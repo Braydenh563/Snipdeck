@@ -56,8 +56,8 @@ pub enum AppMenuEntry {
     /// Keep the Panel on top of other windows (checked while it is). The header button does the same;
     /// at large text sizes the button leaves the header and this row is the only way (audit 2, item 1).
     KeepOnTop,
-    /// View: show or hide the 1 to 9 numbers on the rows (checked while shown).
-    ShowNumbers,
+    /// Open the header's Select / Delete strip in Select mode ("Clear list…" lives there).
+    SelectOrDelete,
     /// Forget the remembered size and position on this monitor and put the Panel back at the default.
     ResetGeometry,
     /// A line between groups.
@@ -153,7 +153,7 @@ pub const APP_MENU: [AppMenuEntry; 21] = [
     AppMenuEntry::Screenshot,
     AppMenuEntry::PauseHotkeys,
     AppMenuEntry::KeepOnTop,
-    AppMenuEntry::ShowNumbers,
+    AppMenuEntry::SelectOrDelete,
     AppMenuEntry::ResetGeometry,
     AppMenuEntry::Separator,
     AppMenuEntry::Troubleshoot,
@@ -233,8 +233,8 @@ where
                 self.choose_on_top(!self.on_top);
                 Vec::new()
             }
-            AppMenuEntry::ShowNumbers => {
-                self.update_settings(|s| s.show_numbers = !s.show_numbers);
+            AppMenuEntry::SelectOrDelete => {
+                self.panel_select_mode(true);
                 Vec::new()
             }
             AppMenuEntry::ResetGeometry => self.reset_panel_geometry(),
@@ -304,7 +304,7 @@ where
         } else {
             self.model.rows()
         };
-        if let Some(row) = rows.get(index) {
+        if let Some(row) = rows.get(index).filter(|r| !r.deleted_pending) {
             self.menu_targets = if in_strip {
                 vec![row.id]
             } else {
@@ -511,7 +511,7 @@ where
     // ---- Row actions ---------------------------------------------------------------------------
 
     fn row_id(&self, index: usize) -> Option<ItemId> {
-        self.model.rows().get(index).map(|r| r.id)
+        self.live_row(index).map(|r| r.id)
     }
 
     /// Ctrl+E or a double-click on row `index`: the quick editor on that item.

@@ -139,6 +139,10 @@ msgstr "すべてのコマンド…"
 msgid "All items"
 msgstr "すべてのスニペット"
 
+msgid "All {n} item moves to the Trash. You can restore it for {} days."
+msgid_plural "All {n} items move to the Trash. You can restore them for {} days."
+msgstr[0] "{n}件のアイテムがごみ箱に移動します。{}日間は元に戻せます。"
+
 msgid "All {} recent copies are removed. This can't be undone."
 msgstr "{}件の最近のコピーを削除します。元に戻せません。"
 
@@ -330,6 +334,15 @@ msgstr "フィルターをクリア"
 
 msgid "Clear history"
 msgstr "履歴を消去"
+
+msgid "Clear list"
+msgstr "リストを空にする"
+
+msgid "Clear list “{}”?"
+msgstr "リスト「{}」を空にしますか？"
+
+msgid "Clear list…"
+msgstr "リストを空にする…"
 
 msgid "Clear recent history"
 msgstr "最近の履歴を消去"
@@ -703,6 +716,9 @@ msgstr "リスト「{}」を削除しますか？"
 msgid "Delete list…"
 msgstr "リストを削除…"
 
+msgid "Delete snippets"
+msgstr "スニペットを削除"
+
 msgid "Delete tag"
 msgstr "タグを削除"
 
@@ -724,6 +740,9 @@ msgstr "このリストを削除しますか？"
 msgid "Delete this tag?"
 msgstr "このタグを削除しますか？"
 
+msgid "Delete “{}”"
+msgstr "「{}」を削除"
+
 msgid "Deleted board “{}”"
 msgstr "ボード「{}」を削除しました"
 
@@ -735,6 +754,9 @@ msgstr "削除されたスニペットは、完全に削除されるまで{}日�
 
 msgid "Deleted list “{}”"
 msgstr "リスト「{}」を削除しました"
+
+msgid "Deleted “{}”"
+msgstr "削除しました:「{}」"
 
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
 msgstr "このPCにあるすべてのボード、リスト、スニペット、バックアップを削除します。元に戻すことはできません。"
@@ -2129,14 +2151,26 @@ msgstr "すべてのボードとリストを検索しました。"
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "機密スニペットをコピーしてから、その後他に何もコピーされなければ、クリップボードから消去されるまでの秒数。0 にすると消去しません。貼り付けると、代わりにご自身のクリップボードの内容が復元されます。"
 
+msgid "Select"
+msgstr "選択"
+
 msgid "Select all items"
 msgstr "すべての項目を選択"
+
+msgid "Select and delete"
+msgstr "選択と削除"
 
 msgid "Select every item"
 msgstr "すべてのスニペットを選択"
 
+msgid "Select or delete…"
+msgstr "選択または削除…"
+
 msgid "Select several items"
 msgstr "複数の項目を選択"
+
+msgid "Select snippets"
+msgstr "スニペットを選択"
 
 msgid "Sensitive"
 msgstr "機密"
@@ -2203,9 +2237,6 @@ msgstr "「記号」タブを表示"
 
 msgid "Show all"
 msgstr "すべて表示"
-
-msgid "Show numbers"
-msgstr "番号を表示"
 
 msgid "Show or hide the Panel"
 msgstr "パネルの表示／非表示"
@@ -2692,6 +2723,9 @@ msgstr "元に戻しました: {}"
 
 msgid "Undo"
 msgstr "元に戻す"
+
+msgid "Undo delete of “{}”"
+msgstr "「{}」の削除を元に戻す"
 
 msgid "Undo last change"
 msgstr "直前の変更を元に戻す"

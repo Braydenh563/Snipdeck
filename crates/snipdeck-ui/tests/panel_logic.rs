@@ -19,7 +19,7 @@ use i_slint_backend_testing::{
     AccessibleRole, ElementHandle, ElementQuery, ElementRoot, mock_elapsed_time,
 };
 use slint::{
-    ComponentHandle, LogicalPosition, ModelRc, VecModel,
+    ComponentHandle, LogicalPosition, Model, ModelRc, VecModel,
     platform::{Key, PointerEventButton, WindowEvent},
 };
 use snipdeck_ui::{
@@ -38,6 +38,7 @@ const MIN_HIT: f32 = 24.0;
 type Log = Rc<RefCell<Vec<String>>>;
 
 /// A populated Panel whose every callback appends a line to the returned log.
+#[allow(clippy::too_many_lines, reason = "one hook per callback of the window")]
 fn start() -> (PanelWindow, Log) {
     let ui = PanelWindow::new().expect("panel");
     fixture::populate(&ui);
@@ -90,6 +91,13 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_select_all_requested, || "select-all".to_string());
     hook!(on_selection_extended, |d| format!("extend:{d}"));
     hook!(on_selection_cleared, || "clear-selection".to_string());
+    hook!(on_select_mode_changed, |on| format!("select-mode:{on}"));
+    hook!(on_delete_mode_changed, |on| format!("delete-mode:{on}"));
+    hook!(on_modes_ended, || "modes-ended".to_string());
+    hook!(on_row_delete_requested, |i| format!("row-delete:{i}"));
+    hook!(on_row_undo_requested, |i| format!("row-undo:{i}"));
+    hook!(on_clear_list_requested, || "clear-requested".to_string());
+    hook!(on_clear_list_confirmed, || "clear-confirmed".to_string());
     hook!(on_bulk_move_requested, || "bulk-move".to_string());
     hook!(on_bulk_colour_requested, || "bulk-colour".to_string());
     hook!(on_bulk_delete_requested, || "bulk-delete".to_string());
@@ -376,6 +384,17 @@ ui_tests! {
         assert_eq!(take(&log), ["close"], "second Esc hides the Panel");
     }
 
+    fn escape_clears_a_typed_search_before_it_ends_a_mode() {
+        let (ui, log) = start();
+        ui.set_delete_mode(true);
+        type_text(ui.window(), "ab");
+        take(&log);
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(take(&log), ["query:"], "the first Esc clears the search and keeps the mode");
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(take(&log), ["modes-ended"], "the second Esc ends the mode");
+    }
+
     fn ctrl_f_focuses_and_selects_the_search_text() {
         let (ui, _log) = start();
         type_text(ui.window(), "abc");
@@ -590,6 +609,25 @@ ui_tests! {
         press(ui.window(), &key(Key::Return));
         press(ui.window(), &key(Key::DownArrow));
         assert!(take(&log).is_empty(), "no callbacks fired");
+    }
+
+    fn alt_digits_address_the_live_rows_when_a_collapsed_row_is_shown() {
+        let (ui, log) = start();
+        let mut sample = fixture::sample_rows();
+        sample[1].deleted_pending = true;
+        for (i, row) in sample.iter_mut().enumerate() {
+            row.ghosts_before = i32::from(i > 1);
+        }
+        fixture::set_rows(&ui, sample);
+        // The host's map: Alt+1 is shown row 0, Alt+2 is shown row 2 (row 1 is collapsed), and so on.
+        ui.set_quick_rows(ModelRc::new(VecModel::from(vec![0, 2, 3, 4, 5])));
+        settle();
+        take(&log);
+        chord(ui.window(), &[Key::Alt], "2");
+        assert_eq!(take(&log), ["quick:2"]);
+        assert_eq!(ui.get_selected_index(), 2, "the cursor lands on the live row, not the collapsed one");
+        chord(ui.window(), &[Key::Alt], "6");
+        assert!(take(&log).is_empty(), "no sixth live row");
     }
 
     fn alt_digits_use_the_nth_row_and_bare_digits_are_always_search_text() {
@@ -2703,5 +2741,134 @@ ui_tests! {
         ui.set_recent_paused(true);
         settle();
         assert!(ElementHandle::find_by_accessible_label(&ui, "History is paused").next().is_some());
+    }
+
+    fn the_select_and_delete_strip_exists_only_while_a_mode_is_on() {
+        let (ui, _log) = start();
+        assert!(missing(&ui, "Select snippets", AccessibleRole::Button), "no strip at rest");
+        assert!(missing(&ui, "Delete snippets", AccessibleRole::Button));
+        ui.set_select_mode(true);
+        settle();
+        assert!(!missing(&ui, "Select snippets", AccessibleRole::Button));
+        assert!(missing(&ui, "Clear list\u{2026}", AccessibleRole::Button), "Clear list is for Delete mode");
+        ui.set_select_mode(false);
+        settle();
+        assert!(missing(&ui, "Select snippets", AccessibleRole::Button), "the strip is gone with the mode");
+    }
+
+    fn the_strip_is_labelled_and_fits_at_every_text_size() {
+        for (scale, w, h) in [(1.0_f32, 320.0_f32, 560.0_f32), (1.5, 480.0, 720.0), (2.0, 640.0, 900.0)] {
+            let (ui, log) = start();
+            ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(scale);
+            ui.window().set_size(slint::LogicalSize::new(w, h));
+            ui.set_delete_mode(true);
+            settle();
+            let mut right = 0.0_f32;
+            for name in ["Select snippets", "Delete snippets", "Clear list\u{2026}", "Done"] {
+                let b = find(&ui, name, AccessibleRole::Button);
+                let (p, s) = (b.absolute_position(), b.size());
+                assert!(p.x >= right - 0.5, "{name} does not overlap the one before at {scale}");
+                assert!(p.x + s.width <= w, "{name} inside the window at {scale}: {p:?} {s:?}");
+                assert!(s.height >= MIN_HIT, "{name} is a real target at {scale}: {}", s.height);
+                right = p.x + s.width;
+            }
+            take(&log);
+            click_at(&ui, centre(&find(&ui, "Select snippets", AccessibleRole::Button)));
+            assert_eq!(take(&log), ["select-mode:true"]);
+            click_at(&ui, centre(&find(&ui, "Clear list\u{2026}", AccessibleRole::Button)));
+            assert_eq!(take(&log), ["clear-requested"]);
+            click_at(&ui, centre(&find(&ui, "Done", AccessibleRole::Button)));
+            assert_eq!(take(&log), ["modes-ended"]);
+        }
+    }
+
+    fn the_switch_moves_between_the_modes_and_done_ends_them() {
+        let (ui, log) = start();
+        ui.set_select_mode(true);
+        settle();
+        take(&log);
+        click_at(&ui, centre(&find(&ui, "Delete snippets", AccessibleRole::Button)));
+        assert_eq!(take(&log), ["delete-mode:true"]);
+        click_at(&ui, centre(&find(&ui, "Done", AccessibleRole::Button)));
+        assert_eq!(take(&log), ["modes-ended"]);
+    }
+
+    fn a_long_title_elides_before_the_delete_button() {
+        for layout in [PanelLayout::List, PanelLayout::Compact, PanelLayout::Cards] {
+            let (ui, _log) = start();
+            ui.set_layout(layout);
+            let long = "A very long snippet title that cannot possibly fit on one line of a narrow Panel";
+            let mut sample = fixture::sample_rows();
+            sample[0].title = long.into();
+            fixture::set_rows(&ui, sample);
+            ui.set_delete_mode(true);
+            settle();
+            let r = rows(&ui)[0].clone();
+            let (top, bottom) = (r.absolute_position().y, r.absolute_position().y + r.size().height);
+            let title = all(&ui, long, AccessibleRole::Text)
+                .into_iter()
+                .find(|t| t.absolute_position().y >= top && t.absolute_position().y < bottom)
+                .expect("the title text");
+            let trash = row_button(&ui, 0, &format!("Delete \u{201c}{long}\u{201d}")).expect("the delete button");
+            let title_right = title.absolute_position().x + title.size().width;
+            assert!(title_right <= trash.absolute_position().x + 0.5, "{layout:?}: title ends at {title_right}, the button starts at {}", trash.absolute_position().x);
+        }
+    }
+
+    fn select_mode_click_marks_the_row_and_esc_leaves_the_mode() {
+        let (ui, log) = start_quiet();
+        ui.set_select_mode(true);
+        settle();
+        take(&log);
+        click_row_with(&ui, 1, &[]);
+        assert_eq!(take(&log), ["picked:1:false:false"], "a plain click picks, never uses");
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(take(&log), ["modes-ended"]);
+    }
+
+    fn delete_mode_rows_have_a_labelled_delete_button_and_a_click_never_pastes() {
+        let (ui, log) = start_quiet();
+        ui.set_delete_mode(true);
+        settle();
+        let title = ui.get_rows().row_data(0).expect("row").title.to_string();
+        let label = format!("Delete \u{201c}{title}\u{201d}");
+        take(&log);
+        click_row_with(&ui, 0, &[]);
+        assert!(take(&log).is_empty(), "a click on the row does nothing in Delete mode");
+        click_at(&ui, centre(&find(&ui, &label, AccessibleRole::Button)));
+        assert_eq!(take(&log), ["row-delete:0"]);
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(take(&log), ["modes-ended"]);
+    }
+
+    fn a_deleted_row_reads_deleted_and_offers_undo() {
+        let (ui, log) = start_quiet();
+        ui.set_delete_mode(true);
+        let mut sample = fixture::sample_rows();
+        sample[0].deleted_pending = true;
+        let row = sample[0].clone();
+        fixture::set_rows(&ui, sample);
+        settle();
+        assert!(missing(&ui, &format!("Delete \u{201c}{}\u{201d}", row.title), AccessibleRole::Button), "no delete button on a deleted row");
+        let ghost = find(&ui, &format!("Deleted \u{201c}{}\u{201d}", row.title), AccessibleRole::Groupbox);
+        assert!(ghost.size().height <= 40.0, "the collapsed row is one compact line: {}", ghost.size().height);
+        assert!(ghost.size().height < rows(&ui)[0].size().height, "shorter than a live row");
+        assert_eq!(rows(&ui).len(), fixture::sample_rows().len() - 1, "the covered card is not an item for assistive technology");
+        take(&log);
+        let undo = find(&ui, &format!("Undo delete of \u{201c}{}\u{201d}", row.title), AccessibleRole::Button);
+        click_at(&ui, centre(&undo));
+        assert_eq!(take(&log), ["row-undo:0"]);
+    }
+
+    fn clear_list_confirmation_shows_the_count_and_asks_once() {
+        let (ui, log) = start();
+        ui.set_clear_list_name("Replies".into());
+        ui.set_clear_list_count(7);
+        ui.set_clear_list_open(true);
+        settle();
+        assert!(ElementHandle::find_by_accessible_label(&ui, "Clear list \u{201c}Replies\u{201d}?").next().is_some());
+        take(&log);
+        click_at(&ui, centre(&find(&ui, "Clear list", AccessibleRole::Button)));
+        assert_eq!(take(&log), ["clear-confirmed"]);
     }
 }

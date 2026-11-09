@@ -78,6 +78,10 @@ export struct PanelRow {
     stack-position: int,
     // In the multi-selection (Ctrl+click, Shift+click, Ctrl+A).
     marked: bool,
+    // Delete mode: the item is in the Trash; the row reads "Deleted · Undo" until the mode ends.
+    deleted-pending: bool,
+    // How many "Deleted · Undo" rows lie above this one: the row numbers (and Alt+N) count live rows only.
+    ghosts-before: int,
 }
 
 // One entry of the Recent inbox (SPEC 5.6), as `snipdeck-app`'s `RecentRowView`: the start of the copied text, the
@@ -342,6 +346,22 @@ export component PanelWindow inherits Window {
     callback add-from-clipboard();
     // ---- Selection (O45): Ctrl+click, Shift+click, Ctrl+A, Shift+Up/Down; the bulk bar acts on it ----
     in property <int> marked-count: 0;
+    // The header's Select and Delete modes (O50): the host owns them (Esc and Done end them); the Select mode only
+    // gives every row a checkbox and makes a plain click mark it, on the same marks and bulk bar as Ctrl+click.
+    in property <bool> select-mode: false;
+    in property <bool> delete-mode: false;
+    callback select-mode-changed(bool);
+    callback delete-mode-changed(bool);
+    callback modes-ended();
+    callback row-delete-requested(int);
+    callback row-undo-requested(int);
+    // The kebab's "Clear list…" confirmation: the count of items that go to the Trash (one Undo brings them back).
+    in property <bool> clear-list-open: false;
+    in property <string> clear-list-name;
+    in property <int> clear-list-count;
+    callback clear-list-requested();
+    callback clear-list-confirmed();
+    callback clear-list-dismissed();
     in property <bool> show-numbers: true;
     callback row-picked(int, bool, bool);
     callback select-all-requested();
@@ -461,7 +481,7 @@ export component PanelWindow inherits Window {
         }
     }
     // The text of the tooltip on screen (empty = none), for tests and assistive checks.
-    out property <string> tooltip-shown: root.tip-open && !root.board-menu-open && !root.app-menu-open && !root.item-menu-open && !root.list-menu-open && !root.list-delete-open && !root.board-delete-open && !root.new-menu-open && !root.pinned-menu-open ? root.tip : "";
+    out property <string> tooltip-shown: root.tip-open && !root.board-menu-open && !root.app-menu-open && !root.item-menu-open && !root.list-menu-open && !root.list-delete-open && !root.clear-list-open && !root.board-delete-open && !root.new-menu-open && !root.pinned-menu-open ? root.tip : "";
 
     // ---- Internals ----------------------------------------------------------------------------
     property <bool> pastes: root.target-name != "";
@@ -553,6 +573,11 @@ export component PanelWindow inherits Window {
     }
     property <length> layout-row-h: root.row-h-of(root.eff-layout);
     property <length> tabs-h: root.lists-in-menu ? 0px : Space.s8;
+    // The Select / Delete strip under the header (a small button and a 4px gap under it).
+    // A collapsed "Deleted · Undo" row.
+    property <length> ghost-h: max(Space.hit, Type.line-base + Space.s2);
+    property <length> strip-h: max(24px, Type.line-sm + Space.s2) + Space.s1 * 2;
+    property <bool> strip-shown: !root.list-hidden && (root.select-mode || root.delete-mode);
     property <length> footer-h: max(Space.s8, Type.line-sm + Space.s3);
     // The "New item" row floats over the foot of the list (audit 2, item 2): the List minimum keeps it clear of the third row.
     property <length> quick-h: Space.hit + Space.s1;
@@ -697,6 +722,11 @@ export component PanelWindow inherits Window {
             root.focus-typing();
         }
     }
+    changed clear-list-open => {
+        if (!root.clear-list-open) {
+            root.focus-typing();
+        }
+    }
     changed board-delete-open => {
         if (!root.board-delete-open) {
             root.focus-typing();
@@ -788,7 +818,7 @@ export component PanelWindow inherits Window {
     }
 
     function use-selected(copy-only: bool) {
-        if (root.sel < 0) {
+        if (root.sel < 0 || root.delete-mode) {
             return;
         }
         root.mark-used(root.sel);
@@ -799,12 +829,18 @@ export component PanelWindow inherits Window {
         }
     }
 
+    // Where the live row for Alt+N sits among the rows shown (the host fills it; without it, row N - 1).
+    in property <[int]> quick-rows;
     function quick(n: int) {
         if (n < 1 || n > root.rows.length) {
             return;
         }
-        root.selected-index = n - 1;
-        root.mark-used(n - 1);
+        if (root.quick-rows.length > 0 && n > root.quick-rows.length) {
+            return;
+        }
+        let at = root.quick-rows.length > 0 ? root.quick-rows[n - 1] : n - 1;
+        root.selected-index = at;
+        root.mark-used(at);
         root.quick-use(n);
     }
 
@@ -1008,13 +1044,16 @@ export component PanelWindow inherits Window {
                 if (event.text == Key.Tab || event.text == Key.Backtab) {
                     self.tab-back = event.text == Key.Backtab || event.modifiers.shift;
                 }
-                if (root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.recent-menu-open || root.recent-save-open || root.list-delete-open || root.board-delete-open || root.new-menu-open || root.pinned-menu-open) {
+                if (root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.recent-menu-open || root.recent-save-open || root.list-delete-open || root.clear-list-open || root.board-delete-open || root.new-menu-open || root.pinned-menu-open) {
                     // The menu (or the confirmation) owns the keyboard; Esc closes it.
                     if (event.text == Key.Escape) {
                         root.new-menu-open = false;
                         root.pinned-menu-open = false;
                         if (root.list-delete-open) {
                             root.list-delete-dismissed();
+                        }
+                        if (root.clear-list-open) {
+                            root.clear-list-dismissed();
                         }
                         if (root.board-delete-open) {
                             root.board-delete-dismissed();
@@ -1186,6 +1225,11 @@ export component PanelWindow inherits Window {
                         return accept;
                     }
                 }
+                // A typed search goes first (below); the mode ends on the Esc after it.
+                if (event.text == Key.Escape && (root.select-mode || root.delete-mode) && !root.searching && !root.search-user) {
+                    root.modes-ended();
+                    return accept;
+                }
                 if (event.text == Key.Escape && root.marked-count > 0 && !root.list-hidden) {
                     root.selection-cleared();
                     return accept;
@@ -1247,7 +1291,9 @@ export component PanelWindow inherits Window {
                 }
                 // With a query, Delete is a text key of the search field.
                 if (event.text == Key.Delete && root.sel >= 0 && !root.searching && !root.list-hidden) {
-                    if (root.marked-count > 0) {
+                    if (root.delete-mode) {
+                        root.row-delete-requested(root.sel);
+                    } else if (root.marked-count > 0) {
                         root.bulk-delete-requested();
                     } else {
                         root.delete-requested(root.sel);
@@ -1525,6 +1571,49 @@ export component PanelWindow inherits Window {
                     }
                 }
 
+                // ---- Select and Delete (O50): a strip under the header that exists only while a mode is on (the header row
+                // is full at 320px and at large text sizes, and the Panel gives nothing away at rest). Esc or Done ends it. Select mode gives each
+                // row a checkbox and uses the bulk bar below; Delete mode gives each row a delete button.
+                if root.strip-shown: Rectangle {
+                    height: root.strip-h;
+                    accessible-role: AccessibleRole.groupbox;
+                    accessible-label: @tr("Select and delete");
+                    HorizontalLayout {
+                        padding-left: Space.s2;
+                        padding-right: Space.s2;
+                        padding-top: Space.s1;
+                        padding-bottom: Space.s1;
+                        spacing: Space.s1;
+                        // A two-button switch: the mode that is on is the filled one.
+                        Button {
+                            size: ButtonSize.sm;
+                            variant: root.select-mode ? ButtonVariant.primary : ButtonVariant.secondary;
+                            text: @tr("Select");
+                            a11y-label: @tr("Select snippets");
+                            clicked => { root.select-mode-changed(true); }
+                        }
+                        Button {
+                            size: ButtonSize.sm;
+                            variant: root.delete-mode ? ButtonVariant.primary : ButtonVariant.secondary;
+                            text: @tr("Delete");
+                            a11y-label: @tr("Delete snippets");
+                            clicked => { root.delete-mode-changed(true); }
+                        }
+                        if root.delete-mode: Button {
+                            size: ButtonSize.sm;
+                            variant: ButtonVariant.ghost;
+                            text: @tr("Clear list…");
+                            clicked => { root.clear-list-requested(); }
+                        }
+                        Rectangle { horizontal-stretch: 1; }
+                        Button {
+                            size: ButtonSize.sm;
+                            text: @tr("Done");
+                            clicked => { root.modes-ended(); }
+                        }
+                    }
+                }
+
                 // ---- Search (spec 2.3): nothing until used, an expanded block that replaces the tabs and the pinned
                 // strip, or (Settings) a 44px strip that stays. Collapsed, the field is clipped to nothing and the
                 // focus waits in `rest`; the first typed character opens the search.
@@ -1761,8 +1850,9 @@ export component PanelWindow inherits Window {
                                     property <int> i: g * root.cols + c;
                                     property <PanelRow> item: root.rows[self.i];
                                     horizontal-stretch: 1;
-                                    preferred-height: card.preferred-height;
-                                    min-height: card.preferred-height;
+                                    // A deleted row collapses to one compact line ("Deleted “title” · Undo").
+                                    preferred-height: item.deleted-pending ? root.ghost-h : card.preferred-height;
+                                    min-height: item.deleted-pending ? root.ghost-h : card.preferred-height;
 
                                     // The row being dragged over this one: a drop lands after it when coming from above.
                                     property <int> row-from: -1;
@@ -1779,26 +1869,30 @@ export component PanelWindow inherits Window {
                                         }
 
                                         DragArea {
-                                            allow-move: !root.searching && !root.list-hidden;
+                                            allow-move: !root.searching && !root.list-hidden && !root.delete-mode && !root.select-mode;
                                             data: root.row-payload(i);
 
                                             card := ItemCard {
                                                 x: 0px;
                                                 y: 0px;
                                                 width: parent.width;
-                                                height: self.preferred-height;
+                                                height: item.deleted-pending ? root.ghost-h : self.preferred-height;
+                                                // The collapsed row's covered card is neither seen nor read.
+                                                visible: !item.deleted-pending;
                                                 variant: root.eff-layout == PanelLayout.compact ? ItemCardVariant.compact : root.eff-layout == PanelLayout.cards ? ItemCardVariant.tile : ItemCardVariant.comfortable;
                                                 edit-action: !(root.layout == PanelLayout.compact && root.narrow);
                                                 copy-action: root.pastes;
-                                                show-actions: i == root.sel && root.marked-count == 0;
+                                                show-actions: i == root.sel && root.marked-count == 0 && !root.delete-mode && !root.select-mode;
                                                 row-tip: root.pastes ? @tr("Click to paste into {}. Shift+click copies.", root.target-name) : @tr("Click to copy.");
                                                 kind: item.kind;
-                                                number: i < 9 ? i + 1 : 0;
-                                                numbered: root.show-numbers;
-                                                pick-mode: root.marked-count > 0;
-                                                actions-hidden: root.marked-count > 0;
+                                                number: i - item.ghosts-before < 9 && !root.select-mode ? i - item.ghosts-before + 1 : 0;
+                                                numbered: root.show-numbers || root.select-mode;
+                                                check-box: root.select-mode;
+                                                reserve-r: root.delete-mode ? (Space.hit + Space.s1) * SystemLook.text-scale : 0px;
+                                                pick-mode: root.marked-count > 0 || root.select-mode || root.delete-mode;
+                                                actions-hidden: root.marked-count > 0 || root.select-mode || root.delete-mode;
                                                 modifier-picks: true;
-                                                show-focus: root.marked-count > 0 && i == root.sel;
+                                                show-focus: (root.marked-count > 0 || root.select-mode || root.delete-mode) && i == root.sel && !item.deleted-pending;
                                                 title: item.title;
                                                 mark-before: item.mark-before;
                                                 mark-text: item.mark-text;
@@ -1813,18 +1907,23 @@ export component PanelWindow inherits Window {
                                                 label: item.label;
                                                 label-name: item.label-name;
                                                 stack-position: item.stack-position;
-                                                selected: root.marked-count > 0 ? item.marked : i == root.sel;
+                                                selected: root.delete-mode ? false : root.marked-count > 0 || root.select-mode ? item.marked : i == root.sel;
                                                 masked-hint: @tr("Hidden. Hold Space to reveal.");
                                                 revealed: i == root.revealed-index;
                                                 pulling: i == root.used-index;
                                                 keyboard-focusable: false;
                                                 picked(shift, ctrl) => {
-                                                    root.selected-index = i;
-                                                    root.row-picked(i, shift, ctrl);
+                                                    // Delete mode: a click on the row does nothing (its own button deletes).
+                                                    if (!root.delete-mode) {
+                                                        root.selected-index = i;
+                                                        root.row-picked(i, shift, ctrl);
+                                                    }
                                                 }
                                                 use => {
-                                                    root.selected-index = i;
-                                                    root.row-activated(i);
+                                                    if (!root.delete-mode && !root.select-mode) {
+                                                        root.selected-index = i;
+                                                        root.row-activated(i);
+                                                    }
                                                 }
                                                 copy => {
                                                     root.selected-index = i;
@@ -1844,6 +1943,52 @@ export component PanelWindow inherits Window {
                                                     root.row-tip-text = on ? text : "";
                                                 }
                                                 reveal-requested(on) => { root.reveal-requested(i, on); }
+                                            }
+
+                                            // Delete mode: a labelled delete button at the row's right end.
+                                            if root.delete-mode && !item.deleted-pending: row-delete := IconButton {
+                                                icon: Icons.trash;
+                                                tooltip: @tr("Delete “{}”", item.title);
+                                                own-tooltip: true;
+                                                scaled: true;
+                                                // The top right corner: the sensitive eye sits on the preview line below it.
+                                                x: card.width - self.width - Space.s1;
+                                                y: Space.s1;
+                                                clicked => { root.row-delete-requested(i); }
+                                            }
+                                            // The row after its delete: it collapses to "Deleted · Undo" until the mode ends.
+                                            if item.deleted-pending: Rectangle {
+                                                x: 0px;
+                                                y: 0px;
+                                                width: card.width;
+                                                height: card.height;
+                                                border-radius: Radius.lg;
+                                                background: Theme.bg-sunken;
+                                                accessible-role: AccessibleRole.groupbox;
+                                                accessible-label: @tr("Deleted “{}”", item.title);
+                                                HorizontalLayout {
+                                                    padding-left: Space.s3;
+                                                    padding-right: Space.s2;
+                                                    spacing: Space.s2;
+                                                    Text {
+                                                        horizontal-stretch: 1;
+                                                        text: @tr("Deleted “{}”", item.title);
+                                                        font-family: Fonts.sans;
+                                                        font-size: Type.sm;
+                                                        color: Theme.text-secondary;
+                                                        vertical-alignment: center;
+                                                        overflow: elide;
+                                                        accessible-role: AccessibleRole.none;
+                                                    }
+                                                    Button {
+                                                        size: ButtonSize.sm;
+                                                        variant: ButtonVariant.ghost;
+                                                        text: @tr("Undo");
+                                                        a11y-label: @tr("Undo delete of “{}”", item.title);
+                                                        y: (parent.height - self.height) / 2;
+                                                        clicked => { root.row-undo-requested(i); }
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -2577,6 +2722,24 @@ export component PanelWindow inherits Window {
                 variant: ButtonVariant.danger;
                 text: @tr("Delete list");
                 clicked => { root.list-delete-confirmed(); }
+            }
+        }
+
+        // "Clear list…" (the kebab): asks once, with the count; the Undo toast brings every item back in one step.
+        Dialog {
+            open: root.clear-list-open;
+            variant: DialogVariant.destructive;
+            title: @tr("Clear list “{}”?", root.clear-list-name);
+            body: @tr("All {n} item moves to the Trash. You can restore it for {} days." | "All {n} items move to the Trash. You can restore them for {} days." % root.clear-list-count, root.trash-days);
+            dismissed => { root.clear-list-dismissed(); }
+            Button {
+                text: @tr("Cancel");
+                clicked => { root.clear-list-dismissed(); }
+            }
+            Button {
+                variant: ButtonVariant.danger;
+                text: @tr("Clear list");
+                clicked => { root.clear-list-confirmed(); }
             }
         }
 

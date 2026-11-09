@@ -231,6 +231,12 @@ pub struct View {
     pub choose_menu: Option<ChooseMenu>,
     /// How many rows the multi-selection holds (the bulk bar shows from one).
     pub marked_count: usize,
+    /// The header's Select mode is on (rows show a checkbox).
+    pub select_mode: bool,
+    /// The header's Delete mode is on (rows show a delete button).
+    pub delete_mode: bool,
+    /// The "Clear list…" confirmation while it asks.
+    pub clear_list: Option<ClearListView>,
     /// The rows show their 1 to 9 numbers (the `show_numbers` setting).
     pub show_numbers: bool,
     /// The Symbols tab is offered (the `show_symbols_tab` setting).
@@ -298,5 +304,14 @@ pub struct ListDeleteView {
     /// The list's name.
     pub name: String,
     /// How many items move to the Trash with it.
+    pub count: usize,
+}
+
+/// The Panel's confirmation before every item of the shown list goes to the Trash.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClearListView {
+    /// The list's name.
+    pub name: String,
+    /// How many items move to the Trash.
     pub count: usize,
 }

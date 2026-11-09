@@ -139,6 +139,11 @@ msgstr "Toutes les commandes…"
 msgid "All items"
 msgstr "Tous les extraits"
 
+msgid "All {n} item moves to the Trash. You can restore it for {} days."
+msgid_plural "All {n} items move to the Trash. You can restore them for {} days."
+msgstr[0] "Le {n} élément va dans la Corbeille. Vous pouvez le restaurer pendant {} jours."
+msgstr[1] "Les {n} éléments vont dans la Corbeille. Vous pouvez les restaurer pendant {} jours."
+
 msgid "All {} recent copies are removed. This can't be undone."
 msgstr "Les {} copies récentes seront supprimées. Cette action est irréversible."
 
@@ -330,6 +335,15 @@ msgstr "Effacer le filtre"
 
 msgid "Clear history"
 msgstr "Effacer l'historique"
+
+msgid "Clear list"
+msgstr "Vider la liste"
+
+msgid "Clear list “{}”?"
+msgstr "Vider la liste « {} » ?"
+
+msgid "Clear list…"
+msgstr "Vider la liste…"
 
 msgid "Clear recent history"
 msgstr "Effacer l'historique récent"
@@ -703,6 +717,9 @@ msgstr "Supprimer la liste « {} » ?"
 msgid "Delete list…"
 msgstr "Supprimer la liste…"
 
+msgid "Delete snippets"
+msgstr "Supprimer des extraits"
+
 msgid "Delete tag"
 msgstr "Supprimer l'étiquette"
 
@@ -724,6 +741,9 @@ msgstr "Supprimer cette liste ?"
 msgid "Delete this tag?"
 msgstr "Supprimer cette étiquette ?"
 
+msgid "Delete “{}”"
+msgstr "Supprimer « {} »"
+
 msgid "Deleted board “{}”"
 msgstr "Tableau « {} » supprimé"
 
@@ -735,6 +755,9 @@ msgstr "Les extraits supprimés restent ici {} jours avant d'être retirés."
 
 msgid "Deleted list “{}”"
 msgstr "Liste « {} » supprimée"
+
+msgid "Deleted “{}”"
+msgstr "Supprimé : « {} »"
 
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
 msgstr "Supprime tous les tableaux, listes, extraits et sauvegardes de ce PC. Cette action est irréversible."
@@ -2136,14 +2159,26 @@ msgstr "Recherche effectuée dans tous les tableaux et listes."
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "Secondes avant que l'extrait sensible copié ne soit vidé du presse-papiers, si rien d'autre n'a été copié depuis. 0 ne le vide jamais. Le collage restaure à la place votre propre presse-papiers."
 
+msgid "Select"
+msgstr "Sélectionner"
+
 msgid "Select all items"
 msgstr "Sélectionner tous les éléments"
+
+msgid "Select and delete"
+msgstr "Sélectionner et supprimer"
 
 msgid "Select every item"
 msgstr "Sélectionner tous les extraits"
 
+msgid "Select or delete…"
+msgstr "Sélectionner ou supprimer…"
+
 msgid "Select several items"
 msgstr "Sélectionner plusieurs éléments"
+
+msgid "Select snippets"
+msgstr "Sélectionner des extraits"
 
 msgid "Sensitive"
 msgstr "Confidentiel"
@@ -2210,9 +2245,6 @@ msgstr "Afficher l’onglet Symboles"
 
 msgid "Show all"
 msgstr "Tout afficher"
-
-msgid "Show numbers"
-msgstr "Afficher les numéros"
 
 msgid "Show or hide the Panel"
 msgstr "Afficher ou masquer le panneau"
@@ -2699,6 +2731,9 @@ msgstr "Annulé : {}"
 
 msgid "Undo"
 msgstr "Annuler"
+
+msgid "Undo delete of “{}”"
+msgstr "Annuler la suppression de « {} »"
 
 msgid "Undo last change"
 msgstr "Annuler la dernière modification"

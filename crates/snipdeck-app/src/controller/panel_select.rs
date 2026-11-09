@@ -10,7 +10,7 @@ use snipdeck_store::{ItemRepo, TrashRepo, Trashable};
 
 use super::{
     Controller, Library, PanelMenu, UseResult, failed, neutral,
-    views::{ChooseEntry, ChooseLabel, ChooseMenu},
+    views::{ChooseEntry, ChooseLabel, ChooseMenu, ClearListView},
 };
 use crate::{
     host::ClipboardText,
@@ -42,7 +42,14 @@ where
 
     /// Ctrl+click (`Toggle`), Shift+click (`Extend`) or a plain click while a selection is on
     /// (`Replace`) on row `index`.
+    ///
+    /// In Select mode a plain click toggles the row, as Ctrl+click does: the checkbox is the click.
     pub fn panel_mark(&mut self, index: usize, mode: SelectMode) {
+        let mode = if self.select_mode && mode == SelectMode::Replace {
+            SelectMode::Toggle
+        } else {
+            mode
+        };
         self.model.mark(index, mode);
     }
 
@@ -59,6 +66,186 @@ where
     /// Esc, or the bulk bar's Clear: nothing is selected.
     pub fn panel_clear_marks(&mut self) {
         self.model.clear_marks();
+    }
+
+    // ---- The header's Select and Delete modes ---------------------------------------------------------
+
+    /// The header's Select button (and its Done): rows get a checkbox and a click marks them.
+    /// Turning it off drops the marks. It ends Delete mode.
+    pub fn panel_select_mode(&mut self, on: bool) {
+        if on {
+            self.end_delete_mode();
+        } else {
+            self.model.clear_marks();
+        }
+        self.select_mode = on;
+    }
+
+    /// The header's Delete button (and its Done): each row gets a delete button. It ends Select
+    /// mode. Turning it off drops the "Deleted · Undo" rows.
+    pub fn panel_delete_mode(&mut self, on: bool) {
+        if on {
+            self.model.clear_marks();
+            self.select_mode = false;
+            self.delete_mode = true;
+            self.delete_list = self.model.list().map(|l| l.id);
+        } else {
+            self.end_delete_mode();
+        }
+    }
+
+    pub(super) fn end_delete_mode(&mut self) {
+        self.delete_mode = false;
+        self.delete_list = None;
+        self.model.clear_ghosts();
+    }
+
+    /// Ends Delete mode when the shown list is not the one it began in (another tab, board or
+    /// new list, a list deleted): its "Deleted · Undo" rows belong to that list.
+    pub(super) fn guard_modes(&mut self) {
+        if self.delete_mode && self.model.list().map(|l| l.id) != self.delete_list {
+            self.end_delete_mode();
+        }
+    }
+
+    /// Esc: leaves Select or Delete mode, whichever is on.
+    pub fn panel_end_modes(&mut self) {
+        self.panel_select_mode(false);
+        self.end_delete_mode();
+    }
+
+    /// The row shown at `index`, unless it is a "Deleted · Undo" row: every action on a row
+    /// goes through this, so the index the window sends is the one the model shows.
+    pub(super) fn live_row(&self, index: usize) -> Option<crate::panel::Row> {
+        self.model
+            .rows()
+            .into_iter()
+            .nth(index)
+            .filter(|r| !r.deleted_pending)
+    }
+
+    /// The row delete button in Delete mode: the item goes to the Trash (one history step) and
+    /// the row collapses to "Deleted · Undo". The cursor moves to the next row (the previous at
+    /// the end).
+    pub fn panel_delete_row(&mut self, index: usize) {
+        if !self.delete_mode {
+            return;
+        }
+        let Some(row) = self.live_row(index) else {
+            return;
+        };
+        let now = self.clock.now();
+        let done = self
+            .store
+            .atomically(|b| b.trash(Trashable::Item(row.id), now));
+        if done.is_err() {
+            self.show_toast(failed());
+            return;
+        }
+        let step = self.record_step(
+            crate::history::Action::Delete,
+            vec![crate::history::Change::Trash(vec![Trashable::Item(row.id)])],
+        );
+        let shown = self.model.rows();
+        let neighbour = shown
+            .iter()
+            .skip(index + 1)
+            .find(|r| !r.deleted_pending)
+            .or_else(|| shown.iter().take(index).rev().find(|r| !r.deleted_pending))
+            .map(|r| r.id);
+        self.model.add_ghost(index, step);
+        if self.refresh_panel().is_err() {
+            self.show_toast(failed());
+        }
+        if let Some(id) = neighbour {
+            self.model.select_item(id);
+        }
+    }
+
+    /// "Undo" on a "Deleted · Undo" row: that one delete is taken back and the row is whole again.
+    /// When the history has forgotten the step the item comes back from the Trash directly.
+    pub fn panel_undo_row(&mut self, index: usize) {
+        let Some(row) = self
+            .model
+            .rows()
+            .into_iter()
+            .nth(index)
+            .filter(|r| r.deleted_pending)
+        else {
+            return;
+        };
+        let step = self.model.ghost_step(row.id).flatten();
+        self.model.remove_ghost(row.id);
+        if let Some(step) = step.filter(|s| self.history.can_undo(*s)) {
+            self.undo_step(Some(step));
+            return;
+        }
+        match self
+            .store
+            .atomically(|b| b.restore(Trashable::Item(row.id)))
+        {
+            Ok(()) => {
+                self.show_toast(Toast {
+                    kind: ToastKind::Success,
+                    message: ToastMessage::Restored { count: 1 },
+                });
+                self.library_changed();
+            }
+            Err(error) => {
+                self.show_toast(super::main_ctl::restore_failed(&error));
+                self.refresh_logged("a failed undo of a deleted row");
+            }
+        }
+    }
+
+    // ---- Clear list… -----------------------------------------------------------------------------------
+
+    /// The strip's "Clear list…" (Delete mode): asks first (nothing to ask about in an empty list or a search).
+    pub fn panel_open_clear_list(&mut self) {
+        if self.model.searching() {
+            return;
+        }
+        if let Some(list) = self.model.list()
+            && !self.model.list_item_ids().is_empty()
+        {
+            self.menu = PanelMenu::ClearList(list.id);
+        }
+    }
+
+    /// The "Clear list…" confirmation's view: the list's name and how many items go.
+    pub(super) fn clear_list_view(&self) -> Option<ClearListView> {
+        let PanelMenu::ClearList(id) = self.menu else {
+            return None;
+        };
+        let list = self.store.list(id).ok()?;
+        Some(ClearListView {
+            name: list.name.as_str().to_owned(),
+            count: self.store.items(id).map_or(0, |items| items.len()),
+        })
+    }
+
+    /// "Clear list" in the confirmation: every item of the list goes to the Trash as one history
+    /// step, with an Undo toast.
+    pub fn panel_clear_list(&mut self) {
+        let PanelMenu::ClearList(id) = self.menu else {
+            return;
+        };
+        self.menu = PanelMenu::None;
+        let ids: Vec<ItemId> = self
+            .store
+            .items(id)
+            .map(|items| items.iter().map(|i| i.id).collect())
+            .unwrap_or_default();
+        self.end_delete_mode();
+        self.model.clear_marks();
+        self.trash_with_undo(&ids);
+    }
+
+    /// Cancel, Esc or a click on the scrim: the confirmation closes and nothing is deleted.
+    pub fn cancel_clear_list(&mut self) {
+        if matches!(self.menu, PanelMenu::ClearList(_)) {
+            self.menu = PanelMenu::None;
+        }
     }
 
     // ---- The bulk bar ------------------------------------------------------------------------------

@@ -48,8 +48,8 @@ pub use panel_select::LABELS;
 pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 pub use symbol_ctl::{IconExport, IconSave, SaveOutcome, SymbolChoice, SymbolMenuEntry};
 pub use views::{
-    BoardDeleteView, ChooseEntry, ChooseLabel, ChooseMenu, Effect, FillSubmission, FillView,
-    ListDeleteView, PickerView, StackView, ToastPhase, ToastView, UseResult, View,
+    BoardDeleteView, ChooseEntry, ChooseLabel, ChooseMenu, ClearListView, Effect, FillSubmission,
+    FillView, ListDeleteView, PickerView, StackView, ToastPhase, ToastView, UseResult, View,
 };
 
 use crate::{
@@ -213,6 +213,12 @@ pub struct Controller<S, C, K, T> {
     /// What the open item menu, or its Move / Colour choice, acts on: the marked rows when the menu was
     /// opened on one of them, else the one row.
     menu_targets: Vec<ItemId>,
+    /// The header's Select mode is on: a click on a row marks it (the bulk bar acts on the marks).
+    select_mode: bool,
+    /// The header's Delete mode is on: each row has a delete button.
+    delete_mode: bool,
+    /// The list Delete mode began in (its "Deleted · Undo" rows live in the model).
+    delete_list: Option<ListId>,
     /// The Main window's state.
     main: MainModel,
     /// The list or board editor, while one is open.
@@ -301,6 +307,8 @@ enum PanelMenu {
     List(ListId),
     /// The list menu's delete confirmation, asking about this list.
     DeleteList(ListId),
+    /// The kebab's "Clear list…" confirmation, asking about this list.
+    ClearList(ListId),
     /// The board menu's delete confirmation, asking about this board.
     DeleteBoard(BoardId),
 }
@@ -399,6 +407,9 @@ where
             menu: PanelMenu::None,
             symbol_menu: None,
             menu_targets: Vec::new(),
+            select_mode: false,
+            delete_mode: false,
+            delete_list: None,
             main,
             editor: None,
             editor_seq: 0,
@@ -516,6 +527,9 @@ where
             symbol_menu: self.symbol_menu_view(),
             choose_menu: self.choose_menu_view(),
             marked_count: self.model.marked_count(),
+            select_mode: self.select_mode,
+            delete_mode: self.delete_mode,
+            clear_list: self.clear_list_view(),
             show_numbers: self.settings.show_numbers,
             symbols_available: self.settings.show_symbols_tab,
             layout: self.settings.panel_layout,
@@ -788,6 +802,7 @@ where
     /// Hides the Panel (Esc with nothing to clear, the close button, the toggle hotkey).
     pub fn hide(&mut self) -> Vec<Effect> {
         self.visible = false;
+        self.end_delete_mode();
         self.blur_hide = false;
         self.panel_revealed = None;
         self.menu = PanelMenu::None;

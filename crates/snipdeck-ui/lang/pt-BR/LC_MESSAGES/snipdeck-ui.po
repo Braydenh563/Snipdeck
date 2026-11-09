@@ -139,6 +139,11 @@ msgstr "Todos os comandos…"
 msgid "All items"
 msgstr "Todos os trechos"
 
+msgid "All {n} item moves to the Trash. You can restore it for {} days."
+msgid_plural "All {n} items move to the Trash. You can restore them for {} days."
+msgstr[0] "O {n} item vai para a Lixeira. Você pode restaurá-lo por {} dias."
+msgstr[1] "Todos os {n} itens vão para a Lixeira. Você pode restaurá-los por {} dias."
+
 msgid "All {} recent copies are removed. This can't be undone."
 msgstr "Todas as {} cópias recentes serão removidas. Isso não pode ser desfeito."
 
@@ -330,6 +335,15 @@ msgstr "Limpar filtro"
 
 msgid "Clear history"
 msgstr "Limpar histórico"
+
+msgid "Clear list"
+msgstr "Limpar lista"
+
+msgid "Clear list “{}”?"
+msgstr "Limpar a lista “{}”?"
+
+msgid "Clear list…"
+msgstr "Limpar lista…"
 
 msgid "Clear recent history"
 msgstr "Limpar histórico recente"
@@ -703,6 +717,9 @@ msgstr "Excluir a lista “{}”?"
 msgid "Delete list…"
 msgstr "Excluir lista…"
 
+msgid "Delete snippets"
+msgstr "Excluir snippets"
+
 msgid "Delete tag"
 msgstr "Excluir etiqueta"
 
@@ -724,6 +741,9 @@ msgstr "Excluir esta lista?"
 msgid "Delete this tag?"
 msgstr "Excluir esta etiqueta?"
 
+msgid "Delete “{}”"
+msgstr "Excluir “{}”"
+
 msgid "Deleted board “{}”"
 msgstr "Quadro “{}” excluído"
 
@@ -735,6 +755,9 @@ msgstr "Os trechos excluídos ficam aqui por {} dias antes de serem removidos."
 
 msgid "Deleted list “{}”"
 msgstr "Lista “{}” excluída"
+
+msgid "Deleted “{}”"
+msgstr "Excluído: “{}”"
 
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
 msgstr "Apaga todos os quadros, listas, trechos e backups deste PC. Isso não pode ser desfeito."
@@ -2136,14 +2159,26 @@ msgstr "Pesquisou em todos os quadros e listas."
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "Segundos até que um item sensível copiado seja limpo da área de transferência, se nada mais tiver sido copiado desde então. 0 nunca o limpa. Ao colar, sua própria área de transferência é restaurada."
 
+msgid "Select"
+msgstr "Selecionar"
+
 msgid "Select all items"
 msgstr "Selecionar todos os itens"
+
+msgid "Select and delete"
+msgstr "Selecionar e excluir"
 
 msgid "Select every item"
 msgstr "Selecionar todos os itens"
 
+msgid "Select or delete…"
+msgstr "Selecionar ou excluir…"
+
 msgid "Select several items"
 msgstr "Selecionar vários itens"
+
+msgid "Select snippets"
+msgstr "Selecionar snippets"
 
 msgid "Sensitive"
 msgstr "Sensível"
@@ -2210,9 +2245,6 @@ msgstr "Mostrar a aba Símbolos"
 
 msgid "Show all"
 msgstr "Mostrar tudo"
-
-msgid "Show numbers"
-msgstr "Mostrar números"
 
 msgid "Show or hide the Panel"
 msgstr "Mostrar ou ocultar o painel"
@@ -2699,6 +2731,9 @@ msgstr "Desfeito: {}"
 
 msgid "Undo"
 msgstr "Desfazer"
+
+msgid "Undo delete of “{}”"
+msgstr "Desfazer a exclusão de “{}”"
 
 msgid "Undo last change"
 msgstr "Desfazer a última alteração"

@@ -15,6 +15,8 @@ component ItemGutter inherits Rectangle {
     // The card is selected: the fill is `bg-selected` (the system highlight in high contrast), so the glyphs
     // switch to the colours meant for that fill.
     in property <bool> selected;
+    // Select mode: the cell is a checkbox (drawn, not interactive: a click anywhere on the row marks it).
+    in property <bool> box: false;
     // The vertical band the number is centred in (the title row).
     in property <length> row-y;
     in property <length> row-h;
@@ -22,7 +24,24 @@ component ItemGutter inherits Rectangle {
     in property <length> cell-w: Space.s4;
     width: root.cell-w;
 
-    if !root.checked && root.number >= 1 && root.number <= 9: Text {
+    if root.box: Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: root.row-y + (root.row-h - self.height) / 2;
+        width: parent.width;
+        height: self.width;
+        border-radius: Radius.sm;
+        border-width: 1.5px;
+        border-color: root.checked ? Theme.accent : Theme.border-strong;
+        background: root.checked ? Theme.accent : transparent;
+        if root.checked: Icon {
+            source: Icons.check;
+            tint: Theme.text-on-accent;
+            size: parent.width - Space.s1;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+    if !root.box && !root.checked && root.number >= 1 && root.number <= 9: Text {
         x: 0;
         y: root.row-y;
         width: parent.width;
@@ -37,7 +56,7 @@ component ItemGutter inherits Rectangle {
         horizontal-alignment: center;
         vertical-alignment: center;
     }
-    if root.checked: Icon {
+    if !root.box && root.checked: Icon {
         source: Icons.check;
         tint: root.selected ? Theme.accent-on-selected : Theme.accent-text;
         size: Space.s3 * SystemLook.text-scale;
@@ -186,6 +205,11 @@ export component ItemCard inherits Rectangle {
     in property <bool> pick-mode: false;
     // A Ctrl (Cmd) click reports `picked` even outside `pick-mode`: the Panel's way into a selection.
     in property <bool> modifier-picks: false;
+    // Select mode (the Panel's header button): the number cell is a checkbox, checked while the card is `selected`.
+    in property <bool> check-box: false;
+    // Room kept free at the right edge for a control the host draws over the card (the Panel's delete button): the title and
+    // the preview elide before it.
+    in property <length> reserve-r: 0px;
     // Draws the keyboard focus ring although the card is not the focus owner (the list's cursor row).
     in property <bool> show-focus: false;
     // False where no row menu exists (the Picker): the row still offers Copy and Edit; only More goes.
@@ -301,7 +325,7 @@ export component ItemCard inherits Rectangle {
     property <length> number-w: root.tile || !root.numbered ? 0px : Space.s5;
     property <length> pad-x: Space.s2;
     property <length> content-x: root.number-w + root.pad-x;
-    property <length> pad-r: root.tile ? root.pad-x : Space.s1;
+    property <length> pad-r: (root.tile ? root.pad-x : Space.s1) + root.reserve-r;
     property <length> content-w: max(0px, root.width - root.content-x - root.pad-r);
     // Space taken left of the title in the compact and comfortable rows (the List row: a 32px tile and a 10px gap; the
     // Compact row: a 24px tile and an 8px gap).
@@ -369,7 +393,7 @@ export component ItemCard inherits Rectangle {
     // The inline tile Card: tile 24 at (8, 8), the title from x 40 (centred on the tile when it is one line), the preview 6 under
     // the taller of the two, from the same x.
     property <length> qti-x: Space.s2 + Space.s6 + Space.s2;
-    property <length> qti-title-w: max(0px, root.width - root.qti-x - root.pad-x - (root.numbered ? Space.s4 + Space.s1 : 0px));
+    property <length> qti-title-w: max(0px, root.width - root.qti-x - root.pad-x - root.reserve-r - (root.numbered ? Space.s4 + Space.s1 : 0px));
     property <length> qti-title-y: Space.s2 + max(0px, (Space.s6 - root.tile-title-h) / 2);
     property <length> qti-prev-y: Space.s2 + max(Space.s6, root.tile-title-h) + Space.s1 + Space.s0-5;
     property <length> qt-prev-y: root.qt-title-y + root.tile-title-h;
@@ -439,7 +463,7 @@ export component ItemCard inherits Rectangle {
     }
     m-title-wrap := Text {
         visible: false;
-        width: root.qti ? root.qti-title-w : max(0px, root.width - 2 * root.pad-x);
+        width: root.qti ? root.qti-title-w : max(0px, root.width - 2 * root.pad-x - root.reserve-r);
         text: root.title;
         font-family: Fonts.sans;
         font-size: Type.base;
@@ -546,7 +570,8 @@ export component ItemCard inherits Rectangle {
             x: root.pad-x;
             cell-w: Space.s4;
             number: root.number;
-            checked: root.lifted;
+            checked: root.check-box ? root.selected : root.lifted;
+            box: root.check-box;
             selected: root.selected;
             // The number is centred on the tile.
             row-y: 0px;
@@ -554,7 +579,19 @@ export component ItemCard inherits Rectangle {
             height: parent.height;
         }
         // The Card: the number (or the check) at the top right, level with the tile.
-        if root.tile && root.numbered: Rectangle {
+        if root.tile && root.check-box: ItemGutter {
+            x: root.width - root.pad-x - Space.s4;
+            y: root.tile-y;
+            cell-w: Space.s4;
+            number: 0;
+            box: true;
+            checked: root.selected;
+            selected: root.selected;
+            row-y: 0px;
+            row-h: root.q-tile-size;
+            height: root.q-tile-size;
+        }
+        if root.tile && root.numbered && !root.check-box: Rectangle {
             x: root.width - root.pad-x - Space.s4;
             y: root.tile-y;
             width: Space.s4;
@@ -663,7 +700,7 @@ export component ItemCard inherits Rectangle {
                 : root.qti ? root.qti-title-y
                 : root.tile ? root.qt-title-y
                 : root.qr-title-y;
-            width: root.qti ? root.qti-title-w : root.tile ? max(0px, root.width - 2 * root.pad-x) : root.title-w;
+            width: root.qti ? root.qti-title-w : root.tile ? max(0px, root.width - 2 * root.pad-x - root.reserve-r) : root.title-w;
             height: root.tile ? root.tile-title-h : root.title-h;
             text: root.title;
             font-family: Fonts.sans;
