@@ -80,6 +80,8 @@ export struct PanelRow {
     marked: bool,
     // Delete mode: the item is in the Trash; the row reads "Deleted · Undo" until the mode ends.
     deleted-pending: bool,
+    // How many "Deleted · Undo" rows lie above this one: the row numbers (and Alt+N) count live rows only.
+    ghosts-before: int,
 }
 
 // One entry of the Recent inbox (SPEC 5.6), as `snipdeck-app`'s `RecentRowView`: the start of the copied text, the
@@ -572,6 +574,8 @@ export component PanelWindow inherits Window {
     property <length> layout-row-h: root.row-h-of(root.eff-layout);
     property <length> tabs-h: root.lists-in-menu ? 0px : Space.s8;
     // The Select / Delete strip under the header (a small button and a 4px gap under it).
+    // A collapsed "Deleted · Undo" row.
+    property <length> ghost-h: max(Space.hit, Type.line-base + Space.s2);
     property <length> strip-h: max(24px, Type.line-sm + Space.s2) + Space.s1 * 2;
     property <bool> strip-shown: !root.list-hidden && (root.select-mode || root.delete-mode);
     property <length> footer-h: max(Space.s8, Type.line-sm + Space.s3);
@@ -825,12 +829,18 @@ export component PanelWindow inherits Window {
         }
     }
 
+    // Where the live row for Alt+N sits among the rows shown (the host fills it; without it, row N - 1).
+    in property <[int]> quick-rows;
     function quick(n: int) {
         if (n < 1 || n > root.rows.length) {
             return;
         }
-        root.selected-index = n - 1;
-        root.mark-used(n - 1);
+        if (root.quick-rows.length > 0 && n > root.quick-rows.length) {
+            return;
+        }
+        let at = root.quick-rows.length > 0 ? root.quick-rows[n - 1] : n - 1;
+        root.selected-index = at;
+        root.mark-used(at);
         root.quick-use(n);
     }
 
@@ -1215,7 +1225,8 @@ export component PanelWindow inherits Window {
                         return accept;
                     }
                 }
-                if (event.text == Key.Escape && (root.select-mode || root.delete-mode)) {
+                // A typed search goes first (below); the mode ends on the Esc after it.
+                if (event.text == Key.Escape && (root.select-mode || root.delete-mode) && !root.searching && !root.search-user) {
                     root.modes-ended();
                     return accept;
                 }
@@ -1839,8 +1850,9 @@ export component PanelWindow inherits Window {
                                     property <int> i: g * root.cols + c;
                                     property <PanelRow> item: root.rows[self.i];
                                     horizontal-stretch: 1;
-                                    preferred-height: card.preferred-height;
-                                    min-height: card.preferred-height;
+                                    // A deleted row collapses to one compact line ("Deleted “title” · Undo").
+                                    preferred-height: item.deleted-pending ? root.ghost-h : card.preferred-height;
+                                    min-height: item.deleted-pending ? root.ghost-h : card.preferred-height;
 
                                     // The row being dragged over this one: a drop lands after it when coming from above.
                                     property <int> row-from: -1;
@@ -1864,17 +1876,19 @@ export component PanelWindow inherits Window {
                                                 x: 0px;
                                                 y: 0px;
                                                 width: parent.width;
-                                                height: self.preferred-height;
+                                                height: item.deleted-pending ? root.ghost-h : self.preferred-height;
+                                                // The collapsed row's covered card is neither seen nor read.
+                                                visible: !item.deleted-pending;
                                                 variant: root.eff-layout == PanelLayout.compact ? ItemCardVariant.compact : root.eff-layout == PanelLayout.cards ? ItemCardVariant.tile : ItemCardVariant.comfortable;
                                                 edit-action: !(root.layout == PanelLayout.compact && root.narrow);
                                                 copy-action: root.pastes;
                                                 show-actions: i == root.sel && root.marked-count == 0 && !root.delete-mode && !root.select-mode;
                                                 row-tip: root.pastes ? @tr("Click to paste into {}. Shift+click copies.", root.target-name) : @tr("Click to copy.");
                                                 kind: item.kind;
-                                                number: i < 9 && !root.select-mode ? i + 1 : 0;
+                                                number: i - item.ghosts-before < 9 && !root.select-mode ? i - item.ghosts-before + 1 : 0;
                                                 numbered: root.show-numbers || root.select-mode;
                                                 check-box: root.select-mode;
-                                                reserve-r: root.delete-mode ? Space.s8 : 0px;
+                                                reserve-r: root.delete-mode ? (Space.hit + Space.s1) * SystemLook.text-scale : 0px;
                                                 pick-mode: root.marked-count > 0 || root.select-mode || root.delete-mode;
                                                 actions-hidden: root.marked-count > 0 || root.select-mode || root.delete-mode;
                                                 modifier-picks: true;
@@ -1936,6 +1950,7 @@ export component PanelWindow inherits Window {
                                                 icon: Icons.trash;
                                                 tooltip: @tr("Delete “{}”", item.title);
                                                 own-tooltip: true;
+                                                scaled: true;
                                                 // The top right corner: the sensitive eye sits on the preview line below it.
                                                 x: card.width - self.width - Space.s1;
                                                 y: Space.s1;
@@ -1950,14 +1965,14 @@ export component PanelWindow inherits Window {
                                                 border-radius: Radius.lg;
                                                 background: Theme.bg-sunken;
                                                 accessible-role: AccessibleRole.groupbox;
-                                                accessible-label: @tr("Deleted: {}", item.title);
+                                                accessible-label: @tr("Deleted “{}”", item.title);
                                                 HorizontalLayout {
                                                     padding-left: Space.s3;
                                                     padding-right: Space.s2;
                                                     spacing: Space.s2;
                                                     Text {
                                                         horizontal-stretch: 1;
-                                                        text: @tr("Deleted");
+                                                        text: @tr("Deleted “{}”", item.title);
                                                         font-family: Fonts.sans;
                                                         font-size: Type.sm;
                                                         color: Theme.text-secondary;
@@ -2715,7 +2730,7 @@ export component PanelWindow inherits Window {
             open: root.clear-list-open;
             variant: DialogVariant.destructive;
             title: @tr("Clear list “{}”?", root.clear-list-name);
-            body: @tr("All {} items move to the Trash. You can restore them for {} days.", root.clear-list-count, root.trash-days);
+            body: @tr("All {n} item moves to the Trash. You can restore it for {} days." | "All {n} items move to the Trash. You can restore them for {} days." % root.clear-list-count, root.trash-days);
             dismissed => { root.clear-list-dismissed(); }
             Button {
                 text: @tr("Cancel");

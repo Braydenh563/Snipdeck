@@ -66,7 +66,7 @@ The Panel is being redesigned; this lists what the current Panel offers and was 
 | Up / Down | Move through the items | Mouse and wheel | ok (navigation) |
 | Enter / Shift+Enter | Use / copy | Click the row; item menu "Use", "Copy" | ok |
 | Alt+Up / Alt+Down | Move the item | Item menu "Move up" / "Move down"; dragging the row | ok |
-| Alt+1 to 9 | Use the Nth item | Click the row (the 1 to 9 numbers on the rows name the key; "Show numbers" in the kebab menu hides them) | ok |
+| Alt+1 to 9 | Use the Nth item | Click the row (the 1 to 9 numbers on the rows name the key; the "Show numbers" setting in Settings hides them) | ok |
 | Ctrl+Tab | Next list | The list tabs | ok |
 | Ctrl+F | Search | The search field | ok |
 | Ctrl+E, Ctrl+D, Ctrl+P | Edit, duplicate, pin | Item menu | ok |

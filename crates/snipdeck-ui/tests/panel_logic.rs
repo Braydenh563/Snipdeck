@@ -384,6 +384,17 @@ ui_tests! {
         assert_eq!(take(&log), ["close"], "second Esc hides the Panel");
     }
 
+    fn escape_clears_a_typed_search_before_it_ends_a_mode() {
+        let (ui, log) = start();
+        ui.set_delete_mode(true);
+        type_text(ui.window(), "ab");
+        take(&log);
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(take(&log), ["query:"], "the first Esc clears the search and keeps the mode");
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(take(&log), ["modes-ended"], "the second Esc ends the mode");
+    }
+
     fn ctrl_f_focuses_and_selects_the_search_text() {
         let (ui, _log) = start();
         type_text(ui.window(), "abc");
@@ -598,6 +609,25 @@ ui_tests! {
         press(ui.window(), &key(Key::Return));
         press(ui.window(), &key(Key::DownArrow));
         assert!(take(&log).is_empty(), "no callbacks fired");
+    }
+
+    fn alt_digits_address_the_live_rows_when_a_collapsed_row_is_shown() {
+        let (ui, log) = start();
+        let mut sample = fixture::sample_rows();
+        sample[1].deleted_pending = true;
+        for (i, row) in sample.iter_mut().enumerate() {
+            row.ghosts_before = i32::from(i > 1);
+        }
+        fixture::set_rows(&ui, sample);
+        // The host's map: Alt+1 is shown row 0, Alt+2 is shown row 2 (row 1 is collapsed), and so on.
+        ui.set_quick_rows(ModelRc::new(VecModel::from(vec![0, 2, 3, 4, 5])));
+        settle();
+        take(&log);
+        chord(ui.window(), &[Key::Alt], "2");
+        assert_eq!(take(&log), ["quick:2"]);
+        assert_eq!(ui.get_selected_index(), 2, "the cursor lands on the live row, not the collapsed one");
+        chord(ui.window(), &[Key::Alt], "6");
+        assert!(take(&log).is_empty(), "no sixth live row");
     }
 
     fn alt_digits_use_the_nth_row_and_bare_digits_are_always_search_text() {
@@ -2820,6 +2850,10 @@ ui_tests! {
         fixture::set_rows(&ui, sample);
         settle();
         assert!(missing(&ui, &format!("Delete \u{201c}{}\u{201d}", row.title), AccessibleRole::Button), "no delete button on a deleted row");
+        let ghost = find(&ui, &format!("Deleted \u{201c}{}\u{201d}", row.title), AccessibleRole::Groupbox);
+        assert!(ghost.size().height <= 40.0, "the collapsed row is one compact line: {}", ghost.size().height);
+        assert!(ghost.size().height < rows(&ui)[0].size().height, "shorter than a live row");
+        assert_eq!(rows(&ui).len(), fixture::sample_rows().len() - 1, "the covered card is not an item for assistive technology");
         take(&log);
         let undo = find(&ui, &format!("Undo delete of \u{201c}{}\u{201d}", row.title), AccessibleRole::Button);
         click_at(&ui, centre(&undo));

@@ -1958,3 +1958,50 @@ fn ctrl_v_on_the_list_adds_the_clipboard_text_with_undo_and_edit() {
         assert_eq!(r.titles().len(), before, "Undo takes it back");
     });
 }
+
+#[test]
+fn the_settings_show_numbers_toggle_still_flips_the_setting_and_the_panel_numbers() {
+    // "Show numbers" left the Panel menu (O50); the Settings toggle is the way. Its handler is
+    // `update_settings(|s| s.show_numbers = on)`.
+    on_ui_thread(|| {
+        let r = rig();
+        let numbers = |r: &Rig| ElementHandle::find_by_accessible_label(&r.ui, "Alt+1").count();
+        assert!(r.ctl.borrow().settings().show_numbers);
+        assert!(numbers(&r) > 0, "the rows show their numbers");
+        r.ctl
+            .borrow_mut()
+            .update_settings(|s| s.show_numbers = false);
+        r.binding.redraw();
+        slint::platform::update_timers_and_animations();
+        assert!(!r.ctl.borrow().settings().show_numbers);
+        assert_eq!(numbers(&r), 0, "the Panel hides them");
+        r.ctl
+            .borrow_mut()
+            .update_settings(|s| s.show_numbers = true);
+        r.binding.redraw();
+        slint::platform::update_timers_and_animations();
+        assert!(numbers(&r) > 0, "and shows them again");
+    });
+}
+
+#[test]
+fn alt_numbers_count_live_rows_and_skip_a_collapsed_one() {
+    on_ui_thread(|| {
+        let r = rig();
+        let count = |r: &Rig, n: usize| {
+            ElementHandle::find_by_accessible_label(&r.ui, &format!("Alt+{n}")).count()
+        };
+        let before = r.ui.get_rows().row_count();
+        r.ctl.borrow_mut().panel_delete_mode(true);
+        r.ctl.borrow_mut().panel_delete_row(0);
+        r.binding.redraw();
+        slint::platform::update_timers_and_animations();
+        assert_eq!(r.ui.get_rows().row_count(), before, "the row stays, collapsed");
+        let quick: Vec<i32> = (0..r.ui.get_quick_rows().row_count())
+            .filter_map(|i| r.ui.get_quick_rows().row_data(i))
+            .collect();
+        assert_eq!(quick[0], 1, "Alt+1 is the first live row, shown second");
+        assert!(count(&r, 1) > 0 && count(&r, before - 1) > 0, "the numbers run 1 to {}", before - 1);
+        assert_eq!(count(&r, before), 0, "and do not skip: no number {before}");
+    });
+}

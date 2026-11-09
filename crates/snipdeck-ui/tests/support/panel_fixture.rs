@@ -198,7 +198,7 @@ pub fn app_menu() -> Vec<MenuEntry> {
             hidden: true,
             ..checked("Keep panel on top")
         },
-        checked("Show numbers"),
+        row("Select or delete\u{2026}", ""),
         row("Reset size and position", ""),
         line(),
         row("Troubleshoot\u{2026}", ""),

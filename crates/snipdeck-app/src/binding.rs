@@ -1296,6 +1296,9 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             .enumerate()
             .map(|(i, r)| {
                 let mut row = panel_row(r, view.dark);
+                // Collapsed "Deleted · Undo" rows do not take a number: the live rows count 1, 2, 3.
+                row.ghosts_before =
+                    to_i32(view.rows[..i].iter().filter(|x| x.deleted_pending).count());
                 row.stack_position = marked
                     .iter()
                     .position(|id| *id == r.id)
@@ -1310,6 +1313,16 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         if let Some(fresh) = refreshed_model(&window.get_rows(), rows) {
             window.set_rows(fresh);
         }
+        // Where the live row for Alt+1 to Alt+9 sits among the rows shown (ghosts are stepped over).
+        let quick: Vec<i32> = view
+            .rows
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| !r.deleted_pending)
+            .take(9)
+            .map(|(i, _)| to_i32(i))
+            .collect();
+        window.set_quick_rows(model(quick.into_iter()));
     }
     render_recent(window, previous, view);
     let revealed = view.revealed.map_or(-1, to_i32);
@@ -1653,6 +1666,7 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
         stack_position: 0,
         marked: row.marked,
         deleted_pending: row.deleted_pending,
+        ghosts_before: 0,
     }
 }
 
