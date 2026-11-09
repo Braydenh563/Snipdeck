@@ -59,6 +59,16 @@ where
         self.update_settings(|s| s.main_window = Some(place));
     }
 
+    /// The Main sidebar was dragged to `width` (logical pixels at 100 % text size; clamped).
+    pub fn set_main_sidebar_width(&mut self, width: u32) {
+        self.update_settings(|s| s.main_sidebar_width = width);
+    }
+
+    /// The Main sidebar was collapsed to its rail or opened again (Ctrl+B, the collapse button).
+    pub fn set_main_sidebar_collapsed(&mut self, collapsed: bool) {
+        self.update_settings(|s| s.main_sidebar_collapsed = collapsed);
+    }
+
     /// The item editor's "More options" was opened or closed: remembered across editors and runs.
     pub fn set_editor_more_open(&mut self, open: bool) {
         self.update_settings(|s| s.editor_more_open = open);
