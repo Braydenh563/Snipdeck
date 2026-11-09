@@ -211,6 +211,44 @@ fn panel_at_225_percent_text_size() {
     assert_golden("panel-scale-light", &render(&h));
 }
 
+/// O50: the header's Select mode (a checkbox on each row, two marked) and Delete mode (a delete button on each row, one
+/// row collapsed to "Deleted · Undo"), light and dark.
+#[test]
+fn panel_select_and_delete_modes() {
+    for (dark, tag) in [(false, "light"), (true, "dark")] {
+        let h = panel(SIZE, dark);
+        h.component.set_select_mode(true);
+        let mut rows = fixture::sample_rows();
+        rows[1].marked = true;
+        rows[3].marked = true;
+        fixture::set_rows(&h.component, rows);
+        h.component.set_marked_count(2);
+        assert_golden(&format!("panel-select-mode-{tag}"), &render(&h));
+
+        let h = panel(SIZE, dark);
+        h.component.set_delete_mode(true);
+        let mut rows = fixture::sample_rows();
+        rows[1].deleted_pending = true;
+        fixture::set_rows(&h.component, rows);
+        assert_golden(&format!("panel-delete-mode-{tag}"), &render(&h));
+    }
+}
+
+/// O50: the header (board, search, New, pin, More, close) and the Select / Delete strip still fit at text scale 1.5
+/// and 2.0, in a window wide enough for the larger text (the Panel's minimum width grows with the text size).
+#[test]
+fn panel_header_and_strip_at_text_scale_150_and_200() {
+    for (scale, size, name) in [
+        (1.5_f32, (480, 720), "panel-strip-150-light"),
+        (2.0, (640, 900), "panel-strip-200-light"),
+    ] {
+        let h = panel(size, false);
+        h.component.global::<SystemLook<'_>>().set_text_scale(scale);
+        h.component.set_select_mode(true);
+        assert_golden(name, &render(&h));
+    }
+}
+
 #[test]
 fn panel_empty_list_and_no_results_and_no_lists() {
     let h = panel(SIZE, false);

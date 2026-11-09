@@ -27,7 +27,7 @@ component ItemGutter inherits Rectangle {
     if root.box: Rectangle {
         x: (parent.width - self.width) / 2;
         y: root.row-y + (root.row-h - self.height) / 2;
-        width: Space.s4 * SystemLook.text-scale;
+        width: parent.width;
         height: self.width;
         border-radius: Radius.sm;
         border-width: 1.5px;

@@ -1922,8 +1922,9 @@ export component PanelWindow inherits Window {
                                                 icon: Icons.trash;
                                                 tooltip: @tr("Delete “{}”", item.title);
                                                 own-tooltip: true;
+                                                // The top right corner: the sensitive eye sits on the preview line below it.
                                                 x: card.width - self.width - Space.s1;
-                                                y: (card.height - self.height) / 2;
+                                                y: Space.s1;
                                                 clicked => { root.row-delete-requested(i); }
                                             }
                                             // The row after its delete: it collapses to "Deleted · Undo" until the mode ends.
