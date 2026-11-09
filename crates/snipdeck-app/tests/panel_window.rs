@@ -1996,12 +1996,18 @@ fn alt_numbers_count_live_rows_and_skip_a_collapsed_one() {
         r.ctl.borrow_mut().panel_delete_row(0);
         r.binding.redraw();
         slint::platform::update_timers_and_animations();
-        assert_eq!(r.ui.get_rows().row_count(), before, "the row stays, collapsed");
+        assert_eq!(
+            r.ui.get_rows().row_count(),
+            before,
+            "the row stays, collapsed"
+        );
         let quick: Vec<i32> = (0..r.ui.get_quick_rows().row_count())
             .filter_map(|i| r.ui.get_quick_rows().row_data(i))
             .collect();
         assert_eq!(quick[0], 1, "Alt+1 is the first live row, shown second");
-        assert!(count(&r, 1) > 0 && count(&r, before - 1) > 0, "the numbers run 1 to {}", before - 1);
-        assert_eq!(count(&r, before), 0, "and do not skip: no number {before}");
+        assert_eq!(quick[..3], [1, 2, 3], "the live rows follow with no gap");
+        // Rows scrolled out of the window draw nothing: check the ones on screen. Each number shows once.
+        assert_eq!(count(&r, 1), 1);
+        assert_eq!(count(&r, 2), 1);
     });
 }

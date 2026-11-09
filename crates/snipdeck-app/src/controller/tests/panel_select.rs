@@ -1031,7 +1031,11 @@ fn up_and_down_skip_the_collapsed_rows() {
     w.ctl.panel_delete_row(1);
     assert_eq!(w.ctl.view().selected, 2, "the cursor went to the next row");
     w.ctl.move_selection(-1);
-    assert_eq!(w.ctl.view().selected, 0, "Up steps back over the collapsed row");
+    assert_eq!(
+        w.ctl.view().selected,
+        0,
+        "Up steps back over the collapsed row"
+    );
     w.ctl.move_selection(1);
     assert_eq!(w.ctl.view().selected, 2, "and Down steps over it");
 }
@@ -1041,7 +1045,11 @@ fn the_cursor_never_rests_on_a_collapsed_row() {
     let mut w = world();
     w.ctl.panel_delete_mode(true);
     w.ctl.panel_delete_row(3);
-    assert_eq!(w.ctl.view().selected, 2, "the previous row when the last one went");
+    assert_eq!(
+        w.ctl.view().selected,
+        2,
+        "the previous row when the last one went"
+    );
     w.ctl.panel_delete_row(0);
     let v = w.ctl.view();
     assert!(!v.rows[v.selected].deleted_pending);
@@ -1055,7 +1063,10 @@ fn an_action_on_the_row_below_a_collapsed_one_acts_on_that_row() {
     w.ctl.panel_delete_row(1);
     let below = w.ctl.view().rows[2].id;
     assert_eq!(w.ctl.edit_row(2), vec![Effect::EditItem(below)]);
-    assert!(w.ctl.edit_row(1).is_empty(), "a collapsed row refuses actions");
+    assert!(
+        w.ctl.edit_row(1).is_empty(),
+        "a collapsed row refuses actions"
+    );
     // The row menu on the row below, then Delete in it, trashes that very item.
     w.ctl.open_item_menu(2, false);
     let at = w
@@ -1067,10 +1078,16 @@ fn an_action_on_the_row_below_a_collapsed_one_acts_on_that_row() {
         .position(|e| *e == ItemMenuEntry::Trash)
         .expect("Delete row");
     w.ctl.choose_item_menu(at);
-    assert!(w.ctl.view().rows.iter().all(|r| r.id != below), "that item went");
+    assert!(
+        w.ctl.view().rows.iter().all(|r| r.id != below),
+        "that item went"
+    );
     assert_eq!(w.ctl.view().rows.len(), 3);
     w.ctl.open_item_menu(1, false);
-    assert!(w.ctl.view().item_menu.is_none(), "no menu on a collapsed row");
+    assert!(
+        w.ctl.view().item_menu.is_none(),
+        "no menu on a collapsed row"
+    );
 }
 
 #[test]
@@ -1083,7 +1100,12 @@ fn quick_numbers_skip_the_collapsed_rows() {
     let first_live = w.ctl.view().rows[1].id;
     w.ctl.quick_use(1);
     assert_eq!(
-        w.ctl.view().rows.iter().find(|r| r.id == first_live).map(|r| r.number),
+        w.ctl
+            .view()
+            .rows
+            .iter()
+            .find(|r| r.id == first_live)
+            .map(|r| r.number),
         Some(1)
     );
     assert!(w.ctl.view().rows[0].deleted_pending);
@@ -1150,6 +1172,9 @@ fn undo_on_a_collapsed_row_works_when_the_history_step_is_gone() {
     w.ctl.panel_undo_row(1);
     let rows = shown(&w);
     assert_eq!(rows.len(), 4);
-    assert!(rows.iter().all(|(_, d)| !d), "the item came back from the Trash");
+    assert!(
+        rows.iter().all(|(_, d)| !d),
+        "the item came back from the Trash"
+    );
     assert!(w.ctl.view().toast.is_some(), "and it said so");
 }

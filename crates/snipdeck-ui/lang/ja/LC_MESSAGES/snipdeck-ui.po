@@ -139,8 +139,9 @@ msgstr "すべてのコマンド…"
 msgid "All items"
 msgstr "すべてのスニペット"
 
-msgid "All {} items move to the Trash. You can restore them for {} days."
-msgstr "{}件のアイテムすべてがごみ箱に移動します。{}日間は元に戻せます。"
+msgid "All {n} item moves to the Trash. You can restore it for {} days."
+msgid_plural "All {n} items move to the Trash. You can restore them for {} days."
+msgstr[0] "{n}件のアイテムがごみ箱に移動します。{}日間は元に戻せます。"
 
 msgid "All {} recent copies are removed. This can't be undone."
 msgstr "{}件の最近のコピーを削除します。元に戻せません。"
@@ -742,9 +743,6 @@ msgstr "このタグを削除しますか？"
 msgid "Delete “{}”"
 msgstr "「{}」を削除"
 
-msgid "Deleted"
-msgstr "削除しました"
-
 msgid "Deleted board “{}”"
 msgstr "ボード「{}」を削除しました"
 
@@ -757,8 +755,8 @@ msgstr "削除されたスニペットは、完全に削除されるまで{}日�
 msgid "Deleted list “{}”"
 msgstr "リスト「{}」を削除しました"
 
-msgid "Deleted: {}"
-msgstr "削除しました: {}"
+msgid "Deleted “{}”"
+msgstr "削除しました:「{}」"
 
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
 msgstr "このPCにあるすべてのボード、リスト、スニペット、バックアップを削除します。元に戻すことはできません。"

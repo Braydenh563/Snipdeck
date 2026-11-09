@@ -650,7 +650,11 @@ impl PanelModel {
 
     /// Ctrl+A: marks every row shown.
     pub fn mark_all(&mut self) {
-        let rows: Vec<Row> = self.rows().into_iter().filter(|r| !r.deleted_pending).collect();
+        let rows: Vec<Row> = self
+            .rows()
+            .into_iter()
+            .filter(|r| !r.deleted_pending)
+            .collect();
         self.marked = rows.iter().map(|r| r.id).collect();
         self.anchor = rows.first().map(|r| r.id);
     }

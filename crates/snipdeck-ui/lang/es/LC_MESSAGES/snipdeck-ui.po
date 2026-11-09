@@ -139,8 +139,10 @@ msgstr "Todos los comandos…"
 msgid "All items"
 msgstr "Todos los fragmentos"
 
-msgid "All {} items move to the Trash. You can restore them for {} days."
-msgstr "Los {} elementos pasan a la Papelera. Puedes restaurarlos durante {} días."
+msgid "All {n} item moves to the Trash. You can restore it for {} days."
+msgid_plural "All {n} items move to the Trash. You can restore them for {} days."
+msgstr[0] "El {n} elemento pasa a la Papelera. Puedes restaurarlo durante {} días."
+msgstr[1] "Los {n} elementos pasan a la Papelera. Puedes restaurarlos durante {} días."
 
 msgid "All {} recent copies are removed. This can't be undone."
 msgstr "Se eliminan las {} copias recientes. Esto no se puede deshacer."
@@ -742,9 +744,6 @@ msgstr "¿Eliminar esta etiqueta?"
 msgid "Delete “{}”"
 msgstr "Eliminar «{}»"
 
-msgid "Deleted"
-msgstr "Eliminado"
-
 msgid "Deleted board “{}”"
 msgstr "Tablero “{}” eliminado"
 
@@ -757,8 +756,8 @@ msgstr "Los fragmentos eliminados permanecen aquí {} días antes de borrarse."
 msgid "Deleted list “{}”"
 msgstr "Lista “{}” eliminada"
 
-msgid "Deleted: {}"
-msgstr "Eliminado: {}"
+msgid "Deleted “{}”"
+msgstr "Eliminado: «{}»"
 
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
 msgstr "Elimina todos los tableros, listas, fragmentos y copias de seguridad de este PC. No se puede deshacer."

@@ -139,8 +139,10 @@ msgstr "Alle Befehle…"
 msgid "All items"
 msgstr "Alle Textbausteine"
 
-msgid "All {} items move to the Trash. You can restore them for {} days."
-msgstr "Alle {} Einträge kommen in den Papierkorb. Du kannst sie {} Tage lang wiederherstellen."
+msgid "All {n} item moves to the Trash. You can restore it for {} days."
+msgid_plural "All {n} items move to the Trash. You can restore them for {} days."
+msgstr[0] "Das {n} Element kommt in den Papierkorb. Du kannst es {} Tage lang wiederherstellen."
+msgstr[1] "Alle {n} Elemente kommen in den Papierkorb. Du kannst sie {} Tage lang wiederherstellen."
 
 msgid "All {} recent copies are removed. This can't be undone."
 msgstr "Alle {} zuletzt kopierten Einträge werden entfernt. Das lässt sich nicht rückgängig machen."
@@ -742,9 +744,6 @@ msgstr "Dieses Schlagwort löschen?"
 msgid "Delete “{}”"
 msgstr "„{}“ löschen"
 
-msgid "Deleted"
-msgstr "Gelöscht"
-
 msgid "Deleted board “{}”"
 msgstr "Board „{}“ gelöscht"
 
@@ -757,8 +756,8 @@ msgstr "Gelöschte Textbausteine bleiben {} Tage hier, bevor sie entfernt werden
 msgid "Deleted list “{}”"
 msgstr "Liste „{}“ gelöscht"
 
-msgid "Deleted: {}"
-msgstr "Gelöscht: {}"
+msgid "Deleted “{}”"
+msgstr "Gelöscht: „{}“"
 
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
 msgstr "Löscht alle Boards, Listen, Textbausteine und Sicherungen auf diesem PC. Das lässt sich nicht rückgängig machen."

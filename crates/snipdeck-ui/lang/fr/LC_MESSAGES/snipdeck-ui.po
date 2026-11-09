@@ -139,8 +139,10 @@ msgstr "Toutes les commandes…"
 msgid "All items"
 msgstr "Tous les extraits"
 
-msgid "All {} items move to the Trash. You can restore them for {} days."
-msgstr "Les {} éléments vont dans la Corbeille. Vous pouvez les restaurer pendant {} jours."
+msgid "All {n} item moves to the Trash. You can restore it for {} days."
+msgid_plural "All {n} items move to the Trash. You can restore them for {} days."
+msgstr[0] "Le {n} élément va dans la Corbeille. Vous pouvez le restaurer pendant {} jours."
+msgstr[1] "Les {n} éléments vont dans la Corbeille. Vous pouvez les restaurer pendant {} jours."
 
 msgid "All {} recent copies are removed. This can't be undone."
 msgstr "Les {} copies récentes seront supprimées. Cette action est irréversible."
@@ -742,9 +744,6 @@ msgstr "Supprimer cette étiquette ?"
 msgid "Delete “{}”"
 msgstr "Supprimer « {} »"
 
-msgid "Deleted"
-msgstr "Supprimé"
-
 msgid "Deleted board “{}”"
 msgstr "Tableau « {} » supprimé"
 
@@ -757,8 +756,8 @@ msgstr "Les extraits supprimés restent ici {} jours avant d'être retirés."
 msgid "Deleted list “{}”"
 msgstr "Liste « {} » supprimée"
 
-msgid "Deleted: {}"
-msgstr "Supprimé : {}"
+msgid "Deleted “{}”"
+msgstr "Supprimé : « {} »"
 
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
 msgstr "Supprime tous les tableaux, listes, extraits et sauvegardes de ce PC. Cette action est irréversible."

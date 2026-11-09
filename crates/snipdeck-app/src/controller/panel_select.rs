@@ -180,7 +180,10 @@ where
             self.undo_step(Some(step));
             return;
         }
-        match self.store.atomically(|b| b.restore(Trashable::Item(row.id))) {
+        match self
+            .store
+            .atomically(|b| b.restore(Trashable::Item(row.id)))
+        {
             Ok(()) => {
                 self.show_toast(Toast {
                     kind: ToastKind::Success,
