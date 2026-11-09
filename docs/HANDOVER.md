@@ -5,16 +5,16 @@ reliability and UX work first. PR #5 (`claude/compassionate-pascal-pod8ux`) stay
 Do not merge, tag or run `release.yml`. Version and CHANGELOG already say 1.0.0; keep them, but fix the CHANGELOG
 date at the real release. The owner capped this session at 96% weekly usage; the limit resets 2026-10-24T07:00Z.
 
-## Now (2026-11-07, hand-off to a new session; finish everything in PR #5)
-Branch `claude/compassionate-pascal-pod8ux`, PR https://github.com/braydenh563/snipdeck/pull/5 (green on 7571b79). Keep all work on this branch and PR; never merge, tag or release.
-State (2026-11-08, pushed d691b10, full gate green): Panel v2 done incl. audit 2 (tab slivers left: item 3 reverted, `.claude/remaining/audit2.md`); Symbols slices 1-7 done (Windows checks = Quick check 13-18); UX quick wins; importers backend + hardening; review 1107 fixes; Rebuild-from-backup safety (`docs/reviews/rebuild-safety-plan.md`).
-Shared look slices 1-8 merged (b70b909)
-Queue (`.claude/work-order.md`), in order:
-1. Shared look slices 1-8 (`docs/reviews/shared-look-spec.md` §8; 1+2 in progress on wt/look12).
-2. v1.0.1 items (compact dock, sidebar resize, header select/delete, paste/drop create, Ctrl+C, quick-add, multi-row drag, ...), importer Settings UI wiring.
-3. Recent rich captures, trimmed v1.1, then Final (full gate, ux-auditor + blind-tester, docs, retro).
-Working rules learned: agents 2-hour box, targeted tests, commit per item with named paths; coordinator runs one full check per push in a clean worktree; `CARGO_BUILD_JOBS=1`, `-j1`, shared `CARGO_TARGET_DIR`; watch disk (`df`, delete `/tmp/target-*` when >90%); goldens regenerate with `UPDATE_GOLDEN=1` and must be opened; no PowerShell here, so grep `.ps1` for `"$var:` before pushing wizard edits. Decisions in `.claude/now.md`.
-Owner-only (hook blocks CI edits): release.yml:147 and release-build.yml:49 must also copy `THIRD_PARTY_NOTICES.md` into the zip (MIT/Unicode notices for the bundled emoji, icons, CLDR data); CI step `python3 scripts/symbols.py --check` (see `.claude/remaining/symbols.md`).
+## Now (2026-11-09, hand-off; finish everything in PR #5)
+Branch `claude/compassionate-pascal-pod8ux`, PR https://github.com/braydenh563/snipdeck/pull/5. Keep all work on this branch and PR; never merge, tag or release.
+State (pushed a75342c, full gate green): Panel v2, Symbols 1-7, UX quick wins, importers backend, rebuild safety, shared look slices 1-8 (DESIGN.md) all done. v1.0.1 slice 1 (paste to create text/link, secret paste opens Sensitive editor, Ctrl+C, toast Edit) and slice 2 (paste images/files, drop files from Explorer into the shown list) done and reviewed.
+In flight: slice 3 compact dock + O28 grips on `wt/v101-s3` (worktree /home/user/wt-panel; `.claude/remaining/v101-s3.md`). Merge it, then full gate, then push.
+Queue (`.claude/work-order.md`; spec `docs/reviews/v101-spec.md`): O50 header Select/Delete, slice 5 Recent rich captures, slice 6 Main quick-add + multi-row drag, slice 7 O54 sidebar + O30 sort, slice 8 A25 + search suggestions; importer Settings UI wiring; trimmed v1.1; Final (full gate, ux-auditor + blind-tester, docs, retro).
+Known v1.1 leftovers: per-tab file drop needs IDropTarget; large drops read on the UI thread (`.claude/remaining/v101-s2.md`); Main item-menu Copy copies only the first of several rows.
+Push rules: read the gate's `failed: none` before pushing; also run `cargo +1.99.1 clippy --workspace --all-targets` (own target dir) and, for Windows code, `cargo clippy -p snipdeck-app --target x86_64-pc-windows-gnu` (target + MinGW installed here; reinstall in a fresh container with `rustup target add x86_64-pc-windows-gnu` and `apt-get install gcc-mingw-w64-x86-64`).
+Working rules: one cargo build at a time (15 GB RAM), `CARGO_BUILD_JOBS=1 -j1`, shared `CARGO_TARGET_DIR=/tmp/target-panel`; agents 2-hour box, targeted tests; coordinator runs `cargo test --workspace --no-fail-fast` then `scripts/gate.sh --full` per push; goldens regenerate with `UPDATE_GOLDEN=1` and must be opened; wait for agents to go idle before merging their branch.
+Windows checks for the owner: wizard `tools/windows-test/tests/m3-app.json` steps 39-42 (paste/copy/drop) plus earlier: tray Open Picker, Recent paste, hotkeys, dock-right, Symbols paste/PNG/Save, Menu key/Shift+F10, Rebuild under AV/OneDrive, Quick check 13-18.
+Owner-only (hook blocks CI edits): release.yml:147 and release-build.yml:49 must also copy `THIRD_PARTY_NOTICES.md`; CI step `python3 scripts/symbols.py --check`; `cargo deny` for serde_yaml_ng.
 
 ## Session 2026-10-24 (owner away, autonomous; resume here)
 - Owner order: 1 merge fix branches + verify; 2 Panel redesign: owner picks from mock-ups BEFORE building
