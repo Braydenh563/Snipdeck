@@ -1337,7 +1337,7 @@ ui_tests! {
         ui.set_layout(PanelLayout::Compact);
         assert!((min(&ui) - 260.0).abs() < 0.5, "Compact (228 and the strip): {}", min(&ui));
         ui.set_layout(PanelLayout::Cards);
-        assert!((min(&ui) - 240.0).abs() < 0.5, "Cards: {}", min(&ui));
+        assert!((min(&ui) - 248.0).abs() < 0.5, "Cards (216 and the strip): {}", min(&ui));
         ui.set_layout(PanelLayout::List);
         assert!((min(&ui) - 360.0).abs() < 0.5);
     }

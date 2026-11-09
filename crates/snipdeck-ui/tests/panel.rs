@@ -6,6 +6,7 @@
 //! Goldens use only glyphs IBM Plex has (no CJK, no U+21B5: system fallback fonts differ per machine); the pixel
 //! assertions below do not depend on glyph shapes.
 
+use i_slint_backend_testing::ElementHandle;
 use slint::{ComponentHandle, ModelRc, VecModel};
 use snipdeck_ui::{
     PanelLayout, PanelWindow, SystemLook, ToastKind,
@@ -162,7 +163,13 @@ fn at_225_percent_the_chips_read_and_the_content_starts_at_x16() {
     h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
     h.component.set_selected_index(1);
     let f = render(&h);
+    // The Select / Delete strip is a small button and 4px above and below, whatever the text size.
+    let strip = ElementHandle::find_by_accessible_label(&h.component, "Select snippets")
+        .next()
+        .map(|b| b.size().height as u32 + 8)
+        .expect("the Select button");
     let ink = |x0: u32, x1: u32, y0: u32, y1: u32| -> Vec<u32> {
+        let (y0, y1) = (y0 + strip, y1 + strip);
         (x0..x1)
             .filter(|&x| {
                 (y0..y1).any(|y| {
@@ -363,17 +370,17 @@ fn panel_search_expanded_replaces_the_tabs_and_pins_and_marks_matches() {
             ring > 100,
             "the focused field wears its ring (dark={dark}): {ring}"
         );
-        // Header 40, then the 72px search block; the list starts right under it (no tab row, no pinned strip).
+        // Header 40, the 32px Select / Delete strip, then the 72px search block; the list starts right under it (no tab row, no pinned strip).
         let hairline = if dark {
             BORDER_SUBTLE_DARK
         } else {
             BORDER_SUBTLE_LIGHT
         };
         assert_eq!(
-            f.pixel(160, HEADER_H + 72 - 1),
+            f.pixel(160, HEADER_H + STRIP_H + 72 - 1),
             hairline,
             "the block's bottom hairline sits at y={} (dark={dark})",
-            HEADER_H + 71
+            HEADER_H + STRIP_H + 71
         );
         assert_golden(name, &f);
     }
@@ -442,7 +449,7 @@ fn a_search_marks_the_preview_match_and_a_tag_hit_reads_tag_name() {
     h.component.set_query("re".into());
     h.component.set_selected_index(2);
     let f = render(&h);
-    let top = HEADER_H + 72;
+    let top = HEADER_H + STRIP_H + 72;
     let row_h: u32 = 74;
     let marked_in = |row: u32| {
         (top + row * row_h..top + (row + 1) * row_h)
@@ -476,7 +483,7 @@ fn a_search_match_is_a_filled_span_not_an_underline() {
     h.component.set_query("re".into());
     h.component.set_selected_index(2);
     let f = render(&h);
-    let top = HEADER_H + 72;
+    let top = HEADER_H + STRIP_H + 72;
     let (mut filled, mut lines) = (0, 0);
     for y in top..top + 30 {
         let run = (8..312)
@@ -516,7 +523,7 @@ fn panel_search_always_shows_a_44px_strip_and_keeps_tabs_and_pins() {
     let f = render(&h);
     // Tabs bottom hairline sits under the 44px strip, header 40 + strip 44 + tabs 32.
     assert_eq!(
-        f.pixel(160, HEADER_H + 44 + 32 - 1),
+        f.pixel(160, HEADER_H + STRIP_H + 44 + 32 - 1),
         BORDER_SUBTLE_LIGHT,
         "tab row follows the strip"
     );
@@ -636,20 +643,20 @@ fn panel_focus_ring_on_a_list_tab_from_the_keyboard() {
         .window()
         .dispatch_event(WindowEvent::WindowActiveChanged(true));
     let _ = render(&h);
-    // Header: board, search, New, keep on top, More, close; then the list tabs.
-    for _ in 0..7 {
+    // Header: board, search, New, keep on top, More, close; Select and Delete; then the list tabs.
+    for _ in 0..9 {
         tap(&h, Key::Tab);
     }
     let f = render(&h);
-    // The ring sits above the selected tab's underline and never covers it: the tab row is y 40..72, its underline the
-    // last 2px (y 70, 71) in the accent colour, the ring just above it.
-    let rows: Vec<u32> = (41..70)
+    // The ring sits above the selected tab's underline and never covers it: the tab row is y 72..104 (header 40 and the strip), its underline the
+    // last 2px (y 102, 103) in the accent colour, the ring just above it.
+    let rows: Vec<u32> = (STRIP_H + 41..STRIP_H + 70)
         .filter(|&y| (4..300).any(|x| f.pixel(x, y) == FOCUS_RING))
         .collect();
     assert!(!rows.is_empty(), "a focus ring is drawn on the tab row");
     // The selected tab's underline is its list colour (teal-600).
     assert_eq!(
-        f.pixel(30, 71),
+        f.pixel(30, STRIP_H + 71),
         [0x04, 0x84, 0x84],
         "the underline stays whole"
     );
@@ -696,6 +703,8 @@ fn a_hovered_header_button_shows_an_ink_tooltip_under_it_inside_the_window_dark(
 // then the list; the footer is the last 32px. The search is collapsed to nothing until it is used.
 const HEADER_H: u32 = 40;
 const FOOTER_H: u32 = 32;
+/// The Select / Delete strip under the header (O50): a 24px button and 4px above and below.
+const STRIP_H: u32 = 32;
 
 #[test]
 fn the_window_is_outlined_with_a_1px_default_border_and_solid_app_chrome() {
@@ -908,8 +917,13 @@ fn the_new_item_row_reads_in_accent_text() {
 /// Where the focus ring shows after a Tab: a band of the Panel (header, tab row, pinned strip, footer), with the
 /// ring's mean x in the header. `-` when the focus is somewhere that draws no ring in these bands (the list).
 fn ring_stop(f: &Frame) -> String {
-    let bands: [(&str, u32, u32); 4] =
-        [("H", 0, 40), ("T", 41, 70), ("P", 72, 108), ("F", 515, 560)];
+    let bands: [(&str, u32, u32); 5] = [
+        ("H", 0, 40),
+        ("S", 41, 72),
+        ("T", 73, 102),
+        ("P", 104, 140),
+        ("F", 515, 560),
+    ];
     for (name, y0, y1) in bands {
         let xs: Vec<u32> = (0..SIZE.0)
             .filter(|&x| (y0..y1).any(|y| f.pixel(x, y) == FOCUS_RING))
@@ -955,6 +969,7 @@ fn focus_order_matches_spec() {
     let one: Vec<&String> = seen[..cycle].iter().collect();
     let count = |p: &str| one.iter().filter(|s| s.starts_with(p)).count();
     // The tab row is one stop (arrows inside) and the add-list "+" the next: it must stay keyboard-reachable (WCAG 2.1.1).
+    assert_eq!(count("S"), 2, "Select and Delete: {seen:?}");
     assert_eq!(count("T"), 2, "the tab row and its + button: {seen:?}");
     assert_eq!(count("P"), 1, "the pinned strip is one stop: {seen:?}");
     assert_eq!(
@@ -975,8 +990,8 @@ fn focus_order_matches_spec() {
         "only the list is ring-less: {seen:?}"
     );
     assert_eq!(
-        cycle, 11,
-        "6 header + 2 tabs + pinned + list + footer: {seen:?}"
+        cycle, 13,
+        "6 header + Select and Delete + 2 tabs + pinned + list + footer: {seen:?}"
     );
 }
 
@@ -993,7 +1008,7 @@ fn shift_tab_walks_the_same_stops_backwards() {
             .dispatch_event(WindowEvent::WindowActiveChanged(true));
         let _ = render(&h);
         let mut seen = Vec::new();
-        for _ in 0..11 {
+        for _ in 0..13 {
             tap(&h, key);
             h.component.window().request_redraw();
             seen.push(ring_stop(&render(&h)));
