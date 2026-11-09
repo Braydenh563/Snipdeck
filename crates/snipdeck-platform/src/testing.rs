@@ -13,6 +13,10 @@ use crate::{
 };
 
 /// A clipboard that records what the pipeline does to it.
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "a test double: each flag is one way to make it misbehave"
+)]
 #[derive(Default)]
 pub struct FakeClipboard {
     /// What was done, in order (`snapshot`, `transient:N`, `persistent:N`, `restore`).
