@@ -805,12 +805,6 @@ msgstr "右に固定"
 msgid "Done"
 msgstr "完了"
 
-msgid "Done deleting"
-msgstr "削除を終了"
-
-msgid "Done selecting"
-msgstr "選択を終了"
-
 msgid "Drop to add to {}"
 msgstr "ここにドロップして {} に追加"
 
@@ -2171,6 +2165,9 @@ msgstr "選択と削除"
 msgid "Select every item"
 msgstr "すべてのスニペットを選択"
 
+msgid "Select or delete…"
+msgstr "選択または削除…"
+
 msgid "Select several items"
 msgstr "複数の項目を選択"
 
@@ -2242,9 +2239,6 @@ msgstr "「記号」タブを表示"
 
 msgid "Show all"
 msgstr "すべて表示"
-
-msgid "Show numbers"
-msgstr "番号を表示"
 
 msgid "Show or hide the Panel"
 msgstr "パネルの表示／非表示"

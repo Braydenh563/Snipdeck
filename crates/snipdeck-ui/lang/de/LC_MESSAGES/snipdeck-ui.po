@@ -805,12 +805,6 @@ msgstr "Rechts angedockt"
 msgid "Done"
 msgstr "Fertig"
 
-msgid "Done deleting"
-msgstr "Löschen beenden"
-
-msgid "Done selecting"
-msgstr "Auswählen beenden"
-
 msgid "Drop to add to {}"
 msgstr "Zum Hinzufügen zu {} ablegen"
 
@@ -2178,6 +2172,9 @@ msgstr "Auswählen und löschen"
 msgid "Select every item"
 msgstr "Alle Textbausteine auswählen"
 
+msgid "Select or delete…"
+msgstr "Auswählen oder löschen…"
+
 msgid "Select several items"
 msgstr "Mehrere Einträge auswählen"
 
@@ -2249,9 +2246,6 @@ msgstr "Tab „Symbole“ anzeigen"
 
 msgid "Show all"
 msgstr "Alle anzeigen"
-
-msgid "Show numbers"
-msgstr "Nummern anzeigen"
 
 msgid "Show or hide the Panel"
 msgstr "Panel anzeigen oder ausblenden"

@@ -805,12 +805,6 @@ msgstr "Acoplado à direita"
 msgid "Done"
 msgstr "Concluído"
 
-msgid "Done deleting"
-msgstr "Concluir exclusão"
-
-msgid "Done selecting"
-msgstr "Concluir seleção"
-
 msgid "Drop to add to {}"
 msgstr "Solte para adicionar a {}"
 
@@ -2178,6 +2172,9 @@ msgstr "Selecionar e excluir"
 msgid "Select every item"
 msgstr "Selecionar todos os itens"
 
+msgid "Select or delete…"
+msgstr "Selecionar ou excluir…"
+
 msgid "Select several items"
 msgstr "Selecionar vários itens"
 
@@ -2249,9 +2246,6 @@ msgstr "Mostrar a aba Símbolos"
 
 msgid "Show all"
 msgstr "Mostrar tudo"
-
-msgid "Show numbers"
-msgstr "Mostrar números"
 
 msgid "Show or hide the Panel"
 msgstr "Mostrar ou ocultar o painel"

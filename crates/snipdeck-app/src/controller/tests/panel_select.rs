@@ -1022,7 +1022,11 @@ fn up_and_down_skip_the_collapsed_rows() {
     w.ctl.panel_delete_row(1);
     assert_eq!(w.ctl.view().selected, 0);
     w.ctl.move_selection(1);
-    assert_eq!(w.ctl.view().selected, 2, "Down steps over the collapsed row");
+    assert_eq!(
+        w.ctl.view().selected,
+        2,
+        "Down steps over the collapsed row"
+    );
     w.ctl.move_selection(-1);
     assert_eq!(w.ctl.view().selected, 0, "and Up steps back over it");
     assert!(!w.ctl.view().rows[w.ctl.view().selected].deleted_pending);

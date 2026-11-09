@@ -805,12 +805,6 @@ msgstr "停靠在右侧"
 msgid "Done"
 msgstr "完成"
 
-msgid "Done deleting"
-msgstr "完成删除"
-
-msgid "Done selecting"
-msgstr "完成选择"
-
 msgid "Drop to add to {}"
 msgstr "松开以添加到 {}"
 
@@ -2171,6 +2165,9 @@ msgstr "选择和删除"
 msgid "Select every item"
 msgstr "选择所有片段"
 
+msgid "Select or delete…"
+msgstr "选择或删除…"
+
 msgid "Select several items"
 msgstr "选择多个项目"
 
@@ -2242,9 +2239,6 @@ msgstr "显示“符号”标签页"
 
 msgid "Show all"
 msgstr "显示全部"
-
-msgid "Show numbers"
-msgstr "显示编号"
 
 msgid "Show or hide the Panel"
 msgstr "显示或隐藏面板"
