@@ -415,6 +415,27 @@ fn the_header_more_glyph_reads_at_3_to_1_against_the_header() {
 }
 
 #[test]
+fn the_grip_pill_reads_at_3_to_1_against_the_header_in_both_themes_and_both_directions() {
+    for (dark, bg) in [(false, APP_LIGHT), (true, APP_DARK)] {
+        for edge in [1, 3] {
+            let h = panel(SIZE, dark);
+            h.component.set_dock_edge(edge);
+            h.component.set_dock_slide(true);
+            let f = render(&h);
+            // Between the keep-on-top button (ends near x 222) and the kebab (starts at 254).
+            let best = (226..252)
+                .flat_map(|x| (6..34).map(move |y| (x, y)))
+                .map(|(x, y)| contrast(f.pixel(x, y), bg))
+                .fold(0.0_f64, f64::max);
+            assert!(
+                best >= 3.0,
+                "dark={dark} edge={edge}: the pill is {best:.2}:1 against the header"
+            );
+        }
+    }
+}
+
+#[test]
 fn a_search_marks_the_preview_match_and_a_tag_hit_reads_tag_name() {
     let h = panel(SIZE, false);
     fixture::set_rows(&h.component, search_rows());
