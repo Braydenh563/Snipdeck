@@ -59,7 +59,7 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 ## Inbox
 - 2026-11-07 owner (verbatim): "Im going to sleep, refine, and polish and finish absolutely everything, work with maximum token efficiency and effectiveness and minimal tokens while maximising productivity. be thorough and always use a critical and detailed expert eye. maximise ux, ensure functionality and learnability, usability and accessibility and more." / "good night and impress me :D" -> away mode on the existing work order; no merge/tag/release.
 - 2026-11-07 triage: 150+ placed/done items moved to .claude/inbox-archive.md; open queue = .claude/work-order.md. The v1 T-items below (owner Windows test 2026-10-21) stay until the owner re-tests them on Windows in Final.
-- 2026-11-09 owner (verbatim): "also if I select on a diagram object in the picture or in the list, it should select that object in the other" -> no diagram view exists in Snipdeck (grep: 0 hits in crates/docs); asked the owner which window/feature this means.
+- 2026-11-09 owner (verbatim): "also if I select on a diagram object in the picture or in the list, it should select that object in the other" -> no diagram view exists in Snipdeck (grep: 0 hits in crates/docs); owner: meant for another project -> dropped.
 - v1 T1 Render glitches on Windows: transparent patches / grey box after opening About, dragging the Panel, opening Edit; hidden parts of a dragged-on-screen Tags window stay transparent (img 2,3,6,7,10). Likely one cause (window resize/redraw with transparency or Mica).
 - v1 T2 Ctrl+Alt+Space stopped showing the Panel mid-session.
 - v1 T3 Hotkey should toggle (press again hides the Panel); Esc / click-away hide is too fiddly ("annoying to access and dismiss").
