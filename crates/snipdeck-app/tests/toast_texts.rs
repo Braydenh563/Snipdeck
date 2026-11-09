@@ -125,10 +125,11 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::FilesNotAdded => 95,
         ToastMessage::DropTo { .. } => 96,
         ToastMessage::TooManyFiles => 97,
+        ToastMessage::SwitchToManual { .. } => 98,
     }
 }
 
-const VARIANTS: usize = 98;
+const VARIANTS: usize = 99;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -294,6 +295,9 @@ fn samples() -> Vec<ToastMessage> {
         M::FilesNotAdded,
         M::DropTo { list: s("Notes") },
         M::TooManyFiles,
+        M::SwitchToManual {
+            list: snipdeck_core::ListId::generate(),
+        },
     ]
 }
 
@@ -405,6 +409,12 @@ fn what_a_toast_carries_reaches_its_sentence() {
         assert_eq!(said(ToastMessage::Duplicated), "Duplicated");
         assert_eq!(said(ToastMessage::ListAdded), "List added");
         assert_eq!(said(ToastMessage::ListSaved), "List saved");
+        assert_eq!(
+            said(ToastMessage::SwitchToManual {
+                list: snipdeck_core::ListId::generate()
+            }),
+            "Switch this list to Manual order?"
+        );
         assert_eq!(said(ToastMessage::BoardSaved), "Board saved");
         assert_eq!(said(ToastMessage::RecentDeleted), "Removed from Recent");
         assert_eq!(said(ToastMessage::RecentCleared), "Recent history cleared");

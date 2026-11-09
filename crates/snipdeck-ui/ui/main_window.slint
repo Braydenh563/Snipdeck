@@ -1342,19 +1342,6 @@ export component MainWindow inherits Window {
                         padding-left: root.pad;
                         padding-right: SystemLook.caption-inset + Space.s2;
                         spacing: Space.s2;
-                        if !root.auto-rail: VerticalLayout {
-                            horizontal-stretch: 0;
-                            alignment: center;
-                            sidebar-toggle := IconButton {
-                                scaled: true;
-                                side-override: root.ctl-h;
-                                icon: Icons.hamburger;
-                                tooltip: root.sidebar-collapsed ? @tr("Expand sidebar (Ctrl+B)") : @tr("Collapse sidebar (Ctrl+B)");
-                                own-tooltip: true;
-                                active: root.sidebar-collapsed;
-                                clicked => { root.toggle-sidebar(); }
-                            }
-                        }
                         Rectangle {
                             horizontal-stretch: 1;
                             min-width: 0px;
@@ -1550,6 +1537,17 @@ export component MainWindow inherits Window {
                         padding-left: root.pad;
                         padding-right: root.pad;
                         spacing: Space.s2;
+                        if !root.auto-rail: sidebar-toggle := IconButton {
+                            horizontal-stretch: 0;
+                            scaled: true;
+                            side-override: root.ctl-h;
+                            icon: Icons.hamburger;
+                            tooltip: root.sidebar-collapsed ? @tr("Expand sidebar (Ctrl+B)") : @tr("Collapse sidebar (Ctrl+B)");
+                            own-tooltip: true;
+                            active: root.sidebar-collapsed;
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.toggle-sidebar(); }
+                        }
                         Text {
                             horizontal-stretch: 1;
                             text: root.section-name();
