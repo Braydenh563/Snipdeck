@@ -55,6 +55,9 @@ pub struct Row {
     pub label: Option<ItemLabel>,
     /// In the multi-selection (Ctrl+click, Shift+click, Ctrl+A).
     pub marked: bool,
+    /// Delete mode: the item is in the Trash and the row shows "Deleted · Undo" in its place until
+    /// the mode ends. Only the controller sets it.
+    pub deleted_pending: bool,
 }
 
 /// A list's name and accent, shown on rows in mixed views.
@@ -431,6 +434,7 @@ impl PanelModel {
             pinned: item.pinned,
             label: item.label,
             marked: self.marked.contains(&item.id),
+            deleted_pending: false,
         }
     }
 

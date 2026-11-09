@@ -150,6 +150,7 @@ where
 
     /// The search text changed.
     pub fn set_query(&mut self, query: &str) {
+        self.ghosts.clear();
         self.model.set_query(query);
     }
 
@@ -163,6 +164,7 @@ where
         let Some(tab) = self.model.tabs().into_iter().nth(index) else {
             return;
         };
+        self.ghosts.clear();
         if self.model.select_list(&self.store, tab.id).is_err() {
             self.show_toast(failed());
         }

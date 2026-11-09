@@ -450,6 +450,7 @@ pub fn app_menu_text(
         AppMenuEntry::KeepOnTop => t.invoke_app_keep_on_top(),
         AppMenuEntry::ShowNumbers => t.invoke_app_show_numbers(),
         AppMenuEntry::ResetGeometry => t.invoke_app_reset_geometry(),
+        AppMenuEntry::ClearList => t.invoke_app_clear_list(),
         AppMenuEntry::Undo | AppMenuEntry::Redo | AppMenuEntry::Separator => return String::new(),
         AppMenuEntry::Troubleshoot => t.invoke_app_troubleshoot(),
         AppMenuEntry::UserGuide => t.invoke_app_user_guide(),

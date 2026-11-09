@@ -10,7 +10,7 @@ use snipdeck_store::{ItemRepo, TrashRepo, Trashable};
 
 use super::{
     Controller, Library, PanelMenu, UseResult, failed, neutral,
-    views::{ChooseEntry, ChooseLabel, ChooseMenu},
+    views::{ChooseEntry, ChooseLabel, ChooseMenu, ClearListView},
 };
 use crate::{
     host::ClipboardText,
@@ -31,6 +31,17 @@ pub const LABELS: [ItemLabel; 8] = [
     ItemLabel::Slate,
 ];
 
+/// A row deleted in Delete mode: it shows "Deleted · Undo" where it was until the mode ends.
+#[derive(Debug, Clone)]
+pub struct Ghost {
+    /// Where the row sat among the rows shown.
+    at: usize,
+    /// The row as it was, shown with `deleted_pending`.
+    row: crate::panel::Row,
+    /// The history step that Undo takes back.
+    step: Option<u64>,
+}
+
 impl<S, C, K, T> Controller<S, C, K, T>
 where
     S: Library,
@@ -42,7 +53,14 @@ where
 
     /// Ctrl+click (`Toggle`), Shift+click (`Extend`) or a plain click while a selection is on
     /// (`Replace`) on row `index`.
+    ///
+    /// In Select mode a plain click toggles the row, as Ctrl+click does: the checkbox is the click.
     pub fn panel_mark(&mut self, index: usize, mode: SelectMode) {
+        let mode = if self.select_mode && mode == SelectMode::Replace {
+            SelectMode::Toggle
+        } else {
+            mode
+        };
         self.model.mark(index, mode);
     }
 
@@ -59,6 +77,163 @@ where
     /// Esc, or the bulk bar's Clear: nothing is selected.
     pub fn panel_clear_marks(&mut self) {
         self.model.clear_marks();
+    }
+
+    // ---- The header's Select and Delete modes ---------------------------------------------------------
+
+    /// The header's Select button (and its Done): rows get a checkbox and a click marks them.
+    /// Turning it off drops the marks. It ends Delete mode.
+    pub fn panel_select_mode(&mut self, on: bool) {
+        if on {
+            self.end_delete_mode();
+        } else {
+            self.model.clear_marks();
+        }
+        self.select_mode = on;
+    }
+
+    /// The header's Delete button (and its Done): each row gets a delete button. It ends Select
+    /// mode. Turning it off drops the "Deleted · Undo" rows.
+    pub fn panel_delete_mode(&mut self, on: bool) {
+        if on {
+            self.model.clear_marks();
+            self.select_mode = false;
+            self.delete_mode = true;
+        } else {
+            self.end_delete_mode();
+        }
+    }
+
+    fn end_delete_mode(&mut self) {
+        self.delete_mode = false;
+        self.ghosts.clear();
+    }
+
+    /// Esc: leaves Select or Delete mode, whichever is on.
+    pub fn panel_end_modes(&mut self) {
+        self.panel_select_mode(false);
+        self.end_delete_mode();
+    }
+
+    /// Puts the "Deleted · Undo" rows back among `rows` (the rows the model shows), each where it
+    /// was. A row whose item is back (Undo from the toast or Ctrl+Z) is not shown twice.
+    pub(super) fn insert_ghosts(&self, rows: &mut Vec<crate::panel::Row>) {
+        for ghost in &self.ghosts {
+            if rows.iter().any(|r| r.id == ghost.row.id) {
+                continue;
+            }
+            let mut row = ghost.row.clone();
+            row.deleted_pending = true;
+            rows.insert(ghost.at.min(rows.len()), row);
+        }
+    }
+
+    /// The model's row index for row `index` of the rows shown (ghosts do not count), or `None`
+    /// when `index` is a "Deleted · Undo" row.
+    fn live_index(&self, index: usize) -> Option<usize> {
+        let mut shown = self.model.rows();
+        self.insert_ghosts(&mut shown);
+        let id = shown.get(index).filter(|r| !r.deleted_pending)?.id;
+        self.model.rows().iter().position(|r| r.id == id)
+    }
+
+    /// The row delete button in Delete mode: the item goes to the Trash (one history step) and
+    /// the row collapses to "Deleted · Undo".
+    pub fn panel_delete_row(&mut self, index: usize) {
+        if !self.delete_mode {
+            return;
+        }
+        let Some(live) = self.live_index(index) else {
+            return;
+        };
+        let Some(row) = self.model.rows().get(live).cloned() else {
+            return;
+        };
+        let now = self.clock.now();
+        let done = self
+            .store
+            .atomically(|b| b.trash(Trashable::Item(row.id), now));
+        if done.is_err() {
+            self.show_toast(failed());
+            return;
+        }
+        let step = self.record_step(
+            crate::history::Action::Delete,
+            vec![crate::history::Change::Trash(vec![Trashable::Item(row.id)])],
+        );
+        self.ghosts.retain(|g| g.row.id != row.id);
+        self.ghosts.push(Ghost {
+            at: index,
+            row,
+            step,
+        });
+        if self.refresh_panel().is_err() {
+            self.show_toast(failed());
+        }
+    }
+
+    /// "Undo" on a "Deleted · Undo" row: that one delete is taken back and the row is whole again.
+    pub fn panel_undo_row(&mut self, index: usize) {
+        let mut shown = self.model.rows();
+        self.insert_ghosts(&mut shown);
+        let Some(id) = shown.get(index).filter(|r| r.deleted_pending).map(|r| r.id) else {
+            return;
+        };
+        let Some(at) = self.ghosts.iter().position(|g| g.row.id == id) else {
+            return;
+        };
+        let ghost = self.ghosts.remove(at);
+        self.undo_step(ghost.step);
+    }
+
+    // ---- Clear list… -----------------------------------------------------------------------------------
+
+    /// The kebab's "Clear list…": asks first (nothing to ask about in an empty list or a search).
+    pub(super) fn open_clear_list(&mut self) {
+        if self.model.searching() {
+            return;
+        }
+        if let Some(list) = self.model.list()
+            && !self.model.list_item_ids().is_empty()
+        {
+            self.menu = PanelMenu::ClearList(list.id);
+        }
+    }
+
+    /// The "Clear list…" confirmation's view: the list's name and how many items go.
+    pub(super) fn clear_list_view(&self) -> Option<ClearListView> {
+        let PanelMenu::ClearList(id) = self.menu else {
+            return None;
+        };
+        let list = self.store.list(id).ok()?;
+        Some(ClearListView {
+            name: list.name.as_str().to_owned(),
+            count: self.store.items(id).map_or(0, |items| items.len()),
+        })
+    }
+
+    /// "Clear list" in the confirmation: every item of the list goes to the Trash as one history
+    /// step, with an Undo toast.
+    pub fn panel_clear_list(&mut self) {
+        let PanelMenu::ClearList(id) = self.menu else {
+            return;
+        };
+        self.menu = PanelMenu::None;
+        let ids: Vec<ItemId> = self
+            .store
+            .items(id)
+            .map(|items| items.iter().map(|i| i.id).collect())
+            .unwrap_or_default();
+        self.end_delete_mode();
+        self.model.clear_marks();
+        self.trash_with_undo(&ids);
+    }
+
+    /// Cancel, Esc or a click on the scrim: the confirmation closes and nothing is deleted.
+    pub fn cancel_clear_list(&mut self) {
+        if matches!(self.menu, PanelMenu::ClearList(_)) {
+            self.menu = PanelMenu::None;
+        }
     }
 
     // ---- The bulk bar ------------------------------------------------------------------------------

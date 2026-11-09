@@ -871,3 +871,142 @@ fn too_many_files_are_refused_with_their_own_message() {
         ToastMessage::TooManyFiles
     );
 }
+
+// ---- Header Select and Delete, "Clear list…" (O50) ---------------------------------------------
+
+fn clear_list_row() -> usize {
+    APP_MENU
+        .iter()
+        .position(|e| *e == AppMenuEntry::ClearList)
+        .expect("a Clear list row in the Panel menu")
+}
+
+#[test]
+fn select_mode_checkbox_marks_like_ctrl_click() {
+    let mut w = world();
+    w.ctl.panel_select_mode(true);
+    assert!(w.ctl.view().select_mode);
+    // A plain click on a row in Select mode toggles it, as Ctrl+click does.
+    w.ctl.panel_mark(0, SelectMode::Replace);
+    w.ctl.panel_mark(2, SelectMode::Replace);
+    assert_eq!(marked(&w), [0, 2]);
+    assert_eq!(w.ctl.view().marked_count, 2, "the same marks drive the bulk bar");
+    w.ctl.panel_mark(0, SelectMode::Replace);
+    assert_eq!(marked(&w), [2]);
+    // Leaving the mode drops the marks.
+    w.ctl.panel_select_mode(false);
+    assert!(!w.ctl.view().select_mode);
+    assert_eq!(marked(&w), Vec::<usize>::new());
+}
+
+#[test]
+fn the_two_modes_exclude_each_other() {
+    let mut w = world();
+    w.ctl.panel_select_mode(true);
+    w.ctl.panel_delete_mode(true);
+    assert!(w.ctl.view().delete_mode);
+    assert!(!w.ctl.view().select_mode);
+    w.ctl.panel_select_mode(true);
+    assert!(w.ctl.view().select_mode);
+    assert!(!w.ctl.view().delete_mode);
+}
+
+#[test]
+fn delete_mode_row_undo_restores_it() {
+    let mut w = world();
+    let before: Vec<String> = w.ctl.view().rows.iter().map(|r| r.title.clone()).collect();
+    w.ctl.panel_delete_mode(true);
+    w.ctl.panel_delete_row(1);
+    let view = w.ctl.view();
+    assert_eq!(view.rows.len(), 4, "the row stays, collapsed");
+    assert!(view.rows[1].deleted_pending);
+    assert_eq!(view.rows[1].title, before[1]);
+    assert_eq!(view.rows.iter().filter(|r| r.deleted_pending).count(), 1);
+    // Deleting the collapsed row again does nothing; the next live row is one step on.
+    w.ctl.panel_delete_row(1);
+    w.ctl.panel_delete_row(2);
+    assert_eq!(
+        w.ctl
+            .view()
+            .rows
+            .iter()
+            .map(|r| r.deleted_pending)
+            .collect::<Vec<_>>(),
+        [false, true, true, false]
+    );
+    // Undo on the first collapsed row brings back that one only, in its place.
+    w.ctl.panel_undo_row(1);
+    let view = w.ctl.view();
+    let titles: Vec<String> = view.rows.iter().map(|r| r.title.clone()).collect();
+    assert_eq!(view.rows.iter().filter(|r| r.deleted_pending).count(), 1);
+    assert!(!view.rows[1].deleted_pending);
+    assert_eq!(titles.len(), 4);
+    assert!(titles.contains(&before[1]));
+}
+
+#[test]
+fn leaving_delete_mode_drops_the_collapsed_rows() {
+    let mut w = world();
+    w.ctl.panel_delete_mode(true);
+    w.ctl.panel_delete_row(0);
+    assert_eq!(w.ctl.view().rows.len(), 4);
+    w.ctl.panel_delete_mode(false);
+    assert_eq!(w.ctl.view().rows.len(), 3);
+    assert!(w.ctl.view().rows.iter().all(|r| !r.deleted_pending));
+}
+
+#[test]
+fn esc_leaves_delete_mode() {
+    let mut w = world();
+    w.ctl.panel_delete_mode(true);
+    w.ctl.panel_delete_row(0);
+    w.ctl.panel_end_modes();
+    assert!(!w.ctl.view().delete_mode);
+    assert_eq!(w.ctl.view().rows.len(), 3);
+    w.ctl.panel_select_mode(true);
+    w.ctl.panel_mark(1, SelectMode::Toggle);
+    w.ctl.panel_end_modes();
+    assert!(!w.ctl.view().select_mode);
+    assert_eq!(w.ctl.view().marked_count, 0);
+}
+
+#[test]
+fn clear_list_asks_once_with_the_count() {
+    let mut w = world();
+    w.ctl.open_app_menu();
+    w.ctl.choose_app_menu(clear_list_row());
+    let ask = w.ctl.view().clear_list.expect("the confirmation asks");
+    assert_eq!(ask.count, 4);
+    assert_eq!(ask.name, "Replies");
+    assert_eq!(w.ctl.view().rows.len(), 4, "nothing is deleted before the answer");
+    w.ctl.cancel_clear_list();
+    assert!(w.ctl.view().clear_list.is_none());
+    assert_eq!(w.ctl.view().rows.len(), 4);
+}
+
+#[test]
+fn clear_list_is_one_step_and_undoes_whole() {
+    let mut w = world();
+    w.ctl.open_app_menu();
+    w.ctl.choose_app_menu(clear_list_row());
+    w.ctl.panel_clear_list();
+    let view = w.ctl.view();
+    assert!(view.clear_list.is_none());
+    assert_eq!(view.rows.len(), 0);
+    let toast = view.toast.expect("an Undo toast");
+    assert_eq!(toast.message, ToastMessage::ItemsTrashed { count: 4 });
+    assert!(toast.undo, "the toast offers Undo");
+    w.ctl.undo();
+    assert_eq!(w.ctl.view().rows.len(), 4, "one Undo brings every item back");
+}
+
+#[test]
+fn clear_list_on_an_empty_list_asks_nothing() {
+    let mut w = world();
+    w.ctl.select_tab(1);
+    w.ctl.panel_mark_all();
+    w.ctl.bulk_delete();
+    w.ctl.open_app_menu();
+    w.ctl.choose_app_menu(clear_list_row());
+    assert!(w.ctl.view().clear_list.is_none());
+}

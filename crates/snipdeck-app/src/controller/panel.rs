@@ -60,6 +60,8 @@ pub enum AppMenuEntry {
     ShowNumbers,
     /// Forget the remembered size and position on this monitor and put the Panel back at the default.
     ResetGeometry,
+    /// Ask, then move every item of the shown list to the Trash (one Undo brings them all back).
+    ClearList,
     /// A line between groups.
     Separator,
     /// Help: the troubleshooting window.
@@ -138,7 +140,7 @@ pub const LIST_MENU: [ListMenuEntry; 2] = [ListMenuEntry::Edit, ListMenuEntry::D
 
 /// The kebab menu's rows. Help is a group of three rows under a line, because the Panel's
 /// `Menu` has no sub-menus.
-pub const APP_MENU: [AppMenuEntry; 21] = [
+pub const APP_MENU: [AppMenuEntry; 23] = [
     AppMenuEntry::Undo,
     AppMenuEntry::Redo,
     AppMenuEntry::Separator,
@@ -155,6 +157,8 @@ pub const APP_MENU: [AppMenuEntry; 21] = [
     AppMenuEntry::KeepOnTop,
     AppMenuEntry::ShowNumbers,
     AppMenuEntry::ResetGeometry,
+    AppMenuEntry::Separator,
+    AppMenuEntry::ClearList,
     AppMenuEntry::Separator,
     AppMenuEntry::Troubleshoot,
     AppMenuEntry::UserGuide,
@@ -238,6 +242,10 @@ where
                 Vec::new()
             }
             AppMenuEntry::ResetGeometry => self.reset_panel_geometry(),
+            AppMenuEntry::ClearList => {
+                self.open_clear_list();
+                Vec::new()
+            }
             AppMenuEntry::Troubleshoot => vec![Effect::OpenHelp(HelpTopic::Troubleshoot)],
             AppMenuEntry::UserGuide => vec![Effect::OpenHelp(HelpTopic::Guide)],
             AppMenuEntry::Shortcuts => vec![Effect::OpenHelp(HelpTopic::Shortcuts)],

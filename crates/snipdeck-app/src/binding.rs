@@ -781,6 +781,13 @@ where
             }
         ));
         wire!(on_select_all_requested, |ctl| ctl.panel_mark_all());
+        wire!(on_select_mode_changed, |ctl, on| ctl.panel_select_mode(on));
+        wire!(on_delete_mode_changed, |ctl, on| ctl.panel_delete_mode(on));
+        wire!(on_modes_ended, |ctl| ctl.panel_end_modes());
+        wire!(on_row_delete_requested, |ctl, i| ctl.panel_delete_row(index(i)));
+        wire!(on_row_undo_requested, |ctl, i| ctl.panel_undo_row(index(i)));
+        wire!(on_clear_list_confirmed, |ctl| ctl.panel_clear_list());
+        wire!(on_clear_list_dismissed, |ctl| ctl.cancel_clear_list());
         wire!(on_selection_extended, |ctl, d| ctl
             .panel_extend_marks(isize::try_from(d).unwrap_or(0)));
         wire!(on_selection_cleared, |ctl| ctl.panel_clear_marks());
@@ -1406,6 +1413,17 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             .map_or_else(SharedString::new, |t| t.name.as_str().into()),
     );
     window.set_marked_count(to_i32(view.marked_count));
+    window.set_select_mode(view.select_mode);
+    window.set_delete_mode(view.delete_mode);
+    if differs(&|p| p.clear_list == view.clear_list)
+        || window.get_clear_list_open() != view.clear_list.is_some()
+    {
+        if let Some(ask) = &view.clear_list {
+            window.set_clear_list_name(ask.name.as_str().into());
+            window.set_clear_list_count(i32::try_from(ask.count).unwrap_or(i32::MAX));
+        }
+        window.set_clear_list_open(view.clear_list.is_some());
+    }
     window.set_show_numbers(view.show_numbers);
     window.set_symbols_available(view.symbols_available);
     window.set_layout(match view.layout {
@@ -1633,6 +1651,7 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
         image: slint::Image::default(),
         stack_position: 0,
         marked: row.marked,
+        deleted_pending: row.deleted_pending,
     }
 }
 
@@ -1698,6 +1717,7 @@ mod tests {
             pinned: false,
             label: None,
             marked: false,
+            deleted_pending: false,
         }
     }
 

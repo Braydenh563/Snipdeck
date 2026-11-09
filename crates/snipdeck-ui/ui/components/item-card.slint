@@ -15,6 +15,8 @@ component ItemGutter inherits Rectangle {
     // The card is selected: the fill is `bg-selected` (the system highlight in high contrast), so the glyphs
     // switch to the colours meant for that fill.
     in property <bool> selected;
+    // Select mode: the cell is a checkbox (drawn, not interactive: a click anywhere on the row marks it).
+    in property <bool> box: false;
     // The vertical band the number is centred in (the title row).
     in property <length> row-y;
     in property <length> row-h;
@@ -22,7 +24,24 @@ component ItemGutter inherits Rectangle {
     in property <length> cell-w: Space.s4;
     width: root.cell-w;
 
-    if !root.checked && root.number >= 1 && root.number <= 9: Text {
+    if root.box: Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: root.row-y + (root.row-h - self.height) / 2;
+        width: Space.s4 * SystemLook.text-scale;
+        height: self.width;
+        border-radius: Radius.sm;
+        border-width: 1.5px;
+        border-color: root.checked ? Theme.accent : Theme.border-strong;
+        background: root.checked ? Theme.accent : transparent;
+        if root.checked: Icon {
+            source: Icons.check;
+            tint: Theme.text-on-accent;
+            size: parent.width - Space.s1;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+    if !root.box && !root.checked && root.number >= 1 && root.number <= 9: Text {
         x: 0;
         y: root.row-y;
         width: parent.width;
@@ -37,7 +56,7 @@ component ItemGutter inherits Rectangle {
         horizontal-alignment: center;
         vertical-alignment: center;
     }
-    if root.checked: Icon {
+    if !root.box && root.checked: Icon {
         source: Icons.check;
         tint: root.selected ? Theme.accent-on-selected : Theme.accent-text;
         size: Space.s3 * SystemLook.text-scale;
@@ -186,6 +205,8 @@ export component ItemCard inherits Rectangle {
     in property <bool> pick-mode: false;
     // A Ctrl (Cmd) click reports `picked` even outside `pick-mode`: the Panel's way into a selection.
     in property <bool> modifier-picks: false;
+    // Select mode (the Panel's header button): the number cell is a checkbox, checked while the card is `selected`.
+    in property <bool> check-box: false;
     // Draws the keyboard focus ring although the card is not the focus owner (the list's cursor row).
     in property <bool> show-focus: false;
     // False where no row menu exists (the Picker): the row still offers Copy and Edit; only More goes.
@@ -546,7 +567,8 @@ export component ItemCard inherits Rectangle {
             x: root.pad-x;
             cell-w: Space.s4;
             number: root.number;
-            checked: root.lifted;
+            checked: root.check-box ? root.selected : root.lifted;
+            box: root.check-box;
             selected: root.selected;
             // The number is centred on the tile.
             row-y: 0px;
@@ -554,7 +576,19 @@ export component ItemCard inherits Rectangle {
             height: parent.height;
         }
         // The Card: the number (or the check) at the top right, level with the tile.
-        if root.tile && root.numbered: Rectangle {
+        if root.tile && root.check-box: ItemGutter {
+            x: root.width - root.pad-x - Space.s4;
+            y: root.tile-y;
+            cell-w: Space.s4;
+            number: 0;
+            box: true;
+            checked: root.selected;
+            selected: root.selected;
+            row-y: 0px;
+            row-h: root.q-tile-size;
+            height: root.q-tile-size;
+        }
+        if root.tile && root.numbered && !root.check-box: Rectangle {
             x: root.width - root.pad-x - Space.s4;
             y: root.tile-y;
             width: Space.s4;
