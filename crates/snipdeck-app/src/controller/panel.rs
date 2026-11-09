@@ -140,7 +140,7 @@ pub const LIST_MENU: [ListMenuEntry; 2] = [ListMenuEntry::Edit, ListMenuEntry::D
 
 /// The kebab menu's rows. Help is a group of three rows under a line, because the Panel's
 /// `Menu` has no sub-menus.
-pub const APP_MENU: [AppMenuEntry; 23] = [
+pub const APP_MENU: [AppMenuEntry; 22] = [
     AppMenuEntry::Undo,
     AppMenuEntry::Redo,
     AppMenuEntry::Separator,
@@ -157,7 +157,6 @@ pub const APP_MENU: [AppMenuEntry; 23] = [
     AppMenuEntry::KeepOnTop,
     AppMenuEntry::ShowNumbers,
     AppMenuEntry::ResetGeometry,
-    AppMenuEntry::Separator,
     AppMenuEntry::ClearList,
     AppMenuEntry::Separator,
     AppMenuEntry::Troubleshoot,
