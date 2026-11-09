@@ -771,7 +771,7 @@ fn a_file_over_the_limit_is_skipped_and_said() {
 }
 
 #[test]
-fn drop_on_a_tab_targets_that_list() {
+fn a_drop_to_a_given_list_targets_that_list() {
     let dir = tempfile::tempdir().expect("dir");
     let mut w = world();
     let paths = files_in(&dir, &[("dropped.txt", b"x")]);
@@ -785,9 +785,15 @@ fn drop_on_a_tab_targets_that_list() {
             count: 1
         }
     );
-    // Over no tab: the list the window shows; a list that is gone falls back to it too.
+    // No list given: the list shown. A list that is gone falls back to the list shown too.
     w.ctl.drop_create(&paths, Origin::Panel, None);
     assert_eq!(w.ctl.view().rows.len(), 5);
+    w.ctl.drop_create(
+        &paths,
+        Origin::Panel,
+        Some(snipdeck_core::ListId::generate()),
+    );
+    assert_eq!(w.ctl.view().rows.len(), 6);
     assert!(w.ctl.history_view().undo.is_some());
 }
 
@@ -810,4 +816,58 @@ fn a_drag_over_the_window_names_the_list_until_it_ends() {
     w.ctl.paste_create(Origin::Panel);
     w.ctl.drop_end();
     assert!(w.ctl.view().toast.is_some());
+}
+
+#[test]
+fn a_picture_over_the_attachment_cap_is_skipped_and_said() {
+    let mut w = world();
+    // The size is checked before the bytes are looked at, so these need not be a real PNG.
+    let big = vec![0_u8; usize::try_from(crate::item_editor::max_attachment_bytes()).unwrap() + 1];
+    w.ctl.services.clipboard.held_png = Some(big);
+    w.ctl.paste_create(Origin::Panel);
+    assert_eq!(w.ctl.view().rows.len(), 4);
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::FilesNotAdded
+    );
+    assert!(w.ctl.history_view().undo.is_none());
+}
+
+#[test]
+fn a_dropped_folder_is_skipped_like_an_unusable_file() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut w = world();
+    let mut paths = files_in(&dir, &[("ok.txt", b"fine")]);
+    let folder = dir.path().join("sub");
+    std::fs::create_dir(&folder).expect("folder");
+    paths.push(folder.to_string_lossy().into_owned());
+    w.ctl.drop_create(&paths, Origin::Panel, None);
+    assert_eq!(w.ctl.view().rows.len(), 5);
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::AddedSomeFiles {
+            list: "Replies".into()
+        }
+    );
+}
+
+#[test]
+fn too_many_files_are_refused_with_their_own_message() {
+    let mut w = world();
+    w.ctl.services.clipboard.files_too_many = true;
+    w.ctl.paste_create(Origin::Panel);
+    assert_eq!(w.ctl.view().rows.len(), 4);
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::TooManyFiles
+    );
+    let many: Vec<String> = (0..=snipdeck_platform::win_formats::MAX_DROP_FILES)
+        .map(|i| format!("f{i}"))
+        .collect();
+    w.ctl.drop_create(&many, Origin::Panel, None);
+    assert_eq!(w.ctl.view().rows.len(), 4);
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::TooManyFiles
+    );
 }

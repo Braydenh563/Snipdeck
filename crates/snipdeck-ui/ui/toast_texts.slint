@@ -72,10 +72,13 @@ export global ToastTexts {
         return @tr("Added to {}", list);
     }
     pure public function added-some-files(list: string) -> string {
-        return @tr("Added to {}. Some files were skipped: too large, empty or unreadable.", list);
+        return @tr("Added to {}. Some were skipped: folders, and files that are empty, too large or unreadable.", list);
     }
     pure public function files-not-added() -> string {
-        return @tr("Those files could not be added. They may be too large, empty or unreadable.");
+        return @tr("Nothing was added. Folders, and files or pictures that are empty, too large or unreadable, are skipped.");
+    }
+    pure public function too-many-files() -> string {
+        return @tr("That is too many files to add at once.");
     }
     pure public function drop-to(list: string) -> string {
         return @tr("Drop to add to {}", list);

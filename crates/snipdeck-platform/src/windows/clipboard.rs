@@ -263,10 +263,12 @@ impl WinClipboard {
         self.call(move || read_png_job(png_format)).ok().flatten()
     }
 
-    /// The paths of the files on the clipboard (`CF_HDROP`, as copied in Explorer); empty if
-    /// there are none or the clipboard stays busy. Writes nothing.
-    pub fn read_files(&mut self) -> Vec<String> {
-        self.call(read_files_job).unwrap_or_default()
+    /// The files on the clipboard (`CF_HDROP`, as copied in Explorer): no paths if there are
+    /// none or the clipboard stays busy, [`win_formats::ClipFiles::TooMany`] for a list over
+    /// the limit. Writes nothing.
+    pub fn read_files(&mut self) -> win_formats::ClipFiles {
+        self.call(read_files_job)
+            .unwrap_or(win_formats::ClipFiles::Files(Vec::new()))
     }
 
     /// Whether the clipboard holds a picture (`CF_DIB`, `CF_DIBV5` or `CF_BITMAP`). Reads
@@ -1154,20 +1156,24 @@ fn read_png_job(png_format: u32) -> Option<Vec<u8>> {
         .find_map(|format| read(u32::from(format)).and_then(|dib| win_formats::dib_to_png(&dib)))
 }
 
-fn read_files_job() -> Vec<String> {
+fn read_files_job() -> win_formats::ClipFiles {
+    let none = || win_formats::ClipFiles::Files(Vec::new());
     let Some(hwnd) = owner_hwnd() else {
-        return Vec::new();
+        return none();
     };
     let Some(_open) = OpenGuard::open(hwnd, READ_OPEN_BUDGET) else {
-        return Vec::new();
+        return none();
     };
     // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
     let Ok(handle) = (unsafe { GetClipboardData(u32::from(CF_HDROP.0)) }) else {
-        return Vec::new();
+        return none();
     };
+    // SAFETY: `handle` is a live global block while the clipboard is open.
+    if unsafe { GlobalSize(HGLOBAL(handle.0)) } > READ_FILES_LIMIT {
+        return win_formats::ClipFiles::TooMany;
+    }
     read_global(HGLOBAL(handle.0), READ_FILES_LIMIT)
-        .map(|bytes| win_formats::parse_drop_files(&bytes))
-        .unwrap_or_default()
+        .map_or_else(none, |bytes| win_formats::clip_files(&bytes))
 }
 
 fn clear_if_text_job(expected: &str) -> bool {

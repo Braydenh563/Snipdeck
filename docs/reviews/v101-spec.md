@@ -59,6 +59,7 @@ wizard steps to `tools/windows-test/tests/m3-app.json` for what it cannot verify
   `ctrl_c_many_joins_like_copy_all`; `tests/panel_window.rs` + `tests/main_window.rs`:
   `ctrl_v_in_search_field_does_not_create`; `toast_edit_button_shows_only_with_edit` (ui logic).
 ### O47 a (images, files) + b (slice 2)
+- **Note:** drops go to the list shown (winit gives no pointer position); per-tab drop moves to v1.1 with `IDropTarget`.
 - **User gets:** pasting a screenshot or files copied in Explorer adds Image/File items; dropping files from
   Explorer on the Panel or Main adds them to the list under the pointer.
 - **Decision:** external drops are **files only** in v1.0.1, through winit `WindowEvent::HoveredFile` /

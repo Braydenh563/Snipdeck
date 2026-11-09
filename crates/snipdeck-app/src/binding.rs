@@ -1028,11 +1028,13 @@ where
                 Rc::new(move |path| {
                     let core = Rc::clone(&core);
                     batch.push(path, move |paths| {
-                        if core.controller.try_borrow_mut().is_ok() {
-                            core.act(|ctl| {
-                                ctl.drop_create(&paths, crate::item_editor::Origin::Panel, None);
-                            });
+                        if core.controller.try_borrow_mut().is_err() {
+                            return false;
                         }
+                        core.act(|ctl| {
+                            ctl.drop_create(paths, crate::item_editor::Origin::Panel, None);
+                        });
+                        true
                     });
                 })
             },

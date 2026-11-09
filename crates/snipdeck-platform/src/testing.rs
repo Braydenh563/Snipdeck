@@ -38,6 +38,8 @@ pub struct FakeClipboard {
     pub held_png: Option<Vec<u8>>,
     /// Files copied in Explorer (`ClipboardText::read_files`).
     pub held_files: Vec<String>,
+    /// The Explorer copy holds more files than a paste takes (`ClipFiles::TooMany`).
+    pub files_too_many: bool,
     /// The sequence number right after the latest write.
     pub write_sequence: Option<u32>,
     /// How many clears fail with "busy" before one works (the clipboard is open elsewhere).

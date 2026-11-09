@@ -833,14 +833,25 @@ fn watch_place<S, C, K, T>(
                     crate::binding::redraw_all();
                 }
                 WindowEvent::DroppedFile(path) => {
+                    // The drag is over: the hint goes now, the items follow once the files of
+                    // the drop have all arrived.
+                    if let Some(c) = for_drops.upgrade()
+                        && let Ok(mut c) = c.try_borrow_mut()
+                    {
+                        c.drop_end();
+                    }
                     let controller = for_drops.clone();
                     batch.push(path.to_string_lossy().into_owned(), move |paths| {
-                        if let Some(c) = controller.upgrade()
-                            && let Ok(mut c) = c.try_borrow_mut()
-                        {
-                            c.drop_create(&paths, crate::item_editor::Origin::Main, None);
-                        }
+                        let Some(c) = controller.upgrade() else {
+                            return true;
+                        };
+                        let Ok(mut c) = c.try_borrow_mut() else {
+                            return false;
+                        };
+                        c.drop_create(paths, crate::item_editor::Origin::Main, None);
+                        drop(c);
                         crate::binding::redraw_all();
+                        true
                     });
                 }
                 _ => {}

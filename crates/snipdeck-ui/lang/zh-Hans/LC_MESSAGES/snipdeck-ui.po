@@ -118,8 +118,8 @@ msgstr "添加到“{}”"
 msgid "Added to {}"
 msgstr "已添加到 {}"
 
-msgid "Added to {}. Some files were skipped: too large, empty or unreadable."
-msgstr "已添加到 {}。部分文件已跳过：太大、为空或无法读取。"
+msgid "Added to {}. Some were skipped: folders, and files that are empty, too large or unreadable."
+msgstr "已添加到 {}。部分内容已跳过：文件夹，以及为空、太大或无法读取的文件。"
 
 msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr "在 Windows 自身保护之上，为你的敏感片段添加密码。首次使用敏感片段时要求输入，此后若 {} 分钟未使用，再次使用时也会要求输入。"
@@ -1560,6 +1560,9 @@ msgstr "没有可保存的内容。请先复制一些文本。"
 msgid "Nothing to undo"
 msgstr "没有可撤销的操作"
 
+msgid "Nothing was added. Folders, and files or pictures that are empty, too large or unreadable, are skipped."
+msgstr "未添加任何内容。文件夹，以及为空、太大或无法读取的文件或图片会被跳过。"
+
 msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
 msgstr "在这些程序中复制的内容不会进入“最近”收件箱。请使用程序的文件名，例如 keepass.exe。"
 
@@ -2441,6 +2444,9 @@ msgstr "该文件超过 {} MB，即单个片段可容纳的上限。"
 msgid "That is not a Snipdeck licence key. A key starts with SNIP1."
 msgstr "这不是 Snipdeck 许可证密钥。密钥以 SNIP1 开头。"
 
+msgid "That is too many files to add at once."
+msgstr "一次添加的文件太多。"
+
 msgid "That isn't a CopyQ export."
 msgstr "这不是 CopyQ 导出文件。"
 
@@ -2614,9 +2620,6 @@ msgstr "此文本超过 {} KB，这是此处可编辑的上限。请缩短它，
 
 msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
 msgstr "此文本为 {}。超过 16 KB 的内容将在此以只读方式打开，并显示前 16 KB。"
-
-msgid "Those files could not be added. They may be too large, empty or unreadable."
-msgstr "无法添加这些文件。它们可能太大、为空或无法读取。"
 
 msgid "Tile view"
 msgstr "平铺视图"

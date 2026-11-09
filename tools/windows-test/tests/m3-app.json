@@ -356,7 +356,7 @@
       "v1": true,
       "title": "Drag files from Explorer onto the Panel and Main window (O47)",
       "do": "Drag two files from Explorer over the Panel (do not drop yet), then drop them. Do the same over the Main window with a list open. Drag a file in and move it out again without dropping. Drop a folder.",
-      "expect": "While dragging, a message says 'Drop to add to <list>'; it goes when the drag leaves or ends. Dropping adds one item per file to the list the window shows, as one Undo step. A drag that leaves adds nothing. A folder is skipped with a message. Dropping on a tab or on text and pictures from other programs is not supported in this version. Write what went wrong in the note (n)."
+      "expect": "While dragging, a message says 'Drop to add to <list>'; it goes when the drag leaves or ends. Dropping adds one item per file to the list shown, as one Undo step, wherever on the window you drop (a drop on a different tab still goes to the list shown). A drag that leaves adds nothing. A folder is skipped and the message says so. Dropping text or pictures from other programs is not supported in this version. Write what went wrong in the note (n)."
     }
   ]
 }

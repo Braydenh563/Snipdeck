@@ -118,8 +118,8 @@ msgstr "Zu „{}“ hinzufügen"
 msgid "Added to {}"
 msgstr "Zu {} hinzugefügt"
 
-msgid "Added to {}. Some files were skipped: too large, empty or unreadable."
-msgstr "Zu {} hinzugefügt. Einige Dateien wurden übersprungen: zu groß, leer oder nicht lesbar."
+msgid "Added to {}. Some were skipped: folders, and files that are empty, too large or unreadable."
+msgstr "Zu {} hinzugefügt. Einiges wurde übersprungen: Ordner sowie leere, zu große oder nicht lesbare Dateien."
 
 msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr "Fügt ein Passwort zum Windows-Schutz für deine vertraulichen Textbausteine hinzu. Wird beim ersten Verwenden eines vertraulichen Textbausteins und erneut nach {} Minuten ohne Nutzung abgefragt."
@@ -1565,6 +1565,9 @@ msgstr "Nichts zu speichern. Kopiere zuerst etwas Text."
 msgid "Nothing to undo"
 msgstr "Nichts zum Rückgängigmachen"
 
+msgid "Nothing was added. Folders, and files or pictures that are empty, too large or unreadable, are skipped."
+msgstr "Nichts wurde hinzugefügt. Ordner sowie leere, zu große oder nicht lesbare Dateien und Bilder werden übersprungen."
+
 msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
 msgstr "Was du in diesen Programmen kopierst, landet nicht im Posteingang „Zuletzt“. Verwende den Dateinamen des Programms, zum Beispiel keepass.exe."
 
@@ -2448,6 +2451,9 @@ msgstr "Diese Datei ist größer als {} MB, das Maximum für einen Textbaustein.
 msgid "That is not a Snipdeck licence key. A key starts with SNIP1."
 msgstr "Das ist kein Snipdeck-Lizenzschlüssel. Ein Schlüssel beginnt mit SNIP1."
 
+msgid "That is too many files to add at once."
+msgstr "Das sind zu viele Dateien auf einmal."
+
 msgid "That isn't a CopyQ export."
 msgstr "Das ist kein CopyQ-Export."
 
@@ -2621,9 +2627,6 @@ msgstr "Dieser Text ist größer als {} KB, das Maximum für die Bearbeitung hie
 
 msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
 msgstr "Dieser Text ist {}. Alles über 16 KB wird hier nur zum Lesen geöffnet; die ersten 16 KB werden angezeigt."
-
-msgid "Those files could not be added. They may be too large, empty or unreadable."
-msgstr "Diese Dateien konnten nicht hinzugefügt werden. Sie sind vielleicht zu groß, leer oder nicht lesbar."
 
 msgid "Tile view"
 msgstr "Kachelansicht"

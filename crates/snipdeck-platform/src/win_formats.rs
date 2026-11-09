@@ -121,6 +121,29 @@ pub fn parse_drop_files(bytes: &[u8]) -> Vec<String> {
     paths
 }
 
+/// The most files one paste or drop adds. More are refused outright, so a huge selection cannot
+/// freeze the window while it is read.
+pub const MAX_DROP_FILES: usize = 1000;
+
+/// The files on the clipboard.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ClipFiles {
+    /// The paths (empty when the clipboard holds no files).
+    Files(Vec<String>),
+    /// More than [`MAX_DROP_FILES`], or a list too big to read.
+    TooMany,
+}
+
+/// The files in `CF_HDROP` bytes, or [`ClipFiles::TooMany`] past [`MAX_DROP_FILES`].
+pub fn clip_files(bytes: &[u8]) -> ClipFiles {
+    let paths = parse_drop_files(bytes);
+    if paths.len() > MAX_DROP_FILES {
+        ClipFiles::TooMany
+    } else {
+        ClipFiles::Files(paths)
+    }
+}
+
 /// Whether `name` can be written directly inside the paste folder. Core validates names when an
 /// item is saved; this repeats core's own check (one Windows-valid path component) as the last
 /// guard before touching the disk.
@@ -971,6 +994,120 @@ mod tests {
         narrow[16..20].copy_from_slice(&0i32.to_le_bytes());
         narrow.extend_from_slice(b"C:\\x.txt\0\0");
         assert_eq!(parse_drop_files(&narrow), ["C:\\x.txt"]);
+    }
+
+    /// A 40-byte-header DIB of `width` x 1, `bits` per pixel, with `compression`, `colors_used`
+    /// and then `after` (masks, colour table, pixels).
+    fn small_dib(
+        width: i32,
+        height: i32,
+        bits: u16,
+        compression: u32,
+        colors_used: u32,
+    ) -> Vec<u8> {
+        let mut dib = Vec::new();
+        dib.extend_from_slice(&40u32.to_le_bytes());
+        dib.extend_from_slice(&width.to_le_bytes());
+        dib.extend_from_slice(&height.to_le_bytes());
+        dib.extend_from_slice(&1u16.to_le_bytes());
+        dib.extend_from_slice(&bits.to_le_bytes());
+        dib.extend_from_slice(&compression.to_le_bytes());
+        dib.extend_from_slice(&[0; 12]);
+        dib.extend_from_slice(&colors_used.to_le_bytes());
+        dib.extend_from_slice(&[0; 4]);
+        dib
+    }
+
+    #[test]
+    fn dib_to_png_refuses_overflowing_and_negative_extremes() {
+        for (w, h) in [
+            (i32::MAX, i32::MAX),
+            (i32::MAX, 1),
+            (1, i32::MAX),
+            (1, i32::MIN),
+            (0, 1),
+            (-1, 1),
+            (1, 0),
+        ] {
+            let mut dib = small_dib(w, h, 24, 0, 0);
+            dib.extend_from_slice(&[0; 16]);
+            assert_eq!(dib_to_png(&dib), None, "{w}x{h}");
+        }
+    }
+
+    #[test]
+    fn dib_to_png_reads_16_bit_pixels() {
+        // BI_RGB is 5-5-5: pure red is 0x7C00, pure blue 0x001F.
+        let mut dib = small_dib(2, 1, 16, 0, 0);
+        dib.extend_from_slice(&[0x00, 0x7C, 0x1F, 0x00]);
+        let (w, _, color, pixels) = decode_png(&dib_to_png(&dib).unwrap());
+        assert_eq!((w, color), (2, png::ColorType::Rgb));
+        assert_eq!(pixels, [255, 0, 0, 0, 0, 255]);
+        // BI_BITFIELDS 5-6-5: green 0x07E0.
+        let mut dib = small_dib(1, 1, 16, 3, 0);
+        for mask in [0xF800u32, 0x07E0, 0x001F] {
+            dib.extend_from_slice(&mask.to_le_bytes());
+        }
+        dib.extend_from_slice(&[0xE0, 0x07, 0, 0]);
+        let (_, _, _, pixels) = decode_png(&dib_to_png(&dib).unwrap());
+        assert_eq!(pixels, [0, 255, 0]);
+    }
+
+    #[test]
+    fn dib_to_png_reads_a_bi_rgb_v5_header_as_opaque() {
+        // The alpha byte of 32-bit BI_RGB pixels is unused, even in a V5 header.
+        let mut dib = vec![0u8; 124];
+        dib[0..4].copy_from_slice(&124u32.to_le_bytes());
+        dib[4..8].copy_from_slice(&1i32.to_le_bytes());
+        dib[8..12].copy_from_slice(&1i32.to_le_bytes());
+        dib[12..14].copy_from_slice(&1u16.to_le_bytes());
+        dib[14..16].copy_from_slice(&32u16.to_le_bytes());
+        dib.extend_from_slice(&[30, 20, 10, 0]); // B G R, unused
+        let (_, _, color, pixels) = decode_png(&dib_to_png(&dib).unwrap());
+        assert_eq!(color, png::ColorType::Rgb);
+        assert_eq!(pixels, [10, 20, 30]);
+    }
+
+    #[test]
+    fn dib_to_png_skips_a_colour_table_before_the_pixels() {
+        let mut dib = small_dib(1, 1, 24, 0, 2);
+        dib.extend_from_slice(&[9; 8]); // two table entries
+        dib.extend_from_slice(&[3, 2, 1, 0]); // B G R + padding
+        let (_, _, _, pixels) = decode_png(&dib_to_png(&dib).unwrap());
+        assert_eq!(pixels, [1, 2, 3]);
+        // A table the bytes do not hold is truncated input.
+        assert_eq!(dib_to_png(&small_dib(1, 1, 24, 0, 2)), None);
+    }
+
+    #[test]
+    fn parse_drop_files_handles_odd_lengths_and_a_low_offset() {
+        // An odd trailing byte after the last complete path is ignored.
+        let mut bytes = drop_files(&[[0x41u16]]).unwrap();
+        bytes.truncate(bytes.len() - 2);
+        bytes.push(0x42);
+        assert_eq!(parse_drop_files(&bytes), ["A"]);
+        // pFiles inside the header itself is not a list.
+        let mut bytes = drop_files(&[[0x41u16]]).unwrap();
+        for low in [0u32, 4, 19] {
+            bytes[0..4].copy_from_slice(&low.to_le_bytes());
+            assert_eq!(parse_drop_files(&bytes), Vec::<String>::new(), "{low}");
+        }
+    }
+
+    #[test]
+    fn clip_files_refuses_more_than_the_file_limit() {
+        let few: Vec<Vec<u16>> = (0..3).map(|i| vec![0x41 + i]).collect();
+        assert_eq!(
+            clip_files(&drop_files(&few).unwrap()),
+            ClipFiles::Files(vec!["A".into(), "B".into(), "C".into()])
+        );
+        let many: Vec<Vec<u16>> = (0..=MAX_DROP_FILES).map(|_| vec![0x41]).collect();
+        assert_eq!(clip_files(&drop_files(&many).unwrap()), ClipFiles::TooMany);
+        let at_limit: Vec<Vec<u16>> = (0..MAX_DROP_FILES).map(|_| vec![0x41]).collect();
+        assert!(matches!(
+            clip_files(&drop_files(&at_limit).unwrap()),
+            ClipFiles::Files(f) if f.len() == MAX_DROP_FILES
+        ));
     }
 
     #[test]

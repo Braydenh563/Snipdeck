@@ -124,10 +124,11 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::AddedSomeFiles { .. } => 94,
         ToastMessage::FilesNotAdded => 95,
         ToastMessage::DropTo { .. } => 96,
+        ToastMessage::TooManyFiles => 97,
     }
 }
 
-const VARIANTS: usize = 97;
+const VARIANTS: usize = 98;
 
 fn s(text: &str) -> String {
     text.to_owned()

@@ -6,6 +6,7 @@
 use std::{cell::Cell, cell::RefCell, rc::Rc};
 
 use snipdeck_core::Timestamp;
+use snipdeck_platform::win_formats::ClipFiles;
 use snipdeck_platform::{
     chord::Chord,
     route::{ScreenRect, Target},
@@ -64,8 +65,9 @@ pub trait ClipboardText {
     /// The clipboard's picture as PNG bytes (a screenshot, a copied image), or `None`. Writes
     /// nothing.
     fn read_png(&mut self) -> Option<Vec<u8>>;
-    /// The paths of the files copied in Explorer; empty when there are none. Writes nothing.
-    fn read_files(&mut self) -> Vec<String>;
+    /// The files copied in Explorer (no paths when there are none; too many is its own answer).
+    /// Writes nothing.
+    fn read_files(&mut self) -> ClipFiles;
     /// Empties the clipboard if it still holds exactly `text` (so something the user copied
     /// since is never lost). Whether it was cleared.
     fn clear_if_text(&mut self, text: &str) -> bool;
@@ -91,7 +93,7 @@ impl ClipboardText for snipdeck_platform::windows::clipboard::WinClipboard {
     fn read_png(&mut self) -> Option<Vec<u8>> {
         Self::read_png(self)
     }
-    fn read_files(&mut self) -> Vec<String> {
+    fn read_files(&mut self) -> ClipFiles {
         Self::read_files(self)
     }
     fn clear_if_text(&mut self, text: &str) -> bool {
@@ -134,8 +136,12 @@ impl ClipboardText for snipdeck_platform::testing::FakeClipboard {
         });
         written.or_else(|| self.held_png.clone())
     }
-    fn read_files(&mut self) -> Vec<String> {
-        self.held_files.clone()
+    fn read_files(&mut self) -> ClipFiles {
+        if self.files_too_many {
+            ClipFiles::TooMany
+        } else {
+            ClipFiles::Files(self.held_files.clone())
+        }
     }
     fn clear_if_text(&mut self, text: &str) -> bool {
         if self.read_text().as_deref() != Some(text) || self.busy_for_clear() {
