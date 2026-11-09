@@ -259,7 +259,8 @@ impl WinClipboard {
     /// `CF_DIBV5`, else `CF_DIB` converted by [`win_formats::dib_to_png`]. `None` if there is no
     /// picture, it is over the size limit, or the clipboard stays busy. Writes nothing.
     pub fn read_png(&mut self) -> Option<Vec<u8>> {
-        self.call(read_png_job).ok().flatten()
+        let png_format = self.formats.png;
+        self.call(move || read_png_job(png_format)).ok().flatten()
     }
 
     /// The paths of the files on the clipboard (`CF_HDROP`, as copied in Explorer); empty if
@@ -1135,8 +1136,7 @@ fn read_text_job() -> Option<String> {
     Some(text)
 }
 
-fn read_png_job() -> Option<Vec<u8>> {
-    let png_format = with_owner(|owner| owner.formats.png).unwrap_or(0);
+fn read_png_job(png_format: u32) -> Option<Vec<u8>> {
     let hwnd = owner_hwnd()?;
     let _open = OpenGuard::open(hwnd, READ_OPEN_BUDGET)?;
     let read = |format: u32| -> Option<Vec<u8>> {
