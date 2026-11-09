@@ -193,8 +193,8 @@ pub struct View {
     pub dock_collapsed: bool,
     /// The handle runs up and down (the Panel is docked to the left or right edge).
     pub dock_vertical: bool,
-    /// The Panel is docked to an edge (the kebab offers to undock it).
-    pub docked: bool,
+    /// The edge the Panel is docked to (the kebab offers to undock it; the dock grips follow it).
+    pub dock_edge: Option<DockEdge>,
     /// The edge the kebab's "Dock" row would dock a floating Panel to (`None` while docked or
     /// before the monitor is known): the row names it.
     pub dock_target: Option<DockEdge>,

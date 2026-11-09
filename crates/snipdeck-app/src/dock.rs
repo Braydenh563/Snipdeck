@@ -184,6 +184,7 @@ mod tests {
             trigger,
             hover_delay_ms: 150,
             leave_delay_ms: 400,
+            full_edge: false,
         }
     }
 

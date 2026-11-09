@@ -684,6 +684,7 @@ struct PageView {
     panel_in_taskbar: bool,
     panel_hide_on_blur: bool,
     screenshot_keep_panel: bool,
+    dock_full_edge: bool,
     recent_history: bool,
     reduce_motion: bool,
     panel_width: i32,
@@ -950,6 +951,7 @@ where
         panel_in_taskbar: settings.panel_in_taskbar,
         panel_hide_on_blur: settings.panel_hide_on_blur,
         screenshot_keep_panel: settings.screenshot_keep_panel,
+        dock_full_edge: settings.dock.full_edge,
         recent_history: settings.recent_history,
         reduce_motion: settings.reduce_motion,
         panel_width: i32::try_from(settings.panel_width).unwrap_or(320),
@@ -1765,6 +1767,8 @@ where
         });
         wire!(on_panel_hide_on_blur_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.panel_hide_on_blur = on)));
+        wire!(on_dock_full_edge_toggled, |core, on| core
+            .act(|ctl| ctl.set_dock_full_edge(on)));
         wire!(on_screenshot_keep_panel_toggled, |core, on| core.act(
             |ctl| ctl.update_settings(|s| s.screenshot_keep_panel = on)
         ));
@@ -1985,6 +1989,9 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.panel_hide_on_blur == view.panel_hide_on_blur) {
         window.set_panel_hide_on_blur(view.panel_hide_on_blur);
+    }
+    if differs(&|p| p.dock_full_edge == view.dock_full_edge) {
+        window.set_dock_full_edge(view.dock_full_edge);
     }
     if differs(&|p| p.screenshot_keep_panel == view.screenshot_keep_panel) {
         window.set_screenshot_keep_panel(view.screenshot_keep_panel);

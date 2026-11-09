@@ -147,7 +147,14 @@ where
             monitor.scale,
             DEFAULT_HEIGHT,
         );
-        let open = frame::docked_rect(edge, monitor.work_area, size, monitor.scale);
+        let open = frame::docked_rect(
+            edge,
+            monitor.work_area,
+            size,
+            monitor.scale,
+            geometry.along,
+            self.settings.dock.full_edge,
+        );
         let rect = if collapsed {
             frame::handle_rect(edge, monitor.work_area, open.along(edge), monitor.scale)
         } else {
@@ -282,6 +289,15 @@ where
         if let (None, Some((w, h))) = (edge, earlier) {
             base = Rect { w, h, ..base };
         }
+        // Where along the edge the Panel lands: where it was dropped (its top, or its left), or
+        // where it already was on that same edge; none centres it.
+        let along = match (edge, stored) {
+            (Some(e), Some(g)) if g.edge.is_some() => {
+                (g.edge == Some(e)).then_some(g.along).flatten()
+            }
+            (Some(e), _) => Some(base.along(e).start),
+            (None, _) => None,
+        };
         let place = match edge {
             Some(edge) => {
                 let size = frame::dock_size(
@@ -292,7 +308,14 @@ where
                     monitor.scale,
                     DEFAULT_HEIGHT,
                 );
-                frame::docked_rect(edge, monitor.work_area, size, monitor.scale)
+                frame::docked_rect(
+                    edge,
+                    monitor.work_area,
+                    size,
+                    monitor.scale,
+                    along,
+                    self.settings.dock.full_edge,
+                )
             }
             None => frame::clamp(base, &monitor),
         };
@@ -307,6 +330,55 @@ where
         });
         self.pending.push(Effect::PlaceWindow(place));
         self.show_toast(neutral(ToastMessage::DockSet(edge)));
+    }
+
+    /// "Docked panel uses the full edge" was switched: the setting changes and an open docked
+    /// Panel is placed again at its new height (queued for [`take_pending`](Self::take_pending)).
+    pub fn set_dock_full_edge(&mut self, on: bool) {
+        self.update_settings(|s| s.dock.full_edge = on);
+        if self.dock_edge().is_some() && !self.dock_collapsed() {
+            let placed = self.dock_place(false);
+            self.pending.extend(placed);
+        }
+    }
+
+    /// The grip pill of a docked Panel was dragged `delta` physical pixels along its edge: the
+    /// Panel slides that far, stays on its edge and inside the work area, and remembers where it
+    /// is. Nothing happens while it is floating or collapsed.
+    pub fn dock_slide(&mut self, delta: i32) -> Vec<Effect> {
+        if self.dock_collapsed() {
+            return Vec::new();
+        }
+        let Some(monitor) = self.monitor.clone() else {
+            return Vec::new();
+        };
+        let Some(g) = self.stored_geometry(&monitor).cloned() else {
+            return Vec::new();
+        };
+        let Some(edge) = g.edge else {
+            return Vec::new();
+        };
+        let now = Rect::of(&g);
+        let start = now.along(edge).start.saturating_add(delta);
+        let moved = frame::docked_rect(
+            edge,
+            monitor.work_area,
+            (now.w, now.h),
+            monitor.scale,
+            Some(start),
+            self.settings.dock.full_edge,
+        );
+        self.update_settings(|s| {
+            s.remember_panel_geometry(PanelGeometry {
+                pre_dock: g.pre_dock,
+                ..moved.geometry(&monitor, Some(edge))
+            });
+        });
+        if moved == now {
+            Vec::new()
+        } else {
+            vec![Effect::PlaceWindow(moved)]
+        }
     }
 
     /// "Reset size and position": forgets what was remembered for the Panel's current monitor (and

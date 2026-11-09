@@ -165,6 +165,8 @@ fn a_docked_panel_ignores_where_it_opens() {
         display().work_area,
         (FLOATING.w, FLOATING.h),
         1.0,
+        Some(FLOATING.y),
+        false,
     );
     assert_eq!(
         w.ctl.restore_frame(&display()),

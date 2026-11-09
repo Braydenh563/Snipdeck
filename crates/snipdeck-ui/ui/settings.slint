@@ -291,6 +291,7 @@ export component SettingsPage inherits Window {
     in-out property <bool> panel-in-taskbar: false;
     in-out property <bool> panel-hide-on-blur: true;
     in-out property <bool> screenshot-keep-panel: false;
+    in-out property <bool> dock-full-edge: false;
     in-out property <bool> recent-history: false;
     // How many copies and how many days the history keeps (the description names them).
     in property <int> recent-max-entries: 200;
@@ -417,6 +418,7 @@ export component SettingsPage inherits Window {
     callback panel-in-taskbar-toggled(on: bool);
     callback panel-hide-on-blur-toggled(on: bool);
     callback screenshot-keep-panel-toggled(on: bool);
+    callback dock-full-edge-toggled(on: bool);
     callback reduce-motion-toggled(on: bool);
     callback panel-width-chosen(width: int);
     callback dock-edge-chosen(index: int);
@@ -917,6 +919,18 @@ export component SettingsPage inherits Window {
                             options: [@tr("Floating"), @tr("Left edge"), @tr("Right edge"), @tr("Top edge"), @tr("Bottom edge")];
                             current: root.dock-edge-index;
                             chosen(i) => { root.dock-edge-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Docked panel uses the full edge");
+                        description: @tr("Off keeps a panel docked to the left or right at the height you dropped it. On stretches it over the whole edge.");
+                        Toggle {
+                            a11y-label: @tr("Docked panel uses the full edge");
+                            checked <=> root.dock-full-edge;
+                            toggled(on) => { root.dock-full-edge-toggled(on); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }

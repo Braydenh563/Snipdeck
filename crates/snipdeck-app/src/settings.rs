@@ -54,6 +54,11 @@ pub struct PanelGeometry {
     /// off its edge) gives them back. Only set while docked.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pre_dock: Option<(u32, u32)>,
+    /// Where the docked Panel starts along its edge (its top on a left or right edge, its left
+    /// on a top or bottom one), in physical pixels. Only set while docked; absent in older files,
+    /// which read as none: centred (or full height).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub along: Option<i32>,
 }
 
 /// Reads an edge name; anything else (a hand-edited or future value) is "not docked" rather
@@ -149,6 +154,8 @@ pub struct DockSettings {
     pub hover_delay_ms: u32,
     /// Leave delay, 0 to 5000 ms.
     pub leave_delay_ms: u32,
+    /// A Panel docked left or right takes the work area's full height instead of keeping its own.
+    pub full_edge: bool,
 }
 
 impl Default for DockSettings {
@@ -157,6 +164,7 @@ impl Default for DockSettings {
             trigger: DockTrigger::Off,
             hover_delay_ms: 150,
             leave_delay_ms: 400,
+            full_edge: false,
         }
     }
 }
@@ -1337,9 +1345,21 @@ mod tests {
             h: 700,
             edge: Some(DockEdge::Right),
             pre_dock: Some((320, 480)),
+            along: None,
         });
         let back = Settings::from_json(&settings.to_json());
         assert_eq!(back.panel_geometry, settings.panel_geometry);
+    }
+
+    #[test]
+    fn old_geometry_without_along_reads_as_none() {
+        let settings = Settings::from_json(
+            r#"{"panel_geometry":[{"monitor_id":"D1","x":0,"y":0,"w":320,"h":1040,"edge":"left","pre_dock":[320,480]}],"dock":{"trigger":"hover"}}"#,
+        );
+        let g = &settings.panel_geometry[0];
+        assert_eq!((g.edge, g.along, g.h), (Some(DockEdge::Left), None, 1040));
+        assert!(!settings.dock.full_edge, "the compact dock is the default");
+        assert_eq!(settings.dock.trigger, DockTrigger::Hover);
     }
 
     #[test]
@@ -1356,6 +1376,7 @@ mod tests {
                 trigger: DockTrigger::Both,
                 hover_delay_ms: 300,
                 leave_delay_ms: 900,
+                full_edge: true,
             },
             ..Settings::default()
         };
@@ -1405,7 +1426,7 @@ mod tests {
         let edges: Vec<_> = settings.panel_geometry.iter().map(|g| g.edge).collect();
         assert_eq!(edges, [None, None, Some(DockEdge::Top)]);
         assert!(
-            !Settings::default().to_json().contains("edge"),
+            !Settings::default().to_json().contains("\"edge\""),
             "no edge is written for a floating Panel"
         );
     }
@@ -1420,6 +1441,7 @@ mod tests {
             h: 500,
             edge: None,
             pre_dock: None,
+            along: None,
         };
         let mut settings = Settings {
             panel_geometry: vec![

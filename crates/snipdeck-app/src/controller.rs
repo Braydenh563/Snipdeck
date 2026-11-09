@@ -492,7 +492,7 @@ where
             topmost: self.on_top && !self.own_window_active,
             dock_collapsed: self.dock.is_collapsed(),
             dock_vertical: self.dock_edge().is_none_or(DockEdge::vertical),
-            docked: self.dock_edge().is_some(),
+            dock_edge: self.dock_edge(),
             dock_target: self.dock_target(),
             dock_preview: self.dock_preview,
             dark: self.look().dark,

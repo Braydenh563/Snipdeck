@@ -38,7 +38,19 @@ fn docked(trigger: DockTrigger, edge: DockEdge) -> World {
 }
 
 fn open_rect(edge: DockEdge) -> Rect {
-    frame::docked_rect(edge, display().work_area, (FLOATING.w, FLOATING.h), 1.0)
+    open_rect_from(edge, FLOATING)
+}
+
+/// The open dock for a Panel dropped at `dropped`: its top (or its left) is where the dock starts.
+fn open_rect_from(edge: DockEdge, dropped: Rect) -> Rect {
+    frame::docked_rect(
+        edge,
+        display().work_area,
+        (dropped.w, dropped.h),
+        1.0,
+        Some(dropped.along(edge).start),
+        false,
+    )
 }
 
 fn handle(edge: DockEdge) -> Rect {
@@ -80,7 +92,7 @@ fn floating_again_clears_the_edge_and_keeps_the_place() {
     w.ctl.dock_to(None);
     assert_eq!(w.ctl.take_pending(), place(restored(DockEdge::Left)));
     assert_eq!(w.ctl.dock_edge(), None);
-    assert!(!w.ctl.view().docked);
+    assert!(!w.ctl.view().dock_edge.is_some());
 }
 
 /// The docked frame's place with the size the Panel had before it was docked.
@@ -367,7 +379,7 @@ fn dragging_a_docked_panel_away_undocks_it() {
     };
     w.ctl.frame_changed(&display(), away);
     assert_eq!(w.ctl.dock_edge(), None);
-    assert!(!w.ctl.view().docked);
+    assert!(!w.ctl.view().dock_edge.is_some());
     let back = Rect {
         w: FLOATING.w,
         h: FLOATING.h,
@@ -431,11 +443,18 @@ fn the_kebab_docks_to_the_nearest_edge_and_then_undocks() {
         .expect("in menu");
     // The Panel sits 40 px from the left edge: that is the nearest.
     w.ctl.open_app_menu();
-    assert_eq!(w.ctl.choose_app_menu(row), place(open_rect(DockEdge::Left)));
+    assert_eq!(
+        w.ctl.choose_app_menu(row),
+        place(open_rect_from(DockEdge::Left, near_left))
+    );
     assert_eq!(w.ctl.dock_edge(), Some(DockEdge::Left));
-    assert!(w.ctl.view().docked);
+    assert!(w.ctl.view().dock_edge.is_some());
     assert_eq!(w.ctl.view().app_menu, None);
-    assert_eq!(w.ctl.choose_app_menu(row), place(restored(DockEdge::Left)));
+    // Undocking leaves it where the compact dock was, at its own size.
+    assert_eq!(
+        w.ctl.choose_app_menu(row),
+        place(open_rect_from(DockEdge::Left, near_left))
+    );
     assert_eq!(w.ctl.dock_edge(), None);
 }
 
@@ -490,7 +509,7 @@ fn the_view_says_which_way_the_handle_runs() {
         let w = docked(DockTrigger::Click, edge);
         let view = w.ctl.view();
         assert_eq!(view.dock_vertical, vertical, "{edge:?}");
-        assert!(view.docked && !view.dock_collapsed);
+        assert!(view.dock_edge.is_some() && !view.dock_collapsed);
     }
 }
 
@@ -507,6 +526,7 @@ fn dock_settings_changes_are_written_with_the_other_settings() {
             trigger: DockTrigger::Both,
             hover_delay_ms: 9999,
             leave_delay_ms: 0,
+            full_edge: false,
         };
     });
     assert_eq!(w.ctl.settings().dock.trigger, DockTrigger::Both);
@@ -541,7 +561,10 @@ fn the_kebab_names_the_nearest_edge_and_never_the_taskbars() {
         .position(|e| *e == AppMenuEntry::Dock)
         .expect("in menu");
     w.ctl.open_app_menu();
-    assert_eq!(w.ctl.choose_app_menu(row), place(open_rect(DockEdge::Left)));
+    assert_eq!(
+        w.ctl.choose_app_menu(row),
+        place(open_rect_from(DockEdge::Left, lower_middle))
+    );
     assert_eq!(w.ctl.dock_edge(), Some(DockEdge::Left));
     assert_eq!(w.ctl.view().dock_target, None, "docked: the row undocks");
     // Without a taskbar the same place docks to the bottom.
@@ -627,7 +650,11 @@ fn reset_size_and_position_floats_the_panel_clear_of_every_edge() {
 
 #[test]
 fn moving_a_side_dock_to_the_bottom_does_not_bring_the_full_height_along() {
-    let mut w = docked(DockTrigger::Off, DockEdge::Left);
+    // With the full edge on, a side dock is stored full height.
+    let mut w = floating(DockTrigger::Off);
+    w.ctl.set_dock_full_edge(true);
+    w.ctl.dock_to(Some(DockEdge::Left));
+    w.ctl.take_pending();
     let work = display().work_area;
     assert_eq!(
         w.ctl.settings().panel_geometry[0].h,
@@ -670,5 +697,108 @@ fn a_stored_bottom_dock_that_was_saved_full_height_reopens_at_the_panel_height()
     assert_eq!(
         i64::from(rect.y) + i64::from(rect.h),
         i64::from(work.y) + i64::from(work.h)
+    );
+}
+
+#[test]
+fn dropping_at_y_300_docks_at_y_300_and_remembers_it() {
+    let mut w = floating(DockTrigger::Off);
+    let dropped = Rect { y: 300, ..FLOATING };
+    w.ctl.frame_changed(&display(), dropped);
+    w.ctl.dock_to(Some(DockEdge::Left));
+    let expected = Rect {
+        x: 0,
+        y: 300,
+        w: FLOATING.w,
+        h: FLOATING.h,
+    };
+    assert_eq!(w.ctl.take_pending(), place(expected));
+    let g = &w.ctl.settings().panel_geometry[0];
+    assert_eq!(
+        (g.edge, g.along, Rect::of(g)),
+        (Some(DockEdge::Left), Some(300), expected)
+    );
+    // Shown again, it comes back at the same height.
+    assert_eq!(w.ctl.placement(&display()), Some(expected));
+}
+
+#[test]
+fn undock_restores_pre_dock() {
+    let mut w = floating(DockTrigger::Off);
+    w.ctl.dock_to(Some(DockEdge::Right));
+    w.ctl.take_pending();
+    w.ctl.dock_to(None);
+    let g = &w.ctl.settings().panel_geometry[0];
+    assert_eq!((g.edge, g.along, g.pre_dock), (None, None, None));
+    assert_eq!((g.w, g.h), (FLOATING.w, FLOATING.h));
+}
+
+#[test]
+fn full_edge_gives_the_side_dock_the_work_area_height_and_back() {
+    let mut w = docked(DockTrigger::Off, DockEdge::Left);
+    w.ctl.set_dock_full_edge(true);
+    let full = display().work_area;
+    assert_eq!(
+        w.ctl.take_pending(),
+        place(Rect {
+            x: 0,
+            y: full.y,
+            w: FLOATING.w,
+            h: full.h
+        })
+    );
+    w.ctl.set_dock_full_edge(false);
+    assert_eq!(w.ctl.take_pending().len(), 1);
+}
+
+#[test]
+fn sliding_clamps_to_the_work_area() {
+    let mut w = docked(DockTrigger::Off, DockEdge::Left);
+    let start = open_rect(DockEdge::Left);
+    let moved = Rect {
+        y: start.y + 50,
+        ..start
+    };
+    assert_eq!(w.ctl.dock_slide(50), place(moved));
+    assert_eq!(w.ctl.settings().panel_geometry[0].along, Some(start.y + 50));
+    // Far past the bottom: pulled inside; the top: stops at the work area.
+    let work = display().work_area;
+    let bottom = Rect {
+        y: i32::try_from(work.h - start.h).unwrap(),
+        ..start
+    };
+    assert_eq!(w.ctl.dock_slide(5000), place(bottom));
+    assert_eq!(w.ctl.dock_slide(5000), Vec::new(), "already at the end");
+    assert_eq!(w.ctl.dock_slide(-9000), place(Rect { y: 0, ..start }));
+    assert_eq!(
+        w.ctl.settings().panel_geometry[0].edge,
+        Some(DockEdge::Left)
+    );
+}
+
+#[test]
+fn a_floating_panel_does_not_slide() {
+    let mut w = floating(DockTrigger::Off);
+    assert_eq!(w.ctl.dock_slide(40), Vec::new());
+}
+
+#[test]
+fn a_docked_panel_refuses_a_resize_from_its_outer_edge() {
+    use crate::frame::Edge;
+    let mut w = docked(DockTrigger::Off, DockEdge::Left);
+    assert_eq!(w.ctl.resize(Edge::Left), Vec::new());
+    assert_eq!(w.ctl.resize(Edge::TopLeft), Vec::new());
+    assert_eq!(
+        w.ctl.resize(Edge::Right),
+        vec![Effect::ResizeWindow(Edge::Right)]
+    );
+    assert_eq!(
+        w.ctl.resize(Edge::Bottom),
+        vec![Effect::ResizeWindow(Edge::Bottom)]
+    );
+    w.ctl.dock_to(None);
+    assert_eq!(
+        w.ctl.resize(Edge::Left),
+        vec![Effect::ResizeWindow(Edge::Left)]
     );
 }
