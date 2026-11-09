@@ -58,6 +58,8 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 - 2026-11-09: O50 Select/Delete is not a permanent header strip (costs 32 px on every Panel; owner: Panel takes too much screen). Entry: ⋯ "Select or delete…"; the strip shows only while a mode is on and holds Select | Delete, Clear list… and Done. "Show numbers" leaves ⋯ (still in Settings) so the menu keeps Quit in view at 560 px; that test is not relaxed.
 
+- 2026-11-09: A second worktree for a gate uses its own CARGO_TARGET_DIR: tests that bake env!("CARGO_MANIFEST_DIR") reuse a cached binary pointing at the removed worktree (release_guard failed that way). Never let a builder edit the tree the gate is checking.
+
 ## Inbox
 - 2026-11-07 owner (verbatim): "Im going to sleep, refine, and polish and finish absolutely everything, work with maximum token efficiency and effectiveness and minimal tokens while maximising productivity. be thorough and always use a critical and detailed expert eye. maximise ux, ensure functionality and learnability, usability and accessibility and more." / "good night and impress me :D" -> away mode on the existing work order; no merge/tag/release.
 - 2026-11-07 triage: 150+ placed/done items moved to .claude/inbox-archive.md; open queue = .claude/work-order.md. The v1 T-items below (owner Windows test 2026-10-21) stay until the owner re-tests them on Windows in Final.
