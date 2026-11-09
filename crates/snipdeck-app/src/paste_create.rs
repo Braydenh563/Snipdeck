@@ -229,12 +229,12 @@ mod tests {
             ..clip
         };
         assert_eq!(classify(&clip), [Piece::Image(vec![1])]);
-        assert!(classify(&Clip::default()).is_empty());
+        assert_eq!(classify(&Clip::default()), Vec::<Piece>::new());
         let clip = Clip {
             png: Some(Vec::new()),
             ..Clip::default()
         };
-        assert!(classify(&clip).is_empty());
+        assert_eq!(classify(&clip), Vec::<Piece>::new());
     }
 
     #[test]

@@ -956,12 +956,12 @@ mod tests {
 
     #[test]
     fn parse_drop_files_survives_bad_input() {
-        assert!(parse_drop_files(&[]).is_empty());
-        assert!(parse_drop_files(&[1, 2, 3]).is_empty());
+        assert_eq!(parse_drop_files(&[]), Vec::<String>::new());
+        assert_eq!(parse_drop_files(&[1, 2, 3]), Vec::<String>::new());
         // pFiles pointing past the end.
         let mut bytes = drop_files(&[[0x41u16]]).unwrap();
         bytes[0..4].copy_from_slice(&999u32.to_le_bytes());
-        assert!(parse_drop_files(&bytes).is_empty());
+        assert_eq!(parse_drop_files(&bytes), Vec::<String>::new());
         // A list without its final terminator still yields what is complete.
         let mut bytes = drop_files(&[[0x41u16], [0x42u16]]).unwrap();
         bytes.truncate(bytes.len() - 2);

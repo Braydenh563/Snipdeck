@@ -71,7 +71,7 @@ where
     }
 
     /// Files are being dragged over a window and are over `list` (`None`: the list the window
-    /// shows). The window says "Drop to add to <list>" until the drag ends.
+    /// shows). The window says "Drop to add to {list}" until the drag ends.
     pub fn drop_hover(&mut self, origin: Origin, list: Option<ListId>) {
         let target = list
             .filter(|l| self.store.list(*l).is_ok())
