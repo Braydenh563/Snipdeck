@@ -47,3 +47,4 @@ date | item | type | rung | rework | note
 2026-11-08 | Shared look slices 1-8 (Main, Picker, palette, editors, menus, Settings) | ui | sonnet | 2 | 
 2026-11-09 | v1.0.1 slice 1: paste to create, Ctrl+C, toast Edit | feature | sonnet | 1 | 
 2026-11-09 | v1.0.1 slice 2: paste images/files, drop files | feature | sonnet | 2 | 
+2026-11-09 | v1.0.1 O50: Select/Delete strip, Clear list | ui | sonnet | 3 | 
