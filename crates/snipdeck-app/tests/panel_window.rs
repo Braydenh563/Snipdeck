@@ -958,7 +958,7 @@ fn click_at(window: &slint::Window, position: slint::LogicalPosition) {
     slint::platform::update_timers_and_animations();
 }
 
-const MENU_ROWS: [&str; 18] = [
+const MENU_ROWS: [&str; 17] = [
     "Nothing to undo",
     "Nothing to redo",
     "Paste stack (mark items)",
@@ -970,9 +970,8 @@ const MENU_ROWS: [&str; 18] = [
     "New item",
     "Take screenshot",
     "Pause hotkeys",
-    "Show numbers",
+    "Select or delete\u{2026}",
     "Reset size and position",
-    "Clear list\u{2026}",
     "Troubleshoot\u{2026}",
     "User guide",
     "About Snipdeck",
@@ -1006,12 +1005,10 @@ fn cue_visible(r: &Rig) -> bool {
 }
 
 #[test]
-fn the_app_menu_fits_a_592px_panel_with_quit_in_view_and_no_scroll() {
-    // O50: "Clear list…" made the menu one 28px row taller, so the 560px default Panel now scrolls it (the next test
-    // covers the cue and End); this is the smallest round height that still shows every row.
+fn the_app_menu_fits_a_560px_panel_with_quit_in_view_and_no_scroll() {
     on_ui_thread(|| {
         let r = rig();
-        open_menu_at(&r, 592.0);
+        open_menu_at(&r, 560.0);
         let menu = element(&r.ui, "Panel menu", AccessibleRole::List);
         let quit = menu_row(&r, "Quit");
         let (m, q) = (menu.absolute_position(), quit.absolute_position());

@@ -128,6 +128,20 @@ where
         }
     }
 
+    /// The cursor row's place among the rows shown, which count the "Deleted · Undo" rows: the
+    /// model moves the cursor over live rows only, so Up and Down step over the collapsed ones.
+    pub(super) fn shown_selected(&self, shown: &[crate::panel::Row]) -> usize {
+        let at = self.model.selected_position().unwrap_or(0);
+        if self.ghosts.is_empty() {
+            return at;
+        }
+        self.model
+            .rows()
+            .get(at)
+            .and_then(|r| shown.iter().position(|s| s.id == r.id))
+            .unwrap_or(at)
+    }
+
     /// The model's row index for row `index` of the rows shown (ghosts do not count), or `None`
     /// when `index` is a "Deleted · Undo" row.
     fn live_index(&self, index: usize) -> Option<usize> {
@@ -188,8 +202,8 @@ where
 
     // ---- Clear list… -----------------------------------------------------------------------------------
 
-    /// The kebab's "Clear list…": asks first (nothing to ask about in an empty list or a search).
-    pub(super) fn open_clear_list(&mut self) {
+    /// The strip's "Clear list…" (Delete mode): asks first (nothing to ask about in an empty list or a search).
+    pub fn panel_open_clear_list(&mut self) {
         if self.model.searching() {
             return;
         }

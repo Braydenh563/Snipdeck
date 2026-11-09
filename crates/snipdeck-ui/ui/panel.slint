@@ -357,6 +357,7 @@ export component PanelWindow inherits Window {
     in property <bool> clear-list-open: false;
     in property <string> clear-list-name;
     in property <int> clear-list-count;
+    callback clear-list-requested();
     callback clear-list-confirmed();
     callback clear-list-dismissed();
     in property <bool> show-numbers: true;
@@ -572,12 +573,12 @@ export component PanelWindow inherits Window {
     property <length> tabs-h: root.lists-in-menu ? 0px : Space.s8;
     // The Select / Delete strip under the header (a small button and a 4px gap under it).
     property <length> strip-h: max(24px, Type.line-sm + Space.s2) + Space.s1 * 2;
-    property <bool> strip-shown: !root.list-hidden && !root.symbols-open && !root.recent-open && (root.rows.length > 0 || root.select-mode || root.delete-mode);
+    property <bool> strip-shown: !root.list-hidden && (root.select-mode || root.delete-mode);
     property <length> footer-h: max(Space.s8, Type.line-sm + Space.s3);
     // The "New item" row floats over the foot of the list (audit 2, item 2): the List minimum keeps it clear of the third row.
     property <length> quick-h: Space.hit + Space.s1;
     // Three rows (one row of tiles in Cards) between the header and the footer, 8 clear above and below; never under 240.
-    out property <length> min-h: max(240px, root.header-h + root.strip-h + root.tabs-h + Space.s2
+    out property <length> min-h: max(240px, root.header-h + root.tabs-h + Space.s2
         + (root.layout == PanelLayout.cards ? 1 : 3) * root.row-h-of(root.layout)
         + (root.layout == PanelLayout.list ? 2 * Space.s1 + root.quick-h : 0px)
         + Space.s2 + root.footer-h);
@@ -585,7 +586,7 @@ export component PanelWindow inherits Window {
     // Set by update-pins() from `changed` handlers (reading `root.height` in a binding would loop with the layout).
     property <bool> pins-fit: true;
     function update-pins() {
-        root.pins-fit = root.height - root.header-h - root.strip-h - root.tabs-h - Space.s8 - Space.s1 - root.footer-h - Space.s2 - root.quick-h
+        root.pins-fit = root.height - root.header-h - root.tabs-h - Space.s8 - Space.s1 - root.footer-h - Space.s2 - root.quick-h
             >= (root.eff-layout == PanelLayout.cards ? 1 : 2) * root.layout-row-h + root.row-gap;
     }
     changed height => { root.update-pins(); }
@@ -1559,8 +1560,8 @@ export component PanelWindow inherits Window {
                     }
                 }
 
-                // ---- Select and Delete (O50): labelled buttons under the header (the header row itself is full at 320px
-                // and at large text sizes). The mode that is on reads "Done"; Esc ends it too. Select mode gives each
+                // ---- Select and Delete (O50): a strip under the header that exists only while a mode is on (the header row
+                // is full at 320px and at large text sizes, and the Panel gives nothing away at rest). Esc or Done ends it. Select mode gives each
                 // row a checkbox and uses the bulk bar below; Delete mode gives each row a delete button.
                 if root.strip-shown: Rectangle {
                     height: root.strip-h;
@@ -1572,20 +1573,32 @@ export component PanelWindow inherits Window {
                         padding-top: Space.s1;
                         padding-bottom: Space.s1;
                         spacing: Space.s1;
-                        alignment: start;
+                        // A two-button switch: the mode that is on is the filled one.
                         Button {
                             size: ButtonSize.sm;
                             variant: root.select-mode ? ButtonVariant.primary : ButtonVariant.secondary;
-                            text: root.select-mode ? @tr("Done") : @tr("Select");
-                            a11y-label: root.select-mode ? @tr("Done selecting") : @tr("Select snippets");
-                            clicked => { root.select-mode-changed(!root.select-mode); }
+                            text: @tr("Select");
+                            a11y-label: @tr("Select snippets");
+                            clicked => { root.select-mode-changed(true); }
                         }
                         Button {
                             size: ButtonSize.sm;
                             variant: root.delete-mode ? ButtonVariant.primary : ButtonVariant.secondary;
-                            text: root.delete-mode ? @tr("Done") : @tr("Delete");
-                            a11y-label: root.delete-mode ? @tr("Done deleting") : @tr("Delete snippets");
-                            clicked => { root.delete-mode-changed(!root.delete-mode); }
+                            text: @tr("Delete");
+                            a11y-label: @tr("Delete snippets");
+                            clicked => { root.delete-mode-changed(true); }
+                        }
+                        if root.delete-mode: Button {
+                            size: ButtonSize.sm;
+                            variant: ButtonVariant.ghost;
+                            text: @tr("Clear list…");
+                            clicked => { root.clear-list-requested(); }
+                        }
+                        Rectangle { horizontal-stretch: 1; }
+                        Button {
+                            size: ButtonSize.sm;
+                            text: @tr("Done");
+                            clicked => { root.modes-ended(); }
                         }
                     }
                 }
@@ -1861,10 +1874,11 @@ export component PanelWindow inherits Window {
                                                 number: i < 9 && !root.select-mode ? i + 1 : 0;
                                                 numbered: root.show-numbers || root.select-mode;
                                                 check-box: root.select-mode;
+                                                reserve-r: root.delete-mode ? Space.s8 : 0px;
                                                 pick-mode: root.marked-count > 0 || root.select-mode || root.delete-mode;
                                                 actions-hidden: root.marked-count > 0 || root.select-mode || root.delete-mode;
                                                 modifier-picks: true;
-                                                show-focus: (root.marked-count > 0 || root.select-mode) && !root.delete-mode && i == root.sel;
+                                                show-focus: (root.marked-count > 0 || root.select-mode || root.delete-mode) && i == root.sel && !item.deleted-pending;
                                                 title: item.title;
                                                 mark-before: item.mark-before;
                                                 mark-text: item.mark-text;

@@ -491,6 +491,7 @@ where
                     .collect();
             }
         }
+        let selected_shown = self.shown_selected(&rows);
         View {
             board_name,
             current_tab: tabs.iter().position(|t| t.active).unwrap_or(0),
@@ -499,7 +500,7 @@ where
             rows,
             revealed,
             query: self.model.query().to_owned(),
-            selected: self.model.selected_position().unwrap_or(0),
+            selected: selected_shown,
             footer: self.model.footer(),
             use_label: self.model.use_label(),
             rows_reorderable: self.model.reorderable(),

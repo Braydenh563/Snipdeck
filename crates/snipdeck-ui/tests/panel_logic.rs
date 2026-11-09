@@ -95,6 +95,7 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_modes_ended, || "modes-ended".to_string());
     hook!(on_row_delete_requested, |i| format!("row-delete:{i}"));
     hook!(on_row_undo_requested, |i| format!("row-undo:{i}"));
+    hook!(on_clear_list_requested, || "clear-requested".to_string());
     hook!(on_clear_list_confirmed, || "clear-confirmed".to_string());
     hook!(on_bulk_move_requested, || "bulk-move".to_string());
     hook!(on_bulk_colour_requested, || "bulk-colour".to_string());
@@ -1331,14 +1332,13 @@ ui_tests! {
         let (ui, _log) = start();
         let min = |ui: &PanelWindow| ui.get_min_h();
         // 296 plus the 32px "New item" row that floats over the foot of the list (audit 2, item 2).
-        // Plus the 32px Select / Delete strip (O50).
-        assert!((min(&ui) - 360.0).abs() < 0.5, "List: {}", min(&ui));
+        assert!((min(&ui) - 328.0).abs() < 0.5, "List: {}", min(&ui));
         ui.set_layout(PanelLayout::Compact);
-        assert!((min(&ui) - 260.0).abs() < 0.5, "Compact (228 and the strip): {}", min(&ui));
+        assert!((min(&ui) - 240.0).abs() < 0.5, "Compact: {}", min(&ui));
         ui.set_layout(PanelLayout::Cards);
-        assert!((min(&ui) - 248.0).abs() < 0.5, "Cards (216 and the strip): {}", min(&ui));
+        assert!((min(&ui) - 240.0).abs() < 0.5, "Cards: {}", min(&ui));
         ui.set_layout(PanelLayout::List);
-        assert!((min(&ui) - 360.0).abs() < 0.5);
+        assert!((min(&ui) - 328.0).abs() < 0.5);
     }
 
     fn at_the_minimum_height_two_rows_show_whole_with_the_pins_and_three_without_clear_of_new_item() {
@@ -1604,7 +1604,7 @@ ui_tests! {
     fn the_smallest_window_loses_the_tab_rows_32_with_the_menu_switcher() {
         let (ui, _log) = start();
         ui.set_lists_in_menu(true);
-        assert!((ui.get_min_h() - 328.0).abs() < 0.5, "List: {}", ui.get_min_h());
+        assert!((ui.get_min_h() - 296.0).abs() < 0.5, "List: {}", ui.get_min_h());
         ui.set_layout(PanelLayout::Compact);
         assert!((ui.get_min_h() - 240.0).abs() < 0.5, "Compact never goes under 240: {}", ui.get_min_h());
         ui.set_layout(PanelLayout::Cards);
@@ -1955,7 +1955,7 @@ ui_tests! {
 
     // ---- Chrome (Panel v2 spec 2.1-2.8) --------------------------------------------------------------
 
-    fn the_chrome_at_rest_is_136_tall_without_pins_and_172_with() {
+    fn the_chrome_at_rest_is_104_tall_without_pins_and_140_with() {
         let (ui, _log) = start();
         let height = ui.window().size().height as f32;
         let deck_top = |ui: &PanelWindow| {
@@ -1968,19 +1968,18 @@ ui_tests! {
         let footer = find(&ui, "Pastes into Outlook · New message", AccessibleRole::Text);
         assert!((footer.size().height - 32.0).abs() < 0.5, "footer 32 tall: {}", footer.size().height);
         let (tabs_y, strip) = deck_top(&ui);
-        // O50: the Select / Delete strip (32) sits between the header (40) and the tabs.
-        assert!((tabs_y - 72.0).abs() < 0.5, "header 40 and the Select / Delete strip 32: tabs start at {tabs_y}");
+        assert!((tabs_y - 40.0).abs() < 0.5, "header is 40 tall: tabs start at {tabs_y}");
         let (strip_y, strip_h) = strip.expect("pinned strip");
-        assert!((strip_y - 104.0).abs() < 0.5 && (strip_h - 36.0).abs() < 0.5, "tabs 32 then pins 36: {strip_y} {strip_h}");
-        let with_pins = 40.0 + 32.0 + 32.0 + strip_h + footer.size().height;
-        assert!((with_pins - 172.0).abs() < 0.5);
+        assert!((strip_y - 72.0).abs() < 0.5 && (strip_h - 36.0).abs() < 0.5, "tabs 32 then pins 36: {strip_y} {strip_h}");
+        let with_pins = 40.0 + 32.0 + strip_h + footer.size().height;
+        assert!((with_pins - 140.0).abs() < 0.5);
         set_pinned(&ui, Vec::new());
         assert!(missing(&ui, "Pinned snippets", AccessibleRole::List));
         let list = find(&ui, "Snippets", AccessibleRole::List);
         // Header 40 + tabs 32 above the list; 32 of footer below it (the list ends above the footer).
-        assert!(list.absolute_position().y >= 104.0 && list.absolute_position().y < 104.0 + 40.0, "list starts under the tabs: {}", list.absolute_position().y);
+        assert!(list.absolute_position().y >= 72.0 && list.absolute_position().y < 72.0 + 40.0, "list starts under the tabs: {}", list.absolute_position().y);
         assert!(footer.absolute_position().y + footer.size().height <= height + 0.5);
-        assert!((40.0 + 32.0 + 32.0 + footer.size().height - 136.0).abs() < 0.5);
+        assert!((40.0 + 32.0 + footer.size().height - 104.0).abs() < 0.5);
     }
 
     fn open_snipdeck_is_a_footer_button_that_goes_icon_only_below_300px() {
@@ -2582,8 +2581,8 @@ ui_tests! {
     fn the_pinned_strip_is_one_tab_stop_and_arrows_move_inside_it() {
         let (ui, log) = start();
         set_pinned(&ui, fixture::pinned_n(12));
-        // Board, search, New, keep on top, More, close, Select, Delete, the tab row, its + button, then the strip: its first chip.
-        for _ in 0..11 {
+        // Board, search, New, keep on top, More, close, the tab row, its + button, then the strip: its first chip.
+        for _ in 0..9 {
             press(ui.window(), &key(Key::Tab));
         }
         press(ui.window(), &key(Key::Return));
@@ -2713,45 +2712,76 @@ ui_tests! {
         assert!(ElementHandle::find_by_accessible_label(&ui, "History is paused").next().is_some());
     }
 
-    fn header_select_and_delete_buttons_are_labelled_and_fit_at_every_text_size() {
+    fn the_select_and_delete_strip_exists_only_while_a_mode_is_on() {
+        let (ui, _log) = start();
+        assert!(missing(&ui, "Select snippets", AccessibleRole::Button), "no strip at rest");
+        assert!(missing(&ui, "Delete snippets", AccessibleRole::Button));
+        ui.set_select_mode(true);
+        settle();
+        assert!(!missing(&ui, "Select snippets", AccessibleRole::Button));
+        assert!(missing(&ui, "Clear list\u{2026}", AccessibleRole::Button), "Clear list is for Delete mode");
+        ui.set_select_mode(false);
+        settle();
+        assert!(missing(&ui, "Select snippets", AccessibleRole::Button), "the strip is gone with the mode");
+    }
+
+    fn the_strip_is_labelled_and_fits_at_every_text_size() {
         for (scale, w, h) in [(1.0_f32, 320.0_f32, 560.0_f32), (1.5, 480.0, 720.0), (2.0, 640.0, 900.0)] {
             let (ui, log) = start();
             ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(scale);
             ui.window().set_size(slint::LogicalSize::new(w, h));
+            ui.set_delete_mode(true);
             settle();
-            let select = find(&ui, "Select snippets", AccessibleRole::Button);
-            let delete = find(&ui, "Delete snippets", AccessibleRole::Button);
-            for (name, b) in [("Select", &select), ("Delete", &delete)] {
+            let mut right = 0.0_f32;
+            for name in ["Select snippets", "Delete snippets", "Clear list\u{2026}", "Done"] {
+                let b = find(&ui, name, AccessibleRole::Button);
                 let (p, s) = (b.absolute_position(), b.size());
-                assert!(p.x >= 0.0 && p.x + s.width <= w, "{name} inside the window at {scale}: {p:?} {s:?}");
+                assert!(p.x >= right - 0.5, "{name} does not overlap the one before at {scale}");
+                assert!(p.x + s.width <= w, "{name} inside the window at {scale}: {p:?} {s:?}");
                 assert!(s.height >= MIN_HIT, "{name} is a real target at {scale}: {}", s.height);
+                right = p.x + s.width;
             }
-            let (sp, ss) = (select.absolute_position(), select.size());
-            let dp = delete.absolute_position();
-            assert!(sp.x + ss.width <= dp.x, "the buttons do not overlap at {scale}");
             take(&log);
-            click_at(&ui, centre(&select));
+            click_at(&ui, centre(&find(&ui, "Select snippets", AccessibleRole::Button)));
             assert_eq!(take(&log), ["select-mode:true"]);
-            click_at(&ui, centre(&delete));
-            assert_eq!(take(&log), ["delete-mode:true"]);
+            click_at(&ui, centre(&find(&ui, "Clear list\u{2026}", AccessibleRole::Button)));
+            assert_eq!(take(&log), ["clear-requested"]);
+            click_at(&ui, centre(&find(&ui, "Done", AccessibleRole::Button)));
+            assert_eq!(take(&log), ["modes-ended"]);
         }
     }
 
-    fn the_active_mode_button_reads_done_and_the_other_stays() {
+    fn the_switch_moves_between_the_modes_and_done_ends_them() {
         let (ui, log) = start();
         ui.set_select_mode(true);
         settle();
-        assert!(!missing(&ui, "Done selecting", AccessibleRole::Button));
-        assert!(!missing(&ui, "Delete snippets", AccessibleRole::Button));
         take(&log);
-        click_at(&ui, centre(&find(&ui, "Done selecting", AccessibleRole::Button)));
-        assert_eq!(take(&log), ["select-mode:false"]);
-        ui.set_select_mode(false);
-        ui.set_delete_mode(true);
-        settle();
-        assert!(!missing(&ui, "Done deleting", AccessibleRole::Button));
-        click_at(&ui, centre(&find(&ui, "Done deleting", AccessibleRole::Button)));
-        assert_eq!(take(&log), ["delete-mode:false"]);
+        click_at(&ui, centre(&find(&ui, "Delete snippets", AccessibleRole::Button)));
+        assert_eq!(take(&log), ["delete-mode:true"]);
+        click_at(&ui, centre(&find(&ui, "Done", AccessibleRole::Button)));
+        assert_eq!(take(&log), ["modes-ended"]);
+    }
+
+    fn a_long_title_elides_before_the_delete_button() {
+        for layout in [PanelLayout::List, PanelLayout::Compact, PanelLayout::Cards] {
+            let (ui, _log) = start();
+            ui.set_layout(layout);
+            let long = "A very long snippet title that cannot possibly fit on one line of a narrow Panel";
+            let mut sample = fixture::sample_rows();
+            sample[0].title = long.into();
+            fixture::set_rows(&ui, sample);
+            ui.set_delete_mode(true);
+            settle();
+            let r = rows(&ui)[0].clone();
+            let (top, bottom) = (r.absolute_position().y, r.absolute_position().y + r.size().height);
+            let title = all(&ui, long, AccessibleRole::Text)
+                .into_iter()
+                .find(|t| t.absolute_position().y >= top && t.absolute_position().y < bottom)
+                .expect("the title text");
+            let trash = row_button(&ui, 0, &format!("Delete \u{201c}{long}\u{201d}")).expect("the delete button");
+            let title_right = title.absolute_position().x + title.size().width;
+            assert!(title_right <= trash.absolute_position().x + 0.5, "{layout:?}: title ends at {title_right}, the button starts at {}", trash.absolute_position().x);
+        }
     }
 
     fn select_mode_click_marks_the_row_and_esc_leaves_the_mode() {

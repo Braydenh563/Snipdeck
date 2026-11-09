@@ -787,6 +787,7 @@ where
         wire!(on_row_delete_requested, |ctl, i| ctl
             .panel_delete_row(index(i)));
         wire!(on_row_undo_requested, |ctl, i| ctl.panel_undo_row(index(i)));
+        wire!(on_clear_list_requested, |ctl| ctl.panel_open_clear_list());
         wire!(on_clear_list_confirmed, |ctl| ctl.panel_clear_list());
         wire!(on_clear_list_dismissed, |ctl| ctl.cancel_clear_list());
         wire!(on_selection_extended, |ctl, d| ctl
@@ -1507,7 +1508,6 @@ fn render_app_menu(window: &ui::PanelWindow, view: &View) {
         checked: (entry == AppMenuEntry::PauseHotkeys && view.hotkeys_paused)
             || (entry == AppMenuEntry::PasteStack
                 && view.stack.as_ref().is_some_and(|s| s.running))
-            || (entry == AppMenuEntry::ShowNumbers && view.show_numbers)
             || (entry == AppMenuEntry::KeepOnTop && view.on_top),
         shortcut: wording::app_menu_shortcut(entry).into(),
         separator: entry == AppMenuEntry::Separator,

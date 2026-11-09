@@ -196,23 +196,6 @@ fn the_item_menu_offers_move_to_colour_and_sensitive() {
 }
 
 #[test]
-fn show_numbers_is_a_menu_row_that_flips_the_setting() {
-    let mut w = world();
-    assert!(w.ctl.view().show_numbers);
-    let at = APP_MENU
-        .iter()
-        .position(|e| *e == AppMenuEntry::ShowNumbers)
-        .expect("row");
-    w.ctl.open_app_menu();
-    w.ctl.choose_app_menu(at);
-    assert!(!w.ctl.view().show_numbers);
-    assert!(!w.ctl.settings().show_numbers);
-    w.ctl.open_app_menu();
-    w.ctl.choose_app_menu(at);
-    assert!(w.ctl.view().show_numbers);
-}
-
-#[test]
 fn keep_on_top_is_a_menu_row_that_flips_the_pin() {
     let mut w = world();
     let before = w.ctl.view().on_top;
@@ -874,11 +857,11 @@ fn too_many_files_are_refused_with_their_own_message() {
 
 // ---- Header Select and Delete, "Clear list…" (O50) ---------------------------------------------
 
-fn clear_list_row() -> usize {
+fn select_or_delete_row() -> usize {
     APP_MENU
         .iter()
-        .position(|e| *e == AppMenuEntry::ClearList)
-        .expect("a Clear list row in the Panel menu")
+        .position(|e| *e == AppMenuEntry::SelectOrDelete)
+        .expect("a Select or delete row in the Panel menu")
 }
 
 #[test]
@@ -977,8 +960,8 @@ fn esc_leaves_delete_mode() {
 #[test]
 fn clear_list_asks_once_with_the_count() {
     let mut w = world();
-    w.ctl.open_app_menu();
-    w.ctl.choose_app_menu(clear_list_row());
+    w.ctl.panel_delete_mode(true);
+    w.ctl.panel_open_clear_list();
     let ask = w.ctl.view().clear_list.expect("the confirmation asks");
     assert_eq!(ask.count, 4);
     assert_eq!(ask.name, "Replies");
@@ -995,8 +978,8 @@ fn clear_list_asks_once_with_the_count() {
 #[test]
 fn clear_list_is_one_step_and_undoes_whole() {
     let mut w = world();
-    w.ctl.open_app_menu();
-    w.ctl.choose_app_menu(clear_list_row());
+    w.ctl.panel_delete_mode(true);
+    w.ctl.panel_open_clear_list();
     w.ctl.panel_clear_list();
     let view = w.ctl.view();
     assert!(view.clear_list.is_none());
@@ -1018,7 +1001,29 @@ fn clear_list_on_an_empty_list_asks_nothing() {
     w.ctl.select_tab(1);
     w.ctl.panel_mark_all();
     w.ctl.bulk_delete();
-    w.ctl.open_app_menu();
-    w.ctl.choose_app_menu(clear_list_row());
+    w.ctl.panel_delete_mode(true);
+    w.ctl.panel_open_clear_list();
     assert!(w.ctl.view().clear_list.is_none());
+}
+
+#[test]
+fn the_kebab_row_select_or_delete_opens_select_mode() {
+    let mut w = world();
+    w.ctl.open_app_menu();
+    w.ctl.choose_app_menu(select_or_delete_row());
+    assert!(w.ctl.view().select_mode);
+    assert!(w.ctl.view().app_menu.is_none(), "the menu closed");
+}
+
+#[test]
+fn up_and_down_skip_the_collapsed_rows() {
+    let mut w = world();
+    w.ctl.panel_delete_mode(true);
+    w.ctl.panel_delete_row(1);
+    assert_eq!(w.ctl.view().selected, 0);
+    w.ctl.move_selection(1);
+    assert_eq!(w.ctl.view().selected, 2, "Down steps over the collapsed row");
+    w.ctl.move_selection(-1);
+    assert_eq!(w.ctl.view().selected, 0, "and Up steps back over it");
+    assert!(!w.ctl.view().rows[w.ctl.view().selected].deleted_pending);
 }
