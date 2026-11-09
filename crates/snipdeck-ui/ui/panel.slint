@@ -250,13 +250,20 @@ export component PanelWindow inherits Window {
     in property <bool> item-menu-open: false;
     in property <[MenuEntry]> item-menu-entries;
     // The context menu of a list tab (right-click, Menu, Shift+F10, F2 or a double-click edits): the host sets
-    // `list-menu-open` on `list-menu-requested`; its rows are fixed here ("Edit list…", "Delete list…").
+    // `list-menu-open` on `list-menu-requested`; its rows are fixed here ("Edit list…", "Delete list…", then the three "Sort by" rows).
     in property <bool> list-menu-open: false;
     property <length> list-menu-x: 0px;
     property <length> list-menu-y: 0px;
+    // The open list's sort (0 Manual, 1 Most used, 2 Recently used): its "Sort by" row is checked.
+    in property <int> list-menu-sort: 0;
+    property <image> list-menu-no-icon;
     property <[MenuEntry]> list-menu-entries: [
         { text: @tr("Edit list…"), icon: Icons.pencil-simple },
         { text: @tr("Delete list…"), icon: Icons.trash, destructive: true },
+        { separator: true },
+        { text: @tr("Sort by: Manual"), icon: root.list-menu-sort == 0 ? Icons.check : root.list-menu-no-icon },
+        { text: @tr("Sort by: Most used"), icon: root.list-menu-sort == 1 ? Icons.check : root.list-menu-no-icon },
+        { text: @tr("Sort by: Recently used"), icon: root.list-menu-sort == 2 ? Icons.check : root.list-menu-no-icon },
     ];
     // The list menu's "Delete list…" confirmation (O52): the host sets `list-delete-open` after that row, and nothing
     // else opens (no list editor). `list-delete-name` and `list-delete-count` fill its words.

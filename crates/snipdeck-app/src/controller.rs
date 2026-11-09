@@ -544,6 +544,13 @@ where
             search_always: self.settings.panel_search == crate::settings::PanelSearch::Always,
             lists_in_menu: self.settings.panel_switcher == crate::settings::PanelSwitcher::Menu,
             list_menu: matches!(self.menu, PanelMenu::List(_)).then(|| LIST_MENU.to_vec()),
+            list_menu_sort: match self.menu {
+                PanelMenu::List(id) => self
+                    .store
+                    .list(id)
+                    .map_or(snipdeck_core::ListSort::Manual, |l| l.sort),
+                _ => snipdeck_core::ListSort::Manual,
+            },
             list_delete: self.list_delete_view(),
             board_delete: self.board_delete_view(),
             hotkeys_paused: self.session.hotkeys_paused,

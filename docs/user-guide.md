@@ -378,6 +378,7 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Main window | `Ctrl+N`, `Ctrl+Shift+N` | New item, new list |
 | Main window | `Ctrl+,` | Settings |
 | Main window | `Ctrl+W` | Close the window |
+| Main window | `Ctrl+B` | Show or hide the sidebar |
 | Main window | `Ctrl+Z` | Undo the delete (not while typing in the search box) |
 | Main window | `Ctrl+F`, `/` | Search |
 | Main window | `Enter`, `Shift+Enter` | Use, or copy only |

@@ -131,10 +131,22 @@ pub enum ListMenuEntry {
     Edit,
     /// Delete the list: the Panel asks in its own confirmation; no editor opens.
     Delete,
+    /// A line between groups.
+    Separator,
+    /// "Sort by": the list orders itself so. The Panel's `Menu` has no sub-menus, so the three
+    /// orders are three rows under a line; the open list's own is checked.
+    SortBy(snipdeck_core::ListSort),
 }
 
 /// The list tab menu's rows.
-pub const LIST_MENU: [ListMenuEntry; 2] = [ListMenuEntry::Edit, ListMenuEntry::Delete];
+pub const LIST_MENU: [ListMenuEntry; 6] = [
+    ListMenuEntry::Edit,
+    ListMenuEntry::Delete,
+    ListMenuEntry::Separator,
+    ListMenuEntry::SortBy(snipdeck_core::ListSort::Manual),
+    ListMenuEntry::SortBy(snipdeck_core::ListSort::MostUsed),
+    ListMenuEntry::SortBy(snipdeck_core::ListSort::RecentlyUsed),
+];
 
 /// The kebab menu's rows. Help is a group of three rows under a line, because the Panel's
 /// `Menu` has no sub-menus.
@@ -432,7 +444,8 @@ where
         }
     }
 
-    /// The user chose row `index` of [`LIST_MENU`]. Edit opens the list editor (its own window,
+    /// The user chose row `index` of [`LIST_MENU`]. A line stays open. Sort by changes the sort of the list
+    /// (the field the List editor edits). Edit opens the list editor (its own window,
     /// shared with the Main window). Delete only asks: the Panel shows its confirmation and
     /// nothing else (O52), and [`confirm_list_delete`](Self::confirm_list_delete) moves the list
     /// and its items to the Trash with an Undo toast.
@@ -448,6 +461,14 @@ where
             }
             Some(ListMenuEntry::Delete) => {
                 self.menu = PanelMenu::DeleteList(id);
+                Vec::new()
+            }
+            Some(ListMenuEntry::SortBy(sort)) => {
+                self.set_list_sort(id, *sort);
+                Vec::new()
+            }
+            Some(ListMenuEntry::Separator) => {
+                self.menu = PanelMenu::List(id);
                 Vec::new()
             }
             None => Vec::new(),

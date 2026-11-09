@@ -12,9 +12,11 @@
 
 use std::time::Duration;
 
+use snipdeck_store::ListRepo as _;
 use snipdeck_app::{
     controller::{
-        Controller, Effect, ItemMenuEntry, LIST_MENU, ListDeleteView, MainAction, MainScreen,
+        Controller, Effect, ItemMenuEntry, LIST_MENU, ListDeleteView, ListMenuEntry, MainAction,
+        MainScreen,
         Services, TOAST_ENTER, TOAST_EXIT, TOAST_HOLD, TOAST_UNDO_HOLD, TagRenameError,
     },
     demo,
@@ -2030,4 +2032,96 @@ fn saving_a_new_list_or_board_from_the_editor_says_so() {
     ctl.main_board_menu_activate(new);
     ctl.main_editor_save("Fresh board", None, None, ListSort::Manual);
     assert_eq!(toast_message(&mut ctl), Some(ToastMessage::BoardSaved));
+}
+
+// ---- The list sort (O30) --------------------------------------------------------------------
+
+#[test]
+fn sorting_from_the_header_matches_the_editor() {
+    let mut ctl = pro();
+    open_list(&mut ctl, "Code");
+    assert_eq!(ctl.main_screen().list_sort, ListSort::Manual);
+    ctl.main_set_list_sort(ListSort::RecentlyUsed);
+    let screen = ctl.main_screen();
+    assert_eq!(screen.list_sort, ListSort::RecentlyUsed);
+    assert!(!screen.reorderable);
+    // The List editor opens on the same value, and saving it unchanged keeps it.
+    let index = list_index(&screen, "Code");
+    ctl.main_edit_list(index);
+    let editor = ctl.main_screen().editor.expect("the editor");
+    assert_eq!(editor.sort, ListSort::RecentlyUsed);
+    ctl.main_editor_close();
+    // A list the header did not touch is as it was.
+    open_list(&mut ctl, "Addresses");
+    assert_eq!(ctl.main_screen().list_sort, ListSort::Manual);
+    // And the rows follow the choice, exactly as when the editor makes it.
+    let mut other = pro();
+    open_list(&mut other, "Code");
+    let index = list_index(&other.main_screen(), "Code");
+    other.main_edit_list(index);
+    other.main_editor_save("Code", None, None, ListSort::RecentlyUsed);
+    open_list(&mut ctl, "Code");
+    assert_eq!(titles(&ctl.main_screen()), titles(&other.main_screen()));
+}
+
+#[test]
+fn dragging_in_a_sorted_list_offers_manual() {
+    let mut ctl = pro();
+    let code = open_list(&mut ctl, "Code");
+    let id = match code.section {
+        Section::List(id) => id,
+        other => panic!("{other:?}"),
+    };
+    ctl.main_set_list_sort(ListSort::MostUsed);
+    let before = titles(&ctl.main_screen());
+    ctl.main_drop_row(0, 1);
+    let screen = ctl.main_screen();
+    assert_eq!(titles(&screen), before, "nothing moved");
+    assert_eq!(message(&screen), ToastMessage::SwitchToManual { list: id });
+    ctl.toast_action();
+    let screen = ctl.main_screen();
+    assert_eq!(screen.list_sort, ListSort::Manual, "the toast's button switched it");
+    assert!(screen.reorderable);
+    assert_eq!(message(&screen), ToastMessage::ListSaved);
+    // Alt+Down offers it the same way.
+    ctl.main_set_list_sort(ListSort::MostUsed);
+    ctl.main_reorder_items(1);
+    assert_eq!(message(&ctl.main_screen()), ToastMessage::SwitchToManual { list: id });
+}
+
+#[test]
+fn a_drag_in_all_items_or_during_a_search_offers_nothing() {
+    let mut ctl = pro();
+    ctl.main_drop_row(0, 1);
+    assert!(ctl.main_screen().toast.is_none(), "All items");
+    open_list(&mut ctl, "Email replies");
+    ctl.main_set_query("a");
+    ctl.main_drop_row(0, 1);
+    assert!(ctl.main_screen().toast.is_none(), "a search");
+}
+
+#[test]
+fn the_panel_list_menu_sorts_and_a_panel_drag_in_a_sorted_list_offers_manual() {
+    let mut ctl = pro();
+    let tab = tab_index(&ctl, "Code");
+    ctl.select_tab(tab);
+    ctl.open_list_menu(tab);
+    assert_eq!(ctl.view().list_menu_sort, ListSort::Manual);
+    let at = LIST_MENU
+        .iter()
+        .position(|e| *e == ListMenuEntry::SortBy(ListSort::MostUsed))
+        .expect("a Sort by row");
+    assert_eq!(ctl.choose_list_menu(at), vec![]);
+    assert_eq!(ctl.view().list_menu, None, "the menu closes");
+    assert!(!ctl.view().rows_reorderable);
+    let before = panel_titles(&ctl);
+    ctl.panel_drop_row(0, 1);
+    assert_eq!(panel_titles(&ctl), before);
+    let list = match ctl.view().toast.expect("a toast").message {
+        ToastMessage::SwitchToManual { list } => list,
+        other => panic!("{other:?}"),
+    };
+    ctl.toast_action();
+    assert!(ctl.view().rows_reorderable);
+    assert_eq!(ctl.store().list(list).unwrap().sort, ListSort::Manual);
 }

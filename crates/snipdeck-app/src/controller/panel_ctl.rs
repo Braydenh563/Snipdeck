@@ -232,6 +232,20 @@ where
         self.panel_move_item(moved, delta);
     }
 
+    /// A move was refused in the Panel: when the shown list sorts itself (and no search runs), a
+    /// toast offers to switch it to manual order.
+    fn offer_manual_for_panel(&mut self) {
+        if self.model.searching() {
+            return;
+        }
+        if let Some(list) = self.model.list()
+            && list.sort != snipdeck_core::ListSort::Manual
+        {
+            let id = list.id;
+            self.offer_manual_order(id);
+        }
+    }
+
     /// Alt+Up / Alt+Down in the Panel: moves the selected row one place.
     pub fn panel_move_selected(&mut self, delta: isize) {
         if let Some(id) = self.model.selected() {
@@ -256,6 +270,7 @@ where
     /// it went (the keys and a drag alike).
     pub(crate) fn panel_move_item(&mut self, moved: ItemId, delta: isize) {
         if !self.model.reorderable() {
+            self.offer_manual_for_panel();
             return;
         }
         let Some(list) = self.model.list().map(|l| l.id) else {

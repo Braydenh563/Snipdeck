@@ -457,7 +457,7 @@ export component MainWindow inherits Window {
     property <length> ctl-h: max(Space.s8 * SystemLook.text-scale, Type.line-base + Space.s2);
     property <length> bar-h: max(Space.s8 + Space.s3, Type.line-base + Space.s2 + Space.s3);
     // Below 720px the sidebar is a rail whatever was chosen; the chosen width and the collapsed flag apply above it.
-    property <bool> auto-rail: root.width < 720px;
+    property <bool> auto-rail: false;
     property <length> sidebar-w: root.narrow ? Space.s12 * root.text-scale : root.sidebar-width * 1px + (root.text-scale - 1) * 96px;
     property <length> splitter-w: 8px;
     property <length> splitter-grab: 0px;
@@ -522,6 +522,7 @@ export component MainWindow inherits Window {
     }
     // Set from `changed` handlers, not bound to `root.width`: a window's width follows its layout.
     function update-narrow() {
+        root.auto-rail = root.width < 720px;
         root.narrow = root.auto-rail || root.sidebar-collapsed;
         root.toolbar-compact = root.width - root.sidebar-w < 560px * root.text-scale;
     }

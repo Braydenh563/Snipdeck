@@ -597,6 +597,11 @@ where
             .main_set_label_filter(crate::binding::label_of(i)));
         wire!(on_view_changed, |ctl, v| ctl.main_set_view(view_of(v)));
         wire!(on_theme_chosen, |ctl, i| ctl.choose_theme(theme_of(i)));
+        wire!(on_sort_chosen, |ctl, i| ctl.main_set_list_sort(sort_of(i)));
+        wire!(on_sidebar_width_changed, |ctl, w| ctl
+            .set_main_sidebar_width(u32::try_from(w).unwrap_or(0)));
+        wire!(on_sidebar_collapsed_changed, |ctl, c| ctl
+            .set_main_sidebar_collapsed(c));
         wire!(on_select_requested, |ctl, i, mode| ctl
             .main_select(index(i), select_mode(mode)));
         wire!(on_select_all_requested, |ctl| ctl.main_select_all());
@@ -1226,6 +1231,14 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
         window.set_query(screen.query.as_str().into());
     }
     window.set_rows_reorderable(screen.reorderable);
+    window.set_list_sort(sort_index(screen.list_sort));
+    // The window runs ahead of the setting while the splitter is dragged: only a change of the setting is pushed.
+    if differs(&|p| p.sidebar_width == screen.sidebar_width) {
+        window.set_sidebar_width(i32::try_from(screen.sidebar_width).unwrap_or(232));
+    }
+    if differs(&|p| p.sidebar_collapsed == screen.sidebar_collapsed) {
+        window.set_sidebar_collapsed(screen.sidebar_collapsed);
+    }
     if window.get_cursor() != to_i32(screen.cursor) {
         window.set_cursor(to_i32(screen.cursor));
     }
@@ -1444,7 +1457,7 @@ fn icon_of(index: i32) -> Option<ListIcon> {
 }
 
 /// 0 manual, 1 most used, 2 recently used.
-fn sort_index(sort: ListSort) -> i32 {
+pub(crate) fn sort_index(sort: ListSort) -> i32 {
     match sort {
         ListSort::Manual => 0,
         ListSort::MostUsed => 1,

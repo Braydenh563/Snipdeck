@@ -1455,6 +1455,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     {
         window.set_list_menu_open(view.list_menu.is_some());
     }
+    window.set_list_menu_sort(crate::main_binding::sort_index(view.list_menu_sort));
     if differs(&|p| p.list_delete == view.list_delete)
         || window.get_list_delete_open() != view.list_delete.is_some()
     {
