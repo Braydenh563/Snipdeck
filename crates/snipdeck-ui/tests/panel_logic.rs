@@ -38,6 +38,7 @@ const MIN_HIT: f32 = 24.0;
 type Log = Rc<RefCell<Vec<String>>>;
 
 /// A populated Panel whose every callback appends a line to the returned log.
+#[allow(clippy::too_many_lines, reason = "one hook per callback of the window")]
 fn start() -> (PanelWindow, Log) {
     let ui = PanelWindow::new().expect("panel");
     fixture::populate(&ui);
