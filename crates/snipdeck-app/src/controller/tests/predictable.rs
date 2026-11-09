@@ -140,6 +140,8 @@ fn a_stored_frame_larger_than_the_work_area_is_shrunk_to_it() {
             h: 3000,
             edge: None,
             pre_dock: None,
+            along: None,
+            other_along: Vec::new(),
         });
     });
     let effects = w.ctl.restore_frame(&m);

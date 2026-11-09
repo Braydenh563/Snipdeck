@@ -49,7 +49,7 @@ pub enum AppMenuEntry {
     /// Open Settings.
     Settings,
     /// Dock the Panel to the edge nearest to it, or undock it when it is docked (the row's
-    /// words follow [`View::docked`](super::View::docked)).
+    /// words follow [`View::dock_edge`](super::View::dock_edge)).
     Dock,
     /// Switch the global hotkeys off and on (checked while they are off).
     PauseHotkeys,
@@ -570,8 +570,16 @@ where
 
     // ---- The window frame ----------------------------------------------------------------------
 
-    /// Pointer down on a resize grip: the host starts the OS resize from `edge`.
+    /// Pointer down on a resize grip: the host starts the OS resize from `edge`. A docked Panel
+    /// refuses its outer edge and that edge's corners ([`frame::dock_resize_allowed`], and with the full edge on, its ends too); the grips
+    /// are not drawn there, this guards a stale press.
     pub fn resize(&mut self, edge: Edge) -> Vec<Effect> {
+        if self
+            .dock_edge()
+            .is_some_and(|d| !frame::dock_resize_allowed(edge, d, self.settings.dock.full_edge))
+        {
+            return Vec::new();
+        }
         vec![Effect::ResizeWindow(edge)]
     }
 
@@ -623,9 +631,9 @@ where
                 ..clamped
             };
         }
-        let stored = self.stored_geometry(monitor);
-        let mut edge = stored.and_then(|g| g.edge);
-        let mut pre_dock = stored.and_then(|g| g.pre_dock);
+        let stored = self.stored_geometry(monitor).cloned();
+        let mut edge = stored.as_ref().and_then(|g| g.edge);
+        let mut pre_dock = stored.as_ref().and_then(|g| g.pre_dock);
         // The first move of a drag that started on a docked Panel takes it off its edge.
         let dragged = std::mem::take(&mut self.drag_started);
         let mut resized = false;
@@ -643,12 +651,22 @@ where
         if edge.is_none() {
             pre_dock = None;
         }
-        self.update_settings(|s| {
-            s.remember_panel_geometry(PanelGeometry {
-                pre_dock,
-                ..clamped.geometry(monitor, edge)
-            });
-        });
+        let mut geometry = PanelGeometry {
+            pre_dock,
+            ..clamped.geometry(monitor, edge)
+        }
+        .remembering(stored.as_ref());
+        // A full-edge dock reports the work area's height back; the Panel's own height (and
+        // place along the edge) stays remembered, so turning the full edge off gives it back.
+        if let (Some(e), Some(old)) = (edge, &stored)
+            && self.settings.dock.full_edge
+            && e.vertical()
+            && old.edge == edge
+            && !resized
+        {
+            (geometry.y, geometry.h, geometry.along) = (old.y, old.h, old.along);
+        }
+        self.update_settings(|s| s.remember_panel_geometry(geometry));
         if resized {
             vec![Effect::PlaceWindow(clamped)]
         } else if clamped == frame || !clamp_position {
@@ -678,15 +696,24 @@ where
         };
         Some(match g.edge {
             Some(edge) => {
-                let size = frame::dock_size(
+                let size = frame::dock_size_for(
                     edge,
                     (g.w, g.h),
                     g.pre_dock,
                     monitor.work_area,
                     monitor.scale,
                     super::dock_ctl::DEFAULT_HEIGHT,
+                    g.along,
+                    self.settings.dock.full_edge,
                 );
-                frame::docked_rect(edge, monitor.work_area, size, monitor.scale)
+                frame::docked_rect(
+                    edge,
+                    monitor.work_area,
+                    size,
+                    monitor.scale,
+                    g.along,
+                    self.settings.dock.full_edge,
+                )
             }
             None => frame::clamp(Rect::of(g), monitor),
         })

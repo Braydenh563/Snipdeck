@@ -262,6 +262,8 @@ pub struct Controller<S, C, K, T> {
     dragging: bool,
     /// The edge the drag under way would dock to if released now (O32).
     dock_preview: Option<DockEdge>,
+    /// Where along its edge the docked Panel was when the grip pill was pressed (physical px).
+    slide_origin: Option<i32>,
     /// Placements decided outside a Panel gesture, waiting for the binding.
     pending: Vec<Effect>,
     /// The master password: whether one is set, whether its prompt is open, the idle clock.
@@ -423,6 +425,7 @@ where
             drag_started: false,
             dragging: false,
             dock_preview: None,
+            slide_origin: None,
             pending: Vec::new(),
             lock: lock_ctl::LockState::new(shown_at),
             recent_gate: None,
@@ -492,7 +495,9 @@ where
             topmost: self.on_top && !self.own_window_active,
             dock_collapsed: self.dock.is_collapsed(),
             dock_vertical: self.dock_edge().is_none_or(DockEdge::vertical),
-            docked: self.dock_edge().is_some(),
+            dock_edge: self.dock_edge(),
+            dock_full_edge: self.settings.dock.full_edge,
+            dock_slide: self.dock_slide_offered(),
             dock_target: self.dock_target(),
             dock_preview: self.dock_preview,
             dark: self.look().dark,

@@ -1424,17 +1424,18 @@ fn docked_rig(trigger: DockTrigger) -> Rig {
     r
 }
 
+// A compact dock keeps the height of the frame it was dropped at (U22), and so does its strip.
 const OPEN: Rect = Rect {
     x: 0,
-    y: 0,
+    y: 300,
     w: 320,
-    h: 1040,
+    h: 480,
 };
 const STRIP: Rect = Rect {
     x: 0,
-    y: 0,
+    y: 300,
     w: 6,
-    h: 1040,
+    h: 480,
 };
 
 fn size(r: &Rig) -> (u32, u32) {
@@ -1477,7 +1478,7 @@ fn a_docked_panel_collapses_to_a_handle_on_the_hotkey_and_the_handle_is_named() 
         assert!(r.ui.get_dock_collapsed());
         assert!(r.ui.window().is_visible(), "a handle, not a hidden window");
         let h = handle(&r);
-        assert_eq!((h.size().width, h.size().height), (6.0, 1040.0));
+        assert_eq!((h.size().width, h.size().height), (6.0, 480.0));
         r.binding.hotkey(HotkeyAction::TogglePanel);
         assert_eq!(size(&r), (OPEN.w, OPEN.h));
         assert!(

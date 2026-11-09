@@ -772,6 +772,9 @@ msgstr "Am rechten Rand andocken"
 msgid "Dock to the top edge"
 msgstr "Am oberen Rand andocken"
 
+msgid "Docked panel uses the full edge"
+msgstr "Angedocktes Panel nutzt den ganzen Rand"
+
 msgid "Docked to the right"
 msgstr "Rechts angedockt"
 
@@ -1586,6 +1589,9 @@ msgstr "Aus"
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "„Aus“ lässt ein angedocktes Panel geöffnet. Sonst klappt es zu einem schmalen Streifen zusammen, und das Panel-Tastenkürzel öffnet es ebenfalls."
 
+msgid "Off keeps a panel docked to the left or right at the height you dropped it. On stretches it over the whole edge."
+msgstr "Aus: Ein links oder rechts angedocktes Panel behält die Höhe, in der du es losgelassen hast. Ein: Es füllt den ganzen Rand."
+
 msgid "One hotkey turns copied text into an item."
 msgstr "Ein Tastenkürzel macht kopierten Text zu einem Textbaustein."
 
@@ -2234,6 +2240,9 @@ msgstr "Überspringen"
 
 msgid "Slate"
 msgstr "Schiefergrau"
+
+msgid "Slide the panel along the edge"
+msgstr "Panel am Rand entlang verschieben"
 
 msgid "Smileys & Emotion"
 msgstr "Smileys & Emotionen"

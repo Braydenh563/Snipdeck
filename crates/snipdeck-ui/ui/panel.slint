@@ -123,6 +123,42 @@ component ResizeGrip inherits TouchArea {
     }
 }
 
+// The header's grip pill (O28): drag it to slide a docked Panel along its edge without undocking. It sits in the
+// header like the other controls: a quiet pill that takes the accent on hover and while pressed.
+component GripPill inherits Rectangle {
+    in property <bool> vertical: true;
+    in property <string> a11y-label;
+    callback along-drag(length);
+    callback along-begin();
+    callback tip(bool);
+
+    width: root.vertical ? Space.s4 : Space.s8;
+    height: Space.s8;
+    accessible-role: button;
+    accessible-label: root.a11y-label;
+
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: root.vertical ? 6px : 20px;
+        height: root.vertical ? 20px : 6px;
+        border-radius: 3px;
+        background: touch.pressed ? Theme.accent : touch.has-hover ? Theme.text-primary : Theme.text-tertiary;
+    }
+    touch := TouchArea {
+        mouse-cursor: root.vertical ? MouseCursor.ns-resize : MouseCursor.ew-resize;
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                root.along-begin();
+            }
+        }
+        moved => {
+            root.along-drag(root.vertical ? self.mouse-y - self.pressed-y : self.mouse-x - self.pressed-x);
+        }
+        changed has-hover => { root.tip(self.has-hover); }
+    }
+}
+
 export component PanelWindow inherits Window {
     title: @tr("Snipdeck");
     no-frame: true;
@@ -247,6 +283,13 @@ export component PanelWindow inherits Window {
     // The edge a drag would dock to if released now (O32), in Settings' "Dock to" order: 0 none,
     // 1 left, 2 right, 3 top, 4 bottom. Drawn as an accent strip along that edge.
     in property <int> dock-preview: 0;
+    // The edge this Panel is docked to, in the same order (0 floating). A docked Panel resizes from its inner edge,
+    // its two ends and the inner corners only (O28), and shows the grip pill that slides it along the edge.
+    in property <int> dock-edge: 0;
+    // A side dock that takes the whole edge (O28): only its inner edge resizes.
+    in property <bool> dock-full-edge: false;
+    // The grip pill shows: the docked Panel can slide (not floating, not collapsed, not a full-edge side dock).
+    in property <bool> dock-slide: false;
 
     // ---- State both ways ----------------------------------------------------------------------
     in-out property <int> current-tab: 0;
@@ -359,6 +402,10 @@ export component PanelWindow inherits Window {
     callback delete-requested(int);
     // Pointer down on a resize grip: the host starts the OS resize from that edge or corner.
     callback resize-requested(ResizeEdge);
+    // The grip pill was dragged: `delta` more logical pixels along the docked edge, from where the press began (O28).
+    callback along-drag(delta: length);
+    // The pill was pressed: the drag's offsets count from where the Panel is now.
+    callback along-begin();
     callback pin-toggled(bool);
     callback toast-undo();
     callback toast-edit();
@@ -690,6 +737,18 @@ export component PanelWindow inherits Window {
     }
 
     // 1-9 -> n, anything else -> 0.
+    // O28: whether the resize grip on `e` exists. A docked Panel has no grip on its outer (screen-side) edge or that
+    // edge's corners, so there is one way off the edge; the rest are as for a floating Panel.
+    pure function grip-allowed(e: ResizeEdge) -> bool {
+        if (root.dock-full-edge && root.dock-edge == 1) { return e == ResizeEdge.right; }
+        if (root.dock-full-edge && root.dock-edge == 2) { return e == ResizeEdge.left; }
+        if (root.dock-edge == 1) { return e != ResizeEdge.left && e != ResizeEdge.top-left && e != ResizeEdge.bottom-left; }
+        if (root.dock-edge == 2) { return e != ResizeEdge.right && e != ResizeEdge.top-right && e != ResizeEdge.bottom-right; }
+        if (root.dock-edge == 3) { return e != ResizeEdge.top && e != ResizeEdge.top-left && e != ResizeEdge.top-right; }
+        if (root.dock-edge == 4) { return e != ResizeEdge.bottom && e != ResizeEdge.bottom-left && e != ResizeEdge.bottom-right; }
+        return true;
+    }
+
     pure function digit(text: string) -> int {
         return text == "1" ? 1 : text == "2" ? 2 : text == "3" ? 3 : text == "4" ? 4 : text == "5" ? 5
             : text == "6" ? 6 : text == "7" ? 7 : text == "8" ? 8 : text == "9" ? 9 : 0;
@@ -1430,6 +1489,16 @@ export component PanelWindow inherits Window {
                             }
                             changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
                             changed has-focus => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+                        }
+                        // O28: a docked Panel slides along its edge by this pill, and stays docked. Beside the
+                        // kebab, where the window controls are, not by the board picker (it read as a caret there).
+                        if root.dock-slide && !root.dock-collapsed: grip-pill := GripPill {
+                            vertical: root.dock-edge <= 2;
+                            a11y-label: @tr("Slide the panel along the edge");
+                            y: (parent.height - self.height) / 2;
+                            along-begin => { root.along-begin(); }
+                            along-drag(d) => { root.along-drag(d); }
+                            tip(on) => { root.tip-set(@tr("Slide the panel along the edge"), self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, on); }
                         }
                         kebab := IconButton {
                             icon: Icons.dots-three-bold;
@@ -2542,7 +2611,7 @@ export component PanelWindow inherits Window {
 
         // ---- Resize grips: invisible, last so they sit above the header's drag area and the menus' scrims.
         // Rows start 8px in and the header buttons 8px in from the right, so none of this overlaps a control.
-        ResizeGrip {
+        if root.grip-allowed(ResizeEdge.left): ResizeGrip {
             edge: ResizeEdge.left;
             x: 0px;
             y: root.grip-corner;
@@ -2550,7 +2619,7 @@ export component PanelWindow inherits Window {
             height: root.height - 2 * root.grip-corner;
             resize(e) => { root.resize-requested(e); }
         }
-        ResizeGrip {
+        if root.grip-allowed(ResizeEdge.right): ResizeGrip {
             edge: ResizeEdge.right;
             x: root.width - root.grip;
             y: root.grip-corner;
@@ -2558,7 +2627,7 @@ export component PanelWindow inherits Window {
             height: root.height - 2 * root.grip-corner;
             resize(e) => { root.resize-requested(e); }
         }
-        ResizeGrip {
+        if root.grip-allowed(ResizeEdge.top): ResizeGrip {
             edge: ResizeEdge.top;
             x: root.grip-corner;
             y: 0px;
@@ -2566,7 +2635,7 @@ export component PanelWindow inherits Window {
             height: root.grip;
             resize(e) => { root.resize-requested(e); }
         }
-        ResizeGrip {
+        if root.grip-allowed(ResizeEdge.bottom): ResizeGrip {
             edge: ResizeEdge.bottom;
             x: root.grip-corner;
             y: root.height - root.grip;
@@ -2574,7 +2643,7 @@ export component PanelWindow inherits Window {
             height: root.grip;
             resize(e) => { root.resize-requested(e); }
         }
-        ResizeGrip {
+        if root.grip-allowed(ResizeEdge.top-left): ResizeGrip {
             edge: ResizeEdge.top-left;
             x: 0px;
             y: 0px;
@@ -2582,7 +2651,7 @@ export component PanelWindow inherits Window {
             height: root.grip-corner;
             resize(e) => { root.resize-requested(e); }
         }
-        ResizeGrip {
+        if root.grip-allowed(ResizeEdge.top-right): ResizeGrip {
             edge: ResizeEdge.top-right;
             x: root.width - root.grip-corner;
             y: 0px;
@@ -2590,7 +2659,7 @@ export component PanelWindow inherits Window {
             height: root.grip-corner;
             resize(e) => { root.resize-requested(e); }
         }
-        ResizeGrip {
+        if root.grip-allowed(ResizeEdge.bottom-left): ResizeGrip {
             edge: ResizeEdge.bottom-left;
             x: 0px;
             y: root.height - root.grip-corner;
@@ -2598,7 +2667,7 @@ export component PanelWindow inherits Window {
             height: root.grip-corner;
             resize(e) => { root.resize-requested(e); }
         }
-        ResizeGrip {
+        if root.grip-allowed(ResizeEdge.bottom-right): ResizeGrip {
             edge: ResizeEdge.bottom-right;
             x: root.width - root.grip-corner;
             y: root.height - root.grip-corner;

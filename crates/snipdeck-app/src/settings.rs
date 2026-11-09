@@ -54,6 +54,49 @@ pub struct PanelGeometry {
     /// off its edge) gives them back. Only set while docked.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pre_dock: Option<(u32, u32)>,
+    /// Where the docked Panel starts along its edge (its top on a left or right edge, its left
+    /// on a top or bottom one), in physical pixels. Only set while docked; absent in older files,
+    /// which read as none: centred (or full height).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub along: Option<i32>,
+    /// Where the Panel sat along the other edges it was docked to on this monitor, so that
+    /// docking to an edge again puts it back there. Never holds the current edge. Absent in
+    /// older files.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub other_along: Vec<(DockEdge, i32)>,
+}
+
+impl PanelGeometry {
+    /// This geometry with the per-edge memory of `old` (the geometry it replaces on the same
+    /// monitor): what `old` had for the edge it is leaving is kept, the current edge's is not.
+    #[must_use]
+    pub fn remembering(mut self, old: Option<&Self>) -> Self {
+        let Some(old) = old else {
+            return self;
+        };
+        let mut others = old.other_along.clone();
+        if let (Some(edge), Some(along)) = (old.edge, old.along) {
+            others.retain(|(e, _)| *e != edge);
+            others.push((edge, along));
+        }
+        others.retain(|(e, _)| Some(*e) != self.edge);
+        self.other_along = others;
+        self
+    }
+
+    /// Where the Panel was last docked along `edge`: the live value when it is docked there, the
+    /// remembered one otherwise.
+    #[must_use]
+    pub fn along_for(&self, edge: DockEdge) -> Option<i32> {
+        if self.edge == Some(edge) {
+            self.along
+        } else {
+            self.other_along
+                .iter()
+                .find(|(e, _)| *e == edge)
+                .map(|(_, a)| *a)
+        }
+    }
 }
 
 /// Reads an edge name; anything else (a hand-edited or future value) is "not docked" rather
@@ -149,6 +192,8 @@ pub struct DockSettings {
     pub hover_delay_ms: u32,
     /// Leave delay, 0 to 5000 ms.
     pub leave_delay_ms: u32,
+    /// A Panel docked left or right takes the work area's full height instead of keeping its own.
+    pub full_edge: bool,
 }
 
 impl Default for DockSettings {
@@ -157,6 +202,7 @@ impl Default for DockSettings {
             trigger: DockTrigger::Off,
             hover_delay_ms: 150,
             leave_delay_ms: 400,
+            full_edge: false,
         }
     }
 }
@@ -1337,9 +1383,22 @@ mod tests {
             h: 700,
             edge: Some(DockEdge::Right),
             pre_dock: Some((320, 480)),
+            along: None,
+            other_along: Vec::new(),
         });
         let back = Settings::from_json(&settings.to_json());
         assert_eq!(back.panel_geometry, settings.panel_geometry);
+    }
+
+    #[test]
+    fn old_geometry_without_along_reads_as_none() {
+        let settings = Settings::from_json(
+            r#"{"panel_geometry":[{"monitor_id":"D1","x":0,"y":0,"w":320,"h":1040,"edge":"left","pre_dock":[320,480]}],"dock":{"trigger":"hover"}}"#,
+        );
+        let g = &settings.panel_geometry[0];
+        assert_eq!((g.edge, g.along, g.h), (Some(DockEdge::Left), None, 1040));
+        assert!(!settings.dock.full_edge, "the compact dock is the default");
+        assert_eq!(settings.dock.trigger, DockTrigger::Hover);
     }
 
     #[test]
@@ -1356,6 +1415,7 @@ mod tests {
                 trigger: DockTrigger::Both,
                 hover_delay_ms: 300,
                 leave_delay_ms: 900,
+                full_edge: true,
             },
             ..Settings::default()
         };
@@ -1405,7 +1465,7 @@ mod tests {
         let edges: Vec<_> = settings.panel_geometry.iter().map(|g| g.edge).collect();
         assert_eq!(edges, [None, None, Some(DockEdge::Top)]);
         assert!(
-            !Settings::default().to_json().contains("edge"),
+            !Settings::default().to_json().contains("\"edge\""),
             "no edge is written for a floating Panel"
         );
     }
@@ -1420,6 +1480,8 @@ mod tests {
             h: 500,
             edge: None,
             pre_dock: None,
+            along: None,
+            other_along: Vec::new(),
         };
         let mut settings = Settings {
             panel_geometry: vec![

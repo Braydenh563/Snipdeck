@@ -73,6 +73,23 @@ fn panel_light() {
     assert_golden("panel-light", &render(&h));
 }
 
+/// O28: a Panel docked to the left shows the grip pill in its header (and no outer-edge grips).
+#[test]
+fn panel_docked_left_shows_the_grip_pill() {
+    let h = list_panel(SIZE, false);
+    h.component.set_dock_edge(1);
+    h.component.set_dock_slide(true);
+    assert_golden("panel-docked-left-light", &render(&h));
+}
+
+#[test]
+fn panel_docked_top_dark_has_a_horizontal_pill() {
+    let h = list_panel(SIZE, true);
+    h.component.set_dock_edge(3);
+    h.component.set_dock_slide(true);
+    assert_golden("panel-docked-top-dark", &render(&h));
+}
+
 #[test]
 fn panel_dark() {
     let h = list_panel(SIZE, true);
@@ -394,6 +411,27 @@ fn the_header_more_glyph_reads_at_3_to_1_against_the_header() {
             best >= 3.0,
             "dark={dark}: the darkest glyph pixel is {best:.2}:1 against the header"
         );
+    }
+}
+
+#[test]
+fn the_grip_pill_reads_at_3_to_1_against_the_header_in_both_themes_and_both_directions() {
+    for (dark, bg) in [(false, APP_LIGHT), (true, APP_DARK)] {
+        for edge in [1, 3] {
+            let h = panel(SIZE, dark);
+            h.component.set_dock_edge(edge);
+            h.component.set_dock_slide(true);
+            let f = render(&h);
+            // Between the keep-on-top button (ends near x 222) and the kebab (starts at 254).
+            let best = (226..252)
+                .flat_map(|x| (6..34).map(move |y| (x, y)))
+                .map(|(x, y)| contrast(f.pixel(x, y), bg))
+                .fold(0.0_f64, f64::max);
+            assert!(
+                best >= 3.0,
+                "dark={dark} edge={edge}: the pill is {best:.2}:1 against the header"
+            );
+        }
     }
 }
 

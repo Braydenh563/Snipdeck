@@ -772,6 +772,9 @@ msgstr "Ancrer au bord droit"
 msgid "Dock to the top edge"
 msgstr "Ancrer au bord supérieur"
 
+msgid "Docked panel uses the full edge"
+msgstr "Le panneau ancré occupe tout le bord"
+
 msgid "Docked to the right"
 msgstr "Ancré à droite"
 
@@ -1586,6 +1589,9 @@ msgstr "Désactivé"
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "« Désactivé » laisse un panneau ancré ouvert. Sinon, il se replie en une fine bande, et le raccourci du panneau l'ouvre aussi."
 
+msgid "Off keeps a panel docked to the left or right at the height you dropped it. On stretches it over the whole edge."
+msgstr "Désactivé : un panneau ancré à gauche ou à droite garde la hauteur où vous l'avez déposé. Activé : il occupe tout le bord."
+
 msgid "One hotkey turns copied text into an item."
 msgstr "Un raccourci transforme le texte copié en extrait."
 
@@ -2234,6 +2240,9 @@ msgstr "Passer"
 
 msgid "Slate"
 msgstr "Ardoise"
+
+msgid "Slide the panel along the edge"
+msgstr "Faire glisser le panneau le long du bord"
 
 msgid "Smileys & Emotion"
 msgstr "Smileys et émotions"

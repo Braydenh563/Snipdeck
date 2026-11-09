@@ -291,6 +291,7 @@ export component SettingsPage inherits Window {
     in-out property <bool> panel-in-taskbar: false;
     in-out property <bool> panel-hide-on-blur: true;
     in-out property <bool> screenshot-keep-panel: false;
+    in-out property <bool> dock-full-edge: false;
     in-out property <bool> recent-history: false;
     // How many copies and how many days the history keeps (the description names them).
     in property <int> recent-max-entries: 200;
@@ -417,6 +418,7 @@ export component SettingsPage inherits Window {
     callback panel-in-taskbar-toggled(on: bool);
     callback panel-hide-on-blur-toggled(on: bool);
     callback screenshot-keep-panel-toggled(on: bool);
+    callback dock-full-edge-toggled(on: bool);
     callback reduce-motion-toggled(on: bool);
     callback panel-width-chosen(width: int);
     callback dock-edge-chosen(index: int);
@@ -475,7 +477,7 @@ export component SettingsPage inherits Window {
     // Titles of section 2 (Panel layout), for the search. A test checks that every row title is in here.
     property <string> keys-2: @tr("Layout") + " " + @tr("Search field") + " " + @tr("Lists") + " " + @tr("Quick-use numbers") + " " + @tr("Show Symbols tab");
     // Titles of section 3 (Opening the Panel), for the search. A test checks that every row title is in here.
-    property <string> keys-3: @tr("Tray icon click opens") + " " + @tr("Panel opens") + " " + @tr("After a paste or copy") + " " + @tr("Hide the panel when it loses focus") + " " + @tr("Show the Panel in the taskbar and Alt+Tab") + " " + @tr("Keep Panel visible during screenshots") + " " + @tr("Dock to") + " " + @tr("Open a docked panel by") + " " + @tr("Hover delay") + " " + @tr("Leave delay") + " " + @tr("Picker position") + " " + @tr("Start with Windows") + " " + @tr("When Windows starts") + " " + @tr("Keep running in the tray when the window closes");
+    property <string> keys-3: @tr("Tray icon click opens") + " " + @tr("Panel opens") + " " + @tr("After a paste or copy") + " " + @tr("Hide the panel when it loses focus") + " " + @tr("Show the Panel in the taskbar and Alt+Tab") + " " + @tr("Keep Panel visible during screenshots") + " " + @tr("Dock to") + " " + @tr("Docked panel uses the full edge") + " " + @tr("Open a docked panel by") + " " + @tr("Hover delay") + " " + @tr("Leave delay") + " " + @tr("Picker position") + " " + @tr("Start with Windows") + " " + @tr("When Windows starts") + " " + @tr("Keep running in the tray when the window closes");
     // Titles of section 4 (Privacy), for the search. A test checks that every row title is in here.
     property <string> keys-4: @tr("Keep a Recent inbox of what you copy") + " " + @tr("Clear recent history") + " " + @tr("Clear the clipboard after copying a sensitive item") + " " + @tr("Master password");
     // Titles of section 5 (Programs), for the search. A test checks that every row title is in here.
@@ -917,6 +919,18 @@ export component SettingsPage inherits Window {
                             options: [@tr("Floating"), @tr("Left edge"), @tr("Right edge"), @tr("Top edge"), @tr("Bottom edge")];
                             current: root.dock-edge-index;
                             chosen(i) => { root.dock-edge-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Docked panel uses the full edge");
+                        description: @tr("Off keeps a panel docked to the left or right at the height you dropped it. On stretches it over the whole edge.");
+                        Toggle {
+                            a11y-label: @tr("Docked panel uses the full edge");
+                            checked <=> root.dock-full-edge;
+                            toggled(on) => { root.dock-full-edge-toggled(on); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }

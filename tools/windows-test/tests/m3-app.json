@@ -357,6 +357,13 @@
       "title": "Drag files from Explorer onto the Panel and Main window (O47)",
       "do": "Drag two files from Explorer over the Panel (do not drop yet), then drop them. Do the same over the Main window with a list open. Drag a file in and move it out again without dropping. Drop a folder.",
       "expect": "While dragging, a message says 'Drop to add to <list>'; it goes when the drag leaves or ends. Dropping adds one item per file to the list shown, as one Undo step, wherever on the window you drop (a drop on a different tab still goes to the list shown). A drag that leaves adds nothing. A folder is skipped and the message says so. Dropping text or pictures from other programs is not supported in this version. Write what went wrong in the note (n)."
+    },
+    {
+      "id": "43",
+      "v1": true,
+      "title": "Compact dock keeps its height and slides along the edge (U22, O28)",
+      "do": "Drag the Panel by its header to a spot about halfway down the screen and let it snap to the left edge. Look at its height and where it sits. Pull its right edge, its top and bottom ends and its lower right corner. Try its left (screen-side) edge and left corners. Drag the small pill in the header up and down. Press and drag on the empty part of the header away from the edge. In Settings > Panel switch on 'Docked panel uses the full edge', then off. Repeat on the right edge.",
+      "expect": "The docked Panel keeps its own height at the height you dropped it; it does not stretch over the whole edge. The inner edge, both ends and the inner corners resize it with the OS resize cursor; the screen-side edge and its corners do nothing. The pill slides the Panel up and down along the edge, stops at the top and bottom of the work area and never undocks it. Dragging the rest of the header takes it off the edge. With the setting on it fills the whole edge; off, it returns to its own height. Quit and start Snipdeck: it comes back docked at the same spot. Write what went wrong in the note (n)."
     }
   ]
 }

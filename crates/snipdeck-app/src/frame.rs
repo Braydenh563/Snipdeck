@@ -138,6 +138,8 @@ impl Rect {
             h: self.h,
             edge,
             pre_dock: None,
+            along: edge.map(|e| self.along(e).start),
+            other_along: Vec::new(),
         }
     }
 
@@ -259,34 +261,56 @@ pub fn handle_rect(edge: DockEdge, work_area: Rect, along: Range<i32>, scale: f3
 }
 
 /// The expanded Panel of `size` (width, height) docked to `edge` of `work_area`, flush with
-/// it. On a left or right edge it takes the work area's full height (DESIGN.md: "full height
-/// when docked"); on a top or bottom edge it keeps its height and sits in the middle of the
-/// edge. The width is held between 260 and 480 logical pixels like any Panel (at `scale`).
+/// it. The width is held between 260 and 480 logical pixels like any Panel (at `scale`).
+///
+/// A Panel on a left or right edge keeps its own height, at `along` (the top of the frame the
+/// user dropped it at); `along` is pulled inside the work area, and `None` centres it. With
+/// `full_edge` it takes the work area's full height instead (DESIGN.md: "full height when
+/// docked"). On a top or bottom edge it keeps its height and sits at `along` (its left),
+/// or in the middle of the edge when there is none; `full_edge` has no say there.
 #[must_use]
-pub fn docked_rect(edge: DockEdge, work_area: Rect, size: (u32, u32), scale: f32) -> Rect {
+pub fn docked_rect(
+    edge: DockEdge,
+    work_area: Rect,
+    size: (u32, u32),
+    scale: f32,
+    along: Option<i32>,
+    full_edge: bool,
+) -> Rect {
     let min_w = scaled(*PANEL_WIDTH.start(), scale);
     let max_w = scaled(*PANEL_WIDTH.end(), scale);
     let w = size.0.clamp(min_w, max_w).min(work_area.w);
+    let min_h = scaled(MIN_HEIGHT, scale);
     if edge.vertical() {
+        let h = if full_edge {
+            work_area.h
+        } else {
+            size.1.max(min_h).min(work_area.h)
+        };
+        let wanted = along.unwrap_or_else(|| {
+            work_area
+                .y
+                .saturating_add_unsigned((work_area.h - h.min(work_area.h)) / 2)
+        });
         Rect {
             x: if edge == DockEdge::Left {
                 work_area.x
             } else {
                 far_side(work_area.x, work_area.w, w)
             },
-            y: work_area.y,
+            y: inside(wanted, h, work_area.y, work_area.h),
             w,
-            h: work_area.h,
+            h,
         }
     } else {
-        let h = size.1.max(scaled(MIN_HEIGHT, scale)).min(work_area.h);
+        let h = size.1.max(min_h).min(work_area.h);
+        let wanted = along.unwrap_or_else(|| {
+            work_area
+                .x
+                .saturating_add_unsigned((work_area.w - w.min(work_area.w)) / 2)
+        });
         Rect {
-            x: inside(
-                work_area.x.saturating_add_unsigned((work_area.w - w) / 2),
-                w,
-                work_area.x,
-                work_area.w,
-            ),
+            x: inside(wanted, w, work_area.x, work_area.w),
             y: if edge == DockEdge::Top {
                 work_area.y
             } else {
@@ -296,6 +320,30 @@ pub fn docked_rect(edge: DockEdge, work_area: Rect, size: (u32, u32), scale: f32
             h,
         }
     }
+}
+
+/// Whether the OS resize from `edge` is offered on a Panel docked to `dock`: the inner edge,
+/// its two ends and the inner corners are; the outer (screen-side) edge and its corners are
+/// not, so there is one way off the edge. A side dock that takes the full edge (`full_edge`) is
+/// as tall as the work area, so its ends and corners go too: only the inner edge stays.
+#[must_use]
+pub fn dock_resize_allowed(edge: Edge, dock: DockEdge, full_edge: bool) -> bool {
+    let outer: [Edge; 3] = match dock {
+        DockEdge::Left => [Edge::Left, Edge::TopLeft, Edge::BottomLeft],
+        DockEdge::Right => [Edge::Right, Edge::TopRight, Edge::BottomRight],
+        DockEdge::Top => [Edge::Top, Edge::TopLeft, Edge::TopRight],
+        DockEdge::Bottom => [Edge::Bottom, Edge::BottomLeft, Edge::BottomRight],
+    };
+    if outer.contains(&edge) {
+        return false;
+    }
+    let inner = match dock {
+        DockEdge::Left => Edge::Right,
+        DockEdge::Right => Edge::Left,
+        DockEdge::Top => Edge::Bottom,
+        DockEdge::Bottom => Edge::Top,
+    };
+    !(full_edge && dock.vertical() && edge != inner)
 }
 
 /// The size (width, height) a Panel brings to a dock on `edge`, from the `size` it has now (or
@@ -316,9 +364,54 @@ pub fn dock_size(
     scale: f32,
     default_height: u32,
 ) -> (u32, u32) {
+    full_height_cut(
+        !edge.vertical(),
+        size,
+        pre_dock,
+        work_area,
+        scale,
+        default_height,
+    )
+}
+
+/// [`dock_size`] for a Panel that may be docked compact: a left or right dock stored full
+/// height with no `along` (an older version's, or one left from the full edge) is not a size
+/// the user chose once `full_edge` is off, so it too falls back to the size before docking, or
+/// to the default height.
+#[must_use]
+#[allow(clippy::too_many_arguments, reason = "the dock's whole stored state")]
+pub fn dock_size_for(
+    edge: DockEdge,
+    size: (u32, u32),
+    pre_dock: Option<(u32, u32)>,
+    work_area: Rect,
+    scale: f32,
+    default_height: u32,
+    along: Option<i32>,
+    full_edge: bool,
+) -> (u32, u32) {
+    let legacy_full = edge.vertical() && !full_edge && along.is_none();
+    full_height_cut(
+        !edge.vertical() || legacy_full,
+        size,
+        pre_dock,
+        work_area,
+        scale,
+        default_height,
+    )
+}
+
+fn full_height_cut(
+    cut_full: bool,
+    size: (u32, u32),
+    pre_dock: Option<(u32, u32)>,
+    work_area: Rect,
+    scale: f32,
+    default_height: u32,
+) -> (u32, u32) {
     // Within a pixel or two of the work area's height: a side dock's frame (or rounding of one).
     let full = |h: u32| h.saturating_add(2) >= work_area.h;
-    if edge.vertical() || !full(size.1) {
+    if !cut_full || !full(size.1) {
         return size;
     }
     let height = pre_dock
@@ -853,11 +946,11 @@ mod tests {
     #[test]
     fn a_docked_panel_on_the_left_or_right_takes_the_full_height() {
         assert_eq!(
-            docked_rect(DockEdge::Left, area(), (320, 480), 1.0),
+            docked_rect(DockEdge::Left, area(), (320, 480), 1.0, None, true),
             at(0, 0, 320, 1040)
         );
         assert_eq!(
-            docked_rect(DockEdge::Right, area(), (320, 480), 1.0),
+            docked_rect(DockEdge::Right, area(), (320, 480), 1.0, None, true),
             at(1600, 0, 320, 1040)
         );
     }
@@ -865,29 +958,164 @@ mod tests {
     #[test]
     fn a_docked_panel_on_the_top_or_bottom_keeps_its_height_and_centres() {
         assert_eq!(
-            docked_rect(DockEdge::Top, area(), (320, 480), 1.0),
+            docked_rect(DockEdge::Top, area(), (320, 480), 1.0, None, true),
             at(800, 0, 320, 480)
         );
         assert_eq!(
-            docked_rect(DockEdge::Bottom, area(), (320, 480), 1.0),
+            docked_rect(DockEdge::Bottom, area(), (320, 480), 1.0, None, true),
             at(800, 560, 320, 480)
         );
     }
 
     #[test]
+    fn a_side_dock_keeps_its_height_at_the_drop_point() {
+        let r = docked_rect(DockEdge::Left, area(), (320, 480), 1.0, Some(300), false);
+        assert_eq!(r, at(0, 300, 320, 480));
+        let r = docked_rect(DockEdge::Right, area(), (320, 480), 1.0, Some(300), false);
+        assert_eq!(r, at(1600, 300, 320, 480));
+        // Along a top dock the same rule runs on x.
+        let r = docked_rect(DockEdge::Top, area(), (320, 480), 1.0, Some(300), false);
+        assert_eq!(r, at(300, 0, 320, 480));
+    }
+
+    #[test]
+    fn a_dock_dropped_past_the_bottom_is_pulled_inside() {
+        let r = docked_rect(DockEdge::Left, area(), (320, 480), 1.0, Some(900), false);
+        assert_eq!(r, at(0, 560, 320, 480));
+        let r = docked_rect(DockEdge::Right, area(), (320, 480), 1.0, Some(-50), false);
+        assert_eq!(r.y, 0);
+        let r = docked_rect(DockEdge::Bottom, area(), (320, 480), 1.0, Some(5000), false);
+        assert_eq!(r.x, 1600);
+    }
+
+    #[test]
+    fn full_edge_gives_the_work_area_height() {
+        let r = docked_rect(DockEdge::Left, area(), (320, 480), 1.0, Some(300), true);
+        assert_eq!(r, at(0, 0, 320, 1040));
+        let r = docked_rect(DockEdge::Right, area(), (320, 480), 1.0, None, true);
+        assert_eq!(r, at(1600, 0, 320, 1040));
+    }
+
+    #[test]
+    fn along_none_centres_like_before() {
+        let r = docked_rect(DockEdge::Left, area(), (320, 480), 1.0, None, false);
+        assert_eq!(r, at(0, 280, 320, 480));
+        let r = docked_rect(DockEdge::Top, area(), (320, 480), 1.0, None, false);
+        assert_eq!(r, at(800, 0, 320, 480));
+    }
+
+    #[test]
+    fn the_outer_edge_and_its_corners_do_not_resize_a_docked_panel() {
+        use Edge::*;
+        let all = [
+            Left,
+            Right,
+            Top,
+            Bottom,
+            TopLeft,
+            TopRight,
+            BottomLeft,
+            BottomRight,
+        ];
+        let blocked = |dock: DockEdge| match dock {
+            DockEdge::Left => vec![Left, TopLeft, BottomLeft],
+            DockEdge::Right => vec![Right, TopRight, BottomRight],
+            DockEdge::Top => vec![Top, TopLeft, TopRight],
+            DockEdge::Bottom => vec![Bottom, BottomLeft, BottomRight],
+        };
+        for dock in DockEdge::ALL {
+            for edge in all {
+                assert_eq!(
+                    dock_resize_allowed(edge, dock, false),
+                    !blocked(dock).contains(&edge),
+                    "{edge:?} on a {dock:?} dock"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_full_edge_side_dock_resizes_from_its_inner_edge_only() {
+        use Edge::*;
+        for edge in [
+            Top,
+            Bottom,
+            TopRight,
+            BottomRight,
+            TopLeft,
+            BottomLeft,
+            Left,
+        ] {
+            assert!(!dock_resize_allowed(edge, DockEdge::Left, true), "{edge:?}");
+        }
+        assert!(dock_resize_allowed(Right, DockEdge::Left, true));
+        assert!(dock_resize_allowed(Left, DockEdge::Right, true));
+        // Top and bottom docks are not affected by it.
+        assert!(dock_resize_allowed(Left, DockEdge::Top, true));
+    }
+
+    #[test]
+    fn an_old_full_height_side_dock_is_compact_when_the_full_edge_is_off() {
+        let work = area();
+        let old = (320, work.h);
+        assert_eq!(
+            dock_size_for(DockEdge::Left, old, None, work, 1.0, 480, None, false),
+            (320, 480),
+            "no pre-dock size: the default height"
+        );
+        assert_eq!(
+            dock_size_for(
+                DockEdge::Right,
+                old,
+                Some((340, 500)),
+                work,
+                1.0,
+                480,
+                None,
+                false
+            ),
+            (320, 500)
+        );
+        // On, or with an along the user chose, it is left alone.
+        assert_eq!(
+            dock_size_for(DockEdge::Left, old, None, work, 1.0, 480, None, true),
+            old
+        );
+        assert_eq!(
+            dock_size_for(DockEdge::Left, old, None, work, 1.0, 480, Some(0), false),
+            old
+        );
+    }
+
+    #[test]
     fn a_docked_panel_keeps_the_panel_width_limits_and_stays_inside() {
-        assert_eq!(docked_rect(DockEdge::Left, area(), (9000, 480), 1.0).w, 480);
-        assert_eq!(docked_rect(DockEdge::Left, area(), (10, 480), 1.0).w, 260);
-        assert_eq!(docked_rect(DockEdge::Left, area(), (320, 480), 1.5).w, 390);
-        assert_eq!(docked_rect(DockEdge::Top, area(), (320, 9000), 1.0).h, 1040);
-        assert_eq!(docked_rect(DockEdge::Top, area(), (320, 10), 1.0).h, 240);
+        assert_eq!(
+            docked_rect(DockEdge::Left, area(), (9000, 480), 1.0, None, true).w,
+            480
+        );
+        assert_eq!(
+            docked_rect(DockEdge::Left, area(), (10, 480), 1.0, None, true).w,
+            260
+        );
+        assert_eq!(
+            docked_rect(DockEdge::Left, area(), (320, 480), 1.5, None, true).w,
+            390
+        );
+        assert_eq!(
+            docked_rect(DockEdge::Top, area(), (320, 9000), 1.0, None, true).h,
+            1040
+        );
+        assert_eq!(
+            docked_rect(DockEdge::Top, area(), (320, 10), 1.0, None, true).h,
+            240
+        );
         let tiny = at(10, 20, 200, 200);
         assert_eq!(
-            docked_rect(DockEdge::Right, tiny, (320, 480), 1.0),
+            docked_rect(DockEdge::Right, tiny, (320, 480), 1.0, None, true),
             at(10, 20, 200, 200)
         );
         assert_eq!(
-            docked_rect(DockEdge::Bottom, tiny, (320, 480), 1.0),
+            docked_rect(DockEdge::Bottom, tiny, (320, 480), 1.0, None, true),
             at(10, 20, 200, 200)
         );
     }
@@ -920,7 +1148,7 @@ mod tests {
             for scale in [1.0, 1.5, 2.0] {
                 for size in [(320, 480), (320, 1080), (9000, 9000), (10, 10), (480, 1040)] {
                     for edge in DockEdge::ALL {
-                        let open = docked_rect(edge, work, size, scale);
+                        let open = docked_rect(edge, work, size, scale, None, true);
                         assert!(
                             inside_area(open, work),
                             "{edge:?} {size:?} at {scale} in {work:?}: {open:?}"
@@ -936,9 +1164,16 @@ mod tests {
     #[test]
     fn a_bottom_dock_ends_on_the_taskbar_and_not_on_the_monitor_edge() {
         let work = at(0, 0, 1920, 1040);
-        let docked = docked_rect(DockEdge::Bottom, work, (320, 480), 1.0);
+        let docked = docked_rect(DockEdge::Bottom, work, (320, 480), 1.0, None, true);
         assert_eq!(i64::from(docked.y) + i64::from(docked.h), 1040);
-        let right = docked_rect(DockEdge::Right, at(0, 0, 1860, 1080), (320, 480), 1.0);
+        let right = docked_rect(
+            DockEdge::Right,
+            at(0, 0, 1860, 1080),
+            (320, 480),
+            1.0,
+            None,
+            true,
+        );
         assert_eq!(i64::from(right.x) + i64::from(right.w), 1860);
     }
 
@@ -972,6 +1207,8 @@ mod tests {
                 work,
                 dock_size(edge, from_side, None, work, 1.0, 480),
                 1.0,
+                None,
+                true,
             );
             assert!(rect.h < work.h, "{edge:?}: {rect:?}");
         }
@@ -1033,7 +1270,7 @@ mod tests {
         // The handle keeps the span of the docked panel, so expanding is the inverse of
         // collapsing for the span, and both sit flush on the same edge.
         for edge in DockEdge::ALL {
-            let docked = docked_rect(edge, area(), (320, 480), 1.0);
+            let docked = docked_rect(edge, area(), (320, 480), 1.0, None, true);
             let handle = handle_rect(edge, area(), docked.along(edge), 1.0);
             assert_eq!(handle.along(edge), docked.along(edge), "{edge:?}");
             let flush = match edge {

@@ -772,6 +772,9 @@ msgstr "Encaixar na borda direita"
 msgid "Dock to the top edge"
 msgstr "Encaixar na borda superior"
 
+msgid "Docked panel uses the full edge"
+msgstr "Painel acoplado usa a borda inteira"
+
 msgid "Docked to the right"
 msgstr "Acoplado à direita"
 
@@ -1586,6 +1589,9 @@ msgstr "Desativado"
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "«Desativado» mantém aberto um painel acoplado. Caso contrário, ele recolhe em uma faixa fina, e o atalho do painel também o abre."
 
+msgid "Off keeps a panel docked to the left or right at the height you dropped it. On stretches it over the whole edge."
+msgstr "Desativado: um painel acoplado à esquerda ou à direita mantém a altura em que você o soltou. Ativado: ele ocupa a borda inteira."
+
 msgid "One hotkey turns copied text into an item."
 msgstr "Um atalho transforma o texto copiado em um item."
 
@@ -2234,6 +2240,9 @@ msgstr "Pular"
 
 msgid "Slate"
 msgstr "Ardósia"
+
+msgid "Slide the panel along the edge"
+msgstr "Deslizar o painel ao longo da borda"
 
 msgid "Smileys & Emotion"
 msgstr "Carinhas e emoções"

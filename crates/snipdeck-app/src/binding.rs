@@ -871,6 +871,27 @@ where
             let core = Rc::clone(&core);
             window.on_toast_hover_changed(move |on| core.controller.borrow_mut().toast_hover(on));
         }
+        {
+            let core = Rc::clone(&core);
+            window.on_along_begin(move || core.controller.borrow_mut().dock_slide_begin());
+        }
+        {
+            // The grip pill's drag: logical pixels along the edge since the press, the window
+            // frame is physical.
+            let core = Rc::clone(&core);
+            let window_weak = window.as_weak();
+            window.on_along_drag(move |delta| {
+                let scale = window_weak
+                    .upgrade()
+                    .map_or(1.0, |w| w.window().scale_factor());
+                #[allow(
+                    clippy::cast_possible_truncation,
+                    reason = "a pointer delta of a few thousand pixels"
+                )]
+                let physical = (delta * scale).round() as i32;
+                core.act_effects(|ctl| ctl.dock_slide(physical));
+            });
+        }
         wire_effects!(on_resize_requested, |ctl, edge| ctl.resize(edge_of(edge)));
         wire_effects!(on_handle_hovered, |ctl, on| ctl
             .dock_event(DockEvent::HandleHover(on)));
@@ -1233,6 +1254,13 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     if differs(&|p| p.dock_vertical == view.dock_vertical) {
         window.set_dock_vertical(view.dock_vertical);
     }
+    if differs(&|p| p.dock_edge == view.dock_edge) {
+        window.set_dock_edge(crate::settings_binding::dock_edge_index(view.dock_edge));
+    }
+    if differs(&|p| (p.dock_full_edge, p.dock_slide) == (view.dock_full_edge, view.dock_slide)) {
+        window.set_dock_full_edge(view.dock_full_edge);
+        window.set_dock_slide(view.dock_slide);
+    }
     if differs(&|p| p.dock_preview == view.dock_preview) {
         window.set_dock_preview(crate::settings_binding::dock_edge_index(view.dock_preview));
     }
@@ -1451,7 +1479,8 @@ fn render_app_menu(window: &ui::PanelWindow, view: &View) {
             AppMenuEntry::PasteStack if view.stack.is_none() => {
                 wording::paste_stack_idle_text(window).into()
             }
-            _ => wording::app_menu_text(window, entry, view.docked, view.dock_target).into(),
+            _ => wording::app_menu_text(window, entry, view.dock_edge.is_some(), view.dock_target)
+                .into(),
         },
         disabled: (entry == AppMenuEntry::Undo && view.history.undo.is_none())
             || (entry == AppMenuEntry::Redo && view.history.redo.is_none())
