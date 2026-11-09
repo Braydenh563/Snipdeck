@@ -158,6 +158,11 @@ fn panel_no_target_light() {
 /// 225% at 360 wide (Panel v2 leftovers): the pinned chips show a readable title (their glyph goes when it would
 /// leave one letter), and the tab label, the pinned chips and the row numbers all start at x16.
 #[test]
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "a button height in pixels is small and positive"
+)]
 fn at_225_percent_the_chips_read_and_the_content_starts_at_x16() {
     let h = panel((360, 760), false);
     h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
@@ -166,7 +171,7 @@ fn at_225_percent_the_chips_read_and_the_content_starts_at_x16() {
     // The Select / Delete strip is a small button and 4px above and below, whatever the text size.
     let strip = ElementHandle::find_by_accessible_label(&h.component, "Select snippets")
         .next()
-        .map(|b| b.size().height as u32 + 8)
+        .map(|b| b.size().height.round() as u32 + 8)
         .expect("the Select button");
     let ink = |x0: u32, x1: u32, y0: u32, y1: u32| -> Vec<u32> {
         let (y0, y1) = (y0 + strip, y1 + strip);

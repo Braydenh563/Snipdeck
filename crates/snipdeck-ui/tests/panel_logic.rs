@@ -19,7 +19,7 @@ use i_slint_backend_testing::{
     AccessibleRole, ElementHandle, ElementQuery, ElementRoot, mock_elapsed_time,
 };
 use slint::{
-    ComponentHandle, Model, LogicalPosition, ModelRc, VecModel,
+    ComponentHandle, LogicalPosition, Model, ModelRc, VecModel,
     platform::{Key, PointerEventButton, WindowEvent},
 };
 use snipdeck_ui::{
@@ -96,7 +96,6 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_row_delete_requested, |i| format!("row-delete:{i}"));
     hook!(on_row_undo_requested, |i| format!("row-undo:{i}"));
     hook!(on_clear_list_confirmed, || "clear-confirmed".to_string());
-    hook!(on_clear_list_dismissed, || "clear-dismissed".to_string());
     hook!(on_bulk_move_requested, || "bulk-move".to_string());
     hook!(on_bulk_colour_requested, || "bulk-colour".to_string());
     hook!(on_bulk_delete_requested, || "bulk-delete".to_string());

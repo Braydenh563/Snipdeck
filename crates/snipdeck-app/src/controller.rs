@@ -48,8 +48,8 @@ pub use panel_select::LABELS;
 pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 pub use symbol_ctl::{IconExport, IconSave, SaveOutcome, SymbolChoice, SymbolMenuEntry};
 pub use views::{
-    BoardDeleteView, ChooseEntry, ChooseLabel, ChooseMenu, Effect, FillSubmission, FillView,
-    ClearListView, ListDeleteView, PickerView, StackView, ToastPhase, ToastView, UseResult, View,
+    BoardDeleteView, ChooseEntry, ChooseLabel, ChooseMenu, ClearListView, Effect, FillSubmission,
+    FillView, ListDeleteView, PickerView, StackView, ToastPhase, ToastView, UseResult, View,
 };
 
 use crate::{

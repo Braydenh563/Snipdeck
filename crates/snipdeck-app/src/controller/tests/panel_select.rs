@@ -890,7 +890,11 @@ fn select_mode_checkbox_marks_like_ctrl_click() {
     w.ctl.panel_mark(0, SelectMode::Replace);
     w.ctl.panel_mark(2, SelectMode::Replace);
     assert_eq!(marked(&w), [0, 2]);
-    assert_eq!(w.ctl.view().marked_count, 2, "the same marks drive the bulk bar");
+    assert_eq!(
+        w.ctl.view().marked_count,
+        2,
+        "the same marks drive the bulk bar"
+    );
     w.ctl.panel_mark(0, SelectMode::Replace);
     assert_eq!(marked(&w), [2]);
     // Leaving the mode drops the marks.
@@ -978,7 +982,11 @@ fn clear_list_asks_once_with_the_count() {
     let ask = w.ctl.view().clear_list.expect("the confirmation asks");
     assert_eq!(ask.count, 4);
     assert_eq!(ask.name, "Replies");
-    assert_eq!(w.ctl.view().rows.len(), 4, "nothing is deleted before the answer");
+    assert_eq!(
+        w.ctl.view().rows.len(),
+        4,
+        "nothing is deleted before the answer"
+    );
     w.ctl.cancel_clear_list();
     assert!(w.ctl.view().clear_list.is_none());
     assert_eq!(w.ctl.view().rows.len(), 4);
@@ -997,7 +1005,11 @@ fn clear_list_is_one_step_and_undoes_whole() {
     assert_eq!(toast.message, ToastMessage::ItemsTrashed { count: 4 });
     assert!(toast.undo, "the toast offers Undo");
     w.ctl.undo();
-    assert_eq!(w.ctl.view().rows.len(), 4, "one Undo brings every item back");
+    assert_eq!(
+        w.ctl.view().rows.len(),
+        4,
+        "one Undo brings every item back"
+    );
 }
 
 #[test]

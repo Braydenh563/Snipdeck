@@ -139,6 +139,9 @@ msgstr "所有命令…"
 msgid "All items"
 msgstr "所有片段"
 
+msgid "All {} items move to the Trash. You can restore them for {} days."
+msgstr "全部 {} 个项目将移入回收站。{} 天内可以恢复。"
+
 msgid "All {} recent copies are removed. This can't be undone."
 msgstr "将删除全部 {} 条最近复制的内容。此操作无法撤销。"
 
@@ -330,6 +333,15 @@ msgstr "清除筛选"
 
 msgid "Clear history"
 msgstr "清除历史"
+
+msgid "Clear list"
+msgstr "清空列表"
+
+msgid "Clear list “{}”?"
+msgstr "清空列表“{}”？"
+
+msgid "Clear list…"
+msgstr "清空列表…"
 
 msgid "Clear recent history"
 msgstr "清除最近记录"
@@ -703,6 +715,9 @@ msgstr "要删除列表“{}”吗？"
 msgid "Delete list…"
 msgstr "删除列表…"
 
+msgid "Delete snippets"
+msgstr "删除片段"
+
 msgid "Delete tag"
 msgstr "删除标签"
 
@@ -724,6 +739,12 @@ msgstr "要删除此列表吗？"
 msgid "Delete this tag?"
 msgstr "要删除此标签吗？"
 
+msgid "Delete “{}”"
+msgstr "删除“{}”"
+
+msgid "Deleted"
+msgstr "已删除"
+
 msgid "Deleted board “{}”"
 msgstr "已删除看板“{}”"
 
@@ -735,6 +756,9 @@ msgstr "已删除的片段会在这里保留 {} 天，之后才会被移除。"
 
 msgid "Deleted list “{}”"
 msgstr "已删除列表“{}”"
+
+msgid "Deleted: {}"
+msgstr "已删除：{}"
 
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
 msgstr "删除这台电脑上的所有看板、列表、片段和备份。此操作无法撤销。"
@@ -780,6 +804,12 @@ msgstr "停靠在右侧"
 
 msgid "Done"
 msgstr "完成"
+
+msgid "Done deleting"
+msgstr "完成删除"
+
+msgid "Done selecting"
+msgstr "完成选择"
 
 msgid "Drop to add to {}"
 msgstr "松开以添加到 {}"
@@ -2129,14 +2159,23 @@ msgstr "已搜索所有看板和列表。"
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "复制敏感片段后，若期间未复制其他内容，则在此秒数后从剪贴板清除。设为 0 则永不清除。粘贴时会改为恢复你原本的剪贴板内容。"
 
+msgid "Select"
+msgstr "选择"
+
 msgid "Select all items"
 msgstr "选择所有项目"
+
+msgid "Select and delete"
+msgstr "选择和删除"
 
 msgid "Select every item"
 msgstr "选择所有片段"
 
 msgid "Select several items"
 msgstr "选择多个项目"
+
+msgid "Select snippets"
+msgstr "选择片段"
 
 msgid "Sensitive"
 msgstr "敏感"
@@ -2692,6 +2731,9 @@ msgstr "已撤销：{}"
 
 msgid "Undo"
 msgstr "撤销"
+
+msgid "Undo delete of “{}”"
+msgstr "撤销删除“{}”"
 
 msgid "Undo last change"
 msgstr "撤销上一次更改"

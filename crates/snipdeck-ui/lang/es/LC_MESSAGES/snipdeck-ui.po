@@ -139,6 +139,9 @@ msgstr "Todos los comandos…"
 msgid "All items"
 msgstr "Todos los fragmentos"
 
+msgid "All {} items move to the Trash. You can restore them for {} days."
+msgstr "Los {} elementos pasan a la Papelera. Puedes restaurarlos durante {} días."
+
 msgid "All {} recent copies are removed. This can't be undone."
 msgstr "Se eliminan las {} copias recientes. Esto no se puede deshacer."
 
@@ -330,6 +333,15 @@ msgstr "Quitar filtro"
 
 msgid "Clear history"
 msgstr "Borrar historial"
+
+msgid "Clear list"
+msgstr "Vaciar lista"
+
+msgid "Clear list “{}”?"
+msgstr "¿Vaciar la lista «{}»?"
+
+msgid "Clear list…"
+msgstr "Vaciar lista…"
 
 msgid "Clear recent history"
 msgstr "Borrar historial reciente"
@@ -703,6 +715,9 @@ msgstr "¿Eliminar la lista “{}”?"
 msgid "Delete list…"
 msgstr "Eliminar lista…"
 
+msgid "Delete snippets"
+msgstr "Eliminar fragmentos"
+
 msgid "Delete tag"
 msgstr "Eliminar etiqueta"
 
@@ -724,6 +739,12 @@ msgstr "¿Eliminar esta lista?"
 msgid "Delete this tag?"
 msgstr "¿Eliminar esta etiqueta?"
 
+msgid "Delete “{}”"
+msgstr "Eliminar «{}»"
+
+msgid "Deleted"
+msgstr "Eliminado"
+
 msgid "Deleted board “{}”"
 msgstr "Tablero “{}” eliminado"
 
@@ -735,6 +756,9 @@ msgstr "Los fragmentos eliminados permanecen aquí {} días antes de borrarse."
 
 msgid "Deleted list “{}”"
 msgstr "Lista “{}” eliminada"
+
+msgid "Deleted: {}"
+msgstr "Eliminado: {}"
 
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
 msgstr "Elimina todos los tableros, listas, fragmentos y copias de seguridad de este PC. No se puede deshacer."
@@ -780,6 +804,12 @@ msgstr "Acoplado a la derecha"
 
 msgid "Done"
 msgstr "Listo"
+
+msgid "Done deleting"
+msgstr "Terminar de eliminar"
+
+msgid "Done selecting"
+msgstr "Terminar de seleccionar"
 
 msgid "Drop to add to {}"
 msgstr "Suelta para añadir a {}"
@@ -2136,14 +2166,23 @@ msgstr "Se buscó en todos los tableros y listas."
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "Segundos antes de que un fragmento sensible copiado se borre del portapapeles, si desde entonces no se ha copiado nada más. 0 nunca lo borra. Al pegar se restaura tu propio portapapeles."
 
+msgid "Select"
+msgstr "Seleccionar"
+
 msgid "Select all items"
 msgstr "Seleccionar todos los elementos"
+
+msgid "Select and delete"
+msgstr "Seleccionar y eliminar"
 
 msgid "Select every item"
 msgstr "Selecciona todos los elementos"
 
 msgid "Select several items"
 msgstr "Seleccionar varios elementos"
+
+msgid "Select snippets"
+msgstr "Seleccionar fragmentos"
 
 msgid "Sensitive"
 msgstr "Confidencial"
@@ -2699,6 +2738,9 @@ msgstr "Se deshizo: {}"
 
 msgid "Undo"
 msgstr "Deshacer"
+
+msgid "Undo delete of “{}”"
+msgstr "Deshacer la eliminación de «{}»"
 
 msgid "Undo last change"
 msgstr "Deshacer el último cambio"

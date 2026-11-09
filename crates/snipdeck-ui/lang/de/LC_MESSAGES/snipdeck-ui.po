@@ -139,6 +139,9 @@ msgstr "Alle Befehle…"
 msgid "All items"
 msgstr "Alle Textbausteine"
 
+msgid "All {} items move to the Trash. You can restore them for {} days."
+msgstr "Alle {} Einträge kommen in den Papierkorb. Du kannst sie {} Tage lang wiederherstellen."
+
 msgid "All {} recent copies are removed. This can't be undone."
 msgstr "Alle {} zuletzt kopierten Einträge werden entfernt. Das lässt sich nicht rückgängig machen."
 
@@ -330,6 +333,15 @@ msgstr "Filter leeren"
 
 msgid "Clear history"
 msgstr "Verlauf löschen"
+
+msgid "Clear list"
+msgstr "Liste leeren"
+
+msgid "Clear list “{}”?"
+msgstr "Liste „{}“ leeren?"
+
+msgid "Clear list…"
+msgstr "Liste leeren…"
 
 msgid "Clear recent history"
 msgstr "Verlauf der letzten Kopien leeren"
@@ -703,6 +715,9 @@ msgstr "Liste „{}“ löschen?"
 msgid "Delete list…"
 msgstr "Liste löschen…"
 
+msgid "Delete snippets"
+msgstr "Snippets löschen"
+
 msgid "Delete tag"
 msgstr "Schlagwort löschen"
 
@@ -724,6 +739,12 @@ msgstr "Diese Liste löschen?"
 msgid "Delete this tag?"
 msgstr "Dieses Schlagwort löschen?"
 
+msgid "Delete “{}”"
+msgstr "„{}“ löschen"
+
+msgid "Deleted"
+msgstr "Gelöscht"
+
 msgid "Deleted board “{}”"
 msgstr "Board „{}“ gelöscht"
 
@@ -735,6 +756,9 @@ msgstr "Gelöschte Textbausteine bleiben {} Tage hier, bevor sie entfernt werden
 
 msgid "Deleted list “{}”"
 msgstr "Liste „{}“ gelöscht"
+
+msgid "Deleted: {}"
+msgstr "Gelöscht: {}"
 
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
 msgstr "Löscht alle Boards, Listen, Textbausteine und Sicherungen auf diesem PC. Das lässt sich nicht rückgängig machen."
@@ -780,6 +804,12 @@ msgstr "Rechts angedockt"
 
 msgid "Done"
 msgstr "Fertig"
+
+msgid "Done deleting"
+msgstr "Löschen beenden"
+
+msgid "Done selecting"
+msgstr "Auswählen beenden"
 
 msgid "Drop to add to {}"
 msgstr "Zum Hinzufügen zu {} ablegen"
@@ -2136,14 +2166,23 @@ msgstr "Alle Boards und Listen durchsucht."
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "Sekunden, bevor ein kopierter vertraulicher Textbaustein aus der Zwischenablage gelöscht wird, sofern danach nichts anderes kopiert wurde. 0 löscht ihn nie. Beim Einfügen wird stattdessen deine eigene Zwischenablage wiederhergestellt."
 
+msgid "Select"
+msgstr "Auswählen"
+
 msgid "Select all items"
 msgstr "Alle Einträge auswählen"
+
+msgid "Select and delete"
+msgstr "Auswählen und löschen"
 
 msgid "Select every item"
 msgstr "Alle Textbausteine auswählen"
 
 msgid "Select several items"
 msgstr "Mehrere Einträge auswählen"
+
+msgid "Select snippets"
+msgstr "Snippets auswählen"
 
 msgid "Sensitive"
 msgstr "Vertraulich"
@@ -2699,6 +2738,9 @@ msgstr "Rückgängig: {}"
 
 msgid "Undo"
 msgstr "Rückgängig"
+
+msgid "Undo delete of “{}”"
+msgstr "Löschen von „{}“ rückgängig machen"
 
 msgid "Undo last change"
 msgstr "Letzte Änderung rückgängig machen"

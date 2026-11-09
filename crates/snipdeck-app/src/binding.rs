@@ -784,7 +784,8 @@ where
         wire!(on_select_mode_changed, |ctl, on| ctl.panel_select_mode(on));
         wire!(on_delete_mode_changed, |ctl, on| ctl.panel_delete_mode(on));
         wire!(on_modes_ended, |ctl| ctl.panel_end_modes());
-        wire!(on_row_delete_requested, |ctl, i| ctl.panel_delete_row(index(i)));
+        wire!(on_row_delete_requested, |ctl, i| ctl
+            .panel_delete_row(index(i)));
         wire!(on_row_undo_requested, |ctl, i| ctl.panel_undo_row(index(i)));
         wire!(on_clear_list_confirmed, |ctl| ctl.panel_clear_list());
         wire!(on_clear_list_dismissed, |ctl| ctl.cancel_clear_list());

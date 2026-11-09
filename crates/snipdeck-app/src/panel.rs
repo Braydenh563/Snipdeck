@@ -24,6 +24,10 @@ use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TagRepo};
 const SEARCH_LIMIT: usize = 50;
 
 /// One row of the item list.
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "independent row flags the view shows, not a state machine"
+)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Row {
     /// The item.
