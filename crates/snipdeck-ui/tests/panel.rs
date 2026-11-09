@@ -78,6 +78,7 @@ fn panel_light() {
 fn panel_docked_left_shows_the_grip_pill() {
     let h = list_panel(SIZE, false);
     h.component.set_dock_edge(1);
+    h.component.set_dock_slide(true);
     assert_golden("panel-docked-left-light", &render(&h));
 }
 
@@ -85,6 +86,7 @@ fn panel_docked_left_shows_the_grip_pill() {
 fn panel_docked_top_dark_has_a_horizontal_pill() {
     let h = list_panel(SIZE, true);
     h.component.set_dock_edge(3);
+    h.component.set_dock_slide(true);
     assert_golden("panel-docked-top-dark", &render(&h));
 }
 

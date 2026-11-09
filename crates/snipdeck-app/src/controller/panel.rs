@@ -571,12 +571,12 @@ where
     // ---- The window frame ----------------------------------------------------------------------
 
     /// Pointer down on a resize grip: the host starts the OS resize from `edge`. A docked Panel
-    /// refuses its outer edge and that edge's corners ([`frame::dock_resize_allowed`]); the grips
+    /// refuses its outer edge and that edge's corners ([`frame::dock_resize_allowed`], and with the full edge on, its ends too); the grips
     /// are not drawn there, this guards a stale press.
     pub fn resize(&mut self, edge: Edge) -> Vec<Effect> {
         if self
             .dock_edge()
-            .is_some_and(|d| !frame::dock_resize_allowed(edge, d))
+            .is_some_and(|d| !frame::dock_resize_allowed(edge, d, self.settings.dock.full_edge))
         {
             return Vec::new();
         }
@@ -654,7 +654,8 @@ where
         let mut geometry = PanelGeometry {
             pre_dock,
             ..clamped.geometry(monitor, edge)
-        };
+        }
+        .remembering(stored.as_ref());
         // A full-edge dock reports the work area's height back; the Panel's own height (and
         // place along the edge) stays remembered, so turning the full edge off gives it back.
         if let (Some(e), Some(old)) = (edge, &stored)
@@ -695,13 +696,15 @@ where
         };
         Some(match g.edge {
             Some(edge) => {
-                let size = frame::dock_size(
+                let size = frame::dock_size_for(
                     edge,
                     (g.w, g.h),
                     g.pre_dock,
                     monitor.work_area,
                     monitor.scale,
                     super::dock_ctl::DEFAULT_HEIGHT,
+                    g.along,
+                    self.settings.dock.full_edge,
                 );
                 frame::docked_rect(
                     edge,

@@ -872,7 +872,12 @@ where
             window.on_toast_hover_changed(move |on| core.controller.borrow_mut().toast_hover(on));
         }
         {
-            // The grip pill's drag: logical pixels along the edge, the window frame is physical.
+            let core = Rc::clone(&core);
+            window.on_along_begin(move || core.controller.borrow_mut().dock_slide_begin());
+        }
+        {
+            // The grip pill's drag: logical pixels along the edge since the press, the window
+            // frame is physical.
             let core = Rc::clone(&core);
             let window_weak = window.as_weak();
             window.on_along_drag(move |delta| {
@@ -1251,6 +1256,10 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     }
     if differs(&|p| p.dock_edge == view.dock_edge) {
         window.set_dock_edge(crate::settings_binding::dock_edge_index(view.dock_edge));
+    }
+    if differs(&|p| (p.dock_full_edge, p.dock_slide) == (view.dock_full_edge, view.dock_slide)) {
+        window.set_dock_full_edge(view.dock_full_edge);
+        window.set_dock_slide(view.dock_slide);
     }
     if differs(&|p| p.dock_preview == view.dock_preview) {
         window.set_dock_preview(crate::settings_binding::dock_edge_index(view.dock_preview));

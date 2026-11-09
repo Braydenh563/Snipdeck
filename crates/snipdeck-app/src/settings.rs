@@ -59,6 +59,44 @@ pub struct PanelGeometry {
     /// which read as none: centred (or full height).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub along: Option<i32>,
+    /// Where the Panel sat along the other edges it was docked to on this monitor, so that
+    /// docking to an edge again puts it back there. Never holds the current edge. Absent in
+    /// older files.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub other_along: Vec<(DockEdge, i32)>,
+}
+
+impl PanelGeometry {
+    /// This geometry with the per-edge memory of `old` (the geometry it replaces on the same
+    /// monitor): what `old` had for the edge it is leaving is kept, the current edge's is not.
+    #[must_use]
+    pub fn remembering(mut self, old: Option<&Self>) -> Self {
+        let Some(old) = old else {
+            return self;
+        };
+        let mut others = old.other_along.clone();
+        if let (Some(edge), Some(along)) = (old.edge, old.along) {
+            others.retain(|(e, _)| *e != edge);
+            others.push((edge, along));
+        }
+        others.retain(|(e, _)| Some(*e) != self.edge);
+        self.other_along = others;
+        self
+    }
+
+    /// Where the Panel was last docked along `edge`: the live value when it is docked there, the
+    /// remembered one otherwise.
+    #[must_use]
+    pub fn along_for(&self, edge: DockEdge) -> Option<i32> {
+        if self.edge == Some(edge) {
+            self.along
+        } else {
+            self.other_along
+                .iter()
+                .find(|(e, _)| *e == edge)
+                .map(|(_, a)| *a)
+        }
+    }
 }
 
 /// Reads an edge name; anything else (a hand-edited or future value) is "not docked" rather
@@ -1346,6 +1384,7 @@ mod tests {
             edge: Some(DockEdge::Right),
             pre_dock: Some((320, 480)),
             along: None,
+            other_along: Vec::new(),
         });
         let back = Settings::from_json(&settings.to_json());
         assert_eq!(back.panel_geometry, settings.panel_geometry);
@@ -1442,6 +1481,7 @@ mod tests {
             edge: None,
             pre_dock: None,
             along: None,
+            other_along: Vec::new(),
         };
         let mut settings = Settings {
             panel_geometry: vec![

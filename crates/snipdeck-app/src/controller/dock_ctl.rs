@@ -139,13 +139,15 @@ where
         };
         // A frame stored as full height (a side dock's, or one an older version saved for a
         // top or bottom dock) is not the height of a top or bottom dock.
-        let size = frame::dock_size(
+        let size = frame::dock_size_for(
             edge,
             (geometry.w, geometry.h),
             geometry.pre_dock,
             monitor.work_area,
             monitor.scale,
             DEFAULT_HEIGHT,
+            geometry.along,
+            self.settings.dock.full_edge,
         );
         let open = frame::docked_rect(
             edge,
@@ -281,8 +283,11 @@ where
             return;
         }
         let mut base = self.open_frame(&monitor);
-        let stored = self.stored_geometry(&monitor);
-        let earlier = stored.filter(|g| g.edge.is_some()).and_then(|g| g.pre_dock);
+        let stored = self.stored_geometry(&monitor).cloned();
+        let earlier = stored
+            .as_ref()
+            .filter(|g| g.edge.is_some())
+            .and_then(|g| g.pre_dock);
         // The size to give back when the Panel leaves its edge: the one it had when it was
         // docked, kept while it stays docked (a docked frame is as tall as the screen).
         let pre_dock = edge.map(|_| earlier.unwrap_or((base.w, base.h)));
@@ -291,23 +296,24 @@ where
         }
         // Where along the edge the Panel lands: where it was dropped (its top, or its left), or
         // where it already was on that same edge; none centres it.
-        let along = match (edge, stored) {
-            (Some(e), Some(g)) if g.edge.is_some() => {
-                (g.edge == Some(e)).then_some(g.along).flatten()
-            }
+        // Docked elsewhere before, it goes back to where it was on that edge.
+        let along = match (edge, &stored) {
+            (Some(e), Some(g)) if g.edge.is_some() => g.along_for(e),
             (Some(e), _) => Some(base.along(e).start),
             (None, _) => None,
         };
         // `remembered` is the Panel at its own height even when the full edge is on, so that
         // turning that off gives the height back; `place` is what the window gets now.
         let (place, remembered) = if let Some(edge) = edge {
-            let size = frame::dock_size(
+            let size = frame::dock_size_for(
                 edge,
                 (base.w, base.h),
                 earlier,
                 monitor.work_area,
                 monitor.scale,
                 DEFAULT_HEIGHT,
+                along,
+                self.settings.dock.full_edge,
             );
             let dock = |full_edge| {
                 frame::docked_rect(
@@ -328,10 +334,13 @@ where
         // Panel losing its trigger.
         self.dock = DockState::Expanded;
         self.update_settings(|s| {
-            s.remember_panel_geometry(PanelGeometry {
-                pre_dock,
-                ..remembered.geometry(&monitor, edge)
-            });
+            s.remember_panel_geometry(
+                PanelGeometry {
+                    pre_dock,
+                    ..remembered.geometry(&monitor, edge)
+                }
+                .remembering(stored.as_ref()),
+            );
         });
         self.pending.push(Effect::PlaceWindow(place));
         self.show_toast(neutral(ToastMessage::DockSet(edge)));
@@ -347,14 +356,46 @@ where
         }
     }
 
-    /// The grip pill of a docked Panel was dragged `delta` physical pixels along its edge: the
-    /// Panel slides that far, stays on its edge and inside the work area, and remembers where it
-    /// is. Nothing happens while it is floating or collapsed.
-    pub fn dock_slide(&mut self, delta: i32) -> Vec<Effect> {
-        if self.dock_collapsed() {
+    /// Whether the docked Panel can slide along its edge: not while floating or collapsed, and
+    /// not a side dock that takes the full edge (it has nowhere to go).
+    fn dock_slidable(&self) -> bool {
+        self.dock_edge()
+            .is_some_and(|e| !(e.vertical() && self.settings.dock.full_edge))
+            && !self.dock_collapsed()
+    }
+
+    /// Whether the header's grip pill is offered: the Panel can slide.
+    #[must_use]
+    pub fn dock_slide_offered(&self) -> bool {
+        self.dock_slidable()
+    }
+
+    /// The grip pill was pressed: where the Panel is along its edge now is the origin the
+    /// drag's offsets count from.
+    pub fn dock_slide_begin(&mut self) {
+        self.slide_origin = self
+            .dock_slidable()
+            .then(|| {
+                let monitor = self.monitor.as_ref()?;
+                let g = self.stored_geometry(monitor)?;
+                Some(Rect::of(g).along(g.edge?).start)
+            })
+            .flatten();
+    }
+
+    /// The grip pill has been dragged `total` physical pixels along the edge since the press
+    /// ([`dock_slide_begin`](Self::dock_slide_begin); the drag begins itself if the press was
+    /// missed). Each call places the Panel at origin plus `total`, so queued or repeated
+    /// moves land in the same place. It stays on its edge and inside the work area, and the
+    /// place is remembered. Nothing happens while the Panel cannot slide.
+    pub fn dock_slide(&mut self, total: i32) -> Vec<Effect> {
+        if !self.dock_slidable() {
             return Vec::new();
         }
-        let Some(monitor) = self.monitor.clone() else {
+        if self.slide_origin.is_none() {
+            self.dock_slide_begin();
+        }
+        let (Some(monitor), Some(origin)) = (self.monitor.clone(), self.slide_origin) else {
             return Vec::new();
         };
         let Some(g) = self.stored_geometry(&monitor).cloned() else {
@@ -364,25 +405,24 @@ where
             return Vec::new();
         };
         let now = Rect::of(&g);
-        let start = now.along(edge).start.saturating_add(delta);
-        let dock = |full_edge| {
-            frame::docked_rect(
-                edge,
-                monitor.work_area,
-                (now.w, now.h),
-                monitor.scale,
-                Some(start),
-                full_edge,
-            )
-        };
-        let (moved, remembered) = (dock(self.settings.dock.full_edge), dock(false));
+        let moved = frame::docked_rect(
+            edge,
+            monitor.work_area,
+            (now.w, now.h),
+            monitor.scale,
+            Some(origin.saturating_add(total)),
+            false,
+        );
         self.update_settings(|s| {
-            s.remember_panel_geometry(PanelGeometry {
-                pre_dock: g.pre_dock,
-                ..remembered.geometry(&monitor, Some(edge))
-            });
+            s.remember_panel_geometry(
+                PanelGeometry {
+                    pre_dock: g.pre_dock,
+                    ..moved.geometry(&monitor, Some(edge))
+                }
+                .remembering(Some(&g)),
+            );
         });
-        if moved == Rect::of(&g) {
+        if moved == now {
             Vec::new()
         } else {
             vec![Effect::PlaceWindow(moved)]

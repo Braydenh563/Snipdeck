@@ -384,6 +384,7 @@ fn a_stored_place_is_fitted_to_a_monitor_that_has_become_smaller() {
             edge: None,
             pre_dock: None,
             along: None,
+            other_along: Vec::new(),
         });
     });
     assert_eq!(

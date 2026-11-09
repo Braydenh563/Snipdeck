@@ -129,9 +129,10 @@ component GripPill inherits Rectangle {
     in property <bool> vertical: true;
     in property <string> a11y-label;
     callback along-drag(length);
+    callback along-begin();
     callback tip(bool);
 
-    width: Space.s8;
+    width: root.vertical ? Space.s4 : Space.s8;
     height: Space.s8;
     accessible-role: button;
     accessible-label: root.a11y-label;
@@ -142,10 +143,15 @@ component GripPill inherits Rectangle {
         width: root.vertical ? 6px : 20px;
         height: root.vertical ? 20px : 6px;
         border-radius: 3px;
-        background: touch.pressed ? Theme.accent : touch.has-hover ? Theme.text-secondary : Theme.border-strong;
+        background: touch.pressed ? Theme.accent : touch.has-hover ? Theme.text-primary : Theme.text-tertiary;
     }
     touch := TouchArea {
         mouse-cursor: root.vertical ? MouseCursor.ns-resize : MouseCursor.ew-resize;
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                root.along-begin();
+            }
+        }
         moved => {
             root.along-drag(root.vertical ? self.mouse-y - self.pressed-y : self.mouse-x - self.pressed-x);
         }
@@ -280,6 +286,10 @@ export component PanelWindow inherits Window {
     // The edge this Panel is docked to, in the same order (0 floating). A docked Panel resizes from its inner edge,
     // its two ends and the inner corners only (O28), and shows the grip pill that slides it along the edge.
     in property <int> dock-edge: 0;
+    // A side dock that takes the whole edge (O28): only its inner edge resizes.
+    in property <bool> dock-full-edge: false;
+    // The grip pill shows: the docked Panel can slide (not floating, not collapsed, not a full-edge side dock).
+    in property <bool> dock-slide: false;
 
     // ---- State both ways ----------------------------------------------------------------------
     in-out property <int> current-tab: 0;
@@ -394,6 +404,8 @@ export component PanelWindow inherits Window {
     callback resize-requested(ResizeEdge);
     // The grip pill was dragged: `delta` more logical pixels along the docked edge, from where the press began (O28).
     callback along-drag(delta: length);
+    // The pill was pressed: the drag's offsets count from where the Panel is now.
+    callback along-begin();
     callback pin-toggled(bool);
     callback toast-undo();
     callback toast-edit();
@@ -728,6 +740,8 @@ export component PanelWindow inherits Window {
     // O28: whether the resize grip on `e` exists. A docked Panel has no grip on its outer (screen-side) edge or that
     // edge's corners, so there is one way off the edge; the rest are as for a floating Panel.
     pure function grip-allowed(e: ResizeEdge) -> bool {
+        if (root.dock-full-edge && root.dock-edge == 1) { return e == ResizeEdge.right; }
+        if (root.dock-full-edge && root.dock-edge == 2) { return e == ResizeEdge.left; }
         if (root.dock-edge == 1) { return e != ResizeEdge.left && e != ResizeEdge.top-left && e != ResizeEdge.bottom-left; }
         if (root.dock-edge == 2) { return e != ResizeEdge.right && e != ResizeEdge.top-right && e != ResizeEdge.bottom-right; }
         if (root.dock-edge == 3) { return e != ResizeEdge.top && e != ResizeEdge.top-left && e != ResizeEdge.top-right; }
@@ -1368,14 +1382,6 @@ export component PanelWindow inherits Window {
                             menu-requested => { root.board-menu-requested(); }
                         }
                         Rectangle { horizontal-stretch: root.lists-in-menu ? 0 : 1; }
-                        // O28: a docked Panel slides along its edge by this pill, and stays docked.
-                        if root.dock-edge > 0 && !root.dock-collapsed: grip-pill := GripPill {
-                            vertical: root.dock-edge <= 2;
-                            a11y-label: @tr("Slide the panel along the edge");
-                            y: (parent.height - self.height) / 2;
-                            along-drag(d) => { root.along-drag(d); }
-                            tip(on) => { root.tip-set(@tr("Slide the panel along the edge"), self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, on); }
-                        }
                         search-button := IconButton {
                             icon: Icons.magnifying-glass;
                             size: IconButtonSize.sm;
@@ -1483,6 +1489,16 @@ export component PanelWindow inherits Window {
                             }
                             changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
                             changed has-focus => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+                        }
+                        // O28: a docked Panel slides along its edge by this pill, and stays docked. Beside the
+                        // kebab, where the window controls are, not by the board picker (it read as a caret there).
+                        if root.dock-slide && !root.dock-collapsed: grip-pill := GripPill {
+                            vertical: root.dock-edge <= 2;
+                            a11y-label: @tr("Slide the panel along the edge");
+                            y: (parent.height - self.height) / 2;
+                            along-begin => { root.along-begin(); }
+                            along-drag(d) => { root.along-drag(d); }
+                            tip(on) => { root.tip-set(@tr("Slide the panel along the edge"), self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, on); }
                         }
                         kebab := IconButton {
                             icon: Icons.dots-three-bold;

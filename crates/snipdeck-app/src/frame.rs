@@ -139,6 +139,7 @@ impl Rect {
             edge,
             pre_dock: None,
             along: edge.map(|e| self.along(e).start),
+            other_along: Vec::new(),
         }
     }
 
@@ -323,16 +324,26 @@ pub fn docked_rect(
 
 /// Whether the OS resize from `edge` is offered on a Panel docked to `dock`: the inner edge,
 /// its two ends and the inner corners are; the outer (screen-side) edge and its corners are
-/// not, so there is one way off the edge.
+/// not, so there is one way off the edge. A side dock that takes the full edge (`full_edge`) is
+/// as tall as the work area, so its ends and corners go too: only the inner edge stays.
 #[must_use]
-pub fn dock_resize_allowed(edge: Edge, dock: DockEdge) -> bool {
+pub fn dock_resize_allowed(edge: Edge, dock: DockEdge, full_edge: bool) -> bool {
     let outer: [Edge; 3] = match dock {
         DockEdge::Left => [Edge::Left, Edge::TopLeft, Edge::BottomLeft],
         DockEdge::Right => [Edge::Right, Edge::TopRight, Edge::BottomRight],
         DockEdge::Top => [Edge::Top, Edge::TopLeft, Edge::TopRight],
         DockEdge::Bottom => [Edge::Bottom, Edge::BottomLeft, Edge::BottomRight],
     };
-    !outer.contains(&edge)
+    if outer.contains(&edge) {
+        return false;
+    }
+    let inner = match dock {
+        DockEdge::Left => Edge::Right,
+        DockEdge::Right => Edge::Left,
+        DockEdge::Top => Edge::Bottom,
+        DockEdge::Bottom => Edge::Top,
+    };
+    !(full_edge && dock.vertical() && edge != inner)
 }
 
 /// The size (width, height) a Panel brings to a dock on `edge`, from the `size` it has now (or
@@ -353,9 +364,54 @@ pub fn dock_size(
     scale: f32,
     default_height: u32,
 ) -> (u32, u32) {
+    full_height_cut(
+        !edge.vertical(),
+        size,
+        pre_dock,
+        work_area,
+        scale,
+        default_height,
+    )
+}
+
+/// [`dock_size`] for a Panel that may be docked compact: a left or right dock stored full
+/// height with no `along` (an older version's, or one left from the full edge) is not a size
+/// the user chose once `full_edge` is off, so it too falls back to the size before docking, or
+/// to the default height.
+#[must_use]
+#[allow(clippy::too_many_arguments, reason = "the dock's whole stored state")]
+pub fn dock_size_for(
+    edge: DockEdge,
+    size: (u32, u32),
+    pre_dock: Option<(u32, u32)>,
+    work_area: Rect,
+    scale: f32,
+    default_height: u32,
+    along: Option<i32>,
+    full_edge: bool,
+) -> (u32, u32) {
+    let legacy_full = edge.vertical() && !full_edge && along.is_none();
+    full_height_cut(
+        !edge.vertical() || legacy_full,
+        size,
+        pre_dock,
+        work_area,
+        scale,
+        default_height,
+    )
+}
+
+fn full_height_cut(
+    cut_full: bool,
+    size: (u32, u32),
+    pre_dock: Option<(u32, u32)>,
+    work_area: Rect,
+    scale: f32,
+    default_height: u32,
+) -> (u32, u32) {
     // Within a pixel or two of the work area's height: a side dock's frame (or rounding of one).
     let full = |h: u32| h.saturating_add(2) >= work_area.h;
-    if edge.vertical() || !full(size.1) {
+    if !cut_full || !full(size.1) {
         return size;
     }
     let height = pre_dock
@@ -970,12 +1026,65 @@ mod tests {
         for dock in DockEdge::ALL {
             for edge in all {
                 assert_eq!(
-                    dock_resize_allowed(edge, dock),
+                    dock_resize_allowed(edge, dock, false),
                     !blocked(dock).contains(&edge),
                     "{edge:?} on a {dock:?} dock"
                 );
             }
         }
+    }
+
+    #[test]
+    fn a_full_edge_side_dock_resizes_from_its_inner_edge_only() {
+        use Edge::*;
+        for edge in [
+            Top,
+            Bottom,
+            TopRight,
+            BottomRight,
+            TopLeft,
+            BottomLeft,
+            Left,
+        ] {
+            assert!(!dock_resize_allowed(edge, DockEdge::Left, true), "{edge:?}");
+        }
+        assert!(dock_resize_allowed(Right, DockEdge::Left, true));
+        assert!(dock_resize_allowed(Left, DockEdge::Right, true));
+        // Top and bottom docks are not affected by it.
+        assert!(dock_resize_allowed(Left, DockEdge::Top, true));
+    }
+
+    #[test]
+    fn an_old_full_height_side_dock_is_compact_when_the_full_edge_is_off() {
+        let work = area();
+        let old = (320, work.h);
+        assert_eq!(
+            dock_size_for(DockEdge::Left, old, None, work, 1.0, 480, None, false),
+            (320, 480),
+            "no pre-dock size: the default height"
+        );
+        assert_eq!(
+            dock_size_for(
+                DockEdge::Right,
+                old,
+                Some((340, 500)),
+                work,
+                1.0,
+                480,
+                None,
+                false
+            ),
+            (320, 500)
+        );
+        // On, or with an along the user chose, it is left alone.
+        assert_eq!(
+            dock_size_for(DockEdge::Left, old, None, work, 1.0, 480, None, true),
+            old
+        );
+        assert_eq!(
+            dock_size_for(DockEdge::Left, old, None, work, 1.0, 480, Some(0), false),
+            old
+        );
     }
 
     #[test]

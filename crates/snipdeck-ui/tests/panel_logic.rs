@@ -111,6 +111,7 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_delete_requested, |i| format!("delete:{i}"));
     hook!(on_resize_requested, |edge| format!("resize:{edge:?}"));
     hook!(on_along_drag, |d| format!("slide:{d}"));
+    hook!(on_along_begin, || "slide-begin".to_string());
     hook!(on_pinned_copied, |i| format!("pinned-copy:{i}"));
     hook!(on_handle_hovered, |on| format!("handle-hover:{on}"));
     hook!(on_handle_clicked, || "handle-click".to_string());
@@ -2260,10 +2261,12 @@ ui_tests! {
         // the inner corners stay.
         ui.set_dock_edge(1);
         settle();
-        for (p, gone) in [(at(2.0, h / 2.0), "Left"), (at(2.0, h - 2.0), "BottomLeft")] {
-            press_at(&ui, p);
-            assert_ne!(take(&log), [format!("resize:{gone}")], "{gone} on a left dock");
-        }
+        // A press where the screen-side grip was is not a resize and not a window drag either
+        // (the body is no drag region), so a docked Panel is not undocked by it.
+        press_at(&ui, at(2.0, h / 2.0));
+        assert_eq!(take(&log), Vec::<String>::new(), "Left on a left dock");
+        press_at(&ui, at(2.0, h - 2.0));
+        assert_eq!(take(&log), Vec::<String>::new(), "BottomLeft on a left dock");
         for (p, kept) in [
             (at(w - 2.0, h / 2.0), "Right"),
             (at(w / 2.0, h - 2.0), "Bottom"),
@@ -2287,7 +2290,31 @@ ui_tests! {
         ui.set_dock_edge(4);
         settle();
         press_at(&ui, at(w / 2.0, h - 2.0));
-        assert_ne!(take(&log), ["resize:Bottom"]);
+        assert_eq!(take(&log), Vec::<String>::new(), "Bottom on a bottom dock");
+        press_at(&ui, at(w - 2.0, h - 2.0));
+        assert_eq!(take(&log), Vec::<String>::new(), "BottomRight on a bottom dock");
+        press_at(&ui, at(2.0, h / 2.0));
+        assert_eq!(take(&log), ["resize:Left"], "the ends of a bottom dock still resize");
+        // Top dock: no top edge, no top corners (the header is not a resize edge there, nor an
+        // undock: a press on the top rim only starts the usual header drag).
+        ui.set_dock_edge(3);
+        settle();
+        press_at(&ui, at(w / 2.0, 1.0));
+        assert!(!take(&log).iter().any(|l| l.starts_with("resize:")), "Top on a top dock");
+        press_at(&ui, at(w / 2.0, h - 2.0));
+        assert_eq!(take(&log), ["resize:Bottom"]);
+        press_at(&ui, at(w - 2.0, h - 2.0));
+        assert_eq!(take(&log), ["resize:BottomRight"]);
+        // A side dock that takes the full edge keeps only its inner edge.
+        ui.set_dock_edge(1);
+        ui.set_dock_full_edge(true);
+        settle();
+        press_at(&ui, at(w / 2.0, h - 2.0));
+        assert_eq!(take(&log), Vec::<String>::new(), "Bottom on a full-edge dock");
+        press_at(&ui, at(w - 2.0, h / 2.0));
+        assert_eq!(take(&log), ["resize:Right"]);
+        ui.set_dock_full_edge(false);
+        settle();
         press_at(&ui, at(w / 2.0, 1.0));
         assert_eq!(take(&log), ["resize:Top"]);
         // Floating again: all of them.
@@ -2301,24 +2328,27 @@ ui_tests! {
         let (ui, log) = start();
         assert!(missing(&ui, "Slide the panel along the edge", AccessibleRole::Button), "floating: no pill");
         ui.set_dock_edge(1);
+        ui.set_dock_slide(true);
         settle();
         let pill = find(&ui, "Slide the panel along the edge", AccessibleRole::Button);
         let c = centre(&pill);
         ui.window().dispatch_event(WindowEvent::PointerMoved { position: c });
         ui.window().dispatch_event(WindowEvent::PointerPressed { position: c, button: PointerEventButton::Left });
-        take(&log);
+        assert_eq!(take(&log), ["slide-begin"], "the press starts the slide");
         let moved = LogicalPosition::new(c.x, c.y + 30.0);
+        ui.window().dispatch_event(WindowEvent::PointerMoved { position: moved });
+        // A second move event reports the total from the press, not another 30 on top.
         ui.window().dispatch_event(WindowEvent::PointerMoved { position: moved });
         ui.window().dispatch_event(WindowEvent::PointerReleased { position: moved, button: PointerEventButton::Left });
         let seen = take(&log);
-        assert_eq!(seen, ["slide:30"], "an axis-locked slide, not the header's window drag");
+        assert_eq!(seen, ["slide:30", "slide:30"], "an axis-locked slide, not the header's window drag");
         // A press on the rest of the header still drags (undocks).
         // (just right of the board picker, left of the pill: header space with no control)
         let picker = find(&ui, "Board: Work", AccessibleRole::Button);
         let gap = LogicalPosition::new(centre(&picker).x + picker.size().width / 2.0 + 2.0, centre(&picker).y);
         press_at(&ui, gap);
         assert_eq!(take(&log), ["drag"]);
-        ui.set_dock_edge(0);
+        ui.set_dock_slide(false);
         settle();
         assert!(missing(&ui, "Slide the panel along the edge", AccessibleRole::Button));
     }
