@@ -45,3 +45,4 @@ date | item | type | rung | rework | note
 2026-11-08 | Shared look slices 1-4 | ui | sonnet | 0 | 
 2026-11-08 | Shared look slices 5-6 (+menu density fix, app test fixes) | ui | sonnet | 2 | 
 2026-11-08 | Shared look slices 1-8 (Main, Picker, palette, editors, menus, Settings) | ui | sonnet | 2 | 
+2026-11-09 | v1.0.1 slice 1: paste to create, Ctrl+C, toast Edit | feature | sonnet | 1 | 

@@ -64,7 +64,7 @@ where
     }
 
     /// Ctrl+C on the Main list: the selection (when more than one row is selected) or row
-    /// `index`, copied by [`copy_items`](Self::copy_items).
+    /// `index`, copied by `copy_items`.
     pub fn main_copy_selection(&mut self, index: usize) -> Option<UseResult> {
         self.main_fresh();
         let ids: Vec<ItemId> = self

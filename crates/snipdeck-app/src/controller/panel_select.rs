@@ -90,7 +90,7 @@ where
         self.trash_with_undo(&ids);
     }
 
-    /// The bulk bar's "Copy all": see [`copy_items`](Self::copy_items) for the marked items.
+    /// The bulk bar's "Copy all": see `copy_items` for the marked items.
     pub fn bulk_copy(&mut self) {
         let ids = self.model.marked_ids();
         let _ = self.copy_items(&ids);

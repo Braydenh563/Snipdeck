@@ -72,3 +72,4 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - v1 T11 OneNote: paste target not recognised, then later recognised (img 17, 18).
 - v1 T12 Visual clash (img 8); combobox keeps its focus border after click-away (img 12).
 - v1 T13 Settings scroll feels laggy.
+- 2026-11-09: Push only after reading the gate's `failed: none` line (never chain push after the gate), and run `cargo +1.99.1 clippy --workspace --all-targets` (own target dir) before each push. Reason: 43f6e8e went red on a 1.99 lint, and 9215acc was pushed with a rustdoc failure.
