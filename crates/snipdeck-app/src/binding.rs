@@ -1428,6 +1428,8 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             .map_or_else(SharedString::new, |t| t.name.as_str().into()),
     );
     window.set_marked_count(to_i32(view.marked_count));
+    window.set_trash_focus_row(view.focus_row.map_or(-1, to_i32));
+    window.set_trash_focus_seq(i32::try_from(view.focus_seq).unwrap_or(i32::MAX));
     window.set_select_mode(view.select_mode);
     window.set_delete_mode(view.delete_mode);
     if differs(&|p| p.clear_list == view.clear_list)

@@ -355,6 +355,14 @@ export component PanelWindow inherits Window {
     callback modes-ended();
     callback row-delete-requested(int);
     callback row-undo-requested(int);
+    // After a delete the host names the row whose delete button takes the focus (-1: the list does); `seq` goes up each time.
+    in property <int> trash-focus-row: -1;
+    in property <int> trash-focus-seq: 0;
+    changed trash-focus-seq => {
+        if (root.trash-focus-row < 0) {
+            root.focus-typing();
+        }
+    }
     // The kebab's "Clear list…" confirmation: the count of items that go to the Trash (one Undo brings them back).
     in property <bool> clear-list-open: false;
     in property <string> clear-list-name;
@@ -1946,11 +1954,14 @@ export component PanelWindow inherits Window {
                                             }
 
                                             // Delete mode: a labelled delete button at the row's right end.
-                                            if root.delete-mode && !item.deleted-pending: row-delete := IconButton {
+                                            row-delete := IconButton {
+                                                // Hidden, not an `if`: the change handler of `focus-request` did not run inside a conditional element (measured).
+                                                visible: root.delete-mode && !item.deleted-pending;
                                                 icon: Icons.trash;
                                                 tooltip: @tr("Delete “{}”", item.title);
                                                 own-tooltip: true;
                                                 scaled: true;
+                                                focus-request: root.trash-focus-row == i ? root.trash-focus-seq : 0;
                                                 // The top right corner: the sensitive eye sits on the preview line below it.
                                                 x: card.width - self.width - Space.s1;
                                                 y: Space.s1;

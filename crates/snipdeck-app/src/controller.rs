@@ -219,6 +219,10 @@ pub struct Controller<S, C, K, T> {
     delete_mode: bool,
     /// The list Delete mode began in (its "Deleted · Undo" rows live in the model).
     delete_list: Option<ListId>,
+    /// After a delete in Delete mode: the shown row whose delete button takes the focus (`None`:
+    /// the list), and a count that goes up with each delete.
+    focus_row: Option<usize>,
+    focus_seq: u64,
     /// The Main window's state.
     main: MainModel,
     /// The list or board editor, while one is open.
@@ -410,6 +414,8 @@ where
             select_mode: false,
             delete_mode: false,
             delete_list: None,
+            focus_row: None,
+            focus_seq: 0,
             main,
             editor: None,
             editor_seq: 0,
@@ -527,6 +533,8 @@ where
             symbol_menu: self.symbol_menu_view(),
             choose_menu: self.choose_menu_view(),
             marked_count: self.model.marked_count(),
+            focus_row: self.focus_row,
+            focus_seq: self.focus_seq,
             select_mode: self.select_mode,
             delete_mode: self.delete_mode,
             clear_list: self.clear_list_view(),
@@ -802,7 +810,7 @@ where
     /// Hides the Panel (Esc with nothing to clear, the close button, the toggle hotkey).
     pub fn hide(&mut self) -> Vec<Effect> {
         self.visible = false;
-        self.end_delete_mode();
+        self.panel_end_modes();
         self.blur_hide = false;
         self.panel_revealed = None;
         self.menu = PanelMenu::None;

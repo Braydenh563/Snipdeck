@@ -231,6 +231,11 @@ pub struct View {
     pub choose_menu: Option<ChooseMenu>,
     /// How many rows the multi-selection holds (the bulk bar shows from one).
     pub marked_count: usize,
+    /// After a delete in Delete mode: the shown row whose delete button takes the keyboard focus
+    /// (`None`: the list), and a count that goes up with each delete.
+    pub focus_row: Option<usize>,
+    /// See `focus_row`.
+    pub focus_seq: u64,
     /// The header's Select mode is on (rows show a checkbox).
     pub select_mode: bool,
     /// The header's Delete mode is on (rows show a delete button).

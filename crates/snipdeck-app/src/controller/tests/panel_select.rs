@@ -1178,3 +1178,60 @@ fn undo_on_a_collapsed_row_works_when_the_history_step_is_gone() {
     );
     assert!(w.ctl.view().toast.is_some(), "and it said so");
 }
+
+#[test]
+fn a_delete_during_a_search_offers_the_undo_toast() {
+    let mut w = world();
+    w.ctl.set_query("a");
+    let rows = w.ctl.view().rows;
+    let gone = rows.first().expect("the search finds a row").id;
+    w.ctl.panel_delete_mode(true);
+    w.ctl.panel_delete_row(0);
+    let view = w.ctl.view();
+    assert!(view.rows.iter().all(|r| r.id != gone && !r.deleted_pending));
+    let toast = view.toast.expect("a toast says it");
+    assert_eq!(toast.message, ToastMessage::ItemsTrashed { count: 1 });
+    assert!(toast.undo, "with Undo");
+    w.ctl.undo();
+    w.ctl.set_query("a");
+    assert!(
+        w.ctl.view().rows.iter().any(|r| r.id == gone),
+        "Undo brings it back"
+    );
+}
+
+#[test]
+fn after_a_delete_the_focus_goes_to_the_next_row_or_the_list() {
+    let mut w = world();
+    w.ctl.panel_delete_mode(true);
+    w.ctl.panel_delete_row(1);
+    assert_eq!(
+        w.ctl.view().focus_row,
+        Some(2),
+        "the next row's delete button"
+    );
+    let seq = w.ctl.view().focus_seq;
+    w.ctl.panel_delete_row(3);
+    assert_eq!(
+        w.ctl.view().focus_row,
+        Some(2),
+        "the previous live row at the end"
+    );
+    assert!(w.ctl.view().focus_seq > seq);
+    w.ctl.panel_delete_row(2);
+    assert_eq!(w.ctl.view().focus_row, Some(0), "the one row left");
+    w.ctl.panel_delete_row(0);
+    assert_eq!(w.ctl.view().focus_row, None, "nothing left: the list");
+}
+
+#[test]
+fn hiding_the_panel_ends_select_mode_and_clears_the_marks() {
+    let mut w = world();
+    w.ctl.panel_select_mode(true);
+    w.ctl.panel_mark(0, SelectMode::Toggle);
+    w.ctl.panel_mark(2, SelectMode::Toggle);
+    assert_eq!(w.ctl.view().marked_count, 2);
+    let _ = w.ctl.hide();
+    assert!(!w.ctl.view().select_mode);
+    assert_eq!(w.ctl.view().marked_count, 0);
+}

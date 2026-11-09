@@ -31,7 +31,12 @@ export component IconButton inherits Rectangle {
     in property <bool> own-tooltip: false;
     out property <bool> has-hover: touch.has-hover && root.enabled;
     out property <bool> has-focus: scope.has-focus;
+    // Each time this goes up the button takes the keyboard focus (the Panel hands it on after a row's delete).
+    in property <int> focus-request: 0;
     callback clicked();
+    changed focus-request => {
+        if (root.focus-request > 0) { scope.focus(); }
+    }
 
     property <float> k: root.scaled ? SystemLook.text-scale : 1.0;
     property <length> side: root.side-override > 0px ? root.side-override : (root.size == IconButtonSize.sm ? Space.hit-min : Space.hit) * root.k;

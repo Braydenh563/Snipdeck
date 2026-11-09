@@ -2793,6 +2793,18 @@ ui_tests! {
         assert_eq!(take(&log), ["modes-ended"]);
     }
 
+    fn the_host_can_hand_the_focus_to_a_rows_delete_button() {
+        let (ui, log) = start_quiet();
+        ui.set_delete_mode(true);
+        settle();
+        take(&log);
+        ui.set_trash_focus_row(2);
+        ui.set_trash_focus_seq(1);
+        settle();
+        press(ui.window(), &key(Key::Return));
+        assert_eq!(take(&log), ["row-delete:2"], "Enter on the focused delete button deletes that row");
+    }
+
     fn a_long_title_elides_before_the_delete_button() {
         for layout in [PanelLayout::List, PanelLayout::Compact, PanelLayout::Cards] {
             let (ui, _log) = start();

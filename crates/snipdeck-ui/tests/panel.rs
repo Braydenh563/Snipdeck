@@ -222,7 +222,13 @@ fn panel_select_and_delete_modes() {
         h.component.set_delete_mode(true);
         let mut rows = fixture::sample_rows();
         rows[1].deleted_pending = true;
+        // As the app draws it: the live rows after the collapsed one count on from it (1, 2, 3, 4, 5).
+        for (i, row) in rows.iter_mut().enumerate() {
+            row.ghosts_before = i32::from(i > 1);
+        }
         fixture::set_rows(&h.component, rows);
+        h.component
+            .set_quick_rows(ModelRc::new(VecModel::from(vec![0, 2, 3, 4, 5])));
         assert_golden(&format!("panel-delete-mode-{tag}"), &render(&h));
     }
 }

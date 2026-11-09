@@ -134,6 +134,11 @@ where
         let Some(row) = self.live_row(index) else {
             return;
         };
+        if self.model.searching() {
+            // A search shows no collapsed rows: the delete says so with the usual Undo toast.
+            self.trash_with_undo(&[row.id]);
+            return;
+        }
         let now = self.clock.now();
         let done = self
             .store
@@ -160,6 +165,8 @@ where
         if let Some(id) = neighbour {
             self.model.select_item(id);
         }
+        self.focus_row = neighbour.and_then(|id| self.model.rows().iter().position(|r| r.id == id));
+        self.focus_seq += 1;
     }
 
     /// "Undo" on a "Deleted · Undo" row: that one delete is taken back and the row is whole again.
