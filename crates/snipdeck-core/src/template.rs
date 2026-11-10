@@ -845,9 +845,7 @@ impl Template {
                 Part::Cursor => state.cursor = Some(out.text.len()),
                 Part::Prompt(index) => {
                     if let Some(prompt) = self.prompts.get(*index) {
-                        match &prompt.kind {
-                            _ => out.push_str(answer(prompt, ctx.answers)),
-                        }
+                        out.push_str(answer(prompt, ctx.answers));
                     }
                 }
                 Part::PickDate(index, format) => {
@@ -1232,8 +1230,7 @@ impl Parser {
             }
             (PromptKind::Choice { options }, PromptKind::Choice { options: later })
                 if *options == later => {}
-            (PromptKind::Date, PromptKind::Date) => {}
-            (PromptKind::Toggle, PromptKind::Toggle) => {}
+            (PromptKind::Date, PromptKind::Date) | (PromptKind::Toggle, PromptKind::Toggle) => {}
             _ => return err(span, conflict()),
         }
         Ok(index)
