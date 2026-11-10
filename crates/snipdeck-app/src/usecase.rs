@@ -629,7 +629,7 @@ mod tests {
         let mut request = World::request(id, UseMode::Paste, PASTE);
         request.transform = Some(Transform::Upper);
         assert!(matches!(w.run(&request), Err(UseError::NotText)));
-        assert!(w.clipboard.written.is_empty());
+        assert_eq!(w.clipboard.written.len(), 0);
     }
 
     #[test]

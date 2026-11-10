@@ -998,7 +998,7 @@ fn the_paste_as_row_has_its_name_and_the_second_level_takes_arrows_enter_and_esc
         press(r.window(), &key(Key::Escape));
         r.binding.redraw();
         assert!(!r.ui.get_item_menu_open(), "Esc closes the menu");
-        assert!(r.ctl.borrow().services().clipboard.written.is_empty());
+        assert_eq!(r.ctl.borrow().services().clipboard.written.len(), 0);
 
         // Down moves the ring and Enter chooses: the second row is UPPERCASE.
         r.ui.invoke_context_menu_requested(0, 10.0, 10.0);

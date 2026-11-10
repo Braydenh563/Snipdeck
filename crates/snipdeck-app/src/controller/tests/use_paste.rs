@@ -125,7 +125,7 @@ fn the_item_menu_offers_paste_as_and_pastes_the_chosen_transform() {
         .map(|t| ChooseLabel::Transform(*t))
         .collect();
     assert_eq!(labels, want);
-    assert!(w.ctl.services.clipboard.written.is_empty());
+    assert_eq!(w.ctl.services.clipboard.written.len(), 0);
     // Row 1 is UPPERCASE.
     w.ctl.choose_item_menu(1);
     assert_eq!(
@@ -151,7 +151,7 @@ fn a_template_with_questions_asks_first_then_pastes_as_the_transform() {
         w.ctl.use_item_as(id, Transform::Title),
         UseResult::NeedsAnswers
     );
-    assert!(w.ctl.services.clipboard.written.is_empty());
+    assert_eq!(w.ctl.services.clipboard.written.len(), 0);
     assert_eq!(
         w.ctl.submit_fill(&["ada lovelace".to_owned()]),
         UseResult::Done(UseOutcome::Pasted)

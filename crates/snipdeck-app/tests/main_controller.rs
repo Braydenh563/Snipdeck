@@ -364,7 +364,7 @@ fn paste_as_in_the_main_window_pastes_the_chosen_transform_for_the_row() {
         ctl.main_action(MainAction::PasteAs, at).is_none(),
         "the action only opens the chooser"
     );
-    assert!(ctl.services().clipboard.written.is_empty());
+    assert_eq!(ctl.services().clipboard.written.len(), 0);
     let upper = Transform::ALL
         .iter()
         .position(|t| *t == Transform::Upper)
