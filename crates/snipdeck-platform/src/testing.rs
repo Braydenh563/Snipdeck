@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use crate::{
     error::Error as ServiceError,
+    hello::{HelloAuthenticator, HelloAvailability, HelloError},
     keys::{KeyEvent, Modifiers},
     payload::Payload,
     pipeline::{Clipboard, Error, Keyboard, Timing},
@@ -526,5 +527,162 @@ mod tests {
         assert!((look.text_scale() - 1.0).abs() < f32::EPSILON);
         look.clone().set_text_scale_percent(Some(150));
         assert!((look.text_scale() - 1.5).abs() < f32::EPSILON);
+    }
+}
+
+/// A deterministic Hello for tests: set the outcomes, count the prompts. `Debug` hides the secret.
+pub struct FakeHello {
+    state: Mutex<FakeHelloState>,
+}
+
+struct FakeHelloState {
+    availability: HelloAvailability,
+    ensure: Result<(), HelloError>,
+    sign: Result<(), HelloError>,
+    secret: Vec<u8>,
+    jitter: bool,
+    prompts: usize,
+}
+
+impl std::fmt::Debug for FakeHello {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FakeHello")
+            .field("prompts", &self.prompts())
+            .finish_non_exhaustive()
+    }
+}
+
+impl Default for FakeHello {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl FakeHello {
+    /// Ready, everything succeeds, one fixed credential.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            state: Mutex::new(FakeHelloState {
+                availability: HelloAvailability::Ready,
+                ensure: Ok(()),
+                sign: Ok(()),
+                secret: b"fake-credential-1".to_vec(),
+                jitter: false,
+                prompts: 0,
+            }),
+        }
+    }
+
+    fn with<T>(&self, f: impl FnOnce(&mut FakeHelloState) -> T) -> T {
+        f(&mut self
+            .state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner))
+    }
+
+    /// Sets what `availability` says.
+    pub fn set_availability(&self, value: HelloAvailability) {
+        self.with(|s| s.availability = value);
+    }
+
+    /// Sets the outcome of `ensure_credential`.
+    pub fn set_ensure(&self, value: Result<(), HelloError>) {
+        self.with(|s| s.ensure = value);
+    }
+
+    /// Sets the outcome of `sign_challenge` (`Ok` signs normally).
+    pub fn set_sign(&self, value: Result<(), HelloError>) {
+        self.with(|s| s.sign = value);
+    }
+
+    /// Replaces the credential: later signatures differ, like a re-made Hello credential.
+    pub fn replace_credential(&self, secret: &[u8]) {
+        self.with(|s| s.secret = secret.to_vec());
+    }
+
+    /// Makes every signature different from the last, like a Hello that is not deterministic.
+    pub fn set_non_deterministic(&self, on: bool) {
+        self.with(|s| s.jitter = on);
+    }
+
+    /// How many times a signature was asked for.
+    #[must_use]
+    pub fn prompts(&self) -> usize {
+        self.with(|s| s.prompts)
+    }
+}
+
+impl HelloAuthenticator for FakeHello {
+    fn availability(&self) -> HelloAvailability {
+        self.with(|s| s.availability)
+    }
+
+    fn ensure_credential(&self) -> Result<(), HelloError> {
+        self.with(|s| s.ensure)
+    }
+
+    fn sign_challenge(&self, challenge: &[u8]) -> Result<zeroize::Zeroizing<Vec<u8>>, HelloError> {
+        self.with(|s| {
+            s.prompts += 1;
+            s.sign?;
+            let mut out = s.secret.clone();
+            out.extend_from_slice(challenge);
+            if s.jitter {
+                out.extend_from_slice(&s.prompts.to_le_bytes());
+            }
+            Ok(zeroize::Zeroizing::new(out))
+        })
+    }
+}
+
+#[cfg(test)]
+mod hello_tests {
+    use super::*;
+
+    #[test]
+    fn signatures_are_repeatable_until_the_credential_changes() {
+        let hello = FakeHello::new();
+        let a = hello.sign_challenge(b"c").unwrap();
+        assert_eq!(a, hello.sign_challenge(b"c").unwrap());
+        hello.replace_credential(b"other");
+        assert_ne!(a, hello.sign_challenge(b"c").unwrap());
+        assert_eq!(hello.prompts(), 3);
+    }
+
+    #[test]
+    fn non_deterministic_mode_differs_each_time() {
+        let hello = FakeHello::new();
+        hello.set_non_deterministic(true);
+        assert_ne!(
+            hello.sign_challenge(b"c").unwrap(),
+            hello.sign_challenge(b"c").unwrap()
+        );
+    }
+
+    #[test]
+    fn cancel_and_removed_map_to_errors() {
+        let hello = FakeHello::new();
+        hello.set_sign(Err(HelloError::Cancelled));
+        assert_eq!(hello.sign_challenge(b"c"), Err(HelloError::Cancelled));
+        hello.set_sign(Err(HelloError::Removed));
+        assert_eq!(hello.sign_challenge(b"c"), Err(HelloError::Removed));
+    }
+
+    #[test]
+    fn availability_and_ensure_follow_the_fake() {
+        let hello = FakeHello::new();
+        assert_eq!(hello.availability(), HelloAvailability::Ready);
+        hello.set_availability(HelloAvailability::NotSetUp);
+        assert_eq!(hello.availability(), HelloAvailability::NotSetUp);
+        hello.set_ensure(Err(HelloError::Cancelled));
+        assert_eq!(hello.ensure_credential(), Err(HelloError::Cancelled));
+    }
+
+    #[test]
+    fn debug_hides_the_secret() {
+        let hello = FakeHello::new();
+        assert!(!format!("{hello:?}").contains("fake-credential"));
+        assert!(!format!("{hello:?}").contains("102"));
     }
 }

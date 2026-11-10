@@ -31,6 +31,7 @@ pub mod dpapi;
 pub mod dpi;
 pub mod erase;
 pub mod file_dialog;
+pub mod hello;
 mod hidden_window;
 pub mod hotkey;
 pub mod keyboard;
