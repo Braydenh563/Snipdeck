@@ -37,6 +37,7 @@ import { Menu, MenuEntry } from "components/menu.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
 import { Chooser, ChoiceEntry } from "components/chooser.slint";
 import { LabelChip } from "components/label-chip.slint";
+import { QuickAdd } from "components/quick-add.slint";
 import { CommandPalette, PaletteRow } from "components/command-palette.slint";
 import { CommandTexts } from "command_texts.slint";
 import { RecentRow, RecentText } from "panel.slint";
@@ -316,6 +317,39 @@ export component MainWindow inherits Window {
     // A label chip was chosen (0 to 7); -1 clears the filter. Choosing the active chip again also clears it.
     callback label-filter-requested(int);
     callback new-item-requested();
+    // The quick-add box above an open list: Enter or [Create] (text, kind 0 Text / 1 Link / 2 Template, sensitive),
+    // and "More options" (the full editor, prefilled with the text).
+    callback quick-add-requested(string, int, bool);
+    callback quick-add-full(string);
+    // What a text looks like (0 Text, 1 Link, 2 Template), for the box's preselected kind.
+    pure callback detect-kind(string) -> int;
+    // Counts up to open the quick-add box and focus it (Ctrl+N in an open list).
+    in-out property <int> quick-add-request: 0;
+    // The box is open: it owns the typing keys (/, Ctrl+Z) like the search field does.
+    property <bool> quick-open: false;
+    // The box sits above the rows of an open list (not in a search, the Trash or a system view).
+    property <bool> quick-add-shown: root.section == MainSection.list && !root.searching && !root.loading;
+    // Ctrl+N: the quick-add box when a list is open, else the item editor.
+    // The box owns the typing keys only while it is on screen.
+    property <bool> quick-typing: root.quick-open && root.quick-add-shown;
+    changed quick-add-shown => {
+        if (!root.quick-add-shown && root.quick-open) {
+            // The box's field had the focus and is gone with it: the items take it, so the window's keys keep working.
+            root.quick-open = false;
+            root.focus-items();
+        }
+    }
+    function new-item() {
+        if (root.quick-add-shown) {
+            if (root.rows.length == 0) {
+                // An empty list shows no collapsed row: open the box itself.
+                root.quick-open = true;
+            }
+            root.quick-add-request += 1;
+        } else {
+            root.new-item-requested();
+        }
+    }
     // The empty deck's "Save from clipboard" and "Import…".
     callback add-from-clipboard();
     callback import-requested();
@@ -943,7 +977,7 @@ export component MainWindow inherits Window {
                     if (event.modifiers.shift) {
                         root.add-list-requested();
                     } else {
-                        root.new-item-requested();
+                        root.new-item();
                     }
                     return accept;
                 }
@@ -952,11 +986,11 @@ export component MainWindow inherits Window {
                     return accept;
                 }
                 // A focused search field undoes its own typing.
-                if ((event.text == "z" || event.text == "Z") && !event.modifiers.shift && !search.has-focus) {
+                if ((event.text == "z" || event.text == "Z") && !event.modifiers.shift && !search.has-focus && !root.quick-typing) {
                     root.undo-requested();
                     return accept;
                 }
-                if ((((event.text == "z" || event.text == "Z") && event.modifiers.shift) || event.text == "y" || event.text == "Y") && !search.has-focus) {
+                if ((((event.text == "z" || event.text == "Z") && event.modifiers.shift) || event.text == "y" || event.text == "Y") && !search.has-focus && !root.quick-typing) {
                     root.redo-requested();
                     return accept;
                 }
@@ -965,7 +999,7 @@ export component MainWindow inherits Window {
                 root.help-requested(HelpPage.guide);
                 return accept;
             }
-            if (event.text == "/" && !search.has-focus && !event.modifiers.control && !event.modifiers.alt) {
+            if (event.text == "/" && !search.has-focus && !root.quick-typing && !event.modifiers.control && !event.modifiers.alt) {
                 root.focus-search();
                 return accept;
             }
@@ -1565,6 +1599,23 @@ export component MainWindow inherits Window {
                     }
                 }
 
+                // ---- Quick add (an open list) -----------------------------------------------------
+                if root.quick-add-shown && (root.rows.length > 0 || root.quick-open): HorizontalLayout {
+                    padding-left: root.pad;
+                    padding-right: root.pad;
+                    padding-bottom: Space.s1;
+                    QuickAdd {
+                        expanded <=> root.quick-open;
+                        list-name: root.section-name();
+                        show-more: true;
+                        open-request: root.quick-add-request;
+                        detect-kind(t) => { root.detect-kind(t) }
+                        create(t, k, s) => { root.quick-add-requested(t, k, s); }
+                        full-editor(t) => { root.quick-add-full(t); }
+                        cancelled => { root.focus-items(); }
+                    }
+                }
+
                 // ---- The items --------------------------------------------------------------------
                 deck := Rectangle {
                     vertical-stretch: 1;
@@ -2129,7 +2180,7 @@ export component MainWindow inherits Window {
                             } else if (root.section == MainSection.recent) {
                                 root.settings-requested();
                             } else {
-                                root.new-item-requested();
+                                root.new-item();
                             }
                         }
                     }

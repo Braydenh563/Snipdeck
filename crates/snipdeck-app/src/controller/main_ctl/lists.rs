@@ -13,7 +13,7 @@ use crate::{
     failure::Cause,
     host::ClipboardText,
     list_text,
-    main_window::{Key, Section, reorder},
+    main_window::{Key, Section, reorder, reorder_many},
     usecase,
 };
 
@@ -202,34 +202,32 @@ where
             return;
         };
         let keys = self.main.keys();
-        let (Some(Key::Item(moved)), Some(Key::Item(target))) =
+        let (Some(Key::Item(first)), Some(Key::Item(target))) =
             (keys.get(from).copied(), keys.get(onto).copied())
         else {
             return;
         };
+        let moved = self.main.dragged_items(from);
         let order = self.main.manual_order(list);
-        let (Some(a), Some(b)) = (
-            order.iter().position(|i| *i == moved),
-            order.iter().position(|i| *i == target),
-        ) else {
-            return;
-        };
-        let Some(delta) = b.checked_signed_diff(a) else {
-            return;
-        };
-        let Some((_, placement)) = reorder(&order, a, delta) else {
+        let Some(placements) = reorder_many(&order, &moved, target) else {
             return;
         };
         let mut changes = Vec::new();
-        let done = move_recorded(&mut self.store, moved, list, placement, &mut changes);
-        let moved_ok = done.is_ok();
-        if moved_ok {
+        let mut done = Ok(());
+        for (id, placement) in placements {
+            done = move_recorded(&mut self.store, id, list, placement, &mut changes);
+            if done.is_err() {
+                break;
+            }
+        }
+        let any = !changes.is_empty();
+        if any {
             self.record_step(crate::history::Action::Reorder, changes);
         }
         self.finish(&done, None);
-        if moved_ok {
+        if any && done.is_ok() {
             self.main_fresh();
-            self.follow_moved_row(moved);
+            self.follow_moved_row(first);
             self.announce_placed(self.main.cursor() + 1, self.main.keys().len());
         }
     }
@@ -240,22 +238,33 @@ where
         if self.main.section() == Section::Trash {
             return;
         }
-        let Some(Key::Item(id)) = self.main.keys().get(row).copied() else {
-            return;
-        };
+        let moved = self.main.dragged_items(row);
         let Some(target) = self.main.lists().get(list) else {
             return;
         };
         let (target, name) = (target.id, target.name.as_str().to_owned());
-        if self.main.item(id).is_none_or(|i| i.list_id == target) {
+        let moved: Vec<ItemId> = moved
+            .into_iter()
+            .filter(|id| self.main.item(*id).is_some_and(|i| i.list_id != target))
+            .collect();
+        if moved.is_empty() {
             return;
         }
         let mut changes = Vec::new();
-        match move_recorded(&mut self.store, id, target, Placement::Last, &mut changes) {
+        let mut done = Ok(());
+        for id in &moved {
+            done = move_recorded(&mut self.store, *id, target, Placement::Last, &mut changes);
+            if done.is_err() {
+                break;
+            }
+        }
+        if !changes.is_empty() {
+            self.record_step(crate::history::Action::Move, changes);
+        }
+        match done {
             Ok(()) => {
-                self.record_step(crate::history::Action::Move, changes);
                 self.show_toast(neutral_toast(ToastMessage::ItemsMoved {
-                    count: 1,
+                    count: moved.len(),
                     list: name,
                 }));
                 self.library_changed();

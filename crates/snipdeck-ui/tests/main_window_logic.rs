@@ -170,6 +170,10 @@ fn start() -> (MainWindow, Log) {
     hook!(on_view_changed, |v| format!("view:{v:?}"));
     hook!(on_theme_chosen, |i| format!("theme:{i}"));
     hook!(on_new_item_requested, || "new".to_string());
+    hook!(on_quick_add_requested, |t, k, s| format!(
+        "quick-add:{t}:{k}:{s}"
+    ));
+    hook!(on_quick_add_full, |t| format!("quick-add-full:{t}"));
     hook!(on_add_from_clipboard, || "add-from-clipboard".to_string());
     hook!(on_import_requested, || "import".to_string());
     hook!(on_add_from_clipboard, || "add-from-clipboard".to_string());
@@ -1283,6 +1287,72 @@ ui_tests! {
             assert_eq!(ui.get_view(), view);
             assert_eq!(take(&log), [logged]);
         }
+    }
+
+    fn ctrl_n_in_an_open_list_focuses_the_quick_add_box_and_saves_with_enter() {
+        let (ui, log) = start();
+        assert!(missing(&ui, "New item in All items", AccessibleRole::Button), "no box outside a list");
+        ui.set_section(MainSection::List);
+        ui.set_section_index(0);
+        settle();
+        find(&ui, "New item in Email replies", AccessibleRole::Button);
+        take(&log);
+        chord(ui.window(), &[Key::Control], "n");
+        settle();
+        assert!(take(&log).is_empty(), "the editor does not open");
+        type_text(ui.window(), "a/b");
+        take(&log);
+        press(ui.window(), &key(Key::Return));
+        assert_eq!(take(&log), ["quick-add:a/b:0:false"], "typing a / does not jump to the search");
+        find(&ui, "More options: open the full editor", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["quick-add-full:"]);
+        press(ui.window(), &key(Key::Escape));
+        settle();
+        assert!(!missing(&ui, "New item in Email replies", AccessibleRole::Button), "Esc folds the box back");
+        assert!(ui.get_items_focused(), "and the focus goes back to the items");
+        ui.set_section(MainSection::Pinned);
+        settle();
+        chord(ui.window(), &[Key::Control], "n");
+        assert_eq!(take(&log), ["new"], "a system view opens the editor as before");
+    }
+
+    fn an_open_quick_add_box_that_goes_away_stops_owning_the_typing_keys() {
+        let (ui, log) = start();
+        ui.set_section(MainSection::List);
+        ui.set_section_index(0);
+        settle();
+        chord(ui.window(), &[Key::Control], "n");
+        settle();
+        chord(ui.window(), &[Key::Control], "z");
+        assert!(!take(&log).contains(&"undo".to_string()), "the box keeps its own typing keys");
+        ui.set_section(MainSection::Pinned);
+        settle();
+        take(&log);
+        chord(ui.window(), &[Key::Control], "z");
+        assert_eq!(take(&log), ["undo"], "Ctrl+Z undoes again once the box is gone");
+        // Coming back to the list shows the folded row, not a stale open box.
+        ui.set_section(MainSection::List);
+        settle();
+        find(&ui, "New item in Email replies", AccessibleRole::Button);
+    }
+
+    fn an_empty_list_shows_no_collapsed_row_and_ctrl_n_opens_the_box() {
+        let (ui, log) = start();
+        fixture::set_rows(&ui, Vec::new());
+        ui.set_section(MainSection::List);
+        ui.set_section_index(0);
+        settle();
+        assert!(missing(&ui, "New item in Email replies", AccessibleRole::Button), "no third New item");
+        take(&log);
+        chord(ui.window(), &[Key::Control], "n");
+        settle();
+        assert!(take(&log).is_empty(), "the editor does not open");
+        type_text(ui.window(), "hi");
+        press(ui.window(), &key(Key::Return));
+        assert_eq!(take(&log), ["quick-add:hi:0:false"], "the box is open and focused");
+        press(ui.window(), &key(Key::Escape));
+        settle();
+        assert!(missing(&ui, "Create item", AccessibleRole::Button), "Esc closes it again");
     }
 
     fn ctrl_n_and_the_buttons_report_what_was_asked() {

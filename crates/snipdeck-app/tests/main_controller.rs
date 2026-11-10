@@ -1516,6 +1516,158 @@ fn panel_titles(ctl: &Ctl) -> Vec<String> {
 }
 
 #[test]
+fn main_quick_add_saves_to_the_open_list() {
+    let mut ctl = pro();
+    open_list(&mut ctl, "Code");
+    let before = titles(&ctl.main_screen());
+    assert!(ctl.quick_add(
+        "a quick note",
+        None,
+        false,
+        snipdeck_app::item_editor::Origin::Main
+    ));
+    let after = titles(&ctl.main_screen());
+    assert_eq!(
+        after.len(),
+        before.len() + 1,
+        "one more row in the open list"
+    );
+    assert_eq!(after.last().map(String::as_str), Some("a quick note"));
+    assert!(
+        !ctl.quick_add("  \n", None, false, snipdeck_app::item_editor::Origin::Main),
+        "blank text adds nothing"
+    );
+}
+
+#[test]
+fn dragging_a_marked_panel_row_moves_every_marked_row_in_one_step() {
+    let mut ctl = pro();
+    let before = panel_titles(&ctl);
+    assert!(before.len() >= 4);
+    ctl.panel_mark(0, SelectMode::Toggle);
+    ctl.panel_mark(1, SelectMode::Toggle);
+    let last = before.len() - 1;
+    ctl.panel_drop_row(0, last);
+    let mut want: Vec<String> = before[2..].to_vec();
+    want.extend_from_slice(&before[..2]);
+    assert_eq!(panel_titles(&ctl), want);
+    ctl.undo();
+    assert_eq!(panel_titles(&ctl), before, "one Undo");
+}
+
+#[test]
+fn main_quick_add_selects_the_new_row_in_main_and_leaves_the_panel_alone() {
+    let mut ctl = pro();
+    open_list(&mut ctl, "Code");
+    let code_tab = ctl
+        .view()
+        .tabs
+        .iter()
+        .position(|t| t.name == "Code")
+        .unwrap();
+    ctl.select_tab(code_tab);
+    let panel_before = ctl.view().selected;
+    assert!(ctl.quick_add(
+        "fresh quick note",
+        None,
+        false,
+        snipdeck_app::item_editor::Origin::Main
+    ));
+    let screen = ctl.main_screen();
+    assert_eq!(screen.rows[screen.cursor].title, "fresh quick note");
+    assert_eq!(ctl.view().selected, panel_before);
+}
+
+#[test]
+fn dragging_marked_rows_onto_a_list_moves_them_all_in_one_undoable_step() {
+    let mut ctl = pro();
+    open_list(&mut ctl, "Email replies");
+    let before = titles(&ctl.main_screen());
+    ctl.main_select(0, SelectMode::Replace);
+    ctl.main_select(1, SelectMode::Toggle);
+    let code = list_index(&ctl.main_screen(), "Code");
+    ctl.main_drop_on_list(1, code);
+    let screen = ctl.main_screen();
+    assert_eq!(titles(&screen), before[2..], "both left the open list");
+    assert!(matches!(
+        message(&screen),
+        ToastMessage::ItemsMoved { count: 2, .. }
+    ));
+    assert_eq!(
+        ctl.history_view().undo,
+        Some(snipdeck_app::history::Action::Move)
+    );
+    ctl.undo();
+    assert_eq!(
+        titles(&ctl.main_screen()),
+        before,
+        "one Undo brings both back"
+    );
+}
+
+#[test]
+fn dragging_marked_panel_rows_onto_a_tab_moves_them_all_in_one_undoable_step() {
+    let mut ctl = pro();
+    let before = panel_titles(&ctl);
+    ctl.panel_mark(0, SelectMode::Toggle);
+    ctl.panel_mark(1, SelectMode::Toggle);
+    let other = ctl
+        .view()
+        .tabs
+        .iter()
+        .position(|t| !t.active)
+        .expect("another tab");
+    ctl.panel_drop_on_tab(0, other);
+    assert_eq!(panel_titles(&ctl), before[2..], "both left the shown list");
+    assert!(matches!(
+        ctl.main_screen().toast.map(|t| t.message),
+        Some(ToastMessage::ItemsMoved { count: 2, .. })
+    ));
+    assert_eq!(
+        ctl.history_view().undo,
+        Some(snipdeck_app::history::Action::Move)
+    );
+    ctl.undo();
+    assert_eq!(panel_titles(&ctl), before);
+}
+
+#[test]
+fn dropping_a_panel_row_on_a_marked_row_changes_nothing() {
+    let mut ctl = pro();
+    let before = panel_titles(&ctl);
+    ctl.panel_mark(0, SelectMode::Toggle);
+    ctl.panel_mark(2, SelectMode::Toggle);
+    ctl.panel_drop_row(0, 2);
+    assert_eq!(panel_titles(&ctl), before);
+    assert_eq!(ctl.history_view().undo, None);
+}
+
+#[test]
+fn a_panel_drag_leaves_a_row_that_is_collapsed_to_deleted_behind() {
+    let mut ctl = pro();
+    let before = panel_titles(&ctl);
+    ctl.panel_delete_mode(true);
+    ctl.panel_delete_row(1);
+    ctl.panel_mark(0, SelectMode::Toggle);
+    ctl.panel_mark(1, SelectMode::Toggle);
+    let last = before.len() - 1;
+    ctl.panel_drop_row(0, last);
+    let live: Vec<String> = ctl
+        .view()
+        .rows
+        .iter()
+        .filter(|r| !r.deleted_pending)
+        .map(|r| r.title.clone())
+        .collect();
+    let mut want: Vec<String> = before[2..].to_vec();
+    want.push(before[0].clone());
+    assert_eq!(
+        live, want,
+        "only the live marked row moved; the collapsed one stayed out"
+    );
+}
+
+#[test]
 fn dragging_a_panel_row_onto_another_takes_its_place() {
     let mut ctl = pro();
     let before = panel_titles(&ctl);

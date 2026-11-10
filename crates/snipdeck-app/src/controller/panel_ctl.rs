@@ -11,7 +11,7 @@ use super::{
 };
 use crate::{
     host::ClipboardText,
-    main_window::reorder,
+    main_window::{reorder, reorder_many},
     settings::{Settings, Theme},
     settings_store::{Poll, SettingsSaver},
     toast::{Toast, ToastKind, ToastMessage},
@@ -180,28 +180,41 @@ where
     }
 
     /// Row `row` of the Panel was dropped on tab `tab`: the item goes to the end of that list.
+    /// When the row is one of several marked, every marked item goes, in their current order,
+    /// as one history step.
     pub fn panel_drop_on_tab(&mut self, row: usize, tab: usize) {
-        let Some(item) = self.live_row(row).map(|r| r.id) else {
-            return;
-        };
         let Some(target) = self.model.tabs().into_iter().nth(tab) else {
             return;
         };
-        if self.store.item(item).is_ok_and(|i| i.list_id == target.id) {
+        let moved: Vec<ItemId> = self
+            .drag_targets(row)
+            .into_iter()
+            .filter(|id| self.store.item(*id).is_ok_and(|i| i.list_id != target.id))
+            .collect();
+        if moved.is_empty() {
             return;
         }
         let mut changes = Vec::new();
-        match super::history_ctl::move_recorded(
-            &mut self.store,
-            item,
-            target.id,
-            Placement::Last,
-            &mut changes,
-        ) {
+        let mut done = Ok(());
+        for id in &moved {
+            done = super::history_ctl::move_recorded(
+                &mut self.store,
+                *id,
+                target.id,
+                Placement::Last,
+                &mut changes,
+            );
+            if done.is_err() {
+                break;
+            }
+        }
+        if !changes.is_empty() {
+            self.record_step(crate::history::Action::Move, changes);
+        }
+        match done {
             Ok(()) => {
-                self.record_step(crate::history::Action::Move, changes);
                 self.show_toast(neutral(ToastMessage::ItemsMoved {
-                    count: 1,
+                    count: moved.len(),
                     list: target.name,
                 }));
                 self.library_changed();
@@ -210,26 +223,73 @@ where
         }
     }
 
-    /// A drag of Panel row `from` ended on row `onto`: the item takes that row's place. Like the
-    /// Main window, only a list in manual order, with no search running, can be arranged.
+    /// What a drag that starts on row `row` carries: the marked rows when `row` is one of them,
+    /// else just that row; a row collapsed to "Deleted · Undo" never goes along.
+    fn drag_targets(&self, row: usize) -> Vec<ItemId> {
+        let live: Vec<ItemId> = self
+            .model
+            .rows()
+            .iter()
+            .filter(|r| !r.deleted_pending)
+            .map(|r| r.id)
+            .collect();
+        self.model
+            .targets(row)
+            .into_iter()
+            .filter(|id| live.contains(id))
+            .collect()
+    }
+
+    /// A drag of Panel row `from` ended on row `onto`: the item takes that row's place; when `from`
+    /// is one of several marked rows, every marked item moves there together, in their current
+    /// order, as one history step. Like the Main window, only a list in manual order, with no
+    /// search running, can be arranged.
     pub fn panel_drop_row(&mut self, from: usize, onto: usize) {
-        let (Some(moved), Some(target)) = (
+        let (Some(first), Some(target)) = (
             self.live_row(from).map(|r| r.id),
             self.live_row(onto).map(|r| r.id),
         ) else {
             return;
         };
+        if !self.model.reorderable() {
+            self.offer_manual_for_panel();
+            return;
+        }
+        let Some(list) = self.model.list().map(|l| l.id) else {
+            return;
+        };
         let order = self.model.manual_order();
-        let (Some(a), Some(b)) = (
-            order.iter().position(|i| *i == moved),
-            order.iter().position(|i| *i == target),
-        ) else {
+        let Some(placements) = reorder_many(&order, &self.drag_targets(from), target) else {
             return;
         };
-        let Some(delta) = b.checked_signed_diff(a) else {
-            return;
-        };
-        self.panel_move_item(moved, delta);
+        let mut changes = Vec::new();
+        let mut done = Ok(());
+        for (id, placement) in placements {
+            done = super::history_ctl::move_recorded(
+                &mut self.store,
+                id,
+                list,
+                placement,
+                &mut changes,
+            );
+            if done.is_err() {
+                break;
+            }
+        }
+        if !changes.is_empty() {
+            self.record_step(crate::history::Action::Reorder, changes);
+        }
+        match done {
+            Ok(()) => {
+                if !self.library_changed() {
+                    return;
+                }
+                self.model.select_item(first);
+                let at = self.model.manual_order().iter().position(|i| *i == first);
+                self.announce_placed(at.map_or(1, |a| a + 1), order.len());
+            }
+            Err(_) => self.show_toast(failed()),
+        }
     }
 
     /// A move was refused in the Panel: when the shown list sorts itself (and no search runs), a
