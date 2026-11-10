@@ -148,7 +148,7 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
 - **Order of items.** Select a row and press `Alt+Up` or `Alt+Down`, in the Main window or the Panel, or choose **Move up** / **Move down** in the snippet's menu.
 - **Move.** Choose **Move to list…** from the item menu to move one or more selected items.
 - **Paste as…** Choose **Paste as…** from the item menu (text items, one at a time) to paste the text changed: **Plain
-  text**, **UPPERCASE**, **lowercase**, **Title Case**, **Trimmed** (no space at the ends) or **slug** (`my-title`).
+  text**, **UPPERCASE**, **lowercase**, **Title Case**, **Trimmed** (no space at the ends) or **slug-like-this** (`my-title`).
   A template is filled in first. The result is always plain text, with the cursor at the end.
 - **Duplicate.** Choose **Duplicate** from the item menu in the Main window to make a copy of the item right
   after it.

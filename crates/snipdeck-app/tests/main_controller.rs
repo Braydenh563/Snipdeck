@@ -359,7 +359,7 @@ fn paste_as_in_the_main_window_pastes_the_chosen_transform_for_the_row() {
     use snipdeck_core::template::transform::Transform;
     let mut ctl = pro();
     let screen = ctl.main_screen();
-    let at = row_of(&screen, "Invoice reminder");
+    let at = row_of(&screen, "Out of office");
     assert!(
         ctl.main_action(MainAction::PasteAs, at).is_none(),
         "the action only opens the chooser"
@@ -375,7 +375,10 @@ fn paste_as_in_the_main_window_pastes_the_chosen_transform_for_the_row() {
     let snipdeck_platform::payload::Data::Text(text) = &written[0].data()[0] else {
         panic!("plain text")
     };
-    assert_eq!(*text, text.to_uppercase());
+    assert_eq!(
+        text,
+        "I'M AWAY UNTIL MONDAY WITH LIMITED EMAIL. FOR ANYTHING URGENT, PLEASE CALL THE OFFICE."
+    );
     // The chooser is spent: a second choice without reopening pastes nothing.
     assert!(ctl.main_paste_as(upper).is_none());
     assert_eq!(ctl.services().clipboard.written.len(), 1);

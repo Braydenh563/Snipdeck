@@ -985,7 +985,7 @@ fn the_paste_as_row_has_its_name_and_the_second_level_takes_arrows_enter_and_esc
                 .collect();
         assert_eq!(
             texts,
-            ["Plain text", "UPPERCASE", "lowercase", "Title Case", "Trimmed", "slug"]
+            ["Plain text", "UPPERCASE", "lowercase", "Title Case", "Trimmed", "slug-like-this"]
         );
         let _ = element(&r.ui, "UPPERCASE", AccessibleRole::ListItem);
         // Esc closes the level and pastes nothing.

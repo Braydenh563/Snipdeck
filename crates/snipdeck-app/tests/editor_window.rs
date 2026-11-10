@@ -755,6 +755,9 @@ fn a_free_user_sees_prompted_fields_refused_with_the_pro_toast() {
         menu(&r, "New item");
         let ed = r.ed();
         assert!(!ed.get_prompted_available());
+        // The Template form is taller (more placeholder chips); the keyboard focus has to be put
+        // in the form first, or Ctrl+Enter below never reaches the editor.
+        type_text(ed.window(), "x");
         click(
             ed.window(),
             &find(&ed, "Template", AccessibleRole::RadioButton),
@@ -763,6 +766,10 @@ fn a_free_user_sees_prompted_fields_refused_with_the_pro_toast() {
         ed.set_item_title("Ask".into());
         settle();
         let before = r.item_count();
+        type_text(ed.window(), "y");
+        ed.window()
+            .dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(true));
+        ed.invoke_focus_title();
         save(&ed);
         assert!(r.editor_shown(), "not saved");
         assert_eq!(r.item_count(), before);

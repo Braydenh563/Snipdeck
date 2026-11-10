@@ -410,7 +410,7 @@ ui_tests! {
         assert_eq!(take(&log), ["action:PasteAs:1"]);
         assert!(ui.get_menu_open(), "the chooser is open");
         let _ = find(&ui, "Paste as…", AccessibleRole::List);
-        for label in ["Plain text", "UPPERCASE", "lowercase", "Title Case", "Trimmed", "slug"] {
+        for label in ["Plain text", "UPPERCASE", "lowercase", "Title Case", "Trimmed", "slug-like-this"] {
             let _ = find_top(&ui, label, AccessibleRole::ListItem);
         }
         find_top(&ui, "UPPERCASE", AccessibleRole::ListItem).invoke_accessible_default_action();
