@@ -482,6 +482,9 @@ impl Rich {
     }
 }
 
+/// A row read for [`Store::recent_payload`]: hash, sealed, kind, extras, blob, blob length.
+type Stored = (Vec<u8>, bool, String, Option<Vec<u8>>, Option<String>, i64);
+
 type Raw = (
     i64,
     Vec<u8>,
@@ -806,7 +809,6 @@ impl Store {
         if key.is_none() && keys::ring_exists(&self.conn)? {
             return Err(Error::EncryptionLocked);
         }
-        type Stored = (Vec<u8>, bool, String, Option<Vec<u8>>, Option<String>, i64);
         let row: Option<Stored> = self
             .conn
             .query_row(

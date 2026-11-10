@@ -149,7 +149,7 @@ pub fn capture_image<L: Library>(
 pub fn capture_files<L: Library>(
     library: &mut L,
     list: &Destination,
-    files: Vec<(String, Vec<u8>)>,
+    files: &[(String, Vec<u8>)],
     now: Timestamp,
 ) -> snipdeck_store::Result<Captured> {
     if files.is_empty() {

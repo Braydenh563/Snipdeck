@@ -1800,7 +1800,7 @@ ui_tests! {
             let log = log.clone();
             ui.on_recent_saved(move |r, t| log.borrow_mut().push(format!("save:{r}:{t}")));
         }
-        let entry = |id: i32, text: &str| snipdeck_ui::RecentRow { id, preview: text.into(), app: "".into(), age_minutes: 1 };
+        let entry = |id: i32, text: &str| snipdeck_ui::RecentRow { id, preview: text.into(), app: "".into(), age_minutes: 1, kind: snipdeck_ui::ItemKind::Text, image: Default::default() };
         ui.set_recent_on(true);
         ui.set_recent_rows(ModelRc::new(VecModel::from(vec![entry(10, "one"), entry(20, "two"), entry(30, "three")])));
         ui.set_section(MainSection::Recent);
@@ -1831,7 +1831,7 @@ ui_tests! {
             let unlock = log.clone();
             ui.on_recent_unlock_requested(move || unlock.borrow_mut().push("unlock".to_string()));
         }
-        let entry = |id: i32| snipdeck_ui::RecentRow { id, preview: "one".into(), app: "".into(), age_minutes: 1 };
+        let entry = |id: i32| snipdeck_ui::RecentRow { id, preview: "one".into(), app: "".into(), age_minutes: 1, kind: snipdeck_ui::ItemKind::Text, image: Default::default() };
         ui.set_recent_on(true);
         ui.set_recent_rows(ModelRc::new(VecModel::from(vec![entry(1), entry(2)])));
         ui.set_section(MainSection::Recent);

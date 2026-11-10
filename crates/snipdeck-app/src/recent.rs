@@ -325,11 +325,13 @@ fn thumbnail(width: u32, height: u32, rgba: &[u8]) -> Option<RecentThumb> {
         return None;
     }
     let side = THUMB_SIDE as usize;
-    let scale = (w.max(h) as f64 / side as f64).max(1.0);
-    let (tw, th) = (
-        ((w as f64 / scale).round() as usize).max(1),
-        ((h as f64 / scale).round() as usize).max(1),
-    );
+    let (tw, th) = if w.max(h) <= side {
+        (w, h)
+    } else if w >= h {
+        (side, (h * side / w).max(1))
+    } else {
+        ((w * side / h).max(1), side)
+    };
     let mut out = Vec::with_capacity(tw * th * 4);
     for ty in 0..th {
         let (y0, y1) = (ty * h / th, ((ty + 1) * h / th).max(ty * h / th + 1).min(h));
@@ -348,13 +350,12 @@ fn thumbnail(width: u32, height: u32, rgba: &[u8]) -> Option<RecentThumb> {
                 }
             }
             let n = ((y1 - y0) * (x1 - x0)) as u64;
-            if sum[3] == 0 {
-                out.extend_from_slice(&[0, 0, 0, 0]);
-            } else {
-                for c in 0..3 {
-                    out.push(u8::try_from(sum[c] / sum[3]).unwrap_or(255));
+            if let Some(red) = sum[0].checked_div(sum[3]) {
+                for v in [red, sum[1] / sum[3], sum[2] / sum[3], sum[3] / n] {
+                    out.push(u8::try_from(v).unwrap_or(255));
                 }
-                out.push(u8::try_from(sum[3] / n).unwrap_or(255));
+            } else {
+                out.extend_from_slice(&[0, 0, 0, 0]);
             }
         }
     }
@@ -891,9 +892,9 @@ mod tests {
         let all = store.recent().expect("recent");
         assert_eq!(all.len(), 1);
         assert_eq!(all[0].kind, RecentKind::Files);
-        assert_eq!(all[0].text, "2 files: B.pdf, a.TXT");
+        assert_eq!(all[0].text, "2 files: a.TXT, B.pdf");
         let row = row_view(&all[0], later);
-        assert_eq!(row.preview, "B.pdf, a.TXT");
+        assert_eq!(row.preview, "a.TXT, B.pdf");
     }
 
     #[test]
@@ -925,7 +926,7 @@ mod tests {
     fn budget_prunes_oldest_image_first() {
         let mut store = keyed();
         let pictures: Vec<Vec<u8>> = (1..=3)
-            .map(|seed| picture(120, 120, seed, png::Compression::Fast))
+            .map(|seed| picture(160, 160, seed, png::Compression::Fast))
             .collect();
         assert!(
             pictures

@@ -372,7 +372,7 @@ where
                         });
                         return;
                     }
-                    capture::capture_files(&mut self.store, &to, files, now)
+                    capture::capture_files(&mut self.store, &to, &files, now)
                 }
                 Ok(_) => Ok(Captured::Empty),
                 Err(e) => Err(e),

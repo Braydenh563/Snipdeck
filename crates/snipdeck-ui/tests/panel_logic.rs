@@ -2690,8 +2690,8 @@ ui_tests! {
         });
         ui.set_recent_available(true);
         ui.set_recent_rows(ModelRc::new(VecModel::from(vec![
-            RecentRow { id: 0, preview: "first copy".into(), app: "Notepad".into(), age_minutes: 3 },
-            RecentRow { id: 2, preview: "second copy".into(), app: "".into(), age_minutes: 0 },
+            RecentRow { id: 0, preview: "first copy".into(), app: "Notepad".into(), age_minutes: 3, kind: snipdeck_ui::ItemKind::Text, image: Default::default() },
+            RecentRow { id: 2, preview: "second copy".into(), app: "".into(), age_minutes: 0, kind: snipdeck_ui::ItemKind::Text, image: Default::default() },
         ])));
         settle();
         let list_rows = rows(&ui).len();
@@ -2725,8 +2725,8 @@ ui_tests! {
         ui.on_recent_used(move |i| used.borrow_mut().push(format!("ruse:{i}")));
         ui.set_recent_available(true);
         ui.set_recent_rows(ModelRc::new(VecModel::from(vec![
-            RecentRow { id: 1, preview: "one".into(), app: "".into(), age_minutes: 1 },
-            RecentRow { id: 2, preview: "two".into(), app: "".into(), age_minutes: 2 },
+            RecentRow { id: 1, preview: "one".into(), app: "".into(), age_minutes: 1, kind: snipdeck_ui::ItemKind::Text, image: Default::default() },
+            RecentRow { id: 2, preview: "two".into(), app: "".into(), age_minutes: 2, kind: snipdeck_ui::ItemKind::Text, image: Default::default() },
         ])));
         press_at(&ui, centre(&find(&ui, "Recent", AccessibleRole::Tab)));
         settle();
