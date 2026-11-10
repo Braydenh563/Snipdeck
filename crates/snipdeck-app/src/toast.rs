@@ -416,7 +416,6 @@ pub fn after_error(error: &UseError) -> Toast {
     use snipdeck_store::Error as Store;
     let message = match error {
         UseError::Platform(_) => ToastMessage::ClipboardBusy,
-        UseError::NoRandomness => ToastMessage::Failed,
         UseError::Render(snipdeck_core::template::RenderError::ProRequired(feature)) => {
             ToastMessage::NeedsPro(*feature)
         }
@@ -429,7 +428,8 @@ pub fn after_error(error: &UseError) -> Toast {
             cause => ToastMessage::UseFailed(cause),
         },
         // A template that needs answers opens the fill form instead of reaching a toast.
-        UseError::NeedsAnswers(_) => ToastMessage::Failed,
+        // No random numbers for `{uuid}` is a plain failure.
+        UseError::NeedsAnswers(_) | UseError::NoRandomness => ToastMessage::Failed,
     };
     Toast {
         kind: ToastKind::Danger,

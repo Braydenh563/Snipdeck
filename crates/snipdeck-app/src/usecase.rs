@@ -284,18 +284,17 @@ fn render_template(text: &str, request: &UseRequest) -> Result<(String, Option<u
         return Err(UseError::NeedsAnswers(template.prompts()));
     }
     let drawn;
-    let uuids = match &request.uuids {
-        Some(given) => given.as_slice(),
-        None => {
-            drawn = (0..template.uuid_count())
-                .map(|_| {
-                    let mut bytes = [0u8; 16];
-                    getrandom::fill(&mut bytes).map_err(|_| UseError::NoRandomness)?;
-                    Ok(bytes)
-                })
-                .collect::<Result<Vec<_>, UseError>>()?;
-            drawn.as_slice()
-        }
+    let uuids = if let Some(given) = &request.uuids {
+        given.as_slice()
+    } else {
+        drawn = (0..template.uuid_count())
+            .map(|_| {
+                let mut bytes = [0u8; 16];
+                getrandom::fill(&mut bytes).map_err(|_| UseError::NoRandomness)?;
+                Ok(bytes)
+            })
+            .collect::<Result<Vec<_>, UseError>>()?;
+        drawn.as_slice()
     };
     let mut ctx = RenderContext::new(request.now, &request.answers)
         .with_tz(request.tz.clone())
