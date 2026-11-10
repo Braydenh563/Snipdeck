@@ -2011,3 +2011,36 @@ fn alt_numbers_count_live_rows_and_skip_a_collapsed_one() {
         assert_eq!(count(&r, 2), 1);
     });
 }
+
+#[test]
+fn alt_down_in_a_sorted_list_offers_manual_order_and_the_button_switches_it() {
+    on_ui_thread(|| {
+        let r = rig();
+        let tab = r
+            .ctl
+            .borrow()
+            .view()
+            .tabs
+            .iter()
+            .position(|t| t.name == "Code")
+            .expect("Code tab");
+        let index = i32::try_from(tab).unwrap();
+        r.ui.invoke_tab_selected(index);
+        r.ui.invoke_list_menu_requested(index);
+        // The fourth row of the list menu is "Sort by: Most used" (Edit, Delete, line, Manual, Most used).
+        r.ui.invoke_list_menu_activated(4);
+        slint::platform::update_timers_and_animations();
+        assert!(!r.ui.get_rows_reorderable(), "sorted by use");
+        assert!(
+            r.ui.get_reorder_offer(),
+            "but the keys and the drag stay live"
+        );
+        r.ui.invoke_focus_search();
+        chord(r.window(), &[Key::Alt], &key(Key::DownArrow));
+        assert_eq!(r.ui.get_toast_text(), "Switch this list to Manual order?");
+        assert_eq!(r.ui.get_toast_undo_label(), "Switch");
+        r.ui.invoke_toast_undo();
+        slint::platform::update_timers_and_animations();
+        assert!(r.ui.get_rows_reorderable(), "the button switched it");
+    });
+}

@@ -417,6 +417,9 @@ msgstr "Fenster schließen"
 msgid "Code"
 msgstr "Code"
 
+msgid "Collapse sidebar (Ctrl+B)"
+msgstr "Seitenleiste einklappen (Strg+B)"
+
 msgid "Colour"
 msgstr "Farbe"
 
@@ -908,6 +911,9 @@ msgstr "Alles im Papierkorb wird endgültig gelöscht. Dies kann nicht rückgän
 
 msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
 msgstr "Alles in deiner Bibliothek wird gelöscht: Boards, Listen, Textbausteine, Bilder, Entwürfe und Sicherungen. Exportiere vorher, wenn du eine Kopie möchtest. Deine Einstellungen und deine Lizenz bleiben."
+
+msgid "Expand sidebar (Ctrl+B)"
+msgstr "Seitenleiste ausklappen (Strg+B)"
 
 msgid "Export as text"
 msgstr "Als Text exportieren"
@@ -2246,11 +2252,17 @@ msgstr "Tab „Symbole“ anzeigen"
 msgid "Show all"
 msgstr "Alle anzeigen"
 
+msgid "Show or hide sidebar"
+msgstr "Seitenleiste ein- oder ausblenden"
+
 msgid "Show or hide the Panel"
 msgstr "Panel anzeigen oder ausblenden"
 
 msgid "Show or hide the panel"
 msgstr "Panel anzeigen oder ausblenden"
+
+msgid "Show or hide the sidebar"
+msgstr "Seitenleiste ein- oder ausblenden"
 
 msgid "Show the Panel"
 msgstr "Das Panel anzeigen"
@@ -2266,6 +2278,9 @@ msgstr "Titel, Farbe, Tags und Datenschutz einblenden"
 
 msgid "Shrug"
 msgstr "Schulterzucken"
+
+msgid "Sidebar width"
+msgstr "Breite der Seitenleiste"
 
 msgid "Skip"
 msgstr "Überspringen"
@@ -2363,8 +2378,26 @@ msgstr "Textbausteine"
 msgid "Sorry"
 msgstr "Entschuldigung"
 
+msgid "Sort by"
+msgstr "Sortieren nach"
+
+msgid "Sort by: Manual"
+msgstr "Sortieren nach: Manuell"
+
+msgid "Sort by: Most used"
+msgstr "Sortieren nach: Am häufigsten verwendet"
+
+msgid "Sort by: Recently used"
+msgstr "Sortieren nach: Zuletzt verwendet"
+
+msgid "Sort by: {}"
+msgstr "Sortieren nach: {}"
+
 msgid "Sort items by"
 msgstr "Textbausteine sortieren nach"
+
+msgid "Sort: {}"
+msgstr "Sortierung: {}"
 
 msgid "Source code"
 msgstr "Quellcode"
@@ -2404,6 +2437,9 @@ msgstr "Supporter"
 
 msgid "Surprise"
 msgstr "Überraschung"
+
+msgid "Switch this list to Manual order?"
+msgstr "Diese Liste auf manuelle Reihenfolge umstellen?"
 
 msgid "Symbols"
 msgstr "Symbole"
@@ -3030,6 +3066,9 @@ msgstr "Verschieben"
 
 msgid "ms"
 msgstr "ms"
+
+msgid "navigation rail collapse expand lists panel left width"
+msgstr "navigation leiste einklappen ausklappen listen panel links breite"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"

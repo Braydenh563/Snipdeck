@@ -416,6 +416,9 @@ msgstr "ウィンドウを閉じる"
 msgid "Code"
 msgstr "コード"
 
+msgid "Collapse sidebar (Ctrl+B)"
+msgstr "サイドバーを折りたたむ (Ctrl+B)"
+
 msgid "Colour"
 msgstr "色"
 
@@ -907,6 +910,9 @@ msgstr "ゴミ箱のすべてが完全に削除されます。この操作は元
 
 msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
 msgstr "ライブラリの中身はすべて削除されます：ボード、リスト、スニペット、画像、下書き、バックアップ。コピーが必要な場合は先にエクスポートしてください。設定とライセンスは残ります。"
+
+msgid "Expand sidebar (Ctrl+B)"
+msgstr "サイドバーを展開 (Ctrl+B)"
 
 msgid "Export as text"
 msgstr "テキストとしてエクスポート"
@@ -2238,11 +2244,17 @@ msgstr "「記号」タブを表示"
 msgid "Show all"
 msgstr "すべて表示"
 
+msgid "Show or hide sidebar"
+msgstr "サイドバーの表示/非表示"
+
 msgid "Show or hide the Panel"
 msgstr "パネルの表示／非表示"
 
 msgid "Show or hide the panel"
 msgstr "パネルを表示または非表示"
+
+msgid "Show or hide the sidebar"
+msgstr "サイドバーの表示/非表示"
 
 msgid "Show the Panel"
 msgstr "パネルを表示"
@@ -2258,6 +2270,9 @@ msgstr "タイトル、色、タグ、プライバシーを表示"
 
 msgid "Shrug"
 msgstr "肩をすくめる"
+
+msgid "Sidebar width"
+msgstr "サイドバーの幅"
 
 msgid "Skip"
 msgstr "スキップ"
@@ -2355,8 +2370,26 @@ msgstr "スニペット"
 msgid "Sorry"
 msgstr "ごめんなさい"
 
+msgid "Sort by"
+msgstr "並べ替え"
+
+msgid "Sort by: Manual"
+msgstr "並べ替え: 手動"
+
+msgid "Sort by: Most used"
+msgstr "並べ替え: よく使う順"
+
+msgid "Sort by: Recently used"
+msgstr "並べ替え: 最近使った順"
+
+msgid "Sort by: {}"
+msgstr "並べ替え: {}"
+
 msgid "Sort items by"
 msgstr "並べ替え"
+
+msgid "Sort: {}"
+msgstr "並べ替え: {}"
 
 msgid "Source code"
 msgstr "ソースコード"
@@ -2396,6 +2429,9 @@ msgstr "Supporter"
 
 msgid "Surprise"
 msgstr "驚き"
+
+msgid "Switch this list to Manual order?"
+msgstr "このリストを手動の並び順に切り替えますか?"
 
 msgid "Symbols"
 msgstr "記号"
@@ -3021,6 +3057,9 @@ msgstr "移動"
 
 msgid "ms"
 msgstr "ms"
+
+msgid "navigation rail collapse expand lists panel left width"
+msgstr "ナビゲーション サイドバー 折りたたむ 展開 リスト パネル 左 幅"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"

@@ -417,6 +417,9 @@ msgstr "Cierra la ventana"
 msgid "Code"
 msgstr "Código"
 
+msgid "Collapse sidebar (Ctrl+B)"
+msgstr "Contraer la barra lateral (Ctrl+B)"
+
 msgid "Colour"
 msgstr "Color"
 
@@ -908,6 +911,9 @@ msgstr "Todo lo de la papelera se eliminará definitivamente. No se puede deshac
 
 msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
 msgstr "Se borra todo lo de tu biblioteca: tableros, listas, fragmentos, imágenes, borradores y copias de seguridad. Exporta antes si quieres una copia. Tus ajustes y tu licencia se conservan."
+
+msgid "Expand sidebar (Ctrl+B)"
+msgstr "Expandir la barra lateral (Ctrl+B)"
 
 msgid "Export as text"
 msgstr "Exportar como texto"
@@ -2246,11 +2252,17 @@ msgstr "Mostrar la pestaña Símbolos"
 msgid "Show all"
 msgstr "Mostrar todo"
 
+msgid "Show or hide sidebar"
+msgstr "Mostrar u ocultar la barra lateral"
+
 msgid "Show or hide the Panel"
 msgstr "Muestra u oculta el panel"
 
 msgid "Show or hide the panel"
 msgstr "Mostrar u ocultar el panel"
+
+msgid "Show or hide the sidebar"
+msgstr "Mostrar u ocultar la barra lateral"
 
 msgid "Show the Panel"
 msgstr "Mostrar el panel"
@@ -2266,6 +2278,9 @@ msgstr "Mostrar título, color, etiquetas y privacidad"
 
 msgid "Shrug"
 msgstr "Encogerse de hombros"
+
+msgid "Sidebar width"
+msgstr "Ancho de la barra lateral"
 
 msgid "Skip"
 msgstr "Omitir"
@@ -2363,8 +2378,26 @@ msgstr "Fragmentos"
 msgid "Sorry"
 msgstr "Perdón"
 
+msgid "Sort by"
+msgstr "Ordenar por"
+
+msgid "Sort by: Manual"
+msgstr "Ordenar por: Manual"
+
+msgid "Sort by: Most used"
+msgstr "Ordenar por: Más usados"
+
+msgid "Sort by: Recently used"
+msgstr "Ordenar por: Usados recientemente"
+
+msgid "Sort by: {}"
+msgstr "Ordenar por: {}"
+
 msgid "Sort items by"
 msgstr "Ordenar fragmentos por"
+
+msgid "Sort: {}"
+msgstr "Orden: {}"
 
 msgid "Source code"
 msgstr "Código fuente"
@@ -2404,6 +2437,9 @@ msgstr "Colaborador"
 
 msgid "Surprise"
 msgstr "Sorpresa"
+
+msgid "Switch this list to Manual order?"
+msgstr "¿Cambiar esta lista al orden manual?"
 
 msgid "Symbols"
 msgstr "Símbolos"
@@ -3030,6 +3066,9 @@ msgstr "mover"
 
 msgid "ms"
 msgstr "ms"
+
+msgid "navigation rail collapse expand lists panel left width"
+msgstr "navegación barra contraer expandir listas panel izquierda ancho"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"

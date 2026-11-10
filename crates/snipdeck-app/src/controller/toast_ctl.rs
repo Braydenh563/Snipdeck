@@ -106,7 +106,7 @@ where
         undo.adds.map(Effect::EditItem).into_iter().collect()
     }
 
-    /// The toast's button: "Open log" on the crash toast (opens the reports folder and closes
+    /// The toast's button: "Switch" on the sort offer (the list goes to manual order), "Open log" on the crash toast (opens the reports folder and closes
     /// the toast; a folder that cannot be opened says so), "Undo" on any other.
     pub fn toast_action(&mut self) {
         if self
@@ -124,6 +124,12 @@ where
                     message: ToastMessage::CannotOpenLog,
                 });
             }
+            return;
+        }
+        if let Some(ToastMessage::SwitchToManual { list }) =
+            self.toast.as_ref().map(|t| t.toast.message.clone())
+        {
+            self.set_list_sort(list, snipdeck_core::ListSort::Manual);
             return;
         }
         self.main_undo();
@@ -177,7 +183,9 @@ where
         match active.phase {
             ToastPhase::Enter => {
                 active.phase = ToastPhase::Hold;
-                if self.undo.as_ref().is_some_and(|u| u.seq == seq) {
+                if self.undo.as_ref().is_some_and(|u| u.seq == seq)
+                    || matches!(active.toast.message, ToastMessage::SwitchToManual { .. })
+                {
                     Some(TOAST_UNDO_HOLD)
                 } else if active.toast.kind == ToastKind::Danger {
                     Some(TOAST_ERROR_HOLD)

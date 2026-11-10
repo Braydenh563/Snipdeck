@@ -828,6 +828,41 @@ ui_tests! {
         assert_eq!(ui.get_current_tab(), 0);
     }
 
+    fn the_list_menu_stays_inside_a_260_px_panel_at_150_percent_in_german() {
+        let (ui, _log) = start();
+        slint::select_bundled_translation("de").expect("de is bundled");
+        // The menu's place is taken from a right-click on a tab at the usual size, then the Panel is narrowed.
+        let tab = find(&ui, "Code", AccessibleRole::Tab);
+        let at = centre(&tab);
+        move_to(&ui, at);
+        ui.window().dispatch_event(WindowEvent::PointerPressed {
+            position: at,
+            button: PointerEventButton::Right,
+        });
+        ui.window().dispatch_event(WindowEvent::PointerReleased {
+            position: at,
+            button: PointerEventButton::Right,
+        });
+        ui.window().set_size(slint::LogicalSize::new(260.0, 560.0));
+        ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(1.5);
+        settle();
+        ui.set_list_menu_open(true);
+        settle();
+        let rows: Vec<_> = ElementQuery::from_root(&ui)
+            .match_accessible_role(AccessibleRole::ListItem)
+            .find_all()
+            .into_iter()
+            .filter(|e| e.accessible_label().is_some_and(|l| l.starts_with("Sortieren nach")))
+            .collect();
+        assert_eq!(rows.len(), 3, "the three Sort by rows");
+        for row in rows {
+            let (p, s) = (row.absolute_position(), row.size());
+            assert!(p.x >= 0.0 && p.x + s.width <= 260.0, "inside the panel: x {} w {}", p.x, s.width);
+        }
+        ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(1.0);
+        slint::select_bundled_translation("").expect("back to the source language");
+    }
+
     // ---- Header --------------------------------------------------------------------------------
 
     fn pressing_the_header_starts_a_window_drag_but_pressing_a_button_does_not() {

@@ -84,11 +84,13 @@ pub enum Command {
     ResetPanel,
     /// Keep the Panel open (on top) or let it close when the user clicks away: switches the pin.
     KeepPanelOpen,
+    /// Fold the Main sidebar to its rail, or open it again (Ctrl+B).
+    ToggleSidebar,
 }
 
 impl Command {
     /// Every command, in the order of `CommandTexts.all`.
-    pub const ALL: [Self; 35] = [
+    pub const ALL: [Self; 36] = [
         Self::NewItem,
         Self::NewList,
         Self::Search,
@@ -124,6 +126,7 @@ impl Command {
         Self::GoTrash,
         Self::ResetPanel,
         Self::KeepPanelOpen,
+        Self::ToggleSidebar,
     ];
 
     /// The command with palette id `id`.
@@ -162,6 +165,7 @@ impl Command {
             Self::PinItem | Self::UnpinItem => "Ctrl+P",
             Self::TrashItem => "Del",
             Self::SelectAll => "Ctrl+A",
+            Self::ToggleSidebar => "Ctrl+B",
             Self::ShowPanel => return chord_text(hotkeys, HotkeyAction::TogglePanel),
             Self::OpenPicker => return chord_text(hotkeys, HotkeyAction::Picker),
             Self::QuickCapture => return chord_text(hotkeys, HotkeyAction::Capture),

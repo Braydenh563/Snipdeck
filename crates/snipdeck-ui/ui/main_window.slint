@@ -341,6 +341,15 @@ export component MainWindow inherits Window {
     in property <string> panel-hotkey;
     // The Panel is on screen: the toolbar button hides it (pressed, "Hide Panel") instead of showing it.
     in property <bool> panel-visible;
+    // The open list's sort (0 Manual, 1 Most used, 2 Recently used); the heading's "Sort" menu changes it.
+    in property <int> list-sort: 0;
+    callback sort-chosen(int);
+    // The sidebar's width in logical pixels at 100 % text size (200 to 320), and whether Ctrl+B or the toolbar
+    // button folded it to the icon rail. The host remembers both; the window changes them as the user does.
+    in-out property <int> sidebar-width: 232;
+    in-out property <bool> sidebar-collapsed: false;
+    callback sidebar-width-changed(int);
+    callback sidebar-collapsed-changed(bool);
     // F1 asks for the guide, Ctrl+/ for the shortcuts, the Help menu for any of them.
     callback help-requested(HelpPage);
     // ---- Command palette: the host fills `palette-rows` (filtered for the query it is told about).
@@ -401,6 +410,8 @@ export component MainWindow inherits Window {
     callback list-dropped(int, int);
     // Rows can be dragged into a new place: the open list is in manual order and no search is running.
     in property <bool> rows-reorderable: false;
+    // The open list sorts itself (no search): a drop still reaches the host, which offers manual order.
+    in property <bool> reorder-offer: false;
 
     // ---- Public -------------------------------------------------------------------------------
     // Holds row `index` in its pulled (used) state for the card's 700ms.
@@ -436,7 +447,7 @@ export component MainWindow inherits Window {
     out property <bool> rail: root.narrow;
     out property <int> columns: root.cols;
     out property <bool> confirm-open: root.confirm-shown;
-    out property <bool> menu-open: item-menu-open || nav-menu-open || chooser-open || help-menu-open || view-menu-open || recent-menu-open || recent-save-open;
+    out property <bool> menu-open: item-menu-open || nav-menu-open || chooser-open || help-menu-open || view-menu-open || sort-menu-open || recent-menu-open || recent-save-open;
 
     // ---- Internals ----------------------------------------------------------------------------
     property <int> used-index: -1;
@@ -447,7 +458,12 @@ export component MainWindow inherits Window {
     property <bool> toolbar-compact: false;
     property <length> ctl-h: max(Space.s8 * SystemLook.text-scale, Type.line-base + Space.s2);
     property <length> bar-h: max(Space.s8 + Space.s3, Type.line-base + Space.s2 + Space.s3);
-    property <length> sidebar-w: root.narrow ? Space.s12 * root.text-scale : 232px + (root.text-scale - 1) * 96px;
+    // Below 720px the sidebar is a rail whatever was chosen; the chosen width and the collapsed flag apply above it.
+    property <bool> auto-rail: false;
+    property <length> sidebar-w: root.narrow ? Space.s12 * root.text-scale : root.sidebar-width * 1px + (root.text-scale - 1) * 96px;
+    property <length> splitter-w: 8px;
+    property <length> splitter-grab: 0px;
+    property <bool> splitter-focused: false;
     property <length> pad: Space.s4;
     // The keyboard focus ring is drawn this far outside a card; the lists are inset by it so a scroll viewport never clips it.
     property <length> ring: Space.s1;
@@ -467,6 +483,7 @@ export component MainWindow inherits Window {
     property <bool> nav-menu-open: false;
     property <bool> help-menu-open: false;
     property <bool> view-menu-open: false;
+    property <bool> sort-menu-open: false;
     // An empty image: a menu row without a check mark keeps its icon column.
     property <image> no-icon;
     property <length> nav-menu-x: 0px;
@@ -497,7 +514,7 @@ export component MainWindow inherits Window {
     property <int> confirm-kind: 0;
     property <int> confirm-target: 0;
     property <bool> confirm-shown: false;
-    property <bool> overlay-open: root.recent-menu-open || root.recent-save-open || root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown || root.board-delete-open || root.palette-open;
+    property <bool> overlay-open: root.recent-menu-open || root.recent-save-open || root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.sort-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown || root.board-delete-open || root.palette-open;
 
     init => {
         Palette.dark = root.dark;
@@ -508,7 +525,8 @@ export component MainWindow inherits Window {
     }
     // Set from `changed` handlers, not bound to `root.width`: a window's width follows its layout.
     function update-narrow() {
-        root.narrow = root.width < 720px;
+        root.auto-rail = root.width < 720px;
+        root.narrow = root.auto-rail || root.sidebar-collapsed;
         root.toolbar-compact = root.width - root.sidebar-w < 560px * root.text-scale;
     }
     changed width => {
@@ -516,6 +534,31 @@ export component MainWindow inherits Window {
     }
     changed text-scale => {
         root.update-narrow();
+    }
+    changed sidebar-collapsed => {
+        root.update-narrow();
+    }
+    changed sidebar-width => {
+        root.update-narrow();
+    }
+    // Ctrl+B and the toolbar button. Below 720px the rail is automatic and wins, so there is nothing to fold.
+    function toggle-sidebar() {
+        if (root.auto-rail) {
+            return;
+        }
+        // The splitter goes away on the rail: the keys go to the list, not nowhere.
+        if (root.splitter-focused) {
+            items-scope.focus();
+        }
+        root.sidebar-collapsed = !root.sidebar-collapsed;
+        root.sidebar-collapsed-changed(root.sidebar-collapsed);
+    }
+    // The sidebar's new width in logical pixels at 100 % text size, clamped; `commit` also tells the host.
+    function set-sidebar-width(px: int, commit: bool) {
+        root.sidebar-width = max(200, min(320, px));
+        if (commit) {
+            root.sidebar-width-changed(root.sidebar-width);
+        }
     }
 
     used-timer := Timer {
@@ -708,6 +751,16 @@ export component MainWindow inherits Window {
         root.view-menu-open = true;
     }
 
+    property <length> sort-menu-x: 0px;
+    property <length> sort-menu-y: 0px;
+    function open-sort-menu(x: length, y: length) {
+        root.close-menus();
+        root.nav-origin = false;
+        root.sort-menu-x = x;
+        root.sort-menu-y = y;
+        root.sort-menu-open = true;
+    }
+
     function open-recent-menu(row: int, x: length, y: length) {
         root.nav-origin = false;
         root.recent-menu-row = row;
@@ -735,6 +788,7 @@ export component MainWindow inherits Window {
         root.nav-menu-open = false;
         root.help-menu-open = false;
         root.view-menu-open = false;
+        root.sort-menu-open = false;
         root.chooser-open = false;
         root.restore-focus();
     }
@@ -855,12 +909,20 @@ export component MainWindow inherits Window {
             : root.tags[root.section-index].label;
     }
 
+    pure function sort-name(sort: int) -> string {
+        return sort == 1 ? @tr("Most used") : sort == 2 ? @tr("Recently used") : @tr("Manual");
+    }
+
     root-scope := FocusScope {
         capture-key-pressed(event) => {
             if (root.overlay-open || search.composing) {
                 return reject;
             }
             if (event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
+                if ((event.text == "b" || event.text == "B") && !event.modifiers.shift) {
+                    root.toggle-sidebar();
+                    return accept;
+                }
                 if (event.text == "k" || event.text == "K" || (event.modifiers.shift && (event.text == "p" || event.text == "P"))) {
                     root.open-palette();
                     return accept;
@@ -1201,6 +1263,7 @@ export component MainWindow inherits Window {
                     width: 1px;
                     background: Theme.border-subtle;
                 }
+
             }
 
             // ======== Content ====================================================================
@@ -1422,6 +1485,17 @@ export component MainWindow inherits Window {
                         padding-left: root.pad;
                         padding-right: root.pad;
                         spacing: Space.s2;
+                        if !root.auto-rail: sidebar-toggle := IconButton {
+                            horizontal-stretch: 0;
+                            scaled: true;
+                            side-override: root.ctl-h;
+                            icon: root.sidebar-collapsed ? Icons.caret-double-right : Icons.caret-double-left;
+                            tooltip: root.sidebar-collapsed ? @tr("Expand sidebar (Ctrl+B)") : @tr("Collapse sidebar (Ctrl+B)");
+                            own-tooltip: true;
+                            active: root.sidebar-collapsed;
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.toggle-sidebar(); }
+                        }
                         Text {
                             horizontal-stretch: 1;
                             text: root.section-name();
@@ -1433,6 +1507,17 @@ export component MainWindow inherits Window {
                             overflow: elide;
                             accessible-role: AccessibleRole.text;
                             accessible-label: root.section-name();
+                        }
+                        if root.section == MainSection.list && !root.searching: sort-button := ToolbarButton {
+                            horizontal-stretch: 0;
+                            h: root.ctl-h;
+                            icon: Icons.rows;
+                            label: @tr("Sort: {}", root.sort-name(root.list-sort));
+                            tooltip: @tr("Sort by: {}", root.sort-name(root.list-sort));
+                            caret: true;
+                            active: root.sort-menu-open;
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.open-sort-menu(self.absolute-position.x, self.absolute-position.y + self.height); }
                         }
                         if root.in-trash && root.rows.length > 0: Button {
                             horizontal-stretch: 0;
@@ -1681,7 +1766,7 @@ export component MainWindow inherits Window {
                                 }
 
                                 row-drop := DropArea {
-                                    enabled: root.rows-reorderable;
+                                    enabled: root.rows-reorderable || root.reorder-offer;
                                     can-drop(event) => {
                                         row-from = root.payload-row(event.data);
                                         row-from >= 0 && row-from != i ? DragAction.move : DragAction.none
@@ -1813,7 +1898,7 @@ export component MainWindow inherits Window {
                                     if root.tile-index(r, c) < root.rows.length: tile-drop := DropArea {
                                         // The tile being dragged over this one: a drop lands after it when coming from before.
                                         property <int> tile-from: -1;
-                                        enabled: root.rows-reorderable;
+                                        enabled: root.rows-reorderable || root.reorder-offer;
                                         can-drop(event) => {
                                             tile-from = root.payload-row(event.data);
                                             tile-from >= 0 && tile-from != root.tile-index(r, c) ? DragAction.move : DragAction.none
@@ -2187,6 +2272,67 @@ export component MainWindow inherits Window {
                 }
             }
         }
+
+        // The splitter: an 8px strip straddling the sidebar's edge (4px each side), above the layout so it never sits under a sidebar control. Drag it, or focus it and press Left / Right
+        // (8px a step). It is not there on the rail.
+        if !root.narrow: splitter := Rectangle {
+            x: root.sidebar-w - root.splitter-w / 2;
+            width: root.splitter-w;
+            height: parent.height;
+            background: transparent;
+            forward-focus: splitter-scope;
+
+            // The line that shows it can be grabbed (hover or drag) and, in the focus colour, that it has focus.
+            Rectangle {
+                x: (parent.width - self.width) / 2;
+                width: splitter-scope.has-focus ? 3px : 2px;
+                background: splitter-scope.has-focus ? Theme.focus-ring : splitter-touch.pressed ? Theme.accent-text : Theme.border-strong;
+                opacity: (splitter-scope.has-focus || splitter-touch.has-hover || splitter-touch.pressed) ? 1 : 0;
+                animate opacity { duration: Motion.instant; easing: Motion.out; }
+            }
+            splitter-touch := TouchArea {
+                mouse-cursor: MouseCursor.col-resize;
+                pointer-event(event) => {
+                    if (event.button != PointerEventButton.left) {
+                        return;
+                    }
+                    if (event.kind == PointerEventKind.down) {
+                        // How far the pointer is from the sidebar's edge, so the edge does not jump to it.
+                        root.splitter-grab = root.sidebar-w - (self.absolute-position.x + self.mouse-x);
+                    } else if (event.kind == PointerEventKind.up) {
+                        root.sidebar-width-changed(root.sidebar-width);
+                    }
+                }
+                moved => {
+                    if (self.pressed) {
+                        let edge = self.absolute-position.x + self.mouse-x + root.splitter-grab;
+                        root.set-sidebar-width(((edge - (root.text-scale - 1) * 96px) / 1px).round(), false);
+                    }
+                }
+            }
+            splitter-scope := FocusScope {
+                accessible-role: AccessibleRole.slider;
+                accessible-label: @tr("Sidebar width");
+                accessible-value: root.sidebar-width;
+                accessible-value-minimum: 200;
+                accessible-value-maximum: 320;
+                accessible-value-step: 8;
+                accessible-action-increment => { root.set-sidebar-width(root.sidebar-width + 8, true); }
+                accessible-action-decrement => { root.set-sidebar-width(root.sidebar-width - 8, true); }
+                changed has-focus => { root.splitter-focused = self.has-focus; }
+                key-pressed(event) => {
+                    if (event.text == Key.LeftArrow) {
+                        root.set-sidebar-width(root.sidebar-width - 8, true);
+                        return accept;
+                    }
+                    if (event.text == Key.RightArrow) {
+                        root.set-sidebar-width(root.sidebar-width + 8, true);
+                        return accept;
+                    }
+                    return reject;
+                }
+            }
+        }
     }
 
     // The bulk bar already says how many are selected; the line shows the count of items and announces the selection.
@@ -2281,7 +2427,7 @@ export component MainWindow inherits Window {
         dismissed => { root.board-menu-dismissed(); }
     }
 
-    if root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.chooser-open || root.recent-menu-open || root.recent-save-open: TouchArea {
+    if root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.sort-menu-open || root.chooser-open || root.recent-menu-open || root.recent-save-open: TouchArea {
         pointer-event(event) => {
             if (event.kind == PointerEventKind.down) {
                 root.close-menus();
@@ -2416,6 +2562,25 @@ export component MainWindow inherits Window {
                 root.view = MainView.compact;
                 root.view-changed(MainView.compact);
             }
+        }
+        dismissed => { root.close-menus(); }
+    }
+    if root.sort-menu-open: Menu {
+        x: max(0px, min(root.sort-menu-x, root.width - self.width - Space.s2));
+        y: root.sort-menu-y;
+        entries: [
+            { text: @tr("Manual"), icon: root.list-sort == 0 ? Icons.check : root.no-icon },
+            { text: @tr("Most used"), icon: root.list-sort == 1 ? Icons.check : root.no-icon },
+            { text: @tr("Recently used"), icon: root.list-sort == 2 ? Icons.check : root.no-icon },
+        ];
+        label: @tr("Sort by");
+        init => {
+            self.current = root.list-sort;
+            self.focus-menu();
+        }
+        activated(i) => {
+            root.close-menus();
+            root.sort-chosen(i);
         }
         dismissed => { root.close-menus(); }
     }

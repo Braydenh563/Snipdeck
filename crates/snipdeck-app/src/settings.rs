@@ -13,6 +13,10 @@ pub const VERSION: u32 = 1;
 pub const PANEL_WIDTH: std::ops::RangeInclusive<u32> = 260..=480;
 /// The Panel's default width.
 pub const PANEL_WIDTH_DEFAULT: u32 = 320;
+/// Narrowest and widest Main sidebar, in logical pixels at 100 % text size.
+pub const MAIN_SIDEBAR_WIDTH: std::ops::RangeInclusive<u32> = 200..=320;
+/// The Main sidebar's default width (what it was before it could be resized).
+pub const MAIN_SIDEBAR_WIDTH_DEFAULT: u32 = 232;
 /// How many daily backups may be kept (Settings > Backups).
 pub const BACKUPS_KEEP: std::ops::RangeInclusive<u32> = 1..=60;
 /// The default number of backups kept (SPEC 5.7a).
@@ -720,6 +724,11 @@ pub struct Settings {
     pub panel_geometry: Vec<PanelGeometry>,
     /// Where the Main window was left; absent until it has been moved or resized.
     pub main_window: Option<WindowPlace>,
+    /// The Main sidebar's width in logical pixels at 100 % text size (200 to 320); the text
+    /// scale is added on top when it is drawn.
+    pub main_sidebar_width: u32,
+    /// The Main sidebar is collapsed to its icon rail (Ctrl+B).
+    pub main_sidebar_collapsed: bool,
     /// How Snipdeck pastes into each program, lower-case executable name first: the paste key,
     /// or "never paste" (SPEC §5.8). A program with no rule gets `Ctrl+V`. A new file starts
     /// with the programs known to need another key.
@@ -798,6 +807,8 @@ impl Default for Settings {
             clipboard_clear_secs: CLIPBOARD_CLEAR_SECS_DEFAULT,
             panel_geometry: Vec::new(),
             main_window: None,
+            main_sidebar_width: MAIN_SIDEBAR_WIDTH_DEFAULT,
+            main_sidebar_collapsed: false,
             programs: builtin_program_rules(),
             no_paste_apps: Vec::new(),
             recent_history: false,
@@ -916,6 +927,8 @@ impl Settings {
         field!(clipboard_clear_secs);
         field!(panel_geometry);
         field!(main_window);
+        field!(main_sidebar_width);
+        field!(main_sidebar_collapsed);
         if let Some(rules) = map.get("programs").and_then(programs_from_value) {
             settings.programs = rules;
         }
@@ -992,6 +1005,9 @@ impl Settings {
         self.panel_width = self
             .panel_width
             .clamp(*PANEL_WIDTH.start(), *PANEL_WIDTH.end());
+        self.main_sidebar_width = self
+            .main_sidebar_width
+            .clamp(*MAIN_SIDEBAR_WIDTH.start(), *MAIN_SIDEBAR_WIDTH.end());
         self.backups_keep = self
             .backups_keep
             .clamp(*BACKUPS_KEEP.start(), *BACKUPS_KEEP.end());
@@ -1332,6 +1348,40 @@ mod tests {
             Settings::from_json(r#"{"version":0,"from_the_future":{"a":1},"theme":"light"}"#);
         assert_eq!(settings.theme, Theme::Light);
         assert_eq!(settings.version, VERSION);
+    }
+
+    #[test]
+    fn sidebar_width_clamps_200_320() {
+        assert_eq!(
+            Settings::from_json(r#"{"main_sidebar_width":10}"#).main_sidebar_width,
+            200
+        );
+        assert_eq!(
+            Settings::from_json(r#"{"main_sidebar_width":9999}"#).main_sidebar_width,
+            320
+        );
+        assert_eq!(
+            Settings::from_json(r#"{"main_sidebar_width":260}"#).main_sidebar_width,
+            260
+        );
+    }
+
+    #[test]
+    fn old_settings_get_232() {
+        let old = Settings::from_json(r#"{"version":1,"theme":"dark","panel_width":400}"#);
+        assert_eq!(old.main_sidebar_width, 232);
+        assert!(!old.main_sidebar_collapsed);
+        assert_eq!(old.panel_width, 400);
+        let saved = Settings {
+            main_sidebar_collapsed: true,
+            main_sidebar_width: 280,
+            ..Settings::default()
+        };
+        let back = Settings::from_json(&saved.to_json());
+        assert_eq!(
+            (back.main_sidebar_width, back.main_sidebar_collapsed),
+            (280, true)
+        );
     }
 
     #[test]

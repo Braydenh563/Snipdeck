@@ -1257,6 +1257,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     if differs(&|p| p.dock_collapsed == view.dock_collapsed) {
         window.set_dock_collapsed(view.dock_collapsed);
     }
+    window.set_reorder_offer(view.reorder_offer);
     if differs(&|p| p.rows_reorderable == view.rows_reorderable) {
         window.set_rows_reorderable(view.rows_reorderable);
     }
@@ -1455,6 +1456,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     {
         window.set_list_menu_open(view.list_menu.is_some());
     }
+    window.set_list_menu_sort(crate::main_binding::sort_index(view.list_menu_sort));
     if differs(&|p| p.list_delete == view.list_delete)
         || window.get_list_delete_open() != view.list_delete.is_some()
     {
