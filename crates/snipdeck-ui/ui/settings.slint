@@ -445,7 +445,7 @@ export component SettingsPage inherits Window {
     callback open-data-folder-requested();
     callback open-backups-folder-requested();
     callback export-requested();
-    // The "Import..." choices: 0 a .snipdeck file, 1 a Ditto database, 2 a CopyQ export, 3 a folder of text files, 4 the Windows clipboard history (its own button), 5 Espanso, 6 Beeftext, 7 TextExpander, 8 PhraseExpress.
+    // The "Import..." choices: 0 a .snipdeck file, 1 a Ditto database, 2 a CopyQ export, 3 a folder of text files, 4 the Windows clipboard history (its own button), 5 Espanso (a folder), 6 Beeftext, 7 TextExpander, 8 PhraseExpress, 9 Espanso (one .yml file).
     // The host asks for the file, works out the preview and sets the import-* properties below.
     callback import-source-chosen(kind: int);
     callback import-confirmed();
@@ -1371,6 +1371,7 @@ export component SettingsPage inherits Window {
                             @tr("CopyQ export"),
                             @tr("Folder of .txt and .md files"),
                             @tr("Espanso (folder)"),
+                            @tr("Espanso (single .yml file)"),
                             @tr("Beeftext export"),
                             @tr("TextExpander export (CSV)"),
                             @tr("PhraseExpress export (CSV)"),
@@ -1381,8 +1382,9 @@ export component SettingsPage inherits Window {
                                 a11y-label: @tr("Import from: {}", choice);
                                 clicked => {
                                     root.import-choosing = false;
-                                    // Index 4 is the clipboard history's own button.
-                                    root.import-source-chosen(i < 4 ? i : i + 1);
+                                    // 4 is the clipboard history's own button, so the entries after the
+                                    // fourth skip it; the single Espanso file (entry 5) is 9, last.
+                                    root.import-source-chosen(i < 4 ? i : i == 5 ? 9 : i == 4 ? 5 : i);
                                 }
                                 changed has-focus => {
                                     if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }

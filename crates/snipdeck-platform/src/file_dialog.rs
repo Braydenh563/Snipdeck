@@ -28,6 +28,8 @@ pub enum PickKind {
     Beeftext,
     /// A CSV export (`.csv`, or `.txt`).
     Csv,
+    /// An Espanso match file (`.yml` or `.yaml`).
+    Yaml,
     /// A folder, chosen with the folder picker rather than by picking a file inside it.
     Folder,
 }
@@ -46,6 +48,7 @@ impl PickKind {
             Self::CopyQ => &[("CopyQ exports", "*.json"), ALL],
             Self::Beeftext => &[("Beeftext exports", "*.json"), ALL],
             Self::Csv => &[("CSV exports", "*.csv;*.txt"), ALL],
+            Self::Yaml => &[("Espanso match files", "*.yml;*.yaml"), ALL],
             Self::Folder => &[],
         }
     }
@@ -244,6 +247,7 @@ mod tests {
         assert_eq!(patterns(PickKind::CopyQ), ["*.json", "*.*"]);
         assert_eq!(patterns(PickKind::Beeftext), ["*.json", "*.*"]);
         assert_eq!(patterns(PickKind::Csv), ["*.csv;*.txt", "*.*"]);
+        assert_eq!(patterns(PickKind::Yaml), ["*.yml;*.yaml", "*.*"]);
         assert_eq!(PickKind::Folder.filters(), []);
     }
 

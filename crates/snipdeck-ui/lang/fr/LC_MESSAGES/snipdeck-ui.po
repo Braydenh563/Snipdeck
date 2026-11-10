@@ -915,6 +915,9 @@ msgstr "Esc"
 msgid "Espanso (folder)"
 msgstr "Espanso (dossier)"
 
+msgid "Espanso (single .yml file)"
+msgstr "Espanso (un seul fichier .yml)"
+
 msgid "Every Supporter feature is on. Thank you."
 msgstr "Toutes les fonctions Supporter sont activées. Merci."
 
