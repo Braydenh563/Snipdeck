@@ -56,7 +56,9 @@ where
             }
             MainAction::Pin => self.pin(&items),
             MainAction::Duplicate => self.duplicate(&items),
-            MainAction::Move | MainAction::Tag | MainAction::PasteAs => self.main.set_chooser(targets),
+            MainAction::Move | MainAction::Tag | MainAction::PasteAs => {
+                self.main.set_chooser(targets);
+            }
             MainAction::Delete => self.trash_items(&items),
             MainAction::Restore => self.restore(&targets),
             MainAction::DeleteForever => self.delete_forever(&targets),

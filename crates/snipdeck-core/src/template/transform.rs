@@ -5,7 +5,7 @@
 //! Unicode's default, so `ß` becomes `SS` in upper case and the result can be longer than the
 //! text it came from.
 
-use unicode_normalization::{char::is_combining_mark, UnicodeNormalization};
+use unicode_normalization::{UnicodeNormalization, char::is_combining_mark};
 
 /// One "Paste as..." choice.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

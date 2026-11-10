@@ -179,7 +179,8 @@ fn a_template_field_a_choice_and_a_date_offset_all_go_through_the_transform() {
         UseResult::NeedsAnswers
     );
     assert_eq!(
-        w.ctl.submit_fill(&["Café Menu".to_owned(), "Firm".to_owned()]),
+        w.ctl
+            .submit_fill(&["Café Menu".to_owned(), "Firm".to_owned()]),
         UseResult::Done(UseOutcome::Pasted)
     );
     // The clock is frozen at the fixture's day; the transform sees the rendered text.

@@ -968,12 +968,11 @@ fn the_paste_as_row_has_its_name_and_the_second_level_takes_arrows_enter_and_esc
         // The accessible name of the row is its text.
         let row = element(&r.ui, "Paste as…", AccessibleRole::ListItem);
         assert_eq!(row.accessible_enabled(), Some(true));
-        let at = r
-            .ui
-            .get_item_menu_entries()
-            .iter()
-            .position(|e| e.text == "Paste as…")
-            .expect("a Paste as row");
+        let at =
+            r.ui.get_item_menu_entries()
+                .iter()
+                .position(|e| e.text == "Paste as…")
+                .expect("a Paste as row");
         r.ui.invoke_item_menu_activated(i32::try_from(at).expect("index"));
         r.binding.redraw();
         // The second level replaces the first, with the six choices as rows.
@@ -985,7 +984,14 @@ fn the_paste_as_row_has_its_name_and_the_second_level_takes_arrows_enter_and_esc
                 .collect();
         assert_eq!(
             texts,
-            ["Plain text", "UPPERCASE", "lowercase", "Title Case", "Trimmed", "slug-like-this"]
+            [
+                "Plain text",
+                "UPPERCASE",
+                "lowercase",
+                "Title Case",
+                "Trimmed",
+                "slug-like-this"
+            ]
         );
         let _ = element(&r.ui, "UPPERCASE", AccessibleRole::ListItem);
         // Esc closes the level and pastes nothing.
