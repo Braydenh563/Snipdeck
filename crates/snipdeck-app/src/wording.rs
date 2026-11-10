@@ -174,6 +174,8 @@ where
         ToastMessage::AddedTo { list, .. } => t.invoke_added_to(list.into()),
         ToastMessage::AddedSomeFiles { list } => t.invoke_added_some_files(list.into()),
         ToastMessage::FilesNotAdded => t.invoke_files_not_added(),
+        ToastMessage::FileMoved => t.invoke_file_moved(),
+        ToastMessage::FilesTooLarge => t.invoke_files_too_large(),
         ToastMessage::TooManyFiles => t.invoke_too_many_files(),
         ToastMessage::DropTo { list } => t.invoke_drop_to(list.into()),
         ToastMessage::LooksSecret => t.invoke_looks_secret(),

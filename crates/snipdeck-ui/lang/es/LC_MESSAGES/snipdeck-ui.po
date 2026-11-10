@@ -933,6 +933,9 @@ msgstr "Los campos que piden un valor son una función de Colaborador. Quítalos
 msgid "File"
 msgstr "Archivo"
 
+msgid "File moved or deleted"
+msgstr "Archivo movido o eliminado"
+
 msgid "Fill in template"
 msgstr "Rellenar plantilla"
 
@@ -2374,6 +2377,9 @@ msgstr "Snipdeck espera en la bandeja para que los atajos funcionen tras iniciar
 
 msgid "Snippets"
 msgstr "Fragmentos"
+
+msgid "Some files were left out: together they are over 64 MB."
+msgstr "Se omitieron algunos archivos: juntos superan los 64 MB."
 
 msgid "Sorry"
 msgstr "Perdón"

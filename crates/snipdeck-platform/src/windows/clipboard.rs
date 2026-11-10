@@ -124,6 +124,8 @@ const READ_TEXT_LIMIT: usize = 32 * 1024 * 1024;
 /// The most a picture or a file list read from the clipboard may take (bytes).
 const READ_IMAGE_LIMIT: usize = win_formats::DIB_DECODE_LIMIT;
 const READ_FILES_LIMIT: usize = 4 * 1024 * 1024;
+/// The biggest HTML or RTF flavour read for Recent (the policy keeps both only up to 1 MiB).
+const RICH_FLAVOUR_LIMIT: usize = 2 * 1024 * 1024;
 /// How long `Drop` waits for the thread to render outstanding formats and exit.
 const SHUTDOWN_WAIT: Duration = Duration::from_secs(2);
 /// Posted to the owner window when jobs are queued.
@@ -493,6 +495,8 @@ struct Formats {
     html: u32,
     rtf: u32,
     png: u32,
+    /// `FileGroupDescriptorW`: virtual files (Outlook attachments), which Recent skips.
+    file_group: u32,
     drop_effect: u32,
     exclude_monitor: u32,
     viewer_ignore: u32,
@@ -510,6 +514,7 @@ impl Formats {
             html: register(w!("HTML Format")),
             rtf: register(w!("Rich Text Format")),
             png: register(w!("PNG")),
+            file_group: register(w!("FileGroupDescriptorW")),
             drop_effect: register(w!("Preferred DropEffect")),
             exclude_monitor: register(w!("ExcludeClipboardContentFromMonitorProcessing")),
             viewer_ignore: register(w!("Clipboard Viewer Ignore")),
@@ -632,8 +637,11 @@ fn write_paste_files(files: &[FilePayload]) -> Result<Vec<Vec<u16>>, Error> {
     win_formats::remove_paste_dirs(&root, previous.as_deref());
     let dir = win_formats::claim_paste_dir(&root, win_formats::os_random).map_err(io)?;
     let mut paths = Vec::with_capacity(files.len());
-    for file in files {
-        let path = dir.join(&file.name);
+    // Two files of the same name (from different folders) must both paste.
+    let names =
+        win_formats::distinct_names(&files.iter().map(|f| f.name.as_str()).collect::<Vec<_>>());
+    for (file, name) in files.iter().zip(&names) {
+        let path = dir.join(name);
         let mut out = fs::OpenOptions::new()
             .write(true)
             .create_new(true)
@@ -936,7 +944,49 @@ fn observe_change(hwnd: HWND) -> ClipboardChange {
             wipe(&mut bytes);
         }
     }
+    // Only after the marker gate above, with the clipboard still open: the formatted flavours
+    // ride along with text; with no text, copied files come first (Explorer), then a picture.
+    // Virtual files (no real path to keep) are skipped, a picture next to them is not.
+    if change.text.is_some() {
+        let mut html = read_format(formats.html, RICH_FLAVOUR_LIMIT);
+        let mut rtf = read_format(formats.rtf, RICH_FLAVOUR_LIMIT);
+        let size = html.as_ref().map_or(0, Vec::len) + rtf.as_ref().map_or(0, Vec::len);
+        if size <= clipboard_watch::MAX_RICH_BYTES {
+            change.html = html.as_deref().and_then(cf_html::parse);
+            change.rtf = rtf.take();
+        } else if let Some(rtf) = rtf.as_mut() {
+            wipe(rtf);
+        }
+        if let Some(html) = html.as_mut() {
+            wipe(html);
+        }
+    } else {
+        if !present(formats.file_group)
+            && let win_formats::ClipFiles::Files(paths) = read_files_open()
+        {
+            change.files = paths;
+        }
+        if change.files.is_empty() {
+            change.image = read_png_open(formats.png);
+        }
+    }
     change
+}
+
+/// Whether a registered format is on the clipboard. A format id of 0 is not asked about.
+fn present(format: u32) -> bool {
+    // SAFETY: no preconditions.
+    format != 0 && unsafe { IsClipboardFormatAvailable(format) }.is_ok()
+}
+
+/// The bytes of one format of the open clipboard; `None` if absent or over `limit`.
+fn read_format(format: u32, limit: usize) -> Option<Vec<u8>> {
+    if !present(format) {
+        return None;
+    }
+    // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
+    let handle = unsafe { GetClipboardData(format) }.ok()?;
+    read_global(HGLOBAL(handle.0), limit)
 }
 
 /// Reads every "keep me out of history" marker. The clipboard must be open by this thread.
@@ -1141,6 +1191,11 @@ fn read_text_job() -> Option<String> {
 fn read_png_job(png_format: u32) -> Option<Vec<u8>> {
     let hwnd = owner_hwnd()?;
     let _open = OpenGuard::open(hwnd, READ_OPEN_BUDGET)?;
+    read_png_open(png_format)
+}
+
+/// [`read_png_job`] with the clipboard already open by this thread.
+fn read_png_open(png_format: u32) -> Option<Vec<u8>> {
     let read = |format: u32| -> Option<Vec<u8>> {
         // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
         let handle = unsafe { GetClipboardData(format) }.ok()?;
@@ -1164,6 +1219,12 @@ fn read_files_job() -> win_formats::ClipFiles {
     let Some(_open) = OpenGuard::open(hwnd, READ_OPEN_BUDGET) else {
         return none();
     };
+    read_files_open()
+}
+
+/// [`read_files_job`] with the clipboard already open by this thread.
+fn read_files_open() -> win_formats::ClipFiles {
+    let none = || win_formats::ClipFiles::Files(Vec::new());
     // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
     let Ok(handle) = (unsafe { GetClipboardData(u32::from(CF_HDROP.0)) }) else {
         return none();

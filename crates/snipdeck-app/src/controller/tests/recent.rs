@@ -430,3 +430,147 @@ fn a_copy_is_kept_sealed_and_nothing_is_kept_without_key_protection() {
     assert_eq!(bare.ctl.recent_entries().len(), 0);
     assert_eq!(bare.ctl.store().recent().expect("recent").len(), 0);
 }
+
+/// A small RGBA PNG of one colour.
+fn png_of(width: u32, height: u32) -> Vec<u8> {
+    let mut out = Vec::new();
+    let mut encoder = png::Encoder::new(&mut out, width, height);
+    encoder.set_color(png::ColorType::Rgba);
+    encoder.set_depth(png::BitDepth::Eight);
+    let mut writer = encoder.write_header().expect("header");
+    writer
+        .write_image_data(&vec![90; (width * height * 4) as usize])
+        .expect("data");
+    writer.finish().expect("finish");
+    out
+}
+
+#[test]
+fn using_a_rich_entry_writes_text_html_rtf() {
+    use snipdeck_platform::payload::Data;
+    let mut w = recent_world();
+    w.ctl.on_clipboard_change(&ClipboardObservation {
+        html: Some("<b>bold</b>".to_owned()),
+        rtf: Some(b"{\\rtf1 bold}".to_vec()),
+        ..copied("bold")
+    });
+    let id = w.ctl.recent_entries()[0].id;
+    w.ctl.recent_use(id, UseMode::Copy);
+    let written = &w.ctl.services().clipboard.written;
+    assert_eq!(written.len(), 1);
+    assert_eq!(
+        written[0].data(),
+        [
+            Data::Text("bold".to_owned()),
+            Data::Html("<b>bold</b>".to_owned()),
+            Data::Rtf(b"{\\rtf1 bold}".to_vec()),
+        ]
+    );
+}
+
+#[test]
+fn promoting_an_image_makes_an_image_item() {
+    use snipdeck_platform::payload::Data;
+    let mut w = recent_world();
+    let png = png_of(12, 8);
+    w.ctl.on_clipboard_change(&ClipboardObservation {
+        image: Some(png.clone()),
+        source_app: Some("snippingtool.exe".to_owned()),
+        ..ClipboardObservation::default()
+    });
+    let entries = w.ctl.recent_entries();
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0].kind, snipdeck_store::RecentKind::Image);
+    let before = w.ctl.store().items(w.links_list).expect("items").len();
+    w.ctl.recent_promote(entries[0].id, w.links_list);
+    let items = w.ctl.store().items(w.links_list).expect("items");
+    assert_eq!(items.len(), before + 1);
+    assert_eq!(items[0].kind, snipdeck_core::ItemKind::Image);
+    assert_eq!(w.ctl.recent_entries().len(), 1, "the entry stays");
+    // Using it puts the same PNG back.
+    w.ctl.recent_copy(entries[0].id);
+    assert_eq!(
+        w.ctl.services().clipboard.written[0].data(),
+        [Data::Png(png)]
+    );
+}
+
+#[test]
+fn a_moved_file_says_so() {
+    let dir = tempfile::tempdir().expect("dir");
+    let kept = dir.path().join("kept.txt");
+    std::fs::write(&kept, b"still here").expect("write");
+    let gone = dir.path().join("gone.txt");
+    let mut w = recent_world();
+    w.ctl.on_clipboard_change(&ClipboardObservation {
+        files: vec![gone.to_string_lossy().into_owned()],
+        ..ClipboardObservation::default()
+    });
+    let id = w.ctl.recent_entries()[0].id;
+    assert_eq!(w.ctl.recent_use(id, UseMode::Copy), UseResult::Failed);
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::FileMoved
+    );
+    assert!(w.ctl.services().clipboard.written.is_empty());
+    let before = w.ctl.store().items(w.links_list).expect("items").len();
+    w.ctl.recent_promote(id, w.links_list);
+    assert_eq!(
+        w.ctl.store().items(w.links_list).expect("items").len(),
+        before
+    );
+    // A file that is still there is read now and saved as a File item.
+    w.ctl.on_clipboard_change(&ClipboardObservation {
+        files: vec![kept.to_string_lossy().into_owned()],
+        ..ClipboardObservation::default()
+    });
+    let id = w.ctl.recent_entries()[0].id;
+    w.ctl.recent_promote(id, w.links_list);
+    let items = w.ctl.store().items(w.links_list).expect("items");
+    assert_eq!(items.len(), before + 1);
+    assert_eq!(items[0].kind, snipdeck_core::ItemKind::File);
+}
+
+#[test]
+fn some_missing_files_still_paste_the_rest_and_say_so() {
+    use snipdeck_platform::payload::Data;
+    let dir = tempfile::tempdir().expect("dir");
+    let kept = dir.path().join("kept.txt");
+    std::fs::write(&kept, b"still here").expect("write");
+    let gone = dir.path().join("gone.txt");
+    let mut w = recent_world();
+    w.ctl.on_clipboard_change(&ClipboardObservation {
+        files: vec![
+            gone.to_string_lossy().into_owned(),
+            kept.to_string_lossy().into_owned(),
+        ],
+        ..ClipboardObservation::default()
+    });
+    let id = w.ctl.recent_entries()[0].id;
+    assert!(matches!(
+        w.ctl.recent_use(id, UseMode::Copy),
+        UseResult::Done(_)
+    ));
+    let written = &w.ctl.services().clipboard.written;
+    assert_eq!(written.len(), 1);
+    let Data::Files(files) = &written[0].data()[0] else {
+        panic!("{:?}", written[0]);
+    };
+    assert_eq!(files.len(), 1);
+    assert_eq!(files[0].name, "kept.txt");
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::FileMoved
+    );
+    // Saving does the same: the file that exists is saved, and the toast still says one is gone.
+    let before = w.ctl.store().items(w.links_list).expect("items").len();
+    w.ctl.recent_promote(id, w.links_list);
+    assert_eq!(
+        w.ctl.store().items(w.links_list).expect("items").len(),
+        before + 1
+    );
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::FileMoved
+    );
+}

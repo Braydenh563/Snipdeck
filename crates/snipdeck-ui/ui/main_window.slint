@@ -2055,10 +2055,10 @@ export component MainWindow inherits Window {
                                         selected: i == root.rcur;
                                         show-focus: i == root.rcur && items-scope.has-focus;
                                         variant: root.view == MainView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
-                                        kind: ItemKind.text;
-                                        preview: entry.preview;
-                                        list-name: entry.app == "" ? RecentText.ago(entry.age-minutes) : entry.app + " · " + RecentText.ago(entry.age-minutes);
-                                        list-color: transparent;
+                                        kind: entry.kind;
+                                        image: entry.image;
+                                        title: entry.preview;
+                                        preview: entry.app == "" ? RecentText.ago(entry.age-minutes) : entry.app + " · " + RecentText.ago(entry.age-minutes);
                                         use => {
                                             root.recent-cursor = i;
                                             root.recent-copied(entry.id);

@@ -1168,6 +1168,8 @@ fn render_recent(window: &ui::PanelWindow, previous: Option<&View>, view: &View)
             preview: r.preview.as_str().into(),
             app: r.app.as_str().into(),
             age_minutes: i32::try_from(r.age_minutes).unwrap_or(i32::MAX),
+            kind: crate::binding::recent_kind(r.kind),
+            image: crate::binding::recent_thumb(r.thumb.as_ref()),
         })));
         window.set_recent_targets(model(targets.iter().map(|t| ui::ChoiceEntry {
             label: t.label.as_str().into(),
@@ -1676,6 +1678,26 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
 
 fn item_kind(row: &Row) -> ui::ItemKind {
     item_kind_of(row.kind, row.sensitive)
+}
+
+/// The card kind of a Recent entry: text, a picture or files.
+pub(crate) fn recent_kind(kind: snipdeck_store::RecentKind) -> ui::ItemKind {
+    match kind {
+        snipdeck_store::RecentKind::Text => ui::ItemKind::Text,
+        snipdeck_store::RecentKind::Image => ui::ItemKind::Image,
+        snipdeck_store::RecentKind::Files => ui::ItemKind::File,
+    }
+}
+
+/// A Recent picture's thumbnail as an image; empty when it has none.
+pub(crate) fn recent_thumb(thumb: Option<&snipdeck_store::RecentThumb>) -> slint::Image {
+    thumb.map_or_else(slint::Image::default, |t| {
+        slint::Image::from_rgba8(
+            slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(
+                &t.rgba, t.width, t.height,
+            ),
+        )
+    })
 }
 
 /// The window's kind for an item: a sensitive item is its own kind whatever it holds.

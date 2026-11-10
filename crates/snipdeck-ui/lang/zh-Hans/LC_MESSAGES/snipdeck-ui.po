@@ -932,6 +932,9 @@ msgstr "要求输入值的字段属于 Supporter 功能。请将其移除后再�
 msgid "File"
 msgstr "文件"
 
+msgid "File moved or deleted"
+msgstr "文件已移动或删除"
+
 msgid "Fill in template"
 msgstr "填写模板"
 
@@ -2366,6 +2369,9 @@ msgstr "Snipdeck 会待在系统托盘中，以便登录后快捷键仍可使用
 
 msgid "Snippets"
 msgstr "片段"
+
+msgid "Some files were left out: together they are over 64 MB."
+msgstr "部分文件被忽略：它们加起来超过 64 MB。"
 
 msgid "Sorry"
 msgstr "抱歉"

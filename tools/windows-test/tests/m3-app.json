@@ -364,6 +364,27 @@
       "title": "Compact dock keeps its height and slides along the edge (U22, O28)",
       "do": "Drag the Panel by its header to a spot about halfway down the screen and let it snap to the left edge. Look at its height and where it sits. Pull its right edge, its top and bottom ends and its lower right corner. Try its left (screen-side) edge and left corners. Drag the small pill in the header up and down. Press and drag on the empty part of the header away from the edge. In Settings > Panel switch on 'Docked panel uses the full edge', then off. Repeat on the right edge.",
       "expect": "The docked Panel keeps its own height at the height you dropped it; it does not stretch over the whole edge. The inner edge, both ends and the inner corners resize it with the OS resize cursor; the screen-side edge and its corners do nothing. The pill slides the Panel up and down along the edge, stops at the top and bottom of the work area and never undocks it. Dragging the rest of the header takes it off the edge. With the setting on it fills the whole edge; off, it returns to its own height. Quit and start Snipdeck: it comes back docked at the same spot. Write what went wrong in the note (n)."
+    },
+    {
+      "id": "44",
+      "v1": true,
+      "title": "Recent keeps a copied picture (slice 5)",
+      "do": "Turn on Recent history. In Snipping Tool take a region screenshot, and in Paint copy a selection. Open the Recent tab in the Panel and in the Main window.",
+      "expect": "Each copy is a row with a small thumbnail of the picture and its size (for example 640 x 360). Copying the same picture twice leaves one row at the top. Clicking a row pastes the picture into Paint with its transparency intact. Write which app's picture lost transparency in the note (n)."
+    },
+    {
+      "id": "45",
+      "v1": true,
+      "title": "Recent keeps copied files by path (slice 5)",
+      "do": "In Explorer select three files and press Ctrl+C. Open Recent. Then rename one file and click the row. Then copy a mail attachment out of Outlook.",
+      "expect": "The Explorer copy is one row with the file glyph and the file names. Clicking pastes the files into another folder. After the rename, clicking says 'File moved or deleted' and pastes nothing. The Outlook attachment copy creates no row. Use 'Save to...' on the row: it makes File items (PNG files make Image items)."
+    },
+    {
+      "id": "46",
+      "v1": true,
+      "title": "Recent keeps formatted text and honours the exclusion markers (slice 5)",
+      "do": "Copy a bold, coloured paragraph from Word, click its Recent row to paste into WordPad, then copy the same words from Notepad. Then copy a password in a password manager that sets the exclude marker, and copy a picture from it if it offers one.",
+      "expect": "The Word copy pastes into WordPad with bold and colour. The same words from Notepad leave one row (newest source app, plain). Nothing from the password manager appears, neither text nor picture nor files. Write any app whose copy was kept despite the marker in the note (n)."
     }
   ]
 }

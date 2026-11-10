@@ -19,6 +19,7 @@ snipdeck-ui = { path = "../snipdeck-ui" }
 # The winit backend with the software renderer is the real window. `unstable-winit-030` lets the
 # app create the Panel un-activated and reach its HWND (ADR-0003, ADR-0008).
 slint = { workspace = true, features = ["backend-winit", "raw-window-handle-06", "unstable-winit-030"] }
+blake3.workspace = true
 jiff.workspace = true
 png.workspace = true
 serde.workspace = true
@@ -33,7 +34,6 @@ snipdeck-store = { path = "../snipdeck-store", features = ["testing"] }
 # Slint's headless platform for the window tests (one process per test file).
 i-slint-backend-testing = "=1.18.1"
 tempfile.workspace = true
-blake3.workspace = true
 # A Ditto database fixture for the import preview test.
 rusqlite.workspace = true
 

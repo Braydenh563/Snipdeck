@@ -933,6 +933,9 @@ msgstr "Felder, die einen Wert abfragen, sind eine Supporter-Funktion. Entferne 
 msgid "File"
 msgstr "Datei"
 
+msgid "File moved or deleted"
+msgstr "Datei verschoben oder gelöscht"
+
 msgid "Fill in template"
 msgstr "Vorlage ausfüllen"
 
@@ -2374,6 +2377,9 @@ msgstr "Snipdeck wartet im Infobereich, damit die Tastenkürzel nach der Anmeldu
 
 msgid "Snippets"
 msgstr "Textbausteine"
+
+msgid "Some files were left out: together they are over 64 MB."
+msgstr "Einige Dateien wurden ausgelassen: Zusammen sind sie größer als 64 MB."
 
 msgid "Sorry"
 msgstr "Entschuldigung"

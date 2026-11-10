@@ -24,9 +24,6 @@ use crate::{
     paste_create::{Clip, Piece, classify, looks_secret},
 };
 
-/// The title of an item made from a picture on the clipboard (a file keeps its own name).
-const PASTED_IMAGE_TITLE: &str = "Pasted image";
-
 /// An item whose bytes are stored and which only needs its row.
 struct Made {
     item: Item,
@@ -249,7 +246,12 @@ where
                 if too_big || !item_editor::is_png(png) {
                     return Ok(None);
                 }
-                let item = Item::new(list, PASTED_IMAGE_TITLE.to_owned(), ItemKind::Image, now);
+                let item = Item::new(
+                    list,
+                    capture::PASTED_IMAGE_TITLE.to_owned(),
+                    ItemKind::Image,
+                    now,
+                );
                 (item, Format::Png(self.store.put(png.clone())?))
             }
             Piece::File(path) => {

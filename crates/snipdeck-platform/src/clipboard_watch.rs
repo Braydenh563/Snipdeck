@@ -15,6 +15,15 @@ pub struct ClipboardChange {
     /// The text on the clipboard; `None` when there is none, when the source asked to be left
     /// out (the text is then never read), or when the clipboard stayed busy.
     pub text: Option<String>,
+    /// The HTML flavour, as a fragment without the `CF_HTML` header; only read next to text.
+    pub html: Option<String>,
+    /// The Rich Text Format flavour; only read next to text.
+    pub rtf: Option<Vec<u8>>,
+    /// The files copied in Explorer (`CF_HDROP`), when there is no text; empty if none, if
+    /// the clipboard holds virtual files (Outlook attachments), or if there are too many.
+    pub files: Vec<String>,
+    /// A picture as PNG bytes, when there is neither text nor files.
+    pub image: Option<Vec<u8>>,
     /// The executable that owns the clipboard, when it could be found.
     pub source_app: Option<String>,
     /// The source set `ExcludeClipboardContentFromMonitorProcessing` or
@@ -50,6 +59,10 @@ impl WatchGate {
         self.0.load(Ordering::Acquire)
     }
 }
+
+/// The HTML and RTF flavours of a text copy are passed on together up to this many bytes; over it
+/// they are dropped (and wiped) and only the text goes on.
+pub const MAX_RICH_BYTES: usize = 1024 * 1024;
 
 /// The registered clipboard format that password managers add to say "do not monitor this".
 pub const EXCLUDE_MONITOR_FORMAT: &str = "ExcludeClipboardContentFromMonitorProcessing";

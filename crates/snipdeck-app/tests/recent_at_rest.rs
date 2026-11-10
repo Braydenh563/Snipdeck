@@ -21,7 +21,7 @@ use snipdeck_app::{
 };
 use snipdeck_core::{Entitlements, Tier, Timestamp};
 use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
-use snipdeck_store::{ItemRepo, RecentRepo, Store, crypto::KdfParams};
+use snipdeck_store::{ItemRepo, RecentContent, RecentRepo, Store, crypto::KdfParams};
 
 #[path = "support/mod.rs"]
 mod support;
@@ -173,7 +173,9 @@ fn plain_rows_from_before_encryption_are_sealed_at_the_first_start_with_a_key() 
     {
         // No key ring yet: the row is stored plain, as version 4 stored every row.
         let mut store = Store::open(data.path()).expect("store");
-        store.add_recent(&m, None, t0()).expect("add");
+        store
+            .add_recent(RecentContent::text(&m), None, t0())
+            .expect("add");
     }
     let file = std::fs::read(data.path().join("snipdeck.db")).expect("db");
     assert!(
@@ -184,4 +186,54 @@ fn plain_rows_from_before_encryption_are_sealed_at_the_first_start_with_a_key() 
     assert_eq!(texts(&ctl), std::slice::from_ref(&m), "nothing lost");
     drop(ctl);
     assert_no_plaintext(data.path(), &[m.as_bytes()]);
+}
+
+#[test]
+fn rich_payloads_are_sealed_at_rest() {
+    let data = tempfile::tempdir().expect("dir");
+    let provider = SharedProvider::new();
+    let clock = FixedClock::new(t0());
+    let (html, path) = (marker("html"), marker("path"));
+    let mut ctl = start(Tier::Free, &provider, data.path(), &clock);
+    ctl.on_clipboard_change(&ClipboardObservation {
+        html: Some(format!("<p>{html}</p>")),
+        ..copied(&marker("plain"))
+    });
+    ctl.on_clipboard_change(&ClipboardObservation {
+        files: vec![format!("C:\\Users\\{path}\\notes.txt")],
+        ..ClipboardObservation::default()
+    });
+    // A picture of pseudo-random bytes, big enough to be a blob file of its own.
+    let mut state = 7_u32;
+    let rgba: Vec<u8> = (0..200 * 200 * 4)
+        .map(|_| {
+            state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            state.to_be_bytes()[0]
+        })
+        .collect();
+    let mut png_bytes = Vec::new();
+    {
+        let mut encoder = png::Encoder::new(&mut png_bytes, 200, 200);
+        encoder.set_color(png::ColorType::Rgba);
+        encoder.set_depth(png::BitDepth::Eight);
+        let mut writer = encoder.write_header().expect("header");
+        writer.write_image_data(&rgba).expect("data");
+        writer.finish().expect("finish");
+    }
+    ctl.on_clipboard_change(&ClipboardObservation {
+        image: Some(png_bytes.clone()),
+        ..ClipboardObservation::default()
+    });
+    assert_eq!(ctl.recent_entries().len(), 3, "all three were kept");
+    drop(ctl);
+    assert_no_plaintext(
+        data.path(),
+        &[
+            html.as_bytes(),
+            path.as_bytes(),
+            // The PNG signature and a run of its data: neither is in any file.
+            &png_bytes[..64],
+            &png_bytes[png_bytes.len() / 2..png_bytes.len() / 2 + 64],
+        ],
+    );
 }

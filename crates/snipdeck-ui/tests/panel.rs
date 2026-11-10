@@ -306,6 +306,52 @@ fn panel_with_the_menu_switcher_closed_and_open() {
     assert_golden("panel-lists-menu-open-light", &render(&h));
 }
 
+/// The Recent list with the three kinds of entry: copied text, a picture (thumbnail) and files.
+#[test]
+fn panel_recent_rows_show_text_a_thumbnail_and_files() {
+    use snipdeck_ui::{ItemKind, RecentRow};
+    // A 48 x 32 gradient stands in for a thumbnail.
+    let mut pixels = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::new(48, 32);
+    for (i, px) in pixels.make_mut_slice().iter_mut().enumerate() {
+        let (x, y) = (
+            u8::try_from(i % 48).unwrap_or(0),
+            u8::try_from(i / 48).unwrap_or(0),
+        );
+        *px = slint::Rgba8Pixel::new(x * 5, 120, 255 - y * 7, 255);
+    }
+    let thumb = slint::Image::from_rgba8(pixels);
+    let row = |id, preview: &str, app: &str, kind, image| RecentRow {
+        id,
+        preview: preview.into(),
+        app: app.into(),
+        age_minutes: 3,
+        kind,
+        image,
+    };
+    let h = panel(SIZE, false);
+    h.component.set_recent_available(true);
+    h.component.set_recent_open(true);
+    h.component
+        .set_recent_rows(ModelRc::new(VecModel::from(vec![
+            row(
+                1,
+                "Meeting notes for Thursday",
+                "Notepad",
+                ItemKind::Text,
+                slint::Image::default(),
+            ),
+            row(2, "640 \u{d7} 360", "Snipping Tool", ItemKind::Image, thumb),
+            row(
+                3,
+                "report.pdf, budget.xlsx",
+                "Explorer",
+                ItemKind::File,
+                slint::Image::default(),
+            ),
+        ])));
+    assert_golden("panel-recent-rows-light", &render(&h));
+}
+
 #[test]
 fn panel_long_titles_in_both_layouts() {
     for (view, name) in [

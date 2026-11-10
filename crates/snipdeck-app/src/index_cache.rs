@@ -235,7 +235,8 @@ mod tests {
         let id = first.all[0].id;
         assert_eq!(first.all[0].use_count, 0);
 
-        s.add_recent("copied", None, at()).unwrap();
+        s.add_recent(snipdeck_store::RecentContent::text("copied"), None, at())
+            .unwrap();
         let after_copy = cache.snapshot(&s).unwrap();
         assert!(Rc::ptr_eq(&first, &after_copy), "a copy reads nothing");
 
@@ -258,11 +259,23 @@ mod tests {
     impl RecentRepo for Counting {
         fn add_recent(
             &mut self,
-            text: &str,
+            content: snipdeck_store::RecentContent<'_>,
             app: Option<&str>,
             now: Timestamp,
         ) -> snipdeck_store::Result<i64> {
-            self.inner.add_recent(text, app, now)
+            self.inner.add_recent(content, app, now)
+        }
+        fn recent_seals_rich(&self) -> bool {
+            self.inner.recent_seals_rich()
+        }
+        fn recent_payload(
+            &self,
+            id: i64,
+        ) -> snipdeck_store::Result<Option<snipdeck_store::RecentPayload>> {
+            self.inner.recent_payload(id)
+        }
+        fn prune_recent_blobs(&mut self, budget: u64) -> snipdeck_store::Result<usize> {
+            self.inner.prune_recent_blobs(budget)
         }
         fn recent(&self) -> snipdeck_store::Result<Vec<RecentEntry>> {
             self.reads.set(self.reads.get() + 1);
@@ -293,12 +306,14 @@ mod tests {
             inner: Store::open_in_memory().unwrap(),
             reads: std::cell::Cell::new(0),
         };
-        s.add_recent("one", None, at()).unwrap();
+        s.add_recent(snipdeck_store::RecentContent::text("one"), None, at())
+            .unwrap();
         let cache = IndexCache::new();
         assert_eq!(cache.recent(&s).len(), 1);
         assert_eq!(cache.recent(&s).len(), 1);
         assert_eq!(s.reads.get(), 1, "the second call reads nothing");
-        s.add_recent("two", None, at()).unwrap();
+        s.add_recent(snipdeck_store::RecentContent::text("two"), None, at())
+            .unwrap();
         assert_eq!(cache.recent(&s).len(), 2);
         assert_eq!(s.reads.get(), 2);
         cache.forget_recent();
