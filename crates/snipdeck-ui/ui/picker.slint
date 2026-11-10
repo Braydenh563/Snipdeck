@@ -19,6 +19,7 @@ import { ListView } from "std-widgets.slint";
 import { Theme, Type, Space, Fonts, SystemLook, Palette } from "theme.slint";
 import { ItemCard, ItemKind, ItemCardVariant } from "components/item-card.slint";
 import { SearchField } from "components/text_field.slint";
+import { SuggestDropdown, SuggestRow } from "components/suggest-dropdown.slint";
 import { EmptyState, EmptyStateKind } from "components/empty_state.slint";
 import { Tag } from "components/tag.slint";
 import { OverlayScrollbar } from "components/scrollbar.slint";
@@ -98,6 +99,17 @@ export component PickerWindow inherits Window {
 
     // ---- Gestures out -------------------------------------------------------------------------
     callback query-changed(string);
+    // Search suggestions (slice 8): every edit asks the host for suggestions (`suggest-requested`: the text and the
+    // caret as a byte offset); the host fills `suggestions`, takes the chosen row through `apply-suggestion` and
+    // empties the list on Esc (`suggest-dismissed`).
+    in property <[SuggestRow]> suggestions;
+    // The search text `suggestions` were made for: rows for any other text are stale and hidden.
+    in property <string> suggest-query;
+    out property <bool> suggest-open: suggest.open;
+    out property <int> suggest-current: suggest.current;
+    callback suggest-requested(string, int);
+    callback suggest-dismissed();
+    callback suggest-chosen(int);
     callback scope-changed(PickerScope);
     // Enter or a click used row `index`.
     callback row-activated(int);
@@ -278,6 +290,8 @@ export component PickerWindow inherits Window {
         search.focus();
         if (s != root.scope) {
             root.scope = s;
+            // Rows made for the old scope are closed.
+            root.suggest-dismissed();
             root.reset-results();
             root.scope-changed(s);
         }
@@ -297,10 +311,21 @@ export component PickerWindow inherits Window {
         root.query-changed(root.query);
     }
 
+    // A suggestion was chosen: the word at the caret is replaced (the host computed the text and the new caret).
+    public function apply-suggestion(text: string, caret: int) {
+        root.query = text;
+        search.set-cursor(caret);
+        root.reset-results();
+        root.query-changed(text);
+    }
+
     scope-keys := FocusScope {
         forward-focus: search;
 
         capture-key-pressed(event) => {
+            if (search.has-focus && !search.composing && suggest.handle-key(event)) {
+                return accept;
+            }
             if (event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
                 if (event.text == "e" || event.text == "E") {
                     if (root.sel >= 0) {
@@ -369,12 +394,14 @@ export component PickerWindow inherits Window {
             HorizontalLayout {
                 padding: Space.s2;
                 search := SearchField {
+                    expanded: suggest.open;
                     placeholder: @tr("Search all snippets");
                     label: @tr("Search all snippets");
                     clear-label: @tr("Clear search");
                     edited(text) => {
                         root.reset-results();
                         root.query-changed(text);
+                        root.suggest-requested(text, search.caret);
                     }
                 }
             }
@@ -538,6 +565,17 @@ export component PickerWindow inherits Window {
                 }
             }
         }
+    }
+
+    suggest := SuggestDropdown {
+        x: search.absolute-position.x;
+        y: search.absolute-position.y + search.box-height + Space.s0-5;
+        width: search.width;
+        label: @tr("Search suggestions");
+        rows: root.suggestions;
+        active: search.has-focus && root.query != "" && root.suggest-query == root.query;
+        chosen(i) => { root.suggest-chosen(i); }
+        dismissed => { root.suggest-dismissed(); }
     }
 
     // The window outline: level 3 is the OS shadow plus a 1px `border-default` (DESIGN.md §6).

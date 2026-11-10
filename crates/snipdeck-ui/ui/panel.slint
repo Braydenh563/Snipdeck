@@ -44,6 +44,7 @@ import { SearchField } from "components/text_field.slint";
 import { EmptyState, EmptyStateKind } from "components/empty_state.slint";
 import { Toast, ToastKind, ToastPhase, Skeleton, SkeletonKind, Tooltip } from "components/feedback.slint";
 import { Menu, MenuEntry } from "components/menu.slint";
+import { SuggestDropdown, SuggestRow } from "components/suggest-dropdown.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
 import { RepaintNudge } from "components/repaint.slint";
 import { Button, ButtonVariant, ButtonSize } from "components/button.slint";
@@ -319,6 +320,17 @@ export component PanelWindow inherits Window {
 
     // ---- Gestures out -------------------------------------------------------------------------
     callback query-changed(string);
+    // Search suggestions (slice 8): every edit asks the host for suggestions (`suggest-requested`: the text and the
+    // caret as a byte offset); the host fills `suggestions`, takes the chosen row through `apply-suggestion` and
+    // empties the list on Esc (`suggest-dismissed`).
+    in property <[SuggestRow]> suggestions;
+    // The search text `suggestions` were made for: rows for any other text are stale and hidden.
+    in property <string> suggest-query;
+    out property <bool> suggest-open: suggest.open;
+    out property <int> suggest-current: suggest.current;
+    callback suggest-requested(string, int);
+    callback suggest-dismissed();
+    callback suggest-chosen(int);
     // A row dragged onto a list tab moves its item there. The host builds and reads the in-window payload (a row index).
     pure callback row-payload(int) -> data-transfer;
     pure callback payload-row(data-transfer) -> int;
@@ -967,6 +979,16 @@ export component PanelWindow inherits Window {
         }
     }
 
+    // A suggestion was chosen: the word at the caret is replaced (the host computed the text and the new caret).
+    public function apply-suggestion(text: string, caret: int) {
+        root.search-user = true;
+        root.query = text;
+        root.selected-index = 0;
+        list.content-y = 0px;
+        search.set-cursor(caret);
+        root.query-changed(text);
+    }
+
     // Esc and the Close button: clears the query and collapses the search in one step.
     function clear-query() {
         root.search-user = false;
@@ -1095,6 +1117,11 @@ export component PanelWindow inherits Window {
                         return accept;
                     }
                     return reject;
+                }
+                // The open suggestion dropdown takes Down, Tab, Enter on a highlighted row and Esc; the search keeps the
+                // keyboard for everything else.
+                if (search.has-focus && !quick.expanded && suggest.handle-key(event)) {
+                    return accept;
                 }
                 // The open quick-add box owns the keyboard (Enter, Shift+Enter, Esc are its own); only Ctrl+N and
                 // Ctrl+Shift+N are the window's.
@@ -1648,6 +1675,7 @@ export component PanelWindow inherits Window {
                     }
 
                     search := SearchField {
+                        expanded: suggest.open;
                         x: Space.s2;
                         y: root.search-block ? Space.s2 : Space.s1;
                         width: max(0px, parent.width - 2 * Space.s2 - (root.search-block ? close-search.width + Space.s1 + Space.s0-5 : 0px));
@@ -1662,6 +1690,7 @@ export component PanelWindow inherits Window {
                             root.selected-index = 0;
                             list.content-y = 0px;
                             root.query-changed(text);
+                            root.suggest-requested(text, search.caret);
                         }
                     }
 
@@ -2543,6 +2572,18 @@ export component PanelWindow inherits Window {
                 }
             }
         }
+        }
+
+        // ---- Search suggestions: under the search field, over the rows (keyboard stays in the field) ----------
+        suggest := SuggestDropdown {
+            x: search.absolute-position.x;
+            y: search.absolute-position.y + search.box-height + Space.s0-5;
+            width: search.width;
+            label: @tr("Search suggestions");
+            rows: root.suggestions;
+            active: search.has-focus && root.query != "" && root.suggest-query == root.query && !root.symbols-open;
+            chosen(i) => { root.suggest-chosen(i); }
+            dismissed => { root.suggest-dismissed(); }
         }
 
         // ---- The board menu: a scrim that dismisses on click, and the menu under the header ----------

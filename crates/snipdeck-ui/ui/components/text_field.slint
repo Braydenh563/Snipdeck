@@ -66,6 +66,8 @@ export component TextField inherits VerticalLayout {
     in property <int> focus-request: 0;
     // Panel v2 search: a taller single-line box (36px) than the 28px form field.
     in property <length> min-box-h: 0px;
+    // A popup this field controls (search suggestions) is showing: announced as expanded.
+    in property <bool> expanded: false;
 
     out property <bool> has-focus: input.has-focus;
     // The caret as a UTF-8 byte offset (it stays put while the field is not focused).
@@ -117,6 +119,7 @@ export component TextField inherits VerticalLayout {
     alignment: start;
     forward-focus: input;
     accessible-role: text-input;
+    accessible-expanded: root.expanded;
     accessible-label: root.label;
     // A password is never handed to a screen reader or other accessibility client.
     accessible-value: root.input-type == InputType.password ? "" : root.text;

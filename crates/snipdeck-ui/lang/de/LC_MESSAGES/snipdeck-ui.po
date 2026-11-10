@@ -456,6 +456,9 @@ msgstr "Inhalt"
 msgid "Control Enter"
 msgstr "Ctrl Enter"
 
+msgid "Control N"
+msgstr "Ctrl N"
+
 msgid "Copied"
 msgstr "Kopiert"
 
@@ -1882,9 +1885,6 @@ msgstr "Angeheftete Textbausteine"
 msgid "Placeholders"
 msgstr "Platzhalter"
 
-msgid "Press Ctrl+N to add a snippet, or Ctrl+K to see every command."
-msgstr "Drücke Ctrl+N, um einen Textbaustein hinzuzufügen, oder Ctrl+K, um alle Befehle zu sehen."
-
 msgid "Press the new shortcut"
 msgstr "Neues Tastenkürzel drücken"
 
@@ -2161,6 +2161,9 @@ msgstr "Kurzbefehle suchen"
 
 msgid "Search snippets"
 msgstr "Textbausteine suchen"
+
+msgid "Search suggestions"
+msgstr "Suchvorschläge"
 
 msgid "Search symbols"
 msgstr "Symbole suchen"
