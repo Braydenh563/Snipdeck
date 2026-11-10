@@ -717,6 +717,10 @@ export component ItemEditor inherits Window {
                                 root.kind-index = i;
                                 // Only text kinds can be sensitive: the switch goes off with the kind.
                                 if (i >= 4) { root.sensitive = false; }
+                                // Picked with the pointer: the caret goes to the text, which stays in view. Left where it was
+                                // (Title is far down the taller Template form), the next key press finds it scrolled out of
+                                // the viewport, which drops the focus and with it Ctrl+Enter.
+                                if (i <= 3 && !self.has-focus) { content-field.focus(); }
                                 root.touch();
                             }
                             changed has-focus => {

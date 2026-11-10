@@ -595,6 +595,31 @@ fn a_placeholder_chip_inserts_at_the_caret_not_at_the_end() {
 }
 
 #[test]
+fn ctrl_enter_saves_a_template_after_picking_the_kind_and_clicking_the_uuid_chip() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        let before = r.item_count();
+        // The Template form is tall (a row per placeholder): picking it must not strand the keyboard
+        // focus on a field that scrolled out of view, where the next key press drops it.
+        click(
+            ed.window(),
+            &find(&ed, "Template", AccessibleRole::RadioButton),
+        );
+        type_text(ed.window(), "Ticket ");
+        click(
+            ed.window(),
+            &find(&ed, "Insert {uuid}", AccessibleRole::Button),
+        );
+        assert_eq!(ed.get_content(), "Ticket {uuid}");
+        save(&ed);
+        assert!(!r.editor_shown(), "Ctrl+Enter saved and closed the editor");
+        assert_eq!(r.item_count(), before + 1);
+    });
+}
+
+#[test]
 fn a_link_without_a_scheme_is_refused_inline_and_a_good_one_saves() {
     on_ui_thread(|| {
         let r = rig();
@@ -755,9 +780,6 @@ fn a_free_user_sees_prompted_fields_refused_with_the_pro_toast() {
         menu(&r, "New item");
         let ed = r.ed();
         assert!(!ed.get_prompted_available());
-        // The Template form is taller (more placeholder chips); the keyboard focus has to be put
-        // in the form first, or Ctrl+Enter below never reaches the editor.
-        type_text(ed.window(), "x");
         click(
             ed.window(),
             &find(&ed, "Template", AccessibleRole::RadioButton),
@@ -766,10 +788,6 @@ fn a_free_user_sees_prompted_fields_refused_with_the_pro_toast() {
         ed.set_item_title("Ask".into());
         settle();
         let before = r.item_count();
-        type_text(ed.window(), "y");
-        ed.window()
-            .dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(true));
-        ed.invoke_focus_title();
         save(&ed);
         assert!(r.editor_shown(), "not saved");
         assert_eq!(r.item_count(), before);
