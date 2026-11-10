@@ -3541,13 +3541,19 @@ file | crates/snipdeck-core/src/format.rs:403
 files_in_one_format_need_distinct_names_ignoring_case | crates/snipdeck-core/src/format.rs:408
 the_same_file_name_in_different_formats_is_fine | crates/snipdeck-core/src/format.rs:427
 
+### crates/snipdeck-core/src/group.rs
+
+Group | crates/snipdeck-core/src/group.rs:9
+impl Group | crates/snipdeck-core/src/group.rs:20
+new | crates/snipdeck-core/src/group.rs:22
+
 ### crates/snipdeck-core/src/ids.rs
 
-tests | crates/snipdeck-core/src/ids.rs:84
-generated_ids_are_v7_and_increase | crates/snipdeck-core/src/ids.rs:89
-display_round_trips_through_from_str | crates/snipdeck-core/src/ids.rs:96
-parsing_accepts_any_uuid_version_and_rejects_junk | crates/snipdeck-core/src/ids.rs:105
-uuid_conversions_preserve_the_value | crates/snipdeck-core/src/ids.rs:121
+tests | crates/snipdeck-core/src/ids.rs:89
+generated_ids_are_v7_and_increase | crates/snipdeck-core/src/ids.rs:94
+display_round_trips_through_from_str | crates/snipdeck-core/src/ids.rs:101
+parsing_accepts_any_uuid_version_and_rejects_junk | crates/snipdeck-core/src/ids.rs:110
+uuid_conversions_preserve_the_value | crates/snipdeck-core/src/ids.rs:126
 
 ### crates/snipdeck-core/src/item.rs
 
@@ -3581,17 +3587,18 @@ content | crates/snipdeck-core/src/lib.rs:18
 entitlements | crates/snipdeck-core/src/lib.rs:19
 error | crates/snipdeck-core/src/lib.rs:20
 format | crates/snipdeck-core/src/lib.rs:21
-ids | crates/snipdeck-core/src/lib.rs:22
-item | crates/snipdeck-core/src/lib.rs:23
-list | crates/snipdeck-core/src/lib.rs:24
-name | crates/snipdeck-core/src/lib.rs:25
-placement | crates/snipdeck-core/src/lib.rs:26
-tag | crates/snipdeck-core/src/lib.rs:27
-usage | crates/snipdeck-core/src/lib.rs:28
-licence | crates/snipdeck-core/src/lib.rs:30
-search | crates/snipdeck-core/src/lib.rs:31
-template | crates/snipdeck-core/src/lib.rs:32
-APP_NAME | crates/snipdeck-core/src/lib.rs:49
+group | crates/snipdeck-core/src/lib.rs:22
+ids | crates/snipdeck-core/src/lib.rs:23
+item | crates/snipdeck-core/src/lib.rs:24
+list | crates/snipdeck-core/src/lib.rs:25
+name | crates/snipdeck-core/src/lib.rs:26
+placement | crates/snipdeck-core/src/lib.rs:27
+tag | crates/snipdeck-core/src/lib.rs:28
+usage | crates/snipdeck-core/src/lib.rs:29
+licence | crates/snipdeck-core/src/lib.rs:31
+search | crates/snipdeck-core/src/lib.rs:32
+template | crates/snipdeck-core/src/lib.rs:33
+APP_NAME | crates/snipdeck-core/src/lib.rs:51
 
 ### crates/snipdeck-core/src/licence.rs
 
@@ -5179,17 +5186,18 @@ ItemsDoc | crates/snipdeck-portable/src/dto.rs:65
 TagDto | crates/snipdeck-portable/src/dto.rs:72
 BoardDto | crates/snipdeck-portable/src/dto.rs:78
 ListDto | crates/snipdeck-portable/src/dto.rs:87
-ItemsParseError | crates/snipdeck-portable/src/dto.rs:112
-parse_items_doc | crates/snipdeck-portable/src/dto.rs:121
-counted_items | crates/snipdeck-portable/src/dto.rs:142
-ItemDto | crates/snipdeck-portable/src/dto.rs:169
-FormatDto | crates/snipdeck-portable/src/dto.rs:203
-FileDto | crates/snipdeck-portable/src/dto.rs:216
-is_false | crates/snipdeck-portable/src/dto.rs:228
-tests | crates/snipdeck-portable/src/dto.rs:233
-doc | crates/snipdeck-portable/src/dto.rs:239
-the_item_cap_stops_the_parse_at_the_first_item_over_it | crates/snipdeck-portable/src/dto.rs:247
-the_budget_does_not_leak_to_later_parses | crates/snipdeck-portable/src/dto.rs:264
+GroupDto | crates/snipdeck-portable/src/dto.rs:108
+ItemsParseError | crates/snipdeck-portable/src/dto.rs:124
+parse_items_doc | crates/snipdeck-portable/src/dto.rs:133
+counted_items | crates/snipdeck-portable/src/dto.rs:154
+ItemDto | crates/snipdeck-portable/src/dto.rs:181
+FormatDto | crates/snipdeck-portable/src/dto.rs:218
+FileDto | crates/snipdeck-portable/src/dto.rs:231
+is_false | crates/snipdeck-portable/src/dto.rs:243
+tests | crates/snipdeck-portable/src/dto.rs:248
+doc | crates/snipdeck-portable/src/dto.rs:254
+the_item_cap_stops_the_parse_at_the_first_item_over_it | crates/snipdeck-portable/src/dto.rs:262
+the_budget_does_not_leak_to_later_parses | crates/snipdeck-portable/src/dto.rs:279
 
 ### crates/snipdeck-portable/src/error.rs
 
@@ -5211,9 +5219,10 @@ part_path | crates/snipdeck-portable/src/export.rs:133
 Exporter | crates/snipdeck-portable/src/export.rs:142
 impl Exporter<'_, L, W> | crates/snipdeck-portable/src/export.rs:150
 build_doc | crates/snipdeck-portable/src/export.rs:151
-format_dto | crates/snipdeck-portable/src/export.rs:246
-payload | crates/snipdeck-portable/src/export.rs:292
-finish | crates/snipdeck-portable/src/export.rs:319
+format_dto | crates/snipdeck-portable/src/export.rs:257
+payload | crates/snipdeck-portable/src/export.rs:303
+finish | crates/snipdeck-portable/src/export.rs:330
+group_dtos | crates/snipdeck-portable/src/export.rs:370
 
 ### crates/snipdeck-portable/src/import.rs
 
@@ -5236,22 +5245,22 @@ parse_name | crates/snipdeck-portable/src/import.rs:379
 parse_key | crates/snipdeck-portable/src/import.rs:383
 unique | crates/snipdeck-portable/src/import.rs:395
 build_plan | crates/snipdeck-portable/src/import.rs:412
-check_counts | crates/snipdeck-portable/src/import.rs:489
-Builder | crates/snipdeck-portable/src/import.rs:528
-impl Builder<'_, R> | crates/snipdeck-portable/src/import.rs:540
-read_tags | crates/snipdeck-portable/src/import.rs:542
-list | crates/snipdeck-portable/src/import.rs:560
-item | crates/snipdeck-portable/src/import.rs:589
-format | crates/snipdeck-portable/src/import.rs:669
-asset_ref | crates/snipdeck-portable/src/import.rs:724
-check_shape | crates/snipdeck-portable/src/import.rs:774
-Payload | crates/snipdeck-portable/src/import.rs:801
-Verdict | crates/snipdeck-portable/src/import.rs:811
-Verified | crates/snipdeck-portable/src/import.rs:820
-Checked | crates/snipdeck-portable/src/import.rs:834
-verify | crates/snipdeck-portable/src/import.rs:848
-verify_item | crates/snipdeck-portable/src/import.rs:884
-check_source | crates/snipdeck-portable/src/import.rs:938
+check_counts | crates/snipdeck-portable/src/import.rs:491
+Builder | crates/snipdeck-portable/src/import.rs:530
+impl Builder<'_, R> | crates/snipdeck-portable/src/import.rs:545
+read_tags | crates/snipdeck-portable/src/import.rs:547
+list | crates/snipdeck-portable/src/import.rs:565
+item | crates/snipdeck-portable/src/import.rs:602
+format | crates/snipdeck-portable/src/import.rs:695
+asset_ref | crates/snipdeck-portable/src/import.rs:750
+check_shape | crates/snipdeck-portable/src/import.rs:800
+Payload | crates/snipdeck-portable/src/import.rs:827
+Verdict | crates/snipdeck-portable/src/import.rs:837
+Verified | crates/snipdeck-portable/src/import.rs:846
+Checked | crates/snipdeck-portable/src/import.rs:860
+verify | crates/snipdeck-portable/src/import.rs:874
+verify_item | crates/snipdeck-portable/src/import.rs:910
+check_source | crates/snipdeck-portable/src/import.rs:964
 
 ### crates/snipdeck-portable/src/importers.rs
 
@@ -5404,13 +5413,13 @@ visit_some | crates/snipdeck-portable/src/importers/espanso.rs:398
 visit_seq | crates/snipdeck-portable/src/importers/espanso.rs:402
 visit_map | crates/snipdeck-portable/src/importers/espanso.rs:411
 parse_yaml | crates/snipdeck-portable/src/importers/espanso.rs:422
-Var | crates/snipdeck-portable/src/importers/espanso.rs:439
-read_match | crates/snipdeck-portable/src/importers/espanso.rs:444
-var_for | crates/snipdeck-portable/src/importers/espanso.rs:495
-choice | crates/snipdeck-portable/src/importers/espanso.rs:523
-convert | crates/snipdeck-portable/src/importers/espanso.rs:536
-literal | crates/snipdeck-portable/src/importers/espanso.rs:568
-convert_form | crates/snipdeck-portable/src/importers/espanso.rs:580
+Var | crates/snipdeck-portable/src/importers/espanso.rs:462
+read_match | crates/snipdeck-portable/src/importers/espanso.rs:467
+var_for | crates/snipdeck-portable/src/importers/espanso.rs:518
+choice | crates/snipdeck-portable/src/importers/espanso.rs:546
+convert | crates/snipdeck-portable/src/importers/espanso.rs:559
+literal | crates/snipdeck-portable/src/importers/espanso.rs:591
+convert_form | crates/snipdeck-portable/src/importers/espanso.rs:603
 
 ### crates/snipdeck-portable/src/importers/expander.rs
 
@@ -5489,57 +5498,57 @@ default | crates/snipdeck-portable/src/limits.rs:43
 ### crates/snipdeck-portable/src/plan.rs
 
 Library | crates/snipdeck-portable/src/plan.rs:33
-data_key | crates/snipdeck-portable/src/plan.rs:36
-atomically | crates/snipdeck-portable/src/plan.rs:45
-impl Library for snipdeck_store::Store | crates/snipdeck-portable/src/plan.rs:48
-data_key | crates/snipdeck-portable/src/plan.rs:49
-atomically | crates/snipdeck-portable/src/plan.rs:53
-Source | crates/snipdeck-portable/src/plan.rs:60
-AssetRef | crates/snipdeck-portable/src/plan.rs:69
-PlanFile | crates/snipdeck-portable/src/plan.rs:76
-PlanFormat | crates/snipdeck-portable/src/plan.rs:82
-PlanItem | crates/snipdeck-portable/src/plan.rs:88
-impl PlanItem | crates/snipdeck-portable/src/plan.rs:109
-text | crates/snipdeck-portable/src/plan.rs:111
-PlanList | crates/snipdeck-portable/src/plan.rs:142
-impl PlanList | crates/snipdeck-portable/src/plan.rs:153
-new | crates/snipdeck-portable/src/plan.rs:154
-PlanBoard | crates/snipdeck-portable/src/plan.rs:169
-Plan | crates/snipdeck-portable/src/plan.rs:177
-impl Plan | crates/snipdeck-portable/src/plan.rs:182
-item_count | crates/snipdeck-portable/src/plan.rs:184
-drop_duplicates | crates/snipdeck-portable/src/plan.rs:196
-ContentHasher | crates/snipdeck-portable/src/plan.rs:216
-impl ContentHasher | crates/snipdeck-portable/src/plan.rs:218
-new | crates/snipdeck-portable/src/plan.rs:219
-single | crates/snipdeck-portable/src/plan.rs:223
-files | crates/snipdeck-portable/src/plan.rs:230
-finish | crates/snipdeck-portable/src/plan.rs:242
-content_parts | crates/snipdeck-portable/src/plan.rs:247
-existing_hashes | crates/snipdeck-portable/src/plan.rs:263
-hash_formats | crates/snipdeck-portable/src/plan.rs:288
-preview_text | crates/snipdeck-portable/src/plan.rs:312
-apply | crates/snipdeck-portable/src/plan.rs:326
-write | crates/snipdeck-portable/src/plan.rs:346
-build_item | crates/snipdeck-portable/src/plan.rs:422
-put | crates/snipdeck-portable/src/plan.rs:485
-resolve | crates/snipdeck-portable/src/plan.rs:493
-tests | crates/snipdeck-portable/src/plan.rs:504
-at | crates/snipdeck-portable/src/plan.rs:512
-name | crates/snipdeck-portable/src/plan.rs:516
-asset | crates/snipdeck-portable/src/plan.rs:520
-item | crates/snipdeck-portable/src/plan.rs:527
-two_boards | crates/snipdeck-portable/src/plan.rs:538
-library | crates/snipdeck-portable/src/plan.rs:558
-state | crates/snipdeck-portable/src/plan.rs:585
-apply_writes_everything_and_reuses_existing_tags | crates/snipdeck-portable/src/plan.rs:604
-a_failure_at_any_point_leaves_the_library_as_it_was | crates/snipdeck-portable/src/plan.rs:631
-tags_clash_by_the_stores_key_not_by_lower_casing | crates/snipdeck-portable/src/plan.rs:666
-rolling_back_never_touches_what_the_user_trashed | crates/snipdeck-portable/src/plan.rs:696
-duplicates_are_dropped_by_content_and_empty_boards_vanish | crates/snipdeck-portable/src/plan.rs:714
-content_hash_ignores_titles_and_distinguishes_format_and_order | crates/snipdeck-portable/src/plan.rs:737
-the_stored_hash_of_an_existing_item_matches_the_plan_hash | crates/snipdeck-portable/src/plan.rs:756
-hashing_plain_items_makes_no_per_item_formats_call | crates/snipdeck-portable/src/plan.rs:834
+data_key | crates/snipdeck-portable/src/plan.rs:38
+atomically | crates/snipdeck-portable/src/plan.rs:47
+impl Library for snipdeck_store::Store | crates/snipdeck-portable/src/plan.rs:50
+data_key | crates/snipdeck-portable/src/plan.rs:51
+atomically | crates/snipdeck-portable/src/plan.rs:55
+Source | crates/snipdeck-portable/src/plan.rs:62
+AssetRef | crates/snipdeck-portable/src/plan.rs:71
+PlanFile | crates/snipdeck-portable/src/plan.rs:78
+PlanFormat | crates/snipdeck-portable/src/plan.rs:84
+PlanItem | crates/snipdeck-portable/src/plan.rs:90
+impl PlanItem | crates/snipdeck-portable/src/plan.rs:113
+text | crates/snipdeck-portable/src/plan.rs:115
+PlanList | crates/snipdeck-portable/src/plan.rs:147
+impl PlanList | crates/snipdeck-portable/src/plan.rs:160
+new | crates/snipdeck-portable/src/plan.rs:161
+PlanBoard | crates/snipdeck-portable/src/plan.rs:177
+Plan | crates/snipdeck-portable/src/plan.rs:185
+impl Plan | crates/snipdeck-portable/src/plan.rs:190
+item_count | crates/snipdeck-portable/src/plan.rs:192
+drop_duplicates | crates/snipdeck-portable/src/plan.rs:204
+ContentHasher | crates/snipdeck-portable/src/plan.rs:224
+impl ContentHasher | crates/snipdeck-portable/src/plan.rs:226
+new | crates/snipdeck-portable/src/plan.rs:227
+single | crates/snipdeck-portable/src/plan.rs:231
+files | crates/snipdeck-portable/src/plan.rs:238
+finish | crates/snipdeck-portable/src/plan.rs:250
+content_parts | crates/snipdeck-portable/src/plan.rs:255
+existing_hashes | crates/snipdeck-portable/src/plan.rs:271
+hash_formats | crates/snipdeck-portable/src/plan.rs:296
+preview_text | crates/snipdeck-portable/src/plan.rs:320
+apply | crates/snipdeck-portable/src/plan.rs:334
+write | crates/snipdeck-portable/src/plan.rs:354
+build_item | crates/snipdeck-portable/src/plan.rs:442
+put | crates/snipdeck-portable/src/plan.rs:505
+resolve | crates/snipdeck-portable/src/plan.rs:513
+tests | crates/snipdeck-portable/src/plan.rs:524
+at | crates/snipdeck-portable/src/plan.rs:532
+name | crates/snipdeck-portable/src/plan.rs:536
+asset | crates/snipdeck-portable/src/plan.rs:540
+item | crates/snipdeck-portable/src/plan.rs:547
+two_boards | crates/snipdeck-portable/src/plan.rs:558
+library | crates/snipdeck-portable/src/plan.rs:578
+state | crates/snipdeck-portable/src/plan.rs:605
+apply_writes_everything_and_reuses_existing_tags | crates/snipdeck-portable/src/plan.rs:624
+a_failure_at_any_point_leaves_the_library_as_it_was | crates/snipdeck-portable/src/plan.rs:651
+tags_clash_by_the_stores_key_not_by_lower_casing | crates/snipdeck-portable/src/plan.rs:686
+rolling_back_never_touches_what_the_user_trashed | crates/snipdeck-portable/src/plan.rs:716
+duplicates_are_dropped_by_content_and_empty_boards_vanish | crates/snipdeck-portable/src/plan.rs:734
+content_hash_ignores_titles_and_distinguishes_format_and_order | crates/snipdeck-portable/src/plan.rs:757
+the_stored_hash_of_an_existing_item_matches_the_plan_hash | crates/snipdeck-portable/src/plan.rs:776
+hashing_plain_items_makes_no_per_item_formats_call | crates/snipdeck-portable/src/plan.rs:854
 
 ### crates/snipdeck-portable/src/report.rs
 
@@ -5609,50 +5618,50 @@ undoing_directly_after_a_set_aside_restores_the_library | crates/snipdeck-store/
 
 ### crates/snipdeck-store/src/batch.rs
 
-Ctx | crates/snipdeck-store/src/batch.rs:25
-Reader | crates/snipdeck-store/src/batch.rs:33
-Post | crates/snipdeck-store/src/batch.rs:43
-impl Post | crates/snipdeck-store/src/batch.rs:56
-written | crates/snipdeck-store/src/batch.rs:60
-release_scrubbed | crates/snipdeck-store/src/batch.rs:75
-checkpoint | crates/snipdeck-store/src/batch.rs:80
-merge | crates/snipdeck-store/src/batch.rs:84
-Access | crates/snipdeck-store/src/batch.rs:93
-reader | crates/snipdeck-store/src/batch.rs:94
-writer | crates/snipdeck-store/src/batch.rs:98
-impl Access for Store | crates/snipdeck-store/src/batch.rs:101
-reader | crates/snipdeck-store/src/batch.rs:102
-writer | crates/snipdeck-store/src/batch.rs:111
-impl Access for Batch<'_> | crates/snipdeck-store/src/batch.rs:116
-reader | crates/snipdeck-store/src/batch.rs:117
-writer | crates/snipdeck-store/src/batch.rs:126
-BlobGuard | crates/snipdeck-store/src/batch.rs:133
-impl BlobGuard<'_> | crates/snipdeck-store/src/batch.rs:138
-disarm | crates/snipdeck-store/src/batch.rs:140
-impl Drop for BlobGuard<'_> | crates/snipdeck-store/src/batch.rs:146
-drop | crates/snipdeck-store/src/batch.rs:147
-Batch | crates/snipdeck-store/src/batch.rs:200
-impl core::fmt::Debug for Batch<'_> | crates/snipdeck-store/src/batch.rs:210
-fmt | crates/snipdeck-store/src/batch.rs:211
-impl Store | crates/snipdeck-store/src/batch.rs:216
-transaction | crates/snipdeck-store/src/batch.rs:225
-finish | crates/snipdeck-store/src/batch.rs:251
-impl Batch<'_> | crates/snipdeck-store/src/batch.rs:261
-commit | crates/snipdeck-store/src/batch.rs:262
-run | crates/snipdeck-store/src/batch.rs:283
-scoped | crates/snipdeck-store/src/batch.rs:295
-undo | crates/snipdeck-store/src/batch.rs:331
-transaction | crates/snipdeck-store/src/batch.rs:345
-restore_with | crates/snipdeck-store/src/batch.rs:353
-put_sensitive | crates/snipdeck-store/src/batch.rs:362
-impl Store | crates/snipdeck-store/src/batch.rs:367
-restore_with | crates/snipdeck-store/src/batch.rs:380
-impl BlobStore for Store | crates/snipdeck-store/src/batch.rs:551
-put | crates/snipdeck-store/src/batch.rs:552
-read | crates/snipdeck-store/src/batch.rs:556
-impl BlobStore for Batch<'_> | crates/snipdeck-store/src/batch.rs:562
-put | crates/snipdeck-store/src/batch.rs:563
-read | crates/snipdeck-store/src/batch.rs:567
+Ctx | crates/snipdeck-store/src/batch.rs:26
+Reader | crates/snipdeck-store/src/batch.rs:34
+Post | crates/snipdeck-store/src/batch.rs:44
+impl Post | crates/snipdeck-store/src/batch.rs:57
+written | crates/snipdeck-store/src/batch.rs:61
+release_scrubbed | crates/snipdeck-store/src/batch.rs:76
+checkpoint | crates/snipdeck-store/src/batch.rs:81
+merge | crates/snipdeck-store/src/batch.rs:85
+Access | crates/snipdeck-store/src/batch.rs:94
+reader | crates/snipdeck-store/src/batch.rs:95
+writer | crates/snipdeck-store/src/batch.rs:99
+impl Access for Store | crates/snipdeck-store/src/batch.rs:102
+reader | crates/snipdeck-store/src/batch.rs:103
+writer | crates/snipdeck-store/src/batch.rs:112
+impl Access for Batch<'_> | crates/snipdeck-store/src/batch.rs:117
+reader | crates/snipdeck-store/src/batch.rs:118
+writer | crates/snipdeck-store/src/batch.rs:127
+BlobGuard | crates/snipdeck-store/src/batch.rs:134
+impl BlobGuard<'_> | crates/snipdeck-store/src/batch.rs:139
+disarm | crates/snipdeck-store/src/batch.rs:141
+impl Drop for BlobGuard<'_> | crates/snipdeck-store/src/batch.rs:147
+drop | crates/snipdeck-store/src/batch.rs:148
+Batch | crates/snipdeck-store/src/batch.rs:201
+impl core::fmt::Debug for Batch<'_> | crates/snipdeck-store/src/batch.rs:211
+fmt | crates/snipdeck-store/src/batch.rs:212
+impl Store | crates/snipdeck-store/src/batch.rs:217
+transaction | crates/snipdeck-store/src/batch.rs:226
+finish | crates/snipdeck-store/src/batch.rs:252
+impl Batch<'_> | crates/snipdeck-store/src/batch.rs:262
+commit | crates/snipdeck-store/src/batch.rs:263
+run | crates/snipdeck-store/src/batch.rs:284
+scoped | crates/snipdeck-store/src/batch.rs:296
+undo | crates/snipdeck-store/src/batch.rs:332
+transaction | crates/snipdeck-store/src/batch.rs:346
+restore_with | crates/snipdeck-store/src/batch.rs:354
+put_sensitive | crates/snipdeck-store/src/batch.rs:363
+impl Store | crates/snipdeck-store/src/batch.rs:368
+restore_with | crates/snipdeck-store/src/batch.rs:381
+impl BlobStore for Store | crates/snipdeck-store/src/batch.rs:578
+put | crates/snipdeck-store/src/batch.rs:579
+read | crates/snipdeck-store/src/batch.rs:583
+impl BlobStore for Batch<'_> | crates/snipdeck-store/src/batch.rs:589
+put | crates/snipdeck-store/src/batch.rs:590
+read | crates/snipdeck-store/src/batch.rs:594
 
 ### crates/snipdeck-store/src/blobs.rs
 
@@ -5752,31 +5761,31 @@ move_list | crates/snipdeck-store/src/boards.rs:242
 
 ### crates/snipdeck-store/src/codec.rs
 
-StoredId | crates/snipdeck-store/src/codec.rs:11
-uuid | crates/snipdeck-store/src/codec.rs:14
-from_uuid | crates/snipdeck-store/src/codec.rs:15
-blob_refs | crates/snipdeck-store/src/codec.rs:39
-id_bytes | crates/snipdeck-store/src/codec.rs:56
-id_from | crates/snipdeck-store/src/codec.rs:61
-not_found | crates/snipdeck-store/src/codec.rs:68
-nanos | crates/snipdeck-store/src/codec.rs:76
-from_nanos | crates/snipdeck-store/src/codec.rs:85
-from_opt_nanos | crates/snipdeck-store/src/codec.rs:91
-Payload | crates/snipdeck-store/src/codec.rs:96
-payload | crates/snipdeck-store/src/codec.rs:99
-content_from | crates/snipdeck-store/src/codec.rs:111
-flag | crates/snipdeck-store/src/codec.rs:136
-exists | crates/snipdeck-store/src/codec.rs:141
-board_is_live | crates/snipdeck-store/src/codec.rs:153
-list_is_live | crates/snipdeck-store/src/codec.rs:165
-item_is_live | crates/snipdeck-store/src/codec.rs:178
-require_board | crates/snipdeck-store/src/codec.rs:192
-require_list | crates/snipdeck-store/src/codec.rs:201
-require_item | crates/snipdeck-store/src/codec.rs:210
-require_new | crates/snipdeck-store/src/codec.rs:219
-raw_placement | crates/snipdeck-store/src/codec.rs:235
-stored_name | crates/snipdeck-store/src/codec.rs:252
-is_valid_name | crates/snipdeck-store/src/codec.rs:265
+StoredId | crates/snipdeck-store/src/codec.rs:13
+uuid | crates/snipdeck-store/src/codec.rs:16
+from_uuid | crates/snipdeck-store/src/codec.rs:17
+blob_refs | crates/snipdeck-store/src/codec.rs:42
+id_bytes | crates/snipdeck-store/src/codec.rs:59
+id_from | crates/snipdeck-store/src/codec.rs:64
+not_found | crates/snipdeck-store/src/codec.rs:71
+nanos | crates/snipdeck-store/src/codec.rs:79
+from_nanos | crates/snipdeck-store/src/codec.rs:88
+from_opt_nanos | crates/snipdeck-store/src/codec.rs:94
+Payload | crates/snipdeck-store/src/codec.rs:99
+payload | crates/snipdeck-store/src/codec.rs:102
+content_from | crates/snipdeck-store/src/codec.rs:114
+flag | crates/snipdeck-store/src/codec.rs:139
+exists | crates/snipdeck-store/src/codec.rs:144
+board_is_live | crates/snipdeck-store/src/codec.rs:156
+list_is_live | crates/snipdeck-store/src/codec.rs:168
+item_is_live | crates/snipdeck-store/src/codec.rs:181
+require_board | crates/snipdeck-store/src/codec.rs:195
+require_list | crates/snipdeck-store/src/codec.rs:204
+require_item | crates/snipdeck-store/src/codec.rs:213
+require_new | crates/snipdeck-store/src/codec.rs:222
+raw_placement | crates/snipdeck-store/src/codec.rs:238
+stored_name | crates/snipdeck-store/src/codec.rs:255
+is_valid_name | crates/snipdeck-store/src/codec.rs:268
 
 ### crates/snipdeck-store/src/crypto.rs
 
@@ -5972,6 +5981,24 @@ quotes_are_doubled_and_operators_stay_inside_them | crates/snipdeck-store/src/ft
 punctuation_only_input_is_nothing | crates/snipdeck-store/src/fts.rs:141
 control_characters_are_dropped_and_length_is_capped | crates/snipdeck-store/src/fts.rs:148
 
+### crates/snipdeck-store/src/groups.rs
+
+GroupDelete | crates/snipdeck-store/src/groups.rs:26
+GroupEnd | crates/snipdeck-store/src/groups.rs:36
+GroupRun | crates/snipdeck-store/src/groups.rs:45
+prune | crates/snipdeck-store/src/groups.rs:53
+inherited | crates/snipdeck-store/src/groups.rs:63
+heal_restored | crates/snipdeck-store/src/groups.rs:79
+live_members | crates/snipdeck-store/src/groups.rs:113
+group_list | crates/snipdeck-store/src/groups.rs:122
+groups_of | crates/snipdeck-store/src/groups.rs:132
+create_group | crates/snipdeck-store/src/groups.rs:168
+gather | crates/snipdeck-store/src/groups.rs:210
+update_group | crates/snipdeck-store/src/groups.rs:230
+delete_group | crates/snipdeck-store/src/groups.rs:242
+move_run | crates/snipdeck-store/src/groups.rs:262
+join_group | crates/snipdeck-store/src/groups.rs:301
+
 ### crates/snipdeck-store/src/items.rs
 
 FROM_LIVE | crates/snipdeck-store/src/items.rs:23
@@ -6003,10 +6030,10 @@ plain_formats | crates/snipdeck-store/src/items.rs:387
 item | crates/snipdeck-store/src/items.rs:443
 formats | crates/snipdeck-store/src/items.rs:449
 insert_item | crates/snipdeck-store/src/items.rs:464
-update_item | crates/snipdeck-store/src/items.rs:518
-move_item | crates/snipdeck-store/src/items.rs:626
-record_use | crates/snipdeck-store/src/items.rs:650
-search | crates/snipdeck-store/src/items.rs:662
+update_item | crates/snipdeck-store/src/items.rs:520
+move_item | crates/snipdeck-store/src/items.rs:629
+record_use | crates/snipdeck-store/src/items.rs:657
+search | crates/snipdeck-store/src/items.rs:669
 
 ### crates/snipdeck-store/src/keys.rs
 
@@ -6049,53 +6076,55 @@ codec | crates/snipdeck-store/src/lib.rs:34
 crypto | crates/snipdeck-store/src/lib.rs:35
 error | crates/snipdeck-store/src/lib.rs:36
 fts | crates/snipdeck-store/src/lib.rs:37
-items | crates/snipdeck-store/src/lib.rs:38
-keys | crates/snipdeck-store/src/lib.rs:39
-migrations | crates/snipdeck-store/src/lib.rs:40
-rank | crates/snipdeck-store/src/lib.rs:41
-recent | crates/snipdeck-store/src/lib.rs:42
-repo | crates/snipdeck-store/src/lib.rs:43
-schema | crates/snipdeck-store/src/lib.rs:44
-store | crates/snipdeck-store/src/lib.rs:45
-tags | crates/snipdeck-store/src/lib.rs:46
-trash | crates/snipdeck-store/src/lib.rs:47
+groups | crates/snipdeck-store/src/lib.rs:38
+items | crates/snipdeck-store/src/lib.rs:39
+keys | crates/snipdeck-store/src/lib.rs:40
+migrations | crates/snipdeck-store/src/lib.rs:41
+rank | crates/snipdeck-store/src/lib.rs:42
+recent | crates/snipdeck-store/src/lib.rs:43
+repo | crates/snipdeck-store/src/lib.rs:44
+schema | crates/snipdeck-store/src/lib.rs:45
+store | crates/snipdeck-store/src/lib.rs:46
+tags | crates/snipdeck-store/src/lib.rs:47
+trash | crates/snipdeck-store/src/lib.rs:48
 
 ### crates/snipdeck-store/src/migrations.rs
 
 APPLICATION_ID | crates/snipdeck-store/src/migrations.rs:17
 Migration | crates/snipdeck-store/src/migrations.rs:21
 MIGRATIONS | crates/snipdeck-store/src/migrations.rs:33
-latest | crates/snipdeck-store/src/migrations.rs:79
-Outcome | crates/snipdeck-store/src/migrations.rs:85
-migrate | crates/snipdeck-store/src/migrations.rs:98
-foreign | crates/snipdeck-store/src/migrations.rs:151
-run_steps | crates/snipdeck-store/src/migrations.rs:157
-write_backup | crates/snipdeck-store/src/migrations.rs:204
-SEALED_RECENT_SINCE | crates/snipdeck-store/src/migrations.rs:242
-scrub_older_backups | crates/snipdeck-store/src/migrations.rs:247
-scrub_or_delete | crates/snipdeck-store/src/migrations.rs:261
-scrub_recent | crates/snipdeck-store/src/migrations.rs:270
-tests | crates/snipdeck-store/src/migrations.rs:291
-with_next | crates/snipdeck-store/src/migrations.rs:309
-version | crates/snipdeck-store/src/migrations.rs:315
-fresh | crates/snipdeck-store/src/migrations.rs:320
-insert_board | crates/snipdeck-store/src/migrations.rs:324
-versions_are_contiguous_from_one | crates/snipdeck-store/src/migrations.rs:333
-a_new_database_is_created_at_the_latest_version | crates/snipdeck-store/src/migrations.rs:341
-migrating_twice_does_nothing_the_second_time | crates/snipdeck-store/src/migrations.rs:359
-a_v1_database_is_migrated_forward_and_keeps_its_data | crates/snipdeck-store/src/migrations.rs:367
-a_failing_migration_rolls_back_completely | crates/snipdeck-store/src/migrations.rs:385
-a_migration_leaving_dangling_references_is_refused | crates/snipdeck-store/src/migrations.rs:427
-a_newer_database_is_refused_without_being_touched | crates/snipdeck-store/src/migrations.rs:452
-someone_elses_sqlite_file_is_refused | crates/snipdeck-store/src/migrations.rs:479
-v2_and_v3_databases_upgrade_through_recent_and_labels | crates/snipdeck-store/src/migrations.rs:497
-migrating_an_existing_file_leaves_a_backup_first | crates/snipdeck-store/src/migrations.rs:528
-plain_copy_with_one_entry | crates/snipdeck-store/src/migrations.rs:552
-entries | crates/snipdeck-store/src/migrations.rs:561
-older_rollback_copies_lose_their_plain_recent_entries_and_a_broken_one_is_deleted | crates/snipdeck-store/src/migrations.rs:569
-a_scrubbed_copy_uses_no_journal_file_and_a_failed_scrub_does_not_fail_the_open | crates/snipdeck-store/src/migrations.rs:587
-a_failed_backup_keeps_the_previous_rollback_copy | crates/snipdeck-store/src/migrations.rs:612
-the_v1_fixture_file_migrates_forward_keeping_every_row_and_leaving_a_backup | crates/snipdeck-store/src/migrations.rs:635
+latest | crates/snipdeck-store/src/migrations.rs:85
+Outcome | crates/snipdeck-store/src/migrations.rs:91
+migrate | crates/snipdeck-store/src/migrations.rs:104
+foreign | crates/snipdeck-store/src/migrations.rs:157
+run_steps | crates/snipdeck-store/src/migrations.rs:163
+write_backup | crates/snipdeck-store/src/migrations.rs:210
+SEALED_RECENT_SINCE | crates/snipdeck-store/src/migrations.rs:248
+scrub_older_backups | crates/snipdeck-store/src/migrations.rs:253
+scrub_or_delete | crates/snipdeck-store/src/migrations.rs:267
+scrub_recent | crates/snipdeck-store/src/migrations.rs:276
+tests | crates/snipdeck-store/src/migrations.rs:297
+with_next | crates/snipdeck-store/src/migrations.rs:315
+version | crates/snipdeck-store/src/migrations.rs:321
+fresh | crates/snipdeck-store/src/migrations.rs:326
+insert_board | crates/snipdeck-store/src/migrations.rs:330
+versions_are_contiguous_from_one | crates/snipdeck-store/src/migrations.rs:339
+a_new_database_is_created_at_the_latest_version | crates/snipdeck-store/src/migrations.rs:347
+migrating_twice_does_nothing_the_second_time | crates/snipdeck-store/src/migrations.rs:365
+a_v1_database_is_migrated_forward_and_keeps_its_data | crates/snipdeck-store/src/migrations.rs:373
+a_failing_migration_rolls_back_completely | crates/snipdeck-store/src/migrations.rs:391
+a_migration_leaving_dangling_references_is_refused | crates/snipdeck-store/src/migrations.rs:433
+a_newer_database_is_refused_without_being_touched | crates/snipdeck-store/src/migrations.rs:458
+an_older_binary_refuses_v8 | crates/snipdeck-store/src/migrations.rs:485
+someone_elses_sqlite_file_is_refused | crates/snipdeck-store/src/migrations.rs:506
+v2_and_v3_databases_upgrade_through_recent_and_labels | crates/snipdeck-store/src/migrations.rs:524
+migrating_an_existing_file_leaves_a_backup_first | crates/snipdeck-store/src/migrations.rs:555
+plain_copy_with_one_entry | crates/snipdeck-store/src/migrations.rs:579
+entries | crates/snipdeck-store/src/migrations.rs:588
+older_rollback_copies_lose_their_plain_recent_entries_and_a_broken_one_is_deleted | crates/snipdeck-store/src/migrations.rs:596
+a_scrubbed_copy_uses_no_journal_file_and_a_failed_scrub_does_not_fail_the_open | crates/snipdeck-store/src/migrations.rs:614
+a_failed_backup_keeps_the_previous_rollback_copy | crates/snipdeck-store/src/migrations.rs:639
+the_v1_fixture_file_migrates_forward_keeping_every_row_and_leaving_a_backup | crates/snipdeck-store/src/migrations.rs:662
 
 ### crates/snipdeck-store/src/rank.rs
 
@@ -6189,44 +6218,51 @@ prune_recent_inner | crates/snipdeck-store/src/recent.rs:911
 
 ### crates/snipdeck-store/src/repo.rs
 
-BoardRepo | crates/snipdeck-store/src/repo.rs:31
-boards | crates/snipdeck-store/src/repo.rs:33
-board | crates/snipdeck-store/src/repo.rs:36
-insert_board | crates/snipdeck-store/src/repo.rs:42
-update_board | crates/snipdeck-store/src/repo.rs:45
-move_board | crates/snipdeck-store/src/repo.rs:48
-ListRepo | crates/snipdeck-store/src/repo.rs:52
-lists | crates/snipdeck-store/src/repo.rs:54
-list | crates/snipdeck-store/src/repo.rs:57
-insert_list | crates/snipdeck-store/src/repo.rs:60
-update_list | crates/snipdeck-store/src/repo.rs:63
-move_list | crates/snipdeck-store/src/repo.rs:66
-ItemRepo | crates/snipdeck-store/src/repo.rs:70
-items | crates/snipdeck-store/src/repo.rs:72
-all_items | crates/snipdeck-store/src/repo.rs:75
-change_counter | crates/snipdeck-store/src/repo.rs:89
-usage_counter | crates/snipdeck-store/src/repo.rs:94
-item | crates/snipdeck-store/src/repo.rs:97
-plain_formats | crates/snipdeck-store/src/repo.rs:106
-formats | crates/snipdeck-store/src/repo.rs:119
-insert_item | crates/snipdeck-store/src/repo.rs:122
-update_item | crates/snipdeck-store/src/repo.rs:128
-move_item | crates/snipdeck-store/src/repo.rs:131
-record_use | crates/snipdeck-store/src/repo.rs:134
-search | crates/snipdeck-store/src/repo.rs:138
-TagRepo | crates/snipdeck-store/src/repo.rs:142
-tags | crates/snipdeck-store/src/repo.rs:144
-insert_tag | crates/snipdeck-store/src/repo.rs:147
-update_tag | crates/snipdeck-store/src/repo.rs:150
-delete_tag | crates/snipdeck-store/src/repo.rs:153
-Trashable | crates/snipdeck-store/src/repo.rs:158
-TrashEntry | crates/snipdeck-store/src/repo.rs:169
-TrashRepo | crates/snipdeck-store/src/repo.rs:179
-trash | crates/snipdeck-store/src/repo.rs:181
-restore | crates/snipdeck-store/src/repo.rs:189
-trashed | crates/snipdeck-store/src/repo.rs:193
-purge | crates/snipdeck-store/src/repo.rs:197
-purge_entry | crates/snipdeck-store/src/repo.rs:207
+BoardRepo | crates/snipdeck-store/src/repo.rs:33
+boards | crates/snipdeck-store/src/repo.rs:35
+board | crates/snipdeck-store/src/repo.rs:38
+insert_board | crates/snipdeck-store/src/repo.rs:44
+update_board | crates/snipdeck-store/src/repo.rs:47
+move_board | crates/snipdeck-store/src/repo.rs:50
+ListRepo | crates/snipdeck-store/src/repo.rs:54
+lists | crates/snipdeck-store/src/repo.rs:56
+list | crates/snipdeck-store/src/repo.rs:59
+insert_list | crates/snipdeck-store/src/repo.rs:62
+update_list | crates/snipdeck-store/src/repo.rs:65
+move_list | crates/snipdeck-store/src/repo.rs:68
+GroupRepo | crates/snipdeck-store/src/repo.rs:75
+groups_of | crates/snipdeck-store/src/repo.rs:77
+create_group | crates/snipdeck-store/src/repo.rs:82
+update_group | crates/snipdeck-store/src/repo.rs:85
+delete_group | crates/snipdeck-store/src/repo.rs:88
+move_run | crates/snipdeck-store/src/repo.rs:91
+join_group | crates/snipdeck-store/src/repo.rs:95
+ItemRepo | crates/snipdeck-store/src/repo.rs:99
+items | crates/snipdeck-store/src/repo.rs:101
+all_items | crates/snipdeck-store/src/repo.rs:104
+change_counter | crates/snipdeck-store/src/repo.rs:118
+usage_counter | crates/snipdeck-store/src/repo.rs:123
+item | crates/snipdeck-store/src/repo.rs:126
+plain_formats | crates/snipdeck-store/src/repo.rs:135
+formats | crates/snipdeck-store/src/repo.rs:148
+insert_item | crates/snipdeck-store/src/repo.rs:151
+update_item | crates/snipdeck-store/src/repo.rs:157
+move_item | crates/snipdeck-store/src/repo.rs:160
+record_use | crates/snipdeck-store/src/repo.rs:163
+search | crates/snipdeck-store/src/repo.rs:167
+TagRepo | crates/snipdeck-store/src/repo.rs:171
+tags | crates/snipdeck-store/src/repo.rs:173
+insert_tag | crates/snipdeck-store/src/repo.rs:176
+update_tag | crates/snipdeck-store/src/repo.rs:179
+delete_tag | crates/snipdeck-store/src/repo.rs:182
+Trashable | crates/snipdeck-store/src/repo.rs:187
+TrashEntry | crates/snipdeck-store/src/repo.rs:198
+TrashRepo | crates/snipdeck-store/src/repo.rs:208
+trash | crates/snipdeck-store/src/repo.rs:210
+restore | crates/snipdeck-store/src/repo.rs:218
+trashed | crates/snipdeck-store/src/repo.rs:222
+purge | crates/snipdeck-store/src/repo.rs:226
+purge_entry | crates/snipdeck-store/src/repo.rs:236
 
 ### crates/snipdeck-store/src/schema.rs
 
@@ -6234,29 +6270,30 @@ V1 | crates/snipdeck-store/src/schema.rs:7
 V2 | crates/snipdeck-store/src/schema.rs:156
 V4 | crates/snipdeck-store/src/schema.rs:174
 V6 | crates/snipdeck-store/src/schema.rs:185
-tests | crates/snipdeck-store/src/schema.rs:191
-db | crates/snipdeck-store/src/schema.rs:195
-id | crates/snipdeck-store/src/schema.rs:202
-board | crates/snipdeck-store/src/schema.rs:206
-list | crates/snipdeck-store/src/schema.rs:213
-item_with | crates/snipdeck-store/src/schema.rs:221
-item | crates/snipdeck-store/src/schema.rs:236
-tree | crates/snipdeck-store/src/schema.rs:240
-the_schema_applies_to_an_empty_database | crates/snipdeck-store/src/schema.rs:247
-every_stored_enum_key_is_accepted_and_unknown_keys_are_not | crates/snipdeck-store/src/schema.rs:272
-ids_must_be_16_bytes | crates/snipdeck-store/src/schema.rs:332
-names_must_not_be_empty | crates/snipdeck-store/src/schema.rs:342
-ranks_are_unique_per_parent_only | crates/snipdeck-store/src/schema.rs:352
-flags_are_booleans_and_sensitive_items_have_no_preview | crates/snipdeck-store/src/schema.rs:366
-use_count_fits_a_u32 | crates/snipdeck-store/src/schema.rs:377
-foreign_keys_reject_orphans | crates/snipdeck-store/src/schema.rs:390
-deleting_a_parent_cascades_to_everything_inside | crates/snipdeck-store/src/schema.rs:412
-deleting_a_tag_unlinks_it_but_keeps_the_items | crates/snipdeck-store/src/schema.rs:445
-tag_names_are_unique_on_the_folded_key | crates/snipdeck-store/src/schema.rs:469
-format_payloads_are_inline_xor_blob | crates/snipdeck-store/src/schema.rs:486
-file_rows_need_a_files_format | crates/snipdeck-store/src/schema.rs:530
-every_foreign_key_column_is_indexed | crates/snipdeck-store/src/schema.rs:551
-the_application_id_marks_the_file_as_snipdeck | crates/snipdeck-store/src/schema.rs:611
+V8 | crates/snipdeck-store/src/schema.rs:192
+tests | crates/snipdeck-store/src/schema.rs:210
+db | crates/snipdeck-store/src/schema.rs:214
+id | crates/snipdeck-store/src/schema.rs:221
+board | crates/snipdeck-store/src/schema.rs:225
+list | crates/snipdeck-store/src/schema.rs:232
+item_with | crates/snipdeck-store/src/schema.rs:240
+item | crates/snipdeck-store/src/schema.rs:255
+tree | crates/snipdeck-store/src/schema.rs:259
+the_schema_applies_to_an_empty_database | crates/snipdeck-store/src/schema.rs:266
+every_stored_enum_key_is_accepted_and_unknown_keys_are_not | crates/snipdeck-store/src/schema.rs:291
+ids_must_be_16_bytes | crates/snipdeck-store/src/schema.rs:351
+names_must_not_be_empty | crates/snipdeck-store/src/schema.rs:361
+ranks_are_unique_per_parent_only | crates/snipdeck-store/src/schema.rs:371
+flags_are_booleans_and_sensitive_items_have_no_preview | crates/snipdeck-store/src/schema.rs:385
+use_count_fits_a_u32 | crates/snipdeck-store/src/schema.rs:396
+foreign_keys_reject_orphans | crates/snipdeck-store/src/schema.rs:409
+deleting_a_parent_cascades_to_everything_inside | crates/snipdeck-store/src/schema.rs:431
+deleting_a_tag_unlinks_it_but_keeps_the_items | crates/snipdeck-store/src/schema.rs:464
+tag_names_are_unique_on_the_folded_key | crates/snipdeck-store/src/schema.rs:488
+format_payloads_are_inline_xor_blob | crates/snipdeck-store/src/schema.rs:505
+file_rows_need_a_files_format | crates/snipdeck-store/src/schema.rs:549
+every_foreign_key_column_is_indexed | crates/snipdeck-store/src/schema.rs:570
+the_application_id_marks_the_file_as_snipdeck | crates/snipdeck-store/src/schema.rs:630
 
 ### crates/snipdeck-store/src/store.rs
 
@@ -6322,9 +6359,9 @@ ENTRIES | crates/snipdeck-store/src/trash.rs:27
 trash | crates/snipdeck-store/src/trash.rs:38
 trashed | crates/snipdeck-store/src/trash.rs:62
 purge | crates/snipdeck-store/src/trash.rs:88
-purge_entry | crates/snipdeck-store/src/trash.rs:128
-restore_with | crates/snipdeck-store/src/trash.rs:182
-list_and_board | crates/snipdeck-store/src/trash.rs:250
+purge_entry | crates/snipdeck-store/src/trash.rs:129
+restore_with | crates/snipdeck-store/src/trash.rs:184
+list_and_board | crates/snipdeck-store/src/trash.rs:255
 
 ### crates/snipdeck-symbols/src/art.rs
 
@@ -7219,7 +7256,8 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-portable/tests/archive_roundtrip.rs` | 17 |
 | `crates/snipdeck-portable/tests/backup.rs` | 14 |
 | `crates/snipdeck-portable/tests/common/mod.rs` | 0 |
-| `crates/snipdeck-portable/tests/expanders.rs` | 26 |
+| `crates/snipdeck-portable/tests/expanders.rs` | 30 |
+| `crates/snipdeck-portable/tests/groups.rs` | 6 |
 | `crates/snipdeck-portable/tests/hostile.rs` | 22 |
 | `crates/snipdeck-portable/tests/importers.rs` | 42 |
 | `crates/snipdeck-portable/tests/sensitive.rs` | 17 |
@@ -7232,7 +7270,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-store/src/crypto/provider.rs` (inline) | 5 |
 | `crates/snipdeck-store/src/error.rs` (inline) | 2 |
 | `crates/snipdeck-store/src/fts.rs` (inline) | 4 |
-| `crates/snipdeck-store/src/migrations.rs` (inline) | 14 |
+| `crates/snipdeck-store/src/migrations.rs` (inline) | 15 |
 | `crates/snipdeck-store/src/schema.rs` (inline) | 15 |
 | `crates/snipdeck-store/src/store.rs` (inline) | 4 |
 | `crates/snipdeck-store/src/tags.rs` (inline) | 2 |
@@ -7242,6 +7280,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-store/tests/common/mod.rs` | 0 |
 | `crates/snipdeck-store/tests/crypto.rs` | 28 |
 | `crates/snipdeck-store/tests/fixture.rs` | 4 |
+| `crates/snipdeck-store/tests/groups.rs` | 13 |
 | `crates/snipdeck-store/tests/items.rs` | 27 |
 | `crates/snipdeck-store/tests/open.rs` | 8 |
 | `crates/snipdeck-store/tests/ordering.rs` | 19 |
