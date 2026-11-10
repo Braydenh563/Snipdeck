@@ -65,6 +65,7 @@ pub struct PickerModel {
     /// Every live item, in library order (board, list, manual order).
     places: Vec<Place>,
     index: Rc<SearchIndex>,
+    suggest: Rc<crate::search_suggest::Index>,
     /// The board the Panel showed when the Picker opened (the "This board" scope).
     board: Option<BoardId>,
     query: String,
@@ -138,6 +139,7 @@ impl PickerModel {
         let mut model = Self {
             places,
             index,
+            suggest: Rc::clone(&snapshot.suggest),
             board,
             query: String::new(),
             scope: Scope::All,
@@ -194,6 +196,12 @@ impl PickerModel {
         self.tag_hits = tag_hits;
         self.results.truncate(RESULT_LIMIT);
         self.selected = 0;
+    }
+
+    /// The names the search suggestions are made of.
+    #[must_use]
+    pub fn suggest_index(&self) -> Rc<crate::search_suggest::Index> {
+        Rc::clone(&self.suggest)
     }
 
     /// Sets the search text; the selection returns to the first row.

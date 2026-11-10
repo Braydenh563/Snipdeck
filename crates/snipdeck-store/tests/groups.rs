@@ -43,7 +43,7 @@ fn v8_keeps_items_and_adds_no_groups() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("snipdeck.db"), FIXTURE_V7).unwrap();
     let s = Store::open(dir.path()).unwrap();
-    assert_eq!(s.schema_version().unwrap(), 8);
+    assert_eq!(s.schema_version().unwrap(), 9);
     assert!(dir.path().join("snipdeck.db.pre-v7.bak").exists());
     let board = s.boards().unwrap().remove(0);
     let list = s.lists(board.id).unwrap().remove(0);

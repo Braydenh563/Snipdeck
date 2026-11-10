@@ -375,6 +375,13 @@ impl PanelModel {
         self.items.iter().map(|i| i.id).collect()
     }
 
+    /// The names the search suggestions are made of (shared with the Picker's, built with the
+    /// search index).
+    #[must_use]
+    pub fn suggest_index(&self) -> Rc<crate::search_suggest::Index> {
+        Rc::clone(&self.all.suggest)
+    }
+
     /// Sets the search text; the selection returns to the first row.
     pub fn set_query(&mut self, query: &str) {
         query.clone_into(&mut self.query);
@@ -900,6 +907,25 @@ mod tests {
             .expect("model")
             .rows();
         assert_eq!(rows[0].title, "first line");
+    }
+
+    // A25 guard: the index is built inside the first load (measured well under 50 ms, so it is
+    // not deferred). Whatever happens to that timing later, a search typed the moment the model
+    // exists must find the library, never an empty "not ready yet" result.
+    #[test]
+    fn a_search_before_the_index_is_ready_still_finds() {
+        let mut f = fixture();
+        let id = add_to(&mut f, Which::Replies, "Thanks", "Thanks for your email");
+        let cache = IndexCache::new();
+        assert_eq!(
+            cache.rebuilds(),
+            0,
+            "nothing is built before the first load"
+        );
+        let mut model = PanelModel::load_cached(&f.store, None, None, &cache).expect("model");
+        model.set_query("thank");
+        let rows = model.rows();
+        assert_eq!(rows.first().map(|r| r.id), Some(id));
     }
 
     #[test]

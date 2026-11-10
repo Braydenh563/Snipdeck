@@ -6,9 +6,12 @@
 //!
 //! * A group or folder becomes a list on one new board; snips with no group go to one default
 //!   list. Groups that differ only in case or spacing are one list.
-//! * Snipdeck has no abbreviation field. The title is the snip's name, with the abbreviation
-//!   after it in parentheses (`Greeting (;hi)`); with only an abbreviation, that; with neither,
-//!   the first line of the text.
+//! * The abbreviation becomes the item's typed trigger (`;hi`); the title is the snip's name,
+//!   or the first line of the text. A snip with several abbreviations (Espanso) keeps the first
+//!   that is a valid trigger and the report names the rest. An abbreviation that cannot be a
+//!   trigger (spaces around or inside it, over 32 characters, or an Espanso `word` match) stays in the title after the name, in parentheses
+//!   (`Greeting (my greeting)`), with a note, so it is not lost. A trigger already taken by
+//!   another snip, or by the library, is dropped with a note when the item is written.
 //! * Only variables with a direct Snipdeck equivalent become placeholders (`{date}`, `{time}`,
 //!   `{datetime:FORMAT}`, `{clipboard}`, `{cursor}`, `{field:Name}`, `{choice:Name|a|b}`); the
 //!   snip is then a template. Any other variable stays in the text as written and the report
@@ -24,6 +27,7 @@ use std::path::Path;
 
 use snipdeck_core::ItemKind;
 use snipdeck_core::Timestamp;
+use snipdeck_core::Trigger;
 use snipdeck_core::template::{Template, escape};
 use snipdeck_store::name_key;
 
@@ -62,7 +66,11 @@ impl Body {
 pub(crate) struct Snip {
     pub group: Option<String>,
     pub name: Option<String>,
-    pub abbreviation: Option<String>,
+    /// What the source calls the typed shortcuts, in its order.
+    pub abbreviations: Vec<String>,
+    /// Whether the source fires them the way Snipdeck does, on the last typed character. False
+    /// for Espanso `word` and `right_word` matches, which wait for a separator.
+    pub typed: bool,
     pub body: Body,
 }
 
@@ -141,25 +149,58 @@ pub(crate) fn read_capped(
     Ok(bytes)
 }
 
-fn title(snip: &Snip) -> String {
+/// The trigger for a snip: its first abbreviation that is a valid [`Trigger`]. Notes go to
+/// `report`: one for each other abbreviation that was not kept.
+fn trigger_of(snip: &Snip, label: &str, report: &mut ImportReport) -> Option<Trigger> {
+    let mut chosen: Option<Trigger> = None;
+    let mut unused = Vec::new();
+    for raw in &snip.abbreviations {
+        if raw.is_empty() {
+            continue;
+        }
+        // Taken as written: a space around it is part of the source's trigger, so it is not one.
+        match Trigger::new(raw) {
+            Ok(t) if chosen.is_none() && snip.typed => chosen = Some(t),
+            _ => unused.push(clean_label(raw, 40)),
+        }
+    }
+    if !unused.is_empty() {
+        let why = if chosen.is_some() {
+            "Snipdeck keeps one trigger per snippet"
+        } else if !snip.typed {
+            "it fires after a separator, which a Snipdeck trigger does not wait for"
+        } else {
+            "a trigger has no spaces and at most 32 characters"
+        };
+        report.warn(Warning::Note(format!(
+            "{label}: `{}` was not kept as a trigger ({why})",
+            unused.join("`, `")
+        )));
+    }
+    chosen
+}
+
+/// The name, or the first line of the text; an abbreviation that did not become a trigger is
+/// appended to the name in parentheses.
+fn title(snip: &Snip, trigger: Option<&Trigger>) -> String {
     let name = snip
         .name
         .as_deref()
         .map(|n| clean_label(n, TITLE_CHARS))
         .unwrap_or_default();
-    let abbr = snip
-        .abbreviation
-        .as_deref()
-        .map(|a| clean_label(a, 40))
-        .unwrap_or_default();
-    match (name.is_empty(), abbr.is_empty()) {
-        (false, false) if name != abbr => {
-            let suffix = format!(" ({abbr})");
+    let lost = if trigger.is_some() {
+        String::new()
+    } else {
+        clean_label(&snip.abbreviations.join(", "), 40)
+    };
+    match (name.is_empty(), lost.is_empty()) {
+        (false, false) if name != lost => {
+            let suffix = format!(" ({lost})");
             let room = TITLE_CHARS.saturating_sub(suffix.chars().count());
             format!("{}{suffix}", truncate_chars(&name, room))
         }
         (false, _) => name,
-        (true, false) => abbr,
+        (true, false) => lost,
         (true, true) => title_from(&snip.body.text),
     }
 }
@@ -227,7 +268,9 @@ pub(crate) fn import_snips<L: Library>(
             by_key.insert(key, lists.len() - 1);
             lists.len() - 1
         };
-        let mut item = PlanItem::text(title(&snip), snip.body.text, now);
+        let trigger = trigger_of(&snip, &label, &mut report);
+        let mut item = PlanItem::text(title(&snip, trigger.as_ref()), snip.body.text, now);
+        item.trigger = trigger;
         if snip.body.template {
             item.kind = ItemKind::Template;
         }

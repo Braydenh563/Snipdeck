@@ -399,6 +399,7 @@ mod at_rest {
                 copied_at INTEGER NOT NULL
              ) STRICT;
              CREATE INDEX recent_entries_newest ON recent_entries (copied_at DESC, id DESC);
+             DROP TABLE triggers;
              DROP INDEX items_group;
              ALTER TABLE items DROP COLUMN group_id;
              DROP TABLE item_groups;
@@ -431,7 +432,7 @@ mod at_rest {
         // Opened with no key: the rows are kept and readable, flagged plain.
         {
             let s = Store::open(dir.path()).unwrap();
-            assert_eq!(s.schema_version().unwrap(), 8);
+            assert_eq!(s.schema_version().unwrap(), 9);
             assert_eq!(texts(&s), [m2.clone(), m1.clone()]);
             assert!(s.has_plain_recent().unwrap());
         }
@@ -534,7 +535,8 @@ mod at_rest {
         // Put the file back the way version 6 left it: no rich columns.
         raw(dir.path())
             .execute_batch(
-                "DROP INDEX items_group;
+                "DROP TABLE triggers;
+                 DROP INDEX items_group;
                  ALTER TABLE items DROP COLUMN group_id;
                  DROP TABLE item_groups;
                  ALTER TABLE recent_entries DROP COLUMN kind;
@@ -545,7 +547,7 @@ mod at_rest {
             )
             .unwrap();
         let s = Store::open(dir.path()).unwrap();
-        assert_eq!(s.schema_version().unwrap(), 8);
+        assert_eq!(s.schema_version().unwrap(), 9);
         let all = s.recent().unwrap();
         assert_eq!(all.len(), 1);
         assert_eq!(all[0].text, m);

@@ -46,6 +46,7 @@ mod schema;
 mod store;
 mod tags;
 mod trash;
+mod triggers;
 
 pub use aside::{finish_rebuild, set_aside, undo_set_aside};
 pub use batch::Batch;
@@ -58,6 +59,7 @@ pub use recent::{
 };
 pub use repo::{
     BoardRepo, GroupRepo, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable,
+    TriggerRepo,
 };
 pub use store::{Closed, FolderLock, GcReport, OpenLockedError, Store};
 pub use tags::name_key;

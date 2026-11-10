@@ -579,6 +579,10 @@ pub(crate) fn update_item(cx: &mut Ctx<'_>, item: &Item, formats: Option<&Format
         ],
     )?;
     write_tags(conn, id, &item.tags)?;
+    if item.sensitive {
+        // A Sensitive item has no trigger: a short code must not release a secret.
+        crate::triggers::free_item(conn, id)?;
+    }
 
     let seal = key.filter(|_| encrypted);
     let mut old = Vec::new();

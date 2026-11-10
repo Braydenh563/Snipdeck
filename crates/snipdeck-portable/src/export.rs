@@ -157,16 +157,14 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
             .collect();
         let mut used_tags: BTreeSet<TagId> = BTreeSet::new();
         let mut boards = Vec::new();
+        let triggers = trigger_map(self.lib)?;
 
         for board in self.lib.boards()? {
             let mut lists = Vec::new();
             for list in self.lib.lists(board.id)? {
                 let mut items = Vec::new();
                 let runs = self.lib.groups_of(list.id)?;
-                let group_of: std::collections::HashMap<_, _> = runs
-                    .iter()
-                    .flat_map(|run| run.items.iter().map(|id| (*id, run.group.id)))
-                    .collect();
+                let group_of = group_map(&runs);
                 let mut written_groups = std::collections::HashSet::new();
                 for item in self.lib.items(list.id)? {
                     if self.report.items >= self.options.limits.max_items {
@@ -200,6 +198,7 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
                         sensitive: item.sensitive,
                         always_plain: item.always_plain,
                         label: item.label.map(|l| l.key().to_owned()),
+                        trigger: triggers.get(&item.id).map(ToString::to_string),
                         group: group_of.get(&item.id).map(|g| {
                             written_groups.insert(*g);
                             g.to_string()
@@ -378,5 +377,25 @@ fn group_dtos(
             name: run.group.name.to_string(),
             collapsed: run.group.collapsed,
         })
+        .collect()
+}
+
+/// Each item's trigger, by item.
+fn trigger_map<L: Library>(
+    lib: &L,
+) -> Result<std::collections::HashMap<snipdeck_core::ItemId, snipdeck_core::Trigger>> {
+    Ok(lib
+        .triggers()?
+        .into_iter()
+        .map(|(trigger, item)| (item, trigger))
+        .collect())
+}
+
+/// The group of each grouped item.
+fn group_map(
+    runs: &[snipdeck_store::GroupRun],
+) -> std::collections::HashMap<snipdeck_core::ItemId, snipdeck_core::GroupId> {
+    runs.iter()
+        .flat_map(|run| run.items.iter().map(|id| (*id, run.group.id)))
         .collect()
 }

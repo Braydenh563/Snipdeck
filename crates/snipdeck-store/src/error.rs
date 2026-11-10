@@ -15,6 +15,12 @@ pub enum Error {
     /// A tag with this name, ignoring case, already exists.
     #[error("a tag named `{0}` already exists")]
     TagExists(String),
+    /// Another live item already has this trigger (case counts).
+    #[error("the trigger `{0}` is already used by another item")]
+    TriggerTaken(String),
+    /// A Sensitive item cannot have a trigger: a short code must not release a secret.
+    #[error("a sensitive item cannot have a trigger")]
+    SensitiveTrigger,
     /// Stored data did not form a valid core value.
     #[error(transparent)]
     Core(#[from] snipdeck_core::Error),

@@ -459,6 +459,9 @@ msgstr "Contenu"
 msgid "Control Enter"
 msgstr "Ctrl Enter"
 
+msgid "Control N"
+msgstr "Ctrl N"
+
 msgid "Copied"
 msgstr "Copié"
 
@@ -1897,9 +1900,6 @@ msgstr "Espaces réservés"
 msgid "Plain text"
 msgstr "Texte brut"
 
-msgid "Press Ctrl+N to add a snippet, or Ctrl+K to see every command."
-msgstr "Appuyez sur Ctrl+N pour ajouter un extrait, ou sur Ctrl+K pour voir toutes les commandes."
-
 msgid "Press the new shortcut"
 msgstr "Appuyez sur le nouveau raccourci"
 
@@ -2176,6 +2176,9 @@ msgstr "Rechercher un raccourci"
 
 msgid "Search snippets"
 msgstr "Rechercher des extraits"
+
+msgid "Search suggestions"
+msgstr "Suggestions de recherche"
 
 msgid "Search symbols"
 msgstr "Rechercher des symboles"

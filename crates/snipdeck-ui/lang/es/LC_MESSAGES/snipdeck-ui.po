@@ -459,6 +459,9 @@ msgstr "Contenido"
 msgid "Control Enter"
 msgstr "Ctrl Enter"
 
+msgid "Control N"
+msgstr "Ctrl N"
+
 msgid "Copied"
 msgstr "Copiado"
 
@@ -1897,9 +1900,6 @@ msgstr "Marcadores de posición"
 msgid "Plain text"
 msgstr "Texto sin formato"
 
-msgid "Press Ctrl+N to add a snippet, or Ctrl+K to see every command."
-msgstr "Pulsa Ctrl+N para añadir un fragmento o Ctrl+K para ver todos los comandos."
-
 msgid "Press the new shortcut"
 msgstr "Pulsa el nuevo atajo"
 
@@ -2176,6 +2176,9 @@ msgstr "Buscar atajos"
 
 msgid "Search snippets"
 msgstr "Buscar fragmentos"
+
+msgid "Search suggestions"
+msgstr "Sugerencias de búsqueda"
 
 msgid "Search symbols"
 msgstr "Buscar símbolos"
