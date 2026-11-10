@@ -58,3 +58,4 @@ date | item | type | rung | rework | note
 2026-11-10 | Empty state keycaps beside the button (owner feedback) | ui | opus | 0 | 
 2026-11-10 | v1.1 slice 8 Hello platform+crypto layer | security | sonnet | 1 | 
 2026-11-10 | v1.1 slice 2b core parser | feature | sonnet | 1 | 
+2026-11-10 | v1.1 slices 5b+7 platform layer | feature | sonnet | 1 | 
