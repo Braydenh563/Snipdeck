@@ -131,9 +131,8 @@ where
             return;
         }
         let from = self.main.cursor();
-        let Some(onto) = from.checked_add_signed(delta) else {
-            return;
-        };
+        // Alt+Up on the first row lands on itself, not nowhere: the sorted-list offer is the same at both ends.
+        let onto = from.saturating_add_signed(delta);
         self.main_drop_row(from, onto);
     }
 
@@ -193,7 +192,6 @@ where
             if !self.main.searching()
                 && let Some(list) = self.main.open_list()
                 && list.sort != ListSort::Manual
-                && from != onto
             {
                 let id = list.id;
                 self.offer_manual_order(id);

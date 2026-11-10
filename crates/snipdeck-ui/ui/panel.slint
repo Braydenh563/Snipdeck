@@ -2673,6 +2673,7 @@ export component PanelWindow inherits Window {
             x: min(max(Space.s2, root.list-menu-x), root.width - self.width - Space.s2);
             y: min(max(Space.s2, root.list-menu-y), root.height - self.height - Space.s2);
             entries: root.list-menu-entries;
+            max-w: root.width - 2 * Space.s2;
             label: @tr("List actions");
             init => { self.focus-menu(); }
             activated(i) => { root.list-menu-activated(i); }

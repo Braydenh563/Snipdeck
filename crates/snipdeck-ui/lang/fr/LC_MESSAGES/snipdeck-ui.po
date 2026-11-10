@@ -2252,6 +2252,9 @@ msgstr "Afficher l’onglet Symboles"
 msgid "Show all"
 msgstr "Tout afficher"
 
+msgid "Show or hide sidebar"
+msgstr "Afficher ou masquer la barre latérale"
+
 msgid "Show or hide the Panel"
 msgstr "Afficher ou masquer le panneau"
 
@@ -3063,6 +3066,9 @@ msgstr "déplacement"
 
 msgid "ms"
 msgstr "ms"
+
+msgid "navigation rail collapse expand lists panel left width"
+msgstr "navigation barre réduire développer listes panneau gauche largeur"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"

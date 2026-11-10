@@ -1384,7 +1384,7 @@ ui_tests! {
         assert_eq!(take(&log), ["sidebar-width:240"]);
         assert_eq!(ui.get_sidebar_width(), 240);
         let moved = find(&ui, "Sidebar width", AccessibleRole::Slider);
-        assert!((moved.absolute_position().x - (240.0 - 8.0)).abs() < 0.5, "{:?}", moved.absolute_position());
+        assert!((moved.absolute_position().x - (240.0 - 4.0)).abs() < 0.5, "{:?}", moved.absolute_position());
         press_key(&ui, Key::LeftArrow);
         press_key(&ui, Key::LeftArrow);
         assert_eq!(take(&log), ["sidebar-width:232", "sidebar-width:224"]);
@@ -1396,6 +1396,21 @@ ui_tests! {
             press_key(&ui, Key::RightArrow);
         }
         assert_eq!(ui.get_sidebar_width(), 320, "stops at 320");
+    }
+
+    fn ctrl_b_with_the_splitter_focused_moves_focus_to_the_list() {
+        let (ui, log) = start();
+        let splitter = find(&ui, "Sidebar width", AccessibleRole::Slider);
+        // The strip straddles the sidebar's edge: 4 px each side of x = 232.
+        let p = splitter.absolute_position();
+        assert!((p.x - 228.0).abs() < 0.5 && (splitter.size().width - 8.0).abs() < 0.5, "{p:?}");
+        press_at_centre(&ui, centre_of(&splitter));
+        assert!(!ui.get_items_focused());
+        take(&log);
+        chord(ui.window(), &[Key::Control], "b");
+        settle();
+        assert_eq!(take(&log), ["sidebar-collapsed:true"]);
+        assert!(ui.get_items_focused(), "the keys go to the list, not nowhere");
     }
 
     fn the_sort_menu_names_the_order_and_reports_the_choice() {

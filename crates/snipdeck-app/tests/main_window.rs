@@ -1481,7 +1481,10 @@ fn a_move_in_a_sorted_list_offers_manual_order_through_the_keys() {
     on_ui_thread(|| {
         let r = rig_tier(Tier::Pro);
         let code = i32::try_from(
-            r.list_names().iter().position(|n| n == "Code").expect("Code"),
+            r.list_names()
+                .iter()
+                .position(|n| n == "Code")
+                .expect("Code"),
         )
         .unwrap();
         r.open_list(code);
@@ -1489,7 +1492,10 @@ fn a_move_in_a_sorted_list_offers_manual_order_through_the_keys() {
         slint::platform::update_timers_and_animations();
         assert_eq!(r.ui.get_list_sort(), 1);
         assert!(!r.ui.get_rows_reorderable());
-        assert!(r.ui.get_reorder_offer(), "drops are accepted so the offer can show");
+        assert!(
+            r.ui.get_reorder_offer(),
+            "drops are accepted so the offer can show"
+        );
         r.ui.invoke_focus_items();
         chord(r.window(), &[Key::Alt], &key(Key::DownArrow));
         assert_eq!(r.ui.get_toast_text(), "Switch this list to Manual order?");
@@ -1505,7 +1511,10 @@ fn dragging_a_row_in_a_sorted_list_offers_manual_order() {
     on_ui_thread(|| {
         let r = rig_tier(Tier::Pro);
         let code = i32::try_from(
-            r.list_names().iter().position(|n| n == "Code").expect("Code"),
+            r.list_names()
+                .iter()
+                .position(|n| n == "Code")
+                .expect("Code"),
         )
         .unwrap();
         r.open_list(code);
@@ -1513,23 +1522,29 @@ fn dragging_a_row_in_a_sorted_list_offers_manual_order() {
         slint::platform::update_timers_and_animations();
         let first = r.ui.get_rows().row_data(0).unwrap().title.to_string();
         let second = r.ui.get_rows().row_data(1).unwrap().title.to_string();
-        let a = element_titled(&r.ui, &first);
-        let b = element_titled(&r.ui, &second);
-        let (pa, pb) = (centre(&a), centre(&b));
-        let w = r.window();
+        let from_row = element_titled(&r.ui, &first);
+        let to_row = element_titled(&r.ui, &second);
+        let (start, end) = (centre(&from_row), centre(&to_row));
+        let win = r.window();
         let button = slint::platform::PointerEventButton::Left;
-        w.dispatch_event(slint::platform::WindowEvent::PointerMoved { position: pa });
-        w.dispatch_event(slint::platform::WindowEvent::PointerPressed { position: pa, button });
+        win.dispatch_event(slint::platform::WindowEvent::PointerMoved { position: start });
+        win.dispatch_event(slint::platform::WindowEvent::PointerPressed {
+            position: start,
+            button,
+        });
         for step in 1..=10_u8 {
             let t = f32::from(step) / 10.0;
             let position = slint::LogicalPosition::new(
-                pa.x + (pb.x - pa.x) * t,
-                pa.y + (pb.y - pa.y) * t,
+                start.x + (end.x - start.x) * t,
+                start.y + (end.y - start.y) * t,
             );
-            w.dispatch_event(slint::platform::WindowEvent::PointerMoved { position });
+            win.dispatch_event(slint::platform::WindowEvent::PointerMoved { position });
             i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(30));
         }
-        w.dispatch_event(slint::platform::WindowEvent::PointerReleased { position: pb, button });
+        win.dispatch_event(slint::platform::WindowEvent::PointerReleased {
+            position: end,
+            button,
+        });
         i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(100));
         slint::platform::update_timers_and_animations();
         assert_eq!(r.ui.get_toast_text(), "Switch this list to Manual order?");

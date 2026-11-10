@@ -2031,7 +2031,10 @@ fn alt_down_in_a_sorted_list_offers_manual_order_and_the_button_switches_it() {
         r.ui.invoke_list_menu_activated(4);
         slint::platform::update_timers_and_animations();
         assert!(!r.ui.get_rows_reorderable(), "sorted by use");
-        assert!(r.ui.get_reorder_offer(), "but the keys and the drag stay live");
+        assert!(
+            r.ui.get_reorder_offer(),
+            "but the keys and the drag stay live"
+        );
         r.ui.invoke_focus_search();
         chord(r.window(), &[Key::Alt], &key(Key::DownArrow));
         assert_eq!(r.ui.get_toast_text(), "Switch this list to Manual order?");

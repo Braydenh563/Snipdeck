@@ -508,11 +508,7 @@ where
             footer: self.model.footer(),
             use_label: self.model.use_label(),
             rows_reorderable: self.model.reorderable(),
-            reorder_offer: !self.model.searching()
-                && self
-                    .model
-                    .list()
-                    .is_some_and(|l| l.sort != snipdeck_core::ListSort::Manual),
+            reorder_offer: self.model.sorts_itself(),
             on_top: self.on_top,
             topmost: self.on_top && !self.own_window_active,
             dock_collapsed: self.dock.is_collapsed(),

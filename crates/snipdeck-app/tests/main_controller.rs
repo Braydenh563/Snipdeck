@@ -2093,6 +2093,19 @@ fn dragging_in_a_sorted_list_offers_manual() {
         message(&ctl.main_screen()),
         ToastMessage::SwitchToManual { list: id }
     );
+    // Alt+Up on the first row and Alt+Down on the last offer it alike.
+    for delta in [-1, 1] {
+        ctl.toast_action();
+        ctl.main_set_list_sort(ListSort::MostUsed);
+        let last = ctl.main_screen().rows.len() - 1;
+        ctl.main_select(if delta < 0 { 0 } else { last }, SelectMode::Replace);
+        ctl.main_reorder_items(delta);
+        assert_eq!(
+            message(&ctl.main_screen()),
+            ToastMessage::SwitchToManual { list: id },
+            "delta {delta}"
+        );
+    }
 }
 
 #[test]

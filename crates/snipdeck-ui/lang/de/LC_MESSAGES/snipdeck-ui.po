@@ -2252,6 +2252,9 @@ msgstr "Tab „Symbole“ anzeigen"
 msgid "Show all"
 msgstr "Alle anzeigen"
 
+msgid "Show or hide sidebar"
+msgstr "Seitenleiste ein- oder ausblenden"
+
 msgid "Show or hide the Panel"
 msgstr "Panel anzeigen oder ausblenden"
 
@@ -3063,6 +3066,9 @@ msgstr "Verschieben"
 
 msgid "ms"
 msgstr "ms"
+
+msgid "navigation rail collapse expand lists panel left width"
+msgstr "navigation leiste einklappen ausklappen listen panel links breite"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"

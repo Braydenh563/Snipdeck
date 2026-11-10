@@ -2244,6 +2244,9 @@ msgstr "「記号」タブを表示"
 msgid "Show all"
 msgstr "すべて表示"
 
+msgid "Show or hide sidebar"
+msgstr "サイドバーの表示/非表示"
+
 msgid "Show or hide the Panel"
 msgstr "パネルの表示／非表示"
 
@@ -3054,6 +3057,9 @@ msgstr "移動"
 
 msgid "ms"
 msgstr "ms"
+
+msgid "navigation rail collapse expand lists panel left width"
+msgstr "ナビゲーション サイドバー 折りたたむ 展開 リスト パネル 左 幅"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"

@@ -2244,6 +2244,9 @@ msgstr "显示“符号”标签页"
 msgid "Show all"
 msgstr "显示全部"
 
+msgid "Show or hide sidebar"
+msgstr "显示或隐藏侧边栏"
+
 msgid "Show or hide the Panel"
 msgstr "显示或隐藏面板"
 
@@ -3054,6 +3057,9 @@ msgstr "移动"
 
 msgid "ms"
 msgstr "毫秒"
+
+msgid "navigation rail collapse expand lists panel left width"
+msgstr "导航 侧边栏 折叠 展开 列表 面板 左侧 宽度"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"

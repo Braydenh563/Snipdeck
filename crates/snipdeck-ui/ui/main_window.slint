@@ -463,6 +463,7 @@ export component MainWindow inherits Window {
     property <length> sidebar-w: root.narrow ? Space.s12 * root.text-scale : root.sidebar-width * 1px + (root.text-scale - 1) * 96px;
     property <length> splitter-w: 8px;
     property <length> splitter-grab: 0px;
+    property <bool> splitter-focused: false;
     property <length> pad: Space.s4;
     // The keyboard focus ring is drawn this far outside a card; the lists are inset by it so a scroll viewport never clips it.
     property <length> ring: Space.s1;
@@ -544,6 +545,10 @@ export component MainWindow inherits Window {
     function toggle-sidebar() {
         if (root.auto-rail) {
             return;
+        }
+        // The splitter goes away on the rail: the keys go to the list, not nowhere.
+        if (root.splitter-focused) {
+            items-scope.focus();
         }
         root.sidebar-collapsed = !root.sidebar-collapsed;
         root.sidebar-collapsed-changed(root.sidebar-collapsed);
@@ -1259,65 +1264,6 @@ export component MainWindow inherits Window {
                     background: Theme.border-subtle;
                 }
 
-                // The splitter: an 8px strip on the sidebar's inner edge. Drag it, or focus it and press Left / Right
-                // (8px a step). It is not there on the rail.
-                if !root.narrow: splitter := Rectangle {
-                    x: parent.width - root.splitter-w;
-                    width: root.splitter-w;
-                    height: parent.height;
-                    background: transparent;
-                    accessible-role: AccessibleRole.slider;
-                    accessible-label: @tr("Sidebar width");
-                    accessible-value: root.sidebar-width;
-                    accessible-value-minimum: 200;
-                    accessible-value-maximum: 320;
-                    accessible-value-step: 8;
-                    accessible-action-increment => { root.set-sidebar-width(root.sidebar-width + 8, true); }
-                    accessible-action-decrement => { root.set-sidebar-width(root.sidebar-width - 8, true); }
-                    forward-focus: splitter-scope;
-
-                    // The line that shows it can be grabbed (hover or drag) and, in the focus colour, that it has focus.
-                    Rectangle {
-                        x: parent.width - self.width;
-                        width: splitter-scope.has-focus ? 3px : 2px;
-                        background: splitter-scope.has-focus ? Theme.focus-ring : splitter-touch.pressed ? Theme.accent-text : Theme.border-strong;
-                        opacity: (splitter-scope.has-focus || splitter-touch.has-hover || splitter-touch.pressed) ? 1 : 0;
-                        animate opacity { duration: Motion.instant; easing: Motion.out; }
-                    }
-                    splitter-touch := TouchArea {
-                        mouse-cursor: MouseCursor.col-resize;
-                        pointer-event(event) => {
-                            if (event.button != PointerEventButton.left) {
-                                return;
-                            }
-                            if (event.kind == PointerEventKind.down) {
-                                // How far the pointer is from the sidebar's edge, so the edge does not jump to it.
-                                root.splitter-grab = root.sidebar-w - (self.absolute-position.x + self.mouse-x);
-                            } else if (event.kind == PointerEventKind.up) {
-                                root.sidebar-width-changed(root.sidebar-width);
-                            }
-                        }
-                        moved => {
-                            if (self.pressed) {
-                                let edge = self.absolute-position.x + self.mouse-x + root.splitter-grab;
-                                root.set-sidebar-width(((edge - (root.text-scale - 1) * 96px) / 1px).round(), false);
-                            }
-                        }
-                    }
-                    splitter-scope := FocusScope {
-                        key-pressed(event) => {
-                            if (event.text == Key.LeftArrow) {
-                                root.set-sidebar-width(root.sidebar-width - 8, true);
-                                return accept;
-                            }
-                            if (event.text == Key.RightArrow) {
-                                root.set-sidebar-width(root.sidebar-width + 8, true);
-                                return accept;
-                            }
-                            return reject;
-                        }
-                    }
-                }
             }
 
             // ======== Content ====================================================================
@@ -1543,7 +1489,7 @@ export component MainWindow inherits Window {
                             horizontal-stretch: 0;
                             scaled: true;
                             side-override: root.ctl-h;
-                            icon: Icons.hamburger;
+                            icon: root.sidebar-collapsed ? Icons.caret-double-right : Icons.caret-double-left;
                             tooltip: root.sidebar-collapsed ? @tr("Expand sidebar (Ctrl+B)") : @tr("Collapse sidebar (Ctrl+B)");
                             own-tooltip: true;
                             active: root.sidebar-collapsed;
@@ -2323,6 +2269,67 @@ export component MainWindow inherits Window {
                             accessible-role: none;
                         }
                     }
+                }
+            }
+        }
+
+        // The splitter: an 8px strip straddling the sidebar's edge (4px each side), above the layout so it never sits under a sidebar control. Drag it, or focus it and press Left / Right
+        // (8px a step). It is not there on the rail.
+        if !root.narrow: splitter := Rectangle {
+            x: root.sidebar-w - root.splitter-w / 2;
+            width: root.splitter-w;
+            height: parent.height;
+            background: transparent;
+            forward-focus: splitter-scope;
+
+            // The line that shows it can be grabbed (hover or drag) and, in the focus colour, that it has focus.
+            Rectangle {
+                x: (parent.width - self.width) / 2;
+                width: splitter-scope.has-focus ? 3px : 2px;
+                background: splitter-scope.has-focus ? Theme.focus-ring : splitter-touch.pressed ? Theme.accent-text : Theme.border-strong;
+                opacity: (splitter-scope.has-focus || splitter-touch.has-hover || splitter-touch.pressed) ? 1 : 0;
+                animate opacity { duration: Motion.instant; easing: Motion.out; }
+            }
+            splitter-touch := TouchArea {
+                mouse-cursor: MouseCursor.col-resize;
+                pointer-event(event) => {
+                    if (event.button != PointerEventButton.left) {
+                        return;
+                    }
+                    if (event.kind == PointerEventKind.down) {
+                        // How far the pointer is from the sidebar's edge, so the edge does not jump to it.
+                        root.splitter-grab = root.sidebar-w - (self.absolute-position.x + self.mouse-x);
+                    } else if (event.kind == PointerEventKind.up) {
+                        root.sidebar-width-changed(root.sidebar-width);
+                    }
+                }
+                moved => {
+                    if (self.pressed) {
+                        let edge = self.absolute-position.x + self.mouse-x + root.splitter-grab;
+                        root.set-sidebar-width(((edge - (root.text-scale - 1) * 96px) / 1px).round(), false);
+                    }
+                }
+            }
+            splitter-scope := FocusScope {
+                accessible-role: AccessibleRole.slider;
+                accessible-label: @tr("Sidebar width");
+                accessible-value: root.sidebar-width;
+                accessible-value-minimum: 200;
+                accessible-value-maximum: 320;
+                accessible-value-step: 8;
+                accessible-action-increment => { root.set-sidebar-width(root.sidebar-width + 8, true); }
+                accessible-action-decrement => { root.set-sidebar-width(root.sidebar-width - 8, true); }
+                changed has-focus => { root.splitter-focused = self.has-focus; }
+                key-pressed(event) => {
+                    if (event.text == Key.LeftArrow) {
+                        root.set-sidebar-width(root.sidebar-width - 8, true);
+                        return accept;
+                    }
+                    if (event.text == Key.RightArrow) {
+                        root.set-sidebar-width(root.sidebar-width + 8, true);
+                        return accept;
+                    }
+                    return reject;
                 }
             }
         }
