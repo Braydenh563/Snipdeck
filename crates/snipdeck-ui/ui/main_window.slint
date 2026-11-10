@@ -2182,8 +2182,10 @@ export component MainWindow inherits Window {
                             : root.in-trash ? @tr("Deleted items stay here for {} days before they are removed.", root.trash-days)
                             : root.section == MainSection.list ? @tr("Add a snippet, or move items here from another list.")
                             : @tr("Tag a snippet to see it here.");
-                        hint: !root.searching && (root.section == MainSection.all || root.section == MainSection.list)
-                            ? @tr("Press Ctrl+N to add a snippet, or Ctrl+K to see every command.") : "";
+                        action-keys: !root.searching && root.section == MainSection.list ? ["Ctrl", "N"] : [];
+                        action-keys-label: @tr("Control N");
+                        secondary-keys: !root.searching && root.section == MainSection.all ? ["Ctrl", "N"] : [];
+                        secondary-keys-label: @tr("Control N");
                         action-text: root.searching ? ""
                             : root.section == MainSection.all ? @tr("Save from clipboard")
                             : root.section == MainSection.list ? @tr("New item")

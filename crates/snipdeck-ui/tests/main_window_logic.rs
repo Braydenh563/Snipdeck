@@ -1851,11 +1851,15 @@ ui_tests! {
         assert_eq!(take(&log), ["help:Shortcuts"]);
     }
 
-    fn an_empty_deck_names_the_keys_that_help() {
+    fn an_empty_deck_names_the_key_beside_new_item() {
         let (ui, _log) = start();
         fixture::set_rows(&ui, Vec::new());
         settle();
-        find(&ui, "Press Ctrl+N to add a snippet, or Ctrl+K to see every command.", AccessibleRole::Text);
+        find(&ui, "Control N", AccessibleRole::Text);
+        assert!(
+            missing(&ui, "Press Ctrl+N to add a snippet, or Ctrl+K to see every command.", AccessibleRole::Text),
+            "no text line under the buttons"
+        );
     }
 
     fn the_recent_list_is_one_tab_stop_with_a_roving_active_row() {

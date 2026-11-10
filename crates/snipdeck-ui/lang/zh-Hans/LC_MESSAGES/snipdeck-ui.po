@@ -455,6 +455,9 @@ msgstr "内容"
 msgid "Control Enter"
 msgstr "Ctrl Enter"
 
+msgid "Control N"
+msgstr "Ctrl N"
+
 msgid "Copied"
 msgstr "已复制"
 
@@ -1875,9 +1878,6 @@ msgstr "已置顶的片段"
 
 msgid "Placeholders"
 msgstr "占位符"
-
-msgid "Press Ctrl+N to add a snippet, or Ctrl+K to see every command."
-msgstr "按 Ctrl+N 添加片段，或按 Ctrl+K 查看所有命令。"
 
 msgid "Press the new shortcut"
 msgstr "按下新的快捷键"

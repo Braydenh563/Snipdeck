@@ -2,6 +2,7 @@ import { Theme, Type, Space, Fonts, Radius } from "../theme.slint";
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
 import { Button, ButtonVariant } from "button.slint";
+import { KeyCombo } from "keycap.slint";
 
 export enum EmptyStateKind { list, board, search, inbox }
 
@@ -13,8 +14,12 @@ export component EmptyState inherits VerticalLayout {
     in property <string> heading;
     in property <string> body;
     in property <string> action-text;
-    // An optional line under the button naming the key that does the same ("Press Ctrl+N to add a snippet").
-    in property <string> hint;
+    // The key that does the same as a button, shown as caps beside it (["Ctrl", "N"]); `*-keys-label` is the
+    // spoken form ("Control N"). Beside, not under: a text line below the buttons reads as a second message.
+    in property <[string]> action-keys;
+    in property <string> action-keys-label;
+    in property <[string]> secondary-keys;
+    in property <string> secondary-keys-label;
     // Panel v2 spec 2.7: a 40px glyph tile, a `type.md` heading, an outline button (36) and an optional ghost
     // button under it; `caption` explains what the action will do.
     in property <bool> quiet: false;
@@ -85,6 +90,13 @@ export component EmptyState inherits VerticalLayout {
     }
     if root.action-text != "": HorizontalLayout {
         alignment: center;
+        spacing: Space.s2;
+        // A hidden twin of the caps on the left keeps the button itself centred.
+        if root.action-keys.length > 0: Rectangle {
+            visible: false;
+            width: action-twin.min-width;
+            action-twin := KeyCombo { keys: root.action-keys; }
+        }
         if !root.quiet: Button {
             text: root.action-text;
             variant: ButtonVariant.primary;
@@ -95,6 +107,10 @@ export component EmptyState inherits VerticalLayout {
             variant: ButtonVariant.secondary;
             height: Space.s8 + Space.s1;
             clicked => { root.action(); }
+        }
+        if root.action-keys.length > 0: VerticalLayout {
+            alignment: center;
+            KeyCombo { keys: root.action-keys; label: root.action-keys-label; }
         }
     }
     if root.caption != "": Text {
@@ -107,10 +123,21 @@ export component EmptyState inherits VerticalLayout {
     }
     if root.secondary-text != "": HorizontalLayout {
         alignment: center;
+        spacing: Space.s2;
+        // A hidden twin of the caps on the left keeps the button itself centred.
+        if root.secondary-keys.length > 0: Rectangle {
+            visible: false;
+            width: secondary-twin.min-width;
+            secondary-twin := KeyCombo { keys: root.secondary-keys; }
+        }
         Button {
             text: root.secondary-text;
             variant: ButtonVariant.ghost;
             clicked => { root.secondary(); }
+        }
+        if root.secondary-keys.length > 0: VerticalLayout {
+            alignment: center;
+            KeyCombo { keys: root.secondary-keys; label: root.secondary-keys-label; }
         }
     }
     if root.tertiary-text != "": HorizontalLayout {
@@ -120,13 +147,5 @@ export component EmptyState inherits VerticalLayout {
             variant: ButtonVariant.ghost;
             clicked => { root.tertiary(); }
         }
-    }
-    if root.hint != "": Text {
-        text: root.hint;
-        color: Theme.text-secondary;
-        font-family: Fonts.sans;
-        font-size: Type.sm;
-        horizontal-alignment: center;
-        wrap: word-wrap;
     }
 }
