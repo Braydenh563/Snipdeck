@@ -333,8 +333,10 @@ export component MainWindow inherits Window {
     // The box owns the typing keys only while it is on screen.
     property <bool> quick-typing: root.quick-open && root.quick-add-shown;
     changed quick-add-shown => {
-        if (!root.quick-add-shown) {
+        if (!root.quick-add-shown && root.quick-open) {
+            // The box's field had the focus and is gone with it: the items take it, so the window's keys keep working.
             root.quick-open = false;
+            root.focus-items();
         }
     }
     function new-item() {
