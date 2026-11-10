@@ -25,6 +25,7 @@ use support::on_ui_thread;
 
 /// The position of `message`'s variant in [`samples`]. The match has no wildcard, so a new
 /// `ToastMessage` variant stops this file compiling until it is listed (and so tested).
+#[allow(clippy::too_many_lines, reason = "one line per message variant")]
 const fn position(message: &ToastMessage) -> usize {
     match message {
         ToastMessage::Pasted { .. } => 0,

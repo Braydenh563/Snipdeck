@@ -417,6 +417,9 @@ msgstr "Fermer la fenêtre"
 msgid "Code"
 msgstr "Code"
 
+msgid "Collapse sidebar (Ctrl+B)"
+msgstr "Réduire la barre latérale (Ctrl+B)"
+
 msgid "Colour"
 msgstr "Couleur"
 
@@ -908,6 +911,9 @@ msgstr "Tout ce qui se trouve dans la corbeille sera supprimé définitivement. 
 
 msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
 msgstr "Tout ce qui est dans votre bibliothèque disparaît : tableaux, listes, extraits, images, brouillons et sauvegardes. Exportez d’abord si vous voulez une copie. Vos réglages et votre licence restent."
+
+msgid "Expand sidebar (Ctrl+B)"
+msgstr "Développer la barre latérale (Ctrl+B)"
 
 msgid "Export as text"
 msgstr "Exporter en texte"
@@ -2252,6 +2258,9 @@ msgstr "Afficher ou masquer le panneau"
 msgid "Show or hide the panel"
 msgstr "Afficher ou masquer le panneau"
 
+msgid "Show or hide the sidebar"
+msgstr "Afficher ou masquer la barre latérale"
+
 msgid "Show the Panel"
 msgstr "Afficher le Panneau"
 
@@ -2266,6 +2275,9 @@ msgstr "Afficher le titre, la couleur, les étiquettes et la confidentialité"
 
 msgid "Shrug"
 msgstr "Haussement d'épaules"
+
+msgid "Sidebar width"
+msgstr "Largeur de la barre latérale"
 
 msgid "Skip"
 msgstr "Passer"
@@ -2363,8 +2375,26 @@ msgstr "Extraits"
 msgid "Sorry"
 msgstr "Désolé"
 
+msgid "Sort by"
+msgstr "Trier par"
+
+msgid "Sort by: Manual"
+msgstr "Trier par : Manuel"
+
+msgid "Sort by: Most used"
+msgstr "Trier par : Les plus utilisés"
+
+msgid "Sort by: Recently used"
+msgstr "Trier par : Utilisés récemment"
+
+msgid "Sort by: {}"
+msgstr "Trier par : {}"
+
 msgid "Sort items by"
 msgstr "Trier les extraits par"
+
+msgid "Sort: {}"
+msgstr "Tri : {}"
 
 msgid "Source code"
 msgstr "Code source"
@@ -2404,6 +2434,9 @@ msgstr "Supporter"
 
 msgid "Surprise"
 msgstr "Surprise"
+
+msgid "Switch this list to Manual order?"
+msgstr "Passer cette liste à l’ordre manuel ?"
 
 msgid "Symbols"
 msgstr "Symboles"

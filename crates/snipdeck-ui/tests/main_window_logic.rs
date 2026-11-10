@@ -191,7 +191,9 @@ fn start() -> (MainWindow, Log) {
     hook!(on_add_list_requested, || "add-list".to_string());
     hook!(on_close_requested, || "close".to_string());
     hook!(on_sidebar_width_changed, |w| format!("sidebar-width:{w}"));
-    hook!(on_sidebar_collapsed_changed, |c| format!("sidebar-collapsed:{c}"));
+    hook!(on_sidebar_collapsed_changed, |c| format!(
+        "sidebar-collapsed:{c}"
+    ));
     hook!(on_sort_chosen, |i| format!("sort:{i}"));
     hook!(on_undo_requested, || "undo".to_string());
     hook!(on_help_requested, |page| format!("help:{page:?}"));
@@ -1368,7 +1370,7 @@ ui_tests! {
         ui.window().set_size(slint::LogicalSize::new(640.0, 520.0));
         settle();
         chord(ui.window(), &[Key::Control], "b");
-        assert!(take(&log).is_empty());
+        assert_eq!(take(&log), Vec::<String>::new());
     }
 
     fn splitter_keys_step_8px() {

@@ -1372,11 +1372,16 @@ mod tests {
         assert_eq!(old.main_sidebar_width, 232);
         assert!(!old.main_sidebar_collapsed);
         assert_eq!(old.panel_width, 400);
-        let mut saved = Settings::default();
-        saved.main_sidebar_collapsed = true;
-        saved.main_sidebar_width = 280;
+        let saved = Settings {
+            main_sidebar_collapsed: true,
+            main_sidebar_width: 280,
+            ..Settings::default()
+        };
         let back = Settings::from_json(&saved.to_json());
-        assert_eq!((back.main_sidebar_width, back.main_sidebar_collapsed), (280, true));
+        assert_eq!(
+            (back.main_sidebar_width, back.main_sidebar_collapsed),
+            (280, true)
+        );
     }
 
     #[test]

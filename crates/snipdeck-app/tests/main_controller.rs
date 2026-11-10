@@ -12,12 +12,10 @@
 
 use std::time::Duration;
 
-use snipdeck_store::ListRepo as _;
 use snipdeck_app::{
     controller::{
         Controller, Effect, ItemMenuEntry, LIST_MENU, ListDeleteView, ListMenuEntry, MainAction,
-        MainScreen,
-        Services, TOAST_ENTER, TOAST_EXIT, TOAST_HOLD, TOAST_UNDO_HOLD, TagRenameError,
+        MainScreen, Services, TOAST_ENTER, TOAST_EXIT, TOAST_HOLD, TOAST_UNDO_HOLD, TagRenameError,
     },
     demo,
     host::{FakeTargets, FixedClock},
@@ -30,6 +28,7 @@ use snipdeck_core::{
     Entitlements, ItemLabel, ListAccent, ListIcon, ListSort, Name, Tag, Tier, Timestamp,
 };
 use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
+use snipdeck_store::ListRepo as _;
 use snipdeck_store::{BoardRepo, ItemRepo, Store, TagRepo, TrashRepo, Trashable};
 
 type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
@@ -2080,13 +2079,20 @@ fn dragging_in_a_sorted_list_offers_manual() {
     assert_eq!(message(&screen), ToastMessage::SwitchToManual { list: id });
     ctl.toast_action();
     let screen = ctl.main_screen();
-    assert_eq!(screen.list_sort, ListSort::Manual, "the toast's button switched it");
+    assert_eq!(
+        screen.list_sort,
+        ListSort::Manual,
+        "the toast's button switched it"
+    );
     assert!(screen.reorderable);
     assert_eq!(message(&screen), ToastMessage::ListSaved);
     // Alt+Down offers it the same way.
     ctl.main_set_list_sort(ListSort::MostUsed);
     ctl.main_reorder_items(1);
-    assert_eq!(message(&ctl.main_screen()), ToastMessage::SwitchToManual { list: id });
+    assert_eq!(
+        message(&ctl.main_screen()),
+        ToastMessage::SwitchToManual { list: id }
+    );
 }
 
 #[test]
