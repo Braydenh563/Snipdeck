@@ -194,6 +194,9 @@ pub(crate) struct ItemDto {
     /// The id of the group this item belongs to, from the list's `groups`; added in 1.2.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub group: Option<String>,
+    /// The typed trigger; added in 1.2. Never present for a sensitive item.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger: Option<String>,
     #[serde(default)]
     pub use_count: u32,
     #[serde(default)]

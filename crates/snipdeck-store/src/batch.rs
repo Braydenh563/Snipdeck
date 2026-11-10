@@ -10,7 +10,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 use rusqlite::{Connection, Transaction};
 use snipdeck_core::{
     Board, BoardId, Content, Formats, Group, GroupId, Item, ItemId, List, ListId, Placement, Tag,
-    TagId, Timestamp,
+    TagId, Timestamp, Trigger,
 };
 
 use crate::blobs::{BlobMark, Blobs};
@@ -19,7 +19,8 @@ use crate::items::Written;
 use crate::store::{Quiet, begin};
 use crate::{
     BlobStore, BoardRepo, Error, GroupDelete, GroupEnd, GroupRepo, GroupRun, ItemRepo, ListRepo,
-    Result, Store, TagRepo, TrashEntry, TrashRepo, Trashable, boards, groups, items, tags, trash,
+    Result, Store, TagRepo, TrashEntry, TrashRepo, Trashable, TriggerRepo, boards, groups, items,
+    tags, trash, triggers,
 };
 
 /// Everything a write needs, inside an open transaction.
@@ -526,6 +527,28 @@ macro_rules! repo_impls {
 
             fn join_group(&mut self, item: ItemId, group: GroupId, end: GroupEnd) -> Result<()> {
                 self.writer(|cx| groups::join_group(cx, item, group, end))
+            }
+        }
+
+        impl TriggerRepo for $ty {
+            fn triggers(&self) -> Result<Vec<(Trigger, ItemId)>> {
+                triggers::triggers(self.reader().conn)
+            }
+
+            fn trigger_of(&self, item: ItemId) -> Result<Option<Trigger>> {
+                triggers::trigger_of(self.reader().conn, item)
+            }
+
+            fn trigger_holder(&self, trigger: &Trigger) -> Result<Option<ItemId>> {
+                triggers::trigger_holder(self.reader().conn, trigger)
+            }
+
+            fn set_trigger(
+                &mut self,
+                item: ItemId,
+                trigger: Option<&Trigger>,
+            ) -> Result<Vec<Trigger>> {
+                self.writer(|cx| triggers::set_trigger(cx, item, trigger))
             }
         }
 

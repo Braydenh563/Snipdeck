@@ -22,7 +22,7 @@ use std::str::FromStr;
 use snipdeck_core::Content;
 use snipdeck_core::{
     BlobRef, BoardId, FileEntry, Format, FormatKind, Formats, GroupId, Inline, ItemId, ItemKind,
-    ItemLabel, ListAccent, ListIcon, ListId, ListSort, ListView, Name, TagId, Timestamp,
+    ItemLabel, ListAccent, ListIcon, ListId, ListSort, ListView, Name, TagId, Timestamp, Trigger,
 };
 use snipdeck_store::crypto::{DataKey, Slot, decrypt_payload};
 use snipdeck_store::name_key;
@@ -662,6 +662,15 @@ impl<R: Read + Seek> Builder<'_, R> {
                 .label
                 .as_deref()
                 .map(|l| parse_key::<ItemLabel>(l, "item label"))
+                .transpose()?,
+            trigger: dto
+                .trigger
+                .as_deref()
+                .map(|t| {
+                    Trigger::new(t).map_err(|e| {
+                        Error::malformed(ITEMS, format!("item {id} has an invalid trigger: {e}"))
+                    })
+                })
                 .transpose()?,
             group: dto
                 .group
