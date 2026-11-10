@@ -448,6 +448,7 @@ fn panel_search_suggestions_drop_under_the_field_with_the_key_row_ringed() {
                 kind,
             })
             .collect();
+    h.component.set_suggest_query("re".into());
     h.component
         .set_suggestions(slint::ModelRc::new(slint::VecModel::from(rows)));
     // Down enters the dropdown: the first row is highlighted and ringed.

@@ -232,8 +232,10 @@ mod tests {
         assert_eq!(first.boards[0].1.len(), 1);
     }
 
-    // A25 measurement (kept as a guard): a 2000-item library builds its index well under the 50 ms
-    // at which building would be deferred. The bound is generous because a debug build is slow.
+    // A25 smoke check: a 2000-item library is read and indexed once, and quickly. It uses the real
+    // clock on purpose: the claim is about elapsed time (the index build is not deferred because it
+    // stays well under 50 ms), so a fixed clock would measure nothing. The bound is a generous 2 s
+    // so a slow or loaded CI machine does not flake; a real regression is orders of magnitude.
     #[test]
     fn building_the_index_of_two_thousand_items_is_cheap() {
         let (mut s, l) = seeded();
@@ -245,7 +247,8 @@ mod tests {
         let snapshot = cache.snapshot(&s).unwrap();
         let took = started.elapsed();
         assert_eq!(snapshot.index.len(), 2000);
-        assert!(took < std::time::Duration::from_millis(500), "{took:?}");
+        assert_eq!(cache.rebuilds(), 1);
+        assert!(took < std::time::Duration::from_secs(2), "{took:?}");
     }
 
     #[test]

@@ -44,7 +44,18 @@ export component SuggestDropdown inherits Rectangle {
             root.dismissed();
             return true;
         }
-        if (event.text == Key.DownArrow || (event.text == Key.Tab && !event.modifiers.shift)) {
+        // Tab never cycles: the first press enters the first row, a press on a row closes the dropdown and lets the
+        // focus move on (the key is not consumed).
+        if (event.text == Key.Tab && !event.modifiers.shift) {
+            if (root.current >= 0) {
+                root.dismissed();
+                return false;
+            }
+            root.by-key = true;
+            root.current = 0;
+            return true;
+        }
+        if (event.text == Key.DownArrow) {
             root.by-key = true;
             root.current = root.current + 1 >= root.rows.length ? 0 : root.current + 1;
             return true;
@@ -69,6 +80,16 @@ export component SuggestDropdown inherits Rectangle {
     border-color: Theme.border-subtle;
     accessible-role: list;
     accessible-label: root.label;
+
+    // Said by a screen reader whenever the highlight moves (a polite live region; not drawn).
+    Text {
+        width: 0px;
+        height: 0px;
+        text: root.current >= 0 && root.current < root.rows.length ? root.rows[root.current].text : "";
+        accessible-role: text;
+        accessible-label: self.text;
+        accessible-live-region: polite;
+    }
 
     VerticalLayout {
         padding: Space.s1;

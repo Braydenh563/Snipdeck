@@ -314,6 +314,9 @@ export component MainWindow inherits Window {
     // caret as a byte offset); the host fills `suggestions`, takes the chosen row through `apply-suggestion` and
     // empties the list on Esc (`suggest-dismissed`).
     in property <[SuggestRow]> suggestions;
+    // The search text `suggestions` were made for: rows for any other text are stale and hidden.
+    in property <string> suggest-query;
+    out property <bool> suggest-open: suggest.open;
     out property <int> suggest-current: suggest.current;
     callback suggest-requested(string, int);
     callback suggest-dismissed();
@@ -1353,6 +1356,7 @@ export component MainWindow inherits Window {
                             VerticalLayout {
                                 alignment: center;
                                 search := SearchField {
+                                    expanded: suggest.open;
                                     placeholder: @tr("Search snippets");
                                     label: @tr("Search snippets");
                                     clear-label: @tr("Clear search");
@@ -2496,7 +2500,7 @@ export component MainWindow inherits Window {
         width: search.width;
         label: @tr("Search suggestions");
         rows: root.suggestions;
-        active: search.has-focus && root.query != "";
+        active: search.has-focus && root.query != "" && root.suggest-query == root.query;
         chosen(i) => { root.suggest-chosen(i); }
         dismissed => { root.suggest-dismissed(); }
     }

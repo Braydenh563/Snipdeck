@@ -1667,12 +1667,12 @@ at | crates/snipdeck-app/src/index_cache.rs:196
 seeded | crates/snipdeck-app/src/index_cache.rs:200
 add | crates/snipdeck-app/src/index_cache.rs:209
 an_unchanged_library_reuses_the_snapshot | crates/snipdeck-app/src/index_cache.rs:218
-building_the_index_of_two_thousand_items_is_cheap | crates/snipdeck-app/src/index_cache.rs:238
-a_write_builds_a_new_index | crates/snipdeck-app/src/index_cache.rs:252
-a_counted_use_and_a_system_copy_do_not_rebuild_the_index_but_a_use_rereads_the_items | crates/snipdeck-app/src/index_cache.rs:269
-the_recent_entries_are_read_once_until_the_store_is_written | crates/snipdeck-app/src/index_cache.rs:343
-reset_forgets_the_snapshot | crates/snipdeck-app/src/index_cache.rs:364
-panel_and_picker_loads_share_one_build_until_a_write | crates/snipdeck-app/src/index_cache.rs:375
+building_the_index_of_two_thousand_items_is_cheap | crates/snipdeck-app/src/index_cache.rs:240
+a_write_builds_a_new_index | crates/snipdeck-app/src/index_cache.rs:255
+a_counted_use_and_a_system_copy_do_not_rebuild_the_index_but_a_use_rereads_the_items | crates/snipdeck-app/src/index_cache.rs:272
+the_recent_entries_are_read_once_until_the_store_is_written | crates/snipdeck-app/src/index_cache.rs:346
+reset_forgets_the_snapshot | crates/snipdeck-app/src/index_cache.rs:367
+panel_and_picker_loads_share_one_build_until_a_write | crates/snipdeck-app/src/index_cache.rs:378
 
 ### crates/snipdeck-app/src/item_editor.rs
 
@@ -2812,27 +2812,31 @@ fold | crates/snipdeck-app/src/search_suggest.rs:50
 sorted_unique | crates/snipdeck-app/src/search_suggest.rs:54
 impl Index | crates/snipdeck-app/src/search_suggest.rs:61
 build | crates/snipdeck-app/src/search_suggest.rs:64
-word_at | crates/snipdeck-app/src/search_suggest.rs:96
-suggest | crates/snipdeck-app/src/search_suggest.rs:114
-apply | crates/snipdeck-app/src/search_suggest.rs:147
-Dropdown | crates/snipdeck-app/src/search_suggest.rs:212
-impl Dropdown | crates/snipdeck-app/src/search_suggest.rs:217
-show | crates/snipdeck-app/src/search_suggest.rs:219
-clear | crates/snipdeck-app/src/search_suggest.rs:226
-choose | crates/snipdeck-app/src/search_suggest.rs:232
-rows | crates/snipdeck-app/src/search_suggest.rs:238
-tests | crates/snipdeck-app/src/search_suggest.rs:256
-at | crates/snipdeck-app/src/search_suggest.rs:260
-item | crates/snipdeck-app/src/search_suggest.rs:264
-index | crates/snipdeck-app/src/search_suggest.rs:270
-texts | crates/snipdeck-app/src/search_suggest.rs:279
-suggests_tags_lists_and_title_words_by_prefix | crates/snipdeck-app/src/search_suggest.rs:287
-never_suggests_sensitive_titles | crates/snipdeck-app/src/search_suggest.rs:299
-caps_at_six | crates/snipdeck-app/src/search_suggest.rs:307
-replaces_only_the_word_at_the_caret | crates/snipdeck-app/src/search_suggest.rs:314
-a_word_already_typed_in_full_is_not_offered_again | crates/snipdeck-app/src/search_suggest.rs:328
-choosing_a_row_applies_it_to_the_query_it_was_made_for_and_empties_the_dropdown | crates/snipdeck-app/src/search_suggest.rs:334
-a_caret_off_a_character_boundary_does_not_panic | crates/snipdeck-app/src/search_suggest.rs:346
+word_at | crates/snipdeck-app/src/search_suggest.rs:98
+matches_prefix | crates/snipdeck-app/src/search_suggest.rs:118
+suggest | crates/snipdeck-app/src/search_suggest.rs:128
+apply | crates/snipdeck-app/src/search_suggest.rs:161
+Dropdown | crates/snipdeck-app/src/search_suggest.rs:234
+impl Dropdown | crates/snipdeck-app/src/search_suggest.rs:240
+show | crates/snipdeck-app/src/search_suggest.rs:242
+asked | crates/snipdeck-app/src/search_suggest.rs:256
+clear | crates/snipdeck-app/src/search_suggest.rs:261
+choose | crates/snipdeck-app/src/search_suggest.rs:270
+rows | crates/snipdeck-app/src/search_suggest.rs:285
+tests | crates/snipdeck-app/src/search_suggest.rs:303
+at | crates/snipdeck-app/src/search_suggest.rs:307
+item | crates/snipdeck-app/src/search_suggest.rs:311
+index | crates/snipdeck-app/src/search_suggest.rs:317
+texts | crates/snipdeck-app/src/search_suggest.rs:326
+suggests_tags_lists_and_title_words_by_prefix | crates/snipdeck-app/src/search_suggest.rs:334
+never_suggests_sensitive_titles | crates/snipdeck-app/src/search_suggest.rs:346
+caps_at_six | crates/snipdeck-app/src/search_suggest.rs:354
+replaces_only_the_word_at_the_caret | crates/snipdeck-app/src/search_suggest.rs:361
+a_word_already_typed_in_full_is_not_offered_again | crates/snipdeck-app/src/search_suggest.rs:375
+choosing_a_row_applies_it_to_the_query_it_was_made_for_and_empties_the_dropdown | crates/snipdeck-app/src/search_suggest.rs:381
+stale_rows_choose_nothing | crates/snipdeck-app/src/search_suggest.rs:401
+words_split_like_title_words_and_keep_search_syntax | crates/snipdeck-app/src/search_suggest.rs:430
+a_caret_off_a_character_boundary_does_not_panic | crates/snipdeck-app/src/search_suggest.rs:471
 
 ### crates/snipdeck-app/src/settings.rs
 
@@ -7177,7 +7181,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/src/repaint.rs` (inline) | 8 |
 | `crates/snipdeck-app/src/screen_clip.rs` (inline) | 13 |
 | `crates/snipdeck-app/src/search_mark.rs` (inline) | 6 |
-| `crates/snipdeck-app/src/search_suggest.rs` (inline) | 7 |
+| `crates/snipdeck-app/src/search_suggest.rs` (inline) | 9 |
 | `crates/snipdeck-app/src/settings.rs` (inline) | 57 |
 | `crates/snipdeck-app/src/settings_binding.rs` (inline) | 15 |
 | `crates/snipdeck-app/src/settings_store.rs` (inline) | 15 |
@@ -7203,8 +7207,8 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/tests/main_window.rs` | 52 |
 | `crates/snipdeck-app/tests/master_password.rs` | 49 |
 | `crates/snipdeck-app/tests/menu_form_texts.rs` | 3 |
-| `crates/snipdeck-app/tests/panel_window.rs` | 74 |
-| `crates/snipdeck-app/tests/picker_window.rs` | 17 |
+| `crates/snipdeck-app/tests/panel_window.rs` | 77 |
+| `crates/snipdeck-app/tests/picker_window.rs` | 19 |
 | `crates/snipdeck-app/tests/rebuild.rs` | 5 |
 | `crates/snipdeck-app/tests/recent_at_rest.rs` | 5 |
 | `crates/snipdeck-app/tests/screenshot.rs` | 2 |

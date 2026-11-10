@@ -455,6 +455,57 @@ fn typing_a_word_offers_suggestions_and_down_or_tab_enters_the_dropdown() {
 }
 
 #[test]
+fn tab_on_a_row_closes_the_dropdown_and_never_cycles() {
+    on_ui_thread(|| {
+        let r = rig();
+        type_text(r.window(), "ret");
+        press(r.window(), &key(Key::Tab));
+        assert_eq!(r.ui.get_suggest_current(), 0, "the first Tab enters row 0");
+        press(r.window(), &key(Key::Tab));
+        assert!(
+            suggestion_texts(&r).is_empty(),
+            "Tab on a row closes the dropdown"
+        );
+        assert_eq!(r.ui.get_suggest_current(), -1);
+        assert_eq!(r.ui.get_query(), "ret", "and chooses nothing");
+    });
+}
+
+#[test]
+fn down_after_the_dropdown_closed_moves_through_the_results() {
+    on_ui_thread(|| {
+        let r = rig();
+        type_text(r.window(), "re");
+        assert!(r.ui.get_suggest_open());
+        let before = r.ui.get_selected_index();
+        press(r.window(), &key(Key::Escape));
+        assert!(!r.ui.get_suggest_open());
+        press(r.window(), &key(Key::DownArrow));
+        assert_eq!(r.ui.get_selected_index(), before + 1);
+    });
+}
+
+#[test]
+fn rows_made_for_other_text_are_stale_hidden_and_ignore_keys() {
+    on_ui_thread(|| {
+        let r = rig();
+        type_text(r.window(), "ret");
+        assert!(r.ui.get_suggest_open());
+        r.ui.set_query("zzz".into());
+        assert!(
+            !r.ui.get_suggest_open(),
+            "a programmatic change hides the old rows"
+        );
+        press(r.window(), &key(Key::DownArrow));
+        assert_eq!(
+            r.ui.get_suggest_current(),
+            -1,
+            "and Down is not taken by them"
+        );
+    });
+}
+
+#[test]
 fn enter_on_a_suggestion_replaces_only_the_word_and_searches_it() {
     on_ui_thread(|| {
         let r = rig();

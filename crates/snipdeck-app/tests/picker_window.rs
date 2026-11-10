@@ -293,6 +293,42 @@ fn a_suggestion_is_entered_with_down_chosen_with_enter_and_closed_with_escape() 
 }
 
 #[test]
+fn tab_with_no_dropdown_cycles_the_scope_and_a_scope_change_closes_the_dropdown() {
+    on_ui_thread(|| {
+        let r = rig();
+        let w = r.open();
+        press(w.window(), &key(Key::Tab));
+        assert_eq!(
+            w.get_scope(),
+            snipdeck_ui::PickerScope::Board,
+            "Tab moves on"
+        );
+        type_text(w.window(), "ret");
+        assert!(w.get_suggest_open());
+        press(w.window(), &key(Key::Backtab));
+        assert_eq!(w.get_scope(), snipdeck_ui::PickerScope::All);
+        assert_eq!(
+            w.get_suggestions().row_count(),
+            0,
+            "rows of the old scope are gone"
+        );
+    });
+}
+
+#[test]
+fn enter_with_no_row_highlighted_still_pastes_while_the_dropdown_is_open() {
+    on_ui_thread(|| {
+        let r = rig();
+        let w = r.open();
+        type_text(w.window(), "ret");
+        assert!(w.get_suggest_open());
+        assert_eq!(w.get_suggest_current(), -1);
+        press(w.window(), &key(Key::Return));
+        assert!(!w.window().is_visible(), "Enter used the selected result");
+    });
+}
+
+#[test]
 fn typing_filters_across_the_boards_and_enter_pastes_into_the_target() {
     on_ui_thread(|| {
         let r = rig();

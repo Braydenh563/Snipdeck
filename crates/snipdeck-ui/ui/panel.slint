@@ -324,6 +324,9 @@ export component PanelWindow inherits Window {
     // caret as a byte offset); the host fills `suggestions`, takes the chosen row through `apply-suggestion` and
     // empties the list on Esc (`suggest-dismissed`).
     in property <[SuggestRow]> suggestions;
+    // The search text `suggestions` were made for: rows for any other text are stale and hidden.
+    in property <string> suggest-query;
+    out property <bool> suggest-open: suggest.open;
     out property <int> suggest-current: suggest.current;
     callback suggest-requested(string, int);
     callback suggest-dismissed();
@@ -1672,6 +1675,7 @@ export component PanelWindow inherits Window {
                     }
 
                     search := SearchField {
+                        expanded: suggest.open;
                         x: Space.s2;
                         y: root.search-block ? Space.s2 : Space.s1;
                         width: max(0px, parent.width - 2 * Space.s2 - (root.search-block ? close-search.width + Space.s1 + Space.s0-5 : 0px));
@@ -2577,7 +2581,7 @@ export component PanelWindow inherits Window {
             width: search.width;
             label: @tr("Search suggestions");
             rows: root.suggestions;
-            active: search.has-focus && root.query != "" && !root.symbols-open;
+            active: search.has-focus && root.query != "" && root.suggest-query == root.query && !root.symbols-open;
             chosen(i) => { root.suggest-chosen(i); }
             dismissed => { root.suggest-dismissed(); }
         }
