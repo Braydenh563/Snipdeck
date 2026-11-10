@@ -4,6 +4,6 @@
 - Blocked: gate.sh clippy builds whole workspace (snipdeck-ui); ran scoped -p fmt/clippy/doc/test instead.
 
 ## Slice 5a (light2 builder)
-- Done: core Trigger + Matcher (trigger.rs), store v9 `triggers` table, TriggerRepo, fixtures/v8.db (from v7.db via MIGRATIONS[..8]).
-- Next: portable (ItemDto.trigger, export/import, format doc), importers keep abbreviations.
-- Blocked: nothing.
+- Done: core Trigger + Matcher; store v9 `triggers`, TriggerRepo, tests/fixtures/v8.db; portable: ItemDto.trigger (format 1.2), import/export, importers keep abbreviations as triggers; docs/format.md.
+- Next: nothing in 5a. UI lane (5b): trigger field, matcher use, Sensitive/never-paste/password checks, app-side Library impl needs no change.
+- Blocked: nothing. gate.sh not run (builds UI); scoped fmt/clippy/doc/test for core, store, portable all pass.

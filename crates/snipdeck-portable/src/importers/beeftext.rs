@@ -101,7 +101,10 @@ fn import_beeftext_bytes<L: Library>(
                 .and_then(|g| names.get(g))
                 .map(|n| (*n).to_owned()),
             name: name.map(str::to_owned),
-            abbreviation: str_of(combo, "keyword").map(str::to_owned),
+            abbreviations: str_of(combo, "keyword")
+                .map(str::to_owned)
+                .into_iter()
+                .collect(),
             body,
         });
     }

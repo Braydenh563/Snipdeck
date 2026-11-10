@@ -110,6 +110,7 @@ duplicates; **an importer assigns new ids** to everything it creates.
 | item | `pinned`, `sensitive`, `always_plain` | boolean, default `false` | |
 | item | `label` | string or absent | Added in 1.1. The colour label: `blue teal green amber orange red violet slate`. |
 | item | `group` | string or absent | Added in 1.2. The `id` of one of its list's `groups`; an unknown id is malformed. A group's members are contiguous in `items` order. |
+| item | `trigger` | string or absent | Added in 1.2. The typed trigger: 1 to 32 characters, no whitespace or control characters, case counts. At most one per item, never on a sensitive item. If another item in the library (or earlier in the archive) already has it, the importer keeps that owner and imports this item without it, with a note. |
 | item | `use_count` | integer 0 to 4 294 967 295, default 0 | |
 | item | `last_used_at` | RFC 3339 string or absent | |
 | item | `source_app` | string or absent | The app the content was captured from. |

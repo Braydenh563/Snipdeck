@@ -247,7 +247,7 @@ pub(crate) fn import_csv<L: Library>(
         snips.push(Snip {
             group: cell(&row, columns.group).map(|g| (spec.group)(g)),
             name,
-            abbreviation,
+            abbreviations: abbreviation.into_iter().collect(),
             body: (spec.convert)(content, &shown, &mut report),
         });
     }

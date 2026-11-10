@@ -18,10 +18,10 @@ use std::fs;
 use common::*;
 use snipdeck_core::ItemKind;
 use snipdeck_portable::{Error, ImportOptions, ImportReport, Limits, MergeStrategy, Warning};
-use snipdeck_store::{BlobStore, BoardRepo, ItemRepo, ListRepo, Store};
+use snipdeck_store::{BlobStore, BoardRepo, ItemRepo, ListRepo, Store, TriggerRepo};
 
-/// (title, kind key, text) of one item.
-type Entry = (String, String, String);
+/// (title, trigger or "", kind key, text) of one item.
+type Entry = (String, String, String, String);
 
 /// (board, list, items) for everything in the library.
 type Contents = Vec<(String, String, Vec<Entry>)>;
@@ -41,6 +41,11 @@ fn contents(store: &Store) -> Contents {
                     };
                     (
                         item.title,
+                        store
+                            .trigger_of(item.id)
+                            .unwrap()
+                            .map(|t| t.to_string())
+                            .unwrap_or_default(),
                         item.kind.key().to_owned(),
                         String::from_utf8(store.read(c).unwrap().into_owned()).unwrap(),
                     )
@@ -53,7 +58,17 @@ fn contents(store: &Store) -> Contents {
 }
 
 fn e(title: &str, kind: ItemKind, text: &str) -> Entry {
-    (title.to_owned(), kind.key().to_owned(), text.to_owned())
+    et(title, "", kind, text)
+}
+
+/// An entry with a trigger.
+fn et(title: &str, trigger: &str, kind: ItemKind, text: &str) -> Entry {
+    (
+        title.to_owned(),
+        trigger.to_owned(),
+        kind.key().to_owned(),
+        text.to_owned(),
+    )
 }
 
 fn small(max_items: usize) -> ImportOptions<'static> {
@@ -128,27 +143,40 @@ fn beeftext_maps_groups_keywords_and_variables() {
                 b.to_owned(),
                 "Email".to_owned(),
                 vec![
-                    e("Greeting (;hi)", ItemKind::Text, "Hello there,\nBest"),
-                    e(";sig", ItemKind::Template, "Regards, {cursor}"),
+                    et("Greeting", ";hi", ItemKind::Text, "Hello there,\nBest"),
+                    et(
+                        "Regards, {cursor}",
+                        ";sig",
+                        ItemKind::Template,
+                        "Regards, {cursor}"
+                    ),
                 ]
             ),
             (
                 b.to_owned(),
                 "Work".to_owned(),
                 vec![
-                    e("Stamp (;ts)", ItemKind::Template, "Today: {date} at {time}"),
-                    e(
-                        "Paste (;pp)",
+                    et(
+                        "Stamp",
+                        ";ts",
+                        ItemKind::Template,
+                        "Today: {date} at {time}"
+                    ),
+                    et(
+                        "Paste",
+                        ";pp",
                         ItemKind::Template,
                         "Wrapped: {clipboard} {{braces}}"
                     ),
-                    e(
-                        "Ask (;ask)",
+                    et(
+                        "Ask",
+                        ";ask",
                         ItemKind::Template,
                         "Dear {field:Customer name}"
                     ),
-                    e(
-                        "Odd (;odd)",
+                    et(
+                        "Odd",
+                        ";odd",
                         ItemKind::Text,
                         "Run #{powershell:C:\\x.ps1} now {x}"
                     ),
@@ -157,7 +185,7 @@ fn beeftext_maps_groups_keywords_and_variables() {
             (
                 b.to_owned(),
                 "Beeftext".to_owned(),
-                vec![e("Loose (;loose)", ItemKind::Text, "no group")]
+                vec![et("Loose", ";loose", ItemKind::Text, "no group")]
             ),
         ]
     );
@@ -177,7 +205,7 @@ fn beeftext_accepts_a_bare_array_of_combos_and_a_bom() {
     let (s, report) = beeftext(json.as_bytes(), &ImportOptions::default());
     assert_eq!(
         contents(&s)[0].2,
-        [e("k", ItemKind::Text, "v")],
+        [et("v", "k", ItemKind::Text, "v")],
         "{report:?}"
     );
 }
@@ -239,7 +267,10 @@ fn beeftext_limits_items_size_and_bad_bytes() {
         "[{{\"keyword\":\"big\",\"snippet\":\"{big}\"}},{{\"keyword\":\"ok\",\"snippet\":\"fine\"}}]"
     );
     let (s, report) = beeftext(json.as_bytes(), &ImportOptions::default());
-    assert_eq!(contents(&s)[0].2, [e("ok", ItemKind::Text, "fine")]);
+    assert_eq!(
+        contents(&s)[0].2,
+        [et("fine", "ok", ItemKind::Text, "fine")]
+    );
     assert!(
         report
             .warnings
@@ -269,7 +300,7 @@ fn beeftext_limits_items_size_and_bad_bytes() {
     bytes.extend_from_slice(b"\xff\xfe");
     bytes.extend_from_slice(b"b\"}]");
     let (s, report) = beeftext(&bytes, &ImportOptions::default());
-    assert!(contents(&s)[0].2[0].2.contains('\u{fffd}'));
+    assert!(contents(&s)[0].2[0].3.contains('\u{fffd}'));
     assert!(
         report
             .warnings
@@ -284,7 +315,12 @@ fn beeftext_two_cursors_fall_back_to_plain_text_and_duplicates_are_skipped() {
     let (s, report) = beeftext(json.as_bytes(), &ImportOptions::default());
     assert_eq!(
         contents(&s)[0].2,
-        [e("c", ItemKind::Text, "a #{cursor} b #{cursor}")]
+        [et(
+            "a #{cursor} b #{cursor}",
+            "c",
+            ItemKind::Text,
+            "a #{cursor} b #{cursor}"
+        )]
     );
     assert!(!notes(&report).is_empty());
 
@@ -361,18 +397,20 @@ fn textexpander_csv_maps_abbreviation_content_and_label() {
             "Imported from TextExpander".to_owned(),
             "TextExpander".to_owned(),
             vec![
-                e(
-                    "Greeting (;hi)",
+                et(
+                    "Greeting",
+                    ";hi",
                     ItemKind::Text,
                     "Hello,\r\nthere \"friend\""
                 ),
-                e(
-                    "Paste (;cb)",
+                et(
+                    "Paste",
+                    ";cb",
                     ItemKind::Template,
                     "A {clipboard} B {cursor} C {{x}}"
                 ),
-                e("Fill-in (;fill)", ItemKind::Text, "Hi %fillpart:name=who%"),
-                e(";nolabel", ItemKind::Text, "plain text"),
+                et("Fill-in", ";fill", ItemKind::Text, "Hi %fillpart:name=who%"),
+                et("plain text", ";nolabel", ItemKind::Text, "plain text"),
                 e("Just a label", ItemKind::Text, "no abbreviation"),
             ]
         )]
@@ -392,7 +430,7 @@ fn textexpander_csv_without_a_header_is_abbreviation_content_label_group() {
     let c = contents(&s);
     assert_eq!(c.len(), 2);
     assert_eq!(c[0].1, "Mail");
-    assert_eq!(c[0].2[1], e("Two (;b)", ItemKind::Text, "second"));
+    assert_eq!(c[0].2[1], et("Two", ";b", ItemKind::Text, "second"));
     assert_eq!(c[1].1, "TextExpander");
 }
 
@@ -412,7 +450,10 @@ fn textexpander_csv_reads_utf16_with_a_bom_and_tabs() {
         .chain(text.encode_utf16().flat_map(u16::to_le_bytes))
         .collect();
     let (s, report) = te(&bytes);
-    assert_eq!(contents(&s)[0].2, [e(";t", ItemKind::Text, "café")]);
+    assert_eq!(
+        contents(&s)[0].2,
+        [et("café", ";t", ItemKind::Text, "café")]
+    );
     assert!(report.warnings.is_empty(), "{:?}", report.warnings);
 }
 
@@ -430,7 +471,7 @@ fn csv_garbage_does_not_panic_and_imports_nothing() {
         let (s2, _) = pe(bad);
         for st in [s, s2] {
             for (_, _, items) in contents(&st) {
-                for (title, _, text) in items {
+                for (title, _, _, text) in items {
                     assert!(!title.is_empty() && !text.trim().is_empty());
                 }
             }
@@ -440,7 +481,12 @@ fn csv_garbage_does_not_panic_and_imports_nothing() {
     let (s, _) = te(b"Abbreviation,Content\n;q,\"never closed\nstill text");
     assert_eq!(
         contents(&s)[0].2,
-        [e(";q", ItemKind::Text, "never closed\nstill text")]
+        [et(
+            "never closed",
+            ";q",
+            ItemKind::Text,
+            "never closed\nstill text"
+        )]
     );
 }
 
@@ -467,7 +513,10 @@ fn csv_limits_rows_cell_size_and_file_size() {
     let big = "x".repeat(5 * 1024 * 1024 + 1);
     let csv = format!("Abbreviation,Content\n;big,{big}\n;ok,fine\n");
     let (s, report) = te(csv.as_bytes());
-    assert_eq!(contents(&s)[0].2, [e(";ok", ItemKind::Text, "fine")]);
+    assert_eq!(
+        contents(&s)[0].2,
+        [et("fine", ";ok", ItemKind::Text, "fine")]
+    );
     assert!(
         report
             .warnings
@@ -523,9 +572,10 @@ fn phraseexpress_csv_maps_folders_autotext_and_macros() {
                 b.to_owned(),
                 "Mail / Work".to_owned(),
                 vec![
-                    e("Greeting (hi)", ItemKind::Text, "Hello;\nthere"),
-                    e(
-                        "Paste (pp)",
+                    et("Greeting", "hi", ItemKind::Text, "Hello;\nthere"),
+                    et(
+                        "Paste",
+                        "pp",
                         ItemKind::Template,
                         "Pasted: {clipboard} {cursor} end"
                     ),
@@ -534,7 +584,7 @@ fn phraseexpress_csv_maps_folders_autotext_and_macros() {
             (
                 b.to_owned(),
                 "Mail".to_owned(),
-                vec![e("Stamp (ts)", ItemKind::Template, "On {date} at {time}")]
+                vec![et("Stamp", "ts", ItemKind::Template, "On {date} at {time}")]
             ),
             (
                 b.to_owned(),
@@ -668,40 +718,54 @@ fn espanso_maps_triggers_vars_forms_and_reports_the_rest() {
     assert_eq!(
         c[0].2,
         [
-            e(":hi", ItemKind::Text, "Hello there"),
-            e(
-                "Signature (:sig, :sign)",
+            et("Hello there", ":hi", ItemKind::Text, "Hello there"),
+            et(
+                "Signature",
+                ":sig",
                 ItemKind::Template,
                 "Regards,\n{cursor}"
             ),
-            e(
+            et(
+                "Today is {datetime:%Y-%m-%d} / {datetime:%d/%m/%Y}",
                 ":date",
                 ItemKind::Template,
                 "Today is {datetime:%Y-%m-%d} / {datetime:%d/%m/%Y}"
             ),
-            e(
+            et(
+                "Pasted: {clipboard} {{braces}}",
                 ":clip",
                 ItemKind::Template,
                 "Pasted: {clipboard} {{braces}}"
             ),
-            e(":shell", ItemKind::Text, "Out: {{out}}"),
-            e(":echo", ItemKind::Template, "A {{x}} B {clipboard}"),
-            e(":pick", ItemKind::Template, "Colour: {choice:c|red|green}"),
-            e(
+            et("Out: {{out}}", ":shell", ItemKind::Text, "Out: {{out}}"),
+            et(
+                "A {{x}} B {clipboard}",
+                ":echo",
+                ItemKind::Template,
+                "A {{x}} B {clipboard}"
+            ),
+            et(
+                "Colour: {choice:c|red|green}",
+                ":pick",
+                ItemKind::Template,
+                "Colour: {choice:c|red|green}"
+            ),
+            et(
+                "Dear {field:name}, pick {choice:kind|a|b} {field:plain|dflt}",
                 ":form",
                 ItemKind::Template,
                 "Dear {field:name}, pick {choice:kind|a|b} {field:plain|dflt}\n"
             ),
-            e(":md", ItemKind::Text, "**bold**"),
-            e(":badfmt", ItemKind::Text, "{{d}}"),
-            e(":twocursors", ItemKind::Text, "a $|$ b $|$"),
+            et("**bold**", ":md", ItemKind::Text, "**bold**"),
+            et("{{d}}", ":badfmt", ItemKind::Text, "{{d}}"),
+            et("a $|$ b $|$", ":twocursors", ItemKind::Text, "a $|$ b $|$"),
         ]
     );
     // regex, image, empty
     assert_eq!(report.items_skipped, 3);
     assert_eq!(report.items_added, 11);
     let all = notes(&report).join("\n");
-    for needle in ["shell", "regex", "image", "markdown", "%Q"] {
+    for needle in ["shell", "regex", "image", "markdown", "%Q", "`:sign`"] {
         assert!(all.contains(needle), "{needle} not in {all}");
     }
 }
@@ -763,7 +827,10 @@ fn espanso_bad_files_do_not_stop_the_good_ones() {
         ("e.yml", "matches:\n  - 5\n  - [1]\n  - trigger: ':t'\n"),
     ];
     let (s, report) = espanso_in(&files, &ImportOptions::default());
-    assert_eq!(contents(&s)[0].2, [e(":ok", ItemKind::Text, "fine")]);
+    assert_eq!(
+        contents(&s)[0].2,
+        [et("fine", ":ok", ItemKind::Text, "fine")]
+    );
     assert!(report.warnings.len() >= 3, "{:?}", report.warnings);
 }
 
@@ -797,7 +864,7 @@ fn espanso_merge_keys_and_anchors_still_resolve() {
     let got = contents(&s);
     let all: Vec<&str> = got
         .iter()
-        .flat_map(|c| c.2.iter().map(|x| x.2.as_str()))
+        .flat_map(|c| c.2.iter().map(|x| x.3.as_str()))
         .collect();
     assert!(
         all.iter().any(|t| t.contains("from merge")),
@@ -811,7 +878,7 @@ fn espanso_texts(yaml: &str) -> Vec<String> {
     let (s, report) = espanso_in(&[("m.yml", yaml)], &ImportOptions::default());
     let got = contents(&s);
     assert!(got.len() == 1, "{got:?} {:?}", report.warnings);
-    got[0].2.iter().map(|c| c.2.clone()).collect()
+    got[0].2.iter().map(|c| c.3.clone()).collect()
 }
 
 #[test]
@@ -856,7 +923,10 @@ fn espanso_limits_items_and_size_and_decodes_bad_bytes() {
         "matches:\n  - trigger: ':big'\n    replace: '{big}'\n  - trigger: ':ok'\n    replace: fine\n"
     );
     let (s, report) = espanso_in(&[("m.yml", &yaml)], &ImportOptions::default());
-    assert_eq!(contents(&s)[0].2, [e(":ok", ItemKind::Text, "fine")]);
+    assert_eq!(
+        contents(&s)[0].2,
+        [et("fine", ":ok", ItemKind::Text, "fine")]
+    );
     assert!(
         report
             .warnings
@@ -874,7 +944,7 @@ fn espanso_limits_items_and_size_and_decodes_bad_bytes() {
     let mut s = store();
     let report =
         snipdeck_portable::import_espanso(&mut s, &path, at(9), &ImportOptions::default()).unwrap();
-    assert!(contents(&s)[0].2[0].2.contains('\u{fffd}'));
+    assert!(contents(&s)[0].2[0].3.contains('\u{fffd}'));
     assert!(
         report
             .warnings
@@ -941,11 +1011,18 @@ fn espanso_date_format_cannot_inject_placeholders() {
 "#;
     let (s, report) = espanso_in(&[("m.yml", yaml)], &ImportOptions::default());
     let items = &contents(&s)[0].2;
-    assert_eq!(items[0], e(":inj", ItemKind::Text, "A {{d}} B"));
-    assert_eq!(items[1], e(":inj2", ItemKind::Text, "A {{d}} B"));
+    assert_eq!(
+        items[0],
+        et("A {{d}} B", ":inj", ItemKind::Text, "A {{d}} B")
+    );
+    assert_eq!(
+        items[1],
+        et("A {{d}} B", ":inj2", ItemKind::Text, "A {{d}} B")
+    );
     assert_eq!(
         items[2],
-        e(
+        et(
+            "keep {clipboard} {cursor} {datetime:%Y} as text",
             ":lit",
             ItemKind::Text,
             "keep {clipboard} {cursor} {datetime:%Y} as text"
@@ -962,11 +1039,11 @@ fn literal_braces_stay_text_in_every_expander_importer() {
     let items = &contents(&s)[0].2;
     assert_eq!(
         items[0],
-        e("a (;a)", ItemKind::Text, "x {clipboard} {cursor} y")
+        et("a", ";a", ItemKind::Text, "x {clipboard} {cursor} y")
     );
     assert_eq!(
         items[1],
-        e("b (;b)", ItemKind::Template, "x {{clipboard}} {cursor}")
+        et("b", ";b", ItemKind::Template, "x {{clipboard}} {cursor}")
     );
 }
 
@@ -978,8 +1055,8 @@ fn csv_a_megabyte_of_commas_is_capped_per_row_and_noted_once() {
     assert_eq!(
         contents(&s)[0].2,
         [
-            e(";a", ItemKind::Text, "fine"),
-            e(";b", ItemKind::Text, "ok")
+            et("fine", ";a", ItemKind::Text, "fine"),
+            et("ok", ";b", ItemKind::Text, "ok")
         ]
     );
     let columns = notes(&report)
@@ -1013,5 +1090,75 @@ fn espanso_folder_stops_at_a_running_byte_budget() {
             .warnings
             .iter()
             .any(|w| matches!(w, Warning::Truncated { .. }))
+    );
+}
+
+// ---------------------------------------------------------------- Triggers
+
+#[test]
+fn espanso_triggers_become_triggers() {
+    let yaml = "matches:
+  - triggers: [':sig', ':sign']
+    label: Signature
+    replace: Regards
+  - trigger: ':addr'
+    replace: 1 High Street
+  - trigger: ':with space'
+    label: Odd one
+    replace: text
+";
+    let (s, report) = espanso_in(&[("match/a.yml", yaml)], &ImportOptions::default());
+    assert_eq!(
+        contents(&s)[0].2,
+        [
+            et("Signature", ":sig", ItemKind::Text, "Regards"),
+            et("1 High Street", ":addr", ItemKind::Text, "1 High Street"),
+            // Not a valid trigger: kept in the title, with a note.
+            e("Odd one (:with space)", ItemKind::Text, "text"),
+        ]
+    );
+    let all = notes(&report).join("\n");
+    assert!(all.contains("`:sign` was not kept"), "{all}");
+    assert!(all.contains("`:with space` was not kept"), "{all}");
+}
+
+#[test]
+fn a_clashing_trigger_is_noted() {
+    let json = r#"[
+      {"name": "First", "keyword": ";x", "snippet": "one"},
+      {"name": "Second", "keyword": ";x", "snippet": "two"},
+      {"name": "Third", "keyword": ";X", "snippet": "three"}
+    ]"#;
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("export.json");
+    fs::write(&path, json).unwrap();
+    let mut s = store();
+    let report =
+        snipdeck_portable::import_beeftext(&mut s, &path, at(9), &ImportOptions::default())
+            .unwrap();
+    assert_eq!(
+        contents(&s)[0].2,
+        [
+            et("First", ";x", ItemKind::Text, "one"),
+            et("Second", "", ItemKind::Text, "two"),
+            et("Third", ";X", ItemKind::Text, "three"),
+        ],
+        "the first keeps it; case counts"
+    );
+    let all = notes(&report).join("\n");
+    assert!(
+        all.contains("`Second`") && all.contains("`;x` is already used"),
+        "{all}"
+    );
+    assert_eq!(report.items_added, 3);
+
+    // A second import meets the library's own trigger.
+    let again =
+        snipdeck_portable::import_beeftext(&mut s, &path, at(10), &ImportOptions::default())
+            .unwrap();
+    assert!(
+        notes(&again).iter().any(|n| n.contains("`First`")),
+        "{:?}",
+        again.warnings
     );
 }

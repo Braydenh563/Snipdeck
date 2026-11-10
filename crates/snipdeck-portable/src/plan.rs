@@ -19,19 +19,20 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use snipdeck_core::{
     BlobRef, Board, Content, FileEntry, Format, FormatKind, Formats, Group, Item, ItemId, ItemKind,
     ItemLabel, List, ListAccent, ListIcon, ListSort, ListView, Name, Placement, Tag, TagId,
-    Timestamp,
+    Timestamp, Trigger,
 };
 use snipdeck_store::crypto::{DataKey, Slot};
 use snipdeck_store::{
-    Batch, BlobStore, BoardRepo, GroupRepo, ItemRepo, ListRepo, TagRepo, TrashRepo, name_key,
+    Batch, BlobStore, BoardRepo, GroupRepo, ItemRepo, ListRepo, TagRepo, TrashRepo, TriggerRepo,
+    name_key,
 };
 
 use crate::error::{Error, Result};
-use crate::report::ImportReport;
+use crate::report::{ImportReport, Warning};
 
 /// Everything this crate needs from storage; [`snipdeck_store::Store`] implements it.
 pub trait Library:
-    BoardRepo + ListRepo + ItemRepo + GroupRepo + TagRepo + TrashRepo + BlobStore
+    BoardRepo + ListRepo + ItemRepo + GroupRepo + TriggerRepo + TagRepo + TrashRepo + BlobStore
 {
     /// The library's data key while it is unlocked, for [`KeySource::Library`](crate::KeySource)
     /// and for callers that pass it to an export. `None` if the library has no key or is locked.
@@ -96,6 +97,8 @@ pub(crate) struct PlanItem {
     pub label: Option<ItemLabel>,
     /// Index into [`PlanList::groups`].
     pub group: Option<usize>,
+    /// The typed trigger; dropped with a note if another item already has it.
+    pub trigger: Option<Trigger>,
     pub use_count: u32,
     pub last_used_at: Option<Timestamp>,
     pub source_app: Option<String>,
@@ -127,6 +130,7 @@ impl PlanItem {
             always_plain: false,
             label: None,
             group: None,
+            trigger: None,
             use_count: 0,
             last_used_at: None,
             source_app: None,
@@ -423,6 +427,19 @@ fn write(
                 lib.insert_item(&item, &formats, Placement::Last)?;
                 if let Some(slot) = plan_item.group.and_then(|g| members.get_mut(g)) {
                     slot.push(item.id);
+                }
+                // A code already in use keeps its owner (the library's, or the first in this
+                // import); the newcomer comes in without one, and the report says so.
+                if let Some(trigger) = plan_item.trigger.as_ref().filter(|_| !item.sensitive) {
+                    if lib.trigger_holder(trigger)?.is_some() {
+                        report.warn(Warning::Note(format!(
+                            "`{}`: the trigger `{trigger}` is already used by another snippet; \
+                             imported without it",
+                            item.title
+                        )));
+                    } else {
+                        lib.set_trigger(item.id, Some(trigger))?;
+                    }
                 }
                 report.items_added += 1;
             }

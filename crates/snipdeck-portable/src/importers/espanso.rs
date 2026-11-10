@@ -9,10 +9,10 @@
 //!
 //! # Mapping
 //!
-//! A match is read from `trigger` or `triggers` (the abbreviations, shown in the title; the
-//! optional `label` is the title) and its text from `replace`, `form`, `markdown` or `html`.
-//! Matches with only `regex` triggers, or with no text (`image_path`, nothing), are skipped
-//! with a note. `markdown` and `html` text is kept as written.
+//! A match is read from `trigger` or `triggers` (the first valid one becomes the item's
+//! trigger; the optional `label` is the title) and its text from `replace`, `form`, `markdown`
+//! or `html`. Matches with only `regex` triggers, or with no text (`image_path`, nothing), are
+//! skipped with a note. `markdown` and `html` text is kept as written.
 //!
 //! `{{name}}` references map where Snipdeck has a direct equivalent, looked up in the match's
 //! `vars` and then the file's `global_vars`:
@@ -487,7 +487,6 @@ fn read_match(m: &Node, globals: &[Node], what: &str, report: &mut ImportReport)
         return None;
     }
     let label = m.str_of("label").map(str::to_owned);
-    let abbreviation = Some(triggers.join(", "));
     let vars: Vec<&Node> = m
         .get("vars")
         .and_then(Node::as_seq)
@@ -510,7 +509,7 @@ fn read_match(m: &Node, globals: &[Node], what: &str, report: &mut ImportReport)
     Some(Snip {
         group: None,
         name: label,
-        abbreviation,
+        abbreviations: triggers.into_iter().map(str::to_owned).collect(),
         body,
     })
 }
