@@ -933,6 +933,9 @@ msgstr "Les champs qui demandent une valeur sont une fonction Supporter. Retirez
 msgid "File"
 msgstr "Fichier"
 
+msgid "File moved or deleted"
+msgstr "Fichier déplacé ou supprimé"
+
 msgid "Fill in template"
 msgstr "Remplir le modèle"
 

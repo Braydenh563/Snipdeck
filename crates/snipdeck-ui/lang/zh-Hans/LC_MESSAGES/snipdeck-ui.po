@@ -932,6 +932,9 @@ msgstr "要求输入值的字段属于 Supporter 功能。请将其移除后再�
 msgid "File"
 msgstr "文件"
 
+msgid "File moved or deleted"
+msgstr "文件已移动或删除"
+
 msgid "Fill in template"
 msgstr "填写模板"
 

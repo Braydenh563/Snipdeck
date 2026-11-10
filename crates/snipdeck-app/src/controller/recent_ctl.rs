@@ -6,11 +6,11 @@
 
 use snipdeck_core::{ListId, UseMode};
 use snipdeck_platform::{
-    payload::{Data, Payload},
+    payload::{Data, FilePayload, Payload},
     pipeline::{self, Clipboard, Env, Keyboard, Timing},
     route::Route,
 };
-use snipdeck_store::RecentEntry;
+use snipdeck_store::{RecentEntry, RecentKind, RecentPayload};
 
 use super::{Controller, Library, Toast, ToastKind, ToastMessage, UseResult, success};
 use crate::{
@@ -226,9 +226,12 @@ where
         let Some(entry) = self.recent_entries().into_iter().find(|e| e.id == id) else {
             return UseResult::Failed;
         };
-        let Some(payload) = Payload::new(vec![Data::Text(entry.text)]) else {
-            self.show_toast(failed());
-            return UseResult::Failed;
+        let payload = match self.recent_clipboard_payload(&entry) {
+            Ok(payload) => payload,
+            Err(toast) => {
+                self.show_toast(toast);
+                return UseResult::Failed;
+            }
         };
         let route = self.model.route();
         let pasted_into = self.model.target().map(|t| t.app.clone());
@@ -265,9 +268,12 @@ where
         let Some(entry) = self.recent_entries().into_iter().find(|e| e.id == id) else {
             return;
         };
-        let Some(payload) = Payload::new(vec![Data::Text(entry.text)]) else {
-            self.show_toast(failed());
-            return;
+        let payload = match self.recent_clipboard_payload(&entry) {
+            Ok(payload) => payload,
+            Err(toast) => {
+                self.show_toast(toast);
+                return;
+            }
         };
         let toast = match self.services.clipboard.write_persistent(&payload) {
             Ok(()) => Toast {
@@ -280,6 +286,41 @@ where
             },
         };
         self.show_toast(toast);
+    }
+
+    /// What goes on the clipboard for `entry`: the text with its HTML and RTF, the picture, or
+    /// the files re-read from where they were copied (they are not stored). The toast to show
+    /// when it cannot be made.
+    fn recent_clipboard_payload(&self, entry: &RecentEntry) -> Result<Payload, Toast> {
+        let extras = self.store.recent_payload(entry.id).map_err(|_| failed())?;
+        let data = match (entry.kind, extras) {
+            (RecentKind::Text, extras) => {
+                let mut data = vec![Data::Text(entry.text.clone())];
+                if let Some(RecentPayload::Text { html, rtf }) = extras {
+                    data.extend(html.map(Data::Html));
+                    data.extend(rtf.map(Data::Rtf));
+                }
+                data
+            }
+            (RecentKind::Image, Some(RecentPayload::Image(png))) => vec![Data::Png(png)],
+            (RecentKind::Files, Some(RecentPayload::Files(paths))) => {
+                let files = recent::read_files(&paths);
+                if files.is_empty() {
+                    return Err(Toast {
+                        kind: ToastKind::Neutral,
+                        message: ToastMessage::FileMoved,
+                    });
+                }
+                vec![Data::Files(
+                    files
+                        .into_iter()
+                        .map(|(name, bytes)| FilePayload { name, bytes })
+                        .collect(),
+                )]
+            }
+            _ => return Err(failed()),
+        };
+        Payload::new(data).ok_or_else(failed)
     }
 
     /// Deletes one entry.
@@ -312,7 +353,32 @@ where
             return;
         };
         let now = self.clock.now();
-        let toast = match recent::promote(&mut self.store, &entry, &to, now) {
+        let saved = match entry.kind {
+            RecentKind::Text => recent::promote(&mut self.store, &entry, &to, now),
+            RecentKind::Image => match self.store.recent_payload(entry.id) {
+                Ok(Some(RecentPayload::Image(png))) => {
+                    capture::capture_image(&mut self.store, &to, png, now)
+                }
+                Ok(_) => Ok(Captured::Empty),
+                Err(e) => Err(e),
+            },
+            RecentKind::Files => match self.store.recent_payload(entry.id) {
+                Ok(Some(RecentPayload::Files(paths))) => {
+                    let files = recent::read_files(&paths);
+                    if files.is_empty() {
+                        self.show_toast(Toast {
+                            kind: ToastKind::Neutral,
+                            message: ToastMessage::FileMoved,
+                        });
+                        return;
+                    }
+                    capture::capture_files(&mut self.store, &to, files, now)
+                }
+                Ok(_) => Ok(Captured::Empty),
+                Err(e) => Err(e),
+            },
+        };
+        let toast = match saved {
             Ok(Captured::Saved { list, .. }) => {
                 if self.refresh_panel().is_err() {
                     self.show_toast(failed());

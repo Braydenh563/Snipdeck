@@ -77,6 +77,9 @@ export global ToastTexts {
     pure public function files-not-added() -> string {
         return @tr("Nothing was added. Folders, and files or pictures that are empty, too large or unreadable, are skipped.");
     }
+    pure public function file-moved() -> string {
+        return @tr("File moved or deleted");
+    }
     pure public function too-many-files() -> string {
         return @tr("That is too many files to add at once.");
     }

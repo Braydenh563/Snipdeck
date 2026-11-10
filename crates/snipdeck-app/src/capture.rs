@@ -4,13 +4,18 @@
 //! content are written in one store transaction ([`Library::atomically`]), so a content blob is
 //! never left without its item.
 
-use snipdeck_core::{Format, Formats, Item, ItemId, ItemKind, ListId, Placement, Timestamp};
+use snipdeck_core::{
+    FileEntry, Format, Formats, Item, ItemId, ItemKind, ListId, Placement, Timestamp,
+};
 use snipdeck_store::{BlobStore, BoardRepo, ItemRepo, ListRepo};
 
 use crate::{controller::Library, paste_create::kind_of_text};
 
 /// The largest text a capture saves (SPEC 5.4: over 5 MB is rejected with a toast).
 pub const MAX_TEXT_BYTES: usize = 5 * 1024 * 1024;
+
+/// The title of an item made from a picture that has no file name.
+pub const PASTED_IMAGE_TITLE: &str = "Pasted image";
 
 /// The list a capture goes into.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -109,6 +114,69 @@ pub fn capture_as<L: Library>(
         item: id,
         list: list.name.clone(),
     })
+}
+
+/// Saves a picture (PNG bytes) as a new Image item at the top of `list`.
+///
+/// # Errors
+///
+/// Any store error; nothing is saved then.
+pub fn capture_image<L: Library>(
+    library: &mut L,
+    list: &Destination,
+    png: Vec<u8>,
+    now: Timestamp,
+) -> snipdeck_store::Result<Captured> {
+    let item = Item::new(list.id, PASTED_IMAGE_TITLE.to_owned(), ItemKind::Image, now);
+    let id = item.id;
+    library.atomically(|batch| {
+        let formats = Formats::new(vec![Format::Png(batch.put(png)?)])?;
+        batch.insert_item(&item, &formats, Placement::First)
+    })?;
+    Ok(Captured::Saved {
+        item: id,
+        list: list.name.clone(),
+    })
+}
+
+/// Saves files (name and bytes, already read) as new items at the top of `list`, the first on
+/// top: a PNG file becomes an Image item, anything else a File item named like the file. Saves
+/// nothing and says [`Captured::Empty`] for no files.
+///
+/// # Errors
+///
+/// Any store error; nothing is saved then.
+pub fn capture_files<L: Library>(
+    library: &mut L,
+    list: &Destination,
+    files: Vec<(String, Vec<u8>)>,
+    now: Timestamp,
+) -> snipdeck_store::Result<Captured> {
+    if files.is_empty() {
+        return Ok(Captured::Empty);
+    }
+    let mut top = None;
+    library.atomically(|batch| {
+        // Last first, so the first file ends up on top.
+        for (name, bytes) in files.iter().rev() {
+            let png = crate::item_editor::is_png(bytes);
+            let kind = if png { ItemKind::Image } else { ItemKind::File };
+            let item = Item::new(list.id, name.clone(), kind, now);
+            let content = batch.put(bytes.clone())?;
+            let format = if png {
+                Format::Png(content)
+            } else {
+                Format::Files(vec![FileEntry::new(name, content)?])
+            };
+            batch.insert_item(&item, &Formats::new(vec![format])?, Placement::First)?;
+            top = Some(item.id);
+        }
+        Ok(())
+    })?;
+    Ok(top.map_or(Captured::Empty, |item| Captured::Saved {
+        item,
+        list: list.name.clone(),
+    }))
 }
 
 /// The kind the quick-add box preselects for `text`: a lone web address is a link, text with a

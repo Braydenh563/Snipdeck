@@ -11,7 +11,9 @@ mod common;
 use std::time::Duration;
 
 use common::*;
-use snipdeck_store::{ItemRepo, RecentRepo};
+use snipdeck_store::{
+    ItemRepo, RecentContent, RecentImage, RecentKind, RecentPayload, RecentRepo, RecentThumb,
+};
 
 const WEEK: Duration = Duration::from_hours(24 * 7);
 
@@ -22,8 +24,9 @@ fn texts(s: &snipdeck_store::Store) -> Vec<String> {
 #[test]
 fn entries_come_back_newest_first_with_their_source() {
     let mut s = store();
-    s.add_recent("a", Some("notepad.exe"), at(1)).unwrap();
-    s.add_recent("b", None, at(2)).unwrap();
+    s.add_recent(RecentContent::text("a"), Some("notepad.exe"), at(1))
+        .unwrap();
+    s.add_recent(RecentContent::text("b"), None, at(2)).unwrap();
     let all = s.recent().unwrap();
     assert_eq!(texts(&s), ["b", "a"]);
     assert_eq!(all[1].source_app.as_deref(), Some("notepad.exe"));
@@ -34,9 +37,10 @@ fn entries_come_back_newest_first_with_their_source() {
 #[test]
 fn recopying_bumps_the_entry_to_the_top_without_a_duplicate() {
     let mut s = store();
-    s.add_recent("a", None, at(1)).unwrap();
-    s.add_recent("b", None, at(2)).unwrap();
-    s.add_recent("a", Some("code.exe"), at(3)).unwrap();
+    s.add_recent(RecentContent::text("a"), None, at(1)).unwrap();
+    s.add_recent(RecentContent::text("b"), None, at(2)).unwrap();
+    s.add_recent(RecentContent::text("a"), Some("code.exe"), at(3))
+        .unwrap();
     assert_eq!(texts(&s), ["a", "b"]);
     let top = &s.recent().unwrap()[0];
     assert_eq!(top.copied_at, at(3));
@@ -46,9 +50,9 @@ fn recopying_bumps_the_entry_to_the_top_without_a_duplicate() {
 #[test]
 fn a_bump_at_the_same_instant_still_lands_on_top() {
     let mut s = store();
-    s.add_recent("a", None, at(1)).unwrap();
-    s.add_recent("b", None, at(1)).unwrap();
-    s.add_recent("a", None, at(1)).unwrap();
+    s.add_recent(RecentContent::text("a"), None, at(1)).unwrap();
+    s.add_recent(RecentContent::text("b"), None, at(1)).unwrap();
+    s.add_recent(RecentContent::text("a"), None, at(1)).unwrap();
     assert_eq!(texts(&s), ["a", "b"]);
 }
 
@@ -56,7 +60,8 @@ fn a_bump_at_the_same_instant_still_lands_on_top() {
 fn the_entry_cap_keeps_exactly_the_newest_n() {
     let mut s = store();
     for i in 0..201 {
-        s.add_recent(&format!("t{i}"), None, at(i)).unwrap();
+        s.add_recent(RecentContent::text(&format!("t{i}")), None, at(i))
+            .unwrap();
     }
     // 201 entries, cap 200: the oldest goes.
     assert_eq!(s.prune_recent(at(300), 200, WEEK).unwrap(), 1);
@@ -72,10 +77,12 @@ fn the_entry_cap_keeps_exactly_the_newest_n() {
 fn the_age_limit_keeps_an_entry_exactly_seven_days_old() {
     let mut s = store();
     let now = at(10 * 86_400);
-    s.add_recent("exactly", None, at(3 * 86_400)).unwrap();
-    s.add_recent("just older", None, at(3 * 86_400 - 1))
+    s.add_recent(RecentContent::text("exactly"), None, at(3 * 86_400))
         .unwrap();
-    s.add_recent("fresh", None, at(9 * 86_400)).unwrap();
+    s.add_recent(RecentContent::text("just older"), None, at(3 * 86_400 - 1))
+        .unwrap();
+    s.add_recent(RecentContent::text("fresh"), None, at(9 * 86_400))
+        .unwrap();
     assert_eq!(s.prune_recent(now, 200, WEEK).unwrap(), 1);
     assert_eq!(texts(&s), ["fresh", "exactly"]);
 }
@@ -83,9 +90,9 @@ fn the_age_limit_keeps_an_entry_exactly_seven_days_old() {
 #[test]
 fn delete_and_clear_remove_entries() {
     let mut s = store();
-    let a = s.add_recent("a", None, at(1)).unwrap();
-    s.add_recent("b", None, at(2)).unwrap();
-    s.add_recent("c", None, at(3)).unwrap();
+    let a = s.add_recent(RecentContent::text("a"), None, at(1)).unwrap();
+    s.add_recent(RecentContent::text("b"), None, at(2)).unwrap();
+    s.add_recent(RecentContent::text("c"), None, at(3)).unwrap();
     s.delete_recent(a).unwrap();
     s.delete_recent(a).unwrap(); // already gone: fine
     assert_eq!(texts(&s), ["c", "b"]);
@@ -97,18 +104,19 @@ fn delete_and_clear_remove_entries() {
 #[test]
 fn entries_are_not_library_items_and_are_not_searchable() {
     let mut s = store();
-    s.add_recent("needle haystack", None, at(1)).unwrap();
+    s.add_recent(RecentContent::text("needle haystack"), None, at(1))
+        .unwrap();
     assert_eq!(s.all_items().unwrap().len(), 0);
 }
 
 #[test]
 fn reading_leaves_the_revisions_alone_and_writing_moves_the_recent_one() {
     let mut s = store();
-    s.add_recent("a", None, at(1)).unwrap();
+    s.add_recent(RecentContent::text("a"), None, at(1)).unwrap();
     let before = s.recent_revision();
     s.recent().unwrap();
     assert_eq!(s.recent_revision(), before);
-    s.add_recent("b", None, at(2)).unwrap();
+    s.add_recent(RecentContent::text("b"), None, at(2)).unwrap();
     assert!(s.recent_revision() > before);
 }
 
@@ -117,7 +125,8 @@ fn entries_survive_reopening() {
     let dir = tempfile::tempdir().unwrap();
     {
         let mut s = snipdeck_store::Store::open(dir.path()).unwrap();
-        s.add_recent("kept", Some("x.exe"), at(5)).unwrap();
+        s.add_recent(RecentContent::text("kept"), Some("x.exe"), at(5))
+            .unwrap();
     }
     let s = snipdeck_store::Store::open(dir.path()).unwrap();
     assert_eq!(texts(&s), ["kept"]);
@@ -185,9 +194,12 @@ mod at_rest {
         let p = provider();
         let mut s = store();
         s.create_key_ring(&ring(&p), None).unwrap();
-        s.add_recent("hello", Some("code.exe"), at(1)).unwrap();
-        s.add_recent("hello", Some("notepad.exe"), at(2)).unwrap();
-        s.add_recent("world", None, at(3)).unwrap();
+        s.add_recent(RecentContent::text("hello"), Some("code.exe"), at(1))
+            .unwrap();
+        s.add_recent(RecentContent::text("hello"), Some("notepad.exe"), at(2))
+            .unwrap();
+        s.add_recent(RecentContent::text("world"), None, at(3))
+            .unwrap();
         let all = s.recent().unwrap();
         assert_eq!(
             all.iter().map(|e| e.text.as_str()).collect::<Vec<_>>(),
@@ -206,7 +218,8 @@ mod at_rest {
         {
             let mut s = Store::open(dir.path()).unwrap();
             s.create_key_ring(&ring(&p), None).unwrap();
-            s.add_recent(&secret, Some(&marker("app")), at(1)).unwrap();
+            s.add_recent(RecentContent::text(&secret), Some(&marker("app")), at(1))
+                .unwrap();
             // Still open: the write-ahead log is part of what is searched.
             assert!(!holds(dir.path(), &secret), "before close");
             assert!(!holds(dir.path(), &marker("app")), "source app");
@@ -231,7 +244,8 @@ mod at_rest {
         let other = tempfile::tempdir().unwrap();
         {
             let mut s = Store::open(other.path()).unwrap();
-            s.add_recent(&plain, None, at(1)).unwrap();
+            s.add_recent(RecentContent::text(&plain), None, at(1))
+                .unwrap();
         }
         assert!(holds(other.path(), &plain), "the probe must see plaintext");
     }
@@ -241,12 +255,12 @@ mod at_rest {
         let p = provider();
         let mut s = store();
         s.create_key_ring(&ring(&p), None).unwrap();
-        s.add_recent("a", None, at(1)).unwrap();
-        s.add_recent("b", None, at(2)).unwrap();
+        s.add_recent(RecentContent::text("a"), None, at(1)).unwrap();
+        s.add_recent(RecentContent::text("b"), None, at(2)).unwrap();
         s.lock_key_ring();
         assert!(matches!(s.recent(), Err(Error::EncryptionLocked)));
         assert!(matches!(
-            s.add_recent("c", None, at(3)),
+            s.add_recent(RecentContent::text("c"), None, at(3)),
             Err(Error::EncryptionLocked)
         ));
         // Retention and clearing need no key.
@@ -270,7 +284,8 @@ mod at_rest {
         {
             let mut s = Store::open(dir.path()).unwrap();
             s.create_key_ring(&ring(&p), Some(&word)).unwrap();
-            s.add_recent("kept", None, at(1)).unwrap();
+            s.add_recent(RecentContent::text("kept"), None, at(1))
+                .unwrap();
         }
         let mut s = Store::open(dir.path()).unwrap();
         assert!(matches!(s.recent(), Err(Error::EncryptionLocked)));
@@ -286,8 +301,12 @@ mod at_rest {
         let dir = tempfile::tempdir().unwrap();
         let mut s = Store::open(dir.path()).unwrap();
         s.create_key_ring(&ring(&p), None).unwrap();
-        let first = s.add_recent("aaa", None, at(1)).unwrap();
-        let second = s.add_recent("bbb", None, at(2)).unwrap();
+        let first = s
+            .add_recent(RecentContent::text("aaa"), None, at(1))
+            .unwrap();
+        let second = s
+            .add_recent(RecentContent::text("bbb"), None, at(2))
+            .unwrap();
         let conn = raw(dir.path());
         let text_of = |id: i64| -> Vec<u8> {
             conn.query_row("SELECT text FROM recent_entries WHERE id = ?1", [id], |r| {
@@ -326,7 +345,8 @@ mod at_rest {
         let dir = tempfile::tempdir().unwrap();
         {
             let mut s = Store::open(dir.path()).unwrap();
-            s.add_recent(&kept, None, at(1)).unwrap();
+            s.add_recent(RecentContent::text(&kept), None, at(1))
+                .unwrap();
             insert_damaged_plain_row(&raw(dir.path()), 7, 5);
             // Unreadable while plain, but the readable rows still list.
             assert_eq!(texts(&s), std::slice::from_ref(&kept));
@@ -351,8 +371,11 @@ mod at_rest {
         let dir = tempfile::tempdir().unwrap();
         let mut s = Store::open(dir.path()).unwrap();
         s.create_key_ring(&ring(&p), None).unwrap();
-        s.add_recent("first", None, at(1)).unwrap();
-        let bad = s.add_recent("second", None, at(2)).unwrap();
+        s.add_recent(RecentContent::text("first"), None, at(1))
+            .unwrap();
+        let bad = s
+            .add_recent(RecentContent::text("second"), None, at(2))
+            .unwrap();
         raw(dir.path())
             .execute(
                 "UPDATE recent_entries SET text = ?1 WHERE id = ?2",
@@ -405,7 +428,7 @@ mod at_rest {
         // Opened with no key: the rows are kept and readable, flagged plain.
         {
             let s = Store::open(dir.path()).unwrap();
-            assert_eq!(s.schema_version().unwrap(), 6);
+            assert_eq!(s.schema_version().unwrap(), 7);
             assert_eq!(texts(&s), [m2.clone(), m1.clone()]);
             assert!(s.has_plain_recent().unwrap());
         }
@@ -442,8 +465,287 @@ mod at_rest {
     fn without_a_key_ring_entries_are_kept_plain_and_flagged() {
         // No key ring yet (no key protection on this machine, or not set up): still works.
         let mut s = store();
-        s.add_recent("x", None, at(1)).unwrap();
+        s.add_recent(RecentContent::text("x"), None, at(1)).unwrap();
         assert!(s.has_plain_recent().unwrap());
         assert_eq!(texts(&s), ["x"]);
+    }
+
+    fn files_under(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
+        let mut out = Vec::new();
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return out;
+        };
+        for entry in entries {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                out.extend(files_under(&path));
+            } else {
+                out.push(path);
+            }
+        }
+        out
+    }
+
+    /// A stand-in for PNG bytes (the store never decodes them), over the inline limit.
+    fn picture(marker: &str) -> Vec<u8> {
+        let mut bytes = marker.as_bytes().to_vec();
+        bytes.resize(100 * 1024, 7);
+        bytes
+    }
+
+    fn image<'a>(png: &'a [u8], thumb: &'a RecentThumb, digest: u8) -> RecentContent<'a> {
+        RecentContent::Image(RecentImage {
+            png,
+            width: 4,
+            height: 2,
+            pixel_digest: [digest; 32],
+            thumb: Some(thumb),
+            label: "Image 4 \u{d7} 2",
+        })
+    }
+
+    fn thumb() -> RecentThumb {
+        RecentThumb {
+            width: 2,
+            height: 1,
+            rgba: vec![1, 2, 3, 255, 4, 5, 6, 255],
+        }
+    }
+
+    fn keyed(dir: &std::path::Path) -> Store {
+        let p = provider();
+        let mut s = Store::open(dir).unwrap();
+        s.create_key_ring(&ring(&p), None).unwrap();
+        s
+    }
+
+    #[test]
+    fn v7_migration_keeps_v6_text_rows() {
+        let dir = tempfile::tempdir().unwrap();
+        let m = marker("v6row");
+        {
+            let mut s = Store::open(dir.path()).unwrap();
+            s.add_recent(RecentContent::text(&m), Some("a.exe"), at(1))
+                .unwrap();
+        }
+        // Put the file back the way version 6 left it: no rich columns.
+        raw(dir.path())
+            .execute_batch(
+                "ALTER TABLE recent_entries DROP COLUMN kind;
+                 ALTER TABLE recent_entries DROP COLUMN rich;
+                 ALTER TABLE recent_entries DROP COLUMN blob;
+                 ALTER TABLE recent_entries DROP COLUMN blob_len;
+                 PRAGMA user_version = 6;",
+            )
+            .unwrap();
+        let s = Store::open(dir.path()).unwrap();
+        assert_eq!(s.schema_version().unwrap(), 7);
+        let all = s.recent().unwrap();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].text, m);
+        assert_eq!(all[0].kind, RecentKind::Text);
+        assert_eq!(all[0].source_app.as_deref(), Some("a.exe"));
+        assert_eq!(
+            s.recent_payload(all[0].id).unwrap(),
+            Some(RecentPayload::Text {
+                html: None,
+                rtf: None
+            })
+        );
+    }
+
+    #[test]
+    fn an_image_blob_on_disk_is_ciphertext() {
+        let dir = tempfile::tempdir().unwrap();
+        let m = marker("picture");
+        let png = picture(&m);
+        let th = thumb();
+        let mut s = keyed(dir.path());
+        let id = s.add_recent(image(&png, &th, 1), None, at(1)).unwrap();
+        let blobs = files_under(&dir.path().join("blobs"));
+        assert_eq!(blobs.len(), 1, "one blob file");
+        for file in files_under(dir.path()) {
+            if file.ends_with("snipdeck.lock") || file.to_string_lossy().ends_with("-shm") {
+                continue;
+            }
+            let bytes = std::fs::read(&file).unwrap();
+            assert!(
+                !bytes.windows(m.len()).any(|w| w == m.as_bytes()),
+                "{} holds the picture",
+                file.display()
+            );
+        }
+        assert_eq!(
+            s.recent_payload(id).unwrap(),
+            Some(RecentPayload::Image(png))
+        );
+        let entry = &s.recent().unwrap()[0];
+        assert_eq!(entry.kind, RecentKind::Image);
+        assert_eq!(entry.image_size, Some((4, 2)));
+        assert_eq!(entry.thumb.as_ref(), Some(&th));
+    }
+
+    #[test]
+    fn pruning_an_image_row_releases_its_blob() {
+        let dir = tempfile::tempdir().unwrap();
+        let png = picture(&marker("pruned"));
+        let th = thumb();
+        let mut s = keyed(dir.path());
+        s.add_recent(image(&png, &th, 2), None, at(1)).unwrap();
+        assert_eq!(files_under(&dir.path().join("blobs")).len(), 1);
+        // Past the entry cap: the oldest goes with its blob.
+        s.add_recent(RecentContent::text("newer"), None, at(2))
+            .unwrap();
+        assert_eq!(s.prune_recent(at(3), 1, WEEK).unwrap(), 1);
+        assert!(files_under(&dir.path().join("blobs")).is_empty());
+        // Age, delete and clear release too.
+        s.add_recent(image(&png, &th, 3), None, at(4)).unwrap();
+        assert_eq!(
+            s.prune_recent(at(4) + Duration::from_hours(24 * 8), 10, WEEK)
+                .unwrap(),
+            2
+        );
+        assert!(files_under(&dir.path().join("blobs")).is_empty());
+        let id = s.add_recent(image(&png, &th, 4), None, at(5)).unwrap();
+        s.delete_recent(id).unwrap();
+        assert!(files_under(&dir.path().join("blobs")).is_empty());
+        s.add_recent(image(&png, &th, 5), None, at(6)).unwrap();
+        s.clear_recent().unwrap();
+        assert!(files_under(&dir.path().join("blobs")).is_empty());
+    }
+
+    #[test]
+    fn gc_keeps_recent_blobs() {
+        let dir = tempfile::tempdir().unwrap();
+        let png = picture(&marker("kept"));
+        let th = thumb();
+        let mut s = keyed(dir.path());
+        let id = s.add_recent(image(&png, &th, 6), None, at(1)).unwrap();
+        let report = s.gc_blobs(Duration::ZERO).unwrap();
+        assert_eq!((report.blobs, report.failed), (0, 0));
+        assert_eq!(
+            s.recent_payload(id).unwrap(),
+            Some(RecentPayload::Image(png))
+        );
+    }
+
+    #[test]
+    fn no_key_ring_skips_images() {
+        let mut s = store();
+        let th = thumb();
+        assert!(!s.recent_seals_rich());
+        let err = s.add_recent(image(&[1, 2, 3], &th, 7), None, at(1));
+        assert!(matches!(err, Err(Error::Invalid(_))), "{err:?}");
+        let paths = vec!["C:\\a.txt".to_owned()];
+        let err = s.add_recent(
+            RecentContent::Files {
+                paths: &paths,
+                label: "1 file: a.txt",
+            },
+            None,
+            at(1),
+        );
+        assert!(matches!(err, Err(Error::Invalid(_))), "{err:?}");
+        assert!(s.recent().unwrap().is_empty());
+        // Text still works, without its formatted flavours.
+        s.add_recent(
+            RecentContent::Text {
+                text: "t",
+                html: Some("<b>t</b>"),
+                rtf: None,
+            },
+            None,
+            at(2),
+        )
+        .unwrap();
+        let id = s.recent().unwrap()[0].id;
+        assert_eq!(
+            s.recent_payload(id).unwrap(),
+            Some(RecentPayload::Text {
+                html: None,
+                rtf: None
+            })
+        );
+    }
+
+    #[test]
+    fn a_small_image_and_files_and_text_flavours_round_trip_sealed() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut s = keyed(dir.path());
+        let th = thumb();
+        let small = s.add_recent(image(&[9; 100], &th, 8), None, at(1)).unwrap();
+        assert!(files_under(&dir.path().join("blobs")).is_empty(), "inline");
+        assert_eq!(
+            s.recent_payload(small).unwrap(),
+            Some(RecentPayload::Image(vec![9; 100]))
+        );
+        let paths = vec!["C:\\b.txt".to_owned(), "C:\\a.txt".to_owned()];
+        let files = s
+            .add_recent(
+                RecentContent::Files {
+                    paths: &paths,
+                    label: "2 files: b.txt, a.txt",
+                },
+                None,
+                at(2),
+            )
+            .unwrap();
+        assert_eq!(
+            s.recent_payload(files).unwrap(),
+            Some(RecentPayload::Files(paths.clone()))
+        );
+        let rich = s
+            .add_recent(
+                RecentContent::Text {
+                    text: "hello",
+                    html: Some("<b>hello</b>"),
+                    rtf: Some(b"{\\rtf1 hello}"),
+                },
+                None,
+                at(3),
+            )
+            .unwrap();
+        assert_eq!(
+            s.recent_payload(rich).unwrap(),
+            Some(RecentPayload::Text {
+                html: Some("<b>hello</b>".to_owned()),
+                rtf: Some(b"{\\rtf1 hello}".to_vec())
+            })
+        );
+        assert_eq!(s.recent_payload(9999).unwrap(), None);
+        let all = s.recent().unwrap();
+        assert_eq!(all[1].files, paths);
+        assert_eq!(all[1].kind, RecentKind::Files);
+    }
+
+    #[test]
+    fn rich_payloads_are_sealed_in_the_database_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let (html, path) = (marker("html"), marker("path"));
+        {
+            let mut s = keyed(dir.path());
+            s.add_recent(
+                RecentContent::Text {
+                    text: "plain",
+                    html: Some(&html),
+                    rtf: None,
+                },
+                None,
+                at(1),
+            )
+            .unwrap();
+            let paths = vec![path.clone()];
+            s.add_recent(
+                RecentContent::Files {
+                    paths: &paths,
+                    label: "1 file",
+                },
+                None,
+                at(2),
+            )
+            .unwrap();
+        }
+        assert!(!holds(dir.path(), &html));
+        assert!(!holds(dir.path(), &path));
     }
 }

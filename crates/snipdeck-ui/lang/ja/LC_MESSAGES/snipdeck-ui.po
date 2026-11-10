@@ -932,6 +932,9 @@ msgstr "値を入力させるフィールドは Supporter の機能です。保�
 msgid "File"
 msgstr "ファイル"
 
+msgid "File moved or deleted"
+msgstr "ファイルが移動または削除されました"
+
 msgid "Fill in template"
 msgstr "テンプレートに入力"
 

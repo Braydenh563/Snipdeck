@@ -1164,6 +1164,8 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
             preview: r.preview.as_str().into(),
             app: r.app.as_str().into(),
             age_minutes: i32::try_from(r.age_minutes).unwrap_or(i32::MAX),
+            kind: crate::binding::recent_kind(r.kind),
+            image: crate::binding::recent_thumb(r.thumb.as_ref()),
         })));
     }
     if differs(&|p| p.recent_targets == screen.recent_targets && p.dark == screen.dark) {

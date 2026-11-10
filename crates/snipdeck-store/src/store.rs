@@ -268,6 +268,11 @@ impl Store {
             [],
         )?
         .into_iter()
+        .chain(crate::recent::blobs_of(
+            &self.conn,
+            "SELECT blob FROM recent_entries WHERE blob IS NOT NULL",
+            [],
+        )?)
         .collect();
 
         let now = SystemTime::now();
@@ -316,8 +321,9 @@ impl Store {
                 .conn
                 .query_row(
                     "SELECT 1 FROM item_formats WHERE blob_hash = ?1
-                     UNION ALL SELECT 1 FROM item_files WHERE blob_hash = ?1 LIMIT 1",
-                    [&blob.as_bytes()[..]],
+                     UNION ALL SELECT 1 FROM item_files WHERE blob_hash = ?1
+                     UNION ALL SELECT 1 FROM recent_entries WHERE blob = ?2 LIMIT 1",
+                    rusqlite::params![&blob.as_bytes()[..], blob.to_string()],
                     |_| Ok(()),
                 )
                 .optional();

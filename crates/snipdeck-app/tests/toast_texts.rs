@@ -127,10 +127,11 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::DropTo { .. } => 96,
         ToastMessage::TooManyFiles => 97,
         ToastMessage::SwitchToManual { .. } => 98,
+        ToastMessage::FileMoved => 99,
     }
 }
 
-const VARIANTS: usize = 99;
+const VARIANTS: usize = 100;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -296,6 +297,7 @@ fn samples() -> Vec<ToastMessage> {
         M::FilesNotAdded,
         M::DropTo { list: s("Notes") },
         M::TooManyFiles,
+        M::FileMoved,
         M::SwitchToManual {
             list: snipdeck_core::ListId::generate(),
         },
@@ -419,6 +421,7 @@ fn what_a_toast_carries_reaches_its_sentence() {
         assert_eq!(said(ToastMessage::BoardSaved), "Board saved");
         assert_eq!(said(ToastMessage::RecentDeleted), "Removed from Recent");
         assert_eq!(said(ToastMessage::RecentCleared), "Recent history cleared");
+        assert_eq!(said(ToastMessage::FileMoved), "File moved or deleted");
         assert_eq!(said(ToastMessage::DockSet(None)), "Panel floats again");
         assert_eq!(
             said(ToastMessage::DockSet(Some(DockEdge::Left))),

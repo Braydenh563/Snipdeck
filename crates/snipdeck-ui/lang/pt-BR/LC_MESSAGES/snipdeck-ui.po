@@ -933,6 +933,9 @@ msgstr "Campos que pedem um valor são um recurso do Supporter. Remova-os para s
 msgid "File"
 msgstr "Arquivo"
 
+msgid "File moved or deleted"
+msgstr "Arquivo movido ou excluído"
+
 msgid "Fill in template"
 msgstr "Preencher modelo"
 

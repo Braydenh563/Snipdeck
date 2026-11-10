@@ -933,6 +933,9 @@ msgstr "Felder, die einen Wert abfragen, sind eine Supporter-Funktion. Entferne 
 msgid "File"
 msgstr "Datei"
 
+msgid "File moved or deleted"
+msgstr "Datei verschoben oder gelöscht"
+
 msgid "Fill in template"
 msgstr "Vorlage ausfüllen"
 

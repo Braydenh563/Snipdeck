@@ -92,6 +92,9 @@ export struct RecentRow {
     preview: string,
     app: string,
     age-minutes: int,
+    // Text, a copied picture (with its thumbnail) or copied files: the card shows the item kind's glyph or thumbnail.
+    kind: ItemKind,
+    image: image,
 }
 
 // The Recent entries' wording of their age, shared by the Panel and the Main window.
@@ -2098,7 +2101,8 @@ export component PanelWindow inherits Window {
                                     width: parent.width - 2 * Space.s1;
                                     height: self.preferred-height;
                                     variant: root.layout == PanelLayout.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
-                                    kind: ItemKind.text;
+                                    kind: entry.kind;
+                                    image: entry.image;
                                     preview: entry.preview;
                                     list-name: entry.app == "" ? RecentText.ago(entry.age-minutes) : entry.app + " · " + RecentText.ago(entry.age-minutes);
                                     list-color: transparent;

@@ -933,6 +933,9 @@ msgstr "Los campos que piden un valor son una función de Colaborador. Quítalos
 msgid "File"
 msgstr "Archivo"
 
+msgid "File moved or deleted"
+msgstr "Archivo movido o eliminado"
+
 msgid "Fill in template"
 msgstr "Rellenar plantilla"
 
