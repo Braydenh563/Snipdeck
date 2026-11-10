@@ -10,10 +10,9 @@
   {uuid} editor chip; user-guide text.
 - Tests written: panel_window paste-as name/keys/Esc, use_paste template+use_item_as, main_window_logic x3, main_controller.
 
-## Next (NOT RUN: the shared target dir lock was held by wt-ci for hours)
-- Run: ui main_window_logic, app --lib, app tests main_controller/settings_window/panel_window/menu_form_texts/fill_window, core, platform.
-- Regenerate the item-editor-template golden (editors.rs, the {uuid} chip changes it), open the PNG.
-- scripts/gate.sh --staged; python3 scripts/codemap.py in the final commit; Windows clippy.
+## Next
+- Nothing open for slice 2a. Verified: targeted suites, gate --staged, clippy 1.99.1, Windows clippy.
+- Note: editor_window `a_free_user_sees_prompted_fields...` needed a key and a focus event before Ctrl+Enter once the {uuid} chip made the Template form taller (cause not found; the keyboard path is unverified in a real window).
 
 ## Blocked
 - Windows-only checks 47-49 are the owner's.
