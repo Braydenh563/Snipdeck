@@ -1,6 +1,6 @@
 # hello agent
 ## Done
-- platform/src/hello.rs: trait, FakeHello, SealedKey (seal/open/is_expired), 8 tests
+- store crypto/hello.rs SealedKey (closure signer); platform hello.rs trait; testing.rs FakeHello
 - platform/src/windows/hello.rs: WindowsHello (KeyCredentialManager), compiles on windows-gnu
 - docs/crypto.md Hello section
 ## Next

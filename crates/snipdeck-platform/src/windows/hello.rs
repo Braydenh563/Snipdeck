@@ -19,6 +19,8 @@ use windows::Storage::Streams::DataReader;
 use windows::Win32::System::Com::{COINIT_MULTITHREADED, CoInitializeEx, CoUninitialize};
 use windows::core::HSTRING;
 
+use zeroize::Zeroizing;
+
 use crate::hello::{HelloAuthenticator, HelloAvailability, HelloError};
 
 /// The credential name Windows stores the key pair under.
@@ -49,10 +51,10 @@ fn on_worker<T: Send + 'static>(
 
 fn status_error(status: KeyCredentialStatus) -> HelloError {
     match status {
-        KeyCredentialStatus::UserCanceled => HelloError::Cancelled,
-        KeyCredentialStatus::NotFound | KeyCredentialStatus::UserPrefersPassword => {
-            HelloError::Removed
+        KeyCredentialStatus::UserCanceled | KeyCredentialStatus::UserPrefersPassword => {
+            HelloError::Cancelled
         }
+        KeyCredentialStatus::NotFound => HelloError::Removed,
         _ => HelloError::Failed,
     }
 }
@@ -102,7 +104,7 @@ impl HelloAuthenticator for WindowsHello {
         })
     }
 
-    fn sign_challenge(&self, challenge: &[u8]) -> Result<Vec<u8>, HelloError> {
+    fn sign_challenge(&self, challenge: &[u8]) -> Result<Zeroizing<Vec<u8>>, HelloError> {
         let challenge = challenge.to_vec();
         on_worker(move || {
             let credential = open_credential()?;
@@ -121,7 +123,7 @@ impl HelloAuthenticator for WindowsHello {
             let len = reader
                 .UnconsumedBufferLength()
                 .map_err(|_| HelloError::Failed)?;
-            let mut bytes = vec![0_u8; len as usize];
+            let mut bytes = Zeroizing::new(vec![0_u8; len as usize]);
             reader
                 .ReadBytes(&mut bytes)
                 .map_err(|_| HelloError::Failed)?;

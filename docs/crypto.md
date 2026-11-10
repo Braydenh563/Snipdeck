@@ -134,11 +134,11 @@ What is **not** guaranteed:
 
 Hello never holds the data key and nothing is written to disk. After a password unlock the app asks
 Hello once to sign a fixed challenge (`KeyCredentialManager`, RSA PKCS#1 v1.5, deterministic).
-`KEK = SHA-256(signature)` seals the data key with XChaCha20-Poly1305 (`platform/src/hello.rs`, same
-`nonce | ciphertext | tag` layout as `aead.rs`) into an in-memory `SealedKey` that also records the
-time of the password unlock. A later Hello prompt re-signs the challenge and opens it. A restart
-forgets the copy; after 7 days from the last password unlock (injected clock) the copy is dropped
-and the password is asked. Cancel, failure, a removed PIN or a wrong signature fall back to the
+`KEK = SHA-256("snipdeck-hello-kek-v1" || signature)` seals the data key with `aead.rs`
+(`store/crypto/hello.rs`, `SealedKey`) into an in-memory copy that also records the time of the
+password unlock. Sealing signs twice and refuses a Hello whose two signatures differ. A later Hello prompt re-signs the challenge and opens it. A restart
+forgets the copy; after 7 days from the last password unlock (injected clock; a clock set back counts as
+expired) the copy is dropped and the password is asked, without a Hello prompt. Cancel, failure, a removed PIN or a wrong signature fall back to the
 password and drop the copy. Keys and signatures are zeroized after use.
 
 ## Limits and non-goals
