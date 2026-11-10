@@ -1,5 +1,5 @@
 mode: continue
-status: stopped (no commit in 60 minutes)
+status: stopped (context ceiling; resume with /work continue after /compact)
 max-continues: 300
 max-idle-minutes: 60
 started: 2026-11-07 (resumed)
