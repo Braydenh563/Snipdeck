@@ -1,5 +1,5 @@
 mode: continue
-status: active
+status: stopped (context ceiling; /compact then /work continue; builder verifying wt/v11-ui, see HANDOVER line 11)
 max-continues: 300
 max-idle-minutes: 60
 started: 2026-11-07 (resumed)
