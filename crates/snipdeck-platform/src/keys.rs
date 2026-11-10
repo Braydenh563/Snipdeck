@@ -60,6 +60,8 @@ pub enum Key {
     /// The `Left` arrow (an extended key on Windows), pressed to move the caret back after a
     /// paste (`{cursor}`).
     Left,
+    /// `Backspace`: erases a typed trigger before the item is pasted over it.
+    Backspace,
     /// An unassigned virtual key, pressed and released while `Alt` or `Win` is held so that
     /// releasing it does not open a menu bar or the Start menu.
     Mask,
@@ -72,6 +74,22 @@ pub struct KeyEvent {
     pub key: Key,
     /// `true` for a press, `false` for a release.
     pub down: bool,
+}
+
+/// The most Backspaces one expansion injects; a trigger is far shorter.
+pub const MAX_BACKSPACES: usize = 64;
+
+/// `count` Backspace presses (each a press and a release), at most [`MAX_BACKSPACES`]. A typed
+/// trigger is erased with these before the item's normal paste.
+pub fn backspaces(count: usize) -> Vec<KeyEvent> {
+    (0..count.min(MAX_BACKSPACES))
+        .flat_map(|_| {
+            [true, false].map(|down| KeyEvent {
+                key: Key::Backspace,
+                down,
+            })
+        })
+        .collect()
 }
 
 /// The key chord a Target uses to paste.
@@ -195,6 +213,20 @@ pub fn paste_sequence(held: Modifiers, paste: PasteKey) -> Vec<KeyEvent> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn backspaces_are_press_release_pairs_and_capped() {
+        use super::{Key, MAX_BACKSPACES, backspaces};
+        let four = backspaces(2);
+        assert_eq!(four.len(), 4);
+        assert!(four.iter().all(|e| e.key == Key::Backspace));
+        assert_eq!(
+            four.iter().map(|e| e.down).collect::<Vec<_>>(),
+            [true, false, true, false]
+        );
+        assert!(backspaces(0).is_empty());
+        assert_eq!(backspaces(10_000).len(), MAX_BACKSPACES * 2);
+    }
+
     use super::*;
 
     const DOWN: bool = true;
