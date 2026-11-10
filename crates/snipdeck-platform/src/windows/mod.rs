@@ -6,6 +6,7 @@
 //! | [`clipboard_history`] | Text entries of the Win+V clipboard history (`WinRT`) |
 //! | [`keyboard`] | `WinKeyboard`: [`crate::pipeline::Keyboard`] via `SendInput` |
 //! | [`target`] | Foreground tracking, UIPI check, caret / UI Automation focus probe |
+//! | [`typing_hook`] | `TypingHook`: `WH_KEYBOARD_LL` on its own thread, for typed-trigger expansion |
 //! | [`window_style`] | Non-activating panel style and its `WM_STYLECHANGING` subclass |
 //! | [`erase`] | The theme colour a window shows before its first frame |
 //! | [`paint_diag`] | `SNIPDECK_DIAG=render`: paint, erase, move and DWM facts for a log |
@@ -41,4 +42,5 @@ pub mod single_instance;
 pub mod system_look;
 pub mod target;
 pub mod tray;
+pub mod typing_hook;
 pub mod window_style;

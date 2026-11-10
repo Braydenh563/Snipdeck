@@ -48,8 +48,8 @@ use windows::Win32::UI::Accessibility::{
     CUIAutomation8, HWINEVENTHOOK, IUIAutomation2, IUIAutomationCacheRequest,
     IUIAutomationTextPattern, IUIAutomationValuePattern, SetWinEventHook,
     UIA_ControlTypePropertyId, UIA_IsEnabledPropertyId, UIA_IsKeyboardFocusablePropertyId,
-    UIA_ProcessIdPropertyId, UIA_TextPatternId, UIA_ValueIsReadOnlyPropertyId, UIA_ValuePatternId,
-    UnhookWinEvent,
+    UIA_IsPasswordPropertyId, UIA_ProcessIdPropertyId, UIA_TextPatternId,
+    UIA_ValueIsReadOnlyPropertyId, UIA_ValuePatternId, UnhookWinEvent,
 };
 use windows::Win32::UI::Shell::{
     QUNS_BUSY, QUNS_PRESENTATION_MODE, QUNS_RUNNING_D3D_FULL_SCREEN, SHQueryUserNotificationState,
@@ -421,6 +421,26 @@ impl TargetTracker {
         })
     }
 
+    /// Whether the globally focused element is a password box (UI Automation `IsPassword`).
+    ///
+    /// Typed-trigger expansion must not run there. `true` also when the answer cannot be had
+    /// (no UI Automation, no focused element, an element of this process, a timeout): the
+    /// safe side. Call it from the thread that owns the tracker, and **off the UI thread**: it
+    /// is one cross-process call that blocks up to `UIA_TRANSACTION_TIMEOUT_MS` (500 ms).
+    #[must_use]
+    pub fn focus_is_password(&self) -> bool {
+        let Some(uia) = self.uia() else {
+            return true;
+        };
+        let inner = &self.inner;
+        inner.probing.set(true);
+        let _probing = ProbeGuard(inner);
+        // SAFETY: no arguments, no preconditions.
+        let own_pid = unsafe { GetCurrentProcessId() };
+        uia.focused_element(own_pid)
+            .is_none_or(|facts| facts.password)
+    }
+
     /// The UI Automation fallback: a focused, editable element makes [`Focus::Automation`].
     fn automation_focus(&self) -> Focus {
         let Some(uia) = self.uia() else {
@@ -568,6 +588,7 @@ impl Uia {
                 UIA_ControlTypePropertyId,
                 UIA_IsKeyboardFocusablePropertyId,
                 UIA_IsEnabledPropertyId,
+                UIA_IsPasswordPropertyId,
                 UIA_ValueIsReadOnlyPropertyId,
             ] {
                 request.AddProperty(property).ok()?;
@@ -609,6 +630,10 @@ impl Uia {
                 enabled: element.CachedIsEnabled().ok()?.as_bool(),
                 value_read_only,
                 has_text_pattern,
+                // An unreadable flag counts as a password box: expansion errs on the safe side.
+                password: !element
+                    .CachedIsPassword()
+                    .is_ok_and(|password| !password.as_bool()),
             })
         }
     }

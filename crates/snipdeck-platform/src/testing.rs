@@ -41,6 +41,10 @@ pub struct FakeClipboard {
     /// A picture on the clipboard that was copied elsewhere (`ClipboardText::read_png` falls
     /// back to it when the latest write holds none).
     pub held_png: Option<Vec<u8>>,
+    /// The HTML flavour (fragment) that rides with the copied text (`ClipboardText::read_rich`).
+    pub held_html: Option<String>,
+    /// The RTF flavour that rides with the copied text (`ClipboardText::read_rich`).
+    pub held_rtf: Option<Vec<u8>>,
     /// Files copied in Explorer (`ClipboardText::read_files`).
     pub held_files: Vec<String>,
     /// The Explorer copy holds more files than a paste takes (`ClipFiles::TooMany`).

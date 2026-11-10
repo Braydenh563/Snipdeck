@@ -28,6 +28,8 @@ pub const VK_RWIN: u16 = 0x5C;
 pub const VK_V: u16 = 0x56;
 /// `VK_INSERT`.
 pub const VK_INSERT: u16 = 0x2D;
+/// `VK_BACK`.
+pub const VK_BACK: u16 = 0x08;
 /// `VK_LEFT`.
 pub const VK_LEFT: u16 = 0x25;
 /// The unassigned virtual key (0xE8) used to mask a lone `Alt` / `Win` release.
@@ -71,6 +73,7 @@ pub const fn key_to_vk(key: Key) -> VirtualKey {
         Key::Insert => extended(VK_INSERT),
         // Unverified on Windows (Fable v1 sweep A5): the arrow keys are extended keys.
         Key::Left => extended(VK_LEFT),
+        Key::Backspace => plain(VK_BACK),
         Key::Mask => plain(VK_MASK),
     }
 }
@@ -131,6 +134,10 @@ pub const UIA_EDIT: i32 = 50004;
 pub const UIA_DOCUMENT: i32 = 50030;
 
 /// What UI Automation said about the focused element.
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "one field per UI Automation property"
+)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ElementFacts {
     /// `UIA_ControlTypePropertyId`.
@@ -143,6 +150,8 @@ pub struct ElementFacts {
     pub value_read_only: Option<bool>,
     /// The element supports `TextPattern`.
     pub has_text_pattern: bool,
+    /// `IsPassword`: a password box (typed-trigger expansion must not run in it).
+    pub password: bool,
 }
 
 /// Whether the focused element can take pasted text.
@@ -338,6 +347,7 @@ mod tests {
         assert_eq!(key_to_vk(Key::Insert), extended(0x2D));
         assert_eq!(key_to_vk(Key::Left), extended(0x25));
         assert_eq!(key_to_vk(Key::Mask), plain(0xE8));
+        assert_eq!(key_to_vk(Key::Backspace), plain(0x08));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Ctrl)), plain(0xA2));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Shift)), plain(0xA0));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Alt)), plain(0xA4));
@@ -454,6 +464,7 @@ mod tests {
             enabled: true,
             value_read_only: None,
             has_text_pattern: false,
+            password: false,
         }
     }
 

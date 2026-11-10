@@ -64,6 +64,43 @@ impl WatchGate {
 /// they are dropped (and wiped) and only the text goes on.
 pub const MAX_RICH_BYTES: usize = 1024 * 1024;
 
+/// The text of a copy with its formatted flavours (`ClipboardText::read_rich`).
+#[derive(Clone, Default, PartialEq, Eq)]
+pub struct RichClip {
+    /// `CF_UNICODETEXT`; `None` when there is none.
+    pub text: Option<String>,
+    /// The HTML flavour as a fragment without the `CF_HTML` header; only next to text.
+    pub html: Option<String>,
+    /// The Rich Text Format flavour; only next to text.
+    pub rtf: Option<Vec<u8>>,
+}
+
+// The content may be a secret: never print it.
+impl std::fmt::Debug for RichClip {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RichClip")
+            .field("text", &self.text.is_some())
+            .field("html", &self.html.is_some())
+            .field("rtf", &self.rtf.is_some())
+            .finish()
+    }
+}
+
+/// Turns the raw `CF_HTML` and RTF bytes into the flavours that travel with text: the HTML
+/// fragment and the RTF bytes. Together over [`MAX_RICH_BYTES`] both are dropped; `CF_HTML` that
+/// does not parse is dropped alone.
+#[must_use]
+pub fn rich_flavours(html: Option<&[u8]>, rtf: Option<&[u8]>) -> (Option<String>, Option<Vec<u8>>) {
+    let size = html.map_or(0, <[u8]>::len) + rtf.map_or(0, <[u8]>::len);
+    if size > MAX_RICH_BYTES {
+        return (None, None);
+    }
+    (
+        html.and_then(crate::cf_html::parse),
+        rtf.map(<[u8]>::to_vec),
+    )
+}
+
 /// The registered clipboard format that password managers add to say "do not monitor this".
 pub const EXCLUDE_MONITOR_FORMAT: &str = "ExcludeClipboardContentFromMonitorProcessing";
 /// The older marker (older `KeePass` and others): present means "viewers must ignore this".
@@ -100,6 +137,21 @@ pub fn dword(bytes: &[u8]) -> Option<u32> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn rich_flavours_cap_and_parse() {
+        use super::{MAX_RICH_BYTES, rich_flavours};
+        assert_eq!(rich_flavours(None, None), (None, None));
+        let rtf = b"{\\rtf1 hi}";
+        assert_eq!(rich_flavours(None, Some(rtf)), (None, Some(rtf.to_vec())));
+        // Not CF_HTML: dropped alone.
+        assert_eq!(
+            rich_flavours(Some(b"junk"), Some(rtf)),
+            (None, Some(rtf.to_vec()))
+        );
+        let big = vec![b'x'; MAX_RICH_BYTES];
+        assert_eq!(rich_flavours(Some(&big), Some(rtf)), (None, None));
+    }
+
     use super::*;
 
     #[test]
