@@ -257,6 +257,15 @@ impl WinClipboard {
         self.call(read_text_job).ok().flatten()
     }
 
+    /// The clipboard's text with its HTML (`CF_HTML`, fragment only) and RTF flavours, read
+    /// together in one open. The flavours are only read next to text. An empty result if the
+    /// clipboard holds no text or stays busy. Writes nothing.
+    pub fn read_rich(&mut self) -> clipboard_watch::RichClip {
+        let formats = self.formats;
+        self.call(move || read_rich_job(&formats))
+            .unwrap_or_default()
+    }
+
     /// The picture on the clipboard as PNG bytes: the registered `PNG` format first, else
     /// `CF_DIBV5`, else `CF_DIB` converted by [`win_formats::dib_to_png`]. `None` if there is no
     /// picture, it is over the size limit, or the clipboard stays busy. Writes nothing.
@@ -950,11 +959,8 @@ fn observe_change(hwnd: HWND) -> ClipboardChange {
     if change.text.is_some() {
         let mut html = read_format(formats.html, RICH_FLAVOUR_LIMIT);
         let mut rtf = read_format(formats.rtf, RICH_FLAVOUR_LIMIT);
-        let size = html.as_ref().map_or(0, Vec::len) + rtf.as_ref().map_or(0, Vec::len);
-        if size <= clipboard_watch::MAX_RICH_BYTES {
-            change.html = html.as_deref().and_then(cf_html::parse);
-            change.rtf = rtf.take();
-        } else if let Some(rtf) = rtf.as_mut() {
+        (change.html, change.rtf) = clipboard_watch::rich_flavours(html.as_deref(), rtf.as_deref());
+        if let Some(rtf) = rtf.as_mut() {
             wipe(rtf);
         }
         if let Some(html) = html.as_mut() {
@@ -1186,6 +1192,32 @@ fn read_text_job() -> Option<String> {
     let text = win_formats::from_unicode_text(&bytes);
     wipe(&mut bytes);
     Some(text)
+}
+
+fn read_rich_job(formats: &Formats) -> clipboard_watch::RichClip {
+    let Some(hwnd) = owner_hwnd() else {
+        return clipboard_watch::RichClip::default();
+    };
+    let Some(_open) = OpenGuard::open(hwnd, READ_OPEN_BUDGET) else {
+        return clipboard_watch::RichClip::default();
+    };
+    let mut clip = clipboard_watch::RichClip::default();
+    // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
+    if let Ok(handle) = unsafe { GetClipboardData(u32::from(CF_UNICODETEXT.0)) }
+        && let Some(mut bytes) = read_global(HGLOBAL(handle.0), READ_TEXT_LIMIT)
+    {
+        clip.text = Some(win_formats::from_unicode_text(&bytes));
+        wipe(&mut bytes);
+    }
+    if clip.text.is_some() {
+        let mut html = read_format(formats.html, RICH_FLAVOUR_LIMIT);
+        let mut rtf = read_format(formats.rtf, RICH_FLAVOUR_LIMIT);
+        (clip.html, clip.rtf) = clipboard_watch::rich_flavours(html.as_deref(), rtf.as_deref());
+        for bytes in [html.as_mut(), rtf.as_mut()].into_iter().flatten() {
+            wipe(bytes);
+        }
+    }
+    clip
 }
 
 fn read_png_job(png_format: u32) -> Option<Vec<u8>> {

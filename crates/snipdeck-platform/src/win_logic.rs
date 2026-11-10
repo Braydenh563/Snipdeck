@@ -134,6 +134,10 @@ pub const UIA_EDIT: i32 = 50004;
 pub const UIA_DOCUMENT: i32 = 50030;
 
 /// What UI Automation said about the focused element.
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "one field per UI Automation property"
+)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ElementFacts {
     /// `UIA_ControlTypePropertyId`.
@@ -146,6 +150,8 @@ pub struct ElementFacts {
     pub value_read_only: Option<bool>,
     /// The element supports `TextPattern`.
     pub has_text_pattern: bool,
+    /// `IsPassword`: a password box (typed-trigger expansion must not run in it).
+    pub password: bool,
 }
 
 /// Whether the focused element can take pasted text.
@@ -458,6 +464,7 @@ mod tests {
             enabled: true,
             value_read_only: None,
             has_text_pattern: false,
+            password: false,
         }
     }
 

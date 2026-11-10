@@ -223,7 +223,7 @@ mod tests {
             four.iter().map(|e| e.down).collect::<Vec<_>>(),
             [true, false, true, false]
         );
-        assert!(backspaces(0).is_empty());
+        assert_eq!(backspaces(0).len(), 0);
         assert_eq!(backspaces(10_000).len(), MAX_BACKSPACES * 2);
     }
 
