@@ -8,7 +8,7 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 msgid "(new ID)"
-msgstr ""
+msgstr "(新しいID)"
 
 msgid "+{} more"
 msgstr "他 {} 件"
@@ -54,6 +54,9 @@ msgstr "マスターパスワードが有効です。機密スニペットを初
 
 msgid "A master password is part of Supporter."
 msgstr "マスターパスワードは Supporter に含まれます。"
+
+msgid "A new random ID each time"
+msgstr "毎回新しいランダムなID"
 
 msgid "A small window you can drag anywhere."
 msgstr "好きな場所にドラッグできる小さなウィンドウです。"

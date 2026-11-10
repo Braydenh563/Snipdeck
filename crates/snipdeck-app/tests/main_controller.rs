@@ -355,6 +355,33 @@ fn move_sends_the_chosen_rows_to_the_end_of_a_list_on_the_open_board() {
 }
 
 #[test]
+fn paste_as_in_the_main_window_pastes_the_chosen_transform_for_the_row() {
+    use snipdeck_core::template::transform::Transform;
+    let mut ctl = pro();
+    let screen = ctl.main_screen();
+    let at = row_of(&screen, "Invoice reminder");
+    assert!(
+        ctl.main_action(MainAction::PasteAs, at).is_none(),
+        "the action only opens the chooser"
+    );
+    assert!(ctl.services().clipboard.written.is_empty());
+    let upper = Transform::ALL
+        .iter()
+        .position(|t| *t == Transform::Upper)
+        .unwrap();
+    assert!(ctl.main_paste_as(upper).is_some());
+    let written = &ctl.services().clipboard.written;
+    assert_eq!(written.len(), 1);
+    let snipdeck_platform::payload::Data::Text(text) = &written[0].data()[0] else {
+        panic!("plain text")
+    };
+    assert_eq!(*text, text.to_uppercase());
+    // The chooser is spent: a second choice without reopening pastes nothing.
+    assert!(ctl.main_paste_as(upper).is_none());
+    assert_eq!(ctl.services().clipboard.written.len(), 1);
+}
+
+#[test]
 fn tags_are_ticked_on_the_chosen_rows_and_unticked_again() {
     let tag = Tag::new(Name::new("invoices").unwrap());
     let mut store = demo::store(now()).unwrap();

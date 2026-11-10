@@ -189,6 +189,7 @@ fn start() -> (MainWindow, Log) {
     hook!(on_toast_edit, || "toast-edit".to_string());
     hook!(on_item_reorder_requested, |d| format!("reorder:{d}"));
     hook!(on_move_chosen, |i| format!("move:{i}"));
+    hook!(on_paste_as_chosen, |i| format!("paste-as:{i}"));
     hook!(on_tag_toggled, |i, on| format!("tag:{i}:{on}"));
     hook!(on_reveal_requested, |i, on| format!("reveal:{i}:{on}"));
     hook!(on_settings_requested, || "settings".to_string());
@@ -395,6 +396,79 @@ ui_tests! {
         settle();
         assert_eq!(take(&log), ["move:1"]);
         assert!(!ui.get_menu_open(), "choosing a list closes it");
+    }
+
+    fn paste_as_in_the_item_menu_opens_a_chooser_of_the_six_transforms() {
+        let (ui, log) = start();
+        press_key(&ui, Key::DownArrow);
+        take(&log);
+        press_key(&ui, Key::Menu);
+        let entry = find(&ui, "Paste as…", AccessibleRole::ListItem);
+        assert_eq!(entry.accessible_enabled(), Some(true));
+        entry.invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["action:PasteAs:1"]);
+        assert!(ui.get_menu_open(), "the chooser is open");
+        let _ = find(&ui, "Paste as…", AccessibleRole::List);
+        for label in ["Plain text", "UPPERCASE", "lowercase", "Title Case", "Trimmed", "slug"] {
+            let _ = find_top(&ui, label, AccessibleRole::ListItem);
+        }
+        find_top(&ui, "UPPERCASE", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["paste-as:1"]);
+        assert!(!ui.get_menu_open(), "choosing closes it");
+    }
+
+    fn the_paste_as_chooser_takes_arrows_enter_and_escape() {
+        let (ui, log) = start();
+        press_key(&ui, Key::Menu);
+        find(&ui, "Paste as…", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        take(&log);
+        // The first choice has the ring; Down twice reaches the third (lowercase).
+        press_key(&ui, Key::DownArrow);
+        press_key(&ui, Key::DownArrow);
+        press_key(&ui, Key::Return);
+        settle();
+        assert_eq!(take(&log), ["paste-as:2"]);
+        assert!(!ui.get_menu_open());
+        assert!(ui.get_items_focused(), "focus returns to the items");
+
+        press_key(&ui, Key::Menu);
+        find(&ui, "Paste as…", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        take(&log);
+        press_key(&ui, Key::Escape);
+        settle();
+        assert!(!ui.get_menu_open(), "Esc closes the second level");
+        assert_eq!(take(&log), Vec::<String>::new(), "nothing is pasted");
+        assert!(ui.get_items_focused());
+    }
+
+    fn paste_as_is_off_for_pictures_files_and_a_multiple_selection() {
+        let (ui, _log) = start();
+        for _ in 0..4 {
+            press_key(&ui, Key::DownArrow);
+        }
+        press_key(&ui, Key::Menu);
+        assert_eq!(
+            find(&ui, "Paste as…", AccessibleRole::ListItem).accessible_enabled(),
+            Some(false),
+            "a picture has no text to transform"
+        );
+        press_key(&ui, Key::Escape);
+        press_key(&ui, Key::UpArrow);
+        press_key(&ui, Key::UpArrow);
+        press_key(&ui, Key::UpArrow);
+        press_key(&ui, Key::UpArrow);
+        ui.set_selected_count(2);
+        settle();
+        press_key(&ui, Key::Menu);
+        assert_eq!(
+            find(&ui, "Paste as…", AccessibleRole::ListItem).accessible_enabled(),
+            Some(false),
+            "one item at a time"
+        );
     }
 
     fn the_tag_chooser_stays_open_and_ticks_each_tag() {

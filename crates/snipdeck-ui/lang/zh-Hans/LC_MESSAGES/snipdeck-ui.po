@@ -8,7 +8,7 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 msgid "(new ID)"
-msgstr ""
+msgstr "(新ID)"
 
 msgid "+{} more"
 msgstr "另有 {} 项"
@@ -54,6 +54,9 @@ msgstr "已开启主密码。首次使用敏感片段时，Snipdeck 会要求输
 
 msgid "A master password is part of Supporter."
 msgstr "主密码是 Supporter 的功能之一。"
+
+msgid "A new random ID each time"
+msgstr "每次生成新的随机ID"
 
 msgid "A small window you can drag anywhere."
 msgstr "可以拖到任意位置的小窗口。"

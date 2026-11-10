@@ -163,6 +163,34 @@ fn a_template_with_questions_asks_first_then_pastes_as_the_transform() {
 }
 
 #[test]
+fn a_template_field_a_choice_and_a_date_offset_all_go_through_the_transform() {
+    use snipdeck_core::template::transform::Transform;
+    let mut w = world();
+    let list = w.ctl.model.list().expect("list").id;
+    let id = add(
+        &mut w.ctl.store,
+        list,
+        ItemKind::Template,
+        "Ticket",
+        "{field:Subject} {choice:Tone|Warm|Firm} {date+1d:%Y-%m-%d}",
+    );
+    assert_eq!(
+        w.ctl.use_item_as(id, Transform::Slug),
+        UseResult::NeedsAnswers
+    );
+    assert_eq!(
+        w.ctl.submit_fill(&["Café Menu".to_owned(), "Firm".to_owned()]),
+        UseResult::Done(UseOutcome::Pasted)
+    );
+    // The clock is frozen at the fixture's day; the transform sees the rendered text.
+    let Data::Text(text) = &w.ctl.services.clipboard.written[0].data()[0] else {
+        panic!("plain text")
+    };
+    assert!(text.starts_with("café-menu-firm-"), "{text:?}");
+    assert!(!text.contains(' ') && !text.contains('{'), "{text:?}");
+}
+
+#[test]
 fn paste_as_on_a_sensitive_item_stays_private() {
     use snipdeck_core::template::transform::Transform;
     let mut w = world();

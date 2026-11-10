@@ -8,7 +8,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
 msgid "(new ID)"
-msgstr ""
+msgstr "(novo ID)"
 
 msgid "+{} more"
 msgstr "+{} mais"
@@ -54,6 +54,9 @@ msgstr "A senha mestra está ativada. O Snipdeck a pede quando você usa um item
 
 msgid "A master password is part of Supporter."
 msgstr "A senha mestra faz parte do Supporter."
+
+msgid "A new random ID each time"
+msgstr "Um novo ID aleatório a cada vez"
 
 msgid "A small window you can drag anywhere."
 msgstr "Uma janela pequena que você pode arrastar para qualquer lugar."

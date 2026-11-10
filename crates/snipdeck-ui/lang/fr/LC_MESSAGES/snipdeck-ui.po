@@ -8,7 +8,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
 msgid "(new ID)"
-msgstr ""
+msgstr "(nouvel ID)"
 
 msgid "+{} more"
 msgstr "+{} de plus"
@@ -54,6 +54,9 @@ msgstr "Un mot de passe principal est activé. Snipdeck le demande lors de la pr
 
 msgid "A master password is part of Supporter."
 msgstr "Le mot de passe principal fait partie de Supporter."
+
+msgid "A new random ID each time"
+msgstr "Un nouvel ID aléatoire à chaque fois"
 
 msgid "A small window you can drag anywhere."
 msgstr "Une petite fenêtre que vous pouvez faire glisser n'importe où."
