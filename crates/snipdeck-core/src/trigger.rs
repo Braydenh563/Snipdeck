@@ -252,14 +252,14 @@ mod tests {
     #[test]
     fn case_counts() {
         let mut m = matcher(&[(";Sig", 1)]);
-        assert!(run(&mut m, ";sig ;SIG").is_empty());
+        assert_eq!(run(&mut m, ";sig ;SIG").len(), 0);
         assert_eq!(run(&mut m, " ;Sig").len(), 1);
     }
 
     #[test]
     fn backspace_pops_one() {
         let mut m = matcher(&[("brb", 1)]);
-        assert!(run(&mut m, "brx").is_empty());
+        assert_eq!(run(&mut m, "brx").len(), 0);
         m.backspace();
         assert_eq!(
             run(&mut m, "b"),

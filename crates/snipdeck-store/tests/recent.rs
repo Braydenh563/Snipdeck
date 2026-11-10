@@ -605,7 +605,10 @@ mod at_rest {
         s.add_recent(RecentContent::text("newer"), None, at(2))
             .unwrap();
         assert_eq!(s.prune_recent(at(3), 1, WEEK).unwrap(), 1);
-        assert!(files_under(&dir.path().join("blobs")).is_empty());
+        assert_eq!(
+            files_under(&dir.path().join("blobs")),
+            [] as [std::path::PathBuf; 0]
+        );
         // Age, delete and clear release too.
         s.add_recent(image(&png, &th, 3), None, at(4)).unwrap();
         assert_eq!(
@@ -613,13 +616,22 @@ mod at_rest {
                 .unwrap(),
             2
         );
-        assert!(files_under(&dir.path().join("blobs")).is_empty());
+        assert_eq!(
+            files_under(&dir.path().join("blobs")),
+            [] as [std::path::PathBuf; 0]
+        );
         let id = s.add_recent(image(&png, &th, 4), None, at(5)).unwrap();
         s.delete_recent(id).unwrap();
-        assert!(files_under(&dir.path().join("blobs")).is_empty());
+        assert_eq!(
+            files_under(&dir.path().join("blobs")),
+            [] as [std::path::PathBuf; 0]
+        );
         s.add_recent(image(&png, &th, 5), None, at(6)).unwrap();
         s.clear_recent().unwrap();
-        assert!(files_under(&dir.path().join("blobs")).is_empty());
+        assert_eq!(
+            files_under(&dir.path().join("blobs")),
+            [] as [std::path::PathBuf; 0]
+        );
     }
 
     #[test]
@@ -654,7 +666,7 @@ mod at_rest {
             at(1),
         );
         assert!(matches!(err, Err(Error::Invalid(_))), "{err:?}");
-        assert!(s.recent().unwrap().is_empty());
+        assert_eq!(s.recent().unwrap(), [] as [snipdeck_store::RecentEntry; 0]);
         // Text still works, without its formatted flavours.
         s.add_recent(
             RecentContent::Text {
@@ -771,8 +783,11 @@ mod at_rest {
             )
             .unwrap();
         assert!(s.add_recent(image(&png, &th, 9), None, at(1)).is_err());
-        assert!(files_under(&dir.path().join("blobs")).is_empty());
-        assert!(s.recent().unwrap().is_empty());
+        assert_eq!(
+            files_under(&dir.path().join("blobs")),
+            [] as [std::path::PathBuf; 0]
+        );
+        assert_eq!(s.recent().unwrap(), [] as [snipdeck_store::RecentEntry; 0]);
     }
 
     #[test]

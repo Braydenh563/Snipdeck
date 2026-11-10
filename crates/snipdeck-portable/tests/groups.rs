@@ -167,7 +167,14 @@ fn an_older_archive_imports_without_groups() {
     let report =
         import_archive(&mut fresh, Cursor::new(&old), "b", at(200), &keep_boards()).unwrap();
     assert!(!report.has_warnings(), "{:?}", report.warnings);
-    assert!(shape(&fresh).is_empty());
+    assert_eq!(
+        shape(&fresh),
+        [] as [(
+            std::string::String,
+            bool,
+            std::vec::Vec<std::string::String>
+        ); 0]
+    );
     assert_eq!(counts(&fresh).2, 5);
 }
 

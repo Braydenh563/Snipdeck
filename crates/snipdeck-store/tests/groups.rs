@@ -48,7 +48,10 @@ fn v8_keeps_items_and_adds_no_groups() {
     let board = s.boards().unwrap().remove(0);
     let list = s.lists(board.id).unwrap().remove(0);
     assert_eq!(titles(&s, list.id), ["Greeting", "Wifi"]);
-    assert!(s.groups_of(list.id).unwrap().is_empty());
+    assert_eq!(
+        s.groups_of(list.id).unwrap(),
+        [] as [snipdeck_store::GroupRun; 0]
+    );
     assert_eq!(s.trashed().unwrap().len(), 1, "the trashed item survives");
     assert_healthy(&s);
 }
@@ -104,7 +107,10 @@ fn moving_to_another_list_leaves_the_group() {
         .unwrap();
     s.move_item(ids[0], other.id, Placement::Last).unwrap();
     assert_eq!(runs(&s, l)[0].1, [ids[1]]);
-    assert!(runs(&s, other.id).is_empty());
+    assert_eq!(
+        runs(&s, other.id),
+        [] as [(std::string::String, std::vec::Vec<snipdeck_core::ItemId>); 0]
+    );
     assert_healthy(&s);
 }
 
@@ -146,7 +152,10 @@ fn deleting_a_group_keeps_or_trashes_its_items() {
     let g = Group::new(l, name("G"));
     s.create_group(&g, &ids[1..3]).unwrap();
     s.delete_group(g.id, GroupDelete::Keep).unwrap();
-    assert!(runs(&s, l).is_empty());
+    assert_eq!(
+        runs(&s, l),
+        [] as [(std::string::String, std::vec::Vec<snipdeck_core::ItemId>); 0]
+    );
     assert_eq!(titles(&s, l), ["A", "B", "C", "D", "E"]);
 
     let g2 = Group::new(l, name("G2"));
@@ -155,7 +164,7 @@ fn deleting_a_group_keeps_or_trashes_its_items() {
         .unwrap();
     assert_eq!(titles(&s, l), ["A", "D", "E"]);
     assert_eq!(s.trashed().unwrap().len(), 2);
-    assert!(s.groups_of(l).unwrap().is_empty());
+    assert_eq!(s.groups_of(l).unwrap(), [] as [snipdeck_store::GroupRun; 0]);
 }
 
 #[test]
@@ -192,7 +201,7 @@ fn a_batch_can_group_and_roll_back() {
         Err(snipdeck_store::Error::Corrupt("stop".to_owned()))
     });
     assert!(done.is_err());
-    assert!(s.groups_of(l).unwrap().is_empty());
+    assert_eq!(s.groups_of(l).unwrap(), [] as [snipdeck_store::GroupRun; 0]);
 }
 
 #[test]
@@ -209,7 +218,10 @@ fn moving_from_another_list_after_a_member_joins_its_group() {
     // A move out of a group into another list's plain spot leaves no group behind.
     s.move_item(x, other.id, Placement::Last).unwrap();
     assert_eq!(runs(&s, l)[0].1, [ids[0], ids[1], ids[2]]);
-    assert!(runs(&s, other.id).is_empty());
+    assert_eq!(
+        runs(&s, other.id),
+        [] as [(std::string::String, std::vec::Vec<snipdeck_core::ItemId>); 0]
+    );
 }
 
 #[test]
@@ -239,7 +251,10 @@ fn restoring_after_trash_items_brings_the_header_back() {
     s.create_group(&g, &ids[1..3]).unwrap();
     s.delete_group(g.id, GroupDelete::TrashItems(at(9)))
         .unwrap();
-    assert!(runs(&s, l).is_empty());
+    assert_eq!(
+        runs(&s, l),
+        [] as [(std::string::String, std::vec::Vec<snipdeck_core::ItemId>); 0]
+    );
     s.restore(Trashable::Item(ids[1])).unwrap();
     s.restore(Trashable::Item(ids[2])).unwrap();
     assert_eq!(runs(&s, l), [("G".to_owned(), vec![ids[1], ids[2]])]);
