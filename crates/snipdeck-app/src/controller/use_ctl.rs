@@ -253,7 +253,20 @@ where
                 if !self.library_changed() {
                     return true;
                 }
-                self.model.select_item(item);
+                match origin {
+                    crate::item_editor::Origin::Panel => self.model.select_item(item),
+                    crate::item_editor::Origin::Main => {
+                        self.main_fresh();
+                        if let Some(at) = self
+                            .main
+                            .keys()
+                            .iter()
+                            .position(|k| *k == crate::main_window::Key::Item(item))
+                        {
+                            self.main.set_cursor(at);
+                        }
+                    }
+                }
                 self.show_saved_toast(
                     Toast {
                         kind: ToastKind::Success,

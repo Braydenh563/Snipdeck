@@ -330,8 +330,19 @@ export component MainWindow inherits Window {
     // The box sits above the rows of an open list (not in a search, the Trash or a system view).
     property <bool> quick-add-shown: root.section == MainSection.list && !root.searching && !root.loading;
     // Ctrl+N: the quick-add box when a list is open, else the item editor.
+    // The box owns the typing keys only while it is on screen.
+    property <bool> quick-typing: root.quick-open && root.quick-add-shown;
+    changed quick-add-shown => {
+        if (!root.quick-add-shown) {
+            root.quick-open = false;
+        }
+    }
     function new-item() {
         if (root.quick-add-shown) {
+            if (root.rows.length == 0) {
+                // An empty list shows no collapsed row: open the box itself.
+                root.quick-open = true;
+            }
             root.quick-add-request += 1;
         } else {
             root.new-item-requested();
@@ -973,11 +984,11 @@ export component MainWindow inherits Window {
                     return accept;
                 }
                 // A focused search field undoes its own typing.
-                if ((event.text == "z" || event.text == "Z") && !event.modifiers.shift && !search.has-focus && !root.quick-open) {
+                if ((event.text == "z" || event.text == "Z") && !event.modifiers.shift && !search.has-focus && !root.quick-typing) {
                     root.undo-requested();
                     return accept;
                 }
-                if ((((event.text == "z" || event.text == "Z") && event.modifiers.shift) || event.text == "y" || event.text == "Y") && !search.has-focus && !root.quick-open) {
+                if ((((event.text == "z" || event.text == "Z") && event.modifiers.shift) || event.text == "y" || event.text == "Y") && !search.has-focus && !root.quick-typing) {
                     root.redo-requested();
                     return accept;
                 }
@@ -986,7 +997,7 @@ export component MainWindow inherits Window {
                 root.help-requested(HelpPage.guide);
                 return accept;
             }
-            if (event.text == "/" && !search.has-focus && !root.quick-open && !event.modifiers.control && !event.modifiers.alt) {
+            if (event.text == "/" && !search.has-focus && !root.quick-typing && !event.modifiers.control && !event.modifiers.alt) {
                 root.focus-search();
                 return accept;
             }
@@ -1587,7 +1598,7 @@ export component MainWindow inherits Window {
                 }
 
                 // ---- Quick add (an open list) -----------------------------------------------------
-                if root.quick-add-shown: HorizontalLayout {
+                if root.quick-add-shown && (root.rows.length > 0 || root.quick-open): HorizontalLayout {
                     padding-left: root.pad;
                     padding-right: root.pad;
                     padding-bottom: Space.s1;

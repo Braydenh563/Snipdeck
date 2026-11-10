@@ -187,8 +187,7 @@ where
             return;
         };
         let moved: Vec<ItemId> = self
-            .model
-            .targets(row)
+            .drag_targets(row)
             .into_iter()
             .filter(|id| self.store.item(*id).is_ok_and(|i| i.list_id != target.id))
             .collect();
@@ -224,6 +223,23 @@ where
         }
     }
 
+    /// What a drag that starts on row `row` carries: the marked rows when `row` is one of them,
+    /// else just that row; a row collapsed to "Deleted · Undo" never goes along.
+    fn drag_targets(&self, row: usize) -> Vec<ItemId> {
+        let live: Vec<ItemId> = self
+            .model
+            .rows()
+            .iter()
+            .filter(|r| !r.deleted_pending)
+            .map(|r| r.id)
+            .collect();
+        self.model
+            .targets(row)
+            .into_iter()
+            .filter(|id| live.contains(id))
+            .collect()
+    }
+
     /// A drag of Panel row `from` ended on row `onto`: the item takes that row's place; when `from`
     /// is one of several marked rows, every marked item moves there together, in their current
     /// order, as one history step. Like the Main window, only a list in manual order, with no
@@ -243,7 +259,7 @@ where
             return;
         };
         let order = self.model.manual_order();
-        let Some(placements) = reorder_many(&order, &self.model.targets(from), target) else {
+        let Some(placements) = reorder_many(&order, &self.drag_targets(from), target) else {
             return;
         };
         let mut changes = Vec::new();

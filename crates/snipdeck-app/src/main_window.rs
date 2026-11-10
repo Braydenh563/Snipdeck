@@ -932,6 +932,7 @@ pub fn reorder<I: Copy>(order: &[I], from: usize, delta: isize) -> Option<(usize
 /// Where dropping the `moved` entries on `onto` places them among `order`: one placement per moved
 /// entry, to be applied in the order given, so that the block lands where a single dragged entry
 /// would (below `onto` when it comes from above, above it otherwise), keeping its current order.
+/// A block that straddles `onto` (some moved entries above it, some below) lands after `onto`.
 /// `None` when `onto` is one of the moved entries (a drop on a marked row), when `onto` is not in
 /// `order`, when no moved entry is in `order`, or when nothing would change.
 #[must_use]
@@ -1293,7 +1294,7 @@ mod tests {
     #[test]
     fn reorder_many_places_the_block_where_a_single_row_would_land() {
         let order = [1u8, 2, 3, 4, 5, 6];
-        let table: [Case<'_>; 8] = [
+        let table: [Case<'_>; 9] = [
             // block down: after the target
             (&[1, 2], 4, Some(vec![3, 4, 1, 2, 5, 6])),
             // block up: before the target
@@ -1306,6 +1307,8 @@ mod tests {
             // a drop on a marked row is a no-op
             (&[2, 4], 4, None),
             (&[2, 4], 2, None),
+            // a block straddling the target lands after it
+            (&[2, 5], 4, Some(vec![1, 3, 4, 2, 5, 6])),
             // onto the row just above the block: it swaps past it
             (&[2, 3], 1, Some(vec![2, 3, 1, 4, 5, 6])),
         ];

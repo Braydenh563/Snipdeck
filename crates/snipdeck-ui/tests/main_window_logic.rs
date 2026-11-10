@@ -1309,10 +1309,50 @@ ui_tests! {
         press(ui.window(), &key(Key::Escape));
         settle();
         assert!(!missing(&ui, "New item in Email replies", AccessibleRole::Button), "Esc folds the box back");
+        assert!(ui.get_items_focused(), "and the focus goes back to the items");
         ui.set_section(MainSection::Pinned);
         settle();
         chord(ui.window(), &[Key::Control], "n");
         assert_eq!(take(&log), ["new"], "a system view opens the editor as before");
+    }
+
+    fn an_open_quick_add_box_that_goes_away_stops_owning_the_typing_keys() {
+        let (ui, log) = start();
+        ui.set_section(MainSection::List);
+        ui.set_section_index(0);
+        settle();
+        chord(ui.window(), &[Key::Control], "n");
+        settle();
+        chord(ui.window(), &[Key::Control], "z");
+        assert!(!take(&log).contains(&"undo".to_string()), "the box keeps its own typing keys");
+        ui.set_section(MainSection::Pinned);
+        settle();
+        take(&log);
+        chord(ui.window(), &[Key::Control], "z");
+        assert_eq!(take(&log), ["undo"], "Ctrl+Z undoes again once the box is gone");
+        // Coming back to the list shows the folded row, not a stale open box.
+        ui.set_section(MainSection::List);
+        settle();
+        find(&ui, "New item in Email replies", AccessibleRole::Button);
+    }
+
+    fn an_empty_list_shows_no_collapsed_row_and_ctrl_n_opens_the_box() {
+        let (ui, log) = start();
+        fixture::set_rows(&ui, Vec::new());
+        ui.set_section(MainSection::List);
+        ui.set_section_index(0);
+        settle();
+        assert!(missing(&ui, "New item in Email replies", AccessibleRole::Button), "no third New item");
+        take(&log);
+        chord(ui.window(), &[Key::Control], "n");
+        settle();
+        assert!(take(&log).is_empty(), "the editor does not open");
+        type_text(ui.window(), "hi");
+        press(ui.window(), &key(Key::Return));
+        assert_eq!(take(&log), ["quick-add:hi:0:false"], "the box is open and focused");
+        press(ui.window(), &key(Key::Escape));
+        settle();
+        assert!(missing(&ui, "Create item", AccessibleRole::Button), "Esc closes it again");
     }
 
     fn ctrl_n_and_the_buttons_report_what_was_asked() {
