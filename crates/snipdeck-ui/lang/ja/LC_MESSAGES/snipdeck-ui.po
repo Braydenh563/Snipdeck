@@ -2370,6 +2370,9 @@ msgstr "Snipdeck はサインイン後にショートカットが使えるよう
 msgid "Snippets"
 msgstr "スニペット"
 
+msgid "Some files were left out: together they are over 64 MB."
+msgstr "一部のファイルを除外しました。合計が 64 MB を超えています。"
+
 msgid "Sorry"
 msgstr "ごめんなさい"
 

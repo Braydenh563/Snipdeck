@@ -60,6 +60,10 @@ impl WatchGate {
     }
 }
 
+/// The HTML and RTF flavours of a text copy are passed on together up to this many bytes; over it
+/// they are dropped (and wiped) and only the text goes on.
+pub const MAX_RICH_BYTES: usize = 1024 * 1024;
+
 /// The registered clipboard format that password managers add to say "do not monitor this".
 pub const EXCLUDE_MONITOR_FORMAT: &str = "ExcludeClipboardContentFromMonitorProcessing";
 /// The older marker (older `KeePass` and others): present means "viewers must ignore this".

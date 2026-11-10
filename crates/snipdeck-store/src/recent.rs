@@ -767,34 +767,48 @@ impl Store {
                 None,
             ),
         };
-        let tx = begin(&mut self.conn)?;
-        let replaced = blobs_of(
-            &tx,
-            "SELECT blob FROM recent_entries WHERE hash = ?1 AND blob IS NOT NULL",
-            params![&h[..]],
-        )?;
-        tx.execute(
-            "DELETE FROM recent_entries WHERE hash = ?1",
-            params![&h[..]],
-        )?;
-        tx.execute(
-            "INSERT INTO recent_entries
+        let written = (|| {
+            let tx = begin(&mut self.conn)?;
+            let replaced = blobs_of(
+                &tx,
+                "SELECT blob FROM recent_entries WHERE hash = ?1 AND blob IS NOT NULL",
+                params![&h[..]],
+            )?;
+            tx.execute(
+                "DELETE FROM recent_entries WHERE hash = ?1",
+                params![&h[..]],
+            )?;
+            tx.execute(
+                "INSERT INTO recent_entries
                  (hash, text, source_app, copied_at, encrypted, kind, rich, blob, blob_len)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-            params![
-                &h[..],
-                stored,
-                app,
-                at,
-                i64::from(key.is_some()),
-                kind.column(),
-                extras,
-                blob.map(|(b, _)| b.to_string()),
-                blob.map_or(0, |(_, len)| i64::try_from(len).unwrap_or(i64::MAX)),
-            ],
-        )?;
-        let id = tx.last_insert_rowid();
-        tx.commit()?;
+                params![
+                    &h[..],
+                    stored,
+                    app,
+                    at,
+                    i64::from(key.is_some()),
+                    kind.column(),
+                    extras,
+                    blob.map(|(b, _)| b.to_string()),
+                    blob.map_or(0, |(_, len)| i64::try_from(len).unwrap_or(i64::MAX)),
+                ],
+            )?;
+            let id = tx.last_insert_rowid();
+            tx.commit()?;
+            Ok::<_, Error>((id, replaced))
+        })();
+        let (id, replaced) = match written {
+            Ok(done) => done,
+            Err(e) => {
+                // The picture's blob was handed out as pending; nothing will attach it now.
+                if let Some((b, _)) = blob {
+                    self.blobs.attached([b]);
+                    self.release_blobs(&[b], false);
+                }
+                return Err(e);
+            }
+        };
         if let Some((b, _)) = blob {
             self.blobs.attached([b]);
         }

@@ -343,6 +343,8 @@ pub enum ToastMessage {
     RecentCleared,
     /// "File moved or deleted": a Recent entry's files are gone from where they were copied.
     FileMoved,
+    /// "Some files were left out: together they are over 64 MB": a files entry passes the total cap.
+    FilesTooLarge,
     /// "Panel docked to the left edge" (and the others), or `None`: "Panel floats again".
     DockSet(Option<DockEdge>),
     /// "Couldn't refresh the view": the change worked, but the list on screen could not be read

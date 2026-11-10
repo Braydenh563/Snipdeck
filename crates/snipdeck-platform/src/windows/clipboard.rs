@@ -637,8 +637,11 @@ fn write_paste_files(files: &[FilePayload]) -> Result<Vec<Vec<u16>>, Error> {
     win_formats::remove_paste_dirs(&root, previous.as_deref());
     let dir = win_formats::claim_paste_dir(&root, win_formats::os_random).map_err(io)?;
     let mut paths = Vec::with_capacity(files.len());
-    for file in files {
-        let path = dir.join(&file.name);
+    // Two files of the same name (from different folders) must both paste.
+    let names =
+        win_formats::distinct_names(&files.iter().map(|f| f.name.as_str()).collect::<Vec<_>>());
+    for (file, name) in files.iter().zip(&names) {
+        let path = dir.join(name);
         let mut out = fs::OpenOptions::new()
             .write(true)
             .create_new(true)
@@ -943,13 +946,24 @@ fn observe_change(hwnd: HWND) -> ClipboardChange {
     }
     // Only after the marker gate above, with the clipboard still open: the formatted flavours
     // ride along with text; with no text, copied files come first (Explorer), then a picture.
-    // Virtual files (no real path to keep) are skipped.
+    // Virtual files (no real path to keep) are skipped, a picture next to them is not.
     if change.text.is_some() {
-        change.html =
-            read_format(formats.html, RICH_FLAVOUR_LIMIT).and_then(|bytes| cf_html::parse(&bytes));
-        change.rtf = read_format(formats.rtf, RICH_FLAVOUR_LIMIT);
-    } else if !present(formats.file_group) {
-        if let win_formats::ClipFiles::Files(paths) = read_files_open() {
+        let mut html = read_format(formats.html, RICH_FLAVOUR_LIMIT);
+        let mut rtf = read_format(formats.rtf, RICH_FLAVOUR_LIMIT);
+        let size = html.as_ref().map_or(0, Vec::len) + rtf.as_ref().map_or(0, Vec::len);
+        if size <= clipboard_watch::MAX_RICH_BYTES {
+            change.html = html.as_deref().and_then(cf_html::parse);
+            change.rtf = rtf.take();
+        } else if let Some(rtf) = rtf.as_mut() {
+            wipe(rtf);
+        }
+        if let Some(html) = html.as_mut() {
+            wipe(html);
+        }
+    } else {
+        if !present(formats.file_group)
+            && let win_formats::ClipFiles::Files(paths) = read_files_open()
+        {
             change.files = paths;
         }
         if change.files.is_empty() {

@@ -96,6 +96,43 @@ pub fn capture_as<L: Library>(
     at: Placement<ItemId>,
     now: Timestamp,
 ) -> snipdeck_store::Result<Captured> {
+    capture_with(library, list, text, (None, None), kind, at, now)
+}
+
+/// Saves `text` at the top of `list` with its HTML and RTF flavours (a Recent entry's), as
+/// [`capture_text`] does for the text itself.
+///
+/// # Errors
+///
+/// Any store error; nothing is saved then.
+pub fn capture_rich_text<L: Library>(
+    library: &mut L,
+    list: &Destination,
+    text: &str,
+    html: Option<&str>,
+    rtf: Option<&[u8]>,
+    now: Timestamp,
+) -> snipdeck_store::Result<Captured> {
+    capture_with(
+        library,
+        list,
+        Some(text),
+        (html, rtf),
+        kind_of_text(text),
+        Placement::First,
+        now,
+    )
+}
+
+fn capture_with<L: Library>(
+    library: &mut L,
+    list: &Destination,
+    text: Option<&str>,
+    (html, rtf): (Option<&str>, Option<&[u8]>),
+    kind: ItemKind,
+    at: Placement<ItemId>,
+    now: Timestamp,
+) -> snipdeck_store::Result<Captured> {
     let Some(text) = text.filter(|t| !t.trim().is_empty()) else {
         return Ok(Captured::Empty);
     };
@@ -107,8 +144,14 @@ pub fn capture_as<L: Library>(
     let id = item.id;
     library.atomically(|batch| {
         let content = batch.put(text.as_bytes().to_vec())?;
-        let formats = Formats::new(vec![Format::Text(content)])?;
-        batch.insert_item(&item, &formats, at)
+        let mut all = vec![Format::Text(content)];
+        if let Some(html) = html {
+            all.push(Format::Html(batch.put(html.as_bytes().to_vec())?));
+        }
+        if let Some(rtf) = rtf {
+            all.push(Format::Rtf(batch.put(rtf.to_vec())?));
+        }
+        batch.insert_item(&item, &Formats::new(all)?, at)
     })?;
     Ok(Captured::Saved {
         item: id,
@@ -149,7 +192,7 @@ pub fn capture_image<L: Library>(
 pub fn capture_files<L: Library>(
     library: &mut L,
     list: &Destination,
-    files: &[(String, Vec<u8>)],
+    files: Vec<(String, Vec<u8>)>,
     now: Timestamp,
 ) -> snipdeck_store::Result<Captured> {
     if files.is_empty() {
@@ -158,15 +201,15 @@ pub fn capture_files<L: Library>(
     let mut top = None;
     library.atomically(|batch| {
         // Last first, so the first file ends up on top.
-        for (name, bytes) in files.iter().rev() {
-            let png = crate::item_editor::is_png(bytes);
+        for (name, bytes) in files.into_iter().rev() {
+            let png = crate::item_editor::is_png(&bytes);
             let kind = if png { ItemKind::Image } else { ItemKind::File };
             let item = Item::new(list.id, name.clone(), kind, now);
-            let content = batch.put(bytes.clone())?;
+            let content = batch.put(bytes)?;
             let format = if png {
                 Format::Png(content)
             } else {
-                Format::Files(vec![FileEntry::new(name, content)?])
+                Format::Files(vec![FileEntry::new(&name, content)?])
             };
             batch.insert_item(&item, &Formats::new(vec![format])?, Placement::First)?;
             top = Some(item.id);

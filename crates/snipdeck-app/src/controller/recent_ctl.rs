@@ -226,8 +226,8 @@ where
         let Some(entry) = self.recent_entries().into_iter().find(|e| e.id == id) else {
             return UseResult::Failed;
         };
-        let payload = match self.recent_clipboard_payload(&entry) {
-            Ok(payload) => payload,
+        let (payload, note) = match self.recent_clipboard_payload(&entry) {
+            Ok(made) => made,
             Err(toast) => {
                 self.show_toast(toast);
                 return UseResult::Failed;
@@ -247,7 +247,9 @@ where
             Ok(outcome) => {
                 self.note_activity();
                 (
-                    toast::after_use(outcome, &route, pasted_into.as_deref()),
+                    note.unwrap_or_else(|| {
+                        toast::after_use(outcome, &route, pasted_into.as_deref())
+                    }),
                     UseResult::Done(outcome),
                 )
             }
@@ -268,18 +270,18 @@ where
         let Some(entry) = self.recent_entries().into_iter().find(|e| e.id == id) else {
             return;
         };
-        let payload = match self.recent_clipboard_payload(&entry) {
-            Ok(payload) => payload,
+        let (payload, note) = match self.recent_clipboard_payload(&entry) {
+            Ok(made) => made,
             Err(toast) => {
                 self.show_toast(toast);
                 return;
             }
         };
         let toast = match self.services.clipboard.write_persistent(&payload) {
-            Ok(()) => Toast {
+            Ok(()) => note.unwrap_or(Toast {
                 kind: ToastKind::Success,
                 message: ToastMessage::Copied,
-            },
+            }),
             Err(_) => Toast {
                 kind: ToastKind::Danger,
                 message: ToastMessage::ClipboardBusy,
@@ -290,9 +292,14 @@ where
 
     /// What goes on the clipboard for `entry`: the text with its HTML and RTF, the picture, or
     /// the files re-read from where they were copied (they are not stored). The toast to show
-    /// when it cannot be made.
-    fn recent_clipboard_payload(&self, entry: &RecentEntry) -> Result<Payload, Toast> {
+    /// when it cannot be made. For files, the second part is a note to show instead of the
+    /// usual toast when some of them could not be read.
+    fn recent_clipboard_payload(
+        &self,
+        entry: &RecentEntry,
+    ) -> Result<(Payload, Option<Toast>), Toast> {
         let extras = self.store.recent_payload(entry.id).map_err(|_| failed())?;
+        let mut note = None;
         let data = match (entry.kind, extras) {
             (RecentKind::Text, extras) => {
                 let mut data = vec![Data::Text(entry.text.clone())];
@@ -304,15 +311,13 @@ where
             }
             (RecentKind::Image, Some(RecentPayload::Image(png))) => vec![Data::Png(png)],
             (RecentKind::Files, Some(RecentPayload::Files(paths))) => {
-                let files = recent::read_files(&paths);
-                if files.is_empty() {
-                    return Err(Toast {
-                        kind: ToastKind::Neutral,
-                        message: ToastMessage::FileMoved,
-                    });
+                let read = recent::read_files(&paths);
+                note = files_note(&read);
+                if read.files.is_empty() {
+                    return Err(note.unwrap_or_else(failed));
                 }
                 vec![Data::Files(
-                    files
+                    read.files
                         .into_iter()
                         .map(|(name, bytes)| FilePayload { name, bytes })
                         .collect(),
@@ -320,7 +325,7 @@ where
             }
             _ => return Err(failed()),
         };
-        Payload::new(data).ok_or_else(failed)
+        Ok((Payload::new(data).ok_or_else(failed)?, note))
     }
 
     /// Deletes one entry.
@@ -353,8 +358,12 @@ where
             return;
         };
         let now = self.clock.now();
+        let mut note = None;
         let saved = match entry.kind {
-            RecentKind::Text => recent::promote(&mut self.store, &entry, &to, now),
+            RecentKind::Text => {
+                let extras = self.store.recent_payload(entry.id).ok().flatten();
+                recent::promote(&mut self.store, &entry, extras.as_ref(), &to, now)
+            }
             RecentKind::Image => match self.store.recent_payload(entry.id) {
                 Ok(Some(RecentPayload::Image(png))) => {
                     capture::capture_image(&mut self.store, &to, png, now)
@@ -364,15 +373,13 @@ where
             },
             RecentKind::Files => match self.store.recent_payload(entry.id) {
                 Ok(Some(RecentPayload::Files(paths))) => {
-                    let files = recent::read_files(&paths);
-                    if files.is_empty() {
-                        self.show_toast(Toast {
-                            kind: ToastKind::Neutral,
-                            message: ToastMessage::FileMoved,
-                        });
+                    let read = recent::read_files(&paths);
+                    note = files_note(&read);
+                    if read.files.is_empty() {
+                        self.show_toast(note.unwrap_or_else(failed));
                         return;
                     }
-                    capture::capture_files(&mut self.store, &to, &files, now)
+                    capture::capture_files(&mut self.store, &to, read.files, now)
                 }
                 Ok(_) => Ok(Captured::Empty),
                 Err(e) => Err(e),
@@ -383,10 +390,10 @@ where
                 if self.refresh_panel().is_err() {
                     self.show_toast(failed());
                 }
-                Toast {
+                note.unwrap_or(Toast {
                     kind: ToastKind::Success,
                     message: ToastMessage::Saved { list },
-                }
+                })
             }
             Ok(Captured::Empty) => Toast {
                 kind: ToastKind::Neutral,
@@ -400,6 +407,22 @@ where
         };
         self.show_toast(toast);
     }
+}
+
+/// The toast for files that could not all be read, if any could not: some were gone (or not
+/// readable), or together they pass the size cap.
+fn files_note(read: &recent::FilesRead) -> Option<Toast> {
+    let message = if read.missing > 0 {
+        ToastMessage::FileMoved
+    } else if read.capped {
+        ToastMessage::FilesTooLarge
+    } else {
+        return None;
+    };
+    Some(Toast {
+        kind: ToastKind::Neutral,
+        message,
+    })
 }
 
 /// The Panel's search box narrows the Recent list too: every word of `query` must appear in

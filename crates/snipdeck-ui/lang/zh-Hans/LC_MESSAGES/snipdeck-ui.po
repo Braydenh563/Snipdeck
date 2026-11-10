@@ -2370,6 +2370,9 @@ msgstr "Snipdeck 会待在系统托盘中，以便登录后快捷键仍可使用
 msgid "Snippets"
 msgstr "片段"
 
+msgid "Some files were left out: together they are over 64 MB."
+msgstr "部分文件被忽略：它们加起来超过 64 MB。"
+
 msgid "Sorry"
 msgstr "抱歉"
 

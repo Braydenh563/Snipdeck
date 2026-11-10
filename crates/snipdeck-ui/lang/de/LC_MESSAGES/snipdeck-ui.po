@@ -2378,6 +2378,9 @@ msgstr "Snipdeck wartet im Infobereich, damit die Tastenkürzel nach der Anmeldu
 msgid "Snippets"
 msgstr "Textbausteine"
 
+msgid "Some files were left out: together they are over 64 MB."
+msgstr "Einige Dateien wurden ausgelassen: Zusammen sind sie größer als 64 MB."
+
 msgid "Sorry"
 msgstr "Entschuldigung"
 

@@ -530,3 +530,47 @@ fn a_moved_file_says_so() {
     assert_eq!(items.len(), before + 1);
     assert_eq!(items[0].kind, snipdeck_core::ItemKind::File);
 }
+
+#[test]
+fn some_missing_files_still_paste_the_rest_and_say_so() {
+    use snipdeck_platform::payload::Data;
+    let dir = tempfile::tempdir().expect("dir");
+    let kept = dir.path().join("kept.txt");
+    std::fs::write(&kept, b"still here").expect("write");
+    let gone = dir.path().join("gone.txt");
+    let mut w = recent_world();
+    w.ctl.on_clipboard_change(&ClipboardObservation {
+        files: vec![
+            gone.to_string_lossy().into_owned(),
+            kept.to_string_lossy().into_owned(),
+        ],
+        ..ClipboardObservation::default()
+    });
+    let id = w.ctl.recent_entries()[0].id;
+    assert!(matches!(
+        w.ctl.recent_use(id, UseMode::Copy),
+        UseResult::Done(_)
+    ));
+    let written = &w.ctl.services().clipboard.written;
+    assert_eq!(written.len(), 1);
+    let Data::Files(files) = &written[0].data()[0] else {
+        panic!("{:?}", written[0]);
+    };
+    assert_eq!(files.len(), 1);
+    assert_eq!(files[0].name, "kept.txt");
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::FileMoved
+    );
+    // Saving does the same: the file that exists is saved, and the toast still says one is gone.
+    let before = w.ctl.store().items(w.links_list).expect("items").len();
+    w.ctl.recent_promote(id, w.links_list);
+    assert_eq!(
+        w.ctl.store().items(w.links_list).expect("items").len(),
+        before + 1
+    );
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::FileMoved
+    );
+}

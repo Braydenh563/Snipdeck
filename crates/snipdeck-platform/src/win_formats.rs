@@ -155,6 +155,29 @@ pub fn is_plain_file_name(name: &str) -> bool {
         .is_ok()
 }
 
+/// `names` made distinct, ignoring case (Windows file names are): a repeat gets " (2)", " (3)"
+/// before its extension, so `a.txt` twice becomes `a.txt` and `a (2).txt`. Order is kept.
+pub fn distinct_names<S: AsRef<str>>(names: &[S]) -> Vec<String> {
+    let mut used = std::collections::HashSet::new();
+    names
+        .iter()
+        .map(|name| {
+            let name = name.as_ref();
+            if used.insert(name.to_lowercase()) {
+                return name.to_owned();
+            }
+            let (stem, ext) = match name.rfind('.') {
+                Some(dot) if dot > 0 => name.split_at(dot),
+                _ => (name, ""),
+            };
+            (2_u32..)
+                .map(|n| format!("{stem} ({n}){ext}"))
+                .find(|candidate| used.insert(candidate.to_lowercase()))
+                .unwrap_or_else(|| name.to_owned())
+        })
+        .collect()
+}
+
 /// Paste folders are `paste-<random>` inside `%TEMP%\Snipdeck`; the older `paste-<n>` names of
 /// earlier versions count as ours too, so they are cleaned up.
 pub const PASTE_DIR_PREFIX: &str = "paste-";
@@ -1108,6 +1131,33 @@ mod tests {
             clip_files(&drop_files(&at_limit).unwrap()),
             ClipFiles::Files(f) if f.len() == MAX_DROP_FILES
         ));
+    }
+
+    #[test]
+    fn duplicate_names_get_a_counter_before_the_extension() {
+        assert_eq!(
+            distinct_names(&[
+                "a.txt",
+                "A.TXT",
+                "b",
+                "b",
+                "a.txt",
+                "a (2).txt",
+                ".env",
+                ".env"
+            ]),
+            [
+                "a.txt",
+                "A (2).TXT",
+                "b",
+                "b (2)",
+                "a (3).txt",
+                "a (2) (2).txt",
+                ".env",
+                ".env (2)"
+            ]
+        );
+        assert_eq!(distinct_names::<&str>(&[]), Vec::<String>::new());
     }
 
     #[test]

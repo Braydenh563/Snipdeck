@@ -80,6 +80,9 @@ export global ToastTexts {
     pure public function file-moved() -> string {
         return @tr("File moved or deleted");
     }
+    pure public function files-too-large() -> string {
+        return @tr("Some files were left out: together they are over 64 MB.");
+    }
     pure public function too-many-files() -> string {
         return @tr("That is too many files to add at once.");
     }

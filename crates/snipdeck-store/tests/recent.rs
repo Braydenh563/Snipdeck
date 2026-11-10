@@ -748,4 +748,40 @@ mod at_rest {
         assert!(!holds(dir.path(), &html));
         assert!(!holds(dir.path(), &path));
     }
+
+    #[test]
+    fn a_failed_write_releases_the_pictures_blob() {
+        let dir = tempfile::tempdir().unwrap();
+        let png = picture(&marker("failing"));
+        let th = thumb();
+        let mut s = keyed(dir.path());
+        // Any insert now fails, after the picture was already put in the blob folder.
+        raw(dir.path())
+            .execute_batch(
+                "CREATE TRIGGER no_inserts BEFORE INSERT ON recent_entries
+                 BEGIN SELECT RAISE(ABORT, 'refused'); END;",
+            )
+            .unwrap();
+        assert!(s.add_recent(image(&png, &th, 9), None, at(1)).is_err());
+        assert!(files_under(&dir.path().join("blobs")).is_empty());
+        assert!(s.recent().unwrap().is_empty());
+    }
+
+    #[test]
+    fn the_entry_cap_releases_the_oldest_blobs() {
+        let dir = tempfile::tempdir().unwrap();
+        let th = thumb();
+        let mut s = keyed(dir.path());
+        for i in 0..201_u8 {
+            let mut png = picture(&marker("cap"));
+            png[0] = i;
+            png[1] = u8::from(i > 127);
+            s.add_recent(image(&png, &th, i), None, at(i64::from(i)))
+                .unwrap();
+        }
+        assert_eq!(files_under(&dir.path().join("blobs")).len(), 201);
+        assert_eq!(s.prune_recent(at(300), 200, WEEK).unwrap(), 1);
+        assert_eq!(files_under(&dir.path().join("blobs")).len(), 200);
+        assert_eq!(s.recent().unwrap().len(), 200);
+    }
 }

@@ -2378,6 +2378,9 @@ msgstr "Snipdeck reste dans la zone de notification pour que les raccourcis fonc
 msgid "Snippets"
 msgstr "Extraits"
 
+msgid "Some files were left out: together they are over 64 MB."
+msgstr "Certains fichiers ont été ignorés : ensemble, ils dépassent 64 Mo."
+
 msgid "Sorry"
 msgstr "Désolé"
 

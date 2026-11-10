@@ -2378,6 +2378,9 @@ msgstr "O Snipdeck aguarda na bandeja para que os atalhos funcionem após o logi
 msgid "Snippets"
 msgstr "Trechos"
 
+msgid "Some files were left out: together they are over 64 MB."
+msgstr "Alguns arquivos foram deixados de fora: juntos, passam de 64 MB."
+
 msgid "Sorry"
 msgstr "Desculpe"
 

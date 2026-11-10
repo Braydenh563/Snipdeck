@@ -9,7 +9,8 @@ use std::time::Duration;
 
 use snipdeck_core::Timestamp;
 use snipdeck_store::{
-    BLOB_BUDGET, RecentContent, RecentEntry, RecentImage, RecentKind, RecentRepo, RecentThumb,
+    BLOB_BUDGET, RecentContent, RecentEntry, RecentImage, RecentKind, RecentPayload, RecentRepo,
+    RecentThumb,
 };
 
 use crate::capture::{self, Captured, Destination};
@@ -19,7 +20,7 @@ use crate::controller::Library;
 pub const MAX_ENTRY_BYTES: usize = 64 * 1024;
 /// The HTML and RTF flavours of a text copy are kept together up to this many bytes; over it
 /// the entry keeps the plain text only.
-pub const MAX_RICH_BYTES: usize = 1024 * 1024;
+pub const MAX_RICH_BYTES: usize = snipdeck_platform::clipboard_watch::MAX_RICH_BYTES;
 /// The biggest picture kept, in pixels (the preview limit).
 pub const MAX_IMAGE_PIXELS: u64 = 16 * 1024 * 1024;
 /// The biggest picture kept, as PNG bytes.
@@ -290,18 +291,55 @@ impl RecentCapture {
     }
 }
 
-/// The files at `paths` as `(name, bytes)`, read now (Recent keeps only the paths). A file that
-/// is gone, a folder, empty, unreadable or over the attachment cap is left out.
+/// The most bytes of files Use or Save to reads at once (the attachment cap).
+pub const MAX_FILES_TOTAL_BYTES: u64 = 64 * 1024 * 1024;
+
+/// What re-reading a files entry found.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct FilesRead {
+    /// The files read, as `(name, bytes)`.
+    pub files: Vec<(String, Vec<u8>)>,
+    /// How many were gone, folders, empty, unreadable or over the attachment cap each.
+    pub missing: usize,
+    /// Reading stopped because the files together passed [`MAX_FILES_TOTAL_BYTES`].
+    pub capped: bool,
+}
+
+impl FilesRead {
+    /// Whether fewer files were read than the entry names.
+    #[must_use]
+    pub const fn incomplete(&self) -> bool {
+        self.missing > 0 || self.capped
+    }
+}
+
+/// The files at `paths`, read now (Recent keeps only the paths).
 #[must_use]
-pub fn read_files(paths: &[String]) -> Vec<(String, Vec<u8>)> {
-    paths
-        .iter()
-        .filter_map(|path| {
-            crate::item_editor::read_source(snipdeck_core::ItemKind::File, path)
-                .ok()
-                .map(|source| (source.name, source.bytes))
-        })
-        .collect()
+pub fn read_files(paths: &[String]) -> FilesRead {
+    read_files_within(paths, MAX_FILES_TOTAL_BYTES)
+}
+
+/// [`read_files`] with the total byte cap given. A file that would take the total past `cap` is
+/// not read, and neither is any after it.
+#[must_use]
+pub fn read_files_within(paths: &[String], cap: u64) -> FilesRead {
+    let mut read = FilesRead::default();
+    let mut total = 0_u64;
+    for path in paths {
+        let size = std::fs::metadata(path.trim().trim_matches('"')).map_or(0, |m| m.len());
+        if total.saturating_add(size) > cap {
+            read.capped = true;
+            break;
+        }
+        match crate::item_editor::read_source(snipdeck_core::ItemKind::File, path) {
+            Ok(source) => {
+                total += u64::try_from(source.bytes.len()).unwrap_or(u64::MAX);
+                read.files.push((source.name, source.bytes));
+            }
+            Err(_) => read.missing += 1,
+        }
+    }
+    read
 }
 
 /// The last path component of a Windows path (either separator).
@@ -449,10 +487,15 @@ pub fn row_view(entry: &RecentEntry, now: Timestamp) -> RecentRowView {
 pub fn promote<L: Library>(
     library: &mut L,
     entry: &RecentEntry,
+    extras: Option<&RecentPayload>,
     list: &Destination,
     now: Timestamp,
 ) -> snipdeck_store::Result<Captured> {
-    capture::capture_text(library, list, Some(&entry.text), now)
+    let (html, rtf) = match extras {
+        Some(RecentPayload::Text { html, rtf }) => (html.as_deref(), rtf.as_deref()),
+        _ => (None, None),
+    };
+    capture::capture_rich_text(library, list, &entry.text, html, rtf, now)
 }
 
 #[cfg(test)]
@@ -658,7 +701,7 @@ mod tests {
             id: list.id,
             name: "Notes".to_owned(),
         };
-        let done = promote(&mut store, &entry, &to, now()).expect("promote");
+        let done = promote(&mut store, &entry, None, &to, now()).expect("promote");
         assert!(matches!(done, Captured::Saved { .. }), "{done:?}");
         assert_eq!(store.items(list.id).expect("items").len(), 1);
         assert_eq!(store.recent().expect("recent").len(), 1);
@@ -666,7 +709,6 @@ mod tests {
 
     // ---- Rich captures --------------------------------------------------------------------
 
-    use snipdeck_store::RecentPayload;
     use snipdeck_store::crypto::{KdfParams, KeyRing, MemoryKeyProvider};
 
     /// A store with a key ring, so images and files can be sealed.
@@ -964,5 +1006,63 @@ mod tests {
             .collect();
         assert!(!kept.contains(&pictures[0]));
         assert!(kept.contains(&pictures[1]) && kept.contains(&pictures[2]));
+    }
+
+    #[test]
+    fn reading_files_stops_at_the_total_cap_and_counts_what_is_gone() {
+        let dir = tempfile::tempdir().expect("dir");
+        let path = |name: &str| dir.path().join(name).to_string_lossy().into_owned();
+        for name in ["one.txt", "two.txt", "three.txt"] {
+            std::fs::write(path(name), [b'x'; 10]).expect("write");
+        }
+        let all = vec![path("one.txt"), path("two.txt"), path("three.txt")];
+        let read = read_files_within(&all, 25);
+        let names: Vec<_> = read.files.iter().map(|(n, _)| n.as_str()).collect();
+        assert_eq!(names, ["one.txt", "two.txt"]);
+        assert!(read.capped && read.missing == 0 && read.incomplete());
+        // Exactly the cap fits.
+        assert!(!read_files_within(&all, 30).incomplete());
+        // A file that is gone is counted and the rest still come.
+        let with_gone = vec![path("one.txt"), path("gone.txt"), path("two.txt")];
+        let read = read_files_within(&with_gone, 1000);
+        assert_eq!(read.files.len(), 2);
+        assert_eq!((read.missing, read.capped), (1, false));
+        assert!(read.incomplete());
+    }
+
+    #[test]
+    fn promoting_text_keeps_its_html_and_rtf() {
+        let mut store = keyed();
+        let board = Board::new(Name::new("B").expect("name"), now());
+        store.insert_board(&board, Placement::Last).expect("board");
+        let list = List::new(board.id, Name::new("Notes").expect("name"), now());
+        store.insert_list(&list, Placement::Last).expect("list");
+        let rich = ClipboardObservation {
+            html: Some("<b>bold</b>".to_owned()),
+            rtf: Some(b"{\\rtf1 bold}".to_vec()),
+            ..obs("bold")
+        };
+        RecentCapture::consider(&mut store, &rich, &on(), now()).expect("consider");
+        let entry = store.recent().expect("recent").remove(0);
+        let extras = store.recent_payload(entry.id).expect("payload");
+        let to = Destination {
+            id: list.id,
+            name: "Notes".to_owned(),
+        };
+        promote(&mut store, &entry, extras.as_ref(), &to, now()).expect("promote");
+        let item = store.items(list.id).expect("items").remove(0);
+        use snipdeck_core::Format;
+        let kinds: Vec<&str> = store
+            .formats(item.id)
+            .expect("formats")
+            .iter()
+            .map(|f| match f {
+                Format::Text(_) => "text",
+                Format::Html(_) => "html",
+                Format::Rtf(_) => "rtf",
+                _ => "other",
+            })
+            .collect();
+        assert_eq!(kinds, ["text", "html", "rtf"]);
     }
 }
