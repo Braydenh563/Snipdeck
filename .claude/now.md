@@ -79,3 +79,4 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - v1 T12 Visual clash (img 8); combobox keeps its focus border after click-away (img 12).
 - v1 T13 Settings scroll feels laggy.
 - 2026-11-09: Push only after reading the gate's `failed: none` line (never chain push after the gate), and run `cargo +1.99.1 clippy --workspace --all-targets` (own target dir) before each push. Reason: 43f6e8e went red on a 1.99 lint, and 9215acc was pushed with a rustdoc failure.
+- 2026-11-10 v1.1 spec (docs/reviews/v11-spec.md) decisions taken as proposed, owner asleep: Hello = one extra Hello prompt after a password unlock (in-memory sealed key; nothing persisted); password every 7 days, no setting; suggest-as-you-type matches triggers only, one suggestion, Tab inserts; tips pictures are English golden crops; importers drop the "Name (abbr)" title once triggers exist; date units d w mo y h min. Reason: safest defaults, reversible later.
