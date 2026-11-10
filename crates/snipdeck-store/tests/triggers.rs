@@ -42,7 +42,10 @@ fn v9_keeps_items_and_adds_no_triggers() {
     let board = s.boards().unwrap().remove(0);
     let list = s.lists(board.id).unwrap().remove(0);
     assert_eq!(titles(&s, list.id), ["Greeting", "Wifi"]);
-    assert!(s.triggers().unwrap().is_empty());
+    assert_eq!(
+        s.triggers().unwrap(),
+        [] as [(snipdeck_core::Trigger, snipdeck_core::ItemId); 0]
+    );
     assert_eq!(s.trashed().unwrap().len(), 1, "the trashed item survives");
     // The new table works on the migrated file.
     let greeting = s.items(list.id).unwrap().remove(0).id;
@@ -62,7 +65,10 @@ fn a_trigger_can_be_set_replaced_and_removed() {
     s.set_trigger(a, Some(&trig(";addr"))).unwrap();
     assert_eq!(s.triggers().unwrap(), [(trig(";addr"), a)], "one per item");
     s.set_trigger(a, None).unwrap();
-    assert!(s.triggers().unwrap().is_empty());
+    assert_eq!(
+        s.triggers().unwrap(),
+        [] as [(snipdeck_core::Trigger, snipdeck_core::ItemId); 0]
+    );
 }
 
 #[test]
@@ -97,12 +103,18 @@ fn undoing_a_trash_keeps_the_trigger() {
     assert_eq!(s.trigger_of(a).unwrap(), Some(trig(";a")));
     // A list, and the board above it.
     s.trash(Trashable::List(l), at(11)).unwrap();
-    assert!(s.triggers().unwrap().is_empty());
+    assert_eq!(
+        s.triggers().unwrap(),
+        [] as [(snipdeck_core::Trigger, snipdeck_core::ItemId); 0]
+    );
     s.restore(Trashable::List(l)).unwrap();
     assert_eq!(s.triggers().unwrap().len(), 2);
     let board = s.boards().unwrap().last().unwrap().id;
     s.trash(Trashable::Board(board), at(12)).unwrap();
-    assert!(s.triggers().unwrap().is_empty());
+    assert_eq!(
+        s.triggers().unwrap(),
+        [] as [(snipdeck_core::Trigger, snipdeck_core::ItemId); 0]
+    );
     s.restore(Trashable::Board(board)).unwrap();
     assert_eq!(s.triggers().unwrap().len(), 2);
     // A group trashed with its items.
@@ -133,7 +145,10 @@ fn a_code_taken_while_the_item_was_in_the_trash_is_not_given_back() {
 fn a_prefix_of_another_code_is_reported() {
     let mut s = store();
     let (_, a, c) = two(&mut s);
-    assert!(s.set_trigger(a, Some(&trig(";addr2"))).unwrap().is_empty());
+    assert_eq!(
+        s.set_trigger(a, Some(&trig(";addr2"))).unwrap(),
+        [] as [snipdeck_core::Trigger; 0]
+    );
     assert_eq!(
         s.set_trigger(c, Some(&trig(";addr"))).unwrap(),
         [trig(";addr2")],
@@ -144,7 +159,10 @@ fn a_prefix_of_another_code_is_reported() {
         [trig(";addr")],
         "an old code is a prefix of the new one"
     );
-    assert!(s.set_trigger(a, Some(&trig(";zzz"))).unwrap().is_empty());
+    assert_eq!(
+        s.set_trigger(a, Some(&trig(";zzz"))).unwrap(),
+        [] as [snipdeck_core::Trigger; 0]
+    );
 }
 
 #[test]
@@ -154,7 +172,10 @@ fn purging_removes_the_row_and_a_sensitive_item_has_none() {
     s.set_trigger(a, Some(&trig(";a"))).unwrap();
     s.trash(Trashable::Item(a), at(10)).unwrap();
     s.purge(at(1000)).unwrap();
-    assert!(s.triggers().unwrap().is_empty());
+    assert_eq!(
+        s.triggers().unwrap(),
+        [] as [(snipdeck_core::Trigger, snipdeck_core::ItemId); 0]
+    );
     assert_healthy(&s);
 
     // Making an item sensitive drops its code; a sensitive item cannot be given one.
@@ -163,7 +184,10 @@ fn purging_removes_the_row_and_a_sensitive_item_has_none() {
     it.sensitive = true;
     it.preview = String::new();
     s.update_item(&it, None).unwrap();
-    assert!(s.triggers().unwrap().is_empty());
+    assert_eq!(
+        s.triggers().unwrap(),
+        [] as [(snipdeck_core::Trigger, snipdeck_core::ItemId); 0]
+    );
     let err = s.set_trigger(c, Some(&trig(";c"))).unwrap_err();
     assert!(matches!(err, Error::SensitiveTrigger), "{err:?}");
 }

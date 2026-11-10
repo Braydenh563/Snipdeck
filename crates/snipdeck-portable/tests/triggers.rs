@@ -116,7 +116,7 @@ fn an_older_archive_imports_without_triggers() {
     let report =
         import_archive(&mut fresh, Cursor::new(&old), "b", at(200), &keep_boards()).unwrap();
     assert!(!report.has_warnings(), "{:?}", report.warnings);
-    assert!(fresh.triggers().unwrap().is_empty());
+    assert_eq!(fresh.triggers().unwrap(), Vec::new());
     assert_eq!(counts(&fresh).2, 3);
 }
 

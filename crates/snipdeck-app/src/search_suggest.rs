@@ -336,8 +336,8 @@ mod tests {
         assert_eq!(texts("ser", 3, &index), ["Server", "Servers", "servo"]);
         assert_eq!(texts("SIG", 3, &index), ["signature"], "case is folded");
         assert_eq!(texts("wo", 2, &index), ["work"]);
-        assert!(texts("", 0, &index).is_empty());
-        assert!(texts("zzz", 3, &index).is_empty());
+        assert_eq!(texts("", 0, &index).len(), 0);
+        assert_eq!(texts("zzz", 3, &index).len(), 0);
         let kinds: Vec<Kind> = suggest("ser", 3, &index).iter().map(|s| s.kind).collect();
         assert_eq!(kinds, [Kind::Tag, Kind::List, Kind::Word]);
     }
@@ -346,7 +346,7 @@ mod tests {
     fn never_suggests_sensitive_titles() {
         let index = index();
         assert!(!texts("pass", 4, &index).iter().any(|t| t == "password"));
-        assert!(texts("pass", 4, &index).is_empty());
+        assert_eq!(texts("pass", 4, &index).len(), 0);
         assert!(texts("emai", 4, &index).contains(&"email".to_owned()));
     }
 
@@ -457,12 +457,12 @@ mod tests {
         assert_eq!(found[0].text, "日本語");
         assert_eq!(apply("日本 x", &found[0]), ("日本語 x".to_owned(), 9));
         // An emoji ends a word, and the caret after one has no word.
-        assert!(suggest("🙂", 4, &index).is_empty());
+        assert_eq!(suggest("🙂", 4, &index).len(), 0);
         let found = suggest("🙂caf", 7, &index);
         assert_eq!(apply("🙂caf", &found[0]), ("🙂café".to_owned(), 9));
         // Mid-word caret: the whole run is replaced.
         let found = suggest("naixx", 3, &index);
-        assert!(found.is_empty());
+        assert_eq!(found.len(), 0);
         let found = suggest("naïxx", 4, &index);
         assert_eq!(apply("naïxx", &found[0]), ("naïve".to_owned(), 6));
     }
