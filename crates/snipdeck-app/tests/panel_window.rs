@@ -527,9 +527,9 @@ fn escape_closes_the_dropdown_first_and_keeps_the_query() {
     on_ui_thread(|| {
         let r = rig();
         type_text(r.window(), "ret");
-        assert!(!suggestion_texts(&r).is_empty());
+        assert_ne!(suggestion_texts(&r), [] as [std::string::String; 0]);
         press(r.window(), &key(Key::Escape));
-        assert!(suggestion_texts(&r).is_empty());
+        assert_eq!(suggestion_texts(&r), [] as [std::string::String; 0]);
         assert_eq!(
             r.ui.get_query(),
             "ret",

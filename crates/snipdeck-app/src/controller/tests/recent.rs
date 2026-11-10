@@ -512,7 +512,7 @@ fn a_moved_file_says_so() {
         w.ctl.view().toast.expect("toast").message,
         ToastMessage::FileMoved
     );
-    assert!(w.ctl.services().clipboard.written.is_empty());
+    assert_eq!(w.ctl.services().clipboard.written.len(), 0);
     let before = w.ctl.store().items(w.links_list).expect("items").len();
     w.ctl.recent_promote(id, w.links_list);
     assert_eq!(
