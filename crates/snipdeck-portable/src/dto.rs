@@ -15,7 +15,7 @@ pub(crate) const FORMAT_NAME: &str = "snipdeck-archive";
 /// The newest major version this build reads and the one it writes.
 pub(crate) const MAJOR: u32 = 1;
 /// The minor version this build writes.
-pub(crate) const MINOR: u32 = 1;
+pub(crate) const MINOR: u32 = 2;
 /// The `encryption` value when payloads are `SNENC2` envelopes (`docs/crypto.md`).
 pub(crate) const ENCRYPTION: &str = "SNENC2";
 
@@ -96,8 +96,20 @@ pub(crate) struct ListDto {
     pub sort: String,
     pub created_at: String,
     pub updated_at: String,
+    /// The list's groups, only those with a written member; added in 1.2.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub groups: Vec<GroupDto>,
     #[serde(deserialize_with = "counted_items")]
     pub items: Vec<ItemDto>,
+}
+
+/// A group of contiguous items in a list; its members name it in `ItemDto::group`.
+#[derive(Debug, Serialize, Deserialize)]
+pub(crate) struct GroupDto {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub collapsed: bool,
 }
 
 thread_local! {
@@ -179,6 +191,9 @@ pub(crate) struct ItemDto {
     /// The colour label; added in 1.1.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
+    /// The id of the group this item belongs to, from the list's `groups`; added in 1.2.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
     #[serde(default)]
     pub use_count: u32,
     #[serde(default)]

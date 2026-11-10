@@ -791,6 +791,52 @@ fn espanso_alias_bombs_and_deep_nesting_are_refused_cheaply() {
 }
 
 #[test]
+fn espanso_merge_keys_and_anchors_still_resolve() {
+    let yaml = "shared: &b {replace: from merge}\nword: &w anchored text\nmatches:\n  - {trigger: ':x', <<: *b}\n  - {trigger: ':y', replace: *w}\n";
+    let (s, report) = espanso_in(&[("m.yml", yaml)], &ImportOptions::default());
+    let got = contents(&s);
+    let all: Vec<&str> = got
+        .iter()
+        .flat_map(|c| c.2.iter().map(|x| x.2.as_str()))
+        .collect();
+    assert!(
+        all.iter().any(|t| t.contains("from merge")),
+        "{got:?} {:?}",
+        report.warnings
+    );
+    assert!(all.iter().any(|t| t.contains("anchored text")), "{got:?}");
+}
+
+fn espanso_texts(yaml: &str) -> Vec<String> {
+    let (s, report) = espanso_in(&[("m.yml", yaml)], &ImportOptions::default());
+    let got = contents(&s);
+    assert!(got.len() == 1, "{got:?} {:?}", report.warnings);
+    got[0].2.iter().map(|c| c.2.clone()).collect()
+}
+
+#[test]
+fn espanso_scalars_stay_text() {
+    let yaml = "matches:\n  - {trigger: ':a', replace: yes}\n  - {trigger: ':b', replace: 007}\n  - {trigger: ':c', replace: 1_000}\n  - {trigger: ':d', replace: no}\n";
+    assert_eq!(espanso_texts(yaml), ["yes", "007", "1_000", "no"]);
+}
+
+#[test]
+fn espanso_one_anchor_merged_into_many_matches_imports() {
+    let mut yaml = String::from("defaults: &d {replace: shared}\nmatches:\n");
+    for i in 0..150 {
+        writeln!(yaml, "  - {{trigger: ':t{i}', <<: *d}}").unwrap();
+    }
+    assert_eq!(espanso_texts(&yaml).len(), 150);
+}
+
+/// The old parser kept repeated keys and `get` found the first; so the first wins.
+#[test]
+fn espanso_duplicate_keys_first_wins() {
+    let yaml = "matches:\n  - trigger: ':a'\n    replace: first\n    replace: second\n";
+    assert_eq!(espanso_texts(yaml), ["first"]);
+}
+
+#[test]
 fn espanso_limits_items_and_size_and_decodes_bad_bytes() {
     let mut yaml = String::from("matches:\n");
     for i in 0..50 {

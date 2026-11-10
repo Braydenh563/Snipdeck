@@ -17,20 +17,22 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 use snipdeck_core::{
-    BlobRef, Board, Content, FileEntry, Format, FormatKind, Formats, Item, ItemId, ItemKind,
+    BlobRef, Board, Content, FileEntry, Format, FormatKind, Formats, Group, Item, ItemId, ItemKind,
     ItemLabel, List, ListAccent, ListIcon, ListSort, ListView, Name, Placement, Tag, TagId,
     Timestamp,
 };
 use snipdeck_store::crypto::{DataKey, Slot};
 use snipdeck_store::{
-    Batch, BlobStore, BoardRepo, ItemRepo, ListRepo, TagRepo, TrashRepo, name_key,
+    Batch, BlobStore, BoardRepo, GroupRepo, ItemRepo, ListRepo, TagRepo, TrashRepo, name_key,
 };
 
 use crate::error::{Error, Result};
 use crate::report::ImportReport;
 
 /// Everything this crate needs from storage; [`snipdeck_store::Store`] implements it.
-pub trait Library: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + BlobStore {
+pub trait Library:
+    BoardRepo + ListRepo + ItemRepo + GroupRepo + TagRepo + TrashRepo + BlobStore
+{
     /// The library's data key while it is unlocked, for [`KeySource::Library`](crate::KeySource)
     /// and for callers that pass it to an export. `None` if the library has no key or is locked.
     fn data_key(&self) -> Option<&DataKey>;
@@ -92,6 +94,8 @@ pub(crate) struct PlanItem {
     pub sensitive: bool,
     pub always_plain: bool,
     pub label: Option<ItemLabel>,
+    /// Index into [`PlanList::groups`].
+    pub group: Option<usize>,
     pub use_count: u32,
     pub last_used_at: Option<Timestamp>,
     pub source_app: Option<String>,
@@ -122,6 +126,7 @@ impl PlanItem {
             sensitive: false,
             always_plain: false,
             label: None,
+            group: None,
             use_count: 0,
             last_used_at: None,
             source_app: None,
@@ -147,6 +152,8 @@ pub(crate) struct PlanList {
     pub sort: ListSort,
     pub created_at: Timestamp,
     pub updated_at: Timestamp,
+    /// Name and collapsed flag of each group; items point at them by index.
+    pub groups: Vec<(Name, bool)>,
     pub items: Vec<PlanItem>,
 }
 
@@ -160,6 +167,7 @@ impl PlanList {
             sort: ListSort::Manual,
             created_at: now,
             updated_at: now,
+            groups: Vec::new(),
             items: Vec::new(),
         }
     }
@@ -409,10 +417,22 @@ fn write(
             lib.insert_list(&list, Placement::Last)?;
             report.lists_added += 1;
 
+            let mut members: Vec<Vec<ItemId>> = vec![Vec::new(); plan_list.groups.len()];
             for plan_item in &mut plan_list.items {
                 let (item, formats) = build_item(lib, plan_item, list.id, &tag_ids, fetch)?;
                 lib.insert_item(&item, &formats, Placement::Last)?;
+                if let Some(slot) = plan_item.group.and_then(|g| members.get_mut(g)) {
+                    slot.push(item.id);
+                }
                 report.items_added += 1;
+            }
+            // Items skipped as duplicates leave their group short; one left empty is not made.
+            for ((name, collapsed), ids) in plan_list.groups.iter().zip(&members) {
+                if !ids.is_empty() {
+                    let mut group = Group::new(list.id, name.clone());
+                    group.collapsed = *collapsed;
+                    lib.create_group(&group, ids)?;
+                }
             }
         }
     }

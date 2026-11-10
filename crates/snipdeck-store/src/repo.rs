@@ -22,10 +22,12 @@
 //!   [`Error::EncryptionLocked`](crate::Error::EncryptionLocked).
 
 use snipdeck_core::{
-    Board, BoardId, Formats, Item, ItemId, List, ListId, Placement, Tag, TagId, Timestamp,
+    Board, BoardId, Formats, Group, GroupId, Item, ItemId, List, ListId, Placement, Tag, TagId,
+    Timestamp,
 };
 
 use crate::Result;
+use crate::groups::{GroupDelete, GroupEnd, GroupRun};
 
 /// Boards.
 pub trait BoardRepo {
@@ -64,6 +66,33 @@ pub trait ListRepo {
 
     /// Moves a list to `at` within `board`, which may be its current board.
     fn move_list(&mut self, id: ListId, board: BoardId, at: Placement<ListId>) -> Result<()>;
+}
+
+/// Groups: named, collapsible runs of contiguous items inside a list.
+///
+/// A group exists while it has a member; the members are read with [`GroupRepo::groups_of`],
+/// not from [`Item`]. See `groups.rs` for how moves and inserts decide membership.
+pub trait GroupRepo {
+    /// The list's groups that have a live member, with those members, top to bottom.
+    fn groups_of(&self, list: ListId) -> Result<Vec<GroupRun>>;
+
+    /// Adds `group` (its `list_id` names the list) with `members`, which must be live items
+    /// of that list; they gather directly below the topmost one, keeping list order.
+    /// Members of other groups leave them. Fails if `members` is empty.
+    fn create_group(&mut self, group: &Group, members: &[ItemId]) -> Result<()>;
+
+    /// Overwrites the group's name and collapsed flag.
+    fn update_group(&mut self, group: &Group) -> Result<()>;
+
+    /// Deletes the group: its items stay ungrouped or go to the trash, in one transaction.
+    fn delete_group(&mut self, id: GroupId, what: GroupDelete) -> Result<()>;
+
+    /// Moves the whole run to `at`. After a member of another group means after that group.
+    fn move_run(&mut self, id: GroupId, at: Placement<ItemId>) -> Result<()>;
+
+    /// Moves a live item of the group's list to the start or end of the group and makes it a
+    /// member (`First` is what undoing the move of a group's first item needs).
+    fn join_group(&mut self, item: ItemId, group: GroupId, end: GroupEnd) -> Result<()>;
 }
 
 /// Items and their content.

@@ -17,7 +17,7 @@ use crate::codec::{
 };
 use crate::crypto::{DataKey, Slot, decrypt_payload, encrypt_payload};
 use crate::rank::{self, ITEMS};
-use crate::{Error, Result, fts, keys};
+use crate::{Error, Result, fts, groups, keys};
 
 /// The tables a live item is read through: the item, its list and its board.
 const FROM_LIVE: &str =
@@ -481,11 +481,12 @@ pub(crate) fn insert_item(
     let encrypt = item.sensitive && key.is_some();
     let (id, list) = (id_bytes(item.id), id_bytes(item.list_id));
     let rank = rank::place(conn, ITEMS, Some(list), raw_placement(at), None)?;
+    let group = groups::inherited(conn, raw_placement(at))?;
     conn.execute(
         "INSERT INTO items (id, list_id, title, kind, preview, pinned, sensitive, always_plain,
                             use_count, last_used_at, source_app, rank, created_at, updated_at,
-                            encrypted, label)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+                            encrypted, label, group_id)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
         params![
             id,
             list,
@@ -502,7 +503,8 @@ pub(crate) fn insert_item(
             created,
             updated,
             flag(encrypt),
-            item.label.map(snipdeck_core::ItemLabel::key)
+            item.label.map(snipdeck_core::ItemLabel::key),
+            group
         ],
     )?;
     let seq = conn.last_insert_rowid();
@@ -549,9 +551,10 @@ pub(crate) fn update_item(cx: &mut Ctx<'_>, item: &Item, formats: Option<&Format
         require_list(conn, item.list_id)?;
         let rank = rank::place(conn, ITEMS, Some(list), Placement::Last, Some(id))?;
         conn.execute(
-            "UPDATE items SET list_id = ?2, rank = ?3 WHERE id = ?1",
+            "UPDATE items SET list_id = ?2, rank = ?3, group_id = NULL WHERE id = ?1",
             params![id, list, rank],
         )?;
+        groups::prune(conn)?;
     }
     // `use_count` and `last_used_at` belong to `record_use`: an editor holding an item
     // loaded before a use must not roll the count back (review L12).
@@ -640,10 +643,14 @@ pub(crate) fn move_item(
         raw_placement(at),
         Some(bytes),
     )?;
+    // After a member of the target list the item joins that member's group; anywhere else it
+    // leaves its own. (`rank::place` has already required the anchor to be in the target list.)
+    let group = groups::inherited(conn, raw_placement(at))?;
     conn.execute(
-        "UPDATE items SET list_id = ?2, rank = ?3 WHERE id = ?1",
-        params![bytes, list_bytes, rank],
+        "UPDATE items SET list_id = ?2, rank = ?3, group_id = ?4 WHERE id = ?1",
+        params![bytes, list_bytes, rank, group],
     )?;
+    groups::prune(conn)?;
     Ok(())
 }
 

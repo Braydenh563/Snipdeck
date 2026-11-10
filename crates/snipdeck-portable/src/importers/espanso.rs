@@ -33,8 +33,8 @@
 //! # Hostile input
 //!
 //! Files over the JSON size limit (`Limits::max_json_bytes`) are skipped. YAML is read through
-//! `serde_yaml_ng`, whose parser limits nesting depth; aliases are expanded as the parser
-//! reads, so the expansion is charged against a budget of four times the file size (plus a
+//! `serde-saphyr`, whose budget limits nesting depth (64), aliases and alias replays; aliases
+//! are expanded as the parser reads, so the expansion is charged against a budget of four times the file size (plus a
 //! floor of 1 MiB) and a billion-laughs file fails early instead of growing.
 //!
 //! Written from Espanso's public documentation (v2 match syntax); not tested against a real
@@ -420,8 +420,31 @@ impl<'de> Visitor<'de> for Seed<'_> {
 
 /// Parses one YAML document; the reason is safe to show (no content quoted).
 fn parse_yaml(text: &str, budget: &Cell<usize>) -> std::result::Result<Node, String> {
-    let de = serde_yaml_ng::Deserializer::from_str(text);
-    Seed { budget }.deserialize(de).map_err(|e| {
+    let mut options = serde_saphyr::Options::default();
+    // Defaults already cap depth (64), alias replays and anchors; the explicit values pin the
+    // limits this importer relies on.
+    if let Some(b) = options.budget.as_mut() {
+        b.max_depth = 64;
+        b.max_aliases = 50_000;
+    }
+    // One `&defaults` merged into many matches is normal; the total event, replay and
+    // expansion budgets bound the cost instead of the alias/anchor ratio.
+    if let Some(b) = options.budget.as_mut() {
+        b.enforce_alias_anchor_ratio = false;
+    }
+    // Text, not typed values: `yes`, `007` and `1_000` are replacement text. The old parser
+    // kept repeated keys and `get` found the first, so the first wins.
+    options.strict_booleans = true;
+    options.leading_zero_numbers_as_strings = true;
+    options.underscored_numbers_as_strings = true;
+    options.duplicate_keys = serde_saphyr::options::DuplicateKeyPolicy::FirstWins;
+    options.with_snippet = false;
+    options.alias_limits.max_total_replayed_events = 1_000_000;
+    options.alias_limits.max_replay_stack_depth = 64;
+    serde_saphyr::with_deserializer_from_str_with_options(text, options, |de| {
+        Seed { budget }.deserialize(de)
+    })
+    .map_err(|e| {
         if budget.get() == 0 {
             "it expands to far more than its size (alias bomb?)".to_owned()
         } else {

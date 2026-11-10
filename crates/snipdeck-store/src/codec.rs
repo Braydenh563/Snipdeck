@@ -2,7 +2,9 @@
 //! ids as 16-byte blobs, timestamps as `i64` nanoseconds, booleans as 0/1.
 
 use rusqlite::{Connection, OptionalExtension, params};
-use snipdeck_core::{BlobRef, BoardId, Content, Inline, ItemId, ListId, Name, TagId, Timestamp};
+use snipdeck_core::{
+    BlobRef, BoardId, Content, GroupId, Inline, ItemId, ListId, Name, TagId, Timestamp,
+};
 use uuid::Uuid;
 
 use crate::{Error, Result};
@@ -33,6 +35,7 @@ stored_id!(BoardId, "board");
 stored_id!(ListId, "list");
 stored_id!(ItemId, "item");
 stored_id!(TagId, "tag");
+stored_id!(GroupId, "group");
 
 /// Runs a query whose one column is a 32-byte blob hash and returns the hashes as refs, or
 /// [`Error::Corrupt`] for a value of another length.

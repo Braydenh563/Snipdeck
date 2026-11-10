@@ -10,8 +10,8 @@ use snipdeck_store::crypto::{DataKey, Slot, encrypt_payload};
 
 use crate::archive::{ASSET_DIR, ArchiveWriter, ITEMS, MANIFEST};
 use crate::dto::{
-    BoardDto, Counts, ENCRYPTION, FORMAT_NAME, FileDto, FormatDto, ItemDto, ItemsDoc, ListDto,
-    MAJOR, MINOR, Manifest, TagDto,
+    BoardDto, Counts, ENCRYPTION, FORMAT_NAME, FileDto, FormatDto, GroupDto, ItemDto, ItemsDoc,
+    ListDto, MAJOR, MINOR, Manifest, TagDto,
 };
 use crate::error::{Error, Result};
 use crate::limits::Limits;
@@ -162,6 +162,12 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
             let mut lists = Vec::new();
             for list in self.lib.lists(board.id)? {
                 let mut items = Vec::new();
+                let runs = self.lib.groups_of(list.id)?;
+                let group_of: std::collections::HashMap<_, _> = runs
+                    .iter()
+                    .flat_map(|run| run.items.iter().map(|id| (*id, run.group.id)))
+                    .collect();
+                let mut written_groups = std::collections::HashSet::new();
                 for item in self.lib.items(list.id)? {
                     if self.report.items >= self.options.limits.max_items {
                         return Err(Error::LimitExceeded {
@@ -194,6 +200,10 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
                         sensitive: item.sensitive,
                         always_plain: item.always_plain,
                         label: item.label.map(|l| l.key().to_owned()),
+                        group: group_of.get(&item.id).map(|g| {
+                            written_groups.insert(*g);
+                            g.to_string()
+                        }),
                         use_count: item.use_count,
                         last_used_at: item.last_used_at.map(|t| t.to_string()),
                         source_app: item.source_app.clone(),
@@ -210,6 +220,7 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
                     name: list.name.to_string(),
                     accent: list.accent.map(|a| a.key().to_owned()),
                     icon: list.icon.map(|i| i.key().to_owned()),
+                    groups: group_dtos(&runs, &written_groups),
                     view: list.view.key().to_owned(),
                     sort: list.sort.key().to_owned(),
                     created_at: list.created_at.to_string(),
@@ -353,4 +364,19 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
         out.flush()?;
         Ok(report)
     }
+}
+
+/// The groups of a list that have a member in the archive.
+fn group_dtos(
+    runs: &[snipdeck_store::GroupRun],
+    written: &std::collections::HashSet<snipdeck_core::GroupId>,
+) -> Vec<GroupDto> {
+    runs.iter()
+        .filter(|run| written.contains(&run.group.id))
+        .map(|run| GroupDto {
+            id: run.group.id.to_string(),
+            name: run.group.name.to_string(),
+            collapsed: run.group.collapsed,
+        })
+        .collect()
 }

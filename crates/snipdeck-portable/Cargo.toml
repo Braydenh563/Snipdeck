@@ -18,7 +18,7 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 zip.workspace = true
-serde_yaml_ng = "0.10"
+serde-saphyr = { version = "2.1", default-features = false, features = ["deserialize"] }
 
 [dev-dependencies]
 # `testing` exposes `MemoryKeyProvider`, for tests that use a real key ring.
