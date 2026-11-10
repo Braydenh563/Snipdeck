@@ -3,7 +3,7 @@
 //! the item menu's second level (the lists to move to, the colours to give). Part of the
 //! [`Controller`]; the window is the host's.
 
-use snipdeck_core::{ItemId, ItemLabel, Placement};
+use snipdeck_core::{ItemId, ItemLabel, Placement, template::transform::Transform};
 use snipdeck_platform::payload::{Data, Payload};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::{ItemRepo, TrashRepo, Trashable};
@@ -422,6 +422,15 @@ where
                 }));
                 Some(ChooseMenu { entries })
             }
+            PanelMenu::PasteAs(_) => Some(ChooseMenu {
+                entries: Transform::ALL
+                    .iter()
+                    .map(|t| ChooseEntry {
+                        label: ChooseLabel::Transform(*t),
+                        checked: false,
+                    })
+                    .collect(),
+            }),
             _ => None,
         }
     }

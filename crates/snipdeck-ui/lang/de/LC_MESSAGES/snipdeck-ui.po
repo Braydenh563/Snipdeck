@@ -1765,6 +1765,9 @@ msgstr "Einfügen"
 msgid "Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere."
 msgstr "Füge einen Lizenzschlüssel ein, um Unterstützer einzuschalten. Der Schlüssel wird auf diesem PC geprüft und nichts wird irgendwohin gesendet."
 
+msgid "Paste as…"
+msgstr "Einfügen als…"
+
 msgid "Paste key for {}"
 msgstr "Einfügetaste für {}"
 
@@ -1890,6 +1893,9 @@ msgstr "Angeheftete Textbausteine"
 
 msgid "Placeholders"
 msgstr "Platzhalter"
+
+msgid "Plain text"
+msgstr "Nur Text"
 
 msgid "Press Ctrl+N to add a snippet, or Ctrl+K to see every command."
 msgstr "Drücke Ctrl+N, um einen Textbaustein hinzuzufügen, oder Ctrl+K, um alle Befehle zu sehen."
@@ -2747,6 +2753,9 @@ msgstr "Kachelansicht"
 msgid "Title"
 msgstr "Titel"
 
+msgid "Title Case"
+msgstr "Erste Buchstaben Groß"
+
 msgid "Title, colour, tags, privacy"
 msgstr "Titel, Farbe, Tags, Datenschutz"
 
@@ -2774,6 +2783,9 @@ msgstr "Reisen & Orte"
 msgid "Tray icon click opens"
 msgstr "Klick auf das Tray-Symbol öffnet"
 
+msgid "Trimmed"
+msgstr "Ohne Leerraum am Rand"
+
 msgid "Troubleshoot"
 msgstr "Fehlerbehebung"
 
@@ -2797,6 +2809,9 @@ msgstr "Befehl eingeben"
 
 msgid "Type {} to confirm"
 msgstr "Gib {} zur Bestätigung ein"
+
+msgid "UPPERCASE"
+msgstr "GROSSBUCHSTABEN"
 
 msgid "Undid {}"
 msgstr "Rückgängig: {}"
@@ -3097,6 +3112,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "Markierung: {}"
 
+msgid "lowercase"
+msgstr "Kleinbuchstaben"
+
 msgid "move"
 msgstr "Verschieben"
 
@@ -3141,6 +3159,9 @@ msgstr "Umsortieren"
 
 msgid "s"
 msgstr "s"
+
+msgid "slug-like-this"
+msgstr "slug-wie-dieser"
 
 msgid "snip snipping capture screen picture image"
 msgstr "ausschnitt snipping aufnahme bildschirm bild screenshot"

@@ -6,7 +6,9 @@ use std::collections::BTreeMap;
 
 use snipdeck_core::{
     ItemId, Timestamp, UseMode,
-    template::{Locale, Prompt, PromptKind, RenderContext, Template, TimeZone},
+    template::{
+        Locale, Prompt, PromptKind, RenderContext, Template, TimeZone, transform::Transform,
+    },
 };
 
 /// How a field is answered.
@@ -43,6 +45,7 @@ pub struct FillModel {
     title: String,
     template: Template,
     fields: Vec<Field>,
+    transform: Option<Transform>,
 }
 
 impl FillModel {
@@ -57,7 +60,21 @@ impl FillModel {
             title,
             template,
             fields,
+            transform: None,
         }
+    }
+
+    /// Pastes the filled template through `transform` ("Paste as...").
+    #[must_use]
+    pub fn with_transform(mut self, transform: Option<Transform>) -> Self {
+        self.transform = transform;
+        self
+    }
+
+    /// The "Paste as..." transform to apply once the form is submitted.
+    #[must_use]
+    pub fn transform(&self) -> Option<Transform> {
+        self.transform
     }
 
     /// The template item.

@@ -104,6 +104,77 @@ pub(super) fn make_sensitive(w: &mut World, id: ItemId) {
 }
 
 #[test]
+fn the_item_menu_offers_paste_as_and_pastes_the_chosen_transform() {
+    use snipdeck_core::template::transform::Transform;
+    let mut w = world();
+    w.ctl.open_item_menu(0, false);
+    let entries = w.ctl.view().item_menu.expect("menu");
+    let at = entries
+        .iter()
+        .position(|e| *e == ItemMenuEntry::PasteAs)
+        .expect("a Paste as row");
+    assert_eq!(entries[at - 1], ItemMenuEntry::Copy, "right after Copy");
+    // The row opens the choices in the menu's place; nothing is pasted yet.
+    w.ctl.choose_item_menu(at);
+    let view = w.ctl.view();
+    assert!(view.item_menu.is_none());
+    let choices = view.choose_menu.expect("choices");
+    let labels: Vec<_> = choices.entries.iter().map(|e| e.label.clone()).collect();
+    let want: Vec<_> = Transform::ALL
+        .iter()
+        .map(|t| ChooseLabel::Transform(*t))
+        .collect();
+    assert_eq!(labels, want);
+    assert!(w.ctl.services.clipboard.written.is_empty());
+    // Row 1 is UPPERCASE.
+    w.ctl.choose_item_menu(1);
+    assert_eq!(
+        w.ctl.services.clipboard.written[0].data(),
+        [Data::Text("FIRST".into())]
+    );
+    assert!(w.ctl.view().choose_menu.is_none());
+}
+
+#[test]
+fn a_template_with_questions_asks_first_then_pastes_as_the_transform() {
+    use snipdeck_core::template::transform::Transform;
+    let mut w = world();
+    let list = w.ctl.model.list().expect("list").id;
+    let id = add(
+        &mut w.ctl.store,
+        list,
+        ItemKind::Template,
+        "Greeting",
+        "hello {field:Name}",
+    );
+    assert_eq!(
+        w.ctl.use_item_as(id, Transform::Title),
+        UseResult::NeedsAnswers
+    );
+    assert!(w.ctl.services.clipboard.written.is_empty());
+    assert_eq!(
+        w.ctl.submit_fill(&["ada lovelace".to_owned()]),
+        UseResult::Done(UseOutcome::Pasted)
+    );
+    assert_eq!(
+        w.ctl.services.clipboard.written[0].data(),
+        [Data::Text("Hello Ada Lovelace".into())]
+    );
+}
+
+#[test]
+fn paste_as_on_a_sensitive_item_stays_private() {
+    use snipdeck_core::template::transform::Transform;
+    let mut w = world();
+    let id = w.ids[0];
+    make_sensitive(&mut w, id);
+    w.ctl.use_item_as(id, Transform::Upper);
+    let written = &w.ctl.services.clipboard.written[0];
+    assert!(written.is_private());
+    assert_eq!(written.data(), [Data::Text("FIRST".into())]);
+}
+
+#[test]
 fn a_copied_sensitive_item_leaves_the_clipboard_after_thirty_seconds() {
     let mut w = world();
     let id = w.ids[0];

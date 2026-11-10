@@ -1765,6 +1765,9 @@ msgstr "Coller"
 msgid "Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere."
 msgstr "Collez une clé de licence pour activer Supporter. La clé est vérifiée sur ce PC et rien n’est envoyé nulle part."
 
+msgid "Paste as…"
+msgstr "Coller en tant que…"
+
 msgid "Paste key for {}"
 msgstr "Touche de collage pour {}"
 
@@ -1890,6 +1893,9 @@ msgstr "Extraits épinglés"
 
 msgid "Placeholders"
 msgstr "Espaces réservés"
+
+msgid "Plain text"
+msgstr "Texte brut"
 
 msgid "Press Ctrl+N to add a snippet, or Ctrl+K to see every command."
 msgstr "Appuyez sur Ctrl+N pour ajouter un extrait, ou sur Ctrl+K pour voir toutes les commandes."
@@ -2747,6 +2753,9 @@ msgstr "Affichage en mosaïque"
 msgid "Title"
 msgstr "Titre"
 
+msgid "Title Case"
+msgstr "Initiales en Majuscules"
+
 msgid "Title, colour, tags, privacy"
 msgstr "Titre, couleur, étiquettes, confidentialité"
 
@@ -2774,6 +2783,9 @@ msgstr "Voyages et lieux"
 msgid "Tray icon click opens"
 msgstr "Un clic sur l'icône de la zone de notification ouvre"
 
+msgid "Trimmed"
+msgstr "Sans espaces aux extrémités"
+
 msgid "Troubleshoot"
 msgstr "Dépannage"
 
@@ -2797,6 +2809,9 @@ msgstr "Saisissez une commande"
 
 msgid "Type {} to confirm"
 msgstr "Saisissez {} pour confirmer"
+
+msgid "UPPERCASE"
+msgstr "MAJUSCULES"
 
 msgid "Undid {}"
 msgstr "Annulé : {}"
@@ -3097,6 +3112,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "libellé : {}"
 
+msgid "lowercase"
+msgstr "minuscules"
+
 msgid "move"
 msgstr "déplacement"
 
@@ -3141,6 +3159,9 @@ msgstr "réorganisation"
 
 msgid "s"
 msgstr "s"
+
+msgid "slug-like-this"
+msgstr "slug-comme-ceci"
 
 msgid "snip snipping capture screen picture image"
 msgstr "capture découpe écran image copie d'écran"

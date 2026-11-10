@@ -235,6 +235,7 @@ pub fn detect_kind(text: &str) -> ItemKind {
         "{time",
         "{clipboard}",
         "{cursor}",
+        "{uuid}",
         "{field:",
         "{choice:",
     ]

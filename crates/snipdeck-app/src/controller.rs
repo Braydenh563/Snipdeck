@@ -307,6 +307,8 @@ enum PanelMenu {
     Move,
     /// The item menu's "Colour": the labels to choose from.
     Colour,
+    /// The item menu's "Paste as...": the transforms to choose from, for this item.
+    PasteAs(ItemId),
     /// The context menu of a list tab.
     List(ListId),
     /// The list menu's delete confirmation, asking about this list.

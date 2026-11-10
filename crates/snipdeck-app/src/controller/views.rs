@@ -141,6 +141,7 @@ pub struct FillSubmission {
     pub(super) item: ItemId,
     pub(super) mode: UseMode,
     pub(super) answers: BTreeMap<String, String>,
+    pub(super) transform: Option<snipdeck_core::template::transform::Transform>,
 }
 
 /// How a use ended.
@@ -280,6 +281,8 @@ pub enum ChooseLabel {
     List(String),
     /// A colour label, or `None` for "No label".
     Colour(Option<snipdeck_core::ItemLabel>),
+    /// A "Paste as..." choice.
+    Transform(snipdeck_core::template::transform::Transform),
 }
 
 /// One row of the Move or Colour choice.

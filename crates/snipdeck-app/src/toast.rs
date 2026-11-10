@@ -416,6 +416,7 @@ pub fn after_error(error: &UseError) -> Toast {
     use snipdeck_store::Error as Store;
     let message = match error {
         UseError::Platform(_) => ToastMessage::ClipboardBusy,
+        UseError::NoRandomness => ToastMessage::Failed,
         UseError::Render(snipdeck_core::template::RenderError::ProRequired(feature)) => {
             ToastMessage::NeedsPro(*feature)
         }

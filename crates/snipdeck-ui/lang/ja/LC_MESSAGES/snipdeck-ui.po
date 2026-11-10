@@ -1759,6 +1759,9 @@ msgstr "貼り付け"
 msgid "Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere."
 msgstr "ライセンスキーを貼り付けるとサポーターが有効になります。キーはこのPCで確認され、何も送信されません。"
 
+msgid "Paste as…"
+msgstr "形式を指定して貼り付け…"
+
 msgid "Paste key for {}"
 msgstr "{} の貼り付けキー"
 
@@ -1884,6 +1887,9 @@ msgstr "ピン留めしたスニペット"
 
 msgid "Placeholders"
 msgstr "プレースホルダー"
+
+msgid "Plain text"
+msgstr "プレーンテキスト"
 
 msgid "Press Ctrl+N to add a snippet, or Ctrl+K to see every command."
 msgstr "Ctrl+N でスニペットを追加、Ctrl+K ですべてのコマンドを表示します。"
@@ -2739,6 +2745,9 @@ msgstr "タイル表示"
 msgid "Title"
 msgstr "タイトル"
 
+msgid "Title Case"
+msgstr "各単語の先頭を大文字"
+
 msgid "Title, colour, tags, privacy"
 msgstr "タイトル、色、タグ、プライバシー"
 
@@ -2766,6 +2775,9 @@ msgstr "旅行と場所"
 msgid "Tray icon click opens"
 msgstr "トレイアイコンのクリックで開く"
 
+msgid "Trimmed"
+msgstr "前後の空白を削除"
+
 msgid "Troubleshoot"
 msgstr "トラブルシューティング"
 
@@ -2789,6 +2801,9 @@ msgstr "コマンドを入力"
 
 msgid "Type {} to confirm"
 msgstr "確認のため {} と入力"
+
+msgid "UPPERCASE"
+msgstr "大文字"
 
 msgid "Undid {}"
 msgstr "元に戻しました: {}"
@@ -3088,6 +3103,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "ラベル: {}"
 
+msgid "lowercase"
+msgstr "小文字"
+
 msgid "move"
 msgstr "移動"
 
@@ -3132,6 +3150,9 @@ msgstr "並べ替え"
 
 msgid "s"
 msgstr "秒"
+
+msgid "slug-like-this"
+msgstr "スラッグ（slug-like-this）"
 
 msgid "snip snipping capture screen picture image"
 msgstr "切り取り スクリーンショット 画面 画像 キャプチャ"

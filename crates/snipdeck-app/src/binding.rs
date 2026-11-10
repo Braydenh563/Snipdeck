@@ -1407,6 +1407,9 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
                         wording::item_label_name(*label).into()
                     }
                     crate::controller::ChooseLabel::Colour(None) => "No label".into(),
+                    crate::controller::ChooseLabel::Transform(t) => {
+                        wording::transform_name(window, *t).into()
+                    }
                 },
                 checked: e.checked,
                 ..Default::default()

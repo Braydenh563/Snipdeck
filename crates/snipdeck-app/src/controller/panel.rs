@@ -2,7 +2,7 @@
 //! edit / rename / delete do to a row, and how a resize or a move is clamped and remembered per
 //! monitor (DESIGN.md §5 Panel). Part of the [`Controller`]; the window is the host's.
 
-use snipdeck_core::{ItemId, UseMode};
+use snipdeck_core::{ItemId, UseMode, template::transform::Transform};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::ItemRepo;
 
@@ -82,6 +82,8 @@ pub enum ItemMenuEntry {
     Use,
     /// Copy the item.
     Copy,
+    /// Open the "Paste as..." choices (plain text, UPPERCASE, ...) for the item.
+    PasteAs,
     /// Edit the item in the item editor.
     Edit,
     /// Pin the item, or unpin it when `pinned`.
@@ -279,9 +281,15 @@ where
     pub(super) fn item_menu_entries(&self, id: ItemId) -> Vec<ItemMenuEntry> {
         let row = self.menu_row(id);
         let pinned = row.as_ref().is_some_and(|r| r.pinned);
-        vec![
-            ItemMenuEntry::Use,
-            ItemMenuEntry::Copy,
+        let mut entries = vec![ItemMenuEntry::Use, ItemMenuEntry::Copy];
+        // Only text can be transformed.
+        if row
+            .as_ref()
+            .is_some_and(|r| crate::item_editor::is_text_kind(r.kind))
+        {
+            entries.push(ItemMenuEntry::PasteAs);
+        }
+        entries.extend([
             ItemMenuEntry::Separator,
             ItemMenuEntry::Edit,
             ItemMenuEntry::Duplicate,
@@ -305,7 +313,8 @@ where
             },
             ItemMenuEntry::Separator,
             ItemMenuEntry::Trash,
-        ]
+        ]);
+        entries
     }
 
     /// Right-click, the Menu key or Shift+F10 on card `index` (or on pinned chip `index` when
@@ -330,7 +339,11 @@ where
     pub fn close_item_menu(&mut self) {
         if matches!(
             self.menu,
-            PanelMenu::Item(_) | PanelMenu::Move | PanelMenu::Colour | PanelMenu::Symbol
+            PanelMenu::Item(_)
+                | PanelMenu::Move
+                | PanelMenu::Colour
+                | PanelMenu::PasteAs(_)
+                | PanelMenu::Symbol
         ) {
             self.menu = PanelMenu::None;
             self.symbol_menu = None;
@@ -339,6 +352,15 @@ where
 
     /// The user chose row `index` of the item menu. The menu closes (a line stays open).
     pub fn choose_item_menu(&mut self, index: usize) -> Vec<Effect> {
+        if let PanelMenu::PasteAs(id) = self.menu {
+            self.menu = PanelMenu::None;
+            self.menu_targets.clear();
+            let Some(transform) = Transform::ALL.get(index).copied() else {
+                return Vec::new();
+            };
+            let used = self.use_item_as(id, transform);
+            return self.after_use(&used);
+        }
         if matches!(self.menu, PanelMenu::Move | PanelMenu::Colour) {
             self.choose_second_level(index);
             return Vec::new();
@@ -360,12 +382,15 @@ where
         {
             return Vec::new();
         }
-        // Move to and Colour open the second level in the menu's place.
-        if matches!(entry, ItemMenuEntry::MoveTo | ItemMenuEntry::Colour) {
-            self.menu = if entry == ItemMenuEntry::MoveTo {
-                PanelMenu::Move
-            } else {
-                PanelMenu::Colour
+        // Move to, Colour and Paste as open the second level in the menu's place.
+        if matches!(
+            entry,
+            ItemMenuEntry::MoveTo | ItemMenuEntry::Colour | ItemMenuEntry::PasteAs
+        ) {
+            self.menu = match entry {
+                ItemMenuEntry::MoveTo => PanelMenu::Move,
+                ItemMenuEntry::PasteAs => PanelMenu::PasteAs(id),
+                _ => PanelMenu::Colour,
             };
             return Vec::new();
         }
@@ -414,7 +439,10 @@ where
                 self.model.clear_marks();
                 Vec::new()
             }
-            ItemMenuEntry::MoveTo | ItemMenuEntry::Colour | ItemMenuEntry::Separator => Vec::new(),
+            ItemMenuEntry::MoveTo
+            | ItemMenuEntry::Colour
+            | ItemMenuEntry::PasteAs
+            | ItemMenuEntry::Separator => Vec::new(),
         }
     }
 

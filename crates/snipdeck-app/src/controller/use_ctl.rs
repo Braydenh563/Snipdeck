@@ -4,7 +4,7 @@ use std::{collections::BTreeMap, time::Duration};
 
 use snipdeck_core::{
     Feature, ItemId, UseMode, UseOutcome,
-    template::{Locale, Template},
+    template::{Locale, Template, transform::Transform},
 };
 use snipdeck_platform::{
     pipeline::{Clipboard, Env, Keyboard, Timing},
@@ -37,7 +37,13 @@ where
     /// Uses `item`: pastes or copies it as `mode` and the Target allow, counts the use and
     /// raises a toast.
     pub fn use_item(&mut self, item: ItemId, mode: UseMode) -> UseResult {
-        self.run_use(item, mode, BTreeMap::new())
+        self.run_use(item, mode, BTreeMap::new(), None)
+    }
+
+    /// "Paste as...": pastes `item` as `transform` says, as plain text with the caret at the end.
+    /// A template with questions opens its fill form first, as for a plain use.
+    pub fn use_item_as(&mut self, item: ItemId, transform: Transform) -> UseResult {
+        self.run_use(item, UseMode::Paste, BTreeMap::new(), Some(transform))
     }
 
     // ---- The Picker --------------------------------------------------------------------------
@@ -134,12 +140,17 @@ where
     // ---- The template fill form --------------------------------------------------------------
 
     /// Opens the fill form for template `item`, to be used with `mode` once it is submitted.
-    pub(super) fn open_fill(&mut self, item: ItemId, mode: UseMode) -> Result<(), UseError> {
+    pub(super) fn open_fill(
+        &mut self,
+        item: ItemId,
+        mode: UseMode,
+        transform: Option<Transform>,
+    ) -> Result<(), UseError> {
         let (title, source) =
             usecase::template_source(&self.store, item)?.ok_or(UseError::NotText)?;
         let template = Template::parse(&source)?;
         self.fill_seq += 1;
-        self.fill = Some(FillModel::new(item, mode, title, template));
+        self.fill = Some(FillModel::new(item, mode, title, template).with_transform(transform));
         Ok(())
     }
 
@@ -178,6 +189,7 @@ where
             item: fill.item(),
             mode: fill.mode(),
             answers: fill.answers(),
+            transform: fill.transform(),
         };
         self.fill = None;
         Some(submission)
@@ -185,7 +197,12 @@ where
 
     /// Re-runs the use that stopped for answers, now with them.
     pub fn run_fill(&mut self, submission: FillSubmission) -> UseResult {
-        self.run_use(submission.item, submission.mode, submission.answers)
+        self.run_use(
+            submission.item,
+            submission.mode,
+            submission.answers,
+            submission.transform,
+        )
     }
 
     /// [`take_fill`](Self::take_fill) and [`run_fill`](Self::run_fill) in one.
@@ -420,6 +437,7 @@ where
         item: ItemId,
         mode: UseMode,
         answers: BTreeMap<String, String>,
+        transform: Option<Transform>,
     ) -> UseResult {
         let route = self.model.route();
         let pasted_into = self.model.target().map(|t| t.app.clone());
@@ -433,6 +451,8 @@ where
             now: self.clock.now(),
             entitlements: self.entitlements,
             answers,
+            transform,
+            uuids: None,
             // Only a template that says `{clipboard}` reads what the user copied (A22).
             clipboard_text: if usecase::template_source(&self.store, item)
                 .ok()
@@ -469,7 +489,7 @@ where
                 self.refresh_logged("a paste");
                 UseResult::Done(used.outcome)
             }
-            Err(UseError::NeedsAnswers(_)) => match self.open_fill(item, mode) {
+            Err(UseError::NeedsAnswers(_)) => match self.open_fill(item, mode, transform) {
                 Ok(()) => UseResult::NeedsAnswers,
                 Err(error) => {
                     self.show_toast(toast::after_error(&error));
