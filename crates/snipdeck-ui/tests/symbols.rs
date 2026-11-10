@@ -74,7 +74,7 @@ fn section(
     y: &mut f32,
     flat: &mut usize,
     title: &str,
-    range: std::ops::Range<usize>,
+    range: impl IntoIterator<Item = usize>,
     cols: usize,
     n: usize,
     chips: bool,
@@ -82,7 +82,7 @@ fn section(
     rows.push(header(title, *y, ""));
     *y += 24.0;
     let h = if chips { 36.0 } else { 40.0 };
-    let indices: Vec<usize> = range.collect();
+    let indices: Vec<usize> = range.into_iter().collect();
     for chunk in indices.chunks(cols).take(n) {
         let cells: Vec<SymbolCell> = chunk
             .iter()
@@ -274,8 +274,10 @@ fn kaomoji_320_light() {
             &mut rows,
             &mut y,
             &mut flat,
-            "JOY",
-            k.start..k.start + 6,
+            "FACES",
+            // Only kaomoji drawn wholly from the bundled IBM Plex glyphs: the others fall back to
+            // system fonts, which differ between this machine and CI.
+            [0, 10, 22, 63, 64, 65].map(|i| k.start + i),
             2,
             3,
             true,
