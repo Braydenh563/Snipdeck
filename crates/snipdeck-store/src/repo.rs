@@ -23,7 +23,7 @@
 
 use snipdeck_core::{
     Board, BoardId, Formats, Group, GroupId, Item, ItemId, List, ListId, Placement, Tag, TagId,
-    Timestamp,
+    Timestamp, Trigger,
 };
 
 use crate::Result;
@@ -93,6 +93,28 @@ pub trait GroupRepo {
     /// Moves a live item of the group's list to the start or end of the group and makes it a
     /// member (`First` is what undoing the move of a group's first item needs).
     fn join_group(&mut self, item: ItemId, group: GroupId, end: GroupEnd) -> Result<()>;
+}
+
+/// Typed triggers: short codes such as `;sig` that stand for items.
+///
+/// A code belongs to one item and is case-sensitive. Putting an item (or its list or board)
+/// in the trash frees its code for good; restoring does not bring it back. A Sensitive item
+/// has none.
+pub trait TriggerRepo {
+    /// Every code in use and its item, sorted by code.
+    fn triggers(&self) -> Result<Vec<(Trigger, ItemId)>>;
+
+    /// The item's code, if it has one. Fails if the item is not live.
+    fn trigger_of(&self, item: ItemId) -> Result<Option<Trigger>>;
+
+    /// The item that uses this code, if any.
+    fn trigger_holder(&self, trigger: &Trigger) -> Result<Option<ItemId>>;
+
+    /// Gives the live item this code (`None` removes it), replacing any it had. Fails with
+    /// [`Error::TriggerTaken`](crate::Error::TriggerTaken) if another item uses the code and
+    /// [`Error::SensitiveTrigger`](crate::Error::SensitiveTrigger) for a Sensitive item; the
+    /// item then keeps what it had.
+    fn set_trigger(&mut self, item: ItemId, trigger: Option<&Trigger>) -> Result<()>;
 }
 
 /// Items and their content.

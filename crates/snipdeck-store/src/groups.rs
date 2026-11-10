@@ -251,6 +251,11 @@ pub(crate) fn delete_group(cx: &mut Ctx<'_>, id: GroupId, what: GroupDelete) -> 
         }
         GroupDelete::TrashItems(at) => {
             conn.execute(
+                "DELETE FROM triggers WHERE item_id IN
+                   (SELECT id FROM items WHERE group_id = ?1 AND deleted_at IS NULL)",
+                [id_bytes(id)],
+            )?;
+            conn.execute(
                 "UPDATE items SET deleted_at = ?2 WHERE group_id = ?1 AND deleted_at IS NULL",
                 params![id_bytes(id), nanos(at)?],
             )?;

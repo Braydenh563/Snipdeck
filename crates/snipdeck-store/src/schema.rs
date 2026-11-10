@@ -206,6 +206,15 @@ ALTER TABLE items ADD COLUMN group_id BLOB
 CREATE INDEX items_group ON items (group_id) WHERE group_id IS NOT NULL;
 ";
 
+/// Version 9: typed triggers. One per item, none shared; case counts (`BINARY` collation).
+/// A trashed item holds none, so the code is free to use again.
+pub(crate) const V9: &str = r"
+CREATE TABLE triggers (
+    trigger TEXT NOT NULL PRIMARY KEY CHECK (length(trigger) BETWEEN 1 AND 32),
+    item_id BLOB NOT NULL UNIQUE REFERENCES items (id) ON DELETE CASCADE
+) STRICT, WITHOUT ROWID;
+";
+
 #[cfg(test)]
 mod tests {
     use rusqlite::{Connection, params};
