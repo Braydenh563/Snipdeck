@@ -102,12 +102,14 @@ duplicates; **an importer assigns new ids** to everything it creates.
 | board, list, item | `created_at`, `updated_at` | RFC 3339 string | Between the years 1677 and 2262 (storage limit). Fractional seconds allowed, offsets other than `Z` allowed. |
 | list | `accent` | string or absent | `blue teal green amber orange red rose violet slate`. |
 | list | `icon` | string or absent | Added in 1.1. One of the 24 icon keys: `folder star heart briefcase house user envelope-simple chat-circle phone calendar-blank shopping-cart credit-card code terminal-window book-open lightbulb flag bookmark-simple globe map-pin camera music-note wrench rocket-launch`. |
+| list | `groups` | array or absent | Added in 1.2. Objects `{id, name, collapsed}` (`id` a UUID unique in the archive, `name` as other names, `collapsed` bool, default false). Only groups with a written member are listed. |
 | list | `view` | string | `compact` or `comfortable`. |
 | list | `sort` | string | `manual`, `most-used` or `recently-used`. |
 | item | `title` | string | May be empty. |
 | item | `kind` | string | `text template code link image file`. Describes content; sensitivity is separate. |
 | item | `pinned`, `sensitive`, `always_plain` | boolean, default `false` | |
 | item | `label` | string or absent | Added in 1.1. The colour label: `blue teal green amber orange red violet slate`. |
+| item | `group` | string or absent | Added in 1.2. The `id` of one of its list's `groups`; an unknown id is malformed. A group's members are contiguous in `items` order. |
 | item | `use_count` | integer 0 to 4 294 967 295, default 0 | |
 | item | `last_used_at` | RFC 3339 string or absent | |
 | item | `source_app` | string or absent | The app the content was captured from. |

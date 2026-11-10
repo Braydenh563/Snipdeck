@@ -21,8 +21,8 @@ use std::str::FromStr;
 
 use snipdeck_core::Content;
 use snipdeck_core::{
-    BlobRef, BoardId, FileEntry, Format, FormatKind, Formats, Inline, ItemId, ItemKind, ItemLabel,
-    ListAccent, ListIcon, ListId, ListSort, ListView, Name, TagId, Timestamp,
+    BlobRef, BoardId, FileEntry, Format, FormatKind, Formats, GroupId, Inline, ItemId, ItemKind,
+    ItemLabel, ListAccent, ListIcon, ListId, ListSort, ListView, Name, TagId, Timestamp,
 };
 use snipdeck_store::crypto::{DataKey, Slot, decrypt_payload};
 use snipdeck_store::name_key;
@@ -430,6 +430,8 @@ fn build_plan<R: Read + Seek>(
         referenced: HashSet::new(),
         tag_index: HashMap::new(),
         seen_lists: HashSet::new(),
+        seen_groups: HashSet::new(),
+        group_index: HashMap::new(),
         seen_items: HashSet::new(),
         truncated: 0,
     };
@@ -532,6 +534,9 @@ struct Builder<'a, R: Read + Seek> {
     referenced: HashSet<BlobRef>,
     tag_index: HashMap<TagId, usize>,
     seen_lists: HashSet<ListId>,
+    seen_groups: HashSet<GroupId>,
+    /// The current list's groups by id, as indexes into `PlanList::groups`.
+    group_index: HashMap<GroupId, usize>,
     seen_items: HashSet<ItemId>,
     /// Items whose title or source app was cut.
     truncated: usize,
@@ -578,6 +583,14 @@ impl<R: Read + Seek> Builder<'_, R> {
             .transpose()?;
         list.view = parse_key::<ListView>(&dto.view, "list view")?;
         list.sort = parse_key::<ListSort>(&dto.sort, "list sort")?;
+        self.group_index.clear();
+        for group in &dto.groups {
+            let id: GroupId = parse_id(&group.id, "group")?;
+            unique(&mut self.seen_groups, id, "group")?;
+            self.group_index.insert(id, list.groups.len());
+            list.groups
+                .push((parse_name(&group.name, "group")?, group.collapsed));
+        }
         for item in &dto.items {
             let item_id: ItemId = parse_id(&item.id, "item")?;
             unique(&mut self.seen_items, item_id, "item")?;
@@ -649,6 +662,19 @@ impl<R: Read + Seek> Builder<'_, R> {
                 .label
                 .as_deref()
                 .map(|l| parse_key::<ItemLabel>(l, "item label"))
+                .transpose()?,
+            group: dto
+                .group
+                .as_deref()
+                .map(|g| {
+                    let gid: GroupId = parse_id(g, "group")?;
+                    self.group_index.get(&gid).copied().ok_or_else(|| {
+                        Error::malformed(
+                            ITEMS,
+                            format!("item {id} is in group {gid}, which its list does not list"),
+                        )
+                    })
+                })
                 .transpose()?,
             use_count: dto.use_count,
             last_used_at: dto
