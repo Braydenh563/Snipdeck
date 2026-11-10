@@ -1257,6 +1257,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     if differs(&|p| p.dock_collapsed == view.dock_collapsed) {
         window.set_dock_collapsed(view.dock_collapsed);
     }
+    window.set_reorder_offer(view.reorder_offer);
     if differs(&|p| p.rows_reorderable == view.rows_reorderable) {
         window.set_rows_reorderable(view.rows_reorderable);
     }

@@ -324,6 +324,8 @@ export component PanelWindow inherits Window {
     // Alt+Up / Alt+Down: move the selected row by -1 or +1.
     callback item-reorder-requested(int);
     in property <bool> rows-reorderable;
+    // The shown list sorts itself (no search): the keys and the drag still reach the host, which offers manual order.
+    in property <bool> reorder-offer;
     // Drag and drop: the host reads the text of a dropped payload (empty when it has none) and saves it as an item.
     pure callback payload-text(data-transfer) -> string;
     callback text-dropped(string);
@@ -1185,7 +1187,7 @@ export component PanelWindow inherits Window {
                     }
                     return reject;
                 }
-                if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift && !switcher.has-focus && !root.list-hidden && root.rows-reorderable
+                if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift && !switcher.has-focus && !root.list-hidden && (root.rows-reorderable || root.reorder-offer)
                     && (event.text == Key.UpArrow || event.text == Key.DownArrow)) {
                     // The keyboard way to arrange rows (WCAG 2.5.7 for the drag); a sorted list or a search leaves the key alone.
                     root.item-reorder-requested(event.text == Key.UpArrow ? -1 : 1);
@@ -1873,7 +1875,7 @@ export component PanelWindow inherits Window {
                                     property <int> row-from: -1;
 
                                     row-drop := DropArea {
-                                        enabled: root.rows-reorderable;
+                                        enabled: root.rows-reorderable || root.reorder-offer;
                                         can-drop(event) => {
                                             row-from = root.payload-row(event.data);
                                             row-from >= 0 && row-from != i ? DragAction.move : DragAction.none

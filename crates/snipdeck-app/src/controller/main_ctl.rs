@@ -170,6 +170,8 @@ pub struct MainScreen {
     pub reorderable: bool,
     /// The sort of the open list (manual when no list is open).
     pub list_sort: snipdeck_core::ListSort,
+    /// The open list sorts itself and no search runs: a drop is refused but offers manual order.
+    pub reorder_offer: bool,
     /// The sidebar's width in logical pixels at 100 % text size (a setting; 200 to 320).
     pub sidebar_width: u32,
     /// The sidebar is folded to its rail by the user (a setting).
@@ -284,6 +286,11 @@ where
             query: self.main.query().to_owned(),
             cursor: self.main.cursor(),
             reorderable: self.main.reorderable(),
+            reorder_offer: !self.main.searching()
+                && self
+                    .main
+                    .open_list()
+                    .is_some_and(|l| l.sort != snipdeck_core::ListSort::Manual),
             list_sort: self
                 .main
                 .open_list()

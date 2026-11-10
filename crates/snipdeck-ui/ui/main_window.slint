@@ -410,6 +410,8 @@ export component MainWindow inherits Window {
     callback list-dropped(int, int);
     // Rows can be dragged into a new place: the open list is in manual order and no search is running.
     in property <bool> rows-reorderable: false;
+    // The open list sorts itself (no search): a drop still reaches the host, which offers manual order.
+    in property <bool> reorder-offer: false;
 
     // ---- Public -------------------------------------------------------------------------------
     // Holds row `index` in its pulled (used) state for the card's 700ms.
@@ -1818,7 +1820,7 @@ export component MainWindow inherits Window {
                                 }
 
                                 row-drop := DropArea {
-                                    enabled: root.rows-reorderable;
+                                    enabled: root.rows-reorderable || root.reorder-offer;
                                     can-drop(event) => {
                                         row-from = root.payload-row(event.data);
                                         row-from >= 0 && row-from != i ? DragAction.move : DragAction.none
@@ -1950,7 +1952,7 @@ export component MainWindow inherits Window {
                                     if root.tile-index(r, c) < root.rows.length: tile-drop := DropArea {
                                         // The tile being dragged over this one: a drop lands after it when coming from before.
                                         property <int> tile-from: -1;
-                                        enabled: root.rows-reorderable;
+                                        enabled: root.rows-reorderable || root.reorder-offer;
                                         can-drop(event) => {
                                             tile-from = root.payload-row(event.data);
                                             tile-from >= 0 && tile-from != root.tile-index(r, c) ? DragAction.move : DragAction.none

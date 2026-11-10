@@ -1232,6 +1232,7 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     }
     window.set_rows_reorderable(screen.reorderable);
     window.set_list_sort(sort_index(screen.list_sort));
+    window.set_reorder_offer(screen.reorder_offer);
     // The window runs ahead of the setting while the splitter is dragged: only a change of the setting is pushed.
     if differs(&|p| p.sidebar_width == screen.sidebar_width) {
         window.set_sidebar_width(i32::try_from(screen.sidebar_width).unwrap_or(232));
