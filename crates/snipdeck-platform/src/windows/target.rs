@@ -425,7 +425,8 @@ impl TargetTracker {
     ///
     /// Typed-trigger expansion must not run there. `true` also when the answer cannot be had
     /// (no UI Automation, no focused element, an element of this process, a timeout): the
-    /// safe side. Call it from the thread that owns the tracker; one cross-process call.
+    /// safe side. Call it from the thread that owns the tracker, and **off the UI thread**: it
+    /// is one cross-process call that blocks up to `UIA_TRANSACTION_TIMEOUT_MS` (500 ms).
     #[must_use]
     pub fn focus_is_password(&self) -> bool {
         let Some(uia) = self.uia() else {

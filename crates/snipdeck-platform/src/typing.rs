@@ -5,10 +5,14 @@
 //! foreground layout and hands a [`Stroke`] to [`classify`]; the result feeds a [`TypeBuffer`],
 //! whose suffix is compared with the item triggers.
 //!
-//! **Privacy.** Typed characters live only in a [`TypeBuffer`] of [`BUFFER_CHARS`] characters,
-//! which is wiped on reset and on drop. Nothing here implements `Debug` with the characters, so
-//! they cannot reach a log or a trace by accident; keep it that way.
+//! **Privacy.** At rest, typed characters live only in a [`TypeBuffer`] of [`BUFFER_CHARS`]
+//! characters, which is wiped on reset and on drop. In transit a character is also in the hook's
+//! stack frame and in the event channel until the consumer takes it; the hook zeroizes its
+//! `ToUnicodeEx` output, but the channel slot and the consumer's copies are not wiped (a `char`
+//! is `Copy`). Nothing here implements `Debug` with the characters, so they cannot reach a log
+//! or a trace by accident; keep it that way.
 
+use unicode_segmentation::UnicodeSegmentation;
 use zeroize::Zeroize;
 
 /// How many of the latest typed characters are kept; the longest trigger must fit.
@@ -147,6 +151,45 @@ pub fn classify(stroke: Stroke) -> Option<TypedEvent> {
     }
 }
 
+/// [`classify`] with the one piece of memory a dead key needs.
+///
+/// With `ToUnicodeEx` flag `0x4` the pending accent is not consumed, so the key typed after a
+/// dead key translates to its plain letter while the app composes another (`^` then `e` is `ê`).
+/// So a dead key resets, and the next character is swallowed (also a reset) rather than
+/// buffered. Bare modifiers in between change nothing.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Classifier {
+    after_dead: bool,
+}
+
+impl Classifier {
+    /// A classifier with no dead key pending.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Like [`classify`].
+    pub fn classify(&mut self, stroke: Stroke) -> Option<TypedEvent> {
+        let event = classify(stroke)?;
+        let was_dead = std::mem::take(&mut self.after_dead);
+        if stroke.text == Translation::Dead && event == TypedEvent::Reset {
+            self.after_dead = true;
+        }
+        if was_dead && matches!(event, TypedEvent::Char(_)) {
+            return Some(TypedEvent::Reset);
+        }
+        Some(event)
+    }
+}
+
+/// How many Backspaces erase `trigger`: one per grapheme cluster (a letter with a combining
+/// mark, or a ZWJ emoji, is one key press to erase).
+#[must_use]
+pub fn backspace_count(trigger: &str) -> usize {
+    trigger.graphemes(true).count()
+}
+
 /// The latest [`BUFFER_CHARS`] typed characters. `Debug` shows no contents.
 pub struct TypeBuffer {
     chars: [char; BUFFER_CHARS],
@@ -222,7 +265,7 @@ impl TypeBuffer {
 
     /// The matcher hook point: the index (into `triggers`) of the longest non-empty trigger that
     /// the typed text ends with. Empty and over-long triggers never match. The caller decides
-    /// whether to expand; on an expansion it erases `trigger.chars().count()` characters with
+    /// whether to expand; on an expansion it erases [`backspace_count`] characters with
     /// [`crate::keys::backspaces`] and calls [`reset`](Self::reset).
     pub fn suffix_match<S: AsRef<str>>(&self, triggers: &[S]) -> Option<usize> {
         let typed = &self.chars[..self.len];
@@ -379,6 +422,59 @@ mod tests {
         buffer.apply(TypedEvent::Reset);
         typed(&mut buffer, "ig");
         assert_eq!(buffer.suffix_match(&[";sig"]), None);
+    }
+
+    #[test]
+    fn a_dead_key_swallows_the_next_character() {
+        let mut c = Classifier::new();
+        assert_eq!(
+            c.classify(stroke(0xDC, Translation::Dead)),
+            Some(TypedEvent::Reset)
+        );
+        // A bare modifier in between does not use up the swallow.
+        assert_eq!(c.classify(stroke(VK_SHIFT, Translation::Nothing)), None);
+        assert_eq!(c.classify(ch(0x45, 'e')), Some(TypedEvent::Reset));
+        assert_eq!(c.classify(ch(0x45, 'e')), Some(TypedEvent::Char('e')));
+        // Dead then Backspace: the swallow ends without a character.
+        c.classify(stroke(0xDC, Translation::Dead));
+        assert_eq!(
+            c.classify(stroke(VK_BACK, Translation::Nothing)),
+            Some(TypedEvent::Backspace)
+        );
+        assert_eq!(c.classify(ch(0x45, 'e')), Some(TypedEvent::Char('e')));
+    }
+
+    #[test]
+    fn caps_lock_with_shift_types_what_the_layout_says() {
+        // The translation already carries Caps and Shift together; Caps Lock itself is silent.
+        assert_eq!(classify(stroke(VK_CAPITAL, Translation::Nothing)), None);
+        assert_eq!(classify(ch(0x41, 'a')), Some(TypedEvent::Char('a')));
+    }
+
+    #[test]
+    fn matching_is_case_sensitive_unicode_and_never_past_the_buffer() {
+        let mut buffer = TypeBuffer::new();
+        typed(&mut buffer, "x;Sig");
+        assert_eq!(buffer.suffix_match(&[";sig"]), None);
+        assert_eq!(buffer.suffix_match(&[";Sig"]), Some(0));
+        buffer.apply(TypedEvent::Reset);
+        typed(&mut buffer, "a;ünï😀");
+        assert_eq!(buffer.suffix_match(&[";ünï😀"]), Some(0));
+        buffer.apply(TypedEvent::Reset);
+        typed(&mut buffer, &"y".repeat(100));
+        let long = "y".repeat(BUFFER_CHARS + 1);
+        assert_eq!(buffer.suffix_match(&[long]), None);
+    }
+
+    #[test]
+    fn backspaces_count_graphemes() {
+        assert_eq!(backspace_count(";sig"), 4);
+        assert_eq!(backspace_count(";e\u{301}"), 2); // e + combining acute
+        assert_eq!(
+            backspace_count(";\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}"),
+            2
+        ); // ZWJ family
+        assert_eq!(backspace_count(""), 0);
     }
 
     #[test]

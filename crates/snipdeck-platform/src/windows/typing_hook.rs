@@ -15,7 +15,7 @@
 
 use std::cell::RefCell;
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{self, Receiver, Sender, SyncSender};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
@@ -34,7 +34,8 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 
 use crate::error::Error;
-use crate::typing::{self, Stroke, Translation, TypedEvent};
+use crate::typing::{self, Classifier, Stroke, Translation, TypedEvent};
+use zeroize::Zeroize;
 
 // The portable table uses plain numbers; make sure they are Windows' numbers.
 const _: () = {
@@ -46,12 +47,17 @@ const _: () = {
 
 /// `ToUnicodeEx` flag: do not change the keyboard state (dead keys stay pending). Windows 10 1607+.
 const KEEP_KEYBOARD_STATE: u32 = 0x4;
+/// Events the channel holds before the hook starts dropping (and resetting the matcher).
+const CHANNEL_SLOTS: usize = 256;
 const STOP_RETRY: Duration = Duration::from_millis(10);
 
 /// What the hook thread keeps between callbacks (the callback has no user-data pointer).
 struct Hooked {
-    events: Sender<TypedEvent>,
+    events: SyncSender<TypedEvent>,
     foreground: isize,
+    classifier: Classifier,
+    /// An event was dropped because the consumer is behind: send a Reset before the next one.
+    dropped: bool,
 }
 
 thread_local! {
@@ -73,7 +79,7 @@ impl TypingHook {
     /// [`Error::Os`] if the hook could not be installed, [`Error::Unavailable`] if the thread
     /// could not start.
     pub fn start() -> Result<(Self, Receiver<TypedEvent>), Error> {
-        let (events, receiver) = mpsc::channel();
+        let (events, receiver) = mpsc::sync_channel(CHANNEL_SLOTS);
         let (ready_tx, ready) = mpsc::channel();
         let thread = std::thread::Builder::new()
             .name("snipdeck-typing-hook".into())
@@ -104,20 +110,19 @@ impl TypingHook {
         let Some(thread) = self.thread.take() else {
             return;
         };
-        let mut posted = false;
-        for _ in 0..50 {
+        // The queue exists before `start` returns, so the post only fails if the thread is gone.
+        // Never detach with the hook installed: retry until it is posted or the thread ended.
+        loop {
             // SAFETY: plain thread-message post; no pointers.
-            posted = unsafe { PostThreadMessageW(self.thread_id, WM_QUIT, WPARAM(0), LPARAM(0)) }
-                .is_ok();
+            let posted =
+                unsafe { PostThreadMessageW(self.thread_id, WM_QUIT, WPARAM(0), LPARAM(0)) }
+                    .is_ok();
             if posted || thread.is_finished() {
                 break;
             }
             std::thread::sleep(STOP_RETRY);
         }
-        if posted || thread.is_finished() {
-            let _ = thread.join();
-        }
-        // Otherwise detach rather than hang the app; the hook dies with the thread.
+        let _ = thread.join();
     }
 }
 
@@ -127,7 +132,7 @@ impl Drop for TypingHook {
     }
 }
 
-fn run(events: Sender<TypedEvent>, ready: &Sender<Result<u32, Error>>) {
+fn run(events: SyncSender<TypedEvent>, ready: &Sender<Result<u32, Error>>) {
     let mut msg = MSG::default();
     // SAFETY: `msg` is a valid out-pointer; peeking a message nobody posts creates the queue so
     // `PostThreadMessageW` from `stop` cannot fail with "no queue".
@@ -138,6 +143,8 @@ fn run(events: Sender<TypedEvent>, ready: &Sender<Result<u32, Error>>) {
         *state.borrow_mut() = Some(Hooked {
             events,
             foreground: 0,
+            classifier: Classifier::new(),
+            dropped: false,
         });
     });
     let hook = install();
@@ -202,23 +209,27 @@ fn handle(info: &KBDLLHOOKSTRUCT) {
     }
     // SAFETY: no preconditions.
     let foreground = unsafe { GetForegroundWindow() };
-    let mut events = Vec::with_capacity(2);
+    let stroke = stroke_of(info, foreground);
     HOOKED.with(|state| {
-        if let Some(hooked) = state.borrow_mut().as_mut()
-            && hooked.foreground != foreground.0 as isize
-        {
+        let mut guard = state.borrow_mut();
+        let Some(hooked) = guard.as_mut() else {
+            return;
+        };
+        let mut pending = [None, None, None];
+        if hooked.dropped {
+            pending[0] = Some(TypedEvent::Reset);
+        }
+        if hooked.foreground != foreground.0 as isize {
             if hooked.foreground != 0 {
-                events.push(TypedEvent::Reset);
+                pending[1] = Some(TypedEvent::Reset);
             }
             hooked.foreground = foreground.0 as isize;
         }
-    });
-    let stroke = stroke_of(info, foreground);
-    events.extend(typing::classify(stroke));
-    HOOKED.with(|state| {
-        if let Some(hooked) = state.borrow().as_ref() {
-            for event in events {
-                let _ = hooked.events.send(event);
+        pending[2] = hooked.classifier.classify(stroke);
+        for event in pending.into_iter().flatten() {
+            hooked.dropped = hooked.events.try_send(event).is_err();
+            if hooked.dropped {
+                break;
             }
         }
     });
@@ -270,10 +281,12 @@ fn translate(
     state: &[u8; 256],
     foreground: windows::Win32::Foundation::HWND,
 ) -> Translation {
-    // SAFETY: a null or dead window gives thread 0, which selects the calling thread's layout.
+    // SAFETY: a null or dead window gives thread 0, which selects the hook thread's own layout
+    // (a fallback: it may differ from the user's).
     let thread = unsafe { GetWindowThreadProcessId(foreground, None) };
     // SAFETY: no preconditions.
     let layout = unsafe { GetKeyboardLayout(thread) };
+    // Typed text: wiped after use.
     let mut out = [0u16; 8];
     // SAFETY: `state` is the 256-byte array the call requires and `out` is a live buffer.
     let written = unsafe {
@@ -286,7 +299,7 @@ fn translate(
             Some(layout),
         )
     };
-    match written {
+    let translation = match written {
         n if n < 0 => Translation::Dead,
         0 => Translation::Nothing,
         n => {
@@ -297,5 +310,7 @@ fn translate(
                 _ => Translation::Nothing,
             }
         }
-    }
+    };
+    out.zeroize();
+    translation
 }
