@@ -276,7 +276,11 @@ fn render_template(text: &str, request: &UseRequest) -> Result<(String, Option<u
             !request.answers.contains_key(&p.name)
                 && !matches!(
                     p.kind,
-                    PromptKind::Field { default: Some(_) } | PromptKind::Choice { .. }
+                    PromptKind::Field { default: Some(_) }
+                        | PromptKind::Multiline { default: Some(_) }
+                        | PromptKind::Choice { .. }
+                        | PromptKind::Date
+                        | PromptKind::Toggle
                 )
         })
         .collect();
