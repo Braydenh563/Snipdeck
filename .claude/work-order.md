@@ -1,5 +1,5 @@
 mode: continue
-status: stopped (context ceiling; resume with /work continue after /compact)
+status: active
 max-continues: 300
 max-idle-minutes: 60
 started: 2026-11-07 (resumed)
@@ -24,8 +24,8 @@ resumed: 2026-11-09 after idle-guard stop during a long gate run (commits c7f28a
 - [x] Carry the Panel v2 look (spec docs/reviews/shared-look-spec.md; slices 1-7 merged b70b909, DESIGN.md 5bdfdb0; slice 8 test cleanup on wt/look8b) to Main lists, Picker, command palette, editors, menus and Settings
 - [x] v1.0.1: Rebuild-from-backup safety (own blob dir for the set-aside db, WAL checkpoint on close, crash-safe move marker; .claude/inbox-archive.md): merged e075b10; Windows rename-under-lock unverified
 - [x] v1.0.1: sidebar resize (O54) [compact dock, grips, O50 done]
-- [ ] v1.0.1: paste or drop to create an item, Ctrl+C on items (O47 a-c; branch claude/o47-abc-wip), Main quick-add
-- [ ] v1.0.1: multi-row drag, toast Edit button, UX-C (O30/O26/O31), U9, A25, search suggestion dropdown (Picker, Panel, Main)
+- [x] v1.0.1: paste or drop to create an item, Ctrl+C on items (O47 a-c; slices 1-2 done); Main quick-add moves to slice 6
+- [ ] v1.0.1 slice 6: Main quick-add + multi-row drag; slice 8: toast Edit button, UX-C (O30/O26/O31), U9, A25, search suggestion dropdown (Picker, Panel, Main)
 - [ ] Recent captures images, files and rich text (owner 2026-10-26), with size caps and the privacy markers
 - [ ] v1.1: placeholders {uuid} + date maths, paste transforms, richer fill-ins
 - [ ] v1.1: importers (TextExpander, Espanso, PhraseExpress, Beeftext): backend merged 947c9b4; Settings import chooser wiring + Note warnings display left
