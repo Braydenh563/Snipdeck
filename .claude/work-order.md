@@ -37,3 +37,4 @@ resumed: 2026-11-09 after idle-guard stop during a long gate run (commits c7f28a
 - [x] v1.1 light lane: slice 9 serde-saphyr + 3a groups data (merged ed7528b)
 - [x] v1.1 slice 5a triggers data (merged)
 - [ ] v1.1 UI lane slices 1 + 2a (wt/v11-ui)
+- [ ] v1.1 slice 8 platform layer (wt/v11-hello, light lane)

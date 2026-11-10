@@ -53,6 +53,7 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - Decision 2026-10-26: agents run only the targeted tests of the crate/test files they touch and commit per item; the coordinator runs one full gate per push. Agent time box 2 h, then hand back. Reason: full gates take ~1 h under contention; the 9-hour agent produced nothing for 4 h.
 - Decision 2026-10-26: new installs start with the Panel unpinned (panel_pinned false in Settings::new_install), so it hides after a paste and on focus loss: the owner's "quick flick open and close". Pin keeps it as a sticky note. Existing files keep their value. Reason: with pinned=true by default hide-after-use never fires (6b agent finding).
 
+- 2026-11-10 owner (verbatim): "dont budget, just finish, dont stop until it is done" -> budget mode off; run to done; still one snipdeck-ui build at a time (RAM).
 - Decision 2026-11-07: only ONE snipdeck-ui build at a time (rustc needs ~9 GB for snipdeck-ui; two at once OOM-killed rustc repeatedly and tripled agent times). Parallel agents only if at most one compiles snipdeck-ui/snipdeck-app; others do docs, reviews, or light crates (portable, core, store).
 - Decision 2026-11-07: Symbols replaces the starter boards idea for emoji/kaomoji/icons; content lives in the Panel Symbols tab (symbols-spec D6).
 
