@@ -102,7 +102,7 @@ pub const MAX_PROMPTS: usize = 16;
 pub const MAX_OFFSETS: usize = 8;
 
 /// Placeholder keywords, for hints in error messages.
-const KEYWORDS: [&str; 8] = [
+const KEYWORDS: [&str; 11] = [
     "uuid",
     "date",
     "time",
@@ -111,7 +111,13 @@ const KEYWORDS: [&str; 8] = [
     "cursor",
     "field",
     "choice",
+    "multiline",
+    "pickdate",
+    "optional",
 ];
+
+/// The answer that ticks an `{optional:Name}` section; any other answer, or none, leaves it out.
+pub const TOGGLE_ON: &str = "true";
 
 /// A parsed template. Build with [`Template::parse`].
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -131,6 +137,9 @@ enum Part {
     Cursor,
     /// Index into `Template::prompts`.
     Prompt(usize),
+    /// `{optional:Name}...{/optional}`: the prompt index of the tick box, and the inside.
+    /// Never nested.
+    Section(usize, Vec<Part>),
 }
 
 /// One `+3d` of a date placeholder, already checked against its unit's bound.
@@ -262,6 +271,19 @@ pub enum PromptKind {
         /// The options, in the order written. Never empty.
         options: Vec<String>,
     },
+    /// Free text that may span lines (`{multiline:Name|default}`).
+    Multiline {
+        /// The text to pre-fill, from the first use that has one.
+        default: Option<String>,
+    },
+    /// A day typed as `YYYY-MM-DD` (`{pickdate:Name|FORMAT}`); unanswered it is today. It
+    /// renders in `format` (the `{datetime:…}` specifiers), or the locale's date style if none.
+    Date {
+        /// The output format, as written.
+        format: Option<String>,
+    },
+    /// A tick box (`{optional:Name}...{/optional}`): answered [`TOGGLE_ON`] it is ticked.
+    Toggle,
 }
 
 /// The result of [`Template::render`].
@@ -414,7 +436,13 @@ pub enum TemplateErrorKind {
     Unterminated,
     /// `{}`.
     EmptyPlaceholder,
-    /// A `field` or `choice` without a name.
+    /// A `{optional:…}` that never meets its `{/optional}`.
+    UnclosedSection,
+    /// An `{optional:…}` inside another one; sections are flat.
+    NestedSection,
+    /// A `{/optional}` with no `{optional:…}` before it.
+    UnmatchedSectionEnd,
+    /// A `field`, `choice`, `multiline`, `pickdate` or `optional` without a name.
     EmptyName,
     /// A `choice` with no options.
     NoOptions,
@@ -443,7 +471,7 @@ pub enum TemplateErrorKind {
         /// The placeholder that takes none.
         placeholder: &'static str,
     },
-    /// `{datetime}`, `{field}` or `{choice}` without the part after the colon.
+    /// `{datetime}`, `{field}`, `{choice}`, `{multiline}`, `{pickdate}` or `{optional}` without the part after the colon.
     MissingArgument {
         /// The placeholder that needs one.
         placeholder: &'static str,
@@ -496,6 +524,9 @@ fn usage(keyword: &str) -> &'static str {
         "cursor" => "{cursor}",
         "field" => "{field:Name}",
         "choice" => "{choice:Name|a|b}",
+        "multiline" => "{multiline:Name|default}",
+        "pickdate" => "{pickdate:Name|FORMAT}",
+        "optional" => "{optional:Name}...{/optional}",
         _ => "",
     }
 }
@@ -507,13 +538,18 @@ impl fmt::Display for TemplateErrorKind {
             Self::Unterminated => f.write_str("`{` is never closed; write `{{` for a literal `{`"),
             Self::EmptyPlaceholder => f.write_str("empty placeholder `{}`"),
             Self::EmptyName => f.write_str("the prompt needs a name, e.g. `{field:Name}`"),
+            Self::UnclosedSection => {
+                f.write_str("`{optional:…}` is never closed; add `{/optional}` after the part")
+            }
+            Self::NestedSection => f.write_str("optional sections cannot be nested"),
+            Self::UnmatchedSectionEnd => f.write_str("`{/optional}` closes nothing"),
             Self::NoOptions => f.write_str("a choice needs options, e.g. `{choice:Name|a|b}`"),
             Self::EmptyOption => f.write_str("a choice option is empty"),
             Self::DuplicateOption { option } => {
                 write!(f, "the choice option `{option}` is listed twice")
             }
             Self::TooManyParts => {
-                f.write_str("a field takes a name and an optional default: `{field:Name|default}`")
+                f.write_str("a prompt takes a name and one more part: `{field:Name|default}`")
             }
             Self::DuplicateCursor => f.write_str("only one `{cursor}` is allowed"),
             Self::TrailingPercent => {
@@ -526,7 +562,9 @@ impl fmt::Display for TemplateErrorKind {
                 }
                 f.write_str(
                     ". Placeholders are {uuid}, {date}, {time}, {datetime:FORMAT}, {clipboard}, \
-                     {cursor}, {field:Name}, {field:Name|default} and {choice:Name|a|b}. \
+                     {cursor}, {field:Name}, {field:Name|default}, {choice:Name|a|b}, \
+                     {multiline:Name|default}, {pickdate:Name|FORMAT} and \
+                     {optional:Name}...{/optional}. \
                      To write a literal brace, double it: {{ or }}",
                 )
             }
@@ -547,7 +585,7 @@ impl fmt::Display for TemplateErrorKind {
             ),
             Self::TooManyPrompts { max } => write!(
                 f,
-                "a template can ask for at most {max} different fields or choices"
+                "a template can ask for at most {max} different fields, choices, dates or sections"
             ),
             Self::BadOffset => {
                 f.write_str("an offset is a sign, a number and a unit, like `+3d` or `-90min`")
@@ -599,6 +637,16 @@ struct Parser {
     prompts: Vec<Prompt>,
     prompt_index: HashMap<String, usize>,
     has_cursor: bool,
+    /// The open `{optional:…}`, if any; `parts` then holds its inside.
+    section: Option<OpenSection>,
+}
+
+/// An `{optional:…}` waiting for its `{/optional}`.
+struct OpenSection {
+    prompt: usize,
+    /// The parts before it, set aside while the inside is collected.
+    outer: Vec<Part>,
+    span: Range<usize>,
 }
 
 impl Template {
@@ -615,6 +663,7 @@ impl Template {
             prompts: Vec::new(),
             prompt_index: HashMap::new(),
             has_cursor: false,
+            section: None,
         };
         let bytes = src.as_bytes();
         let mut text = String::new();
@@ -655,6 +704,9 @@ impl Template {
         if !text.is_empty() {
             parser.parts.push(Part::Text(text));
         }
+        if let Some(open) = parser.section {
+            return err(open.span, TemplateErrorKind::UnclosedSection);
+        }
         Ok(Self {
             parts: parser.parts,
             prompts: parser.prompts,
@@ -669,16 +721,20 @@ impl Template {
 
     /// Whether the template says `{clipboard}`: only then does a use need to read the clipboard.
     pub fn uses_clipboard(&self) -> bool {
-        self.parts.iter().any(|p| matches!(p, Part::Clipboard))
+        fn any(parts: &[Part]) -> bool {
+            parts.iter().any(|p| match p {
+                Part::Clipboard => true,
+                Part::Section(_, inner) => any(inner),
+                _ => false,
+            })
+        }
+        any(&self.parts)
     }
 
     /// How many `{uuid}` the template has: the number of `[u8; 16]` to pass in
     /// [`RenderContext::uuids`].
     pub fn uuid_count(&self) -> usize {
-        self.parts
-            .iter()
-            .filter(|p| matches!(p, Part::Uuid))
-            .count()
+        uuids_in(&self.parts)
     }
 
     /// Whether using this template needs `feature`: only [`Feature::PromptedFields`], and only
@@ -755,36 +811,28 @@ impl Template {
         self.try_render(ctx)
     }
 
-    /// Renders, stopping at [`MAX_RENDERED_BYTES`]; the flag says whether output was cut.
-    fn render_bounded(&self, ctx: &RenderContext<'_>) -> (Rendered, bool) {
-        let when = ctx.now.to_zoned(ctx.tz.clone());
-        let mut out = BoundedString::default();
-        let mut cursor = None;
-        let mut uuids = ctx.uuids.iter();
-        for part in &self.parts {
+    fn render_parts(
+        &self,
+        parts: &[Part],
+        ctx: &RenderContext<'_>,
+        when: &Zoned,
+        state: &mut RenderState<'_>,
+    ) {
+        for part in parts {
+            let out = &mut state.out;
             match part {
                 Part::Text(text) => out.push_str(text),
                 Part::Date(offsets) => {
-                    out.push_str(&date_string(&shifted(&when, offsets), ctx.locale.date));
+                    out.push_str(&date_string(&shifted(when, offsets), ctx.locale.date));
                 }
                 Part::Time(offsets) => {
-                    out.push_str(&time_string(&shifted(&when, offsets), ctx.locale.clock));
+                    out.push_str(&time_string(&shifted(when, offsets), ctx.locale.clock));
                 }
                 Part::DateTime(offsets, parts) => {
-                    let when = shifted(&when, offsets);
-                    for part in parts {
-                        match part {
-                            DtPart::Lit(text) => out.push_str(text),
-                            DtPart::Spec(spec) => {
-                                let mut piece = String::new();
-                                write_spec(&mut piece, &when, *spec);
-                                out.push_str(&piece);
-                            }
-                        }
-                    }
+                    write_parts(out, &shifted(when, offsets), parts);
                 }
                 Part::Uuid => {
-                    let bytes = uuids.next().copied().unwrap_or_default();
+                    let bytes = state.uuids.next().copied().unwrap_or_default();
                     out.push_str(
                         &uuid::Builder::from_random_bytes(bytes)
                             .into_uuid()
@@ -792,17 +840,47 @@ impl Template {
                     );
                 }
                 Part::Clipboard => out.push_str(ctx.clipboard.unwrap_or_default()),
-                Part::Cursor => cursor = Some(out.text.len()),
+                Part::Cursor => state.cursor = Some(out.text.len()),
                 Part::Prompt(index) => {
                     if let Some(prompt) = self.prompts.get(*index) {
-                        out.push_str(answer(prompt, ctx.answers));
+                        match &prompt.kind {
+                            PromptKind::Date { format } => {
+                                render_pick_date(out, prompt, format.as_deref(), ctx, when);
+                            }
+                            _ => out.push_str(answer(prompt, ctx.answers)),
+                        }
+                    }
+                }
+                Part::Section(index, inner) => {
+                    let ticked = self.prompts.get(*index).is_some_and(|prompt| {
+                        ctx.answers.get(&prompt.name).map(String::as_str) == Some(TOGGLE_ON)
+                    });
+                    if ticked {
+                        self.render_parts(inner, ctx, when, state);
+                    } else {
+                        // Keep the `{uuid}` draws aligned with their occurrences.
+                        for _ in 0..uuids_in(inner) {
+                            state.uuids.next();
+                        }
                     }
                 }
             }
-            if out.cut {
+            if state.out.cut {
                 break;
             }
         }
+    }
+
+    /// Renders, stopping at [`MAX_RENDERED_BYTES`]; the flag says whether output was cut.
+    fn render_bounded(&self, ctx: &RenderContext<'_>) -> (Rendered, bool) {
+        let when = ctx.now.to_zoned(ctx.tz.clone());
+        let mut state = RenderState {
+            out: BoundedString::default(),
+            cursor: None,
+            uuids: ctx.uuids.iter(),
+        };
+        self.render_parts(&self.parts, ctx, &when, &mut state);
+        let RenderState { out, cursor, .. } = state;
         let cursor_from_end = cursor.map(|at| graphemes_after(&out.text, at));
         let cut = out.cut;
         (
@@ -812,6 +890,77 @@ impl Template {
             },
             cut,
         )
+    }
+}
+
+/// `{uuid}`s in `parts`, including those inside sections (ticked or not).
+fn uuids_in(parts: &[Part]) -> usize {
+    parts
+        .iter()
+        .map(|p| match p {
+            Part::Uuid => 1,
+            Part::Section(_, inner) => uuids_in(inner),
+            _ => 0,
+        })
+        .sum()
+}
+
+struct RenderState<'a> {
+    out: BoundedString,
+    cursor: Option<usize>,
+    uuids: core::slice::Iter<'a, [u8; 16]>,
+}
+
+fn write_parts(out: &mut BoundedString, when: &Zoned, parts: &[DtPart]) {
+    for part in parts {
+        match part {
+            DtPart::Lit(text) => out.push_str(text),
+            DtPart::Spec(spec) => {
+                let mut piece = String::new();
+                write_spec(&mut piece, when, *spec);
+                out.push_str(&piece);
+            }
+        }
+    }
+}
+
+/// Parses a typed `YYYY-MM-DD` (surrounding spaces ignored): the check for a `pickdate` answer.
+pub fn parse_pick_date(text: &str) -> Option<jiff::civil::Date> {
+    let text = text.trim();
+    let well_formed = text.len() == 10
+        && text.char_indices().all(|(i, c)| match i {
+            4 | 7 => c == '-',
+            _ => c.is_ascii_digit(),
+        });
+    if well_formed { text.parse().ok() } else { None }
+}
+
+/// The text a `pickdate` shows before the user types: today in `ctx.tz` as `YYYY-MM-DD`.
+pub fn today_text(ctx: &RenderContext<'_>) -> String {
+    date_string(&ctx.now.to_zoned(ctx.tz.clone()), DateStyle::Iso)
+}
+
+/// Writes a `pickdate` answer: today if unanswered or blank, nothing if it is not a real date.
+fn render_pick_date(
+    out: &mut BoundedString,
+    prompt: &Prompt,
+    format: Option<&str>,
+    ctx: &RenderContext<'_>,
+    today: &Zoned,
+) {
+    let given = ctx.answers.get(&prompt.name).map_or("", |a| a.trim());
+    let when = if given.is_empty() {
+        today.clone()
+    } else {
+        let Some(zoned) = parse_pick_date(given).and_then(|d| d.to_zoned(ctx.tz.clone()).ok())
+        else {
+            return;
+        };
+        zoned
+    };
+    match format.and_then(|f| parse_format(f, 0).ok()) {
+        Some(parts) => write_parts(out, &when, &parts),
+        None => out.push_str(&date_string(&when, ctx.locale.date)),
     }
 }
 
@@ -847,8 +996,11 @@ fn answer<'a>(prompt: &'a Prompt, answers: &'a BTreeMap<String, String>) -> &'a 
         return given;
     }
     match &prompt.kind {
-        PromptKind::Field { default } => default.as_deref().unwrap_or_default(),
+        PromptKind::Field { default } | PromptKind::Multiline { default } => {
+            default.as_deref().unwrap_or_default()
+        }
         PromptKind::Choice { options } => options.first().map_or("", String::as_str),
+        PromptKind::Date { .. } | PromptKind::Toggle => "",
     }
 }
 
@@ -862,6 +1014,14 @@ impl Parser {
     fn placeholder(&mut self, body: &str, span: Range<usize>) -> Result<(), TemplateError> {
         if body.trim().is_empty() {
             return err(span, TemplateErrorKind::EmptyPlaceholder);
+        }
+        if body.trim() == "/optional" {
+            let Some(open) = self.section.take() else {
+                return err(span, TemplateErrorKind::UnmatchedSectionEnd);
+            };
+            let inner = core::mem::replace(&mut self.parts, open.outer);
+            self.parts.push(Part::Section(open.prompt, inner));
+            return Ok(());
         }
         let (raw_key, arg) = match body.split_once(':') {
             Some((key, arg)) => (key, Some(arg)),
@@ -913,45 +1073,8 @@ impl Parser {
                 self.parts.push(Part::DateTime(offsets, parts));
                 Ok(())
             }
-            "field" | "choice" => {
-                let Some(arg) = arg else {
-                    let placeholder = if key == "field" { "field" } else { "choice" };
-                    return err(span, TemplateErrorKind::MissingArgument { placeholder });
-                };
-                let mut pieces = arg.split('|').map(str::trim);
-                let name = pieces.next().unwrap_or_default();
-                if name.is_empty() {
-                    return err(span, TemplateErrorKind::EmptyName);
-                }
-                let kind = if key == "field" {
-                    let default = pieces.next().filter(|d| !d.is_empty());
-                    if pieces.next().is_some() {
-                        return err(span, TemplateErrorKind::TooManyParts);
-                    }
-                    PromptKind::Field {
-                        default: default.map(str::to_owned),
-                    }
-                } else {
-                    let options: Vec<String> = pieces.map(str::to_owned).collect();
-                    if options.is_empty() {
-                        return err(span, TemplateErrorKind::NoOptions);
-                    }
-                    if options.iter().any(String::is_empty) {
-                        return err(span, TemplateErrorKind::EmptyOption);
-                    }
-                    if let Some(option) = options
-                        .iter()
-                        .enumerate()
-                        .find_map(|(i, option)| options[..i].contains(option).then_some(option))
-                    {
-                        let option = option.clone();
-                        return err(span, TemplateErrorKind::DuplicateOption { option });
-                    }
-                    PromptKind::Choice { options }
-                };
-                let index = self.add_prompt(name, kind, span)?;
-                self.parts.push(Part::Prompt(index));
-                Ok(())
+            "field" | "choice" | "multiline" | "pickdate" | "optional" => {
+                self.prompt_placeholder(key, arg, span)
             }
             _ => err(
                 span,
@@ -961,6 +1084,80 @@ impl Parser {
                 },
             ),
         }
+    }
+    /// Handles `{field}`, `{choice}`, `{multiline}`, `{pickdate}` and `{optional}`.
+    fn prompt_placeholder(
+        &mut self,
+        key: &str,
+        arg: Option<&str>,
+        span: Range<usize>,
+    ) -> Result<(), TemplateError> {
+        let placeholder = KEYWORDS
+            .iter()
+            .find(|&&k| k == key)
+            .copied()
+            .unwrap_or("field");
+        let Some(arg) = arg else {
+            return err(span, TemplateErrorKind::MissingArgument { placeholder });
+        };
+        let mut pieces = arg.split('|').map(str::trim);
+        let name = pieces.next().unwrap_or_default();
+        if name.is_empty() {
+            return err(span, TemplateErrorKind::EmptyName);
+        }
+        let kind = if matches!(key, "field" | "multiline" | "pickdate" | "optional") {
+            let extra = pieces.next().filter(|d| !d.is_empty());
+            if pieces.next().is_some() || (key == "optional" && extra.is_some()) {
+                return err(span, TemplateErrorKind::TooManyParts);
+            }
+            let extra = extra.map(str::to_owned);
+            match key {
+                "field" => PromptKind::Field { default: extra },
+                "multiline" => PromptKind::Multiline { default: extra },
+                "pickdate" => {
+                    if let Some(format) = &extra {
+                        // The format starts after `{pickdate:Name|`.
+                        let at = span.start + 1 + "pickdate:".len() + name.len() + 1;
+                        parse_format(format, at)?;
+                    }
+                    PromptKind::Date { format: extra }
+                }
+                _ => PromptKind::Toggle,
+            }
+        } else {
+            let options: Vec<String> = pieces.map(str::to_owned).collect();
+            if options.is_empty() {
+                return err(span, TemplateErrorKind::NoOptions);
+            }
+            if options.iter().any(String::is_empty) {
+                return err(span, TemplateErrorKind::EmptyOption);
+            }
+            if let Some(option) = options
+                .iter()
+                .enumerate()
+                .find_map(|(i, option)| options[..i].contains(option).then_some(option))
+            {
+                let option = option.clone();
+                return err(span, TemplateErrorKind::DuplicateOption { option });
+            }
+            PromptKind::Choice { options }
+        };
+        if key == "optional" {
+            if self.section.is_some() {
+                return err(span, TemplateErrorKind::NestedSection);
+            }
+            let prompt = self.add_prompt(name, kind, span.clone())?;
+            let outer = core::mem::take(&mut self.parts);
+            self.section = Some(OpenSection {
+                prompt,
+                outer,
+                span,
+            });
+            return Ok(());
+        }
+        let index = self.add_prompt(name, kind, span)?;
+        self.parts.push(Part::Prompt(index));
+        Ok(())
     }
 
     /// Registers a prompt use and returns its index, merging with an earlier use of the name.
@@ -989,13 +1186,17 @@ impl Parser {
             return err(span, conflict());
         };
         match (&mut existing.kind, kind) {
-            (PromptKind::Field { default }, PromptKind::Field { default: later }) => {
+            (PromptKind::Field { default }, PromptKind::Field { default: later })
+            | (PromptKind::Multiline { default }, PromptKind::Multiline { default: later }) => {
                 if default.is_none() {
                     *default = later;
                 }
             }
             (PromptKind::Choice { options }, PromptKind::Choice { options: later })
                 if *options == later => {}
+            (PromptKind::Date { format }, PromptKind::Date { format: later })
+                if *format == later => {}
+            (PromptKind::Toggle, PromptKind::Toggle) => {}
             _ => return err(span, conflict()),
         }
         Ok(index)

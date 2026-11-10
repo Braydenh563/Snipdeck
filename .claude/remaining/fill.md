@@ -1,0 +1,4 @@
+# fill (slice 2b, core)
+- Done: core template.rs: {multiline:Name|default}, {pickdate:Name|FORMAT}, {optional:Name}...{/optional}; PromptKind::{Multiline,Date,Toggle}, Part::Section, TOGGLE_ON, parse_pick_date, today_text; errors UnclosedSection/NestedSection/UnmatchedSectionEnd; tests in template/tests.rs. fmt, clippy 1.99.1, doc, core tests green.
+- Next (UI step): update app sites below; FieldKind for multiline/date/toggle; date check using parse_pick_date; toggle answer is "true" (TOGGLE_ON) else unticked; Date prefill = today_text(ctx).
+- Blocked: none. App/ui not built here (non-exhaustive match breaks): crates/snipdeck-app/src/fill.rs:169 (field_of, exhaustive match on PromptKind); crates/snipdeck-app/src/usecase.rs:279 (missing-answers filter: Multiline default Some, Date and Toggle never "missing").

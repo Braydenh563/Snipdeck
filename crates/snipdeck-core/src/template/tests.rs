@@ -1098,3 +1098,272 @@ fn a_malformed_offset_is_an_error_not_a_guess() {
         TemplateErrorKind::Unknown { .. }
     ));
 }
+
+// ---- richer fill-ins: multiline, pickdate, optional sections -------------------------
+
+fn render_answered(src: &str, pairs: &[(&str, &str)]) -> Rendered {
+    let given = answers(pairs);
+    let ctx = RenderContext::new(now(), &given);
+    Template::parse(src).unwrap().render(&ctx)
+}
+
+fn kind_of(src: &str) -> PromptKind {
+    Template::parse(src).unwrap().prompts().remove(0).kind
+}
+
+#[test]
+fn multiline_answers_keep_their_newlines() {
+    let out = render_answered("Notes:\n{multiline:Body}", &[("Body", "one\ntwo\r\nthree")]);
+    assert_eq!(out.text, "Notes:\none\ntwo\r\nthree");
+    assert_eq!(
+        kind_of("{multiline:Body|hi}"),
+        PromptKind::Multiline {
+            default: Some("hi".to_owned())
+        }
+    );
+    assert_eq!(render("{multiline:Body|hi}"), "hi");
+    assert_eq!(render("{multiline:Body}"), "");
+}
+
+#[test]
+fn a_multiline_and_a_field_of_one_name_conflict() {
+    let e = parse_err("{field:A}{multiline:A}");
+    assert_eq!(
+        e.kind,
+        TemplateErrorKind::ConflictingPrompt { name: "A".into() }
+    );
+    // Same kind merges, first default wins.
+    let t = Template::parse("{multiline:A}{multiline:A|x}").unwrap();
+    assert_eq!(t.prompts().len(), 1);
+    assert_eq!(render("{multiline:A}{multiline:A|x}"), "xx");
+}
+
+#[test]
+fn pickdate_defaults_to_today_in_format() {
+    assert_eq!(render("{pickdate:When|%d %B %Y}"), "17 October 2026");
+    assert_eq!(render("{pickdate:When}"), "2026-10-17");
+    let out = render_with("{pickdate:When}", |c| {
+        c.with_locale(Locale::for_tag("en-US"))
+    });
+    assert_eq!(out.text, "10/17/2026");
+    // Today follows the zone: +10h is already the 18th.
+    let out = render_with("{pickdate:When|%F}", |c| {
+        c.with_tz(TimeZone::fixed(jiff::tz::offset(10)))
+    });
+    assert_eq!(out.text, "2026-10-18");
+}
+
+#[test]
+fn a_typed_pickdate_is_formatted() {
+    let out = render_answered("{pickdate:When|%A %e %b %Y}", &[("When", " 2027-02-28 ")]);
+    assert_eq!(out.text, "Sunday 28 Feb 2027");
+    // Blank means unanswered: today.
+    assert_eq!(
+        render_answered("{pickdate:When|%F}", &[("When", " ")]).text,
+        "2026-10-17"
+    );
+    // Not a real day renders nothing rather than a wrong date.
+    for bad in ["2027-02-30", "2027-2-3", "tomorrow", "2027/02/03"] {
+        assert_eq!(
+            render_answered("[{pickdate:When}]", &[("When", bad)]).text,
+            "[]",
+            "{bad}"
+        );
+        assert!(parse_pick_date(bad).is_none(), "{bad}");
+    }
+    assert!(parse_pick_date("2028-02-29").is_some());
+    assert_eq!(
+        today_text(&RenderContext::new(now(), &NO_ANSWERS)),
+        "2026-10-17"
+    );
+}
+
+#[test]
+fn a_bad_pickdate_format_is_an_error_at_its_place() {
+    let src = "x {pickdate:When|%Q}";
+    let e = parse_err(src);
+    assert_eq!(
+        e.kind,
+        TemplateErrorKind::UnknownFormatSpecifier { specifier: 'Q' }
+    );
+    assert_eq!(&src[e.span.clone()], "%Q");
+    assert_eq!(
+        parse_err("{pickdate:When|%F|x}").kind,
+        TemplateErrorKind::TooManyParts
+    );
+    assert_eq!(
+        parse_err("{pickdate}").kind,
+        TemplateErrorKind::MissingArgument {
+            placeholder: "pickdate"
+        }
+    );
+}
+
+#[test]
+fn an_unticked_section_renders_nothing() {
+    let src = "Hi{optional:Sig}\n-- Bob{/optional}.";
+    assert_eq!(render(src), "Hi.");
+    assert_eq!(render_answered(src, &[("Sig", "false")]).text, "Hi.");
+    assert_eq!(render_answered(src, &[("Sig", "")]).text, "Hi.");
+    assert_eq!(render_answered(src, &[("Sig", "true")]).text, "Hi\n-- Bob.");
+    assert_eq!(
+        Template::parse(src).unwrap().prompts(),
+        vec![Prompt {
+            name: "Sig".into(),
+            kind: PromptKind::Toggle
+        }]
+    );
+}
+
+#[test]
+fn sections_do_not_nest() {
+    let src = "{optional:A}{optional:B}x{/optional}{/optional}";
+    let e = parse_err(src);
+    assert_eq!(e.kind, TemplateErrorKind::NestedSection);
+    assert_eq!(&src[e.span], "{optional:B}");
+    // Two in a row are fine.
+    assert_eq!(
+        render_answered(
+            "{optional:A}a{/optional}{optional:B}b{/optional}",
+            &[("A", "true"), ("B", "true")]
+        )
+        .text,
+        "ab"
+    );
+}
+
+#[test]
+fn an_unclosed_section_is_an_error() {
+    let src = "text {optional:A}never closed";
+    let e = parse_err(src);
+    assert_eq!(e.kind, TemplateErrorKind::UnclosedSection);
+    assert_eq!(&src[e.span], "{optional:A}");
+    assert_eq!(
+        parse_err("a{/optional}").kind,
+        TemplateErrorKind::UnmatchedSectionEnd
+    );
+    assert_eq!(
+        parse_err("{optional}x{/optional}").kind,
+        TemplateErrorKind::MissingArgument {
+            placeholder: "optional"
+        }
+    );
+    assert_eq!(
+        parse_err("{optional:A|b}x{/optional}").kind,
+        TemplateErrorKind::TooManyParts
+    );
+}
+
+#[test]
+fn a_cursor_in_an_unticked_section_is_ignored() {
+    let src = "ab{optional:A}[{cursor}]{/optional}cd";
+    assert_eq!(render_answered(src, &[]).cursor_from_end, None);
+    assert_eq!(render_answered(src, &[]).text, "abcd");
+    let on = render_answered(src, &[("A", "true")]);
+    assert_eq!(on.text, "ab[]cd");
+    assert_eq!(on.cursor_from_end, Some(3));
+    // Only one cursor in the whole template, inside or out.
+    assert_eq!(
+        parse_err("{cursor}{optional:A}{cursor}{/optional}").kind,
+        TemplateErrorKind::DuplicateCursor
+    );
+}
+
+#[test]
+fn a_cursor_outside_survives_an_unticked_section() {
+    let out = render_answered("a{optional:A}zz{/optional}{cursor}b", &[]);
+    assert_eq!((out.text.as_str(), out.cursor_from_end), ("ab", Some(1)));
+}
+
+#[test]
+fn a_section_can_hold_fields_and_a_name_can_be_reused_across_it() {
+    let src = "{field:Who}{optional:Extra}, {field:Who} again {field:What|x}{/optional}";
+    let t = Template::parse(src).unwrap();
+    let names: Vec<String> = t.prompts().into_iter().map(|p| p.name).collect();
+    assert_eq!(names, ["Who", "Extra", "What"]);
+    assert_eq!(render_answered(src, &[("Who", "Ann")]).text, "Ann");
+    assert_eq!(
+        render_answered(src, &[("Who", "Ann"), ("Extra", "true")]).text,
+        "Ann, Ann again x"
+    );
+    // The toggle's name cannot also be a field.
+    assert_eq!(
+        parse_err("{field:A}{optional:A}x{/optional}").kind,
+        TemplateErrorKind::ConflictingPrompt { name: "A".into() }
+    );
+    // Two sections of one name share one tick box.
+    let two = "{optional:A}1{/optional}-{optional:A}2{/optional}";
+    assert_eq!(Template::parse(two).unwrap().prompts().len(), 1);
+    assert_eq!(render_answered(two, &[("A", "true")]).text, "1-2");
+}
+
+#[test]
+fn braces_around_and_in_sections_are_escaped_as_before() {
+    let src = "{{{optional:A}{{x}}{/optional}}}";
+    assert_eq!(render_answered(src, &[]).text, "{}");
+    assert_eq!(render_answered(src, &[("A", "true")]).text, "{{x}}");
+    assert_eq!(escape("{optional:A}"), "{{optional:A}}");
+    assert_eq!(
+        render(&escape("{optional:A}x{/optional}")),
+        "{optional:A}x{/optional}"
+    );
+}
+
+#[test]
+fn uuids_stay_aligned_when_a_section_is_unticked() {
+    let ids = [[1u8; 16], [2u8; 16], [3u8; 16]];
+    let src = "{uuid}{optional:A}{uuid}{/optional}{uuid}";
+    let t = Template::parse(src).unwrap();
+    assert_eq!(t.uuid_count(), 3);
+    let given = answers(&[]);
+    let off = t.render(&RenderContext::new(now(), &given).with_uuids(&ids));
+    let id = |b: u8| {
+        uuid::Builder::from_random_bytes([b; 16])
+            .into_uuid()
+            .to_string()
+    };
+    assert_eq!(off.text, format!("{}{}", id(1), id(3)));
+}
+
+#[test]
+fn clipboard_inside_a_section_is_still_noticed() {
+    assert!(
+        Template::parse("{optional:A}{clipboard}{/optional}")
+            .unwrap()
+            .uses_clipboard()
+    );
+}
+
+#[test]
+fn the_new_prompts_are_supporter_and_count_toward_the_limit() {
+    for src in ["{multiline:A}", "{pickdate:A}", "{optional:A}x{/optional}"] {
+        let t = Template::parse(src).unwrap();
+        assert!(t.requires(Feature::PromptedFields), "{src}");
+        let free = Entitlements::new(Tier::Free);
+        assert!(t.check(&free).is_err(), "{src}");
+    }
+    let mut src = String::new();
+    for i in 0..MAX_PROMPTS {
+        let _ = std::fmt::Write::write_fmt(&mut src, format_args!("{{field:F{i}}}"));
+    }
+    assert!(Template::parse(&src).is_ok());
+    for extra in ["{multiline:X}", "{pickdate:X}", "{optional:X}y{/optional}"] {
+        let e = parse_err(&format!("{src}{extra}"));
+        assert_eq!(
+            e.kind,
+            TemplateErrorKind::TooManyPrompts { max: MAX_PROMPTS }
+        );
+    }
+}
+
+#[test]
+fn misspelled_new_keywords_get_a_hint() {
+    let e = parse_err("{multline:A}");
+    assert!(matches!(
+        e.kind,
+        TemplateErrorKind::Unknown {
+            suggestion: Some("multiline"),
+            ..
+        }
+    ));
+}
