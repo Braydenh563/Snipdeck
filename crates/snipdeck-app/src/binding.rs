@@ -808,7 +808,7 @@ where
             crate::item_editor::Origin::Panel,
             text.as_str()
         ));
-        window.on_detect_kind(detect_kind_index);
+        window.on_detect_kind(|text| detect_kind_index(text.as_str()));
         window.on_payload_text(|data| {
             data.plain_text()
                 .map(|t| t.to_string())
@@ -1176,8 +1176,8 @@ fn render_recent(window: &ui::PanelWindow, previous: Option<&View>, view: &View)
 }
 
 /// What `text` looks like, as the quick-add box's kind chip (0 Text, 1 Link, 2 Template).
-pub(crate) fn detect_kind_index(text: slint::SharedString) -> i32 {
-    match crate::capture::detect_kind(text.as_str()) {
+pub(crate) fn detect_kind_index(text: &str) -> i32 {
+    match crate::capture::detect_kind(text) {
         snipdeck_core::ItemKind::Link => 1,
         snipdeck_core::ItemKind::Template => 2,
         _ => 0,

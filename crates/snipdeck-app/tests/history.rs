@@ -193,7 +193,11 @@ fn dragging_three_marked_rows_is_one_undo_step() {
         .map(|i| before[i].clone())
         .collect();
     want.extend([0, 1, 3].map(|i| before[i].clone()));
-    assert_eq!(order(&ctl, email), want, "the three land together, in order");
+    assert_eq!(
+        order(&ctl, email),
+        want,
+        "the three land together, in order"
+    );
     assert_eq!(ctl.history_view().undo, Some(Action::Reorder));
     ctl.undo();
     assert_eq!(order(&ctl, email), before, "one Undo puts all three back");

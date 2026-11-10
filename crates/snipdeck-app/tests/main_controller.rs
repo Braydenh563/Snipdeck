@@ -1527,7 +1527,11 @@ fn main_quick_add_saves_to_the_open_list() {
         snipdeck_app::item_editor::Origin::Main
     ));
     let after = titles(&ctl.main_screen());
-    assert_eq!(after.len(), before.len() + 1, "one more row in the open list");
+    assert_eq!(
+        after.len(),
+        before.len() + 1,
+        "one more row in the open list"
+    );
     assert_eq!(after.last().map(String::as_str), Some("a quick note"));
     assert!(
         !ctl.quick_add("  \n", None, false, snipdeck_app::item_editor::Origin::Main),

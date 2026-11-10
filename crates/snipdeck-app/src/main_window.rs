@@ -944,12 +944,24 @@ pub fn reorder_many<I: Copy + PartialEq>(
         return None;
     }
     let onto_at = order.iter().position(|i| *i == onto)?;
-    let block: Vec<I> = order.iter().copied().filter(|i| moved.contains(i)).collect();
+    let block: Vec<I> = order
+        .iter()
+        .copied()
+        .filter(|i| moved.contains(i))
+        .collect();
     let first = order.iter().position(|i| block.first() == Some(i))?;
-    let rest: Vec<I> = order.iter().copied().filter(|i| !moved.contains(i)).collect();
+    let rest: Vec<I> = order
+        .iter()
+        .copied()
+        .filter(|i| !moved.contains(i))
+        .collect();
     let onto_rest = rest.iter().position(|i| *i == onto)?;
     // Coming from above (the block starts before `onto`) it lands after `onto`; else before it.
-    let at = if first < onto_at { onto_rest + 1 } else { onto_rest };
+    let at = if first < onto_at {
+        onto_rest + 1
+    } else {
+        onto_rest
+    };
     let mut result = rest;
     result.splice(at..at, block.iter().copied());
     if result == order {
@@ -1261,6 +1273,8 @@ mod tests {
         assert_eq!(titles(&model)[2], "first line");
     }
 
+    type Case<'a> = (&'a [u8], u8, Option<Vec<u8>>);
+
     /// Applies `reorder_many`'s placements to `order` one by one, as the controller does.
     fn apply_many(order: &[u8], moved: &[u8], onto: u8) -> Option<Vec<u8>> {
         let mut now = order.to_vec();
@@ -1269,7 +1283,7 @@ mod tests {
             let at = match placement {
                 Placement::First => 0,
                 Placement::After(p) => now.iter().position(|i| *i == p)? + 1,
-                _ => return None,
+                Placement::Last => return None,
             };
             now.insert(at, id);
         }
@@ -1279,7 +1293,7 @@ mod tests {
     #[test]
     fn reorder_many_places_the_block_where_a_single_row_would_land() {
         let order = [1u8, 2, 3, 4, 5, 6];
-        let table: [(&[u8], u8, Option<Vec<u8>>); 8] = [
+        let table: [Case<'_>; 8] = [
             // block down: after the target
             (&[1, 2], 4, Some(vec![3, 4, 1, 2, 5, 6])),
             // block up: before the target
@@ -1296,11 +1310,23 @@ mod tests {
             (&[2, 3], 1, Some(vec![2, 3, 1, 4, 5, 6])),
         ];
         for (moved, onto, want) in table {
-            assert_eq!(apply_many(&order, moved, onto), want, "{moved:?} onto {onto}");
+            assert_eq!(
+                apply_many(&order, moved, onto),
+                want,
+                "{moved:?} onto {onto}"
+            );
         }
-        assert_eq!(apply_many(&order, &[2], 9), None, "a target outside the order");
+        assert_eq!(
+            apply_many(&order, &[2], 9),
+            None,
+            "a target outside the order"
+        );
         assert_eq!(apply_many(&order, &[], 3), None, "nothing to move");
-        assert_eq!(apply_many(&order, &[9], 3), None, "moved rows not in the order");
+        assert_eq!(
+            apply_many(&order, &[9], 3),
+            None,
+            "moved rows not in the order"
+        );
         // One row is exactly `reorder`.
         let (_, single) = reorder(&order, 0, 2).expect("single");
         assert_eq!(reorder_many(&order, &[1], 3), Some(vec![(1, single)]));

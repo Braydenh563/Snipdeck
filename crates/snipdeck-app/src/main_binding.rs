@@ -769,7 +769,7 @@ where
             ));
         wire!(on_quick_add_full, |ctl, text| ctl
             .open_new_item_with(Origin::Main, text.as_str()));
-        window.on_detect_kind(crate::binding::detect_kind_index);
+        window.on_detect_kind(|text| crate::binding::detect_kind_index(text.as_str()));
         wire!(on_add_from_clipboard, |ctl| ctl.quick_capture());
         // Imports live in Settings (its Import row), so the empty deck's "Import…" opens it over Main.
         window.on_import_requested(|| {
