@@ -34,4 +34,5 @@ resumed: 2026-11-09 after idle-guard stop during a long gate run (commits c7f28a
 - [ ] v1.1: typed-trigger expansion (opt-in, off by default, honours Sensitive + never-paste list)
 - [ ] v1.1: suggest-as-you-type at the caret (opt-in), rich paste, Windows Hello unlock
 - [ ] Final: full gate, polish pass (ux-auditor + blind-tester on Panel, Settings, palette, shortcuts, toasts), docs, morning summary
-- [ ] v1.1 light lane: slice 9 serde-saphyr + 3a groups data (wt/v11-light, built; in review), then 5a
+- [x] v1.1 light lane: slice 9 serde-saphyr + 3a groups data (merged ed7528b)
+- [ ] v1.1 slice 5a triggers data (wt/v11-light2); UI lane slices 1 + 2a (wt/v11-ui)
