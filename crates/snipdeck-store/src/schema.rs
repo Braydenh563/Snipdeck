@@ -187,6 +187,25 @@ ALTER TABLE key_ring ADD COLUMN previous BLOB
     CHECK (previous IS NULL OR (length(previous) > 6 AND substr(previous, 1, 6) = CAST('SNKEY1' AS BLOB)));
 ";
 
+/// Version 8: groups inside a list. A group has no rank; its members (`items.group_id`) are
+/// contiguous in the list's own order and the header sits above the first.
+pub(crate) const V8: &str = r"
+CREATE TABLE item_groups (
+    id        BLOB    NOT NULL PRIMARY KEY CHECK (length(id) = 16),
+    list_id   BLOB    NOT NULL REFERENCES lists (id) ON DELETE CASCADE,
+    name      TEXT    NOT NULL CHECK (length(name) > 0),
+    collapsed INTEGER NOT NULL CHECK (collapsed IN (0, 1))
+) STRICT;
+
+CREATE INDEX item_groups_list ON item_groups (list_id);
+
+ALTER TABLE items ADD COLUMN group_id BLOB
+    REFERENCES item_groups (id) ON DELETE SET NULL
+    CHECK (group_id IS NULL OR length(group_id) = 16);
+
+CREATE INDEX items_group ON items (group_id) WHERE group_id IS NOT NULL;
+";
+
 #[cfg(test)]
 mod tests {
     use rusqlite::{Connection, params};

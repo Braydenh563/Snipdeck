@@ -9,7 +9,8 @@ use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 
 use rusqlite::{Connection, Transaction};
 use snipdeck_core::{
-    Board, BoardId, Content, Formats, Item, ItemId, List, ListId, Placement, Tag, TagId, Timestamp,
+    Board, BoardId, Content, Formats, Group, GroupId, Item, ItemId, List, ListId, Placement, Tag,
+    TagId, Timestamp,
 };
 
 use crate::blobs::{BlobMark, Blobs};
@@ -17,8 +18,8 @@ use crate::crypto::DataKey;
 use crate::items::Written;
 use crate::store::{Quiet, begin};
 use crate::{
-    BlobStore, BoardRepo, Error, ItemRepo, ListRepo, Result, Store, TagRepo, TrashEntry, TrashRepo,
-    Trashable, boards, items, tags, trash,
+    BlobStore, BoardRepo, Error, GroupDelete, GroupRepo, GroupRun, ItemRepo, ListRepo, Result,
+    Store, TagRepo, TrashEntry, TrashRepo, Trashable, boards, groups, items, tags, trash,
 };
 
 /// Everything a write needs, inside an open transaction.
@@ -499,6 +500,32 @@ macro_rules! repo_impls {
 
             fn search(&self, query: &str, limit: usize) -> Result<Vec<ItemId>> {
                 items::search(self.reader().conn, query, limit)
+            }
+        }
+
+        impl GroupRepo for $ty {
+            fn groups_of(&self, list: ListId) -> Result<Vec<GroupRun>> {
+                groups::groups_of(self.reader().conn, list)
+            }
+
+            fn create_group(&mut self, group: &Group, members: &[ItemId]) -> Result<()> {
+                self.writer(|cx| groups::create_group(cx, group, members))
+            }
+
+            fn update_group(&mut self, group: &Group) -> Result<()> {
+                self.writer(|cx| groups::update_group(cx, group))
+            }
+
+            fn delete_group(&mut self, id: GroupId, what: GroupDelete) -> Result<()> {
+                self.writer(|cx| groups::delete_group(cx, id, what))
+            }
+
+            fn move_run(&mut self, id: GroupId, at: Placement<ItemId>) -> Result<()> {
+                self.writer(|cx| groups::move_run(cx, id, at))
+            }
+
+            fn join_group(&mut self, item: ItemId, group: GroupId) -> Result<()> {
+                self.writer(|cx| groups::join_group(cx, item, group))
             }
         }
 

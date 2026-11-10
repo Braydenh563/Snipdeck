@@ -35,6 +35,7 @@ mod codec;
 pub mod crypto;
 mod error;
 mod fts;
+mod groups;
 mod items;
 mod keys;
 mod migrations;
@@ -50,10 +51,13 @@ pub use aside::{finish_rebuild, set_aside, undo_set_aside};
 pub use batch::Batch;
 pub use blobs::BlobStore;
 pub use error::{Error, Result, Trouble};
+pub use groups::{GroupDelete, GroupRun};
 pub use recent::{
     BLOB_BUDGET, RecentContent, RecentEntry, RecentImage, RecentKind, RecentPayload, RecentRepo,
     RecentThumb, THUMB_MAX_BYTES,
 };
-pub use repo::{BoardRepo, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable};
+pub use repo::{
+    BoardRepo, GroupRepo, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable,
+};
 pub use store::{Closed, FolderLock, GcReport, OpenLockedError, Store};
 pub use tags::name_key;

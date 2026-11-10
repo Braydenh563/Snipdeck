@@ -114,6 +114,7 @@ pub(crate) fn purge(cx: &mut Ctx<'_>, cutoff: Timestamp) -> Result<usize> {
     conn.execute("DELETE FROM items WHERE deleted_at < ?1", [cutoff])?;
     conn.execute("DELETE FROM lists WHERE deleted_at < ?1", [cutoff])?;
     conn.execute("DELETE FROM boards WHERE deleted_at < ?1", [cutoff])?;
+    crate::groups::prune(conn)?;
     // Purged items may have held plaintext of sensitive items: after the commit, scrub their
     // blobs, then fold the WAL so their page images do not outlive them (review H1). Both are
     // best effort once the change is committed (review M4).
@@ -173,6 +174,7 @@ pub(crate) fn purge_entry(cx: &mut Ctx<'_>, target: Trashable) -> Result<()> {
     // Foreign keys cascade down to the content; the `items_fts_delete` trigger drops the
     // search rows.
     conn.execute(&format!("DELETE FROM {table} WHERE id = ?1"), [&id])?;
+    crate::groups::prune(conn)?;
     cx.post.release_scrubbed(candidates);
     cx.post.checkpoint();
     Ok(())
@@ -242,6 +244,9 @@ pub(crate) fn restore_with(
             &format!("UPDATE {table} SET deleted_at = NULL WHERE id = ?1"),
             [id],
         )?;
+        if let Trashable::Item(_) = record {
+            crate::groups::heal_restored(tx, id)?;
+        }
     }
     Ok(revived)
 }
