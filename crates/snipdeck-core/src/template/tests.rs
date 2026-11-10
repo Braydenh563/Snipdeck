@@ -1180,23 +1180,76 @@ fn a_typed_pickdate_is_formatted() {
 
 #[test]
 fn a_bad_pickdate_format_is_an_error_at_its_place() {
-    let src = "x {pickdate:When|%Q}";
-    let e = parse_err(src);
-    assert_eq!(
-        e.kind,
-        TemplateErrorKind::UnknownFormatSpecifier { specifier: 'Q' }
-    );
-    assert_eq!(&src[e.span.clone()], "%Q");
-    assert_eq!(
-        parse_err("{pickdate:When|%F|x}").kind,
-        TemplateErrorKind::TooManyParts
-    );
+    for src in [
+        "x {pickdate:When|%Q}",
+        "{ pickdate : When |%Q}",
+        "{pickdate:Whén\u{3000}|%Q}",
+        "{pickdate:日本語 |é%Q}",
+    ] {
+        let e = parse_err(src);
+        assert_eq!(
+            e.kind,
+            TemplateErrorKind::UnknownFormatSpecifier { specifier: 'Q' }
+        );
+        assert!(src.is_char_boundary(e.span.start) && src.is_char_boundary(e.span.end));
+        assert_eq!(&src[e.span.clone()], "%Q", "{src}");
+    }
     assert_eq!(
         parse_err("{pickdate}").kind,
         TemplateErrorKind::MissingArgument {
             placeholder: "pickdate"
         }
     );
+    assert_eq!(
+        parse_err("{pickdate:|%F}").kind,
+        TemplateErrorKind::EmptyName
+    );
+}
+
+#[test]
+fn one_date_name_can_be_used_with_different_formats() {
+    let src = "{pickdate:A|%F} {pickdate:A} {pickdate:A|%d.%m.%y}";
+    let t = Template::parse(src).unwrap();
+    assert_eq!(t.prompts().len(), 1);
+    assert_eq!(
+        render_answered(src, &[("A", "2027-02-03")]).text,
+        "2027-02-03 2027-02-03 03.02.27"
+    );
+    assert_eq!(
+        parse_err("{field:A}{pickdate:A}").kind,
+        TemplateErrorKind::ConflictingPrompt { name: "A".into() }
+    );
+}
+
+#[test]
+fn the_format_keeps_its_spaces() {
+    assert_eq!(render("{pickdate:A| %F }"), " 2026-10-17 ");
+}
+
+#[test]
+fn a_date_that_cannot_be_shown_is_not_accepted() {
+    assert!(parse_pick_date("9999-12-31").is_none());
+    assert_eq!(
+        render_answered("[{pickdate:A}]", &[("A", "9999-12-31")]).text,
+        "[]"
+    );
+    for d in ["9999-12-30", "0001-01-01", "2027-03-14"] {
+        assert!(parse_pick_date(d).is_some(), "{d}");
+        assert!(
+            !render_answered("{pickdate:A|%F}", &[("A", d)])
+                .text
+                .is_empty(),
+            "{d}"
+        );
+    }
+}
+
+#[test]
+fn an_unanswered_pickdate_is_the_start_of_today_in_the_zone() {
+    let out = render_with("{pickdate:A|%F %H:%M}", |c| {
+        c.with_tz(TimeZone::fixed(jiff::tz::offset(-12)))
+    });
+    assert_eq!(out.text, "2026-10-17 00:00");
 }
 
 #[test]

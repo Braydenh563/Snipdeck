@@ -140,6 +140,8 @@ enum Part {
     /// `{optional:Name}...{/optional}`: the prompt index of the tick box, and the inside.
     /// Never nested.
     Section(usize, Vec<Part>),
+    /// `{pickdate:Name|FORMAT}`: the prompt index and this use's format, if any.
+    PickDate(usize, Option<Vec<DtPart>>),
 }
 
 /// One `+3d` of a date placeholder, already checked against its unit's bound.
@@ -276,12 +278,10 @@ pub enum PromptKind {
         /// The text to pre-fill, from the first use that has one.
         default: Option<String>,
     },
-    /// A day typed as `YYYY-MM-DD` (`{pickdate:Name|FORMAT}`); unanswered it is today. It
-    /// renders in `format` (the `{datetime:…}` specifiers), or the locale's date style if none.
-    Date {
-        /// The output format, as written.
-        format: Option<String>,
-    },
+    /// A day typed as `YYYY-MM-DD` (`{pickdate:Name|FORMAT}`); unanswered it is today. Each
+    /// use has its own FORMAT (the `{datetime:…}` specifiers, else the locale's date style),
+    /// so the prompt itself carries nothing.
+    Date,
     /// A tick box (`{optional:Name}...{/optional}`): answered [`TOGGLE_ON`] it is ticked.
     Toggle,
 }
@@ -455,7 +455,7 @@ pub enum TemplateErrorKind {
     },
     /// A `field` with more than a name and a default (`{field:Name|default|extra}`).
     TooManyParts,
-    /// A second `{cursor}`.
+    /// A second `{cursor}`; sections are flat, so one inside a section plus one outside counts.
     DuplicateCursor,
     /// A `%` at the end of a `{datetime:…}` format.
     TrailingPercent,
@@ -738,7 +738,7 @@ impl Template {
     }
 
     /// Whether using this template needs `feature`: only [`Feature::PromptedFields`], and only
-    /// if it has a `{field}` or `{choice}`.
+    /// if it has a prompt: `{field}`, `{choice}`, `{multiline}`, `{pickdate}` or `{optional}`.
     pub fn requires(&self, feature: Feature) -> bool {
         match feature {
             Feature::PromptedFields => !self.prompts.is_empty(),
@@ -768,9 +768,11 @@ impl Template {
     ///
     /// Missing pieces degrade rather than fail: no clipboard renders as nothing, an
     /// unanswered field as its default (or nothing), an unanswered choice as its first
-    /// option. An answer is used as given, even if empty or not among a choice's options.
+    /// option, an unanswered `{pickdate}` as today, an unticked `{optional}` section as nothing.
+    /// An answer is used as given, even if empty or not among a choice's options.
     ///
-    /// This resolves `{field}` and `{choice}` for any tier, so a caller that forgets
+    /// This resolves every prompt (`{field}`, `{choice}`, `{multiline}`, `{pickdate}` and
+    /// `{optional}`) for any tier, so a caller that forgets
     /// [`Template::check`] gives Free users a Supporter feature. If the output would exceed
     /// [`MAX_RENDERED_BYTES`] it is cut at that length (on a character boundary) rather than
     /// grown without bound; [`Template::try_render`] reports that instead.
@@ -844,11 +846,13 @@ impl Template {
                 Part::Prompt(index) => {
                     if let Some(prompt) = self.prompts.get(*index) {
                         match &prompt.kind {
-                            PromptKind::Date { format } => {
-                                render_pick_date(out, prompt, format.as_deref(), ctx, when);
-                            }
                             _ => out.push_str(answer(prompt, ctx.answers)),
                         }
+                    }
+                }
+                Part::PickDate(index, format) => {
+                    if let Some(prompt) = self.prompts.get(*index) {
+                        render_pick_date(out, prompt, format.as_deref(), ctx, when);
                     }
                 }
                 Part::Section(index, inner) => {
@@ -932,7 +936,13 @@ pub fn parse_pick_date(text: &str) -> Option<jiff::civil::Date> {
             4 | 7 => c == '-',
             _ => c.is_ascii_digit(),
         });
-    if well_formed { text.parse().ok() } else { None }
+    let date: jiff::civil::Date = if well_formed {
+        text.parse().ok()?
+    } else {
+        return None;
+    };
+    // Only a day that can be shown: the last day of year 9999 is past the latest instant.
+    date.to_zoned(TimeZone::UTC).ok().map(|_| date)
 }
 
 /// The text a `pickdate` shows before the user types: today in `ctx.tz` as `YYYY-MM-DD`.
@@ -944,22 +954,28 @@ pub fn today_text(ctx: &RenderContext<'_>) -> String {
 fn render_pick_date(
     out: &mut BoundedString,
     prompt: &Prompt,
-    format: Option<&str>,
+    format: Option<&[DtPart]>,
     ctx: &RenderContext<'_>,
     today: &Zoned,
 ) {
     let given = ctx.answers.get(&prompt.name).map_or("", |a| a.trim());
-    let when = if given.is_empty() {
-        today.clone()
+    let date = if given.is_empty() {
+        today.date()
+    } else if let Some(date) = parse_pick_date(given) {
+        date
     } else {
-        let Some(zoned) = parse_pick_date(given).and_then(|d| d.to_zoned(ctx.tz.clone()).ok())
-        else {
-            return;
-        };
-        zoned
+        return;
     };
-    match format.and_then(|f| parse_format(f, 0).ok()) {
-        Some(parts) => write_parts(out, &when, &parts),
+    // The start of that day in the user's zone; a day the zone cannot show falls back to UTC.
+    let Some(when) = date
+        .to_zoned(ctx.tz.clone())
+        .or_else(|_| date.to_zoned(TimeZone::UTC))
+        .ok()
+    else {
+        return;
+    };
+    match format {
+        Some(parts) => write_parts(out, &when, parts),
         None => out.push_str(&date_string(&when, ctx.locale.date)),
     }
 }
@@ -1000,7 +1016,7 @@ fn answer<'a>(prompt: &'a Prompt, answers: &'a BTreeMap<String, String>) -> &'a 
             default.as_deref().unwrap_or_default()
         }
         PromptKind::Choice { options } => options.first().map_or("", String::as_str),
-        PromptKind::Date { .. } | PromptKind::Toggle => "",
+        PromptKind::Date | PromptKind::Toggle => "",
     }
 }
 
@@ -1074,7 +1090,8 @@ impl Parser {
                 Ok(())
             }
             "field" | "choice" | "multiline" | "pickdate" | "optional" => {
-                self.prompt_placeholder(key, arg, span)
+                let arg_at = span.start + 1 + raw_key.len() + 1;
+                self.prompt_placeholder(key, arg, arg_at, span)
             }
             _ => err(
                 span,
@@ -1090,6 +1107,7 @@ impl Parser {
         &mut self,
         key: &str,
         arg: Option<&str>,
+        arg_at: usize,
         span: Range<usize>,
     ) -> Result<(), TemplateError> {
         let placeholder = KEYWORDS
@@ -1100,6 +1118,9 @@ impl Parser {
         let Some(arg) = arg else {
             return err(span, TemplateErrorKind::MissingArgument { placeholder });
         };
+        if key == "pickdate" {
+            return self.pickdate(arg, arg_at, span);
+        }
         let mut pieces = arg.split('|').map(str::trim);
         let name = pieces.next().unwrap_or_default();
         if name.is_empty() {
@@ -1114,14 +1135,6 @@ impl Parser {
             match key {
                 "field" => PromptKind::Field { default: extra },
                 "multiline" => PromptKind::Multiline { default: extra },
-                "pickdate" => {
-                    if let Some(format) = &extra {
-                        // The format starts after `{pickdate:Name|`.
-                        let at = span.start + 1 + "pickdate:".len() + name.len() + 1;
-                        parse_format(format, at)?;
-                    }
-                    PromptKind::Date { format: extra }
-                }
                 _ => PromptKind::Toggle,
             }
         } else {
@@ -1160,6 +1173,31 @@ impl Parser {
         Ok(())
     }
 
+    /// `{pickdate:Name|FORMAT}`. Like `{datetime:FORMAT}`, the format is everything after the
+    /// first `|`, untrimmed, so its error span is exact.
+    fn pickdate(
+        &mut self,
+        arg: &str,
+        arg_at: usize,
+        span: Range<usize>,
+    ) -> Result<(), TemplateError> {
+        let (name, format) = match arg.split_once('|') {
+            Some((name, format)) => (name, Some((format, arg_at + name.len() + 1))),
+            None => (arg, None),
+        };
+        let name = name.trim();
+        if name.is_empty() {
+            return err(span, TemplateErrorKind::EmptyName);
+        }
+        let format = match format {
+            Some((format, at)) if !format.is_empty() => Some(parse_format(format, at)?),
+            _ => None,
+        };
+        let index = self.add_prompt(name, PromptKind::Date, span)?;
+        self.parts.push(Part::PickDate(index, format));
+        Ok(())
+    }
+
     /// Registers a prompt use and returns its index, merging with an earlier use of the name.
     fn add_prompt(
         &mut self,
@@ -1194,8 +1232,7 @@ impl Parser {
             }
             (PromptKind::Choice { options }, PromptKind::Choice { options: later })
                 if *options == later => {}
-            (PromptKind::Date { format }, PromptKind::Date { format: later })
-                if *format == later => {}
+            (PromptKind::Date, PromptKind::Date) => {}
             (PromptKind::Toggle, PromptKind::Toggle) => {}
             _ => return err(span, conflict()),
         }
