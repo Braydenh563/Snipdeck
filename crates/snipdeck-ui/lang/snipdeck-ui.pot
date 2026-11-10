@@ -6,6 +6,10 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+#: ui/form_texts.slint:28
+msgid "(new ID)"
+msgstr ""
+
 #: ui/panel.slint:1839
 msgid "+{} more"
 msgstr ""
@@ -46,11 +50,11 @@ msgstr ""
 msgid "A docked Panel opens at its edge. Set Dock to Floating to choose where it opens."
 msgstr ""
 
-#: ui/form_texts.slint:71
+#: ui/form_texts.slint:76
 msgid "A link can't contain spaces or line breaks."
 msgstr ""
 
-#: ui/form_texts.slint:68
+#: ui/form_texts.slint:73
 msgid "A link needs a scheme such as https://"
 msgstr ""
 
@@ -82,11 +86,11 @@ msgstr ""
 msgid "A tag with that name already exists."
 msgstr ""
 
-#: ui/form_texts.slint:56
+#: ui/form_texts.slint:61
 msgid "A title can have at most {} characters."
 msgstr ""
 
-#: ui/form_texts.slint:59
+#: ui/form_texts.slint:64
 msgid "A title can't contain line breaks or control characters."
 msgstr ""
 
@@ -134,7 +138,7 @@ msgstr ""
 msgid "Add list"
 msgstr ""
 
-#: ui/editors.slint:619 ui/form_texts.slint:62
+#: ui/editors.slint:619 ui/form_texts.slint:67
 msgid "Add some text, or cancel."
 msgstr ""
 
@@ -216,7 +220,7 @@ msgstr ""
 msgid "Amber"
 msgstr ""
 
-#: ui/form_texts.slint:98
+#: ui/form_texts.slint:103
 msgid "An Image item holds a PNG picture. Choose a PNG file, or add this one as a File."
 msgstr ""
 
@@ -236,7 +240,7 @@ msgstr ""
 msgid "Animals & Nature"
 msgstr ""
 
-#: ui/form_texts.slint:148
+#: ui/form_texts.slint:153
 msgid "Another program already uses {}."
 msgstr ""
 
@@ -420,7 +424,7 @@ msgstr ""
 msgid "Checks"
 msgstr ""
 
-#: ui/editors.slint:621 ui/form_texts.slint:80
+#: ui/editors.slint:621 ui/form_texts.slint:85
 msgid "Choose a file, or cancel."
 msgstr ""
 
@@ -1244,7 +1248,7 @@ msgstr ""
 msgid "Fields"
 msgstr ""
 
-#: ui/form_texts.slint:77
+#: ui/form_texts.slint:82
 msgid "Fields that ask for a value are a Supporter feature. Remove them to save."
 msgstr ""
 
@@ -2238,7 +2242,7 @@ msgstr ""
 msgid "Open the item's menu"
 msgstr ""
 
-#: ui/form_texts.slint:133 ui/onboarding.slint:231 ui/settings.slint:461
+#: ui/form_texts.slint:138 ui/onboarding.slint:231 ui/settings.slint:461
 msgid "Open the picker"
 msgstr ""
 
@@ -2282,11 +2286,11 @@ msgstr ""
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
 msgstr ""
 
-#: ui/form_texts.slint:48
+#: ui/form_texts.slint:53
 msgid "PNG, {}"
 msgstr ""
 
-#: ui/form_texts.slint:45
+#: ui/form_texts.slint:50
 msgid "PNG, {} × {}, {}"
 msgstr ""
 
@@ -2362,7 +2366,7 @@ msgstr ""
 msgid "Paste next and the paste stack are Supporter features."
 msgstr ""
 
-#: ui/form_texts.slint:154
+#: ui/form_texts.slint:159
 msgid "Paste next is a Supporter feature, so this shortcut does nothing on the Free plan."
 msgstr ""
 
@@ -2394,7 +2398,7 @@ msgstr ""
 msgid "Paste the Nth result"
 msgstr ""
 
-#: ui/form_texts.slint:139 ui/onboarding.slint:233 ui/settings.slint:463
+#: ui/form_texts.slint:144 ui/onboarding.slint:233 ui/settings.slint:463
 msgid "Paste the next item"
 msgstr ""
 
@@ -2482,7 +2486,7 @@ msgstr ""
 msgid "Picker position"
 msgstr ""
 
-#: ui/form_texts.slint:39
+#: ui/form_texts.slint:44
 msgid "Picture"
 msgstr ""
 
@@ -2550,7 +2554,7 @@ msgstr ""
 msgid "Problem"
 msgstr ""
 
-#: ui/form_texts.slint:168
+#: ui/form_texts.slint:173
 msgid "Program names are at most {} characters."
 msgstr ""
 
@@ -2802,7 +2806,7 @@ msgstr ""
 msgid "Save from the clipboard"
 msgstr ""
 
-#: ui/form_texts.slint:136 ui/onboarding.slint:232 ui/settings.slint:462
+#: ui/form_texts.slint:141 ui/onboarding.slint:232 ui/settings.slint:462
 msgid "Save the clipboard as an item"
 msgstr ""
 
@@ -2994,7 +2998,7 @@ msgstr ""
 msgid "Shortcuts"
 msgstr ""
 
-#: ui/form_texts.slint:157
+#: ui/form_texts.slint:162
 msgid "Shortcuts are not available right now. Try again in a moment."
 msgstr ""
 
@@ -3038,7 +3042,7 @@ msgstr ""
 msgid "Show or hide the Panel"
 msgstr ""
 
-#: ui/form_texts.slint:130 ui/onboarding.slint:230 ui/settings.slint:460
+#: ui/form_texts.slint:135 ui/onboarding.slint:230 ui/settings.slint:460
 msgid "Show or hide the panel"
 msgstr ""
 
@@ -3102,7 +3106,7 @@ msgstr ""
 msgid "Snipdeck Supporter is on. Thank you."
 msgstr ""
 
-#: ui/form_texts.slint:101
+#: ui/form_texts.slint:106
 msgid "Snipdeck can't keep a file with that name. Rename the file and try again."
 msgstr ""
 
@@ -3110,7 +3114,7 @@ msgstr ""
 msgid "Snipdeck can't protect a key on this PC, so a master password is not available."
 msgstr ""
 
-#: ui/form_texts.slint:89
+#: ui/form_texts.slint:94
 msgid "Snipdeck can't read that file. It may be in use or protected."
 msgstr ""
 
@@ -3122,7 +3126,7 @@ msgstr ""
 msgid "Snipdeck couldn't open that. Check that it still exists."
 msgstr ""
 
-#: ui/form_texts.slint:107
+#: ui/form_texts.slint:112
 msgid "Snipdeck couldn't open the encryption key, so nothing was saved."
 msgstr ""
 
@@ -3134,15 +3138,15 @@ msgstr ""
 msgid "Snipdeck couldn't read your encryption key, so the master password can't be set or changed right now. Restart Snipdeck to try again."
 msgstr ""
 
-#: ui/form_texts.slint:122
+#: ui/form_texts.slint:127
 msgid "Snipdeck couldn't save a draft of what you typed."
 msgstr ""
 
-#: ui/form_texts.slint:119
+#: ui/form_texts.slint:124
 msgid "Snipdeck couldn't save this item. Nothing was changed."
 msgstr ""
 
-#: ui/form_texts.slint:116
+#: ui/form_texts.slint:121
 msgid "Snipdeck couldn't write to your library. Check that the disk has room."
 msgstr ""
 
@@ -3386,11 +3390,11 @@ msgstr ""
 msgid "That app"
 msgstr ""
 
-#: ui/form_texts.slint:142
+#: ui/form_texts.slint:147
 msgid "That combination can't be used as a shortcut."
 msgstr ""
 
-#: ui/form_texts.slint:95
+#: ui/form_texts.slint:100
 msgid "That file is empty."
 msgstr ""
 
@@ -3398,7 +3402,7 @@ msgstr ""
 msgid "That file is from a newer Snipdeck. Update Snipdeck to import it."
 msgstr ""
 
-#: ui/form_texts.slint:92
+#: ui/form_texts.slint:97
 msgid "That file is over {} MB, the most an item can hold."
 msgstr ""
 
@@ -3450,7 +3454,7 @@ msgstr ""
 msgid "That licence key is not valid. Check that you copied all of it."
 msgstr ""
 
-#: ui/form_texts.slint:113 ui/toast_texts.slint:356
+#: ui/form_texts.slint:118 ui/toast_texts.slint:356
 msgid "That list was deleted. Choose another list."
 msgstr ""
 
@@ -3458,7 +3462,7 @@ msgstr ""
 msgid "That password is not right. Try again."
 msgstr ""
 
-#: ui/form_texts.slint:86
+#: ui/form_texts.slint:91
 msgid "That path is a folder, not a file."
 msgstr ""
 
@@ -3486,7 +3490,7 @@ msgstr ""
 msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
 msgstr ""
 
-#: ui/form_texts.slint:125
+#: ui/form_texts.slint:130
 msgid "The file dialog couldn't open. Type the path instead."
 msgstr ""
 
@@ -3518,7 +3522,7 @@ msgstr ""
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr ""
 
-#: ui/form_texts.slint:171
+#: ui/form_texts.slint:176
 msgid "The list holds at most {} programs."
 msgstr ""
 
@@ -3582,7 +3586,7 @@ msgstr ""
 msgid "Theme: System"
 msgstr ""
 
-#: ui/form_texts.slint:83
+#: ui/form_texts.slint:88
 msgid "There is no file at that path."
 msgstr ""
 
@@ -3626,7 +3630,7 @@ msgstr ""
 msgid "This item uses a Supporter feature."
 msgstr ""
 
-#: ui/form_texts.slint:110
+#: ui/form_texts.slint:115
 msgid "This item was deleted, so nothing was saved."
 msgstr ""
 
@@ -3646,11 +3650,11 @@ msgstr ""
 msgid "This template can't be read. Open it to fix it."
 msgstr ""
 
-#: ui/form_texts.slint:74
+#: ui/form_texts.slint:79
 msgid "This template can't be read: {}."
 msgstr ""
 
-#: ui/form_texts.slint:65
+#: ui/form_texts.slint:70
 msgid "This text is over {} KB, the most that can be edited here. Shorten it, or keep it in a file."
 msgstr ""
 
@@ -3782,7 +3786,7 @@ msgstr ""
 msgid "Unlock your library first, so your sensitive items are included. Nothing was done."
 msgstr ""
 
-#: ui/form_texts.slint:104
+#: ui/form_texts.slint:109
 msgid "Unlock your library to save this item."
 msgstr ""
 
@@ -3822,7 +3826,7 @@ msgstr ""
 msgid "Use at least {} characters."
 msgstr ""
 
-#: ui/form_texts.slint:162
+#: ui/form_texts.slint:167
 msgid "Use just the program's file name, like notepad.exe."
 msgstr ""
 
@@ -3962,7 +3966,7 @@ msgstr ""
 msgid "Windows did not let Snipdeck read the clipboard history on this PC."
 msgstr ""
 
-#: ui/form_texts.slint:151
+#: ui/form_texts.slint:156
 msgid "Windows doesn't allow {} as a shortcut."
 msgstr ""
 
@@ -4282,7 +4286,7 @@ msgstr[1] ""
 msgid "{} (Enter)"
 msgstr ""
 
-#: ui/form_texts.slint:31
+#: ui/form_texts.slint:36
 msgid "{} KB"
 msgstr ""
 
@@ -4292,11 +4296,11 @@ msgid_plural "{} already in your library, skipped"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/form_texts.slint:42
+#: ui/form_texts.slint:47
 msgid "{} and {} more"
 msgstr ""
 
-#: ui/form_texts.slint:28
+#: ui/form_texts.slint:33
 msgid "{} byte"
 msgid_plural "{} bytes"
 msgstr[0] ""
@@ -4320,7 +4324,7 @@ msgid_plural "{} files in this archive are not known to this version and were le
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/form_texts.slint:51
+#: ui/form_texts.slint:56
 msgid "{} file, {} in all"
 msgid_plural "{} files, {} in all"
 msgstr[0] ""
@@ -4338,11 +4342,11 @@ msgstr ""
 msgid "{} is a link to somewhere else and was not followed."
 msgstr ""
 
-#: ui/form_texts.slint:165
+#: ui/form_texts.slint:170
 msgid "{} is already in the list."
 msgstr ""
 
-#: ui/form_texts.slint:145
+#: ui/form_texts.slint:150
 msgid "{} is already used for “{}”."
 msgstr ""
 
@@ -4430,7 +4434,7 @@ msgstr[1] ""
 msgid "{}, {} of {}"
 msgstr ""
 
-#: ui/form_texts.slint:34
+#: ui/form_texts.slint:39
 msgid "{}.{} MB"
 msgstr ""
 

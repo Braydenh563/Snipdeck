@@ -23,6 +23,11 @@ export global FormTexts {
         return @tr("This is your only board. Add another before deleting it.");
     }
 
+    // What a {uuid} shows in the fill form's preview; the real ID is drawn when the paste happens.
+    pure public function new-id() -> string {
+        return @tr("(new ID)");
+    }
+
     // Sizes.
     pure public function size-bytes(bytes: int) -> string {
         return @tr("{} byte" | "{} bytes" % bytes, bytes);

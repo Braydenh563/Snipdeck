@@ -5,6 +5,8 @@
 //! Unicode's default, so `ß` becomes `SS` in upper case and the result can be longer than the
 //! text it came from.
 
+use unicode_normalization::{char::is_combining_mark, UnicodeNormalization};
+
 /// One "Paste as..." choice.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Transform {
@@ -51,7 +53,8 @@ pub fn apply(transform: Transform, text: &str) -> String {
 fn title(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut word_start = true;
-    for c in text.chars() {
+    // NFC first, so a letter and its combining accent are one character.
+    for c in text.nfc() {
         if c.is_whitespace() {
             out.push(c);
             word_start = true;
@@ -68,8 +71,13 @@ fn title(text: &str) -> String {
 fn slug(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut pending_dash = false;
-    for c in text.chars() {
-        if c.is_alphanumeric() {
+    // NFC first; a mark that stays separate (no precomposed form) still belongs to its word.
+    for c in text.nfc() {
+        if is_combining_mark(c) {
+            if !out.is_empty() && !pending_dash {
+                out.push(c);
+            }
+        } else if c.is_alphanumeric() {
             if pending_dash && !out.is_empty() {
                 out.push('-');
             }
@@ -111,6 +119,11 @@ mod tests {
             (Slug, "Straße 42", "straße-42"),
             (Slug, "日本語 テキスト", "日本語-テキスト"),
             (Slug, "👋👋", ""),
+            (Slug, "Cafe\u{301} au lait", "café-au-lait"),
+            (Slug, "Caf\u{e9}", "café"),
+            (Slug, "क\u{93f}ताब खोज", "किताब-खोज"),
+            (Slug, "\u{301}a", "a"),
+            (Title, "cafe\u{301} au lait", "Café Au Lait"),
             (Slug, "", ""),
         ] {
             assert_eq!(apply(transform, input), want, "{transform:?} {input:?}");
