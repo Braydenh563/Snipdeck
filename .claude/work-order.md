@@ -26,7 +26,7 @@ resumed: 2026-11-09 after idle-guard stop during a long gate run (commits c7f28a
 - [x] v1.0.1: sidebar resize (O54) [compact dock, grips, O50 done]
 - [x] v1.0.1: paste or drop to create an item, Ctrl+C on items (O47 a-c; slices 1-2 done); Main quick-add moves to slice 6
 - [x] v1.0.1 slice 6: Main quick-add + multi-row drag (merged 01a7292)
-- [ ] v1.0.1 slice 8: A25, search suggestion dropdown (Picker, Panel, Main)
+- [x] v1.0.1 slice 8: A25, search suggestion dropdown (Picker, Panel, Main); empty-state keycaps (owner)
 - [x] Recent captures images, files and rich text (owner 2026-10-26), with size caps and the privacy markers
 - [ ] v1.1: placeholders {uuid} + date maths, paste transforms, richer fill-ins
 - [ ] v1.1: importers (TextExpander, Espanso, PhraseExpress, Beeftext): backend merged 947c9b4; Settings import chooser wiring + Note warnings display left

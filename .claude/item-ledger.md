@@ -54,3 +54,5 @@ date | item | type | rung | rework | note
 2026-11-10 | v1.0.1 slice 6 Main quick-add + multi-row drag | feature | sonnet | 1 | 
 2026-11-10 | v1.1 slice 9 serde-saphyr + 3a groups data | feature | sonnet | 1 | 
 2026-11-10 | v1.1 slice 5a triggers data | feature | sonnet | 1 | 
+2026-11-10 | v1.0.1 slice 8 A25 + search suggestions | feature | sonnet | 1 | 
+2026-11-10 | Empty state keycaps beside the button (owner feedback) | ui | opus | 0 | 
