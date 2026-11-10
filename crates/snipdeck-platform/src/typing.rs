@@ -74,10 +74,6 @@ impl std::fmt::Debug for Translation {
 }
 
 /// One key press as the hook sees it.
-#[expect(
-    clippy::struct_excessive_bools,
-    reason = "one flag per physical modifier key"
-)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Stroke {
     /// The virtual-key code.
