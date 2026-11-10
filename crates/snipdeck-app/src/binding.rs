@@ -604,6 +604,7 @@ where
         }
 
         wire!(on_query_changed, |ctl, query| ctl.set_query(query.as_str()));
+        crate::wire_suggestions!(window, core.controller, panel_suggestions);
         wire_effects!(on_row_activated, |ctl, i| {
             let used = ctl.activate_row(index(i), UseMode::Paste);
             ctl.after_use(&used)

@@ -56,6 +56,7 @@ pub mod repaint;
 pub mod screen_clip;
 pub mod screenshot;
 pub mod search_mark;
+pub mod search_suggest;
 pub mod settings;
 pub mod settings_binding;
 pub mod settings_store;

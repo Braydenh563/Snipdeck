@@ -2162,6 +2162,9 @@ msgstr "Rechercher un raccourci"
 msgid "Search snippets"
 msgstr "Rechercher des extraits"
 
+msgid "Search suggestions"
+msgstr "Suggestions de recherche"
+
 msgid "Search symbols"
 msgstr "Rechercher des symboles"
 

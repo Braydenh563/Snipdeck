@@ -186,6 +186,7 @@ where
         }
         wire!(on_query_changed, |core, query| core
             .act(|ctl| ctl.picker_query(query.as_str())));
+        crate::wire_suggestions!(window, self.controller, picker_suggestions);
         wire!(on_scope_changed, |core, scope| core
             .act(|ctl| ctl.picker_scope(scope_of(scope))));
         wire!(on_row_activated, |core, i| core

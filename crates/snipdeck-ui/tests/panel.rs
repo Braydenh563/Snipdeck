@@ -435,6 +435,37 @@ fn search_rows() -> Vec<snipdeck_ui::PanelRow> {
 }
 
 #[test]
+fn panel_search_suggestions_drop_under_the_field_with_the_key_row_ringed() {
+    let h = panel(SIZE, false);
+    activate(&h);
+    fixture::set_rows(&h.component, search_rows());
+    type_keys(&h, &["r".into(), "e".into()]);
+    let rows: Vec<snipdeck_ui::SuggestRow> =
+        [("regex", 0), ("Reference", 1), ("reply", 2), ("retry", 2)]
+            .into_iter()
+            .map(|(text, kind)| snipdeck_ui::SuggestRow {
+                text: text.into(),
+                kind,
+            })
+            .collect();
+    h.component
+        .set_suggestions(slint::ModelRc::new(slint::VecModel::from(rows)));
+    // Down enters the dropdown: the first row is highlighted and ringed.
+    type_keys(&h, &[slint::platform::Key::DownArrow.into()]);
+    assert_eq!(h.component.get_suggest_current(), 0);
+    let f = render(&h);
+    let ring = (4..300)
+        .flat_map(|x| (80..140).map(move |y| (x, y)))
+        .filter(|&(x, y)| f.pixel(x, y) == FOCUS_RING)
+        .count();
+    assert!(
+        ring > 100,
+        "the key-highlighted suggestion wears the ring: {ring}"
+    );
+    assert_golden("panel-suggest-light", &f);
+}
+
+#[test]
 fn panel_search_expanded_replaces_the_tabs_and_pins_and_marks_matches() {
     for (dark, name) in [(false, "panel-search-light"), (true, "panel-search-dark")] {
         let h = panel(SIZE, dark);

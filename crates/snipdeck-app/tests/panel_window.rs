@@ -421,6 +421,74 @@ fn typing_in_the_search_filters_the_rows() {
     });
 }
 
+fn suggestion_texts(r: &Rig) -> Vec<String> {
+    r.ui.get_suggestions()
+        .iter()
+        .map(|row| row.text.to_string())
+        .collect()
+}
+
+#[test]
+fn typing_a_word_offers_suggestions_and_down_or_tab_enters_the_dropdown() {
+    on_ui_thread(|| {
+        let r = rig();
+        type_text(r.window(), "ret");
+        let offered = suggestion_texts(&r);
+        assert!(offered.contains(&"retry".to_owned()), "{offered:?}");
+        assert!(offered.len() <= 6);
+        assert_eq!(
+            r.ui.get_suggest_current(),
+            -1,
+            "the keyboard is still in the field"
+        );
+        press(r.window(), &key(Key::DownArrow));
+        assert_eq!(r.ui.get_suggest_current(), 0, "Down enters the dropdown");
+        press(r.window(), &key(Key::UpArrow));
+        assert_eq!(
+            r.ui.get_suggest_current(),
+            -1,
+            "Up from the first row leaves it"
+        );
+        press(r.window(), &key(Key::Tab));
+        assert_eq!(r.ui.get_suggest_current(), 0, "Tab enters it too");
+    });
+}
+
+#[test]
+fn enter_on_a_suggestion_replaces_only_the_word_and_searches_it() {
+    on_ui_thread(|| {
+        let r = rig();
+        type_text(r.window(), "ret");
+        let first = suggestion_texts(&r)[0].clone();
+        press(r.window(), &key(Key::DownArrow));
+        press(r.window(), &key(Key::Return));
+        assert_eq!(r.ui.get_query().to_string(), first);
+        assert!(
+            suggestion_texts(&r).is_empty(),
+            "choosing empties the dropdown"
+        );
+        assert!(r.window().is_visible(), "and pastes nothing");
+    });
+}
+
+#[test]
+fn escape_closes_the_dropdown_first_and_keeps_the_query() {
+    on_ui_thread(|| {
+        let r = rig();
+        type_text(r.window(), "ret");
+        assert!(!suggestion_texts(&r).is_empty());
+        press(r.window(), &key(Key::Escape));
+        assert!(suggestion_texts(&r).is_empty());
+        assert_eq!(
+            r.ui.get_query(),
+            "ret",
+            "the first Esc only closes the dropdown"
+        );
+        press(r.window(), &key(Key::Escape));
+        assert_eq!(r.ui.get_query(), "", "the next Esc clears the search");
+    });
+}
+
 #[test]
 fn alt_3_pastes_the_third_item_and_counts_the_use() {
     on_ui_thread(|| {

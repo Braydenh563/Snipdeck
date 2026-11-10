@@ -2154,6 +2154,9 @@ msgstr "ショートカットを検索"
 msgid "Search snippets"
 msgstr "スニペットを検索"
 
+msgid "Search suggestions"
+msgstr "検索候補"
+
 msgid "Search symbols"
 msgstr "記号を検索"
 

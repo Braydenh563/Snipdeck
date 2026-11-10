@@ -2154,6 +2154,9 @@ msgstr "搜索快捷键"
 msgid "Search snippets"
 msgstr "搜索片段"
 
+msgid "Search suggestions"
+msgstr "搜索建议"
+
 msgid "Search symbols"
 msgstr "搜索符号"
 

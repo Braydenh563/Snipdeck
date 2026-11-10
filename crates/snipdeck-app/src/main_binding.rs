@@ -579,6 +579,7 @@ where
         }
 
         wire!(on_query_changed, |ctl, q| ctl.main_set_query(q.as_str()));
+        crate::wire_suggestions!(window, core.controller, main_suggestions);
         {
             let core2 = Rc::clone(&core);
             window.on_section_selected(move |kind, i| {

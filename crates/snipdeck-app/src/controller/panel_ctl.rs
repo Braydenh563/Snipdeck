@@ -158,6 +158,16 @@ where
 
     // ---- Gestures ----------------------------------------------------------------------------
 
+    /// The suggestions for the word at `caret` in the Panel's search `query`.
+    #[must_use]
+    pub fn panel_suggestions(
+        &self,
+        query: &str,
+        caret: usize,
+    ) -> Vec<crate::search_suggest::Suggestion> {
+        crate::search_suggest::suggest(query, caret, &self.model.suggest_index())
+    }
+
     /// The search text changed.
     pub fn set_query(&mut self, query: &str) {
         self.model.set_query(query);

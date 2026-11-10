@@ -144,6 +144,7 @@ directions (mock-ups or goldens) and let the owner pick before building.
 Compact dock and dock grips (U22/O28), sidebar resize (O54), header select and delete (O49/O50), paste or drop
 to create an item and Ctrl+C (O47 a-c), Main quick-add, multi-row drag, toast Edit button, UX-C (O30/O26/O31),
 U9, A25. Search-box suggestion dropdown in Picker, Panel and Main.
+Done on `wt/v101-s8` (slice 8): A25 measured and left as is (about 20 ms for 2000 items, under 50), U9 and A25 ticked in `fable-analysis.md`; search suggestions (`search_suggest.rs`, `suggest-dropdown.slint`, three bindings, golden `panel-suggest-light`). Windows behaviour unverified.
 
 ## v1.1
 Optional typed-trigger expansion (off by default; honours Sensitive and the never-paste list), placeholders

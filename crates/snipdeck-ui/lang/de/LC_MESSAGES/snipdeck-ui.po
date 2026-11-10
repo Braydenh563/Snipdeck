@@ -2162,6 +2162,9 @@ msgstr "Kurzbefehle suchen"
 msgid "Search snippets"
 msgstr "Textbausteine suchen"
 
+msgid "Search suggestions"
+msgstr "Suchvorschläge"
+
 msgid "Search symbols"
 msgstr "Symbole suchen"
 

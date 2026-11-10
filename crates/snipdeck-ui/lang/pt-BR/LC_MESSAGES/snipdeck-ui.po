@@ -2162,6 +2162,9 @@ msgstr "Pesquisar atalhos"
 msgid "Search snippets"
 msgstr "Pesquisar trechos"
 
+msgid "Search suggestions"
+msgstr "Sugestões de busca"
+
 msgid "Search symbols"
 msgstr "Pesquisar símbolos"
 

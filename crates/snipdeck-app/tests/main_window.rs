@@ -323,6 +323,21 @@ fn a_click_on_a_sidebar_list_opens_it() {
 }
 
 #[test]
+fn a_suggestion_completes_the_word_in_the_main_search() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_focus_search();
+        type_text(r.window(), "shop");
+        assert_eq!(r.ui.get_suggestions().row_data(0).unwrap().text, "shopping");
+        press(r.window(), &key(Key::DownArrow));
+        press(r.window(), &key(Key::Return));
+        assert_eq!(r.ui.get_query(), "shopping");
+        assert_eq!(r.ui.get_suggestions().row_count(), 0);
+        assert_eq!(r.titles(), ["Shopping list"], "and the search ran");
+    });
+}
+
+#[test]
 fn typing_in_the_search_box_searches_every_board() {
     on_ui_thread(|| {
         let r = rig();

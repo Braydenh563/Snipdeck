@@ -1,0 +1,90 @@
+import { Theme, Space, Radius } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { MenuItem } from "menu.slint";
+
+// One suggestion. `kind` picks the glyph and the spoken kind: 0 tag, 1 list, 2 word of a title.
+export struct SuggestRow {
+    text: string,
+    kind: int,
+}
+
+// The dropdown under a search field (v1.0.1 slice 8): up to six rows of the shared menu row (shared-look decision
+// 9: 32px, radius 6, 16px glyph column, `bg-overlay-hover` highlight, the 2px focus ring on the key-highlighted
+// row only). The keyboard stays in the search field: the host calls `handle-key` first from its key handler and
+// stops there when it returns true.
+//   Down / Tab   enter the dropdown (first row), then move on, wrapping
+//   Up / Shift+Tab   back, and out of the dropdown from the first row
+//   Enter        choose the highlighted row (with none highlighted the host's Enter is untouched)
+//   Esc          close the dropdown (the host empties `rows`); the query stays
+export component SuggestDropdown inherits Rectangle {
+    in property <[SuggestRow]> rows;
+    // Highlighted row, -1 while the keyboard is still in the field.
+    in-out property <int> current: -1;
+    // Spoken name of the list.
+    in property <string> label;
+    // False while the search field has lost the keyboard: the dropdown is hidden and ignores keys.
+    in property <bool> active: true;
+    out property <bool> open: root.active && root.rows.length > 0;
+    callback chosen(int);
+    callback dismissed();
+
+    // True once the keyboard moved the highlight, false again when the pointer does.
+    property <bool> by-key: false;
+
+    changed rows => {
+        root.current = -1;
+        root.by-key = false;
+    }
+
+    public function handle-key(event: KeyEvent) -> bool {
+        if (!root.open || event.modifiers.control || event.modifiers.alt || event.modifiers.meta) {
+            return false;
+        }
+        if (event.text == Key.Escape) {
+            root.dismissed();
+            return true;
+        }
+        if (event.text == Key.DownArrow || (event.text == Key.Tab && !event.modifiers.shift)) {
+            root.by-key = true;
+            root.current = root.current + 1 >= root.rows.length ? 0 : root.current + 1;
+            return true;
+        }
+        if (root.current >= 0 && (event.text == Key.UpArrow || event.text == Key.Backtab || (event.text == Key.Tab && event.modifiers.shift))) {
+            root.by-key = true;
+            root.current = root.current - 1;
+            return true;
+        }
+        if (root.current >= 0 && event.text == Key.Return) {
+            root.chosen(root.current);
+            return true;
+        }
+        return false;
+    }
+
+    height: root.open ? root.rows.length * Space.s8 + 2 * Space.s1 + 2px : 0px;
+    visible: root.open;
+    background: Theme.bg-overlay;
+    border-radius: Radius.lg;
+    border-width: 1px;
+    border-color: Theme.border-subtle;
+    accessible-role: list;
+    accessible-label: root.label;
+
+    VerticalLayout {
+        padding: Space.s1;
+        alignment: start;
+        for row[i] in root.rows: MenuItem {
+            text: row.text;
+            icon: row.kind == 0 ? Icons.tag : row.kind == 1 ? Icons.list-bullets : Icons.magnifying-glass;
+            current: root.current == i;
+            ring: root.by-key;
+            index: i;
+            count: root.rows.length;
+            pointer-entered => {
+                root.by-key = false;
+                root.current = i;
+            }
+            activated => { root.chosen(i); }
+        }
+    }
+}

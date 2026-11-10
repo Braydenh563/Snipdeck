@@ -82,6 +82,18 @@ where
         }
     }
 
+    /// The suggestions for the word at `caret` in the Picker's search `query` (none without a Picker).
+    #[must_use]
+    pub fn picker_suggestions(
+        &self,
+        query: &str,
+        caret: usize,
+    ) -> Vec<crate::search_suggest::Suggestion> {
+        self.picker.as_ref().map_or_else(Vec::new, |picker| {
+            crate::search_suggest::suggest(query, caret, &picker.suggest_index())
+        })
+    }
+
     /// The Picker's scope changed.
     pub fn picker_scope(&mut self, scope: Scope) {
         if let Some(picker) = &mut self.picker {

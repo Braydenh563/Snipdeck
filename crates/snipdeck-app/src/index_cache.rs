@@ -20,6 +20,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use crate::search_suggest::Index;
 use snipdeck_core::{Board, Item, List, search::SearchIndex};
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, RecentEntry, RecentRepo, TagRepo};
 
@@ -33,6 +34,8 @@ pub struct Snapshot {
     pub boards: Vec<(Board, Vec<List>)>,
     /// The search index over [`Snapshot::all`].
     pub index: Rc<SearchIndex>,
+    /// The names the search suggestions are made of, built with the index.
+    pub suggest: Rc<Index>,
 }
 
 #[derive(Debug, Default)]
@@ -42,6 +45,7 @@ struct State {
     read_at: Option<(u64, u64)>,
     /// The `change_counter` the index was built at.
     built_at: Option<u64>,
+    suggest: Rc<Index>,
     snapshot: Rc<Snapshot>,
     rebuilds: usize,
     /// The decrypted Recent entries and the `recent_revision` they were read at.
@@ -89,17 +93,18 @@ impl IndexCache {
             let state = self.0.borrow();
             (state.built_at == Some(counter)).then(|| Rc::clone(&state.snapshot.index))
         };
-        let (index, built) = if let Some(mut index) = reuse {
+        let (index, suggest, built) = if let Some(mut index) = reuse {
             // A counted use changes only the tie-breakers (use count, last use): bring them up
             // to date, copying the index only when one did change.
             if !index.usage_is_current(&all) {
                 Rc::make_mut(&mut index).refresh_usage(&all);
             }
-            (index, false)
+            (index, Rc::clone(&self.0.borrow().suggest), false)
         } else {
-            let tag_names: HashMap<_, _> = store
-                .tags()?
-                .into_iter()
+            let started = std::time::Instant::now();
+            let tags = store.tags()?;
+            let tag_names: HashMap<_, _> = tags
+                .iter()
                 .map(|t| (t.id, t.name.as_str().to_owned()))
                 .collect();
             let mut index = SearchIndex::default();
@@ -111,10 +116,28 @@ impl IndexCache {
                         .filter_map(|t| tag_names.get(t).map(String::as_str)),
                 );
             }
-            (Rc::new(index), true)
+            let suggest = Index::build(
+                &all,
+                tags.iter().map(|t| t.name.as_str()),
+                boards
+                    .iter()
+                    .flat_map(|(_, lists)| lists.iter().map(|l| l.name.as_str())),
+            );
+            crate::trace!(
+                "index build {} us for {} items",
+                started.elapsed().as_micros(),
+                all.len()
+            );
+            (Rc::new(index), Rc::new(suggest), true)
         };
         let mut state = self.0.borrow_mut();
-        state.snapshot = Rc::new(Snapshot { all, boards, index });
+        state.suggest = Rc::clone(&suggest);
+        state.snapshot = Rc::new(Snapshot {
+            all,
+            boards,
+            index,
+            suggest,
+        });
         state.read_at = Some(at);
         state.built_at = Some(counter);
         state.rebuilds += usize::from(built);
@@ -207,6 +230,22 @@ mod tests {
         assert_eq!(first.all.len(), 1);
         assert_eq!(first.boards.len(), 1);
         assert_eq!(first.boards[0].1.len(), 1);
+    }
+
+    // A25 measurement (kept as a guard): a 2000-item library builds its index well under the 50 ms
+    // at which building would be deferred. The bound is generous because a debug build is slow.
+    #[test]
+    fn building_the_index_of_two_thousand_items_is_cheap() {
+        let (mut s, l) = seeded();
+        for n in 0..2000 {
+            add(&mut s, l, &format!("snippet number {n}"));
+        }
+        let cache = IndexCache::new();
+        let started = std::time::Instant::now();
+        let snapshot = cache.snapshot(&s).unwrap();
+        let took = started.elapsed();
+        assert_eq!(snapshot.index.len(), 2000);
+        assert!(took < std::time::Duration::from_millis(500), "{took:?}");
     }
 
     #[test]

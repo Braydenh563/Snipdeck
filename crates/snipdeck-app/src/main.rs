@@ -83,6 +83,8 @@ fn main() -> ExitCode {
     // First, so that a panic anywhere after this leaves a report (the data folder is told to the
     // hook once it is known).
     crash::install(Timestamp::now);
+    // A25: the log's clock starts here, so `first show` below is the milliseconds from main.
+    snipdeck_app::trace!("main start");
     // A release build on Windows has no console of its own: borrow the parent's for the usage
     // and `--check-db` / `--troubleshoot` output.
     platform::attach_parent_console();
@@ -438,6 +440,7 @@ fn run(args: &Args) -> Result<(), String> {
         window
             .show()
             .map_err(|e| format!("showing the Panel: {e}"))?;
+        snipdeck_app::trace!("first show");
         restore_frame(&window);
         frames_armed.set(true);
         attach_now();

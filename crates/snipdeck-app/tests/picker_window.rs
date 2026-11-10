@@ -262,6 +262,37 @@ fn at_150_percent_the_window_and_its_gap_scale() {
 }
 
 #[test]
+fn a_suggestion_is_entered_with_down_chosen_with_enter_and_closed_with_escape() {
+    on_ui_thread(|| {
+        let r = rig();
+        let w = r.open();
+        type_text(w.window(), "ret");
+        press(w.window(), &key(Key::Escape));
+        assert_eq!(
+            w.get_suggestions().row_count(),
+            0,
+            "Esc closes the dropdown only"
+        );
+        assert!(w.window().is_visible(), "the Picker stays open");
+        type_text(w.window(), "r");
+        let first = w.get_suggestions().row_data(0).expect("a suggestion").text;
+        press(w.window(), &key(Key::Tab));
+        assert_eq!(
+            w.get_suggest_current(),
+            0,
+            "Tab enters the dropdown, not the scopes"
+        );
+        press(w.window(), &key(Key::Return));
+        assert!(
+            w.window().is_visible(),
+            "Enter chose the word and pasted nothing"
+        );
+        assert_eq!(w.get_query(), first);
+        assert_eq!(w.get_suggestions().row_count(), 0);
+    });
+}
+
+#[test]
 fn typing_filters_across_the_boards_and_enter_pastes_into_the_target() {
     on_ui_thread(|| {
         let r = rig();

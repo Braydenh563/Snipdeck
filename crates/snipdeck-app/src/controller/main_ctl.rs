@@ -362,7 +362,17 @@ where
         self.revealed = None;
     }
 
-    /// The search box changed (every board is searched).
+    /// The suggestions for the word at `caret` in the Main search `query`.
+    #[must_use]
+    pub fn main_suggestions(
+        &self,
+        query: &str,
+        caret: usize,
+    ) -> Vec<crate::search_suggest::Suggestion> {
+        crate::search_suggest::suggest(query, caret, &self.main.suggest_index())
+    }
+
+    /// The search text changed.
     pub fn main_set_query(&mut self, query: &str) {
         self.main_fresh();
         if self.main.set_query(&self.store, query).is_err() {

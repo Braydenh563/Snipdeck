@@ -279,6 +279,8 @@ pub struct MainModel {
     tag_counts: HashMap<TagId, usize>,
     items: Vec<Item>,
     list_labels: HashMap<ListId, ListLabel>,
+    /// The names the search suggestions are made of, rebuilt by `reload`.
+    suggest: std::rc::Rc<crate::search_suggest::Index>,
     trash: Vec<TrashEntry>,
     section: Section,
     query: String,
@@ -319,6 +321,7 @@ impl MainModel {
             tag_counts: HashMap::new(),
             items: Vec::new(),
             list_labels: HashMap::new(),
+            suggest: std::rc::Rc::default(),
             trash: Vec::new(),
             section: Section::All,
             query: String::new(),
@@ -418,6 +421,11 @@ impl MainModel {
         self.list_labels = list_labels;
         self.trash = trash;
         self.hits = hits;
+        self.suggest = std::rc::Rc::new(crate::search_suggest::Index::build(
+            &self.items,
+            self.tags.iter().map(|t| t.name.as_str()),
+            self.list_labels.values().map(|l| l.name.as_str()),
+        ));
         self.section = match self.section {
             Section::List(id) if !self.lists.iter().any(|l| l.id == id) => Section::All,
             Section::Tag(id) if !self.tags.iter().any(|t| t.id == id) => Section::All,
@@ -546,6 +554,12 @@ impl MainModel {
             Section::List(id) => self.lists.iter().find(|l| l.id == id),
             _ => None,
         }
+    }
+
+    /// The names the search suggestions are made of.
+    #[must_use]
+    pub fn suggest_index(&self) -> std::rc::Rc<crate::search_suggest::Index> {
+        std::rc::Rc::clone(&self.suggest)
     }
 
     /// The search text.
