@@ -49,3 +49,4 @@ date | item | type | rung | rework | note
 2026-11-09 | v1.0.1 slice 2: paste images/files, drop files | feature | sonnet | 2 | 
 2026-11-09 | v1.0.1 O50: Select/Delete strip, Clear list | ui | sonnet | 3 | 
 2026-11-10 | v1.0.1 slice 7: sidebar resize/collapse, sort menus, Manual offer | ui | sonnet | 1 | 
+2026-11-10 | Tick U9 in fable-analysis | docs | opus | 0 | 
