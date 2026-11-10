@@ -59,6 +59,7 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 2026-11-09: O50 Select/Delete is not a permanent header strip (costs 32 px on every Panel; owner: Panel takes too much screen). Entry: ⋯ "Select or delete…"; the strip shows only while a mode is on and holds Select | Delete, Clear list… and Done. "Show numbers" leaves ⋯ (still in Settings) so the menu keeps Quit in view at 560 px; that test is not relaxed.
 
 - 2026-11-09: A second worktree for a gate uses its own CARGO_TARGET_DIR: tests that bake env!("CARGO_MANIFEST_DIR") reuse a cached binary pointing at the removed worktree (release_guard failed that way). Never let a builder edit the tree the gate is checking.
+- 2026-11-10 v1.1 spec (docs/reviews/v11-spec.md) decisions taken as proposed, owner asleep: Hello = one extra Hello prompt after a password unlock (in-memory sealed key; nothing persisted); password every 7 days, no setting; suggest-as-you-type matches triggers only, one suggestion, Tab inserts; tips pictures are English golden crops; importers drop the "Name (abbr)" title once triggers exist; date units d w mo y h min. Reason: safest defaults, reversible later.
 
 ## Inbox
 - (Final UX) Main toolbar "Show Panel" uses Icons.sidebar-simple beside the new « sidebar toggle: two side-panel glyphs, different meanings. Consider a distinct Panel glyph.
@@ -79,4 +80,3 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - v1 T12 Visual clash (img 8); combobox keeps its focus border after click-away (img 12).
 - v1 T13 Settings scroll feels laggy.
 - 2026-11-09: Push only after reading the gate's `failed: none` line (never chain push after the gate), and run `cargo +1.99.1 clippy --workspace --all-targets` (own target dir) before each push. Reason: 43f6e8e went red on a 1.99 lint, and 9215acc was pushed with a rustdoc failure.
-- 2026-11-10 v1.1 spec (docs/reviews/v11-spec.md) decisions taken as proposed, owner asleep: Hello = one extra Hello prompt after a password unlock (in-memory sealed key; nothing persisted); password every 7 days, no setting; suggest-as-you-type matches triggers only, one suggestion, Tab inserts; tips pictures are English golden crops; importers drop the "Name (abbr)" title once triggers exist; date units d w mo y h min. Reason: safest defaults, reversible later.
