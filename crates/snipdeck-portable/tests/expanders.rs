@@ -791,6 +791,23 @@ fn espanso_alias_bombs_and_deep_nesting_are_refused_cheaply() {
 }
 
 #[test]
+fn espanso_merge_keys_and_anchors_still_resolve() {
+    let yaml = "shared: &b {replace: from merge}\nword: &w anchored text\nmatches:\n  - {trigger: ':x', <<: *b}\n  - {trigger: ':y', replace: *w}\n";
+    let (s, report) = espanso_in(&[("m.yml", yaml)], &ImportOptions::default());
+    let got = contents(&s);
+    let all: Vec<&str> = got
+        .iter()
+        .flat_map(|c| c.2.iter().map(|x| x.2.as_str()))
+        .collect();
+    assert!(
+        all.iter().any(|t| t.contains("from merge")),
+        "{got:?} {:?}",
+        report.warnings
+    );
+    assert!(all.iter().any(|t| t.contains("anchored text")), "{got:?}");
+}
+
+#[test]
 fn espanso_limits_items_and_size_and_decodes_bad_bytes() {
     let mut yaml = String::from("matches:\n");
     for i in 0..50 {

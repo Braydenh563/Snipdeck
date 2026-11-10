@@ -4,8 +4,8 @@
 - Shared: `importers/expander.rs` (Snip, Tpl builder, `import_snips`), `importers/csvtable.rs` (RFC 4180 reader + header lookup).
 - `import_beeftext(lib, path, now, opts)` - JSON export (groups -> lists).
 - `import_textexpander_csv`, `import_phraseexpress_csv` - CSV (header-name lookup, positional fallback, `,` `;` tab, UTF-8/16).
-- `import_espanso(lib, path, now, opts)` - file or folder (reads `match/`), YAML via new dep `serde_yaml_ng` 0.10 (MIT; pulls `unsafe-libyaml` MIT, `ryu` Apache-2.0 OR BSL-1.0; all in deny.toml's allow list). cargo-deny itself was not run (not installed here): the owner/CI must run `cargo deny check` (advisories for unsafe-libyaml unverified).
-- Cargo.lock changed (3 new packages: serde_yaml_ng, unsafe-libyaml, ryu).
+- `import_espanso(lib, path, now, opts)` - file or folder (reads `match/`), YAML via `serde-saphyr` 2.1 (v1.1 slice 9 replaced serde_yaml_ng; `cargo deny check` passes, unsafe-libyaml gone).
+- Cargo.lock changed (slice 9: serde_yaml_ng and unsafe-libyaml removed).
 
 ## Decisions / assumptions (none verified against real exports; no sample files offline)
 - No abbreviation field exists, so title = `Name (abbr)`, or the abbreviation, or the first text line.
@@ -14,7 +14,7 @@
 - Beeftext: keys `combos[].keyword/snippet/name/group`, `groups[].uuid/name`; also bare array, `text` as fallback for `snippet`. Variables `#{clipboard|cursor|date|time|input:X}`. `#{dateTime:...}` is Qt format -> left as written.
 - TextExpander: `%clipboard`, `%|` mapped; fill-ins, `%snippet:`, `%key:`, `%URL`, `%calc`, date macros left as written + note.
 - PhraseExpress: header names and macros (`{#clipboard}` `{#date}` `{#time}` `{#caret}`/`{#cursor}`) from memory of the manual - UNVERIFIED. `;`-separated common.
-- Espanso: `regex` triggers, image-only matches skipped with a note; `markdown`/`html` kept as text; `_`-prefixed files skipped; alias-bomb guard = expansion budget 4x file size (min 1 MiB), nesting limit from serde_yaml_ng (128).
+- Espanso: `regex` triggers, image-only matches skipped with a note; `markdown`/`html` kept as text; `_`-prefixed files skipped; alias-bomb guard = expansion budget 4x file size (min 1 MiB), nesting limit 64 from serde-saphyr.
 - File size cap reuses `Limits::max_json_bytes` (default 64 MiB) for all four.
 
 ## Next
