@@ -84,43 +84,67 @@ fn a_duplicate_trigger_is_refused() {
 }
 
 #[test]
-fn trashing_an_item_frees_its_trigger() {
-    let mut s = store();
-    let (_, a, c) = two(&mut s);
-    s.set_trigger(a, Some(&trig(";sig"))).unwrap();
-    s.trash(Trashable::Item(a), at(10)).unwrap();
-    assert!(s.triggers().unwrap().is_empty());
-    s.set_trigger(c, Some(&trig(";sig"))).unwrap();
-    // Restoring does not bring the code back, and does not take it from its new owner.
-    s.restore(Trashable::Item(a)).unwrap();
-    assert_eq!(s.trigger_of(a).unwrap(), None);
-    assert_eq!(s.trigger_holder(&trig(";sig")).unwrap(), Some(c));
-}
-
-#[test]
-fn trashing_a_list_board_or_group_frees_its_triggers() {
+fn undoing_a_trash_keeps_the_trigger() {
     let mut s = store();
     let (l, a, c) = two(&mut s);
     s.set_trigger(a, Some(&trig(";a"))).unwrap();
     s.set_trigger(c, Some(&trig(";c"))).unwrap();
-    s.trash(Trashable::List(l), at(10)).unwrap();
+    // An item: out of the live set while trashed, back on restore.
+    s.trash(Trashable::Item(a), at(10)).unwrap();
+    assert_eq!(s.triggers().unwrap(), [(trig(";c"), c)]);
+    assert_eq!(s.trigger_holder(&trig(";a")).unwrap(), None);
+    s.restore(Trashable::Item(a)).unwrap();
+    assert_eq!(s.trigger_of(a).unwrap(), Some(trig(";a")));
+    // A list, and the board above it.
+    s.trash(Trashable::List(l), at(11)).unwrap();
     assert!(s.triggers().unwrap().is_empty());
-
-    let (_, a2, c2) = two(&mut s);
-    s.set_trigger(a2, Some(&trig(";a"))).unwrap();
-    s.set_trigger(c2, Some(&trig(";c"))).unwrap();
+    s.restore(Trashable::List(l)).unwrap();
+    assert_eq!(s.triggers().unwrap().len(), 2);
     let board = s.boards().unwrap().last().unwrap().id;
-    s.trash(Trashable::Board(board), at(11)).unwrap();
+    s.trash(Trashable::Board(board), at(12)).unwrap();
     assert!(s.triggers().unwrap().is_empty());
-
-    let (l3, a3, c3) = two(&mut s);
-    s.set_trigger(a3, Some(&trig(";a"))).unwrap();
-    s.set_trigger(c3, Some(&trig(";c"))).unwrap();
-    let g = snipdeck_core::Group::new(l3, name("G"));
-    s.create_group(&g, &[a3]).unwrap();
-    s.delete_group(g.id, GroupDelete::TrashItems(at(12)))
+    s.restore(Trashable::Board(board)).unwrap();
+    assert_eq!(s.triggers().unwrap().len(), 2);
+    // A group trashed with its items.
+    let g = snipdeck_core::Group::new(l, name("G"));
+    s.create_group(&g, &[a]).unwrap();
+    s.delete_group(g.id, GroupDelete::TrashItems(at(13)))
         .unwrap();
-    assert_eq!(s.triggers().unwrap(), [(trig(";c"), c3)]);
+    assert_eq!(s.triggers().unwrap(), [(trig(";c"), c)]);
+    s.restore(Trashable::Item(a)).unwrap();
+    assert_eq!(s.trigger_of(a).unwrap(), Some(trig(";a")));
+    assert_healthy(&s);
+}
+
+#[test]
+fn a_code_taken_while_the_item_was_in_the_trash_is_not_given_back() {
+    let mut s = store();
+    let (_, a, c) = two(&mut s);
+    s.set_trigger(a, Some(&trig(";sig"))).unwrap();
+    s.trash(Trashable::Item(a), at(10)).unwrap();
+    s.set_trigger(c, Some(&trig(";sig"))).unwrap();
+    s.restore(Trashable::Item(a)).unwrap();
+    assert_eq!(s.trigger_of(a).unwrap(), None, "dropped, not stolen back");
+    assert_eq!(s.trigger_holder(&trig(";sig")).unwrap(), Some(c));
+    assert_healthy(&s);
+}
+
+#[test]
+fn a_prefix_of_another_code_is_reported() {
+    let mut s = store();
+    let (_, a, c) = two(&mut s);
+    assert!(s.set_trigger(a, Some(&trig(";addr2"))).unwrap().is_empty());
+    assert_eq!(
+        s.set_trigger(c, Some(&trig(";addr"))).unwrap(),
+        [trig(";addr2")],
+        "the new code is a prefix of an old one"
+    );
+    assert_eq!(
+        s.set_trigger(a, Some(&trig(";addr22"))).unwrap(),
+        [trig(";addr")],
+        "an old code is a prefix of the new one"
+    );
+    assert!(s.set_trigger(a, Some(&trig(";zzz"))).unwrap().is_empty());
 }
 
 #[test]

@@ -493,7 +493,7 @@ mod tests {
         let path = std::path::Path::new("x.db");
         migrate(&mut conn, MIGRATIONS, path, false).unwrap();
         assert_eq!(version(&conn), 9);
-        // A build that stops at version 7 meets a version-8 file.
+        // A build that stops at version 8 meets a version-9 file.
         let err = migrate(&mut conn, &MIGRATIONS[..8], path, false).unwrap_err();
         assert!(
             matches!(

@@ -510,6 +510,9 @@ fn read_match(m: &Node, globals: &[Node], what: &str, report: &mut ImportReport)
         group: None,
         name: label,
         abbreviations: triggers.into_iter().map(str::to_owned).collect(),
+        typed: !["word", "right_word"]
+            .iter()
+            .any(|k| m.str_of(k) == Some("true")),
         body,
     })
 }

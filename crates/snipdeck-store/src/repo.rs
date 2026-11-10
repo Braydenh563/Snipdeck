@@ -97,11 +97,12 @@ pub trait GroupRepo {
 
 /// Typed triggers: short codes such as `;sig` that stand for items.
 ///
-/// A code belongs to one item and is case-sensitive. Putting an item (or its list or board)
-/// in the trash frees its code for good; restoring does not bring it back. A Sensitive item
-/// has none.
+/// A code belongs to one item and is case-sensitive. An item in the trash (or whose list or
+/// board is) keeps its code but is left out of [`TriggerRepo::triggers`] and can lose the code
+/// to another item; restoring it gives the code back if nobody took it meanwhile (check
+/// [`TriggerRepo::trigger_of`] after a restore). Purging removes it. A Sensitive item has none.
 pub trait TriggerRepo {
-    /// Every code in use and its item, sorted by code.
+    /// Every code of a live item and its item, sorted by code.
     fn triggers(&self) -> Result<Vec<(Trigger, ItemId)>>;
 
     /// The item's code, if it has one. Fails if the item is not live.
@@ -110,11 +111,13 @@ pub trait TriggerRepo {
     /// The item that uses this code, if any.
     fn trigger_holder(&self, trigger: &Trigger) -> Result<Option<ItemId>>;
 
-    /// Gives the live item this code (`None` removes it), replacing any it had. Fails with
+    /// Gives the live item this code (`None` removes it), replacing any it had. Returns the
+    /// codes of other live items that are a prefix of the new one or start with it: typing the
+    /// longer fires the shorter first, so the caller should warn. Fails with
     /// [`Error::TriggerTaken`](crate::Error::TriggerTaken) if another item uses the code and
     /// [`Error::SensitiveTrigger`](crate::Error::SensitiveTrigger) for a Sensitive item; the
     /// item then keeps what it had.
-    fn set_trigger(&mut self, item: ItemId, trigger: Option<&Trigger>) -> Result<()>;
+    fn set_trigger(&mut self, item: ItemId, trigger: Option<&Trigger>) -> Result<Vec<Trigger>>;
 }
 
 /// Items and their content.

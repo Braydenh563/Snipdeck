@@ -7,3 +7,4 @@
 - Done: core Trigger + Matcher; store v9 `triggers`, TriggerRepo, tests/fixtures/v8.db; portable: ItemDto.trigger (format 1.2), import/export, importers keep abbreviations as triggers; docs/format.md.
 - Next: nothing in 5a. UI lane (5b): trigger field, matcher use, Sensitive/never-paste/password checks, app-side Library impl needs no change.
 - Blocked: nothing. gate.sh not run (builds UI); scoped fmt/clippy/doc/test for core, store, portable all pass.
+- Review fixes done: trash keeps the trigger row (live-only reads, a trashed claim gives way, restore returns it if free), NFC + grapheme Backspaces, Matcher::after_expansion, prefix overlap returned by set_trigger (Vec<Trigger>) and noted by importers, Espanso word/padded triggers kept in title, bad stored row skipped.

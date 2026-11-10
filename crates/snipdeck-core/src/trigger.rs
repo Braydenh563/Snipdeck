@@ -7,18 +7,23 @@
 
 use std::collections::VecDeque;
 
+use unicode_normalization::UnicodeNormalization as _;
+use unicode_normalization::char::{canonical_combining_class, compose};
+use unicode_segmentation::UnicodeSegmentation as _;
+
 use crate::{Error, ItemId};
 
 /// The most characters the matcher remembers, and the longest [`Trigger`].
 pub const BUFFER_CHARS: usize = 32;
 
 /// A trigger: 1 to [`BUFFER_CHARS`] characters, none of them whitespace or a control
-/// character. Case counts: `;Sig` and `;sig` are two triggers.
+/// character, kept in Unicode normalisation form C. Case counts: `;Sig` and `;sig` are two
+/// triggers.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Trigger(String);
 
 impl Trigger {
-    /// Checks the invariants. The text is taken as it is, not trimmed.
+    /// Checks the invariants. The text is normalised to NFC but not trimmed.
     ///
     /// # Errors
     ///
@@ -27,6 +32,8 @@ impl Trigger {
         if text.is_empty() {
             return Err(Error::EmptyTrigger);
         }
+        let text: String = text.nfc().collect();
+        let text = text.as_str();
         if text.chars().count() > BUFFER_CHARS {
             return Err(Error::TriggerTooLong { max: BUFFER_CHARS });
         }
@@ -59,7 +66,8 @@ impl core::fmt::Display for Trigger {
 pub struct Fired {
     /// The item the trigger stands for.
     pub item: ItemId,
-    /// How many characters were typed for it: the Backspaces the caller must send.
+    /// How many user-perceived characters (grapheme clusters) were typed for it: the
+    /// Backspaces the caller must send.
     pub chars: usize,
 }
 
@@ -68,11 +76,14 @@ pub struct Fired {
 /// A trigger fires on the typing of its last character, with no space needed, provided the
 /// character before it is a boundary: the start of the text, whitespace or punctuation (not a
 /// letter or digit). Of several triggers ending at the same character the longest wins. A fire
-/// empties the buffer, so what the caller then types or pastes is not fed back in.
+/// empties the buffer, so what the caller then types or pastes is not fed back in; the caller
+/// then tells the matcher how the expansion ended with [`Matcher::after_expansion`]. A
+/// combining mark typed after a letter is composed with it, so `e` then U+0301 matches a
+/// trigger written as `é`.
 #[derive(Debug, Clone)]
 pub struct Matcher {
     /// Longest first.
-    triggers: Vec<(Vec<char>, ItemId)>,
+    triggers: Vec<(Vec<char>, ItemId, usize)>,
     buf: VecDeque<char>,
     /// Whether the position just before `buf` is a boundary (the start, or a dropped boundary).
     lead: bool,
@@ -87,14 +98,14 @@ impl Matcher {
     /// A matcher for these triggers, with an empty buffer. A trigger given twice keeps the
     /// first.
     pub fn new(triggers: impl IntoIterator<Item = (Trigger, ItemId)>) -> Self {
-        let mut list: Vec<(Vec<char>, ItemId)> = Vec::new();
+        let mut list: Vec<(Vec<char>, ItemId, usize)> = Vec::new();
         for (t, item) in triggers {
             let chars: Vec<char> = t.as_str().chars().collect();
-            if !list.iter().any(|(c, _)| *c == chars) {
-                list.push((chars, item));
+            if !list.iter().any(|(c, ..)| *c == chars) {
+                list.push((chars, item, t.as_str().graphemes(true).count()));
             }
         }
-        list.sort_by_key(|(c, _)| core::cmp::Reverse(c.len()));
+        list.sort_by_key(|(c, ..)| core::cmp::Reverse(c.len()));
         Self {
             triggers: list,
             buf: VecDeque::new(),
@@ -104,19 +115,38 @@ impl Matcher {
 
     /// Takes one typed character; returns the trigger it completed, if any.
     pub fn feed(&mut self, c: char) -> Option<Fired> {
+        if canonical_combining_class(c) != 0
+            && let Some(last) = self.buf.back_mut()
+            && let Some(composed) = compose(*last, c)
+        {
+            *last = composed;
+        } else {
+            self.push(c);
+        }
+        let hit = self.triggers.iter().find(|(t, ..)| self.ends_with(t))?;
+        let fired = Fired {
+            item: hit.1,
+            chars: hit.2,
+        };
+        self.reset();
+        Some(fired)
+    }
+
+    fn push(&mut self, c: char) {
         if self.buf.len() == BUFFER_CHARS
             && let Some(dropped) = self.buf.pop_front()
         {
             self.lead = is_boundary(dropped);
         }
         self.buf.push_back(c);
-        let hit = self.triggers.iter().find(|(t, _)| self.ends_with(t))?;
-        let fired = Fired {
-            item: hit.1,
-            chars: hit.0.len(),
-        };
+    }
+
+    /// Tells the matcher how the expansion that [`Matcher::feed`] just reported ended: with
+    /// `last`, the final character of the text typed or pasted. If that is a letter or digit
+    /// the next trigger needs a boundary of its own, so it cannot fire straight after.
+    pub fn after_expansion(&mut self, last: Option<char>) {
         self.reset();
-        Some(fired)
+        self.lead = last.is_none_or(is_boundary);
     }
 
     /// The user pressed Backspace: forgets the last character. Past the start of the buffer
@@ -321,6 +351,43 @@ mod tests {
         m.reset();
         // A boundary that has scrolled out of the buffer is still remembered.
         assert_eq!(run(&mut m, &format!("a b {long}")).len(), 1);
+    }
+
+    #[test]
+    fn triggers_and_typing_are_compared_in_nfc() {
+        // Stored decomposed, stored composed: the same trigger.
+        assert_eq!(
+            Trigger::new(";cafe\u{301}").unwrap(),
+            Trigger::new(";caf\u{e9}").unwrap()
+        );
+        let mut m = matcher(&[(";cafe\u{301}", 1)]);
+        // Typed as e then a combining acute accent.
+        let fired = run(&mut m, ";cafe\u{301}");
+        assert_eq!(fired.len(), 1);
+        // Five graphemes, though six characters were typed: five Backspaces.
+        assert_eq!(fired[0].2, 5);
+        let mut m = matcher(&[(";caf\u{e9}", 1)]);
+        assert_eq!(
+            run(&mut m, ";cafe\u{301}").len(),
+            1,
+            "composed form typed decomposed"
+        );
+    }
+
+    #[test]
+    fn after_an_expansion_ending_in_a_word_character_the_next_trigger_needs_a_boundary() {
+        let mut m = matcher(&[("brb", 1)]);
+        assert_eq!(run(&mut m, "brb").len(), 1);
+        m.after_expansion(Some('x'));
+        assert!(
+            run(&mut m, "brb").is_empty(),
+            "glued to the expansion's last letter"
+        );
+        m.after_expansion(Some('.'));
+        assert_eq!(run(&mut m, "brb").len(), 1, "punctuation is a boundary");
+        m.after_expansion(None);
+        assert_eq!(run(&mut m, "brb").len(), 1, "nothing known: a fresh start");
+        assert_eq!(m.buffered(), 0);
     }
 
     proptest! {

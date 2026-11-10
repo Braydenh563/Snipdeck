@@ -438,7 +438,17 @@ fn write(
                             item.title
                         )));
                     } else {
-                        lib.set_trigger(item.id, Some(trigger))?;
+                        let overlap = lib.set_trigger(item.id, Some(trigger))?;
+                        if !overlap.is_empty() {
+                            let list: Vec<String> =
+                                overlap.iter().map(ToString::to_string).collect();
+                            report.warn(Warning::Note(format!(
+                                "`{}`: the trigger `{trigger}` and `{}` start alike, so the \
+                                 shorter one fires first",
+                                item.title,
+                                list.join("`, `")
+                            )));
+                        }
                     }
                 }
                 report.items_added += 1;

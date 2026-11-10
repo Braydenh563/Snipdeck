@@ -105,6 +105,7 @@ fn import_beeftext_bytes<L: Library>(
                 .map(str::to_owned)
                 .into_iter()
                 .collect(),
+            typed: true,
             body,
         });
     }

@@ -13,7 +13,10 @@ use std::io::Cursor;
 use common::*;
 use serde_json::json;
 use snipdeck_core::Trigger;
-use snipdeck_portable::{BoardLayout, ExportOptions, ImportOptions, Warning, import_archive};
+use snipdeck_portable::{
+    BoardLayout, ExportOptions, ImportOptions, KeySource, SensitivePolicy, Warning, import_archive,
+};
+use snipdeck_store::crypto::DataKey;
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, Store, TriggerRepo};
 
 fn keep_boards() -> ImportOptions<'static> {
@@ -144,18 +147,52 @@ fn a_bad_trigger_is_refused_and_a_sensitive_one_is_ignored() {
     assert!(import_archive(&mut s, Cursor::new(&bad), "b", at(1), &keep_boards()).is_err());
     assert_eq!(counts(&s).2, 0, "nothing was written");
 
-    let secret = edit_json(&bytes, "items.json", |doc| {
-        doc["boards"][0]["lists"][0]["items"][1]["trigger"] = json!(";s");
-        doc["boards"][0]["lists"][0]["items"][1]["sensitive"] = json!(true);
+    // A sensitive item that arrives with a trigger (hand-edited archive) is imported, with a
+    // key, but without the trigger.
+    let key = DataKey::generate().unwrap();
+    let mut src = with_triggers();
+    let b = src.boards().unwrap()[0].id;
+    let l = src.lists(b).unwrap()[0].id;
+    let mut secret = src.items(l).unwrap()[1].clone(); // B
+    secret.sensitive = true;
+    secret.preview.clear();
+    src.update_item(&secret, None).unwrap();
+    let bytes = export_bytes(
+        &src,
+        &ExportOptions {
+            sensitive: SensitivePolicy::Encrypt(&key),
+            ..ExportOptions::default()
+        },
+    );
+    let edited = edit_json(&bytes, "items.json", |doc| {
+        let items = doc["boards"][0]["lists"][0]["items"]
+            .as_array_mut()
+            .unwrap();
+        let hidden = items
+            .iter_mut()
+            .find(|i| i["sensitive"] == json!(true))
+            .unwrap();
+        hidden["trigger"] = json!(";s");
     });
     let mut s = store();
-    // The sensitive item needs a key to import; without one it is skipped, with its code.
-    let _ = import_archive(&mut s, Cursor::new(&secret), "b", at(1), &keep_boards());
+    let opts = ImportOptions {
+        layout: BoardLayout::KeepBoards,
+        key: KeySource::Given(&key),
+        ..ImportOptions::default()
+    };
+    import_archive(&mut s, Cursor::new(&edited), "b", at(1), &opts).unwrap();
+    let b = s.boards().unwrap()[0].id;
+    let l = s.lists(b).unwrap()[0].id;
+    let items = s.items(l).unwrap();
+    let hidden = items
+        .iter()
+        .find(|i| i.sensitive)
+        .expect("the sensitive item came in");
+    assert_eq!(s.trigger_of(hidden.id).unwrap(), None);
     assert!(
         s.triggers()
             .unwrap()
             .iter()
-            .all(|(t, _)| t.as_str() != ";s"),
-        "a sensitive item never holds a trigger"
+            .all(|(t, _)| t.as_str() != ";s")
     );
 }

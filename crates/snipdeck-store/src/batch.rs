@@ -543,7 +543,11 @@ macro_rules! repo_impls {
                 triggers::trigger_holder(self.reader().conn, trigger)
             }
 
-            fn set_trigger(&mut self, item: ItemId, trigger: Option<&Trigger>) -> Result<()> {
+            fn set_trigger(
+                &mut self,
+                item: ItemId,
+                trigger: Option<&Trigger>,
+            ) -> Result<Vec<Trigger>> {
                 self.writer(|cx| triggers::set_trigger(cx, item, trigger))
             }
         }

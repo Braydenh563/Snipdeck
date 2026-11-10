@@ -21,7 +21,7 @@ use crate::codec::{
     blob_refs, exists, from_nanos, id_bytes, id_from, nanos, not_found, require_board,
     require_item, require_list,
 };
-use crate::{Error, Result, TrashEntry, Trashable, triggers};
+use crate::{Error, Result, TrashEntry, Trashable};
 
 /// One row per trash entry: kind (0 board, 1 list, 2 item), id, label, `deleted_at`.
 const ENTRIES: &str = "
@@ -41,17 +41,14 @@ pub(crate) fn trash(cx: &mut Ctx<'_>, target: Trashable, at: Timestamp) -> Resul
     let (table, id) = match target {
         Trashable::Board(id) => {
             require_board(conn, id)?;
-            triggers::free_board(conn, id_bytes(id))?;
             ("boards", id_bytes(id))
         }
         Trashable::List(id) => {
             require_list(conn, id)?;
-            triggers::free_list(conn, id_bytes(id))?;
             ("lists", id_bytes(id))
         }
         Trashable::Item(id) => {
             require_item(conn, id)?;
-            triggers::free_item(conn, id_bytes(id))?;
             ("items", id_bytes(id))
         }
     };

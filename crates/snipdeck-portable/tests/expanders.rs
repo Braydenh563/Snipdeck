@@ -1162,3 +1162,49 @@ fn a_clashing_trigger_is_noted() {
         again.warnings
     );
 }
+
+#[test]
+fn espanso_word_and_padded_triggers_are_not_typed_triggers() {
+    let yaml = "matches:
+  - trigger: ':w'
+    word: true
+    label: Wordy
+    replace: one
+  - trigger: ' :pad'
+    label: Padded
+    replace: two
+  - trigger: ':lw'
+    left_word: true
+    label: Left
+    replace: three
+";
+    let (s, report) = espanso_in(&[("match/a.yml", yaml)], &ImportOptions::default());
+    assert_eq!(
+        contents(&s)[0].2,
+        [
+            e("Wordy (:w)", ItemKind::Text, "one"),
+            e("Padded (:pad)", ItemKind::Text, "two"),
+            // left_word fires on the last character after a boundary, as Snipdeck does.
+            et("Left", ":lw", ItemKind::Text, "three"),
+        ]
+    );
+    let all = notes(&report).join("\n");
+    assert!(all.contains("fires after a separator"), "{all}");
+    assert!(all.contains("`:pad` was not kept"), "{all}");
+}
+
+#[test]
+fn overlapping_triggers_are_noted() {
+    let json = r#"[
+      {"name": "Long", "keyword": ";addr2", "snippet": "one"},
+      {"name": "Short", "keyword": ";addr", "snippet": "two"}
+    ]"#;
+    let (_, report) = beeftext(json.as_bytes(), &ImportOptions::default());
+    let all = notes(&report).join("\n");
+    assert!(
+        all.contains("`Short`")
+            && all.contains("`;addr2`")
+            && all.contains("shorter one fires first"),
+        "{all}"
+    );
+}

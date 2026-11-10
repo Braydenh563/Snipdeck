@@ -9,7 +9,7 @@
 //! * The abbreviation becomes the item's typed trigger (`;hi`); the title is the snip's name,
 //!   or the first line of the text. A snip with several abbreviations (Espanso) keeps the first
 //!   that is a valid trigger and the report names the rest. An abbreviation that cannot be a
-//!   trigger (spaces, over 32 characters) stays in the title after the name, in parentheses
+//!   trigger (spaces around or inside it, over 32 characters, or an Espanso `word` match) stays in the title after the name, in parentheses
 //!   (`Greeting (my greeting)`), with a note, so it is not lost. A trigger already taken by
 //!   another snip, or by the library, is dropped with a note when the item is written.
 //! * Only variables with a direct Snipdeck equivalent become placeholders (`{date}`, `{time}`,
@@ -68,6 +68,9 @@ pub(crate) struct Snip {
     pub name: Option<String>,
     /// What the source calls the typed shortcuts, in its order.
     pub abbreviations: Vec<String>,
+    /// Whether the source fires them the way Snipdeck does, on the last typed character. False
+    /// for Espanso `word` and `right_word` matches, which wait for a separator.
+    pub typed: bool,
     pub body: Body,
 }
 
@@ -152,18 +155,20 @@ fn trigger_of(snip: &Snip, label: &str, report: &mut ImportReport) -> Option<Tri
     let mut chosen: Option<Trigger> = None;
     let mut unused = Vec::new();
     for raw in &snip.abbreviations {
-        let text = raw.trim();
-        if text.is_empty() {
+        if raw.is_empty() {
             continue;
         }
-        match Trigger::new(text) {
-            Ok(t) if chosen.is_none() => chosen = Some(t),
-            _ => unused.push(clean_label(text, 40)),
+        // Taken as written: a space around it is part of the source's trigger, so it is not one.
+        match Trigger::new(raw) {
+            Ok(t) if chosen.is_none() && snip.typed => chosen = Some(t),
+            _ => unused.push(clean_label(raw, 40)),
         }
     }
     if !unused.is_empty() {
         let why = if chosen.is_some() {
             "Snipdeck keeps one trigger per snippet"
+        } else if !snip.typed {
+            "it fires after a separator, which a Snipdeck trigger does not wait for"
         } else {
             "a trigger has no spaces and at most 32 characters"
         };
