@@ -1356,6 +1356,9 @@ msgstr "Mais"
 msgid "More options"
 msgstr "Mais opções"
 
+msgid "More options: open the full editor"
+msgstr "Mais opções: abrir o editor completo"
+
 msgid "More pinned snippets"
 msgstr "Mais trechos fixados"
 
@@ -1446,6 +1449,9 @@ msgstr "Novo quadro…"
 
 msgid "New item"
 msgstr "Novo trecho"
+
+msgid "New item (quick add in an open list)"
+msgstr "Novo item (adição rápida em uma lista aberta)"
 
 msgid "New item in {}"
 msgstr "Novo item em {}"

@@ -1352,6 +1352,9 @@ msgstr "更多"
 msgid "More options"
 msgstr "更多选项"
 
+msgid "More options: open the full editor"
+msgstr "更多选项：打开完整编辑器"
+
 msgid "More pinned snippets"
 msgstr "更多置顶片段"
 
@@ -1440,6 +1443,9 @@ msgstr "新建看板…"
 
 msgid "New item"
 msgstr "新建片段"
+
+msgid "New item (quick add in an open list)"
+msgstr "新建项目（在打开的列表中为快速添加）"
 
 msgid "New item in {}"
 msgstr "在 {} 中新建项目"

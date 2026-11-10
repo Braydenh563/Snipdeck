@@ -25,6 +25,8 @@ export component QuickAdd inherits Rectangle {
     // Ctrl+Shift+N inside the box: the full editor, prefilled with the text.
     callback full-editor(string);
     callback cancelled();
+    // Shows a "More options" button (the full editor) beside Cancel, for a window where Ctrl+Shift+N is another command.
+    in property <bool> show-more: false;
 
     out property <string> text: field.text;
     out property <length> box-h: root.expanded ? col.preferred-height + 2 * Space.s1 : Space.hit;
@@ -162,6 +164,12 @@ export component QuickAdd inherits Rectangle {
             HorizontalLayout {
                 spacing: Space.s2;
                 alignment: end;
+                if root.show-more: Button {
+                    text: @tr("More options");
+                    variant: ButtonVariant.ghost;
+                    a11y-label: @tr("More options: open the full editor");
+                    clicked => { root.full-editor(field.text); }
+                }
                 Button {
                     text: @tr("Cancel");
                     variant: ButtonVariant.ghost;

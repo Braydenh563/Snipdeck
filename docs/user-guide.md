@@ -25,7 +25,7 @@ This guide says what the app is built to do.
 
 ## Add a snippet
 
-Press `Ctrl+N` in the Main window or the Panel, or use the **New item** button. You can also choose **New
+Press `Ctrl+N` in the Panel, or in the Main window with no list open, or use the **New item** button. With a list open in the Main window, `Ctrl+N` jumps to the quick-add box above its items: type or paste, then press `Enter` to save it at the end of that list (`More options` opens the full editor). You can also choose **New
 snippet** in the Panel menu (the three dots). Pick a **Kind**, fill in the fields and press `Ctrl+Enter` or **Save**. The item
 goes into the list you were looking at.
 
@@ -375,7 +375,7 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Picker | `Ctrl+E`, `Esc` | Edit, close |
 | Main window | `Ctrl+K`, `Ctrl+Shift+P` | All commands |
 | Main window | `Ctrl+/` | Show the keyboard shortcuts |
-| Main window | `Ctrl+N`, `Ctrl+Shift+N` | New item, new list |
+| Main window | `Ctrl+N`, `Ctrl+Shift+N` | New item (the quick-add box in an open list), new list |
 | Main window | `Ctrl+,` | Settings |
 | Main window | `Ctrl+W` | Close the window |
 | Main window | `Ctrl+B` | Show or hide the sidebar |

@@ -1356,6 +1356,9 @@ msgstr "Mehr"
 msgid "More options"
 msgstr "Weitere Optionen"
 
+msgid "More options: open the full editor"
+msgstr "Weitere Optionen: den vollständigen Editor öffnen"
+
 msgid "More pinned snippets"
 msgstr "Weitere angeheftete Textbausteine"
 
@@ -1446,6 +1449,9 @@ msgstr "Neues Board…"
 
 msgid "New item"
 msgstr "Neuer Textbaustein"
+
+msgid "New item (quick add in an open list)"
+msgstr "Neues Element (Schnell hinzufügen in einer offenen Liste)"
 
 msgid "New item in {}"
 msgstr "Neues Element in {}"

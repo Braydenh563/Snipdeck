@@ -1352,6 +1352,9 @@ msgstr "その他"
 msgid "More options"
 msgstr "その他のオプション"
 
+msgid "More options: open the full editor"
+msgstr "その他のオプション: 完全なエディターを開く"
+
 msgid "More pinned snippets"
 msgstr "その他のピン留めスニペット"
 
@@ -1440,6 +1443,9 @@ msgstr "新しいボード…"
 
 msgid "New item"
 msgstr "新しいスニペット"
+
+msgid "New item (quick add in an open list)"
+msgstr "新しい項目(開いているリストではクイック追加)"
 
 msgid "New item in {}"
 msgstr "{}に新しい項目"

@@ -581,6 +581,26 @@ impl MainModel {
             .count()
     }
 
+    /// The items a drag that starts on row `row` carries: every selected item, in the order the
+    /// rows are in, when `row` is one of several selected; else just that row's item.
+    #[must_use]
+    pub fn dragged_items(&self, row: usize) -> Vec<ItemId> {
+        let keys = self.keys();
+        let Some(&Key::Item(own)) = keys.get(row) else {
+            return Vec::new();
+        };
+        if self.selected_count() < 2 || !self.selected.contains(&Key::Item(own)) {
+            return vec![own];
+        }
+        keys.iter()
+            .filter(|k| self.selected.contains(k))
+            .filter_map(|k| match k {
+                Key::Item(id) => Some(*id),
+                _ => None,
+            })
+            .collect()
+    }
+
     fn entries(&self) -> Vec<Entry<'_>> {
         if self.section == Section::Trash {
             let needle = self.query.trim().to_lowercase();
@@ -909,6 +929,41 @@ pub fn reorder<I: Copy>(order: &[I], from: usize, delta: isize) -> Option<(usize
     Some((to, placement))
 }
 
+/// Where dropping the `moved` entries on `onto` places them among `order`: one placement per moved
+/// entry, to be applied in the order given, so that the block lands where a single dragged entry
+/// would (below `onto` when it comes from above, above it otherwise), keeping its current order.
+/// `None` when `onto` is one of the moved entries (a drop on a marked row), when `onto` is not in
+/// `order`, when no moved entry is in `order`, or when nothing would change.
+#[must_use]
+pub fn reorder_many<I: Copy + PartialEq>(
+    order: &[I],
+    moved: &[I],
+    onto: I,
+) -> Option<Vec<(I, Placement<I>)>> {
+    if moved.contains(&onto) {
+        return None;
+    }
+    let onto_at = order.iter().position(|i| *i == onto)?;
+    let block: Vec<I> = order.iter().copied().filter(|i| moved.contains(i)).collect();
+    let first = order.iter().position(|i| block.first() == Some(i))?;
+    let rest: Vec<I> = order.iter().copied().filter(|i| !moved.contains(i)).collect();
+    let onto_rest = rest.iter().position(|i| *i == onto)?;
+    // Coming from above (the block starts before `onto`) it lands after `onto`; else before it.
+    let at = if first < onto_at { onto_rest + 1 } else { onto_rest };
+    let mut result = rest;
+    result.splice(at..at, block.iter().copied());
+    if result == order {
+        return None;
+    }
+    let mut placements = Vec::with_capacity(block.len());
+    let mut previous = at.checked_sub(1).map(|p| result[p]);
+    for id in block {
+        placements.push((id, previous.map_or(Placement::First, Placement::After)));
+        previous = Some(id);
+    }
+    Some(placements)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1204,6 +1259,51 @@ mod tests {
         model.reload(&store).expect("reload");
         model.open(Section::List(list));
         assert_eq!(titles(&model)[2], "first line");
+    }
+
+    /// Applies `reorder_many`'s placements to `order` one by one, as the controller does.
+    fn apply_many(order: &[u8], moved: &[u8], onto: u8) -> Option<Vec<u8>> {
+        let mut now = order.to_vec();
+        for (id, placement) in reorder_many(order, moved, onto)? {
+            now.retain(|i| *i != id);
+            let at = match placement {
+                Placement::First => 0,
+                Placement::After(p) => now.iter().position(|i| *i == p)? + 1,
+                _ => return None,
+            };
+            now.insert(at, id);
+        }
+        Some(now)
+    }
+
+    #[test]
+    fn reorder_many_places_the_block_where_a_single_row_would_land() {
+        let order = [1u8, 2, 3, 4, 5, 6];
+        let table: [(&[u8], u8, Option<Vec<u8>>); 8] = [
+            // block down: after the target
+            (&[1, 2], 4, Some(vec![3, 4, 1, 2, 5, 6])),
+            // block up: before the target
+            (&[5, 6], 2, Some(vec![1, 5, 6, 2, 3, 4])),
+            // up to the very top
+            (&[4, 5], 1, Some(vec![4, 5, 1, 2, 3, 6])),
+            // non-adjacent marks gather in their current order
+            (&[2, 5], 6, Some(vec![1, 3, 4, 6, 2, 5])),
+            (&[5, 2], 1, Some(vec![2, 5, 1, 3, 4, 6])),
+            // a drop on a marked row is a no-op
+            (&[2, 4], 4, None),
+            (&[2, 4], 2, None),
+            // onto the row just above the block: it swaps past it
+            (&[2, 3], 1, Some(vec![2, 3, 1, 4, 5, 6])),
+        ];
+        for (moved, onto, want) in table {
+            assert_eq!(apply_many(&order, moved, onto), want, "{moved:?} onto {onto}");
+        }
+        assert_eq!(apply_many(&order, &[2], 9), None, "a target outside the order");
+        assert_eq!(apply_many(&order, &[], 3), None, "nothing to move");
+        assert_eq!(apply_many(&order, &[9], 3), None, "moved rows not in the order");
+        // One row is exactly `reorder`.
+        let (_, single) = reorder(&order, 0, 2).expect("single");
+        assert_eq!(reorder_many(&order, &[1], 3), Some(vec![(1, single)]));
     }
 
     #[test]

@@ -1516,6 +1516,42 @@ fn panel_titles(ctl: &Ctl) -> Vec<String> {
 }
 
 #[test]
+fn main_quick_add_saves_to_the_open_list() {
+    let mut ctl = pro();
+    open_list(&mut ctl, "Code");
+    let before = titles(&ctl.main_screen());
+    assert!(ctl.quick_add(
+        "a quick note",
+        None,
+        false,
+        snipdeck_app::item_editor::Origin::Main
+    ));
+    let after = titles(&ctl.main_screen());
+    assert_eq!(after.len(), before.len() + 1, "one more row in the open list");
+    assert_eq!(after.last().map(String::as_str), Some("a quick note"));
+    assert!(
+        !ctl.quick_add("  \n", None, false, snipdeck_app::item_editor::Origin::Main),
+        "blank text adds nothing"
+    );
+}
+
+#[test]
+fn dragging_a_marked_panel_row_moves_every_marked_row_in_one_step() {
+    let mut ctl = pro();
+    let before = panel_titles(&ctl);
+    assert!(before.len() >= 4);
+    ctl.panel_mark(0, SelectMode::Toggle);
+    ctl.panel_mark(1, SelectMode::Toggle);
+    let last = before.len() - 1;
+    ctl.panel_drop_row(0, last);
+    let mut want: Vec<String> = before[2..].to_vec();
+    want.extend_from_slice(&before[..2]);
+    assert_eq!(panel_titles(&ctl), want);
+    ctl.undo();
+    assert_eq!(panel_titles(&ctl), before, "one Undo");
+}
+
+#[test]
 fn dragging_a_panel_row_onto_another_takes_its_place() {
     let mut ctl = pro();
     let before = panel_titles(&ctl);

@@ -176,6 +176,59 @@ fn reordering_round_trips_to_the_same_order() {
     assert_eq!(order(&ctl, email), after);
 }
 
+#[test]
+fn dragging_three_marked_rows_is_one_undo_step() {
+    let mut ctl = rig();
+    let email = list_id(&mut ctl, "Email replies");
+    let before = order(&ctl, email);
+    assert!(before.len() >= 5, "the demo list has rows to arrange");
+    ctl.main_open(Section::List(email));
+    ctl.main_select(0, SelectMode::Replace);
+    ctl.main_select(1, SelectMode::Toggle);
+    ctl.main_select(3, SelectMode::Toggle);
+    let last = before.len() - 1;
+    ctl.main_drop_row(1, last);
+    let mut want: Vec<String> = (0..before.len())
+        .filter(|i| ![0, 1, 3].contains(i))
+        .map(|i| before[i].clone())
+        .collect();
+    want.extend([0, 1, 3].map(|i| before[i].clone()));
+    assert_eq!(order(&ctl, email), want, "the three land together, in order");
+    assert_eq!(ctl.history_view().undo, Some(Action::Reorder));
+    ctl.undo();
+    assert_eq!(order(&ctl, email), before, "one Undo puts all three back");
+    assert_eq!(ctl.history_view().undo, None, "and it was a single step");
+    ctl.redo();
+    assert_eq!(order(&ctl, email), want);
+}
+
+#[test]
+fn dragging_an_unmarked_row_moves_it_alone() {
+    let mut ctl = rig();
+    let email = list_id(&mut ctl, "Email replies");
+    let before = order(&ctl, email);
+    ctl.main_open(Section::List(email));
+    ctl.main_select(0, SelectMode::Replace);
+    ctl.main_select(1, SelectMode::Toggle);
+    ctl.main_drop_row(3, 4);
+    let mut want = before.clone();
+    want.swap(3, 4);
+    assert_eq!(order(&ctl, email), want);
+}
+
+#[test]
+fn dropping_on_a_marked_row_changes_nothing() {
+    let mut ctl = rig();
+    let email = list_id(&mut ctl, "Email replies");
+    let before = order(&ctl, email);
+    ctl.main_open(Section::List(email));
+    ctl.main_select(0, SelectMode::Replace);
+    ctl.main_select(2, SelectMode::Toggle);
+    ctl.main_drop_row(0, 2);
+    assert_eq!(order(&ctl, email), before);
+    assert_eq!(ctl.history_view().undo, None);
+}
+
 fn save_new(ctl: &mut Ctl, title: &str, content: &str) -> ItemId {
     ctl.open_new_item(Origin::Main);
     let v = ctl.item_editor_view().expect("editor");
