@@ -189,3 +189,46 @@ fn a_dangling_or_duplicate_group_reference_is_refused() {
     assert!(import_archive(&mut s, Cursor::new(&dup), "b", at(1), &keep_boards()).is_err());
     assert_eq!(counts(&s).2, 0, "nothing was written");
 }
+
+/// Members that are not next to each other in an archive are gathered on import (normalised,
+/// not refused): the group keeps all its members and the list order otherwise holds.
+#[test]
+fn non_contiguous_members_are_gathered_on_import() {
+    let bytes = export_bytes(&grouped(), &ExportOptions::default());
+    let edited = edit_json(&bytes, "items.json", |doc| {
+        let list = &mut doc["boards"][0]["lists"][0];
+        let pair = list["groups"][0]["id"].clone();
+        let solo = list["groups"][1]["id"].clone();
+        list["items"][4]["group"] = pair; // B C [D] E
+        list["groups"].as_array_mut().unwrap().remove(1);
+        let _ = solo;
+    });
+    let mut fresh = store();
+    import_archive(
+        &mut fresh,
+        Cursor::new(&edited),
+        "b",
+        at(200),
+        &keep_boards(),
+    )
+    .unwrap();
+    let got = shape(&fresh);
+    assert_eq!(
+        got,
+        [(
+            "Pair".to_owned(),
+            true,
+            vec!["B".into(), "C".into(), "E".into()]
+        )]
+    );
+    let b = fresh.boards().unwrap()[0].id;
+    let l = fresh.lists(b).unwrap()[0].id;
+    let order: Vec<String> = fresh
+        .items(l)
+        .unwrap()
+        .into_iter()
+        .map(|i| i.title)
+        .collect();
+    assert_eq!(order, ["A", "B", "C", "E", "D"]);
+    assert_healthy(&fresh);
+}

@@ -643,15 +643,9 @@ pub(crate) fn move_item(
         raw_placement(at),
         Some(bytes),
     )?;
-    // After a member the item joins that group (only inside one list); anywhere else it leaves.
-    let group = groups::inherited(conn, raw_placement(at))?.filter(|_| {
-        conn.query_row(
-            "SELECT list_id = ?2 FROM items WHERE id = ?1",
-            params![bytes, list_bytes],
-            |r| r.get::<_, bool>(0),
-        )
-        .unwrap_or(false)
-    });
+    // After a member of the target list the item joins that member's group; anywhere else it
+    // leaves its own. (`rank::place` has already required the anchor to be in the target list.)
+    let group = groups::inherited(conn, raw_placement(at))?;
     conn.execute(
         "UPDATE items SET list_id = ?2, rank = ?3, group_id = ?4 WHERE id = ?1",
         params![bytes, list_bytes, rank, group],

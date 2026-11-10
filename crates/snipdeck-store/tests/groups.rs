@@ -14,7 +14,7 @@ mod common;
 use common::*;
 use snipdeck_core::{Group, ItemId, ListId, Placement};
 use snipdeck_store::{
-    BoardRepo, GroupDelete, GroupRepo, ItemRepo, ListRepo, Store, TrashRepo, Trashable,
+    BoardRepo, GroupDelete, GroupEnd, GroupRepo, ItemRepo, ListRepo, Store, TrashRepo, Trashable,
 };
 
 const FIXTURE_V7: &[u8] = include_bytes!("fixtures/v7.db");
@@ -167,7 +167,7 @@ fn renaming_collapsing_and_joining() {
     g.name = name("New");
     g.collapsed = true;
     s.update_group(&g).unwrap();
-    s.join_group(ids[4], g.id).unwrap();
+    s.join_group(ids[4], g.id, GroupEnd::Last).unwrap();
     let r = s.groups_of(l).unwrap();
     assert_eq!(
         (r[0].group.name.as_str(), r[0].group.collapsed),
@@ -193,4 +193,119 @@ fn a_batch_can_group_and_roll_back() {
     });
     assert!(done.is_err());
     assert!(s.groups_of(l).unwrap().is_empty());
+}
+
+#[test]
+fn moving_from_another_list_after_a_member_joins_its_group() {
+    let mut s = store();
+    let (l, ids) = five(&mut s);
+    let bid = s.boards().unwrap()[0].id;
+    let other = list(&mut s, bid, "Other");
+    let x = item(&mut s, other.id, "X", "X").id;
+    s.create_group(&Group::new(l, name("G")), &ids[..3])
+        .unwrap();
+    s.move_item(x, l, Placement::After(ids[0])).unwrap();
+    assert_eq!(runs(&s, l)[0].1, [ids[0], x, ids[1], ids[2]]);
+    // A move out of a group into another list's plain spot leaves no group behind.
+    s.move_item(x, other.id, Placement::Last).unwrap();
+    assert_eq!(runs(&s, l)[0].1, [ids[0], ids[1], ids[2]]);
+    assert!(runs(&s, other.id).is_empty());
+}
+
+#[test]
+fn joining_at_the_start_keeps_a_firsts_membership_on_undo() {
+    let mut s = store();
+    let (l, ids) = five(&mut s);
+    let g = Group::new(l, name("G"));
+    s.create_group(&g, &ids[1..4]).unwrap(); // B C D
+    // Move the first member out (as a drag would), then undo it: back at the start.
+    s.move_item(ids[1], l, Placement::Last).unwrap();
+    assert_eq!(runs(&s, l)[0].1, [ids[2], ids[3]]);
+    s.join_group(ids[1], g.id, GroupEnd::First).unwrap();
+    assert_eq!(runs(&s, l)[0].1, [ids[1], ids[2], ids[3]]);
+    assert_eq!(titles(&s, l), ["A", "B", "C", "D", "E"]);
+    // With nothing before the run it goes to the very top.
+    s.move_item(ids[0], l, Placement::Last).unwrap();
+    s.join_group(ids[4], g.id, GroupEnd::First).unwrap();
+    assert_eq!(titles(&s, l), ["E", "B", "C", "D", "A"]);
+    assert_healthy(&s);
+}
+
+#[test]
+fn restoring_after_trash_items_brings_the_header_back() {
+    let mut s = store();
+    let (l, ids) = five(&mut s);
+    let g = Group::new(l, name("G"));
+    s.create_group(&g, &ids[1..3]).unwrap();
+    s.delete_group(g.id, GroupDelete::TrashItems(at(9)))
+        .unwrap();
+    assert!(runs(&s, l).is_empty());
+    s.restore(Trashable::Item(ids[1])).unwrap();
+    s.restore(Trashable::Item(ids[2])).unwrap();
+    assert_eq!(runs(&s, l), [("G".to_owned(), vec![ids[1], ids[2]])]);
+}
+
+fn group_rows(dir: &std::path::Path) -> i64 {
+    rusqlite::Connection::open(dir.join("snipdeck.db"))
+        .unwrap()
+        .query_row("SELECT count(*) FROM item_groups", [], |r| r.get(0))
+        .unwrap()
+}
+
+#[test]
+fn purging_the_last_members_removes_the_group() {
+    let dir = tempfile::tempdir().unwrap();
+    {
+        let mut s = Store::open(dir.path()).unwrap();
+        let (l, ids) = five(&mut s);
+        s.create_group(&Group::new(l, name("G")), &ids[1..3])
+            .unwrap();
+        s.trash(Trashable::Item(ids[1]), at(1)).unwrap();
+        s.trash(Trashable::Item(ids[2]), at(2)).unwrap();
+        s.purge(at(10)).unwrap();
+    }
+    assert_eq!(group_rows(dir.path()), 0);
+    {
+        let mut s = Store::open(dir.path()).unwrap();
+        let (l, ids) = five(&mut s);
+        s.create_group(&Group::new(l, name("G")), &ids[..1])
+            .unwrap();
+        s.trash(Trashable::Item(ids[0]), at(1)).unwrap();
+        s.purge_entry(Trashable::Item(ids[0])).unwrap();
+    }
+    assert_eq!(group_rows(dir.path()), 0);
+}
+
+/// A restored item whose rank lies inside another group's run (not reachable through the
+/// store's own calls, but a damaged or hand-edited file could) never splits that run.
+#[test]
+fn a_restored_item_inside_a_run_never_splits_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let (l, ids) = {
+        let mut s = Store::open(dir.path()).unwrap();
+        let (l, ids) = five(&mut s);
+        s.create_group(&Group::new(l, name("G")), &ids[..2])
+            .unwrap(); // A B
+        s.trash(Trashable::Item(ids[3]), at(1)).unwrap(); // D, ungrouped
+        (l, ids)
+    };
+    {
+        // Put D's rank between A and B.
+        let raw = rusqlite::Connection::open(dir.path().join("snipdeck.db")).unwrap();
+        raw.execute(
+            "UPDATE items SET rank = (SELECT (a.rank + b.rank) / 2 FROM items a, items b
+                                       WHERE a.id = ?1 AND b.id = ?2) WHERE id = ?3",
+            rusqlite::params![
+                ids[0].as_uuid().as_bytes(),
+                ids[1].as_uuid().as_bytes(),
+                ids[3].as_uuid().as_bytes()
+            ],
+        )
+        .unwrap();
+    }
+    let mut s = Store::open(dir.path()).unwrap();
+    s.restore(Trashable::Item(ids[3])).unwrap();
+    let r = runs(&s, l);
+    assert_eq!(r.len(), 1);
+    assert_eq!(r[0].1, [ids[0], ids[3], ids[1]], "joined rather than split");
 }

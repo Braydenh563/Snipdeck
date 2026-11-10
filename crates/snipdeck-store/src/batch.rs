@@ -18,8 +18,8 @@ use crate::crypto::DataKey;
 use crate::items::Written;
 use crate::store::{Quiet, begin};
 use crate::{
-    BlobStore, BoardRepo, Error, GroupDelete, GroupRepo, GroupRun, ItemRepo, ListRepo, Result,
-    Store, TagRepo, TrashEntry, TrashRepo, Trashable, boards, groups, items, tags, trash,
+    BlobStore, BoardRepo, Error, GroupDelete, GroupEnd, GroupRepo, GroupRun, ItemRepo, ListRepo,
+    Result, Store, TagRepo, TrashEntry, TrashRepo, Trashable, boards, groups, items, tags, trash,
 };
 
 /// Everything a write needs, inside an open transaction.
@@ -524,8 +524,8 @@ macro_rules! repo_impls {
                 self.writer(|cx| groups::move_run(cx, id, at))
             }
 
-            fn join_group(&mut self, item: ItemId, group: GroupId) -> Result<()> {
-                self.writer(|cx| groups::join_group(cx, item, group))
+            fn join_group(&mut self, item: ItemId, group: GroupId, end: GroupEnd) -> Result<()> {
+                self.writer(|cx| groups::join_group(cx, item, group, end))
             }
         }
 

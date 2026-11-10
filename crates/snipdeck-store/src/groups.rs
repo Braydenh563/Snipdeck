@@ -31,6 +31,15 @@ pub enum GroupDelete {
     TrashItems(Timestamp),
 }
 
+/// Which end of a group an item joins at.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GroupEnd {
+    /// Directly above the group's first live member.
+    First,
+    /// Directly below its last live member.
+    Last,
+}
+
 /// A group and its live members, in list order.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GroupRun {
@@ -82,9 +91,23 @@ pub(crate) fn heal_restored(conn: &Connection, item: [u8; 16]) -> Result<()> {
     )?;
     if split {
         conn.execute("UPDATE items SET group_id = NULL WHERE id = ?1", [item])?;
-        prune(conn)?;
     }
-    Ok(())
+    // Lying inside another group's run: join that run rather than cut it in two.
+    conn.execute(
+        "UPDATE items SET group_id = (
+             SELECT h.group_id FROM items h, items me
+              WHERE me.id = ?1 AND h.list_id = me.list_id AND h.deleted_at IS NULL
+                AND h.group_id IS NOT NULL AND h.group_id IS NOT me.group_id AND h.id != me.id
+              GROUP BY h.group_id HAVING MIN(h.rank) < me.rank AND MAX(h.rank) > me.rank
+              LIMIT 1)
+         WHERE id = ?1 AND EXISTS (
+             SELECT 1 FROM items h, items me
+              WHERE me.id = ?1 AND h.list_id = me.list_id AND h.deleted_at IS NULL
+                AND h.group_id IS NOT NULL AND h.group_id IS NOT me.group_id AND h.id != me.id
+              GROUP BY h.group_id HAVING MIN(h.rank) < me.rank AND MAX(h.rank) > me.rank)",
+        [item],
+    )?;
+    prune(conn)
 }
 
 fn live_members(conn: &Connection, group: [u8; 16]) -> Result<Vec<[u8; 16]>> {
@@ -275,7 +298,12 @@ pub(crate) fn move_run(cx: &mut Ctx<'_>, id: GroupId, at: Placement<ItemId>) -> 
     Ok(())
 }
 
-pub(crate) fn join_group(cx: &mut Ctx<'_>, item: ItemId, group: GroupId) -> Result<()> {
+pub(crate) fn join_group(
+    cx: &mut Ctx<'_>,
+    item: ItemId,
+    group: GroupId,
+    end: GroupEnd,
+) -> Result<()> {
     let conn = cx.conn;
     require_item(conn, item)?;
     let list = group_list(conn, group)?;
@@ -288,13 +316,27 @@ pub(crate) fn join_group(cx: &mut Ctx<'_>, item: ItemId, group: GroupId) -> Resu
     if !in_list {
         return Err(not_found(item));
     }
-    let Some(tail) = live_members(conn, id_bytes(group))?
+    let others: Vec<[u8; 16]> = live_members(conn, id_bytes(group))?
         .into_iter()
-        .rfind(|m| *m != item_bytes)
-    else {
-        return Err(not_found(group));
+        .filter(|m| *m != item_bytes)
+        .collect();
+    let at = match (end, others.first(), others.last()) {
+        (GroupEnd::Last, _, Some(tail)) => Placement::After(Uuid::from_bytes(*tail)),
+        (GroupEnd::First, Some(head), _) => {
+            // Directly above the head: after whatever sorts just before it, else the top.
+            let before: Option<[u8; 16]> = conn
+                .query_row(
+                    "SELECT id FROM items WHERE list_id = ?1 AND id IS NOT ?3
+                       AND rank < (SELECT rank FROM items WHERE id = ?2)
+                     ORDER BY rank DESC LIMIT 1",
+                    params![list, head, item_bytes],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            before.map_or(Placement::First, |b| Placement::After(Uuid::from_bytes(b)))
+        }
+        _ => return Err(not_found(group)),
     };
-    let at = Placement::After(Uuid::from_bytes(tail));
     let rank = rank::place(conn, ITEMS, Some(list), at, Some(item_bytes))?;
     conn.execute(
         "UPDATE items SET rank = ?2, group_id = ?3 WHERE id = ?1",

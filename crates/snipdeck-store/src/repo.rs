@@ -27,7 +27,7 @@ use snipdeck_core::{
 };
 
 use crate::Result;
-use crate::groups::{GroupDelete, GroupRun};
+use crate::groups::{GroupDelete, GroupEnd, GroupRun};
 
 /// Boards.
 pub trait BoardRepo {
@@ -90,8 +90,9 @@ pub trait GroupRepo {
     /// Moves the whole run to `at`. After a member of another group means after that group.
     fn move_run(&mut self, id: GroupId, at: Placement<ItemId>) -> Result<()>;
 
-    /// Moves a live item of the group's list to the end of the group and makes it a member.
-    fn join_group(&mut self, item: ItemId, group: GroupId) -> Result<()>;
+    /// Moves a live item of the group's list to the start or end of the group and makes it a
+    /// member (`First` is what undoing the move of a group's first item needs).
+    fn join_group(&mut self, item: ItemId, group: GroupId, end: GroupEnd) -> Result<()>;
 }
 
 /// Items and their content.

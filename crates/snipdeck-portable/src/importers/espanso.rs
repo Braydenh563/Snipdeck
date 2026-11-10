@@ -427,6 +427,18 @@ fn parse_yaml(text: &str, budget: &Cell<usize>) -> std::result::Result<Node, Str
         b.max_depth = 64;
         b.max_aliases = 50_000;
     }
+    // One `&defaults` merged into many matches is normal; the total event, replay and
+    // expansion budgets bound the cost instead of the alias/anchor ratio.
+    if let Some(b) = options.budget.as_mut() {
+        b.enforce_alias_anchor_ratio = false;
+    }
+    // Text, not typed values: `yes`, `007` and `1_000` are replacement text. The old parser
+    // kept repeated keys and `get` found the first, so the first wins.
+    options.strict_booleans = true;
+    options.leading_zero_numbers_as_strings = true;
+    options.underscored_numbers_as_strings = true;
+    options.duplicate_keys = serde_saphyr::options::DuplicateKeyPolicy::FirstWins;
+    options.with_snippet = false;
     options.alias_limits.max_total_replayed_events = 1_000_000;
     options.alias_limits.max_replay_stack_depth = 64;
     serde_saphyr::with_deserializer_from_str_with_options(text, options, |de| {

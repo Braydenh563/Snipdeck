@@ -51,7 +51,7 @@ pub use aside::{finish_rebuild, set_aside, undo_set_aside};
 pub use batch::Batch;
 pub use blobs::BlobStore;
 pub use error::{Error, Result, Trouble};
-pub use groups::{GroupDelete, GroupRun};
+pub use groups::{GroupDelete, GroupEnd, GroupRun};
 pub use recent::{
     BLOB_BUDGET, RecentContent, RecentEntry, RecentImage, RecentKind, RecentPayload, RecentRepo,
     RecentThumb, THUMB_MAX_BYTES,
