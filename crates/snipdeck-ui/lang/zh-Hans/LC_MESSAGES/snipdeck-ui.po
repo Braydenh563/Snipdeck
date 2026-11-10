@@ -416,6 +416,9 @@ msgstr "关闭窗口"
 msgid "Code"
 msgstr "代码"
 
+msgid "Collapse sidebar (Ctrl+B)"
+msgstr "折叠侧边栏 (Ctrl+B)"
+
 msgid "Colour"
 msgstr "颜色"
 
@@ -907,6 +910,9 @@ msgstr "回收站中的所有内容都将被永久删除，此操作无法撤销
 
 msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
 msgstr "资料库中的所有内容都会被删除：看板、列表、片段、图片、草稿和备份。如果需要副本，请先导出。你的设置和许可证会保留。"
+
+msgid "Expand sidebar (Ctrl+B)"
+msgstr "展开侧边栏 (Ctrl+B)"
 
 msgid "Export as text"
 msgstr "导出为文本"
@@ -2238,11 +2244,17 @@ msgstr "显示“符号”标签页"
 msgid "Show all"
 msgstr "显示全部"
 
+msgid "Show or hide sidebar"
+msgstr "显示或隐藏侧边栏"
+
 msgid "Show or hide the Panel"
 msgstr "显示或隐藏面板"
 
 msgid "Show or hide the panel"
 msgstr "显示或隐藏面板"
+
+msgid "Show or hide the sidebar"
+msgstr "显示或隐藏侧边栏"
 
 msgid "Show the Panel"
 msgstr "显示面板"
@@ -2258,6 +2270,9 @@ msgstr "显示标题、颜色、标签和隐私"
 
 msgid "Shrug"
 msgstr "耸肩"
+
+msgid "Sidebar width"
+msgstr "侧边栏宽度"
 
 msgid "Skip"
 msgstr "跳过"
@@ -2355,8 +2370,26 @@ msgstr "片段"
 msgid "Sorry"
 msgstr "抱歉"
 
+msgid "Sort by"
+msgstr "排序方式"
+
+msgid "Sort by: Manual"
+msgstr "排序方式:手动"
+
+msgid "Sort by: Most used"
+msgstr "排序方式:最常使用"
+
+msgid "Sort by: Recently used"
+msgstr "排序方式:最近使用"
+
+msgid "Sort by: {}"
+msgstr "排序方式:{}"
+
 msgid "Sort items by"
 msgstr "排序方式"
+
+msgid "Sort: {}"
+msgstr "排序:{}"
 
 msgid "Source code"
 msgstr "源代码"
@@ -2396,6 +2429,9 @@ msgstr "Supporter"
 
 msgid "Surprise"
 msgstr "惊讶"
+
+msgid "Switch this list to Manual order?"
+msgstr "要将此列表切换为手动排序吗?"
 
 msgid "Symbols"
 msgstr "符号"
@@ -3021,6 +3057,9 @@ msgstr "移动"
 
 msgid "ms"
 msgstr "毫秒"
+
+msgid "navigation rail collapse expand lists panel left width"
+msgstr "导航 侧边栏 折叠 展开 列表 面板 左侧 宽度"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"

@@ -168,6 +168,14 @@ pub struct MainScreen {
     pub cursor: usize,
     /// Rows can be dragged into a new place: the open list is in manual order and no search is running.
     pub reorderable: bool,
+    /// The sort of the open list (manual when no list is open).
+    pub list_sort: snipdeck_core::ListSort,
+    /// The open list sorts itself and no search runs: a drop is refused but offers manual order.
+    pub reorder_offer: bool,
+    /// The sidebar's width in logical pixels at 100 % text size (a setting; 200 to 320).
+    pub sidebar_width: u32,
+    /// The sidebar is folded to its rail by the user (a setting).
+    pub sidebar_collapsed: bool,
     /// The rows.
     pub rows: Vec<Row>,
     /// How many rows are selected.
@@ -271,11 +279,22 @@ where
             section_index: self.main.section_index(),
             view_mode: self.main.view_mode(),
             theme: self.settings.theme,
+            sidebar_width: self.settings.main_sidebar_width,
+            sidebar_collapsed: self.settings.main_sidebar_collapsed,
             label_chips: self.main.label_chips(),
             label_filter: self.main.label_filter(),
             query: self.main.query().to_owned(),
             cursor: self.main.cursor(),
             reorderable: self.main.reorderable(),
+            reorder_offer: !self.main.searching()
+                && self
+                    .main
+                    .open_list()
+                    .is_some_and(|l| l.sort != snipdeck_core::ListSort::Manual),
+            list_sort: self
+                .main
+                .open_list()
+                .map_or(snipdeck_core::ListSort::Manual, |l| l.sort),
             selected_count: self.main.selected_count(),
             rows,
             use_label: self.model.use_label(),

@@ -28,6 +28,10 @@ where
         match command {
             Command::NewItem => self.open_new_item(Origin::Main),
             Command::NewList => self.main_new_list(),
+            Command::ToggleSidebar => {
+                let collapsed = self.settings.main_sidebar_collapsed;
+                self.set_main_sidebar_collapsed(!collapsed);
+            }
             // Not the controller's: `MainBinding::run_command` handles both before it gets here
             // (Search moves the window's focus, Tour opens the tour window). The arm stays only so
             // the match is exhaustive.

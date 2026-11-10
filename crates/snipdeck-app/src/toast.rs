@@ -329,6 +329,12 @@ pub enum ToastMessage {
     ListAdded,
     /// "List saved": the list editor.
     ListSaved,
+    /// "Switch this list to Manual order?": a drag or Alt+Up / Alt+Down in a list that sorts itself.
+    /// The toast's button switches list `list` to manual order.
+    SwitchToManual {
+        /// The list that was dragged in.
+        list: snipdeck_core::ListId,
+    },
     /// "Board saved": the board editor.
     BoardSaved,
     /// "Removed from Recent".

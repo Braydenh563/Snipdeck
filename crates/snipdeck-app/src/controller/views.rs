@@ -254,6 +254,10 @@ pub struct View {
     pub lists_in_menu: bool,
     /// The context menu of a list tab while it is open ([`LIST_MENU`](crate::controller::LIST_MENU)).
     pub list_menu: Option<Vec<ListMenuEntry>>,
+    /// The sort of the list the list menu is open on (its "Sort by" row is checked).
+    pub list_menu_sort: snipdeck_core::ListSort,
+    /// The shown list sorts itself and no search runs: moves are refused but offer manual order.
+    pub reorder_offer: bool,
     /// The list menu's "Delete list…" confirmation while it asks (the Panel draws it; no
     /// editor opens).
     pub list_delete: Option<ListDeleteView>,

@@ -17,7 +17,7 @@ use std::{
     time::Duration,
 };
 
-use i_slint_backend_testing::{AccessibleRole, ElementHandle};
+use i_slint_backend_testing::{AccessibleRole, ElementHandle, ElementQuery};
 use slint::{ComponentHandle, Model, platform::Key};
 use snipdeck_app::{
     binding::Binding,
@@ -1474,4 +1474,93 @@ fn ctrl_v_in_search_field_does_not_create_but_the_list_pastes() {
             r.ui.get_toast_text()
         );
     });
+}
+
+#[test]
+fn a_move_in_a_sorted_list_offers_manual_order_through_the_keys() {
+    on_ui_thread(|| {
+        let r = rig_tier(Tier::Pro);
+        let code = i32::try_from(
+            r.list_names()
+                .iter()
+                .position(|n| n == "Code")
+                .expect("Code"),
+        )
+        .unwrap();
+        r.open_list(code);
+        r.ui.invoke_sort_chosen(1);
+        slint::platform::update_timers_and_animations();
+        assert_eq!(r.ui.get_list_sort(), 1);
+        assert!(!r.ui.get_rows_reorderable());
+        assert!(
+            r.ui.get_reorder_offer(),
+            "drops are accepted so the offer can show"
+        );
+        r.ui.invoke_focus_items();
+        chord(r.window(), &[Key::Alt], &key(Key::DownArrow));
+        assert_eq!(r.ui.get_toast_text(), "Switch this list to Manual order?");
+        r.ui.invoke_toast_undo();
+        slint::platform::update_timers_and_animations();
+        assert_eq!(r.ui.get_list_sort(), 0, "the button switched it");
+        assert!(r.ui.get_rows_reorderable());
+    });
+}
+
+#[test]
+fn dragging_a_row_in_a_sorted_list_offers_manual_order() {
+    on_ui_thread(|| {
+        let r = rig_tier(Tier::Pro);
+        let code = i32::try_from(
+            r.list_names()
+                .iter()
+                .position(|n| n == "Code")
+                .expect("Code"),
+        )
+        .unwrap();
+        r.open_list(code);
+        r.ui.invoke_sort_chosen(1);
+        slint::platform::update_timers_and_animations();
+        let first = r.ui.get_rows().row_data(0).unwrap().title.to_string();
+        let second = r.ui.get_rows().row_data(1).unwrap().title.to_string();
+        let from_row = element_titled(&r.ui, &first);
+        let to_row = element_titled(&r.ui, &second);
+        let (start, end) = (centre(&from_row), centre(&to_row));
+        let win = r.window();
+        let button = slint::platform::PointerEventButton::Left;
+        win.dispatch_event(slint::platform::WindowEvent::PointerMoved { position: start });
+        win.dispatch_event(slint::platform::WindowEvent::PointerPressed {
+            position: start,
+            button,
+        });
+        for step in 1..=10_u8 {
+            let t = f32::from(step) / 10.0;
+            let position = slint::LogicalPosition::new(
+                start.x + (end.x - start.x) * t,
+                start.y + (end.y - start.y) * t,
+            );
+            win.dispatch_event(slint::platform::WindowEvent::PointerMoved { position });
+            i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(30));
+        }
+        win.dispatch_event(slint::platform::WindowEvent::PointerReleased {
+            position: end,
+            button,
+        });
+        i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(100));
+        slint::platform::update_timers_and_animations();
+        assert_eq!(r.ui.get_toast_text(), "Switch this list to Manual order?");
+    });
+}
+
+fn centre(e: &ElementHandle) -> slint::LogicalPosition {
+    let (p, s) = (e.absolute_position(), e.size());
+    slint::LogicalPosition::new(p.x + s.width / 2.0, p.y + s.height / 2.0)
+}
+
+fn element_titled(ui: &MainWindow, title: &str) -> ElementHandle {
+    ElementQuery::from_root(ui)
+        .match_accessible_role(AccessibleRole::ListItem)
+        .find_all()
+        .into_iter()
+        .find(|e| e.accessible_label().is_some_and(|l| l.starts_with(title)))
+        .unwrap_or_else(|| panic!("no row {title}"))
 }

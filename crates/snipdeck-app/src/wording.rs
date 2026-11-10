@@ -263,6 +263,7 @@ where
         ToastMessage::Duplicated => t.invoke_duplicated(),
         ToastMessage::ListAdded => t.invoke_list_added(),
         ToastMessage::ListSaved => t.invoke_list_saved(),
+        ToastMessage::SwitchToManual { .. } => t.invoke_switch_to_manual(),
         ToastMessage::BoardSaved => t.invoke_board_saved(),
         ToastMessage::RecentDeleted => t.invoke_recent_deleted(),
         ToastMessage::RecentCleared => t.invoke_recent_cleared(),
@@ -357,6 +358,9 @@ where
 /// The label of the crash toast's button.
 pub const OPEN_LOG_LABEL: &str = "Open log";
 
+/// The label of the "Switch this list to Manual order?" toast's button.
+pub const SWITCH_LABEL: &str = "Switch";
+
 /// Why an import could not be previewed, in words for the page, in the language selected for the
 /// UI (the sentences are in the `ImportTexts` global; `window` is the Settings page).
 #[must_use]
@@ -394,6 +398,8 @@ pub const fn toast_button_text(toast: &crate::controller::ToastView) -> &'static
         UNDO_LABEL
     } else if toast.open_log {
         OPEN_LOG_LABEL
+    } else if matches!(toast.message, ToastMessage::SwitchToManual { .. }) {
+        SWITCH_LABEL
     } else {
         ""
     }

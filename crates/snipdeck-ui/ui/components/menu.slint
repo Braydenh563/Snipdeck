@@ -191,10 +191,12 @@ export component Menu inherits Rectangle {
     property <length> row-h: root.full-h > root.menu-max-h ? Space.hit : Space.s8;
     // More rows lie below the visible part: the cue shows (a hairline and a caret at the bottom edge).
     property <bool> more-below: flick.content-height + flick.content-y > flick.height + Space.s1 + 1px;
+    // A host in a narrow window caps the width so the menu stays inside it; the rows elide.
+    in property <length> max-w: 320px;
     property <length> text-w: text-measure.preferred-width;
     property <length> key-w: key-measure.preferred-width;
     width: min(max(180px, root.text-w + (root.key-w > 0px ? root.key-w + 2 * Space.s1 + 2px + Space.s2 : 0px)
-        + (root.icons ? 16px + Space.s2 : 0px) + 2 * Space.s2 + 2 * Space.s1 + 2px), 320px);
+        + (root.icons ? 16px + Space.s2 : 0px) + 2 * Space.s2 + 2 * Space.s1 + 2px), min(320px, root.max-w));
     height: min(lay.preferred-height, root.menu-max-h);
     background: Theme.bg-overlay;
     border-radius: Radius.lg;

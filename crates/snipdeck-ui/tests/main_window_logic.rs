@@ -190,6 +190,11 @@ fn start() -> (MainWindow, Log) {
     hook!(on_settings_requested, || "settings".to_string());
     hook!(on_add_list_requested, || "add-list".to_string());
     hook!(on_close_requested, || "close".to_string());
+    hook!(on_sidebar_width_changed, |w| format!("sidebar-width:{w}"));
+    hook!(on_sidebar_collapsed_changed, |c| format!(
+        "sidebar-collapsed:{c}"
+    ));
+    hook!(on_sort_chosen, |i| format!("sort:{i}"));
     hook!(on_undo_requested, || "undo".to_string());
     hook!(on_help_requested, |page| format!("help:{page:?}"));
     hook!(on_panel_requested, || "panel".to_string());
@@ -1075,7 +1080,7 @@ ui_tests! {
 
     fn a_list_context_menu_edits_or_asks_before_deleting() {
         let (ui, log) = start();
-        for _ in 0..12 {
+        for _ in 0..16 {
             if ui.get_sidebar_focused() {
                 break;
             }
@@ -1113,7 +1118,7 @@ ui_tests! {
 
     fn a_context_menu_is_as_wide_as_its_rows_not_the_window() {
         let (ui, _log) = start();
-        for _ in 0..12 {
+        for _ in 0..16 {
             if ui.get_sidebar_focused() {
                 break;
             }
@@ -1162,7 +1167,7 @@ ui_tests! {
 
     fn a_tag_and_the_trash_have_their_own_confirmations() {
         let (ui, log) = start();
-        for _ in 0..12 {
+        for _ in 0..16 {
             if ui.get_sidebar_focused() {
                 break;
             }
@@ -1338,6 +1343,104 @@ ui_tests! {
         let (ui, _log) = start();
         let board = find(&ui, "Board: Work", AccessibleRole::Button);
         assert!(board.size().height >= MIN_HIT);
+    }
+
+    // ---- Sidebar width, collapse and the list sort ---------------------------------------------------
+
+    fn ctrl_b_toggles_sidebar() {
+        let (ui, log) = start();
+        assert!(!ui.get_rail());
+        chord(ui.window(), &[Key::Control], "b");
+        settle();
+        assert!(ui.get_rail(), "folded to the rail");
+        assert_eq!(take(&log), ["sidebar-collapsed:true"]);
+        assert!(missing(&ui, "Sidebar width", AccessibleRole::Slider), "no splitter on the rail");
+        chord(ui.window(), &[Key::Control], "b");
+        settle();
+        assert!(!ui.get_rail());
+        assert_eq!(take(&log), ["sidebar-collapsed:false"]);
+        // The toolbar button does the same and says the chord.
+        find(&ui, "Collapse sidebar (Ctrl+B)", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert!(ui.get_rail());
+        let _ = find(&ui, "Expand sidebar (Ctrl+B)", AccessibleRole::Button);
+        take(&log);
+        // Below 720 px the rail is automatic and Ctrl+B has nothing to fold.
+        ui.set_sidebar_collapsed(false);
+        ui.window().set_size(slint::LogicalSize::new(640.0, 520.0));
+        settle();
+        chord(ui.window(), &[Key::Control], "b");
+        assert_eq!(take(&log), Vec::<String>::new());
+    }
+
+    fn splitter_keys_step_8px() {
+        let (ui, log) = start();
+        let splitter = find(&ui, "Sidebar width", AccessibleRole::Slider);
+        assert_eq!(splitter.accessible_value().as_deref(), Some("232"));
+        assert!((splitter.size().width - 8.0).abs() < 0.5, "8 px hit area: {:?}", splitter.size());
+        press_at_centre(&ui, centre_of(&splitter));
+        take(&log);
+        press_key(&ui, Key::RightArrow);
+        assert_eq!(take(&log), ["sidebar-width:240"]);
+        assert_eq!(ui.get_sidebar_width(), 240);
+        let moved = find(&ui, "Sidebar width", AccessibleRole::Slider);
+        assert!((moved.absolute_position().x - (240.0 - 4.0)).abs() < 0.5, "{:?}", moved.absolute_position());
+        press_key(&ui, Key::LeftArrow);
+        press_key(&ui, Key::LeftArrow);
+        assert_eq!(take(&log), ["sidebar-width:232", "sidebar-width:224"]);
+        for _ in 0..10 {
+            press_key(&ui, Key::LeftArrow);
+        }
+        assert_eq!(ui.get_sidebar_width(), 200, "stops at 200");
+        for _ in 0..20 {
+            press_key(&ui, Key::RightArrow);
+        }
+        assert_eq!(ui.get_sidebar_width(), 320, "stops at 320");
+    }
+
+    fn ctrl_b_with_the_splitter_focused_moves_focus_to_the_list() {
+        let (ui, log) = start();
+        let splitter = find(&ui, "Sidebar width", AccessibleRole::Slider);
+        // The strip straddles the sidebar's edge: 4 px each side of x = 232.
+        let p = splitter.absolute_position();
+        assert!((p.x - 228.0).abs() < 0.5 && (splitter.size().width - 8.0).abs() < 0.5, "{p:?}");
+        press_at_centre(&ui, centre_of(&splitter));
+        assert!(!ui.get_items_focused());
+        take(&log);
+        chord(ui.window(), &[Key::Control], "b");
+        settle();
+        assert_eq!(take(&log), ["sidebar-collapsed:true"]);
+        assert!(ui.get_items_focused(), "the keys go to the list, not nowhere");
+    }
+
+    fn the_sort_menu_names_the_order_and_reports_the_choice() {
+        let (ui, log) = start();
+        assert!(missing(&ui, "Sort by: Manual", AccessibleRole::Button), "only inside a list");
+        ui.set_section(MainSection::List);
+        ui.set_section_index(0);
+        settle();
+        let button = find(&ui, "Sort by: Manual", AccessibleRole::Button);
+        assert!(button.size().height >= MIN_HIT);
+        ui.set_list_sort(1);
+        settle();
+        let _ = find(&ui, "Sort by: Most used", AccessibleRole::Button);
+        ui.set_list_sort(0);
+        settle();
+        take(&log);
+        find(&ui, "Sort by: Manual", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        let _ = find(&ui, "Sort by", AccessibleRole::List);
+        press_key(&ui, Key::DownArrow);
+        press_key(&ui, Key::Return);
+        assert_eq!(take(&log), ["sort:1"]);
+    }
+
+    fn the_sidebar_rail_has_a_settings_button_when_collapsed() {
+        let (ui, _log) = start();
+        ui.set_sidebar_collapsed(true);
+        settle();
+        assert!(ui.get_rail());
+        let _ = find(&ui, "Settings", AccessibleRole::Button);
     }
 
     // ---- States ------------------------------------------------------------------------------------

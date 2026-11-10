@@ -1,7 +1,7 @@
 //! Lists and boards: creating, moving, renaming, reordering and deleting.
 
 use super::super::history_ctl::move_recorded;
-use snipdeck_core::{BoardId, ItemId, ListId, Placement};
+use snipdeck_core::{BoardId, ItemId, ListId, ListSort, Placement};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::Trashable;
 
@@ -131,9 +131,8 @@ where
             return;
         }
         let from = self.main.cursor();
-        let Some(onto) = from.checked_add_signed(delta) else {
-            return;
-        };
+        // Alt+Up on the first row lands on itself, not nowhere: the sorted-list offer is the same at both ends.
+        let onto = from.saturating_add_signed(delta);
         self.main_drop_row(from, onto);
     }
 
@@ -145,12 +144,58 @@ where
         }
     }
 
+    /// The heading's "Sort" menu: the open list orders itself by `sort`. The same field the List
+    /// editor edits.
+    pub fn main_set_list_sort(&mut self, sort: ListSort) {
+        self.main_fresh();
+        if let Some(id) = self.main.open_list().map(|l| l.id) {
+            self.set_list_sort(id, sort);
+        }
+    }
+
+    /// Writes list `id`'s sort (the heading's menu, the Panel's list menu and the "Switch" toast
+    /// all end here); a toast says it was saved. Nothing happens when it already has that sort.
+    pub(in crate::controller) fn set_list_sort(&mut self, id: ListId, sort: ListSort) {
+        let now = self.clock.now();
+        let done = self.store.list(id).and_then(|mut list| {
+            if list.sort == sort {
+                return Ok(false);
+            }
+            list.sort = sort;
+            list.updated_at = now;
+            self.store.update_list(&list).map(|()| true)
+        });
+        match done {
+            Ok(true) => {
+                self.main.mark_stale();
+                self.main_fresh();
+                self.show_toast(super::super::success(ToastMessage::ListSaved));
+                self.library_changed();
+            }
+            Ok(false) => {}
+            Err(_) => self.show_toast(failed()),
+        }
+    }
+
+    /// A drag or Alt+Up / Alt+Down was refused because list `id` sorts itself: offers to switch
+    /// it to manual order (the toast's button does).
+    pub(in crate::controller) fn offer_manual_order(&mut self, id: ListId) {
+        self.show_toast(neutral_toast(ToastMessage::SwitchToManual { list: id }));
+    }
+
     /// A drag of row `from` ended on row `onto`: the item takes that row's place and a toast says
     /// which place that is. Like Alt+Up / Alt+Down, only a list in manual order can be arranged
-    /// by hand.
+    /// by hand; in a list that sorts itself a toast offers to switch it to manual order.
     pub fn main_drop_row(&mut self, from: usize, onto: usize) {
         self.main_fresh();
         if !self.main.reorderable() {
+            if !self.main.searching()
+                && let Some(list) = self.main.open_list()
+                && list.sort != ListSort::Manual
+            {
+                let id = list.id;
+                self.offer_manual_order(id);
+            }
             return;
         }
         let Some(list) = self.main.open_list().map(|l| l.id) else {

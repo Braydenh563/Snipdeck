@@ -349,6 +349,13 @@ impl PanelModel {
         self.lists.iter().find(|l| Some(l.id) == self.list)
     }
 
+    /// The shown list orders itself (not manual) and no search runs: a move is refused, but the
+    /// refusal offers to switch the list to manual order.
+    #[must_use]
+    pub fn sorts_itself(&self) -> bool {
+        !self.searching() && self.list().is_some_and(|l| l.sort != ListSort::Manual)
+    }
+
     /// Whether a search is active.
     #[must_use]
     pub fn searching(&self) -> bool {
