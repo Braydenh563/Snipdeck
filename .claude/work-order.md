@@ -1,5 +1,5 @@
 mode: continue
-status: stopped (context ceiling; resume with /work continue after /compact; builders s5/s6 in flight, see HANDOVER)
+status: active
 max-continues: 300
 max-idle-minutes: 60
 started: 2026-11-07 (resumed)
