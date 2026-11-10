@@ -24,6 +24,10 @@ pub enum PickKind {
     Ditto,
     /// A `CopyQ` JSON export (`.json`).
     CopyQ,
+    /// A Beeftext JSON export (`.json`).
+    Beeftext,
+    /// A CSV export (`.csv`, or `.txt`).
+    Csv,
     /// A folder, chosen with the folder picker rather than by picking a file inside it.
     Folder,
 }
@@ -40,6 +44,8 @@ impl PickKind {
             Self::Snipdeck => &[("Snipdeck files", "*.snipdeck"), ALL],
             Self::Ditto => &[("Ditto databases", "*.db"), ALL],
             Self::CopyQ => &[("CopyQ exports", "*.json"), ALL],
+            Self::Beeftext => &[("Beeftext exports", "*.json"), ALL],
+            Self::Csv => &[("CSV exports", "*.csv;*.txt"), ALL],
             Self::Folder => &[],
         }
     }
@@ -236,6 +242,8 @@ mod tests {
         assert_eq!(patterns(PickKind::Snipdeck), ["*.snipdeck", "*.*"]);
         assert_eq!(patterns(PickKind::Ditto), ["*.db", "*.*"]);
         assert_eq!(patterns(PickKind::CopyQ), ["*.json", "*.*"]);
+        assert_eq!(patterns(PickKind::Beeftext), ["*.json", "*.*"]);
+        assert_eq!(patterns(PickKind::Csv), ["*.csv;*.txt", "*.*"]);
         assert_eq!(PickKind::Folder.filters(), []);
     }
 

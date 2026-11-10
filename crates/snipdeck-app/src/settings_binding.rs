@@ -290,7 +290,9 @@ pub const fn pick_kind(kind: ImportKind) -> snipdeck_platform::file_dialog::Pick
         ImportKind::Snipdeck => PickKind::Snipdeck,
         ImportKind::Ditto => PickKind::Ditto,
         ImportKind::CopyQ => PickKind::CopyQ,
-        ImportKind::Folder => PickKind::Folder,
+        ImportKind::Folder | ImportKind::Espanso => PickKind::Folder,
+        ImportKind::Beeftext => PickKind::Beeftext,
+        ImportKind::TextExpander | ImportKind::PhraseExpress => PickKind::Csv,
     }
 }
 
@@ -1441,6 +1443,10 @@ where
             1 => ImportKind::Ditto,
             2 => ImportKind::CopyQ,
             3 => ImportKind::Folder,
+            5 => ImportKind::Espanso,
+            6 => ImportKind::Beeftext,
+            7 => ImportKind::TextExpander,
+            8 => ImportKind::PhraseExpress,
             _ => return self.import_clipboard_history(),
         };
         let owner = self

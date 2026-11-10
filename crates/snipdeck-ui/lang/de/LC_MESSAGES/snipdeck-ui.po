@@ -234,6 +234,9 @@ msgstr "Zu behaltende Sicherungen"
 msgid "Backups, export, light and dark, 7 languages"
 msgstr "Sicherungen, Export, helles und dunkles Design, 7 Sprachen"
 
+msgid "Beeftext export"
+msgstr "Beeftext-Export"
+
 msgid "Below"
 msgstr "Unten"
 
@@ -899,6 +902,9 @@ msgstr "Bibliothek löschen…"
 
 msgid "Escape"
 msgstr "Esc"
+
+msgid "Espanso (folder)"
+msgstr "Espanso (Ordner)"
 
 msgid "Every Supporter feature is on. Thank you."
 msgstr "Alle Unterstützer-Funktionen sind aktiv. Vielen Dank."
@@ -1843,6 +1849,9 @@ msgstr "Zahle, was du möchtest, ab A$5, empfohlen sind A$8. Einmalig, und jedes
 msgid "People & Body"
 msgstr "Menschen & Körper"
 
+msgid "PhraseExpress export (CSV)"
+msgstr "PhraseExpress-Export (CSV)"
+
 msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
 msgstr "Wähle, wo das Panel sitzt. Du kannst das jederzeit in den Einstellungen ändern, ebenso die anderen Ränder, das Ausblenden beim Wechsel der App und die Taskleistenschaltfläche."
 
@@ -2522,6 +2531,9 @@ msgstr "Kopierter Text erscheint hier, der neueste zuerst, bis du ihn löschst o
 msgid "Text you copy shows up here for {} days. Save the useful ones to a list."
 msgstr "Kopierter Text wird hier {} Tage angezeigt. Speichere die nützlichen in einer Liste."
 
+msgid "TextExpander export (CSV)"
+msgstr "TextExpander-Export (CSV)"
+
 msgid "That app"
 msgstr "Diese App"
 
@@ -2543,14 +2555,26 @@ msgstr "Das ist kein Snipdeck-Lizenzschlüssel. Ein Schlüssel beginnt mit SNIP1
 msgid "That is too many files to add at once."
 msgstr "Das sind zu viele Dateien auf einmal."
 
+msgid "That isn't a Beeftext export."
+msgstr "Das ist kein Beeftext-Export."
+
 msgid "That isn't a CopyQ export."
 msgstr "Das ist kein CopyQ-Export."
 
 msgid "That isn't a Ditto database."
 msgstr "Das ist keine Ditto-Datenbank."
 
+msgid "That isn't a PhraseExpress CSV export."
+msgstr "Das ist kein PhraseExpress-CSV-Export."
+
 msgid "That isn't a Snipdeck file, or it is damaged."
 msgstr "Das ist keine Snipdeck-Datei, oder sie ist beschädigt."
+
+msgid "That isn't a TextExpander CSV export."
+msgstr "Das ist kein TextExpander-CSV-Export."
+
+msgid "That isn't an Espanso configuration."
+msgstr "Das ist keine Espanso-Konfiguration."
 
 msgid "That key is not for Snipdeck Supporter."
 msgstr "Dieser Schlüssel gilt nicht für Snipdeck Supporter."

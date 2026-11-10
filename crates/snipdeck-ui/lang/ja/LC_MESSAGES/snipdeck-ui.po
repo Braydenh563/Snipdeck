@@ -233,6 +233,9 @@ msgstr "保持するバックアップ数"
 msgid "Backups, export, light and dark, 7 languages"
 msgstr "バックアップ、エクスポート、ライト／ダークテーマ、7言語"
 
+msgid "Beeftext export"
+msgstr "Beeftext のエクスポート"
+
 msgid "Below"
 msgstr "下"
 
@@ -898,6 +901,9 @@ msgstr "ライブラリを削除…"
 
 msgid "Escape"
 msgstr "Esc"
+
+msgid "Espanso (folder)"
+msgstr "Espanso（フォルダー）"
 
 msgid "Every Supporter feature is on. Thank you."
 msgstr "サポーターの機能がすべて使えます。ありがとうございます。"
@@ -1837,6 +1843,9 @@ msgstr "A$5から、お好きな金額でお支払いください（推奨はA$8
 msgid "People & Body"
 msgstr "人と体"
 
+msgid "PhraseExpress export (CSV)"
+msgstr "PhraseExpress のエクスポート（CSV）"
+
 msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
 msgstr "パネルの配置を選びます。設定でいつでも変更でき、他の端、アプリを切り替えたときの非表示、タスクバーのボタンも設定できます。"
 
@@ -2514,6 +2523,9 @@ msgstr "コピーしたテキストが新しい順にここに表示されます
 msgid "Text you copy shows up here for {} days. Save the useful ones to a list."
 msgstr "コピーしたテキストはここに{}日間表示されます。役立つものはリストに保存してください。"
 
+msgid "TextExpander export (CSV)"
+msgstr "TextExpander のエクスポート（CSV）"
+
 msgid "That app"
 msgstr "そのアプリ"
 
@@ -2535,14 +2547,26 @@ msgstr "Snipdeck のライセンスキーではありません。キーは SNIP1
 msgid "That is too many files to add at once."
 msgstr "一度に追加するファイルが多すぎます。"
 
+msgid "That isn't a Beeftext export."
+msgstr "これは Beeftext のエクスポートではありません。"
+
 msgid "That isn't a CopyQ export."
 msgstr "CopyQ のエクスポートファイルではありません。"
 
 msgid "That isn't a Ditto database."
 msgstr "Ditto のデータベースではありません。"
 
+msgid "That isn't a PhraseExpress CSV export."
+msgstr "これは PhraseExpress の CSV エクスポートではありません。"
+
 msgid "That isn't a Snipdeck file, or it is damaged."
 msgstr "Snipdeck のファイルではないか、破損しています。"
+
+msgid "That isn't a TextExpander CSV export."
+msgstr "これは TextExpander の CSV エクスポートではありません。"
+
+msgid "That isn't an Espanso configuration."
+msgstr "これは Espanso の設定ではありません。"
 
 msgid "That key is not for Snipdeck Supporter."
 msgstr "そのキーは Snipdeck Supporter 用ではありません。"

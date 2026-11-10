@@ -233,6 +233,9 @@ msgstr "保留的备份数"
 msgid "Backups, export, light and dark, 7 languages"
 msgstr "备份、导出、浅色和深色主题、7 种语言"
 
+msgid "Beeftext export"
+msgstr "Beeftext 导出文件"
+
 msgid "Below"
 msgstr "下方"
 
@@ -898,6 +901,9 @@ msgstr "删除资料库…"
 
 msgid "Escape"
 msgstr "Esc"
+
+msgid "Espanso (folder)"
+msgstr "Espanso（文件夹）"
 
 msgid "Every Supporter feature is on. Thank you."
 msgstr "所有支持者功能均已开启。谢谢。"
@@ -1837,6 +1843,9 @@ msgstr "可自定价格，最低 A$5，建议 A$8。一次性付费，包括所�
 msgid "People & Body"
 msgstr "人物与身体"
 
+msgid "PhraseExpress export (CSV)"
+msgstr "PhraseExpress 导出文件（CSV）"
+
 msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
 msgstr "选择面板的位置。你可以随时在设置中更改，还可设置其他边缘、切换应用时隐藏以及任务栏按钮。"
 
@@ -2514,6 +2523,9 @@ msgstr "你复制的文本会按最新优先显示在这里，直到你清除或
 msgid "Text you copy shows up here for {} days. Save the useful ones to a list."
 msgstr "你复制的文本会在这里保留 {} 天。把有用的保存到列表中。"
 
+msgid "TextExpander export (CSV)"
+msgstr "TextExpander 导出文件（CSV）"
+
 msgid "That app"
 msgstr "该应用"
 
@@ -2535,14 +2547,26 @@ msgstr "这不是 Snipdeck 许可证密钥。密钥以 SNIP1 开头。"
 msgid "That is too many files to add at once."
 msgstr "一次添加的文件太多。"
 
+msgid "That isn't a Beeftext export."
+msgstr "这不是 Beeftext 导出文件。"
+
 msgid "That isn't a CopyQ export."
 msgstr "这不是 CopyQ 导出文件。"
 
 msgid "That isn't a Ditto database."
 msgstr "这不是 Ditto 数据库。"
 
+msgid "That isn't a PhraseExpress CSV export."
+msgstr "这不是 PhraseExpress 的 CSV 导出文件。"
+
 msgid "That isn't a Snipdeck file, or it is damaged."
 msgstr "这不是 Snipdeck 文件，或者文件已损坏。"
+
+msgid "That isn't a TextExpander CSV export."
+msgstr "这不是 TextExpander 的 CSV 导出文件。"
+
+msgid "That isn't an Espanso configuration."
+msgstr "这不是 Espanso 配置。"
 
 msgid "That key is not for Snipdeck Supporter."
 msgstr "该密钥不适用于 Snipdeck Supporter。"

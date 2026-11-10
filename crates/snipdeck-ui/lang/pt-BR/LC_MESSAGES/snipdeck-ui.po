@@ -234,6 +234,9 @@ msgstr "Backups a manter"
 msgid "Backups, export, light and dark, 7 languages"
 msgstr "Backups, exportação, tema claro e escuro, 7 idiomas"
 
+msgid "Beeftext export"
+msgstr "Exportação do Beeftext"
+
 msgid "Below"
 msgstr "Abaixo"
 
@@ -899,6 +902,9 @@ msgstr "Apagar a biblioteca…"
 
 msgid "Escape"
 msgstr "Esc"
+
+msgid "Espanso (folder)"
+msgstr "Espanso (pasta)"
 
 msgid "Every Supporter feature is on. Thank you."
 msgstr "Todos os recursos de Apoiador estão ativados. Obrigado."
@@ -1843,6 +1849,9 @@ msgstr "Pague o quanto quiser a partir de A$ 5, sugerido A$ 8. Pagamento único,
 msgid "People & Body"
 msgstr "Pessoas e corpo"
 
+msgid "PhraseExpress export (CSV)"
+msgstr "Exportação do PhraseExpress (CSV)"
+
 msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
 msgstr "Escolha como o painel fica posicionado. Você pode alterar isso quando quiser em Configurações, junto com as outras bordas, a ocultação ao trocar de app e o botão da barra de tarefas."
 
@@ -2522,6 +2531,9 @@ msgstr "O texto que você copia aparece aqui, do mais novo para o mais antigo, a
 msgid "Text you copy shows up here for {} days. Save the useful ones to a list."
 msgstr "O texto que você copia fica aqui por {} dias. Salve os úteis em uma lista."
 
+msgid "TextExpander export (CSV)"
+msgstr "Exportação do TextExpander (CSV)"
+
 msgid "That app"
 msgstr "Esse app"
 
@@ -2543,14 +2555,26 @@ msgstr "Essa não é uma chave de licença do Snipdeck. Uma chave começa com SN
 msgid "That is too many files to add at once."
 msgstr "São arquivos demais para adicionar de uma vez."
 
+msgid "That isn't a Beeftext export."
+msgstr "Isso não é uma exportação do Beeftext."
+
 msgid "That isn't a CopyQ export."
 msgstr "Isso não é uma exportação do CopyQ."
 
 msgid "That isn't a Ditto database."
 msgstr "Isso não é um banco de dados do Ditto."
 
+msgid "That isn't a PhraseExpress CSV export."
+msgstr "Isso não é uma exportação CSV do PhraseExpress."
+
 msgid "That isn't a Snipdeck file, or it is damaged."
 msgstr "Isso não é um arquivo do Snipdeck ou está danificado."
+
+msgid "That isn't a TextExpander CSV export."
+msgstr "Isso não é uma exportação CSV do TextExpander."
+
+msgid "That isn't an Espanso configuration."
+msgstr "Isso não é uma configuração do Espanso."
 
 msgid "That key is not for Snipdeck Supporter."
 msgstr "Essa chave não é para o Supporter do Snipdeck."

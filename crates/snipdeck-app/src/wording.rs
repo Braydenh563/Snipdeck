@@ -378,6 +378,14 @@ pub fn import_problem_text(
         ImportProblem::NotThisKind(ImportKind::Ditto) => texts.invoke_problem_not_ditto(),
         ImportProblem::NotThisKind(ImportKind::CopyQ) => texts.invoke_problem_not_copyq(),
         ImportProblem::NotThisKind(ImportKind::Folder) => texts.invoke_problem_not_folder(),
+        ImportProblem::NotThisKind(ImportKind::Espanso) => texts.invoke_problem_not_espanso(),
+        ImportProblem::NotThisKind(ImportKind::Beeftext) => texts.invoke_problem_not_beeftext(),
+        ImportProblem::NotThisKind(ImportKind::TextExpander) => {
+            texts.invoke_problem_not_textexpander()
+        }
+        ImportProblem::NotThisKind(ImportKind::PhraseExpress) => {
+            texts.invoke_problem_not_phraseexpress()
+        }
         ImportProblem::TooNew => texts.invoke_problem_too_new(),
         ImportProblem::HistoryOff => texts.invoke_problem_history_off(),
         ImportProblem::HistoryUnavailable => texts.invoke_problem_history_unavailable(),

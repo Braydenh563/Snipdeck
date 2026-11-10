@@ -17,8 +17,9 @@ use snipdeck_portable::{
     BoardLayout, ExportOptions, HistoryEntry, ImportOptions, ImportReport, KeySource,
     MergeStrategy, SensitivePolicy,
     backup::{self, BackupOutcome},
-    export_to_path, import_archive_path, import_copyq_json, import_ditto, import_entries,
-    import_folder,
+    export_to_path, import_archive_path, import_beeftext, import_copyq_json, import_ditto,
+    import_entries, import_espanso, import_folder, import_phraseexpress_csv,
+    import_textexpander_csv,
 };
 use snipdeck_store::{
     ItemRepo, Store,
@@ -41,6 +42,14 @@ pub enum ImportSource {
     CopyQ(PathBuf),
     /// A folder of `.txt` and `.md` files, one item each.
     Folder(PathBuf),
+    /// An Espanso configuration: its folder (or one of its `.yml` files).
+    Espanso(PathBuf),
+    /// A Beeftext JSON export.
+    Beeftext(PathBuf),
+    /// A `TextExpander` CSV export.
+    TextExpander(PathBuf),
+    /// A `PhraseExpress` CSV export.
+    PhraseExpress(PathBuf),
     /// The text entries of the Windows clipboard history (Win+V), already read by the caller.
     /// They land on a new board called `board` (the caller words it in the UI's language).
     ClipboardHistory {
@@ -56,7 +65,14 @@ impl ImportSource {
     #[must_use]
     pub fn path(&self) -> Option<&Path> {
         match self {
-            Self::Snipdeck(p) | Self::Ditto(p) | Self::CopyQ(p) | Self::Folder(p) => Some(p),
+            Self::Snipdeck(p)
+            | Self::Ditto(p)
+            | Self::CopyQ(p)
+            | Self::Folder(p)
+            | Self::Espanso(p)
+            | Self::Beeftext(p)
+            | Self::TextExpander(p)
+            | Self::PhraseExpress(p) => Some(p),
             Self::ClipboardHistory { .. } => None,
         }
     }
@@ -83,6 +99,10 @@ impl ImportSource {
             Self::Ditto(p) => import_ditto(store, p, now, options),
             Self::CopyQ(p) => import_copyq_json(store, p, now, options),
             Self::Folder(p) => import_folder(store, p, now, options),
+            Self::Espanso(p) => import_espanso(store, p, now, options),
+            Self::Beeftext(p) => import_beeftext(store, p, now, options),
+            Self::TextExpander(p) => import_textexpander_csv(store, p, now, options),
+            Self::PhraseExpress(p) => import_phraseexpress_csv(store, p, now, options),
             Self::ClipboardHistory { entries, board } => {
                 import_entries(store, entries, board, now, options)
             }
@@ -150,6 +170,14 @@ pub enum ImportKind {
     CopyQ,
     /// A folder of text files.
     Folder,
+    /// An Espanso configuration folder.
+    Espanso,
+    /// A Beeftext export.
+    Beeftext,
+    /// A `TextExpander` CSV export.
+    TextExpander,
+    /// A `PhraseExpress` CSV export.
+    PhraseExpress,
 }
 
 impl ImportSource {
@@ -161,6 +189,10 @@ impl ImportSource {
             ImportKind::Ditto => Self::Ditto(path),
             ImportKind::CopyQ => Self::CopyQ(path),
             ImportKind::Folder => Self::Folder(path),
+            ImportKind::Espanso => Self::Espanso(path),
+            ImportKind::Beeftext => Self::Beeftext(path),
+            ImportKind::TextExpander => Self::TextExpander(path),
+            ImportKind::PhraseExpress => Self::PhraseExpress(path),
         }
     }
 
@@ -172,6 +204,10 @@ impl ImportSource {
             Self::Ditto(_) => Some(ImportKind::Ditto),
             Self::CopyQ(_) => Some(ImportKind::CopyQ),
             Self::Folder(_) => Some(ImportKind::Folder),
+            Self::Espanso(_) => Some(ImportKind::Espanso),
+            Self::Beeftext(_) => Some(ImportKind::Beeftext),
+            Self::TextExpander(_) => Some(ImportKind::TextExpander),
+            Self::PhraseExpress(_) => Some(ImportKind::PhraseExpress),
             Self::ClipboardHistory { .. } => None,
         }
     }
