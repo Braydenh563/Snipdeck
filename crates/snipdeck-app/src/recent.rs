@@ -501,7 +501,7 @@ pub fn promote<L: Library>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snipdeck_core::{Board, List, Name, Placement};
+    use snipdeck_core::{Board, Format, List, Name, Placement};
     use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, Store};
 
     fn now() -> Timestamp {
@@ -1051,7 +1051,6 @@ mod tests {
         };
         promote(&mut store, &entry, extras.as_ref(), &to, now()).expect("promote");
         let item = store.items(list.id).expect("items").remove(0);
-        use snipdeck_core::Format;
         let kinds: Vec<&str> = store
             .formats(item.id)
             .expect("formats")

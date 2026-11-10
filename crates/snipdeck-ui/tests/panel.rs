@@ -313,7 +313,10 @@ fn panel_recent_rows_show_text_a_thumbnail_and_files() {
     // A 48 x 32 gradient stands in for a thumbnail.
     let mut pixels = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::new(48, 32);
     for (i, px) in pixels.make_mut_slice().iter_mut().enumerate() {
-        let (x, y) = ((i % 48) as u8, (i / 48) as u8);
+        let (x, y) = (
+            u8::try_from(i % 48).unwrap_or(0),
+            u8::try_from(i / 48).unwrap_or(0),
+        );
         *px = slint::Rgba8Pixel::new(x * 5, 120, 255 - y * 7, 255);
     }
     let thumb = slint::Image::from_rgba8(pixels);

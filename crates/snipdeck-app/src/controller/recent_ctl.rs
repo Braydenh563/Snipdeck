@@ -227,7 +227,7 @@ where
             return UseResult::Failed;
         };
         let (payload, note) = match self.recent_clipboard_payload(&entry) {
-            Ok(made) => made,
+            Ok(ready) => ready,
             Err(toast) => {
                 self.show_toast(toast);
                 return UseResult::Failed;
@@ -271,7 +271,7 @@ where
             return;
         };
         let (payload, note) = match self.recent_clipboard_payload(&entry) {
-            Ok(made) => made,
+            Ok(ready) => ready,
             Err(toast) => {
                 self.show_toast(toast);
                 return;

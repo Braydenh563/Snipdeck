@@ -170,7 +170,7 @@ pub fn distinct_names<S: AsRef<str>>(names: &[S]) -> Vec<String> {
                 Some(dot) if dot > 0 => name.split_at(dot),
                 _ => (name, ""),
             };
-            (2_u32..)
+            (2_u32..=u32::MAX)
                 .map(|n| format!("{stem} ({n}){ext}"))
                 .find(|candidate| used.insert(candidate.to_lowercase()))
                 .unwrap_or_else(|| name.to_owned())

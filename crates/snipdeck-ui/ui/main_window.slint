@@ -2057,9 +2057,8 @@ export component MainWindow inherits Window {
                                         variant: root.view == MainView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
                                         kind: entry.kind;
                                         image: entry.image;
-                                        preview: entry.preview;
-                                        list-name: entry.app == "" ? RecentText.ago(entry.age-minutes) : entry.app + " · " + RecentText.ago(entry.age-minutes);
-                                        list-color: transparent;
+                                        title: entry.preview;
+                                        preview: entry.app == "" ? RecentText.ago(entry.age-minutes) : entry.app + " · " + RecentText.ago(entry.age-minutes);
                                         use => {
                                             root.recent-cursor = i;
                                             root.recent-copied(entry.id);
