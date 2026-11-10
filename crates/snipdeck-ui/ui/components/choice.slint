@@ -125,7 +125,20 @@ export component Checkbox inherits Rectangle {
     // Spoken value while `mixed` ("Partially checked"); the host translates it.
     in property <string> mixed-label;
     in property <bool> enabled: true;
+    // Counts up to ask for keyboard focus (as `TextField.focus-request`).
+    in property <int> focus-request: 0;
     callback toggled(bool);
+
+    changed focus-request => {
+        if (root.focus-request > 0) {
+            scope.focus();
+        }
+    }
+    init => {
+        if (root.focus-request > 0) {
+            scope.focus();
+        }
+    }
 
     property <bool> pressed: touch.pressed && root.enabled;
     property <bool> hovered: touch.has-hover && root.enabled;

@@ -23,6 +23,11 @@ export global FormTexts {
         return @tr("This is your only board. Add another before deleting it.");
     }
 
+    // A date field that is not a real day; the format is the same hint the field shows.
+    pure public function bad-date() -> string {
+        return @tr("Enter a real date as YYYY-MM-DD, or leave it empty for today.");
+    }
+
     // What a {uuid} shows in the fill form's preview; the real ID is drawn when the paste happens.
     pure public function new-id() -> string {
         return @tr("(new ID)");

@@ -26,7 +26,9 @@ use snipdeck_app::{
     settings::{HotkeyAction, Settings},
     toast_binding::ToastUi,
 };
-use snipdeck_core::{Entitlements, Tier, Timestamp};
+use snipdeck_core::{
+    Content, Entitlements, Format, Formats, Inline, Tier, Timestamp,
+};
 use snipdeck_platform::{
     payload::Data,
     route::ScreenRect,
@@ -380,5 +382,86 @@ fn the_form_exposes_roles_and_labels_to_assistive_technology() {
         assert_eq!(preview.accessible_label().as_deref(), Some("Preview"));
         let insert = element(&form, "Insert", AccessibleRole::Button);
         assert_eq!(insert.accessible_label().as_deref(), Some("Insert"));
+    });
+}
+
+/// The invoice template, rewritten to ask for one of each richer kind: a multi-line body, a
+/// date and a tick box.
+fn rich_form() -> (Rig, PickerWindow, TemplateFillWindow) {
+    let mut store = demo::store(now()).expect("demo store");
+    let mut template = store
+        .all_items()
+        .expect("items")
+        .into_iter()
+        .find(|i| i.title == "Invoice reminder")
+        .expect("the template");
+    let text = "{multiline:Body}\nDue {pickdate:Due|%F}{optional:PS}\nP.S. thanks{/optional}";
+    template.preview = text.into();
+    let content = Content::Inline(Inline::new(text.as_bytes().to_vec()).expect("inline"));
+    let formats = Formats::new(vec![Format::Text(content)]).expect("formats");
+    store
+        .update_item(&template, Some(&formats))
+        .expect("rewrite");
+    let r = rig_on(store);
+    let (picker, form) = r.open_form(false);
+    (r, picker, form)
+}
+
+#[test]
+fn multiline_enter_adds_a_line() {
+    on_ui_thread(|| {
+        let (_r, _p, form) = rich_form();
+        type_text(form.window(), "one");
+        press(form.window(), &key(Key::Return));
+        type_text(form.window(), "two");
+        assert!(form.window().is_visible(), "Enter did not submit");
+        let fields = form.get_fields();
+        assert_eq!(fields.row_data(0).expect("field").value, "one\ntwo");
+        assert!(form.get_preview().starts_with("one\ntwo\nDue "));
+        // Ctrl+Enter submits from inside the box.
+        chord(form.window(), &[Key::Control], &key(Key::Return));
+        assert!(!form.window().is_visible(), "Ctrl+Enter pasted");
+    });
+}
+
+#[test]
+fn toggle_field_shows_a_check_box() {
+    on_ui_thread(|| {
+        let (_r, _p, form) = rich_form();
+        let tick = element(&form, "PS", AccessibleRole::Checkbox);
+        assert_eq!(tick.accessible_checked(), Some(false));
+        assert!(!form.get_preview().contains("P.S."));
+        form.invoke_focus_field(2);
+        slint::platform::update_timers_and_animations();
+        press(form.window(), " ");
+        assert_eq!(tick.accessible_checked(), Some(true));
+        assert_eq!(form.get_fields().row_data(2).expect("field").value, "true");
+        assert!(form.get_preview().ends_with("P.S. thanks"));
+        press(form.window(), " ");
+        assert_eq!(form.get_fields().row_data(2).expect("field").value, "");
+        assert!(!form.get_preview().contains("P.S."));
+    });
+}
+
+#[test]
+fn a_bad_date_is_flagged_on_its_field_and_keeps_the_form_open() {
+    on_ui_thread(|| {
+        let (r, _p, form) = rich_form();
+        type_text(form.window(), "hello");
+        form.invoke_focus_field(1);
+        slint::platform::update_timers_and_animations();
+        type_text(form.window(), "2026-02-30");
+        chord(form.window(), &[Key::Control], &key(Key::Return));
+        assert!(form.window().is_visible(), "still open");
+        assert!(r.ctl.borrow().fill().is_some());
+        let error = form.get_fields().row_data(1).expect("field").error;
+        assert!(error.contains("YYYY-MM-DD"), "{error}");
+        assert_eq!(r.ctl.borrow().services().keyboard.sent.len(), 0);
+        // Editing clears it, and a real day goes through.
+        press(form.window(), &key(Key::Backspace));
+        assert_eq!(form.get_fields().row_data(1).expect("field").error, "");
+        type_text(form.window(), "1");
+        chord(form.window(), &[Key::Control], &key(Key::Return));
+        assert!(!form.window().is_visible());
     });
 }

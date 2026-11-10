@@ -628,6 +628,9 @@ export component ItemEditor inherits Window {
         { token: "{cursor}", help: @tr("Where the text cursor lands after pasting") },
         { token: "{field:Name}", help: @tr("Asks for a value each time"), prompted: true },
         { token: "{choice:Name|a|b}", help: @tr("Asks you to pick one of the options"), prompted: true },
+        { token: "{multiline:Name|default}", help: @tr("Asks for text over several lines"), prompted: true },
+        { token: "{pickdate:Name|FORMAT}", help: @tr("Asks for a date, today if left empty"), prompted: true },
+        { token: "{optional:Name}...{/optional}", help: @tr("A tick box; the text inside is pasted only when ticked"), prompted: true },
     ];
 
     function touch() {
