@@ -1032,6 +1032,9 @@ msgstr "Bandeiras"
 msgid "Floating"
 msgstr "Flutuante"
 
+msgid "Fold or open a group"
+msgstr "Recolher ou expandir um grupo"
+
 msgid "Fold the Panel into a thin strip."
 msgstr "Recolher o painel em uma faixa fina."
 
@@ -1118,6 +1121,9 @@ msgstr "Grupo"
 
 msgid "Group name"
 msgstr "Nome do grupo"
+
+msgid "Group the marked rows"
+msgstr "Agrupar as linhas marcadas"
 
 msgid "Group..."
 msgstr "Agrupar..."
@@ -1240,6 +1246,9 @@ msgstr "Incluído"
 
 msgid "Insert"
 msgstr "Colar"
+
+msgid "Insert the suggested item (Windows only)"
+msgstr "Inserir o item sugerido (somente Windows)"
 
 msgid "Insert {}"
 msgstr "Inserir {}"
@@ -1481,6 +1490,9 @@ msgstr "Mais usados"
 
 msgid "Move"
 msgstr "Mover"
+
+msgid "Move a group up or down"
+msgstr "Mover um grupo para cima ou para baixo"
 
 msgid "Move a page at a time"
 msgstr "Mover uma página por vez"
@@ -2155,6 +2167,9 @@ msgstr "Removido de Recentes"
 msgid "Remove…"
 msgstr "Remover…"
 
+msgid "Rename a group"
+msgstr "Renomear um grupo"
+
 msgid "Rename board…"
 msgstr "Renomear quadro…"
 
@@ -2172,6 +2187,9 @@ msgstr "Renomear o item"
 
 msgid "Repeat the new password"
 msgstr "Repita a nova senha"
+
+msgid "Replace a typed trigger with its item (Windows only)"
+msgstr "Substituir um gatilho digitado pelo seu item (somente Windows)"
 
 msgid "Required"
 msgstr "Obrigatório"
@@ -2356,6 +2374,9 @@ msgstr "Selecionar todos os itens"
 
 msgid "Select or delete…"
 msgstr "Selecionar ou excluir…"
+
+msgid "Select or unselect the row"
+msgstr "Selecionar ou desmarcar a linha"
 
 msgid "Select several items"
 msgstr "Selecionar vários itens"
@@ -3029,11 +3050,20 @@ msgstr "Desencaixar o painel"
 msgid "Ungroup"
 msgstr "Desagrupar"
 
+msgid "Ungroup (the group's menu)"
+msgstr "Desagrupar (menu do grupo)"
+
 msgid "Unlock"
 msgstr "Desbloquear"
 
 msgid "Unlock Snipdeck"
 msgstr "Desbloquear o Snipdeck"
+
+msgid "Unlock window"
+msgstr "Janela de desbloqueio"
+
+msgid "Unlock with Windows Hello (Windows only)"
+msgstr "Desbloquear com o Windows Hello (somente Windows)"
 
 msgid "Unlock your library first, so your sensitive items are included. Nothing was done."
 msgstr "Desbloqueie sua biblioteca primeiro, para que seus itens sensíveis sejam incluídos. Nada foi feito."

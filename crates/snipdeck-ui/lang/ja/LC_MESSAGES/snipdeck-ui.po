@@ -1031,6 +1031,9 @@ msgstr "旗"
 msgid "Floating"
 msgstr "フローティング"
 
+msgid "Fold or open a group"
+msgstr "グループを折りたたむ／開く"
+
 msgid "Fold the Panel into a thin strip."
 msgstr "パネルを細い帯にたたみます。"
 
@@ -1117,6 +1120,9 @@ msgstr "グループ"
 
 msgid "Group name"
 msgstr "グループ名"
+
+msgid "Group the marked rows"
+msgstr "選択した行をグループ化"
 
 msgid "Group..."
 msgstr "グループ化..."
@@ -1238,6 +1244,9 @@ msgstr "含まれる"
 
 msgid "Insert"
 msgstr "貼り付け"
+
+msgid "Insert the suggested item (Windows only)"
+msgstr "提案された項目を挿入（Windows のみ）"
 
 msgid "Insert {}"
 msgstr "{} を挿入"
@@ -1477,6 +1486,9 @@ msgstr "よく使う順"
 
 msgid "Move"
 msgstr "移動"
+
+msgid "Move a group up or down"
+msgstr "グループを上下に移動"
 
 msgid "Move a page at a time"
 msgstr "1ページずつ移動"
@@ -2149,6 +2161,9 @@ msgstr "最近から削除しました"
 msgid "Remove…"
 msgstr "削除…"
 
+msgid "Rename a group"
+msgstr "グループの名前を変更"
+
 msgid "Rename board…"
 msgstr "ボード名を変更…"
 
@@ -2166,6 +2181,9 @@ msgstr "項目の名前を変更"
 
 msgid "Repeat the new password"
 msgstr "新しいパスワードを再入力"
+
+msgid "Replace a typed trigger with its item (Windows only)"
+msgstr "入力したトリガーをその項目に置き換える（Windows のみ）"
 
 msgid "Required"
 msgstr "必須"
@@ -2348,6 +2366,9 @@ msgstr "すべてのスニペットを選択"
 
 msgid "Select or delete…"
 msgstr "選択または削除…"
+
+msgid "Select or unselect the row"
+msgstr "行の選択を切り替える"
 
 msgid "Select several items"
 msgstr "複数の項目を選択"
@@ -3021,11 +3042,20 @@ msgstr "パネルの固定を解除"
 msgid "Ungroup"
 msgstr "グループ解除"
 
+msgid "Ungroup (the group's menu)"
+msgstr "グループ解除（グループのメニュー）"
+
 msgid "Unlock"
 msgstr "ロック解除"
 
 msgid "Unlock Snipdeck"
 msgstr "Snipdeck のロックを解除"
+
+msgid "Unlock window"
+msgstr "ロック解除ウィンドウ"
+
+msgid "Unlock with Windows Hello (Windows only)"
+msgstr "Windows Hello でロック解除（Windows のみ）"
 
 msgid "Unlock your library first, so your sensitive items are included. Nothing was done."
 msgstr "機密スニペットを含めるため、先にライブラリのロックを解除してください。何も実行されていません。"

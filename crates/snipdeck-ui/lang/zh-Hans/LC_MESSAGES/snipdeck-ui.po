@@ -1031,6 +1031,9 @@ msgstr "旗帜"
 msgid "Floating"
 msgstr "浮动"
 
+msgid "Fold or open a group"
+msgstr "折叠或展开分组"
+
 msgid "Fold the Panel into a thin strip."
 msgstr "将面板折叠为细条。"
 
@@ -1117,6 +1120,9 @@ msgstr "分组"
 
 msgid "Group name"
 msgstr "分组名称"
+
+msgid "Group the marked rows"
+msgstr "将选中的行分组"
 
 msgid "Group..."
 msgstr "分组..."
@@ -1238,6 +1244,9 @@ msgstr "已包含"
 
 msgid "Insert"
 msgstr "粘贴"
+
+msgid "Insert the suggested item (Windows only)"
+msgstr "插入建议的项目（仅限 Windows）"
 
 msgid "Insert {}"
 msgstr "插入 {}"
@@ -1477,6 +1486,9 @@ msgstr "最常用"
 
 msgid "Move"
 msgstr "移动"
+
+msgid "Move a group up or down"
+msgstr "上移或下移分组"
 
 msgid "Move a page at a time"
 msgstr "按页移动"
@@ -2149,6 +2161,9 @@ msgstr "已从“最近”中移除"
 msgid "Remove…"
 msgstr "移除…"
 
+msgid "Rename a group"
+msgstr "重命名分组"
+
 msgid "Rename board…"
 msgstr "重命名看板…"
 
@@ -2166,6 +2181,9 @@ msgstr "重命名项目"
 
 msgid "Repeat the new password"
 msgstr "再次输入新密码"
+
+msgid "Replace a typed trigger with its item (Windows only)"
+msgstr "将键入的触发词替换为对应项目（仅限 Windows）"
 
 msgid "Required"
 msgstr "必填"
@@ -2348,6 +2366,9 @@ msgstr "选择所有片段"
 
 msgid "Select or delete…"
 msgstr "选择或删除…"
+
+msgid "Select or unselect the row"
+msgstr "选中或取消选中该行"
 
 msgid "Select several items"
 msgstr "选择多个项目"
@@ -3021,11 +3042,20 @@ msgstr "取消停靠面板"
 msgid "Ungroup"
 msgstr "取消分组"
 
+msgid "Ungroup (the group's menu)"
+msgstr "取消分组（分组菜单）"
+
 msgid "Unlock"
 msgstr "解锁"
 
 msgid "Unlock Snipdeck"
 msgstr "解锁 Snipdeck"
+
+msgid "Unlock window"
+msgstr "解锁窗口"
+
+msgid "Unlock with Windows Hello (Windows only)"
+msgstr "使用 Windows Hello 解锁（仅限 Windows）"
 
 msgid "Unlock your library first, so your sensitive items are included. Nothing was done."
 msgstr "请先解锁资料库，以便包含你的敏感片段。未执行任何操作。"

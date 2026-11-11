@@ -169,7 +169,7 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
   holds and an arrow. Click the header, or press `Left` to fold it and `Right` to open it again; a folded group
   hides its items. Press `F2` on a header, or choose **Rename group**, to change the name. Choose **Ungroup**
   to dissolve the group and keep its items. **Delete group** moves the group and its items to the Trash, and
-  `Ctrl+Z` brings them all back in one step. Drag a header to move the whole group. Groups show only when the
+  `Ctrl+Z` brings them all back in one step. Drag a header to move the whole group, or press `Alt+Up` or `Alt+Down` on it. `Enter` or `Space` on a header also folds or opens it. Groups show only when the
   list is sorted by hand (Manual); if it is not, **Group...** offers to switch. Searching lists every match,
   even inside a folded group, under the group's header. Press `Ctrl+G` on a header to rename it. Undo
   (`Ctrl+Z`) takes back a grouping, a rename, an ungroup, a delete and a drag of a header or of an item onto
@@ -495,7 +495,9 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Panel | `Ctrl+E`, `F2` | Edit the selected item |
 | Panel | `Ctrl+P` | Pin or unpin the selected item |
 | Panel | `Ctrl+G` | Group the marked rows |
-| Panel | `Left`, `Right` (on a group header) | Fold or open the group |
+| Panel | `Left`, `Right`, `Enter` or `Space` (on a group header) | Fold or open the group |
+| Panel | `Alt+Up`, `Alt+Down` (on a group header) | Move the whole group |
+| Panel | `Menu`, `Shift+F10` (on a group header) | Open its menu: Rename group, Ungroup, Delete group |
 | Panel | `F2`, or `Ctrl+G` with nothing marked (on a group header) | Rename the group |
 | Panel | `Delete` | Move the selected item to the Trash (not while searching) |
 | Panel | `Menu`, `Shift+F10` | Open the item menu |
