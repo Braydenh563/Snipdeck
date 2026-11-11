@@ -509,9 +509,11 @@ component DisclosureRow inherits Rectangle {
 export component ItemEditor inherits Window {
     title: root.is-new ? @tr("New item") : @tr("Edit item");
     background: Theme.bg-app;
-    min-width: 420px;
+    // Grows with the text size: at 225% the footer buttons need about 600 px.
+    out property <length> min-window-width: max(420px, 270px * SystemLook.text-scale);
+    min-width: root.min-window-width;
     min-height: 380px;
-    preferred-width: 560px;
+    preferred-width: max(560px, root.min-window-width);
     // Opens at the height of its form (More options closed), up to 700 px; the form scrolls past that.
     preferred-height: min(700px, max(380px, form.preferred-height + footer.height));
 

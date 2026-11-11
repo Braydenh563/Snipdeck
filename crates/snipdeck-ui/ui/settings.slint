@@ -248,7 +248,9 @@ component PasteRuleList inherits VerticalLayout {
 export component SettingsPage inherits Window {
     title: @tr("Settings");
     background: Theme.bg-app;
-    min-width: 420px;
+    // Grows with the text size: at 225% a row needs about 760 px or its title wraps one word per line.
+    out property <length> min-window-width: max(420px, 340px * SystemLook.text-scale);
+    min-width: root.min-window-width;
     min-height: 360px;
     preferred-width: root.wanted-width;
     preferred-height: root.wanted-height;
