@@ -76,7 +76,7 @@ More in [`tools/launcher/README.md`](tools/launcher/README.md).
 - **Six kinds of item.** Text, code, link, template, image and file.
 - **Templates.** Insert `{date}`, `{time}` or your own date format. Supporter adds fields and choices that ask you
   for a value each time.
-- **Quick capture.** Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>2</kbd> to save the clipboard text as a new item.
+- **Quick capture.** Choose a hotkey for it in Settings (it is off until you do), then press it to save the clipboard text as a new item.
 - **Recent inbox.** On by default for new installs (one switch turns it off). Keeps what you copy for 7 days (last 200 copies), skips password managers and
   Sensitive items, and lets you save a copy to a list.
 - **Import.** Bring in a `.snipdeck` file, a Ditto database, a CopyQ export or a folder of `.txt` and `.md`
@@ -136,10 +136,10 @@ Rendered from the app's own interface, in light or dark to match your GitHub the
 
 | Hotkey | Action |
 |---|---|
-| <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Space</kbd> | Show or hide the Panel |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Y</kbd> | Show or hide the Panel |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> | Open the Picker |
-| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>2</kbd> | Save the clipboard text as a new item |
-| <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd> | Paste the next pinned item or list item (Supporter) |
+| *none until you set one* | Save the clipboard text as a new item (Settings > Shortcuts) |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>U</kbd> | Paste the next pinned item or list item (Supporter) |
 
 Change any of them in Settings. If another program owns a hotkey, Snipdeck says so and the rest keep working.
 
@@ -149,7 +149,7 @@ Change any of them in Settings. If another program owns a hotkey, Snipdeck says 
 | Where | Keys | Action |
 |---|---|---|
 | Panel, Main window | <kbd>Enter</kbd>, <kbd>Shift</kbd>+<kbd>Enter</kbd> | Paste, or copy only |
-| Panel, Picker | <kbd>1</kbd> to <kbd>9</kbd> | Use that row while the search box is empty |
+| Panel, Picker | <kbd>Alt</kbd>+<kbd>1</kbd> to <kbd>Alt</kbd>+<kbd>9</kbd> | Use that row (digits without <kbd>Alt</kbd> are search text) |
 | Panel, Main window | <kbd>Ctrl</kbd>+<kbd>E</kbd> or <kbd>F2</kbd> | Edit the selected item |
 | Panel, Main window | <kbd>Ctrl</kbd>+<kbd>F</kbd> | Search |
 | Picker | <kbd>Tab</kbd> | Switch between All, This board and Pinned |
@@ -165,7 +165,7 @@ The full list is in the [user guide](docs/user-guide.md#keyboard-reference).
 <details>
 <summary>If the Panel is hidden</summary>
 
-Closing the Panel hides it to the tray and Snipdeck keeps running. Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Space</kbd>,
+Closing the Panel hides it to the tray and Snipdeck keeps running. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Y</kbd> (or the hotkey you chose in Settings),
 left-click the tray icon, or right-click it and choose **Open Panel**. Starting Snipdeck a second time also
 brings the running copy forward.
 </details>

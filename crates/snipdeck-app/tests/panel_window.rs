@@ -1145,7 +1145,7 @@ const MENU_ROWS: [&str; 17] = [
     "Paste stack (mark items)",
     "Dock to the nearest edge",
     "Keyboard shortcuts",
-    "All commands\u{2026}",
+    "Commands\u{2026}",
     "Settings\u{2026}",
     "Open Snipdeck",
     "New item",
@@ -2307,27 +2307,27 @@ fn the_header_menu_folds_opens_and_moves_the_group_for_a_mouse_user() {
             [
                 "Rename group",
                 "Fold group",
-                "Move group up",
-                "Move group down",
+                "Move the group up",
+                "Move the group down",
                 "Ungroup",
                 "Delete group"
             ]
         );
-        assert!(rows[2].1, "Move group up is greyed at the top");
-        assert!(!rows[3].1, "Move group down is live");
+        assert!(rows[2].1, "Move the group up is greyed at the top");
+        assert!(!rows[3].1, "Move the group down is live");
 
         choose_menu_row(&r, "Fold group");
         assert_eq!(r.ui.get_rows().row_count(), count - 2, "the items hide");
         r.ui.invoke_context_menu_requested(0, 10.0, 10.0);
         assert!(
-            item_menu_rows(&r).iter().any(|(t, _)| t == "Open group"),
-            "a folded group offers Open group"
+            item_menu_rows(&r).iter().any(|(t, _)| t == "Unfold group"),
+            "a folded group offers Unfold group"
         );
-        choose_menu_row(&r, "Open group");
+        choose_menu_row(&r, "Unfold group");
         assert_eq!(r.ui.get_rows().row_count(), count, "the items are back");
 
         r.ui.invoke_context_menu_requested(0, 10.0, 10.0);
-        choose_menu_row(&r, "Move group down");
+        choose_menu_row(&r, "Move the group down");
         assert!(
             !r.ui.get_rows().row_data(0).expect("row").is_header,
             "the group moved below the loose item"

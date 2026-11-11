@@ -34,8 +34,8 @@ msgstr "PNG画像。Snipdeckが独自のコピーを保存します。"
 msgid "A Panel that a shortcut or the tray showed hides after a paste or copy. A pinned Panel stays, and a docked one folds back to its edge."
 msgstr "ショートカットまたはトレイから表示したパネルは、貼り付けやコピーの後に隠れます。ピン留めしたパネルはそのまま残り、固定したパネルは端に折りたたまれます。"
 
-msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
-msgstr "Supporter の機能です。機密スニペットを Windows の保護に加えてパスワードで守ります。機密スニペットを初めて使うときと、{}分間使わなかった後に入力を求めます。"
+msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. With a Supporter plan on Windows, you can then also unlock with Windows Hello."
+msgstr "Supporter の機能です。機密スニペットを Windows の保護に加えてパスワードで守ります。機密スニペットを初めて使うときと、{}分間使わなかった後に入力を求めます。Windows で Supporter プランをお使いの場合は、Windows Hello でもロック解除できます。"
 
 msgid "A docked Panel opens at its edge. Set Dock to Floating to choose where it opens."
 msgstr "固定したパネルは端に開きます。開く場所を選ぶには、固定先を「フローティング」にします。"
@@ -142,8 +142,8 @@ msgstr "{} に追加しました"
 msgid "Added to {}. Some were skipped: folders, and files that are empty, too large or unreadable."
 msgstr "{} に追加しました。フォルダー、および空・大きすぎる・読み取れないファイルはスキップしました。"
 
-msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
-msgstr "機密スニペットを Windows の保護に加えてパスワードで守ります。機密スニペットを初めて使うときと、{}分間使わなかった後に入力を求めます。"
+msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. With a Supporter plan on Windows, you can then also unlock with Windows Hello."
+msgstr "機密スニペットを Windows の保護に加えてパスワードで守ります。機密スニペットを初めて使うときと、{}分間使わなかった後に入力を求めます。Windows で Supporter プランをお使いの場合は、Windows Hello でもロック解除できます。"
 
 msgid "Adds a text snippet to {}"
 msgstr "{} にテキストのスニペットを追加します"
@@ -151,14 +151,11 @@ msgstr "{} にテキストのスニペットを追加します"
 msgid "After a paste or copy"
 msgstr "貼り付けやコピーの後"
 
-msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
-msgstr "トリガーの先頭を入力すると、テキストカーソルの位置に小さなヒントが表示され、スニペットを提案します。Tab キーで挿入でき、それ以外のキーは通常どおり動作します。Tab キーは、ヒントが表示されている間だけ使われます。"
+msgid "After you type the first two characters of a trigger, a small hint at the text cursor offers the item. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
+msgstr "トリガーの最初の 2 文字を入力すると、テキストカーソルの位置に小さなヒントが表示され、アイテムを提案します。Tab キーで挿入でき、それ以外のキーは通常どおり動作します。Tab キーは、ヒントが表示されている間だけ使われます。"
 
 msgid "All"
 msgstr "すべて"
-
-msgid "All commands…"
-msgstr "すべてのコマンド…"
 
 msgid "All items"
 msgstr "すべてのスニペット"
@@ -470,17 +467,20 @@ msgstr "ゆったり"
 msgid "Comfortable view"
 msgstr "ゆったり表示"
 
-msgid "Command palette (every action)"
-msgstr "コマンドパレット（すべての操作）"
-
 msgid "Commands"
 msgstr "コマンド"
 
 msgid "Commands (Ctrl+K)"
 msgstr "コマンド (Ctrl+K)"
 
+msgid "Commands (every action)"
+msgstr "コマンド（すべての操作）"
+
 msgid "Commands in the Main window"
 msgstr "メインウィンドウのコマンド"
+
+msgid "Commands…"
+msgstr "コマンド…"
 
 msgid "Compact"
 msgstr "コンパクト"
@@ -1037,11 +1037,8 @@ msgstr "フローティング"
 msgid "Fold group"
 msgstr "グループを折りたたむ"
 
-msgid "Fold or open a group"
-msgstr "グループを折りたたむ／開く"
-
-msgid "Fold or unfold group"
-msgstr "グループを折りたたむ／開く"
+msgid "Fold or unfold a group"
+msgstr "グループを折りたたむ／展開する"
 
 msgid "Fold the Panel into a thin strip."
 msgstr "パネルを細い帯にたたみます。"
@@ -1091,6 +1088,9 @@ msgstr "Supporter を入手…"
 msgid "Get started"
 msgstr "はじめる"
 
+msgid "Give a snippet a trigger, such as ;sig, under More options in its editor."
+msgstr "スニペットのエディターの「その他のオプション」で、;sig のようなトリガーを設定します。"
+
 msgid "Give it a name."
 msgstr "名前を付けてください。"
 
@@ -1130,14 +1130,11 @@ msgstr "グループ"
 msgid "Group name"
 msgstr "グループ名"
 
-msgid "Group selected items"
-msgstr "選択した項目をグループ化"
-
-msgid "Group the marked rows"
+msgid "Group the selected rows"
 msgstr "選択した行をグループ化"
 
-msgid "Group..."
-msgstr "グループ化..."
+msgid "Group…"
+msgstr "グループ化…"
 
 msgid "Handy for forms you fill field by field."
 msgstr "フォームを項目ごとに入力するときに便利です。"
@@ -1175,8 +1172,8 @@ msgstr "パネルを隠す"
 msgid "Hide the panel when it loses focus"
 msgstr "フォーカスを失ったらパネルを隠す"
 
-msgid "Hide title, colour, tags and privacy"
-msgstr "タイトル、色、タグ、プライバシーを隠す"
+msgid "Hide title, colour, tags, trigger and privacy"
+msgstr "タイトル、色、タグ、トリガー、プライバシーを隠す"
 
 msgid "History is paused"
 msgstr "履歴は一時停止中です"
@@ -1205,8 +1202,8 @@ msgstr "ポインターが開いたパネルから外れてからパネルがた
 msgid "How tall the item rows are in the Main window lists. Compact shows one line per item."
 msgstr "メインウィンドウのリストでの行の高さです。コンパクトでは 1 スニペットを 1 行で表示します。"
 
-msgid "How the Panel lists your snippets: one per row, two per row as cards, or tight rows. A search shows rows in every layout."
-msgstr "パネルでのスニペットの並べ方です。1 行に 1 件、カードで 1 行に 2 件、または詰めた行から選べます。検索中はどのレイアウトでも行で表示します。"
+msgid "How the Panel lists your items: one per row, two per row as cards, or tight rows. A search shows rows in every layout."
+msgstr "パネルがアイテムを並べる方法です。1 行に 1 つ、1 行に 2 つのカード、またはコンパクトな行から選びます。検索中はどのレイアウトでも行で表示されます。"
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "パネルを開く幅（{}〜{}ピクセル）。"
@@ -1499,9 +1496,6 @@ msgstr "よく使う順"
 msgid "Move"
 msgstr "移動"
 
-msgid "Move a group up or down"
-msgstr "グループを上下に移動"
-
 msgid "Move a page at a time"
 msgstr "1ページずつ移動"
 
@@ -1514,12 +1508,6 @@ msgstr "ボードを上へ移動"
 msgid "Move down"
 msgstr "下へ移動"
 
-msgid "Move group down"
-msgstr "グループを下に移動"
-
-msgid "Move group up"
-msgstr "グループを上に移動"
-
 msgid "Move selected item to Trash"
 msgstr "選択したスニペットをゴミ箱へ移動"
 
@@ -1528,6 +1516,9 @@ msgstr "グループを下に移動"
 
 msgid "Move the group up"
 msgstr "グループを上に移動"
+
+msgid "Move the group up or down"
+msgstr "グループを上または下へ移動"
 
 msgid "Move the item to the Trash"
 msgstr "スニペットをゴミ箱へ移動"
@@ -1753,8 +1744,8 @@ msgstr "何も追加されませんでした。フォルダー、および空・
 msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
 msgstr "これらのプログラムでコピーした内容は「最近」の受信箱に入りません。プログラムのファイル名を使ってください（例: keepass.exe）。"
 
-msgid "Numbers the first nine rows so pressing 1 to 9 uses that snippet."
-msgstr "最初の 9 行に番号を付け、1～9 キーでそのスニペットを使えるようにします。"
+msgid "Numbers the first nine rows so pressing Alt+1 to 9 uses that item."
+msgstr "最初の 9 行に番号を付け、Alt+1～9 キーでそのアイテムを使えるようにします。"
 
 msgid "OK"
 msgstr "OK"
@@ -1803,9 +1794,6 @@ msgstr "バックアップフォルダーを開く"
 
 msgid "Open data folder"
 msgstr "データフォルダーを開く"
-
-msgid "Open group"
-msgstr "グループを開く"
 
 msgid "Open logs folder"
 msgstr "ログフォルダーを開く"
@@ -2298,11 +2286,11 @@ msgstr "保存: {}"
 msgid "Saved {}."
 msgstr "{} を保存しました。"
 
-msgid "Saved. This code overlaps another trigger, so one of them may never fire."
-msgstr "保存しました。このコードは別のトリガーと重なっているため、どちらかが動作しない場合があります。"
+msgid "Saved. This trigger overlaps another trigger, so one of them may never fire."
+msgstr "保存しました。このトリガーは別のトリガーと重なっているため、どちらかが動作しない場合があります。"
 
-msgid "Saved. This code overlaps the trigger of “{}”, so one of them may never fire."
-msgstr "保存しました。このコードは「{}」のトリガーと重なっているため、どちらかが動作しない可能性があります。"
+msgid "Saved. This trigger overlaps the trigger of “{}”, so one of them may never fire."
+msgstr "保存しました。このトリガーは「{}」のトリガーと重なっているため、どちらかが動作しない可能性があります。"
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "すべてのボード、リスト、スニペットを、選んだフォルダーに 1 つの .snipdeck ファイルとして保存します。"
@@ -2493,8 +2481,8 @@ msgstr "パネルをタスクバーと Alt+Tab に表示"
 msgid "Show the welcome tour again"
 msgstr "ウェルカムツアーをもう一度表示"
 
-msgid "Show title, colour, tags and privacy"
-msgstr "タイトル、色、タグ、プライバシーを表示"
+msgid "Show title, colour, tags, trigger and privacy"
+msgstr "タイトル、色、タグ、トリガー、プライバシーを表示"
 
 msgid "Shrug"
 msgstr "肩をすくめる"
@@ -2685,8 +2673,8 @@ msgstr "Tab"
 msgid "Tabs"
 msgstr "タブ"
 
-msgid "Tabs put each list of the board in a row under the header. Menu moves them into the board picker and gives the space back to your snippets."
-msgstr "タブは、ボードの各リストをヘッダーの下に横一列に並べます。メニューにすると、ボードの選択に移してスニペットの表示領域を広げます。"
+msgid "Tabs put each list of the board in a row under the header. Menu moves them into the board picker and gives the space back to your items."
+msgstr "タブはボードの各リストをヘッダーの下の 1 行に並べます。「メニュー」はそれらをボードの選択欄に移し、空いた場所をアイテムに回します。"
 
 msgid "Tag"
 msgstr "タグ"
@@ -2904,6 +2892,9 @@ msgstr "テーマ: ライト"
 msgid "Theme: System"
 msgstr "テーマ: システム"
 
+msgid "Then type it in any app. Turn this on in Settings, under Typing."
+msgstr "あとは任意のアプリで入力するだけです。設定の「入力」でオンにします。"
+
 msgid "There is no file at that path."
 msgstr "そのパスにファイルがありません。"
 
@@ -2973,8 +2964,8 @@ msgstr "タイトル"
 msgid "Title Case"
 msgstr "各単語の先頭を大文字"
 
-msgid "Title, colour, tags, privacy"
-msgstr "タイトル、色、タグ、プライバシー"
+msgid "Title, colour, tags, trigger, privacy"
+msgstr "タイトル、色、タグ、トリガー、プライバシー"
 
 msgid "Titles, text and labels all count."
 msgstr "タイトル、本文、ラベルのすべてが対象です。"
@@ -3033,6 +3024,9 @@ msgstr "Snipdeck のスライドやフェードの動きをオフにします。
 msgid "Type a command"
 msgstr "コマンドを入力"
 
+msgid "Type a short code, get a snippet"
+msgstr "短いコードを入力してスニペットを挿入"
+
 msgid "Type this in any app to insert the snippet. Turn it on in Settings, under Typing."
 msgstr "どのアプリでもこれを入力すると、スニペットが挿入されます。設定の「入力」でオンにしてください。"
 
@@ -3065,6 +3059,9 @@ msgstr "{} を元に戻す (Ctrl+Z)"
 
 msgid "Undock the panel"
 msgstr "パネルの固定を解除"
+
+msgid "Unfold group"
+msgstr "グループを展開"
 
 msgid "Ungroup"
 msgstr "グループ解除"
@@ -3138,8 +3135,8 @@ msgstr "N番目のスニペットを使用"
 msgid "Use the item"
 msgstr "スニペットを使用"
 
-msgid "Use your face, fingerprint or PIN instead of typing the master password. The password is still asked after a restart and every 7 days, and it always works."
-msgstr "マスターパスワードを入力する代わりに、顔、指紋、または PIN を使います。パスワードは再起動後と 7 日ごとに引き続き求められ、いつでも使えます。"
+msgid "Use your face, fingerprint or PIN instead of typing the master password. Windows asks for Hello twice when you turn this on. The password is still asked after a restart and every 7 days, and it always works."
+msgstr "マスターパスワードを入力する代わりに、顔、指紋、または PIN を使います。パスワードは再起動後と 7 日ごとに引き続き求められ、いつでも使えます。オンにすると、Windows が Hello を 2 回確認します。"
 
 msgid "Use {}"
 msgstr "{} を使う"
@@ -3192,8 +3189,8 @@ msgstr "Windows の起動時"
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "ピンがオフのとき、ほかのアプリに切り替えるとすぐにパネルが隠れます。ピン留めしたパネルは隠れません。"
 
-msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
-msgstr "他のプログラムでスニペットのトリガーを入力すると、Snipdeck がそれをスニペットに置き換えます。そのために押したキーを監視しますが、保持するのは直近の数文字だけで、メモリ内にのみ置き、ディスクには保存しません。\nパスワード欄、「貼り付けない」に設定したプログラム、機密アイテムでは何も展開されません。"
+msgid "When you type an item's trigger in another program, Snipdeck replaces it with the item's text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items."
+msgstr "他のプログラムでアイテムのトリガーを入力すると、Snipdeck がそれをアイテムのテキストに置き換えます。そのために押したキーを監視しますが、保持するのは直近の数文字だけで、メモリ内にのみ置き、ディスクには保存しません。\nパスワード欄、「貼り付けない」に設定したプログラム、管理者として実行中のプログラム、Snipdeck が前面にあるとき、機密アイテムでは何も展開されません。"
 
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "ショートカットまたはトレイでパネルを表示する位置です。アプリにテキストカーソルがない場合、「テキストカーソルの位置」はマウスの位置になります。"
@@ -3221,9 +3218,6 @@ msgstr "ウィンドウの動作"
 
 msgid "Windows"
 msgstr "Windows"
-
-msgid "Windows Hello changed. Unlock with your password once to set it up again."
-msgstr "Windows Hello が変更されました。パスワードで一度ロックを解除すると、再設定されます。"
 
 msgid "Windows Hello did not unlock Snipdeck. Use your master password."
 msgstr "Windows Hello では Snipdeck のロックを解除できませんでした。マスターパスワードを使ってください。"
@@ -3273,6 +3267,9 @@ msgstr "はい"
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "取り込むと {} 個のボードになりますが、無料プランには {} 個まで含まれます。"
 
+msgid "Your Windows Hello PIN, face or fingerprint changed. Unlock with your password once to set Windows Hello up again."
+msgstr "Windows Hello の PIN、顔、または指紋が変更されました。パスワードで一度ロック解除すると、Windows Hello を再設定できます。"
+
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr "ライブラリは1つのフォルダー（%LOCALAPPDATA%\\Snipdeck）にあります：snipdeck.db（ボード、リスト、スニペット、タグ、ゴミ箱）、blobs（画像、ファイル、長いテキスト）、settings.json、ライセンスキー、バックアップ（保持すると選んだ数）、ログ。"
 
@@ -3297,8 +3294,8 @@ msgstr "ショートカット設定"
 msgid "add"
 msgstr "追加"
 
-msgid "add create folder group"
-msgstr "追加 作成 フォルダー グループ"
+msgid "add create"
+msgstr "追加 作成"
 
 msgid "add create snippet note write"
 msgstr "追加 作成 スニペット メモ 書く"
@@ -3388,6 +3385,9 @@ msgstr "お気に入り ピン留め 表示"
 msgid "find filter look"
 msgstr "検索 絞り込み 探す"
 
+msgid "fingerprint face PIN biometric lock"
+msgstr "指紋 顔 PIN 生体認証 ロック"
+
 msgid "group change"
 msgstr "グループの変更"
 
@@ -3410,6 +3410,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "ラベル: {}"
 
+msgid "license supporter upgrade key"
+msgstr "ライセンス サポーター アップグレード キー"
+
 msgid "lowercase"
 msgstr "小文字"
 
@@ -3427,6 +3430,9 @@ msgstr "名前 タイトル 変更 編集 セクション"
 
 msgid "navigation rail collapse expand lists panel left width"
 msgstr "ナビゲーション サイドバー 折りたたむ 展開 リスト パネル 左 幅"
+
+msgid "never paste excluded apps"
+msgstr "貼り付けない 除外するプログラム"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"
@@ -3493,6 +3499,9 @@ msgstr "タグ: {}"
 
 msgid "to insert"
 msgstr "で挿入"
+
+msgid "trigger triggers text expansion autocomplete shortcode"
+msgstr "トリガー テキスト展開 オートコンプリート 略語 ショートカット"
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "チュートリアル 入門 基本 学ぶ"

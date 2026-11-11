@@ -359,8 +359,8 @@ export global ToastTexts {
     pure public function trigger-overlaps(other: string) -> string {
         // An untitled item (or one gone meanwhile) has no name to show: the general wording.
         return other == ""
-            ? @tr("Saved. This code overlaps another trigger, so one of them may never fire.")
-            : @tr("Saved. This code overlaps the trigger of “{}”, so one of them may never fire.", other);
+            ? @tr("Saved. This trigger overlaps another trigger, so one of them may never fire.")
+            : @tr("Saved. This trigger overlaps the trigger of “{}”, so one of them may never fire.", other);
     }
     pure public function typing-unavailable() -> string {
         return @tr("Couldn't start typing triggers. Nothing will be expanded or suggested.");

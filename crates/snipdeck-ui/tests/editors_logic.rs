@@ -311,6 +311,38 @@ ui_tests! {
         assert_eq!(take(&log), ["save"]);
     }
 
+    fn the_trigger_field_speaks_its_helper_then_the_warning_and_the_error_wins() {
+        const HELPER: &str =
+            "Type this in any app to insert the snippet. Turn it on in Settings, under Typing.";
+        const ONE_CHAR: &str = "A one-character trigger fires every time you type it, even inside words. Two or more characters are safer.";
+        let (ui, _log) = item_editor();
+        ui.set_trigger("".into());
+        settle();
+        let desc = |ui: &ItemEditor| {
+            find(ui, "Trigger", AccessibleRole::TextInput).accessible_description()
+        };
+        assert_eq!(desc(&ui).as_deref(), Some(HELPER), "the helper is spoken");
+        ui.set_trigger(";".into());
+        settle();
+        assert_eq!(desc(&ui).as_deref(), Some(ONE_CHAR), "the warning replaces it");
+        ui.set_trigger_error("That trigger is taken.".into());
+        settle();
+        assert_eq!(
+            desc(&ui).as_deref(),
+            Some("That trigger is taken."),
+            "the error wins"
+        );
+        ui.set_trigger_error("".into());
+        ui.set_sensitive(true);
+        settle();
+        let reason = find(
+            &ui,
+            "Sensitive items can't be typed in, so they have no trigger.",
+            AccessibleRole::Text,
+        );
+        assert!(reason.accessible_label().is_some(), "the reason is a text node");
+    }
+
     fn escape_leaves_a_clean_editor_and_asks_before_discarding_changes() {
         let (ui, log) = item_editor();
         press_key(&ui, Key::Escape);
@@ -706,14 +738,14 @@ ui_tests! {
         let (ui, _log) = item_editor();
         ui.set_more_open(false);
         settle();
-        let closed = find(&ui, "Show title, colour, tags and privacy", AccessibleRole::Button);
+        let closed = find(&ui, "Show title, colour, tags, trigger and privacy", AccessibleRole::Button);
         assert_eq!(closed.accessible_expanded(), Some(false));
         assert!((closed.size().height - 32.0).abs() < 0.5);
         let field = find(&ui, "Content", AccessibleRole::TextInput);
         assert!(closed.size().width >= field.size().width - 1.0, "the row spans the form");
         ui.set_more_open(true);
         settle();
-        let open = find(&ui, "Hide title, colour, tags and privacy", AccessibleRole::Button);
+        let open = find(&ui, "Hide title, colour, tags, trigger and privacy", AccessibleRole::Button);
         assert_eq!(open.accessible_expanded(), Some(true));
     }
 
@@ -735,11 +767,11 @@ ui_tests! {
         let (ui, log) = item_editor();
         ui.set_more_open(false);
         settle();
-        find(&ui, "Show title, colour, tags and privacy", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Show title, colour, tags, trigger and privacy", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
         assert!(ui.get_more_open());
         assert_eq!(take(&log), ["more:true"]);
-        find(&ui, "Hide title, colour, tags and privacy", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Hide title, colour, tags, trigger and privacy", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
         assert!(!ui.get_more_open());
         assert_eq!(take(&log), ["more:false"]);
@@ -773,10 +805,10 @@ ui_tests! {
         let (ui, _log) = item_editor();
         ui.set_more_open(false);
         settle();
-        assert!(!missing(&ui, "Show title, colour, tags and privacy", AccessibleRole::Button));
+        assert!(!missing(&ui, "Show title, colour, tags, trigger and privacy", AccessibleRole::Button));
         ui.set_title_error("Too long.".into());
         settle();
-        assert!(!missing(&ui, "Hide title, colour, tags and privacy", AccessibleRole::Button));
+        assert!(!missing(&ui, "Hide title, colour, tags, trigger and privacy", AccessibleRole::Button));
     }
 
     fn save_names_its_shortcut_in_a_tooltip() {
@@ -1274,6 +1306,38 @@ ui_tests! {
             hidden.is_empty(),
             "the search hides {hidden:?} (a section's search text is out of step with its rows)"
         );
+    }
+
+    fn searching_hello_without_the_row_lands_on_the_master_password_hint() {
+        // Hello is not offered (no password, Free plan or no Hello): the search still shows the Privacy
+        // section, with its Master password row, which says what Hello needs.
+        let (ui, _log) = settings();
+        ui.set_hello_offered(false);
+        settle();
+        SettingsFilter::get(&ui).set_query("Hello".into());
+        settle();
+        assert!(missing(&ui, "Unlock with Windows Hello", AccessibleRole::Groupbox));
+        assert!(!missing(&ui, "Master password", AccessibleRole::Groupbox));
+        assert!(!missing(&ui, "Privacy", AccessibleRole::Groupbox));
+    }
+
+    fn every_settings_section_is_found_by_its_own_title_and_a_few_plain_words() {
+        let (ui, _log) = settings();
+        ui.set_hello_offered(true);
+        settle();
+        let filter = SettingsFilter::get(&ui);
+        for (query, section) in [
+            ("Shortcuts", "Shortcuts"), ("Appearance", "Appearance"), ("Panel layout", "Panel layout"),
+            ("Opening the Panel", "Opening the Panel"), ("Privacy", "Privacy"), ("Programs", "Programs"),
+            ("Typing", "Typing"), ("Backups and your data", "Backups and your data"), ("Licence", "Licence"),
+            ("trigger", "Typing"), ("triggers", "Typing"), ("text expansion", "Typing"), ("autocomplete", "Typing"),
+            ("fingerprint", "Privacy"), ("PIN", "Privacy"), ("face", "Privacy"),
+            ("never paste", "Programs"), ("license", "Licence"),
+        ] {
+            filter.set_query(query.into());
+            settle();
+            assert!(!missing(&ui, section, AccessibleRole::Groupbox), "\"{query}\" does not find {section}");
+        }
     }
 
     fn escape_ends_a_recording_first_and_then_closes_the_page() {

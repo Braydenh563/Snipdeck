@@ -15,6 +15,8 @@ export component Toggle inherits Rectangle {
     in property <string> text;
     // Spoken label when there is no visible text.
     in property <string> a11y-label;
+    // Spoken hint, such as why the switch is off and cannot be changed.
+    in property <string> a11y-description;
     in property <bool> enabled: true;
     out property <bool> has-focus: scope.has-focus;
     callback toggled(bool);
@@ -30,6 +32,7 @@ export component Toggle inherits Rectangle {
     forward-focus: scope;
     accessible-role: switch;
     accessible-label: root.a11y-label != "" ? root.a11y-label : root.text;
+    accessible-description: root.a11y-description;
     accessible-checkable: true;
     accessible-checked: root.checked;
     accessible-enabled: root.enabled;

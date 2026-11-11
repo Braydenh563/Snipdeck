@@ -72,7 +72,7 @@ pub struct Tip {
 }
 
 /// The cards, in the order a new user meets the features (the order of `TipTexts`).
-pub const TIPS: [Tip; 10] = [
+pub const TIPS: [Tip; 11] = [
     Tip {
         image: "01-open-panel.png",
         action: TipAction::ShowPanel,
@@ -132,6 +132,12 @@ pub const TIPS: [Tip; 10] = [
         action: TipAction::Settings,
 
         feature: Some(Feature::MasterPassword),
+    },
+    Tip {
+        image: "11-trigger.png",
+        action: TipAction::Settings,
+
+        feature: None,
     },
 ];
 

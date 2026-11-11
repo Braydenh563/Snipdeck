@@ -33,6 +33,7 @@ CROPS = [
     ("08-commands.png", "palette-light", (298, 44, 438, 184)),
     ("09-view.png", "main-tile-light", (492, 0, 548, 282)),
     ("10-sensitive.png", "panel-light", (0, 350, 320, 135)),
+    ("11-trigger.png", "item-editor-trigger-light", (0, 316, 420, 480)),
 ]
 
 

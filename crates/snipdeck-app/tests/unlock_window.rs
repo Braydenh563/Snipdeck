@@ -617,7 +617,7 @@ fn a_changed_hello_says_so_once_and_the_password_sets_it_up_again() {
         assert!(r.ctl.borrow().library_locked());
         assert!(has_text(
             &r.ui,
-            "Windows Hello changed. Unlock with your password once to set it up again."
+            "Your Windows Hello PIN, face or fingerprint changed. Unlock with your password once to set Windows Hello up again."
         ));
         assert!(hello_button(&r.ui).is_none());
         type_text(r.ui.window(), password());

@@ -42,7 +42,7 @@ pub enum AppMenuEntry {
     PasteStack,
     /// Open the Main window.
     Open,
-    /// Open the Main window on its command palette ("All commands…", Ctrl+K).
+    /// Open the Main window on its command palette ("Commands…", Ctrl+K).
     Commands,
     /// Make a new snippet.
     NewSnippet,
@@ -129,7 +129,7 @@ pub enum ItemMenuEntry {
     RenameGroup,
     /// On a group header: fold the group, or open it when `folded` (the keys are Left, Right, Enter, Space).
     ToggleGroup {
-        /// The group is folded now (the row reads "Open group").
+        /// The group is folded now (the row reads "Unfold group").
         folded: bool,
     },
     /// On a group header: move the group one place up (Alt+Up).

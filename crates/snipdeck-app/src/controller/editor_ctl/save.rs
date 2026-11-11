@@ -41,7 +41,7 @@ where
                 self.clear_draft(&slot);
                 self.show_toast(if let Some(other) = overlaps {
                     Toast {
-                        kind: ToastKind::Neutral,
+                        kind: ToastKind::Danger,
                         message: ToastMessage::TriggerOverlaps { other },
                     }
                 } else {

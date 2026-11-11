@@ -34,8 +34,8 @@ msgstr "Una imagen PNG. Snipdeck guarda su propia copia."
 msgid "A Panel that a shortcut or the tray showed hides after a paste or copy. A pinned Panel stays, and a docked one folds back to its edge."
 msgstr "Un panel que se mostró con un atajo o desde la bandeja se oculta tras pegar o copiar. Un panel anclado permanece, y uno acoplado vuelve a plegarse en su borde."
 
-msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
-msgstr "Función de Colaborador. Añade una contraseña además de la protección de Windows para tus fragmentos sensibles. Se pide la primera vez que usas un fragmento sensible y de nuevo tras {} minutos sin usarlo."
+msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. With a Supporter plan on Windows, you can then also unlock with Windows Hello."
+msgstr "Función de Colaborador. Añade una contraseña además de la protección de Windows para tus fragmentos sensibles. Se pide la primera vez que usas un fragmento sensible y de nuevo tras {} minutos sin usarlo. Con un plan Supporter en Windows, también podrás desbloquear con Windows Hello."
 
 msgid "A docked Panel opens at its edge. Set Dock to Floating to choose where it opens."
 msgstr "Un panel acoplado se abre en su borde. Pon Acoplar a en Flotante para elegir dónde se abre."
@@ -142,8 +142,8 @@ msgstr "Añadido a {}"
 msgid "Added to {}. Some were skipped: folders, and files that are empty, too large or unreadable."
 msgstr "Añadido a {}. Se omitió una parte: carpetas y archivos vacíos, demasiado grandes o ilegibles."
 
-msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
-msgstr "Añade una contraseña además de la protección de Windows para tus fragmentos sensibles. Se pide la primera vez que usas un fragmento sensible y de nuevo tras {} minutos sin usarlo."
+msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. With a Supporter plan on Windows, you can then also unlock with Windows Hello."
+msgstr "Añade una contraseña además de la protección de Windows para tus fragmentos sensibles. Se pide la primera vez que usas un fragmento sensible y de nuevo tras {} minutos sin usarlo. Con un plan Supporter en Windows, también podrás desbloquear con Windows Hello."
 
 msgid "Adds a text snippet to {}"
 msgstr "Añade un fragmento de texto a {}"
@@ -151,14 +151,11 @@ msgstr "Añade un fragmento de texto a {}"
 msgid "After a paste or copy"
 msgstr "Después de pegar o copiar"
 
-msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
-msgstr "Al escribir el comienzo de un atajo, una pequeña sugerencia junto al cursor de texto ofrece el fragmento. Pulsa Tab para insertarlo; cualquier otra tecla continúa con normalidad. Tab solo se intercepta mientras se muestra la sugerencia."
+msgid "After you type the first two characters of a trigger, a small hint at the text cursor offers the item. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
+msgstr "Al escribir los dos primeros caracteres de un atajo, una pequeña sugerencia junto al cursor de texto ofrece el elemento. Pulsa Tab para insertarlo; cualquier otra tecla continúa con normalidad. Tab solo se intercepta mientras se muestra la sugerencia."
 
 msgid "All"
 msgstr "Todos"
-
-msgid "All commands…"
-msgstr "Todos los comandos…"
 
 msgid "All items"
 msgstr "Todos los fragmentos"
@@ -471,17 +468,20 @@ msgstr "Cómoda"
 msgid "Comfortable view"
 msgstr "Vista cómoda"
 
-msgid "Command palette (every action)"
-msgstr "Paleta de comandos (todas las acciones)"
-
 msgid "Commands"
 msgstr "Comandos"
 
 msgid "Commands (Ctrl+K)"
 msgstr "Comandos (Ctrl+K)"
 
+msgid "Commands (every action)"
+msgstr "Comandos (todas las acciones)"
+
 msgid "Commands in the Main window"
 msgstr "Comandos en la ventana principal"
+
+msgid "Commands…"
+msgstr "Comandos…"
 
 msgid "Compact"
 msgstr "Compacta"
@@ -1038,11 +1038,8 @@ msgstr "Flotante"
 msgid "Fold group"
 msgstr "Plegar grupo"
 
-msgid "Fold or open a group"
+msgid "Fold or unfold a group"
 msgstr "Plegar o desplegar un grupo"
-
-msgid "Fold or unfold group"
-msgstr "Plegar o desplegar grupo"
 
 msgid "Fold the Panel into a thin strip."
 msgstr "Pliega el panel en una franja fina."
@@ -1092,6 +1089,9 @@ msgstr "Hazte Colaborador…"
 msgid "Get started"
 msgstr "Empezar"
 
+msgid "Give a snippet a trigger, such as ;sig, under More options in its editor."
+msgstr "Dale a un fragmento un atajo, como ;sig, en «Más opciones» de su editor."
+
 msgid "Give it a name."
 msgstr "Ponle un nombre."
 
@@ -1131,14 +1131,11 @@ msgstr "Grupo"
 msgid "Group name"
 msgstr "Nombre del grupo"
 
-msgid "Group selected items"
-msgstr "Agrupar los elementos seleccionados"
+msgid "Group the selected rows"
+msgstr "Agrupar las filas seleccionadas"
 
-msgid "Group the marked rows"
-msgstr "Agrupar las filas marcadas"
-
-msgid "Group..."
-msgstr "Agrupar..."
+msgid "Group…"
+msgstr "Agrupar…"
 
 msgid "Handy for forms you fill field by field."
 msgstr "Útil para formularios que rellenas campo a campo."
@@ -1176,8 +1173,8 @@ msgstr "Ocultar el panel"
 msgid "Hide the panel when it loses focus"
 msgstr "Ocultar el panel al perder el foco"
 
-msgid "Hide title, colour, tags and privacy"
-msgstr "Ocultar título, color, etiquetas y privacidad"
+msgid "Hide title, colour, tags, trigger and privacy"
+msgstr "Ocultar título, color, etiquetas, atajo y privacidad"
 
 msgid "History is paused"
 msgstr "El historial está en pausa"
@@ -1206,8 +1203,8 @@ msgstr "Cuánto tiempo permanece el puntero fuera del panel abierto antes de que
 msgid "How tall the item rows are in the Main window lists. Compact shows one line per item."
 msgstr "Qué altura tienen las filas de fragmentos en las listas de la ventana principal. Compacta muestra una línea por fragmento."
 
-msgid "How the Panel lists your snippets: one per row, two per row as cards, or tight rows. A search shows rows in every layout."
-msgstr "Cómo muestra el panel tus fragmentos: uno por fila, dos por fila como tarjetas o filas ajustadas. Una búsqueda muestra filas en cualquier diseño."
+msgid "How the Panel lists your items: one per row, two per row as cards, or tight rows. A search shows rows in every layout."
+msgstr "Cómo lista el Panel tus elementos: uno por fila, dos por fila como tarjetas o filas compactas. Una búsqueda muestra filas en cualquier diseño."
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "Ancho con el que se abre el panel, de {} a {} píxeles."
@@ -1503,9 +1500,6 @@ msgstr "Más usados"
 msgid "Move"
 msgstr "Mover"
 
-msgid "Move a group up or down"
-msgstr "Mover un grupo hacia arriba o abajo"
-
 msgid "Move a page at a time"
 msgstr "Mover una página a la vez"
 
@@ -1518,12 +1512,6 @@ msgstr "Subir tablero"
 msgid "Move down"
 msgstr "Bajar"
 
-msgid "Move group down"
-msgstr "Mover grupo hacia abajo"
-
-msgid "Move group up"
-msgstr "Mover grupo hacia arriba"
-
 msgid "Move selected item to Trash"
 msgstr "Mover el elemento seleccionado a la papelera"
 
@@ -1532,6 +1520,9 @@ msgstr "Mover el grupo hacia abajo"
 
 msgid "Move the group up"
 msgstr "Mover el grupo hacia arriba"
+
+msgid "Move the group up or down"
+msgstr "Mover el grupo hacia arriba o abajo"
 
 msgid "Move the item to the Trash"
 msgstr "Mueve el elemento a la papelera"
@@ -1759,8 +1750,8 @@ msgstr "No se añadió nada. Se omiten las carpetas y los archivos o imágenes v
 msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
 msgstr "Lo que copies en estos programas no llega a la bandeja Recientes. Usa el nombre de archivo del programa, por ejemplo keepass.exe."
 
-msgid "Numbers the first nine rows so pressing 1 to 9 uses that snippet."
-msgstr "Numera las nueve primeras filas para que, al pulsar de 1 a 9, se use ese fragmento."
+msgid "Numbers the first nine rows so pressing Alt+1 to 9 uses that item."
+msgstr "Numera las nueve primeras filas para que, al pulsar Alt+1 a 9, se use ese elemento."
 
 msgid "OK"
 msgstr "Correcto"
@@ -1809,9 +1800,6 @@ msgstr "Abrir la carpeta de copias de seguridad"
 
 msgid "Open data folder"
 msgstr "Abrir la carpeta de datos"
-
-msgid "Open group"
-msgstr "Desplegar grupo"
 
 msgid "Open logs folder"
 msgstr "Abrir carpeta de registros"
@@ -2306,11 +2294,11 @@ msgstr "Guardado {}"
 msgid "Saved {}."
 msgstr "{} guardado."
 
-msgid "Saved. This code overlaps another trigger, so one of them may never fire."
-msgstr "Guardado. Este código se solapa con otro disparador, así que puede que uno de los dos nunca se active."
+msgid "Saved. This trigger overlaps another trigger, so one of them may never fire."
+msgstr "Guardado. Este atajo se solapa con otro atajo, así que puede que uno de los dos nunca se active."
 
-msgid "Saved. This code overlaps the trigger of “{}”, so one of them may never fire."
-msgstr "Guardado. Este código se solapa con el atajo de «{}», así que puede que uno de los dos nunca se active."
+msgid "Saved. This trigger overlaps the trigger of “{}”, so one of them may never fire."
+msgstr "Guardado. Este atajo se solapa con el atajo de «{}», así que puede que uno de los dos nunca se active."
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "Guarda todos los tableros, listas y fragmentos en un archivo .snipdeck dentro de la carpeta que elijas."
@@ -2501,8 +2489,8 @@ msgstr "Mostrar el Panel en la barra de tareas y en Alt+Tab"
 msgid "Show the welcome tour again"
 msgstr "Mostrar de nuevo el recorrido de bienvenida"
 
-msgid "Show title, colour, tags and privacy"
-msgstr "Mostrar título, color, etiquetas y privacidad"
+msgid "Show title, colour, tags, trigger and privacy"
+msgstr "Mostrar título, color, etiquetas, atajo y privacidad"
 
 msgid "Shrug"
 msgstr "Encogerse de hombros"
@@ -2693,8 +2681,8 @@ msgstr "Tab"
 msgid "Tabs"
 msgstr "Pestañas"
 
-msgid "Tabs put each list of the board in a row under the header. Menu moves them into the board picker and gives the space back to your snippets."
-msgstr "Las pestañas ponen cada lista del tablero en una fila bajo el encabezado. Menú las mueve al selector de tableros y devuelve el espacio a tus fragmentos."
+msgid "Tabs put each list of the board in a row under the header. Menu moves them into the board picker and gives the space back to your items."
+msgstr "Las pestañas colocan cada lista del tablero en una fila bajo la cabecera. «Menú» las pasa al selector de tableros y devuelve el espacio a tus elementos."
 
 msgid "Tag"
 msgstr "Etiquetas"
@@ -2912,6 +2900,9 @@ msgstr "Tema: claro"
 msgid "Theme: System"
 msgstr "Tema: sistema"
 
+msgid "Then type it in any app. Turn this on in Settings, under Typing."
+msgstr "Luego escríbelo en cualquier aplicación. Actívalo en Ajustes, en «Escritura»."
+
 msgid "There is no file at that path."
 msgstr "No hay ningún archivo en esa ruta."
 
@@ -2981,8 +2972,8 @@ msgstr "Título"
 msgid "Title Case"
 msgstr "Tipo Título"
 
-msgid "Title, colour, tags, privacy"
-msgstr "Título, color, etiquetas, privacidad"
+msgid "Title, colour, tags, trigger, privacy"
+msgstr "Título, color, etiquetas, atajo, privacidad"
 
 msgid "Titles, text and labels all count."
 msgstr "Cuentan los títulos, el texto y las etiquetas."
@@ -3041,6 +3032,9 @@ msgstr "Desactiva los deslizamientos y desvanecimientos en Snipdeck. También se
 msgid "Type a command"
 msgstr "Escribe un comando"
 
+msgid "Type a short code, get a snippet"
+msgstr "Escribe un código corto, obtén un fragmento"
+
 msgid "Type this in any app to insert the snippet. Turn it on in Settings, under Typing."
 msgstr "Escríbelo en cualquier aplicación para insertar el fragmento. Actívalo en Ajustes, en Escritura."
 
@@ -3073,6 +3067,9 @@ msgstr "Deshacer {} (Ctrl+Z)"
 
 msgid "Undock the panel"
 msgstr "Desacoplar el panel"
+
+msgid "Unfold group"
+msgstr "Desplegar grupo"
 
 msgid "Ungroup"
 msgstr "Desagrupar"
@@ -3146,8 +3143,8 @@ msgstr "Usa el elemento n"
 msgid "Use the item"
 msgstr "Usa el elemento"
 
-msgid "Use your face, fingerprint or PIN instead of typing the master password. The password is still asked after a restart and every 7 days, and it always works."
-msgstr "Usa tu rostro, huella digital o PIN en lugar de escribir la contraseña maestra. La contraseña se sigue pidiendo tras un reinicio y cada 7 días, y siempre funciona."
+msgid "Use your face, fingerprint or PIN instead of typing the master password. Windows asks for Hello twice when you turn this on. The password is still asked after a restart and every 7 days, and it always works."
+msgstr "Usa tu rostro, huella digital o PIN en lugar de escribir la contraseña maestra. La contraseña se sigue pidiendo tras un reinicio y cada 7 días, y siempre funciona. Windows pide Hello dos veces al activarlo."
 
 msgid "Use {}"
 msgstr "Usar {}"
@@ -3200,8 +3197,8 @@ msgstr "Al iniciar Windows"
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "Con la chincheta desactivada, el panel se oculta en cuanto cambias a otra aplicación. Un panel fijado se queda."
 
-msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
-msgstr "Cuando escribes el atajo de un fragmento en otro programa, Snipdeck lo sustituye por el fragmento. Para ello Snipdeck observa las teclas que pulsas y guarda solo los últimos caracteres en memoria, nunca en disco.\nNo se expande nada en cuadros de contraseña, en programas configurados como «Nunca pegar» ni en elementos confidenciales."
+msgid "When you type an item's trigger in another program, Snipdeck replaces it with the item's text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items."
+msgstr "Cuando escribes el atajo de un elemento en otro programa, Snipdeck lo sustituye por el texto del elemento. Para ello Snipdeck observa las teclas que pulsas y guarda solo los últimos caracteres en memoria, nunca en disco.\nNo se expande nada en cuadros de contraseña, en programas configurados como «Nunca pegar», en programas que se ejecutan como administrador, mientras Snipdeck está en primer plano ni en elementos confidenciales."
 
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "Dónde aparece el panel cuando lo muestra un atajo o la bandeja. En el cursor de texto recurre al ratón cuando la aplicación no tiene cursor."
@@ -3229,9 +3226,6 @@ msgstr "Comportamiento de la ventana"
 
 msgid "Windows"
 msgstr "Windows"
-
-msgid "Windows Hello changed. Unlock with your password once to set it up again."
-msgstr "Windows Hello ha cambiado. Desbloquea una vez con tu contraseña para configurarlo de nuevo."
 
 msgid "Windows Hello did not unlock Snipdeck. Use your master password."
 msgstr "Windows Hello no desbloqueó Snipdeck. Usa tu contraseña maestra."
@@ -3281,6 +3275,9 @@ msgstr "Sí"
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "Tendrías {} tableros, y el plan Gratis incluye {}."
 
+msgid "Your Windows Hello PIN, face or fingerprint changed. Unlock with your password once to set Windows Hello up again."
+msgstr "Tu PIN, rostro o huella de Windows Hello ha cambiado. Desbloquea una vez con tu contraseña para volver a configurar Windows Hello."
+
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr "Tu biblioteca está en una sola carpeta, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (tableros, listas, fragmentos, etiquetas y la Papelera), blobs (imágenes, archivos y texto largo), settings.json, tu clave de licencia, copias de seguridad (tantas como elijas conservar) y registros."
 
@@ -3305,8 +3302,8 @@ msgstr "Tus atajos"
 msgid "add"
 msgstr "añadir"
 
-msgid "add create folder group"
-msgstr "añadir crear carpeta grupo"
+msgid "add create"
+msgstr "añadir crear"
 
 msgid "add create snippet note write"
 msgstr "añadir crear fragmento nota escribir"
@@ -3397,6 +3394,9 @@ msgstr "favoritos mostrar"
 msgid "find filter look"
 msgstr "buscar filtrar encontrar"
 
+msgid "fingerprint face PIN biometric lock"
+msgstr "huella dactilar rostro PIN biometría bloqueo"
+
 msgid "group change"
 msgstr "cambio de grupo"
 
@@ -3420,6 +3420,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "etiqueta: {}"
 
+msgid "license supporter upgrade key"
+msgstr "licencia supporter mejora clave"
+
 msgid "lowercase"
 msgstr "minúsculas"
 
@@ -3437,6 +3440,9 @@ msgstr "nombre título cambiar editar sección"
 
 msgid "navigation rail collapse expand lists panel left width"
 msgstr "navegación barra contraer expandir listas panel izquierda ancho"
+
+msgid "never paste excluded apps"
+msgstr "nunca pegar programas excluidos"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"
@@ -3503,6 +3509,9 @@ msgstr "etiqueta: {}"
 
 msgid "to insert"
 msgstr "para insertar"
+
+msgid "trigger triggers text expansion autocomplete shortcode"
+msgstr "atajo disparador expansión de texto autocompletar abreviatura"
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "tutorial introducción inicio básico aprender"

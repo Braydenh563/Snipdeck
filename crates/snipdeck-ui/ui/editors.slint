@@ -1086,9 +1086,9 @@ export component ItemEditor inherits Window {
                     spacing: 0px;
                     more-toggle := DisclosureRow {
                         text: @tr("More options");
-                        summary: @tr("Title, colour, tags, privacy");
+                        summary: @tr("Title, colour, tags, trigger, privacy");
                         open: root.more-shown;
-                        a11y-label: root.more-shown ? @tr("Hide title, colour, tags and privacy") : @tr("Show title, colour, tags and privacy");
+                        a11y-label: root.more-shown ? @tr("Hide title, colour, tags, trigger and privacy") : @tr("Show title, colour, tags, trigger and privacy");
                         clicked => {
                             root.more-open = !root.more-shown;
                             root.more-toggled(root.more-open);
@@ -1234,7 +1234,14 @@ export component ItemEditor inherits Window {
 
                     if root.sensitive: FormField {
                         label: @tr("Trigger");
-                        helper: @tr("Sensitive items can't be typed in, so they have no trigger.");
+                        Text {
+                            text: @tr("Sensitive items can't be typed in, so they have no trigger.");
+                            color: Theme.text-secondary;
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            wrap: word-wrap;
+                            accessible-role: AccessibleRole.text;
+                        }
                     }
                     if !root.sensitive: FormField {
                         label: @tr("Trigger");
@@ -1243,6 +1250,8 @@ export component ItemEditor inherits Window {
                         error: root.trigger-error;
                         trigger-field := TextField {
                             label: @tr("Trigger");
+                            description: root.trigger-warning != "" ? root.trigger-warning : root.trigger-helper;
+                            error: root.trigger-error;
                             placeholder: @tr("For example ;sig");
                             text <=> root.trigger;
                             edited(t) => { root.touch(); root.trigger-edited(t); }
