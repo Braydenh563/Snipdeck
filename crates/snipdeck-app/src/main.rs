@@ -33,7 +33,7 @@ use snipdeck_app::{
     crash, demo,
     drafts::Drafts,
     fill_binding::FillUi,
-    headless,
+    headless, hello_job,
     help_binding::{HelpUi, SystemHelpHost},
     host, key_provider,
     main_binding::{self, MainUi},
@@ -264,12 +264,19 @@ fn run(args: &Args) -> Result<(), String> {
         // Argon2id takes a moment on purpose: a master password step works its key out on a
         // worker thread, and the window waits with a status instead of freezing.
         master_job::set_offload(Rc::new(master_job::Threads));
+        // Windows Hello prompts wait for a person, so they run on a worker too.
+        hello_job::use_worker_threads();
+        if let Some(hello) = platform::hello() {
+            controller.set_hello(hello);
+        }
         if let Some(picker) = platform::file_picker() {
             controller.set_file_picker(picker);
         }
         controller.set_log_opener(Box::new(crash::open_log_folder));
         controller.unlock_library();
     }
+    // Whether Hello is ready is asked on its worker (it can block), so start-up does not wait.
+    snipdeck_app::unlock_binding::refresh_hello(&controller);
 
     // The tray makes closing the Panel safe (it hides, and the icon brings it back). Whether an
     // icon is in the notification area is reported by the tray itself (`TrayEvent::IconPresent`,

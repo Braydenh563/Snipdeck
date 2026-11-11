@@ -129,12 +129,15 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::SwitchToManual { .. } => 98,
         ToastMessage::FileMoved => 99,
         ToastMessage::FilesTooLarge => 100,
-        ToastMessage::TriggerOverlaps { .. } => 101,
-        ToastMessage::TypingUnavailable => 102,
+        ToastMessage::HelloTurnedOff => 101,
+        ToastMessage::HelloNotTurnedOn => 102,
+        ToastMessage::HelloEnrolFailed => 103,
+        ToastMessage::TriggerOverlaps { .. } => 104,
+        ToastMessage::TypingUnavailable => 105,
     }
 }
 
-const VARIANTS: usize = 103;
+const VARIANTS: usize = 106;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -309,6 +312,9 @@ fn samples() -> Vec<ToastMessage> {
         M::SwitchToManual {
             list: snipdeck_core::ListId::generate(),
         },
+        M::HelloTurnedOff,
+        M::HelloNotTurnedOn,
+        M::HelloEnrolFailed,
     ]
 }
 

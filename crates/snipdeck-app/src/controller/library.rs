@@ -119,6 +119,9 @@ pub trait Library:
 
     /// Whether the key is open.
     fn is_unlocked(&self) -> bool;
+
+    /// A second copy of the open key (to seal under Windows Hello); `None` while locked.
+    fn duplicate_data_key(&self) -> Option<DataKey>;
 }
 
 impl Library for Store {
@@ -183,5 +186,9 @@ impl Library for Store {
 
     fn is_unlocked(&self) -> bool {
         Store::is_unlocked(self)
+    }
+
+    fn duplicate_data_key(&self) -> Option<DataKey> {
+        Store::duplicate_data_key(self)
     }
 }

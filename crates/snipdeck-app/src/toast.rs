@@ -86,6 +86,12 @@ pub enum ToastMessage {
     MasterPasswordChangedNotOpen,
     /// "Master password removed. Snipdeck couldn't open the library just now; ..."
     MasterPasswordRemovedNotOpen,
+    /// "Windows Hello didn't work, so it was turned off. You can turn it on again in Settings."
+    HelloTurnedOff,
+    /// "Windows Hello was not turned on." (the user cancelled the prompt that turns it on)
+    HelloNotTurnedOn,
+    /// "Windows Hello didn't work, so it was not turned on." (the prompt that turns it on failed)
+    HelloEnrolFailed,
     /// "Unlock your library first, so a copy includes your sensitive items."
     UnlockFirst,
     /// "Your library locked. The sensitive item you were editing was closed without saving."

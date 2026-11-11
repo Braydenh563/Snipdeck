@@ -3054,6 +3054,9 @@ msgstr "解锁 Snipdeck"
 msgid "Unlock window"
 msgstr "解锁窗口"
 
+msgid "Unlock with Windows Hello"
+msgstr "使用 Windows Hello 解锁"
+
 msgid "Unlock with Windows Hello (Windows only)"
 msgstr "使用 Windows Hello 解锁（仅限 Windows）"
 
@@ -3107,6 +3110,9 @@ msgstr "使用第 N 个片段"
 
 msgid "Use the item"
 msgstr "使用该片段"
+
+msgid "Use your face, fingerprint or PIN instead of typing the master password. The password is still asked after a restart and every 7 days, and it always works."
+msgstr "使用面部、指纹或 PIN 代替输入主密码。重启后以及每隔 7 天仍会要求输入密码，密码始终可用。"
 
 msgid "Use {}"
 msgstr "使用 {}"
@@ -3188,6 +3194,24 @@ msgstr "窗口行为"
 
 msgid "Windows"
 msgstr "Windows"
+
+msgid "Windows Hello changed. Unlock with your password once to set it up again."
+msgstr "Windows Hello 已更改。请用密码解锁一次，以重新设置。"
+
+msgid "Windows Hello did not unlock Snipdeck. Use your master password."
+msgstr "Windows Hello 未能解锁 Snipdeck。请使用主密码。"
+
+msgid "Windows Hello didn't work, so it was not turned on."
+msgstr "Windows Hello 无法使用，因此未开启。"
+
+msgid "Windows Hello didn't work, so it was turned off. You can turn it on again in Settings."
+msgstr "Windows Hello 无法使用，已将其关闭。您可以在“设置”中重新开启。"
+
+msgid "Windows Hello was cancelled. Use your master password."
+msgstr "Windows Hello 已取消。请使用主密码。"
+
+msgid "Windows Hello was not turned on."
+msgstr "Windows Hello 未开启。"
 
 msgid "Windows accent"
 msgstr "Windows 强调色"

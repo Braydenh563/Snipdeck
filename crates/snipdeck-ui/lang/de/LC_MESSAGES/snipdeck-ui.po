@@ -3062,6 +3062,9 @@ msgstr "Snipdeck entsperren"
 msgid "Unlock window"
 msgstr "Entsperrfenster"
 
+msgid "Unlock with Windows Hello"
+msgstr "Mit Windows Hello entsperren"
+
 msgid "Unlock with Windows Hello (Windows only)"
 msgstr "Mit Windows Hello entsperren (nur Windows)"
 
@@ -3115,6 +3118,9 @@ msgstr "Den n-ten Textbaustein verwenden"
 
 msgid "Use the item"
 msgstr "Textbaustein verwenden"
+
+msgid "Use your face, fingerprint or PIN instead of typing the master password. The password is still asked after a restart and every 7 days, and it always works."
+msgstr "Verwende Gesicht, Fingerabdruck oder PIN, statt das Hauptpasswort einzutippen. Das Passwort wird nach einem Neustart und alle 7 Tage weiterhin abgefragt und funktioniert immer."
 
 msgid "Use {}"
 msgstr "{} verwenden"
@@ -3196,6 +3202,24 @@ msgstr "Fensterverhalten"
 
 msgid "Windows"
 msgstr "Windows"
+
+msgid "Windows Hello changed. Unlock with your password once to set it up again."
+msgstr "Windows Hello hat sich geändert. Entsperre einmal mit deinem Passwort, um es erneut einzurichten."
+
+msgid "Windows Hello did not unlock Snipdeck. Use your master password."
+msgstr "Windows Hello hat Snipdeck nicht entsperrt. Verwende dein Hauptpasswort."
+
+msgid "Windows Hello didn't work, so it was not turned on."
+msgstr "Windows Hello hat nicht funktioniert und wurde deshalb nicht eingeschaltet."
+
+msgid "Windows Hello didn't work, so it was turned off. You can turn it on again in Settings."
+msgstr "Windows Hello hat nicht funktioniert und wurde deshalb ausgeschaltet. Du kannst es in den Einstellungen wieder einschalten."
+
+msgid "Windows Hello was cancelled. Use your master password."
+msgstr "Windows Hello wurde abgebrochen. Verwende dein Hauptpasswort."
+
+msgid "Windows Hello was not turned on."
+msgstr "Windows Hello wurde nicht eingeschaltet."
 
 msgid "Windows accent"
 msgstr "Windows-Akzent"

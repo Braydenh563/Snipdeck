@@ -395,6 +395,7 @@ fn settings_keyboard_walk() {
         let h = Harness::new(SettingsPage::new, w, h_);
         scene!(h.component, s);
         editor::settings(&h.component);
+        h.component.set_hello_offered(true);
         let fired = Rc::new(Cell::new(false));
         let f = fired.clone();
         h.component.on_close_requested(move || f.set(true));

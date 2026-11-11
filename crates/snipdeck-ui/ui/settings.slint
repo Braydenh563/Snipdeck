@@ -379,6 +379,9 @@ export component SettingsPage inherits Window {
     in property <bool> master-locked: false;
     // This plan may set a master password (Supporter).
     in property <bool> master-allowed: false;
+    // Windows Hello unlock: offered only with a master password set, on a Supporter plan, on a PC where Hello is ready.
+    in property <bool> hello-offered: false;
+    in-out property <bool> hello-unlock: false;
     in property <int> master-idle-minutes: 15;
     in property <int> master-min-length: 8;
     // What the host found wrong with the last attempt; the host clears it when the form closes.
@@ -419,6 +422,7 @@ export component SettingsPage inherits Window {
     callback panel-start-visible-chosen(index: int);
     callback autostart-toggled(on: bool);
     callback close-to-tray-toggled(on: bool);
+    callback hello-unlock-toggled(on: bool);
     callback recent-history-toggled(on: bool);
     callback expand-triggers-toggled(on: bool);
     callback suggest-triggers-toggled(on: bool);
@@ -1171,6 +1175,18 @@ export component SettingsPage inherits Window {
                                 changed has-focus => {
                                     if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                                 }
+                            }
+                        }
+                    }
+                    if root.hello-offered: SettingRow {
+                        title: @tr("Unlock with Windows Hello");
+                        description: @tr("Use your face, fingerprint or PIN instead of typing the master password. The password is still asked after a restart and every 7 days, and it always works.");
+                        Toggle {
+                            a11y-label: @tr("Unlock with Windows Hello");
+                            checked <=> root.hello-unlock;
+                            toggled(on) => { root.hello-unlock-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }
                         }
                     }

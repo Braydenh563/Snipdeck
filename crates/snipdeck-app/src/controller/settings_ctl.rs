@@ -372,7 +372,7 @@ where
             verify_embedded(token, self.clock.now())
                 .map_err(licence_store::problem_of)
                 .and_then(|entitlements| {
-                    self.entitlements = entitlements;
+                    self.change_plan(entitlements);
                     match data_dir {
                         Some(dir) => {
                             licence_store::write(dir, token).map_err(|_| LicenceProblem::NotSaved)
@@ -891,7 +891,9 @@ where
         self.queue.reset();
         self.index_cache.reset();
         self.clear_history();
-        // The key record may have gone (forgotten) or stayed (with its password).
+        // The key record may have gone (forgotten) or stayed (with its password). A Hello copy
+        // was sealed for the old key: it goes either way, and Hello is switched off.
+        self.forget_hello();
         self.refresh_master();
         self.show_toast(if erased {
             Toast {

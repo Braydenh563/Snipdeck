@@ -21,6 +21,7 @@ use snipdeck_ui as ui;
 use crate::{
     binding::{redraw_all, register_redraw},
     controller::{Controller, MasterProblem},
+    hello_job::{HelloFailure, HelloJob},
     host::ClipboardText,
     main_binding::{create_window, raise, set_look},
     native_window::fit_when_settled,
@@ -37,7 +38,84 @@ pub fn slint_problem(problem: MasterProblem) -> ui::MasterProblem {
         MasterProblem::SupporterOnly => ui::MasterProblem::SupporterOnly,
         MasterProblem::Unavailable => ui::MasterProblem::Unavailable,
         MasterProblem::Failed => ui::MasterProblem::Failed,
+        MasterProblem::HelloFailed => ui::MasterProblem::HelloFailed,
+        MasterProblem::HelloCancelled => ui::MasterProblem::HelloCancelled,
+        MasterProblem::HelloChanged => ui::MasterProblem::HelloChanged,
+        MasterProblem::HelloTurnedOff => ui::MasterProblem::HelloTurnedOff,
     }
+}
+
+/// Asks Hello, on its worker, whether it can be used now, and redraws when it answers. Called at
+/// start-up and when Settings or the unlock window opens, so a PIN added or removed after launch
+/// shows. UI thread only.
+pub fn refresh_hello<C, K, T>(controller: &Rc<RefCell<Controller<Store, C, K, T>>>)
+where
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    let (job, first) = {
+        let mut ctl = controller.borrow_mut();
+        let first = !ctl.hello_availability_known();
+        (ctl.begin_hello_refresh(), first)
+    };
+    let Some(job) = job else {
+        return;
+    };
+    let again = Rc::clone(controller);
+    run_step(controller, Some(job), move |answered| {
+        // A quick password unlock may have come before Hello's first answer, so nothing was
+        // sealed then: seal the open key now. Only that first answer does: opening Settings or the
+        // unlock window later must not put a Hello prompt on screen.
+        if first && answered.is_some() {
+            seal_open_key(&again);
+        }
+    });
+}
+
+/// Runs a Hello step where Hello jobs run and applies its outcome. `then` gets the result, or
+/// `None` when the outcome was of a step given up on (the library was locked, a newer step began):
+/// that is dropped with its key and must not turn anything off. UI thread only.
+fn run_step<C, K, T>(
+    controller: &Rc<RefCell<Controller<Store, C, K, T>>>,
+    job: Option<HelloJob>,
+    then: impl FnOnce(Option<Result<(), HelloFailure>>) + 'static,
+) where
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    let Some(job) = job else {
+        return;
+    };
+    let controller = Rc::clone(controller);
+    crate::hello_job::run_job(
+        job,
+        Box::new(move |done| {
+            if controller.borrow().hello_stale(&done) {
+                drop(done);
+                redraw_all();
+                then(None);
+                return;
+            }
+            let result = controller.borrow_mut().finish_hello(done);
+            redraw_all();
+            then(Some(result));
+        }),
+    );
+}
+
+/// Seals the open key under Hello if Hello is on and no copy exists. Whatever comes back (cancelled,
+/// failed, removed) changes nothing: the option stays, there is no copy, the password unlocks, and
+/// the next password unlock tries again. A prompt the user cancels never turns Hello off.
+pub(crate) fn seal_open_key<C, K, T>(controller: &Rc<RefCell<Controller<Store, C, K, T>>>)
+where
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    let job = controller.borrow_mut().begin_hello_seal();
+    run_step(controller, job, |_| {});
 }
 
 struct UnlockCore<C, K, T> {
@@ -81,6 +159,7 @@ where
         let controller = self.core.controller.borrow();
         let look = controller.settings_look();
         window.set_dark(look.dark);
+        crate::text_scale::apply(&window.global::<ui::SystemLook<'_>>());
         set_look(
             &window,
             look.high_contrast.as_ref(),
@@ -89,7 +168,20 @@ where
         );
         drop(controller);
         window.set_password(slint::SharedString::new());
-        window.set_problem(ui::MasterProblem::None);
+        // Said once: the note is taken, so the next time the window opens it is not repeated.
+        window.set_problem(
+            if self
+                .core
+                .controller
+                .borrow_mut()
+                .take_hello_turned_off_note()
+            {
+                ui::MasterProblem::HelloTurnedOff
+            } else {
+                ui::MasterProblem::None
+            },
+        );
+        window.set_hello_available(self.core.controller.borrow().hello_button_shown());
         window.set_focus_request(window.get_focus_request() + 1);
     }
 }
@@ -121,6 +213,10 @@ where
         {
             let core = Rc::clone(&core);
             window.on_submitted(move |password| core.submitted(&password));
+        }
+        {
+            let core = Rc::clone(&core);
+            window.on_hello_requested(move || core.hello_requested());
         }
         {
             let core = Rc::clone(&core);
@@ -193,9 +289,63 @@ where
         };
         window.set_busy(false);
         match result {
-            Ok(()) => Self::opened(&window),
+            Ok(()) => {
+                Self::opened(&window);
+                // The password just unlocked: Hello is asked once to seal the copy.
+                self.seal_after_unlock();
+            }
             Err(problem) => Self::refused(&window, problem),
         }
+    }
+
+    fn seal_after_unlock(&self) {
+        seal_open_key(&self.controller);
+    }
+
+    /// The Hello button: Hello opens the sealed copy. Any failure leaves the password prompt as it
+    /// was, with a hint.
+    fn hello_requested(self: &Rc<Self>) {
+        let Some(window) = self.window.upgrade() else {
+            return;
+        };
+        window.set_problem(ui::MasterProblem::None);
+        let job = self.controller.borrow_mut().begin_hello_unlock();
+        if job.is_none() {
+            window.set_hello_available(false);
+            Self::refused(&window, MasterProblem::HelloFailed);
+            return;
+        }
+        window.set_busy(true);
+        let weak = self.window.clone();
+        let weak_controller = Rc::clone(&self.controller);
+        run_step(&self.controller, job, move |result| {
+            let Some(window) = weak.upgrade() else {
+                return;
+            };
+            window.set_busy(false);
+            match result {
+                Some(Ok(())) => {
+                    let _ = window.hide();
+                }
+                // A step given up on (the library was locked meanwhile): the prompt stays as
+                // it is, and the field has the focus.
+                None => window.set_focus_request(window.get_focus_request() + 1),
+                // The copy is gone: the password is the way in.
+                Some(Err(failure)) => {
+                    // A cancel keeps the copy, so the button stays for another try.
+                    window.set_hello_available(weak_controller.borrow().hello_unlock_available());
+                    // A Hello that changed says so once; the password sets it up again.
+                    let changed = failure == HelloFailure::Mismatch
+                        && weak_controller.borrow_mut().take_hello_changed_note();
+                    let problem = match failure {
+                        _ if changed => MasterProblem::HelloChanged,
+                        HelloFailure::Cancelled => MasterProblem::HelloCancelled,
+                        _ => MasterProblem::HelloFailed,
+                    };
+                    Self::refused(&window, problem);
+                }
+            }
+        });
     }
 
     fn opened(window: &ui::UnlockWindow) {
@@ -223,6 +373,9 @@ where
         {
             window.set_password(slint::SharedString::new());
             let _ = window.hide();
+        } else if let Some(window) = self.window.upgrade() {
+            // Every redraw: a button for a copy that is gone (expired, Hello turned off) is never left.
+            window.set_hello_available(self.controller.borrow().hello_button_shown());
         }
     }
 }
@@ -268,6 +421,7 @@ impl UnlockUi {
             let mut slot = slot.borrow_mut();
             if slot.is_none() {
                 let window = create_window(ui::UnlockWindow::new)?;
+                crate::text_scale::apply(&window.global::<ui::SystemLook<'_>>());
                 crate::native_window::size_before_show(
                     window.window(),
                     (window.get_wanted_width(), window.get_wanted_height()),
@@ -279,6 +433,7 @@ impl UnlockUi {
                 return Ok(());
             };
             binding.prepare();
+            refresh_hello(&controller);
             crate::native_window::place_over_owner(window.window());
             window.show()?;
             fit_when_settled(window);
