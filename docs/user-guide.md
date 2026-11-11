@@ -175,7 +175,14 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
   (`Ctrl+Z`) takes back a grouping, a rename, an ungroup, a delete and a drag of a header or of an item onto
   one. In the Cards layout a list with groups shows one column, so a header spans the width. The numbers `Alt+1`
   to `Alt+9` count items only, never headers. A screen reader reads a header as "group, 3 items" and says
-  whether it is expanded or collapsed. Groups are not in the Main window yet.
+  whether it is expanded or collapsed.
+  **In the Main window** the groups work the same way, in a list sorted by hand: `Ctrl+G` groups the selected rows
+  (the row at the cursor when none is selected), and on a header `Left` folds, `Right` opens, `Enter` does the
+  other, `F2` renames, `Delete` moves the group and its items to the Trash, and `Alt+Up` or `Alt+Down` moves the
+  whole group. The header's menu has Rename group, Ungroup and Delete group, and the command
+  palette (`Ctrl+K`) has the same actions. Search results are a flat list of matches without headers, and a list that
+  holds groups is drawn as rows even in the Tile layout, so a header can span the width. Undo (`Ctrl+Z`) takes back
+  each of these steps.
 - **Move.** Choose **Move to list…** from the item menu to move one or more selected items.
 - **Paste as…** Choose **Paste as…** from the item menu (text items, one at a time) to paste the text changed: **Plain
   text**, **UPPERCASE**, **lowercase**, **Title Case**, **Trimmed** (no space at the ends) or **slug-like-this** (`my-title`).
@@ -529,6 +536,11 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Main window | `Delete` | Move to the Trash (in the Trash: delete for good) |
 | Main window | `Ctrl+A`, `Ctrl+Space` | Select all, toggle a row |
 | Main window | `Alt+Up`, `Alt+Down` | Move an item or list |
+| Main window | `Ctrl+G` | Group the selected rows (the row at the cursor when none is selected) |
+| Main window | `Left`, `Right`, `Enter` (on a group header) | Fold or open the group |
+| Main window | `F2` (on a group header) | Rename the group |
+| Main window | `Alt+Up`, `Alt+Down` (on a group header) | Move the whole group |
+| Main window | `Delete` (on a group header) | Move the group and its items to the Trash |
 | Panel | `Alt+Up`, `Alt+Down` | Move the selected item |
 | Panel, Main window | `Space` (hold) | Reveal a sensitive item |
 | Main window | `F1` | Open the Help window |

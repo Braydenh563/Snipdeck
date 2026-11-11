@@ -286,7 +286,6 @@ where
         }
     }
 
-
     fn group_clear_marks(&mut self, s: Surface) {
         match s {
             Surface::Panel => self.model.clear_marks(),
@@ -344,9 +343,29 @@ where
         })
     }
 
+    /// The group under the Main window's cursor and where it can move, `None` on an item.
+    pub(super) fn main_cursor_group(&self) -> Option<crate::commands::CursorGroup> {
+        let at = self.main.cursor();
+        self.group_row(Surface::Main, at)?;
+        let can = |delta| self.group_step_target(Surface::Main, at, delta).is_some();
+        Some(crate::commands::CursorGroup {
+            up: can(-1),
+            down: can(1),
+        })
+    }
+
+    /// The palette's "Move group up / down": the same move as Alt+Up / Alt+Down on the header at `index`.
+    pub(super) fn main_move_group(&mut self, index: usize, delta: isize) {
+        self.main_fresh();
+        self.group_move_on(Surface::Main, index, delta);
+    }
+
     /// Whether the group whose header is row `index` can move `delta` places (1 or -1).
     pub(crate) fn can_move_group(&self, index: usize, delta: isize) -> bool {
-        self.model.reorderable() && self.group_step_target(Surface::Panel, index, delta).is_some()
+        self.model.reorderable()
+            && self
+                .group_step_target(Surface::Panel, index, delta)
+                .is_some()
     }
 
     /// Alt+Up / Alt+Down on a header, or "Move up / down" in its menu: the whole group moves one

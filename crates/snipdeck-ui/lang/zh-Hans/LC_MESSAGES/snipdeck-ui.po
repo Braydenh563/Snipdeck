@@ -737,6 +737,9 @@ msgstr "以你选择的格式显示日期和时间"
 msgid "Delete"
 msgstr "删除"
 
+msgid "Delete a group and its items"
+msgstr "删除分组及其中的项目"
+
 msgid "Delete board"
 msgstr "删除看板"
 
@@ -1034,6 +1037,9 @@ msgstr "浮动"
 msgid "Fold or open a group"
 msgstr "折叠或展开分组"
 
+msgid "Fold or unfold group"
+msgstr "折叠或展开分组"
+
 msgid "Fold the Panel into a thin strip."
 msgstr "将面板折叠为细条。"
 
@@ -1120,6 +1126,9 @@ msgstr "分组"
 
 msgid "Group name"
 msgstr "分组名称"
+
+msgid "Group selected items"
+msgstr "将选中的项目分组"
 
 msgid "Group the marked rows"
 msgstr "将选中的行分组"
@@ -1501,6 +1510,12 @@ msgstr "将看板上移"
 
 msgid "Move down"
 msgstr "下移"
+
+msgid "Move group down"
+msgstr "下移分组"
+
+msgid "Move group up"
+msgstr "上移分组"
 
 msgid "Move selected item to Trash"
 msgstr "将所选片段移到回收站"
@@ -3301,6 +3316,9 @@ msgstr "剪贴板"
 msgid "clipboard save grab screenshot"
 msgstr "剪贴板 保存 抓取 截图"
 
+msgid "collapse expand hide show toggle section"
+msgstr "折叠 展开 隐藏 显示 切换 区段"
+
 msgid "colour change"
 msgstr "颜色更改"
 
@@ -3324,6 +3342,9 @@ msgstr "已删除 还原 回收站 显示"
 
 msgid "diagnose doctor problems fix"
 msgstr "诊断 检查 问题 修复"
+
+msgid "dissolve split remove group keep items section"
+msgstr "解散 拆分 移除 分组 保留 项目 区段"
 
 msgid "drop"
 msgstr "拖放"
@@ -3380,11 +3401,17 @@ msgstr "标签：{}"
 msgid "lowercase"
 msgstr "小写"
 
+msgid "make new folder together section collect"
+msgstr "创建 新建 文件夹 一起 区段 收集"
+
 msgid "move"
 msgstr "移动"
 
 msgid "ms"
 msgstr "毫秒"
+
+msgid "name title change edit section"
+msgstr "名称 标题 更改 编辑 区段"
 
 msgid "navigation rail collapse expand lists panel left width"
 msgstr "导航 侧边栏 折叠 展开 列表 面板 左侧 宽度"
@@ -3419,8 +3446,17 @@ msgstr "px"
 msgid "quick find paste palette"
 msgstr "快速查找 粘贴 面板"
 
+msgid "remove trash discard section items"
+msgstr "移除 回收站 丢弃 区段 项目"
+
 msgid "reorder"
 msgstr "重新排序"
+
+msgid "reorder earlier raise section"
+msgstr "重新排序 提前 上移 区段"
+
+msgid "reorder later lower section"
+msgstr "重新排序 延后 下移 区段"
 
 msgid "s"
 msgstr "秒"

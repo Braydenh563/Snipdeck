@@ -64,6 +64,13 @@ where
             Command::PasteNext => {
                 self.paste_next();
             }
+            Command::GroupItems => self.main_group_marked(cursor),
+            Command::FoldGroup => self.main_group_collapse(cursor, None),
+            Command::RenameGroup => self.main_group_rename_start(cursor),
+            Command::UngroupGroup => self.main_group_ungroup(cursor),
+            Command::DeleteGroup => self.main_group_delete(cursor),
+            Command::MoveGroupUp => self.main_move_group(cursor, -1),
+            Command::MoveGroupDown => self.main_move_group(cursor, 1),
             Command::SelectAll => self.main_select_all(),
             Command::TakeScreenshot => {
                 let effects = self.take_screenshot();

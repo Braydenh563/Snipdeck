@@ -183,6 +183,8 @@ pub struct MainScreen {
     /// The header whose name should open for editing in place, with the request count
     /// (a new request is a new `rename_seq`).
     pub rename_row: Option<usize>,
+    /// The cursor is on a group's header: where that group can move (the palette offers the group commands).
+    pub cursor_group: Option<crate::commands::CursorGroup>,
     /// Counts the rename requests.
     pub rename_seq: u64,
     /// How many rows are selected.
@@ -309,6 +311,7 @@ where
             selected_count: self.main.selected_count(),
             rows,
             rename_row,
+            cursor_group: self.main_cursor_group(),
             rename_seq: self.rename_seq,
             use_label: self.model.use_label(),
             revealed,
