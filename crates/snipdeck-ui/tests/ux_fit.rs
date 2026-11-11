@@ -6,7 +6,8 @@ use i_slint_backend_testing::{AccessibleRole as Role, ElementQuery};
 use slint::{ComponentHandle, Global};
 use snipdeck_ui::testing::{Harness, assert_golden};
 use snipdeck_ui::{
-    HelpWindow, MainWindow, PaletteRow, PanelWindow, SettingsFilter, SettingsPage, SystemLook, ToastKind, ToastWindow,
+    HelpWindow, MainWindow, PaletteRow, PanelWindow, SettingsFilter, SettingsPage, SystemLook,
+    ToastKind, ToastWindow,
 };
 
 #[path = "support/editor_fixture.rs"]

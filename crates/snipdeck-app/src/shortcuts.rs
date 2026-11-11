@@ -138,7 +138,11 @@ pub const CATALOGUE: [Shortcut; 80] = [
     row(Main, "Ctrl+Y"),
     row(Main, "Ctrl+W"),
     row(Main, "Ctrl+B"),
-    custom(Main, &["Alt", "Up", ALT, "Alt", "Down"], "Alt+Up or Alt+Down"),
+    custom(
+        Main,
+        &["Alt", "Up", ALT, "Alt", "Down"],
+        "Alt+Up or Alt+Down",
+    ),
     custom(Main, &["Space"], "Hold Space"),
     // Groups in the Main window.
     row(Main, "Ctrl+G"),
@@ -157,10 +161,18 @@ pub const CATALOGUE: [Shortcut; 80] = [
     custom(Panel, &["PgUp", ALT, "PgDn"], "PageUp or PageDown"),
     row(Panel, "Enter"),
     row(Panel, "Shift+Enter"),
-    custom(Panel, &["Alt", "Up", ALT, "Alt", "Down"], "Alt+Up or Alt+Down"),
+    custom(
+        Panel,
+        &["Alt", "Up", ALT, "Alt", "Down"],
+        "Alt+Up or Alt+Down",
+    ),
     custom(Panel, &["Alt", "1-9"], "Alt+1 to 9"),
     custom(Panel, &["Space"], "Hold Space"),
-    custom(Panel, &["Shift", "Up", ALT, "Shift", "Down"], "Shift+Up or Shift+Down"),
+    custom(
+        Panel,
+        &["Shift", "Up", ALT, "Shift", "Down"],
+        "Shift+Up or Shift+Down",
+    ),
     row(Panel, "Ctrl+A"),
     row(Panel, "Ctrl+Tab"),
     row(Panel, "Ctrl+Shift+Tab"),
