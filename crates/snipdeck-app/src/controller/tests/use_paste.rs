@@ -1312,3 +1312,55 @@ fn a_window_that_is_no_longer_in_front_stops_an_expansion_and_a_hint() {
         TypedOutcome::Expanded(_)
     ));
 }
+
+fn tab_batch() -> Vec<KeyEvent> {
+    [true, false]
+        .map(|down| KeyEvent {
+            key: snipdeck_platform::keys::Key::Tab,
+            down,
+        })
+        .to_vec()
+}
+
+#[test]
+fn a_swallowed_tab_that_cannot_insert_is_given_back_exactly_once() {
+    let (mut w, _typing) = suggest_world(";two");
+    w.ctl.update_settings(|s| s.suggest_triggers = true);
+    let typed = suggestion(&w, ";two", 2, false);
+    // A Snipdeck window is in use: the insertion is skipped, the Tab must not be lost.
+    w.ctl.set_own_window_active(true);
+    assert_eq!(w.ctl.accept_hinted(&typed, true), TypedOutcome::Skipped);
+    assert_eq!(backspaces_sent(&mut w), vec![tab_batch()]);
+}
+
+#[test]
+fn a_swallowed_tab_for_a_hint_not_on_screen_is_given_back_exactly_once() {
+    let (mut w, _typing) = suggest_world(";two");
+    let typed = suggestion(&w, ";two", 2, false);
+    assert_eq!(w.ctl.accept_hinted(&typed, false), TypedOutcome::Skipped);
+    assert_eq!(backspaces_sent(&mut w), vec![tab_batch()]);
+}
+
+#[test]
+fn a_tab_that_inserts_is_not_given_back() {
+    let (mut w, _typing) = suggest_world(";two");
+    let typed = suggestion(&w, ";two", 2, false);
+    let out = w.ctl.accept_hinted(&typed, true);
+    assert!(matches!(out, TypedOutcome::Expanded(_)));
+    assert!(
+        !backspaces_sent(&mut w).contains(&tab_batch()),
+        "no Tab after an insertion"
+    );
+}
+
+#[test]
+fn a_hint_from_another_worker_generation_is_stale() {
+    let (w, typing) = suggest_world(";two");
+    typing.set_generation(3);
+    assert!(!w.ctl.hint_is_stale(3 << 32 | 1));
+    assert!(w.ctl.hint_is_stale(2 << 32 | 1), "an older worker");
+    assert!(
+        w.ctl.hint_is_stale(4 << 32 | 1),
+        "a newer one is not the running one either"
+    );
+}

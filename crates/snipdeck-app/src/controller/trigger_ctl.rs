@@ -11,6 +11,7 @@ use std::collections::BTreeMap;
 
 use snipdeck_core::{Candidate, Matcher, UseMode};
 use snipdeck_platform::{
+    keys::{Key, KeyEvent},
     pipeline::{Clipboard, Keyboard, Timing},
     route::{Route, ScreenRect},
 };
@@ -95,6 +96,32 @@ where
                 })
             })
             .collect()
+    }
+
+    /// Whether hint number `id` is from a worker other than the running one.
+    #[must_use]
+    pub fn hint_is_stale(&self, id: u64) -> bool {
+        let running = self.typing.as_ref().map_or(0, |t| t.generation());
+        crate::typing_worker::generation_of(id) != running
+    }
+
+    /// `Tab` was swallowed for hint `id`'s suggestion. Inserts it if the hint is `on_screen` and
+    /// the insertion still goes out; otherwise the swallowed `Tab` is given back to the app (a
+    /// slightly late `Tab` beats a lost one).
+    pub fn accept_hinted(&mut self, typed: &Typed, on_screen: bool) -> TypedOutcome {
+        let outcome = if on_screen {
+            self.accept_suggested(typed)
+        } else {
+            TypedOutcome::Skipped
+        };
+        if outcome == TypedOutcome::Skipped {
+            let tab = |down| KeyEvent {
+                key: Key::Tab,
+                down,
+            };
+            let _ = self.services.keyboard.send(&[tab(true), tab(false)]);
+        }
+        outcome
     }
 
     /// Hint number `id` is on screen: the hook may take a plain `Tab` for it.

@@ -226,6 +226,9 @@ pub trait TypingControl {
     /// Hint number `id` is really on screen: the hook may take a plain `Tab` for it. Only the UI
     /// thread raises the flag, and only after showing the hint.
     fn hint_up(&mut self, id: u64);
+    /// The generation of the running worker (see `typing_worker::next_generation`); a hint number
+    /// from another generation is stale. 0 while none runs.
+    fn generation(&self) -> u64;
     /// Hint number `id` was taken down: the hook stops taking a plain `Tab` for it. A newer
     /// hint's flag is left alone.
     fn hint_down(&mut self, id: u64);
@@ -241,6 +244,7 @@ pub struct FakeTyping {
     triggers: Rc<Cell<u32>>,
     candidates: Rc<RefCell<Vec<snipdeck_core::Candidate>>>,
     up: Rc<RefCell<Vec<u64>>>,
+    generation: Rc<Cell<u64>>,
     hint: Rc<RefCell<Vec<u64>>>,
     skipped: Rc<RefCell<Vec<snipdeck_core::Fired>>>,
 }
@@ -250,6 +254,11 @@ impl FakeTyping {
     #[must_use]
     pub fn candidates(&self) -> Vec<snipdeck_core::Candidate> {
         self.candidates.borrow().clone()
+    }
+
+    /// Makes the fake report `generation` as the running worker's.
+    pub fn set_generation(&self, generation: u64) {
+        self.generation.set(generation);
     }
 
     /// Every `hint_up` call, in order.
@@ -305,6 +314,10 @@ impl TypingControl for FakeTyping {
 
     fn hint_up(&mut self, id: u64) {
         self.up.borrow_mut().push(id);
+    }
+
+    fn generation(&self) -> u64 {
+        self.generation.get()
     }
 
     fn hint_down(&mut self, id: u64) {

@@ -22,12 +22,19 @@ const POLL: Duration = Duration::from_millis(100);
 const HINT_IDLE_POLLS: u32 = 50;
 
 /// The number the next shown hint gets (0 is "no hint": the hook's flag value for "off").
-static NEXT_HINT: AtomicU64 = AtomicU64::new(1);
+static NEXT_GENERATION: AtomicU64 = AtomicU64::new(1);
 
-/// The number the next hint will get: a worker started now only makes hints from here on.
+/// A number for a worker that is about to start. Its hints carry it (see [`generation_of`]), so a
+/// message from a worker that was switched off meanwhile can be told apart.
 #[must_use]
-pub fn next_hint() -> u64 {
-    NEXT_HINT.load(Ordering::SeqCst)
+pub fn next_generation() -> u64 {
+    NEXT_GENERATION.fetch_add(1, Ordering::SeqCst)
+}
+
+/// The generation of the worker that made hint number `id`.
+#[must_use]
+pub fn generation_of(id: u64) -> u64 {
+    id >> 32
 }
 
 /// What follows an expansion, as far as the matcher is told: the text ends in a letter, so the
@@ -135,6 +142,11 @@ pub struct Env {
     pub pass_tab: Arc<dyn Fn() + Send + Sync>,
     /// The foreground window.
     pub foreground: Foreground,
+    /// This worker's generation (see [`next_generation`]); its hint numbers are
+    /// `generation << 32 | n`.
+    pub generation: u64,
+    /// The hints made so far.
+    pub hints: AtomicU64,
     /// How often the worker looks around while no key arrives.
     pub poll: Duration,
     /// Polls without a key before a shown hint comes down.
@@ -150,8 +162,11 @@ impl Env {
         tab: Arc<AtomicU64>,
         foreground: Foreground,
         pass_tab: Arc<dyn Fn() + Send + Sync>,
+        generation: u64,
     ) -> Self {
         Self {
+            generation,
+            hints: AtomicU64::new(0),
             sent,
             lost,
             tab,
@@ -324,8 +339,12 @@ pub fn run(
                 let counter = Arc::clone(&env.sent);
                 let fresh = move || counter.load(Ordering::SeqCst) == at;
                 if let TypedEvent::Tab(id) = event {
-                    accept_hint(&mut hint, id, env, fresh, &mut password, &mut deliver);
-                    typist.inserted();
+                    if accept_hint(&mut hint, id, env, fresh, &mut password, &mut deliver) {
+                        typist.inserted();
+                    } else {
+                        // The Tab went back to the app: a plain tab character, a boundary.
+                        let _ = typist.event(TypedEvent::Char('\t'));
+                    }
                     continue;
                 }
                 let fired = typist.event(event);
@@ -376,7 +395,7 @@ pub fn run(
 /// `Tab` swallowed for hint number `id`: hands the suggestion over for insertion if that hint is
 /// the one held and shown, unless the focus is a password box by now (checked again here: the
 /// focus may have moved since the hint went up). Any other `Tab` (the hint it was swallowed for
-/// is gone) is given back to the app from here.
+/// is gone) is given back to the app from here. Whether the suggestion was handed over.
 fn accept_hint(
     hint: &mut Option<Hint>,
     id: u64,
@@ -384,10 +403,10 @@ fn accept_hint(
     fresh: impl Fn() -> bool + Send + Sync + 'static,
     password: &mut impl FnMut() -> bool,
     deliver: &mut impl FnMut(Out),
-) {
+) -> bool {
     let Some(h) = hint.take().filter(|h| h.shown && h.id == id) else {
         (env.pass_tab)();
-        return;
+        return false;
     };
     let _ = env
         .tab
@@ -395,7 +414,7 @@ fn accept_hint(
     if password() {
         deliver(Out::Hide(h.id));
         (env.pass_tab)();
-        return;
+        return false;
     }
     let fired = Fired {
         item: h.item,
@@ -406,6 +425,7 @@ fn accept_hint(
         Typed::new(fired, false, fresh).in_window(h.window, Arc::clone(&env.foreground)),
         h.id,
     ));
+    true
 }
 
 /// Takes the hint down, telling the UI thread if it was showing. The hook gets its `Tab` back
@@ -448,7 +468,7 @@ fn follow_hint(
     let window = (env.foreground)();
     let in_password_box = password();
     let shown = !in_password_box && fresh();
-    let id = NEXT_HINT.fetch_add(1, Ordering::SeqCst);
+    let id = env.generation << 32 | (env.hints.fetch_add(1, Ordering::SeqCst) + 1);
     if shown {
         let fired = Fired {
             item,
@@ -498,6 +518,7 @@ mod tests {
             Arc::new(AtomicU64::new(0)),
             Arc::new(move || seen.load(Ordering::SeqCst)),
             Arc::new(|| {}),
+            0,
         );
         env.poll = Duration::from_millis(1);
         env.idle_polls = 3;
@@ -708,15 +729,18 @@ mod tests {
                 log.lock().expect("log").push(line);
             };
             if let TypedEvent::Tab(_) = event {
-                accept_hint(
+                if accept_hint(
                     &mut hint,
                     armed.get(),
                     &env,
                     || true,
                     &mut ask,
                     &mut deliver,
-                );
-                typist.inserted();
+                ) {
+                    typist.inserted();
+                } else {
+                    let _ = typist.event(TypedEvent::Char('\t'));
+                }
             } else if typist.event(event).is_none() {
                 follow_hint(
                     &typist,
@@ -953,8 +977,9 @@ mod tests {
     #[test]
     fn a_hint_that_is_old_when_a_late_hide_arrives_is_told_apart_by_its_number() {
         let cands = [candidate(";sig", 1, 0, false)];
-        let ids = |events: &[TypedEvent]| {
-            let (env, _) = test_env(&Arc::new(AtomicU64::new(0)));
+        let ids = |events: &[TypedEvent], generation: u64| {
+            let (mut env, _) = test_env(&Arc::new(AtomicU64::new(0)));
+            env.generation = generation;
             let mut typist = Typist::new(Matcher::new([]));
             let mut hint = None;
             let mut ids = Vec::new();
@@ -975,8 +1000,8 @@ mod tests {
             }
             ids
         };
-        let first = ids(&chars(";s"));
-        let second = ids(&chars(";s"));
+        let first = ids(&chars(";s"), 1);
+        let second = ids(&chars(";s"), 2);
         assert_ne!(first[0], second[0], "every hint has a number of its own");
     }
 
@@ -1146,5 +1171,66 @@ mod tests {
             got.extend(typist.event(TypedEvent::Char(c)));
         }
         assert_eq!(got.len(), 1, "after a reset a trigger may start at once");
+    }
+
+    #[test]
+    fn a_tab_that_went_back_to_the_app_is_a_boundary_not_an_insertion() {
+        let item = item_id(1);
+        let (keys, events) = Keys::new();
+        let (utx, updates) = channel();
+        utx.send(Update::List(TypingList {
+            matcher: matcher(";x", item),
+            candidates: Vec::new(),
+        }))
+        .expect("list");
+        // A Tab swallowed for a hint that no longer exists, then a trigger right after it.
+        keys.press(TypedEvent::Tab(77));
+        keys.type_text(";x");
+        let (env, _) = test_env(&keys.sent);
+        drop(keys);
+        let mut got = 0;
+        run(
+            &events,
+            &updates,
+            &env,
+            || false,
+            |out| {
+                if matches!(out, Out::Expand(_)) {
+                    got += 1;
+                }
+            },
+        );
+        assert_eq!(
+            got, 1,
+            "the passed-on Tab left a boundary; no insertion was assumed"
+        );
+    }
+
+    #[test]
+    fn hint_numbers_carry_the_workers_generation() {
+        let cands = [candidate(";sig", 1, 0, false)];
+        let (mut env, _) = test_env(&Arc::new(AtomicU64::new(0)));
+        env.generation = 7;
+        let mut typist = Typist::new(Matcher::new([]));
+        let mut hint = None;
+        let mut ids = Vec::new();
+        for c in ";s".chars() {
+            typist.event(TypedEvent::Char(c));
+            follow_hint(
+                &typist,
+                &cands,
+                &mut hint,
+                (&env, &|| true),
+                &mut || false,
+                &mut |out| {
+                    if let Out::Show(_, id) = out {
+                        ids.push(id);
+                    }
+                },
+            );
+        }
+        assert_eq!(ids.len(), 1);
+        assert_eq!(generation_of(ids[0]), 7);
+        assert_ne!(next_generation(), next_generation());
     }
 }

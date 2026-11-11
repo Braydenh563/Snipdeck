@@ -173,8 +173,8 @@ mod imp {
         on_typed: Arc<dyn Fn(Out) + Send + Sync>,
         list: Option<(Matcher, Vec<Candidate>)>,
         running: Option<Running>,
-        /// The first hint number of the running worker.
-        first_hint: u64,
+        /// The generation of the running worker (see `typing_worker::next_generation`).
+        generation: u64,
     }
 
     struct Running {
@@ -190,7 +190,7 @@ mod imp {
                 on_typed,
                 list: None,
                 running: None,
-                first_hint: 0,
+                generation: 0,
             }
         }
 
@@ -204,7 +204,8 @@ mod imp {
                 }));
             }
             let on_typed = Arc::clone(&self.on_typed);
-            self.first_hint = crate::typing_worker::next_hint();
+            let generation = crate::typing_worker::next_generation();
+            self.generation = generation;
             let tab = hook.tab_flag();
             let env = Env::new(
                 hook.sent(),
@@ -224,6 +225,7 @@ mod imp {
                     let _ = snipdeck_platform::windows::keyboard::WinKeyboard
                         .send(&[tab(true), tab(false)]);
                 }),
+                generation,
             );
             let worker = std::thread::Builder::new()
                 .name("snipdeck-typing-worker".into())
@@ -282,9 +284,17 @@ mod imp {
             self.list = Some((matcher, candidates));
         }
 
+        fn generation(&self) -> u64 {
+            if self.running.is_some() {
+                self.generation
+            } else {
+                0
+            }
+        }
+
         fn hint_up(&mut self, id: u64) {
             // Hints of a worker from before the last switch-off never arm the new hook.
-            if id < self.first_hint {
+            if crate::typing_worker::generation_of(id) != self.generation {
                 return;
             }
             if let Some(running) = &self.running {

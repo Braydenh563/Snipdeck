@@ -303,6 +303,12 @@ where
     /// What the typing worker found (SPEC slice 5b and 6): an expansion, or the suggestion hint.
     fn typed(self: &Rc<Self>, out: crate::typing_worker::Out) {
         use crate::{controller::HintOutcome, typing_worker::Out};
+        // Anything from a worker that is no longer the running one is stale.
+        if let Out::Show(_, id) | Out::Hide(id) | Out::Accept(_, id) = &out
+            && self.controller.borrow().hint_is_stale(*id)
+        {
+            return;
+        }
         match out {
             Out::Expand(typed) => {
                 self.hint_down();
@@ -312,14 +318,16 @@ where
             }
             // Only the hint that is on screen is accepted: anything else was passed on or is
             // old, and inserts nothing.
-            Out::Accept(typed, id) if self.hints.is_current(id) => {
-                self.hint_down();
-                let _ = self.act(|ctl| ctl.accept_suggested(&typed));
+            Out::Accept(typed, id) => {
+                let on_screen = self.hints.is_current(id);
+                if on_screen {
+                    self.hint_down();
+                }
+                let _ = self.act(|ctl| ctl.accept_hinted(&typed, on_screen));
             }
             // A hide for an older hint (a worker that was switched off and on again) is stale.
             Out::Hide(id) if self.hints.is_current(id) => self.hint_down(),
-            // Anything else addressed to a hint that is not on screen changes nothing.
-            Out::Accept(..) | Out::Hide(_) => {}
+            Out::Hide(_) => {}
             // A show older than one already seen is stale too.
             Out::Show(_, id) if !self.hints.admit(id) => {}
             Out::Show(typed, id) => {
@@ -344,12 +352,15 @@ where
                         false
                     }
                 };
+                let replaced = self.hints.shown(if up { id } else { 0 });
+                let mut ctl = self.controller.borrow_mut();
+                if replaced != 0 && replaced != id {
+                    // The hint it replaces no longer takes a Tab.
+                    ctl.hint_down(replaced);
+                }
                 if up {
-                    self.hints.shown(id);
                     // On screen for real: now the hook may take a Tab for it.
-                    self.controller.borrow_mut().hint_up(id);
-                } else {
-                    self.hints.shown(0);
+                    ctl.hint_up(id);
                 }
             }
         }
@@ -1250,9 +1261,9 @@ impl HintIds {
         true
     }
 
-    /// Hint `id` is on screen (0: none is).
-    fn shown(&self, id: u64) {
-        self.shown.set(id);
+    /// Hint `id` is on screen (0: none is); returns the number it replaced, 0 for none.
+    fn shown(&self, id: u64) -> u64 {
+        self.shown.replace(id)
     }
 
     /// Whether hint `id` is the one on screen.
@@ -1274,11 +1285,11 @@ mod hint_id_tests {
     fn an_old_hide_accept_or_show_is_ignored() {
         let ids = HintIds::default();
         assert!(ids.admit(5));
-        ids.shown(5);
+        assert_eq!(ids.shown(5), 0);
         assert!(ids.is_current(5));
         // A newer hint replaces it; everything addressed to the old number is stale.
         assert!(ids.admit(9));
-        ids.shown(9);
+        assert_eq!(ids.shown(9), 5, "the replaced hint is reported");
         assert!(!ids.is_current(5), "an old Hide/Accept does not match");
         assert!(!ids.admit(5), "an old Show is refused");
         assert!(ids.is_current(9));
