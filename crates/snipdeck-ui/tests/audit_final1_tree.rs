@@ -140,9 +140,6 @@ fn interactive_elements_are_named_big_enough_and_inside_the_window() {
                 &mut checked,
             ));
         }
-        for p in &all {
-            eprintln!("{p}");
-        }
         assert!(checked > 100, "only {checked} elements were checked");
         assert_eq!(all, Vec::<String>::new());
     });

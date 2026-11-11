@@ -2225,3 +2225,65 @@ fn alt_down_in_a_sorted_list_offers_manual_order_and_the_button_switches_it() {
         assert!(r.ui.get_rows_reorderable(), "the button switched it");
     });
 }
+
+/// Marks the first two rows and presses Ctrl+G.
+fn group_first_two(r: &Rig) {
+    {
+        let mut ctl = r.ctl.borrow_mut();
+        ctl.panel_mark(0, snipdeck_app::main_window::SelectMode::Toggle);
+        ctl.panel_mark(1, snipdeck_app::main_window::SelectMode::Toggle);
+    }
+    r.binding.redraw();
+    chord(r.window(), &[Key::Control], "g");
+}
+
+#[test]
+fn ctrl_g_groups_the_marked_rows() {
+    on_ui_thread(|| {
+        let r = rig();
+        let before = r.ui.get_rows().row_count();
+        group_first_two(&r);
+        let rows = r.ui.get_rows();
+        assert_eq!(rows.row_count(), before + 1, "a header was added");
+        let header = rows.row_data(0).expect("row");
+        assert!(header.is_header);
+        assert_eq!(header.group_count, 2);
+        assert!(rows.row_data(1).expect("row").grouped);
+    });
+}
+
+#[test]
+fn left_collapses_and_right_expands_a_header() {
+    on_ui_thread(|| {
+        let r = rig();
+        group_first_two(&r);
+        // The new header is selected and renaming: Esc ends the rename, then the keys are the list's.
+        press(r.window(), &key(Key::Escape));
+        let count = r.ui.get_rows().row_count();
+        press(r.window(), &key(Key::LeftArrow));
+        assert_eq!(
+            r.ui.get_rows().row_count(),
+            count - 2,
+            "the items are hidden"
+        );
+        assert!(r.ui.get_rows().row_data(0).expect("row").group_collapsed);
+        press(r.window(), &key(Key::RightArrow));
+        assert_eq!(r.ui.get_rows().row_count(), count);
+    });
+}
+
+#[test]
+fn header_is_announced_with_its_count() {
+    on_ui_thread(|| {
+        let r = rig();
+        group_first_two(&r);
+        let name = r.ui.get_rows().row_data(0).expect("row").title;
+        // Folded or open is the header's expanded state, not part of its label.
+        let label = format!("group {name}, 2 items");
+        let header = element(&r.ui, &label, AccessibleRole::Button);
+        assert_eq!(header.accessible_expanded(), Some(true));
+        press(r.window(), &key(Key::LeftArrow));
+        let header = element(&r.ui, &label, AccessibleRole::Button);
+        assert_eq!(header.accessible_expanded(), Some(false));
+    });
+}

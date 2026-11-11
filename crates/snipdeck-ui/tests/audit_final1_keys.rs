@@ -227,10 +227,6 @@ fn audit<C: ComponentHandle>(
             focused(w)
         };
         let last = back();
-        if std::env::var_os("KEYS_DEBUG").is_some() {
-            let tail: Vec<&str> = stops.iter().rev().take(60).map(|(s, _)| s.name.as_str()).collect();
-            eprintln!("{scene}: forward tail (last first) {tail:?}, Shift+Tab from first -> {:?}", last.as_ref().map(|l| &l.name));
-        }
         if last.as_ref().map(|l| &l.name) != stops.last().map(|(s, _)| &s.name) {
             out.push(format!("{scene}: Shift+Tab from the first stop did not reach the last"));
         }
@@ -259,7 +255,6 @@ fn audit<C: ComponentHandle>(
             ));
         }
     }
-    eprintln!("{scene}: {n} stops");
     out
 }
 
@@ -271,14 +266,11 @@ fn expect_clean(problems: &[String]) {
 /// docs/reviews/final-audit-1.md: the test pins them and fails when one stops happening, so the entry
 /// gets removed together with the fix.
 fn expect_clean_except(problems: &[String], known: &[&str]) {
-    for p in problems {
-        eprintln!("{p}");
-    }
     let unknown: Vec<&String> = problems
         .iter()
         .filter(|p| !known.iter().any(|k| p.contains(k)))
         .collect();
-    assert_eq!(unknown, Vec::<&String>::new());
+    assert_eq!(unknown, Vec::<&String>::new(), "{} stops walked", problems.len());
     let gone: Vec<&&str> = known
         .iter()
         .filter(|k| !problems.iter().any(|p| p.contains(**k)))

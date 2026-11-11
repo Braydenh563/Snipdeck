@@ -740,6 +740,9 @@ msgstr "要永久删除吗？"
 msgid "Delete for good…"
 msgstr "永久删除…"
 
+msgid "Delete group"
+msgstr "删除分组"
+
 msgid "Delete list"
 msgstr "删除列表"
 
@@ -1087,6 +1090,15 @@ msgstr "绿色"
 
 msgid "Greet"
 msgstr "问候"
+
+msgid "Group"
+msgstr "分组"
+
+msgid "Group name"
+msgstr "分组名称"
+
+msgid "Group..."
+msgstr "分组..."
 
 msgid "Handy for forms you fill field by field."
 msgstr "适合逐个字段填写的表单。"
@@ -2122,6 +2134,9 @@ msgstr "移除…"
 msgid "Rename board…"
 msgstr "重命名看板…"
 
+msgid "Rename group"
+msgstr "重命名分组"
+
 msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
 msgstr "重命名或删除标签。删除标签会将其从片段中移除，片段本身保留。"
 
@@ -2961,6 +2976,9 @@ msgstr "撤销 {} (Ctrl+Z)"
 msgid "Undock the panel"
 msgstr "取消停靠面板"
 
+msgid "Ungroup"
+msgstr "取消分组"
+
 msgid "Unlock"
 msgstr "解锁"
 
@@ -3235,6 +3253,13 @@ msgstr "置顶 收藏 显示"
 msgid "find filter look"
 msgstr "查找 筛选 查看"
 
+msgid "group change"
+msgstr "分组更改"
+
+msgid "group {}, {} item"
+msgid_plural "group {}, {} items"
+msgstr[0] "分组 {}，{} 项"
+
 msgid "help docs manual how"
 msgstr "帮助 文档 手册 操作方法"
 
@@ -3409,6 +3434,10 @@ msgstr "{} 正被其他应用占用。请在设置中选择其他快捷键。"
 
 msgid "{} is {}, over the 5 MB limit for text, and was skipped."
 msgstr "{} 为 {}，超过文本 5 MB 的上限，已跳过。"
+
+msgid "{} item"
+msgid_plural "{} items"
+msgstr[0] "{} 项"
 
 msgid "{} item in {} list will be added"
 msgid_plural "{} items in {} lists will be added"

@@ -23,6 +23,9 @@ All notable changes to Snipdeck are recorded here. The format follows
 - **Rich paste**: pasting into the Panel or Main, and the capture hotkey, keep HTML and RTF beside the text, so the
   item pastes formatted in Word or Outlook and as text in Notepad. Rows show a "Formatted" mark; editing the text
   says the formatting will be removed, and "Remove formatting" drops it alone. Unverified on Windows.
+- **Groups inside a list**: mark rows and press Ctrl+G (or use the item menu) to gather them under a named,
+  collapsible header. Drag items into or out of a group, drag a whole group by its header, rename it in place, and
+  undo any of it. Search keeps the matches under their group's header. Unverified with Narrator on Windows.
 
 ### Changed
 - A template with any question in it now always opens the fill form, even when every question has a default or
@@ -30,6 +33,10 @@ All notable changes to Snipdeck are recorded here. The format follows
 - In the fill form, Space ticks a tick box and Enter moves on (or pastes on the last field), like every other
   field.
 - The "Supporter" badge beside a locked feature is as tall as the control next to it, with its lock centred.
+- The item editor, Help, Settings and the fill form get wider at large text sizes (up to 225%), so buttons, tabs and
+  setting rows no longer overlap or clip.
+- Tips pictures end on a whole row, and the Main window's Show Panel button has its own icon.
+- The Template editor's placeholder list lines its descriptions up in one column, and stacks each name above its description in a narrow window.
 
 ### Security
 - YAML import parsing moved from `serde_yaml_ng` to `serde-saphyr` (deserialize only), so `unsafe-libyaml`

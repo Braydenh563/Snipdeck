@@ -21,6 +21,7 @@ mod commands_ctl;
 mod create_ctl;
 mod dock_ctl;
 mod editor_ctl;
+mod group_ctl;
 mod history_ctl;
 mod library;
 mod lock_ctl;
@@ -223,6 +224,12 @@ pub struct Controller<S, C, K, T> {
     /// the list), and a count that goes up with each delete.
     focus_row: Option<usize>,
     focus_seq: u64,
+    /// The header row that should start its inline rename (a group just made), and a counter
+    /// that tells the window it is a new request.
+    rename_group: Option<snipdeck_core::GroupId>,
+    rename_seq: u64,
+    /// What a new group is called until the user renames it (the window's translated word).
+    group_name: String,
     /// The Main window's state.
     main: MainModel,
     /// The list or board editor, while one is open.
@@ -418,6 +425,9 @@ where
             delete_list: None,
             focus_row: None,
             focus_seq: 0,
+            rename_group: None,
+            rename_seq: 0,
+            group_name: String::from("Group"),
             main,
             editor: None,
             editor_seq: 0,
@@ -475,6 +485,29 @@ where
 
     // ---- Reading -----------------------------------------------------------------------------
 
+    /// The fill form's view, with a sensitive template's text masked (the Picker and the
+    /// lists mask it the same way; an unreadable item masks too).
+    fn fill_view(&self) -> Option<FillView> {
+        self.fill.as_ref().map(|f| {
+            let masked = self.store.item(f.item()).is_ok_and(|i| i.sensitive);
+            FillView {
+                seq: self.fill_seq,
+                title: f.title().to_owned(),
+                fields: f.fields().to_vec(),
+                preview: if masked {
+                    String::new()
+                } else {
+                    f.preview(
+                        self.clock.now(),
+                        &self.tz,
+                        Locale::for_tag(&self.settings.language),
+                    )
+                },
+                masked,
+            }
+        })
+    }
+
     /// Everything the window shows now.
     #[must_use]
     pub fn view(&self) -> View {
@@ -498,6 +531,10 @@ where
                     .collect();
             }
         }
+        let rename_row = self.rename_group.and_then(|g| {
+            rows.iter()
+                .position(|r| r.header.as_ref().is_some_and(|h| h.group == g))
+        });
         View {
             board_name,
             current_tab: tabs.iter().position(|t| t.active).unwrap_or(0),
@@ -538,6 +575,8 @@ where
             marked_count: self.model.marked_count(),
             focus_row: self.focus_row,
             focus_seq: self.focus_seq,
+            rename_row,
+            rename_seq: self.rename_seq,
             select_mode: self.select_mode,
             delete_mode: self.delete_mode,
             clear_list: self.clear_list_view(),
@@ -558,26 +597,7 @@ where
                 selected: p.selected(),
                 footer: self.model.footer(),
             }),
-            fill: self.fill.as_ref().map(|f| {
-                // A sensitive template's text must not reach the window (the Picker and the
-                // lists mask it the same way); an unreadable item masks too.
-                let masked = self.store.item(f.item()).is_ok_and(|i| i.sensitive);
-                FillView {
-                    seq: self.fill_seq,
-                    title: f.title().to_owned(),
-                    fields: f.fields().to_vec(),
-                    preview: if masked {
-                        String::new()
-                    } else {
-                        f.preview(
-                            self.clock.now(),
-                            &self.tz,
-                            Locale::for_tag(&self.settings.language),
-                        )
-                    },
-                    masked,
-                }
-            }),
+            fill: self.fill_view(),
             recent: self.recent_view(),
         }
     }
