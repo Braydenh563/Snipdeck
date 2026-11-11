@@ -581,6 +581,13 @@
       "title": "Windows Hello: change the password while Hello is on",
       "do": "With Hello on, change the master password in Settings > Security. Lock, open the unlock window.",
       "expect": "Either Hello still unlocks (the copy was sealed again) or the button is gone and the password is asked once and Hello sets itself up again; it never unlocks with the old password's data key wrongly, and the master password always works. Write which you saw in the note (n)."
+    },
+    {
+      "id": "78",
+      "v1": false,
+      "title": "Groups with Narrator: header, fold, move, member position",
+      "do": "Turn Narrator on (Win+Ctrl+Enter). In the Panel with a group of at least two items, Tab to the group header and listen. Press Space, then Enter, on it. Press Alt+Down, then Alt+Up. Move into the group with the arrow keys and listen to a member row.",
+      "expect": "The header reads its name, its item count and whether it is expanded or collapsed. Space and Enter each fold or unfold it, and Narrator says the new state. Alt+Up and Alt+Down move the group and Narrator announces its new place. A member row reads its position in the group, such as 1 of 2, and a row outside any group reads no position. Write what Narrator said for each in the note (n)."
     }
   ]
 }
