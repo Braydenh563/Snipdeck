@@ -2250,8 +2250,8 @@ msgstr "保存: {}"
 msgid "Saved {}."
 msgstr "{} を保存しました。"
 
-msgid "Saved. This code overlaps another trigger, so one of them may never fire."
-msgstr "保存しました。このコードは別のトリガーと重なっているため、どちらかが動作しない場合があります。"
+msgid "Saved. This code overlaps the trigger of “{}”, so one of them may never fire."
+msgstr "保存しました。このコードは「{}」のトリガーと重なっているため、どちらかが動作しない可能性があります。"
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "すべてのボード、リスト、スニペットを、選んだフォルダーに 1 つの .snipdeck ファイルとして保存します。"
@@ -2357,6 +2357,9 @@ msgstr "機密のスニペット"
 
 msgid "Sensitive items are encrypted on disk, on every plan."
 msgstr "機密スニペットは、どのプランでもディスク上で暗号化されます。"
+
+msgid "Sensitive items can't be typed in, so they have no trigger."
+msgstr "機密項目は入力による挿入ができないため、トリガーはありません。"
 
 msgid "Sensitive items, masked"
 msgstr "機密スニペット（マスク表示）"
@@ -2984,6 +2987,9 @@ msgstr "確認のため {} と入力"
 
 msgid "Typing"
 msgstr "入力"
+
+msgid "Typing triggers work on Windows only."
+msgstr "入力によるトリガーは Windows でのみ動作します。"
 
 msgid "UPPERCASE"
 msgstr "大文字"

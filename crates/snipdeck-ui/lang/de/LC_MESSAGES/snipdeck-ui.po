@@ -2258,8 +2258,8 @@ msgstr "Gespeichert {}"
 msgid "Saved {}."
 msgstr "{} gespeichert."
 
-msgid "Saved. This code overlaps another trigger, so one of them may never fire."
-msgstr "Gespeichert. Dieses Kürzel überschneidet sich mit einem anderen; eines der beiden löst vielleicht nie aus."
+msgid "Saved. This code overlaps the trigger of “{}”, so one of them may never fire."
+msgstr "Gespeichert. Dieses Kürzel überschneidet sich mit dem von „{}“; eines der beiden löst vielleicht nie aus."
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "Speichert alle Boards, Listen und Textbausteine als eine .snipdeck-Datei in einem Ordner deiner Wahl."
@@ -2365,6 +2365,9 @@ msgstr "Vertraulicher Textbaustein"
 
 msgid "Sensitive items are encrypted on disk, on every plan."
 msgstr "Vertrauliche Textbausteine werden in jedem Tarif auf dem Datenträger verschlüsselt."
+
+msgid "Sensitive items can't be typed in, so they have no trigger."
+msgstr "Vertrauliche Einträge lassen sich nicht eintippen, deshalb haben sie kein Kürzel."
 
 msgid "Sensitive items, masked"
 msgstr "Vertrauliche Textbausteine, verdeckt"
@@ -2992,6 +2995,9 @@ msgstr "Gib {} zur Bestätigung ein"
 
 msgid "Typing"
 msgstr "Tippen"
+
+msgid "Typing triggers work on Windows only."
+msgstr "Kürzel beim Tippen funktionieren nur unter Windows."
 
 msgid "UPPERCASE"
 msgstr "GROSSBUCHSTABEN"

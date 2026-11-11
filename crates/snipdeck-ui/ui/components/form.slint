@@ -18,6 +18,8 @@ export component FormField inherits VerticalLayout {
     in property <string> label;
     in property <string> helper;
     in property <string> error;
+    // A warning (not an error): icon plus warning colour, announced politely when it appears.
+    in property <string> warning;
 
     spacing: Space.s1;
     alignment: start;
@@ -39,6 +41,26 @@ export component FormField inherits VerticalLayout {
         font-size: Type.sm;
         wrap: word-wrap;
         accessible-role: none;
+    }
+    if root.warning != "": HorizontalLayout {
+        spacing: Space.s1;
+        alignment: start;
+        Icon {
+            source: Icons.warning;
+            tint: Theme.warning-fg;
+            y: (Type.line-sm - self.height) / 2;
+        }
+        Text {
+            horizontal-stretch: 1;
+            text: root.warning;
+            color: Theme.warning-fg;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            wrap: word-wrap;
+            accessible-role: AccessibleRole.text;
+            accessible-label: root.warning;
+            accessible-live-region: polite;
+        }
     }
     if root.error != "": FieldError { text: root.error; }
 }

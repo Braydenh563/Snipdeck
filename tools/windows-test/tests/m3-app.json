@@ -511,6 +511,20 @@
       "title": "Tab ignored when focus moved to a different window or a password box",
       "do": "Type ;s in Notepad, click into a password field in a browser (or another window), press Tab.",
       "expect": "No expansion happens in the other window; Tab behaves normally there."
+    },
+    {
+      "id": "68",
+      "v1": false,
+      "title": "Screen reader announces the suggest hint (live region)",
+      "do": "Turn on Narrator (Win+Ctrl+Enter). In Notepad type the start of a trigger so the hint shows, e.g. ;s.",
+      "expect": "Narrator reads the hint (the item title and 'press Tab to insert') without the focus leaving Notepad. If it stays silent, note it: the hint window is non-activating and the announcement relies on its live region."
+    },
+    {
+      "id": "69",
+      "v1": false,
+      "title": "One-character trigger warning is styled and announced",
+      "do": "With Narrator on, open an item's editor and type ; in the Trigger field.",
+      "expect": "A warning line with the warning icon and the warning colour appears under the field (same height rhythm as other field notes) and Narrator reads it politely. Choosing Sensitive replaces the field with one line saying Sensitive items have no trigger."
     }
   ]
 }

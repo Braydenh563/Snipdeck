@@ -1587,7 +1587,12 @@ fn a_trigger_that_hides_another_is_saved_with_a_warning() {
     let v = view(&r.ctl);
     r.ctl.item_editor_save(&typed(&v, "Two", "2"));
     assert!(!r.ctl.item_editor_open(), "still saved");
-    assert_eq!(toast(&r.ctl), ToastMessage::TriggerOverlaps);
+    assert_eq!(
+        toast(&r.ctl),
+        ToastMessage::TriggerOverlaps {
+            other: "One".into()
+        }
+    );
     assert_eq!(r.ctl.store().triggers().expect("all").len(), 2);
 }
 

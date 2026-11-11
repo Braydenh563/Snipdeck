@@ -357,6 +357,8 @@ export component SettingsPage inherits Window {
     in property <string> import-problem;
     // The Windows clipboard history is offered as an import source (Windows only).
     in property <bool> import-history-available: false;
+    // False off Windows: typed triggers need the Windows keyboard hook, so the Typing switches are off.
+    in property <bool> typing-available: false;
     in property <int> import-boards: 0;
     in property <int> import-lists: 0;
     in property <int> import-items: 0;
@@ -1230,11 +1232,20 @@ export component SettingsPage inherits Window {
                     gap: Space.s6;
                     search-text: root.keys-6;
                     located(y) => { page.scroll-to(y - body.absolute-position.y); }
+                    if !root.typing-available: Text {
+                        text: @tr("Typing triggers work on Windows only.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                        accessible-role: AccessibleRole.text;
+                    }
                     SettingRow {
                         title: @tr("Expand abbreviations as I type");
                         description: @tr("When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk. Nothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items.");
                         Toggle {
                             a11y-label: @tr("Expand abbreviations as I type");
+                            enabled: root.typing-available;
                             checked <=> root.expand-triggers;
                             toggled(on) => { root.expand-triggers-toggled(on); }
                             changed has-focus => {
@@ -1247,6 +1258,7 @@ export component SettingsPage inherits Window {
                         description: @tr("After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual.");
                         Toggle {
                             a11y-label: @tr("Suggest snippets as I type");
+                            enabled: root.typing-available;
                             checked <=> root.suggest-triggers;
                             toggled(on) => { root.suggest-triggers-toggled(on); }
                             changed has-focus => {

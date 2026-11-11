@@ -124,6 +124,12 @@ pub trait SettingsHost {
     /// Windows does). The source is left out of the "Import..." choices when it does not.
     fn clipboard_history_supported(&self) -> bool;
 
+    /// Whether typed triggers can work here (they need the Windows keyboard hook). The Typing
+    /// section turns its switches off and says so when this is false.
+    fn typing_supported(&self) -> bool {
+        cfg!(windows)
+    }
+
     /// Reads the text entries of the Windows clipboard history. May block until Windows answers.
     fn read_clipboard_history(&self) -> HistoryRead;
 }
@@ -1679,6 +1685,7 @@ where
         // The search field: Slint cannot test "contains", so the page asks here.
         ui::SettingsFilter::get(window).on_matches(|text, query| settings_match(&text, &query));
         window.set_import_history_available(core.host.clipboard_history_supported());
+        window.set_typing_available(core.host.typing_supported());
         core.refresh_backups();
         core.sync();
 

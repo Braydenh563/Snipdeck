@@ -129,7 +129,7 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::SwitchToManual { .. } => 98,
         ToastMessage::FileMoved => 99,
         ToastMessage::FilesTooLarge => 100,
-        ToastMessage::TriggerOverlaps => 101,
+        ToastMessage::TriggerOverlaps { .. } => 101,
     }
 }
 
@@ -301,7 +301,9 @@ fn samples() -> Vec<ToastMessage> {
         M::TooManyFiles,
         M::FileMoved,
         M::FilesTooLarge,
-        M::TriggerOverlaps,
+        M::TriggerOverlaps {
+            other: s("Signature"),
+        },
         M::SwitchToManual {
             list: snipdeck_core::ListId::generate(),
         },
@@ -431,8 +433,10 @@ fn what_a_toast_carries_reaches_its_sentence() {
             "Some files were left out: together they are over 64 MB."
         );
         assert_eq!(
-            said(ToastMessage::TriggerOverlaps),
-            "Saved. This code overlaps another trigger, so one of them may never fire."
+            said(ToastMessage::TriggerOverlaps {
+                other: "Signature".into()
+            }),
+            "Saved. This code overlaps the trigger of “Signature”, so one of them may never fire."
         );
         assert_eq!(said(ToastMessage::DockSet(None)), "Panel floats again");
         assert_eq!(
