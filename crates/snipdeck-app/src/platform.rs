@@ -314,6 +314,21 @@ pub fn attach_parent_console() {
     snipdeck_platform::windows::console::attach_parent_console();
 }
 
+/// Windows Hello on this machine; none elsewhere.
+#[must_use]
+pub fn hello() -> Option<std::sync::Arc<dyn snipdeck_platform::hello::HelloAuthenticator>> {
+    #[cfg(windows)]
+    {
+        Some(std::sync::Arc::new(
+            snipdeck_platform::windows::hello::WindowsHello,
+        ))
+    }
+    #[cfg(not(windows))]
+    {
+        None
+    }
+}
+
 /// The file dialog of this machine: the Windows Open dialog; none elsewhere (the item editor then
 /// offers only its path field).
 #[must_use]

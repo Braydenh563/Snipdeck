@@ -21,6 +21,7 @@ use snipdeck_ui as ui;
 use crate::{
     binding::{redraw_all, register_redraw},
     controller::{Controller, MasterProblem},
+    hello_job::{HelloFailure, HelloJob},
     host::ClipboardText,
     main_binding::{create_window, raise, set_look},
     native_window::fit_when_settled,
@@ -37,6 +38,7 @@ pub fn slint_problem(problem: MasterProblem) -> ui::MasterProblem {
         MasterProblem::SupporterOnly => ui::MasterProblem::SupporterOnly,
         MasterProblem::Unavailable => ui::MasterProblem::Unavailable,
         MasterProblem::Failed => ui::MasterProblem::Failed,
+        MasterProblem::HelloFailed => ui::MasterProblem::HelloFailed,
     }
 }
 
@@ -90,6 +92,7 @@ where
         drop(controller);
         window.set_password(slint::SharedString::new());
         window.set_problem(ui::MasterProblem::None);
+        window.set_hello_available(self.core.controller.borrow().hello_unlock_available());
         window.set_focus_request(window.get_focus_request() + 1);
     }
 }
@@ -121,6 +124,10 @@ where
         {
             let core = Rc::clone(&core);
             window.on_submitted(move |password| core.submitted(&password));
+        }
+        {
+            let core = Rc::clone(&core);
+            window.on_hello_requested(move || core.hello_requested());
         }
         {
             let core = Rc::clone(&core);
@@ -193,9 +200,71 @@ where
         };
         window.set_busy(false);
         match result {
-            Ok(()) => Self::opened(&window),
+            Ok(()) => {
+                Self::opened(&window);
+                // The password just unlocked: Hello is asked once to seal the copy.
+                self.seal_after_unlock();
+            }
             Err(problem) => Self::refused(&window, problem),
         }
+    }
+
+    fn seal_after_unlock(&self) {
+        let job = self.controller.borrow_mut().begin_hello_seal();
+        self.run_hello(job, |_| {});
+    }
+
+    /// Runs `job` (if any) where Hello jobs run, then applies the outcome and hands it to `then`.
+    fn run_hello(
+        &self,
+        job: Option<HelloJob>,
+        then: impl FnOnce(Result<(), HelloFailure>) + 'static,
+    ) {
+        let Some(job) = job else {
+            return;
+        };
+        let controller = Rc::clone(&self.controller);
+        crate::hello_job::run_job(
+            job,
+            Box::new(move |done| {
+                let result = controller.borrow_mut().finish_hello(done);
+                redraw_all();
+                then(result);
+            }),
+        );
+    }
+
+    /// The Hello button: Hello opens the sealed copy. Any failure leaves the password prompt as it
+    /// was, with a hint.
+    fn hello_requested(self: &Rc<Self>) {
+        let Some(window) = self.window.upgrade() else {
+            return;
+        };
+        window.set_problem(ui::MasterProblem::None);
+        let job = self.controller.borrow_mut().begin_hello_unlock();
+        if job.is_none() {
+            window.set_hello_available(false);
+            Self::refused(&window, MasterProblem::HelloFailed);
+            return;
+        }
+        window.set_busy(true);
+        let weak = self.window.clone();
+        self.run_hello(job, move |result| {
+            let Some(window) = weak.upgrade() else {
+                return;
+            };
+            window.set_busy(false);
+            match result {
+                Ok(()) => {
+                    let _ = window.hide();
+                }
+                Err(_) => {
+                    // The copy is gone: the password is the way in.
+                    window.set_hello_available(false);
+                    Self::refused(&window, MasterProblem::HelloFailed);
+                }
+            }
+        });
     }
 
     fn opened(window: &ui::UnlockWindow) {

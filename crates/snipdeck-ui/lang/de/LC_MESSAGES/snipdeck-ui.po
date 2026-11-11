@@ -2975,6 +2975,9 @@ msgstr "Entsperren"
 msgid "Unlock Snipdeck"
 msgstr "Snipdeck entsperren"
 
+msgid "Unlock with Windows Hello"
+msgstr "Mit Windows Hello entsperren"
+
 msgid "Unlock your library first, so your sensitive items are included. Nothing was done."
 msgstr "Entsperre zuerst deine Bibliothek, damit deine vertraulichen Textbausteine einbezogen werden. Nichts wurde getan."
 
@@ -3025,6 +3028,9 @@ msgstr "Den n-ten Textbaustein verwenden"
 
 msgid "Use the item"
 msgstr "Textbaustein verwenden"
+
+msgid "Use your face, fingerprint or PIN instead of typing the master password. The password is still asked after a restart and every 7 days, and it always works."
+msgstr "Verwende Gesicht, Fingerabdruck oder PIN, statt das Hauptpasswort einzutippen. Das Passwort wird nach einem Neustart und alle 7 Tage weiterhin abgefragt und funktioniert immer."
 
 msgid "Use {}"
 msgstr "{} verwenden"
@@ -3103,6 +3109,9 @@ msgstr "Fensterverhalten"
 
 msgid "Windows"
 msgstr "Windows"
+
+msgid "Windows Hello did not unlock Snipdeck. Use your master password."
+msgstr "Windows Hello hat Snipdeck nicht entsperrt. Verwende dein Hauptpasswort."
 
 msgid "Windows accent"
 msgstr "Windows-Akzent"

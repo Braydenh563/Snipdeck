@@ -721,6 +721,8 @@ struct PageView {
     master_state: i32,
     master_locked: bool,
     master_allowed: bool,
+    hello_offered: bool,
+    hello_unlock: bool,
     has_data_folder: bool,
     backups: Vec<BackupLine>,
     last_backup: String,
@@ -996,6 +998,8 @@ where
         },
         master_locked: controller.library_locked(),
         master_allowed: controller.master_password_allowed(),
+        hello_offered: controller.hello_offered(),
+        hello_unlock: controller.hello_enabled(),
         has_data_folder,
         backups: state
             .backups
@@ -1064,6 +1068,27 @@ where
     T: Timing + 'static,
 {
     /// Runs `f` on the controller, then redraws every window.
+    /// The Windows Hello switch. Turning it on asks Hello once to seal the open key; if that fails
+    /// the switch goes back off and the password is untouched.
+    fn hello_toggled(self: &Rc<Self>, on: bool) {
+        let job = self.act(|ctl| ctl.set_hello_unlock(on));
+        let Some(job) = job else {
+            return;
+        };
+        let core = Rc::clone(self);
+        crate::hello_job::run_job(
+            job,
+            Box::new(move |done| {
+                let sealed = core.act(|ctl| ctl.finish_hello(done));
+                if sealed.is_err() {
+                    core.act(|ctl| {
+                        let _ = ctl.set_hello_unlock(false);
+                    });
+                }
+            }),
+        );
+    }
+
     fn act<R>(self: &Rc<Self>, f: impl FnOnce(&mut Controller<Store, C, K, T>) -> R) -> R {
         let result = f(&mut self.controller.borrow_mut());
         redraw_all();
@@ -1782,6 +1807,7 @@ where
                     .unwrap_or_default();
             })));
         wire!(on_autostart_toggled, |core, on| core.autostart_toggled(on));
+        wire!(on_hello_unlock_toggled, |core, on| core.hello_toggled(on));
         wire!(on_close_to_tray_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.close_to_tray = on)));
         wire!(on_panel_in_taskbar_toggled, |core, on| {
@@ -2094,6 +2120,12 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.master_allowed == view.master_allowed) {
         window.set_master_allowed(view.master_allowed);
+    }
+    if differs(&|p| p.hello_offered == view.hello_offered) {
+        window.set_hello_offered(view.hello_offered);
+    }
+    if differs(&|p| p.hello_unlock == view.hello_unlock) {
+        window.set_hello_unlock(view.hello_unlock);
     }
     if differs(&|p| p.has_data_folder == view.has_data_folder) {
         window.set_has_data_folder(view.has_data_folder);

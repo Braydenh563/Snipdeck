@@ -413,6 +413,34 @@
       "title": "Rich paste: RTF from WordPad (v1.1 slice 7)",
       "do": "In WordPad type a line, make one word bold and one word red, select all and copy. In the Panel press Ctrl+V with no text box focused. Paste the new item into WordPad and into Notepad.",
       "expect": "The item gets a Formatted mark. WordPad shows the bold word and the red word; Notepad shows the plain line. Editing only the title in the editor and saving keeps the formatting."
+    },
+    {
+      "id": "63",
+      "v1": false,
+      "title": "Windows Hello: turn it on with a PIN (v1.1 slice 8)",
+      "do": "On a PC where Windows Hello has a PIN, face or fingerprint set up, and with a Supporter licence and a master password set, open Settings > Security. Look for Unlock with Windows Hello, turn it on and complete the Windows Hello prompts (it may ask twice).",
+      "expect": "The switch Unlock with Windows Hello is shown only because a master password is set and Hello is ready. Turning it on shows the Windows Hello prompt and the switch stays on. Without a master password, or on the Free plan, the row is not shown. Write anything that looks wrong in the note (n)."
+    },
+    {
+      "id": "64",
+      "v1": false,
+      "title": "Windows Hello: lock, then unlock by face or fingerprint (v1.1 slice 8)",
+      "do": "With Windows Hello unlock on, lock the library (wait for the idle lock or lock it from the tray), then try to use a sensitive item so the unlock window opens. Press Unlock with Windows Hello and use your face or fingerprint. Then lock again, press the button and cancel the Windows Hello prompt. Finally restart Snipdeck and open the unlock window again.",
+      "expect": "Face or fingerprint unlocks the library and the window closes. Cancelling leaves the window open with the message that Windows Hello did not unlock and to use the master password, the Hello button is gone, and typing the master password still unlocks. After a restart the Hello button is not shown until the password has been typed once; after typing it Windows Hello asks once to set itself up again."
+    },
+    {
+      "id": "65",
+      "v1": false,
+      "title": "Windows Hello: the prompt is in front of Snipdeck (v1.1 slice 8)",
+      "do": "Press Unlock with Windows Hello in the unlock window and look at where the Windows Hello prompt appears.",
+      "expect": "The Windows Hello prompt is in front of the Snipdeck window and takes the keyboard, not hidden behind it. Write what you saw in the note (n); this was not tested before."
+    },
+    {
+      "id": "66",
+      "v1": false,
+      "title": "Windows Hello: a PC without Hello hides the option (v1.1 slice 8)",
+      "do": "On a PC (or a user account) with no Windows Hello PIN, face or fingerprint set up, with a master password set, open Settings > Security and open the unlock window.",
+      "expect": "The Unlock with Windows Hello row is not shown in Settings and the unlock window shows only the master password field. Nothing else changes."
     }
   ]
 }

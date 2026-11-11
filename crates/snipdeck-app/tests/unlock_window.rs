@@ -24,7 +24,10 @@ use snipdeck_app::{
     unlock_binding::UnlockBinding,
 };
 use snipdeck_core::{Entitlements, Tier, Timestamp};
-use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
+use snipdeck_platform::{
+    hello::{HelloAvailability, HelloError},
+    testing::{FakeClipboard, FakeHello, FakeKeyboard, FakeTiming},
+};
 use snipdeck_store::{
     Store,
     crypto::{KdfParams, MemoryKeyProvider},
@@ -50,6 +53,11 @@ struct Rig {
 
 /// A library with a master password that is locked, the prompt asked for and shown.
 fn rig() -> Rig {
+    rig_with(None)
+}
+
+/// Like [`rig`], with Windows Hello on and a sealed copy when `hello` is given.
+fn rig_with(hello: Option<&std::sync::Arc<FakeHello>>) -> Rig {
     let dir = tempfile::tempdir().expect("dir");
     let now: Timestamp = "2026-10-17T10:30:00Z".parse().expect("timestamp");
     let mut store = Store::open(dir.path()).expect("store");
@@ -71,6 +79,11 @@ fn rig() -> Rig {
     ctl.set_kdf_params(KdfParams::insecure_for_tests(64, 1, 1).expect("params"));
     ctl.set_master_password(password(), password())
         .expect("set");
+    if let Some(hello) = hello {
+        ctl.set_hello(hello.clone());
+        let job = ctl.set_hello_unlock(true).expect("sealing step");
+        ctl.finish_hello(job.run()).expect("sealed");
+    }
     ctl.lock_now();
     ctl.request_unlock();
     assert!(ctl.library_locked() && ctl.unlock_prompt_open());
@@ -312,5 +325,65 @@ fn a_worker_thread_hands_the_outcome_back_through_the_event_loop() {
         assert!(!r.ui.get_busy(), "the worker's answer arrived");
         assert!(!r.ctl.borrow().library_locked());
         assert!(!r.ui.window().is_visible());
+    });
+}
+
+fn hello_button(ui: &UnlockWindow) -> Option<ElementHandle> {
+    ElementHandle::find_by_accessible_label(ui, "Unlock with Windows Hello")
+        .find(|e| e.accessible_role() == Some(AccessibleRole::Button))
+}
+
+#[test]
+fn hello_button_shows_only_when_ready() {
+    on_ui_thread(|| {
+        // No Hello on this PC, or not turned on: only the password.
+        let r = rig();
+        assert!(hello_button(&r.ui).is_none());
+
+        // Ready with a sealed copy: the button is there, and the password field stays.
+        let hello = std::sync::Arc::new(FakeHello::new());
+        let r = rig_with(Some(&hello));
+        assert!(hello_button(&r.ui).is_some());
+        element(&r.ui, "Master password", AccessibleRole::TextInput);
+
+        // Hello no longer ready (no PIN): the option disappears.
+        hello.set_availability(HelloAvailability::NotSetUp);
+        r.ctl.borrow_mut().refresh_hello();
+        r.binding.prepare();
+        settle();
+        assert!(hello_button(&r.ui).is_none());
+    });
+}
+
+#[test]
+fn the_hello_button_unlocks_and_a_cancelled_hello_leaves_the_password() {
+    on_ui_thread(|| {
+        let hello = std::sync::Arc::new(FakeHello::new());
+        let r = rig_with(Some(&hello));
+        hello_button(&r.ui)
+            .expect("button")
+            .invoke_accessible_default_action();
+        settle();
+        assert!(!r.ctl.borrow().library_locked());
+        assert!(!r.ui.window().is_visible(), "the window closes on success");
+
+        let hello = std::sync::Arc::new(FakeHello::new());
+        let r = rig_with(Some(&hello));
+        hello.set_sign(Err(HelloError::Cancelled));
+        hello_button(&r.ui)
+            .expect("button")
+            .invoke_accessible_default_action();
+        settle();
+        assert!(r.ctl.borrow().library_locked());
+        assert!(r.ui.window().is_visible(), "the prompt stays");
+        assert!(has_text(
+            &r.ui,
+            "Windows Hello did not unlock Snipdeck. Use your master password."
+        ));
+        assert!(hello_button(&r.ui).is_none(), "the copy is gone");
+        type_text(r.ui.window(), password());
+        press(r.ui.window(), "\n");
+        settle();
+        assert!(!r.ctl.borrow().library_locked(), "the password still works");
     });
 }

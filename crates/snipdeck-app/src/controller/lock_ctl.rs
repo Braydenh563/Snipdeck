@@ -22,6 +22,8 @@ use snipdeck_core::{Feature, Timestamp};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::crypto::{CryptoError, KdfParams, KeyProvider, KeyRecord, KeyRing};
 
+mod hello_ctl;
+
 use super::{Controller, Effect, Library, Toast, ToastKind, ToastMessage};
 use crate::{
     host::ClipboardText,
@@ -58,6 +60,8 @@ pub enum MasterProblem {
     SupporterOnly,
     /// No key protection on this machine.
     Unavailable,
+    /// Windows Hello did not unlock (cancelled, failed, removed or expired); the password does.
+    HelloFailed,
     /// The store refused, or the action does not fit the state. Nothing changed.
     Failed,
 }
@@ -89,6 +93,8 @@ pub(super) struct LockState {
     generation: u64,
     /// Cost of Argon2id for a new password; `None` is [`KdfParams::DEFAULT`]. Tests make it cheap.
     pub(super) kdf: Option<KdfParams>,
+    /// Windows Hello unlock (`hello_ctl.rs`).
+    hello: hello_ctl::HelloState,
 }
 
 impl LockState {
@@ -101,6 +107,7 @@ impl LockState {
             busy: None,
             generation: 0,
             kdf: None,
+            hello: hello_ctl::HelloState::default(),
         }
     }
 }
@@ -436,12 +443,8 @@ where
                 self.store
                     .open_with_key(key)
                     .map_err(|_| MasterProblem::Failed)?;
-                self.lock.prompt = false;
-                self.note_activity();
-                self.sync_recent_gate();
-                // Unlocking answers the "locked" error on screen, so it replaces it.
-                self.show_toast(neutral(ToastMessage::Unlocked));
-                self.refresh_or_notice("unlocking");
+                self.note_password_unlock();
+                self.complete_unlock();
                 Ok(())
             }
             (MasterOp::Set { exists }, Some(record)) => {
@@ -490,6 +493,7 @@ where
                 // or not the key opens now.
                 self.lock.set = false;
                 self.lock.prompt = false;
+                self.lock.hello.drop_copy();
                 let reopened = self.open_after_change(key);
                 self.note_activity();
                 self.show_toast(neutral(if reopened {
@@ -504,6 +508,16 @@ where
                 Err(MasterProblem::Failed)
             }
         }
+    }
+
+    /// The library is open after an unlock (password or Hello).
+    fn complete_unlock(&mut self) {
+        self.lock.prompt = false;
+        self.note_activity();
+        self.sync_recent_gate();
+        // Unlocking answers the "locked" error on screen, so it replaces it.
+        self.show_toast(neutral(ToastMessage::Unlocked));
+        self.refresh_or_notice("unlocking");
     }
 
     fn check_idle(&self) -> Result<(), MasterProblem> {

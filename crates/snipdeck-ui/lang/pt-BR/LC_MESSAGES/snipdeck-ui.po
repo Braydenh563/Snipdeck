@@ -2975,6 +2975,9 @@ msgstr "Desbloquear"
 msgid "Unlock Snipdeck"
 msgstr "Desbloquear o Snipdeck"
 
+msgid "Unlock with Windows Hello"
+msgstr "Desbloquear com o Windows Hello"
+
 msgid "Unlock your library first, so your sensitive items are included. Nothing was done."
 msgstr "Desbloqueie sua biblioteca primeiro, para que seus itens sensíveis sejam incluídos. Nada foi feito."
 
@@ -3025,6 +3028,9 @@ msgstr "Usar o enésimo item"
 
 msgid "Use the item"
 msgstr "Usar o item"
+
+msgid "Use your face, fingerprint or PIN instead of typing the master password. The password is still asked after a restart and every 7 days, and it always works."
+msgstr "Use seu rosto, impressão digital ou PIN em vez de digitar a senha mestra. A senha ainda é pedida após uma reinicialização e a cada 7 dias, e sempre funciona."
 
 msgid "Use {}"
 msgstr "Usar {}"
@@ -3103,6 +3109,9 @@ msgstr "Comportamento da janela"
 
 msgid "Windows"
 msgstr "Windows"
+
+msgid "Windows Hello did not unlock Snipdeck. Use your master password."
+msgstr "O Windows Hello não desbloqueou o Snipdeck. Use sua senha mestra."
 
 msgid "Windows accent"
 msgstr "Destaque do Windows"

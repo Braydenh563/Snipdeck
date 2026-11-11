@@ -1266,3 +1266,190 @@ fn rebuilding_an_encrypted_library_keeps_its_sensitive_items_readable() {
         Some(SECRET)
     );
 }
+
+// ---- Windows Hello unlock (v1.1 slice 8), against the fake Hello ---------------------------------
+
+mod hello {
+    use std::sync::Arc;
+
+    use snipdeck_app::hello_job::HelloFailure;
+    use snipdeck_platform::{
+        hello::{HelloAvailability, HelloError},
+        testing::FakeHello,
+    };
+    use snipdeck_store::crypto::HELLO_MAX_AGE;
+
+    use super::*;
+
+    fn fake() -> Arc<FakeHello> {
+        Arc::new(FakeHello::new())
+    }
+
+    /// Hello on, the copy sealed (the library is open).
+    fn enable(r: &mut Rig, hello: &Arc<FakeHello>) {
+        r.ctl.set_hello(hello.clone());
+        let job = r.ctl.set_hello_unlock(true).expect("a sealing step");
+        r.ctl.finish_hello(job.run()).expect("sealed");
+    }
+
+    /// Hello on with a password set and the library locked.
+    fn locked_with_hello() -> (Rig, Arc<FakeHello>) {
+        let hello = fake();
+        let mut r = with_password(Tier::Pro);
+        enable(&mut r, &hello);
+        r.ctl.lock_now();
+        assert!(r.ctl.library_locked());
+        (r, hello)
+    }
+
+    fn open_by_hello(r: &mut Rig) -> Result<(), HelloFailure> {
+        let job = r.ctl.begin_hello_unlock().expect("a Hello step");
+        r.ctl.finish_hello(job.run())
+    }
+
+    #[test]
+    fn hello_unlock_opens_with_the_sealed_copy() {
+        let (mut r, hello) = locked_with_hello();
+        assert!(r.ctl.hello_unlock_available());
+        assert_eq!(r.secret(), None);
+        let prompts = hello.prompts();
+        open_by_hello(&mut r).expect("opened");
+        assert!(!r.ctl.library_locked());
+        assert_eq!(r.secret().as_deref(), Some(SECRET));
+        assert_eq!(r.toast(), Some(ToastMessage::Unlocked));
+        assert_eq!(hello.prompts(), prompts + 1, "one prompt to open");
+        // And again after a lock: the copy is kept.
+        r.ctl.lock_now();
+        assert!(r.ctl.hello_unlock_available());
+    }
+
+    #[test]
+    fn restart_needs_the_password() {
+        let (r, hello) = locked_with_hello();
+        let mut r = r.restart(Tier::Pro);
+        r.ctl.set_hello(hello);
+        assert!(r.ctl.library_locked());
+        assert!(
+            !r.ctl.hello_unlock_available(),
+            "a restart forgets the copy"
+        );
+        assert!(r.ctl.begin_hello_unlock().is_none());
+        r.ctl.unlock_with_password(password()).expect("password");
+        assert!(!r.ctl.library_locked());
+    }
+
+    #[test]
+    fn after_seven_days_the_password_is_needed() {
+        let (mut r, hello) = locked_with_hello();
+        r.advance(HELLO_MAX_AGE - Duration::from_secs(1));
+        assert!(r.ctl.hello_unlock_available(), "still valid a second early");
+        r.advance(Duration::from_secs(1));
+        assert!(!r.ctl.hello_unlock_available());
+        let prompts = hello.prompts();
+        assert!(r.ctl.begin_hello_unlock().is_none());
+        assert_eq!(hello.prompts(), prompts, "Hello is not asked for nothing");
+        // The password unlocks and seals a fresh copy for the next seven days.
+        r.ctl.unlock_with_password(password()).expect("password");
+        let job = r.ctl.begin_hello_seal().expect("re-seal");
+        r.ctl.finish_hello(job.run()).expect("sealed");
+        r.ctl.lock_now();
+        assert!(r.ctl.hello_unlock_available());
+    }
+
+    #[test]
+    fn hello_cancel_falls_back() {
+        let (mut r, hello) = locked_with_hello();
+        hello.set_sign(Err(HelloError::Cancelled));
+        assert_eq!(open_by_hello(&mut r), Err(HelloFailure::Cancelled));
+        assert!(r.ctl.library_locked(), "still locked");
+        assert!(!r.ctl.hello_unlock_available(), "the copy is dropped");
+        r.ctl
+            .unlock_with_password(password())
+            .expect("the password works");
+        assert_eq!(r.secret().as_deref(), Some(SECRET));
+    }
+
+    #[test]
+    fn a_removed_hello_or_a_changed_credential_falls_back() {
+        let (mut r, hello) = locked_with_hello();
+        hello.replace_credential(b"another credential");
+        assert_eq!(open_by_hello(&mut r), Err(HelloFailure::Failed));
+        assert!(r.ctl.library_locked());
+        r.ctl.unlock_with_password(password()).expect("password");
+
+        let (mut r, hello) = locked_with_hello();
+        hello.set_sign(Err(HelloError::Removed));
+        assert_eq!(open_by_hello(&mut r), Err(HelloFailure::Failed));
+        r.ctl.unlock_with_password(password()).expect("password");
+    }
+
+    #[test]
+    fn a_hello_that_is_not_repeatable_is_not_used() {
+        let hello = fake();
+        hello.set_non_deterministic(true);
+        let mut r = with_password(Tier::Pro);
+        r.ctl.set_hello(hello);
+        let job = r.ctl.set_hello_unlock(true).expect("a step");
+        assert_eq!(r.ctl.finish_hello(job.run()), Err(HelloFailure::Failed));
+        r.ctl.lock_now();
+        assert!(!r.ctl.hello_unlock_available());
+    }
+
+    #[test]
+    fn free_tier_has_no_hello() {
+        let hello = fake();
+        let r = with_password(Tier::Pro).restart(Tier::Free);
+        let mut r = r;
+        r.ctl.set_hello(hello.clone());
+        assert!(!r.ctl.hello_offered());
+        assert!(r.ctl.set_hello_unlock(true).is_none());
+        assert!(!r.ctl.settings().hello_unlock);
+        assert!(r.ctl.begin_hello_seal().is_none());
+        assert_eq!(hello.prompts(), 0, "Hello is never asked");
+    }
+
+    #[test]
+    fn it_is_offered_only_with_a_password_and_a_ready_hello() {
+        let hello = fake();
+        let mut r = rig(Tier::Pro);
+        r.ctl.set_hello(hello.clone());
+        assert!(!r.ctl.hello_offered(), "no master password");
+        r.ctl
+            .set_master_password(password(), password())
+            .expect("set");
+        assert!(r.ctl.hello_offered());
+        hello.set_availability(HelloAvailability::NotSetUp);
+        r.ctl.refresh_hello();
+        assert!(!r.ctl.hello_offered(), "no PIN set up");
+        hello.set_availability(HelloAvailability::Unsupported);
+        r.ctl.refresh_hello();
+        assert!(!r.ctl.hello_offered());
+        assert!(!r.ctl.settings().hello_unlock, "off by default");
+    }
+
+    #[test]
+    fn removing_the_master_password_drops_hello() {
+        let (mut r, hello) = locked_with_hello();
+        let prompts = hello.prompts();
+        r.ctl.unlock_with_password(password()).expect("password");
+        r.ctl.remove_master_password(password()).expect("removed");
+        assert!(!r.ctl.hello_offered());
+        assert!(r.ctl.begin_hello_unlock().is_none());
+        assert!(r.ctl.begin_hello_seal().is_none());
+        // A new password does not bring the old copy back.
+        r.ctl
+            .set_master_password(password(), password())
+            .expect("set again");
+        r.ctl.lock_now();
+        assert!(!r.ctl.hello_unlock_available());
+        assert_eq!(hello.prompts(), prompts, "Hello is never asked again");
+    }
+
+    #[test]
+    fn turning_it_off_drops_the_copy() {
+        let (mut r, _hello) = locked_with_hello();
+        assert!(r.ctl.set_hello_unlock(false).is_none());
+        assert!(!r.ctl.hello_unlock_available());
+        assert!(!r.ctl.settings().hello_unlock);
+    }
+}

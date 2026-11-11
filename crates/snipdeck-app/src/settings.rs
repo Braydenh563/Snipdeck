@@ -694,6 +694,9 @@ pub struct Settings {
     pub autostart: bool,
     /// Closing the main window hides it to the tray instead of quitting.
     pub close_to_tray: bool,
+    /// Unlock the library with Windows Hello (Supporter; needs a master password; the password
+    /// stays the fallback). Off by default.
+    pub hello_unlock: bool,
     /// The Panel has a taskbar button (and an Alt+Tab entry). Off by default: the tray icon and
     /// the panel shortcut bring it back.
     pub panel_in_taskbar: bool,
@@ -795,6 +798,7 @@ impl Default for Settings {
             language: String::new(),
             autostart: false,
             close_to_tray: true,
+            hello_unlock: false,
             panel_in_taskbar: false,
             panel_hide_on_blur: true,
             panel_pinned: true,
@@ -915,6 +919,7 @@ impl Settings {
         field!(language);
         field!(autostart);
         field!(close_to_tray);
+        field!(hello_unlock);
         field!(panel_in_taskbar);
         field!(panel_hide_on_blur);
         field!(panel_pinned);
