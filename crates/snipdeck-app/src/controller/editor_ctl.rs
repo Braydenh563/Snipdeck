@@ -93,6 +93,9 @@ pub(super) struct ItemEditorSlot {
     /// The saved text of a text item up to the editing cap: what "changed" is measured against.
     /// A sensitive item's text is held here while its editor is open and no longer.
     original_text: Option<String>,
+    /// The item keeps HTML or RTF next to its text: saving changed text drops them, and
+    /// "Remove formatting" drops them alone.
+    formatted: bool,
     /// `updated_at` of the item when it was opened, as text: a draft of an older state is stale.
     stamp: Option<String>,
     /// The size of a text over the editing cap, which is shown read-only.
@@ -238,6 +241,8 @@ where
             privacy_problem: slot.problems.privacy.clone(),
             banner: slot.problems.banner.clone(),
             large: slot.large,
+            formatted: slot.formatted,
+            saved_text: slot.original_text.clone().unwrap_or_default(),
             attachment: slot.attachment.clone(),
             prompted_available: self.entitlements.allows(Feature::PromptedFields),
             can_browse: self.editor_env.picker.is_some(),
@@ -289,6 +294,39 @@ where
         if tag.pending && !tag.checked {
             // A tag that was only typed in and is now unticked is forgotten.
             slot.tags.remove(index);
+        }
+    }
+
+    /// "Remove formatting": the open item keeps its text and loses its HTML and RTF at once, with
+    /// the editor left open and the fields as they are. Does nothing for an item without them.
+    pub fn item_editor_remove_formatting(&mut self) {
+        let Some(slot) = self.item_editor.as_ref() else {
+            return;
+        };
+        let ItemTarget::Item(id) = slot.target else {
+            return;
+        };
+        if !slot.formatted {
+            return;
+        }
+        let done = self.store.formats(id).and_then(|formats| {
+            let kept: Vec<Format> = formats
+                .iter()
+                .filter(|f| !matches!(f, Format::Html(_) | Format::Rtf(_)))
+                .cloned()
+                .collect();
+            let item = self.store.item(id)?;
+            self.store
+                .atomically(|b| b.update_item(&item, Some(&Formats::new(kept.clone())?)))
+        });
+        match done {
+            Ok(()) => {
+                if let Some(slot) = self.item_editor.as_mut() {
+                    slot.formatted = false;
+                }
+                self.library_changed();
+            }
+            Err(_) => self.show_toast(failed()),
         }
     }
 

@@ -229,6 +229,7 @@ where
             original_kind: ItemKind::Text,
             original_sensitive: false,
             original_text: None,
+            formatted: false,
             stamp: None,
             large: None,
             attachment: None,
@@ -289,6 +290,14 @@ where
             attachment = Some(self.attachment_of(item.kind, id)?);
         }
         let tags = self.tag_entries(&item.tags)?;
+        // A secret keeps no formatting (and its content is not read here for a flag).
+        let formatted = !item.sensitive
+            && item_editor::is_text_kind(item.kind)
+            && self
+                .store
+                .formats(id)?
+                .iter()
+                .any(|f| matches!(f, Format::Html(_) | Format::Rtf(_)));
         let mut slot = ItemEditorSlot {
             seq: 0,
             raise: 0,
@@ -300,6 +309,7 @@ where
             original_kind: item.kind,
             original_sensitive: item.sensitive,
             original_text,
+            formatted,
             stamp: Some(item.updated_at.to_string()),
             large,
             attachment,

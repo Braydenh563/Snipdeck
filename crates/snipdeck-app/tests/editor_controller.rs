@@ -777,6 +777,71 @@ fn changing_only_the_title_keeps_the_other_formats_of_a_rich_item() {
     assert_eq!(kinds, [FormatKind::Html, FormatKind::Text], "untouched");
 }
 
+/// A library with one rich item "Rich" (text, HTML and RTF), opened in the editor.
+fn rich_item_open() -> (Ctl, ItemId) {
+    let mut store = Store::open_in_memory().expect("store");
+    let board = snipdeck_core::Board::new(snipdeck_core::Name::new("B").expect("name"), now());
+    snipdeck_store::BoardRepo::insert_board(&mut store, &board, Placement::Last).expect("board");
+    let l = snipdeck_core::List::new(
+        board.id,
+        snipdeck_core::Name::new("L").expect("name"),
+        now(),
+    );
+    store.insert_list(&l, Placement::Last).expect("list");
+    let mut item = Item::new(l.id, "Rich".into(), ItemKind::Text, now());
+    item.preview = "bold".into();
+    let inline = |b: &[u8]| Content::Inline(Inline::new(b.to_vec()).expect("inline"));
+    let formats = Formats::new(vec![
+        Format::Text(inline(b"bold")),
+        Format::Html(inline(b"<b>bold</b>")),
+        Format::Rtf(inline(b"{\\rtf1 bold}")),
+    ])
+    .expect("formats");
+    store
+        .insert_item(&item, &formats, Placement::Last)
+        .expect("item");
+    let dir = tempfile::tempdir().expect("dir");
+    let provider = SharedProvider::new();
+    let (mut ctl, _) = controller(store, Tier::Pro, dir.path(), &provider, true);
+    std::mem::forget(dir);
+    ctl.open_item_editor(item.id);
+    (ctl, item.id)
+}
+
+fn kinds_of(ctl: &Ctl, id: ItemId) -> Vec<FormatKind> {
+    ctl.store()
+        .formats(id)
+        .expect("formats")
+        .iter()
+        .map(Format::kind)
+        .collect()
+}
+
+#[test]
+fn editing_text_drops_formatting_after_the_notice() {
+    let (mut ctl, id) = rich_item_open();
+    let v = view(&ctl);
+    assert!(v.formatted, "the editor knows to show the notice");
+    assert_eq!(v.saved_text, "bold", "what the notice measures against");
+    ctl.item_editor_save(&EditorInput {
+        content: "bolder".into(),
+        ..v.fields
+    });
+    assert!(!ctl.item_editor_open());
+    assert_eq!(kinds_of(&ctl, id), [FormatKind::Text]);
+    assert_eq!(text_of(&ctl, id), "bolder");
+}
+
+#[test]
+fn remove_formatting_keeps_text() {
+    let (mut ctl, id) = rich_item_open();
+    ctl.item_editor_remove_formatting();
+    assert!(ctl.item_editor_open(), "the editor stays open");
+    assert!(!view(&ctl).formatted, "the notice and the action go");
+    assert_eq!(kinds_of(&ctl, id), [FormatKind::Text]);
+    assert_eq!(text_of(&ctl, id), "bold");
+}
+
 #[test]
 fn deleting_from_the_editor_moves_the_item_to_the_trash_with_undo() {
     let mut r = pro();

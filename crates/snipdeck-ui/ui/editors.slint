@@ -561,6 +561,10 @@ export component ItemEditor inherits Window {
     in property <string> banner;
     // The fields hold an unsaved draft from an earlier session.
     in property <bool> restored: false;
+    // The item keeps HTML or RTF next to its text (rich paste): changed text loses it, and "Remove formatting" drops it alone.
+    // `saved-content` is the text as saved, which the notice compares the field against.
+    in property <bool> formatted: false;
+    in property <string> saved-content;
     // Anything changed since the window opened (the host clears it after a save with `mark-clean()`).
     out property <bool> dirty: false;
     in-out property <bool> discard-open: false;
@@ -573,6 +577,7 @@ export component ItemEditor inherits Window {
     // F1: the user guide.
     callback help-requested();
     callback delete-requested();
+    callback remove-formatting-requested();
     callback tag-toggled(index: int);
     // A new tag name was entered; the host creates it and adds it to `tags` (ticked).
     callback tag-added(name: string);
@@ -759,6 +764,17 @@ export component ItemEditor inherits Window {
                                 error: root.content-shown-error;
                                 text <=> root.content;
                                 edited(t) => { root.touch(); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                            if root.formatted && !root.content-large && root.content != root.saved-content: Notice {
+                                text: @tr("Saving changed text removes the formatting.");
+                            }
+                            if root.formatted: Button {
+                                text: @tr("Remove formatting");
+                                a11y-label: @tr("Remove formatting, keep the text");
+                                clicked => { root.remove-formatting-requested(); }
                                 changed has-focus => {
                                     if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                                 }

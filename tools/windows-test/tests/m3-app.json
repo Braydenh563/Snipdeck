@@ -399,6 +399,20 @@
       "title": "Tray menu: Tips opens the Tips tab (v1.1 slice 4)",
       "do": "Right-click the Snipdeck tray icon and choose Tips. Then press Tab to reach the first Try it button, press Enter, and scroll the list with the mouse wheel. Close Help, open the welcome tour from Help > About > Show, go to the last step and choose See the tips.",
       "expect": "Tips sits in the tray menu between Open Snipdeck and Take screenshot. Choosing it opens the Help window on its fourth tab, Tips, with ten cards: a title, two lines, a picture and a Try it button each. Tab moves from card to card and keeps the focused button in view; Enter on the first card shows the Panel. The pictures are not cut off at the window's smallest size. The tour's See the tips button opens the same tab. Nothing in the window or the tray icon shows an unread badge or a prompt. Write anything that clips, overlaps or reads badly in Narrator in the note (n)."
+    },
+    {
+      "id": "52",
+      "v1": false,
+      "title": "Rich paste: a bold table from Word to Outlook and Notepad (v1.1 slice 7)",
+      "do": "In Word make a small table with a bold header row and copy it. Open the Panel and press Ctrl+V with no text box focused, then copy something else, press the capture hotkey after copying the table again. Look at the new rows, then paste the first one into an Outlook message and into Notepad. Open the item in the editor, type a letter and look above the buttons, then press Remove formatting on the other item.",
+      "expect": "Both new items have a Formatted mark on the row. In Outlook the table arrives with its bold header and borders; in Notepad it arrives as plain tab-separated text. In the editor a note reads Saving changed text removes the formatting and a Remove formatting button sits under the text. Remove formatting keeps the text, the mark disappears from the row, and the item now pastes as plain text in Outlook. Choosing Paste as > Plain text on a formatted item pastes plain text. A password copied from a browser still opens the editor with Sensitive on instead of saving. Write anything that looks wrong in the note (n)."
+    },
+    {
+      "id": "53",
+      "v1": false,
+      "title": "Rich paste: RTF from WordPad (v1.1 slice 7)",
+      "do": "In WordPad type a line, make one word bold and one word red, select all and copy. In the Panel press Ctrl+V with no text box focused. Paste the new item into WordPad and into Notepad.",
+      "expect": "The item gets a Formatted mark. WordPad shows the bold word and the red word; Notepad shows the plain line. Editing only the title in the editor and saving keeps the formatting."
     }
   ]
 }

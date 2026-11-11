@@ -1031,6 +1031,9 @@ msgstr "例: メールの返信"
 msgid "For example, Work"
 msgstr "例: 仕事"
 
+msgid "Formatted"
+msgstr "書式あり"
+
 msgid "Free"
 msgstr "無料"
 
@@ -2086,6 +2089,12 @@ msgstr "{} をやり直す (Ctrl+Y)"
 msgid "Reduce motion"
 msgstr "動きを減らす"
 
+msgid "Remove formatting"
+msgstr "書式を削除"
+
+msgid "Remove formatting, keep the text"
+msgstr "書式を削除してテキストは残す"
+
 msgid "Remove from Recent"
 msgstr "最近から削除"
 
@@ -2216,6 +2225,9 @@ msgstr "すべてのボード、リスト、スニペットを、選んだフォ
 
 msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows."
 msgstr "押した時点でクリップボードにあるテキストを、パネルに表示中のリストに新しいスニペットとして保存します。"
+
+msgid "Saving changed text removes the formatting."
+msgstr "テキストを変更して保存すると、書式は削除されます。"
 
 msgid "Saving…"
 msgstr "保存中…"

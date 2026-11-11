@@ -192,6 +192,9 @@ export component ItemCard inherits Rectangle {
     in property <string> label-name;
     // 1-based place in the paste stack (SPEC 5.1); 0 = not marked. Drawn as an icon plus a number, never colour alone.
     in property <int> stack-position: 0;
+    // The item keeps HTML or RTF next to its text: a small "Formatted" mark sits left of the stack mark (not on tiles,
+    // which have no room; the accessible description says it there too).
+    in property <bool> formatted: false;
     in property <bool> selected: false;
     // Forces a sensitive item revealed (the app's own "show" toggle). Press-and-hold also reveals.
     in property <bool> revealed: false;
@@ -410,7 +413,8 @@ export component ItemCard inherits Rectangle {
     // The right end of the action group: left of the eye.
     property <length> act-right: root.qr-right - root.qr-eye-w;
     property <length> qr-stack-w: root.stack-position > 0 ? 36px + Space.s1 : 0px;
-    property <length> qr-trail-w: root.qr-eye-w + (root.qr-actions-shown ? root.qr-actions-w : 0px) + root.qr-stack-w;
+    property <length> qr-fmt-w: root.formatted && !root.tile && !root.sensitive ? m-fmt.preferred-width + 2 * Space.s1 + Space.s1 : 0px;
+    property <length> qr-trail-w: root.qr-eye-w + (root.qr-actions-shown ? root.qr-actions-w : 0px) + root.qr-stack-w + root.qr-fmt-w;
     // The preview gives way to the trailing controls (and keeps 6px clear of them); the title never does (Compact: only
     // past the preview, and never below its 12-character floor).
     property <length> qr-preview-reserve: root.qr-trail-w > 0px ? root.qr-trail-w + 6px : 0px;
@@ -445,7 +449,7 @@ export component ItemCard inherits Rectangle {
         : (root.preview != "" ? root.title + ", " + root.preview : root.title)
             + (root.stack-position > 0 ? ", " + @tr("paste stack, number {}", root.stack-position) : "");
     // A masked secret says how to reveal it (`masked-hint`); otherwise the list the item belongs to.
-    accessible-description: root.has-label ? (root.described == "" ? @tr("label: {}", root.label-name) : root.described + ", " + @tr("label: {}", root.label-name)) : root.described;
+    accessible-description: (root.has-label ? (root.described == "" ? @tr("label: {}", root.label-name) : root.described + ", " + @tr("label: {}", root.label-name)) : root.described) + (root.formatted && !root.sensitive ? (root.described == "" && !root.has-label ? "" : ", ") + @tr("Formatted") : "");
     accessible-item-selectable: true;
     accessible-item-selected: root.selected;
     accessible-action-default => {
@@ -491,6 +495,13 @@ export component ItemCard inherits Rectangle {
         font-family: root.mono-preview ? Fonts.mono : Fonts.sans;
         font-size: Type.sm;
         wrap: no-wrap;
+    }
+    m-fmt := Text {
+        visible: false;
+        text: @tr("Formatted");
+        font-family: Fonts.sans;
+        font-size: Type.xs;
+        font-weight: Type.medium;
     }
     m-list := Text {
         visible: false;
@@ -914,6 +925,29 @@ export component ItemCard inherits Rectangle {
                     root.reveal-requested(false);
                 }
             }
+        }
+    }
+
+    // ---- Formatted mark: a quiet chip, left of the stack mark and the actions ---------------------
+    if root.qr-fmt-w > 0px: Rectangle {
+        width: root.qr-fmt-w - Space.s1;
+        height: Type.line-xs + Space.s0-5 * 2;
+        x: root.qr-right - root.qr-eye-w - (root.qr-actions-shown ? root.qr-actions-w : 0px) - root.qr-stack-w - self.width;
+        y: root.compact ? (root.card-h - self.height) / 2 : root.qr-band-y + (root.qr-band-h - self.height) / 2;
+        border-radius: Radius.md;
+        background: Theme.bg-sunken;
+        accessible-role: AccessibleRole.none;
+        Text {
+            width: parent.width;
+            height: parent.height;
+            text: @tr("Formatted");
+            font-family: Fonts.sans;
+            font-size: Type.xs;
+            font-weight: Type.medium;
+            color: root.selected ? Theme.text-secondary-on-selected : Theme.text-secondary;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            accessible-role: AccessibleRole.none;
         }
     }
 

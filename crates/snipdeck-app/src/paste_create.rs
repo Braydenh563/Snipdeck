@@ -13,6 +13,10 @@ use snipdeck_core::ItemKind;
 pub struct Clip {
     /// Plain text (a browser link arrives as its address).
     pub text: Option<String>,
+    /// The HTML flavour that came with the text (a fragment); `None` for plain text.
+    pub html: Option<String>,
+    /// The RTF flavour that came with the text; `None` for plain text.
+    pub rtf: Option<Vec<u8>>,
     /// A PNG picture (a screenshot, a copied image).
     pub png: Option<Vec<u8>>,
     /// Files from Explorer.
@@ -28,6 +32,10 @@ pub enum Piece {
         kind: ItemKind,
         /// The text.
         text: String,
+        /// The HTML flavour that came with it.
+        html: Option<String>,
+        /// The RTF flavour that came with it.
+        rtf: Option<Vec<u8>>,
     },
     /// A PNG picture.
     Image(Vec<u8>),
@@ -48,6 +56,8 @@ pub fn classify(clip: &Clip) -> Vec<Piece> {
         return vec![Piece::Text {
             kind: kind_of_text(text),
             text: text.to_owned(),
+            html: clip.html.clone(),
+            rtf: clip.rtf.clone(),
         }];
     }
     match clip.png.as_ref().filter(|p| !p.is_empty()) {
@@ -207,6 +217,8 @@ mod tests {
         let clip = Clip {
             text: Some("name.txt".into()),
             png: Some(vec![1]),
+            html: None,
+            rtf: None,
             files: vec![PathBuf::from("a"), PathBuf::from("b")],
         };
         assert_eq!(
@@ -221,7 +233,9 @@ mod tests {
             classify(&clip),
             [Piece::Text {
                 kind: ItemKind::Text,
-                text: "name.txt".into()
+                text: "name.txt".into(),
+                html: None,
+                rtf: None,
             }]
         );
         let clip = Clip {

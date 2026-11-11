@@ -81,6 +81,8 @@ export struct PanelRow {
     marked: bool,
     // Delete mode: the item is in the Trash; the row reads "Deleted · Undo" until the mode ends.
     deleted-pending: bool,
+    // The item keeps HTML or RTF next to its text: the card shows a "Formatted" mark.
+    formatted: bool,
     // How many "Deleted · Undo" rows lie above this one: the row numbers (and Alt+N) count live rows only.
     ghosts-before: int,
 }
@@ -1956,6 +1958,7 @@ export component PanelWindow inherits Window {
                                                 label: item.label;
                                                 label-name: item.label-name;
                                                 stack-position: item.stack-position;
+                                                formatted: item.formatted;
                                                 selected: root.delete-mode ? false : root.marked-count > 0 || root.select-mode ? item.marked : i == root.sel;
                                                 masked-hint: @tr("Hidden. Hold Space to reveal.");
                                                 revealed: i == root.revealed-index;

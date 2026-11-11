@@ -60,6 +60,9 @@ impl Clock for FixedClock {
 pub trait ClipboardText {
     /// The clipboard's text, or `None` when it holds none or stays busy. Writes nothing.
     fn read_text(&mut self) -> Option<String>;
+    /// The clipboard's text with its HTML and RTF flavours (only next to text; over the size cap
+    /// they are dropped). Writes nothing.
+    fn read_rich(&mut self) -> snipdeck_platform::clipboard_watch::RichClip;
     /// Whether the clipboard holds a picture (a screenshot, say).
     fn has_image(&mut self) -> bool;
     /// The clipboard's picture as PNG bytes (a screenshot, a copied image), or `None`. Writes
@@ -86,6 +89,9 @@ pub trait ClipboardText {
 impl ClipboardText for snipdeck_platform::windows::clipboard::WinClipboard {
     fn read_text(&mut self) -> Option<String> {
         Self::read_text(self)
+    }
+    fn read_rich(&mut self) -> snipdeck_platform::clipboard_watch::RichClip {
+        Self::read_rich(self)
     }
     fn has_image(&mut self) -> bool {
         Self::has_image(self)
@@ -119,6 +125,15 @@ impl ClipboardText for snipdeck_platform::testing::FakeClipboard {
             snipdeck_platform::payload::Data::Text(text) => Some(text.clone()),
             _ => None,
         })
+    }
+    fn read_rich(&mut self) -> snipdeck_platform::clipboard_watch::RichClip {
+        let text = ClipboardText::read_text(self);
+        let (html, rtf) = if text.is_some() {
+            (self.held_html.clone(), self.held_rtf.clone())
+        } else {
+            (None, None)
+        };
+        snipdeck_platform::clipboard_watch::RichClip { text, html, rtf }
     }
     fn has_image(&mut self) -> bool {
         self.written.last().is_some_and(|p| {

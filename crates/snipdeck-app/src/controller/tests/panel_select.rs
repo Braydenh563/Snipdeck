@@ -472,6 +472,49 @@ fn a_secret_paste_opens_the_editor_sensitive() {
     assert_eq!(editor.fields.content, secret);
 }
 
+/// The kinds a stored item holds, in order.
+fn stored_kinds(w: &World, id: snipdeck_core::ItemId) -> Vec<snipdeck_core::FormatKind> {
+    w.ctl
+        .store
+        .formats(id)
+        .expect("formats")
+        .iter()
+        .map(snipdeck_core::Format::kind)
+        .collect()
+}
+
+#[test]
+fn paste_create_keeps_html_and_rtf() {
+    use snipdeck_core::FormatKind as K;
+    let mut w = pasting("bold words");
+    w.ctl.services.clipboard.held_html = Some("<b>bold</b> words".into());
+    w.ctl.services.clipboard.held_rtf = Some(b"{\\rtf1 bold words}".to_vec());
+    w.ctl.paste_create(Origin::Panel);
+    let row = w.ctl.view().rows[0].clone();
+    assert_eq!(row.preview, "bold words");
+    assert_eq!(stored_kinds(&w, row.id), [K::Text, K::Html, K::Rtf]);
+    assert!(row.formatted, "the row carries the Formatted mark");
+    // Plain text stays plain.
+    let mut w = pasting("just text");
+    w.ctl.paste_create(Origin::Panel);
+    let row = w.ctl.view().rows[0].clone();
+    assert_eq!(stored_kinds(&w, row.id), [K::Text]);
+    assert!(!row.formatted);
+}
+
+#[test]
+fn a_secret_rich_paste_still_opens_the_sensitive_editor() {
+    let secret = "ghp_abcdefghijklmnopqrstuvwxyz0123456789";
+    let mut w = pasting(secret);
+    w.ctl.services.clipboard.held_html = Some(format!("<b>{secret}</b>"));
+    w.ctl.services.clipboard.held_rtf = Some(b"{\\rtf1 secret}".to_vec());
+    w.ctl.paste_create(Origin::Panel);
+    assert_eq!(w.ctl.view().rows.len(), 4, "nothing was saved");
+    let editor = w.ctl.item_editor_view().expect("the editor is open");
+    assert!(editor.is_new && editor.fields.sensitive);
+    assert_eq!(editor.fields.content, secret);
+}
+
 #[test]
 fn ctrl_c_one_item_uses_item_copy() {
     let mut w = world();

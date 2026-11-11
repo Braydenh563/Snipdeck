@@ -1032,6 +1032,9 @@ msgstr "Par exemple, Réponses e-mail"
 msgid "For example, Work"
 msgstr "Par exemple, Travail"
 
+msgid "Formatted"
+msgstr "Mis en forme"
+
 msgid "Free"
 msgstr "Gratuit"
 
@@ -2092,6 +2095,12 @@ msgstr "Rétablir {} (Ctrl+Y)"
 msgid "Reduce motion"
 msgstr "Réduire les animations"
 
+msgid "Remove formatting"
+msgstr "Supprimer la mise en forme"
+
+msgid "Remove formatting, keep the text"
+msgstr "Supprimer la mise en forme, garder le texte"
+
 msgid "Remove from Recent"
 msgstr "Retirer de Récents"
 
@@ -2224,6 +2233,9 @@ msgstr "Enregistre tous les tableaux, listes et extraits dans un seul fichier .s
 
 msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows."
 msgstr "Enregistre le texte présent dans le presse-papiers au moment où vous appuyez, comme nouvel extrait dans la liste affichée par le panneau."
+
+msgid "Saving changed text removes the formatting."
+msgstr "Enregistrer un texte modifié supprime la mise en forme."
 
 msgid "Saving…"
 msgstr "Enregistrement…"

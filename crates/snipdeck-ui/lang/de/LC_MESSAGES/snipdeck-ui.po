@@ -1032,6 +1032,9 @@ msgstr "Zum Beispiel E-Mail-Antworten"
 msgid "For example, Work"
 msgstr "Zum Beispiel Arbeit"
 
+msgid "Formatted"
+msgstr "Formatiert"
+
 msgid "Free"
 msgstr "Kostenlos"
 
@@ -2092,6 +2095,12 @@ msgstr "{} wiederholen (Strg+Y)"
 msgid "Reduce motion"
 msgstr "Bewegung reduzieren"
 
+msgid "Remove formatting"
+msgstr "Formatierung entfernen"
+
+msgid "Remove formatting, keep the text"
+msgstr "Formatierung entfernen, Text behalten"
+
 msgid "Remove from Recent"
 msgstr "Aus Zuletzt entfernen"
 
@@ -2224,6 +2233,9 @@ msgstr "Speichert alle Boards, Listen und Textbausteine als eine .snipdeck-Datei
 
 msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows."
 msgstr "Speichert den Text, der beim Drücken in der Zwischenablage liegt, als neuen Textbaustein in der Liste, die das Panel zeigt."
+
+msgid "Saving changed text removes the formatting."
+msgstr "Beim Speichern geänderten Texts wird die Formatierung entfernt."
 
 msgid "Saving…"
 msgstr "Wird gespeichert…"

@@ -1681,6 +1681,7 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
         stack_position: 0,
         marked: row.marked,
         deleted_pending: row.deleted_pending,
+        formatted: row.formatted && !row.sensitive,
         ghosts_before: 0,
     }
 }
@@ -1768,6 +1769,7 @@ mod tests {
             label: None,
             marked: false,
             deleted_pending: false,
+            formatted: false,
         }
     }
 

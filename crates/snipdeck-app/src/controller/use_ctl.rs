@@ -230,8 +230,12 @@ where
     /// The capture hotkey: saves the text on the clipboard as a new item at the top of the
     /// default list (the list the Panel shows), and says so in a toast.
     pub fn quick_capture(&mut self) {
-        let text = self.services.clipboard.read_text();
-        self.save_text(text.as_deref());
+        let clip = self.services.clipboard.read_rich();
+        self.save_rich(
+            clip.text.as_deref(),
+            clip.html.as_deref(),
+            clip.rtf.as_deref(),
+        );
     }
 
     /// Text dropped on the Panel: saved like a capture, at the top of the list the Panel shows.
@@ -321,10 +325,28 @@ where
     }
 
     pub(super) fn save_text(&mut self, text: Option<&str>) {
+        self.save_rich(text, None, None);
+    }
+
+    /// Saves `text` with the HTML and RTF flavours that came with it, as a capture.
+    fn save_rich(&mut self, text: Option<&str>, html: Option<&str>, rtf: Option<&[u8]>) {
         let current = self.model.list().map(|l| l.id);
         let toast = match capture::default_list(&self.store, current) {
             Ok(Some(list)) => {
-                match capture::capture_text(&mut self.store, &list, text, self.clock.now()) {
+                let kind = text.map_or(
+                    snipdeck_core::ItemKind::Text,
+                    crate::paste_create::kind_of_text,
+                );
+                let saved = capture::capture_with(
+                    &mut self.store,
+                    &list,
+                    text,
+                    (html, rtf),
+                    kind,
+                    snipdeck_core::Placement::First,
+                    self.clock.now(),
+                );
+                match saved {
                     Ok(Captured::Saved { list, .. }) => {
                         // Saved is saved: a refresh that fails is only logged.
                         self.refresh_logged("a quick save");
