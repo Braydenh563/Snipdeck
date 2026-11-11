@@ -23,6 +23,9 @@ All notable changes to Snipdeck are recorded here. The format follows
 - **Rich paste**: pasting into the Panel or Main, and the capture hotkey, keep HTML and RTF beside the text, so the
   item pastes formatted in Word or Outlook and as text in Notepad. Rows show a "Formatted" mark; editing the text
   says the formatting will be removed, and "Remove formatting" drops it alone. Unverified on Windows.
+- **Groups inside a list**: mark rows and press Ctrl+G (or use the item menu) to gather them under a named,
+  collapsible header. Drag items into or out of a group, drag a whole group by its header, rename it in place, and
+  undo any of it. Search keeps the matches under their group's header. Unverified with Narrator on Windows.
 
 ### Changed
 - A template with any question in it now always opens the fill form, even when every question has a default or
