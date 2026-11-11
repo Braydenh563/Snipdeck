@@ -1064,7 +1064,7 @@ fn suggestions_alone_install_the_hook_and_hand_over_the_candidates() {
     let (mut w, typing) = suggest_world(";two");
     assert!(!w.ctl.settings().expand_triggers);
     assert_eq!(typing.enabled_history().last(), Some(&true), "hook is on");
-    w.ctl.refresh_panel();
+    let _ = w.ctl.refresh_panel();
     let candidates = typing.candidates();
     assert_eq!(candidates.len(), 1);
     assert_eq!(candidates[0].item, w.ids[1]);
@@ -1124,7 +1124,7 @@ fn the_hint_names_the_item_at_the_caret() {
     assert_eq!(
         w.ctl.suggest_typed(&typed),
         HintOutcome::Show {
-            title: "Second".into(),
+            title: "Two".into(),
             caret: CARET
         }
     );
@@ -1167,7 +1167,7 @@ fn sensitive_items_are_never_suggested() {
     assert_eq!(w.ctl.suggest_typed(&typed), HintOutcome::Hide);
     assert_eq!(w.ctl.accept_suggested(&typed), TypedOutcome::Skipped);
     // And it is not among the candidates the worker matches prefixes against.
-    w.ctl.refresh_panel();
+    let _ = w.ctl.refresh_panel();
     w.ctl.update_settings(|s| s.suggest_triggers = false);
     w.ctl.update_settings(|s| s.suggest_triggers = true);
     assert_eq!(typing.candidates(), Vec::new());

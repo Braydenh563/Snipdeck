@@ -163,6 +163,11 @@ impl Typist {
                 self.matcher.reset();
                 None
             }
+            // The text a hint inserts is not known: start over, with a boundary needed.
+            TypedEvent::Tab => {
+                self.inserted();
+                None
+            }
         }
     }
 }
