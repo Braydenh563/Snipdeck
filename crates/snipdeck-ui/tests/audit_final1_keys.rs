@@ -652,7 +652,7 @@ fn settings_typing_section_walk() {
                         e.accessible_role() == Some(Role::Switch)
                             && e.accessible_label().is_some_and(|l| l == name)
                     })
-                    .and_then(|e| e.accessible_description())
+                    .and_then(i_slint_backend_testing::ElementHandle::accessible_description)
                     .unwrap_or_default();
                 if got != want {
                     problems.push(format!("{scene}: {name:?} describes {got:?}, not {want:?}"));
