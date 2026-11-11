@@ -565,19 +565,16 @@ pub const fn app_menu_shortcut(entry: crate::controller::AppMenuEntry) -> &'stat
 pub const fn item_menu_shortcut(entry: crate::controller::ItemMenuEntry) -> &'static str {
     use crate::controller::ItemMenuEntry;
     match entry {
-        ItemMenuEntry::Use => "Enter",
+        ItemMenuEntry::Use | ItemMenuEntry::ToggleGroup { .. } => "Enter",
         ItemMenuEntry::Copy => "Shift+Enter",
         ItemMenuEntry::Edit => "Ctrl+E",
         ItemMenuEntry::Duplicate => "Ctrl+D",
         ItemMenuEntry::Pin { .. } => "Ctrl+P",
         ItemMenuEntry::Trash => "Del",
-        ItemMenuEntry::MoveUp { .. } => "Alt+Up",
-        ItemMenuEntry::MoveDown { .. } => "Alt+Down",
+        ItemMenuEntry::MoveUp { .. } | ItemMenuEntry::GroupUp { .. } => "Alt+Up",
+        ItemMenuEntry::MoveDown { .. } | ItemMenuEntry::GroupDown { .. } => "Alt+Down",
         ItemMenuEntry::Group => "Ctrl+G",
         ItemMenuEntry::RenameGroup => "F2",
-        ItemMenuEntry::ToggleGroup { .. } => "Enter",
-        ItemMenuEntry::GroupUp { .. } => "Alt+Up",
-        ItemMenuEntry::GroupDown { .. } => "Alt+Down",
         ItemMenuEntry::Ungroup
         | ItemMenuEntry::DeleteGroup
         | ItemMenuEntry::Stack { .. }
