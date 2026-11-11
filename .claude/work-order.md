@@ -40,4 +40,5 @@ resumed: 2026-11-09 after idle-guard stop during a long gate run (commits c7f28a
 - [x] v1.1 slice 8 platform layer (wt/v11-hello merged 9c44b6b; review fixed 867757c)
 - [x] v1.1 slice 2b core parser (wt/v11-fill f2463a1, reviewed+fixed; app sites in .claude/remaining/fill.md)
 - [ ] v1.1 slice 2b app+UI (wt/v11-fill, agent; shares /tmp/target-panel lock with the Ctrl+Enter agent)
+- [ ] v1.1 slice 4 tips (wt/v11-tips, agent)
 - [x] v1.1 slices 5b+7 platform layer (wt/v11-plat ebd01f2 merged locally; app build unchecked until next full gate)
