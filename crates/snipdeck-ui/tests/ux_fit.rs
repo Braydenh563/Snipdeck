@@ -4,7 +4,7 @@
 
 use i_slint_backend_testing::{AccessibleRole as Role, ElementQuery};
 use slint::{ComponentHandle, Global};
-use snipdeck_ui::testing::Harness;
+use snipdeck_ui::testing::{Harness, assert_golden};
 use snipdeck_ui::{PanelWindow, SettingsFilter, SettingsPage, SystemLook, ToastKind, ToastWindow};
 
 #[path = "support/editor_fixture.rs"]
@@ -156,4 +156,33 @@ fn long_toasts_wrap_in_the_panel() {
         }
     }
     assert_eq!(problems, Vec::<String>::new());
+}
+
+/// The wrapped toast as drawn: toast window at 1x and 2.25x (sized to its content), Panel at 320 wide at 2.25x.
+#[test]
+fn wrapped_toast_goldens() {
+    for (scale, name) in [(1.0f32, "toast-wrapped-1x"), (2.25, "toast-wrapped-225")] {
+        let probe = Harness::new(ToastWindow::new, 1100, 300);
+        probe.component.global::<SystemLook<'_>>().set_text_scale(scale);
+        probe.component.set_text(LONG_TOAST.into());
+        probe.component.set_kind(ToastKind::Danger);
+        probe.component.set_undo_label("Undo".into());
+        let _ = probe.render_settled();
+        let (w, h) = (
+            probe.component.get_content_width().ceil() as u32,
+            probe.component.get_content_height().ceil() as u32,
+        );
+        let hn = Harness::new(ToastWindow::new, w, h);
+        hn.component.global::<SystemLook<'_>>().set_text_scale(scale);
+        hn.component.set_text(LONG_TOAST.into());
+        hn.component.set_kind(ToastKind::Danger);
+        hn.component.set_undo_label("Undo".into());
+        assert_golden(name, &hn.render_settled());
+    }
+    let h = Harness::new(PanelWindow::new, 320, 560);
+    panel_fx::populate(&h.component);
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    h.component.set_toast_text(LONG_TOAST.into());
+    h.component.set_toast_kind(ToastKind::Danger);
+    assert_golden("panel-toast-wrapped-225", &h.render_settled());
 }
