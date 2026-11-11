@@ -520,7 +520,10 @@ impl PanelModel {
     #[must_use]
     pub fn group_at(&self, index: usize) -> Option<GroupRun> {
         let header = self.rows().into_iter().nth(index)?.header?;
-        self.groups.iter().find(|r| r.group.id == header.group).cloned()
+        self.groups
+            .iter()
+            .find(|r| r.group.id == header.group)
+            .cloned()
     }
 
     /// The shown list's groups.
@@ -784,11 +787,7 @@ impl PanelModel {
 
     /// Ctrl+A: marks every row shown.
     pub fn mark_all(&mut self) {
-        let rows: Vec<Row> = self
-            .rows()
-            .into_iter()
-            .filter(Row::is_item)
-            .collect();
+        let rows: Vec<Row> = self.rows().into_iter().filter(Row::is_item).collect();
         self.marked = rows.iter().map(|r| r.id).collect();
         self.anchor = rows.first().map(|r| r.id);
     }

@@ -783,7 +783,8 @@ where
             }
         ));
         wire!(on_group_requested, |ctl, i| ctl.group_marked(index(i)));
-        wire!(on_group_toggled, |ctl, i| ctl.group_collapse(index(i), None));
+        wire!(on_group_toggled, |ctl, i| ctl
+            .group_collapse(index(i), None));
         wire!(on_group_collapsed_set, |ctl, i, collapsed| ctl
             .group_collapse(index(i), Some(collapsed)));
         wire!(on_group_renamed, |ctl, i, name| ctl
@@ -1698,10 +1699,7 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
         formatted: row.formatted && !row.sensitive,
         ghosts_before: 0,
         is_header: row.header.is_some(),
-        group_count: row
-            .header
-            .as_ref()
-            .map_or(0, |h| to_i32(h.count)),
+        group_count: row.header.as_ref().map_or(0, |h| to_i32(h.count)),
         group_collapsed: row.header.as_ref().is_some_and(|h| h.collapsed),
         grouped: row.grouped,
     }

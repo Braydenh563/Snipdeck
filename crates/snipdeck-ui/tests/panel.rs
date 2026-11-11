@@ -233,6 +233,33 @@ fn panel_select_and_delete_modes() {
     }
 }
 
+/// v1.1 slice 3b: a group inside the list. An expanded header with its two indented items, the header selected (focus
+/// ring), and a collapsed header below with its count. Numbers skip the headers.
+#[test]
+fn panel_with_a_group_light() {
+    let h = panel(SIZE, false);
+    let mut rows = fixture::sample_rows();
+    rows.truncate(4);
+    let header = |title: &str, count: i32, collapsed: bool| snipdeck_ui::PanelRow {
+        title: title.into(),
+        is_header: true,
+        group_count: count,
+        group_collapsed: collapsed,
+        ..Default::default()
+    };
+    rows.insert(0, header("Replies", 2, false));
+    rows[1].grouped = true;
+    rows[2].grouped = true;
+    rows.push(header("Archive", 5, true));
+    for (i, row) in rows.iter_mut().enumerate() {
+        row.ghosts_before = i32::from(i > 0 && i < 5);
+    }
+    rows[5].ghosts_before = 1;
+    fixture::set_rows(&h.component, rows);
+    h.component.set_selected_index(0);
+    assert_golden("panel-group-light", &render(&h));
+}
+
 /// O50: the header (board, search, New, pin, More, close) and the Delete-mode strip (Select | Delete, Clear list…, Done) still fit at text scale 1.5
 /// and 2.0, in a window wide enough for the larger text (the Panel's minimum width grows with the text size).
 #[test]

@@ -1,7 +1,8 @@
 //! The library bound the controller works over, and its implementation for the real store.
 
 use snipdeck_store::{
-    Batch, BlobStore, BoardRepo, GroupRepo, ItemRepo, ListRepo, RecentRepo, Store, TagRepo, TrashRepo,
+    Batch, BlobStore, BoardRepo, GroupRepo, ItemRepo, ListRepo, RecentRepo, Store, TagRepo,
+    TrashRepo,
     crypto::{DataKey, KeyRecord, KeyRing},
 };
 

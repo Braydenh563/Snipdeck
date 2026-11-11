@@ -392,11 +392,6 @@ where
             return Vec::new();
         };
         if entry == ItemMenuEntry::Separator
-            || entry
-                == (ItemMenuEntry::Sensitive {
-                    on: false,
-                    enabled: false,
-                })
             || matches!(entry, ItemMenuEntry::Sensitive { enabled: false, .. })
         {
             return Vec::new();
@@ -464,9 +459,7 @@ where
                 }
                 Vec::new()
             }
-            ItemMenuEntry::RenameGroup
-            | ItemMenuEntry::Ungroup
-            | ItemMenuEntry::DeleteGroup => {
+            ItemMenuEntry::RenameGroup | ItemMenuEntry::Ungroup | ItemMenuEntry::DeleteGroup => {
                 self.choose_group_entry(id, entry);
                 Vec::new()
             }

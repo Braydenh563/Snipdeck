@@ -20,8 +20,8 @@ use snipdeck_platform::{
 mod commands_ctl;
 mod create_ctl;
 mod dock_ctl;
-mod group_ctl;
 mod editor_ctl;
+mod group_ctl;
 mod history_ctl;
 mod library;
 mod lock_ctl;
@@ -485,6 +485,29 @@ where
 
     // ---- Reading -----------------------------------------------------------------------------
 
+    /// The fill form's view, with a sensitive template's text masked (the Picker and the
+    /// lists mask it the same way; an unreadable item masks too).
+    fn fill_view(&self) -> Option<FillView> {
+        self.fill.as_ref().map(|f| {
+            let masked = self.store.item(f.item()).is_ok_and(|i| i.sensitive);
+            FillView {
+                seq: self.fill_seq,
+                title: f.title().to_owned(),
+                fields: f.fields().to_vec(),
+                preview: if masked {
+                    String::new()
+                } else {
+                    f.preview(
+                        self.clock.now(),
+                        &self.tz,
+                        Locale::for_tag(&self.settings.language),
+                    )
+                },
+                masked,
+            }
+        })
+    }
+
     /// Everything the window shows now.
     #[must_use]
     pub fn view(&self) -> View {
@@ -570,26 +593,7 @@ where
                 selected: p.selected(),
                 footer: self.model.footer(),
             }),
-            fill: self.fill.as_ref().map(|f| {
-                // A sensitive template's text must not reach the window (the Picker and the
-                // lists mask it the same way); an unreadable item masks too.
-                let masked = self.store.item(f.item()).is_ok_and(|i| i.sensitive);
-                FillView {
-                    seq: self.fill_seq,
-                    title: f.title().to_owned(),
-                    fields: f.fields().to_vec(),
-                    preview: if masked {
-                        String::new()
-                    } else {
-                        f.preview(
-                            self.clock.now(),
-                            &self.tz,
-                            Locale::for_tag(&self.settings.language),
-                        )
-                    },
-                    masked,
-                }
-            }),
+            fill: self.fill_view(),
             recent: self.recent_view(),
         }
     }

@@ -111,11 +111,12 @@ where
             self.show_toast(failed());
         }
         // The cursor stays on the header.
-        if let Some(at) = self.model.rows().iter().position(|r| {
-            r.header
-                .as_ref()
-                .is_some_and(|h| h.group == group.id)
-        }) {
+        if let Some(at) = self
+            .model
+            .rows()
+            .iter()
+            .position(|r| r.header.as_ref().is_some_and(|h| h.group == group.id))
+        {
             self.model.select_row(at);
         }
     }

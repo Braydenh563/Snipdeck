@@ -16,6 +16,8 @@ export component GroupHeader inherits Rectangle {
     in property <string> rename-label;
     callback toggled();
     callback renamed(string);
+    // The rename ended by key (Enter or Esc): the host gives the keyboard back to the list.
+    callback rename-ended();
     callback menu-requested(length, length);
 
     property <bool> renaming: false;
@@ -95,10 +97,12 @@ export component GroupHeader inherits Rectangle {
                 accepted => {
                     root.renaming = false;
                     root.renamed(self.text);
+                    root.rename-ended();
                 }
                 key-pressed(event) => {
                     if (event.text == Key.Escape) {
                         root.renaming = false;
+                        root.rename-ended();
                         return accept;
                     }
                     return reject;

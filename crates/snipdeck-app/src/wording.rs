@@ -504,8 +504,9 @@ pub const fn item_menu_shortcut(entry: crate::controller::ItemMenuEntry) -> &'st
         ItemMenuEntry::MoveDown { .. } => "Alt+Down",
         ItemMenuEntry::Group => "Ctrl+G",
         ItemMenuEntry::RenameGroup => "F2",
-        ItemMenuEntry::Ungroup | ItemMenuEntry::DeleteGroup => "",
-        ItemMenuEntry::Stack { .. }
+        ItemMenuEntry::Ungroup
+        | ItemMenuEntry::DeleteGroup
+        | ItemMenuEntry::Stack { .. }
         | ItemMenuEntry::PasteAs
         | ItemMenuEntry::MoveTo
         | ItemMenuEntry::Colour
