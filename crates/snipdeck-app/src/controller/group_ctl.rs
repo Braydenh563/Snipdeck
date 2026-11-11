@@ -13,6 +13,15 @@ use crate::{
     host::ClipboardText,
 };
 
+/// What a shown row is, for stepping a group past its neighbours.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum RowMark {
+    Header(snipdeck_core::GroupId),
+    Member,
+    Loose(ItemId),
+    Other,
+}
+
 /// Whose rows a group operation reads: the Panel's or the Main window's.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Surface {
@@ -249,31 +258,34 @@ where
         }
     }
 
-    /// Alt+Up / Alt+Down on a Main window header: the row the whole group should be dropped on to move one
-    /// step (past the item or the whole group beside it), or `None` at the ends.
-    pub(super) fn main_group_step(&self, from: usize, delta: isize) -> Option<usize> {
-        let run = self.main.group_at(from)?;
-        let keys = self.main.keys();
-        if delta > 0 {
-            let shown = keys[from + 1..]
+    /// What each shown row is, for stepping a group past its neighbours.
+    fn row_marks(&self, s: Surface) -> Vec<RowMark> {
+        match s {
+            Surface::Panel => self
+                .model
+                .rows()
                 .iter()
-                .take_while(|k| matches!(k, MainKey::Item(id) if run.items.contains(id)))
-                .count();
-            let onto = from + 1 + shown;
-            return (onto < keys.len()).then_some(onto);
-        }
-        let above = from.checked_sub(1)?;
-        // Above a group's last visible member: onto that group's header.
-        match keys[above] {
-            MainKey::Item(id) => Some(
-                self.main
-                    .group_of(id)
-                    .and_then(|g| self.header_row(Surface::Main, g.group.id))
-                    .unwrap_or(above),
-            ),
-            _ => Some(above),
+                .map(|r| match &r.header {
+                    Some(h) => RowMark::Header(h.group),
+                    None if r.grouped => RowMark::Member,
+                    None if r.is_item() => RowMark::Loose(r.id),
+                    None => RowMark::Other,
+                })
+                .collect(),
+            Surface::Main => self
+                .main
+                .keys()
+                .iter()
+                .map(|k| match k {
+                    MainKey::Group(g) => RowMark::Header(*g),
+                    MainKey::Item(id) if self.main.group_of(*id).is_some() => RowMark::Member,
+                    MainKey::Item(id) => RowMark::Loose(*id),
+                    _ => RowMark::Other,
+                })
+                .collect(),
         }
     }
+
 
     fn group_clear_marks(&mut self, s: Surface) {
         match s {
@@ -313,9 +325,10 @@ where
 
     /// The row to drop group `index` on to move it one place (`delta` of 1 or -1): the next
     /// block (a group's header or a loose row) in that direction. `None` at the ends.
-    fn group_step_target(&self, index: usize, delta: isize) -> Option<usize> {
-        let run = self.group_row(index)?;
-        let order = self.model.manual_order();
+    fn group_step_target(&self, s: Surface, index: usize, delta: isize) -> Option<usize> {
+        let run = self.group_row(s, index)?;
+        let list = self.group_list(s)?;
+        let order = self.group_order(s, list);
         let first = order.iter().position(|i| run.items.first() == Some(i))?;
         let last = first + run.items.len().saturating_sub(1);
         let next = if delta > 0 {
@@ -323,47 +336,49 @@ where
         } else {
             order.get(first.checked_sub(1)?)
         }?;
-        let rows = self.model.rows();
-        let group = self.model.group_of(*next).map(|g| g.group.id);
-        rows.iter().position(|r| match group {
-            Some(g) => r.header.as_ref().is_some_and(|h| h.group == g),
-            None => r.id == *next,
+        let group = self.group_of_item(s, *next).map(|g| g.group.id);
+        self.row_marks(s).iter().position(|m| match (m, group) {
+            (RowMark::Header(h), Some(g)) => *h == g,
+            (RowMark::Loose(id), None) => id == next,
+            _ => false,
         })
     }
 
     /// Whether the group whose header is row `index` can move `delta` places (1 or -1).
     pub(crate) fn can_move_group(&self, index: usize, delta: isize) -> bool {
-        self.model.reorderable() && self.group_step_target(index, delta).is_some()
+        self.model.reorderable() && self.group_step_target(Surface::Panel, index, delta).is_some()
     }
 
     /// Alt+Up / Alt+Down on a header, or "Move up / down" in its menu: the whole group moves one
     /// place past the next group or loose row (the keyboard way to drag a group). One history
     /// step; the cursor stays on the header and the new place is announced.
     pub(crate) fn group_move(&mut self, index: usize, delta: isize) {
-        let Some(group) = self.group_row(index).map(|r| r.group.id) else {
+        self.group_move_on(Surface::Panel, index, delta);
+    }
+
+    /// [`group_move`](Self::group_move) for either window's rows.
+    pub(super) fn group_move_on(&mut self, s: Surface, index: usize, delta: isize) {
+        let Some(group) = self.group_row(s, index).map(|r| r.group.id) else {
             return;
         };
-        if !self.model.reorderable() {
-            self.offer_manual_for_panel();
+        if !self.group_reorderable(s) {
+            self.offer_manual_for_group(s);
             return;
         }
-        let Some(onto) = self.group_step_target(index, delta) else {
+        let Some(onto) = self.group_step_target(s, index, delta) else {
             return;
         };
-        self.group_drop(index, onto);
-        let rows = self.model.rows();
-        let blocks: Vec<bool> = rows
+        self.group_drop_on(s, index, onto);
+        let marks = self.row_marks(s);
+        let Some(at) = self.header_row(s, group) else {
+            return;
+        };
+        self.group_cursor(s, at);
+        let blocks: Vec<bool> = marks
             .iter()
-            .filter(|r| !r.grouped)
-            .map(|r| r.header.as_ref().is_some_and(|h| h.group == group))
+            .filter(|m| !matches!(m, RowMark::Member))
+            .map(|m| matches!(m, RowMark::Header(g) if *g == group))
             .collect();
-        let Some(at) = rows
-            .iter()
-            .position(|r| r.header.as_ref().is_some_and(|h| h.group == group))
-        else {
-            return;
-        };
-        self.model.select_row(at);
         if let Some(place) = blocks.iter().position(|mine| *mine) {
             self.announce_placed(place + 1, blocks.len());
         }

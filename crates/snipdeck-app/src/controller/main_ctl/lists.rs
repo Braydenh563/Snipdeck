@@ -133,9 +133,7 @@ where
         let from = self.main.cursor();
         if self.main.group_at(from).is_some() {
             // A header moves its whole group past the item or group beside it.
-            if let Some(onto) = self.main_group_step(from, delta) {
-                self.main_drop_row(from, onto);
-            }
+            self.group_move_on(Surface::Main, from, delta);
             return;
         }
         // Alt+Up on the first row lands on itself, not nowhere: the sorted-list offer is the same at both ends.
