@@ -86,8 +86,10 @@ pub fn bbox(f: &Frame, r: (u32, u32, u32, u32), bg: [u8; 3]) -> Option<(u32, u32
     b
 }
 
-fn scale(c: &impl ComponentHandle, s: f32) {
-    c.global::<SystemLook<'_>>().set_text_scale(s);
+macro_rules! scale {
+    ($c:expr, $s:expr) => {
+        $c.global::<SystemLook<'_>>().set_text_scale($s)
+    };
 }
 
 fn item(
@@ -100,7 +102,7 @@ fn item(
     let hn = Harness::new(ItemEditor::new, w, h);
     hn.component.set_dark(dark);
     editor::text_item(&hn.component);
-    scale(&hn.component, s);
+    scale!(hn.component, s);
     setup(&hn.component);
     hn
 }
@@ -138,7 +140,7 @@ fn dump_fill_scenes() {
         let hn = Harness::new(TemplateFillWindow::new, w, 1400);
         hn.component.set_dark(dark);
         fill::populate(&hn.component);
-        scale(&hn.component, s);
+        scale!(hn.component, s);
         let _ = hn.render_settled();
         let height = hn.component.get_content_height();
         let win = hn.component.window();
@@ -157,7 +159,7 @@ fn dump_help_scenes() {
         editor::help(&hn.component);
         editor::shortcuts(&hn.component);
         editor::tips(&hn.component);
-        scale(&hn.component, s);
+        scale!(hn.component, s);
         hn.component.set_tab(tab);
         dump(&format!("help-t{tab}-{}-{w}-{s}", if dark { "dark" } else { "light" }), &hn.render_settled());
     }
@@ -169,7 +171,7 @@ fn dump_settings_scenes() {
         let hn = Harness::new(SettingsPage::new, w, h);
         hn.component.set_dark(dark);
         editor::settings(&hn.component);
-        scale(&hn.component, s);
+        scale!(hn.component, s);
         dump(&format!("settings-{}-{w}x{h}-{s}", if dark { "dark" } else { "light" }), &hn.render_settled());
     }
 }
@@ -187,7 +189,7 @@ fn dump_toast_panel_palette() {
     for s in [1.0f32, 1.5, 2.25] {
         let hn = Harness::new(PanelWindow::new, 320, 560);
         panel_fx::populate(&hn.component);
-        scale(&hn.component, s);
+        scale!(hn.component, s);
         let mut rows = panel_fx::sample_rows();
         rows[0].formatted = true;
         rows[1].formatted = true;
@@ -199,7 +201,7 @@ fn dump_toast_panel_palette() {
         let hn = Harness::new(MainWindow::new, w, h);
         hn.component.set_dark(dark);
         let _ = main_fx::populate(&hn.component);
-        scale(&hn.component, s);
+        scale!(hn.component, s);
         hn.component.invoke_open_palette();
         let row = |id: i32, label: &str, mark: &str, keys: &[&str]| snipdeck_ui::PaletteRow {
             id,
