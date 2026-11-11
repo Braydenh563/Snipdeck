@@ -124,6 +124,12 @@ pub trait SettingsHost {
     /// Windows does). The source is left out of the "Import..." choices when it does not.
     fn clipboard_history_supported(&self) -> bool;
 
+    /// Whether typed triggers can work here (they need the Windows keyboard hook). The Typing
+    /// section turns its switches off and says so when this is false.
+    fn typing_supported(&self) -> bool {
+        cfg!(windows)
+    }
+
     /// Reads the text entries of the Windows clipboard history. May block until Windows answers.
     fn read_clipboard_history(&self) -> HistoryRead;
 }
@@ -703,6 +709,8 @@ struct PageView {
     screenshot_keep_panel: bool,
     dock_full_edge: bool,
     recent_history: bool,
+    expand_triggers: bool,
+    suggest_triggers: bool,
     reduce_motion: bool,
     panel_width: i32,
     dock_edge_index: i32,
@@ -972,6 +980,8 @@ where
         screenshot_keep_panel: settings.screenshot_keep_panel,
         dock_full_edge: settings.dock.full_edge,
         recent_history: settings.recent_history,
+        expand_triggers: settings.expand_triggers,
+        suggest_triggers: settings.suggest_triggers,
         reduce_motion: settings.reduce_motion,
         panel_width: i32::try_from(settings.panel_width).unwrap_or(320),
         dock_edge_index: dock_edge_index(controller.dock_edge()),
@@ -1702,6 +1712,7 @@ where
         // The search field: Slint cannot test "contains", so the page asks here.
         ui::SettingsFilter::get(window).on_matches(|text, query| settings_match(&text, &query));
         window.set_import_history_available(core.host.clipboard_history_supported());
+        window.set_typing_available(core.host.typing_supported());
         core.refresh_backups();
         core.sync();
 
@@ -1825,6 +1836,10 @@ where
         ));
         wire!(on_recent_history_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.recent_history = on)));
+        wire!(on_expand_triggers_toggled, |core, on| core
+            .act(|ctl| ctl.update_settings(|s| s.expand_triggers = on)));
+        wire!(on_suggest_triggers_toggled, |core, on| core
+            .act(|ctl| ctl.update_settings(|s| s.suggest_triggers = on)));
         wire!(on_recent_history_cleared, |core| {
             core.act(Controller::recent_clear);
         });
@@ -2047,6 +2062,12 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     if differs(&|p| p.screenshot_keep_panel == view.screenshot_keep_panel) {
         window.set_screenshot_keep_panel(view.screenshot_keep_panel);
     }
+    if differs(&|p| p.expand_triggers == view.expand_triggers) {
+        window.set_expand_triggers(view.expand_triggers);
+    }
+    if differs(&|p| p.suggest_triggers == view.suggest_triggers) {
+        window.set_suggest_triggers(view.suggest_triggers);
+    }
     if differs(&|p| p.recent_history == view.recent_history) {
         window.set_recent_history(view.recent_history);
         window.set_recent_max_entries(crate::recent::max_entries_count());
@@ -2164,11 +2185,25 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
 // ---- Opening the window on demand --------------------------------------------------------------
 
 thread_local! {
+    /// Opens the Settings page at the Licence section; set with [`OPENER`].
+    static LICENCE_OPENER: RefCell<Option<Rc<dyn Fn()>>> = const { RefCell::new(None) };
     /// Opens the Settings page; set by [`SettingsUi::new`]. The Main window's Settings button
     /// reaches the page through [`request_open`] because it is created long before the host
     /// could hand it anything.
     static OPENER: RefCell<Option<Rc<dyn Fn()>>> = const { RefCell::new(None) };
 }
+
+/// Scrolls an open Settings page to the Licence section.
+fn jump_to_licence(window: Option<&ui::SettingsPage>) {
+    if let Some(window) = window {
+        let filter = ui::SettingsFilter::get(window);
+        filter.set_jump_target(LICENCE_SECTION);
+        filter.set_jump_seq(filter.get_jump_seq() + 1);
+    }
+}
+
+/// The Licence section's index in `settings.slint` (the search keys `keys-7`).
+const LICENCE_SECTION: i32 = 7;
 
 /// Opens the Settings page (creating it the first time), if the host made one with
 /// [`SettingsUi::new`]. UI thread only.
@@ -2179,11 +2214,20 @@ pub fn request_open() {
     }
 }
 
+/// Opens the Settings page at the Licence section (Get Supporter), for a button that sits next to a Supporter
+/// refusal. UI thread only.
+pub fn request_open_licence() {
+    let opener = LICENCE_OPENER.with(|o| o.borrow().clone());
+    if let Some(opener) = opener {
+        opener();
+    }
+}
+
 /// Creates the Settings page the first time it is asked for, binds it, and shows and raises it
 /// every time. Not generic: the host keeps one of these.
 pub struct SettingsUi {
     open: Box<dyn Fn() -> Result<(), slint::PlatformError>>,
-    window: Box<dyn Fn() -> Option<ui::SettingsPage>>,
+    window: Rc<dyn Fn() -> Option<ui::SettingsPage>>,
 }
 
 impl std::fmt::Debug for SettingsUi {
@@ -2254,15 +2298,22 @@ impl SettingsUi {
                 Ok(())
             })
         };
-        let window = {
+        let window: Rc<dyn Fn() -> Option<ui::SettingsPage>> = {
             let slot = Rc::clone(&slot);
-            Box::new(move || {
+            Rc::new(move || {
                 slot.borrow()
                     .as_ref()
                     .map(|(window, _)| window.clone_strong())
             })
         };
         let open: Rc<dyn Fn() -> Result<(), slint::PlatformError>> = Rc::new(open);
+        LICENCE_OPENER.with(|o| {
+            let (open, window) = (Rc::clone(&open), Rc::clone(&window));
+            *o.borrow_mut() = Some(Rc::new(move || match open() {
+                Ok(()) => jump_to_licence(window().as_ref()),
+                Err(e) => crate::trace!("cannot open the licence settings: {e}"),
+            }));
+        });
         OPENER.with(|o| {
             let open = Rc::clone(&open);
             *o.borrow_mut() = Some(Rc::new(move || {
@@ -2284,6 +2335,17 @@ impl SettingsUi {
     /// The windowing system failed to create or show it.
     pub fn open(&self) -> Result<(), slint::PlatformError> {
         (self.open)()
+    }
+
+    /// Opens the page and scrolls it to the Licence section (where Get Supporter is).
+    ///
+    /// # Errors
+    ///
+    /// The windowing system failed to create or show it.
+    pub fn open_licence(&self) -> Result<(), slint::PlatformError> {
+        self.open()?;
+        jump_to_licence(self.window().as_ref());
+        Ok(())
     }
 
     /// The page, once it has been created.

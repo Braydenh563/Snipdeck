@@ -63,6 +63,8 @@ component Notice inherits Rectangle {
 }
 
 // The button row at the bottom of an editor: Delete at the left (when the thing exists), Cancel and Save at the right.
+// When the three do not fit side by side (a narrow window or a large text size), Delete moves to its own row above
+// Cancel and Save, so no label is ever clipped or overlaps another button.
 component EditorFooter inherits Rectangle {
     in property <bool> show-delete: false;
     in property <string> delete-label;
@@ -73,7 +75,14 @@ component EditorFooter inherits Rectangle {
     callback cancel();
     callback save();
 
-    height: row.preferred-height + 1px;
+    property <length> pad-x: Space.s4;
+    property <length> pad-top: Space.s3 + 1px;
+    property <length> pad-bottom: Space.s3;
+    property <bool> stacked: root.show-delete
+        && del.preferred-width + cancel.preferred-width + save.preferred-width + 3 * Space.s2 + 2 * root.pad-x > root.width;
+    property <length> top-row: root.stacked ? del.height + Space.s2 : 0px;
+
+    height: root.pad-top + root.top-row + save.height + root.pad-bottom + 1px;
     background: Theme.bg-surface;
 
     Rectangle {
@@ -81,31 +90,31 @@ component EditorFooter inherits Rectangle {
         height: 1px;
         background: Theme.border-subtle;
     }
-    row := HorizontalLayout {
-        padding: Space.s3;
-        padding-top: Space.s3 + 1px;
-        padding-left: Space.s4;
-        padding-right: Space.s4;
-        spacing: Space.s2;
-        if root.show-delete: Button {
-            text: root.delete-label;
-            icon: Icons.trash;
-            variant: ButtonVariant.ghost;
-            clicked => { root.delete(); }
-        }
-        Rectangle {
-            horizontal-stretch: 1;
-        }
-        Button {
-            text: root.cancel-label;
-            clicked => { root.cancel(); }
-        }
-        Button {
-            text: root.save-label;
-            tooltip: root.save-tooltip;
-            variant: ButtonVariant.primary;
-            clicked => { root.save(); }
-        }
+    del := Button {
+        visible: root.show-delete;
+        x: root.pad-x;
+        y: root.pad-top;
+        width: self.preferred-width;
+        text: root.delete-label;
+        icon: Icons.trash;
+        variant: ButtonVariant.ghost;
+        clicked => { root.delete(); }
+    }
+    cancel := Button {
+        x: save.x - Space.s2 - self.width;
+        y: root.pad-top + root.top-row;
+        width: self.preferred-width;
+        text: root.cancel-label;
+        clicked => { root.cancel(); }
+    }
+    save := Button {
+        x: root.width - root.pad-x - self.width;
+        y: root.pad-top + root.top-row;
+        width: self.preferred-width;
+        text: root.save-label;
+        tooltip: root.save-tooltip;
+        variant: ButtonVariant.primary;
+        clicked => { root.save(); }
     }
 }
 
@@ -116,6 +125,122 @@ struct PlaceholderHelp {
     token: string,
     help: string,
     prompted: bool,
+}
+
+// The chip of one placeholder row, left-aligned in a cell `col` wide (the width of the widest chip, so the cells of all
+// the rows line up).
+component PlaceholderChip inherits Rectangle {
+    in property <string> token;
+    in property <bool> chip-enabled;
+    in property <length> cell-w;
+    callback chosen();
+    callback chip-focused(y: length, h: length);
+
+    min-width: root.cell-w;
+    // 0 = the natural width.
+    max-width: root.cell-w > 0px ? root.cell-w : 1000000px;
+    HorizontalLayout {
+        alignment: start;
+        Button {
+            size: ButtonSize.sm;
+            text: root.token;
+            a11y-label: @tr("Insert {}", root.token);
+            enabled: root.chip-enabled;
+            clicked => { root.chosen(); }
+            changed has-focus => {
+                if (self.has-focus) { root.chip-focused(self.absolute-position.y, self.height); }
+            }
+        }
+    }
+}
+
+// The badge cell: one column on every row of the free plan (empty where the row has no badge), so the help text is
+// one column too. Top-aligned: a help text that wraps to two lines must not stretch the badge.
+component PlaceholderBadge inherits Rectangle {
+    in property <bool> prompted;
+    in property <length> cell-w;
+    min-height: max(24px, Type.line-sm + Space.s2);
+    min-width: root.cell-w;
+    // 0 = the natural width.
+    max-width: root.cell-w > 0px ? root.cell-w : 1000000px;
+    if root.prompted: VerticalLayout {
+        alignment: start;
+        // As tall as the small Button chip beside it (`button.slint` height-px).
+        LockBadge {
+            text: @tr("Supporter");
+            height: max(24px, Type.line-sm + Space.s2);
+        }
+    }
+}
+
+component PlaceholderHelpText inherits Text {
+    horizontal-stretch: 1;
+    min-width: 0px;
+    min-height: max(24px, Type.line-sm + Space.s2);
+    color: Theme.text-secondary;
+    font-family: Fonts.sans;
+    font-size: Type.sm;
+    vertical-alignment: center;
+    wrap: word-wrap;
+    accessible-role: none;
+}
+
+// One line of the template placeholder help. The chips share one column (as wide as the longest token), so the badge
+// and the help text start at the same x on every row. When the window is too narrow for the help to keep a readable
+// width beside them (a narrow window or a large text size), the help moves under the chip and the badge column
+// stays with it.
+component PlaceholderRow inherits VerticalLayout {
+    in property <string> token;
+    in property <string> help;
+    in property <bool> prompted;
+    in property <bool> locked;
+    in property <bool> chip-enabled;
+    // The measured widths of the widest chip and of the badge, and the width the form has.
+    in property <length> chip-w;
+    in property <length> badge-w;
+    in property <length> avail;
+    callback chosen();
+    callback chip-focused(y: length, h: length);
+
+    property <bool> stacked: root.chip-w + (root.locked ? root.badge-w + Space.s2 : 0px) + Space.s2
+        + 14 * Type.sm > root.avail;
+
+    if !root.stacked: HorizontalLayout {
+        spacing: Space.s2;
+        PlaceholderChip {
+            token: root.token; chip-enabled: root.chip-enabled; cell-w: root.chip-w;
+            chosen => { root.chosen(); }
+            chip-focused(y, h) => { root.chip-focused(y, h); }
+        }
+        if root.locked: PlaceholderBadge { prompted: root.prompted; cell-w: root.badge-w; }
+        PlaceholderHelpText { text: root.help; }
+    }
+    if root.stacked: VerticalLayout {
+        spacing: Space.s0-5;
+        HorizontalLayout {
+            alignment: start;
+            PlaceholderChip {
+                token: root.token; chip-enabled: root.chip-enabled; cell-w: 0px;
+                chosen => { root.chosen(); }
+                chip-focused(y, h) => { root.chip-focused(y, h); }
+            }
+        }
+        if root.prompted: HorizontalLayout {
+            alignment: start;
+            PlaceholderBadge { prompted: true; cell-w: root.badge-w; }
+        }
+        // A wrapped Text gets its height only once it has a width, so the row takes the height of the help at the
+        // width the form has.
+        Rectangle {
+            height: stacked-help.preferred-height;
+            stacked-help := PlaceholderHelpText {
+                x: 0px;
+                y: 0px;
+                width: parent.width;
+                text: root.help;
+            }
+        }
+    }
 }
 
 // The cell of the colour picker that means "no colour". Same size and states as `Swatch`.
@@ -509,9 +634,11 @@ component DisclosureRow inherits Rectangle {
 export component ItemEditor inherits Window {
     title: root.is-new ? @tr("New item") : @tr("Edit item");
     background: Theme.bg-app;
-    min-width: 420px;
+    // Grows with the text size: at 225% the footer buttons need about 600 px.
+    out property <length> min-window-width: max(420px, 270px * SystemLook.text-scale);
+    min-width: root.min-window-width;
     min-height: 380px;
-    preferred-width: 560px;
+    preferred-width: max(560px, root.min-window-width);
     // Opens at the height of its form (More options closed), up to 700 px; the form scrolls past that.
     preferred-height: min(700px, max(380px, form.preferred-height + footer.height));
 
@@ -558,6 +685,16 @@ export component ItemEditor inherits Window {
     in property <bool> can-browse: false;
     // A problem with the Sensitive switch, and a failure of Save that belongs to no field ("The disk is full").
     in property <string> privacy-error;
+    // The Trigger field (typed in any app to insert the item; hidden for a Sensitive item) and a problem with it.
+    in-out property <string> trigger;
+    in property <string> trigger-error;
+    callback trigger-edited(text: string);
+    // The note under the Trigger field. One character is allowed but fires on every typing of it,
+    // inside words included, so it gets a warning instead.
+    out property <string> trigger-warning: root.trigger.character-count == 1
+        ? @tr("A one-character trigger fires every time you type it, even inside words. Two or more characters are safer.")
+        : "";
+    out property <string> trigger-helper: @tr("Type this in any app to insert the snippet. Turn it on in Settings, under Typing.");
     in property <string> banner;
     // The fields hold an unsaved draft from an earlier session.
     in property <bool> restored: false;
@@ -578,6 +715,9 @@ export component ItemEditor inherits Window {
     callback help-requested();
     callback delete-requested();
     callback remove-formatting-requested();
+    // The refusal under the content is "needs Supporter": the host sets this, and the button beside it opens the licence.
+    in property <bool> content-needs-supporter: false;
+    callback supporter-requested();
     callback tag-toggled(index: int);
     // A new tag name was entered; the host creates it and adds it to `tags` (ticked).
     callback tag-added(name: string);
@@ -612,7 +752,7 @@ export component ItemEditor inherits Window {
 
     property <bool> text-kind: root.kind-index <= 3;
     // A refusal that sits under "More options" opens it, so it is never hidden.
-    out property <bool> more-shown: root.more-open || root.title-error != "" || root.privacy-error != "";
+    out property <bool> more-shown: root.more-open || root.title-error != "" || root.privacy-error != "" || root.trigger-error != "";
     property <string> sensitive-base: @tr("Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard a little after you copy it (the time is in Settings).");
     property <string> sensitive-help: root.text-kind
         ? root.sensitive-base
@@ -637,6 +777,9 @@ export component ItemEditor inherits Window {
         { token: "{pickdate:Name|FORMAT}", help: @tr("Asks for a date, today if left empty"), prompted: true },
         { token: "{optional:Name}...{/optional}", help: @tr("A tick box; the text inside is pasted only when ticked"), prompted: true },
     ];
+
+    // The longest token (by text), whose chip sets the width of the placeholder chip column.
+    property <string> widest-token: "{optional:Name}...{/optional}";
 
     function touch() {
         root.dirty = true;
@@ -746,7 +889,8 @@ export component ItemEditor inherits Window {
                     // text field exists whatever the kind (a field inside an `if` cannot be focused from here).
                     Rectangle {
                         height: root.text-kind ? content-form.preferred-height : attachment.preferred-height;
-                        clip: true;
+                        // No `clip` here: a clipping Rectangle between the field and the scroll view makes Slint skip the
+                        // field when Tab-ing while it is scrolled out of view (see focus_traversal_repro.rs).
 
                         content-form := FormField {
                             width: parent.width;
@@ -766,6 +910,16 @@ export component ItemEditor inherits Window {
                                 edited(t) => { root.touch(); }
                                 changed has-focus => {
                                     if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                            if root.content-needs-supporter: HorizontalLayout {
+                                alignment: start;
+                                Button {
+                                    text: @tr("Get Supporter…");
+                                    clicked => { root.supporter-requested(); }
+                                    changed has-focus => {
+                                        if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                    }
                                 }
                             }
                             if root.formatted && !root.content-large && root.content != root.saved-content: Notice {
@@ -873,42 +1027,38 @@ export component ItemEditor inherits Window {
                             wrap: word-wrap;
                             accessible-role: none;
                         }
-                        for ph in root.placeholders: HorizontalLayout {
-                            spacing: Space.s2;
-                            Button {
+                        // The chips share one column (as wide as the longest token, capped so the help keeps room), so
+                        // the badge and the help text start at the same x on every row. The probes below are never
+                        // drawn: they only measure the widest chip and the badge.
+                        Rectangle {
+                            height: 0px;
+                            chip-measure := Button {
                                 size: ButtonSize.sm;
-                                text: ph.token;
-                                a11y-label: @tr("Insert {}", ph.token);
-                                enabled: !root.content-large && (!ph.prompted || root.prompted-available);
-                                clicked => {
-                                    root.placeholder-chosen(ph.token, content-field.caret);
-                                    root.touch();
-                                }
-                                changed has-focus => {
-                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                                }
+                                text: root.widest-token;
+                                visible: false;
+                                x: 0px;
                             }
-                            // Top-aligned: a help text that wraps to two lines must not stretch the badge.
-                            if ph.prompted && !root.prompted-available: VerticalLayout {
-                                alignment: start;
-                                // As tall as the small Button chip beside it (`button.slint` height-px).
-                                LockBadge {
-                                    text: @tr("Supporter");
-                                    height: max(24px, Type.line-sm + Space.s2);
-                                }
+                            badge-measure := LockBadge {
+                                text: @tr("Supporter");
+                                visible: false;
+                                x: 0px;
                             }
-                            Text {
-                                horizontal-stretch: 1;
-                                min-width: 0px;
-                                min-height: max(24px, Type.line-sm + Space.s2);
-                                text: ph.help;
-                                color: Theme.text-secondary;
-                                font-family: Fonts.sans;
-                                font-size: Type.sm;
-                                vertical-alignment: center;
-                                wrap: word-wrap;
-                                accessible-role: none;
+                        }
+                        for ph in root.placeholders: PlaceholderRow {
+                            token: ph.token;
+                            help: ph.help;
+                            prompted: ph.prompted;
+                            locked: !root.prompted-available;
+                            chip-enabled: !root.content-large && (!ph.prompted || root.prompted-available);
+                            chip-w: chip-measure.preferred-width;
+                            badge-w: badge-measure.preferred-width;
+                            // The form's width less its side padding.
+                            avail: flick.viewport-width - Space.s4 * 2;
+                            chosen => {
+                                root.placeholder-chosen(ph.token, content-field.caret);
+                                root.touch();
                             }
+                            chip-focused(y, h) => { root.reveal-field(y, h); }
                         }
                     }
 
@@ -1073,6 +1223,27 @@ export component ItemEditor inherits Window {
                             checked <=> root.sensitive;
                             enabled: root.text-kind;
                             toggled(v) => { root.touch(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+
+                    if root.sensitive: FormField {
+                        label: @tr("Trigger");
+                        helper: @tr("Sensitive items can't be typed in, so they have no trigger.");
+                    }
+                    if !root.sensitive: FormField {
+                        label: @tr("Trigger");
+                        helper: root.trigger-helper;
+                        warning: root.trigger-warning;
+                        error: root.trigger-error;
+                        trigger-field := TextField {
+                            label: @tr("Trigger");
+                            placeholder: @tr("For example ;sig");
+                            text <=> root.trigger;
+                            edited(t) => { root.touch(); root.trigger-edited(t); }
+                            accepted(t) => { root.try-save(); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }

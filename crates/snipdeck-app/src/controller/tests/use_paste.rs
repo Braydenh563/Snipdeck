@@ -755,3 +755,612 @@ fn the_setting_off_keeps_the_panel_open_and_a_failed_use_never_hides() {
     assert_eq!(w.ctl.after_use(&UseResult::NeedsAnswers), Vec::new());
     assert!(w.ctl.visible());
 }
+
+// ---- Typed-trigger expansion (slice 5b) --------------------------------------------------------
+
+use crate::typing_worker::Typed;
+use snipdeck_core::{Fired, Trigger};
+use snipdeck_store::TriggerRepo;
+
+/// A world where typing expansion is on and item `n` has the trigger `code`.
+fn typing_world(n: usize, code: &str) -> World {
+    let mut w = world();
+    w.ctl.update_settings(|s| s.expand_triggers = true);
+    let trigger = Trigger::new(code).expect("trigger");
+    w.ctl
+        .store
+        .set_trigger(w.ids[n], Some(&trigger))
+        .expect("set trigger");
+    w
+}
+
+/// What typing `text` makes the matcher fire.
+fn typed(w: &World, text: &str) -> Fired {
+    let mut matcher = w.ctl.trigger_matcher();
+    text.chars()
+        .find_map(|c| matcher.feed(c))
+        .expect("the trigger fires")
+}
+
+fn backspaces_sent(w: &mut World) -> Vec<Vec<KeyEvent>> {
+    w.ctl.services().keyboard.sent.clone()
+}
+
+#[test]
+fn a_typed_trigger_backspaces_then_pastes() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    assert_eq!((fired.item, fired.chars), (w.ids[1], 4));
+    let out = w
+        .ctl
+        .expand_typed(&Typed::new(fired.clone(), false, || true));
+    assert_eq!(
+        out,
+        TypedOutcome::Expanded(UseResult::Done(UseOutcome::Pasted))
+    );
+    let sent = backspaces_sent(&mut w);
+    assert_eq!(sent.len(), 1, "one injection: erase and paste together");
+    assert!(
+        sent[0].starts_with(&snipdeck_platform::keys::backspaces(4)),
+        "erased first"
+    );
+    assert!(
+        sent[0].contains(&KeyEvent {
+            key: Key::V,
+            down: true
+        }),
+        "then the normal paste"
+    );
+    assert_eq!(
+        w.ctl.services().clipboard.written[0].data(),
+        [Data::Text("second".into())]
+    );
+    assert_eq!(uses(&w, w.ids[1]), 1);
+}
+
+#[test]
+fn a_trigger_counts_graphemes_not_characters() {
+    let mut w = typing_world(1, ";e\u{301}");
+    let fired = typed(&w, ";e\u{301}");
+    assert_eq!(fired.chars, 2);
+    w.ctl
+        .expand_typed(&Typed::new(fired.clone(), false, || true));
+    assert!(backspaces_sent(&mut w)[0].starts_with(&snipdeck_platform::keys::backspaces(2)));
+}
+
+#[test]
+fn never_paste_app_does_not_expand() {
+    let mut w = typing_world(1, ";two");
+    w.ctl.update_settings(|s| {
+        s.programs = vec![crate::settings::ProgramRule {
+            exe: "outlook.exe".into(),
+            paste: crate::settings::ProgramPaste::Never,
+        }];
+    });
+    let fired = typed(&w, ";two");
+    assert_eq!(
+        w.ctl
+            .expand_typed(&Typed::new(fired.clone(), false, || true)),
+        TypedOutcome::Skipped
+    );
+    assert_eq!(
+        backspaces_sent(&mut w),
+        Vec::<Vec<KeyEvent>>::new(),
+        "nothing was typed into the app"
+    );
+    assert_eq!(uses(&w, w.ids[1]), 0);
+}
+
+#[test]
+fn password_box_does_not_expand() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    assert_eq!(
+        w.ctl
+            .expand_typed(&Typed::new(fired.clone(), true, || true)),
+        TypedOutcome::Skipped
+    );
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+    assert_eq!(uses(&w, w.ids[1]), 0);
+}
+
+#[test]
+fn sensitive_item_never_expands() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    let id = w.ids[1];
+    make_sensitive(&mut w, id);
+    assert_eq!(
+        w.ctl
+            .expand_typed(&Typed::new(fired.clone(), false, || true)),
+        TypedOutcome::Skipped
+    );
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+    let mut matcher = w.ctl.trigger_matcher();
+    assert!(
+        ";two".chars().all(|c| matcher.feed(c).is_none()),
+        "and the matcher does not hold it"
+    );
+}
+
+#[test]
+fn no_expansion_without_a_paste_target_or_while_snipdeck_is_in_front() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    w.ctl.set_own_window_active(true);
+    assert_eq!(
+        w.ctl
+            .expand_typed(&Typed::new(fired.clone(), false, || true)),
+        TypedOutcome::Skipped
+    );
+    w.ctl.set_own_window_active(false);
+    w.targets.set(None);
+    assert_eq!(
+        w.ctl
+            .expand_typed(&Typed::new(fired.clone(), false, || true)),
+        TypedOutcome::Skipped
+    );
+    let mut elevated = outlook();
+    elevated.elevated = true;
+    w.targets.set(Some(elevated));
+    assert_eq!(
+        w.ctl
+            .expand_typed(&Typed::new(fired.clone(), false, || true)),
+        TypedOutcome::Skipped
+    );
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+}
+
+#[test]
+fn an_item_trashed_since_the_matcher_was_built_does_not_expand() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    w.ctl
+        .store
+        .trash(snipdeck_store::Trashable::Item(w.ids[1]), w.clock.now())
+        .expect("trash");
+    assert_eq!(
+        w.ctl
+            .expand_typed(&Typed::new(fired.clone(), false, || true)),
+        TypedOutcome::Skipped
+    );
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+}
+
+#[test]
+fn off_by_default_installs_no_hook() {
+    let mut w = world();
+    let typing = crate::host::FakeTyping::default();
+    w.ctl.set_typing(Box::new(typing.clone()));
+    assert!(!w.ctl.settings().expand_triggers);
+    assert_eq!(typing.enabled_history(), vec![false], "told: off");
+    // A trigger exists but the feature is off: still no hook, and a stray event does nothing.
+    let trigger = Trigger::new(";two").expect("trigger");
+    w.ctl
+        .store
+        .set_trigger(w.ids[1], Some(&trigger))
+        .expect("set");
+    let mut matcher = w.ctl.trigger_matcher();
+    let fired = ";two".chars().find_map(|c| matcher.feed(c)).expect("fires");
+    assert_eq!(
+        w.ctl
+            .expand_typed(&Typed::new(fired.clone(), false, || true)),
+        TypedOutcome::Skipped
+    );
+    assert!(!typing.ever_enabled());
+    w.ctl.update_settings(|s| s.expand_triggers = true);
+    assert_eq!(typing.enabled_history().last(), Some(&true));
+    w.ctl.update_settings(|s| s.expand_triggers = false);
+    assert_eq!(typing.enabled_history().last(), Some(&false));
+}
+
+#[test]
+fn a_prompted_trigger_opens_the_fill_form_and_erases_only_once_it_is_confirmed() {
+    let mut w = typing_world(3, ";hi");
+    let fired = typed(&w, ";hi");
+    let out = w
+        .ctl
+        .expand_typed(&Typed::new(fired.clone(), false, || true));
+    assert_eq!(out, TypedOutcome::Expanded(UseResult::NeedsAnswers));
+    assert!(w.ctl.fill().is_some());
+    assert_eq!(
+        backspaces_sent(&mut w),
+        Vec::<Vec<KeyEvent>>::new(),
+        "the typed code stays until the form is confirmed"
+    );
+    assert_eq!(
+        uses(&w, w.ids[3]),
+        0,
+        "not used until the form is submitted"
+    );
+    w.ctl.submit_fill(&["Sam".to_owned()]);
+    let sent = backspaces_sent(&mut w);
+    assert_eq!(sent.len(), 1, "erase and paste in one injection");
+    assert!(sent[0].starts_with(&snipdeck_platform::keys::backspaces(3)));
+    assert_eq!(uses(&w, w.ids[3]), 1);
+}
+
+#[test]
+fn a_cancelled_fill_form_erases_nothing_and_later_fills_do_not_erase() {
+    let mut w = typing_world(3, ";hi");
+    let fired = typed(&w, ";hi");
+    w.ctl.expand_typed(&Typed::new(fired, false, || true));
+    w.ctl.cancel_fill();
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+    // The same template used by hand afterwards must not erase what the user never typed.
+    assert_eq!(
+        w.ctl.use_item(w.ids[3], UseMode::Paste),
+        UseResult::NeedsAnswers
+    );
+    w.ctl.submit_fill(&["Sam".to_owned()]);
+    let sent = backspaces_sent(&mut w);
+    assert_eq!(sent.len(), 1);
+    assert!(!sent[0].starts_with(&snipdeck_platform::keys::backspaces(1)));
+}
+
+#[test]
+fn a_fill_form_confirmed_in_another_app_erases_nothing() {
+    let mut w = typing_world(3, ";hi");
+    let fired = typed(&w, ";hi");
+    w.ctl.expand_typed(&Typed::new(fired, false, || true));
+    let mut elsewhere = outlook();
+    elsewhere.app = "other.exe".into();
+    w.targets.set(Some(elsewhere));
+    w.ctl.submit_fill(&["Sam".to_owned()]);
+    for batch in backspaces_sent(&mut w) {
+        assert!(!batch.starts_with(&snipdeck_platform::keys::backspaces(1)));
+    }
+}
+
+#[test]
+fn a_key_after_the_fire_erases_nothing() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    let out = w.ctl.expand_typed(&Typed::new(fired, false, || false));
+    assert_eq!(out, TypedOutcome::Skipped);
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+    assert_eq!(uses(&w, w.ids[1]), 0);
+}
+
+#[test]
+fn a_key_typed_while_the_clipboard_is_confirmed_sends_nothing() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    // Current when the controller first asks, stale by the time the keys are about to go out.
+    let asked = std::sync::atomic::AtomicUsize::new(0);
+    let typed = Typed::new(fired, false, move || {
+        asked.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0
+    });
+    let out = w.ctl.expand_typed(&typed);
+    assert_eq!(out, TypedOutcome::Skipped);
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+    assert_eq!(uses(&w, w.ids[1]), 0, "not counted");
+}
+
+#[test]
+fn another_window_in_front_before_the_keys_go_out_sends_nothing() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    // The user switches window during the clipboard check: the flag is raised on the second ask.
+    let raised = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let mut other = outlook();
+    other.app = "other.exe".into();
+    w.targets.switch_when(std::sync::Arc::clone(&raised), other);
+    let asked = std::sync::atomic::AtomicUsize::new(0);
+    let typed = Typed::new(fired, false, move || {
+        if asked.fetch_add(1, std::sync::atomic::Ordering::SeqCst) > 0 {
+            raised.store(true, std::sync::atomic::Ordering::SeqCst);
+        }
+        true
+    });
+    assert_eq!(w.ctl.expand_typed(&typed), TypedOutcome::Skipped);
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+}
+
+#[test]
+fn a_failed_clipboard_erases_nothing() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    w.ctl.services.clipboard.fail_write = true;
+    w.ctl.expand_typed(&Typed::new(fired, false, || true));
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+    assert_eq!(uses(&w, w.ids[1]), 0);
+}
+
+#[test]
+fn a_trigger_changed_since_the_fire_does_not_expand() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    let other = Trigger::new(";zzz").expect("trigger");
+    w.ctl
+        .store
+        .set_trigger(w.ids[1], Some(&other))
+        .expect("set");
+    let out = w.ctl.expand_typed(&Typed::new(fired, false, || true));
+    assert_eq!(out, TypedOutcome::Skipped);
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+}
+
+#[test]
+fn an_unpinned_panel_that_is_shown_does_not_stop_an_expansion_in_another_app() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    w.ctl.on_top = false;
+    w.ctl.show();
+    assert!(!w.ctl.own_window_active);
+    let out = w.ctl.expand_typed(&Typed::new(fired, false, || true));
+    assert_eq!(
+        out,
+        TypedOutcome::Expanded(UseResult::Done(UseOutcome::Pasted))
+    );
+}
+
+// ---- Suggest as you type (slice 6) ----------------------------------------------------------
+
+use crate::controller::HintOutcome;
+use snipdeck_platform::route::ScreenRect;
+
+const CARET: ScreenRect = ScreenRect {
+    x: 400,
+    y: 300,
+    w: 2,
+    h: 18,
+};
+
+/// Suggestions on (expansion off), item 1 has the trigger `code`, and the Target has a caret.
+fn suggest_world(code: &str) -> (World, crate::host::FakeTyping) {
+    let mut w = world();
+    let typing = crate::host::FakeTyping::default();
+    w.ctl.set_typing(Box::new(typing.clone()));
+    w.ctl.update_settings(|s| s.suggest_triggers = true);
+    let trigger = Trigger::new(code).expect("trigger");
+    w.ctl
+        .store
+        .set_trigger(w.ids[1], Some(&trigger))
+        .expect("set trigger");
+    w.targets.set_caret(Some(CARET));
+    (w, typing)
+}
+
+/// What the worker would hand over once `chars` characters of the code are typed.
+fn suggestion(w: &World, code: &str, chars: usize, password: bool) -> Typed {
+    let fired = Fired {
+        item: w.ids[1],
+        trigger: Trigger::new(code).expect("trigger"),
+        chars,
+    };
+    Typed::new(fired, password, || true)
+}
+
+#[test]
+fn suggestions_alone_install_the_hook_and_hand_over_the_candidates() {
+    let (mut w, typing) = suggest_world(";two");
+    assert!(!w.ctl.settings().expand_triggers);
+    assert_eq!(typing.enabled_history().last(), Some(&true), "hook is on");
+    let _ = w.ctl.refresh_panel();
+    let candidates = typing.candidates();
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(candidates[0].item, w.ids[1]);
+    w.ctl.update_settings(|s| s.suggest_triggers = false);
+    assert_eq!(
+        typing.enabled_history().last(),
+        Some(&false),
+        "and off again"
+    );
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+}
+
+#[test]
+fn with_only_suggestions_on_a_complete_trigger_never_expands() {
+    let (mut w, _) = suggest_world(";two");
+    assert!(!w.ctl.settings().expand_triggers);
+    let typed = suggestion(&w, ";two", 4, false);
+    assert_eq!(w.ctl.expand_typed(&typed), TypedOutcome::Skipped);
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+}
+
+#[test]
+fn tab_inserts_and_backspaces_the_prefix() {
+    let (mut w, _) = suggest_world(";two");
+    let typed = suggestion(&w, ";two", 2, false);
+    let out = w.ctl.accept_suggested(&typed);
+    assert_eq!(
+        out,
+        TypedOutcome::Expanded(UseResult::Done(UseOutcome::Pasted))
+    );
+    let sent = backspaces_sent(&mut w);
+    assert_eq!(sent.len(), 1, "erase and paste in one injection");
+    assert!(sent[0].starts_with(&snipdeck_platform::keys::backspaces(2)));
+    assert!(sent[0].contains(&KeyEvent {
+        key: Key::V,
+        down: true
+    }));
+    assert_eq!(uses(&w, w.ids[1]), 1);
+}
+
+#[test]
+fn accepting_needs_the_suggestion_setting_and_the_same_gates() {
+    let (mut w, _) = suggest_world(";two");
+    let typed = suggestion(&w, ";two", 2, false);
+    w.ctl.update_settings(|s| s.suggest_triggers = false);
+    assert_eq!(w.ctl.accept_suggested(&typed), TypedOutcome::Skipped);
+    w.ctl.update_settings(|s| s.suggest_triggers = true);
+    // A password box, a changed trigger and a stale key all stop it.
+    let in_password = suggestion(&w, ";two", 2, true);
+    assert_eq!(w.ctl.accept_suggested(&in_password), TypedOutcome::Skipped);
+    let stale = Typed::new(typed.fired.clone(), false, || false);
+    assert_eq!(w.ctl.accept_suggested(&stale), TypedOutcome::Skipped);
+    let other = Trigger::new(";zzz").expect("trigger");
+    w.ctl
+        .store
+        .set_trigger(w.ids[1], Some(&other))
+        .expect("set");
+    assert_eq!(w.ctl.accept_suggested(&typed), TypedOutcome::Skipped);
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+}
+
+#[test]
+fn the_hint_names_the_item_at_the_caret() {
+    let (mut w, _) = suggest_world(";two");
+    let typed = suggestion(&w, ";two", 2, false);
+    assert_eq!(
+        w.ctl.suggest_typed(&typed),
+        HintOutcome::Show {
+            title: "Two".into(),
+            caret: CARET
+        }
+    );
+}
+
+#[test]
+fn no_caret_no_hint() {
+    let (mut w, _) = suggest_world(";two");
+    w.targets.set_caret(None);
+    let typed = suggestion(&w, ";two", 2, false);
+    assert_eq!(w.ctl.suggest_typed(&typed), HintOutcome::Hide);
+}
+
+#[test]
+fn no_hint_in_a_password_box_when_off_or_with_snipdeck_in_front() {
+    let (mut w, _) = suggest_world(";two");
+    let typed = suggestion(&w, ";two", 2, false);
+    assert_eq!(
+        w.ctl.suggest_typed(&suggestion(&w, ";two", 2, true)),
+        HintOutcome::Hide
+    );
+    w.ctl.set_own_window_active(true);
+    assert_eq!(w.ctl.suggest_typed(&typed), HintOutcome::Hide);
+    w.ctl.set_own_window_active(false);
+    let mut elevated = outlook();
+    elevated.elevated = true;
+    w.targets.set(Some(elevated));
+    assert_eq!(w.ctl.suggest_typed(&typed), HintOutcome::Hide);
+    w.targets.set(Some(outlook()));
+    w.ctl.update_settings(|s| s.suggest_triggers = false);
+    assert_eq!(w.ctl.suggest_typed(&typed), HintOutcome::Hide);
+}
+
+#[test]
+fn sensitive_items_are_never_suggested() {
+    let (mut w, typing) = suggest_world(";two");
+    let typed = suggestion(&w, ";two", 2, false);
+    let id = w.ids[1];
+    make_sensitive(&mut w, id);
+    assert_eq!(w.ctl.suggest_typed(&typed), HintOutcome::Hide);
+    assert_eq!(w.ctl.accept_suggested(&typed), TypedOutcome::Skipped);
+    // And it is not among the candidates the worker matches prefixes against.
+    let _ = w.ctl.refresh_panel();
+    w.ctl.update_settings(|s| s.suggest_triggers = false);
+    w.ctl.update_settings(|s| s.suggest_triggers = true);
+    assert_eq!(typing.candidates(), Vec::new());
+}
+
+#[test]
+fn the_ui_thread_arms_the_hint_flag_only_for_a_hint_it_shows() {
+    let (mut w, typing) = suggest_world(";two");
+    assert_eq!(
+        typing.hint_up_history(),
+        Vec::<u64>::new(),
+        "nothing armed by itself"
+    );
+    w.ctl.hint_up(3);
+    w.ctl.hint_down(3);
+    w.ctl.hint_down(9);
+    assert_eq!(typing.hint_up_history(), vec![3]);
+    assert_eq!(typing.hint_history(), vec![3, 9]);
+}
+
+#[test]
+fn a_skipped_expansion_is_reported_back_so_the_next_trigger_gets_its_boundary() {
+    let mut w = typing_world(1, ";two");
+    let typing = crate::host::FakeTyping::default();
+    w.ctl.set_typing(Box::new(typing.clone()));
+    let fired = typed(&w, ";two");
+    // A Snipdeck window is in use: nothing is typed.
+    w.ctl.set_own_window_active(true);
+    let out = w
+        .ctl
+        .expand_typed(&Typed::new(fired.clone(), false, || true));
+    assert_eq!(out, TypedOutcome::Skipped);
+    assert_eq!(typing.not_expanded_history(), vec![fired.clone()]);
+    // An expansion that goes out is not reported.
+    w.ctl.set_own_window_active(false);
+    let out = w.ctl.expand_typed(&Typed::new(fired, false, || true));
+    assert!(matches!(out, TypedOutcome::Expanded(_)));
+    assert_eq!(typing.not_expanded_history().len(), 1);
+}
+
+#[test]
+fn a_window_that_is_no_longer_in_front_stops_an_expansion_and_a_hint() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    let front = std::sync::Arc::new(std::sync::atomic::AtomicIsize::new(5));
+    let seen = std::sync::Arc::clone(&front);
+    let at_fire: crate::typing_worker::Foreground =
+        std::sync::Arc::new(move || seen.load(std::sync::atomic::Ordering::SeqCst));
+    let typed_in = |fired: Fired| Typed::new(fired, false, || true).in_window(5, at_fire.clone());
+    // Another window (same app, a second Notepad) came to the front after the trigger.
+    front.store(6, std::sync::atomic::Ordering::SeqCst);
+    assert_eq!(
+        w.ctl.expand_typed(&typed_in(fired.clone())),
+        TypedOutcome::Skipped
+    );
+    assert!(backspaces_sent(&mut w).is_empty(), "nothing was typed");
+    front.store(5, std::sync::atomic::Ordering::SeqCst);
+    assert!(matches!(
+        w.ctl.expand_typed(&typed_in(fired)),
+        TypedOutcome::Expanded(_)
+    ));
+}
+
+fn tab_batch() -> Vec<KeyEvent> {
+    [true, false]
+        .map(|down| KeyEvent {
+            key: snipdeck_platform::keys::Key::Tab,
+            down,
+        })
+        .to_vec()
+}
+
+#[test]
+fn a_swallowed_tab_that_cannot_insert_is_given_back_exactly_once() {
+    let (mut w, _typing) = suggest_world(";two");
+    w.ctl.update_settings(|s| s.suggest_triggers = true);
+    let typed = suggestion(&w, ";two", 2, false);
+    // A Snipdeck window is in use: the insertion is skipped, the Tab must not be lost.
+    w.ctl.set_own_window_active(true);
+    assert_eq!(w.ctl.accept_hinted(&typed, true), TypedOutcome::Skipped);
+    assert_eq!(backspaces_sent(&mut w), vec![tab_batch()]);
+}
+
+#[test]
+fn a_swallowed_tab_for_a_hint_not_on_screen_is_given_back_exactly_once() {
+    let (mut w, _typing) = suggest_world(";two");
+    let typed = suggestion(&w, ";two", 2, false);
+    assert_eq!(w.ctl.accept_hinted(&typed, false), TypedOutcome::Skipped);
+    assert_eq!(backspaces_sent(&mut w), vec![tab_batch()]);
+}
+
+#[test]
+fn a_tab_that_inserts_is_not_given_back() {
+    let (mut w, _typing) = suggest_world(";two");
+    let typed = suggestion(&w, ";two", 2, false);
+    let out = w.ctl.accept_hinted(&typed, true);
+    assert!(matches!(out, TypedOutcome::Expanded(_)));
+    assert!(
+        !backspaces_sent(&mut w).contains(&tab_batch()),
+        "no Tab after an insertion"
+    );
+}
+
+#[test]
+fn a_hint_from_another_worker_generation_is_stale() {
+    let (w, typing) = suggest_world(";two");
+    typing.set_generation(3);
+    assert!(!w.ctl.hint_is_stale(3 << 32 | 1));
+    assert!(w.ctl.hint_is_stale(2 << 32 | 1), "an older worker");
+    assert!(
+        w.ctl.hint_is_stale(4 << 32 | 1),
+        "a newer one is not the running one either"
+    );
+}

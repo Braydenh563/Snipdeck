@@ -1278,3 +1278,439 @@ fn hiding_the_panel_ends_select_mode_and_clears_the_marks() {
     assert!(!w.ctl.view().select_mode);
     assert_eq!(w.ctl.view().marked_count, 0);
 }
+
+// ---- Groups ---------------------------------------------------------------------------------------
+
+fn group_first_two(w: &mut World) {
+    w.ctl.panel_mark(0, SelectMode::Toggle);
+    w.ctl.panel_mark(1, SelectMode::Toggle);
+    w.ctl.group_marked(0);
+}
+
+fn headers(w: &World) -> Vec<usize> {
+    w.ctl
+        .view()
+        .rows
+        .iter()
+        .enumerate()
+        .filter(|(_, r)| r.header.is_some())
+        .map(|(i, _)| i)
+        .collect()
+}
+
+#[test]
+fn group_from_selection_is_one_undo_step() {
+    let mut w = world();
+    group_first_two(&mut w);
+    let view = w.ctl.view();
+    assert_eq!(view.rows.len(), 5, "a header joins the four items");
+    let header = view.rows[0].header.clone().expect("the header is first");
+    assert_eq!(header.count, 2);
+    assert!(view.rows[1].grouped && view.rows[2].grouped && !view.rows[3].grouped);
+    assert_eq!(view.rename_row, Some(0), "the new header starts renaming");
+    w.ctl.undo();
+    assert_eq!(headers(&w), Vec::<usize>::new(), "one Undo ungroups");
+    assert_eq!(w.ctl.view().rows.len(), 4);
+    w.ctl.redo();
+    assert_eq!(headers(&w), [0]);
+}
+
+#[test]
+fn delete_group_keep_items_ungroups() {
+    let mut w = world();
+    group_first_two(&mut w);
+    w.ctl.group_ungroup(0);
+    assert_eq!(headers(&w), Vec::<usize>::new());
+    assert_eq!(w.ctl.view().rows.len(), 4, "the items stay");
+    w.ctl.undo();
+    assert_eq!(headers(&w), [0], "Undo brings the header back");
+}
+
+#[test]
+fn delete_group_with_its_items_is_one_undo() {
+    let mut w = world();
+    group_first_two(&mut w);
+    w.ctl.group_delete(0);
+    assert_eq!(w.ctl.view().rows.len(), 2);
+    assert!(w.ctl.view().toast.expect("toast").undo);
+    w.ctl.undo();
+    assert_eq!(w.ctl.view().rows.len(), 5, "items and header are back");
+}
+
+#[test]
+fn collapsed_group_hides_rows_but_search_shows_them() {
+    let mut w = world();
+    let title = w.ctl.view().rows[0].title.clone();
+    group_first_two(&mut w);
+    w.ctl.group_collapse(0, Some(true));
+    assert_eq!(w.ctl.view().rows.len(), 3, "header and the two others");
+    assert!(w.ctl.view().rows[0].header.as_ref().unwrap().collapsed);
+    w.ctl.set_query(&title);
+    let rows = w.ctl.view().rows;
+    let at = rows
+        .iter()
+        .position(|r| r.title == title && r.header.is_none())
+        .expect("a search finds the item inside the collapsed group");
+    assert!(at > 0, "the match is not first");
+    let header = rows[at - 1]
+        .header
+        .as_ref()
+        .expect("the header sits before the match");
+    assert!(!header.collapsed, "the header is open in results");
+    assert!(rows[at].grouped, "the match is drawn under the header");
+    w.ctl.set_query("");
+    w.ctl.group_collapse(0, Some(false));
+    assert_eq!(w.ctl.view().rows.len(), 5);
+}
+
+#[test]
+fn quick_numbers_skip_headers() {
+    let mut w = world();
+    group_first_two(&mut w);
+    let numbers: Vec<u8> = w.ctl.view().rows.iter().map(|r| r.number).collect();
+    assert_eq!(numbers, [0, 1, 2, 3, 4], "the header takes no number");
+    w.ctl.group_collapse(0, Some(true));
+    let numbers: Vec<u8> = w.ctl.view().rows.iter().map(|r| r.number).collect();
+    assert_eq!(numbers, [0, 1, 2], "numbers count the rows shown");
+}
+
+#[test]
+fn renaming_a_group_is_undoable_and_a_header_is_never_marked() {
+    let mut w = world();
+    group_first_two(&mut w);
+    w.ctl.group_rename(0, "Work");
+    assert_eq!(w.ctl.view().rows[0].title, "Work");
+    w.ctl.undo();
+    assert_ne!(w.ctl.view().rows[0].title, "Work");
+    w.ctl.panel_mark_all();
+    assert_eq!(w.ctl.view().marked_count, 4, "only items are marked");
+    w.ctl.panel_mark(0, SelectMode::Toggle);
+    assert_eq!(w.ctl.view().marked_count, 4);
+}
+
+/// The shown rows as text: a header is `[name]`, an item is its title.
+fn shape(w: &World) -> Vec<String> {
+    w.ctl
+        .view()
+        .rows
+        .iter()
+        .map(|r| {
+            if r.header.is_some() {
+                format!("[{}]", r.title)
+            } else {
+                r.title.clone()
+            }
+        })
+        .collect()
+}
+
+/// Two groups: `[Group] a b [Second] c d` (the item titles come from the fixture).
+fn two_groups(w: &mut World) {
+    group_first_two(w);
+    w.ctl.panel_mark(3, SelectMode::Toggle);
+    w.ctl.panel_mark(4, SelectMode::Toggle);
+    w.ctl.group_marked(3);
+    w.ctl.group_rename(3, "Second");
+}
+
+#[test]
+fn dragging_a_group_down_onto_the_next_group_moves_it_below() {
+    let mut w = world();
+    two_groups(&mut w);
+    let before = shape(&w);
+    w.ctl.panel_drop_row(0, 3);
+    let after = shape(&w);
+    assert_eq!(
+        after,
+        [&before[3..], &before[..3]].concat(),
+        "the whole first group sits below the second"
+    );
+    assert!(w.ctl.view().toast.is_none(), "no failure toast");
+}
+
+#[test]
+fn dragging_a_group_up_onto_the_group_above_moves_it_above() {
+    let mut w = world();
+    two_groups(&mut w);
+    let before = shape(&w);
+    w.ctl.panel_drop_row(3, 0);
+    assert_eq!(shape(&w), [&before[3..], &before[..3]].concat());
+}
+
+#[test]
+fn dragging_a_group_to_the_top_and_to_the_end() {
+    let mut w = world();
+    two_groups(&mut w);
+    let before = shape(&w);
+    // Onto the last item: the group goes to the end.
+    w.ctl.panel_drop_row(0, 5);
+    assert_eq!(shape(&w), [&before[3..], &before[..3]].concat());
+    // Back to the top: second group (now first) is row 0; drag the first-group (row 3) onto row 1.
+    w.ctl.panel_drop_row(3, 1);
+    assert_eq!(
+        shape(&w),
+        before,
+        "dropped onto the item at the top it goes above it"
+    );
+}
+
+#[test]
+fn a_group_drag_is_one_undo_step_and_redo_repeats_it() {
+    let mut w = world();
+    two_groups(&mut w);
+    let before = shape(&w);
+    w.ctl.panel_drop_row(0, 3);
+    let moved = shape(&w);
+    assert_ne!(moved, before);
+    w.ctl.undo();
+    assert_eq!(shape(&w), before, "Undo puts the group back");
+    w.ctl.redo();
+    assert_eq!(shape(&w), moved);
+}
+
+#[test]
+fn an_item_dropped_on_a_header_joins_and_undo_takes_it_out() {
+    let mut w = world();
+    group_first_two(&mut w);
+    let before = shape(&w);
+    // Row 4 is the last item; drop it on the header.
+    w.ctl.panel_drop_row(4, 0);
+    assert_eq!(
+        w.ctl.view().rows[0].header.as_ref().expect("header").count,
+        3
+    );
+    w.ctl.undo();
+    assert_eq!(shape(&w), before);
+    assert_eq!(
+        w.ctl.view().rows[0].header.as_ref().expect("header").count,
+        2
+    );
+}
+
+#[test]
+fn undoing_ctrl_g_on_apart_rows_puts_them_back_and_redo_groups_again() {
+    let mut w = world();
+    let before = shape(&w);
+    // Rows 0 and 2 are not neighbours.
+    w.ctl.panel_mark(0, SelectMode::Toggle);
+    w.ctl.panel_mark(2, SelectMode::Toggle);
+    w.ctl.group_marked(0);
+    let grouped = shape(&w);
+    assert_eq!(grouped[1], before[0]);
+    assert_eq!(grouped[2], before[2], "gathered under the topmost");
+    w.ctl.undo();
+    assert_eq!(shape(&w), before, "same order and no header");
+    w.ctl.redo();
+    assert_eq!(shape(&w), grouped);
+}
+
+/// Like `shape`, but a member is shown as `+title`, so membership is compared too.
+fn members_shape(w: &World) -> Vec<String> {
+    w.ctl
+        .view()
+        .rows
+        .iter()
+        .map(|r| match (&r.header, r.grouped) {
+            (Some(h), _) => format!("[{}:{}]", r.title, h.count),
+            (None, true) => format!("+{}", r.title),
+            (None, false) => r.title.clone(),
+        })
+        .collect()
+}
+
+#[test]
+fn undoing_a_drop_on_a_header_keeps_an_item_below_another_group_ungrouped() {
+    let mut w = world();
+    group_first_two(&mut w);
+    // `[Group] a b c [Second] d`: c is ungrouped, right below the first group.
+    w.ctl.panel_mark(4, SelectMode::Toggle);
+    w.ctl.group_marked(4);
+    w.ctl.group_rename(4, "Second");
+    let before = members_shape(&w);
+    assert!(
+        !before[3].starts_with('+'),
+        "c starts ungrouped: {before:?}"
+    );
+    w.ctl.panel_drop_row(3, 4);
+    let joined = members_shape(&w);
+    assert_ne!(joined, before);
+    w.ctl.undo();
+    assert_eq!(members_shape(&w), before, "c is ungrouped at its old place");
+    w.ctl.redo();
+    assert_eq!(members_shape(&w), joined);
+    w.ctl.undo();
+    assert_eq!(members_shape(&w), before);
+}
+
+#[test]
+fn undoing_ctrl_g_puts_a_member_of_another_group_back_in_it() {
+    let mut w = world();
+    group_first_two(&mut w);
+    let before = members_shape(&w);
+    // b (row 2, in the first group) and d (row 4) become a new group.
+    w.ctl.panel_mark(2, SelectMode::Toggle);
+    w.ctl.panel_mark(4, SelectMode::Toggle);
+    w.ctl.group_marked(2);
+    let grouped = members_shape(&w);
+    assert_ne!(grouped, before);
+    w.ctl.undo();
+    assert_eq!(members_shape(&w), before, "b is back in the first group");
+    w.ctl.redo();
+    assert_eq!(members_shape(&w), grouped);
+    w.ctl.undo();
+    assert_eq!(members_shape(&w), before);
+}
+
+#[test]
+fn the_rename_request_follows_its_group_and_ends() {
+    let mut w = world();
+    group_first_two(&mut w);
+    assert_eq!(w.ctl.view().rename_row, Some(0));
+    let seq = w.ctl.view().rename_seq;
+    // The header moves down a row; the request is still on it.
+    w.ctl.panel_mark(0, SelectMode::Toggle);
+    w.ctl.panel_drop_row(3, 1);
+    let at = headers(&w)[0];
+    assert_eq!(
+        w.ctl.view().rename_row,
+        Some(at),
+        "keyed by group, not by row"
+    );
+    assert_eq!(w.ctl.view().rename_seq, seq);
+    w.ctl.group_rename_ended();
+    assert_eq!(w.ctl.view().rename_row, None, "spent once the rename ends");
+}
+
+#[test]
+fn ctrl_g_on_a_header_renames_its_group() {
+    let mut w = world();
+    group_first_two(&mut w);
+    w.ctl.group_rename_ended();
+    w.ctl.group_marked(0);
+    assert_eq!(headers(&w), [0], "no second group");
+    assert_eq!(w.ctl.view().rename_row, Some(0));
+}
+
+// ---- Groups: keyboard and menu alternatives to dragging (WCAG 2.5.7) -------------------------------
+
+fn select_title(w: &mut World, title: &str) {
+    let at = w
+        .ctl
+        .view()
+        .rows
+        .iter()
+        .position(|r| r.title == title)
+        .expect("row");
+    w.ctl.model.select_row(at);
+}
+
+fn group_of_title(w: &World, title: &str) -> bool {
+    w.ctl
+        .view()
+        .rows
+        .iter()
+        .find(|r| r.title == title)
+        .is_some_and(|r| r.grouped)
+}
+
+#[test]
+fn alt_down_on_a_header_moves_the_whole_group_one_place() {
+    let mut w = world();
+    two_groups(&mut w);
+    let before = shape(&w);
+    w.ctl.model.select_row(0);
+    w.ctl.panel_move_selected(1);
+    assert_eq!(
+        shape(&w),
+        [&before[3..], &before[..3]].concat(),
+        "the first group goes below the second"
+    );
+    let at = w.ctl.view().selected;
+    assert!(
+        w.ctl.view().rows[at].header.is_some(),
+        "the cursor stays on the header"
+    );
+}
+
+#[test]
+fn alt_up_on_a_header_moves_the_whole_group_one_place() {
+    let mut w = world();
+    two_groups(&mut w);
+    let before = shape(&w);
+    w.ctl.model.select_row(3);
+    w.ctl.panel_move_selected(-1);
+    assert_eq!(shape(&w), [&before[3..], &before[..3]].concat());
+    w.ctl.undo();
+    assert_eq!(shape(&w), before, "one Undo step");
+}
+
+#[test]
+fn a_header_at_the_top_cannot_move_up_and_says_so_in_its_menu() {
+    let mut w = world();
+    two_groups(&mut w);
+    let before = shape(&w);
+    w.ctl.model.select_row(0);
+    w.ctl.panel_move_selected(-1);
+    assert_eq!(shape(&w), before);
+    let id = w.ctl.view().rows[0].id;
+    let entries = w.ctl.item_menu_entries(id);
+    assert!(entries.contains(&ItemMenuEntry::MoveUp { enabled: false }));
+    assert!(entries.contains(&ItemMenuEntry::MoveDown { enabled: true }));
+}
+
+#[test]
+fn the_header_menu_moves_the_group() {
+    let mut w = world();
+    two_groups(&mut w);
+    let before = shape(&w);
+    w.ctl.open_item_menu(0, false);
+    let id = w.ctl.view().rows[0].id;
+    let at = w
+        .ctl
+        .item_menu_entries(id)
+        .iter()
+        .position(|e| *e == ItemMenuEntry::MoveDown { enabled: true })
+        .expect("a Move down row on the header menu");
+    let _ = w.ctl.choose_item_menu(at);
+    assert_eq!(shape(&w), [&before[3..], &before[..3]].concat());
+}
+
+#[test]
+fn a_collapsed_group_moves_as_one_block() {
+    let mut w = world();
+    two_groups(&mut w);
+    w.ctl.group_collapse(0, Some(true));
+    w.ctl.model.select_row(0);
+    w.ctl.panel_move_selected(1);
+    let shape_now = shape(&w);
+    assert_eq!(shape_now.first().map(String::as_str), Some("[Second]"));
+    w.ctl.group_collapse(
+        shape_now.iter().position(|s| s == "[Group]").unwrap(),
+        Some(false),
+    );
+    assert_eq!(shape(&w).iter().filter(|s| s.starts_with('[')).count(), 2);
+}
+
+#[test]
+fn alt_arrows_carry_an_item_into_and_out_of_a_group_without_the_mouse() {
+    let mut w = world();
+    group_first_two(&mut w);
+    let loose = w.ctl.view().rows[3].title.clone();
+    assert!(!group_of_title(&w, &loose));
+    select_title(&mut w, &loose);
+    w.ctl.panel_move_selected(-1);
+    assert!(
+        group_of_title(&w, &loose),
+        "Alt+Up from just below joins the group"
+    );
+    w.ctl.panel_move_selected(1);
+    assert!(
+        group_of_title(&w, &loose),
+        "back at the group's end, still in it"
+    );
+    w.ctl.panel_move_selected(1);
+    assert!(
+        !group_of_title(&w, &loose),
+        "Alt+Down from the last place leaves it"
+    );
+}

@@ -2,6 +2,7 @@
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 ## Decisions
+- 2026-11-11 owner: hub mode. This session is the orchestrator; worker cloud sessions (Sonnet) build slices on their own branches (claude/v11-groups, -typing, -hello, -polish) and report by send_message; the orchestrator reviews, merges into the PR branch, gates and pushes, and reassigns finished workers. Reason: owner asked for speed; separate machines remove the shared RAM/disk/target-dir bottleneck. Owner reset weekly usage: no budget stop.
 - 2026-11-08: UI builders also run the snipdeck-app window tests for every window they touch (picker_window, main_window, panel_window, fill_window, settings_window): shared look 1-4 passed the ui crate and broke 4 app tests.
 - 2026-11-08: v1.0.1 external drops are files only; text/image/link drops from other apps wait for v1.1 (winit owns the drop target). Main keeps Ctrl+Shift+N = New list. Rich Recent captures need a key ring (encrypted blobs), files stored as paths only (docs/reviews/v101-spec.md).
 - 2026-10-20 owner: "go with your suggestion" (budget at 87%): O54 stays in v1 (Sonnet, after O47 merges). O49/O50 -> v1.0.1 (reverses "including O49"); reason: needs O45+O47 merged first and would push past the 93% ceiling.
@@ -65,7 +66,7 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 2026-11-10 v1.1 spec (docs/reviews/v11-spec.md) decisions taken as proposed, owner asleep: Hello = one extra Hello prompt after a password unlock (in-memory sealed key; nothing persisted); password every 7 days, no setting; suggest-as-you-type matches triggers only, one suggestion, Tab inserts; tips pictures are English golden crops; importers drop the "Name (abbr)" title once triggers exist; date units d w mo y h min. Reason: safest defaults, reversible later.
 
 ## Inbox
-- 2026-11-11 (coordinator) Tips: picture 01 crop cuts the first Panel row mid-text (help-tips-light.png); re-crop to a whole row in Final ux pass.
+- 2026-11-11 (coordinator) Tips: picture 01 crop cuts the first Panel row mid-text (help-tips-light.png); re-crop to a whole row in Final ux pass. Fixed in dc432fe (tips pictures end on row edges).
 - (Final UX) Main toolbar "Show Panel" uses Icons.sidebar-simple beside the new « sidebar toggle: two side-panel glyphs, different meanings. Consider a distinct Panel glyph.
 - 2026-11-07 owner (verbatim): "Im going to sleep, refine, and polish and finish absolutely everything, work with maximum token efficiency and effectiveness and minimal tokens while maximising productivity. be thorough and always use a critical and detailed expert eye. maximise ux, ensure functionality and learnability, usability and accessibility and more." / "good night and impress me :D" -> away mode on the existing work order; no merge/tag/release.
 - 2026-11-07 triage: 150+ placed/done items moved to .claude/inbox-archive.md; open queue = .claude/work-order.md. The v1 T-items below (owner Windows test 2026-10-21) stay until the owner re-tests them on Windows in Final.
@@ -84,3 +85,7 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - v1 T12 Visual clash (img 8); combobox keeps its focus border after click-away (img 12).
 - v1 T13 Settings scroll feels laggy.
 - 2026-11-09: Push only after reading the gate's `failed: none` line (never chain push after the gate), and run `cargo +1.99.1 clippy --workspace --all-targets` (own target dir) before each push. Reason: 43f6e8e went red on a 1.99 lint, and 9215acc was pushed with a rustdoc failure.
+- 2026-11-11 06:25 (owner frustrated at pace: "omfg you told me 70% 3 hours ago") Builds use CARGO_BUILD_JOBS=3 locally and nproc in workers (was 1); one gate per merge batch. Reason: 20-40 min single-core builds made each review round about an hour.
+- 2026-11-11 06:32 (owner: "just do everything and the proper full gates and checks at the end after all stuff has been done with item 6") Per-merge local gates stop; merges are reviewed and pushed (CI checks them); one full gate + cargo +1.99.1 clippy at the end. Item 6 stays in this PR. Supersedes the 2026-11-09 push-after-gate rule for this run.
+- 2026-11-11 06:40 Worker send_message reports can be lost (groups and Hello sat idle about 10 min). The hub checks list_sessions status_bucket (COMPLETED = waiting for a job) at every wake, not only branch pushes.
+- 2026-11-11 10:50 hub: the snipdeck-ui lib compiles twice for `cargo test -p snipdeck-ui` (lib + lib test) and two copies at once exhaust 15 GB: run that crate with -j1. The disk filled at 20 GB of stale target: prune `find /tmp/target-panel/debug/{deps,build,.fingerprint} -maxdepth 1 -mmin +120` before the final gate.

@@ -35,7 +35,7 @@ use crate::error::{Error, Result};
 use crate::import::{ImportOptions, board_name, finish};
 use crate::limits::TEXT_LIMIT;
 use crate::plan::{Library, Plan, PlanBoard, PlanItem, PlanList};
-use crate::report::{ImportReport, Warning};
+use crate::report::{ImportReport, Note, Warning};
 
 use super::{MEMORY_BUDGET, clean_label, title_from, truncate_chars};
 
@@ -105,9 +105,9 @@ impl Tpl {
                 template: true,
             }
         } else {
-            report.warn(Warning::Note(format!(
-                "{label}: its variables do not fit a Snipdeck template together (for example two cursor marks); kept as plain text"
-            )));
+            report.warn(Warning::Note(Note::VariablesDoNotFit {
+                label: label.to_string(),
+            }));
             Body::plain(original)
         }
     }
@@ -165,17 +165,14 @@ fn trigger_of(snip: &Snip, label: &str, report: &mut ImportReport) -> Option<Tri
         }
     }
     if !unused.is_empty() {
-        let why = if chosen.is_some() {
-            "Snipdeck keeps one trigger per snippet"
+        let (label, triggers) = (label.to_string(), unused.join(", "));
+        report.warn(Warning::Note(if chosen.is_some() {
+            Note::TriggerOnlyOne { label, triggers }
         } else if !snip.typed {
-            "it fires after a separator, which a Snipdeck trigger does not wait for"
+            Note::TriggerNeedsSeparator { label, triggers }
         } else {
-            "a trigger has no spaces and at most 32 characters"
-        };
-        report.warn(Warning::Note(format!(
-            "{label}: `{}` was not kept as a trigger ({why})",
-            unused.join("`, `")
-        )));
+            Note::TriggerBadShape { label, triggers }
+        }));
     }
     chosen
 }

@@ -61,6 +61,9 @@ msgstr "主密码可以锁定整个卡组。"
 msgid "A new random ID each time"
 msgstr "每次生成新的随机ID"
 
+msgid "A one-character trigger fires every time you type it, even inside words. Two or more characters are safer."
+msgstr "单个字符的触发词每次输入都会触发，连单词中间也不例外。使用两个或更多字符更安全。"
+
 msgid "A small window you can drag anywhere."
 msgstr "可以拖到任意位置的小窗口。"
 
@@ -81,6 +84,9 @@ msgstr "标题最多 {} 个字符。"
 
 msgid "A title can't contain line breaks or control characters."
 msgstr "标题不能包含换行或控制字符。"
+
+msgid "A trigger is 1 to 32 characters with no spaces."
+msgstr "触发词为 1 到 32 个字符，不含空格。"
 
 msgid "About"
 msgstr "关于"
@@ -145,6 +151,9 @@ msgstr "向 {} 添加文本片段"
 msgid "After a paste or copy"
 msgstr "粘贴或复制后"
 
+msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual."
+msgstr "输入触发词的开头后，文本光标处会出现一个小提示，推荐对应的片段。按 Tab 键插入；按其他任何键则照常输入。"
+
 msgid "All"
 msgstr "全部"
 
@@ -196,6 +205,9 @@ msgstr "动物与自然"
 
 msgid "Another program already uses {}."
 msgstr "其他程序已在使用 {}。"
+
+msgid "Another snippet already uses this trigger."
+msgstr "另一个片段已使用此触发词。"
 
 msgid "Anywhere in Windows"
 msgstr "Windows 中的任何位置"
@@ -740,6 +752,9 @@ msgstr "要永久删除吗？"
 msgid "Delete for good…"
 msgstr "永久删除…"
 
+msgid "Delete group"
+msgstr "删除分组"
+
 msgid "Delete list"
 msgstr "删除列表"
 
@@ -956,6 +971,9 @@ msgstr "回收站中的所有内容都将被永久删除，此操作无法撤销
 msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
 msgstr "资料库中的所有内容都会被删除：看板、列表、片段、图片、草稿和备份。如果需要副本，请先导出。你的设置和许可证会保留。"
 
+msgid "Expand abbreviations as I type"
+msgstr "输入时展开缩写"
+
 msgid "Expand sidebar (Ctrl+B)"
 msgstr "展开侧边栏 (Ctrl+B)"
 
@@ -1025,6 +1043,9 @@ msgstr "跟随系统设置中的 Windows 主题。"
 msgid "Food & Drink"
 msgstr "食物与饮料"
 
+msgid "For example ;sig"
+msgstr "例如 ;sig"
+
 msgid "For example, Email replies"
 msgstr "例如：邮件回复"
 
@@ -1087,6 +1108,15 @@ msgstr "绿色"
 
 msgid "Greet"
 msgstr "问候"
+
+msgid "Group"
+msgstr "分组"
+
+msgid "Group name"
+msgstr "分组名称"
+
+msgid "Group..."
+msgstr "分组..."
 
 msgid "Handy for forms you fill field by field."
 msgstr "适合逐个字段填写的表单。"
@@ -2065,9 +2095,6 @@ msgstr "已清除最近记录"
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "“最近”会保留你复制的文本，仅保存在这台电脑上，最多保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感片段不会被保留。你可以随时在设置中更改。"
 
-msgid "Recent shows what you used and captured lately."
-msgstr "“最近”会显示你最近使用和捕获的内容。"
-
 msgid "Recently used"
 msgstr "最近使用"
 
@@ -2121,6 +2148,9 @@ msgstr "移除…"
 
 msgid "Rename board…"
 msgstr "重命名看板…"
+
+msgid "Rename group"
+msgstr "重命名分组"
 
 msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
 msgstr "重命名或删除标签。删除标签会将其从片段中移除，片段本身保留。"
@@ -2219,6 +2249,12 @@ msgstr "已保存 {}"
 
 msgid "Saved {}."
 msgstr "已保存 {}。"
+
+msgid "Saved. This code overlaps another trigger, so one of them may never fire."
+msgstr "已保存。此代码与另一个触发词重叠，其中一个可能永远不会触发。"
+
+msgid "Saved. This code overlaps the trigger of “{}”, so one of them may never fire."
+msgstr "已保存。此代码与“{}”的触发词重叠，其中一个可能永远不会触发。"
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "将所有看板、列表和片段保存为一个 .snipdeck 文件，存放在你选择的文件夹中。"
@@ -2324,6 +2360,9 @@ msgstr "敏感片段"
 
 msgid "Sensitive items are encrypted on disk, on every plan."
 msgstr "无论哪种方案，敏感片段都会加密存储在磁盘上。"
+
+msgid "Sensitive items can't be typed in, so they have no trigger."
+msgstr "敏感项目无法通过键入插入，因此没有触发词。"
 
 msgid "Sensitive items, masked"
 msgstr "敏感片段，已隐藏"
@@ -2567,6 +2606,9 @@ msgstr "强度：强"
 
 msgid "Strength: weak"
 msgstr "强度：弱"
+
+msgid "Suggest snippets as I type"
+msgstr "输入时推荐片段"
 
 msgid "Supporter"
 msgstr "Supporter"
@@ -2910,6 +2952,9 @@ msgstr "旅行与地点"
 msgid "Tray icon click opens"
 msgstr "点击托盘图标时打开"
 
+msgid "Trigger"
+msgstr "触发词"
+
 msgid "Trimmed"
 msgstr "去除首尾空白"
 
@@ -2937,8 +2982,17 @@ msgstr "关闭 Snipdeck 中的滑动和淡入淡出效果。当 Windows 已关�
 msgid "Type a command"
 msgstr "输入命令"
 
+msgid "Type this in any app to insert the snippet. Turn it on in Settings, under Typing."
+msgstr "在任何应用中输入它即可插入该片段。请在“设置”的“输入”中开启。"
+
 msgid "Type {} to confirm"
 msgstr "输入 {} 以确认"
+
+msgid "Typing"
+msgstr "输入"
+
+msgid "Typing triggers work on Windows only."
+msgstr "键入触发仅适用于 Windows。"
 
 msgid "UPPERCASE"
 msgstr "大写"
@@ -2960,6 +3014,9 @@ msgstr "撤销 {} (Ctrl+Z)"
 
 msgid "Undock the panel"
 msgstr "取消停靠面板"
+
+msgid "Ungroup"
+msgstr "取消分组"
 
 msgid "Unlock"
 msgstr "解锁"
@@ -3075,6 +3132,9 @@ msgstr "Windows 启动时"
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "图钉关闭时，切换到其他应用后面板会立即隐藏。已固定的面板不会隐藏。"
 
+msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk. Nothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
+msgstr "在其他程序中输入片段的触发词时，Snipdeck 会将其替换为该片段。为此 Snipdeck 会监视你按下的按键，只在内存中保留最后几个字符，绝不写入磁盘。在密码框、设为“从不粘贴”的程序以及敏感项目中不会展开。"
+
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "通过快捷键或托盘显示面板时，面板出现的位置。应用没有文本光标时，“文本光标处”会改用鼠标位置。"
 
@@ -3141,8 +3201,11 @@ msgstr "Windows 不允许将 {} 用作快捷键。"
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows 跟随你的 Windows 文字大小（设置 > 辅助功能 > 文字大小）。选择一个大小即可改用该大小。"
 
-msgid "YYYY-MM-DD"
-msgstr "YYYY-MM-DD"
+msgid "With clipboard history on, Recent keeps what you copy in other programs."
+msgstr "开启剪贴板历史后，“最近”会保存你在其他程序中复制的内容。"
+
+msgid "YYYY-MM-DD, empty for today"
+msgstr "YYYY-MM-DD，留空表示今天"
 
 msgid "Yes"
 msgstr "是"
@@ -3259,6 +3322,13 @@ msgstr "置顶 收藏 显示"
 msgid "find filter look"
 msgstr "查找 筛选 查看"
 
+msgid "group change"
+msgstr "分组更改"
+
+msgid "group {}, {} item"
+msgid_plural "group {}, {} items"
+msgstr[0] "分组 {}，{} 项"
+
 msgid "help docs manual how"
 msgstr "帮助 文档 手册 操作方法"
 
@@ -3336,6 +3406,9 @@ msgstr "标签更改"
 
 msgid "tag: {}"
 msgstr "标签：{}"
+
+msgid "to insert"
+msgstr "插入"
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "教程 入门 引导 基础 学习"
@@ -3428,11 +3501,22 @@ msgstr "{} 为空，已跳过。"
 msgid "{} is not valid UTF-8, so characters that could not be read were replaced."
 msgstr "{} 不是有效的 UTF-8 编码，无法读取的字符已被替换。"
 
+msgid "{} is turned off in Espanso (its name starts with an underscore) and was skipped."
+msgstr "{} 在 Espanso 中已停用（名称以下划线开头），已跳过。"
+
 msgid "{} is used by another app. Choose another in Settings."
 msgstr "{} 正被其他应用占用。请在设置中选择其他快捷键。"
 
 msgid "{} is {}, over the 5 MB limit for text, and was skipped."
 msgstr "{} 为 {}，超过文本 5 MB 的上限，已跳过。"
+
+msgid "{} item"
+msgid_plural "{} items"
+msgstr[0] "{} 项"
+
+msgid "{} item had a title or source app longer than {} or {} characters, and it was cut."
+msgid_plural "{} items had a title or source app longer than {} or {} characters, and it was cut."
+msgstr[0] "有 {} 个项目的标题或来源应用超过 {} 或 {} 个字符，已截断。"
 
 msgid "{} item in {} list will be added"
 msgid_plural "{} items in {} lists will be added"
@@ -3478,11 +3562,65 @@ msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "备份中不包含 {} 项敏感项目。"
 
+msgid "{} — press Tab to insert"
+msgstr "{} — 按 Tab 插入"
+
+msgid "{}, match {}"
+msgstr "{}，第 {} 项"
+
 msgid "{}, {} of {}"
 msgstr "{}，第 {} 项（共 {} 项）"
 
 msgid "{}.{} MB"
 msgstr "{}.{} MB"
 
+msgid "{}: Snipdeck does not know the date format {}, so it was left as written."
+msgstr "{}：Snipdeck 不认识日期格式 {}，已保持原样。"
+
+msgid "{}: it has no text (a picture or other content) and was skipped."
+msgstr "{}：没有文本（图片或其他内容），已跳过。"
+
+msgid "{}: it has no trigger and was skipped."
+msgstr "{}：没有触发词，已跳过。"
+
+msgid "{}: its Markdown or HTML text is kept as written."
+msgstr "{}：其 Markdown 或 HTML 文本保持原样。"
+
+msgid "{}: its only trigger is a regular expression, which Snipdeck cannot use, so it was skipped."
+msgstr "{}：唯一的触发词是正则表达式，Snipdeck 无法使用，已跳过。"
+
+msgid "{}: its variables cannot be one Snipdeck template together (for example two cursor marks), so it was kept as plain text."
+msgstr "{}：其变量无法合并为一个 Snipdeck 模板（例如有两个光标标记），已保留为纯文本。"
+
+msgid "{}: some rows have more than 256 columns, and the extra columns were ignored."
+msgstr "{}：有些行超过 256 列，多余的列已忽略。"
+
+msgid "{}: the form field {} has no Snipdeck equivalent and was left as written."
+msgstr "{}：表单字段 {} 在 Snipdeck 中没有对应项，已保持原样。"
+
+msgid "{}: the trigger {} and {} start alike, so the shorter one fires first."
+msgstr "{}：触发词 {} 与 {} 开头相同，因此较短的会先触发。"
+
+msgid "{}: the trigger {} is already used by another snippet, so it was imported without it."
+msgstr "{}：触发词 {} 已被另一个片段使用，因此导入时未带触发词。"
+
+msgid "{}: this entry is not a match and was skipped."
+msgstr "{}：此条目不是匹配项，已跳过。"
+
 msgid "{}: {}"
 msgstr "{}: {}"
+
+msgid "{}: {} (a shell, script or random variable, or one Snipdeck does not know) has no Snipdeck equivalent and was left as written."
+msgstr "{}：{}（shell、脚本或随机变量，或 Snipdeck 不认识的变量）在 Snipdeck 中没有对应项，已保持原样。"
+
+msgid "{}: {} has no Snipdeck equivalent and was left as written."
+msgstr "{}：{} 在 Snipdeck 中没有对应项，已保持原样。"
+
+msgid "{}: {} was not kept as a trigger, because a snippet has one trigger."
+msgstr "{}：{} 未保留为触发词，因为一个片段只有一个触发词。"
+
+msgid "{}: {} was not kept as a trigger, because a trigger has no spaces and at most 32 characters."
+msgstr "{}：{} 未保留为触发词，因为触发词不能含空格，且最多 32 个字符。"
+
+msgid "{}: {} was not kept as a trigger, because it fires after a separator and a Snipdeck trigger does not wait for one."
+msgstr "{}：{} 未保留为触发词，因为它在分隔符之后触发，而 Snipdeck 的触发词不会等待分隔符。"

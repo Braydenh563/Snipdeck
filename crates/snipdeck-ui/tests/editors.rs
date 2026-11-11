@@ -222,6 +222,85 @@ fn item_editor_at_225_percent_text_size() {
 }
 
 #[test]
+fn item_editor_template_placeholders_at_420px_and_225_percent_text_size() {
+    // The placeholder grid under pressure: the chip column is capped, so the help text wraps instead of leaving the window.
+    let h = item((420, 2600), false);
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    h.component.set_kind_index(3);
+    h.component.set_prompted_available(false);
+    h.component.set_content("Due on {date}.".into());
+    assert_golden("item-editor-template-narrow-scale-light", &render(&h));
+}
+
+/// Saving a template with a prompted field on the Free plan: the refusal sits under the text and a button beside it
+/// opens the way to get Supporter.
+#[test]
+fn item_editor_supporter_refusal_offers_get_supporter() {
+    let h = item(ITEM, false);
+    h.component.set_kind_index(3);
+    h.component.set_prompted_available(false);
+    h.component.set_content("Dear {field:Name}".into());
+    h.component.set_content_error(
+        "Fields that ask for a value are a Supporter feature. Remove them to save.".into(),
+    );
+    h.component.set_content_needs_supporter(true);
+    assert_golden("item-editor-needs-supporter-light", &render(&h));
+}
+
+/// The footer buttons (by their accessible label) as (left, top, right, bottom) in window pixels.
+fn footer_buttons(
+    h: &Harness<ItemEditor>,
+    labels: &[&str],
+    scale: f32,
+) -> Vec<(String, (f32, f32, f32, f32))> {
+    use i_slint_backend_testing::{AccessibleRole, ElementHandle};
+    labels
+        .iter()
+        .map(|label| {
+            let found: Vec<_> = ElementHandle::find_by_accessible_label(&h.component, label)
+                .filter(|e| e.accessible_role() == Some(AccessibleRole::Button))
+                .collect();
+            let e = found.last().unwrap_or_else(|| panic!("no button {label}"));
+            let (p, size) = (e.absolute_position(), e.size());
+            (
+                (*label).to_string(),
+                (
+                    p.x * scale,
+                    p.y * scale,
+                    (p.x + size.width) * scale,
+                    (p.y + size.height) * scale,
+                ),
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn the_editor_footer_reflows_at_420px_and_225_percent_text_size() {
+    let h = item((420, 2600), false);
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    h.component.set_is_new(false);
+    let _ = render(&h);
+    let boxes = footer_buttons(&h, &["Move to Trash", "Cancel", "Save"], 1.0);
+    for (name, b) in &boxes {
+        assert!(
+            b.0 >= 0.0 && b.2 <= 420.0,
+            "{name} leaves the window: {b:?}"
+        );
+    }
+    for (i, (an, a)) in boxes.iter().enumerate() {
+        for (bn, b) in &boxes[i + 1..] {
+            let apart = a.2 <= b.0 || b.2 <= a.0 || a.3 <= b.1 || b.3 <= a.1;
+            assert!(apart, "{an} overlaps {bn}: {a:?} {b:?}");
+        }
+    }
+    assert!(
+        boxes[0].1.3 <= boxes[1].1.1,
+        "Trash is on its own row above Cancel"
+    );
+}
+
+#[test]
 fn item_editor_asks_before_discarding_and_scrolls_to_the_focus() {
     let h = item(ITEM, false);
     let _ = render(&h);
@@ -588,6 +667,16 @@ fn help_tips_light_and_dark() {
     fixture::tips(&h.component);
     h.component.set_tab(3);
     assert_golden("help-tips-dark", &render(&h));
+}
+
+/// The Tips tab on the Free plan: the cards of Supporter features carry the Supporter mark beside the title.
+#[test]
+fn help_tips_free_plan_marks_the_supporter_cards() {
+    let h = Harness::new(HelpWindow::new, HELP.0, HELP.1 * 2);
+    fixture::help(&h.component);
+    fixture::tips_on(&h.component, true);
+    h.component.set_tab(3);
+    assert_golden("help-tips-free-light", &render(&h));
 }
 
 /// The Tips tab at the Help window's smallest size: the cards keep their picture and button and the

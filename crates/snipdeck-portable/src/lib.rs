@@ -58,4 +58,4 @@ pub use importers::{
 };
 pub use limits::{Limits, TEXT_LIMIT};
 pub use plan::Library;
-pub use report::{ImportReport, MAX_WARNINGS, Warning};
+pub use report::{ImportReport, MAX_WARNINGS, Note, Warning};

@@ -123,6 +123,14 @@ pub enum ItemMenuEntry {
     },
     /// Move the item to the Trash, with an Undo toast.
     Trash,
+    /// Group the marked items (or this one) under a new header.
+    Group,
+    /// On a group header: rename it in place.
+    RenameGroup,
+    /// On a group header: remove the header, keep the items.
+    Ungroup,
+    /// On a group header: move the header and its items to the Trash.
+    DeleteGroup,
     /// A line between groups.
     Separator,
 }
@@ -282,6 +290,21 @@ where
     /// The rows of the item menu for `id`.
     pub(super) fn item_menu_entries(&self, id: ItemId) -> Vec<ItemMenuEntry> {
         let row = self.menu_row(id);
+        if row.as_ref().is_some_and(|r| r.header.is_some()) {
+            let at = self.model.rows().iter().position(|r| r.id == id);
+            return vec![
+                ItemMenuEntry::RenameGroup,
+                ItemMenuEntry::MoveUp {
+                    enabled: at.is_some_and(|at| self.can_move_group(at, -1)),
+                },
+                ItemMenuEntry::MoveDown {
+                    enabled: at.is_some_and(|at| self.can_move_group(at, 1)),
+                },
+                ItemMenuEntry::Ungroup,
+                ItemMenuEntry::Separator,
+                ItemMenuEntry::DeleteGroup,
+            ];
+        }
         let pinned = row.as_ref().is_some_and(|r| r.pinned);
         let mut entries = vec![ItemMenuEntry::Use, ItemMenuEntry::Copy];
         // Only text can be transformed.
@@ -313,6 +336,7 @@ where
             ItemMenuEntry::MoveDown {
                 enabled: self.can_move_item(id, 1),
             },
+            ItemMenuEntry::Group,
             ItemMenuEntry::Separator,
             ItemMenuEntry::Trash,
         ]);
@@ -375,11 +399,6 @@ where
             return Vec::new();
         };
         if entry == ItemMenuEntry::Separator
-            || entry
-                == (ItemMenuEntry::Sensitive {
-                    on: false,
-                    enabled: false,
-                })
             || matches!(entry, ItemMenuEntry::Sensitive { enabled: false, .. })
         {
             return Vec::new();
@@ -398,6 +417,11 @@ where
         }
         self.menu = PanelMenu::None;
         let targets = std::mem::take(&mut self.menu_targets);
+        let is_header = self
+            .model
+            .rows()
+            .iter()
+            .any(|r| r.id == id && r.header.is_some());
         match entry {
             ItemMenuEntry::Sensitive { .. } => {
                 self.toggle_item_sensitive(id);
@@ -424,16 +448,8 @@ where
                 self.toggle_stack_mark(id);
                 Vec::new()
             }
-            ItemMenuEntry::MoveUp { enabled } => {
-                if enabled {
-                    self.panel_move_item(id, -1);
-                }
-                Vec::new()
-            }
-            ItemMenuEntry::MoveDown { enabled } => {
-                if enabled {
-                    self.panel_move_item(id, 1);
-                }
+            ItemMenuEntry::MoveUp { .. } | ItemMenuEntry::MoveDown { .. } => {
+                self.choose_move(id, entry, is_header);
                 Vec::new()
             }
             ItemMenuEntry::Trash => {
@@ -441,10 +457,38 @@ where
                 self.model.clear_marks();
                 Vec::new()
             }
+            ItemMenuEntry::Group => {
+                if let Some(at) = self.model.rows().iter().position(|r| r.id == id) {
+                    self.group_marked(at);
+                }
+                Vec::new()
+            }
+            ItemMenuEntry::RenameGroup | ItemMenuEntry::Ungroup | ItemMenuEntry::DeleteGroup => {
+                self.choose_group_entry(id, entry);
+                Vec::new()
+            }
             ItemMenuEntry::MoveTo
             | ItemMenuEntry::Colour
             | ItemMenuEntry::PasteAs
             | ItemMenuEntry::Separator => Vec::new(),
+        }
+    }
+
+    /// The item menu's Move up / Move down on item or header `id`.
+    fn choose_move(&mut self, id: ItemId, entry: ItemMenuEntry, is_header: bool) {
+        let (ItemMenuEntry::MoveUp { enabled } | ItemMenuEntry::MoveDown { enabled }) = entry
+        else {
+            return;
+        };
+        let delta = if matches!(entry, ItemMenuEntry::MoveUp { .. }) {
+            -1
+        } else {
+            1
+        };
+        if is_header {
+            self.choose_group_entry(id, entry);
+        } else if enabled {
+            self.panel_move_item(id, delta);
         }
     }
 
@@ -590,6 +634,10 @@ where
 
     /// F2 on row `index`. The Panel has no inline title field, so this opens the same editor.
     pub fn rename_row(&mut self, index: usize) -> Vec<Effect> {
+        if let Some(run) = self.model.group_at(index) {
+            self.start_group_rename(run.group.id);
+            return Vec::new();
+        }
         self.edit_row(index)
     }
 

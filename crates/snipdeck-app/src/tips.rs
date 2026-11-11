@@ -4,6 +4,8 @@
 //! translated there; the pictures are crops of the golden renders under
 //! `crates/snipdeck-ui/ui/images/tips/` (`scripts/tips_images.py` regenerates them).
 
+use snipdeck_core::Feature;
+
 use crate::commands::Command;
 
 /// What a card's "Try it" does. Each maps to one [`Command`] the palette also offers.
@@ -64,6 +66,9 @@ pub struct Tip {
     pub image: &'static str,
     /// What "Try it" does.
     pub action: TipAction,
+    /// The Supporter feature the card is about, when the Free plan lacks it: the card is marked and "Try it" opens
+    /// the licence page instead of running into a wall.
+    pub feature: Option<Feature>,
 }
 
 /// The cards, in the order a new user meets the features (the order of `TipTexts`).
@@ -71,42 +76,62 @@ pub const TIPS: [Tip; 10] = [
     Tip {
         image: "01-open-panel.png",
         action: TipAction::ShowPanel,
+
+        feature: None,
     },
     Tip {
         image: "02-search.png",
         action: TipAction::Browse,
+
+        feature: None,
     },
     Tip {
         image: "03-pinned.png",
         action: TipAction::GoPinned,
+
+        feature: None,
     },
     Tip {
         image: "04-paste-next.png",
         action: TipAction::PasteNext,
+
+        feature: Some(Feature::PasteStack),
     },
     Tip {
         image: "05-templates.png",
         action: TipAction::NewItem,
+
+        feature: Some(Feature::PromptedFields),
     },
     Tip {
         image: "06-capture.png",
         action: TipAction::QuickCapture,
+
+        feature: None,
     },
     Tip {
         image: "07-symbols.png",
         action: TipAction::Symbols,
+
+        feature: None,
     },
     Tip {
         image: "08-commands.png",
         action: TipAction::Shortcuts,
+
+        feature: None,
     },
     Tip {
         image: "09-view.png",
         action: TipAction::ViewTile,
+
+        feature: None,
     },
     Tip {
         image: "10-sensitive.png",
         action: TipAction::Settings,
+
+        feature: Some(Feature::MasterPassword),
     },
 ];
 

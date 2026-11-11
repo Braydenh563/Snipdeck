@@ -248,7 +248,9 @@ component PasteRuleList inherits VerticalLayout {
 export component SettingsPage inherits Window {
     title: @tr("Settings");
     background: Theme.bg-app;
-    min-width: 420px;
+    // Grows with the text size: at 225% a row needs about 760 px or its title wraps one word per line.
+    out property <length> min-window-width: max(420px, 340px * SystemLook.text-scale);
+    min-width: root.min-window-width;
     min-height: 360px;
     preferred-width: root.wanted-width;
     preferred-height: root.wanted-height;
@@ -293,6 +295,8 @@ export component SettingsPage inherits Window {
     in-out property <bool> screenshot-keep-panel: false;
     in-out property <bool> dock-full-edge: false;
     in-out property <bool> recent-history: false;
+    in-out property <bool> expand-triggers: false;
+    in-out property <bool> suggest-triggers: false;
     // How many copies and how many days the history keeps (the description names them).
     in property <int> recent-max-entries: 200;
     in property <int> recent-max-days: 7;
@@ -353,6 +357,8 @@ export component SettingsPage inherits Window {
     in property <string> import-problem;
     // The Windows clipboard history is offered as an import source (Windows only).
     in property <bool> import-history-available: false;
+    // False off Windows: typed triggers need the Windows keyboard hook, so the Typing switches are off.
+    in property <bool> typing-available: false;
     in property <int> import-boards: 0;
     in property <int> import-lists: 0;
     in property <int> import-items: 0;
@@ -418,6 +424,8 @@ export component SettingsPage inherits Window {
     callback close-to-tray-toggled(on: bool);
     callback hello-unlock-toggled(on: bool);
     callback recent-history-toggled(on: bool);
+    callback expand-triggers-toggled(on: bool);
+    callback suggest-triggers-toggled(on: bool);
     callback recent-history-cleared();
     callback panel-in-taskbar-toggled(on: bool);
     callback panel-hide-on-blur-toggled(on: bool);
@@ -486,11 +494,13 @@ export component SettingsPage inherits Window {
     property <string> keys-4: @tr("Keep a Recent inbox of what you copy") + " " + @tr("Clear recent history") + " " + @tr("Clear the clipboard after copying a sensitive item") + " " + @tr("Master password");
     // Titles of section 5 (Programs), for the search. A test checks that every row title is in here.
     property <string> keys-5: @tr("Programs");
-    // Titles of section 6 (Backups and your data), for the search. A test checks that every row title is in here.
-    property <string> keys-6: @tr("Backups to keep") + " " + @tr("Export library") + " " + @tr("Import") + " " + @tr("Erase library") + " " + @tr("Also forget the encryption key");
-    // Titles of section 7 (Licence), for the search. A test checks that every row title is in here.
-    property <string> keys-7: @tr("Get Supporter");
-    property <string> keys-all: root.keys-0 + " " + root.keys-1 + " " + root.keys-2 + " " + root.keys-3 + " " + root.keys-4 + " " + root.keys-5 + " " + root.keys-6 + " " + root.keys-7;
+    // Titles of section 6 (Typing), for the search. A test checks that every row title is in here.
+    property <string> keys-6: @tr("Expand abbreviations as I type") + " " + @tr("Suggest snippets as I type");
+    // Titles of section 7 (Backups and your data), for the search. A test checks that every row title is in here.
+    property <string> keys-7: @tr("Backups to keep") + " " + @tr("Export library") + " " + @tr("Import") + " " + @tr("Erase library") + " " + @tr("Also forget the encryption key");
+    // Titles of section 8 (Licence), for the search. A test checks that every row title is in here.
+    property <string> keys-8: @tr("Get Supporter");
+    property <string> keys-all: root.keys-0 + " " + root.keys-1 + " " + root.keys-2 + " " + root.keys-3 + " " + root.keys-4 + " " + root.keys-5 + " " + root.keys-6 + " " + root.keys-7 + " " + root.keys-8;
 
     function reveal-field(y: length, h: length) {
         page.reveal(y - page.absolute-position.y, h);
@@ -589,7 +599,7 @@ export component SettingsPage inherits Window {
                         width: 240px * SystemLook.text-scale;
                         label: @tr("Jump to a section");
                         placeholder: @tr("Jump to a section");
-                        options: [@tr("Shortcuts"), @tr("Appearance"), @tr("Panel layout"), @tr("Opening the Panel"), @tr("Privacy"), @tr("Programs"), @tr("Backups and your data"), @tr("Licence")];
+                        options: [@tr("Shortcuts"), @tr("Appearance"), @tr("Panel layout"), @tr("Opening the Panel"), @tr("Privacy"), @tr("Programs"), @tr("Typing"), @tr("Backups and your data"), @tr("Licence")];
                         current: -1;
                         chosen(i) => { SettingsFilter.jump-target = i; SettingsFilter.jump-seq += 1; }
                         changed has-focus => {
@@ -1233,10 +1243,52 @@ export component SettingsPage inherits Window {
                 }
 
                 FormSection {
-                    title: @tr("Backups and your data");
+                    title: @tr("Typing");
                     index: 6;
                     gap: Space.s6;
                     search-text: root.keys-6;
+                    located(y) => { page.scroll-to(y - body.absolute-position.y); }
+                    if !root.typing-available: Text {
+                        text: @tr("Typing triggers work on Windows only.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                        accessible-role: AccessibleRole.text;
+                    }
+                    SettingRow {
+                        title: @tr("Expand abbreviations as I type");
+                        description: @tr("When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk. Nothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items.");
+                        Toggle {
+                            a11y-label: @tr("Expand abbreviations as I type");
+                            enabled: root.typing-available;
+                            checked <=> root.expand-triggers;
+                            toggled(on) => { root.expand-triggers-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Suggest snippets as I type");
+                        description: @tr("After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual.");
+                        Toggle {
+                            a11y-label: @tr("Suggest snippets as I type");
+                            enabled: root.typing-available;
+                            checked <=> root.suggest-triggers;
+                            toggled(on) => { root.suggest-triggers-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                }
+
+                FormSection {
+                    title: @tr("Backups and your data");
+                    index: 7;
+                    gap: Space.s6;
+                    search-text: root.keys-7;
                     located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     Text {
                         text: @tr("Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything.", root.backups-keep);
@@ -1633,9 +1685,9 @@ export component SettingsPage inherits Window {
 
                 FormSection {
                     title: @tr("Licence");
-                    index: 7;
+                    index: 8;
                     gap: Space.s6;
-                    search-text: root.keys-7;
+                    search-text: root.keys-8;
                     located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     SettingRow {
                         title: root.pro ? @tr("Snipdeck Supporter") : @tr("Free plan");

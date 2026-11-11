@@ -51,6 +51,7 @@ where
         }
         self.dock_resync();
         self.sync_recent_gate();
+        self.sync_typing(true);
     }
 
     /// The Main window was moved, resized, maximised or restored: remembers where it is, to
@@ -255,6 +256,9 @@ where
     /// order, as one history step. Like the Main window, only a list in manual order, with no
     /// search running, can be arranged.
     pub fn panel_drop_row(&mut self, from: usize, onto: usize) {
+        if self.group_drop(from, onto) {
+            return;
+        }
         let (Some(first), Some(target)) = (
             self.live_row(from).map(|r| r.id),
             self.live_row(onto).map(|r| r.id),
@@ -304,7 +308,7 @@ where
 
     /// A move was refused in the Panel: when the shown list sorts itself (and no search runs), a
     /// toast offers to switch it to manual order.
-    fn offer_manual_for_panel(&mut self) {
+    pub(super) fn offer_manual_for_panel(&mut self) {
         if self.model.searching() {
             return;
         }
@@ -320,6 +324,9 @@ where
     pub fn panel_move_selected(&mut self, delta: isize) {
         if let Some(id) = self.model.selected() {
             self.panel_move_item(id, delta);
+        } else if let Some(at) = self.model.selected_position() {
+            // A group header: the whole group moves.
+            self.group_move(at, delta);
         }
     }
 
@@ -524,6 +531,7 @@ where
     /// Reads the library again into the Panel (and tells the Main window to).
     pub(super) fn refresh_panel(&mut self) -> snipdeck_store::Result<()> {
         self.main.mark_stale();
+        self.sync_typing(false);
         #[cfg(test)]
         if FAIL_REFRESH.get() {
             return Err(snipdeck_store::Error::NotFound {

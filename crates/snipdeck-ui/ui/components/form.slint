@@ -18,6 +18,8 @@ export component FormField inherits VerticalLayout {
     in property <string> label;
     in property <string> helper;
     in property <string> error;
+    // A warning (not an error): icon plus warning colour, announced politely when it appears.
+    in property <string> warning;
 
     spacing: Space.s1;
     alignment: start;
@@ -39,6 +41,26 @@ export component FormField inherits VerticalLayout {
         font-size: Type.sm;
         wrap: word-wrap;
         accessible-role: none;
+    }
+    if root.warning != "": HorizontalLayout {
+        spacing: Space.s1;
+        alignment: start;
+        Icon {
+            source: Icons.warning;
+            tint: Theme.warning-fg;
+            y: (Type.line-sm - self.height) / 2;
+        }
+        Text {
+            horizontal-stretch: 1;
+            text: root.warning;
+            color: Theme.warning-fg;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            wrap: word-wrap;
+            accessible-role: AccessibleRole.text;
+            accessible-label: root.warning;
+            accessible-live-region: polite;
+        }
     }
     if root.error != "": FieldError { text: root.error; }
 }
@@ -416,6 +438,54 @@ export component SelectField inherits VerticalLayout {
             background: transparent;
         }
 
+
+        scope := FocusScope {
+            enabled: root.enabled;
+            focus-on-click: false;
+            key-pressed(event) => {
+                if (!root.open) {
+                    if (event.text == Key.DownArrow || event.text == Key.UpArrow || event.text == "\n" || event.text == " ") {
+                        root.toggle();
+                        return accept;
+                    }
+                    return reject;
+                }
+                if (event.text == Key.Escape) {
+                    root.open = false;
+                    return accept;
+                }
+                if (event.text == Key.DownArrow) {
+                    root.hl = min(root.options.length - 1, root.hl + 1);
+                    return accept;
+                }
+                if (event.text == Key.UpArrow) {
+                    root.hl = max(0, root.hl - 1);
+                    return accept;
+                }
+                if (event.text == Key.Home) {
+                    root.hl = 0;
+                    return accept;
+                }
+                if (event.text == Key.End) {
+                    root.hl = root.options.length - 1;
+                    return accept;
+                }
+                if (event.text == "\n" || event.text == " ") {
+                    root.pick(root.hl);
+                    return accept;
+                }
+                if (event.text == Key.Tab || event.text == Key.Backtab) {
+                    root.open = false;
+                }
+                return reject;
+            }
+            changed has-focus => {
+                if (!self.has-focus) {
+                    root.open = false;
+                }
+            }
+        }
+
         touch := TouchArea {
             enabled: root.enabled;
             clicked => { root.toggle(); }
@@ -443,53 +513,6 @@ export component SelectField inherits VerticalLayout {
                 count: root.options.length;
                 pointer-entered => { root.hl = i; }
                 activated => { root.pick(i); }
-            }
-        }
-    }
-
-    scope := FocusScope {
-        enabled: root.enabled;
-        focus-on-click: false;
-        key-pressed(event) => {
-            if (!root.open) {
-                if (event.text == Key.DownArrow || event.text == Key.UpArrow || event.text == "\n" || event.text == " ") {
-                    root.toggle();
-                    return accept;
-                }
-                return reject;
-            }
-            if (event.text == Key.Escape) {
-                root.open = false;
-                return accept;
-            }
-            if (event.text == Key.DownArrow) {
-                root.hl = min(root.options.length - 1, root.hl + 1);
-                return accept;
-            }
-            if (event.text == Key.UpArrow) {
-                root.hl = max(0, root.hl - 1);
-                return accept;
-            }
-            if (event.text == Key.Home) {
-                root.hl = 0;
-                return accept;
-            }
-            if (event.text == Key.End) {
-                root.hl = root.options.length - 1;
-                return accept;
-            }
-            if (event.text == "\n" || event.text == " ") {
-                root.pick(root.hl);
-                return accept;
-            }
-            if (event.text == Key.Tab || event.text == Key.Backtab) {
-                root.open = false;
-            }
-            return reject;
-        }
-        changed has-focus => {
-            if (!self.has-focus) {
-                root.open = false;
             }
         }
     }

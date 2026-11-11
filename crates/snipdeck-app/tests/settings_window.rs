@@ -486,6 +486,7 @@ fn the_programs_section_is_where_the_page_says_and_each_row_has_a_paste_key_drop
             "Opening the Panel",
             "Privacy",
             "Programs",
+            "Typing",
             "Backups and your data",
             "Licence",
         ];
@@ -1763,7 +1764,7 @@ fn a_file_that_cannot_be_imported_shows_a_problem_and_nothing_to_confirm() {
 /// Every warning the importers can raise, one of each variant. The `match` makes a new variant a
 /// compile error here until it is listed (and so given a sentence).
 fn every_warning() -> Vec<snipdeck_portable::Warning> {
-    use snipdeck_portable::Warning as W;
+    use snipdeck_portable::{Note as N, Warning as W};
     let name = || "Notes.txt".to_owned();
     let all = vec![
         W::NewerMinorVersion {
@@ -1792,7 +1793,10 @@ fn every_warning() -> Vec<snipdeck_portable::Warning> {
         W::Truncated {
             reason: "too many entries".into(),
         },
-        W::Note("Something else happened.".into()),
+        W::Note(N::TriggerTaken {
+            title: "Sig".into(),
+            trigger: ";sig".into(),
+        }),
     ];
     for w in &all {
         match w {
@@ -1814,6 +1818,184 @@ fn every_warning() -> Vec<snipdeck_portable::Warning> {
         }
     }
     all
+}
+
+/// Every importer note, one of each variant (the `match` makes a new one a compile error here).
+fn every_note() -> Vec<snipdeck_portable::Note> {
+    use snipdeck_portable::Note as N;
+    let s = |t: &str| t.to_owned();
+    let all = vec![
+        N::UnmappedVariables {
+            label: s("Alpha"),
+            tokens: s("{#x}"),
+        },
+        N::UnmappedEspansoVariables {
+            label: s("Alpha"),
+            tokens: s("{{x}}"),
+        },
+        N::VariablesDoNotFit { label: s("Alpha") },
+        N::TriggerOnlyOne {
+            label: s("Alpha"),
+            triggers: s("b, c"),
+        },
+        N::TriggerNeedsSeparator {
+            label: s("Alpha"),
+            triggers: s("b"),
+        },
+        N::TriggerBadShape {
+            label: s("Alpha"),
+            triggers: s("b c"),
+        },
+        N::DisabledFile { name: s("_x.yml") },
+        N::NotAMatch { what: s("Beta1") },
+        N::RegexTriggerOnly { what: s("Beta2") },
+        N::NoTrigger { what: s("Beta3") },
+        N::MarkupKept { what: s("Beta4") },
+        N::NoText { what: s("Beta5") },
+        N::DateFormat {
+            what: s("Beta6"),
+            format: s("%Q"),
+        },
+        N::FormField {
+            what: s("Beta7"),
+            name: s("f"),
+        },
+        N::ColumnsCut { file: s("a.csv") },
+        N::TriggerTaken {
+            title: s("Sig"),
+            trigger: s(";sig"),
+        },
+        N::TriggerOverlap {
+            title: s("Sig"),
+            trigger: s(";s"),
+            others: s(";sig"),
+        },
+        N::TitleCut {
+            count: 2,
+            title_chars: 200,
+            source_chars: 100,
+        },
+    ];
+    for n in &all {
+        match n {
+            N::UnmappedVariables { .. }
+            | N::UnmappedEspansoVariables { .. }
+            | N::VariablesDoNotFit { .. }
+            | N::TriggerOnlyOne { .. }
+            | N::TriggerNeedsSeparator { .. }
+            | N::TriggerBadShape { .. }
+            | N::DisabledFile { .. }
+            | N::NotAMatch { .. }
+            | N::RegexTriggerOnly { .. }
+            | N::NoTrigger { .. }
+            | N::MarkupKept { .. }
+            | N::NoText { .. }
+            | N::DateFormat { .. }
+            | N::FormField { .. }
+            | N::ColumnsCut { .. }
+            | N::TriggerTaken { .. }
+            | N::TriggerOverlap { .. }
+            | N::TitleCut { .. } => {}
+        }
+    }
+    all
+}
+
+/// The values a note shows, which every language must carry in its sentence.
+fn note_args(n: &snipdeck_portable::Note) -> Vec<String> {
+    use snipdeck_portable::Note as N;
+    let v = |xs: &[&str]| xs.iter().map(|x| (*x).to_owned()).collect();
+    match n {
+        N::UnmappedVariables { label, tokens } | N::UnmappedEspansoVariables { label, tokens } => {
+            v(&[label, tokens])
+        }
+        N::VariablesDoNotFit { label } => v(&[label]),
+        N::TriggerOnlyOne { label, triggers }
+        | N::TriggerNeedsSeparator { label, triggers }
+        | N::TriggerBadShape { label, triggers } => v(&[label, triggers]),
+        N::DisabledFile { name } => v(&[name]),
+        N::NotAMatch { what }
+        | N::RegexTriggerOnly { what }
+        | N::NoTrigger { what }
+        | N::MarkupKept { what }
+        | N::NoText { what } => v(&[what]),
+        N::DateFormat { what, format } => v(&[what, format]),
+        N::FormField { what, name } => v(&[what, name]),
+        N::ColumnsCut { file } => v(&[file]),
+        N::TriggerTaken { title, trigger } => v(&[title, trigger]),
+        N::TriggerOverlap {
+            title,
+            trigger,
+            others,
+        } => v(&[title, trigger, others]),
+        N::TitleCut {
+            count,
+            title_chars,
+            source_chars,
+        } => {
+            vec![
+                count.to_string(),
+                title_chars.to_string(),
+                source_chars.to_string(),
+            ]
+        }
+    }
+}
+
+const LOCALES: [&str; 6] = ["de", "es", "fr", "pt-BR", "ja", "zh-Hans"];
+
+#[test]
+fn every_importer_note_is_translated_and_keeps_its_values_in_every_language() {
+    on_ui_thread(|| {
+        let r = rig();
+        let text = |n: &snipdeck_portable::Note| {
+            snipdeck_app::wording::import_warning_text(
+                &r.ui,
+                &snipdeck_portable::Warning::Note(n.clone()),
+            )
+        };
+        let english: Vec<String> = every_note().iter().map(&text).collect();
+        for locale in LOCALES {
+            slint::select_bundled_translation(locale).expect("bundled");
+            for (n, en) in every_note().iter().zip(&english) {
+                let t = text(n);
+                assert!(
+                    !t.contains('`') && t.chars().count() > 5,
+                    "{locale} {n:?}: {t}"
+                );
+                assert_ne!(&t, en, "{locale}: {n:?} is not translated");
+                for arg in note_args(n) {
+                    assert!(t.contains(&arg), "{locale}: {n:?} lost {arg:?}: {t}");
+                }
+            }
+        }
+        slint::select_bundled_translation("").expect("back to the source language");
+    });
+}
+
+#[test]
+fn note_labels_are_translated_too() {
+    use snipdeck_portable::{Note as N, Warning as W};
+    on_ui_thread(|| {
+        let r = rig();
+        let text = |what: &str| {
+            let n = N::NoTrigger {
+                what: what.to_owned(),
+            };
+            snipdeck_app::wording::import_warning_text(&r.ui, &W::Note(n))
+        };
+        assert!(text("base.yml, match 3").contains("base.yml, match 3"));
+        assert!(text("Ditto clip 7").contains("Clip 7"));
+        slint::select_bundled_translation("de").expect("de is bundled");
+        let (matched, clip) = (text("base.yml, match 3"), text("Ditto clip 7"));
+        slint::select_bundled_translation("").expect("back to the source language");
+        assert!(matched.contains("base.yml, Eintrag 3"), "{matched}");
+        assert!(
+            !matched.contains("match") && !clip.contains("Ditto clip"),
+            "{matched} {clip}"
+        );
+        assert!(clip.contains("Clip 7") || clip.contains('7'), "{clip}");
+    });
 }
 
 #[test]
@@ -3170,5 +3352,32 @@ fn the_hello_row_appears_with_a_password_and_a_ready_hello_and_the_switch_seals(
         }
         r.binding.redraw();
         assert!(!r.ui.get_hello_offered());
+    });
+}
+
+#[test]
+fn the_typing_toggles_are_off_by_default_and_change_the_settings() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(!r.ui.get_expand_triggers() && !r.ui.get_suggest_triggers());
+        assert!(!r.ctl.borrow().settings().expand_triggers);
+        element(
+            &r.ui,
+            "Expand abbreviations as I type",
+            AccessibleRole::Switch,
+        );
+        r.ui.invoke_expand_triggers_toggled(true);
+        assert!(r.ctl.borrow().settings().expand_triggers);
+        r.ui.invoke_suggest_triggers_toggled(true);
+        assert!(r.ctl.borrow().settings().suggest_triggers);
+    });
+}
+
+#[test]
+fn the_typing_section_says_it_works_on_windows_only_where_it_does_not() {
+    on_ui_thread(|| {
+        // The fake host stands in for a machine without the Windows keyboard hook.
+        let r = rig();
+        assert!(!r.ui.get_typing_available());
     });
 }

@@ -415,32 +415,165 @@
       "expect": "The item gets a Formatted mark. WordPad shows the bold word and the red word; Notepad shows the plain line. Editing only the title in the editor and saving keeps the formatting."
     },
     {
+      "id": "54",
+      "v1": false,
+      "title": "Panel: groups inside a list (v1.1 slice 3b)",
+      "do": "Set a list to Manual sort. In the Panel mark three rows with Space, press Ctrl+G, type a name and press Enter. Press Left on the group header, then Right. Click the header. Press F2 on it and rename it. Drag the header to another place. Right-click the header and choose Ungroup. Group again, choose Delete group, then press Ctrl+Z. Type a word from a grouped item in the search box while the group is collapsed. With Narrator on, move to a header with the arrow keys.",
+      "expect": "The marked rows gather under a header showing the name, the item count and a chevron. Left collapses, Right expands, a click toggles; the focus ring shows on the header and Tab/arrows reach it. Rename edits in place. Dragging the header moves the whole group. Ungroup keeps the items. Delete group moves the group and its items to Trash in one step and Ctrl+Z brings the header and items back. Search lists matches even inside a collapsed group. Quick numbers count item rows only, never headers. Narrator reads a header as 'group, N items, collapsed' (or expanded). Write anything that looks wrong in the note (n)."
+    },
+    {
+      "id": "55",
+      "v1": false,
+      "title": "Typed trigger expands (v1.1 slice 5b)",
+      "do": "Settings > Typing: turn on \"Expand abbreviations as I type\". Give a snippet the trigger ;sig in its editor (Trigger field). In Notepad, Word, Chrome (a text box) and Windows Terminal type ;sig.",
+      "expect": "In each app the four characters are replaced by the snippet text (Terminal pastes with its own key). The clipboard has its old content back afterwards and the use count goes up by one."
+    },
+    {
+      "id": "56",
+      "v1": false,
+      "title": "Dead keys still compose with the hook on (v1.1 slice 5b)",
+      "do": "With a German keyboard layout and the setting on, in Notepad press the ^ key and then e.",
+      "expect": "ê appears, exactly as with the setting off. Also try ' then a on a US-International layout (á)."
+    },
+    {
+      "id": "57",
+      "v1": false,
+      "title": "No expansion in a password box (v1.1 slice 5b)",
+      "do": "With the setting on, open a sign-in page in Edge and type ;sig into the password box.",
+      "expect": "The text ;sig stays as typed; nothing is expanded or pasted. In the user-name box on the same page it does expand."
+    },
+    {
+      "id": "58",
+      "v1": false,
+      "title": "No expansion in a never-paste app (v1.1 slice 5b)",
+      "do": "In Settings > Programs set Notepad to never paste. With the setting on, type ;sig in Notepad.",
+      "expect": "The text ;sig stays as typed and nothing is pasted."
+    },
+    {
+      "id": "59",
+      "v1": false,
+      "title": "No expansion in an elevated window (v1.1 slice 5b)",
+      "do": "With the setting on, open an elevated (Run as administrator) Notepad and type ;sig.",
+      "expect": "The text ;sig stays as typed and nothing is pasted."
+    },
+    {
+      "id": "60",
+      "v1": false,
+      "title": "The hook is quiet (v1.1 slice 5b)",
+      "do": "With the setting on, type fast for a minute in Notepad and watch Windows Security (Defender) and Task Manager. Turn the setting off and check the hook is gone (type ;sig: no expansion).",
+      "expect": "Defender raises no warning, typing feels no slower, and Snipdeck's CPU stays near zero. With the setting off no expansion happens."
+    },
+    {
+      "id": "61",
+      "v1": false,
+      "title": "Suggestion hint at the caret (v1.1 slice 6)",
+      "do": "Turn on Settings > Typing > Suggest snippets as I type. Make an item with the trigger ;signature. In Notepad and then Word type ;s and look beside the caret. Type a letter that is not part of the trigger. Type ;s again, then click into the other app window and back.",
+      "expect": "After two characters a small hint appears under the caret with the item title and a Tab key chip. It never takes focus: the caret keeps blinking in the app and typing carries on. A letter that does not continue the code, or moving to another window, makes it go away. Near the bottom of the screen it flips above the caret. Note any app where it appears in the wrong place (n)."
+    },
+    {
+      "id": "62",
+      "v1": false,
+      "title": "Tab without a hint still moves focus (v1.1 slice 6)",
+      "do": "With the setting on, open a web page with a form in Edge and press Tab between fields without typing a trigger. Then type ;s in Notepad and press Tab while the hint shows.",
+      "expect": "Tab moves between the form fields as usual when no hint is showing. With the hint showing, Tab removes the typed ;s and inserts the item, and no tab character is typed."
+    },
+    {
       "id": "63",
       "v1": false,
-      "title": "Windows Hello: turn it on with a PIN (v1.1 slice 8)",
-      "do": "On a PC where Windows Hello has a PIN, face or fingerprint set up, and with a Supporter licence and a master password set, open Settings > Security. Look for Unlock with Windows Hello, turn it on and complete the Windows Hello prompts (turning it on asks twice, to check Hello is repeatable; later it asks once).",
-      "expect": "The switch Unlock with Windows Hello is shown only because a master password is set and Hello is ready. Turning it on shows the Windows Hello prompt and the switch stays on. Without a master password, or on the Free plan, the row is not shown. Write anything that looks wrong in the note (n)."
+      "title": "Tab is not swallowed after a quick type-and-leave (typing fixes)",
+      "do": "Suggest on. In Notepad type ;s (hint shows) then quickly type a letter that is not in the trigger, then press Tab.",
+      "expect": "The hint goes away and Tab inserts a tab character as usual; it never does nothing."
     },
     {
       "id": "64",
       "v1": false,
-      "title": "Windows Hello: lock, then unlock by face or fingerprint (v1.1 slice 8)",
-      "do": "With Windows Hello unlock on, lock the library (wait for the idle lock or lock it from the tray), then try to use a sensitive item so the unlock window opens. Press Unlock with Windows Hello and use your face or fingerprint. Then lock again, press the button and cancel the Windows Hello prompt. Finally restart Snipdeck and open the unlock window again.",
-      "expect": "Face or fingerprint unlocks the library and the window closes. Cancelling leaves the window open with the message that Windows Hello did not unlock and to use the master password, the Hello button is gone, and typing the master password still unlocks. After a restart the Hello button is not shown until the password has been typed once; after typing it Windows Hello asks once to set itself up again."
+      "title": "Hint goes away on a mouse click inside the same window",
+      "do": "Type ;s so the hint shows, then click elsewhere in the same Notepad text, then press Tab.",
+      "expect": "The hint disappears at the click and Tab acts as a normal tab. Needs the mouse hook; if the hint stays until you type, report it."
     },
     {
       "id": "65",
       "v1": false,
-      "title": "Windows Hello: the prompt is in front of Snipdeck (v1.1 slice 8)",
-      "do": "Press Unlock with Windows Hello in the unlock window and look at where the Windows Hello prompt appears.",
-      "expect": "The Windows Hello prompt is in front of the Snipdeck window and takes the keyboard, not hidden behind it. Write what you saw in the note (n); this was not tested before."
+      "title": "Hint times out when idle",
+      "do": "Type ;s and leave the keyboard and mouse alone for about 6 seconds, then press Tab.",
+      "expect": "The hint disappears after roughly 5 seconds and Tab acts as a normal tab."
     },
     {
       "id": "66",
       "v1": false,
-      "title": "Windows Hello: a PC without Hello hides the option (v1.1 slice 8)",
-      "do": "On a PC (or a user account) with no Windows Hello PIN, face or fingerprint set up, with a master password set, open Settings > Security and open the unlock window.",
-      "expect": "The Unlock with Windows Hello row is not shown in Settings and the unlock window shows only the master password field. Nothing else changes."
+      "title": "A swallowed Tab is given back",
+      "do": "Type ;s, then switch to another app with Alt+Tab at once and press Tab in it. The Tab is sent from the typing thread (SendInput) when the hint went away between the key press and its handling.",
+      "expect": "The other app receives exactly one Tab; no tab is lost or doubled."
+    },
+    {
+      "id": "67",
+      "v1": false,
+      "title": "Tab ignored when focus moved to a different window or a password box",
+      "do": "Type ;s in Notepad, click into a password field in a browser (or another window), press Tab.",
+      "expect": "No expansion happens in the other window; Tab behaves normally there."
+    },
+    {
+      "id": "68",
+      "v1": false,
+      "title": "Screen reader announces the suggest hint (live region)",
+      "do": "Turn on Narrator (Win+Ctrl+Enter). In Notepad type the start of a trigger so the hint shows, e.g. ;s.",
+      "expect": "Narrator reads the hint (the item title and 'press Tab to insert') without the focus leaving Notepad. If it stays silent, note it: the hint window is non-activating and the announcement relies on its live region."
+    },
+    {
+      "id": "69",
+      "v1": false,
+      "title": "One-character trigger warning is styled and announced",
+      "do": "With Narrator on, open an item's editor and type ; in the Trigger field.",
+      "expect": "A warning line with the warning icon and the warning colour appears under the field (same height rhythm as other field notes) and Narrator reads it politely. Choosing Sensitive replaces the field with one line saying Sensitive items have no trigger."
+    },
+    {
+      "id": "70",
+      "v1": false,
+      "title": "Windows Hello: switch it on (two prompts)",
+      "do": "On a PC where Windows Hello has a PIN, face or fingerprint set up, with a Supporter licence and a master password set, open Settings > Security and turn on Unlock with Windows Hello. Answer the Windows Hello prompts. Then repeat, but cancel the first prompt.",
+      "expect": "Turning it on asks twice (the second checks that Hello answers the same way) and the switch stays on. If you cancel, the switch goes back off and a message says Windows Hello was not turned on; nothing says to look in Settings. Without a master password or on the Free plan the row is not shown. Write anything odd in the note (n)."
+    },
+    {
+      "id": "71",
+      "v1": false,
+      "title": "Windows Hello: lock, then unlock by face or fingerprint",
+      "do": "With Hello on, lock the library (idle lock or from the tray) and use a sensitive item so the unlock window opens. Press Unlock with Windows Hello and use your face or fingerprint. Then restart Snipdeck and open the unlock window again.",
+      "expect": "Hello unlocks and the window closes. After a restart the Hello button is not shown until the password has been typed once; after typing it Hello asks once to set itself up again. The Hello button sits on its own row above Cancel and Unlock."
+    },
+    {
+      "id": "72",
+      "v1": false,
+      "title": "Windows Hello: cancel, then retry",
+      "do": "Lock the library, open the unlock window, press Unlock with Windows Hello and cancel the Windows prompt. Press the button again and unlock. Then cancel again and type the master password instead.",
+      "expect": "After a cancel the window says Windows Hello was cancelled and to use the master password; the Hello button stays so you can try again. The retry unlocks. The master password always works."
+    },
+    {
+      "id": "73",
+      "v1": false,
+      "title": "Windows Hello: the prompt is in front of Snipdeck",
+      "do": "Press Unlock with Windows Hello and look at where the Windows Hello prompt appears.",
+      "expect": "The prompt is in front of the Snipdeck window and takes the keyboard, not hidden behind it. Write what you saw in the note (n)."
+    },
+    {
+      "id": "74",
+      "v1": false,
+      "title": "Windows Hello: a PC without Hello hides the option",
+      "do": "On a PC or user account with no Windows Hello set up, with a master password set, open Settings > Security and the unlock window.",
+      "expect": "The Unlock with Windows Hello row is not shown in Settings and the unlock window shows only the master password field."
+    },
+    {
+      "id": "75",
+      "v1": false,
+      "title": "Windows Hello: turn it off",
+      "do": "With Hello on, turn off Unlock with Windows Hello in Settings > Security, lock the library and open the unlock window.",
+      "expect": "The unlock window shows only the master password field. Turning it on again asks two prompts."
+    },
+    {
+      "id": "76",
+      "v1": false,
+      "title": "Windows Hello: change the password while Hello is on",
+      "do": "With Hello on, change the master password in Settings > Security. Lock, open the unlock window.",
+      "expect": "Either Hello still unlocks (the copy was sealed again) or the button is gone and the password is asked once and Hello sets itself up again; it never unlocks with the old password's data key wrongly, and the master password always works. Write which you saw in the note (n)."
     }
   ]
 }

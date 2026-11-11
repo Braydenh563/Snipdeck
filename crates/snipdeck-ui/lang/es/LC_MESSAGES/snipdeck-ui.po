@@ -61,6 +61,9 @@ msgstr "Una contraseña maestra bloquea todo el mazo."
 msgid "A new random ID each time"
 msgstr "Un ID aleatorio nuevo cada vez"
 
+msgid "A one-character trigger fires every time you type it, even inside words. Two or more characters are safer."
+msgstr "Un atajo de un solo carácter se activa cada vez que lo escribes, incluso dentro de las palabras. Dos o más caracteres son más seguros."
+
 msgid "A small window you can drag anywhere."
 msgstr "Una ventana pequeña que puedes arrastrar a cualquier lugar."
 
@@ -81,6 +84,9 @@ msgstr "Un título puede tener como máximo {} caracteres."
 
 msgid "A title can't contain line breaks or control characters."
 msgstr "Un título no puede contener saltos de línea ni caracteres de control."
+
+msgid "A trigger is 1 to 32 characters with no spaces."
+msgstr "Un atajo tiene de 1 a 32 caracteres sin espacios."
 
 msgid "About"
 msgstr "Acerca de"
@@ -145,6 +151,9 @@ msgstr "Añade un fragmento de texto a {}"
 msgid "After a paste or copy"
 msgstr "Después de pegar o copiar"
 
+msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual."
+msgstr "Al escribir el comienzo de un atajo, una pequeña sugerencia junto al cursor de texto ofrece el fragmento. Pulsa Tab para insertarlo; cualquier otra tecla continúa con normalidad."
+
 msgid "All"
 msgstr "Todos"
 
@@ -197,6 +206,9 @@ msgstr "Animales y naturaleza"
 
 msgid "Another program already uses {}."
 msgstr "Otro programa ya usa {}."
+
+msgid "Another snippet already uses this trigger."
+msgstr "Otro fragmento ya usa este atajo."
 
 msgid "Anywhere in Windows"
 msgstr "En cualquier parte de Windows"
@@ -741,6 +753,9 @@ msgstr "¿Eliminar definitivamente?"
 msgid "Delete for good…"
 msgstr "Eliminar definitivamente…"
 
+msgid "Delete group"
+msgstr "Eliminar grupo"
+
 msgid "Delete list"
 msgstr "Eliminar lista"
 
@@ -957,6 +972,9 @@ msgstr "Todo lo de la papelera se eliminará definitivamente. No se puede deshac
 msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
 msgstr "Se borra todo lo de tu biblioteca: tableros, listas, fragmentos, imágenes, borradores y copias de seguridad. Exporta antes si quieres una copia. Tus ajustes y tu licencia se conservan."
 
+msgid "Expand abbreviations as I type"
+msgstr "Expandir abreviaturas al escribir"
+
 msgid "Expand sidebar (Ctrl+B)"
 msgstr "Expandir la barra lateral (Ctrl+B)"
 
@@ -1026,6 +1044,9 @@ msgstr "Sigue el tema de Windows según la configuración del sistema."
 msgid "Food & Drink"
 msgstr "Comida y bebida"
 
+msgid "For example ;sig"
+msgstr "Por ejemplo ;sig"
+
 msgid "For example, Email replies"
 msgstr "Por ejemplo, Respuestas de correo"
 
@@ -1088,6 +1109,15 @@ msgstr "Verde"
 
 msgid "Greet"
 msgstr "Saludo"
+
+msgid "Group"
+msgstr "Grupo"
+
+msgid "Group name"
+msgstr "Nombre del grupo"
+
+msgid "Group..."
+msgstr "Agrupar..."
 
 msgid "Handy for forms you fill field by field."
 msgstr "Útil para formularios que rellenas campo a campo."
@@ -2071,9 +2101,6 @@ msgstr "Historial reciente borrado"
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "Recientes guarda el texto que copias, solo en este equipo, durante las últimas {} copias o {} días, lo que ocurra primero. Las contraseñas de los gestores de contraseñas y los fragmentos sensibles nunca se guardan. Puedes cambiarlo cuando quieras en Configuración."
 
-msgid "Recent shows what you used and captured lately."
-msgstr "Recientes muestra lo que usaste y capturaste últimamente."
-
 msgid "Recently used"
 msgstr "Usados recientemente"
 
@@ -2127,6 +2154,9 @@ msgstr "Quitar…"
 
 msgid "Rename board…"
 msgstr "Renombrar tablero…"
+
+msgid "Rename group"
+msgstr "Renombrar grupo"
 
 msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
 msgstr "Cambia el nombre o elimina etiquetas. Al eliminar una etiqueta, se quita de sus fragmentos; los fragmentos se conservan."
@@ -2227,6 +2257,12 @@ msgstr "Guardado {}"
 
 msgid "Saved {}."
 msgstr "{} guardado."
+
+msgid "Saved. This code overlaps another trigger, so one of them may never fire."
+msgstr "Guardado. Este código se solapa con otro disparador, así que puede que uno de los dos nunca se active."
+
+msgid "Saved. This code overlaps the trigger of “{}”, so one of them may never fire."
+msgstr "Guardado. Este código se solapa con el atajo de «{}», así que puede que uno de los dos nunca se active."
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "Guarda todos los tableros, listas y fragmentos en un archivo .snipdeck dentro de la carpeta que elijas."
@@ -2332,6 +2368,9 @@ msgstr "Fragmento sensible"
 
 msgid "Sensitive items are encrypted on disk, on every plan."
 msgstr "Los fragmentos sensibles se cifran en disco, en todos los planes."
+
+msgid "Sensitive items can't be typed in, so they have no trigger."
+msgstr "Los elementos confidenciales no se pueden escribir, así que no tienen atajo."
 
 msgid "Sensitive items, masked"
 msgstr "Fragmentos sensibles, ocultos"
@@ -2575,6 +2614,9 @@ msgstr "Seguridad: fuerte"
 
 msgid "Strength: weak"
 msgstr "Seguridad: débil"
+
+msgid "Suggest snippets as I type"
+msgstr "Sugerir fragmentos al escribir"
 
 msgid "Supporter"
 msgstr "Colaborador"
@@ -2918,6 +2960,9 @@ msgstr "Viajes y lugares"
 msgid "Tray icon click opens"
 msgstr "Al hacer clic en el icono de la bandeja se abre"
 
+msgid "Trigger"
+msgstr "Atajo"
+
 msgid "Trimmed"
 msgstr "Sin espacios en los extremos"
 
@@ -2945,8 +2990,17 @@ msgstr "Desactiva los deslizamientos y desvanecimientos en Snipdeck. También se
 msgid "Type a command"
 msgstr "Escribe un comando"
 
+msgid "Type this in any app to insert the snippet. Turn it on in Settings, under Typing."
+msgstr "Escríbelo en cualquier aplicación para insertar el fragmento. Actívalo en Ajustes, en Escritura."
+
 msgid "Type {} to confirm"
 msgstr "Escribe {} para confirmar"
+
+msgid "Typing"
+msgstr "Escritura"
+
+msgid "Typing triggers work on Windows only."
+msgstr "Los atajos al escribir solo funcionan en Windows."
 
 msgid "UPPERCASE"
 msgstr "MAYÚSCULAS"
@@ -2968,6 +3022,9 @@ msgstr "Deshacer {} (Ctrl+Z)"
 
 msgid "Undock the panel"
 msgstr "Desacoplar el panel"
+
+msgid "Ungroup"
+msgstr "Desagrupar"
 
 msgid "Unlock"
 msgstr "Desbloquear"
@@ -3083,6 +3140,9 @@ msgstr "Al iniciar Windows"
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "Con la chincheta desactivada, el panel se oculta en cuanto cambias a otra aplicación. Un panel fijado se queda."
 
+msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk. Nothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
+msgstr "Cuando escribes el atajo de un fragmento en otro programa, Snipdeck lo sustituye por el fragmento. Para ello Snipdeck observa las teclas que pulsas y guarda solo los últimos caracteres en memoria, nunca en disco. No se expande nada en cuadros de contraseña, en programas configurados como «Nunca pegar» ni en elementos confidenciales."
+
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "Dónde aparece el panel cuando lo muestra un atajo o la bandeja. En el cursor de texto recurre al ratón cuando la aplicación no tiene cursor."
 
@@ -3149,8 +3209,11 @@ msgstr "Windows no permite {} como atajo."
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows sigue el tamaño de texto de Windows (Configuración > Accesibilidad > Tamaño del texto). Elige un tamaño para usar ese en su lugar."
 
-msgid "YYYY-MM-DD"
-msgstr "AAAA-MM-DD"
+msgid "With clipboard history on, Recent keeps what you copy in other programs."
+msgstr "Con el historial del portapapeles activado, Recientes guarda lo que copias en otros programas."
+
+msgid "YYYY-MM-DD, empty for today"
+msgstr "YYYY-MM-DD, vacío para hoy"
 
 msgid "Yes"
 msgstr "Sí"
@@ -3268,6 +3331,14 @@ msgstr "favoritos mostrar"
 msgid "find filter look"
 msgstr "buscar filtrar encontrar"
 
+msgid "group change"
+msgstr "cambio de grupo"
+
+msgid "group {}, {} item"
+msgid_plural "group {}, {} items"
+msgstr[0] "grupo {}, {} elemento"
+msgstr[1] "grupo {}, {} elementos"
+
 msgid "help docs manual how"
 msgstr "ayuda documentación manual cómo"
 
@@ -3345,6 +3416,9 @@ msgstr "cambio de etiqueta"
 
 msgid "tag: {}"
 msgstr "etiqueta: {}"
+
+msgid "to insert"
+msgstr "para insertar"
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "tutorial introducción inicio básico aprender"
@@ -3444,11 +3518,24 @@ msgstr "{} está vacío y se omitió."
 msgid "{} is not valid UTF-8, so characters that could not be read were replaced."
 msgstr "{} no es UTF-8 válido, así que los caracteres que no se pudieron leer se sustituyeron."
 
+msgid "{} is turned off in Espanso (its name starts with an underscore) and was skipped."
+msgstr "{} está desactivado en Espanso (su nombre empieza por un guion bajo) y se omitió."
+
 msgid "{} is used by another app. Choose another in Settings."
 msgstr "{} lo usa otra aplicación. Elige otro en Configuración."
 
 msgid "{} is {}, over the 5 MB limit for text, and was skipped."
 msgstr "{} ocupa {}, más del límite de 5 MB para texto, y se omitió."
+
+msgid "{} item"
+msgid_plural "{} items"
+msgstr[0] "{} elemento"
+msgstr[1] "{} elementos"
+
+msgid "{} item had a title or source app longer than {} or {} characters, and it was cut."
+msgid_plural "{} items had a title or source app longer than {} or {} characters, and it was cut."
+msgstr[0] "{} elemento tenía un título o una aplicación de origen de más de {} o {} caracteres, y se recortó."
+msgstr[1] "{} elementos tenían un título o una aplicación de origen de más de {} o {} caracteres, y se recortaron."
 
 msgid "{} item in {} list will be added"
 msgid_plural "{} items in {} lists will be added"
@@ -3502,11 +3589,65 @@ msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "Falta {} elemento sensible en la copia de seguridad."
 msgstr[1] "Faltan {} elementos sensibles en la copia de seguridad."
 
+msgid "{} — press Tab to insert"
+msgstr "{}: pulsa Tab para insertar"
+
+msgid "{}, match {}"
+msgstr "{}, coincidencia {}"
+
 msgid "{}, {} of {}"
 msgstr "{}, {} de {}"
 
 msgid "{}.{} MB"
 msgstr "{},{} MB"
 
+msgid "{}: Snipdeck does not know the date format {}, so it was left as written."
+msgstr "{}: Snipdeck no conoce el formato de fecha {}, así que se dejó tal cual."
+
+msgid "{}: it has no text (a picture or other content) and was skipped."
+msgstr "{}: no tiene texto (una imagen u otro contenido) y se omitió."
+
+msgid "{}: it has no trigger and was skipped."
+msgstr "{}: no tiene activador y se omitió."
+
+msgid "{}: its Markdown or HTML text is kept as written."
+msgstr "{}: su texto Markdown o HTML se conserva tal cual."
+
+msgid "{}: its only trigger is a regular expression, which Snipdeck cannot use, so it was skipped."
+msgstr "{}: su único activador es una expresión regular, que Snipdeck no puede usar, así que se omitió."
+
+msgid "{}: its variables cannot be one Snipdeck template together (for example two cursor marks), so it was kept as plain text."
+msgstr "{}: sus variables no caben juntas en una plantilla de Snipdeck (por ejemplo, dos marcas de cursor), así que se conservó como texto sin formato."
+
+msgid "{}: some rows have more than 256 columns, and the extra columns were ignored."
+msgstr "{}: algunas filas tienen más de 256 columnas y se ignoraron las columnas sobrantes."
+
+msgid "{}: the form field {} has no Snipdeck equivalent and was left as written."
+msgstr "{}: el campo de formulario {} no tiene equivalente en Snipdeck y se dejó tal cual."
+
+msgid "{}: the trigger {} and {} start alike, so the shorter one fires first."
+msgstr "{}: el activador {} y {} empiezan igual, así que se activa primero el más corto."
+
+msgid "{}: the trigger {} is already used by another snippet, so it was imported without it."
+msgstr "{}: el activador {} ya lo usa otro fragmento, así que se importó sin él."
+
+msgid "{}: this entry is not a match and was skipped."
+msgstr "{}: esta entrada no es una coincidencia (match) y se omitió."
+
 msgid "{}: {}"
 msgstr "{}: {}"
+
+msgid "{}: {} (a shell, script or random variable, or one Snipdeck does not know) has no Snipdeck equivalent and was left as written."
+msgstr "{}: {} (una variable de shell, de script o aleatoria, o una que Snipdeck no conoce) no tiene equivalente en Snipdeck y se dejó tal cual."
+
+msgid "{}: {} has no Snipdeck equivalent and was left as written."
+msgstr "{}: {} no tiene equivalente en Snipdeck y se dejó tal cual."
+
+msgid "{}: {} was not kept as a trigger, because a snippet has one trigger."
+msgstr "{}: {} no se conservó como activador porque un fragmento solo tiene un activador."
+
+msgid "{}: {} was not kept as a trigger, because a trigger has no spaces and at most 32 characters."
+msgstr "{}: {} no se conservó como activador porque un activador no lleva espacios y tiene como máximo 32 caracteres."
+
+msgid "{}: {} was not kept as a trigger, because it fires after a separator and a Snipdeck trigger does not wait for one."
+msgstr "{}: {} no se conservó como activador porque se activa tras un separador y un activador de Snipdeck no espera uno."

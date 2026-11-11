@@ -56,6 +56,8 @@ pub enum Effect {
     PlaceWindow(Rect),
     /// Show the window that asks for the master password (a locked sensitive item was needed).
     OpenUnlock,
+    /// Open Settings at the Licence section (Get Supporter), from a Supporter feature that is off.
+    OpenLicence,
 }
 
 /// How far a toast is through its life (the Slint `ToastPhase`).
@@ -142,6 +144,16 @@ pub struct FillSubmission {
     pub(super) mode: UseMode,
     pub(super) answers: BTreeMap<String, String>,
     pub(super) transform: Option<snipdeck_core::template::transform::Transform>,
+    /// A typed trigger to erase with the paste, once the form is confirmed.
+    pub(super) erase: Option<FillErase>,
+}
+
+/// A typed trigger waiting for its fill form: how many characters to erase, and the app they were
+/// typed into (the paste only goes there).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct FillErase {
+    pub(super) chars: usize,
+    pub(super) app: Option<String>,
 }
 
 /// How a use ended.
@@ -153,6 +165,9 @@ pub enum UseResult {
     NeedsAnswers,
     /// It did not happen; a toast says why.
     Failed,
+    /// It was called off before any key went out (the user typed on, or changed window): nothing
+    /// was sent or counted, and no toast.
+    Cancelled,
 }
 
 /// Everything the Panel window shows, as plain data.
@@ -237,6 +252,10 @@ pub struct View {
     pub focus_row: Option<usize>,
     /// See `focus_row`.
     pub focus_seq: u64,
+    /// The header row to open for rename (a group just made).
+    pub rename_row: Option<usize>,
+    /// See `rename_row`.
+    pub rename_seq: u64,
     /// The header's Select mode is on (rows show a checkbox).
     pub select_mode: bool,
     /// The header's Delete mode is on (rows show a delete button).

@@ -470,6 +470,48 @@ impl TargetTracker {
     }
 }
 
+/// Whether the focused element is a password box, asked from a thread that is not the UI thread.
+///
+/// A [`TargetTracker`] belongs to the UI thread, and the answer can take 500 ms, so typed-trigger
+/// expansion builds one of these on its own worker thread (COM is initialised there). Create it
+/// and call it on that one thread; the type is not `Send`.
+pub struct PasswordProbe {
+    // Dropped before `_com`: the interfaces must go before COM does.
+    uia: Option<Uia>,
+    _com: ComGuard,
+}
+
+impl Default for PasswordProbe {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PasswordProbe {
+    /// Initialises COM on the current thread and creates the UI Automation objects.
+    #[must_use]
+    pub fn new() -> Self {
+        let com = ComGuard::init();
+        Self {
+            uia: Uia::create(),
+            _com: com,
+        }
+    }
+
+    /// `true` for a password box, and also when the answer cannot be had (no UI Automation, no
+    /// focused element, an element of this process, a timeout): expansion errs on the safe side.
+    #[must_use]
+    pub fn focus_is_password(&self) -> bool {
+        let Some(uia) = &self.uia else {
+            return true;
+        };
+        // SAFETY: no arguments, no preconditions.
+        let own_pid = unsafe { GetCurrentProcessId() };
+        uia.focused_element(own_pid)
+            .is_none_or(|facts| facts.password)
+    }
+}
+
 impl Drop for TargetTracker {
     fn drop(&mut self) {
         if !self.hook.is_invalid() {

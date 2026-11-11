@@ -61,6 +61,9 @@ msgstr "マスターパスワードでデッキ全体をロックできます。
 msgid "A new random ID each time"
 msgstr "毎回新しいランダムなID"
 
+msgid "A one-character trigger fires every time you type it, even inside words. Two or more characters are safer."
+msgstr "1文字のトリガーは、単語の途中でも入力するたびに実行されます。2文字以上のほうが安全です。"
+
 msgid "A small window you can drag anywhere."
 msgstr "好きな場所にドラッグできる小さなウィンドウです。"
 
@@ -81,6 +84,9 @@ msgstr "タイトルは最大 {} 文字までです。"
 
 msgid "A title can't contain line breaks or control characters."
 msgstr "タイトルに改行や制御文字を含めることはできません。"
+
+msgid "A trigger is 1 to 32 characters with no spaces."
+msgstr "トリガーは空白を含まない1～32文字です。"
 
 msgid "About"
 msgstr "バージョン情報"
@@ -145,6 +151,9 @@ msgstr "{} にテキストのスニペットを追加します"
 msgid "After a paste or copy"
 msgstr "貼り付けやコピーの後"
 
+msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual."
+msgstr "トリガーの先頭を入力すると、テキストカーソルの位置に小さなヒントが表示され、スニペットを提案します。Tab キーで挿入でき、それ以外のキーは通常どおり動作します。"
+
 msgid "All"
 msgstr "すべて"
 
@@ -196,6 +205,9 @@ msgstr "動物と自然"
 
 msgid "Another program already uses {}."
 msgstr "別のプログラムが {} を既に使用しています。"
+
+msgid "Another snippet already uses this trigger."
+msgstr "このトリガーは別のスニペットですでに使われています。"
 
 msgid "Anywhere in Windows"
 msgstr "Windows のどこでも"
@@ -740,6 +752,9 @@ msgstr "完全に削除しますか？"
 msgid "Delete for good…"
 msgstr "完全に削除…"
 
+msgid "Delete group"
+msgstr "グループを削除"
+
 msgid "Delete list"
 msgstr "リストを削除"
 
@@ -956,6 +971,9 @@ msgstr "ゴミ箱のすべてが完全に削除されます。この操作は元
 msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
 msgstr "ライブラリの中身はすべて削除されます：ボード、リスト、スニペット、画像、下書き、バックアップ。コピーが必要な場合は先にエクスポートしてください。設定とライセンスは残ります。"
 
+msgid "Expand abbreviations as I type"
+msgstr "入力中に略語を展開する"
+
 msgid "Expand sidebar (Ctrl+B)"
 msgstr "サイドバーを展開 (Ctrl+B)"
 
@@ -1025,6 +1043,9 @@ msgstr "Windowsの設定に従います。"
 msgid "Food & Drink"
 msgstr "食べ物と飲み物"
 
+msgid "For example ;sig"
+msgstr "例: ;sig"
+
 msgid "For example, Email replies"
 msgstr "例: メールの返信"
 
@@ -1087,6 +1108,15 @@ msgstr "緑"
 
 msgid "Greet"
 msgstr "あいさつ"
+
+msgid "Group"
+msgstr "グループ"
+
+msgid "Group name"
+msgstr "グループ名"
+
+msgid "Group..."
+msgstr "グループ化..."
 
 msgid "Handy for forms you fill field by field."
 msgstr "フォームを項目ごとに入力するときに便利です。"
@@ -2065,9 +2095,6 @@ msgstr "最近の履歴を消去しました"
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "「最近」は、コピーしたテキストをこのコンピューターにのみ、直近 {} 回のコピーまたは {} 日間のどちらか早い方まで保持します。パスワードマネージャーのパスワードと機密スニペットは保持されません。設定でいつでも変更できます。"
 
-msgid "Recent shows what you used and captured lately."
-msgstr "「最近」には、最近使ったものや保存したものが表示されます。"
-
 msgid "Recently used"
 msgstr "最近使ったもの"
 
@@ -2121,6 +2148,9 @@ msgstr "削除…"
 
 msgid "Rename board…"
 msgstr "ボード名を変更…"
+
+msgid "Rename group"
+msgstr "グループ名を変更"
 
 msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
 msgstr "タグの名前を変更または削除します。タグを削除しても、それが付いたスニペットは残ります。"
@@ -2219,6 +2249,12 @@ msgstr "保存: {}"
 
 msgid "Saved {}."
 msgstr "{} を保存しました。"
+
+msgid "Saved. This code overlaps another trigger, so one of them may never fire."
+msgstr "保存しました。このコードは別のトリガーと重なっているため、どちらかが動作しない場合があります。"
+
+msgid "Saved. This code overlaps the trigger of “{}”, so one of them may never fire."
+msgstr "保存しました。このコードは「{}」のトリガーと重なっているため、どちらかが動作しない可能性があります。"
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "すべてのボード、リスト、スニペットを、選んだフォルダーに 1 つの .snipdeck ファイルとして保存します。"
@@ -2324,6 +2360,9 @@ msgstr "機密のスニペット"
 
 msgid "Sensitive items are encrypted on disk, on every plan."
 msgstr "機密スニペットは、どのプランでもディスク上で暗号化されます。"
+
+msgid "Sensitive items can't be typed in, so they have no trigger."
+msgstr "機密項目は入力による挿入ができないため、トリガーはありません。"
 
 msgid "Sensitive items, masked"
 msgstr "機密スニペット（マスク表示）"
@@ -2567,6 +2606,9 @@ msgstr "強度: 強い"
 
 msgid "Strength: weak"
 msgstr "強度: 弱い"
+
+msgid "Suggest snippets as I type"
+msgstr "入力中にスニペットを提案する"
 
 msgid "Supporter"
 msgstr "Supporter"
@@ -2910,6 +2952,9 @@ msgstr "旅行と場所"
 msgid "Tray icon click opens"
 msgstr "トレイアイコンのクリックで開く"
 
+msgid "Trigger"
+msgstr "トリガー"
+
 msgid "Trimmed"
 msgstr "前後の空白を削除"
 
@@ -2937,8 +2982,17 @@ msgstr "Snipdeck のスライドやフェードの動きをオフにします。
 msgid "Type a command"
 msgstr "コマンドを入力"
 
+msgid "Type this in any app to insert the snippet. Turn it on in Settings, under Typing."
+msgstr "どのアプリでもこれを入力すると、スニペットが挿入されます。設定の「入力」でオンにしてください。"
+
 msgid "Type {} to confirm"
 msgstr "確認のため {} と入力"
+
+msgid "Typing"
+msgstr "入力"
+
+msgid "Typing triggers work on Windows only."
+msgstr "入力によるトリガーは Windows でのみ動作します。"
 
 msgid "UPPERCASE"
 msgstr "大文字"
@@ -2960,6 +3014,9 @@ msgstr "{} を元に戻す (Ctrl+Z)"
 
 msgid "Undock the panel"
 msgstr "パネルの固定を解除"
+
+msgid "Ungroup"
+msgstr "グループ解除"
 
 msgid "Unlock"
 msgstr "ロック解除"
@@ -3075,6 +3132,9 @@ msgstr "Windows の起動時"
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "ピンがオフのとき、ほかのアプリに切り替えるとすぐにパネルが隠れます。ピン留めしたパネルは隠れません。"
 
+msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk. Nothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
+msgstr "他のプログラムでスニペットのトリガーを入力すると、Snipdeck がそれをスニペットに置き換えます。そのために押したキーを監視しますが、保持するのは直近の数文字だけで、メモリ内にのみ置き、ディスクには保存しません。パスワード欄、「貼り付けない」に設定したプログラム、機密アイテムでは何も展開されません。"
+
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "ショートカットまたはトレイでパネルを表示する位置です。アプリにテキストカーソルがない場合、「テキストカーソルの位置」はマウスの位置になります。"
 
@@ -3141,8 +3201,11 @@ msgstr "Windows では {} をショートカットに使えません。"
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows の文字サイズ（設定 > アクセシビリティ > 文字サイズ）に従います。サイズを選ぶと、そちらを使います。"
 
-msgid "YYYY-MM-DD"
-msgstr "YYYY-MM-DD"
+msgid "With clipboard history on, Recent keeps what you copy in other programs."
+msgstr "クリップボード履歴をオンにすると、「最近」に他のプログラムでコピーした内容が残ります。"
+
+msgid "YYYY-MM-DD, empty for today"
+msgstr "YYYY-MM-DD、空欄なら今日"
 
 msgid "Yes"
 msgstr "はい"
@@ -3259,6 +3322,13 @@ msgstr "お気に入り ピン留め 表示"
 msgid "find filter look"
 msgstr "検索 絞り込み 探す"
 
+msgid "group change"
+msgstr "グループの変更"
+
+msgid "group {}, {} item"
+msgid_plural "group {}, {} items"
+msgstr[0] "グループ {}、{} 件"
+
 msgid "help docs manual how"
 msgstr "ヘルプ ドキュメント マニュアル 使い方"
 
@@ -3336,6 +3406,9 @@ msgstr "タグの変更"
 
 msgid "tag: {}"
 msgstr "タグ: {}"
+
+msgid "to insert"
+msgstr "で挿入"
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "チュートリアル 入門 基本 学ぶ"
@@ -3428,11 +3501,22 @@ msgstr "{} は空のため、スキップされました。"
 msgid "{} is not valid UTF-8, so characters that could not be read were replaced."
 msgstr "{} は有効な UTF-8 ではないため、読めない文字は置き換えられました。"
 
+msgid "{} is turned off in Espanso (its name starts with an underscore) and was skipped."
+msgstr "{} は Espanso で無効になっている（名前がアンダースコアで始まる）ため、スキップしました。"
+
 msgid "{} is used by another app. Choose another in Settings."
 msgstr "{} は別のアプリが使用中です。設定で別のものを選んでください。"
 
 msgid "{} is {}, over the 5 MB limit for text, and was skipped."
 msgstr "{} は {} で、テキストの上限 5 MB を超えるためスキップされました。"
+
+msgid "{} item"
+msgid_plural "{} items"
+msgstr[0] "{} 件"
+
+msgid "{} item had a title or source app longer than {} or {} characters, and it was cut."
+msgid_plural "{} items had a title or source app longer than {} or {} characters, and it was cut."
+msgstr[0] "{} 件の項目で、タイトルまたは元のアプリ名が {} 文字または {} 文字を超えたため、切り詰めました。"
 
 msgid "{} item in {} list will be added"
 msgid_plural "{} items in {} lists will be added"
@@ -3478,11 +3562,65 @@ msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "機密項目 {} 件がバックアップに含まれていませんでした。"
 
+msgid "{} — press Tab to insert"
+msgstr "{} — Tab キーで挿入"
+
+msgid "{}, match {}"
+msgstr "{}、{} 番目のエントリ"
+
 msgid "{}, {} of {}"
 msgstr "{}、{} / {}"
 
 msgid "{}.{} MB"
 msgstr "{}.{} MB"
 
+msgid "{}: Snipdeck does not know the date format {}, so it was left as written."
+msgstr "{}：Snipdeck は日付の形式 {} を認識しないため、そのままにしました。"
+
+msgid "{}: it has no text (a picture or other content) and was skipped."
+msgstr "{}：テキストがない（画像などの内容）ため、スキップしました。"
+
+msgid "{}: it has no trigger and was skipped."
+msgstr "{}：トリガーがないため、スキップしました。"
+
+msgid "{}: its Markdown or HTML text is kept as written."
+msgstr "{}：Markdown または HTML のテキストはそのまま残しました。"
+
+msgid "{}: its only trigger is a regular expression, which Snipdeck cannot use, so it was skipped."
+msgstr "{}：唯一のトリガーが正規表現で、Snipdeck では使えないため、スキップしました。"
+
+msgid "{}: its variables cannot be one Snipdeck template together (for example two cursor marks), so it was kept as plain text."
+msgstr "{}：変数を 1 つの Snipdeck テンプレートにまとめられない（たとえばカーソル位置が 2 つある）ため、プレーンテキストのままにしました。"
+
+msgid "{}: some rows have more than 256 columns, and the extra columns were ignored."
+msgstr "{}：256 列を超える行があり、超えた列は無視しました。"
+
+msgid "{}: the form field {} has no Snipdeck equivalent and was left as written."
+msgstr "{}：フォームフィールド {} に相当する Snipdeck の機能がないため、そのままにしました。"
+
+msgid "{}: the trigger {} and {} start alike, so the shorter one fires first."
+msgstr "{}：トリガー {} と {} は先頭が同じなので、短い方が先に動作します。"
+
+msgid "{}: the trigger {} is already used by another snippet, so it was imported without it."
+msgstr "{}：トリガー {} は別のスニペットで使われているため、トリガーなしで取り込みました。"
+
+msgid "{}: this entry is not a match and was skipped."
+msgstr "{}：このエントリはマッチではないため、スキップしました。"
+
 msgid "{}: {}"
 msgstr "{}: {}"
+
+msgid "{}: {} (a shell, script or random variable, or one Snipdeck does not know) has no Snipdeck equivalent and was left as written."
+msgstr "{}：{}（シェル、スクリプト、ランダムの変数、または Snipdeck が認識しない変数）に相当する Snipdeck の機能がないため、そのままにしました。"
+
+msgid "{}: {} has no Snipdeck equivalent and was left as written."
+msgstr "{}：{} に相当する Snipdeck の機能がないため、そのままにしました。"
+
+msgid "{}: {} was not kept as a trigger, because a snippet has one trigger."
+msgstr "{}：{} は、1 つのスニペットにトリガーは 1 つだけなので、トリガーとして残しませんでした。"
+
+msgid "{}: {} was not kept as a trigger, because a trigger has no spaces and at most 32 characters."
+msgstr "{}：{} は、トリガーにスペースは使えず 32 文字までなので、トリガーとして残しませんでした。"
+
+msgid "{}: {} was not kept as a trigger, because it fires after a separator and a Snipdeck trigger does not wait for one."
+msgstr "{}：{} は区切り文字の後で動作するもので、Snipdeck のトリガーは区切りを待たないため、トリガーとして残しませんでした。"

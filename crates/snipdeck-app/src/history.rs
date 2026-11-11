@@ -12,7 +12,7 @@
 
 use std::collections::VecDeque;
 
-use snipdeck_core::{Item, ItemId, ListId, Placement};
+use snipdeck_core::{Group, GroupId, Item, ItemId, ListId, Placement, Trigger};
 use snipdeck_store::Trashable;
 
 /// How many steps are kept; the oldest goes first.
@@ -43,6 +43,8 @@ pub enum Action {
     Tag,
     /// Items duplicated.
     Duplicate,
+    /// A group made, renamed or ungrouped.
+    Group,
 }
 
 impl Action {
@@ -61,6 +63,7 @@ impl Action {
             Self::Pin => 8,
             Self::Tag => 9,
             Self::Duplicate => 10,
+            Self::Group => 11,
         }
     }
 }
@@ -73,6 +76,8 @@ pub struct Snap {
     pub item: Item,
     /// The text content to write back; `None` leaves the content alone.
     pub text: Option<String>,
+    /// The trigger to write back (`Some(None)` clears it); `None` leaves it alone.
+    pub trigger: Option<Option<Trigger>>,
 }
 
 /// Where an item sits: its list and its place in it.
@@ -102,6 +107,69 @@ pub enum Change {
         /// Where redo puts it.
         to: Spot,
     },
+    /// A group exists, holding these items (they gather under the topmost). Undoing a
+    /// creation is [`Change::Ungroup`]; undoing an ungroup is this.
+    Group {
+        /// The group, with the name and collapsed flag it has.
+        group: Group,
+        /// Its members, top to bottom.
+        members: Vec<ItemId>,
+    },
+    /// The group is gone and its items stay in the list ungrouped.
+    Ungroup {
+        /// The group as it was.
+        group: Group,
+        /// Its members, top to bottom.
+        members: Vec<ItemId>,
+    },
+    /// A whole group went from one place in its list to another (members stay together).
+    MoveRun {
+        /// The group.
+        group: GroupId,
+        /// Where undo puts it.
+        from: Placement<ItemId>,
+        /// Where redo puts it.
+        to: Placement<ItemId>,
+    },
+    /// An item joined a group at its top (dragged onto the header). Undoing it is
+    /// [`Change::Leave`].
+    Join {
+        /// The item.
+        item: ItemId,
+        /// The group it joined.
+        group: GroupId,
+        /// Where it was before.
+        from: Spot,
+        /// The group it was in before, if any: Undo restores exactly this membership.
+        from_group: Option<Group>,
+    },
+    /// The inverse of [`Change::Join`]: the item goes back to where it was.
+    Leave {
+        /// The item.
+        item: ItemId,
+        /// The group it leaves.
+        group: GroupId,
+        /// Where it goes back to.
+        from: Spot,
+        /// The group it goes back into, if any (`None`: it ends up in no group).
+        from_group: Option<Group>,
+    },
+    /// An item's group is set to exactly this one (`None`: no group), wherever it sits. Recorded
+    /// before moves that would otherwise re-derive the membership from the row above; it
+    /// is its own inverse, because the state it restores is the state that preceded the step.
+    Regroup {
+        /// The item.
+        item: ItemId,
+        /// The group it belongs to (made again if it was emptied since), or none.
+        group: Option<Group>,
+    },
+    /// A group was renamed.
+    Rename {
+        /// The group before.
+        before: Group,
+        /// The group after.
+        after: Group,
+    },
 }
 
 impl Change {
@@ -119,6 +187,49 @@ impl Change {
                 id: *id,
                 from: *to,
                 to: *from,
+            },
+            Self::Group { group, members } => Self::Ungroup {
+                group: group.clone(),
+                members: members.clone(),
+            },
+            Self::Ungroup { group, members } => Self::Group {
+                group: group.clone(),
+                members: members.clone(),
+            },
+            Self::MoveRun { group, from, to } => Self::MoveRun {
+                group: *group,
+                from: *to,
+                to: *from,
+            },
+            Self::Join {
+                item,
+                group,
+                from,
+                from_group,
+            } => Self::Leave {
+                item: *item,
+                group: *group,
+                from: *from,
+                from_group: from_group.clone(),
+            },
+            Self::Leave {
+                item,
+                group,
+                from,
+                from_group,
+            } => Self::Join {
+                item: *item,
+                group: *group,
+                from: *from,
+                from_group: from_group.clone(),
+            },
+            Self::Regroup { item, group } => Self::Regroup {
+                item: *item,
+                group: group.clone(),
+            },
+            Self::Rename { before, after } => Self::Rename {
+                before: after.clone(),
+                after: before.clone(),
             },
         }
     }

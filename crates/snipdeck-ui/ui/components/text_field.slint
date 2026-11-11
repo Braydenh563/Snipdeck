@@ -198,7 +198,8 @@ export component TextField inherits VerticalLayout {
                 viewport := Rectangle {
                     horizontal-stretch: 1;
                     min-width: 0px;
-                    clip: true;
+                    // No `clip` here: the Flickable clips its content, and a clipping Rectangle between it and an
+                    // outer scroll view makes Slint skip the field when Tab-ing while it is scrolled out of view.
 
                     flick := Flickable {
                         width: parent.width;

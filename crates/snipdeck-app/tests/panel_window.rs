@@ -2225,3 +2225,171 @@ fn alt_down_in_a_sorted_list_offers_manual_order_and_the_button_switches_it() {
         assert!(r.ui.get_rows_reorderable(), "the button switched it");
     });
 }
+
+/// Marks the first two rows and presses Ctrl+G.
+fn group_first_two(r: &Rig) {
+    {
+        let mut ctl = r.ctl.borrow_mut();
+        ctl.panel_mark(0, snipdeck_app::main_window::SelectMode::Toggle);
+        ctl.panel_mark(1, snipdeck_app::main_window::SelectMode::Toggle);
+    }
+    r.binding.redraw();
+    chord(r.window(), &[Key::Control], "g");
+}
+
+#[test]
+fn ctrl_g_groups_the_marked_rows() {
+    on_ui_thread(|| {
+        let r = rig();
+        let before = r.ui.get_rows().row_count();
+        group_first_two(&r);
+        let rows = r.ui.get_rows();
+        assert_eq!(rows.row_count(), before + 1, "a header was added");
+        let header = rows.row_data(0).expect("row");
+        assert!(header.is_header);
+        assert_eq!(header.group_count, 2);
+        assert!(rows.row_data(1).expect("row").grouped);
+    });
+}
+
+#[test]
+fn left_collapses_and_right_expands_a_header() {
+    on_ui_thread(|| {
+        let r = rig();
+        group_first_two(&r);
+        // The new header is selected and renaming: Esc ends the rename, then the keys are the list's.
+        press(r.window(), &key(Key::Escape));
+        let count = r.ui.get_rows().row_count();
+        press(r.window(), &key(Key::LeftArrow));
+        assert_eq!(
+            r.ui.get_rows().row_count(),
+            count - 2,
+            "the items are hidden"
+        );
+        assert!(r.ui.get_rows().row_data(0).expect("row").group_collapsed);
+        press(r.window(), &key(Key::RightArrow));
+        assert_eq!(r.ui.get_rows().row_count(), count);
+    });
+}
+
+#[test]
+fn header_is_announced_with_its_count() {
+    on_ui_thread(|| {
+        let r = rig();
+        group_first_two(&r);
+        let name = r.ui.get_rows().row_data(0).expect("row").title;
+        // Folded or open is the header's expanded state, not part of its label.
+        let label = format!("group {name}, 2 items");
+        let header = element(&r.ui, &label, AccessibleRole::Button);
+        assert_eq!(header.accessible_expanded(), Some(true));
+        press(r.window(), &key(Key::LeftArrow));
+        let header = element(&r.ui, &label, AccessibleRole::Button);
+        assert_eq!(header.accessible_expanded(), Some(false));
+    });
+}
+
+/// Two groups, `[Group] a b [Second] c d`, with the cursor on the first header and the rename
+/// ended.
+fn two_groups_in_window(r: &Rig) {
+    group_first_two(r);
+    press(r.window(), &key(Key::Escape));
+    {
+        let mut ctl = r.ctl.borrow_mut();
+        ctl.panel_mark(3, snipdeck_app::main_window::SelectMode::Toggle);
+        ctl.panel_mark(4, snipdeck_app::main_window::SelectMode::Toggle);
+        ctl.group_marked(3);
+        ctl.group_rename(3, "Second");
+        ctl.group_rename_ended();
+        ctl.panel_clear_marks();
+    }
+    r.ctl.borrow_mut().move_selection(-100);
+    r.binding.redraw();
+    assert_eq!(
+        r.ui.get_selected_index(),
+        0,
+        "the cursor is on the first header"
+    );
+    r.ui.invoke_focus_search();
+}
+
+fn row_titles(r: &Rig) -> Vec<String> {
+    r.ui.get_rows()
+        .iter()
+        .map(|row| row.title.to_string())
+        .collect()
+}
+
+#[test]
+fn alt_down_on_a_header_moves_the_group_and_alt_up_brings_it_back() {
+    on_ui_thread(|| {
+        let r = rig();
+        two_groups_in_window(&r);
+        let before = row_titles(&r);
+        chord(r.window(), &[Key::Alt], &key(Key::DownArrow));
+        let after = row_titles(&r);
+        assert_eq!(
+            after,
+            [&before[3..6], &before[..3], &before[6..]].concat(),
+            "the first group went below the second, the loose rows stayed"
+        );
+        assert_eq!(
+            r.ui.get_selected_index(),
+            3,
+            "the cursor stays on the header"
+        );
+        chord(r.window(), &[Key::Alt], &key(Key::UpArrow));
+        assert_eq!(row_titles(&r), before);
+        assert_eq!(r.ui.get_selected_index(), 0);
+    });
+}
+
+#[test]
+fn enter_and_space_fold_and_unfold_a_header_and_up_down_walk_into_its_rows() {
+    on_ui_thread(|| {
+        let r = rig();
+        two_groups_in_window(&r);
+        let count = r.ui.get_rows().row_count();
+        press(r.window(), &key(Key::Return));
+        assert_eq!(r.ui.get_rows().row_count(), count - 2, "Enter folds");
+        press(r.window(), " ");
+        assert_eq!(r.ui.get_rows().row_count(), count, "Space unfolds");
+        press(r.window(), " ");
+        assert_eq!(r.ui.get_rows().row_count(), count - 2, "Space folds");
+        press(r.window(), &key(Key::DownArrow));
+        assert_eq!(
+            r.ui.get_selected_index(),
+            1,
+            "Down from a folded header goes to the next header"
+        );
+        press(r.window(), &key(Key::UpArrow));
+        press(r.window(), &key(Key::RightArrow));
+        press(r.window(), &key(Key::DownArrow));
+        assert_eq!(r.ui.get_selected_index(), 1, "into the first member");
+        assert!(r.ui.get_rows().row_data(1).expect("row").grouped);
+        press(r.window(), &key(Key::UpArrow));
+        assert_eq!(r.ui.get_selected_index(), 0, "and back to the header");
+    });
+}
+
+#[test]
+fn f2_on_a_header_starts_its_rename_and_folding_under_the_cursor_keeps_a_row_selected() {
+    on_ui_thread(|| {
+        let r = rig();
+        two_groups_in_window(&r);
+        press(r.window(), &key(Key::F2));
+        assert_eq!(
+            r.ui.get_rename_row(),
+            0,
+            "F2 renames the header, not an item editor"
+        );
+        press(r.window(), &key(Key::Escape));
+        // A member has the cursor and its group folds (the chevron): the cursor lands on the
+        // header, never on nothing.
+        r.ui.set_selected_index(1);
+        r.ui.invoke_group_toggled(0);
+        slint::platform::update_timers_and_animations();
+        let at = r.ui.get_selected_index();
+        let row = r.ui.get_rows().row_data(usize::try_from(at).unwrap());
+        assert!(row.is_some_and(|row| row.is_header), "on the header");
+    });
+}

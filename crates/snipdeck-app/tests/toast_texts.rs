@@ -132,10 +132,11 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::HelloTurnedOff => 101,
         ToastMessage::HelloNotTurnedOn => 102,
         ToastMessage::HelloEnrolFailed => 103,
+        ToastMessage::TriggerOverlaps { .. } => 104,
     }
 }
 
-const VARIANTS: usize = 104;
+const VARIANTS: usize = 105;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -303,6 +304,9 @@ fn samples() -> Vec<ToastMessage> {
         M::TooManyFiles,
         M::FileMoved,
         M::FilesTooLarge,
+        M::TriggerOverlaps {
+            other: s("Signature"),
+        },
         M::SwitchToManual {
             list: snipdeck_core::ListId::generate(),
         },
@@ -433,6 +437,19 @@ fn what_a_toast_carries_reaches_its_sentence() {
         assert_eq!(
             said(ToastMessage::FilesTooLarge),
             "Some files were left out: together they are over 64 MB."
+        );
+        assert_eq!(
+            said(ToastMessage::TriggerOverlaps {
+                other: "Signature".into()
+            }),
+            "Saved. This code overlaps the trigger of “Signature”, so one of them may never fire."
+        );
+        assert_eq!(
+            said(ToastMessage::TriggerOverlaps {
+                other: String::new()
+            }),
+            "Saved. This code overlaps another trigger, so one of them may never fire.",
+            "an untitled item is not named as “”"
         );
         assert_eq!(said(ToastMessage::DockSet(None)), "Panel floats again");
         assert_eq!(

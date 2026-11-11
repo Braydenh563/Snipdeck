@@ -129,7 +129,12 @@ fn a_trigger_already_in_the_library_stays_with_its_owner() {
     let notes = report
         .warnings
         .iter()
-        .filter(|w| matches!(w, Warning::Note(n) if n.contains("already used")))
+        .filter(|w| {
+            matches!(
+                w,
+                Warning::Note(snipdeck_portable::Note::TriggerTaken { .. })
+            )
+        })
         .count();
     assert_eq!(notes, 2, "{:?}", report.warnings);
     assert_eq!(s.triggers().unwrap().len(), 2, "the owners kept them");
