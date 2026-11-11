@@ -286,7 +286,6 @@ where
         }
     }
 
-
     fn group_clear_marks(&mut self, s: Surface) {
         match s {
             Surface::Panel => self.model.clear_marks(),
@@ -346,7 +345,10 @@ where
 
     /// Whether the group whose header is row `index` can move `delta` places (1 or -1).
     pub(crate) fn can_move_group(&self, index: usize, delta: isize) -> bool {
-        self.model.reorderable() && self.group_step_target(Surface::Panel, index, delta).is_some()
+        self.model.reorderable()
+            && self
+                .group_step_target(Surface::Panel, index, delta)
+                .is_some()
     }
 
     /// Alt+Up / Alt+Down on a header, or "Move up / down" in its menu: the whole group moves one
