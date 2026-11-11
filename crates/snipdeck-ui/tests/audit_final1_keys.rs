@@ -442,4 +442,23 @@ fn fill_form_multiline_and_date_error_fit_at_225() {
         enc.write_header().unwrap().write_image_data(&f.rgb).unwrap();
     }
     assert!(f.height as f32 >= height, "frame {} vs content {height}", f.height);
+    // The date error is drawn in full: red text pixels exist and none reach the right padding (a clipped or
+    // overflowing line would run to the edge of the window).
+    let (mut n, mut max_x) = (0u32, 0u32);
+    for y in 0..f.height {
+        for x in 0..f.width {
+            let [r, g, b] = f.pixel(x, y);
+            if r > 150 && g < 80 && b < 90 {
+                n += 1;
+                max_x = max_x.max(x);
+            }
+        }
+    }
+    assert!(n > 200, "the date error is not drawn ({n} red pixels)");
+    assert!(max_x < w - 16, "the date error runs to the window edge (x {max_x} of {w})");
+    // The multiline box (three lines typed) keeps all three lines inside its border: the last line's ink
+    // sits above the box's bottom edge. Found by scanning the column at x = 40 for ink below "Notes".
+    let ink = |x: u32, y: u32| f.pixel(x, y).iter().all(|c| *c < 100);
+    let rows: Vec<u32> = (400..560).filter(|&y| (24..140).any(|x| ink(x, y))).collect();
+    assert!(rows.len() > 30, "multiline text not drawn ({} ink rows)", rows.len());
 }
