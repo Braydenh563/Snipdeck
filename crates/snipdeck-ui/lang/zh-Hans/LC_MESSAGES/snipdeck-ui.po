@@ -151,14 +151,11 @@ msgstr "向 {} 添加文本片段"
 msgid "After a paste or copy"
 msgstr "粘贴或复制后"
 
-msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
-msgstr "输入触发词的开头后，文本光标处会出现一个小提示，推荐对应的片段。按 Tab 键插入；按其他任何键则照常输入。仅在提示显示时才会占用 Tab 键。"
+msgid "After you type the first two characters of a trigger, a small hint at the text cursor offers the item. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
+msgstr "输入触发词的前两个字符后，文本光标处会出现一个小提示，推荐对应的项目。按 Tab 键插入；按其他任何键则照常输入。仅在提示显示时才会占用 Tab 键。"
 
 msgid "All"
 msgstr "全部"
-
-msgid "All commands…"
-msgstr "所有命令…"
 
 msgid "All items"
 msgstr "所有片段"
@@ -470,17 +467,20 @@ msgstr "舒适"
 msgid "Comfortable view"
 msgstr "舒适视图"
 
-msgid "Command palette (every action)"
-msgstr "命令面板（所有操作）"
-
 msgid "Commands"
 msgstr "命令"
 
 msgid "Commands (Ctrl+K)"
 msgstr "命令（Ctrl+K）"
 
+msgid "Commands (every action)"
+msgstr "命令（所有操作）"
+
 msgid "Commands in the Main window"
 msgstr "主窗口中的命令"
+
+msgid "Commands…"
+msgstr "命令…"
 
 msgid "Compact"
 msgstr "紧凑"
@@ -1037,10 +1037,7 @@ msgstr "浮动"
 msgid "Fold group"
 msgstr "折叠分组"
 
-msgid "Fold or open a group"
-msgstr "折叠或展开分组"
-
-msgid "Fold or unfold group"
+msgid "Fold or unfold a group"
 msgstr "折叠或展开分组"
 
 msgid "Fold the Panel into a thin strip."
@@ -1091,6 +1088,9 @@ msgstr "获取 Supporter…"
 msgid "Get started"
 msgstr "开始使用"
 
+msgid "Give a snippet a trigger, such as ;sig, under More options in its editor."
+msgstr "在片段编辑器的“更多选项”中为它设置触发词，例如 ;sig。"
+
 msgid "Give it a name."
 msgstr "请为其命名。"
 
@@ -1130,14 +1130,11 @@ msgstr "分组"
 msgid "Group name"
 msgstr "分组名称"
 
-msgid "Group selected items"
-msgstr "将选中的项目分组"
+msgid "Group the selected rows"
+msgstr "将所选的行分组"
 
-msgid "Group the marked rows"
-msgstr "将选中的行分组"
-
-msgid "Group..."
-msgstr "分组..."
+msgid "Group…"
+msgstr "分组…"
 
 msgid "Handy for forms you fill field by field."
 msgstr "适合逐个字段填写的表单。"
@@ -1175,8 +1172,8 @@ msgstr "隐藏面板"
 msgid "Hide the panel when it loses focus"
 msgstr "失去焦点时隐藏面板"
 
-msgid "Hide title, colour, tags and privacy"
-msgstr "隐藏标题、颜色、标签和隐私"
+msgid "Hide title, colour, tags, trigger and privacy"
+msgstr "隐藏标题、颜色、标签、触发词和隐私"
 
 msgid "History is paused"
 msgstr "历史记录已暂停"
@@ -1205,8 +1202,8 @@ msgstr "指针离开已展开的面板多久后面板收起，范围为 0 至 {}
 msgid "How tall the item rows are in the Main window lists. Compact shows one line per item."
 msgstr "主窗口列表中片段行的高度。紧凑模式每个片段显示一行。"
 
-msgid "How the Panel lists your snippets: one per row, two per row as cards, or tight rows. A search shows rows in every layout."
-msgstr "面板列出片段的方式：每行一个、每行两个的卡片，或紧凑的行。搜索时，所有布局都显示为行。"
+msgid "How the Panel lists your items: one per row, two per row as cards, or tight rows. A search shows rows in every layout."
+msgstr "面板列出项目的方式：每行一个、每行两个卡片，或紧凑的行。搜索时在任何布局下都显示为行。"
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "面板展开的宽度，范围为 {} 至 {} 像素。"
@@ -1499,9 +1496,6 @@ msgstr "最常用"
 msgid "Move"
 msgstr "移动"
 
-msgid "Move a group up or down"
-msgstr "上移或下移分组"
-
 msgid "Move a page at a time"
 msgstr "按页移动"
 
@@ -1514,12 +1508,6 @@ msgstr "将看板上移"
 msgid "Move down"
 msgstr "下移"
 
-msgid "Move group down"
-msgstr "下移分组"
-
-msgid "Move group up"
-msgstr "上移分组"
-
 msgid "Move selected item to Trash"
 msgstr "将所选片段移到回收站"
 
@@ -1528,6 +1516,9 @@ msgstr "下移该分组"
 
 msgid "Move the group up"
 msgstr "上移该分组"
+
+msgid "Move the group up or down"
+msgstr "上移或下移分组"
 
 msgid "Move the item to the Trash"
 msgstr "将该片段移到回收站"
@@ -1753,8 +1744,8 @@ msgstr "未添加任何内容。文件夹，以及为空、太大或无法读取
 msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
 msgstr "在这些程序中复制的内容不会进入“最近”收件箱。请使用程序的文件名，例如 keepass.exe。"
 
-msgid "Numbers the first nine rows so pressing 1 to 9 uses that snippet."
-msgstr "为前九行编号，按 1 到 9 即可使用对应的片段。"
+msgid "Numbers the first nine rows so pressing Alt+1 to 9 uses that item."
+msgstr "为前九行编号，按 Alt+1 到 9 即可使用对应的项目。"
 
 msgid "OK"
 msgstr "正常"
@@ -1803,9 +1794,6 @@ msgstr "打开备份文件夹"
 
 msgid "Open data folder"
 msgstr "打开数据文件夹"
-
-msgid "Open group"
-msgstr "展开分组"
 
 msgid "Open logs folder"
 msgstr "打开日志文件夹"
@@ -2298,11 +2286,11 @@ msgstr "已保存 {}"
 msgid "Saved {}."
 msgstr "已保存 {}。"
 
-msgid "Saved. This code overlaps another trigger, so one of them may never fire."
-msgstr "已保存。此代码与另一个触发词重叠，其中一个可能永远不会触发。"
+msgid "Saved. This trigger overlaps another trigger, so one of them may never fire."
+msgstr "已保存。此触发词与另一个触发词重叠，其中一个可能永远不会触发。"
 
-msgid "Saved. This code overlaps the trigger of “{}”, so one of them may never fire."
-msgstr "已保存。此代码与“{}”的触发词重叠，其中一个可能永远不会触发。"
+msgid "Saved. This trigger overlaps the trigger of “{}”, so one of them may never fire."
+msgstr "已保存。此触发词与“{}”的触发词重叠，其中一个可能永远不会触发。"
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "将所有看板、列表和片段保存为一个 .snipdeck 文件，存放在你选择的文件夹中。"
@@ -2493,8 +2481,8 @@ msgstr "在任务栏和 Alt+Tab 中显示面板"
 msgid "Show the welcome tour again"
 msgstr "再次显示欢迎导览"
 
-msgid "Show title, colour, tags and privacy"
-msgstr "显示标题、颜色、标签和隐私"
+msgid "Show title, colour, tags, trigger and privacy"
+msgstr "显示标题、颜色、标签、触发词和隐私"
 
 msgid "Shrug"
 msgstr "耸肩"
@@ -2685,8 +2673,8 @@ msgstr "Tab"
 msgid "Tabs"
 msgstr "标签页"
 
-msgid "Tabs put each list of the board in a row under the header. Menu moves them into the board picker and gives the space back to your snippets."
-msgstr "标签页会把看板的每个列表排成一行，放在标题栏下方。菜单则把它们移到看板选择器中，把空间还给你的片段。"
+msgid "Tabs put each list of the board in a row under the header. Menu moves them into the board picker and gives the space back to your items."
+msgstr "选项卡把看板的每个列表放在标题下的一行。“菜单”则把它们移入看板选择器，把空间还给你的项目。"
 
 msgid "Tag"
 msgstr "标签"
@@ -2904,6 +2892,9 @@ msgstr "主题:浅色"
 msgid "Theme: System"
 msgstr "主题:跟随系统"
 
+msgid "Then type it in any app. Turn this on in Settings, under Typing."
+msgstr "然后在任何应用中输入它。请在设置的“输入”中开启。"
+
 msgid "There is no file at that path."
 msgstr "该路径下没有文件。"
 
@@ -2973,8 +2964,8 @@ msgstr "标题"
 msgid "Title Case"
 msgstr "首字母大写"
 
-msgid "Title, colour, tags, privacy"
-msgstr "标题、颜色、标签、隐私"
+msgid "Title, colour, tags, trigger, privacy"
+msgstr "标题、颜色、标签、触发词、隐私"
 
 msgid "Titles, text and labels all count."
 msgstr "标题、文本和标签都会被搜索。"
@@ -3033,6 +3024,9 @@ msgstr "关闭 Snipdeck 中的滑动和淡入淡出效果。当 Windows 已关�
 msgid "Type a command"
 msgstr "输入命令"
 
+msgid "Type a short code, get a snippet"
+msgstr "输入短代码，得到片段"
+
 msgid "Type this in any app to insert the snippet. Turn it on in Settings, under Typing."
 msgstr "在任何应用中输入它即可插入该片段。请在“设置”的“输入”中开启。"
 
@@ -3065,6 +3059,9 @@ msgstr "撤销 {} (Ctrl+Z)"
 
 msgid "Undock the panel"
 msgstr "取消停靠面板"
+
+msgid "Unfold group"
+msgstr "展开分组"
 
 msgid "Ungroup"
 msgstr "取消分组"
@@ -3192,8 +3189,8 @@ msgstr "Windows 启动时"
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "图钉关闭时，切换到其他应用后面板会立即隐藏。已固定的面板不会隐藏。"
 
-msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
-msgstr "在其他程序中输入片段的触发词时，Snipdeck 会将其替换为该片段。为此 Snipdeck 会监视你按下的按键，只在内存中保留最后几个字符，绝不写入磁盘。\n在密码框、设为“从不粘贴”的程序以及敏感项目中不会展开。"
+msgid "When you type an item's trigger in another program, Snipdeck replaces it with the item's text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items."
+msgstr "在其他程序中输入项目的触发词时，Snipdeck 会将其替换为该项目的文本。为此 Snipdeck 会监视你按下的按键，只在内存中保留最后几个字符，绝不写入磁盘。\n在密码框、设为“从不粘贴”的程序、以管理员身份运行的程序、Snipdeck 位于前台时以及敏感项目中不会展开。"
 
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "通过快捷键或托盘显示面板时，面板出现的位置。应用没有文本光标时，“文本光标处”会改用鼠标位置。"
@@ -3297,8 +3294,8 @@ msgstr "你的快捷键"
 msgid "add"
 msgstr "添加"
 
-msgid "add create folder group"
-msgstr "添加 新建 文件夹 分组"
+msgid "add create"
+msgstr "添加 新建"
 
 msgid "add create snippet note write"
 msgstr "添加 新建 片段 笔记 写入"
@@ -3388,6 +3385,9 @@ msgstr "置顶 收藏 显示"
 msgid "find filter look"
 msgstr "查找 筛选 查看"
 
+msgid "fingerprint face PIN biometric lock"
+msgstr "指纹 面部 PIN 生物识别 锁定"
+
 msgid "group change"
 msgstr "分组更改"
 
@@ -3410,6 +3410,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "标签：{}"
 
+msgid "license supporter upgrade key"
+msgstr "许可证 支持者 升级 密钥"
+
 msgid "lowercase"
 msgstr "小写"
 
@@ -3427,6 +3430,9 @@ msgstr "名称 标题 更改 编辑 区段"
 
 msgid "navigation rail collapse expand lists panel left width"
 msgstr "导航 侧边栏 折叠 展开 列表 面板 左侧 宽度"
+
+msgid "never paste excluded apps"
+msgstr "从不粘贴 排除的程序"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"
@@ -3490,6 +3496,9 @@ msgstr "标签：{}"
 
 msgid "to insert"
 msgstr "插入"
+
+msgid "trigger triggers text expansion autocomplete shortcode"
+msgstr "触发词 文本扩展 自动补全 缩写 快捷"
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "教程 入门 引导 基础 学习"

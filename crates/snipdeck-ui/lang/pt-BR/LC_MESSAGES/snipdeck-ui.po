@@ -151,14 +151,11 @@ msgstr "Adiciona um trecho de texto a {}"
 msgid "After a paste or copy"
 msgstr "Depois de colar ou copiar"
 
-msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
-msgstr "Ao digitar o início de um gatilho, uma pequena dica junto ao cursor de texto oferece o trecho. Pressione Tab para inseri-lo; qualquer outra tecla segue normalmente. O Tab só é capturado enquanto a dica está visível."
+msgid "After you type the first two characters of a trigger, a small hint at the text cursor offers the item. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
+msgstr "Ao digitar os dois primeiros caracteres de um gatilho, uma pequena dica junto ao cursor de texto oferece o item. Pressione Tab para inseri-lo; qualquer outra tecla segue normalmente. O Tab só é capturado enquanto a dica está visível."
 
 msgid "All"
 msgstr "Todos"
-
-msgid "All commands…"
-msgstr "Todos os comandos…"
 
 msgid "All items"
 msgstr "Todos os trechos"
@@ -471,17 +468,20 @@ msgstr "Confortável"
 msgid "Comfortable view"
 msgstr "Exibição confortável"
 
-msgid "Command palette (every action)"
-msgstr "Paleta de comandos (todas as ações)"
-
 msgid "Commands"
 msgstr "Comandos"
 
 msgid "Commands (Ctrl+K)"
 msgstr "Comandos (Ctrl+K)"
 
+msgid "Commands (every action)"
+msgstr "Comandos (todas as ações)"
+
 msgid "Commands in the Main window"
 msgstr "Comandos na janela principal"
+
+msgid "Commands…"
+msgstr "Comandos…"
 
 msgid "Compact"
 msgstr "Compacta"
@@ -1038,11 +1038,8 @@ msgstr "Flutuante"
 msgid "Fold group"
 msgstr "Recolher grupo"
 
-msgid "Fold or open a group"
+msgid "Fold or unfold a group"
 msgstr "Recolher ou expandir um grupo"
-
-msgid "Fold or unfold group"
-msgstr "Recolher ou expandir grupo"
 
 msgid "Fold the Panel into a thin strip."
 msgstr "Recolher o painel em uma faixa fina."
@@ -1092,6 +1089,9 @@ msgstr "Obter o Supporter…"
 msgid "Get started"
 msgstr "Começar"
 
+msgid "Give a snippet a trigger, such as ;sig, under More options in its editor."
+msgstr "Dê um gatilho a um trecho, como ;sig, em “Mais opções” no editor dele."
+
 msgid "Give it a name."
 msgstr "Dê um nome a ele."
 
@@ -1131,14 +1131,11 @@ msgstr "Grupo"
 msgid "Group name"
 msgstr "Nome do grupo"
 
-msgid "Group selected items"
-msgstr "Agrupar os itens selecionados"
+msgid "Group the selected rows"
+msgstr "Agrupar as linhas selecionadas"
 
-msgid "Group the marked rows"
-msgstr "Agrupar as linhas marcadas"
-
-msgid "Group..."
-msgstr "Agrupar..."
+msgid "Group…"
+msgstr "Agrupar…"
 
 msgid "Handy for forms you fill field by field."
 msgstr "Útil para formulários preenchidos campo a campo."
@@ -1176,8 +1173,8 @@ msgstr "Ocultar o painel"
 msgid "Hide the panel when it loses focus"
 msgstr "Ocultar o painel ao perder o foco"
 
-msgid "Hide title, colour, tags and privacy"
-msgstr "Ocultar título, cor, tags e privacidade"
+msgid "Hide title, colour, tags, trigger and privacy"
+msgstr "Ocultar título, cor, tags, gatilho e privacidade"
 
 msgid "History is paused"
 msgstr "O histórico está pausado"
@@ -1206,8 +1203,8 @@ msgstr "Quanto tempo o ponteiro fica fora do painel aberto antes de ele recolher
 msgid "How tall the item rows are in the Main window lists. Compact shows one line per item."
 msgstr "Altura das linhas de itens nas listas da janela principal. Compacta mostra uma linha por item."
 
-msgid "How the Panel lists your snippets: one per row, two per row as cards, or tight rows. A search shows rows in every layout."
-msgstr "Como o Painel lista seus trechos: um por linha, dois por linha como cartões ou linhas compactas. Uma pesquisa mostra linhas em qualquer layout."
+msgid "How the Panel lists your items: one per row, two per row as cards, or tight rows. A search shows rows in every layout."
+msgstr "Como o Painel lista seus itens: um por linha, dois por linha como cartões ou linhas compactas. Uma busca mostra linhas em qualquer layout."
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "Largura em que o painel abre, de {} a {} pixels."
@@ -1503,9 +1500,6 @@ msgstr "Mais usados"
 msgid "Move"
 msgstr "Mover"
 
-msgid "Move a group up or down"
-msgstr "Mover um grupo para cima ou para baixo"
-
 msgid "Move a page at a time"
 msgstr "Mover uma página por vez"
 
@@ -1518,12 +1512,6 @@ msgstr "Mover quadro para cima"
 msgid "Move down"
 msgstr "Mover para baixo"
 
-msgid "Move group down"
-msgstr "Mover grupo para baixo"
-
-msgid "Move group up"
-msgstr "Mover grupo para cima"
-
 msgid "Move selected item to Trash"
 msgstr "Mover item selecionado para a Lixeira"
 
@@ -1532,6 +1520,9 @@ msgstr "Mover o grupo para baixo"
 
 msgid "Move the group up"
 msgstr "Mover o grupo para cima"
+
+msgid "Move the group up or down"
+msgstr "Mover o grupo para cima ou para baixo"
 
 msgid "Move the item to the Trash"
 msgstr "Mover o item para a Lixeira"
@@ -1759,8 +1750,8 @@ msgstr "Nada foi adicionado. Pastas e arquivos ou imagens vazios, grandes demais
 msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
 msgstr "Nada que você copiar nestes programas chega à caixa de Recentes. Use o nome do arquivo do programa, por exemplo keepass.exe."
 
-msgid "Numbers the first nine rows so pressing 1 to 9 uses that snippet."
-msgstr "Numera as nove primeiras linhas para que as teclas de 1 a 9 usem esse trecho."
+msgid "Numbers the first nine rows so pressing Alt+1 to 9 uses that item."
+msgstr "Numera as nove primeiras linhas para que Alt+1 a 9 use esse item."
 
 msgid "OK"
 msgstr "OK"
@@ -1809,9 +1800,6 @@ msgstr "Abrir a pasta de backups"
 
 msgid "Open data folder"
 msgstr "Abrir a pasta de dados"
-
-msgid "Open group"
-msgstr "Expandir grupo"
 
 msgid "Open logs folder"
 msgstr "Abrir pasta de logs"
@@ -2306,11 +2294,11 @@ msgstr "Salvo {}"
 msgid "Saved {}."
 msgstr "{} salvo."
 
-msgid "Saved. This code overlaps another trigger, so one of them may never fire."
-msgstr "Salvo. Este código se sobrepõe a outro gatilho, então um dos dois pode nunca disparar."
+msgid "Saved. This trigger overlaps another trigger, so one of them may never fire."
+msgstr "Salvo. Este gatilho se sobrepõe a outro gatilho, então um dos dois pode nunca disparar."
 
-msgid "Saved. This code overlaps the trigger of “{}”, so one of them may never fire."
-msgstr "Salvo. Este código se sobrepõe ao gatilho de “{}”, então um dos dois pode nunca disparar."
+msgid "Saved. This trigger overlaps the trigger of “{}”, so one of them may never fire."
+msgstr "Salvo. Este gatilho se sobrepõe ao gatilho de “{}”, então um dos dois pode nunca disparar."
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "Salva todos os quadros, listas e itens em um único arquivo .snipdeck, em uma pasta que você escolher."
@@ -2501,8 +2489,8 @@ msgstr "Mostrar o Painel na barra de tarefas e no Alt+Tab"
 msgid "Show the welcome tour again"
 msgstr "Mostrar o tour de boas-vindas novamente"
 
-msgid "Show title, colour, tags and privacy"
-msgstr "Mostrar título, cor, tags e privacidade"
+msgid "Show title, colour, tags, trigger and privacy"
+msgstr "Mostrar título, cor, tags, gatilho e privacidade"
 
 msgid "Shrug"
 msgstr "Dar de ombros"
@@ -2693,8 +2681,8 @@ msgstr "Tab"
 msgid "Tabs"
 msgstr "Guias"
 
-msgid "Tabs put each list of the board in a row under the header. Menu moves them into the board picker and gives the space back to your snippets."
-msgstr "As guias colocam cada lista do quadro em uma linha sob o cabeçalho. Menu as move para o seletor de quadros e devolve o espaço aos seus trechos."
+msgid "Tabs put each list of the board in a row under the header. Menu moves them into the board picker and gives the space back to your items."
+msgstr "As abas colocam cada lista do quadro em uma linha sob o cabeçalho. “Menu” as move para o seletor de quadros e devolve o espaço aos seus itens."
 
 msgid "Tag"
 msgstr "Etiquetas"
@@ -2912,6 +2900,9 @@ msgstr "Tema: claro"
 msgid "Theme: System"
 msgstr "Tema: sistema"
 
+msgid "Then type it in any app. Turn this on in Settings, under Typing."
+msgstr "Depois, digite-o em qualquer app. Ative isso em Configurações, em “Digitação”."
+
 msgid "There is no file at that path."
 msgstr "Não há nenhum arquivo nesse caminho."
 
@@ -2981,8 +2972,8 @@ msgstr "Título"
 msgid "Title Case"
 msgstr "Iniciais Maiúsculas"
 
-msgid "Title, colour, tags, privacy"
-msgstr "Título, cor, tags, privacidade"
+msgid "Title, colour, tags, trigger, privacy"
+msgstr "Título, cor, tags, gatilho, privacidade"
 
 msgid "Titles, text and labels all count."
 msgstr "Títulos, texto e rótulos contam."
@@ -3041,6 +3032,9 @@ msgstr "Desativa as animações de deslizar e desvanecer no Snipdeck. Também fi
 msgid "Type a command"
 msgstr "Digite um comando"
 
+msgid "Type a short code, get a snippet"
+msgstr "Digite um código curto, receba um trecho"
+
 msgid "Type this in any app to insert the snippet. Turn it on in Settings, under Typing."
 msgstr "Digite isto em qualquer aplicativo para inserir o trecho. Ative em Configurações, em Digitação."
 
@@ -3073,6 +3067,9 @@ msgstr "Desfazer {} (Ctrl+Z)"
 
 msgid "Undock the panel"
 msgstr "Desencaixar o painel"
+
+msgid "Unfold group"
+msgstr "Expandir grupo"
 
 msgid "Ungroup"
 msgstr "Desagrupar"
@@ -3200,8 +3197,8 @@ msgstr "Quando o Windows inicia"
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "Com o alfinete desativado, o painel se oculta assim que você muda para outro aplicativo. Um painel fixado permanece."
 
-msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
-msgstr "Quando você digita o gatilho de um trecho em outro programa, o Snipdeck o substitui pelo trecho. Para isso, o Snipdeck observa as teclas pressionadas e guarda apenas os últimos caracteres na memória, nunca no disco.\nNada é expandido em campos de senha, em programas definidos como “Nunca colar” nem em itens confidenciais."
+msgid "When you type an item's trigger in another program, Snipdeck replaces it with the item's text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items."
+msgstr "Quando você digita o gatilho de um item em outro programa, o Snipdeck o substitui pelo texto do item. Para isso, o Snipdeck observa as teclas pressionadas e guarda apenas os últimos caracteres na memória, nunca no disco.\nNada é expandido em campos de senha, em programas definidos como “Nunca colar”, em programas executados como administrador, enquanto o Snipdeck está em primeiro plano nem em itens confidenciais."
 
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "Onde o Painel aparece quando um atalho ou a bandeja o mostra. No cursor de texto usa o mouse quando o app não tem cursor."
@@ -3305,8 +3302,8 @@ msgstr "Seus atalhos"
 msgid "add"
 msgstr "adicionar"
 
-msgid "add create folder group"
-msgstr "adicionar criar pasta grupo"
+msgid "add create"
+msgstr "adicionar criar"
 
 msgid "add create snippet note write"
 msgstr "adicionar criar trecho nota escrever"
@@ -3397,6 +3394,9 @@ msgstr "favoritos favoritos mostrar"
 msgid "find filter look"
 msgstr "encontrar filtrar buscar"
 
+msgid "fingerprint face PIN biometric lock"
+msgstr "impressão digital rosto PIN biometria bloqueio"
+
 msgid "group change"
 msgstr "alteração de grupo"
 
@@ -3420,6 +3420,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "rótulo: {}"
 
+msgid "license supporter upgrade key"
+msgstr "licença supporter upgrade chave"
+
 msgid "lowercase"
 msgstr "minúsculas"
 
@@ -3437,6 +3440,9 @@ msgstr "nome título alterar editar seção"
 
 msgid "navigation rail collapse expand lists panel left width"
 msgstr "navegação barra recolher expandir listas painel esquerda largura"
+
+msgid "never paste excluded apps"
+msgstr "nunca colar apps excluídos"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"
@@ -3500,6 +3506,9 @@ msgstr "etiqueta: {}"
 
 msgid "to insert"
 msgstr "para inserir"
+
+msgid "trigger triggers text expansion autocomplete shortcode"
+msgstr "gatilho expansão de texto autocompletar abreviação atalho"
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "tutorial introdução integração básico aprender"

@@ -44,7 +44,7 @@ where
     K: Keyboard,
     T: Timing,
 {
-    /// Ctrl+G, or "Group..." in the item menu: the marked rows (else row `cursor`) become one
+    /// Ctrl+G, or "Group…" in the item menu: the marked rows (else row `cursor`) become one
     /// group named by the window's "Group" text, and its header starts renaming. Only a list in manual order can
     /// hold groups; others offer to switch.
     pub fn group_marked(&mut self, cursor: usize) {

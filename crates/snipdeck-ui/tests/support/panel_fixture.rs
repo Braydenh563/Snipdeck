@@ -186,7 +186,7 @@ pub fn app_menu() -> Vec<MenuEntry> {
         off("Paste stack (mark items)"),
         row("Dock to the nearest edge", ""),
         row("Keyboard shortcuts", "Ctrl+/"),
-        row("All commands\u{2026}", "Ctrl+K"),
+        row("Commands\u{2026}", "Ctrl+K"),
         row("Settings\u{2026}", ""),
         line(),
         row("Open Snipdeck", ""),

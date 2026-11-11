@@ -179,7 +179,7 @@ impl Command {
             Self::Settings => "Ctrl+,",
             Self::UserGuide => "F1",
             Self::Shortcuts => "Ctrl+/",
-            Self::UseItem => "Enter",
+            Self::UseItem | Self::FoldGroup => "Enter",
             Self::CopyItem => "Shift+Enter",
             Self::DuplicateItem => "Ctrl+D",
             Self::EditItem => "Ctrl+E",
@@ -606,13 +606,13 @@ mod tests {
             all.push((filler.to_owned(), String::new()));
         }
         for (label, words) in [
-            ("Group selected items", "make new folder"),
-            ("Fold or unfold group", "collapse expand"),
+            ("Group the selected rows", "make new folder"),
+            ("Fold or unfold a group", "collapse expand"),
             ("Rename group", "name"),
             ("Ungroup", "dissolve"),
             ("Delete group", "remove trash"),
-            ("Move group up", "reorder earlier"),
-            ("Move group down", "reorder later"),
+            ("Move the group up", "reorder earlier"),
+            ("Move the group down", "reorder later"),
         ] {
             all.push((label.to_owned(), words.to_owned()));
         }
@@ -674,7 +674,7 @@ mod tests {
             (Command::DeleteGroup, Some("Del")),
             (Command::MoveGroupUp, Some("Alt+Up")),
             (Command::MoveGroupDown, Some("Alt+Down")),
-            (Command::FoldGroup, None),
+            (Command::FoldGroup, Some("Enter")),
             (Command::UngroupGroup, None),
         ] {
             assert_eq!(command.shortcut(&hotkeys).as_deref(), keys, "{command:?}");

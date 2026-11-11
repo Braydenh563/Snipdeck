@@ -163,26 +163,28 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
 - **Lists.** Add a list with **Add list** in the sidebar, or the **+** tab in the Panel. **Edit list** sets the name, a colour and the sort: manual, most
   used or recently used. Move a list with `Alt+Up` or `Alt+Down` while it is selected in the sidebar.
 - **Order of items.** Select a row and press `Alt+Up` or `Alt+Down`, in the Main window or the Panel, or choose **Move up** / **Move down** in the snippet's menu.
-- **Groups.** In the Panel, a list can hold named groups of items. Mark two or more rows, then press `Ctrl+G`
-  or choose **Group...** from the item menu. The rows gather under a header and its name opens for typing:
-  type a name and press `Enter` (the default is "Group"). The header shows the name, how many items the group
-  holds and an arrow. Click the header, or press `Left` to fold it and `Right` to open it again; a folded group
-  hides its items. Press `F2` on a header, or choose **Rename group**, to change the name. Choose **Ungroup**
-  to dissolve the group and keep its items. **Delete group** moves the group and its items to the Trash, and
-  `Ctrl+Z` brings them all back in one step. Drag a header to move the whole group, or press `Alt+Up` or `Alt+Down` on it. `Enter` or `Space` on a header also folds or opens it. Groups show only when the
-  list is sorted by hand (Manual); if it is not, **Group...** offers to switch. Searching lists every match,
-  even inside a folded group, under the group's header. Press `Ctrl+G` on a header to rename it. Undo
-  (`Ctrl+Z`) takes back a grouping, a rename, an ungroup, a delete and a drag of a header or of an item onto
-  one. In the Cards layout a list with groups shows one column, so a header spans the width. The numbers `Alt+1`
-  to `Alt+9` count items only, never headers. A screen reader reads a header as "group, 3 items" and says
-  whether it is expanded or collapsed.
-  **In the Main window** the groups work the same way, in a list sorted by hand: `Ctrl+G` groups the selected rows
-  (the row at the cursor when none is selected), and on a header `Left` folds, `Right` opens, `Enter` does the
-  other, `F2` renames, `Delete` moves the group and its items to the Trash, and `Alt+Up` or `Alt+Down` moves the
-  whole group. The header's menu has Rename group, Ungroup and Delete group, and the command
-  palette (`Ctrl+K`) has the same actions. Search results are a flat list of matches without headers, and a list that
-  holds groups is drawn as rows, so a header can span the width; the Tile view button rests (greyed out) until the list has no groups. Undo (`Ctrl+Z`) takes back
-  each of these steps.
+- **Groups.** A list sorted by hand (Manual) can hold named groups of items, in the Panel and in the Main window.
+  - **Make one.** Select two or more rows and press `Ctrl+G`, or choose **Group…** from the item menu (the row
+    at the cursor when nothing is selected). The rows gather under a header and its name opens for typing: type a
+    name and press `Enter` (the default is "Group"). In a list that sorts itself, **Group…** offers to switch to
+    Manual first.
+  - **Read the header.** It shows the name, how many items the group holds and an arrow. A screen reader reads it
+    as "group, 3 items" and says whether it is expanded or collapsed.
+  - **Fold or unfold a group.** Click the header, or press `Left` to fold and `Right` to unfold. `Enter` toggles it
+    (in the Panel `Space` does too). A folded group hides its items and stays folded.
+  - **Rename.** Press `F2` on the header, press `Ctrl+G` on it with nothing selected, or choose **Rename group**.
+  - **Ungroup or delete.** **Ungroup** dissolves the group and keeps its items. **Delete group** (or `Delete`
+    on the header) moves the group and its items to the Trash, and `Ctrl+Z` brings them all back in one step.
+  - **Move.** Drag a header to move the whole group, or press `Alt+Up` or `Alt+Down` on it. Dropping an item on a
+    header adds it to that group.
+  - **Search.** Searching lists every match, even inside a folded group, under the group's header in the Panel;
+    the Main window shows a flat list of matches with no headers.
+  - **Layout.** A list that holds groups is drawn as rows, so a header spans the width; the Tile view button
+    rests (greyed out) until the list has no groups. `Alt+1` to `Alt+9` count items only, never headers.
+  - **Main window.** The command palette (`Ctrl+K`) has the same actions, and the header's menu has Rename group,
+    Ungroup and Delete group.
+  - **Undo.** `Ctrl+Z` takes back a grouping, a rename, an ungroup, a delete and a drag of a header or of an
+    item onto one.
 - **Move.** Choose **Move to list…** from the item menu to move one or more selected items.
 - **Paste as…** Choose **Paste as…** from the item menu (text items, one at a time) to paste the text changed: **Plain
   text**, **UPPERCASE**, **lowercase**, **Title Case**, **Trimmed** (no space at the ends) or **slug-like-this** (`my-title`).
@@ -228,7 +230,7 @@ only if the Free plan has room for it.
 
 ## Commands and shortcuts
 
-- **All commands.** Press `Ctrl+K` (or `Ctrl+Shift+P`) in the Main window, or choose **All commands…** in
+- **Commands.** Press `Ctrl+K` (or `Ctrl+Shift+P`) in the Main window, or choose **Commands…** in
   the Panel menu. Type a few letters, such as "new" or "hotkeys", and press `Enter`. The palette lists the
   actions of the app, so you never need to remember where one lives.
 - **Keyboard shortcuts.** Press `Ctrl+/` to see every shortcut. It is also a tab in the Help window.
@@ -284,7 +286,7 @@ back.
 
 ### Tips
 
-The **Tips** tab of the Help window has ten short cards on what Snipdeck can do. Each has a title, two lines, a
+The **Tips** tab of the Help window has eleven short cards on what Snipdeck can do. Each has a title, two lines, a
 picture and a **Try it** button that runs the action for you (for example, showing the Panel). Open it from the
 tray icon's menu (**Tips**), from Help, from the last page of the welcome tour, or from the **More tips** card in
 the **Getting started** list. Snipdeck never shows a badge or a reminder about tips; they wait until you look.
@@ -304,17 +306,27 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   Settings > Accessibility > Text size in Windows) or a fixed 100, 125, 150 or 175 %. **Reduce motion** turns off
   sliding and fading. It is also off when Windows has **Animation effects** off. **Panel width** is 260 to 480
   pixels. You can also drag the Panel's edges.
-- **Panel.** **Show the Panel in the taskbar and Alt+Tab** gives the Panel a taskbar button and an Alt+Tab entry while it is on screen (off by default). A paste from a Panel reached with Alt+Tab still goes to the app you were in before.
-  **Hide the panel when it loses focus** hides an unpinned Panel when you switch to another app (on by default).
-  **Start with Windows** starts Snipdeck hidden in the tray when you sign in. **Keep running in the tray when the
-  window closes** is on by default. Turn it off and closing the Panel or the Main window quits Snipdeck.
-- **Panel dock.** **Dock to** fixes the Panel against Floating, Left edge, Right edge, Top edge or Bottom edge
-  of the monitor it is on. The edge the taskbar is on is never used. You can also drag the Panel by its header
-  to within a few pixels of an edge: a strip marks the edge, and the Panel docks there when you let go. The
-  Panel's menu names the edge it would dock to ("Dock to the right edge"). **Open a docked panel by** is Off, Hover, Click or Hover and click. Off keeps a docked
-  Panel open. The other choices fold it into a thin strip, and the Panel shortcut opens it too. **Hover delay**
-  (0 to 2000 ms, default 150) is how long the pointer rests on the strip. **Leave delay** (0 to 5000 ms, default
-  400) is how long it stays off the Panel before it folds.
+- **Panel layout.** **Layout** is List, Cards (two per row) or Compact. **Search field** is Appears when you type
+  or Always shown. **Lists** are Tabs or a Menu in the board picker. **Quick-use numbers** numbers the first nine
+  rows for `Alt+1` to `Alt+9`. **Show Symbols tab** shows or hides the Symbols tab and its `Ctrl+K` command.
+- **Opening the Panel.** **Tray icon click opens** the Panel or the Main window. **Panel opens** where you left it,
+  at the mouse or at the text cursor. **After a paste or copy** hides the Panel or keeps it open.
+  **Hide the panel when it loses focus** hides an unpinned Panel when you switch to another app (on by
+  default). **Show the Panel in the taskbar and Alt+Tab** gives the Panel a taskbar button and an Alt+Tab entry
+  while it is on screen (off by default); a paste from a Panel reached with Alt+Tab still goes to the app you
+  were in before. **Keep Panel visible during screenshots** leaves it on screen for Take screenshot.
+  **Picker position** is the side of your text cursor the Picker opens on. **Start with Windows** starts Snipdeck
+  hidden in the tray when you sign in, and **When Windows starts** can open the Panel as well. **Keep running in
+  the tray when the window closes** is on by default. Turn it off and closing the Panel or the Main window quits
+  Snipdeck.
+- **Docking** is also in Opening the Panel. **Dock to** fixes the Panel against Floating, Left edge, Right edge,
+  Top edge or Bottom edge of the monitor it is on. The edge the taskbar is on is never used. You can also drag
+  the Panel by its header to within a few pixels of an edge: a strip marks the edge, and the Panel docks there
+  when you let go. The Panel's menu names the edge it would dock to ("Dock to the right edge"). **Open a docked
+  panel by** is Off, Hover, Click or Hover and click. Off keeps a docked Panel open. The other choices fold it
+  into a thin strip, and the Panel shortcut opens it too. **Hover delay** (0 to 2000 ms, default 150) is how long
+  the pointer rests on the strip. **Leave delay** (0 to 5000 ms, default 400) is how long it stays off the Panel
+  before it folds.
 - **Typing.** **Expand abbreviations as I type** and **Suggest snippets as I type**, both off by default. See
   [Triggers and typing](#triggers-and-typing-windows).
 - **Privacy.** **Keep a Recent inbox of what you copy** and the programs it never keeps copies from. **Clear the
@@ -337,8 +349,8 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   table. To turn on Supporter, paste your key (it starts with `SNIP1.`) and press **Activate**. See
   [Free and Supporter](#free-and-supporter) and [`licensing.md`](licensing.md).
 
-The page lists its groups in this order: Shortcuts, Appearance, Panel, Privacy, Programs, Typing, Backups and
-your data, Licence. Press `F1` or choose **Help** at the bottom of the page to open this guide.
+The page lists its groups in this order: Shortcuts, Appearance, Panel layout, Opening the Panel, Privacy,
+Programs, Typing, Backups and your data, Licence. Press `F1` or choose **Help** at the bottom of the page to open this guide.
 
 ## Triggers and typing (Windows)
 
@@ -361,7 +373,7 @@ waits for a space, punctuation or the start of a line, like a trigger does. When
 trigger, the item is pasted instead of hinted. Only trigger codes count, never titles.
 
 In the item editor, the **Trigger** box has the same rules: 1 to 32 characters with no spaces, and no two
-items share one. A one-character trigger shows a warning, because it fires every time you type it, even inside words; two or more characters are safer. If you save a code that another trigger starts with, or that starts another trigger, a message says "Saved. This code overlaps the trigger of “Title”, so one of them may never fire." with the other item's title (without a title it says "another trigger"). The item is still saved.
+items share one. A one-character trigger shows a warning, because it fires every time you type it, even inside words; two or more characters are safer. If you save a code that another trigger starts with, or that starts another trigger, a message says "Saved. This trigger overlaps the trigger of “Title”, so one of them may never fire." with the other item's title (without a title it says "another trigger"). The item is still saved.
 
 If Snipdeck cannot start the typing watcher, a message says "Couldn't start typing triggers. Nothing will be expanded or suggested."
 
@@ -503,7 +515,7 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Panel | `Ctrl+Tab`, `Ctrl+Shift+Tab` | Next or previous list |
 | Panel | `Ctrl+F` | Focus the search box |
 | Panel | `Ctrl+D` | Duplicate |
-| Panel | `Ctrl+K` | All commands (opens them in the Main window) |
+| Panel | `Ctrl+K` | Commands (opens them in the Main window) |
 | Panel | `Ctrl+N`, `Ctrl+Shift+N` | New item, new list |
 | Panel | `Ctrl+,` | Settings |
 | Panel | `Ctrl+/` | Show the keyboard shortcuts |
@@ -511,18 +523,18 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Panel | `Ctrl+Z` | Undo the last delete, grouping, group rename, ungroup or group drag (search box empty) |
 | Panel | `Ctrl+E`, `F2` | Edit the selected item |
 | Panel | `Ctrl+P` | Pin or unpin the selected item |
-| Panel | `Ctrl+G` | Group the marked rows |
-| Panel | `Left`, `Right`, `Enter` or `Space` (on a group header) | Fold or open the group |
+| Panel | `Ctrl+G` | Group the selected rows |
+| Panel | `Left`, `Right`, `Enter` or `Space` (on a group header) | Fold or unfold the group |
 | Panel | `Alt+Up`, `Alt+Down` (on a group header) | Move the whole group |
 | Panel | `Menu`, `Shift+F10` (on a group header) | Open its menu: Rename group, Ungroup, Delete group |
-| Panel | `F2`, or `Ctrl+G` with nothing marked (on a group header) | Rename the group |
+| Panel | `F2`, or `Ctrl+G` with nothing selected (on a group header) | Rename the group |
 | Panel | `Delete` | Move the selected item to the Trash (not while searching) |
 | Panel | `Menu`, `Shift+F10` | Open the item menu |
 | Panel | `Esc` | Clear the search; with nothing to clear, hide the Panel |
 | Picker | `Tab`, `Shift+Tab` | Change scope |
 | Picker | `Alt+1` to `Alt+9` | Use that row |
 | Picker | `Ctrl+E`, `Esc` | Edit, close |
-| Main window | `Ctrl+K`, `Ctrl+Shift+P` | All commands |
+| Main window | `Ctrl+K`, `Ctrl+Shift+P` | Commands |
 | Main window | `Ctrl+/` | Show the keyboard shortcuts |
 | Main window | `Ctrl+N`, `Ctrl+Shift+N` | New item (the quick-add box in an open list), new list |
 | Main window | `Ctrl+,` | Settings |
@@ -538,7 +550,7 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Main window | `Ctrl+A`, `Ctrl+Space` | Select all, toggle a row |
 | Main window | `Alt+Up`, `Alt+Down` | Move an item or list |
 | Main window | `Ctrl+G` | Group the selected rows (the row at the cursor when none is selected) |
-| Main window | `Left`, `Right`, `Enter` (on a group header) | Fold or open the group |
+| Main window | `Left`, `Right`, `Enter` (on a group header) | Fold or unfold the group |
 | Main window | `F2` (on a group header) | Rename the group |
 | Main window | `Alt+Up`, `Alt+Down` (on a group header) | Move the whole group |
 | Main window | `Delete` (on a group header) | Move the group and its items to the Trash |

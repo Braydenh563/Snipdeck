@@ -483,23 +483,23 @@ export component SettingsPage inherits Window {
 
     property <string> hotkey-names-text: root.hotkey-names[0] + " " + root.hotkey-names[1] + " " + root.hotkey-names[2] + " " + root.hotkey-names[3];
     // Titles of section 0 (Shortcuts), for the search. A test checks that every row title is in here.
-    property <string> keys-0: root.hotkey-names-text;
+    property <string> keys-0: @tr("Shortcuts") + " " + root.hotkey-names-text;
     // Titles of section 1 (Appearance), for the search. A test checks that every row title is in here.
-    property <string> keys-1: @tr("Theme") + " " + @tr("Main list density") + " " + @tr("Accent colour") + " " + @tr("Text size") + " " + @tr("Language") + " " + @tr("Reduce motion") + " " + @tr("Panel width");
+    property <string> keys-1: @tr("Appearance") + " " + @tr("Theme") + " " + @tr("Main list density") + " " + @tr("Accent colour") + " " + @tr("Text size") + " " + @tr("Language") + " " + @tr("Reduce motion") + " " + @tr("Panel width");
     // Titles of section 2 (Panel layout), for the search. A test checks that every row title is in here.
-    property <string> keys-2: @tr("Layout") + " " + @tr("Search field") + " " + @tr("Lists") + " " + @tr("Quick-use numbers") + " " + @tr("Show Symbols tab");
+    property <string> keys-2: @tr("Panel layout") + " " + @tr("Layout") + " " + @tr("Search field") + " " + @tr("Lists") + " " + @tr("Quick-use numbers") + " " + @tr("Show Symbols tab");
     // Titles of section 3 (Opening the Panel), for the search. A test checks that every row title is in here.
-    property <string> keys-3: @tr("Tray icon click opens") + " " + @tr("Panel opens") + " " + @tr("After a paste or copy") + " " + @tr("Hide the panel when it loses focus") + " " + @tr("Show the Panel in the taskbar and Alt+Tab") + " " + @tr("Keep Panel visible during screenshots") + " " + @tr("Dock to") + " " + @tr("Docked panel uses the full edge") + " " + @tr("Open a docked panel by") + " " + @tr("Hover delay") + " " + @tr("Leave delay") + " " + @tr("Picker position") + " " + @tr("Start with Windows") + " " + @tr("When Windows starts") + " " + @tr("Keep running in the tray when the window closes");
+    property <string> keys-3: @tr("Opening the Panel") + " " + @tr("Tray icon click opens") + " " + @tr("Panel opens") + " " + @tr("After a paste or copy") + " " + @tr("Hide the panel when it loses focus") + " " + @tr("Show the Panel in the taskbar and Alt+Tab") + " " + @tr("Keep Panel visible during screenshots") + " " + @tr("Dock to") + " " + @tr("Docked panel uses the full edge") + " " + @tr("Open a docked panel by") + " " + @tr("Hover delay") + " " + @tr("Leave delay") + " " + @tr("Picker position") + " " + @tr("Start with Windows") + " " + @tr("When Windows starts") + " " + @tr("Keep running in the tray when the window closes");
     // Titles of section 4 (Privacy), for the search. A test checks that every row title is in here.
-    property <string> keys-4: @tr("Keep a Recent inbox of what you copy") + " " + @tr("Clear recent history") + " " + @tr("Clear the clipboard after copying a sensitive item") + " " + @tr("Master password") + " " + @tr("Unlock with Windows Hello");
+    property <string> keys-4: @tr("Privacy") + " " + @tr("fingerprint face PIN biometric lock") + " " + @tr("Keep a Recent inbox of what you copy") + " " + @tr("Clear recent history") + " " + @tr("Clear the clipboard after copying a sensitive item") + " " + @tr("Master password") + " " + @tr("Unlock with Windows Hello");
     // Titles of section 5 (Programs), for the search. A test checks that every row title is in here.
-    property <string> keys-5: @tr("Programs");
+    property <string> keys-5: @tr("Programs") + " " + @tr("never paste excluded apps");
     // Titles of section 6 (Typing), for the search. A test checks that every row title is in here.
-    property <string> keys-6: @tr("Expand abbreviations as I type") + " " + @tr("Suggest snippets as I type");
+    property <string> keys-6: @tr("Typing") + " " + @tr("Expand abbreviations as I type") + " " + @tr("Suggest snippets as I type") + " " + @tr("trigger triggers text expansion autocomplete shortcode");
     // Titles of section 7 (Backups and your data), for the search. A test checks that every row title is in here.
-    property <string> keys-7: @tr("Backups to keep") + " " + @tr("Export library") + " " + @tr("Import") + " " + @tr("Erase library") + " " + @tr("Also forget the encryption key");
+    property <string> keys-7: @tr("Backups and your data") + " " + @tr("Backups to keep") + " " + @tr("Export library") + " " + @tr("Import") + " " + @tr("Erase library") + " " + @tr("Also forget the encryption key");
     // Titles of section 8 (Licence), for the search. A test checks that every row title is in here.
-    property <string> keys-8: @tr("Get Supporter");
+    property <string> keys-8: @tr("Licence") + " " + @tr("Get Supporter") + " " + @tr("license supporter upgrade key");
     property <string> keys-all: root.keys-0 + " " + root.keys-1 + " " + root.keys-2 + " " + root.keys-3 + " " + root.keys-4 + " " + root.keys-5 + " " + root.keys-6 + " " + root.keys-7 + " " + root.keys-8;
 
     function reveal-field(y: length, h: length) {
@@ -771,7 +771,7 @@ export component SettingsPage inherits Window {
                     located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     SettingRow {
                         title: @tr("Layout");
-                        description: @tr("How the Panel lists your snippets: one per row, two per row as cards, or tight rows. A search shows rows in every layout.");
+                        description: @tr("How the Panel lists your items: one per row, two per row as cards, or tight rows. A search shows rows in every layout.");
                         Segmented {
                             width: 320px * SystemLook.text-scale;
                             label: @tr("Layout");
@@ -799,7 +799,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Lists");
-                        description: @tr("Tabs put each list of the board in a row under the header. Menu moves them into the board picker and gives the space back to your snippets.");
+                        description: @tr("Tabs put each list of the board in a row under the header. Menu moves them into the board picker and gives the space back to your items.");
                         Segmented {
                             width: 200px * SystemLook.text-scale;
                             label: @tr("Lists");
@@ -813,7 +813,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Quick-use numbers");
-                        description: @tr("Numbers the first nine rows so pressing 1 to 9 uses that snippet.");
+                        description: @tr("Numbers the first nine rows so pressing Alt+1 to 9 uses that item.");
                         Toggle {
                             a11y-label: @tr("Quick-use numbers");
                             checked <=> root.show-numbers;
@@ -1259,7 +1259,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Expand abbreviations as I type");
-                        description: @tr("When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items.");
+                        description: @tr("When you type an item's trigger in another program, Snipdeck replaces it with the item's text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items.");
                         Toggle {
                             a11y-label: @tr("Expand abbreviations as I type");
                             enabled: root.typing-available;
@@ -1272,7 +1272,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Suggest snippets as I type");
-                        description: @tr("After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows.");
+                        description: @tr("After you type the first two characters of a trigger, a small hint at the text cursor offers the item. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows.");
                         Toggle {
                             a11y-label: @tr("Suggest snippets as I type");
                             enabled: root.typing-available;
