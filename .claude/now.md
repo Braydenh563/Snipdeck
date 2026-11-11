@@ -55,6 +55,7 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 - 2026-11-10 owner (verbatim): "dont budget, just finish, dont stop until it is done" -> budget mode off; run to done; still one snipdeck-ui build at a time (RAM).
 - 2026-11-10 owner (verbatim): "also dont \"wait until an agent is finished\" just sit idle until their completion notifications or ci or codeql or smth wake you" -> Decision: no foreground wait loops; end the turn and let notifications wake the session.
+- 2026-11-11 inbox: Slint drops keyboard focus when the focused item is clipped out of a Flickable (found via Template editor Ctrl+Enter, fixed for the kind pick in f508e86). A user who scrolls a long form with the wheel while a field has focus may lose focus too. Check in Final ux-auditor pass on every scrolling form (editor, settings, fill).
 - Decision 2026-11-07: only ONE snipdeck-ui build at a time (rustc needs ~9 GB for snipdeck-ui; two at once OOM-killed rustc repeatedly and tripled agent times). Parallel agents only if at most one compiles snipdeck-ui/snipdeck-app; others do docs, reviews, or light crates (portable, core, store).
 - Decision 2026-11-07: Symbols replaces the starter boards idea for emoji/kaomoji/icons; content lives in the Panel Symbols tab (symbols-spec D6).
 
