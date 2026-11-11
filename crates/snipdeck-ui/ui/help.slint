@@ -317,10 +317,9 @@ export component HelpWindow inherits Window {
                         accessible-description: tip.first-line + " " + tip.second-line;
                         min-height: body.preferred-height;
 
-                        property <bool> button-focused: try.has-focus;
-                        changed button-focused => {
-                            if (self.button-focused) { tips-scroll.reveal(card.y, card.height); }
-                        }
+                        // No manual `reveal` on focus: Slint scrolls the focused button into view itself, and passing
+                        // the card's content-relative y here fought that scroll and left the cards below it unreachable
+                        // by Tab (final-audit-1 #19).
 
                         body := VerticalLayout {
                             padding: Space.s3;

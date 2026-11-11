@@ -889,7 +889,8 @@ export component ItemEditor inherits Window {
                     // text field exists whatever the kind (a field inside an `if` cannot be focused from here).
                     Rectangle {
                         height: root.text-kind ? content-form.preferred-height : attachment.preferred-height;
-                        clip: true;
+                        // No `clip` here: a clipping Rectangle between the field and the scroll view makes Slint skip the
+                        // field when Tab-ing while it is scrolled out of view (see focus_traversal_repro.rs).
 
                         content-form := FormField {
                             width: parent.width;
