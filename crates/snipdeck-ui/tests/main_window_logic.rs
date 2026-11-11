@@ -250,6 +250,31 @@ macro_rules! ui_tests {
 
 ui_tests! {
 
+    fn a_header_made_with_a_rename_request_opens_its_editor_at_once() {
+        let (ui, _log) = start();
+        // Ctrl+G adds the header and asks for its rename in the same refresh: the header is born
+        // with the request, so the editor must open from the start value, not from a change.
+        ui.set_rename_row(0);
+        ui.set_rename_seq(1);
+        let mut rows = fixture::sample_rows();
+        rows.truncate(3);
+        rows.insert(
+            0,
+            snipdeck_ui::MainRow {
+                title: "Group".into(),
+                is_header: true,
+                group_count: 2,
+                ..Default::default()
+            },
+        );
+        rows[1].grouped = true;
+        rows[2].grouped = true;
+        fixture::set_rows(&ui, rows);
+        ui.set_has_groups(true);
+        settle();
+        assert!(!all(&ui, "Group name", AccessibleRole::TextInput).is_empty());
+    }
+
     fn a_group_header_is_a_labelled_expandable_button_and_has_its_own_keys() {
         let (ui, log) = start();
         let header = |count: i32, collapsed: bool| snipdeck_ui::MainRow {
