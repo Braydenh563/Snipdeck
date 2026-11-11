@@ -872,13 +872,19 @@ export component ItemEditor inherits Window {
                                     if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                                 }
                             }
-                            if ph.prompted && !root.prompted-available: LockBadge {
-                                text: @tr("Supporter");
-                                y: (parent.height - self.height) / 2;
+                            // Top-aligned: a help text that wraps to two lines must not stretch the badge.
+                            if ph.prompted && !root.prompted-available: VerticalLayout {
+                                alignment: start;
+                                // As tall as the small Button chip beside it (`button.slint` height-px).
+                                LockBadge {
+                                    text: @tr("Supporter");
+                                    height: max(24px, Type.line-sm + Space.s2);
+                                }
                             }
                             Text {
                                 horizontal-stretch: 1;
                                 min-width: 0px;
+                                min-height: max(24px, Type.line-sm + Space.s2);
                                 text: ph.help;
                                 color: Theme.text-secondary;
                                 font-family: Fonts.sans;

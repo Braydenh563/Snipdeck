@@ -403,11 +403,15 @@ ui_tests! {
         settle();
         assert_eq!(find(&ui, "Insert {field:Name}", AccessibleRole::Button).accessible_enabled(), Some(false));
         assert_eq!(find(&ui, "Insert {date}", AccessibleRole::Button).accessible_enabled(), Some(true));
-        // The Supporter chips carry a lock badge in place.
+        for chip in ["{multiline:Name|default}", "{pickdate:Name|FORMAT}", "{optional:Name}...{/optional}"] {
+            let label = format!("Insert {chip}");
+            assert_eq!(find(&ui, &label, AccessibleRole::Button).accessible_enabled(), Some(false), "{chip}");
+        }
+        // The Supporter chips (field, choice, multiline, pickdate, optional) carry a lock badge in place.
         let badges = ElementHandle::find_by_accessible_label(&ui, "Supporter")
             .filter(|e| e.accessible_role() == Some(AccessibleRole::Text))
             .count();
-        assert_eq!(badges, 2);
+        assert_eq!(badges, 5);
     }
 
     fn the_list_select_opens_in_place_chooses_and_closes_with_escape() {

@@ -185,9 +185,9 @@ export component SettingRow inherits Rectangle {
                     vertical-alignment: center;
                     accessible-role: none;
                 }
-                if root.locked-text != "": LockBadge {
-                    text: root.locked-text;
-                    y: (parent.height - self.height) / 2;
+                if root.locked-text != "": VerticalLayout {
+                    alignment: center;
+                    LockBadge { text: root.locked-text; }
                 }
             }
             if root.description != "": Text {
