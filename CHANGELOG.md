@@ -6,6 +6,45 @@ All notable changes to Snipdeck are recorded here. The format follows
 
 "Unverified" marks Windows behaviour that no one has run on a real Windows PC.
 
+## [Unreleased]
+
+### Added
+- **More importers** in Settings > Import...: Espanso, Beeftext, TextExpander (CSV) and PhraseExpress (CSV), beside
+  Ditto and CopyQ, with the same preview, report and Undo. Their abbreviations are kept as triggers.
+- **More placeholders**: `{uuid}`, and date maths after `date`, `time` and `datetime`, for example `{date+3d}`,
+  `{date-1w:%Y-%m-%d}`, `{time+90min}`, `{datetime+1mo:%F %H:%M}` (units `d w mo y h min`, chainable).
+- **Paste as...** in the item menu: Plain text, UPPERCASE, lowercase, Title Case, Trimmed, slug.
+- **Richer fill-ins** (Supporter): `{multiline:Name|default}` (a box of several lines; Enter adds a line,
+  Ctrl+Enter pastes), `{pickdate:Name|FORMAT}` (a typed `YYYY-MM-DD` date, today when left empty; a date that does
+  not exist is refused on its field), and `{optional:Name}...{/optional}` (a tick box; the text inside pastes only
+  when ticked). The item editor offers all three as chips.
+- **Tips**: a fourth Help tab with ten cards (a title, two lines, a picture and a Try it button), reached from the
+  tray, Help, the last page of the welcome tour and a Getting started card.
+- **Rich paste**: pasting into the Panel or Main, and the capture hotkey, keep HTML and RTF beside the text, so the
+  item pastes formatted in Word or Outlook and as text in Notepad. Rows show a "Formatted" mark; editing the text
+  says the formatting will be removed, and "Remove formatting" drops it alone. Unverified on Windows.
+- **Groups inside a list**: mark rows and press Ctrl+G (or use the item menu) to gather them under a named,
+  collapsible header. Drag items into or out of a group, drag a whole group by its header, rename it in place, and
+  undo any of it. Search keeps the matches under their group's header. Unverified with Narrator on Windows.
+
+### Changed
+- A template with any question in it now always opens the fill form, even when every question has a default or
+  is a choice; the defaults fill the form in.
+- In the fill form, Space ticks a tick box and Enter moves on (or pastes on the last field), like every other
+  field.
+- The "Supporter" badge beside a locked feature is as tall as the control next to it, with its lock centred.
+- The item editor, Help, Settings and the fill form get wider at large text sizes (up to 225%), so buttons, tabs and
+  setting rows no longer overlap or clip.
+- Tips pictures end on a whole row, and the Main window's Show Panel button has its own icon.
+- The Template editor's placeholder list lines its descriptions up in one column, and stacks each name above its description in a narrow window.
+- Tips mark Supporter features with a badge, and a Free user's Try it on one opens the licence page. The item editor says which placeholders need Supporter and offers Get Supporter... beside the message.
+- The item editor's buttons move onto two rows when the window is narrow or the text is large, so none is cut off.
+- Import notes (a skipped match, a cut title, an unsupported field) are shown in your language.
+
+### Security
+- YAML import parsing moved from `serde_yaml_ng` to `serde-saphyr` (deserialize only), so `unsafe-libyaml`
+  (RUSTSEC-2024-0449) is no longer in the build.
+
 ## [1.0.0] - 2026-10-21
 
 First release. Windows 10 and 11, 64-bit. Not code-signed, so Windows SmartScreen asks you to confirm the

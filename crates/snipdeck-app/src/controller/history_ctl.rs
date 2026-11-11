@@ -2,9 +2,11 @@
 //! forward. The Main window and the Panel share one history (Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z and
 //! the two header buttons); the toast's Undo button takes back the step it was shown for.
 
-use snipdeck_core::{Item, ItemId, ListId, Placement, Timestamp};
+use snipdeck_core::{Group, Item, ItemId, ListId, Placement, Timestamp};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
-use snipdeck_store::{Batch, ItemRepo, TrashRepo, Trashable, TriggerRepo};
+use snipdeck_store::{
+    Batch, GroupDelete, GroupEnd, GroupRepo, ItemRepo, TrashRepo, Trashable, TriggerRepo,
+};
 
 use super::{Controller, Library, Toast, ToastKind, ToastMessage, failed};
 use crate::{
@@ -131,8 +133,38 @@ fn apply(
             }
         }
         Change::Move { id, to, .. } => b.move_item(*id, to.0, to.1)?,
+        Change::Group { group, members } => b.create_group(group, members)?,
+        Change::Ungroup { group, .. } => b.delete_group(group.id, GroupDelete::Keep)?,
+        Change::Rename { after, .. } => b.update_group(after)?,
+        Change::MoveRun { group, to, .. } => b.move_run(*group, *to)?,
+        Change::Join { item, group, .. } => b.join_group(*item, *group, GroupEnd::First)?,
+        Change::Leave {
+            item,
+            from,
+            from_group,
+            ..
+        } => {
+            b.move_item(*item, from.0, from.1)?;
+            regroup(b, *item, from_group.as_ref())?;
+        }
+        Change::Regroup { item, group } => regroup(b, *item, group.as_ref())?,
     }
     Ok(())
+}
+
+/// Puts `item` in exactly `group` (made again, with the item alone, if it was emptied and
+/// pruned since) or in none, leaving its position alone.
+fn regroup<B: GroupRepo>(
+    b: &mut B,
+    item: ItemId,
+    group: Option<&Group>,
+) -> snipdeck_store::Result<()> {
+    match group {
+        None => b.set_item_group(item, None),
+        Some(g) => b
+            .set_item_group(item, Some(g.id))
+            .or_else(|_| b.create_group(g, &[item])),
+    }
 }
 
 impl<S, C, K, T> Controller<S, C, K, T>

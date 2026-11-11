@@ -2144,11 +2144,25 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
 // ---- Opening the window on demand --------------------------------------------------------------
 
 thread_local! {
+    /// Opens the Settings page at the Licence section; set with [`OPENER`].
+    static LICENCE_OPENER: RefCell<Option<Rc<dyn Fn()>>> = const { RefCell::new(None) };
     /// Opens the Settings page; set by [`SettingsUi::new`]. The Main window's Settings button
     /// reaches the page through [`request_open`] because it is created long before the host
     /// could hand it anything.
     static OPENER: RefCell<Option<Rc<dyn Fn()>>> = const { RefCell::new(None) };
 }
+
+/// Scrolls an open Settings page to the Licence section.
+fn jump_to_licence(window: Option<&ui::SettingsPage>) {
+    if let Some(window) = window {
+        let filter = ui::SettingsFilter::get(window);
+        filter.set_jump_target(LICENCE_SECTION);
+        filter.set_jump_seq(filter.get_jump_seq() + 1);
+    }
+}
+
+/// The Licence section's index in `settings.slint` (the search keys `keys-7`).
+const LICENCE_SECTION: i32 = 7;
 
 /// Opens the Settings page (creating it the first time), if the host made one with
 /// [`SettingsUi::new`]. UI thread only.
@@ -2159,11 +2173,20 @@ pub fn request_open() {
     }
 }
 
+/// Opens the Settings page at the Licence section (Get Supporter), for a button that sits next to a Supporter
+/// refusal. UI thread only.
+pub fn request_open_licence() {
+    let opener = LICENCE_OPENER.with(|o| o.borrow().clone());
+    if let Some(opener) = opener {
+        opener();
+    }
+}
+
 /// Creates the Settings page the first time it is asked for, binds it, and shows and raises it
 /// every time. Not generic: the host keeps one of these.
 pub struct SettingsUi {
     open: Box<dyn Fn() -> Result<(), slint::PlatformError>>,
-    window: Box<dyn Fn() -> Option<ui::SettingsPage>>,
+    window: Rc<dyn Fn() -> Option<ui::SettingsPage>>,
 }
 
 impl std::fmt::Debug for SettingsUi {
@@ -2232,15 +2255,22 @@ impl SettingsUi {
                 Ok(())
             })
         };
-        let window = {
+        let window: Rc<dyn Fn() -> Option<ui::SettingsPage>> = {
             let slot = Rc::clone(&slot);
-            Box::new(move || {
+            Rc::new(move || {
                 slot.borrow()
                     .as_ref()
                     .map(|(window, _)| window.clone_strong())
             })
         };
         let open: Rc<dyn Fn() -> Result<(), slint::PlatformError>> = Rc::new(open);
+        LICENCE_OPENER.with(|o| {
+            let (open, window) = (Rc::clone(&open), Rc::clone(&window));
+            *o.borrow_mut() = Some(Rc::new(move || match open() {
+                Ok(()) => jump_to_licence(window().as_ref()),
+                Err(e) => crate::trace!("cannot open the licence settings: {e}"),
+            }));
+        });
         OPENER.with(|o| {
             let open = Rc::clone(&open);
             *o.borrow_mut() = Some(Rc::new(move || {
@@ -2262,6 +2292,17 @@ impl SettingsUi {
     /// The windowing system failed to create or show it.
     pub fn open(&self) -> Result<(), slint::PlatformError> {
         (self.open)()
+    }
+
+    /// Opens the page and scrolls it to the Licence section (where Get Supporter is).
+    ///
+    /// # Errors
+    ///
+    /// The windowing system failed to create or show it.
+    pub fn open_licence(&self) -> Result<(), slint::PlatformError> {
+        self.open()?;
+        jump_to_licence(self.window().as_ref());
+        Ok(())
     }
 
     /// The page, once it has been created.

@@ -415,6 +415,13 @@
       "expect": "The item gets a Formatted mark. WordPad shows the bold word and the red word; Notepad shows the plain line. Editing only the title in the editor and saving keeps the formatting."
     },
     {
+      "id": "54",
+      "v1": false,
+      "title": "Panel: groups inside a list (v1.1 slice 3b)",
+      "do": "Set a list to Manual sort. In the Panel mark three rows with Space, press Ctrl+G, type a name and press Enter. Press Left on the group header, then Right. Click the header. Press F2 on it and rename it. Drag the header to another place. Right-click the header and choose Ungroup. Group again, choose Delete group, then press Ctrl+Z. Type a word from a grouped item in the search box while the group is collapsed. With Narrator on, move to a header with the arrow keys.",
+      "expect": "The marked rows gather under a header showing the name, the item count and a chevron. Left collapses, Right expands, a click toggles; the focus ring shows on the header and Tab/arrows reach it. Rename edits in place. Dragging the header moves the whole group. Ungroup keeps the items. Delete group moves the group and its items to Trash in one step and Ctrl+Z brings the header and items back. Search lists matches even inside a collapsed group. Quick numbers count item rows only, never headers. Narrator reads a header as 'group, N items, collapsed' (or expanded). Write anything that looks wrong in the note (n)."
+    },
+    {
       "id": "55",
       "v1": false,
       "title": "Typed trigger expands (v1.1 slice 5b)",

@@ -484,6 +484,10 @@ where
         };
         let view = self.controller.borrow().view();
         render(&window, self.shown.borrow().as_ref(), &view);
+        // A new group's name follows the language the window is in now.
+        self.controller
+            .borrow_mut()
+            .set_group_name(&window.invoke_group_default_name());
         // Placements decided by another window (Settings docking the Panel, the dock being
         // switched off) are carried out here, where the Panel's window is.
         let pending = self.controller.borrow_mut().take_pending();
@@ -643,6 +647,7 @@ where
         on_effect: impl Fn(&Effect) + 'static,
     ) -> Binding {
         let core = Core::new(this, window, host, Box::new(on_effect));
+        core.act(|ctl| ctl.set_group_name(&window.invoke_group_default_name()));
         core.sync();
         {
             // Where the other windows open over the Panel, while it is shown.
@@ -858,6 +863,14 @@ where
                 crate::main_window::SelectMode::Replace
             }
         ));
+        wire!(on_group_requested, |ctl, i| ctl.group_marked(index(i)));
+        wire!(on_group_toggled, |ctl, i| ctl
+            .group_collapse(index(i), None));
+        wire!(on_group_collapsed_set, |ctl, i, collapsed| ctl
+            .group_collapse(index(i), Some(collapsed)));
+        wire!(on_group_renamed, |ctl, i, name| ctl
+            .group_rename(index(i), name.as_str()));
+        wire!(on_group_rename_ended, |ctl| ctl.group_rename_ended());
         wire!(on_select_all_requested, |ctl| ctl.panel_mark_all());
         wire!(on_select_mode_changed, |ctl, on| ctl.panel_select_mode(on));
         wire!(on_delete_mode_changed, |ctl, on| ctl.panel_delete_mode(on));
@@ -1387,8 +1400,13 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             .map(|(i, r)| {
                 let mut row = panel_row(r, view.dark);
                 // Collapsed "Deleted · Undo" rows do not take a number: the live rows count 1, 2, 3.
-                row.ghosts_before =
-                    to_i32(view.rows[..i].iter().filter(|x| x.deleted_pending).count());
+                // Neither do group headers.
+                row.ghosts_before = to_i32(
+                    view.rows[..i]
+                        .iter()
+                        .filter(|x| x.deleted_pending || x.header.is_some())
+                        .count(),
+                );
                 row.stack_position = marked
                     .iter()
                     .position(|id| *id == r.id)
@@ -1508,7 +1526,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
                         | ItemMenuEntry::MoveDown { enabled: false }
                 ),
                 separator: entry == ItemMenuEntry::Separator,
-                destructive: entry == ItemMenuEntry::Trash,
+                destructive: matches!(entry, ItemMenuEntry::Trash | ItemMenuEntry::DeleteGroup),
                 ..Default::default()
             });
             window.set_item_menu_entries(model(entries));
@@ -1522,6 +1540,9 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     );
     window.set_marked_count(to_i32(view.marked_count));
     window.set_trash_focus_row(view.focus_row.map_or(-1, to_i32));
+    window.set_has_groups(view.rows.iter().any(|r| r.header.is_some()));
+    window.set_rename_row(view.rename_row.map_or(-1, to_i32));
+    window.set_rename_seq(i32::try_from(view.rename_seq).unwrap_or(i32::MAX));
     window.set_trash_focus_seq(i32::try_from(view.focus_seq).unwrap_or(i32::MAX));
     window.set_select_mode(view.select_mode);
     window.set_delete_mode(view.delete_mode);
@@ -1764,6 +1785,10 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
         deleted_pending: row.deleted_pending,
         formatted: row.formatted && !row.sensitive,
         ghosts_before: 0,
+        is_header: row.header.is_some(),
+        group_count: row.header.as_ref().map_or(0, |h| to_i32(h.count)),
+        group_collapsed: row.header.as_ref().is_some_and(|h| h.collapsed),
+        grouped: row.grouped,
     }
 }
 
@@ -1851,6 +1876,8 @@ mod tests {
             marked: false,
             deleted_pending: false,
             formatted: false,
+            header: None,
+            grouped: false,
         }
     }
 

@@ -440,6 +440,25 @@ ui_tests! {
         assert!(!shown(&ui) && missing(&ui, "Remove formatting, keep the text", AccessibleRole::Button));
     }
 
+    fn the_supporter_refusal_on_save_offers_the_way_to_get_supporter() {
+        let (ui, log) = item_editor();
+        ui.on_supporter_requested({
+            let log = log.clone();
+            move || log.borrow_mut().push("supporter".to_owned())
+        });
+        settle();
+        assert!(missing(&ui, "Get Supporter…", AccessibleRole::Button), "no refusal, no button");
+        ui.set_content_error("Fields that ask for a value are a Supporter feature. Remove them to save.".into());
+        ui.set_content_needs_supporter(true);
+        settle();
+        find(&ui, "Get Supporter…", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["supporter"]);
+        ui.set_content_needs_supporter(false);
+        settle();
+        assert!(missing(&ui, "Get Supporter…", AccessibleRole::Button));
+    }
+
     fn the_list_select_opens_in_place_chooses_and_closes_with_escape() {
         let (ui, log) = item_editor();
         let combo = find(&ui, "List", AccessibleRole::Combobox);

@@ -8,7 +8,7 @@
 
 use slint::Global;
 use snipdeck_platform::tray::TrayLabels;
-use snipdeck_portable::Warning;
+use snipdeck_portable::{Note, Warning};
 use snipdeck_ui::{
     FormTexts, ImportTexts, MenuTexts, PanelWindow, SettingsPage, ToastTexts, TrayTexts,
 };
@@ -125,10 +125,59 @@ pub fn import_warning_text(window: &SettingsPage, warning: &Warning) -> String {
         Warning::SymlinkSkipped { name: n } => texts.invoke_symlink_skipped(name(n)),
         Warning::NonTextSkipped { count: n } => texts.invoke_non_text_skipped(count(*n)),
         Warning::Truncated { .. } => texts.invoke_truncated(),
-        // Free text from an importer: already a sentence, in English.
-        Warning::Note(note) => return note.clone(),
+        Warning::Note(note) => note_text(&texts, note, &count),
     };
     text.into()
+}
+
+/// The sentence for what an importer changed in one snippet or file.
+fn note_text(
+    texts: &ImportTexts<'_>,
+    note: &Note,
+    count: &dyn Fn(usize) -> i32,
+) -> slint::SharedString {
+    match note {
+        Note::UnmappedVariables { label, tokens } => {
+            texts.invoke_note_unmapped_variables(label.into(), tokens.into())
+        }
+        Note::UnmappedEspansoVariables { label, tokens } => {
+            texts.invoke_note_unmapped_espanso_variables(label.into(), tokens.into())
+        }
+        Note::VariablesDoNotFit { label } => texts.invoke_note_variables_do_not_fit(label.into()),
+        Note::TriggerOnlyOne { label, triggers } => {
+            texts.invoke_note_trigger_only_one(label.into(), triggers.into())
+        }
+        Note::TriggerNeedsSeparator { label, triggers } => {
+            texts.invoke_note_trigger_needs_separator(label.into(), triggers.into())
+        }
+        Note::TriggerBadShape { label, triggers } => {
+            texts.invoke_note_trigger_bad_shape(label.into(), triggers.into())
+        }
+        Note::DisabledFile { name } => texts.invoke_note_disabled_file(name.into()),
+        Note::NotAMatch { what } => texts.invoke_note_not_a_match(what.into()),
+        Note::RegexTriggerOnly { what } => texts.invoke_note_regex_trigger_only(what.into()),
+        Note::NoTrigger { what } => texts.invoke_note_no_trigger(what.into()),
+        Note::MarkupKept { what } => texts.invoke_note_markup_kept(what.into()),
+        Note::NoText { what } => texts.invoke_note_no_text(what.into()),
+        Note::DateFormat { what, format } => {
+            texts.invoke_note_date_format(what.into(), format.into())
+        }
+        Note::FormField { what, name } => texts.invoke_note_form_field(what.into(), name.into()),
+        Note::ColumnsCut { file } => texts.invoke_note_columns_cut(file.into()),
+        Note::TriggerTaken { title, trigger } => {
+            texts.invoke_note_trigger_taken(title.into(), trigger.into())
+        }
+        Note::TriggerOverlap {
+            title,
+            trigger,
+            others,
+        } => texts.invoke_note_trigger_overlap(title.into(), trigger.into(), others.into()),
+        Note::TitleCut {
+            count: n,
+            title_chars,
+            source_chars,
+        } => texts.invoke_note_title_cut(count(*n), count(*title_chars), count(*source_chars)),
+    }
 }
 
 /// The N in "entry N" or "Ditto clip N", the labels the importers give a clip without a title.
@@ -503,7 +552,11 @@ pub const fn item_menu_shortcut(entry: crate::controller::ItemMenuEntry) -> &'st
         ItemMenuEntry::Trash => "Del",
         ItemMenuEntry::MoveUp { .. } => "Alt+Up",
         ItemMenuEntry::MoveDown { .. } => "Alt+Down",
-        ItemMenuEntry::Stack { .. }
+        ItemMenuEntry::Group => "Ctrl+G",
+        ItemMenuEntry::RenameGroup => "F2",
+        ItemMenuEntry::Ungroup
+        | ItemMenuEntry::DeleteGroup
+        | ItemMenuEntry::Stack { .. }
         | ItemMenuEntry::PasteAs
         | ItemMenuEntry::MoveTo
         | ItemMenuEntry::Colour
@@ -535,6 +588,10 @@ pub fn item_menu_label(window: &PanelWindow, entry: crate::controller::ItemMenuE
         ItemMenuEntry::Sensitive { .. } => t.invoke_item_sensitive(),
         ItemMenuEntry::MoveUp { .. } => moves.invoke_menu_move_up(),
         ItemMenuEntry::MoveDown { .. } => moves.invoke_menu_move_down(),
+        ItemMenuEntry::Group => t.invoke_item_group(),
+        ItemMenuEntry::RenameGroup => t.invoke_group_rename(),
+        ItemMenuEntry::Ungroup => t.invoke_group_ungroup(),
+        ItemMenuEntry::DeleteGroup => t.invoke_group_delete(),
         ItemMenuEntry::Separator => return String::new(),
     }
     .into()

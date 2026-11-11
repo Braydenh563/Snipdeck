@@ -589,6 +589,11 @@ fn effect_handler(
                 eprintln!("snipdeck: cannot open the settings: {e}");
             }
         }
+        Effect::OpenLicence => {
+            if let Err(e) = settings_ui.open_licence() {
+                eprintln!("snipdeck: cannot open the licence settings: {e}");
+            }
+        }
         // A locked sensitive item behind a master password: ask for it.
         Effect::OpenUnlock => {
             if let Err(e) = unlock_ui.open() {

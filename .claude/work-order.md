@@ -30,9 +30,12 @@ resumed: 2026-11-09 after idle-guard stop during a long gate run (commits c7f28a
 - [x] Recent captures images, files and rich text (owner 2026-10-26), with size caps and the privacy markers
 - [x] v1.1: placeholders {uuid} + date maths, paste transforms, richer fill-ins
 - [x] v1.1: importers (TextExpander, Espanso, PhraseExpress, Beeftext): backend merged 947c9b4; Settings import chooser wiring + Note warnings display left
-- [ ] v1.1: groups inside a list (O46), tips window
-- [ ] v1.1: typed-trigger expansion (opt-in, off by default, honours Sensitive + never-paste list)
-- [ ] v1.1: suggest-as-you-type at the caret (opt-in), rich paste, Windows Hello unlock
+- [x] v1.1: groups inside a list (O46) [tips done 4] -> worker session_01NKjURwUK2uTpedr6rZ5xYV, branch claude/v11-groups (f430809 reviewed 06:45: 2 HIGH, 4 MEDIUM, 3 LOW sent back; 05ee5e7 re-review: 2 MEDIUM; 8874b98 merged 08:35)
+- [ ] v1.1: typed-trigger expansion (opt-in, off by default, honours Sensitive + never-paste list) -> worker session_01NKjURtkiRo8LLwynuYFyy5, branch claude/v11-typing (5b then 6; 6eaf3e8: 5 MEDIUM 5 LOW; 05582f3 re-review 09:00: 1 HIGH, 3 MEDIUM sent back)
+- [ ] v1.1: suggest-as-you-type at the caret (opt-in) [typing worker], rich paste [done 7], Windows Hello unlock -> worker session_01NKjURtLEn1uEjCJX5KgxGA, branch claude/v11-hello (c6f30f0: 4 MEDIUM 5 LOW; 34993ba re-review: 1 MEDIUM 3 LOW + 2 partial sent back); item 6 split: suggest UI claude/v11-suggest (Hello worker), hook/ctl (typing worker) [b71810a re-reviewed 08:10: 1 MEDIUM, 4 LOW sent back]
+- [x] Polish: tips pictures end on row edges, distinct Show Panel icon, scroll-focus tests (merged dc432fe); final audit 1: min window widths follow text size (merged db6cab3)
+- [x] Align placeholder chip column (merged 07:30)
+- [ ] Audit 1b keyboard walk -> audit worker, branch claude/v11-audit
 - [ ] Final: full gate, polish pass (ux-auditor + blind-tester on Panel, Settings, palette, shortcuts, toasts), docs, morning summary
 - [x] v1.1 light lane: slice 9 serde-saphyr + 3a groups data (merged ed7528b)
 - [x] v1.1 slice 5a triggers data (merged)

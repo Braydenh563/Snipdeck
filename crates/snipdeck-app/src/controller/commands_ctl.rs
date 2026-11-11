@@ -23,7 +23,13 @@ where
 {
     /// "Try it" on a card of Help > Tips: runs the card's command, and brings the Main window
     /// forward first when the command shows its result there.
-    pub fn try_tip(&mut self, action: crate::tips::TipAction) {
+    pub fn try_tip(&mut self, tip: crate::tips::Tip) {
+        let action = tip.action;
+        // A Supporter card on the Free plan: the way to get the feature, not a dead end.
+        if tip.feature.is_some_and(|f| !self.entitlements.allows(f)) {
+            self.pending.push(Effect::OpenLicence);
+            return;
+        }
         if action.opens_main() {
             self.pending.push(Effect::OpenMainWindow);
         }
