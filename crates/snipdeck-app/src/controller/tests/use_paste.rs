@@ -1020,3 +1020,163 @@ fn the_visible_panel_gets_no_expansion() {
     assert_eq!(out, TypedOutcome::Skipped);
     assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
 }
+
+// ---- Suggest as you type (slice 6) ----------------------------------------------------------
+
+use crate::controller::HintOutcome;
+use snipdeck_platform::route::ScreenRect;
+
+const CARET: ScreenRect = ScreenRect {
+    x: 400,
+    y: 300,
+    w: 2,
+    h: 18,
+};
+
+/// Suggestions on (expansion off), item 1 has the trigger `code`, and the Target has a caret.
+fn suggest_world(code: &str) -> (World, crate::host::FakeTyping) {
+    let mut w = world();
+    let typing = crate::host::FakeTyping::default();
+    w.ctl.set_typing(Box::new(typing.clone()));
+    w.ctl.update_settings(|s| s.suggest_triggers = true);
+    let trigger = Trigger::new(code).expect("trigger");
+    w.ctl
+        .store
+        .set_trigger(w.ids[1], Some(&trigger))
+        .expect("set trigger");
+    w.ctl.hide();
+    w.targets.set_caret(Some(CARET));
+    (w, typing)
+}
+
+/// What the worker would hand over once `chars` characters of the code are typed.
+fn suggestion(w: &World, code: &str, chars: usize, password: bool) -> Typed {
+    let fired = Fired {
+        item: w.ids[1],
+        trigger: Trigger::new(code).expect("trigger"),
+        chars,
+    };
+    Typed::new(fired, password, || true)
+}
+
+#[test]
+fn suggestions_alone_install_the_hook_and_hand_over_the_candidates() {
+    let (mut w, typing) = suggest_world(";two");
+    assert!(!w.ctl.settings().expand_triggers);
+    assert_eq!(typing.enabled_history().last(), Some(&true), "hook is on");
+    w.ctl.refresh_panel();
+    let candidates = typing.candidates();
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(candidates[0].item, w.ids[1]);
+    w.ctl.update_settings(|s| s.suggest_triggers = false);
+    assert_eq!(
+        typing.enabled_history().last(),
+        Some(&false),
+        "and off again"
+    );
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+}
+
+#[test]
+fn tab_inserts_and_backspaces_the_prefix() {
+    let (mut w, _) = suggest_world(";two");
+    let typed = suggestion(&w, ";two", 2, false);
+    let out = w.ctl.accept_suggested(&typed);
+    assert_eq!(
+        out,
+        TypedOutcome::Expanded(UseResult::Done(UseOutcome::Pasted))
+    );
+    let sent = backspaces_sent(&mut w);
+    assert_eq!(sent.len(), 1, "erase and paste in one injection");
+    assert!(sent[0].starts_with(&snipdeck_platform::keys::backspaces(2)));
+    assert!(sent[0].contains(&KeyEvent {
+        key: Key::V,
+        down: true
+    }));
+    assert_eq!(uses(&w, w.ids[1]), 1);
+}
+
+#[test]
+fn accepting_needs_the_suggestion_setting_and_the_same_gates() {
+    let (mut w, _) = suggest_world(";two");
+    let typed = suggestion(&w, ";two", 2, false);
+    w.ctl.update_settings(|s| s.suggest_triggers = false);
+    assert_eq!(w.ctl.accept_suggested(&typed), TypedOutcome::Skipped);
+    w.ctl.update_settings(|s| s.suggest_triggers = true);
+    // A password box, a changed trigger and a stale key all stop it.
+    let in_password = suggestion(&w, ";two", 2, true);
+    assert_eq!(w.ctl.accept_suggested(&in_password), TypedOutcome::Skipped);
+    let stale = Typed::new(typed.fired.clone(), false, || false);
+    assert_eq!(w.ctl.accept_suggested(&stale), TypedOutcome::Skipped);
+    let other = Trigger::new(";zzz").expect("trigger");
+    w.ctl
+        .store
+        .set_trigger(w.ids[1], Some(&other))
+        .expect("set");
+    assert_eq!(w.ctl.accept_suggested(&typed), TypedOutcome::Skipped);
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+}
+
+#[test]
+fn the_hint_names_the_item_at_the_caret() {
+    let (mut w, _) = suggest_world(";two");
+    let typed = suggestion(&w, ";two", 2, false);
+    assert_eq!(
+        w.ctl.suggest_typed(&typed),
+        HintOutcome::Show {
+            title: "Second".into(),
+            caret: CARET
+        }
+    );
+}
+
+#[test]
+fn no_caret_no_hint() {
+    let (mut w, _) = suggest_world(";two");
+    w.targets.set_caret(None);
+    let typed = suggestion(&w, ";two", 2, false);
+    assert_eq!(w.ctl.suggest_typed(&typed), HintOutcome::Hide);
+}
+
+#[test]
+fn no_hint_in_a_password_box_when_off_or_with_snipdeck_in_front() {
+    let (mut w, _) = suggest_world(";two");
+    let typed = suggestion(&w, ";two", 2, false);
+    assert_eq!(
+        w.ctl.suggest_typed(&suggestion(&w, ";two", 2, true)),
+        HintOutcome::Hide
+    );
+    w.ctl.set_own_window_active(true);
+    assert_eq!(w.ctl.suggest_typed(&typed), HintOutcome::Hide);
+    w.ctl.set_own_window_active(false);
+    let mut elevated = outlook();
+    elevated.elevated = true;
+    w.targets.set(Some(elevated));
+    assert_eq!(w.ctl.suggest_typed(&typed), HintOutcome::Hide);
+    w.targets.set(Some(outlook()));
+    w.ctl.update_settings(|s| s.suggest_triggers = false);
+    assert_eq!(w.ctl.suggest_typed(&typed), HintOutcome::Hide);
+}
+
+#[test]
+fn sensitive_items_are_never_suggested() {
+    let (mut w, typing) = suggest_world(";two");
+    let typed = suggestion(&w, ";two", 2, false);
+    let id = w.ids[1];
+    make_sensitive(&mut w, id);
+    assert_eq!(w.ctl.suggest_typed(&typed), HintOutcome::Hide);
+    assert_eq!(w.ctl.accept_suggested(&typed), TypedOutcome::Skipped);
+    // And it is not among the candidates the worker matches prefixes against.
+    w.ctl.refresh_panel();
+    w.ctl.update_settings(|s| s.suggest_triggers = false);
+    w.ctl.update_settings(|s| s.suggest_triggers = true);
+    assert_eq!(typing.candidates(), Vec::new());
+}
+
+#[test]
+fn the_hint_flag_reaches_the_hook() {
+    let (mut w, typing) = suggest_world(";two");
+    w.ctl.set_hint_up(true);
+    w.ctl.set_hint_up(false);
+    assert_eq!(typing.hint_history(), vec![true, false]);
+}

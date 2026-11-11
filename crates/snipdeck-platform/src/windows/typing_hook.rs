@@ -16,7 +16,7 @@
 use std::cell::RefCell;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender, SyncSender};
 use std::thread::JoinHandle;
 use std::time::Duration;
@@ -59,6 +59,8 @@ struct Hooked {
     /// Events handed to the channel so far (raised before the send, so a key pressed a moment ago
     /// already counts).
     sent: Arc<AtomicU64>,
+    /// A suggestion hint is up: a plain `Tab` is taken, not passed on.
+    tab: Arc<AtomicBool>,
     foreground: isize,
     classifier: Classifier,
     /// An event was dropped because the consumer is behind: send a Reset before the next one.
@@ -73,6 +75,7 @@ thread_local! {
 #[derive(Debug)]
 pub struct TypingHook {
     sent: Arc<AtomicU64>,
+    tab: Arc<AtomicBool>,
     thread_id: u32,
     thread: Option<JoinHandle<()>>,
 }
@@ -89,14 +92,17 @@ impl TypingHook {
         let (ready_tx, ready) = mpsc::channel();
         let sent = Arc::new(AtomicU64::new(0));
         let hook_sent = Arc::clone(&sent);
+        let tab = Arc::new(AtomicBool::new(false));
+        let hook_tab = Arc::clone(&tab);
         let thread = std::thread::Builder::new()
             .name("snipdeck-typing-hook".into())
-            .spawn(move || run(events, hook_sent, &ready_tx))
+            .spawn(move || run(events, hook_sent, hook_tab, &ready_tx))
             .map_err(|_| Error::Unavailable("could not start the typing hook thread"))?;
         match ready.recv_timeout(Duration::from_secs(5)) {
             Ok(Ok(thread_id)) => Ok((
                 Self {
                     sent,
+                    tab,
                     thread_id,
                     thread: Some(thread),
                 },
@@ -116,6 +122,13 @@ impl TypingHook {
     #[must_use]
     pub fn sent(&self) -> Arc<AtomicU64> {
         Arc::clone(&self.sent)
+    }
+
+    /// The flag that tells the hook a suggestion hint is up. While it is set, a plain `Tab` is
+    /// swallowed and reported as [`TypedEvent::Tab`]; every other key passes through as before.
+    #[must_use]
+    pub fn tab_flag(&self) -> Arc<AtomicBool> {
+        Arc::clone(&self.tab)
     }
 
     /// Unhooks and joins the thread.
@@ -149,7 +162,12 @@ impl Drop for TypingHook {
     }
 }
 
-fn run(events: SyncSender<TypedEvent>, sent: Arc<AtomicU64>, ready: &Sender<Result<u32, Error>>) {
+fn run(
+    events: SyncSender<TypedEvent>,
+    sent: Arc<AtomicU64>,
+    tab: Arc<AtomicBool>,
+    ready: &Sender<Result<u32, Error>>,
+) {
     let mut msg = MSG::default();
     // SAFETY: `msg` is a valid out-pointer; peeking a message nobody posts creates the queue so
     // `PostThreadMessageW` from `stop` cannot fail with "no queue".
@@ -160,6 +178,7 @@ fn run(events: SyncSender<TypedEvent>, sent: Arc<AtomicU64>, ready: &Sender<Resu
         *state.borrow_mut() = Some(Hooked {
             events,
             sent,
+            tab,
             foreground: 0,
             classifier: Classifier::new(),
             dropped: false,
@@ -209,30 +228,51 @@ fn install() -> Result<HHOOK, Error> {
 
 unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     // A panic must not unwind across the FFI boundary; the event is simply lost.
-    let _ = catch_unwind(AssertUnwindSafe(|| {
+    let swallowed = catch_unwind(AssertUnwindSafe(|| {
         if code >= 0 && matches!(u32::try_from(wparam.0), Ok(WM_KEYDOWN | WM_SYSKEYDOWN)) {
             // SAFETY: for a `WH_KEYBOARD_LL` call with `code >= 0`, `lparam` points to a
             // `KBDLLHOOKSTRUCT` that is valid for the duration of the call.
             let info = unsafe { *(lparam.0 as *const KBDLLHOOKSTRUCT) };
-            handle(&info);
+            return handle(&info);
         }
-    }));
+        false
+    }))
+    .unwrap_or(false);
+    if swallowed {
+        // The hint's Tab: the app does not get it (a non-zero result ends the hook chain).
+        return LRESULT(1);
+    }
     // SAFETY: passes the unchanged arguments on; the hook handle argument is ignored by Windows.
     unsafe { CallNextHookEx(None, code, wparam, lparam) }
 }
 
-fn handle(info: &KBDLLHOOKSTRUCT) {
+/// Takes one key press; returns whether the key must not reach the app (the hint's `Tab`).
+fn handle(info: &KBDLLHOOKSTRUCT) -> bool {
     if info.flags.0 & LLKHF_INJECTED.0 != 0 {
-        return;
+        return false;
     }
     // SAFETY: no preconditions.
     let foreground = unsafe { GetForegroundWindow() };
     let stroke = stroke_of(info, foreground);
+    let plain_tab = typing::is_plain_tab(stroke) && !async_down(VK_SHIFT.0);
     HOOKED.with(|state| {
         let mut guard = state.borrow_mut();
         let Some(hooked) = guard.as_mut() else {
-            return;
+            return false;
         };
+        if plain_tab
+            && hooked.tab.load(Ordering::SeqCst)
+            && !hooked.dropped
+            && hooked.foreground == foreground.0 as isize
+        {
+            hooked.sent.fetch_add(1, Ordering::SeqCst);
+            if hooked.events.try_send(TypedEvent::Tab).is_ok() {
+                return true;
+            }
+            // The worker is behind: the Tab goes on to the app and the context is dropped.
+            hooked.sent.fetch_sub(1, Ordering::SeqCst);
+            hooked.dropped = true;
+        }
         let mut pending = [None, None, None];
         if hooked.dropped {
             pending[0] = Some(TypedEvent::Reset);
@@ -252,7 +292,8 @@ fn handle(info: &KBDLLHOOKSTRUCT) {
                 break;
             }
         }
-    });
+        false
+    })
 }
 
 fn async_down(vk: u16) -> bool {

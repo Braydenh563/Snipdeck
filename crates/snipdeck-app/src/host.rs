@@ -216,8 +216,16 @@ pub trait TargetSource {
 pub trait TypingControl {
     /// Installs the hook (`true`) or removes it (`false`). Idempotent.
     fn set_enabled(&mut self, on: bool);
-    /// The triggers to watch for, as of now.
-    fn set_triggers(&mut self, matcher: snipdeck_core::Matcher);
+    /// The triggers to watch for, as of now, and the candidates a typed prefix is matched
+    /// against for suggestions (empty when suggestions are off).
+    fn set_triggers(
+        &mut self,
+        matcher: snipdeck_core::Matcher,
+        candidates: Vec<snipdeck_core::Candidate>,
+    );
+    /// A suggestion hint is up (`true`): the hook takes a plain `Tab` instead of passing it on.
+    /// Any other key, and `Tab` while no hint is up, pass through untouched.
+    fn set_hint_up(&mut self, up: bool);
 }
 
 /// A [`TypingControl`] that records what it was told. Cloning shares the state.
@@ -225,9 +233,23 @@ pub trait TypingControl {
 pub struct FakeTyping {
     enabled: Rc<RefCell<Vec<bool>>>,
     triggers: Rc<Cell<u32>>,
+    candidates: Rc<RefCell<Vec<snipdeck_core::Candidate>>>,
+    hint: Rc<RefCell<Vec<bool>>>,
 }
 
 impl FakeTyping {
+    /// The candidates last handed over.
+    #[must_use]
+    pub fn candidates(&self) -> Vec<snipdeck_core::Candidate> {
+        self.candidates.borrow().clone()
+    }
+
+    /// Every `set_hint_up` call, in order.
+    #[must_use]
+    pub fn hint_history(&self) -> Vec<bool> {
+        self.hint.borrow().clone()
+    }
+
     /// Every `set_enabled` call, in order.
     #[must_use]
     pub fn enabled_history(&self) -> Vec<bool> {
@@ -252,8 +274,17 @@ impl TypingControl for FakeTyping {
         self.enabled.borrow_mut().push(on);
     }
 
-    fn set_triggers(&mut self, _matcher: snipdeck_core::Matcher) {
+    fn set_triggers(
+        &mut self,
+        _matcher: snipdeck_core::Matcher,
+        candidates: Vec<snipdeck_core::Candidate>,
+    ) {
         self.triggers.set(self.triggers.get() + 1);
+        *self.candidates.borrow_mut() = candidates;
+    }
+
+    fn set_hint_up(&mut self, up: bool) {
+        self.hint.borrow_mut().push(up);
     }
 }
 

@@ -48,7 +48,7 @@ pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, Lis
 pub use panel_select::LABELS;
 pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 pub use symbol_ctl::{IconExport, IconSave, SaveOutcome, SymbolChoice, SymbolMenuEntry};
-pub use trigger_ctl::TypedOutcome;
+pub use trigger_ctl::{HintOutcome, TypedOutcome};
 pub use views::{
     BoardDeleteView, ChooseEntry, ChooseLabel, ChooseMenu, ClearListView, Effect, FillSubmission,
     FillView, ListDeleteView, PickerView, StackView, ToastPhase, ToastView, UseResult, View,
@@ -286,6 +286,8 @@ pub struct Controller<S, C, K, T> {
     typing: Option<Box<dyn crate::host::TypingControl>>,
     /// The trigger list last sent to the typing service, so an unchanged list is not sent again.
     typing_sent: Vec<(snipdeck_core::Trigger, snipdeck_core::ItemId)>,
+    /// Whether the candidate list handed over was built with suggestions on.
+    typing_suggest: bool,
     /// Whether the typing service was last told to run.
     typing_on: Option<bool>,
     /// Told whether clipboard history is on and whether it is paused, for the tray menu's
@@ -458,6 +460,7 @@ where
             recent_gate: None,
             typing: None,
             typing_sent: Vec::new(),
+            typing_suggest: false,
             typing_on: None,
             tray_history: None,
             screen_clip: crate::screen_clip::ScreenClipFlow::new(),

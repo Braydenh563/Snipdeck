@@ -114,7 +114,7 @@ pub struct Binding {
     tray: Rc<dyn Fn(TrayEvent)>,
     system_look: Rc<dyn Fn(SystemLook)>,
     clipboard_changed: Rc<dyn Fn(snipdeck_platform::clipboard_watch::ClipboardChange)>,
-    typed_trigger: Rc<dyn Fn(&crate::typing_worker::Typed)>,
+    typed_trigger: Rc<dyn Fn(crate::typing_worker::Out)>,
     frame_changed: Rc<FrameFn>,
     frame_moved: Rc<FrameFn>,
     restore_frame: Rc<MonitorFn>,
@@ -175,9 +175,10 @@ impl Binding {
         (self.clipboard_changed)(change);
     }
 
-    /// A typed trigger completed (see `Typed::password` and `Typed::still_current`).
-    pub fn typed_trigger(&self, typed: &crate::typing_worker::Typed) {
-        (self.typed_trigger)(typed);
+    /// The typing worker has something for the UI thread: a completed trigger, a suggestion to
+    /// show or take down, or `Tab` on the hint (see `Typed::password` and `Typed::still_current`).
+    pub fn typed_trigger(&self, out: crate::typing_worker::Out) {
+        (self.typed_trigger)(out);
     }
 
     /// Windows' light / dark or high-contrast state is `look` (read at start-up, and again on
@@ -227,6 +228,8 @@ struct Core<S, C, K, T> {
     window: slint::Weak<ui::PanelWindow>,
     /// What the Panel asks of the machine: the keyboard for text entry, and to give it back.
     host: Rc<dyn PopupHost>,
+    /// The suggestion hint at the caret (made on first use).
+    hint: crate::suggest_hint::SuggestHint,
     on_effect: Box<dyn Fn(&Effect)>,
     /// What the window shows now, so a redraw sets only what changed (re-setting the rows
     /// model would reset the list's scroll position on every toast tick).
@@ -264,6 +267,7 @@ where
             Self {
                 controller: Rc::clone(controller),
                 window: window.as_weak(),
+                hint: crate::suggest_hint::SuggestHint::new(Rc::clone(&host)),
                 host,
                 on_effect,
                 shown: RefCell::new(None),
@@ -284,6 +288,53 @@ where
     }
 
     /// Runs `f` on the controller, then redraws.
+    /// Takes the suggestion hint down and tells the keyboard hook `Tab` is its own again.
+    fn hint_down(&self) {
+        self.hint.hide_hint();
+        self.controller.borrow_mut().set_hint_up(false);
+    }
+
+    /// What the typing worker found (SPEC slice 5b and 6): an expansion, or the suggestion hint.
+    fn typed(self: &Rc<Self>, out: crate::typing_worker::Out) {
+        use crate::{controller::HintOutcome, typing_worker::Out};
+        match out {
+            Out::Expand(typed) => {
+                self.hint_down();
+                self.act(|ctl| {
+                    let _ = ctl.expand_typed(&typed);
+                });
+            }
+            Out::Accept(typed) => {
+                self.hint_down();
+                self.act(|ctl| {
+                    let _ = ctl.accept_suggested(&typed);
+                });
+            }
+            Out::Hide => self.hint_down(),
+            Out::Show(typed) => {
+                let (outcome, look) = {
+                    let mut ctl = self.controller.borrow_mut();
+                    let outcome = ctl.suggest_typed(&typed);
+                    let view = ctl.view();
+                    let look = crate::suggest_hint::HintLook {
+                        dark: view.dark,
+                        high_contrast: view.high_contrast.clone(),
+                        accent: view.accent,
+                        reduced_motion: view.reduced_motion,
+                    };
+                    (outcome, look)
+                };
+                match outcome {
+                    HintOutcome::Show { title, caret } => {
+                        let up = self.hint.show_hint(&title, Some(caret), &look);
+                        self.controller.borrow_mut().set_hint_up(up);
+                    }
+                    HintOutcome::Hide => self.hint_down(),
+                }
+            }
+        }
+    }
+
     fn act<R>(self: &Rc<Self>, f: impl FnOnce(&mut Controller<S, C, K, T>) -> R) -> R {
         let result = f(&mut self.controller.borrow_mut());
         redraw_all();
@@ -1006,11 +1057,7 @@ where
             },
             typed_trigger: {
                 let core = Rc::clone(&core);
-                Rc::new(move |typed: &crate::typing_worker::Typed| {
-                    core.act(|ctl| {
-                        let _ = ctl.expand_typed(typed);
-                    });
-                })
+                Rc::new(move |out: crate::typing_worker::Out| core.typed(out))
             },
             frame_changed: {
                 let core = Rc::clone(&core);

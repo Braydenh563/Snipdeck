@@ -44,14 +44,14 @@ mod imp {
     use std::sync::Arc;
 
     use super::{Callbacks, Host, Start, WatchGate};
-    use crate::typing_worker::Typed;
+    use crate::typing_worker::{Out, TypingList};
     use crate::{
         controller::Services,
         frame::{Monitor, Rect},
         host::{HotkeyBackend, HotkeyFailure, TargetSource, TypingControl, action_of},
         placement::PopupHost,
     };
-    use snipdeck_core::Matcher;
+    use snipdeck_core::{Candidate, Matcher};
     use snipdeck_platform::{chord::Chord, system_look::SystemLookSource};
 
     pub(super) fn system_look() -> Arc<dyn SystemLookSource> {
@@ -170,22 +170,23 @@ mod imp {
     /// The typing hook and the worker that turns its keys into completed triggers. Nothing runs
     /// until [`TypingControl::set_enabled`] turns it on (UNVERIFIED on Windows).
     struct WinTyping {
-        on_typed: Arc<dyn Fn(Typed) + Send + Sync>,
-        matcher: Matcher,
+        on_typed: Arc<dyn Fn(Out) + Send + Sync>,
+        list: Option<(Matcher, Vec<Candidate>)>,
         running: Option<Running>,
     }
 
     struct Running {
         hook: TypingHook,
-        updates: std::sync::mpsc::Sender<Matcher>,
+        tab: Arc<std::sync::atomic::AtomicBool>,
+        updates: std::sync::mpsc::Sender<TypingList>,
         worker: std::thread::JoinHandle<()>,
     }
 
     impl WinTyping {
-        fn new(on_typed: Arc<dyn Fn(Typed) + Send + Sync>) -> Self {
+        fn new(on_typed: Arc<dyn Fn(Out) + Send + Sync>) -> Self {
             Self {
                 on_typed,
-                matcher: Matcher::new([]),
+                list: None,
                 running: None,
             }
         }
@@ -193,7 +194,12 @@ mod imp {
         fn start(&mut self) -> Result<Running, String> {
             let (hook, events) = TypingHook::start().map_err(|e| format!("typing hook: {e}"))?;
             let (updates, rx) = std::sync::mpsc::channel();
-            let _ = updates.send(self.matcher.clone());
+            if let Some((matcher, candidates)) = &self.list {
+                let _ = updates.send(TypingList {
+                    matcher: matcher.clone(),
+                    candidates: candidates.clone(),
+                });
+            }
             let on_typed = Arc::clone(&self.on_typed);
             let sent = hook.sent();
             let worker = std::thread::Builder::new()
@@ -210,8 +216,10 @@ mod imp {
                     );
                 })
                 .map_err(|e| format!("typing worker: {e}"))?;
+            let tab = hook.tab_flag();
             Ok(Running {
                 hook,
+                tab,
                 updates,
                 worker,
             })
@@ -240,11 +248,20 @@ mod imp {
             }
         }
 
-        fn set_triggers(&mut self, matcher: Matcher) {
+        fn set_triggers(&mut self, matcher: Matcher, candidates: Vec<Candidate>) {
             if let Some(running) = &self.running {
-                let _ = running.updates.send(matcher.clone());
+                let _ = running.updates.send(TypingList {
+                    matcher: matcher.clone(),
+                    candidates: candidates.clone(),
+                });
             }
-            self.matcher = matcher;
+            self.list = Some((matcher, candidates));
+        }
+
+        fn set_hint_up(&mut self, up: bool) {
+            if let Some(running) = &self.running {
+                running.tab.store(up, std::sync::atomic::Ordering::SeqCst);
+            }
         }
     }
 
@@ -439,7 +456,7 @@ pub struct Callbacks {
     pub on_clipboard_change: Box<dyn Fn(ClipboardChange) + Send>,
     /// A typed trigger completed, and whether the focused element is a password box (typing
     /// worker thread).
-    pub on_typed: Box<dyn Fn(crate::typing_worker::Typed) + Send + Sync>,
+    pub on_typed: Box<dyn Fn(crate::typing_worker::Out) + Send + Sync>,
 }
 
 /// The platform services the app runs on.
