@@ -4074,7 +4074,7 @@ msgstr ""
 msgid "Unlock window"
 msgstr ""
 
-#: ui/master_password.slint:393 ui/settings.slint:1182 ui/settings.slint:1185
+#: ui/master_password.slint:393 ui/settings.slint:494 ui/settings.slint:1182 ui/settings.slint:1185
 msgid "Unlock with Windows Hello"
 msgstr ""
 
