@@ -63,6 +63,8 @@ component Notice inherits Rectangle {
 }
 
 // The button row at the bottom of an editor: Delete at the left (when the thing exists), Cancel and Save at the right.
+// When the three do not fit side by side (a narrow window or a large text size), Delete moves to its own row above
+// Cancel and Save, so no label is ever clipped or overlaps another button.
 component EditorFooter inherits Rectangle {
     in property <bool> show-delete: false;
     in property <string> delete-label;
@@ -73,7 +75,14 @@ component EditorFooter inherits Rectangle {
     callback cancel();
     callback save();
 
-    height: row.preferred-height + 1px;
+    property <length> pad-x: Space.s4;
+    property <length> pad-top: Space.s3 + 1px;
+    property <length> pad-bottom: Space.s3;
+    property <bool> stacked: root.show-delete
+        && del.preferred-width + cancel.preferred-width + save.preferred-width + 3 * Space.s2 + 2 * root.pad-x > root.width;
+    property <length> top-row: root.stacked ? del.height + Space.s2 : 0px;
+
+    height: root.pad-top + root.top-row + save.height + root.pad-bottom + 1px;
     background: Theme.bg-surface;
 
     Rectangle {
@@ -81,31 +90,31 @@ component EditorFooter inherits Rectangle {
         height: 1px;
         background: Theme.border-subtle;
     }
-    row := HorizontalLayout {
-        padding: Space.s3;
-        padding-top: Space.s3 + 1px;
-        padding-left: Space.s4;
-        padding-right: Space.s4;
-        spacing: Space.s2;
-        if root.show-delete: Button {
-            text: root.delete-label;
-            icon: Icons.trash;
-            variant: ButtonVariant.ghost;
-            clicked => { root.delete(); }
-        }
-        Rectangle {
-            horizontal-stretch: 1;
-        }
-        Button {
-            text: root.cancel-label;
-            clicked => { root.cancel(); }
-        }
-        Button {
-            text: root.save-label;
-            tooltip: root.save-tooltip;
-            variant: ButtonVariant.primary;
-            clicked => { root.save(); }
-        }
+    del := Button {
+        visible: root.show-delete;
+        x: root.pad-x;
+        y: root.pad-top;
+        width: self.preferred-width;
+        text: root.delete-label;
+        icon: Icons.trash;
+        variant: ButtonVariant.ghost;
+        clicked => { root.delete(); }
+    }
+    cancel := Button {
+        x: save.x - Space.s2 - self.width;
+        y: root.pad-top + root.top-row;
+        width: self.preferred-width;
+        text: root.cancel-label;
+        clicked => { root.cancel(); }
+    }
+    save := Button {
+        x: root.width - root.pad-x - self.width;
+        y: root.pad-top + root.top-row;
+        width: self.preferred-width;
+        text: root.save-label;
+        tooltip: root.save-tooltip;
+        variant: ButtonVariant.primary;
+        clicked => { root.save(); }
     }
 }
 
