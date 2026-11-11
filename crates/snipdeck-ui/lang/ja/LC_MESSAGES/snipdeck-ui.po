@@ -3102,8 +3102,14 @@ msgstr "ウィンドウの動作"
 msgid "Windows"
 msgstr "Windows"
 
+msgid "Windows Hello changed. Unlock with your password once to set it up again."
+msgstr "Windows Hello が変更されました。パスワードで一度ロックを解除すると、再設定されます。"
+
 msgid "Windows Hello did not unlock Snipdeck. Use your master password."
 msgstr "Windows Hello では Snipdeck のロックを解除できませんでした。マスターパスワードを使ってください。"
+
+msgid "Windows Hello didn't work, so it was turned off. You can turn it on again in Settings."
+msgstr "Windows Hello が動作しなかったため、オフにしました。設定からもう一度オンにできます。"
 
 msgid "Windows accent"
 msgstr "Windows のアクセント"

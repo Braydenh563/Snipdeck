@@ -1084,12 +1084,9 @@ where
                 if core.act(|ctl| ctl.hello_stale(&done)) {
                     return;
                 }
-                let sealed = core.act(|ctl| ctl.finish_hello(done));
-                if sealed.is_err() {
-                    core.act(|ctl| {
-                        let _ = ctl.set_hello_unlock(false);
-                    });
-                }
+                // A switch-on that does not finish goes back off in the controller, with a message
+                // unless the user cancelled.
+                let _ = core.act(|ctl| ctl.finish_hello(done));
             }),
         );
     }

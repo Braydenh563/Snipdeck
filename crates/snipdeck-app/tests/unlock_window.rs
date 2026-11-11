@@ -394,6 +394,18 @@ fn the_hello_button_unlocks_and_a_cancelled_hello_leaves_the_password() {
     });
 }
 
+/// Shows the unlock prompt again after a lock.
+fn reopen(r: &Rig) {
+    {
+        let mut ctl = r.ctl.borrow_mut();
+        ctl.request_unlock();
+        let _ = ctl.take_pending();
+    }
+    r.binding.prepare();
+    r.ui.show().expect("show");
+    settle();
+}
+
 #[test]
 fn a_password_unlock_seals_again_and_a_cancelled_seal_keeps_hello_on() {
     on_ui_thread(|| {
@@ -425,11 +437,9 @@ fn a_password_unlock_seals_again_and_a_cancelled_seal_keeps_hello_on() {
         r.ctl.borrow_mut().lock_now();
         assert!(!r.ctl.borrow().hello_unlock_available(), "no copy");
         hello.set_sign(Ok(()));
-        r.ctl
-            .borrow_mut()
-            .unlock_with_password(password())
-            .expect("password");
-        snipdeck_app::unlock_binding::seal_after_password(&r.ctl);
+        reopen(&r);
+        type_text(r.ui.window(), password());
+        press(r.ui.window(), "\n");
         settle();
         r.ctl.borrow_mut().lock_now();
         assert!(
@@ -532,6 +542,85 @@ fn the_outcome_of_a_step_given_up_on_shows_no_hello_error() {
         );
         type_text(r.ui.window(), password());
         assert_eq!(r.ui.get_password(), password(), "the field has the focus");
+    });
+}
+
+#[test]
+fn after_a_restart_hello_asks_nothing_at_open_and_once_after_the_first_password() {
+    on_ui_thread(|| {
+        let hello = std::sync::Arc::new(FakeHello::new());
+        let r = rig_with(Some(&hello));
+        // A restart forgets the in-memory copy; the option is still on.
+        r.ctl
+            .borrow_mut()
+            .change_plan(Entitlements::new(Tier::Free));
+        r.ctl.borrow_mut().change_plan(Entitlements::new(Tier::Pro));
+        assert!(r.ctl.borrow().settings().hello_unlock);
+        let before = hello.prompts();
+        r.binding.prepare();
+        snipdeck_app::unlock_binding::refresh_hello(&r.ctl);
+        settle();
+        assert!(hello_button(&r.ui).is_none(), "no copy: only the password");
+        assert_eq!(hello.prompts(), before, "no Hello prompt at open");
+        type_text(r.ui.window(), password());
+        press(r.ui.window(), "\n");
+        settle();
+        assert!(!r.ctl.borrow().library_locked());
+        assert_eq!(hello.prompts(), before + 1, "one seal after the password");
+        r.ctl.borrow_mut().lock_now();
+        assert!(r.ctl.borrow().hello_unlock_available());
+    });
+}
+
+#[test]
+fn a_changed_hello_says_so_once_and_the_password_sets_it_up_again() {
+    on_ui_thread(|| {
+        let hello = std::sync::Arc::new(FakeHello::new());
+        let r = rig_with(Some(&hello));
+        hello.replace_credential(b"another credential");
+        hello_button(&r.ui)
+            .expect("button")
+            .invoke_accessible_default_action();
+        settle();
+        assert!(r.ctl.borrow().library_locked());
+        assert!(has_text(
+            &r.ui,
+            "Windows Hello changed. Unlock with your password once to set it up again."
+        ));
+        assert!(hello_button(&r.ui).is_none());
+        type_text(r.ui.window(), password());
+        press(r.ui.window(), "\n");
+        settle();
+        assert!(!r.ctl.borrow().library_locked());
+        r.ctl.borrow_mut().lock_now();
+        assert!(r.ctl.borrow().hello_unlock_available(), "sealed again");
+        assert!(r.ctl.borrow().settings().hello_unlock);
+    });
+}
+
+#[test]
+fn a_hello_turned_off_for_failing_says_why_in_the_unlock_window() {
+    on_ui_thread(|| {
+        let hello = std::sync::Arc::new(FakeHello::new());
+        let r = rig_with(Some(&hello));
+        r.ctl
+            .borrow_mut()
+            .change_plan(Entitlements::new(Tier::Free));
+        r.ctl.borrow_mut().change_plan(Entitlements::new(Tier::Pro));
+        hello.set_sign(Err(HelloError::Removed));
+        for _ in 0..2 {
+            type_text(r.ui.window(), password());
+            press(r.ui.window(), "\n");
+            settle();
+            r.ctl.borrow_mut().lock_now();
+            reopen(&r);
+        }
+        assert!(!r.ctl.borrow().settings().hello_unlock);
+        assert!(has_text(
+            &r.ui,
+            "Windows Hello didn't work, so it was turned off. You can turn it on again in Settings."
+        ));
+        assert!(hello_button(&r.ui).is_none());
     });
 }
 

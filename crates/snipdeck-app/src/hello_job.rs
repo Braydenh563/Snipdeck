@@ -58,18 +58,20 @@ pub enum HelloFailure {
     Cancelled,
     /// Hello failed, was removed, or is not repeatable on this PC.
     Failed,
-    /// Hello answered, but its signature no longer opens the copy: this Hello does not give a
-    /// repeatable signature, so it cannot protect a key and is turned off.
+    /// Hello answered, but its signature no longer opens the copy (a PIN reset made a new
+    /// credential, for example): the copy goes, and the next password unlock seals a new one.
     Mismatch,
+    /// Two signatures of the same challenge differ: this Hello cannot protect a key and is
+    /// turned off.
+    NotRepeatable,
 }
 
 fn failure(error: HelloSealError<HelloError>) -> HelloFailure {
     match error {
         HelloSealError::Expired => HelloFailure::Expired,
         HelloSealError::Sign(HelloError::Cancelled) => HelloFailure::Cancelled,
-        HelloSealError::Sign(_) | HelloSealError::NotRepeatable | HelloSealError::Failed => {
-            HelloFailure::Failed
-        }
+        HelloSealError::NotRepeatable => HelloFailure::NotRepeatable,
+        HelloSealError::Sign(_) | HelloSealError::Failed => HelloFailure::Failed,
     }
 }
 

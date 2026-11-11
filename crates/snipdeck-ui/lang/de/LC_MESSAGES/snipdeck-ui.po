@@ -3110,8 +3110,14 @@ msgstr "Fensterverhalten"
 msgid "Windows"
 msgstr "Windows"
 
+msgid "Windows Hello changed. Unlock with your password once to set it up again."
+msgstr "Windows Hello hat sich geändert. Entsperren Sie einmal mit Ihrem Passwort, um es erneut einzurichten."
+
 msgid "Windows Hello did not unlock Snipdeck. Use your master password."
 msgstr "Windows Hello hat Snipdeck nicht entsperrt. Verwende dein Hauptpasswort."
+
+msgid "Windows Hello didn't work, so it was turned off. You can turn it on again in Settings."
+msgstr "Windows Hello hat nicht funktioniert und wurde deshalb ausgeschaltet. Sie können es in den Einstellungen wieder einschalten."
 
 msgid "Windows accent"
 msgstr "Windows-Akzent"

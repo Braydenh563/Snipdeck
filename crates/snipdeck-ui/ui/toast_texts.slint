@@ -59,6 +59,9 @@ export global ToastTexts {
     pure public function master-password-removed-not-open() -> string {
         return @tr("Master password removed. Snipdeck couldn't open the library just now. Restart Snipdeck to use your sensitive items.");
     }
+    pure public function hello-turned-off() -> string {
+        return @tr("Windows Hello didn't work, so it was turned off. You can turn it on again in Settings.");
+    }
     pure public function locked-editor-closed() -> string {
         return @tr("Your library locked after a while. The sensitive item you were editing was closed without saving.");
     }

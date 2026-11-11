@@ -39,6 +39,8 @@ pub fn slint_problem(problem: MasterProblem) -> ui::MasterProblem {
         MasterProblem::Unavailable => ui::MasterProblem::Unavailable,
         MasterProblem::Failed => ui::MasterProblem::Failed,
         MasterProblem::HelloFailed => ui::MasterProblem::HelloFailed,
+        MasterProblem::HelloChanged => ui::MasterProblem::HelloChanged,
+        MasterProblem::HelloTurnedOff => ui::MasterProblem::HelloTurnedOff,
     }
 }
 
@@ -100,17 +102,6 @@ fn run_step<C, K, T>(
             then(Some(result));
         }),
     );
-}
-
-/// Seals the open key under Hello after a password unlock (what the unlock window does itself);
-/// for a caller that unlocks with the password some other way. UI thread only.
-pub fn seal_after_password<C, K, T>(controller: &Rc<RefCell<Controller<Store, C, K, T>>>)
-where
-    C: Clipboard + ClipboardText + 'static,
-    K: Keyboard + 'static,
-    T: Timing + 'static,
-{
-    seal_open_key(controller);
 }
 
 /// Seals the open key under Hello if Hello is on and no copy exists. Whatever comes back (cancelled,
@@ -175,7 +166,11 @@ where
         );
         drop(controller);
         window.set_password(slint::SharedString::new());
-        window.set_problem(ui::MasterProblem::None);
+        window.set_problem(if self.core.controller.borrow().hello_turned_off_note() {
+            ui::MasterProblem::HelloTurnedOff
+        } else {
+            ui::MasterProblem::None
+        });
         window.set_hello_available(self.core.controller.borrow().hello_unlock_available());
         window.set_focus_request(window.get_focus_request() + 1);
     }
@@ -312,6 +307,7 @@ where
         }
         window.set_busy(true);
         let weak = self.window.clone();
+        let weak_controller = Rc::clone(&self.controller);
         run_step(&self.controller, job, move |result| {
             let Some(window) = weak.upgrade() else {
                 return;
@@ -325,9 +321,19 @@ where
                 // it is, and the field has the focus.
                 None => window.set_focus_request(window.get_focus_request() + 1),
                 // The copy is gone: the password is the way in.
-                Some(Err(_)) => {
+                Some(Err(failure)) => {
                     window.set_hello_available(false);
-                    Self::refused(&window, MasterProblem::HelloFailed);
+                    // A Hello that changed says so once; the password sets it up again.
+                    let changed = failure == HelloFailure::Mismatch
+                        && weak_controller.borrow_mut().take_hello_changed_note();
+                    Self::refused(
+                        &window,
+                        if changed {
+                            MasterProblem::HelloChanged
+                        } else {
+                            MasterProblem::HelloFailed
+                        },
+                    );
                 }
             }
         });

@@ -3102,8 +3102,14 @@ msgstr "窗口行为"
 msgid "Windows"
 msgstr "Windows"
 
+msgid "Windows Hello changed. Unlock with your password once to set it up again."
+msgstr "Windows Hello 已更改。请用密码解锁一次，以重新设置。"
+
 msgid "Windows Hello did not unlock Snipdeck. Use your master password."
 msgstr "Windows Hello 未能解锁 Snipdeck。请使用主密码。"
+
+msgid "Windows Hello didn't work, so it was turned off. You can turn it on again in Settings."
+msgstr "Windows Hello 无法使用，已将其关闭。您可以在“设置”中重新开启。"
 
 msgid "Windows accent"
 msgstr "Windows 强调色"

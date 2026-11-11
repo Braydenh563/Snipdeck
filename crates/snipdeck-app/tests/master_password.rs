@@ -1413,9 +1413,147 @@ mod hello {
         let mut r = with_password(Tier::Pro);
         attach(&mut r.ctl, &hello);
         let job = r.ctl.set_hello_unlock(true).expect("a step");
-        assert_eq!(r.ctl.finish_hello(job.run()), Err(HelloFailure::Failed));
+        assert_eq!(
+            r.ctl.finish_hello(job.run()),
+            Err(HelloFailure::NotRepeatable)
+        );
         r.ctl.lock_now();
         assert!(!r.ctl.hello_unlock_available());
+    }
+
+    /// Password-unlocks the locked library and runs the seal that follows, as the app does.
+    fn password_then_seal(r: &mut Rig) -> Option<Result<(), HelloFailure>> {
+        r.ctl.unlock_with_password(password()).expect("password");
+        let job = r.ctl.begin_hello_seal()?;
+        Some(r.ctl.finish_hello(job.run()))
+    }
+
+    #[test]
+    fn turning_hello_on_and_cancelling_leaves_the_switch_off_without_a_message() {
+        let hello = fake();
+        let mut r = with_password(Tier::Pro);
+        attach(&mut r.ctl, &hello);
+        hello.set_sign(Err(HelloError::Cancelled));
+        let job = r.ctl.set_hello_unlock(true).expect("a step");
+        assert_eq!(r.ctl.finish_hello(job.run()), Err(HelloFailure::Cancelled));
+        assert!(!r.ctl.settings().hello_unlock, "the user did not finish");
+        assert_ne!(r.toast(), Some(ToastMessage::HelloTurnedOff));
+        assert!(!r.ctl.hello_turned_off_note(), "a cancel is not a failure");
+    }
+
+    #[test]
+    fn turning_hello_on_when_it_fails_says_why() {
+        let hello = fake();
+        let mut r = with_password(Tier::Pro);
+        attach(&mut r.ctl, &hello);
+        hello.set_sign(Err(HelloError::Removed));
+        let job = r.ctl.set_hello_unlock(true).expect("a step");
+        assert_eq!(r.ctl.finish_hello(job.run()), Err(HelloFailure::Failed));
+        assert!(!r.ctl.settings().hello_unlock);
+        assert_eq!(r.toast(), Some(ToastMessage::HelloTurnedOff));
+        assert!(r.ctl.hello_turned_off_note());
+        // Turning it on again clears the note.
+        hello.set_sign(Ok(()));
+        let job = r.ctl.set_hello_unlock(true).expect("a step");
+        r.ctl.finish_hello(job.run()).expect("sealed");
+        assert!(!r.ctl.hello_turned_off_note());
+    }
+
+    #[test]
+    fn a_hello_that_is_not_repeatable_is_turned_off_with_a_message() {
+        let hello = fake();
+        hello.set_non_deterministic(true);
+        let mut r = with_password(Tier::Pro);
+        attach(&mut r.ctl, &hello);
+        let job = r.ctl.set_hello_unlock(true).expect("a step");
+        assert_eq!(
+            r.ctl.finish_hello(job.run()),
+            Err(HelloFailure::NotRepeatable)
+        );
+        assert!(!r.ctl.settings().hello_unlock);
+        assert_eq!(r.toast(), Some(ToastMessage::HelloTurnedOff));
+    }
+
+    #[test]
+    fn a_seal_that_keeps_failing_after_password_unlocks_turns_hello_off_with_a_message() {
+        let (mut r, hello) = locked_with_hello();
+        // The copy is gone (a restart): each password unlock seals again.
+        r.ctl
+            .change_plan(snipdeck_core::Entitlements::new(Tier::Free));
+        r.ctl
+            .change_plan(snipdeck_core::Entitlements::new(Tier::Pro));
+        hello.set_sign(Err(HelloError::Removed));
+        assert_eq!(password_then_seal(&mut r), Some(Err(HelloFailure::Failed)));
+        assert!(r.ctl.settings().hello_unlock, "one failure is tolerated");
+        r.ctl.lock_now();
+        // A good seal between resets the count.
+        hello.set_sign(Ok(()));
+        assert_eq!(password_then_seal(&mut r), Some(Ok(())));
+        r.ctl.lock_now();
+        r.ctl
+            .change_plan(snipdeck_core::Entitlements::new(Tier::Free));
+        r.ctl
+            .change_plan(snipdeck_core::Entitlements::new(Tier::Pro));
+        hello.set_sign(Err(HelloError::Removed));
+        assert_eq!(password_then_seal(&mut r), Some(Err(HelloFailure::Failed)));
+        assert!(r.ctl.settings().hello_unlock, "the count started again");
+        r.ctl.lock_now();
+        assert_eq!(password_then_seal(&mut r), Some(Err(HelloFailure::Failed)));
+        assert!(!r.ctl.settings().hello_unlock, "two in a row: off");
+        assert_eq!(r.toast(), Some(ToastMessage::HelloTurnedOff));
+        assert!(r.ctl.hello_turned_off_note());
+        assert!(r.ctl.begin_hello_seal().is_none(), "no more prompts");
+    }
+
+    #[test]
+    fn a_cancelled_seal_after_a_password_unlock_never_counts() {
+        let (mut r, hello) = locked_with_hello();
+        r.ctl
+            .change_plan(snipdeck_core::Entitlements::new(Tier::Free));
+        r.ctl
+            .change_plan(snipdeck_core::Entitlements::new(Tier::Pro));
+        hello.set_sign(Err(HelloError::Cancelled));
+        for _ in 0..3 {
+            assert_eq!(
+                password_then_seal(&mut r),
+                Some(Err(HelloFailure::Cancelled))
+            );
+            r.ctl.lock_now();
+        }
+        assert!(r.ctl.settings().hello_unlock);
+        assert!(!r.ctl.hello_turned_off_note());
+    }
+
+    #[test]
+    fn a_changed_credential_that_is_not_repeatable_ends_the_cycle_instead_of_looping() {
+        let (mut r, hello) = locked_with_hello();
+        hello.replace_credential(b"another credential");
+        hello.set_non_deterministic(true);
+        assert_eq!(open_by_hello(&mut r), Err(HelloFailure::Mismatch));
+        assert!(
+            r.ctl.hello_changed_note(),
+            "the next unlock says Hello changed"
+        );
+        assert!(r.ctl.settings().hello_unlock);
+        // The password unlocks; the re-seal runs the repeat check and finds Hello unusable.
+        assert_eq!(
+            password_then_seal(&mut r),
+            Some(Err(HelloFailure::NotRepeatable))
+        );
+        assert!(!r.ctl.settings().hello_unlock, "off, with a message");
+        assert_eq!(r.toast(), Some(ToastMessage::HelloTurnedOff));
+        r.ctl.lock_now();
+        assert!(!r.ctl.hello_unlock_available());
+        assert!(r.ctl.begin_hello_unlock().is_none());
+    }
+
+    #[test]
+    fn the_changed_note_is_given_once() {
+        let (mut r, hello) = locked_with_hello();
+        hello.replace_credential(b"another credential");
+        assert_eq!(open_by_hello(&mut r), Err(HelloFailure::Mismatch));
+        assert!(r.ctl.take_hello_changed_note());
+        assert!(!r.ctl.take_hello_changed_note(), "once");
     }
 
     #[test]

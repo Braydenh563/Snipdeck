@@ -168,6 +168,7 @@ where
         ToastMessage::MasterPasswordChanged => t.invoke_master_password_changed(),
         ToastMessage::MasterPasswordRemoved => t.invoke_master_password_removed(),
         ToastMessage::MasterPasswordChangedNotOpen => t.invoke_master_password_changed_not_open(),
+        ToastMessage::HelloTurnedOff => t.invoke_hello_turned_off(),
         ToastMessage::MasterPasswordRemovedNotOpen => t.invoke_master_password_removed_not_open(),
         ToastMessage::LockedEditorClosed => t.invoke_locked_editor_closed(),
         ToastMessage::UnlockFirst => t.invoke_unlock_first(),

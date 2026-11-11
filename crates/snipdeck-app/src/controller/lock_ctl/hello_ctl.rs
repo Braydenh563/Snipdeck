@@ -18,6 +18,8 @@ use snipdeck_platform::{
 };
 use snipdeck_store::crypto::SealedKey;
 
+use crate::toast::ToastMessage;
+
 use super::{Controller, Library};
 use crate::{
     hello_job::{HelloDone, HelloFailure, HelloJob, Product},
@@ -40,7 +42,38 @@ pub(super) struct HelloState {
     generation: u64,
     /// Counts the availability questions: an older answer never replaces a newer one.
     availability_generation: u64,
+    /// The next seal also checks the signature repeats (Hello changed under a sealed copy).
+    recheck: bool,
+    /// Seals that failed in a row after password unlocks (a cancel does not count).
+    seal_failures: u8,
+    /// The step under way.
+    step: Step,
+    /// What the unlock window should say about Hello, if anything.
+    note: Note,
 }
+
+/// A line about Hello for the unlock window.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+enum Note {
+    #[default]
+    None,
+    /// An unlock with Hello found it changed; said once.
+    Changed,
+    /// Hello was turned off because it kept failing.
+    TurnedOff,
+}
+
+/// What a Hello step does.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+enum Step {
+    #[default]
+    Idle,
+    Seal,
+    Open,
+}
+
+/// Seals that may fail in a row before Hello is turned off.
+const SEAL_FAILURES_ALLOWED: u8 = 2;
 
 impl core::fmt::Debug for HelloState {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -148,10 +181,13 @@ where
     /// Turns the option on or off. On: the first Hello prompt seals a copy of the open key (the
     /// returned job; run it, then [`finish_hello`](Self::finish_hello)). Off: the copy is dropped.
     pub fn set_hello_unlock(&mut self, on: bool) -> Option<HelloJob> {
+        self.lock.hello.note = Note::None;
+        self.lock.hello.seal_failures = 0;
         if !on || !self.hello_offered() {
             self.update_settings(|s| s.hello_unlock = false);
             self.lock.hello.drop_copy();
             self.lock.hello.enrol = false;
+            self.lock.hello.recheck = false;
             return None;
         }
         self.update_settings(|s| s.hello_unlock = true);
@@ -172,10 +208,11 @@ where
             .password_at
             .unwrap_or_else(|| self.clock.now());
         self.lock.hello.busy = true;
+        self.lock.hello.step = Step::Seal;
         Some(HelloJob::seal(
             hello,
             key,
-            self.lock.hello.enrol,
+            self.lock.hello.enrol || self.lock.hello.recheck,
             since_epoch(at),
             self.lock.hello.token(),
         ))
@@ -198,6 +235,7 @@ where
         }
         let hello = Arc::clone(state.hello.as_ref()?);
         state.busy = true;
+        state.step = Step::Open;
         Some(HelloJob::open(hello, sealed, now, state.token()))
     }
 
@@ -246,8 +284,14 @@ where
         self.lock.hello.busy = false;
         match done.outcome {
             Ok(Product::Sealed(sealed)) => {
-                self.lock.hello.sealed = Some(sealed);
-                self.lock.hello.enrol = false;
+                let state = &mut self.lock.hello;
+                state.sealed = Some(sealed);
+                state.enrol = false;
+                state.recheck = false;
+                state.seal_failures = 0;
+                if state.note == Note::Changed {
+                    state.note = Note::None;
+                }
                 Ok(())
             }
             Ok(Product::Availability(_)) => Ok(()),
@@ -261,12 +305,80 @@ where
                 Ok(())
             }
             Err(failure) => {
-                // The copy goes, the option stays: a Hello that changed (a PIN reset makes a new
-                // credential) is sealed again at the next password unlock, which asks it once.
+                // The copy goes. The option stays unless the failure is final (below): a Hello
+                // that changed (a PIN reset makes a new credential) is sealed again at the next
+                // password unlock, with the repeat check, which asks it once.
                 self.lock.hello.sealed = None;
+                match (self.lock.hello.step, failure) {
+                    (Step::Open, HelloFailure::Mismatch) => {
+                        self.lock.hello.note = Note::Changed;
+                        self.lock.hello.recheck = true;
+                    }
+                    (Step::Seal, failure) => self.seal_failed(failure),
+                    _ => {}
+                }
                 Err(failure)
             }
         }
+    }
+
+    /// A seal failed. The user's own switch-on that did not finish goes back off (with a message
+    /// unless they cancelled); a seal after a password unlock turns Hello off for a Hello that
+    /// cannot repeat, or after two failures in a row. A cancel never counts.
+    fn seal_failed(&mut self, failure: HelloFailure) {
+        let quiet = matches!(failure, HelloFailure::Cancelled | HelloFailure::Expired);
+        if self.lock.hello.enrol {
+            if quiet {
+                self.update_settings(|s| s.hello_unlock = false);
+                self.lock.hello.enrol = false;
+                self.lock.hello.recheck = false;
+            } else {
+                self.turn_hello_off();
+            }
+            return;
+        }
+        if quiet {
+            return;
+        }
+        let state = &mut self.lock.hello;
+        state.seal_failures = state.seal_failures.saturating_add(1);
+        if failure == HelloFailure::NotRepeatable || state.seal_failures >= SEAL_FAILURES_ALLOWED {
+            self.turn_hello_off();
+        }
+    }
+
+    /// Hello is turned off because it does not work here: the option goes, and a toast and the
+    /// unlock window say why. The password is untouched.
+    fn turn_hello_off(&mut self) {
+        self.update_settings(|s| s.hello_unlock = false);
+        let state = &mut self.lock.hello;
+        state.enrol = false;
+        state.recheck = false;
+        state.seal_failures = 0;
+        state.sealed = None;
+        state.note = Note::TurnedOff;
+        self.show_toast(super::neutral(ToastMessage::HelloTurnedOff));
+    }
+
+    /// Hello was turned off because it kept failing (cleared when the user turns it on again).
+    #[must_use]
+    pub fn hello_turned_off_note(&self) -> bool {
+        self.lock.hello.note == Note::TurnedOff
+    }
+
+    /// An unlock with Hello found it changed and its note was not shown yet.
+    #[must_use]
+    pub fn hello_changed_note(&self) -> bool {
+        self.lock.hello.note == Note::Changed
+    }
+
+    /// Takes the "Hello changed" note: true once per change.
+    pub fn take_hello_changed_note(&mut self) -> bool {
+        let said = self.lock.hello.note == Note::Changed;
+        if said {
+            self.lock.hello.note = Note::None;
+        }
+        said
     }
 
     /// The password just unlocked the library: the 7 days count from now, and an old copy goes.
