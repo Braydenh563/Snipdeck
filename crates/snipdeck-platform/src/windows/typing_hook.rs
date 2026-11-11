@@ -65,8 +65,9 @@ struct Hooked {
     /// happened, so the count stays raised; the consumer takes these in at the next reset.
     lost: Arc<AtomicU64>,
     /// The number of the suggestion hint that is up, 0 for none: a plain `Tab` is taken while it
-    /// is set. Only the consumer sets it (and clears it when the hint comes down); the hook
-    /// clears it in the same step that takes the `Tab` or sees a mouse click.
+    /// is set. Only the UI thread sets it, after the hint is really on screen; whoever takes the
+    /// hint down clears it (compare-exchange on the number), and the hook clears it in the same
+    /// step that takes the `Tab` or sees a mouse click.
     tab: Arc<AtomicU64>,
     foreground: isize,
     classifier: Classifier,
@@ -143,7 +144,7 @@ impl TypingHook {
 
     /// The flag that tells the hook a suggestion hint is up: the hint's number, 0 for none. While
     /// it is set, a plain `Tab` is swallowed (the flag goes back to 0 in the same step) and
-    /// reported as [`TypedEvent::Tab`]; every other key passes through as before. A mouse
+    /// reported as [`TypedEvent::Tab`] (with the hint's number); every other key passes through as before. A mouse
     /// click also clears it and resets the typed context.
     #[must_use]
     pub fn tab_flag(&self) -> Arc<AtomicU64> {
@@ -331,13 +332,14 @@ fn handle(info: &KBDLLHOOKSTRUCT) -> bool {
         };
         // One step decides: the flag is read and cleared together, so a hint that comes down
         // meanwhile cannot leave a swallow behind.
-        if plain_tab
-            && !hooked.dropped
-            && hooked.foreground == foreground.0 as isize
-            && hooked.tab.swap(0, Ordering::SeqCst) != 0
-        {
+        let live = if plain_tab && !hooked.dropped && hooked.foreground == foreground.0 as isize {
+            hooked.tab.swap(0, Ordering::SeqCst)
+        } else {
+            0
+        };
+        if live != 0 {
             hooked.sent.fetch_add(1, Ordering::SeqCst);
-            if hooked.events.try_send(TypedEvent::Tab).is_ok() {
+            if hooked.events.try_send(TypedEvent::Tab(live)).is_ok() {
                 return true;
             }
             // The worker is behind: the Tab goes on to the app, which makes anything pending

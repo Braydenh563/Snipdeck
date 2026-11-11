@@ -173,6 +173,8 @@ mod imp {
         on_typed: Arc<dyn Fn(Out) + Send + Sync>,
         list: Option<(Matcher, Vec<Candidate>)>,
         running: Option<Running>,
+        /// The first hint number of the running worker.
+        first_hint: u64,
     }
 
     struct Running {
@@ -188,6 +190,7 @@ mod imp {
                 on_typed,
                 list: None,
                 running: None,
+                first_hint: 0,
             }
         }
 
@@ -201,12 +204,26 @@ mod imp {
                 }));
             }
             let on_typed = Arc::clone(&self.on_typed);
+            self.first_hint = crate::typing_worker::next_hint();
             let tab = hook.tab_flag();
             let env = Env::new(
                 hook.sent(),
                 hook.lost(),
                 Arc::clone(&tab),
                 Arc::new(snipdeck_platform::windows::typing_hook::foreground_window),
+                Arc::new(|| {
+                    use snipdeck_platform::{
+                        keys::{Key, KeyEvent},
+                        pipeline::Keyboard,
+                    };
+                    let tab = |down| KeyEvent {
+                        key: Key::Tab,
+                        down,
+                    };
+                    // The hook ignores injected keys, so this Tab is not swallowed again.
+                    let _ = snipdeck_platform::windows::keyboard::WinKeyboard
+                        .send(&[tab(true), tab(false)]);
+                }),
             );
             let worker = std::thread::Builder::new()
                 .name("snipdeck-typing-worker".into())
@@ -263,6 +280,21 @@ mod imp {
                 }));
             }
             self.list = Some((matcher, candidates));
+        }
+
+        fn hint_up(&mut self, id: u64) {
+            // Hints of a worker from before the last switch-off never arm the new hook.
+            if id < self.first_hint {
+                return;
+            }
+            if let Some(running) = &self.running {
+                let _ = running.tab.compare_exchange(
+                    0,
+                    id,
+                    std::sync::atomic::Ordering::SeqCst,
+                    std::sync::atomic::Ordering::SeqCst,
+                );
+            }
         }
 
         fn hint_down(&mut self, id: u64) {

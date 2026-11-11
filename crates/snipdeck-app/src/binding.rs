@@ -231,7 +231,7 @@ struct Core<S, C, K, T> {
     /// The suggestion hint at the caret (made on first use).
     hint: crate::suggest_hint::SuggestHint,
     /// The number of the hint that is up, 0 for none.
-    hint_id: std::cell::Cell<u64>,
+    hints: HintIds,
     on_effect: Box<dyn Fn(&Effect)>,
     /// What the window shows now, so a redraw sets only what changed (re-setting the rows
     /// model would reset the list's scroll position on every toast tick).
@@ -270,7 +270,7 @@ where
                 controller: Rc::clone(controller),
                 window: window.as_weak(),
                 hint: crate::suggest_hint::SuggestHint::new(Rc::clone(&host)),
-                hint_id: std::cell::Cell::new(0),
+                hints: HintIds::default(),
                 host,
                 on_effect,
                 shown: RefCell::new(None),
@@ -294,7 +294,7 @@ where
     /// back.
     fn hint_down(&self) {
         self.hint.hide_hint();
-        let id = self.hint_id.replace(0);
+        let id = self.hints.take();
         if id != 0 {
             self.controller.borrow_mut().hint_down(id);
         }
@@ -302,7 +302,7 @@ where
 
     /// What the typing worker found (SPEC slice 5b and 6): an expansion, or the suggestion hint.
     fn typed(self: &Rc<Self>, out: crate::typing_worker::Out) {
-        use crate::{controller::HintOutcome, controller::TypedOutcome, typing_worker::Out};
+        use crate::{controller::HintOutcome, typing_worker::Out};
         match out {
             Out::Expand(typed) => {
                 self.hint_down();
@@ -310,18 +310,18 @@ where
                     let _ = ctl.expand_typed(&typed);
                 });
             }
-            Out::Accept(typed) => {
+            // Only the hint that is on screen is accepted: anything else was passed on or is
+            // old, and inserts nothing.
+            Out::Accept(typed, id) if self.hints.is_current(id) => {
                 self.hint_down();
-                let outcome = self.act(|ctl| ctl.accept_suggested(&typed));
-                if outcome == TypedOutcome::Skipped {
-                    // The Tab was swallowed for a hint that could not be accepted after all.
-                    self.controller.borrow_mut().replay_tab();
-                }
+                let _ = self.act(|ctl| ctl.accept_suggested(&typed));
             }
-            Out::PassTab => self.controller.borrow_mut().replay_tab(),
             // A hide for an older hint (a worker that was switched off and on again) is stale.
-            Out::Hide(id) if id == self.hint_id.get() => self.hint_down(),
-            Out::Hide(_) => {}
+            Out::Hide(id) if self.hints.is_current(id) => self.hint_down(),
+            // Anything else addressed to a hint that is not on screen changes nothing.
+            Out::Accept(..) | Out::Hide(_) => {}
+            // A show older than one already seen is stale too.
+            Out::Show(_, id) if !self.hints.admit(id) => {}
             Out::Show(typed, id) => {
                 let (outcome, look) = {
                     let mut ctl = self.controller.borrow_mut();
@@ -345,11 +345,11 @@ where
                     }
                 };
                 if up {
-                    self.hint_id.set(id);
+                    self.hints.shown(id);
+                    // On screen for real: now the hook may take a Tab for it.
+                    self.controller.borrow_mut().hint_up(id);
                 } else {
-                    self.hint_id.set(0);
-                    // Not shown: the hook must not take a Tab for it.
-                    self.controller.borrow_mut().hint_down(id);
+                    self.hints.shown(0);
                 }
             }
         }
@@ -1229,6 +1229,62 @@ fn edge_of(edge: ui::ResizeEdge) -> Edge {
         ui::ResizeEdge::TopRight => Edge::TopRight,
         ui::ResizeEdge::BottomLeft => Edge::BottomLeft,
         ui::ResizeEdge::BottomRight => Edge::BottomRight,
+    }
+}
+
+/// Which suggestion hint is on screen, and the newest hint number seen. A worker that was
+/// switched off and on again may still deliver for its old hints; their numbers tell them apart.
+#[derive(Default)]
+struct HintIds {
+    shown: std::cell::Cell<u64>,
+    newest: std::cell::Cell<u64>,
+}
+
+impl HintIds {
+    /// Whether a show for hint `id` is current (not older than one already seen); records it.
+    fn admit(&self, id: u64) -> bool {
+        if id < self.newest.get() {
+            return false;
+        }
+        self.newest.set(id);
+        true
+    }
+
+    /// Hint `id` is on screen (0: none is).
+    fn shown(&self, id: u64) {
+        self.shown.set(id);
+    }
+
+    /// Whether hint `id` is the one on screen.
+    fn is_current(&self, id: u64) -> bool {
+        id != 0 && id == self.shown.get()
+    }
+
+    /// Takes the shown hint's number, leaving none.
+    fn take(&self) -> u64 {
+        self.shown.replace(0)
+    }
+}
+
+#[cfg(test)]
+mod hint_id_tests {
+    use super::HintIds;
+
+    #[test]
+    fn an_old_hide_accept_or_show_is_ignored() {
+        let ids = HintIds::default();
+        assert!(ids.admit(5));
+        ids.shown(5);
+        assert!(ids.is_current(5));
+        // A newer hint replaces it; everything addressed to the old number is stale.
+        assert!(ids.admit(9));
+        ids.shown(9);
+        assert!(!ids.is_current(5), "an old Hide/Accept does not match");
+        assert!(!ids.admit(5), "an old Show is refused");
+        assert!(ids.is_current(9));
+        assert_eq!(ids.take(), 9);
+        assert!(!ids.is_current(9), "nothing is on screen after a take");
+        assert!(!ids.is_current(0));
     }
 }
 

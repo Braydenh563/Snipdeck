@@ -1,3 +1,3 @@
 # typing
-Done: review fixes H1,H2,M3,M4,L (worker owns Tab flag, mouse/idle/window checks, replay, trigger warning, place_hint tests).
-Next: none. Blocked: Windows-only unverified (mouse hook, Tab replay, window handle).
+Done: review rounds 1+2 (UI arms Tab flag after show, Tab(id) event, worker-thread Tab pass, NotExpanded no longer wipes buffer, idle keeps buffer, HintIds generation tests), PR head merged.
+Next: none. Blocked: Windows-only unverified.

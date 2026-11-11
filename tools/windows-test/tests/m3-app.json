@@ -502,7 +502,7 @@
       "id": "66",
       "v1": false,
       "title": "A swallowed Tab is given back",
-      "do": "Type ;s, then switch to another app with Alt+Tab at once and press Tab in it.",
+      "do": "Type ;s, then switch to another app with Alt+Tab at once and press Tab in it. The Tab is sent from the typing thread (SendInput) when the hint went away between the key press and its handling.",
       "expect": "The other app receives exactly one Tab; no tab is lost or doubled."
     },
     {

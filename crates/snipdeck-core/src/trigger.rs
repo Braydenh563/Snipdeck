@@ -226,6 +226,13 @@ impl Matcher {
         self.lead = last.is_none_or(is_boundary);
     }
 
+    /// Changes only what the position before the buffer counts as, keeping the buffer: the
+    /// character that stands there is `last` (see [`Matcher::after_expansion`], which also
+    /// forgets the buffer). For a correction that arrives while the user already types on.
+    pub fn set_lead(&mut self, last: Option<char>) {
+        self.lead = last.is_none_or(is_boundary);
+    }
+
     /// The user pressed Backspace: forgets the last character. Past the start of the buffer
     /// the text before it is unknown, so no boundary can be assumed.
     pub fn backspace(&mut self) {
@@ -293,6 +300,16 @@ mod tests {
             uses,
             sensitive,
         }
+    }
+
+    #[test]
+    fn set_lead_changes_the_boundary_and_keeps_what_was_typed() {
+        let mut m = matcher(&[(";bb", 1)]);
+        m.after_expansion(Some('a'));
+        assert!(run(&mut m, ";b").is_empty());
+        m.set_lead(None);
+        assert_eq!(m.buffered(), 2, "the buffer stays");
+        assert_eq!(run(&mut m, "b"), vec![(0, id(1), 3)]);
     }
 
     #[test]

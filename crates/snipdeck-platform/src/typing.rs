@@ -99,9 +99,10 @@ pub enum TypedEvent {
     Char(char),
     /// The last character was erased.
     Backspace,
-    /// A plain `Tab` that the hook swallowed because a suggestion hint is showing (the hook
-    /// only produces this while it was told a hint is up; otherwise `Tab` is a [`Reset`](Self::Reset)).
-    Tab,
+    /// A plain `Tab` that the hook swallowed because a suggestion hint is showing, with the number
+    /// of the hint it was swallowed for (the hook only produces this while the UI has armed that
+    /// hint; otherwise `Tab` is a [`Reset`](Self::Reset)).
+    Tab(u64),
     /// The typing context is gone (focus moved, caret jumped, an IME composes): forget everything.
     Reset,
 }
@@ -112,7 +113,7 @@ impl std::fmt::Debug for TypedEvent {
         match self {
             Self::Char(_) => f.write_str("Char(..)"),
             Self::Backspace => f.write_str("Backspace"),
-            Self::Tab => f.write_str("Tab"),
+            Self::Tab(_) => f.write_str("Tab"),
             Self::Reset => f.write_str("Reset"),
         }
     }
@@ -240,7 +241,7 @@ impl TypeBuffer {
         match event {
             TypedEvent::Char(c) => self.push(c),
             TypedEvent::Backspace => self.len = self.len.saturating_sub(1),
-            TypedEvent::Reset | TypedEvent::Tab => self.reset(),
+            TypedEvent::Reset | TypedEvent::Tab(_) => self.reset(),
         }
         if self.len < BUFFER_CHARS {
             self.chars[self.len..].zeroize();

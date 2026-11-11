@@ -223,9 +223,11 @@ pub trait TypingControl {
         matcher: snipdeck_core::Matcher,
         candidates: Vec<snipdeck_core::Candidate>,
     );
-    /// The UI thread did not show hint number `id` (or took it down): the hook stops taking a
-    /// plain `Tab` for it. Only the worker raises the flag, and a newer hint's flag is left
-    /// alone.
+    /// Hint number `id` is really on screen: the hook may take a plain `Tab` for it. Only the UI
+    /// thread raises the flag, and only after showing the hint.
+    fn hint_up(&mut self, id: u64);
+    /// Hint number `id` was taken down: the hook stops taking a plain `Tab` for it. A newer
+    /// hint's flag is left alone.
     fn hint_down(&mut self, id: u64);
     /// The expansion for `fired` was not sent (a Snipdeck window, an excluded app, a skipped
     /// route): the code stays in the app, so the next trigger needs a boundary of its own.
@@ -238,6 +240,7 @@ pub struct FakeTyping {
     enabled: Rc<RefCell<Vec<bool>>>,
     triggers: Rc<Cell<u32>>,
     candidates: Rc<RefCell<Vec<snipdeck_core::Candidate>>>,
+    up: Rc<RefCell<Vec<u64>>>,
     hint: Rc<RefCell<Vec<u64>>>,
     skipped: Rc<RefCell<Vec<snipdeck_core::Fired>>>,
 }
@@ -247,6 +250,12 @@ impl FakeTyping {
     #[must_use]
     pub fn candidates(&self) -> Vec<snipdeck_core::Candidate> {
         self.candidates.borrow().clone()
+    }
+
+    /// Every `hint_up` call, in order.
+    #[must_use]
+    pub fn hint_up_history(&self) -> Vec<u64> {
+        self.up.borrow().clone()
     }
 
     /// Every `hint_down` call, in order.
@@ -292,6 +301,10 @@ impl TypingControl for FakeTyping {
     ) {
         self.triggers.set(self.triggers.get() + 1);
         *self.candidates.borrow_mut() = candidates;
+    }
+
+    fn hint_up(&mut self, id: u64) {
+        self.up.borrow_mut().push(id);
     }
 
     fn hint_down(&mut self, id: u64) {

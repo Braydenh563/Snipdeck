@@ -11,7 +11,6 @@ use std::collections::BTreeMap;
 
 use snipdeck_core::{Candidate, Matcher, UseMode};
 use snipdeck_platform::{
-    keys::{Key, KeyEvent},
     pipeline::{Clipboard, Keyboard, Timing},
     route::{Route, ScreenRect},
 };
@@ -98,20 +97,18 @@ where
             .collect()
     }
 
+    /// Hint number `id` is on screen: the hook may take a plain `Tab` for it.
+    pub fn hint_up(&mut self, id: u64) {
+        if let Some(typing) = self.typing.as_mut() {
+            typing.hint_up(id);
+        }
+    }
+
     /// Hint number `id` is not showing (or was taken down): the hook lets `Tab` through again.
     pub fn hint_down(&mut self, id: u64) {
         if let Some(typing) = self.typing.as_mut() {
             typing.hint_down(id);
         }
-    }
-
-    /// Gives a `Tab` back to the app: the hook swallowed it for a hint that was gone by then.
-    pub fn replay_tab(&mut self) {
-        let tab = |down| KeyEvent {
-            key: Key::Tab,
-            down,
-        };
-        let _ = self.services.keyboard.send(&[tab(true), tab(false)]);
     }
 
     /// Tells the typed-trigger service which triggers exist (only when the list changed) and
