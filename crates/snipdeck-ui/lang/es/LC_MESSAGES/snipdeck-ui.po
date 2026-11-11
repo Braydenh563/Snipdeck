@@ -1032,6 +1032,9 @@ msgstr "Por ejemplo, Respuestas de correo"
 msgid "For example, Work"
 msgstr "Por ejemplo, Trabajo"
 
+msgid "Formatted"
+msgstr "Con formato"
+
 msgid "Free"
 msgstr "Gratis"
 
@@ -2092,6 +2095,12 @@ msgstr "Rehacer {} (Ctrl+Y)"
 msgid "Reduce motion"
 msgstr "Reducir animaciones"
 
+msgid "Remove formatting"
+msgstr "Quitar formato"
+
+msgid "Remove formatting, keep the text"
+msgstr "Quitar formato y conservar el texto"
+
 msgid "Remove from Recent"
 msgstr "Quitar de Recientes"
 
@@ -2224,6 +2233,9 @@ msgstr "Guarda todos los tableros, listas y fragmentos en un archivo .snipdeck d
 
 msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows."
 msgstr "Guarda como un fragmento nuevo, en la lista que muestra el panel, el texto que hay en el portapapeles cuando lo pulsas."
+
+msgid "Saving changed text removes the formatting."
+msgstr "Al guardar el texto modificado se quita el formato."
 
 msgid "Saving…"
 msgstr "Guardando…"

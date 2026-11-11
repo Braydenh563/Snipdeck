@@ -2919,3 +2919,31 @@ ui_tests! {
         assert_eq!(take(&log), ["clear-confirmed"]);
     }
 }
+
+#[test]
+fn a_formatted_row_says_so_to_a_screen_reader_and_a_plain_one_does_not() {
+    on_ui_thread(|| {
+        let (ui, _log) = start();
+        let mut rows = fixture::sample_rows();
+        rows[0].formatted = true;
+        fixture::set_rows(&ui, rows);
+        slint::platform::update_timers_and_animations();
+        let described: Vec<String> = by_role(&ui, AccessibleRole::ListItem)
+            .into_iter()
+            .filter(|e| {
+                e.accessible_label().is_some_and(|l| {
+                    l.starts_with("Thanks, received") || l.starts_with("Invoice reminder")
+                })
+            })
+            .filter_map(|e| e.accessible_description().map(|d| d.to_string()))
+            .collect();
+        assert!(
+            described.iter().any(|d| d.contains("Formatted")),
+            "{described:?}"
+        );
+        assert!(
+            described.iter().any(|d| !d.contains("Formatted")),
+            "{described:?}"
+        );
+    });
+}

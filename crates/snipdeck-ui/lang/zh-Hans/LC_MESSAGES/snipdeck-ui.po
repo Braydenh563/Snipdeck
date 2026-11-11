@@ -1031,6 +1031,9 @@ msgstr "例如：邮件回复"
 msgid "For example, Work"
 msgstr "例如：工作"
 
+msgid "Formatted"
+msgstr "带格式"
+
 msgid "Free"
 msgstr "免费"
 
@@ -2086,6 +2089,12 @@ msgstr "重做 {} (Ctrl+Y)"
 msgid "Reduce motion"
 msgstr "减少动画"
 
+msgid "Remove formatting"
+msgstr "清除格式"
+
+msgid "Remove formatting, keep the text"
+msgstr "清除格式，保留文本"
+
 msgid "Remove from Recent"
 msgstr "从“最近”中移除"
 
@@ -2216,6 +2225,9 @@ msgstr "将所有看板、列表和片段保存为一个 .snipdeck 文件，存�
 
 msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows."
 msgstr "将你按下时剪贴板中的文本，作为新片段保存到面板当前显示的列表中。"
+
+msgid "Saving changed text removes the formatting."
+msgstr "保存修改后的文本会清除格式。"
 
 msgid "Saving…"
 msgstr "正在保存…"

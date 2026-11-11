@@ -62,6 +62,8 @@ pub struct Row {
     /// Delete mode: the item is in the Trash and the row shows "Deleted · Undo" in its place until
     /// the mode ends. Only the controller sets it.
     pub deleted_pending: bool,
+    /// The item keeps HTML or RTF next to its text: the row shows a "Formatted" mark.
+    pub formatted: bool,
 }
 
 /// A list's name and accent, shown on rows in mixed views.
@@ -576,6 +578,7 @@ impl PanelModel {
             label: item.label,
             marked: self.marked.contains(&item.id),
             deleted_pending: false,
+            formatted: self.all.rich.contains(&item.id),
         }
     }
 

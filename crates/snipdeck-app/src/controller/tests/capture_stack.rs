@@ -37,6 +37,28 @@ fn quick_capture_saves_the_clipboard_text_at_the_top_of_the_shown_list() {
 }
 
 #[test]
+fn capture_hotkey_keeps_formatting() {
+    use snipdeck_core::FormatKind as K;
+    let mut w = build(Opts {
+        clipboard: Some("some bold text"),
+        ..Opts::default()
+    });
+    w.ctl.services.clipboard.held_html = Some("some <b>bold</b> text".into());
+    w.ctl.services.clipboard.held_rtf = Some(b"{\\rtf1 some bold text}".to_vec());
+    w.ctl.on_hotkey(HotkeyAction::Capture);
+    let id = w.ctl.view().rows[0].id;
+    let kinds: Vec<K> = w
+        .ctl
+        .store
+        .formats(id)
+        .expect("formats")
+        .iter()
+        .map(snipdeck_core::Format::kind)
+        .collect();
+    assert_eq!(kinds, [K::Text, K::Html, K::Rtf]);
+}
+
+#[test]
 fn quick_capture_with_nothing_on_the_clipboard_saves_nothing() {
     let mut w = world();
     w.ctl.on_hotkey(HotkeyAction::Capture);

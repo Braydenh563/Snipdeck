@@ -51,7 +51,8 @@ where
             ClipFiles::Files(paths) => clip.files = paths.into_iter().map(PathBuf::from).collect(),
         }
         if clip.files.is_empty() {
-            clip.text = self.services.clipboard.read_text();
+            let rich = self.services.clipboard.read_rich();
+            (clip.text, clip.html, clip.rtf) = (rich.text, rich.html, rich.rtf);
             if clip.text.as_deref().is_none_or(|t| t.trim().is_empty()) {
                 clip.png = self.services.clipboard.read_png();
             }
@@ -127,12 +128,21 @@ where
             self.show_toast(neutral(ToastMessage::NoListToSave));
             return;
         };
-        if let [Piece::Text { kind, text }] = pieces.as_slice() {
+        if let [
+            Piece::Text {
+                kind,
+                text,
+                html,
+                rtf,
+            },
+        ] = pieces.as_slice()
+        {
+            // A secret never goes in unseen, and its formatting is not kept.
             if looks_secret(text).is_some() {
                 self.open_new_item_secret(list, text);
                 return;
             }
-            self.create_text(list, text, *kind, action);
+            self.create_text(list, (text, html.as_deref(), rtf.as_deref()), *kind, action);
             return;
         }
         // Files and a picture: the bytes are read and stored one at a time (a drop of many large
@@ -171,15 +181,22 @@ where
     }
 
     /// One text (or a link) as a new item, through the same save as quick capture.
-    fn create_text(&mut self, list: ListId, text: &str, kind: ItemKind, action: Action) {
+    fn create_text(
+        &mut self,
+        list: ListId,
+        (text, html, rtf): (&str, Option<&str>, Option<&[u8]>),
+        kind: ItemKind,
+        action: Action,
+    ) {
         let Ok(Some(destination)) = capture::default_list(&self.store, Some(list)) else {
             self.show_toast(failed());
             return;
         };
-        let saved = capture::capture_as(
+        let saved = capture::capture_with(
             &mut self.store,
             &destination,
             Some(text),
+            (html, rtf),
             kind,
             Placement::First,
             self.clock.now(),

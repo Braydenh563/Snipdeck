@@ -351,6 +351,12 @@ where
             core.sync();
         });
         let core = Rc::downgrade(self);
+        w.on_remove_formatting_requested(move || {
+            if let Some(core) = core.upgrade() {
+                core.act(Controller::item_editor_remove_formatting);
+            }
+        });
+        let core = Rc::downgrade(self);
         w.on_paste_requested(move || {
             core.upgrade()
                 .is_some_and(|core| core.act(Controller::refuse_pasted_image))
@@ -454,6 +460,8 @@ fn apply_state(w: &ui::ItemEditor, view: &ItemEditorView) {
     w.set_prompted_available(view.prompted_available);
     w.set_can_browse(view.can_browse);
     w.set_restored(view.restored);
+    w.set_formatted(view.formatted);
+    w.set_saved_content(view.saved_text.as_str().into());
 }
 
 /// Shows the tag chips and how many are ticked.

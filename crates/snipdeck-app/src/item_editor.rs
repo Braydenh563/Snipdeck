@@ -255,6 +255,11 @@ pub struct ItemEditorView {
     pub banner: Option<EditorProblem>,
     /// The text is over the editing cap: shown read-only; this is its size in bytes.
     pub large: Option<u64>,
+    /// The item keeps HTML or RTF next to its text: the window says that saving changed text
+    /// removes it and offers "Remove formatting".
+    pub formatted: bool,
+    /// The saved text the notice measures against (empty when the text is over the editing cap).
+    pub saved_text: String,
     /// What an existing Image or File holds.
     pub attachment: Option<AttachmentView>,
     /// Prompted placeholders are available (Supporter).

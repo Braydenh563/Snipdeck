@@ -1032,6 +1032,9 @@ msgstr "Por exemplo, Respostas de e-mail"
 msgid "For example, Work"
 msgstr "Por exemplo, Trabalho"
 
+msgid "Formatted"
+msgstr "Formatado"
+
 msgid "Free"
 msgstr "Gratuito"
 
@@ -2092,6 +2095,12 @@ msgstr "Refazer {} (Ctrl+Y)"
 msgid "Reduce motion"
 msgstr "Reduzir movimento"
 
+msgid "Remove formatting"
+msgstr "Remover formatação"
+
+msgid "Remove formatting, keep the text"
+msgstr "Remover formatação e manter o texto"
+
 msgid "Remove from Recent"
 msgstr "Remover de Recentes"
 
@@ -2224,6 +2233,9 @@ msgstr "Salva todos os quadros, listas e itens em um único arquivo .snipdeck, e
 
 msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows."
 msgstr "Salva o texto que está na área de transferência quando você pressiona como um novo item na lista que o painel mostra."
+
+msgid "Saving changed text removes the formatting."
+msgstr "Salvar o texto alterado remove a formatação."
 
 msgid "Saving…"
 msgstr "Salvando…"

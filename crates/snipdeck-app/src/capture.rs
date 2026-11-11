@@ -124,7 +124,7 @@ pub fn capture_rich_text<L: Library>(
     )
 }
 
-fn capture_with<L: Library>(
+pub(crate) fn capture_with<L: Library>(
     library: &mut L,
     list: &Destination,
     text: Option<&str>,

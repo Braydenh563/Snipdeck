@@ -17,11 +17,11 @@
 //! a clone to each model it loads.
 
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use crate::search_suggest::Index;
-use snipdeck_core::{Board, Item, List, search::SearchIndex};
+use snipdeck_core::{Board, Format, Item, ItemId, List, search::SearchIndex};
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, RecentEntry, RecentRepo, TagRepo};
 
 /// What the Panel and the Picker read from the library on every load, kept together: every
@@ -36,6 +36,9 @@ pub struct Snapshot {
     pub index: Rc<SearchIndex>,
     /// The names the search suggestions are made of, built with the index.
     pub suggest: Rc<Index>,
+    /// The items that keep HTML or RTF next to their text (the Panel's "Formatted" mark).
+    /// Sensitive items are left out: their content is never read for a list.
+    pub rich: Rc<HashSet<ItemId>>,
 }
 
 #[derive(Debug, Default)]
@@ -93,6 +96,23 @@ impl IndexCache {
             let state = self.0.borrow();
             (state.built_at == Some(counter)).then(|| Rc::clone(&state.snapshot.index))
         };
+        let rich = {
+            let state = self.0.borrow();
+            match (state.built_at == Some(counter)).then(|| Rc::clone(&state.snapshot.rich)) {
+                Some(rich) => rich,
+                None => Rc::new(
+                    store
+                        .plain_formats()?
+                        .into_iter()
+                        .filter(|(_, f)| {
+                            f.iter()
+                                .any(|f| matches!(f, Format::Html(_) | Format::Rtf(_)))
+                        })
+                        .map(|(id, _)| id)
+                        .collect(),
+                ),
+            }
+        };
         let (index, suggest, built) = if let Some(mut index) = reuse {
             // A counted use changes only the tie-breakers (use count, last use): bring them up
             // to date, copying the index only when one did change.
@@ -137,6 +157,7 @@ impl IndexCache {
             boards,
             index,
             suggest,
+            rich,
         });
         state.read_at = Some(at);
         state.built_at = Some(counter);
