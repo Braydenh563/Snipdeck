@@ -18,6 +18,8 @@ export component GroupHeader inherits Rectangle {
     callback renamed(string);
     // The rename ended by key (Enter or Esc): the host gives the keyboard back to the list.
     callback rename-ended();
+    // The inline rename opened: the host lets keys through to it until `renamed` or `rename-ended`.
+    callback rename-started();
     callback menu-requested(length, length);
 
     property <bool> renaming: false;
@@ -40,6 +42,7 @@ export component GroupHeader inherits Rectangle {
             edit.text = root.name;
             edit.focus();
             edit.select-all();
+            root.rename-started();
         }
     }
 
@@ -51,6 +54,7 @@ export component GroupHeader inherits Rectangle {
             edit.text = root.name;
             edit.focus();
             edit.select-all();
+            root.rename-started();
         }
     }
 
@@ -61,6 +65,7 @@ export component GroupHeader inherits Rectangle {
             edit.text = root.name;
             edit.focus();
             edit.select-all();
+            root.rename-started();
         }
         pointer-event(event) => {
             if (event.kind == PointerEventKind.down && event.button == PointerEventButton.right) {

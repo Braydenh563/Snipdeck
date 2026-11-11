@@ -523,6 +523,43 @@ fn main_window_with_a_group_light_and_dark() {
     }
 }
 
+/// A Main group header is a full hit target (28 px inside its ring inset) and grows with the text size, so its name
+/// stays inside it at 2.25x.
+#[test]
+fn a_main_group_header_grows_with_the_text_size() {
+    for (scale, min) in [(1.0_f32, 28.0_f32), (2.25, 28.0 * 2.25)] {
+        let h = window(SIZE, false);
+        h.component.global::<SystemLook<'_>>().set_text_scale(scale);
+        let mut rows = fixture::sample_rows();
+        rows.truncate(2);
+        rows.insert(
+            0,
+            snipdeck_ui::MainRow {
+                title: "Replies".into(),
+                is_header: true,
+                group_count: 2,
+                ..Default::default()
+            },
+        );
+        rows[1].grouped = true;
+        rows[2].grouped = true;
+        fixture::set_rows(&h.component, rows);
+        h.component.set_has_groups(true);
+        let _ = render(&h);
+        let header = i_slint_backend_testing::ElementHandle::find_by_accessible_label(
+            &h.component,
+            "group Replies, 2 items",
+        )
+        .next()
+        .expect("the header is in the tree");
+        let height = header.size().height;
+        assert!(
+            height >= min - 0.5,
+            "header at {scale}x is {height} px tall, wants at least {min}"
+        );
+    }
+}
+
 #[test]
 fn main_window_search_results_light_and_dark() {
     for (dark, name) in [(false, "main-search-light"), (true, "main-search-dark")] {

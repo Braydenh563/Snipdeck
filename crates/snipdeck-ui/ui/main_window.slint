@@ -536,6 +536,8 @@ export component MainWindow inherits Window {
     property <bool> toolbar-compact: false;
     property <length> ctl-h: max(Space.s8 * SystemLook.text-scale, Type.line-base + Space.s2);
     property <length> bar-h: max(Space.s8 + Space.s3, Type.line-base + Space.s2 + Space.s3);
+    // A group header row: a full hit target inside its focus-ring inset, growing with the text size so its name never spills.
+    property <length> header-h: max(Space.hit * SystemLook.text-scale, Type.line-sm + Space.s2) + 2 * root.ring;
     // Below 720px the sidebar is a rail whatever was chosen; the chosen width and the collapsed flag apply above it.
     property <bool> auto-rail: false;
     property <length> sidebar-w: root.narrow ? Space.s12 * root.text-scale : root.sidebar-width * 1px + (root.text-scale - 1) * 96px;
@@ -1914,7 +1916,7 @@ export component MainWindow inherits Window {
                                 property <bool> is-cursor: i == root.cur;
                                 // The row being dragged over this one: a drop lands after it when coming from above.
                                 property <int> row-from: -1;
-                                height: (row.is-header ? Space.hit : card.preferred-height) + root.row-gap + (i == root.rows.length - 1 ? 2 * root.ring : 0px);
+                                height: (row.is-header ? root.header-h : card.preferred-height) + root.row-gap + (i == root.rows.length - 1 ? 2 * root.ring : 0px);
 
                                 init => {
                                     if (self.is-cursor) { root.reveal-list(self.y, self.height); }
@@ -1946,7 +1948,7 @@ export component MainWindow inherits Window {
                                             x: root.ring;
                                             y: root.ring;
                                             width: parent.width - 2 * root.ring;
-                                            height: Space.hit - 2 * root.ring;
+                                            height: root.header-h - 2 * root.ring;
                                             name: row.title;
                                             collapsed: row.group-collapsed;
                                             count-text: @tr("{} item" | "{} items" % row.group-count, row.group-count);

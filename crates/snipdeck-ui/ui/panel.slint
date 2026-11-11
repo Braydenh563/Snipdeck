@@ -201,6 +201,8 @@ export component PanelWindow inherits Window {
     // A group header that should start renaming (the controller counts requests in `rename-seq`).
     in property <int> rename-row: -1;
     in property <int> rename-seq: 0;
+    // A group header's inline rename has the keyboard (set by the header, cleared when it ends).
+    property <bool> header-renaming: false;
     // Ctrl+G, or the item menu: group the marked rows (else row `i`). A header: fold or unfold (`group-toggled`), set
     // folded or unfolded (`group-collapsed-set`), rename (`group-renamed`).
     callback group-requested(int);
@@ -1114,6 +1116,10 @@ export component PanelWindow inherits Window {
             }
 
             capture-key-pressed(event) => {
+                // A group header's name is being typed: its field takes every key (Enter keeps, Esc cancels).
+                if (root.header-renaming) {
+                    return reject;
+                }
                 if (event.text == Key.Tab || event.text == Key.Backtab) {
                     self.tab-back = event.text == Key.Backtab || event.modifiers.shift;
                 }
@@ -1977,8 +1983,9 @@ export component PanelWindow inherits Window {
                                                 selected: i == root.sel;
                                                 rename-request: root.rename-row == i ? root.rename-seq : 0;
                                                 toggled => { root.selected-index = i; root.group-toggled(i); }
-                                                renamed(text) => { root.group-renamed(i, text); }
-                                                rename-ended => { root.group-rename-ended(); root.focus-typing(); }
+                                                rename-started => { root.header-renaming = true; }
+                                                renamed(text) => { root.header-renaming = false; root.group-renamed(i, text); }
+                                                rename-ended => { root.header-renaming = false; root.group-rename-ended(); root.focus-typing(); }
                                                 menu-requested(x, y) => {
                                                     root.item-menu-x = self.absolute-position.x + x;
                                                     root.item-menu-y = self.absolute-position.y + y;

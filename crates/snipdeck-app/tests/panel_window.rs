@@ -2272,6 +2272,22 @@ fn left_collapses_and_right_expands_a_header() {
     });
 }
 
+#[test]
+fn a_new_group_takes_its_name_as_typed() {
+    on_ui_thread(|| {
+        let r = rig();
+        group_first_two(&r);
+        // Ctrl+G opens the new header's name for typing: the keys go there, not to the search.
+        type_text(r.window(), "Hi");
+        press(r.window(), &key(Key::Return));
+        let header = r.ui.get_rows().row_data(0).expect("row");
+        assert!(header.is_header);
+        assert_eq!(header.title, "Hi", "the typed name is the group's");
+        assert_eq!(header.group_count, 2, "both items stay in the group");
+        assert_eq!(r.ui.get_query(), "", "the search got none of the typing");
+    });
+}
+
 /// The labels (and whether each is greyed) of the item menu as drawn now.
 fn item_menu_rows(r: &Rig) -> Vec<(String, bool)> {
     r.ui.get_item_menu_entries()

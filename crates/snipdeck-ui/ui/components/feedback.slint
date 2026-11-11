@@ -20,7 +20,7 @@ component ToastButton inherits Rectangle {
     width: ink-action.preferred-width + 2 * Space.s2 + Space.s0-5;
     ink-btn := Rectangle {
         width: parent.width;
-        height: Space.s6 + Space.s1;
+        height: max(Space.s6 + Space.s1, ink-action.preferred-height + Space.s1);
         y: (parent.height - self.height) / 2;
         border-radius: Radius.md;
         background: ink-touch.pressed ? Theme.ink-pressed : ink-touch.has-hover ? Theme.ink-hover : transparent;
@@ -92,6 +92,8 @@ export component Toast inherits Rectangle {
     opacity: root.phase == ToastPhase.exit ? 0.0 : 1.0;
     accessible-role: AccessibleRole.text;
     accessible-label: root.text;
+    // The icon's meaning, for a screen reader: a warning or a success is said after the message.
+    accessible-description: root.kind == ToastKind.danger ? @tr("Warning") : root.kind == ToastKind.success ? @tr("Done") : "";
     accessible-live-region: polite;
 
     animate opacity { duration: root.phase == ToastPhase.exit ? Motion.fade : Motion.quick; easing: Motion.out; }
