@@ -824,11 +824,19 @@ fn a_trigger_counts_graphemes_not_characters() {
 #[test]
 fn never_paste_app_does_not_expand() {
     let mut w = typing_world(1, ";two");
-    w.ctl
-        .update_settings(|s| s.no_paste_apps = vec!["outlook.exe".into()]);
+    w.ctl.update_settings(|s| {
+        s.programs = vec![crate::settings::ProgramRule {
+            exe: "outlook.exe".into(),
+            paste: crate::settings::ProgramPaste::Never,
+        }];
+    });
     let fired = typed(&w, ";two");
     assert_eq!(w.ctl.expand_typed(fired, false), TypedOutcome::Skipped);
-    assert!(backspaces_sent(&mut w).is_empty(), "nothing was typed into the app");
+    assert_eq!(
+        backspaces_sent(&mut w),
+        Vec::<Vec<KeyEvent>>::new(),
+        "nothing was typed into the app"
+    );
     assert_eq!(uses(&w, w.ids[1]), 0);
 }
 

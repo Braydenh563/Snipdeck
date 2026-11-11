@@ -82,6 +82,9 @@ msgstr "Un titre peut comporter au maximum {} caractères."
 msgid "A title can't contain line breaks or control characters."
 msgstr "Un titre ne peut pas contenir de sauts de ligne ni de caractères de contrôle."
 
+msgid "A trigger is 1 to 32 characters with no spaces."
+msgstr "Un raccourci compte de 1 à 32 caractères, sans espaces."
+
 msgid "About"
 msgstr "À propos"
 
@@ -145,6 +148,9 @@ msgstr "Ajoute un extrait de texte à {}"
 msgid "After a paste or copy"
 msgstr "Après un collage ou une copie"
 
+msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual."
+msgstr "Quand vous tapez le début d’un raccourci, une petite info-bulle près du curseur propose l’extrait. Appuyez sur Tab pour l’insérer ; toute autre touche fonctionne comme d’habitude."
+
 msgid "All"
 msgstr "Tous"
 
@@ -197,6 +203,9 @@ msgstr "Animaux et nature"
 
 msgid "Another program already uses {}."
 msgstr "Un autre programme utilise déjà {}."
+
+msgid "Another snippet already uses this trigger."
+msgstr "Un autre extrait utilise déjà ce raccourci."
 
 msgid "Anywhere in Windows"
 msgstr "Partout dans Windows"
@@ -957,6 +966,9 @@ msgstr "Tout ce qui se trouve dans la corbeille sera supprimé définitivement. 
 msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
 msgstr "Tout ce qui est dans votre bibliothèque disparaît : tableaux, listes, extraits, images, brouillons et sauvegardes. Exportez d’abord si vous voulez une copie. Vos réglages et votre licence restent."
 
+msgid "Expand abbreviations as I type"
+msgstr "Développer les abréviations à la frappe"
+
 msgid "Expand sidebar (Ctrl+B)"
 msgstr "Développer la barre latérale (Ctrl+B)"
 
@@ -1025,6 +1037,9 @@ msgstr "Suit le thème de Windows selon le réglage du système."
 
 msgid "Food & Drink"
 msgstr "Nourriture et boissons"
+
+msgid "For example ;sig"
+msgstr "Par exemple ;sig"
 
 msgid "For example, Email replies"
 msgstr "Par exemple, Réponses e-mail"
@@ -2576,6 +2591,9 @@ msgstr "Force : forte"
 msgid "Strength: weak"
 msgstr "Force : faible"
 
+msgid "Suggest snippets as I type"
+msgstr "Suggérer des extraits à la frappe"
+
 msgid "Supporter"
 msgstr "Supporter"
 
@@ -2918,6 +2936,9 @@ msgstr "Voyages et lieux"
 msgid "Tray icon click opens"
 msgstr "Un clic sur l'icône de la zone de notification ouvre"
 
+msgid "Trigger"
+msgstr "Raccourci"
+
 msgid "Trimmed"
 msgstr "Sans espaces aux extrémités"
 
@@ -2945,8 +2966,14 @@ msgstr "Désactive les glissements et fondus dans Snipdeck. Elle est aussi désa
 msgid "Type a command"
 msgstr "Saisissez une commande"
 
+msgid "Type this in any app to insert the snippet. Turn it on in Settings, under Typing."
+msgstr "Tapez-le dans n’importe quelle application pour insérer l’extrait. Activez-le dans les Paramètres, sous Saisie."
+
 msgid "Type {} to confirm"
 msgstr "Saisissez {} pour confirmer"
+
+msgid "Typing"
+msgstr "Saisie"
 
 msgid "UPPERCASE"
 msgstr "MAJUSCULES"
@@ -3076,6 +3103,9 @@ msgstr "Au démarrage de Windows"
 
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "Quand l'épingle est désactivée, le panneau se masque dès que tu passes à une autre application. Un panneau épinglé reste."
+
+msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk. Nothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
+msgstr "Quand vous tapez le raccourci d’un extrait dans un autre programme, Snipdeck le remplace par l’extrait. Pour cela, Snipdeck surveille les touches pressées et ne garde que les derniers caractères en mémoire, jamais sur le disque. Rien n’est développé dans les champs de mot de passe, dans les programmes réglés sur « Ne jamais coller » ni pour les éléments sensibles."
 
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "Où le Panneau apparaît quand un raccourci ou la zone de notification l'affiche. Au curseur de texte se rabat sur la souris quand l'application n'en a pas."

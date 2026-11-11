@@ -129,15 +129,18 @@ mod tests {
         let (utx, updates) = channel();
         utx.send(matcher(";a", item)).expect("matcher");
         feed(&tx, ";a");
-        let more = tx.clone();
-        drop(tx);
+        let mut more = Some(tx);
         let mut got = 0;
         run(
             &events,
             &updates,
             || {
                 // The user kept typing during the check.
-                more.send(TypedEvent::Char('x')).expect("send");
+                // Sending then dropping the sender also ends the run once the queue is read.
+                more.take()
+                    .expect("asked once")
+                    .send(TypedEvent::Char('x'))
+                    .expect("send");
                 false
             },
             |_, _| got += 1,

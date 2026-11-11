@@ -82,6 +82,9 @@ msgstr "Un título puede tener como máximo {} caracteres."
 msgid "A title can't contain line breaks or control characters."
 msgstr "Un título no puede contener saltos de línea ni caracteres de control."
 
+msgid "A trigger is 1 to 32 characters with no spaces."
+msgstr "Un atajo tiene de 1 a 32 caracteres sin espacios."
+
 msgid "About"
 msgstr "Acerca de"
 
@@ -145,6 +148,9 @@ msgstr "Añade un fragmento de texto a {}"
 msgid "After a paste or copy"
 msgstr "Después de pegar o copiar"
 
+msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual."
+msgstr "Al escribir el comienzo de un atajo, una pequeña sugerencia junto al cursor de texto ofrece el fragmento. Pulsa Tab para insertarlo; cualquier otra tecla continúa con normalidad."
+
 msgid "All"
 msgstr "Todos"
 
@@ -197,6 +203,9 @@ msgstr "Animales y naturaleza"
 
 msgid "Another program already uses {}."
 msgstr "Otro programa ya usa {}."
+
+msgid "Another snippet already uses this trigger."
+msgstr "Otro fragmento ya usa este atajo."
 
 msgid "Anywhere in Windows"
 msgstr "En cualquier parte de Windows"
@@ -957,6 +966,9 @@ msgstr "Todo lo de la papelera se eliminará definitivamente. No se puede deshac
 msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
 msgstr "Se borra todo lo de tu biblioteca: tableros, listas, fragmentos, imágenes, borradores y copias de seguridad. Exporta antes si quieres una copia. Tus ajustes y tu licencia se conservan."
 
+msgid "Expand abbreviations as I type"
+msgstr "Expandir abreviaturas al escribir"
+
 msgid "Expand sidebar (Ctrl+B)"
 msgstr "Expandir la barra lateral (Ctrl+B)"
 
@@ -1025,6 +1037,9 @@ msgstr "Sigue el tema de Windows según la configuración del sistema."
 
 msgid "Food & Drink"
 msgstr "Comida y bebida"
+
+msgid "For example ;sig"
+msgstr "Por ejemplo ;sig"
 
 msgid "For example, Email replies"
 msgstr "Por ejemplo, Respuestas de correo"
@@ -2576,6 +2591,9 @@ msgstr "Seguridad: fuerte"
 msgid "Strength: weak"
 msgstr "Seguridad: débil"
 
+msgid "Suggest snippets as I type"
+msgstr "Sugerir fragmentos al escribir"
+
 msgid "Supporter"
 msgstr "Colaborador"
 
@@ -2918,6 +2936,9 @@ msgstr "Viajes y lugares"
 msgid "Tray icon click opens"
 msgstr "Al hacer clic en el icono de la bandeja se abre"
 
+msgid "Trigger"
+msgstr "Atajo"
+
 msgid "Trimmed"
 msgstr "Sin espacios en los extremos"
 
@@ -2945,8 +2966,14 @@ msgstr "Desactiva los deslizamientos y desvanecimientos en Snipdeck. También se
 msgid "Type a command"
 msgstr "Escribe un comando"
 
+msgid "Type this in any app to insert the snippet. Turn it on in Settings, under Typing."
+msgstr "Escríbelo en cualquier aplicación para insertar el fragmento. Actívalo en Ajustes, en Escritura."
+
 msgid "Type {} to confirm"
 msgstr "Escribe {} para confirmar"
+
+msgid "Typing"
+msgstr "Escritura"
 
 msgid "UPPERCASE"
 msgstr "MAYÚSCULAS"
@@ -3076,6 +3103,9 @@ msgstr "Al iniciar Windows"
 
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "Con la chincheta desactivada, el panel se oculta en cuanto cambias a otra aplicación. Un panel fijado se queda."
+
+msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk. Nothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
+msgstr "Cuando escribes el atajo de un fragmento en otro programa, Snipdeck lo sustituye por el fragmento. Para ello Snipdeck observa las teclas que pulsas y guarda solo los últimos caracteres en memoria, nunca en disco. No se expande nada en cuadros de contraseña, en programas configurados como «Nunca pegar» ni en elementos confidenciales."
 
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "Dónde aparece el panel cuando lo muestra un atajo o la bandeja. En el cursor de texto recurre al ratón cuando la aplicación no tiene cursor."

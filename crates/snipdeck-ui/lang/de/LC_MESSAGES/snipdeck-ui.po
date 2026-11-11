@@ -82,6 +82,9 @@ msgstr "Ein Titel darf höchstens {} Zeichen haben."
 msgid "A title can't contain line breaks or control characters."
 msgstr "Ein Titel darf keine Zeilenumbrüche oder Steuerzeichen enthalten."
 
+msgid "A trigger is 1 to 32 characters with no spaces."
+msgstr "Ein Kürzel hat 1 bis 32 Zeichen ohne Leerzeichen."
+
 msgid "About"
 msgstr "Info"
 
@@ -145,6 +148,9 @@ msgstr "Fügt {} einen Textbaustein hinzu"
 msgid "After a paste or copy"
 msgstr "Nach dem Einfügen oder Kopieren"
 
+msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual."
+msgstr "Sobald du den Anfang eines Kürzels tippst, bietet ein kleiner Hinweis am Textcursor den Baustein an. Mit Tab fügst du ihn ein; jede andere Taste wirkt wie gewohnt."
+
 msgid "All"
 msgstr "Alle"
 
@@ -197,6 +203,9 @@ msgstr "Tiere & Natur"
 
 msgid "Another program already uses {}."
 msgstr "Ein anderes Programm verwendet {} bereits."
+
+msgid "Another snippet already uses this trigger."
+msgstr "Ein anderer Baustein verwendet dieses Kürzel bereits."
 
 msgid "Anywhere in Windows"
 msgstr "Überall in Windows"
@@ -957,6 +966,9 @@ msgstr "Alles im Papierkorb wird endgültig gelöscht. Dies kann nicht rückgän
 msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
 msgstr "Alles in deiner Bibliothek wird gelöscht: Boards, Listen, Textbausteine, Bilder, Entwürfe und Sicherungen. Exportiere vorher, wenn du eine Kopie möchtest. Deine Einstellungen und deine Lizenz bleiben."
 
+msgid "Expand abbreviations as I type"
+msgstr "Kürzel beim Tippen erweitern"
+
 msgid "Expand sidebar (Ctrl+B)"
 msgstr "Seitenleiste ausklappen (Strg+B)"
 
@@ -1025,6 +1037,9 @@ msgstr "Folgt dem Windows-Design gemäß deiner Systemeinstellung."
 
 msgid "Food & Drink"
 msgstr "Essen & Trinken"
+
+msgid "For example ;sig"
+msgstr "Zum Beispiel ;sig"
 
 msgid "For example, Email replies"
 msgstr "Zum Beispiel E-Mail-Antworten"
@@ -2576,6 +2591,9 @@ msgstr "Stärke: stark"
 msgid "Strength: weak"
 msgstr "Stärke: schwach"
 
+msgid "Suggest snippets as I type"
+msgstr "Bausteine beim Tippen vorschlagen"
+
 msgid "Supporter"
 msgstr "Supporter"
 
@@ -2918,6 +2936,9 @@ msgstr "Reisen & Orte"
 msgid "Tray icon click opens"
 msgstr "Klick auf das Tray-Symbol öffnet"
 
+msgid "Trigger"
+msgstr "Kürzel"
+
 msgid "Trimmed"
 msgstr "Ohne Leerraum am Rand"
 
@@ -2945,8 +2966,14 @@ msgstr "Schaltet das Gleiten und Ein- und Ausblenden in Snipdeck aus. Es ist auc
 msgid "Type a command"
 msgstr "Befehl eingeben"
 
+msgid "Type this in any app to insert the snippet. Turn it on in Settings, under Typing."
+msgstr "Tippe das in einer beliebigen App, um den Baustein einzufügen. Aktiviere es in den Einstellungen unter Tippen."
+
 msgid "Type {} to confirm"
 msgstr "Gib {} zur Bestätigung ein"
+
+msgid "Typing"
+msgstr "Tippen"
 
 msgid "UPPERCASE"
 msgstr "GROSSBUCHSTABEN"
@@ -3076,6 +3103,9 @@ msgstr "Beim Start von Windows"
 
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "Ist die Pinnnadel aus, blendet sich das Panel aus, sobald du zu einer anderen App wechselst. Ein angeheftetes Panel bleibt."
+
+msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk. Nothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
+msgstr "Wenn du das Kürzel eines Bausteins in einem anderen Programm tippst, ersetzt Snipdeck es durch den Baustein. Dafür beobachtet Snipdeck die gedrückten Tasten und behält nur die letzten Zeichen im Arbeitsspeicher, nie auf der Festplatte. In Passwortfeldern, in Programmen mit „Nie einfügen“ und bei vertraulichen Einträgen wird nichts erweitert."
 
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "Wo das Panel erscheint, wenn ein Tastenkürzel oder das Tray es anzeigt. „Am Textcursor“ weicht auf die Maus aus, wenn die App keinen hat."

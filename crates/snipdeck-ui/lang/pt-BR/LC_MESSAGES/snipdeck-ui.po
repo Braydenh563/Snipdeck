@@ -82,6 +82,9 @@ msgstr "Um título pode ter no máximo {} caracteres."
 msgid "A title can't contain line breaks or control characters."
 msgstr "Um título não pode conter quebras de linha nem caracteres de controle."
 
+msgid "A trigger is 1 to 32 characters with no spaces."
+msgstr "Um gatilho tem de 1 a 32 caracteres, sem espaços."
+
 msgid "About"
 msgstr "Sobre"
 
@@ -145,6 +148,9 @@ msgstr "Adiciona um trecho de texto a {}"
 msgid "After a paste or copy"
 msgstr "Depois de colar ou copiar"
 
+msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual."
+msgstr "Ao digitar o início de um gatilho, uma pequena dica junto ao cursor de texto oferece o trecho. Pressione Tab para inseri-lo; qualquer outra tecla segue normalmente."
+
 msgid "All"
 msgstr "Todos"
 
@@ -197,6 +203,9 @@ msgstr "Animais e natureza"
 
 msgid "Another program already uses {}."
 msgstr "Outro programa já usa {}."
+
+msgid "Another snippet already uses this trigger."
+msgstr "Outro trecho já usa este gatilho."
 
 msgid "Anywhere in Windows"
 msgstr "Em qualquer lugar do Windows"
@@ -957,6 +966,9 @@ msgstr "Tudo na lixeira será excluído definitivamente. Isso não pode ser desf
 msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
 msgstr "Tudo na sua biblioteca será apagado: quadros, listas, trechos, imagens, rascunhos e backups. Exporte antes se quiser uma cópia. Suas configurações e sua licença permanecem."
 
+msgid "Expand abbreviations as I type"
+msgstr "Expandir abreviações ao digitar"
+
 msgid "Expand sidebar (Ctrl+B)"
 msgstr "Expandir a barra lateral (Ctrl+B)"
 
@@ -1025,6 +1037,9 @@ msgstr "Segue o tema do Windows conforme a configuração do sistema."
 
 msgid "Food & Drink"
 msgstr "Comidas e bebidas"
+
+msgid "For example ;sig"
+msgstr "Por exemplo ;sig"
 
 msgid "For example, Email replies"
 msgstr "Por exemplo, Respostas de e-mail"
@@ -2576,6 +2591,9 @@ msgstr "Força: forte"
 msgid "Strength: weak"
 msgstr "Força: fraca"
 
+msgid "Suggest snippets as I type"
+msgstr "Sugerir trechos ao digitar"
+
 msgid "Supporter"
 msgstr "Supporter"
 
@@ -2918,6 +2936,9 @@ msgstr "Viagens e lugares"
 msgid "Tray icon click opens"
 msgstr "O clique no ícone da bandeja abre"
 
+msgid "Trigger"
+msgstr "Gatilho"
+
 msgid "Trimmed"
 msgstr "Sem espaços nas pontas"
 
@@ -2945,8 +2966,14 @@ msgstr "Desativa as animações de deslizar e desvanecer no Snipdeck. Também fi
 msgid "Type a command"
 msgstr "Digite um comando"
 
+msgid "Type this in any app to insert the snippet. Turn it on in Settings, under Typing."
+msgstr "Digite isto em qualquer aplicativo para inserir o trecho. Ative em Configurações, em Digitação."
+
 msgid "Type {} to confirm"
 msgstr "Digite {} para confirmar"
+
+msgid "Typing"
+msgstr "Digitação"
 
 msgid "UPPERCASE"
 msgstr "MAIÚSCULAS"
@@ -3076,6 +3103,9 @@ msgstr "Quando o Windows inicia"
 
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "Com o alfinete desativado, o painel se oculta assim que você muda para outro aplicativo. Um painel fixado permanece."
+
+msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk. Nothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
+msgstr "Quando você digita o gatilho de um trecho em outro programa, o Snipdeck o substitui pelo trecho. Para isso, o Snipdeck observa as teclas pressionadas e guarda apenas os últimos caracteres na memória, nunca no disco. Nada é expandido em campos de senha, em programas definidos como “Nunca colar” nem em itens confidenciais."
 
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "Onde o Painel aparece quando um atalho ou a bandeja o mostra. No cursor de texto usa o mouse quando o app não tem cursor."

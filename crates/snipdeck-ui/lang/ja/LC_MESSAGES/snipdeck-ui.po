@@ -82,6 +82,9 @@ msgstr "タイトルは最大 {} 文字までです。"
 msgid "A title can't contain line breaks or control characters."
 msgstr "タイトルに改行や制御文字を含めることはできません。"
 
+msgid "A trigger is 1 to 32 characters with no spaces."
+msgstr "トリガーは空白を含まない1～32文字です。"
+
 msgid "About"
 msgstr "バージョン情報"
 
@@ -145,6 +148,9 @@ msgstr "{} にテキストのスニペットを追加します"
 msgid "After a paste or copy"
 msgstr "貼り付けやコピーの後"
 
+msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual."
+msgstr "トリガーの先頭を入力すると、テキストカーソルの位置に小さなヒントが表示され、スニペットを提案します。Tab キーで挿入でき、それ以外のキーは通常どおり動作します。"
+
 msgid "All"
 msgstr "すべて"
 
@@ -196,6 +202,9 @@ msgstr "動物と自然"
 
 msgid "Another program already uses {}."
 msgstr "別のプログラムが {} を既に使用しています。"
+
+msgid "Another snippet already uses this trigger."
+msgstr "このトリガーは別のスニペットですでに使われています。"
 
 msgid "Anywhere in Windows"
 msgstr "Windows のどこでも"
@@ -956,6 +965,9 @@ msgstr "ゴミ箱のすべてが完全に削除されます。この操作は元
 msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
 msgstr "ライブラリの中身はすべて削除されます：ボード、リスト、スニペット、画像、下書き、バックアップ。コピーが必要な場合は先にエクスポートしてください。設定とライセンスは残ります。"
 
+msgid "Expand abbreviations as I type"
+msgstr "入力中に略語を展開する"
+
 msgid "Expand sidebar (Ctrl+B)"
 msgstr "サイドバーを展開 (Ctrl+B)"
 
@@ -1024,6 +1036,9 @@ msgstr "Windowsの設定に従います。"
 
 msgid "Food & Drink"
 msgstr "食べ物と飲み物"
+
+msgid "For example ;sig"
+msgstr "例: ;sig"
 
 msgid "For example, Email replies"
 msgstr "例: メールの返信"
@@ -2568,6 +2583,9 @@ msgstr "強度: 強い"
 msgid "Strength: weak"
 msgstr "強度: 弱い"
 
+msgid "Suggest snippets as I type"
+msgstr "入力中にスニペットを提案する"
+
 msgid "Supporter"
 msgstr "Supporter"
 
@@ -2910,6 +2928,9 @@ msgstr "旅行と場所"
 msgid "Tray icon click opens"
 msgstr "トレイアイコンのクリックで開く"
 
+msgid "Trigger"
+msgstr "トリガー"
+
 msgid "Trimmed"
 msgstr "前後の空白を削除"
 
@@ -2937,8 +2958,14 @@ msgstr "Snipdeck のスライドやフェードの動きをオフにします。
 msgid "Type a command"
 msgstr "コマンドを入力"
 
+msgid "Type this in any app to insert the snippet. Turn it on in Settings, under Typing."
+msgstr "どのアプリでもこれを入力すると、スニペットが挿入されます。設定の「入力」でオンにしてください。"
+
 msgid "Type {} to confirm"
 msgstr "確認のため {} と入力"
+
+msgid "Typing"
+msgstr "入力"
 
 msgid "UPPERCASE"
 msgstr "大文字"
@@ -3068,6 +3095,9 @@ msgstr "Windows の起動時"
 
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "ピンがオフのとき、ほかのアプリに切り替えるとすぐにパネルが隠れます。ピン留めしたパネルは隠れません。"
+
+msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk. Nothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
+msgstr "他のプログラムでスニペットのトリガーを入力すると、Snipdeck がそれをスニペットに置き換えます。そのために押したキーを監視しますが、保持するのは直近の数文字だけで、メモリ内にのみ置き、ディスクには保存しません。パスワード欄、「貼り付けない」に設定したプログラム、機密アイテムでは何も展開されません。"
 
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "ショートカットまたはトレイでパネルを表示する位置です。アプリにテキストカーソルがない場合、「テキストカーソルの位置」はマウスの位置になります。"

@@ -413,6 +413,48 @@
       "title": "Rich paste: RTF from WordPad (v1.1 slice 7)",
       "do": "In WordPad type a line, make one word bold and one word red, select all and copy. In the Panel press Ctrl+V with no text box focused. Paste the new item into WordPad and into Notepad.",
       "expect": "The item gets a Formatted mark. WordPad shows the bold word and the red word; Notepad shows the plain line. Editing only the title in the editor and saving keeps the formatting."
+    },
+    {
+      "id": "55",
+      "v1": false,
+      "title": "Typed trigger expands (v1.1 slice 5b)",
+      "do": "Settings > Typing: turn on \"Expand abbreviations as I type\". Give a snippet the trigger ;sig in its editor (Trigger field). In Notepad, Word, Chrome (a text box) and Windows Terminal type ;sig.",
+      "expect": "In each app the four characters are replaced by the snippet text (Terminal pastes with its own key). The clipboard has its old content back afterwards and the use count goes up by one."
+    },
+    {
+      "id": "56",
+      "v1": false,
+      "title": "Dead keys still compose with the hook on (v1.1 slice 5b)",
+      "do": "With a German keyboard layout and the setting on, in Notepad press the ^ key and then e.",
+      "expect": "ê appears, exactly as with the setting off. Also try ' then a on a US-International layout (á)."
+    },
+    {
+      "id": "57",
+      "v1": false,
+      "title": "No expansion in a password box (v1.1 slice 5b)",
+      "do": "With the setting on, open a sign-in page in Edge and type ;sig into the password box.",
+      "expect": "The text ;sig stays as typed; nothing is expanded or pasted. In the user-name box on the same page it does expand."
+    },
+    {
+      "id": "58",
+      "v1": false,
+      "title": "No expansion in a never-paste app (v1.1 slice 5b)",
+      "do": "In Settings > Programs set Notepad to never paste. With the setting on, type ;sig in Notepad.",
+      "expect": "The text ;sig stays as typed and nothing is pasted."
+    },
+    {
+      "id": "59",
+      "v1": false,
+      "title": "No expansion in an elevated window (v1.1 slice 5b)",
+      "do": "With the setting on, open an elevated (Run as administrator) Notepad and type ;sig.",
+      "expect": "The text ;sig stays as typed and nothing is pasted."
+    },
+    {
+      "id": "60",
+      "v1": false,
+      "title": "The hook is quiet (v1.1 slice 5b)",
+      "do": "With the setting on, type fast for a minute in Notepad and watch Windows Security (Defender) and Task Manager. Turn the setting off and check the hook is gone (type ;sig: no expansion).",
+      "expect": "Defender raises no warning, typing feels no slower, and Snipdeck's CPU stays near zero. With the setting off no expansion happens."
     }
   ]
 }
