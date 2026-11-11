@@ -321,7 +321,9 @@ component ColourPicker inherits Rectangle {
     accessible-label: root.label;
 
     HorizontalLayout {
-        spacing: Space.s1;
+        // The targets grow with the text size and the window cannot get wider than its minimum, so the gap shrinks
+        // by the same factor: nine targets at 2.25x still end inside the window (final-audit-2 re-audit).
+        spacing: Space.s1 / SystemLook.text-scale;
         alignment: start;
         NoColour {
             label: root.none-label;
