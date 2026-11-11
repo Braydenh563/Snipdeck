@@ -34,8 +34,8 @@ msgstr "PNG 图片。Snipdeck 会保存自己的副本。"
 msgid "A Panel that a shortcut or the tray showed hides after a paste or copy. A pinned Panel stays, and a docked one folds back to its edge."
 msgstr "通过快捷键或托盘显示的面板会在粘贴或复制后隐藏。已置顶的面板会保持显示，已停靠的面板会收回到边缘。"
 
-msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
-msgstr "Supporter 功能。在 Windows 自身保护之上，为你的敏感片段添加密码。首次使用敏感片段时要求输入，此后若 {} 分钟未使用，再次使用时也会要求输入。"
+msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. With a Supporter plan on Windows, you can then also unlock with Windows Hello."
+msgstr "Supporter 功能。在 Windows 自身保护之上，为你的敏感片段添加密码。首次使用敏感片段时要求输入，此后若 {} 分钟未使用，再次使用时也会要求输入。在 Windows 上使用 Supporter 套餐时，你还可以用 Windows Hello 解锁。"
 
 msgid "A docked Panel opens at its edge. Set Dock to Floating to choose where it opens."
 msgstr "已停靠的面板会在其边缘打开。将“停靠到”设为“浮动”，即可选择它的打开位置。"
@@ -142,8 +142,8 @@ msgstr "已添加到 {}"
 msgid "Added to {}. Some were skipped: folders, and files that are empty, too large or unreadable."
 msgstr "已添加到 {}。部分内容已跳过：文件夹，以及为空、太大或无法读取的文件。"
 
-msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
-msgstr "在 Windows 自身保护之上，为你的敏感片段添加密码。首次使用敏感片段时要求输入，此后若 {} 分钟未使用，再次使用时也会要求输入。"
+msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. With a Supporter plan on Windows, you can then also unlock with Windows Hello."
+msgstr "在 Windows 自身保护之上，为你的敏感片段添加密码。首次使用敏感片段时要求输入，此后若 {} 分钟未使用，再次使用时也会要求输入。在 Windows 上使用 Supporter 套餐时，你还可以用 Windows Hello 解锁。"
 
 msgid "Adds a text snippet to {}"
 msgstr "向 {} 添加文本片段"
@@ -3138,8 +3138,8 @@ msgstr "使用第 N 个片段"
 msgid "Use the item"
 msgstr "使用该片段"
 
-msgid "Use your face, fingerprint or PIN instead of typing the master password. The password is still asked after a restart and every 7 days, and it always works."
-msgstr "使用面部、指纹或 PIN 代替输入主密码。重启后以及每隔 7 天仍会要求输入密码，密码始终可用。"
+msgid "Use your face, fingerprint or PIN instead of typing the master password. Windows asks for Hello twice when you turn this on. The password is still asked after a restart and every 7 days, and it always works."
+msgstr "使用面部、指纹或 PIN 代替输入主密码。重启后以及每隔 7 天仍会要求输入密码，密码始终可用。开启时，Windows 会要求两次 Hello 验证。"
 
 msgid "Use {}"
 msgstr "使用 {}"
@@ -3222,9 +3222,6 @@ msgstr "窗口行为"
 msgid "Windows"
 msgstr "Windows"
 
-msgid "Windows Hello changed. Unlock with your password once to set it up again."
-msgstr "Windows Hello 已更改。请用密码解锁一次，以重新设置。"
-
 msgid "Windows Hello did not unlock Snipdeck. Use your master password."
 msgstr "Windows Hello 未能解锁 Snipdeck。请使用主密码。"
 
@@ -3272,6 +3269,9 @@ msgstr "是"
 
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "你将拥有 {} 个看板，而免费版仅包含 {} 个。"
+
+msgid "Your Windows Hello PIN, face or fingerprint changed. Unlock with your password once to set Windows Hello up again."
+msgstr "你的 Windows Hello PIN、面部或指纹已更改。请先用密码解锁一次，以重新设置 Windows Hello。"
 
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr "你的资料库位于同一个文件夹 %LOCALAPPDATA%\\Snipdeck 中：snipdeck.db（看板、列表、片段、标签和回收站）、blobs（图片、文件和长文本）、settings.json、你的许可证密钥、备份（按你选择保留的份数）和日志。"

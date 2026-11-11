@@ -395,10 +395,11 @@ If Windows cannot protect a key on your PC, the master password is not available
 
 With a master password set, Windows Hello can unlock the library with your face, fingerprint or PIN instead of
 typing the password. It needs a Supporter plan and a PC where Windows Hello is set up. The option is hidden
-otherwise.
+otherwise. If you do not see it, check those three things (a master password, Supporter, Hello set up in
+Windows). The Master password row mentions Hello too, and searching Settings for "Hello" finds that row.
 
 - **Turn it on.** Settings, under **Privacy**, below **Master password**: switch on **Unlock with Windows
-  Hello**. Windows asks for Hello twice, one after the other, to check it repeats. If you cancel or it fails,
+  Hello**. Windows asks for Hello twice, one after the other, to check it repeats (the row's description says so). If you cancel or it fails,
   the switch goes back off and a message says "Windows Hello was not turned on." (or "didn't work, so it was
   not turned on."). The same happens if the library locks, or the plan changes, before it finishes. You can
   turn it off the same way. Settings search finds it too.
@@ -414,8 +415,8 @@ otherwise.
   row after password unlocks, or Hello gives different answers each time, Snipdeck turns it off and says so
   (a message, and a line in the unlock window). Turn it on again in Settings.
 - **A changed Hello.** If you reset your PIN or change your face or fingerprint, Windows makes a new
-  credential and the old copy no longer opens. The unlock window says "Windows Hello changed. Unlock with your
-  password once to set it up again." Type your password. Snipdeck then asks Hello twice to check it repeats,
+  credential and the old copy no longer opens. The unlock window says "Your Windows Hello PIN, face or fingerprint changed. Unlock with your
+  password once to set Windows Hello up again." Type your password. Snipdeck then asks Hello twice to check it repeats,
   and the next unlock can use Hello. Snipdeck asks only right after a password unlock. Opening Settings or
   the unlock window never puts up a Hello prompt. If you cancel that prompt, Hello stays on and it asks again
   after your next password unlock.
