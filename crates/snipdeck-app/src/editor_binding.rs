@@ -280,6 +280,35 @@ where
         Some(w)
     }
 
+    /// Labels, formatting and pasting inside the form: the callbacks that only reach the controller.
+    fn wire_content(self: &Rc<Self>, w: &ui::ItemEditor) {
+        let core = Rc::downgrade(self);
+        w.on_tag_toggled(move |i| {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            core.act(|ctl| ctl.item_editor_tag_toggled(index(i)));
+        });
+        let core = Rc::downgrade(self);
+        w.on_tag_added(move |name| {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            core.act(|ctl| ctl.item_editor_tag_added(name.as_str()));
+        });
+        let core = Rc::downgrade(self);
+        w.on_remove_formatting_requested(move || {
+            if let Some(core) = core.upgrade() {
+                core.act(Controller::item_editor_remove_formatting);
+            }
+        });
+        let core = Rc::downgrade(self);
+        w.on_paste_requested(move || {
+            core.upgrade()
+                .is_some_and(|core| core.act(Controller::refuse_pasted_image))
+        });
+    }
+
     fn wire(self: &Rc<Self>, w: &ui::ItemEditor) {
         let core = Rc::downgrade(self);
         let weak = w.as_weak();
@@ -315,20 +344,7 @@ where
             crate::trace!("callback editor delete-requested");
             core.act(Controller::item_editor_delete);
         });
-        let core = Rc::downgrade(self);
-        w.on_tag_toggled(move |i| {
-            let Some(core) = core.upgrade() else {
-                return;
-            };
-            core.act(|ctl| ctl.item_editor_tag_toggled(index(i)));
-        });
-        let core = Rc::downgrade(self);
-        w.on_tag_added(move |name| {
-            let Some(core) = core.upgrade() else {
-                return;
-            };
-            core.act(|ctl| ctl.item_editor_tag_added(name.as_str()));
-        });
+        self.wire_content(w);
         let core = Rc::downgrade(self);
         let weak = w.as_weak();
         w.on_more_toggled(move |open| {
@@ -349,17 +365,6 @@ where
             core.controller.borrow_mut().item_editor_edited();
             core.arm_autosave();
             core.sync();
-        });
-        let core = Rc::downgrade(self);
-        w.on_remove_formatting_requested(move || {
-            if let Some(core) = core.upgrade() {
-                core.act(Controller::item_editor_remove_formatting);
-            }
-        });
-        let core = Rc::downgrade(self);
-        w.on_paste_requested(move || {
-            core.upgrade()
-                .is_some_and(|core| core.act(Controller::refuse_pasted_image))
         });
         let core = Rc::downgrade(self);
         let weak = w.as_weak();
