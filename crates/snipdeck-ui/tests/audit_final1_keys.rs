@@ -559,7 +559,7 @@ fn nodes<C: ComponentHandle>(
         .find_all()
     {
         let (p, s) = (e.absolute_position(), e.size());
-        if s.width == 0.0 || s.height == 0.0 {
+        if s.width < 0.5 || s.height < 0.5 {
             continue;
         }
         let n = (
@@ -572,7 +572,10 @@ fn nodes<C: ComponentHandle>(
             s.width,
             s.height,
         );
-        if !seen.iter().any(|o| o.0 == n.0 && o.2 == n.2 && o.3 == n.3) {
+        if !seen
+            .iter()
+            .any(|o| o.0 == n.0 && (o.2 - n.2).abs() < 0.5 && (o.3 - n.3).abs() < 0.5)
+        {
             seen.push(n);
         }
     }
