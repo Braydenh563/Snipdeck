@@ -188,6 +188,7 @@ impl Command {
             Self::SelectAll => "Ctrl+A",
             Self::ToggleSidebar => "Ctrl+B",
             Self::GroupItems => "Ctrl+G",
+            Self::FoldGroup => "Enter",
             Self::RenameGroup => "F2",
             Self::MoveGroupUp => "Alt+Up",
             Self::MoveGroupDown => "Alt+Down",
