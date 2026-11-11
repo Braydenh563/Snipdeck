@@ -216,3 +216,29 @@ fn dump_toast_panel_palette() {
         dump(&format!("palette-{}-{w}-{s}", if dark { "dark" } else { "light" }), &hn.render_settled());
     }
 }
+
+#[test]
+fn dump_width_sweep_at_225() {
+    for w in [600u32, 700, 800, 945] {
+        let hn = Harness::new(HelpWindow::new, w, 700);
+        editor::help(&hn.component);
+        editor::shortcuts(&hn.component);
+        scale!(hn.component, 2.25);
+        hn.component.set_tab(2);
+        dump(&format!("sweep-help-{w}"), &hn.render_settled());
+        let hn = item(w, 900, false, 2.25, |c| c.set_formatted(true));
+        dump(&format!("sweep-item-{w}"), &hn.render_settled());
+        let hn = Harness::new(SettingsPage::new, w, 900);
+        editor::settings(&hn.component);
+        scale!(hn.component, 2.25);
+        dump(&format!("sweep-settings-{w}"), &hn.render_settled());
+        let hn = Harness::new(TemplateFillWindow::new, w, 1600);
+        fill::populate(&hn.component);
+        scale!(hn.component, 2.25);
+        let _ = hn.render_settled();
+        let height = hn.component.get_content_height();
+        hn.component.window().set_size(slint::LogicalSize::new(w as f32, height));
+        hn.component.window().request_redraw();
+        dump(&format!("sweep-fill-{w}"), &hn.render_settled());
+    }
+}
