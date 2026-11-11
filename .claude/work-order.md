@@ -37,6 +37,7 @@ resumed: 2026-11-09 after idle-guard stop during a long gate run (commits c7f28a
 - [x] Align placeholder chip column (merged 07:30)
 - [x] Audit 1b keyboard walk -> audit worker, branch claude/v11-audit (merged fb9209c; goldens after the Tab-order fixes)
 - [ ] Final audit 2 (Hello + typing): report docs/reviews/final-audit-2.md; Hello A1/A5/A7/A8 -> Hello worker, typing B3-B10 -> typing worker
+- [ ] Groups in the Main window (spec: Panel and Main) -> sweep worker, claude/v11-groups-main
 - [ ] Groups a11y (Alt+Up/Down, header keys, window tests) -> Hello worker, claude/v11-groups-a11y
 - [ ] Final: full gate, polish pass (ux-auditor + blind-tester on Panel, Settings, palette, shortcuts, toasts), docs, morning summary
 - [x] v1.1 light lane: slice 9 serde-saphyr + 3a groups data (merged ed7528b)
