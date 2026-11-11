@@ -655,7 +655,14 @@ fn at_225_percent_text_the_buttons_have_room_and_hello_has_its_own_row() {
         r.ui.global::<snipdeck_ui::SystemLook>()
             .set_text_scale(2.25);
         settle();
-        let width = r.ui.window().size().width as f32 / r.ui.window().scale_factor();
+        // The host sizes the window from what it wants (as `size_before_show` does).
+        let scale = r.ui.window().scale_factor();
+        r.ui.window().set_size(slint::LogicalSize::new(
+            r.ui.get_wanted_width(),
+            r.ui.get_wanted_height(),
+        ));
+        settle();
+        let width = r.ui.window().size().width as f32 / scale;
         assert!(
             width >= 270.0 * 2.25,
             "the window grew with the text: {width}"

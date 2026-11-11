@@ -309,9 +309,11 @@ where
                 // that changed (a PIN reset makes a new credential) is sealed again at the next
                 // password unlock, with the repeat check, which asks it once.
                 // A cancel at the unlock keeps the copy: the button offers another try.
-                if !(self.lock.hello.step == Step::Open && failure == HelloFailure::Cancelled) {
-                    self.lock.hello.sealed = None;
-                }
+                self.lock.hello.sealed = if self.lock.hello.step == Step::Open {
+                    done.kept
+                } else {
+                    None
+                };
                 match (self.lock.hello.step, failure) {
                     (Step::Open, HelloFailure::Mismatch) => {
                         self.lock.hello.note = Note::Changed;

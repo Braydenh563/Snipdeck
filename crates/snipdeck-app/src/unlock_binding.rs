@@ -410,6 +410,7 @@ impl UnlockUi {
             let mut slot = slot.borrow_mut();
             if slot.is_none() {
                 let window = create_window(ui::UnlockWindow::new)?;
+                crate::text_scale::apply(&window.global::<ui::SystemLook<'_>>());
                 crate::native_window::size_before_show(
                     window.window(),
                     (window.get_wanted_width(), window.get_wanted_height()),

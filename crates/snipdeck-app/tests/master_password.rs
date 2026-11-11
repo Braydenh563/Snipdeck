@@ -1483,7 +1483,7 @@ mod hello {
     }
 
     #[test]
-    fn a_hello_that_is_not_repeatable_is_turned_off_with_a_message() {
+    fn a_hello_that_is_not_repeatable_does_not_get_turned_on_and_says_so() {
         let hello = fake();
         hello.set_non_deterministic(true);
         let mut r = with_password(Tier::Pro);
@@ -1494,7 +1494,7 @@ mod hello {
             Err(HelloFailure::NotRepeatable)
         );
         assert!(!r.ctl.settings().hello_unlock);
-        assert_eq!(r.toast(), Some(ToastMessage::HelloTurnedOff));
+        assert_eq!(r.toast(), Some(ToastMessage::HelloEnrolFailed));
     }
 
     #[test]
