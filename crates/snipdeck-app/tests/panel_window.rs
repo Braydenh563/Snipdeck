@@ -2257,8 +2257,8 @@ fn left_collapses_and_right_expands_a_header() {
     on_ui_thread(|| {
         let r = rig();
         group_first_two(&r);
-        // The new header is selected and renaming: Esc ends the rename, then the keys are the list's.
-        press(r.window(), &key(Key::Escape));
+        // The new header is selected and renaming: Enter ends the rename, then the keys are the list's.
+        press(r.window(), &key(Key::Return));
         let count = r.ui.get_rows().row_count();
         press(r.window(), &key(Key::LeftArrow));
         assert_eq!(
@@ -2340,6 +2340,8 @@ fn header_is_announced_with_its_count() {
     on_ui_thread(|| {
         let r = rig();
         group_first_two(&r);
+        // The new header opens its name for typing: Enter ends that, then the keys are the list's.
+        press(r.window(), &key(Key::Return));
         let name = r.ui.get_rows().row_data(0).expect("row").title;
         // Folded or open is the header's expanded state, not part of its label.
         let label = format!("group {name}, 2 items");

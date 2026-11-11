@@ -4,7 +4,7 @@ import { Icon } from "icon.slint";
 
 // The header of a group of items in a list (Panel). A quiet bar: chevron, name, count. A click or Enter folds and
 // unfolds it, a double-click or F2 renames it in place, a right click opens its menu. It is not focusable itself:
-// the Panel's key handler owns the keys, and `selected` draws the focus ring like a card's.
+// the Panel's key handler owns the keys, and `selected` paints the card's selected fill.
 export component GroupHeader inherits Rectangle {
     in property <string> name;
     in property <string> count-text;
@@ -25,11 +25,13 @@ export component GroupHeader inherits Rectangle {
 
     min-height: Space.hit;
     border-radius: Radius.lg;
-    background: root.selected ? Theme.bg-sunken : root.hover ? Theme.bg-sunken.transparentize(0.5) : transparent;
+    background: root.selected ? Theme.bg-selected : root.hover ? Theme.bg-sunken.transparentize(0.5) : transparent;
     accessible-role: button;
     accessible-label: root.a11y-label;
     accessible-expandable: true;
     accessible-expanded: !root.collapsed;
+    accessible-item-selectable: true;
+    accessible-item-selected: root.selected;
     accessible-action-default => { root.toggled(); }
 
     changed rename-request => {
@@ -81,12 +83,13 @@ export component GroupHeader inherits Rectangle {
         }
         Rectangle {
             horizontal-stretch: 1;
+            min-width: 0px;
             Text {
                 visible: !root.renaming;
                 width: parent.width;
                 height: parent.height;
                 text: root.name;
-                color: Theme.text-primary;
+                color: root.selected ? Theme.text-on-selected : Theme.text-primary;
                 font-family: Fonts.sans;
                 font-size: Type.sm;
                 font-weight: 600;
@@ -128,21 +131,11 @@ export component GroupHeader inherits Rectangle {
         }
         Text {
             text: root.count-text;
-            color: Theme.text-secondary;
+            color: root.selected ? Theme.text-secondary-on-selected : Theme.text-secondary;
             font-family: Fonts.sans;
             font-size: Type.xs;
             vertical-alignment: center;
             accessible-role: none;
         }
-    }
-
-    // Keyboard focus ring: 2px, like a card's.
-    Rectangle {
-        width: parent.width;
-        height: parent.height;
-        border-width: root.selected ? 2px : 0px;
-        border-color: Theme.focus-ring;
-        border-radius: Radius.lg;
-        background: transparent;
     }
 }
