@@ -3446,6 +3446,9 @@ msgstr "{} est vide et a été ignoré."
 msgid "{} is not valid UTF-8, so characters that could not be read were replaced."
 msgstr "{} n'est pas en UTF-8 valide : les caractères illisibles ont été remplacés."
 
+msgid "{} is turned off in Espanso (its name starts with an underscore) and was skipped."
+msgstr "{} est désactivé dans Espanso (son nom commence par un tiret bas) et a été ignoré."
+
 msgid "{} is used by another app. Choose another in Settings."
 msgstr "{} est utilisé par une autre application. Choisissez-en un autre dans les paramètres."
 
@@ -3456,6 +3459,11 @@ msgid "{} item"
 msgid_plural "{} items"
 msgstr[0] "{} élément"
 msgstr[1] "{} éléments"
+
+msgid "{} item had a title or source app longer than {} or {} characters, and it was cut."
+msgid_plural "{} items had a title or source app longer than {} or {} characters, and it was cut."
+msgstr[0] "{} élément avait un titre ou une application source de plus de {} ou {} caractères, et il a été tronqué."
+msgstr[1] "{} éléments avaient un titre ou une application source de plus de {} ou {} caractères, et ils ont été tronqués."
 
 msgid "{} item in {} list will be added"
 msgid_plural "{} items in {} lists will be added"
@@ -3515,5 +3523,53 @@ msgstr "{}, {} sur {}"
 msgid "{}.{} MB"
 msgstr "{},{} Mo"
 
+msgid "{}: Snipdeck does not know the date format {}, so it was left as written."
+msgstr "{} : Snipdeck ne connaît pas le format de date {} ; il a été laissé tel quel."
+
+msgid "{}: it has no text (a picture or other content) and was skipped."
+msgstr "{} : il n’a pas de texte (une image ou un autre contenu) et a été ignoré."
+
+msgid "{}: it has no trigger and was skipped."
+msgstr "{} : il n’a pas de déclencheur et a été ignoré."
+
+msgid "{}: its Markdown or HTML text is kept as written."
+msgstr "{} : son texte Markdown ou HTML est conservé tel quel."
+
+msgid "{}: its only trigger is a regular expression, which Snipdeck cannot use, so it was skipped."
+msgstr "{} : son seul déclencheur est une expression régulière, que Snipdeck ne peut pas utiliser ; il a été ignoré."
+
+msgid "{}: its variables cannot be one Snipdeck template together (for example two cursor marks), so it was kept as plain text."
+msgstr "{} : ses variables ne peuvent pas former un seul modèle Snipdeck (par exemple deux marques de curseur) ; il a été conservé comme texte brut."
+
+msgid "{}: some rows have more than 256 columns, and the extra columns were ignored."
+msgstr "{} : certaines lignes ont plus de 256 colonnes, et les colonnes en trop ont été ignorées."
+
+msgid "{}: the form field {} has no Snipdeck equivalent and was left as written."
+msgstr "{} : le champ de formulaire {} n’a pas d’équivalent dans Snipdeck et a été laissé tel quel."
+
+msgid "{}: the trigger {} and {} start alike, so the shorter one fires first."
+msgstr "{} : le déclencheur {} et {} commencent de la même façon, donc le plus court se déclenche en premier."
+
+msgid "{}: the trigger {} is already used by another snippet, so it was imported without it."
+msgstr "{} : le déclencheur {} est déjà utilisé par un autre extrait ; il a été importé sans lui."
+
+msgid "{}: this entry is not a match and was skipped."
+msgstr "{} : cette entrée n’est pas une correspondance (match) et a été ignorée."
+
 msgid "{}: {}"
 msgstr "{}: {}"
+
+msgid "{}: {} (a shell, script or random variable, or one Snipdeck does not know) has no Snipdeck equivalent and was left as written."
+msgstr "{} : {} (une variable de shell, de script ou aléatoire, ou une variable inconnue de Snipdeck) n’a pas d’équivalent dans Snipdeck et a été laissée telle quelle."
+
+msgid "{}: {} has no Snipdeck equivalent and was left as written."
+msgstr "{} : {} n’a pas d’équivalent dans Snipdeck et a été laissé tel quel."
+
+msgid "{}: {} was not kept as a trigger, because a snippet has one trigger."
+msgstr "{} : {} n’a pas été conservé comme déclencheur, car un extrait n’a qu’un déclencheur."
+
+msgid "{}: {} was not kept as a trigger, because a trigger has no spaces and at most 32 characters."
+msgstr "{} : {} n’a pas été conservé comme déclencheur, car un déclencheur n’a pas d’espaces et fait au plus 32 caractères."
+
+msgid "{}: {} was not kept as a trigger, because it fires after a separator and a Snipdeck trigger does not wait for one."
+msgstr "{} : {} n’a pas été conservé comme déclencheur, car il se déclenche après un séparateur et un déclencheur Snipdeck n’en attend pas."

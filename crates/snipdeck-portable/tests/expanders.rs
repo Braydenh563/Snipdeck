@@ -86,7 +86,7 @@ fn notes(report: &ImportReport) -> Vec<String> {
         .warnings
         .iter()
         .filter_map(|w| match w {
-            Warning::Note(n) => Some(n.clone()),
+            Warning::Note(n) => Some(n.to_string()),
             _ => None,
         })
         .collect()

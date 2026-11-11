@@ -3429,6 +3429,9 @@ msgstr "{} 为空，已跳过。"
 msgid "{} is not valid UTF-8, so characters that could not be read were replaced."
 msgstr "{} 不是有效的 UTF-8 编码，无法读取的字符已被替换。"
 
+msgid "{} is turned off in Espanso (its name starts with an underscore) and was skipped."
+msgstr "{} 在 Espanso 中已停用（名称以下划线开头），已跳过。"
+
 msgid "{} is used by another app. Choose another in Settings."
 msgstr "{} 正被其他应用占用。请在设置中选择其他快捷键。"
 
@@ -3438,6 +3441,10 @@ msgstr "{} 为 {}，超过文本 5 MB 的上限，已跳过。"
 msgid "{} item"
 msgid_plural "{} items"
 msgstr[0] "{} 项"
+
+msgid "{} item had a title or source app longer than {} or {} characters, and it was cut."
+msgid_plural "{} items had a title or source app longer than {} or {} characters, and it was cut."
+msgstr[0] "有 {} 个项目的标题或来源应用超过 {} 或 {} 个字符，已截断。"
 
 msgid "{} item in {} list will be added"
 msgid_plural "{} items in {} lists will be added"
@@ -3489,5 +3496,53 @@ msgstr "{}，第 {} 项（共 {} 项）"
 msgid "{}.{} MB"
 msgstr "{}.{} MB"
 
+msgid "{}: Snipdeck does not know the date format {}, so it was left as written."
+msgstr "{}：Snipdeck 不认识日期格式 {}，已保持原样。"
+
+msgid "{}: it has no text (a picture or other content) and was skipped."
+msgstr "{}：没有文本（图片或其他内容），已跳过。"
+
+msgid "{}: it has no trigger and was skipped."
+msgstr "{}：没有触发词，已跳过。"
+
+msgid "{}: its Markdown or HTML text is kept as written."
+msgstr "{}：其 Markdown 或 HTML 文本保持原样。"
+
+msgid "{}: its only trigger is a regular expression, which Snipdeck cannot use, so it was skipped."
+msgstr "{}：唯一的触发词是正则表达式，Snipdeck 无法使用，已跳过。"
+
+msgid "{}: its variables cannot be one Snipdeck template together (for example two cursor marks), so it was kept as plain text."
+msgstr "{}：其变量无法合并为一个 Snipdeck 模板（例如有两个光标标记），已保留为纯文本。"
+
+msgid "{}: some rows have more than 256 columns, and the extra columns were ignored."
+msgstr "{}：有些行超过 256 列，多余的列已忽略。"
+
+msgid "{}: the form field {} has no Snipdeck equivalent and was left as written."
+msgstr "{}：表单字段 {} 在 Snipdeck 中没有对应项，已保持原样。"
+
+msgid "{}: the trigger {} and {} start alike, so the shorter one fires first."
+msgstr "{}：触发词 {} 与 {} 开头相同，因此较短的会先触发。"
+
+msgid "{}: the trigger {} is already used by another snippet, so it was imported without it."
+msgstr "{}：触发词 {} 已被另一个片段使用，因此导入时未带触发词。"
+
+msgid "{}: this entry is not a match and was skipped."
+msgstr "{}：此条目不是匹配项，已跳过。"
+
 msgid "{}: {}"
 msgstr "{}: {}"
+
+msgid "{}: {} (a shell, script or random variable, or one Snipdeck does not know) has no Snipdeck equivalent and was left as written."
+msgstr "{}：{}（shell、脚本或随机变量，或 Snipdeck 不认识的变量）在 Snipdeck 中没有对应项，已保持原样。"
+
+msgid "{}: {} has no Snipdeck equivalent and was left as written."
+msgstr "{}：{} 在 Snipdeck 中没有对应项，已保持原样。"
+
+msgid "{}: {} was not kept as a trigger, because a snippet has one trigger."
+msgstr "{}：{} 未保留为触发词，因为一个片段只有一个触发词。"
+
+msgid "{}: {} was not kept as a trigger, because a trigger has no spaces and at most 32 characters."
+msgstr "{}：{} 未保留为触发词，因为触发词不能含空格，且最多 32 个字符。"
+
+msgid "{}: {} was not kept as a trigger, because it fires after a separator and a Snipdeck trigger does not wait for one."
+msgstr "{}：{} 未保留为触发词，因为它在分隔符之后触发，而 Snipdeck 的触发词不会等待分隔符。"
