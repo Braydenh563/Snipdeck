@@ -57,6 +57,10 @@ where
             self.offer_manual_for_group(s);
             return;
         }
+        // Under a colour filter the rows show no headers: a group made now would be invisible.
+        if s == Surface::Main && !self.main.shows_groups() {
+            return;
+        }
         let Ok(name) = Name::new(&self.group_name) else {
             return;
         };
@@ -71,13 +75,19 @@ where
         let group = Group::new(list, name);
         let order = self.group_order(s, list);
         // Each member's group now: Undo puts every one back exactly, whatever the moves did.
+        let Ok(runs) = self.store.groups_of(list) else {
+            self.show_toast(failed());
+            return;
+        };
         let mut changes: Vec<Change> = members
             .iter()
             .filter_map(|id| {
-                self.group_of_item(s, *id).map(|r| Change::Regroup {
-                    item: *id,
-                    group: Some(r.group),
-                })
+                runs.iter()
+                    .find(|r| r.items.contains(id))
+                    .map(|r| Change::Regroup {
+                        item: *id,
+                        group: Some(r.group.clone()),
+                    })
             })
             .collect();
         let made = self.store.atomically(|b| {
@@ -286,7 +296,6 @@ where
         }
     }
 
-
     fn group_clear_marks(&mut self, s: Surface) {
         match s {
             Surface::Panel => self.model.clear_marks(),
@@ -346,7 +355,10 @@ where
 
     /// Whether the group whose header is row `index` can move `delta` places (1 or -1).
     pub(crate) fn can_move_group(&self, index: usize, delta: isize) -> bool {
-        self.model.reorderable() && self.group_step_target(Surface::Panel, index, delta).is_some()
+        self.model.reorderable()
+            && self
+                .group_step_target(Surface::Panel, index, delta)
+                .is_some()
     }
 
     /// Alt+Up / Alt+Down on a header, or "Move up / down" in its menu: the whole group moves one

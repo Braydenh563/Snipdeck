@@ -213,3 +213,60 @@ fn alt_arrows_on_a_header_move_the_whole_group_one_step() {
     w.ctl.main_reorder_items(1);
     assert_eq!(shape(&mut w)[0].0, "Group");
 }
+
+/// Gives the first `n` rows of the open list the Red label.
+fn label_first_rows_red(w: &mut World, n: usize) {
+    let ids: Vec<_> = w
+        .ctl
+        .main_screen()
+        .rows
+        .iter()
+        .take(n)
+        .filter_map(|r| match r.key {
+            crate::main_window::Key::Item(id) => Some(id),
+            _ => None,
+        })
+        .collect();
+    w.ctl.label_items(&ids, Some(snipdeck_core::ItemLabel::Red));
+}
+
+#[test]
+fn ctrl_g_under_a_colour_filter_groups_nothing_because_no_header_could_show() {
+    let mut w = open_replies();
+    label_first_rows_red(&mut w, 2);
+    w.ctl
+        .main_set_label_filter(Some(snipdeck_core::ItemLabel::Red));
+    assert_eq!(shape(&mut w).len(), 2, "the filter shows two rows");
+    w.ctl.main_select(0, SelectMode::Replace);
+    w.ctl.main_select(1, SelectMode::Toggle);
+    w.ctl.main_group_marked(0);
+    w.ctl.main_set_label_filter(None);
+    assert_eq!(
+        shape(&mut w).iter().filter(|r| r.1).count(),
+        0,
+        "no group was made behind the filter"
+    );
+    assert!(
+        w.ctl.main_screen().rename_row.is_none(),
+        "and no rename is waiting for a header that is not there"
+    );
+}
+
+#[test]
+fn a_refused_ctrl_g_under_a_colour_filter_leaves_the_existing_group_and_its_undo_alone() {
+    let mut w = open_replies();
+    group_first_two(&mut w);
+    w.ctl.group_rename_ended();
+    label_first_rows_red(&mut w, 1);
+    w.ctl
+        .main_set_label_filter(Some(snipdeck_core::ItemLabel::Red));
+    w.ctl.main_select(0, SelectMode::Replace);
+    w.ctl.main_group_marked(0);
+    w.ctl.main_set_label_filter(None);
+    let rows = shape(&mut w);
+    assert_eq!(rows.iter().filter(|r| r.1).count(), 1, "{rows:?}");
+    assert_eq!(rows.iter().filter(|r| r.2).count(), 2, "{rows:?}");
+    // The one Undo is still the first grouping: it ungroups, and nothing else was recorded on top of it.
+    w.ctl.undo();
+    assert_eq!(shape(&mut w).iter().filter(|r| r.1).count(), 0);
+}

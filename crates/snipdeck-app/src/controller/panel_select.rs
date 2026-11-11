@@ -368,7 +368,7 @@ where
     }
 
     /// Gives the items `ids` colour `label` (`None` clears it).
-    fn label_items(&mut self, ids: &[ItemId], label: Option<ItemLabel>) {
+    pub(super) fn label_items(&mut self, ids: &[ItemId], label: Option<ItemLabel>) {
         let now = self.clock.now();
         let done = self.store.atomically(|b| {
             for id in ids {

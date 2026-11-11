@@ -734,10 +734,7 @@ where
                     .borrow()
                     .as_ref()
                     .and_then(|s| s.rows.get(index(row)))
-                    .and_then(|r| match r.key {
-                        Key::Item(id) => Some(Payload::Item(id)),
-                        _ => None,
-                    })
+                    .and_then(|r| row_payload(r.key))
                     .map_or_else(slint::DataTransfer::default, Payload::into_transfer)
             });
         }
@@ -755,14 +752,13 @@ where
         }
         {
             let core = Rc::clone(&core);
-            window.on_payload_row(move |data| match Payload::of(&data) {
-                Some(Payload::Item(id)) => core.shown.borrow().as_ref().map_or(-1, |s| {
-                    s.rows
-                        .iter()
-                        .position(|r| r.key == Key::Item(id))
-                        .map_or(-1, to_i32)
-                }),
-                _ => -1,
+            window.on_payload_row(move |data| {
+                let Some(key) = Payload::of(&data).and_then(payload_key) else {
+                    return -1;
+                };
+                core.shown.borrow().as_ref().map_or(-1, |s| {
+                    s.rows.iter().position(|r| r.key == key).map_or(-1, to_i32)
+                })
             });
         }
         {
@@ -1351,6 +1347,24 @@ where
     );
 }
 
+/// What a dragged row carries: an item, or a group's header (a note or a header only; nothing else drags).
+fn row_payload(key: Key) -> Option<Payload> {
+    match key {
+        Key::Item(id) => Some(Payload::Item(id)),
+        Key::Group(id) => Some(Payload::Group(id)),
+        _ => None,
+    }
+}
+
+/// The row a dropped payload stands for.
+fn payload_key(payload: Payload) -> Option<Key> {
+    match payload {
+        Payload::Item(id) => Some(Key::Item(id)),
+        Payload::Group(id) => Some(Key::Group(id)),
+        Payload::List(_) => None,
+    }
+}
+
 /// The items a list holds: headers stand for their group's count (members folded away included) and the members
 /// shown under an open header are not counted twice.
 fn list_total(rows: &[crate::main_window::Row]) -> usize {
@@ -1671,6 +1685,30 @@ mod tests {
         });
         assert!(result.is_err());
         assert!(!regular_window_being_shown());
+    }
+
+    #[test]
+    fn a_dragged_header_travels_as_a_group_payload_and_finds_its_row_again() {
+        use crate::main_window::Key;
+        let (item, group) = (
+            snipdeck_core::ItemId::generate(),
+            snipdeck_core::GroupId::generate(),
+        );
+        let rows = [Key::Group(group), Key::Item(item)];
+        for (at, key) in rows.iter().enumerate() {
+            let data = row_payload(*key).expect("a row drags").into_transfer();
+            let back = Payload::of(&data).and_then(payload_key);
+            assert_eq!(back, Some(*key));
+            assert_eq!(rows.iter().position(|k| Some(*k) == back), Some(at));
+        }
+        assert_eq!(
+            row_payload(Key::Board(snipdeck_core::BoardId::generate())),
+            None
+        );
+        assert_eq!(
+            payload_key(Payload::List(snipdeck_core::ListId::generate())),
+            None
+        );
     }
 
     #[test]
