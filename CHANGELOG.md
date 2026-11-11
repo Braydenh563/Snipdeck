@@ -38,6 +38,8 @@ All notable changes to Snipdeck are recorded here. The format follows
 - Tips pictures end on a whole row, and the Main window's Show Panel button has its own icon.
 - The Template editor's placeholder list lines its descriptions up in one column, and stacks each name above its description in a narrow window.
 - Tips mark Supporter features with a badge, and a Free user's Try it on one opens the licence page. The item editor says which placeholders need Supporter and offers Get Supporter... beside the message.
+- The item editor's buttons move onto two rows when the window is narrow or the text is large, so none is cut off.
+- Import notes (a skipped match, a cut title, an unsupported field) are shown in your language.
 
 ### Security
 - YAML import parsing moved from `serde_yaml_ng` to `serde-saphyr` (deserialize only), so `unsafe-libyaml`
