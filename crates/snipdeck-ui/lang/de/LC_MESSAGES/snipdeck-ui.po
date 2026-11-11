@@ -1524,6 +1524,12 @@ msgstr "Gruppe nach oben verschieben"
 msgid "Move selected item to Trash"
 msgstr "Ausgewählten Textbaustein in den Papierkorb verschieben"
 
+msgid "Move the group down"
+msgstr "Gruppe nach unten verschieben"
+
+msgid "Move the group up"
+msgstr "Gruppe nach oben verschieben"
+
 msgid "Move the item to the Trash"
 msgstr "Textbaustein in den Papierkorb verschieben"
 

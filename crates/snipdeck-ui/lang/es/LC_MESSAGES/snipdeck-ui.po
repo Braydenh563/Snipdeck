@@ -1524,6 +1524,12 @@ msgstr "Mover grupo hacia arriba"
 msgid "Move selected item to Trash"
 msgstr "Mover el elemento seleccionado a la papelera"
 
+msgid "Move the group down"
+msgstr "Mover el grupo hacia abajo"
+
+msgid "Move the group up"
+msgstr "Mover el grupo hacia arriba"
+
 msgid "Move the item to the Trash"
 msgstr "Mueve el elemento a la papelera"
 

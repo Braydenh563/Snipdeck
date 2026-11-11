@@ -90,7 +90,7 @@ use Scope::{Anywhere, Editors, Main, Panel, Picker, Unlock};
 
 /// Every shortcut, in the order of `ShortcutTexts.titles` (a test in `tests/help_window.rs` checks the
 /// length) and grouped by scope in the order of [`Scope::ALL`].
-pub const CATALOGUE: [Shortcut; 79] = [
+pub const CATALOGUE: [Shortcut; 80] = [
     // Anywhere in Windows.
     global(HotkeyAction::TogglePanel),
     global(HotkeyAction::Picker),
@@ -131,11 +131,8 @@ pub const CATALOGUE: [Shortcut; 79] = [
         "Left, Right or Enter on a group header",
     ),
     row(Main, "F2"),
-    custom(
-        Main,
-        &["Alt", "Up", "Down"],
-        "Alt+Up or Alt+Down on a group header",
-    ),
+    row(Main, "Alt+Up"),
+    row(Main, "Alt+Down"),
     row(Main, "Del"),
     // Panel.
     custom(Panel, &["A-Z"], "Type"),

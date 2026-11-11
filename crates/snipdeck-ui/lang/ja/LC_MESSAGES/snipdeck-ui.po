@@ -1520,6 +1520,12 @@ msgstr "グループを上に移動"
 msgid "Move selected item to Trash"
 msgstr "選択したスニペットをゴミ箱へ移動"
 
+msgid "Move the group down"
+msgstr "グループを下に移動"
+
+msgid "Move the group up"
+msgstr "グループを上に移動"
+
 msgid "Move the item to the Trash"
 msgstr "スニペットをゴミ箱へ移動"
 

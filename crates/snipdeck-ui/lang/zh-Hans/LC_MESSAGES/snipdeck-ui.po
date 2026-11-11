@@ -1520,6 +1520,12 @@ msgstr "上移分组"
 msgid "Move selected item to Trash"
 msgstr "将所选片段移到回收站"
 
+msgid "Move the group down"
+msgstr "下移该分组"
+
+msgid "Move the group up"
+msgstr "上移该分组"
+
 msgid "Move the item to the Trash"
 msgstr "将该片段移到回收站"
 

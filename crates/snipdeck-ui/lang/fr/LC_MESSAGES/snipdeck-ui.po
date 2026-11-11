@@ -1524,6 +1524,12 @@ msgstr "Déplacer le groupe vers le haut"
 msgid "Move selected item to Trash"
 msgstr "Mettre l'extrait sélectionné à la corbeille"
 
+msgid "Move the group down"
+msgstr "Déplacer le groupe vers le bas"
+
+msgid "Move the group up"
+msgstr "Déplacer le groupe vers le haut"
+
 msgid "Move the item to the Trash"
 msgstr "Mettre l'extrait à la corbeille"
 
