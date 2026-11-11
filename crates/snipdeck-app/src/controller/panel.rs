@@ -448,19 +448,16 @@ where
                 self.toggle_stack_mark(id);
                 Vec::new()
             }
-            ItemMenuEntry::MoveUp { .. } | ItemMenuEntry::MoveDown { .. } if is_header => {
-                self.choose_group_entry(id, entry);
-                Vec::new()
-            }
-            ItemMenuEntry::MoveUp { enabled } => {
-                if enabled {
-                    self.panel_move_item(id, -1);
-                }
-                Vec::new()
-            }
-            ItemMenuEntry::MoveDown { enabled } => {
-                if enabled {
-                    self.panel_move_item(id, 1);
+            ItemMenuEntry::MoveUp { enabled } | ItemMenuEntry::MoveDown { enabled } => {
+                let delta = if matches!(entry, ItemMenuEntry::MoveUp { .. }) {
+                    -1
+                } else {
+                    1
+                };
+                if is_header {
+                    self.choose_group_entry(id, entry);
+                } else if enabled {
+                    self.panel_move_item(id, delta);
                 }
                 Vec::new()
             }

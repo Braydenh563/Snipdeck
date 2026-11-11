@@ -2302,14 +2302,18 @@ fn two_groups_in_window(r: &Rig) {
         ctl.group_rename_ended();
         ctl.panel_clear_marks();
     }
+    r.ctl.borrow_mut().move_selection(-100);
     r.binding.redraw();
-    r.ui.set_selected_index(0);
+    assert_eq!(
+        r.ui.get_selected_index(),
+        0,
+        "the cursor is on the first header"
+    );
     r.ui.invoke_focus_search();
 }
 
 fn row_titles(r: &Rig) -> Vec<String> {
-    r.ui
-        .get_rows()
+    r.ui.get_rows()
         .iter()
         .map(|row| row.title.to_string())
         .collect()
@@ -2323,8 +2327,16 @@ fn alt_down_on_a_header_moves_the_group_and_alt_up_brings_it_back() {
         let before = row_titles(&r);
         chord(r.window(), &[Key::Alt], &key(Key::DownArrow));
         let after = row_titles(&r);
-        assert_eq!(after, [&before[3..], &before[..3]].concat());
-        assert_eq!(r.ui.get_selected_index(), 3, "the cursor stays on the header");
+        assert_eq!(
+            after,
+            [&before[3..6], &before[..3], &before[6..]].concat(),
+            "the first group went below the second, the loose rows stayed"
+        );
+        assert_eq!(
+            r.ui.get_selected_index(),
+            3,
+            "the cursor stays on the header"
+        );
         chord(r.window(), &[Key::Alt], &key(Key::UpArrow));
         assert_eq!(row_titles(&r), before);
         assert_eq!(r.ui.get_selected_index(), 0);
