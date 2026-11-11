@@ -38,6 +38,14 @@ All notable changes to Snipdeck are recorded here. The format follows
 - **Trigger field in the item editor**: 1 to 32 characters without spaces, unique; a one-character trigger gets a
   warning, saving an overlapping code shows a message naming the other item, and a Sensitive item shows that it
   has no trigger. Windows-only behaviour is unverified.
+- **Windows Hello unlock** (Supporter): with a master password set, Settings > Privacy > **Unlock with Windows Hello**
+  lets your face, fingerprint or PIN unlock the library. Switching it on asks Hello twice to check it repeats.
+  Nothing is written to disk: an encrypted copy of the key lives in memory, so after a restart, and every 7 days,
+  the password is needed once (the next password unlock asks Hello once to set it up again). Cancelling an unlock
+  keeps the button for another try; a failure falls back to the password. A switch-on that is cancelled or fails
+  stays off ("Windows Hello was not turned on." or "...didn't work, so it was not turned on."). Changing the
+  password re-seals the copy; erasing the library, or setting or removing the password, turns Hello off. Settings
+  search finds it. Unverified on Windows.
 
 ### Changed
 - A template with any question in it now always opens the fill form, even when every question has a default or

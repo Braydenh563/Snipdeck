@@ -390,25 +390,33 @@ With a master password set, Windows Hello can unlock the library with your face,
 typing the password. It needs a Supporter plan and a PC where Windows Hello is set up. The option is hidden
 otherwise.
 
-- **Turn it on.** Settings, under **Privacy**: switch on **Unlock with Windows Hello**. Windows asks for
-  Hello twice, one after the other, to check it can be used. You can turn it off the same way.
+- **Turn it on.** Settings, under **Privacy**, below **Master password**: switch on **Unlock with Windows
+  Hello**. Windows asks for Hello twice, one after the other, to check it repeats. If you cancel or it fails,
+  the switch goes back off and a message says "Windows Hello was not turned on." (or "didn't work, so it was
+  not turned on."). The same happens if the library locks, or the plan changes, before it finishes. You can
+  turn it off the same way. Settings search finds it too.
 - **Unlock.** When the library is locked and Snipdeck asks for the password, press **Unlock with Windows
   Hello** and use your face, fingerprint or PIN. The password box stays there: the password always works.
 - **When the password is needed.** After Snipdeck restarts, and 7 days after the last time you typed the
   password. After a password unlock, Windows asks for Hello once so the next unlock can use it.
-- **When Hello fails.** If you cancel the prompt, it fails or the PIN was removed, the unlock window says
-  "Windows Hello did not unlock Snipdeck. Use your master password." The Hello button goes away and the
-  password box stays. **Unlock with Windows Hello** stays switched on in Settings: a cancel never turns it off.
+- **When Hello is cancelled.** If you cancel the prompt, the unlock window says "Windows Hello was cancelled.
+  Use your master password." The button stays, so you can try again.
+- **When Hello fails.** If it fails or the PIN was removed, the unlock window says "Windows Hello did not
+  unlock Snipdeck. Use your master password." The button goes away and the password box stays. **Unlock with
+  Windows Hello** stays switched on, and the next password unlock sets Hello up again. If it fails twice in a
+  row after password unlocks, or Hello gives different answers each time, Snipdeck turns it off and says so
+  (a message, and a line in the unlock window). Turn it on again in Settings.
 - **A changed Hello.** If you reset your PIN or change your face or fingerprint, Windows makes a new
-  credential and the old copy no longer opens. You see the same message above once, on the unlock that fails.
-  Type your password. Snipdeck then asks Hello once to set itself up again, and the next unlock can use Hello.
-  Snipdeck asks only right after a password unlock. Opening Settings or the unlock window never puts up a
-  Hello prompt. If you cancel that prompt too, nothing is shown, Hello stays on, and it asks again after
-  your next password unlock.
+  credential and the old copy no longer opens. The unlock window says "Windows Hello changed. Unlock with your
+  password once to set it up again." Type your password. Snipdeck then asks Hello twice to check it repeats,
+  and the next unlock can use Hello. Snipdeck asks only right after a password unlock. Opening Settings or
+  the unlock window never puts up a Hello prompt. If you cancel that prompt, Hello stays on and it asks again
+  after your next password unlock.
 - **Lock.** The library still locks after 15 minutes without use, as described above. Hello is another way
-  back in; locking does not turn it off.
-- **Remove the password or lose Supporter.** Removing the master password turns Hello off. If the licence
-  stops being Supporter, the saved Hello copy is dropped and only the password unlocks.
+  back in; locking does not turn it off. Closing the unlock window stops a Hello prompt under way.
+- **Change, remove or erase.** Changing the master password re-seals the Hello copy with one prompt. Setting or
+  removing the password, or erasing the library, turns Hello off. If the licence stops being Supporter, the
+  saved Hello copy is dropped and only the password unlocks.
 
 Hello never stores your key or password on disk. Snipdeck keeps an encrypted copy of the key in memory only,
 which a restart forgets. The details are in [`crypto.md`](crypto.md). This part works only on Windows and has
