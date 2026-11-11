@@ -304,17 +304,27 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   Settings > Accessibility > Text size in Windows) or a fixed 100, 125, 150 or 175 %. **Reduce motion** turns off
   sliding and fading. It is also off when Windows has **Animation effects** off. **Panel width** is 260 to 480
   pixels. You can also drag the Panel's edges.
-- **Panel.** **Show the Panel in the taskbar and Alt+Tab** gives the Panel a taskbar button and an Alt+Tab entry while it is on screen (off by default). A paste from a Panel reached with Alt+Tab still goes to the app you were in before.
-  **Hide the panel when it loses focus** hides an unpinned Panel when you switch to another app (on by default).
-  **Start with Windows** starts Snipdeck hidden in the tray when you sign in. **Keep running in the tray when the
-  window closes** is on by default. Turn it off and closing the Panel or the Main window quits Snipdeck.
-- **Panel dock.** **Dock to** fixes the Panel against Floating, Left edge, Right edge, Top edge or Bottom edge
-  of the monitor it is on. The edge the taskbar is on is never used. You can also drag the Panel by its header
-  to within a few pixels of an edge: a strip marks the edge, and the Panel docks there when you let go. The
-  Panel's menu names the edge it would dock to ("Dock to the right edge"). **Open a docked panel by** is Off, Hover, Click or Hover and click. Off keeps a docked
-  Panel open. The other choices fold it into a thin strip, and the Panel shortcut opens it too. **Hover delay**
-  (0 to 2000 ms, default 150) is how long the pointer rests on the strip. **Leave delay** (0 to 5000 ms, default
-  400) is how long it stays off the Panel before it folds.
+- **Panel layout.** **Layout** is List, Cards (two per row) or Compact. **Search field** is Appears when you type
+  or Always shown. **Lists** are Tabs or a Menu in the board picker. **Quick-use numbers** numbers the first nine
+  rows for `Alt+1` to `Alt+9`. **Show Symbols tab** shows or hides the Symbols tab and its `Ctrl+K` command.
+- **Opening the Panel.** **Tray icon click opens** the Panel or the Main window. **Panel opens** where you left it,
+  at the mouse or at the text cursor. **After a paste or copy** hides the Panel or keeps it open.
+  **Hide the panel when it loses focus** hides an unpinned Panel when you switch to another app (on by
+  default). **Show the Panel in the taskbar and Alt+Tab** gives the Panel a taskbar button and an Alt+Tab entry
+  while it is on screen (off by default); a paste from a Panel reached with Alt+Tab still goes to the app you
+  were in before. **Keep Panel visible during screenshots** leaves it on screen for Take screenshot.
+  **Picker position** is the side of your text cursor the Picker opens on. **Start with Windows** starts Snipdeck
+  hidden in the tray when you sign in, and **When Windows starts** can open the Panel as well. **Keep running in
+  the tray when the window closes** is on by default. Turn it off and closing the Panel or the Main window quits
+  Snipdeck.
+- **Docking** is also in Opening the Panel. **Dock to** fixes the Panel against Floating, Left edge, Right edge,
+  Top edge or Bottom edge of the monitor it is on. The edge the taskbar is on is never used. You can also drag
+  the Panel by its header to within a few pixels of an edge: a strip marks the edge, and the Panel docks there
+  when you let go. The Panel's menu names the edge it would dock to ("Dock to the right edge"). **Open a docked
+  panel by** is Off, Hover, Click or Hover and click. Off keeps a docked Panel open. The other choices fold it
+  into a thin strip, and the Panel shortcut opens it too. **Hover delay** (0 to 2000 ms, default 150) is how long
+  the pointer rests on the strip. **Leave delay** (0 to 5000 ms, default 400) is how long it stays off the Panel
+  before it folds.
 - **Typing.** **Expand abbreviations as I type** and **Suggest snippets as I type**, both off by default. See
   [Triggers and typing](#triggers-and-typing-windows).
 - **Privacy.** **Keep a Recent inbox of what you copy** and the programs it never keeps copies from. **Clear the
@@ -337,8 +347,8 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   table. To turn on Supporter, paste your key (it starts with `SNIP1.`) and press **Activate**. See
   [Free and Supporter](#free-and-supporter) and [`licensing.md`](licensing.md).
 
-The page lists its groups in this order: Shortcuts, Appearance, Panel, Privacy, Programs, Typing, Backups and
-your data, Licence. Press `F1` or choose **Help** at the bottom of the page to open this guide.
+The page lists its groups in this order: Shortcuts, Appearance, Panel layout, Opening the Panel, Privacy,
+Programs, Typing, Backups and your data, Licence. Press `F1` or choose **Help** at the bottom of the page to open this guide.
 
 ## Triggers and typing (Windows)
 
