@@ -385,6 +385,13 @@
       "title": "Recent keeps formatted text and honours the exclusion markers (slice 5)",
       "do": "Copy a bold, coloured paragraph from Word, click its Recent row to paste into WordPad, then copy the same words from Notepad. Then copy a password in a password manager that sets the exclude marker, and copy a picture from it if it offers one.",
       "expect": "The Word copy pastes into WordPad with bold and colour. The same words from Notepad leave one row (newest source app, plain). Nothing from the password manager appears, neither text nor picture nor files. Write any app whose copy was kept despite the marker in the note (n)."
+    },
+    {
+      "id": "51",
+      "v1": true,
+      "title": "Tray menu: Tips opens the Tips tab (v1.1 slice 4)",
+      "do": "Right-click the Snipdeck tray icon and choose Tips. Then press Tab to reach the first Try it button, press Enter, and scroll the list with the mouse wheel. Close Help, open the welcome tour from Help > About > Show, go to the last step and choose See the tips.",
+      "expect": "Tips sits in the tray menu between Open Snipdeck and Take screenshot. Choosing it opens the Help window on its fourth tab, Tips, with ten cards: a title, two lines, a picture and a Try it button each. Tab moves from card to card and keeps the focused button in view; Enter on the first card shows the Panel. The pictures are not cut off at the window's smallest size. The tour's See the tips button opens the same tab. Nothing in the window or the tray icon shows an unread badge or a prompt. Write anything that clips, overlaps or reads badly in Narrator in the note (n)."
     }
   ]
 }

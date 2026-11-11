@@ -18,6 +18,14 @@ import { ShortcutTexts } from "shortcut_texts.slint";
 
 export { ShortcutGroup, ShortcutLineData }
 
+// One card of the Tips tab, already in words and with its picture (the app builds it from `TipTexts`).
+export struct TipCard {
+    title: string,
+    first-line: string,
+    second-line: string,
+    picture: image,
+}
+
 // One line of the Troubleshoot list, already in words (the doctor's English; see snipdeck-app `doctor`).
 export struct HelpCheck {
     label: string,
@@ -41,7 +49,7 @@ export component HelpWindow inherits Window {
     out property <length> wanted-height: 640px;
 
     in property <bool> dark: false;
-    // 0 Troubleshoot, 1 About, 2 Shortcuts.
+    // 0 Troubleshoot, 1 About, 2 Shortcuts, 3 Tips.
     in-out property <int> tab: 0;
     in property <[HelpCheck]> checks;
     // The Shortcuts tab: the groups of lines that match the search box (the host builds them: it holds the
@@ -49,6 +57,10 @@ export component HelpWindow inherits Window {
     in property <[ShortcutGroup]> shortcut-groups;
     in-out property <string> shortcut-query;
     callback shortcut-query-changed(string);
+    // The Tips tab: the cards (the app builds them), and "Try it" of card `index` (the app runs its command).
+    in property <[TipCard]> tips;
+    in property <string> try-it-text: @tr("Try it");
+    callback try-tip-requested(index: int);
     // False in the demo, which has no data folder.
     in property <bool> has-data-folder: true;
     in property <string> version: "0.1.0";
@@ -122,7 +134,7 @@ export component HelpWindow inherits Window {
 
             Segmented {
                 label: @tr("Help sections");
-                options: [@tr("Troubleshoot"), @tr("About"), @tr("Shortcuts")];
+                options: [@tr("Troubleshoot"), @tr("About"), @tr("Shortcuts"), @tr("Tips")];
                 current: root.tab;
                 chosen(i) => { root.tab = i; }
             }
@@ -277,6 +289,95 @@ export component HelpWindow inherits Window {
                     horizontal-alignment: center;
                     accessible-role: text;
                     accessible-live-region: polite;
+                }
+            }
+
+            if root.tab == 3: tips-scroll := FormScroll {
+                content-height: tips-list.preferred-height;
+                content-width: self.viewport-width;
+
+                tips-list := VerticalLayout {
+                    x: 0px;
+                    width: parent.viewport-width;
+                    spacing: Space.s3;
+                    alignment: start;
+
+                    for tip[i] in root.tips: card := Rectangle {
+                        background: Theme.bg-surface;
+                        border-width: 1px;
+                        border-color: Theme.border-subtle;
+                        border-radius: Radius.lg;
+                        accessible-role: groupbox;
+                        accessible-label: tip.title;
+                        accessible-description: tip.first-line + " " + tip.second-line;
+                        min-height: body.preferred-height;
+
+                        property <bool> button-focused: try.has-focus;
+                        changed button-focused => {
+                            if (self.button-focused) { tips-scroll.reveal(card.y, card.height); }
+                        }
+
+                        body := VerticalLayout {
+                            padding: Space.s3;
+                            spacing: Space.s2;
+                            Text {
+                                text: tip.title;
+                                color: Theme.text-primary;
+                                font-family: Fonts.sans;
+                                font-size: Type.md;
+                                font-weight: Type.semibold;
+                                wrap: word-wrap;
+                                accessible-role: none;
+                            }
+                            Text {
+                                text: tip.first-line;
+                                color: Theme.text-secondary;
+                                font-family: Fonts.sans;
+                                font-size: Type.base;
+                                wrap: word-wrap;
+                                accessible-role: none;
+                            }
+                            Text {
+                                text: tip.second-line;
+                                color: Theme.text-secondary;
+                                font-family: Fonts.sans;
+                                font-size: Type.base;
+                                wrap: word-wrap;
+                                accessible-role: none;
+                            }
+                            // The picture is a crop of the app drawn in the light theme, so it keeps a hairline of its own
+                            // in the dark one. The words around it say everything it shows.
+                            Rectangle {
+                                height: min(self.width, 320px) * 150 / 320;
+                                horizontal-stretch: 1;
+                                min-width: 0px;
+                                Rectangle {
+                                    x: 0px;
+                                    width: min(parent.width, 320px);
+                                    height: parent.height;
+                                    border-width: 1px;
+                                    border-color: Theme.border-default;
+                                    border-radius: Radius.md;
+                                    clip: true;
+                                    Image {
+                                        source: tip.picture;
+                                        width: parent.width;
+                                        height: parent.height;
+                                        image-fit: contain;
+                                        accessible-role: none;
+                                    }
+                                }
+                            }
+                            HorizontalLayout {
+                                alignment: start;
+                                try := Button {
+                                    text: root.try-it-text;
+                                    a11y-label: root.try-it-text + ": " + tip.title;
+                                    clicked => { root.try-tip-requested(i); }
+                                }
+                            }
+                        }
+                    }
                 }
             }
 

@@ -28,6 +28,8 @@ pub enum TrayEntry {
     OpenPicker,
     /// Show the main window.
     OpenSnipdeck,
+    /// Open Help on its Tips tab.
+    Tips,
     /// Start a screenshot: the snipping overlay opens and the Panel steps aside.
     TakeScreenshot,
     /// Switch the global hotkeys off or on (a check mark shows when they are off).
@@ -41,10 +43,11 @@ pub enum TrayEntry {
 
 impl TrayEntry {
     /// Every entry, in menu order.
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::OpenPanel,
         Self::OpenPicker,
         Self::OpenSnipdeck,
+        Self::Tips,
         Self::TakeScreenshot,
         Self::PauseHotkeys,
         Self::PauseHistory,
@@ -58,6 +61,7 @@ impl TrayEntry {
             Self::OpenPanel => "Open Panel",
             Self::OpenPicker => "Open Picker",
             Self::OpenSnipdeck => "Open Snipdeck",
+            Self::Tips => "Tips",
             Self::TakeScreenshot => "Take screenshot",
             Self::PauseHotkeys => "Pause hotkeys",
             Self::PauseHistory => "Pause history",
@@ -76,6 +80,7 @@ impl TrayEntry {
             Self::PauseHistory => 5,
             Self::TakeScreenshot => 6,
             Self::OpenPicker => 7,
+            Self::Tips => 8,
         }
     }
 
@@ -97,6 +102,8 @@ pub struct TrayLabels {
     pub open_picker: String,
     /// [`TrayEntry::OpenSnipdeck`].
     pub open_snipdeck: String,
+    /// [`TrayEntry::Tips`].
+    pub tips: String,
     /// [`TrayEntry::TakeScreenshot`].
     pub take_screenshot: String,
     /// [`TrayEntry::PauseHotkeys`].
@@ -116,6 +123,7 @@ impl Default for TrayLabels {
             open_panel: english(TrayEntry::OpenPanel),
             open_picker: english(TrayEntry::OpenPicker),
             open_snipdeck: english(TrayEntry::OpenSnipdeck),
+            tips: english(TrayEntry::Tips),
             take_screenshot: english(TrayEntry::TakeScreenshot),
             pause_hotkeys: english(TrayEntry::PauseHotkeys),
             pause_history: english(TrayEntry::PauseHistory),
@@ -133,6 +141,7 @@ impl TrayLabels {
             TrayEntry::OpenPanel => &self.open_panel,
             TrayEntry::OpenPicker => &self.open_picker,
             TrayEntry::OpenSnipdeck => &self.open_snipdeck,
+            TrayEntry::Tips => &self.tips,
             TrayEntry::TakeScreenshot => &self.take_screenshot,
             TrayEntry::PauseHotkeys => &self.pause_hotkeys,
             TrayEntry::PauseHistory => &self.pause_history,
@@ -152,6 +161,8 @@ pub enum TrayEvent {
     OpenPicker,
     /// "Open Snipdeck", or a double click on the icon.
     OpenSnipdeck,
+    /// "Tips": Help on its Tips tab.
+    Tips,
     /// "Take screenshot".
     TakeScreenshot,
     /// "Pause hotkeys" was toggled; `true` = the hotkeys should now be off.
@@ -464,6 +475,7 @@ impl TrayModel {
             TrayEntry::OpenPanel => TrayEvent::OpenPanel,
             TrayEntry::OpenPicker => TrayEvent::OpenPicker,
             TrayEntry::OpenSnipdeck => TrayEvent::OpenSnipdeck,
+            TrayEntry::Tips => TrayEvent::Tips,
             TrayEntry::TakeScreenshot => TrayEvent::TakeScreenshot,
             TrayEntry::PauseHotkeys => {
                 self.hotkeys_paused = !self.hotkeys_paused;
@@ -664,6 +676,7 @@ mod tests {
             open_panel: "Panel öffnen".into(),
             open_picker: "Picker öffnen".into(),
             open_snipdeck: "Snipdeck öffnen".into(),
+            tips: "Tipps".into(),
             take_screenshot: "Bildschirmfoto aufnehmen".into(),
             pause_hotkeys: "Tastenkürzel pausieren".into(),
             pause_history: "Verlauf pausieren".into(),
@@ -686,6 +699,7 @@ mod tests {
                 "Panel öffnen",
                 "Picker öffnen",
                 "Snipdeck öffnen",
+                "Tipps",
                 "Bildschirmfoto aufnehmen",
                 "Tastenkürzel pausieren",
                 "Beenden"
@@ -733,6 +747,7 @@ mod tests {
         assert_eq!(m.pick(TrayEntry::OpenPanel), TrayEvent::OpenPanel);
         assert_eq!(m.pick(TrayEntry::OpenPicker), TrayEvent::OpenPicker);
         assert_eq!(m.pick(TrayEntry::OpenSnipdeck), TrayEvent::OpenSnipdeck);
+        assert_eq!(m.pick(TrayEntry::Tips), TrayEvent::Tips);
         assert_eq!(m.pick(TrayEntry::TakeScreenshot), TrayEvent::TakeScreenshot);
         assert_eq!(m.pick(TrayEntry::Quit), TrayEvent::Quit);
     }

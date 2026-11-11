@@ -25,6 +25,8 @@ pub enum HelpTopic {
     About,
     /// The Help window on its Shortcuts tab (Ctrl+/, "Keyboard shortcuts").
     Shortcuts,
+    /// The Help window on its Tips tab (the tray's "Tips", the tour's last page).
+    Tips,
 }
 
 /// One row of the Panel's kebab menu, in the order it is drawn. The menu is flat: a row's

@@ -225,6 +225,8 @@ export component OnboardingWindow inherits Window {
     callback back-requested();
     callback next-requested();
     callback skip-requested();
+    // "See the tips" on the last step: the host opens Help on its Tips tab.
+    callback tips-requested();
 
     property <[string]> hotkey-names: [
         @tr("Show or hide the panel"),
@@ -411,6 +413,18 @@ export component OnboardingWindow inherits Window {
                     }
                     if root.notice != "": FieldError {
                         text: root.notice;
+                    }
+                }
+
+                if root.step == 3: FormSection {
+                    title: @tr("Tips");
+                    SettingRow {
+                        title: @tr("Ten short tips");
+                        description: @tr("What Snipdeck can do, with a picture and a button to try each one. You can open them again from Help.");
+                        Button {
+                            text: @tr("See the tips");
+                            clicked => { root.tips-requested(); }
+                        }
                     }
                 }
             }

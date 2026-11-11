@@ -880,6 +880,7 @@ where
                 Vec::new()
             }
             TrayEvent::OpenSnipdeck => vec![Effect::OpenMainWindow],
+            TrayEvent::Tips => vec![Effect::OpenHelp(HelpTopic::Tips)],
             TrayEvent::HotkeysPaused(paused) => {
                 self.set_hotkeys_paused(paused);
                 vec![Effect::SetHotkeysPaused(paused)]

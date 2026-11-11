@@ -16,7 +16,7 @@ pub const STARTER_LIST: &str = "Snippets";
 /// The first list of a first run: cards that teach by doing (SPEC 5.7b).
 pub const GETTING_STARTED_LIST: &str = "Getting started";
 /// The cards of [`GETTING_STARTED_LIST`]: title, kind and text.
-const GETTING_STARTED: [(&str, ItemKind, &str); 4] = [
+const GETTING_STARTED: [(&str, ItemKind, &str); 5] = [
     (
         "Click me to paste",
         ItemKind::Text,
@@ -36,6 +36,11 @@ const GETTING_STARTED: [(&str, ItemKind, &str); 4] = [
         "Right-click for more",
         ItemKind::Text,
         "Right-click a card, or press the Menu key, to edit it, pin it to the strip above the list, move it, tag it or delete it. Delete this list when you no longer need it.",
+    ),
+    (
+        "More tips",
+        ItemKind::Text,
+        "Help > Tips has ten short cards with a picture and a Try it button each. Open it from Help, or from the tray icon's menu.",
     ),
 ];
 /// The name of a list made with the `+` tab (numbered when taken).
@@ -234,7 +239,8 @@ mod tests {
                 "Click me to paste",
                 "Shift+click to copy",
                 "Try a template",
-                "Right-click for more"
+                "Right-click for more",
+                "More tips"
             ]
         );
         let starter = store.lists(board).unwrap()[1].id;

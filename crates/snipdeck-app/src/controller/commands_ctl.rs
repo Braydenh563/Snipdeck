@@ -21,6 +21,15 @@ where
     K: Keyboard,
     T: Timing,
 {
+    /// "Try it" on a card of Help > Tips: runs the card's command, and brings the Main window
+    /// forward first when the command shows its result there.
+    pub fn try_tip(&mut self, action: crate::tips::TipAction) {
+        if action.opens_main() {
+            self.pending.push(Effect::OpenMainWindow);
+        }
+        self.run_command(action.command(), 0);
+    }
+
     /// Runs `command`. `cursor` is the row under the keyboard cursor: the item commands act on it
     /// (the selection, when several rows are selected, as the menus do). Commands that only
     /// move focus inside the Main window (Search) are the window's and do nothing here.

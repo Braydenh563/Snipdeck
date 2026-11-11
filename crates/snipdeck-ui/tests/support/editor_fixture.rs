@@ -2,10 +2,10 @@
 //! `tests/editors_logic.rs` (behaviour); `#[path]`-included, so each test binary compiles its own copy.
 #![allow(dead_code, reason = "each test binary uses a subset of the fixtures")]
 
-use slint::{Color, Image, ModelRc, Rgba8Pixel, SharedPixelBuffer, SharedString, VecModel};
+use slint::{Color, Global, Image, Model, ModelRc, Rgba8Pixel, SharedPixelBuffer, SharedString, VecModel};
 use snipdeck_ui::{
     BackupRow, ChoiceEntry, HelpCheck, HelpWindow, HotkeySetting, ItemEditor, ListEditor,
-    OnboardingWindow, PasteRuleRow, SettingsPage, ShortcutGroup, ShortcutLineData, TagManager,
+    OnboardingWindow, PasteRuleRow, SettingsPage, ShortcutGroup, ShortcutLineData, TagManager, TipCard, TipTexts,
 };
 
 pub fn strings(items: &[&str]) -> ModelRc<SharedString> {
@@ -202,6 +202,20 @@ pub fn shortcuts(ui: &HelpWindow) {
             &[("New item", &["Ctrl", "N"]), ("Search", &["Ctrl", "F"])],
         ),
     ])));
+}
+
+/// The Tips tab with every card, in the words and pictures of `TipTexts`.
+pub fn tips(ui: &HelpWindow) {
+    let words = TipTexts::get(ui);
+    let cards: Vec<TipCard> = (0..words.get_titles().row_count())
+        .map(|i| TipCard {
+            title: words.get_titles().row_data(i).unwrap_or_default(),
+            first_line: words.get_first_lines().row_data(i).unwrap_or_default(),
+            second_line: words.get_second_lines().row_data(i).unwrap_or_default(),
+            picture: words.get_images().row_data(i).unwrap_or_default(),
+        })
+        .collect();
+    ui.set_tips(ModelRc::new(VecModel::from(cards)));
 }
 
 /// The welcome tour on `step` (0 to 3), with the defaults of a first run.

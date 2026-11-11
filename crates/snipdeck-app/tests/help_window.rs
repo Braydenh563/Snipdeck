@@ -17,17 +17,18 @@ use std::{
 
 use slint::{ComponentHandle, Global, Model};
 use snipdeck_app::{
-    controller::{Controller, Services},
+    controller::{Controller, Effect, HelpTopic, Services},
     demo,
-    help_binding::{HelpBinding, HelpHost},
+    help_binding::{HelpBinding, HelpHost, tab_of},
     host::{FakeTargets, FixedClock},
     settings::{Hotkeys, Settings},
     shortcuts::CATALOGUE,
+    tips::TIPS,
 };
 use snipdeck_core::{Entitlements, Tier, Timestamp};
 use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
 use snipdeck_store::Store;
-use snipdeck_ui::{HelpWindow, ShortcutTexts};
+use snipdeck_ui::{HelpWindow, ShortcutTexts, TipTexts};
 
 #[path = "support/mod.rs"]
 mod support;
@@ -60,6 +61,7 @@ fn now() -> Timestamp {
 }
 
 struct Rig {
+    ctl: Rc<RefCell<Ctl>>,
     ui: HelpWindow,
     binding: HelpBinding<FakeClipboard, FakeKeyboard, FakeTiming>,
 }
@@ -86,7 +88,7 @@ fn rig(settings: Settings) -> Rig {
     ui.set_tab(2);
     ui.show().expect("show");
     binding.refresh();
-    Rig { ui, binding }
+    Rig { ctl, ui, binding }
 }
 
 impl Rig {
@@ -214,5 +216,69 @@ fn typing_in_the_search_box_filters_by_action_name_or_chord() {
             CATALOGUE.len(),
             "clearing brings every line back"
         );
+    });
+}
+
+#[test]
+fn tips_topic_opens_the_fourth_tab() {
+    on_ui_thread(|| {
+        assert_eq!(tab_of(HelpTopic::Tips), 3, "Tips is the fourth tab");
+        assert_ne!(tab_of(HelpTopic::Shortcuts), tab_of(HelpTopic::Tips));
+        let r = rig(Settings::default());
+        r.ui.set_tab(tab_of(HelpTopic::Tips));
+        r.binding.refresh();
+        let words = TipTexts::get(&r.ui);
+        for list in [
+            words.get_titles().row_count(),
+            words.get_first_lines().row_count(),
+            words.get_second_lines().row_count(),
+            words.get_images().row_count(),
+        ] {
+            assert_eq!(list, TIPS.len(), "one entry per tip in every TipTexts list");
+        }
+        let cards: Vec<_> = r.ui.get_tips().iter().collect();
+        assert_eq!(cards.len(), TIPS.len());
+        for card in &cards {
+            assert!(!card.title.is_empty() && !card.first_line.is_empty());
+            assert!(!card.second_line.is_empty());
+            assert!(card.picture.size().width > 0, "{}: no picture", card.title);
+        }
+        assert_eq!(cards[0].title.as_str(), "Open the Panel from anywhere");
+        // The template card shows the two placeholder examples, not their format holes.
+        assert!(cards[4].second_line.contains("{field:Name}"));
+    });
+}
+
+#[test]
+fn try_it_runs_the_tip_action() {
+    on_ui_thread(|| {
+        let r = rig(Settings::default());
+        r.ui.set_tab(3);
+        r.binding.refresh();
+        // The Pinned card shows its result in the Main window: it must come forward.
+        let pinned = TIPS
+            .iter()
+            .position(|t| t.action.command() == snipdeck_app::commands::Command::GoPinned)
+            .expect("a Pinned card");
+        let _ = r.ctl.borrow_mut().take_pending();
+        r.ui.invoke_try_tip_requested(i32::try_from(pinned).expect("index"));
+        let effects = r.ctl.borrow_mut().take_pending();
+        assert!(effects.contains(&Effect::OpenMainWindow), "{effects:?}");
+
+        // The Shortcuts card asks for Help on the Shortcuts tab.
+        let shortcuts = TIPS
+            .iter()
+            .position(|t| t.action.command() == snipdeck_app::commands::Command::Shortcuts)
+            .expect("a Shortcuts card");
+        r.ui.invoke_try_tip_requested(i32::try_from(shortcuts).expect("index"));
+        let effects = r.ctl.borrow_mut().take_pending();
+        assert!(
+            effects.contains(&Effect::OpenHelp(HelpTopic::Shortcuts)),
+            "{effects:?}"
+        );
+
+        // A stale index does nothing.
+        r.ui.invoke_try_tip_requested(99);
+        assert!(r.ctl.borrow_mut().take_pending().is_empty());
     });
 }

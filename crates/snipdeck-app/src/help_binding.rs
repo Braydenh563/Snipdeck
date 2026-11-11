@@ -32,6 +32,7 @@ use crate::{
     main_binding::{create_window, raise, set_look},
     native_window::fit_when_settled,
     settings::{HotkeyAction, Hotkeys},
+    tips,
     settings_binding::action_name,
     shortcuts::{self, Scope},
     toast::{ToastKind, ToastMessage},
@@ -276,6 +277,9 @@ struct HelpCore<C, K, T> {
     /// The Shortcuts tab as last drawn, so a redraw that changes nothing leaves the list (and its
     /// scroll position) alone.
     shortcuts_shown: RefCell<Vec<shortcuts::Group>>,
+    /// The titles of the Tips cards as last drawn: the cards are rebuilt only when the language
+    /// changes them.
+    tips_shown: RefCell<Vec<String>>,
     /// Redraws this window (registered with `binding::register_redraw`).
     redraw: Rc<dyn Fn()>,
 }
@@ -310,6 +314,41 @@ where
         *self.shortcuts_shown.borrow_mut() = groups;
     }
 
+    /// Draws the Tips tab: one card per [`tips::TIPS`] entry, with the words of the language
+    /// selected for the UI now.
+    fn sync_tips(&self, window: &ui::HelpWindow) {
+        let words = ui::TipTexts::get(window);
+        let (titles, firsts, seconds, images) = (
+            words.get_titles(),
+            words.get_first_lines(),
+            words.get_second_lines(),
+            words.get_images(),
+        );
+        let shown: Vec<String> = titles.iter().map(|t| t.to_string()).collect();
+        if *self.tips_shown.borrow() == shown {
+            return;
+        }
+        let cards = (0..tips::TIPS.len()).map(|i| ui::TipCard {
+            title: titles.row_data(i).unwrap_or_default(),
+            first_line: firsts.row_data(i).unwrap_or_default(),
+            second_line: seconds.row_data(i).unwrap_or_default(),
+            picture: images.row_data(i).unwrap_or_default(),
+        });
+        window.set_tips(model(cards));
+        *self.tips_shown.borrow_mut() = shown;
+    }
+
+    /// "Try it" of card `index`: runs the card's command like the palette does.
+    fn try_tip(&self, index: i32) {
+        let tip = usize::try_from(index)
+            .ok()
+            .and_then(|i| tips::TIPS.get(i).copied());
+        if let Some(tip) = tip {
+            self.controller.borrow_mut().try_tip(tip.action);
+            redraw_all();
+        }
+    }
+
     fn sync(self: &Rc<Self>) {
         let Some(window) = self.window.upgrade() else {
             return;
@@ -327,6 +366,7 @@ where
                 controller.settings_toast(),
             )
         };
+        self.sync_tips(&window);
         window.set_dark(look.dark);
         set_look(
             &window,
@@ -548,6 +588,7 @@ where
                 checks: RefCell::new(Vec::new()),
                 shortcut_query: RefCell::default(),
                 shortcuts_shown: RefCell::default(),
+                tips_shown: RefCell::default(),
                 redraw: Rc::new(move || {
                     if let Some(core) = weak.upgrade() {
                         core.sync();
@@ -582,6 +623,7 @@ where
                 }
             });
         }
+        wire!(on_try_tip_requested, |core, index| core.try_tip(index));
         wire!(on_rebuild_confirmed, |core| core.rebuild());
         wire!(on_rebuild_dismissed, |core| {
             if let Some(window) = core.window.upgrade() {
@@ -670,6 +712,17 @@ fn ui_group(window: &ui::HelpWindow, group: &shortcuts::Group) -> ui::ShortcutGr
     }
 }
 
+/// The tab of the Help window that shows `topic`: 0 Troubleshoot, 1 About, 2 Shortcuts, 3 Tips.
+#[must_use]
+pub const fn tab_of(topic: HelpTopic) -> i32 {
+    match topic {
+        HelpTopic::About => 1,
+        HelpTopic::Shortcuts => 2,
+        HelpTopic::Tips => 3,
+        HelpTopic::Troubleshoot | HelpTopic::Guide => 0,
+    }
+}
+
 // ---- Opening the window on demand --------------------------------------------------------------
 
 /// Creates the Help window the first time it is asked for, binds it, and shows and raises it
@@ -724,11 +777,7 @@ impl HelpUi {
                 let Some((window, binding)) = slot.as_ref() else {
                     return Ok(());
                 };
-                window.set_tab(match topic {
-                    HelpTopic::About => 1,
-                    HelpTopic::Shortcuts => 2,
-                    _ => 0,
-                });
+                window.set_tab(tab_of(topic));
                 crate::native_window::place_over_owner(window.window());
                 window.show()?;
                 crate::ownership::opened(crate::ownership::Win::Help);
