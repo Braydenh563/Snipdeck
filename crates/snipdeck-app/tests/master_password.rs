@@ -1873,7 +1873,8 @@ mod hello {
         let old = r.ctl.set_hello_unlock(true).expect("step");
         r.ctl.lock_now();
         r.ctl.unlock_with_password(password()).expect("password");
-        let new = r.ctl.begin_hello_seal().expect("a newer step");
+        // The cut-short switch-on went back off; the user turns it on again: a newer step.
+        let new = r.ctl.set_hello_unlock(true).expect("a newer step");
         let stale = old.run();
         assert!(!r.ctl.hello_current(&stale));
         assert!(r.ctl.finish_hello(stale).is_err());

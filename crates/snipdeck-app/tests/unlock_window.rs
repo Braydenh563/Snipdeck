@@ -724,18 +724,17 @@ fn when_the_hello_button_disappears_the_focus_goes_to_the_password_field() {
     on_ui_thread(|| {
         let hello = std::sync::Arc::new(FakeHello::new());
         let r = rig_with(Some(&hello));
-        // The copy goes while the window is open (the plan changed), before the window redraws:
-        // the button is still there, takes the focus, and is pressed.
-        r.ctl
-            .borrow_mut()
-            .change_plan(Entitlements::new(Tier::Free));
+        // Tab moves the focus to the Hello button.
         press(r.ui.window(), "\t");
         settle();
         type_text(r.ui.window(), "x");
         assert_eq!(r.ui.get_password(), "", "Tab moved the focus off the field");
-        hello_button(&r.ui)
-            .expect("button")
-            .invoke_accessible_default_action();
+        // The copy goes while the window is open (the plan changed): the next redraw takes the
+        // button away and the focus goes back to the field.
+        r.ctl
+            .borrow_mut()
+            .change_plan(Entitlements::new(Tier::Free));
+        r.binding.redraw();
         settle();
         assert!(hello_button(&r.ui).is_none(), "the button is gone");
         type_text(r.ui.window(), password());
@@ -744,5 +743,57 @@ fn when_the_hello_button_disappears_the_focus_goes_to_the_password_field() {
             password(),
             "keys reach the password field"
         );
+    });
+}
+
+#[test]
+fn a_redraw_never_leaves_a_hello_button_for_a_copy_that_is_gone() {
+    on_ui_thread(|| {
+        let hello = std::sync::Arc::new(FakeHello::new());
+        let r = rig_with(Some(&hello));
+        assert!(hello_button(&r.ui).is_some());
+        r.ctl
+            .borrow_mut()
+            .change_plan(Entitlements::new(Tier::Free));
+        assert!(
+            hello_button(&r.ui).is_some(),
+            "nothing redrew yet, so the window still shows it"
+        );
+        r.binding.redraw();
+        settle();
+        assert!(hello_button(&r.ui).is_none(), "the redraw removes it");
+        // And it comes back with the copy.
+        r.ctl.borrow_mut().change_plan(Entitlements::new(Tier::Pro));
+        r.binding.redraw();
+        settle();
+        assert_eq!(
+            hello_button(&r.ui).is_some(),
+            r.ctl.borrow().hello_button_shown()
+        );
+    });
+}
+
+#[test]
+fn the_turned_off_line_shows_once_and_not_every_time_the_window_opens() {
+    on_ui_thread(|| {
+        let hello = std::sync::Arc::new(FakeHello::new());
+        let r = rig_with(Some(&hello));
+        r.ctl
+            .borrow_mut()
+            .change_plan(Entitlements::new(Tier::Free));
+        r.ctl.borrow_mut().change_plan(Entitlements::new(Tier::Pro));
+        hello.set_sign(Err(HelloError::Removed));
+        for _ in 0..2 {
+            type_text(r.ui.window(), password());
+            press(r.ui.window(), "\n");
+            settle();
+            r.ctl.borrow_mut().lock_now();
+            reopen(&r);
+        }
+        let line = "Windows Hello didn't work, so it was turned off. You can turn it on again in Settings.";
+        assert!(has_text(&r.ui, line), "said when the window opens");
+        r.ctl.borrow_mut().lock_now();
+        reopen(&r);
+        assert!(!has_text(&r.ui, line), "not said again");
     });
 }

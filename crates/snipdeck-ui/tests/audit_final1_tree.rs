@@ -129,6 +129,7 @@ fn interactive_elements_are_named_big_enough_and_inside_the_window() {
             let ui = SettingsPage::new().unwrap();
             ui.global::<SystemLook<'_>>().set_text_scale(s);
             editor::settings(&ui);
+            ui.set_hello_offered(true);
             let sw = if s > 1.5 { 765.0 } else { w };
             ui.window().set_size(slint::LogicalSize::new(sw, 1400.0));
             ui.show().unwrap();
