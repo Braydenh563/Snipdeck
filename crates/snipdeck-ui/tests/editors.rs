@@ -217,11 +217,10 @@ fn item_editor_long_values_and_the_inline_limit() {
 /// "More options" open on an item with a trigger: the picture of the Tips card on triggers.
 #[test]
 fn item_editor_more_options_shows_the_trigger() {
-    let h = item_fit(420, false, |c| {
-        c.set_more_open(true);
-        c.set_item_title("Email signature".into());
-        c.set_trigger(";sig".into());
-    });
+    let h = item((420, 900), false);
+    h.component.set_more_open(true);
+    h.component.set_item_title("Email signature".into());
+    h.component.set_trigger(";sig".into());
     assert_golden("item-editor-trigger-light", &render(&h));
 }
 
