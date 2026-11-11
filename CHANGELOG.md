@@ -53,6 +53,12 @@ All notable changes to Snipdeck are recorded here. The format follows
   search finds it. Unverified on Windows.
 
 ### Changed
+- Long toasts wrap onto several lines instead of being cut off, and their icon grows with the text size; warnings
+  are announced as warnings.
+- Settings search leaves no gap where hidden sections were, and the shortcut list wraps long names onto more lines.
+- Keys that are alternatives show "or" between them (Up or Down); keys pressed together sit side by side.
+- The command palette grows with the text size, so long command names stay whole.
+- A selected group header is shown by its fill alone, and a new group opens its name for typing (Enter keeps it).
 - A template with any question in it now always opens the fill form, even when every question has a default or
   is a choice; the defaults fill the form in.
 - In the fill form, Space ticks a tick box and Enter moves on (or pastes on the last field), like every other
