@@ -1647,6 +1647,8 @@ mod tests {
                 None,
                 "report",
             ),
+            header: None,
+            grouped: false,
         };
         let mapped = main_row(&row, false);
         assert_eq!(mapped.mark_before.as_str(), "Q3 ");
