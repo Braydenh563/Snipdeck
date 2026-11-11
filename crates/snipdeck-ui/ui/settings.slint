@@ -1130,6 +1130,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Master password");
+                        search-also: @tr("Unlock with Windows Hello");
                         description: root.master-state == 0
                             ? @tr("Snipdeck can't protect a key on this PC, so a master password is not available.")
                             : root.master-state == 3
@@ -1139,8 +1140,8 @@ export component SettingsPage inherits Window {
                                 ? @tr("A master password is on and your sensitive items are locked.")
                                 : @tr("A master password is on. Snipdeck asks for it when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes))
                             : root.master-allowed
-                            ? @tr("Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes)
-                            : @tr("A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes);
+                            ? @tr("Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. With a Supporter plan on Windows, you can then also unlock with Windows Hello.", root.master-idle-minutes)
+                            : @tr("A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. With a Supporter plan on Windows, you can then also unlock with Windows Hello.", root.master-idle-minutes);
                         HorizontalLayout {
                             spacing: Space.s2;
                             if root.master-state != 2: Button {
@@ -1180,7 +1181,7 @@ export component SettingsPage inherits Window {
                     }
                     if root.hello-offered: SettingRow {
                         title: @tr("Unlock with Windows Hello");
-                        description: @tr("Use your face, fingerprint or PIN instead of typing the master password. The password is still asked after a restart and every 7 days, and it always works.");
+                        description: @tr("Use your face, fingerprint or PIN instead of typing the master password. Windows asks for Hello twice when you turn this on. The password is still asked after a restart and every 7 days, and it always works.");
                         Toggle {
                             a11y-label: @tr("Unlock with Windows Hello");
                             checked <=> root.hello-unlock;

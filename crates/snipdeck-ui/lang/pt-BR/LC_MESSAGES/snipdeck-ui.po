@@ -34,8 +34,8 @@ msgstr "Uma imagem PNG. O Snipdeck guarda a própria cópia."
 msgid "A Panel that a shortcut or the tray showed hides after a paste or copy. A pinned Panel stays, and a docked one folds back to its edge."
 msgstr "Um Painel exibido por um atalho ou pela bandeja é ocultado depois de colar ou copiar. Um Painel fixado permanece, e um acoplado recolhe-se de volta à sua borda."
 
-msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
-msgstr "Recurso do Supporter. Adiciona uma senha à proteção do próprio Windows para seus itens sensíveis. Pedida quando você usa um item sensível pela primeira vez e de novo após {} minutos sem uso."
+msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. With a Supporter plan on Windows, you can then also unlock with Windows Hello."
+msgstr "Recurso do Supporter. Adiciona uma senha à proteção do próprio Windows para seus itens sensíveis. Pedida quando você usa um item sensível pela primeira vez e de novo após {} minutos sem uso. Com um plano Supporter no Windows, você também poderá desbloquear com o Windows Hello."
 
 msgid "A docked Panel opens at its edge. Set Dock to Floating to choose where it opens."
 msgstr "Um Painel acoplado abre na sua borda. Defina Acoplar a como Flutuante para escolher onde ele abre."
@@ -142,8 +142,8 @@ msgstr "Adicionado a {}"
 msgid "Added to {}. Some were skipped: folders, and files that are empty, too large or unreadable."
 msgstr "Adicionado a {}. Alguns itens foram ignorados: pastas e arquivos vazios, grandes demais ou ilegíveis."
 
-msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
-msgstr "Adiciona uma senha à proteção do próprio Windows para seus itens sensíveis. Pedida quando você usa um item sensível pela primeira vez e de novo após {} minutos sem uso."
+msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. With a Supporter plan on Windows, you can then also unlock with Windows Hello."
+msgstr "Adiciona uma senha à proteção do próprio Windows para seus itens sensíveis. Pedida quando você usa um item sensível pela primeira vez e de novo após {} minutos sem uso. Com um plano Supporter no Windows, você também poderá desbloquear com o Windows Hello."
 
 msgid "Adds a text snippet to {}"
 msgstr "Adiciona um trecho de texto a {}"
@@ -3140,8 +3140,8 @@ msgstr "Usar o enésimo item"
 msgid "Use the item"
 msgstr "Usar o item"
 
-msgid "Use your face, fingerprint or PIN instead of typing the master password. The password is still asked after a restart and every 7 days, and it always works."
-msgstr "Use seu rosto, impressão digital ou PIN em vez de digitar a senha mestra. A senha ainda é pedida após uma reinicialização e a cada 7 dias, e sempre funciona."
+msgid "Use your face, fingerprint or PIN instead of typing the master password. Windows asks for Hello twice when you turn this on. The password is still asked after a restart and every 7 days, and it always works."
+msgstr "Use seu rosto, impressão digital ou PIN em vez de digitar a senha mestra. A senha ainda é pedida após uma reinicialização e a cada 7 dias, e sempre funciona. O Windows pede o Hello duas vezes ao ativar."
 
 msgid "Use {}"
 msgstr "Usar {}"
@@ -3224,9 +3224,6 @@ msgstr "Comportamento da janela"
 msgid "Windows"
 msgstr "Windows"
 
-msgid "Windows Hello changed. Unlock with your password once to set it up again."
-msgstr "O Windows Hello mudou. Desbloqueie uma vez com sua senha para configurá-lo novamente."
-
 msgid "Windows Hello did not unlock Snipdeck. Use your master password."
 msgstr "O Windows Hello não desbloqueou o Snipdeck. Use sua senha mestra."
 
@@ -3274,6 +3271,9 @@ msgstr "Sim"
 
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "Você teria {} quadros, e o plano Gratuito inclui {}."
+
+msgid "Your Windows Hello PIN, face or fingerprint changed. Unlock with your password once to set Windows Hello up again."
+msgstr "O PIN, o rosto ou a impressão digital do Windows Hello mudou. Desbloqueie uma vez com sua senha para configurar o Windows Hello novamente."
 
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr "Sua biblioteca fica em uma única pasta, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (quadros, listas, trechos, etiquetas e a Lixeira), blobs (imagens, arquivos e textos longos), settings.json, sua chave de licença, backups (quantos você escolher manter) e registros."

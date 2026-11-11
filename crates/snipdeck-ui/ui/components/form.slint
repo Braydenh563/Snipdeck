@@ -176,8 +176,11 @@ export component SettingRow inherits Rectangle {
     // Not empty = a Free plan cannot use this yet: the lock badge with this text (the word "Supporter") shows by the title.
     in property <string> locked-text;
 
+    // Other words the Settings search also finds this row by (for a related row that is not always shown).
+    in property <string> search-also;
+
     // The Settings search hides a row whose title does not hold the query (a hidden row takes no space).
-    property <bool> shown: SettingsFilter.shows(root.title);
+    property <bool> shown: SettingsFilter.shows(root.title) || (root.search-also != "" && SettingsFilter.shows(root.search-also));
     visible: root.shown;
     max-height: root.shown ? 100000px : 0px;
     // A Rectangle does not take its height from the layout inside it, so say it: wrapped text makes the row taller.
