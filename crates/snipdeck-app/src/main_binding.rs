@@ -1260,6 +1260,7 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     }
     window.set_rows_reorderable(screen.reorderable);
     window.set_has_groups(screen.rows.iter().any(|r| r.header.is_some()));
+    window.set_list_total(to_i32(list_total(&screen.rows)));
     let rename_row = screen.rename_row.map_or(-1, to_i32);
     if window.get_rename_row() != rename_row {
         window.set_rename_row(rename_row);
@@ -1348,6 +1349,17 @@ where
         screen.accent.as_ref(),
         screen.reduced_motion,
     );
+}
+
+/// The items a list holds: headers stand for their group's count (members folded away included) and the members
+/// shown under an open header are not counted twice.
+fn list_total(rows: &[crate::main_window::Row]) -> usize {
+    rows.iter()
+        .map(|r| match &r.header {
+            Some(h) => h.count,
+            None => usize::from(!r.grouped),
+        })
+        .sum()
 }
 
 fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
@@ -1659,6 +1671,44 @@ mod tests {
         });
         assert!(result.is_err());
         assert!(!regular_window_being_shown());
+    }
+
+    #[test]
+    fn the_list_total_counts_items_not_headers_and_folded_members() {
+        use crate::main_window::{Key, Row};
+        use crate::panel::GroupHeader;
+        let item = |grouped: bool, header: Option<GroupHeader>| Row {
+            key: Key::Item(snipdeck_core::ItemId::generate()),
+            kind: snipdeck_core::ItemKind::Text,
+            sensitive: false,
+            title: String::new(),
+            preview: String::new(),
+            list: None,
+            pinned: false,
+            label: None,
+            selected: false,
+            marks: crate::search_mark::marks("", "", false, None, ""),
+            header,
+            grouped,
+        };
+        let head = |count, collapsed| {
+            Some(GroupHeader {
+                group: snipdeck_core::GroupId::generate(),
+                name: "G".into(),
+                count,
+                collapsed,
+            })
+        };
+        let rows = [
+            item(false, head(2, false)),
+            item(true, None),
+            item(true, None),
+            item(false, None),
+            item(false, None),
+            item(false, head(5, true)),
+        ];
+        assert_eq!(list_total(&rows), 9);
+        assert_eq!(list_total(&rows[3..5]), 2);
     }
 
     #[test]

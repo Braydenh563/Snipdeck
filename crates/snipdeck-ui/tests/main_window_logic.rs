@@ -266,7 +266,10 @@ ui_tests! {
         rows[2].grouped = true;
         let model = fixture::set_rows(&ui, rows);
         ui.set_has_groups(true);
+        ui.set_list_total(9);
         settle();
+        // The footer counts items, not rows (a header is not an item; folded members still are).
+        assert!(ElementHandle::find_by_accessible_label(&ui, "9 items").next().is_some());
         {
             let l = log.clone();
             ui.on_group_requested(move |i| l.borrow_mut().push(format!("group:{i}")));

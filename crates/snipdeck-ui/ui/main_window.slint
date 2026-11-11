@@ -467,6 +467,8 @@ export component MainWindow inherits Window {
     in property <int> rename-seq: 0;
     // Some row is a group's header: a list with headers stays one column wide, so the tile view draws rows.
     in property <bool> has-groups: false;
+    // The items the list holds, folded group members included (headers are not items); -1: count the rows.
+    in property <int> list-total: -1;
     public pure function group-default-name() -> string { return @tr("Group"); }
     public pure function group-announcement(name: string, count: int) -> string {
         return @tr("group {}, {} item" | "group {}, {} items" % count, name, count);
@@ -1681,7 +1683,7 @@ export component MainWindow inherits Window {
                             clicked => { root.label-filter-requested(-1); }
                         }
                         if root.label-filter >= 0: Text {
-                            text: @tr("{n} item" | "{n} items" % root.rows.length);
+                            text: @tr("{n} item" | "{n} items" % (root.list-total >= 0 ? root.list-total : root.rows.length));
                             font-family: Fonts.sans;
                             font-size: Type.sm;
                             color: Theme.text-secondary;

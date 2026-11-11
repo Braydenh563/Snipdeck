@@ -517,6 +517,8 @@ fn main_window_with_a_group_light_and_dark() {
         rows.push(header("Archive", 5, true));
         fixture::set_rows(&h.component, rows);
         h.component.set_has_groups(true);
+        // The footer counts items (9), not rows (6): the host sets it from the headers' counts.
+        h.component.set_list_total(9);
         assert_golden(name, &render(&h));
     }
 }
