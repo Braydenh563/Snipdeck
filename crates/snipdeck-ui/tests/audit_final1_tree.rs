@@ -10,8 +10,8 @@
     reason = "test code: a failure is a failed test"
 )]
 
-use i_slint_backend_testing::{AccessibleRole, ElementHandle, ElementQuery, ElementRoot};
-use slint::{ComponentHandle, Global};
+use i_slint_backend_testing::{AccessibleRole, ElementQuery, ElementRoot};
+use slint::ComponentHandle;
 use snipdeck_ui::{HelpWindow, ItemEditor, SettingsPage, SystemLook, TemplateFillWindow};
 
 #[path = "support/mod.rs"]
@@ -35,7 +35,7 @@ const ROLES: [AccessibleRole; 8] = [
 ];
 
 /// Problems found in the interactive elements under `root`, for a window `width` px wide.
-fn problems(root: &impl ElementRoot, width: f32, scene: &str) -> Vec<String> {
+fn problems(root: &impl ElementRoot, width: f32, scene: &str, checked: &mut usize) -> Vec<String> {
     let mut out = Vec::new();
     for role in ROLES {
         for e in ElementQuery::from_root(root)
@@ -44,18 +44,31 @@ fn problems(root: &impl ElementRoot, width: f32, scene: &str) -> Vec<String> {
             .find_all()
         {
             let (p, s) = (e.absolute_position(), e.size());
-            let name = e.accessible_label().map(|l| l.to_string()).unwrap_or_default();
+            let name = e
+                .accessible_label()
+                .map(|l| l.to_string())
+                .unwrap_or_default();
             if s.width == 0.0 || s.height == 0.0 {
                 continue; // not shown
             }
+            *checked += 1;
             if name.trim().is_empty() {
-                out.push(format!("{scene}: {role:?} at ({:.0},{:.0}) has no name", p.x, p.y));
+                out.push(format!(
+                    "{scene}: {role:?} at ({:.0},{:.0}) has no name",
+                    p.x, p.y
+                ));
             }
             if s.width < 24.0 || s.height < 24.0 {
-                out.push(format!("{scene}: {role:?} {name:?} is {:.0}x{:.0}", s.width, s.height));
+                out.push(format!(
+                    "{scene}: {role:?} {name:?} is {:.0}x{:.0}",
+                    s.width, s.height
+                ));
             }
             if p.x + s.width > width + 0.5 {
-                out.push(format!("{scene}: {role:?} {name:?} ends at {:.0} of {width}", p.x + s.width));
+                out.push(format!(
+                    "{scene}: {role:?} {name:?} ends at {:.0} of {width}",
+                    p.x + s.width
+                ));
             }
         }
     }
@@ -66,6 +79,7 @@ fn problems(root: &impl ElementRoot, width: f32, scene: &str) -> Vec<String> {
 fn interactive_elements_are_named_big_enough_and_inside_the_window() {
     on_ui_thread(|| {
         let mut all = Vec::new();
+        let mut checked = 0;
         for (s, w) in [(1.0f32, 420.0f32), (2.25, 608.0)] {
             let ui = HelpWindow::new().unwrap();
             ui.global::<SystemLook<'_>>().set_text_scale(s);
@@ -77,7 +91,12 @@ fn interactive_elements_are_named_big_enough_and_inside_the_window() {
             for tab in 0..4 {
                 ui.set_tab(tab);
                 slint::platform::update_timers_and_animations();
-                all.extend(problems(&ui, w, &format!("help tab {tab} at {s}x")));
+                all.extend(problems(
+                    &ui,
+                    w,
+                    &format!("help tab {tab} at {s}x"),
+                    &mut checked,
+                ));
             }
             let ui = ItemEditor::new().unwrap();
             ui.global::<SystemLook<'_>>().set_text_scale(s);
@@ -88,14 +107,25 @@ fn interactive_elements_are_named_big_enough_and_inside_the_window() {
             ui.window().set_size(slint::LogicalSize::new(w, 900.0));
             ui.show().unwrap();
             slint::platform::update_timers_and_animations();
-            all.extend(problems(&ui, w, &format!("item editor template at {s}x")));
+            all.extend(problems(
+                &ui,
+                w,
+                &format!("item editor template at {s}x"),
+                &mut checked,
+            ));
             let ui = TemplateFillWindow::new().unwrap();
             ui.global::<SystemLook<'_>>().set_text_scale(s);
             fill::populate(&ui);
-            ui.window().set_size(slint::LogicalSize::new(w.max(320.0), 1400.0));
+            ui.window()
+                .set_size(slint::LogicalSize::new(w.max(320.0), 1400.0));
             ui.show().unwrap();
             slint::platform::update_timers_and_animations();
-            all.extend(problems(&ui, w.max(320.0), &format!("fill at {s}x")));
+            all.extend(problems(
+                &ui,
+                w.max(320.0),
+                &format!("fill at {s}x"),
+                &mut checked,
+            ));
             let ui = SettingsPage::new().unwrap();
             ui.global::<SystemLook<'_>>().set_text_scale(s);
             editor::settings(&ui);
@@ -103,11 +133,17 @@ fn interactive_elements_are_named_big_enough_and_inside_the_window() {
             ui.window().set_size(slint::LogicalSize::new(sw, 1400.0));
             ui.show().unwrap();
             slint::platform::update_timers_and_animations();
-            all.extend(problems(&ui, sw, &format!("settings at {s}x")));
+            all.extend(problems(
+                &ui,
+                sw,
+                &format!("settings at {s}x"),
+                &mut checked,
+            ));
         }
         for p in &all {
             eprintln!("{p}");
         }
+        assert!(checked > 100, "only {checked} elements were checked");
         assert_eq!(all, Vec::<String>::new());
     });
 }
