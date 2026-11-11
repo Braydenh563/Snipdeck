@@ -269,7 +269,7 @@ where
         &mut self,
         slot: &mut ItemEditorSlot,
         failure: SaveFailure,
-    ) -> Result<String, ()> {
+    ) -> Result<(String, bool), ()> {
         slot.problems.banner = Some(EditorProblem::Save(failure));
         self.show_toast(Toast {
             kind: ToastKind::Danger,

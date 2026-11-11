@@ -4,7 +4,7 @@
 
 use snipdeck_core::{Item, ItemId, ListId, Placement, Timestamp};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
-use snipdeck_store::{Batch, ItemRepo, TrashRepo, Trashable};
+use snipdeck_store::{Batch, ItemRepo, TrashRepo, Trashable, TriggerRepo};
 
 use super::{Controller, Library, Toast, ToastKind, ToastMessage, failed};
 use crate::{
