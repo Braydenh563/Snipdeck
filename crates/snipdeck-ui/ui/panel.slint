@@ -1978,7 +1978,7 @@ export component PanelWindow inherits Window {
                                                 rename-request: root.rename-row == i ? root.rename-seq : 0;
                                                 toggled => { root.selected-index = i; root.group-toggled(i); }
                                                 renamed(text) => { root.group-renamed(i, text); }
-                                                rename-ended => { root.group-rename-ended(); search.focus(); }
+                                                rename-ended => { root.group-rename-ended(); root.focus-typing(); }
                                                 menu-requested(x, y) => {
                                                     root.item-menu-x = self.absolute-position.x + x;
                                                     root.item-menu-y = self.absolute-position.y + y;
