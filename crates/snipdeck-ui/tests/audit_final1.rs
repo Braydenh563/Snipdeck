@@ -77,20 +77,24 @@ fn ink(f: &Frame, r: (u32, u32, u32, u32), bg: [u8; 3]) -> ([u8; 3], f64) {
 }
 
 /// Bounding box of the pixels in `r` that are not `bg` (within 6 levels).
-fn bbox(f: &Frame, r: (u32, u32, u32, u32), bg: [u8; 3]) -> Option<(u32, u32, u32, u32)> {
-    let mut b: Option<(u32, u32, u32, u32)> = None;
-    for y in r.1..r.3.min(f.height) {
-        for x in r.0..r.2.min(f.width) {
-            let p = f.pixel(x, y);
-            if p.iter().zip(bg).any(|(a, b)| a.abs_diff(b) > 6) {
-                b = Some(match b {
+fn bbox(frame: &Frame, area: (u32, u32, u32, u32), bg: [u8; 3]) -> Option<(u32, u32, u32, u32)> {
+    let mut found: Option<(u32, u32, u32, u32)> = None;
+    for y in area.1..area.3.min(frame.height) {
+        for x in area.0..area.2.min(frame.width) {
+            let pixel = frame.pixel(x, y);
+            if pixel
+                .iter()
+                .zip(bg)
+                .any(|(have, want)| have.abs_diff(want) > 6)
+            {
+                found = Some(match found {
                     None => (x, y, x + 1, y + 1),
                     Some(o) => (o.0.min(x), o.1.min(y), o.2.max(x + 1), o.3.max(y + 1)),
                 });
             }
         }
     }
-    b
+    found
 }
 
 macro_rules! scale {
