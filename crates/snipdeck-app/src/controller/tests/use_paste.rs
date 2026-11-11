@@ -955,6 +955,19 @@ fn off_by_default_installs_no_hook() {
 }
 
 #[test]
+fn a_hook_that_cannot_start_says_so() {
+    let mut w = world();
+    let typing = crate::host::FakeTyping::default();
+    w.ctl.set_typing(Box::new(typing.clone()));
+    typing.fail_start(true);
+    w.ctl.update_settings(|s| s.expand_triggers = true);
+    let toast = w.ctl.view().toast.expect("a message");
+    assert_eq!(toast.kind, ToastKind::Danger);
+    assert_eq!(toast.message, ToastMessage::TypingUnavailable);
+    assert_eq!(typing.enabled_history().last(), Some(&true), "it was tried");
+}
+
+#[test]
 fn a_prompted_trigger_opens_the_fill_form_and_erases_only_once_it_is_confirmed() {
     let mut w = typing_world(3, ";hi");
     let fired = typed(&w, ";hi");

@@ -151,8 +151,8 @@ msgstr "Ajoute un extrait de texte à {}"
 msgid "After a paste or copy"
 msgstr "Après un collage ou une copie"
 
-msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual."
-msgstr "Quand vous tapez le début d’un raccourci, une petite info-bulle près du curseur propose l’extrait. Appuyez sur Tab pour l’insérer ; toute autre touche fonctionne comme d’habitude."
+msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
+msgstr "Quand vous tapez le début d’un raccourci, une petite info-bulle près du curseur propose l’extrait. Appuyez sur Tab pour l’insérer ; toute autre touche fonctionne comme d’habitude. Tab n’est pris que tant que l’info-bulle est affichée."
 
 msgid "All"
 msgstr "Tous"
@@ -680,6 +680,9 @@ msgstr "Impossible d'enregistrer vos paramètres. Snipdeck va réessayer."
 
 msgid "Couldn't start the screenshot tool."
 msgstr "Impossible de lancer l'outil de capture d'écran."
+
+msgid "Couldn't start typing triggers. Nothing will be expanded or suggested."
+msgstr "Impossible de démarrer les raccourcis à la frappe. Rien ne sera développé ni proposé."
 
 msgid "Couldn't use this item. Try again, or restart Snipdeck if it keeps happening."
 msgstr "Impossible d'utiliser cet extrait. Réessayez, ou redémarrez Snipdeck si cela persiste."
@@ -3131,8 +3134,8 @@ msgstr "Au démarrage de Windows"
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "Quand l'épingle est désactivée, le panneau se masque dès que tu passes à une autre application. Un panneau épinglé reste."
 
-msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk. Nothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
-msgstr "Quand vous tapez le raccourci d’un extrait dans un autre programme, Snipdeck le remplace par l’extrait. Pour cela, Snipdeck surveille les touches pressées et ne garde que les derniers caractères en mémoire, jamais sur le disque. Rien n’est développé dans les champs de mot de passe, dans les programmes réglés sur « Ne jamais coller » ni pour les éléments sensibles."
+msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
+msgstr "Quand vous tapez le raccourci d’un extrait dans un autre programme, Snipdeck le remplace par l’extrait. Pour cela, Snipdeck surveille les touches pressées et ne garde que les derniers caractères en mémoire, jamais sur le disque.\nRien n’est développé dans les champs de mot de passe, dans les programmes réglés sur « Ne jamais coller » ni pour les éléments sensibles."
 
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "Où le Panneau apparaît quand un raccourci ou la zone de notification l'affiche. Au curseur de texte se rabat sur la souris quand l'application n'en a pas."

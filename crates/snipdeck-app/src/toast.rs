@@ -302,6 +302,8 @@ pub enum ToastMessage {
         /// The title of the other item whose trigger overlaps.
         other: String,
     },
+    /// "Couldn't start typing triggers. Nothing will be expanded or suggested."
+    TypingUnavailable,
     /// "Couldn't unlock the encryption key. Nothing was saved."
     KeyUnavailable,
     /// "This item was deleted. Nothing was saved."

@@ -214,8 +214,9 @@ pub trait TargetSource {
 /// The controller tells it whether anyone wants it (`set_enabled`) and which triggers exist
 /// (`set_triggers`); while it is disabled the implementation must hold no keyboard hook at all.
 pub trait TypingControl {
-    /// Installs the hook (`true`) or removes it (`false`). Idempotent.
-    fn set_enabled(&mut self, on: bool);
+    /// Installs the hook (`true`) or removes it (`false`). Idempotent. Returns `false` only when
+    /// the hook was wanted and could not be installed.
+    fn set_enabled(&mut self, on: bool) -> bool;
     /// The triggers to watch for, as of now, and the candidates a typed prefix is matched
     /// against for suggestions (empty when suggestions are off).
     fn set_triggers(
@@ -247,9 +248,15 @@ pub struct FakeTyping {
     generation: Rc<Cell<u64>>,
     hint: Rc<RefCell<Vec<u64>>>,
     skipped: Rc<RefCell<Vec<snipdeck_core::Fired>>>,
+    fail_start: Rc<Cell<bool>>,
 }
 
 impl FakeTyping {
+    /// Makes every later turn-on fail, as a hook Windows refuses to install does.
+    pub fn fail_start(&self, fail: bool) {
+        self.fail_start.set(fail);
+    }
+
     /// The candidates last handed over.
     #[must_use]
     pub fn candidates(&self) -> Vec<snipdeck_core::Candidate> {
@@ -299,8 +306,9 @@ impl FakeTyping {
 }
 
 impl TypingControl for FakeTyping {
-    fn set_enabled(&mut self, on: bool) {
+    fn set_enabled(&mut self, on: bool) -> bool {
         self.enabled.borrow_mut().push(on);
+        !(on && self.fail_start.get())
     }
 
     fn set_triggers(

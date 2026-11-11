@@ -151,8 +151,8 @@ msgstr "Fügt {} einen Textbaustein hinzu"
 msgid "After a paste or copy"
 msgstr "Nach dem Einfügen oder Kopieren"
 
-msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual."
-msgstr "Sobald du den Anfang eines Kürzels tippst, bietet ein kleiner Hinweis am Textcursor den Baustein an. Mit Tab fügst du ihn ein; jede andere Taste wirkt wie gewohnt."
+msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
+msgstr "Sobald du den Anfang eines Kürzels tippst, bietet ein kleiner Hinweis am Textcursor den Baustein an. Mit Tab fügst du ihn ein; jede andere Taste wirkt wie gewohnt. Tab wird nur abgefangen, solange der Hinweis zu sehen ist."
 
 msgid "All"
 msgstr "Alle"
@@ -680,6 +680,9 @@ msgstr "Deine Einstellungen konnten nicht gespeichert werden. Snipdeck versucht 
 
 msgid "Couldn't start the screenshot tool."
 msgstr "Das Screenshot-Werkzeug konnte nicht gestartet werden."
+
+msgid "Couldn't start typing triggers. Nothing will be expanded or suggested."
+msgstr "Kürzel beim Tippen konnten nicht gestartet werden. Es wird nichts erweitert oder vorgeschlagen."
 
 msgid "Couldn't use this item. Try again, or restart Snipdeck if it keeps happening."
 msgstr "Dieser Textbaustein konnte nicht verwendet werden. Versuche es erneut oder starte Snipdeck neu, falls es weiter passiert."
@@ -3131,8 +3134,8 @@ msgstr "Beim Start von Windows"
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "Ist die Pinnnadel aus, blendet sich das Panel aus, sobald du zu einer anderen App wechselst. Ein angeheftetes Panel bleibt."
 
-msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk. Nothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
-msgstr "Wenn du das Kürzel eines Bausteins in einem anderen Programm tippst, ersetzt Snipdeck es durch den Baustein. Dafür beobachtet Snipdeck die gedrückten Tasten und behält nur die letzten Zeichen im Arbeitsspeicher, nie auf der Festplatte. In Passwortfeldern, in Programmen mit „Nie einfügen“ und bei vertraulichen Einträgen wird nichts erweitert."
+msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
+msgstr "Wenn du das Kürzel eines Bausteins in einem anderen Programm tippst, ersetzt Snipdeck es durch den Baustein. Dafür beobachtet Snipdeck die gedrückten Tasten und behält nur die letzten Zeichen im Arbeitsspeicher, nie auf der Festplatte.\nIn Passwortfeldern, in Programmen mit „Nie einfügen“ und bei vertraulichen Einträgen wird nichts erweitert."
 
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "Wo das Panel erscheint, wenn ein Tastenkürzel oder das Tray es anzeigt. „Am Textcursor“ weicht auf die Maus aus, wenn die App keinen hat."

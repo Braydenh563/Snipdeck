@@ -255,14 +255,17 @@ mod imp {
             clippy::print_stderr,
             reason = "a hook that cannot be installed has no other place to say so"
         )]
-        fn set_enabled(&mut self, on: bool) {
+        fn set_enabled(&mut self, on: bool) -> bool {
             if on == self.running.is_some() {
-                return;
+                return true;
             }
             if on {
                 match self.start() {
                     Ok(running) => self.running = Some(running),
-                    Err(e) => eprintln!("snipdeck: {e}"),
+                    Err(e) => {
+                        eprintln!("snipdeck: {e}");
+                        return false;
+                    }
                 }
             } else if let Some(running) = self.running.take() {
                 // Unhooking drops the event sender, which ends the worker. It is not joined: it
@@ -272,6 +275,7 @@ mod imp {
                 drop(running.updates);
                 drop(running.worker);
             }
+            true
         }
 
         fn set_triggers(&mut self, matcher: Matcher, candidates: Vec<Candidate>) {

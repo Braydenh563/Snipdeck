@@ -96,6 +96,8 @@ pub fn hotkeys() -> Vec<HotkeySetting> {
 }
 
 pub fn settings(ui: &SettingsPage) {
+    // The Typing switches are stops only where typing works (Windows): walk them.
+    ui.set_typing_available(true);
     ui.set_hotkeys(ModelRc::new(VecModel::from(hotkeys())));
     ui.set_languages(strings(&[
         "Follow Windows",

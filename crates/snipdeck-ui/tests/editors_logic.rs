@@ -1232,7 +1232,7 @@ ui_tests! {
     fn every_settings_row_is_found_by_its_own_title() {
         let (ui, _log) = settings();
         let sections = [
-            "Shortcuts", "Appearance", "Panel layout", "Opening the Panel", "Privacy", "Programs",
+            "Shortcuts", "Appearance", "Panel layout", "Opening the Panel", "Privacy", "Programs", "Typing",
             "Backups and your data", "Licence",
         ];
         // The Licence section's plan table is a comparison, not settings: its rows are not searched.
