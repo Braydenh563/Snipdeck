@@ -138,7 +138,7 @@ Rendered from the app's own interface, in light or dark to match your GitHub the
 |---|---|
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Y</kbd> | Show or hide the Panel |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> | Open the Picker |
-| *none until you set one* | Save the clipboard text as a new item (Settings > Opening the Panel) |
+| *none until you set one* | Save the clipboard text as a new item (Settings > Shortcuts) |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>U</kbd> | Paste the next pinned item or list item (Supporter) |
 
 Change any of them in Settings. If another program owns a hotkey, Snipdeck says so and the rest keep working.

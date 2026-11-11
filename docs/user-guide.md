@@ -163,26 +163,28 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
 - **Lists.** Add a list with **Add list** in the sidebar, or the **+** tab in the Panel. **Edit list** sets the name, a colour and the sort: manual, most
   used or recently used. Move a list with `Alt+Up` or `Alt+Down` while it is selected in the sidebar.
 - **Order of items.** Select a row and press `Alt+Up` or `Alt+Down`, in the Main window or the Panel, or choose **Move up** / **Move down** in the snippet's menu.
-- **Groups.** In the Panel, a list can hold named groups of items. Mark two or more rows, then press `Ctrl+G`
-  or choose **Group...** from the item menu. The rows gather under a header and its name opens for typing:
-  type a name and press `Enter` (the default is "Group"). The header shows the name, how many items the group
-  holds and an arrow. Click the header, or press `Left` to fold it and `Right` to open it again; a folded group
-  hides its items. Press `F2` on a header, or choose **Rename group**, to change the name. Choose **Ungroup**
-  to dissolve the group and keep its items. **Delete group** moves the group and its items to the Trash, and
-  `Ctrl+Z` brings them all back in one step. Drag a header to move the whole group, or press `Alt+Up` or `Alt+Down` on it. `Enter` or `Space` on a header also folds or opens it. Groups show only when the
-  list is sorted by hand (Manual); if it is not, **Group...** offers to switch. Searching lists every match,
-  even inside a folded group, under the group's header. Press `Ctrl+G` on a header to rename it. Undo
-  (`Ctrl+Z`) takes back a grouping, a rename, an ungroup, a delete and a drag of a header or of an item onto
-  one. In the Cards layout a list with groups shows one column, so a header spans the width. The numbers `Alt+1`
-  to `Alt+9` count items only, never headers. A screen reader reads a header as "group, 3 items" and says
-  whether it is expanded or collapsed.
-  **In the Main window** the groups work the same way, in a list sorted by hand: `Ctrl+G` groups the selected rows
-  (the row at the cursor when none is selected), and on a header `Left` folds, `Right` opens, `Enter` does the
-  other, `F2` renames, `Delete` moves the group and its items to the Trash, and `Alt+Up` or `Alt+Down` moves the
-  whole group. The header's menu has Rename group, Ungroup and Delete group, and the command
-  palette (`Ctrl+K`) has the same actions. Search results are a flat list of matches without headers, and a list that
-  holds groups is drawn as rows even in the Tile layout, so a header can span the width. Undo (`Ctrl+Z`) takes back
-  each of these steps.
+- **Groups.** A list sorted by hand (Manual) can hold named groups of items, in the Panel and in the Main window.
+  - **Make one.** Select two or more rows and press `Ctrl+G`, or choose **Group...** from the item menu (the row
+    at the cursor when nothing is selected). The rows gather under a header and its name opens for typing: type a
+    name and press `Enter` (the default is "Group"). In a list that sorts itself, **Group...** offers to switch to
+    Manual first.
+  - **Read the header.** It shows the name, how many items the group holds and an arrow. A screen reader reads it
+    as "group, 3 items" and says whether it is expanded or collapsed.
+  - **Fold or open a group.** Click the header, or press `Left` to fold and `Right` to open. `Enter` toggles it
+    (in the Panel `Space` does too). A folded group hides its items and stays folded.
+  - **Rename.** Press `F2` on the header, press `Ctrl+G` on it with nothing selected, or choose **Rename group**.
+  - **Ungroup or delete.** **Ungroup** dissolves the group and keeps its items. **Delete group** (or `Delete`
+    on the header) moves the group and its items to the Trash, and `Ctrl+Z` brings them all back in one step.
+  - **Move.** Drag a header to move the whole group, or press `Alt+Up` or `Alt+Down` on it. Dropping an item on a
+    header adds it to that group.
+  - **Search.** Searching lists every match, even inside a folded group, under the group's header in the Panel;
+    the Main window shows a flat list of matches with no headers.
+  - **Layout.** A list that holds groups is drawn as rows even in the Cards or Tile layout, so a header spans the
+    width. `Alt+1` to `Alt+9` count items only, never headers.
+  - **Main window.** The command palette (`Ctrl+K`) has the same actions, and the header's menu has Rename group,
+    Ungroup and Delete group.
+  - **Undo.** `Ctrl+Z` takes back a grouping, a rename, an ungroup, a delete and a drag of a header or of an
+    item onto one.
 - **Move.** Choose **Move to list…** from the item menu to move one or more selected items.
 - **Paste as…** Choose **Paste as…** from the item menu (text items, one at a time) to paste the text changed: **Plain
   text**, **UPPERCASE**, **lowercase**, **Title Case**, **Trimmed** (no space at the ends) or **slug-like-this** (`my-title`).
