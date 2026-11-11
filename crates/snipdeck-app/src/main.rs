@@ -272,6 +272,8 @@ fn run(args: &Args) -> Result<(), String> {
         controller.set_log_opener(Box::new(crash::open_log_folder));
         controller.unlock_library();
     }
+    // Whether Hello is ready is asked on its worker (it can block), so start-up does not wait.
+    snipdeck_app::unlock_binding::refresh_hello(&controller);
 
     // The tray makes closing the Panel safe (it hides, and the icon brings it back). Whether an
     // icon is in the notification area is reported by the tray itself (`TrayEvent::IconPresent`,

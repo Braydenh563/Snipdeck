@@ -1079,6 +1079,11 @@ where
         crate::hello_job::run_job(
             job,
             Box::new(move |done| {
+                // An outcome of a step that was given up on (locked, switched off, a newer step)
+                // is dropped with its copy and must not undo the newer step.
+                if !core.act(|ctl| ctl.hello_current(&done)) {
+                    return;
+                }
                 let sealed = core.act(|ctl| ctl.finish_hello(done));
                 if sealed.is_err() {
                     core.act(|ctl| {
@@ -2244,6 +2249,8 @@ impl SettingsUi {
                 window.show()?;
                 crate::ownership::opened(crate::ownership::Win::Settings);
                 fit_when_settled(window);
+                // A PIN added or removed since the last look shows in the Hello row.
+                crate::unlock_binding::refresh_hello(&controller);
                 // The page was hidden, so it skipped the redraws; draw it now that it is up.
                 binding.redraw();
                 raise(window.window());

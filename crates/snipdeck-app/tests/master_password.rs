@@ -1281,13 +1281,24 @@ mod hello {
 
     use super::*;
 
+    /// Gives the controller `hello` and applies its answer to "can it be used" (a job in the app).
+    fn attach(ctl: &mut Ctl, hello: &Arc<FakeHello>) {
+        ctl.set_hello(hello.clone());
+        refresh(ctl);
+    }
+
+    fn refresh(ctl: &mut Ctl) {
+        let job = ctl.begin_hello_refresh().expect("a Hello");
+        ctl.finish_hello(job.run()).expect("answered");
+    }
+
     fn fake() -> Arc<FakeHello> {
         Arc::new(FakeHello::new())
     }
 
     /// Hello on, the copy sealed (the library is open).
     fn enable(r: &mut Rig, hello: &Arc<FakeHello>) {
-        r.ctl.set_hello(hello.clone());
+        attach(&mut r.ctl, hello);
         let job = r.ctl.set_hello_unlock(true).expect("a sealing step");
         r.ctl.finish_hello(job.run()).expect("sealed");
     }
@@ -1327,7 +1338,7 @@ mod hello {
     fn restart_needs_the_password() {
         let (r, hello) = locked_with_hello();
         let mut r = r.restart(Tier::Pro);
-        r.ctl.set_hello(hello);
+        attach(&mut r.ctl, &hello);
         assert!(r.ctl.library_locked());
         assert!(
             !r.ctl.hello_unlock_available(),
@@ -1388,7 +1399,7 @@ mod hello {
         let hello = fake();
         hello.set_non_deterministic(true);
         let mut r = with_password(Tier::Pro);
-        r.ctl.set_hello(hello);
+        attach(&mut r.ctl, &hello);
         let job = r.ctl.set_hello_unlock(true).expect("a step");
         assert_eq!(r.ctl.finish_hello(job.run()), Err(HelloFailure::Failed));
         r.ctl.lock_now();
@@ -1400,7 +1411,7 @@ mod hello {
         let hello = fake();
         let r = with_password(Tier::Pro).restart(Tier::Free);
         let mut r = r;
-        r.ctl.set_hello(hello.clone());
+        attach(&mut r.ctl, &hello);
         assert!(!r.ctl.hello_offered());
         assert!(r.ctl.set_hello_unlock(true).is_none());
         assert!(!r.ctl.settings().hello_unlock);
@@ -1412,19 +1423,87 @@ mod hello {
     fn it_is_offered_only_with_a_password_and_a_ready_hello() {
         let hello = fake();
         let mut r = rig(Tier::Pro);
-        r.ctl.set_hello(hello.clone());
+        attach(&mut r.ctl, &hello);
         assert!(!r.ctl.hello_offered(), "no master password");
         r.ctl
             .set_master_password(password(), password())
             .expect("set");
         assert!(r.ctl.hello_offered());
         hello.set_availability(HelloAvailability::NotSetUp);
-        r.ctl.refresh_hello();
+        refresh(&mut r.ctl);
         assert!(!r.ctl.hello_offered(), "no PIN set up");
         hello.set_availability(HelloAvailability::Unsupported);
-        r.ctl.refresh_hello();
+        refresh(&mut r.ctl);
         assert!(!r.ctl.hello_offered());
         assert!(!r.ctl.settings().hello_unlock, "off by default");
+    }
+
+    #[test]
+    fn turning_it_on_asks_twice_and_each_later_seal_asks_once() {
+        let hello = fake();
+        let mut r = with_password(Tier::Pro);
+        attach(&mut r.ctl, &hello);
+        assert_eq!(hello.prompts(), 0, "asking if it is ready is not a prompt");
+        let job = r.ctl.set_hello_unlock(true).expect("step");
+        r.ctl.finish_hello(job.run()).expect("sealed");
+        assert_eq!(hello.prompts(), 2, "enrolment checks the signature repeats");
+        r.ctl.lock_now();
+        r.ctl.unlock_with_password(password()).expect("password");
+        let before = hello.prompts();
+        let job = r.ctl.begin_hello_seal().expect("re-seal");
+        r.ctl.finish_hello(job.run()).expect("sealed");
+        assert_eq!(hello.prompts(), before + 1, "one prompt per later seal");
+    }
+
+    #[test]
+    fn locking_during_a_seal_stops_it_and_refuses_the_copy() {
+        let hello = fake();
+        let mut r = with_password(Tier::Pro);
+        attach(&mut r.ctl, &hello);
+        let job = r.ctl.set_hello_unlock(true).expect("step");
+        let before = hello.prompts();
+        r.ctl.lock_now();
+        // The worker was told to stop: it asks Hello nothing and the outcome is refused.
+        let done = job.run();
+        assert_eq!(hello.prompts(), before, "no prompt after the lock");
+        assert!(r.ctl.finish_hello(done).is_err());
+        assert!(!r.ctl.hello_unlock_available(), "no copy");
+        r.ctl.unlock_with_password(password()).expect("password");
+        r.ctl.lock_now();
+        assert!(!r.ctl.hello_unlock_available(), "still no copy");
+    }
+
+    #[test]
+    fn an_outcome_of_an_older_step_never_replaces_a_newer_one() {
+        let hello = fake();
+        let mut r = with_password(Tier::Pro);
+        attach(&mut r.ctl, &hello);
+        let old = r.ctl.set_hello_unlock(true).expect("step");
+        r.ctl.lock_now();
+        r.ctl.unlock_with_password(password()).expect("password");
+        let new = r.ctl.begin_hello_seal().expect("a newer step");
+        let stale = old.run();
+        assert!(!r.ctl.hello_current(&stale));
+        assert!(r.ctl.finish_hello(stale).is_err());
+        r.ctl
+            .finish_hello(new.run())
+            .expect("the newer step still lands");
+        r.ctl.lock_now();
+        assert!(r.ctl.hello_unlock_available());
+    }
+
+    #[test]
+    fn a_plan_change_to_free_drops_the_copy_while_running() {
+        let (mut r, _hello) = locked_with_hello();
+        assert!(r.ctl.hello_unlock_available());
+        r.ctl.change_plan(Entitlements::new(Tier::Free));
+        assert!(!r.ctl.hello_enabled());
+        assert!(!r.ctl.hello_unlock_available());
+        r.ctl.change_plan(Entitlements::new(Tier::Pro));
+        assert!(
+            !r.ctl.hello_unlock_available(),
+            "the copy does not come back"
+        );
     }
 
     #[test]
@@ -1434,6 +1513,7 @@ mod hello {
         r.ctl.unlock_with_password(password()).expect("password");
         r.ctl.remove_master_password(password()).expect("removed");
         assert!(!r.ctl.hello_offered());
+        assert!(!r.ctl.settings().hello_unlock, "the switch is off too");
         assert!(r.ctl.begin_hello_unlock().is_none());
         assert!(r.ctl.begin_hello_seal().is_none());
         // A new password does not bring the old copy back.

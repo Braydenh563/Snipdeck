@@ -42,6 +42,29 @@ pub fn slint_problem(problem: MasterProblem) -> ui::MasterProblem {
     }
 }
 
+/// Asks Hello, on its worker, whether it can be used now, and redraws when it answers. Called at
+/// start-up and when Settings or the unlock window opens, so a PIN added or removed after launch
+/// shows. UI thread only.
+pub fn refresh_hello<C, K, T>(controller: &Rc<RefCell<Controller<Store, C, K, T>>>)
+where
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    let job = controller.borrow_mut().begin_hello_refresh();
+    let Some(job) = job else {
+        return;
+    };
+    let controller = Rc::clone(controller);
+    crate::hello_job::run_job(
+        job,
+        Box::new(move |done| {
+            let _ = controller.borrow_mut().finish_hello(done);
+            redraw_all();
+        }),
+    );
+}
+
 struct UnlockCore<C, K, T> {
     controller: Rc<RefCell<Controller<Store, C, K, T>>>,
     window: slint::Weak<ui::UnlockWindow>,
@@ -211,7 +234,15 @@ where
 
     fn seal_after_unlock(&self) {
         let job = self.controller.borrow_mut().begin_hello_seal();
-        self.run_hello(job, |_| {});
+        let controller = Rc::clone(&self.controller);
+        // A seal that fails turns Hello off, as it does from Settings, so later unlocks do not
+        // keep prompting; the password is untouched.
+        self.run_hello(job, move |result| {
+            if result.is_err() {
+                let _ = controller.borrow_mut().set_hello_unlock(false);
+                redraw_all();
+            }
+        });
     }
 
     /// Runs `job` (if any) where Hello jobs run, then applies the outcome and hands it to `then`.
@@ -348,6 +379,7 @@ impl UnlockUi {
                 return Ok(());
             };
             binding.prepare();
+            refresh_hello(&controller);
             crate::native_window::place_over_owner(window.window());
             window.show()?;
             fit_when_settled(window);

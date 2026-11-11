@@ -372,7 +372,7 @@ where
             verify_embedded(token, self.clock.now())
                 .map_err(licence_store::problem_of)
                 .and_then(|entitlements| {
-                    self.entitlements = entitlements;
+                    self.change_plan(entitlements);
                     match data_dir {
                         Some(dir) => {
                             licence_store::write(dir, token).map_err(|_| LicenceProblem::NotSaved)

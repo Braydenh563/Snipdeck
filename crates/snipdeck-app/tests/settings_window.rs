@@ -3122,3 +3122,53 @@ fn where_the_panel_opens_is_off_while_it_is_docked() {
         assert!(r.ui.get_panel_open_at_enabled());
     });
 }
+
+#[test]
+fn the_hello_row_appears_with_a_password_and_a_ready_hello_and_the_switch_seals() {
+    on_ui_thread(|| {
+        let hello = std::sync::Arc::new(snipdeck_platform::testing::FakeHello::new());
+        let r = master_rig(Tier::Pro);
+        {
+            let mut ctl = r.ctl.borrow_mut();
+            ctl.set_hello(hello.clone());
+            let job = ctl.begin_hello_refresh().expect("a Hello");
+            ctl.finish_hello(job.run()).expect("answered");
+        }
+        r.binding.redraw();
+        assert!(!r.ui.get_hello_offered(), "no master password yet");
+
+        r.ctl
+            .borrow_mut()
+            .set_master_password(password(), password())
+            .expect("set");
+        r.binding.redraw();
+        assert!(r.ui.get_hello_offered());
+        assert!(!r.ui.get_hello_unlock(), "off by default");
+        assert_eq!(hello.prompts(), 0);
+
+        // The switch turns it on: two prompts for the first seal, the setting is saved on.
+        r.ui.invoke_hello_unlock_toggled(true);
+        slint::platform::update_timers_and_animations();
+        assert!(r.ui.get_hello_unlock());
+        assert!(r.ctl.borrow().settings().hello_unlock);
+        assert_eq!(hello.prompts(), 2);
+
+        // A failing Hello puts the switch back off.
+        r.ui.invoke_hello_unlock_toggled(false);
+        hello.set_sign(Err(snipdeck_platform::hello::HelloError::Cancelled));
+        r.ui.invoke_hello_unlock_toggled(true);
+        slint::platform::update_timers_and_animations();
+        assert!(!r.ui.get_hello_unlock());
+        assert!(!r.ctl.borrow().settings().hello_unlock);
+
+        // No PIN set up: the row goes.
+        hello.set_availability(snipdeck_platform::hello::HelloAvailability::NotSetUp);
+        {
+            let mut ctl = r.ctl.borrow_mut();
+            let job = ctl.begin_hello_refresh().expect("job");
+            ctl.finish_hello(job.run()).expect("answered");
+        }
+        r.binding.redraw();
+        assert!(!r.ui.get_hello_offered());
+    });
+}

@@ -6,7 +6,10 @@
 //! expired copy, drops the copy and leaves the password prompt as it was. Key material is never
 //! logged.
 
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::{Arc, atomic::AtomicBool, atomic::Ordering},
+    time::Duration,
+};
 
 use snipdeck_core::Timestamp;
 use snipdeck_platform::{
@@ -24,6 +27,10 @@ use crate::{
 /// What the controller knows about Hello. No secret is shown by `Debug`.
 #[derive(Default)]
 pub(super) struct HelloState {
+    /// The user just turned Hello on: the next seal also checks the signature repeats.
+    enrol: bool,
+    /// Tells a running job to stop (the library was locked, or the step was given up on).
+    cancel: Arc<AtomicBool>,
     hello: Option<Arc<dyn HelloAuthenticator>>,
     availability: Option<HelloAvailability>,
     sealed: Option<SealedKey>,
@@ -43,11 +50,23 @@ impl core::fmt::Debug for HelloState {
 }
 
 impl HelloState {
+    /// Gives up on a step under way: its job is told to stop (it drops its key without asking
+    /// Hello again) and its outcome, when it comes, is refused.
+    pub(super) fn cancel_step(&mut self) {
+        self.cancel.store(true, Ordering::SeqCst);
+        self.cancel = Arc::default();
+        self.generation = self.generation.wrapping_add(1);
+        self.busy = false;
+    }
+
     /// Forgets the copy and gives up on a step under way.
     pub(super) fn drop_copy(&mut self) {
         self.sealed = None;
-        self.generation = self.generation.wrapping_add(1);
-        self.busy = false;
+        self.cancel_step();
+    }
+
+    fn token(&self) -> (u64, Arc<AtomicBool>) {
+        (self.generation, Arc::clone(&self.cancel))
     }
 }
 
@@ -62,17 +81,25 @@ where
     K: Keyboard,
     T: Timing,
 {
-    /// Uses `hello` for the Windows Hello unlock. Without one the option is never offered.
+    /// Uses `hello` for the Windows Hello unlock. Nothing is offered until
+    /// [`begin_hello_refresh`](Self::begin_hello_refresh) has been run and applied: asking Hello
+    /// whether it is ready can block, so it is a job like the others.
     pub fn set_hello(&mut self, hello: Arc<dyn HelloAuthenticator>) {
         self.lock.hello.hello = Some(hello);
-        self.refresh_hello();
+        self.lock.hello.availability = None;
     }
 
-    /// Asks Hello again whether it can be used (Settings opened, a PIN was set up meanwhile).
-    pub fn refresh_hello(&mut self) {
-        let availability = self.lock.hello.hello.as_ref().map(|h| h.availability());
-        self.lock.hello.availability = availability;
-        if availability != Some(HelloAvailability::Ready) {
+    /// The first part of asking Hello whether it can be used (the app does it at start-up and
+    /// when Settings or the unlock window opens, so a PIN added or removed meanwhile shows).
+    pub fn begin_hello_refresh(&mut self) -> Option<HelloJob> {
+        let hello = Arc::clone(self.lock.hello.hello.as_ref()?);
+        Some(HelloJob::availability(hello))
+    }
+
+    /// The plan changed (a licence was applied): a copy for a plan without the feature is dropped.
+    pub fn change_plan(&mut self, entitlements: snipdeck_core::Entitlements) {
+        self.entitlements = entitlements;
+        if !self.master_password_allowed() {
             self.lock.hello.drop_copy();
         }
     }
@@ -112,9 +139,11 @@ where
         if !on || !self.hello_offered() {
             self.update_settings(|s| s.hello_unlock = false);
             self.lock.hello.drop_copy();
+            self.lock.hello.enrol = false;
             return None;
         }
         self.update_settings(|s| s.hello_unlock = true);
+        self.lock.hello.enrol = true;
         self.begin_hello_seal()
     }
 
@@ -134,8 +163,9 @@ where
         Some(HelloJob::seal(
             hello,
             key,
+            self.lock.hello.enrol,
             since_epoch(at),
-            self.lock.hello.generation,
+            self.lock.hello.token(),
         ))
     }
 
@@ -156,7 +186,7 @@ where
         }
         let hello = Arc::clone(state.hello.as_ref()?);
         state.busy = true;
-        Some(HelloJob::open(hello, sealed, now, state.generation))
+        Some(HelloJob::open(hello, sealed, now, state.token()))
     }
 
     /// Whether `done` belongs to the step under way.
@@ -171,6 +201,13 @@ where
     ///
     /// [`HelloFailure`] when Hello gave nothing: the copy is dropped and the password remains.
     pub fn finish_hello(&mut self, done: HelloDone) -> Result<(), HelloFailure> {
+        if let Ok(Product::Availability(availability)) = done.outcome {
+            self.lock.hello.availability = Some(availability);
+            if availability != HelloAvailability::Ready {
+                self.lock.hello.drop_copy();
+            }
+            return Ok(());
+        }
         if !self.hello_current(&done) {
             return Err(HelloFailure::Failed);
         }
@@ -178,8 +215,10 @@ where
         match done.outcome {
             Ok(Product::Sealed(sealed)) => {
                 self.lock.hello.sealed = Some(sealed);
+                self.lock.hello.enrol = false;
                 Ok(())
             }
+            Ok(Product::Availability(_)) => Ok(()),
             Ok(Product::Opened(key, sealed)) => {
                 if self.store.open_with_key(key).is_err() {
                     self.lock.hello.drop_copy();

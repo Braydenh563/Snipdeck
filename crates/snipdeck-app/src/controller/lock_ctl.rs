@@ -494,6 +494,7 @@ where
                 self.lock.set = false;
                 self.lock.prompt = false;
                 self.lock.hello.drop_copy();
+                self.update_settings(|s| s.hello_unlock = false);
                 let reopened = self.open_after_change(key);
                 self.note_activity();
                 self.show_toast(neutral(if reopened {
@@ -596,6 +597,9 @@ where
         }
         // A change or removal still being derived must not reopen what is being locked.
         self.invalidate_master();
+        // A Hello step under way is told to stop and its outcome is refused; the sealed copy stays
+        // (it is what Hello unlocks with).
+        self.lock.hello.cancel_step();
         self.store.lock_key_ring();
         self.index_cache.forget_recent();
         self.revealed = None;

@@ -8,15 +8,26 @@
 //! Slint-free apart from [`run_job`]'s worker hand-back. Nothing here logs key material or a
 //! signature; a job and its outcome wipe the keys they hold when dropped.
 
-use std::{cell::RefCell, collections::HashMap, sync::Arc, time::Duration};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+    time::Duration,
+};
 
-use snipdeck_platform::hello::{HelloAuthenticator, HelloError};
+use snipdeck_platform::hello::{HelloAuthenticator, HelloAvailability, HelloError};
 use snipdeck_store::crypto::{DataKey, HelloSealError, SealedKey};
 
 /// What a job does.
 enum Work {
-    /// Seals `key` under Hello (after a password unlock).
-    Seal { key: DataKey },
+    /// Seals `key` under Hello (after a password unlock). `enrol`: this is the first seal after the
+    /// user turned Hello on, so two signatures are compared; later seals sign once.
+    Seal { key: DataKey, enrol: bool },
+    /// Asks Hello whether it can be used.
+    Availability,
     /// Opens `sealed` with Hello.
     Open { sealed: SealedKey },
 }
@@ -27,6 +38,9 @@ pub struct HelloJob {
     now: Duration,
     work: Work,
     generation: u64,
+    /// Set by the controller when the library is locked or the step is given up on: the job then
+    /// does not ask Hello and drops its key.
+    cancel: Arc<AtomicBool>,
 }
 
 impl core::fmt::Debug for HelloJob {
@@ -60,6 +74,8 @@ fn failure(error: HelloSealError<HelloError>) -> HelloFailure {
 pub(crate) enum Product {
     /// A new sealed copy.
     Sealed(SealedKey),
+    /// Whether Hello can be used.
+    Availability(HelloAvailability),
     /// The data key the copy opened (the copy comes back too, to be kept).
     Opened(DataKey, SealedKey),
 }
@@ -82,14 +98,26 @@ impl HelloJob {
     pub(crate) fn seal(
         hello: Arc<dyn HelloAuthenticator>,
         key: DataKey,
+        enrol: bool,
         now: Duration,
-        generation: u64,
+        (generation, cancel): (u64, Arc<AtomicBool>),
     ) -> Self {
         Self {
             hello,
             now,
-            work: Work::Seal { key },
+            work: Work::Seal { key, enrol },
             generation,
+            cancel,
+        }
+    }
+
+    pub(crate) fn availability(hello: Arc<dyn HelloAuthenticator>) -> Self {
+        Self {
+            hello,
+            now: Duration::ZERO,
+            work: Work::Availability,
+            generation: 0,
+            cancel: Arc::default(),
         }
     }
 
@@ -97,13 +125,14 @@ impl HelloJob {
         hello: Arc<dyn HelloAuthenticator>,
         sealed: SealedKey,
         now: Duration,
-        generation: u64,
+        (generation, cancel): (u64, Arc<AtomicBool>),
     ) -> Self {
         Self {
             hello,
             now,
             work: Work::Open { sealed },
             generation,
+            cancel,
         }
     }
 
@@ -111,16 +140,31 @@ impl HelloJob {
     #[must_use]
     pub fn run(self) -> HelloDone {
         let hello = self.hello;
-        let sign = |challenge: &[u8]| hello.sign_challenge(challenge);
+        let cancel = self.cancel;
+        // Asked at each prompt: a locked library or a given-up step does not wait for a person.
+        let sign = |challenge: &[u8]| {
+            if cancel.load(Ordering::SeqCst) {
+                Err(HelloError::Cancelled)
+            } else {
+                hello.sign_challenge(challenge)
+            }
+        };
         let outcome = match self.work {
-            Work::Seal { key } => hello
-                .ensure_credential()
-                .map_err(|e| failure(HelloSealError::Sign(e)))
-                .and_then(|()| {
+            Work::Availability => Ok(Product::Availability(hello.availability())),
+            Work::Seal { key, enrol } => if cancel.load(Ordering::SeqCst) {
+                Err(HelloError::Cancelled)
+            } else {
+                hello.ensure_credential()
+            }
+            .map_err(|e| failure(HelloSealError::Sign(e)))
+            .and_then(|()| {
+                let sealed = if enrol {
                     SealedKey::seal(&key, self.now, sign)
-                        .map(Product::Sealed)
-                        .map_err(failure)
-                }),
+                } else {
+                    SealedKey::seal_once(&key, self.now, sign)
+                };
+                sealed.map(Product::Sealed).map_err(failure)
+            }),
             Work::Open { sealed } => sealed
                 .open(self.now, sign)
                 .map(|key| Product::Opened(key, sealed))

@@ -81,6 +81,8 @@ fn rig_with(hello: Option<&std::sync::Arc<FakeHello>>) -> Rig {
         .expect("set");
     if let Some(hello) = hello {
         ctl.set_hello(hello.clone());
+        let job = ctl.begin_hello_refresh().expect("a Hello");
+        ctl.finish_hello(job.run()).expect("answered");
         let job = ctl.set_hello_unlock(true).expect("sealing step");
         ctl.finish_hello(job.run()).expect("sealed");
     }
@@ -348,7 +350,11 @@ fn hello_button_shows_only_when_ready() {
 
         // Hello no longer ready (no PIN): the option disappears.
         hello.set_availability(HelloAvailability::NotSetUp);
-        r.ctl.borrow_mut().refresh_hello();
+        let job = r.ctl.borrow_mut().begin_hello_refresh().expect("job");
+        r.ctl
+            .borrow_mut()
+            .finish_hello(job.run())
+            .expect("answered");
         r.binding.prepare();
         settle();
         assert!(hello_button(&r.ui).is_none());
@@ -385,5 +391,34 @@ fn the_hello_button_unlocks_and_a_cancelled_hello_leaves_the_password() {
         press(r.ui.window(), "\n");
         settle();
         assert!(!r.ctl.borrow().library_locked(), "the password still works");
+    });
+}
+
+#[test]
+fn a_password_unlock_seals_again_and_a_failed_seal_turns_hello_off() {
+    on_ui_thread(|| {
+        // The password unlocks and Hello is asked once to seal: the next lock offers the button.
+        let hello = std::sync::Arc::new(FakeHello::new());
+        let r = rig_with(Some(&hello));
+        let before = hello.prompts();
+        type_text(r.ui.window(), password());
+        press(r.ui.window(), "\n");
+        settle();
+        assert!(!r.ctl.borrow().library_locked());
+        assert_eq!(hello.prompts(), before + 1, "one prompt to seal");
+        r.ctl.borrow_mut().lock_now();
+        assert!(r.ctl.borrow().hello_unlock_available());
+
+        // Hello cancelled at the seal: the switch goes off, the password unlock stands.
+        let hello = std::sync::Arc::new(FakeHello::new());
+        let r = rig_with(Some(&hello));
+        hello.set_sign(Err(HelloError::Cancelled));
+        type_text(r.ui.window(), password());
+        press(r.ui.window(), "\n");
+        settle();
+        assert!(!r.ctl.borrow().library_locked());
+        assert!(!r.ctl.borrow().settings().hello_unlock);
+        r.ctl.borrow_mut().lock_now();
+        assert!(!r.ctl.borrow().hello_unlock_available());
     });
 }

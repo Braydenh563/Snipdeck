@@ -99,6 +99,29 @@ impl SealedKey {
         })
     }
 
+    /// Seals `key` with one signature of [`HELLO_CHALLENGE`]: one Hello prompt. Only for a Hello
+    /// whose signatures [`seal`](Self::seal) already found repeatable (checked when the user turned
+    /// Hello on); a signer that later changes simply fails to open the copy and the password is
+    /// asked.
+    ///
+    /// # Errors
+    ///
+    /// [`HelloSealError::Sign`] from `sign`; [`HelloSealError::Failed`] if sealing fails.
+    pub fn seal_once<E>(
+        key: &DataKey,
+        now: Duration,
+        sign: impl FnOnce(&[u8]) -> Result<Zeroizing<Vec<u8>>, E>,
+    ) -> Result<Self, HelloSealError<E>> {
+        let signature = sign(HELLO_CHALLENGE).map_err(HelloSealError::Sign)?;
+        let kek = kek(&signature);
+        let blob =
+            aead::seal(&kek, AAD, key.expose().as_slice()).map_err(|_| HelloSealError::Failed)?;
+        Ok(Self {
+            blob,
+            password_unlock_at: now,
+        })
+    }
+
     /// Opens the key. Expired (checked first, so Hello is not prompted for nothing) or not, `sign`
     /// is only called when the copy is still valid at `now`.
     ///
@@ -163,6 +186,22 @@ mod tests {
         let sealed = SealedKey::seal(&key(), T0, signer(b"a")).unwrap();
         let opened = sealed.open(T0, signer(b"a")).unwrap();
         assert!(opened.same_as(&key()));
+    }
+
+    #[test]
+    fn seal_once_signs_once_and_opens_like_seal() {
+        let calls = Cell::new(0_u8);
+        let counted = |c: &[u8]| {
+            calls.set(calls.get() + 1);
+            signer(b"a")(c)
+        };
+        let sealed = SealedKey::seal_once(&key(), T0, counted).unwrap();
+        assert_eq!(calls.get(), 1);
+        assert!(sealed.open(T0, signer(b"a")).unwrap().same_as(&key()));
+        assert_eq!(
+            sealed.open(T0, signer(b"b")).unwrap_err(),
+            HelloSealError::Failed
+        );
     }
 
     #[test]
