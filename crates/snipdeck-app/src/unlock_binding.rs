@@ -169,11 +169,18 @@ where
         drop(controller);
         window.set_password(slint::SharedString::new());
         // Said once: the note is taken, so the next time the window opens it is not repeated.
-        window.set_problem(if self.core.controller.borrow_mut().take_hello_turned_off_note() {
-            ui::MasterProblem::HelloTurnedOff
-        } else {
-            ui::MasterProblem::None
-        });
+        window.set_problem(
+            if self
+                .core
+                .controller
+                .borrow_mut()
+                .take_hello_turned_off_note()
+            {
+                ui::MasterProblem::HelloTurnedOff
+            } else {
+                ui::MasterProblem::None
+            },
+        );
         window.set_hello_available(self.core.controller.borrow().hello_button_shown());
         window.set_focus_request(window.get_focus_request() + 1);
     }

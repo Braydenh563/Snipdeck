@@ -182,13 +182,15 @@ impl HelloJob {
                 };
                 sealed.map(Product::Sealed).map_err(failure)
             }),
-            Work::Open { sealed } => sealed
-                .open(self.now, sign)
-                .map(Product::Opened)
-                .map_err(|e| match e {
-                    HelloSealError::Failed => HelloFailure::Mismatch,
-                    other => failure(other),
-                }),
+            Work::Open { sealed } => {
+                sealed
+                    .open(self.now, sign)
+                    .map(Product::Opened)
+                    .map_err(|e| match e {
+                        HelloSealError::Failed => HelloFailure::Mismatch,
+                        other => failure(other),
+                    })
+            }
         };
         HelloDone {
             generation: self.generation,
