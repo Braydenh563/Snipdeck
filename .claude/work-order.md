@@ -46,7 +46,7 @@ resumed: 2026-11-09 after idle-guard stop during a long gate run (commits c7f28a
 - [x] Groups a11y (Alt+Up/Down, header keys, window tests) merged (b2c1b01)
 - [x] Groups measurements (tree, contrast, focus ring, 2.25x/320px): all pass; members say n of m (merged)
 - [x] Blind-test fixes: README hotkeys, trigger/palette/groups wording, guide -> typing worker claude/v11-learn; Hello prerequisites -> Hello worker claude/v11-hello-learn; Panel header menu fold/move -> groups worker claude/v11-header-menu (all merged: learn dd52884, hello-learn, header-menu)
-- [ ] ux-auditor findings: H1 search gap, H3 toast wrap, M1 shortcuts clip, M5 keycap or, L3 palette width -> audit worker claude/v11-ux-fit; M2/L1/L2 header + 2 panel_window tests -> sweep worker claude/v11-header-a11y; M3/M4/L4 a11y descriptions + toast kinds -> groups worker claude/v11-a11y-desc; H2/M6 wording -> typing worker claude/v11-learn
+- [x] ux-auditor findings: H1 search gap, H3 toast wrap, M1 shortcuts clip, M5 keycap or, L3 palette width -> audit worker claude/v11-ux-fit; M2/L1/L2 header + 2 panel_window tests -> sweep worker claude/v11-header-a11y; M3/M4/L4 a11y descriptions + toast kinds -> groups worker claude/v11-a11y-desc; H2/M6 wording -> typing worker claude/v11-learn (all merged; ux-fit ddaec4c, header-a11y b3d6cd2)
 - [ ] Final: full gate, polish pass (ux-auditor + blind-tester on Panel, Settings, palette, shortcuts, toasts), docs, morning summary
 - [x] v1.1 light lane: slice 9 serde-saphyr + 3a groups data (merged ed7528b)
 - [x] v1.1 slice 5a triggers data (merged)
