@@ -2243,6 +2243,9 @@ msgstr "Salvo {}"
 msgid "Saved {}."
 msgstr "{} salvo."
 
+msgid "Saved. This code overlaps another trigger, so one of them may never fire."
+msgstr "Salvo. Este código se sobrepõe a outro gatilho, então um dos dois pode nunca disparar."
+
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "Salva todos os quadros, listas e itens em um único arquivo .snipdeck, em uma pasta que você escolher."
 

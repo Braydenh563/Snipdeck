@@ -2243,6 +2243,9 @@ msgstr "Guardado {}"
 msgid "Saved {}."
 msgstr "{} guardado."
 
+msgid "Saved. This code overlaps another trigger, so one of them may never fire."
+msgstr "Guardado. Este código se solapa con otro disparador, así que puede que uno de los dos nunca se active."
+
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "Guarda todos los tableros, listas y fragmentos en un archivo .snipdeck dentro de la carpeta que elijas."
 

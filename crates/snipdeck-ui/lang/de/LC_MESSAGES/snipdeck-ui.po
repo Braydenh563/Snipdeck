@@ -2243,6 +2243,9 @@ msgstr "Gespeichert {}"
 msgid "Saved {}."
 msgstr "{} gespeichert."
 
+msgid "Saved. This code overlaps another trigger, so one of them may never fire."
+msgstr "Gespeichert. Dieses Kürzel überschneidet sich mit einem anderen; eines der beiden löst vielleicht nie aus."
+
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "Speichert alle Boards, Listen und Textbausteine als eine .snipdeck-Datei in einem Ordner deiner Wahl."
 

@@ -1569,6 +1569,55 @@ fn a_trigger_is_saved_read_back_and_cleared_by_blank() {
 }
 
 #[test]
+fn a_trigger_that_hides_another_is_saved_with_a_warning() {
+    let mut r = pro();
+    let first = save_new(&mut r.ctl, ItemKind::Text, "One", "1");
+    r.ctl.open_item_editor(first);
+    r.ctl.item_editor_set_trigger(";sig");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "One", "1"));
+    assert_eq!(
+        toast(&r.ctl),
+        ToastMessage::Saved {
+            list: "Inbox".into()
+        }
+    );
+    r.ctl.open_new_item(Origin::Main);
+    r.ctl.item_editor_set_trigger(";sig2");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Two", "2"));
+    assert!(!r.ctl.item_editor_open(), "still saved");
+    assert_eq!(toast(&r.ctl), ToastMessage::TriggerOverlaps);
+    assert_eq!(r.ctl.store().triggers().expect("all").len(), 2);
+}
+
+#[test]
+fn undoing_an_edit_restores_the_trigger_and_redo_sets_it_again() {
+    let mut r = pro();
+    let id = save_new(&mut r.ctl, ItemKind::Text, "One", "1");
+    r.ctl.open_item_editor(id);
+    r.ctl.item_editor_set_trigger(";old");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "One", "1"));
+    r.ctl.open_item_editor(id);
+    r.ctl.item_editor_set_trigger(";new");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "One", "1"));
+    let code = |r: &Rig| {
+        r.ctl
+            .store()
+            .trigger_of(id)
+            .expect("read")
+            .map(|t| t.as_str().to_owned())
+    };
+    assert_eq!(code(&r).as_deref(), Some(";new"));
+    r.ctl.undo();
+    assert_eq!(code(&r).as_deref(), Some(";old"), "undo");
+    r.ctl.redo();
+    assert_eq!(code(&r).as_deref(), Some(";new"), "redo");
+}
+
+#[test]
 fn trigger_clash_shows_an_error() {
     let mut r = pro();
     let first = save_new(&mut r.ctl, ItemKind::Text, "One", "1");

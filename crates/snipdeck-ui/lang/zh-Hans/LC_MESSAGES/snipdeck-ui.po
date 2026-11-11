@@ -2235,6 +2235,9 @@ msgstr "已保存 {}"
 msgid "Saved {}."
 msgstr "已保存 {}。"
 
+msgid "Saved. This code overlaps another trigger, so one of them may never fire."
+msgstr "已保存。此代码与另一个触发词重叠，其中一个可能永远不会触发。"
+
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "将所有看板、列表和片段保存为一个 .snipdeck 文件，存放在你选择的文件夹中。"
 

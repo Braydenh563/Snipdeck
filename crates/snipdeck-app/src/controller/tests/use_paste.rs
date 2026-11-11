@@ -800,13 +800,13 @@ fn a_typed_trigger_backspaces_then_pastes() {
         TypedOutcome::Expanded(UseResult::Done(UseOutcome::Pasted))
     );
     let sent = backspaces_sent(&mut w);
-    assert_eq!(
-        sent[0],
-        snipdeck_platform::keys::backspaces(4),
+    assert_eq!(sent.len(), 1, "one injection: erase and paste together");
+    assert!(
+        sent[0].starts_with(&snipdeck_platform::keys::backspaces(4)),
         "erased first"
     );
     assert!(
-        sent[1].contains(&KeyEvent {
+        sent[0].contains(&KeyEvent {
             key: Key::V,
             down: true
         }),
@@ -826,10 +826,7 @@ fn a_trigger_counts_graphemes_not_characters() {
     assert_eq!(fired.chars, 2);
     w.ctl
         .expand_typed(&Typed::new(fired.clone(), false, || true));
-    assert_eq!(
-        backspaces_sent(&mut w)[0],
-        snipdeck_platform::keys::backspaces(2)
-    );
+    assert!(backspaces_sent(&mut w)[0].starts_with(&snipdeck_platform::keys::backspaces(2)));
 }
 
 #[test]
@@ -1017,6 +1014,7 @@ fn a_trigger_changed_since_the_fire_does_not_expand() {
 fn the_visible_panel_gets_no_expansion() {
     let mut w = typing_world(1, ";two");
     let fired = typed(&w, ";two");
+    w.ctl.on_top = false;
     w.ctl.show();
     let out = w.ctl.expand_typed(&Typed::new(fired, false, || true));
     assert_eq!(out, TypedOutcome::Skipped);

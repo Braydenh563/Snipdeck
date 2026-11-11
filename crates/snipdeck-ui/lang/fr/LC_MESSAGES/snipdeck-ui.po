@@ -2243,6 +2243,9 @@ msgstr "Enregistré {}"
 msgid "Saved {}."
 msgstr "{} enregistré."
 
+msgid "Saved. This code overlaps another trigger, so one of them may never fire."
+msgstr "Enregistré. Ce code chevauche un autre déclencheur ; l'un des deux risque de ne jamais se déclencher."
+
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "Enregistre tous les tableaux, listes et extraits dans un seul fichier .snipdeck, dans le dossier de votre choix."
 

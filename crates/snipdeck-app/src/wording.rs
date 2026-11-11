@@ -247,6 +247,7 @@ where
         ToastMessage::MailNotOpened => t.invoke_mail_not_opened(),
         ToastMessage::AutostartFailed => t.invoke_autostart_failed(),
         ToastMessage::CannotOpenLog => t.invoke_cannot_open_log(),
+        ToastMessage::TriggerOverlaps => t.invoke_trigger_overlaps(),
         ToastMessage::KeyUnavailable => t.invoke_key_unavailable(),
         ToastMessage::ItemGone => t.invoke_item_gone(),
         ToastMessage::ListGone => t.invoke_list_gone(),

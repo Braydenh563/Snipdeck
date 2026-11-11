@@ -27,6 +27,7 @@ pub(super) fn snap(item: &Item) -> Snap {
     Snap {
         item: item.clone(),
         text: None,
+        trigger: None,
     }
 }
 
@@ -117,6 +118,17 @@ fn apply(
                 None => None,
             };
             b.update_item(&after.item, formats.as_ref())?;
+            if let Some(trigger) = &after.trigger {
+                // A code another item took in the meantime stays with that item.
+                match b.set_trigger(after.item.id, trigger.as_ref()) {
+                    Ok(_)
+                    | Err(
+                        snipdeck_store::Error::TriggerTaken(_)
+                        | snipdeck_store::Error::SensitiveTrigger,
+                    ) => {}
+                    Err(e) => return Err(e),
+                }
+            }
         }
         Change::Move { id, to, .. } => b.move_item(*id, to.0, to.1)?,
     }

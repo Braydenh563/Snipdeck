@@ -2235,6 +2235,9 @@ msgstr "保存: {}"
 msgid "Saved {}."
 msgstr "{} を保存しました。"
 
+msgid "Saved. This code overlaps another trigger, so one of them may never fire."
+msgstr "保存しました。このコードは別のトリガーと重なっているため、どちらかが動作しない場合があります。"
+
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "すべてのボード、リスト、スニペットを、選んだフォルダーに 1 つの .snipdeck ファイルとして保存します。"
 

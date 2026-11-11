@@ -271,12 +271,13 @@ mod tests {
     #[test]
     fn the_same_trigger_twice_needs_a_boundary_between() {
         let item = item_id(1);
-        let (keys, events) = Keys::new();
         // `brb` straight after `brb`: the second is not at a word start.
-        keys.type_text("brbbrb");
-        let (got, _) = deliver_all(keys, &events, item, "brb", || false);
-        assert_eq!(got.len(), 1, "one expansion, not two");
-
+        let mut typist = Typist::new(matcher("brb", item));
+        let mut fires = 0;
+        for c in "brbbrb".chars() {
+            fires += usize::from(typist.event(TypedEvent::Char(c)).is_some());
+        }
+        assert_eq!(fires, 1, "one expansion, not two");
         let mut typist = Typist::new(matcher("brb", item));
         let mut fires = 0;
         for c in "brb brb".chars() {
