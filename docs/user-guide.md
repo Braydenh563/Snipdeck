@@ -76,6 +76,11 @@ that is too short gives its last day (`{date+1mo}` on 31 January is 28 or 29 Feb
 `{date}` and `{time}` use your computer's time zone. `{clipboard}` inserts the clipboard text. Type `{{` and `}}` for literal braces. Any other braces are an error, and the editor says so when
 you save.
 
+On the Free plan the **Placeholders** list in the editor marks every Supporter placeholder with a **Supporter**
+badge. You can still type one. When you save, the editor refuses and says the text needs Supporter. The message
+sits under the text box, with a **Get Supporter…** button right below it that opens the Supporter dialog. Remove
+the placeholder to save on the Free plan.
+
 In the Fill in template window, each `{uuid}` shows as "(new ID)" in the preview: the real ID is made when you insert.
 
 When you use a template with `{field}`, `{choice}`, `{multiline}`, `{pickdate}` or `{optional}`, a **Fill in template** window
@@ -335,7 +340,7 @@ no two items share one. Set it in the item editor, in the **Trigger** box (sensi
 imported from Espanso or similar tools keep their abbreviations as triggers.
 
 Two options under **Typing** in Settings use triggers while you type in other programs. Both are off by
-default, and both work only on Windows (not yet tested on a real PC).
+default, and both work only on Windows (not yet tested on a real PC). On other systems the two switches do nothing.
 
 - **Expand abbreviations as I type.** When you type a trigger in another program, Snipdeck deletes it and
   pastes the item. A trigger fires on its last character, after a space or punctuation (or at the start of a
@@ -344,8 +349,16 @@ default, and both work only on Windows (not yet tested on a real PC).
   text cursor shows the item's title and "Tab to insert". Press `Tab` to insert it. Any other key carries on as
   usual. If several triggers match, the most used item is offered. No text cursor, no hint.
 
+The hint shows only while what you typed is the start of a trigger. It needs at least two characters, and it
+waits for a space, punctuation or the start of a line, like a trigger does. When you have typed the whole
+trigger, the item is pasted instead of hinted. Only trigger codes count, never titles.
+
+In the item editor, the **Trigger** box has the same rules: 1 to 32 characters with no spaces, and no two
+items share one. If you save a code that another trigger starts with, or that starts another trigger, a
+message says "Saved. This code overlaps another trigger, so one of them may never fire." The item is still saved.
+
 Nothing expands in password boxes, in programs set to **Never paste**, in programs running as administrator,
-while Snipdeck is in front, or for sensitive items. Snipdeck keeps only the last 32 characters you typed, in
+while Snipdeck is in front, or for sensitive items. Sensitive items are never suggested either. Snipdeck keeps only the last 32 characters you typed, in
 memory, and never writes them to disk or the log. The typing watcher runs only while one of the options is on.
 
 ## Master password (Supporter)
@@ -382,8 +395,15 @@ otherwise.
   Hello** and use your face, fingerprint or PIN. The password box stays there: the password always works.
 - **When the password is needed.** After Snipdeck restarts, and 7 days after the last time you typed the
   password. After a password unlock, Windows asks for Hello once so the next unlock can use it.
-- **When Hello fails.** If you cancel it, it fails or the PIN was removed, Snipdeck says "Windows Hello did not
-  unlock Snipdeck. Use your master password." and the button goes away until you type the password.
+- **When Hello fails.** If you cancel the prompt, it fails or the PIN was removed, the unlock window says
+  "Windows Hello did not unlock Snipdeck. Use your master password." The Hello button goes away and the
+  password box stays. **Unlock with Windows Hello** stays switched on in Settings: a cancel never turns it off.
+- **A changed Hello.** If you reset your PIN or change your face or fingerprint, Windows makes a new
+  credential and the old copy no longer opens. You see the same message above once, on the unlock that fails.
+  Type your password. Snipdeck then asks Hello once to set itself up again, and the next unlock can use Hello.
+  Snipdeck asks only right after a password unlock. Opening Settings or the unlock window never puts up a
+  Hello prompt. If you cancel that prompt too, nothing is shown, Hello stays on, and it asks again after
+  your next password unlock.
 - **Lock.** The library still locks after 15 minutes without use, as described above. Hello is another way
   back in; locking does not turn it off.
 - **Remove the password or lose Supporter.** Removing the master password turns Hello off. If the licence
@@ -469,12 +489,12 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Panel | `Ctrl+,` | Settings |
 | Panel | `Ctrl+/` | Show the keyboard shortcuts |
 | Panel | `Ctrl+W` | Hide the Panel |
-| Panel | `Ctrl+Z` | Undo the delete (search box empty) |
+| Panel | `Ctrl+Z` | Undo the last delete, grouping, group rename, ungroup or group drag (search box empty) |
 | Panel | `Ctrl+E`, `F2` | Edit the selected item |
 | Panel | `Ctrl+P` | Pin or unpin the selected item |
 | Panel | `Ctrl+G` | Group the marked rows |
 | Panel | `Left`, `Right` (on a group header) | Fold or open the group |
-| Panel | `F2` (on a group header) | Rename the group |
+| Panel | `F2`, or `Ctrl+G` with nothing marked (on a group header) | Rename the group |
 | Panel | `Delete` | Move the selected item to the Trash (not while searching) |
 | Panel | `Menu`, `Shift+F10` | Open the item menu |
 | Panel | `Esc` | Clear the search; with nothing to clear, hide the Panel |
