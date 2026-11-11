@@ -1826,48 +1826,38 @@ fn every_note() -> Vec<snipdeck_portable::Note> {
     let s = |t: &str| t.to_owned();
     let all = vec![
         N::UnmappedVariables {
-            label: s("A"),
+            label: s("Alpha"),
             tokens: s("{#x}"),
         },
         N::UnmappedEspansoVariables {
-            label: s("A"),
+            label: s("Alpha"),
             tokens: s("{{x}}"),
         },
-        N::VariablesDoNotFit { label: s("A") },
+        N::VariablesDoNotFit { label: s("Alpha") },
         N::TriggerOnlyOne {
-            label: s("A"),
+            label: s("Alpha"),
             triggers: s("b, c"),
         },
         N::TriggerNeedsSeparator {
-            label: s("A"),
+            label: s("Alpha"),
             triggers: s("b"),
         },
         N::TriggerBadShape {
-            label: s("A"),
+            label: s("Alpha"),
             triggers: s("b c"),
         },
         N::DisabledFile { name: s("_x.yml") },
-        N::NotAMatch {
-            what: s("base.yml, match 1"),
-        },
-        N::RegexTriggerOnly {
-            what: s("base.yml, match 2"),
-        },
-        N::NoTrigger {
-            what: s("base.yml, match 3"),
-        },
-        N::MarkupKept {
-            what: s("base.yml, match 4"),
-        },
-        N::NoText {
-            what: s("base.yml, match 5"),
-        },
+        N::NotAMatch { what: s("Beta1") },
+        N::RegexTriggerOnly { what: s("Beta2") },
+        N::NoTrigger { what: s("Beta3") },
+        N::MarkupKept { what: s("Beta4") },
+        N::NoText { what: s("Beta5") },
         N::DateFormat {
-            what: s("base.yml, match 6"),
+            what: s("Beta6"),
             format: s("%Q"),
         },
         N::FormField {
-            what: s("base.yml, match 7"),
+            what: s("Beta7"),
             name: s("f"),
         },
         N::ColumnsCut { file: s("a.csv") },
@@ -1911,8 +1901,51 @@ fn every_note() -> Vec<snipdeck_portable::Note> {
     all
 }
 
+/// The values a note shows, which every language must carry in its sentence.
+fn note_args(n: &snipdeck_portable::Note) -> Vec<String> {
+    use snipdeck_portable::Note as N;
+    let v = |xs: &[&str]| xs.iter().map(|x| (*x).to_owned()).collect();
+    match n {
+        N::UnmappedVariables { label, tokens } | N::UnmappedEspansoVariables { label, tokens } => {
+            v(&[label, tokens])
+        }
+        N::VariablesDoNotFit { label } => v(&[label]),
+        N::TriggerOnlyOne { label, triggers }
+        | N::TriggerNeedsSeparator { label, triggers }
+        | N::TriggerBadShape { label, triggers } => v(&[label, triggers]),
+        N::DisabledFile { name } => v(&[name]),
+        N::NotAMatch { what }
+        | N::RegexTriggerOnly { what }
+        | N::NoTrigger { what }
+        | N::MarkupKept { what }
+        | N::NoText { what } => v(&[what]),
+        N::DateFormat { what, format } => v(&[what, format]),
+        N::FormField { what, name } => v(&[what, name]),
+        N::ColumnsCut { file } => v(&[file]),
+        N::TriggerTaken { title, trigger } => v(&[title, trigger]),
+        N::TriggerOverlap {
+            title,
+            trigger,
+            others,
+        } => v(&[title, trigger, others]),
+        N::TitleCut {
+            count,
+            title_chars,
+            source_chars,
+        } => {
+            vec![
+                count.to_string(),
+                title_chars.to_string(),
+                source_chars.to_string(),
+            ]
+        }
+    }
+}
+
+const LOCALES: [&str; 6] = ["de", "es", "fr", "pt-BR", "ja", "zh-Hans"];
+
 #[test]
-fn every_importer_note_is_a_translated_sentence() {
+fn every_importer_note_is_translated_and_keeps_its_values_in_every_language() {
     on_ui_thread(|| {
         let r = rig();
         let text = |n: &snipdeck_portable::Note| {
@@ -1922,14 +1955,46 @@ fn every_importer_note_is_a_translated_sentence() {
             )
         };
         let english: Vec<String> = every_note().iter().map(&text).collect();
-        slint::select_bundled_translation("de").expect("de is bundled");
-        let german: Vec<String> = every_note().iter().map(&text).collect();
-        slint::select_bundled_translation("").expect("back to the source language");
-        for ((n, en), de) in every_note().iter().zip(&english).zip(&german) {
-            assert!(!en.is_empty() && !en.contains('`'), "{n:?}: {en}");
-            assert_ne!(en, de, "{n:?} is not translated");
-            assert!(de.chars().count() > 10, "{n:?}: {de}");
+        for locale in LOCALES {
+            slint::select_bundled_translation(locale).expect("bundled");
+            for (n, en) in every_note().iter().zip(&english) {
+                let t = text(n);
+                assert!(
+                    !t.contains('`') && t.chars().count() > 5,
+                    "{locale} {n:?}: {t}"
+                );
+                assert_ne!(&t, en, "{locale}: {n:?} is not translated");
+                for arg in note_args(n) {
+                    assert!(t.contains(&arg), "{locale}: {n:?} lost {arg:?}: {t}");
+                }
+            }
         }
+        slint::select_bundled_translation("").expect("back to the source language");
+    });
+}
+
+#[test]
+fn note_labels_are_translated_too() {
+    use snipdeck_portable::{Note as N, Warning as W};
+    on_ui_thread(|| {
+        let r = rig();
+        let text = |what: &str| {
+            let n = N::NoTrigger {
+                what: what.to_owned(),
+            };
+            snipdeck_app::wording::import_warning_text(&r.ui, &W::Note(n))
+        };
+        assert!(text("base.yml, match 3").contains("base.yml, match 3"));
+        assert!(text("Ditto clip 7").contains("Clip 7"));
+        slint::select_bundled_translation("de").expect("de is bundled");
+        let (matched, clip) = (text("base.yml, match 3"), text("Ditto clip 7"));
+        slint::select_bundled_translation("").expect("back to the source language");
+        assert!(matched.contains("base.yml, Eintrag 3"), "{matched}");
+        assert!(
+            !matched.contains("match") && !clip.contains("Ditto clip"),
+            "{matched} {clip}"
+        );
+        assert!(clip.contains("Clip 7") || clip.contains('7'), "{clip}");
     });
 }
 

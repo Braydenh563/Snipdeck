@@ -3559,6 +3559,9 @@ msgstr[1] "{} vertrauliche Textbausteine waren nicht in der Sicherung."
 msgid "{} — press Tab to insert"
 msgstr "{} – mit Tab einfügen"
 
+msgid "{}, match {}"
+msgstr "{}, Eintrag {}"
+
 msgid "{}, {} of {}"
 msgstr "{}, {} von {}"
 

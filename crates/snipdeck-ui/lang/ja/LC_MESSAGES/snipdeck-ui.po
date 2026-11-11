@@ -3532,6 +3532,9 @@ msgstr[0] "機密項目 {} 件がバックアップに含まれていません�
 msgid "{} — press Tab to insert"
 msgstr "{} — Tab キーで挿入"
 
+msgid "{}, match {}"
+msgstr "{}、{} 番目のエントリ"
+
 msgid "{}, {} of {}"
 msgstr "{}、{} / {}"
 

@@ -3559,6 +3559,9 @@ msgstr[1] "{} extraits sensibles ne figuraient pas dans la sauvegarde."
 msgid "{} — press Tab to insert"
 msgstr "{} : appuyez sur Tab pour insérer"
 
+msgid "{}, match {}"
+msgstr "{}, correspondance {}"
+
 msgid "{}, {} of {}"
 msgstr "{}, {} sur {}"
 

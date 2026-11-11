@@ -3559,6 +3559,9 @@ msgstr[1] "{} trechos sensíveis não estavam no backup."
 msgid "{} — press Tab to insert"
 msgstr "{} — pressione Tab para inserir"
 
+msgid "{}, match {}"
+msgstr "{}, correspondência {}"
+
 msgid "{}, {} of {}"
 msgstr "{}, {} de {}"
 

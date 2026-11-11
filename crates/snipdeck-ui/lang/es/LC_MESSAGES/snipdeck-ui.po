@@ -3559,6 +3559,9 @@ msgstr[1] "Faltan {} elementos sensibles en la copia de seguridad."
 msgid "{} — press Tab to insert"
 msgstr "{}: pulsa Tab para insertar"
 
+msgid "{}, match {}"
+msgstr "{}, coincidencia {}"
+
 msgid "{}, {} of {}"
 msgstr "{}, {} de {}"
 

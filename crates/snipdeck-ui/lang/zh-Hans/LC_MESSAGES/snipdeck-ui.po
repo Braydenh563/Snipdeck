@@ -3532,6 +3532,9 @@ msgstr[0] "备份中不包含 {} 项敏感项目。"
 msgid "{} — press Tab to insert"
 msgstr "{} — 按 Tab 插入"
 
+msgid "{}, match {}"
+msgstr "{}，第 {} 项"
+
 msgid "{}, {} of {}"
 msgstr "{}，第 {} 项（共 {} 项）"
 
