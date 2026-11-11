@@ -163,6 +163,9 @@ export component FormSection inherits VerticalLayout {
     }
     VerticalLayout {
         visible: root.shown;
+        // Prose, tables and lists in a section keep their own minimum height; a hidden section must take none of it
+        // (the Settings search used to leave a blank gap above the first match), so say so with the minimum too.
+        min-height: root.shown ? self.preferred-height : 0px;
         max-height: root.shown ? 100000px : 0px;
         spacing: 0px;
         @children

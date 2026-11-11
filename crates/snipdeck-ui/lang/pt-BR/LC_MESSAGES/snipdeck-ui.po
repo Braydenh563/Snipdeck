@@ -3450,6 +3450,9 @@ msgstr "notepad.exe"
 msgid "open toggle deck hide"
 msgstr "abrir alternar deck ocultar"
 
+msgid "or"
+msgstr "ou"
+
 msgid "paste"
 msgstr "colar"
 

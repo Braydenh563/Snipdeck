@@ -96,8 +96,40 @@ export component Toast inherits Rectangle {
 
     animate opacity { duration: root.phase == ToastPhase.exit ? Motion.fade : Motion.quick; easing: Motion.out; }
 
+    // The width the message wraps to when the toast is sized from its text (the toast window): the host gives the
+    // width the window will have, so the height it reads is the wrapped one. A toast with a width of its own (the
+    // Panel's) leaves it at the default.
+    in property <length> wrap-width: root.width;
+    // Everything in the row except the message: the icon, the buttons and the padding.
+    property <length> chrome: row.preferred-width - one-line.preferred-width;
+    property <length> text-width: max(Space.s8, root.wrap-width - root.chrome);
+
     preferred-width: row.preferred-width;
-    preferred-height: Space.s8 + Space.s2;
+    // 40 for one line; a wrapped message (two or three lines) makes the toast taller, as does a larger text size.
+    preferred-height: max(Space.s8 + Space.s2, wrapped.preferred-height + 2 * Space.s2);
+
+    // Only to measure: the message on one line (its natural width) and wrapped to the width it gets.
+    one-line := Text {
+        visible: false;
+        text: root.text;
+        font-family: Fonts.sans;
+        font-size: Type.sm;
+        wrap: TextWrap.no-wrap;
+        x: 0px;
+        y: 0px;
+        accessible-role: none;
+    }
+    wrapped := Text {
+        visible: false;
+        width: root.text-width;
+        text: root.text;
+        font-family: Fonts.sans;
+        font-size: Type.sm;
+        wrap: TextWrap.word-wrap;
+        x: 0px;
+        y: 0px;
+        accessible-role: none;
+    }
 
     area := TouchArea {
         row := HorizontalLayout {
@@ -105,11 +137,14 @@ export component Toast inherits Rectangle {
             padding-right: (root.undo-label != "" || root.edit-label != "") ? Space.s1 : Space.s3;
             spacing: Space.s2;
             if root.has-icon: Rectangle {
-                width: 16px;
+                // The icon grows with the text size, like the message beside it.
+                width: 16px * SystemLook.text-scale;
                 Icon {
                     source: root.kind == ToastKind.success ? Icons.check-circle : Icons.warning;
                     tint: Theme.text-on-ink;
-                    y: (parent.height - self.height) / 2;
+                    size: 16px * SystemLook.text-scale;
+                    // Level with the first line of the message.
+                    y: max(0px, (Space.s8 + Space.s2 - 2 * Space.s2 - self.height) / 2) + Space.s2;
                 }
             }
             Text {
@@ -118,8 +153,9 @@ export component Toast inherits Rectangle {
                 font-family: Fonts.sans;
                 font-size: Type.sm;
                 vertical-alignment: center;
-                wrap: TextWrap.no-wrap;
-                overflow: elide;
+                wrap: TextWrap.word-wrap;
+                horizontal-stretch: 1;
+                min-width: 0px;
             }
             // Each button's wrapper takes the layout's full height so the button inside centres on the message (a layout ignores `y`).
             if root.undo-label != "": undo-button := ToastButton {

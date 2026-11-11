@@ -3440,6 +3440,9 @@ msgstr "notepad.exe"
 msgid "open toggle deck hide"
 msgstr "打开 切换 卡组 隐藏"
 
+msgid "or"
+msgstr "或"
+
 msgid "paste"
 msgstr "粘贴"
 

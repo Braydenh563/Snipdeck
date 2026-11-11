@@ -142,7 +142,7 @@ export component CommandPalette inherits Rectangle {
     }
 
     card := Rectangle {
-        width: min(Space.s12 * 9, parent.width - 2 * Space.s4);
+        width: min(Space.s12 * 9 * SystemLook.text-scale, parent.width - 2 * Space.s4);
         x: (parent.width - self.width) / 2;
         y: min(Space.s12, parent.height / 8);
         height: min(content.preferred-height, parent.height - self.y - Space.s4);
@@ -191,7 +191,7 @@ export component CommandPalette inherits Rectangle {
                     // Keeps the highlighted row in view (the scrollbar may move the list away from it until the highlight moves).
                     property <length> follow: min(0px, max(-(root.cur + 1) * root.row-h + plist.height, -root.cur * root.row-h));
                     property <int> n: root.rows.length;
-                    height: min(root.rows.length * root.row-h, Space.s12 * 6);
+                    height: min(root.rows.length * root.row-h, Space.s12 * 6 * SystemLook.text-scale);
                     init => { plist.content-y = self.follow; }
                     changed follow => { plist.content-y = self.follow; }
                     changed n => { plist.content-y = self.follow; }
