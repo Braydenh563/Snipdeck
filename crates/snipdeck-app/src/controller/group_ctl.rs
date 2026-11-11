@@ -22,6 +22,14 @@ enum RowMark {
     Other,
 }
 
+/// A window's request to open a header's inline rename, and a counter that tells the window it
+/// is a new request.
+#[derive(Debug, Default, Clone, Copy)]
+pub(super) struct Rename {
+    pub(super) group: Option<snipdeck_core::GroupId>,
+    pub(super) seq: u64,
+}
+
 /// Whose rows a group operation reads: the Panel's or the Main window's.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Surface {
@@ -57,6 +65,10 @@ where
             self.offer_manual_for_group(s);
             return;
         }
+        // Under a colour filter the rows show no headers: a group made now would be invisible.
+        if s == Surface::Main && !self.main.shows_groups() {
+            return;
+        }
         let Ok(name) = Name::new(&self.group_name) else {
             return;
         };
@@ -64,20 +76,26 @@ where
         if members.is_empty() {
             // On a header with nothing marked there is nothing to gather: rename its group.
             if let Some(run) = self.group_row(s, cursor) {
-                self.start_group_rename(run.group.id);
+                self.start_group_rename(s, run.group.id);
             }
             return;
         }
         let group = Group::new(list, name);
         let order = self.group_order(s, list);
         // Each member's group now: Undo puts every one back exactly, whatever the moves did.
+        let Ok(runs) = self.store.groups_of(list) else {
+            self.show_toast(failed());
+            return;
+        };
         let mut changes: Vec<Change> = members
             .iter()
             .filter_map(|id| {
-                self.group_of_item(s, *id).map(|r| Change::Regroup {
-                    item: *id,
-                    group: Some(r.group),
-                })
+                runs.iter()
+                    .find(|r| r.items.contains(id))
+                    .map(|r| Change::Regroup {
+                        item: *id,
+                        group: Some(r.group.clone()),
+                    })
             })
             .collect();
         let made = self.store.atomically(|b| {
@@ -124,7 +142,7 @@ where
         }
         if let Some(at) = self.header_row(s, group.id) {
             self.group_cursor(s, at);
-            self.start_group_rename(group.id);
+            self.start_group_rename(s, group.id);
         }
     }
 
@@ -135,21 +153,34 @@ where
 
     /// Asks the window to open the inline rename of group `id`'s header. The request follows the
     /// group, not a row number, and ends with [`group_rename_ended`](Self::group_rename_ended).
-    pub(super) fn start_group_rename(&mut self, id: snipdeck_core::GroupId) {
-        self.rename_group = Some(id);
-        self.rename_seq += 1;
+    pub(super) fn start_group_rename(&mut self, s: Surface, id: snipdeck_core::GroupId) {
+        let r = self.rename_of(s);
+        r.group = Some(id);
+        r.seq += 1;
     }
 
-    /// The inline rename closed (accepted or abandoned): the request is spent.
+    fn rename_of(&mut self, s: Surface) -> &mut Rename {
+        match s {
+            Surface::Panel => &mut self.rename_panel,
+            Surface::Main => &mut self.rename_main,
+        }
+    }
+
+    /// The Panel's inline rename closed (accepted or abandoned): the request is spent.
     pub fn group_rename_ended(&mut self) {
-        self.rename_group = None;
+        self.rename_panel.group = None;
+    }
+
+    /// The Main window's inline rename closed (accepted, abandoned or lost the focus).
+    pub fn main_group_rename_ended(&mut self) {
+        self.rename_main.group = None;
     }
 
     /// F2 on a header in the Main window: its name opens for editing in place.
     pub fn main_group_rename_start(&mut self, index: usize) {
         self.main_fresh();
         if let Some(run) = self.group_row(Surface::Main, index) {
-            self.start_group_rename(run.group.id);
+            self.start_group_rename(Surface::Main, run.group.id);
         }
     }
 
@@ -161,7 +192,7 @@ where
         match entry {
             super::ItemMenuEntry::RenameGroup => {
                 if let Some(run) = self.group_row(Surface::Panel, at) {
-                    self.start_group_rename(run.group.id);
+                    self.start_group_rename(Surface::Panel, run.group.id);
                 }
             }
             super::ItemMenuEntry::Ungroup => self.group_ungroup(at),
@@ -450,6 +481,8 @@ where
     }
 
     fn group_rename_on(&mut self, s: Surface, index: usize, name: &str) {
+        // Saving (Enter or the focus leaving) closes the editor, whatever came of the name.
+        self.rename_of(s).group = None;
         let Some(run) = self.group_row(s, index) else {
             return;
         };
@@ -635,6 +668,118 @@ where
             }
         }
         true
+    }
+
+    /// Alt+Up / Alt+Down (and the item menu's Move up / down) on the item at Main row `from` when the
+    /// open list shows groups: the item swaps places with the row beside it, taking that row's
+    /// group (the rows above the first member are its header: moving past it leaves the group);
+    /// a folded group is stepped over whole, an open group's header is joined at its top.
+    /// One undo step, none when nothing changes. `false`: not a case for this path.
+    pub(super) fn main_move_item_on(&mut self, from: usize, delta: isize) -> bool {
+        if !self.main.shows_groups() || self.main.open_groups().is_empty() {
+            return false;
+        }
+        let (Some(MainKey::Item(id)), Some(list)) = (
+            self.main.keys().get(from).copied(),
+            self.group_list(Surface::Main),
+        ) else {
+            return false;
+        };
+        let Some(beside) = from.checked_add_signed(delta) else {
+            return true;
+        };
+        let order = self.group_order(Surface::Main, list);
+        let old = self.group_of_item(Surface::Main, id);
+        let (to, want) = match self.main.keys().get(beside).copied() {
+            Some(MainKey::Item(n)) => {
+                let want = self.group_of_item(Surface::Main, n).map(|r| r.group.id);
+                let to = if delta < 0 {
+                    place_before(&order, n, &[id])
+                } else {
+                    Some(Placement::After(n))
+                };
+                (to, want)
+            }
+            Some(MainKey::Group(g)) => {
+                let Some(run) = self.main.group_at(beside) else {
+                    return true;
+                };
+                if old.as_ref().is_some_and(|o| o.group.id == g) {
+                    // Past its own header: out of the group, above it.
+                    (place_before(&order, id, &[id]), None)
+                } else if run.group.collapsed {
+                    let to = if delta < 0 {
+                        run.items
+                            .first()
+                            .and_then(|first| place_before(&order, *first, &[id]))
+                    } else {
+                        run.items.last().map(|last| Placement::After(*last))
+                    };
+                    (to, None)
+                } else {
+                    // An open group's header below: the item joins it at its top.
+                    let joined = self.join_dropped(Surface::Main, id, &run);
+                    self.finish_item_move(joined.is_ok(), id);
+                    return true;
+                }
+            }
+            _ => return true,
+        };
+        let Some(to) = to else {
+            return true;
+        };
+        let mut changes = vec![Change::Regroup {
+            item: id,
+            group: old.as_ref().map(|r| r.group.clone()),
+        }];
+        let done = self.store.atomically(|b| {
+            let spot = super::history_ctl::spot_of(b, id)?;
+            super::history_ctl::move_recorded(b, id, list, to, &mut changes)?;
+            let now = b.groups_of(list)?;
+            let now = now
+                .iter()
+                .find(|r| r.items.contains(&id))
+                .map(|r| r.group.clone());
+            if now.as_ref().map(|g| g.id) != want {
+                b.set_item_group(id, want)?;
+                changes.push(Change::Regroup {
+                    item: id,
+                    group: want.and_then(|w| {
+                        b.groups_of(list)
+                            .ok()?
+                            .into_iter()
+                            .find(|r| r.group.id == w)
+                            .map(|r| r.group)
+                    }),
+                });
+            }
+            let after = b.groups_of(list)?;
+            let group = after
+                .iter()
+                .find(|r| r.items.contains(&id))
+                .map(|r| r.group.id);
+            // The step is the net change: nothing moved, nothing to undo.
+            Ok(spot != super::history_ctl::spot_of(b, id)?
+                || group != old.as_ref().map(|r| r.group.id))
+        });
+        if let Ok(true) = done {
+            self.record_step(Action::Reorder, changes);
+        }
+        self.finish_item_move(done.is_ok(), id);
+        true
+    }
+
+    /// After an item move in the Main window: refresh, follow the item and say where it is.
+    fn finish_item_move(&mut self, ok: bool, id: ItemId) {
+        if !ok {
+            self.show_toast(failed());
+            return;
+        }
+        self.library_changed();
+        self.main_fresh();
+        self.follow_moved_row(id);
+        let at = self.main.cursor();
+        self.announce_placed(at + 1, self.main.keys().len());
     }
 
     /// Item `id` dropped on the header of `target`: it joins the group at its top (one step).

@@ -677,7 +677,8 @@ impl MainModel {
 
     /// Whether the rows carry group headers: the open section is one list in manual order, with no search and no
     /// colour filter (a filter would cut a group's run).
-    fn shows_groups(&self) -> bool {
+    #[must_use]
+    pub fn shows_groups(&self) -> bool {
         self.label_filter.is_none() && self.reorderable()
     }
 

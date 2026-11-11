@@ -469,7 +469,6 @@ export component MainWindow inherits Window {
     in property <bool> has-groups: false;
     // The items the list holds, folded group members included (headers are not items); -1: count the rows.
     in property <int> list-total: -1;
-    public pure function group-default-name() -> string { return @tr("Group"); }
     public pure function group-announcement(name: string, count: int) -> string {
         return @tr("group {}, {} item" | "group {}, {} items" % count, name, count);
     }
@@ -898,6 +897,7 @@ export component MainWindow inherits Window {
         { text: @tr("Move down"), icon: Icons.caret-down, shortcut: "Alt+Down", disabled: root.multi || !root.rows-reorderable || root.item-menu-index >= root.rows.length - 1 },
         { text: @tr("Move to list…"), icon: Icons.folder },
         { text: @tr("Tags…"), icon: Icons.tag },
+        { text: MenuTexts.item-group(), icon: Icons.rows, disabled: !root.rows-reorderable || root.label-filter >= 0 },
         { separator: true },
         { text: @tr("Move to Trash"), icon: Icons.trash, destructive: true, shortcut: "Del" },
     ];
@@ -948,7 +948,9 @@ export component MainWindow inherits Window {
             root.act(ItemAction.move, index);
         } else if (i == 10) {
             root.act(ItemAction.tag, index);
-        } else if (i == 12) {
+        } else if (i == 11) {
+            root.group-requested(index);
+        } else if (i == 13) {
             root.act(ItemAction.delete, index);
         }
         if (!root.chooser-open && !root.confirm-shown) {
@@ -1579,9 +1581,11 @@ export component MainWindow inherits Window {
                                     side-override: root.ctl-h - 2 * Space.s0-5;
                                     icon: Icons.squares-four;
                                     tooltip: @tr("Tile view");
-                                    active: root.view == MainView.tile;
+                                    // Groups draw rows, never tiles: the button rests while they show.
+                                    enabled: !root.has-groups;
+                                    active: root.view == MainView.tile && !root.has-groups;
                                     accessible-checkable: true;
-                                    accessible-checked: root.view == MainView.tile;
+                                    accessible-checked: root.view == MainView.tile && !root.has-groups;
                                     clicked => {
                                         root.view = MainView.tile;
                                         root.view-changed(MainView.tile);
@@ -1955,6 +1959,7 @@ export component MainWindow inherits Window {
                                             rename-ended => { root.group-rename-ended(); items-scope.focus(); }
                                             menu-requested(x, y) => {
                                                 root.cursor = i;
+                                                root.select-requested(i, SelectMode.replace);
                                                 root.open-item-menu(i, self.absolute-position.x + x, self.absolute-position.y + y);
                                             }
                                         }
@@ -2001,7 +2006,7 @@ export component MainWindow inherits Window {
                                 Rectangle {
                                     visible: row-drop.has-drag;
                                     x: root.ring;
-                                    y: row-from >= 0 && row-from < i ? card.y + card.height - 1px : 0px;
+                                    y: row-from >= 0 && row-from < i ? (row.is-header ? parent.height - 1px : card.y + card.height - 1px) : 0px;
                                     width: parent.width - 2 * root.ring;
                                     height: 2px;
                                     background: Theme.accent;

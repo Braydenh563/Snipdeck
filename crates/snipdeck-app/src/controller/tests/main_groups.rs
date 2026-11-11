@@ -115,13 +115,13 @@ fn renaming_a_group_is_undoable_and_an_empty_name_does_nothing() {
 fn f2_on_a_header_asks_the_window_to_rename_it_in_place() {
     let mut w = open_replies();
     group_first_two(&mut w);
-    w.ctl.group_rename_ended();
+    w.ctl.main_group_rename_ended();
     let before = w.ctl.main_screen().rename_seq;
     w.ctl.main_group_rename_start(0);
     let screen = w.ctl.main_screen();
     assert_eq!(screen.rename_row, Some(0));
     assert_eq!(screen.rename_seq, before + 1);
-    w.ctl.group_rename_ended();
+    w.ctl.main_group_rename_ended();
     assert_eq!(w.ctl.main_screen().rename_row, None);
     w.ctl.main_group_rename_start(1);
     assert_eq!(
@@ -214,6 +214,138 @@ fn alt_arrows_on_a_header_move_the_whole_group_one_step() {
     assert_eq!(shape(&mut w)[0].0, "Group");
 }
 
+/// Gives the first `n` rows of the open list the Red label.
+fn label_first_rows_red(w: &mut World, n: usize) {
+    let ids: Vec<_> = w
+        .ctl
+        .main_screen()
+        .rows
+        .iter()
+        .take(n)
+        .filter_map(|r| match r.key {
+            crate::main_window::Key::Item(id) => Some(id),
+            _ => None,
+        })
+        .collect();
+    w.ctl.label_items(&ids, Some(snipdeck_core::ItemLabel::Red));
+}
+
+#[test]
+fn ctrl_g_under_a_colour_filter_groups_nothing_because_no_header_could_show() {
+    let mut w = open_replies();
+    label_first_rows_red(&mut w, 2);
+    w.ctl
+        .main_set_label_filter(Some(snipdeck_core::ItemLabel::Red));
+    assert_eq!(shape(&mut w).len(), 2, "the filter shows two rows");
+    w.ctl.main_select(0, SelectMode::Replace);
+    w.ctl.main_select(1, SelectMode::Toggle);
+    w.ctl.main_group_marked(0);
+    w.ctl.main_set_label_filter(None);
+    assert_eq!(
+        shape(&mut w).iter().filter(|r| r.1).count(),
+        0,
+        "no group was made behind the filter"
+    );
+    assert!(
+        w.ctl.main_screen().rename_row.is_none(),
+        "and no rename is waiting for a header that is not there"
+    );
+}
+
+#[test]
+fn a_refused_ctrl_g_under_a_colour_filter_leaves_the_existing_group_and_its_undo_alone() {
+    let mut w = open_replies();
+    group_first_two(&mut w);
+    w.ctl.main_group_rename_ended();
+    label_first_rows_red(&mut w, 1);
+    w.ctl
+        .main_set_label_filter(Some(snipdeck_core::ItemLabel::Red));
+    w.ctl.main_select(0, SelectMode::Replace);
+    w.ctl.main_group_marked(0);
+    w.ctl.main_set_label_filter(None);
+    let rows = shape(&mut w);
+    assert_eq!(rows.iter().filter(|r| r.1).count(), 1, "{rows:?}");
+    assert_eq!(rows.iter().filter(|r| r.2).count(), 2, "{rows:?}");
+    // The one Undo is still the first grouping: it ungroups, and nothing else was recorded on top of it.
+    w.ctl.undo();
+    assert_eq!(shape(&mut w).iter().filter(|r| r.1).count(), 0);
+}
+
+/// Whether the screen shows the "not saved" toast.
+fn toast_failed(w: &mut World) -> bool {
+    matches!(
+        w.ctl.main_screen().toast.map(|t| t.message),
+        Some(ToastMessage::NotSaved)
+    )
+}
+
+fn titles(w: &mut World) -> Vec<String> {
+    shape(w).into_iter().map(|r| r.0).collect()
+}
+
+#[test]
+fn alt_down_on_the_only_member_of_a_group_leaves_it_without_a_failed_toast() {
+    let mut w = open_replies();
+    w.ctl.main_group_marked(2); // [One Two [Group] Three Greeting]
+    w.ctl.main_select(3, SelectMode::Replace);
+    w.ctl.main_reorder_items(1);
+    assert!(!toast_failed(&mut w), "no failed toast");
+    assert_eq!(titles(&mut w), ["One", "Two", "Greeting", "Three"]);
+    assert_eq!(w.ctl.main_screen().cursor, 3, "the cursor follows the item");
+    w.ctl.undo();
+    assert_eq!(
+        titles(&mut w),
+        ["One", "Two", "Group", "Three", "Greeting"],
+        "one Undo puts the group back"
+    );
+}
+
+#[test]
+fn alt_up_on_the_first_member_leaves_the_group_and_records_exactly_one_step() {
+    let mut w = open_replies();
+    group_first_two(&mut w); // [Group] One Two Three Greeting
+    w.ctl.main_select(1, SelectMode::Replace);
+    w.ctl.main_reorder_items(-1);
+    assert_eq!(titles(&mut w), ["One", "Group", "Two", "Three", "Greeting"]);
+    w.ctl.undo();
+    assert_eq!(
+        titles(&mut w),
+        ["Group", "One", "Two", "Three", "Greeting"],
+        "one Undo re-joins"
+    );
+    w.ctl.undo();
+    assert_eq!(
+        titles(&mut w),
+        ["One", "Two", "Three", "Greeting"],
+        "the next Undo is the grouping, not an empty step"
+    );
+}
+
+#[test]
+fn an_item_steps_past_a_folded_group_instead_of_joining_it() {
+    let mut w = open_replies();
+    group_first_two(&mut w);
+    w.ctl.main_group_collapse(0, Some(true)); // [Group*] Three Greeting
+    w.ctl.main_select(1, SelectMode::Replace);
+    w.ctl.main_reorder_items(-1);
+    assert_eq!(titles(&mut w), ["Three", "Group", "Greeting"]);
+    let count = |w: &mut World| {
+        w.ctl
+            .main_screen()
+            .rows
+            .iter()
+            .find_map(|r| r.header.as_ref().map(|h| h.count))
+    };
+    assert_eq!(count(&mut w), Some(2), "Three did not join");
+    w.ctl.main_select(0, SelectMode::Replace);
+    w.ctl.main_reorder_items(1);
+    assert_eq!(titles(&mut w), ["Group", "Three", "Greeting"]);
+    assert_eq!(count(&mut w), Some(2), "nor on the way back");
+    w.ctl.undo();
+    w.ctl.undo();
+    assert_eq!(titles(&mut w), ["Group", "Three", "Greeting"]);
+}
+
 #[test]
 fn the_palette_groups_folds_renames_moves_ungroups_and_deletes_like_the_keys() {
     use crate::commands::{Command, CursorGroup};
@@ -225,7 +357,7 @@ fn the_palette_groups_folds_renames_moves_ungroups_and_deletes_like_the_keys() {
         "a header appeared: {:?}",
         shape(&mut w)
     );
-    w.ctl.group_rename_ended();
+    w.ctl.main_group_rename_ended();
     // Put the cursor on the header (row 1: One, [Group], Two, ...).
     let head = shape(&mut w).iter().position(|r| r.1).expect("header");
     w.ctl.main_select(head, SelectMode::Replace);
@@ -247,7 +379,7 @@ fn the_palette_groups_folds_renames_moves_ungroups_and_deletes_like_the_keys() {
     // Rename starts the inline edit on that header.
     w.ctl.run_command(Command::RenameGroup, head);
     assert_eq!(w.ctl.main_screen().rename_row, Some(head));
-    w.ctl.group_rename_ended();
+    w.ctl.main_group_rename_ended();
     // Move up: the header passes the item above it; the cursor stays on it.
     w.ctl.run_command(Command::MoveGroupUp, head);
     let screen = w.ctl.main_screen();
@@ -270,7 +402,7 @@ fn the_palette_groups_folds_renames_moves_ungroups_and_deletes_like_the_keys() {
     // Delete group trashes the header's items (Undo is the usual toast).
     w.ctl.main_select(1, SelectMode::Replace);
     w.ctl.run_command(Command::GroupItems, 1);
-    w.ctl.group_rename_ended();
+    w.ctl.main_group_rename_ended();
     let head = shape(&mut w).iter().position(|r| r.1).expect("header");
     w.ctl.run_command(Command::DeleteGroup, head);
     assert_eq!(
@@ -284,7 +416,81 @@ fn the_palette_groups_folds_renames_moves_ungroups_and_deletes_like_the_keys() {
 fn an_item_row_has_no_cursor_group() {
     let mut w = open_replies();
     group_first_two(&mut w);
-    w.ctl.group_rename_ended();
+    w.ctl.main_group_rename_ended();
     w.ctl.main_select(1, SelectMode::Replace);
     assert_eq!(w.ctl.main_screen().cursor_group, None);
+}
+
+#[test]
+fn a_rename_started_in_the_main_window_does_not_reach_the_panel_and_ending_one_keeps_the_other() {
+    let mut w = open_replies();
+    group_first_two(&mut w);
+    assert!(w.ctl.main_screen().rename_row.is_some());
+    assert_eq!(
+        w.ctl.view().rename_row,
+        None,
+        "the Panel was not asked to rename"
+    );
+    let panel_seq = w.ctl.view().rename_seq;
+    w.ctl.group_rename_ended();
+    assert!(
+        w.ctl.main_screen().rename_row.is_some(),
+        "the Panel's end does not close the Main window's editor"
+    );
+    assert_eq!(w.ctl.view().rename_seq, panel_seq);
+}
+
+#[test]
+fn saving_a_name_ends_the_request_so_a_later_move_cannot_reopen_it_on_another_header() {
+    let mut w = open_replies();
+    two_groups(&mut w); // renames "Second" while the new header's request is still open
+    w.ctl.main_group_rename(0, "Work");
+    assert_eq!(w.ctl.main_screen().rename_row, None, "the save ended it");
+    w.ctl.main_select(3, SelectMode::Replace);
+    w.ctl.main_reorder_items(-1);
+    assert_eq!(
+        w.ctl.main_screen().rename_row,
+        None,
+        "moving a group opens no editor"
+    );
+}
+
+#[test]
+fn deleting_a_folded_group_trashes_its_hidden_members_and_undo_restores_them() {
+    let mut w = open_replies();
+    group_first_two(&mut w);
+    w.ctl.main_group_collapse(0, Some(true)); // [Group*] Three Greeting
+    w.ctl.main_group_delete(0);
+    assert_eq!(
+        titles(&mut w),
+        ["Three", "Greeting"],
+        "the folded members went too"
+    );
+    w.ctl.undo();
+    assert_eq!(
+        titles(&mut w),
+        ["Group", "Three", "Greeting"],
+        "still folded"
+    );
+    assert_eq!(
+        w.ctl.main_screen().rows[0].header.as_ref().map(|h| h.count),
+        Some(2),
+        "one Undo brings the header and both members back"
+    );
+}
+
+#[test]
+fn folding_a_group_with_its_members_selected_drops_them_from_the_selection() {
+    let mut w = open_replies();
+    group_first_two(&mut w);
+    w.ctl.main_select(1, SelectMode::Replace);
+    w.ctl.main_select(2, SelectMode::Toggle);
+    assert_eq!(w.ctl.main_screen().selected_count, 2);
+    w.ctl.main_group_collapse(0, Some(true));
+    assert_eq!(
+        w.ctl.main_screen().selected_count,
+        0,
+        "hidden rows are not acted on by a later delete"
+    );
+    assert_eq!(titles(&mut w), ["Group", "Three", "Greeting"]);
 }

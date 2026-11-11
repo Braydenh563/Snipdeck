@@ -41,6 +41,17 @@ export component GroupHeader inherits Rectangle {
         }
     }
 
+    // `changed` does not fire for a value a header is born with (Ctrl+G adds the header and the
+    // request together), so the editor also opens at init.
+    init => {
+        if (root.rename-request != 0) {
+            root.renaming = true;
+            edit.text = root.name;
+            edit.focus();
+            edit.select-all();
+        }
+    }
+
     touch := TouchArea {
         clicked => { if (!root.renaming) { root.toggled(); } }
         double-clicked => {

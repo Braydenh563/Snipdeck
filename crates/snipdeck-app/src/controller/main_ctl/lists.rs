@@ -136,6 +136,9 @@ where
             self.group_move_on(Surface::Main, from, delta);
             return;
         }
+        if self.main_move_item_on(from, delta) {
+            return;
+        }
         // Alt+Up on the first row lands on itself, not nowhere: the sorted-list offer is the same at both ends.
         let onto = from.saturating_add_signed(delta);
         self.main_drop_row(from, onto);
@@ -143,7 +146,7 @@ where
 
     /// Puts the cursor on item `id` among the rows now shown (a label filter can hide some of the
     /// list, so its place in the list is not its row).
-    pub(super) fn follow_moved_row(&mut self, id: ItemId) {
+    pub(in crate::controller) fn follow_moved_row(&mut self, id: ItemId) {
         if let Some(at) = self.main.keys().iter().position(|k| *k == Key::Item(id)) {
             self.main.set_cursor(at);
         }
