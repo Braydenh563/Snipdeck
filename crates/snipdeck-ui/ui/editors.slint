@@ -1067,22 +1067,6 @@ export component ItemEditor inherits Window {
                         }
                     }
 
-                    if !root.sensitive: FormField {
-                        label: @tr("Trigger");
-                        helper: @tr("Type this in any app to insert the snippet. Turn it on in Settings, under Typing.");
-                        error: root.trigger-error;
-                        trigger-field := TextField {
-                            label: @tr("Trigger");
-                            placeholder: @tr("For example ;sig");
-                            text <=> root.trigger;
-                            edited(t) => { root.touch(); root.trigger-edited(t); }
-                            accepted(t) => { root.try-save(); }
-                            changed has-focus => {
-                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                            }
-                        }
-                    }
-
                     FormField {
                         label: @tr("Privacy");
                         helper: root.sensitive-help;
@@ -1093,6 +1077,22 @@ export component ItemEditor inherits Window {
                             checked <=> root.sensitive;
                             enabled: root.text-kind;
                             toggled(v) => { root.touch(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+
+                    if !root.sensitive: FormField {
+                        label: @tr("Trigger");
+                        helper: @tr("Type this in any app to insert the snippet. Turn it on in Settings, under Typing.");
+                        error: root.trigger-error;
+                        trigger-field := TextField {
+                            label: @tr("Trigger");
+                            placeholder: @tr("For example ;sig");
+                            text <=> root.trigger;
+                            edited(t) => { root.touch(); root.trigger-edited(t); }
+                            accepted(t) => { root.try-save(); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }

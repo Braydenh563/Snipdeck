@@ -1008,6 +1008,9 @@ fn trigger_field_hidden_for_sensitive() {
         let r = rig();
         menu(&r, "New item");
         let ed = r.ed();
+        // Tall enough that every field is on screen (off-screen ones are not in the tree).
+        ed.window().set_size(slint::PhysicalSize::new(900, 2400));
+        settle();
         assert!(!missing(&ed, "Trigger", AccessibleRole::TextInput));
         click(
             ed.window(),
