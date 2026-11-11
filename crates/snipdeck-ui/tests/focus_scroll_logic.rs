@@ -121,13 +121,13 @@ fn walk(
 
 fn assert_kept(name: &str, w: &Walk) {
     assert!(
-        !w.reached.is_empty(),
-        "{name}: no text field took the focus, so the walk proved nothing"
-    );
-    assert!(
         w.lost.is_empty(),
         "{name}: the focus was lost at Tab stop(s) {:?}",
         w.lost
+    );
+    assert!(
+        !w.reached.is_empty(),
+        "{name}: no text field took the focus, so the walk proved nothing"
     );
     assert!(
         w.hidden.is_empty(),
@@ -163,7 +163,7 @@ ui_tests! {
     fn the_item_editor_keeps_the_focus_going_backwards_too() {
         for (kind, name) in [(0, "text"), (3, "template")] {
             let (ui, help) = item_editor(kind, 330.0);
-            assert_kept(name, &walk(&ui, &help, Key::Backtab, 40, 330.0));
+            assert_kept(name, &walk(&ui, &help, Key::Backtab, 80, 330.0));
         }
     }
 
@@ -191,8 +191,14 @@ ui_tests! {
         let help = Rc::new(Cell::new(0));
         let h = help.clone();
         ui.on_help_requested(move || h.set(h.get() + 1));
-        press(ui.window(), &key(Key::Tab));
-        assert_kept("list editor", &walk(&ui, &help, Key::Tab, 30, 200.0));
+        // The name field has the focus when the window opens; the walk then visits every other stop (the colours,
+        // the sort order, the buttons), none of which is a text field.
+        type_text(ui.window(), "~");
+        settle();
+        assert_eq!(ui.get_name(), "~Email replies", "the name field has the focus at the start");
+        let w = walk(&ui, &help, Key::Tab, 30, 200.0);
+        assert!(w.lost.is_empty(), "list editor: the focus was lost at Tab stop(s) {:?}", w.lost);
+        assert!(w.hidden.is_empty(), "list editor: focused field not scrolled into view: {:?}", w.hidden);
     }
 
     fn the_board_editor_keeps_the_focus_through_every_tab_stop_while_it_scrolls() {
