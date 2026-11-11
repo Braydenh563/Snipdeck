@@ -187,6 +187,7 @@ pub fn shortcut_group(title: &str, note: &str, lines: &[(&str, &[&str])]) -> Sho
                     title: (*title).into(),
                     keys: strings(keys),
                     spoken: keys.join("+").into(),
+                    plain: false,
                 })
                 .collect::<Vec<_>>(),
         )),

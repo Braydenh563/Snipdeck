@@ -6,7 +6,7 @@ use i_slint_backend_testing::{AccessibleRole as Role, ElementQuery};
 use slint::{ComponentHandle, Global};
 use snipdeck_ui::testing::{Harness, assert_golden};
 use snipdeck_ui::{
-    HelpWindow, PanelWindow, SettingsFilter, SettingsPage, SystemLook, ToastKind, ToastWindow,
+    HelpWindow, MainWindow, PaletteRow, PanelWindow, SettingsFilter, SettingsPage, SystemLook, ToastKind, ToastWindow,
 };
 
 #[path = "support/editor_fixture.rs"]
@@ -208,6 +208,7 @@ fn wrapped_shortcut_titles_are_not_clipped() {
                 .collect::<Vec<slint::SharedString>>(),
         )),
         spoken: keys.join(" ").into(),
+        plain: false,
     };
     h.component
         .set_shortcut_groups(slint::ModelRc::new(slint::VecModel::from(vec![
@@ -243,4 +244,70 @@ fn wrapped_shortcut_titles_are_not_clipped() {
         Vec::new(),
         "lines of long titles that are too short to hold them"
     );
+}
+
+/// M5: alternatives ("Up" or "Down") read as alternatives: the word "or" stands between them, and a word like
+/// "Trigger" is plain text, not a cap.
+#[test]
+fn shortcut_alternatives_say_or_and_words_are_not_caps() {
+    let h = Harness::new(HelpWindow::new, 608, 600);
+    editor::help(&h.component);
+    let keys = |k: &[&str]| {
+        slint::ModelRc::new(slint::VecModel::from(
+            k.iter()
+                .map(|s| (*s).into())
+                .collect::<Vec<slint::SharedString>>(),
+        ))
+    };
+    let line = |title: &str, k: &[&str], plain: bool| snipdeck_ui::ShortcutLineData {
+        title: title.into(),
+        keys: keys(k),
+        spoken: title.into(),
+        plain,
+    };
+    h.component
+        .set_shortcut_groups(slint::ModelRc::new(slint::VecModel::from(vec![
+            snipdeck_ui::ShortcutGroup {
+                title: "Panel".into(),
+                note: "".into(),
+                lines: slint::ModelRc::new(slint::VecModel::from(vec![
+                    line("Move", &["Up", "|", "Down"], false),
+                    line("Chord", &["Up", "Down"], false),
+                    line("Expand", &["Trigger"], true),
+                ])),
+            },
+        ])));
+    h.component.set_tab(2);
+    let frame = h.render_settled();
+    // Each KeyCombo is a text node labelled with the spoken form (here the title).
+    let combos = find(&h, Role::Text);
+    let width = |t: &str| combos.iter().find(|c| c.0 == t).map_or(0.0, |c| c.3);
+    assert!(
+        width("Move") - width("Chord") >= 16.0,
+        "\"or\" and its gaps must separate alternatives from a chord: {combos:?}"
+    );
+    assert_golden("shortcuts-or-1x", &frame);
+}
+
+/// L3: the palette card grows with the text size (bounded by the window), so a long command name stays whole.
+#[test]
+fn palette_scales_with_the_text_size() {
+    let rows = ["Group selected items", "Open Settings"].map(|label| PaletteRow {
+        id: 0,
+        label: label.into(),
+        keys: slint::ModelRc::new(slint::VecModel::from(vec![
+            slint::SharedString::from("Ctrl"),
+            "Shift".into(),
+            "G".into(),
+        ])),
+        spoken: "Control Shift G".into(),
+        mark_before: "".into(),
+        mark_text: "".into(),
+    });
+    let h = Harness::new(MainWindow::new, 1400, 700);
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    h.component.invoke_open_palette();
+    h.component
+        .set_palette_rows(slint::ModelRc::new(slint::VecModel::from(rows.to_vec())));
+    assert_golden("palette-225", &h.render_settled());
 }

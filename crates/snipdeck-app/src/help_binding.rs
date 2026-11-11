@@ -711,6 +711,7 @@ fn ui_group(window: &ui::HelpWindow, group: &shortcuts::Group) -> ui::ShortcutGr
             title: line.title.as_str().into(),
             keys: model(line.keys.iter().map(|k| k.as_str().into())),
             spoken: line.spoken.as_str().into(),
+            plain: line.plain,
         })),
     }
 }

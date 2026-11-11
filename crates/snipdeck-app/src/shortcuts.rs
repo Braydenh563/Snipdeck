@@ -52,6 +52,13 @@ pub enum Keys {
         /// What assistive technology reads.
         spoken: &'static str,
     },
+    /// Not keys at all but a word ("Trigger", "Hello"): shown as plain text, not as a cap.
+    Plain {
+        /// The word.
+        text: &'static str,
+        /// What assistive technology reads.
+        spoken: &'static str,
+    },
     /// The chord of a global hotkey as set in Settings; empty while the hotkey is off.
     Global(HotkeyAction),
 }
@@ -65,6 +72,9 @@ pub struct Shortcut {
     pub keys: Keys,
 }
 
+/// Between two alternatives in a `Custom` list of caps ("Up" or "Down"); the list draws it as the word "or".
+pub const ALT: &str = "|";
+
 const fn row(scope: Scope, chord: &'static str) -> Shortcut {
     Shortcut {
         scope,
@@ -76,6 +86,13 @@ const fn custom(scope: Scope, caps: &'static [&'static str], spoken: &'static st
     Shortcut {
         scope,
         keys: Keys::Custom { caps, spoken },
+    }
+}
+
+const fn plain(scope: Scope, text: &'static str, spoken: &'static str) -> Shortcut {
+    Shortcut {
+        scope,
+        keys: Keys::Plain { text, spoken },
     }
 }
 
@@ -97,7 +114,7 @@ pub const CATALOGUE: [Shortcut; 80] = [
     global(HotkeyAction::Capture),
     global(HotkeyAction::PasteNext),
     // Typed in any program (Windows only): the Trigger field of an item, and the suggestion hint.
-    custom(Anywhere, &["Trigger"], "The item's trigger"),
+    plain(Anywhere, "Trigger", "The item's trigger"),
     custom(Anywhere, &["Tab"], "Tab while the suggestion hint shows"),
     // Main window.
     row(Main, "Ctrl+K"),
@@ -121,13 +138,13 @@ pub const CATALOGUE: [Shortcut; 80] = [
     row(Main, "Ctrl+Y"),
     row(Main, "Ctrl+W"),
     row(Main, "Ctrl+B"),
-    custom(Main, &["Alt", "Up", "Down"], "Alt+Up or Alt+Down"),
+    custom(Main, &["Alt", "Up", ALT, "Alt", "Down"], "Alt+Up or Alt+Down"),
     custom(Main, &["Space"], "Hold Space"),
     // Groups in the Main window.
     row(Main, "Ctrl+G"),
     custom(
         Main,
-        &["Left", "Right", "Enter"],
+        &["Left", ALT, "Right", ALT, "Enter"],
         "Left, Right or Enter on a group header",
     ),
     row(Main, "F2"),
@@ -136,14 +153,14 @@ pub const CATALOGUE: [Shortcut; 80] = [
     row(Main, "Del"),
     // Panel.
     custom(Panel, &["A-Z"], "Type"),
-    custom(Panel, &["Up", "Down"], "Up or Down"),
-    custom(Panel, &["PgUp", "PgDn"], "PageUp or PageDown"),
+    custom(Panel, &["Up", ALT, "Down"], "Up or Down"),
+    custom(Panel, &["PgUp", ALT, "PgDn"], "PageUp or PageDown"),
     row(Panel, "Enter"),
     row(Panel, "Shift+Enter"),
-    custom(Panel, &["Alt", "Up", "Down"], "Alt+Up or Alt+Down"),
+    custom(Panel, &["Alt", "Up", ALT, "Alt", "Down"], "Alt+Up or Alt+Down"),
     custom(Panel, &["Alt", "1-9"], "Alt+1 to 9"),
     custom(Panel, &["Space"], "Hold Space"),
-    custom(Panel, &["Shift", "Up", "Down"], "Shift+Up or Shift+Down"),
+    custom(Panel, &["Shift", "Up", ALT, "Shift", "Down"], "Shift+Up or Shift+Down"),
     row(Panel, "Ctrl+A"),
     row(Panel, "Ctrl+Tab"),
     row(Panel, "Ctrl+Shift+Tab"),
@@ -169,29 +186,29 @@ pub const CATALOGUE: [Shortcut; 80] = [
     row(Panel, "Ctrl+G"),
     custom(
         Panel,
-        &["Left", "Right", "Enter", "Space"],
+        &["Left", ALT, "Right", ALT, "Enter", ALT, "Space"],
         "Left, Right, Enter or Space on a group header",
     ),
     row(Panel, "F2"),
     custom(
         Panel,
-        &["Alt", "Up", "Down"],
+        &["Alt", "Up", ALT, "Alt", "Down"],
         "Alt+Up or Alt+Down on a group header",
     ),
     custom(Panel, &["Shift", "F10"], "Shift+F10 or the Menu key"),
     // Picker.
-    custom(Picker, &["Up", "Down"], "Up or Down"),
+    custom(Picker, &["Up", ALT, "Down"], "Up or Down"),
     row(Picker, "Enter"),
     row(Picker, "Shift+Enter"),
     custom(Picker, &["Alt", "1-9"], "Alt+1 to 9"),
-    custom(Picker, &["Tab", "Shift"], "Tab or Shift+Tab"),
+    custom(Picker, &["Tab", ALT, "Shift", "Tab"], "Tab or Shift+Tab"),
     row(Picker, "Ctrl+E"),
     row(Picker, "Esc"),
     // Editors.
     row(Editors, "Ctrl+Enter"),
     row(Editors, "Esc"),
     // The unlock window.
-    custom(Unlock, &["Hello"], "Unlock with Windows Hello"),
+    plain(Unlock, "Hello", "Unlock with Windows Hello"),
 ];
 
 /// One line the list shows.
@@ -203,6 +220,8 @@ pub struct Line {
     pub keys: Vec<String>,
     /// The keys spoken; empty = off.
     pub spoken: String,
+    /// A word rather than keys: drawn as plain text.
+    pub plain: bool,
 }
 
 /// The lines of one scope.
@@ -222,6 +241,7 @@ impl Keys {
                 caps.iter().map(|c| (*c).to_owned()).collect(),
                 spoken.to_owned(),
             ),
+            Self::Plain { text, spoken } => (vec![text.to_owned()], spoken.to_owned()),
             Self::Global(action) => crate::commands::chord_caps(hotkeys, action),
         }
     }
@@ -250,6 +270,7 @@ fn matches(line: &Line, words: &[String]) -> bool {
     let key_words: Vec<String> = line
         .keys
         .iter()
+        .filter(|k| *k != ALT)
         .map(|k| k.to_lowercase())
         .chain(
             line.spoken
@@ -288,6 +309,7 @@ pub fn groups_of(
                     title: title.clone(),
                     keys,
                     spoken,
+                    plain: matches!(shortcut.keys, Keys::Plain { .. }),
                 }
             })
             .filter(|line| matches(line, &words))

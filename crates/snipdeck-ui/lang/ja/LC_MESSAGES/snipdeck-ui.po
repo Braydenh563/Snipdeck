@@ -3434,6 +3434,9 @@ msgstr "notepad.exe"
 msgid "open toggle deck hide"
 msgstr "開く 切り替え デッキ 隠す"
 
+msgid "or"
+msgstr "または"
+
 msgid "paste"
 msgstr "貼り付け"
 

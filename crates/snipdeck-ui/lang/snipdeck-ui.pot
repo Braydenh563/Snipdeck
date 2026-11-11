@@ -2350,7 +2350,7 @@ msgstr ""
 msgid "Objects"
 msgstr ""
 
-#: ui/components/shortcuts-sheet.slint:15 ui/components/shortcuts-sheet.slint:40 ui/settings.slint:959
+#: ui/components/shortcuts-sheet.slint:17 ui/components/shortcuts-sheet.slint:49 ui/settings.slint:959
 msgid "Off"
 msgstr ""
 
@@ -4580,6 +4580,10 @@ msgstr ""
 
 #: ui/command_texts.slint:18
 msgid "open toggle deck hide"
+msgstr ""
+
+#: ui/components/keycap.slint:69
+msgid "or"
 msgstr ""
 
 #: ui/toast_texts.slint:184
