@@ -185,7 +185,7 @@ fn a_selected_header_paints_a_whole_focus_ring_inside_its_bounds() {
         let h = panel(320, dark, 1.0, "Replies", true);
         let f = h.render_settled();
         let (x0, y0, x1, y1) = rect(&handle(&h, "Replies", 2));
-        let (mx, my) = ((x0 + x1) / 2, (y0 + y1) / 2);
+        let (mx, my) = (u32::midpoint(x0, x1), u32::midpoint(y0, y1));
         // Two pixels thick, on the inside of every edge (corners are rounded, so the middle of each).
         let edges = [
             ("top", [(mx, y0), (mx, y0 + 1)]),
@@ -225,7 +225,7 @@ fn at_225_text_and_320_wide_a_long_title_elides_and_count_and_chevron_stay_whole
         let e = handle(&h, long, 2);
         let (x0, y0, x1, y1) = rect(&e);
         let t = if dark { DARK } else { LIGHT };
-        let bg = f.pixel((x0 + x1) / 2, y0 + 4);
+        let bg = f.pixel(u32::midpoint(x0, x1), y0 + 4);
         eprintln!(
             "dark={dark}: header {x0},{y0} to {x1},{y1} ({} x {} px)",
             x1 - x0,
