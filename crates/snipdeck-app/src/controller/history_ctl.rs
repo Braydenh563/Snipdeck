@@ -4,7 +4,7 @@
 
 use snipdeck_core::{Item, ItemId, ListId, Placement, Timestamp};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
-use snipdeck_store::{Batch, ItemRepo, TrashRepo, Trashable};
+use snipdeck_store::{Batch, GroupDelete, GroupRepo, ItemRepo, TrashRepo, Trashable};
 
 use super::{Controller, Library, Toast, ToastKind, ToastMessage, failed};
 use crate::{
@@ -119,6 +119,9 @@ fn apply(
             b.update_item(&after.item, formats.as_ref())?;
         }
         Change::Move { id, to, .. } => b.move_item(*id, to.0, to.1)?,
+        Change::Group { group, members } => b.create_group(group, members)?,
+        Change::Ungroup { group, .. } => b.delete_group(group.id, GroupDelete::Keep)?,
+        Change::Rename { after, .. } => b.update_group(after)?,
     }
     Ok(())
 }

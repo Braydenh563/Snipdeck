@@ -121,7 +121,7 @@ where
             .rows()
             .into_iter()
             .nth(index)
-            .filter(|r| !r.deleted_pending)
+            .filter(crate::panel::Row::is_item)
     }
 
     /// The row delete button in Delete mode: the item goes to the Trash (one history step) and

@@ -1,0 +1,133 @@
+import { Theme, Type, Space, Radius, Fonts } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+
+// The header of a group of items in a list (Panel). A quiet bar: chevron, name, count. A click or Enter folds and
+// unfolds it, a double-click or F2 renames it in place, a right click opens its menu. It is not focusable itself:
+// the Panel's key handler owns the keys, and `selected` draws the focus ring like a card's.
+export component GroupHeader inherits Rectangle {
+    in property <string> name;
+    in property <string> count-text;
+    in property <string> a11y-label;
+    in property <bool> collapsed;
+    in property <bool> selected;
+    // Starts the inline rename when it changes to a new non-zero value (the host counts requests).
+    in property <int> rename-request: 0;
+    in property <string> rename-label;
+    callback toggled();
+    callback renamed(string);
+    callback menu-requested(length, length);
+
+    property <bool> renaming: false;
+    property <bool> hover: touch.has-hover;
+
+    min-height: Space.hit;
+    border-radius: Radius.lg;
+    background: root.selected ? Theme.bg-sunken : root.hover ? Theme.bg-sunken.transparentize(0.5) : transparent;
+    accessible-role: button;
+    accessible-label: root.a11y-label;
+    accessible-expandable: true;
+    accessible-expanded: !root.collapsed;
+    accessible-action-default => { root.toggled(); }
+
+    changed rename-request => {
+        if (root.rename-request != 0) {
+            root.renaming = true;
+            edit.text = root.name;
+            edit.focus();
+            edit.select-all();
+        }
+    }
+
+    touch := TouchArea {
+        clicked => { if (!root.renaming) { root.toggled(); } }
+        double-clicked => {
+            root.renaming = true;
+            edit.text = root.name;
+            edit.focus();
+            edit.select-all();
+        }
+        pointer-event(event) => {
+            if (event.kind == PointerEventKind.down && event.button == PointerEventButton.right) {
+                root.menu-requested(self.mouse-x, self.mouse-y);
+            }
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: Space.s2;
+        padding-right: Space.s3;
+        spacing: Space.s2;
+        VerticalLayout {
+            alignment: center;
+            Icon {
+                source: root.collapsed ? Icons.caret-right : Icons.caret-down;
+                tint: Theme.text-secondary;
+                size: Type.base;
+            }
+        }
+        Rectangle {
+            horizontal-stretch: 1;
+            Text {
+                visible: !root.renaming;
+                width: parent.width;
+                height: parent.height;
+                text: root.name;
+                color: Theme.text-primary;
+                font-family: Fonts.sans;
+                font-size: Type.sm;
+                font-weight: 600;
+                vertical-alignment: center;
+                overflow: elide;
+                accessible-role: none;
+            }
+            edit := TextInput {
+                visible: root.renaming;
+                width: parent.width;
+                height: parent.height;
+                color: Theme.text-primary;
+                font-family: Fonts.sans;
+                font-size: Type.sm;
+                font-weight: 600;
+                vertical-alignment: center;
+                single-line: true;
+                accessible-label: root.rename-label;
+                accepted => {
+                    root.renaming = false;
+                    root.renamed(self.text);
+                }
+                key-pressed(event) => {
+                    if (event.text == Key.Escape) {
+                        root.renaming = false;
+                        return accept;
+                    }
+                    return reject;
+                }
+                changed has-focus => {
+                    if (!self.has-focus && root.renaming) {
+                        root.renaming = false;
+                        root.renamed(self.text);
+                    }
+                }
+            }
+        }
+        Text {
+            text: root.count-text;
+            color: Theme.text-secondary;
+            font-family: Fonts.sans;
+            font-size: Type.xs;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+    }
+
+    // Keyboard focus ring: 2px, like a card's.
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        border-width: root.selected ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.lg;
+        background: transparent;
+    }
+}

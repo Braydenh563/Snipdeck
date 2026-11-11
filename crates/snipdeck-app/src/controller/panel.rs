@@ -123,6 +123,14 @@ pub enum ItemMenuEntry {
     },
     /// Move the item to the Trash, with an Undo toast.
     Trash,
+    /// Group the marked items (or this one) under a new header.
+    Group,
+    /// On a group header: rename it in place.
+    RenameGroup,
+    /// On a group header: remove the header, keep the items.
+    Ungroup,
+    /// On a group header: move the header and its items to the Trash.
+    DeleteGroup,
     /// A line between groups.
     Separator,
 }
@@ -282,6 +290,14 @@ where
     /// The rows of the item menu for `id`.
     pub(super) fn item_menu_entries(&self, id: ItemId) -> Vec<ItemMenuEntry> {
         let row = self.menu_row(id);
+        if row.as_ref().is_some_and(|r| r.header.is_some()) {
+            return vec![
+                ItemMenuEntry::RenameGroup,
+                ItemMenuEntry::Ungroup,
+                ItemMenuEntry::Separator,
+                ItemMenuEntry::DeleteGroup,
+            ];
+        }
         let pinned = row.as_ref().is_some_and(|r| r.pinned);
         let mut entries = vec![ItemMenuEntry::Use, ItemMenuEntry::Copy];
         // Only text can be transformed.
@@ -313,6 +329,7 @@ where
             ItemMenuEntry::MoveDown {
                 enabled: self.can_move_item(id, 1),
             },
+            ItemMenuEntry::Group,
             ItemMenuEntry::Separator,
             ItemMenuEntry::Trash,
         ]);
@@ -439,6 +456,18 @@ where
             ItemMenuEntry::Trash => {
                 self.trash_with_undo(&targets);
                 self.model.clear_marks();
+                Vec::new()
+            }
+            ItemMenuEntry::Group => {
+                if let Some(at) = self.model.rows().iter().position(|r| r.id == id) {
+                    self.group_marked(at);
+                }
+                Vec::new()
+            }
+            ItemMenuEntry::RenameGroup
+            | ItemMenuEntry::Ungroup
+            | ItemMenuEntry::DeleteGroup => {
+                self.choose_group_entry(id, entry);
                 Vec::new()
             }
             ItemMenuEntry::MoveTo
@@ -590,6 +619,11 @@ where
 
     /// F2 on row `index`. The Panel has no inline title field, so this opens the same editor.
     pub fn rename_row(&mut self, index: usize) -> Vec<Effect> {
+        if self.model.group_at(index).is_some() {
+            self.rename_row = Some(index);
+            self.rename_seq += 1;
+            return Vec::new();
+        }
         self.edit_row(index)
     }
 

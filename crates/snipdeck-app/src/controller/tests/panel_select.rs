@@ -1278,3 +1278,105 @@ fn hiding_the_panel_ends_select_mode_and_clears_the_marks() {
     assert!(!w.ctl.view().select_mode);
     assert_eq!(w.ctl.view().marked_count, 0);
 }
+
+// ---- Groups ---------------------------------------------------------------------------------------
+
+fn group_first_two(w: &mut World) {
+    w.ctl.panel_mark(0, SelectMode::Toggle);
+    w.ctl.panel_mark(1, SelectMode::Toggle);
+    w.ctl.group_marked(0);
+}
+
+fn headers(w: &World) -> Vec<usize> {
+    w.ctl
+        .view()
+        .rows
+        .iter()
+        .enumerate()
+        .filter(|(_, r)| r.header.is_some())
+        .map(|(i, _)| i)
+        .collect()
+}
+
+#[test]
+fn group_from_selection_is_one_undo_step() {
+    let mut w = world();
+    group_first_two(&mut w);
+    let view = w.ctl.view();
+    assert_eq!(view.rows.len(), 5, "a header joins the four items");
+    let header = view.rows[0].header.clone().expect("the header is first");
+    assert_eq!(header.count, 2);
+    assert!(view.rows[1].grouped && view.rows[2].grouped && !view.rows[3].grouped);
+    assert_eq!(view.rename_row, Some(0), "the new header starts renaming");
+    w.ctl.undo();
+    assert_eq!(headers(&w), Vec::<usize>::new(), "one Undo ungroups");
+    assert_eq!(w.ctl.view().rows.len(), 4);
+    w.ctl.redo();
+    assert_eq!(headers(&w), [0]);
+}
+
+#[test]
+fn delete_group_keep_items_ungroups() {
+    let mut w = world();
+    group_first_two(&mut w);
+    w.ctl.group_ungroup(0);
+    assert_eq!(headers(&w), Vec::<usize>::new());
+    assert_eq!(w.ctl.view().rows.len(), 4, "the items stay");
+    w.ctl.undo();
+    assert_eq!(headers(&w), [0], "Undo brings the header back");
+}
+
+#[test]
+fn delete_group_with_its_items_is_one_undo() {
+    let mut w = world();
+    group_first_two(&mut w);
+    w.ctl.group_delete(0);
+    assert_eq!(w.ctl.view().rows.len(), 2);
+    assert!(w.ctl.view().toast.expect("toast").undo);
+    w.ctl.undo();
+    assert_eq!(w.ctl.view().rows.len(), 5, "items and header are back");
+}
+
+#[test]
+fn collapsed_group_hides_rows_but_search_shows_them() {
+    let mut w = world();
+    let title = w.ctl.view().rows[0].title.clone();
+    group_first_two(&mut w);
+    w.ctl.group_collapse(0, Some(true));
+    assert_eq!(w.ctl.view().rows.len(), 3, "header and the two others");
+    assert!(w.ctl.view().rows[0].header.as_ref().unwrap().collapsed);
+    w.ctl.set_query(&title);
+    let rows = w.ctl.view().rows;
+    assert!(
+        rows.iter().any(|r| r.title == title && r.header.is_none()),
+        "a search finds the item inside the collapsed group"
+    );
+    w.ctl.set_query("");
+    w.ctl.group_collapse(0, Some(false));
+    assert_eq!(w.ctl.view().rows.len(), 5);
+}
+
+#[test]
+fn quick_numbers_skip_headers() {
+    let mut w = world();
+    group_first_two(&mut w);
+    let numbers: Vec<u8> = w.ctl.view().rows.iter().map(|r| r.number).collect();
+    assert_eq!(numbers, [0, 1, 2, 3, 4], "the header takes no number");
+    w.ctl.group_collapse(0, Some(true));
+    let numbers: Vec<u8> = w.ctl.view().rows.iter().map(|r| r.number).collect();
+    assert_eq!(numbers, [0, 1, 2], "numbers count the rows shown");
+}
+
+#[test]
+fn renaming_a_group_is_undoable_and_a_header_is_never_marked() {
+    let mut w = world();
+    group_first_two(&mut w);
+    w.ctl.group_rename(0, "Work");
+    assert_eq!(w.ctl.view().rows[0].title, "Work");
+    w.ctl.undo();
+    assert_ne!(w.ctl.view().rows[0].title, "Work");
+    w.ctl.panel_mark_all();
+    assert_eq!(w.ctl.view().marked_count, 4, "only items are marked");
+    w.ctl.panel_mark(0, SelectMode::Toggle);
+    assert_eq!(w.ctl.view().marked_count, 4);
+}

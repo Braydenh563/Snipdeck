@@ -11,14 +11,14 @@ use crate::{
     search_mark,
 };
 use snipdeck_core::{
-    Board, BoardId, Item, ItemId, ItemKind, ItemLabel, List, ListAccent, ListIcon, ListId,
+    Board, BoardId, GroupId, Item, ItemId, ItemKind, ItemLabel, List, ListAccent, ListIcon, ListId,
     ListSort, search::SearchIndex,
 };
 use snipdeck_platform::{
     keys::{PasteRule, builtin_paste_rules},
     route::{Policy, Route, Target, decide_with},
 };
-use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TagRepo};
+use snipdeck_store::{BoardRepo, GroupRepo, GroupRun, ItemRepo, ListRepo, TagRepo};
 
 /// How many search results the Panel shows.
 const SEARCH_LIMIT: usize = 50;
@@ -64,6 +64,31 @@ pub struct Row {
     pub deleted_pending: bool,
     /// The item keeps HTML or RTF next to its text: the row shows a "Formatted" mark.
     pub formatted: bool,
+    /// The row is a group's header, not an item (its `id` is the group's, never an item's).
+    pub header: Option<GroupHeader>,
+    /// The item is a member of a group shown above it: the card is indented.
+    pub grouped: bool,
+}
+
+impl Row {
+    /// An item row a click can use, edit or mark: not a header, not "Deleted · Undo".
+    #[must_use]
+    pub fn is_item(&self) -> bool {
+        self.header.is_none() && !self.deleted_pending
+    }
+}
+
+/// What a group's header row shows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GroupHeader {
+    /// The group.
+    pub group: GroupId,
+    /// Its name.
+    pub name: String,
+    /// How many items it holds (collapsed or not).
+    pub count: usize,
+    /// The items are hidden under the header.
+    pub collapsed: bool,
 }
 
 /// A list's name and accent, shown on rows in mixed views.
@@ -123,6 +148,8 @@ pub struct PanelModel {
     lists: Vec<List>,
     list: Option<ListId>,
     items: Vec<Item>,
+    /// The shown list's groups (empty when it is not in manual order: a group needs its order).
+    groups: Vec<GroupRun>,
     /// Every item, the boards and the index, as read when the library last changed.
     all: Rc<Snapshot>,
     list_labels: HashMap<ListId, ListLabel>,
@@ -174,7 +201,7 @@ impl PanelModel {
         list: Option<ListId>,
     ) -> snipdeck_store::Result<Self>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
     {
         Self::load_cached(store, board, list, &IndexCache::new())
     }
@@ -193,7 +220,7 @@ impl PanelModel {
         cache: &IndexCache,
     ) -> snipdeck_store::Result<Self>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
     {
         let snapshot = cache.snapshot(store)?;
         let boards: Vec<Board> = snapshot.boards.iter().map(|(b, _)| b.clone()).collect();
@@ -208,6 +235,10 @@ impl PanelModel {
             .or_else(|| lists.first().map(|l| l.id));
         let items = match list {
             Some(id) => store.items(id)?,
+            None => Vec::new(),
+        };
+        let groups = match list {
+            Some(id) => store.groups_of(id)?,
             None => Vec::new(),
         };
         let list_labels = snapshot
@@ -232,6 +263,7 @@ impl PanelModel {
             lists,
             list,
             items,
+            groups,
             all: snapshot,
             list_labels,
             index,
@@ -255,7 +287,7 @@ impl PanelModel {
     /// Any store error; the model is left as it was.
     pub fn refresh<S>(&mut self, store: &S) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
     {
         self.reload(store, self.board, self.list, true)
     }
@@ -268,7 +300,7 @@ impl PanelModel {
     /// Any store error; the model is left as it was.
     pub fn select_list<S>(&mut self, store: &S, list: ListId) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
     {
         self.reload(store, self.board, Some(list), false)
     }
@@ -280,7 +312,7 @@ impl PanelModel {
     /// Any store error; the model is left as it was.
     pub fn select_board<S>(&mut self, store: &S, board: BoardId) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
     {
         self.reload(store, Some(board), None, false)
     }
@@ -293,7 +325,7 @@ impl PanelModel {
         keep_search: bool,
     ) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
     {
         let mut next = Self::load_cached(store, board, list, &self.cache)?;
         next.target = self.target.take();
@@ -407,12 +439,7 @@ impl PanelModel {
     #[must_use]
     pub fn rows(&self) -> Vec<Row> {
         if !self.searching() {
-            let mut rows: Vec<Row> = self
-                .list_items()
-                .into_iter()
-                .enumerate()
-                .map(|(n, item)| self.row(item, n, false, None))
-                .collect();
+            let mut rows = self.list_rows();
             self.place_ghosts(&mut rows);
             return rows;
         }
@@ -426,6 +453,86 @@ impl PanelModel {
             .enumerate()
             .map(|(n, (item, tag))| self.row(item, n, true, tag))
             .collect()
+    }
+
+    /// The shown list's rows: items, with a header above each group (the group's items are
+    /// left out while it is collapsed). Quick numbers count item rows only. A list that orders
+    /// itself shows no groups: a group is a run of the manual order.
+    fn list_rows(&self) -> Vec<Row> {
+        let manual = self.list().is_some_and(|l| l.sort == ListSort::Manual);
+        let runs: HashMap<ItemId, &GroupRun> = if manual {
+            self.groups
+                .iter()
+                .flat_map(|run| run.items.iter().map(move |i| (*i, run)))
+                .collect()
+        } else {
+            HashMap::new()
+        };
+        let mut rows = Vec::new();
+        let mut open: Option<GroupId> = None;
+        let mut number = 0;
+        for item in self.list_items() {
+            let run = runs.get(&item.id).copied();
+            if let Some(run) = run.filter(|r| open != Some(r.group.id)) {
+                rows.push(Self::header_row(run));
+            }
+            open = run.map(|r| r.group.id);
+            if run.is_some_and(|r| r.group.collapsed) {
+                continue;
+            }
+            let mut row = self.row(item, number, false, None);
+            row.grouped = run.is_some();
+            rows.push(row);
+            number += 1;
+        }
+        rows
+    }
+
+    /// The header row of `run`.
+    fn header_row(run: &GroupRun) -> Row {
+        Row {
+            id: ItemId::from_uuid(*run.group.id.as_uuid()),
+            number: 0,
+            kind: ItemKind::Text,
+            sensitive: false,
+            title: run.group.name.as_str().to_owned(),
+            preview: String::new(),
+            list: None,
+            title_mark: None,
+            preview_mark: None,
+            tag_hit: None,
+            pinned: false,
+            label: None,
+            marked: false,
+            deleted_pending: false,
+            formatted: false,
+            header: Some(GroupHeader {
+                group: run.group.id,
+                name: run.group.name.as_str().to_owned(),
+                count: run.items.len(),
+                collapsed: run.group.collapsed,
+            }),
+            grouped: false,
+        }
+    }
+
+    /// The group whose header is shown at row `index`.
+    #[must_use]
+    pub fn group_at(&self, index: usize) -> Option<GroupRun> {
+        let header = self.rows().into_iter().nth(index)?.header?;
+        self.groups.iter().find(|r| r.group.id == header.group).cloned()
+    }
+
+    /// The shown list's groups.
+    #[must_use]
+    pub fn groups(&self) -> &[GroupRun] {
+        &self.groups
+    }
+
+    /// The group item `id` belongs to, if any.
+    #[must_use]
+    pub fn group_of(&self, id: ItemId) -> Option<&GroupRun> {
+        self.groups.iter().find(|r| r.items.contains(&id))
     }
 
     /// Puts the "Deleted · Undo" rows of the shown list back, each after the row that was above it.
@@ -472,7 +579,7 @@ impl PanelModel {
         let (Some(list), rows) = (self.list, self.rows()) else {
             return;
         };
-        let Some(row) = rows.get(index).filter(|r| !r.deleted_pending) else {
+        let Some(row) = rows.get(index).filter(|r| r.is_item()) else {
             return;
         };
         let after = index.checked_sub(1).and_then(|i| rows.get(i)).map(|r| r.id);
@@ -579,6 +686,8 @@ impl PanelModel {
             marked: self.marked.contains(&item.id),
             deleted_pending: false,
             formatted: self.all.rich.contains(&item.id),
+            header: None,
+            grouped: false,
         }
     }
 
@@ -586,13 +695,21 @@ impl PanelModel {
     #[must_use]
     pub fn selected(&self) -> Option<ItemId> {
         let rows = self.rows();
-        Self::nearest_live(&rows, self.selected).map(|i| rows[i].id)
+        Self::nearest_live(&rows, self.selected)
+            .map(|i| &rows[i])
+            .filter(|r| r.header.is_none())
+            .map(|r| r.id)
     }
 
     /// The position of the keyboard-selected row in [`rows`](Self::rows).
     #[must_use]
     pub fn selected_position(&self) -> Option<usize> {
         Self::nearest_live(&self.rows(), self.selected)
+    }
+
+    /// Puts the keyboard cursor on shown row `at` (a header included).
+    pub fn select_row(&mut self, at: usize) {
+        self.selected = at;
     }
 
     /// Puts the selection on item `id` if it is among the rows shown.
@@ -617,7 +734,7 @@ impl PanelModel {
     /// past the end is ignored.
     pub fn mark(&mut self, index: usize, mode: SelectMode) {
         let rows = self.rows();
-        if rows.get(index).is_none_or(|r| r.deleted_pending) {
+        if rows.get(index).is_none_or(|r| !r.is_item()) {
             return;
         }
         let ids: Vec<ItemId> = rows.iter().map(|r| r.id).collect();
@@ -641,7 +758,7 @@ impl PanelModel {
                 let (lo, hi) = (from.min(index), from.max(index));
                 self.marked = rows[lo..=hi]
                     .iter()
-                    .filter(|r| !r.deleted_pending)
+                    .filter(|r| r.is_item())
                     .map(|r| r.id)
                     .collect();
                 if self.anchor.is_none() {
@@ -670,7 +787,7 @@ impl PanelModel {
         let rows: Vec<Row> = self
             .rows()
             .into_iter()
-            .filter(|r| !r.deleted_pending)
+            .filter(Row::is_item)
             .collect();
         self.marked = rows.iter().map(|r| r.id).collect();
         self.anchor = rows.first().map(|r| r.id);
@@ -704,7 +821,7 @@ impl PanelModel {
     pub fn targets(&self, index: usize) -> Vec<ItemId> {
         let rows = self.rows();
         match rows.get(index) {
-            Some(row) if row.deleted_pending => Vec::new(),
+            Some(row) if !row.is_item() => Vec::new(),
             Some(row) if row.marked => rows.iter().filter(|r| r.marked).map(|r| r.id).collect(),
             Some(row) => vec![row.id],
             None => Vec::new(),

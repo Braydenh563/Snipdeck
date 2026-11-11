@@ -20,6 +20,7 @@ use snipdeck_platform::{
 mod commands_ctl;
 mod create_ctl;
 mod dock_ctl;
+mod group_ctl;
 mod editor_ctl;
 mod history_ctl;
 mod library;
@@ -223,6 +224,12 @@ pub struct Controller<S, C, K, T> {
     /// the list), and a count that goes up with each delete.
     focus_row: Option<usize>,
     focus_seq: u64,
+    /// The header row that should start its inline rename (a group just made), and a counter
+    /// that tells the window it is a new request.
+    rename_row: Option<usize>,
+    rename_seq: u64,
+    /// What a new group is called until the user renames it (the window's translated word).
+    group_name: String,
     /// The Main window's state.
     main: MainModel,
     /// The list or board editor, while one is open.
@@ -418,6 +425,9 @@ where
             delete_list: None,
             focus_row: None,
             focus_seq: 0,
+            rename_row: None,
+            rename_seq: 0,
+            group_name: String::from("Group"),
             main,
             editor: None,
             editor_seq: 0,
@@ -538,6 +548,8 @@ where
             marked_count: self.model.marked_count(),
             focus_row: self.focus_row,
             focus_seq: self.focus_seq,
+            rename_row: self.rename_row,
+            rename_seq: self.rename_seq,
             select_mode: self.select_mode,
             delete_mode: self.delete_mode,
             clear_list: self.clear_list_view(),

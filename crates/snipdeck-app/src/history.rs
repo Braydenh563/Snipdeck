@@ -12,7 +12,7 @@
 
 use std::collections::VecDeque;
 
-use snipdeck_core::{Item, ItemId, ListId, Placement};
+use snipdeck_core::{Group, Item, ItemId, ListId, Placement};
 use snipdeck_store::Trashable;
 
 /// How many steps are kept; the oldest goes first.
@@ -43,6 +43,8 @@ pub enum Action {
     Tag,
     /// Items duplicated.
     Duplicate,
+    /// A group made, renamed or ungrouped.
+    Group,
 }
 
 impl Action {
@@ -61,6 +63,7 @@ impl Action {
             Self::Pin => 8,
             Self::Tag => 9,
             Self::Duplicate => 10,
+            Self::Group => 11,
         }
     }
 }
@@ -102,6 +105,28 @@ pub enum Change {
         /// Where redo puts it.
         to: Spot,
     },
+    /// A group exists, holding these items (they gather under the topmost). Undoing a
+    /// creation is [`Change::Ungroup`]; undoing an ungroup is this.
+    Group {
+        /// The group, with the name and collapsed flag it has.
+        group: Group,
+        /// Its members, top to bottom.
+        members: Vec<ItemId>,
+    },
+    /// The group is gone and its items stay in the list ungrouped.
+    Ungroup {
+        /// The group as it was.
+        group: Group,
+        /// Its members, top to bottom.
+        members: Vec<ItemId>,
+    },
+    /// A group was renamed.
+    Rename {
+        /// The group before.
+        before: Group,
+        /// The group after.
+        after: Group,
+    },
 }
 
 impl Change {
@@ -119,6 +144,18 @@ impl Change {
                 id: *id,
                 from: *to,
                 to: *from,
+            },
+            Self::Group { group, members } => Self::Ungroup {
+                group: group.clone(),
+                members: members.clone(),
+            },
+            Self::Ungroup { group, members } => Self::Group {
+                group: group.clone(),
+                members: members.clone(),
+            },
+            Self::Rename { before, after } => Self::Rename {
+                before: after.clone(),
+                after: before.clone(),
             },
         }
     }
