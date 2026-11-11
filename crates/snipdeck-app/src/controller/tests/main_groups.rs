@@ -270,3 +270,78 @@ fn a_refused_ctrl_g_under_a_colour_filter_leaves_the_existing_group_and_its_undo
     w.ctl.undo();
     assert_eq!(shape(&mut w).iter().filter(|r| r.1).count(), 0);
 }
+
+/// Whether the screen shows the "not saved" toast.
+fn toast_failed(w: &mut World) -> bool {
+    matches!(
+        w.ctl.main_screen().toast.map(|t| t.message),
+        Some(ToastMessage::NotSaved)
+    )
+}
+
+fn titles(w: &mut World) -> Vec<String> {
+    shape(w).into_iter().map(|r| r.0).collect()
+}
+
+#[test]
+fn alt_down_on_the_only_member_of_a_group_leaves_it_without_a_failed_toast() {
+    let mut w = open_replies();
+    w.ctl.main_group_marked(2); // [One Two [Group] Three Greeting]
+    w.ctl.main_select(3, SelectMode::Replace);
+    w.ctl.main_reorder_items(1);
+    assert!(!toast_failed(&mut w), "no failed toast");
+    assert_eq!(titles(&mut w), ["One", "Two", "Greeting", "Three"]);
+    assert_eq!(w.ctl.main_screen().cursor, 3, "the cursor follows the item");
+    w.ctl.undo();
+    assert_eq!(
+        titles(&mut w),
+        ["One", "Two", "Group", "Three", "Greeting"],
+        "one Undo puts the group back"
+    );
+}
+
+#[test]
+fn alt_up_on_the_first_member_leaves_the_group_and_records_exactly_one_step() {
+    let mut w = open_replies();
+    group_first_two(&mut w); // [Group] One Two Three Greeting
+    w.ctl.main_select(1, SelectMode::Replace);
+    w.ctl.main_reorder_items(-1);
+    assert_eq!(titles(&mut w), ["One", "Group", "Two", "Three", "Greeting"]);
+    w.ctl.undo();
+    assert_eq!(
+        titles(&mut w),
+        ["Group", "One", "Two", "Three", "Greeting"],
+        "one Undo re-joins"
+    );
+    w.ctl.undo();
+    assert_eq!(
+        titles(&mut w),
+        ["One", "Two", "Three", "Greeting"],
+        "the next Undo is the grouping, not an empty step"
+    );
+}
+
+#[test]
+fn an_item_steps_past_a_folded_group_instead_of_joining_it() {
+    let mut w = open_replies();
+    group_first_two(&mut w);
+    w.ctl.main_group_collapse(0, Some(true)); // [Group*] Three Greeting
+    w.ctl.main_select(1, SelectMode::Replace);
+    w.ctl.main_reorder_items(-1);
+    assert_eq!(titles(&mut w), ["Three", "Group", "Greeting"]);
+    let count = |w: &mut World| {
+        w.ctl
+            .main_screen()
+            .rows
+            .iter()
+            .find_map(|r| r.header.as_ref().map(|h| h.count))
+    };
+    assert_eq!(count(&mut w), Some(2), "Three did not join");
+    w.ctl.main_select(0, SelectMode::Replace);
+    w.ctl.main_reorder_items(1);
+    assert_eq!(titles(&mut w), ["Group", "Three", "Greeting"]);
+    assert_eq!(count(&mut w), Some(2), "nor on the way back");
+    w.ctl.undo();
+    w.ctl.undo();
+    assert_eq!(titles(&mut w), ["Group", "Three", "Greeting"]);
+}

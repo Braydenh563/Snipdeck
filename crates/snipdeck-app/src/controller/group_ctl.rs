@@ -630,6 +630,118 @@ where
         true
     }
 
+    /// Alt+Up / Alt+Down (and the item menu's Move up / down) on the item at Main row `from` when the
+    /// open list shows groups: the item swaps places with the row beside it, taking that row's
+    /// group (the rows above the first member are its header: moving past it leaves the group);
+    /// a folded group is stepped over whole, an open group's header is joined at its top.
+    /// One undo step, none when nothing changes. `false`: not a case for this path.
+    pub(super) fn main_move_item_on(&mut self, from: usize, delta: isize) -> bool {
+        if !self.main.shows_groups() || self.main.open_groups().is_empty() {
+            return false;
+        }
+        let (Some(MainKey::Item(id)), Some(list)) = (
+            self.main.keys().get(from).copied(),
+            self.group_list(Surface::Main),
+        ) else {
+            return false;
+        };
+        let Some(beside) = from.checked_add_signed(delta) else {
+            return true;
+        };
+        let order = self.group_order(Surface::Main, list);
+        let old = self.group_of_item(Surface::Main, id);
+        let (to, want) = match self.main.keys().get(beside).copied() {
+            Some(MainKey::Item(n)) => {
+                let want = self.group_of_item(Surface::Main, n).map(|r| r.group.id);
+                let to = if delta < 0 {
+                    place_before(&order, n, &[id])
+                } else {
+                    Some(Placement::After(n))
+                };
+                (to, want)
+            }
+            Some(MainKey::Group(g)) => {
+                let Some(run) = self.main.group_at(beside) else {
+                    return true;
+                };
+                if old.as_ref().is_some_and(|o| o.group.id == g) {
+                    // Past its own header: out of the group, above it.
+                    (place_before(&order, id, &[id]), None)
+                } else if run.group.collapsed {
+                    let to = if delta < 0 {
+                        run.items
+                            .first()
+                            .and_then(|first| place_before(&order, *first, &[id]))
+                    } else {
+                        run.items.last().map(|last| Placement::After(*last))
+                    };
+                    (to, None)
+                } else {
+                    // An open group's header below: the item joins it at its top.
+                    let joined = self.join_dropped(Surface::Main, id, &run);
+                    self.finish_item_move(joined.is_ok(), id);
+                    return true;
+                }
+            }
+            _ => return true,
+        };
+        let Some(to) = to else {
+            return true;
+        };
+        let mut changes = vec![Change::Regroup {
+            item: id,
+            group: old.as_ref().map(|r| r.group.clone()),
+        }];
+        let done = self.store.atomically(|b| {
+            let spot = super::history_ctl::spot_of(b, id)?;
+            super::history_ctl::move_recorded(b, id, list, to, &mut changes)?;
+            let now = b.groups_of(list)?;
+            let now = now
+                .iter()
+                .find(|r| r.items.contains(&id))
+                .map(|r| r.group.clone());
+            if now.as_ref().map(|g| g.id) != want {
+                b.set_item_group(id, want)?;
+                changes.push(Change::Regroup {
+                    item: id,
+                    group: want.and_then(|w| {
+                        b.groups_of(list)
+                            .ok()?
+                            .into_iter()
+                            .find(|r| r.group.id == w)
+                            .map(|r| r.group)
+                    }),
+                });
+            }
+            let after = b.groups_of(list)?;
+            let group = after
+                .iter()
+                .find(|r| r.items.contains(&id))
+                .map(|r| r.group.id);
+            // The step is the net change: nothing moved, nothing to undo.
+            Ok(spot != super::history_ctl::spot_of(b, id)?
+                || group != old.as_ref().map(|r| r.group.id))
+        });
+        if let Ok(true) = done {
+            self.record_step(Action::Reorder, changes);
+        }
+        self.finish_item_move(done.is_ok(), id);
+        true
+    }
+
+    /// After an item move in the Main window: refresh, follow the item and say where it is.
+    fn finish_item_move(&mut self, ok: bool, id: ItemId) {
+        if !ok {
+            self.show_toast(failed());
+            return;
+        }
+        self.library_changed();
+        self.main_fresh();
+        self.follow_moved_row(id);
+        let at = self.main.cursor();
+        self.announce_placed(at + 1, self.main.keys().len());
+    }
+
     /// Item `id` dropped on the header of `target`: it joins the group at its top (one step).
     fn join_dropped(
         &mut self,
