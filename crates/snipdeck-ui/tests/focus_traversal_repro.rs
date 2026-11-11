@@ -84,8 +84,16 @@ fn text_field_scrolled_out_of_a_flickable() {
     check(Scrolled::new);
 }
 
-/// The item editor's content slot clipped its field: a clipping `Rectangle` round a control must not hide it from Tab.
+/// Slint behaviour the editor used to trip over (finding 18): a control under a clipping `Rectangle` that sits inside
+/// a scroll view is skipped by Tab while it is scrolled away. Pinned so a Slint upgrade that fixes it shows up; the
+/// app avoids such a `clip` round focusable content (`editors.slint` content slot, `text_field.slint` viewport).
 #[test]
-fn control_in_clipping_rectangle_in_a_flickable() {
-    check(ClippedSlot::new);
+fn control_in_clipping_rectangle_in_a_flickable_is_skipped() {
+    let h = Harness::new(ClippedSlot::new, 300, 300);
+    let _ = h.render_settled();
+    let seen = walk(h.component.window(), false, 4);
+    assert!(
+        !seen.contains(&Some("Field".to_string())),
+        "Slint now keeps a clipped control in the Tab order; the workaround may go: {seen:?}"
+    );
 }
