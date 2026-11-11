@@ -34,8 +34,8 @@ msgstr "PNG画像。Snipdeckが独自のコピーを保存します。"
 msgid "A Panel that a shortcut or the tray showed hides after a paste or copy. A pinned Panel stays, and a docked one folds back to its edge."
 msgstr "ショートカットまたはトレイから表示したパネルは、貼り付けやコピーの後に隠れます。ピン留めしたパネルはそのまま残り、固定したパネルは端に折りたたまれます。"
 
-msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
-msgstr "Supporter の機能です。機密スニペットを Windows の保護に加えてパスワードで守ります。機密スニペットを初めて使うときと、{}分間使わなかった後に入力を求めます。"
+msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. With a Supporter plan on Windows, you can then also unlock with Windows Hello."
+msgstr "Supporter の機能です。機密スニペットを Windows の保護に加えてパスワードで守ります。機密スニペットを初めて使うときと、{}分間使わなかった後に入力を求めます。Windows で Supporter プランをお使いの場合は、Windows Hello でもロック解除できます。"
 
 msgid "A docked Panel opens at its edge. Set Dock to Floating to choose where it opens."
 msgstr "固定したパネルは端に開きます。開く場所を選ぶには、固定先を「フローティング」にします。"
@@ -142,8 +142,8 @@ msgstr "{} に追加しました"
 msgid "Added to {}. Some were skipped: folders, and files that are empty, too large or unreadable."
 msgstr "{} に追加しました。フォルダー、および空・大きすぎる・読み取れないファイルはスキップしました。"
 
-msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
-msgstr "機密スニペットを Windows の保護に加えてパスワードで守ります。機密スニペットを初めて使うときと、{}分間使わなかった後に入力を求めます。"
+msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. With a Supporter plan on Windows, you can then also unlock with Windows Hello."
+msgstr "機密スニペットを Windows の保護に加えてパスワードで守ります。機密スニペットを初めて使うときと、{}分間使わなかった後に入力を求めます。Windows で Supporter プランをお使いの場合は、Windows Hello でもロック解除できます。"
 
 msgid "Adds a text snippet to {}"
 msgstr "{} にテキストのスニペットを追加します"
@@ -3138,8 +3138,8 @@ msgstr "N番目のスニペットを使用"
 msgid "Use the item"
 msgstr "スニペットを使用"
 
-msgid "Use your face, fingerprint or PIN instead of typing the master password. The password is still asked after a restart and every 7 days, and it always works."
-msgstr "マスターパスワードを入力する代わりに、顔、指紋、または PIN を使います。パスワードは再起動後と 7 日ごとに引き続き求められ、いつでも使えます。"
+msgid "Use your face, fingerprint or PIN instead of typing the master password. Windows asks for Hello twice when you turn this on. The password is still asked after a restart and every 7 days, and it always works."
+msgstr "マスターパスワードを入力する代わりに、顔、指紋、または PIN を使います。パスワードは再起動後と 7 日ごとに引き続き求められ、いつでも使えます。オンにすると、Windows が Hello を 2 回確認します。"
 
 msgid "Use {}"
 msgstr "{} を使う"
@@ -3222,9 +3222,6 @@ msgstr "ウィンドウの動作"
 msgid "Windows"
 msgstr "Windows"
 
-msgid "Windows Hello changed. Unlock with your password once to set it up again."
-msgstr "Windows Hello が変更されました。パスワードで一度ロックを解除すると、再設定されます。"
-
 msgid "Windows Hello did not unlock Snipdeck. Use your master password."
 msgstr "Windows Hello では Snipdeck のロックを解除できませんでした。マスターパスワードを使ってください。"
 
@@ -3272,6 +3269,9 @@ msgstr "はい"
 
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "取り込むと {} 個のボードになりますが、無料プランには {} 個まで含まれます。"
+
+msgid "Your Windows Hello PIN, face or fingerprint changed. Unlock with your password once to set Windows Hello up again."
+msgstr "Windows Hello の PIN、顔、または指紋が変更されました。パスワードで一度ロック解除すると、Windows Hello を再設定できます。"
 
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr "ライブラリは1つのフォルダー（%LOCALAPPDATA%\\Snipdeck）にあります：snipdeck.db（ボード、リスト、スニペット、タグ、ゴミ箱）、blobs（画像、ファイル、長いテキスト）、settings.json、ライセンスキー、バックアップ（保持すると選んだ数）、ログ。"

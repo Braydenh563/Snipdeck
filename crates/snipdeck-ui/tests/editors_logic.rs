@@ -1276,6 +1276,19 @@ ui_tests! {
         );
     }
 
+    fn searching_hello_without_the_row_lands_on_the_master_password_hint() {
+        // Hello is not offered (no password, Free plan or no Hello): the search still shows the Privacy
+        // section, with its Master password row, which says what Hello needs.
+        let (ui, _log) = settings();
+        ui.set_hello_offered(false);
+        settle();
+        SettingsFilter::get(&ui).set_query("Hello".into());
+        settle();
+        assert!(missing(&ui, "Unlock with Windows Hello", AccessibleRole::Groupbox));
+        assert!(!missing(&ui, "Master password", AccessibleRole::Groupbox));
+        assert!(!missing(&ui, "Privacy", AccessibleRole::Groupbox));
+    }
+
     fn escape_ends_a_recording_first_and_then_closes_the_page() {
         let (ui, log) = settings();
         find(&ui, "Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
