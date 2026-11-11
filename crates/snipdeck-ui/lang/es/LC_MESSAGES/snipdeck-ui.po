@@ -70,6 +70,9 @@ msgstr "Una tira con tus fragmentos junto a la aplicación en la que trabajas. H
 msgid "A tag with that name already exists."
 msgstr "Ya existe una etiqueta con ese nombre."
 
+msgid "A tick box; the text inside is pasted only when ticked"
+msgstr "Una casilla; el texto de dentro se pega solo si está marcada"
+
 msgid "A title can have at most {} characters."
 msgstr "Un título puede tener como máximo {} caracteres."
 
@@ -204,8 +207,14 @@ msgstr "Aplicar el nuevo nombre"
 msgid "As many as you like, of every kind."
 msgstr "Los que quieras, de cualquier tipo."
 
+msgid "Asks for a date, today if left empty"
+msgstr "Pide una fecha; hoy si se deja vacía"
+
 msgid "Asks for a value each time"
 msgstr "Pide un valor cada vez"
+
+msgid "Asks for text over several lines"
+msgstr "Pide texto en varias líneas"
 
 msgid "Asks you to pick one of the options"
 msgstr "Te pide elegir una de las opciones"
@@ -891,6 +900,9 @@ msgstr "Terminar pila"
 msgid "Enter"
 msgstr "Enter"
 
+msgid "Enter a real date as YYYY-MM-DD, or leave it empty for today."
+msgstr "Escribe una fecha real como AAAA-MM-DD, o déjala vacía para hoy."
+
 msgid "Enter creates “{}” in {}"
 msgstr "Intro crea «{}» en {}"
 
@@ -1156,6 +1168,9 @@ msgstr[1] "Importados {} elementos"
 
 msgid "Import…"
 msgstr "Importar…"
+
+msgid "Include"
+msgstr "Incluir"
 
 msgid "Included"
 msgstr "Incluido"
@@ -2992,6 +3007,9 @@ msgstr "Windows no permite {} como atajo."
 
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows sigue el tamaño de texto de Windows (Configuración > Accesibilidad > Tamaño del texto). Elige un tamaño para usar ese en su lugar."
+
+msgid "YYYY-MM-DD"
+msgstr "AAAA-MM-DD"
 
 msgid "Yes"
 msgstr "Sí"

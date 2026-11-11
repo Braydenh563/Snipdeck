@@ -58,6 +58,9 @@ editor, the **Placeholders** list inserts one for you.
 | `{cursor}` | Nothing. It marks where the text cursor ends up after pasting. | Free |
 | `{field:Name}` or `{field:Name\|default}` | Asks you for a value each time | Supporter |
 | `{choice:Name\|a\|b}` | Asks you to pick one of the options | Supporter |
+| `{multiline:Name}` or `{multiline:Name\|default}` | Asks for text over several lines | Supporter |
+| `{pickdate:Name}` or `{pickdate:Name\|FORMAT}` | Asks for a date typed as `YYYY-MM-DD`; left empty it is today. `FORMAT` is how it is written, such as `%d %B %Y`. | Supporter |
+| `{optional:Name}...{/optional}` | A tick box. The text inside is inserted only when it is ticked. Sections do not nest. | Supporter |
 
 `{date}`, `{time}` and `{datetime:FORMAT}` can move in time: add an offset such as `{date+3d}`,
 `{date-1w:%Y-%m-%d}`, `{time+90min}` or `{datetime+1mo:%d %B %Y %H:%M}`. The units are `d` (days), `w` (weeks),
@@ -70,8 +73,10 @@ you save.
 
 In the Fill in template window, each `{uuid}` shows as "(new ID)" in the preview: the real ID is made when you insert.
 
-When you use a template with `{field}` or `{choice}`, a **Fill in template** window opens. Fill the fields,
-check the preview and press `Ctrl+Enter` to insert. `Esc` cancels.
+When you use a template with `{field}`, `{choice}`, `{multiline}`, `{pickdate}` or `{optional}`, a **Fill in template** window
+opens. Fill the fields, check the preview and press `Ctrl+Enter` to insert. `Esc` cancels. In a multi-line box `Enter`
+adds a line; `Ctrl+Enter` still inserts. A date that is not a real day (such as 2026-02-30) is marked on its box and
+nothing is inserted until you fix it or clear it. The tick box is switched with `Space`.
 
 ### Sensitive items
 

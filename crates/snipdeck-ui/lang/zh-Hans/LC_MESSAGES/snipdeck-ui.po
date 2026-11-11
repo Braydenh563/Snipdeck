@@ -70,6 +70,9 @@ msgstr "在你正在使用的应用旁边显示的片段栏。点击其中一条
 msgid "A tag with that name already exists."
 msgstr "已存在同名标签。"
 
+msgid "A tick box; the text inside is pasted only when ticked"
+msgstr "一个复选框；仅在勾选时才粘贴其中的文本"
+
 msgid "A title can have at most {} characters."
 msgstr "标题最多 {} 个字符。"
 
@@ -203,8 +206,14 @@ msgstr "应用新名称"
 msgid "As many as you like, of every kind."
 msgstr "每种类型均可添加任意数量。"
 
+msgid "Asks for a date, today if left empty"
+msgstr "询问日期，留空则为今天"
+
 msgid "Asks for a value each time"
 msgstr "每次都询问值"
+
+msgid "Asks for text over several lines"
+msgstr "询问多行文本"
 
 msgid "Asks you to pick one of the options"
 msgstr "让你从选项中选择一项"
@@ -890,6 +899,9 @@ msgstr "结束堆栈"
 msgid "Enter"
 msgstr "Enter"
 
+msgid "Enter a real date as YYYY-MM-DD, or leave it empty for today."
+msgstr "请输入真实的日期，格式为 YYYY-MM-DD，或留空表示今天。"
+
 msgid "Enter creates “{}” in {}"
 msgstr "按 Enter 创建“{}”（位于 {}）"
 
@@ -1154,6 +1166,9 @@ msgstr[0] "已导入 {} 个片段"
 
 msgid "Import…"
 msgstr "导入…"
+
+msgid "Include"
+msgstr "包含"
 
 msgid "Included"
 msgstr "已包含"
@@ -2984,6 +2999,9 @@ msgstr "Windows 不允许将 {} 用作快捷键。"
 
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows 跟随你的 Windows 文字大小（设置 > 辅助功能 > 文字大小）。选择一个大小即可改用该大小。"
+
+msgid "YYYY-MM-DD"
+msgstr "YYYY-MM-DD"
 
 msgid "Yes"
 msgstr "是"

@@ -70,6 +70,9 @@ msgstr "Une bande de vos extraits à côté de l'application dans laquelle vous 
 msgid "A tag with that name already exists."
 msgstr "Une étiquette portant ce nom existe déjà."
 
+msgid "A tick box; the text inside is pasted only when ticked"
+msgstr "Une case à cocher ; le texte à l'intérieur n'est collé que si elle est cochée"
+
 msgid "A title can have at most {} characters."
 msgstr "Un titre peut comporter au maximum {} caractères."
 
@@ -204,8 +207,14 @@ msgstr "Appliquer le nouveau nom"
 msgid "As many as you like, of every kind."
 msgstr "Autant que vous voulez, de chaque type."
 
+msgid "Asks for a date, today if left empty"
+msgstr "Demande une date, aujourd'hui si elle est vide"
+
 msgid "Asks for a value each time"
 msgstr "Demande une valeur à chaque fois"
+
+msgid "Asks for text over several lines"
+msgstr "Demande un texte sur plusieurs lignes"
 
 msgid "Asks you to pick one of the options"
 msgstr "Vous demande de choisir une option"
@@ -891,6 +900,9 @@ msgstr "Terminer la pile"
 msgid "Enter"
 msgstr "Enter"
 
+msgid "Enter a real date as YYYY-MM-DD, or leave it empty for today."
+msgstr "Saisissez une vraie date au format AAAA-MM-JJ, ou laissez vide pour aujourd'hui."
+
 msgid "Enter creates “{}” in {}"
 msgstr "Entrée crée « {} » dans {}"
 
@@ -1156,6 +1168,9 @@ msgstr[1] "{} extraits importés"
 
 msgid "Import…"
 msgstr "Importer…"
+
+msgid "Include"
+msgstr "Inclure"
 
 msgid "Included"
 msgstr "Inclus"
@@ -2992,6 +3007,9 @@ msgstr "Windows n'autorise pas {} comme raccourci."
 
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows suit la taille du texte de Windows (Paramètres > Accessibilité > Taille du texte). Choisissez une taille pour utiliser celle-ci à la place."
+
+msgid "YYYY-MM-DD"
+msgstr "AAAA-MM-JJ"
 
 msgid "Yes"
 msgstr "Oui"

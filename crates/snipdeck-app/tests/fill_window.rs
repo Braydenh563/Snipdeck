@@ -26,9 +26,7 @@ use snipdeck_app::{
     settings::{HotkeyAction, Settings},
     toast_binding::ToastUi,
 };
-use snipdeck_core::{
-    Content, Entitlements, Format, Formats, Inline, Tier, Timestamp,
-};
+use snipdeck_core::{Content, Entitlements, Format, Formats, Inline, Tier, Timestamp};
 use snipdeck_platform::{
     payload::Data,
     route::ScreenRect,
@@ -457,10 +455,10 @@ fn a_bad_date_is_flagged_on_its_field_and_keeps_the_form_open() {
         let error = form.get_fields().row_data(1).expect("field").error;
         assert!(error.contains("YYYY-MM-DD"), "{error}");
         assert_eq!(r.ctl.borrow().services().keyboard.sent.len(), 0);
-        // Editing clears it, and a real day goes through.
-        press(form.window(), &key(Key::Backspace));
+        // The flagged field is focused with its text selected: typing replaces it, which clears the
+        // error, and a real day goes through.
+        type_text(form.window(), "2026-02-28");
         assert_eq!(form.get_fields().row_data(1).expect("field").error, "");
-        type_text(form.window(), "1");
         chord(form.window(), &[Key::Control], &key(Key::Return));
         assert!(!form.window().is_visible());
     });
