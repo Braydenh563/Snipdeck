@@ -588,6 +588,62 @@
       "title": "Groups with Narrator: header, fold, move, member position",
       "do": "Turn Narrator on (Win+Ctrl+Enter). In the Panel with a group of at least two items, Tab to the group header and listen. Press Space, then Enter, on it. Press Alt+Down, then Alt+Up. Move into the group with the arrow keys and listen to a member row.",
       "expect": "The header reads its name, its item count and whether it is expanded or collapsed. Space and Enter each fold or unfold it, and Narrator says the new state. Alt+Up and Alt+Down move the group and Narrator announces its new place. A member row reads its position in the group, such as 1 of 2, and a row outside any group reads no position. Write what Narrator said for each in the note (n)."
+    },
+    {
+      "id": "79",
+      "v1": false,
+      "title": "Main groups: Ctrl+G groups the selected rows",
+      "do": "In the Main window open a list sorted by hand (Manual) with at least four items. Select two items with Ctrl+click, then press Ctrl+G. Then press Ctrl+G on a single row with nothing selected.",
+      "expect": "The two items sit under a new header named Group and its name opens for editing at once; Enter keeps the name. With nothing selected the row at the cursor becomes a group of its own. In a list that sorts itself, Ctrl+G offers to switch to Manual order instead. Ctrl+Z takes the grouping back in one step."
+    },
+    {
+      "id": "80",
+      "v1": false,
+      "title": "Main groups: fold and unfold with the keys and the mouse",
+      "do": "Put the cursor on a group header. Press Left, then Right, then Enter, then Enter again. Click the chevron on the header, then click the header itself.",
+      "expect": "Left folds the group and hides its items, Right opens it, Enter does the other each time, and a click on the chevron or the header does the same. The header's chevron turns with the state and the count stays visible. A folded group stays folded after you close and reopen the window."
+    },
+    {
+      "id": "81",
+      "v1": false,
+      "title": "Main groups: F2 renames a header",
+      "do": "Put the cursor on a header and press F2. Type a new name and press Enter. Press F2 again, type another name and press Esc. Choose Rename group from the header's right-click menu.",
+      "expect": "F2 opens the name in place with the old name selected. Enter keeps the new name, Esc leaves the old one, and the menu entry opens the same edit. An empty name changes nothing. Ctrl+Z undoes the rename."
+    },
+    {
+      "id": "82",
+      "v1": false,
+      "title": "Main groups: Delete on a header moves the group to the Trash, and Undo brings it back",
+      "do": "Put the cursor on a header of a group with items and press Del. Press Ctrl+Z (or choose Undo in the toast). Then open the Trash.",
+      "expect": "Del moves the group and all its items to the Trash with an Undo toast; nothing asks first. Ctrl+Z brings the header and every item back in place in one step. Before Undo the Trash lists the items. Choosing Ungroup from the header's menu instead keeps the items and removes only the header."
+    },
+    {
+      "id": "83",
+      "v1": false,
+      "title": "Main groups: drag a header with the mouse",
+      "do": "Drag a group header onto another row or group in the list, and drop it. Then drag a single item onto a header.",
+      "expect": "The header moves with all its items and lands where it was dropped. An item dropped on a header joins that group at its top. Each drop is one Undo step. In a list that sorts itself, the drop offers Manual order instead."
+    },
+    {
+      "id": "84",
+      "v1": false,
+      "title": "Main groups: Alt+Up and Alt+Down move a header",
+      "do": "Put the cursor on a group header and press Alt+Down, then Alt+Up. Try Alt+Up on the first group.",
+      "expect": "The whole group moves one place past the next group or loose row and the cursor stays on its header. At the top or bottom nothing moves and nothing breaks. Ctrl+Z puts it back in one step."
+    },
+    {
+      "id": "85",
+      "v1": false,
+      "title": "Main groups: the command palette has the group commands",
+      "do": "Press Ctrl+K. With the cursor on an item type group; with the cursor on a header type group again, and also try fold, rename, ungroup, delete and move.",
+      "expect": "On an item the palette offers Group selected items (Ctrl+G) and no header command. On a header it offers Fold or unfold group, Rename group (F2), Ungroup, Delete group (Del) and Move group up or down (Alt+Up, Alt+Down), and the move entries are missing at the first or last place. Each command does what its key does."
+    },
+    {
+      "id": "86",
+      "v1": false,
+      "title": "Main groups with Narrator: a header reads its name, count and state",
+      "do": "Turn Narrator on (Win+Ctrl+Enter). In the Main window arrow down to a group header, then fold it with Left and open it with Right, then arrow into a member row.",
+      "expect": "Narrator reads the header as group, its name, its item count (for example 3 items) and whether it is expanded or collapsed, and says the new state after Left and Right. A member row reads its position in the group. Write what Narrator said in the note (n)."
     }
   ]
 }
