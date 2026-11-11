@@ -63,6 +63,7 @@ pub mod settings_store;
 pub mod shortcuts;
 pub mod starter;
 pub mod symbols_binding;
+pub mod suggest_hint;
 pub mod symbols_panel;
 pub mod text_scale;
 pub mod tips;

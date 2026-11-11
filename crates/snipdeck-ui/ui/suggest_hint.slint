@@ -1,0 +1,77 @@
+// The suggestion hint (v1.1 slice 6): while a trigger is being typed in another app, a small label by the caret
+// says which item the trigger is the start of and that Tab inserts it. It never takes focus and is not
+// interactive; the host keeps it non-activating, places it at the caret and shows it only while the hint stands.
+import { Theme, Type, Radius, Space, Fonts, Palette, SystemLook } from "theme.slint";
+import { Keycap } from "components/keycap.slint";
+
+export component SuggestHintWindow inherits Window {
+    title: @tr("Snipdeck");
+    no-frame: true;
+    always-on-top: true;
+    background: Theme.bg-overlay;
+    preferred-width: root.content-width;
+    preferred-height: root.content-height;
+
+    in property <bool> dark: false;
+    // The item the typed code is the start of.
+    in property <string> item-title;
+    // The size that fits the hint; the host sizes and places the window from it.
+    out property <length> content-width: min(hint.preferred-width, 360px * SystemLook.text-scale);
+    out property <length> content-height: hint.preferred-height;
+
+    init => {
+        Palette.dark = root.dark;
+    }
+    changed dark => {
+        Palette.dark = root.dark;
+    }
+
+    hint := Rectangle {
+        width: parent.width;
+        height: parent.height;
+        background: Theme.bg-overlay;
+        border-radius: Radius.md;
+        border-width: 1px;
+        border-color: Theme.border-default;
+        preferred-width: row.preferred-width + 2px;
+        preferred-height: row.preferred-height + 2px;
+        accessible-role: AccessibleRole.text;
+        accessible-label: @tr("{} — press Tab to insert", root.item-title);
+
+        row := HorizontalLayout {
+            padding-left: Space.s2;
+            padding-right: Space.s2;
+            padding-top: Space.s1;
+            padding-bottom: Space.s1;
+            spacing: Space.s2;
+            Text {
+                text: root.item-title;
+                color: Theme.text-primary;
+                font-family: Fonts.sans;
+                font-size: Type.sm;
+                font-weight: Type.medium;
+                vertical-alignment: center;
+                wrap: TextWrap.no-wrap;
+                overflow: elide;
+                accessible-role: none;
+            }
+            // The chip keeps its own height; the wrapper centres it on the title.
+            Rectangle {
+                width: tab.min-width;
+                tab := Keycap {
+                    text: "Tab";
+                    y: (parent.height - self.height) / 2;
+                }
+            }
+            Text {
+                text: @tr("to insert");
+                color: Theme.text-secondary;
+                font-family: Fonts.sans;
+                font-size: Type.sm;
+                vertical-alignment: center;
+                wrap: TextWrap.no-wrap;
+                accessible-role: none;
+            }
+        }
+    }
+}

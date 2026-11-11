@@ -3352,6 +3352,9 @@ msgstr "Tag-Änderung"
 msgid "tag: {}"
 msgstr "Schlagwort: {}"
 
+msgid "to insert"
+msgstr "einfügen"
+
 msgid "tutorial intro onboarding basics learn"
 msgstr "Tutorial Einführung Einstieg Grundlagen lernen"
 
@@ -3507,6 +3510,9 @@ msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "{} vertraulicher Textbaustein war nicht in der Sicherung."
 msgstr[1] "{} vertrauliche Textbausteine waren nicht in der Sicherung."
+
+msgid "{} — press Tab to insert"
+msgstr "{} – mit Tab einfügen"
 
 msgid "{}, {} of {}"
 msgstr "{}, {} von {}"
