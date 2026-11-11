@@ -91,8 +91,7 @@ fn panel(w: u32, dark: bool, scale: f32, title: &str, selected: bool) -> Harness
     rows.push(header("Archive", 5, true));
     fixture::set_rows(&h.component, rows);
     h.component.set_has_groups(true);
-    h.component
-        .set_selected_index(if selected { 0 } else { -1 });
+    h.component.set_selected_index(if selected { 0 } else { 1 });
     h
 }
 
@@ -151,8 +150,16 @@ fn a_header_is_a_button_that_names_its_group_count_and_fold_state() {
     let h = panel(320, false, 1.0, "Replies", true);
     let _ = h.render_settled();
     let e = handle(&h, "Replies", 2);
-    assert_eq!(e.accessible_item_selected(), Some(true), "the cursor header is selected");
-    assert_eq!(e.accessible_expandable(), Some(true), "and stays an expandable button");
+    assert_eq!(
+        e.accessible_item_selected(),
+        Some(true),
+        "the cursor header is selected"
+    );
+    assert_eq!(
+        e.accessible_expandable(),
+        Some(true),
+        "and stays an expandable button"
+    );
     // One item reads in the singular.
     let one = h.component.invoke_group_announcement("Solo".into(), 1);
     assert_eq!(one, "group Solo, 1 item");
@@ -213,14 +220,19 @@ fn a_selected_header_paints_the_selected_fill_like_a_card_and_no_ring() {
                 "{name}: a ring is painted at the {edge}"
             );
         }
-        // A header that is not selected paints the page, not the fill.
+        // A header that is not selected paints the page (the pixel just above it), not the fill.
         let h = panel(320, dark, 1.0, "Replies", false);
         let f = h.render_settled();
         let (x0, y0, x1, _) = rect(&handle(&h, "Replies", 2));
-        let p = f.pixel(u32::midpoint(x0, x1), y0 + 1);
+        let mx = u32::midpoint(x0, x1);
+        let (p, page) = (f.pixel(mx, y0 + 1), f.pixel(mx, y0 - 1));
         assert!(
-            p.iter().zip(t.app).all(|(a, b)| a.abs_diff(b) <= 4),
-            "{name}: an unselected header is on the page, got {p:?}"
+            p.iter().zip(page).all(|(a, b)| a.abs_diff(b) <= 4),
+            "{name}: an unselected header is on the page {page:?}, got {p:?}"
+        );
+        assert!(
+            !p.iter().zip(t.selected).all(|(a, b)| a.abs_diff(b) <= 4),
+            "{name}: an unselected header must not paint the selected fill"
         );
     }
 }
