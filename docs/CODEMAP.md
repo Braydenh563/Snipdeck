@@ -3686,39 +3686,40 @@ tray_labels | crates/snipdeck-app/src/wording.rs:28
 item_label_name | crates/snipdeck-app/src/wording.rs:46
 list_icon_name | crates/snipdeck-app/src/wording.rs:61
 import_warning_text | crates/snipdeck-app/src/wording.rs:98
-note_text | crates/snipdeck-app/src/wording.rs:134
-numbered_label | crates/snipdeck-app/src/wording.rs:184
-toast_text | crates/snipdeck-app/src/wording.rs:196
-licence_problem_text | crates/snipdeck-app/src/wording.rs:340
-LANGUAGE_NAMES | crates/snipdeck-app/src/wording.rs:358
-LANGUAGE_TAGS | crates/snipdeck-app/src/wording.rs:369
-action_word | crates/snipdeck-app/src/wording.rs:372
-undo_tip | crates/snipdeck-app/src/wording.rs:379
-redo_tip | crates/snipdeck-app/src/wording.rs:390
-UNDO_LABEL | crates/snipdeck-app/src/wording.rs:400
-toast_edit_label | crates/snipdeck-app/src/wording.rs:404
-OPEN_LOG_LABEL | crates/snipdeck-app/src/wording.rs:412
-SWITCH_LABEL | crates/snipdeck-app/src/wording.rs:415
-import_problem_text | crates/snipdeck-app/src/wording.rs:420
-history_source_name | crates/snipdeck-app/src/wording.rs:451
-toast_button_text | crates/snipdeck-app/src/wording.rs:457
-use_label_text | crates/snipdeck-app/src/wording.rs:472
-paste_stack_idle_text | crates/snipdeck-app/src/wording.rs:486
-app_menu_text | crates/snipdeck-app/src/wording.rs:493
-app_menu_shortcut | crates/snipdeck-app/src/wording.rs:532
-item_menu_shortcut | crates/snipdeck-app/src/wording.rs:544
-item_menu_label | crates/snipdeck-app/src/wording.rs:571
-transform_name | crates/snipdeck-app/src/wording.rs:602
-symbol_menu_entry | crates/snipdeck-app/src/wording.rs:621
-board_menu_text | crates/snipdeck-app/src/wording.rs:659
-int | crates/snipdeck-app/src/wording.rs:678
-name_error_text | crates/snipdeck-app/src/wording.rs:684
-tag_rename_error_text | crates/snipdeck-app/src/wording.rs:700
-delete_hint_text | crates/snipdeck-app/src/wording.rs:715
-size_text | crates/snipdeck-app/src/wording.rs:728
-attachment_name_text | crates/snipdeck-app/src/wording.rs:748
-attachment_detail_text | crates/snipdeck-app/src/wording.rs:764
-editor_problem_text | crates/snipdeck-app/src/wording.rs:785
+note_text | crates/snipdeck-app/src/wording.rs:129
+entry_label | crates/snipdeck-app/src/wording.rs:186
+numbered_label | crates/snipdeck-app/src/wording.rs:201
+toast_text | crates/snipdeck-app/src/wording.rs:213
+licence_problem_text | crates/snipdeck-app/src/wording.rs:357
+LANGUAGE_NAMES | crates/snipdeck-app/src/wording.rs:375
+LANGUAGE_TAGS | crates/snipdeck-app/src/wording.rs:386
+action_word | crates/snipdeck-app/src/wording.rs:389
+undo_tip | crates/snipdeck-app/src/wording.rs:396
+redo_tip | crates/snipdeck-app/src/wording.rs:407
+UNDO_LABEL | crates/snipdeck-app/src/wording.rs:417
+toast_edit_label | crates/snipdeck-app/src/wording.rs:421
+OPEN_LOG_LABEL | crates/snipdeck-app/src/wording.rs:429
+SWITCH_LABEL | crates/snipdeck-app/src/wording.rs:432
+import_problem_text | crates/snipdeck-app/src/wording.rs:437
+history_source_name | crates/snipdeck-app/src/wording.rs:468
+toast_button_text | crates/snipdeck-app/src/wording.rs:474
+use_label_text | crates/snipdeck-app/src/wording.rs:489
+paste_stack_idle_text | crates/snipdeck-app/src/wording.rs:503
+app_menu_text | crates/snipdeck-app/src/wording.rs:510
+app_menu_shortcut | crates/snipdeck-app/src/wording.rs:549
+item_menu_shortcut | crates/snipdeck-app/src/wording.rs:561
+item_menu_label | crates/snipdeck-app/src/wording.rs:588
+transform_name | crates/snipdeck-app/src/wording.rs:619
+symbol_menu_entry | crates/snipdeck-app/src/wording.rs:638
+board_menu_text | crates/snipdeck-app/src/wording.rs:676
+int | crates/snipdeck-app/src/wording.rs:695
+name_error_text | crates/snipdeck-app/src/wording.rs:701
+tag_rename_error_text | crates/snipdeck-app/src/wording.rs:717
+delete_hint_text | crates/snipdeck-app/src/wording.rs:732
+size_text | crates/snipdeck-app/src/wording.rs:745
+attachment_name_text | crates/snipdeck-app/src/wording.rs:765
+attachment_detail_text | crates/snipdeck-app/src/wording.rs:781
+editor_problem_text | crates/snipdeck-app/src/wording.rs:802
 
 ### crates/snipdeck-core/build.rs
 
@@ -4328,25 +4329,25 @@ matcher | crates/snipdeck-core/src/trigger.rs:284
 run | crates/snipdeck-core/src/trigger.rs:289
 cand | crates/snipdeck-core/src/trigger.rs:296
 set_lead_changes_the_boundary_and_keeps_what_was_typed | crates/snipdeck-core/src/trigger.rs:306
-prefix_needs_two_characters | crates/snipdeck-core/src/trigger.rs:316
-prefix_picks_the_most_used | crates/snipdeck-core/src/trigger.rs:342
-sensitive_items_are_never_suggested | crates/snipdeck-core/src/trigger.rs:363
-a_suggestion_counts_graphemes_and_follows_the_matcher | crates/snipdeck-core/src/trigger.rs:371
-a_fire_names_the_trigger_that_was_typed | crates/snipdeck-core/src/trigger.rs:383
-debug_does_not_show_what_was_typed | crates/snipdeck-core/src/trigger.rs:390
-a_trigger_is_validated | crates/snipdeck-core/src/trigger.rs:403
-fires_at_the_last_character | crates/snipdeck-core/src/trigger.rs:425
-needs_a_boundary_before | crates/snipdeck-core/src/trigger.rs:434
-case_counts | crates/snipdeck-core/src/trigger.rs:449
-backspace_pops_one | crates/snipdeck-core/src/trigger.rs:456
-reset_clears_the_buffer | crates/snipdeck-core/src/trigger.rs:477
-longest_trigger_wins | crates/snipdeck-core/src/trigger.rs:488
-a_shorter_trigger_fires_first_when_typed_first | crates/snipdeck-core/src/trigger.rs:511
-a_duplicate_keeps_the_first | crates/snipdeck-core/src/trigger.rs:521
-buffer_never_exceeds_32 | crates/snipdeck-core/src/trigger.rs:527
-a_32_character_trigger_still_needs_its_boundary | crates/snipdeck-core/src/trigger.rs:537
-triggers_and_typing_are_compared_in_nfc | crates/snipdeck-core/src/trigger.rs:553
-after_an_expansion_ending_in_a_word_character_the_next_trigger_needs_a_boundary | crates/snipdeck-core/src/trigger.rs:574
+prefix_needs_two_characters | crates/snipdeck-core/src/trigger.rs:319
+prefix_picks_the_most_used | crates/snipdeck-core/src/trigger.rs:345
+sensitive_items_are_never_suggested | crates/snipdeck-core/src/trigger.rs:366
+a_suggestion_counts_graphemes_and_follows_the_matcher | crates/snipdeck-core/src/trigger.rs:374
+a_fire_names_the_trigger_that_was_typed | crates/snipdeck-core/src/trigger.rs:386
+debug_does_not_show_what_was_typed | crates/snipdeck-core/src/trigger.rs:393
+a_trigger_is_validated | crates/snipdeck-core/src/trigger.rs:406
+fires_at_the_last_character | crates/snipdeck-core/src/trigger.rs:428
+needs_a_boundary_before | crates/snipdeck-core/src/trigger.rs:437
+case_counts | crates/snipdeck-core/src/trigger.rs:452
+backspace_pops_one | crates/snipdeck-core/src/trigger.rs:459
+reset_clears_the_buffer | crates/snipdeck-core/src/trigger.rs:480
+longest_trigger_wins | crates/snipdeck-core/src/trigger.rs:491
+a_shorter_trigger_fires_first_when_typed_first | crates/snipdeck-core/src/trigger.rs:514
+a_duplicate_keeps_the_first | crates/snipdeck-core/src/trigger.rs:524
+buffer_never_exceeds_32 | crates/snipdeck-core/src/trigger.rs:530
+a_32_character_trigger_still_needs_its_boundary | crates/snipdeck-core/src/trigger.rs:540
+triggers_and_typing_are_compared_in_nfc | crates/snipdeck-core/src/trigger.rs:556
+after_an_expansion_ending_in_a_word_character_the_next_trigger_needs_a_boundary | crates/snipdeck-core/src/trigger.rs:577
 
 ### crates/snipdeck-core/src/usage.rs
 
@@ -7832,7 +7833,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/tests/rebuild.rs` | 5 |
 | `crates/snipdeck-app/tests/recent_at_rest.rs` | 5 |
 | `crates/snipdeck-app/tests/screenshot.rs` | 2 |
-| `crates/snipdeck-app/tests/settings_window.rs` | 80 |
+| `crates/snipdeck-app/tests/settings_window.rs` | 81 |
 | `crates/snipdeck-app/tests/suggest_hint.rs` | 7 |
 | `crates/snipdeck-app/tests/support/mod.rs` | 0 |
 | `crates/snipdeck-app/tests/toast_texts.rs` | 5 |
