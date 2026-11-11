@@ -288,6 +288,12 @@ impl TypingControl for FakeTyping {
     }
 }
 
+/// A Target change waiting for a flag: see [`FakeTargets::switch_when`].
+type TargetSwitch = (
+    std::sync::Arc<std::sync::atomic::AtomicBool>,
+    Option<Target>,
+);
+
 /// A scripted Target. Cloning shares the state, so a test keeps a handle after handing the
 /// source to the controller.
 #[derive(Debug, Clone, Default)]
@@ -299,14 +305,7 @@ pub struct FakeTargets {
     monitors: Rc<RefCell<Vec<crate::frame::Monitor>>>,
     /// A Target change that happens once the flag is raised (from another thread, as a typed
     /// key would be).
-    switch: Rc<
-        RefCell<
-            Option<(
-                std::sync::Arc<std::sync::atomic::AtomicBool>,
-                Option<Target>,
-            )>,
-        >,
-    >,
+    switch: Rc<RefCell<Option<TargetSwitch>>>,
 }
 
 impl FakeTargets {

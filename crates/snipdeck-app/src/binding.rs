@@ -318,7 +318,7 @@ where
                     let view = ctl.view();
                     let look = crate::suggest_hint::HintLook {
                         dark: view.dark,
-                        high_contrast: view.high_contrast.clone(),
+                        high_contrast: view.high_contrast,
                         accent: view.accent,
                         reduced_motion: view.reduced_motion,
                     };

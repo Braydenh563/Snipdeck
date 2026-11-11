@@ -155,7 +155,7 @@ where
     }
 
     /// The user typed a trigger. Expands only when the setting is on and [`typed_allowed`]
-    /// (Self::typed_allowed), the Target would take a paste (not excluded, not elevated,
+    /// (`Self::typed_allowed`), the Target would take a paste (not excluded, not elevated,
     /// something focused), and nothing else was typed meanwhile.
     pub fn expand_typed(&mut self, typed: &Typed) -> TypedOutcome {
         self.insert_typed(self.settings.expand_triggers, typed)

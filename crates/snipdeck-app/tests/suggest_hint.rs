@@ -5,6 +5,8 @@
     clippy::expect_used,
     clippy::unwrap_used,
     clippy::panic,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
     reason = "test code: a failure is a failed test"
 )]
 
