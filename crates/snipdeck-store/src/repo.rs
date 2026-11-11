@@ -93,6 +93,11 @@ pub trait GroupRepo {
     /// Moves a live item of the group's list to the start or end of the group and makes it a
     /// member (`First` is what undoing the move of a group's first item needs).
     fn join_group(&mut self, item: ItemId, group: GroupId, end: GroupEnd) -> Result<()>;
+
+    /// Sets the item's group to exactly `group` (`None` leaves its group) and leaves its position
+    /// alone. The group must be one of the item's list. For undo, which must restore a
+    /// membership that a move would otherwise re-derive from the neighbour above.
+    fn set_item_group(&mut self, item: ItemId, group: Option<GroupId>) -> Result<()>;
 }
 
 /// Typed triggers: short codes such as `;sig` that stand for items.

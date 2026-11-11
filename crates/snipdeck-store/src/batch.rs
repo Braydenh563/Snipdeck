@@ -528,6 +528,10 @@ macro_rules! repo_impls {
             fn join_group(&mut self, item: ItemId, group: GroupId, end: GroupEnd) -> Result<()> {
                 self.writer(|cx| groups::join_group(cx, item, group, end))
             }
+
+            fn set_item_group(&mut self, item: ItemId, group: Option<GroupId>) -> Result<()> {
+                self.writer(|cx| groups::set_item_group(cx, item, group))
+            }
         }
 
         impl TriggerRepo for $ty {

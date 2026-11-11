@@ -237,6 +237,10 @@ pub struct View {
     pub focus_row: Option<usize>,
     /// See `focus_row`.
     pub focus_seq: u64,
+    /// The header row to open for rename (a group just made).
+    pub rename_row: Option<usize>,
+    /// See `rename_row`.
+    pub rename_seq: u64,
     /// The header's Select mode is on (rows show a checkbox).
     pub select_mode: bool,
     /// The header's Delete mode is on (rows show a delete button).

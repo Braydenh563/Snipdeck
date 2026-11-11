@@ -502,7 +502,11 @@ pub const fn item_menu_shortcut(entry: crate::controller::ItemMenuEntry) -> &'st
         ItemMenuEntry::Trash => "Del",
         ItemMenuEntry::MoveUp { .. } => "Alt+Up",
         ItemMenuEntry::MoveDown { .. } => "Alt+Down",
-        ItemMenuEntry::Stack { .. }
+        ItemMenuEntry::Group => "Ctrl+G",
+        ItemMenuEntry::RenameGroup => "F2",
+        ItemMenuEntry::Ungroup
+        | ItemMenuEntry::DeleteGroup
+        | ItemMenuEntry::Stack { .. }
         | ItemMenuEntry::PasteAs
         | ItemMenuEntry::MoveTo
         | ItemMenuEntry::Colour
@@ -534,6 +538,10 @@ pub fn item_menu_label(window: &PanelWindow, entry: crate::controller::ItemMenuE
         ItemMenuEntry::Sensitive { .. } => t.invoke_item_sensitive(),
         ItemMenuEntry::MoveUp { .. } => moves.invoke_menu_move_up(),
         ItemMenuEntry::MoveDown { .. } => moves.invoke_menu_move_down(),
+        ItemMenuEntry::Group => t.invoke_item_group(),
+        ItemMenuEntry::RenameGroup => t.invoke_group_rename(),
+        ItemMenuEntry::Ungroup => t.invoke_group_ungroup(),
+        ItemMenuEntry::DeleteGroup => t.invoke_group_delete(),
         ItemMenuEntry::Separator => return String::new(),
     }
     .into()

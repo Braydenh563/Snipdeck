@@ -741,6 +741,9 @@ msgstr "Endgültig löschen?"
 msgid "Delete for good…"
 msgstr "Endgültig löschen…"
 
+msgid "Delete group"
+msgstr "Gruppe löschen"
+
 msgid "Delete list"
 msgstr "Liste löschen"
 
@@ -1088,6 +1091,15 @@ msgstr "Grün"
 
 msgid "Greet"
 msgstr "Begrüßung"
+
+msgid "Group"
+msgstr "Gruppe"
+
+msgid "Group name"
+msgstr "Gruppenname"
+
+msgid "Group..."
+msgstr "Gruppieren..."
 
 msgid "Handy for forms you fill field by field."
 msgstr "Praktisch für Formulare, die du Feld für Feld ausfüllst."
@@ -2128,6 +2140,9 @@ msgstr "Entfernen…"
 msgid "Rename board…"
 msgstr "Board umbenennen…"
 
+msgid "Rename group"
+msgstr "Gruppe umbenennen"
+
 msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
 msgstr "Schlagwörter umbenennen oder löschen. Beim Löschen eines Schlagworts wird es aus seinen Textbausteinen entfernt; die Textbausteine bleiben erhalten."
 
@@ -2969,6 +2984,9 @@ msgstr "{} rückgängig machen (Strg+Z)"
 msgid "Undock the panel"
 msgstr "Panel lösen"
 
+msgid "Ungroup"
+msgstr "Gruppierung aufheben"
+
 msgid "Unlock"
 msgstr "Entsperren"
 
@@ -3244,6 +3262,14 @@ msgstr "Favoriten anzeigen"
 msgid "find filter look"
 msgstr "finden filtern suchen"
 
+msgid "group change"
+msgstr "Gruppenänderung"
+
+msgid "group {}, {} item"
+msgid_plural "group {}, {} items"
+msgstr[0] "Gruppe {}, {} Element"
+msgstr[1] "Gruppe {}, {} Elemente"
+
 msgid "help docs manual how"
 msgstr "Hilfe Dokumentation Handbuch Anleitung"
 
@@ -3425,6 +3451,11 @@ msgstr "{} wird von einer anderen App verwendet. Wähle in den Einstellungen ein
 
 msgid "{} is {}, over the 5 MB limit for text, and was skipped."
 msgstr "{} ist {} groß, über dem Limit von 5 MB für Text, und wurde übersprungen."
+
+msgid "{} item"
+msgid_plural "{} items"
+msgstr[0] "{} Element"
+msgstr[1] "{} Elemente"
 
 msgid "{} item in {} list will be added"
 msgid_plural "{} items in {} lists will be added"
