@@ -39,10 +39,10 @@ where
         match self.save_item(&mut slot, input) {
             Ok((list, overlaps)) => {
                 self.clear_draft(&slot);
-                self.show_toast(if overlaps {
+                self.show_toast(if let Some(other) = overlaps {
                     Toast {
                         kind: ToastKind::Neutral,
-                        message: ToastMessage::TriggerOverlaps,
+                        message: ToastMessage::TriggerOverlaps { other },
                     }
                 } else {
                     Toast {
@@ -67,9 +67,9 @@ where
         &mut self,
         slot: &mut ItemEditorSlot,
         input: &EditorInput,
-    ) -> Result<(String, bool), ()> {
+    ) -> Result<(String, Option<String>), ()> {
         let now = self.clock.now();
-        let mut overlaps = false;
+        let mut overlaps: Option<String> = None;
         let new = slot.is_new();
         // A new item takes any kind; an existing text item any text kind; the rest keep theirs.
         let kind = if new
@@ -191,7 +191,8 @@ where
                     let formats = build_formats(b, sensitive, text.as_deref(), source.as_ref())?;
                     b.insert_item(&item, &formats, Placement::First)?;
                     if trigger.is_some() {
-                        overlaps = !b.set_trigger(item.id, trigger.as_ref())?.is_empty();
+                        let codes = b.set_trigger(item.id, trigger.as_ref())?;
+                        overlaps = overlap_title(b, &codes)?;
                     }
                     Ok(())
                 });
@@ -230,7 +231,8 @@ where
                         };
                         b.update_item(&item, formats.as_ref())?;
                         if trigger.is_some() || !slot.original_trigger.is_empty() {
-                            overlaps = !b.set_trigger(id, trigger.as_ref())?.is_empty();
+                            let codes = b.set_trigger(id, trigger.as_ref())?;
+                            overlaps = overlap_title(b, &codes)?;
                         }
                         Ok(())
                     });
@@ -266,7 +268,7 @@ where
         &mut self,
         slot: &mut ItemEditorSlot,
         failure: SaveFailure,
-    ) -> Result<(String, bool), ()> {
+    ) -> Result<(String, Option<String>), ()> {
         slot.problems.banner = Some(EditorProblem::Save(failure));
         self.show_toast(Toast {
             kind: ToastKind::Danger,
@@ -378,6 +380,20 @@ fn edit_step(
             }),
         }],
     ))
+}
+
+/// The title of the item that owns the first of these overlapping codes, for the "Saved, but" toast.
+fn overlap_title<B: TriggerRepo + ItemRepo>(
+    b: &B,
+    codes: &[Trigger],
+) -> snipdeck_store::Result<Option<String>> {
+    let Some(code) = codes.first() else {
+        return Ok(None);
+    };
+    Ok(match b.trigger_holder(code)? {
+        Some(id) => Some(b.item(id)?.title),
+        None => Some(String::new()),
+    })
 }
 
 #[cfg(test)]

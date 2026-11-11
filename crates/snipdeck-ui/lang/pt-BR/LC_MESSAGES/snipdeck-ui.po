@@ -2261,6 +2261,9 @@ msgstr "{} salvo."
 msgid "Saved. This code overlaps another trigger, so one of them may never fire."
 msgstr "Salvo. Este código se sobrepõe a outro gatilho, então um dos dois pode nunca disparar."
 
+msgid "Saved. This code overlaps the trigger of “{}”, so one of them may never fire."
+msgstr "Salvo. Este código se sobrepõe ao gatilho de “{}”, então um dos dois pode nunca disparar."
+
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "Salva todos os quadros, listas e itens em um único arquivo .snipdeck, em uma pasta que você escolher."
 
@@ -2365,6 +2368,9 @@ msgstr "Trecho sensível"
 
 msgid "Sensitive items are encrypted on disk, on every plan."
 msgstr "Itens sensíveis são criptografados no disco, em todos os planos."
+
+msgid "Sensitive items can't be typed in, so they have no trigger."
+msgstr "Itens sensíveis não podem ser digitados, então não têm gatilho."
 
 msgid "Sensitive items, masked"
 msgstr "Itens sensíveis, mascarados"
@@ -2992,6 +2998,9 @@ msgstr "Digite {} para confirmar"
 
 msgid "Typing"
 msgstr "Digitação"
+
+msgid "Typing triggers work on Windows only."
+msgstr "Os gatilhos ao digitar só funcionam no Windows."
 
 msgid "UPPERCASE"
 msgstr "MAIÚSCULAS"

@@ -2261,6 +2261,9 @@ msgstr "{} guardado."
 msgid "Saved. This code overlaps another trigger, so one of them may never fire."
 msgstr "Guardado. Este código se solapa con otro disparador, así que puede que uno de los dos nunca se active."
 
+msgid "Saved. This code overlaps the trigger of “{}”, so one of them may never fire."
+msgstr "Guardado. Este código se solapa con el atajo de «{}», así que puede que uno de los dos nunca se active."
+
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "Guarda todos los tableros, listas y fragmentos en un archivo .snipdeck dentro de la carpeta que elijas."
 
@@ -2365,6 +2368,9 @@ msgstr "Fragmento sensible"
 
 msgid "Sensitive items are encrypted on disk, on every plan."
 msgstr "Los fragmentos sensibles se cifran en disco, en todos los planes."
+
+msgid "Sensitive items can't be typed in, so they have no trigger."
+msgstr "Los elementos confidenciales no se pueden escribir, así que no tienen atajo."
 
 msgid "Sensitive items, masked"
 msgstr "Fragmentos sensibles, ocultos"
@@ -2992,6 +2998,9 @@ msgstr "Escribe {} para confirmar"
 
 msgid "Typing"
 msgstr "Escritura"
+
+msgid "Typing triggers work on Windows only."
+msgstr "Los atajos al escribir solo funcionan en Windows."
 
 msgid "UPPERCASE"
 msgstr "MAYÚSCULAS"

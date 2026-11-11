@@ -1008,18 +1008,25 @@ fn a_one_character_trigger_gets_a_warning_under_the_field() {
         let r = rig();
         menu(&r, "New item");
         let ed = r.ed();
-        let normal = ed.get_trigger_helper().to_string();
+        // Tall enough that every field is on screen (off-screen ones are not in the tree).
+        ed.window().set_size(slint::PhysicalSize::new(900, 2400));
+        assert_eq!(
+            ed.get_trigger_warning().to_string(),
+            "",
+            "no warning at first"
+        );
         ed.set_trigger(";".into());
         settle();
-        let warning = ed.get_trigger_helper().to_string();
-        assert_ne!(warning, normal, "one character warns");
+        let warning = ed.get_trigger_warning().to_string();
         assert!(warning.contains("one-character"), "{warning}");
+        // Announced, not only drawn: a text element carrying the warning is in the tree.
+        let _ = find(&ed, &warning, AccessibleRole::Text);
         ed.set_trigger(";s".into());
         settle();
-        assert_eq!(ed.get_trigger_helper().to_string(), normal, "two do not");
+        assert_eq!(ed.get_trigger_warning().to_string(), "", "two do not");
         ed.set_trigger("".into());
         settle();
-        assert_eq!(ed.get_trigger_helper().to_string(), normal, "none either");
+        assert_eq!(ed.get_trigger_warning().to_string(), "", "none either");
     });
 }
 

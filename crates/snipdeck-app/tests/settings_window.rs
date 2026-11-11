@@ -3322,3 +3322,12 @@ fn the_typing_toggles_are_off_by_default_and_change_the_settings() {
         assert!(r.ctl.borrow().settings().suggest_triggers);
     });
 }
+
+#[test]
+fn the_typing_section_says_it_works_on_windows_only_where_it_does_not() {
+    on_ui_thread(|| {
+        // The fake host stands in for a machine without the Windows keyboard hook.
+        let r = rig();
+        assert!(!r.ui.get_typing_available());
+    });
+}
