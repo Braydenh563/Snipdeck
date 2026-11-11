@@ -70,6 +70,9 @@ msgstr "作業中のアプリの横に、スニペットを並べた帯が表示
 msgid "A tag with that name already exists."
 msgstr "その名前のタグは既に存在します。"
 
+msgid "A tick box; the text inside is pasted only when ticked"
+msgstr "チェックボックス。オンのときだけ中のテキストを貼り付けます"
+
 msgid "A title can have at most {} characters."
 msgstr "タイトルは最大 {} 文字までです。"
 
@@ -203,8 +206,14 @@ msgstr "新しい名前を適用"
 msgid "As many as you like, of every kind."
 msgstr "すべての種類を、必要なだけ。"
 
+msgid "Asks for a date, today if left empty"
+msgstr "日付を尋ねます。空のままなら今日の日付です"
+
 msgid "Asks for a value each time"
 msgstr "毎回値を尋ねる"
+
+msgid "Asks for text over several lines"
+msgstr "複数行のテキストを尋ねます"
 
 msgid "Asks you to pick one of the options"
 msgstr "オプションから1つ選択を求めます"
@@ -890,6 +899,9 @@ msgstr "スタックを終了"
 msgid "Enter"
 msgstr "Enter"
 
+msgid "Enter a real date as YYYY-MM-DD, or leave it empty for today."
+msgstr "実在する日付を YYYY-MM-DD の形式で入力するか、空のままにして今日にします。"
+
 msgid "Enter creates “{}” in {}"
 msgstr "Enter で「{}」を {} に作成"
 
@@ -1154,6 +1166,9 @@ msgstr[0] "{} 件のスニペットを取り込みました"
 
 msgid "Import…"
 msgstr "取り込む…"
+
+msgid "Include"
+msgstr "含める"
 
 msgid "Included"
 msgstr "含まれる"
@@ -2984,6 +2999,9 @@ msgstr "Windows では {} をショートカットに使えません。"
 
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows の文字サイズ（設定 > アクセシビリティ > 文字サイズ）に従います。サイズを選ぶと、そちらを使います。"
+
+msgid "YYYY-MM-DD"
+msgstr "YYYY-MM-DD"
 
 msgid "Yes"
 msgstr "はい"

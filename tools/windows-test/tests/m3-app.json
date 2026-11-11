@@ -385,6 +385,13 @@
       "title": "Recent keeps formatted text and honours the exclusion markers (slice 5)",
       "do": "Copy a bold, coloured paragraph from Word, click its Recent row to paste into WordPad, then copy the same words from Notepad. Then copy a password in a password manager that sets the exclude marker, and copy a picture from it if it offers one.",
       "expect": "The Word copy pastes into WordPad with bold and colour. The same words from Notepad leave one row (newest source app, plain). Nothing from the password manager appears, neither text nor picture nor files. Write any app whose copy was kept despite the marker in the note (n)."
+    },
+    {
+      "id": "50",
+      "v1": false,
+      "title": "Fill-ins: multi-line box, date and tick box, pasted into Outlook (v1.1 slice 2b)",
+      "do": "Make a Template with {multiline:Body}, {pickdate:Due|%F} and {optional:PS}P.S. thanks{/optional}. Use it from the Picker with an Outlook message open. In the form type two lines in the first box (Enter adds a line), type 2026-02-30 in the date and press Ctrl+Enter, correct it to a real day, tick the box with Space and press Ctrl+Enter.",
+      "expect": "Enter adds a line and does not submit. The bad date keeps the form open with an error under the date box and the focus there. After the fix the text pastes into Outlook with both lines, the date, and the P.S. line. Run it again with the box unticked and the date empty: no P.S., and today's date. A screen reader announces the tick box as a check box named PS."
     }
   ]
 }

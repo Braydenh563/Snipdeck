@@ -20,7 +20,7 @@ use crate::{
     accent::Accent,
     binding::{index, model, redraw_all, register_redraw},
     controller::{Controller, FillView, HelpTopic, Library, View},
-    fill::{Field, FieldKind},
+    fill::{Field, FieldKind, Missing},
     frame::Rect,
     host::ClipboardText,
     panel::Footer,
@@ -169,8 +169,29 @@ where
             self.shell.hide();
             crate::trace!("fill form submitted");
             self.controller.borrow_mut().run_fill(submission);
+        } else if let Some(window) = self.shell.window() {
+            self.flag_bad_date(&window);
         }
         redraw_all();
+    }
+
+    /// The window cannot read a date, so when the form held one that is not a real day the
+    /// field says so and takes the focus (a required field left empty is flagged by the window).
+    fn flag_bad_date(&self, window: &ui::TemplateFillWindow) {
+        let bad = self
+            .controller
+            .borrow()
+            .fill()
+            .and_then(crate::fill::FillModel::first_missing);
+        let Some((at, Missing::BadDate)) = bad else {
+            return;
+        };
+        let fields = window.get_fields();
+        if let Some(mut field) = fields.row_data(at) {
+            field.error = window.global::<ui::FormTexts<'_>>().invoke_bad_date();
+            fields.set_row_data(at, field);
+            window.invoke_focus_field(crate::binding::to_i32(at));
+        }
     }
 
     fn wire(self: &Rc<Self>, window: &ui::TemplateFillWindow) {
@@ -276,6 +297,9 @@ pub fn form_field(field: &Field) -> ui::FormField {
         kind: match field.kind {
             FieldKind::Text => ui::TemplateFieldKind::Text,
             FieldKind::Choice => ui::TemplateFieldKind::Choice,
+            FieldKind::Multiline => ui::TemplateFieldKind::Multiline,
+            FieldKind::Date => ui::TemplateFieldKind::Date,
+            FieldKind::Toggle => ui::TemplateFieldKind::Toggle,
         },
         value: field.value.as_str().into(),
         options: model(field.options.iter().map(|o| o.as_str().into())),

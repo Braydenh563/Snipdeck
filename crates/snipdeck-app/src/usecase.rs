@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use snipdeck_core::{
     Entitlements, Feature, Format, Formats, Item, ItemId, ItemKind, Timestamp, UseMode, UseOutcome,
     template::{
-        Locale, Prompt, PromptKind, RenderContext, RenderError, Template, TemplateError, TimeZone,
+        Locale, Prompt, RenderContext, RenderError, Template, TemplateError, TimeZone,
         transform::{self, Transform},
     },
 };
@@ -269,19 +269,14 @@ fn render_template(text: &str, request: &UseRequest) -> Result<(String, Option<u
             return Err(RenderError::ProRequired(feature).into());
         }
     }
-    let missing: Vec<Prompt> = template
-        .prompts()
-        .into_iter()
-        .filter(|p| {
-            !request.answers.contains_key(&p.name)
-                && !matches!(
-                    p.kind,
-                    PromptKind::Field { default: Some(_) } | PromptKind::Choice { .. }
-                )
-        })
-        .collect();
-    if !missing.is_empty() {
-        return Err(UseError::NeedsAnswers(template.prompts()));
+    // Any prompt without an answer opens the form, whatever its kind: a default only prefills
+    // it, and a choice, date or tick box alone must still be asked (empty date = today).
+    let prompts = template.prompts();
+    if prompts
+        .iter()
+        .any(|p| !request.answers.contains_key(&p.name))
+    {
+        return Err(UseError::NeedsAnswers(prompts));
     }
     let drawn;
     let uuids = if let Some(given) = &request.uuids {
@@ -720,6 +715,31 @@ mod tests {
             Err(UseError::Render(RenderError::ProRequired(_)))
         ));
         assert_eq!(w.store.item(id).expect("item").use_count, 0);
+    }
+
+    #[test]
+    fn every_prompt_kind_opens_the_form_until_it_is_answered() {
+        for text in [
+            "Hi{optional:PS}, P.S.{/optional}",
+            "Due {pickdate:Due}",
+            "Size {choice:Size|S|M}",
+            "Hi {field:Name|there}",
+            "{multiline:Body|Dear all}",
+        ] {
+            let mut w = World::new();
+            let id = w.add(ItemKind::Template, false, text);
+            let mut request = World::request(id, UseMode::Copy, Route::Copy(CopyReason::NoTarget));
+            assert!(
+                matches!(w.run(&request), Err(UseError::NeedsAnswers(_))),
+                "{text} asks first"
+            );
+            let prompts = Template::parse(text).expect("parses").prompts();
+            request.answers = prompts
+                .iter()
+                .map(|p| (p.name.clone(), String::new()))
+                .collect();
+            w.run(&request).expect("answered, it renders");
+        }
     }
 
     #[test]

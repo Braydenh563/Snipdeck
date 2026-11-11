@@ -125,7 +125,23 @@ export component Checkbox inherits Rectangle {
     // Spoken value while `mixed` ("Partially checked"); the host translates it.
     in property <string> mixed-label;
     in property <bool> enabled: true;
+    // Counts up to ask for keyboard focus (as `TextField.focus-request`).
+    in property <int> focus-request: 0;
+    // Off in a form, where Enter moves on (`entered`) and only Space flips the box.
+    in property <bool> enter-flips: true;
     callback toggled(bool);
+    callback entered();
+
+    changed focus-request => {
+        if (root.focus-request > 0) {
+            scope.focus();
+        }
+    }
+    init => {
+        if (root.focus-request > 0) {
+            scope.focus();
+        }
+    }
 
     property <bool> pressed: touch.pressed && root.enabled;
     property <bool> hovered: touch.has-hover && root.enabled;
@@ -209,6 +225,10 @@ export component Checkbox inherits Rectangle {
         enabled: root.enabled;
         focus-on-click: false;
         key-pressed(event) => {
+            if (event.text == "\n" && !root.enter-flips) {
+                root.entered();
+                return accept;
+            }
             if (event.text == " " || event.text == "\n") {
                 root.flip();
                 return accept;

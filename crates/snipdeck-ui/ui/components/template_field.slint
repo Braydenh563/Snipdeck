@@ -2,8 +2,9 @@ import { SystemLook, Theme, Type, Radius, Space, Motion, Fonts } from "../theme.
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
 import { TextField, FieldError } from "text_field.slint";
+import { Checkbox } from "choice.slint";
 
-export enum TemplateFieldKind { text, choice, date, multiline }
+export enum TemplateFieldKind { text, choice, date, multiline, toggle }
 
 // DESIGN.md §4 TemplateField: one prompted placeholder of a template ({field:Name}, {choice:Name|a|b}) in the
 // fill-in form. A label row (the template glyph, the name, and the word for "required" when it is: never a
@@ -11,6 +12,8 @@ export enum TemplateFieldKind { text, choice, date, multiline }
 //   text    a TextField
 //   multiline  a multi-line TextField (Enter adds a line)
 //   choice  a list of options, one selected (Up / Down / Home / End move; one tab stop)
+//   toggle  a check box ({optional:Name}); `value` is "true" when ticked and "" when not. Space flips it; Enter moves on like the other fields;
+//           it is one Tab stop and its accessible label is the prompt name.
 //   date    a TextField with a calendar glyph; `placeholder` carries the format hint ("YYYY-MM-DD"). Parsing,
 //           locale and validation belong to the caller, which reports problems through `error`.
 //
@@ -129,7 +132,7 @@ export component TemplateField inherits FocusScope {
             }
         }
 
-        if root.kind != TemplateFieldKind.choice: TextField {
+        if root.kind != TemplateFieldKind.choice && root.kind != TemplateFieldKind.toggle: TextField {
             text <=> root.value;
             label: root.full-label;
             placeholder: root.placeholder;
@@ -219,6 +222,20 @@ export component TemplateField inherits FocusScope {
             }
         }
 
-        if root.kind == TemplateFieldKind.choice && root.error != "": FieldError { text: root.error; }
+        if root.kind == TemplateFieldKind.toggle: Checkbox {
+            focus-request: root.focus-request;
+            text: @tr("Include");
+            a11y-label: root.label;
+            checked: root.value == "true";
+            enabled: root.enabled;
+            enter-flips: false;
+            entered => { root.accepted(root.value); }
+            toggled(on) => {
+                root.value = on ? "true" : "";
+                root.edited(root.value);
+            }
+        }
+
+        if (root.kind == TemplateFieldKind.choice || root.kind == TemplateFieldKind.toggle) && root.error != "": FieldError { text: root.error; }
     }
 }
