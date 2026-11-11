@@ -2361,6 +2361,9 @@ msgstr "すべてのスニペットを選択"
 msgid "Select or delete…"
 msgstr "選択または削除…"
 
+msgid "Select or unselect the row"
+msgstr "行の選択を切り替える"
+
 msgid "Select several items"
 msgstr "複数の項目を選択"
 

@@ -2369,6 +2369,9 @@ msgstr "Sélectionner tous les extraits"
 msgid "Select or delete…"
 msgstr "Sélectionner ou supprimer…"
 
+msgid "Select or unselect the row"
+msgstr "Sélectionner ou désélectionner la ligne"
+
 msgid "Select several items"
 msgstr "Sélectionner plusieurs éléments"
 

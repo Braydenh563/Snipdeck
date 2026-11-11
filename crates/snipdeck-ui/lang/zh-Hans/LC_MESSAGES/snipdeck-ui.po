@@ -2361,6 +2361,9 @@ msgstr "选择所有片段"
 msgid "Select or delete…"
 msgstr "选择或删除…"
 
+msgid "Select or unselect the row"
+msgstr "选中或取消选中该行"
+
 msgid "Select several items"
 msgstr "选择多个项目"
 

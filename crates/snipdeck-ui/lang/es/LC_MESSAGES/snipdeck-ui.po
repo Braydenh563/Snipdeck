@@ -2369,6 +2369,9 @@ msgstr "Selecciona todos los elementos"
 msgid "Select or delete…"
 msgstr "Seleccionar o eliminar…"
 
+msgid "Select or unselect the row"
+msgstr "Seleccionar o deseleccionar la fila"
+
 msgid "Select several items"
 msgstr "Seleccionar varios elementos"
 

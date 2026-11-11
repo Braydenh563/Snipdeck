@@ -2369,6 +2369,9 @@ msgstr "Alle Textbausteine auswählen"
 msgid "Select or delete…"
 msgstr "Auswählen oder löschen…"
 
+msgid "Select or unselect the row"
+msgstr "Zeile auswählen oder abwählen"
+
 msgid "Select several items"
 msgstr "Mehrere Einträge auswählen"
 

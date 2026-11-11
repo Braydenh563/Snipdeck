@@ -90,7 +90,7 @@ use Scope::{Anywhere, Editors, Main, Panel, Picker, Unlock};
 
 /// Every shortcut, in the order of `ShortcutTexts.titles` (a test in `tests/help_window.rs` checks the
 /// length) and grouped by scope in the order of [`Scope::ALL`].
-pub const CATALOGUE: [Shortcut; 70] = [
+pub const CATALOGUE: [Shortcut; 74] = [
     // Anywhere in Windows.
     global(HotkeyAction::TogglePanel),
     global(HotkeyAction::Picker),
@@ -101,6 +101,7 @@ pub const CATALOGUE: [Shortcut; 70] = [
     custom(Anywhere, &["Tab"], "Tab while the suggestion hint shows"),
     // Main window.
     row(Main, "Ctrl+K"),
+    row(Main, "Ctrl+Shift+P"),
     row(Main, "Ctrl+N"),
     row(Main, "Ctrl+Shift+N"),
     row(Main, "Ctrl+F"),
@@ -110,15 +111,18 @@ pub const CATALOGUE: [Shortcut; 70] = [
     row(Main, "Enter"),
     row(Main, "Shift+Enter"),
     row(Main, "Ctrl+E"),
+    row(Main, "F2"),
     row(Main, "Ctrl+D"),
     row(Main, "Ctrl+P"),
     row(Main, "Del"),
     row(Main, "Ctrl+A"),
+    row(Main, "Ctrl+Space"),
     row(Main, "Ctrl+Z"),
     row(Main, "Ctrl+Y"),
     row(Main, "Ctrl+W"),
     row(Main, "Ctrl+B"),
     custom(Main, &["Alt", "Up", "Down"], "Alt+Up or Alt+Down"),
+    custom(Main, &["Space"], "Hold Space"),
     // Panel.
     custom(Panel, &["A-Z"], "Type"),
     custom(Panel, &["Up", "Down"], "Up or Down"),
@@ -169,7 +173,7 @@ pub const CATALOGUE: [Shortcut; 70] = [
     row(Picker, "Enter"),
     row(Picker, "Shift+Enter"),
     custom(Picker, &["Alt", "1-9"], "Alt+1 to 9"),
-    row(Picker, "Tab"),
+    custom(Picker, &["Tab", "Shift"], "Tab or Shift+Tab"),
     row(Picker, "Ctrl+E"),
     row(Picker, "Esc"),
     // Editors.
@@ -618,6 +622,7 @@ mod tests {
             "the table was found: {} rows",
             table.len()
         );
+        let mut missing = Vec::new();
         for line in table {
             let cells: Vec<&str> = line.trim_matches('|').split('|').map(str::trim).collect();
             let (where_, keys) = (cells[0], cells[1]);
@@ -635,12 +640,15 @@ mod tests {
             for scope in guide_scopes(where_) {
                 let rows = listed(scope);
                 for key in &wanted {
-                    assert!(
-                        rows.iter().any(|row| key.iter().all(|a| row.contains(a))),
-                        "the guide lists {keys:?} for {where_} but the shortcuts list has no row for it"
-                    );
+                    if !rows.iter().any(|row| key.iter().all(|a| row.contains(a))) {
+                        missing.push(format!("{keys} ({where_})"));
+                    }
                 }
             }
         }
+        assert!(
+            missing.is_empty(),
+            "the guide's keyboard table lists keys the shortcuts list lacks: {missing:#?}"
+        );
     }
 }
