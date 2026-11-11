@@ -640,11 +640,11 @@ hello_current | crates/snipdeck-app/src/controller/lock_ctl/hello_ctl.rs:308
 finish_hello | crates/snipdeck-app/src/controller/lock_ctl/hello_ctl.rs:317
 seal_failed | crates/snipdeck-app/src/controller/lock_ctl/hello_ctl.rs:394
 turn_hello_off | crates/snipdeck-app/src/controller/lock_ctl/hello_ctl.rs:424
-hello_turned_off_note | crates/snipdeck-app/src/controller/lock_ctl/hello_ctl.rs:438
-take_hello_turned_off_note | crates/snipdeck-app/src/controller/lock_ctl/hello_ctl.rs:443
-hello_changed_note | crates/snipdeck-app/src/controller/lock_ctl/hello_ctl.rs:453
-take_hello_changed_note | crates/snipdeck-app/src/controller/lock_ctl/hello_ctl.rs:458
-note_password_unlock | crates/snipdeck-app/src/controller/lock_ctl/hello_ctl.rs:467
+hello_turned_off_note | crates/snipdeck-app/src/controller/lock_ctl/hello_ctl.rs:441
+take_hello_turned_off_note | crates/snipdeck-app/src/controller/lock_ctl/hello_ctl.rs:446
+hello_changed_note | crates/snipdeck-app/src/controller/lock_ctl/hello_ctl.rs:456
+take_hello_changed_note | crates/snipdeck-app/src/controller/lock_ctl/hello_ctl.rs:461
+note_password_unlock | crates/snipdeck-app/src/controller/lock_ctl/hello_ctl.rs:470
 
 ### crates/snipdeck-app/src/controller/main_ctl.rs
 
@@ -3616,9 +3616,9 @@ command | crates/snipdeck-app/src/tips.rs:39
 opens_main | crates/snipdeck-app/src/tips.rs:57
 Tip | crates/snipdeck-app/src/tips.rs:64
 TIPS | crates/snipdeck-app/src/tips.rs:75
-tests | crates/snipdeck-app/src/tips.rs:139
-every_tip_has_an_image_that_exists | crates/snipdeck-app/src/tips.rs:145
-every_action_maps_to_a_command | crates/snipdeck-app/src/tips.rs:160
+tests | crates/snipdeck-app/src/tips.rs:145
+every_tip_has_an_image_that_exists | crates/snipdeck-app/src/tips.rs:151
+every_action_maps_to_a_command | crates/snipdeck-app/src/tips.rs:166
 
 ### crates/snipdeck-app/src/toast.rs
 
@@ -7456,8 +7456,8 @@ main | scripts/symbols.py:667
 
 ### scripts/tips_images.py
 
-render | scripts/tips_images.py:39
-main | scripts/tips_images.py:48
+render | scripts/tips_images.py:40
+main | scripts/tips_images.py:49
 
 ### spikes/s1-noactivate/src/main.rs
 
@@ -8090,7 +8090,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/buttons.rs` | 4 |
 | `crates/snipdeck-ui/tests/deck.rs` | 13 |
 | `crates/snipdeck-ui/tests/deck_logic.rs` | 1 |
-| `crates/snipdeck-ui/tests/editors.rs` | 30 |
+| `crates/snipdeck-ui/tests/editors.rs` | 31 |
 | `crates/snipdeck-ui/tests/editors_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/fill.rs` | 10 |
 | `crates/snipdeck-ui/tests/fill_logic.rs` | 1 |

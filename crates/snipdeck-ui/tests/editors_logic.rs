@@ -311,6 +311,38 @@ ui_tests! {
         assert_eq!(take(&log), ["save"]);
     }
 
+    fn the_trigger_field_speaks_its_helper_then_the_warning_and_the_error_wins() {
+        const HELPER: &str =
+            "Type this in any app to insert the snippet. Turn it on in Settings, under Typing.";
+        const ONE_CHAR: &str = "A one-character trigger fires every time you type it, even inside words. Two or more characters are safer.";
+        let (ui, _log) = item_editor();
+        ui.set_trigger("".into());
+        settle();
+        let desc = |ui: &ItemEditor| {
+            find(ui, "Trigger", AccessibleRole::TextInput).accessible_description()
+        };
+        assert_eq!(desc(&ui).as_deref(), Some(HELPER), "the helper is spoken");
+        ui.set_trigger(";".into());
+        settle();
+        assert_eq!(desc(&ui).as_deref(), Some(ONE_CHAR), "the warning replaces it");
+        ui.set_trigger_error("That trigger is taken.".into());
+        settle();
+        assert_eq!(
+            desc(&ui).as_deref(),
+            Some("That trigger is taken."),
+            "the error wins"
+        );
+        ui.set_trigger_error("".into());
+        ui.set_sensitive(true);
+        settle();
+        let reason = find(
+            &ui,
+            "Sensitive items can't be typed in, so they have no trigger.",
+            AccessibleRole::Text,
+        );
+        assert!(reason.accessible_label().is_some(), "the reason is a text node");
+    }
+
     fn escape_leaves_a_clean_editor_and_asks_before_discarding_changes() {
         let (ui, log) = item_editor();
         press_key(&ui, Key::Escape);

@@ -641,6 +641,23 @@ fn settings_typing_section_walk() {
                 .find_all()
                 .iter()
                 .any(|e| e.accessible_label().is_some_and(|l| l == WINDOWS_ONLY_NOTE));
+            // Unavailable, the switches carry the reason as their description; available, nothing.
+            for name in TYPING_TOGGLES {
+                let want = if available { "" } else { WINDOWS_ONLY_NOTE };
+                let got = i_slint_backend_testing::ElementQuery::from_root(&h.component)
+                    .match_descendants()
+                    .find_all()
+                    .iter()
+                    .find(|e| {
+                        e.accessible_role() == Some(Role::Switch)
+                            && e.accessible_label().is_some_and(|l| l == name)
+                    })
+                    .and_then(i_slint_backend_testing::ElementHandle::accessible_description)
+                    .unwrap_or_default();
+                if got != want {
+                    problems.push(format!("{scene}: {name:?} describes {got:?}, not {want:?}"));
+                }
+            }
             if note_in_tree == available {
                 problems.push(format!(
                     "{scene}: the Windows-only note shows is {note_in_tree}"

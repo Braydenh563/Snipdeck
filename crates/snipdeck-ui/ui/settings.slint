@@ -1262,6 +1262,7 @@ export component SettingsPage inherits Window {
                         description: @tr("When you type an item's trigger in another program, Snipdeck replaces it with the item's text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items.");
                         Toggle {
                             a11y-label: @tr("Expand abbreviations as I type");
+                            a11y-description: root.typing-available ? "" : @tr("Typing triggers work on Windows only.");
                             enabled: root.typing-available;
                             checked <=> root.expand-triggers;
                             toggled(on) => { root.expand-triggers-toggled(on); }
@@ -1275,6 +1276,7 @@ export component SettingsPage inherits Window {
                         description: @tr("After you type the first two characters of a trigger, a small hint at the text cursor offers the item. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows.");
                         Toggle {
                             a11y-label: @tr("Suggest snippets as I type");
+                            a11y-description: root.typing-available ? "" : @tr("Typing triggers work on Windows only.");
                             enabled: root.typing-available;
                             checked <=> root.suggest-triggers;
                             toggled(on) => { root.suggest-triggers-toggled(on); }
