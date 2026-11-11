@@ -712,7 +712,7 @@ where
             .main_group_rename(index(i), name.as_str()));
         wire!(on_group_rename_requested, |ctl, i| ctl
             .main_group_rename_start(index(i)));
-        wire!(on_group_rename_ended, |ctl| ctl.group_rename_ended());
+        wire!(on_group_rename_ended, |ctl| ctl.main_group_rename_ended());
         wire!(on_group_ungroup_requested, |ctl, i| ctl
             .main_group_ungroup(index(i)));
         wire!(on_group_delete_requested, |ctl, i| ctl

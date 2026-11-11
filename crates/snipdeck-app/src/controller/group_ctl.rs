@@ -22,6 +22,14 @@ enum RowMark {
     Other,
 }
 
+/// A window's request to open a header's inline rename, and a counter that tells the window it
+/// is a new request.
+#[derive(Debug, Default, Clone, Copy)]
+pub(super) struct Rename {
+    pub(super) group: Option<snipdeck_core::GroupId>,
+    pub(super) seq: u64,
+}
+
 /// Whose rows a group operation reads: the Panel's or the Main window's.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Surface {
@@ -68,7 +76,7 @@ where
         if members.is_empty() {
             // On a header with nothing marked there is nothing to gather: rename its group.
             if let Some(run) = self.group_row(s, cursor) {
-                self.start_group_rename(run.group.id);
+                self.start_group_rename(s, run.group.id);
             }
             return;
         }
@@ -134,7 +142,7 @@ where
         }
         if let Some(at) = self.header_row(s, group.id) {
             self.group_cursor(s, at);
-            self.start_group_rename(group.id);
+            self.start_group_rename(s, group.id);
         }
     }
 
@@ -145,21 +153,34 @@ where
 
     /// Asks the window to open the inline rename of group `id`'s header. The request follows the
     /// group, not a row number, and ends with [`group_rename_ended`](Self::group_rename_ended).
-    pub(super) fn start_group_rename(&mut self, id: snipdeck_core::GroupId) {
-        self.rename_group = Some(id);
-        self.rename_seq += 1;
+    pub(super) fn start_group_rename(&mut self, s: Surface, id: snipdeck_core::GroupId) {
+        let r = self.rename_of(s);
+        r.group = Some(id);
+        r.seq += 1;
     }
 
-    /// The inline rename closed (accepted or abandoned): the request is spent.
+    fn rename_of(&mut self, s: Surface) -> &mut Rename {
+        match s {
+            Surface::Panel => &mut self.rename_panel,
+            Surface::Main => &mut self.rename_main,
+        }
+    }
+
+    /// The Panel's inline rename closed (accepted or abandoned): the request is spent.
     pub fn group_rename_ended(&mut self) {
-        self.rename_group = None;
+        self.rename_panel.group = None;
+    }
+
+    /// The Main window's inline rename closed (accepted, abandoned or lost the focus).
+    pub fn main_group_rename_ended(&mut self) {
+        self.rename_main.group = None;
     }
 
     /// F2 on a header in the Main window: its name opens for editing in place.
     pub fn main_group_rename_start(&mut self, index: usize) {
         self.main_fresh();
         if let Some(run) = self.group_row(Surface::Main, index) {
-            self.start_group_rename(run.group.id);
+            self.start_group_rename(Surface::Main, run.group.id);
         }
     }
 
@@ -171,7 +192,7 @@ where
         match entry {
             super::ItemMenuEntry::RenameGroup => {
                 if let Some(run) = self.group_row(Surface::Panel, at) {
-                    self.start_group_rename(run.group.id);
+                    self.start_group_rename(Surface::Panel, run.group.id);
                 }
             }
             super::ItemMenuEntry::Ungroup => self.group_ungroup(at),
@@ -460,6 +481,8 @@ where
     }
 
     fn group_rename_on(&mut self, s: Surface, index: usize, name: &str) {
+        // Saving (Enter or the focus leaving) closes the editor, whatever came of the name.
+        self.rename_of(s).group = None;
         let Some(run) = self.group_row(s, index) else {
             return;
         };

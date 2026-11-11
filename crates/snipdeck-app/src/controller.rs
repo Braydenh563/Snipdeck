@@ -230,8 +230,9 @@ pub struct Controller<S, C, K, T> {
     focus_seq: u64,
     /// The header row that should start its inline rename (a group just made), and a counter
     /// that tells the window it is a new request.
-    rename_group: Option<snipdeck_core::GroupId>,
-    rename_seq: u64,
+    rename_panel: group_ctl::Rename,
+    /// The same for the Main window: each window has its own editor.
+    rename_main: group_ctl::Rename,
     /// What a new group is called until the user renames it (the window's translated word).
     group_name: String,
     /// The Main window's state.
@@ -438,8 +439,8 @@ where
             delete_list: None,
             focus_row: None,
             focus_seq: 0,
-            rename_group: None,
-            rename_seq: 0,
+            rename_panel: group_ctl::Rename::default(),
+            rename_main: group_ctl::Rename::default(),
             group_name: String::from("Group"),
             main,
             editor: None,
@@ -548,7 +549,7 @@ where
                     .collect();
             }
         }
-        let rename_row = self.rename_group.and_then(|g| {
+        let rename_row = self.rename_panel.group.and_then(|g| {
             rows.iter()
                 .position(|r| r.header.as_ref().is_some_and(|h| h.group == g))
         });
@@ -593,7 +594,7 @@ where
             focus_row: self.focus_row,
             focus_seq: self.focus_seq,
             rename_row,
-            rename_seq: self.rename_seq,
+            rename_seq: self.rename_panel.seq,
             select_mode: self.select_mode,
             delete_mode: self.delete_mode,
             clear_list: self.clear_list_view(),
