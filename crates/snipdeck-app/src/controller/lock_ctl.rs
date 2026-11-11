@@ -62,6 +62,8 @@ pub enum MasterProblem {
     Unavailable,
     /// Windows Hello did not unlock (cancelled, failed, removed or expired); the password does.
     HelloFailed,
+    /// The user cancelled the Hello prompt (the button stays).
+    HelloCancelled,
     /// Windows Hello changed since it was set up; the password unlocks and sets it up again.
     HelloChanged,
     /// Windows Hello was turned off because it did not work here.

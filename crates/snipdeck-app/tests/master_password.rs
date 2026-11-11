@@ -1372,7 +1372,20 @@ mod hello {
         hello.set_sign(Err(HelloError::Cancelled));
         assert_eq!(open_by_hello(&mut r), Err(HelloFailure::Cancelled));
         assert!(r.ctl.library_locked(), "still locked");
-        assert!(!r.ctl.hello_unlock_available(), "the copy is dropped");
+        assert!(
+            r.ctl.hello_unlock_available(),
+            "a cancel keeps the copy, so the button can be tried again"
+        );
+        hello.set_sign(Ok(()));
+        assert_eq!(open_by_hello(&mut r), Ok(()), "the retry opens it");
+        assert_eq!(r.secret().as_deref(), Some(SECRET));
+    }
+
+    #[test]
+    fn a_cancelled_hello_leaves_the_password_working() {
+        let (mut r, hello) = locked_with_hello();
+        hello.set_sign(Err(HelloError::Cancelled));
+        assert_eq!(open_by_hello(&mut r), Err(HelloFailure::Cancelled));
         r.ctl
             .unlock_with_password(password())
             .expect("the password works");
@@ -1429,7 +1442,7 @@ mod hello {
     }
 
     #[test]
-    fn turning_hello_on_and_cancelling_leaves_the_switch_off_without_a_message() {
+    fn turning_hello_on_and_cancelling_leaves_the_switch_off_and_says_so() {
         let hello = fake();
         let mut r = with_password(Tier::Pro);
         attach(&mut r.ctl, &hello);
@@ -1437,7 +1450,11 @@ mod hello {
         let job = r.ctl.set_hello_unlock(true).expect("a step");
         assert_eq!(r.ctl.finish_hello(job.run()), Err(HelloFailure::Cancelled));
         assert!(!r.ctl.settings().hello_unlock, "the user did not finish");
-        assert_ne!(r.toast(), Some(ToastMessage::HelloTurnedOff));
+        assert_eq!(
+            r.toast(),
+            Some(ToastMessage::HelloNotTurnedOn),
+            "the switch going back off is explained"
+        );
         assert!(!r.ctl.hello_turned_off_note(), "a cancel is not a failure");
     }
 
@@ -1450,13 +1467,19 @@ mod hello {
         let job = r.ctl.set_hello_unlock(true).expect("a step");
         assert_eq!(r.ctl.finish_hello(job.run()), Err(HelloFailure::Failed));
         assert!(!r.ctl.settings().hello_unlock);
-        assert_eq!(r.toast(), Some(ToastMessage::HelloTurnedOff));
-        assert!(r.ctl.hello_turned_off_note());
-        // Turning it on again clears the note.
+        assert_eq!(
+            r.toast(),
+            Some(ToastMessage::HelloEnrolFailed),
+            "said in Settings, so the words do not send the user there"
+        );
+        assert!(
+            !r.ctl.hello_turned_off_note(),
+            "it was never on: the unlock window has nothing to say"
+        );
         hello.set_sign(Ok(()));
         let job = r.ctl.set_hello_unlock(true).expect("a step");
         r.ctl.finish_hello(job.run()).expect("sealed");
-        assert!(!r.ctl.hello_turned_off_note());
+        assert!(r.ctl.settings().hello_unlock);
     }
 
     #[test]

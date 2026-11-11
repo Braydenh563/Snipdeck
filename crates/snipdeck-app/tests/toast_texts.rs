@@ -130,10 +130,12 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::FileMoved => 99,
         ToastMessage::FilesTooLarge => 100,
         ToastMessage::HelloTurnedOff => 101,
+        ToastMessage::HelloNotTurnedOn => 102,
+        ToastMessage::HelloEnrolFailed => 103,
     }
 }
 
-const VARIANTS: usize = 102;
+const VARIANTS: usize = 104;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -305,6 +307,8 @@ fn samples() -> Vec<ToastMessage> {
             list: snipdeck_core::ListId::generate(),
         },
         M::HelloTurnedOff,
+        M::HelloNotTurnedOn,
+        M::HelloEnrolFailed,
     ]
 }
 

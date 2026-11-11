@@ -384,6 +384,29 @@ fn the_hello_button_unlocks_and_a_cancelled_hello_leaves_the_password() {
         assert!(r.ui.window().is_visible(), "the prompt stays");
         assert!(has_text(
             &r.ui,
+            "Windows Hello was cancelled. Use your master password."
+        ));
+        assert!(
+            hello_button(&r.ui).is_some(),
+            "a cancel keeps the button, so there is a retry"
+        );
+        hello.set_sign(Ok(()));
+        hello_button(&r.ui)
+            .expect("button")
+            .invoke_accessible_default_action();
+        settle();
+        assert!(!r.ctl.borrow().library_locked(), "the retry unlocked");
+
+        // A Hello that failed for real: the copy is gone and so is the button.
+        let hello = std::sync::Arc::new(FakeHello::new());
+        let r = rig_with(Some(&hello));
+        hello.set_sign(Err(HelloError::Removed));
+        hello_button(&r.ui)
+            .expect("button")
+            .invoke_accessible_default_action();
+        settle();
+        assert!(has_text(
+            &r.ui,
             "Windows Hello did not unlock Snipdeck. Use your master password."
         ));
         assert!(hello_button(&r.ui).is_none(), "the copy is gone");
@@ -621,6 +644,49 @@ fn a_hello_turned_off_for_failing_says_why_in_the_unlock_window() {
             "Windows Hello didn't work, so it was turned off. You can turn it on again in Settings."
         ));
         assert!(hello_button(&r.ui).is_none());
+    });
+}
+
+#[test]
+fn at_225_percent_text_the_buttons_have_room_and_hello_has_its_own_row() {
+    on_ui_thread(|| {
+        let hello = std::sync::Arc::new(FakeHello::new());
+        let r = rig_with(Some(&hello));
+        r.ui.global::<snipdeck_ui::SystemLook>()
+            .set_text_scale(2.25);
+        settle();
+        let width = r.ui.window().size().width as f32 / r.ui.window().scale_factor();
+        assert!(
+            width >= 270.0 * 2.25,
+            "the window grew with the text: {width}"
+        );
+        let hello_btn = hello_button(&r.ui).expect("hello");
+        let cancel = element(&r.ui, "Cancel", AccessibleRole::Button);
+        let unlock = element(&r.ui, "Unlock", AccessibleRole::Button);
+        let (h, c, u) = (
+            (hello_btn.absolute_position(), hello_btn.size()),
+            (cancel.absolute_position(), cancel.size()),
+            (unlock.absolute_position(), unlock.size()),
+        );
+        assert!(
+            h.0.y + h.1.height <= c.0.y,
+            "Hello sits on a row above Cancel and Unlock"
+        );
+        for (name, (pos, size)) in [("hello", h), ("cancel", c), ("unlock", u)] {
+            assert!(pos.x >= 0.0, "{name} starts inside the window");
+            assert!(
+                pos.x + size.width <= width + 0.5,
+                "{name} ends inside the window"
+            );
+        }
+        assert!(
+            h.1.width > c.1.width * 2.0,
+            "Hello's long label has the whole row"
+        );
+        assert!(
+            c.1.width >= 60.0 && u.1.width >= 60.0,
+            "Cancel and Unlock are not squeezed"
+        );
     });
 }
 

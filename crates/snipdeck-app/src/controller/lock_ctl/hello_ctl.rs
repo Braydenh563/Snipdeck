@@ -308,7 +308,10 @@ where
                 // The copy goes. The option stays unless the failure is final (below): a Hello
                 // that changed (a PIN reset makes a new credential) is sealed again at the next
                 // password unlock, with the repeat check, which asks it once.
-                self.lock.hello.sealed = None;
+                // A cancel at the unlock keeps the copy: the button offers another try.
+                if !(self.lock.hello.step == Step::Open && failure == HelloFailure::Cancelled) {
+                    self.lock.hello.sealed = None;
+                }
                 match (self.lock.hello.step, failure) {
                     (Step::Open, HelloFailure::Mismatch) => {
                         self.lock.hello.note = Note::Changed;
@@ -328,13 +331,18 @@ where
     fn seal_failed(&mut self, failure: HelloFailure) {
         let quiet = matches!(failure, HelloFailure::Cancelled | HelloFailure::Expired);
         if self.lock.hello.enrol {
-            if quiet {
-                self.update_settings(|s| s.hello_unlock = false);
-                self.lock.hello.enrol = false;
-                self.lock.hello.recheck = false;
+            // It was never on: the switch goes back off and the toast says so (a cancel or
+            // an expiry as "not turned on", a failure with its reason).
+            self.update_settings(|s| s.hello_unlock = false);
+            let state = &mut self.lock.hello;
+            state.enrol = false;
+            state.recheck = false;
+            state.sealed = None;
+            self.show_toast(super::neutral(if quiet {
+                ToastMessage::HelloNotTurnedOn
             } else {
-                self.turn_hello_off();
-            }
+                ToastMessage::HelloEnrolFailed
+            }));
             return;
         }
         if quiet {

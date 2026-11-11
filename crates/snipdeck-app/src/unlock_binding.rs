@@ -39,6 +39,7 @@ pub fn slint_problem(problem: MasterProblem) -> ui::MasterProblem {
         MasterProblem::Unavailable => ui::MasterProblem::Unavailable,
         MasterProblem::Failed => ui::MasterProblem::Failed,
         MasterProblem::HelloFailed => ui::MasterProblem::HelloFailed,
+        MasterProblem::HelloCancelled => ui::MasterProblem::HelloCancelled,
         MasterProblem::HelloChanged => ui::MasterProblem::HelloChanged,
         MasterProblem::HelloTurnedOff => ui::MasterProblem::HelloTurnedOff,
     }
@@ -158,6 +159,7 @@ where
         let controller = self.core.controller.borrow();
         let look = controller.settings_look();
         window.set_dark(look.dark);
+        crate::text_scale::apply(&window.global::<ui::SystemLook<'_>>());
         set_look(
             &window,
             look.high_contrast.as_ref(),
@@ -322,18 +324,17 @@ where
                 None => window.set_focus_request(window.get_focus_request() + 1),
                 // The copy is gone: the password is the way in.
                 Some(Err(failure)) => {
-                    window.set_hello_available(false);
+                    // A cancel keeps the copy, so the button stays for another try.
+                    window.set_hello_available(weak_controller.borrow().hello_unlock_available());
                     // A Hello that changed says so once; the password sets it up again.
                     let changed = failure == HelloFailure::Mismatch
                         && weak_controller.borrow_mut().take_hello_changed_note();
-                    Self::refused(
-                        &window,
-                        if changed {
-                            MasterProblem::HelloChanged
-                        } else {
-                            MasterProblem::HelloFailed
-                        },
-                    );
+                    let problem = match failure {
+                        _ if changed => MasterProblem::HelloChanged,
+                        HelloFailure::Cancelled => MasterProblem::HelloCancelled,
+                        _ => MasterProblem::HelloFailed,
+                    };
+                    Self::refused(&window, problem);
                 }
             }
         });
