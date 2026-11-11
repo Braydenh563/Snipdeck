@@ -1633,24 +1633,145 @@ mod hello {
     }
 
     #[test]
-    fn an_outcome_of_a_step_given_up_on_is_stale_and_leaves_hello_on() {
+    fn a_switch_on_cut_short_by_a_lock_goes_back_off_and_its_late_outcome_is_dropped() {
         let hello = fake();
         let mut r = with_password(Tier::Pro);
         attach(&mut r.ctl, &hello);
         let step = r.ctl.set_hello_unlock(true).expect("step");
         // The library locks (hotkey or auto-lock) while the seal is on its way.
         r.ctl.lock_now();
+        assert!(
+            !r.ctl.settings().hello_unlock,
+            "a switch-on that did not finish is off, not on without a copy"
+        );
+        assert_eq!(r.toast(), Some(ToastMessage::HelloNotTurnedOn));
         let late = step.run();
         assert!(r.ctl.hello_stale(&late), "the binding drops it");
         drop(late);
-        assert!(
-            r.ctl.settings().hello_unlock,
-            "a dropped result does not turn Hello off"
-        );
-        // The next password unlock seals as usual.
+        assert!(!r.ctl.settings().hello_unlock);
+        // The next password unlock seals nothing: Hello is off until the user turns it on again.
         r.ctl.unlock_with_password(password()).expect("password");
-        let seal = r.ctl.begin_hello_seal().expect("a new step");
-        assert!(!r.ctl.hello_stale(&seal.run()));
+        assert!(r.ctl.begin_hello_seal().is_none());
+        assert!(
+            r.ctl.set_hello_unlock(true).is_some(),
+            "and it can be turned on again"
+        );
+    }
+
+    #[test]
+    fn turning_hello_on_while_the_library_is_locked_leaves_the_switch_off_and_says_so() {
+        let hello = fake();
+        let mut r = with_password(Tier::Pro);
+        attach(&mut r.ctl, &hello);
+        r.ctl.lock_now();
+        assert!(r.ctl.set_hello_unlock(true).is_none(), "no key to seal");
+        assert!(!r.ctl.settings().hello_unlock);
+        assert_eq!(r.toast(), Some(ToastMessage::HelloNotTurnedOn));
+    }
+
+    #[test]
+    fn erasing_the_library_forgets_the_hello_copy_and_switches_hello_off() {
+        for forget_key in [false, true] {
+            let hello = fake();
+            let mut r = with_password(Tier::Pro);
+            enable(&mut r, &hello);
+            r.ctl.lock_now();
+            assert!(r.ctl.hello_unlock_available());
+            assert!(r.ctl.erase_library(r.data.path(), forget_key));
+            assert!(!r.ctl.settings().hello_unlock, "forget_key={forget_key}");
+            assert!(!r.ctl.hello_unlock_available(), "forget_key={forget_key}");
+            assert!(r.ctl.begin_hello_unlock().is_none());
+            // A new password never meets the old key's copy.
+            if forget_key {
+                r.ctl
+                    .set_master_password(support::pw("new"), support::pw("new"))
+                    .expect("a new password");
+                r.ctl.lock_now();
+                assert!(!r.ctl.settings().hello_unlock);
+                assert!(!r.ctl.hello_unlock_available());
+                assert!(r.ctl.begin_hello_unlock().is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn setting_a_password_again_never_keeps_a_hello_copy() {
+        let hello = fake();
+        let mut r = with_password(Tier::Pro);
+        enable(&mut r, &hello);
+        r.ctl.remove_master_password(password()).expect("removed");
+        assert!(!r.ctl.settings().hello_unlock);
+        r.ctl
+            .set_master_password(support::pw("again"), support::pw("again"))
+            .expect("set again");
+        r.ctl.lock_now();
+        assert!(!r.ctl.settings().hello_unlock);
+        assert!(!r.ctl.hello_unlock_available());
+    }
+
+    #[test]
+    fn closing_the_unlock_window_stops_a_hello_unlock_under_way() {
+        let (mut r, _hello) = locked_with_hello();
+        let job = r.ctl.begin_hello_unlock().expect("a Hello step");
+        r.ctl.request_unlock();
+        r.ctl.cancel_unlock();
+        let done = job.run();
+        assert!(r.ctl.hello_stale(&done), "the binding drops it");
+        drop(done);
+        assert!(r.ctl.library_locked(), "the user said no");
+        assert!(
+            r.ctl.hello_unlock_available(),
+            "the copy is still there for the next time"
+        );
+    }
+
+    #[test]
+    fn a_hello_unlock_given_up_on_keeps_the_copy() {
+        let (mut r, hello) = locked_with_hello();
+        hello.set_sign(Err(HelloError::Cancelled));
+        let job = r.ctl.begin_hello_unlock().expect("a Hello step");
+        r.ctl.lock_now();
+        let done = job.run();
+        assert!(r.ctl.hello_stale(&done));
+        drop(done);
+        hello.set_sign(Ok(()));
+        assert!(r.ctl.hello_unlock_available(), "a good copy is not lost");
+        assert_eq!(open_by_hello(&mut r), Ok(()));
+    }
+
+    #[test]
+    fn the_turned_off_note_is_said_once() {
+        let hello = fake();
+        let mut r = with_password(Tier::Pro);
+        enable(&mut r, &hello);
+        r.ctl.lock_now();
+        hello.set_sign(Err(HelloError::Removed));
+        assert_eq!(password_then_seal(&mut r), Some(Err(HelloFailure::Failed)));
+        r.ctl.lock_now();
+        assert_eq!(password_then_seal(&mut r), Some(Err(HelloFailure::Failed)));
+        assert!(!r.ctl.settings().hello_unlock, "turned off");
+        assert!(r.ctl.hello_turned_off_note());
+        assert!(r.ctl.take_hello_turned_off_note(), "said once");
+        assert!(!r.ctl.take_hello_turned_off_note(), "and not again");
+        assert!(!r.ctl.hello_turned_off_note());
+    }
+
+    #[test]
+    fn changing_the_password_seals_a_new_copy_on_the_next_step() {
+        let hello = fake();
+        let mut r = with_password(Tier::Pro);
+        enable(&mut r, &hello);
+        r.ctl
+            .change_master_password(password(), support::pw("changed"), support::pw("changed"))
+            .expect("changed");
+        assert!(r.ctl.settings().hello_unlock, "Hello stays on");
+        // The old copy fitted the old record: it is gone, and the host seals a new one.
+        let job = r.ctl.begin_hello_seal().expect("a new copy is sealed");
+        r.ctl.finish_hello(job.run()).expect("sealed");
+        r.ctl.lock_now();
+        assert!(r.ctl.hello_unlock_available());
+        assert_eq!(open_by_hello(&mut r), Ok(()));
+        assert!(!r.ctl.library_locked());
     }
 
     #[test]
