@@ -741,6 +741,9 @@ msgstr "Endgültig löschen?"
 msgid "Delete for good…"
 msgstr "Endgültig löschen…"
 
+msgid "Delete group"
+msgstr "Gruppe löschen"
+
 msgid "Delete list"
 msgstr "Liste löschen"
 
@@ -1088,6 +1091,15 @@ msgstr "Grün"
 
 msgid "Greet"
 msgstr "Begrüßung"
+
+msgid "Group"
+msgstr "Gruppe"
+
+msgid "Group name"
+msgstr "Gruppenname"
+
+msgid "Group..."
+msgstr "Gruppieren..."
 
 msgid "Handy for forms you fill field by field."
 msgstr "Praktisch für Formulare, die du Feld für Feld ausfüllst."
@@ -2071,9 +2083,6 @@ msgstr "Verlauf „Zuletzt“ gelöscht"
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "„Zuletzt“ behält den kopierten Text, nur auf diesem Computer, für die letzten {} Kopien oder {} Tage, je nachdem, was zuerst eintritt. Passwörter aus Passwortmanagern und vertrauliche Textbausteine werden nie gespeichert. Du kannst das jederzeit in den Einstellungen ändern."
 
-msgid "Recent shows what you used and captured lately."
-msgstr "„Zuletzt verwendet“ zeigt, was du zuletzt benutzt und erfasst hast."
-
 msgid "Recently used"
 msgstr "Kürzlich verwendet"
 
@@ -2127,6 +2136,9 @@ msgstr "Entfernen…"
 
 msgid "Rename board…"
 msgstr "Board umbenennen…"
+
+msgid "Rename group"
+msgstr "Gruppe umbenennen"
 
 msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
 msgstr "Schlagwörter umbenennen oder löschen. Beim Löschen eines Schlagworts wird es aus seinen Textbausteinen entfernt; die Textbausteine bleiben erhalten."
@@ -2969,6 +2981,9 @@ msgstr "{} rückgängig machen (Strg+Z)"
 msgid "Undock the panel"
 msgstr "Panel lösen"
 
+msgid "Ungroup"
+msgstr "Gruppierung aufheben"
+
 msgid "Unlock"
 msgstr "Entsperren"
 
@@ -3125,8 +3140,11 @@ msgstr "Windows erlaubt {} nicht als Tastenkürzel."
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows folgt deiner Windows-Textgröße (Einstellungen > Erleichterte Bedienung > Textgröße). Wähle eine Größe, um stattdessen diese zu verwenden."
 
-msgid "YYYY-MM-DD"
-msgstr "JJJJ-MM-TT"
+msgid "With clipboard history on, Recent keeps what you copy in other programs."
+msgstr "Mit eingeschaltetem Verlauf der Zwischenablage behält „Zuletzt verwendet“ alles, was du in anderen Programmen kopierst."
+
+msgid "YYYY-MM-DD, empty for today"
+msgstr "YYYY-MM-DD, leer für heute"
 
 msgid "Yes"
 msgstr "Ja"
@@ -3243,6 +3261,14 @@ msgstr "Favoriten anzeigen"
 
 msgid "find filter look"
 msgstr "finden filtern suchen"
+
+msgid "group change"
+msgstr "Gruppenänderung"
+
+msgid "group {}, {} item"
+msgid_plural "group {}, {} items"
+msgstr[0] "Gruppe {}, {} Element"
+msgstr[1] "Gruppe {}, {} Elemente"
 
 msgid "help docs manual how"
 msgstr "Hilfe Dokumentation Handbuch Anleitung"
@@ -3425,6 +3451,11 @@ msgstr "{} wird von einer anderen App verwendet. Wähle in den Einstellungen ein
 
 msgid "{} is {}, over the 5 MB limit for text, and was skipped."
 msgstr "{} ist {} groß, über dem Limit von 5 MB für Text, und wurde übersprungen."
+
+msgid "{} item"
+msgid_plural "{} items"
+msgstr[0] "{} Element"
+msgstr[1] "{} Elemente"
 
 msgid "{} item in {} list will be added"
 msgid_plural "{} items in {} lists will be added"

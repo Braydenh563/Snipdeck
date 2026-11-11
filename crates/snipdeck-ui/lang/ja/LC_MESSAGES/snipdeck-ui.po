@@ -740,6 +740,9 @@ msgstr "完全に削除しますか？"
 msgid "Delete for good…"
 msgstr "完全に削除…"
 
+msgid "Delete group"
+msgstr "グループを削除"
+
 msgid "Delete list"
 msgstr "リストを削除"
 
@@ -1087,6 +1090,15 @@ msgstr "緑"
 
 msgid "Greet"
 msgstr "あいさつ"
+
+msgid "Group"
+msgstr "グループ"
+
+msgid "Group name"
+msgstr "グループ名"
+
+msgid "Group..."
+msgstr "グループ化..."
 
 msgid "Handy for forms you fill field by field."
 msgstr "フォームを項目ごとに入力するときに便利です。"
@@ -2065,9 +2077,6 @@ msgstr "最近の履歴を消去しました"
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "「最近」は、コピーしたテキストをこのコンピューターにのみ、直近 {} 回のコピーまたは {} 日間のどちらか早い方まで保持します。パスワードマネージャーのパスワードと機密スニペットは保持されません。設定でいつでも変更できます。"
 
-msgid "Recent shows what you used and captured lately."
-msgstr "「最近」には、最近使ったものや保存したものが表示されます。"
-
 msgid "Recently used"
 msgstr "最近使ったもの"
 
@@ -2121,6 +2130,9 @@ msgstr "削除…"
 
 msgid "Rename board…"
 msgstr "ボード名を変更…"
+
+msgid "Rename group"
+msgstr "グループ名を変更"
 
 msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
 msgstr "タグの名前を変更または削除します。タグを削除しても、それが付いたスニペットは残ります。"
@@ -2961,6 +2973,9 @@ msgstr "{} を元に戻す (Ctrl+Z)"
 msgid "Undock the panel"
 msgstr "パネルの固定を解除"
 
+msgid "Ungroup"
+msgstr "グループ解除"
+
 msgid "Unlock"
 msgstr "ロック解除"
 
@@ -3117,8 +3132,11 @@ msgstr "Windows では {} をショートカットに使えません。"
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows の文字サイズ（設定 > アクセシビリティ > 文字サイズ）に従います。サイズを選ぶと、そちらを使います。"
 
-msgid "YYYY-MM-DD"
-msgstr "YYYY-MM-DD"
+msgid "With clipboard history on, Recent keeps what you copy in other programs."
+msgstr "クリップボード履歴をオンにすると、「最近」に他のプログラムでコピーした内容が残ります。"
+
+msgid "YYYY-MM-DD, empty for today"
+msgstr "YYYY-MM-DD、空欄なら今日"
 
 msgid "Yes"
 msgstr "はい"
@@ -3234,6 +3252,13 @@ msgstr "お気に入り ピン留め 表示"
 
 msgid "find filter look"
 msgstr "検索 絞り込み 探す"
+
+msgid "group change"
+msgstr "グループの変更"
+
+msgid "group {}, {} item"
+msgid_plural "group {}, {} items"
+msgstr[0] "グループ {}、{} 件"
 
 msgid "help docs manual how"
 msgstr "ヘルプ ドキュメント マニュアル 使い方"
@@ -3409,6 +3434,10 @@ msgstr "{} は別のアプリが使用中です。設定で別のものを選ん
 
 msgid "{} is {}, over the 5 MB limit for text, and was skipped."
 msgstr "{} は {} で、テキストの上限 5 MB を超えるためスキップされました。"
+
+msgid "{} item"
+msgid_plural "{} items"
+msgstr[0] "{} 件"
 
 msgid "{} item in {} list will be added"
 msgid_plural "{} items in {} lists will be added"

@@ -64,3 +64,6 @@ date | item | type | rung | rework | note
 2026-11-11 | v1.1 slice 4 tips | ui | sonnet | 0 | 
 2026-11-11 | final audit 1: min window widths follow text size | ui | sonnet | 0 | 
 2026-11-11 | polish: tips picture crops, Show Panel icon, scroll-focus tests | ui | sonnet | 0 | 
+2026-11-11 | Align placeholder chip column | ui | sonnet | 0 | 
+2026-11-11 | v1.1 groups inside a list (3b UI) | feature | sonnet | 2 | 
+2026-11-11 | Blind-test UI fixes: Supporter marks, licence route | ui | sonnet | 0 | 

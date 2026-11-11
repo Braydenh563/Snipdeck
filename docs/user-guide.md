@@ -243,6 +243,13 @@ The Recent inbox keeps the text you copy in other programs, so you can find it a
   for your account). Without a master password the inbox works as usual; with one, the library locked means
   the inbox shows **Recent copies are locked** and collects nothing until you unlock.
 
+## Symbols
+
+The Panel's **Symbols** tab (the smiley next to Recent) holds emoji, kaomoji and icons. Type in **Search emoji,
+kaomoji, icons** or pick **Emoji**, **Kaomoji** or **Icons** and a group. Click a symbol to paste it into the app you
+were typing in, the same as an item; `Shift`+click copies it instead. **Recently used** keeps the ones you use. To hide
+the tab and its `Ctrl+K` command, turn off **Show Symbols tab** in Settings.
+
 ## Help and the welcome tour
 
 Press `F1` or open **Help** in the Main window to see the Help window. **Troubleshoot** is a checklist that finds
@@ -419,7 +426,8 @@ read it. To export one list as text, see [Organise](#organise).
 - **CopyQ export:** the JSON file CopyQ saves.
 - **Folder of .txt and .md files:** every text and Markdown file in the folder becomes one item.
 - **Espanso (folder)** or **Espanso (single .yml file):** Espanso's configuration folder (its `match` files) or
-  one match file. Each file becomes a list. Matches with only a `regex` trigger, or with no text, are left out.
+  one match file. Each file becomes a list. Files whose name starts with `_` (Espanso treats them as switched off),
+  matches with only a `regex` trigger, and matches with no text are left out, and the preview says why.
 - **Beeftext export:** the JSON file Beeftext exports.
 - **TextExpander export (CSV)** and **PhraseExpress export (CSV):** the CSV file each program exports.
 
