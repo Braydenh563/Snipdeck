@@ -1579,7 +1579,7 @@ fn a_trigger_that_hides_another_is_saved_with_a_warning() {
     assert_eq!(
         toast(&r.ctl),
         ToastMessage::Saved {
-            list: "Inbox".into()
+            list: "Email replies".into()
         }
     );
     r.ctl.open_new_item(Origin::Main);
