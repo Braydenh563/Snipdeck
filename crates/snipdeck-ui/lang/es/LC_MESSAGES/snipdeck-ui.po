@@ -2083,9 +2083,6 @@ msgstr "Historial reciente borrado"
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "Recientes guarda el texto que copias, solo en este equipo, durante las últimas {} copias o {} días, lo que ocurra primero. Las contraseñas de los gestores de contraseñas y los fragmentos sensibles nunca se guardan. Puedes cambiarlo cuando quieras en Configuración."
 
-msgid "Recent shows what you used and captured lately."
-msgstr "Recientes muestra lo que usaste y capturaste últimamente."
-
 msgid "Recently used"
 msgstr "Usados recientemente"
 
@@ -3143,8 +3140,11 @@ msgstr "Windows no permite {} como atajo."
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows sigue el tamaño de texto de Windows (Configuración > Accesibilidad > Tamaño del texto). Elige un tamaño para usar ese en su lugar."
 
-msgid "YYYY-MM-DD"
-msgstr "AAAA-MM-DD"
+msgid "With clipboard history on, Recent keeps what you copy in other programs."
+msgstr "Con el historial del portapapeles activado, Recientes guarda lo que copias en otros programas."
+
+msgid "YYYY-MM-DD, empty for today"
+msgstr "YYYY-MM-DD, vacío para hoy"
 
 msgid "Yes"
 msgstr "Sí"

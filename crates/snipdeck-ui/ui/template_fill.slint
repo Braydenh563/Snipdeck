@@ -218,7 +218,7 @@ export component TemplateFillWindow inherits Window {
                     required: field.required;
                     required-text: @tr("Required");
                     placeholder: field.kind == TemplateFieldKind.date && field.placeholder == ""
-                        ? @tr("YYYY-MM-DD") : field.placeholder;
+                        ? @tr("YYYY-MM-DD, empty for today") : field.placeholder;
                     choices: field.options;
                     choice-index: field.choice-index;
                     value: field.value;

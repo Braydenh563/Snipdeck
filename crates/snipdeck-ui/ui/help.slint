@@ -8,6 +8,7 @@
 import { Theme, Type, Space, Radius, Fonts, Palette, SystemLook } from "theme.slint";
 import { Icons } from "icons.slint";
 import { Icon } from "components/icon.slint";
+import { LockBadge } from "components/lock-badge.slint";
 import { Button, ButtonSize, ButtonVariant } from "components/button.slint";
 import { Toast, ToastKind, ToastPhase } from "components/feedback.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
@@ -24,6 +25,8 @@ export struct TipCard {
     first-line: string,
     second-line: string,
     picture: image,
+    // A Supporter feature that the Free plan lacks: the card carries the Supporter mark.
+    locked: bool,
 }
 
 // One line of the Troubleshoot list, already in words (the doctor's English; see snipdeck-app `doctor`).
@@ -322,14 +325,27 @@ export component HelpWindow inherits Window {
                         body := VerticalLayout {
                             padding: Space.s3;
                             spacing: Space.s2;
-                            Text {
-                                text: tip.title;
-                                color: Theme.text-primary;
-                                font-family: Fonts.sans;
-                                font-size: Type.md;
-                                font-weight: Type.semibold;
-                                wrap: word-wrap;
-                                accessible-role: none;
+                            HorizontalLayout {
+                                spacing: Space.s2;
+                                Text {
+                                    text: tip.title;
+                                    color: Theme.text-primary;
+                                    font-family: Fonts.sans;
+                                    font-size: Type.md;
+                                    font-weight: Type.semibold;
+                                    wrap: word-wrap;
+                                    horizontal-stretch: 1;
+                                    min-width: 0px;
+                                    accessible-role: none;
+                                }
+                                // Beside the first line of the title, level with it.
+                                if tip.locked: VerticalLayout {
+                                    alignment: start;
+                                    LockBadge {
+                                        text: @tr("Supporter");
+                                        height: Type.line-base;
+                                    }
+                                }
                             }
                             VerticalLayout {
                                 spacing: Space.s0-5;
