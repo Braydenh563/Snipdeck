@@ -540,7 +540,7 @@ msgstr ""
 msgid "Clear the search"
 msgstr ""
 
-#: ui/shortcut_texts.slint:79
+#: ui/shortcut_texts.slint:85
 msgid "Clear the search, then close"
 msgstr ""
 
@@ -580,7 +580,7 @@ msgstr ""
 msgid "Clipboard clear time"
 msgstr ""
 
-#: ui/editors.slint:2002 ui/panel.slint:1766 ui/picker.slint:563 ui/settings.slint:1589 ui/settings.slint:1807 ui/shortcut_texts.slint:92 ui/shortcut_texts.slint:95 ui/template_fill.slint:194
+#: ui/editors.slint:2002 ui/panel.slint:1766 ui/picker.slint:563 ui/settings.slint:1589 ui/settings.slint:1807 ui/shortcut_texts.slint:98 ui/shortcut_texts.slint:101 ui/template_fill.slint:194
 msgid "Close"
 msgstr ""
 
@@ -628,7 +628,7 @@ msgstr ""
 msgid "Command palette (every action)"
 msgstr ""
 
-#: ui/command_texts.slint:53 ui/main_window.slint:1504
+#: ui/command_texts.slint:60 ui/main_window.slint:1504
 msgid "Commands"
 msgstr ""
 
@@ -636,7 +636,7 @@ msgstr ""
 msgid "Commands (Ctrl+K)"
 msgstr ""
 
-#: ui/shortcut_texts.slint:70
+#: ui/shortcut_texts.slint:76
 msgid "Commands in the Main window"
 msgstr ""
 
@@ -712,11 +712,11 @@ msgstr ""
 msgid "Copy something, then save it here."
 msgstr ""
 
-#: ui/shortcut_texts.slint:35 ui/shortcut_texts.slint:54
+#: ui/shortcut_texts.slint:35 ui/shortcut_texts.slint:60
 msgid "Copy the item"
 msgstr ""
 
-#: ui/shortcut_texts.slint:88
+#: ui/shortcut_texts.slint:94
 msgid "Copy the result"
 msgstr ""
 
@@ -980,6 +980,10 @@ msgstr ""
 msgid "Delete"
 msgstr ""
 
+#: ui/shortcut_texts.slint:54
+msgid "Delete a group and its items"
+msgstr ""
+
 #: ui/editors.slint:1806 ui/main_window.slint:2843 ui/panel.slint:2892
 msgid "Delete board"
 msgstr ""
@@ -1004,7 +1008,7 @@ msgstr ""
 msgid "Delete for good…"
 msgstr ""
 
-#: ui/menu_texts.slint:163
+#: ui/command_texts.slint:55 ui/menu_texts.slint:163
 msgid "Delete group"
 msgstr ""
 
@@ -1148,7 +1152,7 @@ msgstr ""
 msgid "Duplicate selected item"
 msgstr ""
 
-#: ui/shortcut_texts.slint:38 ui/shortcut_texts.slint:66
+#: ui/shortcut_texts.slint:38 ui/shortcut_texts.slint:72
 msgid "Duplicate the item"
 msgstr ""
 
@@ -1180,11 +1184,11 @@ msgstr ""
 msgid "Edit selected item"
 msgstr ""
 
-#: ui/shortcut_texts.slint:36 ui/shortcut_texts.slint:37 ui/shortcut_texts.slint:64
+#: ui/shortcut_texts.slint:36 ui/shortcut_texts.slint:37 ui/shortcut_texts.slint:70
 msgid "Edit the item"
 msgstr ""
 
-#: ui/shortcut_texts.slint:91
+#: ui/shortcut_texts.slint:97
 msgid "Edit the result"
 msgstr ""
 
@@ -1340,7 +1344,7 @@ msgstr ""
 msgid "Fill in the blanks"
 msgstr ""
 
-#: ui/shortcut_texts.slint:50
+#: ui/shortcut_texts.slint:56
 msgid "Filter as you type"
 msgstr ""
 
@@ -1372,8 +1376,12 @@ msgstr ""
 msgid "Floating"
 msgstr ""
 
-#: ui/shortcut_texts.slint:81
+#: ui/shortcut_texts.slint:50 ui/shortcut_texts.slint:87
 msgid "Fold or open a group"
+msgstr ""
+
+#: ui/command_texts.slint:52
+msgid "Fold or unfold group"
 msgstr ""
 
 #: ui/components/plan-table.slint:30
@@ -1492,7 +1500,11 @@ msgstr ""
 msgid "Group name"
 msgstr ""
 
-#: ui/shortcut_texts.slint:80
+#: ui/command_texts.slint:51
+msgid "Group selected items"
+msgstr ""
+
+#: ui/shortcut_texts.slint:49 ui/shortcut_texts.slint:86
 msgid "Group the marked rows"
 msgstr ""
 
@@ -1540,7 +1552,7 @@ msgstr ""
 msgid "Hide Panel ({})"
 msgstr ""
 
-#: ui/settings.slint:883 ui/shortcut_texts.slint:76
+#: ui/settings.slint:883 ui/shortcut_texts.slint:82
 msgid "Hide the Panel"
 msgstr ""
 
@@ -1560,7 +1572,7 @@ msgstr ""
 msgid "Hold to reveal"
 msgstr ""
 
-#: ui/shortcut_texts.slint:48 ui/shortcut_texts.slint:57
+#: ui/shortcut_texts.slint:48 ui/shortcut_texts.slint:63
 msgid "Hold to reveal a hidden item"
 msgstr ""
 
@@ -1750,7 +1762,7 @@ msgstr ""
 msgid "Keep secrets secret"
 msgstr ""
 
-#: ui/shortcut_texts.slint:68
+#: ui/shortcut_texts.slint:74
 msgid "Keep the Panel on top (pin)"
 msgstr ""
 
@@ -1762,7 +1774,7 @@ msgstr ""
 msgid "Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept."
 msgstr ""
 
-#: ui/command_texts.slint:27 ui/main_window.slint:2706 ui/menu_texts.slint:97 ui/shortcut_texts.slint:32 ui/shortcut_texts.slint:77
+#: ui/command_texts.slint:27 ui/main_window.slint:2706 ui/menu_texts.slint:97 ui/shortcut_texts.slint:32 ui/shortcut_texts.slint:83
 msgid "Keyboard shortcuts"
 msgstr ""
 
@@ -1982,11 +1994,11 @@ msgstr ""
 msgid "Move"
 msgstr ""
 
-#: ui/shortcut_texts.slint:83
+#: ui/shortcut_texts.slint:89
 msgid "Move a group up or down"
 msgstr ""
 
-#: ui/shortcut_texts.slint:52
+#: ui/shortcut_texts.slint:58
 msgid "Move a page at a time"
 msgstr ""
 
@@ -2002,23 +2014,39 @@ msgstr ""
 msgid "Move down"
 msgstr ""
 
+#: ui/command_texts.slint:57
+msgid "Move group down"
+msgstr ""
+
+#: ui/command_texts.slint:56
+msgid "Move group up"
+msgstr ""
+
 #: ui/command_texts.slint:42
 msgid "Move selected item to Trash"
 msgstr ""
 
-#: ui/shortcut_texts.slint:40 ui/shortcut_texts.slint:69
+#: ui/shortcut_texts.slint:53
+msgid "Move the group down"
+msgstr ""
+
+#: ui/shortcut_texts.slint:52
+msgid "Move the group up"
+msgstr ""
+
+#: ui/shortcut_texts.slint:40 ui/shortcut_texts.slint:75
 msgid "Move the item to the Trash"
 msgstr ""
 
-#: ui/shortcut_texts.slint:47 ui/shortcut_texts.slint:55
+#: ui/shortcut_texts.slint:47 ui/shortcut_texts.slint:61
 msgid "Move the item up or down its list"
 msgstr ""
 
-#: ui/shortcut_texts.slint:51
+#: ui/shortcut_texts.slint:57
 msgid "Move through the items"
 msgstr ""
 
-#: ui/shortcut_texts.slint:86
+#: ui/shortcut_texts.slint:92
 msgid "Move through the results"
 msgstr ""
 
@@ -2090,7 +2118,7 @@ msgstr ""
 msgid "New board…"
 msgstr ""
 
-#: ui/command_texts.slint:15 ui/components/quick-add.slint:104 ui/components/quick-add.slint:144 ui/editors.slint:637 ui/main_window.slint:1601 ui/main_window.slint:2299 ui/main_window.slint:2302 ui/menu_texts.slint:14 ui/shortcut_texts.slint:71
+#: ui/command_texts.slint:15 ui/components/quick-add.slint:104 ui/components/quick-add.slint:144 ui/editors.slint:637 ui/main_window.slint:1601 ui/main_window.slint:2299 ui/main_window.slint:2302 ui/menu_texts.slint:14 ui/shortcut_texts.slint:77
 msgid "New item"
 msgstr ""
 
@@ -2102,7 +2130,7 @@ msgstr ""
 msgid "New item in {}"
 msgstr ""
 
-#: ui/command_texts.slint:12 ui/command_texts.slint:16 ui/editors.slint:1705 ui/panel.slint:576 ui/panel.slint:2313 ui/panel.slint:2683 ui/shortcut_texts.slint:29 ui/shortcut_texts.slint:72
+#: ui/command_texts.slint:12 ui/command_texts.slint:16 ui/editors.slint:1705 ui/panel.slint:576 ui/panel.slint:2313 ui/panel.slint:2683 ui/shortcut_texts.slint:29 ui/shortcut_texts.slint:78
 msgid "New list"
 msgstr ""
 
@@ -2130,11 +2158,11 @@ msgstr ""
 msgid "Next"
 msgstr ""
 
-#: ui/shortcut_texts.slint:60
+#: ui/shortcut_texts.slint:66
 msgid "Next list"
 msgstr ""
 
-#: ui/shortcut_texts.slint:90
+#: ui/shortcut_texts.slint:96
 msgid "Next scope"
 msgstr ""
 
@@ -2194,7 +2222,7 @@ msgstr ""
 msgid "No settings match"
 msgstr ""
 
-#: ui/shortcut_texts.slint:102
+#: ui/shortcut_texts.slint:108
 msgid "No shortcut matches"
 msgstr ""
 
@@ -2390,7 +2418,7 @@ msgstr ""
 msgid "Open the Picker at your cursor"
 msgstr ""
 
-#: ui/shortcut_texts.slint:63
+#: ui/shortcut_texts.slint:69
 msgid "Open the item's menu"
 msgstr ""
 
@@ -2554,7 +2582,7 @@ msgstr ""
 msgid "Paste stack: {} marked"
 msgstr ""
 
-#: ui/shortcut_texts.slint:89
+#: ui/shortcut_texts.slint:95
 msgid "Paste the Nth result"
 msgstr ""
 
@@ -2566,7 +2594,7 @@ msgstr ""
 msgid "Paste the next item of a stack"
 msgstr ""
 
-#: ui/shortcut_texts.slint:87
+#: ui/shortcut_texts.slint:93
 msgid "Paste the result"
 msgstr ""
 
@@ -2666,7 +2694,7 @@ msgstr ""
 msgid "Pin a snippet from the Panel to find it here."
 msgstr ""
 
-#: ui/shortcut_texts.slint:39 ui/shortcut_texts.slint:67
+#: ui/shortcut_texts.slint:39 ui/shortcut_texts.slint:73
 msgid "Pin or unpin the item"
 msgstr ""
 
@@ -2718,7 +2746,7 @@ msgstr ""
 msgid "Preview"
 msgstr ""
 
-#: ui/shortcut_texts.slint:61
+#: ui/shortcut_texts.slint:67
 msgid "Previous list"
 msgstr ""
 
@@ -2826,7 +2854,7 @@ msgstr ""
 msgid "Redid {}"
 msgstr ""
 
-#: ui/shortcut_texts.slint:44 ui/shortcut_texts.slint:75
+#: ui/shortcut_texts.slint:44 ui/shortcut_texts.slint:81
 msgid "Redo"
 msgstr ""
 
@@ -2882,7 +2910,7 @@ msgstr ""
 msgid "Remove…"
 msgstr ""
 
-#: ui/shortcut_texts.slint:82
+#: ui/shortcut_texts.slint:51 ui/shortcut_texts.slint:88
 msgid "Rename a group"
 msgstr ""
 
@@ -2890,7 +2918,7 @@ msgstr ""
 msgid "Rename board…"
 msgstr ""
 
-#: ui/menu_texts.slint:157
+#: ui/command_texts.slint:53 ui/menu_texts.slint:157
 msgid "Rename group"
 msgstr ""
 
@@ -2902,7 +2930,7 @@ msgstr ""
 msgid "Rename tag {}"
 msgstr ""
 
-#: ui/shortcut_texts.slint:65
+#: ui/shortcut_texts.slint:71
 msgid "Rename the item"
 msgstr ""
 
@@ -2982,7 +3010,7 @@ msgstr ""
 msgid "Sad"
 msgstr ""
 
-#: ui/editors.slint:1276 ui/editors.slint:1653 ui/shortcut_texts.slint:94
+#: ui/editors.slint:1276 ui/editors.slint:1653 ui/shortcut_texts.slint:100
 msgid "Save"
 msgstr ""
 
@@ -3066,7 +3094,7 @@ msgstr ""
 msgid "Scroll right"
 msgstr ""
 
-#: ui/command_texts.slint:17 ui/shortcut_texts.slint:30 ui/shortcut_texts.slint:62
+#: ui/command_texts.slint:17 ui/shortcut_texts.slint:30 ui/shortcut_texts.slint:68
 msgid "Search"
 msgstr ""
 
@@ -3102,7 +3130,7 @@ msgstr ""
 msgid "Search settings"
 msgstr ""
 
-#: ui/shortcut_texts.slint:100
+#: ui/shortcut_texts.slint:106
 msgid "Search shortcuts"
 msgstr ""
 
@@ -3118,7 +3146,7 @@ msgstr ""
 msgid "Search symbols"
 msgstr ""
 
-#: ui/shortcut_texts.slint:101
+#: ui/shortcut_texts.slint:107
 msgid "Search the keyboard shortcuts"
 msgstr ""
 
@@ -3150,7 +3178,7 @@ msgstr ""
 msgid "Select and delete"
 msgstr ""
 
-#: ui/shortcut_texts.slint:41 ui/shortcut_texts.slint:59
+#: ui/shortcut_texts.slint:41 ui/shortcut_texts.slint:65
 msgid "Select every item"
 msgstr ""
 
@@ -3162,7 +3190,7 @@ msgstr ""
 msgid "Select or unselect the row"
 msgstr ""
 
-#: ui/shortcut_texts.slint:58
+#: ui/shortcut_texts.slint:64
 msgid "Select several items"
 msgstr ""
 
@@ -3206,7 +3234,7 @@ msgstr ""
 msgid "Set password…"
 msgstr ""
 
-#: ui/command_texts.slint:24 ui/main_window.slint:1354 ui/main_window.slint:1368 ui/settings.slint:249 ui/shortcut_texts.slint:31 ui/shortcut_texts.slint:73
+#: ui/command_texts.slint:24 ui/main_window.slint:1354 ui/main_window.slint:1368 ui/settings.slint:249 ui/shortcut_texts.slint:31 ui/shortcut_texts.slint:79
 msgid "Settings"
 msgstr ""
 
@@ -4006,7 +4034,7 @@ msgstr ""
 msgid "Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off."
 msgstr ""
 
-#: ui/command_texts.slint:54
+#: ui/command_texts.slint:61
 msgid "Type a command"
 msgstr ""
 
@@ -4034,7 +4062,7 @@ msgstr ""
 msgid "Undid {}"
 msgstr ""
 
-#: ui/panel.slint:2106 ui/shortcut_texts.slint:43 ui/shortcut_texts.slint:74
+#: ui/panel.slint:2106 ui/shortcut_texts.slint:43 ui/shortcut_texts.slint:80
 msgid "Undo"
 msgstr ""
 
@@ -4054,11 +4082,11 @@ msgstr ""
 msgid "Undock the panel"
 msgstr ""
 
-#: ui/menu_texts.slint:160
+#: ui/command_texts.slint:54 ui/menu_texts.slint:160
 msgid "Ungroup"
 msgstr ""
 
-#: ui/shortcut_texts.slint:84
+#: ui/shortcut_texts.slint:90
 msgid "Ungroup (the group's menu)"
 msgstr ""
 
@@ -4078,7 +4106,7 @@ msgstr ""
 msgid "Unlock with Windows Hello"
 msgstr ""
 
-#: ui/shortcut_texts.slint:97
+#: ui/shortcut_texts.slint:103
 msgid "Unlock with Windows Hello (Windows only)"
 msgstr ""
 
@@ -4142,11 +4170,11 @@ msgstr ""
 msgid "Use selected item"
 msgstr ""
 
-#: ui/shortcut_texts.slint:56
+#: ui/shortcut_texts.slint:62
 msgid "Use the Nth item"
 msgstr ""
 
-#: ui/shortcut_texts.slint:34 ui/shortcut_texts.slint:53
+#: ui/shortcut_texts.slint:34 ui/shortcut_texts.slint:59
 msgid "Use the item"
 msgstr ""
 
@@ -4162,7 +4190,7 @@ msgstr ""
 msgid "Use {} for {}"
 msgstr ""
 
-#: ui/command_texts.slint:25 ui/help.slint:460 ui/main_window.slint:2703 ui/menu_texts.slint:94 ui/shortcut_texts.slint:33 ui/shortcut_texts.slint:78
+#: ui/command_texts.slint:25 ui/help.slint:460 ui/main_window.slint:2703 ui/menu_texts.slint:94 ui/shortcut_texts.slint:33 ui/shortcut_texts.slint:84
 msgid "User guide"
 msgstr ""
 
@@ -4404,6 +4432,10 @@ msgstr ""
 msgid "clipboard save grab screenshot"
 msgstr ""
 
+#: ui/command_texts.slint:52
+msgid "collapse expand hide show toggle section"
+msgstr ""
+
 #: ui/toast_texts.slint:190
 msgid "colour change"
 msgstr ""
@@ -4434,6 +4466,10 @@ msgstr ""
 
 #: ui/command_texts.slint:28
 msgid "diagnose doctor problems fix"
+msgstr ""
+
+#: ui/command_texts.slint:54
+msgid "dissolve split remove group keep items section"
 msgstr ""
 
 #: ui/toast_texts.slint:185
@@ -4510,12 +4546,20 @@ msgstr ""
 msgid "lowercase"
 msgstr ""
 
+#: ui/command_texts.slint:51
+msgid "make new folder together section collect"
+msgstr ""
+
 #: ui/toast_texts.slint:188
 msgid "move"
 msgstr ""
 
 #: ui/settings.slint:974 ui/settings.slint:992
 msgid "ms"
+msgstr ""
+
+#: ui/command_texts.slint:53
+msgid "name title change edit section"
 msgstr ""
 
 #: ui/command_texts.slint:50
@@ -4562,8 +4606,20 @@ msgstr ""
 msgid "quick find paste palette"
 msgstr ""
 
+#: ui/command_texts.slint:55
+msgid "remove trash discard section items"
+msgstr ""
+
 #: ui/toast_texts.slint:189
 msgid "reorder"
+msgstr ""
+
+#: ui/command_texts.slint:56
+msgid "reorder earlier raise section"
+msgstr ""
+
+#: ui/command_texts.slint:57
+msgid "reorder later lower section"
 msgstr ""
 
 #: ui/settings.slint:1120

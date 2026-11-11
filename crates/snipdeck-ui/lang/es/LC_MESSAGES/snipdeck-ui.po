@@ -738,6 +738,9 @@ msgstr "Fecha y hora en el formato que elijas"
 msgid "Delete"
 msgstr "Eliminar"
 
+msgid "Delete a group and its items"
+msgstr "Eliminar un grupo y sus elementos"
+
 msgid "Delete board"
 msgstr "Eliminar tablero"
 
@@ -1035,6 +1038,9 @@ msgstr "Flotante"
 msgid "Fold or open a group"
 msgstr "Plegar o desplegar un grupo"
 
+msgid "Fold or unfold group"
+msgstr "Plegar o desplegar grupo"
+
 msgid "Fold the Panel into a thin strip."
 msgstr "Pliega el panel en una franja fina."
 
@@ -1121,6 +1127,9 @@ msgstr "Grupo"
 
 msgid "Group name"
 msgstr "Nombre del grupo"
+
+msgid "Group selected items"
+msgstr "Agrupar los elementos seleccionados"
 
 msgid "Group the marked rows"
 msgstr "Agrupar las filas marcadas"
@@ -1506,8 +1515,20 @@ msgstr "Subir tablero"
 msgid "Move down"
 msgstr "Bajar"
 
+msgid "Move group down"
+msgstr "Mover grupo hacia abajo"
+
+msgid "Move group up"
+msgstr "Mover grupo hacia arriba"
+
 msgid "Move selected item to Trash"
 msgstr "Mover el elemento seleccionado a la papelera"
+
+msgid "Move the group down"
+msgstr "Mover el grupo hacia abajo"
+
+msgid "Move the group up"
+msgstr "Mover el grupo hacia arriba"
 
 msgid "Move the item to the Trash"
 msgstr "Mueve el elemento a la papelera"
@@ -3310,6 +3331,9 @@ msgstr "portapapeles"
 msgid "clipboard save grab screenshot"
 msgstr "portapapeles guardar capturar captura de pantalla"
 
+msgid "collapse expand hide show toggle section"
+msgstr "contraer expandir ocultar mostrar alternar sección"
+
 msgid "colour change"
 msgstr "cambio de color"
 
@@ -3333,6 +3357,9 @@ msgstr "eliminados restaurar papelera mostrar"
 
 msgid "diagnose doctor problems fix"
 msgstr "diagnosticar problemas arreglar"
+
+msgid "dissolve split remove group keep items section"
+msgstr "disolver separar quitar grupo conservar elementos sección"
 
 msgid "drop"
 msgstr "soltar"
@@ -3390,11 +3417,17 @@ msgstr "etiqueta: {}"
 msgid "lowercase"
 msgstr "minúsculas"
 
+msgid "make new folder together section collect"
+msgstr "crear nuevo carpeta juntos sección reunir"
+
 msgid "move"
 msgstr "mover"
 
 msgid "ms"
 msgstr "ms"
+
+msgid "name title change edit section"
+msgstr "nombre título cambiar editar sección"
 
 msgid "navigation rail collapse expand lists panel left width"
 msgstr "navegación barra contraer expandir listas panel izquierda ancho"
@@ -3429,8 +3462,17 @@ msgstr "px"
 msgid "quick find paste palette"
 msgstr "rápido buscar pegar paleta"
 
+msgid "remove trash discard section items"
+msgstr "quitar papelera descartar sección elementos"
+
 msgid "reorder"
 msgstr "reordenar"
+
+msgid "reorder earlier raise section"
+msgstr "reordenar antes subir sección"
+
+msgid "reorder later lower section"
+msgstr "reordenar después bajar sección"
 
 msgid "s"
 msgstr "s"

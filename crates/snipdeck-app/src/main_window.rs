@@ -1343,7 +1343,7 @@ mod tests {
             0,
             "a header is not selected like a card"
         );
-        assert!(model.targets(1).is_empty());
+        assert_eq!(model.targets(1), []);
         model.select_all();
         assert!(!model.rows()[1].selected, "{:?} stays unselected", group.id);
         assert_eq!(model.targets(0).len(), model.keys().len() - 1);
