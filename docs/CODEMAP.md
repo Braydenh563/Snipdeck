@@ -1696,16 +1696,16 @@ new | crates/snipdeck-app/src/help_binding.rs:578
 refresh | crates/snipdeck-app/src/help_binding.rs:672
 shortcut_groups | crates/snipdeck-app/src/help_binding.rs:682
 ui_group | crates/snipdeck-app/src/help_binding.rs:696
-tab_of | crates/snipdeck-app/src/help_binding.rs:720
-HelpUi | crates/snipdeck-app/src/help_binding.rs:733
-impl std::fmt::Debug for HelpUi | crates/snipdeck-app/src/help_binding.rs:738
-fmt | crates/snipdeck-app/src/help_binding.rs:739
-impl HelpUi | crates/snipdeck-app/src/help_binding.rs:744
-new | crates/snipdeck-app/src/help_binding.rs:747
-open | crates/snipdeck-app/src/help_binding.rs:806
-tests | crates/snipdeck-app/src/help_binding.rs:818
-the_links_point_at_the_repository | crates/snipdeck-app/src/help_binding.rs:824
-the_report_flags_are_switches_and_numbers_never_typed_text | crates/snipdeck-app/src/help_binding.rs:833
+tab_of | crates/snipdeck-app/src/help_binding.rs:721
+HelpUi | crates/snipdeck-app/src/help_binding.rs:734
+impl std::fmt::Debug for HelpUi | crates/snipdeck-app/src/help_binding.rs:739
+fmt | crates/snipdeck-app/src/help_binding.rs:740
+impl HelpUi | crates/snipdeck-app/src/help_binding.rs:745
+new | crates/snipdeck-app/src/help_binding.rs:748
+open | crates/snipdeck-app/src/help_binding.rs:807
+tests | crates/snipdeck-app/src/help_binding.rs:819
+the_links_point_at_the_repository | crates/snipdeck-app/src/help_binding.rs:825
+the_report_flags_are_switches_and_numbers_never_typed_text | crates/snipdeck-app/src/help_binding.rs:834
 
 ### crates/snipdeck-app/src/history.rs
 
@@ -3460,39 +3460,41 @@ the_file_sink_writes_the_settings_file_after_the_quiet_time | crates/snipdeck-ap
 Scope | crates/snipdeck-app/src/shortcuts.rs:16
 impl Scope | crates/snipdeck-app/src/shortcuts.rs:31
 Keys | crates/snipdeck-app/src/shortcuts.rs:45
-Shortcut | crates/snipdeck-app/src/shortcuts.rs:61
-row | crates/snipdeck-app/src/shortcuts.rs:68
-custom | crates/snipdeck-app/src/shortcuts.rs:75
-global | crates/snipdeck-app/src/shortcuts.rs:82
-CATALOGUE | crates/snipdeck-app/src/shortcuts.rs:93
-Line | crates/snipdeck-app/src/shortcuts.rs:199
-Group | crates/snipdeck-app/src/shortcuts.rs:210
-impl Keys | crates/snipdeck-app/src/shortcuts.rs:217
-resolve | crates/snipdeck-app/src/shortcuts.rs:218
-words | crates/snipdeck-app/src/shortcuts.rs:232
-matches | crates/snipdeck-app/src/shortcuts.rs:248
-groups_of | crates/snipdeck-app/src/shortcuts.rs:272
-groups | crates/snipdeck-app/src/shortcuts.rs:304
-tests | crates/snipdeck-app/src/shortcuts.rs:309
-fixture | crates/snipdeck-app/src/shortcuts.rs:313
-found | crates/snipdeck-app/src/shortcuts.rs:334
-an_empty_query_lists_every_line_in_catalogue_order | crates/snipdeck-app/src/shortcuts.rs:350
-the_filter_matches_the_action_name_ignoring_case | crates/snipdeck-app/src/shortcuts.rs:357
-every_word_of_the_query_must_match | crates/snipdeck-app/src/shortcuts.rs:365
-the_filter_matches_the_chord_however_it_is_typed | crates/snipdeck-app/src/shortcuts.rs:371
-a_key_is_found_by_its_cap_and_by_what_it_is_called_aloud | crates/snipdeck-app/src/shortcuts.rs:381
-a_single_letter_matches_a_key_or_a_word_start_not_the_middle_of_words | crates/snipdeck-app/src/shortcuts.rs:393
-the_global_hotkeys_follow_the_settings_and_a_hotkey_that_is_off_shows_no_keys | crates/snipdeck-app/src/shortcuts.rs:401
-a_group_with_no_matching_line_is_left_out | crates/snipdeck-app/src/shortcuts.rs:420
-a_query_of_only_a_plus_looks_for_the_plus_key | crates/snipdeck-app/src/shortcuts.rs:428
-the_real_catalogue_is_grouped_by_scope_in_order_and_lists_the_panels_keep_open_key | crates/snipdeck-app/src/shortcuts.rs:434
-the_main_window_keys_match_the_commands_that_have_a_shortcut | crates/snipdeck-app/src/shortcuts.rs:451
-header_keys | crates/snipdeck-app/src/shortcuts.rs:519
-every_key_in_the_panels_header_comment_has_a_row_in_the_list | crates/snipdeck-app/src/shortcuts.rs:546
-atoms | crates/snipdeck-app/src/shortcuts.rs:572
-guide_scopes | crates/snipdeck-app/src/shortcuts.rs:586
-listed | crates/snipdeck-app/src/shortcuts.rs:608
-every_shortcut_in_the_guides_keyboard_table_is_in_the_list | crates/snipdeck-app/src/shortcuts.rs:621
+Shortcut | crates/snipdeck-app/src/shortcuts.rs:68
+ALT | crates/snipdeck-app/src/shortcuts.rs:76
+row | crates/snipdeck-app/src/shortcuts.rs:78
+custom | crates/snipdeck-app/src/shortcuts.rs:85
+plain | crates/snipdeck-app/src/shortcuts.rs:92
+global | crates/snipdeck-app/src/shortcuts.rs:99
+CATALOGUE | crates/snipdeck-app/src/shortcuts.rs:110
+Line | crates/snipdeck-app/src/shortcuts.rs:228
+Group | crates/snipdeck-app/src/shortcuts.rs:241
+impl Keys | crates/snipdeck-app/src/shortcuts.rs:248
+resolve | crates/snipdeck-app/src/shortcuts.rs:249
+words | crates/snipdeck-app/src/shortcuts.rs:264
+matches | crates/snipdeck-app/src/shortcuts.rs:280
+groups_of | crates/snipdeck-app/src/shortcuts.rs:305
+groups | crates/snipdeck-app/src/shortcuts.rs:338
+tests | crates/snipdeck-app/src/shortcuts.rs:343
+fixture | crates/snipdeck-app/src/shortcuts.rs:347
+found | crates/snipdeck-app/src/shortcuts.rs:368
+an_empty_query_lists_every_line_in_catalogue_order | crates/snipdeck-app/src/shortcuts.rs:384
+the_filter_matches_the_action_name_ignoring_case | crates/snipdeck-app/src/shortcuts.rs:391
+every_word_of_the_query_must_match | crates/snipdeck-app/src/shortcuts.rs:399
+the_filter_matches_the_chord_however_it_is_typed | crates/snipdeck-app/src/shortcuts.rs:405
+a_key_is_found_by_its_cap_and_by_what_it_is_called_aloud | crates/snipdeck-app/src/shortcuts.rs:415
+a_single_letter_matches_a_key_or_a_word_start_not_the_middle_of_words | crates/snipdeck-app/src/shortcuts.rs:427
+the_global_hotkeys_follow_the_settings_and_a_hotkey_that_is_off_shows_no_keys | crates/snipdeck-app/src/shortcuts.rs:435
+a_group_with_no_matching_line_is_left_out | crates/snipdeck-app/src/shortcuts.rs:454
+a_query_of_only_a_plus_looks_for_the_plus_key | crates/snipdeck-app/src/shortcuts.rs:462
+the_real_catalogue_is_grouped_by_scope_in_order_and_lists_the_panels_keep_open_key | crates/snipdeck-app/src/shortcuts.rs:468
+the_main_window_keys_match_the_commands_that_have_a_shortcut | crates/snipdeck-app/src/shortcuts.rs:485
+header_keys | crates/snipdeck-app/src/shortcuts.rs:553
+every_key_in_the_panels_header_comment_has_a_row_in_the_list | crates/snipdeck-app/src/shortcuts.rs:580
+atoms | crates/snipdeck-app/src/shortcuts.rs:606
+guide_scopes | crates/snipdeck-app/src/shortcuts.rs:620
+listed | crates/snipdeck-app/src/shortcuts.rs:642
+every_shortcut_in_the_guides_keyboard_table_is_in_the_list | crates/snipdeck-app/src/shortcuts.rs:655
 
 ### crates/snipdeck-app/src/starter.rs
 
@@ -8096,7 +8098,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/fill_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/focus_scroll_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/focus_traversal_repro.rs` | 6 |
-| `crates/snipdeck-ui/tests/group_header_measure.rs` | 4 |
+| `crates/snipdeck-ui/tests/group_header_measure.rs` | 5 |
 | `crates/snipdeck-ui/tests/i18n.rs` | 1 |
 | `crates/snipdeck-ui/tests/inputs.rs` | 17 |
 | `crates/snipdeck-ui/tests/inputs_logic.rs` | 1 |
@@ -8127,6 +8129,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/symbol_nav.rs` | 5 |
 | `crates/snipdeck-ui/tests/symbols.rs` | 12 |
 | `crates/snipdeck-ui/tests/tray_texts.rs` | 1 |
+| `crates/snipdeck-ui/tests/ux_fit.rs` | 7 |
 | `scripts/test_i18n.py` | 16 |
 | `scripts/test_symbols.py` | 24 |
 | `spikes/s3-longtext/src/viewer.rs` (inline) | 1 |
