@@ -1035,6 +1035,9 @@ msgstr "Bandeiras"
 msgid "Floating"
 msgstr "Flutuante"
 
+msgid "Fold group"
+msgstr "Recolher grupo"
+
 msgid "Fold or open a group"
 msgstr "Recolher ou expandir um grupo"
 
@@ -1806,6 +1809,9 @@ msgstr "Abrir a pasta de backups"
 
 msgid "Open data folder"
 msgstr "Abrir a pasta de dados"
+
+msgid "Open group"
+msgstr "Expandir grupo"
 
 msgid "Open logs folder"
 msgstr "Abrir pasta de logs"

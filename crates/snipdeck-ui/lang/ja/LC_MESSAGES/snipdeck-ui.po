@@ -1034,6 +1034,9 @@ msgstr "旗"
 msgid "Floating"
 msgstr "フローティング"
 
+msgid "Fold group"
+msgstr "グループを折りたたむ"
+
 msgid "Fold or open a group"
 msgstr "グループを折りたたむ／開く"
 
@@ -1800,6 +1803,9 @@ msgstr "バックアップフォルダーを開く"
 
 msgid "Open data folder"
 msgstr "データフォルダーを開く"
+
+msgid "Open group"
+msgstr "グループを開く"
 
 msgid "Open logs folder"
 msgstr "ログフォルダーを開く"

@@ -1035,6 +1035,9 @@ msgstr "Flaggen"
 msgid "Floating"
 msgstr "Frei"
 
+msgid "Fold group"
+msgstr "Gruppe einklappen"
+
 msgid "Fold or open a group"
 msgstr "Gruppe einklappen oder aufklappen"
 
@@ -1806,6 +1809,9 @@ msgstr "Sicherungsordner öffnen"
 
 msgid "Open data folder"
 msgstr "Datenordner öffnen"
+
+msgid "Open group"
+msgstr "Gruppe aufklappen"
 
 msgid "Open logs folder"
 msgstr "Protokollordner öffnen"

@@ -1035,6 +1035,9 @@ msgstr "Drapeaux"
 msgid "Floating"
 msgstr "Flottant"
 
+msgid "Fold group"
+msgstr "Replier le groupe"
+
 msgid "Fold or open a group"
 msgstr "Replier ou déplier un groupe"
 
@@ -1806,6 +1809,9 @@ msgstr "Ouvrir le dossier des sauvegardes"
 
 msgid "Open data folder"
 msgstr "Ouvrir le dossier de données"
+
+msgid "Open group"
+msgstr "Déplier le groupe"
 
 msgid "Open logs folder"
 msgstr "Ouvrir le dossier des journaux"

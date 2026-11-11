@@ -1654,8 +1654,8 @@ fn a_header_at_the_top_cannot_move_up_and_says_so_in_its_menu() {
     assert_eq!(shape(&w), before);
     let id = w.ctl.view().rows[0].id;
     let entries = w.ctl.item_menu_entries(id);
-    assert!(entries.contains(&ItemMenuEntry::MoveUp { enabled: false }));
-    assert!(entries.contains(&ItemMenuEntry::MoveDown { enabled: true }));
+    assert!(entries.contains(&ItemMenuEntry::GroupUp { enabled: false }));
+    assert!(entries.contains(&ItemMenuEntry::GroupDown { enabled: true }));
 }
 
 #[test]
@@ -1669,10 +1669,59 @@ fn the_header_menu_moves_the_group() {
         .ctl
         .item_menu_entries(id)
         .iter()
-        .position(|e| *e == ItemMenuEntry::MoveDown { enabled: true })
-        .expect("a Move down row on the header menu");
+        .position(|e| *e == ItemMenuEntry::GroupDown { enabled: true })
+        .expect("a Move group down row on the header menu");
     let _ = w.ctl.choose_item_menu(at);
     assert_eq!(shape(&w), [&before[3..], &before[..3]].concat());
+}
+
+#[test]
+fn the_header_menu_folds_and_opens_the_group_and_offers_the_other_way_after() {
+    let mut w = world();
+    two_groups(&mut w);
+    let id = w.ctl.view().rows[0].id;
+    assert!(
+        w.ctl
+            .item_menu_entries(id)
+            .contains(&ItemMenuEntry::ToggleGroup { folded: false })
+    );
+    w.ctl.open_item_menu(0, false);
+    let at = w
+        .ctl
+        .item_menu_entries(id)
+        .iter()
+        .position(|e| matches!(e, ItemMenuEntry::ToggleGroup { .. }))
+        .expect("a fold row on the header menu");
+    let _ = w.ctl.choose_item_menu(at);
+    assert!(
+        w.ctl.view().rows[0]
+            .header
+            .as_ref()
+            .is_some_and(|h| h.collapsed),
+        "folded"
+    );
+    let id = w.ctl.view().rows[0].id;
+    assert!(
+        w.ctl
+            .item_menu_entries(id)
+            .contains(&ItemMenuEntry::ToggleGroup { folded: true }),
+        "a folded group offers Open"
+    );
+    w.ctl.open_item_menu(0, false);
+    let at = w
+        .ctl
+        .item_menu_entries(id)
+        .iter()
+        .position(|e| matches!(e, ItemMenuEntry::ToggleGroup { .. }))
+        .expect("an open row");
+    let _ = w.ctl.choose_item_menu(at);
+    assert!(
+        w.ctl.view().rows[0]
+            .header
+            .as_ref()
+            .is_some_and(|h| !h.collapsed),
+        "open again"
+    );
 }
 
 #[test]

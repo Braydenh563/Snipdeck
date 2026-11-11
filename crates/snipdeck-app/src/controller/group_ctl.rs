@@ -165,12 +165,13 @@ where
                 }
             }
             super::ItemMenuEntry::Ungroup => self.group_ungroup(at),
-            super::ItemMenuEntry::MoveUp { enabled } => {
+            super::ItemMenuEntry::ToggleGroup { .. } => self.group_collapse(at, None),
+            super::ItemMenuEntry::GroupUp { enabled } => {
                 if enabled {
                     self.group_move(at, -1);
                 }
             }
-            super::ItemMenuEntry::MoveDown { enabled } => {
+            super::ItemMenuEntry::GroupDown { enabled } => {
                 if enabled {
                     self.group_move(at, 1);
                 }

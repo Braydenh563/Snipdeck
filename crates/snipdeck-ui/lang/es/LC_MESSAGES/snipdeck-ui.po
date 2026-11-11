@@ -1035,6 +1035,9 @@ msgstr "Banderas"
 msgid "Floating"
 msgstr "Flotante"
 
+msgid "Fold group"
+msgstr "Plegar grupo"
+
 msgid "Fold or open a group"
 msgstr "Plegar o desplegar un grupo"
 
@@ -1806,6 +1809,9 @@ msgstr "Abrir la carpeta de copias de seguridad"
 
 msgid "Open data folder"
 msgstr "Abrir la carpeta de datos"
+
+msgid "Open group"
+msgstr "Desplegar grupo"
 
 msgid "Open logs folder"
 msgstr "Abrir carpeta de registros"

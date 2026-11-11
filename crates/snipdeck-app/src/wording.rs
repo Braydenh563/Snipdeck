@@ -575,6 +575,9 @@ pub const fn item_menu_shortcut(entry: crate::controller::ItemMenuEntry) -> &'st
         ItemMenuEntry::MoveDown { .. } => "Alt+Down",
         ItemMenuEntry::Group => "Ctrl+G",
         ItemMenuEntry::RenameGroup => "F2",
+        ItemMenuEntry::ToggleGroup { .. } => "Enter",
+        ItemMenuEntry::GroupUp { .. } => "Alt+Up",
+        ItemMenuEntry::GroupDown { .. } => "Alt+Down",
         ItemMenuEntry::Ungroup
         | ItemMenuEntry::DeleteGroup
         | ItemMenuEntry::Stack { .. }
@@ -611,6 +614,10 @@ pub fn item_menu_label(window: &PanelWindow, entry: crate::controller::ItemMenuE
         ItemMenuEntry::MoveDown { .. } => moves.invoke_menu_move_down(),
         ItemMenuEntry::Group => t.invoke_item_group(),
         ItemMenuEntry::RenameGroup => t.invoke_group_rename(),
+        ItemMenuEntry::ToggleGroup { folded: false } => t.invoke_group_fold(),
+        ItemMenuEntry::ToggleGroup { folded: true } => t.invoke_group_open(),
+        ItemMenuEntry::GroupUp { .. } => t.invoke_group_move_up(),
+        ItemMenuEntry::GroupDown { .. } => t.invoke_group_move_down(),
         ItemMenuEntry::Ungroup => t.invoke_group_ungroup(),
         ItemMenuEntry::DeleteGroup => t.invoke_group_delete(),
         ItemMenuEntry::Separator => return String::new(),
