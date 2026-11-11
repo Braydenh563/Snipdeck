@@ -28,8 +28,8 @@ resumed: 2026-11-09 after idle-guard stop during a long gate run (commits c7f28a
 - [x] v1.0.1 slice 6: Main quick-add + multi-row drag (merged 01a7292)
 - [x] v1.0.1 slice 8: A25, search suggestion dropdown (Picker, Panel, Main); empty-state keycaps (owner)
 - [x] Recent captures images, files and rich text (owner 2026-10-26), with size caps and the privacy markers
-- [ ] v1.1: placeholders {uuid} + date maths, paste transforms, richer fill-ins
-- [ ] v1.1: importers (TextExpander, Espanso, PhraseExpress, Beeftext): backend merged 947c9b4; Settings import chooser wiring + Note warnings display left
+- [x] v1.1: placeholders {uuid} + date maths, paste transforms, richer fill-ins
+- [x] v1.1: importers (TextExpander, Espanso, PhraseExpress, Beeftext): backend merged 947c9b4; Settings import chooser wiring + Note warnings display left
 - [ ] v1.1: groups inside a list (O46), tips window
 - [ ] v1.1: typed-trigger expansion (opt-in, off by default, honours Sensitive + never-paste list)
 - [ ] v1.1: suggest-as-you-type at the caret (opt-in), rich paste, Windows Hello unlock
@@ -39,6 +39,6 @@ resumed: 2026-11-09 after idle-guard stop during a long gate run (commits c7f28a
 - [x] v1.1 UI lane slices 1 + 2a (wt/v11-ui merged; Ctrl+Enter root cause fixed f508e86)
 - [x] v1.1 slice 8 platform layer (wt/v11-hello merged 9c44b6b; review fixed 867757c)
 - [x] v1.1 slice 2b core parser (wt/v11-fill f2463a1, reviewed+fixed; app sites in .claude/remaining/fill.md)
-- [ ] v1.1 slice 2b app+UI (wt/v11-fill, agent; shares /tmp/target-panel lock with the Ctrl+Enter agent)
-- [ ] v1.1 slice 4 tips (wt/v11-tips, agent)
+- [x] v1.1 slice 2b app+UI (wt/v11-fill, agent; shares /tmp/target-panel lock with the Ctrl+Enter agent)
+- [x] v1.1 slice 4 tips (wt/v11-tips, agent)
 - [x] v1.1 slices 5b+7 platform layer (wt/v11-plat ebd01f2 merged locally; app build unchecked until next full gate)

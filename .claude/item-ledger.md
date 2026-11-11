@@ -60,3 +60,5 @@ date | item | type | rung | rework | note
 2026-11-10 | v1.1 slice 2b core parser | feature | sonnet | 1 | 
 2026-11-10 | v1.1 slices 5b+7 platform layer | feature | sonnet | 1 | 
 2026-11-11 | v1.1 slices 1+2a importers, uuid, date maths, paste as | ui | sonnet | 2 | 
+2026-11-11 | v1.1 slice 2b fill-form kinds | ui | sonnet | 1 | 
+2026-11-11 | v1.1 slice 4 tips | ui | sonnet | 0 | 
