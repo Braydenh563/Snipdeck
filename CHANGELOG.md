@@ -13,7 +13,7 @@ All notable changes to Snipdeck are recorded here. The format follows
   foldable header, as in the Panel. `Left`, `Right` and `Enter` fold a header, `F2` renames it, `Delete` moves the
   group and its items to the Trash, and `Alt+Up` / `Alt+Down` (or a drag) moves the whole group. The command
   palette and the shortcuts list have the group actions. Search shows a flat list, and a list that holds groups is drawn as
-  rows even in the Tile layout.
+  rows, and the Tile view button rests until the list has no groups.
 - **More importers** in Settings > Import...: Espanso, Beeftext, TextExpander (CSV) and PhraseExpress (CSV), beside
   Ditto and CopyQ, with the same preview, report and Undo. Their abbreviations are kept as triggers.
 - **More placeholders**: `{uuid}`, and date maths after `date`, `time` and `datetime`, for example `{date+3d}`,

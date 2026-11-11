@@ -181,7 +181,7 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
   other, `F2` renames, `Delete` moves the group and its items to the Trash, and `Alt+Up` or `Alt+Down` moves the
   whole group. The header's menu has Rename group, Ungroup and Delete group, and the command
   palette (`Ctrl+K`) has the same actions. Search results are a flat list of matches without headers, and a list that
-  holds groups is drawn as rows even in the Tile layout, so a header can span the width. Undo (`Ctrl+Z`) takes back
+  holds groups is drawn as rows, so a header can span the width; the Tile view button rests (greyed out) until the list has no groups. Undo (`Ctrl+Z`) takes back
   each of these steps.
 - **Move.** Choose **Move to list…** from the item menu to move one or more selected items.
 - **Paste as…** Choose **Paste as…** from the item menu (text items, one at a time) to paste the text changed: **Plain
