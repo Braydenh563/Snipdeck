@@ -36,7 +36,7 @@ resumed: 2026-11-09 after idle-guard stop during a long gate run (commits c7f28a
 - [x] Polish: tips pictures end on row edges, distinct Show Panel icon, scroll-focus tests (merged dc432fe); final audit 1: min window widths follow text size (merged db6cab3)
 - [x] Align placeholder chip column (merged 07:30)
 - [x] Audit 1b keyboard walk -> audit worker, branch claude/v11-audit (merged fb9209c; goldens after the Tab-order fixes)
-- [ ] Final audit 2 (Hello + typing): report docs/reviews/final-audit-2.md; Hello A1/A5/A7 done 5a19d49, review: 1 HIGH (copy outlives key) 1 MED 6 LOW + A8 + m3 steps sent back, typing B3-B10 -> typing worker
+- [x] Final audit 2 (Hello + typing): report docs/reviews/final-audit-2.md; Hello A1/A5/A7 done 5a19d49, review: 1 HIGH (copy outlives key) 1 MED 6 LOW fixed 76dba4a, re-review 8/8 confirmed, merged a1886b9; 5 LOW + nit sent back, typing B3-B10 -> typing worker
 - [x] Import notes LOWs + docs refresh (merged 7310bd0, 63c0259)
 - [x] In-app help and shortcut lists for groups, triggers, Hello (merged 07cd1f0; Hello settings-search key after the Hello merge)
 - [ ] Groups in the Main window (spec: Panel and Main) -> sweep worker, claude/v11-groups-main
