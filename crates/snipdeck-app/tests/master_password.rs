@@ -1383,8 +1383,13 @@ mod hello {
     fn a_removed_hello_or_a_changed_credential_falls_back() {
         let (mut r, hello) = locked_with_hello();
         hello.replace_credential(b"another credential");
-        assert_eq!(open_by_hello(&mut r), Err(HelloFailure::Failed));
+        assert_eq!(open_by_hello(&mut r), Err(HelloFailure::Mismatch));
         assert!(r.ctl.library_locked());
+        assert!(
+            !r.ctl.settings().hello_unlock,
+            "a Hello that stopped matching is turned off, not asked again and again"
+        );
+        assert!(!r.ctl.hello_unlock_available());
         r.ctl.unlock_with_password(password()).expect("password");
 
         let (mut r, hello) = locked_with_hello();
@@ -1403,6 +1408,71 @@ mod hello {
         assert_eq!(r.ctl.finish_hello(job.run()), Err(HelloFailure::Failed));
         r.ctl.lock_now();
         assert!(!r.ctl.hello_unlock_available());
+    }
+
+    #[test]
+    fn an_older_availability_answer_never_replaces_a_newer_one() {
+        let hello = fake();
+        let mut r = with_password(Tier::Pro);
+        r.ctl.set_hello(hello.clone());
+        hello.set_availability(HelloAvailability::NotSetUp);
+        let older = r.ctl.begin_hello_refresh().expect("a Hello");
+        let slow = older.run();
+        hello.set_availability(HelloAvailability::Ready);
+        let newer = r.ctl.begin_hello_refresh().expect("a Hello");
+        r.ctl.finish_hello(newer.run()).expect("answered");
+        assert!(r.ctl.hello_offered());
+        assert!(r.ctl.hello_stale(&slow));
+        r.ctl.finish_hello(slow).expect("ignored");
+        assert!(
+            r.ctl.hello_offered(),
+            "the older \"not set up\" did not win"
+        );
+    }
+
+    #[test]
+    fn an_outcome_of_a_step_given_up_on_is_stale_and_leaves_hello_on() {
+        let hello = fake();
+        let mut r = with_password(Tier::Pro);
+        attach(&mut r.ctl, &hello);
+        let step = r.ctl.set_hello_unlock(true).expect("step");
+        // The library locks (hotkey or auto-lock) while the seal is on its way.
+        r.ctl.lock_now();
+        let late = step.run();
+        assert!(r.ctl.hello_stale(&late), "the binding drops it");
+        drop(late);
+        assert!(
+            r.ctl.settings().hello_unlock,
+            "a dropped result does not turn Hello off"
+        );
+        // The next password unlock seals as usual.
+        r.ctl.unlock_with_password(password()).expect("password");
+        let seal = r.ctl.begin_hello_seal().expect("a new step");
+        assert!(!r.ctl.hello_stale(&seal.run()));
+    }
+
+    #[test]
+    fn a_quick_unlock_before_hello_answered_seals_once_it_has() {
+        let hello = fake();
+        let mut r = with_password(Tier::Pro);
+        enable(&mut r, &hello);
+        r.ctl.lock_now();
+        // As after a restart: Hello has not been asked yet.
+        r.ctl.set_hello(hello.clone());
+        r.ctl.unlock_with_password(password()).expect("password");
+        assert!(
+            r.ctl.begin_hello_seal().is_none(),
+            "not offered until Hello answers"
+        );
+        let job = r.ctl.begin_hello_refresh().expect("a Hello");
+        r.ctl.finish_hello(job.run()).expect("answered");
+        let seal = r
+            .ctl
+            .begin_hello_seal()
+            .expect("sealed now that it is known");
+        r.ctl.finish_hello(seal.run()).expect("sealed");
+        r.ctl.lock_now();
+        assert!(r.ctl.hello_unlock_available());
     }
 
     #[test]

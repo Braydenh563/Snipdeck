@@ -422,3 +422,31 @@ fn a_password_unlock_seals_again_and_a_failed_seal_turns_hello_off() {
         assert!(!r.ctl.borrow().hello_unlock_available());
     });
 }
+
+#[test]
+fn when_the_hello_button_disappears_the_focus_goes_to_the_password_field() {
+    on_ui_thread(|| {
+        let hello = std::sync::Arc::new(FakeHello::new());
+        let r = rig_with(Some(&hello));
+        // The copy goes while the window is open (the plan changed), before the window redraws:
+        // the button is still there, takes the focus, and is pressed.
+        r.ctl
+            .borrow_mut()
+            .change_plan(Entitlements::new(Tier::Free));
+        press(r.ui.window(), "\t");
+        settle();
+        type_text(r.ui.window(), "x");
+        assert_eq!(r.ui.get_password(), "", "Tab moved the focus off the field");
+        hello_button(&r.ui)
+            .expect("button")
+            .invoke_accessible_default_action();
+        settle();
+        assert!(hello_button(&r.ui).is_none(), "the button is gone");
+        type_text(r.ui.window(), password());
+        assert_eq!(
+            r.ui.get_password(),
+            password(),
+            "keys reach the password field"
+        );
+    });
+}

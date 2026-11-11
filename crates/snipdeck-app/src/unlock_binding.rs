@@ -39,6 +39,7 @@ pub fn slint_problem(problem: MasterProblem) -> ui::MasterProblem {
         MasterProblem::Unavailable => ui::MasterProblem::Unavailable,
         MasterProblem::Failed => ui::MasterProblem::Failed,
         MasterProblem::HelloFailed => ui::MasterProblem::HelloFailed,
+        MasterProblem::HelloOff => ui::MasterProblem::HelloOff,
     }
 }
 
@@ -55,14 +56,62 @@ where
     let Some(job) = job else {
         return;
     };
+    let again = Rc::clone(controller);
+    run_step(controller, Some(job), move |_| {
+        // A quick password unlock may have come before Hello's first answer, so nothing was
+        // sealed then: seal the open key now.
+        seal_open_key(&again);
+    });
+}
+
+/// Runs a Hello step where Hello jobs run and applies its outcome. `then` gets the result, or
+/// `None` when the outcome was of a step given up on (the library was locked, a newer step began):
+/// that is dropped with its key and must not turn anything off. UI thread only.
+fn run_step<C, K, T>(
+    controller: &Rc<RefCell<Controller<Store, C, K, T>>>,
+    job: Option<HelloJob>,
+    then: impl FnOnce(Option<Result<(), HelloFailure>>) + 'static,
+) where
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    let Some(job) = job else {
+        return;
+    };
     let controller = Rc::clone(controller);
     crate::hello_job::run_job(
         job,
         Box::new(move |done| {
-            let _ = controller.borrow_mut().finish_hello(done);
+            if controller.borrow().hello_stale(&done) {
+                drop(done);
+                redraw_all();
+                then(None);
+                return;
+            }
+            let result = controller.borrow_mut().finish_hello(done);
             redraw_all();
+            then(Some(result));
         }),
     );
+}
+
+/// Seals the open key under Hello if Hello is on and no copy exists. A seal that fails turns Hello
+/// off, as it does from Settings, so later unlocks do not keep prompting; the password is untouched.
+fn seal_open_key<C, K, T>(controller: &Rc<RefCell<Controller<Store, C, K, T>>>)
+where
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    let job = controller.borrow_mut().begin_hello_seal();
+    let again = Rc::clone(controller);
+    run_step(controller, job, move |result| {
+        if let Some(Err(_)) = result {
+            let _ = again.borrow_mut().set_hello_unlock(false);
+            redraw_all();
+        }
+    });
 }
 
 struct UnlockCore<C, K, T> {
@@ -233,36 +282,7 @@ where
     }
 
     fn seal_after_unlock(&self) {
-        let job = self.controller.borrow_mut().begin_hello_seal();
-        let controller = Rc::clone(&self.controller);
-        // A seal that fails turns Hello off, as it does from Settings, so later unlocks do not
-        // keep prompting; the password is untouched.
-        self.run_hello(job, move |result| {
-            if result.is_err() {
-                let _ = controller.borrow_mut().set_hello_unlock(false);
-                redraw_all();
-            }
-        });
-    }
-
-    /// Runs `job` (if any) where Hello jobs run, then applies the outcome and hands it to `then`.
-    fn run_hello(
-        &self,
-        job: Option<HelloJob>,
-        then: impl FnOnce(Result<(), HelloFailure>) + 'static,
-    ) {
-        let Some(job) = job else {
-            return;
-        };
-        let controller = Rc::clone(&self.controller);
-        crate::hello_job::run_job(
-            job,
-            Box::new(move |done| {
-                let result = controller.borrow_mut().finish_hello(done);
-                redraw_all();
-                then(result);
-            }),
-        );
+        seal_open_key(&self.controller);
     }
 
     /// The Hello button: Hello opens the sealed copy. Any failure leaves the password prompt as it
@@ -280,17 +300,28 @@ where
         }
         window.set_busy(true);
         let weak = self.window.clone();
-        self.run_hello(job, move |result| {
+        run_step(&self.controller, job, move |result| {
             let Some(window) = weak.upgrade() else {
                 return;
             };
             window.set_busy(false);
-            if result.is_ok() {
-                let _ = window.hide();
-            } else {
+            match result {
+                Some(Ok(())) => {
+                    let _ = window.hide();
+                }
+                // A step given up on (the library was locked meanwhile): the prompt stays as
+                // it is, and the field has the focus.
+                None => window.set_focus_request(window.get_focus_request() + 1),
                 // The copy is gone: the password is the way in.
-                window.set_hello_available(false);
-                Self::refused(&window, MasterProblem::HelloFailed);
+                Some(Err(failure)) => {
+                    window.set_hello_available(false);
+                    let problem = if failure == HelloFailure::Mismatch {
+                        MasterProblem::HelloOff
+                    } else {
+                        MasterProblem::HelloFailed
+                    };
+                    Self::refused(&window, problem);
+                }
             }
         });
     }

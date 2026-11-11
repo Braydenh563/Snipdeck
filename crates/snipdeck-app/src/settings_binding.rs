@@ -1081,7 +1081,7 @@ where
             Box::new(move |done| {
                 // An outcome of a step that was given up on (locked, switched off, a newer step)
                 // is dropped with its copy and must not undo the newer step.
-                if !core.act(|ctl| ctl.hello_current(&done)) {
+                if core.act(|ctl| ctl.hello_stale(&done)) {
                     return;
                 }
                 let sealed = core.act(|ctl| ctl.finish_hello(done));

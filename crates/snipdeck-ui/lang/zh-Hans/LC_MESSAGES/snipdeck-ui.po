@@ -3105,6 +3105,9 @@ msgstr "Windows"
 msgid "Windows Hello did not unlock Snipdeck. Use your master password."
 msgstr "Windows Hello 未能解锁 Snipdeck。请使用主密码。"
 
+msgid "Windows Hello stopped matching, so it was turned off. Use your master password."
+msgstr "Windows Hello 已不再匹配，因此已关闭。请使用主密码。"
+
 msgid "Windows accent"
 msgstr "Windows 强调色"
 

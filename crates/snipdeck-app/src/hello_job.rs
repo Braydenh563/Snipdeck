@@ -58,6 +58,9 @@ pub enum HelloFailure {
     Cancelled,
     /// Hello failed, was removed, or is not repeatable on this PC.
     Failed,
+    /// Hello answered, but its signature no longer opens the copy: this Hello does not give a
+    /// repeatable signature, so it cannot protect a key and is turned off.
+    Mismatch,
 }
 
 fn failure(error: HelloSealError<HelloError>) -> HelloFailure {
@@ -94,6 +97,14 @@ impl core::fmt::Debug for HelloDone {
     }
 }
 
+impl HelloDone {
+    /// Whether this answers "can Hello be used" (it has its own generation, apart from the steps).
+    #[must_use]
+    pub fn is_availability(&self) -> bool {
+        matches!(self.outcome, Ok(Product::Availability(_)))
+    }
+}
+
 impl HelloJob {
     pub(crate) fn seal(
         hello: Arc<dyn HelloAuthenticator>,
@@ -111,12 +122,12 @@ impl HelloJob {
         }
     }
 
-    pub(crate) fn availability(hello: Arc<dyn HelloAuthenticator>) -> Self {
+    pub(crate) fn availability(hello: Arc<dyn HelloAuthenticator>, generation: u64) -> Self {
         Self {
             hello,
             now: Duration::ZERO,
             work: Work::Availability,
-            generation: 0,
+            generation,
             cancel: Arc::default(),
         }
     }
@@ -168,7 +179,10 @@ impl HelloJob {
             Work::Open { sealed } => sealed
                 .open(self.now, sign)
                 .map(|key| Product::Opened(key, sealed))
-                .map_err(failure),
+                .map_err(|e| match e {
+                    HelloSealError::Failed => HelloFailure::Mismatch,
+                    other => failure(other),
+                }),
         };
         HelloDone {
             generation: self.generation,

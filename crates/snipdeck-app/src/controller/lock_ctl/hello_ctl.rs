@@ -38,6 +38,8 @@ pub(super) struct HelloState {
     password_at: Option<Timestamp>,
     busy: bool,
     generation: u64,
+    /// Counts the availability questions: an older answer never replaces a newer one.
+    availability_generation: u64,
 }
 
 impl core::fmt::Debug for HelloState {
@@ -87,13 +89,17 @@ where
     pub fn set_hello(&mut self, hello: Arc<dyn HelloAuthenticator>) {
         self.lock.hello.hello = Some(hello);
         self.lock.hello.availability = None;
+        self.lock.hello.availability_generation =
+            self.lock.hello.availability_generation.wrapping_add(1);
     }
 
     /// The first part of asking Hello whether it can be used (the app does it at start-up and
     /// when Settings or the unlock window opens, so a PIN added or removed meanwhile shows).
     pub fn begin_hello_refresh(&mut self) -> Option<HelloJob> {
         let hello = Arc::clone(self.lock.hello.hello.as_ref()?);
-        Some(HelloJob::availability(hello))
+        let state = &mut self.lock.hello;
+        state.availability_generation = state.availability_generation.wrapping_add(1);
+        Some(HelloJob::availability(hello, state.availability_generation))
     }
 
     /// The plan changed (a licence was applied): a copy for a plan without the feature is dropped.
@@ -189,6 +195,18 @@ where
         Some(HelloJob::open(hello, sealed, now, state.token()))
     }
 
+    /// Whether `done` is the outcome of a step that was given up on (the library locked, the option
+    /// switched off, a newer step started) or of an older availability question: it is to be
+    /// dropped, not applied and not reported as a failure.
+    #[must_use]
+    pub fn hello_stale(&self, done: &HelloDone) -> bool {
+        if done.is_availability() {
+            done.generation != self.lock.hello.availability_generation
+        } else {
+            !self.hello_current(done)
+        }
+    }
+
     /// Whether `done` belongs to the step under way.
     #[must_use]
     pub fn hello_current(&self, done: &HelloDone) -> bool {
@@ -202,6 +220,9 @@ where
     /// [`HelloFailure`] when Hello gave nothing: the copy is dropped and the password remains.
     pub fn finish_hello(&mut self, done: HelloDone) -> Result<(), HelloFailure> {
         if let Ok(Product::Availability(availability)) = done.outcome {
+            if done.generation != self.lock.hello.availability_generation {
+                return Ok(());
+            }
             self.lock.hello.availability = Some(availability);
             if availability != HelloAvailability::Ready {
                 self.lock.hello.drop_copy();
@@ -230,6 +251,11 @@ where
             }
             Err(failure) => {
                 self.lock.hello.sealed = None;
+                if failure == HelloFailure::Mismatch {
+                    // The signature no longer opens what it sealed: Hello would fail every time.
+                    self.update_settings(|s| s.hello_unlock = false);
+                    self.lock.hello.enrol = false;
+                }
                 Err(failure)
             }
         }
