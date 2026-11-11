@@ -88,7 +88,7 @@ fn typing_scenes(s: f32, w: f32, sw: f32, all: &mut Vec<String>, checked: &mut u
         let filter = snipdeck_ui::SettingsFilter::get(&ui);
         filter.on_matches(|text, query| text.to_lowercase().contains(&query.to_lowercase()));
         filter.set_query("as I type".into());
-        ui.window().set_size(slint::LogicalSize::new(sw, 1800.0));
+        ui.window().set_size(slint::LogicalSize::new(sw, 3000.0));
         ui.show().unwrap();
         slint::platform::update_timers_and_animations();
         all.extend(problems(

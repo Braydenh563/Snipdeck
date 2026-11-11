@@ -607,7 +607,7 @@ fn settings_typing_section_walk() {
     for (s, w) in [(1.0f32, 420u32), (2.25, 765)] {
         for available in [true, false] {
             let scene = format!("settings typing at {s}x, {available}");
-            let h = Harness::new(SettingsPage::new, w, 1800);
+            let h = Harness::new(SettingsPage::new, w, 3000);
             scene!(h.component, s);
             editor::settings(&h.component);
             h.component.set_typing_available(available);
