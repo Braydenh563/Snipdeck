@@ -329,12 +329,12 @@ where
         let run = self.group_row(s, index)?;
         let list = self.group_list(s)?;
         let order = self.group_order(s, list);
-        let first = order.iter().position(|i| run.items.first() == Some(i))?;
-        let last = first + run.items.len().saturating_sub(1);
+        let head = order.iter().position(|i| run.items.first() == Some(i))?;
+        let tail = head + run.items.len().saturating_sub(1);
         let next = if delta > 0 {
-            order.get(last + 1)
+            order.get(tail + 1)
         } else {
-            order.get(first.checked_sub(1)?)
+            order.get(head.checked_sub(1)?)
         }?;
         let group = self.group_of_item(s, *next).map(|g| g.group.id);
         self.row_marks(s).iter().position(|m| match (m, group) {
