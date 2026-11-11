@@ -61,6 +61,7 @@ fn app(exe: &str, title: &str) -> Target {
         app: exe.into(),
         title: title.into(),
         elevated: false,
+        password: false,
         focus: Focus::Caret,
     }
 }

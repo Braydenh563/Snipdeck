@@ -703,6 +703,8 @@ struct PageView {
     screenshot_keep_panel: bool,
     dock_full_edge: bool,
     recent_history: bool,
+    expand_triggers: bool,
+    suggest_triggers: bool,
     reduce_motion: bool,
     panel_width: i32,
     dock_edge_index: i32,
@@ -970,6 +972,8 @@ where
         screenshot_keep_panel: settings.screenshot_keep_panel,
         dock_full_edge: settings.dock.full_edge,
         recent_history: settings.recent_history,
+        expand_triggers: settings.expand_triggers,
+        suggest_triggers: settings.suggest_triggers,
         reduce_motion: settings.reduce_motion,
         panel_width: i32::try_from(settings.panel_width).unwrap_or(320),
         dock_edge_index: dock_edge_index(controller.dock_edge()),
@@ -1797,6 +1801,10 @@ where
         ));
         wire!(on_recent_history_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.recent_history = on)));
+        wire!(on_expand_triggers_toggled, |core, on| core
+            .act(|ctl| ctl.update_settings(|s| s.expand_triggers = on)));
+        wire!(on_suggest_triggers_toggled, |core, on| core
+            .act(|ctl| ctl.update_settings(|s| s.suggest_triggers = on)));
         wire!(on_recent_history_cleared, |core| {
             core.act(Controller::recent_clear);
         });
@@ -2018,6 +2026,12 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.screenshot_keep_panel == view.screenshot_keep_panel) {
         window.set_screenshot_keep_panel(view.screenshot_keep_panel);
+    }
+    if differs(&|p| p.expand_triggers == view.expand_triggers) {
+        window.set_expand_triggers(view.expand_triggers);
+    }
+    if differs(&|p| p.suggest_triggers == view.suggest_triggers) {
+        window.set_suggest_triggers(view.suggest_triggers);
     }
     if differs(&|p| p.recent_history == view.recent_history) {
         window.set_recent_history(view.recent_history);

@@ -67,6 +67,7 @@ pub mod symbols_panel;
 pub mod text_scale;
 pub mod tips;
 pub mod toast;
+pub mod typing_worker;
 pub mod toast_binding;
 pub mod tour;
 pub mod trace;

@@ -36,9 +36,11 @@ mod symbol_ctl;
 #[cfg(test)]
 mod tests;
 mod toast_ctl;
+mod trigger_ctl;
 mod use_ctl;
 mod views;
 
+pub use trigger_ctl::TypedOutcome;
 pub use history_ctl::HistoryView;
 pub use library::Library;
 pub use lock_ctl::{MasterProblem, MasterState};
@@ -280,6 +282,8 @@ pub struct Controller<S, C, K, T> {
     lock: lock_ctl::LockState,
     /// Switches the clipboard listener of the Recent inbox (see `recent_ctl.rs`).
     recent_gate: Option<snipdeck_platform::clipboard_watch::WatchGate>,
+    /// The typed-trigger service (keyboard hook), once the host hands it over.
+    typing: Option<Box<dyn crate::host::TypingControl>>,
     /// Told whether clipboard history is on and whether it is paused, for the tray menu's
     /// "Pause history" entry (see `recent_ctl.rs`).
     tray_history: Option<recent_ctl::HistorySink>,
@@ -448,6 +452,7 @@ where
             pending: Vec::new(),
             lock: lock_ctl::LockState::new(shown_at),
             recent_gate: None,
+            typing: None,
             tray_history: None,
             screen_clip: crate::screen_clip::ScreenClipFlow::new(),
             screen_clip_host: None,

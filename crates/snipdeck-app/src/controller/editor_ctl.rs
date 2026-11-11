@@ -70,6 +70,7 @@ struct Problems {
     content: Option<EditorProblem>,
     source: Option<EditorProblem>,
     privacy: Option<EditorProblem>,
+    trigger: Option<EditorProblem>,
     banner: Option<EditorProblem>,
 }
 
@@ -90,6 +91,11 @@ pub(super) struct ItemEditorSlot {
     problems: Problems,
     original_kind: ItemKind,
     original_sensitive: bool,
+    /// The Trigger field as typed (empty: none); the window sends it with
+    /// [`item_editor_set_trigger`](Controller::item_editor_set_trigger).
+    trigger: String,
+    /// The item's trigger when the editor opened (empty: none).
+    original_trigger: String,
     /// The saved text of a text item up to the editing cap: what "changed" is measured against.
     /// A sensitive item's text is held here while its editor is open and no longer.
     original_text: Option<String>,
@@ -239,6 +245,8 @@ where
             content_problem: slot.problems.content.clone(),
             source_problem: slot.problems.source.clone(),
             privacy_problem: slot.problems.privacy.clone(),
+            trigger: slot.trigger.clone(),
+            trigger_problem: slot.problems.trigger.clone(),
             banner: slot.problems.banner.clone(),
             large: slot.large,
             formatted: slot.formatted,
@@ -252,6 +260,14 @@ where
     }
 
     // ---- Editing -------------------------------------------------------------------------------
+
+    /// The Trigger field now holds `text` (blank: the item has no trigger). Checked on Save.
+    pub fn item_editor_set_trigger(&mut self, text: &str) {
+        if let Some(slot) = self.item_editor.as_mut() {
+            slot.trigger = text.trim().to_owned();
+            slot.problems.trigger = None;
+        }
+    }
 
     /// A field was edited: refusals no longer apply.
     pub fn item_editor_edited(&mut self) {

@@ -734,6 +734,8 @@ where
         EditorProblem::TitleHasControl => t.invoke_title_control_char(),
         EditorProblem::ContentEmpty => t.invoke_content_empty(),
         EditorProblem::ContentTooLong { max_kb } => t.invoke_content_too_long(int(*max_kb)),
+        EditorProblem::TriggerInvalid => t.invoke_trigger_invalid(),
+        EditorProblem::TriggerTaken => t.invoke_trigger_taken(),
         EditorProblem::LinkNeedsScheme => t.invoke_link_needs_scheme(),
         EditorProblem::LinkHasSpace => t.invoke_link_has_space(),
         EditorProblem::Template(why) => t.invoke_template_unreadable(why.as_str().into()),

@@ -114,6 +114,7 @@ pub struct Binding {
     tray: Rc<dyn Fn(TrayEvent)>,
     system_look: Rc<dyn Fn(SystemLook)>,
     clipboard_changed: Rc<dyn Fn(snipdeck_platform::clipboard_watch::ClipboardChange)>,
+    typed_trigger: Rc<dyn Fn(snipdeck_core::Fired, bool)>,
     frame_changed: Rc<FrameFn>,
     frame_moved: Rc<FrameFn>,
     restore_frame: Rc<MonitorFn>,
@@ -172,6 +173,11 @@ impl Binding {
     /// keep it.
     pub fn clipboard_changed(&self, change: snipdeck_platform::clipboard_watch::ClipboardChange) {
         (self.clipboard_changed)(change);
+    }
+
+    /// A typed trigger completed; `password` says the focus is a password box.
+    pub fn typed_trigger(&self, fired: snipdeck_core::Fired, password: bool) {
+        (self.typed_trigger)(fired, password);
     }
 
     /// Windows' light / dark or high-contrast state is `look` (read at start-up, and again on
@@ -997,6 +1003,14 @@ where
                         });
                     },
                 )
+            },
+            typed_trigger: {
+                let core = Rc::clone(&core);
+                Rc::new(move |fired, password| {
+                    core.act(|ctl| {
+                        let _ = ctl.expand_typed(fired, password);
+                    });
+                })
             },
             frame_changed: {
                 let core = Rc::clone(&core);

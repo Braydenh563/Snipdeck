@@ -34,8 +34,9 @@ mod imp {
             screen,
             single_instance::{Acquired, SingleInstance},
             system_look::{SystemLookWatcher, WinSystemLook},
-            target::TargetTracker,
+            target::{PasswordProbe, TargetTracker},
             tray::WinTray,
+            typing_hook::TypingHook,
             window_style,
         },
     };
@@ -46,9 +47,10 @@ mod imp {
     use crate::{
         controller::Services,
         frame::{Monitor, Rect},
-        host::{HotkeyBackend, HotkeyFailure, TargetSource, action_of},
+        host::{HotkeyBackend, HotkeyFailure, TargetSource, TypingControl, action_of},
         placement::PopupHost,
     };
+    use snipdeck_core::{Fired, Matcher};
     use snipdeck_platform::{chord::Chord, system_look::SystemLookSource};
 
     pub(super) fn system_look() -> Arc<dyn SystemLookSource> {
@@ -164,6 +166,85 @@ mod imp {
         }
     }
 
+    /// The typing hook and the worker that turns its keys into completed triggers. Nothing runs
+    /// until [`TypingControl::set_enabled`] turns it on (UNVERIFIED on Windows).
+    struct WinTyping {
+        on_typed: Arc<dyn Fn(Fired, bool) + Send + Sync>,
+        matcher: Matcher,
+        running: Option<Running>,
+    }
+
+    struct Running {
+        hook: TypingHook,
+        updates: std::sync::mpsc::Sender<Matcher>,
+        worker: std::thread::JoinHandle<()>,
+    }
+
+    impl WinTyping {
+        fn new(on_typed: Arc<dyn Fn(Fired, bool) + Send + Sync>) -> Self {
+            Self {
+                on_typed,
+                matcher: Matcher::new([]),
+                running: None,
+            }
+        }
+
+        fn start(&mut self) -> Result<Running, String> {
+            let (hook, events) = TypingHook::start().map_err(|e| format!("typing hook: {e}"))?;
+            let (updates, rx) = std::sync::mpsc::channel();
+            let _ = updates.send(self.matcher.clone());
+            let on_typed = Arc::clone(&self.on_typed);
+            let worker = std::thread::Builder::new()
+                .name("snipdeck-typing-worker".into())
+                .spawn(move || {
+                    // Made on this thread: the probe blocks and must stay off the UI thread.
+                    let probe = PasswordProbe::new();
+                    crate::typing_worker::run(
+                        &events,
+                        &rx,
+                        || probe.focus_is_password(),
+                        |fired, password| on_typed(fired, password),
+                    );
+                })
+                .map_err(|e| format!("typing worker: {e}"))?;
+            Ok(Running {
+                hook,
+                updates,
+                worker,
+            })
+        }
+    }
+
+    impl TypingControl for WinTyping {
+        #[allow(
+            clippy::print_stderr,
+            reason = "a hook that cannot be installed has no other place to say so"
+        )]
+        fn set_enabled(&mut self, on: bool) {
+            if on == self.running.is_some() {
+                return;
+            }
+            if on {
+                match self.start() {
+                    Ok(running) => self.running = Some(running),
+                    Err(e) => eprintln!("snipdeck: {e}"),
+                }
+            } else if let Some(running) = self.running.take() {
+                // Unhooking drops the event sender, which ends the worker.
+                running.hook.stop();
+                drop(running.updates);
+                let _ = running.worker.join();
+            }
+        }
+
+        fn set_triggers(&mut self, matcher: Matcher) {
+            if let Some(running) = &self.running {
+                let _ = running.updates.send(matcher.clone());
+            }
+            self.matcher = matcher;
+        }
+    }
+
     pub(super) fn connect(callbacks: Callbacks, single_instance: bool) -> Result<Start, String> {
         let Callbacks {
             on_hotkey,
@@ -172,6 +253,7 @@ mod imp {
             on_tray,
             on_look_changed,
             on_clipboard_change,
+            on_typed,
         } = callbacks;
         // Before any window exists: the tray's window, menu and icon are made ahead of the UI
         // toolkit, which would otherwise be too late to make the process DPI aware.
@@ -230,6 +312,7 @@ mod imp {
             popups: Rc::new(Popups(popup_tracker)),
             tray,
             recent_gate,
+            typing: Box::new(WinTyping::new(Arc::from(on_typed))),
             warnings,
             keep_alive,
         })))
@@ -274,6 +357,7 @@ mod imp {
             callbacks.on_tray,
             callbacks.on_look_changed,
             callbacks.on_clipboard_change,
+            callbacks.on_typed,
         );
         Ok(Start::Run(Box::new(Host {
             services: Services {
@@ -291,6 +375,7 @@ mod imp {
             // No tray off Windows: closing the Panel quits the dev build.
             tray: None,
             recent_gate: WatchGate::new(),
+            typing: Box::new(crate::host::FakeTyping::default()),
             warnings: Vec::new(),
             keep_alive: Vec::new(),
         })))
@@ -349,6 +434,9 @@ pub struct Callbacks {
     pub on_look_changed: Box<dyn Fn() + Send>,
     /// The clipboard changed and the Recent inbox is listening (clipboard thread).
     pub on_clipboard_change: Box<dyn Fn(ClipboardChange) + Send>,
+    /// A typed trigger completed, and whether the focused element is a password box (typing
+    /// worker thread).
+    pub on_typed: Box<dyn Fn(snipdeck_core::Fired, bool) + Send + Sync>,
 }
 
 /// The platform services the app runs on.
@@ -370,6 +458,8 @@ pub struct Host {
     pub tray: Option<Box<dyn Tray>>,
     /// Switches the clipboard listener of the Recent inbox on and off.
     pub recent_gate: WatchGate,
+    /// Installs and removes the typing hook (typed-trigger expansion and suggestions).
+    pub typing: Box<dyn crate::host::TypingControl>,
     /// Services that failed to start but are not essential: print them.
     pub warnings: Vec<String>,
     /// Kept alive for the life of the process (the single-instance claim, the colour-mode
@@ -414,6 +504,7 @@ mod tests {
             on_tray: Box::new(|_| {}),
             on_look_changed: Box::new(|| {}),
             on_clipboard_change: Box::new(|_| {}),
+            on_typed: Box::new(|_, _| {}),
         };
         let Ok(Start::Run(host)) = connect(callbacks, true) else {
             panic!("the dev host always starts")

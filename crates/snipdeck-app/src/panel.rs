@@ -860,6 +860,7 @@ mod tests {
             app: app.into(),
             title: "New message".into(),
             elevated: false,
+            password: false,
             focus,
         }
     }

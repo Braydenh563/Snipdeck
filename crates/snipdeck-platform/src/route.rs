@@ -43,6 +43,9 @@ pub struct Target {
     pub elevated: bool,
     /// What focus was found inside the Target.
     pub focus: Focus,
+    /// The focused element is a password box. Probing it blocks, so only typed-trigger expansion
+    /// asks (off the UI thread) and sets this; everywhere else it is `false`.
+    pub password: bool,
 }
 
 // The title may be private (a document name, a page title): never print it.
@@ -53,6 +56,7 @@ impl std::fmt::Debug for Target {
             .field("title_len", &self.title.len())
             .field("elevated", &self.elevated)
             .field("focus", &self.focus)
+            .field("password", &self.password)
             .finish()
     }
 }
@@ -152,6 +156,7 @@ mod tests {
             app: app.into(),
             title: "Untitled".into(),
             elevated,
+            password: false,
             focus,
         }
     }

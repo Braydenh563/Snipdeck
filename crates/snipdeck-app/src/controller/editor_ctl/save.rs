@@ -1,8 +1,8 @@
 //! Saving the item, and the library key made on the first sensitive item.
 
-use snipdeck_core::{Feature, Item, ItemKind, Name, Placement, Tag};
+use snipdeck_core::{Feature, Item, ItemKind, Name, Placement, Tag, Trigger};
 use snipdeck_store::{
-    ItemRepo, TagRepo, Trashable,
+    ItemRepo, TagRepo, Trashable, TriggerRepo,
     crypto::{CryptoError, KeyProviderError},
     name_key,
 };
@@ -127,6 +127,30 @@ where
                 }
             }
         }
+        // A Sensitive item has no trigger (a short code must not release a secret).
+        let mut trigger: Option<Trigger> = None;
+        if !sensitive && !slot.trigger.is_empty() {
+            match Trigger::new(&slot.trigger) {
+                Ok(t) => {
+                    let taken = self
+                        .store
+                        .trigger_holder(&t)
+                        .ok()
+                        .flatten()
+                        .is_some_and(|holder| slot.target != ItemTarget::Item(holder));
+                    if taken {
+                        slot.problems.trigger = Some(EditorProblem::TriggerTaken);
+                        refused = true;
+                    } else {
+                        trigger = Some(t);
+                    }
+                }
+                Err(_) => {
+                    slot.problems.trigger = Some(EditorProblem::TriggerInvalid);
+                    refused = true;
+                }
+            }
+        }
         let list = slot.lists.get(input.list_index).cloned();
         if refused {
             return Err(());
@@ -160,7 +184,12 @@ where
                         b.insert_tag(tag)?;
                     }
                     let formats = build_formats(b, sensitive, text.as_deref(), source.as_ref())?;
-                    b.insert_item(&item, &formats, Placement::First)
+                    b.insert_item(&item, &formats, Placement::First)?;
+                    if trigger.is_some() {
+                        // The overlaps it returns are for a warning the editor does not show yet.
+                        let _overlaps = b.set_trigger(item.id, trigger.as_ref())?;
+                    }
+                    Ok(())
                 });
                 if done.is_ok() {
                     recorded = Some((
@@ -195,7 +224,11 @@ where
                             Some(t) => Some(build_formats(b, sensitive, Some(t), None)?),
                             None => None,
                         };
-                        b.update_item(&item, formats.as_ref())
+                        b.update_item(&item, formats.as_ref())?;
+                        if trigger.is_some() || !slot.original_trigger.is_empty() {
+                            let _overlaps = b.set_trigger(id, trigger.as_ref())?;
+                        }
+                        Ok(())
                     });
                     if done.is_ok() {
                         recorded = edit_step(

@@ -486,6 +486,7 @@ fn the_programs_section_is_where_the_page_says_and_each_row_has_a_paste_key_drop
             "Opening the Panel",
             "Privacy",
             "Programs",
+            "Typing",
             "Backups and your data",
             "Licence",
         ];
@@ -3120,5 +3121,23 @@ fn where_the_panel_opens_is_off_while_it_is_docked() {
         );
         r.ui.invoke_dock_edge_chosen(0);
         assert!(r.ui.get_panel_open_at_enabled());
+    });
+}
+
+#[test]
+fn the_typing_toggles_are_off_by_default_and_change_the_settings() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(!r.ui.get_expand_triggers() && !r.ui.get_suggest_triggers());
+        assert!(!r.ctl.borrow().settings().expand_triggers);
+        element(
+            &r.ui,
+            "Expand abbreviations as I type",
+            AccessibleRole::Checkbox,
+        );
+        r.ui.invoke_expand_triggers_toggled(true);
+        assert!(r.ctl.borrow().settings().expand_triggers);
+        r.ui.invoke_suggest_triggers_toggled(true);
+        assert!(r.ctl.borrow().settings().suggest_triggers);
     });
 }

@@ -68,6 +68,12 @@ export global FormTexts {
     pure public function title-control-char() -> string {
         return @tr("A title can't contain line breaks or control characters.");
     }
+    pure public function trigger-invalid() -> string {
+        return @tr("A trigger is 1 to 32 characters with no spaces.");
+    }
+    pure public function trigger-taken() -> string {
+        return @tr("Another snippet already uses this trigger.");
+    }
     pure public function content-empty() -> string {
         return @tr("Add some text, or cancel.");
     }

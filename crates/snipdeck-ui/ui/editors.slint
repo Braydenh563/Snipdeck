@@ -558,6 +558,10 @@ export component ItemEditor inherits Window {
     in property <bool> can-browse: false;
     // A problem with the Sensitive switch, and a failure of Save that belongs to no field ("The disk is full").
     in property <string> privacy-error;
+    // The Trigger field (typed in any app to insert the item; hidden for a Sensitive item) and a problem with it.
+    in-out property <string> trigger;
+    in property <string> trigger-error;
+    callback trigger-edited(text: string);
     in property <string> banner;
     // The fields hold an unsaved draft from an earlier session.
     in property <bool> restored: false;
@@ -612,7 +616,7 @@ export component ItemEditor inherits Window {
 
     property <bool> text-kind: root.kind-index <= 3;
     // A refusal that sits under "More options" opens it, so it is never hidden.
-    out property <bool> more-shown: root.more-open || root.title-error != "" || root.privacy-error != "";
+    out property <bool> more-shown: root.more-open || root.title-error != "" || root.privacy-error != "" || root.trigger-error != "";
     property <string> sensitive-base: @tr("Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard a little after you copy it (the time is in Settings).");
     property <string> sensitive-help: root.text-kind
         ? root.sensitive-base
@@ -1057,6 +1061,22 @@ export component ItemEditor inherits Window {
                                     self.text = "";
                                 }
                             }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+
+                    if !root.sensitive: FormField {
+                        label: @tr("Trigger");
+                        helper: @tr("Type this in any app to insert the snippet. Turn it on in Settings, under Typing.");
+                        error: root.trigger-error;
+                        trigger-field := TextField {
+                            label: @tr("Trigger");
+                            placeholder: @tr("For example ;sig");
+                            text <=> root.trigger;
+                            edited(t) => { root.touch(); root.trigger-edited(t); }
+                            accepted(t) => { root.try-save(); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }

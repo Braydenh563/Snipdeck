@@ -209,6 +209,54 @@ pub trait TargetSource {
     }
 }
 
+/// The typed-trigger service: the keyboard hook that watches what is typed for abbreviations.
+///
+/// The controller tells it whether anyone wants it (`set_enabled`) and which triggers exist
+/// (`set_triggers`); while it is disabled the implementation must hold no keyboard hook at all.
+pub trait TypingControl {
+    /// Installs the hook (`true`) or removes it (`false`). Idempotent.
+    fn set_enabled(&mut self, on: bool);
+    /// The triggers to watch for, as of now.
+    fn set_triggers(&mut self, matcher: snipdeck_core::Matcher);
+}
+
+/// A [`TypingControl`] that records what it was told. Cloning shares the state.
+#[derive(Debug, Clone, Default)]
+pub struct FakeTyping {
+    enabled: Rc<RefCell<Vec<bool>>>,
+    triggers: Rc<Cell<u32>>,
+}
+
+impl FakeTyping {
+    /// Every `set_enabled` call, in order.
+    #[must_use]
+    pub fn enabled_history(&self) -> Vec<bool> {
+        self.enabled.borrow().clone()
+    }
+
+    /// Whether the hook was ever asked to be installed.
+    #[must_use]
+    pub fn ever_enabled(&self) -> bool {
+        self.enabled.borrow().contains(&true)
+    }
+
+    /// How many trigger lists were handed over.
+    #[must_use]
+    pub fn trigger_lists(&self) -> u32 {
+        self.triggers.get()
+    }
+}
+
+impl TypingControl for FakeTyping {
+    fn set_enabled(&mut self, on: bool) {
+        self.enabled.borrow_mut().push(on);
+    }
+
+    fn set_triggers(&mut self, _matcher: snipdeck_core::Matcher) {
+        self.triggers.set(self.triggers.get() + 1);
+    }
+}
+
 /// A scripted Target. Cloning shares the state, so a test keeps a handle after handing the
 /// source to the controller.
 #[derive(Debug, Clone, Default)]

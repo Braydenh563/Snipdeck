@@ -107,6 +107,10 @@ pub enum EditorProblem {
         /// The limit in KB.
         max_kb: usize,
     },
+    /// The trigger is not 1 to 32 characters without spaces.
+    TriggerInvalid,
+    /// Another item already has this trigger.
+    TriggerTaken,
     /// A link without a scheme such as `https://`.
     LinkNeedsScheme,
     /// A link with a space or a line break in it.
@@ -251,6 +255,10 @@ pub struct ItemEditorView {
     pub source_problem: Option<EditorProblem>,
     /// The Sensitive switch is refused.
     pub privacy_problem: Option<EditorProblem>,
+    /// The Trigger is refused.
+    pub trigger_problem: Option<EditorProblem>,
+    /// The Trigger field as it stands.
+    pub trigger: String,
     /// A failure that belongs to no field.
     pub banner: Option<EditorProblem>,
     /// The text is over the editing cap: shown read-only; this is its size in bytes.

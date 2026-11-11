@@ -535,6 +535,7 @@ fn a_program_rule_in_settings_decides_the_paste_key() {
         app: "wt.exe".into(),
         title: "PowerShell".into(),
         elevated: false,
+        password: false,
         focus: Focus::Caret,
     };
     let rule = || ProgramRule {
@@ -754,4 +755,166 @@ fn the_setting_off_keeps_the_panel_open_and_a_failed_use_never_hides() {
     assert_eq!(w.ctl.after_use(&UseResult::Failed), Vec::new());
     assert_eq!(w.ctl.after_use(&UseResult::NeedsAnswers), Vec::new());
     assert!(w.ctl.visible());
+}
+
+// ---- Typed-trigger expansion (slice 5b) --------------------------------------------------------
+
+use snipdeck_core::{Fired, Trigger};
+use snipdeck_store::TriggerRepo;
+
+/// A world where typing expansion is on and item `n` has the trigger `code`.
+fn typing_world(n: usize, code: &str) -> World {
+    let mut w = world();
+    w.ctl.update_settings(|s| s.expand_triggers = true);
+    let trigger = Trigger::new(code).expect("trigger");
+    w.ctl
+        .store
+        .set_trigger(w.ids[n], Some(&trigger))
+        .expect("set trigger");
+    w
+}
+
+/// What typing `text` makes the matcher fire.
+fn typed(w: &World, text: &str) -> Fired {
+    let mut matcher = w.ctl.trigger_matcher();
+    text.chars()
+        .find_map(|c| matcher.feed(c))
+        .expect("the trigger fires")
+}
+
+fn backspaces_sent(w: &mut World) -> Vec<Vec<KeyEvent>> {
+    w.ctl.services().keyboard.sent.clone()
+}
+
+#[test]
+fn a_typed_trigger_backspaces_then_pastes() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    assert_eq!((fired.item, fired.chars), (w.ids[1], 4));
+    let out = w.ctl.expand_typed(fired, false);
+    assert_eq!(out, TypedOutcome::Expanded(UseResult::Done(UseOutcome::Pasted)));
+    let sent = backspaces_sent(&mut w);
+    assert_eq!(sent[0], snipdeck_platform::keys::backspaces(4), "erased first");
+    assert!(
+        sent[1].contains(&KeyEvent {
+            key: Key::V,
+            down: true
+        }),
+        "then the normal paste"
+    );
+    assert_eq!(
+        w.ctl.services().clipboard.written[0].data(),
+        [Data::Text("second".into())]
+    );
+    assert_eq!(uses(&w, w.ids[1]), 1);
+}
+
+#[test]
+fn a_trigger_counts_graphemes_not_characters() {
+    let mut w = typing_world(1, ";e\u{301}");
+    let fired = typed(&w, ";e\u{301}");
+    assert_eq!(fired.chars, 2);
+    w.ctl.expand_typed(fired, false);
+    assert_eq!(
+        backspaces_sent(&mut w)[0],
+        snipdeck_platform::keys::backspaces(2)
+    );
+}
+
+#[test]
+fn never_paste_app_does_not_expand() {
+    let mut w = typing_world(1, ";two");
+    w.ctl
+        .update_settings(|s| s.no_paste_apps = vec!["outlook.exe".into()]);
+    let fired = typed(&w, ";two");
+    assert_eq!(w.ctl.expand_typed(fired, false), TypedOutcome::Skipped);
+    assert!(backspaces_sent(&mut w).is_empty(), "nothing was typed into the app");
+    assert_eq!(uses(&w, w.ids[1]), 0);
+}
+
+#[test]
+fn password_box_does_not_expand() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    assert_eq!(w.ctl.expand_typed(fired, true), TypedOutcome::Skipped);
+    assert!(backspaces_sent(&mut w).is_empty());
+    assert_eq!(uses(&w, w.ids[1]), 0);
+}
+
+#[test]
+fn sensitive_item_never_expands() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    let id = w.ids[1];
+    make_sensitive(&mut w, id);
+    assert_eq!(w.ctl.expand_typed(fired, false), TypedOutcome::Skipped);
+    assert!(backspaces_sent(&mut w).is_empty());
+    let mut matcher = w.ctl.trigger_matcher();
+    assert!(
+        ";two".chars().all(|c| matcher.feed(c).is_none()),
+        "and the matcher does not hold it"
+    );
+}
+
+#[test]
+fn no_expansion_without_a_paste_target_or_while_snipdeck_is_in_front() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    w.ctl.set_own_window_active(true);
+    assert_eq!(w.ctl.expand_typed(fired, false), TypedOutcome::Skipped);
+    w.ctl.set_own_window_active(false);
+    w.targets.set(None);
+    assert_eq!(w.ctl.expand_typed(fired, false), TypedOutcome::Skipped);
+    let mut elevated = outlook();
+    elevated.elevated = true;
+    w.targets.set(Some(elevated));
+    assert_eq!(w.ctl.expand_typed(fired, false), TypedOutcome::Skipped);
+    assert!(backspaces_sent(&mut w).is_empty());
+}
+
+#[test]
+fn an_item_trashed_since_the_matcher_was_built_does_not_expand() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    w.ctl
+        .store
+        .trash(snipdeck_store::Trashable::Item(w.ids[1]), w.clock.now())
+        .expect("trash");
+    assert_eq!(w.ctl.expand_typed(fired, false), TypedOutcome::Skipped);
+    assert!(backspaces_sent(&mut w).is_empty());
+}
+
+#[test]
+fn off_by_default_installs_no_hook() {
+    let mut w = world();
+    let typing = crate::host::FakeTyping::default();
+    w.ctl.set_typing(Box::new(typing.clone()));
+    assert!(!w.ctl.settings().expand_triggers);
+    assert_eq!(typing.enabled_history(), vec![false], "told: off");
+    // A trigger exists but the feature is off: still no hook, and a stray event does nothing.
+    let trigger = Trigger::new(";two").expect("trigger");
+    w.ctl.store.set_trigger(w.ids[1], Some(&trigger)).expect("set");
+    let mut matcher = w.ctl.trigger_matcher();
+    let fired = ";two".chars().find_map(|c| matcher.feed(c)).expect("fires");
+    assert_eq!(w.ctl.expand_typed(fired, false), TypedOutcome::Skipped);
+    assert!(!typing.ever_enabled());
+    w.ctl.update_settings(|s| s.expand_triggers = true);
+    assert_eq!(typing.enabled_history().last(), Some(&true));
+    w.ctl.update_settings(|s| s.expand_triggers = false);
+    assert_eq!(typing.enabled_history().last(), Some(&false));
+}
+
+#[test]
+fn a_prompted_trigger_opens_the_fill_form() {
+    let mut w = typing_world(3, ";hi");
+    let fired = typed(&w, ";hi");
+    let out = w.ctl.expand_typed(fired, false);
+    assert_eq!(out, TypedOutcome::Expanded(UseResult::NeedsAnswers));
+    assert_eq!(
+        backspaces_sent(&mut w)[0],
+        snipdeck_platform::keys::backspaces(3),
+        "the typed code is gone before the form opens"
+    );
+    assert!(w.ctl.fill().is_some());
+    assert_eq!(uses(&w, w.ids[3]), 0, "not used until the form is submitted");
 }
