@@ -3256,13 +3256,9 @@ msgstr "検索 絞り込み 探す"
 msgid "group change"
 msgstr "グループの変更"
 
-msgid "group {}, {} item, collapsed"
-msgid_plural "group {}, {} items, collapsed"
-msgstr[0] "グループ {}、{} 件、折りたたみ"
-
-msgid "group {}, {} item, expanded"
-msgid_plural "group {}, {} items, expanded"
-msgstr[0] "グループ {}、{} 件、展開"
+msgid "group {}, {} item"
+msgid_plural "group {}, {} items"
+msgstr[0] "グループ {}、{} 件"
 
 msgid "help docs manual how"
 msgstr "ヘルプ ドキュメント マニュアル 使い方"

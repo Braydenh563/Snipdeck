@@ -2278,10 +2278,12 @@ fn header_is_announced_with_its_count() {
         let r = rig();
         group_first_two(&r);
         let name = r.ui.get_rows().row_data(0).expect("row").title;
-        let label = format!("group {name}, 2 items, expanded");
-        let _ = element(&r.ui, &label, AccessibleRole::Button);
+        // Folded or open is the header's expanded state, not part of its label.
+        let label = format!("group {name}, 2 items");
+        let header = element(&r.ui, &label, AccessibleRole::Button);
+        assert_eq!(header.accessible_expanded(), Some(true));
         press(r.window(), &key(Key::LeftArrow));
-        let label = format!("group {name}, 2 items, collapsed");
-        let _ = element(&r.ui, &label, AccessibleRole::Button);
+        let header = element(&r.ui, &label, AccessibleRole::Button);
+        assert_eq!(header.accessible_expanded(), Some(false));
     });
 }

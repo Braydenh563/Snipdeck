@@ -4,7 +4,7 @@
 
 use snipdeck_core::{Item, ItemId, ListId, Placement, Timestamp};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
-use snipdeck_store::{Batch, GroupDelete, GroupRepo, ItemRepo, TrashRepo, Trashable};
+use snipdeck_store::{Batch, GroupDelete, GroupEnd, GroupRepo, ItemRepo, TrashRepo, Trashable};
 
 use super::{Controller, Library, Toast, ToastKind, ToastMessage, failed};
 use crate::{
@@ -122,6 +122,20 @@ fn apply(
         Change::Group { group, members } => b.create_group(group, members)?,
         Change::Ungroup { group, .. } => b.delete_group(group.id, GroupDelete::Keep)?,
         Change::Rename { after, .. } => b.update_group(after)?,
+        Change::MoveRun { group, to, .. } => b.move_run(*group, *to)?,
+        Change::Join { item, group, .. } => b.join_group(*item, *group, GroupEnd::First)?,
+        Change::Leave {
+            item,
+            from,
+            from_group,
+            was_first,
+            ..
+        } => {
+            b.move_item(*item, from.0, from.1)?;
+            if let (Some(g), true) = (from_group, was_first) {
+                b.join_group(*item, *g, GroupEnd::First)?;
+            }
+        }
     }
     Ok(())
 }

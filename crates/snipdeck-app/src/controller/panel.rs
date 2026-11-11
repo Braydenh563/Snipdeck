@@ -612,9 +612,8 @@ where
 
     /// F2 on row `index`. The Panel has no inline title field, so this opens the same editor.
     pub fn rename_row(&mut self, index: usize) -> Vec<Effect> {
-        if self.model.group_at(index).is_some() {
-            self.rename_row = Some(index);
-            self.rename_seq += 1;
+        if let Some(run) = self.model.group_at(index) {
+            self.start_group_rename(run.group.id);
             return Vec::new();
         }
         self.edit_row(index)

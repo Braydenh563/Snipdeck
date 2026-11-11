@@ -407,6 +407,10 @@ where
         };
         let view = self.controller.borrow().view();
         render(&window, self.shown.borrow().as_ref(), &view);
+        // A new group's name follows the language the window is in now.
+        self.controller
+            .borrow_mut()
+            .set_group_name(&window.invoke_group_default_name());
         // Placements decided by another window (Settings docking the Panel, the dock being
         // switched off) are carried out here, where the Panel's window is.
         let pending = self.controller.borrow_mut().take_pending();
@@ -789,6 +793,7 @@ where
             .group_collapse(index(i), Some(collapsed)));
         wire!(on_group_renamed, |ctl, i, name| ctl
             .group_rename(index(i), name.as_str()));
+        wire!(on_group_rename_ended, |ctl| ctl.group_rename_ended());
         wire!(on_select_all_requested, |ctl| ctl.panel_mark_all());
         wire!(on_select_mode_changed, |ctl, on| ctl.panel_select_mode(on));
         wire!(on_delete_mode_changed, |ctl, on| ctl.panel_delete_mode(on));
@@ -1454,6 +1459,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     );
     window.set_marked_count(to_i32(view.marked_count));
     window.set_trash_focus_row(view.focus_row.map_or(-1, to_i32));
+    window.set_has_groups(view.rows.iter().any(|r| r.header.is_some()));
     window.set_rename_row(view.rename_row.map_or(-1, to_i32));
     window.set_rename_seq(i32::try_from(view.rename_seq).unwrap_or(i32::MAX));
     window.set_trash_focus_seq(i32::try_from(view.focus_seq).unwrap_or(i32::MAX));

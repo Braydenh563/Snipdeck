@@ -12,7 +12,7 @@
 
 use std::collections::VecDeque;
 
-use snipdeck_core::{Group, Item, ItemId, ListId, Placement};
+use snipdeck_core::{Group, GroupId, Item, ItemId, ListId, Placement};
 use snipdeck_store::Trashable;
 
 /// How many steps are kept; the oldest goes first.
@@ -120,6 +120,42 @@ pub enum Change {
         /// Its members, top to bottom.
         members: Vec<ItemId>,
     },
+    /// A whole group went from one place in its list to another (members stay together).
+    MoveRun {
+        /// The group.
+        group: GroupId,
+        /// Where undo puts it.
+        from: Placement<ItemId>,
+        /// Where redo puts it.
+        to: Placement<ItemId>,
+    },
+    /// An item joined a group at its top (dragged onto the header). Undoing it is
+    /// [`Change::Leave`].
+    Join {
+        /// The item.
+        item: ItemId,
+        /// The group it joined.
+        group: GroupId,
+        /// Where it was before.
+        from: Spot,
+        /// The group it was in before, if any.
+        from_group: Option<GroupId>,
+        /// It was that group's first member.
+        was_first: bool,
+    },
+    /// The inverse of [`Change::Join`]: the item goes back to where it was.
+    Leave {
+        /// The item.
+        item: ItemId,
+        /// The group it leaves.
+        group: GroupId,
+        /// Where it goes back to.
+        from: Spot,
+        /// The group it goes back into, if any.
+        from_group: Option<GroupId>,
+        /// It was that group's first member.
+        was_first: bool,
+    },
     /// A group was renamed.
     Rename {
         /// The group before.
@@ -152,6 +188,37 @@ impl Change {
             Self::Ungroup { group, members } => Self::Group {
                 group: group.clone(),
                 members: members.clone(),
+            },
+            Self::MoveRun { group, from, to } => Self::MoveRun {
+                group: *group,
+                from: *to,
+                to: *from,
+            },
+            Self::Join {
+                item,
+                group,
+                from,
+                from_group,
+                was_first,
+            } => Self::Leave {
+                item: *item,
+                group: *group,
+                from: *from,
+                from_group: *from_group,
+                was_first: *was_first,
+            },
+            Self::Leave {
+                item,
+                group,
+                from,
+                from_group,
+                was_first,
+            } => Self::Join {
+                item: *item,
+                group: *group,
+                from: *from,
+                from_group: *from_group,
+                was_first: *was_first,
             },
             Self::Rename { before, after } => Self::Rename {
                 before: after.clone(),

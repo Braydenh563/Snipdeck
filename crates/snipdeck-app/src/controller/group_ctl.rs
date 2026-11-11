@@ -34,21 +34,53 @@ where
         };
         let members = self.model.targets(cursor);
         if members.is_empty() {
+            // On a header with nothing marked there is nothing to gather: rename its group.
+            if let Some(run) = self.group_row(cursor) {
+                self.start_group_rename(run.group.id);
+            }
             return;
         }
         let group = Group::new(list, name);
-        let made = self.store.atomically(|b| b.create_group(&group, &members));
+        let order = self.model.manual_order();
+        let mut changes = Vec::new();
+        let made = self.store.atomically(|b| {
+            // The members gather under the topmost: each one that is not already right below
+            // the one before moves there, as a recorded move, so Undo puts it back.
+            let ordered: Vec<ItemId> = order
+                .iter()
+                .filter(|i| members.contains(i))
+                .copied()
+                .collect();
+            let mut now = order.clone();
+            for pair in ordered.windows(2) {
+                let at = now.iter().position(|i| *i == pair[1]);
+                if at.and_then(|n| n.checked_sub(1)).and_then(|n| now.get(n)) == Some(&pair[0]) {
+                    continue;
+                }
+                super::history_ctl::move_recorded(
+                    b,
+                    pair[1],
+                    list,
+                    Placement::After(pair[0]),
+                    &mut changes,
+                )?;
+                now.retain(|i| *i != pair[1]);
+                if let Some(n) = now.iter().position(|i| *i == pair[0]) {
+                    now.insert(n + 1, pair[1]);
+                }
+            }
+            b.create_group(&group, &ordered)?;
+            changes.push(Change::Group {
+                group: group.clone(),
+                members: ordered,
+            });
+            Ok(())
+        });
         if made.is_err() {
             self.show_toast(failed());
             return;
         }
-        self.record_step(
-            Action::Group,
-            vec![Change::Group {
-                group: group.clone(),
-                members,
-            }],
-        );
+        self.record_step(Action::Group, changes);
         self.model.clear_marks();
         if self.refresh_panel().is_err() {
             self.show_toast(failed());
@@ -61,14 +93,25 @@ where
             .position(|r| r.header.as_ref().is_some_and(|h| h.group == group.id));
         if let Some(at) = at {
             self.model.select_row(at);
-            self.rename_row = Some(at);
-            self.rename_seq += 1;
+            self.start_group_rename(group.id);
         }
     }
 
     /// Sets the name a new group starts with (the translated "Group").
     pub fn set_group_name(&mut self, name: &str) {
         name.clone_into(&mut self.group_name);
+    }
+
+    /// Asks the window to open the inline rename of group `id`'s header. The request follows the
+    /// group, not a row number, and ends with [`group_rename_ended`](Self::group_rename_ended).
+    pub(super) fn start_group_rename(&mut self, id: snipdeck_core::GroupId) {
+        self.rename_group = Some(id);
+        self.rename_seq += 1;
+    }
+
+    /// The inline rename closed (accepted or abandoned): the request is spent.
+    pub fn group_rename_ended(&mut self) {
+        self.rename_group = None;
     }
 
     /// A header's menu row was chosen.
@@ -78,8 +121,9 @@ where
         };
         match entry {
             super::ItemMenuEntry::RenameGroup => {
-                self.rename_row = Some(at);
-                self.rename_seq += 1;
+                if let Some(run) = self.group_row(at) {
+                    self.start_group_rename(run.group.id);
+                }
             }
             super::ItemMenuEntry::Ungroup => self.group_ungroup(at),
             _ => self.group_delete(at),
@@ -181,6 +225,7 @@ where
 
     /// A drag that involves a header: a header dropped on a row moves the whole group there; an
     /// item dropped on a header joins that group at its top. Returns whether it was one of these.
+    /// Both are one history step.
     pub(super) fn group_drop(&mut self, from: usize, onto: usize) -> bool {
         let rows = self.model.rows();
         let (Some(a), Some(b)) = (rows.get(from), rows.get(onto)) else {
@@ -196,25 +241,46 @@ where
         let order = self.model.manual_order();
         let done = match (self.group_row(from), self.group_row(onto)) {
             (Some(run), target) => {
-                // Onto an item: after it. Onto a header: before that group.
-                let placement = match target {
-                    Some(t) => t
-                        .items
-                        .first()
-                        .and_then(|i| order.iter().position(|o| o == i))
-                        .and_then(|p| p.checked_sub(1))
-                        .map_or(Placement::First, |p| Placement::After(order[p])),
-                    None => Placement::After(b.id),
-                };
-                if run.items.contains(&b.id) {
+                if run.items.contains(&b.id)
+                    || target.as_ref().is_some_and(|t| t.group.id == run.group.id)
+                {
                     return true;
                 }
-                self.store.move_run(run.group.id, placement)
+                let down = from < onto;
+                let anchor = match &target {
+                    Some(t) if down => t.items.last().copied(),
+                    Some(t) => t.items.first().copied(),
+                    None => Some(b.id),
+                };
+                let Some(anchor) = anchor else {
+                    return true;
+                };
+                let to = if down {
+                    Placement::After(anchor)
+                } else {
+                    // Above the anchor's group (or the anchor), outside the dragged run.
+                    let top = self
+                        .model
+                        .group_of(anchor)
+                        .and_then(|g| g.items.first().copied())
+                        .unwrap_or(anchor);
+                    place_before(&order, top, &run.items)
+                };
+                let back = place_before(&order, run.items[0], &run.items);
+                let moved = self.store.move_run(run.group.id, to);
+                if moved.is_ok() {
+                    self.record_step(
+                        Action::Reorder,
+                        vec![Change::MoveRun {
+                            group: run.group.id,
+                            from: back,
+                            to,
+                        }],
+                    );
+                }
+                moved
             }
-            (None, Some(t)) if a.is_item() => {
-                self.store
-                    .join_group(a.id, t.group.id, snipdeck_store::GroupEnd::First)
-            }
+            (None, Some(t)) if a.is_item() => self.join_dropped(a.id, &t),
             _ => return true,
         };
         if done.is_err() {
@@ -224,4 +290,37 @@ where
         }
         true
     }
+
+    /// Item `id` dropped on the header of `target`: it joins the group at its top (one step).
+    fn join_dropped(
+        &mut self,
+        id: ItemId,
+        target: &snipdeck_store::GroupRun,
+    ) -> snipdeck_store::Result<()> {
+        let from = super::history_ctl::spot_of(&self.store, id)?;
+        let old = self.model.group_of(id).cloned();
+        self.store
+            .join_group(id, target.group.id, snipdeck_store::GroupEnd::First)?;
+        self.record_step(
+            Action::Reorder,
+            vec![Change::Join {
+                item: id,
+                group: target.group.id,
+                from,
+                from_group: old.as_ref().map(|r| r.group.id),
+                was_first: old.as_ref().is_some_and(|r| r.items.first() == Some(&id)),
+            }],
+        );
+        Ok(())
+    }
+}
+
+/// The placement directly above `anchor` in `order`, not counting the `run` being moved.
+fn place_before(order: &[ItemId], anchor: ItemId, run: &[ItemId]) -> Placement<ItemId> {
+    let at = order.iter().position(|i| *i == anchor).unwrap_or(0);
+    order[..at]
+        .iter()
+        .rev()
+        .find(|i| !run.contains(i))
+        .map_or(Placement::First, |p| Placement::After(*p))
 }

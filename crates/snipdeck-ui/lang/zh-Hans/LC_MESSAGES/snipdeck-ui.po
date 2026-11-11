@@ -3256,13 +3256,9 @@ msgstr "查找 筛选 查看"
 msgid "group change"
 msgstr "分组更改"
 
-msgid "group {}, {} item, collapsed"
-msgid_plural "group {}, {} items, collapsed"
-msgstr[0] "分组 {}，{} 项，已折叠"
-
-msgid "group {}, {} item, expanded"
-msgid_plural "group {}, {} items, expanded"
-msgstr[0] "分组 {}，{} 项，已展开"
+msgid "group {}, {} item"
+msgid_plural "group {}, {} items"
+msgstr[0] "分组 {}，{} 项"
 
 msgid "help docs manual how"
 msgstr "帮助 文档 手册 操作方法"

@@ -204,11 +204,12 @@ export component PanelWindow inherits Window {
     callback group-toggled(int);
     callback group-collapsed-set(int, bool);
     callback group-renamed(int, string);
+    callback group-rename-ended();
     // The name a new group starts with.
     public pure function group-default-name() -> string { return @tr("Group"); }
-    public pure function group-announcement(name: string, count: int, collapsed: bool) -> string {
-        return collapsed ? @tr("group {}, {} item, collapsed" | "group {}, {} items, collapsed" % count, name, count)
-            : @tr("group {}, {} item, expanded" | "group {}, {} items, expanded" % count, name, count);
+    public pure function group-announcement(name: string, count: int) -> string {
+        // Folded or open is spoken from the header's expanded state, so the label does not repeat it.
+        return @tr("group {}, {} item" | "group {}, {} items" % count, name, count);
     }
     // The Recent inbox (SPEC 5.6): `recent-available` while clipboard history is on shows the clock tab at the far left
     // of the tab row. `recent-open` is the clock tab being the selected one (the panel sets it; the host is told).
@@ -612,10 +613,13 @@ export component PanelWindow inherits Window {
     property <PanelLayout> eff-layout: root.layout == PanelLayout.cards && root.searching ? PanelLayout.list : root.layout;
     property <length> row-gap: root.eff-layout == PanelLayout.compact ? 0px : Space.s1 + Space.s0-5;
     // Cards: 2 columns from 288px wide, 1 below (set from `changed` handlers: the window's width follows its layout).
+    // A list with group headers stays one column wide, so a header spans the whole width.
+    in property <bool> has-groups: false;
     property <int> cols: 1;
     function update-cols() {
-        root.cols = root.eff-layout == PanelLayout.cards && root.width >= 288px ? 2 : 1;
+        root.cols = root.eff-layout == PanelLayout.cards && root.width >= 288px && !root.has-groups ? 2 : 1;
     }
+    changed has-groups => { root.update-cols(); }
     property <length> col-gap: Space.s1 + Space.s0-5;
     // Rows (Cards: pairs of tiles) in the list, and how many tiles group `g` holds.
     property <int> row-groups: floor((root.rows.length + root.cols - 1) / root.cols);
@@ -1965,13 +1969,13 @@ export component PanelWindow inherits Window {
                                                 name: item.title;
                                                 collapsed: item.group-collapsed;
                                                 count-text: @tr("{} item" | "{} items" % item.group-count, item.group-count);
-                                                a11y-label: root.group-announcement(item.title, item.group-count, item.group-collapsed);
+                                                a11y-label: root.group-announcement(item.title, item.group-count);
                                                 rename-label: @tr("Group name");
                                                 selected: i == root.sel;
                                                 rename-request: root.rename-row == i ? root.rename-seq : 0;
                                                 toggled => { root.selected-index = i; root.group-toggled(i); }
                                                 renamed(text) => { root.group-renamed(i, text); }
-                                                rename-ended => { search.focus(); }
+                                                rename-ended => { root.group-rename-ended(); search.focus(); }
                                                 menu-requested(x, y) => {
                                                     root.item-menu-x = self.absolute-position.x + x;
                                                     root.item-menu-y = self.absolute-position.y + y;

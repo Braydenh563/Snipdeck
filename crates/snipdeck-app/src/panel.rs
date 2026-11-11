@@ -443,16 +443,54 @@ impl PanelModel {
             self.place_ghosts(&mut rows);
             return rows;
         }
-        self.index
-            .query(&self.query, SEARCH_LIMIT)
+        let found = self.index.query(&self.query, SEARCH_LIMIT);
+        let hits: Vec<(&Item, Option<&str>)> = found
             .iter()
             .filter_map(|hit| {
                 let item = self.all.all.iter().find(|i| i.id == hit.id)?;
                 Some((item, hit.tag.as_deref()))
             })
-            .enumerate()
-            .map(|(n, (item, tag))| self.row(item, n, true, tag))
-            .collect()
+            .collect();
+        let manual = self.list().is_some_and(|l| l.sort == ListSort::Manual);
+        let mut rows = Vec::new();
+        let mut shown: Vec<GroupId> = Vec::new();
+        let mut number = 0;
+        for (item, tag) in &hits {
+            let run = if manual {
+                self.group_of(item.id)
+                    .filter(|r| !shown.contains(&r.group.id))
+            } else {
+                None
+            };
+            let Some(run) = run else {
+                if !manual || self.group_of(item.id).is_none() {
+                    rows.push(self.row(item, number, true, *tag));
+                    number += 1;
+                }
+                continue;
+            };
+            // A match inside a group: the group's header (open) with all its matches below it,
+            // even when the group is folded.
+            shown.push(run.group.id);
+            let mine: Vec<&(&Item, Option<&str>)> = hits
+                .iter()
+                .filter(|(i, _)| run.items.contains(&i.id))
+                .collect();
+            let mut header = Self::header_row(run);
+            header.header = header.header.map(|h| GroupHeader {
+                count: mine.len(),
+                collapsed: false,
+                ..h
+            });
+            rows.push(header);
+            for (member, tag) in mine {
+                let mut row = self.row(member, number, true, *tag);
+                row.grouped = true;
+                rows.push(row);
+                number += 1;
+            }
+        }
+        rows
     }
 
     /// The shown list's rows: items, with a header above each group (the group's items are
