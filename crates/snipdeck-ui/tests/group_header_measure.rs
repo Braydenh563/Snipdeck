@@ -91,7 +91,7 @@ fn panel(w: u32, dark: bool, scale: f32, title: &str, selected: bool) -> Harness
     rows.push(header("Archive", 5, true));
     fixture::set_rows(&h.component, rows);
     h.component.set_has_groups(true);
-    h.component.set_selected_index(if selected { 0 } else { 1 });
+    h.component.set_selected_index(i32::from(!selected));
     h
 }
 
