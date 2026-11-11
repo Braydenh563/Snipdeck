@@ -50,6 +50,15 @@ fn the_tray_menu_opens_the_picker() {
 }
 
 #[test]
+fn the_tray_menu_opens_help_on_the_tips_tab() {
+    let mut w = world();
+    assert_eq!(
+        w.ctl.on_tray(TrayEvent::Tips),
+        [Effect::OpenHelp(crate::controller::HelpTopic::Tips)]
+    );
+}
+
+#[test]
 fn the_tray_menu_opens_snipdeck_and_quits() {
     let mut w = world();
     assert_eq!(

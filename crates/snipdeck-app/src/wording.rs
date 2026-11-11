@@ -31,6 +31,7 @@ pub fn tray_labels(window: &PanelWindow) -> TrayLabels {
         open_panel: texts.get_open_panel().into(),
         open_picker: texts.get_open_picker().into(),
         open_snipdeck: texts.get_open_snipdeck().into(),
+        tips: texts.get_tips().into(),
         take_screenshot: texts.get_take_screenshot().into(),
         pause_hotkeys: texts.get_pause_hotkeys().into(),
         pause_history: texts.get_pause_history().into(),

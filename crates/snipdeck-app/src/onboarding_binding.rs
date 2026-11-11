@@ -401,6 +401,9 @@ where
         }));
         wire!(on_next_requested, |core| core.next());
         wire!(on_skip_requested, |core| core.skip());
+        wire!(on_tips_requested, |core| core.act(
+            |ctl| ctl.main_open_help(crate::controller::HelpTopic::Tips)
+        ));
         {
             // The title bar's close button is a Skip too.
             let core = Rc::clone(&core);

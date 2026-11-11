@@ -55,6 +55,9 @@ msgstr "マスターパスワードが有効です。機密スニペットを初
 msgid "A master password is part of Supporter."
 msgstr "マスターパスワードは Supporter に含まれます。"
 
+msgid "A master password locks the whole deck."
+msgstr "マスターパスワードでデッキ全体をロックできます。"
+
 msgid "A new random ID each time"
 msgstr "毎回新しいランダムなID"
 
@@ -123,6 +126,9 @@ msgstr "貼り付けスタックに追加"
 
 msgid "Add to “{}”"
 msgstr "「{}」に追加"
+
+msgid "Add {} or {} to a snippet."
+msgstr "スニペットに {} や {} を追加します。"
 
 msgid "Added to {}"
 msgstr "{} に追加しました"
@@ -334,6 +340,9 @@ msgstr "確認項目"
 
 msgid "Choose a file, or cancel."
 msgstr "ファイルを選ぶか、キャンセルしてください。"
+
+msgid "Choose comfortable rows, compact rows or tiles."
+msgstr "ゆったり行、コンパクト行、タイルから選べます。"
 
 msgid "Choose one to add it where the cursor is. It is filled in when you use the item."
 msgstr "カーソルの位置に追加するものを選びます。スニペットを使うときに入力されます。"
@@ -881,6 +890,9 @@ msgstr "絵文字"
 msgid "Emoji art: Microsoft Fluent Emoji (MIT). Icons: Phosphor (MIT). Emoji names and keywords: Unicode CLDR (Unicode-3.0)."
 msgstr "絵文字の画像: Microsoft Fluent Emoji (MIT)。アイコン: Phosphor (MIT)。絵文字の名前とキーワード: Unicode CLDR (Unicode-3.0)。"
 
+msgid "Emoji, kaomoji and icons live in the Panel's Symbols tab."
+msgstr "絵文字、顔文字、アイコンはパネルの「記号」タブにあります。"
+
 msgid "Empty Trash"
 msgstr "ゴミ箱を空にする"
 
@@ -932,6 +944,9 @@ msgstr "Espanso（.yml ファイル1つ）"
 msgid "Every Supporter feature is on. Thank you."
 msgstr "サポーターの機能がすべて使えます。ありがとうございます。"
 
+msgid "Every command, one search away"
+msgstr "すべてのコマンドが検索ひとつで見つかる"
+
 msgid "Everything checks out."
 msgstr "問題ありません。"
 
@@ -968,11 +983,17 @@ msgstr "ファイルが移動または削除されました"
 msgid "Fill in template"
 msgstr "テンプレートに入力"
 
+msgid "Fill in the blanks"
+msgstr "空欄を埋める"
+
 msgid "Filter as you type"
 msgstr "入力に合わせて絞り込み"
 
 msgid "Filter by colour label"
 msgstr "カラーラベルで絞り込み"
+
+msgid "Find anything by typing"
+msgstr "入力するだけで何でも見つかる"
 
 msgid "Fixed against the right edge of the screen, full height."
 msgstr "画面の右端に、全高で固定されます。"
@@ -1055,11 +1076,17 @@ msgstr "最近へ移動"
 msgid "Go to Trash"
 msgstr "ゴミ箱へ移動"
 
+msgid "Grab text as you go"
+msgstr "作業中のテキストをすぐ保存"
+
 msgid "Green"
 msgstr "緑"
 
 msgid "Greet"
 msgstr "あいさつ"
+
+msgid "Handy for forms you fill field by field."
+msgstr "フォームを項目ごとに入力するときに便利です。"
 
 msgid "Heard it. This shortcut works."
 msgstr "聞こえました。このショートカットは使えます。"
@@ -1223,6 +1250,9 @@ msgstr "コピーした内容を「最近」の受信箱に残す"
 msgid "Keep editing"
 msgstr "編集を続ける"
 
+msgid "Keep favourites in reach"
+msgstr "お気に入りをすぐ手の届く所に"
+
 msgid "Keep fewer backups"
 msgstr "バックアップを減らす"
 
@@ -1234,6 +1264,9 @@ msgstr "パネルを手前に表示"
 
 msgid "Keep running in the tray when the window closes"
 msgstr "ウィンドウを閉じても通知領域で実行を続ける"
+
+msgid "Keep secrets secret"
+msgstr "秘密は秘密のままに"
 
 msgid "Keep the Panel on top (pin)"
 msgstr "パネルを常に手前に表示(ピン留め)"
@@ -1289,6 +1322,9 @@ msgstr "ライセンスキー"
 msgid "Light"
 msgstr "ライト"
 
+msgid "Light, dark or follow Windows."
+msgstr "ライト、ダーク、または Windows に合わせます。"
+
 msgid "Link"
 msgstr "リンク"
 
@@ -1343,6 +1379,9 @@ msgstr "メインリストの密度: コンパクト"
 msgid "Main window"
 msgstr "メインウィンドウ"
 
+msgid "Make it fit your screen"
+msgstr "画面に合わせて調整"
+
 msgid "Make the panel narrower"
 msgstr "パネルを狭くする"
 
@@ -1357,6 +1396,9 @@ msgstr "タグを管理…"
 
 msgid "Manual"
 msgstr "手動"
+
+msgid "Mark a snippet Sensitive to hide it until you reveal it."
+msgstr "スニペットを機密にすると、表示するまで隠せます。"
 
 msgid "Master password"
 msgstr "マスターパスワード"
@@ -1696,6 +1738,9 @@ msgstr "ログフォルダーを開く"
 msgid "Open the Microsoft Store page"
 msgstr "Microsoft Store のページを開く"
 
+msgid "Open the Panel from anywhere"
+msgstr "どこからでもパネルを開く"
+
 msgid "Open the Picker at your cursor"
 msgstr "カーソル位置でピッカーを開く"
 
@@ -1801,6 +1846,12 @@ msgstr "「次を貼り付け」は Supporter の機能のため、無料プラ�
 msgid "Paste next item"
 msgstr "次の項目を貼り付け"
 
+msgid "Paste next pastes the next item each time you press it."
+msgstr "「次を貼り付け」は、押すたびに次の項目を貼り付けます。"
+
+msgid "Paste several in order"
+msgstr "複数を順番に貼り付ける"
+
 msgid "Paste stack"
 msgstr "貼り付けスタック"
 
@@ -1879,6 +1930,9 @@ msgstr "PhraseExpress のエクスポート（CSV）"
 msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
 msgstr "パネルの配置を選びます。設定でいつでも変更でき、他の端、アプリを切り替えたときの非表示、タスクバーのボタンも設定できます。"
 
+msgid "Pick one and it pastes where you were typing."
+msgstr "選ぶと、入力していた場所に貼り付けられます。"
+
 msgid "Picker"
 msgstr "ピッカー"
 
@@ -1906,6 +1960,9 @@ msgstr "選択したスニペットをピン留め"
 msgid "Pin the snippets you use most to keep them one click away."
 msgstr "よく使うスニペットをピン留めすると、ワンクリックですぐに使えます。"
 
+msgid "Pin the snippets you use most; they stay at the top of the Panel."
+msgstr "よく使うスニペットをピン留めすると、パネルの上部に残ります。"
+
 msgid "Pinned"
 msgstr "ピン留め"
 
@@ -1918,11 +1975,17 @@ msgstr "プレースホルダー"
 msgid "Plain text"
 msgstr "プレーンテキスト"
 
+msgid "Press Ctrl+K in Main to find any action by name."
+msgstr "メインウィンドウで Ctrl+K を押すと、名前で操作を探せます。"
+
 msgid "Press the new shortcut"
 msgstr "新しいショートカットを押してください"
 
 msgid "Press the shortcut now"
 msgstr "今すぐショートカットを押してください"
+
+msgid "Press your Panel shortcut in any app to bring up your snippets."
+msgstr "どのアプリでもパネルのショートカットを押すと、スニペットが表示されます。"
 
 msgid "Preview"
 msgstr "プレビュー"
@@ -1956,6 +2019,9 @@ msgstr "複数のスニペットを並べておき、ホットキーを押すた
 
 msgid "Quick capture"
 msgstr "クイックキャプチャ"
+
+msgid "Quick capture saves what you copied as a new snippet."
+msgstr "クイックキャプチャは、コピーした内容を新しいスニペットとして保存します。"
 
 msgid "Quick capture the clipboard"
 msgstr "クリップボードをクイックキャプチャ"
@@ -1995,6 +2061,9 @@ msgstr "最近の履歴を消去しました"
 
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "「最近」は、コピーしたテキストをこのコンピューターにのみ、直近 {} 回のコピーまたは {} 日間のどちらか早い方まで保持します。パスワードマネージャーのパスワードと機密スニペットは保持されません。設定でいつでも変更できます。"
+
+msgid "Recent shows what you used and captured lately."
+msgstr "「最近」には、最近使ったものや保存したものが表示されます。"
 
 msgid "Recently used"
 msgstr "最近使ったもの"
@@ -2202,11 +2271,17 @@ msgstr "記号を検索"
 msgid "Search the keyboard shortcuts"
 msgstr "キーボードショートカットを検索"
 
+msgid "Search them by name, in your language."
+msgstr "あなたの言語の名前で検索できます。"
+
 msgid "Searched every board and list."
 msgstr "すべてのボードとリストを検索しました。"
 
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "機密スニペットをコピーしてから、その後他に何もコピーされなければ、クリップボードから消去されるまでの秒数。0 にすると消去しません。貼り付けると、代わりにご自身のクリップボードの内容が復元されます。"
+
+msgid "See the tips"
+msgstr "ヒントを見る"
 
 msgid "Select"
 msgstr "選択"
@@ -2454,6 +2529,9 @@ msgstr "Space"
 msgid "Start stack"
 msgstr "スタックを開始"
 
+msgid "Start typing in the Panel or Main to filter every list at once."
+msgstr "パネルやメインウィンドウで入力すると、すべてのリストを一度に絞り込めます。"
+
 msgid "Start with Windows"
 msgstr "Windows の起動時に開始"
 
@@ -2489,6 +2567,9 @@ msgstr "このリストを手動の並び順に切り替えますか?"
 
 msgid "Symbols"
 msgstr "記号"
+
+msgid "Symbols at your fingertips"
+msgstr "記号がすぐ手元に"
 
 msgid "Symbols data"
 msgstr "記号のデータ"
@@ -2532,11 +2613,17 @@ msgstr "テンプレート"
 msgid "Template text"
 msgstr "テンプレートのテキスト"
 
+msgid "Templates ask for names, dates and options before they paste."
+msgstr "テンプレートは貼り付ける前に、名前、日付、選択肢を尋ねます。"
+
 msgid "Templates that ask"
 msgstr "入力を求めるテンプレート"
 
 msgid "Templates with date, time and cursor"
 msgstr "日付・時刻・カーソル位置を含むテンプレート"
+
+msgid "Ten short tips"
+msgstr "10 個の短いヒント"
 
 msgid "Test"
 msgstr "テスト"
@@ -2685,6 +2772,9 @@ msgstr "選択したスニペットは完全に削除されます。この操作
 msgid "The sensitive item \"{}\" cannot be unlocked with this computer's key and was skipped."
 msgstr "機密スニペット「{}」は、このコンピューターのキーではロックを解除できないため、スキップされました。"
 
+msgid "The shortcut for each is shown beside it."
+msgstr "それぞれのショートカットが横に表示されます。"
+
 msgid "The tag is removed from its items. The items themselves stay."
 msgstr "タグはスニペットから外されます。スニペット自体は残ります。"
 
@@ -2769,6 +2859,9 @@ msgstr "このテキストは{}です。16 KBを超えるものはここでは�
 msgid "Tile view"
 msgstr "タイル表示"
 
+msgid "Tips"
+msgstr "ヒント"
+
 msgid "Title"
 msgstr "タイトル"
 
@@ -2777,6 +2870,9 @@ msgstr "各単語の先頭を大文字"
 
 msgid "Title, colour, tags, privacy"
 msgstr "タイトル、色、タグ、プライバシー"
+
+msgid "Titles, text and labels all count."
+msgstr "タイトル、本文、ラベルのすべてが対象です。"
 
 msgid "To remove everything, use Erase library under Backups and your data, then delete the folder."
 msgstr "すべて削除するには、「バックアップとデータ」の「ライブラリを削除」を使い、そのあとフォルダーを削除してください。"
@@ -2813,6 +2909,9 @@ msgstr "トラブルシューティング…"
 
 msgid "Try another word, or a different kind."
 msgstr "別の言葉や別の種類をお試しください。"
+
+msgid "Try it"
+msgstr "試す"
 
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "設定でクリップボード履歴をオンにすると、コピーした内容が保存されます。"
@@ -2883,6 +2982,9 @@ msgstr "ピン留めを解除"
 msgid "Unpin selected item"
 msgstr "選択したスニペットのピン留めを解除"
 
+msgid "Unpin them the same way."
+msgstr "ピン留めの解除も同じ操作です。"
+
 msgid "Use"
 msgstr "使用"
 
@@ -2933,6 +3035,9 @@ msgstr "Snipdeck へようこそ"
 
 msgid "Welcome tour"
 msgstr "ウェルカムツアー"
+
+msgid "What Snipdeck can do, with a picture and a button to try each one. You can open them again from Help."
+msgstr "Snipdeck でできることを、画像と試すボタン付きで紹介します。ヘルプからいつでも開き直せます。"
 
 msgid "What a click on the Snipdeck icon in the tray opens. The tray menu still has both."
 msgstr "トレイの Snipdeck アイコンをクリックしたときに開くものです。トレイのメニューからはどちらも開けます。"

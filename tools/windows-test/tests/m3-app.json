@@ -392,6 +392,13 @@
       "title": "Fill-ins: multi-line box, date and tick box, pasted into Outlook (v1.1 slice 2b)",
       "do": "Make a Template with {multiline:Body}, {pickdate:Due|%F} and {optional:PS}P.S. thanks{/optional}. Use it from the Picker with an Outlook message open. In the form type two lines in the first box (Enter adds a line), type 2026-02-30 in the date and press Ctrl+Enter, correct it to a real day, tick the box with Space and press Ctrl+Enter.",
       "expect": "Enter adds a line and does not submit. The bad date keeps the form open with an error under the date box and the focus there. After the fix the text pastes into Outlook with both lines, the date, and the P.S. line. Run it again with the box unticked and the date empty: no P.S., and today's date. A screen reader announces the tick box as a check box named PS."
+    },
+    {
+      "id": "51",
+      "v1": false,
+      "title": "Tray menu: Tips opens the Tips tab (v1.1 slice 4)",
+      "do": "Right-click the Snipdeck tray icon and choose Tips. Then press Tab to reach the first Try it button, press Enter, and scroll the list with the mouse wheel. Close Help, open the welcome tour from Help > About > Show, go to the last step and choose See the tips.",
+      "expect": "Tips sits in the tray menu between Open Snipdeck and Take screenshot. Choosing it opens the Help window on its fourth tab, Tips, with ten cards: a title, two lines, a picture and a Try it button each. Tab moves from card to card and keeps the focused button in view; Enter on the first card shows the Panel. The pictures are not cut off at the window's smallest size. The tour's See the tips button opens the same tab. Nothing in the window or the tray icon shows an unread badge or a prompt. Write anything that clips, overlaps or reads badly in Narrator in the note (n)."
     }
   ]
 }

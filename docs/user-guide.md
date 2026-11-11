@@ -243,6 +243,14 @@ use **Show the welcome tour again** in Help or the link in About.
 When the Panel hides for the first time, a message tells you Snipdeck is still running and how to bring it
 back.
 
+### Tips
+
+The **Tips** tab of the Help window has ten short cards on what Snipdeck can do. Each has a title, two lines, a
+picture and a **Try it** button that runs the action for you (for example, showing the Panel). Open it from the
+tray icon's menu (**Tips**), from Help, from the last page of the welcome tour, or from the **More tips** card in
+the **Getting started** list. Snipdeck never shows a badge or a reminder about tips; they wait until you look.
+Press `Tab` to move from card to card.
+
 ## Settings
 
 Open Settings from the Panel menu or the Main window. Changes apply at once and are saved.
