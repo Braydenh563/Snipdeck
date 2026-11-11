@@ -1993,7 +1993,7 @@ fn note_labels_are_translated_too() {
             !matched.contains("match") && !clip.contains("Ditto clip"),
             "{matched} {clip}"
         );
-        assert!(clip.contains("Clip 7") || clip.contains("7"), "{clip}");
+        assert!(clip.contains("Clip 7") || clip.contains('7'), "{clip}");
     });
 }
 
