@@ -40,8 +40,9 @@ resumed: 2026-11-09 after idle-guard stop during a long gate run (commits c7f28a
 - [x] Import notes LOWs + docs refresh (merged 7310bd0, 63c0259)
 - [x] In-app help and shortcut lists for groups, triggers, Hello (merged 07cd1f0; Hello settings-search key after the Hello merge)
 - [x] Groups in the Main window (merged c3a53a0; footer counts items, one group_move_on path; reviewer running)
-- [ ] Main groups palette commands, shortcut rows, guide + CHANGELOG -> typing worker, claude/v11-groups-docs
-- [ ] Re-audit typing CI clippy + 2.25x switch fix -> audit worker, claude/v11-reaudit-typing
+- [x] Main groups palette commands, shortcut rows, guide + CHANGELOG (merged 3b5f7ad); Windows steps 79-86 (e53c97a)
+- [x] Re-audit typing CI clippy + 2.25x switch fix (merged 9bb51f3)
+- [ ] Groups in Main review fixes (payload drag, label filter Ctrl+G, Alt+arrow by headers, per-surface rename, tile button) -> sweep worker, claude/v11-groups-fix
 - [x] Groups a11y (Alt+Up/Down, header keys, window tests) merged (b2c1b01)
 - [x] Groups measurements (tree, contrast, focus ring, 2.25x/320px): all pass; members say n of m (merged)
 - [ ] Final: full gate, polish pass (ux-auditor + blind-tester on Panel, Settings, palette, shortcuts, toasts), docs, morning summary
