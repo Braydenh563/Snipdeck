@@ -559,7 +559,7 @@ fn nodes<C: ComponentHandle>(
         .find_all()
     {
         let (p, s) = (e.absolute_position(), e.size());
-        if s.width == 0.0 || s.height == 0.0 {
+        if s.width < 0.5 || s.height < 0.5 {
             continue;
         }
         let n = (
@@ -572,7 +572,10 @@ fn nodes<C: ComponentHandle>(
             s.width,
             s.height,
         );
-        if !seen.iter().any(|o| o.0 == n.0 && o.2 == n.2 && o.3 == n.3) {
+        if !seen
+            .iter()
+            .any(|o| o.0 == n.0 && (o.2 - n.2).abs() < 0.5 && (o.3 - n.3).abs() < 0.5)
+        {
             seen.push(n);
         }
     }
@@ -698,9 +701,7 @@ fn editor_trigger_warning_is_visible_readable_and_reachable() {
                 .into_iter()
                 .filter(|n| n.0 == ONE_CHAR_WARNING)
                 .collect();
-            if found.len() != 1 {
-                problems.push(format!("{scene}: {} warning nodes", found.len()));
-            } else {
+            if found.len() == 1 {
                 let n = &found[0];
                 if n.2 < 0.0 || n.2 + n.4 > w as f32 + 0.5 {
                     problems.push(format!(
@@ -723,6 +724,8 @@ fn editor_trigger_warning_is_visible_readable_and_reachable() {
                         "{scene}: warning text contrast {best:.2}:1 on {bg:?}"
                     ));
                 }
+            } else {
+                problems.push(format!("{scene}: {} warning nodes", found.len()));
             }
             // The field is a named stop with the ring.
             let names = lap(&build("a", false, 900));

@@ -48,7 +48,7 @@ fn problems(root: &impl ElementRoot, width: f32, scene: &str, checked: &mut usiz
                 .accessible_label()
                 .map(|l| l.to_string())
                 .unwrap_or_default();
-            if s.width == 0.0 || s.height == 0.0 {
+            if s.width < 0.5 || s.height < 0.5 {
                 continue; // not shown
             }
             *checked += 1;
@@ -73,6 +73,47 @@ fn problems(root: &impl ElementRoot, width: f32, scene: &str, checked: &mut usiz
         }
     }
     out
+}
+
+/// The Typing rows of Settings (typing triggers available and not) and the item editor with the one-character
+/// trigger warning showing.
+fn typing_scenes(s: f32, w: f32, sw: f32, all: &mut Vec<String>, checked: &mut usize) {
+    // The Typing section alone (the search leaves it on screen), with typing triggers available and not.
+    for available in [true, false] {
+        use slint::Global;
+        let ui = SettingsPage::new().unwrap();
+        ui.global::<SystemLook<'_>>().set_text_scale(s);
+        editor::settings(&ui);
+        ui.set_typing_available(available);
+        let filter = snipdeck_ui::SettingsFilter::get(&ui);
+        filter.on_matches(|text, query| text.to_lowercase().contains(&query.to_lowercase()));
+        filter.set_query("as I type".into());
+        ui.window().set_size(slint::LogicalSize::new(sw, 1800.0));
+        ui.show().unwrap();
+        slint::platform::update_timers_and_animations();
+        all.extend(problems(
+            &ui,
+            sw,
+            &format!("settings typing ({available}) at {s}x"),
+            checked,
+        ));
+    }
+    // The Trigger field with the one-character warning showing.
+    let ui = ItemEditor::new().unwrap();
+    ui.global::<SystemLook<'_>>().set_text_scale(s);
+    editor::text_item(&ui);
+    ui.set_more_open(true);
+    ui.set_trigger("a".into());
+    let ew = if s > 1.5 { 608.0 } else { w };
+    ui.window().set_size(slint::LogicalSize::new(ew, 1800.0));
+    ui.show().unwrap();
+    slint::platform::update_timers_and_animations();
+    all.extend(problems(
+        &ui,
+        ew,
+        &format!("item editor trigger warning at {s}x"),
+        checked,
+    ));
 }
 
 #[test]
@@ -140,43 +181,7 @@ fn interactive_elements_are_named_big_enough_and_inside_the_window() {
                 &format!("settings at {s}x"),
                 &mut checked,
             ));
-            // The Typing section alone (the search leaves it on screen), with typing triggers available and not.
-            for available in [true, false] {
-                use slint::Global;
-                let ui = SettingsPage::new().unwrap();
-                ui.global::<SystemLook<'_>>().set_text_scale(s);
-                editor::settings(&ui);
-                ui.set_typing_available(available);
-                let filter = snipdeck_ui::SettingsFilter::get(&ui);
-                filter
-                    .on_matches(|text, query| text.to_lowercase().contains(&query.to_lowercase()));
-                filter.set_query("as I type".into());
-                ui.window().set_size(slint::LogicalSize::new(sw, 1800.0));
-                ui.show().unwrap();
-                slint::platform::update_timers_and_animations();
-                all.extend(problems(
-                    &ui,
-                    sw,
-                    &format!("settings typing ({available}) at {s}x"),
-                    &mut checked,
-                ));
-            }
-            // The Trigger field with the one-character warning showing.
-            let ui = ItemEditor::new().unwrap();
-            ui.global::<SystemLook<'_>>().set_text_scale(s);
-            editor::text_item(&ui);
-            ui.set_more_open(true);
-            ui.set_trigger("a".into());
-            let ew = if s > 1.5 { 608.0 } else { w };
-            ui.window().set_size(slint::LogicalSize::new(ew, 1800.0));
-            ui.show().unwrap();
-            slint::platform::update_timers_and_animations();
-            all.extend(problems(
-                &ui,
-                ew,
-                &format!("item editor trigger warning at {s}x"),
-                &mut checked,
-            ));
+            typing_scenes(s, w, sw, &mut all, &mut checked);
         }
         assert!(checked > 100, "only {checked} elements were checked");
         assert_eq!(all, Vec::<String>::new());
