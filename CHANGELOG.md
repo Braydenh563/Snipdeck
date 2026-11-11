@@ -30,6 +30,9 @@ All notable changes to Snipdeck are recorded here. The format follows
 - In the fill form, Space ticks a tick box and Enter moves on (or pastes on the last field), like every other
   field.
 - The "Supporter" badge beside a locked feature is as tall as the control next to it, with its lock centred.
+- The item editor, Help, Settings and the fill form get wider at large text sizes (up to 225%), so buttons, tabs and
+  setting rows no longer overlap or clip.
+- Tips pictures end on a whole row, and the Main window's Show Panel button has its own icon.
 
 ### Security
 - YAML import parsing moved from `serde_yaml_ng` to `serde-saphyr` (deserialize only), so `unsafe-libyaml`
