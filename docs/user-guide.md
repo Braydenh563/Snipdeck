@@ -164,13 +164,13 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
   used or recently used. Move a list with `Alt+Up` or `Alt+Down` while it is selected in the sidebar.
 - **Order of items.** Select a row and press `Alt+Up` or `Alt+Down`, in the Main window or the Panel, or choose **Move up** / **Move down** in the snippet's menu.
 - **Groups.** A list sorted by hand (Manual) can hold named groups of items, in the Panel and in the Main window.
-  - **Make one.** Select two or more rows and press `Ctrl+G`, or choose **Group...** from the item menu (the row
+  - **Make one.** Select two or more rows and press `Ctrl+G`, or choose **Group…** from the item menu (the row
     at the cursor when nothing is selected). The rows gather under a header and its name opens for typing: type a
-    name and press `Enter` (the default is "Group"). In a list that sorts itself, **Group...** offers to switch to
+    name and press `Enter` (the default is "Group"). In a list that sorts itself, **Group…** offers to switch to
     Manual first.
   - **Read the header.** It shows the name, how many items the group holds and an arrow. A screen reader reads it
     as "group, 3 items" and says whether it is expanded or collapsed.
-  - **Fold or open a group.** Click the header, or press `Left` to fold and `Right` to open. `Enter` toggles it
+  - **Fold or unfold a group.** Click the header, or press `Left` to fold and `Right` to unfold. `Enter` toggles it
     (in the Panel `Space` does too). A folded group hides its items and stays folded.
   - **Rename.** Press `F2` on the header, press `Ctrl+G` on it with nothing selected, or choose **Rename group**.
   - **Ungroup or delete.** **Ungroup** dissolves the group and keeps its items. **Delete group** (or `Delete`
@@ -179,8 +179,8 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
     header adds it to that group.
   - **Search.** Searching lists every match, even inside a folded group, under the group's header in the Panel;
     the Main window shows a flat list of matches with no headers.
-  - **Layout.** A list that holds groups is drawn as rows even in the Cards or Tile layout, so a header spans the
-    width. `Alt+1` to `Alt+9` count items only, never headers.
+  - **Layout.** A list that holds groups is drawn as rows, so a header spans the width; the Tile view button
+    rests (greyed out) until the list has no groups. `Alt+1` to `Alt+9` count items only, never headers.
   - **Main window.** The command palette (`Ctrl+K`) has the same actions, and the header's menu has Rename group,
     Ungroup and Delete group.
   - **Undo.** `Ctrl+Z` takes back a grouping, a rename, an ungroup, a delete and a drag of a header or of an
@@ -523,7 +523,7 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Panel | `Ctrl+E`, `F2` | Edit the selected item |
 | Panel | `Ctrl+P` | Pin or unpin the selected item |
 | Panel | `Ctrl+G` | Group the selected rows |
-| Panel | `Left`, `Right`, `Enter` or `Space` (on a group header) | Fold or open the group |
+| Panel | `Left`, `Right`, `Enter` or `Space` (on a group header) | Fold or unfold the group |
 | Panel | `Alt+Up`, `Alt+Down` (on a group header) | Move the whole group |
 | Panel | `Menu`, `Shift+F10` (on a group header) | Open its menu: Rename group, Ungroup, Delete group |
 | Panel | `F2`, or `Ctrl+G` with nothing selected (on a group header) | Rename the group |
@@ -549,7 +549,7 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Main window | `Ctrl+A`, `Ctrl+Space` | Select all, toggle a row |
 | Main window | `Alt+Up`, `Alt+Down` | Move an item or list |
 | Main window | `Ctrl+G` | Group the selected rows (the row at the cursor when none is selected) |
-| Main window | `Left`, `Right`, `Enter` (on a group header) | Fold or open the group |
+| Main window | `Left`, `Right`, `Enter` (on a group header) | Fold or unfold the group |
 | Main window | `F2` (on a group header) | Rename the group |
 | Main window | `Alt+Up`, `Alt+Down` (on a group header) | Move the whole group |
 | Main window | `Delete` (on a group header) | Move the group and its items to the Trash |

@@ -1276,6 +1276,25 @@ ui_tests! {
         );
     }
 
+    fn every_settings_section_is_found_by_its_own_title_and_a_few_plain_words() {
+        let (ui, _log) = settings();
+        ui.set_hello_offered(true);
+        settle();
+        let filter = SettingsFilter::get(&ui);
+        for (query, section) in [
+            ("Shortcuts", "Shortcuts"), ("Appearance", "Appearance"), ("Panel layout", "Panel layout"),
+            ("Opening the Panel", "Opening the Panel"), ("Privacy", "Privacy"), ("Programs", "Programs"),
+            ("Typing", "Typing"), ("Backups and your data", "Backups and your data"), ("Licence", "Licence"),
+            ("trigger", "Typing"), ("triggers", "Typing"), ("text expansion", "Typing"), ("autocomplete", "Typing"),
+            ("fingerprint", "Privacy"), ("PIN", "Privacy"), ("face", "Privacy"),
+            ("never paste", "Programs"), ("license", "Licence"),
+        ] {
+            filter.set_query(query.into());
+            settle();
+            assert!(!missing(&ui, section, AccessibleRole::Groupbox), "\"{query}\" does not find {section}");
+        }
+    }
+
     fn escape_ends_a_recording_first_and_then_closes_the_page() {
         let (ui, log) = settings();
         find(&ui, "Open the picker", AccessibleRole::Button).invoke_accessible_default_action();

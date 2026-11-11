@@ -1604,6 +1604,8 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
                     entry,
                     ItemMenuEntry::MoveUp { enabled: false }
                         | ItemMenuEntry::MoveDown { enabled: false }
+                        | ItemMenuEntry::GroupUp { enabled: false }
+                        | ItemMenuEntry::GroupDown { enabled: false }
                 ),
                 separator: entry == ItemMenuEntry::Separator,
                 destructive: matches!(entry, ItemMenuEntry::Trash | ItemMenuEntry::DeleteGroup),
@@ -1920,6 +1922,8 @@ pub(crate) fn item_kind_of(kind: ItemKind, sensitive: bool) -> ui::ItemKind {
 pub(crate) enum Payload {
     Item(snipdeck_core::ItemId),
     List(snipdeck_core::ListId),
+    /// A group's header, dragged in the Main window.
+    Group(snipdeck_core::GroupId),
 }
 
 impl Payload {

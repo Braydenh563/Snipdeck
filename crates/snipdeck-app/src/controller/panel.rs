@@ -127,6 +127,21 @@ pub enum ItemMenuEntry {
     Group,
     /// On a group header: rename it in place.
     RenameGroup,
+    /// On a group header: fold the group, or open it when `folded` (the keys are Left, Right, Enter, Space).
+    ToggleGroup {
+        /// The group is folded now (the row reads "Unfold group").
+        folded: bool,
+    },
+    /// On a group header: move the group one place up (Alt+Up).
+    GroupUp {
+        /// The list is in manual order, no search runs and the group is not first.
+        enabled: bool,
+    },
+    /// On a group header: move the group one place down (Alt+Down).
+    GroupDown {
+        /// The list is in manual order, no search runs and the group is not last.
+        enabled: bool,
+    },
     /// On a group header: remove the header, keep the items.
     Ungroup,
     /// On a group header: move the header and its items to the Trash.
@@ -294,10 +309,15 @@ where
             let at = self.model.rows().iter().position(|r| r.id == id);
             return vec![
                 ItemMenuEntry::RenameGroup,
-                ItemMenuEntry::MoveUp {
+                ItemMenuEntry::ToggleGroup {
+                    folded: at
+                        .and_then(|at| self.model.group_at(at))
+                        .is_some_and(|run| run.group.collapsed),
+                },
+                ItemMenuEntry::GroupUp {
                     enabled: at.is_some_and(|at| self.can_move_group(at, -1)),
                 },
-                ItemMenuEntry::MoveDown {
+                ItemMenuEntry::GroupDown {
                     enabled: at.is_some_and(|at| self.can_move_group(at, 1)),
                 },
                 ItemMenuEntry::Ungroup,
@@ -417,11 +437,6 @@ where
         }
         self.menu = PanelMenu::None;
         let targets = std::mem::take(&mut self.menu_targets);
-        let is_header = self
-            .model
-            .rows()
-            .iter()
-            .any(|r| r.id == id && r.header.is_some());
         match entry {
             ItemMenuEntry::Sensitive { .. } => {
                 self.toggle_item_sensitive(id);
@@ -449,7 +464,7 @@ where
                 Vec::new()
             }
             ItemMenuEntry::MoveUp { .. } | ItemMenuEntry::MoveDown { .. } => {
-                self.choose_move(id, entry, is_header);
+                self.choose_move(id, entry);
                 Vec::new()
             }
             ItemMenuEntry::Trash => {
@@ -463,7 +478,12 @@ where
                 }
                 Vec::new()
             }
-            ItemMenuEntry::RenameGroup | ItemMenuEntry::Ungroup | ItemMenuEntry::DeleteGroup => {
+            ItemMenuEntry::RenameGroup
+            | ItemMenuEntry::ToggleGroup { .. }
+            | ItemMenuEntry::GroupUp { .. }
+            | ItemMenuEntry::GroupDown { .. }
+            | ItemMenuEntry::Ungroup
+            | ItemMenuEntry::DeleteGroup => {
                 self.choose_group_entry(id, entry);
                 Vec::new()
             }
@@ -474,8 +494,8 @@ where
         }
     }
 
-    /// The item menu's Move up / Move down on item or header `id`.
-    fn choose_move(&mut self, id: ItemId, entry: ItemMenuEntry, is_header: bool) {
+    /// The item menu's Move up / Move down on item `id`.
+    fn choose_move(&mut self, id: ItemId, entry: ItemMenuEntry) {
         let (ItemMenuEntry::MoveUp { enabled } | ItemMenuEntry::MoveDown { enabled }) = entry
         else {
             return;
@@ -485,9 +505,7 @@ where
         } else {
             1
         };
-        if is_header {
-            self.choose_group_entry(id, entry);
-        } else if enabled {
+        if enabled {
             self.panel_move_item(id, delta);
         }
     }
@@ -635,7 +653,7 @@ where
     /// F2 on row `index`. The Panel has no inline title field, so this opens the same editor.
     pub fn rename_row(&mut self, index: usize) -> Vec<Effect> {
         if let Some(run) = self.model.group_at(index) {
-            self.start_group_rename(run.group.id);
+            self.start_group_rename(super::group_ctl::Surface::Panel, run.group.id);
             return Vec::new();
         }
         self.edit_row(index)

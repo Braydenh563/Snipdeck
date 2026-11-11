@@ -250,6 +250,47 @@ macro_rules! ui_tests {
 
 ui_tests! {
 
+    fn the_tile_button_is_off_and_unchecked_while_groups_draw_the_rows() {
+        let (ui, _log) = start();
+        ui.set_view(snipdeck_ui::MainView::Tile);
+        settle();
+        let tile = || find(&ui, "Tile view", AccessibleRole::Button);
+        assert_eq!(tile().accessible_enabled(), Some(true));
+        assert_eq!(tile().accessible_checked(), Some(true));
+        ui.set_has_groups(true);
+        settle();
+        assert_eq!(tile().accessible_enabled(), Some(false), "tiles cannot show groups");
+        assert_eq!(tile().accessible_checked(), Some(false), "and it is not announced as checked");
+        ui.set_has_groups(false);
+        settle();
+        assert_eq!(tile().accessible_checked(), Some(true), "the choice itself is kept");
+    }
+
+    fn a_header_made_with_a_rename_request_opens_its_editor_at_once() {
+        let (ui, _log) = start();
+        // Ctrl+G adds the header and asks for its rename in the same refresh: the header is born
+        // with the request, so the editor must open from the start value, not from a change.
+        ui.set_rename_row(0);
+        ui.set_rename_seq(1);
+        let mut rows = fixture::sample_rows();
+        rows.truncate(3);
+        rows.insert(
+            0,
+            snipdeck_ui::MainRow {
+                title: "Group".into(),
+                is_header: true,
+                group_count: 2,
+                ..Default::default()
+            },
+        );
+        rows[1].grouped = true;
+        rows[2].grouped = true;
+        fixture::set_rows(&ui, rows);
+        ui.set_has_groups(true);
+        settle();
+        assert!(!all(&ui, "Group name", AccessibleRole::TextInput).is_empty());
+    }
+
     fn a_group_header_is_a_labelled_expandable_button_and_has_its_own_keys() {
         let (ui, log) = start();
         let header = |count: i32, collapsed: bool| snipdeck_ui::MainRow {

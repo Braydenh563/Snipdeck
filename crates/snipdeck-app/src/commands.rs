@@ -188,6 +188,7 @@ impl Command {
             Self::SelectAll => "Ctrl+A",
             Self::ToggleSidebar => "Ctrl+B",
             Self::GroupItems => "Ctrl+G",
+            Self::FoldGroup => "Enter",
             Self::RenameGroup => "F2",
             Self::MoveGroupUp => "Alt+Up",
             Self::MoveGroupDown => "Alt+Down",
@@ -607,12 +608,12 @@ mod tests {
         }
         for (label, words) in [
             ("Group the selected rows", "make new folder"),
-            ("Fold or open a group", "collapse expand"),
+            ("Fold or unfold a group", "collapse expand"),
             ("Rename group", "name"),
             ("Ungroup", "dissolve"),
             ("Delete group", "remove trash"),
-            ("Move group up", "reorder earlier"),
-            ("Move group down", "reorder later"),
+            ("Move the group up", "reorder earlier"),
+            ("Move the group down", "reorder later"),
         ] {
             all.push((label.to_owned(), words.to_owned()));
         }

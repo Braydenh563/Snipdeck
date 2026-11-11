@@ -254,7 +254,7 @@ where
             }
         }
         let in_recent = self.main.section() == Section::Recent;
-        let rename_row = self.rename_group.and_then(|g| {
+        let rename_row = self.rename_main.group.and_then(|g| {
             rows.iter()
                 .position(|r| r.header.as_ref().is_some_and(|h| h.group == g))
         });
@@ -312,7 +312,7 @@ where
             rows,
             rename_row,
             cursor_group: self.main_cursor_group(),
-            rename_seq: self.rename_seq,
+            rename_seq: self.rename_main.seq,
             use_label: self.model.use_label(),
             revealed,
             toast: self.toast_view(),

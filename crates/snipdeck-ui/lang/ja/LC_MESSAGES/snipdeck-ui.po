@@ -151,8 +151,8 @@ msgstr "{} にテキストのスニペットを追加します"
 msgid "After a paste or copy"
 msgstr "貼り付けやコピーの後"
 
-msgid "After you type the first two characters of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
-msgstr "トリガーの最初の 2 文字を入力すると、テキストカーソルの位置に小さなヒントが表示され、スニペットを提案します。Tab キーで挿入でき、それ以外のキーは通常どおり動作します。Tab キーは、ヒントが表示されている間だけ使われます。"
+msgid "After you type the first two characters of a trigger, a small hint at the text cursor offers the item. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
+msgstr "トリガーの最初の 2 文字を入力すると、テキストカーソルの位置に小さなヒントが表示され、アイテムを提案します。Tab キーで挿入でき、それ以外のキーは通常どおり動作します。Tab キーは、ヒントが表示されている間だけ使われます。"
 
 msgid "All"
 msgstr "すべて"
@@ -1034,8 +1034,11 @@ msgstr "旗"
 msgid "Floating"
 msgstr "フローティング"
 
-msgid "Fold or open a group"
-msgstr "グループを折りたたむ／開く"
+msgid "Fold group"
+msgstr "グループを折りたたむ"
+
+msgid "Fold or unfold a group"
+msgstr "グループを折りたたむ／展開する"
 
 msgid "Fold the Panel into a thin strip."
 msgstr "パネルを細い帯にたたみます。"
@@ -1130,8 +1133,8 @@ msgstr "グループ名"
 msgid "Group the selected rows"
 msgstr "選択した行をグループ化"
 
-msgid "Group..."
-msgstr "グループ化..."
+msgid "Group…"
+msgstr "グループ化…"
 
 msgid "Handy for forms you fill field by field."
 msgstr "フォームを項目ごとに入力するときに便利です。"
@@ -1199,8 +1202,8 @@ msgstr "ポインターが開いたパネルから外れてからパネルがた
 msgid "How tall the item rows are in the Main window lists. Compact shows one line per item."
 msgstr "メインウィンドウのリストでの行の高さです。コンパクトでは 1 スニペットを 1 行で表示します。"
 
-msgid "How the Panel lists your snippets: one per row, two per row as cards, or tight rows. A search shows rows in every layout."
-msgstr "パネルでのスニペットの並べ方です。1 行に 1 件、カードで 1 行に 2 件、または詰めた行から選べます。検索中はどのレイアウトでも行で表示します。"
+msgid "How the Panel lists your items: one per row, two per row as cards, or tight rows. A search shows rows in every layout."
+msgstr "パネルがアイテムを並べる方法です。1 行に 1 つ、1 行に 2 つのカード、またはコンパクトな行から選びます。検索中はどのレイアウトでも行で表示されます。"
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "パネルを開く幅（{}〜{}ピクセル）。"
@@ -1493,9 +1496,6 @@ msgstr "よく使う順"
 msgid "Move"
 msgstr "移動"
 
-msgid "Move a group up or down"
-msgstr "グループを上下に移動"
-
 msgid "Move a page at a time"
 msgstr "1ページずつ移動"
 
@@ -1508,12 +1508,6 @@ msgstr "ボードを上へ移動"
 msgid "Move down"
 msgstr "下へ移動"
 
-msgid "Move group down"
-msgstr "グループを下に移動"
-
-msgid "Move group up"
-msgstr "グループを上に移動"
-
 msgid "Move selected item to Trash"
 msgstr "選択したスニペットをゴミ箱へ移動"
 
@@ -1522,6 +1516,9 @@ msgstr "グループを下に移動"
 
 msgid "Move the group up"
 msgstr "グループを上に移動"
+
+msgid "Move the group up or down"
+msgstr "グループを上または下へ移動"
 
 msgid "Move the item to the Trash"
 msgstr "スニペットをゴミ箱へ移動"
@@ -1747,8 +1744,8 @@ msgstr "何も追加されませんでした。フォルダー、および空・
 msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
 msgstr "これらのプログラムでコピーした内容は「最近」の受信箱に入りません。プログラムのファイル名を使ってください（例: keepass.exe）。"
 
-msgid "Numbers the first nine rows so pressing Alt+1 to 9 uses that snippet."
-msgstr "最初の 9 行に番号を付け、Alt+1～9 キーでそのスニペットを使えるようにします。"
+msgid "Numbers the first nine rows so pressing Alt+1 to 9 uses that item."
+msgstr "最初の 9 行に番号を付け、Alt+1～9 キーでそのアイテムを使えるようにします。"
 
 msgid "OK"
 msgstr "OK"
@@ -2676,8 +2673,8 @@ msgstr "Tab"
 msgid "Tabs"
 msgstr "タブ"
 
-msgid "Tabs put each list of the board in a row under the header. Menu moves them into the board picker and gives the space back to your snippets."
-msgstr "タブは、ボードの各リストをヘッダーの下に横一列に並べます。メニューにすると、ボードの選択に移してスニペットの表示領域を広げます。"
+msgid "Tabs put each list of the board in a row under the header. Menu moves them into the board picker and gives the space back to your items."
+msgstr "タブはボードの各リストをヘッダーの下の 1 行に並べます。「メニュー」はそれらをボードの選択欄に移し、空いた場所をアイテムに回します。"
 
 msgid "Tag"
 msgstr "タグ"
@@ -3063,6 +3060,9 @@ msgstr "{} を元に戻す (Ctrl+Z)"
 msgid "Undock the panel"
 msgstr "パネルの固定を解除"
 
+msgid "Unfold group"
+msgstr "グループを展開"
+
 msgid "Ungroup"
 msgstr "グループ解除"
 
@@ -3189,8 +3189,8 @@ msgstr "Windows の起動時"
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "ピンがオフのとき、ほかのアプリに切り替えるとすぐにパネルが隠れます。ピン留めしたパネルは隠れません。"
 
-msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items."
-msgstr "他のプログラムでスニペットのトリガーを入力すると、Snipdeck がそれをスニペットに置き換えます。そのために押したキーを監視しますが、保持するのは直近の数文字だけで、メモリ内にのみ置き、ディスクには保存しません。\nパスワード欄、「貼り付けない」に設定したプログラム、管理者として実行中のプログラム、Snipdeck が前面にあるとき、機密アイテムでは何も展開されません。"
+msgid "When you type an item's trigger in another program, Snipdeck replaces it with the item's text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items."
+msgstr "他のプログラムでアイテムのトリガーを入力すると、Snipdeck がそれをアイテムのテキストに置き換えます。そのために押したキーを監視しますが、保持するのは直近の数文字だけで、メモリ内にのみ置き、ディスクには保存しません。\nパスワード欄、「貼り付けない」に設定したプログラム、管理者として実行中のプログラム、Snipdeck が前面にあるとき、機密アイテムでは何も展開されません。"
 
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "ショートカットまたはトレイでパネルを表示する位置です。アプリにテキストカーソルがない場合、「テキストカーソルの位置」はマウスの位置になります。"
@@ -3385,6 +3385,9 @@ msgstr "お気に入り ピン留め 表示"
 msgid "find filter look"
 msgstr "検索 絞り込み 探す"
 
+msgid "fingerprint face PIN biometric lock"
+msgstr "指紋 顔 PIN 生体認証 ロック"
+
 msgid "group change"
 msgstr "グループの変更"
 
@@ -3407,6 +3410,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "ラベル: {}"
 
+msgid "license supporter upgrade key"
+msgstr "ライセンス サポーター アップグレード キー"
+
 msgid "lowercase"
 msgstr "小文字"
 
@@ -3424,6 +3430,9 @@ msgstr "名前 タイトル 変更 編集 セクション"
 
 msgid "navigation rail collapse expand lists panel left width"
 msgstr "ナビゲーション サイドバー 折りたたむ 展開 リスト パネル 左 幅"
+
+msgid "never paste excluded apps"
+msgstr "貼り付けない 除外するプログラム"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"
@@ -3488,8 +3497,8 @@ msgstr "タグ: {}"
 msgid "to insert"
 msgstr "で挿入"
 
-msgid "trigger text expansion shortcode"
-msgstr "トリガー 展開 テキスト展開 略語 ショートカット"
+msgid "trigger triggers text expansion autocomplete shortcode"
+msgstr "トリガー テキスト展開 オートコンプリート 略語 ショートカット"
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "チュートリアル 入門 基本 学ぶ"

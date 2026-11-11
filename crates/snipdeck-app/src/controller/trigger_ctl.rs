@@ -196,8 +196,8 @@ where
         current && !self.store.item(fired.item).is_ok_and(|i| i.sensitive)
     }
 
-    /// The user typed a trigger. Expands only when the setting is on and [`typed_allowed`]
-    /// (`Self::typed_allowed`), the Target would take a paste (not excluded, not elevated,
+    /// The user typed a trigger. Expands only when the setting is on and `typed_allowed` holds, the
+    /// Target would take a paste (not excluded, not elevated,
     /// something focused), and nothing else was typed meanwhile.
     pub fn expand_typed(&mut self, typed: &Typed) -> TypedOutcome {
         let outcome = self.insert_typed(self.settings.expand_triggers, typed);
