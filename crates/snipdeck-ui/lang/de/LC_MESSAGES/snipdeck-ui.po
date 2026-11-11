@@ -2083,9 +2083,6 @@ msgstr "Verlauf „Zuletzt“ gelöscht"
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "„Zuletzt“ behält den kopierten Text, nur auf diesem Computer, für die letzten {} Kopien oder {} Tage, je nachdem, was zuerst eintritt. Passwörter aus Passwortmanagern und vertrauliche Textbausteine werden nie gespeichert. Du kannst das jederzeit in den Einstellungen ändern."
 
-msgid "Recent shows what you used and captured lately."
-msgstr "„Zuletzt verwendet“ zeigt, was du zuletzt benutzt und erfasst hast."
-
 msgid "Recently used"
 msgstr "Kürzlich verwendet"
 
@@ -3143,8 +3140,11 @@ msgstr "Windows erlaubt {} nicht als Tastenkürzel."
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows folgt deiner Windows-Textgröße (Einstellungen > Erleichterte Bedienung > Textgröße). Wähle eine Größe, um stattdessen diese zu verwenden."
 
-msgid "YYYY-MM-DD"
-msgstr "JJJJ-MM-TT"
+msgid "With clipboard history on, Recent keeps what you copy in other programs."
+msgstr "Mit eingeschaltetem Verlauf der Zwischenablage behält „Zuletzt verwendet“ alles, was du in anderen Programmen kopierst."
+
+msgid "YYYY-MM-DD, empty for today"
+msgstr "YYYY-MM-DD, leer für heute"
 
 msgid "Yes"
 msgstr "Ja"

@@ -232,6 +232,21 @@ fn item_editor_template_placeholders_at_420px_and_225_percent_text_size() {
     assert_golden("item-editor-template-narrow-scale-light", &render(&h));
 }
 
+/// Saving a template with a prompted field on the Free plan: the refusal sits under the text and a button beside it
+/// opens the way to get Supporter.
+#[test]
+fn item_editor_supporter_refusal_offers_get_supporter() {
+    let h = item(ITEM, false);
+    h.component.set_kind_index(3);
+    h.component.set_prompted_available(false);
+    h.component.set_content("Dear {field:Name}".into());
+    h.component.set_content_error(
+        "Fields that ask for a value are a Supporter feature. Remove them to save.".into(),
+    );
+    h.component.set_content_needs_supporter(true);
+    assert_golden("item-editor-needs-supporter-light", &render(&h));
+}
+
 #[test]
 fn item_editor_asks_before_discarding_and_scrolls_to_the_focus() {
     let h = item(ITEM, false);
@@ -599,6 +614,16 @@ fn help_tips_light_and_dark() {
     fixture::tips(&h.component);
     h.component.set_tab(3);
     assert_golden("help-tips-dark", &render(&h));
+}
+
+/// The Tips tab on the Free plan: the cards of Supporter features carry the Supporter mark beside the title.
+#[test]
+fn help_tips_free_plan_marks_the_supporter_cards() {
+    let h = Harness::new(HelpWindow::new, HELP.0, HELP.1 * 2);
+    fixture::help(&h.component);
+    fixture::tips_on(&h.component, true);
+    h.component.set_tab(3);
+    assert_golden("help-tips-free-light", &render(&h));
 }
 
 /// The Tips tab at the Help window's smallest size: the cards keep their picture and button and the

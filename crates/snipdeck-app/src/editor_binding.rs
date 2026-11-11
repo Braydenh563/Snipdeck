@@ -297,6 +297,7 @@ where
             core.act(|ctl| ctl.item_editor_tag_added(name.as_str()));
         });
         let core = Rc::downgrade(self);
+        w.on_supporter_requested(crate::settings_binding::request_open_licence);
         w.on_remove_formatting_requested(move || {
             if let Some(core) = core.upgrade() {
                 core.act(Controller::item_editor_remove_formatting);
@@ -459,6 +460,10 @@ fn apply_state(w: &ui::ItemEditor, view: &ItemEditorView) {
     };
     w.set_title_error(text(&view.title_problem));
     w.set_content_error(text(&view.content_problem));
+    w.set_content_needs_supporter(matches!(
+        view.content_problem,
+        Some(EditorProblem::NeedsPro(_))
+    ));
     w.set_source_error(text(&view.source_problem));
     w.set_privacy_error(text(&view.privacy_problem));
     w.set_banner(text(&view.banner));

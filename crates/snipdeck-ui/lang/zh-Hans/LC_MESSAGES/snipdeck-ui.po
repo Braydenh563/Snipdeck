@@ -2077,9 +2077,6 @@ msgstr "已清除最近记录"
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "“最近”会保留你复制的文本，仅保存在这台电脑上，最多保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感片段不会被保留。你可以随时在设置中更改。"
 
-msgid "Recent shows what you used and captured lately."
-msgstr "“最近”会显示你最近使用和捕获的内容。"
-
 msgid "Recently used"
 msgstr "最近使用"
 
@@ -3135,8 +3132,11 @@ msgstr "Windows 不允许将 {} 用作快捷键。"
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows 跟随你的 Windows 文字大小（设置 > 辅助功能 > 文字大小）。选择一个大小即可改用该大小。"
 
-msgid "YYYY-MM-DD"
-msgstr "YYYY-MM-DD"
+msgid "With clipboard history on, Recent keeps what you copy in other programs."
+msgstr "开启剪贴板历史后，“最近”会保存你在其他程序中复制的内容。"
+
+msgid "YYYY-MM-DD, empty for today"
+msgstr "YYYY-MM-DD，留空表示今天"
 
 msgid "Yes"
 msgstr "是"

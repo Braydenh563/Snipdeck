@@ -330,6 +330,18 @@ ui_tests! {
         assert_eq!(field().accessible_description().map(|d| d.to_string()).unwrap_or_default(), "");
     }
 
+    fn the_date_box_says_that_empty_means_today() {
+        let mut date = fixture::date("Due date");
+        date.placeholder = "".into();
+        let (ui, _log) = start_with(vec![date]);
+        settle();
+        let field = find(&ui, "Due date", AccessibleRole::TextInput);
+        assert_eq!(
+            field.accessible_placeholder_text().as_deref(),
+            Some("YYYY-MM-DD, empty for today")
+        );
+    }
+
     // ---- Tab order -----------------------------------------------------------------------------
 
     fn tab_visits_the_fields_in_order_then_cancel_and_insert() {
