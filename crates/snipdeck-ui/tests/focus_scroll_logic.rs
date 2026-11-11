@@ -139,13 +139,17 @@ ui_tests! {
     }
 
     fn the_item_editor_keeps_the_focus_after_the_kind_is_picked_with_the_pointer() {
-        let (ui, help) = item_editor(0, 330.0);
+        // A clipped chip is not in the accessibility tree: pick in a tall window, then shrink it so the taller
+        // Template form scrolls, and walk.
+        let (ui, help) = item_editor(0, 900.0);
         let chip = ElementHandle::find_by_accessible_label(&ui, "Template")
             .find(|e| e.accessible_role() == Some(AccessibleRole::RadioButton))
             .expect("template chip");
-        chip.invoke_accessible_default_action();
+        chip.mock_single_click(slint::platform::PointerEventButton::Left);
         settle();
         assert_eq!(ui.get_kind_index(), 3);
+        ui.window().set_size(slint::LogicalSize::new(560.0, 330.0));
+        settle();
         assert_kept("template after the pick", &walk(&ui, &help, Key::Tab, 40, 330.0));
     }
 
