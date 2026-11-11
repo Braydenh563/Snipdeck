@@ -1474,6 +1474,19 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
                         .filter(|x| x.deleted_pending || x.header.is_some())
                         .count(),
                 );
+                // A group's items count off under their header: "2 of 5".
+                if r.grouped {
+                    let before = view.rows[..i]
+                        .iter()
+                        .rev()
+                        .take_while(|x| x.grouped)
+                        .count();
+                    let header = view.rows[..i - before]
+                        .last()
+                        .and_then(|x| x.header.as_ref());
+                    row.set_position = to_i32(before + 1);
+                    row.set_size = header.map_or(0, |h| to_i32(h.count));
+                }
                 row.stack_position = marked
                     .iter()
                     .position(|id| *id == r.id)
@@ -1856,6 +1869,8 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
         group_count: row.header.as_ref().map_or(0, |h| to_i32(h.count)),
         group_collapsed: row.header.as_ref().is_some_and(|h| h.collapsed),
         grouped: row.grouped,
+        set_position: 0,
+        set_size: 0,
     }
 }
 
