@@ -1642,7 +1642,7 @@ fn trigger_clash_shows_an_error() {
         view(&r.ctl).trigger_problem,
         Some(EditorProblem::TriggerInvalid)
     );
-    assert!(r.ctl.store().triggers().expect("all").len() == 1);
+    assert_eq!(r.ctl.store().triggers().expect("all").len(), 1);
     // The item keeps its own code when it is saved again.
     r.ctl.item_editor_cancel();
     r.ctl.open_item_editor(first);
