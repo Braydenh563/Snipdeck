@@ -71,3 +71,4 @@ date | item | type | rung | rework | note
 2026-11-11 | Audit 1b keyboard walk merge (Tab-order fixes, goldens) | review | opus | 2 | 
 2026-11-11 | Groups in the Main window | feature | sonnet | 2 | 
 2026-11-11 | Final UX audit (v1.1 surfaces) | review | opus | 0 | 
+2026-11-11 | Blind-test fixes (README hotkeys, wording, Hello prerequisites, header menu) | docs | sonnet | 1 | 
