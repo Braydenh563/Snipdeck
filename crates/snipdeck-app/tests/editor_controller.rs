@@ -1616,6 +1616,9 @@ fn a_sensitive_item_keeps_no_trigger() {
         sensitive: true,
         ..typed(&v, "Plain", "x")
     });
-    assert!(!r.ctl.item_editor_open(), "saved: the code was dropped, not refused");
+    assert!(
+        !r.ctl.item_editor_open(),
+        "saved: the code was dropped, not refused"
+    );
     assert_eq!(r.ctl.store().triggers().expect("all").len(), 0);
 }

@@ -117,7 +117,12 @@ mod tests {
         feed(&tx, "hi ;sig");
         drop(tx);
         let mut got = Vec::new();
-        run(&events, &updates, || true, |f, p| got.push((f.item, f.chars, p)));
+        run(
+            &events,
+            &updates,
+            || true,
+            |f, p| got.push((f.item, f.chars, p)),
+        );
         // The extra-key check sees nothing after the last character, so it is delivered.
         assert_eq!(got, [(item, 4, true)]);
     }

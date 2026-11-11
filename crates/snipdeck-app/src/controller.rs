@@ -40,7 +40,6 @@ mod trigger_ctl;
 mod use_ctl;
 mod views;
 
-pub use trigger_ctl::TypedOutcome;
 pub use history_ctl::HistoryView;
 pub use library::Library;
 pub use lock_ctl::{MasterProblem, MasterState};
@@ -49,6 +48,7 @@ pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, Lis
 pub use panel_select::LABELS;
 pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 pub use symbol_ctl::{IconExport, IconSave, SaveOutcome, SymbolChoice, SymbolMenuEntry};
+pub use trigger_ctl::TypedOutcome;
 pub use views::{
     BoardDeleteView, ChooseEntry, ChooseLabel, ChooseMenu, ClearListView, Effect, FillSubmission,
     FillView, ListDeleteView, PickerView, StackView, ToastPhase, ToastView, UseResult, View,

@@ -792,9 +792,16 @@ fn a_typed_trigger_backspaces_then_pastes() {
     let fired = typed(&w, ";two");
     assert_eq!((fired.item, fired.chars), (w.ids[1], 4));
     let out = w.ctl.expand_typed(fired, false);
-    assert_eq!(out, TypedOutcome::Expanded(UseResult::Done(UseOutcome::Pasted)));
+    assert_eq!(
+        out,
+        TypedOutcome::Expanded(UseResult::Done(UseOutcome::Pasted))
+    );
     let sent = backspaces_sent(&mut w);
-    assert_eq!(sent[0], snipdeck_platform::keys::backspaces(4), "erased first");
+    assert_eq!(
+        sent[0],
+        snipdeck_platform::keys::backspaces(4),
+        "erased first"
+    );
     assert!(
         sent[1].contains(&KeyEvent {
             key: Key::V,
@@ -901,7 +908,10 @@ fn off_by_default_installs_no_hook() {
     assert_eq!(typing.enabled_history(), vec![false], "told: off");
     // A trigger exists but the feature is off: still no hook, and a stray event does nothing.
     let trigger = Trigger::new(";two").expect("trigger");
-    w.ctl.store.set_trigger(w.ids[1], Some(&trigger)).expect("set");
+    w.ctl
+        .store
+        .set_trigger(w.ids[1], Some(&trigger))
+        .expect("set");
     let mut matcher = w.ctl.trigger_matcher();
     let fired = ";two".chars().find_map(|c| matcher.feed(c)).expect("fires");
     assert_eq!(w.ctl.expand_typed(fired, false), TypedOutcome::Skipped);
@@ -924,5 +934,9 @@ fn a_prompted_trigger_opens_the_fill_form() {
         "the typed code is gone before the form opens"
     );
     assert!(w.ctl.fill().is_some());
-    assert_eq!(uses(&w, w.ids[3]), 0, "not used until the form is submitted");
+    assert_eq!(
+        uses(&w, w.ids[3]),
+        0,
+        "not used until the form is submitted"
+    );
 }
