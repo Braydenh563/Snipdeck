@@ -378,6 +378,14 @@ pub fn import_problem_text(
         ImportProblem::NotThisKind(ImportKind::Ditto) => texts.invoke_problem_not_ditto(),
         ImportProblem::NotThisKind(ImportKind::CopyQ) => texts.invoke_problem_not_copyq(),
         ImportProblem::NotThisKind(ImportKind::Folder) => texts.invoke_problem_not_folder(),
+        ImportProblem::NotThisKind(ImportKind::Espanso) => texts.invoke_problem_not_espanso(),
+        ImportProblem::NotThisKind(ImportKind::Beeftext) => texts.invoke_problem_not_beeftext(),
+        ImportProblem::NotThisKind(ImportKind::TextExpander) => {
+            texts.invoke_problem_not_textexpander()
+        }
+        ImportProblem::NotThisKind(ImportKind::PhraseExpress) => {
+            texts.invoke_problem_not_phraseexpress()
+        }
         ImportProblem::TooNew => texts.invoke_problem_too_new(),
         ImportProblem::HistoryOff => texts.invoke_problem_history_off(),
         ImportProblem::HistoryUnavailable => texts.invoke_problem_history_unavailable(),
@@ -494,6 +502,7 @@ pub const fn item_menu_shortcut(entry: crate::controller::ItemMenuEntry) -> &'st
         ItemMenuEntry::MoveUp { .. } => "Alt+Up",
         ItemMenuEntry::MoveDown { .. } => "Alt+Down",
         ItemMenuEntry::Stack { .. }
+        | ItemMenuEntry::PasteAs
         | ItemMenuEntry::MoveTo
         | ItemMenuEntry::Colour
         | ItemMenuEntry::Sensitive { .. }
@@ -511,6 +520,7 @@ pub fn item_menu_label(window: &PanelWindow, entry: crate::controller::ItemMenuE
     match entry {
         ItemMenuEntry::Use => t.invoke_item_use(),
         ItemMenuEntry::Copy => t.invoke_item_copy(),
+        ItemMenuEntry::PasteAs => t.invoke_item_paste_as(),
         ItemMenuEntry::Edit => t.invoke_item_edit(),
         ItemMenuEntry::Duplicate => t.invoke_item_duplicate(),
         ItemMenuEntry::Pin { pinned: false } => t.invoke_item_pin(),
@@ -524,6 +534,25 @@ pub fn item_menu_label(window: &PanelWindow, entry: crate::controller::ItemMenuE
         ItemMenuEntry::MoveUp { .. } => moves.invoke_menu_move_up(),
         ItemMenuEntry::MoveDown { .. } => moves.invoke_menu_move_down(),
         ItemMenuEntry::Separator => return String::new(),
+    }
+    .into()
+}
+
+/// The words of a "Paste as..." choice.
+#[must_use]
+pub fn transform_name(
+    window: &PanelWindow,
+    transform: snipdeck_core::template::transform::Transform,
+) -> String {
+    use snipdeck_core::template::transform::Transform;
+    let t = MenuTexts::get(window);
+    match transform {
+        Transform::Plain => t.invoke_paste_as_plain(),
+        Transform::Upper => t.invoke_paste_as_upper(),
+        Transform::Lower => t.invoke_paste_as_lower(),
+        Transform::Title => t.invoke_paste_as_title(),
+        Transform::Trimmed => t.invoke_paste_as_trimmed(),
+        Transform::Slug => t.invoke_paste_as_slug(),
     }
     .into()
 }

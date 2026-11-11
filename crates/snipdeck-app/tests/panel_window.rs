@@ -959,6 +959,68 @@ fn reduced_motion_reaches_the_window_from_windows_or_the_setting() {
 }
 
 #[test]
+fn the_paste_as_row_has_its_name_and_the_second_level_takes_arrows_enter_and_escape() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_context_menu_requested(0, 10.0, 10.0);
+        r.binding.redraw();
+        assert!(r.ui.get_item_menu_open());
+        // The accessible name of the row is its text.
+        let row = element(&r.ui, "Paste as…", AccessibleRole::ListItem);
+        assert_eq!(row.accessible_enabled(), Some(true));
+        let at =
+            r.ui.get_item_menu_entries()
+                .iter()
+                .position(|e| e.text == "Paste as…")
+                .expect("a Paste as row");
+        r.ui.invoke_item_menu_activated(i32::try_from(at).expect("index"));
+        r.binding.redraw();
+        // The second level replaces the first, with the six choices as rows.
+        assert!(r.ui.get_item_menu_open());
+        let texts: Vec<String> =
+            r.ui.get_item_menu_entries()
+                .iter()
+                .map(|e| e.text.to_string())
+                .collect();
+        assert_eq!(
+            texts,
+            [
+                "Plain text",
+                "UPPERCASE",
+                "lowercase",
+                "Title Case",
+                "Trimmed",
+                "slug-like-this"
+            ]
+        );
+        let _ = element(&r.ui, "UPPERCASE", AccessibleRole::ListItem);
+        // Esc closes the level and pastes nothing.
+        press(r.window(), &key(Key::Escape));
+        r.binding.redraw();
+        assert!(!r.ui.get_item_menu_open(), "Esc closes the menu");
+        assert_eq!(r.ctl.borrow().services().clipboard.written.len(), 0);
+
+        // Down moves the ring and Enter chooses: the second row is UPPERCASE.
+        r.ui.invoke_context_menu_requested(0, 10.0, 10.0);
+        r.binding.redraw();
+        r.ui.invoke_item_menu_activated(i32::try_from(at).expect("index"));
+        r.binding.redraw();
+        press(r.window(), &key(Key::DownArrow));
+        press(r.window(), &key(Key::DownArrow));
+        press(r.window(), &key(Key::Return));
+        r.binding.redraw();
+        assert!(!r.ui.get_item_menu_open(), "choosing closes it");
+        let ctl = r.ctl.borrow();
+        let written = &ctl.services().clipboard.written;
+        assert_eq!(written.len(), 1);
+        let Data::Text(text) = &written[0].data()[0] else {
+            panic!("plain text")
+        };
+        assert_eq!(*text, text.to_uppercase(), "pasted as UPPERCASE");
+    });
+}
+
+#[test]
 fn ctrl_p_pins_the_selected_row_and_unpins_it_again_and_the_menu_row_shows_the_key() {
     on_ui_thread(|| {
         let r = rig();

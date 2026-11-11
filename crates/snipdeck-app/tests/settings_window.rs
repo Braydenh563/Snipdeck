@@ -91,6 +91,8 @@ struct FakeHost {
     documents: RefCell<Option<PathBuf>>,
     /// What the import dialog answers, once.
     import_pick: RefCell<Option<PathBuf>>,
+    /// Every `pick_import` call: the kind and whether one file was asked for.
+    import_asked: RefCell<Vec<(snipdeck_app::controller::ImportKind, bool)>>,
     /// What the Windows clipboard history holds; unset reads as "turned off".
     history: RefCell<Option<HistoryRead>>,
     /// What the export folder dialog answers; unset reads as a machine without a dialog.
@@ -145,9 +147,11 @@ impl SettingsHost for FakeHost {
 
     fn pick_import(
         &self,
-        _kind: snipdeck_app::controller::ImportKind,
+        kind: snipdeck_app::controller::ImportKind,
+        single_file: bool,
         _owner: Option<isize>,
     ) -> Option<PathBuf> {
+        self.import_asked.borrow_mut().push((kind, single_file));
         self.import_pick.borrow_mut().take()
     }
 
@@ -2067,9 +2071,117 @@ fn each_import_choice_asks_for_its_own_dialog() {
         (ImportKind::Ditto, PickKind::Ditto),
         (ImportKind::CopyQ, PickKind::CopyQ),
         (ImportKind::Folder, PickKind::Folder),
+        (ImportKind::Espanso, PickKind::Folder),
+        (ImportKind::Beeftext, PickKind::Beeftext),
+        (ImportKind::TextExpander, PickKind::Csv),
+        (ImportKind::PhraseExpress, PickKind::Csv),
     ] {
-        assert_eq!(settings_binding::pick_kind(kind), dialog);
+        assert_eq!(settings_binding::pick_kind(kind, false), dialog);
     }
+    assert_eq!(
+        settings_binding::pick_kind(ImportKind::Espanso, true),
+        PickKind::Yaml,
+        "the single-file Espanso choice offers .yml files"
+    );
+}
+
+#[test]
+fn import_choices_list_nine_sources() {
+    on_ui_thread(|| {
+        let r = rig_on(
+            Store::open_in_memory().unwrap(),
+            Tier::Pro,
+            tempfile::tempdir().unwrap(),
+            true,
+        );
+        r.ui.window()
+            .set_size(slint::LogicalSize::new(640.0, 6000.0));
+        element(
+            &r.ui,
+            "Import into your library, see a preview first",
+            AccessibleRole::Button,
+        )
+        .invoke_accessible_default_action();
+        for name in [
+            ".snipdeck file",
+            "Ditto database",
+            "CopyQ export",
+            "Folder of .txt and .md files",
+            "Espanso (folder)",
+            "Espanso (single .yml file)",
+            "Beeftext export",
+            "TextExpander export (CSV)",
+            "PhraseExpress export (CSV)",
+        ] {
+            element(
+                &r.ui,
+                &format!("Import from: {name}"),
+                AccessibleRole::Button,
+            );
+        }
+    });
+}
+
+#[test]
+fn each_new_choice_previews_its_own_source_and_a_wrong_file_is_a_problem() {
+    on_ui_thread(|| {
+        let r = rig_on(
+            Store::open_in_memory().unwrap(),
+            Tier::Pro,
+            tempfile::tempdir().unwrap(),
+            false,
+        );
+        let junk = r.dir.path().join("junk.json");
+        std::fs::write(&junk, b"definitely not an export").unwrap();
+        // A Beeftext file that is not an export is "not this kind"; a CSV that is missing
+        // cannot be opened (a CSV with odd rows is read leniently, with warnings).
+        *r.host.import_pick.borrow_mut() = Some(junk.clone());
+        r.ui.invoke_import_source_chosen(6);
+        assert!(r.ui.get_import_open());
+        assert_eq!(r.ui.get_import_problem(), "That isn't a Beeftext export.");
+        r.ui.invoke_import_confirmed();
+        for choice in [7, 8] {
+            *r.host.import_pick.borrow_mut() = Some(r.dir.path().join("missing.csv"));
+            r.ui.invoke_import_source_chosen(choice);
+            assert!(r.ui.get_import_open(), "choice {choice}");
+            assert_eq!(
+                r.ui.get_import_problem(),
+                "Snipdeck couldn't open that. Check that it still exists.",
+                "choice {choice}"
+            );
+            r.ui.invoke_import_confirmed();
+        }
+        // Espanso: a folder with one match file previews its snippet.
+        let folder = r.dir.path().join("espanso");
+        std::fs::create_dir_all(folder.join("match")).unwrap();
+        std::fs::write(
+            folder.join("match/base.yml"),
+            "matches:\n  - trigger: \":hi\"\n    replace: \"Hello there\"\n",
+        )
+        .unwrap();
+        *r.host.import_pick.borrow_mut() = Some(folder);
+        r.ui.invoke_import_source_chosen(5);
+        assert!(r.ui.get_import_open());
+        assert_eq!(r.ui.get_import_problem(), "");
+        assert_eq!(r.ui.get_import_title(), "Import from espanso");
+        r.ui.invoke_import_confirmed();
+        // The single-file choice (9) asks for one file, and a lone .yml previews like a folder.
+        let file = r.dir.path().join("one.yml");
+        std::fs::write(
+            &file,
+            "matches:\n  - trigger: \":bye\"\n    replace: \"Goodbye\"\n",
+        )
+        .unwrap();
+        *r.host.import_pick.borrow_mut() = Some(file);
+        r.host.import_asked.borrow_mut().clear();
+        r.ui.invoke_import_source_chosen(9);
+        assert_eq!(
+            *r.host.import_asked.borrow(),
+            [(snipdeck_app::controller::ImportKind::Espanso, true)]
+        );
+        assert!(r.ui.get_import_open());
+        assert_eq!(r.ui.get_import_problem(), "");
+    });
 }
 
 #[test]

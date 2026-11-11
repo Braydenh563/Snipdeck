@@ -66,6 +66,18 @@ export global ImportTexts {
     pure public function problem-not-folder() -> string {
         return @tr("Snipdeck couldn't read that folder.");
     }
+    pure public function problem-not-espanso() -> string {
+        return @tr("That isn't an Espanso configuration.");
+    }
+    pure public function problem-not-beeftext() -> string {
+        return @tr("That isn't a Beeftext export.");
+    }
+    pure public function problem-not-textexpander() -> string {
+        return @tr("That isn't a TextExpander CSV export.");
+    }
+    pure public function problem-not-phraseexpress() -> string {
+        return @tr("That isn't a PhraseExpress CSV export.");
+    }
     pure public function problem-too-new() -> string {
         return @tr("That file is from a newer Snipdeck. Update Snipdeck to import it.");
     }

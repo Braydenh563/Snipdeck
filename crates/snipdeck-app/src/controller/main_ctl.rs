@@ -58,6 +58,8 @@ pub enum MainAction {
     Move,
     /// Open the *Tags* chooser for the targets.
     Tag,
+    /// Open the *Paste as…* chooser for the item.
+    PasteAs,
     /// Move the targets to the Trash, with an Undo toast.
     Delete,
     /// Bring the targets back from the Trash.

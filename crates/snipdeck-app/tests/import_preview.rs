@@ -230,6 +230,46 @@ fn the_free_board_limit_blocks_the_preview_and_the_import_writes_nothing() {
 }
 
 #[test]
+fn each_import_kind_round_trips_through_of_and_kind() {
+    for kind in [
+        ImportKind::Snipdeck,
+        ImportKind::Ditto,
+        ImportKind::CopyQ,
+        ImportKind::Folder,
+        ImportKind::Espanso,
+        ImportKind::Beeftext,
+        ImportKind::TextExpander,
+        ImportKind::PhraseExpress,
+    ] {
+        let source = ImportSource::of(kind, "x".into());
+        assert_eq!(source.kind(), Some(kind));
+        assert_eq!(source.path(), Some(Path::new("x")));
+    }
+}
+
+#[test]
+fn a_malformed_beeftext_file_is_not_this_kind() {
+    let dir = tempfile::tempdir().unwrap();
+    let junk = dir.path().join("junk.json");
+    fs::write(&junk, b"{ not json").unwrap();
+    let mut ctl = rig_on(Store::open_in_memory().unwrap(), Tier::Pro);
+    for (source, kind) in [
+        (ImportSource::Beeftext(junk.clone()), ImportKind::Beeftext),
+        (
+            ImportSource::TextExpander(dir.path().join("none.csv")),
+            ImportKind::TextExpander,
+        ),
+    ] {
+        let got = ctl.preview_import(&source);
+        if kind == ImportKind::Beeftext {
+            assert_eq!(got, Err(ImportProblem::NotThisKind(kind)));
+        } else {
+            assert_eq!(got, Err(ImportProblem::Unreadable));
+        }
+    }
+}
+
+#[test]
 fn a_file_that_is_not_what_was_chosen_is_a_problem_not_a_panic() {
     let dir = tempfile::tempdir().unwrap();
     let junk = dir.path().join("junk.bin");

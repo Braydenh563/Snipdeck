@@ -7,6 +7,7 @@ use snipdeck_core::{
     Entitlements, Feature, Format, Formats, Item, ItemId, ItemKind, Timestamp, UseMode, UseOutcome,
     template::{
         Locale, Prompt, PromptKind, RenderContext, RenderError, Template, TemplateError, TimeZone,
+        transform::{self, Transform},
     },
 };
 use snipdeck_platform::{
@@ -37,6 +38,11 @@ pub struct UseRequest {
     pub tz: TimeZone,
     /// The date and clock style for `{date}` and `{time}`.
     pub locale: Locale,
+    /// A "Paste as..." transform: applied to the text (a template is rendered first) and the
+    /// item goes out as plain text only, with the caret left at the end.
+    pub transform: Option<Transform>,
+    /// Random bytes for each `{uuid}`; `None` draws them from the system.
+    pub uuids: Option<Vec<[u8; 16]>>,
 }
 
 /// The most Left presses sent to put the caret at `{cursor}`.
@@ -87,6 +93,9 @@ pub enum UseError {
     /// The clipboard or key injection failed.
     #[error(transparent)]
     Platform(#[from] pipeline::Error),
+    /// The system gave no random numbers for `{uuid}`.
+    #[error("the system gave no random numbers")]
+    NoRandomness,
 }
 
 /// Uses an item. The use is counted only when it happened (pasted or copied); if counting it
@@ -199,16 +208,25 @@ fn build_payload<S: BlobStore>(
     let mut data = Vec::new();
     for format in formats {
         match format {
+            // A transformed paste is plain text: no HTML, RTF, picture or files go with it.
+            Format::Html(_) | Format::Rtf(_) | Format::Png(_) | Format::Files(_)
+                if request.transform.is_some() => {}
             Format::Text(content) => {
                 let bytes = store.read(content)?;
                 let text = String::from_utf8(bytes.into_owned()).map_err(|_| UseError::NotText)?;
-                if item.kind == ItemKind::Template {
+                let mut text = if item.kind == ItemKind::Template {
                     let rendered = render_template(&text, request)?;
                     cursor = rendered.1;
-                    data.push(Data::Text(rendered.0));
+                    rendered.0
                 } else {
-                    data.push(Data::Text(text));
+                    text
+                };
+                if let Some(transform) = request.transform {
+                    text = transform::apply(transform, &text);
+                    // The transform can change lengths (`ß` is `SS`): no caret to restore.
+                    cursor = None;
                 }
+                data.push(Data::Text(text));
             }
             // A template's rich formats cannot be filled in: its text is what gets pasted.
             Format::Html(_) | Format::Rtf(_) if item.kind == ItemKind::Template => {}
@@ -265,9 +283,23 @@ fn render_template(text: &str, request: &UseRequest) -> Result<(String, Option<u
     if !missing.is_empty() {
         return Err(UseError::NeedsAnswers(template.prompts()));
     }
+    let drawn;
+    let uuids = if let Some(given) = &request.uuids {
+        given.as_slice()
+    } else {
+        drawn = (0..template.uuid_count())
+            .map(|_| {
+                let mut bytes = [0u8; 16];
+                getrandom::fill(&mut bytes).map_err(|_| UseError::NoRandomness)?;
+                Ok(bytes)
+            })
+            .collect::<Result<Vec<_>, UseError>>()?;
+        drawn.as_slice()
+    };
     let mut ctx = RenderContext::new(request.now, &request.answers)
         .with_tz(request.tz.clone())
-        .with_locale(request.locale);
+        .with_locale(request.locale)
+        .with_uuids(uuids);
     if let Some(clipboard) = &request.clipboard_text {
         ctx = ctx.with_clipboard(clipboard);
     }
@@ -342,6 +374,8 @@ mod tests {
                 clipboard_text: None,
                 tz: TimeZone::UTC,
                 locale: Locale::for_tag("en"),
+                transform: None,
+                uuids: None,
             }
         }
 
@@ -513,6 +547,120 @@ mod tests {
         };
         assert!(text.starts_with("Hi Sam, on "), "{text}");
         assert!(!text.contains('{'), "{text}");
+    }
+
+    fn texts_written(w: &World) -> Vec<Vec<Data>> {
+        w.clipboard
+            .written
+            .iter()
+            .map(|p| p.data().to_vec())
+            .collect()
+    }
+
+    #[test]
+    fn paste_as_upper_is_plain_with_caret_at_end() {
+        // A template with a caret and an HTML twin: the transform keeps the text only and
+        // leaves the caret where the paste ends.
+        let mut w = World::new();
+        let id = w.add(ItemKind::Template, false, "Hi {cursor} straße");
+        let mut request = World::request(id, UseMode::Paste, PASTE);
+        request.transform = Some(Transform::Upper);
+        let used = w.run(&request).expect("used");
+        assert_eq!(texts_written(&w), [[Data::Text("HI  STRASSE".into())]]);
+        assert_eq!(used.cursor_from_end, None);
+        assert!(
+            w.keyboard.sent.iter().flatten().all(|e| e.key != Key::Left),
+            "no caret moves"
+        );
+
+        // Rich formats are left behind.
+        let mut w = World::new();
+        let id = w.add(ItemKind::Text, false, "plain words");
+        let existing = w.store.formats(id).expect("formats");
+        let mut formats: Vec<Format> = existing.into_iter().cloned().collect();
+        let html = snipdeck_core::Content::Inline(
+            snipdeck_core::Inline::new(b"<b>plain words</b>".to_vec()).expect("inline"),
+        );
+        formats.push(Format::Html(html));
+        let item = w.store.item(id).expect("item");
+        w.store
+            .update_item(&item, Some(&Formats::new(formats).expect("formats")))
+            .expect("set");
+        let mut request = World::request(id, UseMode::Paste, PASTE);
+        w.run(&request).expect("used");
+        assert_eq!(
+            w.clipboard.written[0].data().len(),
+            2,
+            "html goes along untransformed"
+        );
+        request.transform = Some(Transform::Title);
+        w.run(&request).expect("used");
+        assert_eq!(
+            w.clipboard.written[1].data(),
+            [Data::Text("Plain Words".into())]
+        );
+    }
+
+    #[test]
+    fn paste_as_on_a_sensitive_item_still_goes_out_private() {
+        let mut w = World::new();
+        let id = w.add(ItemKind::Text, true, "hunter2");
+        let mut request = World::request(id, UseMode::Copy, Route::Copy(CopyReason::NoTarget));
+        request.transform = Some(Transform::Upper);
+        w.run(&request).expect("used");
+        assert!(w.clipboard.written[0].is_private());
+        assert_eq!(
+            w.clipboard.written[0].data(),
+            [Data::Text("HUNTER2".into())]
+        );
+    }
+
+    #[test]
+    fn a_paste_as_on_a_picture_is_refused_not_pasted() {
+        let mut w = World::new();
+        let id = w.add(ItemKind::Text, false, "x");
+        let formats = vec![Format::Png(snipdeck_core::Content::Inline(
+            snipdeck_core::Inline::new(vec![1, 2, 3]).expect("inline"),
+        ))];
+        let item = w.store.item(id).expect("item");
+        w.store
+            .update_item(&item, Some(&Formats::new(formats).expect("formats")))
+            .expect("set");
+        let mut request = World::request(id, UseMode::Paste, PASTE);
+        request.transform = Some(Transform::Upper);
+        assert!(matches!(w.run(&request), Err(UseError::NotText)));
+        assert_eq!(w.clipboard.written.len(), 0);
+    }
+
+    #[test]
+    fn uuids_in_a_template_come_from_the_request_and_differ_per_occurrence() {
+        let mut w = World::new();
+        let id = w.add(ItemKind::Template, false, "{uuid}|{uuid}");
+        let mut request = World::request(id, UseMode::Copy, Route::Copy(CopyReason::NoTarget));
+        request.uuids = Some(vec![[0x11; 16], [0x22; 16]]);
+        w.run(&request).expect("used");
+        assert_eq!(
+            w.clipboard.written[0].data(),
+            [Data::Text(
+                "11111111-1111-4111-9111-111111111111|22222222-2222-4222-a222-222222222222".into()
+            )]
+        );
+        // Without bytes from the caller the system draws them: two distinct v4 ids.
+        let mut w = World::new();
+        let id = w.add(ItemKind::Template, false, "{uuid}|{uuid}");
+        w.run(&World::request(
+            id,
+            UseMode::Copy,
+            Route::Copy(CopyReason::NoTarget),
+        ))
+        .expect("used");
+        let Data::Text(text) = &w.clipboard.written[0].data()[0] else {
+            panic!("text")
+        };
+        let (a, b) = text.split_once('|').expect("two");
+        assert_ne!(a, b);
+        assert_eq!(a.len(), 36);
+        assert_eq!(a.as_bytes()[14], b'4');
     }
 
     #[test]

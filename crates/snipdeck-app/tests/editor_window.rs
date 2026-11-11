@@ -595,6 +595,31 @@ fn a_placeholder_chip_inserts_at_the_caret_not_at_the_end() {
 }
 
 #[test]
+fn ctrl_enter_saves_a_template_after_picking_the_kind_and_clicking_the_uuid_chip() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        let before = r.item_count();
+        // The Template form is tall (a row per placeholder): picking it must not strand the keyboard
+        // focus on a field that scrolled out of view, where the next key press drops it.
+        click(
+            ed.window(),
+            &find(&ed, "Template", AccessibleRole::RadioButton),
+        );
+        type_text(ed.window(), "Ticket ");
+        click(
+            ed.window(),
+            &find(&ed, "Insert {uuid}", AccessibleRole::Button),
+        );
+        assert_eq!(ed.get_content(), "Ticket {uuid}");
+        save(&ed);
+        assert!(!r.editor_shown(), "Ctrl+Enter saved and closed the editor");
+        assert_eq!(r.item_count(), before + 1);
+    });
+}
+
+#[test]
 fn a_link_without_a_scheme_is_refused_inline_and_a_good_one_saves() {
     on_ui_thread(|| {
         let r = rig();

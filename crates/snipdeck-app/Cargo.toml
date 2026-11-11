@@ -20,11 +20,13 @@ snipdeck-ui = { path = "../snipdeck-ui" }
 # app create the Panel un-activated and reach its HWND (ADR-0003, ADR-0008).
 slint = { workspace = true, features = ["backend-winit", "raw-window-handle-06", "unstable-winit-030"] }
 blake3.workspace = true
+getrandom.workspace = true
 jiff.workspace = true
 png.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+uuid.workspace = true
 
 [dev-dependencies]
 # `licence-issuer`: the signer, so a test can mint a key the development public key accepts.

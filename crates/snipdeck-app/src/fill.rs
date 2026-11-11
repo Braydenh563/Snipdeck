@@ -6,7 +6,9 @@ use std::collections::BTreeMap;
 
 use snipdeck_core::{
     ItemId, Timestamp, UseMode,
-    template::{Locale, Prompt, PromptKind, RenderContext, Template, TimeZone},
+    template::{
+        Locale, Prompt, PromptKind, RenderContext, Template, TimeZone, transform::Transform,
+    },
 };
 
 /// How a field is answered.
@@ -43,6 +45,7 @@ pub struct FillModel {
     title: String,
     template: Template,
     fields: Vec<Field>,
+    transform: Option<Transform>,
 }
 
 impl FillModel {
@@ -57,7 +60,21 @@ impl FillModel {
             title,
             template,
             fields,
+            transform: None,
         }
+    }
+
+    /// Pastes the filled template through `transform` ("Paste as...").
+    #[must_use]
+    pub fn with_transform(mut self, transform: Option<Transform>) -> Self {
+        self.transform = transform;
+        self
+    }
+
+    /// The "Paste as..." transform to apply once the form is submitted.
+    #[must_use]
+    pub fn transform(&self) -> Option<Transform> {
+        self.transform
     }
 
     /// The template item.
@@ -125,15 +142,28 @@ impl FillModel {
     }
 
     /// The template as it would be pasted with the answers so far (a field not answered yet
-    /// is empty in it).
+    /// is empty in it). Each `{uuid}` shows as [`preview_uuid`], which the window replaces with
+    /// a translated "(new ID)": the real one is drawn when the paste happens.
     #[must_use]
     pub fn preview(&self, now: Timestamp, tz: &TimeZone, locale: Locale) -> String {
         let answers = self.answers();
+        let uuids = vec![PREVIEW_UUID_BYTES; self.template.uuid_count()];
         let ctx = RenderContext::new(now, &answers)
             .with_tz(tz.clone())
-            .with_locale(locale);
+            .with_locale(locale)
+            .with_uuids(&uuids);
         self.template.render(&ctx).text
     }
+}
+
+const PREVIEW_UUID_BYTES: [u8; 16] = [0xA5; 16];
+
+/// The text a `{uuid}` has in [`FillModel::preview`]; the window swaps it for a translated label.
+#[must_use]
+pub fn preview_uuid() -> String {
+    uuid::Builder::from_random_bytes(PREVIEW_UUID_BYTES)
+        .into_uuid()
+        .to_string()
 }
 
 fn field_of(prompt: Prompt) -> Field {
@@ -176,6 +206,14 @@ mod tests {
 
     fn preview(m: &FillModel) -> String {
         m.preview(now(), &TimeZone::UTC, Locale::for_tag("en"))
+    }
+
+    #[test]
+    fn every_uuid_in_the_preview_is_the_marker_not_a_nil_id() {
+        let m = form("a {uuid} b {uuid}");
+        let marker = preview_uuid();
+        assert_ne!(marker, uuid::Uuid::nil().to_string());
+        assert_eq!(preview(&m), format!("a {marker} b {marker}"));
     }
 
     #[test]

@@ -20,7 +20,9 @@
 //! |---|---|---|
 //! | `{date}` | Free | the date in the context's [`Locale`] (ISO `2026-10-17` by default) |
 //! | `{time}` | Free | the time in the context's [`Locale`] (`14:05`, or `2:05 PM` for a 12-hour locale) |
-//! | `{datetime:FORMAT}` | Free | the date and time formatted by `FORMAT`, see below |
+//! | `{datetime:FORMAT}` / `{date:FORMAT}` | Free | the date and time formatted by `FORMAT`, see below |
+//! | `{date+3d}`, `{time-90min}`, `{datetime+1mo:%F}` | Free | the same, moved by an offset, see below |
+//! | `{uuid}` | Free | a random version 4 UUID, new for each use of the placeholder |
 //! | `{clipboard}` | Free | the clipboard text the caller supplied, or nothing |
 //! | `{cursor}` | Free | nothing; marks where the caret should land, see [`Rendered::cursor_from_end`] |
 //! | `{field:Name}` / `{field:Name\|default}` | Supporter | the answer to a text prompt |
@@ -34,6 +36,17 @@
 //! contain `{`, `}` or `|`. A name used twice is one prompt (see [`Template::prompts`]).
 //!
 //! Substituted text (clipboard, answers) is never parsed again.
+//!
+//! # Offsets
+//!
+//! `date`, `time` and `datetime` take one or more offsets straight after the keyword:
+//! a sign, a whole number and a unit, as in `{date+3d}`, `{date-1w:%Y-%m-%d}`,
+//! `{time+90min}` or `{date+1mo-1d}`. Units: `d` days, `w` weeks, `mo` months, `y` years
+//! (calendar arithmetic in the context's time zone; a month end clamps, so 31 January plus
+//! `1mo` is 28 February, and a wall-clock time that a clock change skips moves forward),
+//! and `h` hours, `min` minutes (elapsed time). At most [`MAX_OFFSETS`] offsets, each
+//! bounded (100 y, 1200 mo, 5214 w, 36500 d, 876000 h, 52560000 min), so rendering stays
+//! infallible. There is no `m` or `M`: it would be months or minutes.
 //!
 //! # `{datetime:FORMAT}`
 //!
@@ -68,6 +81,8 @@ use unicode_segmentation::UnicodeSegmentation as _;
 
 use crate::{Entitlements, Error, Feature, Timestamp};
 
+pub mod transform;
+
 #[cfg(test)]
 mod tests;
 
@@ -83,8 +98,12 @@ pub const MAX_RENDERED_BYTES: usize = 16 * 1024 * 1024;
 /// validates and lists this many, so a template with more is refused when it is parsed.
 pub const MAX_PROMPTS: usize = 16;
 
+/// The most offsets one `{date+…}` may chain.
+pub const MAX_OFFSETS: usize = 8;
+
 /// Placeholder keywords, for hints in error messages.
-const KEYWORDS: [&str; 7] = [
+const KEYWORDS: [&str; 8] = [
+    "uuid",
     "date",
     "time",
     "datetime",
@@ -104,13 +123,92 @@ pub struct Template {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Part {
     Text(String),
-    Date,
-    Time,
-    DateTime(Vec<DtPart>),
+    Date(Vec<Offset>),
+    Time(Vec<Offset>),
+    DateTime(Vec<Offset>, Vec<DtPart>),
+    Uuid,
     Clipboard,
     Cursor,
     /// Index into `Template::prompts`.
     Prompt(usize),
+}
+
+/// One `+3d` of a date placeholder, already checked against its unit's bound.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Offset {
+    amount: i64,
+    unit: Unit,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Unit {
+    Day,
+    Week,
+    Month,
+    Year,
+    Hour,
+    Minute,
+}
+
+impl Unit {
+    /// The unit written `word`, if it is one of `d w mo y h min`.
+    fn of(word: &str) -> Option<Self> {
+        Some(match word {
+            "d" => Self::Day,
+            "w" => Self::Week,
+            "mo" => Self::Month,
+            "y" => Self::Year,
+            "h" => Self::Hour,
+            "min" => Self::Minute,
+            _ => return None,
+        })
+    }
+
+    const fn word(self) -> &'static str {
+        match self {
+            Self::Day => "d",
+            Self::Week => "w",
+            Self::Month => "mo",
+            Self::Year => "y",
+            Self::Hour => "h",
+            Self::Minute => "min",
+        }
+    }
+
+    /// The largest amount, so that a chain of [`MAX_OFFSETS`] stays far inside jiff's range.
+    const fn max(self) -> u64 {
+        match self {
+            Self::Day => 36_500,
+            Self::Week => 5_214,
+            Self::Month => 1_200,
+            Self::Year => 100,
+            Self::Hour => 876_000,
+            Self::Minute => 52_560_000,
+        }
+    }
+
+    /// `when` moved by `amount` of this unit; `None` if the result is out of range.
+    fn apply(self, when: &Zoned, amount: i64) -> Option<Zoned> {
+        let span = jiff::Span::new();
+        let span = match self {
+            Self::Day => span.try_days(amount),
+            Self::Week => span.try_weeks(amount),
+            Self::Month => span.try_months(amount),
+            Self::Year => span.try_years(amount),
+            Self::Hour => span.try_hours(amount),
+            Self::Minute => span.try_minutes(amount),
+        }
+        .ok()?;
+        when.checked_add(span).ok()
+    }
+}
+
+/// `when` moved by each offset in turn. An offset that would leave the representable range
+/// (not reachable from a sane clock) is skipped, so rendering cannot fail.
+fn shifted(when: &Zoned, offsets: &[Offset]) -> Zoned {
+    offsets.iter().fold(when.clone(), |at, offset| {
+        offset.unit.apply(&at, offset.amount).unwrap_or(at)
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -249,6 +347,10 @@ pub struct RenderContext<'a> {
     pub clipboard: Option<&'a str>,
     /// Answers to the template's [`Prompt`]s, by name.
     pub answers: &'a BTreeMap<String, String>,
+    /// Random bytes for `{uuid}`, one entry per occurrence in order (see
+    /// [`Template::uuid_count`]); a missing entry renders as all-zero bytes. The caller draws
+    /// them, so rendering stays a pure function.
+    pub uuids: &'a [[u8; 16]],
 }
 
 impl<'a> RenderContext<'a> {
@@ -260,7 +362,15 @@ impl<'a> RenderContext<'a> {
             locale: Locale::default(),
             clipboard: None,
             answers,
+            uuids: &[],
         }
+    }
+
+    /// Supplies the random bytes for `{uuid}`, one `[u8; 16]` per occurrence.
+    #[must_use]
+    pub fn with_uuids(mut self, uuids: &'a [[u8; 16]]) -> Self {
+        self.uuids = uuids;
+        self
     }
 
     /// Shows times in `tz`.
@@ -348,6 +458,27 @@ pub enum TemplateErrorKind {
         /// The limit, [`MAX_PROMPTS`].
         max: usize,
     },
+    /// An offset that is not a sign, a number and a unit (`{date+3}`, `{date+d}`).
+    BadOffset,
+    /// An offset unit that is not `d w mo y h min`.
+    UnknownOffsetUnit {
+        /// The unit as written.
+        found: String,
+        /// What to write instead.
+        hint: &'static str,
+    },
+    /// An offset over its unit's bound.
+    OffsetOutOfRange {
+        /// The unit.
+        unit: &'static str,
+        /// The largest amount allowed.
+        max: u64,
+    },
+    /// More than [`MAX_OFFSETS`] offsets in one placeholder.
+    TooManyOffsets {
+        /// The limit, [`MAX_OFFSETS`].
+        max: usize,
+    },
     /// A `%x` in a `{datetime:…}` format that is not in the supported set.
     UnknownFormatSpecifier {
         /// The character after the `%`.
@@ -357,6 +488,7 @@ pub enum TemplateErrorKind {
 
 fn usage(keyword: &str) -> &'static str {
     match keyword {
+        "uuid" => "{uuid}",
         "date" => "{date}",
         "time" => "{time}",
         "datetime" => "{datetime:FORMAT}",
@@ -393,7 +525,7 @@ impl fmt::Display for TemplateErrorKind {
                     write!(f, ", did you mean `{}`?", usage(keyword))?;
                 }
                 f.write_str(
-                    ". Placeholders are {date}, {time}, {datetime:FORMAT}, {clipboard}, \
+                    ". Placeholders are {uuid}, {date}, {time}, {datetime:FORMAT}, {clipboard}, \
                      {cursor}, {field:Name}, {field:Name|default} and {choice:Name|a|b}. \
                      To write a literal brace, double it: {{ or }}",
                 )
@@ -417,6 +549,18 @@ impl fmt::Display for TemplateErrorKind {
                 f,
                 "a template can ask for at most {max} different fields or choices"
             ),
+            Self::BadOffset => {
+                f.write_str("an offset is a sign, a number and a unit, like `+3d` or `-90min`")
+            }
+            Self::UnknownOffsetUnit { found, hint } => {
+                write!(f, "unknown offset unit `{found}`; use {hint}")
+            }
+            Self::OffsetOutOfRange { unit, max } => {
+                write!(f, "an offset in `{unit}` can be at most {max}")
+            }
+            Self::TooManyOffsets { max } => {
+                write!(f, "a placeholder can have at most {max} offsets")
+            }
             Self::UnknownFormatSpecifier { specifier } => write!(
                 f,
                 "unknown date format `%{specifier}`; supported: \
@@ -528,6 +672,15 @@ impl Template {
         self.parts.iter().any(|p| matches!(p, Part::Clipboard))
     }
 
+    /// How many `{uuid}` the template has: the number of `[u8; 16]` to pass in
+    /// [`RenderContext::uuids`].
+    pub fn uuid_count(&self) -> usize {
+        self.parts
+            .iter()
+            .filter(|p| matches!(p, Part::Uuid))
+            .count()
+    }
+
     /// Whether using this template needs `feature`: only [`Feature::PromptedFields`], and only
     /// if it has a `{field}` or `{choice}`.
     pub fn requires(&self, feature: Feature) -> bool {
@@ -607,12 +760,18 @@ impl Template {
         let when = ctx.now.to_zoned(ctx.tz.clone());
         let mut out = BoundedString::default();
         let mut cursor = None;
+        let mut uuids = ctx.uuids.iter();
         for part in &self.parts {
             match part {
                 Part::Text(text) => out.push_str(text),
-                Part::Date => out.push_str(&date_string(&when, ctx.locale.date)),
-                Part::Time => out.push_str(&time_string(&when, ctx.locale.clock)),
-                Part::DateTime(parts) => {
+                Part::Date(offsets) => {
+                    out.push_str(&date_string(&shifted(&when, offsets), ctx.locale.date));
+                }
+                Part::Time(offsets) => {
+                    out.push_str(&time_string(&shifted(&when, offsets), ctx.locale.clock));
+                }
+                Part::DateTime(offsets, parts) => {
+                    let when = shifted(&when, offsets);
                     for part in parts {
                         match part {
                             DtPart::Lit(text) => out.push_str(text),
@@ -623,6 +782,14 @@ impl Template {
                             }
                         }
                     }
+                }
+                Part::Uuid => {
+                    let bytes = uuids.next().copied().unwrap_or_default();
+                    out.push_str(
+                        &uuid::Builder::from_random_bytes(bytes)
+                            .into_uuid()
+                            .to_string(),
+                    );
                 }
                 Part::Clipboard => out.push_str(ctx.clipboard.unwrap_or_default()),
                 Part::Cursor => cursor = Some(out.text.len()),
@@ -700,10 +867,17 @@ impl Parser {
             Some((key, arg)) => (key, Some(arg)),
             None => (body, None),
         };
-        let key = raw_key.trim();
+        let (key, offsets) = split_offsets(raw_key, span.start + 1)?;
+        // `{date:FORMAT}` is `{datetime:FORMAT}`.
+        let key = if key == "date" && arg.is_some() {
+            "datetime"
+        } else {
+            key
+        };
         let simple = match key {
-            "date" => Some(("date", Part::Date)),
-            "time" => Some(("time", Part::Time)),
+            "uuid" => Some(("uuid", Part::Uuid)),
+            "date" => Some(("date", Part::Date(offsets.clone()))),
+            "time" => Some(("time", Part::Time(offsets.clone()))),
             "clipboard" => Some(("clipboard", Part::Clipboard)),
             "cursor" => Some(("cursor", Part::Cursor)),
             _ => None,
@@ -725,16 +899,18 @@ impl Parser {
             "datetime" => {
                 let format = arg.unwrap_or_default();
                 if format.is_empty() {
-                    return err(
-                        span,
-                        TemplateErrorKind::MissingArgument {
-                            placeholder: "datetime",
-                        },
-                    );
+                    let placeholder = if raw_key.trim_start().starts_with("date")
+                        && !raw_key.trim_start().starts_with("datetime")
+                    {
+                        "date"
+                    } else {
+                        "datetime"
+                    };
+                    return err(span, TemplateErrorKind::MissingArgument { placeholder });
                 }
                 // The format starts after the opening brace, the (padded) key and the colon.
                 let parts = parse_format(format, span.start + 1 + raw_key.len() + 1)?;
-                self.parts.push(Part::DateTime(parts));
+                self.parts.push(Part::DateTime(offsets, parts));
                 Ok(())
             }
             "field" | "choice" => {
@@ -823,6 +999,120 @@ impl Parser {
             _ => return err(span, conflict()),
         }
         Ok(index)
+    }
+}
+
+/// Splits `{date+3d-1w}`'s key into the keyword and its offsets. `raw_key` is the text before
+/// the first `:`, starting at byte `at` of the source. A key with no `+` or `-` after a
+/// date keyword comes back whole (an unknown name is reported by the caller).
+fn split_offsets(raw_key: &str, at: usize) -> Result<(&str, Vec<Offset>), TemplateError> {
+    let key = raw_key.trim();
+    let Some(sign) = key.find(['+', '-']) else {
+        return Ok((key, Vec::new()));
+    };
+    let head = key[..sign].trim_end();
+    if !matches!(head, "date" | "time" | "datetime") {
+        return Ok((key, Vec::new()));
+    }
+    let lead = raw_key.len() - raw_key.trim_start().len();
+    Ok((head, parse_offsets(&key[sign..], at + lead + sign)?))
+}
+
+/// Parses `+3d-1w`; `at` is where `text` starts in the source.
+fn parse_offsets(text: &str, at: usize) -> Result<Vec<Offset>, TemplateError> {
+    let bytes = text.as_bytes();
+    let mut offsets = Vec::new();
+    let mut i = 0;
+    loop {
+        while bytes.get(i).is_some_and(u8::is_ascii_whitespace) {
+            i += 1;
+        }
+        if i >= bytes.len() {
+            return Ok(offsets);
+        }
+        let start = i;
+        let bad = |end: usize| {
+            err(
+                at + start..at + end.max(start + 1),
+                TemplateErrorKind::BadOffset,
+            )
+        };
+        let negative = match bytes.get(i) {
+            Some(b'+') => false,
+            Some(b'-') => true,
+            _ => return bad(i + 1),
+        };
+        i += 1;
+        while bytes.get(i).is_some_and(u8::is_ascii_whitespace) {
+            i += 1;
+        }
+        let digits = i;
+        while bytes.get(i).is_some_and(u8::is_ascii_digit) {
+            i += 1;
+        }
+        if i == digits {
+            return bad(i);
+        }
+        let amount = text[digits..i].parse::<u64>().unwrap_or(u64::MAX);
+        while bytes.get(i).is_some_and(u8::is_ascii_whitespace) {
+            i += 1;
+        }
+        let word = i;
+        while bytes.get(i).is_some_and(u8::is_ascii_alphabetic) {
+            i += 1;
+        }
+        if i == word {
+            return bad(i);
+        }
+        let span = at + start..at + i;
+        let Some(unit) = Unit::of(&text[word..i]) else {
+            return err(
+                span,
+                TemplateErrorKind::UnknownOffsetUnit {
+                    found: text[word..i].to_owned(),
+                    hint: unit_hint(&text[word..i]),
+                },
+            );
+        };
+        if amount > unit.max() {
+            return err(
+                span,
+                TemplateErrorKind::OffsetOutOfRange {
+                    unit: unit.word(),
+                    max: unit.max(),
+                },
+            );
+        }
+        if offsets.len() == MAX_OFFSETS {
+            return err(span, TemplateErrorKind::TooManyOffsets { max: MAX_OFFSETS });
+        }
+        // Bounded above, so it fits an `i64`.
+        let amount = i64::try_from(amount).unwrap_or_default();
+        offsets.push(Offset {
+            amount: if negative { -amount } else { amount },
+            unit,
+        });
+        // The next thing must be whitespace or the next sign.
+        if bytes
+            .get(i)
+            .is_some_and(|b| !b.is_ascii_whitespace() && !matches!(b, b'+' | b'-'))
+        {
+            return err(at + i..at + i + 1, TemplateErrorKind::BadOffset);
+        }
+    }
+}
+
+/// What to write instead of the unit `found`.
+fn unit_hint(found: &str) -> &'static str {
+    match found.to_ascii_lowercase().as_str() {
+        "m" => "`mo` for months or `min` for minutes",
+        "day" | "days" => "`d` for days",
+        "week" | "weeks" | "wk" => "`w` for weeks",
+        "month" | "months" => "`mo` for months",
+        "year" | "years" | "yr" | "yrs" => "`y` for years",
+        "hour" | "hours" | "hr" | "hrs" => "`h` for hours",
+        "minute" | "minutes" | "mins" => "`min` for minutes",
+        _ => "one of d, w, mo, y, h, min",
     }
 }
 

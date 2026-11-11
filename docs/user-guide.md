@@ -54,12 +54,21 @@ editor, the **Placeholders** list inserts one for you.
 |---|---|---|
 | `{date}`, `{time}` | Today's date, or the time | Free |
 | `{datetime:FORMAT}` | Date and time in a format you choose, such as `{datetime:%d %B %Y}` | Free |
+| `{uuid}` | A new random ID (version 4), different for each `{uuid}` and each use | Free |
 | `{cursor}` | Nothing. It marks where the text cursor ends up after pasting. | Free |
 | `{field:Name}` or `{field:Name\|default}` | Asks you for a value each time | Supporter |
 | `{choice:Name\|a\|b}` | Asks you to pick one of the options | Supporter |
 
+`{date}`, `{time}` and `{datetime:FORMAT}` can move in time: add an offset such as `{date+3d}`,
+`{date-1w:%Y-%m-%d}`, `{time+90min}` or `{datetime+1mo:%d %B %Y %H:%M}`. The units are `d` (days), `w` (weeks),
+`mo` (months), `y` (years), `h` (hours) and `min` (minutes); you can chain offsets, as in `{date+1mo-1d}`. A month
+that is too short gives its last day (`{date+1mo}` on 31 January is 28 or 29 February). `{date:FORMAT}` works like
+`{datetime:FORMAT}`. Very large offsets are an error, and the editor says so when you save.
+
 `{date}` and `{time}` use your computer's time zone. `{clipboard}` inserts the clipboard text. Type `{{` and `}}` for literal braces. Any other braces are an error, and the editor says so when
 you save.
+
+In the Fill in template window, each `{uuid}` shows as "(new ID)" in the preview: the real ID is made when you insert.
 
 When you use a template with `{field}` or `{choice}`, a **Fill in template** window opens. Fill the fields,
 check the preview and press `Ctrl+Enter` to insert. `Esc` cancels.
@@ -138,6 +147,9 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
   used or recently used. Move a list with `Alt+Up` or `Alt+Down` while it is selected in the sidebar.
 - **Order of items.** Select a row and press `Alt+Up` or `Alt+Down`, in the Main window or the Panel, or choose **Move up** / **Move down** in the snippet's menu.
 - **Move.** Choose **Move to list…** from the item menu to move one or more selected items.
+- **Paste as…** Choose **Paste as…** from the item menu (text items, one at a time) to paste the text changed: **Plain
+  text**, **UPPERCASE**, **lowercase**, **Title Case**, **Trimmed** (no space at the ends) or **slug-like-this** (`my-title`).
+  A template is filled in first. The result is always plain text, with the cursor at the end.
 - **Duplicate.** Choose **Duplicate** from the item menu in the Main window to make a copy of the item right
   after it.
 - **Export a list as text.** Right-click a list in the sidebar and choose **Export as text**. Snipdeck writes
@@ -154,8 +166,8 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
   `Ctrl+A` selects all. `Esc` clears the selection.
 - **Open the item menu** with a right-click, the `Menu` key or `Shift+F10`. Or point at a row or card, or
   focus it, and press the **More** (⋯) button that appears. It opens the same menu, for a mouse or touch
-  screen. In the Main window the menu offers Use or Paste, Copy, Edit, Duplicate, Pin or Unpin, Move to list,
-  Tags and Move to Trash. In the Panel it offers Use, Copy, Edit, Pin or Unpin, Add to paste stack and Move
+  screen. In the Main window the menu offers Use or Paste, Copy, Paste as…, Edit, Duplicate, Pin or Unpin, Move to list,
+  Tags and Move to Trash. In the Panel it offers Use, Copy, Paste as…, Edit, Pin or Unpin, Add to paste stack and Move
   to Trash.
 - **Edit or delete a list in the Panel.** Right-click its tab, or press `Menu`, `Shift+F10` or `F2` on it.
   Double-click a tab to edit it.

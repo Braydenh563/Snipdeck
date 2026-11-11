@@ -111,8 +111,14 @@ pub trait SettingsHost {
 
     /// Asks the user for the file (or, for [`ImportKind::Folder`], the folder) to import.
     /// `owner` is the Settings window's native handle: it is disabled while the dialog is open.
-    /// `None` when they cancelled or the machine has no dialog.
-    fn pick_import(&self, kind: ImportKind, owner: Option<isize>) -> Option<PathBuf>;
+    /// `single_file` asks for one file where the source is usually a folder (an Espanso `.yml`
+    /// file). `None` when they cancelled or the machine has no dialog.
+    fn pick_import(
+        &self,
+        kind: ImportKind,
+        single_file: bool,
+        owner: Option<isize>,
+    ) -> Option<PathBuf>;
 
     /// Whether this PC has a Windows clipboard history to offer as an import source (only
     /// Windows does). The source is left out of the "Import..." choices when it does not.
@@ -243,18 +249,23 @@ impl SettingsHost for SystemHost {
         }
     }
 
-    fn pick_import(&self, kind: ImportKind, owner: Option<isize>) -> Option<PathBuf> {
+    fn pick_import(
+        &self,
+        kind: ImportKind,
+        single_file: bool,
+        owner: Option<isize>,
+    ) -> Option<PathBuf> {
         #[cfg(windows)]
         {
             crate::platform::file_picker()?
-                .pick(pick_kind(kind), owner)
+                .pick(pick_kind(kind, single_file), owner)
                 .ok()
                 .flatten()
         }
         #[cfg(not(windows))]
         {
             // Only Windows has a file dialog.
-            let _ = (kind, owner);
+            let _ = (kind, single_file, owner);
             None
         }
     }
@@ -282,15 +293,21 @@ fn history_entries(entries: Vec<ClipboardHistoryEntry>) -> Vec<HistoryEntry> {
 }
 
 /// The dialog an import choice opens: files filtered by the source's extension, or the folder
-/// picker.
+/// picker. `single_file` is the Espanso choice that takes one `.yml` file instead of a folder.
 #[must_use]
-pub const fn pick_kind(kind: ImportKind) -> snipdeck_platform::file_dialog::PickKind {
+pub const fn pick_kind(
+    kind: ImportKind,
+    single_file: bool,
+) -> snipdeck_platform::file_dialog::PickKind {
     use snipdeck_platform::file_dialog::PickKind;
     match kind {
+        ImportKind::Espanso if single_file => PickKind::Yaml,
         ImportKind::Snipdeck => PickKind::Snipdeck,
         ImportKind::Ditto => PickKind::Ditto,
         ImportKind::CopyQ => PickKind::CopyQ,
-        ImportKind::Folder => PickKind::Folder,
+        ImportKind::Folder | ImportKind::Espanso => PickKind::Folder,
+        ImportKind::Beeftext => PickKind::Beeftext,
+        ImportKind::TextExpander | ImportKind::PhraseExpress => PickKind::Csv,
     }
 }
 
@@ -1436,18 +1453,24 @@ where
 
     /// The "Import..." choice `kind`: asks for the file, then shows the preview.
     fn import_chosen(self: &Rc<Self>, kind: i32) {
+        // 9 is Espanso again, as one file instead of a folder.
+        let single_file = kind == 9;
         let kind = match kind {
             0 => ImportKind::Snipdeck,
             1 => ImportKind::Ditto,
             2 => ImportKind::CopyQ,
             3 => ImportKind::Folder,
+            5 | 9 => ImportKind::Espanso,
+            6 => ImportKind::Beeftext,
+            7 => ImportKind::TextExpander,
+            8 => ImportKind::PhraseExpress,
             _ => return self.import_clipboard_history(),
         };
         let owner = self
             .window
             .upgrade()
             .and_then(|w| crate::native_window::handle_of(w.window()));
-        let Some(path) = self.host.pick_import(kind, owner) else {
+        let Some(path) = self.host.pick_import(kind, single_file, owner) else {
             return;
         };
         let source = ImportSource::of(kind, path);

@@ -401,9 +401,9 @@ fn near_misses_get_a_suggestion() {
 #[test]
 fn argument_rules_are_enforced() {
     assert_eq!(
-        parse_err("{date:%Y}").kind,
+        parse_err("{time:%Y}").kind,
         TemplateErrorKind::UnexpectedArgument {
-            placeholder: "date"
+            placeholder: "time"
         }
     );
     assert_eq!(
@@ -696,9 +696,9 @@ fn placeholder_keys_are_trimmed_like_names_and_options() {
     );
     assert_eq!(parse_err("{ }").kind, TemplateErrorKind::EmptyPlaceholder);
     assert_eq!(
-        parse_err("{ date:%Y}").kind,
+        parse_err("{ time:%Y}").kind,
         TemplateErrorKind::UnexpectedArgument {
-            placeholder: "date"
+            placeholder: "time"
         }
     );
 }
@@ -867,4 +867,234 @@ fn only_a_clipboard_placeholder_uses_the_clipboard() {
             .expect("parses")
             .uses_clipboard()
     );
+}
+
+// ---- {uuid} and date maths (v1.1 slice 2a) -----------------------------------------------
+
+fn render_at(at: &str, src: &str) -> String {
+    let ctx = RenderContext::new(at.parse().unwrap(), &NO_ANSWERS);
+    Template::parse(src).unwrap().render(&ctx).text
+}
+
+fn render_in(tz: &str, at: &str, src: &str) -> String {
+    // POSIX rules, not a zone name: the Linux build has no zone database.
+    let ctx = RenderContext::new(at.parse().unwrap(), &NO_ANSWERS)
+        .with_tz(TimeZone::posix(tz).expect("time zone"));
+    Template::parse(src).unwrap().render(&ctx).text
+}
+
+fn bytes_from(first: u8) -> [u8; 16] {
+    core::array::from_fn(|i| first.wrapping_add(u8::try_from(i).unwrap()))
+}
+
+#[test]
+fn uuid_renders_the_given_bytes_as_v4() {
+    let ids = [bytes_from(0)];
+    let ctx = RenderContext::new(now(), &NO_ANSWERS).with_uuids(&ids);
+    let out = Template::parse("id={uuid}").unwrap().render(&ctx).text;
+    // Byte 6 gets version 4 (0x06 -> 0x46), byte 8 the RFC 4122 variant (0x08 -> 0x88).
+    assert_eq!(out, "id=00010203-0405-4607-8809-0a0b0c0d0e0f");
+}
+
+#[test]
+fn each_uuid_occurrence_is_new() {
+    let ids = [bytes_from(0), bytes_from(16)];
+    let ctx = RenderContext::new(now(), &NO_ANSWERS).with_uuids(&ids);
+    let template = Template::parse("{uuid} {uuid}").unwrap();
+    assert_eq!(template.uuid_count(), 2);
+    let out = template.render(&ctx).text;
+    assert_eq!(
+        out,
+        "00010203-0405-4607-8809-0a0b0c0d0e0f 10111213-1415-4617-9819-1a1b1c1d1e1f"
+    );
+    // Without bytes it still renders (all-zero randomness), never fails.
+    assert_eq!(render("{uuid}"), "00000000-0000-4000-8000-000000000000");
+    assert_eq!(
+        parse_err("{uuid:x}").kind,
+        TemplateErrorKind::UnexpectedArgument {
+            placeholder: "uuid"
+        }
+    );
+}
+
+#[test]
+fn date_offsets_add_days_weeks_months_years() {
+    assert_eq!(render("{date+3d}"), "2026-10-20");
+    assert_eq!(render("{date-1w}"), "2026-10-10");
+    assert_eq!(render("{date+1mo}"), "2026-11-17");
+    assert_eq!(render("{date+1y}"), "2027-10-17");
+    assert_eq!(render("{date+1mo-1d}"), "2026-11-16");
+    assert_eq!(render("{ date + 3 d }"), "2026-10-20");
+    assert_eq!(render("{date-1w:%Y-%m-%d}"), "2026-10-10");
+    assert_eq!(render("{datetime+1mo:%F %H:%M}"), "2026-11-17 14:05");
+    assert_eq!(render("{datetime-0d:%F}"), "2026-10-17");
+}
+
+#[test]
+fn month_end_clamps() {
+    assert_eq!(
+        render_at("2026-01-31T10:00:00Z", "{date+1mo}"),
+        "2026-02-28"
+    );
+    assert_eq!(
+        render_at("2028-01-31T10:00:00Z", "{date+1mo}"),
+        "2028-02-29"
+    );
+    assert_eq!(render_at("2028-02-29T10:00:00Z", "{date+1y}"), "2029-02-28");
+    assert_eq!(
+        render_at("2026-03-31T10:00:00Z", "{date-1mo}"),
+        "2026-02-28"
+    );
+    assert_eq!(
+        render_at("2026-12-31T10:00:00Z", "{date+2mo}"),
+        "2027-02-28"
+    );
+}
+
+#[test]
+fn time_offsets_cross_midnight() {
+    assert_eq!(render_at("2026-10-17T23:30:00Z", "{time+90min}"), "01:00");
+    assert_eq!(
+        render_at("2026-10-17T23:30:00Z", "{datetime+90min:%F %H:%M}"),
+        "2026-10-18 01:00"
+    );
+    assert_eq!(render_at("2026-10-17T01:00:00Z", "{time-2h}"), "23:00");
+    assert_eq!(
+        render_at("2026-10-17T23:30:00Z", "{date+90min}"),
+        "2026-10-18"
+    );
+}
+
+#[test]
+fn offsets_follow_the_calendar_across_a_dst_change() {
+    // New York springs forward on 2026-03-08 at 02:00. 12:00 EST on the 7th.
+    let zone = "EST5EDT,M3.2.0,M11.1.0";
+    let at = "2026-03-07T17:00:00Z";
+    // A day is a wall-clock day: still 12:00 the next day, now EDT.
+    assert_eq!(
+        render_in(zone, at, "{datetime+1d:%F %H:%M %z}"),
+        "2026-03-08 12:00 -0400"
+    );
+    // 24 hours is elapsed time: one hour later on the wall clock.
+    assert_eq!(
+        render_in(zone, at, "{datetime+24h:%F %H:%M %z}"),
+        "2026-03-08 13:00 -0400"
+    );
+    // 02:30 on the 8th does not exist: the compatible reading is 03:30 EDT.
+    assert_eq!(
+        render_in(zone, "2026-03-07T07:30:00Z", "{datetime+1d:%F %H:%M}"),
+        "2026-03-08 03:30"
+    );
+    // Falling back on 2026-11-01: 12:00 EDT on the 31st plus a day is 12:00 EST.
+    assert_eq!(
+        render_in(zone, "2026-10-31T16:00:00Z", "{datetime+1d:%F %H:%M %z}"),
+        "2026-11-01 12:00 -0500"
+    );
+}
+
+#[test]
+fn date_takes_a_format_like_datetime() {
+    assert_eq!(render("{date:%d.%m.%Y}"), "17.10.2026");
+    assert_eq!(render("{date:%A}"), render("{datetime:%A}"));
+    assert_eq!(
+        parse_err("{time:%H}").kind,
+        TemplateErrorKind::UnexpectedArgument {
+            placeholder: "time"
+        }
+    );
+    assert_eq!(
+        parse_err("{date:}").kind,
+        TemplateErrorKind::MissingArgument {
+            placeholder: "date"
+        }
+    );
+    assert_eq!(
+        parse_err("{datetime+1d}").kind,
+        TemplateErrorKind::MissingArgument {
+            placeholder: "datetime"
+        }
+    );
+}
+
+#[test]
+fn offsets_past_the_bound_are_errors_with_a_span() {
+    let e = parse_err("a {date+101y}");
+    assert_eq!(e.span, 7..12, "{e}");
+    assert_eq!(
+        e.kind,
+        TemplateErrorKind::OffsetOutOfRange {
+            unit: "y",
+            max: 100
+        }
+    );
+    for (src, unit, max) in [
+        ("{date+1201mo}", "mo", 1200),
+        ("{date+36501d}", "d", 36500),
+        ("{date+5215w}", "w", 5214),
+        ("{time+876001h}", "h", 876_000),
+        ("{time-52560001min}", "min", 52_560_000),
+        ("{date+99999999999999999999d}", "d", 36500),
+    ] {
+        assert_eq!(
+            parse_err(src).kind,
+            TemplateErrorKind::OffsetOutOfRange { unit, max },
+            "{src}"
+        );
+    }
+    // The bound itself is fine.
+    assert!(Template::parse("{date+100y}").is_ok());
+    assert!(Template::parse("{date+1d+1d+1d+1d+1d+1d+1d+1d}").is_ok());
+    assert_eq!(
+        parse_err("{date+1d+1d+1d+1d+1d+1d+1d+1d+1d}").kind,
+        TemplateErrorKind::TooManyOffsets { max: 8 }
+    );
+    // The largest legal offsets render without failing.
+    assert_eq!(render("{date+100y+100y+100y}"), "2326-10-17");
+    assert_eq!(render("{date-100y}"), "1926-10-17");
+}
+
+#[test]
+fn unknown_units_get_a_hint() {
+    let TemplateErrorKind::UnknownOffsetUnit { found, hint } = parse_err("{date+3m}").kind else {
+        panic!("expected an unknown unit");
+    };
+    assert_eq!(found, "m");
+    assert!(hint.contains("mo") && hint.contains("min"), "{hint}");
+    for (src, found, hint) in [
+        ("{date+3days}", "days", "d"),
+        ("{date+2weeks}", "weeks", "w"),
+        ("{date+1M}", "M", "mo"),
+        ("{time+1hr}", "hr", "h"),
+        ("{date+1yr}", "yr", "y"),
+        ("{date+1x}", "x", "d, w, mo, y, h, min"),
+    ] {
+        let TemplateErrorKind::UnknownOffsetUnit { found: f, hint: h } = parse_err(src).kind else {
+            panic!("{src}");
+        };
+        assert_eq!(f, found);
+        assert!(h.contains(hint), "{src}: {h}");
+    }
+    // The span covers the term, sign to unit.
+    assert_eq!(parse_err("{date+3m}").span, 5..8);
+}
+
+#[test]
+fn a_malformed_offset_is_an_error_not_a_guess() {
+    for src in [
+        "{date+}",
+        "{date+d}",
+        "{date+3}",
+        "{date+3d5}",
+        "{date+-3d}",
+        "{date 3d}",
+        "{date+3 d x}",
+    ] {
+        assert!(Template::parse(src).is_err(), "{src}");
+    }
+    assert_eq!(parse_err("{date+3}").kind, TemplateErrorKind::BadOffset);
+    // Names that merely start with date are still unknown placeholders.
+    assert!(matches!(
+        parse_err("{dates+1d}").kind,
+        TemplateErrorKind::Unknown { .. }
+    ));
 }

@@ -7,6 +7,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
+msgid "(new ID)"
+msgstr "(nouvel ID)"
+
 msgid "+{} more"
 msgstr "+{} de plus"
 
@@ -51,6 +54,9 @@ msgstr "Un mot de passe principal est activé. Snipdeck le demande lors de la pr
 
 msgid "A master password is part of Supporter."
 msgstr "Le mot de passe principal fait partie de Supporter."
+
+msgid "A new random ID each time"
+msgstr "Un nouvel ID aléatoire à chaque fois"
 
 msgid "A small window you can drag anywhere."
 msgstr "Une petite fenêtre que vous pouvez faire glisser n'importe où."
@@ -233,6 +239,9 @@ msgstr "Sauvegardes à conserver"
 
 msgid "Backups, export, light and dark, 7 languages"
 msgstr "Sauvegardes, export, thèmes clair et sombre, 7 langues"
+
+msgid "Beeftext export"
+msgstr "Export Beeftext"
 
 msgid "Below"
 msgstr "En dessous"
@@ -902,6 +911,12 @@ msgstr "Effacer la bibliothèque…"
 
 msgid "Escape"
 msgstr "Esc"
+
+msgid "Espanso (folder)"
+msgstr "Espanso (dossier)"
+
+msgid "Espanso (single .yml file)"
+msgstr "Espanso (un seul fichier .yml)"
 
 msgid "Every Supporter feature is on. Thank you."
 msgstr "Toutes les fonctions Supporter sont activées. Merci."
@@ -1762,6 +1777,9 @@ msgstr "Coller"
 msgid "Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere."
 msgstr "Collez une clé de licence pour activer Supporter. La clé est vérifiée sur ce PC et rien n’est envoyé nulle part."
 
+msgid "Paste as…"
+msgstr "Coller en tant que…"
+
 msgid "Paste key for {}"
 msgstr "Touche de collage pour {}"
 
@@ -1846,6 +1864,9 @@ msgstr "Payez ce que vous voulez à partir de 5 A$, 8 A$ suggérés. Paiement un
 msgid "People & Body"
 msgstr "Personnes et corps"
 
+msgid "PhraseExpress export (CSV)"
+msgstr "Export PhraseExpress (CSV)"
+
 msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
 msgstr "Choisissez la position du panneau. Vous pouvez la modifier à tout moment dans les paramètres, avec les autres bords, le masquage au changement d'application et le bouton de la barre des tâches."
 
@@ -1884,6 +1905,9 @@ msgstr "Extraits épinglés"
 
 msgid "Placeholders"
 msgstr "Espaces réservés"
+
+msgid "Plain text"
+msgstr "Texte brut"
 
 msgid "Press the new shortcut"
 msgstr "Appuyez sur le nouveau raccourci"
@@ -2525,6 +2549,9 @@ msgstr "Le texte que vous copiez apparaît ici, le plus récent en premier, jusq
 msgid "Text you copy shows up here for {} days. Save the useful ones to a list."
 msgstr "Le texte que vous copiez reste ici pendant {} jours. Enregistrez les utiles dans une liste."
 
+msgid "TextExpander export (CSV)"
+msgstr "Export TextExpander (CSV)"
+
 msgid "That app"
 msgstr "Cette application"
 
@@ -2546,14 +2573,26 @@ msgstr "Ce n'est pas une clé de licence Snipdeck. Une clé commence par SNIP1."
 msgid "That is too many files to add at once."
 msgstr "Il y a trop de fichiers à ajouter en une fois."
 
+msgid "That isn't a Beeftext export."
+msgstr "Ce n'est pas un export Beeftext."
+
 msgid "That isn't a CopyQ export."
 msgstr "Ce n'est pas un export CopyQ."
 
 msgid "That isn't a Ditto database."
 msgstr "Ce n'est pas une base de données Ditto."
 
+msgid "That isn't a PhraseExpress CSV export."
+msgstr "Ce n'est pas un export CSV PhraseExpress."
+
 msgid "That isn't a Snipdeck file, or it is damaged."
 msgstr "Ce n'est pas un fichier Snipdeck, ou il est endommagé."
+
+msgid "That isn't a TextExpander CSV export."
+msgstr "Ce n'est pas un export CSV TextExpander."
+
+msgid "That isn't an Espanso configuration."
+msgstr "Ce n'est pas une configuration Espanso."
 
 msgid "That key is not for Snipdeck Supporter."
 msgstr "Cette clé ne correspond pas à Snipdeck Supporter."
@@ -2726,6 +2765,9 @@ msgstr "Affichage en mosaïque"
 msgid "Title"
 msgstr "Titre"
 
+msgid "Title Case"
+msgstr "Initiales en Majuscules"
+
 msgid "Title, colour, tags, privacy"
 msgstr "Titre, couleur, étiquettes, confidentialité"
 
@@ -2753,6 +2795,9 @@ msgstr "Voyages et lieux"
 msgid "Tray icon click opens"
 msgstr "Un clic sur l'icône de la zone de notification ouvre"
 
+msgid "Trimmed"
+msgstr "Sans espaces aux extrémités"
+
 msgid "Troubleshoot"
 msgstr "Dépannage"
 
@@ -2776,6 +2821,9 @@ msgstr "Saisissez une commande"
 
 msgid "Type {} to confirm"
 msgstr "Saisissez {} pour confirmer"
+
+msgid "UPPERCASE"
+msgstr "MAJUSCULES"
 
 msgid "Undid {}"
 msgstr "Annulé : {}"
@@ -3076,6 +3124,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "libellé : {}"
 
+msgid "lowercase"
+msgstr "minuscules"
+
 msgid "move"
 msgstr "déplacement"
 
@@ -3120,6 +3171,9 @@ msgstr "réorganisation"
 
 msgid "s"
 msgstr "s"
+
+msgid "slug-like-this"
+msgstr "slug-comme-ceci"
 
 msgid "snip snipping capture screen picture image"
 msgstr "capture découpe écran image copie d'écran"

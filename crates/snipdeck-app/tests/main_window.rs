@@ -1119,6 +1119,7 @@ impl SettingsHost for NoHost {
     fn pick_import(
         &self,
         _kind: snipdeck_app::controller::ImportKind,
+        _single_file: bool,
         _owner: Option<isize>,
     ) -> Option<PathBuf> {
         None

@@ -7,6 +7,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
+msgid "(new ID)"
+msgstr "(新ID)"
+
 msgid "+{} more"
 msgstr "另有 {} 项"
 
@@ -51,6 +54,9 @@ msgstr "已开启主密码。首次使用敏感片段时，Snipdeck 会要求输
 
 msgid "A master password is part of Supporter."
 msgstr "主密码是 Supporter 的功能之一。"
+
+msgid "A new random ID each time"
+msgstr "每次生成新的随机ID"
 
 msgid "A small window you can drag anywhere."
 msgstr "可以拖到任意位置的小窗口。"
@@ -232,6 +238,9 @@ msgstr "保留的备份数"
 
 msgid "Backups, export, light and dark, 7 languages"
 msgstr "备份、导出、浅色和深色主题、7 种语言"
+
+msgid "Beeftext export"
+msgstr "Beeftext 导出文件"
 
 msgid "Below"
 msgstr "下方"
@@ -901,6 +910,12 @@ msgstr "删除资料库…"
 
 msgid "Escape"
 msgstr "Esc"
+
+msgid "Espanso (folder)"
+msgstr "Espanso（文件夹）"
+
+msgid "Espanso (single .yml file)"
+msgstr "Espanso（单个 .yml 文件）"
 
 msgid "Every Supporter feature is on. Thank you."
 msgstr "所有支持者功能均已开启。谢谢。"
@@ -1756,6 +1771,9 @@ msgstr "粘贴"
 msgid "Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere."
 msgstr "粘贴许可证密钥即可开启支持者功能。密钥只在这台电脑上验证，不会发送到任何地方。"
 
+msgid "Paste as…"
+msgstr "粘贴为…"
+
 msgid "Paste key for {}"
 msgstr "{} 的粘贴键"
 
@@ -1840,6 +1858,9 @@ msgstr "可自定价格，最低 A$5，建议 A$8。一次性付费，包括所�
 msgid "People & Body"
 msgstr "人物与身体"
 
+msgid "PhraseExpress export (CSV)"
+msgstr "PhraseExpress 导出文件（CSV）"
+
 msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
 msgstr "选择面板的位置。你可以随时在设置中更改，还可设置其他边缘、切换应用时隐藏以及任务栏按钮。"
 
@@ -1878,6 +1899,9 @@ msgstr "已置顶的片段"
 
 msgid "Placeholders"
 msgstr "占位符"
+
+msgid "Plain text"
+msgstr "纯文本"
 
 msgid "Press the new shortcut"
 msgstr "按下新的快捷键"
@@ -2517,6 +2541,9 @@ msgstr "你复制的文本会按最新优先显示在这里，直到你清除或
 msgid "Text you copy shows up here for {} days. Save the useful ones to a list."
 msgstr "你复制的文本会在这里保留 {} 天。把有用的保存到列表中。"
 
+msgid "TextExpander export (CSV)"
+msgstr "TextExpander 导出文件（CSV）"
+
 msgid "That app"
 msgstr "该应用"
 
@@ -2538,14 +2565,26 @@ msgstr "这不是 Snipdeck 许可证密钥。密钥以 SNIP1 开头。"
 msgid "That is too many files to add at once."
 msgstr "一次添加的文件太多。"
 
+msgid "That isn't a Beeftext export."
+msgstr "这不是 Beeftext 导出文件。"
+
 msgid "That isn't a CopyQ export."
 msgstr "这不是 CopyQ 导出文件。"
 
 msgid "That isn't a Ditto database."
 msgstr "这不是 Ditto 数据库。"
 
+msgid "That isn't a PhraseExpress CSV export."
+msgstr "这不是 PhraseExpress 的 CSV 导出文件。"
+
 msgid "That isn't a Snipdeck file, or it is damaged."
 msgstr "这不是 Snipdeck 文件，或者文件已损坏。"
+
+msgid "That isn't a TextExpander CSV export."
+msgstr "这不是 TextExpander 的 CSV 导出文件。"
+
+msgid "That isn't an Espanso configuration."
+msgstr "这不是 Espanso 配置。"
 
 msgid "That key is not for Snipdeck Supporter."
 msgstr "该密钥不适用于 Snipdeck Supporter。"
@@ -2718,6 +2757,9 @@ msgstr "平铺视图"
 msgid "Title"
 msgstr "标题"
 
+msgid "Title Case"
+msgstr "首字母大写"
+
 msgid "Title, colour, tags, privacy"
 msgstr "标题、颜色、标签、隐私"
 
@@ -2745,6 +2787,9 @@ msgstr "旅行与地点"
 msgid "Tray icon click opens"
 msgstr "点击托盘图标时打开"
 
+msgid "Trimmed"
+msgstr "去除首尾空白"
+
 msgid "Troubleshoot"
 msgstr "故障排除"
 
@@ -2768,6 +2813,9 @@ msgstr "输入命令"
 
 msgid "Type {} to confirm"
 msgstr "输入 {} 以确认"
+
+msgid "UPPERCASE"
+msgstr "大写"
 
 msgid "Undid {}"
 msgstr "已撤销：{}"
@@ -3067,6 +3115,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "标签：{}"
 
+msgid "lowercase"
+msgstr "小写"
+
 msgid "move"
 msgstr "移动"
 
@@ -3111,6 +3162,9 @@ msgstr "重新排序"
 
 msgid "s"
 msgstr "秒"
+
+msgid "slug-like-this"
+msgstr "短链接式（slug-like-this）"
 
 msgid "snip snipping capture screen picture image"
 msgstr "截取 截图 屏幕 图片 图像"

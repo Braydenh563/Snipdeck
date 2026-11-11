@@ -319,7 +319,10 @@ fn render(
         window.set_preview(if fill.masked {
             crate::binding::MASKED_PREVIEW.into()
         } else {
-            fill.preview.as_str().into()
+            let new_id = window.global::<ui::FormTexts<'_>>().invoke_new_id();
+            fill.preview
+                .replace(&crate::fill::preview_uuid(), new_id.as_str())
+                .into()
         });
     }
     if differs(&|p| p.copies == copies) {

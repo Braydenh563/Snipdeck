@@ -1,6 +1,7 @@
 //! Item actions and the Trash with its Undo.
 
 use crate::history::{Action, Change};
+use snipdeck_core::template::transform::Transform;
 use snipdeck_core::{Feature, Item, ItemId, Name, Placement, Tag};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::{ItemRepo, TrashRepo, Trashable};
@@ -55,12 +56,27 @@ where
             }
             MainAction::Pin => self.pin(&items),
             MainAction::Duplicate => self.duplicate(&items),
-            MainAction::Move | MainAction::Tag => self.main.set_chooser(targets),
+            MainAction::Move | MainAction::Tag | MainAction::PasteAs => {
+                self.main.set_chooser(targets);
+            }
             MainAction::Delete => self.trash_items(&items),
             MainAction::Restore => self.restore(&targets),
             MainAction::DeleteForever => self.delete_forever(&targets),
         }
         None
+    }
+
+    /// The *Paste as…* chooser picked choice `index` (in the order of [`Transform::ALL`]): the
+    /// item it was opened for is pasted through it, as plain text with the caret at the end.
+    pub fn main_paste_as(&mut self, index: usize) -> Option<UseResult> {
+        self.main_fresh();
+        let id = self.main.chooser().iter().find_map(|k| match k {
+            Key::Item(id) => Some(*id),
+            _ => None,
+        });
+        self.main.set_chooser(Vec::new());
+        let transform = Transform::ALL.get(index).copied()?;
+        Some(self.use_item_as(id?, transform))
     }
 
     /// Ctrl+C on the Main list: the selection (when more than one row is selected) or row

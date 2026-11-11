@@ -7,6 +7,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
+msgid "(new ID)"
+msgstr "(新しいID)"
+
 msgid "+{} more"
 msgstr "他 {} 件"
 
@@ -51,6 +54,9 @@ msgstr "マスターパスワードが有効です。機密スニペットを初
 
 msgid "A master password is part of Supporter."
 msgstr "マスターパスワードは Supporter に含まれます。"
+
+msgid "A new random ID each time"
+msgstr "毎回新しいランダムなID"
 
 msgid "A small window you can drag anywhere."
 msgstr "好きな場所にドラッグできる小さなウィンドウです。"
@@ -232,6 +238,9 @@ msgstr "保持するバックアップ数"
 
 msgid "Backups, export, light and dark, 7 languages"
 msgstr "バックアップ、エクスポート、ライト／ダークテーマ、7言語"
+
+msgid "Beeftext export"
+msgstr "Beeftext のエクスポート"
 
 msgid "Below"
 msgstr "下"
@@ -901,6 +910,12 @@ msgstr "ライブラリを削除…"
 
 msgid "Escape"
 msgstr "Esc"
+
+msgid "Espanso (folder)"
+msgstr "Espanso（フォルダー）"
+
+msgid "Espanso (single .yml file)"
+msgstr "Espanso（.yml ファイル1つ）"
 
 msgid "Every Supporter feature is on. Thank you."
 msgstr "サポーターの機能がすべて使えます。ありがとうございます。"
@@ -1756,6 +1771,9 @@ msgstr "貼り付け"
 msgid "Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere."
 msgstr "ライセンスキーを貼り付けるとサポーターが有効になります。キーはこのPCで確認され、何も送信されません。"
 
+msgid "Paste as…"
+msgstr "形式を指定して貼り付け…"
+
 msgid "Paste key for {}"
 msgstr "{} の貼り付けキー"
 
@@ -1840,6 +1858,9 @@ msgstr "A$5から、お好きな金額でお支払いください（推奨はA$8
 msgid "People & Body"
 msgstr "人と体"
 
+msgid "PhraseExpress export (CSV)"
+msgstr "PhraseExpress のエクスポート（CSV）"
+
 msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
 msgstr "パネルの配置を選びます。設定でいつでも変更でき、他の端、アプリを切り替えたときの非表示、タスクバーのボタンも設定できます。"
 
@@ -1878,6 +1899,9 @@ msgstr "ピン留めしたスニペット"
 
 msgid "Placeholders"
 msgstr "プレースホルダー"
+
+msgid "Plain text"
+msgstr "プレーンテキスト"
 
 msgid "Press the new shortcut"
 msgstr "新しいショートカットを押してください"
@@ -2517,6 +2541,9 @@ msgstr "コピーしたテキストが新しい順にここに表示されます
 msgid "Text you copy shows up here for {} days. Save the useful ones to a list."
 msgstr "コピーしたテキストはここに{}日間表示されます。役立つものはリストに保存してください。"
 
+msgid "TextExpander export (CSV)"
+msgstr "TextExpander のエクスポート（CSV）"
+
 msgid "That app"
 msgstr "そのアプリ"
 
@@ -2538,14 +2565,26 @@ msgstr "Snipdeck のライセンスキーではありません。キーは SNIP1
 msgid "That is too many files to add at once."
 msgstr "一度に追加するファイルが多すぎます。"
 
+msgid "That isn't a Beeftext export."
+msgstr "これは Beeftext のエクスポートではありません。"
+
 msgid "That isn't a CopyQ export."
 msgstr "CopyQ のエクスポートファイルではありません。"
 
 msgid "That isn't a Ditto database."
 msgstr "Ditto のデータベースではありません。"
 
+msgid "That isn't a PhraseExpress CSV export."
+msgstr "これは PhraseExpress の CSV エクスポートではありません。"
+
 msgid "That isn't a Snipdeck file, or it is damaged."
 msgstr "Snipdeck のファイルではないか、破損しています。"
+
+msgid "That isn't a TextExpander CSV export."
+msgstr "これは TextExpander の CSV エクスポートではありません。"
+
+msgid "That isn't an Espanso configuration."
+msgstr "これは Espanso の設定ではありません。"
 
 msgid "That key is not for Snipdeck Supporter."
 msgstr "そのキーは Snipdeck Supporter 用ではありません。"
@@ -2718,6 +2757,9 @@ msgstr "タイル表示"
 msgid "Title"
 msgstr "タイトル"
 
+msgid "Title Case"
+msgstr "各単語の先頭を大文字"
+
 msgid "Title, colour, tags, privacy"
 msgstr "タイトル、色、タグ、プライバシー"
 
@@ -2745,6 +2787,9 @@ msgstr "旅行と場所"
 msgid "Tray icon click opens"
 msgstr "トレイアイコンのクリックで開く"
 
+msgid "Trimmed"
+msgstr "前後の空白を削除"
+
 msgid "Troubleshoot"
 msgstr "トラブルシューティング"
 
@@ -2768,6 +2813,9 @@ msgstr "コマンドを入力"
 
 msgid "Type {} to confirm"
 msgstr "確認のため {} と入力"
+
+msgid "UPPERCASE"
+msgstr "大文字"
 
 msgid "Undid {}"
 msgstr "元に戻しました: {}"
@@ -3067,6 +3115,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "ラベル: {}"
 
+msgid "lowercase"
+msgstr "小文字"
+
 msgid "move"
 msgstr "移動"
 
@@ -3111,6 +3162,9 @@ msgstr "並べ替え"
 
 msgid "s"
 msgstr "秒"
+
+msgid "slug-like-this"
+msgstr "スラッグ（slug-like-this）"
 
 msgid "snip snipping capture screen picture image"
 msgstr "切り取り スクリーンショット 画面 画像 キャプチャ"

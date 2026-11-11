@@ -618,6 +618,7 @@ where
         wire!(on_item_action, |ctl, action, i| ctl
             .main_action(action_of(action), index(i)));
         wire!(on_move_chosen, |ctl, i| ctl.main_move_to(index(i)));
+        wire!(on_paste_as_chosen, |ctl, i| ctl.main_paste_as(index(i)));
         wire!(on_tag_toggled, |ctl, i, on| ctl
             .main_toggle_tag(index(i), on));
         wire!(on_reveal_requested, |ctl, i, on| ctl
@@ -1561,6 +1562,7 @@ fn action_of(action: ui::ItemAction) -> MainAction {
         ui::ItemAction::Duplicate => MainAction::Duplicate,
         ui::ItemAction::Move => MainAction::Move,
         ui::ItemAction::Tag => MainAction::Tag,
+        ui::ItemAction::PasteAs => MainAction::PasteAs,
         ui::ItemAction::Delete => MainAction::Delete,
         ui::ItemAction::Restore => MainAction::Restore,
         ui::ItemAction::DeleteForever => MainAction::DeleteForever,
