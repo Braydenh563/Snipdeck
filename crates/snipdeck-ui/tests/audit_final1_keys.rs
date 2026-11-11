@@ -48,6 +48,8 @@ const RING_DARK: [u8; 3] = [0x74, 0xAC, 0xFF];
 #[derive(Clone, Debug, PartialEq)]
 struct Stop {
     name: String,
+    role: String,
+    inner: String,
     x: f32,
     y: f32,
     w: f32,
@@ -60,7 +62,7 @@ fn focused(window: &slint::Window) -> Option<Stop> {
         .focus_item
         .borrow()
         .upgrade()?;
-    let mut cur: Option<ItemRc> = Some(item);
+    let mut cur: Option<ItemRc> = Some(item.clone());
     while let Some(i) = cur {
         if i.is_accessible() {
             let g = i.geometry();
@@ -71,6 +73,8 @@ fn focused(window: &slint::Window) -> Option<Stop> {
                 .to_string();
             return Some(Stop {
                 name,
+                role: format!("{:?}", i.accessible_role()),
+                inner: { let g = item.geometry(); let q = item.map_to_window(LogicalPoint::new(g.origin.x, g.origin.y)); format!("focus item at ({:.0},{:.0}) {:.0}x{:.0}", q.x, q.y, g.size.width, g.size.height) },
                 x: p.x,
                 y: p.y,
                 w: g.size.width,
@@ -117,6 +121,11 @@ fn tab(window: &slint::Window, back: bool) {
 
 /// Walks the stops with Tab until the first one comes round again (or `limit` presses), then back
 /// with Shift+Tab. Returns the problems found.
+/// A frame after a key press; the renderer has nothing to draw when the press changed nothing on screen.
+fn snap<C: ComponentHandle>(h: &Harness<C>) -> Option<Frame> {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| h.render_settled())).ok()
+}
+
 fn audit<C: ComponentHandle>(
     h: &Harness<C>,
     scene: &str,
@@ -127,19 +136,31 @@ fn audit<C: ComponentHandle>(
     let ring = if dark { RING_DARK } else { RING_LIGHT };
     let w = h.component.window();
     let mut out = Vec::new();
-    let _ = h.render_settled();
-    tab(w, false);
+    let first = h.render_settled();
     let mut stops: Vec<(Stop, Frame)> = Vec::new();
+    // A window that opens with a control focused starts the walk there.
+    if let Some(s) = focused(w) {
+        stops.push((s, first));
+    }
+    tab(w, false);
     loop {
-        let frame = h.render_settled();
-        let Some(s) = focused(w) else {
+        let mut cur = focused(w);
+        if cur.is_none() {
+            // Tab from the last stop leaves the window (to the OS); one more Tab comes back to the first.
+            tab(w, false);
+            cur = focused(w);
+        }
+        let Some(frame) = snap(h) else {
+            out.push(format!("{scene}: Tab {} changed nothing on screen (no visible focus)", stops.len() + 1));
+            tab(w, false);
+            continue;
+        };
+        let Some(s) = cur else {
             out.push(format!("{scene}: Tab {} left no focused control", stops.len() + 1));
             break;
         };
-        if let Some((first, _)) = stops.first() {
-            if *first == s {
-                break; // came round: no trap
-            }
+        if stops.iter().any(|(p, _)| p.name == s.name) {
+            break; // came round: no trap
         }
         stops.push((s, frame));
         if stops.len() > limit {
@@ -149,6 +170,9 @@ fn audit<C: ComponentHandle>(
         tab(w, false);
     }
     for (i, (s, f)) in stops.iter().enumerate() {
+        if s.role == "Groupbox" {
+            out.push(format!("{scene}: stop {i} {:?} is a group, not a control ({})", s.name, s.inner));
+        }
         if s.name.trim().is_empty() {
             out.push(format!("{scene}: stop {i} at ({:.0},{:.0}) has no name", s.x, s.y));
         }
@@ -159,29 +183,42 @@ fn audit<C: ComponentHandle>(
                 s.name, s.x, s.y, s.w, s.h
             ));
         }
-        if i > 0 {
-            let p = &stops[i - 1].0;
+    }
+    // Visual order: the cycle may break once (where it wraps); a second break means focus jumps around. Pages
+    // that scroll (Tips, Settings) move their stops between presses, so window y cannot be compared there.
+    if !scene.contains("tab 3") && !scene.starts_with("settings") && !(scene.starts_with("item") && scene.contains("2.25x")) && stops.len() > 2 {
+        let n = stops.len();
+        let mut breaks = Vec::new();
+        for i in 0..n {
+            let (p, s) = (&stops[i].0, &stops[(i + 1) % n].0);
             let same_row = (s.y - p.y).abs() < p.h.min(s.h) / 2.0;
             let ok = if same_row { s.x >= p.x - 1.0 } else { s.y >= p.y - 1.0 };
             if !ok {
-                out.push(format!(
-                    "{scene}: stop {i} {:?} ({:.0},{:.0}) follows {:?} ({:.0},{:.0}) against the visual order",
-                    s.name, s.x, s.y, p.name, p.x, p.y
-                ));
+                breaks.push(format!("{:?} ({:.0},{:.0}) -> {:?} ({:.0},{:.0})", p.name, p.x, p.y, s.name, s.x, s.y));
             }
+        }
+        if breaks.len() > 1 {
+            let all: Vec<String> = stops.iter().map(|(s, _)| format!("{} ({:.0},{:.0})", s.name, s.x, s.y)).collect();
+            out.push(format!("{scene}: focus order jumps against the visual order at {}; order: {}", breaks.join("; "), all.join(" > ")));
         }
     }
     // Shift+Tab from the first stop goes to the last, and back again reaches the same stops.
     if stops.len() > 1 {
-        tab(w, true);
-        let last = focused(w);
-        if last.as_ref() != stops.last().map(|(s, _)| s) {
+        let back = || {
+            tab(w, true);
+            if focused(w).is_none() {
+                tab(w, true); // the first Shift+Tab left the window
+            }
+            focused(w)
+        };
+        let last = back();
+        if last.as_ref().map(|l| &l.name) != stops.last().map(|(s, _)| &s.name) {
             out.push(format!("{scene}: Shift+Tab from the first stop did not reach the last"));
         }
         for (s, _) in stops.iter().rev().skip(1) {
-            tab(w, true);
-            if focused(w).as_ref() != Some(s) {
-                out.push(format!("{scene}: Shift+Tab walk differs at {:?}", s.name));
+            let got = back();
+            if got.as_ref().map(|g| &g.name) != Some(&s.name) {
+                out.push(format!("{scene}: Shift+Tab walk differs: expected {:?}, got {:?}", s.name, got.map(|g| g.name)));
                 break;
             }
         }
@@ -191,7 +228,7 @@ fn audit<C: ComponentHandle>(
     for target in [0, n / 2, n.saturating_sub(1)] {
         // Walk from wherever we are to `target` with Tab.
         for _ in 0..(2 * n) {
-            if focused(w).as_ref() == stops.get(target).map(|(s, _)| s) {
+            if focused(w).map(|f| f.name) == stops.get(target).map(|(s, _)| s.name.clone()) {
                 break;
             }
             tab(w, false);
