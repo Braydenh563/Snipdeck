@@ -51,7 +51,10 @@ fn field_values(root: &impl ElementRoot) -> Vec<(ElementHandle, String)> {
         .find_all()
         .into_iter()
         .map(|e| {
-            let v = e.accessible_value().map(|v| v.to_string()).unwrap_or_default();
+            let v = e
+                .accessible_value()
+                .map(|v| v.to_string())
+                .unwrap_or_default();
             (e, v)
         })
         .collect()
@@ -68,8 +71,18 @@ struct Walk {
 }
 
 /// Presses `tab` up to `stops` times; `help` counts the key handler's F1 callback.
-fn walk(ui: &impl ComponentHandle, help: &Rc<Cell<u32>>, tab: Key, stops: usize, height: f32) -> Walk {
-    let mut out = Walk { lost: vec![], hidden: vec![], reached: vec![] };
+fn walk(
+    ui: &impl ComponentHandle,
+    help: &Rc<Cell<u32>>,
+    tab: Key,
+    stops: usize,
+    height: f32,
+) -> Walk {
+    let mut out = Walk {
+        lost: vec![],
+        hidden: vec![],
+        reached: vec![],
+    };
     for stop in 0..stops {
         if tab == Key::Backtab {
             chord(ui.window(), &[Key::Shift], &key(Key::Backtab));
@@ -90,10 +103,14 @@ fn walk(ui: &impl ComponentHandle, help: &Rc<Cell<u32>>, tab: Key, stops: usize,
         settle();
         for ((e, was), (_, now)) in snapshot.iter().zip(field_values(ui)) {
             if *was != now {
-                let label = e.accessible_label().map(|l| l.to_string()).unwrap_or_default();
+                let label = e
+                    .accessible_label()
+                    .map(|l| l.to_string())
+                    .unwrap_or_default();
                 let (p, s) = (e.absolute_position(), e.size());
                 if p.y < 0.0 || p.y + s.height > height {
-                    out.hidden.push(format!("{label} at y {} h {} in {height}", p.y, s.height));
+                    out.hidden
+                        .push(format!("{label} at y {} h {} in {height}", p.y, s.height));
                 }
                 out.reached.push(label);
             }
@@ -103,8 +120,20 @@ fn walk(ui: &impl ComponentHandle, help: &Rc<Cell<u32>>, tab: Key, stops: usize,
 }
 
 fn assert_kept(name: &str, w: &Walk) {
-    assert!(w.lost.is_empty(), "{name}: the focus was lost at Tab stop(s) {:?}", w.lost);
-    assert!(w.hidden.is_empty(), "{name}: focused field not scrolled into view: {:?}", w.hidden);
+    assert!(
+        !w.reached.is_empty(),
+        "{name}: no text field took the focus, so the walk proved nothing"
+    );
+    assert!(
+        w.lost.is_empty(),
+        "{name}: the focus was lost at Tab stop(s) {:?}",
+        w.lost
+    );
+    assert!(
+        w.hidden.is_empty(),
+        "{name}: focused field not scrolled into view: {:?}",
+        w.hidden
+    );
 }
 
 fn item_editor(kind: i32, height: f32) -> (ItemEditor, Rc<Cell<u32>>) {
