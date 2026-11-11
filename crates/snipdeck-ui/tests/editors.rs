@@ -222,6 +222,17 @@ fn item_editor_at_225_percent_text_size() {
 }
 
 #[test]
+fn item_editor_template_placeholders_at_420px_and_225_percent_text_size() {
+    // The placeholder grid under pressure: the chip column is capped, so the help text wraps instead of leaving the window.
+    let h = item((420, 2600), false);
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    h.component.set_kind_index(3);
+    h.component.set_prompted_available(false);
+    h.component.set_content("Due on {date}.".into());
+    assert_golden("item-editor-template-narrow-scale-light", &render(&h));
+}
+
+#[test]
 fn item_editor_asks_before_discarding_and_scrolls_to_the_focus() {
     let h = item(ITEM, false);
     let _ = render(&h);

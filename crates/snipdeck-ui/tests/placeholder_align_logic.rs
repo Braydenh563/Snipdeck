@@ -11,7 +11,7 @@
     reason = "test code: a failure is a failed test"
 )]
 
-use i_slint_backend_testing::{AccessibleRole, ElementHandle, ElementQuery, ElementRoot};
+use i_slint_backend_testing::{AccessibleRole, ElementHandle, ElementQuery};
 use slint::{ComponentHandle, Global};
 use snipdeck_ui::{ItemEditor, SystemLook};
 
@@ -51,14 +51,24 @@ struct Rows {
 }
 
 fn rows(ui: &ItemEditor) -> Rows {
-    let help = ElementQuery::from_root(ui)
+    // One element per row: the query reports each instance once per repeated copy, so drop duplicates.
+    let mut help: Vec<(f32, f32, f32)> = ElementQuery::from_root(ui)
         .match_descendants()
-        .match_id("ItemEditor::ph-help")
+        .match_type_name("PlaceholderHelpText")
         .find_all()
         .into_iter()
-        .map(|e| (e.absolute_position().x, e.size().width))
+        .map(|e| {
+            (
+                e.absolute_position().x,
+                e.absolute_position().y,
+                e.size().width,
+            )
+        })
         .collect();
-    let chip_els: Vec<ElementHandle> = ElementQuery::from_root(ui)
+    help.sort_by(|a, b| a.1.total_cmp(&b.1).then(a.0.total_cmp(&b.0)));
+    help.dedup_by(|a, b| (a.0 - b.0).abs() < 0.5 && (a.1 - b.1).abs() < 0.5);
+    let help = help.into_iter().map(|(x, _, w)| (x, w)).collect();
+    let mut chip_els: Vec<ElementHandle> = ElementQuery::from_root(ui)
         .match_descendants()
         .match_accessible_role(AccessibleRole::Button)
         .find_all()
@@ -68,10 +78,20 @@ fn rows(ui: &ItemEditor) -> Rows {
                 .is_some_and(|l| l.starts_with("Insert {"))
         })
         .collect();
-    let badges = ElementHandle::find_by_accessible_label(ui, "Supporter")
+    chip_els.sort_by(|a, b| a.absolute_position().y.total_cmp(&b.absolute_position().y));
+    chip_els.dedup_by(|a, b| (a.absolute_position().y - b.absolute_position().y).abs() < 0.5);
+    let mut badges: Vec<(f32, f32, f32)> = ElementHandle::find_by_accessible_label(ui, "Supporter")
         .filter(|e| e.accessible_role() == Some(AccessibleRole::Text))
-        .map(|e| (e.absolute_position().x, e.absolute_position().y, e.size().height))
+        .map(|e| {
+            (
+                e.absolute_position().x,
+                e.absolute_position().y,
+                e.size().height,
+            )
+        })
         .collect();
+    badges.sort_by(|a, b| a.1.total_cmp(&b.1));
+    badges.dedup_by(|a, b| (a.0 - b.0).abs() < 0.5 && (a.1 - b.1).abs() < 0.5);
     Rows {
         help,
         chips: chip_els.iter().map(|e| e.absolute_position().x).collect(),
