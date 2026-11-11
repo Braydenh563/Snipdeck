@@ -291,8 +291,15 @@ where
     pub(super) fn item_menu_entries(&self, id: ItemId) -> Vec<ItemMenuEntry> {
         let row = self.menu_row(id);
         if row.as_ref().is_some_and(|r| r.header.is_some()) {
+            let at = self.model.rows().iter().position(|r| r.id == id);
             return vec![
                 ItemMenuEntry::RenameGroup,
+                ItemMenuEntry::MoveUp {
+                    enabled: at.is_some_and(|at| self.can_move_group(at, -1)),
+                },
+                ItemMenuEntry::MoveDown {
+                    enabled: at.is_some_and(|at| self.can_move_group(at, 1)),
+                },
                 ItemMenuEntry::Ungroup,
                 ItemMenuEntry::Separator,
                 ItemMenuEntry::DeleteGroup,
@@ -410,6 +417,11 @@ where
         }
         self.menu = PanelMenu::None;
         let targets = std::mem::take(&mut self.menu_targets);
+        let is_header = self
+            .model
+            .rows()
+            .iter()
+            .any(|r| r.id == id && r.header.is_some());
         match entry {
             ItemMenuEntry::Sensitive { .. } => {
                 self.toggle_item_sensitive(id);
@@ -434,6 +446,10 @@ where
             }
             ItemMenuEntry::Stack { .. } => {
                 self.toggle_stack_mark(id);
+                Vec::new()
+            }
+            ItemMenuEntry::MoveUp { .. } | ItemMenuEntry::MoveDown { .. } if is_header => {
+                self.choose_group_entry(id, entry);
                 Vec::new()
             }
             ItemMenuEntry::MoveUp { enabled } => {
