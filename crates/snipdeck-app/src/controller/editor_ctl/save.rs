@@ -403,7 +403,7 @@ mod tests {
         let before = item();
         let mut after = before.clone();
         after.label = Some(ItemLabel::Blue);
-        let (action, changes) = edit_step(&before, &after, Some("hi", None), None).unwrap();
+        let (action, changes) = edit_step(&before, &after, Some("hi"), None, None).unwrap();
         assert_eq!(action, Action::Colour);
         assert_eq!(changes.len(), 1);
     }
@@ -412,7 +412,7 @@ mod tests {
     fn a_text_change_keeps_both_texts_and_a_sensitive_one_is_not_recorded() {
         let before = item();
         let after = before.clone();
-        let (action, changes) = edit_step(&before, &after, Some("old", None), Some("new")).unwrap();
+        let (action, changes) = edit_step(&before, &after, Some("old"), Some("new"), None).unwrap();
         assert_eq!(action, Action::Edit);
         let Change::Update {
             before: b,
@@ -427,7 +427,7 @@ mod tests {
         );
         let mut secret = before.clone();
         secret.sensitive = true;
-        assert!(edit_step(&before, &secret, Some("old", None), Some("new")).is_none());
-        assert!(edit_step(&before, &after, None, Some("new", None)).is_none());
+        assert!(edit_step(&before, &secret, Some("old"), Some("new"), None).is_none());
+        assert!(edit_step(&before, &after, None, Some("new"), None).is_none());
     }
 }
