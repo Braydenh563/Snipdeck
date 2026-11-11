@@ -760,6 +760,7 @@ fn the_setting_off_keeps_the_panel_open_and_a_failed_use_never_hides() {
 
 use crate::typing_worker::Typed;
 use snipdeck_core::{Fired, Trigger};
+use snipdeck_platform::keys::Key;
 use snipdeck_store::TriggerRepo;
 
 /// A world where typing expansion is on and item `n` has the trigger `code`.
@@ -1256,9 +1257,72 @@ fn sensitive_items_are_never_suggested() {
 }
 
 #[test]
-fn the_hint_flag_reaches_the_hook() {
+fn the_ui_thread_only_ever_lowers_the_hint_flag() {
     let (mut w, typing) = suggest_world(";two");
-    w.ctl.set_hint_up(true);
-    w.ctl.set_hint_up(false);
-    assert_eq!(typing.hint_history(), vec![true, false]);
+    w.ctl.hint_down(3);
+    w.ctl.hint_down(9);
+    assert_eq!(typing.hint_history(), vec![3, 9]);
+}
+
+#[test]
+fn a_skipped_expansion_is_reported_back_so_the_next_trigger_gets_its_boundary() {
+    let mut w = typing_world(1, ";two");
+    let typing = crate::host::FakeTyping::default();
+    w.ctl.set_typing(Box::new(typing.clone()));
+    let fired = typed(&w, ";two");
+    // A Snipdeck window is in use: nothing is typed.
+    w.ctl.set_own_window_active(true);
+    let out = w
+        .ctl
+        .expand_typed(&Typed::new(fired.clone(), false, || true));
+    assert_eq!(out, TypedOutcome::Skipped);
+    assert_eq!(typing.not_expanded_history(), vec![fired.clone()]);
+    // An expansion that goes out is not reported.
+    w.ctl.set_own_window_active(false);
+    let out = w.ctl.expand_typed(&Typed::new(fired, false, || true));
+    assert!(matches!(out, TypedOutcome::Expanded(_)));
+    assert_eq!(typing.not_expanded_history().len(), 1);
+}
+
+#[test]
+fn a_window_that_is_no_longer_in_front_stops_an_expansion_and_a_hint() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    let front = std::sync::Arc::new(std::sync::atomic::AtomicIsize::new(5));
+    let seen = std::sync::Arc::clone(&front);
+    let at_fire: crate::typing_worker::Foreground =
+        std::sync::Arc::new(move || seen.load(std::sync::atomic::Ordering::SeqCst));
+    let typed_in = |fired: Fired| Typed::new(fired, false, || true).in_window(5, at_fire.clone());
+    // Another window (same app, a second Notepad) came to the front after the trigger.
+    front.store(6, std::sync::atomic::Ordering::SeqCst);
+    assert_eq!(
+        w.ctl.expand_typed(&typed_in(fired.clone())),
+        TypedOutcome::Skipped
+    );
+    assert!(backspaces_sent(&mut w).is_empty(), "nothing was typed");
+    front.store(5, std::sync::atomic::Ordering::SeqCst);
+    assert!(matches!(
+        w.ctl.expand_typed(&typed_in(fired)),
+        TypedOutcome::Expanded(_)
+    ));
+}
+
+#[test]
+fn a_tab_given_back_to_the_app_is_one_injected_tab() {
+    let mut w = typing_world(1, ";two");
+    w.ctl.replay_tab();
+    let sent = backspaces_sent(&mut w);
+    assert_eq!(
+        sent,
+        vec![vec![
+            KeyEvent {
+                key: Key::Tab,
+                down: true
+            },
+            KeyEvent {
+                key: Key::Tab,
+                down: false
+            },
+        ]]
+    );
 }

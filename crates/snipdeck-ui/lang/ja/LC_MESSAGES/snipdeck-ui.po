@@ -61,6 +61,9 @@ msgstr "マスターパスワードでデッキ全体をロックできます。
 msgid "A new random ID each time"
 msgstr "毎回新しいランダムなID"
 
+msgid "A one-character trigger fires every time you type it, even inside words. Two or more characters are safer."
+msgstr "1文字のトリガーは、単語の途中でも入力するたびに実行されます。2文字以上のほうが安全です。"
+
 msgid "A small window you can drag anywhere."
 msgstr "好きな場所にドラッグできる小さなウィンドウです。"
 

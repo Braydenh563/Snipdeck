@@ -230,6 +230,8 @@ struct Core<S, C, K, T> {
     host: Rc<dyn PopupHost>,
     /// The suggestion hint at the caret (made on first use).
     hint: crate::suggest_hint::SuggestHint,
+    /// The number of the hint that is up, 0 for none.
+    hint_id: std::cell::Cell<u64>,
     on_effect: Box<dyn Fn(&Effect)>,
     /// What the window shows now, so a redraw sets only what changed (re-setting the rows
     /// model would reset the list's scroll position on every toast tick).
@@ -268,6 +270,7 @@ where
                 controller: Rc::clone(controller),
                 window: window.as_weak(),
                 hint: crate::suggest_hint::SuggestHint::new(Rc::clone(&host)),
+                hint_id: std::cell::Cell::new(0),
                 host,
                 on_effect,
                 shown: RefCell::new(None),
@@ -287,16 +290,19 @@ where
         core
     }
 
-    /// Runs `f` on the controller, then redraws.
-    /// Takes the suggestion hint down and tells the keyboard hook `Tab` is its own again.
+    /// Takes the suggestion hint down (if one is up) and lets the keyboard hook have `Tab`
+    /// back.
     fn hint_down(&self) {
         self.hint.hide_hint();
-        self.controller.borrow_mut().set_hint_up(false);
+        let id = self.hint_id.replace(0);
+        if id != 0 {
+            self.controller.borrow_mut().hint_down(id);
+        }
     }
 
     /// What the typing worker found (SPEC slice 5b and 6): an expansion, or the suggestion hint.
     fn typed(self: &Rc<Self>, out: crate::typing_worker::Out) {
-        use crate::{controller::HintOutcome, typing_worker::Out};
+        use crate::{controller::HintOutcome, controller::TypedOutcome, typing_worker::Out};
         match out {
             Out::Expand(typed) => {
                 self.hint_down();
@@ -306,12 +312,17 @@ where
             }
             Out::Accept(typed) => {
                 self.hint_down();
-                self.act(|ctl| {
-                    let _ = ctl.accept_suggested(&typed);
-                });
+                let outcome = self.act(|ctl| ctl.accept_suggested(&typed));
+                if outcome == TypedOutcome::Skipped {
+                    // The Tab was swallowed for a hint that could not be accepted after all.
+                    self.controller.borrow_mut().replay_tab();
+                }
             }
-            Out::Hide => self.hint_down(),
-            Out::Show(typed) => {
+            Out::PassTab => self.controller.borrow_mut().replay_tab(),
+            // A hide for an older hint (a worker that was switched off and on again) is stale.
+            Out::Hide(id) if id == self.hint_id.get() => self.hint_down(),
+            Out::Hide(_) => {}
+            Out::Show(typed, id) => {
                 let (outcome, look) = {
                     let mut ctl = self.controller.borrow_mut();
                     let outcome = ctl.suggest_typed(&typed);
@@ -324,12 +335,21 @@ where
                     };
                     (outcome, look)
                 };
-                match outcome {
+                let up = match outcome {
                     HintOutcome::Show { title, caret } => {
-                        let up = self.hint.show_hint(&title, Some(caret), &look);
-                        self.controller.borrow_mut().set_hint_up(up);
+                        self.hint.show_hint(&title, Some(caret), &look)
                     }
-                    HintOutcome::Hide => self.hint_down(),
+                    HintOutcome::Hide => {
+                        self.hint.hide_hint();
+                        false
+                    }
+                };
+                if up {
+                    self.hint_id.set(id);
+                } else {
+                    self.hint_id.set(0);
+                    // Not shown: the hook must not take a Tab for it.
+                    self.controller.borrow_mut().hint_down(id);
                 }
             }
         }

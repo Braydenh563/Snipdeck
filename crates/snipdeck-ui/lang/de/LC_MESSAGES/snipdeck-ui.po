@@ -61,6 +61,9 @@ msgstr "Ein Master-Passwort sperrt das ganze Deck."
 msgid "A new random ID each time"
 msgstr "Jedes Mal eine neue zufällige ID"
 
+msgid "A one-character trigger fires every time you type it, even inside words. Two or more characters are safer."
+msgstr "Ein Kürzel aus einem Zeichen löst jedes Mal aus, wenn du es tippst, auch mitten in Wörtern. Zwei oder mehr Zeichen sind sicherer."
+
 msgid "A small window you can drag anywhere."
 msgstr "Ein kleines Fenster, das du überallhin ziehen kannst."
 

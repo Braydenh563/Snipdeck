@@ -17,11 +17,21 @@ use snipdeck_platform::typing::TypedEvent;
 /// How often the worker looks for a new trigger list while no key arrives.
 const POLL: Duration = Duration::from_millis(100);
 
+/// Polls without any key before a shown hint comes down by itself (5 s): the user went on
+/// elsewhere, for example into another field of the same window.
+const HINT_IDLE_POLLS: u32 = 50;
+
+/// The number the next shown hint gets (0 is "no hint": the hook's flag value for "off").
+static NEXT_HINT: AtomicU64 = AtomicU64::new(1);
+
 /// What follows an expansion, as far as the matcher is told: the text ends in a letter, so the
 /// next trigger needs a boundary of its own (typing `brb` twice must not expand twice). The
 /// worker does not know the item's text; a text that ends in a boundary costs one extra
 /// boundary character, never a wrong expansion.
 const AFTER_EXPANSION: Option<char> = Some('a');
+
+/// Reads the foreground window's handle.
+pub type Foreground = Arc<dyn Fn() -> isize + Send + Sync>;
 
 /// A completed trigger on its way to the UI thread.
 pub struct Typed {
@@ -30,6 +40,7 @@ pub struct Typed {
     /// The focused element is a password box (or could not be told).
     pub password: bool,
     fresh: Box<dyn Fn() -> bool + Send + Sync>,
+    window: Option<(isize, Foreground)>,
 }
 
 impl Typed {
@@ -44,7 +55,22 @@ impl Typed {
             fired,
             password,
             fresh: Box::new(fresh),
+            window: None,
         }
+    }
+
+    /// The trigger was typed in window `at`; `now` reads the foreground window.
+    #[must_use]
+    pub fn in_window(mut self, at: isize, now: Foreground) -> Self {
+        self.window = Some((at, now));
+        self
+    }
+
+    /// The foreground window is still the one the trigger was typed in (a window made for a
+    /// test, or without a handle, is always the same).
+    #[must_use]
+    pub fn same_window(&self) -> bool {
+        self.window.as_ref().is_none_or(|(at, now)| now() == *at)
     }
 
     /// No key has been pressed since the trigger was completed. Ask it right before the
@@ -70,12 +96,61 @@ impl std::fmt::Debug for Typed {
 pub enum Out {
     /// A trigger was completed (expansion).
     Expand(Typed),
-    /// A suggestion stands: show the hint. Accepting it would do what the [`Typed`] says.
-    Show(Typed),
-    /// The hint that was shown no longer stands.
-    Hide,
+    /// A suggestion stands: show hint number `.1`. Accepting it would do what the [`Typed`] says.
+    Show(Typed, u64),
+    /// Hint number `.0` no longer stands (a hide for an older hint changes nothing).
+    Hide(u64),
     /// `Tab` was pressed while the hint showed: insert the suggested item.
     Accept(Typed),
+    /// The hook swallowed a `Tab` for a hint that was gone by then (or in a password box): the
+    /// app should get it after all.
+    PassTab,
+}
+
+/// What the UI thread tells the worker.
+pub enum Update {
+    /// A new trigger list.
+    List(TypingList),
+    /// The expansion for `fired` was not sent (a Snipdeck window, an excluded app, ...): the
+    /// code stays in the app, so the next trigger needs a boundary after its last character.
+    NotExpanded(Fired),
+}
+
+/// What the worker shares with the hook and the platform.
+pub struct Env {
+    /// The hook's count of events (see [`Typed::still_current`]).
+    pub sent: Arc<AtomicU64>,
+    /// Events the hook counted but could not send: the worker takes them in at the next reset.
+    pub lost: Arc<AtomicU64>,
+    /// The hook's swallow flag: the number of the hint a plain `Tab` belongs to, 0 for none. Only
+    /// the worker sets it (when a hint is handed over) and clears it (when it comes down).
+    pub tab: Arc<AtomicU64>,
+    /// The foreground window.
+    pub foreground: Foreground,
+    /// How often the worker looks around while no key arrives.
+    pub poll: Duration,
+    /// Polls without a key before a shown hint comes down.
+    pub idle_polls: u32,
+}
+
+impl Env {
+    /// The shared state with the normal timings.
+    #[must_use]
+    pub fn new(
+        sent: Arc<AtomicU64>,
+        lost: Arc<AtomicU64>,
+        tab: Arc<AtomicU64>,
+        foreground: Foreground,
+    ) -> Self {
+        Self {
+            sent,
+            lost,
+            tab,
+            foreground,
+            poll: POLL,
+            idle_polls: HINT_IDLE_POLLS,
+        }
+    }
 }
 
 /// What the worker watches for: the triggers that expand and, when suggestions are on, the
@@ -89,6 +164,8 @@ pub struct TypingList {
 
 /// The suggestion the worker holds for the code being typed.
 struct Hint {
+    id: u64,
+    window: isize,
     item: ItemId,
     trigger: Trigger,
     chars: usize,
@@ -182,14 +259,14 @@ impl Typist {
 
 /// Runs until `events` is closed (the hook stopped).
 ///
-/// `sent` is the hook's count of events; `password` says whether the focused element is a
-/// password box (it may block); `deliver` gets what the UI thread should act on. If the user
-/// typed anything after a trigger, whether during the password check or later (see
+/// `env` is what the worker shares with the hook; `password` says whether the focused element
+/// is a password box (it may block); `deliver` gets what the UI thread should act on. If the
+/// user typed anything after a trigger, whether during the password check or later (see
 /// [`Typed::still_current`]), the expansion is dropped: its Backspaces would erase the wrong text.
 pub fn run(
     events: &Receiver<TypedEvent>,
-    updates: &Receiver<TypingList>,
-    sent: &Arc<AtomicU64>,
+    updates: &Receiver<Update>,
+    env: &Env,
     mut password: impl FnMut() -> bool,
     mut deliver: impl FnMut(Out),
 ) {
@@ -197,33 +274,44 @@ pub fn run(
     let mut candidates: Vec<Candidate> = Vec::new();
     let mut hint: Option<Hint> = None;
     let mut consumed: u64 = 0;
+    let mut idle: u32 = 0;
     loop {
-        while let Ok(list) = updates.try_recv() {
-            typist.set_matcher(list.matcher);
-            candidates = list.candidates;
-            drop_hint(&mut hint, &mut deliver);
+        while let Ok(update) = updates.try_recv() {
+            match update {
+                Update::List(list) => {
+                    typist.set_matcher(list.matcher);
+                    candidates = list.candidates;
+                    drop_hint(&mut hint, env, &mut deliver);
+                }
+                Update::NotExpanded(fired) => typist.not_expanded(&fired),
+            }
         }
-        match events.recv_timeout(POLL) {
+        match events.recv_timeout(env.poll) {
             Ok(event) => {
+                idle = 0;
                 consumed += 1;
+                if event == TypedEvent::Reset {
+                    // Keys the hook counted but could not send came before this reset.
+                    consumed += env.lost.swap(0, Ordering::SeqCst);
+                }
                 let at = consumed;
-                let counter = Arc::clone(sent);
+                let counter = Arc::clone(&env.sent);
                 let fresh = move || counter.load(Ordering::SeqCst) == at;
                 if event == TypedEvent::Tab {
-                    accept_hint(&mut hint, fresh, &mut deliver);
+                    accept_hint(&mut hint, env, fresh, &mut password, &mut deliver);
                     typist.inserted();
                     continue;
                 }
                 let fired = typist.event(event);
                 if fired.is_some() {
-                    drop_hint(&mut hint, &mut deliver);
+                    drop_hint(&mut hint, env, &mut deliver);
                 }
                 let Some(fired) = fired else {
                     follow_hint(
                         &typist,
                         &candidates,
                         &mut hint,
-                        &fresh,
+                        (env, &fresh),
                         &mut password,
                         &mut deliver,
                     );
@@ -233,43 +321,74 @@ pub fn run(
                     typist.not_expanded(&fired);
                     continue;
                 }
+                let window = (env.foreground)();
                 let in_password_box = password();
                 if in_password_box || !fresh() {
                     typist.not_expanded(&fired);
                 }
                 if fresh() {
-                    deliver(Out::Expand(Typed::new(fired, in_password_box, fresh)));
+                    let typed = Typed::new(fired, in_password_box, fresh)
+                        .in_window(window, Arc::clone(&env.foreground));
+                    deliver(Out::Expand(typed));
                 }
             }
-            Err(RecvTimeoutError::Timeout) => {}
+            Err(RecvTimeoutError::Timeout) => {
+                idle += 1;
+                if idle >= env.idle_polls && hint.is_some() {
+                    // Nothing typed for a while: the hint is stale (the user may have clicked
+                    // into another field). What was typed is forgotten with it.
+                    drop_hint(&mut hint, env, &mut deliver);
+                    typist.reset();
+                }
+            }
             Err(RecvTimeoutError::Disconnected) => break,
         }
     }
     // The hook is gone: a hint still on screen must come down.
-    drop_hint(&mut hint, &mut deliver);
+    drop_hint(&mut hint, env, &mut deliver);
 }
 
-/// `Tab` on the hint: hands the suggestion over for insertion. Without a shown hint nothing
-/// happens (the hook only reports a `Tab` while it was told a hint is up).
+/// `Tab` on the hint: hands the suggestion over for insertion, unless the focus is a password
+/// box by now (checked again here: the focus may have moved since the hint went up). A `Tab`
+/// with no shown hint behind it (the hook swallowed it just before the hint went down) is given
+/// back to the app.
 fn accept_hint(
     hint: &mut Option<Hint>,
+    env: &Env,
     fresh: impl Fn() -> bool + Send + Sync + 'static,
+    password: &mut impl FnMut() -> bool,
     deliver: &mut impl FnMut(Out),
 ) {
-    if let Some(h) = hint.take().filter(|h| h.shown) {
-        let fired = Fired {
-            item: h.item,
-            trigger: h.trigger,
-            chars: h.chars,
-        };
-        deliver(Out::Accept(Typed::new(fired, false, fresh)));
+    let Some(h) = hint.take().filter(|h| h.shown) else {
+        deliver(Out::PassTab);
+        return;
+    };
+    let _ = env
+        .tab
+        .compare_exchange(h.id, 0, Ordering::SeqCst, Ordering::SeqCst);
+    if password() {
+        deliver(Out::Hide(h.id));
+        deliver(Out::PassTab);
+        return;
     }
+    let fired = Fired {
+        item: h.item,
+        trigger: h.trigger,
+        chars: h.chars,
+    };
+    deliver(Out::Accept(
+        Typed::new(fired, false, fresh).in_window(h.window, Arc::clone(&env.foreground)),
+    ));
 }
 
-/// Takes the hint down, telling the UI thread if it was showing.
-fn drop_hint(hint: &mut Option<Hint>, deliver: &mut impl FnMut(Out)) {
-    if hint.take().is_some_and(|h| h.shown) {
-        deliver(Out::Hide);
+/// Takes the hint down, telling the UI thread if it was showing. The hook gets its `Tab` back
+/// before anything else happens.
+fn drop_hint(hint: &mut Option<Hint>, env: &Env, deliver: &mut impl FnMut(Out)) {
+    if let Some(h) = hint.take().filter(|h| h.shown) {
+        let _ = env
+            .tab
+            .compare_exchange(h.id, 0, Ordering::SeqCst, Ordering::SeqCst);
+        deliver(Out::Hide(h.id));
     }
 }
 
@@ -279,12 +398,12 @@ fn follow_hint(
     typist: &Typist,
     candidates: &[Candidate],
     hint: &mut Option<Hint>,
-    fresh: &impl Fn() -> bool,
+    (env, fresh): (&Env, &impl Fn() -> bool),
     password: &mut impl FnMut() -> bool,
     deliver: &mut impl FnMut(Out),
 ) {
     let Some((item, trigger, chars)) = typist.suggestion(candidates) else {
-        drop_hint(hint, deliver);
+        drop_hint(hint, env, deliver);
         return;
     };
     if let Some(h) = hint
@@ -294,13 +413,15 @@ fn follow_hint(
         h.chars = chars;
         return;
     }
-    drop_hint(hint, deliver);
+    drop_hint(hint, env, deliver);
     // Keys queued behind this one: the next event decides, no need to probe for this one.
     if !fresh() {
         return;
     }
+    let window = (env.foreground)();
     let in_password_box = password();
     let shown = !in_password_box && fresh();
+    let id = NEXT_HINT.fetch_add(1, Ordering::SeqCst);
     if shown {
         let fired = Fired {
             item,
@@ -308,9 +429,15 @@ fn follow_hint(
             chars,
         };
         // The hint is only for showing; accepting is decided at the `Tab`.
-        deliver(Out::Show(Typed::new(fired, false, || true)));
+        let typed =
+            Typed::new(fired, false, || true).in_window(window, Arc::clone(&env.foreground));
+        deliver(Out::Show(typed, id));
+        // The hook swallows a plain `Tab` from here until this hint comes down.
+        env.tab.store(id, Ordering::SeqCst);
     }
     *hint = Some(Hint {
+        id,
+        window,
         item,
         trigger,
         chars,
@@ -332,6 +459,22 @@ mod tests {
 
     fn matcher(code: &str, item: ItemId) -> Matcher {
         Matcher::new([(Trigger::new(code).expect("trigger"), item)])
+    }
+
+    /// The shared state for a test: instant polls, a hint that goes after 3 idle polls, and a
+    /// foreground window the test can change.
+    fn test_env(sent: &Arc<AtomicU64>) -> (Env, Arc<std::sync::atomic::AtomicIsize>) {
+        let window = Arc::new(std::sync::atomic::AtomicIsize::new(7));
+        let seen = Arc::clone(&window);
+        let mut env = Env::new(
+            Arc::clone(sent),
+            Arc::new(AtomicU64::new(0)),
+            Arc::new(AtomicU64::new(0)),
+            Arc::new(move || seen.load(Ordering::SeqCst)),
+        );
+        env.poll = Duration::from_millis(1);
+        env.idle_polls = 3;
+        (env, window)
     }
 
     /// The hook's side: counts an event, then sends it.
@@ -373,15 +516,16 @@ mod tests {
         mut password: impl FnMut() -> bool,
     ) -> (Vec<Typed>, Arc<AtomicU64>) {
         let (utx, updates) = channel();
-        utx.send(TypingList {
+        utx.send(Update::List(TypingList {
             matcher: matcher(code, item),
             candidates: Vec::new(),
-        })
+        }))
         .expect("matcher");
         let sent = Arc::clone(&keys.sent);
         drop(keys);
         let mut got = Vec::new();
-        run(events, &updates, &sent, &mut password, |out| {
+        let (env, _) = test_env(&sent);
+        run(events, &updates, &env, &mut password, |out| {
             if let Out::Expand(t) = out {
                 got.push(t);
             }
@@ -500,34 +644,51 @@ mod tests {
     }
 
     /// What the worker hands over for `events`, one at a time with nothing queued behind.
-    fn hint_run(candidates: &[Candidate], password: bool, events: &[TypedEvent]) -> Vec<String> {
+    /// `password` answers each probe in turn (the last answer repeats).
+    fn hint_run_with(
+        candidates: &[Candidate],
+        password: &[bool],
+        events: &[TypedEvent],
+    ) -> (Vec<String>, Env) {
+        let (env, _) = test_env(&Arc::new(AtomicU64::new(0)));
         let mut typist = Typist::new(Matcher::new([]));
         let mut hint = None;
         let mut outs = Vec::new();
+        let mut probes = 0;
+        let mut ask = || {
+            let answer = password[probes.min(password.len() - 1)];
+            probes += 1;
+            answer
+        };
         for &event in events {
             let mut deliver = |out: Out| {
                 outs.push(match out {
-                    Out::Show(t) => format!("show {}", t.fired.chars),
-                    Out::Hide => "hide".to_owned(),
+                    Out::Show(t, _) => format!("show {}", t.fired.chars),
+                    Out::Hide(_) => "hide".to_owned(),
                     Out::Accept(t) => format!("accept {}", t.fired.chars),
                     Out::Expand(_) => "expand".to_owned(),
+                    Out::PassTab => "pass-tab".to_owned(),
                 });
             };
             if event == TypedEvent::Tab {
-                accept_hint(&mut hint, || true, &mut deliver);
+                accept_hint(&mut hint, &env, || true, &mut ask, &mut deliver);
                 typist.inserted();
             } else if typist.event(event).is_none() {
                 follow_hint(
                     &typist,
                     candidates,
                     &mut hint,
-                    &|| true,
-                    &mut || password,
+                    (&env, &|| true),
+                    &mut ask,
                     &mut deliver,
                 );
             }
         }
-        outs
+        (outs, env)
+    }
+
+    fn hint_run(candidates: &[Candidate], password: bool, events: &[TypedEvent]) -> Vec<String> {
+        hint_run_with(candidates, &[password], events).0
     }
 
     fn candidate(code: &str, n: u8, uses: u64, sensitive: bool) -> Candidate {
@@ -566,7 +727,7 @@ mod tests {
     }
 
     #[test]
-    fn other_keys_take_the_hint_down_and_a_tab_without_one_does_nothing() {
+    fn other_keys_take_the_hint_down_and_a_tab_without_one_is_passed_on() {
         let cands = [candidate(";sig", 1, 0, false)];
         for key in [
             TypedEvent::Reset,
@@ -583,7 +744,11 @@ mod tests {
         }
         let mut events = chars(";s");
         events.extend([TypedEvent::Reset, TypedEvent::Tab]);
-        assert_eq!(hint_run(&cands, false, &events), ["show 2", "hide"]);
+        assert_eq!(
+            hint_run(&cands, false, &events),
+            ["show 2", "hide", "pass-tab"],
+            "a Tab the hook swallowed for a hint that was gone goes back to the app"
+        );
     }
 
     #[test]
@@ -591,7 +756,7 @@ mod tests {
         let cands = [candidate(";sig", 1, 0, false)];
         let mut events = chars(";s");
         events.push(TypedEvent::Tab);
-        assert_eq!(hint_run(&cands, true, &events), Vec::<String>::new());
+        assert_eq!(hint_run(&cands, true, &events), ["pass-tab"]);
     }
 
     #[test]
@@ -599,5 +764,192 @@ mod tests {
         let cands = [candidate(";sig", 1, 0, false)];
         assert_eq!(hint_run(&cands, false, &chars(";")), Vec::<String>::new());
         assert_eq!(hint_run(&cands, false, &chars("sig")), Vec::<String>::new());
+    }
+
+    #[test]
+    fn the_worker_owns_the_tab_flag_and_clears_it_before_anything_else_can_see_it() {
+        let cands = [candidate(";sig", 1, 0, false)];
+        let (outs, env) = hint_run_with(&cands, &[false], &chars(";s"));
+        assert_eq!(outs, ["show 2"]);
+        assert_ne!(
+            env.tab.load(Ordering::SeqCst),
+            0,
+            "armed with the hint's number"
+        );
+        for key in [
+            TypedEvent::Backspace,
+            TypedEvent::Char('x'),
+            TypedEvent::Reset,
+        ] {
+            let mut events = chars(";s");
+            events.push(key);
+            let (_, env) = hint_run_with(&cands, &[false], &events);
+            assert_eq!(
+                env.tab.load(Ordering::SeqCst),
+                0,
+                "{key:?} takes the flag down"
+            );
+        }
+        let mut events = chars(";s");
+        events.push(TypedEvent::Tab);
+        let (outs, env) = hint_run_with(&cands, &[false], &events);
+        assert_eq!(outs, ["show 2", "accept 2"]);
+        assert_eq!(env.tab.load(Ordering::SeqCst), 0, "accepting takes it down");
+    }
+
+    #[test]
+    fn a_tab_swallowed_just_before_the_hint_went_down_is_given_back() {
+        // The hook took the Tab while the flag was still up; the worker had already processed a
+        // Backspace (hint gone) when the Tab event arrived.
+        let cands = [candidate(";sig", 1, 0, false)];
+        let mut events = chars(";s");
+        events.extend([TypedEvent::Backspace, TypedEvent::Tab]);
+        assert_eq!(
+            hint_run(&cands, false, &events),
+            ["show 2", "hide", "pass-tab"]
+        );
+    }
+
+    #[test]
+    fn the_password_check_runs_again_at_tab_time() {
+        let cands = [candidate(";sig", 1, 0, false)];
+        let mut events = chars(";s");
+        events.push(TypedEvent::Tab);
+        // Not a password box when the hint went up, one by the time of the Tab (a click into
+        // another field of the same window).
+        let (outs, env) = hint_run_with(&cands, &[false, true], &events);
+        assert_eq!(outs, ["show 2", "hide", "pass-tab"]);
+        assert_eq!(env.tab.load(Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn an_accepted_hint_remembers_the_window_it_was_shown_in() {
+        let (env, window) = test_env(&Arc::new(AtomicU64::new(0)));
+        let cands = [candidate(";sig", 1, 0, false)];
+        let mut typist = Typist::new(Matcher::new([]));
+        let mut hint = None;
+        let mut outs = Vec::new();
+        for c in ";s".chars() {
+            typist.event(TypedEvent::Char(c));
+            follow_hint(
+                &typist,
+                &cands,
+                &mut hint,
+                (&env, &|| true),
+                &mut || false,
+                &mut |out| outs.push(out),
+            );
+        }
+        window.store(8, Ordering::SeqCst);
+        accept_hint(&mut hint, &env, || true, &mut || false, &mut |out| {
+            outs.push(out);
+        });
+        let Some(Out::Accept(typed)) = outs.pop() else {
+            panic!("an accept");
+        };
+        assert!(!typed.same_window(), "the focus moved to another window");
+        window.store(7, Ordering::SeqCst);
+        assert!(typed.same_window());
+    }
+
+    #[test]
+    fn a_shown_hint_comes_down_after_some_idle_time() {
+        let (keys, events) = Keys::new();
+        let (utx, updates) = channel();
+        utx.send(Update::List(TypingList {
+            matcher: Matcher::new([]),
+            candidates: vec![candidate(";sig", 1, 0, false)],
+        }))
+        .expect("list");
+        keys.type_text(";s");
+        let (env, _) = test_env(&keys.sent);
+        let (otx, outs) = channel();
+        let worker = std::thread::spawn(move || {
+            run(
+                &events,
+                &updates,
+                &env,
+                || false,
+                |out| {
+                    let _ = otx.send(match out {
+                        Out::Show(..) => "show",
+                        Out::Hide(_) => "hide",
+                        _ => "other",
+                    });
+                },
+            );
+        });
+        let wait = Duration::from_secs(10);
+        assert_eq!(outs.recv_timeout(wait), Ok("show"));
+        assert_eq!(outs.recv_timeout(wait), Ok("hide"), "no key came");
+        drop(keys);
+        worker.join().expect("worker");
+    }
+
+    #[test]
+    fn a_hint_that_is_old_when_a_late_hide_arrives_is_told_apart_by_its_number() {
+        let cands = [candidate(";sig", 1, 0, false)];
+        let ids = |events: &[TypedEvent]| {
+            let (env, _) = test_env(&Arc::new(AtomicU64::new(0)));
+            let mut typist = Typist::new(Matcher::new([]));
+            let mut hint = None;
+            let mut ids = Vec::new();
+            for &event in events {
+                typist.event(event);
+                follow_hint(
+                    &typist,
+                    &cands,
+                    &mut hint,
+                    (&env, &|| true),
+                    &mut || false,
+                    &mut |out| {
+                        if let Out::Show(_, id) | Out::Hide(id) = out {
+                            ids.push(id);
+                        }
+                    },
+                );
+            }
+            ids
+        };
+        let first = ids(&chars(";s"));
+        let second = ids(&chars(";s"));
+        assert_ne!(first[0], second[0], "every hint has a number of its own");
+    }
+
+    #[test]
+    fn keys_the_hook_could_not_send_do_not_keep_later_triggers_stale_forever() {
+        let item = item_id(1);
+        let (keys, events) = Keys::new();
+        // A key was counted and lost (the channel was full), then the hook sent a reset.
+        keys.sent.fetch_add(1, Ordering::SeqCst);
+        let lost = Arc::new(AtomicU64::new(1));
+        keys.press(TypedEvent::Reset);
+        keys.type_text(";a");
+        let (utx, updates) = channel();
+        utx.send(Update::List(TypingList {
+            matcher: matcher(";a", item),
+            candidates: Vec::new(),
+        }))
+        .expect("list");
+        let (mut env, _) = test_env(&keys.sent);
+        env.lost = lost;
+        drop(keys);
+        let mut got = Vec::new();
+        run(
+            &events,
+            &updates,
+            &env,
+            || false,
+            |out| {
+                if let Out::Expand(t) = out {
+                    got.push(t);
+                }
+            },
+        );
+        assert_eq!(got.len(), 1);
+        assert!(
+            got[0].still_current(),
+            "the lost key was taken in at the reset"
+        );
     }
 }

@@ -117,3 +117,85 @@ fn place_hint_needs_a_caret_and_a_monitor() {
     let none = snipdeck_app::placement::NoPopups;
     assert_eq!(place_hint(&none, Some(caret(10, 10)), (100.0, 28.0)), None);
 }
+
+fn monitor(name: &str, x: i32, y: i32, w: u32, h: u32, scale: f32) -> Monitor {
+    Monitor {
+        taskbar: None,
+        id: Monitor::id_of(name, w, h),
+        work_area: Rect { x, y, w, h },
+        scale,
+    }
+}
+
+fn two_monitors(left: Monitor, right: Monitor) -> FakePopups {
+    let host = FakePopups::one(left);
+    host.monitors.borrow_mut().push(right);
+    host
+}
+
+fn inside(r: Rect, area: Rect) -> bool {
+    r.x >= area.x
+        && r.y >= area.y
+        && i64::from(r.x) + i64::from(r.w) <= i64::from(area.x) + i64::from(area.w)
+        && i64::from(r.y) + i64::from(r.h) <= i64::from(area.y) + i64::from(area.h)
+}
+
+#[test]
+fn place_hint_flips_above_a_caret_near_the_bottom_edge() {
+    let host = popups(1.0);
+    let c = caret(400, 1030);
+    let below = place_hint(&*host, Some(caret(400, 300)), (120.0, 28.0)).expect("placed");
+    assert!(below.y >= 300 + 18, "room: below the caret {below:?}");
+    let above = place_hint(&*host, Some(c), (120.0, 28.0)).expect("placed");
+    assert!(
+        i64::from(above.y) + i64::from(above.h) <= i64::from(c.y),
+        "it sits above the caret line, not over the text: {above:?}"
+    );
+    assert!(above.y >= 0);
+}
+
+#[test]
+fn place_hint_on_a_secondary_monitor_left_of_the_primary_with_negative_coordinates() {
+    let left = Rect {
+        x: -1920,
+        y: -200,
+        w: 1920,
+        h: 1040,
+    };
+    let host = two_monitors(
+        monitor("PRIMARY", 0, 0, 1920, 1040, 1.0),
+        monitor("LEFT", left.x, left.y, left.w, left.h, 1.0),
+    );
+    // Mid-screen, near the left edge and at the bottom edge of the left monitor.
+    for c in [caret(-1000, 300), caret(-1915, 300), caret(-300, 830)] {
+        let r = place_hint(&host, Some(c), (120.0, 28.0)).expect("placed");
+        assert!(inside(r, left), "{c:?} -> {r:?} stays on its monitor");
+    }
+    let flipped = place_hint(&host, Some(caret(-300, 830)), (120.0, 28.0)).expect("placed");
+    assert!(
+        flipped.y + i32::try_from(flipped.h).unwrap() <= 830,
+        "{flipped:?}"
+    );
+}
+
+#[test]
+fn place_hint_scales_by_the_monitor_the_caret_is_on() {
+    let right = Rect {
+        x: 1920,
+        y: 0,
+        w: 2560,
+        h: 1400,
+    };
+    let host = two_monitors(
+        monitor("PRIMARY", 0, 0, 1920, 1040, 1.0),
+        monitor("RIGHT", right.x, right.y, right.w, right.h, 2.0),
+    );
+    let on_primary = place_hint(&host, Some(caret(400, 300)), (120.0, 28.0)).expect("placed");
+    let on_right = place_hint(&host, Some(caret(2500, 300)), (120.0, 28.0)).expect("placed");
+    assert_eq!((on_primary.w, on_primary.h), (120, 28), "1x monitor");
+    assert_eq!((on_right.w, on_right.h), (240, 56), "2x monitor");
+    assert!(inside(on_right, right), "{on_right:?}");
+    // A caret at the right edge of the 2x monitor is pulled back inside it at its own size.
+    let edge = place_hint(&host, Some(caret(4475, 300)), (120.0, 28.0)).expect("placed");
+    assert!(inside(edge, right), "{edge:?}");
+}

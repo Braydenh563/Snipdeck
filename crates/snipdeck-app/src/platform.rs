@@ -44,7 +44,7 @@ mod imp {
     use std::sync::Arc;
 
     use super::{Callbacks, Host, Start, WatchGate};
-    use crate::typing_worker::{Out, TypingList};
+    use crate::typing_worker::{Env, Out, TypingList, Update};
     use crate::{
         controller::Services,
         frame::{Monitor, Rect},
@@ -177,8 +177,8 @@ mod imp {
 
     struct Running {
         hook: TypingHook,
-        tab: Arc<std::sync::atomic::AtomicBool>,
-        updates: std::sync::mpsc::Sender<TypingList>,
+        tab: Arc<std::sync::atomic::AtomicU64>,
+        updates: std::sync::mpsc::Sender<Update>,
         worker: std::thread::JoinHandle<()>,
     }
 
@@ -195,13 +195,19 @@ mod imp {
             let (hook, events) = TypingHook::start().map_err(|e| format!("typing hook: {e}"))?;
             let (updates, rx) = std::sync::mpsc::channel();
             if let Some((matcher, candidates)) = &self.list {
-                let _ = updates.send(TypingList {
+                let _ = updates.send(Update::List(TypingList {
                     matcher: matcher.clone(),
                     candidates: candidates.clone(),
-                });
+                }));
             }
             let on_typed = Arc::clone(&self.on_typed);
-            let sent = hook.sent();
+            let tab = hook.tab_flag();
+            let env = Env::new(
+                hook.sent(),
+                hook.lost(),
+                Arc::clone(&tab),
+                Arc::new(snipdeck_platform::windows::typing_hook::foreground_window),
+            );
             let worker = std::thread::Builder::new()
                 .name("snipdeck-typing-worker".into())
                 .spawn(move || {
@@ -210,13 +216,12 @@ mod imp {
                     crate::typing_worker::run(
                         &events,
                         &rx,
-                        &sent,
+                        &env,
                         || probe.focus_is_password(),
                         |typed| on_typed(typed),
                     );
                 })
                 .map_err(|e| format!("typing worker: {e}"))?;
-            let tab = hook.tab_flag();
             Ok(Running {
                 hook,
                 tab,
@@ -252,17 +257,29 @@ mod imp {
 
         fn set_triggers(&mut self, matcher: Matcher, candidates: Vec<Candidate>) {
             if let Some(running) = &self.running {
-                let _ = running.updates.send(TypingList {
+                let _ = running.updates.send(Update::List(TypingList {
                     matcher: matcher.clone(),
                     candidates: candidates.clone(),
-                });
+                }));
             }
             self.list = Some((matcher, candidates));
         }
 
-        fn set_hint_up(&mut self, up: bool) {
+        fn hint_down(&mut self, id: u64) {
             if let Some(running) = &self.running {
-                running.tab.store(up, std::sync::atomic::Ordering::SeqCst);
+                // Only this hint's own flag: a newer hint's stays.
+                let _ = running.tab.compare_exchange(
+                    id,
+                    0,
+                    std::sync::atomic::Ordering::SeqCst,
+                    std::sync::atomic::Ordering::SeqCst,
+                );
+            }
+        }
+
+        fn not_expanded(&mut self, fired: snipdeck_core::Fired) {
+            if let Some(running) = &self.running {
+                let _ = running.updates.send(Update::NotExpanded(fired));
             }
         }
     }

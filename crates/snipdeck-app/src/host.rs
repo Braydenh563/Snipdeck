@@ -223,9 +223,13 @@ pub trait TypingControl {
         matcher: snipdeck_core::Matcher,
         candidates: Vec<snipdeck_core::Candidate>,
     );
-    /// A suggestion hint is up (`true`): the hook takes a plain `Tab` instead of passing it on.
-    /// Any other key, and `Tab` while no hint is up, pass through untouched.
-    fn set_hint_up(&mut self, up: bool);
+    /// The UI thread did not show hint number `id` (or took it down): the hook stops taking a
+    /// plain `Tab` for it. Only the worker raises the flag, and a newer hint's flag is left
+    /// alone.
+    fn hint_down(&mut self, id: u64);
+    /// The expansion for `fired` was not sent (a Snipdeck window, an excluded app, a skipped
+    /// route): the code stays in the app, so the next trigger needs a boundary of its own.
+    fn not_expanded(&mut self, fired: snipdeck_core::Fired);
 }
 
 /// A [`TypingControl`] that records what it was told. Cloning shares the state.
@@ -234,7 +238,8 @@ pub struct FakeTyping {
     enabled: Rc<RefCell<Vec<bool>>>,
     triggers: Rc<Cell<u32>>,
     candidates: Rc<RefCell<Vec<snipdeck_core::Candidate>>>,
-    hint: Rc<RefCell<Vec<bool>>>,
+    hint: Rc<RefCell<Vec<u64>>>,
+    skipped: Rc<RefCell<Vec<snipdeck_core::Fired>>>,
 }
 
 impl FakeTyping {
@@ -244,10 +249,16 @@ impl FakeTyping {
         self.candidates.borrow().clone()
     }
 
-    /// Every `set_hint_up` call, in order.
+    /// Every `hint_down` call, in order.
     #[must_use]
-    pub fn hint_history(&self) -> Vec<bool> {
+    pub fn hint_history(&self) -> Vec<u64> {
         self.hint.borrow().clone()
+    }
+
+    /// The triggers reported as not expanded, in order.
+    #[must_use]
+    pub fn not_expanded_history(&self) -> Vec<snipdeck_core::Fired> {
+        self.skipped.borrow().clone()
     }
 
     /// Every `set_enabled` call, in order.
@@ -283,8 +294,12 @@ impl TypingControl for FakeTyping {
         *self.candidates.borrow_mut() = candidates;
     }
 
-    fn set_hint_up(&mut self, up: bool) {
-        self.hint.borrow_mut().push(up);
+    fn hint_down(&mut self, id: u64) {
+        self.hint.borrow_mut().push(id);
+    }
+
+    fn not_expanded(&mut self, fired: snipdeck_core::Fired) {
+        self.skipped.borrow_mut().push(fired);
     }
 }
 

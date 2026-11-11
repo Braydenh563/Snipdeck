@@ -469,6 +469,41 @@
       "title": "Tab without a hint still moves focus (v1.1 slice 6)",
       "do": "With the setting on, open a web page with a form in Edge and press Tab between fields without typing a trigger. Then type ;s in Notepad and press Tab while the hint shows.",
       "expect": "Tab moves between the form fields as usual when no hint is showing. With the hint showing, Tab removes the typed ;s and inserts the item, and no tab character is typed."
+    },
+    {
+      "id": "63",
+      "v1": false,
+      "title": "Tab is not swallowed after a quick type-and-leave (typing fixes)",
+      "do": "Suggest on. In Notepad type ;s (hint shows) then quickly type a letter that is not in the trigger, then press Tab.",
+      "expect": "The hint goes away and Tab inserts a tab character as usual; it never does nothing."
+    },
+    {
+      "id": "64",
+      "v1": false,
+      "title": "Hint goes away on a mouse click inside the same window",
+      "do": "Type ;s so the hint shows, then click elsewhere in the same Notepad text, then press Tab.",
+      "expect": "The hint disappears at the click and Tab acts as a normal tab. Needs the mouse hook; if the hint stays until you type, report it."
+    },
+    {
+      "id": "65",
+      "v1": false,
+      "title": "Hint times out when idle",
+      "do": "Type ;s and leave the keyboard and mouse alone for about 6 seconds, then press Tab.",
+      "expect": "The hint disappears after roughly 5 seconds and Tab acts as a normal tab."
+    },
+    {
+      "id": "66",
+      "v1": false,
+      "title": "A swallowed Tab is given back",
+      "do": "Type ;s, then switch to another app with Alt+Tab at once and press Tab in it.",
+      "expect": "The other app receives exactly one Tab; no tab is lost or doubled."
+    },
+    {
+      "id": "67",
+      "v1": false,
+      "title": "Tab ignored when focus moved to a different window or a password box",
+      "do": "Type ;s in Notepad, click into a password field in a browser (or another window), press Tab.",
+      "expect": "No expansion happens in the other window; Tab behaves normally there."
     }
   ]
 }

@@ -1003,6 +1003,27 @@ fn trigger_clash_shows_an_error() {
 }
 
 #[test]
+fn a_one_character_trigger_gets_a_warning_under_the_field() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        let normal = ed.get_trigger_helper().to_string();
+        ed.set_trigger(";".into());
+        settle();
+        let warning = ed.get_trigger_helper().to_string();
+        assert_ne!(warning, normal, "one character warns");
+        assert!(warning.contains("one-character"), "{warning}");
+        ed.set_trigger(";s".into());
+        settle();
+        assert_eq!(ed.get_trigger_helper().to_string(), normal, "two do not");
+        ed.set_trigger("".into());
+        settle();
+        assert_eq!(ed.get_trigger_helper().to_string(), normal, "none either");
+    });
+}
+
+#[test]
 fn trigger_field_hidden_for_sensitive() {
     on_ui_thread(|| {
         let r = rig();

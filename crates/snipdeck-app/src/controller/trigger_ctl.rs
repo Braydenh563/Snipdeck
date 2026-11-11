@@ -11,6 +11,7 @@ use std::collections::BTreeMap;
 
 use snipdeck_core::{Candidate, Matcher, UseMode};
 use snipdeck_platform::{
+    keys::{Key, KeyEvent},
     pipeline::{Clipboard, Keyboard, Timing},
     route::{Route, ScreenRect},
 };
@@ -97,11 +98,20 @@ where
             .collect()
     }
 
-    /// Tells the hook a hint is up (a plain `Tab` is then the hint's) or down.
-    pub fn set_hint_up(&mut self, up: bool) {
+    /// Hint number `id` is not showing (or was taken down): the hook lets `Tab` through again.
+    pub fn hint_down(&mut self, id: u64) {
         if let Some(typing) = self.typing.as_mut() {
-            typing.set_hint_up(up);
+            typing.hint_down(id);
         }
+    }
+
+    /// Gives a `Tab` back to the app: the hook swallowed it for a hint that was gone by then.
+    pub fn replay_tab(&mut self) {
+        let tab = |down| KeyEvent {
+            key: Key::Tab,
+            down,
+        };
+        let _ = self.services.keyboard.send(&[tab(true), tab(false)]);
     }
 
     /// Tells the typed-trigger service which triggers exist (only when the list changed) and
@@ -143,6 +153,7 @@ where
         let fired = &typed.fired;
         if !enabled
             || typed.password
+            || !typed.same_window()
             || self.own_window_active
             || self.picker.is_some()
             || self.fill.is_some()
@@ -158,7 +169,14 @@ where
     /// (`Self::typed_allowed`), the Target would take a paste (not excluded, not elevated,
     /// something focused), and nothing else was typed meanwhile.
     pub fn expand_typed(&mut self, typed: &Typed) -> TypedOutcome {
-        self.insert_typed(self.settings.expand_triggers, typed)
+        let outcome = self.insert_typed(self.settings.expand_triggers, typed);
+        if outcome == TypedOutcome::Skipped {
+            // The typed code stays in the app: the worker must not treat the text as replaced.
+            if let Some(typing) = self.typing.as_mut() {
+                typing.not_expanded(typed.fired.clone());
+            }
+        }
+        outcome
     }
 
     /// `Tab` was pressed on the hint: the same insertion as a typed trigger, gated by the
@@ -174,7 +192,10 @@ where
         let fired = &typed.fired;
         // The Target is whatever has the focus now.
         self.on_target_changed();
-        if !matches!(self.model.route(), Route::Paste { .. }) || !typed.still_current() {
+        if !matches!(self.model.route(), Route::Paste { .. })
+            || !typed.still_current()
+            || !typed.same_window()
+        {
             return TypedOutcome::Skipped;
         }
         // The Backspaces go out with the paste key, once the item can be pasted.
