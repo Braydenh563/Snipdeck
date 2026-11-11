@@ -42,7 +42,7 @@ export component FocusProbeScrolled inherits Window {
     Flickable {
         width: 300px;
         height: 60px;
-        viewport-height: 600px;
+        content-height: 600px;
         VerticalLayout {
             Button { text: "One"; }
             Rectangle { height: 200px; }
@@ -61,7 +61,7 @@ export component FocusProbeClippedSlot inherits Window {
     Flickable {
         width: 300px;
         height: 60px;
-        viewport-height: 600px;
+        content-height: 600px;
         VerticalLayout {
             Button { text: "One"; }
             Rectangle { height: 200px; }
@@ -84,7 +84,7 @@ export component FocusProbeCards inherits Window {
     Flickable {
         width: 300px;
         height: 120px;
-        viewport-height: 1000px;
+        content-height: 1000px;
         VerticalLayout {
             for i in 10: Rectangle {
                 height: 100px;

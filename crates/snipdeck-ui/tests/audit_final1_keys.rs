@@ -693,9 +693,6 @@ fn editor_trigger_warning_is_visible_readable_and_reachable() {
                 }
             }
             // The field is a named stop with the ring.
-            let fired = Rc::new(Cell::new(false));
-            let f = fired.clone();
-            h.component.on_close_requested(move || f.set(true));
             let names = lap(&build("a", false));
             if !names.iter().any(|n| n == "Trigger") {
                 problems.push(format!("{scene}: Tab never reaches the Trigger field: {names:?}"));
