@@ -117,33 +117,33 @@ kind_of_index | crates/snipdeck-app/src/binding.rs:1352
 index | crates/snipdeck-app/src/binding.rs:1360
 window_colour | crates/snipdeck-app/src/binding.rs:1368
 render | crates/snipdeck-app/src/binding.rs:1383
-render_app_menu | crates/snipdeck-app/src/binding.rs:1690
-model | crates/snipdeck-app/src/binding.rs:1719
-refreshed_model | crates/snipdeck-app/src/binding.rs:1727
-to_i32 | crates/snipdeck-app/src/binding.rs:1744
-tab_item | crates/snipdeck-app/src/binding.rs:1748
-list_icon_image | crates/snipdeck-app/src/binding.rs:1758
-label_fields | crates/snipdeck-app/src/binding.rs:1769
-label_index | crates/snipdeck-app/src/binding.rs:1781
-label_of | crates/snipdeck-app/src/binding.rs:1786
-MASKED_PREVIEW | crates/snipdeck-app/src/binding.rs:1795
-panel_row | crates/snipdeck-app/src/binding.rs:1799
-item_kind | crates/snipdeck-app/src/binding.rs:1862
-recent_kind | crates/snipdeck-app/src/binding.rs:1867
-recent_thumb | crates/snipdeck-app/src/binding.rs:1876
-item_kind_of | crates/snipdeck-app/src/binding.rs:1887
-Payload | crates/snipdeck-app/src/binding.rs:1905
-impl Payload | crates/snipdeck-app/src/binding.rs:1910
-into_transfer | crates/snipdeck-app/src/binding.rs:1911
-of | crates/snipdeck-app/src/binding.rs:1917
-tests | crates/snipdeck-app/src/binding.rs:1923
-row | crates/snipdeck-app/src/binding.rs:1929
-a_sensitive_row_is_masked_and_never_carries_a_preview_kind | crates/snipdeck-app/src/binding.rs:1952
-a_sensitive_row_never_carries_a_preview_mark_or_a_tag_hit | crates/snipdeck-app/src/binding.rs:1960
-kinds_map_one_to_one | crates/snipdeck-app/src/binding.rs:1988
-a_mixed_view_row_carries_its_list_name_and_colour | crates/snipdeck-app/src/binding.rs:2002
-indexes_never_wrap | crates/snipdeck-app/src/binding.rs:2022
-models_keep_their_order | crates/snipdeck-app/src/binding.rs:2029
+render_app_menu | crates/snipdeck-app/src/binding.rs:1703
+model | crates/snipdeck-app/src/binding.rs:1732
+refreshed_model | crates/snipdeck-app/src/binding.rs:1740
+to_i32 | crates/snipdeck-app/src/binding.rs:1757
+tab_item | crates/snipdeck-app/src/binding.rs:1761
+list_icon_image | crates/snipdeck-app/src/binding.rs:1771
+label_fields | crates/snipdeck-app/src/binding.rs:1782
+label_index | crates/snipdeck-app/src/binding.rs:1794
+label_of | crates/snipdeck-app/src/binding.rs:1799
+MASKED_PREVIEW | crates/snipdeck-app/src/binding.rs:1808
+panel_row | crates/snipdeck-app/src/binding.rs:1812
+item_kind | crates/snipdeck-app/src/binding.rs:1877
+recent_kind | crates/snipdeck-app/src/binding.rs:1882
+recent_thumb | crates/snipdeck-app/src/binding.rs:1891
+item_kind_of | crates/snipdeck-app/src/binding.rs:1902
+Payload | crates/snipdeck-app/src/binding.rs:1920
+impl Payload | crates/snipdeck-app/src/binding.rs:1925
+into_transfer | crates/snipdeck-app/src/binding.rs:1926
+of | crates/snipdeck-app/src/binding.rs:1932
+tests | crates/snipdeck-app/src/binding.rs:1938
+row | crates/snipdeck-app/src/binding.rs:1944
+a_sensitive_row_is_masked_and_never_carries_a_preview_kind | crates/snipdeck-app/src/binding.rs:1967
+a_sensitive_row_never_carries_a_preview_mark_or_a_tag_hit | crates/snipdeck-app/src/binding.rs:1975
+kinds_map_one_to_one | crates/snipdeck-app/src/binding.rs:2003
+a_mixed_view_row_carries_its_list_name_and_colour | crates/snipdeck-app/src/binding.rs:2017
+indexes_never_wrap | crates/snipdeck-app/src/binding.rs:2037
+models_keep_their_order | crates/snipdeck-app/src/binding.rs:2044
 
 ### crates/snipdeck-app/src/capture.rs
 
@@ -7921,7 +7921,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/tests/main_window.rs` | 52 |
 | `crates/snipdeck-app/tests/master_password.rs` | 83 |
 | `crates/snipdeck-app/tests/menu_form_texts.rs` | 3 |
-| `crates/snipdeck-app/tests/panel_window.rs` | 84 |
+| `crates/snipdeck-app/tests/panel_window.rs` | 85 |
 | `crates/snipdeck-app/tests/picker_window.rs` | 19 |
 | `crates/snipdeck-app/tests/rebuild.rs` | 5 |
 | `crates/snipdeck-app/tests/recent_at_rest.rs` | 5 |
@@ -8041,6 +8041,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/fill_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/focus_scroll_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/focus_traversal_repro.rs` | 6 |
+| `crates/snipdeck-ui/tests/group_header_measure.rs` | 4 |
 | `crates/snipdeck-ui/tests/i18n.rs` | 1 |
 | `crates/snipdeck-ui/tests/inputs.rs` | 17 |
 | `crates/snipdeck-ui/tests/inputs_logic.rs` | 1 |

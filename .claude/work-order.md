@@ -41,7 +41,7 @@ resumed: 2026-11-09 after idle-guard stop during a long gate run (commits c7f28a
 - [x] In-app help and shortcut lists for groups, triggers, Hello (merged 07cd1f0; Hello settings-search key after the Hello merge)
 - [ ] Groups in the Main window (spec: Panel and Main) -> sweep worker, claude/v11-groups-main
 - [x] Groups a11y (Alt+Up/Down, header keys, window tests) merged (b2c1b01)
-- [ ] Groups measurements (tree, contrast, focus ring, 2.25x/320px) -> typing worker, claude/v11-groups-measure
+- [x] Groups measurements (tree, contrast, focus ring, 2.25x/320px): all pass; members say n of m (merged)
 - [ ] Final: full gate, polish pass (ux-auditor + blind-tester on Panel, Settings, palette, shortcuts, toasts), docs, morning summary
 - [x] v1.1 light lane: slice 9 serde-saphyr + 3a groups data (merged ed7528b)
 - [x] v1.1 slice 5a triggers data (merged)
