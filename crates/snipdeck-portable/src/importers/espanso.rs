@@ -175,9 +175,7 @@ fn find_files(dir: &Path, report: &mut ImportReport) -> Vec<PathBuf> {
                     continue;
                 }
                 if name.starts_with('_') {
-                    report.warn(Warning::Note(Note::DisabledFile {
-                        name: name.clone(),
-                    }));
+                    report.warn(Warning::Note(Note::DisabledFile { name: name.clone() }));
                 } else {
                     found.push(entry.path());
                 }
