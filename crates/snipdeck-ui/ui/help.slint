@@ -329,21 +329,24 @@ export component HelpWindow inherits Window {
                                 wrap: word-wrap;
                                 accessible-role: none;
                             }
-                            Text {
-                                text: tip.first-line;
-                                color: Theme.text-secondary;
-                                font-family: Fonts.sans;
-                                font-size: Type.base;
-                                wrap: word-wrap;
-                                accessible-role: none;
-                            }
-                            Text {
-                                text: tip.second-line;
-                                color: Theme.text-secondary;
-                                font-family: Fonts.sans;
-                                font-size: Type.base;
-                                wrap: word-wrap;
-                                accessible-role: none;
+                            VerticalLayout {
+                                spacing: Space.s0-5;
+                                Text {
+                                    text: tip.first-line;
+                                    color: Theme.text-secondary;
+                                    font-family: Fonts.sans;
+                                    font-size: Type.base;
+                                    wrap: word-wrap;
+                                    accessible-role: none;
+                                }
+                                Text {
+                                    text: tip.second-line;
+                                    color: Theme.text-secondary;
+                                    font-family: Fonts.sans;
+                                    font-size: Type.base;
+                                    wrap: word-wrap;
+                                    accessible-role: none;
+                                }
                             }
                             // The picture is a crop of the app drawn in the light theme, so it keeps a hairline of its own
                             // in the dark one. The words around it say everything it shows.

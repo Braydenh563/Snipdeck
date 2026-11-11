@@ -135,7 +135,10 @@ mod tests {
     fn every_action_maps_to_a_command() {
         for tip in TIPS {
             let command = tip.action.command();
-            assert!(Command::ALL.contains(&command), "{command:?} is not offered");
+            assert!(
+                Command::ALL.contains(&command),
+                "{command:?} is not offered"
+            );
             assert!(
                 !command.needs_item(),
                 "{command:?} needs an item under the cursor"

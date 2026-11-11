@@ -23,14 +23,14 @@ SIZE = (320, 150)
 # (picture, golden, crop box x, y, width, height in golden pixels; the aspect is 320:150).
 CROPS = [
     ("01-open-panel.png", "panel-light", (0, 0, 320, 150)),
-    ("02-search.png", "panel-search-light", (0, 30, 320, 150)),
+    ("02-search.png", "panel-search-light", (0, 38, 320, 150)),
     ("03-pinned.png", "panel-pinned-overflow-light", (0, 0, 320, 150)),
     ("04-paste-next.png", "panel-cards-light", (0, 100, 320, 150)),
     ("05-templates.png", "fill-light", (0, 0, 440, 206)),
     ("06-capture.png", "panel-recent-rows-light", (0, 40, 320, 150)),
     ("07-symbols.png", "symbols-emoji-320-light", (0, 40, 320, 150)),
-    ("08-commands.png", "palette-light", (240, 0, 640, 300)),
-    ("09-view.png", "main-tile-light", (230, 0, 640, 300)),
+    ("08-commands.png", "palette-light", (300, 40, 440, 206)),
+    ("09-view.png", "main-tile-light", (400, 0, 520, 244)),
     ("10-sensitive.png", "panel-light", (0, 340, 320, 150)),
 ]
 

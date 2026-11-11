@@ -589,3 +589,14 @@ fn help_tips_light_and_dark() {
     h.component.set_tab(3);
     assert_golden("help-tips-dark", &render(&h));
 }
+
+/// The Tips tab at the Help window's smallest size: the cards keep their picture and button and the
+/// list scrolls.
+#[test]
+fn help_tips_at_the_minimum_size() {
+    let h = Harness::new(HelpWindow::new, 420, 360);
+    fixture::help(&h.component);
+    fixture::tips(&h.component);
+    h.component.set_tab(3);
+    assert_golden("help-tips-min-light", &render(&h));
+}

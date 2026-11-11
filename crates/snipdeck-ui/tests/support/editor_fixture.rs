@@ -2,10 +2,13 @@
 //! `tests/editors_logic.rs` (behaviour); `#[path]`-included, so each test binary compiles its own copy.
 #![allow(dead_code, reason = "each test binary uses a subset of the fixtures")]
 
-use slint::{Color, Global, Image, Model, ModelRc, Rgba8Pixel, SharedPixelBuffer, SharedString, VecModel};
+use slint::{
+    Color, Global, Image, Model, ModelRc, Rgba8Pixel, SharedPixelBuffer, SharedString, VecModel,
+};
 use snipdeck_ui::{
     BackupRow, ChoiceEntry, HelpCheck, HelpWindow, HotkeySetting, ItemEditor, ListEditor,
-    OnboardingWindow, PasteRuleRow, SettingsPage, ShortcutGroup, ShortcutLineData, TagManager, TipCard, TipTexts,
+    OnboardingWindow, PasteRuleRow, SettingsPage, ShortcutGroup, ShortcutLineData, TagManager,
+    TipCard, TipTexts,
 };
 
 pub fn strings(items: &[&str]) -> ModelRc<SharedString> {

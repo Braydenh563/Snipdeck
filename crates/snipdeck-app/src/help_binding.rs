@@ -32,9 +32,9 @@ use crate::{
     main_binding::{create_window, raise, set_look},
     native_window::fit_when_settled,
     settings::{HotkeyAction, Hotkeys},
-    tips,
     settings_binding::action_name,
     shortcuts::{self, Scope},
+    tips,
     toast::{ToastKind, ToastMessage},
     wording,
 };

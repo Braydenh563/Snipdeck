@@ -568,6 +568,7 @@ mod tests {
                 "Open Panel",
                 "Open Picker",
                 "Open Snipdeck",
+                "Tips",
                 "Take screenshot",
                 "Pause hotkeys",
                 "-",
@@ -607,7 +608,7 @@ mod tests {
         let labels = menu_labels(&mut m);
         let at = labels.iter().position(|(l, _)| l == "Pause history");
         // Right after "Pause hotkeys", before "Quit".
-        assert_eq!(at, Some(5));
+        assert_eq!(at, Some(6));
         assert_eq!(labels.last().map(|(l, _)| l.as_str()), Some("Quit"));
         assert!(labels.iter().all(|(_, checked)| !checked));
         m.set_history(false, false);
