@@ -264,7 +264,7 @@ where
     /// The Trigger field now holds `text` (blank: the item has no trigger). Checked on Save.
     pub fn item_editor_set_trigger(&mut self, text: &str) {
         if let Some(slot) = self.item_editor.as_mut() {
-            slot.trigger = text.trim().to_owned();
+            text.trim().clone_into(&mut slot.trigger);
             slot.problems.trigger = None;
         }
     }

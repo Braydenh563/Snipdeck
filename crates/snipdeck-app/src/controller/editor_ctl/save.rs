@@ -138,25 +138,22 @@ where
         // A Sensitive item has no trigger (a short code must not release a secret).
         let mut trigger: Option<Trigger> = None;
         if !sensitive && !slot.trigger.is_empty() {
-            match Trigger::new(&slot.trigger) {
-                Ok(t) => {
-                    let taken = self
-                        .store
-                        .trigger_holder(&t)
-                        .ok()
-                        .flatten()
-                        .is_some_and(|holder| slot.target != ItemTarget::Item(holder));
-                    if taken {
-                        slot.problems.trigger = Some(EditorProblem::TriggerTaken);
-                        refused = true;
-                    } else {
-                        trigger = Some(t);
-                    }
-                }
-                Err(_) => {
-                    slot.problems.trigger = Some(EditorProblem::TriggerInvalid);
+            if let Ok(t) = Trigger::new(&slot.trigger) {
+                let taken = self
+                    .store
+                    .trigger_holder(&t)
+                    .ok()
+                    .flatten()
+                    .is_some_and(|holder| slot.target != ItemTarget::Item(holder));
+                if taken {
+                    slot.problems.trigger = Some(EditorProblem::TriggerTaken);
                     refused = true;
+                } else {
+                    trigger = Some(t);
                 }
+            } else {
+                slot.problems.trigger = Some(EditorProblem::TriggerInvalid);
+                refused = true;
             }
         }
         let list = slot.lists.get(input.list_index).cloned();
