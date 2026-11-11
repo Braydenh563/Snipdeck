@@ -1098,7 +1098,8 @@ export component ItemEditor inherits Window {
                     more-box := Rectangle {
                         height: root.more-shown ? more-col.preferred-height : 0px;
                         visible: root.more-shown;
-                        clip: true;
+                        // No `clip`: it sits between these fields and the scroll view, so Slint skipped them when Tab-ing
+                        // while they were scrolled out of view (the Trigger field at 2.25x). Hidden, `visible` covers it.
                         more-col := VerticalLayout {
                             width: parent.width;
                             spacing: Space.s4;

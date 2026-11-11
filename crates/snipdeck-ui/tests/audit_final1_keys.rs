@@ -572,7 +572,7 @@ fn nodes<C: ComponentHandle>(
 /// Names of the stops Tab visits in one lap.
 fn lap<C: ComponentHandle>(h: &Harness<C>) -> Vec<String> {
     let w = h.component.window();
-    let _ = h.render_settled();
+    let _ = snap(h);
     let mut names: Vec<String> = Vec::new();
     for _ in 0..200 {
         tab(w, false);
