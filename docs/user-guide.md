@@ -166,8 +166,11 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
   to dissolve the group and keep its items. **Delete group** moves the group and its items to the Trash, and
   `Ctrl+Z` brings them all back in one step. Drag a header to move the whole group. Groups show only when the
   list is sorted by hand (Manual); if it is not, **Group...** offers to switch. Searching lists every match,
-  even inside a folded group. The numbers `Alt+1` to `Alt+9` count items only, never headers. A screen reader
-  reads a header as "group, 3 items, folded" or "group, 3 items, expanded". Groups are not in the Main window yet.
+  even inside a folded group, under the group's header. Press `Ctrl+G` on a header to rename it. Undo
+  (`Ctrl+Z`) takes back a grouping, a rename, an ungroup, a delete and a drag of a header or of an item onto
+  one. In the Cards layout a list with groups shows one column, so a header spans the width. The numbers `Alt+1`
+  to `Alt+9` count items only, never headers. A screen reader reads a header as "group, 3 items" and says
+  whether it is expanded or collapsed. Groups are not in the Main window yet.
 - **Move.** Choose **Move to list…** from the item menu to move one or more selected items.
 - **Paste as…** Choose **Paste as…** from the item menu (text items, one at a time) to paste the text changed: **Plain
   text**, **UPPERCASE**, **lowercase**, **Title Case**, **Trimmed** (no space at the ends) or **slug-like-this** (`my-title`).
