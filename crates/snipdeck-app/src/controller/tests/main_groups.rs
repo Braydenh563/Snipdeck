@@ -454,3 +454,43 @@ fn saving_a_name_ends_the_request_so_a_later_move_cannot_reopen_it_on_another_he
         "moving a group opens no editor"
     );
 }
+
+#[test]
+fn deleting_a_folded_group_trashes_its_hidden_members_and_undo_restores_them() {
+    let mut w = open_replies();
+    group_first_two(&mut w);
+    w.ctl.main_group_collapse(0, Some(true)); // [Group*] Three Greeting
+    w.ctl.main_group_delete(0);
+    assert_eq!(
+        titles(&mut w),
+        ["Three", "Greeting"],
+        "the folded members went too"
+    );
+    w.ctl.undo();
+    assert_eq!(
+        titles(&mut w),
+        ["Group", "Three", "Greeting"],
+        "still folded"
+    );
+    assert_eq!(
+        w.ctl.main_screen().rows[0].header.as_ref().map(|h| h.count),
+        Some(2),
+        "one Undo brings the header and both members back"
+    );
+}
+
+#[test]
+fn folding_a_group_with_its_members_selected_drops_them_from_the_selection() {
+    let mut w = open_replies();
+    group_first_two(&mut w);
+    w.ctl.main_select(1, SelectMode::Replace);
+    w.ctl.main_select(2, SelectMode::Toggle);
+    assert_eq!(w.ctl.main_screen().selected_count, 2);
+    w.ctl.main_group_collapse(0, Some(true));
+    assert_eq!(
+        w.ctl.main_screen().selected_count,
+        0,
+        "hidden rows are not acted on by a later delete"
+    );
+    assert_eq!(titles(&mut w), ["Group", "Three", "Greeting"]);
+}

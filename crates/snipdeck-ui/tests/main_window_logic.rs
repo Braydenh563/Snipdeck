@@ -250,6 +250,22 @@ macro_rules! ui_tests {
 
 ui_tests! {
 
+    fn the_tile_button_is_off_and_unchecked_while_groups_draw_the_rows() {
+        let (ui, _log) = start();
+        ui.set_view(snipdeck_ui::MainView::Tile);
+        settle();
+        let tile = || find(&ui, "Tile view", AccessibleRole::Button);
+        assert_eq!(tile().accessible_enabled(), Some(true));
+        assert_eq!(tile().accessible_checked(), Some(true));
+        ui.set_has_groups(true);
+        settle();
+        assert_eq!(tile().accessible_enabled(), Some(false), "tiles cannot show groups");
+        assert_eq!(tile().accessible_checked(), Some(false), "and it is not announced as checked");
+        ui.set_has_groups(false);
+        settle();
+        assert_eq!(tile().accessible_checked(), Some(true), "the choice itself is kept");
+    }
+
     fn a_header_made_with_a_rename_request_opens_its_editor_at_once() {
         let (ui, _log) = start();
         // Ctrl+G adds the header and asks for its rename in the same refresh: the header is born
