@@ -2272,6 +2272,69 @@ fn left_collapses_and_right_expands_a_header() {
     });
 }
 
+/// The labels (and whether each is greyed) of the item menu as drawn now.
+fn item_menu_rows(r: &Rig) -> Vec<(String, bool)> {
+    r.ui.get_item_menu_entries()
+        .iter()
+        .filter(|row| !row.separator)
+        .map(|row| (row.text.to_string(), row.disabled))
+        .collect()
+}
+
+fn choose_menu_row(r: &Rig, label: &str) {
+    let at =
+        r.ui.get_item_menu_entries()
+            .iter()
+            .position(|row| row.text == label)
+            .unwrap_or_else(|| panic!("no {label:?} row in {:?}", item_menu_rows(r)));
+    r.ui.invoke_item_menu_activated(i32::try_from(at).expect("index"));
+}
+
+#[test]
+fn the_header_menu_folds_opens_and_moves_the_group_for_a_mouse_user() {
+    on_ui_thread(|| {
+        let r = rig();
+        group_first_two(&r);
+        press(r.window(), &key(Key::Escape));
+        let count = r.ui.get_rows().row_count();
+
+        r.ui.invoke_context_menu_requested(0, 10.0, 10.0);
+        assert!(r.ui.get_item_menu_open());
+        let rows = item_menu_rows(&r);
+        let names: Vec<&str> = rows.iter().map(|(t, _)| t.as_str()).collect();
+        assert_eq!(
+            names,
+            [
+                "Rename group",
+                "Fold group",
+                "Move group up",
+                "Move group down",
+                "Ungroup",
+                "Delete group"
+            ]
+        );
+        assert!(rows[2].1, "Move group up is greyed at the top");
+        assert!(!rows[3].1, "Move group down is live");
+
+        choose_menu_row(&r, "Fold group");
+        assert_eq!(r.ui.get_rows().row_count(), count - 2, "the items hide");
+        r.ui.invoke_context_menu_requested(0, 10.0, 10.0);
+        assert!(
+            item_menu_rows(&r).iter().any(|(t, _)| t == "Open group"),
+            "a folded group offers Open group"
+        );
+        choose_menu_row(&r, "Open group");
+        assert_eq!(r.ui.get_rows().row_count(), count, "the items are back");
+
+        r.ui.invoke_context_menu_requested(0, 10.0, 10.0);
+        choose_menu_row(&r, "Move group down");
+        assert!(
+            !r.ui.get_rows().row_data(0).expect("row").is_header,
+            "the group moved below the loose item"
+        );
+    });
+}
+
 #[test]
 fn header_is_announced_with_its_count() {
     on_ui_thread(|| {

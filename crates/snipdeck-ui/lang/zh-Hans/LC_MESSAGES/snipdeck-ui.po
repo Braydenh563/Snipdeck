@@ -1034,6 +1034,9 @@ msgstr "旗帜"
 msgid "Floating"
 msgstr "浮动"
 
+msgid "Fold group"
+msgstr "折叠分组"
+
 msgid "Fold or open a group"
 msgstr "折叠或展开分组"
 
@@ -1800,6 +1803,9 @@ msgstr "打开备份文件夹"
 
 msgid "Open data folder"
 msgstr "打开数据文件夹"
+
+msgid "Open group"
+msgstr "展开分组"
 
 msgid "Open logs folder"
 msgstr "打开日志文件夹"

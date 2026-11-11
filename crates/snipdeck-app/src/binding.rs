@@ -1604,6 +1604,8 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
                     entry,
                     ItemMenuEntry::MoveUp { enabled: false }
                         | ItemMenuEntry::MoveDown { enabled: false }
+                        | ItemMenuEntry::GroupUp { enabled: false }
+                        | ItemMenuEntry::GroupDown { enabled: false }
                 ),
                 separator: entry == ItemMenuEntry::Separator,
                 destructive: matches!(entry, ItemMenuEntry::Trash | ItemMenuEntry::DeleteGroup),

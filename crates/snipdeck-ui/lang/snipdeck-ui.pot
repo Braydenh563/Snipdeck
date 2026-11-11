@@ -976,7 +976,7 @@ msgstr ""
 msgid "Date and time in a format you choose"
 msgstr ""
 
-#: ui/menu_texts.slint:166 ui/panel.slint:1687 ui/panel.slint:2394
+#: ui/menu_texts.slint:178 ui/panel.slint:1687 ui/panel.slint:2394
 msgid "Delete"
 msgstr ""
 
@@ -992,7 +992,7 @@ msgstr ""
 msgid "Delete board “{}”?"
 msgstr ""
 
-#: ui/menu_texts.slint:183
+#: ui/menu_texts.slint:195
 msgid "Delete board…"
 msgstr ""
 
@@ -1008,7 +1008,7 @@ msgstr ""
 msgid "Delete for good…"
 msgstr ""
 
-#: ui/command_texts.slint:55 ui/menu_texts.slint:163
+#: ui/command_texts.slint:55 ui/menu_texts.slint:175
 msgid "Delete group"
 msgstr ""
 
@@ -1374,6 +1374,10 @@ msgstr ""
 
 #: ui/onboarding.slint:378 ui/settings.slint:933
 msgid "Floating"
+msgstr ""
+
+#: ui/menu_texts.slint:160
+msgid "Fold group"
 msgstr ""
 
 #: ui/shortcut_texts.slint:50 ui/shortcut_texts.slint:87
@@ -2002,11 +2006,11 @@ msgstr ""
 msgid "Move a page at a time"
 msgstr ""
 
-#: ui/menu_texts.slint:180
+#: ui/menu_texts.slint:192
 msgid "Move board down"
 msgstr ""
 
-#: ui/menu_texts.slint:177
+#: ui/menu_texts.slint:189
 msgid "Move board up"
 msgstr ""
 
@@ -2014,11 +2018,11 @@ msgstr ""
 msgid "Move down"
 msgstr ""
 
-#: ui/command_texts.slint:57
+#: ui/command_texts.slint:57 ui/menu_texts.slint:169
 msgid "Move group down"
 msgstr ""
 
-#: ui/command_texts.slint:56
+#: ui/command_texts.slint:56 ui/menu_texts.slint:166
 msgid "Move group up"
 msgstr ""
 
@@ -2114,7 +2118,7 @@ msgstr ""
 msgid "New board"
 msgstr ""
 
-#: ui/menu_texts.slint:171
+#: ui/menu_texts.slint:183
 msgid "New board…"
 msgstr ""
 
@@ -2400,6 +2404,10 @@ msgstr ""
 
 #: ui/help.slint:117 ui/help.slint:247 ui/settings.slint:1389
 msgid "Open data folder"
+msgstr ""
+
+#: ui/menu_texts.slint:163
+msgid "Open group"
 msgstr ""
 
 #: ui/help.slint:117 ui/help.slint:252
@@ -2914,7 +2922,7 @@ msgstr ""
 msgid "Rename a group"
 msgstr ""
 
-#: ui/menu_texts.slint:174
+#: ui/menu_texts.slint:186
 msgid "Rename board…"
 msgstr ""
 
@@ -4082,7 +4090,7 @@ msgstr ""
 msgid "Undock the panel"
 msgstr ""
 
-#: ui/command_texts.slint:54 ui/menu_texts.slint:160
+#: ui/command_texts.slint:54 ui/menu_texts.slint:172
 msgid "Ungroup"
 msgstr ""
 

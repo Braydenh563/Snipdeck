@@ -565,14 +565,14 @@ pub const fn app_menu_shortcut(entry: crate::controller::AppMenuEntry) -> &'stat
 pub const fn item_menu_shortcut(entry: crate::controller::ItemMenuEntry) -> &'static str {
     use crate::controller::ItemMenuEntry;
     match entry {
-        ItemMenuEntry::Use => "Enter",
+        ItemMenuEntry::Use | ItemMenuEntry::ToggleGroup { .. } => "Enter",
         ItemMenuEntry::Copy => "Shift+Enter",
         ItemMenuEntry::Edit => "Ctrl+E",
         ItemMenuEntry::Duplicate => "Ctrl+D",
         ItemMenuEntry::Pin { .. } => "Ctrl+P",
         ItemMenuEntry::Trash => "Del",
-        ItemMenuEntry::MoveUp { .. } => "Alt+Up",
-        ItemMenuEntry::MoveDown { .. } => "Alt+Down",
+        ItemMenuEntry::MoveUp { .. } | ItemMenuEntry::GroupUp { .. } => "Alt+Up",
+        ItemMenuEntry::MoveDown { .. } | ItemMenuEntry::GroupDown { .. } => "Alt+Down",
         ItemMenuEntry::Group => "Ctrl+G",
         ItemMenuEntry::RenameGroup => "F2",
         ItemMenuEntry::Ungroup
@@ -611,6 +611,10 @@ pub fn item_menu_label(window: &PanelWindow, entry: crate::controller::ItemMenuE
         ItemMenuEntry::MoveDown { .. } => moves.invoke_menu_move_down(),
         ItemMenuEntry::Group => t.invoke_item_group(),
         ItemMenuEntry::RenameGroup => t.invoke_group_rename(),
+        ItemMenuEntry::ToggleGroup { folded: false } => t.invoke_group_fold(),
+        ItemMenuEntry::ToggleGroup { folded: true } => t.invoke_group_open(),
+        ItemMenuEntry::GroupUp { .. } => t.invoke_group_move_up(),
+        ItemMenuEntry::GroupDown { .. } => t.invoke_group_move_down(),
         ItemMenuEntry::Ungroup => t.invoke_group_ungroup(),
         ItemMenuEntry::DeleteGroup => t.invoke_group_delete(),
         ItemMenuEntry::Separator => return String::new(),
