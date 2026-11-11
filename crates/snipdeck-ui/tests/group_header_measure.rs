@@ -23,19 +23,19 @@ use snipdeck_ui::{
 #[path = "support/panel_fixture.rs"]
 mod fixture;
 
-// design/tokens/palette.json: text.primary, text.secondary, bg.app, bg.sunken, focus.ring.
+// design/tokens/palette.json: text.primary, text.secondary, bg.app, bg.selected, focus.ring.
 const LIGHT: Tokens = Tokens {
     primary: [0x17, 0x16, 0x13],
     secondary: [0x5D, 0x5A, 0x57],
     app: [0xF5, 0xF3, 0xF1],
-    sunken: [0xEB, 0xE9, 0xE7],
+    selected: [0xEB, 0xF2, 0xFE],
     ring: [0x28, 0x70, 0xD4],
 };
 const DARK: Tokens = Tokens {
     primary: [0xEB, 0xE9, 0xE7],
     secondary: [0xA0, 0x9E, 0x9A],
     app: [0x11, 0x0F, 0x0D],
-    sunken: [0x11, 0x0F, 0x0D],
+    selected: [0x05, 0x30, 0x6A],
     ring: [0x74, 0xAC, 0xFF],
 };
 
@@ -43,7 +43,7 @@ struct Tokens {
     primary: [u8; 3],
     secondary: [u8; 3],
     app: [u8; 3],
-    sunken: [u8; 3],
+    selected: [u8; 3],
     ring: [u8; 3],
 }
 
@@ -145,6 +145,14 @@ fn a_header_is_a_button_that_names_its_group_count_and_fold_state() {
         Some(false),
         "a folded group says so"
     );
+    // The selected header says so in the tree, the others say they could be.
+    assert_eq!(e.accessible_item_selectable(), Some(true));
+    assert_eq!(e.accessible_item_selected(), Some(false));
+    let h = panel(320, false, 1.0, "Replies", true);
+    let _ = h.render_settled();
+    let e = handle(&h, "Replies", 2);
+    assert_eq!(e.accessible_item_selected(), Some(true), "the cursor header is selected");
+    assert_eq!(e.accessible_expandable(), Some(true), "and stays an expandable button");
     // One item reads in the singular.
     let one = h.component.invoke_group_announcement("Solo".into(), 1);
     assert_eq!(one, "group Solo, 1 item");
@@ -153,7 +161,7 @@ fn a_header_is_a_button_that_names_its_group_count_and_fold_state() {
 #[test]
 fn the_text_count_and_chevron_pass_wcag_aa_in_both_themes() {
     for (dark, t, name) in [(false, LIGHT, "light"), (true, DARK, "dark")] {
-        for (bg, on) in [(t.app, "list"), (t.sunken, "selected")] {
+        for (bg, on) in [(t.app, "list"), (t.selected, "selected")] {
             let title = contrast(t.primary, bg);
             let count = contrast(t.secondary, bg);
             eprintln!(
@@ -180,40 +188,69 @@ fn the_text_count_and_chevron_pass_wcag_aa_in_both_themes() {
 }
 
 #[test]
-fn a_selected_header_paints_a_whole_focus_ring_inside_its_bounds() {
+fn a_selected_header_paints_the_selected_fill_like_a_card_and_no_ring() {
     for (dark, t, name) in [(false, LIGHT, "light"), (true, DARK, "dark")] {
         let h = panel(320, dark, 1.0, "Replies", true);
         let f = h.render_settled();
         let (x0, y0, x1, y1) = rect(&handle(&h, "Replies", 2));
         let (mx, my) = (u32::midpoint(x0, x1), u32::midpoint(y0, y1));
-        // Two pixels thick, on the inside of every edge (corners are rounded, so the middle of each).
-        let edges = [
-            ("top", [(mx, y0), (mx, y0 + 1)]),
-            ("bottom", [(mx, y1 - 1), (mx, y1 - 2)]),
-            ("left", [(x0, my), (x0 + 1, my)]),
-            ("right", [(x1 - 1, my), (x1 - 2, my)]),
-        ];
-        for (edge, pixels) in edges {
-            for (x, y) in pixels {
-                let p = f.pixel(x, y);
-                eprintln!("{name} {edge} ({x},{y}) = {p:?}");
-                assert!(
-                    p.iter().zip(t.ring).all(|(a, b)| a.abs_diff(b) <= 8),
-                    "{name} ring {edge} at ({x},{y}) is {p:?}, want {:?}",
-                    t.ring
-                );
-            }
+        // The fill reaches the middle of every edge (corners are rounded) and is the card's.
+        for (edge, (x, y)) in [
+            ("top", (mx, y0 + 1)),
+            ("bottom", (mx, y1 - 2)),
+            ("left", (x0 + 1, my)),
+            ("right", (x1 - 2, my)),
+        ] {
+            let p = f.pixel(x, y);
+            eprintln!("{name} {edge} ({x},{y}) = {p:?}");
+            assert!(
+                p.iter().zip(t.selected).all(|(a, b)| a.abs_diff(b) <= 4),
+                "{name} {edge} at ({x},{y}) is {p:?}, want the selected fill {:?}",
+                t.selected
+            );
+            assert!(
+                !p.iter().zip(t.ring).all(|(a, b)| a.abs_diff(b) <= 8),
+                "{name}: a ring is painted at the {edge}"
+            );
         }
-        let ring_vs = contrast(t.ring, t.sunken).min(contrast(t.ring, t.app));
-        eprintln!("{name}: ring against the page {ring_vs:.2}:1");
-        assert!(ring_vs >= 3.0, "{name}: {ring_vs:.2}");
-        // Not clipped: the pixel just outside the rectangle is not ring coloured.
-        let outside = f.pixel(mx, y0.saturating_sub(1));
+        // A header that is not selected paints the page, not the fill.
+        let h = panel(320, dark, 1.0, "Replies", false);
+        let f = h.render_settled();
+        let (x0, y0, x1, _) = rect(&handle(&h, "Replies", 2));
+        let p = f.pixel(u32::midpoint(x0, x1), y0 + 1);
         assert!(
-            !outside.iter().zip(t.ring).all(|(a, b)| a.abs_diff(b) <= 8),
-            "{name}: the ring spills above the header"
+            p.iter().zip(t.app).all(|(a, b)| a.abs_diff(b) <= 4),
+            "{name}: an unselected header is on the page, got {p:?}"
         );
     }
+}
+
+#[test]
+fn at_260_wide_and_225_text_the_rename_input_stays_inside_the_header_and_the_count_whole() {
+    let long = "A very long group name that cannot possibly fit in a narrow Panel";
+    let h = panel(260, false, 2.25, long, true);
+    // Ask for the rename after the rows exist, as F2 does.
+    h.component.set_rename_row(0);
+    h.component.set_rename_seq(1);
+    let f = h.render_settled();
+    let (x0, y0, x1, y1) = rect(&handle(&h, long, 2));
+    let input = ElementHandle::find_by_accessible_label(&h.component, "Group name")
+        .find(|e| e.accessible_role() == Some(AccessibleRole::TextInput))
+        .expect("the rename input is open");
+    let p = input.absolute_position();
+    let w = input.size().width;
+    eprintln!("header {x0}..{x1}; input {}..{}", p.x, p.x + w);
+    assert!(x1 <= 260, "the header stays in the 260 px Panel");
+    assert!(
+        p.x + w <= (x1 - 6) as f32,
+        "the input ends at {} inside the header's {x1}",
+        p.x + w
+    );
+    // The count is whole: ink in its corner of the header, nothing past the edge.
+    let bg = f.pixel(u32::midpoint(x0, x1), y0 + 4);
+    let count = bbox(&f, (x1 - 100, y0 + 6, x1, y1 - 6), bg).expect("count");
+    eprintln!("count box {count:?}");
+    assert!(count.2 <= x1 - 6, "the count is pushed out: {count:?}");
 }
 
 #[test]

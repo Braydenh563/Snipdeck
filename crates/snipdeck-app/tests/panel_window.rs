@@ -2340,6 +2340,8 @@ fn header_is_announced_with_its_count() {
     on_ui_thread(|| {
         let r = rig();
         group_first_two(&r);
+        // The new header opens its name for typing: Esc ends that, then the keys are the list's.
+        press(r.window(), &key(Key::Escape));
         let name = r.ui.get_rows().row_data(0).expect("row").title;
         // Folded or open is the header's expanded state, not part of its label.
         let label = format!("group {name}, 2 items");
