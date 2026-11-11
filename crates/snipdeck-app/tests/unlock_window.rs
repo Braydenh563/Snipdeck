@@ -652,7 +652,7 @@ fn at_225_percent_text_the_buttons_have_room_and_hello_has_its_own_row() {
     on_ui_thread(|| {
         let hello = std::sync::Arc::new(FakeHello::new());
         let r = rig_with(Some(&hello));
-        r.ui.global::<snipdeck_ui::SystemLook>()
+        r.ui.global::<snipdeck_ui::SystemLook<'_>>()
             .set_text_scale(2.25);
         settle();
         // The host sizes the window from what it wants (as `size_before_show` does).
@@ -662,7 +662,8 @@ fn at_225_percent_text_the_buttons_have_room_and_hello_has_its_own_row() {
             r.ui.get_wanted_height(),
         ));
         settle();
-        let width = r.ui.window().size().width as f32 / scale;
+        let width =
+            f32::from(u16::try_from(r.ui.window().size().width).unwrap_or(u16::MAX)) / scale;
         assert!(
             width >= 270.0 * 2.25,
             "the window grew with the text: {width}"
