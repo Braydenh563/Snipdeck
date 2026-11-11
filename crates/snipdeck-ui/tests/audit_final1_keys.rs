@@ -524,12 +524,19 @@ fn fill_form_multiline_and_date_error_fit_at_225() {
 
 const ONE_CHAR_WARNING: &str = "A one-character trigger fires every time you type it, even inside words. Two or more characters are safer.";
 const WINDOWS_ONLY_NOTE: &str = "Typing triggers work on Windows only.";
-const TYPING_TOGGLES: [&str; 2] = ["Expand abbreviations as I type", "Suggest snippets as I type"];
+const TYPING_TOGGLES: [&str; 2] = [
+    "Expand abbreviations as I type",
+    "Suggest snippets as I type",
+];
 
 fn rel_lum(c: [u8; 3]) -> f64 {
     let l = |v: u8| {
         let v = f64::from(v) / 255.0;
-        if v <= 0.03928 { v / 12.92 } else { ((v + 0.055) / 1.055).powf(2.4) }
+        if v <= 0.03928 {
+            v / 12.92
+        } else {
+            ((v + 0.055) / 1.055).powf(2.4)
+        }
     };
     0.2126 * l(c[0]) + 0.7152 * l(c[1]) + 0.0722 * l(c[2])
 }
@@ -555,7 +562,9 @@ fn nodes<C: ComponentHandle>(
             continue;
         }
         let n = (
-            e.accessible_label().map(|l| l.to_string()).unwrap_or_default(),
+            e.accessible_label()
+                .map(|l| l.to_string())
+                .unwrap_or_default(),
             e.accessible_enabled().unwrap_or(true),
             p.x,
             p.y,
@@ -594,10 +603,18 @@ fn settings_typing_section_walk() {
     for (s, w) in [(1.0f32, 420u32), (2.25, 765)] {
         for available in [true, false] {
             let scene = format!("settings typing at {s}x, {available}");
-            let h = Harness::new(SettingsPage::new, w, 900);
+            let h = Harness::new(SettingsPage::new, w, 1800);
             scene!(h.component, s);
             editor::settings(&h.component);
             h.component.set_typing_available(available);
+            // The search leaves only the Typing section, so its rows are on screen (the tree lists only what is).
+            {
+                use slint::Global;
+                let filter = snipdeck_ui::SettingsFilter::get(&h.component);
+                filter
+                    .on_matches(|text, query| text.to_lowercase().contains(&query.to_lowercase()));
+                filter.set_query("as I type".into());
+            }
             let _ = h.render_settled();
             let switches = nodes(&h, Role::Switch);
             for name in TYPING_TOGGLES {
@@ -609,20 +626,28 @@ fn settings_typing_section_walk() {
                     problems.push(format!("{scene}: {name:?} enabled is {}", n.1));
                 }
                 if n.4 < 24.0 || n.5 < 24.0 || n.2 + n.4 > w as f32 + 0.5 {
-                    problems.push(format!("{scene}: {name:?} is {:.0}x{:.0} at x {:.0}", n.4, n.5, n.2));
+                    problems.push(format!(
+                        "{scene}: {name:?} is {:.0}x{:.0} at x {:.0}",
+                        n.4, n.5, n.2
+                    ));
                 }
             }
-            let note = nodes(&h, Role::Text).iter().any(|n| n.0 == WINDOWS_ONLY_NOTE || n.0.is_empty() && false);
             let note_in_tree = i_slint_backend_testing::ElementQuery::from_root(&h.component)
                 .match_descendants()
                 .find_all()
                 .iter()
                 .any(|e| e.accessible_label().is_some_and(|l| l == WINDOWS_ONLY_NOTE));
             if note_in_tree == available {
-                problems.push(format!("{scene}: the Windows-only note shows is {note_in_tree}"));
+                problems.push(format!(
+                    "{scene}: the Windows-only note shows is {note_in_tree}"
+                ));
             }
-            let _ = note;
-            let names = lap(&h);
+            // The nodes above were measured with the search on; the walk is the page as it opens.
+            let walk = Harness::new(SettingsPage::new, w, 900);
+            scene!(walk.component, s);
+            editor::settings(&walk.component);
+            walk.component.set_typing_available(available);
+            let names = lap(&walk);
             for name in TYPING_TOGGLES {
                 if names.iter().any(|n| n == name) != available {
                     problems.push(format!("{scene}: Tab reaches {name:?} is {}", !available));
@@ -656,8 +681,8 @@ fn editor_trigger_warning_is_visible_readable_and_reachable() {
     for (s, w) in [(1.0f32, 560u32), (2.25, 608)] {
         for dark in [false, true] {
             let scene = format!("trigger warning at {s}x dark {dark}");
-            let build = |trigger: &str, sensitive: bool| {
-                let h = Harness::new(ItemEditor::new, w, 1100);
+            let build = |trigger: &str, sensitive: bool, height: u32| {
+                let h = Harness::new(ItemEditor::new, w, height);
                 scene!(h.component, s);
                 h.component.set_dark(dark);
                 editor::text_item(&h.component);
@@ -666,7 +691,7 @@ fn editor_trigger_warning_is_visible_readable_and_reachable() {
                 h.component.set_sensitive(sensitive);
                 h
             };
-            let h = build("a", false);
+            let h = build("a", false, 4000);
             let frame = h.render_settled();
             let found: Vec<_> = nodes(&h, Role::Text)
                 .into_iter()
@@ -677,10 +702,14 @@ fn editor_trigger_warning_is_visible_readable_and_reachable() {
             } else {
                 let n = &found[0];
                 if n.2 < 0.0 || n.2 + n.4 > w as f32 + 0.5 {
-                    problems.push(format!("{scene}: warning runs from x {:.0} to {:.0} of {w}", n.2, n.2 + n.4));
+                    problems.push(format!(
+                        "{scene}: warning runs from x {:.0} to {:.0} of {w}",
+                        n.2,
+                        n.2 + n.4
+                    ));
                 }
-                let (x0, y0) = ((n.2 * s) as u32, (n.3 * s) as u32);
-                let (x1, y1) = (((n.2 + n.4) * s) as u32, ((n.3 + n.5) * s) as u32);
+                let (x0, y0) = (n.2 as u32, n.3 as u32);
+                let (x1, y1) = ((n.2 + n.4) as u32, (n.3 + n.5) as u32);
                 let bg = frame.pixel(x0.saturating_sub(2).min(frame.width - 1), y0);
                 let mut best = 1.0f64;
                 for y in y0..y1.min(frame.height) {
@@ -689,25 +718,34 @@ fn editor_trigger_warning_is_visible_readable_and_reachable() {
                     }
                 }
                 if best < 4.5 {
-                    problems.push(format!("{scene}: warning text contrast {best:.2}:1 on {bg:?}"));
+                    problems.push(format!(
+                        "{scene}: warning text contrast {best:.2}:1 on {bg:?}"
+                    ));
                 }
             }
             // The field is a named stop with the ring.
-            let names = lap(&build("a", false));
+            let names = lap(&build("a", false, 900));
             if !names.iter().any(|n| n == "Trigger") {
-                problems.push(format!("{scene}: Tab never reaches the Trigger field: {names:?}"));
+                problems.push(format!(
+                    "{scene}: Tab never reaches the Trigger field: {names:?}"
+                ));
             }
             // Two characters: no warning.
-            let h2 = build("ab", false);
+            let h2 = build("ab", false, 4000);
             let _ = h2.render_settled();
-            if nodes(&h2, Role::Text).iter().any(|n| n.0 == ONE_CHAR_WARNING) {
+            if nodes(&h2, Role::Text)
+                .iter()
+                .any(|n| n.0 == ONE_CHAR_WARNING)
+            {
                 problems.push(format!("{scene}: the warning shows for two characters"));
             }
             // Sensitive: the field is gone and the reason is said.
-            let h3 = build("", true);
+            let h3 = build("", true, 4000);
             let _ = h3.render_settled();
             if nodes(&h3, Role::TextInput).iter().any(|n| n.0 == "Trigger") {
-                problems.push(format!("{scene}: a Sensitive item still shows the Trigger field"));
+                problems.push(format!(
+                    "{scene}: a Sensitive item still shows the Trigger field"
+                ));
             }
         }
     }
