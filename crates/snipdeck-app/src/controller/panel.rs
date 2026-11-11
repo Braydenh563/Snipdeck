@@ -294,13 +294,13 @@ where
             let at = self.model.rows().iter().position(|r| r.id == id);
             return vec![
                 ItemMenuEntry::RenameGroup,
-                ItemMenuEntry::Ungroup,
                 ItemMenuEntry::MoveUp {
                     enabled: at.is_some_and(|at| self.can_move_group(at, -1)),
                 },
                 ItemMenuEntry::MoveDown {
                     enabled: at.is_some_and(|at| self.can_move_group(at, 1)),
                 },
+                ItemMenuEntry::Ungroup,
                 ItemMenuEntry::Separator,
                 ItemMenuEntry::DeleteGroup,
             ];
@@ -417,6 +417,11 @@ where
         }
         self.menu = PanelMenu::None;
         let targets = std::mem::take(&mut self.menu_targets);
+        let is_header = self
+            .model
+            .rows()
+            .iter()
+            .any(|r| r.id == id && r.header.is_some());
         match entry {
             ItemMenuEntry::Sensitive { .. } => {
                 self.toggle_item_sensitive(id);
@@ -443,19 +448,19 @@ where
                 self.toggle_stack_mark(id);
                 Vec::new()
             }
-            ItemMenuEntry::MoveUp { enabled } | ItemMenuEntry::MoveDown { enabled } => {
-                let delta = if matches!(entry, ItemMenuEntry::MoveUp { .. }) {
-                    -1
-                } else {
-                    1
-                };
+            ItemMenuEntry::MoveUp { .. } | ItemMenuEntry::MoveDown { .. } if is_header => {
+                self.choose_group_entry(id, entry);
+                Vec::new()
+            }
+            ItemMenuEntry::MoveUp { enabled } => {
                 if enabled {
-                    match self.model.rows().iter().position(|r| r.id == id) {
-                        Some(at) if self.model.rows()[at].header.is_some() => {
-                            self.panel_move_group(at, delta);
-                        }
-                        _ => self.panel_move_item(id, delta),
-                    }
+                    self.panel_move_item(id, -1);
+                }
+                Vec::new()
+            }
+            ItemMenuEntry::MoveDown { enabled } => {
+                if enabled {
+                    self.panel_move_item(id, 1);
                 }
                 Vec::new()
             }
