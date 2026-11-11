@@ -32,7 +32,7 @@ resumed: 2026-11-09 after idle-guard stop during a long gate run (commits c7f28a
 - [x] v1.1: importers (TextExpander, Espanso, PhraseExpress, Beeftext): backend merged 947c9b4; Settings import chooser wiring + Note warnings display left
 - [ ] v1.1: groups inside a list (O46) [tips done 4] -> worker session_01NKjURwUK2uTpedr6rZ5xYV, branch claude/v11-groups
 - [ ] v1.1: typed-trigger expansion (opt-in, off by default, honours Sensitive + never-paste list) -> worker session_01NKjURtkiRo8LLwynuYFyy5, branch claude/v11-typing (5b then 6)
-- [ ] v1.1: suggest-as-you-type at the caret (opt-in) [typing worker], rich paste [done 7], Windows Hello unlock -> worker session_01NKjURtLEn1uEjCJX5KgxGA, branch claude/v11-hello
+- [ ] v1.1: suggest-as-you-type at the caret (opt-in) [typing worker], rich paste [done 7], Windows Hello unlock -> worker session_01NKjURtLEn1uEjCJX5KgxGA, branch claude/v11-hello (c6f30f0 reviewed 05:35: 0 HIGH, 4 MEDIUM, 5 LOW sent back for fixes)
 - [ ] (polish worker session_01NKjURu9UuNY6KJyufoh7Cv, branch claude/v11-polish: tips crop, Panel glyph, scroll-focus audit)
 - [ ] Final: full gate, polish pass (ux-auditor + blind-tester on Panel, Settings, palette, shortcuts, toasts), docs, morning summary
 - [x] v1.1 light lane: slice 9 serde-saphyr + 3a groups data (merged ed7528b)

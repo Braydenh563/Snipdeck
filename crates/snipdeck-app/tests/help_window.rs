@@ -279,6 +279,6 @@ fn try_it_runs_the_tip_action() {
 
         // A stale index does nothing.
         r.ui.invoke_try_tip_requested(99);
-        assert!(r.ctl.borrow_mut().take_pending().is_empty());
+        assert_eq!(r.ctl.borrow_mut().take_pending(), Vec::new());
     });
 }
