@@ -1,5 +1,5 @@
 //! Final audit 1 (docs/reviews/final-audit-1.md): renders the audited windows at light/dark, their
-//! smallest size and 1.5x / 2.25x text size, and measures contrast, centring and clipping from the
+//! smallest size and 1.5x / 2.25x text size, for contrast, centring and clipping measurements from the
 //! pixels. Set `SNIPDECK_AUDIT_DIR` to also write every frame as a PNG. No real clock.
 
 #![allow(
@@ -43,54 +43,6 @@ fn dump(name: &str, f: &Frame) {
         .unwrap()
         .write_image_data(&f.rgb)
         .unwrap();
-}
-
-fn lin(c: u8) -> f64 {
-    let c = f64::from(c) / 255.0;
-    if c <= 0.03928 {
-        c / 12.92
-    } else {
-        ((c + 0.055) / 1.055).powf(2.4)
-    }
-}
-fn lum(p: [u8; 3]) -> f64 {
-    0.2126 * lin(p[0]) + 0.7152 * lin(p[1]) + 0.0722 * lin(p[2])
-}
-fn contrast(a: [u8; 3], b: [u8; 3]) -> f64 {
-    let (x, y) = (lum(a), lum(b));
-    (x.max(y) + 0.05) / (x.min(y) + 0.05)
-}
-
-/// The pixel in `r` (x0,y0,x1,y1) that differs most from `bg`, and its contrast with `bg`.
-fn ink(f: &Frame, r: (u32, u32, u32, u32), bg: [u8; 3]) -> ([u8; 3], f64) {
-    let mut best = (bg, 1.0);
-    for y in r.1..r.3.min(f.height) {
-        for x in r.0..r.2.min(f.width) {
-            let p = f.pixel(x, y);
-            let c = contrast(p, bg);
-            if c > best.1 {
-                best = (p, c);
-            }
-        }
-    }
-    best
-}
-
-/// Bounding box of the pixels in `r` that are not `bg` (within 6 levels).
-fn bbox(f: &Frame, r: (u32, u32, u32, u32), bg: [u8; 3]) -> Option<(u32, u32, u32, u32)> {
-    let mut b: Option<(u32, u32, u32, u32)> = None;
-    for y in r.1..r.3.min(f.height) {
-        for x in r.0..r.2.min(f.width) {
-            let p = f.pixel(x, y);
-            if p.iter().zip(bg).any(|(a, b)| a.abs_diff(b) > 6) {
-                b = Some(match b {
-                    None => (x, y, x + 1, y + 1),
-                    Some(o) => (o.0.min(x), o.1.min(y), o.2.max(x + 1), o.3.max(y + 1)),
-                });
-            }
-        }
-    }
-    b
 }
 
 macro_rules! scale {
