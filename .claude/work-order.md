@@ -39,7 +39,9 @@ resumed: 2026-11-09 after idle-guard stop during a long gate run (commits c7f28a
 - [x] Final audit 2 (Hello + typing): report docs/reviews/final-audit-2.md; Hello A1/A5/A7 done 5a19d49, review: 1 HIGH (copy outlives key) 1 MED 6 LOW fixed 76dba4a, re-review 8/8 confirmed, merged a1886b9; 5 LOW + nit fixed 0f1f2f6, merged, typing B3-B10 -> typing worker
 - [x] Import notes LOWs + docs refresh (merged 7310bd0, 63c0259)
 - [x] In-app help and shortcut lists for groups, triggers, Hello (merged 07cd1f0; Hello settings-search key after the Hello merge)
-- [ ] Groups in the Main window (spec: Panel and Main) -> sweep worker, claude/v11-groups-main
+- [x] Groups in the Main window (merged c3a53a0; footer counts items, one group_move_on path; reviewer running)
+- [ ] Main groups palette commands, shortcut rows, guide + CHANGELOG -> typing worker, claude/v11-groups-docs
+- [ ] Re-audit typing CI clippy + 2.25x switch fix -> audit worker, claude/v11-reaudit-typing
 - [x] Groups a11y (Alt+Up/Down, header keys, window tests) merged (b2c1b01)
 - [x] Groups measurements (tree, contrast, focus ring, 2.25x/320px): all pass; members say n of m (merged)
 - [ ] Final: full gate, polish pass (ux-auditor + blind-tester on Panel, Settings, palette, shortcuts, toasts), docs, morning summary
