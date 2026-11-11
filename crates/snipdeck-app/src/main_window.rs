@@ -128,6 +128,10 @@ pub enum SelectMode {
 }
 
 /// One row of the item area.
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent display flags of one row, as in the window's own row struct"
+)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Row {
     /// What it stands for.
