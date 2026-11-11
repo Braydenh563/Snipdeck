@@ -52,7 +52,7 @@ use snipdeck_core::template::Template;
 use crate::error::{Error, Result};
 use crate::import::ImportOptions;
 use crate::plan::Library;
-use crate::report::{ImportReport, Warning};
+use crate::report::{ImportReport, Note, Warning};
 
 use super::expander::{Body, Snip, Tpl, import_snips, placeholder_name, read_capped};
 use super::{MEMORY_BUDGET, clean_label, decode_text, note_lossy};
@@ -175,9 +175,9 @@ fn find_files(dir: &Path, report: &mut ImportReport) -> Vec<PathBuf> {
                     continue;
                 }
                 if name.starts_with('_') {
-                    report.warn(Warning::Note(format!(
-                        "{name} is disabled in Espanso (its name starts with _) and was skipped"
-                    )));
+                    report.warn(Warning::Note(Note::DisabledFile {
+                        name: name.clone(),
+                    }));
                 } else {
                     found.push(entry.path());
                 }
@@ -465,11 +465,11 @@ enum Var {
 }
 
 fn read_match(m: &Node, globals: &[Node], what: &str, report: &mut ImportReport) -> Option<Snip> {
-    let note = |report: &mut ImportReport, msg: &str| {
-        report.warn(Warning::Note(format!("{what}: {msg}")));
+    let note = |report: &mut ImportReport, make: fn(String) -> Note| {
+        report.warn(Warning::Note(make(what.to_string())));
     };
     if !matches!(m, Node::Map(_)) {
-        note(report, "is not a match; skipped");
+        note(report, |what| Note::NotAMatch { what });
         return None;
     }
     let mut triggers: Vec<&str> = m.get("trigger").map(Node::strings).unwrap_or_default();
@@ -477,12 +477,9 @@ fn read_match(m: &Node, globals: &[Node], what: &str, report: &mut ImportReport)
     triggers.retain(|t| !t.trim().is_empty());
     if triggers.is_empty() {
         if m.get("regex").is_some() || m.get("regexes").is_some() {
-            note(
-                report,
-                "has only a regex trigger, which Snipdeck cannot use; skipped",
-            );
+            note(report, |what| Note::RegexTriggerOnly { what });
         } else {
-            note(report, "has no trigger; skipped");
+            note(report, |what| Note::NoTrigger { what });
         }
         return None;
     }
@@ -500,10 +497,10 @@ fn read_match(m: &Node, globals: &[Node], what: &str, report: &mut ImportReport)
     } else if let Some(form) = m.str_of("form") {
         convert_form(form, m.get("form_fields"), what, report)
     } else if let Some(text) = m.str_of("markdown").or_else(|| m.str_of("html")) {
-        note(report, "markdown/html text is kept as written");
+        note(report, |what| Note::MarkupKept { what });
         Body::plain(text)
     } else {
-        note(report, "has no text (image or other content); skipped");
+        note(report, |what| Note::NoText { what });
         return None;
     };
     Some(Snip {
@@ -531,9 +528,10 @@ fn var_for(name: &str, vars: &[&Node], what: &str, report: &mut ImportReport) ->
             if !format.contains(['{', '}']) && Template::parse(&placeholder).is_ok() {
                 Some(Var::Placeholder(placeholder))
             } else {
-                report.warn(Warning::Note(format!(
-                    "{what}: the date format {format} is not one Snipdeck knows; left as written"
-                )));
+                report.warn(Warning::Note(Note::DateFormat {
+                    what: what.to_string(),
+                    format: format.to_string(),
+                }));
                 None
             }
         }
@@ -581,10 +579,10 @@ fn convert(src: &str, vars: &[&Node], what: &str, report: &mut ImportReport) -> 
     }
     literal(&mut tpl, rest);
     if !unmapped.is_empty() {
-        report.warn(Warning::Note(format!(
-            "{what}: no Snipdeck equivalent for {{{{{}}}}} (shell, script, random or unknown); left as written",
-            unmapped.join("}}, {{")
-        )));
+        report.warn(Warning::Note(Note::UnmappedEspansoVariables {
+            label: what.to_string(),
+            tokens: format!("{{{{{}}}}}", unmapped.join("}}, {{")),
+        }));
     }
     tpl.finish(src, what, report)
 }
@@ -628,9 +626,10 @@ fn convert_form(src: &str, fields: Option<&Node>, what: &str, report: &mut Impor
             tpl.ph(&p);
         } else {
             tpl.lit(&rest[start..start + 2 + end + 2]);
-            report.warn(Warning::Note(format!(
-                "{what}: the form field [[{name}]] has no Snipdeck equivalent; left as written"
-            )));
+            report.warn(Warning::Note(Note::FormField {
+                what: what.to_string(),
+                name: name.to_string(),
+            }));
         }
         rest = &after[end + 2..];
     }

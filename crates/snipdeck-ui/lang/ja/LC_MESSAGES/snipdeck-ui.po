@@ -3429,6 +3429,9 @@ msgstr "{} は空のため、スキップされました。"
 msgid "{} is not valid UTF-8, so characters that could not be read were replaced."
 msgstr "{} は有効な UTF-8 ではないため、読めない文字は置き換えられました。"
 
+msgid "{} is turned off in Espanso (its name starts with an underscore) and was skipped."
+msgstr "{} は Espanso で無効になっている（名前がアンダースコアで始まる）ため、スキップしました。"
+
 msgid "{} is used by another app. Choose another in Settings."
 msgstr "{} は別のアプリが使用中です。設定で別のものを選んでください。"
 
@@ -3438,6 +3441,10 @@ msgstr "{} は {} で、テキストの上限 5 MB を超えるためスキッ�
 msgid "{} item"
 msgid_plural "{} items"
 msgstr[0] "{} 件"
+
+msgid "{} item had a title or source app longer than {} or {} characters, and it was cut."
+msgid_plural "{} items had a title or source app longer than {} or {} characters, and it was cut."
+msgstr[0] "{} 件の項目で、タイトルまたは元のアプリ名が {} 文字または {} 文字を超えたため、切り詰めました。"
 
 msgid "{} item in {} list will be added"
 msgid_plural "{} items in {} lists will be added"
@@ -3489,5 +3496,53 @@ msgstr "{}、{} / {}"
 msgid "{}.{} MB"
 msgstr "{}.{} MB"
 
+msgid "{}: Snipdeck does not know the date format {}, so it was left as written."
+msgstr "{}：Snipdeck は日付の形式 {} を認識しないため、そのままにしました。"
+
+msgid "{}: it has no text (a picture or other content) and was skipped."
+msgstr "{}：テキストがない（画像などの内容）ため、スキップしました。"
+
+msgid "{}: it has no trigger and was skipped."
+msgstr "{}：トリガーがないため、スキップしました。"
+
+msgid "{}: its Markdown or HTML text is kept as written."
+msgstr "{}：Markdown または HTML のテキストはそのまま残しました。"
+
+msgid "{}: its only trigger is a regular expression, which Snipdeck cannot use, so it was skipped."
+msgstr "{}：唯一のトリガーが正規表現で、Snipdeck では使えないため、スキップしました。"
+
+msgid "{}: its variables cannot be one Snipdeck template together (for example two cursor marks), so it was kept as plain text."
+msgstr "{}：変数を 1 つの Snipdeck テンプレートにまとめられない（たとえばカーソル位置が 2 つある）ため、プレーンテキストのままにしました。"
+
+msgid "{}: some rows have more than 256 columns, and the extra columns were ignored."
+msgstr "{}：256 列を超える行があり、超えた列は無視しました。"
+
+msgid "{}: the form field {} has no Snipdeck equivalent and was left as written."
+msgstr "{}：フォームフィールド {} に相当する Snipdeck の機能がないため、そのままにしました。"
+
+msgid "{}: the trigger {} and {} start alike, so the shorter one fires first."
+msgstr "{}：トリガー {} と {} は先頭が同じなので、短い方が先に動作します。"
+
+msgid "{}: the trigger {} is already used by another snippet, so it was imported without it."
+msgstr "{}：トリガー {} は別のスニペットで使われているため、トリガーなしで取り込みました。"
+
+msgid "{}: this entry is not a match and was skipped."
+msgstr "{}：このエントリはマッチではないため、スキップしました。"
+
 msgid "{}: {}"
 msgstr "{}: {}"
+
+msgid "{}: {} (a shell, script or random variable, or one Snipdeck does not know) has no Snipdeck equivalent and was left as written."
+msgstr "{}：{}（シェル、スクリプト、ランダムの変数、または Snipdeck が認識しない変数）に相当する Snipdeck の機能がないため、そのままにしました。"
+
+msgid "{}: {} has no Snipdeck equivalent and was left as written."
+msgstr "{}：{} に相当する Snipdeck の機能がないため、そのままにしました。"
+
+msgid "{}: {} was not kept as a trigger, because a snippet has one trigger."
+msgstr "{}：{} は、1 つのスニペットにトリガーは 1 つだけなので、トリガーとして残しませんでした。"
+
+msgid "{}: {} was not kept as a trigger, because a trigger has no spaces and at most 32 characters."
+msgstr "{}：{} は、トリガーにスペースは使えず 32 文字までなので、トリガーとして残しませんでした。"
+
+msgid "{}: {} was not kept as a trigger, because it fires after a separator and a Snipdeck trigger does not wait for one."
+msgstr "{}：{} は区切り文字の後で動作するもので、Snipdeck のトリガーは区切りを待たないため、トリガーとして残しませんでした。"

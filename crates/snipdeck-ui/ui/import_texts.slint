@@ -50,6 +50,63 @@ export global ImportTexts {
         return @tr("The import stopped early because the source is bigger than Snipdeck reads in one go.");
     }
 
+    // What an importer changed or left out of one snippet or file (`Note` in snipdeck-portable). `label` is the
+    // snippet or file the note is about; `tokens` and `triggers` are the source's own text, listed as written.
+    pure public function note-unmapped-variables(label: string, tokens: string) -> string {
+        return @tr("{}: {} has no Snipdeck equivalent and was left as written.", label, tokens);
+    }
+    pure public function note-unmapped-espanso-variables(label: string, tokens: string) -> string {
+        return @tr("{}: {} (a shell, script or random variable, or one Snipdeck does not know) has no Snipdeck equivalent and was left as written.", label, tokens);
+    }
+    pure public function note-variables-do-not-fit(label: string) -> string {
+        return @tr("{}: its variables cannot be one Snipdeck template together (for example two cursor marks), so it was kept as plain text.", label);
+    }
+    pure public function note-trigger-only-one(label: string, triggers: string) -> string {
+        return @tr("{}: {} was not kept as a trigger, because a snippet has one trigger.", label, triggers);
+    }
+    pure public function note-trigger-needs-separator(label: string, triggers: string) -> string {
+        return @tr("{}: {} was not kept as a trigger, because it fires after a separator and a Snipdeck trigger does not wait for one.", label, triggers);
+    }
+    pure public function note-trigger-bad-shape(label: string, triggers: string) -> string {
+        return @tr("{}: {} was not kept as a trigger, because a trigger has no spaces and at most 32 characters.", label, triggers);
+    }
+    pure public function note-disabled-file(name: string) -> string {
+        return @tr("{} is turned off in Espanso (its name starts with an underscore) and was skipped.", name);
+    }
+    pure public function note-not-a-match(what: string) -> string {
+        return @tr("{}: this entry is not a match and was skipped.", what);
+    }
+    pure public function note-regex-trigger-only(what: string) -> string {
+        return @tr("{}: its only trigger is a regular expression, which Snipdeck cannot use, so it was skipped.", what);
+    }
+    pure public function note-no-trigger(what: string) -> string {
+        return @tr("{}: it has no trigger and was skipped.", what);
+    }
+    pure public function note-markup-kept(what: string) -> string {
+        return @tr("{}: its Markdown or HTML text is kept as written.", what);
+    }
+    pure public function note-no-text(what: string) -> string {
+        return @tr("{}: it has no text (a picture or other content) and was skipped.", what);
+    }
+    pure public function note-date-format(what: string, format: string) -> string {
+        return @tr("{}: Snipdeck does not know the date format {}, so it was left as written.", what, format);
+    }
+    pure public function note-form-field(what: string, name: string) -> string {
+        return @tr("{}: the form field {} has no Snipdeck equivalent and was left as written.", what, name);
+    }
+    pure public function note-columns-cut(file: string) -> string {
+        return @tr("{}: some rows have more than 256 columns, and the extra columns were ignored.", file);
+    }
+    pure public function note-trigger-taken(title: string, trigger: string) -> string {
+        return @tr("{}: the trigger {} is already used by another snippet, so it was imported without it.", title, trigger);
+    }
+    pure public function note-trigger-overlap(title: string, trigger: string, others: string) -> string {
+        return @tr("{}: the trigger {} and {} start alike, so the shorter one fires first.", title, trigger, others);
+    }
+    pure public function note-title-cut(count: int, title: int, source: int) -> string {
+        return @tr("{} item had a title or source app longer than {} or {} characters, and it was cut." | "{} items had a title or source app longer than {} or {} characters, and it was cut." % count, count, title, source);
+    }
+
     // Why an import could not be previewed. Shown in place of the counts.
     pure public function problem-unreadable() -> string {
         return @tr("Snipdeck couldn't open that. Check that it still exists.");

@@ -28,7 +28,7 @@ use snipdeck_store::{
 };
 
 use crate::error::{Error, Result};
-use crate::report::{ImportReport, Warning};
+use crate::report::{ImportReport, Note, Warning};
 
 /// Everything this crate needs from storage; [`snipdeck_store::Store`] implements it.
 pub trait Library:
@@ -432,22 +432,20 @@ fn write(
                 // import); the newcomer comes in without one, and the report says so.
                 if let Some(trigger) = plan_item.trigger.as_ref().filter(|_| !item.sensitive) {
                     if lib.trigger_holder(trigger)?.is_some() {
-                        report.warn(Warning::Note(format!(
-                            "`{}`: the trigger `{trigger}` is already used by another snippet; \
-                             imported without it",
-                            item.title
-                        )));
+                        report.warn(Warning::Note(Note::TriggerTaken {
+                            title: item.title.clone(),
+                            trigger: trigger.to_string(),
+                        }));
                     } else {
                         let overlap = lib.set_trigger(item.id, Some(trigger))?;
                         if !overlap.is_empty() {
                             let list: Vec<String> =
                                 overlap.iter().map(ToString::to_string).collect();
-                            report.warn(Warning::Note(format!(
-                                "`{}`: the trigger `{trigger}` and `{}` start alike, so the \
-                                 shorter one fires first",
-                                item.title,
-                                list.join("`, `")
-                            )));
+                            report.warn(Warning::Note(Note::TriggerOverlap {
+                                title: item.title.clone(),
+                                trigger: trigger.to_string(),
+                                others: list.join(", "),
+                            }));
                         }
                     }
                 }

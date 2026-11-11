@@ -3446,6 +3446,9 @@ msgstr "{} está vazio e foi ignorado."
 msgid "{} is not valid UTF-8, so characters that could not be read were replaced."
 msgstr "{} não é UTF-8 válido, então os caracteres que não puderam ser lidos foram substituídos."
 
+msgid "{} is turned off in Espanso (its name starts with an underscore) and was skipped."
+msgstr "{} está desativado no Espanso (o nome começa com um sublinhado) e foi ignorado."
+
 msgid "{} is used by another app. Choose another in Settings."
 msgstr "{} está em uso por outro app. Escolha outro em Configurações."
 
@@ -3456,6 +3459,11 @@ msgid "{} item"
 msgid_plural "{} items"
 msgstr[0] "{} item"
 msgstr[1] "{} itens"
+
+msgid "{} item had a title or source app longer than {} or {} characters, and it was cut."
+msgid_plural "{} items had a title or source app longer than {} or {} characters, and it was cut."
+msgstr[0] "{} item tinha um título ou app de origem com mais de {} ou {} caracteres, e foi cortado."
+msgstr[1] "{} itens tinham um título ou app de origem com mais de {} ou {} caracteres, e foram cortados."
 
 msgid "{} item in {} list will be added"
 msgid_plural "{} items in {} lists will be added"
@@ -3515,5 +3523,53 @@ msgstr "{}, {} de {}"
 msgid "{}.{} MB"
 msgstr "{},{} MB"
 
+msgid "{}: Snipdeck does not know the date format {}, so it was left as written."
+msgstr "{}: o Snipdeck não conhece o formato de data {}, então ele foi deixado como estava."
+
+msgid "{}: it has no text (a picture or other content) and was skipped."
+msgstr "{}: não tem texto (uma imagem ou outro conteúdo) e foi ignorado."
+
+msgid "{}: it has no trigger and was skipped."
+msgstr "{}: não tem gatilho e foi ignorado."
+
+msgid "{}: its Markdown or HTML text is kept as written."
+msgstr "{}: o texto em Markdown ou HTML foi mantido como estava."
+
+msgid "{}: its only trigger is a regular expression, which Snipdeck cannot use, so it was skipped."
+msgstr "{}: o único gatilho é uma expressão regular, que o Snipdeck não consegue usar, então foi ignorado."
+
+msgid "{}: its variables cannot be one Snipdeck template together (for example two cursor marks), so it was kept as plain text."
+msgstr "{}: as variáveis não cabem juntas em um modelo do Snipdeck (por exemplo, duas marcas de cursor), então foi mantido como texto simples."
+
+msgid "{}: some rows have more than 256 columns, and the extra columns were ignored."
+msgstr "{}: algumas linhas têm mais de 256 colunas, e as colunas extras foram ignoradas."
+
+msgid "{}: the form field {} has no Snipdeck equivalent and was left as written."
+msgstr "{}: o campo de formulário {} não tem equivalente no Snipdeck e foi deixado como estava."
+
+msgid "{}: the trigger {} and {} start alike, so the shorter one fires first."
+msgstr "{}: o gatilho {} e {} começam igual, então o mais curto é disparado primeiro."
+
+msgid "{}: the trigger {} is already used by another snippet, so it was imported without it."
+msgstr "{}: o gatilho {} já é usado por outro trecho, então foi importado sem ele."
+
+msgid "{}: this entry is not a match and was skipped."
+msgstr "{}: esta entrada não é uma correspondência (match) e foi ignorada."
+
 msgid "{}: {}"
 msgstr "{}: {}"
+
+msgid "{}: {} (a shell, script or random variable, or one Snipdeck does not know) has no Snipdeck equivalent and was left as written."
+msgstr "{}: {} (uma variável de shell, de script ou aleatória, ou uma que o Snipdeck não conhece) não tem equivalente no Snipdeck e foi deixada como estava."
+
+msgid "{}: {} has no Snipdeck equivalent and was left as written."
+msgstr "{}: {} não tem equivalente no Snipdeck e foi deixado como estava."
+
+msgid "{}: {} was not kept as a trigger, because a snippet has one trigger."
+msgstr "{}: {} não foi mantido como gatilho, porque um trecho tem só um gatilho."
+
+msgid "{}: {} was not kept as a trigger, because a trigger has no spaces and at most 32 characters."
+msgstr "{}: {} não foi mantido como gatilho, porque um gatilho não tem espaços e tem no máximo 32 caracteres."
+
+msgid "{}: {} was not kept as a trigger, because it fires after a separator and a Snipdeck trigger does not wait for one."
+msgstr "{}: {} não foi mantido como gatilho, porque dispara depois de um separador e um gatilho do Snipdeck não espera por um."

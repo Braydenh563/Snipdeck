@@ -168,7 +168,7 @@ use std::path::Path;
 use crate::error::Result;
 use crate::import::ImportOptions;
 use crate::plan::Library;
-use crate::report::{ImportReport, Warning};
+use crate::report::{ImportReport, Note, Warning};
 
 use super::expander::{Body, Snip, import_snips, read_capped};
 use super::{decode_text, note_lossy};
@@ -213,10 +213,9 @@ pub(crate) fn import_csv<L: Library>(
         });
     }
     if table.cells_cut {
-        report.warn(Warning::Note(format!(
-            "{}: some rows have more than 256 columns; the rest were ignored",
-            spec.file
-        )));
+        report.warn(Warning::Note(Note::ColumnsCut {
+            file: spec.file.to_string(),
+        }));
     }
     let mut rows = table.rows.into_iter().peekable();
     let columns = match rows

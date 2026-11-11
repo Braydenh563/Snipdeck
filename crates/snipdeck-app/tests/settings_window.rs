@@ -1763,7 +1763,7 @@ fn a_file_that_cannot_be_imported_shows_a_problem_and_nothing_to_confirm() {
 /// Every warning the importers can raise, one of each variant. The `match` makes a new variant a
 /// compile error here until it is listed (and so given a sentence).
 fn every_warning() -> Vec<snipdeck_portable::Warning> {
-    use snipdeck_portable::Warning as W;
+    use snipdeck_portable::{Note as N, Warning as W};
     let name = || "Notes.txt".to_owned();
     let all = vec![
         W::NewerMinorVersion {
@@ -1792,7 +1792,10 @@ fn every_warning() -> Vec<snipdeck_portable::Warning> {
         W::Truncated {
             reason: "too many entries".into(),
         },
-        W::Note("Something else happened.".into()),
+        W::Note(N::TriggerTaken {
+            title: "Sig".into(),
+            trigger: ";sig".into(),
+        }),
     ];
     for w in &all {
         match w {
@@ -1814,6 +1817,119 @@ fn every_warning() -> Vec<snipdeck_portable::Warning> {
         }
     }
     all
+}
+
+/// Every importer note, one of each variant (the `match` makes a new one a compile error here).
+fn every_note() -> Vec<snipdeck_portable::Note> {
+    use snipdeck_portable::Note as N;
+    let s = |t: &str| t.to_owned();
+    let all = vec![
+        N::UnmappedVariables {
+            label: s("A"),
+            tokens: s("{#x}"),
+        },
+        N::UnmappedEspansoVariables {
+            label: s("A"),
+            tokens: s("{{x}}"),
+        },
+        N::VariablesDoNotFit { label: s("A") },
+        N::TriggerOnlyOne {
+            label: s("A"),
+            triggers: s("b, c"),
+        },
+        N::TriggerNeedsSeparator {
+            label: s("A"),
+            triggers: s("b"),
+        },
+        N::TriggerBadShape {
+            label: s("A"),
+            triggers: s("b c"),
+        },
+        N::DisabledFile { name: s("_x.yml") },
+        N::NotAMatch {
+            what: s("base.yml, match 1"),
+        },
+        N::RegexTriggerOnly {
+            what: s("base.yml, match 2"),
+        },
+        N::NoTrigger {
+            what: s("base.yml, match 3"),
+        },
+        N::MarkupKept {
+            what: s("base.yml, match 4"),
+        },
+        N::NoText {
+            what: s("base.yml, match 5"),
+        },
+        N::DateFormat {
+            what: s("base.yml, match 6"),
+            format: s("%Q"),
+        },
+        N::FormField {
+            what: s("base.yml, match 7"),
+            name: s("f"),
+        },
+        N::ColumnsCut { file: s("a.csv") },
+        N::TriggerTaken {
+            title: s("Sig"),
+            trigger: s(";sig"),
+        },
+        N::TriggerOverlap {
+            title: s("Sig"),
+            trigger: s(";s"),
+            others: s(";sig"),
+        },
+        N::TitleCut {
+            count: 2,
+            title_chars: 200,
+            source_chars: 100,
+        },
+    ];
+    for n in &all {
+        match n {
+            N::UnmappedVariables { .. }
+            | N::UnmappedEspansoVariables { .. }
+            | N::VariablesDoNotFit { .. }
+            | N::TriggerOnlyOne { .. }
+            | N::TriggerNeedsSeparator { .. }
+            | N::TriggerBadShape { .. }
+            | N::DisabledFile { .. }
+            | N::NotAMatch { .. }
+            | N::RegexTriggerOnly { .. }
+            | N::NoTrigger { .. }
+            | N::MarkupKept { .. }
+            | N::NoText { .. }
+            | N::DateFormat { .. }
+            | N::FormField { .. }
+            | N::ColumnsCut { .. }
+            | N::TriggerTaken { .. }
+            | N::TriggerOverlap { .. }
+            | N::TitleCut { .. } => {}
+        }
+    }
+    all
+}
+
+#[test]
+fn every_importer_note_is_a_translated_sentence() {
+    on_ui_thread(|| {
+        let r = rig();
+        let text = |n: &snipdeck_portable::Note| {
+            snipdeck_app::wording::import_warning_text(
+                &r.ui,
+                &snipdeck_portable::Warning::Note(n.clone()),
+            )
+        };
+        let english: Vec<String> = every_note().iter().map(&text).collect();
+        slint::select_bundled_translation("de").expect("de is bundled");
+        let german: Vec<String> = every_note().iter().map(&text).collect();
+        slint::select_bundled_translation("").expect("back to the source language");
+        for ((n, en), de) in every_note().iter().zip(&english).zip(&german) {
+            assert!(!en.is_empty() && !en.contains('`'), "{n:?}: {en}");
+            assert_ne!(en, de, "{n:?} is not translated");
+            assert!(de.chars().count() > 10, "{n:?}: {de}");
+        }
+    });
 }
 
 #[test]
