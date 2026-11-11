@@ -736,7 +736,7 @@ msgstr ""
 msgid "Couldn't export your library: the folder can't be written to. Check it isn't read-only or in use, then try again."
 msgstr ""
 
-#: ui/import_texts.slint:142
+#: ui/import_texts.slint:146
 msgid "Couldn't import that."
 msgstr ""
 
@@ -3282,7 +3282,7 @@ msgstr ""
 msgid "Snipdeck closed unexpectedly last time. Open the log?"
 msgstr ""
 
-#: ui/import_texts.slint:112
+#: ui/import_texts.slint:116
 msgid "Snipdeck couldn't open that. Check that it still exists."
 msgstr ""
 
@@ -3290,7 +3290,7 @@ msgstr ""
 msgid "Snipdeck couldn't open the encryption key, so nothing was saved."
 msgstr ""
 
-#: ui/import_texts.slint:124
+#: ui/import_texts.slint:128
 msgid "Snipdeck couldn't read that folder."
 msgstr ""
 
@@ -3574,7 +3574,7 @@ msgstr ""
 msgid "That file is empty."
 msgstr ""
 
-#: ui/import_texts.slint:139
+#: ui/import_texts.slint:143
 msgid "That file is from a newer Snipdeck. Update Snipdeck to import it."
 msgstr ""
 
@@ -3590,31 +3590,31 @@ msgstr ""
 msgid "That is too many files to add at once."
 msgstr ""
 
-#: ui/import_texts.slint:130
+#: ui/import_texts.slint:134
 msgid "That isn't a Beeftext export."
 msgstr ""
 
-#: ui/import_texts.slint:121
+#: ui/import_texts.slint:125
 msgid "That isn't a CopyQ export."
 msgstr ""
 
-#: ui/import_texts.slint:118
+#: ui/import_texts.slint:122
 msgid "That isn't a Ditto database."
 msgstr ""
 
-#: ui/import_texts.slint:136
+#: ui/import_texts.slint:140
 msgid "That isn't a PhraseExpress CSV export."
 msgstr ""
 
-#: ui/import_texts.slint:115
+#: ui/import_texts.slint:119
 msgid "That isn't a Snipdeck file, or it is damaged."
 msgstr ""
 
-#: ui/import_texts.slint:133
+#: ui/import_texts.slint:137
 msgid "That isn't a TextExpander CSV export."
 msgstr ""
 
-#: ui/import_texts.slint:127
+#: ui/import_texts.slint:131
 msgid "That isn't an Espanso configuration."
 msgstr ""
 
@@ -3662,7 +3662,7 @@ msgstr ""
 msgid "The Trash is empty"
 msgstr ""
 
-#: ui/import_texts.slint:151
+#: ui/import_texts.slint:155
 msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
 msgstr ""
 
@@ -4158,15 +4158,15 @@ msgstr ""
 msgid "Windows accent follows your Windows personalisation."
 msgstr ""
 
-#: ui/import_texts.slint:155
+#: ui/import_texts.slint:159
 msgid "Windows clipboard history"
 msgstr ""
 
-#: ui/import_texts.slint:145
+#: ui/import_texts.slint:149
 msgid "Windows clipboard history is turned off. Turn it on in Windows Settings > System > Clipboard, copy some text, then try again."
 msgstr ""
 
-#: ui/import_texts.slint:148
+#: ui/import_texts.slint:152
 msgid "Windows did not let Snipdeck read the clipboard history on this PC."
 msgstr ""
 
@@ -4580,7 +4580,7 @@ msgstr ""
 msgid "{} is not valid UTF-8, so characters that could not be read were replaced."
 msgstr ""
 
-#: ui/import_texts.slint:74
+#: ui/import_texts.slint:78
 msgid "{} is turned off in Espanso (its name starts with an underscore) and was skipped."
 msgstr ""
 
@@ -4598,7 +4598,7 @@ msgid_plural "{} items"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/import_texts.slint:107
+#: ui/import_texts.slint:111
 msgid "{} item had a title or source app longer than {} or {} characters, and it was cut."
 msgid_plural "{} items had a title or source app longer than {} or {} characters, and it was cut."
 msgstr[0] ""
@@ -4668,6 +4668,10 @@ msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] ""
 msgstr[1] ""
 
+#: ui/import_texts.slint:57
+msgid "{}, match {}"
+msgstr ""
+
 #: ui/components/command-palette.slint:127
 msgid "{}, {} of {}"
 msgstr ""
@@ -4676,47 +4680,47 @@ msgstr ""
 msgid "{}.{} MB"
 msgstr ""
 
-#: ui/import_texts.slint:92
+#: ui/import_texts.slint:96
 msgid "{}: Snipdeck does not know the date format {}, so it was left as written."
 msgstr ""
 
-#: ui/import_texts.slint:89
+#: ui/import_texts.slint:93
 msgid "{}: it has no text (a picture or other content) and was skipped."
 msgstr ""
 
-#: ui/import_texts.slint:83
+#: ui/import_texts.slint:87
 msgid "{}: it has no trigger and was skipped."
 msgstr ""
 
-#: ui/import_texts.slint:86
+#: ui/import_texts.slint:90
 msgid "{}: its Markdown or HTML text is kept as written."
 msgstr ""
 
-#: ui/import_texts.slint:80
+#: ui/import_texts.slint:84
 msgid "{}: its only trigger is a regular expression, which Snipdeck cannot use, so it was skipped."
 msgstr ""
 
-#: ui/import_texts.slint:62
+#: ui/import_texts.slint:66
 msgid "{}: its variables cannot be one Snipdeck template together (for example two cursor marks), so it was kept as plain text."
 msgstr ""
 
-#: ui/import_texts.slint:98
+#: ui/import_texts.slint:102
 msgid "{}: some rows have more than 256 columns, and the extra columns were ignored."
 msgstr ""
 
-#: ui/import_texts.slint:95
+#: ui/import_texts.slint:99
 msgid "{}: the form field {} has no Snipdeck equivalent and was left as written."
 msgstr ""
 
-#: ui/import_texts.slint:104
+#: ui/import_texts.slint:108
 msgid "{}: the trigger {} and {} start alike, so the shorter one fires first."
 msgstr ""
 
-#: ui/import_texts.slint:101
+#: ui/import_texts.slint:105
 msgid "{}: the trigger {} is already used by another snippet, so it was imported without it."
 msgstr ""
 
-#: ui/import_texts.slint:77
+#: ui/import_texts.slint:81
 msgid "{}: this entry is not a match and was skipped."
 msgstr ""
 
@@ -4724,22 +4728,22 @@ msgstr ""
 msgid "{}: {}"
 msgstr ""
 
-#: ui/import_texts.slint:59
+#: ui/import_texts.slint:63
 msgid "{}: {} (a shell, script or random variable, or one Snipdeck does not know) has no Snipdeck equivalent and was left as written."
 msgstr ""
 
-#: ui/import_texts.slint:56
+#: ui/import_texts.slint:60
 msgid "{}: {} has no Snipdeck equivalent and was left as written."
 msgstr ""
 
-#: ui/import_texts.slint:65
+#: ui/import_texts.slint:69
 msgid "{}: {} was not kept as a trigger, because a snippet has one trigger."
 msgstr ""
 
-#: ui/import_texts.slint:71
+#: ui/import_texts.slint:75
 msgid "{}: {} was not kept as a trigger, because a trigger has no spaces and at most 32 characters."
 msgstr ""
 
-#: ui/import_texts.slint:68
+#: ui/import_texts.slint:72
 msgid "{}: {} was not kept as a trigger, because it fires after a separator and a Snipdeck trigger does not wait for one."
 msgstr ""

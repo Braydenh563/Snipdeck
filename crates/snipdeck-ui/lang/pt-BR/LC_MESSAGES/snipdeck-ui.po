@@ -3517,6 +3517,9 @@ msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "{} trecho sensível não estava no backup."
 msgstr[1] "{} trechos sensíveis não estavam no backup."
 
+msgid "{}, match {}"
+msgstr "{}, correspondência {}"
+
 msgid "{}, {} of {}"
 msgstr "{}, {} de {}"
 

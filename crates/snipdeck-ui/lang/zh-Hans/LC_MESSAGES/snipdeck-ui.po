@@ -3490,6 +3490,9 @@ msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "备份中不包含 {} 项敏感项目。"
 
+msgid "{}, match {}"
+msgstr "{}，第 {} 项"
+
 msgid "{}, {} of {}"
 msgstr "{}，第 {} 项（共 {} 项）"
 

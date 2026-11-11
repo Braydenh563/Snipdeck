@@ -3490,6 +3490,9 @@ msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "機密項目 {} 件がバックアップに含まれていませんでした。"
 
+msgid "{}, match {}"
+msgstr "{}、{} 番目のエントリ"
+
 msgid "{}, {} of {}"
 msgstr "{}、{} / {}"
 

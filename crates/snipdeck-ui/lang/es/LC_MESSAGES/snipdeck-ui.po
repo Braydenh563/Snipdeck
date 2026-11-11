@@ -3517,6 +3517,9 @@ msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "Falta {} elemento sensible en la copia de seguridad."
 msgstr[1] "Faltan {} elementos sensibles en la copia de seguridad."
 
+msgid "{}, match {}"
+msgstr "{}, coincidencia {}"
+
 msgid "{}, {} of {}"
 msgstr "{}, {} de {}"
 

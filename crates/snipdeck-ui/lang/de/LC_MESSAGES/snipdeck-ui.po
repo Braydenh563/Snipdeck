@@ -3517,6 +3517,9 @@ msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "{} vertraulicher Textbaustein war nicht in der Sicherung."
 msgstr[1] "{} vertrauliche Textbausteine waren nicht in der Sicherung."
 
+msgid "{}, match {}"
+msgstr "{}, Eintrag {}"
+
 msgid "{}, {} of {}"
 msgstr "{}, {} von {}"
 

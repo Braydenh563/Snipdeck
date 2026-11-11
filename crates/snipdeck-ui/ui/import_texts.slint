@@ -52,6 +52,10 @@ export global ImportTexts {
 
     // What an importer changed or left out of one snippet or file (`Note` in snipdeck-portable). `label` is the
     // snippet or file the note is about; `tokens` and `triggers` are the source's own text, listed as written.
+    // An Espanso match as the notes name it: the file and the match's number in it.
+    pure public function match-name(file: string, number: int) -> string {
+        return @tr("{}, match {}", file, number);
+    }
     pure public function note-unmapped-variables(label: string, tokens: string) -> string {
         return @tr("{}: {} has no Snipdeck equivalent and was left as written.", label, tokens);
     }
