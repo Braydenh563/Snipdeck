@@ -150,6 +150,7 @@ where
     pub fn change_plan(&mut self, entitlements: snipdeck_core::Entitlements) {
         self.entitlements = entitlements;
         if !self.master_password_allowed() {
+            self.give_up_hello_step(true);
             self.lock.hello.drop_copy();
         }
     }
@@ -325,6 +326,7 @@ where
             };
             self.lock.hello.availability = Some(availability);
             if availability != HelloAvailability::Ready {
+                self.give_up_hello_step(true);
                 self.lock.hello.drop_copy();
             }
             return Ok(());
@@ -399,6 +401,7 @@ where
             state.enrol = false;
             state.recheck = false;
             state.sealed = None;
+            state.bound = None;
             self.show_toast(super::neutral(if quiet {
                 ToastMessage::HelloNotTurnedOn
             } else {
@@ -425,6 +428,7 @@ where
         state.recheck = false;
         state.seal_failures = 0;
         state.sealed = None;
+        state.bound = None;
         state.note = Note::TurnedOff;
         self.show_toast(super::neutral(ToastMessage::HelloTurnedOff));
     }
@@ -461,6 +465,9 @@ where
 
     /// The password just unlocked the library: the 7 days count from now, and an old copy goes.
     pub(super) fn note_password_unlock(&mut self) {
+        // A Hello step under way belongs to the copy that goes now: its outcome must not meet the
+        // new state (a Hello unlock would find no bound record and turn Hello off).
+        self.give_up_hello_step(true);
         self.lock.hello.password_at = Some(self.clock.now());
         self.lock.hello.sealed = None;
         self.lock.hello.bound = None;

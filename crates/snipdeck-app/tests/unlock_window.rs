@@ -58,8 +58,14 @@ fn rig() -> Rig {
 
 /// Like [`rig`], with Windows Hello on and a sealed copy when `hello` is given.
 fn rig_with(hello: Option<&std::sync::Arc<FakeHello>>) -> Rig {
+    rig_with_clock(hello).0
+}
+
+/// Like [`rig_with`], and the clock the controller reads (to move time on).
+fn rig_with_clock(hello: Option<&std::sync::Arc<FakeHello>>) -> (Rig, FixedClock) {
     let dir = tempfile::tempdir().expect("dir");
     let now: Timestamp = "2026-10-17T10:30:00Z".parse().expect("timestamp");
+    let clock = FixedClock::new(now);
     let mut store = Store::open(dir.path()).expect("store");
     demo::seed(&mut store, now).expect("seed");
     let mut ctl = Controller::new(
@@ -70,7 +76,7 @@ fn rig_with(hello: Option<&std::sync::Arc<FakeHello>>) -> Rig {
             timing: FakeTiming::default(),
         },
         Box::new(FakeTargets::new(Some(demo::target()))),
-        Box::new(FixedClock::new(now)),
+        Box::new(clock.clone()),
         Settings::default(),
         Entitlements::new(Tier::Pro),
     )
@@ -96,12 +102,15 @@ fn rig_with(hello: Option<&std::sync::Arc<FakeHello>>) -> Rig {
     binding.prepare();
     ui.show().expect("show");
     slint::platform::update_timers_and_animations();
-    Rig {
-        ui,
-        ctl,
-        binding,
-        _dir: dir,
-    }
+    (
+        Rig {
+            ui,
+            ctl,
+            binding,
+            _dir: dir,
+        },
+        clock,
+    )
 }
 
 fn element(ui: &UnlockWindow, label: &str, role: AccessibleRole) -> ElementHandle {
@@ -762,14 +771,12 @@ fn a_redraw_never_leaves_a_hello_button_for_a_copy_that_is_gone() {
         r.binding.redraw();
         settle();
         assert!(hello_button(&r.ui).is_none(), "the redraw removes it");
-        // And it comes back with the copy.
+        // Going back to a plan with the feature does not bring the dropped copy back: the button
+        // stays away until a password unlock seals a new one.
         r.ctl.borrow_mut().change_plan(Entitlements::new(Tier::Pro));
         r.binding.redraw();
         settle();
-        assert_eq!(
-            hello_button(&r.ui).is_some(),
-            r.ctl.borrow().hello_button_shown()
-        );
+        assert!(hello_button(&r.ui).is_none(), "no copy, so no button");
     });
 }
 
@@ -795,5 +802,33 @@ fn the_turned_off_line_shows_once_and_not_every_time_the_window_opens() {
         r.ctl.borrow_mut().lock_now();
         reopen(&r);
         assert!(!has_text(&r.ui, line), "not said again");
+    });
+}
+
+#[test]
+fn pressing_a_hello_button_whose_copy_expired_says_so_and_does_not_call_hello() {
+    on_ui_thread(|| {
+        let hello = std::sync::Arc::new(FakeHello::new());
+        let (r, clock) = rig_with_clock(Some(&hello));
+        assert!(hello_button(&r.ui).is_some());
+        let prompts = hello.prompts();
+        // Eight days later, with nothing redrawn: the window still shows the button.
+        let later: Timestamp = "2026-10-25T10:30:00Z".parse().expect("timestamp");
+        clock.set(later);
+        assert!(
+            hello_button(&r.ui).is_some(),
+            "stale until something redraws"
+        );
+        hello_button(&r.ui)
+            .expect("button")
+            .invoke_accessible_default_action();
+        settle();
+        assert_eq!(hello.prompts(), prompts, "Hello was not asked");
+        assert!(has_text(
+            &r.ui,
+            "Windows Hello did not unlock Snipdeck. Use your master password."
+        ));
+        assert!(hello_button(&r.ui).is_none(), "the button is gone");
+        assert!(r.ctl.borrow().library_locked());
     });
 }
