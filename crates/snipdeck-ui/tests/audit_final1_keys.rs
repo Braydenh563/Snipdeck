@@ -701,9 +701,7 @@ fn editor_trigger_warning_is_visible_readable_and_reachable() {
                 .into_iter()
                 .filter(|n| n.0 == ONE_CHAR_WARNING)
                 .collect();
-            if found.len() != 1 {
-                problems.push(format!("{scene}: {} warning nodes", found.len()));
-            } else {
+            if found.len() == 1 {
                 let n = &found[0];
                 if n.2 < 0.0 || n.2 + n.4 > w as f32 + 0.5 {
                     problems.push(format!(
@@ -726,6 +724,8 @@ fn editor_trigger_warning_is_visible_readable_and_reachable() {
                         "{scene}: warning text contrast {best:.2}:1 on {bg:?}"
                     ));
                 }
+            } else {
+                problems.push(format!("{scene}: {} warning nodes", found.len()));
             }
             // The field is a named stop with the ring.
             let names = lap(&build("a", false, 900));
