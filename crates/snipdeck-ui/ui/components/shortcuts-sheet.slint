@@ -9,12 +9,13 @@ component ShortcutLine inherits Rectangle {
     in property <[string]> keys;
     in property <string> spoken;
 
-    min-height: max(Space.hit * SystemLook.text-scale + Space.s1, Type.line-base + Space.s2);
+    // A Rectangle does not take its height from the layout inside it: wrapped titles make the line taller.
+    min-height: max(Space.hit * SystemLook.text-scale + Space.s1, Type.line-base + Space.s2, row.preferred-height);
     accessible-role: groupbox;
     accessible-label: root.title;
     accessible-description: root.keys.length > 0 ? root.spoken : @tr("Off");
 
-    HorizontalLayout {
+    row := HorizontalLayout {
         padding-top: Space.s1;
         padding-bottom: Space.s1;
         spacing: Space.s4;

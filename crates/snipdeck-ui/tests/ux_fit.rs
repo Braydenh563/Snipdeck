@@ -5,7 +5,9 @@
 use i_slint_backend_testing::{AccessibleRole as Role, ElementQuery};
 use slint::{ComponentHandle, Global};
 use snipdeck_ui::testing::{Harness, assert_golden};
-use snipdeck_ui::{PanelWindow, SettingsFilter, SettingsPage, SystemLook, ToastKind, ToastWindow};
+use snipdeck_ui::{
+    HelpWindow, PanelWindow, SettingsFilter, SettingsPage, SystemLook, ToastKind, ToastWindow,
+};
 
 #[path = "support/editor_fixture.rs"]
 mod editor;
@@ -163,7 +165,10 @@ fn long_toasts_wrap_in_the_panel() {
 fn wrapped_toast_goldens() {
     for (scale, name) in [(1.0f32, "toast-wrapped-1x"), (2.25, "toast-wrapped-225")] {
         let probe = Harness::new(ToastWindow::new, 1100, 300);
-        probe.component.global::<SystemLook<'_>>().set_text_scale(scale);
+        probe
+            .component
+            .global::<SystemLook<'_>>()
+            .set_text_scale(scale);
         probe.component.set_text(LONG_TOAST.into());
         probe.component.set_kind(ToastKind::Danger);
         probe.component.set_undo_label("Undo".into());
@@ -173,7 +178,9 @@ fn wrapped_toast_goldens() {
             probe.component.get_content_height().ceil() as u32,
         );
         let hn = Harness::new(ToastWindow::new, w, h);
-        hn.component.global::<SystemLook<'_>>().set_text_scale(scale);
+        hn.component
+            .global::<SystemLook<'_>>()
+            .set_text_scale(scale);
         hn.component.set_text(LONG_TOAST.into());
         hn.component.set_kind(ToastKind::Danger);
         hn.component.set_undo_label("Undo".into());
@@ -185,4 +192,55 @@ fn wrapped_toast_goldens() {
     h.component.set_toast_text(LONG_TOAST.into());
     h.component.set_toast_kind(ToastKind::Danger);
     assert_golden("panel-toast-wrapped-225", &h.render_settled());
+}
+
+/// M1: a Shortcuts line whose title wraps is as tall as its wrapped lines (it used to keep a one-line minimum and clip).
+#[test]
+fn wrapped_shortcut_titles_are_not_clipped() {
+    let h = Harness::new(HelpWindow::new, 608, 1400);
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    editor::help(&h.component);
+    let line = |title: &str, keys: &[&str]| snipdeck_ui::ShortcutLineData {
+        title: title.into(),
+        keys: slint::ModelRc::new(slint::VecModel::from(
+            keys.iter()
+                .map(|k| (*k).into())
+                .collect::<Vec<slint::SharedString>>(),
+        )),
+        spoken: keys.join(" ").into(),
+    };
+    h.component
+        .set_shortcut_groups(slint::ModelRc::new(slint::VecModel::from(vec![
+            snipdeck_ui::ShortcutGroup {
+                title: "Main window".into(),
+                note: "".into(),
+                lines: slint::ModelRc::new(slint::VecModel::from(vec![
+                    line(
+                        "Move the selected items to another list or board",
+                        &["Ctrl", "Shift", "M"],
+                    ),
+                    line("Group the selected items under one heading, then move the whole group to another board without opening it", &["Ctrl", "G"]),
+                    line("New item", &["Ctrl", "N"]),
+                ])),
+            },
+        ])));
+    h.component.set_tab(2);
+    let frame = h.render_settled();
+    assert_golden("shortcuts-wrapped-225", &frame);
+    let lines: Vec<_> = find(&h, Role::Groupbox)
+        .into_iter()
+        .filter(|n| n.0.chars().count() >= 34)
+        .collect();
+    assert!(!lines.is_empty(), "no long shortcut titles on screen");
+    // Two lines of the 14 px text at 2.25x are about 2 x 44 high; a one-line minimum is about 67.
+    let short: Vec<_> = lines
+        .iter()
+        .filter(|n| n.4 < 85.0)
+        .map(|n| (n.0.clone(), n.4))
+        .collect();
+    assert_eq!(
+        short,
+        Vec::new(),
+        "lines of long titles that are too short to hold them"
+    );
 }
