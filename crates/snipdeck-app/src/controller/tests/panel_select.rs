@@ -1590,3 +1590,127 @@ fn ctrl_g_on_a_header_renames_its_group() {
     assert_eq!(headers(&w), [0], "no second group");
     assert_eq!(w.ctl.view().rename_row, Some(0));
 }
+
+// ---- Groups: keyboard and menu alternatives to dragging (WCAG 2.5.7) -------------------------------
+
+fn select_title(w: &mut World, title: &str) {
+    let at = w
+        .ctl
+        .view()
+        .rows
+        .iter()
+        .position(|r| r.title == title)
+        .expect("row");
+    w.ctl.model.select_row(at);
+}
+
+fn group_of_title(w: &World, title: &str) -> bool {
+    w.ctl
+        .view()
+        .rows
+        .iter()
+        .find(|r| r.title == title)
+        .is_some_and(|r| r.grouped)
+}
+
+#[test]
+fn alt_down_on_a_header_moves_the_whole_group_one_place() {
+    let mut w = world();
+    two_groups(&mut w);
+    let before = shape(&w);
+    w.ctl.model.select_row(0);
+    w.ctl.panel_move_selected(1);
+    assert_eq!(
+        shape(&w),
+        [&before[3..], &before[..3]].concat(),
+        "the first group goes below the second"
+    );
+    let at = w.ctl.view().selected;
+    assert!(
+        w.ctl.view().rows[at].header.is_some(),
+        "the cursor stays on the header"
+    );
+}
+
+#[test]
+fn alt_up_on_a_header_moves_the_whole_group_one_place() {
+    let mut w = world();
+    two_groups(&mut w);
+    let before = shape(&w);
+    w.ctl.model.select_row(3);
+    w.ctl.panel_move_selected(-1);
+    assert_eq!(shape(&w), [&before[3..], &before[..3]].concat());
+    w.ctl.undo();
+    assert_eq!(shape(&w), before, "one Undo step");
+}
+
+#[test]
+fn a_header_at_the_top_cannot_move_up_and_says_so_in_its_menu() {
+    let mut w = world();
+    two_groups(&mut w);
+    let before = shape(&w);
+    w.ctl.model.select_row(0);
+    w.ctl.panel_move_selected(-1);
+    assert_eq!(shape(&w), before);
+    let id = w.ctl.view().rows[0].id;
+    let entries = w.ctl.item_menu_entries(id);
+    assert!(entries.contains(&ItemMenuEntry::MoveUp { enabled: false }));
+    assert!(entries.contains(&ItemMenuEntry::MoveDown { enabled: true }));
+}
+
+#[test]
+fn the_header_menu_moves_the_group() {
+    let mut w = world();
+    two_groups(&mut w);
+    let before = shape(&w);
+    w.ctl.open_item_menu(0, false);
+    let id = w.ctl.view().rows[0].id;
+    let at = w
+        .ctl
+        .item_menu_entries(id)
+        .iter()
+        .position(|e| *e == ItemMenuEntry::MoveDown { enabled: true })
+        .expect("a Move down row on the header menu");
+    let _ = w.ctl.choose_item_menu(at);
+    assert_eq!(shape(&w), [&before[3..], &before[..3]].concat());
+}
+
+#[test]
+fn a_collapsed_group_moves_as_one_block() {
+    let mut w = world();
+    two_groups(&mut w);
+    w.ctl.group_collapse(0, Some(true));
+    w.ctl.model.select_row(0);
+    w.ctl.panel_move_selected(1);
+    let shape_now = shape(&w);
+    assert_eq!(shape_now.first().map(String::as_str), Some("[Second]"));
+    w.ctl.group_collapse(
+        shape_now.iter().position(|s| s == "[Group]").unwrap(),
+        Some(false),
+    );
+    assert_eq!(shape(&w).iter().filter(|s| s.starts_with('[')).count(), 2);
+}
+
+#[test]
+fn alt_arrows_carry_an_item_into_and_out_of_a_group_without_the_mouse() {
+    let mut w = world();
+    group_first_two(&mut w);
+    let loose = w.ctl.view().rows[3].title.clone();
+    assert!(!group_of_title(&w, &loose));
+    select_title(&mut w, &loose);
+    w.ctl.panel_move_selected(-1);
+    assert!(
+        group_of_title(&w, &loose),
+        "Alt+Up from just below joins the group"
+    );
+    w.ctl.panel_move_selected(1);
+    assert!(
+        group_of_title(&w, &loose),
+        "back at the group's end, still in it"
+    );
+    w.ctl.panel_move_selected(1);
+    assert!(
+        !group_of_title(&w, &loose),
+        "Alt+Down from the last place leaves it"
+    );
+}

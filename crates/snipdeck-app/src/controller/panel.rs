@@ -291,8 +291,15 @@ where
     pub(super) fn item_menu_entries(&self, id: ItemId) -> Vec<ItemMenuEntry> {
         let row = self.menu_row(id);
         if row.as_ref().is_some_and(|r| r.header.is_some()) {
+            let at = self.model.rows().iter().position(|r| r.id == id);
             return vec![
                 ItemMenuEntry::RenameGroup,
+                ItemMenuEntry::MoveUp {
+                    enabled: at.is_some_and(|at| self.can_move_group(at, -1)),
+                },
+                ItemMenuEntry::MoveDown {
+                    enabled: at.is_some_and(|at| self.can_move_group(at, 1)),
+                },
                 ItemMenuEntry::Ungroup,
                 ItemMenuEntry::Separator,
                 ItemMenuEntry::DeleteGroup,
@@ -410,6 +417,11 @@ where
         }
         self.menu = PanelMenu::None;
         let targets = std::mem::take(&mut self.menu_targets);
+        let is_header = self
+            .model
+            .rows()
+            .iter()
+            .any(|r| r.id == id && r.header.is_some());
         match entry {
             ItemMenuEntry::Sensitive { .. } => {
                 self.toggle_item_sensitive(id);
@@ -436,16 +448,8 @@ where
                 self.toggle_stack_mark(id);
                 Vec::new()
             }
-            ItemMenuEntry::MoveUp { enabled } => {
-                if enabled {
-                    self.panel_move_item(id, -1);
-                }
-                Vec::new()
-            }
-            ItemMenuEntry::MoveDown { enabled } => {
-                if enabled {
-                    self.panel_move_item(id, 1);
-                }
+            ItemMenuEntry::MoveUp { .. } | ItemMenuEntry::MoveDown { .. } => {
+                self.choose_move(id, entry, is_header);
                 Vec::new()
             }
             ItemMenuEntry::Trash => {
@@ -467,6 +471,24 @@ where
             | ItemMenuEntry::Colour
             | ItemMenuEntry::PasteAs
             | ItemMenuEntry::Separator => Vec::new(),
+        }
+    }
+
+    /// The item menu's Move up / Move down on item or header `id`.
+    fn choose_move(&mut self, id: ItemId, entry: ItemMenuEntry, is_header: bool) {
+        let (ItemMenuEntry::MoveUp { enabled } | ItemMenuEntry::MoveDown { enabled }) = entry
+        else {
+            return;
+        };
+        let delta = if matches!(entry, ItemMenuEntry::MoveUp { .. }) {
+            -1
+        } else {
+            1
+        };
+        if is_header {
+            self.choose_group_entry(id, entry);
+        } else if enabled {
+            self.panel_move_item(id, delta);
         }
     }
 
