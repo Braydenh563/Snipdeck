@@ -285,15 +285,12 @@ where
                 return;
             };
             window.set_busy(false);
-            match result {
-                Ok(()) => {
-                    let _ = window.hide();
-                }
-                Err(_) => {
-                    // The copy is gone: the password is the way in.
-                    window.set_hello_available(false);
-                    Self::refused(&window, MasterProblem::HelloFailed);
-                }
+            if result.is_ok() {
+                let _ = window.hide();
+            } else {
+                // The copy is gone: the password is the way in.
+                window.set_hello_available(false);
+                Self::refused(&window, MasterProblem::HelloFailed);
             }
         });
     }

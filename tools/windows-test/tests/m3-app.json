@@ -418,7 +418,7 @@
       "id": "63",
       "v1": false,
       "title": "Windows Hello: turn it on with a PIN (v1.1 slice 8)",
-      "do": "On a PC where Windows Hello has a PIN, face or fingerprint set up, and with a Supporter licence and a master password set, open Settings > Security. Look for Unlock with Windows Hello, turn it on and complete the Windows Hello prompts (it may ask twice).",
+      "do": "On a PC where Windows Hello has a PIN, face or fingerprint set up, and with a Supporter licence and a master password set, open Settings > Security. Look for Unlock with Windows Hello, turn it on and complete the Windows Hello prompts (turning it on asks twice, to check Hello is repeatable; later it asks once).",
       "expect": "The switch Unlock with Windows Hello is shown only because a master password is set and Hello is ready. Turning it on shows the Windows Hello prompt and the switch stays on. Without a master password, or on the Free plan, the row is not shown. Write anything that looks wrong in the note (n)."
     },
     {

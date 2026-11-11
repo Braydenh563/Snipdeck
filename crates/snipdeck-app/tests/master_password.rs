@@ -1277,7 +1277,6 @@ mod hello {
         hello::{HelloAvailability, HelloError},
         testing::FakeHello,
     };
-    use snipdeck_store::crypto::HELLO_MAX_AGE;
 
     use super::*;
 
@@ -1352,7 +1351,7 @@ mod hello {
     #[test]
     fn after_seven_days_the_password_is_needed() {
         let (mut r, hello) = locked_with_hello();
-        r.advance(HELLO_MAX_AGE - Duration::from_secs(1));
+        r.advance(Duration::from_hours(167) + Duration::from_secs(3599));
         assert!(r.ctl.hello_unlock_available(), "still valid a second early");
         r.advance(Duration::from_secs(1));
         assert!(!r.ctl.hello_unlock_available());
