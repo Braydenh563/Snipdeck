@@ -306,7 +306,10 @@ mod tests {
     fn set_lead_changes_the_boundary_and_keeps_what_was_typed() {
         let mut m = matcher(&[(";bb", 1)]);
         m.after_expansion(Some('a'));
-        assert!(run(&mut m, ";b").is_empty());
+        assert!(
+            run(&mut m, ";b").is_empty(),
+            "no boundary after the letter: nothing fires"
+        );
         m.set_lead(None);
         assert_eq!(m.buffered(), 2, "the buffer stays");
         assert_eq!(run(&mut m, "b"), vec![(0, id(1), 3)]);
