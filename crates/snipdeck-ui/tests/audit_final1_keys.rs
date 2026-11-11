@@ -12,6 +12,8 @@
 
 #![allow(
     dead_code,
+    clippy::many_single_char_names,
+    clippy::too_many_lines,
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
     clippy::cast_precision_loss,
@@ -74,7 +76,14 @@ fn focused(window: &slint::Window) -> Option<Stop> {
             return Some(Stop {
                 name,
                 role: format!("{:?}", i.accessible_role()),
-                inner: { let g = item.geometry(); let q = item.map_to_window(LogicalPoint::new(g.origin.x, g.origin.y)); format!("focus item at ({:.0},{:.0}) {:.0}x{:.0}", q.x, q.y, g.size.width, g.size.height) },
+                inner: {
+                    let g = item.geometry();
+                    let q = item.map_to_window(LogicalPoint::new(g.origin.x, g.origin.y));
+                    format!(
+                        "focus item at ({:.0},{:.0}) {:.0}x{:.0}",
+                        q.x, q.y, g.size.width, g.size.height
+                    )
+                },
                 x: p.x,
                 y: p.y,
                 w: g.size.width,
@@ -142,23 +151,27 @@ fn audit<C: ComponentHandle>(
     if let Some(s) = focused(w) {
         stops.push((s, first));
     }
-    let mut wraps = 0;
     tab(w, false);
     loop {
         let mut cur = focused(w);
         if cur.is_none() {
-            wraps += 1;
             // Tab from the last stop leaves the window (to the OS); one more Tab comes back to the first.
             tab(w, false);
             cur = focused(w);
         }
         let Some(frame) = snap(h) else {
-            out.push(format!("{scene}: Tab {} changed nothing on screen (no visible focus)", stops.len() + 1));
+            out.push(format!(
+                "{scene}: Tab {} changed nothing on screen (no visible focus)",
+                stops.len() + 1
+            ));
             tab(w, false);
             continue;
         };
         let Some(s) = cur else {
-            out.push(format!("{scene}: Tab {} left no focused control", stops.len() + 1));
+            out.push(format!(
+                "{scene}: Tab {} left no focused control",
+                stops.len() + 1
+            ));
             break;
         };
         // Came round (no trap) when this stop and the one before it have been seen in that order. Names can repeat
@@ -178,18 +191,30 @@ fn audit<C: ComponentHandle>(
         }
         stops.push((s, frame));
         if stops.len() > limit {
-            let names: Vec<&str> = stops.iter().skip(40).map(|(s, _)| s.name.as_str()).collect();
-            out.push(format!("{scene}: no way round after {limit} Tab presses (trap?); stops 40..: {names:?}"));
+            let names: Vec<&str> = stops
+                .iter()
+                .skip(40)
+                .map(|(s, _)| s.name.as_str())
+                .collect();
+            out.push(format!(
+                "{scene}: no way round after {limit} Tab presses (trap?); stops 40..: {names:?}"
+            ));
             break;
         }
         tab(w, false);
     }
     for (i, (s, f)) in stops.iter().enumerate() {
         if s.role == "Groupbox" {
-            out.push(format!("{scene}: stop {i} {:?} is a group, not a control ({})", s.name, s.inner));
+            out.push(format!(
+                "{scene}: stop {i} {:?} is a group, not a control ({})",
+                s.name, s.inner
+            ));
         }
         if s.name.trim().is_empty() {
-            out.push(format!("{scene}: stop {i} at ({:.0},{:.0}) has no name", s.x, s.y));
+            out.push(format!(
+                "{scene}: stop {i} at ({:.0},{:.0}) has no name",
+                s.x, s.y
+            ));
         }
         let n = ring_pixels(f, s, ring);
         if n < 8 {
@@ -201,20 +226,37 @@ fn audit<C: ComponentHandle>(
     }
     // Visual order: the cycle may break once (where it wraps); a second break means focus jumps around. Pages
     // that scroll (Tips, Settings) move their stops between presses, so window y cannot be compared there.
-    if !scene.contains("tab 3") && !scene.starts_with("settings") && !(scene.starts_with("item") && scene.contains("2.25x")) && stops.len() > 2 {
+    let scrolls = scene.contains("tab 3")
+        || scene.starts_with("settings")
+        || (scene.starts_with("item") && scene.contains("2.25x"));
+    if !scrolls && stops.len() > 2 {
         let n = stops.len();
         let mut breaks = Vec::new();
         for i in 0..n {
             let (p, s) = (&stops[i].0, &stops[(i + 1) % n].0);
             let same_row = (s.y - p.y).abs() < p.h.min(s.h) / 2.0;
-            let ok = if same_row { s.x >= p.x - 1.0 } else { s.y >= p.y - 1.0 };
+            let ok = if same_row {
+                s.x >= p.x - 1.0
+            } else {
+                s.y >= p.y - 1.0
+            };
             if !ok {
-                breaks.push(format!("{:?} ({:.0},{:.0}) -> {:?} ({:.0},{:.0})", p.name, p.x, p.y, s.name, s.x, s.y));
+                breaks.push(format!(
+                    "{:?} ({:.0},{:.0}) -> {:?} ({:.0},{:.0})",
+                    p.name, p.x, p.y, s.name, s.x, s.y
+                ));
             }
         }
         if breaks.len() > 1 {
-            let all: Vec<String> = stops.iter().map(|(s, _)| format!("{} ({:.0},{:.0})", s.name, s.x, s.y)).collect();
-            out.push(format!("{scene}: focus order jumps against the visual order at {}; order: {}", breaks.join("; "), all.join(" > ")));
+            let all: Vec<String> = stops
+                .iter()
+                .map(|(s, _)| format!("{} ({:.0},{:.0})", s.name, s.x, s.y))
+                .collect();
+            out.push(format!(
+                "{scene}: focus order jumps against the visual order at {}; order: {}",
+                breaks.join("; "),
+                all.join(" > ")
+            ));
         }
     }
     // Shift+Tab from the first stop goes to the last, and back again reaches the same stops.
@@ -228,12 +270,18 @@ fn audit<C: ComponentHandle>(
         };
         let last = back();
         if last.as_ref().map(|l| &l.name) != stops.last().map(|(s, _)| &s.name) {
-            out.push(format!("{scene}: Shift+Tab from the first stop did not reach the last"));
+            out.push(format!(
+                "{scene}: Shift+Tab from the first stop did not reach the last"
+            ));
         }
         for (s, _) in stops.iter().rev().skip(1) {
             let got = back();
             if got.as_ref().map(|g| &g.name) != Some(&s.name) {
-                out.push(format!("{scene}: Shift+Tab walk differs: expected {:?}, got {:?}", s.name, got.map(|g| g.name)));
+                out.push(format!(
+                    "{scene}: Shift+Tab walk differs: expected {:?}, got {:?}",
+                    s.name,
+                    got.map(|g| g.name)
+                ));
                 break;
             }
         }
@@ -270,12 +318,21 @@ fn expect_clean_except(problems: &[String], known: &[&str]) {
         .iter()
         .filter(|p| !known.iter().any(|k| p.contains(k)))
         .collect();
-    assert_eq!(unknown, Vec::<&String>::new(), "{} stops walked", problems.len());
+    assert_eq!(
+        unknown,
+        Vec::<&String>::new(),
+        "{} stops walked",
+        problems.len()
+    );
     let gone: Vec<&&str> = known
         .iter()
         .filter(|k| !problems.iter().any(|p| p.contains(**k)))
         .collect();
-    assert_eq!(gone, Vec::<&&str>::new(), "a known finding no longer happens: remove it from the list");
+    assert_eq!(
+        gone,
+        Vec::<&&str>::new(),
+        "a known finding no longer happens: remove it from the list"
+    );
 }
 
 macro_rules! scene {
@@ -307,7 +364,13 @@ fn help_keyboard_walk() {
             h.component.on_close_requested(move || f.set(true));
             let win = h.component.window();
             let esc = || esc_fires(win, &fired);
-            all.extend(audit(&h, &format!("help tab {tab_i} at {s}x"), false, 60, &esc));
+            all.extend(audit(
+                &h,
+                &format!("help tab {tab_i} at {s}x"),
+                false,
+                60,
+                &esc,
+            ));
         }
     }
     expect_clean_except(&all, &["help tab 3"]);
@@ -342,7 +405,10 @@ fn item_editor_keyboard_walk() {
             ));
         }
     }
-    expect_clean_except(&all, &["Shift+Tab walk differs: expected \"Template text\""]);
+    expect_clean_except(
+        &all,
+        &["Shift+Tab walk differs: expected \"Template text\""],
+    );
 }
 
 #[test]
@@ -397,7 +463,13 @@ fn fill_form_keyboard_walk() {
             h.component.on_cancelled(move || f.set(true));
             let win = h.component.window();
             let esc = || esc_fires(win, &fired);
-            all.extend(audit(&h, &format!("fill dark={dark} at {s}x"), dark, 30, &esc));
+            all.extend(audit(
+                &h,
+                &format!("fill dark={dark} at {s}x"),
+                dark,
+                30,
+                &esc,
+            ));
         }
     }
     expect_clean(&all);
@@ -431,9 +503,16 @@ fn fill_form_multiline_and_date_error_fit_at_225() {
         let mut enc = png::Encoder::new(std::io::BufWriter::new(file), f.width, f.height);
         enc.set_color(png::ColorType::Rgb);
         enc.set_depth(png::BitDepth::Eight);
-        enc.write_header().unwrap().write_image_data(&f.rgb).unwrap();
+        enc.write_header()
+            .unwrap()
+            .write_image_data(&f.rgb)
+            .unwrap();
     }
-    assert!(f.height as f32 >= height, "frame {} vs content {height}", f.height);
+    assert!(
+        f.height as f32 >= height,
+        "frame {} vs content {height}",
+        f.height
+    );
     // The date error is drawn in full: red text pixels exist and none reach the right padding (a clipped or
     // overflowing line would run to the edge of the window).
     let (mut n, mut max_x) = (0u32, 0u32);
@@ -447,10 +526,19 @@ fn fill_form_multiline_and_date_error_fit_at_225() {
         }
     }
     assert!(n > 200, "the date error is not drawn ({n} red pixels)");
-    assert!(max_x < w - 16, "the date error runs to the window edge (x {max_x} of {w})");
+    assert!(
+        max_x < w - 16,
+        "the date error runs to the window edge (x {max_x} of {w})"
+    );
     // The multiline box (three lines typed) keeps all three lines inside its border: the last line's ink
     // sits above the box's bottom edge. Found by scanning the column at x = 40 for ink below "Notes".
     let ink = |x: u32, y: u32| f.pixel(x, y).iter().all(|c| *c < 100);
-    let rows: Vec<u32> = (400..560).filter(|&y| (24..140).any(|x| ink(x, y))).collect();
-    assert!(rows.len() > 30, "multiline text not drawn ({} ink rows)", rows.len());
+    let rows: Vec<u32> = (400..560)
+        .filter(|&y| (24..140).any(|x| ink(x, y)))
+        .collect();
+    assert!(
+        rows.len() > 30,
+        "multiline text not drawn ({} ink rows)",
+        rows.len()
+    );
 }
