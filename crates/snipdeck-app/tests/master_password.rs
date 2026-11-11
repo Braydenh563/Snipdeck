@@ -1524,6 +1524,12 @@ mod hello {
         assert_eq!(password_then_seal(&mut r), Some(Err(HelloFailure::Failed)));
         assert!(!r.ctl.settings().hello_unlock, "two in a row: off");
         assert_eq!(r.toast(), Some(ToastMessage::HelloTurnedOff));
+        let t = r.ctl.view().toast.expect("a toast");
+        assert_eq!(t.kind, snipdeck_app::toast::ToastKind::Danger, "a warning");
+        assert_eq!(
+            r.ctl.toast_tick(t.seq),
+            Some(snipdeck_app::controller::TOAST_ERROR_HOLD)
+        );
         assert!(r.ctl.hello_turned_off_note());
         assert!(r.ctl.begin_hello_seal().is_none(), "no more prompts");
     }

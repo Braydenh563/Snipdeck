@@ -18,7 +18,7 @@ use snipdeck_platform::{
 };
 use snipdeck_store::crypto::{KeyRecord, SealedKey};
 
-use crate::toast::ToastMessage;
+use crate::toast::{Toast, ToastKind, ToastMessage};
 
 use super::{Controller, Library};
 use crate::{
@@ -430,7 +430,10 @@ where
         state.sealed = None;
         state.bound = None;
         state.note = Note::TurnedOff;
-        self.show_toast(super::neutral(ToastMessage::HelloTurnedOff));
+        self.show_toast(Toast {
+            kind: ToastKind::Danger,
+            message: ToastMessage::HelloTurnedOff,
+        });
     }
 
     /// Hello was turned off because it kept failing (cleared when the user turns it on again).

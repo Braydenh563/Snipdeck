@@ -1594,6 +1594,17 @@ fn a_trigger_that_hides_another_is_saved_with_a_warning() {
         }
     );
     assert_eq!(r.ctl.store().triggers().expect("all").len(), 2);
+    let t = r.ctl.view().toast.expect("a toast");
+    assert_eq!(
+        t.kind,
+        snipdeck_app::toast::ToastKind::Danger,
+        "a warning, with the icon"
+    );
+    assert_eq!(
+        r.ctl.toast_tick(t.seq),
+        Some(snipdeck_app::controller::TOAST_ERROR_HOLD),
+        "held longer than a neutral toast"
+    );
 }
 
 #[test]
