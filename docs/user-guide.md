@@ -336,26 +336,27 @@ your data, Licence. Press `F1` or choose **Help** at the bottom of the page to o
 ## Triggers and typing (Windows)
 
 A **trigger** is a short code you give an item, such as `;sig`. It is 1 to 32 characters with no spaces, and
-no two items share one. Set it in the item editor, in the **Trigger** box (sensitive items have none). Items
+no two items share one. Set it in the item editor, in the **Trigger** box. A Sensitive item shows "Sensitive items can't be typed in, so they have no trigger." there instead. Items
 imported from Espanso or similar tools keep their abbreviations as triggers.
 
 Two options under **Typing** in Settings use triggers while you type in other programs. Both are off by
-default, and both work only on Windows (not yet tested on a real PC). On other systems the two switches do nothing.
+default, and both work only on Windows (not yet tested on a real PC). On other systems Settings says "Typing triggers work on Windows only."
 
 - **Expand abbreviations as I type.** When you type a trigger in another program, Snipdeck deletes it and
-  pastes the item. A trigger fires on its last character, after a space or punctuation (or at the start of a
-  line): no extra key is needed. If the item has fill-in fields, the form opens first.
+  pastes the item. A trigger must begin after a space or punctuation (or at the start of a line) and fires on
+  its last character: no extra key is needed. If the item has fill-in fields, the form opens first.
 - **Suggest snippets as I type.** After you type the first two characters of a trigger, a small hint at the
-  text cursor shows the item's title and "Tab to insert". Press `Tab` to insert it. Any other key carries on as
-  usual. If several triggers match, the most used item is offered. No text cursor, no hint.
+  text cursor shows the item's title and "Tab to insert". Press `Tab` to insert it. Snipdeck takes `Tab` only while the hint shows; any other key carries on as
+  usual, and `Esc` (like the arrow keys, `Enter` and `Delete`) clears what you typed so the hint goes away. The hint also goes if you stop typing for about 5 seconds. If several triggers match, the most used item is offered. No text cursor, no hint.
 
 The hint shows only while what you typed is the start of a trigger. It needs at least two characters, and it
 waits for a space, punctuation or the start of a line, like a trigger does. When you have typed the whole
 trigger, the item is pasted instead of hinted. Only trigger codes count, never titles.
 
 In the item editor, the **Trigger** box has the same rules: 1 to 32 characters with no spaces, and no two
-items share one. If you save a code that another trigger starts with, or that starts another trigger, a
-message says "Saved. This code overlaps another trigger, so one of them may never fire." The item is still saved.
+items share one. A one-character trigger shows a warning, because it fires every time you type it, even inside words; two or more characters are safer. If you save a code that another trigger starts with, or that starts another trigger, a message says "Saved. This code overlaps the trigger of “Title”, so one of them may never fire." with the other item's title (without a title it says "another trigger"). The item is still saved.
+
+If Snipdeck cannot start the typing watcher, a message says "Couldn't start typing triggers. Nothing will be expanded or suggested."
 
 Nothing expands in password boxes, in programs set to **Never paste**, in programs running as administrator,
 while Snipdeck is in front, or for sensitive items. Sensitive items are never suggested either. Snipdeck keeps only the last 32 characters you typed, in
