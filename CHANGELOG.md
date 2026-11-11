@@ -33,6 +33,7 @@ All notable changes to Snipdeck are recorded here. The format follows
 - The item editor, Help, Settings and the fill form get wider at large text sizes (up to 225%), so buttons, tabs and
   setting rows no longer overlap or clip.
 - Tips pictures end on a whole row, and the Main window's Show Panel button has its own icon.
+- The Template editor's placeholder list lines its descriptions up in one column, and stacks each name above its description in a narrow window.
 
 ### Security
 - YAML import parsing moved from `serde_yaml_ng` to `serde-saphyr` (deserialize only), so `unsafe-libyaml`

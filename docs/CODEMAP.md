@@ -1234,16 +1234,17 @@ sync | crates/snipdeck-app/src/editor_binding.rs:167
 arm_autosave | crates/snipdeck-app/src/editor_binding.rs:227
 autosave_now | crates/snipdeck-app/src/editor_binding.rs:241
 window_for_use | crates/snipdeck-app/src/editor_binding.rs:262
-wire | crates/snipdeck-app/src/editor_binding.rs:283
-browse | crates/snipdeck-app/src/editor_binding.rs:397
-wire_placeholder_chips | crates/snipdeck-app/src/editor_binding.rs:417
-read_input | crates/snipdeck-app/src/editor_binding.rs:434
-apply_state | crates/snipdeck-app/src/editor_binding.rs:448
-set_tags | crates/snipdeck-app/src/editor_binding.rs:468
-fill | crates/snipdeck-app/src/editor_binding.rs:481
-bring_to_front | crates/snipdeck-app/src/editor_binding.rs:523
-tests | crates/snipdeck-app/src/editor_binding.rs:531
-more_options_opened_by_a_refusal_counts_as_a_change_once | crates/snipdeck-app/src/editor_binding.rs:535
+wire_content | crates/snipdeck-app/src/editor_binding.rs:284
+wire | crates/snipdeck-app/src/editor_binding.rs:312
+browse | crates/snipdeck-app/src/editor_binding.rs:402
+wire_placeholder_chips | crates/snipdeck-app/src/editor_binding.rs:422
+read_input | crates/snipdeck-app/src/editor_binding.rs:439
+apply_state | crates/snipdeck-app/src/editor_binding.rs:453
+set_tags | crates/snipdeck-app/src/editor_binding.rs:473
+fill | crates/snipdeck-app/src/editor_binding.rs:486
+bring_to_front | crates/snipdeck-app/src/editor_binding.rs:528
+tests | crates/snipdeck-app/src/editor_binding.rs:536
+more_options_opened_by_a_refusal_counts_as_a_change_once | crates/snipdeck-app/src/editor_binding.rs:540
 
 ### crates/snipdeck-app/src/failure.rs
 
@@ -7089,8 +7090,8 @@ main | scripts/symbols.py:667
 
 ### scripts/tips_images.py
 
-render | scripts/tips_images.py:38
-main | scripts/tips_images.py:47
+render | scripts/tips_images.py:39
+main | scripts/tips_images.py:48
 
 ### spikes/s1-noactivate/src/main.rs
 
@@ -7715,14 +7716,17 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-symbols/tests/search.rs` | 8 |
 | `crates/snipdeck-ui/src/fonts.rs` (inline) | 2 |
 | `crates/snipdeck-ui/src/selection.rs` (inline) | 5 |
+| `crates/snipdeck-ui/tests/audit_final1.rs` | 7 |
+| `crates/snipdeck-ui/tests/audit_final1_tree.rs` | 1 |
 | `crates/snipdeck-ui/tests/button_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/buttons.rs` | 4 |
 | `crates/snipdeck-ui/tests/deck.rs` | 13 |
 | `crates/snipdeck-ui/tests/deck_logic.rs` | 1 |
-| `crates/snipdeck-ui/tests/editors.rs` | 26 |
+| `crates/snipdeck-ui/tests/editors.rs` | 27 |
 | `crates/snipdeck-ui/tests/editors_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/fill.rs` | 10 |
 | `crates/snipdeck-ui/tests/fill_logic.rs` | 1 |
+| `crates/snipdeck-ui/tests/focus_scroll_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/i18n.rs` | 1 |
 | `crates/snipdeck-ui/tests/inputs.rs` | 17 |
 | `crates/snipdeck-ui/tests/inputs_logic.rs` | 1 |
@@ -7732,6 +7736,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/panel_logic.rs` | 2 |
 | `crates/snipdeck-ui/tests/picker.rs` | 16 |
 | `crates/snipdeck-ui/tests/picker_logic.rs` | 1 |
+| `crates/snipdeck-ui/tests/placeholder_align_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/primitives.rs` | 6 |
 | `crates/snipdeck-ui/tests/primitives_logic.rs` | 22 |
 | `crates/snipdeck-ui/tests/primitives_pixels.rs` | 13 |
