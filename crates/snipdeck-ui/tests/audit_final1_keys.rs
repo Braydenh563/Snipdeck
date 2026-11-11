@@ -373,7 +373,7 @@ fn help_keyboard_walk() {
             ));
         }
     }
-    expect_clean_except(&all, &["help tab 3"]);
+    expect_clean(&all);
 }
 
 #[test]
@@ -425,7 +425,7 @@ fn settings_keyboard_walk() {
         let esc = || esc_fires(win, &fired);
         all.extend(audit(&h, &format!("settings at {s}x"), false, 120, &esc));
     }
-    expect_clean_except(&all, &["Tab reaches", "Shift+Tab walk differs"]);
+    expect_clean(&all);
 }
 
 fn every_kind() -> Vec<snipdeck_ui::FormField> {
