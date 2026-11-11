@@ -3258,7 +3258,7 @@ msgstr ""
 msgid "Smileys & Emotion"
 msgstr ""
 
-#: ui/main_window.slint:244 ui/panel.slint:173 ui/picker.slint:77 ui/toast_window.slint:9
+#: ui/main_window.slint:244 ui/panel.slint:173 ui/picker.slint:77 ui/suggest_hint.slint:8 ui/toast_window.slint:9
 msgid "Snipdeck"
 msgstr ""
 
@@ -4464,6 +4464,10 @@ msgstr ""
 msgid "tag: {}"
 msgstr ""
 
+#: ui/suggest_hint.slint:67
+msgid "to insert"
+msgstr ""
+
 #: ui/command_texts.slint:26
 msgid "tutorial intro onboarding basics learn"
 msgstr ""
@@ -4661,6 +4665,10 @@ msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] ""
 msgstr[1] ""
+
+#: ui/suggest_hint.slint:39
+msgid "{} — press Tab to insert"
+msgstr ""
 
 #: ui/components/command-palette.slint:127
 msgid "{}, {} of {}"

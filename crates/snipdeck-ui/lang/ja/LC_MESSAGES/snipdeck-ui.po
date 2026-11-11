@@ -3346,6 +3346,9 @@ msgstr "タグの変更"
 msgid "tag: {}"
 msgstr "タグ: {}"
 
+msgid "to insert"
+msgstr "で挿入"
+
 msgid "tutorial intro onboarding basics learn"
 msgstr "チュートリアル 入門 基本 学ぶ"
 
@@ -3486,6 +3489,9 @@ msgstr[0] "このファイルの作成時に、機密スニペット {} 件は�
 msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "機密項目 {} 件がバックアップに含まれていませんでした。"
+
+msgid "{} — press Tab to insert"
+msgstr "{} — Tab キーで挿入"
 
 msgid "{}, {} of {}"
 msgstr "{}、{} / {}"

@@ -3355,6 +3355,9 @@ msgstr "cambio de etiqueta"
 msgid "tag: {}"
 msgstr "etiqueta: {}"
 
+msgid "to insert"
+msgstr "para insertar"
+
 msgid "tutorial intro onboarding basics learn"
 msgstr "tutorial introducción inicio básico aprender"
 
@@ -3510,6 +3513,9 @@ msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "Falta {} elemento sensible en la copia de seguridad."
 msgstr[1] "Faltan {} elementos sensibles en la copia de seguridad."
+
+msgid "{} — press Tab to insert"
+msgstr "{}: pulsa Tab para insertar"
 
 msgid "{}, {} of {}"
 msgstr "{}, {} de {}"

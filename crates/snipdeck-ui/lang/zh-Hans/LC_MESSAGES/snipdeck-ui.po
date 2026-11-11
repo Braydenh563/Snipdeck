@@ -3346,6 +3346,9 @@ msgstr "标签更改"
 msgid "tag: {}"
 msgstr "标签：{}"
 
+msgid "to insert"
+msgstr "插入"
+
 msgid "tutorial intro onboarding basics learn"
 msgstr "教程 入门 引导 基础 学习"
 
@@ -3486,6 +3489,9 @@ msgstr[0] "创建此文件时，已省略 {} 个敏感片段。"
 msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "备份中不包含 {} 项敏感项目。"
+
+msgid "{} — press Tab to insert"
+msgstr "{} — 按 Tab 插入"
 
 msgid "{}, {} of {}"
 msgstr "{}，第 {} 项（共 {} 项）"

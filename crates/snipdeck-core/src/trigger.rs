@@ -73,6 +73,70 @@ pub struct Fired {
     pub chars: usize,
 }
 
+/// The fewest typed characters that make a suggestion.
+pub const SUGGEST_MIN_CHARS: usize = 2;
+
+/// A trigger the user could be offered: what stands behind it and how it ranks.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Candidate {
+    /// The trigger code.
+    pub trigger: Trigger,
+    /// The item it stands for.
+    pub item: ItemId,
+    /// How often the item was used (more is offered first).
+    pub uses: u64,
+    /// Sensitive items are never suggested.
+    pub sensitive: bool,
+}
+
+/// The one trigger to suggest while a code is being typed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Suggestion {
+    /// The item the full trigger stands for.
+    pub item: ItemId,
+    /// How many user-perceived characters of the trigger are typed: the Backspaces to send before
+    /// inserting.
+    pub chars: usize,
+}
+
+/// Which trigger the characters typed so far are the start of.
+///
+/// `typed` is the matcher's buffer ([`Matcher::typed`]) and `at_start` whether a trigger may begin at
+/// its first character. A trigger is suggested once at least [`SUGGEST_MIN_CHARS`] of its characters
+/// are typed, after a boundary, and not yet all of them (a complete trigger fires instead). Of
+/// several, the most used wins and a tie keeps the earlier in `candidates`. Only trigger codes are
+/// matched, never titles, and Sensitive items are skipped.
+#[must_use]
+pub fn prefix_of(typed: &str, at_start: bool, candidates: &[Candidate]) -> Option<Suggestion> {
+    let typed: Vec<char> = typed.chars().collect();
+    let mut best: Option<(u64, Suggestion)> = None;
+    for c in candidates.iter().filter(|c| !c.sensitive) {
+        let code: Vec<char> = c.trigger.as_str().chars().collect();
+        let longest = code.len().saturating_sub(1).min(typed.len());
+        // The longest typed tail first: a shorter one would only be a suffix of a longer typing.
+        let hit = (SUGGEST_MIN_CHARS..=longest).rev().find(|&k| {
+            let start = typed.len() - k;
+            typed[start..] == code[..k]
+                && match start {
+                    0 => at_start,
+                    n => is_boundary(typed[n - 1]),
+                }
+        });
+        let Some(k) = hit else { continue };
+        if best.is_none_or(|(uses, _)| c.uses > uses) {
+            let chars = c.trigger.as_str().chars().take(k).collect::<String>();
+            best = Some((
+                c.uses,
+                Suggestion {
+                    item: c.item,
+                    chars: chars.graphemes(true).count(),
+                },
+            ));
+        }
+    }
+    best.map(|(_, s)| s)
+}
+
 /// Watches typed characters for triggers.
 ///
 /// A trigger fires on the typing of its last character, with no space needed, provided the
@@ -177,6 +241,12 @@ impl Matcher {
         self.lead = true;
     }
 
+    /// The characters typed since the last reset and whether a trigger may begin at the first of
+    /// them. What [`prefix_of`] looks at.
+    pub fn typed(&self) -> (String, bool) {
+        (self.buf.iter().collect(), self.lead)
+    }
+
     /// How many characters the buffer holds; never more than [`BUFFER_CHARS`].
     pub fn buffered(&self) -> usize {
         self.buf.len()
@@ -214,6 +284,82 @@ mod tests {
             .enumerate()
             .filter_map(|(i, c)| m.feed(c).map(|f| (i, f.item, f.chars)))
             .collect()
+    }
+
+    fn cand(t: &str, n: u8, uses: u64, sensitive: bool) -> Candidate {
+        Candidate {
+            trigger: Trigger::new(t).unwrap(),
+            item: id(n),
+            uses,
+            sensitive,
+        }
+    }
+
+    #[test]
+    fn prefix_needs_two_characters() {
+        let c = [cand(";sig", 1, 5, false)];
+        assert_eq!(prefix_of("", true, &c), None);
+        assert_eq!(prefix_of(";", true, &c), None, "one character");
+        assert_eq!(
+            prefix_of(";s", true, &c),
+            Some(Suggestion {
+                item: id(1),
+                chars: 2
+            })
+        );
+        assert_eq!(prefix_of(";si", true, &c).map(|s| s.chars), Some(3));
+        assert_eq!(
+            prefix_of(";sig", true, &c),
+            None,
+            "complete: it fires instead"
+        );
+        assert_eq!(prefix_of(";x", true, &c), None, "not a prefix");
+        assert_eq!(prefix_of("a;s", true, &c), None, "a letter before");
+        assert_eq!(prefix_of("a ;s", true, &c).map(|s| s.chars), Some(2));
+        assert_eq!(prefix_of(";s", false, &c), None, "text before the buffer");
+        assert_eq!(prefix_of("hi;s", true, &c), None, "a letter before");
+        assert_eq!(prefix_of("hi (;s", true, &c).map(|s| s.chars), Some(2));
+    }
+
+    #[test]
+    fn prefix_picks_the_most_used() {
+        let c = [
+            cand(";sig", 1, 3, false),
+            cand(";sign", 2, 9, false),
+            cand(";sit", 3, 9, false),
+            cand("zz", 4, 100, false),
+        ];
+        assert_eq!(
+            prefix_of(";si", true, &c).map(|s| s.item),
+            Some(id(2)),
+            "most used; tie keeps the first"
+        );
+        assert_eq!(
+            prefix_of(";sig", true, &c).map(|s| s.item),
+            Some(id(2)),
+            "only ;sign is longer"
+        );
+        assert_eq!(prefix_of(";sit", true, &c), None);
+    }
+
+    #[test]
+    fn sensitive_items_are_never_suggested() {
+        let c = [cand(";pin", 1, 99, true), cand(";pit", 2, 1, false)];
+        assert_eq!(prefix_of(";pi", true, &c).map(|s| s.item), Some(id(2)));
+        let only = [cand(";pin", 1, 99, true)];
+        assert_eq!(prefix_of(";pi", true, &only), None);
+    }
+
+    #[test]
+    fn a_suggestion_counts_graphemes_and_follows_the_matcher() {
+        let c = [cand("é-mail", 1, 1, false)];
+        assert_eq!(prefix_of("e\u{301}-", true, &c), None, "not composed here");
+        let mut m = matcher(&[("é-mail", 1)]);
+        for ch in "e\u{301}-".chars() {
+            m.feed(ch);
+        }
+        let (typed, at_start) = m.typed();
+        assert_eq!(prefix_of(&typed, at_start, &c).map(|s| s.chars), Some(2));
     }
 
     #[test]
