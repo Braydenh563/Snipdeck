@@ -675,7 +675,7 @@ mod tests {
             (Command::DeleteGroup, Some("Del")),
             (Command::MoveGroupUp, Some("Alt+Up")),
             (Command::MoveGroupDown, Some("Alt+Down")),
-            (Command::FoldGroup, None),
+            (Command::FoldGroup, Some("Enter")),
             (Command::UngroupGroup, None),
         ] {
             assert_eq!(command.shortcut(&hotkeys).as_deref(), keys, "{command:?}");
