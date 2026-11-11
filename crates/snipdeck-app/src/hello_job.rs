@@ -81,8 +81,8 @@ pub(crate) enum Product {
     Sealed(SealedKey),
     /// Whether Hello can be used.
     Availability(HelloAvailability),
-    /// The data key the copy opened (the copy comes back too, to be kept).
-    Opened(DataKey, SealedKey),
+    /// The data key the copy opened.
+    Opened(DataKey),
 }
 
 /// The outcome of a [`HelloJob`].
@@ -92,8 +92,6 @@ pub struct HelloDone {
     /// so a job that panicked or could not start still says which counter to compare with.
     pub(crate) availability: bool,
     pub(crate) outcome: Result<Product, HelloFailure>,
-    /// The sealed copy a cancelled unlock hands back, to be kept for another try.
-    pub(crate) kept: Option<SealedKey>,
 }
 
 impl core::fmt::Debug for HelloDone {
@@ -160,7 +158,6 @@ impl HelloJob {
         let hello = self.hello;
         let cancel = self.cancel;
         let availability = matches!(self.work, Work::Availability);
-        let mut kept = None;
         // Asked at each prompt: a locked library or a given-up step does not wait for a person.
         let sign = |challenge: &[u8]| {
             if cancel.load(Ordering::SeqCst) {
@@ -185,28 +182,18 @@ impl HelloJob {
                 };
                 sealed.map(Product::Sealed).map_err(failure)
             }),
-            Work::Open { sealed } => {
-                let opened = sealed.open(self.now, sign);
-                match opened {
-                    Ok(key) => Ok(Product::Opened(key, sealed)),
-                    Err(e) => {
-                        let failure = match e {
-                            HelloSealError::Failed => HelloFailure::Mismatch,
-                            other => failure(other),
-                        };
-                        if failure == HelloFailure::Cancelled {
-                            kept = Some(sealed);
-                        }
-                        Err(failure)
-                    }
-                }
-            }
+            Work::Open { sealed } => sealed
+                .open(self.now, sign)
+                .map(Product::Opened)
+                .map_err(|e| match e {
+                    HelloSealError::Failed => HelloFailure::Mismatch,
+                    other => failure(other),
+                }),
         };
         HelloDone {
             generation: self.generation,
             availability,
             outcome,
-            kept,
         }
     }
 
@@ -217,7 +204,6 @@ impl HelloJob {
             generation: self.generation,
             availability: matches!(self.work, Work::Availability),
             outcome: Err(HelloFailure::Failed),
-            kept: None,
         }
     }
 }
@@ -304,7 +290,6 @@ pub fn run_job(job: HelloJob, finish: Finish) {
                     generation,
                     availability,
                     outcome: Err(HelloFailure::Failed),
-                    kept: None,
                 });
             let _ = slint::invoke_from_event_loop(move || deliver(ticket, done));
         });

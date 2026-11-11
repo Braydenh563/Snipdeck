@@ -262,6 +262,8 @@ where
     /// The user closed the unlock window without a password. The library stays locked.
     pub fn cancel_unlock(&mut self) {
         self.lock.prompt = false;
+        // A Hello unlock under way must not open the library after the user said no.
+        self.give_up_hello_unlock();
         // A password already being checked must not open the library after the user said no.
         if self.lock.busy == Some(MasterOp::Unlock) {
             self.invalidate_master();
@@ -461,6 +463,7 @@ where
                     // The password is set for good from here, whether or not the library
                     // opens now: a retry must ask for it, not offer to set it again.
                     self.lock.set = true;
+                    self.forget_hello();
                     self.store
                         .open_with_key(key)
                         .map_err(|_| MasterProblem::Failed)?;
@@ -469,6 +472,7 @@ where
                         .install_key_ring(key, &record)
                         .map_err(|_| MasterProblem::Failed)?;
                     self.lock.set = true;
+                    self.forget_hello();
                 }
                 self.note_activity();
                 self.show_toast(neutral(ToastMessage::MasterPasswordSet));
@@ -482,6 +486,9 @@ where
                 // The password is changed for good from here. The user just proved the old one,
                 // so the library opens if it was locked; if that fails the change still stands
                 // and the toast says the library is locked.
+                // The record changed, so a sealed copy no longer fits it: the password just
+                // proved counts as a fresh unlock, and the host seals a new copy (one prompt).
+                self.note_password_unlock();
                 let reopened = self.open_after_change(key);
                 self.note_activity();
                 self.show_toast(neutral(if reopened {
@@ -499,8 +506,7 @@ where
                 // or not the key opens now.
                 self.lock.set = false;
                 self.lock.prompt = false;
-                self.lock.hello.drop_copy();
-                self.update_settings(|s| s.hello_unlock = false);
+                self.forget_hello();
                 let reopened = self.open_after_change(key);
                 self.note_activity();
                 self.show_toast(neutral(if reopened {
@@ -605,7 +611,7 @@ where
         self.invalidate_master();
         // A Hello step under way is told to stop and its outcome is refused; the sealed copy stays
         // (it is what Hello unlocks with).
-        self.lock.hello.cancel_step();
+        self.give_up_hello_step(true);
         self.store.lock_key_ring();
         self.index_cache.forget_recent();
         self.revealed = None;

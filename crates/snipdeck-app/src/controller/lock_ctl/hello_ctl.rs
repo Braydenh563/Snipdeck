@@ -16,7 +16,7 @@ use snipdeck_platform::{
     hello::{HelloAuthenticator, HelloAvailability},
     pipeline::{Clipboard, Keyboard, Timing},
 };
-use snipdeck_store::crypto::SealedKey;
+use snipdeck_store::crypto::{KeyRecord, SealedKey};
 
 use crate::toast::ToastMessage;
 
@@ -36,6 +36,10 @@ pub(super) struct HelloState {
     hello: Option<Arc<dyn HelloAuthenticator>>,
     availability: Option<HelloAvailability>,
     sealed: Option<SealedKey>,
+    /// The key record the copy was sealed for (it holds no secret). A copy only opens the library
+    /// while the stored record is still this one: a new key (erased, forgotten) never opens with
+    /// an old copy.
+    bound: Option<KeyRecord>,
     /// When the password last unlocked the library (the 7 days count from here).
     password_at: Option<Timestamp>,
     busy: bool,
@@ -97,6 +101,7 @@ impl HelloState {
     /// Forgets the copy and gives up on a step under way.
     pub(super) fn drop_copy(&mut self) {
         self.sealed = None;
+        self.bound = None;
         self.cancel_step();
     }
 
@@ -168,11 +173,17 @@ where
     /// sealed copy that has not expired exists.
     #[must_use]
     pub fn hello_unlock_available(&self) -> bool {
-        let state = &self.lock.hello;
+        self.hello_button_shown() && !self.lock.hello.busy
+    }
+
+    /// Whether the unlock window shows its Hello button (it stays, disabled, while a step runs).
+    #[must_use]
+    pub fn hello_button_shown(&self) -> bool {
         self.hello_enabled()
             && self.library_locked()
-            && !state.busy
-            && state
+            && self
+                .lock
+                .hello
                 .sealed
                 .as_ref()
                 .is_some_and(|s| !s.is_expired(since_epoch(self.clock.now())))
@@ -192,7 +203,47 @@ where
         }
         self.update_settings(|s| s.hello_unlock = true);
         self.lock.hello.enrol = true;
-        self.begin_hello_seal()
+        let job = self.begin_hello_seal();
+        if job.is_none() && self.lock.hello.sealed.is_none() {
+            // Nothing could start (the library is locked: there is no open key to seal): the switch
+            // goes back off and says so, instead of staying on without a copy.
+            self.update_settings(|s| s.hello_unlock = false);
+            self.lock.hello.enrol = false;
+            self.show_toast(super::neutral(ToastMessage::HelloNotTurnedOn));
+        }
+        job
+    }
+
+    /// Forgets everything about Hello: the copy, a step under way, and the option. Used when the
+    /// key it was sealed for goes (the library was erased, the password removed or set anew).
+    pub(in crate::controller) fn forget_hello(&mut self) {
+        self.lock.hello.drop_copy();
+        self.lock.hello.enrol = false;
+        self.lock.hello.recheck = false;
+        self.update_settings(|s| s.hello_unlock = false);
+    }
+
+    /// Gives up on a Hello step under way (the library was locked, the unlock window closed). A
+    /// switch-on that was cut short goes back off, so the switch never says "on" without a copy.
+    pub(super) fn give_up_hello_step(&mut self, show: bool) {
+        let was_switching_on = self.lock.hello.busy && self.lock.hello.enrol;
+        if was_switching_on {
+            self.update_settings(|s| s.hello_unlock = false);
+            self.lock.hello.enrol = false;
+            self.lock.hello.recheck = false;
+        }
+        self.lock.hello.cancel_step();
+        if was_switching_on && show {
+            self.show_toast(super::neutral(ToastMessage::HelloNotTurnedOn));
+        }
+    }
+
+    /// The unlock window closed: a Hello unlock under way is given up on (its outcome is refused
+    /// and the copy stays).
+    pub(super) fn give_up_hello_unlock(&mut self) {
+        if self.lock.hello.busy && self.lock.hello.step == Step::Open {
+            self.lock.hello.cancel_step();
+        }
     }
 
     /// The first part of sealing the open key under Hello, if Hello is on and the library is open.
@@ -229,7 +280,7 @@ where
         if state.busy {
             return None;
         }
-        let sealed = state.sealed.take()?;
+        let sealed = state.sealed.clone()?;
         if sealed.is_expired(now) {
             return None;
         }
@@ -284,8 +335,10 @@ where
         self.lock.hello.busy = false;
         match done.outcome {
             Ok(Product::Sealed(sealed)) => {
+                let bound = self.store.key_record().ok().flatten();
                 let state = &mut self.lock.hello;
                 state.sealed = Some(sealed);
+                state.bound = bound;
                 state.enrol = false;
                 state.recheck = false;
                 state.seal_failures = 0;
@@ -295,12 +348,19 @@ where
                 Ok(())
             }
             Ok(Product::Availability(_)) => Ok(()),
-            Ok(Product::Opened(key, sealed)) => {
+            Ok(Product::Opened(key)) => {
+                // The copy opens only the key it was sealed for: if the stored record changed
+                // since (the library was erased, a new key made), the copy is stale and the
+                // password is asked.
+                let current = self.store.key_record().ok().flatten();
+                if current.is_none() || current != self.lock.hello.bound {
+                    self.turn_hello_off();
+                    return Err(HelloFailure::Failed);
+                }
                 if self.store.open_with_key(key).is_err() {
                     self.lock.hello.drop_copy();
                     return Err(HelloFailure::Failed);
                 }
-                self.lock.hello.sealed = Some(sealed);
                 self.complete_unlock();
                 Ok(())
             }
@@ -309,11 +369,10 @@ where
                 // that changed (a PIN reset makes a new credential) is sealed again at the next
                 // password unlock, with the repeat check, which asks it once.
                 // A cancel at the unlock keeps the copy: the button offers another try.
-                self.lock.hello.sealed = if self.lock.hello.step == Step::Open {
-                    done.kept
-                } else {
-                    None
-                };
+                if !(self.lock.hello.step == Step::Open && failure == HelloFailure::Cancelled) {
+                    self.lock.hello.sealed = None;
+                    self.lock.hello.bound = None;
+                }
                 match (self.lock.hello.step, failure) {
                     (Step::Open, HelloFailure::Mismatch) => {
                         self.lock.hello.note = Note::Changed;
@@ -376,6 +435,15 @@ where
         self.lock.hello.note == Note::TurnedOff
     }
 
+    /// Takes the "Hello was turned off" note: true once per turn-off.
+    pub fn take_hello_turned_off_note(&mut self) -> bool {
+        let said = self.lock.hello.note == Note::TurnedOff;
+        if said {
+            self.lock.hello.note = Note::None;
+        }
+        said
+    }
+
     /// An unlock with Hello found it changed and its note was not shown yet.
     #[must_use]
     pub fn hello_changed_note(&self) -> bool {
@@ -395,5 +463,6 @@ where
     pub(super) fn note_password_unlock(&mut self) {
         self.lock.hello.password_at = Some(self.clock.now());
         self.lock.hello.sealed = None;
+        self.lock.hello.bound = None;
     }
 }

@@ -108,7 +108,7 @@ fn run_step<C, K, T>(
 /// Seals the open key under Hello if Hello is on and no copy exists. Whatever comes back (cancelled,
 /// failed, removed) changes nothing: the option stays, there is no copy, the password unlocks, and
 /// the next password unlock tries again. A prompt the user cancels never turns Hello off.
-fn seal_open_key<C, K, T>(controller: &Rc<RefCell<Controller<Store, C, K, T>>>)
+pub(crate) fn seal_open_key<C, K, T>(controller: &Rc<RefCell<Controller<Store, C, K, T>>>)
 where
     C: Clipboard + ClipboardText + 'static,
     K: Keyboard + 'static,
@@ -168,12 +168,13 @@ where
         );
         drop(controller);
         window.set_password(slint::SharedString::new());
-        window.set_problem(if self.core.controller.borrow().hello_turned_off_note() {
+        // Said once: the note is taken, so the next time the window opens it is not repeated.
+        window.set_problem(if self.core.controller.borrow_mut().take_hello_turned_off_note() {
             ui::MasterProblem::HelloTurnedOff
         } else {
             ui::MasterProblem::None
         });
-        window.set_hello_available(self.core.controller.borrow().hello_unlock_available());
+        window.set_hello_available(self.core.controller.borrow().hello_button_shown());
         window.set_focus_request(window.get_focus_request() + 1);
     }
 }
@@ -365,6 +366,9 @@ where
         {
             window.set_password(slint::SharedString::new());
             let _ = window.hide();
+        } else if let Some(window) = self.window.upgrade() {
+            // Every redraw: a button for a copy that is gone (expired, Hello turned off) is never left.
+            window.set_hello_available(self.controller.borrow().hello_button_shown());
         }
     }
 }

@@ -1460,7 +1460,11 @@ where
         window.set_master_busy(false);
         window.set_master_problem(ui::MasterProblem::None);
         match result {
-            Ok(()) => window.invoke_close_master(),
+            Ok(()) => {
+                window.invoke_close_master();
+                // A changed password counts as an unlock: Hello (if on) seals a new copy.
+                crate::unlock_binding::seal_open_key(&self.controller);
+            }
             Err(problem) => {
                 window.set_master_problem(crate::unlock_binding::slint_problem(problem));
             }

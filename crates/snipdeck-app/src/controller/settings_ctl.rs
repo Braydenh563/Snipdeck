@@ -891,7 +891,9 @@ where
         self.queue.reset();
         self.index_cache.reset();
         self.clear_history();
-        // The key record may have gone (forgotten) or stayed (with its password).
+        // The key record may have gone (forgotten) or stayed (with its password). A Hello copy
+        // was sealed for the old key: it goes either way, and Hello is switched off.
+        self.forget_hello();
         self.refresh_master();
         self.show_toast(if erased {
             Toast {

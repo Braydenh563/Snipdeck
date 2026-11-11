@@ -59,6 +59,7 @@ fn same(a: &[u8], b: &[u8]) -> bool {
 }
 
 /// The data key sealed under Hello, plus when the password last unlocked the library.
+#[derive(Clone)]
 pub struct SealedKey {
     blob: Vec<u8>,
     password_unlock_at: Duration,
