@@ -2,6 +2,12 @@
 //! the Shortcuts list does not clip wrapped titles (M1), keycaps tell a chord from alternatives (M5) and the palette
 //! scales with the text size (L3). Measured in the headless harness; sizes are logical pixels.
 
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "pixel geometry of a test frame"
+)]
+
 use i_slint_backend_testing::{AccessibleRole as Role, ElementQuery};
 use slint::{ComponentHandle, Global};
 use snipdeck_ui::testing::{Harness, assert_golden};
