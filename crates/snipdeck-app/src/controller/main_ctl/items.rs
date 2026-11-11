@@ -201,8 +201,8 @@ where
     pub(super) fn restore(&mut self, targets: &[Key]) {
         let limit = self.board_limit();
         let done = self.store.atomically(|b| {
-            for key in targets {
-                b.restore_with(Trashable::from(*key), limit)?;
+            for entry in targets.iter().filter_map(|k| k.trashable()) {
+                b.restore_with(entry, limit)?;
             }
             Ok(())
         });
@@ -227,8 +227,8 @@ where
         // Steps may name what goes for good.
         self.clear_history();
         let done = self.store.atomically(|b| {
-            for key in targets {
-                b.purge_entry(Trashable::from(*key))?;
+            for entry in targets.iter().filter_map(|k| k.trashable()) {
+                b.purge_entry(entry)?;
             }
             Ok(())
         });

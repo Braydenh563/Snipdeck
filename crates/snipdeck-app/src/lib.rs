@@ -24,6 +24,7 @@ pub mod fill;
 pub mod fill_binding;
 pub mod frame;
 pub mod headless;
+pub mod hello_job;
 pub mod help_binding;
 pub mod history;
 pub mod host;

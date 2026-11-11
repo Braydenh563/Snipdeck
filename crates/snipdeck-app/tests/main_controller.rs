@@ -29,7 +29,7 @@ use snipdeck_core::{
 };
 use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
 use snipdeck_store::ListRepo as _;
-use snipdeck_store::{BoardRepo, ItemRepo, Store, TagRepo, TrashRepo, Trashable};
+use snipdeck_store::{BoardRepo, ItemRepo, Store, TagRepo, TrashRepo};
 
 type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 
@@ -1167,7 +1167,7 @@ fn undo_cannot_bring_a_board_back_past_the_free_limit() {
         .main_screen()
         .rows
         .iter()
-        .position(|r| Trashable::from(r.key) == fifth)
+        .position(|r| r.key.trashable() == Some(fifth))
         .unwrap();
     ctl.main_action(MainAction::Restore, at);
     let screen = ctl.main_screen();

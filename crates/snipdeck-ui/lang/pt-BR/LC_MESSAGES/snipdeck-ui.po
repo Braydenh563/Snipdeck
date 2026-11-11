@@ -151,8 +151,8 @@ msgstr "Adiciona um trecho de texto a {}"
 msgid "After a paste or copy"
 msgstr "Depois de colar ou copiar"
 
-msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual."
-msgstr "Ao digitar o início de um gatilho, uma pequena dica junto ao cursor de texto oferece o trecho. Pressione Tab para inseri-lo; qualquer outra tecla segue normalmente."
+msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
+msgstr "Ao digitar o início de um gatilho, uma pequena dica junto ao cursor de texto oferece o trecho. Pressione Tab para inseri-lo; qualquer outra tecla segue normalmente. O Tab só é capturado enquanto a dica está visível."
 
 msgid "All"
 msgstr "Todos"
@@ -681,6 +681,9 @@ msgstr "Não foi possível salvar suas configurações. O Snipdeck tentará de n
 msgid "Couldn't start the screenshot tool."
 msgstr "Não foi possível iniciar a ferramenta de captura."
 
+msgid "Couldn't start typing triggers. Nothing will be expanded or suggested."
+msgstr "Não foi possível iniciar os gatilhos ao digitar. Nada será expandido nem sugerido."
+
 msgid "Couldn't use this item. Try again, or restart Snipdeck if it keeps happening."
 msgstr "Não foi possível usar este item. Tente novamente ou reinicie o Snipdeck se continuar acontecendo."
 
@@ -1029,6 +1032,9 @@ msgstr "Bandeiras"
 msgid "Floating"
 msgstr "Flutuante"
 
+msgid "Fold or open a group"
+msgstr "Recolher ou expandir um grupo"
+
 msgid "Fold the Panel into a thin strip."
 msgstr "Recolher o painel em uma faixa fina."
 
@@ -1115,6 +1121,9 @@ msgstr "Grupo"
 
 msgid "Group name"
 msgstr "Nome do grupo"
+
+msgid "Group the marked rows"
+msgstr "Agrupar as linhas marcadas"
 
 msgid "Group..."
 msgstr "Agrupar..."
@@ -1237,6 +1246,9 @@ msgstr "Incluído"
 
 msgid "Insert"
 msgstr "Colar"
+
+msgid "Insert the suggested item (Windows only)"
+msgstr "Inserir o item sugerido (somente Windows)"
 
 msgid "Insert {}"
 msgstr "Inserir {}"
@@ -1478,6 +1490,9 @@ msgstr "Mais usados"
 
 msgid "Move"
 msgstr "Mover"
+
+msgid "Move a group up or down"
+msgstr "Mover um grupo para cima ou para baixo"
 
 msgid "Move a page at a time"
 msgstr "Mover uma página por vez"
@@ -2152,6 +2167,9 @@ msgstr "Removido de Recentes"
 msgid "Remove…"
 msgstr "Remover…"
 
+msgid "Rename a group"
+msgstr "Renomear um grupo"
+
 msgid "Rename board…"
 msgstr "Renomear quadro…"
 
@@ -2169,6 +2187,9 @@ msgstr "Renomear o item"
 
 msgid "Repeat the new password"
 msgstr "Repita a nova senha"
+
+msgid "Replace a typed trigger with its item (Windows only)"
+msgstr "Substituir um gatilho digitado pelo seu item (somente Windows)"
 
 msgid "Required"
 msgstr "Obrigatório"
@@ -2353,6 +2374,9 @@ msgstr "Selecionar todos os itens"
 
 msgid "Select or delete…"
 msgstr "Selecionar ou excluir…"
+
+msgid "Select or unselect the row"
+msgstr "Selecionar ou desmarcar a linha"
 
 msgid "Select several items"
 msgstr "Selecionar vários itens"
@@ -3026,11 +3050,23 @@ msgstr "Desencaixar o painel"
 msgid "Ungroup"
 msgstr "Desagrupar"
 
+msgid "Ungroup (the group's menu)"
+msgstr "Desagrupar (menu do grupo)"
+
 msgid "Unlock"
 msgstr "Desbloquear"
 
 msgid "Unlock Snipdeck"
 msgstr "Desbloquear o Snipdeck"
+
+msgid "Unlock window"
+msgstr "Janela de desbloqueio"
+
+msgid "Unlock with Windows Hello"
+msgstr "Desbloquear com o Windows Hello"
+
+msgid "Unlock with Windows Hello (Windows only)"
+msgstr "Desbloquear com o Windows Hello (somente Windows)"
 
 msgid "Unlock your library first, so your sensitive items are included. Nothing was done."
 msgstr "Desbloqueie sua biblioteca primeiro, para que seus itens sensíveis sejam incluídos. Nada foi feito."
@@ -3083,6 +3119,9 @@ msgstr "Usar o enésimo item"
 msgid "Use the item"
 msgstr "Usar o item"
 
+msgid "Use your face, fingerprint or PIN instead of typing the master password. The password is still asked after a restart and every 7 days, and it always works."
+msgstr "Use seu rosto, impressão digital ou PIN em vez de digitar a senha mestra. A senha ainda é pedida após uma reinicialização e a cada 7 dias, e sempre funciona."
+
 msgid "Use {}"
 msgstr "Usar {}"
 
@@ -3134,8 +3173,8 @@ msgstr "Quando o Windows inicia"
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "Com o alfinete desativado, o painel se oculta assim que você muda para outro aplicativo. Um painel fixado permanece."
 
-msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk. Nothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
-msgstr "Quando você digita o gatilho de um trecho em outro programa, o Snipdeck o substitui pelo trecho. Para isso, o Snipdeck observa as teclas pressionadas e guarda apenas os últimos caracteres na memória, nunca no disco. Nada é expandido em campos de senha, em programas definidos como “Nunca colar” nem em itens confidenciais."
+msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
+msgstr "Quando você digita o gatilho de um trecho em outro programa, o Snipdeck o substitui pelo trecho. Para isso, o Snipdeck observa as teclas pressionadas e guarda apenas os últimos caracteres na memória, nunca no disco.\nNada é expandido em campos de senha, em programas definidos como “Nunca colar” nem em itens confidenciais."
 
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "Onde o Painel aparece quando um atalho ou a bandeja o mostra. No cursor de texto usa o mouse quando o app não tem cursor."
@@ -3163,6 +3202,24 @@ msgstr "Comportamento da janela"
 
 msgid "Windows"
 msgstr "Windows"
+
+msgid "Windows Hello changed. Unlock with your password once to set it up again."
+msgstr "O Windows Hello mudou. Desbloqueie uma vez com sua senha para configurá-lo novamente."
+
+msgid "Windows Hello did not unlock Snipdeck. Use your master password."
+msgstr "O Windows Hello não desbloqueou o Snipdeck. Use sua senha mestra."
+
+msgid "Windows Hello didn't work, so it was not turned on."
+msgstr "O Windows Hello não funcionou e não foi ativado."
+
+msgid "Windows Hello didn't work, so it was turned off. You can turn it on again in Settings."
+msgstr "O Windows Hello não funcionou e foi desativado. Você pode ativá-lo novamente em Configurações."
+
+msgid "Windows Hello was cancelled. Use your master password."
+msgstr "O Windows Hello foi cancelado. Use sua senha mestra."
+
+msgid "Windows Hello was not turned on."
+msgstr "O Windows Hello não foi ativado."
 
 msgid "Windows accent"
 msgstr "Destaque do Windows"

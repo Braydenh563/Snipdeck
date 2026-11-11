@@ -2288,6 +2288,50 @@ fn header_is_announced_with_its_count() {
     });
 }
 
+/// The list-item rows of the window, in tree order, with their position in a set and its size.
+fn list_rows(ui: &PanelWindow) -> Vec<(String, Option<usize>, Option<usize>)> {
+    use i_slint_backend_testing::ElementQuery;
+    ElementQuery::from_root(ui)
+        .match_predicate(|e| e.accessible_role() == Some(AccessibleRole::ListItem))
+        .find_all()
+        .into_iter()
+        .map(|e| {
+            (
+                e.accessible_label().unwrap_or_default().to_string(),
+                e.accessible_item_index(),
+                e.accessible_item_count(),
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn group_members_say_their_position_in_the_group_and_loose_rows_say_nothing() {
+    on_ui_thread(|| {
+        let r = rig();
+        group_first_two(&r);
+        r.window().set_size(slint::LogicalSize::new(360.0, 900.0));
+        slint::platform::update_timers_and_animations();
+        let rows = list_rows(&r.ui);
+        let name = |i: usize| r.ui.get_rows().row_data(i).expect("row").title.to_string();
+        let first = rows
+            .iter()
+            .find(|(l, ..)| l.starts_with(&name(1)))
+            .expect("first member");
+        let second = rows
+            .iter()
+            .find(|(l, ..)| l.starts_with(&name(2)))
+            .expect("second member");
+        assert_eq!((first.1, first.2), (Some(0), Some(2)), "{first:?}");
+        assert_eq!((second.1, second.2), (Some(1), Some(2)), "{second:?}");
+        let loose = rows
+            .iter()
+            .find(|(l, ..)| l.starts_with(&name(3)))
+            .expect("a loose row");
+        assert_eq!((loose.1, loose.2), (None, None), "{loose:?}");
+    });
+}
+
 /// Two groups, `[Group] a b [Second] c d`, with the cursor on the first header and the rename
 /// ended.
 fn two_groups_in_window(r: &Rig) {

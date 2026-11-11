@@ -169,7 +169,7 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
   holds and an arrow. Click the header, or press `Left` to fold it and `Right` to open it again; a folded group
   hides its items. Press `F2` on a header, or choose **Rename group**, to change the name. Choose **Ungroup**
   to dissolve the group and keep its items. **Delete group** moves the group and its items to the Trash, and
-  `Ctrl+Z` brings them all back in one step. Drag a header to move the whole group. Groups show only when the
+  `Ctrl+Z` brings them all back in one step. Drag a header to move the whole group, or press `Alt+Up` or `Alt+Down` on it. `Enter` or `Space` on a header also folds or opens it. Groups show only when the
   list is sorted by hand (Manual); if it is not, **Group...** offers to switch. Searching lists every match,
   even inside a folded group, under the group's header. Press `Ctrl+G` on a header to rename it. Undo
   (`Ctrl+Z`) takes back a grouping, a rename, an ungroup, a delete and a drag of a header or of an item onto
@@ -336,26 +336,27 @@ your data, Licence. Press `F1` or choose **Help** at the bottom of the page to o
 ## Triggers and typing (Windows)
 
 A **trigger** is a short code you give an item, such as `;sig`. It is 1 to 32 characters with no spaces, and
-no two items share one. Set it in the item editor, in the **Trigger** box (sensitive items have none). Items
+no two items share one. Set it in the item editor, in the **Trigger** box. A Sensitive item shows "Sensitive items can't be typed in, so they have no trigger." there instead. Items
 imported from Espanso or similar tools keep their abbreviations as triggers.
 
 Two options under **Typing** in Settings use triggers while you type in other programs. Both are off by
-default, and both work only on Windows (not yet tested on a real PC). On other systems the two switches do nothing.
+default, and both work only on Windows (not yet tested on a real PC). On other systems Settings says "Typing triggers work on Windows only."
 
 - **Expand abbreviations as I type.** When you type a trigger in another program, Snipdeck deletes it and
-  pastes the item. A trigger fires on its last character, after a space or punctuation (or at the start of a
-  line): no extra key is needed. If the item has fill-in fields, the form opens first.
+  pastes the item. A trigger must begin after a space or punctuation (or at the start of a line) and fires on
+  its last character: no extra key is needed. If the item has fill-in fields, the form opens first.
 - **Suggest snippets as I type.** After you type the first two characters of a trigger, a small hint at the
-  text cursor shows the item's title and "Tab to insert". Press `Tab` to insert it. Any other key carries on as
-  usual. If several triggers match, the most used item is offered. No text cursor, no hint.
+  text cursor shows the item's title and "Tab to insert". Press `Tab` to insert it. Snipdeck takes `Tab` only while the hint shows; any other key carries on as
+  usual, and `Esc` (like the arrow keys, `Enter` and `Delete`) clears what you typed so the hint goes away. The hint also goes if you stop typing for about 5 seconds. If several triggers match, the most used item is offered. No text cursor, no hint.
 
 The hint shows only while what you typed is the start of a trigger. It needs at least two characters, and it
 waits for a space, punctuation or the start of a line, like a trigger does. When you have typed the whole
 trigger, the item is pasted instead of hinted. Only trigger codes count, never titles.
 
 In the item editor, the **Trigger** box has the same rules: 1 to 32 characters with no spaces, and no two
-items share one. If you save a code that another trigger starts with, or that starts another trigger, a
-message says "Saved. This code overlaps another trigger, so one of them may never fire." The item is still saved.
+items share one. A one-character trigger shows a warning, because it fires every time you type it, even inside words; two or more characters are safer. If you save a code that another trigger starts with, or that starts another trigger, a message says "Saved. This code overlaps the trigger of “Title”, so one of them may never fire." with the other item's title (without a title it says "another trigger"). The item is still saved.
+
+If Snipdeck cannot start the typing watcher, a message says "Couldn't start typing triggers. Nothing will be expanded or suggested."
 
 Nothing expands in password boxes, in programs set to **Never paste**, in programs running as administrator,
 while Snipdeck is in front, or for sensitive items. Sensitive items are never suggested either. Snipdeck keeps only the last 32 characters you typed, in
@@ -389,25 +390,33 @@ With a master password set, Windows Hello can unlock the library with your face,
 typing the password. It needs a Supporter plan and a PC where Windows Hello is set up. The option is hidden
 otherwise.
 
-- **Turn it on.** Settings, under **Privacy**: switch on **Unlock with Windows Hello**. Windows asks for
-  Hello twice, one after the other, to check it can be used. You can turn it off the same way.
+- **Turn it on.** Settings, under **Privacy**, below **Master password**: switch on **Unlock with Windows
+  Hello**. Windows asks for Hello twice, one after the other, to check it repeats. If you cancel or it fails,
+  the switch goes back off and a message says "Windows Hello was not turned on." (or "didn't work, so it was
+  not turned on."). The same happens if the library locks, or the plan changes, before it finishes. You can
+  turn it off the same way. Settings search finds it too.
 - **Unlock.** When the library is locked and Snipdeck asks for the password, press **Unlock with Windows
   Hello** and use your face, fingerprint or PIN. The password box stays there: the password always works.
 - **When the password is needed.** After Snipdeck restarts, and 7 days after the last time you typed the
   password. After a password unlock, Windows asks for Hello once so the next unlock can use it.
-- **When Hello fails.** If you cancel the prompt, it fails or the PIN was removed, the unlock window says
-  "Windows Hello did not unlock Snipdeck. Use your master password." The Hello button goes away and the
-  password box stays. **Unlock with Windows Hello** stays switched on in Settings: a cancel never turns it off.
+- **When Hello is cancelled.** If you cancel the prompt, the unlock window says "Windows Hello was cancelled.
+  Use your master password." The button stays, so you can try again.
+- **When Hello fails.** If it fails or the PIN was removed, the unlock window says "Windows Hello did not
+  unlock Snipdeck. Use your master password." The button goes away and the password box stays. **Unlock with
+  Windows Hello** stays switched on, and the next password unlock sets Hello up again. If it fails twice in a
+  row after password unlocks, or Hello gives different answers each time, Snipdeck turns it off and says so
+  (a message, and a line in the unlock window). Turn it on again in Settings.
 - **A changed Hello.** If you reset your PIN or change your face or fingerprint, Windows makes a new
-  credential and the old copy no longer opens. You see the same message above once, on the unlock that fails.
-  Type your password. Snipdeck then asks Hello once to set itself up again, and the next unlock can use Hello.
-  Snipdeck asks only right after a password unlock. Opening Settings or the unlock window never puts up a
-  Hello prompt. If you cancel that prompt too, nothing is shown, Hello stays on, and it asks again after
-  your next password unlock.
+  credential and the old copy no longer opens. The unlock window says "Windows Hello changed. Unlock with your
+  password once to set it up again." Type your password. Snipdeck then asks Hello twice to check it repeats,
+  and the next unlock can use Hello. Snipdeck asks only right after a password unlock. Opening Settings or
+  the unlock window never puts up a Hello prompt. If you cancel that prompt, Hello stays on and it asks again
+  after your next password unlock.
 - **Lock.** The library still locks after 15 minutes without use, as described above. Hello is another way
-  back in; locking does not turn it off.
-- **Remove the password or lose Supporter.** Removing the master password turns Hello off. If the licence
-  stops being Supporter, the saved Hello copy is dropped and only the password unlocks.
+  back in; locking does not turn it off. Closing the unlock window stops a Hello prompt under way.
+- **Change, remove or erase.** Changing the master password re-seals the Hello copy with one prompt. Setting or
+  removing the password, or erasing the library, turns Hello off. If the licence stops being Supporter, the
+  saved Hello copy is dropped and only the password unlocks.
 
 Hello never stores your key or password on disk. Snipdeck keeps an encrypted copy of the key in memory only,
 which a restart forgets. The details are in [`crypto.md`](crypto.md). This part works only on Windows and has
@@ -495,7 +504,9 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Panel | `Ctrl+E`, `F2` | Edit the selected item |
 | Panel | `Ctrl+P` | Pin or unpin the selected item |
 | Panel | `Ctrl+G` | Group the marked rows |
-| Panel | `Left`, `Right` (on a group header) | Fold or open the group |
+| Panel | `Left`, `Right`, `Enter` or `Space` (on a group header) | Fold or open the group |
+| Panel | `Alt+Up`, `Alt+Down` (on a group header) | Move the whole group |
+| Panel | `Menu`, `Shift+F10` (on a group header) | Open its menu: Rename group, Ungroup, Delete group |
 | Panel | `F2`, or `Ctrl+G` with nothing marked (on a group header) | Rename the group |
 | Panel | `Delete` | Move the selected item to the Trash (not while searching) |
 | Panel | `Menu`, `Shift+F10` | Open the item menu |

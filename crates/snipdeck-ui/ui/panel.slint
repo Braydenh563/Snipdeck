@@ -92,6 +92,9 @@ export struct PanelRow {
     group-collapsed: bool,
     // The item sits under a group's header: the card is indented.
     grouped: bool,
+    // Its place among the group's items (1 = first) and how many the group has; 0 = not in a group.
+    set-position: int,
+    set-size: int,
 }
 
 // One entry of the Recent inbox (SPEC 5.6), as `snipdeck-app`'s `RecentRowView`: the start of the copied text, the
@@ -2018,6 +2021,8 @@ export component PanelWindow inherits Window {
                                                 label: item.label;
                                                 label-name: item.label-name;
                                                 stack-position: item.stack-position;
+                                                set-position: item.set-position;
+                                                set-size: item.set-size;
                                                 formatted: item.formatted;
                                                 selected: root.delete-mode ? false : root.marked-count > 0 || root.select-mode ? item.marked : i == root.sel;
                                                 masked-hint: @tr("Hidden. Hold Space to reveal.");

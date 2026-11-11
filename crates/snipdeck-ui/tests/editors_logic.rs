@@ -1231,6 +1231,9 @@ ui_tests! {
 
     fn every_settings_row_is_found_by_its_own_title() {
         let (ui, _log) = settings();
+        // The Windows Hello row shows only where Hello is offered: show it so it is searched too.
+        ui.set_hello_offered(true);
+        settle();
         let sections = [
             "Shortcuts", "Appearance", "Panel layout", "Opening the Panel", "Privacy", "Programs", "Typing",
             "Backups and your data", "Licence",
@@ -1257,6 +1260,7 @@ ui_tests! {
             .filter(|t| !sections.contains(&t.as_str()) && !plan_table.contains(&t.as_str()))
             .collect();
         assert!(titles.len() > 30, "{titles:?}");
+        assert!(titles.iter().any(|t| t == "Unlock with Windows Hello"), "{titles:?}");
         let filter = SettingsFilter::get(&ui);
         let mut hidden = Vec::new();
         for title in titles {

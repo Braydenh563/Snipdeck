@@ -151,8 +151,8 @@ msgstr "向 {} 添加文本片段"
 msgid "After a paste or copy"
 msgstr "粘贴或复制后"
 
-msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual."
-msgstr "输入触发词的开头后，文本光标处会出现一个小提示，推荐对应的片段。按 Tab 键插入；按其他任何键则照常输入。"
+msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
+msgstr "输入触发词的开头后，文本光标处会出现一个小提示，推荐对应的片段。按 Tab 键插入；按其他任何键则照常输入。仅在提示显示时才会占用 Tab 键。"
 
 msgid "All"
 msgstr "全部"
@@ -680,6 +680,9 @@ msgstr "无法保存你的设置。Snipdeck 将再次尝试。"
 msgid "Couldn't start the screenshot tool."
 msgstr "无法启动截图工具。"
 
+msgid "Couldn't start typing triggers. Nothing will be expanded or suggested."
+msgstr "无法启动键入触发。不会展开或推荐任何内容。"
+
 msgid "Couldn't use this item. Try again, or restart Snipdeck if it keeps happening."
 msgstr "无法使用此片段。请重试；如果问题持续出现，请重启 Snipdeck。"
 
@@ -1028,6 +1031,9 @@ msgstr "旗帜"
 msgid "Floating"
 msgstr "浮动"
 
+msgid "Fold or open a group"
+msgstr "折叠或展开分组"
+
 msgid "Fold the Panel into a thin strip."
 msgstr "将面板折叠为细条。"
 
@@ -1114,6 +1120,9 @@ msgstr "分组"
 
 msgid "Group name"
 msgstr "分组名称"
+
+msgid "Group the marked rows"
+msgstr "将选中的行分组"
 
 msgid "Group..."
 msgstr "分组..."
@@ -1235,6 +1244,9 @@ msgstr "已包含"
 
 msgid "Insert"
 msgstr "粘贴"
+
+msgid "Insert the suggested item (Windows only)"
+msgstr "插入建议的项目（仅限 Windows）"
 
 msgid "Insert {}"
 msgstr "插入 {}"
@@ -1474,6 +1486,9 @@ msgstr "最常用"
 
 msgid "Move"
 msgstr "移动"
+
+msgid "Move a group up or down"
+msgstr "上移或下移分组"
 
 msgid "Move a page at a time"
 msgstr "按页移动"
@@ -2146,6 +2161,9 @@ msgstr "已从“最近”中移除"
 msgid "Remove…"
 msgstr "移除…"
 
+msgid "Rename a group"
+msgstr "重命名分组"
+
 msgid "Rename board…"
 msgstr "重命名看板…"
 
@@ -2163,6 +2181,9 @@ msgstr "重命名项目"
 
 msgid "Repeat the new password"
 msgstr "再次输入新密码"
+
+msgid "Replace a typed trigger with its item (Windows only)"
+msgstr "将键入的触发词替换为对应项目（仅限 Windows）"
 
 msgid "Required"
 msgstr "必填"
@@ -2345,6 +2366,9 @@ msgstr "选择所有片段"
 
 msgid "Select or delete…"
 msgstr "选择或删除…"
+
+msgid "Select or unselect the row"
+msgstr "选中或取消选中该行"
 
 msgid "Select several items"
 msgstr "选择多个项目"
@@ -3018,11 +3042,23 @@ msgstr "取消停靠面板"
 msgid "Ungroup"
 msgstr "取消分组"
 
+msgid "Ungroup (the group's menu)"
+msgstr "取消分组（分组菜单）"
+
 msgid "Unlock"
 msgstr "解锁"
 
 msgid "Unlock Snipdeck"
 msgstr "解锁 Snipdeck"
+
+msgid "Unlock window"
+msgstr "解锁窗口"
+
+msgid "Unlock with Windows Hello"
+msgstr "使用 Windows Hello 解锁"
+
+msgid "Unlock with Windows Hello (Windows only)"
+msgstr "使用 Windows Hello 解锁（仅限 Windows）"
 
 msgid "Unlock your library first, so your sensitive items are included. Nothing was done."
 msgstr "请先解锁资料库，以便包含你的敏感片段。未执行任何操作。"
@@ -3075,6 +3111,9 @@ msgstr "使用第 N 个片段"
 msgid "Use the item"
 msgstr "使用该片段"
 
+msgid "Use your face, fingerprint or PIN instead of typing the master password. The password is still asked after a restart and every 7 days, and it always works."
+msgstr "使用面部、指纹或 PIN 代替输入主密码。重启后以及每隔 7 天仍会要求输入密码，密码始终可用。"
+
 msgid "Use {}"
 msgstr "使用 {}"
 
@@ -3126,8 +3165,8 @@ msgstr "Windows 启动时"
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "图钉关闭时，切换到其他应用后面板会立即隐藏。已固定的面板不会隐藏。"
 
-msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk. Nothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
-msgstr "在其他程序中输入片段的触发词时，Snipdeck 会将其替换为该片段。为此 Snipdeck 会监视你按下的按键，只在内存中保留最后几个字符，绝不写入磁盘。在密码框、设为“从不粘贴”的程序以及敏感项目中不会展开。"
+msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
+msgstr "在其他程序中输入片段的触发词时，Snipdeck 会将其替换为该片段。为此 Snipdeck 会监视你按下的按键，只在内存中保留最后几个字符，绝不写入磁盘。\n在密码框、设为“从不粘贴”的程序以及敏感项目中不会展开。"
 
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "通过快捷键或托盘显示面板时，面板出现的位置。应用没有文本光标时，“文本光标处”会改用鼠标位置。"
@@ -3155,6 +3194,24 @@ msgstr "窗口行为"
 
 msgid "Windows"
 msgstr "Windows"
+
+msgid "Windows Hello changed. Unlock with your password once to set it up again."
+msgstr "Windows Hello 已更改。请用密码解锁一次，以重新设置。"
+
+msgid "Windows Hello did not unlock Snipdeck. Use your master password."
+msgstr "Windows Hello 未能解锁 Snipdeck。请使用主密码。"
+
+msgid "Windows Hello didn't work, so it was not turned on."
+msgstr "Windows Hello 无法使用，因此未开启。"
+
+msgid "Windows Hello didn't work, so it was turned off. You can turn it on again in Settings."
+msgstr "Windows Hello 无法使用，已将其关闭。您可以在“设置”中重新开启。"
+
+msgid "Windows Hello was cancelled. Use your master password."
+msgstr "Windows Hello 已取消。请使用主密码。"
+
+msgid "Windows Hello was not turned on."
+msgstr "Windows Hello 未开启。"
 
 msgid "Windows accent"
 msgstr "Windows 强调色"

@@ -255,14 +255,17 @@ mod imp {
             clippy::print_stderr,
             reason = "a hook that cannot be installed has no other place to say so"
         )]
-        fn set_enabled(&mut self, on: bool) {
+        fn set_enabled(&mut self, on: bool) -> bool {
             if on == self.running.is_some() {
-                return;
+                return true;
             }
             if on {
                 match self.start() {
                     Ok(running) => self.running = Some(running),
-                    Err(e) => eprintln!("snipdeck: {e}"),
+                    Err(e) => {
+                        eprintln!("snipdeck: {e}");
+                        return false;
+                    }
                 }
             } else if let Some(running) = self.running.take() {
                 // Unhooking drops the event sender, which ends the worker. It is not joined: it
@@ -272,6 +275,7 @@ mod imp {
                 drop(running.updates);
                 drop(running.worker);
             }
+            true
         }
 
         fn set_triggers(&mut self, matcher: Matcher, candidates: Vec<Candidate>) {
@@ -478,6 +482,21 @@ pub fn system_look() -> Arc<dyn SystemLookSource> {
 pub fn attach_parent_console() {
     #[cfg(windows)]
     snipdeck_platform::windows::console::attach_parent_console();
+}
+
+/// Windows Hello on this machine; none elsewhere.
+#[must_use]
+pub fn hello() -> Option<std::sync::Arc<dyn snipdeck_platform::hello::HelloAuthenticator>> {
+    #[cfg(windows)]
+    {
+        Some(std::sync::Arc::new(
+            snipdeck_platform::windows::hello::WindowsHello,
+        ))
+    }
+    #[cfg(not(windows))]
+    {
+        None
+    }
 }
 
 /// The file dialog of this machine: the Windows Open dialog; none elsewhere (the item editor then

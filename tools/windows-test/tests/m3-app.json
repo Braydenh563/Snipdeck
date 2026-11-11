@@ -525,6 +525,69 @@
       "title": "One-character trigger warning is styled and announced",
       "do": "With Narrator on, open an item's editor and type ; in the Trigger field.",
       "expect": "A warning line with the warning icon and the warning colour appears under the field (same height rhythm as other field notes) and Narrator reads it politely. Choosing Sensitive replaces the field with one line saying Sensitive items have no trigger."
+    },
+    {
+      "id": "70",
+      "v1": false,
+      "title": "Esc takes the hint down and reaches the app; a hook that cannot start says so",
+      "do": "In Notepad type ;s so the hint shows, then press Esc. Then, if you can make hook installation fail (a policy or security product that blocks keyboard hooks), turn on Settings > Typing > Expand abbreviations as I type.",
+      "expect": "Esc hides the hint and Notepad still receives the Esc; Tab afterwards is a plain tab. When the hook cannot start, a red toast says 'Couldn't start typing triggers. Nothing will be expanded or suggested.' If you cannot make it fail, say so: this path is unverified."
+    },
+    {
+      "id": "71",
+      "v1": false,
+      "title": "Windows Hello: switch it on (two prompts)",
+      "do": "On a PC where Windows Hello has a PIN, face or fingerprint set up, with a Supporter licence and a master password set, open Settings > Security and turn on Unlock with Windows Hello. Answer the Windows Hello prompts. Then repeat, but cancel the first prompt.",
+      "expect": "Turning it on asks twice (the second checks that Hello answers the same way) and the switch stays on. If you cancel, the switch goes back off and a message says Windows Hello was not turned on; nothing says to look in Settings. Without a master password or on the Free plan the row is not shown. Write anything odd in the note (n)."
+    },
+    {
+      "id": "72",
+      "v1": false,
+      "title": "Windows Hello: lock, then unlock by face or fingerprint",
+      "do": "With Hello on, lock the library (idle lock or from the tray) and use a sensitive item so the unlock window opens. Press Unlock with Windows Hello and use your face or fingerprint. Then restart Snipdeck and open the unlock window again.",
+      "expect": "Hello unlocks and the window closes. After a restart the Hello button is not shown until the password has been typed once; after typing it Hello asks once to set itself up again. The Hello button sits on its own row above Cancel and Unlock."
+    },
+    {
+      "id": "73",
+      "v1": false,
+      "title": "Windows Hello: cancel, then retry",
+      "do": "Lock the library, open the unlock window, press Unlock with Windows Hello and cancel the Windows prompt. Press the button again and unlock. Then cancel again and type the master password instead.",
+      "expect": "After a cancel the window says Windows Hello was cancelled and to use the master password; the Hello button stays so you can try again. The retry unlocks. The master password always works."
+    },
+    {
+      "id": "74",
+      "v1": false,
+      "title": "Windows Hello: the prompt is in front of Snipdeck",
+      "do": "Press Unlock with Windows Hello and look at where the Windows Hello prompt appears.",
+      "expect": "The prompt is in front of the Snipdeck window and takes the keyboard, not hidden behind it. Write what you saw in the note (n)."
+    },
+    {
+      "id": "75",
+      "v1": false,
+      "title": "Windows Hello: a PC without Hello hides the option",
+      "do": "On a PC or user account with no Windows Hello set up, with a master password set, open Settings > Security and the unlock window.",
+      "expect": "The Unlock with Windows Hello row is not shown in Settings and the unlock window shows only the master password field."
+    },
+    {
+      "id": "76",
+      "v1": false,
+      "title": "Windows Hello: turn it off",
+      "do": "With Hello on, turn off Unlock with Windows Hello in Settings > Security, lock the library and open the unlock window.",
+      "expect": "The unlock window shows only the master password field. Turning it on again asks two prompts."
+    },
+    {
+      "id": "77",
+      "v1": false,
+      "title": "Windows Hello: change the password while Hello is on",
+      "do": "With Hello on, change the master password in Settings > Security. Lock, open the unlock window.",
+      "expect": "Either Hello still unlocks (the copy was sealed again) or the button is gone and the password is asked once and Hello sets itself up again; it never unlocks with the old password's data key wrongly, and the master password always works. Write which you saw in the note (n)."
+    },
+    {
+      "id": "78",
+      "v1": false,
+      "title": "Groups with Narrator: header, fold, move, member position",
+      "do": "Turn Narrator on (Win+Ctrl+Enter). In the Panel with a group of at least two items, Tab to the group header and listen. Press Space, then Enter, on it. Press Alt+Down, then Alt+Up. Move into the group with the arrow keys and listen to a member row.",
+      "expect": "The header reads its name, its item count and whether it is expanded or collapsed. Space and Enter each fold or unfold it, and Narrator says the new state. Alt+Up and Alt+Down move the group and Narrator announces its new place. A member row reads its position in the group, such as 1 of 2, and a row outside any group reads no position. Write what Narrator said for each in the note (n)."
     }
   ]
 }

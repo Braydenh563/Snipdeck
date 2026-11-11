@@ -143,7 +143,7 @@ fn the_shortcut_texts_have_one_title_per_shortcut_and_one_name_per_scope() {
 }
 
 #[test]
-fn the_tab_lists_every_shortcut_in_five_groups_with_the_note_under_the_global_ones() {
+fn the_tab_lists_every_shortcut_in_six_groups_with_the_note_under_the_global_ones() {
     on_ui_thread(|| {
         let r = rig(Settings::default());
         let shown = r.shown();
@@ -155,7 +155,8 @@ fn the_tab_lists_every_shortcut_in_five_groups_with_the_note_under_the_global_on
                 "Main window",
                 "Panel",
                 "Picker",
-                "Editors"
+                "Editors",
+                "Unlock window"
             ]
         );
         let total: usize = shown.iter().map(|(_, lines)| lines.len()).sum();
