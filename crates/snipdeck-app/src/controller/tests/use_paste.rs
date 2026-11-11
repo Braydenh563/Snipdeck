@@ -837,7 +837,7 @@ fn password_box_does_not_expand() {
     let mut w = typing_world(1, ";two");
     let fired = typed(&w, ";two");
     assert_eq!(w.ctl.expand_typed(fired, true), TypedOutcome::Skipped);
-    assert!(backspaces_sent(&mut w).is_empty());
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
     assert_eq!(uses(&w, w.ids[1]), 0);
 }
 
@@ -848,7 +848,7 @@ fn sensitive_item_never_expands() {
     let id = w.ids[1];
     make_sensitive(&mut w, id);
     assert_eq!(w.ctl.expand_typed(fired, false), TypedOutcome::Skipped);
-    assert!(backspaces_sent(&mut w).is_empty());
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
     let mut matcher = w.ctl.trigger_matcher();
     assert!(
         ";two".chars().all(|c| matcher.feed(c).is_none()),
@@ -869,7 +869,7 @@ fn no_expansion_without_a_paste_target_or_while_snipdeck_is_in_front() {
     elevated.elevated = true;
     w.targets.set(Some(elevated));
     assert_eq!(w.ctl.expand_typed(fired, false), TypedOutcome::Skipped);
-    assert!(backspaces_sent(&mut w).is_empty());
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
 }
 
 #[test]
@@ -881,7 +881,7 @@ fn an_item_trashed_since_the_matcher_was_built_does_not_expand() {
         .trash(snipdeck_store::Trashable::Item(w.ids[1]), w.clock.now())
         .expect("trash");
     assert_eq!(w.ctl.expand_typed(fired, false), TypedOutcome::Skipped);
-    assert!(backspaces_sent(&mut w).is_empty());
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
 }
 
 #[test]
