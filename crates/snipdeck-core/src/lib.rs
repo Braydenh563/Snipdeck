@@ -46,7 +46,9 @@ pub use list::{List, ListAccent, ListIcon, ListSort, ListView};
 pub use name::Name;
 pub use placement::Placement;
 pub use tag::Tag;
-pub use trigger::{BUFFER_CHARS, Fired, Matcher, Trigger};
+pub use trigger::{
+    BUFFER_CHARS, Candidate, Fired, Matcher, SUGGEST_MIN_CHARS, Suggestion, Trigger, prefix_of,
+};
 pub use usage::{PasteFailure, UseMode, UseOutcome};
 
 /// The product name shown to users. The working name lives only here (SPEC header).
