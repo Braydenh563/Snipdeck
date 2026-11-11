@@ -5,10 +5,12 @@
 use i_slint_backend_testing::{AccessibleRole as Role, ElementQuery};
 use slint::{ComponentHandle, Global};
 use snipdeck_ui::testing::Harness;
-use snipdeck_ui::{SettingsFilter, SettingsPage, SystemLook};
+use snipdeck_ui::{PanelWindow, SettingsFilter, SettingsPage, SystemLook, ToastKind, ToastWindow};
 
 #[path = "support/editor_fixture.rs"]
 mod editor;
+#[path = "support/panel_fixture.rs"]
+mod panel_fx;
 
 /// (label, x, y, width, height) of every shown element with `role`, top to bottom.
 fn find<C: ComponentHandle>(h: &Harness<C>, role: Role) -> Vec<(String, f32, f32, f32, f32)> {
@@ -20,13 +22,18 @@ fn find<C: ComponentHandle>(h: &Harness<C>, role: Role) -> Vec<(String, f32, f32
     {
         let (p, s) = (e.absolute_position(), e.size());
         let n = (
-            e.accessible_label().map(|l| l.to_string()).unwrap_or_default(),
+            e.accessible_label()
+                .map(|l| l.to_string())
+                .unwrap_or_default(),
             p.x,
             p.y,
             s.width,
             s.height,
         );
-        if s.width > 0.5 && s.height > 0.5 && !out.iter().any(|o| o.0 == n.0 && (o.2 - n.2).abs() < 0.5) {
+        if s.width > 0.5
+            && s.height > 0.5
+            && !out.iter().any(|o| o.0 == n.0 && (o.2 - n.2).abs() < 0.5)
+        {
             out.push(n);
         }
     }
@@ -57,14 +64,95 @@ fn settings_search_leaves_no_blank_gap() {
                 .into_iter()
                 .find(|n| n.0 == "Search settings")
                 .expect("search field");
-            let Some(sec) = find(&h, Role::Groupbox).into_iter().find(|n| n.0 == section) else {
-                problems.push(format!("{query:?} at {scale}x: section {section:?} is not on screen"));
+            let Some(sec) = find(&h, Role::Groupbox)
+                .into_iter()
+                .find(|n| n.0 == section)
+            else {
+                problems.push(format!(
+                    "{query:?} at {scale}x: section {section:?} is not on screen"
+                ));
                 continue;
             };
             let gap = sec.2 - (field.2 + field.4);
             if gap > 40.0 * scale {
-                problems.push(format!("{query:?} at {scale}x: {section:?} starts {gap:.0} px under the search field"));
+                problems.push(format!(
+                    "{query:?} at {scale}x: {section:?} starts {gap:.0} px under the search field"
+                ));
             }
+        }
+    }
+    assert_eq!(problems, Vec::<String>::new());
+}
+
+const LONG_TOAST: &str = "Saved. This code overlaps the trigger of \u{201c}Signature\u{201d}, so one of them may never fire.";
+
+/// H3: a long toast wraps to two or three lines instead of eliding to one, in the toast window (capped at 480 logical
+/// px times the text size) and in a 320 px Panel.
+#[test]
+fn long_toasts_wrap_in_the_toast_window() {
+    let mut problems: Vec<String> = Vec::new();
+    for scale in [1.0f32, 2.25] {
+        let size = |text: &str| {
+            let h = Harness::new(ToastWindow::new, 1100, 300);
+            h.component.global::<SystemLook<'_>>().set_text_scale(scale);
+            h.component.set_text(text.into());
+            h.component.set_kind(ToastKind::Danger);
+            h.component.set_undo_label("Undo".into());
+            let _ = h.render_settled();
+            (
+                h.component.get_content_width(),
+                h.component.get_content_height(),
+            )
+        };
+        let (short_w, short_h) = size("Copied");
+        let (w, h) = size(LONG_TOAST);
+        if w > 480.0 * scale + 0.5 {
+            problems.push(format!(
+                "{scale}x: the toast is {w:.0} wide, over the {:.0} cap",
+                480.0 * scale
+            ));
+        }
+        if h < short_h + 8.0 {
+            problems.push(format!(
+                "{scale}x: a long toast is {h:.0} tall, a short one {short_h:.0}: it did not wrap"
+            ));
+        }
+        if h > short_h * 3.5 {
+            problems.push(format!(
+                "{scale}x: a long toast is {h:.0} tall (short {short_h:.0}): more than three lines"
+            ));
+        }
+        let _ = short_w;
+    }
+    assert_eq!(problems, Vec::<String>::new());
+}
+
+#[test]
+fn long_toasts_wrap_in_the_panel() {
+    let mut problems: Vec<String> = Vec::new();
+    for scale in [1.0f32, 2.25] {
+        let h = Harness::new(PanelWindow::new, 320, 600);
+        panel_fx::populate(&h.component);
+        h.component.global::<SystemLook<'_>>().set_text_scale(scale);
+        h.component.set_toast_text(LONG_TOAST.into());
+        h.component.set_toast_kind(ToastKind::Danger);
+        let _ = h.render_settled();
+        let toast = find(&h, Role::Text)
+            .into_iter()
+            .find(|n| n.0 == LONG_TOAST)
+            .expect("toast node");
+        if toast.4 < 40.0 + 8.0 {
+            problems.push(format!(
+                "{scale}x: the toast is {:.0} tall: it did not wrap",
+                toast.4
+            ));
+        }
+        if toast.2 < 0.0 || toast.2 + toast.4 > 600.0 || toast.1 < 0.0 || toast.1 + toast.3 > 320.5
+        {
+            problems.push(format!(
+                "{scale}x: the toast is at ({:.0},{:.0}) {:.0}x{:.0} in 320x600",
+                toast.1, toast.2, toast.3, toast.4
+            ));
         }
     }
     assert_eq!(problems, Vec::<String>::new());
