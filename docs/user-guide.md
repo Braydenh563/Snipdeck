@@ -158,6 +158,16 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
 - **Lists.** Add a list with **Add list** in the sidebar, or the **+** tab in the Panel. **Edit list** sets the name, a colour and the sort: manual, most
   used or recently used. Move a list with `Alt+Up` or `Alt+Down` while it is selected in the sidebar.
 - **Order of items.** Select a row and press `Alt+Up` or `Alt+Down`, in the Main window or the Panel, or choose **Move up** / **Move down** in the snippet's menu.
+- **Groups.** In the Panel, a list can hold named groups of items. Mark two or more rows, then press `Ctrl+G`
+  or choose **Group...** from the item menu. The rows gather under a header and its name opens for typing:
+  type a name and press `Enter` (the default is "Group"). The header shows the name, how many items the group
+  holds and an arrow. Click the header, or press `Left` to fold it and `Right` to open it again; a folded group
+  hides its items. Press `F2` on a header, or choose **Rename group**, to change the name. Choose **Ungroup**
+  to dissolve the group and keep its items. **Delete group** moves the group and its items to the Trash, and
+  `Ctrl+Z` brings them all back in one step. Drag a header to move the whole group. Groups show only when the
+  list is sorted by hand (Manual); if it is not, **Group...** offers to switch. Searching lists every match,
+  even inside a folded group. The numbers `Alt+1` to `Alt+9` count items only, never headers. A screen reader
+  reads a header as "group, 3 items, folded" or "group, 3 items, expanded". Groups are not in the Main window yet.
 - **Move.** Choose **Move to list…** from the item menu to move one or more selected items.
 - **Paste as…** Choose **Paste as…** from the item menu (text items, one at a time) to paste the text changed: **Plain
   text**, **UPPERCASE**, **lowercase**, **Title Case**, **Trimmed** (no space at the ends) or **slug-like-this** (`my-title`).
@@ -283,9 +293,12 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   Panel open. The other choices fold it into a thin strip, and the Panel shortcut opens it too. **Hover delay**
   (0 to 2000 ms, default 150) is how long the pointer rests on the strip. **Leave delay** (0 to 5000 ms, default
   400) is how long it stays off the Panel before it folds.
+- **Typing.** **Expand abbreviations as I type** and **Suggest snippets as I type**, both off by default. See
+  [Triggers and typing](#triggers-and-typing-windows).
 - **Privacy.** **Keep a Recent inbox of what you copy** and the programs it never keeps copies from. **Clear the
   clipboard after copying a sensitive item** sets the seconds (30 by default, `0`
-  never clears it). **Master password** sets, changes or removes the password (Supporter). Below them is a
+  never clears it). **Master password** sets, changes or removes the password (Supporter). With a password set,
+  **Unlock with Windows Hello** appears under it (see [Windows Hello](#windows-hello-supporter-windows)). Below them is a
   short summary of what is stored and where.
 - **Programs.** One row per program, by file name, such as `windowsterminal.exe`, with the key Snipdeck presses to
   paste there: **Ctrl+V**, **Ctrl+Shift+V**, **Shift+Insert**, or **Never paste** (Snipdeck copies instead).
@@ -302,8 +315,28 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   table. To turn on Supporter, paste your key (it starts with `SNIP1.`) and press **Activate**. See
   [Free and Supporter](#free-and-supporter) and [`licensing.md`](licensing.md).
 
-The page lists its groups in this order: Shortcuts, Appearance, Panel, Privacy, Programs, Licence, Backups and
-your data. Press `F1` or choose **Help** at the bottom of the page to open this guide.
+The page lists its groups in this order: Shortcuts, Appearance, Panel, Privacy, Programs, Typing, Backups and
+your data, Licence. Press `F1` or choose **Help** at the bottom of the page to open this guide.
+
+## Triggers and typing (Windows)
+
+A **trigger** is a short code you give an item, such as `;sig`. It is 1 to 32 characters with no spaces, and
+no two items share one. Set it in the item editor, in the **Trigger** box (sensitive items have none). Items
+imported from Espanso or similar tools keep their abbreviations as triggers.
+
+Two options under **Typing** in Settings use triggers while you type in other programs. Both are off by
+default, and both work only on Windows (not yet tested on a real PC).
+
+- **Expand abbreviations as I type.** When you type a trigger in another program, Snipdeck deletes it and
+  pastes the item. A trigger fires on its last character, after a space or punctuation (or at the start of a
+  line): no extra key is needed. If the item has fill-in fields, the form opens first.
+- **Suggest snippets as I type.** After you type the first two characters of a trigger, a small hint at the
+  text cursor shows the item's title and "Tab to insert". Press `Tab` to insert it. Any other key carries on as
+  usual. If several triggers match, the most used item is offered. No text cursor, no hint.
+
+Nothing expands in password boxes, in programs set to **Never paste**, in programs running as administrator,
+while Snipdeck is in front, or for sensitive items. Snipdeck keeps only the last 32 characters you typed, in
+memory, and never writes them to disk or the log. The typing watcher runs only while one of the options is on.
 
 ## Master password (Supporter)
 
@@ -326,6 +359,29 @@ shows how strong it looks.
 
 If Windows cannot protect a key on your PC, the master password is not available. See
 [`troubleshooting.md`](troubleshooting.md) and [`crypto.md`](crypto.md).
+
+## Windows Hello (Supporter, Windows)
+
+With a master password set, Windows Hello can unlock the library with your face, fingerprint or PIN instead of
+typing the password. It needs a Supporter plan and a PC where Windows Hello is set up. The option is hidden
+otherwise.
+
+- **Turn it on.** Settings, under **Privacy**: switch on **Unlock with Windows Hello**. Windows asks for
+  Hello twice, one after the other, to check it can be used. You can turn it off the same way.
+- **Unlock.** When the library is locked and Snipdeck asks for the password, press **Unlock with Windows
+  Hello** and use your face, fingerprint or PIN. The password box stays there: the password always works.
+- **When the password is needed.** After Snipdeck restarts, and 7 days after the last time you typed the
+  password. After a password unlock, Windows asks for Hello once so the next unlock can use it.
+- **When Hello fails.** If you cancel it, it fails or the PIN was removed, Snipdeck says "Windows Hello did not
+  unlock Snipdeck. Use your master password." and the button goes away until you type the password.
+- **Lock.** The library still locks after 15 minutes without use, as described above. Hello is another way
+  back in; locking does not turn it off.
+- **Remove the password or lose Supporter.** Removing the master password turns Hello off. If the licence
+  stops being Supporter, the saved Hello copy is dropped and only the password unlocks.
+
+Hello never stores your key or password on disk. Snipdeck keeps an encrypted copy of the key in memory only,
+which a restart forgets. The details are in [`crypto.md`](crypto.md). This part works only on Windows and has
+not yet been tested on a real PC.
 
 ## Free and Supporter
 
@@ -405,6 +461,9 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Panel | `Ctrl+Z` | Undo the delete (search box empty) |
 | Panel | `Ctrl+E`, `F2` | Edit the selected item |
 | Panel | `Ctrl+P` | Pin or unpin the selected item |
+| Panel | `Ctrl+G` | Group the marked rows |
+| Panel | `Left`, `Right` (on a group header) | Fold or open the group |
+| Panel | `F2` (on a group header) | Rename the group |
 | Panel | `Delete` | Move the selected item to the Trash (not while searching) |
 | Panel | `Menu`, `Shift+F10` | Open the item menu |
 | Panel | `Esc` | Clear the search; with nothing to clear, hide the Panel |
@@ -429,6 +488,9 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Panel | `Alt+Up`, `Alt+Down` | Move the selected item |
 | Panel, Main window | `Space` (hold) | Reveal a sensitive item |
 | Main window | `F1` | Open the Help window |
+| Any program (Typing on) | the item's trigger | Replace the trigger with the item |
+| Any program (Suggest on) | `Tab` while the hint shows | Insert the suggested item |
+| Unlock window | **Unlock with Windows Hello** | Unlock with face, fingerprint or PIN |
 | Item editor | `Ctrl+Enter` | Save |
 | Fill form | `Ctrl+Enter`, `Esc` | Insert, cancel |
 
