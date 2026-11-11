@@ -29,7 +29,7 @@ use snipdeck_core::{
 };
 use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
 use snipdeck_store::ListRepo as _;
-use snipdeck_store::{BoardRepo, ItemRepo, Store, TagRepo, TrashRepo, Trashable};
+use snipdeck_store::{BoardRepo, ItemRepo, Store, TagRepo, TrashRepo};
 
 type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 
