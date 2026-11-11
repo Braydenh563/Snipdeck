@@ -1029,6 +1029,9 @@ msgstr "Flaggen"
 msgid "Floating"
 msgstr "Frei"
 
+msgid "Fold or open a group"
+msgstr "Gruppe einklappen oder aufklappen"
+
 msgid "Fold the Panel into a thin strip."
 msgstr "Das Panel zu einem schmalen Streifen einklappen."
 
@@ -1115,6 +1118,9 @@ msgstr "Gruppe"
 
 msgid "Group name"
 msgstr "Gruppenname"
+
+msgid "Group the marked rows"
+msgstr "Markierte Zeilen gruppieren"
 
 msgid "Group..."
 msgstr "Gruppieren..."
@@ -1237,6 +1243,9 @@ msgstr "Enthalten"
 
 msgid "Insert"
 msgstr "Einfügen"
+
+msgid "Insert the suggested item (Windows only)"
+msgstr "Vorgeschlagenen Eintrag einfügen (nur Windows)"
 
 msgid "Insert {}"
 msgstr "{} einfügen"
@@ -1478,6 +1487,9 @@ msgstr "Am häufigsten verwendet"
 
 msgid "Move"
 msgstr "Verschieben"
+
+msgid "Move a group up or down"
+msgstr "Gruppe nach oben oder unten verschieben"
 
 msgid "Move a page at a time"
 msgstr "Seitenweise bewegen"
@@ -2152,6 +2164,9 @@ msgstr "Aus „Zuletzt“ entfernt"
 msgid "Remove…"
 msgstr "Entfernen…"
 
+msgid "Rename a group"
+msgstr "Gruppe umbenennen"
+
 msgid "Rename board…"
 msgstr "Board umbenennen…"
 
@@ -2169,6 +2184,9 @@ msgstr "Eintrag umbenennen"
 
 msgid "Repeat the new password"
 msgstr "Neues Passwort wiederholen"
+
+msgid "Replace a typed trigger with its item (Windows only)"
+msgstr "Getipptes Kürzel durch seinen Eintrag ersetzen (nur Windows)"
 
 msgid "Required"
 msgstr "Pflichtfeld"
@@ -3017,11 +3035,20 @@ msgstr "Panel lösen"
 msgid "Ungroup"
 msgstr "Gruppierung aufheben"
 
+msgid "Ungroup (the group's menu)"
+msgstr "Gruppierung aufheben (Menü der Gruppe)"
+
 msgid "Unlock"
 msgstr "Entsperren"
 
 msgid "Unlock Snipdeck"
 msgstr "Snipdeck entsperren"
+
+msgid "Unlock window"
+msgstr "Entsperrfenster"
+
+msgid "Unlock with Windows Hello (Windows only)"
+msgstr "Mit Windows Hello entsperren (nur Windows)"
 
 msgid "Unlock your library first, so your sensitive items are included. Nothing was done."
 msgstr "Entsperre zuerst deine Bibliothek, damit deine vertraulichen Textbausteine einbezogen werden. Nichts wurde getan."

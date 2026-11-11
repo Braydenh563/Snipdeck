@@ -1029,6 +1029,9 @@ msgstr "Banderas"
 msgid "Floating"
 msgstr "Flotante"
 
+msgid "Fold or open a group"
+msgstr "Plegar o desplegar un grupo"
+
 msgid "Fold the Panel into a thin strip."
 msgstr "Pliega el panel en una franja fina."
 
@@ -1115,6 +1118,9 @@ msgstr "Grupo"
 
 msgid "Group name"
 msgstr "Nombre del grupo"
+
+msgid "Group the marked rows"
+msgstr "Agrupar las filas marcadas"
 
 msgid "Group..."
 msgstr "Agrupar..."
@@ -1237,6 +1243,9 @@ msgstr "Incluido"
 
 msgid "Insert"
 msgstr "Pegar"
+
+msgid "Insert the suggested item (Windows only)"
+msgstr "Insertar el elemento sugerido (solo Windows)"
 
 msgid "Insert {}"
 msgstr "Insertar {}"
@@ -1478,6 +1487,9 @@ msgstr "Más usados"
 
 msgid "Move"
 msgstr "Mover"
+
+msgid "Move a group up or down"
+msgstr "Mover un grupo hacia arriba o abajo"
 
 msgid "Move a page at a time"
 msgstr "Mover una página a la vez"
@@ -2152,6 +2164,9 @@ msgstr "Quitado de Recientes"
 msgid "Remove…"
 msgstr "Quitar…"
 
+msgid "Rename a group"
+msgstr "Cambiar el nombre de un grupo"
+
 msgid "Rename board…"
 msgstr "Renombrar tablero…"
 
@@ -2169,6 +2184,9 @@ msgstr "Renombrar el elemento"
 
 msgid "Repeat the new password"
 msgstr "Repite la nueva contraseña"
+
+msgid "Replace a typed trigger with its item (Windows only)"
+msgstr "Sustituir un disparador escrito por su elemento (solo Windows)"
 
 msgid "Required"
 msgstr "Obligatorio"
@@ -3017,11 +3035,20 @@ msgstr "Desacoplar el panel"
 msgid "Ungroup"
 msgstr "Desagrupar"
 
+msgid "Ungroup (the group's menu)"
+msgstr "Desagrupar (menú del grupo)"
+
 msgid "Unlock"
 msgstr "Desbloquear"
 
 msgid "Unlock Snipdeck"
 msgstr "Desbloquear Snipdeck"
+
+msgid "Unlock window"
+msgstr "Ventana de desbloqueo"
+
+msgid "Unlock with Windows Hello (Windows only)"
+msgstr "Desbloquear con Windows Hello (solo Windows)"
 
 msgid "Unlock your library first, so your sensitive items are included. Nothing was done."
 msgstr "Desbloquea primero tu biblioteca para incluir tus fragmentos sensibles. No se hizo nada."

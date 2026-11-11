@@ -1029,6 +1029,9 @@ msgstr "Drapeaux"
 msgid "Floating"
 msgstr "Flottant"
 
+msgid "Fold or open a group"
+msgstr "Replier ou déplier un groupe"
+
 msgid "Fold the Panel into a thin strip."
 msgstr "Replier le panneau en fine bande."
 
@@ -1115,6 +1118,9 @@ msgstr "Groupe"
 
 msgid "Group name"
 msgstr "Nom du groupe"
+
+msgid "Group the marked rows"
+msgstr "Regrouper les lignes cochées"
 
 msgid "Group..."
 msgstr "Grouper..."
@@ -1237,6 +1243,9 @@ msgstr "Inclus"
 
 msgid "Insert"
 msgstr "Coller"
+
+msgid "Insert the suggested item (Windows only)"
+msgstr "Insérer l'élément suggéré (Windows uniquement)"
 
 msgid "Insert {}"
 msgstr "Insérer {}"
@@ -1478,6 +1487,9 @@ msgstr "Les plus utilisés"
 
 msgid "Move"
 msgstr "Déplacer"
+
+msgid "Move a group up or down"
+msgstr "Déplacer un groupe vers le haut ou le bas"
 
 msgid "Move a page at a time"
 msgstr "Se déplacer d'une page à la fois"
@@ -2152,6 +2164,9 @@ msgstr "Retiré des récents"
 msgid "Remove…"
 msgstr "Supprimer…"
 
+msgid "Rename a group"
+msgstr "Renommer un groupe"
+
 msgid "Rename board…"
 msgstr "Renommer le tableau…"
 
@@ -2169,6 +2184,9 @@ msgstr "Renommer l'élément"
 
 msgid "Repeat the new password"
 msgstr "Répétez le nouveau mot de passe"
+
+msgid "Replace a typed trigger with its item (Windows only)"
+msgstr "Remplacer un déclencheur saisi par son élément (Windows uniquement)"
 
 msgid "Required"
 msgstr "Obligatoire"
@@ -3017,11 +3035,20 @@ msgstr "Détacher le panneau"
 msgid "Ungroup"
 msgstr "Dissocier"
 
+msgid "Ungroup (the group's menu)"
+msgstr "Dégrouper (menu du groupe)"
+
 msgid "Unlock"
 msgstr "Déverrouiller"
 
 msgid "Unlock Snipdeck"
 msgstr "Déverrouiller Snipdeck"
+
+msgid "Unlock window"
+msgstr "Fenêtre de déverrouillage"
+
+msgid "Unlock with Windows Hello (Windows only)"
+msgstr "Déverrouiller avec Windows Hello (Windows uniquement)"
 
 msgid "Unlock your library first, so your sensitive items are included. Nothing was done."
 msgstr "Déverrouillez d'abord votre bibliothèque pour y inclure vos extraits sensibles. Rien n'a été fait."
