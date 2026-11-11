@@ -151,14 +151,11 @@ msgstr "Ajoute un extrait de texte à {}"
 msgid "After a paste or copy"
 msgstr "Après un collage ou une copie"
 
-msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
-msgstr "Quand vous tapez le début d’un raccourci, une petite info-bulle près du curseur propose l’extrait. Appuyez sur Tab pour l’insérer ; toute autre touche fonctionne comme d’habitude. Tab n’est pris que tant que l’info-bulle est affichée."
+msgid "After you type the first two characters of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
+msgstr "Quand vous tapez les deux premiers caractères d’un raccourci, une petite info-bulle près du curseur propose l’extrait. Appuyez sur Tab pour l’insérer ; toute autre touche fonctionne comme d’habitude. Tab n’est pris que tant que l’info-bulle est affichée."
 
 msgid "All"
 msgstr "Tous"
-
-msgid "All commands…"
-msgstr "Toutes les commandes…"
 
 msgid "All items"
 msgstr "Tous les extraits"
@@ -471,17 +468,20 @@ msgstr "Confortable"
 msgid "Comfortable view"
 msgstr "Affichage confortable"
 
-msgid "Command palette (every action)"
-msgstr "Palette de commandes (toutes les actions)"
-
 msgid "Commands"
 msgstr "Commandes"
 
 msgid "Commands (Ctrl+K)"
 msgstr "Commandes (Ctrl+K)"
 
+msgid "Commands (every action)"
+msgstr "Commandes (toutes les actions)"
+
 msgid "Commands in the Main window"
 msgstr "Commandes dans la fenêtre principale"
+
+msgid "Commands…"
+msgstr "Commandes…"
 
 msgid "Compact"
 msgstr "Compact"
@@ -1038,9 +1038,6 @@ msgstr "Flottant"
 msgid "Fold or open a group"
 msgstr "Replier ou déplier un groupe"
 
-msgid "Fold or unfold group"
-msgstr "Replier ou déplier le groupe"
-
 msgid "Fold the Panel into a thin strip."
 msgstr "Replier le panneau en fine bande."
 
@@ -1089,6 +1086,9 @@ msgstr "Obtenir Supporter…"
 msgid "Get started"
 msgstr "Commencer"
 
+msgid "Give a snippet a trigger, such as ;sig, under More options in its editor."
+msgstr "Donnez un raccourci à un extrait, par exemple ;sig, sous « Plus d’options » dans son éditeur."
+
 msgid "Give it a name."
 msgstr "Donnez-lui un nom."
 
@@ -1128,11 +1128,8 @@ msgstr "Groupe"
 msgid "Group name"
 msgstr "Nom du groupe"
 
-msgid "Group selected items"
-msgstr "Regrouper les éléments sélectionnés"
-
-msgid "Group the marked rows"
-msgstr "Regrouper les lignes cochées"
+msgid "Group the selected rows"
+msgstr "Regrouper les lignes sélectionnées"
 
 msgid "Group..."
 msgstr "Grouper..."
@@ -1173,8 +1170,8 @@ msgstr "Masquer le panneau"
 msgid "Hide the panel when it loses focus"
 msgstr "Masquer le panneau quand il perd le focus"
 
-msgid "Hide title, colour, tags and privacy"
-msgstr "Masquer le titre, la couleur, les étiquettes et la confidentialité"
+msgid "Hide title, colour, tags, trigger and privacy"
+msgstr "Masquer le titre, la couleur, les étiquettes, le raccourci et la confidentialité"
 
 msgid "History is paused"
 msgstr "L'historique est suspendu"
@@ -1756,8 +1753,8 @@ msgstr "Rien n'a été ajouté. Les dossiers, et les fichiers ou images vides, t
 msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
 msgstr "Rien de ce que vous copiez dans ces programmes n'arrive dans la boîte Récents. Utilisez le nom de fichier du programme, par exemple keepass.exe."
 
-msgid "Numbers the first nine rows so pressing 1 to 9 uses that snippet."
-msgstr "Numérote les neuf premières lignes pour que les touches 1 à 9 utilisent cet extrait."
+msgid "Numbers the first nine rows so pressing Alt+1 to 9 uses that snippet."
+msgstr "Numérote les neuf premières lignes pour que Alt+1 à 9 utilise cet extrait."
 
 msgid "OK"
 msgstr "OK"
@@ -2300,11 +2297,11 @@ msgstr "Enregistré {}"
 msgid "Saved {}."
 msgstr "{} enregistré."
 
-msgid "Saved. This code overlaps another trigger, so one of them may never fire."
-msgstr "Enregistré. Ce code chevauche un autre déclencheur ; l'un des deux risque de ne jamais se déclencher."
+msgid "Saved. This trigger overlaps another trigger, so one of them may never fire."
+msgstr "Enregistré. Ce raccourci chevauche un autre raccourci ; l’un des deux risque de ne jamais se déclencher."
 
-msgid "Saved. This code overlaps the trigger of “{}”, so one of them may never fire."
-msgstr "Enregistré. Ce code chevauche le raccourci de « {} » : l’un des deux risque de ne jamais se déclencher."
+msgid "Saved. This trigger overlaps the trigger of “{}”, so one of them may never fire."
+msgstr "Enregistré. Ce raccourci chevauche celui de « {} » : l’un des deux risque de ne jamais se déclencher."
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "Enregistre tous les tableaux, listes et extraits dans un seul fichier .snipdeck, dans le dossier de votre choix."
@@ -2495,8 +2492,8 @@ msgstr "Afficher le Panneau dans la barre des tâches et dans Alt+Tab"
 msgid "Show the welcome tour again"
 msgstr "Afficher à nouveau la visite de bienvenue"
 
-msgid "Show title, colour, tags and privacy"
-msgstr "Afficher le titre, la couleur, les étiquettes et la confidentialité"
+msgid "Show title, colour, tags, trigger and privacy"
+msgstr "Afficher le titre, la couleur, les étiquettes, le raccourci et la confidentialité"
 
 msgid "Shrug"
 msgstr "Haussement d'épaules"
@@ -2906,6 +2903,9 @@ msgstr "Thème : clair"
 msgid "Theme: System"
 msgstr "Thème : système"
 
+msgid "Then type it in any app. Turn this on in Settings, under Typing."
+msgstr "Tapez-le ensuite dans n’importe quelle application. Activez-le dans Réglages, sous « Saisie »."
+
 msgid "There is no file at that path."
 msgstr "Aucun fichier à ce chemin."
 
@@ -2975,8 +2975,8 @@ msgstr "Titre"
 msgid "Title Case"
 msgstr "Initiales en Majuscules"
 
-msgid "Title, colour, tags, privacy"
-msgstr "Titre, couleur, étiquettes, confidentialité"
+msgid "Title, colour, tags, trigger, privacy"
+msgstr "Titre, couleur, étiquettes, raccourci, confidentialité"
 
 msgid "Titles, text and labels all count."
 msgstr "Les titres, le texte et les étiquettes comptent tous."
@@ -3034,6 +3034,9 @@ msgstr "Désactive les glissements et fondus dans Snipdeck. Elle est aussi désa
 
 msgid "Type a command"
 msgstr "Saisissez une commande"
+
+msgid "Type a short code, get a snippet"
+msgstr "Tapez un code court, obtenez un extrait"
 
 msgid "Type this in any app to insert the snippet. Turn it on in Settings, under Typing."
 msgstr "Tapez-le dans n’importe quelle application pour insérer l’extrait. Activez-le dans les Paramètres, sous Saisie."
@@ -3194,8 +3197,8 @@ msgstr "Au démarrage de Windows"
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "Quand l'épingle est désactivée, le panneau se masque dès que tu passes à une autre application. Un panneau épinglé reste."
 
-msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
-msgstr "Quand vous tapez le raccourci d’un extrait dans un autre programme, Snipdeck le remplace par l’extrait. Pour cela, Snipdeck surveille les touches pressées et ne garde que les derniers caractères en mémoire, jamais sur le disque.\nRien n’est développé dans les champs de mot de passe, dans les programmes réglés sur « Ne jamais coller » ni pour les éléments sensibles."
+msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items."
+msgstr "Quand vous tapez le raccourci d’un extrait dans un autre programme, Snipdeck le remplace par l’extrait. Pour cela, Snipdeck surveille les touches pressées et ne garde que les derniers caractères en mémoire, jamais sur le disque.\nRien n’est développé dans les champs de mot de passe, dans les programmes réglés sur « Ne jamais coller », dans les programmes exécutés en administrateur, quand Snipdeck est au premier plan ni pour les éléments sensibles."
 
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "Où le Panneau apparaît quand un raccourci ou la zone de notification l'affiche. Au curseur de texte se rabat sur la souris quand l'application n'en a pas."
@@ -3299,8 +3302,8 @@ msgstr "Vos raccourcis"
 msgid "add"
 msgstr "ajout"
 
-msgid "add create folder group"
-msgstr "ajouter créer dossier groupe"
+msgid "add create"
+msgstr "ajouter créer"
 
 msgid "add create snippet note write"
 msgstr "ajouter créer extrait note écrire"
@@ -3494,6 +3497,9 @@ msgstr "étiquette : {}"
 
 msgid "to insert"
 msgstr "pour insérer"
+
+msgid "trigger text expansion shortcode"
+msgstr "raccourci déclencheur développer texte abréviation"
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "tutoriel introduction démarrage bases apprendre"

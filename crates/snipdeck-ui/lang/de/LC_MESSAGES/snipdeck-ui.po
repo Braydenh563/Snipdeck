@@ -151,14 +151,11 @@ msgstr "Fügt {} einen Textbaustein hinzu"
 msgid "After a paste or copy"
 msgstr "Nach dem Einfügen oder Kopieren"
 
-msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
-msgstr "Sobald du den Anfang eines Kürzels tippst, bietet ein kleiner Hinweis am Textcursor den Baustein an. Mit Tab fügst du ihn ein; jede andere Taste wirkt wie gewohnt. Tab wird nur abgefangen, solange der Hinweis zu sehen ist."
+msgid "After you type the first two characters of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
+msgstr "Sobald du die ersten zwei Zeichen eines Kürzels tippst, bietet ein kleiner Hinweis am Textcursor den Baustein an. Mit Tab fügst du ihn ein; jede andere Taste wirkt wie gewohnt. Tab wird nur abgefangen, solange der Hinweis zu sehen ist."
 
 msgid "All"
 msgstr "Alle"
-
-msgid "All commands…"
-msgstr "Alle Befehle…"
 
 msgid "All items"
 msgstr "Alle Textbausteine"
@@ -471,17 +468,20 @@ msgstr "Komfortabel"
 msgid "Comfortable view"
 msgstr "Komfortable Ansicht"
 
-msgid "Command palette (every action)"
-msgstr "Befehlspalette (jede Aktion)"
-
 msgid "Commands"
 msgstr "Befehle"
 
 msgid "Commands (Ctrl+K)"
 msgstr "Befehle (Ctrl+K)"
 
+msgid "Commands (every action)"
+msgstr "Befehle (jede Aktion)"
+
 msgid "Commands in the Main window"
 msgstr "Befehle im Hauptfenster"
+
+msgid "Commands…"
+msgstr "Befehle…"
 
 msgid "Compact"
 msgstr "Kompakt"
@@ -1038,9 +1038,6 @@ msgstr "Frei"
 msgid "Fold or open a group"
 msgstr "Gruppe einklappen oder aufklappen"
 
-msgid "Fold or unfold group"
-msgstr "Gruppe ein- oder ausklappen"
-
 msgid "Fold the Panel into a thin strip."
 msgstr "Das Panel zu einem schmalen Streifen einklappen."
 
@@ -1089,6 +1086,9 @@ msgstr "Supporter werden…"
 msgid "Get started"
 msgstr "Los geht's"
 
+msgid "Give a snippet a trigger, such as ;sig, under More options in its editor."
+msgstr "Gib einem Baustein ein Kürzel, etwa ;sig, unter „Weitere Optionen“ in seinem Editor."
+
 msgid "Give it a name."
 msgstr "Gib ihm einen Namen."
 
@@ -1128,11 +1128,8 @@ msgstr "Gruppe"
 msgid "Group name"
 msgstr "Gruppenname"
 
-msgid "Group selected items"
-msgstr "Ausgewählte Elemente gruppieren"
-
-msgid "Group the marked rows"
-msgstr "Markierte Zeilen gruppieren"
+msgid "Group the selected rows"
+msgstr "Ausgewählte Zeilen gruppieren"
 
 msgid "Group..."
 msgstr "Gruppieren..."
@@ -1173,8 +1170,8 @@ msgstr "Panel ausblenden"
 msgid "Hide the panel when it loses focus"
 msgstr "Panel ausblenden, wenn es den Fokus verliert"
 
-msgid "Hide title, colour, tags and privacy"
-msgstr "Titel, Farbe, Tags und Datenschutz ausblenden"
+msgid "Hide title, colour, tags, trigger and privacy"
+msgstr "Titel, Farbe, Tags, Kürzel und Datenschutz ausblenden"
 
 msgid "History is paused"
 msgstr "Verlauf ist pausiert"
@@ -1756,8 +1753,8 @@ msgstr "Nichts wurde hinzugefügt. Ordner sowie leere, zu große oder nicht lesb
 msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
 msgstr "Was du in diesen Programmen kopierst, landet nicht im Posteingang „Zuletzt“. Verwende den Dateinamen des Programms, zum Beispiel keepass.exe."
 
-msgid "Numbers the first nine rows so pressing 1 to 9 uses that snippet."
-msgstr "Nummeriert die ersten neun Zeilen, sodass du mit den Tasten 1 bis 9 den jeweiligen Textbaustein verwendest."
+msgid "Numbers the first nine rows so pressing Alt+1 to 9 uses that snippet."
+msgstr "Nummeriert die ersten neun Zeilen, sodass du mit Alt+1 bis 9 den jeweiligen Textbaustein verwendest."
 
 msgid "OK"
 msgstr "OK"
@@ -2300,10 +2297,10 @@ msgstr "Gespeichert {}"
 msgid "Saved {}."
 msgstr "{} gespeichert."
 
-msgid "Saved. This code overlaps another trigger, so one of them may never fire."
+msgid "Saved. This trigger overlaps another trigger, so one of them may never fire."
 msgstr "Gespeichert. Dieses Kürzel überschneidet sich mit einem anderen; eines der beiden löst vielleicht nie aus."
 
-msgid "Saved. This code overlaps the trigger of “{}”, so one of them may never fire."
+msgid "Saved. This trigger overlaps the trigger of “{}”, so one of them may never fire."
 msgstr "Gespeichert. Dieses Kürzel überschneidet sich mit dem von „{}“; eines der beiden löst vielleicht nie aus."
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
@@ -2495,8 +2492,8 @@ msgstr "Panel in der Taskleiste und bei Alt+Tab anzeigen"
 msgid "Show the welcome tour again"
 msgstr "Willkommenstour erneut anzeigen"
 
-msgid "Show title, colour, tags and privacy"
-msgstr "Titel, Farbe, Tags und Datenschutz einblenden"
+msgid "Show title, colour, tags, trigger and privacy"
+msgstr "Titel, Farbe, Tags, Kürzel und Datenschutz einblenden"
 
 msgid "Shrug"
 msgstr "Schulterzucken"
@@ -2906,6 +2903,9 @@ msgstr "Design: Hell"
 msgid "Theme: System"
 msgstr "Design: System"
 
+msgid "Then type it in any app. Turn this on in Settings, under Typing."
+msgstr "Dann tippst du es in einer beliebigen App. Aktiviere das in den Einstellungen unter „Tippen“."
+
 msgid "There is no file at that path."
 msgstr "Unter diesem Pfad gibt es keine Datei."
 
@@ -2975,8 +2975,8 @@ msgstr "Titel"
 msgid "Title Case"
 msgstr "Erste Buchstaben Groß"
 
-msgid "Title, colour, tags, privacy"
-msgstr "Titel, Farbe, Tags, Datenschutz"
+msgid "Title, colour, tags, trigger, privacy"
+msgstr "Titel, Farbe, Tags, Kürzel, Datenschutz"
 
 msgid "Titles, text and labels all count."
 msgstr "Titel, Text und Beschriftungen zählen alle."
@@ -3034,6 +3034,9 @@ msgstr "Schaltet das Gleiten und Ein- und Ausblenden in Snipdeck aus. Es ist auc
 
 msgid "Type a command"
 msgstr "Befehl eingeben"
+
+msgid "Type a short code, get a snippet"
+msgstr "Kurzes Kürzel tippen, Baustein erhalten"
 
 msgid "Type this in any app to insert the snippet. Turn it on in Settings, under Typing."
 msgstr "Tippe das in einer beliebigen App, um den Baustein einzufügen. Aktiviere es in den Einstellungen unter Tippen."
@@ -3194,8 +3197,8 @@ msgstr "Beim Start von Windows"
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "Ist die Pinnnadel aus, blendet sich das Panel aus, sobald du zu einer anderen App wechselst. Ein angeheftetes Panel bleibt."
 
-msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
-msgstr "Wenn du das Kürzel eines Bausteins in einem anderen Programm tippst, ersetzt Snipdeck es durch den Baustein. Dafür beobachtet Snipdeck die gedrückten Tasten und behält nur die letzten Zeichen im Arbeitsspeicher, nie auf der Festplatte.\nIn Passwortfeldern, in Programmen mit „Nie einfügen“ und bei vertraulichen Einträgen wird nichts erweitert."
+msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items."
+msgstr "Wenn du das Kürzel eines Bausteins in einem anderen Programm tippst, ersetzt Snipdeck es durch den Baustein. Dafür beobachtet Snipdeck die gedrückten Tasten und behält nur die letzten Zeichen im Arbeitsspeicher, nie auf der Festplatte.\nIn Passwortfeldern, in Programmen mit „Nie einfügen“, in Programmen mit Administratorrechten, solange Snipdeck im Vordergrund ist, und bei vertraulichen Einträgen wird nichts erweitert."
 
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "Wo das Panel erscheint, wenn ein Tastenkürzel oder das Tray es anzeigt. „Am Textcursor“ weicht auf die Maus aus, wenn die App keinen hat."
@@ -3299,8 +3302,8 @@ msgstr "Deine Tastenkürzel"
 msgid "add"
 msgstr "Hinzufügen"
 
-msgid "add create folder group"
-msgstr "hinzufügen erstellen Ordner Gruppe"
+msgid "add create"
+msgstr "hinzufügen erstellen"
 
 msgid "add create snippet note write"
 msgstr "hinzufügen erstellen Textbaustein Notiz schreiben"
@@ -3494,6 +3497,9 @@ msgstr "Schlagwort: {}"
 
 msgid "to insert"
 msgstr "einfügen"
+
+msgid "trigger text expansion shortcode"
+msgstr "Kürzel Trigger Textbaustein erweitern Abkürzung"
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "Tutorial Einführung Einstieg Grundlagen lernen"

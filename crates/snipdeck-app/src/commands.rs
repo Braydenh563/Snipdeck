@@ -606,8 +606,8 @@ mod tests {
             all.push((filler.to_owned(), String::new()));
         }
         for (label, words) in [
-            ("Group selected items", "make new folder"),
-            ("Fold or unfold group", "collapse expand"),
+            ("Group the selected rows", "make new folder"),
+            ("Fold or open a group", "collapse expand"),
             ("Rename group", "name"),
             ("Ungroup", "dissolve"),
             ("Delete group", "remove trash"),

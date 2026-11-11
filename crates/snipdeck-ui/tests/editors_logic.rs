@@ -706,14 +706,14 @@ ui_tests! {
         let (ui, _log) = item_editor();
         ui.set_more_open(false);
         settle();
-        let closed = find(&ui, "Show title, colour, tags and privacy", AccessibleRole::Button);
+        let closed = find(&ui, "Show title, colour, tags, trigger and privacy", AccessibleRole::Button);
         assert_eq!(closed.accessible_expanded(), Some(false));
         assert!((closed.size().height - 32.0).abs() < 0.5);
         let field = find(&ui, "Content", AccessibleRole::TextInput);
         assert!(closed.size().width >= field.size().width - 1.0, "the row spans the form");
         ui.set_more_open(true);
         settle();
-        let open = find(&ui, "Hide title, colour, tags and privacy", AccessibleRole::Button);
+        let open = find(&ui, "Hide title, colour, tags, trigger and privacy", AccessibleRole::Button);
         assert_eq!(open.accessible_expanded(), Some(true));
     }
 
@@ -735,11 +735,11 @@ ui_tests! {
         let (ui, log) = item_editor();
         ui.set_more_open(false);
         settle();
-        find(&ui, "Show title, colour, tags and privacy", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Show title, colour, tags, trigger and privacy", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
         assert!(ui.get_more_open());
         assert_eq!(take(&log), ["more:true"]);
-        find(&ui, "Hide title, colour, tags and privacy", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Hide title, colour, tags, trigger and privacy", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
         assert!(!ui.get_more_open());
         assert_eq!(take(&log), ["more:false"]);
@@ -773,10 +773,10 @@ ui_tests! {
         let (ui, _log) = item_editor();
         ui.set_more_open(false);
         settle();
-        assert!(!missing(&ui, "Show title, colour, tags and privacy", AccessibleRole::Button));
+        assert!(!missing(&ui, "Show title, colour, tags, trigger and privacy", AccessibleRole::Button));
         ui.set_title_error("Too long.".into());
         settle();
-        assert!(!missing(&ui, "Hide title, colour, tags and privacy", AccessibleRole::Button));
+        assert!(!missing(&ui, "Hide title, colour, tags, trigger and privacy", AccessibleRole::Button));
     }
 
     fn save_names_its_shortcut_in_a_tooltip() {

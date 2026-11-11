@@ -70,7 +70,7 @@ msgstr ""
 msgid "A master password is part of Supporter."
 msgstr ""
 
-#: ui/tip_texts.slint:40
+#: ui/tip_texts.slint:42
 msgid "A master password locks the whole deck."
 msgstr ""
 
@@ -174,7 +174,7 @@ msgstr ""
 msgid "Add to “{}”"
 msgstr ""
 
-#: ui/tip_texts.slint:35
+#: ui/tip_texts.slint:37
 msgid "Add {} or {} to a snippet."
 msgstr ""
 
@@ -199,15 +199,11 @@ msgid "After a paste or copy"
 msgstr ""
 
 #: ui/settings.slint:1274
-msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
+msgid "After you type the first two characters of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
 msgstr ""
 
 #: ui/picker.slint:422 ui/symbols.slint:190
 msgid "All"
-msgstr ""
-
-#: ui/menu_texts.slint:11
-msgid "All commands…"
 msgstr ""
 
 #: ui/main_window.slint:1018 ui/main_window.slint:1203
@@ -468,7 +464,7 @@ msgstr ""
 msgid "Choose a file, or cancel."
 msgstr ""
 
-#: ui/tip_texts.slint:27
+#: ui/tip_texts.slint:28
 msgid "Choose comfortable rows, compact rows or tiles."
 msgstr ""
 
@@ -624,10 +620,6 @@ msgstr ""
 msgid "Comfortable view"
 msgstr ""
 
-#: ui/shortcut_texts.slint:26 ui/shortcut_texts.slint:27
-msgid "Command palette (every action)"
-msgstr ""
-
 #: ui/command_texts.slint:60 ui/main_window.slint:1504
 msgid "Commands"
 msgstr ""
@@ -636,8 +628,16 @@ msgstr ""
 msgid "Commands (Ctrl+K)"
 msgstr ""
 
+#: ui/shortcut_texts.slint:26 ui/shortcut_texts.slint:27
+msgid "Commands (every action)"
+msgstr ""
+
 #: ui/shortcut_texts.slint:76
 msgid "Commands in the Main window"
+msgstr ""
+
+#: ui/menu_texts.slint:11
+msgid "Commands…"
 msgstr ""
 
 #: ui/settings.slint:684 ui/settings.slint:778
@@ -1212,7 +1212,7 @@ msgstr ""
 msgid "Emoji art: Microsoft Fluent Emoji (MIT). Icons: Phosphor (MIT). Emoji names and keywords: Unicode CLDR (Unicode-3.0)."
 msgstr ""
 
-#: ui/tip_texts.slint:25
+#: ui/tip_texts.slint:26
 msgid "Emoji, kaomoji and icons live in the Panel's Symbols tab."
 msgstr ""
 
@@ -1376,12 +1376,8 @@ msgstr ""
 msgid "Floating"
 msgstr ""
 
-#: ui/shortcut_texts.slint:50 ui/shortcut_texts.slint:87
+#: ui/command_texts.slint:52 ui/shortcut_texts.slint:50 ui/shortcut_texts.slint:87
 msgid "Fold or open a group"
-msgstr ""
-
-#: ui/command_texts.slint:52
-msgid "Fold or unfold group"
 msgstr ""
 
 #: ui/components/plan-table.slint:30
@@ -1448,6 +1444,10 @@ msgstr ""
 msgid "Get started"
 msgstr ""
 
+#: ui/tip_texts.slint:30
+msgid "Give a snippet a trigger, such as ;sig, under More options in its editor."
+msgstr ""
+
 #: ui/form_texts.slint:8
 msgid "Give it a name."
 msgstr ""
@@ -1500,19 +1500,15 @@ msgstr ""
 msgid "Group name"
 msgstr ""
 
-#: ui/command_texts.slint:51
-msgid "Group selected items"
-msgstr ""
-
-#: ui/shortcut_texts.slint:49 ui/shortcut_texts.slint:86
-msgid "Group the marked rows"
+#: ui/command_texts.slint:51 ui/shortcut_texts.slint:49 ui/shortcut_texts.slint:86
+msgid "Group the selected rows"
 msgstr ""
 
 #: ui/menu_texts.slint:154
 msgid "Group..."
 msgstr ""
 
-#: ui/tip_texts.slint:34
+#: ui/tip_texts.slint:36
 msgid "Handy for forms you fill field by field."
 msgstr ""
 
@@ -1561,7 +1557,7 @@ msgid "Hide the panel when it loses focus"
 msgstr ""
 
 #: ui/editors.slint:1091
-msgid "Hide title, colour, tags and privacy"
+msgid "Hide title, colour, tags, trigger and privacy"
 msgstr ""
 
 #: ui/panel.slint:2240
@@ -1834,7 +1830,7 @@ msgstr ""
 msgid "Light"
 msgstr ""
 
-#: ui/tip_texts.slint:39
+#: ui/tip_texts.slint:41
 msgid "Light, dark or follow Windows."
 msgstr ""
 
@@ -1934,7 +1930,7 @@ msgstr ""
 msgid "Manual"
 msgstr ""
 
-#: ui/tip_texts.slint:28
+#: ui/tip_texts.slint:29
 msgid "Mark a snippet Sensitive to hide it until you reveal it."
 msgstr ""
 
@@ -2335,7 +2331,7 @@ msgid "Nothing you copy in these programs reaches the Recent inbox. Use the prog
 msgstr ""
 
 #: ui/settings.slint:816
-msgid "Numbers the first nine rows so pressing 1 to 9 uses that snippet."
+msgid "Numbers the first nine rows so pressing Alt+1 to 9 uses that snippet."
 msgstr ""
 
 #: ui/help.slint:107
@@ -2554,7 +2550,7 @@ msgstr ""
 msgid "Paste next item"
 msgstr ""
 
-#: ui/tip_texts.slint:22
+#: ui/tip_texts.slint:23
 msgid "Paste next pastes the next item each time you press it."
 msgstr ""
 
@@ -2666,7 +2662,7 @@ msgstr ""
 msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
 msgstr ""
 
-#: ui/tip_texts.slint:31
+#: ui/tip_texts.slint:33
 msgid "Pick one and it pastes where you were typing."
 msgstr ""
 
@@ -2706,7 +2702,7 @@ msgstr ""
 msgid "Pin the snippets you use most to keep them one click away."
 msgstr ""
 
-#: ui/tip_texts.slint:21
+#: ui/tip_texts.slint:22
 msgid "Pin the snippets you use most; they stay at the top of the Panel."
 msgstr ""
 
@@ -2726,7 +2722,7 @@ msgstr ""
 msgid "Plain text"
 msgstr ""
 
-#: ui/tip_texts.slint:26
+#: ui/tip_texts.slint:27
 msgid "Press Ctrl+K in Main to find any action by name."
 msgstr ""
 
@@ -2738,7 +2734,7 @@ msgstr ""
 msgid "Press the shortcut now"
 msgstr ""
 
-#: ui/tip_texts.slint:19
+#: ui/tip_texts.slint:20
 msgid "Press your Panel shortcut in any app to bring up your snippets."
 msgstr ""
 
@@ -2786,7 +2782,7 @@ msgstr ""
 msgid "Quick capture"
 msgstr ""
 
-#: ui/tip_texts.slint:24
+#: ui/tip_texts.slint:25
 msgid "Quick capture saves what you copied as a new snippet."
 msgstr ""
 
@@ -3059,11 +3055,11 @@ msgid "Saved {}."
 msgstr ""
 
 #: ui/toast_texts.slint:362
-msgid "Saved. This code overlaps another trigger, so one of them may never fire."
+msgid "Saved. This trigger overlaps another trigger, so one of them may never fire."
 msgstr ""
 
 #: ui/toast_texts.slint:363
-msgid "Saved. This code overlaps the trigger of “{}”, so one of them may never fire."
+msgid "Saved. This trigger overlaps the trigger of “{}”, so one of them may never fire."
 msgstr ""
 
 #: ui/settings.slint:1409
@@ -3150,7 +3146,7 @@ msgstr ""
 msgid "Search the keyboard shortcuts"
 msgstr ""
 
-#: ui/tip_texts.slint:37
+#: ui/tip_texts.slint:39
 msgid "Search them by name, in your language."
 msgstr ""
 
@@ -3319,7 +3315,7 @@ msgid "Show the welcome tour again"
 msgstr ""
 
 #: ui/editors.slint:1091
-msgid "Show title, colour, tags and privacy"
+msgid "Show title, colour, tags, trigger and privacy"
 msgstr ""
 
 #: ui/symbols.slint:62
@@ -3502,7 +3498,7 @@ msgstr ""
 msgid "Start stack"
 msgstr ""
 
-#: ui/tip_texts.slint:20
+#: ui/tip_texts.slint:21
 msgid "Start typing in the Panel or Main to filter every list at once."
 msgstr ""
 
@@ -3618,7 +3614,7 @@ msgstr ""
 msgid "Template text"
 msgstr ""
 
-#: ui/tip_texts.slint:23
+#: ui/tip_texts.slint:24
 msgid "Templates ask for names, dates and options before they paste."
 msgstr ""
 
@@ -3830,7 +3826,7 @@ msgstr ""
 msgid "The sensitive item \"{}\" cannot be unlocked with this computer's key and was skipped."
 msgstr ""
 
-#: ui/tip_texts.slint:38
+#: ui/tip_texts.slint:40
 msgid "The shortcut for each is shown beside it."
 msgstr ""
 
@@ -3864,6 +3860,10 @@ msgstr ""
 
 #: ui/command_texts.slint:33 ui/main_window.slint:2735 ui/toast_texts.slint:407
 msgid "Theme: System"
+msgstr ""
+
+#: ui/tip_texts.slint:43
+msgid "Then type it in any app. Turn this on in Settings, under Typing."
 msgstr ""
 
 #: ui/form_texts.slint:99
@@ -3959,10 +3959,10 @@ msgid "Title Case"
 msgstr ""
 
 #: ui/editors.slint:1089
-msgid "Title, colour, tags, privacy"
+msgid "Title, colour, tags, trigger, privacy"
 msgstr ""
 
-#: ui/tip_texts.slint:32
+#: ui/tip_texts.slint:34
 msgid "Titles, text and labels all count."
 msgstr ""
 
@@ -4036,6 +4036,10 @@ msgstr ""
 
 #: ui/command_texts.slint:61
 msgid "Type a command"
+msgstr ""
+
+#: ui/tip_texts.slint:17
+msgid "Type a short code, get a snippet"
 msgstr ""
 
 #: ui/editors.slint:699
@@ -4146,7 +4150,7 @@ msgstr ""
 msgid "Unpin selected item"
 msgstr ""
 
-#: ui/tip_texts.slint:33
+#: ui/tip_texts.slint:35
 msgid "Unpin them the same way."
 msgstr ""
 
@@ -4251,7 +4255,7 @@ msgid "When the pin is off, the panel hides as soon as you switch to another app
 msgstr ""
 
 #: ui/settings.slint:1261
-msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
+msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items."
 msgstr ""
 
 #: ui/settings.slint:863
@@ -4342,7 +4346,7 @@ msgstr ""
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr ""
 
-#: ui/tip_texts.slint:36
+#: ui/tip_texts.slint:38
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr ""
 
@@ -4391,7 +4395,7 @@ msgid "add"
 msgstr ""
 
 #: ui/command_texts.slint:16
-msgid "add create folder group"
+msgid "add create"
 msgstr ""
 
 #: ui/command_texts.slint:15
@@ -4648,6 +4652,10 @@ msgstr ""
 
 #: ui/suggest_hint.slint:69
 msgid "to insert"
+msgstr ""
+
+#: ui/settings.slint:498
+msgid "trigger text expansion shortcode"
 msgstr ""
 
 #: ui/command_texts.slint:26

@@ -303,7 +303,7 @@ pub enum ToastMessage {
     AutostartFailed,
     /// "Couldn't open the log folder."
     CannotOpenLog,
-    /// "Saved. This code overlaps the trigger of “{other}”, so one of them may never fire."
+    /// "Saved. This trigger overlaps the trigger of “{other}”, so one of them may never fire."
     TriggerOverlaps {
         /// The title of the other item whose trigger overlaps.
         other: String,

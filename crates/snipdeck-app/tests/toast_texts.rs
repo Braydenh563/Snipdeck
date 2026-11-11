@@ -444,13 +444,13 @@ fn what_a_toast_carries_reaches_its_sentence() {
             said(ToastMessage::TriggerOverlaps {
                 other: "Signature".into()
             }),
-            "Saved. This code overlaps the trigger of “Signature”, so one of them may never fire."
+            "Saved. This trigger overlaps the trigger of “Signature”, so one of them may never fire."
         );
         assert_eq!(
             said(ToastMessage::TriggerOverlaps {
                 other: String::new()
             }),
-            "Saved. This code overlaps another trigger, so one of them may never fire.",
+            "Saved. This trigger overlaps another trigger, so one of them may never fire.",
             "an untitled item is not named as “”"
         );
         assert_eq!(

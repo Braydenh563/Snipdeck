@@ -1145,7 +1145,7 @@ const MENU_ROWS: [&str; 17] = [
     "Paste stack (mark items)",
     "Dock to the nearest edge",
     "Keyboard shortcuts",
-    "All commands\u{2026}",
+    "Commands\u{2026}",
     "Settings\u{2026}",
     "Open Snipdeck",
     "New item",

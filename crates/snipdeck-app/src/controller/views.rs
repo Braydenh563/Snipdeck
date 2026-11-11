@@ -40,7 +40,7 @@ pub enum Effect {
     /// Start a new snippet. The Panel's binding opens the item editor on it
     /// ([`Controller::open_new_item`](crate::controller::Controller::open_new_item)); the host has nothing more to do.
     NewItem,
-    /// Show the Main window with the command palette open (the Panel's "All commands…" and Ctrl+K).
+    /// Show the Main window with the command palette open (the Panel's "Commands…" and Ctrl+K).
     OpenCommands,
     /// Open a help page (not built yet: the host logs it).
     OpenHelp(HelpTopic),

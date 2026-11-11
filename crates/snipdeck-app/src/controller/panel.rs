@@ -42,7 +42,7 @@ pub enum AppMenuEntry {
     PasteStack,
     /// Open the Main window.
     Open,
-    /// Open the Main window on its command palette ("All commands…", Ctrl+K).
+    /// Open the Main window on its command palette ("Commands…", Ctrl+K).
     Commands,
     /// Make a new snippet.
     NewSnippet,

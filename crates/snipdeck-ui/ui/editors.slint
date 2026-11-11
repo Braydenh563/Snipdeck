@@ -1086,9 +1086,9 @@ export component ItemEditor inherits Window {
                     spacing: 0px;
                     more-toggle := DisclosureRow {
                         text: @tr("More options");
-                        summary: @tr("Title, colour, tags, privacy");
+                        summary: @tr("Title, colour, tags, trigger, privacy");
                         open: root.more-shown;
-                        a11y-label: root.more-shown ? @tr("Hide title, colour, tags and privacy") : @tr("Show title, colour, tags and privacy");
+                        a11y-label: root.more-shown ? @tr("Hide title, colour, tags, trigger and privacy") : @tr("Show title, colour, tags, trigger and privacy");
                         clicked => {
                             root.more-open = !root.more-shown;
                             root.more-toggled(root.more-open);

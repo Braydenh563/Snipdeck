@@ -230,7 +230,7 @@ only if the Free plan has room for it.
 
 ## Commands and shortcuts
 
-- **All commands.** Press `Ctrl+K` (or `Ctrl+Shift+P`) in the Main window, or choose **All commands…** in
+- **Commands.** Press `Ctrl+K` (or `Ctrl+Shift+P`) in the Main window, or choose **Commands…** in
   the Panel menu. Type a few letters, such as "new" or "hotkeys", and press `Enter`. The palette lists the
   actions of the app, so you never need to remember where one lives.
 - **Keyboard shortcuts.** Press `Ctrl+/` to see every shortcut. It is also a tab in the Help window.
@@ -286,7 +286,7 @@ back.
 
 ### Tips
 
-The **Tips** tab of the Help window has ten short cards on what Snipdeck can do. Each has a title, two lines, a
+The **Tips** tab of the Help window has eleven short cards on what Snipdeck can do. Each has a title, two lines, a
 picture and a **Try it** button that runs the action for you (for example, showing the Panel). Open it from the
 tray icon's menu (**Tips**), from Help, from the last page of the welcome tour, or from the **More tips** card in
 the **Getting started** list. Snipdeck never shows a badge or a reminder about tips; they wait until you look.
@@ -373,7 +373,7 @@ waits for a space, punctuation or the start of a line, like a trigger does. When
 trigger, the item is pasted instead of hinted. Only trigger codes count, never titles.
 
 In the item editor, the **Trigger** box has the same rules: 1 to 32 characters with no spaces, and no two
-items share one. A one-character trigger shows a warning, because it fires every time you type it, even inside words; two or more characters are safer. If you save a code that another trigger starts with, or that starts another trigger, a message says "Saved. This code overlaps the trigger of “Title”, so one of them may never fire." with the other item's title (without a title it says "another trigger"). The item is still saved.
+items share one. A one-character trigger shows a warning, because it fires every time you type it, even inside words; two or more characters are safer. If you save a code that another trigger starts with, or that starts another trigger, a message says "Saved. This trigger overlaps the trigger of “Title”, so one of them may never fire." with the other item's title (without a title it says "another trigger"). The item is still saved.
 
 If Snipdeck cannot start the typing watcher, a message says "Couldn't start typing triggers. Nothing will be expanded or suggested."
 
@@ -514,7 +514,7 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Panel | `Ctrl+Tab`, `Ctrl+Shift+Tab` | Next or previous list |
 | Panel | `Ctrl+F` | Focus the search box |
 | Panel | `Ctrl+D` | Duplicate |
-| Panel | `Ctrl+K` | All commands (opens them in the Main window) |
+| Panel | `Ctrl+K` | Commands (opens them in the Main window) |
 | Panel | `Ctrl+N`, `Ctrl+Shift+N` | New item, new list |
 | Panel | `Ctrl+,` | Settings |
 | Panel | `Ctrl+/` | Show the keyboard shortcuts |
@@ -522,18 +522,18 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Panel | `Ctrl+Z` | Undo the last delete, grouping, group rename, ungroup or group drag (search box empty) |
 | Panel | `Ctrl+E`, `F2` | Edit the selected item |
 | Panel | `Ctrl+P` | Pin or unpin the selected item |
-| Panel | `Ctrl+G` | Group the marked rows |
+| Panel | `Ctrl+G` | Group the selected rows |
 | Panel | `Left`, `Right`, `Enter` or `Space` (on a group header) | Fold or open the group |
 | Panel | `Alt+Up`, `Alt+Down` (on a group header) | Move the whole group |
 | Panel | `Menu`, `Shift+F10` (on a group header) | Open its menu: Rename group, Ungroup, Delete group |
-| Panel | `F2`, or `Ctrl+G` with nothing marked (on a group header) | Rename the group |
+| Panel | `F2`, or `Ctrl+G` with nothing selected (on a group header) | Rename the group |
 | Panel | `Delete` | Move the selected item to the Trash (not while searching) |
 | Panel | `Menu`, `Shift+F10` | Open the item menu |
 | Panel | `Esc` | Clear the search; with nothing to clear, hide the Panel |
 | Picker | `Tab`, `Shift+Tab` | Change scope |
 | Picker | `Alt+1` to `Alt+9` | Use that row |
 | Picker | `Ctrl+E`, `Esc` | Edit, close |
-| Main window | `Ctrl+K`, `Ctrl+Shift+P` | All commands |
+| Main window | `Ctrl+K`, `Ctrl+Shift+P` | Commands |
 | Main window | `Ctrl+/` | Show the keyboard shortcuts |
 | Main window | `Ctrl+N`, `Ctrl+Shift+N` | New item (the quick-add box in an open list), new list |
 | Main window | `Ctrl+,` | Settings |
