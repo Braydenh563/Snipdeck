@@ -45,6 +45,11 @@ becomes a new item at the top of the current list. Text over 5 MB is refused. Th
 from anywhere, saving whatever text is on the clipboard when you press it; it is off until you set a shortcut in
 Settings, **Shortcuts**.
 
+**Formatting.** Pasting into the Panel or the Main window (`Ctrl+V`), **Save from clipboard** and the Capture
+shortcut keep the formatting (HTML and RTF) beside the text. Such an item pastes formatted into Word or Outlook and as
+plain text into Notepad, and its row shows a **Formatted** mark. In the editor, changing the text removes the
+formatting when you save, and the editor says so first; **Remove formatting** drops it and keeps the text.
+
 ### Templates
 
 A template is an item whose text has placeholders. Snipdeck fills them in when you use the item. In the
@@ -76,7 +81,9 @@ In the Fill in template window, each `{uuid}` shows as "(new ID)" in the preview
 When you use a template with `{field}`, `{choice}`, `{multiline}`, `{pickdate}` or `{optional}`, a **Fill in template** window
 opens. Fill the fields, check the preview and press `Ctrl+Enter` to insert. `Esc` cancels. In a multi-line box `Enter`
 adds a line; `Ctrl+Enter` still inserts. A date that is not a real day (such as 2026-02-30) is marked on its box and
-nothing is inserted until you fix it or clear it. The tick box is switched with `Space`.
+nothing is inserted until you fix it or clear it. `Enter` moves to the next box, and on the last box it inserts.
+The tick box is switched with `Space`. The form opens for any template that asks something, even when every
+question has a default: the defaults are already filled in.
 
 ### Sensitive items
 
@@ -352,6 +359,12 @@ read it. To export one list as text, see [Organise](#organise).
 - **Ditto database:** the database file Ditto keeps.
 - **CopyQ export:** the JSON file CopyQ saves.
 - **Folder of .txt and .md files:** every text and Markdown file in the folder becomes one item.
+- **Espanso (folder)** or **Espanso (single .yml file):** Espanso's configuration folder (its `match` files) or
+  one match file. Each file becomes a list. Matches with only a `regex` trigger, or with no text, are left out.
+- **Beeftext export:** the JSON file Beeftext exports.
+- **TextExpander export (CSV)** and **PhraseExpress export (CSV):** the CSV file each program exports.
+
+From Espanso, Beeftext, TextExpander and PhraseExpress, each snippet's abbreviation is kept as its trigger.
 
 Snipdeck reads the source first and shows a preview before it changes anything: how many items and lists will
 be added, how many new boards will be made, how many items you already have (these are skipped), and a **Will
