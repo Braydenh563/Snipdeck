@@ -459,6 +459,8 @@ not be imported** list with the reason for each item left out, such as a file ov
 picture or file that CopyQ or Ditto holds, or a sensitive item that this PC has no key for. Choose **Import**
 to go ahead or **Cancel** to leave your library as it was. Everything arrives under one new board named after the
 file or folder. The Free plan's board limit still applies, and the preview says when an import would pass it.
+Notes in the preview, such as which item they belong to ("entry 3", "Ditto clip 7" or a file name with the
+match number), are shown in your language like the rest of Snipdeck.
 
 **Restore.** Restoring a backup in Settings shows the same preview. A restore puts each board back under its
 own name.
