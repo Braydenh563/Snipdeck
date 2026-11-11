@@ -2,6 +2,7 @@
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 ## Decisions
+- 2026-11-11 owner: hub mode. This session is the orchestrator; worker cloud sessions (Sonnet) build slices on their own branches (claude/v11-groups, -typing, -hello, -polish) and report by send_message; the orchestrator reviews, merges into the PR branch, gates and pushes, and reassigns finished workers. Reason: owner asked for speed; separate machines remove the shared RAM/disk/target-dir bottleneck. Owner reset weekly usage: no budget stop.
 - 2026-11-08: UI builders also run the snipdeck-app window tests for every window they touch (picker_window, main_window, panel_window, fill_window, settings_window): shared look 1-4 passed the ui crate and broke 4 app tests.
 - 2026-11-08: v1.0.1 external drops are files only; text/image/link drops from other apps wait for v1.1 (winit owns the drop target). Main keeps Ctrl+Shift+N = New list. Rich Recent captures need a key ring (encrypted blobs), files stored as paths only (docs/reviews/v101-spec.md).
 - 2026-10-20 owner: "go with your suggestion" (budget at 87%): O54 stays in v1 (Sonnet, after O47 merges). O49/O50 -> v1.0.1 (reverses "including O49"); reason: needs O45+O47 merged first and would push past the 93% ceiling.
