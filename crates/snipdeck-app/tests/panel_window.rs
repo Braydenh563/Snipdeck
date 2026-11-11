@@ -2288,6 +2288,37 @@ fn a_new_group_takes_its_name_as_typed() {
     });
 }
 
+#[test]
+fn a_rename_handed_to_another_header_keeps_the_keys() {
+    on_ui_thread(|| {
+        let r = rig();
+        group_first_two(&r);
+        press(r.window(), &key(Key::Return));
+        // A second group from the next two items: its header opens its name for typing.
+        {
+            let mut ctl = r.ctl.borrow_mut();
+            ctl.panel_mark(3, snipdeck_app::main_window::SelectMode::Toggle);
+            ctl.panel_mark(4, snipdeck_app::main_window::SelectMode::Toggle);
+        }
+        r.binding.redraw();
+        chord(r.window(), &[Key::Control], "g");
+        let rows = r.ui.get_rows();
+        let headers: Vec<usize> = (0..rows.row_count())
+            .filter(|i| rows.row_data(*i).is_some_and(|row| row.is_header))
+            .collect();
+        assert_eq!(headers.len(), 2, "two groups");
+        // While the second header is renaming, the first one starts a rename (as a double-click does): the
+        // second one's late focus loss must not hand the keys back to the Panel.
+        r.ui.set_rename_row(i32::try_from(headers[0]).expect("row"));
+        r.ui.set_rename_seq(r.ui.get_rename_seq() + 1);
+        type_text(r.window(), "Zed");
+        press(r.window(), &key(Key::Return));
+        let first = r.ui.get_rows().row_data(headers[0]).expect("row");
+        assert_eq!(first.title, "Zed", "the typing went to the first header");
+        assert_eq!(r.ui.get_query(), "", "the search got none of the typing");
+    });
+}
+
 /// The labels (and whether each is greyed) of the item menu as drawn now.
 fn item_menu_rows(r: &Rig) -> Vec<(String, bool)> {
     r.ui.get_item_menu_entries()

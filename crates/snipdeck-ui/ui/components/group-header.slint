@@ -4,7 +4,8 @@ import { Icon } from "icon.slint";
 
 // The header of a group of items in a list (Panel). A quiet bar: chevron, name, count. A click or Enter folds and
 // unfolds it, a double-click or F2 renames it in place, a right click opens its menu. It is not focusable itself:
-// the Panel's key handler owns the keys, and `selected` paints the card's selected fill.
+// the host's key handler owns the keys (except while the rename field is open, see `rename-started`), and
+// `selected` paints the card's selected fill.
 export component GroupHeader inherits Rectangle {
     in property <string> name;
     in property <string> count-text;

@@ -201,8 +201,9 @@ export component PanelWindow inherits Window {
     // A group header that should start renaming (the controller counts requests in `rename-seq`).
     in property <int> rename-row: -1;
     in property <int> rename-seq: 0;
-    // A group header's inline rename has the keyboard (set by the header, cleared when it ends).
-    property <bool> header-renaming: false;
+    // The row whose group header is being renamed (-1: none). Only that header clears it, so a rename that hands
+    // over to another header keeps the keys with the new one.
+    property <int> header-renaming-row: -1;
     // Ctrl+G, or the item menu: group the marked rows (else row `i`). A header: fold or unfold (`group-toggled`), set
     // folded or unfolded (`group-collapsed-set`), rename (`group-renamed`).
     callback group-requested(int);
@@ -524,6 +525,8 @@ export component PanelWindow inherits Window {
     // that is collapsed away is "not visible" to Slint and would lose the keys, so the focus waits in `rest` and the
     // first character opens the search and moves into it).
     function focus-typing() {
+        // The keys go back to the Panel: no header rename holds them any more.
+        root.header-renaming-row = -1;
         if (root.search-shown) {
             search.focus();
         } else {
@@ -1116,12 +1119,13 @@ export component PanelWindow inherits Window {
             }
 
             capture-key-pressed(event) => {
-                // A group header's name is being typed: its field takes every key (Enter keeps, Esc cancels).
-                if (root.header-renaming) {
-                    return reject;
-                }
                 if (event.text == Key.Tab || event.text == Key.Backtab) {
                     self.tab-back = event.text == Key.Backtab || event.modifiers.shift;
+                }
+                // A group header's name is being typed: its field takes every key (Enter keeps, Esc cancels). Once the
+                // Panel's own list or search has the focus again (the header went away mid-rename), the keys are theirs.
+                if (root.header-renaming-row >= 0 && !self.has-focus && !rest.has-focus && !search.has-focus) {
+                    return reject;
                 }
                 if (root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.recent-menu-open || root.recent-save-open || root.list-delete-open || root.clear-list-open || root.board-delete-open || root.new-menu-open || root.pinned-menu-open) {
                     // The menu (or the confirmation) owns the keyboard; Esc closes it.
@@ -1983,9 +1987,16 @@ export component PanelWindow inherits Window {
                                                 selected: i == root.sel;
                                                 rename-request: root.rename-row == i ? root.rename-seq : 0;
                                                 toggled => { root.selected-index = i; root.group-toggled(i); }
-                                                rename-started => { root.header-renaming = true; }
-                                                renamed(text) => { root.header-renaming = false; root.group-renamed(i, text); }
-                                                rename-ended => { root.header-renaming = false; root.group-rename-ended(); root.focus-typing(); }
+                                                rename-started => { root.header-renaming-row = i; }
+                                                renamed(text) => {
+                                                    if (root.header-renaming-row == i) { root.header-renaming-row = -1; }
+                                                    root.group-renamed(i, text);
+                                                }
+                                                rename-ended => {
+                                                    if (root.header-renaming-row == i) { root.header-renaming-row = -1; }
+                                                    root.group-rename-ended();
+                                                    root.focus-typing();
+                                                }
                                                 menu-requested(x, y) => {
                                                     root.item-menu-x = self.absolute-position.x + x;
                                                     root.item-menu-y = self.absolute-position.y + y;

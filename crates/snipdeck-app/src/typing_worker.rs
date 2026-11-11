@@ -1123,11 +1123,12 @@ mod tests {
         assert_eq!(outs.recv_timeout(wait), Ok("show"));
         assert_eq!(outs.recv_timeout(wait), Ok("hide"), "idle");
         keys.type_text("ig");
-        assert_eq!(
-            outs.recv_timeout(wait),
-            Ok("expand"),
-            "the typed ;s was kept"
-        );
+        // ";si" may bring the hint back before ";sig" completes the trigger, depending on when the worker wakes:
+        // either way the next thing that is not the hint is the expansion.
+        let next = std::iter::from_fn(|| Some(outs.recv_timeout(wait)))
+            .find(|out| !matches!(out, Ok("show" | "hide")))
+            .expect("an output");
+        assert_eq!(next, Ok("expand"), "the typed ;s was kept");
         drop(keys);
         worker.join().expect("worker");
     }

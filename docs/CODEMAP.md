@@ -3747,10 +3747,10 @@ a_hint_that_is_old_when_a_late_hide_arrives_is_told_apart_by_its_number | crates
 keys_the_hook_could_not_send_do_not_keep_later_triggers_stale_forever | crates/snipdeck-app/src/typing_worker.rs:1009
 a_tab_swallowed_for_another_hint_than_the_held_one_is_given_back | crates/snipdeck-app/src/typing_worker.rs:1046
 the_idle_drop_hides_the_hint_but_keeps_the_trigger_being_typed | crates/snipdeck-app/src/typing_worker.rs:1093
-a_late_not_expanded_keeps_the_trigger_typed_since | crates/snipdeck-app/src/typing_worker.rs:1136
-a_not_expanded_after_a_reset_changes_nothing | crates/snipdeck-app/src/typing_worker.rs:1158
-a_tab_that_went_back_to_the_app_is_a_boundary_not_an_insertion | crates/snipdeck-app/src/typing_worker.rs:1177
-hint_numbers_carry_the_workers_generation | crates/snipdeck-app/src/typing_worker.rs:1210
+a_late_not_expanded_keeps_the_trigger_typed_since | crates/snipdeck-app/src/typing_worker.rs:1137
+a_not_expanded_after_a_reset_changes_nothing | crates/snipdeck-app/src/typing_worker.rs:1159
+a_tab_that_went_back_to_the_app_is_a_boundary_not_an_insertion | crates/snipdeck-app/src/typing_worker.rs:1178
+hint_numbers_carry_the_workers_generation | crates/snipdeck-app/src/typing_worker.rs:1211
 
 ### crates/snipdeck-app/src/unlock_binding.rs
 
@@ -7978,7 +7978,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/tests/main_window.rs` | 52 |
 | `crates/snipdeck-app/tests/master_password.rs` | 85 |
 | `crates/snipdeck-app/tests/menu_form_texts.rs` | 3 |
-| `crates/snipdeck-app/tests/panel_window.rs` | 87 |
+| `crates/snipdeck-app/tests/panel_window.rs` | 88 |
 | `crates/snipdeck-app/tests/picker_window.rs` | 19 |
 | `crates/snipdeck-app/tests/rebuild.rs` | 5 |
 | `crates/snipdeck-app/tests/recent_at_rest.rs` | 5 |
