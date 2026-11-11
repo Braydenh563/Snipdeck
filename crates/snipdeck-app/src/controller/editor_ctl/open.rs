@@ -228,6 +228,8 @@ where
             problems: Problems::default(),
             original_kind: ItemKind::Text,
             original_sensitive: false,
+            trigger: String::new(),
+            original_trigger: String::new(),
             original_text: None,
             formatted: false,
             stamp: None,
@@ -298,6 +300,14 @@ where
                 .formats(id)?
                 .iter()
                 .any(|f| matches!(f, Format::Html(_) | Format::Rtf(_)));
+        let trigger = if item.sensitive {
+            String::new()
+        } else {
+            self.store
+                .trigger_of(id)?
+                .map(|t| t.as_str().to_owned())
+                .unwrap_or_default()
+        };
         let mut slot = ItemEditorSlot {
             seq: 0,
             raise: 0,
@@ -308,6 +318,8 @@ where
             problems: Problems::default(),
             original_kind: item.kind,
             original_sensitive: item.sensitive,
+            trigger: trigger.clone(),
+            original_trigger: trigger,
             original_text,
             formatted,
             stamp: Some(item.updated_at.to_string()),

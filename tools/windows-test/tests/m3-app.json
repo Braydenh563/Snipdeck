@@ -420,6 +420,97 @@
       "title": "Panel: groups inside a list (v1.1 slice 3b)",
       "do": "Set a list to Manual sort. In the Panel mark three rows with Space, press Ctrl+G, type a name and press Enter. Press Left on the group header, then Right. Click the header. Press F2 on it and rename it. Drag the header to another place. Right-click the header and choose Ungroup. Group again, choose Delete group, then press Ctrl+Z. Type a word from a grouped item in the search box while the group is collapsed. With Narrator on, move to a header with the arrow keys.",
       "expect": "The marked rows gather under a header showing the name, the item count and a chevron. Left collapses, Right expands, a click toggles; the focus ring shows on the header and Tab/arrows reach it. Rename edits in place. Dragging the header moves the whole group. Ungroup keeps the items. Delete group moves the group and its items to Trash in one step and Ctrl+Z brings the header and items back. Search lists matches even inside a collapsed group. Quick numbers count item rows only, never headers. Narrator reads a header as 'group, N items, collapsed' (or expanded). Write anything that looks wrong in the note (n)."
+    },
+    {
+      "id": "55",
+      "v1": false,
+      "title": "Typed trigger expands (v1.1 slice 5b)",
+      "do": "Settings > Typing: turn on \"Expand abbreviations as I type\". Give a snippet the trigger ;sig in its editor (Trigger field). In Notepad, Word, Chrome (a text box) and Windows Terminal type ;sig.",
+      "expect": "In each app the four characters are replaced by the snippet text (Terminal pastes with its own key). The clipboard has its old content back afterwards and the use count goes up by one."
+    },
+    {
+      "id": "56",
+      "v1": false,
+      "title": "Dead keys still compose with the hook on (v1.1 slice 5b)",
+      "do": "With a German keyboard layout and the setting on, in Notepad press the ^ key and then e.",
+      "expect": "ê appears, exactly as with the setting off. Also try ' then a on a US-International layout (á)."
+    },
+    {
+      "id": "57",
+      "v1": false,
+      "title": "No expansion in a password box (v1.1 slice 5b)",
+      "do": "With the setting on, open a sign-in page in Edge and type ;sig into the password box.",
+      "expect": "The text ;sig stays as typed; nothing is expanded or pasted. In the user-name box on the same page it does expand."
+    },
+    {
+      "id": "58",
+      "v1": false,
+      "title": "No expansion in a never-paste app (v1.1 slice 5b)",
+      "do": "In Settings > Programs set Notepad to never paste. With the setting on, type ;sig in Notepad.",
+      "expect": "The text ;sig stays as typed and nothing is pasted."
+    },
+    {
+      "id": "59",
+      "v1": false,
+      "title": "No expansion in an elevated window (v1.1 slice 5b)",
+      "do": "With the setting on, open an elevated (Run as administrator) Notepad and type ;sig.",
+      "expect": "The text ;sig stays as typed and nothing is pasted."
+    },
+    {
+      "id": "60",
+      "v1": false,
+      "title": "The hook is quiet (v1.1 slice 5b)",
+      "do": "With the setting on, type fast for a minute in Notepad and watch Windows Security (Defender) and Task Manager. Turn the setting off and check the hook is gone (type ;sig: no expansion).",
+      "expect": "Defender raises no warning, typing feels no slower, and Snipdeck's CPU stays near zero. With the setting off no expansion happens."
+    },
+    {
+      "id": "61",
+      "v1": false,
+      "title": "Suggestion hint at the caret (v1.1 slice 6)",
+      "do": "Turn on Settings > Typing > Suggest snippets as I type. Make an item with the trigger ;signature. In Notepad and then Word type ;s and look beside the caret. Type a letter that is not part of the trigger. Type ;s again, then click into the other app window and back.",
+      "expect": "After two characters a small hint appears under the caret with the item title and a Tab key chip. It never takes focus: the caret keeps blinking in the app and typing carries on. A letter that does not continue the code, or moving to another window, makes it go away. Near the bottom of the screen it flips above the caret. Note any app where it appears in the wrong place (n)."
+    },
+    {
+      "id": "62",
+      "v1": false,
+      "title": "Tab without a hint still moves focus (v1.1 slice 6)",
+      "do": "With the setting on, open a web page with a form in Edge and press Tab between fields without typing a trigger. Then type ;s in Notepad and press Tab while the hint shows.",
+      "expect": "Tab moves between the form fields as usual when no hint is showing. With the hint showing, Tab removes the typed ;s and inserts the item, and no tab character is typed."
+    },
+    {
+      "id": "63",
+      "v1": false,
+      "title": "Tab is not swallowed after a quick type-and-leave (typing fixes)",
+      "do": "Suggest on. In Notepad type ;s (hint shows) then quickly type a letter that is not in the trigger, then press Tab.",
+      "expect": "The hint goes away and Tab inserts a tab character as usual; it never does nothing."
+    },
+    {
+      "id": "64",
+      "v1": false,
+      "title": "Hint goes away on a mouse click inside the same window",
+      "do": "Type ;s so the hint shows, then click elsewhere in the same Notepad text, then press Tab.",
+      "expect": "The hint disappears at the click and Tab acts as a normal tab. Needs the mouse hook; if the hint stays until you type, report it."
+    },
+    {
+      "id": "65",
+      "v1": false,
+      "title": "Hint times out when idle",
+      "do": "Type ;s and leave the keyboard and mouse alone for about 6 seconds, then press Tab.",
+      "expect": "The hint disappears after roughly 5 seconds and Tab acts as a normal tab."
+    },
+    {
+      "id": "66",
+      "v1": false,
+      "title": "A swallowed Tab is given back",
+      "do": "Type ;s, then switch to another app with Alt+Tab at once and press Tab in it. The Tab is sent from the typing thread (SendInput) when the hint went away between the key press and its handling.",
+      "expect": "The other app receives exactly one Tab; no tab is lost or doubled."
+    },
+    {
+      "id": "67",
+      "v1": false,
+      "title": "Tab ignored when focus moved to a different window or a password box",
+      "do": "Type ;s in Notepad, click into a password field in a browser (or another window), press Tab.",
+      "expect": "No expansion happens in the other window; Tab behaves normally there."
     }
   ]
 }

@@ -61,6 +61,9 @@ msgstr "主密码可以锁定整个卡组。"
 msgid "A new random ID each time"
 msgstr "每次生成新的随机ID"
 
+msgid "A one-character trigger fires every time you type it, even inside words. Two or more characters are safer."
+msgstr "单个字符的触发词每次输入都会触发，连单词中间也不例外。使用两个或更多字符更安全。"
+
 msgid "A small window you can drag anywhere."
 msgstr "可以拖到任意位置的小窗口。"
 
@@ -81,6 +84,9 @@ msgstr "标题最多 {} 个字符。"
 
 msgid "A title can't contain line breaks or control characters."
 msgstr "标题不能包含换行或控制字符。"
+
+msgid "A trigger is 1 to 32 characters with no spaces."
+msgstr "触发词为 1 到 32 个字符，不含空格。"
 
 msgid "About"
 msgstr "关于"
@@ -145,6 +151,9 @@ msgstr "向 {} 添加文本片段"
 msgid "After a paste or copy"
 msgstr "粘贴或复制后"
 
+msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual."
+msgstr "输入触发词的开头后，文本光标处会出现一个小提示，推荐对应的片段。按 Tab 键插入；按其他任何键则照常输入。"
+
 msgid "All"
 msgstr "全部"
 
@@ -196,6 +205,9 @@ msgstr "动物与自然"
 
 msgid "Another program already uses {}."
 msgstr "其他程序已在使用 {}。"
+
+msgid "Another snippet already uses this trigger."
+msgstr "另一个片段已使用此触发词。"
 
 msgid "Anywhere in Windows"
 msgstr "Windows 中的任何位置"
@@ -959,6 +971,9 @@ msgstr "回收站中的所有内容都将被永久删除，此操作无法撤销
 msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
 msgstr "资料库中的所有内容都会被删除：看板、列表、片段、图片、草稿和备份。如果需要副本，请先导出。你的设置和许可证会保留。"
 
+msgid "Expand abbreviations as I type"
+msgstr "输入时展开缩写"
+
 msgid "Expand sidebar (Ctrl+B)"
 msgstr "展开侧边栏 (Ctrl+B)"
 
@@ -1027,6 +1042,9 @@ msgstr "跟随系统设置中的 Windows 主题。"
 
 msgid "Food & Drink"
 msgstr "食物与饮料"
+
+msgid "For example ;sig"
+msgstr "例如 ;sig"
 
 msgid "For example, Email replies"
 msgstr "例如：邮件回复"
@@ -2232,6 +2250,9 @@ msgstr "已保存 {}"
 msgid "Saved {}."
 msgstr "已保存 {}。"
 
+msgid "Saved. This code overlaps another trigger, so one of them may never fire."
+msgstr "已保存。此代码与另一个触发词重叠，其中一个可能永远不会触发。"
+
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "将所有看板、列表和片段保存为一个 .snipdeck 文件，存放在你选择的文件夹中。"
 
@@ -2580,6 +2601,9 @@ msgstr "强度：强"
 msgid "Strength: weak"
 msgstr "强度：弱"
 
+msgid "Suggest snippets as I type"
+msgstr "输入时推荐片段"
+
 msgid "Supporter"
 msgstr "Supporter"
 
@@ -2922,6 +2946,9 @@ msgstr "旅行与地点"
 msgid "Tray icon click opens"
 msgstr "点击托盘图标时打开"
 
+msgid "Trigger"
+msgstr "触发词"
+
 msgid "Trimmed"
 msgstr "去除首尾空白"
 
@@ -2949,8 +2976,14 @@ msgstr "关闭 Snipdeck 中的滑动和淡入淡出效果。当 Windows 已关�
 msgid "Type a command"
 msgstr "输入命令"
 
+msgid "Type this in any app to insert the snippet. Turn it on in Settings, under Typing."
+msgstr "在任何应用中输入它即可插入该片段。请在“设置”的“输入”中开启。"
+
 msgid "Type {} to confirm"
 msgstr "输入 {} 以确认"
+
+msgid "Typing"
+msgstr "输入"
 
 msgid "UPPERCASE"
 msgstr "大写"
@@ -3083,6 +3116,9 @@ msgstr "Windows 启动时"
 
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "图钉关闭时，切换到其他应用后面板会立即隐藏。已固定的面板不会隐藏。"
+
+msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk. Nothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
+msgstr "在其他程序中输入片段的触发词时，Snipdeck 会将其替换为该片段。为此 Snipdeck 会监视你按下的按键，只在内存中保留最后几个字符，绝不写入磁盘。在密码框、设为“从不粘贴”的程序以及敏感项目中不会展开。"
 
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "通过快捷键或托盘显示面板时，面板出现的位置。应用没有文本光标时，“文本光标处”会改用鼠标位置。"
@@ -3338,6 +3374,9 @@ msgstr "标签更改"
 msgid "tag: {}"
 msgstr "标签：{}"
 
+msgid "to insert"
+msgstr "插入"
+
 msgid "tutorial intro onboarding basics learn"
 msgstr "教程 入门 引导 基础 学习"
 
@@ -3489,6 +3528,9 @@ msgstr[0] "创建此文件时，已省略 {} 个敏感片段。"
 msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "备份中不包含 {} 项敏感项目。"
+
+msgid "{} — press Tab to insert"
+msgstr "{} — 按 Tab 插入"
 
 msgid "{}, {} of {}"
 msgstr "{}，第 {} 项（共 {} 项）"

@@ -99,6 +99,10 @@ pub enum TypedEvent {
     Char(char),
     /// The last character was erased.
     Backspace,
+    /// A plain `Tab` that the hook swallowed because a suggestion hint is showing, with the number
+    /// of the hint it was swallowed for (the hook only produces this while the UI has armed that
+    /// hint; otherwise `Tab` is a [`Reset`](Self::Reset)).
+    Tab(u64),
     /// The typing context is gone (focus moved, caret jumped, an IME composes): forget everything.
     Reset,
 }
@@ -109,9 +113,17 @@ impl std::fmt::Debug for TypedEvent {
         match self {
             Self::Char(_) => f.write_str("Char(..)"),
             Self::Backspace => f.write_str("Backspace"),
+            Self::Tab(_) => f.write_str("Tab"),
             Self::Reset => f.write_str("Reset"),
         }
     }
+}
+
+/// Whether `stroke` is a `Tab` with no `Ctrl`, `Alt` or Windows key (the caller rules out
+/// `Shift`, which a [`Stroke`] does not carry): the only press a suggestion hint takes.
+#[must_use]
+pub fn is_plain_tab(stroke: Stroke) -> bool {
+    stroke.vk == VK_TAB && !stroke.ctrl && !stroke.alt && !stroke.win
 }
 
 /// Maps a key press to what the matcher should do, or `None` when the press changes nothing
@@ -229,7 +241,7 @@ impl TypeBuffer {
         match event {
             TypedEvent::Char(c) => self.push(c),
             TypedEvent::Backspace => self.len = self.len.saturating_sub(1),
-            TypedEvent::Reset => self.reset(),
+            TypedEvent::Reset | TypedEvent::Tab(_) => self.reset(),
         }
         if self.len < BUFFER_CHARS {
             self.chars[self.len..].zeroize();
@@ -293,6 +305,30 @@ impl TypeBuffer {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn only_a_plain_tab_is_the_hints() {
+        let tab = |ctrl, alt, win| Stroke {
+            vk: VK_TAB,
+            ctrl,
+            alt,
+            win,
+            text: Translation::Nothing,
+        };
+        assert!(is_plain_tab(tab(false, false, false)));
+        assert!(!is_plain_tab(tab(true, false, false)));
+        assert!(!is_plain_tab(tab(false, true, false)));
+        assert!(!is_plain_tab(tab(false, false, true)));
+        assert!(!is_plain_tab(Stroke {
+            vk: 0x41,
+            ctrl: false,
+            alt: false,
+            win: false,
+            text: Translation::Text('a')
+        }));
+        // Without the hint's flag a Tab is only a reset.
+        assert_eq!(classify(tab(false, false, false)), Some(TypedEvent::Reset));
+    }
+
     use super::*;
 
     fn stroke(vk: u16, text: Translation) -> Stroke {

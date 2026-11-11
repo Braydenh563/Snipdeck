@@ -719,6 +719,12 @@ pub struct Settings {
     pub text_size: TextSize,
     /// Seconds after copying a sensitive item before the clipboard is cleared (0 = never).
     pub clipboard_clear_secs: u32,
+    /// Typed abbreviations expand into their snippet in any app (Settings > Typing). Off until the
+    /// user asks: while off, no keyboard hook is installed.
+    pub expand_triggers: bool,
+    /// A hint at the caret offers a snippet after two characters that start a trigger. Off until
+    /// the user asks; it uses the same keyboard hook as `expand_triggers`.
+    pub suggest_triggers: bool,
     /// Where the Panel sat on each monitor it was moved or resized on; wins over `panel_width`
     /// there. Absent in older files.
     pub panel_geometry: Vec<PanelGeometry>,
@@ -805,6 +811,8 @@ impl Default for Settings {
             reduce_motion: false,
             text_size: TextSize::System,
             clipboard_clear_secs: CLIPBOARD_CLEAR_SECS_DEFAULT,
+            expand_triggers: false,
+            suggest_triggers: false,
             panel_geometry: Vec::new(),
             main_window: None,
             main_sidebar_width: MAIN_SIDEBAR_WIDTH_DEFAULT,
@@ -925,6 +933,8 @@ impl Settings {
         field!(reduce_motion);
         field!(text_size);
         field!(clipboard_clear_secs);
+        field!(expand_triggers);
+        field!(suggest_triggers);
         field!(panel_geometry);
         field!(main_window);
         field!(main_sidebar_width);
@@ -1764,6 +1774,19 @@ mod tests {
         assert_eq!((bad.reduce_motion, bad.theme), (false, Theme::Dark));
         let on = Settings {
             reduce_motion: true,
+            ..Settings::default()
+        };
+        assert_eq!(Settings::from_json(&on.to_json()), on);
+    }
+
+    #[test]
+    fn typing_features_are_off_by_default_and_kept() {
+        for s in [Settings::new_install(), Settings::from_json("{}")] {
+            assert!(!s.expand_triggers && !s.suggest_triggers);
+        }
+        let on = Settings {
+            expand_triggers: true,
+            suggest_triggers: true,
             ..Settings::default()
         };
         assert_eq!(Settings::from_json(&on.to_json()), on);

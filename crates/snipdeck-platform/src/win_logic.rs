@@ -30,6 +30,8 @@ pub const VK_V: u16 = 0x56;
 pub const VK_INSERT: u16 = 0x2D;
 /// `VK_BACK`.
 pub const VK_BACK: u16 = 0x08;
+/// `VK_TAB`.
+pub const VK_TAB: u16 = 0x09;
 /// `VK_LEFT`.
 pub const VK_LEFT: u16 = 0x25;
 /// The unassigned virtual key (0xE8) used to mask a lone `Alt` / `Win` release.
@@ -74,6 +76,7 @@ pub const fn key_to_vk(key: Key) -> VirtualKey {
         // Unverified on Windows (Fable v1 sweep A5): the arrow keys are extended keys.
         Key::Left => extended(VK_LEFT),
         Key::Backspace => plain(VK_BACK),
+        Key::Tab => plain(VK_TAB),
         Key::Mask => plain(VK_MASK),
     }
 }
@@ -348,6 +351,7 @@ mod tests {
         assert_eq!(key_to_vk(Key::Left), extended(0x25));
         assert_eq!(key_to_vk(Key::Mask), plain(0xE8));
         assert_eq!(key_to_vk(Key::Backspace), plain(0x08));
+        assert_eq!(key_to_vk(Key::Tab), plain(0x09));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Ctrl)), plain(0xA2));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Shift)), plain(0xA0));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Alt)), plain(0xA4));

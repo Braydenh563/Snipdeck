@@ -297,6 +297,8 @@ pub enum ToastMessage {
     AutostartFailed,
     /// "Couldn't open the log folder."
     CannotOpenLog,
+    /// "Saved. This code overlaps another trigger, so one of them may never fire."
+    TriggerOverlaps,
     /// "Couldn't unlock the encryption key. Nothing was saved."
     KeyUnavailable,
     /// "This item was deleted. Nothing was saved."

@@ -12,7 +12,7 @@
 
 use std::collections::VecDeque;
 
-use snipdeck_core::{Group, GroupId, Item, ItemId, ListId, Placement};
+use snipdeck_core::{Group, GroupId, Item, ItemId, ListId, Placement, Trigger};
 use snipdeck_store::Trashable;
 
 /// How many steps are kept; the oldest goes first.
@@ -76,6 +76,8 @@ pub struct Snap {
     pub item: Item,
     /// The text content to write back; `None` leaves the content alone.
     pub text: Option<String>,
+    /// The trigger to write back (`Some(None)` clears it); `None` leaves it alone.
+    pub trigger: Option<Option<Trigger>>,
 }
 
 /// Where an item sits: its list and its place in it.

@@ -114,6 +114,7 @@ pub struct Binding {
     tray: Rc<dyn Fn(TrayEvent)>,
     system_look: Rc<dyn Fn(SystemLook)>,
     clipboard_changed: Rc<dyn Fn(snipdeck_platform::clipboard_watch::ClipboardChange)>,
+    typed_trigger: Rc<dyn Fn(crate::typing_worker::Out)>,
     frame_changed: Rc<FrameFn>,
     frame_moved: Rc<FrameFn>,
     restore_frame: Rc<MonitorFn>,
@@ -174,6 +175,12 @@ impl Binding {
         (self.clipboard_changed)(change);
     }
 
+    /// The typing worker has something for the UI thread: a completed trigger, a suggestion to
+    /// show or take down, or `Tab` on the hint (see `Typed::password` and `Typed::still_current`).
+    pub fn typed_trigger(&self, out: crate::typing_worker::Out) {
+        (self.typed_trigger)(out);
+    }
+
     /// Windows' light / dark or high-contrast state is `look` (read at start-up, and again on
     /// every change notification; an unchanged look redraws nothing).
     pub fn system_look(&self, look: SystemLook) {
@@ -221,6 +228,10 @@ struct Core<S, C, K, T> {
     window: slint::Weak<ui::PanelWindow>,
     /// What the Panel asks of the machine: the keyboard for text entry, and to give it back.
     host: Rc<dyn PopupHost>,
+    /// The suggestion hint at the caret (made on first use).
+    hint: crate::suggest_hint::SuggestHint,
+    /// The number of the hint that is up, 0 for none.
+    hints: HintIds,
     on_effect: Box<dyn Fn(&Effect)>,
     /// What the window shows now, so a redraw sets only what changed (re-setting the rows
     /// model would reset the list's scroll position on every toast tick).
@@ -258,6 +269,8 @@ where
             Self {
                 controller: Rc::clone(controller),
                 window: window.as_weak(),
+                hint: crate::suggest_hint::SuggestHint::new(Rc::clone(&host)),
+                hints: HintIds::default(),
                 host,
                 on_effect,
                 shown: RefCell::new(None),
@@ -277,7 +290,82 @@ where
         core
     }
 
-    /// Runs `f` on the controller, then redraws.
+    /// Takes the suggestion hint down (if one is up) and lets the keyboard hook have `Tab`
+    /// back.
+    fn hint_down(&self) {
+        self.hint.hide_hint();
+        let id = self.hints.take();
+        if id != 0 {
+            self.controller.borrow_mut().hint_down(id);
+        }
+    }
+
+    /// What the typing worker found (SPEC slice 5b and 6): an expansion, or the suggestion hint.
+    fn typed(self: &Rc<Self>, out: crate::typing_worker::Out) {
+        use crate::{controller::HintOutcome, typing_worker::Out};
+        // Anything from a worker that is no longer the running one is stale.
+        if let Out::Show(_, id) | Out::Hide(id) | Out::Accept(_, id) = &out
+            && self.controller.borrow().hint_is_stale(*id)
+        {
+            return;
+        }
+        match out {
+            Out::Expand(typed) => {
+                self.hint_down();
+                self.act(|ctl| {
+                    let _ = ctl.expand_typed(&typed);
+                });
+            }
+            // Only the hint that is on screen is accepted: anything else was passed on or is
+            // old, and inserts nothing.
+            Out::Accept(typed, id) => {
+                let on_screen = self.hints.is_current(id);
+                if on_screen {
+                    self.hint_down();
+                }
+                let _ = self.act(|ctl| ctl.accept_hinted(&typed, on_screen));
+            }
+            // A hide for an older hint (a worker that was switched off and on again) is stale.
+            Out::Hide(id) if self.hints.is_current(id) => self.hint_down(),
+            Out::Hide(_) => {}
+            // A show older than one already seen is stale too.
+            Out::Show(_, id) if !self.hints.admit(id) => {}
+            Out::Show(typed, id) => {
+                let (outcome, look) = {
+                    let mut ctl = self.controller.borrow_mut();
+                    let outcome = ctl.suggest_typed(&typed);
+                    let view = ctl.view();
+                    let look = crate::suggest_hint::HintLook {
+                        dark: view.dark,
+                        high_contrast: view.high_contrast,
+                        accent: view.accent,
+                        reduced_motion: view.reduced_motion,
+                    };
+                    (outcome, look)
+                };
+                let up = match outcome {
+                    HintOutcome::Show { title, caret } => {
+                        self.hint.show_hint(&title, Some(caret), &look)
+                    }
+                    HintOutcome::Hide => {
+                        self.hint.hide_hint();
+                        false
+                    }
+                };
+                let replaced = self.hints.shown(if up { id } else { 0 });
+                let mut ctl = self.controller.borrow_mut();
+                if replaced != 0 && replaced != id {
+                    // The hint it replaces no longer takes a Tab.
+                    ctl.hint_down(replaced);
+                }
+                if up {
+                    // On screen for real: now the hook may take a Tab for it.
+                    ctl.hint_up(id);
+                }
+            }
+        }
+    }
+
     fn act<R>(self: &Rc<Self>, f: impl FnOnce(&mut Controller<S, C, K, T>) -> R) -> R {
         let result = f(&mut self.controller.borrow_mut());
         redraw_all();
@@ -1011,6 +1099,10 @@ where
                     },
                 )
             },
+            typed_trigger: {
+                let core = Rc::clone(&core);
+                Rc::new(move |out: crate::typing_worker::Out| core.typed(out))
+            },
             frame_changed: {
                 let core = Rc::clone(&core);
                 Rc::new(move |monitor: &Monitor, frame| {
@@ -1148,6 +1240,62 @@ fn edge_of(edge: ui::ResizeEdge) -> Edge {
         ui::ResizeEdge::TopRight => Edge::TopRight,
         ui::ResizeEdge::BottomLeft => Edge::BottomLeft,
         ui::ResizeEdge::BottomRight => Edge::BottomRight,
+    }
+}
+
+/// Which suggestion hint is on screen, and the newest hint number seen. A worker that was
+/// switched off and on again may still deliver for its old hints; their numbers tell them apart.
+#[derive(Default)]
+struct HintIds {
+    shown: std::cell::Cell<u64>,
+    newest: std::cell::Cell<u64>,
+}
+
+impl HintIds {
+    /// Whether a show for hint `id` is current (not older than one already seen); records it.
+    fn admit(&self, id: u64) -> bool {
+        if id < self.newest.get() {
+            return false;
+        }
+        self.newest.set(id);
+        true
+    }
+
+    /// Hint `id` is on screen (0: none is); returns the number it replaced, 0 for none.
+    fn shown(&self, id: u64) -> u64 {
+        self.shown.replace(id)
+    }
+
+    /// Whether hint `id` is the one on screen.
+    fn is_current(&self, id: u64) -> bool {
+        id != 0 && id == self.shown.get()
+    }
+
+    /// Takes the shown hint's number, leaving none.
+    fn take(&self) -> u64 {
+        self.shown.replace(0)
+    }
+}
+
+#[cfg(test)]
+mod hint_id_tests {
+    use super::HintIds;
+
+    #[test]
+    fn an_old_hide_accept_or_show_is_ignored() {
+        let ids = HintIds::default();
+        assert!(ids.admit(5));
+        assert_eq!(ids.shown(5), 0);
+        assert!(ids.is_current(5));
+        // A newer hint replaces it; everything addressed to the old number is stale.
+        assert!(ids.admit(9));
+        assert_eq!(ids.shown(9), 5, "the replaced hint is reported");
+        assert!(!ids.is_current(5), "an old Hide/Accept does not match");
+        assert!(!ids.admit(5), "an old Show is refused");
+        assert!(ids.is_current(9));
+        assert_eq!(ids.take(), 9);
+        assert!(!ids.is_current(9), "nothing is on screen after a take");
+        assert!(!ids.is_current(0));
     }
 }
 

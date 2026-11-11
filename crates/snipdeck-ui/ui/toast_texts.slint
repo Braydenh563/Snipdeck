@@ -347,6 +347,9 @@ export global ToastTexts {
     pure public function cannot-open-log() -> string {
         return @tr("Couldn't open the log folder.");
     }
+    pure public function trigger-overlaps() -> string {
+        return @tr("Saved. This code overlaps another trigger, so one of them may never fire.");
+    }
     pure public function key-unavailable() -> string {
         return @tr("Couldn't open the encryption key. Nothing was saved.");
     }

@@ -4,7 +4,9 @@
 
 use snipdeck_core::{Group, Item, ItemId, ListId, Placement, Timestamp};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
-use snipdeck_store::{Batch, GroupDelete, GroupEnd, GroupRepo, ItemRepo, TrashRepo, Trashable};
+use snipdeck_store::{
+    Batch, GroupDelete, GroupEnd, GroupRepo, ItemRepo, TrashRepo, Trashable, TriggerRepo,
+};
 
 use super::{Controller, Library, Toast, ToastKind, ToastMessage, failed};
 use crate::{
@@ -27,6 +29,7 @@ pub(super) fn snap(item: &Item) -> Snap {
     Snap {
         item: item.clone(),
         text: None,
+        trigger: None,
     }
 }
 
@@ -117,6 +120,17 @@ fn apply(
                 None => None,
             };
             b.update_item(&after.item, formats.as_ref())?;
+            if let Some(trigger) = &after.trigger {
+                // A code another item took in the meantime stays with that item.
+                match b.set_trigger(after.item.id, trigger.as_ref()) {
+                    Ok(_)
+                    | Err(
+                        snipdeck_store::Error::TriggerTaken(_)
+                        | snipdeck_store::Error::SensitiveTrigger,
+                    ) => {}
+                    Err(e) => return Err(e),
+                }
+            }
         }
         Change::Move { id, to, .. } => b.move_item(*id, to.0, to.1)?,
         Change::Group { group, members } => b.create_group(group, members)?,

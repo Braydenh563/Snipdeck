@@ -320,7 +320,11 @@ where
             crate::trace!("callback editor save-requested");
             if let Some(w) = weak.upgrade() {
                 let input = read_input(&w);
-                core.act(|ctl| ctl.item_editor_save(&input));
+                let trigger = w.get_trigger();
+                core.act(|ctl| {
+                    ctl.item_editor_set_trigger(trigger.as_str());
+                    ctl.item_editor_save(&input);
+                });
             }
         });
         let core = Rc::downgrade(self);
@@ -356,6 +360,15 @@ where
                 core.refit_toggled(&w);
             }
             core.act(|ctl| ctl.set_editor_more_open(open));
+        });
+        let core = Rc::downgrade(self);
+        w.on_trigger_edited(move |text| {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            core.controller
+                .borrow_mut()
+                .item_editor_set_trigger(text.as_str());
         });
         let core = Rc::downgrade(self);
         w.on_edited(move || {
@@ -466,6 +479,7 @@ fn apply_state(w: &ui::ItemEditor, view: &ItemEditorView) {
     ));
     w.set_source_error(text(&view.source_problem));
     w.set_privacy_error(text(&view.privacy_problem));
+    w.set_trigger_error(text(&view.trigger_problem));
     w.set_banner(text(&view.banner));
     w.set_prompted_available(view.prompted_available);
     w.set_can_browse(view.can_browse);
@@ -496,6 +510,7 @@ fn fill(w: &ui::ItemEditor, view: &ItemEditorView) {
     w.set_item_title(fields.title.as_str().into());
     w.set_content(fields.content.as_str().into());
     w.set_sensitive(fields.sensitive);
+    w.set_trigger(view.trigger.as_str().into());
     w.set_source_path(fields.source_path.as_str().into());
     w.set_list_names(model(
         view.list_names

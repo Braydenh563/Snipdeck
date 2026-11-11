@@ -37,6 +37,7 @@ mod symbol_ctl;
 #[cfg(test)]
 mod tests;
 mod toast_ctl;
+mod trigger_ctl;
 mod use_ctl;
 mod views;
 
@@ -48,6 +49,7 @@ pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, Lis
 pub use panel_select::LABELS;
 pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 pub use symbol_ctl::{IconExport, IconSave, SaveOutcome, SymbolChoice, SymbolMenuEntry};
+pub use trigger_ctl::{HintOutcome, TypedOutcome};
 pub use views::{
     BoardDeleteView, ChooseEntry, ChooseLabel, ChooseMenu, ClearListView, Effect, FillSubmission,
     FillView, ListDeleteView, PickerView, StackView, ToastPhase, ToastView, UseResult, View,
@@ -201,6 +203,8 @@ pub struct Controller<S, C, K, T> {
     /// The template fill form, while it is open.
     fill: Option<FillModel>,
     fill_seq: u64,
+    /// A typed trigger to erase once the fill form is confirmed.
+    fill_erase: Option<views::FillErase>,
     /// Where "paste next" is in its run.
     queue: PasteQueue,
     /// The items marked for a paste stack, in marking order.
@@ -287,6 +291,14 @@ pub struct Controller<S, C, K, T> {
     lock: lock_ctl::LockState,
     /// Switches the clipboard listener of the Recent inbox (see `recent_ctl.rs`).
     recent_gate: Option<snipdeck_platform::clipboard_watch::WatchGate>,
+    /// The typed-trigger service (keyboard hook), once the host hands it over.
+    typing: Option<Box<dyn crate::host::TypingControl>>,
+    /// The trigger list last sent to the typing service, so an unchanged list is not sent again.
+    typing_sent: Vec<(snipdeck_core::Trigger, snipdeck_core::ItemId)>,
+    /// Whether the candidate list handed over was built with suggestions on.
+    typing_suggest: bool,
+    /// Whether the typing service was last told to run.
+    typing_on: Option<bool>,
     /// Told whether clipboard history is on and whether it is paused, for the tray menu's
     /// "Pause history" entry (see `recent_ctl.rs`).
     tray_history: Option<recent_ctl::HistorySink>,
@@ -413,6 +425,7 @@ where
             toast_seq: 0,
             picker: None,
             fill: None,
+            fill_erase: None,
             fill_seq: 0,
             queue: PasteQueue::default(),
             stack: Vec::new(),
@@ -458,6 +471,10 @@ where
             pending: Vec::new(),
             lock: lock_ctl::LockState::new(shown_at),
             recent_gate: None,
+            typing: None,
+            typing_sent: Vec::new(),
+            typing_suggest: false,
+            typing_on: None,
             tray_history: None,
             screen_clip: crate::screen_clip::ScreenClipFlow::new(),
             screen_clip_host: None,
@@ -955,6 +972,7 @@ where
         {
             self.picker = None;
             self.fill = None;
+            self.fill_erase = None;
         }
         self.on_target_changed();
         if self.hides_on_blur() {

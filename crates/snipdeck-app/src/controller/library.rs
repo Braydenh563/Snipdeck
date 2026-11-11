@@ -2,14 +2,22 @@
 
 use snipdeck_store::{
     Batch, BlobStore, BoardRepo, GroupRepo, ItemRepo, ListRepo, RecentRepo, Store, TagRepo,
-    TrashRepo,
+    TrashRepo, TriggerRepo,
     crypto::{DataKey, KeyRecord, KeyRing},
 };
 
 /// What the controller needs from the library: every repository trait in one bound, and a way
 /// to make several writes land together (or not at all).
 pub trait Library:
-    BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + GroupRepo + BlobStore + RecentRepo
+    BoardRepo
+    + ListRepo
+    + ItemRepo
+    + TagRepo
+    + TrashRepo
+    + GroupRepo
+    + BlobStore
+    + RecentRepo
+    + TriggerRepo
 {
     /// Runs `f` in one store transaction: what it does through the [`Batch`] commits together
     /// when `f` returns `Ok`, and none of it happens when it returns `Err`.
