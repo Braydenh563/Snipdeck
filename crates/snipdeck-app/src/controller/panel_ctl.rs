@@ -323,6 +323,9 @@ where
     pub fn panel_move_selected(&mut self, delta: isize) {
         if let Some(id) = self.model.selected() {
             self.panel_move_item(id, delta);
+        } else if let Some(at) = self.model.selected_position() {
+            // The cursor is on a group's header: the whole group moves.
+            self.panel_move_group(at, delta);
         }
     }
 

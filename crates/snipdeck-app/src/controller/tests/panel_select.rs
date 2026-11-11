@@ -1590,3 +1590,89 @@ fn ctrl_g_on_a_header_renames_its_group() {
     assert_eq!(headers(&w), [0], "no second group");
     assert_eq!(w.ctl.view().rename_row, Some(0));
 }
+
+// ---- Groups from the keyboard and the menu (WCAG 2.5.7: every drag has another way) ---------------
+
+/// Puts the cursor on row `at` (a header included).
+fn cursor_to(w: &mut World, at: usize) {
+    let from = w.ctl.view().selected;
+    w.ctl
+        .move_selection(isize::try_from(at).unwrap() - isize::try_from(from).unwrap());
+    assert_eq!(w.ctl.view().selected, at);
+}
+
+#[test]
+fn alt_down_on_a_header_moves_the_whole_group_and_the_cursor_follows() {
+    let mut w = world();
+    two_groups(&mut w);
+    let before = shape(&w);
+    cursor_to(&mut w, 0);
+    w.ctl.panel_move_selected(1);
+    assert_eq!(shape(&w), [&before[3..], &before[..3]].concat());
+    assert_eq!(
+        w.ctl.view().selected,
+        3,
+        "the cursor stays on the moved header"
+    );
+    assert_eq!(
+        w.ctl.view().toast.map(|t| t.message),
+        Some(ToastMessage::ItemPlaced {
+            position: 2,
+            total: 2
+        }),
+        "said aloud: the group is now second of two"
+    );
+}
+
+#[test]
+fn alt_up_on_a_header_moves_the_group_above_and_ends_do_nothing() {
+    let mut w = world();
+    two_groups(&mut w);
+    let before = shape(&w);
+    cursor_to(&mut w, 0);
+    w.ctl.panel_move_selected(-1);
+    assert_eq!(shape(&w), before, "the first group cannot go higher");
+    cursor_to(&mut w, 3);
+    w.ctl.panel_move_selected(1);
+    assert_eq!(shape(&w), before, "the last group cannot go lower");
+    w.ctl.panel_move_selected(-1);
+    assert_eq!(shape(&w), [&before[3..], &before[..3]].concat());
+    assert_eq!(w.ctl.view().selected, 0);
+}
+
+#[test]
+fn a_group_moves_past_a_loose_item_as_one_place_and_undo_is_one_step() {
+    let mut w = world();
+    group_first_two(&mut w);
+    let before = shape(&w);
+    cursor_to(&mut w, 0);
+    w.ctl.panel_move_selected(1);
+    let after = shape(&w);
+    assert_eq!(after[0], before[3], "the item below went above the group");
+    assert_eq!(after[1], before[0]);
+    w.ctl.undo();
+    assert_eq!(shape(&w), before);
+}
+
+#[test]
+fn the_header_menu_moves_the_group_too() {
+    let mut w = world();
+    two_groups(&mut w);
+    let before = shape(&w);
+    w.ctl.open_item_menu(0, false);
+    let entries = w.ctl.view().item_menu.expect("menu");
+    assert!(entries.contains(&ItemMenuEntry::MoveUp { enabled: false }));
+    let down = entries
+        .iter()
+        .position(|e| *e == ItemMenuEntry::MoveDown { enabled: true })
+        .expect("Move down is offered on a header");
+    w.ctl.choose_item_menu(down);
+    assert_eq!(shape(&w), [&before[3..], &before[..3]].concat());
+    w.ctl.open_item_menu(3, false);
+    let entries = w.ctl.view().item_menu.expect("menu");
+    assert!(
+        entries.contains(&ItemMenuEntry::MoveUp { enabled: true }),
+        "the second group can go up"
+    );
+    assert!(entries.contains(&ItemMenuEntry::MoveDown { enabled: false }));
+}

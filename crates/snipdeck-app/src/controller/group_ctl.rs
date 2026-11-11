@@ -305,6 +305,89 @@ where
         true
     }
 
+    /// Where the group `run` goes when moved `delta` (-1 or 1) places among the list's blocks (a
+    /// group or a loose item is one block): the placement, the group's new place (from 1) and the
+    /// number of blocks. `None` at either end.
+    fn group_step(
+        &self,
+        run: &snipdeck_store::GroupRun,
+        delta: isize,
+    ) -> Option<(Placement<ItemId>, usize, usize)> {
+        let order = self.model.manual_order();
+        let mut blocks: Vec<Vec<ItemId>> = Vec::new();
+        for id in &order {
+            match self.model.group_of(*id) {
+                Some(g) if blocks.last().is_some_and(|b| g.items.contains(&b[0])) => {
+                    if let Some(last) = blocks.last_mut() {
+                        last.push(*id);
+                    }
+                }
+                _ => blocks.push(vec![*id]),
+            }
+        }
+        let at = blocks.iter().position(|b| b.contains(run.items.first()?))?;
+        let to = at.checked_add_signed(delta)?;
+        let target = blocks.get(to)?;
+        let placement = if delta > 0 {
+            Placement::After(*target.last()?)
+        } else {
+            place_before(&order, *target.first()?, &run.items)?
+        };
+        Some((placement, to + 1, blocks.len()))
+    }
+
+    /// Whether the group whose header is row `index` can move `delta` places.
+    pub(crate) fn can_move_group(&self, index: usize, delta: isize) -> bool {
+        self.model.reorderable()
+            && self
+                .group_row(index)
+                .is_some_and(|run| self.group_step(&run, delta).is_some())
+    }
+
+    /// Alt+Up / Alt+Down on a header, or its menu's Move up / Move down: the whole group moves one
+    /// place (past a group or a loose item), as one history step. The cursor stays on the header
+    /// and the new place is said aloud.
+    pub(crate) fn panel_move_group(&mut self, index: usize, delta: isize) {
+        let Some(run) = self.group_row(index) else {
+            return;
+        };
+        if !self.model.reorderable() {
+            self.offer_manual_for_panel();
+            return;
+        }
+        let Some((to, position, total)) = self.group_step(&run, delta) else {
+            return;
+        };
+        let order = self.model.manual_order();
+        let Some(back) = place_before(&order, run.items[0], &run.items) else {
+            return;
+        };
+        if self.store.move_run(run.group.id, to).is_err() {
+            self.show_toast(failed());
+            return;
+        }
+        self.record_step(
+            Action::Reorder,
+            vec![Change::MoveRun {
+                group: run.group.id,
+                from: back,
+                to,
+            }],
+        );
+        if !self.library_changed() {
+            return;
+        }
+        if let Some(at) = self
+            .model
+            .rows()
+            .iter()
+            .position(|r| r.header.as_ref().is_some_and(|h| h.group == run.group.id))
+        {
+            self.model.select_row(at);
+        }
+        self.announce_placed(position, total);
+    }
+
     /// Item `id` dropped on the header of `target`: it joins the group at its top (one step).
     fn join_dropped(
         &mut self,
