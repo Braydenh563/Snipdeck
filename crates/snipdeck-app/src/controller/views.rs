@@ -142,6 +142,16 @@ pub struct FillSubmission {
     pub(super) mode: UseMode,
     pub(super) answers: BTreeMap<String, String>,
     pub(super) transform: Option<snipdeck_core::template::transform::Transform>,
+    /// A typed trigger to erase with the paste, once the form is confirmed.
+    pub(super) erase: Option<FillErase>,
+}
+
+/// A typed trigger waiting for its fill form: how many characters to erase, and the app they were
+/// typed into (the paste only goes there).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct FillErase {
+    pub(super) chars: usize,
+    pub(super) app: Option<String>,
 }
 
 /// How a use ended.
@@ -153,6 +163,9 @@ pub enum UseResult {
     NeedsAnswers,
     /// It did not happen; a toast says why.
     Failed,
+    /// It was called off before any key went out (the user typed on, or changed window): nothing
+    /// was sent or counted, and no toast.
+    Cancelled,
 }
 
 /// Everything the Panel window shows, as plain data.

@@ -771,7 +771,6 @@ fn typing_world(n: usize, code: &str) -> World {
         .store
         .set_trigger(w.ids[n], Some(&trigger))
         .expect("set trigger");
-    w.ctl.hide();
     w
 }
 
@@ -956,24 +955,57 @@ fn off_by_default_installs_no_hook() {
 }
 
 #[test]
-fn a_prompted_trigger_opens_the_fill_form() {
+fn a_prompted_trigger_opens_the_fill_form_and_erases_only_once_it_is_confirmed() {
     let mut w = typing_world(3, ";hi");
     let fired = typed(&w, ";hi");
     let out = w
         .ctl
         .expand_typed(&Typed::new(fired.clone(), false, || true));
     assert_eq!(out, TypedOutcome::Expanded(UseResult::NeedsAnswers));
-    assert_eq!(
-        backspaces_sent(&mut w)[0],
-        snipdeck_platform::keys::backspaces(3),
-        "the typed code is gone before the form opens"
-    );
     assert!(w.ctl.fill().is_some());
     assert_eq!(
-        uses(&w, w.ids[3]),
-        0,
-        "not used until the form is submitted"
+        backspaces_sent(&mut w),
+        Vec::<Vec<KeyEvent>>::new(),
+        "the typed code stays until the form is confirmed"
     );
+    assert_eq!(uses(&w, w.ids[3]), 0, "not used until the form is submitted");
+    w.ctl.submit_fill(&["Sam".to_owned()]);
+    let sent = backspaces_sent(&mut w);
+    assert_eq!(sent.len(), 1, "erase and paste in one injection");
+    assert!(sent[0].starts_with(&snipdeck_platform::keys::backspaces(3)));
+    assert_eq!(uses(&w, w.ids[3]), 1);
+}
+
+#[test]
+fn a_cancelled_fill_form_erases_nothing_and_later_fills_do_not_erase() {
+    let mut w = typing_world(3, ";hi");
+    let fired = typed(&w, ";hi");
+    w.ctl.expand_typed(&Typed::new(fired, false, || true));
+    w.ctl.cancel_fill();
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+    // The same template used by hand afterwards must not erase what the user never typed.
+    assert_eq!(
+        w.ctl.use_item(w.ids[3], UseMode::Paste),
+        UseResult::NeedsAnswers
+    );
+    w.ctl.submit_fill(&["Sam".to_owned()]);
+    let sent = backspaces_sent(&mut w);
+    assert_eq!(sent.len(), 1);
+    assert!(!sent[0].starts_with(&snipdeck_platform::keys::backspaces(1)));
+}
+
+#[test]
+fn a_fill_form_confirmed_in_another_app_erases_nothing() {
+    let mut w = typing_world(3, ";hi");
+    let fired = typed(&w, ";hi");
+    w.ctl.expand_typed(&Typed::new(fired, false, || true));
+    let mut elsewhere = outlook();
+    elsewhere.app = "other.exe".into();
+    w.targets.set(Some(elsewhere));
+    w.ctl.submit_fill(&["Sam".to_owned()]);
+    for batch in backspaces_sent(&mut w) {
+        assert!(!batch.starts_with(&snipdeck_platform::keys::backspaces(1)));
+    }
 }
 
 #[test]
@@ -984,6 +1016,41 @@ fn a_key_after_the_fire_erases_nothing() {
     assert_eq!(out, TypedOutcome::Skipped);
     assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
     assert_eq!(uses(&w, w.ids[1]), 0);
+}
+
+#[test]
+fn a_key_typed_while_the_clipboard_is_confirmed_sends_nothing() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    // Current when the controller first asks, stale by the time the keys are about to go out.
+    let asked = std::sync::atomic::AtomicUsize::new(0);
+    let typed = Typed::new(fired, false, move || {
+        asked.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0
+    });
+    let out = w.ctl.expand_typed(&typed);
+    assert_eq!(out, TypedOutcome::Skipped);
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+    assert_eq!(uses(&w, w.ids[1]), 0, "not counted");
+}
+
+#[test]
+fn another_window_in_front_before_the_keys_go_out_sends_nothing() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    // The user switches window during the clipboard check: the flag is raised on the second ask.
+    let raised = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let mut other = outlook();
+    other.app = "other.exe".into();
+    w.targets.switch_when(std::sync::Arc::clone(&raised), other);
+    let asked = std::sync::atomic::AtomicUsize::new(0);
+    let typed = Typed::new(fired, false, move || {
+        if asked.fetch_add(1, std::sync::atomic::Ordering::SeqCst) > 0 {
+            raised.store(true, std::sync::atomic::Ordering::SeqCst);
+        }
+        true
+    });
+    assert_eq!(w.ctl.expand_typed(&typed), TypedOutcome::Skipped);
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
 }
 
 #[test]
@@ -1011,14 +1078,17 @@ fn a_trigger_changed_since_the_fire_does_not_expand() {
 }
 
 #[test]
-fn the_visible_panel_gets_no_expansion() {
+fn an_unpinned_panel_that_is_shown_does_not_stop_an_expansion_in_another_app() {
     let mut w = typing_world(1, ";two");
     let fired = typed(&w, ";two");
     w.ctl.on_top = false;
     w.ctl.show();
+    assert!(!w.ctl.own_window_active);
     let out = w.ctl.expand_typed(&Typed::new(fired, false, || true));
-    assert_eq!(out, TypedOutcome::Skipped);
-    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+    assert_eq!(
+        out,
+        TypedOutcome::Expanded(UseResult::Done(UseOutcome::Pasted))
+    );
 }
 
 // ---- Suggest as you type (slice 6) ----------------------------------------------------------
@@ -1044,7 +1114,6 @@ fn suggest_world(code: &str) -> (World, crate::host::FakeTyping) {
         .store
         .set_trigger(w.ids[1], Some(&trigger))
         .expect("set trigger");
-    w.ctl.hide();
     w.targets.set_caret(Some(CARET));
     (w, typing)
 }
@@ -1074,6 +1143,15 @@ fn suggestions_alone_install_the_hook_and_hand_over_the_candidates() {
         Some(&false),
         "and off again"
     );
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+}
+
+#[test]
+fn with_only_suggestions_on_a_complete_trigger_never_expands() {
+    let (mut w, _) = suggest_world(";two");
+    assert!(!w.ctl.settings().expand_triggers);
+    let typed = suggestion(&w, ";two", 4, false);
+    assert_eq!(w.ctl.expand_typed(&typed), TypedOutcome::Skipped);
     assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
 }
 

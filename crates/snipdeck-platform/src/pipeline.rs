@@ -121,6 +121,9 @@ pub enum Error {
     /// Windows refused the injected input.
     #[error("key injection failed: {0}")]
     Input(String),
+    /// The use was called off before any key went out (the user typed on or switched window).
+    #[error("the use was called off")]
+    Superseded,
 }
 
 /// The platform services a use needs.
@@ -146,22 +149,28 @@ pub fn use_item<C: Clipboard, K: Keyboard, T: Timing>(
     mode: UseMode,
     route: &Route,
 ) -> Result<UseOutcome, Error> {
-    use_item_erasing(env, payload, mode, route, 0)
+    use_item_erasing(env, payload, mode, route, 0, &|| true)
 }
 
 /// [`use_item`] for a typed trigger: when the item is pasted, `erase` Backspaces go out in the
 /// same injection as the paste key, so they are sent only once the clipboard holds the item.
 /// A use that fails first (the clipboard is busy) erases nothing, and a copy erases nothing.
 ///
+/// `proceed` is asked once more right before the keys go out (after the clipboard write was
+/// confirmed, which can take a while): if it says no, nothing is sent and the clipboard is put
+/// back.
+///
 /// # Errors
 ///
-/// [`Error::Clipboard`] if not even a copy was possible.
+/// [`Error::Clipboard`] if not even a copy was possible; [`Error::Superseded`] if `proceed` said
+/// no.
 pub fn use_item_erasing<C: Clipboard, K: Keyboard, T: Timing>(
     env: &mut Env<'_, C, K, T>,
     payload: &Payload,
     mode: UseMode,
     route: &Route,
     erase: usize,
+    proceed: &dyn Fn() -> bool,
 ) -> Result<UseOutcome, Error> {
     let payload = if mode == UseMode::PastePlain {
         payload.plain_text()
@@ -177,7 +186,7 @@ pub fn use_item_erasing<C: Clipboard, K: Keyboard, T: Timing>(
             env.clipboard.write_persistent(&payload)?;
             Ok(copy_outcome(reason))
         }
-        (_, Route::Paste { key }) => paste(env, &payload, *key, erase),
+        (_, Route::Paste { key }) => paste(env, &payload, *key, erase, proceed),
     }
 }
 
@@ -192,6 +201,7 @@ fn paste<C: Clipboard, K: Keyboard, T: Timing>(
     payload: &Payload,
     key: PasteKey,
     erase: usize,
+    proceed: &dyn Fn() -> bool,
 ) -> Result<UseOutcome, Error> {
     // A failed snapshot only costs the restore; the paste itself still works, but the outcome says
     // the item was left on the clipboard so a sensitive item can still be cleared later.
@@ -213,6 +223,14 @@ fn paste<C: Clipboard, K: Keyboard, T: Timing>(
         ));
     }
 
+    if !proceed() {
+        // The user typed on or changed window while we waited: Backspaces now would erase the
+        // wrong text. Put the clipboard back and send nothing.
+        if let Some(snapshot) = snapshot {
+            let _ = env.clipboard.restore(snapshot, written);
+        }
+        return Err(Error::Superseded);
+    }
     let mut events = crate::keys::backspaces(erase);
     events.extend(paste_sequence(env.keyboard.held_modifiers(), key));
     if env.keyboard.send(&events).is_err() {
@@ -295,7 +313,7 @@ mod tests {
                 keyboard: &mut self.keyboard,
                 timing: &mut self.timing,
             };
-            use_item_erasing(&mut env, &text_and_html(), mode, route, erase)
+            use_item_erasing(&mut env, &text_and_html(), mode, route, erase, &|| true)
         }
     }
 
@@ -314,6 +332,22 @@ mod tests {
         let sent = &w.keyboard.sent[0];
         assert_eq!(&sent[..6], &crate::keys::backspaces(3)[..]);
         assert!(sent.len() > 6, "the paste chord follows the Backspaces");
+    }
+
+    #[test]
+    fn a_use_called_off_before_the_keys_go_out_sends_nothing_and_restores_the_clipboard() {
+        let mut w = World::new();
+        let mut env = Env {
+            clipboard: &mut w.clipboard,
+            keyboard: &mut w.keyboard,
+            timing: &mut w.timing,
+        };
+        let out = use_item_erasing(&mut env, &text_and_html(), UseMode::Paste, &PASTE, 3, &|| {
+            false
+        });
+        assert_eq!(out, Err(Error::Superseded));
+        assert!(w.keyboard.sent.is_empty(), "no Backspace, no paste key");
+        assert_eq!(w.clipboard.log, ["snapshot", "transient:2", "restore"]);
     }
 
     #[test]

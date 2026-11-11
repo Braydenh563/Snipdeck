@@ -297,6 +297,9 @@ pub struct FakeTargets {
     caret: Rc<Cell<Option<ScreenRect>>>,
     cursor: Rc<Cell<Option<(i32, i32)>>>,
     monitors: Rc<RefCell<Vec<crate::frame::Monitor>>>,
+    /// A Target change that happens once the flag is raised (from another thread, as a typed
+    /// key would be).
+    switch: Rc<RefCell<Option<(std::sync::Arc<std::sync::atomic::AtomicBool>, Option<Target>)>>>,
 }
 
 impl FakeTargets {
@@ -309,7 +312,13 @@ impl FakeTargets {
             caret: Rc::default(),
             cursor: Rc::default(),
             monitors: Rc::default(),
+            switch: Rc::default(),
         }
+    }
+
+    /// Changes the Target to `target` the first time it is read after `flag` is raised.
+    pub fn switch_when(&self, flag: std::sync::Arc<std::sync::atomic::AtomicBool>, target: Target) {
+        *self.switch.borrow_mut() = Some((flag, Some(target)));
     }
 
     /// Adds a monitor [`monitor_at`](TargetSource::monitor_at) can find (none: the host cannot
@@ -342,6 +351,14 @@ impl FakeTargets {
 
 impl TargetSource for FakeTargets {
     fn current(&self) -> Option<Target> {
+        let raised = self
+            .switch
+            .borrow()
+            .as_ref()
+            .is_some_and(|(flag, _)| flag.load(std::sync::atomic::Ordering::SeqCst));
+        if raised && let Some((_, target)) = self.switch.borrow_mut().take() {
+            *self.current.borrow_mut() = target;
+        }
         self.current.borrow().clone()
     }
 

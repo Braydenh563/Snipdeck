@@ -15,7 +15,7 @@ use snipdeck_platform::{
     route::{Route, ScreenRect},
 };
 
-use super::{Controller, Library, UseResult};
+use super::{Controller, Library, UseResult, use_ctl::Erasing};
 use crate::{
     host::{ClipboardText, TypingControl},
     typing_worker::Typed,
@@ -144,8 +144,6 @@ where
         if !enabled
             || typed.password
             || self.own_window_active
-            // The Panel is in use (a pinned one is not: the probe covers its search box).
-            || (self.visible && !self.on_top)
             || self.picker.is_some()
             || self.fill.is_some()
         {
@@ -180,13 +178,22 @@ where
             return TypedOutcome::Skipped;
         }
         // The Backspaces go out with the paste key, once the item can be pasted.
-        TypedOutcome::Expanded(self.run_use_erasing(
+        let fresh = || typed.still_current();
+        let erase = Erasing {
+            chars: fired.chars,
+            app: self.model.target().map(|t| t.app.clone()),
+            fresh: Some(&fresh),
+        };
+        match self.run_use_erasing(
             fired.item,
             UseMode::Paste,
             BTreeMap::new(),
             None,
-            fired.chars,
-        ))
+            Some(erase),
+        ) {
+            UseResult::Cancelled => TypedOutcome::Skipped,
+            result => TypedOutcome::Expanded(result),
+        }
     }
 
     /// A trigger is being typed: whether a hint with the item's title stands at the caret. The

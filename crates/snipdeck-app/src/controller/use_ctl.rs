@@ -12,7 +12,7 @@ use snipdeck_platform::{
 };
 
 use super::{
-    CLIPBOARD_CLEAR_ATTEMPTS, CLIPBOARD_CLEAR_RETRY, ClipboardDigest, Controller, FillSubmission,
+    CLIPBOARD_CLEAR_ATTEMPTS, CLIPBOARD_CLEAR_RETRY, ClipboardDigest, Controller, FillSubmission, views::FillErase,
     Library, PendingClear, REFOCUS_WAIT, StackView, UseResult, failed, neutral,
 };
 use crate::{
@@ -24,6 +24,17 @@ use crate::{
     toast::{self, Toast, ToastKind, ToastMessage},
     usecase::{self, UseError, UseRequest},
 };
+
+/// A typed trigger to erase with a paste.
+pub(super) struct Erasing<'a> {
+    /// Backspaces to send.
+    pub(super) chars: usize,
+    /// The app the trigger was typed into: the paste only goes while it is still in front.
+    pub(super) app: Option<String>,
+    /// `false` once a key was typed after the trigger (none for a confirmed fill form, whose own
+    /// keystrokes the hook also sees).
+    pub(super) fresh: Option<&'a dyn Fn() -> bool>,
+}
 
 impl<S, C, K, T> Controller<S, C, K, T>
 where
@@ -53,6 +64,7 @@ where
     /// the window it came from.
     pub fn open_picker(&mut self) {
         self.fill = None;
+        self.fill_erase = None;
         self.on_target_changed();
         match PickerModel::load_cached(&self.store, self.model.board(), &self.index_cache) {
             Ok(picker) => self.picker = Some(picker),
@@ -161,6 +173,7 @@ where
         let (title, source) =
             usecase::template_source(&self.store, item)?.ok_or(UseError::NotText)?;
         let template = Template::parse(&source)?;
+        self.fill_erase = None;
         self.fill_seq += 1;
         self.fill = Some(FillModel::new(item, mode, title, template).with_transform(transform));
         Ok(())
@@ -182,6 +195,7 @@ where
     /// Closes the fill form without using the template (Esc, the close button) and hands the
     /// focus back to the Target.
     pub fn cancel_fill(&mut self) {
+        self.fill_erase = None;
         if self.fill.take().is_some() {
             self.target.refocus();
         }
@@ -202,6 +216,7 @@ where
             mode: fill.mode(),
             answers: fill.answers(),
             transform: fill.transform(),
+            erase: self.fill_erase.take(),
         };
         self.fill = None;
         Some(submission)
@@ -209,11 +224,17 @@ where
 
     /// Re-runs the use that stopped for answers, now with them.
     pub fn run_fill(&mut self, submission: FillSubmission) -> UseResult {
-        self.run_use(
+        let erase = submission.erase.map(|e| Erasing {
+            chars: e.chars,
+            app: e.app,
+            fresh: None,
+        });
+        self.run_use_erasing(
             submission.item,
             submission.mode,
             submission.answers,
             submission.transform,
+            erase,
         )
     }
 
@@ -473,19 +494,21 @@ where
         answers: BTreeMap<String, String>,
         transform: Option<Transform>,
     ) -> UseResult {
-        self.run_use_erasing(item, mode, answers, transform, 0)
+        self.run_use_erasing(item, mode, answers, transform, None)
     }
 
-    /// [`run_use`](Self::run_use) that also erases `erase` typed characters: with the paste key
-    /// when it can go, or at once when the fill form is to open.
+    /// [`run_use`](Self::run_use) that also erases a typed trigger: with the paste key, in one
+    /// injection, and only if the user has not typed on or changed window by then. A template
+    /// that needs answers erases nothing yet: the erase waits for the confirmed form.
     pub(super) fn run_use_erasing(
         &mut self,
         item: ItemId,
         mode: UseMode,
         answers: BTreeMap<String, String>,
         transform: Option<Transform>,
-        erase: usize,
+        erase: Option<Erasing<'_>>,
     ) -> UseResult {
+        let chars = erase.as_ref().map_or(0, |e| e.chars);
         let route = self.model.route();
         let pasted_into = self.model.target().map(|t| t.app.clone());
         if mode != UseMode::Copy && matches!(route, Route::Paste { .. }) && self.target.refocus() {
@@ -500,7 +523,7 @@ where
             answers,
             transform,
             uuids: None,
-            erase,
+            erase: chars,
             // Only a template that says `{clipboard}` reads what the user copied (A22).
             clipboard_text: if usecase::template_source(&self.store, item)
                 .ok()
@@ -520,7 +543,15 @@ where
             keyboard: &mut self.services.keyboard,
             timing: &mut self.services.timing,
         };
-        match usecase::use_item(&mut self.store, &mut env, &request) {
+        // Asked right before the keys go out: no key typed since the trigger, same app in front.
+        let target = &self.target;
+        let proceed = || {
+            erase.as_ref().is_none_or(|e| {
+                e.fresh.is_none_or(|fresh| fresh())
+                    && target.current().map(|t| t.app) == e.app
+            })
+        };
+        match usecase::use_item_guarded(&mut self.store, &mut env, &request, &proceed) {
             Ok(used) => {
                 if let Some(line) = used.count_failed_line() {
                     crate::trace!("{line}");
@@ -537,16 +568,19 @@ where
                 self.refresh_logged("a paste");
                 UseResult::Done(used.outcome)
             }
+            Err(UseError::Platform(snipdeck_platform::pipeline::Error::Superseded)) => {
+                UseResult::Cancelled
+            }
             Err(UseError::NeedsAnswers(_)) => {
-                if erase > 0 {
-                    // The form takes over the keyboard: the typed code goes now.
-                    let _ = self
-                        .services
-                        .keyboard
-                        .send(&snipdeck_platform::keys::backspaces(erase));
-                }
                 match self.open_fill(item, mode, transform) {
-                    Ok(()) => UseResult::NeedsAnswers,
+                    Ok(()) => {
+                        // The typed code goes when the form is confirmed, not before.
+                        self.fill_erase = erase.filter(|e| e.chars > 0).map(|e| FillErase {
+                            chars: e.chars,
+                            app: e.app,
+                        });
+                        UseResult::NeedsAnswers
+                    }
                     Err(error) => {
                         self.show_toast(toast::after_error(&error));
                         UseResult::Failed

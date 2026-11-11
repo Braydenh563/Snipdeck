@@ -202,6 +202,8 @@ pub struct Controller<S, C, K, T> {
     /// The template fill form, while it is open.
     fill: Option<FillModel>,
     fill_seq: u64,
+    /// A typed trigger to erase once the fill form is confirmed.
+    fill_erase: Option<views::FillErase>,
     /// Where "paste next" is in its run.
     queue: PasteQueue,
     /// The items marked for a paste stack, in marking order.
@@ -416,6 +418,7 @@ where
             toast_seq: 0,
             picker: None,
             fill: None,
+            fill_erase: None,
             fill_seq: 0,
             queue: PasteQueue::default(),
             stack: Vec::new(),
@@ -949,6 +952,7 @@ where
         {
             self.picker = None;
             self.fill = None;
+            self.fill_erase = None;
         }
         self.on_target_changed();
         if self.hides_on_blur() {

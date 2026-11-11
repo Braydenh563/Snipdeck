@@ -117,11 +117,38 @@ where
     K: Keyboard,
     T: Timing,
 {
+    use_item_guarded(store, env, request, &|| true)
+}
+
+/// [`use_item`] that asks `proceed` right before the keys go out and calls the use off when it
+/// says no ([`pipeline::Error::Superseded`], as [`UseError::Platform`]).
+///
+/// # Errors
+///
+/// See [`UseError`].
+pub fn use_item_guarded<S, C, K, T>(
+    store: &mut S,
+    env: &mut Env<'_, C, K, T>,
+    request: &UseRequest,
+    proceed: &dyn Fn() -> bool,
+) -> Result<Used, UseError>
+where
+    S: ItemRepo + BlobStore,
+    C: Clipboard,
+    K: Keyboard,
+    T: Timing,
+{
     let item = store.item(request.item)?;
     let formats = store.formats(request.item)?;
     let (payload, cursor_from_end) = build_payload(store, &item, &formats, request)?;
-    let outcome =
-        pipeline::use_item_erasing(env, &payload, request.mode, &request.route, request.erase)?;
+    let outcome = pipeline::use_item_erasing(
+        env,
+        &payload,
+        request.mode,
+        &request.route,
+        request.erase,
+        proceed,
+    )?;
     if matches!(outcome, UseOutcome::Pasted | UseOutcome::PastedNotRestored)
         && let Some(n) = cursor_from_end.filter(|n| *n > 0)
     {
