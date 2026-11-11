@@ -448,17 +448,8 @@ where
                 self.toggle_stack_mark(id);
                 Vec::new()
             }
-            ItemMenuEntry::MoveUp { enabled } | ItemMenuEntry::MoveDown { enabled } => {
-                let delta = if matches!(entry, ItemMenuEntry::MoveUp { .. }) {
-                    -1
-                } else {
-                    1
-                };
-                if is_header {
-                    self.choose_group_entry(id, entry);
-                } else if enabled {
-                    self.panel_move_item(id, delta);
-                }
+            ItemMenuEntry::MoveUp { .. } | ItemMenuEntry::MoveDown { .. } => {
+                self.choose_move(id, entry, is_header);
                 Vec::new()
             }
             ItemMenuEntry::Trash => {
@@ -480,6 +471,24 @@ where
             | ItemMenuEntry::Colour
             | ItemMenuEntry::PasteAs
             | ItemMenuEntry::Separator => Vec::new(),
+        }
+    }
+
+    /// The item menu's Move up / Move down on item or header `id`.
+    fn choose_move(&mut self, id: ItemId, entry: ItemMenuEntry, is_header: bool) {
+        let (ItemMenuEntry::MoveUp { enabled } | ItemMenuEntry::MoveDown { enabled }) = entry
+        else {
+            return;
+        };
+        let delta = if matches!(entry, ItemMenuEntry::MoveUp { .. }) {
+            -1
+        } else {
+            1
+        };
+        if is_header {
+            self.choose_group_entry(id, entry);
+        } else if enabled {
+            self.panel_move_item(id, delta);
         }
     }
 
