@@ -1167,7 +1167,7 @@ fn undo_cannot_bring_a_board_back_past_the_free_limit() {
         .main_screen()
         .rows
         .iter()
-        .position(|r| Trashable::from(r.key) == fifth)
+        .position(|r| r.key.trashable() == Some(fifth))
         .unwrap();
     ctl.main_action(MainAction::Restore, at);
     let screen = ctl.main_screen();
