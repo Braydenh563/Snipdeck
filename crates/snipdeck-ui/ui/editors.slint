@@ -321,7 +321,9 @@ component ColourPicker inherits Rectangle {
     accessible-label: root.label;
 
     HorizontalLayout {
-        spacing: Space.s1;
+        // The targets grow with the text size and the window cannot get wider than its minimum, so the gap shrinks
+        // by the same factor: nine targets at 2.25x still end inside the window (final-audit-2 re-audit).
+        spacing: Space.s1 / SystemLook.text-scale;
         alignment: start;
         NoColour {
             label: root.none-label;
@@ -1098,7 +1100,8 @@ export component ItemEditor inherits Window {
                     more-box := Rectangle {
                         height: root.more-shown ? more-col.preferred-height : 0px;
                         visible: root.more-shown;
-                        clip: true;
+                        // No `clip`: it sits between these fields and the scroll view, so Slint skipped them when Tab-ing
+                        // while they were scrolled out of view (the Trigger field at 2.25x). Hidden, `visible` covers it.
                         more-col := VerticalLayout {
                             width: parent.width;
                             spacing: Space.s4;

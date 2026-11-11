@@ -140,6 +140,43 @@ fn interactive_elements_are_named_big_enough_and_inside_the_window() {
                 &format!("settings at {s}x"),
                 &mut checked,
             ));
+            // The Typing section alone (the search leaves it on screen), with typing triggers available and not.
+            for available in [true, false] {
+                use slint::Global;
+                let ui = SettingsPage::new().unwrap();
+                ui.global::<SystemLook<'_>>().set_text_scale(s);
+                editor::settings(&ui);
+                ui.set_typing_available(available);
+                let filter = snipdeck_ui::SettingsFilter::get(&ui);
+                filter
+                    .on_matches(|text, query| text.to_lowercase().contains(&query.to_lowercase()));
+                filter.set_query("as I type".into());
+                ui.window().set_size(slint::LogicalSize::new(sw, 1800.0));
+                ui.show().unwrap();
+                slint::platform::update_timers_and_animations();
+                all.extend(problems(
+                    &ui,
+                    sw,
+                    &format!("settings typing ({available}) at {s}x"),
+                    &mut checked,
+                ));
+            }
+            // The Trigger field with the one-character warning showing.
+            let ui = ItemEditor::new().unwrap();
+            ui.global::<SystemLook<'_>>().set_text_scale(s);
+            editor::text_item(&ui);
+            ui.set_more_open(true);
+            ui.set_trigger("a".into());
+            let ew = if s > 1.5 { 608.0 } else { w };
+            ui.window().set_size(slint::LogicalSize::new(ew, 1800.0));
+            ui.show().unwrap();
+            slint::platform::update_timers_and_animations();
+            all.extend(problems(
+                &ui,
+                ew,
+                &format!("item editor trigger warning at {s}x"),
+                &mut checked,
+            ));
         }
         assert!(checked > 100, "only {checked} elements were checked");
         assert_eq!(all, Vec::<String>::new());

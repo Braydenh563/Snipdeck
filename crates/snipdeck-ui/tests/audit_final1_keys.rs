@@ -520,3 +520,254 @@ fn fill_form_multiline_and_date_error_fit_at_225() {
         rows.len()
     );
 }
+
+// ---- Re-audit of the typing features (final-audit-2 B3, B6, B8, B9) ---------------------------------------------
+
+const ONE_CHAR_WARNING: &str = "A one-character trigger fires every time you type it, even inside words. Two or more characters are safer.";
+const WINDOWS_ONLY_NOTE: &str = "Typing triggers work on Windows only.";
+const TYPING_TOGGLES: [&str; 2] = [
+    "Expand abbreviations as I type",
+    "Suggest snippets as I type",
+];
+
+fn rel_lum(c: [u8; 3]) -> f64 {
+    let l = |v: u8| {
+        let v = f64::from(v) / 255.0;
+        if v <= 0.03928 {
+            v / 12.92
+        } else {
+            ((v + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    0.2126 * l(c[0]) + 0.7152 * l(c[1]) + 0.0722 * l(c[2])
+}
+
+fn contrast(a: [u8; 3], b: [u8; 3]) -> f64 {
+    let (x, y) = (rel_lum(a), rel_lum(b));
+    (x.max(y) + 0.05) / (x.min(y) + 0.05)
+}
+
+/// Every shown accessible node with the role and label: (label, x, y, w, h) in logical pixels.
+fn nodes<C: ComponentHandle>(
+    h: &Harness<C>,
+    role: i_slint_backend_testing::AccessibleRole,
+) -> Vec<(String, bool, f32, f32, f32, f32)> {
+    let mut seen: Vec<(String, bool, f32, f32, f32, f32)> = Vec::new();
+    for e in i_slint_backend_testing::ElementQuery::from_root(&h.component)
+        .match_descendants()
+        .match_accessible_role(role)
+        .find_all()
+    {
+        let (p, s) = (e.absolute_position(), e.size());
+        if s.width == 0.0 || s.height == 0.0 {
+            continue;
+        }
+        let n = (
+            e.accessible_label()
+                .map(|l| l.to_string())
+                .unwrap_or_default(),
+            e.accessible_enabled().unwrap_or(true),
+            p.x,
+            p.y,
+            s.width,
+            s.height,
+        );
+        if !seen.iter().any(|o| o.0 == n.0 && o.2 == n.2 && o.3 == n.3) {
+            seen.push(n);
+        }
+    }
+    seen
+}
+
+/// Names of the stops Tab visits in one lap.
+fn lap<C: ComponentHandle>(h: &Harness<C>) -> Vec<String> {
+    let w = h.component.window();
+    let _ = snap(h);
+    let mut names: Vec<String> = Vec::new();
+    for _ in 0..200 {
+        tab(w, false);
+        let Some(s) = focused(w) else { continue };
+        if names.contains(&s.name) && names.first() == Some(&s.name) {
+            break;
+        }
+        names.push(s.name);
+    }
+    names
+}
+
+/// The Typing rows of Settings: both toggles are named, inside the window, at least 24 px, and Tab reaches them only
+/// while typing triggers are available; unavailable, they are disabled and the note says why.
+#[test]
+fn settings_typing_section_walk() {
+    use i_slint_backend_testing::AccessibleRole as Role;
+    let mut problems: Vec<String> = Vec::new();
+    for (s, w) in [(1.0f32, 420u32), (2.25, 765)] {
+        for available in [true, false] {
+            let scene = format!("settings typing at {s}x, {available}");
+            let h = Harness::new(SettingsPage::new, w, 1800);
+            scene!(h.component, s);
+            editor::settings(&h.component);
+            h.component.set_typing_available(available);
+            // The search leaves only the Typing section, so its rows are on screen (the tree lists only what is).
+            {
+                use slint::Global;
+                let filter = snipdeck_ui::SettingsFilter::get(&h.component);
+                filter
+                    .on_matches(|text, query| text.to_lowercase().contains(&query.to_lowercase()));
+                filter.set_query("as I type".into());
+            }
+            let _ = h.render_settled();
+            let switches = nodes(&h, Role::Switch);
+            for name in TYPING_TOGGLES {
+                let Some(n) = switches.iter().find(|n| n.0 == name) else {
+                    problems.push(format!("{scene}: no switch named {name:?}"));
+                    continue;
+                };
+                if n.1 != available {
+                    problems.push(format!("{scene}: {name:?} enabled is {}", n.1));
+                }
+                if n.4 < 24.0 || n.5 < 24.0 || n.2 + n.4 > w as f32 + 0.5 {
+                    problems.push(format!(
+                        "{scene}: {name:?} is {:.0}x{:.0} at x {:.0}",
+                        n.4, n.5, n.2
+                    ));
+                }
+            }
+            let note_in_tree = i_slint_backend_testing::ElementQuery::from_root(&h.component)
+                .match_descendants()
+                .find_all()
+                .iter()
+                .any(|e| e.accessible_label().is_some_and(|l| l == WINDOWS_ONLY_NOTE));
+            if note_in_tree == available {
+                problems.push(format!(
+                    "{scene}: the Windows-only note shows is {note_in_tree}"
+                ));
+            }
+            // The nodes above were measured with the search on; the walk is the page as it opens.
+            let walk = Harness::new(SettingsPage::new, w, 900);
+            scene!(walk.component, s);
+            editor::settings(&walk.component);
+            walk.component.set_typing_available(available);
+            let names = lap(&walk);
+            for name in TYPING_TOGGLES {
+                if names.iter().any(|n| n == name) != available {
+                    problems.push(format!("{scene}: Tab reaches {name:?} is {}", !available));
+                }
+            }
+            // The whole lap is clean when they are enabled (ring painted on every stop).
+            if available {
+                let h = Harness::new(SettingsPage::new, w, 900);
+                scene!(h.component, s);
+                editor::settings(&h.component);
+                h.component.set_typing_available(true);
+                let fired = Rc::new(Cell::new(false));
+                let f = fired.clone();
+                h.component.on_close_requested(move || f.set(true));
+                let win = h.component.window();
+                let esc = || esc_fires(win, &fired);
+                problems.extend(audit(&h, &scene, false, 140, &esc));
+            }
+        }
+    }
+    expect_clean(&problems);
+}
+
+/// The one-character trigger warning: its own accessible text node, inside the window at 1x and 2.25x, readable
+/// (>= 4.5:1) in light and dark, gone for two characters, and the Trigger field is a named Tab stop that paints the
+/// focus ring. A Sensitive item shows the explanation and no field.
+#[test]
+fn editor_trigger_warning_is_visible_readable_and_reachable() {
+    use i_slint_backend_testing::AccessibleRole as Role;
+    let mut problems: Vec<String> = Vec::new();
+    for (s, w) in [(1.0f32, 560u32), (2.25, 608)] {
+        for dark in [false, true] {
+            let scene = format!("trigger warning at {s}x dark {dark}");
+            let build = |trigger: &str, sensitive: bool, height: u32| {
+                let h = Harness::new(ItemEditor::new, w, height);
+                scene!(h.component, s);
+                h.component.set_dark(dark);
+                editor::text_item(&h.component);
+                h.component.set_more_open(true);
+                h.component.set_trigger(trigger.into());
+                h.component.set_sensitive(sensitive);
+                h
+            };
+            let h = build("a", false, 4000);
+            let frame = h.render_settled();
+            let found: Vec<_> = nodes(&h, Role::Text)
+                .into_iter()
+                .filter(|n| n.0 == ONE_CHAR_WARNING)
+                .collect();
+            if found.len() != 1 {
+                problems.push(format!("{scene}: {} warning nodes", found.len()));
+            } else {
+                let n = &found[0];
+                if n.2 < 0.0 || n.2 + n.4 > w as f32 + 0.5 {
+                    problems.push(format!(
+                        "{scene}: warning runs from x {:.0} to {:.0} of {w}",
+                        n.2,
+                        n.2 + n.4
+                    ));
+                }
+                let (x0, y0) = (n.2 as u32, n.3 as u32);
+                let (x1, y1) = ((n.2 + n.4) as u32, (n.3 + n.5) as u32);
+                let bg = frame.pixel(x0.saturating_sub(2).min(frame.width - 1), y0);
+                let mut best = 1.0f64;
+                for y in y0..y1.min(frame.height) {
+                    for x in x0..x1.min(frame.width) {
+                        best = best.max(contrast(frame.pixel(x, y), bg));
+                    }
+                }
+                if best < 4.5 {
+                    problems.push(format!(
+                        "{scene}: warning text contrast {best:.2}:1 on {bg:?}"
+                    ));
+                }
+            }
+            // The field is a named stop with the ring.
+            let names = lap(&build("a", false, 900));
+            if !names.iter().any(|n| n == "Trigger") {
+                problems.push(format!(
+                    "{scene}: Tab never reaches the Trigger field: {names:?}"
+                ));
+            }
+            // Two characters: no warning.
+            let h2 = build("ab", false, 4000);
+            let _ = h2.render_settled();
+            if nodes(&h2, Role::Text)
+                .iter()
+                .any(|n| n.0 == ONE_CHAR_WARNING)
+            {
+                problems.push(format!("{scene}: the warning shows for two characters"));
+            }
+            // Sensitive: the field is gone and the reason is said.
+            let h3 = build("", true, 4000);
+            let _ = h3.render_settled();
+            if nodes(&h3, Role::TextInput).iter().any(|n| n.0 == "Trigger") {
+                problems.push(format!(
+                    "{scene}: a Sensitive item still shows the Trigger field"
+                ));
+            }
+        }
+    }
+    expect_clean(&problems);
+}
+
+/// The headless harness cannot read `accessible-live-region`, so the markers that make a screen reader announce the
+/// typing messages are pinned in the sources: the one-character warning (polite) and the suggest hint (polite).
+#[test]
+fn typing_messages_are_live_regions_in_the_source() {
+    let ui = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("ui");
+    let form = std::fs::read_to_string(ui.join("components/form.slint")).unwrap();
+    let warning = form.split("if root.warning != \"\"").nth(1).unwrap();
+    let warning = warning.split("if root.error").next().unwrap();
+    assert!(
+        warning.contains("accessible-live-region: polite;"),
+        "FormField warning is not a polite live region"
+    );
+    let hint = std::fs::read_to_string(ui.join("suggest_hint.slint")).unwrap();
+    assert!(
+        hint.contains("accessible-live-region: polite;"),
+        "the suggest hint is not a live region"
+    );
+}
