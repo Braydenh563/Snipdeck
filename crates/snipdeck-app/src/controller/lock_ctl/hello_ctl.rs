@@ -93,6 +93,12 @@ where
             self.lock.hello.availability_generation.wrapping_add(1);
     }
 
+    /// Whether Hello has answered the availability question since it was attached.
+    #[must_use]
+    pub fn hello_availability_known(&self) -> bool {
+        self.lock.hello.availability.is_some()
+    }
+
     /// The first part of asking Hello whether it can be used (the app does it at start-up and
     /// when Settings or the unlock window opens, so a PIN added or removed meanwhile shows).
     pub fn begin_hello_refresh(&mut self) -> Option<HelloJob> {
@@ -219,10 +225,15 @@ where
     ///
     /// [`HelloFailure`] when Hello gave nothing: the copy is dropped and the password remains.
     pub fn finish_hello(&mut self, done: HelloDone) -> Result<(), HelloFailure> {
-        if let Ok(Product::Availability(availability)) = done.outcome {
+        if done.is_availability() {
             if done.generation != self.lock.hello.availability_generation {
                 return Ok(());
             }
+            // A question that could not be asked (its job panicked) counts as "not usable".
+            let availability = match done.outcome {
+                Ok(Product::Availability(availability)) => availability,
+                _ => HelloAvailability::Unsupported,
+            };
             self.lock.hello.availability = Some(availability);
             if availability != HelloAvailability::Ready {
                 self.lock.hello.drop_copy();
@@ -250,12 +261,9 @@ where
                 Ok(())
             }
             Err(failure) => {
+                // The copy goes, the option stays: a Hello that changed (a PIN reset makes a new
+                // credential) is sealed again at the next password unlock, which asks it once.
                 self.lock.hello.sealed = None;
-                if failure == HelloFailure::Mismatch {
-                    // The signature no longer opens what it sealed: Hello would fail every time.
-                    self.update_settings(|s| s.hello_unlock = false);
-                    self.lock.hello.enrol = false;
-                }
                 Err(failure)
             }
         }

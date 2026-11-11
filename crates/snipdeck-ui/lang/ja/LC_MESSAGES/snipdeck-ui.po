@@ -3105,9 +3105,6 @@ msgstr "Windows"
 msgid "Windows Hello did not unlock Snipdeck. Use your master password."
 msgstr "Windows Hello では Snipdeck のロックを解除できませんでした。マスターパスワードを使ってください。"
 
-msgid "Windows Hello stopped matching, so it was turned off. Use your master password."
-msgstr "Windows Hello が一致しなくなったため、オフにしました。マスターパスワードを使ってください。"
-
 msgid "Windows accent"
 msgstr "Windows のアクセント"
 

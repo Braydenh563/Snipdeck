@@ -39,7 +39,6 @@ pub fn slint_problem(problem: MasterProblem) -> ui::MasterProblem {
         MasterProblem::Unavailable => ui::MasterProblem::Unavailable,
         MasterProblem::Failed => ui::MasterProblem::Failed,
         MasterProblem::HelloFailed => ui::MasterProblem::HelloFailed,
-        MasterProblem::HelloOff => ui::MasterProblem::HelloOff,
     }
 }
 
@@ -52,15 +51,22 @@ where
     K: Keyboard + 'static,
     T: Timing + 'static,
 {
-    let job = controller.borrow_mut().begin_hello_refresh();
+    let (job, first) = {
+        let mut ctl = controller.borrow_mut();
+        let first = !ctl.hello_availability_known();
+        (ctl.begin_hello_refresh(), first)
+    };
     let Some(job) = job else {
         return;
     };
     let again = Rc::clone(controller);
-    run_step(controller, Some(job), move |_| {
+    run_step(controller, Some(job), move |answered| {
         // A quick password unlock may have come before Hello's first answer, so nothing was
-        // sealed then: seal the open key now.
-        seal_open_key(&again);
+        // sealed then: seal the open key now. Only that first answer does: opening Settings or the
+        // unlock window later must not put a Hello prompt on screen.
+        if first && answered.is_some() {
+            seal_open_key(&again);
+        }
     });
 }
 
@@ -96,8 +102,20 @@ fn run_step<C, K, T>(
     );
 }
 
-/// Seals the open key under Hello if Hello is on and no copy exists. A seal that fails turns Hello
-/// off, as it does from Settings, so later unlocks do not keep prompting; the password is untouched.
+/// Seals the open key under Hello after a password unlock (what the unlock window does itself);
+/// for a caller that unlocks with the password some other way. UI thread only.
+pub fn seal_after_password<C, K, T>(controller: &Rc<RefCell<Controller<Store, C, K, T>>>)
+where
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    seal_open_key(controller);
+}
+
+/// Seals the open key under Hello if Hello is on and no copy exists. Whatever comes back (cancelled,
+/// failed, removed) changes nothing: the option stays, there is no copy, the password unlocks, and
+/// the next password unlock tries again. A prompt the user cancels never turns Hello off.
 fn seal_open_key<C, K, T>(controller: &Rc<RefCell<Controller<Store, C, K, T>>>)
 where
     C: Clipboard + ClipboardText + 'static,
@@ -105,13 +123,7 @@ where
     T: Timing + 'static,
 {
     let job = controller.borrow_mut().begin_hello_seal();
-    let again = Rc::clone(controller);
-    run_step(controller, job, move |result| {
-        if let Some(Err(_)) = result {
-            let _ = again.borrow_mut().set_hello_unlock(false);
-            redraw_all();
-        }
-    });
+    run_step(controller, job, |_| {});
 }
 
 struct UnlockCore<C, K, T> {
@@ -313,14 +325,9 @@ where
                 // it is, and the field has the focus.
                 None => window.set_focus_request(window.get_focus_request() + 1),
                 // The copy is gone: the password is the way in.
-                Some(Err(failure)) => {
+                Some(Err(_)) => {
                     window.set_hello_available(false);
-                    let problem = if failure == HelloFailure::Mismatch {
-                        MasterProblem::HelloOff
-                    } else {
-                        MasterProblem::HelloFailed
-                    };
-                    Self::refused(&window, problem);
+                    Self::refused(&window, MasterProblem::HelloFailed);
                 }
             }
         });

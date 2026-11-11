@@ -138,8 +138,8 @@ Hello once to sign a fixed challenge (`KeyCredentialManager`, RSA PKCS#1 v1.5, d
 (`store/crypto/hello.rs`, `SealedKey`) into an in-memory copy that also records the time of the
 password unlock. Turning Hello on signs twice (two prompts) and refuses a Hello whose two signatures differ; every later seal (after a password unlock) signs once. A later Hello prompt re-signs the challenge and opens it. A restart
 forgets the copy; after 7 days from the last password unlock (injected clock; a clock set back counts as
-expired) the copy is dropped and the password is asked, without a Hello prompt. Cancel, failure, a removed PIN or a wrong signature fall back to the
-password and drop the copy. Keys and signatures are zeroized after use.
+expired) the copy is dropped and the password is asked, without a Hello prompt. Cancel, failure, a removed PIN or a wrong signature (for example a PIN reset made a new credential) fall back to the
+password and drop the copy; the option stays on and the next password unlock seals a new copy (one prompt). A cancelled or failed seal never turns Hello off, and only the first Hello answer after start-up seals; opening Settings or the unlock window later never prompts. Keys and signatures are zeroized after use.
 
 ## Limits and non-goals
 

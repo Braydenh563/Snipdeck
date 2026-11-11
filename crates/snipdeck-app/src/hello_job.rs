@@ -86,6 +86,9 @@ pub(crate) enum Product {
 /// The outcome of a [`HelloJob`].
 pub struct HelloDone {
     pub(crate) generation: u64,
+    /// Which counter `generation` is from: the availability questions or the steps. Set by the job,
+    /// so a job that panicked or could not start still says which counter to compare with.
+    pub(crate) availability: bool,
     pub(crate) outcome: Result<Product, HelloFailure>,
 }
 
@@ -101,7 +104,7 @@ impl HelloDone {
     /// Whether this answers "can Hello be used" (it has its own generation, apart from the steps).
     #[must_use]
     pub fn is_availability(&self) -> bool {
-        matches!(self.outcome, Ok(Product::Availability(_)))
+        self.availability
     }
 }
 
@@ -152,6 +155,7 @@ impl HelloJob {
     pub fn run(self) -> HelloDone {
         let hello = self.hello;
         let cancel = self.cancel;
+        let availability = matches!(self.work, Work::Availability);
         // Asked at each prompt: a locked library or a given-up step does not wait for a person.
         let sign = |challenge: &[u8]| {
             if cancel.load(Ordering::SeqCst) {
@@ -186,13 +190,17 @@ impl HelloJob {
         };
         HelloDone {
             generation: self.generation,
+            availability,
             outcome,
         }
     }
 
-    fn failed(&self) -> HelloDone {
+    /// The outcome of a job that could not run (its thread could not start, or it panicked).
+    #[must_use]
+    pub fn failed(&self) -> HelloDone {
         HelloDone {
             generation: self.generation,
+            availability: matches!(self.work, Work::Availability),
             outcome: Err(HelloFailure::Failed),
         }
     }
@@ -205,6 +213,36 @@ thread_local! {
     static THREADS: RefCell<bool> = const { RefCell::new(false) };
     static WAITING: RefCell<HashMap<u64, Finish>> = RefCell::new(HashMap::new());
     static NEXT_TICKET: RefCell<u64> = const { RefCell::new(0) };
+    static HELD: RefCell<Option<Vec<(HelloJob, Finish)>>> = const { RefCell::new(None) };
+}
+
+/// For tests: from now on the jobs of this thread wait in a queue instead of running, so a test
+/// can finish them in any order (and look at the windows meanwhile).
+pub fn hold_jobs() {
+    HELD.with(|h| *h.borrow_mut() = Some(Vec::new()));
+}
+
+/// For tests: how many jobs wait.
+#[must_use]
+pub fn held_jobs() -> usize {
+    HELD.with(|h| h.borrow().as_ref().map_or(0, Vec::len))
+}
+
+/// For tests: runs the `index`th waiting job and applies its outcome, as the worker would. Returns
+/// whether a job waited at `index`.
+pub fn finish_held(index: usize) -> bool {
+    let held = HELD.with(|h| {
+        h.borrow_mut()
+            .as_mut()
+            .filter(|queue| index < queue.len())
+            .map(|queue| queue.remove(index))
+    });
+    held.map(|(job, finish)| finish(job.run())).is_some()
+}
+
+/// For tests: jobs run before `run_job` returns again; waiting jobs are dropped.
+pub fn release_jobs() {
+    HELD.with(|h| *h.borrow_mut() = None);
 }
 
 /// Runs Hello jobs of this (UI) thread on worker threads instead of the calling thread. The app
@@ -221,6 +259,15 @@ fn deliver(ticket: u64, done: HelloDone) {
 
 /// Runs `job`, then calls `finish` with its outcome on the UI thread.
 pub fn run_job(job: HelloJob, finish: Finish) {
+    let mut pending = Some((job, finish));
+    HELD.with(|h| {
+        if let Some(queue) = h.borrow_mut().as_mut() {
+            queue.extend(pending.take());
+        }
+    });
+    let Some((job, finish)) = pending else {
+        return;
+    };
     if !THREADS.with(|t| *t.borrow()) {
         finish(job.run());
         return;
@@ -232,13 +279,14 @@ pub fn run_job(job: HelloJob, finish: Finish) {
     });
     WAITING.with(|w| w.borrow_mut().insert(ticket, finish));
     let failed = job.failed();
-    let generation = job.generation;
+    let (generation, availability) = (job.generation, failed.availability);
     let spawned = std::thread::Builder::new()
         .name("snipdeck-hello".to_owned())
         .spawn(move || {
             let done = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| job.run()))
                 .unwrap_or_else(|_| HelloDone {
                     generation,
+                    availability,
                     outcome: Err(HelloFailure::Failed),
                 });
             let _ = slint::invoke_from_event_loop(move || deliver(ticket, done));

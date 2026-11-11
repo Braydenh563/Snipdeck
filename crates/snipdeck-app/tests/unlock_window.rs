@@ -395,7 +395,7 @@ fn the_hello_button_unlocks_and_a_cancelled_hello_leaves_the_password() {
 }
 
 #[test]
-fn a_password_unlock_seals_again_and_a_failed_seal_turns_hello_off() {
+fn a_password_unlock_seals_again_and_a_cancelled_seal_keeps_hello_on() {
     on_ui_thread(|| {
         // The password unlocks and Hello is asked once to seal: the next lock offers the button.
         let hello = std::sync::Arc::new(FakeHello::new());
@@ -409,7 +409,8 @@ fn a_password_unlock_seals_again_and_a_failed_seal_turns_hello_off() {
         r.ctl.borrow_mut().lock_now();
         assert!(r.ctl.borrow().hello_unlock_available());
 
-        // Hello cancelled at the seal: the switch goes off, the password unlock stands.
+        // The prompt is cancelled at the seal: the password unlock stands, there is no copy, and
+        // the option stays on, so the next password unlock asks again.
         let hello = std::sync::Arc::new(FakeHello::new());
         let r = rig_with(Some(&hello));
         hello.set_sign(Err(HelloError::Cancelled));
@@ -417,9 +418,141 @@ fn a_password_unlock_seals_again_and_a_failed_seal_turns_hello_off() {
         press(r.ui.window(), "\n");
         settle();
         assert!(!r.ctl.borrow().library_locked());
-        assert!(!r.ctl.borrow().settings().hello_unlock);
+        assert!(
+            r.ctl.borrow().settings().hello_unlock,
+            "a cancel is not a no"
+        );
         r.ctl.borrow_mut().lock_now();
-        assert!(!r.ctl.borrow().hello_unlock_available());
+        assert!(!r.ctl.borrow().hello_unlock_available(), "no copy");
+        hello.set_sign(Ok(()));
+        r.ctl
+            .borrow_mut()
+            .unlock_with_password(password())
+            .expect("password");
+        snipdeck_app::unlock_binding::seal_after_password(&r.ctl);
+        settle();
+        r.ctl.borrow_mut().lock_now();
+        assert!(
+            r.ctl.borrow().hello_unlock_available(),
+            "sealed on the retry"
+        );
+    });
+}
+
+/// A Hello that has not answered yet when the password unlocks (the app asks at start-up).
+fn rig_unanswered() -> (Rig, std::sync::Arc<FakeHello>) {
+    let hello = std::sync::Arc::new(FakeHello::new());
+    let r = rig_with(Some(&hello));
+    r.ctl.borrow_mut().set_hello(hello.clone());
+    (r, hello)
+}
+
+#[test]
+fn a_late_availability_answer_seals_the_open_key_once() {
+    on_ui_thread(|| {
+        let (r, hello) = rig_unanswered();
+        type_text(r.ui.window(), password());
+        press(r.ui.window(), "\n");
+        settle();
+        assert!(!r.ctl.borrow().library_locked());
+        r.ctl.borrow_mut().lock_now();
+        assert!(
+            !r.ctl.borrow().hello_unlock_available(),
+            "nothing was sealed yet"
+        );
+        r.ctl
+            .borrow_mut()
+            .unlock_with_password(password())
+            .expect("password");
+
+        snipdeck_app::hello_job::hold_jobs();
+        snipdeck_app::unlock_binding::refresh_hello(&r.ctl);
+        assert_eq!(snipdeck_app::hello_job::held_jobs(), 1, "the question");
+        let before = hello.prompts();
+        assert!(snipdeck_app::hello_job::finish_held(0), "a job waits");
+        assert_eq!(snipdeck_app::hello_job::held_jobs(), 1, "then the seal");
+        assert!(snipdeck_app::hello_job::finish_held(0), "a job waits");
+        snipdeck_app::hello_job::release_jobs();
+        assert_eq!(hello.prompts(), before + 1);
+        r.ctl.borrow_mut().lock_now();
+        assert!(r.ctl.borrow().hello_unlock_available());
+    });
+}
+
+#[test]
+fn opening_settings_later_does_not_put_a_hello_prompt_on_screen() {
+    on_ui_thread(|| {
+        // Hello is on and answered, there is no copy (the seal was cancelled), the library is open.
+        let hello = std::sync::Arc::new(FakeHello::new());
+        let r = rig_with(Some(&hello));
+        hello.set_sign(Err(HelloError::Cancelled));
+        type_text(r.ui.window(), password());
+        press(r.ui.window(), "\n");
+        settle();
+        hello.set_sign(Ok(()));
+        let before = hello.prompts();
+        snipdeck_app::unlock_binding::refresh_hello(&r.ctl);
+        assert_eq!(
+            hello.prompts(),
+            before,
+            "a refresh only asks if Hello is ready"
+        );
+        assert!(r.ctl.borrow().settings().hello_unlock);
+    });
+}
+
+#[test]
+fn the_outcome_of_a_step_given_up_on_shows_no_hello_error() {
+    on_ui_thread(|| {
+        let hello = std::sync::Arc::new(FakeHello::new());
+        let r = rig_with(Some(&hello));
+        snipdeck_app::hello_job::hold_jobs();
+        hello_button(&r.ui)
+            .expect("button")
+            .invoke_accessible_default_action();
+        assert_eq!(
+            snipdeck_app::hello_job::held_jobs(),
+            1,
+            "Hello is being asked"
+        );
+        // The step is given up on while the prompt is up (the plan changed, the copy goes).
+        r.ctl
+            .borrow_mut()
+            .change_plan(Entitlements::new(Tier::Free));
+        assert!(snipdeck_app::hello_job::finish_held(0), "a job waits");
+        snipdeck_app::hello_job::release_jobs();
+        settle();
+        assert!(r.ctl.borrow().library_locked());
+        assert!(
+            !has_text(
+                &r.ui,
+                "Windows Hello did not unlock Snipdeck. Use your master password."
+            ),
+            "a dropped step is not reported as a failure"
+        );
+        type_text(r.ui.window(), password());
+        assert_eq!(r.ui.get_password(), password(), "the field has the focus");
+    });
+}
+
+#[test]
+fn an_older_availability_answer_is_dropped_by_the_binding() {
+    on_ui_thread(|| {
+        let hello = std::sync::Arc::new(FakeHello::new());
+        let r = rig_with(Some(&hello));
+        snipdeck_app::hello_job::hold_jobs();
+        snipdeck_app::unlock_binding::refresh_hello(&r.ctl);
+        snipdeck_app::unlock_binding::refresh_hello(&r.ctl);
+        assert_eq!(snipdeck_app::hello_job::held_jobs(), 2);
+        // The newer question answers first (ready), then the older one answers late (no PIN).
+        assert!(snipdeck_app::hello_job::finish_held(1), "a job waits");
+        hello.set_availability(HelloAvailability::NotSetUp);
+        assert!(snipdeck_app::hello_job::finish_held(0), "a job waits");
+        snipdeck_app::hello_job::release_jobs();
+        assert!(
+            r.ctl.borrow().hello_offered(),
+            "the late, older answer must not replace the newer one"
+        );
     });
 }
 

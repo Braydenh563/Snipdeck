@@ -1386,11 +1386,19 @@ mod hello {
         assert_eq!(open_by_hello(&mut r), Err(HelloFailure::Mismatch));
         assert!(r.ctl.library_locked());
         assert!(
-            !r.ctl.settings().hello_unlock,
-            "a Hello that stopped matching is turned off, not asked again and again"
+            r.ctl.settings().hello_unlock,
+            "the option stays: the next password unlock seals the new credential"
         );
-        assert!(!r.ctl.hello_unlock_available());
+        assert!(!r.ctl.hello_unlock_available(), "the old copy is gone");
         r.ctl.unlock_with_password(password()).expect("password");
+        let job = r
+            .ctl
+            .begin_hello_seal()
+            .expect("sealed again after the password");
+        r.ctl.finish_hello(job.run()).expect("sealed");
+        r.ctl.lock_now();
+        assert!(r.ctl.hello_unlock_available());
+        open_by_hello(&mut r).expect("the new credential opens it");
 
         let (mut r, hello) = locked_with_hello();
         hello.set_sign(Err(HelloError::Removed));
@@ -1408,6 +1416,39 @@ mod hello {
         assert_eq!(r.ctl.finish_hello(job.run()), Err(HelloFailure::Failed));
         r.ctl.lock_now();
         assert!(!r.ctl.hello_unlock_available());
+    }
+
+    #[test]
+    fn a_job_that_could_not_run_is_tagged_with_its_own_counter() {
+        let hello = fake();
+        let mut r = with_password(Tier::Pro);
+        r.ctl.set_hello(hello.clone());
+        let ask = r.ctl.begin_hello_refresh().expect("a Hello");
+        assert!(ask.failed().is_availability());
+        attach(&mut r.ctl, &hello);
+        let step = r.ctl.set_hello_unlock(true).expect("a step");
+        assert!(!step.failed().is_availability());
+    }
+
+    #[test]
+    fn an_availability_failure_never_stands_in_for_a_step() {
+        let hello = fake();
+        let mut r = with_password(Tier::Pro);
+        attach(&mut r.ctl, &hello);
+        let step = r.ctl.set_hello_unlock(true).expect("a step");
+        // The step is under way; an availability question fails (its job panicked) meanwhile.
+        let ask = r.ctl.begin_hello_refresh().expect("a Hello");
+        let failed = ask.failed();
+        assert!(!r.ctl.hello_stale(&failed), "it is the newest question");
+        r.ctl.finish_hello(failed).expect("recorded as not usable");
+        assert!(
+            !r.ctl.hello_offered(),
+            "a question that failed offers nothing"
+        );
+        // Hello is not usable now, so the step under way is given up on: its late outcome is
+        // dropped, not mistaken for (or by) the availability answer.
+        let late = step.run();
+        assert!(r.ctl.hello_stale(&late));
     }
 
     #[test]
