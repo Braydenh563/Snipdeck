@@ -45,6 +45,8 @@ resumed: 2026-11-09 after idle-guard stop during a long gate run (commits c7f28a
 - [ ] Groups in Main review fixes (payload drag, label filter Ctrl+G, Alt+arrow by headers, per-surface rename, tile button) -> sweep worker, claude/v11-groups-fix
 - [x] Groups a11y (Alt+Up/Down, header keys, window tests) merged (b2c1b01)
 - [x] Groups measurements (tree, contrast, focus ring, 2.25x/320px): all pass; members say n of m (merged)
+- [ ] Blind-test fixes: README hotkeys, trigger/palette/groups wording, guide -> typing worker claude/v11-learn; Hello prerequisites -> Hello worker claude/v11-hello-learn; Panel header menu fold/move -> groups worker claude/v11-header-menu
+- [ ] ux-auditor findings (running)
 - [ ] Final: full gate, polish pass (ux-auditor + blind-tester on Panel, Settings, palette, shortcuts, toasts), docs, morning summary
 - [x] v1.1 light lane: slice 9 serde-saphyr + 3a groups data (merged ed7528b)
 - [x] v1.1 slice 5a triggers data (merged)
