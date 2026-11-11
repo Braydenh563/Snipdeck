@@ -68,3 +68,4 @@ date | item | type | rung | rework | note
 2026-11-11 | v1.1 groups inside a list (3b UI) | feature | sonnet | 2 | 
 2026-11-11 | Blind-test UI fixes: Supporter marks, licence route | ui | sonnet | 0 | 
 2026-11-11 | Editor footer reflow + importer note i18n | ui | sonnet | 0 | 
+2026-11-11 | Audit 1b keyboard walk merge (Tab-order fixes, goldens) | review | opus | 2 | 

@@ -2,8 +2,10 @@
 // Flickable and inside a conditional. Not shown by the app.
 import { TextField } from "../components/text_field.slint";
 import { Button } from "../components/button.slint";
+import { Theme } from "../theme.slint";
 
 export component FocusProbePlain inherits Window {
+    background: Theme.bg-app;
     VerticalLayout {
         Button { text: "One"; }
         TextField { label: "Field"; }
@@ -12,6 +14,7 @@ export component FocusProbePlain inherits Window {
 }
 
 export component FocusProbeFlick inherits Window {
+    background: Theme.bg-app;
     Flickable {
         VerticalLayout {
             Button { text: "One"; }
@@ -22,6 +25,7 @@ export component FocusProbeFlick inherits Window {
 }
 
 export component FocusProbeConditional inherits Window {
+    background: Theme.bg-app;
     in property <bool> show: true;
     VerticalLayout {
         Button { text: "One"; }
@@ -32,6 +36,7 @@ export component FocusProbeConditional inherits Window {
 
 // A text field scrolled out of a small Flickable (Settings, item editor): Tab must still reach it.
 export component FocusProbeScrolled inherits Window {
+    background: Theme.bg-app;
     width: 300px;
     height: 60px;
     Flickable {
@@ -50,6 +55,7 @@ export component FocusProbeScrolled inherits Window {
 
 // A clipping Rectangle between a control and the scroll view hides the control from Tab while it is scrolled away.
 export component FocusProbeClippedSlot inherits Window {
+    background: Theme.bg-app;
     width: 300px;
     height: 60px;
     Flickable {
@@ -72,6 +78,7 @@ export component FocusProbeClippedSlot inherits Window {
 
 // Cards from a `for` in a Flickable, most of them scrolled away.
 export component FocusProbeCards inherits Window {
+    background: Theme.bg-app;
     width: 300px;
     height: 120px;
     Flickable {

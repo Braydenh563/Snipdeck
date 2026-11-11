@@ -35,7 +35,9 @@ resumed: 2026-11-09 after idle-guard stop during a long gate run (commits c7f28a
 - [ ] v1.1: suggest-as-you-type at the caret (opt-in) [typing worker], rich paste [done 7], Windows Hello unlock -> worker session_01NKjURtLEn1uEjCJX5KgxGA, branch claude/v11-hello (c6f30f0: 4 MEDIUM 5 LOW; 34993ba re-review: 1 MEDIUM 3 LOW + 2 partial sent back); item 6 split: suggest UI claude/v11-suggest (Hello worker), hook/ctl (typing worker) [b71810a re-reviewed 08:10: 1 MEDIUM, 4 LOW sent back]
 - [x] Polish: tips pictures end on row edges, distinct Show Panel icon, scroll-focus tests (merged dc432fe); final audit 1: min window widths follow text size (merged db6cab3)
 - [x] Align placeholder chip column (merged 07:30)
-- [ ] Audit 1b keyboard walk -> audit worker, branch claude/v11-audit
+- [x] Audit 1b keyboard walk -> audit worker, branch claude/v11-audit (merged fb9209c; goldens after the Tab-order fixes)
+- [ ] Final audit 2 (Hello + typing): report docs/reviews/final-audit-2.md; Hello A1/A5/A7/A8 -> Hello worker, typing B3-B10 -> typing worker
+- [ ] Groups a11y (Alt+Up/Down, header keys, window tests) -> Hello worker, claude/v11-groups-a11y
 - [ ] Final: full gate, polish pass (ux-auditor + blind-tester on Panel, Settings, palette, shortcuts, toasts), docs, morning summary
 - [x] v1.1 light lane: slice 9 serde-saphyr + 3a groups data (merged ed7528b)
 - [x] v1.1 slice 5a triggers data (merged)

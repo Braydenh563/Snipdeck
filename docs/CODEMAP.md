@@ -6950,9 +6950,6 @@ whole_window | crates/snipdeck-ui/src/damage.rs:11
 
 cjk_font_candidates | crates/snipdeck-ui/src/fonts.rs:10
 cjk_font_family | crates/snipdeck-ui/src/fonts.rs:38
-tests | crates/snipdeck-ui/src/fonts.rs:47
-launch_locales_map_to_the_families_of_the_design | crates/snipdeck-ui/src/fonts.rs:51
-the_first_installed_family_wins_and_none_means_no_change | crates/snipdeck-ui/src/fonts.rs:64
 
 ### crates/snipdeck-ui/src/layout.rs
 
@@ -6983,13 +6980,6 @@ is_empty | crates/snipdeck-ui/src/selection.rs:92
 indices | crates/snipdeck-ui/src/selection.rs:97
 apply | crates/snipdeck-ui/src/selection.rs:103
 bind | crates/snipdeck-ui/src/selection.rs:122
-tests | crates/snipdeck-ui/src/selection.rs:166
-picked | crates/snipdeck-ui/src/selection.rs:169
-replace_selects_one_row_and_sets_the_anchor | crates/snipdeck-ui/src/selection.rs:174
-toggle_adds_and_removes_without_touching_the_rest | crates/snipdeck-ui/src/selection.rs:182
-extend_selects_the_range_from_the_anchor_in_both_directions | crates/snipdeck-ui/src/selection.rs:192
-extend_after_a_toggle_starts_from_the_toggled_row | crates/snipdeck-ui/src/selection.rs:203
-out_of_range_indices_are_ignored_and_clamp_drops_vanished_rows | crates/snipdeck-ui/src/selection.rs:212
 
 ### crates/snipdeck-ui/src/symbol_nav.rs
 
@@ -7753,9 +7743,8 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-symbols/tests/lazy.rs` | 1 |
 | `crates/snipdeck-symbols/tests/recents.rs` | 4 |
 | `crates/snipdeck-symbols/tests/search.rs` | 8 |
-| `crates/snipdeck-ui/src/fonts.rs` (inline) | 2 |
-| `crates/snipdeck-ui/src/selection.rs` (inline) | 5 |
 | `crates/snipdeck-ui/tests/audit_final1.rs` | 7 |
+| `crates/snipdeck-ui/tests/audit_final1_keys.rs` | 5 |
 | `crates/snipdeck-ui/tests/audit_final1_tree.rs` | 1 |
 | `crates/snipdeck-ui/tests/button_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/buttons.rs` | 4 |
@@ -7766,9 +7755,11 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/fill.rs` | 10 |
 | `crates/snipdeck-ui/tests/fill_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/focus_scroll_logic.rs` | 1 |
+| `crates/snipdeck-ui/tests/focus_traversal_repro.rs` | 6 |
 | `crates/snipdeck-ui/tests/i18n.rs` | 1 |
 | `crates/snipdeck-ui/tests/inputs.rs` | 17 |
 | `crates/snipdeck-ui/tests/inputs_logic.rs` | 1 |
+| `crates/snipdeck-ui/tests/lib_units.rs` | 7 |
 | `crates/snipdeck-ui/tests/main_window.rs` | 24 |
 | `crates/snipdeck-ui/tests/main_window_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/panel.rs` | 51 |
