@@ -342,9 +342,14 @@ mod tests {
             keyboard: &mut w.keyboard,
             timing: &mut w.timing,
         };
-        let out = use_item_erasing(&mut env, &text_and_html(), UseMode::Paste, &PASTE, 3, &|| {
-            false
-        });
+        let out = use_item_erasing(
+            &mut env,
+            &text_and_html(),
+            UseMode::Paste,
+            &PASTE,
+            3,
+            &|| false,
+        );
         assert_eq!(out, Err(Error::Superseded));
         assert!(w.keyboard.sent.is_empty(), "no Backspace, no paste key");
         assert_eq!(w.clipboard.log, ["snapshot", "transient:2", "restore"]);

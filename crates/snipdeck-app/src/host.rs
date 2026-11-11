@@ -299,7 +299,14 @@ pub struct FakeTargets {
     monitors: Rc<RefCell<Vec<crate::frame::Monitor>>>,
     /// A Target change that happens once the flag is raised (from another thread, as a typed
     /// key would be).
-    switch: Rc<RefCell<Option<(std::sync::Arc<std::sync::atomic::AtomicBool>, Option<Target>)>>>,
+    switch: Rc<
+        RefCell<
+            Option<(
+                std::sync::Arc<std::sync::atomic::AtomicBool>,
+                Option<Target>,
+            )>,
+        >,
+    >,
 }
 
 impl FakeTargets {

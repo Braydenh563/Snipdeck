@@ -241,10 +241,12 @@ mod imp {
                     Err(e) => eprintln!("snipdeck: {e}"),
                 }
             } else if let Some(running) = self.running.take() {
-                // Unhooking drops the event sender, which ends the worker.
+                // Unhooking drops the event sender, which ends the worker. It is not joined: it
+                // may be inside the password probe (which can block on the other app), and this
+                // runs on the UI thread. A late result it still delivers meets the settings gate.
                 running.hook.stop();
                 drop(running.updates);
-                let _ = running.worker.join();
+                drop(running.worker);
             }
         }
 

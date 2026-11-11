@@ -968,7 +968,11 @@ fn a_prompted_trigger_opens_the_fill_form_and_erases_only_once_it_is_confirmed()
         Vec::<Vec<KeyEvent>>::new(),
         "the typed code stays until the form is confirmed"
     );
-    assert_eq!(uses(&w, w.ids[3]), 0, "not used until the form is submitted");
+    assert_eq!(
+        uses(&w, w.ids[3]),
+        0,
+        "not used until the form is submitted"
+    );
     w.ctl.submit_fill(&["Sam".to_owned()]);
     let sent = backspaces_sent(&mut w);
     assert_eq!(sent.len(), 1, "erase and paste in one injection");

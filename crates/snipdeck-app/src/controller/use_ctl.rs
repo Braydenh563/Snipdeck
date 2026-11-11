@@ -12,8 +12,8 @@ use snipdeck_platform::{
 };
 
 use super::{
-    CLIPBOARD_CLEAR_ATTEMPTS, CLIPBOARD_CLEAR_RETRY, ClipboardDigest, Controller, FillSubmission, views::FillErase,
-    Library, PendingClear, REFOCUS_WAIT, StackView, UseResult, failed, neutral,
+    CLIPBOARD_CLEAR_ATTEMPTS, CLIPBOARD_CLEAR_RETRY, ClipboardDigest, Controller, FillSubmission,
+    Library, PendingClear, REFOCUS_WAIT, StackView, UseResult, failed, neutral, views::FillErase,
 };
 use crate::{
     capture::{self, Captured},
@@ -547,8 +547,7 @@ where
         let target = &self.target;
         let proceed = || {
             erase.as_ref().is_none_or(|e| {
-                e.fresh.is_none_or(|fresh| fresh())
-                    && target.current().map(|t| t.app) == e.app
+                e.fresh.is_none_or(|fresh| fresh()) && target.current().map(|t| t.app) == e.app
             })
         };
         match usecase::use_item_guarded(&mut self.store, &mut env, &request, &proceed) {

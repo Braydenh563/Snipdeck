@@ -132,6 +132,14 @@ impl Typist {
         self.matcher.after_expansion(AFTER_EXPANSION);
     }
 
+    /// The expansion `fired` reported was not sent after all (a password box, a key typed on):
+    /// the code stays in the app, so the next trigger needs a boundary after ITS last character,
+    /// not after an inserted text.
+    pub fn not_expanded(&mut self, fired: &Fired) {
+        self.matcher
+            .after_expansion(fired.trigger.as_str().chars().last());
+    }
+
     /// The trigger the typed characters are the start of, if one stands out (see [`prefix_of`]).
     #[must_use]
     pub fn suggestion(&self, candidates: &[Candidate]) -> Option<(ItemId, Trigger, usize)> {
@@ -222,9 +230,13 @@ pub fn run(
                     continue;
                 };
                 if !fresh() {
+                    typist.not_expanded(&fired);
                     continue;
                 }
                 let in_password_box = password();
+                if in_password_box || !fresh() {
+                    typist.not_expanded(&fired);
+                }
                 if fresh() {
                     deliver(Out::Expand(Typed::new(fired, in_password_box, fresh)));
                 }
@@ -233,6 +245,8 @@ pub fn run(
             Err(RecvTimeoutError::Disconnected) => break,
         }
     }
+    // The hook is gone: a hint still on screen must come down.
+    drop_hint(&mut hint, &mut deliver);
 }
 
 /// `Tab` on the hint: hands the suggestion over for insertion. Without a shown hint nothing
@@ -438,6 +452,26 @@ mod tests {
             fires += usize::from(typist.event(TypedEvent::Char(c)).is_some());
         }
         assert_eq!(fires, 2, "a space is a boundary");
+    }
+
+    #[test]
+    fn an_expansion_that_did_not_go_out_leaves_the_boundary_of_the_typed_code() {
+        let item = item_id(1);
+        let mut typist = Typist::new(matcher("brb.", item));
+        let mut fired = None;
+        for c in "brb.".chars() {
+            fired = typist.event(TypedEvent::Char(c)).or(fired);
+        }
+        let fired = fired.expect("fires");
+        assert!(
+            !typist.matcher.typed().1,
+            "an expansion ends in unknown text"
+        );
+        typist.not_expanded(&fired);
+        assert!(
+            typist.matcher.typed().1,
+            "the code stays, and it ended on punctuation"
+        );
     }
 
     #[test]
