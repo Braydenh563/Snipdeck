@@ -295,6 +295,28 @@ fn panel_compact_and_cards_layouts() {
     }
 }
 
+/// Rich paste: an item that keeps HTML or RTF shows a quiet "Formatted" chip left of the stack mark and the actions (the
+/// third row also carries a stack mark, the second is selected with its actions shown).
+#[test]
+fn panel_formatted_rows_show_the_mark() {
+    for (layout, dark, name) in [
+        (PanelLayout::List, false, "panel-formatted-light"),
+        (PanelLayout::List, true, "panel-formatted-dark"),
+        (PanelLayout::Compact, false, "panel-formatted-compact-light"),
+    ] {
+        let h = panel(SIZE, dark);
+        h.component.set_layout(layout);
+        let mut rows = fixture::sample_rows();
+        rows[0].formatted = true;
+        rows[1].formatted = true;
+        rows[2].formatted = true;
+        rows[2].stack_position = 1;
+        fixture::set_rows(&h.component, rows);
+        h.component.set_selected_index(1);
+        assert_golden(name, &render(&h));
+    }
+}
+
 /// The Menu switcher (Panel v2 spec 3): no tab row, "Board · List" in the header, and its menu open.
 #[test]
 fn panel_with_the_menu_switcher_closed_and_open() {

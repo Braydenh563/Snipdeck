@@ -410,6 +410,32 @@ ui_tests! {
         assert_eq!(badges, 2);
     }
 
+    fn a_formatted_item_says_changed_text_loses_its_formatting_and_offers_to_remove_it_alone() {
+        let (ui, log) = item_editor();
+        let notice = "Saving changed text removes the formatting.";
+        let shown = |ui: &ItemEditor| ElementHandle::find_by_accessible_label(ui, notice).count() > 0;
+        assert!(missing(&ui, "Remove formatting, keep the text", AccessibleRole::Button), "a plain item shows neither");
+        assert!(!shown(&ui));
+        ui.set_content("bold words".into());
+        ui.set_saved_content("bold words".into());
+        ui.set_formatted(true);
+        ui.on_remove_formatting_requested({
+            let log = log.clone();
+            move || log.borrow_mut().push("remove-formatting".to_owned())
+        });
+        settle();
+        assert!(!shown(&ui), "no notice while the text is as saved");
+        find(&ui, "Remove formatting, keep the text", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert!(take(&log).iter().any(|l| l == "remove-formatting"));
+        ui.set_content("bolder words".into());
+        settle();
+        assert!(shown(&ui), "the notice appears once the text differs from the saved one");
+        ui.set_formatted(false);
+        settle();
+        assert!(!shown(&ui) && missing(&ui, "Remove formatting, keep the text", AccessibleRole::Button));
+    }
+
     fn the_list_select_opens_in_place_chooses_and_closes_with_escape() {
         let (ui, log) = item_editor();
         let combo = find(&ui, "List", AccessibleRole::Combobox);

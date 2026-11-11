@@ -1,4 +1,4 @@
 # v11-rich (slice 7)
-Done: host read_rich, Clip html/rtf, create_ctl, quick_capture, editor notice+remove formatting, Panel row mark, item-card chip, i18n, wizard 52-53, tests written.
-Next: compile + run tests (app lib, editor_controller, panel/editor window tests), goldens.
+Done: everything in the slice 7 Touches list, tests, i18n (6 locales), wizard 52-53, 3 new goldens.
+Next: coordinator gate (clippy/doc not run here).
 Blocked: nothing.
