@@ -1454,17 +1454,18 @@ where
             return;
         }
         let result = self.act(|ctl| ctl.finish_master(done));
+        if result.is_ok() {
+            // A changed password counts as an unlock: Hello (if on) seals a new copy, whether or
+            // not the Settings window is still there.
+            crate::unlock_binding::seal_open_key(&self.controller);
+        }
         let Some(window) = self.window.upgrade() else {
             return;
         };
         window.set_master_busy(false);
         window.set_master_problem(ui::MasterProblem::None);
         match result {
-            Ok(()) => {
-                window.invoke_close_master();
-                // A changed password counts as an unlock: Hello (if on) seals a new copy.
-                crate::unlock_binding::seal_open_key(&self.controller);
-            }
+            Ok(()) => window.invoke_close_master(),
             Err(problem) => {
                 window.set_master_problem(crate::unlock_binding::slint_problem(problem));
             }

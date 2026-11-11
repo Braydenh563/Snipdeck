@@ -1740,6 +1740,45 @@ mod hello {
     }
 
     #[test]
+    fn a_password_change_while_a_hello_unlock_is_under_way_does_not_turn_hello_off() {
+        let (mut r, _hello) = locked_with_hello();
+        let job = r.ctl.begin_hello_unlock().expect("a Hello step");
+        // The password unlocks (and then changes) while the Hello prompt is up.
+        r.ctl.unlock_with_password(password()).expect("password");
+        let done = job.run();
+        assert!(r.ctl.hello_stale(&done), "the step was given up on");
+        drop(done);
+        assert!(r.ctl.settings().hello_unlock, "Hello stays on");
+        assert!(!r.ctl.hello_turned_off_note());
+        r.ctl
+            .change_master_password(password(), support::pw("c2"), support::pw("c2"))
+            .expect("changed");
+        let seal = r.ctl.begin_hello_seal().expect("a new copy");
+        r.ctl.finish_hello(seal.run()).expect("sealed");
+        assert!(r.ctl.settings().hello_unlock);
+    }
+
+    #[test]
+    fn a_plan_change_or_an_unusable_hello_reverts_a_switch_on_under_way() {
+        for plan_change in [true, false] {
+            let hello = fake();
+            let mut r = with_password(Tier::Pro);
+            attach(&mut r.ctl, &hello);
+            let step = r.ctl.set_hello_unlock(true).expect("step");
+            if plan_change {
+                r.ctl.change_plan(Entitlements::new(Tier::Free));
+            } else {
+                hello.set_availability(HelloAvailability::NotSetUp);
+                refresh(&mut r.ctl);
+            }
+            assert!(!r.ctl.settings().hello_unlock, "plan_change={plan_change}");
+            assert_eq!(r.toast(), Some(ToastMessage::HelloNotTurnedOn));
+            let late = step.run();
+            assert!(r.ctl.hello_stale(&late));
+        }
+    }
+
+    #[test]
     fn the_turned_off_note_is_said_once() {
         let hello = fake();
         let mut r = with_password(Tier::Pro);
