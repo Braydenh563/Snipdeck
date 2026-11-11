@@ -17,11 +17,11 @@ use std::{collections::BTreeSet, path::PathBuf, rc::Rc, sync::Arc};
 use snipdeck_core::{Feature, Format, Formats, Item, ItemId, ItemKind, ListId, Tag, TagId};
 use snipdeck_platform::file_dialog::FilePicker;
 use snipdeck_store::{
-    BlobStore,
+    BlobStore, ItemRepo,
     crypto::{CryptoError, KeyProvider},
 };
 
-use super::{Controller, Library, Toast, ToastKind, ToastMessage};
+use super::{Controller, Library, Toast, ToastKind, ToastMessage, failed};
 use crate::{
     drafts::{Draft, DraftKey, Drafts},
     host::ClipboardText,
