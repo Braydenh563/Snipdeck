@@ -213,3 +213,78 @@ fn alt_arrows_on_a_header_move_the_whole_group_one_step() {
     w.ctl.main_reorder_items(1);
     assert_eq!(shape(&mut w)[0].0, "Group");
 }
+
+#[test]
+fn the_palette_groups_folds_renames_moves_ungroups_and_deletes_like_the_keys() {
+    use crate::commands::{Command, CursorGroup};
+    let mut w = open_replies();
+    // Group the cursor row (Two) from the palette: the cursor item alone, as Ctrl+G does.
+    w.ctl.run_command(Command::GroupItems, 1);
+    assert!(
+        shape(&mut w).iter().any(|r| r.1),
+        "a header appeared: {:?}",
+        shape(&mut w)
+    );
+    w.ctl.group_rename_ended();
+    // Put the cursor on the header (row 1: One, [Group], Two, ...).
+    let head = shape(&mut w).iter().position(|r| r.1).expect("header");
+    w.ctl.main_select(head, SelectMode::Replace);
+    let screen = w.ctl.main_screen();
+    assert_eq!(
+        screen.cursor_group,
+        Some(CursorGroup {
+            up: true,
+            down: true
+        }),
+        "a place above and below"
+    );
+    // Fold and unfold.
+    let rows = screen.rows.len();
+    w.ctl.run_command(Command::FoldGroup, head);
+    assert_eq!(w.ctl.main_screen().rows.len(), rows - 1, "Two is hidden");
+    w.ctl.run_command(Command::FoldGroup, head);
+    assert_eq!(w.ctl.main_screen().rows.len(), rows, "and shown again");
+    // Rename starts the inline edit on that header.
+    w.ctl.run_command(Command::RenameGroup, head);
+    assert_eq!(w.ctl.main_screen().rename_row, Some(head));
+    w.ctl.group_rename_ended();
+    // Move up: the header passes the item above it; the cursor stays on it.
+    w.ctl.run_command(Command::MoveGroupUp, head);
+    let screen = w.ctl.main_screen();
+    assert_eq!(screen.cursor, head - 1);
+    assert!(screen.rows[head - 1].header.is_some());
+    assert_eq!(
+        screen.cursor_group,
+        Some(CursorGroup {
+            up: false,
+            down: true
+        }),
+        "now first"
+    );
+    w.ctl.run_command(Command::MoveGroupDown, head - 1);
+    assert!(w.ctl.main_screen().rows[head].header.is_some());
+    // Ungroup keeps the items; the header goes.
+    w.ctl.run_command(Command::UngroupGroup, head);
+    assert!(shape(&mut w).iter().all(|r| !r.1), "no header left");
+    assert_eq!(w.ctl.main_screen().rows.len(), 4);
+    // Delete group trashes the header's items (Undo is the usual toast).
+    w.ctl.main_select(1, SelectMode::Replace);
+    w.ctl.run_command(Command::GroupItems, 1);
+    w.ctl.group_rename_ended();
+    let head = shape(&mut w).iter().position(|r| r.1).expect("header");
+    w.ctl.run_command(Command::DeleteGroup, head);
+    assert_eq!(
+        w.ctl.main_screen().rows.len(),
+        3,
+        "its item went to the Trash"
+    );
+}
+
+#[test]
+fn an_item_row_has_no_cursor_group() {
+    let mut w = open_replies();
+    group_first_two(&mut w);
+    w.ctl.group_rename_ended();
+    w.ctl.main_select(1, SelectMode::Replace);
+    assert_eq!(w.ctl.main_screen().cursor_group, None);
+}

@@ -34,10 +34,13 @@ pub fn context<'a>(
     let row = screen.and_then(|s| s.rows.get(s.cursor.min(s.rows.len().saturating_sub(1))));
     Context {
         hotkeys,
-        has_item: row.is_some(),
+        // A group's header is a row but not an item.
+        has_item: row.is_some_and(|r| r.header.is_none()),
         item_pinned: row.is_some_and(|r| r.pinned),
         in_trash: screen.is_some_and(|s| s.section == Section::Trash),
         symbols,
+        in_list: screen.is_some_and(|s| matches!(s.section, Section::List(_))),
+        group: screen.and_then(|s| s.cursor_group),
     }
 }
 

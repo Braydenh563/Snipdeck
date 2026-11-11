@@ -738,6 +738,9 @@ msgstr "Datum und Uhrzeit in einem Format deiner Wahl"
 msgid "Delete"
 msgstr "Löschen"
 
+msgid "Delete a group and its items"
+msgstr "Gruppe mit ihren Textbausteinen löschen"
+
 msgid "Delete board"
 msgstr "Board löschen"
 
@@ -1035,6 +1038,9 @@ msgstr "Frei"
 msgid "Fold or open a group"
 msgstr "Gruppe einklappen oder aufklappen"
 
+msgid "Fold or unfold group"
+msgstr "Gruppe ein- oder ausklappen"
+
 msgid "Fold the Panel into a thin strip."
 msgstr "Das Panel zu einem schmalen Streifen einklappen."
 
@@ -1121,6 +1127,9 @@ msgstr "Gruppe"
 
 msgid "Group name"
 msgstr "Gruppenname"
+
+msgid "Group selected items"
+msgstr "Ausgewählte Elemente gruppieren"
 
 msgid "Group the marked rows"
 msgstr "Markierte Zeilen gruppieren"
@@ -1506,8 +1515,20 @@ msgstr "Board nach oben verschieben"
 msgid "Move down"
 msgstr "Nach unten"
 
+msgid "Move group down"
+msgstr "Gruppe nach unten verschieben"
+
+msgid "Move group up"
+msgstr "Gruppe nach oben verschieben"
+
 msgid "Move selected item to Trash"
 msgstr "Ausgewählten Textbaustein in den Papierkorb verschieben"
+
+msgid "Move the group down"
+msgstr "Gruppe nach unten verschieben"
+
+msgid "Move the group up"
+msgstr "Gruppe nach oben verschieben"
 
 msgid "Move the item to the Trash"
 msgstr "Textbaustein in den Papierkorb verschieben"
@@ -3310,6 +3331,9 @@ msgstr "Zwischenablage"
 msgid "clipboard save grab screenshot"
 msgstr "Zwischenablage speichern erfassen Bildschirmfoto"
 
+msgid "collapse expand hide show toggle section"
+msgstr "einklappen ausklappen verbergen anzeigen umschalten Abschnitt"
+
 msgid "colour change"
 msgstr "Farbänderung"
 
@@ -3333,6 +3357,9 @@ msgstr "gelöscht wiederherstellen Papierkorb anzeigen"
 
 msgid "diagnose doctor problems fix"
 msgstr "diagnostizieren Diagnose Probleme beheben"
+
+msgid "dissolve split remove group keep items section"
+msgstr "auflösen trennen entfernen Gruppe behalten Elemente Abschnitt"
 
 msgid "drop"
 msgstr "Ablegen"
@@ -3390,11 +3417,17 @@ msgstr "Markierung: {}"
 msgid "lowercase"
 msgstr "Kleinbuchstaben"
 
+msgid "make new folder together section collect"
+msgstr "erstellen neu Ordner zusammen Abschnitt sammeln"
+
 msgid "move"
 msgstr "Verschieben"
 
 msgid "ms"
 msgstr "ms"
+
+msgid "name title change edit section"
+msgstr "Name Titel ändern bearbeiten Abschnitt"
 
 msgid "navigation rail collapse expand lists panel left width"
 msgstr "navigation leiste einklappen ausklappen listen panel links breite"
@@ -3429,8 +3462,17 @@ msgstr "px"
 msgid "quick find paste palette"
 msgstr "schnell finden einfügen Palette"
 
+msgid "remove trash discard section items"
+msgstr "entfernen Papierkorb verwerfen Abschnitt Elemente"
+
 msgid "reorder"
 msgstr "Umsortieren"
+
+msgid "reorder earlier raise section"
+msgstr "umsortieren früher anheben Abschnitt"
+
+msgid "reorder later lower section"
+msgstr "umsortieren später absenken Abschnitt"
 
 msgid "s"
 msgstr "s"
