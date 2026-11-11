@@ -282,7 +282,6 @@ fn the_picker_closes_when_the_user_switches_to_another_app_and_does_not_steal_th
         app: "chrome.exe".into(),
         title: "Docs".into(),
         elevated: false,
-        password: false,
         focus: Focus::Caret,
     }));
     w.ctl.on_foreground_changed();

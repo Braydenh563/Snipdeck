@@ -44,13 +44,14 @@ mod imp {
     use std::sync::Arc;
 
     use super::{Callbacks, Host, Start, WatchGate};
+    use crate::typing_worker::Typed;
     use crate::{
         controller::Services,
         frame::{Monitor, Rect},
         host::{HotkeyBackend, HotkeyFailure, TargetSource, TypingControl, action_of},
         placement::PopupHost,
     };
-    use snipdeck_core::{Fired, Matcher};
+    use snipdeck_core::Matcher;
     use snipdeck_platform::{chord::Chord, system_look::SystemLookSource};
 
     pub(super) fn system_look() -> Arc<dyn SystemLookSource> {
@@ -169,7 +170,7 @@ mod imp {
     /// The typing hook and the worker that turns its keys into completed triggers. Nothing runs
     /// until [`TypingControl::set_enabled`] turns it on (UNVERIFIED on Windows).
     struct WinTyping {
-        on_typed: Arc<dyn Fn(Fired, bool) + Send + Sync>,
+        on_typed: Arc<dyn Fn(Typed) + Send + Sync>,
         matcher: Matcher,
         running: Option<Running>,
     }
@@ -181,7 +182,7 @@ mod imp {
     }
 
     impl WinTyping {
-        fn new(on_typed: Arc<dyn Fn(Fired, bool) + Send + Sync>) -> Self {
+        fn new(on_typed: Arc<dyn Fn(Typed) + Send + Sync>) -> Self {
             Self {
                 on_typed,
                 matcher: Matcher::new([]),
@@ -194,6 +195,7 @@ mod imp {
             let (updates, rx) = std::sync::mpsc::channel();
             let _ = updates.send(self.matcher.clone());
             let on_typed = Arc::clone(&self.on_typed);
+            let sent = hook.sent();
             let worker = std::thread::Builder::new()
                 .name("snipdeck-typing-worker".into())
                 .spawn(move || {
@@ -202,8 +204,9 @@ mod imp {
                     crate::typing_worker::run(
                         &events,
                         &rx,
+                        &sent,
                         || probe.focus_is_password(),
-                        |fired, password| on_typed(fired, password),
+                        |typed| on_typed(typed),
                     );
                 })
                 .map_err(|e| format!("typing worker: {e}"))?;
@@ -436,7 +439,7 @@ pub struct Callbacks {
     pub on_clipboard_change: Box<dyn Fn(ClipboardChange) + Send>,
     /// A typed trigger completed, and whether the focused element is a password box (typing
     /// worker thread).
-    pub on_typed: Box<dyn Fn(snipdeck_core::Fired, bool) + Send + Sync>,
+    pub on_typed: Box<dyn Fn(crate::typing_worker::Typed) + Send + Sync>,
 }
 
 /// The platform services the app runs on.
@@ -504,7 +507,7 @@ mod tests {
             on_tray: Box::new(|_| {}),
             on_look_changed: Box::new(|| {}),
             on_clipboard_change: Box::new(|_| {}),
-            on_typed: Box::new(|_, _| {}),
+            on_typed: Box::new(|_| {}),
         };
         let Ok(Start::Run(host)) = connect(callbacks, true) else {
             panic!("the dev host always starts")

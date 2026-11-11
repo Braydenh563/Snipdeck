@@ -473,6 +473,19 @@ where
         answers: BTreeMap<String, String>,
         transform: Option<Transform>,
     ) -> UseResult {
+        self.run_use_erasing(item, mode, answers, transform, 0)
+    }
+
+    /// [`run_use`](Self::run_use) that also erases `erase` typed characters: with the paste key
+    /// when it can go, or at once when the fill form is to open.
+    pub(super) fn run_use_erasing(
+        &mut self,
+        item: ItemId,
+        mode: UseMode,
+        answers: BTreeMap<String, String>,
+        transform: Option<Transform>,
+        erase: usize,
+    ) -> UseResult {
         let route = self.model.route();
         let pasted_into = self.model.target().map(|t| t.app.clone());
         if mode != UseMode::Copy && matches!(route, Route::Paste { .. }) && self.target.refocus() {
@@ -487,6 +500,7 @@ where
             answers,
             transform,
             uuids: None,
+            erase,
             // Only a template that says `{clipboard}` reads what the user copied (A22).
             clipboard_text: if usecase::template_source(&self.store, item)
                 .ok()
@@ -523,13 +537,22 @@ where
                 self.refresh_logged("a paste");
                 UseResult::Done(used.outcome)
             }
-            Err(UseError::NeedsAnswers(_)) => match self.open_fill(item, mode, transform) {
-                Ok(()) => UseResult::NeedsAnswers,
-                Err(error) => {
-                    self.show_toast(toast::after_error(&error));
-                    UseResult::Failed
+            Err(UseError::NeedsAnswers(_)) => {
+                if erase > 0 {
+                    // The form takes over the keyboard: the typed code goes now.
+                    let _ = self
+                        .services
+                        .keyboard
+                        .send(&snipdeck_platform::keys::backspaces(erase));
                 }
-            },
+                match self.open_fill(item, mode, transform) {
+                    Ok(()) => UseResult::NeedsAnswers,
+                    Err(error) => {
+                        self.show_toast(toast::after_error(&error));
+                        UseResult::Failed
+                    }
+                }
+            }
             Err(error) => {
                 self.show_toast(toast::after_error(&error));
                 UseResult::Failed

@@ -146,6 +146,23 @@ pub fn use_item<C: Clipboard, K: Keyboard, T: Timing>(
     mode: UseMode,
     route: &Route,
 ) -> Result<UseOutcome, Error> {
+    use_item_erasing(env, payload, mode, route, 0)
+}
+
+/// [`use_item`] for a typed trigger: when the item is pasted, `erase` Backspaces go out in the
+/// same injection as the paste key, so they are sent only once the clipboard holds the item.
+/// A use that fails first (the clipboard is busy) erases nothing, and a copy erases nothing.
+///
+/// # Errors
+///
+/// [`Error::Clipboard`] if not even a copy was possible.
+pub fn use_item_erasing<C: Clipboard, K: Keyboard, T: Timing>(
+    env: &mut Env<'_, C, K, T>,
+    payload: &Payload,
+    mode: UseMode,
+    route: &Route,
+    erase: usize,
+) -> Result<UseOutcome, Error> {
     let payload = if mode == UseMode::PastePlain {
         payload.plain_text()
     } else {
@@ -160,7 +177,7 @@ pub fn use_item<C: Clipboard, K: Keyboard, T: Timing>(
             env.clipboard.write_persistent(&payload)?;
             Ok(copy_outcome(reason))
         }
-        (_, Route::Paste { key }) => paste(env, &payload, *key),
+        (_, Route::Paste { key }) => paste(env, &payload, *key, erase),
     }
 }
 
@@ -174,6 +191,7 @@ fn paste<C: Clipboard, K: Keyboard, T: Timing>(
     env: &mut Env<'_, C, K, T>,
     payload: &Payload,
     key: PasteKey,
+    erase: usize,
 ) -> Result<UseOutcome, Error> {
     // A failed snapshot only costs the restore; the paste itself still works, but the outcome says
     // the item was left on the clipboard so a sensitive item can still be cleared later.
@@ -195,7 +213,8 @@ fn paste<C: Clipboard, K: Keyboard, T: Timing>(
         ));
     }
 
-    let events = paste_sequence(env.keyboard.held_modifiers(), key);
+    let mut events = crate::keys::backspaces(erase);
+    events.extend(paste_sequence(env.keyboard.held_modifiers(), key));
     if env.keyboard.send(&events).is_err() {
         // The item is still on the clipboard from the transient write. Writing it again would
         // overwrite anything the user copied meanwhile and drop the privacy markers.
@@ -263,18 +282,54 @@ mod tests {
             }
         }
         fn run(&mut self, mode: UseMode, route: &Route) -> Result<UseOutcome, Error> {
+            self.run_erasing(mode, route, 0)
+        }
+        fn run_erasing(
+            &mut self,
+            mode: UseMode,
+            route: &Route,
+            erase: usize,
+        ) -> Result<UseOutcome, Error> {
             let mut env = Env {
                 clipboard: &mut self.clipboard,
                 keyboard: &mut self.keyboard,
                 timing: &mut self.timing,
             };
-            use_item(&mut env, &text_and_html(), mode, route)
+            use_item_erasing(&mut env, &text_and_html(), mode, route, erase)
         }
     }
 
     const PASTE: Route = Route::Paste {
         key: PasteKey::CtrlV,
     };
+
+    #[test]
+    fn erased_characters_go_out_with_the_paste_key_once_the_write_is_confirmed() {
+        let mut w = World::new();
+        assert_eq!(
+            w.run_erasing(UseMode::Paste, &PASTE, 3),
+            Ok(UseOutcome::Pasted)
+        );
+        assert_eq!(w.keyboard.sent.len(), 1, "one injection");
+        let sent = &w.keyboard.sent[0];
+        assert_eq!(&sent[..6], &crate::keys::backspaces(3)[..]);
+        assert!(sent.len() > 6, "the paste chord follows the Backspaces");
+    }
+
+    #[test]
+    fn a_use_that_fails_before_the_paste_erases_nothing() {
+        let mut lost = World::new();
+        lost.clipboard.never_confirm = true;
+        assert!(matches!(
+            lost.run_erasing(UseMode::Paste, &PASTE, 3),
+            Err(Error::Clipboard(_))
+        ));
+        assert!(lost.keyboard.sent.is_empty(), "the typed code stays");
+        // A copy (no paste route) erases nothing either.
+        let mut copy = World::new();
+        let _ = copy.run_erasing(UseMode::Copy, &PASTE, 3);
+        assert!(copy.keyboard.sent.is_empty());
+    }
 
     #[test]
     fn paste_snapshots_writes_sends_waits_and_restores_in_order() {

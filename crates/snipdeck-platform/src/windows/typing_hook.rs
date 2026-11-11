@@ -15,6 +15,8 @@
 
 use std::cell::RefCell;
 use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender, SyncSender};
 use std::thread::JoinHandle;
 use std::time::Duration;
@@ -54,6 +56,9 @@ const STOP_RETRY: Duration = Duration::from_millis(10);
 /// What the hook thread keeps between callbacks (the callback has no user-data pointer).
 struct Hooked {
     events: SyncSender<TypedEvent>,
+    /// Events handed to the channel so far (raised before the send, so a key pressed a moment ago
+    /// already counts).
+    sent: Arc<AtomicU64>,
     foreground: isize,
     classifier: Classifier,
     /// An event was dropped because the consumer is behind: send a Reset before the next one.
@@ -67,6 +72,7 @@ thread_local! {
 /// A running hook. Dropping it stops it.
 #[derive(Debug)]
 pub struct TypingHook {
+    sent: Arc<AtomicU64>,
     thread_id: u32,
     thread: Option<JoinHandle<()>>,
 }
@@ -81,13 +87,16 @@ impl TypingHook {
     pub fn start() -> Result<(Self, Receiver<TypedEvent>), Error> {
         let (events, receiver) = mpsc::sync_channel(CHANNEL_SLOTS);
         let (ready_tx, ready) = mpsc::channel();
+        let sent = Arc::new(AtomicU64::new(0));
+        let hook_sent = Arc::clone(&sent);
         let thread = std::thread::Builder::new()
             .name("snipdeck-typing-hook".into())
-            .spawn(move || run(events, &ready_tx))
+            .spawn(move || run(events, hook_sent, &ready_tx))
             .map_err(|_| Error::Unavailable("could not start the typing hook thread"))?;
         match ready.recv_timeout(Duration::from_secs(5)) {
             Ok(Ok(thread_id)) => Ok((
                 Self {
+                    sent,
                     thread_id,
                     thread: Some(thread),
                 },
@@ -99,6 +108,14 @@ impl TypingHook {
             }
             Err(_) => Err(Error::Unavailable("the typing hook thread did not start")),
         }
+    }
+
+    /// How many events the hook has handed to the channel. A consumer that has read exactly this
+    /// many knows no key has been pressed since: it uses that to drop an expansion when the user
+    /// kept typing.
+    #[must_use]
+    pub fn sent(&self) -> Arc<AtomicU64> {
+        Arc::clone(&self.sent)
     }
 
     /// Unhooks and joins the thread.
@@ -132,7 +149,7 @@ impl Drop for TypingHook {
     }
 }
 
-fn run(events: SyncSender<TypedEvent>, ready: &Sender<Result<u32, Error>>) {
+fn run(events: SyncSender<TypedEvent>, sent: Arc<AtomicU64>, ready: &Sender<Result<u32, Error>>) {
     let mut msg = MSG::default();
     // SAFETY: `msg` is a valid out-pointer; peeking a message nobody posts creates the queue so
     // `PostThreadMessageW` from `stop` cannot fail with "no queue".
@@ -142,6 +159,7 @@ fn run(events: SyncSender<TypedEvent>, ready: &Sender<Result<u32, Error>>) {
     HOOKED.with(|state| {
         *state.borrow_mut() = Some(Hooked {
             events,
+            sent,
             foreground: 0,
             classifier: Classifier::new(),
             dropped: false,
@@ -227,8 +245,10 @@ fn handle(info: &KBDLLHOOKSTRUCT) {
         }
         pending[2] = hooked.classifier.classify(stroke);
         for event in pending.into_iter().flatten() {
+            hooked.sent.fetch_add(1, Ordering::SeqCst);
             hooked.dropped = hooked.events.try_send(event).is_err();
             if hooked.dropped {
+                hooked.sent.fetch_sub(1, Ordering::SeqCst);
                 break;
             }
         }

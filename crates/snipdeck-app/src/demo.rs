@@ -52,7 +52,6 @@ pub fn target() -> Target {
         app: "OUTLOOK.EXE".into(),
         title: "New message".into(),
         elevated: false,
-        password: false,
         focus: Focus::Caret,
     }
 }

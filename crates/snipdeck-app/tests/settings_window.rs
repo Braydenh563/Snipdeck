@@ -3133,7 +3133,7 @@ fn the_typing_toggles_are_off_by_default_and_change_the_settings() {
         element(
             &r.ui,
             "Expand abbreviations as I type",
-            AccessibleRole::Checkbox,
+            AccessibleRole::Switch,
         );
         r.ui.invoke_expand_triggers_toggled(true);
         assert!(r.ctl.borrow().settings().expand_triggers);

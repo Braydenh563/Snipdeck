@@ -417,7 +417,6 @@ impl TargetTracker {
             app: process_exe_name(pid).unwrap_or_else(|| UNKNOWN_APP.to_owned()),
             title: window_title(hwnd),
             elevated,
-            password: false,
             focus,
         })
     }

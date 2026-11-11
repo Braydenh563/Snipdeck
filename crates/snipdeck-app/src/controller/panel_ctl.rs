@@ -51,7 +51,7 @@ where
         }
         self.dock_resync();
         self.sync_recent_gate();
-        self.sync_typing();
+        self.sync_typing(true);
     }
 
     /// The Main window was moved, resized, maximised or restored: remembers where it is, to
@@ -525,7 +525,7 @@ where
     /// Reads the library again into the Panel (and tells the Main window to).
     pub(super) fn refresh_panel(&mut self) -> snipdeck_store::Result<()> {
         self.main.mark_stale();
-        self.sync_typing();
+        self.sync_typing(false);
         #[cfg(test)]
         if FAIL_REFRESH.get() {
             return Err(snipdeck_store::Error::NotFound {

@@ -284,6 +284,10 @@ pub struct Controller<S, C, K, T> {
     recent_gate: Option<snipdeck_platform::clipboard_watch::WatchGate>,
     /// The typed-trigger service (keyboard hook), once the host hands it over.
     typing: Option<Box<dyn crate::host::TypingControl>>,
+    /// The trigger list last sent to the typing service, so an unchanged list is not sent again.
+    typing_sent: Vec<(snipdeck_core::Trigger, snipdeck_core::ItemId)>,
+    /// Whether the typing service was last told to run.
+    typing_on: Option<bool>,
     /// Told whether clipboard history is on and whether it is paused, for the tray menu's
     /// "Pause history" entry (see `recent_ctl.rs`).
     tray_history: Option<recent_ctl::HistorySink>,
@@ -453,6 +457,8 @@ where
             lock: lock_ctl::LockState::new(shown_at),
             recent_gate: None,
             typing: None,
+            typing_sent: Vec::new(),
+            typing_on: None,
             tray_history: None,
             screen_clip: crate::screen_clip::ScreenClipFlow::new(),
             screen_clip_host: None,

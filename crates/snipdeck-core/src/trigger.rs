@@ -62,10 +62,12 @@ impl core::fmt::Display for Trigger {
 }
 
 /// A trigger that was just completed.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Fired {
     /// The item the trigger stands for.
     pub item: ItemId,
+    /// The trigger that was typed (so a trigger changed since can be told from this one).
+    pub trigger: Trigger,
     /// How many user-perceived characters (grapheme clusters) were typed for it: the
     /// Backspaces the caller must send.
     pub chars: usize,
@@ -80,13 +82,23 @@ pub struct Fired {
 /// then tells the matcher how the expansion ended with [`Matcher::after_expansion`]. A
 /// combining mark typed after a letter is composed with it, so `e` then U+0301 matches a
 /// trigger written as `é`.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Matcher {
     /// Longest first.
     triggers: Vec<(Vec<char>, ItemId, usize)>,
     buf: VecDeque<char>,
     /// Whether the position just before `buf` is a boundary (the start, or a dropped boundary).
     lead: bool,
+}
+
+// What was typed is private (a password may pass through): never print the buffer.
+impl core::fmt::Debug for Matcher {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Matcher")
+            .field("triggers", &self.triggers.len())
+            .field("buffered", &self.buf.len())
+            .finish_non_exhaustive()
+    }
 }
 
 /// Whether a trigger may begin right after `c`.
@@ -126,6 +138,7 @@ impl Matcher {
         let hit = self.triggers.iter().find(|(t, ..)| self.ends_with(t))?;
         let fired = Fired {
             item: hit.1,
+            trigger: Trigger(hit.0.iter().collect()),
             chars: hit.2,
         };
         self.reset();
@@ -201,6 +214,26 @@ mod tests {
             .enumerate()
             .filter_map(|(i, c)| m.feed(c).map(|f| (i, f.item, f.chars)))
             .collect()
+    }
+
+    #[test]
+    fn a_fire_names_the_trigger_that_was_typed() {
+        let mut m = matcher(&[(";sig", 1)]);
+        let fired = ";sig".chars().find_map(|c| m.feed(c)).expect("fires");
+        assert_eq!(fired.trigger, Trigger::new(";sig").unwrap());
+    }
+
+    #[test]
+    fn debug_does_not_show_what_was_typed() {
+        let mut m = matcher(&[(";sig", 1)]);
+        for c in "hunter2".chars() {
+            m.feed(c);
+        }
+        let shown = format!("{m:?}");
+        assert!(
+            !shown.contains("hunter") && !shown.contains(";sig"),
+            "{shown}"
+        );
     }
 
     #[test]

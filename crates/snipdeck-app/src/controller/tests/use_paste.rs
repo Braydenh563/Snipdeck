@@ -535,7 +535,6 @@ fn a_program_rule_in_settings_decides_the_paste_key() {
         app: "wt.exe".into(),
         title: "PowerShell".into(),
         elevated: false,
-        password: false,
         focus: Focus::Caret,
     };
     let rule = || ProgramRule {
@@ -759,6 +758,7 @@ fn the_setting_off_keeps_the_panel_open_and_a_failed_use_never_hides() {
 
 // ---- Typed-trigger expansion (slice 5b) --------------------------------------------------------
 
+use crate::typing_worker::Typed;
 use snipdeck_core::{Fired, Trigger};
 use snipdeck_store::TriggerRepo;
 
@@ -771,6 +771,7 @@ fn typing_world(n: usize, code: &str) -> World {
         .store
         .set_trigger(w.ids[n], Some(&trigger))
         .expect("set trigger");
+    w.ctl.hide();
     w
 }
 
@@ -791,7 +792,9 @@ fn a_typed_trigger_backspaces_then_pastes() {
     let mut w = typing_world(1, ";two");
     let fired = typed(&w, ";two");
     assert_eq!((fired.item, fired.chars), (w.ids[1], 4));
-    let out = w.ctl.expand_typed(fired, false);
+    let out = w
+        .ctl
+        .expand_typed(&Typed::new(fired.clone(), false, || true));
     assert_eq!(
         out,
         TypedOutcome::Expanded(UseResult::Done(UseOutcome::Pasted))
@@ -821,7 +824,8 @@ fn a_trigger_counts_graphemes_not_characters() {
     let mut w = typing_world(1, ";e\u{301}");
     let fired = typed(&w, ";e\u{301}");
     assert_eq!(fired.chars, 2);
-    w.ctl.expand_typed(fired, false);
+    w.ctl
+        .expand_typed(&Typed::new(fired.clone(), false, || true));
     assert_eq!(
         backspaces_sent(&mut w)[0],
         snipdeck_platform::keys::backspaces(2)
@@ -838,7 +842,11 @@ fn never_paste_app_does_not_expand() {
         }];
     });
     let fired = typed(&w, ";two");
-    assert_eq!(w.ctl.expand_typed(fired, false), TypedOutcome::Skipped);
+    assert_eq!(
+        w.ctl
+            .expand_typed(&Typed::new(fired.clone(), false, || true)),
+        TypedOutcome::Skipped
+    );
     assert_eq!(
         backspaces_sent(&mut w),
         Vec::<Vec<KeyEvent>>::new(),
@@ -851,7 +859,11 @@ fn never_paste_app_does_not_expand() {
 fn password_box_does_not_expand() {
     let mut w = typing_world(1, ";two");
     let fired = typed(&w, ";two");
-    assert_eq!(w.ctl.expand_typed(fired, true), TypedOutcome::Skipped);
+    assert_eq!(
+        w.ctl
+            .expand_typed(&Typed::new(fired.clone(), true, || true)),
+        TypedOutcome::Skipped
+    );
     assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
     assert_eq!(uses(&w, w.ids[1]), 0);
 }
@@ -862,7 +874,11 @@ fn sensitive_item_never_expands() {
     let fired = typed(&w, ";two");
     let id = w.ids[1];
     make_sensitive(&mut w, id);
-    assert_eq!(w.ctl.expand_typed(fired, false), TypedOutcome::Skipped);
+    assert_eq!(
+        w.ctl
+            .expand_typed(&Typed::new(fired.clone(), false, || true)),
+        TypedOutcome::Skipped
+    );
     assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
     let mut matcher = w.ctl.trigger_matcher();
     assert!(
@@ -876,14 +892,26 @@ fn no_expansion_without_a_paste_target_or_while_snipdeck_is_in_front() {
     let mut w = typing_world(1, ";two");
     let fired = typed(&w, ";two");
     w.ctl.set_own_window_active(true);
-    assert_eq!(w.ctl.expand_typed(fired, false), TypedOutcome::Skipped);
+    assert_eq!(
+        w.ctl
+            .expand_typed(&Typed::new(fired.clone(), false, || true)),
+        TypedOutcome::Skipped
+    );
     w.ctl.set_own_window_active(false);
     w.targets.set(None);
-    assert_eq!(w.ctl.expand_typed(fired, false), TypedOutcome::Skipped);
+    assert_eq!(
+        w.ctl
+            .expand_typed(&Typed::new(fired.clone(), false, || true)),
+        TypedOutcome::Skipped
+    );
     let mut elevated = outlook();
     elevated.elevated = true;
     w.targets.set(Some(elevated));
-    assert_eq!(w.ctl.expand_typed(fired, false), TypedOutcome::Skipped);
+    assert_eq!(
+        w.ctl
+            .expand_typed(&Typed::new(fired.clone(), false, || true)),
+        TypedOutcome::Skipped
+    );
     assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
 }
 
@@ -895,7 +923,11 @@ fn an_item_trashed_since_the_matcher_was_built_does_not_expand() {
         .store
         .trash(snipdeck_store::Trashable::Item(w.ids[1]), w.clock.now())
         .expect("trash");
-    assert_eq!(w.ctl.expand_typed(fired, false), TypedOutcome::Skipped);
+    assert_eq!(
+        w.ctl
+            .expand_typed(&Typed::new(fired.clone(), false, || true)),
+        TypedOutcome::Skipped
+    );
     assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
 }
 
@@ -914,7 +946,11 @@ fn off_by_default_installs_no_hook() {
         .expect("set");
     let mut matcher = w.ctl.trigger_matcher();
     let fired = ";two".chars().find_map(|c| matcher.feed(c)).expect("fires");
-    assert_eq!(w.ctl.expand_typed(fired, false), TypedOutcome::Skipped);
+    assert_eq!(
+        w.ctl
+            .expand_typed(&Typed::new(fired.clone(), false, || true)),
+        TypedOutcome::Skipped
+    );
     assert!(!typing.ever_enabled());
     w.ctl.update_settings(|s| s.expand_triggers = true);
     assert_eq!(typing.enabled_history().last(), Some(&true));
@@ -926,7 +962,9 @@ fn off_by_default_installs_no_hook() {
 fn a_prompted_trigger_opens_the_fill_form() {
     let mut w = typing_world(3, ";hi");
     let fired = typed(&w, ";hi");
-    let out = w.ctl.expand_typed(fired, false);
+    let out = w
+        .ctl
+        .expand_typed(&Typed::new(fired.clone(), false, || true));
     assert_eq!(out, TypedOutcome::Expanded(UseResult::NeedsAnswers));
     assert_eq!(
         backspaces_sent(&mut w)[0],
@@ -939,4 +977,48 @@ fn a_prompted_trigger_opens_the_fill_form() {
         0,
         "not used until the form is submitted"
     );
+}
+
+#[test]
+fn a_key_after_the_fire_erases_nothing() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    let out = w.ctl.expand_typed(&Typed::new(fired, false, || false));
+    assert_eq!(out, TypedOutcome::Skipped);
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+    assert_eq!(uses(&w, w.ids[1]), 0);
+}
+
+#[test]
+fn a_failed_clipboard_erases_nothing() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    w.ctl.services.clipboard.fail_write = true;
+    w.ctl.expand_typed(&Typed::new(fired, false, || true));
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+    assert_eq!(uses(&w, w.ids[1]), 0);
+}
+
+#[test]
+fn a_trigger_changed_since_the_fire_does_not_expand() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    let other = Trigger::new(";zzz").expect("trigger");
+    w.ctl
+        .store
+        .set_trigger(w.ids[1], Some(&other))
+        .expect("set");
+    let out = w.ctl.expand_typed(&Typed::new(fired, false, || true));
+    assert_eq!(out, TypedOutcome::Skipped);
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+}
+
+#[test]
+fn the_visible_panel_gets_no_expansion() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    w.ctl.show();
+    let out = w.ctl.expand_typed(&Typed::new(fired, false, || true));
+    assert_eq!(out, TypedOutcome::Skipped);
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
 }

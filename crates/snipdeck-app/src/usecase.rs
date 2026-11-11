@@ -43,6 +43,8 @@ pub struct UseRequest {
     pub transform: Option<Transform>,
     /// Random bytes for each `{uuid}`; `None` draws them from the system.
     pub uuids: Option<Vec<[u8; 16]>>,
+    /// Backspaces to send with the paste, to erase a typed trigger (0 for every other use).
+    pub erase: usize,
 }
 
 /// The most Left presses sent to put the caret at `{cursor}`.
@@ -118,7 +120,8 @@ where
     let item = store.item(request.item)?;
     let formats = store.formats(request.item)?;
     let (payload, cursor_from_end) = build_payload(store, &item, &formats, request)?;
-    let outcome = pipeline::use_item(env, &payload, request.mode, &request.route)?;
+    let outcome =
+        pipeline::use_item_erasing(env, &payload, request.mode, &request.route, request.erase)?;
     if matches!(outcome, UseOutcome::Pasted | UseOutcome::PastedNotRestored)
         && let Some(n) = cursor_from_end.filter(|n| *n > 0)
     {
@@ -371,6 +374,7 @@ mod tests {
                 locale: Locale::for_tag("en"),
                 transform: None,
                 uuids: None,
+                erase: 0,
             }
         }
 

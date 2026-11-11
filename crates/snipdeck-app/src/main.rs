@@ -165,9 +165,7 @@ fn run(args: &Args) -> Result<(), String> {
         on_target_changed: Box::new(|| with_binding(Binding::target_changed)),
         on_tray: Box::new(|event| on_ui_thread(move |b| b.tray(event))),
         on_clipboard_change: Box::new(|change| on_ui_thread(move |b| b.clipboard_changed(change))),
-        on_typed: Box::new(|fired, password| {
-            on_ui_thread(move |b| b.typed_trigger(fired, password));
-        }),
+        on_typed: Box::new(|typed| on_ui_thread(move |b| b.typed_trigger(&typed))),
         on_look_changed: {
             let look = Arc::clone(&look);
             // Read on the UI thread: the value is fresher than the one the watcher saw.
