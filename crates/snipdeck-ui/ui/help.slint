@@ -39,7 +39,9 @@ export struct HelpCheck {
 export component HelpWindow inherits Window {
     title: @tr("Help");
     background: Theme.bg-app;
-    min-width: 420px;
+    // Grows with the text size: at 225% the tab bar and the shortcut rows need about 600 px (final audit 1).
+    out property <length> min-window-width: max(420px, 270px * SystemLook.text-scale);
+    min-width: root.min-window-width;
     min-height: 360px;
     preferred-width: root.wanted-width;
     preferred-height: root.wanted-height;

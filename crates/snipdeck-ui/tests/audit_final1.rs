@@ -242,3 +242,27 @@ fn dump_width_sweep_at_225() {
         dump(&format!("sweep-fill-{w}"), &hn.render_settled());
     }
 }
+
+/// The smallest window width follows the text size: at 225% the footers, tab bar and setting rows
+/// of the audited windows need about 600 px (Settings about 760), which 420 px does not give.
+#[test]
+fn smallest_window_width_grows_with_text_size() {
+    for (s, help, settings, editor_w, fill_w) in [
+        (1.0f32, 420.0f32, 420.0f32, 420.0f32, 320.0f32),
+        (2.25, 607.5, 765.0, 607.5, 607.5),
+    ] {
+        let near = |a: f32, b: f32| (a - b).abs() < 0.5;
+        let h = Harness::new(HelpWindow::new, 700, 400);
+        scale!(h.component, s);
+        assert!(near(h.component.get_min_window_width(), help), "help at {s}");
+        let h = Harness::new(SettingsPage::new, 800, 400);
+        scale!(h.component, s);
+        assert!(near(h.component.get_min_window_width(), settings), "settings at {s}");
+        let h = Harness::new(ItemEditor::new, 700, 400);
+        scale!(h.component, s);
+        assert!(near(h.component.get_min_window_width(), editor_w), "editor at {s}");
+        let h = Harness::new(TemplateFillWindow::new, 700, 400);
+        scale!(h.component, s);
+        assert!(near(h.component.get_min_window_width(), fill_w), "fill at {s}");
+    }
+}
