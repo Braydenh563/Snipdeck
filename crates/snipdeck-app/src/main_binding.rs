@@ -703,6 +703,20 @@ where
                 core.run_command(id);
             });
         }
+        wire!(on_group_requested, |ctl, i| ctl.main_group_marked(index(i)));
+        wire!(on_group_toggled, |ctl, i| ctl
+            .main_group_collapse(index(i), None));
+        wire!(on_group_collapsed_set, |ctl, i, c| ctl
+            .main_group_collapse(index(i), Some(c)));
+        wire!(on_group_renamed, |ctl, i, name| ctl
+            .main_group_rename(index(i), name.as_str()));
+        wire!(on_group_rename_requested, |ctl, i| ctl
+            .main_group_rename_start(index(i)));
+        wire!(on_group_rename_ended, |ctl| ctl.group_rename_ended());
+        wire!(on_group_ungroup_requested, |ctl, i| ctl
+            .main_group_ungroup(index(i)));
+        wire!(on_group_delete_requested, |ctl, i| ctl
+            .main_group_delete(index(i)));
         wire!(on_item_reorder_requested, |ctl, d| ctl
             .main_reorder_items(isize::try_from(d).unwrap_or(0)));
         wire!(on_list_reorder_requested, |ctl, i, d| ctl
@@ -1245,6 +1259,15 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
         window.set_query(screen.query.as_str().into());
     }
     window.set_rows_reorderable(screen.reorderable);
+    window.set_has_groups(screen.rows.iter().any(|r| r.header.is_some()));
+    let rename_row = screen.rename_row.map_or(-1, to_i32);
+    if window.get_rename_row() != rename_row {
+        window.set_rename_row(rename_row);
+    }
+    let rename_seq = to_i32(usize::try_from(screen.rename_seq).unwrap_or(0));
+    if window.get_rename_seq() != rename_seq {
+        window.set_rename_seq(rename_seq);
+    }
     window.set_list_sort(sort_index(screen.list_sort));
     window.set_reorder_offer(screen.reorder_offer);
     // The window runs ahead of the setting while the splitter is dragged: only a change of the setting is pushed.
@@ -1341,7 +1364,11 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
     let marks = row.marks.fields();
     ui::MainRow {
         kind: item_kind_of(row.kind, row.sensitive),
-        title: row.title.as_str().into(),
+        title: row
+            .header
+            .as_ref()
+            .map_or(row.title.as_str(), |h| h.name.as_str())
+            .into(),
         mark_before: marks.mark_before.as_str().into(),
         mark_text: marks.mark_text.as_str().into(),
         preview: if row.sensitive {
@@ -1368,6 +1395,13 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
         image: slint::Image::default(),
         pinned: row.pinned,
         selected: row.selected,
+        is_header: row.header.is_some(),
+        group_count: row
+            .header
+            .as_ref()
+            .map_or(0, |h| i32::try_from(h.count).unwrap_or(i32::MAX)),
+        group_collapsed: row.header.as_ref().is_some_and(|h| h.collapsed),
+        grouped: row.grouped,
     }
 }
 
