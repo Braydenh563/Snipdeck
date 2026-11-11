@@ -691,9 +691,10 @@ export component ItemEditor inherits Window {
     callback trigger-edited(text: string);
     // The note under the Trigger field. One character is allowed but fires on every typing of it,
     // inside words included, so it gets a warning instead.
-    out property <string> trigger-helper: root.trigger.character-count == 1
+    out property <string> trigger-warning: root.trigger.character-count == 1
         ? @tr("A one-character trigger fires every time you type it, even inside words. Two or more characters are safer.")
-        : @tr("Type this in any app to insert the snippet. Turn it on in Settings, under Typing.");
+        : "";
+    out property <string> trigger-helper: @tr("Type this in any app to insert the snippet. Turn it on in Settings, under Typing.");
     in property <string> banner;
     // The fields hold an unsaved draft from an earlier session.
     in property <bool> restored: false;
@@ -1228,9 +1229,14 @@ export component ItemEditor inherits Window {
                         }
                     }
 
+                    if root.sensitive: FormField {
+                        label: @tr("Trigger");
+                        helper: @tr("Sensitive items can't be typed in, so they have no trigger.");
+                    }
                     if !root.sensitive: FormField {
                         label: @tr("Trigger");
                         helper: root.trigger-helper;
+                        warning: root.trigger-warning;
                         error: root.trigger-error;
                         trigger-field := TextField {
                             label: @tr("Trigger");

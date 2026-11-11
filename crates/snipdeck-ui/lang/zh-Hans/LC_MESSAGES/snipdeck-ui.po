@@ -2253,6 +2253,9 @@ msgstr "已保存 {}。"
 msgid "Saved. This code overlaps another trigger, so one of them may never fire."
 msgstr "已保存。此代码与另一个触发词重叠，其中一个可能永远不会触发。"
 
+msgid "Saved. This code overlaps the trigger of “{}”, so one of them may never fire."
+msgstr "已保存。此代码与“{}”的触发词重叠，其中一个可能永远不会触发。"
+
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "将所有看板、列表和片段保存为一个 .snipdeck 文件，存放在你选择的文件夹中。"
 
@@ -2357,6 +2360,9 @@ msgstr "敏感片段"
 
 msgid "Sensitive items are encrypted on disk, on every plan."
 msgstr "无论哪种方案，敏感片段都会加密存储在磁盘上。"
+
+msgid "Sensitive items can't be typed in, so they have no trigger."
+msgstr "敏感项目无法通过键入插入，因此没有触发词。"
 
 msgid "Sensitive items, masked"
 msgstr "敏感片段，已隐藏"
@@ -2985,6 +2991,9 @@ msgstr "输入 {} 以确认"
 msgid "Typing"
 msgstr "输入"
 
+msgid "Typing triggers work on Windows only."
+msgstr "键入触发仅适用于 Windows。"
+
 msgid "UPPERCASE"
 msgstr "大写"
 
@@ -3531,6 +3540,9 @@ msgstr[0] "备份中不包含 {} 项敏感项目。"
 
 msgid "{} — press Tab to insert"
 msgstr "{} — 按 Tab 插入"
+
+msgid "{}, match {}"
+msgstr "{}，第 {} 项"
 
 msgid "{}, {} of {}"
 msgstr "{}，第 {} 项（共 {} 项）"

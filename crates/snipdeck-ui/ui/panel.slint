@@ -1389,12 +1389,12 @@ export component PanelWindow inherits Window {
                         return accept;
                     }
                 }
-                // A group's header: Left folds it, Right unfolds it, Enter does the other.
+                // A group's header: Left folds it, Right unfolds it, Enter or Space does the other.
                 if (root.search-focused && !root.searching && !root.list-hidden && root.sel >= 0 && root.sel < root.rows.length
                     && root.rows[root.sel].is-header && !event.modifiers.control && !event.modifiers.alt && !event.modifiers.shift) {
                     if (event.text == Key.LeftArrow) { root.group-collapsed-set(root.sel, true); return accept; }
                     if (event.text == Key.RightArrow) { root.group-collapsed-set(root.sel, false); return accept; }
-                    if (event.text == Key.Return) { root.group-toggled(root.sel); return accept; }
+                    if (event.text == Key.Return || event.text == " ") { root.group-toggled(root.sel); return accept; }
                 }
                 // Cards, search empty: Left and Right step one tile (Up and Down a whole row of tiles).
                 if (root.eff-layout == PanelLayout.cards && root.search-focused && !root.searching && !root.list-hidden

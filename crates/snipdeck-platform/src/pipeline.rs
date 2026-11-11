@@ -367,7 +367,7 @@ mod tests {
         // A copy (no paste route) erases nothing either.
         let mut copy = World::new();
         let _ = copy.run_erasing(UseMode::Copy, &PASTE, 3);
-        assert!(copy.keyboard.sent.is_empty());
+        assert!(copy.keyboard.sent.is_empty(), "a copy sends no keys");
     }
 
     #[test]

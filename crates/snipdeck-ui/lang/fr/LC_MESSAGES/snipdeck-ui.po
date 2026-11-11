@@ -2261,6 +2261,9 @@ msgstr "{} enregistré."
 msgid "Saved. This code overlaps another trigger, so one of them may never fire."
 msgstr "Enregistré. Ce code chevauche un autre déclencheur ; l'un des deux risque de ne jamais se déclencher."
 
+msgid "Saved. This code overlaps the trigger of “{}”, so one of them may never fire."
+msgstr "Enregistré. Ce code chevauche le raccourci de « {} » : l’un des deux risque de ne jamais se déclencher."
+
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "Enregistre tous les tableaux, listes et extraits dans un seul fichier .snipdeck, dans le dossier de votre choix."
 
@@ -2365,6 +2368,9 @@ msgstr "Extrait sensible"
 
 msgid "Sensitive items are encrypted on disk, on every plan."
 msgstr "Les extraits sensibles sont chiffrés sur le disque, quelle que soit l'offre."
+
+msgid "Sensitive items can't be typed in, so they have no trigger."
+msgstr "Les éléments sensibles ne peuvent pas être saisis, ils n’ont donc pas de raccourci."
 
 msgid "Sensitive items, masked"
 msgstr "Extraits sensibles, masqués"
@@ -2993,6 +2999,9 @@ msgstr "Saisissez {} pour confirmer"
 msgid "Typing"
 msgstr "Saisie"
 
+msgid "Typing triggers work on Windows only."
+msgstr "Les raccourcis à la frappe ne fonctionnent que sous Windows."
+
 msgid "UPPERCASE"
 msgstr "MAJUSCULES"
 
@@ -3558,6 +3567,9 @@ msgstr[1] "{} extraits sensibles ne figuraient pas dans la sauvegarde."
 
 msgid "{} — press Tab to insert"
 msgstr "{} : appuyez sur Tab pour insérer"
+
+msgid "{}, match {}"
+msgstr "{}, correspondance {}"
 
 msgid "{}, {} of {}"
 msgstr "{}, {} sur {}"

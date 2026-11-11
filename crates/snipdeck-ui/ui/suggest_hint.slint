@@ -37,6 +37,8 @@ export component SuggestHintWindow inherits Window {
         preferred-height: row.preferred-height + 2px;
         accessible-role: AccessibleRole.text;
         accessible-label: @tr("{} — press Tab to insert", root.item-title);
+        // The window never takes the focus, so a screen reader hears it only as a live region.
+        accessible-live-region: polite;
 
         row := HorizontalLayout {
             padding-left: Space.s2;

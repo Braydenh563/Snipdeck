@@ -98,12 +98,7 @@ pub fn list_icon_name(icon: ListIcon) -> &'static str {
 pub fn import_warning_text(window: &SettingsPage, warning: &Warning) -> String {
     let texts = ImportTexts::get(window);
     let count = |n: usize| i32::try_from(n).unwrap_or(i32::MAX);
-    let name = |name: &str| -> slint::SharedString {
-        match numbered_label(name) {
-            Some(n) => texts.invoke_clip_name(count(n)),
-            None => name.into(),
-        }
-    };
+    let name = |name: &str| entry_label(&texts, name);
     let text = match warning {
         Warning::NewerMinorVersion { found } => texts.invoke_newer_minor_version(found.into()),
         Warning::UnknownEntries { count: n } => texts.invoke_unknown_entries(count(*n)),
@@ -138,31 +133,37 @@ fn note_text(
 ) -> slint::SharedString {
     match note {
         Note::UnmappedVariables { label, tokens } => {
-            texts.invoke_note_unmapped_variables(label.into(), tokens.into())
+            texts.invoke_note_unmapped_variables(entry_label(texts, label), tokens.into())
         }
         Note::UnmappedEspansoVariables { label, tokens } => {
-            texts.invoke_note_unmapped_espanso_variables(label.into(), tokens.into())
+            texts.invoke_note_unmapped_espanso_variables(entry_label(texts, label), tokens.into())
         }
-        Note::VariablesDoNotFit { label } => texts.invoke_note_variables_do_not_fit(label.into()),
+        Note::VariablesDoNotFit { label } => {
+            texts.invoke_note_variables_do_not_fit(entry_label(texts, label))
+        }
         Note::TriggerOnlyOne { label, triggers } => {
-            texts.invoke_note_trigger_only_one(label.into(), triggers.into())
+            texts.invoke_note_trigger_only_one(entry_label(texts, label), triggers.into())
         }
         Note::TriggerNeedsSeparator { label, triggers } => {
-            texts.invoke_note_trigger_needs_separator(label.into(), triggers.into())
+            texts.invoke_note_trigger_needs_separator(entry_label(texts, label), triggers.into())
         }
         Note::TriggerBadShape { label, triggers } => {
-            texts.invoke_note_trigger_bad_shape(label.into(), triggers.into())
+            texts.invoke_note_trigger_bad_shape(entry_label(texts, label), triggers.into())
         }
         Note::DisabledFile { name } => texts.invoke_note_disabled_file(name.into()),
-        Note::NotAMatch { what } => texts.invoke_note_not_a_match(what.into()),
-        Note::RegexTriggerOnly { what } => texts.invoke_note_regex_trigger_only(what.into()),
-        Note::NoTrigger { what } => texts.invoke_note_no_trigger(what.into()),
-        Note::MarkupKept { what } => texts.invoke_note_markup_kept(what.into()),
-        Note::NoText { what } => texts.invoke_note_no_text(what.into()),
-        Note::DateFormat { what, format } => {
-            texts.invoke_note_date_format(what.into(), format.into())
+        Note::NotAMatch { what } => texts.invoke_note_not_a_match(entry_label(texts, what)),
+        Note::RegexTriggerOnly { what } => {
+            texts.invoke_note_regex_trigger_only(entry_label(texts, what))
         }
-        Note::FormField { what, name } => texts.invoke_note_form_field(what.into(), name.into()),
+        Note::NoTrigger { what } => texts.invoke_note_no_trigger(entry_label(texts, what)),
+        Note::MarkupKept { what } => texts.invoke_note_markup_kept(entry_label(texts, what)),
+        Note::NoText { what } => texts.invoke_note_no_text(entry_label(texts, what)),
+        Note::DateFormat { what, format } => {
+            texts.invoke_note_date_format(entry_label(texts, what), format.into())
+        }
+        Note::FormField { what, name } => {
+            texts.invoke_note_form_field(entry_label(texts, what), name.into())
+        }
         Note::ColumnsCut { file } => texts.invoke_note_columns_cut(file.into()),
         Note::TriggerTaken { title, trigger } => {
             texts.invoke_note_trigger_taken(title.into(), trigger.into())
@@ -178,6 +179,22 @@ fn note_text(
             source_chars,
         } => texts.invoke_note_title_cut(count(*n), count(*title_chars), count(*source_chars)),
     }
+}
+
+/// An entry's name as the importers wrote it, in the UI language: "entry N" and "Ditto clip N" read
+/// "Clip N", and Espanso's "file.yml, match N" has its "match" translated.
+fn entry_label(texts: &ImportTexts<'_>, name: &str) -> slint::SharedString {
+    let count = |n: usize| i32::try_from(n).unwrap_or(i32::MAX);
+    if let Some(n) = numbered_label(name) {
+        return texts.invoke_clip_name(count(n));
+    }
+    if let Some((file, n)) = name
+        .rsplit_once(", match ")
+        .and_then(|(file, n)| Some((file, n.parse::<usize>().ok()?)))
+    {
+        return texts.invoke_match_name(file.into(), count(n));
+    }
+    name.into()
 }
 
 /// The N in "entry N" or "Ditto clip N", the labels the importers give a clip without a title.
@@ -296,7 +313,7 @@ where
         ToastMessage::MailNotOpened => t.invoke_mail_not_opened(),
         ToastMessage::AutostartFailed => t.invoke_autostart_failed(),
         ToastMessage::CannotOpenLog => t.invoke_cannot_open_log(),
-        ToastMessage::TriggerOverlaps => t.invoke_trigger_overlaps(),
+        ToastMessage::TriggerOverlaps { other } => t.invoke_trigger_overlaps(other.into()),
         ToastMessage::KeyUnavailable => t.invoke_key_unavailable(),
         ToastMessage::ItemGone => t.invoke_item_gone(),
         ToastMessage::ListGone => t.invoke_list_gone(),

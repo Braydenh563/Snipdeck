@@ -156,6 +156,16 @@ where
                 }
             }
             super::ItemMenuEntry::Ungroup => self.group_ungroup(at),
+            super::ItemMenuEntry::MoveUp { enabled } => {
+                if enabled {
+                    self.group_move(at, -1);
+                }
+            }
+            super::ItemMenuEntry::MoveDown { enabled } => {
+                if enabled {
+                    self.group_move(at, 1);
+                }
+            }
             _ => self.group_delete(at),
         }
     }
@@ -298,6 +308,64 @@ where
                     self.offer_manual_order(id);
                 }
             }
+        }
+    }
+
+    /// The row to drop group `index` on to move it one place (`delta` of 1 or -1): the next
+    /// block (a group's header or a loose row) in that direction. `None` at the ends.
+    fn group_step_target(&self, index: usize, delta: isize) -> Option<usize> {
+        let run = self.group_row(index)?;
+        let order = self.model.manual_order();
+        let first = order.iter().position(|i| run.items.first() == Some(i))?;
+        let last = first + run.items.len().saturating_sub(1);
+        let next = if delta > 0 {
+            order.get(last + 1)
+        } else {
+            order.get(first.checked_sub(1)?)
+        }?;
+        let rows = self.model.rows();
+        let group = self.model.group_of(*next).map(|g| g.group.id);
+        rows.iter().position(|r| match group {
+            Some(g) => r.header.as_ref().is_some_and(|h| h.group == g),
+            None => r.id == *next,
+        })
+    }
+
+    /// Whether the group whose header is row `index` can move `delta` places (1 or -1).
+    pub(crate) fn can_move_group(&self, index: usize, delta: isize) -> bool {
+        self.model.reorderable() && self.group_step_target(index, delta).is_some()
+    }
+
+    /// Alt+Up / Alt+Down on a header, or "Move up / down" in its menu: the whole group moves one
+    /// place past the next group or loose row (the keyboard way to drag a group). One history
+    /// step; the cursor stays on the header and the new place is announced.
+    pub(crate) fn group_move(&mut self, index: usize, delta: isize) {
+        let Some(group) = self.group_row(index).map(|r| r.group.id) else {
+            return;
+        };
+        if !self.model.reorderable() {
+            self.offer_manual_for_panel();
+            return;
+        }
+        let Some(onto) = self.group_step_target(index, delta) else {
+            return;
+        };
+        self.group_drop(index, onto);
+        let rows = self.model.rows();
+        let blocks: Vec<bool> = rows
+            .iter()
+            .filter(|r| !r.grouped)
+            .map(|r| r.header.as_ref().is_some_and(|h| h.group == group))
+            .collect();
+        let Some(at) = rows
+            .iter()
+            .position(|r| r.header.as_ref().is_some_and(|h| h.group == group))
+        else {
+            return;
+        };
+        self.model.select_row(at);
+        if let Some(place) = blocks.iter().position(|mine| *mine) {
+            self.announce_placed(place + 1, blocks.len());
         }
     }
 
