@@ -694,6 +694,9 @@ export component ItemEditor inherits Window {
     callback help-requested();
     callback delete-requested();
     callback remove-formatting-requested();
+    // The refusal under the content is "needs Supporter": the host sets this, and the button beside it opens the licence.
+    in property <bool> content-needs-supporter: false;
+    callback supporter-requested();
     callback tag-toggled(index: int);
     // A new tag name was entered; the host creates it and adds it to `tags` (ticked).
     callback tag-added(name: string);
@@ -885,6 +888,16 @@ export component ItemEditor inherits Window {
                                 edited(t) => { root.touch(); }
                                 changed has-focus => {
                                     if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                            if root.content-needs-supporter: HorizontalLayout {
+                                alignment: start;
+                                Button {
+                                    text: @tr("Get Supporter…");
+                                    clicked => { root.supporter-requested(); }
+                                    changed has-focus => {
+                                        if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                    }
                                 }
                             }
                             if root.formatted && !root.content-large && root.content != root.saved-content: Notice {

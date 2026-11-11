@@ -2071,9 +2071,6 @@ msgstr "Historique récent effacé"
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "Récents conserve le texte que vous copiez, sur cet ordinateur uniquement, pour les {} dernières copies ou les {} derniers jours, selon la première limite atteinte. Les mots de passe des gestionnaires de mots de passe et les extraits sensibles ne sont jamais conservés. Vous pouvez le modifier à tout moment dans les paramètres."
 
-msgid "Recent shows what you used and captured lately."
-msgstr "Récents affiche ce que vous avez utilisé et capturé dernièrement."
-
 msgid "Recently used"
 msgstr "Utilisés récemment"
 
@@ -3125,8 +3122,11 @@ msgstr "Windows n'autorise pas {} comme raccourci."
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows suit la taille du texte de Windows (Paramètres > Accessibilité > Taille du texte). Choisissez une taille pour utiliser celle-ci à la place."
 
-msgid "YYYY-MM-DD"
-msgstr "AAAA-MM-JJ"
+msgid "With clipboard history on, Recent keeps what you copy in other programs."
+msgstr "Avec l’historique du presse-papiers activé, Récents garde ce que vous copiez dans d’autres programmes."
+
+msgid "YYYY-MM-DD, empty for today"
+msgstr "YYYY-MM-DD, vide pour aujourd’hui"
 
 msgid "Yes"
 msgstr "Oui"

@@ -56,6 +56,8 @@ pub enum Effect {
     PlaceWindow(Rect),
     /// Show the window that asks for the master password (a locked sensitive item was needed).
     OpenUnlock,
+    /// Open Settings at the Licence section (Get Supporter), from a Supporter feature that is off.
+    OpenLicence,
 }
 
 /// How far a toast is through its life (the Slint `ToastPhase`).
