@@ -42,7 +42,16 @@ where
         }
         let group = Group::new(list, name);
         let order = self.model.manual_order();
-        let mut changes = Vec::new();
+        // Each member's group now: Undo puts every one back exactly, whatever the moves did.
+        let mut changes: Vec<Change> = members
+            .iter()
+            .filter_map(|id| {
+                self.model.group_of(*id).map(|r| Change::Regroup {
+                    item: *id,
+                    group: Some(r.group.clone()),
+                })
+            })
+            .collect();
         let made = self.store.atomically(|b| {
             // The members gather under the topmost: each one that is not already right below
             // the one before moves there, as a recorded move, so Undo puts it back.
@@ -264,9 +273,14 @@ where
                         .group_of(anchor)
                         .and_then(|g| g.items.first().copied())
                         .unwrap_or(anchor);
-                    place_before(&order, top, &run.items)
+                    let Some(to) = place_before(&order, top, &run.items) else {
+                        return true;
+                    };
+                    to
                 };
-                let back = place_before(&order, run.items[0], &run.items);
+                let Some(back) = place_before(&order, run.items[0], &run.items) else {
+                    return true;
+                };
                 let moved = self.store.move_run(run.group.id, to);
                 if moved.is_ok() {
                     self.record_step(
@@ -307,8 +321,7 @@ where
                 item: id,
                 group: target.group.id,
                 from,
-                from_group: old.as_ref().map(|r| r.group.id),
-                was_first: old.as_ref().is_some_and(|r| r.items.first() == Some(&id)),
+                from_group: old.map(|r| r.group),
             }],
         );
         Ok(())
@@ -316,11 +329,14 @@ where
 }
 
 /// The placement directly above `anchor` in `order`, not counting the `run` being moved.
-fn place_before(order: &[ItemId], anchor: ItemId, run: &[ItemId]) -> Placement<ItemId> {
-    let at = order.iter().position(|i| *i == anchor).unwrap_or(0);
-    order[..at]
-        .iter()
-        .rev()
-        .find(|i| !run.contains(i))
-        .map_or(Placement::First, |p| Placement::After(*p))
+/// `None` when `anchor` is not in `order`.
+fn place_before(order: &[ItemId], anchor: ItemId, run: &[ItemId]) -> Option<Placement<ItemId>> {
+    let at = order.iter().position(|i| *i == anchor)?;
+    Some(
+        order[..at]
+            .iter()
+            .rev()
+            .find(|i| !run.contains(i))
+            .map_or(Placement::First, |p| Placement::After(*p)),
+    )
 }

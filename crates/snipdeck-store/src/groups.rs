@@ -344,3 +344,25 @@ pub(crate) fn join_group(
     )?;
     prune(conn)
 }
+
+pub(crate) fn set_item_group(cx: &mut Ctx<'_>, item: ItemId, group: Option<GroupId>) -> Result<()> {
+    let conn = cx.conn;
+    require_item(conn, item)?;
+    let item_bytes = id_bytes(item);
+    if let Some(group) = group {
+        let list = group_list(conn, group)?;
+        let in_list: bool = conn.query_row(
+            "SELECT list_id = ?2 FROM items WHERE id = ?1",
+            params![item_bytes, list],
+            |r| r.get(0),
+        )?;
+        if !in_list {
+            return Err(not_found(item));
+        }
+    }
+    conn.execute(
+        "UPDATE items SET group_id = ?2 WHERE id = ?1",
+        params![item_bytes, group.map(id_bytes)],
+    )?;
+    prune(conn)
+}

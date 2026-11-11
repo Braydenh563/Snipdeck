@@ -138,10 +138,8 @@ pub enum Change {
         group: GroupId,
         /// Where it was before.
         from: Spot,
-        /// The group it was in before, if any.
-        from_group: Option<GroupId>,
-        /// It was that group's first member.
-        was_first: bool,
+        /// The group it was in before, if any: Undo restores exactly this membership.
+        from_group: Option<Group>,
     },
     /// The inverse of [`Change::Join`]: the item goes back to where it was.
     Leave {
@@ -151,10 +149,17 @@ pub enum Change {
         group: GroupId,
         /// Where it goes back to.
         from: Spot,
-        /// The group it goes back into, if any.
-        from_group: Option<GroupId>,
-        /// It was that group's first member.
-        was_first: bool,
+        /// The group it goes back into, if any (`None`: it ends up in no group).
+        from_group: Option<Group>,
+    },
+    /// An item's group is set to exactly this one (`None`: no group), wherever it sits. Recorded
+    /// before moves that would otherwise re-derive the membership from the row above; it
+    /// is its own inverse, because the state it restores is the state that preceded the step.
+    Regroup {
+        /// The item.
+        item: ItemId,
+        /// The group it belongs to (made again if it was emptied since), or none.
+        group: Option<Group>,
     },
     /// A group was renamed.
     Rename {
@@ -199,26 +204,26 @@ impl Change {
                 group,
                 from,
                 from_group,
-                was_first,
             } => Self::Leave {
                 item: *item,
                 group: *group,
                 from: *from,
-                from_group: *from_group,
-                was_first: *was_first,
+                from_group: from_group.clone(),
             },
             Self::Leave {
                 item,
                 group,
                 from,
                 from_group,
-                was_first,
             } => Self::Join {
                 item: *item,
                 group: *group,
                 from: *from,
-                from_group: *from_group,
-                was_first: *was_first,
+                from_group: from_group.clone(),
+            },
+            Self::Regroup { item, group } => Self::Regroup {
+                item: *item,
+                group: group.clone(),
             },
             Self::Rename { before, after } => Self::Rename {
                 before: after.clone(),

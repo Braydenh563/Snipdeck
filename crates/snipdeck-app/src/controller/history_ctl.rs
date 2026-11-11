@@ -2,7 +2,7 @@
 //! forward. The Main window and the Panel share one history (Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z and
 //! the two header buttons); the toast's Undo button takes back the step it was shown for.
 
-use snipdeck_core::{Item, ItemId, ListId, Placement, Timestamp};
+use snipdeck_core::{Group, Item, ItemId, ListId, Placement, Timestamp};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::{Batch, GroupDelete, GroupEnd, GroupRepo, ItemRepo, TrashRepo, Trashable};
 
@@ -128,16 +128,29 @@ fn apply(
             item,
             from,
             from_group,
-            was_first,
             ..
         } => {
             b.move_item(*item, from.0, from.1)?;
-            if let (Some(g), true) = (from_group, was_first) {
-                b.join_group(*item, *g, GroupEnd::First)?;
-            }
+            regroup(b, *item, from_group.as_ref())?;
         }
+        Change::Regroup { item, group } => regroup(b, *item, group.as_ref())?,
     }
     Ok(())
+}
+
+/// Puts `item` in exactly `group` (made again, with the item alone, if it was emptied and
+/// pruned since) or in none, leaving its position alone.
+fn regroup<B: GroupRepo>(
+    b: &mut B,
+    item: ItemId,
+    group: Option<&Group>,
+) -> snipdeck_store::Result<()> {
+    match group {
+        None => b.set_item_group(item, None),
+        Some(g) => b
+            .set_item_group(item, Some(g.id))
+            .or_else(|_| b.create_group(g, &[item])),
+    }
 }
 
 impl<S, C, K, T> Controller<S, C, K, T>

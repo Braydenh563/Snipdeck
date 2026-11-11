@@ -1504,6 +1504,63 @@ fn undoing_ctrl_g_on_apart_rows_puts_them_back_and_redo_groups_again() {
     assert_eq!(shape(&w), grouped);
 }
 
+/// Like `shape`, but a member is shown as `+title`, so membership is compared too.
+fn members_shape(w: &World) -> Vec<String> {
+    w.ctl
+        .view()
+        .rows
+        .iter()
+        .map(|r| match (&r.header, r.grouped) {
+            (Some(h), _) => format!("[{}:{}]", r.title, h.count),
+            (None, true) => format!("+{}", r.title),
+            (None, false) => r.title.clone(),
+        })
+        .collect()
+}
+
+#[test]
+fn undoing_a_drop_on_a_header_keeps_an_item_below_another_group_ungrouped() {
+    let mut w = world();
+    group_first_two(&mut w);
+    // `[Group] a b c [Second] d`: c is ungrouped, right below the first group.
+    w.ctl.panel_mark(4, SelectMode::Toggle);
+    w.ctl.group_marked(4);
+    w.ctl.group_rename(4, "Second");
+    let before = members_shape(&w);
+    assert!(
+        !before[3].starts_with('+'),
+        "c starts ungrouped: {before:?}"
+    );
+    w.ctl.panel_drop_row(3, 4);
+    let joined = members_shape(&w);
+    assert_ne!(joined, before);
+    w.ctl.undo();
+    assert_eq!(members_shape(&w), before, "c is ungrouped at its old place");
+    w.ctl.redo();
+    assert_eq!(members_shape(&w), joined);
+    w.ctl.undo();
+    assert_eq!(members_shape(&w), before);
+}
+
+#[test]
+fn undoing_ctrl_g_puts_a_member_of_another_group_back_in_it() {
+    let mut w = world();
+    group_first_two(&mut w);
+    let before = members_shape(&w);
+    // b (row 2, in the first group) and d (row 4) become a new group.
+    w.ctl.panel_mark(2, SelectMode::Toggle);
+    w.ctl.panel_mark(4, SelectMode::Toggle);
+    w.ctl.group_marked(2);
+    let grouped = members_shape(&w);
+    assert_ne!(grouped, before);
+    w.ctl.undo();
+    assert_eq!(members_shape(&w), before, "b is back in the first group");
+    w.ctl.redo();
+    assert_eq!(members_shape(&w), grouped);
+    w.ctl.undo();
+    assert_eq!(members_shape(&w), before);
+}
+
 #[test]
 fn the_rename_request_follows_its_group_and_ends() {
     let mut w = world();
