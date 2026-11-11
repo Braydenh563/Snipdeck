@@ -10,12 +10,14 @@
 use std::collections::{HashMap, HashSet};
 
 use snipdeck_core::{
-    Board, BoardId, Item, ItemId, ItemKind, ItemLabel, List, ListAccent, ListIcon, ListId,
+    Board, BoardId, GroupId, Item, ItemId, ItemKind, ItemLabel, List, ListAccent, ListIcon, ListId,
     ListSort, Placement, Tag, TagId,
 };
-use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable};
+use snipdeck_store::{
+    BoardRepo, GroupRepo, GroupRun, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable,
+};
 
-use crate::panel::ListLabel;
+use crate::panel::{GroupHeader, ListLabel};
 use crate::search_mark::{self, Marks};
 use crate::settings::RowDensity;
 
@@ -28,7 +30,7 @@ pub const LIST_NOTE: &str = "List";
 /// The preview of a trashed board.
 pub const BOARD_NOTE: &str = "Board";
 
-/// Something a row stands for: an item, or (in the Trash view only) a trashed list or board.
+/// Something a row stands for: an item, a group's header, or (in the Trash view only) a trashed list or board.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Key {
     /// An item.
@@ -37,14 +39,19 @@ pub enum Key {
     List(ListId),
     /// A board, in the Trash.
     Board(BoardId),
+    /// A group's header in a list in manual order: it is never selected or acted on like an item.
+    Group(GroupId),
 }
 
-impl From<Key> for Trashable {
-    fn from(key: Key) -> Self {
-        match key {
-            Key::Item(id) => Self::Item(id),
-            Key::List(id) => Self::List(id),
-            Key::Board(id) => Self::Board(id),
+impl Key {
+    /// What the Trash would hold for this row; a group header is not an entry.
+    #[must_use]
+    pub fn trashable(self) -> Option<Trashable> {
+        match self {
+            Self::Item(id) => Some(Trashable::Item(id)),
+            Self::List(id) => Some(Trashable::List(id)),
+            Self::Board(id) => Some(Trashable::Board(id)),
+            Self::Group(_) => None,
         }
     }
 }
@@ -121,6 +128,10 @@ pub enum SelectMode {
 }
 
 /// One row of the item area.
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent display flags of one row, as in the window's own row struct"
+)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Row {
     /// What it stands for.
@@ -144,6 +155,10 @@ pub struct Row {
     /// While searching: where the query matched (shared-look spec decision 3). The search hits
     /// carry ids only, so there is no tag hit here.
     pub marks: Marks,
+    /// The row is a group's header, not an item: `title` is its name.
+    pub header: Option<GroupHeader>,
+    /// The item sits under a group's header: the card is indented.
+    pub grouped: bool,
 }
 
 /// A list in the sidebar.
@@ -278,6 +293,8 @@ pub struct MainModel {
     tags: Vec<Tag>,
     tag_counts: HashMap<TagId, usize>,
     items: Vec<Item>,
+    /// The groups of each list of the open board.
+    groups: HashMap<ListId, Vec<GroupRun>>,
     list_labels: HashMap<ListId, ListLabel>,
     /// The names the search suggestions are made of, rebuilt by `reload`.
     suggest: std::rc::Rc<crate::search_suggest::Index>,
@@ -304,6 +321,8 @@ impl Default for MainModel {
 enum Entry<'a> {
     Item(&'a Item),
     Trashed(&'a TrashEntry),
+    /// A group's header above its members.
+    Header(&'a GroupRun),
 }
 
 impl MainModel {
@@ -320,6 +339,7 @@ impl MainModel {
             tags: Vec::new(),
             tag_counts: HashMap::new(),
             items: Vec::new(),
+            groups: HashMap::new(),
             list_labels: HashMap::new(),
             suggest: std::rc::Rc::default(),
             trash: Vec::new(),
@@ -371,7 +391,7 @@ impl MainModel {
     /// Any store error; the model is left as it was.
     pub fn reload<S>(&mut self, store: &S) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + GroupRepo,
     {
         let boards = store.boards()?;
         let board = self
@@ -383,6 +403,10 @@ impl MainModel {
             None => Vec::new(),
         };
         let items = store.all_items()?;
+        let groups = lists
+            .iter()
+            .map(|l| Ok((l.id, store.groups_of(l.id)?)))
+            .collect::<snipdeck_store::Result<HashMap<_, _>>>()?;
         let tags = store.tags()?;
         let trash = store.trashed()?;
         let mut list_labels = HashMap::new();
@@ -418,6 +442,7 @@ impl MainModel {
         self.tags = tags;
         self.tag_counts = tag_counts;
         self.items = items;
+        self.groups = groups;
         self.list_labels = list_labels;
         self.trash = trash;
         self.hits = hits;
@@ -626,11 +651,63 @@ impl MainModel {
                 .collect();
         }
         let wanted = self.label_filter;
-        self.unfiltered_items()
+        let items = self
+            .unfiltered_items()
             .into_iter()
-            .filter(|i| wanted.is_none() || i.label == wanted)
-            .map(Entry::Item)
-            .collect()
+            .filter(|i| wanted.is_none() || i.label == wanted);
+        if !self.shows_groups() {
+            return items.map(Entry::Item).collect();
+        }
+        // A group is a run of the manual order: its header goes above the first member, and a folded group
+        // shows the header only.
+        let mut entries = Vec::new();
+        let mut open: Option<GroupId> = None;
+        for item in items {
+            let run = self.group_of(item.id);
+            if let Some(run) = run.filter(|r| open != Some(r.group.id)) {
+                entries.push(Entry::Header(run));
+            }
+            open = run.map(|r| r.group.id);
+            if run.is_none_or(|r| !r.group.collapsed) {
+                entries.push(Entry::Item(item));
+            }
+        }
+        entries
+    }
+
+    /// Whether the rows carry group headers: the open section is one list in manual order, with no search and no
+    /// colour filter (a filter would cut a group's run).
+    fn shows_groups(&self) -> bool {
+        self.label_filter.is_none() && self.reorderable()
+    }
+
+    /// The open list's groups (none when it shows none).
+    #[must_use]
+    pub fn open_groups(&self) -> &[GroupRun] {
+        match self.section {
+            Section::List(id) if self.shows_groups() => {
+                self.groups.get(&id).map_or(&[], Vec::as_slice)
+            }
+            _ => &[],
+        }
+    }
+
+    /// The group whose header is row `index`.
+    #[must_use]
+    pub fn group_at(&self, index: usize) -> Option<GroupRun> {
+        let Some(Key::Group(id)) = self.keys().get(index).copied() else {
+            return None;
+        };
+        self.open_groups()
+            .iter()
+            .find(|r| r.group.id == id)
+            .cloned()
+    }
+
+    /// The group item `id` belongs to, in the open list.
+    #[must_use]
+    pub fn group_of(&self, id: ItemId) -> Option<&GroupRun> {
+        self.open_groups().iter().find(|r| r.items.contains(&id))
     }
 
     /// The items of the open view before the colour-label filter: the search hits while
@@ -709,6 +786,7 @@ impl MainModel {
             .map(|e| match e {
                 Entry::Item(i) => Key::Item(i.id),
                 Entry::Trashed(t) => t.target.into(),
+                Entry::Header(r) => Key::Group(r.group.id),
             })
             .collect()
     }
@@ -744,6 +822,8 @@ impl MainModel {
                         pinned: item.pinned,
                         label: item.label,
                         selected: self.selected.contains(&Key::Item(item.id)),
+                        header: None,
+                        grouped: self.group_of(item.id).is_some() && self.shows_groups(),
                     }
                 }
                 Entry::Trashed(entry) => {
@@ -754,7 +834,7 @@ impl MainModel {
                         sensitive: false,
                         title: entry.label.clone(),
                         preview: match key {
-                            Key::Item(_) => String::new(),
+                            Key::Item(_) | Key::Group(_) => String::new(),
                             Key::List(_) => LIST_NOTE.to_owned(),
                             Key::Board(_) => BOARD_NOTE.to_owned(),
                         },
@@ -763,8 +843,29 @@ impl MainModel {
                         label: None,
                         selected: self.selected.contains(&key),
                         marks: Marks::default(),
+                        header: None,
+                        grouped: false,
                     }
                 }
+                Entry::Header(run) => Row {
+                    key: Key::Group(run.group.id),
+                    kind: ItemKind::Text,
+                    sensitive: false,
+                    title: run.group.name.as_str().to_owned(),
+                    preview: String::new(),
+                    list: None,
+                    pinned: false,
+                    label: None,
+                    selected: false,
+                    marks: Marks::default(),
+                    header: Some(GroupHeader {
+                        group: run.group.id,
+                        name: run.group.name.as_str().to_owned(),
+                        count: run.items.len(),
+                        collapsed: run.group.collapsed,
+                    }),
+                    grouped: false,
+                },
             })
             .collect()
     }
@@ -819,7 +920,7 @@ impl MainModel {
     /// Any store error from reading the board's lists.
     pub fn open_board<S>(&mut self, store: &S, id: BoardId) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + GroupRepo,
     {
         if !self.boards.iter().any(|b| b.id == id) {
             return Ok(());
@@ -883,12 +984,21 @@ impl MainModel {
                 self.selected = keys[lo..=hi].iter().copied().collect();
             }
         }
+        // A header is reached by the cursor but never selected like a card.
+        self.selected.retain(|k| !matches!(k, Key::Group(_)));
+        if matches!(key, Key::Group(_)) && mode == SelectMode::Replace {
+            self.anchor = None;
+        }
         self.cursor = index;
     }
 
-    /// Selects every row.
+    /// Selects every row (headers aside).
     pub fn select_all(&mut self) {
-        self.selected = self.keys().into_iter().collect();
+        self.selected = self
+            .keys()
+            .into_iter()
+            .filter(|k| !matches!(k, Key::Group(_)))
+            .collect();
     }
 
     /// Selects nothing.
@@ -910,7 +1020,11 @@ impl MainModel {
         if selected.len() > 1 {
             selected
         } else {
-            keys.get(index).copied().into_iter().collect()
+            keys.get(index)
+                .copied()
+                .filter(|k| !matches!(k, Key::Group(_)))
+                .into_iter()
+                .collect()
         }
     }
 
@@ -1118,6 +1232,141 @@ mod tests {
         model.open(Section::List(code.id));
         assert_eq!(titles(&model), ["Recent customers", "Retry helper"]);
         assert!(!model.reorderable());
+    }
+
+    /// The list with the most items in the demo library, with its item ids in order.
+    fn fullest_list(model: &MainModel, store: &Store) -> (ListId, Vec<ItemId>) {
+        model
+            .lists()
+            .iter()
+            .map(|l| (l.id, store.items(l.id).expect("items")))
+            .max_by_key(|(_, items)| items.len())
+            .map(|(id, items)| (id, items.iter().map(|i| i.id).collect()))
+            .expect("a list")
+    }
+
+    /// Groups the middle items of the fullest list: [first, header, a, b, (rest)].
+    fn grouped(
+        store: &mut Store,
+        model: &mut MainModel,
+    ) -> (ListId, Vec<ItemId>, snipdeck_core::Group) {
+        use snipdeck_store::GroupRepo;
+        let (list, ids) = fullest_list(model, store);
+        assert!(ids.len() >= 3, "the demo list has at least three items");
+        let group = snipdeck_core::Group::new(list, Name::new("Pair").expect("name"));
+        store.create_group(&group, &ids[1..3]).expect("group");
+        model.reload(store).expect("reload");
+        model.open(Section::List(list));
+        (list, ids, group)
+    }
+
+    #[test]
+    fn a_manual_list_shows_a_header_above_its_group_and_indents_the_members() {
+        let (mut store, mut model) = loaded();
+        let (_, ids, group) = grouped(&mut store, &mut model);
+        let rows = model.rows();
+        assert_eq!(rows[0].key, Key::Item(ids[0]));
+        assert!(rows[0].header.is_none() && !rows[0].grouped);
+        assert_eq!(rows[1].key, Key::Group(group.id));
+        let header = rows[1].header.as_ref().expect("header");
+        assert_eq!(
+            (header.name.as_str(), header.count, header.collapsed),
+            ("Pair", 2, false)
+        );
+        assert_eq!(rows[2].key, Key::Item(ids[1]));
+        assert!(rows[2].grouped && rows[3].grouped);
+        assert_eq!(model.keys().len(), model.rows().len());
+    }
+
+    #[test]
+    fn a_collapsed_group_hides_its_members_and_keeps_its_header() {
+        let (mut store, mut model) = loaded();
+        let (list, ids, mut group) = grouped(&mut store, &mut model);
+        group.collapsed = true;
+        snipdeck_store::GroupRepo::update_group(&mut store, &group).expect("collapse");
+        model.reload(&store).expect("reload");
+        let keys = model.keys();
+        assert!(keys.contains(&Key::Group(group.id)));
+        assert!(!keys.contains(&Key::Item(ids[1])) && !keys.contains(&Key::Item(ids[2])));
+        assert_eq!(
+            model.manual_order(list).len(),
+            ids.len(),
+            "the order still holds every item"
+        );
+        assert_eq!(model.rows()[1].header.as_ref().expect("header").count, 2);
+    }
+
+    #[test]
+    fn groups_need_manual_order_and_no_search_or_label_filter() {
+        let (mut store, mut model) = loaded();
+        let (list, _, group) = grouped(&mut store, &mut model);
+        model.set_query(&store, "e").expect("search");
+        assert!(
+            model
+                .rows()
+                .iter()
+                .all(|r| r.header.is_none() && !r.grouped),
+            "a search is flat"
+        );
+        model.set_query(&store, "").expect("clear");
+        assert!(model.rows().iter().any(|r| r.header.is_some()));
+        model.open(Section::All);
+        assert!(
+            model.rows().iter().all(|r| r.header.is_none()),
+            "All items is flat"
+        );
+        let mut sorted = model
+            .lists()
+            .iter()
+            .find(|l| l.id == list)
+            .expect("list")
+            .clone();
+        sorted.sort = ListSort::MostUsed;
+        store.update_list(&sorted).expect("sort");
+        model.reload(&store).expect("reload");
+        model.open(Section::List(list));
+        assert!(
+            !model.keys().contains(&Key::Group(group.id)),
+            "a list that sorts itself shows no groups"
+        );
+    }
+
+    #[test]
+    fn a_header_is_never_an_action_target_and_select_all_skips_it() {
+        let (mut store, mut model) = loaded();
+        let (_, ids, group) = grouped(&mut store, &mut model);
+        model.select(1, SelectMode::Replace);
+        assert_eq!(model.cursor(), 1);
+        assert_eq!(
+            model.selected_count(),
+            0,
+            "a header is not selected like a card"
+        );
+        assert!(model.targets(1).is_empty());
+        model.select_all();
+        assert!(!model.rows()[1].selected, "{:?} stays unselected", group.id);
+        assert_eq!(model.targets(0).len(), model.keys().len() - 1);
+        model.select(0, SelectMode::Replace);
+        model.select(3, SelectMode::Extend);
+        assert_eq!(
+            model.targets(0),
+            [Key::Item(ids[0]), Key::Item(ids[1]), Key::Item(ids[2])],
+            "a range across the header keeps the items only"
+        );
+        assert!(
+            model.dragged_items(1).is_empty(),
+            "a header drags as a group, not as items"
+        );
+    }
+
+    #[test]
+    fn group_at_and_group_of_find_the_group_by_row_and_by_item() {
+        let (mut store, mut model) = loaded();
+        let (_, ids, group) = grouped(&mut store, &mut model);
+        assert_eq!(model.group_at(1).map(|r| r.group.id), Some(group.id));
+        assert!(model.group_at(0).is_none() && model.group_at(2).is_none());
+        assert_eq!(model.group_of(ids[2]).map(|r| r.group.id), Some(group.id));
+        assert!(model.group_of(ids[0]).is_none());
     }
 
     #[test]

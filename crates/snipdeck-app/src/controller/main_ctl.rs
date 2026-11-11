@@ -180,6 +180,11 @@ pub struct MainScreen {
     pub sidebar_collapsed: bool,
     /// The rows.
     pub rows: Vec<Row>,
+    /// The header whose name should open for editing in place, with the request count
+    /// (a new request is a new `rename_seq`).
+    pub rename_row: Option<usize>,
+    /// Counts the rename requests.
+    pub rename_seq: u64,
     /// How many rows are selected.
     pub selected_count: usize,
     /// "Use" or "Copy", by what a click can do now.
@@ -247,6 +252,10 @@ where
             }
         }
         let in_recent = self.main.section() == Section::Recent;
+        let rename_row = self.rename_group.and_then(|g| {
+            rows.iter()
+                .position(|r| r.header.as_ref().is_some_and(|h| h.group == g))
+        });
         MainScreen {
             dark: look.dark,
             high_contrast: look.high_contrast,
@@ -299,6 +308,8 @@ where
                 .map_or(snipdeck_core::ListSort::Manual, |l| l.sort),
             selected_count: self.main.selected_count(),
             rows,
+            rename_row,
+            rename_seq: self.rename_seq,
             use_label: self.model.use_label(),
             revealed,
             toast: self.toast_view(),

@@ -496,6 +496,33 @@ fn title_width_unchanged_on_hover() {
     assert_golden("main-row-hover-light", &hovered);
 }
 
+/// v1.1: a group inside the Main list. An expanded header with its two indented cards (the header holds the keyboard
+/// cursor), and a collapsed header below with its count.
+#[test]
+fn main_window_with_a_group_light_and_dark() {
+    for (dark, name) in [(false, "main-group-light"), (true, "main-group-dark")] {
+        let h = window(SIZE, dark);
+        let header = |title: &str, count: i32, collapsed: bool| snipdeck_ui::MainRow {
+            title: title.into(),
+            is_header: true,
+            group_count: count,
+            group_collapsed: collapsed,
+            ..Default::default()
+        };
+        let mut rows = fixture::sample_rows();
+        rows.truncate(4);
+        rows.insert(0, header("Replies", 2, false));
+        rows[1].grouped = true;
+        rows[2].grouped = true;
+        rows.push(header("Archive", 5, true));
+        fixture::set_rows(&h.component, rows);
+        h.component.set_has_groups(true);
+        // The footer counts items (9), not rows (6): the host sets it from the headers' counts.
+        h.component.set_list_total(9);
+        assert_golden(name, &render(&h));
+    }
+}
+
 #[test]
 fn main_window_search_results_light_and_dark() {
     for (dark, name) in [(false, "main-search-light"), (true, "main-search-dark")] {

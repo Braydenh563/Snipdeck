@@ -249,6 +249,72 @@ macro_rules! ui_tests {
 }
 
 ui_tests! {
+
+    fn a_group_header_is_a_labelled_expandable_button_and_has_its_own_keys() {
+        let (ui, log) = start();
+        let header = |count: i32, collapsed: bool| snipdeck_ui::MainRow {
+            title: "Replies".into(),
+            is_header: true,
+            group_count: count,
+            group_collapsed: collapsed,
+            ..Default::default()
+        };
+        let mut rows = fixture::sample_rows();
+        rows.truncate(3);
+        rows.insert(0, header(2, false));
+        rows[1].grouped = true;
+        rows[2].grouped = true;
+        let model = fixture::set_rows(&ui, rows);
+        ui.set_has_groups(true);
+        ui.set_list_total(9);
+        settle();
+        // The footer counts items, not rows (a header is not an item; folded members still are).
+        assert!(ElementHandle::find_by_accessible_label(&ui, "9 items").next().is_some());
+        {
+            let l = log.clone();
+            ui.on_group_requested(move |i| l.borrow_mut().push(format!("group:{i}")));
+            let l = log.clone();
+            ui.on_group_toggled(move |i| l.borrow_mut().push(format!("toggle:{i}")));
+            let l = log.clone();
+            ui.on_group_collapsed_set(move |i, c| l.borrow_mut().push(format!("collapse:{i}:{c}")));
+            let l = log.clone();
+            ui.on_group_rename_requested(move |i| l.borrow_mut().push(format!("rename:{i}")));
+            let l = log.clone();
+            ui.on_group_delete_requested(move |i| l.borrow_mut().push(format!("delete:{i}")));
+        }
+        take(&log);
+        let button = find(&ui, "group Replies, 2 items", AccessibleRole::Button);
+        assert_eq!(button.accessible_expanded(), Some(true));
+        assert_eq!(button.accessible_expandable(), Some(true));
+        // Ctrl+G groups at the cursor row.
+        chord(ui.window(), &[Key::Control], "g");
+        settle();
+        assert_eq!(take(&log).last().map(String::as_str), Some("group:0"));
+        // The cursor is on the header: Left folds, Right unfolds, Enter toggles, F2 renames, Delete deletes the group.
+        press_key(&ui, Key::Home);
+        take(&log);
+        press_key(&ui, Key::LeftArrow);
+        press_key(&ui, Key::RightArrow);
+        press_key(&ui, Key::Return);
+        press_key(&ui, Key::F2);
+        press_key(&ui, Key::Delete);
+        assert_eq!(
+            take(&log),
+            ["collapse:0:true", "collapse:0:false", "toggle:0", "rename:0", "delete:0"]
+        );
+        // A click on the header toggles it.
+        press_at_centre(&ui, centre_of(&button));
+        assert_eq!(take(&log), ["toggle:0"]);
+        // A collapsed header says so.
+        let mut h = model.row_data(0).unwrap();
+        h.group_collapsed = true;
+        model.set_row_data(0, h);
+        settle();
+        assert_eq!(
+            find(&ui, "group Replies, 2 items", AccessibleRole::Button).accessible_expanded(),
+            Some(false)
+        );
+    }
     // ---- Item area: keyboard -------------------------------------------------------------------
 
     fn the_item_area_is_one_tab_stop_and_arrows_move_the_cursor_and_report_the_selection() {
