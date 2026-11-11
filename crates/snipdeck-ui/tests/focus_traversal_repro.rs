@@ -14,8 +14,9 @@ use i_slint_core::{
 };
 use slint::{ComponentHandle, platform::Key};
 use snipdeck_ui::{
-    FocusProbeConditional as Conditional, FocusProbeScrolled as Scrolled, FocusProbeClippedSlot as ClippedSlot, FocusProbeFlick as InFlick, FocusProbePlain as Plain,
-    testing::Harness,
+    FocusProbeCards as Cards, FocusProbeClippedSlot as ClippedSlot,
+    FocusProbeConditional as Conditional, FocusProbeFlick as InFlick, FocusProbePlain as Plain,
+    FocusProbeScrolled as Scrolled, testing::Harness,
 };
 
 #[path = "support/mod.rs"]
@@ -96,4 +97,14 @@ fn control_in_clipping_rectangle_in_a_flickable_is_skipped() {
         !seen.contains(&Some("Field".to_string())),
         "Slint now keeps a clipped control in the Tab order; the workaround may go: {seen:?}"
     );
+}
+
+/// Cards from a `for` in a scroll view, most of them scrolled away, are all Tab stops.
+#[test]
+fn offscreen_cards_are_tab_stops() {
+    let h = Harness::new(Cards::new, 300, 300);
+    let _ = h.render_settled();
+    let seen = walk(h.component.window(), false, 11);
+    let want: Vec<Option<String>> = (0..10).map(|i| Some(format!("Card {i}"))).collect();
+    assert_eq!(&seen[..10], &want[..], "forward walk: {seen:?}");
 }

@@ -306,32 +306,12 @@ fn audit<C: ComponentHandle>(
     out
 }
 
+/// Every walk must be clean: no known findings are pinned any more.
 fn expect_clean(problems: &[String]) {
-    expect_clean_except(problems, &[]);
-}
-
-/// Like `expect_clean`, but the `known` problems (substrings) are open findings in
-/// docs/reviews/final-audit-1.md: the test pins them and fails when one stops happening, so the entry
-/// gets removed together with the fix.
-fn expect_clean_except(problems: &[String], known: &[&str]) {
-    let unknown: Vec<&String> = problems
-        .iter()
-        .filter(|p| !known.iter().any(|k| p.contains(k)))
-        .collect();
     assert_eq!(
-        unknown,
-        Vec::<&String>::new(),
-        "{} stops walked",
-        problems.len()
-    );
-    let gone: Vec<&&str> = known
-        .iter()
-        .filter(|k| !problems.iter().any(|p| p.contains(**k)))
-        .collect();
-    assert_eq!(
-        gone,
-        Vec::<&&str>::new(),
-        "a known finding no longer happens: remove it from the list"
+        problems,
+        Vec::<String>::new(),
+        "keyboard walk found problems"
     );
 }
 
@@ -405,10 +385,7 @@ fn item_editor_keyboard_walk() {
             ));
         }
     }
-    expect_clean_except(
-        &all,
-        &["Shift+Tab walk differs: expected \"Template text\""],
-    );
+    expect_clean(&all);
 }
 
 #[test]

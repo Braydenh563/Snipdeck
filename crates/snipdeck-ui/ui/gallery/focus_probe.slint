@@ -69,3 +69,25 @@ export component FocusProbeClippedSlot inherits Window {
         }
     }
 }
+
+// Cards from a `for` in a Flickable, most of them scrolled away.
+export component FocusProbeCards inherits Window {
+    width: 300px;
+    height: 120px;
+    Flickable {
+        width: 300px;
+        height: 120px;
+        viewport-height: 1000px;
+        VerticalLayout {
+            for i in 10: Rectangle {
+                height: 100px;
+                VerticalLayout {
+                    HorizontalLayout {
+                        alignment: start;
+                        Button { text: "Card " + i; }
+                    }
+                }
+            }
+        }
+    }
+}
