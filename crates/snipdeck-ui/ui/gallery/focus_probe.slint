@@ -1,0 +1,93 @@
+// Test probes for the Tab order (tests/focus_traversal_repro.rs): a text field between two buttons, plain, inside a
+// Flickable and inside a conditional. Not shown by the app.
+import { TextField } from "../components/text_field.slint";
+import { Button } from "../components/button.slint";
+
+export component FocusProbePlain inherits Window {
+    VerticalLayout {
+        Button { text: "One"; }
+        TextField { label: "Field"; }
+        Button { text: "Three"; }
+    }
+}
+
+export component FocusProbeFlick inherits Window {
+    Flickable {
+        VerticalLayout {
+            Button { text: "One"; }
+            TextField { label: "Field"; }
+            Button { text: "Three"; }
+        }
+    }
+}
+
+export component FocusProbeConditional inherits Window {
+    in property <bool> show: true;
+    VerticalLayout {
+        Button { text: "One"; }
+        if root.show: TextField { label: "Field"; }
+        Button { text: "Three"; }
+    }
+}
+
+// A text field scrolled out of a small Flickable (Settings, item editor): Tab must still reach it.
+export component FocusProbeScrolled inherits Window {
+    width: 300px;
+    height: 60px;
+    Flickable {
+        width: 300px;
+        height: 60px;
+        viewport-height: 600px;
+        VerticalLayout {
+            Button { text: "One"; }
+            Rectangle { height: 200px; }
+            TextField { label: "Field"; }
+            Rectangle { height: 200px; }
+            Button { text: "Three"; }
+        }
+    }
+}
+
+// A clipping Rectangle between a control and the scroll view hides the control from Tab while it is scrolled away.
+export component FocusProbeClippedSlot inherits Window {
+    width: 300px;
+    height: 60px;
+    Flickable {
+        width: 300px;
+        height: 60px;
+        viewport-height: 600px;
+        VerticalLayout {
+            Button { text: "One"; }
+            Rectangle { height: 200px; }
+            Rectangle {
+                height: 100px;
+                clip: true;
+                Button { text: "Field"; }
+            }
+            Rectangle { height: 200px; }
+            Button { text: "Three"; }
+        }
+    }
+}
+
+// Cards from a `for` in a Flickable, most of them scrolled away.
+export component FocusProbeCards inherits Window {
+    width: 300px;
+    height: 120px;
+    Flickable {
+        width: 300px;
+        height: 120px;
+        viewport-height: 1000px;
+        VerticalLayout {
+            for i in 10: Rectangle {
+                height: 100px;
+                VerticalLayout {
+                    HorizontalLayout {
+                        alignment: start;
+                        Button { text: "Card " + i; }
+                    }
+                }
+            }
+        }
+    }
+}

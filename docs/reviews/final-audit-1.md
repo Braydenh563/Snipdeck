@@ -27,9 +27,32 @@ used: nothing here is verified on Windows (DirectWrite text, real DPI scaling, n
 
 ## Not verified
 
-- Focus order by keyboard and keyboard traps were not walked in this audit (existing `*_logic.rs` tests cover
-  Tab order for the editors, Settings and Help); not re-measured here.
 - Windows rendering, real DPI scaling and Narrator. The minimum-width change relies on the window backend reading
   `min-width` again when the text size changes; on Windows that needs a manual check.
 - Fixed #1-#4 are checked by a property test (`smallest_window_width_grows_with_text_size`) and by renders at 600 px
   at 2.25x, not by a golden of the real minimum-size window.
+
+## Audit 1b: keyboard walk and 2.25x fill form
+
+Method: `crates/snipdeck-ui/tests/audit_final1_keys.rs` presses Tab until the cycle closes, then Shift+Tab back,
+then Esc on the first, a middle and the last stop. The focus holder is read from the window; its nearest
+accessible ancestor is the "control". Every stop is rendered while focused and must paint at least 8 pixels of the
+`focus.ring` colour (#2870D4 light, #74ACFF dark) in the 4 px band round its border. Help (4 tabs), item editor
+(template, free and Supporter), Settings and the fill form (field, choice, multiline, date, tick box) at 1x and
+2.25x, fill form also in dark. Tab off the last stop leaves the window (to the OS), the next Tab comes back.
+
+| # | Finding | Measurement | Fixed? |
+|---|---------|-------------|--------|
+| 13 | Fill form, choice field: the Tab stop was the field's outer FocusScope, not the radio group, so the screen reader announced the group "Fields" and not "Tone" | focus item 408x110 at (16,116) had role Groupbox "Fields"; 0 ring pixels at the group | Yes: the list has its own FocusScope inside the radio group (`template_field.slint`) |
+| 14 | Settings, all five dropdowns (Accent colour, Text size, Language, Panel opens, Dock to): the combobox role sat on the box, the FocusScope was a zero-height sibling in the layout, so focus announced the row's group and the focus ring was drawn on an element that was not the focus holder | focus items 200x0 at (412,700) at 1x, 450x0 at 2.25x, role Groupbox | Yes: scope moved inside the box (`form.slint` SelectField) |
+| 15 | All walked windows: every stop has a name, paints the focus ring in both themes at 1x and 2.25x, Esc reaches the window from first, middle and last stop, no trap | 57 stops Settings, 13 / 18 item editor (free / Supporter), 8 fill form, 6 / 5 / 2 / 4 Help tabs | OK |
+| 16 | Fill form at 2.25x with the new 608 px minimum: the three-line multiline box and the long date error show in full | date error is the only red text, its right edge is more than 16 px inside the window; three ink lines in the box (`fill-225-errors.png` opened) | OK, asserted |
+| 17 | Settings: after the first lap Tab never returned to "Search settings" and "Jump to a section"; forward Tab skipped the "Licence key" field | Slint skips an item hidden by a clipping `Rectangle` that sits between it and a scroll view (`is_visible_or_clipped_by_flickable` only forgives a `Flickable` as the first clipping ancestor). `TextField` wrapped its `Flickable` in a `clip: true` Rectangle, so a field scrolled out of view dropped out of the Tab order. Reproduced by `focus_traversal_repro.rs` (`text_field_scrolled_out_of_a_flickable`) | Yes: `clip` removed from the field viewport (`text_field.slint`; the Flickable already clips). Walk is clean at 1x and 2.25x |
+| 18 | Item editor at 2.25x: Shift+Tab from "Remove formatting" skipped the "Template text" field and went to "Kind" | same cause: the content slot was a `clip: true` Rectangle around the field. Pinned as Slint behaviour by `control_in_clipping_rectangle_in_a_flickable_is_skipped` | Yes: `clip` removed from the slot (`editors.slint`) |
+| 19 | Help Tips tab: Tab stopped after the third "Try it" (the next Tab left no focused control) and Shift+Tab never reached the first cards | different cause: each card called `FormScroll.reveal(card.y, ...)` on focus, passing a content-relative y where the function expects a y relative to the visible area, which fought Slint's own scroll-to-focus. With the call removed all 10 buttons are visited in order in both directions (`offscreen_cards_are_tab_stops` shows off-screen cards are normal Tab stops) | Yes: manual `reveal` removed from the Tips cards (`help.slint`); Slint scrolls the focused button into view |
+
+Not verified: a real keyboard on Windows (17-19 were root-caused and fixed in the .slint sources, not worked round in the
+harness; Slint's scroll-to-focus on Windows is assumed to match the software backend), Narrator announcing the choice list and
+dropdowns (13, 14 are fixed by the accessible tree, not heard), visual order on scrolling pages (Settings, Tips,
+item editor at 2.25x): window y moves with the scroll so the order check is skipped there (focus order was read
+from the names instead).
