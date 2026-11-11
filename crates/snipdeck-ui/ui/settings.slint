@@ -1242,7 +1242,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Expand abbreviations as I type");
-                        description: @tr("When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk. Nothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items.");
+                        description: @tr("When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items.");
                         Toggle {
                             a11y-label: @tr("Expand abbreviations as I type");
                             enabled: root.typing-available;
@@ -1255,7 +1255,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Suggest snippets as I type");
-                        description: @tr("After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual.");
+                        description: @tr("After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows.");
                         Toggle {
                             a11y-label: @tr("Suggest snippets as I type");
                             enabled: root.typing-available;

@@ -16,7 +16,7 @@ use snipdeck_platform::{
     route::{Route, ScreenRect},
 };
 
-use super::{Controller, Library, UseResult, use_ctl::Erasing};
+use super::{Controller, Library, Toast, ToastKind, ToastMessage, UseResult, use_ctl::Erasing};
 use crate::{
     host::{ClipboardText, TypingControl},
     typing_worker::Typed,
@@ -160,13 +160,20 @@ where
         }
         let enable = (settings_changed || self.typing_on != Some(on)).then_some(on);
         self.typing_on = Some(on);
+        let mut failed = false;
         if let Some(typing) = self.typing.as_mut() {
             if let Some((matcher, candidates)) = lists {
                 typing.set_triggers(matcher, candidates);
             }
             if let Some(on) = enable {
-                typing.set_enabled(on);
+                failed = !typing.set_enabled(on);
             }
+        }
+        if failed {
+            self.show_toast(Toast {
+                kind: ToastKind::Danger,
+                message: ToastMessage::TypingUnavailable,
+            });
         }
     }
 

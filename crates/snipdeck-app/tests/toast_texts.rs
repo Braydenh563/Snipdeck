@@ -130,10 +130,11 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::FileMoved => 99,
         ToastMessage::FilesTooLarge => 100,
         ToastMessage::TriggerOverlaps { .. } => 101,
+        ToastMessage::TypingUnavailable => 102,
     }
 }
 
-const VARIANTS: usize = 102;
+const VARIANTS: usize = 103;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -304,6 +305,7 @@ fn samples() -> Vec<ToastMessage> {
         M::TriggerOverlaps {
             other: s("Signature"),
         },
+        M::TypingUnavailable,
         M::SwitchToManual {
             list: snipdeck_core::ListId::generate(),
         },
@@ -444,6 +446,10 @@ fn what_a_toast_carries_reaches_its_sentence() {
             }),
             "Saved. This code overlaps another trigger, so one of them may never fire.",
             "an untitled item is not named as “”"
+        );
+        assert_eq!(
+            said(ToastMessage::TypingUnavailable),
+            "Couldn't start typing triggers. Nothing will be expanded or suggested."
         );
         assert_eq!(said(ToastMessage::DockSet(None)), "Panel floats again");
         assert_eq!(

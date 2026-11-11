@@ -525,6 +525,13 @@
       "title": "One-character trigger warning is styled and announced",
       "do": "With Narrator on, open an item's editor and type ; in the Trigger field.",
       "expect": "A warning line with the warning icon and the warning colour appears under the field (same height rhythm as other field notes) and Narrator reads it politely. Choosing Sensitive replaces the field with one line saying Sensitive items have no trigger."
+    },
+    {
+      "id": "70",
+      "v1": false,
+      "title": "Esc takes the hint down and reaches the app; a hook that cannot start says so",
+      "do": "In Notepad type ;s so the hint shows, then press Esc. Then, if you can make hook installation fail (a policy or security product that blocks keyboard hooks), turn on Settings > Typing > Expand abbreviations as I type.",
+      "expect": "Esc hides the hint and Notepad still receives the Esc; Tab afterwards is a plain tab. When the hook cannot start, a red toast says 'Couldn't start typing triggers. Nothing will be expanded or suggested.' If you cannot make it fail, say so: this path is unverified."
     }
   ]
 }

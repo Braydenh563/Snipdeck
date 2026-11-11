@@ -151,8 +151,8 @@ msgstr "{} にテキストのスニペットを追加します"
 msgid "After a paste or copy"
 msgstr "貼り付けやコピーの後"
 
-msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual."
-msgstr "トリガーの先頭を入力すると、テキストカーソルの位置に小さなヒントが表示され、スニペットを提案します。Tab キーで挿入でき、それ以外のキーは通常どおり動作します。"
+msgid "After you type the start of a trigger, a small hint at the text cursor offers the snippet. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
+msgstr "トリガーの先頭を入力すると、テキストカーソルの位置に小さなヒントが表示され、スニペットを提案します。Tab キーで挿入でき、それ以外のキーは通常どおり動作します。Tab キーは、ヒントが表示されている間だけ使われます。"
 
 msgid "All"
 msgstr "すべて"
@@ -679,6 +679,9 @@ msgstr "設定を保存できませんでした。Snipdeck が再試行します
 
 msgid "Couldn't start the screenshot tool."
 msgstr "スクリーンショットのツールを起動できませんでした。"
+
+msgid "Couldn't start typing triggers. Nothing will be expanded or suggested."
+msgstr "入力トリガーを開始できませんでした。展開も提案も行われません。"
 
 msgid "Couldn't use this item. Try again, or restart Snipdeck if it keeps happening."
 msgstr "このスニペットを使用できませんでした。もう一度お試しください。繰り返す場合は Snipdeck を再起動してください。"
@@ -3126,8 +3129,8 @@ msgstr "Windows の起動時"
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "ピンがオフのとき、ほかのアプリに切り替えるとすぐにパネルが隠れます。ピン留めしたパネルは隠れません。"
 
-msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk. Nothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
-msgstr "他のプログラムでスニペットのトリガーを入力すると、Snipdeck がそれをスニペットに置き換えます。そのために押したキーを監視しますが、保持するのは直近の数文字だけで、メモリ内にのみ置き、ディスクには保存しません。パスワード欄、「貼り付けない」に設定したプログラム、機密アイテムでは何も展開されません。"
+msgid "When you type a snippet's trigger in another program, Snipdeck replaces it with the snippet. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, or for Sensitive items."
+msgstr "他のプログラムでスニペットのトリガーを入力すると、Snipdeck がそれをスニペットに置き換えます。そのために押したキーを監視しますが、保持するのは直近の数文字だけで、メモリ内にのみ置き、ディスクには保存しません。\nパスワード欄、「貼り付けない」に設定したプログラム、機密アイテムでは何も展開されません。"
 
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "ショートカットまたはトレイでパネルを表示する位置です。アプリにテキストカーソルがない場合、「テキストカーソルの位置」はマウスの位置になります。"
