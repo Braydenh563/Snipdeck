@@ -1683,7 +1683,7 @@ export component MainWindow inherits Window {
                             clicked => { root.label-filter-requested(-1); }
                         }
                         if root.label-filter >= 0: Text {
-                            text: @tr("{n} item" | "{n} items" % (root.list-total >= 0 ? root.list-total : root.rows.length));
+                            text: @tr("{n} item" | "{n} items" % root.rows.length);
                             font-family: Fonts.sans;
                             font-size: Type.sm;
                             color: Theme.text-secondary;
@@ -2517,12 +2517,14 @@ export component MainWindow inherits Window {
         }
     }
 
+    // The items the list holds: a group header is no item, and its folded members still are (the host sets `list-total`).
+    property <int> item-total: root.list-total >= 0 ? root.list-total : root.rows.length;
     // The bulk bar already says how many are selected; the line shows the count of items and announces the selection.
     // While searching it counts the matches and names the board they were found in.
     property <string> status-text: root.searching
         ? (root.rows.length == 0 ? @tr("No matches in {}", root.board-name)
             : @tr("{n} match in {}" | "{n} matches in {}" % root.rows.length, root.board-name))
-        : @tr("{n} item" | "{n} items" % root.rows.length);
+        : @tr("{n} item" | "{n} items" % root.item-total);
 
     // Keeps the sidebar's cursor row in view. The row's place follows from the row heights, not from measuring
     // the element (a measurement taken before the first layout would scroll the sidebar away).
