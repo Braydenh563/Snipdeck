@@ -22,8 +22,8 @@
 ---
 
 > [!NOTE]
-> Snipdeck 1.0.0 is released. It is not code-signed, so Windows SmartScreen asks you to confirm the first
-> start (More info, then Run anyway).
+> Snipdeck 1.0.0 is nearly ready: the first release is being tested on Windows. Setup is not code-signed
+> yet, so Windows SmartScreen asks you to confirm it (More info, then Run anyway).
 
 ## What it is
 

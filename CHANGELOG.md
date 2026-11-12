@@ -6,9 +6,58 @@ All notable changes to Snipdeck are recorded here. The format follows
 
 "Unverified" marks Windows behaviour that no one has run on a real Windows PC.
 
-## [Unreleased]
+## [Unreleased] (1.0.0)
+
+First release. Windows 10 (1903 or newer) and 11, 64-bit. Not code-signed, so Windows SmartScreen asks you to confirm the
+first start.
 
 ### Added
+- **The Panel**: a strip at the screen edge that never takes the focus from the app you are typing in. List
+  tabs, a pinned strip, search, a row menu (Use, Copy, Edit, Pin, Move, Colour, Sensitive, Delete), and a menu
+  of its own (Open Snipdeck, New snippet, Settings, Pause hotkeys, Quit).
+- A **New item** row in the Panel, multi-select with a bulk bar (move, colour, sensitive, delete), **Show
+  numbers**, and **Reset size and position**. Resize by dragging its edges (260 to 480 pixels wide); size and
+  place are remembered for each monitor. The keep-on-top button is a pin icon that looks pressed when on.
+- **Edge docking**: Floating, Left, Right, Top or Bottom, opened by hover, click or both, with hover and leave
+  delays. A docked Panel folds into a thin strip. Undocking brings back its earlier size.
+- **The Picker** (`Ctrl+Shift+Space`), the template fill form with a live preview, and quick capture
+  (`Ctrl+Shift+2`). `Alt+1` to `Alt+9` use that row. **Paste next** and **paste stack** (Supporter).
+- **The Main window**: boards, lists, tags, Pinned, Recent and Trash in a sidebar; compact, comfortable and
+  tile views; search; multi-select; move to list; tags; colour labels; list icons; drag and drop; keyboard
+  reordering; a **Hide Panel / Show Panel** button; Duplicate (`Ctrl+D`); Export as text.
+- **Undo and redo** for library changes: `Ctrl+Z`, `Ctrl+Y` and buttons in the header and toolbar. Deleting
+  also shows an Undo button for at least 5 seconds.
+- **The item editor** for text, code, link, template, image and file items. It opens at the height of its
+  form, and unsaved changes are kept as a draft that survives a crash. Editors for boards, lists and tags.
+- **The Trash** keeps deleted items, lists and boards for 30 days.
+- **Settings**: hotkeys with conflict messages, theme, accent colour, language, window behaviour, start with
+  Windows, tray, never-paste-into programs, licence, backups, export, import and erase. **Reduce motion** also
+  follows Windows.
+- **Import** from a `.snipdeck` file, Ditto, CopyQ, a folder of `.txt` and `.md` files, and Windows clipboard
+  history, always after a preview. Export of the whole library, daily backups (1 to 60 kept) and restore.
+- **Recent inbox** (off by default): the last 200 copies or 7 days, skipping password managers and your
+  exclude list, with **Save to…**, **Pause history** and **Clear recent history**. Entries are encrypted on disk.
+- **Sensitive items**: hidden in lists until you hold `Space`, kept out of Windows clipboard history, encrypted
+  on disk on every plan, and cleared from the clipboard after 30 seconds.
+- **Supporter**: pay what you want from A$5 (suggested A$8), once. Adds unlimited boards, templates that ask
+  for values, paste next, paste stack and a **master password**. Free has up to 5 boards.
+- Templates with `{date}`, `{time}`, `{clipboard}`, `{cursor}`, and fields and choices (Supporter).
+- A command palette (`Ctrl+K`), a shortcuts sheet (`Ctrl+/`), a welcome tour, a Getting started list, Help
+  (`F1`) with a Troubleshoot checklist and About, and **Take screenshot** in the Panel, tray and palette.
+- A tray icon with a translated menu. Left click toggles the Panel and double-click opens the Main window.
+- Overlay scrollbars on every scrolling surface.
+- Spanish, German, French, Brazilian Portuguese, Japanese and Simplified Chinese.
+- Screen-reader names on every icon button, status messages that are announced, a focus ring, and text that
+  follows the Windows text size.
+- `Snipdeck.bat`: double-click to download the latest release, check its SHA-256, unpack and start; later it
+  starts offline. Also `update`, `reinstall`, `backup`, `restore`, `doctor`, `logs` and `uninstall`.
+- `--check-db` and `--troubleshoot`. Crash reports (newest 10 kept) that never quote your snippets.
+- Releases carry a SHA-256 file and build provenance (`gh attestation verify`).
+
+- Help > Troubleshoot has **Rebuild from backup…** for a damaged database: it sets the old file aside and
+  recovers the items it can read.
+- The Main window toolbar is grouped by function, the Panel's board menu has New board, Rename board and
+  Delete board, and the Help tools row is tidied.
 - **Windows installer**: `Snipdeck-Setup-<version>.exe` installs Snipdeck for your account (no administrator
   prompt) with a Start-menu entry, an optional desktop icon and an Apps & features entry. Running a newer Setup
   closes Snipdeck, upgrades it and keeps your library; uninstalling keeps the library unless you choose to erase it.
@@ -81,63 +130,6 @@ All notable changes to Snipdeck are recorded here. The format follows
 - The keyboard shortcuts list has an "Unlock window" group, and the guide's keyboard table gained the rows that were missing (Picker Shift+Tab, Main window Ctrl+Shift+P, F2, Ctrl+Space and Space, the group keys, typed triggers).
 - Tab and Shift+Tab reach every field in the item editor, Settings and the fill form, including text fields inside scrolling areas, dropdowns and template choices, and the focus ring is no longer cut off.
 
-### Security
-- YAML import parsing moved from `serde_yaml_ng` to `serde-saphyr` (deserialize only), so `unsafe-libyaml`
-  (RUSTSEC-2024-0449) is no longer in the build.
-
-## [1.0.0] - 2026-10-21
-
-First release. Windows 10 and 11, 64-bit. Not code-signed, so Windows SmartScreen asks you to confirm the
-first start.
-
-### Added
-- **The Panel**: a strip at the screen edge that never takes the focus from the app you are typing in. List
-  tabs, a pinned strip, search, a row menu (Use, Copy, Edit, Pin, Move, Colour, Sensitive, Delete), and a menu
-  of its own (Open Snipdeck, New snippet, Settings, Pause hotkeys, Quit).
-- A **New item** row in the Panel, multi-select with a bulk bar (move, colour, sensitive, delete), **Show
-  numbers**, and **Reset size and position**. Resize by dragging its edges (260 to 480 pixels wide); size and
-  place are remembered for each monitor. The keep-on-top button is a pin icon that looks pressed when on.
-- **Edge docking**: Floating, Left, Right, Top or Bottom, opened by hover, click or both, with hover and leave
-  delays. A docked Panel folds into a thin strip. Undocking brings back its earlier size.
-- **The Picker** (`Ctrl+Shift+Space`), the template fill form with a live preview, and quick capture
-  (`Ctrl+Shift+2`). `Alt+1` to `Alt+9` use that row. **Paste next** and **paste stack** (Supporter).
-- **The Main window**: boards, lists, tags, Pinned, Recent and Trash in a sidebar; compact, comfortable and
-  tile views; search; multi-select; move to list; tags; colour labels; list icons; drag and drop; keyboard
-  reordering; a **Hide Panel / Show Panel** button; Duplicate (`Ctrl+D`); Export as text.
-- **Undo and redo** for library changes: `Ctrl+Z`, `Ctrl+Y` and buttons in the header and toolbar. Deleting
-  also shows an Undo button for at least 5 seconds.
-- **The item editor** for text, code, link, template, image and file items. It opens at the height of its
-  form, and unsaved changes are kept as a draft that survives a crash. Editors for boards, lists and tags.
-- **The Trash** keeps deleted items, lists and boards for 30 days.
-- **Settings**: hotkeys with conflict messages, theme, accent colour, language, window behaviour, start with
-  Windows, tray, never-paste-into programs, licence, backups, export, import and erase. **Reduce motion** also
-  follows Windows.
-- **Import** from a `.snipdeck` file, Ditto, CopyQ, a folder of `.txt` and `.md` files, and Windows clipboard
-  history, always after a preview. Export of the whole library, daily backups (1 to 60 kept) and restore.
-- **Recent inbox** (off by default): the last 200 copies or 7 days, skipping password managers and your
-  exclude list, with **Save to…**, **Pause history** and **Clear recent history**. Entries are encrypted on disk.
-- **Sensitive items**: hidden in lists until you hold `Space`, kept out of Windows clipboard history, encrypted
-  on disk on every plan, and cleared from the clipboard after 30 seconds.
-- **Supporter**: pay what you want from A$5 (suggested A$8), once. Adds unlimited boards, templates that ask
-  for values, paste next, paste stack and a **master password**. Free has up to 5 boards.
-- Templates with `{date}`, `{time}`, `{clipboard}`, `{cursor}`, and fields and choices (Supporter).
-- A command palette (`Ctrl+K`), a shortcuts sheet (`Ctrl+/`), a welcome tour, a Getting started list, Help
-  (`F1`) with a Troubleshoot checklist and About, and **Take screenshot** in the Panel, tray and palette.
-- A tray icon with a translated menu. Left click toggles the Panel and double-click opens the Main window.
-- Overlay scrollbars on every scrolling surface.
-- Spanish, German, French, Brazilian Portuguese, Japanese and Simplified Chinese.
-- Screen-reader names on every icon button, status messages that are announced, a focus ring, and text that
-  follows the Windows text size.
-- `Snipdeck.bat`: double-click to download the latest release, check its SHA-256, unpack and start; later it
-  starts offline. Also `update`, `reinstall`, `backup`, `restore`, `doctor`, `logs` and `uninstall`.
-- `--check-db` and `--troubleshoot`. Crash reports (newest 10 kept) that never quote your snippets.
-- Releases carry a SHA-256 file and build provenance (`gh attestation verify`).
-
-- Help > Troubleshoot has **Rebuild from backup…** for a damaged database: it sets the old file aside and
-  recovers the items it can read.
-- The Main window toolbar is grouped by function, the Panel's board menu has New board, Rename board and
-  Delete board, and the Help tools row is tidied.
-
 ### Fixed
 - **Open data folder** in Settings and Help opens the library folder again.
 - The first paste after a start pasted the previous clipboard content. The clipboard write is now confirmed
@@ -157,6 +149,8 @@ first start.
 
 Windows behaviour (focus, tray, IME, DPAPI, scaling) was developed on Linux and checked on a real PC only in
 part before this release.
+- YAML import parsing moved from `serde_yaml_ng` to `serde-saphyr` (deserialize only), so `unsafe-libyaml`
+  (RUSTSEC-2024-0449) is no longer in the build.
 
 ## Development history before 1.0.0
 
