@@ -86,6 +86,7 @@ if [ -f scripts/test_symbols.py ]; then step symbols-tests python3 -I scripts/te
 if [ -f scripts/installer_check.py ]; then step installer python3 -I scripts/installer_check.py; fi
 if [ -f scripts/test_installer_check.py ]; then step installer-tests python3 -I scripts/test_installer_check.py; fi
 if [ -f scripts/test_msix_manifest.py ]; then step msix-tests python3 -I scripts/test_msix_manifest.py; fi
+if [ -f scripts/test_bump_version.py ]; then step bump-tests python3 -I scripts/test_bump_version.py; fi
 echo "ran: ${ran[*]:-none}"
 echo "failed: ${failed[*]:-none}"
 echo "skipped: ${skipped[*]:-none}"

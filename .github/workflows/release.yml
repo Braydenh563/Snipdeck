@@ -1,16 +1,20 @@
-# Release: creates the GitHub Release for a version tag (v*) and attaches the Windows
-# portable zip, its SHA-256 and build provenance. Also runs from the Actions tab
-# (Release -> Run workflow -> "1.0.0", no leading v) for when a tag can't be pushed:
-# softprops/action-gh-release creates the tag itself when given tag_name.
+# Release: builds a version and publishes it as a GitHub Release.
 #
-# Before releasing:
-#   1. Set [workspace.package] version in Cargo.toml to the version (the job below
-#      refuses a tag that disagrees with it, so a v1.0.0 never calls itself 0.1.0).
-#   2. Rename CHANGELOG.md's "## [Unreleased] (1.0.0)" header to "## [1.0.0] - YYYY-MM-DD".
-#      The notes step matches that exact number; no match falls back to GitHub's notes.
-#   3. The SNIPDECK_LICENCE_PUBLIC_KEY repository secret is set (docs/licensing.md):
-#      a release never embeds the development key.
-# Then: git tag v1.0.0 && git push origin v1.0.0
+# The usual route: push everything to main, then Actions -> Release -> Run workflow (on main) and type the
+# version without the v, e.g. 1.1.0. The workflow then:
+#   1. sets that version in Cargo.toml and Cargo.lock and renames CHANGELOG.md's "## [Unreleased]" section
+#      to "## [1.1.0] - <today>" (scripts/bump_version.py), commits "Release v1.1.0" to main and pushes it
+#      (skipped when there is nothing to change);
+#   2. creates the tag and the GitHub Release on that commit, with the changelog section as the notes;
+#   3. builds, smoke-tests and attaches the Setup .exe and the portable zip (+ SHA-256 and attestation).
+# A version lower than the one in Cargo.toml is refused. If main is protected against direct pushes, allow
+# github-actions to push or bump the version in a PR first (then step 1 has nothing to change).
+#
+# The other route still works: set the version yourself, then git tag v1.1.0 && git push origin v1.1.0
+# (the tag must match [workspace.package] version, so a v1.1.0 never calls itself 1.0.0).
+#
+# Needs the SNIPDECK_LICENCE_PUBLIC_KEY repository secret (docs/licensing.md): a release never embeds the
+# development key.
 #
 # Assets per release: the portable zip, the per-user Setup .exe (Inno Setup), their SHA-256 files and
 # build attestations. The Microsoft Store MSIX is built only when the repository variables MSIX_IDENTITY_NAME,
@@ -55,23 +59,72 @@ jobs:
         # into its text (GitHub's script-injection guidance).
         env:
           INPUT_VERSION: ${{ inputs.version }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           if [ -n "$INPUT_VERSION" ]; then VERSION="$INPUT_VERSION"; else VERSION="${GITHUB_REF_NAME#v}"; fi
           if ! printf %s "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
             echo "::error::'$VERSION' is not a version like 1.0.0"; exit 1
           fi
-          # The tag must say what the code says: the app reports the workspace version
-          # (About, Troubleshoot report, crash log).
+          # The app reports the workspace version (About, Troubleshoot report, crash log), so the release
+          # must say what the code says. A pushed tag must match it as it stands; a typed version is
+          # written into the code by the bump job, from main only, and may not go backwards.
           CODE=$(sed -n '/^\[workspace.package\]/,/^\[/{s/^version = "\([^"]*\)"/\1/p}' Cargo.toml)
-          if [ "$VERSION" != "$CODE" ]; then
-            echo "::error::release version $VERSION does not match [workspace.package] version $CODE in Cargo.toml"; exit 1
+          if [ -z "$INPUT_VERSION" ]; then
+            if [ "$VERSION" != "$CODE" ]; then
+              echo "::error::tag v$VERSION does not match [workspace.package] version $CODE in Cargo.toml"; exit 1
+            fi
+          else
+            if [ "$GITHUB_REF" != "refs/heads/$DEFAULT_BRANCH" ]; then
+              echo "::error::run the Release workflow on $DEFAULT_BRANCH (it commits the version there), not $GITHUB_REF_NAME"; exit 1
+            fi
+            # Same ordering as the bump script (a prerelease sorts below its release).
+            if ! python3 -I -c 'import sys; sys.path.insert(0, "scripts"); import bump_version as b; sys.exit(b.parse(sys.argv[1]) < b.parse(sys.argv[2]))' "$VERSION" "$CODE"; then
+              echo "::error::$VERSION is lower than the current version $CODE"; exit 1
+            fi
+            if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null 2>&1; then
+              echo "::error::tag v$VERSION already exists"; exit 1
+            fi
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
 
+  # The manual route: write the typed version into the code and commit it to main. Always runs (a skipped
+  # job would skip everything after it); on a tag push it only reports the tagged commit. It runs no build
+  # and no dependency code: only scripts/bump_version.py (standard library) and git.
+  bump:
+    name: Set the version on main
+    needs: resolve-version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    outputs:
+      sha: ${{ steps.commit.outputs.sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          # The push below needs the token; this job checks out only the repository's own main.
+          persist-credentials: ${{ github.event_name == 'workflow_dispatch' }}
+      - name: Bump, commit and push
+        id: commit
+        env:
+          VERSION: ${{ needs.resolve-version.outputs.version }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            python3 -I scripts/bump_version.py "$VERSION" --date "$(date -u +%F)"
+            if ! git diff --quiet; then
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git commit -am "Release v$VERSION"
+              git push origin "HEAD:$GITHUB_REF_NAME"
+            fi
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "Release commit: \`$(git rev-parse --short HEAD)\`" >> "$GITHUB_STEP_SUMMARY"
+
   github-release:
     name: Create GitHub Release
-    needs: resolve-version
+    needs: [resolve-version, bump]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -79,6 +132,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          # The release commit, so the notes come from the renamed changelog section.
+          ref: ${{ needs.bump.outputs.sha }}
           persist-credentials: false
       - name: Extract the changelog entry for this version
         id: changelog
@@ -100,8 +155,8 @@ jobs:
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ needs.resolve-version.outputs.tag }}
-          # Only used on the manual route, where the tag does not exist yet.
-          target_commitish: ${{ github.sha }}
+          # Only used on the manual route, where the tag does not exist yet: the commit the bump job pushed.
+          target_commitish: ${{ needs.bump.outputs.sha }}
           body: ${{ steps.changelog.outputs.notes }}
           generate_release_notes: ${{ steps.changelog.outputs.notes == '' }}
 
@@ -110,7 +165,8 @@ jobs:
   # still leave this job green: a missing Store setup never blocks a release.
   msix-assets:
     name: MSIX logos
-    needs: resolve-version
+    # After the release job: on the manual route the tag it checks out is created there.
+    needs: [resolve-version, github-release]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

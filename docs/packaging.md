@@ -3,6 +3,23 @@
 Owner steps for Windows. Nothing here has been run yet: see [What is unverified](#what-is-unverified-until-run-on-windows).
 The Microsoft Store page you may have been looking for is this one. [`store.md`](store.md) is the storage layer.
 
+## Releasing a version
+
+1. Push everything to `main` and wait for CI to go green.
+2. On GitHub: Actions > Release > Run workflow, branch `main`, type the version without the `v` (for
+   example `1.1.0`), Run.
+
+The workflow writes the version into `Cargo.toml` and `Cargo.lock`, renames the changelog's `## [Unreleased]`
+section to `## [1.1.0] - <today>` (`scripts/bump_version.py`), commits `Release v1.1.0` to `main`, tags it,
+and publishes the GitHub Release with that changelog section as the notes. It then builds, smoke-tests and
+attaches `Snipdeck-Setup-1.1.0.exe`, the portable zip, their `.sha256` files and build attestations. The
+Store MSIX is kept as a workflow artifact when the MSIX variables are set (section 1).
+
+It refuses a version lower than the current one, an existing tag, and a run from any branch but `main`.
+If `main` is protected against direct pushes, let `github-actions` bypass the rule, or bump the version
+in a PR first (the workflow then has nothing to commit). Pushing a tag `v1.1.0` yourself still works when
+`Cargo.toml` already says `1.1.0`.
+
 ## Installer (Setup .exe)
 
 The normal download for a home user is `Snipdeck-Setup-<version>.exe`, built with Inno Setup 6 from
