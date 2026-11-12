@@ -19,6 +19,12 @@ Design: `docs/reviews/dock-redesign.md`. Decisions: `.claude/now.md`. Owner chec
   risen menu, strip tooltip (gone in a drag, docked wording), strip has no button role, dock strings translated
   (6 locales), goldens for the drag preview and the dragged strip, settings/onboarding/user-guide wording.
 
+- Re-verification fixes (R1-R15, 6ed1fbbb on): full screen asked per monitor, the tab reveals from just past an
+  inner edge and a dock there drags onto the next monitor, corner wobble keeps the first edge, same-scale monitor
+  resizes nothing, legacy full-height dock mended in one reader, resize hold without a readable button,
+  `drag_cancel` and `starts_tucked` removed, hidden start and every first show placed before the window exists
+  (`find_monitor`), blur hint wording, docs.
+
 ## Next
 - Owner runs "Dock and drag" D1-D23 on Windows; fix what it finds.
 - A pinned floating Panel still stays above a full-screen app (only the dock steps down).
@@ -29,6 +35,9 @@ Design: `docs/reviews/dock-redesign.md`. Decisions: `.claude/now.md`. Owner chec
 - `GetAsyncKeyState` release net when the release lands outside the window.
 - The 6 px topmost tab: hover, click and the 50 ms poll under other topmost windows.
 - Per-monitor DPI change in mid-drag; TouchArea capture while the window moves under the pointer.
-- `SHQueryUserNotificationState` as the full-screen probe (polled every 50 ms while docked); it answers for the
-  foreground app on any monitor.
-- Hidden start as a tab: the window is shown and placed before it becomes the tab (a flash is possible).
+- Full-screen probe per monitor (`target::fullscreen_covers`: frameless window covering the monitor, in front or
+  at its middle; polled every 50 ms while docked): borderless games, video players, PowerPoint, F11 browsers.
+- Hidden start as a tab and every first show: the window is placed before it exists (Slint applies the stored
+  position and size when winit creates it); no flash and no stolen focus is the aim, unverified.
+- Reveal from just past an inner edge and a drag across a shared edge on a real two-monitor desk.
+- The resize hold under an elevated foreground window (button always reads up).
