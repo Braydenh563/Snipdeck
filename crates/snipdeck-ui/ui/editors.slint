@@ -17,6 +17,7 @@ import { Theme, Type, Space, Radius, Motion, Fonts, Palette, ListHue, SystemLook
 import { Icons } from "icons.slint";
 import { ListIcons } from "list-icons.slint";
 import { Icon } from "components/icon.slint";
+import { ItemCard, ItemKind, ItemCardVariant } from "components/item-card.slint";
 import { Button, ButtonVariant, ButtonSize } from "components/button.slint";
 import { IconButton, IconButtonSize } from "components/icon-button.slint";
 import { TextField, FieldError } from "components/text_field.slint";
@@ -506,6 +507,133 @@ component DisclosureRow inherits Rectangle {
     }
 }
 
+// The editor's Preview: the item as its cards will look in the small Panel and in the Main list, built by the host from
+// the fields as they are now (nothing is saved). A Template adds its result with sample values, a Link what it opens.
+// The cards are inert: a TouchArea above them swallows hover and clicks, so no action icon appears and nothing is used.
+component PreviewPane inherits Rectangle {
+    in property <ItemKind> card-kind: ItemKind.text;
+    in property <string> kind-name;
+    in property <string> title;
+    in property <string> excerpt;
+    in property <string> mask;
+    in property <int> label: -1;
+    in property <string> label-name;
+    // A Template's result, a Link's host, and why neither can be shown.
+    in property <string> expanded;
+    in property <string> link-host;
+    in property <string> note;
+
+    background: Theme.bg-app;
+    accessible-role: groupbox;
+    accessible-label: @tr("Preview");
+
+    FormScroll {
+        content-height: col.preferred-height;
+        content-width: self.viewport-width;
+        col := VerticalLayout {
+            x: 0px;
+            width: parent.viewport-width;
+            padding: Space.s4;
+            spacing: Space.s4;
+            alignment: start;
+
+            Text {
+                text: @tr("Unsaved: this is how the item will look once you save it.");
+                color: Theme.text-secondary;
+                font-family: Fonts.sans;
+                font-size: Type.sm;
+                wrap: word-wrap;
+            }
+            FormField {
+                label: @tr("Small panel");
+                Rectangle {
+                    height: panel-card.preferred-height;
+                    panel-card := ItemCard {
+                        width: min(parent.width, 360px);
+                        x: 0px;
+                        variant: ItemCardVariant.compact;
+                        number: 1;
+                        kind: root.card-kind;
+                        title: root.title;
+                        preview: root.excerpt;
+                        masked-preview: root.mask;
+                        label: root.label;
+                        label-name: root.label-name;
+                        keyboard-focusable: false;
+                        has-menu: false;
+                        copy-action: false;
+                        edit-action: false;
+                    }
+                    TouchArea { }
+                }
+            }
+            FormField {
+                label: @tr("Main list");
+                Rectangle {
+                    height: main-card.preferred-height;
+                    main-card := ItemCard {
+                        width: parent.width;
+                        variant: ItemCardVariant.comfortable;
+                        numbered: false;
+                        kind: root.card-kind;
+                        title: root.title;
+                        preview: root.excerpt;
+                        masked-preview: root.mask;
+                        label: root.label;
+                        label-name: root.label-name;
+                        keyboard-focusable: false;
+                        has-menu: false;
+                        copy-action: false;
+                        edit-action: false;
+                    }
+                    TouchArea { }
+                }
+            }
+            FormField {
+                label: @tr("Type");
+                Text {
+                    text: root.kind-name;
+                    color: Theme.text-primary;
+                    font-family: Fonts.sans;
+                    font-size: Type.base;
+                }
+            }
+            if root.expanded != "": FormField {
+                label: @tr("Result with sample values");
+                helper: @tr("Dates are today's; a field you fill in when you use the item shows its name or default.");
+                Rectangle {
+                    height: result.preferred-height + 2 * Space.s3;
+                    background: Theme.bg-sunken;
+                    border-radius: Radius.md;
+                    border-width: 1px;
+                    border-color: Theme.border-default;
+                    result := Text {
+                        x: Space.s3;
+                        y: Space.s3;
+                        width: parent.width - 2 * Space.s3;
+                        text: root.expanded;
+                        color: Theme.text-primary;
+                        font-family: Fonts.mono;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+            if root.link-host != "": FormField {
+                label: @tr("Opens");
+                Text {
+                    text: root.link-host;
+                    color: Theme.text-primary;
+                    font-family: Fonts.mono;
+                    font-size: Type.base;
+                    overflow: elide;
+                }
+            }
+            if root.note != "": FieldError { text: root.note; }
+        }
+    }
+}
+
 export component ItemEditor inherits Window {
     title: root.is-new ? @tr("New item") : @tr("Edit item");
     background: Theme.bg-app;
@@ -513,11 +641,11 @@ export component ItemEditor inherits Window {
     min-height: 380px;
     preferred-width: 560px;
     // Opens at the height of its form (More options closed), up to 700 px; the form scrolls past that.
-    preferred-height: min(700px, max(380px, form.preferred-height + footer.height));
+    preferred-height: min(700px, max(380px, form.preferred-height + footer.height + header.height));
 
     // The height the window wants for its form as it is now (More options open or closed), up to 700 px.
     // The host sets the window to it on open and on each toggle, cut to the screen's work area.
-    out property <length> fit-height: min(700px, max(380px, form.preferred-height + footer.height));
+    out property <length> fit-height: min(700px, max(380px, form.preferred-height + footer.height + header.height));
 
     in property <bool> dark: false;
     in property <bool> is-new: false;
@@ -570,6 +698,19 @@ export component ItemEditor inherits Window {
     in-out property <bool> discard-open: false;
     in-out property <bool> tags-open: false;
 
+    // Preview: the item as its cards will look, from the fields as they are now. Turning it on asks the host
+    // (`preview-requested`) to fill the `preview-*` values; turning it off returns to the form with every field as it was.
+    in-out property <bool> preview-on: false;
+    callback preview-requested();
+    in property <string> preview-title;
+    in property <string> preview-excerpt;
+    in property <string> preview-mask;
+    in property <string> preview-expanded;
+    in property <string> preview-link;
+    in property <string> preview-note;
+    // The caption of a Link's "(new ID)" stand-in, passed to the host so the sample result is translated.
+    out property <string> preview-new-id: @tr("(new ID)");
+
     // Fires only when the item passes the checks the window can make itself.
     callback save-requested();
     // Leaving without saving; sent after the user confirmed discarding changes, or at once when nothing changed.
@@ -611,6 +752,25 @@ export component ItemEditor inherits Window {
     }
 
     property <bool> text-kind: root.kind-index <= 3;
+    property <[string]> label-names: [@tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Orange"), @tr("Red"), @tr("Violet"), @tr("Slate")];
+    property <[string]> kind-names: [@tr("Text"), @tr("Code"), @tr("Link"), @tr("Template"), @tr("Image"), @tr("File")];
+    // The kind index of this window mapped to the card's kinds (a sensitive text item draws as the masked card).
+    property <ItemKind> card-kind: root.sensitive && root.text-kind ? ItemKind.sensitive
+        : root.kind-index == 0 ? ItemKind.text
+        : root.kind-index == 1 ? ItemKind.code
+        : root.kind-index == 2 ? ItemKind.link
+        : root.kind-index == 3 ? ItemKind.template
+        : root.kind-index == 4 ? ItemKind.image : ItemKind.file;
+    function toggle-preview() {
+        if (root.preview-on) {
+            root.preview-on = false;
+            root.focus-title();
+        } else {
+            root.preview-requested();
+            root.preview-on = true;
+            preview-toggle.take-focus();
+        }
+    }
     // A refusal that sits under "More options" opens it, so it is never hidden.
     out property <bool> more-shown: root.more-open || root.title-error != "" || root.privacy-error != "";
     property <string> sensitive-base: @tr("Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard a little after you copy it (the time is in Settings).");
@@ -674,6 +834,10 @@ export component ItemEditor inherits Window {
                 root.try-save();
                 return accept;
             }
+            if ((event.text == "p" || event.text == "P" || event.text == "\u{10}") && event.modifiers.control && !event.modifiers.alt && !root.discard-open) {
+                root.toggle-preview();
+                return accept;
+            }
             if ((event.text == "v" || event.text == "V" || event.text == "\u{16}") && event.modifiers.control && !event.modifiers.alt && root.paste-requested()) {
                 return accept;
             }
@@ -696,8 +860,50 @@ export component ItemEditor inherits Window {
         }
 
         VerticalLayout {
-            flick := FormScroll {
+            header := Rectangle {
+                height: header-row.preferred-height;
+                background: Theme.bg-surface;
+                header-row := HorizontalLayout {
+                    padding: Space.s2;
+                    padding-left: Space.s4;
+                    padding-right: Space.s4;
+                    Rectangle { horizontal-stretch: 1; }
+                    preview-toggle := Button {
+                        text: @tr("Preview");
+                        icon: root.preview-on ? Icons.eye-slash : Icons.eye;
+                        variant: root.preview-on ? ButtonVariant.primary : ButtonVariant.secondary;
+                        size: ButtonSize.sm;
+                        tooltip: root.preview-on ? @tr("Back to editing (Ctrl+P)") : @tr("Preview how this item will look (Ctrl+P)");
+                        a11y-label: root.preview-on ? @tr("Preview, on. Back to editing") : @tr("Preview, off. Show how this item will look");
+                        clicked => { root.toggle-preview(); }
+                    }
+                }
+                Rectangle {
+                    y: parent.height - 1px;
+                    height: 1px;
+                    background: Theme.border-subtle;
+                }
+            }
+            Rectangle {
                 vertical-stretch: 1;
+            if root.preview-on: PreviewPane {
+                width: parent.width;
+                height: parent.height;
+                card-kind: root.card-kind;
+                kind-name: root.kind-names[root.kind-index];
+                title: root.preview-title;
+                excerpt: root.preview-excerpt;
+                mask: root.preview-mask;
+                label: root.label-index;
+                label-name: root.label-index >= 0 ? root.label-names[root.label-index] : "";
+                expanded: root.preview-expanded;
+                link-host: root.preview-link;
+                note: root.preview-note;
+            }
+            flick := FormScroll {
+                width: parent.width;
+                height: parent.height;
+                visible: !root.preview-on;
                 content-height: form.preferred-height;
                 content-width: self.viewport-width;
 
@@ -975,7 +1181,7 @@ export component ItemEditor inherits Window {
                             hues: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.violet, ListHue.slate];
                             label: @tr("Colour label");
                             none-label: @tr("No label");
-                            names: [@tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Orange"), @tr("Red"), @tr("Violet"), @tr("Slate")];
+                            names: root.label-names;
                             accent: root.label-index;
                             chosen(a) => {
                                 root.label-index = a;
@@ -1082,6 +1288,7 @@ export component ItemEditor inherits Window {
                     }
                     }
                 }
+            }
             }
 
             if root.banner != "": Rectangle {

@@ -14,7 +14,9 @@
 
 use std::{collections::BTreeSet, path::PathBuf, rc::Rc, sync::Arc};
 
-use snipdeck_core::{Feature, Format, Formats, Item, ItemId, ItemKind, ListId, Tag, TagId};
+use snipdeck_core::{
+    Feature, Format, Formats, Item, ItemId, ItemKind, ListId, Tag, TagId, template::Locale,
+};
 use snipdeck_platform::file_dialog::FilePicker;
 use snipdeck_store::{
     BlobStore, ItemRepo,
@@ -28,6 +30,7 @@ use crate::{
     item_editor::{
         AttachmentView, EditorInput, EditorProblem, ItemEditorView, SaveFailure, Source,
     },
+    item_preview::{self, CardPreview, PreviewWords},
 };
 
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
@@ -249,6 +252,25 @@ where
             restored: slot.restored,
             more_open: self.settings.editor_more_open,
         })
+    }
+
+    /// The card the open editor's `input` would make, built from the unsaved fields with the
+    /// controller's clock, time zone and language. `None` when no editor is open. Reads nothing
+    /// from the store and writes nothing.
+    #[must_use]
+    pub fn item_editor_preview(
+        &self,
+        input: &EditorInput,
+        words: PreviewWords<'_>,
+    ) -> Option<CardPreview> {
+        self.item_editor.as_ref()?;
+        Some(item_preview::card_of(
+            input,
+            self.clock.now(),
+            &self.tz,
+            Locale::for_tag(&self.settings.language),
+            words,
+        ))
     }
 
     // ---- Editing -------------------------------------------------------------------------------
