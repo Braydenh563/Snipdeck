@@ -2,6 +2,13 @@
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 ## Decisions
+- 2026-11-12 dock redesign (docs/reviews/dock-redesign.md), owner: "I want it liek the toolbar with microsoft pc manager":
+  - The Panel drag is app-driven from the screen cursor (polled at 16 ms), not the OS move loop. Reason: the OS loop gives no release event and no cursor, and lets Windows Snap resize the Panel.
+  - Docking is decided by the cursor only: within 4 px of a work-area edge for 200 ms shows a live preview; release docks; pulling back 12 px escapes. Reason: window-side proximity docked every tall Panel.
+  - Floating frame and docked size are stored separately per monitor (`docked`); `pre_dock` is read once and dropped. Reason: "it reset my width".
+  - A docked Panel tucks by default (trigger Off -> Both once, marker `dock.tucks_by_default`), is topmost while docked, and never hides on focus loss; Close/Esc/hotkey tuck it, the tray toggle hides it. Reason: an unpinned docked Panel vanished with no tab to hover.
+  - One gesture replaces the grip pill: dragging a docked Panel slides it along the edge, a 24 px pull across undocks. Reason: two handles with two meanings was the "hard to tell where to drag" complaint.
+  - Focus model: unchanged (no-activate). New: the Panel hotkey on a tucked Panel reveals it and takes the keyboard (as a normal show does); a tuck by hotkey/Close gives it back to the Target.
 - 2026-11-12 owner (verbatim): "yeah I think the image editing is a little out of scope, so cut that, by the launcher I was meaning the packaged app so that isnt needed, I do want the colour picker tho as I like to save and copy colours I see for when I do things like web design as I am an interaction design student". Image editing: cut for good. O56 launcher = the installed app (Inno Setup .exe + MSIX, done). Colour picker + screen eyedropper: back in (reverses the 2026-10-26 cut). Multi-panel stays cut.
 - 2026-11-11 owner: hub mode. This session is the orchestrator; worker cloud sessions (Sonnet) build slices on their own branches (claude/v11-groups, -typing, -hello, -polish) and report by send_message; the orchestrator reviews, merges into the PR branch, gates and pushes, and reassigns finished workers. Reason: owner asked for speed; separate machines remove the shared RAM/disk/target-dir bottleneck. Owner reset weekly usage: no budget stop.
 - 2026-11-08: UI builders also run the snipdeck-app window tests for every window they touch (picker_window, main_window, panel_window, fill_window, settings_window): shared look 1-4 passed the ui crate and broke 4 app tests.
