@@ -92,6 +92,10 @@ mod imp {
         fn monitor_at(&self, x: i32, y: i32) -> Option<Monitor> {
             monitor_under(x, y)
         }
+
+        fn fullscreen_in_front(&self) -> bool {
+            snipdeck_platform::windows::target::fullscreen_in_front()
+        }
     }
 
     /// The Picker, the fill form and the toast window on the real machine.

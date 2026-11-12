@@ -292,9 +292,14 @@ pub struct Controller<S, C, K, T> {
     /// it since: it stays out until it has, so that it does not tuck away under the hand that
     /// docked it.
     dock_fresh: bool,
+    /// When the Panel was last docked from a menu or from Settings.
+    docked_at: Timestamp,
     /// The work area the dock's timer last read for the Panel's monitor: a change in it (the
     /// taskbar moved) places the dock again.
     dock_area_seen: Option<(String, crate::frame::Rect)>,
+    /// A full-screen app was in front at the last dock tick: the docked Panel keeps out of its
+    /// way (not topmost, no reveal under the pointer) unless it has the keyboard.
+    fullscreen: bool,
     /// Placements decided outside a Panel gesture, waiting for the binding.
     pending: Vec<Effect>,
     /// The master password: whether one is set, whether its prompt is open, the idle clock.
@@ -479,7 +484,9 @@ where
             panel_focused: false,
             resizing: false,
             dock_fresh: false,
+            docked_at: shown_at,
             dock_area_seen: None,
+            fullscreen: false,
             pending: Vec::new(),
             lock: lock_ctl::LockState::new(shown_at),
             recent_gate: None,
@@ -580,7 +587,7 @@ where
             on_top: self.on_top,
             // A docked Panel that tucks is topmost like a pinned one: its tab must stay
             // reachable over the other windows.
-            topmost: (self.on_top || self.dock_active()) && !self.own_window_active,
+            topmost: self.topmost(),
             dock_collapsed: self.dock.is_collapsed(),
             dock_vertical: self.shown_edge().is_none_or(DockEdge::vertical),
             dock_edge: self.shown_edge(),
@@ -819,9 +826,7 @@ where
             {
                 self.show()
             }
-            HotkeyAction::TogglePanel if self.dock_live() => self.dock_tuck(),
-            HotkeyAction::TogglePanel if self.visible => self.hide(),
-            HotkeyAction::TogglePanel => self.show(),
+            HotkeyAction::TogglePanel => self.toggle(),
             HotkeyAction::Picker if self.picker.is_some() => {
                 self.close_picker();
                 Vec::new()
@@ -839,6 +844,57 @@ where
                 Vec::new()
             }
         }
+    }
+
+    /// Whether the Panel's window is kept above the others: pinned, or docked with a tab that
+    /// must stay reachable. It steps down while one of the app's own windows has the focus, and
+    /// a docked one while a full-screen app is in front (unless it has the keyboard: the hotkey
+    /// still opens it there).
+    #[must_use]
+    pub fn topmost(&self) -> bool {
+        // A dock that tucks is above the others whatever the pin says, and under a full-screen
+        // app whatever the pin says: its tab has no business over a game.
+        let above = if self.dock_active() {
+            !self.dock_covered()
+        } else {
+            self.on_top
+        };
+        above && !self.own_window_active
+    }
+
+    /// Shows a Panel that is hidden or tucked, and puts an open one away: a docked Panel that
+    /// tucks goes to its tab (the tab is the way back), any other hides.
+    fn toggle(&mut self) -> Vec<Effect> {
+        if self.dock_live() && !self.dock_collapsed() {
+            self.dock_tuck()
+        } else if self.visible && !self.dock_live() {
+            self.hide()
+        } else {
+            self.show()
+        }
+    }
+
+    /// The app started with the Panel not shown, and the window has been placed where it was
+    /// left ([`restore_frame`](Self::restore_frame)): a docked Panel that tucks starts as its
+    /// tab, which is always there; any other stays hidden.
+    pub fn start_hidden(&mut self) -> Vec<Effect> {
+        if self.dock_live() {
+            self.dock_tuck()
+        } else {
+            self.hide()
+        }
+    }
+
+    /// Whether a start with the Panel hidden shows the window all the same, as the tab of a
+    /// docked Panel: some monitor has it docked and the dock tucks.
+    #[must_use]
+    pub fn starts_tucked(&self) -> bool {
+        self.settings.dock.trigger != crate::settings::DockTrigger::Off
+            && self
+                .settings
+                .panel_geometry
+                .iter()
+                .any(|g| g.edge.is_some())
     }
 
     /// Shows the Panel (a second launch, the tray, the toggle hotkey). The Target is read
@@ -945,8 +1001,10 @@ where
             TrayEvent::TogglePanel if self.settings.tray_click == TrayClick::Main => {
                 vec![Effect::OpenMainWindow]
             }
-            TrayEvent::TogglePanel if self.visible => self.hide(),
-            TrayEvent::TogglePanel | TrayEvent::OpenPanel => self.show(),
+            // The click on the tray took the keyboard from the Panel, so unlike the hotkey it
+            // cannot go by that: an open dock tucks, a tucked one opens.
+            TrayEvent::TogglePanel => self.toggle(),
+            TrayEvent::OpenPanel => self.show(),
             TrayEvent::OpenPicker => {
                 self.open_picker();
                 Vec::new()

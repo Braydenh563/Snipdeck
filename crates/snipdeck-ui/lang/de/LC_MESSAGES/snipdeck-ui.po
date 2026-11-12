@@ -31,8 +31,8 @@ msgstr "175 %"
 msgid "A PNG picture. Snipdeck keeps its own copy."
 msgstr "Ein PNG-Bild. Snipdeck behält eine eigene Kopie."
 
-msgid "A Panel that a shortcut or the tray showed hides after a paste or copy. A pinned Panel stays, and a docked one folds back to its edge."
-msgstr "Ein Panel, das ein Tastenkürzel oder das Tray-Symbol angezeigt hat, wird nach dem Einfügen oder Kopieren ausgeblendet. Ein angeheftetes Panel bleibt sichtbar, ein angedocktes klappt an seinen Rand zurück."
+msgid "A Panel that a shortcut or the tray showed hides after a paste or copy. A pinned Panel stays, and a docked one tucks back into its tab after a paste."
+msgstr "Ein Panel, das ein Tastenkürzel oder das Tray-Symbol angezeigt hat, wird nach dem Einfügen oder Kopieren ausgeblendet. Ein angeheftetes Panel bleibt sichtbar, ein angedocktes zieht sich nach dem Einfügen zu seinem Reiter zurück."
 
 msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. With a Supporter plan on Windows, you can then also unlock with Windows Hello."
 msgstr "Eine Supporter-Funktion. Fügt ein Passwort zum Windows-Schutz für deine vertraulichen Textbausteine hinzu. Wird beim ersten Verwenden eines vertraulichen Textbausteins und erneut nach {} Minuten ohne Nutzung abgefragt. Mit einem Supporter-Plan unter Windows kannst du dann auch mit Windows Hello entsperren."
@@ -239,6 +239,9 @@ msgstr "Mindestens {} Zeichen. Ein paar unzusammenhängende Wörter ergeben ein 
 
 msgid "At the mouse"
 msgstr "An der Maus"
+
+msgid "At the right edge of the screen. It tucks into a thin tab and slides out when the pointer comes to it."
+msgstr "Am rechten Bildschirmrand. Es zieht sich zu einem schmalen Reiter zurück und fährt aus, wenn der Mauszeiger ihn erreicht."
 
 msgid "At the text cursor"
 msgstr "Am Textcursor"
@@ -858,8 +861,11 @@ msgstr "Rechts angedockt"
 msgid "Done"
 msgstr "Fertig"
 
+msgid "Drag along the edge to move. Pull away from the edge to float."
+msgstr "Am Rand entlang ziehen, um es zu verschieben. Vom Rand wegziehen, um es zu lösen."
+
 msgid "Drag to move. Hold at a screen edge to dock."
-msgstr ""
+msgstr "Ziehen zum Verschieben. An einem Bildschirmrand halten, um anzudocken."
 
 msgid "Drop to add to {}"
 msgstr "Zum Hinzufügen zu {} ablegen"
@@ -1023,14 +1029,8 @@ msgstr "Nach Farbmarkierung filtern"
 msgid "Find anything by typing"
 msgstr "Alles durch Tippen finden"
 
-msgid "Fixed against the right edge of the screen, full height."
-msgstr "Am rechten Bildschirmrand fixiert, in voller Höhe."
-
 msgid "Fixed placeholders filled in when you paste."
 msgstr "Feste Platzhalter, die beim Einfügen ausgefüllt werden."
-
-msgid "Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere."
-msgstr "Setzt das Panel an einen Bildschirmrand, auf dem Monitor, auf dem es sich befindet. „Frei“ lässt es überall stehen."
 
 msgid "Flags"
 msgstr "Flaggen"
@@ -1197,11 +1197,11 @@ msgstr "Darüberfahren und Klick"
 msgid "Hover delay"
 msgstr "Verzögerung beim Darüberfahren"
 
-msgid "How long the pointer rests on the strip before the panel opens, from 0 to {} milliseconds."
-msgstr "Wie lange der Zeiger auf dem Streifen ruht, bevor sich das Panel öffnet, von 0 bis {} Millisekunden."
+msgid "How long the pointer rests on the tab before the panel opens, from 0 to {} milliseconds."
+msgstr "Wie lange der Mauszeiger auf dem Reiter ruht, bevor sich das Panel öffnet, von 0 bis {} Millisekunden."
 
-msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
-msgstr "Wie lange der Zeiger vom geöffneten Panel entfernt bleibt, bevor es sich einklappt, von 0 bis {} Millisekunden."
+msgid "How long the pointer stays off the open panel before it tucks away, from 0 to {} milliseconds."
+msgstr "Wie lange der Mauszeiger außerhalb des geöffneten Panels bleibt, bevor es sich zurückzieht, von 0 bis {} Millisekunden."
 
 msgid "How tall the item rows are in the Main window lists. Compact shows one line per item."
 msgstr "Wie hoch die Zeilen der Textbausteine in den Listen des Hauptfensters sind. Kompakt zeigt eine Zeile pro Textbaustein."
@@ -1533,9 +1533,6 @@ msgstr "Textbaustein in den Papierkorb verschieben"
 msgid "Move the item up or down its list"
 msgstr "Textbaustein in seiner Liste nach oben oder unten verschieben"
 
-msgid "Move the panel"
-msgstr ""
-
 msgid "Move through the items"
 msgstr "Durch die Textbausteine navigieren"
 
@@ -1768,11 +1765,11 @@ msgstr "Objekte"
 msgid "Off"
 msgstr "Aus"
 
-msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
-msgstr "„Aus“ lässt ein angedocktes Panel geöffnet. Sonst klappt es zu einem schmalen Streifen zusammen, und das Panel-Tastenkürzel öffnet es ebenfalls."
-
 msgid "Off keeps a panel docked to the left or right at the height you dropped it. On stretches it over the whole edge."
 msgstr "Aus: Ein links oder rechts angedocktes Panel behält die Höhe, in der du es losgelassen hast. Ein: Es füllt den ganzen Rand."
+
+msgid "Off leaves a docked panel at its full size: it shows and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the panel shortcut opens it too."
+msgstr "Aus: Ein angedocktes Panel behält seine volle Größe und wird wie ein schwebendes ein- und ausgeblendet. Sonst zieht es sich zu einem schmalen Reiter an seinem Rand zurück, und das Panel-Tastenkürzel öffnet es ebenfalls."
 
 msgid "One hotkey turns copied text into an item."
 msgstr "Ein Tastenkürzel macht kopierten Text zu einem Textbaustein."
@@ -2089,6 +2086,12 @@ msgstr "Programme"
 msgid "Prompt for a value or a choice each time you paste."
 msgstr "Bei jedem Einfügen nach einem Wert oder einer Auswahl fragen."
 
+msgid "Pull away from the edge to float."
+msgstr "Vom Rand wegziehen, um es zu lösen."
+
+msgid "Puts the panel at one edge of the screen, on the monitor it is on. Dragging it to an edge and holding it there does the same. Floating lets it sit anywhere."
+msgstr "Setzt das Panel an einen Bildschirmrand, auf dem Monitor, auf dem es sich befindet. Es an einen Rand zu ziehen und dort zu halten bewirkt dasselbe. Mit „Frei“ kann es überall stehen."
+
 msgid "Queue several items, then paste them one per hotkey press."
 msgstr "Mehrere Textbausteine in eine Warteschlange stellen und sie dann mit jedem Tastendruck einzeln einfügen."
 
@@ -2159,7 +2162,7 @@ msgid "Reduce motion"
 msgstr "Bewegung reduzieren"
 
 msgid "Release to dock"
-msgstr ""
+msgstr "Loslassen zum Andocken"
 
 msgid "Remove formatting"
 msgstr "Formatierung entfernen"
@@ -3200,8 +3203,8 @@ msgstr "Deine Änderungen an diesem Textbaustein wurden nicht gespeichert."
 msgid "When Windows starts"
 msgstr "Beim Start von Windows"
 
-msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
-msgstr "Ist die Pinnnadel aus, blendet sich das Panel aus, sobald du zu einer anderen App wechselst. Ein angeheftetes Panel bleibt."
+msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel tucks into its tab instead."
+msgstr "Ist die Pinnnadel aus, blendet sich das Panel aus, sobald du zu einer anderen App wechselst. Ein angeheftetes Panel bleibt, ein angedocktes zieht sich stattdessen zu seinem Reiter zurück."
 
 msgid "When you type an item's trigger in another program, Snipdeck replaces it with the item's text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items."
 msgstr "Wenn du das Kürzel eines Eintrags in einem anderen Programm tippst, ersetzt Snipdeck es durch den Text des Eintrags. Dafür beobachtet Snipdeck die gedrückten Tasten und behält nur die letzten Zeichen im Arbeitsspeicher, nie auf der Festplatte.\nIn Passwortfeldern, in Programmen mit „Nie einfügen“, in Programmen mit Administratorrechten, solange Snipdeck im Vordergrund ist, und bei vertraulichen Einträgen wird nichts erweitert."

@@ -57,11 +57,12 @@ The app moves the window itself from the cursor on screen; the OS move loop is g
 
 `Revealed → Leaving(since) → Tucked → Revealing(since) → Revealed`.
 
-- Tucked: a 6 px tab on the edge (the handle), always topmost, pinned or not.
+- Tucked: a 6 px tab on the edge (the handle), topmost, pinned or not. While a full-screen app is in front (`TargetSource::fullscreen_in_front`) and the Panel has not the keyboard, it is not topmost and the pointer reveals nothing.
+- The tab is there whenever the dock is: a hidden start (`--hidden`, "When Windows starts") shows the window as the tab when a monitor has the Panel docked and the trigger is not Off (`Controller::starts_tucked`, `start_hidden`).
 - Pointer in the tab's reveal zone (the tab grown by `REVEAL_ZONE` = 12 logical px) for the hover delay (150 ms) reveals it; a click on the tab reveals at once; the Panel hotkey reveals it and takes the keyboard.
 - Revealed stays while "held": the pointer is within `KEEP_ZONE` (8 logical px) of the Panel, or a menu is open, or the Panel has the keyboard, or a drag or resize is under way. Not held for the leave delay (400 ms): tucks.
 - The pointer is level-triggered: the binding polls the cursor every 50 ms while the dock is live (Windows), and falls back to Slint's hover events where the cursor cannot be read.
-- A paste tucks at once. Close (X, Esc) and the hotkey tuck a docked Panel and give the keyboard back to the Target; they do not hide the window. The tray's toggle still hides it.
+- A paste tucks at once. Close (X, Esc) and the hotkey tuck a docked Panel and give the keyboard back to the Target; they do not hide the window. The tray's toggle tucks an open dock and opens a tucked one.
 - A docked Panel no longer hides on focus loss: the tab is how it comes back.
 - No slide animation: the frame is placed in one step and repainted whole (`repaint_whole`).
 
@@ -74,7 +75,7 @@ The owner asked for "a mix between microsoft sticky notes, and the toolbar/main 
 | Sticky Notes | A title strip across the whole top that is nothing but a grab area; the window is exactly where and as big as it was left; resize from every side and corner |
 | PC Manager toolbar | Drag it anywhere; pushed to a screen edge it attaches, tucks to a sliver and comes out when the pointer arrives |
 
-- **Grab strip:** the top 24 logical px, full width, with a pill in the middle (36 x 4, wider and brighter on hover, accent while dragged), the move cursor and a tooltip. It replaces the six dots that sat between the header buttons, so the header has that room back. The top 6 px stay the resize edge; 14 px by the full width are drag.
+- **Grab strip:** the top 24 logical px, full width, with a pill in the middle (36 x 4, wider and brighter on hover, accent while dragged), the move cursor and a tooltip. It replaces the six dots that sat between the header buttons, so the header has that room back. The top 6 px stay the resize edge; 18 px by the full width are drag.
 - The header's empty space under the strip still drags, as before.
 - The strip is there floating and docked: docked it slides the Panel along its edge, and a pull across the edge takes it off.
 - Not changed here (left to the visual pass, to avoid two sessions restyling the same rows): the header's controls, the tabs, the rows and the footer.
@@ -90,13 +91,14 @@ Per monitor: the floating frame (`x y w h`) and the docked size (`docked`), plus
 | field | before | now |
 |---|---|---|
 | `x y w h` | the open frame, docked or floating | the floating frame, always |
-| `docked` | - | `[w, h]` while docked or after; absent: use the floating size |
+| `docked` | - | `[w, h]` of a left or right dock, while docked or after; absent: use the floating size |
+| `docked_flat` | - | the same for a top or bottom dock, kept apart from the side dock's |
 | `pre_dock` | floating size while docked | read only, never written |
 | `edge`, `along`, `other_along` | unchanged | unchanged |
 
-On load (`Settings::sanitize`), once per entry: a docked entry without `docked` gets `docked = [w, h]`; if it has `pre_dock`, `w h = pre_dock`. `pre_dock` is then dropped. A side dock an old version stored full height stays full height until resized (sizes are not guessed any more).
+On load (`Settings::sanitize`), once per entry: a docked entry without a docked size for its kind of edge gets `[w, h]` as that size; if it has `pre_dock`, `w h = pre_dock`. `pre_dock` is then dropped. A stored height as tall as the work area is not believed where it cannot have been chosen (`frame::dock_size`): a top or bottom dock, and a side dock stored without a place along its edge while the full edge is off, open at the floating height (or the default).
 
-`dock`: new `tucks_by_default` marker (absent in old files = false). On load, when false: a trigger of `off` becomes `both`, and the marker is set. Reason: Off was the old default, not a choice, and it is why a docked Panel never tucked. "Stay open" remains selectable afterwards.
+`dock`: new `tucks_by_default` marker (absent in old files = false). On load, when false and no monitor has the Panel docked: a trigger of `off` becomes `both`, and the marker is set. Reason: Off was the old default, not a choice, and it is why a docked Panel never tucked. When false and a Panel is docked, nothing changes yet: that Panel was docked under the old rules (the old first-run default, or the dock that took a Panel coming near an edge) and stays open as it was, so it does not turn into a tab on the first launch. The turn to `both` happens the next time the user docks the Panel to an edge (`DockSettings::docked_by_choice`), undocks it, or picks a trigger in Settings (`choose`). "Stay open" remains selectable afterwards.
 
 ## Windows-only, unverified here
 

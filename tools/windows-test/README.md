@@ -57,7 +57,12 @@ strip. Open the Panel on a normal library or the Quick check's, and note P / F f
 | D15 | Hold at the taskbar's edge | Nothing is offered; it floats |
 | D16 | Two monitors: drag across the border between them at normal speed, then drop on the other | Nothing docks at the border; on the other monitor it has the same apparent size (also at another scaling) |
 | D17 | Two monitors: dock on the inner edge of one (the border to the other), move the mouse over the tab from both sides | It reveals; note if it is hard to hit |
-| D18 | Docked and tucked, with a full-screen video or a game on top | Note whether the tab shows over it (it is a normal always-on-top window) |
+| D18 | Docked and tucked, with a full-screen video or a game in front | The tab is not drawn over it, and the mouse at that edge does not slide the Panel out. Leave full screen: the tab is back. In full screen press the Panel shortcut: the Panel opens over it, and tucks when you click back into the app |
+| D19 | Rest the mouse on the strip until its tooltip shows, then drag | The tooltip goes when the drag starts and is not back when you let go. Docked, the tooltip reads "Drag along the edge to move. Pull away from the edge to float." |
+| D20 | In a short Panel (drag its bottom edge up) open the More menu so that it covers the button, and click the same spot again | The menu closes; nothing in it is chosen |
+| D21 | Dock the Panel, let it tuck, quit Snipdeck and start it with `--hidden` (or sign out and in with "Start with Windows" on) | The tab is at its edge from the start, without the Panel flashing open and without taking the keyboard; the mouse on it opens the Panel |
+| D22 | Docked and out: click the tray icon; click it again | The first click tucks the Panel to its tab, the second opens it |
+| D23 | With a settings file from the previous version in which the Panel was docked: start this version | The Panel is docked and stays open as before (no tab). Drag it off the edge and dock it again: from then on it tucks |
 
 Known unknowns to watch: D2 (smoothness at the 16 ms poll), D7 (the tab receiving the mouse under other
 always-on-top windows), D16 (scaling change in mid-drag), and whether letting go of the mouse outside the Panel

@@ -148,7 +148,6 @@ component ResizeGrip inherits TouchArea {
 // docked Panel slides along its edge, a pull across the edge undocks it, and holding it at a screen edge docks it.
 // The pill is quiet until hovered and accent while the Panel is dragged.
 component GrabStrip inherits Rectangle {
-    in property <string> a11y-label;
     in property <bool> active: false;
     // The pointer in window coordinates.
     callback began(length, length);
@@ -156,9 +155,8 @@ component GrabStrip inherits Rectangle {
     callback ended();
     callback tip(bool);
 
-    accessible-role: button;
-    accessible-label: root.a11y-label;
-
+    // No accessible role: the strip only answers a pointer drag, and a screen reader's "press" would do nothing.
+    // The keyboard docks, floats and resets the Panel from the More menu.
     pill := Rectangle {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2 + 2px;
@@ -550,7 +548,7 @@ export component PanelWindow inherits Window {
         }
     }
     // The text of the tooltip on screen (empty = none), for tests and assistive checks.
-    out property <string> tooltip-shown: root.tip-open && !root.board-menu-open && !root.app-menu-open && !root.item-menu-open && !root.list-menu-open && !root.list-delete-open && !root.clear-list-open && !root.board-delete-open && !root.new-menu-open && !root.pinned-menu-open ? root.tip : "";
+    out property <string> tooltip-shown: root.tip-open && !root.board-menu-open && !root.app-menu-open && !root.item-menu-open && !root.list-menu-open && !root.list-delete-open && !root.clear-list-open && !root.board-delete-open && !root.new-menu-open && !root.pinned-menu-open && !root.dragging ? root.tip : "";
 
     // ---- Internals ----------------------------------------------------------------------------
     property <bool> pastes: root.target-name != "";
@@ -712,6 +710,16 @@ export component PanelWindow inherits Window {
             }
         }
     }
+    // A tooltip does not ride along with a dragged Panel, and is not back when the drag ends.
+    changed dragging => {
+        if (root.dragging) {
+            root.tip-set(root.tip, 0px, 0px, false);
+        }
+    }
+    // What the grab strip's tooltip says: a docked Panel slides along its edge and floats when pulled off it.
+    property <string> grab-tip: root.dock-edge == 0 ? @tr("Drag to move. Hold at a screen edge to dock.") : root.dock-full-edge && root.dock-edge <= 2 ? @tr("Pull away from the edge to float.") : @tr("Drag along the edge to move. Pull away from the edge to float.");
+    // The text it put up, so that it closes the same one after the Panel was docked under the pointer.
+    property <string> grab-tip-up: "";
     // The tooltip text a row put up (empty when none is from a row). A row that is deleted, replaced or scrolled away
     // while the pointer rests on it never reports the pointer leaving, so the tip is closed when the rows change.
     property <string> row-tip-text: "";
@@ -1500,15 +1508,21 @@ export component PanelWindow inherits Window {
             }
 
             VerticalLayout {
-                // ---- Grab strip (20): the whole width drags the Panel ----------
+                // ---- Grab strip (24): the whole width drags the Panel ----------
                 grab := GrabStrip {
                     height: root.grab-h;
-                    a11y-label: @tr("Move the panel");
                     active: root.dragging;
                     began(x, y) => { root.drag-began(x, y); }
                     moved(x, y) => { root.drag-moved(x, y); }
                     ended => { root.drag-ended(); }
-                    tip(on) => { root.tip-set(@tr("Drag to move. Hold at a screen edge to dock."), self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, on && !root.dragging); }
+                    tip(on) => {
+                        if (on && !root.dragging) {
+                            root.grab-tip-up = root.grab-tip;
+                            root.tip-set(root.grab-tip-up, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, true);
+                        } else {
+                            root.tip-set(root.grab-tip-up, 0px, 0px, false);
+                        }
+                    }
                 }
 
                 // ---- Header (40): board picker, drag region, search, New, keep on top, More, close ----------
@@ -2752,6 +2766,15 @@ export component PanelWindow inherits Window {
             init => { self.focus-menu(); }
             activated(i) => { root.app-menu-activated(i); }
             dismissed => { root.app-menu-dismissed(); }
+        }
+        // A menu too tall for the window rises over the kebab: a second click on the button still closes the menu,
+        // and does not choose the row that happens to be under the pointer.
+        if root.app-menu-open: TouchArea {
+            x: kebab.absolute-position.x;
+            y: kebab.absolute-position.y;
+            width: kebab.width;
+            height: kebab.height;
+            clicked => { root.app-menu-dismissed(); }
         }
 
         // ---- The New menu (header): under the button, kept inside the window.

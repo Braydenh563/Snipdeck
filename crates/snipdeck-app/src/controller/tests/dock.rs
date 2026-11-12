@@ -1704,6 +1704,36 @@ fn a_panel_docked_from_the_menu_stays_out_until_the_pointer_has_been_on_it() {
 }
 
 #[test]
+fn where_the_cursor_cannot_be_read_only_the_leave_of_the_docking_itself_is_ignored() {
+    // The window went to its edge from under the pointer and says so at once: not a leave.
+    let mut w = floating(DockTrigger::Both);
+    w.targets.set_cursor(None);
+    w.ctl.dock_to(Some(DockEdge::Right));
+    assert_eq!(w.ctl.take_pending(), place(open_rect(DockEdge::Right)));
+    advance(&w, 30);
+    assert_eq!(w.ctl.dock_hover(DockEvent::PanelHover(false)), Vec::new());
+    assert!(!w.ctl.dock_needs_tick(), "no leave delay runs");
+    // The pointer comes to it and goes: now it tucks as ever.
+    advance(&w, 5_000);
+    assert_eq!(w.ctl.dock_hover(DockEvent::PanelHover(true)), Vec::new());
+    assert_eq!(w.ctl.dock_hover(DockEvent::PanelHover(false)), Vec::new());
+    advance(&w, 5_400);
+    assert_eq!(w.ctl.dock_tick(), place(handle(DockEdge::Right)));
+
+    // The Panel stayed under the pointer as it docked, so the window reported no enter: a
+    // leave long after the docking is the pointer going, and the leave delay runs.
+    let mut w = floating(DockTrigger::Both);
+    w.targets.set_cursor(None);
+    w.ctl.dock_to(Some(DockEdge::Right));
+    w.ctl.take_pending();
+    advance(&w, 1_000);
+    assert_eq!(w.ctl.dock_hover(DockEvent::PanelHover(false)), Vec::new());
+    assert!(w.ctl.dock_needs_tick(), "the leave delay is running");
+    advance(&w, 1_400);
+    assert_eq!(w.ctl.dock_tick(), place(handle(DockEdge::Right)));
+}
+
+#[test]
 fn a_floating_panel_dropped_on_another_monitor_is_not_said_to_float_again() {
     let mut w = floating(DockTrigger::Both);
     w.targets.add_monitor(display());
@@ -1729,4 +1759,133 @@ fn a_floating_panel_dropped_on_another_monitor_is_not_said_to_float_again() {
         w.ctl.view().toast.map(|t| t.message),
         Some(ToastMessage::DockSet(None))
     );
+}
+
+#[test]
+fn a_full_screen_app_in_front_hides_the_tab_and_the_pointer_does_not_reveal_it() {
+    let mut w = docked(DockTrigger::Both, DockEdge::Right);
+    assert_eq!(w.ctl.close(), place(handle(DockEdge::Right)));
+    w.targets.set_cursor(Some((1000, 300)));
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    assert!(w.ctl.view().topmost, "the tab is above other windows");
+    // A game takes the whole screen: the pointer at its edge is the game's.
+    w.targets.set_fullscreen(true);
+    w.targets.set_cursor(Some((1919, 300)));
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    assert!(!w.ctl.view().topmost, "the game covers the tab");
+    advance(&w, 5_000);
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    assert!(w.ctl.view().dock_collapsed);
+    // The game is gone: the tab is back, and the pointer resting on it opens the Panel.
+    w.targets.set_fullscreen(false);
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    assert!(w.ctl.view().topmost);
+    advance(&w, 5_150);
+    assert_eq!(w.ctl.dock_tick(), place(open_rect(DockEdge::Right)));
+}
+
+#[test]
+fn the_hotkey_still_opens_the_dock_over_a_full_screen_app_and_it_tucks_when_left() {
+    let mut w = docked(DockTrigger::Both, DockEdge::Right);
+    assert_eq!(w.ctl.close(), place(handle(DockEdge::Right)));
+    w.targets.set_fullscreen(true);
+    w.targets.set_cursor(Some((1000, 300)));
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    assert_eq!(
+        w.ctl.on_hotkey(HotkeyAction::TogglePanel),
+        [
+            Effect::PlaceWindow(open_rect(DockEdge::Right)),
+            Effect::ShowPanel
+        ]
+    );
+    w.ctl.set_panel_focused(true);
+    assert!(
+        w.ctl.view().topmost,
+        "called by the user, it is above the app"
+    );
+    advance(&w, 60_000);
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    assert!(!w.ctl.view().dock_collapsed, "in use, it stays");
+    // The keyboard goes back to the app: the Panel does not stay over it, pointer or not.
+    w.ctl.set_panel_focused(false);
+    w.targets.set_cursor(Some((1700, 300)));
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    assert!(!w.ctl.view().topmost);
+    advance(&w, 60_400);
+    assert_eq!(w.ctl.dock_tick(), place(handle(DockEdge::Right)));
+}
+
+#[test]
+fn a_hidden_start_of_a_docked_panel_shows_its_tab() {
+    let before = docked(DockTrigger::Both, DockEdge::Right);
+    let mut w = world_with(Some(outlook()), before.ctl.settings().clone());
+    assert!(w.ctl.starts_tucked());
+    assert_eq!(
+        w.ctl.restore_frame(&display()),
+        place(open_rect(DockEdge::Right))
+    );
+    assert_eq!(w.ctl.start_hidden(), place(handle(DockEdge::Right)));
+    assert!(w.ctl.visible(), "on screen, as its tab");
+    assert!(w.ctl.dock_live(), "and watching for the pointer");
+    assert!(w.ctl.view().dock_collapsed);
+    // The pointer comes to the tab: the Panel opens.
+    w.targets.set_cursor(Some((1000, 300)));
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    w.targets.set_cursor(Some((1919, 300)));
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    advance(&w, 150);
+    assert_eq!(w.ctl.dock_tick(), place(open_rect(DockEdge::Right)));
+    // A floating Panel and a dock that stays open start hidden, as asked.
+    let mut loose = floating(DockTrigger::Both);
+    assert!(!loose.ctl.starts_tucked());
+    assert_eq!(loose.ctl.start_hidden(), [Effect::HidePanel]);
+    assert!(
+        !docked(DockTrigger::Off, DockEdge::Right)
+            .ctl
+            .starts_tucked()
+    );
+}
+
+#[test]
+fn the_tray_click_tucks_an_open_dock_and_opens_a_tucked_one() {
+    use snipdeck_platform::tray::TrayEvent;
+    let mut w = docked(DockTrigger::Both, DockEdge::Right);
+    assert_eq!(
+        w.ctl.on_tray(TrayEvent::TogglePanel),
+        place(handle(DockEdge::Right))
+    );
+    assert!(w.ctl.visible(), "the tab stays");
+    assert!(w.ctl.dock_live());
+    assert_eq!(
+        w.ctl.on_tray(TrayEvent::TogglePanel),
+        [
+            Effect::PlaceWindow(open_rect(DockEdge::Right)),
+            Effect::ShowPanel
+        ]
+    );
+    assert!(!w.ctl.view().dock_collapsed);
+}
+
+#[test]
+fn a_panel_docked_by_an_older_version_stays_open_until_it_is_docked_again() {
+    // What an older version left: docked (its default, or its dock took the Panel), and the
+    // trigger off because that was the default then.
+    let mut settings = Settings::default();
+    settings.dock.trigger = DockTrigger::Off;
+    settings.dock.tucks_by_default = false;
+    settings
+        .panel_geometry
+        .push(open_rect(DockEdge::Right).geometry(&display(), Some(DockEdge::Right)));
+    let mut w = world_with(Some(outlook()), settings);
+    assert_eq!(w.ctl.restore_frame(&display()).len(), 1);
+    assert!(!w.ctl.starts_tucked());
+    assert!(!w.ctl.dock_live(), "it stays open, as it did");
+    w.targets.set_cursor(Some((1000, 300)));
+    advance(&w, 60_000);
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    assert!(!w.ctl.view().dock_collapsed);
+    // Docked again by the user, it is this version's dock: it tucks.
+    w.ctl.dock_to(Some(DockEdge::Left));
+    assert_eq!(w.ctl.settings().dock.trigger, DockTrigger::Both);
+    assert!(w.ctl.dock_live());
 }

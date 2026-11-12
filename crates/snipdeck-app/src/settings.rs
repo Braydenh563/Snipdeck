@@ -227,9 +227,10 @@ pub struct DockSettings {
     pub leave_delay_ms: u32,
     /// A Panel docked left or right takes the work area's full height instead of keeping its own.
     pub full_edge: bool,
-    /// Set once the file is from a version whose docked Panel tucks away by default. Absent
-    /// in older files, whose `off` was the default and not a choice: [`DockSettings::sanitize`]
-    /// turns that into `both` once.
+    /// Set once the trigger is this version's default or the user's choice. Absent in older
+    /// files, whose `off` was the default and not a choice: [`DockSettings::sanitize`] turns
+    /// that into `both`, at once when no Panel is docked and otherwise the next time the user
+    /// docks one ([`docked_by_choice`](Self::docked_by_choice)).
     #[serde(default)]
     pub tucks_by_default: bool,
 }
@@ -248,13 +249,12 @@ impl Default for DockSettings {
 
 impl DockSettings {
     /// Puts both delays in range, and gives a file from before the dock tucked by default
-    /// that default.
-    pub fn sanitize(&mut self) {
-        if !self.tucks_by_default {
-            if self.trigger == DockTrigger::Off {
-                self.trigger = DockTrigger::Both;
-            }
-            self.tucks_by_default = true;
+    /// that default. `docked` says whether a Panel is docked on any monitor: one docked under
+    /// the old rules (often by a dock nobody asked for) stays open as it was, and does not
+    /// turn into a tab on the first launch of this version.
+    pub fn sanitize(&mut self, docked: bool) {
+        if !(docked && self.trigger == DockTrigger::Off) {
+            self.docked_by_choice();
         }
         self.hover_delay_ms = self
             .hover_delay_ms
@@ -262,6 +262,23 @@ impl DockSettings {
         self.leave_delay_ms = self
             .leave_delay_ms
             .clamp(*LEAVE_DELAY_MS.start(), *LEAVE_DELAY_MS.end());
+    }
+
+    /// The user docked the Panel: from now on the trigger is theirs or this version's default,
+    /// so an old file's `off` that nobody chose becomes `both`.
+    pub fn docked_by_choice(&mut self) {
+        if !self.tucks_by_default {
+            if self.trigger == DockTrigger::Off {
+                self.trigger = DockTrigger::Both;
+            }
+            self.tucks_by_default = true;
+        }
+    }
+
+    /// The user picked `trigger` in Settings: a choice, whatever the file was before.
+    pub fn choose(&mut self, trigger: DockTrigger) {
+        self.trigger = trigger;
+        self.tucks_by_default = true;
     }
 }
 
@@ -1076,7 +1093,8 @@ impl Settings {
             (WindowPlace::MIN_SIDE..=PANEL_SIDE_LIMIT).contains(&p.w)
                 && (WindowPlace::MIN_SIDE..=PANEL_SIDE_LIMIT).contains(&p.h)
         });
-        self.dock.sanitize();
+        self.dock
+            .sanitize(self.panel_geometry.iter().any(|g| g.edge.is_some()));
         self.sanitize_programs();
         let mut seen = std::collections::BTreeSet::new();
         self.no_history_apps = self
@@ -1604,6 +1622,42 @@ mod tests {
         // "Stay open" chosen since then is kept across a save and a load.
         let mut chosen = old;
         chosen.dock.trigger = DockTrigger::Off;
+        let back = Settings::from_json(&chosen.to_json());
+        assert_eq!(back.dock.trigger, DockTrigger::Off);
+    }
+
+    #[test]
+    fn an_old_file_with_the_panel_docked_does_not_tuck_until_it_is_docked_again() {
+        // The old default was a Panel docked to the right edge that stayed open, and the old
+        // dock took a Panel that only came near an edge: neither was asked to become a tab.
+        let old = Settings::from_json(
+            r#"{"dock":{"trigger":"off"},"panel_geometry":[
+                {"monitor_id":"D1","x":1600,"y":0,"w":320,"h":1040,"edge":"right"}
+            ]}"#,
+        );
+        assert_eq!(
+            old.dock.trigger,
+            DockTrigger::Off,
+            "it stays open, as it was"
+        );
+        assert!(!old.dock.tucks_by_default);
+        let back = Settings::from_json(&old.to_json());
+        assert_eq!(back.dock, old.dock, "and still after a save and a load");
+        // Docked again by the user, it tucks like any dock of this version.
+        let mut again = old.clone();
+        again.dock.docked_by_choice();
+        assert_eq!(again.dock.trigger, DockTrigger::Both);
+        assert!(again.dock.tucks_by_default);
+        // Undocked, there is nothing left to protect: the default is in force.
+        let mut floating = old.clone();
+        floating.panel_geometry[0].edge = None;
+        floating.sanitize();
+        assert_eq!(floating.dock.trigger, DockTrigger::Both);
+        // "Stay open" picked in Settings is a choice and survives the next dock.
+        let mut chosen = old;
+        chosen.dock.choose(DockTrigger::Off);
+        chosen.dock.docked_by_choice();
+        assert_eq!(chosen.dock.trigger, DockTrigger::Off);
         let back = Settings::from_json(&chosen.to_json());
         assert_eq!(back.dock.trigger, DockTrigger::Off);
     }

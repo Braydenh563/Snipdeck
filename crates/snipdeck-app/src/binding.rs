@@ -135,6 +135,7 @@ pub struct Binding {
     panel_focused: Rc<dyn Fn(bool)>,
     restore_frame: Rc<MonitorFn>,
     restore_anchor: Rc<dyn Fn()>,
+    start_hidden: Rc<dyn Fn()>,
     files_hover: Rc<dyn Fn(bool)>,
     file_dropped: Rc<dyn Fn(String)>,
 }
@@ -241,6 +242,12 @@ impl Binding {
     /// `--hidden` start): place it at the mouse or the text cursor, if the user asked for that.
     pub fn restore_anchor(&self) {
         (self.restore_anchor)();
+    }
+
+    /// The app started with the Panel not shown and its window has been placed: a docked Panel
+    /// that tucks becomes its tab, any other is hidden.
+    pub fn start_hidden(&self) {
+        (self.start_hidden)();
     }
 }
 
@@ -572,9 +579,12 @@ where
                     let Ok(mut ctl) = core.controller.try_borrow_mut() else {
                         return;
                     };
+                    let topmost = ctl.topmost();
                     let effects = ctl.dock_tick();
+                    // A full-screen app came in front or left: the window steps down or back up.
+                    let stepped = topmost != ctl.topmost();
                     drop(ctl);
-                    if !effects.is_empty() {
+                    if stepped || !effects.is_empty() {
                         redraw_all();
                         core.apply(&effects);
                     }
@@ -1259,6 +1269,10 @@ where
             restore_anchor: {
                 let core = Rc::clone(&core);
                 Rc::new(move || core.act_effects(Controller::restore_anchor))
+            },
+            start_hidden: {
+                let core = Rc::clone(&core);
+                Rc::new(move || core.act_effects(Controller::start_hidden))
             },
             files_hover: {
                 let core = Rc::clone(&core);

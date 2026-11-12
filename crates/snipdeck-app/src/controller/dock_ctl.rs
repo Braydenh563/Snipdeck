@@ -25,6 +25,10 @@ pub(super) const DEFAULT_HEIGHT: u32 = 480;
 /// How far from the work area's corner a Panel with no stored place opens (logical pixels).
 const OPEN_INSET: u32 = 48;
 
+/// How long after a docking a leave reported by the window is the window having moved from
+/// under the pointer. Only used where the cursor cannot be read on screen.
+const FRESH_LEAVE_MS: i64 = 250;
+
 /// `logical` pixels at `scale`, for a zone around a rectangle.
 fn zone(logical: u32, scale: f32) -> i64 {
     i64::from(frame::scaled(logical, scale))
@@ -103,7 +107,14 @@ where
         if event == DockEvent::PanelHover(true) {
             self.dock_fresh = false;
         } else if event == DockEvent::PanelHover(false) && self.dock_fresh {
-            return Vec::new();
+            // A window that went to its edge from under the pointer reports that leave at once:
+            // it is the docking, not the pointer. A later one is the pointer going, from a
+            // Panel that stayed under it (so no enter was ever reported).
+            let since = self.clock.now().as_millisecond() - self.docked_at.as_millisecond();
+            if since < FRESH_LEAVE_MS {
+                return Vec::new();
+            }
+            self.dock_fresh = false;
         }
         // A window may report a leave when the pointer only moved onto its own menu: under an
         // open menu a leave is not believed.
@@ -111,6 +122,12 @@ where
             return Vec::new();
         }
         self.dock_event(event)
+    }
+
+    /// A full-screen app is in front and the Panel has not the keyboard: the docked Panel is
+    /// out of its way, not above it and not sliding out under a pointer at the screen edge.
+    pub(super) fn dock_covered(&self) -> bool {
+        self.fullscreen && !self.panel_focused
     }
 
     /// The Panel is docked, may tuck away and is on screen: the host calls
@@ -252,7 +269,19 @@ where
         let mut effects = self.dock_area_refresh();
         let scale = self.monitor.as_ref().map_or(1.0, |m| m.scale);
         let held = self.dock_held();
-        if let (Some(cursor), Some((open, tab, edge))) = (self.target.cursor(), self.dock_rects()) {
+        self.fullscreen = self.target.fullscreen_in_front();
+        if self.dock_covered() {
+            // A full-screen app is in front: the pointer at its edge is the app's, and a Panel
+            // left open over it goes to its tab (which is under the app until that ends).
+            let event = if self.dock.is_collapsed() {
+                DockEvent::HandleHover(false)
+            } else {
+                DockEvent::PanelHover(held)
+            };
+            effects.extend(self.dock_event(event));
+        } else if let (Some(cursor), Some((open, tab, edge))) =
+            (self.target.cursor(), self.dock_rects())
+        {
             let event = if self.dock.is_collapsed() {
                 DockEvent::HandleHover(frame::on_tab(
                     cursor,
@@ -566,7 +595,12 @@ where
         // the Panel: it stays out until the pointer has been.
         self.dock = DockState::Expanded;
         self.dock_fresh = edge.is_some();
+        self.docked_at = self.clock.now();
+        let chosen = edge.is_some() && edge != stored.as_ref().and_then(|g| g.edge);
         self.update_settings(|s| {
+            if chosen {
+                s.dock.docked_by_choice();
+            }
             s.remember_panel_geometry(geometry.remembering(stored.as_ref()));
         });
         self.pending.push(Effect::PlaceWindow(place));
@@ -742,6 +776,9 @@ where
         let now_docked = geometry.edge;
         self.dock = DockState::Expanded;
         self.update_settings(|s| {
+            if now_docked.is_some() && (now_docked != was_docked || left.is_some()) {
+                s.dock.docked_by_choice();
+            }
             // Dragged to another monitor, it is no longer docked on the one it left.
             if let Some(old) = left.as_ref()
                 && let Some(g) = s.panel_geometry.iter_mut().find(|g| g.monitor_id == old.id)

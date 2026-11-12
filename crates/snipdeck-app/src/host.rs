@@ -213,6 +213,11 @@ pub trait TargetSource {
     fn monitor_at(&self, _x: i32, _y: i32) -> Option<crate::frame::Monitor> {
         None
     }
+    /// Whether a full-screen app, game or presentation is in front. `false` (the default)
+    /// where the host cannot tell.
+    fn fullscreen_in_front(&self) -> bool {
+        false
+    }
 }
 
 /// The typed-trigger service: the keyboard hook that watches what is typed for abbreviations.
@@ -358,6 +363,7 @@ pub struct FakeTargets {
     caret: Rc<Cell<Option<ScreenRect>>>,
     cursor: Rc<Cell<Option<(i32, i32)>>>,
     primary: Rc<Cell<Option<bool>>>,
+    fullscreen: Rc<Cell<bool>>,
     monitors: Rc<RefCell<Vec<crate::frame::Monitor>>>,
     /// A Target change that happens once the flag is raised (from another thread, as a typed
     /// key would be).
@@ -374,6 +380,7 @@ impl FakeTargets {
             caret: Rc::default(),
             cursor: Rc::default(),
             primary: Rc::default(),
+            fullscreen: Rc::default(),
             monitors: Rc::default(),
             switch: Rc::default(),
         }
@@ -403,6 +410,11 @@ impl FakeTargets {
     /// Sets what the host reads for the primary mouse button (`None`: it cannot be read).
     pub fn set_primary_down(&self, down: Option<bool>) {
         self.primary.set(down);
+    }
+
+    /// Sets whether a full-screen app is in front.
+    pub fn set_fullscreen(&self, on: bool) {
+        self.fullscreen.set(on);
     }
 
     /// Replaces the monitors the host knows.
@@ -450,6 +462,10 @@ impl TargetSource for FakeTargets {
 
     fn primary_down(&self) -> Option<bool> {
         self.primary.get()
+    }
+
+    fn fullscreen_in_front(&self) -> bool {
+        self.fullscreen.get()
     }
 
     fn monitor_at(&self, x: i32, y: i32) -> Option<crate::frame::Monitor> {

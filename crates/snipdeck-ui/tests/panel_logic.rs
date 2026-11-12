@@ -166,6 +166,11 @@ fn find(root: &impl ElementRoot, label: &str, role: AccessibleRole) -> ElementHa
         .unwrap_or_else(|| panic!("no {role:?} labelled {label:?}"))
 }
 
+/// The grab strip across the top of the Panel (it has no accessible role: it only answers a pointer drag).
+fn grab_strip(ui: &PanelWindow) -> Option<ElementHandle> {
+    ElementHandle::find_by_element_id(ui, "PanelWindow::grab").next()
+}
+
 fn missing(root: &impl ElementRoot, label: &str, role: AccessibleRole) -> bool {
     all(root, label, role).is_empty()
 }
@@ -2419,7 +2424,7 @@ ui_tests! {
         for edge in [0, 1, 3] {
             ui.set_dock_edge(edge);
             settle();
-            let strip = find(&ui, "Move the panel", AccessibleRole::Button);
+            let strip = grab_strip(&ui).expect("the grab strip");
             assert!((strip.size().width - width).abs() < 0.5, "edge {edge}: the whole width");
             assert!(strip.absolute_position().y.abs() < 0.5 && (strip.size().height - 24.0).abs() < 0.5);
             // Its ends and its middle, below the top resize edge and clear of the corners.
@@ -2446,7 +2451,68 @@ ui_tests! {
         ui.set_dock_edge(1);
         ui.set_dock_collapsed(true);
         settle();
+        assert!(grab_strip(&ui).is_none());
+    }
+
+    fn the_grab_strip_is_not_offered_to_a_screen_reader_as_a_button() {
+        let (ui, _log) = start();
+        let strip = grab_strip(&ui).expect("the grab strip");
+        assert_ne!(strip.accessible_role(), Some(AccessibleRole::Button), "a press on it would do nothing");
         assert!(missing(&ui, "Move the panel", AccessibleRole::Button));
+    }
+
+    fn the_strips_tooltip_goes_when_a_drag_starts_and_says_what_a_docked_panel_can_do() {
+        let (ui, _log) = start();
+        let strip = LogicalPosition::new(160.0, 13.0);
+        move_to(&ui, strip);
+        wait(900);
+        assert_eq!(ui.get_tooltip_shown(), "Drag to move. Hold at a screen edge to dock.");
+        // The drag starts: no tooltip rides along under the pointer, and none is back when it ends.
+        ui.set_dragging(true);
+        settle();
+        assert_eq!(ui.get_tooltip_shown(), "");
+        ui.set_dragging(false);
+        settle();
+        assert_eq!(ui.get_tooltip_shown(), "");
+        // Docked, the strip says what a drag does there.
+        move_to(&ui, away(&ui));
+        wait(600);
+        ui.set_dock_edge(2);
+        settle();
+        move_to(&ui, strip);
+        wait(900);
+        assert_eq!(ui.get_tooltip_shown(), "Drag along the edge to move. Pull away from the edge to float.");
+        // Undocked under the pointer, the tooltip that is up still closes when the pointer leaves.
+        ui.set_dock_edge(0);
+        settle();
+        move_to(&ui, away(&ui));
+        wait(600);
+        assert_eq!(ui.get_tooltip_shown(), "");
+        // A side dock that takes the whole edge does not slide.
+        ui.set_dock_edge(1);
+        ui.set_dock_full_edge(true);
+        settle();
+        move_to(&ui, strip);
+        wait(900);
+        assert_eq!(ui.get_tooltip_shown(), "Pull away from the edge to float.");
+    }
+
+    fn a_second_click_on_the_kebab_closes_a_menu_that_has_risen_over_it() {
+        let (ui, log) = start();
+        ui.window().set_size(slint::LogicalSize::new(320.0, 328.0));
+        settle();
+        let kebab = centre(&find(&ui, "More", AccessibleRole::Button));
+        ui.set_app_menu_open(true);
+        settle();
+        let menu = find(&ui, "Panel menu", AccessibleRole::List);
+        let (top, left) = (menu.absolute_position().y, menu.absolute_position().x);
+        assert!(
+            top < kebab.y && kebab.y < top + menu.size().height && left < kebab.x && kebab.x < left + menu.size().width,
+            "the menu covers the button it came from"
+        );
+        take(&log);
+        click_at(&ui, kebab);
+        assert_eq!(take(&log), ["app-dismissed"], "the click closes the menu and chooses no row");
     }
 
     // ---- The edge dock ---------------------------------------------------------------------------

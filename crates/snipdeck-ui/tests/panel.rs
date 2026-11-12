@@ -88,6 +88,29 @@ fn panel_docked_top_dark_keeps_the_grab_strip() {
     assert_golden("panel-docked-top-dark", &render(&h));
 }
 
+/// A drag held at a screen edge: the accent frame and "Release to dock" over the Panel, and the strip's pill wide
+/// and in the accent colour.
+#[test]
+fn panel_drag_held_at_an_edge_says_release_to_dock() {
+    for (dark, name) in [
+        (false, "panel-dock-preview-light"),
+        (true, "panel-dock-preview-dark"),
+    ] {
+        let h = list_panel(SIZE, dark);
+        h.component.set_dragging(true);
+        h.component.set_dock_preview(2);
+        assert_golden(name, &render(&h));
+    }
+}
+
+/// A floating Panel while it is dragged: only the pill says so.
+#[test]
+fn panel_dragged_floating_shows_the_accent_pill_and_no_frame() {
+    let h = list_panel(SIZE, false);
+    h.component.set_dragging(true);
+    assert_golden("panel-dragging-light", &render(&h));
+}
+
 #[test]
 fn panel_dark() {
     let h = list_panel(SIZE, true);
