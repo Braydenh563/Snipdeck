@@ -210,7 +210,7 @@ Every icon-only control has a tooltip and an accessible label with the same word
 | Swatch | Pick a list/accent colour | 9 list hues; 8 for an item's colour label (with a "No label" cell) | default, selected (ring), focus |
 | IconPicker | Pick a list icon | "No icon" + 24 icons, one tab stop, arrow keys | default, hover, selected (ring), focus |
 | LabelChip | Filter the Main window by colour label | colour dot + name + count | default, hover, selected (ring + check), focus |
-| Tooltip | Name icon-only actions | — | delay 500ms, instant when moving between items |
+| Tooltip | Name icon-only actions | — | delay 500ms, instant when moving between items; wraps to the window width and is clamped inside the window |
 | Toast | Transient result ("Copied", "Pasted into Notepad"); the one **ink toast** (40 tall, `ink` fill, `text.on-ink`, radius 8) used by every surface, including the toast window | neutral · success (check) · danger (warning, with Undo) | enter, hold 2.5s, exit |
 | Skeleton | Loading placeholder matching the final shape | row · tile | — |
 | Menu / MenuItem | Context and overflow actions; also the Settings select popups | with icon, shortcut keycap, accent check (chosen row), destructive; rows 32px (radius 6), 28px when the menu would not fit its window at 32, then a scroll cue (hairline and caret) at the bottom edge | default, highlight (`bg.overlay-hover`; 2px `focus.ring` on a key highlight only, never on hover), disabled (`text.tertiary` glyph and label, no opacity) |

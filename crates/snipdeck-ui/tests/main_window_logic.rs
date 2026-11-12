@@ -1694,6 +1694,36 @@ ui_tests! {
         let _ = find(&ui, "Settings", AccessibleRole::Button);
     }
 
+    fn rail_tooltips_stay_inside_the_window() {
+        let (ui, _log) = start();
+        ui.set_sidebar_collapsed(true);
+        settle();
+        assert!(ui.get_rail());
+        let win = ui.window().size().to_logical(ui.window().scale_factor());
+        let mut seen = 0;
+        for label in ["Settings", "Board: Work", "Expand sidebar (Ctrl+B)"] {
+            let Some(button) = all(&ui, label, AccessibleRole::Button).into_iter().next() else {
+                continue;
+            };
+            ui.window().dispatch_event(slint::platform::WindowEvent::PointerMoved {
+                position: centre_of(&button),
+            });
+            i_slint_backend_testing::mock_elapsed_time(std::time::Duration::from_millis(900));
+            settle();
+            let tips = ElementQuery::from_root(&ui).match_inherits("Tooltip").find_all();
+            let Some(tip) = tips.last() else { continue };
+            seen += 1;
+            let (p, z) = (tip.absolute_position(), tip.size());
+            assert!(p.x >= 8.0, "{label}: tooltip starts at x {}", p.x);
+            assert!(p.x + z.width <= win.width - 8.0, "{label}: tooltip ends at {}", p.x + z.width);
+            ui.window().dispatch_event(slint::platform::WindowEvent::PointerMoved {
+                position: slint::LogicalPosition::new(win.width - 2.0, win.height - 2.0),
+            });
+            settle();
+        }
+        assert!(seen >= 2, "tooltips measured: {seen}");
+    }
+
     // ---- States ------------------------------------------------------------------------------------
 
     fn the_sidebar_collapses_to_a_rail_below_720px_and_keeps_its_names() {

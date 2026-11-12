@@ -863,6 +863,59 @@ ui_tests! {
         slint::select_bundled_translation("").expect("back to the source language");
     }
 
+    fn a_tall_item_menu_in_a_short_panel_stays_inside_the_window() {
+        let (ui, _log) = start();
+        ui.set_item_menu_entries(ModelRc::new(VecModel::from(
+            (1..=30)
+                .map(|i| snipdeck_ui::MenuEntry {
+                    text: format!("Action {i:02}").into(),
+                    ..Default::default()
+                })
+                .collect::<Vec<_>>(),
+        )));
+        ui.window().set_size(slint::LogicalSize::new(260.0, 220.0));
+        settle();
+        let at = centre(&rows(&ui)[0]);
+        move_to(&ui, at);
+        ui.window().dispatch_event(WindowEvent::PointerPressed {
+            position: at,
+            button: PointerEventButton::Right,
+        });
+        ui.window().dispatch_event(WindowEvent::PointerReleased {
+            position: at,
+            button: PointerEventButton::Right,
+        });
+        ui.set_item_menu_open(true);
+        settle();
+        let menu = find(&ui, "Item actions", AccessibleRole::List);
+        let (p, z) = (menu.absolute_position(), menu.size());
+        assert!(p.y >= 8.0, "the menu starts at y {}", p.y);
+        assert!(p.y + z.height <= 220.0 - 8.0, "the menu ends at y {}", p.y + z.height);
+    }
+
+    fn the_list_menu_in_a_short_panel_stays_inside_the_window() {
+        let (ui, _log) = start();
+        let tab = find(&ui, "Code", AccessibleRole::Tab);
+        let at = centre(&tab);
+        move_to(&ui, at);
+        ui.window().dispatch_event(WindowEvent::PointerPressed {
+            position: at,
+            button: PointerEventButton::Right,
+        });
+        ui.window().dispatch_event(WindowEvent::PointerReleased {
+            position: at,
+            button: PointerEventButton::Right,
+        });
+        ui.window().set_size(slint::LogicalSize::new(260.0, 150.0));
+        settle();
+        ui.set_list_menu_open(true);
+        settle();
+        let menu = find(&ui, "List actions", AccessibleRole::List);
+        let (p, z) = (menu.absolute_position(), menu.size());
+        assert!(p.y >= 8.0, "the menu starts at y {}", p.y);
+        assert!(p.y + z.height <= 150.0 - 8.0, "the menu ends at y {}", p.y + z.height);
+    }
+
     // ---- Header --------------------------------------------------------------------------------
 
     fn pressing_the_header_starts_a_window_drag_but_pressing_a_button_does_not() {

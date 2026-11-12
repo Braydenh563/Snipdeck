@@ -8385,7 +8385,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/support/panel_fixture.rs` | 0 |
 | `crates/snipdeck-ui/tests/support/picker_fixture.rs` | 0 |
 | `crates/snipdeck-ui/tests/symbol_nav.rs` | 5 |
-| `crates/snipdeck-ui/tests/symbols.rs` | 12 |
+| `crates/snipdeck-ui/tests/symbols.rs` | 14 |
 | `crates/snipdeck-ui/tests/tray_texts.rs` | 1 |
 | `crates/snipdeck-ui/tests/ux_fit.rs` | 7 |
 | `scripts/test_bump_version.py` | 6 |

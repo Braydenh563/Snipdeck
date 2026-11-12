@@ -2596,11 +2596,13 @@ export component MainWindow inherits Window {
     if root.tip != "": Tooltip {
         text: root.tip;
         open: root.tip-open;
-        x: root.toolbar-tip ? min(root.tip-x, root.width - self.preferred-width - Space.s2)
-            : min(max(Space.s2, root.tip-x - self.width / 2), root.width - self.width - Space.s2);
-        y: root.toolbar-tip ? root.bar-h - Space.s1 : root.card-tip-bottom + Space.s1;
+        limit-width: root.width - 2 * Space.s2;
         width: self.preferred-width;
         height: self.preferred-height;
+        // The window's edges win over the placement (max last).
+        x: max(Space.s2, root.toolbar-tip ? min(root.tip-x, root.width - self.width - Space.s2)
+            : min(root.tip-x - self.width / 2, root.width - self.width - Space.s2));
+        y: min(root.toolbar-tip ? root.bar-h - Space.s1 : root.card-tip-bottom + Space.s1, root.height - self.height - Space.s2);
     }
 
     // ---- Overlays: a scrim that dismisses on click, then the menu --------------------------------

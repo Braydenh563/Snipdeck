@@ -16,7 +16,10 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use slint::{ComponentHandle, ModelRc, VecModel, platform::WindowEvent};
+use std::time::Duration;
+
+use i_slint_backend_testing::ElementQuery;
+use slint::{ComponentHandle, LogicalPosition, ModelRc, VecModel, platform::WindowEvent};
 use snipdeck_symbols::{Catalog, Kind, SymbolId};
 use snipdeck_ui::{
     PanelWindow, SymbolCell, SymbolRow,
@@ -394,4 +397,72 @@ fn ids_of_the_recents_fixture_exist() {
     // Guards the fixture itself: the "recently used" cells name real emoji.
     let c = Catalog::get();
     assert!(c.index_of(&SymbolId::Emoji("1f600".into())).is_some());
+}
+
+// ---- The hover tooltip stays inside the window ---------------------------------------------------
+
+/// Rest the pointer on the grid at `(x, y)` until the tooltip would show, and return its box as
+/// `(x, y, w, h)` in window coordinates, or `None` when nothing opened a tooltip there.
+fn tooltip_at(shown: &Shown, x: f32, y: f32) -> Option<(f32, f32, f32, f32)> {
+    shown
+        .h
+        .component
+        .window()
+        .dispatch_event(WindowEvent::PointerMoved {
+            position: LogicalPosition::new(x, y),
+        });
+    shown.h.advance(Duration::from_millis(900));
+    if !shown.h.component.get_tooltip_shown().contains("Click") {
+        return None;
+    }
+    let tips = ElementQuery::from_root(&shown.h.component)
+        .match_inherits("Tooltip")
+        .find_all();
+    assert_eq!(tips.len(), 1, "one tooltip");
+    let (at, size) = (tips[0].absolute_position(), tips[0].size());
+    Some((at.x, at.y, size.width, size.height))
+}
+
+#[test]
+fn a_long_symbol_tooltip_wraps_and_stays_inside_a_narrow_window() {
+    let s = open(260, false, 1, emoji_rows);
+    s.h.component
+        .set_target_name("A Very Long Application Name Indeed".into());
+    let _ = render(&s);
+    let mut seen = 0;
+    // The first column of cells, top to bottom: x 10..50.
+    for y in (150..520).step_by(20) {
+        let Some((x, ty, w, h)) = tooltip_at(&s, 30.0, y as f32) else {
+            continue;
+        };
+        seen += 1;
+        assert!(x >= 8.0, "left edge {x} at y {y}");
+        assert!(x + w <= 260.0 - 8.0, "right edge {} at y {y}", x + w);
+        assert!(h > 0.0 && ty >= 0.0, "top {ty} at y {y}");
+    }
+    assert!(seen >= 3, "the pointer reached some cells ({seen})");
+}
+
+#[test]
+fn a_symbol_tooltip_in_the_bottom_row_stays_above_the_window_bottom() {
+    let s = open(260, false, 1, emoji_rows);
+    // A long name makes the hint wrap to several lines, so the tooltip is tall.
+    s.h.component
+        .set_target_name("A Very Long Application Name Indeed".into());
+    s.h.component
+        .window()
+        .set_size(slint::LogicalSize::new(260.0, 300.0));
+    let _ = render(&s);
+    let mut lowest = None;
+    for y in (100..300).step_by(4) {
+        if let Some(b) = tooltip_at(&s, 30.0, y as f32) {
+            lowest = Some((y, b));
+        }
+    }
+    let (y, (_, ty, _, h)) = lowest.expect("a cell was hovered");
+    assert!(
+        ty + h <= 300.0 - 8.0,
+        "tooltip bottom {} for a hover at y {y}",
+        ty + h
+    );
 }

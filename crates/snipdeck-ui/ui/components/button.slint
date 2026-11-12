@@ -137,7 +137,8 @@ export component Button inherits Rectangle {
     if root.tip-open: Tooltip {
         text: root.tooltip;
         open: true;
-        x: min(0px, root.width - self.preferred-width);
+        // Right-aligned to the button (it grows leftwards), but never past the window's left edge.
+        x: max(Space.s2 - root.absolute-position.x, min(0px, root.width - self.width));
         y: root.height + Space.s1;
         width: self.preferred-width;
         height: self.preferred-height;

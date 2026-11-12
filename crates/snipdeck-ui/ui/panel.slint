@@ -2679,6 +2679,7 @@ export component PanelWindow inherits Window {
         if root.board-menu-open && !root.lists-in-menu: Menu {
             x: Space.s2;
             y: root.header-h - Space.s1;
+            menu-max-h: root.height - (root.header-h - Space.s1) - Space.s2;
             entries: root.board-menu-entries;
             label: @tr("Boards");
             icons: false;
@@ -2728,7 +2729,7 @@ export component PanelWindow inherits Window {
             clicked => { root.app-menu-dismissed(); }
         }
         if root.app-menu-open: Menu {
-            x: min(max(Space.s2, kebab.absolute-position.x + kebab.width - self.width), root.width - self.width - Space.s2);
+            x: max(Space.s2, min(kebab.absolute-position.x + kebab.width - self.width, root.width - self.width - Space.s2));
             y: root.header-h - Space.s1;
             // Inside the window at any height: a taller menu scrolls.
             menu-max-h: root.height - (root.header-h - Space.s1) - Space.s2;
@@ -2744,8 +2745,9 @@ export component PanelWindow inherits Window {
             clicked => { root.new-menu-open = false; }
         }
         if root.new-menu-open: Menu {
-            x: min(max(Space.s2, new-button.absolute-position.x), root.width - self.width - Space.s2);
+            x: max(Space.s2, min(new-button.absolute-position.x, root.width - self.width - Space.s2));
             y: root.header-h - Space.s1;
+            menu-max-h: root.height - (root.header-h - Space.s1) - Space.s2;
             entries: root.new-menu-entries;
             label: @tr("New");
             init => { self.focus-menu(); }
@@ -2768,7 +2770,8 @@ export component PanelWindow inherits Window {
         }
         if root.pinned-menu-open: Menu {
             x: root.width - self.width - Space.s2;
-            y: root.pinned-menu-y - Space.s1;
+            y: max(Space.s2, min(root.pinned-menu-y - Space.s1, root.height - self.height - Space.s2));
+            menu-max-h: root.height - 2 * Space.s2;
             entries: root.pinned-more-entries;
             label: @tr("More pinned snippets");
             icons: false;
@@ -2785,8 +2788,10 @@ export component PanelWindow inherits Window {
             clicked => { root.item-menu-dismissed(); }
         }
         if root.item-menu-open: Menu {
-            x: min(max(Space.s2, root.item-menu-x), root.width - self.width - Space.s2);
-            y: min(max(Space.s2, root.item-menu-y), root.height - self.height - Space.s2);
+            x: max(Space.s2, min(root.item-menu-x, root.width - self.width - Space.s2));
+            y: max(Space.s2, min(root.item-menu-y, root.height - self.height - Space.s2));
+            // Inside the window at any height (and top-docked, where the top is the screen's top): a taller menu scrolls.
+            menu-max-h: root.height - 2 * Space.s2;
             entries: root.item-menu-entries;
             label: @tr("Item actions");
             icons: false;
@@ -2800,8 +2805,9 @@ export component PanelWindow inherits Window {
             clicked => { root.list-menu-dismissed(); }
         }
         if root.list-menu-open: Menu {
-            x: min(max(Space.s2, root.list-menu-x), root.width - self.width - Space.s2);
-            y: min(max(Space.s2, root.list-menu-y), root.height - self.height - Space.s2);
+            x: max(Space.s2, min(root.list-menu-x, root.width - self.width - Space.s2));
+            y: max(Space.s2, min(root.list-menu-y, root.height - self.height - Space.s2));
+            menu-max-h: root.height - 2 * Space.s2;
             entries: root.list-menu-entries;
             max-w: root.width - 2 * Space.s2;
             label: @tr("List actions");
@@ -2818,8 +2824,9 @@ export component PanelWindow inherits Window {
             }
         }
         if root.recent-menu-open: Menu {
-            x: min(max(Space.s2, root.recent-menu-x), root.width - self.width - Space.s2);
-            y: min(max(Space.s2, root.recent-menu-y), root.height - self.height - Space.s2);
+            x: max(Space.s2, min(root.recent-menu-x, root.width - self.width - Space.s2));
+            y: max(Space.s2, min(root.recent-menu-y, root.height - self.height - Space.s2));
+            menu-max-h: root.height - 2 * Space.s2;
             entries: [
                 { text: @tr("Save to…"), icon: Icons.folder },
                 { text: @tr("Copy"), icon: Icons.copy },
@@ -2840,8 +2847,8 @@ export component PanelWindow inherits Window {
             dismissed => { root.recent-menu-open = false; }
         }
         if root.recent-save-open: Chooser {
-            x: min(max(Space.s2, root.recent-menu-x), root.width - self.width - Space.s2);
-            y: min(max(Space.s2, root.recent-menu-y), root.height - self.height - Space.s2);
+            x: max(Space.s2, min(root.recent-menu-x, root.width - self.width - Space.s2));
+            y: max(Space.s2, min(root.recent-menu-y, root.height - self.height - Space.s2));
             width: min(240px, root.width - 2 * Space.s2);
             entries: root.recent-targets;
             label: @tr("Save to…");
@@ -2917,10 +2924,12 @@ export component PanelWindow inherits Window {
         tooltip := Tooltip {
             text: root.tip;
             open: root.tooltip-shown != "";
+            limit-width: root.width - 2 * Space.s2;
             width: self.preferred-width;
             height: self.preferred-height;
-            x: min(max(Space.s2, root.tip-cx - self.width / 2), root.width - self.width - Space.s2);
-            y: root.tip-bottom + Space.s1;
+            // The edges win over the centring (max last), so a wide tip never starts left of the window.
+            x: max(Space.s2, min(root.tip-cx - self.width / 2, root.width - self.width - Space.s2));
+            y: max(Space.s2, min(root.tip-bottom + Space.s1, root.height - self.height - Space.s2));
         }
 
         // ---- Resize grips: invisible, last so they sit above the header's drag area and the menus' scrims.
