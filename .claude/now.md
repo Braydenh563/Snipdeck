@@ -66,6 +66,8 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 2026-11-09: A second worktree for a gate uses its own CARGO_TARGET_DIR: tests that bake env!("CARGO_MANIFEST_DIR") reuse a cached binary pointing at the removed worktree (release_guard failed that way). Never let a builder edit the tree the gate is checking.
 - 2026-11-10 v1.1 spec (docs/reviews/v11-spec.md) decisions taken as proposed, owner asleep: Hello = one extra Hello prompt after a password unlock (in-memory sealed key; nothing persisted); password every 7 days, no setting; suggest-as-you-type matches triggers only, one suggestion, Tab inserts; tips pictures are English golden crops; importers drop the "Name (abbr)" title once triggers exist; date units d w mo y h min. Reason: safest defaults, reversible later.
 
+- 2026-11-12: Colour tool UI and the editor preview toggle are built by cloud worker sessions (branches claude/colour-tool, claude/editor-preview), merged into PR #5 by the coordinator. Reason: this machine fits one snipdeck_ui compile at a time, so local parallel builds OOM; the local colour workflow wf_8676d216-bbf is superseded and not resumed.
+
 ## Inbox
 - 2026-11-12 owner (verbatim): "I tried using the slide along the edge thingo and it went transparent for a little bit but then fixed itself" -> fixing now: the grip drag measured from the moving pill (jumps back and forth) and place() resized on every move.
 - 2026-11-12 owner (verbatim): "when I hover over the scrollbar (at least in the expanded icons list) it has some blank space to the left" -> fixing now.
