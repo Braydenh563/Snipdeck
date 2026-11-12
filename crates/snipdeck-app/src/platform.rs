@@ -334,6 +334,7 @@ mod imp {
         let Callbacks {
             on_hotkey,
             on_second,
+            on_quit,
             on_target_changed,
             on_tray,
             on_look_changed,
@@ -345,7 +346,7 @@ mod imp {
         let _ = snipdeck_platform::windows::dpi::enable_per_monitor_awareness();
         let mut keep_alive: Vec<Box<dyn std::any::Any>> = Vec::new();
         if single_instance {
-            match SingleInstance::acquire(super::APP_ID, on_second) {
+            match SingleInstance::acquire(super::APP_ID, on_second, on_quit) {
                 Ok(Acquired::First(guard)) => keep_alive.push(Box::new(guard)),
                 Ok(Acquired::Second) => return Ok(Start::AlreadyRunning),
                 Err(e) => return Err(format!("single-instance guard: {e}")),
@@ -438,6 +439,7 @@ mod imp {
         let _ = (
             callbacks.on_hotkey,
             callbacks.on_second,
+            callbacks.on_quit,
             callbacks.on_target_changed,
             callbacks.on_tray,
             callbacks.on_look_changed,
@@ -484,6 +486,44 @@ pub fn attach_parent_console() {
     snipdeck_platform::windows::console::attach_parent_console();
 }
 
+/// `--quit`: asks the Snipdeck running in this Windows session to quit, as the tray's Quit does,
+/// and returns at once. Nothing is opened or created but the existing quit event; whether or not
+/// one is running (or can be asked: an elevated one cannot be signalled from a normal process),
+/// this prints nothing and the caller exits 0. Does nothing off Windows.
+/// Unverified on Windows.
+pub fn ask_to_quit() {
+    #[cfg(windows)]
+    let _ = snipdeck_platform::windows::single_instance::ask_to_quit(APP_ID);
+}
+
+/// Whether the app runs from an installed MSIX / Store package; never off Windows.
+#[must_use]
+pub fn is_packaged() -> bool {
+    #[cfg(windows)]
+    {
+        snipdeck_platform::windows::package::is_packaged()
+    }
+    #[cfg(not(windows))]
+    {
+        false
+    }
+}
+
+/// Whether Windows started this process as the package's startup task, which cannot pass
+/// `--hidden`. The first call asks Windows (the answer exists only once), so `main` calls it
+/// before anything else; later calls return the kept answer. Unverified on Windows.
+#[must_use]
+pub fn launched_by_startup_task() -> bool {
+    #[cfg(windows)]
+    {
+        snipdeck_platform::windows::package::launched_by_startup_task()
+    }
+    #[cfg(not(windows))]
+    {
+        false
+    }
+}
+
 /// Windows Hello on this machine; none elsewhere.
 #[must_use]
 pub fn hello() -> Option<std::sync::Arc<dyn snipdeck_platform::hello::HelloAuthenticator>> {
@@ -525,6 +565,9 @@ pub struct Callbacks {
     pub on_hotkey: Box<dyn Fn(HotkeyAction) + Send>,
     /// A second launch asked this instance to show itself (service thread).
     pub on_second: Box<dyn Fn() + Send>,
+    /// `snipdeck.exe --quit` asked this instance to quit (service thread); do what the tray's
+    /// Quit does.
+    pub on_quit: Box<dyn Fn() + Send>,
     /// The foreground window changed (UI thread).
     pub on_target_changed: Box<dyn Fn()>,
     /// The user used the tray icon (tray thread).
@@ -600,6 +643,7 @@ mod tests {
         let callbacks = Callbacks {
             on_hotkey: Box::new(|_| {}),
             on_second: Box::new(|| {}),
+            on_quit: Box::new(|| {}),
             on_target_changed: Box::new(|| {}),
             on_tray: Box::new(|_| {}),
             on_look_changed: Box::new(|| {}),

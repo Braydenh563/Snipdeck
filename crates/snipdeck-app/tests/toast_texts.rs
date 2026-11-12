@@ -134,10 +134,12 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::HelloEnrolFailed => 103,
         ToastMessage::TriggerOverlaps { .. } => 104,
         ToastMessage::TypingUnavailable => 105,
+        ToastMessage::AutostartSwitchedOff => 106,
+        ToastMessage::AutostartPolicy => 107,
     }
 }
 
-const VARIANTS: usize = 106;
+const VARIANTS: usize = 108;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -232,6 +234,8 @@ fn samples() -> Vec<ToastMessage> {
         M::FolderNotOpened,
         M::MailNotOpened,
         M::AutostartFailed,
+        M::AutostartSwitchedOff,
+        M::AutostartPolicy,
         M::CannotOpenLog,
         M::KeyUnavailable,
         M::ItemGone,

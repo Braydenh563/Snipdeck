@@ -28,7 +28,7 @@ use snipdeck_app::{
     native_window::{self, Surface},
     onboarding_binding::OnboardingUi,
     settings::{Hotkeys, Settings},
-    settings_binding::SettingsHost,
+    settings_binding::{AutostartError, SettingsHost},
 };
 use snipdeck_app::{commands::Command, host::HotkeyProblem};
 use snipdeck_core::{Entitlements, Tier, Timestamp};
@@ -1094,7 +1094,7 @@ impl SettingsHost for NoHost {
         Vec::new()
     }
 
-    fn set_autostart(&self, _on: bool, _hidden: bool) -> Result<(), String> {
+    fn set_autostart(&self, _on: bool, _hidden: bool) -> Result<(), AutostartError> {
         Ok(())
     }
 

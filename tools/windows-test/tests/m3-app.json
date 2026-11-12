@@ -644,6 +644,13 @@
       "title": "Main groups with Narrator: a header reads its name, count and state",
       "do": "Turn Narrator on (Win+Ctrl+Enter). In the Main window arrow down to a group header, then fold it with Left and open it with Right, then arrow into a member row.",
       "expect": "Narrator reads the header as group, its name, its item count (for example 3 items) and whether it is expanded or collapsed, and says the new state after Left and Right. A member row reads its position in the group. Write what Narrator said in the note (n)."
+    },
+    {
+      "id": "87",
+      "v1": false,
+      "title": "Quit from the command line closes the running Snipdeck",
+      "do": "Start Snipdeck. Change something in the library (for example add a snippet or rename a list) and, without waiting, open a Command Prompt or PowerShell window in the folder that holds the program. Run the program with --quit (for a build from source that is target\\release\\snipdeck-app.exe --quit; for an installed copy it is snipdeck.exe --quit). Watch the tray, then start Snipdeck again. Then run the same command a second time with Snipdeck closed.",
+      "expect": "The command returns to the prompt at once and prints nothing. Within 2 seconds the tray icon goes away and the Panel closes, as if you had chosen Quit in the tray menu. After you start Snipdeck again, the library has the edit you made just before the command. With Snipdeck closed, the command still returns at once, prints nothing and its exit code is 0 (in PowerShell, $LASTEXITCODE shows 0), and it does not start a window or leave Snipdeck running."
     }
   ]
 }

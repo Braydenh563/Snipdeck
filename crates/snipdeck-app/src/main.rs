@@ -99,6 +99,13 @@ fn main() -> ExitCode {
         println!("{}", cli::USAGE);
         return ExitCode::SUCCESS;
     }
+    if args.quit {
+        // Nothing else first: no library, data folder, log or window, and no mutex.
+        platform::ask_to_quit();
+        return ExitCode::SUCCESS;
+    }
+    // Windows says once how a packaged build was started; ask before anything else could.
+    let by_startup_task = platform::launched_by_startup_task();
     if args.check_db || args.troubleshoot {
         return headless(&args);
     }
@@ -111,7 +118,7 @@ fn main() -> ExitCode {
     );
     let outcome = match &args.screenshot {
         Some(path) => take_screenshot(path, args.dark),
-        None => run(&args),
+        None => run(&args, by_startup_task),
     };
     match outcome {
         Ok(()) => ExitCode::SUCCESS,
@@ -156,12 +163,16 @@ fn take_screenshot(path: &std::path::Path, dark: bool) -> Result<(), String> {
     clippy::too_many_lines,
     reason = "start-up is one ordered sequence: each step needs the one before"
 )]
-fn run(args: &Args) -> Result<(), String> {
+fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     // Events from service threads become calls on this thread, through the binding.
     let look = platform::system_look();
     let callbacks = Callbacks {
         on_hotkey: Box::new(|action| on_ui_thread(move |b| b.hotkey(action))),
         on_second: Box::new(|| on_ui_thread(Binding::show)),
+        // The same path as the tray's Quit, so pending saves flush after the event loop ends.
+        on_quit: Box::new(|| {
+            on_ui_thread(|b| b.tray(snipdeck_platform::tray::TrayEvent::Quit));
+        }),
         on_target_changed: Box::new(|| with_binding(Binding::target_changed)),
         on_tray: Box::new(|event| on_ui_thread(move |b| b.tray(event))),
         on_clipboard_change: Box::new(|change| on_ui_thread(move |b| b.clipboard_changed(change))),
@@ -220,6 +231,12 @@ fn run(args: &Args) -> Result<(), String> {
         .set_size(slint::LogicalSize::new(width, 480.0));
 
     let startup_chords = settings.hotkeys.clone();
+    // A startup task cannot pass `--hidden`: the saved "When Windows starts" choice stands in.
+    let start_hidden = args.hidden
+        || snipdeck_platform::startup_task::start_hidden(
+            by_startup_task,
+            settings.starts_visible(),
+        );
     // The text size, before any window draws: the setting over Windows' own.
     snipdeck_app::text_scale::configure(settings.text_size);
     snipdeck_app::text_scale::set_system(look.text_scale());
@@ -443,7 +460,7 @@ fn run(args: &Args) -> Result<(), String> {
         &startup_chords.registrable(supporter_at_start),
     ));
 
-    if args.hidden {
+    if start_hidden {
         controller.borrow_mut().hide();
         frames_armed.set(true);
     } else {

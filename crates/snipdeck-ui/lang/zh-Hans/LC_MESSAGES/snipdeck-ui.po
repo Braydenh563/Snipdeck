@@ -3255,6 +3255,9 @@ msgstr "Windows 不允许将 {} 用作快捷键。"
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows 跟随你的 Windows 文字大小（设置 > 辅助功能 > 文字大小）。选择一个大小即可改用该大小。"
 
+msgid "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
+msgstr "Windows 已在“设置”>“应用”>“启动”中关闭了 Snipdeck。请在那里重新打开。"
+
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "开启剪贴板历史后，“最近”会保存你在其他程序中复制的内容。"
 
@@ -3284,6 +3287,9 @@ msgstr "库已重建，但清理失败。Snipdeck 会在下次启动时完成。
 
 msgid "Your old database is kept in the folder {}."
 msgstr "旧数据库已保留在文件夹 {} 中。"
+
+msgid "Your organisation's policy keeps Snipdeck from starting with Windows."
+msgstr "你所在组织的策略不允许 Snipdeck 随 Windows 启动。"
 
 msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
 msgstr "你的敏感片段仅由 Windows 保护，与免费版相同。"

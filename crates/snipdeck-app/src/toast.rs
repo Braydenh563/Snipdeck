@@ -301,6 +301,11 @@ pub enum ToastMessage {
     MailNotOpened,
     /// "Couldn't change the Windows start-up entry."
     AutostartFailed,
+    /// "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
+    /// (the Store build; only the user can switch the startup task back on)
+    AutostartSwitchedOff,
+    /// "Your organisation's policy keeps Snipdeck from starting with Windows."
+    AutostartPolicy,
     /// "Couldn't open the log folder."
     CannotOpenLog,
     /// "Saved. This trigger overlaps the trigger of “{other}”, so one of them may never fire."

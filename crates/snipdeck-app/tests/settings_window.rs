@@ -37,7 +37,7 @@ use snipdeck_app::{
         Settings, TextSize, Theme,
     },
     settings_binding::{
-        self, ExportFolder, SettingsBinding, SettingsHost, SettingsUi, request_open,
+        self, AutostartError, ExportFolder, SettingsBinding, SettingsHost, SettingsUi, request_open,
     },
     settings_store::{FileSink, SettingsSaver},
     wording,
@@ -106,9 +106,9 @@ impl SettingsHost for FakeHost {
         settings_binding::apply_hotkeys(&mut *self.hotkeys.borrow_mut(), hotkeys)
     }
 
-    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), String> {
+    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), AutostartError> {
         if self.autostart_fails.get() {
-            return Err("the registry said no".into());
+            return Err(AutostartError::Other("the registry said no".into()));
         }
         self.autostart.set(Some(on));
         self.autostart_hidden.set(Some(hidden));
