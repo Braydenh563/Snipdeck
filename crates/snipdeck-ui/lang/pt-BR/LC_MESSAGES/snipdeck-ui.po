@@ -858,6 +858,9 @@ msgstr "Acoplado à direita"
 msgid "Done"
 msgstr "Concluído"
 
+msgid "Drag to move. Hold at a screen edge to dock."
+msgstr ""
+
 msgid "Drop to add to {}"
 msgstr "Solte para adicionar a {}"
 
@@ -1530,6 +1533,9 @@ msgstr "Mover o item para a Lixeira"
 msgid "Move the item up or down its list"
 msgstr "Mover o item para cima ou para baixo na lista"
 
+msgid "Move the panel"
+msgstr ""
+
 msgid "Move through the items"
 msgstr "Navegar pelos itens"
 
@@ -2152,6 +2158,9 @@ msgstr "Refazer {} (Ctrl+Y)"
 msgid "Reduce motion"
 msgstr "Reduzir movimento"
 
+msgid "Release to dock"
+msgstr ""
+
 msgid "Remove formatting"
 msgstr "Remover formatação"
 
@@ -2503,9 +2512,6 @@ msgstr "Pular"
 
 msgid "Slate"
 msgstr "Ardósia"
-
-msgid "Slide the panel along the edge"
-msgstr "Deslizar o painel ao longo da borda"
 
 msgid "Smileys & Emotion"
 msgstr "Carinhas e emoções"

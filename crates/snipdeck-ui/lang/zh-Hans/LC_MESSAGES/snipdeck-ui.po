@@ -857,6 +857,9 @@ msgstr "停靠在右侧"
 msgid "Done"
 msgstr "完成"
 
+msgid "Drag to move. Hold at a screen edge to dock."
+msgstr ""
+
 msgid "Drop to add to {}"
 msgstr "松开以添加到 {}"
 
@@ -1526,6 +1529,9 @@ msgstr "将该片段移到回收站"
 msgid "Move the item up or down its list"
 msgstr "在列表中上下移动该片段"
 
+msgid "Move the panel"
+msgstr ""
+
 msgid "Move through the items"
 msgstr "在片段之间移动"
 
@@ -2146,6 +2152,9 @@ msgstr "重做 {} (Ctrl+Y)"
 msgid "Reduce motion"
 msgstr "减少动画"
 
+msgid "Release to dock"
+msgstr ""
+
 msgid "Remove formatting"
 msgstr "清除格式"
 
@@ -2495,9 +2504,6 @@ msgstr "跳过"
 
 msgid "Slate"
 msgstr "石板灰"
-
-msgid "Slide the panel along the edge"
-msgstr "沿边缘滑动面板"
 
 msgid "Smileys & Emotion"
 msgstr "笑脸与情绪"

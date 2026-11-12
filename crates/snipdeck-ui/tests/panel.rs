@@ -73,20 +73,18 @@ fn panel_light() {
     assert_golden("panel-light", &render(&h));
 }
 
-/// O28: a Panel docked to the left shows the grip pill in its header (and no outer-edge grips).
+/// A Panel docked to the left: the same window, grab strip and all (and no outer-edge grips).
 #[test]
-fn panel_docked_left_shows_the_grip_pill() {
+fn panel_docked_left_keeps_the_grab_strip() {
     let h = list_panel(SIZE, false);
     h.component.set_dock_edge(1);
-    h.component.set_dock_slide(true);
     assert_golden("panel-docked-left-light", &render(&h));
 }
 
 #[test]
-fn panel_docked_top_dark_has_a_horizontal_pill() {
+fn panel_docked_top_dark_keeps_the_grab_strip() {
     let h = list_panel(SIZE, true);
     h.component.set_dock_edge(3);
-    h.component.set_dock_slide(true);
     assert_golden("panel-docked-top-dark", &render(&h));
 }
 
@@ -172,8 +170,8 @@ fn at_225_percent_the_chips_read_and_the_content_starts_at_x16() {
             })
             .collect()
     };
-    // First chip: x8..125, y118..152 (the strip sits under the tab row).
-    let chip = ink(8, 125, 118, 152);
+    // First chip: x8..125, y142..176 (the strip sits under the tab row).
+    let chip = ink(8, 125, 142, 176);
     assert!(
         chip.len() >= 52,
         "the chip shows a word, not a letter: {} ink columns",
@@ -184,12 +182,12 @@ fn at_225_percent_the_chips_read_and_the_content_starts_at_x16() {
         "chip title starts at x16: {chip:?}"
     );
     // Row 1's number (digit ink starts within 4px of the 16px cell) and the tab label (the first tab).
-    let number = ink(0, 40, 185, 225);
+    let number = ink(0, 40, 209, 249);
     assert!(
         number.first().is_some_and(|&x| (16..=20).contains(&x)),
         "number gutter starts at x16: {number:?}"
     );
-    let tab = ink(0, 60, 75, 105);
+    let tab = ink(0, 60, 99, 129);
     assert!(
         tab.first().is_some_and(|&x| (16..=19).contains(&x)),
         "tab label starts at x16: {tab:?}"
@@ -584,7 +582,7 @@ fn the_header_more_glyph_reads_at_3_to_1_against_the_header() {
         let f = render(&h);
         // The kebab button spans x 254..278 in the 320 wide header; its glyph is three dots.
         let best = (256..278)
-            .flat_map(|x| (8..32).map(move |y| (x, y)))
+            .flat_map(|x| (32..56).map(move |y| (x, y)))
             .map(|(x, y)| contrast(f.pixel(x, y), bg))
             .fold(0.0_f64, f64::max);
         assert!(
@@ -595,16 +593,16 @@ fn the_header_more_glyph_reads_at_3_to_1_against_the_header() {
 }
 
 #[test]
-fn the_grip_pill_reads_at_3_to_1_against_the_header_in_both_themes_and_both_directions() {
+fn the_grab_pill_reads_at_3_to_1_against_the_panel_in_both_themes_floating_and_docked() {
     for (dark, bg) in [(false, APP_LIGHT), (true, APP_DARK)] {
-        for edge in [1, 3] {
+        for edge in [0, 1, 3] {
             let h = panel(SIZE, dark);
             h.component.set_dock_edge(edge);
-            h.component.set_dock_slide(true);
             let f = render(&h);
-            // Between the keep-on-top button (ends near x 222) and the kebab (starts at 254).
-            let best = (226..252)
-                .flat_map(|x| (6..34).map(move |y| (x, y)))
+            // The middle of the grab strip, the top 24 px of the Panel.
+            let mid = SIZE.0 / 2;
+            let best = (mid - 16..mid + 16)
+                .flat_map(|x| (4..22).map(move |y| (x, y)))
                 .map(|(x, y)| contrast(f.pixel(x, y), bg))
                 .fold(0.0_f64, f64::max);
             assert!(
@@ -769,12 +767,12 @@ fn focus_ring_only_on_keyboard_focus() {
     let h = panel(SIZE, false);
     let w = h.component.window();
     w.dispatch_event(WindowEvent::WindowActiveChanged(true));
-    // The keep-on-top button: 32 square at x 216, y 4 (measured from the accessibility tree).
-    let pin = (216, 4, 32, 32);
+    // The keep-on-top button: 32 square at x 216, y 28 (measured from the accessibility tree).
+    let pin = (216, 28, 32, 32);
     assert_eq!(ring_pixels(&render(&h), pin, 4), 0, "no ring at rest");
 
     // A pointer click gives the button the focus but draws no ring.
-    let at = LogicalPosition::new(232.0, 20.0);
+    let at = LogicalPosition::new(232.0, 44.0);
     w.dispatch_event(WindowEvent::PointerMoved { position: at });
     w.dispatch_event(WindowEvent::PointerPressed {
         position: at,
@@ -785,7 +783,7 @@ fn focus_ring_only_on_keyboard_focus() {
         button: PointerEventButton::Left,
     });
     w.dispatch_event(WindowEvent::PointerMoved {
-        position: LogicalPosition::new(92.0, 20.0),
+        position: LogicalPosition::new(92.0, 44.0),
     });
     assert_eq!(
         ring_pixels(&render(&h), pin, 4),
@@ -821,15 +819,15 @@ fn panel_focus_ring_on_a_list_tab_from_the_keyboard() {
         tap(&h, Key::Tab);
     }
     let f = render(&h);
-    // The ring sits above the selected tab's underline and never covers it: the tab row is y 40..72, its underline the
-    // last 2px (y 70, 71) in the accent colour, the ring just above it.
-    let rows: Vec<u32> = (41..70)
+    // The ring sits above the selected tab's underline and never covers it: the tab row is y 64..96, its underline the
+    // last 2px (y 94, 95) in the accent colour, the ring just above it.
+    let rows: Vec<u32> = (65..94)
         .filter(|&y| (4..300).any(|x| f.pixel(x, y) == FOCUS_RING))
         .collect();
     assert!(!rows.is_empty(), "a focus ring is drawn on the tab row");
     // The selected tab's underline is its list colour (teal-600).
     assert_eq!(
-        f.pixel(30, 71),
+        f.pixel(30, 95),
         [0x04, 0x84, 0x84],
         "the underline stays whole"
     );
@@ -842,19 +840,19 @@ fn tooltip_under_the_close_button(dark: bool, ink: [u8; 3]) {
     use slint::{LogicalPosition, platform::WindowEvent};
     let h = panel(SIZE, dark);
     let _ = render(&h);
-    let at = LogicalPosition::new(300.0, 20.0); // 320 - 4 - 16: the 32px close button's centre
+    let at = LogicalPosition::new(300.0, 44.0); // 320 - 4 - 16: the 32px close button's centre, under the grab strip
     h.component
         .window()
         .dispatch_event(WindowEvent::PointerMoved { position: at });
     h.advance(std::time::Duration::from_millis(600));
     h.advance(std::time::Duration::from_millis(200));
     let f = render(&h);
-    // Below the button (bottom edge 32), a 4px gap, then the tooltip body; its right edge is clamped 8px
+    // Below the button (bottom edge 56), a 4px gap, then the tooltip body; its right edge is clamped 8px
     // from the window.
-    assert_eq!(f.pixel(SIZE.0 - 12, 44), ink, "tooltip body (dark={dark})");
+    assert_eq!(f.pixel(SIZE.0 - 12, 68), ink, "tooltip body (dark={dark})");
     let app = if dark { APP_DARK } else { APP_LIGHT };
     assert_eq!(
-        f.pixel(SIZE.0 - 3, 44),
+        f.pixel(SIZE.0 - 3, 68),
         app,
         "clear of the window edge (dark={dark})"
     );
@@ -874,7 +872,7 @@ fn a_hovered_header_button_shows_an_ink_tooltip_under_it_inside_the_window_dark(
 
 // Layout of the populated Panel at 320 wide (ui/panel.slint, spec 2.1-2.6): header 40, tabs 32, pinned strip 36,
 // then the list; the footer is the last 32px. The search is collapsed to nothing until it is used.
-const HEADER_H: u32 = 40;
+const HEADER_H: u32 = 64;
 const FOOTER_H: u32 = 32;
 
 #[test]
@@ -1009,7 +1007,7 @@ fn the_handle_wears_the_list_colour_unless_high_contrast_is_on() {
 /// Pixels of exactly `colour` in the header band (y < 40).
 fn header_pixels_of(f: &Frame, colour: [u8; 3]) -> usize {
     (0..320)
-        .flat_map(|x| (0..40).map(move |y| (x, y)))
+        .flat_map(|x| (0..HEADER_H).map(move |y| (x, y)))
         .filter(|&(x, y)| f.pixel(x, y) == colour)
         .count()
 }
@@ -1257,7 +1255,7 @@ fn at_225_percent_the_board_name_keeps_six_characters() {
     h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
     let f = render(&h);
     // The name starts at x16; the picker ends before the search button. Six characters of a 31px font are about 100px.
-    let ink = ink_columns(&f, 10, 150, 8, 50);
+    let ink = ink_columns(&f, 10, 150, 32, 74);
     let first = *ink.first().expect("the name has ink");
     let width = ink.iter().filter(|&&x| x < 16 + 120).count();
     assert!(first <= 20, "the name starts at the left: {first}");
@@ -1273,7 +1271,7 @@ fn at_225_percent_the_header_glyphs_grow_with_the_text() {
     let h = panel((360, 760), false);
     h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
     let f = render(&h);
-    let rows: Vec<u32> = (4..56)
+    let rows: Vec<u32> = (28..80)
         .filter(|&y| {
             (200..300).any(|x| {
                 let p = f.pixel(x, y);

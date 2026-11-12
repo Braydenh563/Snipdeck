@@ -858,6 +858,9 @@ msgstr "Rechts angedockt"
 msgid "Done"
 msgstr "Fertig"
 
+msgid "Drag to move. Hold at a screen edge to dock."
+msgstr ""
+
 msgid "Drop to add to {}"
 msgstr "Zum Hinzufügen zu {} ablegen"
 
@@ -1530,6 +1533,9 @@ msgstr "Textbaustein in den Papierkorb verschieben"
 msgid "Move the item up or down its list"
 msgstr "Textbaustein in seiner Liste nach oben oder unten verschieben"
 
+msgid "Move the panel"
+msgstr ""
+
 msgid "Move through the items"
 msgstr "Durch die Textbausteine navigieren"
 
@@ -2152,6 +2158,9 @@ msgstr "{} wiederholen (Strg+Y)"
 msgid "Reduce motion"
 msgstr "Bewegung reduzieren"
 
+msgid "Release to dock"
+msgstr ""
+
 msgid "Remove formatting"
 msgstr "Formatierung entfernen"
 
@@ -2503,9 +2512,6 @@ msgstr "Überspringen"
 
 msgid "Slate"
 msgstr "Schiefergrau"
-
-msgid "Slide the panel along the edge"
-msgstr "Panel am Rand entlang verschieben"
 
 msgid "Smileys & Emotion"
 msgstr "Smileys & Emotionen"

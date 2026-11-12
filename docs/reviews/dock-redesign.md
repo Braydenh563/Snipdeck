@@ -65,6 +65,20 @@ The app moves the window itself from the cursor on screen; the OS move loop is g
 - A docked Panel no longer hides on focus loss: the tab is how it comes back.
 - No slide animation: the frame is placed in one step and repainted whole (`repaint_whole`).
 
+## The window (a note you can park)
+
+The owner asked for "a mix between microsoft sticky notes, and the toolbar/main window for microsoft PC manager". What that means here:
+
+| From | Taken |
+|---|---|
+| Sticky Notes | A title strip across the whole top that is nothing but a grab area; the window is exactly where and as big as it was left; resize from every side and corner |
+| PC Manager toolbar | Drag it anywhere; pushed to a screen edge it attaches, tucks to a sliver and comes out when the pointer arrives |
+
+- **Grab strip:** the top 24 logical px, full width, with a pill in the middle (36 x 4, wider and brighter on hover, accent while dragged), the move cursor and a tooltip. It replaces the six dots that sat between the header buttons, so the header has that room back. The top 6 px stay the resize edge; 14 px by the full width are drag.
+- The header's empty space under the strip still drags, as before.
+- The strip is there floating and docked: docked it slides the Panel along its edge, and a pull across the edge takes it off.
+- Not changed here (left to the visual pass, to avoid two sessions restyling the same rows): the header's controls, the tabs, the rows and the footer.
+
 ## Sizes
 
 Per monitor: the floating frame (`x y w h`) and the docked size (`docked`), plus where the Panel sits along each edge (`along`, `other_along`). Docking for the first time keeps the floating size. A resize while docked changes only the docked size; a resize while floating only the floating one. Nothing else writes a size. "Docked panel uses the full edge" still stretches a side dock to the work area's height without touching the stored height.

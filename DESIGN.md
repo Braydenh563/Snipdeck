@@ -284,10 +284,11 @@ One row, `components/item-card.slint`, used by the Panel, the Picker and the Mai
 - **Proximity:** 4px between related parts of a card, 6px between cards (comfortable), 0 with hairline dividers in compact mode, 16px between groups.
 
 ### Panel
-- Width: default 320, min 260, max 480. Height: free, or full height when docked.
+- Width: default 320, min 260, max 480. Height: free. Floating and docked sizes are separate and each is kept until resized; "Docked panel uses the full edge" stretches a side dock to the work area.
+- The top 24px is a grab strip across the whole width (a 36 x 4 pill in its middle, `text-tertiary`, `text-primary` on hover, accent while dragged; move cursor). It and the header's empty space drag the Panel.
 - Header: 40px. Tab bar: 32px. Padding: 8px.
 - **Target footer** (32px): "Pastes into **Outlook** · New message". It always shows where a click will go, and reads "Copies to clipboard" when no target is known.
-- Docked to an edge it auto-hides to a **6px tab** in the board's accent colour, and reveals on hover after 150ms or by hotkey.
+- Docked to an edge it auto-hides to a **6px tab** in the board's accent colour, and reveals on hover after 150ms or by hotkey. It docks only when the cursor itself is held at the screen edge (preview: accent frame and "Release to dock"); the tab reveals when the pointer is within 12px of it.
 - **Chrome** (header, tab bar, footer): solid `bg.app` baseline. Optional **Mica** enhancement on Windows 11 22621+ (`DWMWA_SYSTEMBACKDROP_TYPE = DWMSBT_MAINWINDOW`, software renderer, chrome transparent, cards opaque); it is switched off on Windows 10, with "Transparency effects" off, in high-contrast mode, and for the never-active panel unless the S4 workaround proves reliable. The main window (which is activated normally) is where Mica is expected to look right.
 - **DeckEdge:** when the list overflows, the bottom 10px shows two card edges, each 4px tall and inset 6px / 12px per side, in `bg.surface` with a `border.subtle` outline. The top edge shows the same once scrolled. No gradient fades.
 

@@ -857,6 +857,9 @@ msgstr "右に固定"
 msgid "Done"
 msgstr "完了"
 
+msgid "Drag to move. Hold at a screen edge to dock."
+msgstr ""
+
 msgid "Drop to add to {}"
 msgstr "ここにドロップして {} に追加"
 
@@ -1526,6 +1529,9 @@ msgstr "スニペットをゴミ箱へ移動"
 msgid "Move the item up or down its list"
 msgstr "リスト内でスニペットを上下に移動"
 
+msgid "Move the panel"
+msgstr ""
+
 msgid "Move through the items"
 msgstr "スニペット間を移動"
 
@@ -2146,6 +2152,9 @@ msgstr "{} をやり直す (Ctrl+Y)"
 msgid "Reduce motion"
 msgstr "動きを減らす"
 
+msgid "Release to dock"
+msgstr ""
+
 msgid "Remove formatting"
 msgstr "書式を削除"
 
@@ -2495,9 +2504,6 @@ msgstr "スキップ"
 
 msgid "Slate"
 msgstr "スレート"
-
-msgid "Slide the panel along the edge"
-msgstr "パネルを端に沿って動かす"
 
 msgid "Smileys & Emotion"
 msgstr "顔と感情"

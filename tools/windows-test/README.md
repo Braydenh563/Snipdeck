@@ -32,6 +32,37 @@ first run to fall back to manual on some of them.
 
 The full test, unchanged, is the second choice of the same `.bat` (or press Enter in the wizard).
 
+## Dock and drag (by hand, about 5 minutes)
+
+The Panel's move, dock, size and reveal were rebuilt (`docs/reviews/dock-redesign.md`). None of it can be judged
+from Linux: the window is moved by the app from the mouse position, and the tucked tab is a 6 px always-on-top
+strip. Open the Panel on a normal library or the Quick check's, and note P / F for each line.
+
+| # | Do this | You should see |
+|---|---|---|
+| D1 | Look at the top of the Panel | A strip with a short pill in its middle, the whole width. The mouse turns into the move cursor over it; resting on it says "Drag to move. Hold at a screen edge to dock." |
+| D2 | Drag the Panel by the strip in circles through the middle of the screen, fast and slow | It follows the mouse exactly, with no lag behind, no jumps, and no see-through or half-painted Panel |
+| D3 | Drag a tall Panel so that its side is against a screen edge while the mouse is still well inside the screen, and let go | It stays floating exactly there. No frame, no "Release to dock" |
+| D4 | Drag until the mouse itself is at the left or right edge of the screen and hold still for a moment | After about a fifth of a second the Panel jumps flush to that edge with an accent frame and "Release to dock" |
+| D5 | Still holding, pull the mouse back a finger's width | The frame goes and the Panel floats under the mouse again. Let go: it floats |
+| D6 | Repeat D4 and let go | It is docked. Move the mouse away: after a moment it tucks to a slim tab on the edge |
+| D7 | Move the mouse to the tab (or to the screen edge beside it) | The Panel slides out after a moment and stays while the mouse is on it |
+| D8 | Click in the search box, type, then move the mouse away while typing | It stays out while you type. Click another window: it tucks |
+| D9 | Open the ⋯ menu, move the mouse off the Panel | It stays out while the menu is open |
+| D10 | Press the Panel shortcut twice | Tucked: it comes out and the search box takes the keyboard. Out: it tucks and Notepad has the cursor again |
+| D11 | Docked and out: drag the strip up and down | The Panel slides along the edge and stays docked |
+| D12 | Docked and out: drag the strip away from the edge | It comes off, at the size it had floating, under the mouse |
+| D13 | Floating: resize it. Dock it, resize it there. Undock, dock again, restart Snipdeck | Each state comes back at the size you gave it: floating size floating, docked size docked |
+| D14 | Drag the mouse into a screen corner and hold | One edge is offered and it does not flicker between two |
+| D15 | Hold at the taskbar's edge | Nothing is offered; it floats |
+| D16 | Two monitors: drag across the border between them at normal speed, then drop on the other | Nothing docks at the border; on the other monitor it has the same apparent size (also at another scaling) |
+| D17 | Two monitors: dock on the inner edge of one (the border to the other), move the mouse over the tab from both sides | It reveals; note if it is hard to hit |
+| D18 | Docked and tucked, with a full-screen video or a game on top | Note whether the tab shows over it (it is a normal always-on-top window) |
+
+Known unknowns to watch: D2 (smoothness at the 16 ms poll), D7 (the tab receiving the mouse under other
+always-on-top windows), D16 (scaling change in mid-drag), and whether letting go of the mouse outside the Panel
+always ends the drag (it should: a polled "button is up" backs up the window's own release).
+
 ---
 
 ## Full test
