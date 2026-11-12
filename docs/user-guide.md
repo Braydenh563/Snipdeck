@@ -40,6 +40,12 @@ goes into the list you were looking at.
 
 The editor shows a banner if it restored changes you had not saved. Text over 16 KB opens read-only.
 
+**Preview.** Press **Preview** (or `Ctrl+P`) to see the item as the Panel and the Main list will draw it, with the colour, the
+kind and your layout. A template also shows its result with sample values (dates are today's; a field you fill in when you use
+the item shows its name or default), and a link shows the address it opens. A sensitive item shows neither its text nor its
+address. Nothing is saved and nothing you typed is lost; press **Preview** again to go back to editing. If Save is refused, you
+are taken back to the field to fix.
+
 **Save text from the clipboard.** Copy something, then use **Save from clipboard** in an empty Panel. The text
 becomes a new item at the top of the current list. Text over 5 MB is refused. The Capture shortcut does the same
 from anywhere, saving whatever text is on the clipboard when you press it; it is off until you set a shortcut in
@@ -565,6 +571,7 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Any program (Suggest on) | `Tab` while the hint shows | Insert the suggested item |
 | Unlock window | **Unlock with Windows Hello** | Unlock with face, fingerprint or PIN |
 | Item editor | `Ctrl+Enter` | Save |
+| Item editor | `Ctrl+P` | Preview on or off |
 | Fill form | `Ctrl+Enter`, `Esc` | Insert, cancel |
 
 ## Drag and drop

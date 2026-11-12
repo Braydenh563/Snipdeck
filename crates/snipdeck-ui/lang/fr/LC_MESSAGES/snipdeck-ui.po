@@ -249,6 +249,9 @@ msgstr "Au curseur de texte"
 msgid "Back"
 msgstr "Retour"
 
+msgid "Back to editing (Ctrl+P)"
+msgstr "Retour à la modification (Ctrl+P)"
+
 msgid "Back up now"
 msgstr "Sauvegarder maintenant"
 
@@ -737,6 +740,9 @@ msgstr "Base de données reconstruite : {} extraits restaurés. Les extraits plu
 
 msgid "Date and time in a format you choose"
 msgstr "Date et heure dans le format de votre choix"
+
+msgid "Dates are today's; a field you fill in when you use the item shows its name or default."
+msgstr "Les dates sont celles d'aujourd'hui ; un champ à remplir à l'utilisation affiche son nom ou sa valeur par défaut."
 
 msgid "Delete"
 msgstr "Supprimer"
@@ -1428,6 +1434,9 @@ msgstr "Les journaux ne sont écrits que si Snipdeck plante, ne contiennent aucu
 msgid "Love"
 msgstr "Amour"
 
+msgid "Main list"
+msgstr "Liste principale"
+
 msgid "Main list density"
 msgstr "Densité des listes principales"
 
@@ -1840,6 +1849,9 @@ msgstr "Ouvrir le guide d'utilisation (F1)"
 msgid "Opening the Panel"
 msgstr "Ouverture du Panneau"
 
+msgid "Opens"
+msgstr "Ouvre"
+
 msgid "Opens in your browser."
 msgstr "S'ouvre dans votre navigateur."
 
@@ -2062,6 +2074,9 @@ msgstr "Appuyez sur votre raccourci du panneau dans n'importe quelle appli pour 
 msgid "Preview"
 msgstr "Aperçu"
 
+msgid "Preview how this item will look (Ctrl+P)"
+msgstr "Aperçu de cet élément (Ctrl+P)"
+
 msgid "Previous list"
 msgstr "Liste précédente"
 
@@ -2245,6 +2260,9 @@ msgid "Restored {} item from the backup"
 msgid_plural "Restored {} items from the backup"
 msgstr[0] "{} extrait restauré depuis la sauvegarde"
 msgstr[1] "{} extraits restaurés depuis la sauvegarde"
+
+msgid "Result with sample values"
+msgstr "Résultat avec des valeurs d'exemple"
 
 msgid "Results"
 msgstr "Résultats"
@@ -2515,6 +2533,9 @@ msgstr "Passer"
 
 msgid "Slate"
 msgstr "Ardoise"
+
+msgid "Small panel"
+msgstr "Petit panneau"
 
 msgid "Smileys & Emotion"
 msgstr "Smileys et émotions"
@@ -3038,6 +3059,9 @@ msgstr "Si tu désactives cette option, fermer le panneau ou la fenêtre princip
 msgid "Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off."
 msgstr "Désactive les glissements et fondus dans Snipdeck. Elle est aussi désactivée quand les effets d'animation de Windows sont désactivés."
 
+msgid "Type"
+msgstr "Type"
+
 msgid "Type a command"
 msgstr "Saisissez une commande"
 
@@ -3130,6 +3154,9 @@ msgstr "Désépingler l'extrait sélectionné"
 
 msgid "Unpin them the same way."
 msgstr "Désépinglez-les de la même façon."
+
+msgid "Unsaved: this is how the item will look once you save it."
+msgstr "Non enregistré : voici l'aspect de l'élément une fois enregistré."
 
 msgid "Use"
 msgstr "Utiliser"

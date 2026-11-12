@@ -248,6 +248,9 @@ msgstr "テキストカーソルの位置"
 msgid "Back"
 msgstr "戻る"
 
+msgid "Back to editing (Ctrl+P)"
+msgstr "編集に戻る (Ctrl+P)"
+
 msgid "Back up now"
 msgstr "今すぐバックアップ"
 
@@ -736,6 +739,9 @@ msgstr "データベースを再構築しました。{} 件を復元しました
 
 msgid "Date and time in a format you choose"
 msgstr "任意の形式の日付と時刻"
+
+msgid "Dates are today's; a field you fill in when you use the item shows its name or default."
+msgstr "日付は今日のものです。使用時に入力するフィールドには、名前または既定値が表示されます。"
 
 msgid "Delete"
 msgstr "削除"
@@ -1424,6 +1430,9 @@ msgstr "ログはSnipdeckが異常終了したときだけ書き込まれ、ス�
 msgid "Love"
 msgstr "愛"
 
+msgid "Main list"
+msgstr "メインリスト"
+
 msgid "Main list density"
 msgstr "メインリストの密度"
 
@@ -1834,6 +1843,9 @@ msgstr "ユーザーガイドを開く (F1)"
 msgid "Opening the Panel"
 msgstr "パネルの開き方"
 
+msgid "Opens"
+msgstr "開く先"
+
 msgid "Opens in your browser."
 msgstr "ブラウザーで開きます。"
 
@@ -2056,6 +2068,9 @@ msgstr "どのアプリでもパネルのショートカットを押すと、ス
 msgid "Preview"
 msgstr "プレビュー"
 
+msgid "Preview how this item will look (Ctrl+P)"
+msgstr "このスニペットの表示をプレビュー (Ctrl+P)"
+
 msgid "Previous list"
 msgstr "前のリスト"
 
@@ -2237,6 +2252,9 @@ msgstr[0] "{} 件のスニペットを復元しました"
 msgid "Restored {} item from the backup"
 msgid_plural "Restored {} items from the backup"
 msgstr[0] "バックアップから {} 件のスニペットを復元しました"
+
+msgid "Result with sample values"
+msgstr "サンプル値での結果"
 
 msgid "Results"
 msgstr "検索結果"
@@ -2507,6 +2525,9 @@ msgstr "スキップ"
 
 msgid "Slate"
 msgstr "スレート"
+
+msgid "Small panel"
+msgstr "小さなパネル"
 
 msgid "Smileys & Emotion"
 msgstr "顔と感情"
@@ -3030,6 +3051,9 @@ msgstr "オフにすると、パネルまたはメインウィンドウを閉じ
 msgid "Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off."
 msgstr "Snipdeck のスライドやフェードの動きをオフにします。Windows のアニメーション効果がオフのときも、動きはオフになります。"
 
+msgid "Type"
+msgstr "種類"
+
 msgid "Type a command"
 msgstr "コマンドを入力"
 
@@ -3122,6 +3146,9 @@ msgstr "選択したスニペットのピン留めを解除"
 
 msgid "Unpin them the same way."
 msgstr "ピン留めの解除も同じ操作です。"
+
+msgid "Unsaved: this is how the item will look once you save it."
+msgstr "未保存：保存するとスニペットはこのように表示されます。"
 
 msgid "Use"
 msgstr "使用"

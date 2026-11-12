@@ -249,6 +249,9 @@ msgstr "No cursor de texto"
 msgid "Back"
 msgstr "Voltar"
 
+msgid "Back to editing (Ctrl+P)"
+msgstr "Voltar à edição (Ctrl+P)"
+
 msgid "Back up now"
 msgstr "Fazer backup agora"
 
@@ -737,6 +740,9 @@ msgstr "Banco de dados reconstruído: {} trechos restaurados. Não foi possível
 
 msgid "Date and time in a format you choose"
 msgstr "Data e hora no formato escolhido"
+
+msgid "Dates are today's; a field you fill in when you use the item shows its name or default."
+msgstr "As datas são as de hoje; um campo que você preenche ao usar o item mostra o nome ou o valor padrão."
 
 msgid "Delete"
 msgstr "Excluir"
@@ -1428,6 +1434,9 @@ msgstr "Os registros só são gravados quando o Snipdeck fecha de forma inespera
 msgid "Love"
 msgstr "Amor"
 
+msgid "Main list"
+msgstr "Lista principal"
+
 msgid "Main list density"
 msgstr "Densidade das listas principais"
 
@@ -1840,6 +1849,9 @@ msgstr "Abrir o guia do usuário (F1)"
 msgid "Opening the Panel"
 msgstr "Abertura do Painel"
 
+msgid "Opens"
+msgstr "Abre"
+
 msgid "Opens in your browser."
 msgstr "Abre no seu navegador."
 
@@ -2062,6 +2074,9 @@ msgstr "Pressione o atalho do painel em qualquer app para exibir seus itens."
 msgid "Preview"
 msgstr "Pré-visualização"
 
+msgid "Preview how this item will look (Ctrl+P)"
+msgstr "Pré-visualizar este item (Ctrl+P)"
+
 msgid "Previous list"
 msgstr "Lista anterior"
 
@@ -2245,6 +2260,9 @@ msgid "Restored {} item from the backup"
 msgid_plural "Restored {} items from the backup"
 msgstr[0] "{} item restaurado do backup"
 msgstr[1] "{} itens restaurados do backup"
+
+msgid "Result with sample values"
+msgstr "Resultado com valores de exemplo"
 
 msgid "Results"
 msgstr "Resultados"
@@ -2515,6 +2533,9 @@ msgstr "Pular"
 
 msgid "Slate"
 msgstr "Ardósia"
+
+msgid "Small panel"
+msgstr "Painel pequeno"
 
 msgid "Smileys & Emotion"
 msgstr "Carinhas e emoções"
@@ -3038,6 +3059,9 @@ msgstr "Se você desativar, fechar o painel ou a janela principal encerra o Snip
 msgid "Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off."
 msgstr "Desativa as animações de deslizar e desvanecer no Snipdeck. Também fica desativado quando o Windows tem os efeitos de animação desligados."
 
+msgid "Type"
+msgstr "Tipo"
+
 msgid "Type a command"
 msgstr "Digite um comando"
 
@@ -3130,6 +3154,9 @@ msgstr "Desafixar item selecionado"
 
 msgid "Unpin them the same way."
 msgstr "Desafixe do mesmo jeito."
+
+msgid "Unsaved: this is how the item will look once you save it."
+msgstr "Não salvo: é assim que o item ficará depois de salvar."
 
 msgid "Use"
 msgstr "Usar"

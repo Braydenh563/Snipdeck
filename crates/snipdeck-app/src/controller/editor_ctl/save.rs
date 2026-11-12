@@ -101,9 +101,7 @@ where
             let checked = item_editor::check_text(&input.content).and_then(|()| match kind {
                 ItemKind::Link => item_editor::check_link(&input.content),
                 ItemKind::Template => {
-                    let introduced = new
-                        || slot.original_kind != ItemKind::Template
-                        || slot.original_text.as_deref() != Some(input.content.as_str());
+                    let introduced = slot.template_introduced(&input.content);
                     item_editor::check_template(&input.content, prompted, introduced)
                         .map(|()| input.content.clone())
                 }

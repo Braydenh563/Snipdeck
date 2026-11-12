@@ -248,6 +248,9 @@ msgstr "文本光标处"
 msgid "Back"
 msgstr "上一步"
 
+msgid "Back to editing (Ctrl+P)"
+msgstr "返回编辑 (Ctrl+P)"
+
 msgid "Back up now"
 msgstr "立即备份"
 
@@ -736,6 +739,9 @@ msgstr "数据库已重建：已还原 {} 项。无法读取较新的项目。"
 
 msgid "Date and time in a format you choose"
 msgstr "以你选择的格式显示日期和时间"
+
+msgid "Dates are today's; a field you fill in when you use the item shows its name or default."
+msgstr "日期为今天的日期；使用时才填写的字段会显示其名称或默认值。"
 
 msgid "Delete"
 msgstr "删除"
@@ -1424,6 +1430,9 @@ msgstr "日志只在 Snipdeck 崩溃时写入，不含片段内容，也不会�
 msgid "Love"
 msgstr "爱"
 
+msgid "Main list"
+msgstr "主列表"
+
 msgid "Main list density"
 msgstr "主列表密度"
 
@@ -1834,6 +1843,9 @@ msgstr "打开用户指南 (F1)"
 msgid "Opening the Panel"
 msgstr "打开面板"
 
+msgid "Opens"
+msgstr "打开"
+
 msgid "Opens in your browser."
 msgstr "在浏览器中打开。"
 
@@ -2056,6 +2068,9 @@ msgstr "在任何应用中按面板快捷键，即可调出你的片段。"
 msgid "Preview"
 msgstr "预览"
 
+msgid "Preview how this item will look (Ctrl+P)"
+msgstr "预览此项目的外观 (Ctrl+P)"
+
 msgid "Previous list"
 msgstr "上一个列表"
 
@@ -2237,6 +2252,9 @@ msgstr[0] "已还原 {} 个片段"
 msgid "Restored {} item from the backup"
 msgid_plural "Restored {} items from the backup"
 msgstr[0] "已从备份还原 {} 个片段"
+
+msgid "Result with sample values"
+msgstr "使用示例值的结果"
 
 msgid "Results"
 msgstr "搜索结果"
@@ -2507,6 +2525,9 @@ msgstr "跳过"
 
 msgid "Slate"
 msgstr "石板灰"
+
+msgid "Small panel"
+msgstr "小面板"
 
 msgid "Smileys & Emotion"
 msgstr "笑脸与情绪"
@@ -3030,6 +3051,9 @@ msgstr "关闭后，关闭面板或主窗口将退出 Snipdeck。"
 msgid "Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off."
 msgstr "关闭 Snipdeck 中的滑动和淡入淡出效果。当 Windows 已关闭“动画效果”时，同样会关闭。"
 
+msgid "Type"
+msgstr "类型"
+
 msgid "Type a command"
 msgstr "输入命令"
 
@@ -3122,6 +3146,9 @@ msgstr "取消置顶所选片段"
 
 msgid "Unpin them the same way."
 msgstr "取消置顶的方式相同。"
+
+msgid "Unsaved: this is how the item will look once you save it."
+msgstr "未保存：保存后项目将如此显示。"
 
 msgid "Use"
 msgstr "使用"

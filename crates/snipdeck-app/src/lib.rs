@@ -32,6 +32,7 @@ pub mod host;
 pub mod hotkey_health;
 pub mod index_cache;
 pub mod item_editor;
+pub mod item_preview;
 pub mod key_provider;
 pub mod licence_store;
 pub mod list_text;

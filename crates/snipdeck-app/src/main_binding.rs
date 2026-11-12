@@ -1608,7 +1608,7 @@ fn theme_of(index: i32) -> Theme {
     }
 }
 
-fn ui_view(view: ViewMode) -> ui::MainView {
+pub(crate) fn ui_view(view: ViewMode) -> ui::MainView {
     match view {
         ViewMode::Comfortable => ui::MainView::Comfortable,
         ViewMode::Compact => ui::MainView::Compact,
