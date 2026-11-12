@@ -263,9 +263,15 @@ where
         input: &EditorInput,
         words: PreviewWords<'_>,
     ) -> Option<CardPreview> {
-        self.item_editor.as_ref()?;
+        let slot = self.item_editor.as_ref()?;
+        // The refusal Save would give a free user who has just added a prompted placeholder.
+        let introduced = slot.is_new()
+            || slot.original_kind != ItemKind::Template
+            || slot.original_text.as_deref() != Some(input.content.as_str());
+        let prompted_allowed = self.entitlements.allows(Feature::PromptedFields) || !introduced;
         Some(item_preview::card_of(
             input,
+            prompted_allowed,
             self.clock.now(),
             &self.tz,
             Locale::for_tag(&self.settings.language),

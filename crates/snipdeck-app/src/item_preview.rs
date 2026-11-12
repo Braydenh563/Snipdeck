@@ -8,7 +8,7 @@
 //! `‹Name›` stand-in for a field with none), a Link gets its resolved address.
 
 use snipdeck_core::{
-    Item, ItemId, ItemKind, ItemLabel, Timestamp,
+    Feature, Item, ItemId, ItemKind, ItemLabel, Timestamp,
     template::{Locale, Template, TimeZone},
 };
 
@@ -56,10 +56,12 @@ pub struct CardPreview {
 }
 
 /// The card for `input`. `now` is the moment `{date}` and `{time}` show; `tz` and `locale` are
-/// the user's.
+/// the user's. `prompted_allowed` is false when Save would refuse a prompted placeholder here
+/// (a free user who just added one): the card then says so instead of expanding it.
 #[must_use]
 pub fn card_of(
     input: &EditorInput,
+    prompted_allowed: bool,
     now: Timestamp,
     tz: &TimeZone,
     locale: Locale,
@@ -73,14 +75,17 @@ pub fn card_of(
         ""
     };
     let excerpt = Item::preview_of(text, sensitive);
-    let title = if input.title.trim().is_empty() {
+    // A sensitive item's secret is never the title: untitled, it has none.
+    let title = if !input.title.trim().is_empty() {
+        input.title.trim().to_owned()
+    } else if sensitive {
+        String::new()
+    } else {
         text.trim_start()
             .lines()
             .next()
             .unwrap_or_default()
             .to_owned()
-    } else {
-        input.title.trim().to_owned()
     };
     let mut card = CardPreview {
         kind: input.kind,
@@ -94,12 +99,20 @@ pub fn card_of(
     };
     match input.kind {
         ItemKind::Link => match item_editor::check_link(text) {
-            Ok(url) => card.link = Some(link_display(&url)),
+            // A sensitive link's host is as secret as the link.
+            Ok(url) if !sensitive => card.link = Some(link_display(&url)),
+            Ok(_) => {}
             Err(p) if !text.trim().is_empty() => card.problem = Some(p),
             Err(_) => {}
         },
         ItemKind::Template if !text.trim().is_empty() => match Template::parse(text) {
-            Ok(template) => card.expanded = Some(expand(&template, now, tz, locale, words)),
+            Ok(_) if item_editor::check_template(text, prompted_allowed, true).is_err() => {
+                card.problem = Some(EditorProblem::NeedsPro(Feature::PromptedFields));
+            }
+            Ok(template) if !sensitive => {
+                card.expanded = Some(expand(&template, now, tz, locale, words));
+            }
+            Ok(_) => {}
             Err(e) => card.problem = Some(EditorProblem::Template(e.kind.to_string())),
         },
         _ => {}
@@ -188,7 +201,7 @@ mod tests {
     }
 
     fn card(input: &EditorInput) -> CardPreview {
-        card_of(input, now(), &TimeZone::UTC, Locale::default(), WORDS)
+        card_of(input, true, now(), &TimeZone::UTC, Locale::default(), WORDS)
     }
 
     #[test]
@@ -286,5 +299,84 @@ mod tests {
     fn an_image_or_file_has_no_text_card_fields() {
         let c = card(&input(ItemKind::File, "", "ignored"));
         assert_eq!((c.excerpt.as_str(), c.title.as_str()), ("", ""));
+    }
+}
+
+#[cfg(test)]
+mod secret_tests {
+    use super::*;
+
+    fn sensitive(kind: ItemKind, title: &str, content: &str) -> CardPreview {
+        let input = EditorInput {
+            kind,
+            title: title.to_owned(),
+            content: content.to_owned(),
+            sensitive: true,
+            list_index: 0,
+            source_path: String::new(),
+            label: None,
+        };
+        card_of(
+            &input,
+            true,
+            Timestamp::from_second(1_772_600_767).expect("a moment"),
+            &TimeZone::UTC,
+            Locale::default(),
+            PreviewWords { new_id: "(new ID)" },
+        )
+    }
+
+    /// Nothing the card carries may contain the secret.
+    fn assert_no_secret(c: &CardPreview, secret: &str) {
+        let all = format!("{c:?}");
+        assert!(!all.contains(secret), "the secret leaked into {all}");
+    }
+
+    #[test]
+    fn an_untitled_sensitive_text_has_no_title_from_its_secret() {
+        let c = sensitive(ItemKind::Text, "", "hunter2-secret\nmore");
+        assert_eq!(c.title, "");
+        assert_no_secret(&c, "hunter2");
+        assert_eq!(sensitive(ItemKind::Text, "Bank", "hunter2").title, "Bank");
+    }
+
+    #[test]
+    fn a_sensitive_template_shows_no_expansion() {
+        let c = sensitive(ItemKind::Template, "", "pw {field:Who|hunter2-secret}");
+        assert!(c.expanded.is_none());
+        assert_no_secret(&c, "hunter2");
+    }
+
+    #[test]
+    fn a_sensitive_link_shows_no_host() {
+        let c = sensitive(ItemKind::Link, "", "https://hunter2-secret.example/x");
+        assert!(c.link.is_none());
+        assert_no_secret(&c, "hunter2");
+    }
+
+    #[test]
+    fn a_new_prompted_placeholder_is_refused_for_a_free_user_like_save() {
+        let input = EditorInput {
+            kind: ItemKind::Template,
+            title: "t".to_owned(),
+            content: "Dear {field:Name}".to_owned(),
+            sensitive: false,
+            list_index: 0,
+            source_path: String::new(),
+            label: None,
+        };
+        let c = card_of(
+            &input,
+            false,
+            Timestamp::from_second(1_772_600_767).expect("a moment"),
+            &TimeZone::UTC,
+            Locale::default(),
+            PreviewWords { new_id: "(new ID)" },
+        );
+        assert_eq!(
+            c.problem,
+            Some(EditorProblem::NeedsPro(Feature::PromptedFields))
+        );
+        assert!(c.expanded.is_none());
     }
 }
