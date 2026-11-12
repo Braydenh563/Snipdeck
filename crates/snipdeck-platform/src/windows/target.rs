@@ -53,9 +53,6 @@ use windows::Win32::UI::Accessibility::{
     UIA_IsPasswordPropertyId, UIA_ProcessIdPropertyId, UIA_TextPatternId,
     UIA_ValueIsReadOnlyPropertyId, UIA_ValuePatternId, UnhookWinEvent,
 };
-use windows::Win32::UI::Shell::{
-    QUNS_BUSY, QUNS_PRESENTATION_MODE, QUNS_RUNNING_D3D_FULL_SCREEN, SHQueryUserNotificationState,
-};
 use windows::Win32::UI::WindowsAndMessaging::{
     EVENT_SYSTEM_FOREGROUND, GA_ROOT, GUITHREADINFO, GWL_EXSTYLE, GWL_STYLE, GetAncestor,
     GetClassNameW, GetDesktopWindow, GetForegroundWindow, GetGUIThreadInfo, GetShellWindow,
@@ -828,23 +825,11 @@ fn integrity_level(process: HANDLE) -> Option<u32> {
     }
 }
 
-/// Whether a full-screen app, game or presentation is in front. Pasting from the deck into it
-/// would be wrong, and the hotkey should not pop the panel over it.
-#[must_use]
-pub fn fullscreen_in_front() -> bool {
-    // SAFETY: no arguments, no preconditions.
-    let state = unsafe { SHQueryUserNotificationState() };
-    matches!(
-        state,
-        Ok(QUNS_BUSY | QUNS_RUNNING_D3D_FULL_SCREEN | QUNS_PRESENTATION_MODE)
-    )
-}
-
 /// Whether a full-screen window (a game, a video, a slide show) covers the monitor that holds
 /// the physical point `(x, y)`: the foreground window, or the window in the middle of that
 /// monitor (a video left playing on a second screen is not in front, and covers it all the
-/// same). Only that monitor: [`fullscreen_in_front`] speaks for the whole session. The
-/// desktop, the shell and this process's own windows never count.
+/// same). Only that monitor: one on another screen is not asked about. The desktop, the shell
+/// and this process's own windows never count.
 #[must_use]
 pub fn fullscreen_covers(x: i32, y: i32) -> bool {
     // SAFETY: plain call; a point on no monitor gives a null handle.

@@ -6007,70 +6007,69 @@ the_watcher_starts_and_stops | crates/snipdeck-platform/src/windows/system_look.
 
 ### crates/snipdeck-platform/src/windows/target.rs
 
-UIA_CONNECTION_TIMEOUT_MS | crates/snipdeck-platform/src/windows/target.rs:72
-UIA_TRANSACTION_TIMEOUT_MS | crates/snipdeck-platform/src/windows/target.rs:74
-UNKNOWN_APP | crates/snipdeck-platform/src/windows/target.rs:77
-TITLE_UNITS | crates/snipdeck-platform/src/windows/target.rs:79
-Entry | crates/snipdeck-platform/src/windows/target.rs:89
-Inner | crates/snipdeck-platform/src/windows/target.rs:96
-impl Inner | crates/snipdeck-platform/src/windows/target.rs:114
-panel_hwnd | crates/snipdeck-platform/src/windows/target.rs:115
-target_hwnd | crates/snipdeck-platform/src/windows/target.rs:119
-is_own | crates/snipdeck-platform/src/windows/target.rs:124
-note_foreground | crates/snipdeck-platform/src/windows/target.rs:139
-is_popup | crates/snipdeck-platform/src/windows/target.rs:160
-panel_is_foreground | crates/snipdeck-platform/src/windows/target.rs:165
-notify | crates/snipdeck-platform/src/windows/target.rs:173
-is_task_switcher | crates/snipdeck-platform/src/windows/target.rs:180
-is_shell_surface | crates/snipdeck-platform/src/windows/target.rs:192
-hwnd_from | crates/snipdeck-platform/src/windows/target.rs:207
-TargetTracker | crates/snipdeck-platform/src/windows/target.rs:212
-impl TargetTracker | crates/snipdeck-platform/src/windows/target.rs:220
-install | crates/snipdeck-platform/src/windows/target.rs:235
-set_panel | crates/snipdeck-platform/src/windows/target.rs:275
-register_popup | crates/snipdeck-platform/src/windows/target.rs:285
-current | crates/snipdeck-platform/src/windows/target.rs:309
-begin_text_entry | crates/snipdeck-platform/src/windows/target.rs:333
-begin_text_entry_in | crates/snipdeck-platform/src/windows/target.rs:340
-end_text_entry | crates/snipdeck-platform/src/windows/target.rs:359
-refocus_target | crates/snipdeck-platform/src/windows/target.rs:374
-caret | crates/snipdeck-platform/src/windows/target.rs:392
-probe | crates/snipdeck-platform/src/windows/target.rs:407
-focus_is_password | crates/snipdeck-platform/src/windows/target.rs:435
-automation_focus | crates/snipdeck-platform/src/windows/target.rs:449
-uia | crates/snipdeck-platform/src/windows/target.rs:465
-PasswordProbe | crates/snipdeck-platform/src/windows/target.rs:482
-impl Default for PasswordProbe | crates/snipdeck-platform/src/windows/target.rs:488
-default | crates/snipdeck-platform/src/windows/target.rs:489
-impl PasswordProbe | crates/snipdeck-platform/src/windows/target.rs:494
-new | crates/snipdeck-platform/src/windows/target.rs:497
-focus_is_password | crates/snipdeck-platform/src/windows/target.rs:508
-impl Drop for TargetTracker | crates/snipdeck-platform/src/windows/target.rs:519
-drop | crates/snipdeck-platform/src/windows/target.rs:520
-ProbeGuard | crates/snipdeck-platform/src/windows/target.rs:538
-impl Drop for ProbeGuard<'_> | crates/snipdeck-platform/src/windows/target.rs:540
-drop | crates/snipdeck-platform/src/windows/target.rs:541
-ComGuard | crates/snipdeck-platform/src/windows/target.rs:576
-impl ComGuard | crates/snipdeck-platform/src/windows/target.rs:580
-init | crates/snipdeck-platform/src/windows/target.rs:581
-impl Drop for ComGuard | crates/snipdeck-platform/src/windows/target.rs:594
-drop | crates/snipdeck-platform/src/windows/target.rs:595
-UiaState | crates/snipdeck-platform/src/windows/target.rs:603
-Uia | crates/snipdeck-platform/src/windows/target.rs:612
-impl Uia | crates/snipdeck-platform/src/windows/target.rs:617
-create | crates/snipdeck-platform/src/windows/target.rs:618
-focused_element | crates/snipdeck-platform/src/windows/target.rs:657
-gui_thread_focus | crates/snipdeck-platform/src/windows/target.rs:689
-gui_thread_caret | crates/snipdeck-platform/src/windows/target.rs:706
-window_title | crates/snipdeck-platform/src/windows/target.rs:734
-process_exe_name | crates/snipdeck-platform/src/windows/target.rs:747
-window_exe_name | crates/snipdeck-platform/src/windows/target.rs:769
-open_process | crates/snipdeck-platform/src/windows/target.rs:781
-process_integrity | crates/snipdeck-platform/src/windows/target.rs:790
-integrity_level | crates/snipdeck-platform/src/windows/target.rs:796
-fullscreen_in_front | crates/snipdeck-platform/src/windows/target.rs:834
-fullscreen_covers | crates/snipdeck-platform/src/windows/target.rs:849
-covers_monitor | crates/snipdeck-platform/src/windows/target.rs:882
+UIA_CONNECTION_TIMEOUT_MS | crates/snipdeck-platform/src/windows/target.rs:69
+UIA_TRANSACTION_TIMEOUT_MS | crates/snipdeck-platform/src/windows/target.rs:71
+UNKNOWN_APP | crates/snipdeck-platform/src/windows/target.rs:74
+TITLE_UNITS | crates/snipdeck-platform/src/windows/target.rs:76
+Entry | crates/snipdeck-platform/src/windows/target.rs:86
+Inner | crates/snipdeck-platform/src/windows/target.rs:93
+impl Inner | crates/snipdeck-platform/src/windows/target.rs:111
+panel_hwnd | crates/snipdeck-platform/src/windows/target.rs:112
+target_hwnd | crates/snipdeck-platform/src/windows/target.rs:116
+is_own | crates/snipdeck-platform/src/windows/target.rs:121
+note_foreground | crates/snipdeck-platform/src/windows/target.rs:136
+is_popup | crates/snipdeck-platform/src/windows/target.rs:157
+panel_is_foreground | crates/snipdeck-platform/src/windows/target.rs:162
+notify | crates/snipdeck-platform/src/windows/target.rs:170
+is_task_switcher | crates/snipdeck-platform/src/windows/target.rs:177
+is_shell_surface | crates/snipdeck-platform/src/windows/target.rs:189
+hwnd_from | crates/snipdeck-platform/src/windows/target.rs:204
+TargetTracker | crates/snipdeck-platform/src/windows/target.rs:209
+impl TargetTracker | crates/snipdeck-platform/src/windows/target.rs:217
+install | crates/snipdeck-platform/src/windows/target.rs:232
+set_panel | crates/snipdeck-platform/src/windows/target.rs:272
+register_popup | crates/snipdeck-platform/src/windows/target.rs:282
+current | crates/snipdeck-platform/src/windows/target.rs:306
+begin_text_entry | crates/snipdeck-platform/src/windows/target.rs:330
+begin_text_entry_in | crates/snipdeck-platform/src/windows/target.rs:337
+end_text_entry | crates/snipdeck-platform/src/windows/target.rs:356
+refocus_target | crates/snipdeck-platform/src/windows/target.rs:371
+caret | crates/snipdeck-platform/src/windows/target.rs:389
+probe | crates/snipdeck-platform/src/windows/target.rs:404
+focus_is_password | crates/snipdeck-platform/src/windows/target.rs:432
+automation_focus | crates/snipdeck-platform/src/windows/target.rs:446
+uia | crates/snipdeck-platform/src/windows/target.rs:462
+PasswordProbe | crates/snipdeck-platform/src/windows/target.rs:479
+impl Default for PasswordProbe | crates/snipdeck-platform/src/windows/target.rs:485
+default | crates/snipdeck-platform/src/windows/target.rs:486
+impl PasswordProbe | crates/snipdeck-platform/src/windows/target.rs:491
+new | crates/snipdeck-platform/src/windows/target.rs:494
+focus_is_password | crates/snipdeck-platform/src/windows/target.rs:505
+impl Drop for TargetTracker | crates/snipdeck-platform/src/windows/target.rs:516
+drop | crates/snipdeck-platform/src/windows/target.rs:517
+ProbeGuard | crates/snipdeck-platform/src/windows/target.rs:535
+impl Drop for ProbeGuard<'_> | crates/snipdeck-platform/src/windows/target.rs:537
+drop | crates/snipdeck-platform/src/windows/target.rs:538
+ComGuard | crates/snipdeck-platform/src/windows/target.rs:573
+impl ComGuard | crates/snipdeck-platform/src/windows/target.rs:577
+init | crates/snipdeck-platform/src/windows/target.rs:578
+impl Drop for ComGuard | crates/snipdeck-platform/src/windows/target.rs:591
+drop | crates/snipdeck-platform/src/windows/target.rs:592
+UiaState | crates/snipdeck-platform/src/windows/target.rs:600
+Uia | crates/snipdeck-platform/src/windows/target.rs:609
+impl Uia | crates/snipdeck-platform/src/windows/target.rs:614
+create | crates/snipdeck-platform/src/windows/target.rs:615
+focused_element | crates/snipdeck-platform/src/windows/target.rs:654
+gui_thread_focus | crates/snipdeck-platform/src/windows/target.rs:686
+gui_thread_caret | crates/snipdeck-platform/src/windows/target.rs:703
+window_title | crates/snipdeck-platform/src/windows/target.rs:731
+process_exe_name | crates/snipdeck-platform/src/windows/target.rs:744
+window_exe_name | crates/snipdeck-platform/src/windows/target.rs:766
+open_process | crates/snipdeck-platform/src/windows/target.rs:778
+process_integrity | crates/snipdeck-platform/src/windows/target.rs:787
+integrity_level | crates/snipdeck-platform/src/windows/target.rs:793
+fullscreen_covers | crates/snipdeck-platform/src/windows/target.rs:834
+covers_monitor | crates/snipdeck-platform/src/windows/target.rs:867
 
 ### crates/snipdeck-platform/src/windows/tray.rs
 
