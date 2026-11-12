@@ -29,7 +29,15 @@ is the developer route. Plan (next session, workflow):
   (install, upgrade over an older version, uninstall keeps data, Store package sideload test).
 - Windows-only: everything above is unverified until the owner runs it.
 
-## Now (2026-11-11 evening; v1.1 work complete in PR #5)
+## Now (2026-11-12 15:40 UTC; owner asleep, Fable paused to save usage)
+Hub session_01NKjURuyvhApCqnss7v9Php coordinates four branches into PR #5 (none merged yet):
+- `claude/dock-redesign` (Fable, PAUSED by the owner overnight): re-verify rounds 1-3 in `docs/reviews/dock-redesign-reverify*.md`; at d37d9c9 all R-items fixed. Three minors open (legacy full-height raw read in `placement()` no-entry branch; `in_size_loop` must compare `hwndMoveSize` with the Panel HWND; SPEC.md:72 "a docked Panel that tucks"). Give them to Sonnet, gate, merge.
+- `claude/editor-preview` (Sonnet): PR-branch merge + Tab walk + refill test, gate running.
+- `claude/colour-tool` (Sonnet): fixing C1-C24 (`docs/reviews/colour-tool-reverify.md`).
+- Owner bug sweep (workflow, worktree `.claude/worktrees/slide-fix`, commits 902ce1b..695eb2d): visual and files groups left.
+- LAST, only when the owner says go: Fable full-app audit + blind usability tests on Haiku, Sonnet and Opus (same goals, no source/docs), see `.claude/now.md` Inbox.
+
+## Earlier (2026-11-11 evening; v1.1 work complete in PR #5)
 Branch `claude/compassionate-pascal-pod8ux`, PR https://github.com/braydenh563/snipdeck/pull/5. Keep all work on this branch and PR; never merge, tag or release.
 State: all v1.1 work is merged into the PR head: placeholders and fill-ins, paste transforms, importers with Settings wiring, groups inside a list (Panel and Main, keyboard, Narrator, header menu fold/move), typed-trigger expansion and suggest-as-you-type (opt-in), rich paste, Windows Hello unlock, tips, in-app help and shortcut lists, final audits 1 and 2, blind-test and ux-auditor fixes (Settings search gap, wrapping toasts, shortcut rows that wrap, "or" between alternative keys, palette that scales with text, group header selected state, accessible descriptions, warning toasts). Worker branches `claude/v11-*` are merged and can be deleted by the owner.
 Windows-only, unverified until the owner runs `tools/windows-test` (wizard `tests/m3-app.json`): steps 39-86 (typing 68-70, Hello 71-77, Narrator groups 78, Main groups 79-86); kaomoji, quick check, Ctrl+Enter in the Template editor, typed expansion with dead keys, the suggest hint, rich paste into Word/Outlook/Notepad/WordPad, Narrator on group headers.
