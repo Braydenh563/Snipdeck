@@ -91,7 +91,7 @@ mod imp {
 
         fn size_loop(&self) -> Option<bool> {
             // Asked on the UI thread, the Panel's own.
-            Some(screen::in_size_loop())
+            Some(screen::in_size_loop(self.0.panel()))
         }
 
         fn monitor_at(&self, x: i32, y: i32) -> Option<Monitor> {

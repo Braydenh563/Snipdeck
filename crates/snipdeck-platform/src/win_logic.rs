@@ -301,6 +301,15 @@ pub enum ZStep {
     NotTopmost,
 }
 
+/// Whether the move or size loop a thread reports is the one on the Panel: the thread's other
+/// windows (Main, Settings) have loops of their own, which are not the Panel's resize.
+/// `in_loop` is `GUI_INMOVESIZE`, `loop_window` is `hwndMoveSize`, and `panel` is 0 until the
+/// Panel's window exists.
+#[must_use]
+pub const fn size_loop_on_panel(in_loop: bool, loop_window: isize, panel: isize) -> bool {
+    in_loop && panel != 0 && loop_window == panel
+}
+
 /// The z-order steps that bring a window to the front without activating it.
 ///
 /// `ShowWindow` on a hidden non-activating window (the Panel) keeps the place the window had in
@@ -343,6 +352,14 @@ impl ClassNames {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_size_loop_counts_only_on_the_panel_window() {
+        assert!(size_loop_on_panel(true, 7, 7));
+        assert!(!size_loop_on_panel(true, 9, 7), "another window's loop");
+        assert!(!size_loop_on_panel(false, 7, 7), "no loop");
+        assert!(!size_loop_on_panel(true, 0, 0), "no Panel window yet");
+    }
 
     #[test]
     fn a_class_name_belongs_to_one_handler_type() {

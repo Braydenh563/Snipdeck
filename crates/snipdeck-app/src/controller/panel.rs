@@ -812,8 +812,10 @@ where
     #[must_use]
     pub fn placement(&self, monitor: &Monitor) -> Option<Rect> {
         let Some(g) = self.stored_geometry(monitor) else {
-            let last = self.settings.panel_geometry.last()?;
-            return Some(frame::clamp(Rect::of(last), monitor));
+            let mut last = self.settings.panel_geometry.last()?.clone();
+            // An older version's full-height dock is not as tall as this screen.
+            super::dock_ctl::mend_full_height(&mut last, monitor);
+            return Some(frame::clamp(Rect::of(&last), monitor));
         };
         Some(match g.edge {
             Some(edge) => self.dock_open(g, edge, monitor),

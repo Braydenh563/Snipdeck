@@ -267,6 +267,12 @@ impl TargetTracker {
         }
     }
 
+    /// The panel's window (`HWND` value), 0 until [`set_panel`](Self::set_panel) is called.
+    #[must_use]
+    pub fn panel(&self) -> isize {
+        self.inner.panel.get()
+    }
+
     /// Tells the tracker the panel's window (`HWND` value), so it is never the Target. Call it as
     /// soon as the window exists.
     pub fn set_panel(&self, hwnd: isize) {

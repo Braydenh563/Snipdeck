@@ -2124,6 +2124,31 @@ fn old_full_height_dock(edge: DockEdge) -> World {
 }
 
 #[test]
+fn a_full_height_dock_an_older_version_stored_on_a_monitor_that_is_gone_opens_ordinary_height_elsewhere()
+ {
+    let mut w = old_full_height_dock(DockEdge::Right);
+    // Its entry is for a monitor that is not there any more; the pointer is on another one.
+    w.ctl
+        .update_settings(|s| s.panel_geometry[0].monitor_id = "GONE".into());
+    // A monitor no taller than the one it was left on, so that the old height fills it.
+    let there = frame::Monitor {
+        work_area: Rect {
+            h: 1000,
+            ..second_display().work_area
+        },
+        scale: 1.0,
+        ..second_display()
+    };
+    w.targets.add_monitor(there.clone());
+    let rect = w.ctl.placement(&there).expect("a place");
+    assert_eq!(
+        rect.h, 480,
+        "the ordinary height, not as tall as the screen"
+    );
+    assert!(there.holds(rect.x, rect.y), "{rect:?}");
+}
+
+#[test]
 fn undocking_a_dock_an_older_version_stored_full_height_gives_a_panel_of_ordinary_height() {
     // From the menu.
     let mut w = old_full_height_dock(DockEdge::Right);

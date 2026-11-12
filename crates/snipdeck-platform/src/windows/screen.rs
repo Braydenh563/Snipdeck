@@ -22,6 +22,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 
 use crate::route::ScreenRect;
+use crate::win_logic;
 
 /// What is known of one monitor.
 #[derive(Debug, Clone, PartialEq)]
@@ -61,9 +62,10 @@ pub fn primary_button_down() -> bool {
 /// Whether the calling thread is inside the system's move or size loop (the one a window's
 /// border or caption starts, which runs until the button comes up): `GUI_INMOVESIZE`. Asked on
 /// the UI thread it says whether a resize of one of its windows is still under way, also
-/// where the button itself cannot be read.
+/// where the button itself cannot be read. Only a loop on `panel` (its `HWND` value) counts: one
+/// on the thread's Main or Settings window is not the Panel's resize.
 #[must_use]
-pub fn in_size_loop() -> bool {
+pub fn in_size_loop(panel: isize) -> bool {
     let mut info = GUITHREADINFO {
         cbSize: u32::try_from(size_of::<GUITHREADINFO>()).unwrap_or(0),
         ..Default::default()
@@ -71,7 +73,12 @@ pub fn in_size_loop() -> bool {
     // SAFETY: `info` is initialised with its size, as the call requires, and outlives the
     // call; the thread id is the caller's own.
     let read = unsafe { GetGUIThreadInfo(GetCurrentThreadId(), &raw mut info) };
-    read.is_ok() && info.flags.contains(GUI_INMOVESIZE)
+    read.is_ok()
+        && win_logic::size_loop_on_panel(
+            info.flags.contains(GUI_INMOVESIZE),
+            info.hwndMoveSize.0 as isize,
+            panel,
+        )
 }
 
 /// The clipboard's change count and whether it holds a picture, for waiting on a screenshot.

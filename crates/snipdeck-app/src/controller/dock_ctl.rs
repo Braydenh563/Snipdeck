@@ -43,6 +43,26 @@ struct DragPlace {
     sizes: DragSizes,
 }
 
+/// Reads an older version's docked frame, stored as the Panel's only size, as the ordinary
+/// height: a docked entry with no place along its edge that is as tall as `monitor`'s work
+/// area is not a floating height the user chose. Its side-dock size was as tall as the screen
+/// for the same reason: the full edge stretches the window now, not the size the Panel keeps.
+pub(super) fn mend_full_height(geometry: &mut PanelGeometry, monitor: &Monitor) {
+    let area = monitor.work_area;
+    let full = |h: u32| h.saturating_add(2) >= area.h;
+    if geometry.edge.is_none() || geometry.along.is_some() {
+        return;
+    }
+    if full(geometry.h) {
+        geometry.h = frame::scaled(DEFAULT_HEIGHT, monitor.scale).min(area.h / 2);
+    }
+    if let Some((w, h)) = geometry.docked
+        && full(h)
+    {
+        geometry.docked = Some((w, geometry.h));
+    }
+}
+
 impl<S, C, K, T> Controller<S, C, K, T>
 where
     S: Library,
@@ -534,20 +554,7 @@ where
         let mut geometry = self.stored_geometry(monitor).cloned().unwrap_or_else(|| {
             frame::clamp(self.open_frame(monitor), monitor).geometry(monitor, None)
         });
-        let area = monitor.work_area;
-        let full = |h: u32| h.saturating_add(2) >= area.h;
-        if geometry.edge.is_some() && geometry.along.is_none() {
-            if full(geometry.h) {
-                geometry.h = frame::scaled(DEFAULT_HEIGHT, monitor.scale).min(area.h / 2);
-            }
-            // Its side-dock size was as tall as the screen for the same reason: the full
-            // edge stretches the window now, not the size the Panel keeps.
-            if let Some((w, h)) = geometry.docked
-                && full(h)
-            {
-                geometry.docked = Some((w, geometry.h));
-            }
-        }
+        mend_full_height(&mut geometry, monitor);
         geometry
     }
 
