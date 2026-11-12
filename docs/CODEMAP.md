@@ -8504,7 +8504,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-symbols/tests/recents.rs` | 4 |
 | `crates/snipdeck-symbols/tests/search.rs` | 8 |
 | `crates/snipdeck-ui/tests/audit_final1.rs` | 7 |
-| `crates/snipdeck-ui/tests/audit_final1_keys.rs` | 8 |
+| `crates/snipdeck-ui/tests/audit_final1_keys.rs` | 9 |
 | `crates/snipdeck-ui/tests/audit_final1_tree.rs` | 1 |
 | `crates/snipdeck-ui/tests/button_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/buttons.rs` | 4 |
