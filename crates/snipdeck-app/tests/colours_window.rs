@@ -102,7 +102,7 @@ fn typing_a_colour_updates_every_format_and_the_contrast() {
     let hex = s.get_formats().row_data(0).expect("hex row");
     assert_eq!(hex.value.as_str(), "#ff0000");
     let hsl = s.get_formats().row_data(2).expect("hsl row");
-    assert!(hsl.value.contains('0'), "{}", hsl.value);
+    assert_eq!(hsl.value.as_str(), "hsl(0, 100%, 50%)");
     let white = s.get_contrast().row_data(0).expect("white row");
     assert_eq!(
         white.ratio.as_str(),
@@ -185,4 +185,45 @@ fn the_dark_tab_renders_too() {
     r.state().invoke_input_edited("#3a7bd5".into());
     r.state().invoke_style_picked(1);
     shot("wheel-420", &r.h.render_settled());
+}
+
+#[test]
+fn brightness_to_zero_and_back_keeps_the_colour_and_the_values_row_says_so() {
+    let r = rig(false, (320, 640));
+    let blue = Rgba8::rgb(58, 123, 213);
+    r.state().invoke_input_edited("#3a7bd5".into());
+    let (hue, sat, bri) = {
+        let s = r.state();
+        (s.get_hue(), 0.0_f32, s.get_bri())
+    };
+    r.state().invoke_bri_moved(0.0);
+    assert_eq!(
+        r.ctl.borrow().colour_view().current,
+        Rgba8::rgb(0, 0, 0),
+        "black"
+    );
+    r.state().invoke_bri_moved(bri);
+    assert_eq!(r.ctl.borrow().colour_view().current, blue);
+    let _ = (hue, sat);
+}
+
+#[test]
+fn a_typed_hue_on_a_grey_sticks_and_stepping_it_advances() {
+    let r = rig(false, (320, 640));
+    r.state().invoke_input_edited("#808080".into());
+    r.state().invoke_model_picked(3); // HSB
+    r.state().invoke_channel_committed(0, "120".into());
+    assert_eq!(
+        r.state().get_channels().row_data(0).unwrap().text.as_str(),
+        "120"
+    );
+    r.state().invoke_channel_stepped(0, 1);
+    assert_eq!(
+        r.state().get_channels().row_data(0).unwrap().text.as_str(),
+        "121"
+    );
+    assert_eq!(
+        r.ctl.borrow().colour_view().current,
+        Rgba8::rgb(128, 128, 128)
+    );
 }

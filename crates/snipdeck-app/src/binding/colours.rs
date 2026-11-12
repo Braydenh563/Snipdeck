@@ -6,8 +6,8 @@ use std::{cell::RefCell, rc::Rc};
 
 use slint::{Global, ModelRc, SharedString, VecModel};
 use snipdeck_colour::{
-    Format, InputModel, PickerStyle, Rgba8, Scheme, contrast_ratio, from_hsv, literal, marks,
-    nearest_name, parse, ratio_text, render_square, render_wheel, scheme,
+    Format, InputModel, PickerStyle, Rgba8, Scheme, contrast_ratio, from_hsv, marks, nearest_name,
+    parse, ratio_text, render_square, render_wheel, scheme,
 };
 use snipdeck_core::{ListId, UseMode};
 use snipdeck_ui as ui;
@@ -30,6 +30,22 @@ pub struct Glue {
     inner: RefCell<Inner>,
 }
 
+impl Inner {
+    /// The picker's hue, saturation and brightness for `c`: the held ones while they still make
+    /// `c` (alpha aside), else read from `c`, keeping the last hue where `c` has none.
+    fn state(&mut self, c: Rgba8) -> panel::Hsb {
+        if let Some((held, st)) = self.held
+            && (held.r, held.g, held.b) == (c.r, c.g, c.b)
+        {
+            self.held = Some((c, st));
+            return st;
+        }
+        let st = panel::hsb(c, self.held.map_or(0.0, |(_, st)| st.0));
+        self.held = Some((c, st));
+        st
+    }
+}
+
 /// Everything a redraw of the tab depends on besides the surface.
 #[derive(PartialEq)]
 struct Drawn {
@@ -41,15 +57,13 @@ struct Drawn {
     names: Vec<String>,
     target: String,
     values_error: String,
-    pinned: String,
+    held: Option<(Rgba8, panel::Hsb)>,
 }
 
 #[derive(Default)]
 struct Inner {
     /// The hue the picker surfaces show, kept when the colour is a grey or black.
-    hue: f32,
-    /// A hue a picker gesture just chose (the 8-bit colour cannot give it back exactly).
-    pinned_hue: Option<f32>,
+    held: Option<(Rgba8, panel::Hsb)>,
     /// The next redraw leaves the input line alone (the text in it made the colour).
     typing_input: bool,
     typing_other: bool,
@@ -177,13 +191,14 @@ impl Glue {
         let target = window.get_target_name().to_string();
         let pastes = !target.is_empty();
         let names: Vec<String> = lists.iter().map(|(_, n)| n.clone()).collect();
+        s.state(c);
         let key = key_of(view, &s, pastes, eyedropper, &names, &target);
         if s.drawn.as_ref() == Some(&key) && !s.fresh {
+            // Nothing to draw: a typed literal that is the colour already must not leave its flag.
+            s.typing_input = false;
+            s.typing_other = false;
             return;
         }
-        // The hue: kept through greys, taken from a picker gesture, else read from the colour.
-        let (h, _, _) = panel::hsb(c, s.hue);
-        s.hue = s.pinned_hue.take().unwrap_or(h);
         s.lists = lists.iter().map(|(id, _)| *id).collect();
         let changed = s.last_colour != Some(c);
         s.last_colour = Some(c);
@@ -292,7 +307,7 @@ fn picker(state: &ui::ColourState<'_>, s: &mut Inner, view: &ColourView) {
             .position(|x| *x == view.scheme)
             .map_or(0, |i| i32::try_from(i).unwrap_or(0)),
     );
-    let (hue, sat, bri) = panel::hsb(c, s.hue);
+    let (hue, sat, bri) = s.state(c);
     #[allow(
         clippy::cast_possible_truncation,
         reason = "a hue or a brightness of at most 360 rounds to a small integer"
@@ -317,7 +332,7 @@ fn picker(state: &ui::ColourState<'_>, s: &mut Inner, view: &ColourView) {
     state.set_bri(bri);
     state.set_alpha(f32::from(c.a) / 255.0 * 100.0);
     state.set_channels(model(
-        panel::channels(c, view.input_model, s.hue)
+        panel::channels(c, view.input_model, s.state(c))
             .into_iter()
             .map(|ch| ui::ColourChannel {
                 label: ch.label.into(),
@@ -344,7 +359,7 @@ fn key_of(
         names: names.to_vec(),
         target: target.to_owned(),
         values_error: s.values_error.clone(),
-        pinned: format!("{:?}", s.pinned_hue),
+        held: s.held,
     }
 }
 
@@ -395,10 +410,17 @@ where
             .copied()
     }
 
-    /// Picker gestures set the colour and pin the hue they chose.
-    fn set_picked(self: &Rc<Self>, c: Rgba8, hue: f32) {
-        self.colours.inner.borrow_mut().pinned_hue = Some(hue);
+    /// Picker gestures and typed values set the colour and the hue, saturation and brightness it
+    /// was made from.
+    fn set_picked(self: &Rc<Self>, c: Rgba8, st: panel::Hsb) {
+        self.colours.inner.borrow_mut().held = Some((c, st));
         self.act(|ctl| ctl.set_colour(c));
+    }
+
+    /// The picker's state for the colour now.
+    fn picker_state(&self) -> (Rgba8, panel::Hsb) {
+        let current = self.colour_view().current;
+        (current, self.colours.inner.borrow_mut().state(current))
     }
 
     fn save_target(&self, i: i32) -> SaveTarget {
@@ -429,7 +451,7 @@ where
             let core = Rc::clone(self);
             state.on_input_edited(move |text| {
                 // A whole colour literal applies live; the error waits for Enter.
-                if let Some(c) = literal(text.as_str()) {
+                if let Ok(c) = parse(text.as_str()) {
                     core.colours.inner.borrow_mut().typing_input = true;
                     core.colours.inner.borrow_mut().input_error.clear();
                     core.act(|ctl| ctl.set_colour(c));
@@ -458,7 +480,7 @@ where
         {
             let core = Rc::clone(self);
             state.on_other_edited(move |text| {
-                if let Some(c) = literal(text.as_str()) {
+                if let Ok(c) = parse(text.as_str()) {
                     core.colours.inner.borrow_mut().typing_other = true;
                     core.colours.inner.borrow_mut().other_error.clear();
                     core.act(|ctl| ctl.set_contrast_with(c));
@@ -619,39 +641,35 @@ where
         {
             let core = Rc::clone(self);
             state.on_surface_moved(move |x, y, _done| {
-                let v = core.colour_view();
-                let hue = core.colours.inner.borrow().hue;
-                let (_, _, bri) = panel::hsb(v.current, hue);
-                let (c, h, _) = panel::pick(v.style, x, y, hue, bri, v.current.a);
-                core.set_picked(c, h);
+                let (current, st) = core.picker_state();
+                let style = core.colour_view().style;
+                let (c, next) = panel::pick_hsb(style, x, y, st, current.a);
+                core.set_picked(c, next);
             });
         }
         {
             let core = Rc::clone(self);
             state.on_surface_nudged(move |dx, dy| {
-                let v = core.colour_view();
-                let hue = core.colours.inner.borrow().hue;
-                let (c, h) = panel::nudge(v.style, panel::hsb(v.current, hue), dx, dy, v.current.a);
-                core.set_picked(c, h);
+                let (current, st) = core.picker_state();
+                let style = core.colour_view().style;
+                let (c, next) = panel::nudge(style, st, dx, dy, current.a);
+                core.set_picked(c, next);
             });
         }
         {
             let core = Rc::clone(self);
             state.on_hue_moved(move |h| {
-                let v = core.colour_view();
-                let hue = core.colours.inner.borrow().hue;
-                let (_, sat, bri) = panel::hsb(v.current, hue);
-                let c = hsb_colour(h, sat, bri, v.current.a);
-                core.set_picked(c, h.min(359.999));
+                let (current, st) = core.picker_state();
+                let next = (h.min(359.999), st.1, st.2);
+                core.set_picked(hsb_colour(next, current.a), next);
             });
         }
         {
             let core = Rc::clone(self);
             state.on_bri_moved(move |b| {
-                let v = core.colour_view();
-                let hue = core.colours.inner.borrow().hue;
-                let (h, sat, _) = panel::hsb(v.current, hue);
-                core.set_picked(hsb_colour(h, sat, b, v.current.a), h);
+                let (current, st) = core.picker_state();
+                let next = (st.0, st.1, b.clamp(0.0, 100.0));
+                core.set_picked(hsb_colour(next, current.a), next);
             });
         }
         {
@@ -671,36 +689,32 @@ where
         {
             let core = Rc::clone(self);
             state.on_channel_committed(move |i, text| {
-                let v = core.colour_view();
-                let hue = core.colours.inner.borrow().hue;
+                let (current, st) = core.picker_state();
+                let model = core.colour_view().input_model;
                 let result = usize::try_from(i)
                     .map_err(|_| panel::Reject::NoSuchChannel)
-                    .and_then(|i| panel::commit(v.current, v.input_model, i, text.as_str(), hue));
-                core.apply_channel(result, hue);
+                    .and_then(|i| panel::commit(current, model, i, text.as_str(), st));
+                core.apply_channel(result);
             });
         }
         {
             let core = Rc::clone(self);
             state.on_channel_stepped(move |i, d| {
-                let v = core.colour_view();
-                let hue = core.colours.inner.borrow().hue;
+                let (current, st) = core.picker_state();
+                let model = core.colour_view().input_model;
                 let result = usize::try_from(i)
                     .map_err(|_| panel::Reject::NoSuchChannel)
-                    .and_then(|i| panel::step(v.current, v.input_model, i, d, hue));
-                core.apply_channel(result, hue);
+                    .and_then(|i| panel::step(current, model, i, d, st));
+                core.apply_channel(result);
             });
         }
     }
 
-    fn apply_channel(self: &Rc<Self>, result: Result<Rgba8, panel::Reject>, hue: f32) {
+    fn apply_channel(self: &Rc<Self>, result: Result<(Rgba8, panel::Hsb), panel::Reject>) {
         match result {
-            Ok(c) => {
+            Ok((c, st)) => {
                 self.colours.inner.borrow_mut().values_error.clear();
-                // The hue field of a grey stays where the user put it.
-                self.colours.inner.borrow_mut().pinned_hue = Some(hue);
-                let h = panel::hsb(c, hue).0;
-                self.colours.inner.borrow_mut().pinned_hue = Some(h);
-                self.act(|ctl| ctl.set_colour(c));
+                self.set_picked(c, st);
             }
             Err(panel::Reject::NotANumber(label)) => {
                 if let Some(w) = self.window.upgrade() {
@@ -714,7 +728,7 @@ where
     }
 }
 
-fn hsb_colour(h: f32, sat: f32, bri: f32, alpha: u8) -> Rgba8 {
+fn hsb_colour((h, sat, bri): panel::Hsb, alpha: u8) -> Rgba8 {
     from_hsv(
         snipdeck_colour::Hsv {
             h: f64::from(h),
