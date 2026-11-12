@@ -293,7 +293,10 @@ fn closing_a_docked_panel_tucks_it_and_losing_the_foreground_does_not_hide_it() 
     advance(&w, 5_000);
     assert_eq!(w.ctl.on_foreground_changed(), Vec::new());
     assert!(w.ctl.visible(), "its tab is how it comes back");
-    assert!(w.ctl.view().topmost, "a docked Panel stays above other windows");
+    assert!(
+        w.ctl.view().topmost,
+        "a docked Panel stays above other windows"
+    );
     assert_eq!(w.ctl.close(), place(handle(DockEdge::Right)));
     assert!(w.ctl.visible());
     assert!(w.ctl.view().dock_collapsed);
@@ -410,7 +413,10 @@ fn where_the_cursor_cannot_be_read_the_windows_own_hover_still_works() {
     // Where it can be read, the window's enter and leave are not listened to.
     let mut polled = docked(DockTrigger::Both, DockEdge::Right);
     polled.targets.set_cursor(Some((1700, 300)));
-    assert_eq!(polled.ctl.dock_hover(DockEvent::PanelHover(false)), Vec::new());
+    assert_eq!(
+        polled.ctl.dock_hover(DockEvent::PanelHover(false)),
+        Vec::new()
+    );
     advance(&polled, 5_000);
     assert_eq!(polled.ctl.dock_tick(), Vec::new());
     assert!(!polled.ctl.view().dock_collapsed);
@@ -531,7 +537,11 @@ fn the_handle_strip_is_not_remembered_or_clamped_as_the_panel_frame() {
     assert_eq!(w.ctl.frame_changed(&display(), narrower), Vec::new());
     let g = &w.ctl.settings().panel_geometry[0];
     assert_eq!(g.docked, Some((300, FLOATING.h)));
-    assert_eq!(Rect::of(g), FLOATING, "the floating frame is not the docked one");
+    assert_eq!(
+        Rect::of(g),
+        FLOATING,
+        "the floating frame is not the docked one"
+    );
     assert_eq!(
         w.ctl.settings().panel_geometry[0].edge,
         Some(DockEdge::Right)
@@ -563,7 +573,12 @@ fn a_tall_panel_dragged_through_the_middle_of_the_screen_never_docks() {
     let mut w = floating(DockTrigger::Both);
     w.ctl.frame_changed(&display(), tall);
     press(&mut w, (150, 10), tall);
-    for (ms, cursor) in [(0, (160, 12)), (300, (400, 20)), (900, (960, 30)), (5_000, (960, 30))] {
+    for (ms, cursor) in [
+        (0, (160, 12)),
+        (300, (400, 20)),
+        (900, (960, 30)),
+        (5_000, (960, 30)),
+    ] {
         advance(&w, ms);
         pull(&mut w, cursor);
         assert_eq!(w.ctl.view().dock_preview, None, "{cursor:?}");
@@ -826,7 +841,11 @@ fn a_drag_held_at_an_allowed_edge_docks_there_and_at_the_taskbar_does_not() {
     };
     assert_eq!(pull(&mut w, (1919, 300)), place(at_right));
     assert_eq!(w.ctl.view().dock_preview, Some(DockEdge::Right));
-    assert_eq!(w.ctl.dock_edge(), None, "nothing is docked before the release");
+    assert_eq!(
+        w.ctl.dock_edge(),
+        None,
+        "nothing is docked before the release"
+    );
     assert_eq!(w.ctl.drag_end(), place(at_right));
     assert_eq!(w.ctl.dock_edge(), Some(DockEdge::Right));
     assert_eq!(w.ctl.view().dock_preview, None);
@@ -988,7 +1007,11 @@ fn undocking_gives_the_floating_frame_back_and_keeps_the_docked_size() {
     let g = &w.ctl.settings().panel_geometry[0];
     assert_eq!((g.edge, g.along), (None, None));
     assert_eq!(Rect::of(g), FLOATING);
-    assert_eq!(g.docked, Some((400, FLOATING.h)), "for the next time it docks");
+    assert_eq!(
+        g.docked,
+        Some((400, FLOATING.h)),
+        "for the next time it docks"
+    );
 }
 
 #[test]
@@ -1003,7 +1026,10 @@ fn a_resize_while_floating_changes_only_the_floating_size() {
     };
     assert_eq!(w.ctl.frame_changed(&display(), bigger), Vec::new());
     let g = &w.ctl.settings().panel_geometry[0];
-    assert_eq!((Rect::of(g), g.docked), (bigger, Some((FLOATING.w, FLOATING.h))));
+    assert_eq!(
+        (Rect::of(g), g.docked),
+        (bigger, Some((FLOATING.w, FLOATING.h)))
+    );
     w.ctl.dock_to(Some(DockEdge::Left));
     assert_eq!(w.ctl.take_pending(), place(open_rect(DockEdge::Left)));
 }

@@ -624,10 +624,7 @@ where
         let effects = ctl.drag_move(pointer);
         let dragging = ctl.dragging();
         drop(ctl);
-        if effects
-            .iter()
-            .any(|e| matches!(e, Effect::PlaceWindow(_)))
-        {
+        if effects.iter().any(|e| matches!(e, Effect::PlaceWindow(_))) {
             redraw_all();
         }
         self.apply(&effects);

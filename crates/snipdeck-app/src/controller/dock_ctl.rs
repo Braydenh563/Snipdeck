@@ -465,7 +465,11 @@ where
 
     /// What a drag step needs for the cursor at `cursor`: the monitor (the Panel's own while
     /// it slides along its edge, else the one under the cursor) and the sizes there.
-    fn drag_ctx(&self, drag: &Drag, cursor: (i32, i32)) -> Option<(Monitor, (u32, u32), (u32, u32))> {
+    fn drag_ctx(
+        &self,
+        drag: &Drag,
+        cursor: (i32, i32),
+    ) -> Option<(Monitor, (u32, u32), (u32, u32))> {
         let own = self.monitor.clone();
         let monitor = if matches!(drag.phase(), DragPhase::Slide(_)) {
             own

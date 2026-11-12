@@ -1500,14 +1500,23 @@ mod tests {
         let g = &settings.panel_geometry[0];
         assert_eq!((g.w, g.h), (320, 480), "the floating size it had before");
         assert_eq!(g.docked, Some((340, 1040)), "the docked size it has now");
-        assert_eq!((g.edge, g.along, g.pre_dock), (Some(DockEdge::Left), Some(30), None));
+        assert_eq!(
+            (g.edge, g.along, g.pre_dock),
+            (Some(DockEdge::Left), Some(30), None)
+        );
         let floating = &settings.panel_geometry[1];
         assert_eq!((floating.w, floating.h, floating.docked), (300, 500, None));
         let no_memory = &settings.panel_geometry[2];
-        assert_eq!((no_memory.w, no_memory.h, no_memory.docked), (300, 500, None));
+        assert_eq!(
+            (no_memory.w, no_memory.h, no_memory.docked),
+            (300, 500, None)
+        );
         let json = settings.to_json();
         assert!(!json.contains("pre_dock"), "never written again: {json}");
-        assert_eq!(Settings::from_json(&json).panel_geometry, settings.panel_geometry);
+        assert_eq!(
+            Settings::from_json(&json).panel_geometry,
+            settings.panel_geometry
+        );
     }
 
     #[test]
@@ -1526,7 +1535,11 @@ mod tests {
         let dock = Settings::default().dock;
         assert_eq!(dock.trigger, DockTrigger::Both);
         assert_eq!((dock.hover_delay_ms, dock.leave_delay_ms), (150, 400));
-        assert_eq!(Settings::from_json("{}").dock, dock, "a file with no dock section");
+        assert_eq!(
+            Settings::from_json("{}").dock,
+            dock,
+            "a file with no dock section"
+        );
     }
 
     #[test]

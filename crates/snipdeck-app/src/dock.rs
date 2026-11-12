@@ -264,10 +264,7 @@ fn px(logical: u32, scale: f32) -> i64 {
     } else {
         1.0
     };
-    #[allow(
-        clippy::cast_possible_truncation,
-        reason = "a few pixels, rounded"
-    )]
+    #[allow(clippy::cast_possible_truncation, reason = "a few pixels, rounded")]
     let pixels = (f64::from(logical) * scale).round() as i64;
     pixels
 }
