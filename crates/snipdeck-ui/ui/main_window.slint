@@ -58,6 +58,9 @@ export struct MainRow {
     preview: string,
     preview-before: string,
     preview-match: string,
+    // A colour value in the text: the type tile shows the colour.
+    swatch: color,
+    has-swatch: bool,
     tag-hit: string,
     // Stands in for a sensitive item's preview.
     masked-preview: string,
@@ -198,6 +201,8 @@ component MainCard inherits ItemCard {
     preview: root.data.preview;
     preview-before: root.data.preview-before;
     preview-match: root.data.preview-match;
+    swatch: root.data.swatch;
+    has-swatch: root.data.has-swatch;
     tag-hit: root.data.tag-hit;
     masked-preview: root.data.masked-preview;
     masked-hint: @tr("Hidden. Hold Space to reveal.");

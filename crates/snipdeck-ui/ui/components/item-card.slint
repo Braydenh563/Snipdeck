@@ -173,6 +173,9 @@ export component ItemCard inherits Rectangle {
     // line cut to a window around the match. Never drawn for a sensitive item (the app does not send it either).
     in property <string> preview-before;
     in property <string> preview-match;
+    // A colour value in the text: the type tile is filled with it.
+    in property <color> swatch: transparent;
+    in property <bool> has-swatch: false;
     // Search: the name of the tag that matched when the title and the preview show no match; the preview line
     // then reads "tag: <name>". Ignored for a sensitive item.
     in property <string> tag-hit;
@@ -670,12 +673,12 @@ export component ItemCard inherits Rectangle {
             width: root.q-tile-size;
             height: root.q-tile-size;
             border-radius: root.comfortable ? Radius.md : Radius.sm;
-            background: root.kind-tile;
-            border-width: Theme.hc-border != transparent ? 1px : 0px;
-            border-color: Theme.hc-border;
+            background: root.has-swatch ? root.swatch : root.kind-tile;
+            border-width: root.has-swatch ? 1px : Theme.hc-border != transparent ? 1px : 0px;
+            border-color: root.has-swatch && Theme.hc-border == transparent ? Theme.border-subtle : Theme.hc-border;
             accessible-role: AccessibleRole.image;
-            accessible-label: root.kind-name;
-            Icon {
+            accessible-label: root.has-swatch ? @tr("Colour") : root.kind-name;
+            if !root.has-swatch: Icon {
                 source: root.glyph;
                 tint: root.kind-glyph;
                 size: Space.s4;

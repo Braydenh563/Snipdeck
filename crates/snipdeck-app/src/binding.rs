@@ -1853,6 +1853,17 @@ pub(crate) fn list_icon_image(
         .unwrap_or_default()
 }
 
+/// The swatch of a card: the colour the item's text is, for a plain (not sensitive) text item, as
+/// the colour and whether there is one.
+pub(crate) fn swatch_fields(preview: &str, sensitive: bool) -> (slint::Color, bool) {
+    if sensitive {
+        return (slint::Color::default(), false);
+    }
+    snipdeck_colour::literal(preview).map_or((slint::Color::default(), false), |c| {
+        (slint::Color::from_argb_u8(c.a, c.r, c.g, c.b), true)
+    })
+}
+
 /// The row's colour label as the windows take it: -1 for none, else the position in
 /// [`ItemLabel::ALL`], with the label's name.
 pub(crate) fn label_fields(label: Option<ItemLabel>) -> (i32, SharedString) {
@@ -1904,6 +1915,7 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
     // The windowed first line replaces the preview only for a marked row; a sensitive row never has one.
     let marked = row.preview_mark.as_ref().filter(|_| !row.sensitive);
     let (label, label_name) = label_fields(row.label);
+    let (swatch, has_swatch) = swatch_fields(&row.preview, row.sensitive);
     ui::PanelRow {
         kind: item_kind(row),
         title: row.title.as_str().into(),
@@ -1920,6 +1932,8 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
         preview_before: marked
             .map_or_else(SharedString::new, |(before, ..)| before.as_str().into()),
         preview_match: marked.map_or_else(SharedString::new, |(_, found, _)| found.as_str().into()),
+        swatch,
+        has_swatch,
         tag_hit: row
             .tag_hit
             .as_deref()
@@ -2014,6 +2028,16 @@ impl Payload {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn swatch_follows_a_colour_literal_and_never_a_secret() {
+        let (c, on) = swatch_fields("#3a7bd5", false);
+        assert!(on);
+        assert_eq!(c, slint::Color::from_argb_u8(255, 0x3a, 0x7b, 0xd5));
+        assert!(!swatch_fields("#3a7bd5", true).1);
+        assert!(!swatch_fields("red", false).1);
+        assert!(!swatch_fields("see #3a7bd5 here", false).1);
+    }
+
     use super::*;
     use crate::panel::ListLabel;
     use slint::Model;

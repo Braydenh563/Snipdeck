@@ -1409,6 +1409,7 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
     );
     let (label, label_name) = crate::binding::label_fields(row.label);
     let marks = row.marks.fields();
+    let (swatch, has_swatch) = crate::binding::swatch_fields(&row.preview, row.sensitive);
     ui::MainRow {
         kind: item_kind_of(row.kind, row.sensitive),
         title: row
@@ -1429,6 +1430,8 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
         },
         preview_before: marks.preview_before.as_str().into(),
         preview_match: marks.preview_match.as_str().into(),
+        swatch,
+        has_swatch,
         tag_hit: marks.tag_hit.as_str().into(),
         masked_preview: if row.sensitive {
             crate::binding::MASKED_PREVIEW.into()
