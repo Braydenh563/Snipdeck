@@ -4600,6 +4600,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "snipdeck-colour"
+version = "1.0.0"
+dependencies = [
+ "proptest",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "snipdeck-core"
 version = "1.0.0"
 dependencies = [
