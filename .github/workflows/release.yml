@@ -12,6 +12,11 @@
 #      a release never embeds the development key.
 # Then: git tag v1.0.0 && git push origin v1.0.0
 #
+# Assets per release: the portable zip, the per-user Setup .exe (Inno Setup), their SHA-256 files and
+# build attestations. The Microsoft Store MSIX is built only when the repository variables MSIX_IDENTITY_NAME,
+# MSIX_PUBLISHER and MSIX_PUBLISHER_DISPLAY_NAME are set (docs/packaging.md); it is a workflow artifact
+# for Partner Center, never attached to the GitHub Release.
+#
 # This replaces the tag path of release-build.yml, which keeps only the dev build on main.
 
 name: Release
@@ -100,12 +105,43 @@ jobs:
           body: ${{ steps.changelog.outputs.notes }}
           generate_release_notes: ${{ steps.changelog.outputs.notes == '' }}
 
+  # The MSIX logo PNGs need cairosvg + the native cairo library, which is easy on Linux and a pain on the
+  # Windows runner, so they are rendered here and handed to windows-build. Skipped steps (variables unset)
+  # still leave this job green: a missing Store setup never blocks a release.
+  msix-assets:
+    name: MSIX logos
+    needs: resolve-version
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      MSIX_IDENTITY_NAME: ${{ vars.MSIX_IDENTITY_NAME }}
+      MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER }}
+      MSIX_PUBLISHER_DISPLAY_NAME: ${{ vars.MSIX_PUBLISHER_DISPLAY_NAME }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.resolve-version.outputs.tag }}
+          persist-credentials: false
+      - name: Render the logos
+        if: ${{ env.MSIX_IDENTITY_NAME != '' && env.MSIX_PUBLISHER != '' && env.MSIX_PUBLISHER_DISPLAY_NAME != '' }}
+        run: |
+          pip install cairosvg
+          python3 scripts/make_msix_assets.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: msix-assets
+          path: packaging/msix/Assets
+          if-no-files-found: ignore
+          retention-days: 1
+
   # Build and publish are split (security-v1.md M3): the build runs every dependency's
   # build.rs with a read-only token that is not kept in .git/config; the publish job
   # holds the write and attestation permissions and runs no repository code.
   windows-build:
-    name: Windows portable zip (build)
-    needs: [resolve-version, github-release]
+    name: Windows zip, installer and MSIX (build)
+    needs: [resolve-version, github-release, msix-assets]
     runs-on: windows-latest
     timeout-minutes: 60
     permissions:
@@ -133,6 +169,49 @@ jobs:
           New-Item -ItemType Directory -Force $data | Out-Null
           $p = Start-Process target\release\snipdeck-app.exe -ArgumentList "--check-db","--data-dir",$data -Wait -PassThru -NoNewWindow
           if ($p.ExitCode -ne 0) { throw "snipdeck --check-db on a fresh folder exited $($p.ExitCode)" }
+      - name: Build the Setup installer (Inno Setup 6)
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.resolve-version.outputs.version }}
+        run: |
+          $iscc = (Get-Command iscc -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) {
+            $p = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"
+            if (Test-Path $p) { $iscc = $p }
+          }
+          if (-not $iscc) {
+            choco install innosetup -y --no-progress
+            $p = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"
+            if (Test-Path $p) { $iscc = $p }
+          }
+          if (-not $iscc) { throw "Inno Setup 6 (ISCC.exe) was not found and could not be installed" }
+          $exe = (Resolve-Path target\release\snipdeck-app.exe).Path
+          & $iscc "/DAppVersion=$env:VERSION" "/DSourceExe=$exe" packaging\inno\snipdeck.iss
+          if ($LASTEXITCODE -ne 0) { throw "iscc exited $LASTEXITCODE" }
+          $setup = Get-Item "dist\Snipdeck-Setup-$env:VERSION.exe"
+          $hash = (Get-FileHash $setup.FullName -Algorithm SHA256).Hash.ToLower()
+          "$hash  $($setup.Name)" | Set-Content "dist\$($setup.Name).sha256"
+          "SETUP=$($setup.FullName)" >> $env:GITHUB_ENV
+          "### $($setup.Name)`nSHA-256: ``$hash`` ($([math]::Round($setup.Length / 1MB, 2)) MB)`n" >> $env:GITHUB_STEP_SUMMARY
+      # Install silently into a temp folder, start the installed exe's headless check, uninstall,
+      # and require the exe to be gone. Nothing ships that does not install and remove cleanly.
+      - name: Smoke test the installer
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP "snipdeck-installed"
+          $data = Join-Path $env:RUNNER_TEMP "snipdeck-installed-data"
+          New-Item -ItemType Directory -Force $data | Out-Null
+          $p = Start-Process $env:SETUP -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/CURRENTUSER","/DIR=$dir" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Setup exited $($p.ExitCode)" }
+          $exe = Join-Path $dir "snipdeck.exe"
+          if (-not (Test-Path $exe)) { throw "Setup did not install $exe" }
+          $c = Start-Process $exe -ArgumentList "--check-db","--data-dir",$data -Wait -PassThru -NoNewWindow
+          if ($c.ExitCode -ne 0) { throw "installed snipdeck --check-db exited $($c.ExitCode)" }
+          $u = Start-Process (Join-Path $dir "unins000.exe") -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES" -Wait -PassThru
+          if ($u.ExitCode -ne 0) { throw "the uninstaller exited $($u.ExitCode)" }
+          # The uninstaller finishes in a copy of itself: give it a moment.
+          for ($i = 0; $i -lt 30 -and (Test-Path $exe); $i++) { Start-Sleep -Seconds 1 }
+          if (Test-Path $exe) { throw "the uninstaller left $exe behind" }
       - name: Pack the zip and its SHA-256
         shell: pwsh
         env:
@@ -144,7 +223,7 @@ jobs:
           Copy-Item target\release\snipdeck-app.exe dist\$name\app\snipdeck.exe
           Copy-Item Snipdeck.bat dist\$name\
           Copy-Item tools\launcher dist\$name\tools\launcher -Recurse
-          Copy-Item README.md, LICENSE*, CHANGELOG.md, docs\user-guide.md dist\$name\ -ErrorAction SilentlyContinue
+          Copy-Item README.md, LICENSE*, THIRD_PARTY_NOTICES.md, CHANGELOG.md, docs\user-guide.md dist\$name\ -ErrorAction SilentlyContinue
           Compress-Archive -Path dist\$name\* -DestinationPath dist\$name.zip
           $hash = (Get-FileHash dist\$name.zip -Algorithm SHA256).Hash.ToLower()
           "$hash  $name.zip" | Set-Content dist\$name.zip.sha256
@@ -153,17 +232,69 @@ jobs:
           $exe = Get-Item dist\$name\app\snipdeck.exe
           $zip = Get-Item dist\$name.zip
           "### $name`n| File | MB |`n|---|---|`n| snipdeck.exe | $([math]::Round($exe.Length / 1MB, 2)) |`n| zip | $([math]::Round($zip.Length / 1MB, 2)) |`n`nSHA-256: ``$hash``" >> $env:GITHUB_STEP_SUMMARY
+      # Microsoft Store package. Only when the three repository variables are set (Settings > Secrets
+      # and variables > Actions > Variables); values come from Partner Center > Product identity.
+      - name: MSIX package (skipped)
+        if: ${{ vars.MSIX_IDENTITY_NAME == '' || vars.MSIX_PUBLISHER == '' || vars.MSIX_PUBLISHER_DISPLAY_NAME == '' }}
+        shell: pwsh
+        run: |
+          Write-Output "::notice::MSIX skipped. Set the repository variables MSIX_IDENTITY_NAME, MSIX_PUBLISHER and MSIX_PUBLISHER_DISPLAY_NAME (values from Partner Center > Product identity) to build the Store package. See docs/packaging.md."
+      - name: Download the MSIX logos
+        if: ${{ vars.MSIX_IDENTITY_NAME != '' && vars.MSIX_PUBLISHER != '' && vars.MSIX_PUBLISHER_DISPLAY_NAME != '' }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: msix-assets
+          path: msix-assets
+      - name: Build the MSIX (unsigned, the Store signs it)
+        if: ${{ vars.MSIX_IDENTITY_NAME != '' && vars.MSIX_PUBLISHER != '' && vars.MSIX_PUBLISHER_DISPLAY_NAME != '' }}
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.resolve-version.outputs.version }}
+          MSIX_IDENTITY_NAME: ${{ vars.MSIX_IDENTITY_NAME }}
+          MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER }}
+          MSIX_PUBLISHER_DISPLAY_NAME: ${{ vars.MSIX_PUBLISHER_DISPLAY_NAME }}
+        run: |
+          $stage = "dist\msix-stage"
+          New-Item -ItemType Directory -Force $stage | Out-Null
+          Copy-Item target\release\snipdeck-app.exe "$stage\snipdeck.exe"
+          Copy-Item msix-assets "$stage\Assets" -Recurse
+          python scripts\msix_manifest.py --identity-name $env:MSIX_IDENTITY_NAME --publisher $env:MSIX_PUBLISHER --publisher-display-name $env:MSIX_PUBLISHER_DISPLAY_NAME --version $env:VERSION --out "$stage\AppxManifest.xml"
+          if ($LASTEXITCODE -ne 0) { throw "msix_manifest.py exited $LASTEXITCODE" }
+          # The newest Windows 10/11 SDK's x64 makeappx.exe.
+          $kits = Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10\bin"
+          $makeappx = Get-ChildItem $kits -Recurse -Filter makeappx.exe -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match '\\bin\\\d+(\.\d+)+\\x64\\' } |
+            Sort-Object { [version]([regex]::Match($_.FullName, '\\bin\\(\d+(?:\.\d+)+)\\x64\\').Groups[1].Value) } -Descending |
+            Select-Object -First 1
+          if (-not $makeappx) { throw "makeappx.exe was not found under $kits" }
+          $msix = "dist\Snipdeck-$env:VERSION-x64.msix"
+          & $makeappx.FullName pack /o /d $stage /p $msix
+          if ($LASTEXITCODE -ne 0) { throw "makeappx exited $LASTEXITCODE" }
+          Remove-Item $stage -Recurse -Force
+          $hash = (Get-FileHash $msix -Algorithm SHA256).Hash.ToLower()
+          "MSIX=$msix" >> $env:GITHUB_ENV
+          "### $msix`nSHA-256: ``$hash``. Unsigned: upload it to Partner Center (it is not attached to the GitHub Release).`n" >> $env:GITHUB_STEP_SUMMARY
+      - name: Keep the MSIX for Partner Center
+        if: ${{ env.MSIX != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-msix
+          path: ${{ env.MSIX }}
+          if-no-files-found: error
+          retention-days: 30
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: windows-portable
           path: |
             ${{ env.ZIP }}
             ${{ env.SUM }}
+            ${{ env.SETUP }}
+            ${{ env.SETUP }}.sha256
           if-no-files-found: error
           retention-days: 1
 
   windows-publish:
-    name: Windows portable zip (attest and upload)
+    name: Windows zip and installer (attest and upload)
     needs: [resolve-version, windows-build]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -179,12 +310,15 @@ jobs:
           path: dist
       - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
-          subject-path: dist/*.zip
+          subject-path: |
+            dist/*.zip
+            dist/*.exe
       - name: Upload to the release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ needs.resolve-version.outputs.tag }}
           files: |
             dist/*.zip
+            dist/*.exe
             dist/*.sha256
           fail_on_unmatched_files: true
