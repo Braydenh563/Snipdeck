@@ -25,6 +25,11 @@ Design: `docs/reviews/dock-redesign.md`. Decisions: `.claude/now.md`. Owner chec
   `drag_cancel` and `starts_tucked` removed, hidden start and every first show placed before the window exists
   (`find_monitor`), blur hint wording, docs.
 
+- Review minors (d37d9c9) fixed: a monitor with no stored entry mends a legacy full-height dock
+  (`dock_ctl::mend_full_height`, shared with `geometry_on`); `in_size_loop(panel)` counts only a loop on the
+  Panel's window (`win_logic::size_loop_on_panel`); SPEC "only a docked Panel that tucks is always on top".
+  Windows `snipdeck-app` not checked locally (no mingw): CI's Windows `cargo check` covers `platform.rs`.
+
 ## Next
 - Owner runs "Dock and drag" D1-D23 on Windows; fix what it finds.
 - A pinned floating Panel still stays above a full-screen app (only the dock steps down).
