@@ -67,10 +67,18 @@ pub fn card_of(
 ) -> CardPreview {
     let text_kind = item_editor::is_text_kind(input.kind);
     let sensitive = input.sensitive && text_kind;
-    let text = if text_kind { input.content.as_str() } else { "" };
+    let text = if text_kind {
+        input.content.as_str()
+    } else {
+        ""
+    };
     let excerpt = Item::preview_of(text, sensitive);
     let title = if input.title.trim().is_empty() {
-        text.trim_start().lines().next().unwrap_or_default().to_owned()
+        text.trim_start()
+            .lines()
+            .next()
+            .unwrap_or_default()
+            .to_owned()
     } else {
         input.title.trim().to_owned()
     };
@@ -117,7 +125,9 @@ fn expand(
         .fields()
         .iter()
         .enumerate()
-        .filter(|(_, f)| f.value.is_empty() && matches!(f.kind, FieldKind::Text | FieldKind::Multiline))
+        .filter(|(_, f)| {
+            f.value.is_empty() && matches!(f.kind, FieldKind::Text | FieldKind::Multiline)
+        })
         .map(|(i, _)| i)
         .collect();
     for i in empty {
@@ -133,7 +143,10 @@ fn link_display(url: &str) -> LinkDisplay {
     let (scheme, rest) = url.split_once(':').unwrap_or(("", url));
     let scheme = scheme.to_ascii_lowercase();
     let Some(after) = rest.strip_prefix("//") else {
-        return LinkDisplay { scheme, host: rest.to_owned() };
+        return LinkDisplay {
+            scheme,
+            host: rest.to_owned(),
+        };
     };
     let authority = after.split(['/', '?', '#']).next().unwrap_or_default();
     let host_port = authority.rsplit_once('@').map_or(authority, |(_, h)| h);
@@ -145,7 +158,10 @@ fn link_display(url: &str) -> LinkDisplay {
     } else {
         host_port.split(':').next().unwrap_or_default()
     };
-    LinkDisplay { scheme, host: host.to_owned() }
+    LinkDisplay {
+        scheme,
+        host: host.to_owned(),
+    }
 }
 
 #[cfg(test)]
@@ -240,10 +256,17 @@ mod tests {
 
     #[test]
     fn a_link_resolves_to_its_host() {
-        let c = card(&input(ItemKind::Link, "", " HTTPS://user:pw@Docs.Example.com:8080/a/b?q=1#x "));
+        let c = card(&input(
+            ItemKind::Link,
+            "",
+            " HTTPS://user:pw@Docs.Example.com:8080/a/b?q=1#x ",
+        ));
         assert_eq!(
             c.link,
-            Some(LinkDisplay { scheme: "https".into(), host: "Docs.Example.com".into() })
+            Some(LinkDisplay {
+                scheme: "https".into(),
+                host: "Docs.Example.com".into()
+            })
         );
         let c = card(&input(ItemKind::Link, "", "mailto:me@example.com"));
         assert_eq!(c.link.map(|l| l.host).as_deref(), Some("me@example.com"));

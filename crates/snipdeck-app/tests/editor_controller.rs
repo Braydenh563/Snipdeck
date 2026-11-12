@@ -1564,7 +1564,10 @@ fn the_preview_shows_the_unsaved_fields_without_saving_or_needing_a_save() {
     input.label = Some(ItemLabel::Teal);
     let card = r.ctl.item_editor_preview(&input, WORDS).expect("a card");
     assert_eq!(card.kind, ItemKind::Template);
-    assert_eq!(card.title, "Dear {field:Who}, today is {date}", "first line");
+    assert_eq!(
+        card.title, "Dear {field:Who}, today is {date}",
+        "first line"
+    );
     assert_eq!(card.label, Some(ItemLabel::Teal));
     // The clock is the controller's fixed one (2026-10-17 10:30Z): any time zone puts the day
     // between the 16th and the 18th.
@@ -1576,7 +1579,10 @@ fn the_preview_shows_the_unsaved_fields_without_saving_or_needing_a_save() {
     let card = r.ctl.item_editor_preview(&input, WORDS).expect("a card");
     assert_eq!(card.link.map(|l| l.host).as_deref(), Some("example.com"));
     assert_eq!(r.ctl.store().all_items().expect("items").len(), before);
-    assert!(view(&r.ctl).fields.content.is_empty(), "the controller's fields are untouched");
+    assert!(
+        view(&r.ctl).fields.content.is_empty(),
+        "the controller's fields are untouched"
+    );
 }
 
 fn typed_default() -> EditorInput {

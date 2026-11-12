@@ -987,13 +987,18 @@ fn preview_shows_the_unsaved_item_from_the_button_and_ctrl_p_and_loses_nothing()
         let before = r.item_count();
 
         // The header button turns it on; the card is built from the typed, unsaved fields.
-        let toggle = find(&ed, "Preview, off. Show how this item will look", AccessibleRole::Button);
+        let toggle = find(
+            &ed,
+            "Preview, off. Show how this item will look",
+            AccessibleRole::Button,
+        );
         click(ed.window(), &toggle);
         assert!(ed.get_preview_on());
         assert_eq!(ed.get_preview_title(), "Hi {field:Who}, on {date}");
         assert_eq!(ed.get_preview_excerpt(), "Hi {field:Who}, on {date}");
         assert!(
-            ed.get_preview_expanded().starts_with("Hi ‹Who›, on 2026-10-1"),
+            ed.get_preview_expanded()
+                .starts_with("Hi ‹Who›, on 2026-10-1"),
             "{}",
             ed.get_preview_expanded()
         );
