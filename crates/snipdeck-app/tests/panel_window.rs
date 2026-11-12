@@ -1145,7 +1145,7 @@ const MENU_ROWS: [&str; 17] = [
     "Paste stack (mark items)",
     "Dock to the nearest edge",
     "Keyboard shortcuts",
-    "All commands\u{2026}",
+    "Commands\u{2026}",
     "Settings\u{2026}",
     "Open Snipdeck",
     "New item",
@@ -2223,5 +2223,329 @@ fn alt_down_in_a_sorted_list_offers_manual_order_and_the_button_switches_it() {
         r.ui.invoke_toast_undo();
         slint::platform::update_timers_and_animations();
         assert!(r.ui.get_rows_reorderable(), "the button switched it");
+    });
+}
+
+/// Marks the first two rows and presses Ctrl+G.
+fn group_first_two(r: &Rig) {
+    {
+        let mut ctl = r.ctl.borrow_mut();
+        ctl.panel_mark(0, snipdeck_app::main_window::SelectMode::Toggle);
+        ctl.panel_mark(1, snipdeck_app::main_window::SelectMode::Toggle);
+    }
+    r.binding.redraw();
+    chord(r.window(), &[Key::Control], "g");
+}
+
+#[test]
+fn ctrl_g_groups_the_marked_rows() {
+    on_ui_thread(|| {
+        let r = rig();
+        let before = r.ui.get_rows().row_count();
+        group_first_two(&r);
+        let rows = r.ui.get_rows();
+        assert_eq!(rows.row_count(), before + 1, "a header was added");
+        let header = rows.row_data(0).expect("row");
+        assert!(header.is_header);
+        assert_eq!(header.group_count, 2);
+        assert!(rows.row_data(1).expect("row").grouped);
+    });
+}
+
+#[test]
+fn left_collapses_and_right_expands_a_header() {
+    on_ui_thread(|| {
+        let r = rig();
+        group_first_two(&r);
+        // The new header is selected and renaming: Enter ends the rename, then the keys are the list's.
+        press(r.window(), &key(Key::Return));
+        let count = r.ui.get_rows().row_count();
+        press(r.window(), &key(Key::LeftArrow));
+        assert_eq!(
+            r.ui.get_rows().row_count(),
+            count - 2,
+            "the items are hidden"
+        );
+        assert!(r.ui.get_rows().row_data(0).expect("row").group_collapsed);
+        press(r.window(), &key(Key::RightArrow));
+        assert_eq!(r.ui.get_rows().row_count(), count);
+    });
+}
+
+#[test]
+fn a_new_group_takes_its_name_as_typed() {
+    on_ui_thread(|| {
+        let r = rig();
+        group_first_two(&r);
+        // Ctrl+G opens the new header's name for typing: the keys go there, not to the search.
+        type_text(r.window(), "Hi");
+        press(r.window(), &key(Key::Return));
+        let header = r.ui.get_rows().row_data(0).expect("row");
+        assert!(header.is_header);
+        assert_eq!(header.title, "Hi", "the typed name is the group's");
+        assert_eq!(header.group_count, 2, "both items stay in the group");
+        assert_eq!(r.ui.get_query(), "", "the search got none of the typing");
+    });
+}
+
+#[test]
+fn a_rename_handed_to_another_header_keeps_the_keys() {
+    on_ui_thread(|| {
+        let r = rig();
+        group_first_two(&r);
+        press(r.window(), &key(Key::Return));
+        // A second group from the next two items: its header opens its name for typing.
+        {
+            let mut ctl = r.ctl.borrow_mut();
+            ctl.panel_mark(3, snipdeck_app::main_window::SelectMode::Toggle);
+            ctl.panel_mark(4, snipdeck_app::main_window::SelectMode::Toggle);
+        }
+        r.binding.redraw();
+        chord(r.window(), &[Key::Control], "g");
+        let rows = r.ui.get_rows();
+        let headers: Vec<usize> = (0..rows.row_count())
+            .filter(|i| rows.row_data(*i).is_some_and(|row| row.is_header))
+            .collect();
+        assert_eq!(headers.len(), 2, "two groups");
+        // While the second header is renaming, the first one starts a rename (as a double-click does): the
+        // second one's late focus loss must not hand the keys back to the Panel.
+        r.ui.set_rename_row(i32::try_from(headers[0]).expect("row"));
+        r.ui.set_rename_seq(r.ui.get_rename_seq() + 1);
+        type_text(r.window(), "Zed");
+        press(r.window(), &key(Key::Return));
+        let first = r.ui.get_rows().row_data(headers[0]).expect("row");
+        assert_eq!(first.title, "Zed", "the typing went to the first header");
+        assert_eq!(r.ui.get_query(), "", "the search got none of the typing");
+    });
+}
+
+/// The labels (and whether each is greyed) of the item menu as drawn now.
+fn item_menu_rows(r: &Rig) -> Vec<(String, bool)> {
+    r.ui.get_item_menu_entries()
+        .iter()
+        .filter(|row| !row.separator)
+        .map(|row| (row.text.to_string(), row.disabled))
+        .collect()
+}
+
+fn choose_menu_row(r: &Rig, label: &str) {
+    let at =
+        r.ui.get_item_menu_entries()
+            .iter()
+            .position(|row| row.text == label)
+            .unwrap_or_else(|| panic!("no {label:?} row in {:?}", item_menu_rows(r)));
+    r.ui.invoke_item_menu_activated(i32::try_from(at).expect("index"));
+}
+
+#[test]
+fn the_header_menu_folds_opens_and_moves_the_group_for_a_mouse_user() {
+    on_ui_thread(|| {
+        let r = rig();
+        group_first_two(&r);
+        press(r.window(), &key(Key::Escape));
+        let count = r.ui.get_rows().row_count();
+
+        r.ui.invoke_context_menu_requested(0, 10.0, 10.0);
+        assert!(r.ui.get_item_menu_open());
+        let rows = item_menu_rows(&r);
+        let names: Vec<&str> = rows.iter().map(|(t, _)| t.as_str()).collect();
+        assert_eq!(
+            names,
+            [
+                "Rename group",
+                "Fold group",
+                "Move the group up",
+                "Move the group down",
+                "Ungroup",
+                "Delete group"
+            ]
+        );
+        assert!(rows[2].1, "Move the group up is greyed at the top");
+        assert!(!rows[3].1, "Move the group down is live");
+
+        choose_menu_row(&r, "Fold group");
+        assert_eq!(r.ui.get_rows().row_count(), count - 2, "the items hide");
+        r.ui.invoke_context_menu_requested(0, 10.0, 10.0);
+        assert!(
+            item_menu_rows(&r).iter().any(|(t, _)| t == "Unfold group"),
+            "a folded group offers Unfold group"
+        );
+        choose_menu_row(&r, "Unfold group");
+        assert_eq!(r.ui.get_rows().row_count(), count, "the items are back");
+
+        r.ui.invoke_context_menu_requested(0, 10.0, 10.0);
+        choose_menu_row(&r, "Move the group down");
+        assert!(
+            !r.ui.get_rows().row_data(0).expect("row").is_header,
+            "the group moved below the loose item"
+        );
+    });
+}
+
+#[test]
+fn header_is_announced_with_its_count() {
+    on_ui_thread(|| {
+        let r = rig();
+        group_first_two(&r);
+        // The new header opens its name for typing: Enter ends that, then the keys are the list's.
+        press(r.window(), &key(Key::Return));
+        let name = r.ui.get_rows().row_data(0).expect("row").title;
+        // Folded or open is the header's expanded state, not part of its label.
+        let label = format!("group {name}, 2 items");
+        let header = element(&r.ui, &label, AccessibleRole::Button);
+        assert_eq!(header.accessible_expanded(), Some(true));
+        press(r.window(), &key(Key::LeftArrow));
+        let header = element(&r.ui, &label, AccessibleRole::Button);
+        assert_eq!(header.accessible_expanded(), Some(false));
+    });
+}
+
+/// The list-item rows of the window, in tree order, with their position in a set and its size.
+fn list_rows(ui: &PanelWindow) -> Vec<(String, Option<usize>, Option<usize>)> {
+    use i_slint_backend_testing::ElementQuery;
+    ElementQuery::from_root(ui)
+        .match_predicate(|e| e.accessible_role() == Some(AccessibleRole::ListItem))
+        .find_all()
+        .into_iter()
+        .map(|e| {
+            (
+                e.accessible_label().unwrap_or_default().to_string(),
+                e.accessible_item_index(),
+                e.accessible_item_count(),
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn group_members_say_their_position_in_the_group_and_loose_rows_say_nothing() {
+    on_ui_thread(|| {
+        let r = rig();
+        group_first_two(&r);
+        r.window().set_size(slint::LogicalSize::new(360.0, 900.0));
+        slint::platform::update_timers_and_animations();
+        let rows = list_rows(&r.ui);
+        let name = |i: usize| r.ui.get_rows().row_data(i).expect("row").title.to_string();
+        let first = rows
+            .iter()
+            .find(|(l, ..)| l.starts_with(&name(1)))
+            .expect("first member");
+        let second = rows
+            .iter()
+            .find(|(l, ..)| l.starts_with(&name(2)))
+            .expect("second member");
+        assert_eq!((first.1, first.2), (Some(0), Some(2)), "{first:?}");
+        assert_eq!((second.1, second.2), (Some(1), Some(2)), "{second:?}");
+        let loose = rows
+            .iter()
+            .find(|(l, ..)| l.starts_with(&name(3)))
+            .expect("a loose row");
+        assert_eq!((loose.1, loose.2), (None, None), "{loose:?}");
+    });
+}
+
+/// Two groups, `[Group] a b [Second] c d`, with the cursor on the first header and the rename
+/// ended.
+fn two_groups_in_window(r: &Rig) {
+    group_first_two(r);
+    press(r.window(), &key(Key::Escape));
+    {
+        let mut ctl = r.ctl.borrow_mut();
+        ctl.panel_mark(3, snipdeck_app::main_window::SelectMode::Toggle);
+        ctl.panel_mark(4, snipdeck_app::main_window::SelectMode::Toggle);
+        ctl.group_marked(3);
+        ctl.group_rename(3, "Second");
+        ctl.group_rename_ended();
+        ctl.panel_clear_marks();
+    }
+    r.ctl.borrow_mut().move_selection(-100);
+    r.binding.redraw();
+    assert_eq!(
+        r.ui.get_selected_index(),
+        0,
+        "the cursor is on the first header"
+    );
+    r.ui.invoke_focus_search();
+}
+
+fn row_titles(r: &Rig) -> Vec<String> {
+    r.ui.get_rows()
+        .iter()
+        .map(|row| row.title.to_string())
+        .collect()
+}
+
+#[test]
+fn alt_down_on_a_header_moves_the_group_and_alt_up_brings_it_back() {
+    on_ui_thread(|| {
+        let r = rig();
+        two_groups_in_window(&r);
+        let before = row_titles(&r);
+        chord(r.window(), &[Key::Alt], &key(Key::DownArrow));
+        let after = row_titles(&r);
+        assert_eq!(
+            after,
+            [&before[3..6], &before[..3], &before[6..]].concat(),
+            "the first group went below the second, the loose rows stayed"
+        );
+        assert_eq!(
+            r.ui.get_selected_index(),
+            3,
+            "the cursor stays on the header"
+        );
+        chord(r.window(), &[Key::Alt], &key(Key::UpArrow));
+        assert_eq!(row_titles(&r), before);
+        assert_eq!(r.ui.get_selected_index(), 0);
+    });
+}
+
+#[test]
+fn enter_and_space_fold_and_unfold_a_header_and_up_down_walk_into_its_rows() {
+    on_ui_thread(|| {
+        let r = rig();
+        two_groups_in_window(&r);
+        let count = r.ui.get_rows().row_count();
+        press(r.window(), &key(Key::Return));
+        assert_eq!(r.ui.get_rows().row_count(), count - 2, "Enter folds");
+        press(r.window(), " ");
+        assert_eq!(r.ui.get_rows().row_count(), count, "Space unfolds");
+        press(r.window(), " ");
+        assert_eq!(r.ui.get_rows().row_count(), count - 2, "Space folds");
+        press(r.window(), &key(Key::DownArrow));
+        assert_eq!(
+            r.ui.get_selected_index(),
+            1,
+            "Down from a folded header goes to the next header"
+        );
+        press(r.window(), &key(Key::UpArrow));
+        press(r.window(), &key(Key::RightArrow));
+        press(r.window(), &key(Key::DownArrow));
+        assert_eq!(r.ui.get_selected_index(), 1, "into the first member");
+        assert!(r.ui.get_rows().row_data(1).expect("row").grouped);
+        press(r.window(), &key(Key::UpArrow));
+        assert_eq!(r.ui.get_selected_index(), 0, "and back to the header");
+    });
+}
+
+#[test]
+fn f2_on_a_header_starts_its_rename_and_folding_under_the_cursor_keeps_a_row_selected() {
+    on_ui_thread(|| {
+        let r = rig();
+        two_groups_in_window(&r);
+        press(r.window(), &key(Key::F2));
+        assert_eq!(
+            r.ui.get_rename_row(),
+            0,
+            "F2 renames the header, not an item editor"
+        );
+        press(r.window(), &key(Key::Escape));
+        // A member has the cursor and its group folds (the chevron): the cursor lands on the
+        // header, never on nothing.
+        r.ui.set_selected_index(1);
+        r.ui.invoke_group_toggled(0);
+        slint::platform::update_timers_and_animations();
+        let at = r.ui.get_selected_index();
+        let row = r.ui.get_rows().row_data(usize::try_from(at).unwrap());
+        assert!(row.is_some_and(|row| row.is_header), "on the header");
     });
 }

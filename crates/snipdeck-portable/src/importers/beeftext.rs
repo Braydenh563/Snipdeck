@@ -25,7 +25,7 @@ use snipdeck_core::Timestamp;
 use crate::error::{Error, Result};
 use crate::import::ImportOptions;
 use crate::plan::Library;
-use crate::report::{ImportReport, Warning};
+use crate::report::{ImportReport, Note, Warning};
 
 use super::expander::{Snip, Tpl, import_snips, placeholder_name, read_capped};
 use super::{decode_text, note_lossy};
@@ -159,10 +159,10 @@ fn convert(src: &str, label: &str, report: &mut ImportReport) -> super::expander
     }
     tpl.lit(rest);
     if !unmapped.is_empty() {
-        report.warn(Warning::Note(format!(
-            "{label}: no Snipdeck equivalent for #{{{}}}; left as written",
-            unmapped.join("}, #{")
-        )));
+        report.warn(Warning::Note(Note::UnmappedVariables {
+            label: label.to_string(),
+            tokens: format!("#{{{}}}", unmapped.join("}, #{")),
+        }));
     }
     tpl.finish(src, label, report)
 }

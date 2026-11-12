@@ -63,6 +63,33 @@ pub fn supporter_mailto() -> String {
     format!("mailto:{SUPPORTER_EMAIL}")
 }
 
+/// Why "Start with Windows" could not be changed.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum AutostartError {
+    /// The user switched Snipdeck off under Settings > Apps > Startup (the Store build): only
+    /// they can switch it back on.
+    #[error("Windows has the startup task switched off for this user")]
+    SwitchedOff,
+    /// The organisation's policy forbids it.
+    #[error("policy keeps the startup task off")]
+    Policy,
+    /// Anything else (the log has the text).
+    #[error("{0}")]
+    Other(String),
+}
+
+impl AutostartError {
+    /// The toast that tells the user, in their language.
+    #[must_use]
+    pub const fn toast(&self) -> ToastMessage {
+        match self {
+            Self::SwitchedOff => ToastMessage::AutostartSwitchedOff,
+            Self::Policy => ToastMessage::AutostartPolicy,
+            Self::Other(_) => ToastMessage::AutostartFailed,
+        }
+    }
+}
+
 /// What Settings asks of the machine. [`SystemHost`] is the real one; tests bring a fake.
 pub trait SettingsHost {
     /// Makes `hotkeys` the registered global shortcuts: the empty ones are removed, the others
@@ -74,7 +101,7 @@ pub trait SettingsHost {
     /// # Errors
     ///
     /// Why it could not be changed.
-    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), String>;
+    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), AutostartError>;
 
     /// Whether the "Start with Windows" entry exists now (the user may have deleted it outside
     /// Snipdeck). Where there is no such entry the setting is only remembered, so it reads `true`.
@@ -123,6 +150,12 @@ pub trait SettingsHost {
     /// Whether this PC has a Windows clipboard history to offer as an import source (only
     /// Windows does). The source is left out of the "Import..." choices when it does not.
     fn clipboard_history_supported(&self) -> bool;
+
+    /// Whether typed triggers can work here (they need the Windows keyboard hook). The Typing
+    /// section turns its switches off and says so when this is false.
+    fn typing_supported(&self) -> bool {
+        cfg!(windows)
+    }
 
     /// Reads the text entries of the Windows clipboard history. May block until Windows answers.
     fn read_clipboard_history(&self) -> HistoryRead;
@@ -184,16 +217,27 @@ impl SettingsHost for SystemHost {
         apply_hotkeys(&mut **self.hotkeys.borrow_mut(), hotkeys)
     }
 
-    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), String> {
+    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), AutostartError> {
         #[cfg(windows)]
         {
-            let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+            use snipdeck_platform::{startup_task::Blocked, windows::package};
+            if package::is_packaged() {
+                // The package's startup task cannot carry `--hidden`: `main` reads the saved
+                // "When Windows starts" choice instead.
+                let _ = hidden;
+                return package::set_startup_task(on).map_err(|e| match e {
+                    package::TaskError::Blocked(Blocked::ByUser) => AutostartError::SwitchedOff,
+                    package::TaskError::Blocked(Blocked::ByPolicy) => AutostartError::Policy,
+                    package::TaskError::Os(e) => AutostartError::Other(e.to_string()),
+                });
+            }
+            let exe = std::env::current_exe().map_err(|e| AutostartError::Other(e.to_string()))?;
             snipdeck_platform::windows::autostart::set_enabled(
                 &exe,
                 if hidden { "--hidden" } else { "" },
                 on,
             )
-            .map_err(|e| e.to_string())
+            .map_err(|e| AutostartError::Other(e.to_string()))
         }
         #[cfg(not(windows))]
         {
@@ -206,7 +250,11 @@ impl SettingsHost for SystemHost {
     fn autostart_registered(&self) -> bool {
         #[cfg(windows)]
         {
-            snipdeck_platform::windows::autostart::is_enabled()
+            if snipdeck_platform::windows::package::is_packaged() {
+                snipdeck_platform::windows::package::startup_task_enabled()
+            } else {
+                snipdeck_platform::windows::autostart::is_enabled()
+            }
         }
         #[cfg(not(windows))]
         {
@@ -703,6 +751,8 @@ struct PageView {
     screenshot_keep_panel: bool,
     dock_full_edge: bool,
     recent_history: bool,
+    expand_triggers: bool,
+    suggest_triggers: bool,
     reduce_motion: bool,
     panel_width: i32,
     dock_edge_index: i32,
@@ -721,6 +771,8 @@ struct PageView {
     master_state: i32,
     master_locked: bool,
     master_allowed: bool,
+    hello_offered: bool,
+    hello_unlock: bool,
     has_data_folder: bool,
     backups: Vec<BackupLine>,
     last_backup: String,
@@ -970,6 +1022,8 @@ where
         screenshot_keep_panel: settings.screenshot_keep_panel,
         dock_full_edge: settings.dock.full_edge,
         recent_history: settings.recent_history,
+        expand_triggers: settings.expand_triggers,
+        suggest_triggers: settings.suggest_triggers,
         reduce_motion: settings.reduce_motion,
         panel_width: i32::try_from(settings.panel_width).unwrap_or(320),
         dock_edge_index: dock_edge_index(controller.dock_edge()),
@@ -996,6 +1050,8 @@ where
         },
         master_locked: controller.library_locked(),
         master_allowed: controller.master_password_allowed(),
+        hello_offered: controller.hello_offered(),
+        hello_unlock: controller.hello_enabled(),
         has_data_folder,
         backups: state
             .backups
@@ -1064,6 +1120,29 @@ where
     T: Timing + 'static,
 {
     /// Runs `f` on the controller, then redraws every window.
+    /// The Windows Hello switch. Turning it on asks Hello once to seal the open key; if that fails
+    /// the switch goes back off and the password is untouched.
+    fn hello_toggled(self: &Rc<Self>, on: bool) {
+        let job = self.act(|ctl| ctl.set_hello_unlock(on));
+        let Some(job) = job else {
+            return;
+        };
+        let core = Rc::clone(self);
+        crate::hello_job::run_job(
+            job,
+            Box::new(move |done| {
+                // An outcome of a step that was given up on (locked, switched off, a newer step)
+                // is dropped with its copy and must not undo the newer step.
+                if core.act(|ctl| ctl.hello_stale(&done)) {
+                    return;
+                }
+                // A switch-on that does not finish goes back off in the controller, with a message
+                // unless the user cancelled.
+                let _ = core.act(|ctl| ctl.finish_hello(done));
+            }),
+        );
+    }
+
     fn act<R>(self: &Rc<Self>, f: impl FnOnce(&mut Controller<Store, C, K, T>) -> R) -> R {
         let result = f(&mut self.controller.borrow_mut());
         redraw_all();
@@ -1331,7 +1410,7 @@ where
             self.controller.borrow().settings().autostart && self.host.autostart_registered();
         if rewrite && let Err(error) = self.host.set_autostart(true, !visible) {
             crate::trace!("autostart rewrite: {error}");
-            self.toast(ToastKind::Danger, ToastMessage::AutostartFailed);
+            self.toast(ToastKind::Danger, error.toast());
             self.force_redraw();
             return;
         }
@@ -1346,7 +1425,7 @@ where
             }
             Err(error) => {
                 crate::trace!("autostart {on}: {error}");
-                self.toast(ToastKind::Danger, ToastMessage::AutostartFailed);
+                self.toast(ToastKind::Danger, error.toast());
                 self.force_redraw();
             }
         }
@@ -1417,6 +1496,11 @@ where
             return;
         }
         let result = self.act(|ctl| ctl.finish_master(done));
+        if result.is_ok() {
+            // A changed password counts as an unlock: Hello (if on) seals a new copy, whether or
+            // not the Settings window is still there.
+            crate::unlock_binding::seal_open_key(&self.controller);
+        }
         let Some(window) = self.window.upgrade() else {
             return;
         };
@@ -1675,6 +1759,7 @@ where
         // The search field: Slint cannot test "contains", so the page asks here.
         ui::SettingsFilter::get(window).on_matches(|text, query| settings_match(&text, &query));
         window.set_import_history_available(core.host.clipboard_history_supported());
+        window.set_typing_available(core.host.typing_supported());
         core.refresh_backups();
         core.sync();
 
@@ -1782,6 +1867,7 @@ where
                     .unwrap_or_default();
             })));
         wire!(on_autostart_toggled, |core, on| core.autostart_toggled(on));
+        wire!(on_hello_unlock_toggled, |core, on| core.hello_toggled(on));
         wire!(on_close_to_tray_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.close_to_tray = on)));
         wire!(on_panel_in_taskbar_toggled, |core, on| {
@@ -1797,6 +1883,10 @@ where
         ));
         wire!(on_recent_history_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.recent_history = on)));
+        wire!(on_expand_triggers_toggled, |core, on| core
+            .act(|ctl| ctl.update_settings(|s| s.expand_triggers = on)));
+        wire!(on_suggest_triggers_toggled, |core, on| core
+            .act(|ctl| ctl.update_settings(|s| s.suggest_triggers = on)));
         wire!(on_recent_history_cleared, |core| {
             core.act(Controller::recent_clear);
         });
@@ -2019,6 +2109,12 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     if differs(&|p| p.screenshot_keep_panel == view.screenshot_keep_panel) {
         window.set_screenshot_keep_panel(view.screenshot_keep_panel);
     }
+    if differs(&|p| p.expand_triggers == view.expand_triggers) {
+        window.set_expand_triggers(view.expand_triggers);
+    }
+    if differs(&|p| p.suggest_triggers == view.suggest_triggers) {
+        window.set_suggest_triggers(view.suggest_triggers);
+    }
     if differs(&|p| p.recent_history == view.recent_history) {
         window.set_recent_history(view.recent_history);
         window.set_recent_max_entries(crate::recent::max_entries_count());
@@ -2095,6 +2191,12 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     if differs(&|p| p.master_allowed == view.master_allowed) {
         window.set_master_allowed(view.master_allowed);
     }
+    if differs(&|p| p.hello_offered == view.hello_offered) {
+        window.set_hello_offered(view.hello_offered);
+    }
+    if differs(&|p| p.hello_unlock == view.hello_unlock) {
+        window.set_hello_unlock(view.hello_unlock);
+    }
     if differs(&|p| p.has_data_folder == view.has_data_folder) {
         window.set_has_data_folder(view.has_data_folder);
     }
@@ -2130,11 +2232,25 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
 // ---- Opening the window on demand --------------------------------------------------------------
 
 thread_local! {
+    /// Opens the Settings page at the Licence section; set with [`OPENER`].
+    static LICENCE_OPENER: RefCell<Option<Rc<dyn Fn()>>> = const { RefCell::new(None) };
     /// Opens the Settings page; set by [`SettingsUi::new`]. The Main window's Settings button
     /// reaches the page through [`request_open`] because it is created long before the host
     /// could hand it anything.
     static OPENER: RefCell<Option<Rc<dyn Fn()>>> = const { RefCell::new(None) };
 }
+
+/// Scrolls an open Settings page to the Licence section.
+fn jump_to_licence(window: Option<&ui::SettingsPage>) {
+    if let Some(window) = window {
+        let filter = ui::SettingsFilter::get(window);
+        filter.set_jump_target(LICENCE_SECTION);
+        filter.set_jump_seq(filter.get_jump_seq() + 1);
+    }
+}
+
+/// The Licence section's index in `settings.slint` (the search keys `keys-7`).
+const LICENCE_SECTION: i32 = 7;
 
 /// Opens the Settings page (creating it the first time), if the host made one with
 /// [`SettingsUi::new`]. UI thread only.
@@ -2145,11 +2261,20 @@ pub fn request_open() {
     }
 }
 
+/// Opens the Settings page at the Licence section (Get Supporter), for a button that sits next to a Supporter
+/// refusal. UI thread only.
+pub fn request_open_licence() {
+    let opener = LICENCE_OPENER.with(|o| o.borrow().clone());
+    if let Some(opener) = opener {
+        opener();
+    }
+}
+
 /// Creates the Settings page the first time it is asked for, binds it, and shows and raises it
 /// every time. Not generic: the host keeps one of these.
 pub struct SettingsUi {
     open: Box<dyn Fn() -> Result<(), slint::PlatformError>>,
-    window: Box<dyn Fn() -> Option<ui::SettingsPage>>,
+    window: Rc<dyn Fn() -> Option<ui::SettingsPage>>,
 }
 
 impl std::fmt::Debug for SettingsUi {
@@ -2212,21 +2337,30 @@ impl SettingsUi {
                 window.show()?;
                 crate::ownership::opened(crate::ownership::Win::Settings);
                 fit_when_settled(window);
+                // A PIN added or removed since the last look shows in the Hello row.
+                crate::unlock_binding::refresh_hello(&controller);
                 // The page was hidden, so it skipped the redraws; draw it now that it is up.
                 binding.redraw();
                 raise(window.window());
                 Ok(())
             })
         };
-        let window = {
+        let window: Rc<dyn Fn() -> Option<ui::SettingsPage>> = {
             let slot = Rc::clone(&slot);
-            Box::new(move || {
+            Rc::new(move || {
                 slot.borrow()
                     .as_ref()
                     .map(|(window, _)| window.clone_strong())
             })
         };
         let open: Rc<dyn Fn() -> Result<(), slint::PlatformError>> = Rc::new(open);
+        LICENCE_OPENER.with(|o| {
+            let (open, window) = (Rc::clone(&open), Rc::clone(&window));
+            *o.borrow_mut() = Some(Rc::new(move || match open() {
+                Ok(()) => jump_to_licence(window().as_ref()),
+                Err(e) => crate::trace!("cannot open the licence settings: {e}"),
+            }));
+        });
         OPENER.with(|o| {
             let open = Rc::clone(&open);
             *o.borrow_mut() = Some(Rc::new(move || {
@@ -2250,6 +2384,17 @@ impl SettingsUi {
         (self.open)()
     }
 
+    /// Opens the page and scrolls it to the Licence section (where Get Supporter is).
+    ///
+    /// # Errors
+    ///
+    /// The windowing system failed to create or show it.
+    pub fn open_licence(&self) -> Result<(), slint::PlatformError> {
+        self.open()?;
+        jump_to_licence(self.window().as_ref());
+        Ok(())
+    }
+
     /// The page, once it has been created.
     #[must_use]
     pub fn window(&self) -> Option<ui::SettingsPage> {
@@ -2259,6 +2404,14 @@ impl SettingsUi {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn autostart_errors_pick_their_toast() {
+        use super::AutostartError as E;
+        assert_eq!(E::SwitchedOff.toast(), ToastMessage::AutostartSwitchedOff);
+        assert_eq!(E::Policy.toast(), ToastMessage::AutostartPolicy);
+        assert_eq!(E::Other("x".into()).toast(), ToastMessage::AutostartFailed);
+    }
+
     use super::*;
     use crate::host::FakeHotkeys;
 

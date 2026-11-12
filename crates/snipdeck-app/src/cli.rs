@@ -23,6 +23,8 @@ pub struct Args {
     pub check_db: bool,
     /// Print the Troubleshoot report and exit.
     pub troubleshoot: bool,
+    /// Ask the Snipdeck running in this Windows session to quit, then exit.
+    pub quit: bool,
     /// Print the usage and exit.
     pub help: bool,
 }
@@ -49,6 +51,8 @@ Usage: snipdeck-app [options]
   --data-dir <folder>    keep the library in <folder>
   --check-db             check the library for damage and exit (0 healthy, 1 problems, 2 not run)
   --troubleshoot         print the Troubleshoot report and exit (close Snipdeck first)
+  --quit                 ask the running Snipdeck to quit, as the tray's Quit does, and exit (0
+                         whether or not one was running; Windows only)
   --help                 show this text
 ";
 
@@ -67,6 +71,7 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, ArgError>
             "--dark" => parsed.dark = true,
             "--check-db" => parsed.check_db = true,
             "--troubleshoot" => parsed.troubleshoot = true,
+            "--quit" => parsed.quit = true,
             "--help" | "-h" => parsed.help = true,
             "--data-dir" => {
                 let value = args.next().ok_or(ArgError::MissingValue("--data-dir"))?;
@@ -118,6 +123,13 @@ mod tests {
         let args = parse_all(&["--check-db", "--troubleshoot"]).expect("args");
         assert!(args.check_db && args.troubleshoot);
         assert!(!parse_all(&[]).expect("args").check_db);
+    }
+
+    #[test]
+    fn quit_is_a_flag_on_its_own() {
+        assert!(parse_all(&["--quit"]).expect("args").quit);
+        assert!(!parse_all(&[]).expect("args").quit);
+        assert!(USAGE.contains("--quit"));
     }
 
     #[test]

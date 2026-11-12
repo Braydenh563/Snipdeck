@@ -96,6 +96,8 @@ pub fn hotkeys() -> Vec<HotkeySetting> {
 }
 
 pub fn settings(ui: &SettingsPage) {
+    // The Typing switches are stops only where typing works (Windows): walk them.
+    ui.set_typing_available(true);
     ui.set_hotkeys(ModelRc::new(VecModel::from(hotkeys())));
     ui.set_languages(strings(&[
         "Follow Windows",
@@ -185,6 +187,7 @@ pub fn shortcut_group(title: &str, note: &str, lines: &[(&str, &[&str])]) -> Sho
                     title: (*title).into(),
                     keys: strings(keys),
                     spoken: keys.join("+").into(),
+                    plain: false,
                 })
                 .collect::<Vec<_>>(),
         )),
@@ -209,6 +212,12 @@ pub fn shortcuts(ui: &HelpWindow) {
 
 /// The Tips tab with every card, in the words and pictures of `TipTexts`.
 pub fn tips(ui: &HelpWindow) {
+    tips_on(ui, false);
+}
+
+/// The Tips tab as the Free plan sees it: the cards of Supporter features (paste next, templates, the master
+/// password) carry the Supporter mark.
+pub fn tips_on(ui: &HelpWindow, free: bool) {
     let words = TipTexts::get(ui);
     let cards: Vec<TipCard> = (0..words.get_titles().row_count())
         .map(|i| TipCard {
@@ -216,6 +225,7 @@ pub fn tips(ui: &HelpWindow) {
             first_line: words.get_first_lines().row_data(i).unwrap_or_default(),
             second_line: words.get_second_lines().row_data(i).unwrap_or_default(),
             picture: words.get_images().row_data(i).unwrap_or_default(),
+            locked: free && [3, 4, 9].contains(&i),
         })
         .collect();
     ui.set_tips(ModelRc::new(VecModel::from(cards)));

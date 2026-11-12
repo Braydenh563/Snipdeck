@@ -38,6 +38,7 @@ import { SuggestDropdown, SuggestRow } from "components/suggest-dropdown.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
 import { Chooser, ChoiceEntry } from "components/chooser.slint";
 import { MenuTexts } from "menu_texts.slint";
+import { GroupHeader } from "components/group-header.slint";
 import { LabelChip } from "components/label-chip.slint";
 import { QuickAdd } from "components/quick-add.slint";
 import { CommandPalette, PaletteRow } from "components/command-palette.slint";
@@ -69,6 +70,12 @@ export struct MainRow {
     image: image,
     pinned: bool,
     selected: bool,
+    // A group's header takes the place of a card: `title` is its name, `group-count` its items, `group-collapsed`
+    // whether they are hidden. `grouped`: the item sits under a header, so its card is indented.
+    is-header: bool,
+    group-count: int,
+    group-collapsed: bool,
+    grouped: bool,
 }
 
 // One chip of the colour-label filter row: `label` is 0 to 7 in the order blue, teal, green, amber, orange, red,
@@ -441,8 +448,30 @@ export component MainWindow inherits Window {
     // Pointer down on an empty part of the title bar: the host starts the OS window drag.
     callback drag-requested();
     callback title-double-clicked();
-    // Alt+Up / Alt+Down in the item area: move the row at the cursor up (-1) or down (+1) within its list.
+    // Alt+Up / Alt+Down in the item area: move the row at the cursor up (-1) or down (+1) within its list (a group
+    // header moves its whole group).
     callback item-reorder-requested(int);
+    // Groups, in a list in manual order. Ctrl+G groups the selected rows (else the row at the cursor); on a header,
+    // Left folds, Right unfolds, Enter or a click does the other, F2 renames in place (`group-rename-requested`;
+    // the host answers with `rename-row`), Delete deletes the group with its items.
+    callback group-requested(int);
+    callback group-toggled(int);
+    callback group-collapsed-set(int, bool);
+    callback group-renamed(int, string);
+    callback group-rename-requested(int);
+    callback group-rename-ended();
+    callback group-ungroup-requested(int);
+    callback group-delete-requested(int);
+    // The header that should open its name for editing (the host counts requests in `rename-seq`).
+    in property <int> rename-row: -1;
+    in property <int> rename-seq: 0;
+    // Some row is a group's header: a list with headers stays one column wide, so the tile view draws rows.
+    in property <bool> has-groups: false;
+    // The items the list holds, folded group members included (headers are not items); -1: count the rows.
+    in property <int> list-total: -1;
+    public pure function group-announcement(name: string, count: int) -> string {
+        return @tr("group {}, {} item" | "group {}, {} items" % count, name, count);
+    }
     // Alt+Up / Alt+Down in the sidebar on a list: its index in `lists`, then -1 or +1.
     callback list-reorder-requested(int, int);
     // Drag and drop (WCAG 2.5.7 gives the keyboard alternatives above and the item menu's Move to list). The payloads are
@@ -507,6 +536,8 @@ export component MainWindow inherits Window {
     property <bool> toolbar-compact: false;
     property <length> ctl-h: max(Space.s8 * SystemLook.text-scale, Type.line-base + Space.s2);
     property <length> bar-h: max(Space.s8 + Space.s3, Type.line-base + Space.s2 + Space.s3);
+    // A group header row: a full hit target inside its focus-ring inset, growing with the text size so its name never spills.
+    property <length> header-h: Space.hit * SystemLook.text-scale + 2 * root.ring;
     // Below 720px the sidebar is a rail whatever was chosen; the chosen width and the collapsed flag apply above it.
     property <bool> auto-rail: false;
     property <length> sidebar-w: root.narrow ? Space.s12 * root.text-scale : root.sidebar-width * 1px + (root.text-scale - 1) * 96px;
@@ -520,7 +551,7 @@ export component MainWindow inherits Window {
     property <int> n-tags: root.tags.length;
     property <int> nav-total: 4 + root.n-lists + root.n-tags;
     property <int> cur: root.rows.length == 0 ? -1 : min(max(root.cursor, 0), root.rows.length - 1);
-    property <bool> tile: root.view == MainView.tile;
+    property <bool> tile: root.view == MainView.tile && !root.has-groups;
     property <bool> in-trash: root.section == MainSection.trash;
     property <bool> searching: root.query != "";
     property <bool> multi: root.selected-count > 1;
@@ -845,6 +876,13 @@ export component MainWindow inherits Window {
         root.restore-focus();
     }
 
+    property <[MenuEntry]> group-entries: [
+        { text: MenuTexts.group-rename(), icon: Icons.pencil-simple, shortcut: "F2" },
+        { text: MenuTexts.group-ungroup(), icon: Icons.files },
+        { separator: true },
+        { text: MenuTexts.group-delete(), icon: Icons.trash, destructive: true, shortcut: "Del" },
+    ];
+
     property <[MenuEntry]> item-entries: root.in-trash ? [
         { text: @tr("Restore"), icon: Icons.arrow-counter-clockwise },
         { separator: true },
@@ -861,6 +899,7 @@ export component MainWindow inherits Window {
         { text: @tr("Move down"), icon: Icons.caret-down, shortcut: "Alt+Down", disabled: root.multi || !root.rows-reorderable || root.item-menu-index >= root.rows.length - 1 },
         { text: @tr("Move to list…"), icon: Icons.folder },
         { text: @tr("Tags…"), icon: Icons.tag },
+        { text: MenuTexts.item-group(), icon: Icons.rows, disabled: !root.rows-reorderable || root.label-filter >= 0 },
         { separator: true },
         { text: @tr("Move to Trash"), icon: Icons.trash, destructive: true, shortcut: "Del" },
     ];
@@ -877,6 +916,19 @@ export component MainWindow inherits Window {
     function item-menu-activated(i: int) {
         let index = root.item-menu-index;
         root.item-menu-open = false;
+        if (root.rows[index].is-header) {
+            if (i == 0) {
+                root.group-rename-requested(index);
+            } else if (i == 1) {
+                root.group-ungroup-requested(index);
+            } else if (i == 3) {
+                root.group-delete-requested(index);
+            }
+            if (i != 0) {
+                items-scope.focus();
+            }
+            return;
+        }
         if (root.in-trash) {
             root.act(i == 0 ? ItemAction.restore : ItemAction.delete-forever, index);
         } else if (i == 0) {
@@ -898,7 +950,9 @@ export component MainWindow inherits Window {
             root.act(ItemAction.move, index);
         } else if (i == 10) {
             root.act(ItemAction.tag, index);
-        } else if (i == 12) {
+        } else if (i == 11) {
+            root.group-requested(index);
+        } else if (i == 13) {
             root.act(ItemAction.delete, index);
         }
         if (!root.chooser-open && !root.confirm-shown) {
@@ -1396,7 +1450,7 @@ export component MainWindow inherits Window {
                                 panel-show := IconButton {
                                     scaled: true;
                                     side-override: root.ctl-h;
-                                    icon: Icons.sidebar-simple;
+                                    icon: Icons.picture-in-picture;
                                     tooltip: root.panel-visible
                                         ? (root.panel-hotkey == "" ? @tr("Hide Panel") : @tr("Hide Panel ({})", root.panel-hotkey))
                                         : (root.panel-hotkey == "" ? @tr("Show Panel") : @tr("Show Panel ({})", root.panel-hotkey));
@@ -1529,9 +1583,11 @@ export component MainWindow inherits Window {
                                     side-override: root.ctl-h - 2 * Space.s0-5;
                                     icon: Icons.squares-four;
                                     tooltip: @tr("Tile view");
-                                    active: root.view == MainView.tile;
+                                    // Groups draw rows, never tiles: the button rests while they show.
+                                    enabled: !root.has-groups;
+                                    active: root.view == MainView.tile && !root.has-groups;
                                     accessible-checkable: true;
-                                    accessible-checked: root.view == MainView.tile;
+                                    accessible-checked: root.view == MainView.tile && !root.has-groups;
                                     clicked => {
                                         root.view = MainView.tile;
                                         root.view-changed(MainView.tile);
@@ -1723,6 +1779,19 @@ export component MainWindow inherits Window {
                             if (event.modifiers.alt || root.rows.length == 0) {
                                 return reject;
                             }
+                            if (ctrl && !shift && !root.in-trash && (event.text == "g" || event.text == "G")) {
+                                root.group-requested(root.cur);
+                                return accept;
+                            }
+                            // A group's header: Left folds it, Right unfolds it, Enter does the other, F2 renames it, Delete
+                            // deletes the group (its items go to the Trash with an Undo).
+                            if (!ctrl && !shift && root.cur >= 0 && root.rows[root.cur].is-header) {
+                                if (event.text == Key.LeftArrow) { root.group-collapsed-set(root.cur, true); return accept; }
+                                if (event.text == Key.RightArrow) { root.group-collapsed-set(root.cur, false); return accept; }
+                                if (event.text == Key.Return) { root.group-toggled(root.cur); return accept; }
+                                if (event.text == Key.F2) { root.group-rename-requested(root.cur); return accept; }
+                                if (event.text == Key.Delete) { root.group-delete-requested(root.cur); return accept; }
+                            }
                             if (ctrl) {
                                 if (!shift && !root.in-trash && !root.recent-shown && (event.text == "c" || event.text == "C")) {
                                     root.copy-selection-requested(root.cur);
@@ -1847,7 +1916,7 @@ export component MainWindow inherits Window {
                                 property <bool> is-cursor: i == root.cur;
                                 // The row being dragged over this one: a drop lands after it when coming from above.
                                 property <int> row-from: -1;
-                                height: card.preferred-height + root.row-gap + (i == root.rows.length - 1 ? 2 * root.ring : 0px);
+                                height: (row.is-header ? root.header-h : card.preferred-height) + root.row-gap + (i == root.rows.length - 1 ? 2 * root.ring : 0px);
 
                                 init => {
                                     if (self.is-cursor) { root.reveal-list(self.y, self.height); }
@@ -1874,10 +1943,34 @@ export component MainWindow inherits Window {
                                         allow-move: !root.in-trash;
                                         data: root.row-payload(i);
 
-                                        card := MainCard {
+                                        // A group's header takes the place of a card.
+                                        if row.is-header: GroupHeader {
                                             x: root.ring;
                                             y: root.ring;
                                             width: parent.width - 2 * root.ring;
+                                            height: root.header-h - 2 * root.ring;
+                                            name: row.title;
+                                            collapsed: row.group-collapsed;
+                                            count-text: @tr("{} item" | "{} items" % row.group-count, row.group-count);
+                                            a11y-label: root.group-announcement(row.title, row.group-count);
+                                            rename-label: @tr("Group name");
+                                            selected: i == root.cur && items-scope.has-focus && root.kbd-focus;
+                                            rename-request: root.rename-row == i ? root.rename-seq : 0;
+                                            toggled => { root.cursor = i; root.group-toggled(i); }
+                                            renamed(text) => { root.group-renamed(i, text); }
+                                            rename-ended => { root.group-rename-ended(); items-scope.focus(); }
+                                            menu-requested(x, y) => {
+                                                root.cursor = i;
+                                                root.select-requested(i, SelectMode.replace);
+                                                root.open-item-menu(i, self.absolute-position.x + x, self.absolute-position.y + y);
+                                            }
+                                        }
+
+                                        card := MainCard {
+                                            visible: !row.is-header;
+                                            x: root.ring + (row.grouped ? Space.s3 : 0px);
+                                            y: root.ring;
+                                            width: parent.width - 2 * root.ring - (row.grouped ? Space.s3 : 0px);
                                             height: self.preferred-height;
                                             variant: root.view == MainView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
                                             data: row;
@@ -1915,7 +2008,7 @@ export component MainWindow inherits Window {
                                 Rectangle {
                                     visible: row-drop.has-drag;
                                     x: root.ring;
-                                    y: row-from >= 0 && row-from < i ? card.y + card.height - 1px : 0px;
+                                    y: row-from >= 0 && row-from < i ? (row.is-header ? parent.height - 1px : card.y + card.height - 1px) : 0px;
                                     width: parent.width - 2 * root.ring;
                                     height: 2px;
                                     background: Theme.accent;
@@ -2431,12 +2524,14 @@ export component MainWindow inherits Window {
         }
     }
 
+    // The items the list holds: a group header is no item, and its folded members still are (the host sets `list-total`).
+    property <int> item-total: root.list-total >= 0 ? root.list-total : root.rows.length;
     // The bulk bar already says how many are selected; the line shows the count of items and announces the selection.
     // While searching it counts the matches and names the board they were found in.
     property <string> status-text: root.searching
         ? (root.rows.length == 0 ? @tr("No matches in {}", root.board-name)
             : @tr("{n} match in {}" | "{n} matches in {}" % root.rows.length, root.board-name))
-        : @tr("{n} item" | "{n} items" % root.rows.length);
+        : @tr("{n} item" | "{n} items" % root.item-total);
 
     // Keeps the sidebar's cursor row in view. The row's place follows from the row heights, not from measuring
     // the element (a measurement taken before the first layout would scroll the sidebar away).
@@ -2586,7 +2681,7 @@ export component MainWindow inherits Window {
     if root.item-menu-open: Menu {
         x: max(0px, min(root.item-menu-x, root.width - self.width - Space.s2));
         y: max(0px, min(root.item-menu-y, root.height - self.height - Space.s2));
-        entries: root.item-entries;
+        entries: root.rows[root.item-menu-index].is-header ? root.group-entries : root.item-entries;
         label: @tr("Item actions");
         init => {
             self.current = 0;

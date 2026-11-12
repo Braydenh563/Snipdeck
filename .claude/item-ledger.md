@@ -62,3 +62,15 @@ date | item | type | rung | rework | note
 2026-11-11 | v1.1 slices 1+2a importers, uuid, date maths, paste as | ui | sonnet | 2 | 
 2026-11-11 | v1.1 slice 2b fill-form kinds | ui | sonnet | 1 | 
 2026-11-11 | v1.1 slice 4 tips | ui | sonnet | 0 | 
+2026-11-11 | final audit 1: min window widths follow text size | ui | sonnet | 0 | 
+2026-11-11 | polish: tips picture crops, Show Panel icon, scroll-focus tests | ui | sonnet | 0 | 
+2026-11-11 | Align placeholder chip column | ui | sonnet | 0 | 
+2026-11-11 | v1.1 groups inside a list (3b UI) | feature | sonnet | 2 | 
+2026-11-11 | Blind-test UI fixes: Supporter marks, licence route | ui | sonnet | 0 | 
+2026-11-11 | Editor footer reflow + importer note i18n | ui | sonnet | 0 | 
+2026-11-11 | Audit 1b keyboard walk merge (Tab-order fixes, goldens) | review | opus | 2 | 
+2026-11-11 | Groups in the Main window | feature | sonnet | 2 | 
+2026-11-11 | Final UX audit (v1.1 surfaces) | review | opus | 0 | 
+2026-11-11 | Blind-test fixes (README hotkeys, wording, Hello prerequisites, header menu) | docs | sonnet | 1 | 
+2026-11-11 | ux-auditor findings (search gap, toast wrap, shortcuts clip, keycap or, palette width, header a11y, descriptions) | ui | sonnet | 1 | 
+2026-11-12 | Final polish: ux-auditor re-check fixes (group rename keys, Main header height, toast kind) | review | opus | 1 | 

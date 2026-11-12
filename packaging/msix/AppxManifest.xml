@@ -6,17 +6,21 @@
   identity values from Partner Center (Product management > Product identity). A sideload test build
   takes Publisher from the subject of the test certificate. Keep the filled copy out of git.
 
-  No startupTask extension is declared on purpose. "Start with Windows" needs the WinRT StartupTask API,
-  which the app does not call yet: today it writes an HKCU Run value, which a packaged app does not
-  honour. Add a desktop:Extension Category="windows.startupTask" (and the desktop namespace) only with
-  that code. See docs/packaging.md, section 1.
+  Start with Windows: the Store build declares the StartupTask below (TaskId SnipdeckStartup, disabled
+  until the user turns it on). The app calls the WinRT StartupTask API for it; the HKCU Run value that the
+  portable and Setup builds use is ignored by a packaged app.
+
+  Data: AppData virtualisation is ON (the default; no unvirtualizedResources). The Store build's data is
+  per package and is removed when the app is uninstalled; Windows 10 1903+ redirects new AppData files
+  into the package's own folder. Do not declare unvirtualizedResources to change that.
 
   The Assets\ paths below must match the files scripts/make_msix_assets.py writes to packaging\msix\Assets\.
 -->
 <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
          xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
          xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-         IgnorableNamespaces="uap rescap">
+         IgnorableNamespaces="uap desktop rescap">
 
   <!-- {{IDENTITY_NAME}}: the reserved package name, for example YourPublisher.Snipdeck. Copy from Partner Center. -->
   <!-- {{PUBLISHER}}: the CN=... string. Must match exactly what the package is signed with. -->
@@ -35,7 +39,7 @@
 
   <Dependencies>
     <!-- MinVersion: the oldest Windows build the app was tested on. MaxVersionTested: the newest one tested. -->
-    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22621.0" />
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.18362.0" MaxVersionTested="10.0.22621.0" />
   </Dependencies>
 
   <Resources>
@@ -49,6 +53,11 @@
                           BackgroundColor="transparent"
                           Square150x150Logo="Assets\Square150x150Logo.png"
                           Square44x44Logo="Assets\Square44x44Logo.png" />
+      <Extensions>
+        <desktop:Extension Category="windows.startupTask" Executable="snipdeck.exe" EntryPoint="Windows.FullTrustApplication">
+          <desktop:StartupTask TaskId="SnipdeckStartup" Enabled="false" DisplayName="Snipdeck" />
+        </desktop:Extension>
+      </Extensions>
     </Application>
   </Applications>
 

@@ -23,7 +23,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 | Release | Platform | Notes |
 |---|---|---|
 | v1.0 | Windows 10 (1903+) / 11 | Primary target |
-| v1.1 | macOS 13+ | Needs Accessibility permission for paste-into-field |
+| Later | macOS 13+ | Needs Accessibility permission for paste-into-field |
 | later | Linux (X11 full, Wayland copy-only) | Wayland blocks key injection |
 
 ## 4. Domain model (glossary)
@@ -63,6 +63,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - Add: **+ From clipboard**, `Ctrl+V` / drag-drop onto panel, **quick new note** (inline), global
   **save-selection** hotkey (copies selection under the hood, restores clipboard).
 - Reorder by drag (also `Alt+↑/↓`); per-list sort: Manual (default) / Most used / Recently used.
+- **Groups:** with the list on Manual sort, marked rows gather under a named, foldable header (`Ctrl+G`, item menu "Group…"). `Left`/`Right` fold and open a header, `F2` renames it, Ungroup keeps the items, Delete group sends group and items to the Trash as one undo step. Dragging a header moves the whole run. Search lists matches inside folded groups under their header. Groups survive export, import, backup and undo (schema v8, `item_groups` + `items.group_id`).
 - **Search:** typing while the panel is focused filters across **every board** and shows where each match lives ("Board · List"); a miss on another board used to send people to the Main window. (Panel and picker match **title, tags and the first 64 characters of content** in memory with `nucleo`, multi-threaded: measured 4–8 ms for 10k items against the 16 ms budget; full-content matching was 22–57 ms and is not used there. The main window's search uses SQLite FTS5 for full content) (the search field expands over the tab row, with a visible Close button; `Esc` clears and collapses). `Ctrl+F` and the search icon also work; a setting can keep the field always shown.
 - **Recent tab:** when history is on, a clock tab sits at the far left of the tab row. Promote an entry by dragging it to a tab or with "Save to…".
 - **Symbols tab:** a smiley tab after the clock tab. One search covers emoji, kaomoji and icons; kind tabs (Emoji, Kaomoji, Icons) and a group strip narrow it, and `Ctrl+Left/Right` steps the kind. Click pastes an emoji or kaomoji into the Target (copies when there is none), `Shift+click` copies only, and `Ctrl+S` adds the selected emoji or kaomoji to the current list as a Text item. An icon always copies, as a PNG (64px, in the theme's text colour); the SVG copy (`currentColor` kept) and Save as (SVG or PNG) are in the controller, with their menu planned (slice 6). Recents: "Recently used" on top of the grid, most recent first, at most 24, saved in the settings. Details: `docs/reviews/symbols-spec.md`.
@@ -98,6 +99,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
   transforms (UPPER/lower/Title, trim, strip formatting, dedupe lines, sort lines),
   **template field inserter** with live preview. Rich-text items: formatting preserved on paste;
   edited as text (rich-text editing is v1.x).
+- **Editor footer:** Trash, Cancel and Save share one row; when the row does not fit, Trash moves above Cancel/Save instead of clipping. The template placeholder help lists its rows with one shared chip column so descriptions line up.
 - **Image**: crop, rotate/flip, resize/scale, **redact** (blur / solid box). Non-destructive until save.
 
 ### 5.5 Capture & OCR
@@ -144,6 +146,7 @@ Seeds a **Getting started** list whose cards teach by doing ("Click me to paste"
 ### 5.9 Data portability
 - Export/import `.snipdeck` (zip: `manifest.json`, `items.json`, `assets/`), schema documented in `docs/format.md`.
 - Importers: Ditto, CopyQ, Windows clipboard history (current session), folder of `.txt`/`.md`.
+- Importer notes are typed (`Note` in `snipdeck-portable`) and worded in the UI through `@tr`, so every note, including its "entry N" / "Ditto clip N" / "file, match N" label, appears in the user's language with its values intact.
 - Data folder relocatable (e.g. into OneDrive/Dropbox for DIY sync); DB is single-writer — warn on concurrent use.
 
 ## 6. Free vs Supporter
@@ -172,6 +175,7 @@ Licence key: offline Ed25519-signed token, no phone-home (ADR-0005).
 - CJK font fallback, IME-correct text input, locale-aware dates in `{date}`.
 - WCAG 2.2 AA contrast in both themes, full keyboard operation, AccessKit/Narrator labels,
   visible focus, respects Windows reduced-motion and text-scale settings.
+- Tab order (audit 1b): focus moves in reading order through the Panel, editors and scrolling forms; a control that scrolls into view takes focus with it, and the Tips cards are reached with `Tab` card to card.
 
 ## 8. Appearance
 - **Own minimal brand** (Linear/Raycast-class restraint): neutral surfaces, one accent, sharp type, dense but calm.

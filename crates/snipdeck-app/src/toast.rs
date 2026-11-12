@@ -86,6 +86,12 @@ pub enum ToastMessage {
     MasterPasswordChangedNotOpen,
     /// "Master password removed. Snipdeck couldn't open the library just now; ..."
     MasterPasswordRemovedNotOpen,
+    /// "Windows Hello didn't work, so it was turned off. You can turn it on again in Settings."
+    HelloTurnedOff,
+    /// "Windows Hello was not turned on." (the user cancelled the prompt that turns it on)
+    HelloNotTurnedOn,
+    /// "Windows Hello didn't work, so it was not turned on." (the prompt that turns it on failed)
+    HelloEnrolFailed,
     /// "Unlock your library first, so a copy includes your sensitive items."
     UnlockFirst,
     /// "Your library locked. The sensitive item you were editing was closed without saving."
@@ -295,8 +301,20 @@ pub enum ToastMessage {
     MailNotOpened,
     /// "Couldn't change the Windows start-up entry."
     AutostartFailed,
+    /// "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
+    /// (the Store build; only the user can switch the startup task back on)
+    AutostartSwitchedOff,
+    /// "Your organisation's policy keeps Snipdeck from starting with Windows."
+    AutostartPolicy,
     /// "Couldn't open the log folder."
     CannotOpenLog,
+    /// "Saved. This trigger overlaps the trigger of “{other}”, so one of them may never fire."
+    TriggerOverlaps {
+        /// The title of the other item whose trigger overlaps.
+        other: String,
+    },
+    /// "Couldn't start typing triggers. Nothing will be expanded or suggested."
+    TypingUnavailable,
     /// "Couldn't unlock the encryption key. Nothing was saved."
     KeyUnavailable,
     /// "This item was deleted. Nothing was saved."

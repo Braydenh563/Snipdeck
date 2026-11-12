@@ -33,7 +33,7 @@ use snipdeck_app::{
     crash, demo,
     drafts::Drafts,
     fill_binding::FillUi,
-    headless,
+    headless, hello_job,
     help_binding::{HelpUi, SystemHelpHost},
     host, key_provider,
     main_binding::{self, MainUi},
@@ -99,6 +99,13 @@ fn main() -> ExitCode {
         println!("{}", cli::USAGE);
         return ExitCode::SUCCESS;
     }
+    if args.quit {
+        // Nothing else first: no library, data folder, log or window, and no mutex.
+        platform::ask_to_quit();
+        return ExitCode::SUCCESS;
+    }
+    // Windows says once how a packaged build was started; ask before anything else could.
+    let by_startup_task = platform::launched_by_startup_task();
     if args.check_db || args.troubleshoot {
         return headless(&args);
     }
@@ -111,7 +118,7 @@ fn main() -> ExitCode {
     );
     let outcome = match &args.screenshot {
         Some(path) => take_screenshot(path, args.dark),
-        None => run(&args),
+        None => run(&args, by_startup_task),
     };
     match outcome {
         Ok(()) => ExitCode::SUCCESS,
@@ -156,15 +163,20 @@ fn take_screenshot(path: &std::path::Path, dark: bool) -> Result<(), String> {
     clippy::too_many_lines,
     reason = "start-up is one ordered sequence: each step needs the one before"
 )]
-fn run(args: &Args) -> Result<(), String> {
+fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     // Events from service threads become calls on this thread, through the binding.
     let look = platform::system_look();
     let callbacks = Callbacks {
         on_hotkey: Box::new(|action| on_ui_thread(move |b| b.hotkey(action))),
         on_second: Box::new(|| on_ui_thread(Binding::show)),
+        // The same path as the tray's Quit, so pending saves flush after the event loop ends.
+        on_quit: Box::new(|| {
+            on_ui_thread(|b| b.tray(snipdeck_platform::tray::TrayEvent::Quit));
+        }),
         on_target_changed: Box::new(|| with_binding(Binding::target_changed)),
         on_tray: Box::new(|event| on_ui_thread(move |b| b.tray(event))),
         on_clipboard_change: Box::new(|change| on_ui_thread(move |b| b.clipboard_changed(change))),
+        on_typed: Box::new(|typed| on_ui_thread(move |b| b.typed_trigger(typed))),
         on_look_changed: {
             let look = Arc::clone(&look);
             // Read on the UI thread: the value is fresher than the one the watcher saw.
@@ -200,6 +212,7 @@ fn run(args: &Args) -> Result<(), String> {
         popups,
         tray,
         recent_gate,
+        typing,
         warnings,
         keep_alive: _keep_alive,
     } = host;
@@ -218,6 +231,12 @@ fn run(args: &Args) -> Result<(), String> {
         .set_size(slint::LogicalSize::new(width, 480.0));
 
     let startup_chords = settings.hotkeys.clone();
+    // A startup task cannot pass `--hidden`: the saved "When Windows starts" choice stands in.
+    let start_hidden = args.hidden
+        || snipdeck_platform::startup_task::start_hidden(
+            by_startup_task,
+            settings.starts_visible(),
+        );
     // The text size, before any window draws: the setting over Windows' own.
     snipdeck_app::text_scale::configure(settings.text_size);
     snipdeck_app::text_scale::set_system(look.text_scale());
@@ -245,6 +264,7 @@ fn run(args: &Args) -> Result<(), String> {
         let mut controller = controller.borrow_mut();
         controller.set_system_look(look.read());
         controller.set_recent_gate(recent_gate);
+        controller.set_typing(typing);
         controller.prune_recent();
         if let Some(saver) = saver {
             controller.set_settings_saver(saver);
@@ -261,12 +281,20 @@ fn run(args: &Args) -> Result<(), String> {
         // Argon2id takes a moment on purpose: a master password step works its key out on a
         // worker thread, and the window waits with a status instead of freezing.
         master_job::set_offload(Rc::new(master_job::Threads));
+        snipdeck_app::drop_read::use_threads();
+        // Windows Hello prompts wait for a person, so they run on a worker too.
+        hello_job::use_worker_threads();
+        if let Some(hello) = platform::hello() {
+            controller.set_hello(hello);
+        }
         if let Some(picker) = platform::file_picker() {
             controller.set_file_picker(picker);
         }
         controller.set_log_opener(Box::new(crash::open_log_folder));
         controller.unlock_library();
     }
+    // Whether Hello is ready is asked on its worker (it can block), so start-up does not wait.
+    snipdeck_app::unlock_binding::refresh_hello(&controller);
 
     // The tray makes closing the Panel safe (it hides, and the icon brings it back). Whether an
     // icon is in the notification area is reported by the tray itself (`TrayEvent::IconPresent`,
@@ -433,7 +461,7 @@ fn run(args: &Args) -> Result<(), String> {
         &startup_chords.registrable(supporter_at_start),
     ));
 
-    if args.hidden {
+    if start_hidden {
         controller.borrow_mut().hide();
         frames_armed.set(true);
     } else {
@@ -572,7 +600,7 @@ fn effect_handler(
                 eprintln!("snipdeck: cannot open the main window: {e}");
             }
         }
-        // The Panel's "All commands…" and Ctrl+K: the Main window, with the palette open.
+        // The Panel's "Commands…" and Ctrl+K: the Main window, with the palette open.
         Effect::OpenCommands => match main_ui.open() {
             Ok(()) => {
                 if let Some(window) = main_ui.window() {
@@ -584,6 +612,11 @@ fn effect_handler(
         Effect::OpenSettings => {
             if let Err(e) = settings_ui.open() {
                 eprintln!("snipdeck: cannot open the settings: {e}");
+            }
+        }
+        Effect::OpenLicence => {
+            if let Err(e) = settings_ui.open_licence() {
+                eprintln!("snipdeck: cannot open the licence settings: {e}");
             }
         }
         // A locked sensitive item behind a master password: ask for it.

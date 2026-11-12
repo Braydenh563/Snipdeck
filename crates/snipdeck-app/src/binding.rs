@@ -94,11 +94,28 @@ const DOCK_REPLACE_AFTER: std::time::Duration = std::time::Duration::from_millis
 /// How long the Panel must hold still after a move for the drag to count as released.
 const DRAG_SETTLE: std::time::Duration = std::time::Duration::from_millis(250);
 
-/// Moves and sizes the window to `frame`.
+/// Moves and sizes the window to `frame`, touching only what differs (a slide moves the Panel on
+/// every pointer move; asking for the same size again each time made Windows resize the surface
+/// mid-drag), then draws it whole.
 fn place(window: &ui::PanelWindow, frame: Rect) {
     let w = window.window();
-    w.set_position(slint::PhysicalPosition::new(frame.x, frame.y));
-    w.set_size(slint::PhysicalSize::new(frame.w, frame.h));
+    let position = slint::PhysicalPosition::new(frame.x, frame.y);
+    if w.position() != position {
+        w.set_position(position);
+    }
+    let size = slint::PhysicalSize::new(frame.w, frame.h);
+    if w.size() != size {
+        w.set_size(size);
+    }
+    repaint_whole(window);
+}
+
+/// Damages the whole Panel so the next frame is drawn in full (O39). Windows drops a hidden
+/// window's pixels and Slint's software renderer presents only what changed, so a Panel shown
+/// again (after the item editor closes) or moved came back with see-through gaps.
+fn repaint_whole(window: &ui::PanelWindow) {
+    window.set_repaint_flip(!window.get_repaint_flip());
+    window.window().request_redraw();
 }
 
 /// What the host keeps after binding: the entry points for events that do not come from the
@@ -114,6 +131,7 @@ pub struct Binding {
     tray: Rc<dyn Fn(TrayEvent)>,
     system_look: Rc<dyn Fn(SystemLook)>,
     clipboard_changed: Rc<dyn Fn(snipdeck_platform::clipboard_watch::ClipboardChange)>,
+    typed_trigger: Rc<dyn Fn(crate::typing_worker::Out)>,
     frame_changed: Rc<FrameFn>,
     frame_moved: Rc<FrameFn>,
     restore_frame: Rc<MonitorFn>,
@@ -174,6 +192,12 @@ impl Binding {
         (self.clipboard_changed)(change);
     }
 
+    /// The typing worker has something for the UI thread: a completed trigger, a suggestion to
+    /// show or take down, or `Tab` on the hint (see `Typed::password` and `Typed::still_current`).
+    pub fn typed_trigger(&self, out: crate::typing_worker::Out) {
+        (self.typed_trigger)(out);
+    }
+
     /// Windows' light / dark or high-contrast state is `look` (read at start-up, and again on
     /// every change notification; an unchanged look redraws nothing).
     pub fn system_look(&self, look: SystemLook) {
@@ -221,6 +245,10 @@ struct Core<S, C, K, T> {
     window: slint::Weak<ui::PanelWindow>,
     /// What the Panel asks of the machine: the keyboard for text entry, and to give it back.
     host: Rc<dyn PopupHost>,
+    /// The suggestion hint at the caret (made on first use).
+    hint: crate::suggest_hint::SuggestHint,
+    /// The number of the hint that is up, 0 for none.
+    hints: HintIds,
     on_effect: Box<dyn Fn(&Effect)>,
     /// What the window shows now, so a redraw sets only what changed (re-setting the rows
     /// model would reset the list's scroll position on every toast tick).
@@ -258,6 +286,8 @@ where
             Self {
                 controller: Rc::clone(controller),
                 window: window.as_weak(),
+                hint: crate::suggest_hint::SuggestHint::new(Rc::clone(&host)),
+                hints: HintIds::default(),
                 host,
                 on_effect,
                 shown: RefCell::new(None),
@@ -277,7 +307,82 @@ where
         core
     }
 
-    /// Runs `f` on the controller, then redraws.
+    /// Takes the suggestion hint down (if one is up) and lets the keyboard hook have `Tab`
+    /// back.
+    fn hint_down(&self) {
+        self.hint.hide_hint();
+        let id = self.hints.take();
+        if id != 0 {
+            self.controller.borrow_mut().hint_down(id);
+        }
+    }
+
+    /// What the typing worker found (SPEC slice 5b and 6): an expansion, or the suggestion hint.
+    fn typed(self: &Rc<Self>, out: crate::typing_worker::Out) {
+        use crate::{controller::HintOutcome, typing_worker::Out};
+        // Anything from a worker that is no longer the running one is stale.
+        if let Out::Show(_, id) | Out::Hide(id) | Out::Accept(_, id) = &out
+            && self.controller.borrow().hint_is_stale(*id)
+        {
+            return;
+        }
+        match out {
+            Out::Expand(typed) => {
+                self.hint_down();
+                self.act(|ctl| {
+                    let _ = ctl.expand_typed(&typed);
+                });
+            }
+            // Only the hint that is on screen is accepted: anything else was passed on or is
+            // old, and inserts nothing.
+            Out::Accept(typed, id) => {
+                let on_screen = self.hints.is_current(id);
+                if on_screen {
+                    self.hint_down();
+                }
+                let _ = self.act(|ctl| ctl.accept_hinted(&typed, on_screen));
+            }
+            // A hide for an older hint (a worker that was switched off and on again) is stale.
+            Out::Hide(id) if self.hints.is_current(id) => self.hint_down(),
+            Out::Hide(_) => {}
+            // A show older than one already seen is stale too.
+            Out::Show(_, id) if !self.hints.admit(id) => {}
+            Out::Show(typed, id) => {
+                let (outcome, look) = {
+                    let mut ctl = self.controller.borrow_mut();
+                    let outcome = ctl.suggest_typed(&typed);
+                    let view = ctl.view();
+                    let look = crate::suggest_hint::HintLook {
+                        dark: view.dark,
+                        high_contrast: view.high_contrast,
+                        accent: view.accent,
+                        reduced_motion: view.reduced_motion,
+                    };
+                    (outcome, look)
+                };
+                let up = match outcome {
+                    HintOutcome::Show { title, caret } => {
+                        self.hint.show_hint(&title, Some(caret), &look)
+                    }
+                    HintOutcome::Hide => {
+                        self.hint.hide_hint();
+                        false
+                    }
+                };
+                let replaced = self.hints.shown(if up { id } else { 0 });
+                let mut ctl = self.controller.borrow_mut();
+                if replaced != 0 && replaced != id {
+                    // The hint it replaces no longer takes a Tab.
+                    ctl.hint_down(replaced);
+                }
+                if up {
+                    // On screen for real: now the hook may take a Tab for it.
+                    ctl.hint_up(id);
+                }
+            }
+        }
+    }
+
     fn act<R>(self: &Rc<Self>, f: impl FnOnce(&mut Controller<S, C, K, T>) -> R) -> R {
         let result = f(&mut self.controller.borrow_mut());
         redraw_all();
@@ -336,6 +441,7 @@ where
                     // A hidden Panel comes back where it was in the stack, behind the app in
                     // use; and one that is "shown" already (a second Open Panel) may be buried.
                     crate::native_window::raise(&window);
+                    repaint_whole(&window);
                     // Shown on purpose (the hotkey, the tray, a second launch): the user types
                     // next, so the Panel takes the keyboard. A dock-hover reveal never comes
                     // here, so the pointer passing over the edge steals nothing.
@@ -407,6 +513,10 @@ where
         };
         let view = self.controller.borrow().view();
         render(&window, self.shown.borrow().as_ref(), &view);
+        // A new group's name follows the language the window is in now.
+        self.controller
+            .borrow_mut()
+            .set_group_name(&window.invoke_group_default_name());
         // Placements decided by another window (Settings docking the Panel, the dock being
         // switched off) are carried out here, where the Panel's window is.
         let pending = self.controller.borrow_mut().take_pending();
@@ -566,6 +676,7 @@ where
         on_effect: impl Fn(&Effect) + 'static,
     ) -> Binding {
         let core = Core::new(this, window, host, Box::new(on_effect));
+        core.act(|ctl| ctl.set_group_name(&window.invoke_group_default_name()));
         core.sync();
         {
             // Where the other windows open over the Panel, while it is shown.
@@ -781,6 +892,14 @@ where
                 crate::main_window::SelectMode::Replace
             }
         ));
+        wire!(on_group_requested, |ctl, i| ctl.group_marked(index(i)));
+        wire!(on_group_toggled, |ctl, i| ctl
+            .group_collapse(index(i), None));
+        wire!(on_group_collapsed_set, |ctl, i, collapsed| ctl
+            .group_collapse(index(i), Some(collapsed)));
+        wire!(on_group_renamed, |ctl, i, name| ctl
+            .group_rename(index(i), name.as_str()));
+        wire!(on_group_rename_ended, |ctl| ctl.group_rename_ended());
         wire!(on_select_all_requested, |ctl| ctl.panel_mark_all());
         wire!(on_select_mode_changed, |ctl, on| ctl.panel_select_mode(on));
         wire!(on_delete_mode_changed, |ctl, on| ctl.panel_delete_mode(on));
@@ -878,24 +997,45 @@ where
             window.on_toast_hover_changed(move |on| core.controller.borrow_mut().toast_hover(on));
         }
         {
-            let core = Rc::clone(&core);
-            window.on_along_begin(move || core.controller.borrow_mut().dock_slide_begin());
-        }
-        {
-            // The grip pill's drag: logical pixels along the edge since the press, the window
-            // frame is physical.
-            let core = Rc::clone(&core);
-            let window_weak = window.as_weak();
+            // The grip pill's drag. The pill moves with the window, so the distance is measured
+            // on screen from the press (`SlideDrag`), not inside the pill.
+            let press: Rc<Cell<Option<crate::dock::SlideDrag>>> = Rc::default();
+            let window_at = |w: &ui::PanelWindow| {
+                let p = w.window().position();
+                (p.x, p.y)
+            };
+            {
+                let (core, press, weak) = (Rc::clone(&core), Rc::clone(&press), window.as_weak());
+                window.on_along_begin(move || {
+                    if let Some(w) = weak.upgrade() {
+                        press.set(Some(crate::dock::SlideDrag::begin(
+                            core.host.cursor(),
+                            window_at(&w),
+                        )));
+                    }
+                    core.controller.borrow_mut().dock_slide_begin();
+                });
+            }
+            let (core, weak) = (Rc::clone(&core), window.as_weak());
             window.on_along_drag(move |delta| {
-                let scale = window_weak
-                    .upgrade()
-                    .map_or(1.0, |w| w.window().scale_factor());
+                let Some(w) = weak.upgrade() else {
+                    return;
+                };
+                // The pointer's offset is in logical pixels; the window frame is physical.
                 #[allow(
                     clippy::cast_possible_truncation,
                     reason = "a pointer delta of a few thousand pixels"
                 )]
-                let physical = (delta * scale).round() as i32;
-                core.act_effects(|ctl| ctl.dock_slide(physical));
+                let pointer = (delta * w.window().scale_factor()).round() as i32;
+                let drag = press.get().unwrap_or_else(|| {
+                    let begun = crate::dock::SlideDrag::begin(core.host.cursor(), window_at(&w));
+                    press.set(Some(begun));
+                    begun
+                });
+                // The same axis the pill measures: a side dock (1 left, 2 right) slides along y.
+                let vertical = w.get_dock_edge() <= 2;
+                let total = drag.total(core.host.cursor(), window_at(&w), pointer, vertical);
+                core.act_effects(|ctl| ctl.dock_slide(total));
             });
         }
         wire_effects!(on_resize_requested, |ctl, edge| ctl.resize(edge_of(edge)));
@@ -998,6 +1138,10 @@ where
                     },
                 )
             },
+            typed_trigger: {
+                let core = Rc::clone(&core);
+                Rc::new(move |out: crate::typing_worker::Out| core.typed(out))
+            },
             frame_changed: {
                 let core = Rc::clone(&core);
                 Rc::new(move |monitor: &Monitor, frame| {
@@ -1058,9 +1202,22 @@ where
                         if core.controller.try_borrow_mut().is_err() {
                             return false;
                         }
-                        core.act(|ctl| {
-                            ctl.drop_create(paths, crate::item_editor::Origin::Panel, None);
+                        let started = core.act(|ctl| {
+                            ctl.drop_begin(paths, crate::item_editor::Origin::Panel, None)
                         });
+                        if let Some(run) = started {
+                            // The files are read off the UI thread; the Panel stays alive.
+                            let core = Rc::clone(&core);
+                            crate::drop_read::drive(
+                                run,
+                                Rc::new(move |run, done| {
+                                    if core.controller.try_borrow_mut().is_err() {
+                                        return Err(Box::new((run, done)));
+                                    }
+                                    Ok(core.act(|ctl| ctl.drop_read_done(run, done)))
+                                }),
+                            );
+                        }
                         true
                     });
                 })
@@ -1135,6 +1292,62 @@ fn edge_of(edge: ui::ResizeEdge) -> Edge {
         ui::ResizeEdge::TopRight => Edge::TopRight,
         ui::ResizeEdge::BottomLeft => Edge::BottomLeft,
         ui::ResizeEdge::BottomRight => Edge::BottomRight,
+    }
+}
+
+/// Which suggestion hint is on screen, and the newest hint number seen. A worker that was
+/// switched off and on again may still deliver for its old hints; their numbers tell them apart.
+#[derive(Default)]
+struct HintIds {
+    shown: std::cell::Cell<u64>,
+    newest: std::cell::Cell<u64>,
+}
+
+impl HintIds {
+    /// Whether a show for hint `id` is current (not older than one already seen); records it.
+    fn admit(&self, id: u64) -> bool {
+        if id < self.newest.get() {
+            return false;
+        }
+        self.newest.set(id);
+        true
+    }
+
+    /// Hint `id` is on screen (0: none is); returns the number it replaced, 0 for none.
+    fn shown(&self, id: u64) -> u64 {
+        self.shown.replace(id)
+    }
+
+    /// Whether hint `id` is the one on screen.
+    fn is_current(&self, id: u64) -> bool {
+        id != 0 && id == self.shown.get()
+    }
+
+    /// Takes the shown hint's number, leaving none.
+    fn take(&self) -> u64 {
+        self.shown.replace(0)
+    }
+}
+
+#[cfg(test)]
+mod hint_id_tests {
+    use super::HintIds;
+
+    #[test]
+    fn an_old_hide_accept_or_show_is_ignored() {
+        let ids = HintIds::default();
+        assert!(ids.admit(5));
+        assert_eq!(ids.shown(5), 0);
+        assert!(ids.is_current(5));
+        // A newer hint replaces it; everything addressed to the old number is stale.
+        assert!(ids.admit(9));
+        assert_eq!(ids.shown(9), 5, "the replaced hint is reported");
+        assert!(!ids.is_current(5), "an old Hide/Accept does not match");
+        assert!(!ids.admit(5), "an old Show is refused");
+        assert!(ids.is_current(9));
+        assert_eq!(ids.take(), 9);
+        assert!(!ids.is_current(9), "nothing is on screen after a take");
+        assert!(!ids.is_current(0));
     }
 }
 
@@ -1306,8 +1519,26 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             .map(|(i, r)| {
                 let mut row = panel_row(r, view.dark);
                 // Collapsed "Deleted · Undo" rows do not take a number: the live rows count 1, 2, 3.
-                row.ghosts_before =
-                    to_i32(view.rows[..i].iter().filter(|x| x.deleted_pending).count());
+                // Neither do group headers.
+                row.ghosts_before = to_i32(
+                    view.rows[..i]
+                        .iter()
+                        .filter(|x| x.deleted_pending || x.header.is_some())
+                        .count(),
+                );
+                // A group's items count off under their header: "2 of 5".
+                if r.grouped {
+                    let before = view.rows[..i]
+                        .iter()
+                        .rev()
+                        .take_while(|x| x.grouped)
+                        .count();
+                    let header = view.rows[..i - before]
+                        .last()
+                        .and_then(|x| x.header.as_ref());
+                    row.set_position = to_i32(before + 1);
+                    row.set_size = header.map_or(0, |h| to_i32(h.count));
+                }
                 row.stack_position = marked
                     .iter()
                     .position(|id| *id == r.id)
@@ -1425,9 +1656,11 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
                     entry,
                     ItemMenuEntry::MoveUp { enabled: false }
                         | ItemMenuEntry::MoveDown { enabled: false }
+                        | ItemMenuEntry::GroupUp { enabled: false }
+                        | ItemMenuEntry::GroupDown { enabled: false }
                 ),
                 separator: entry == ItemMenuEntry::Separator,
-                destructive: entry == ItemMenuEntry::Trash,
+                destructive: matches!(entry, ItemMenuEntry::Trash | ItemMenuEntry::DeleteGroup),
                 ..Default::default()
             });
             window.set_item_menu_entries(model(entries));
@@ -1441,6 +1674,9 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     );
     window.set_marked_count(to_i32(view.marked_count));
     window.set_trash_focus_row(view.focus_row.map_or(-1, to_i32));
+    window.set_has_groups(view.rows.iter().any(|r| r.header.is_some()));
+    window.set_rename_row(view.rename_row.map_or(-1, to_i32));
+    window.set_rename_seq(i32::try_from(view.rename_seq).unwrap_or(i32::MAX));
     window.set_trash_focus_seq(i32::try_from(view.focus_seq).unwrap_or(i32::MAX));
     window.set_select_mode(view.select_mode);
     window.set_delete_mode(view.delete_mode);
@@ -1683,6 +1919,12 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
         deleted_pending: row.deleted_pending,
         formatted: row.formatted && !row.sensitive,
         ghosts_before: 0,
+        is_header: row.header.is_some(),
+        group_count: row.header.as_ref().map_or(0, |h| to_i32(h.count)),
+        group_collapsed: row.header.as_ref().is_some_and(|h| h.collapsed),
+        grouped: row.grouped,
+        set_position: 0,
+        set_size: 0,
     }
 }
 
@@ -1732,6 +1974,8 @@ pub(crate) fn item_kind_of(kind: ItemKind, sensitive: bool) -> ui::ItemKind {
 pub(crate) enum Payload {
     Item(snipdeck_core::ItemId),
     List(snipdeck_core::ListId),
+    /// A group's header, dragged in the Main window.
+    Group(snipdeck_core::GroupId),
 }
 
 impl Payload {
@@ -1770,6 +2014,8 @@ mod tests {
             marked: false,
             deleted_pending: false,
             formatted: false,
+            header: None,
+            grouped: false,
         }
     }
 

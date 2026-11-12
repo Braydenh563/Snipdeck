@@ -21,6 +21,7 @@ mod commands_ctl;
 mod create_ctl;
 mod dock_ctl;
 mod editor_ctl;
+mod group_ctl;
 mod history_ctl;
 mod library;
 mod lock_ctl;
@@ -36,9 +37,11 @@ mod symbol_ctl;
 #[cfg(test)]
 mod tests;
 mod toast_ctl;
+mod trigger_ctl;
 mod use_ctl;
 mod views;
 
+pub use create_ctl::DropRun;
 pub use history_ctl::HistoryView;
 pub use library::Library;
 pub use lock_ctl::{MasterProblem, MasterState};
@@ -47,6 +50,7 @@ pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, Lis
 pub use panel_select::LABELS;
 pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 pub use symbol_ctl::{IconExport, IconSave, SaveOutcome, SymbolChoice, SymbolMenuEntry};
+pub use trigger_ctl::{HintOutcome, TypedOutcome};
 pub use views::{
     BoardDeleteView, ChooseEntry, ChooseLabel, ChooseMenu, ClearListView, Effect, FillSubmission,
     FillView, ListDeleteView, PickerView, StackView, ToastPhase, ToastView, UseResult, View,
@@ -200,6 +204,8 @@ pub struct Controller<S, C, K, T> {
     /// The template fill form, while it is open.
     fill: Option<FillModel>,
     fill_seq: u64,
+    /// A typed trigger to erase once the fill form is confirmed.
+    fill_erase: Option<views::FillErase>,
     /// Where "paste next" is in its run.
     queue: PasteQueue,
     /// The items marked for a paste stack, in marking order.
@@ -223,6 +229,13 @@ pub struct Controller<S, C, K, T> {
     /// the list), and a count that goes up with each delete.
     focus_row: Option<usize>,
     focus_seq: u64,
+    /// The header row that should start its inline rename (a group just made), and a counter
+    /// that tells the window it is a new request.
+    rename_panel: group_ctl::Rename,
+    /// The same for the Main window: each window has its own editor.
+    rename_main: group_ctl::Rename,
+    /// What a new group is called until the user renames it (the window's translated word).
+    group_name: String,
     /// The Main window's state.
     main: MainModel,
     /// The list or board editor, while one is open.
@@ -280,6 +293,14 @@ pub struct Controller<S, C, K, T> {
     lock: lock_ctl::LockState,
     /// Switches the clipboard listener of the Recent inbox (see `recent_ctl.rs`).
     recent_gate: Option<snipdeck_platform::clipboard_watch::WatchGate>,
+    /// The typed-trigger service (keyboard hook), once the host hands it over.
+    typing: Option<Box<dyn crate::host::TypingControl>>,
+    /// The trigger list last sent to the typing service, so an unchanged list is not sent again.
+    typing_sent: Vec<(snipdeck_core::Trigger, snipdeck_core::ItemId)>,
+    /// Whether the candidate list handed over was built with suggestions on.
+    typing_suggest: bool,
+    /// Whether the typing service was last told to run.
+    typing_on: Option<bool>,
     /// Told whether clipboard history is on and whether it is paused, for the tray menu's
     /// "Pause history" entry (see `recent_ctl.rs`).
     tray_history: Option<recent_ctl::HistorySink>,
@@ -406,6 +427,7 @@ where
             toast_seq: 0,
             picker: None,
             fill: None,
+            fill_erase: None,
             fill_seq: 0,
             queue: PasteQueue::default(),
             stack: Vec::new(),
@@ -418,6 +440,9 @@ where
             delete_list: None,
             focus_row: None,
             focus_seq: 0,
+            rename_panel: group_ctl::Rename::default(),
+            rename_main: group_ctl::Rename::default(),
+            group_name: String::from("Group"),
             main,
             editor: None,
             editor_seq: 0,
@@ -448,6 +473,10 @@ where
             pending: Vec::new(),
             lock: lock_ctl::LockState::new(shown_at),
             recent_gate: None,
+            typing: None,
+            typing_sent: Vec::new(),
+            typing_suggest: false,
+            typing_on: None,
             tray_history: None,
             screen_clip: crate::screen_clip::ScreenClipFlow::new(),
             screen_clip_host: None,
@@ -475,6 +504,29 @@ where
 
     // ---- Reading -----------------------------------------------------------------------------
 
+    /// The fill form's view, with a sensitive template's text masked (the Picker and the
+    /// lists mask it the same way; an unreadable item masks too).
+    fn fill_view(&self) -> Option<FillView> {
+        self.fill.as_ref().map(|f| {
+            let masked = self.store.item(f.item()).is_ok_and(|i| i.sensitive);
+            FillView {
+                seq: self.fill_seq,
+                title: f.title().to_owned(),
+                fields: f.fields().to_vec(),
+                preview: if masked {
+                    String::new()
+                } else {
+                    f.preview(
+                        self.clock.now(),
+                        &self.tz,
+                        Locale::for_tag(&self.settings.language),
+                    )
+                },
+                masked,
+            }
+        })
+    }
+
     /// Everything the window shows now.
     #[must_use]
     pub fn view(&self) -> View {
@@ -498,6 +550,10 @@ where
                     .collect();
             }
         }
+        let rename_row = self.rename_panel.group.and_then(|g| {
+            rows.iter()
+                .position(|r| r.header.as_ref().is_some_and(|h| h.group == g))
+        });
         View {
             board_name,
             current_tab: tabs.iter().position(|t| t.active).unwrap_or(0),
@@ -538,6 +594,8 @@ where
             marked_count: self.model.marked_count(),
             focus_row: self.focus_row,
             focus_seq: self.focus_seq,
+            rename_row,
+            rename_seq: self.rename_panel.seq,
             select_mode: self.select_mode,
             delete_mode: self.delete_mode,
             clear_list: self.clear_list_view(),
@@ -558,26 +616,7 @@ where
                 selected: p.selected(),
                 footer: self.model.footer(),
             }),
-            fill: self.fill.as_ref().map(|f| {
-                // A sensitive template's text must not reach the window (the Picker and the
-                // lists mask it the same way); an unreadable item masks too.
-                let masked = self.store.item(f.item()).is_ok_and(|i| i.sensitive);
-                FillView {
-                    seq: self.fill_seq,
-                    title: f.title().to_owned(),
-                    fields: f.fields().to_vec(),
-                    preview: if masked {
-                        String::new()
-                    } else {
-                        f.preview(
-                            self.clock.now(),
-                            &self.tz,
-                            Locale::for_tag(&self.settings.language),
-                        )
-                    },
-                    masked,
-                }
-            }),
+            fill: self.fill_view(),
             recent: self.recent_view(),
         }
     }
@@ -935,6 +974,7 @@ where
         {
             self.picker = None;
             self.fill = None;
+            self.fill_erase = None;
         }
         self.on_target_changed();
         if self.hides_on_blur() {

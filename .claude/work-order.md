@@ -1,5 +1,5 @@
 mode: continue
-status: active
+status: done
 max-continues: 300
 max-idle-minutes: 60
 started: 2026-11-07 (resumed)
@@ -30,10 +30,24 @@ resumed: 2026-11-09 after idle-guard stop during a long gate run (commits c7f28a
 - [x] Recent captures images, files and rich text (owner 2026-10-26), with size caps and the privacy markers
 - [x] v1.1: placeholders {uuid} + date maths, paste transforms, richer fill-ins
 - [x] v1.1: importers (TextExpander, Espanso, PhraseExpress, Beeftext): backend merged 947c9b4; Settings import chooser wiring + Note warnings display left
-- [ ] v1.1: groups inside a list (O46), tips window
-- [ ] v1.1: typed-trigger expansion (opt-in, off by default, honours Sensitive + never-paste list)
-- [ ] v1.1: suggest-as-you-type at the caret (opt-in), rich paste, Windows Hello unlock
-- [ ] Final: full gate, polish pass (ux-auditor + blind-tester on Panel, Settings, palette, shortcuts, toasts), docs, morning summary
+- [x] v1.1: groups inside a list (O46) [tips done 4] -> worker session_01NKjURwUK2uTpedr6rZ5xYV, branch claude/v11-groups (f430809 reviewed 06:45: 2 HIGH, 4 MEDIUM, 3 LOW sent back; 05ee5e7 re-review: 2 MEDIUM; 8874b98 merged 08:35)
+- [x] v1.1: typed-trigger expansion (opt-in, off by default, honours Sensitive + never-paste list) -> worker session_01NKjURtkiRo8LLwynuYFyy5, branch claude/v11-typing (5b then 6; 6eaf3e8: 5 MEDIUM 5 LOW; 05582f3 re-review 09:00: 1 HIGH, 3 MEDIUM sent back; 84c4d20 round 3 merged 663d164; audit2 6aaf630 merged 1e675e9)
+- [x] v1.1: suggest-as-you-type at the caret (opt-in) [typing worker], rich paste [done 7], Windows Hello unlock -> worker session_01NKjURtLEn1uEjCJX5KgxGA, branch claude/v11-hello (c6f30f0: 4 MEDIUM 5 LOW; 34993ba re-review: 1 MEDIUM 3 LOW + 2 partial sent back); item 6 split: suggest UI claude/v11-suggest (Hello worker), hook/ctl (typing worker) [b71810a re-reviewed 08:10: 1 MEDIUM, 4 LOW sent back]
+- [x] Polish: tips pictures end on row edges, distinct Show Panel icon, scroll-focus tests (merged dc432fe); final audit 1: min window widths follow text size (merged db6cab3)
+- [x] Align placeholder chip column (merged 07:30)
+- [x] Audit 1b keyboard walk -> audit worker, branch claude/v11-audit (merged fb9209c; goldens after the Tab-order fixes)
+- [x] Final audit 2 (Hello + typing): report docs/reviews/final-audit-2.md; Hello A1/A5/A7 done 5a19d49, review: 1 HIGH (copy outlives key) 1 MED 6 LOW fixed 76dba4a, re-review 8/8 confirmed, merged a1886b9; 5 LOW + nit fixed 0f1f2f6, merged, typing B3-B10 -> typing worker
+- [x] Import notes LOWs + docs refresh (merged 7310bd0, 63c0259)
+- [x] In-app help and shortcut lists for groups, triggers, Hello (merged 07cd1f0; Hello settings-search key after the Hello merge)
+- [x] Groups in the Main window (merged c3a53a0; footer counts items, one group_move_on path; reviewer running)
+- [x] Main groups palette commands, shortcut rows, guide + CHANGELOG (merged 3b5f7ad); Windows steps 79-86 (e53c97a)
+- [x] Re-audit typing CI clippy + 2.25x switch fix (merged 9bb51f3)
+- [x] Groups in Main review fixes (merged 7e58ab3) + Panel header menu fold/move (merged)
+- [x] Groups a11y (Alt+Up/Down, header keys, window tests) merged (b2c1b01)
+- [x] Groups measurements (tree, contrast, focus ring, 2.25x/320px): all pass; members say n of m (merged)
+- [x] Blind-test fixes: README hotkeys, trigger/palette/groups wording, guide -> typing worker claude/v11-learn; Hello prerequisites -> Hello worker claude/v11-hello-learn; Panel header menu fold/move -> groups worker claude/v11-header-menu (all merged: learn dd52884, hello-learn, header-menu)
+- [x] ux-auditor findings: H1 search gap, H3 toast wrap, M1 shortcuts clip, M5 keycap or, L3 palette width -> audit worker claude/v11-ux-fit; M2/L1/L2 header + 2 panel_window tests -> sweep worker claude/v11-header-a11y; M3/M4/L4 a11y descriptions + toast kinds -> groups worker claude/v11-a11y-desc; H2/M6 wording -> typing worker claude/v11-learn (all merged; ux-fit ddaec4c, header-a11y b3d6cd2)
+- [x] Final: full gate, polish pass (ux-auditor + blind-tester on Panel, Settings, palette, shortcuts, toasts), docs, morning summary (gate --full green 9725802, 1.99 clippy+doc, deny, Windows check, CI green; ux-auditor re-check: 2 HIGH fixed 4f9f5c2, reviewer: 2 HIGH fixed 9725802)
 - [x] v1.1 light lane: slice 9 serde-saphyr + 3a groups data (merged ed7528b)
 - [x] v1.1 slice 5a triggers data (merged)
 - [x] v1.1 UI lane slices 1 + 2a (wt/v11-ui merged; Ctrl+Enter root cause fixed f508e86)

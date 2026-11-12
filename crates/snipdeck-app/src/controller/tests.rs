@@ -38,6 +38,7 @@ mod access;
 mod capture_stack;
 mod dock;
 mod look_settings;
+mod main_groups;
 mod menus_frame;
 mod onboarding;
 mod panel_select;

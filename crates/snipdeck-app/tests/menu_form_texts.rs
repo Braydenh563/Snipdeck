@@ -47,7 +47,7 @@ fn every_menu_row_has_words_except_the_separators() {
         );
         assert_eq!(
             app_menu_text(&w, AppMenuEntry::Commands, false, None),
-            "All commands\u{2026}"
+            "Commands\u{2026}"
         );
         assert_eq!(app_menu_text(&w, AppMenuEntry::Separator, false, None), "");
         assert_eq!(

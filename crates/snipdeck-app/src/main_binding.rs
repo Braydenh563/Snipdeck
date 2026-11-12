@@ -703,6 +703,20 @@ where
                 core.run_command(id);
             });
         }
+        wire!(on_group_requested, |ctl, i| ctl.main_group_marked(index(i)));
+        wire!(on_group_toggled, |ctl, i| ctl
+            .main_group_collapse(index(i), None));
+        wire!(on_group_collapsed_set, |ctl, i, c| ctl
+            .main_group_collapse(index(i), Some(c)));
+        wire!(on_group_renamed, |ctl, i, name| ctl
+            .main_group_rename(index(i), name.as_str()));
+        wire!(on_group_rename_requested, |ctl, i| ctl
+            .main_group_rename_start(index(i)));
+        wire!(on_group_rename_ended, |ctl| ctl.main_group_rename_ended());
+        wire!(on_group_ungroup_requested, |ctl, i| ctl
+            .main_group_ungroup(index(i)));
+        wire!(on_group_delete_requested, |ctl, i| ctl
+            .main_group_delete(index(i)));
         wire!(on_item_reorder_requested, |ctl, d| ctl
             .main_reorder_items(isize::try_from(d).unwrap_or(0)));
         wire!(on_list_reorder_requested, |ctl, i, d| ctl
@@ -720,10 +734,7 @@ where
                     .borrow()
                     .as_ref()
                     .and_then(|s| s.rows.get(index(row)))
-                    .and_then(|r| match r.key {
-                        Key::Item(id) => Some(Payload::Item(id)),
-                        _ => None,
-                    })
+                    .and_then(|r| row_payload(r.key))
                     .map_or_else(slint::DataTransfer::default, Payload::into_transfer)
             });
         }
@@ -741,14 +752,13 @@ where
         }
         {
             let core = Rc::clone(&core);
-            window.on_payload_row(move |data| match Payload::of(&data) {
-                Some(Payload::Item(id)) => core.shown.borrow().as_ref().map_or(-1, |s| {
-                    s.rows
-                        .iter()
-                        .position(|r| r.key == Key::Item(id))
-                        .map_or(-1, to_i32)
-                }),
-                _ => -1,
+            window.on_payload_row(move |data| {
+                let Some(key) = Payload::of(&data).and_then(payload_key) else {
+                    return -1;
+                };
+                core.shown.borrow().as_ref().map_or(-1, |s| {
+                    s.rows.iter().position(|r| r.key == key).map_or(-1, to_i32)
+                })
             });
         }
         {
@@ -865,9 +875,28 @@ fn watch_place<S, C, K, T>(
                         let Ok(mut c) = c.try_borrow_mut() else {
                             return false;
                         };
-                        c.drop_create(paths, crate::item_editor::Origin::Main, None);
+                        let started = c.drop_begin(paths, crate::item_editor::Origin::Main, None);
                         drop(c);
                         crate::binding::redraw_all();
+                        if let Some(run) = started {
+                            // The files are read off the UI thread; the window stays alive.
+                            let controller = controller.clone();
+                            crate::drop_read::drive(
+                                run,
+                                Rc::new(move |run, done| {
+                                    let Some(c) = controller.upgrade() else {
+                                        return Ok(None);
+                                    };
+                                    let Ok(mut c) = c.try_borrow_mut() else {
+                                        return Err(Box::new((run, done)));
+                                    };
+                                    let next = c.drop_read_done(run, done);
+                                    drop(c);
+                                    crate::binding::redraw_all();
+                                    Ok(next)
+                                }),
+                            );
+                        }
                         true
                     });
                 }
@@ -1245,6 +1274,16 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
         window.set_query(screen.query.as_str().into());
     }
     window.set_rows_reorderable(screen.reorderable);
+    window.set_has_groups(screen.rows.iter().any(|r| r.header.is_some()));
+    window.set_list_total(to_i32(list_total(&screen.rows)));
+    let rename_row = screen.rename_row.map_or(-1, to_i32);
+    if window.get_rename_row() != rename_row {
+        window.set_rename_row(rename_row);
+    }
+    let rename_seq = to_i32(usize::try_from(screen.rename_seq).unwrap_or(0));
+    if window.get_rename_seq() != rename_seq {
+        window.set_rename_seq(rename_seq);
+    }
     window.set_list_sort(sort_index(screen.list_sort));
     window.set_reorder_offer(screen.reorder_offer);
     // The window runs ahead of the setting while the splitter is dragged: only a change of the setting is pushed.
@@ -1327,6 +1366,35 @@ where
     );
 }
 
+/// What a dragged row carries: an item, or a group's header (a note or a header only; nothing else drags).
+fn row_payload(key: Key) -> Option<Payload> {
+    match key {
+        Key::Item(id) => Some(Payload::Item(id)),
+        Key::Group(id) => Some(Payload::Group(id)),
+        _ => None,
+    }
+}
+
+/// The row a dropped payload stands for.
+fn payload_key(payload: Payload) -> Option<Key> {
+    match payload {
+        Payload::Item(id) => Some(Key::Item(id)),
+        Payload::Group(id) => Some(Key::Group(id)),
+        Payload::List(_) => None,
+    }
+}
+
+/// The items a list holds: headers stand for their group's count (members folded away included) and the members
+/// shown under an open header are not counted twice.
+fn list_total(rows: &[crate::main_window::Row]) -> usize {
+    rows.iter()
+        .map(|r| match &r.header {
+            Some(h) => h.count,
+            None => usize::from(!r.grouped),
+        })
+        .sum()
+}
+
 fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
     let (list_name, color) = row.list.as_ref().map_or_else(
         || (SharedString::new(), slint::Color::default()),
@@ -1341,7 +1409,11 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
     let marks = row.marks.fields();
     ui::MainRow {
         kind: item_kind_of(row.kind, row.sensitive),
-        title: row.title.as_str().into(),
+        title: row
+            .header
+            .as_ref()
+            .map_or(row.title.as_str(), |h| h.name.as_str())
+            .into(),
         mark_before: marks.mark_before.as_str().into(),
         mark_text: marks.mark_text.as_str().into(),
         preview: if row.sensitive {
@@ -1368,6 +1440,13 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
         image: slint::Image::default(),
         pinned: row.pinned,
         selected: row.selected,
+        is_header: row.header.is_some(),
+        group_count: row
+            .header
+            .as_ref()
+            .map_or(0, |h| i32::try_from(h.count).unwrap_or(i32::MAX)),
+        group_collapsed: row.header.as_ref().is_some_and(|h| h.collapsed),
+        grouped: row.grouped,
     }
 }
 
@@ -1628,6 +1707,68 @@ mod tests {
     }
 
     #[test]
+    fn a_dragged_header_travels_as_a_group_payload_and_finds_its_row_again() {
+        use crate::main_window::Key;
+        let (item, group) = (
+            snipdeck_core::ItemId::generate(),
+            snipdeck_core::GroupId::generate(),
+        );
+        let rows = [Key::Group(group), Key::Item(item)];
+        for (at, key) in rows.iter().enumerate() {
+            let data = row_payload(*key).expect("a row drags").into_transfer();
+            let back = Payload::of(&data).and_then(payload_key);
+            assert_eq!(back, Some(*key));
+            assert_eq!(rows.iter().position(|k| Some(*k) == back), Some(at));
+        }
+        assert_eq!(
+            row_payload(Key::Board(snipdeck_core::BoardId::generate())),
+            None
+        );
+        assert_eq!(
+            payload_key(Payload::List(snipdeck_core::ListId::generate())),
+            None
+        );
+    }
+
+    #[test]
+    fn the_list_total_counts_items_not_headers_and_folded_members() {
+        use crate::main_window::{Key, Row};
+        use crate::panel::GroupHeader;
+        let item = |grouped: bool, header: Option<GroupHeader>| Row {
+            key: Key::Item(snipdeck_core::ItemId::generate()),
+            kind: snipdeck_core::ItemKind::Text,
+            sensitive: false,
+            title: String::new(),
+            preview: String::new(),
+            list: None,
+            pinned: false,
+            label: None,
+            selected: false,
+            marks: crate::search_mark::marks("", "", false, None, ""),
+            header,
+            grouped,
+        };
+        let head = |count, collapsed| {
+            Some(GroupHeader {
+                group: snipdeck_core::GroupId::generate(),
+                name: "G".into(),
+                count,
+                collapsed,
+            })
+        };
+        let rows = [
+            item(false, head(2, false)),
+            item(true, None),
+            item(true, None),
+            item(false, None),
+            item(false, None),
+            item(false, head(5, true)),
+        ];
+        assert_eq!(list_total(&rows), 9);
+        assert_eq!(list_total(&rows[3..5]), 2);
+    }
+
+    #[test]
     fn main_row_carries_the_marks_and_masks_a_secret() {
         use crate::main_window::{Key, Row};
         let mut row = Row {
@@ -1647,6 +1788,8 @@ mod tests {
                 None,
                 "report",
             ),
+            header: None,
+            grouped: false,
         };
         let mapped = main_row(&row, false);
         assert_eq!(mapped.mark_before.as_str(), "Q3 ");

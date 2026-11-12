@@ -3,13 +3,14 @@
 // The chords are not here: they are key names, which are not translated, and the app fills the four global
 // ones from the settings. The app filters and groups the rows, because Rust cannot reach `@tr`.
 export global ShortcutTexts {
-    // In the order of `Scope::ALL`: Anywhere, Main window, Panel, Picker, Editors.
+    // In the order of `Scope::ALL`: Anywhere, Main window, Panel, Picker, Editors, Unlock window.
     out property <[string]> scopes: [
         @tr("Anywhere in Windows"),
         @tr("Main window"),
         @tr("Panel"),
         @tr("Picker"),
         @tr("Editors"),
+        @tr("Unlock window"),
     ];
     // Under the "Anywhere in Windows" group.
     out property <string> global-note: @tr("Change these in Settings.");
@@ -19,8 +20,11 @@ export global ShortcutTexts {
         @tr("Open the Picker at your cursor"),
         @tr("Quick capture the clipboard"),
         @tr("Paste the next item of a stack"),
+        @tr("Replace a typed trigger with its item (Windows only)"),
+        @tr("Insert the suggested item (Windows only)"),
         // Main window.
-        @tr("Command palette (every action)"),
+        @tr("Commands (every action)"),
+        @tr("Commands (every action)"),
         @tr("New item (quick add in an open list)"),
         @tr("New list"),
         @tr("Search"),
@@ -30,15 +34,24 @@ export global ShortcutTexts {
         @tr("Use the item"),
         @tr("Copy the item"),
         @tr("Edit the item"),
+        @tr("Edit the item"),
         @tr("Duplicate the item"),
         @tr("Pin or unpin the item"),
         @tr("Move the item to the Trash"),
         @tr("Select every item"),
+        @tr("Select or unselect the row"),
         @tr("Undo"),
         @tr("Redo"),
         @tr("Close the window"),
         @tr("Show or hide the sidebar"),
         @tr("Move the item up or down its list"),
+        @tr("Hold to reveal a hidden item"),
+        @tr("Group the selected rows"),
+        @tr("Fold or unfold a group"),
+        @tr("Rename a group"),
+        @tr("Move the group up"),
+        @tr("Move the group down"),
+        @tr("Delete a group and its items"),
         // Panel.
         @tr("Filter as you type"),
         @tr("Move through the items"),
@@ -70,6 +83,11 @@ export global ShortcutTexts {
         @tr("Keyboard shortcuts"),
         @tr("User guide"),
         @tr("Clear the search, then close"),
+        @tr("Group the selected rows"),
+        @tr("Fold or unfold a group"),
+        @tr("Rename a group"),
+        @tr("Move the group up or down"),
+        @tr("Ungroup (the group's menu)"),
         // Picker.
         @tr("Move through the results"),
         @tr("Paste the result"),
@@ -82,6 +100,8 @@ export global ShortcutTexts {
         @tr("Save"),
         @tr("Preview"),
         @tr("Close"),
+        // Unlock window.
+        @tr("Unlock with Windows Hello (Windows only)"),
     ];
     // The search box.
     out property <string> search-placeholder: @tr("Search shortcuts");

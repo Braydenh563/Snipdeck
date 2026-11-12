@@ -3,9 +3,52 @@
 Owner steps for Windows. Nothing here has been run yet: see [What is unverified](#what-is-unverified-until-run-on-windows).
 The Microsoft Store page you may have been looking for is this one. [`store.md`](store.md) is the storage layer.
 
-**The portable zip stays the main download.** It is built by `.github/workflows/release-build.yml`
-and attached to the GitHub Release with its SHA-256 and a build attestation. MSIX and signing add
-a second channel and fewer warnings. They do not replace the zip.
+## Releasing a version
+
+1. Push everything to `main` and wait for CI to go green.
+2. On GitHub: Actions > Release > Run workflow, branch `main`, type the version without the `v` (for
+   example `1.1.0`), Run.
+
+The workflow writes the version into `Cargo.toml` and `Cargo.lock`, renames the changelog's `## [Unreleased]`
+section to `## [1.1.0] - <today>` (`scripts/bump_version.py`), commits `Release v1.1.0` to `main`, tags it,
+and publishes the GitHub Release with that changelog section as the notes. It then builds, smoke-tests and
+attaches `Snipdeck-Setup-1.1.0.exe`, the portable zip, their `.sha256` files and build attestations. The
+Store MSIX is kept as a workflow artifact when the MSIX variables are set (section 1).
+
+It refuses a version lower than the current one, an existing tag, and a run from any branch but `main`.
+If `main` is protected against direct pushes, let `github-actions` bypass the rule, or bump the version
+in a PR first (the workflow then has nothing to commit). Pushing a tag `v1.1.0` yourself still works when
+`Cargo.toml` already says `1.1.0`.
+
+## Installer (Setup .exe)
+
+The normal download for a home user is `Snipdeck-Setup-<version>.exe`, built with Inno Setup 6 from
+[`packaging/inno/snipdeck.iss`](../packaging/inno/snipdeck.iss). The portable zip stays available.
+
+- **No admin.** It installs for the current user only, into `%LOCALAPPDATA%\Programs\Snipdeck`
+  (the wizard lets you pick another folder). It adds a Start menu shortcut, an optional desktop shortcut
+  and an entry in Settings > Apps. Windows 10 version 1903 or newer, 64-bit.
+- **Start with Windows** is not an installer option. The app owns that setting (first run or Settings).
+- **Your library is never moved.** Cards, settings and backups live in `%LOCALAPPDATA%\Snipdeck`
+  whatever the install folder is.
+- **Upgrade.** Run a newer Setup over the old one. It asks a running Snipdeck to quit (`snipdeck.exe --quit`,
+  the same as tray > Quit) and waits up to 15 seconds. If it is still running, Setup stops with a message
+  telling you to quit it from the tray icon. A silent upgrade (`/VERYSILENT`) starts Snipdeck again afterwards
+  if it was running. An old version that does not know `--quit` just times out the same way.
+- **Uninstall** (Settings > Apps) removes the program and the "Start with Windows" entry. It then asks whether
+  to also erase the library in `%LOCALAPPDATA%\Snipdeck` (default No). A silent uninstall never erases it.
+- **SmartScreen.** Until the installer is signed (section 2, SignPath is the plan), Windows shows "Windows
+  protected your PC": choose More info > Run anyway. Check the download against the `.sha256` file.
+- **Build locally** (Windows, Inno Setup 6 installed): build the release exe, then
+  `iscc /DAppVersion=1.0.0 /DSourceExe=C:\path\to\target\release\snipdeck-app.exe packaging\inno\snipdeck.iss`.
+  The result is `dist\Snipdeck-Setup-1.0.0.exe`. Optional: `/DOutputSuffix=-dev-abc1234`, and `/DSignTool=<name>`
+  with a matching `/S<name>=...` to sign. `python3 scripts/installer_check.py` checks the script on any OS.
+- **CI.** `release.yml` builds it after the exe smoke test, installs it silently into a temp folder, runs
+  `--check-db` from there, uninstalls and checks the exe is gone. `release-build.yml` builds a dev installer.
+
+**The portable zip stays available.** It is built by `.github/workflows/release.yml` (dev builds by
+`release-build.yml`) and attached to the GitHub Release with its SHA-256 and a build attestation, like the
+Setup .exe. MSIX and signing add a second channel and fewer warnings. They do not replace the zip.
 
 ## Facts to check before relying on them
 
@@ -23,7 +66,7 @@ The manifest template and the logo script are in [`packaging/msix/`](../packagin
 | Executable | `target\release\snipdeck-app.exe`, shipped as `snipdeck.exe` (the workflow renames it) |
 | Version | `1.0.0` in `Cargo.toml`. MSIX needs four parts: `1.0.0.0` |
 | Icon sources | `assets/logo/snipdeck-icon.svg` (vector), `assets/logo/snipdeck.ico` (embedded in the exe) |
-| Start with Windows | Settings toggle, runs `snipdeck.exe --hidden` (`settings_binding.rs`) |
+| Start with Windows | Settings toggle, runs `snipdeck.exe --hidden` (`settings_binding.rs`); in the Store build the WinRT `StartupTask` `SnipdeckStartup` |
 | Licence | GPL-3.0-only, repository `https://github.com/Braydenh563/Snipdeck` |
 
 ### AppxManifest.xml fields
@@ -37,7 +80,7 @@ The manifest template and the logo script are in [`packaging/msix/`](../packagin
 | `Properties DisplayName` | `Snipdeck` | |
 | `Properties PublisherDisplayName` | your Partner Center publisher name | |
 | `Properties Logo` | `Assets\StoreLogo.png` (50x50) | |
-| `Dependencies TargetDeviceFamily` | `Windows.Desktop`, `MinVersion="10.0.17763.0"`, `MaxVersionTested` a current build | Set `MinVersion` to what the app was tested on. |
+| `Dependencies TargetDeviceFamily` | `Windows.Desktop`, `MinVersion="10.0.18362.0"` (Windows 10 1903, equal to the installer), `MaxVersionTested` a current build | Set `MinVersion` to what the app was tested on. |
 | `Application Executable` | `snipdeck.exe` | |
 | `Application EntryPoint` | `Windows.FullTrustApplication` | |
 | `uap:VisualElements` | `DisplayName="Snipdeck"`, `Description`, `BackgroundColor="transparent"`, `Square44x44Logo`, `Square150x150Logo` | |
@@ -47,20 +90,18 @@ The manifest template and the logo script are in [`packaging/msix/`](../packagin
 Declare the namespaces `uap`, `desktop` (for `desktop:`), `rescap` and list them in
 `IgnorableNamespaces`. Use the schema reference on Microsoft Learn for the exact namespace URIs.
 
-**Start with Windows needs a code change before the Store build.** Today the app writes
-`HKCU\...\Run\Snipdeck` (`windows/autostart.rs`). Inside an MSIX package, registry writes under
-HKCU are redirected to a private hive, so Windows would not run that entry at logon. A packaged
-build must turn the startup task on with the WinRT `StartupTask` API instead, and must start
-hidden when launched by it (the manifest cannot pass `--hidden`; the app would have to treat the
-startup activation as hidden). Until that is done, **leave the `startupTask` extension out** and
-hide the toggle or explain it in the Store build. This is a follow-up for the code, not this page.
+**Start with Windows in the Store build.** The manifest declares the `StartupTask` (`SnipdeckStartup`,
+`Enabled="false"`: off until the user turns it on). A packaged app cannot use the HKCU Run value (registry
+writes are redirected), so the app calls the WinRT `StartupTask` API for it. `scripts/installer_check.py`
+keeps the id in the manifest and the name `snipdeck.exe` honest.
 
-Two more packaged-app differences to expect (unverified):
+Packaged-app differences to expect (unverified):
 
-- The data folder. Writes under `%APPDATA%` and `%LOCALAPPDATA%` by a packaged desktop app are
-  redirected into the package's own folder, and deleted on uninstall. Check where Snipdeck keeps
-  `snipdeck.db`, decide whether a Store user's data should survive uninstall, and update
-  [`user-guide.md`](user-guide.md) ("Open data folder") if the path differs.
+- The data folder. AppData virtualisation stays ON (the manifest has no `unvirtualizedResources`). On
+  Windows 10 1903 and newer, new files a packaged desktop app writes under `%APPDATA%` and `%LOCALAPPDATA%`
+  go into the package's own folder, so **the Store build's data is per package and is removed when the app is
+  uninstalled**. It is not shared with the Setup or portable install. Check where Snipdeck keeps `snipdeck.db`
+  and update [`user-guide.md`](user-guide.md) ("Open data folder") if the path differs.
 - The in-app update check. `docs/adr/0006-distribution.md` says Store builds disable it. The Store
   updates the app itself.
 
@@ -82,19 +123,48 @@ writing). *Check before relying on it.* Use `docs/images/` for screenshots.
 
 ### Build an unsigned or test-signed package
 
-On a Windows PC with the Windows SDK installed (it provides `MakeAppx.exe` and `SignTool.exe`
-under `C:\Program Files (x86)\Windows Kits\10\bin\<version>\x64\`):
+**In CI.** `release.yml` builds `Snipdeck-<version>-x64.msix` when all three repository variables are set
+(Settings > Secrets and variables > Actions > Variables), with the values from Partner Center > Product identity:
 
-1. Build the release exe: `cargo build --release -p snipdeck-app --locked`. A release build needs
-   `SNIPDECK_LICENCE_PUBLIC_KEY` set, as in [`licensing.md`](licensing.md).
-2. Make a staging folder, for example `dist\msix\`, with `snipdeck.exe`, `AppxManifest.xml` and
-   `Assets\*.png`. Keep the zip's extra files (launcher, docs) out of it: the package is just the exe.
-3. Run `MakeAppx.exe pack /d dist\msix /p dist\Snipdeck.msix`.
-4. To test it locally, sign with a self-made test certificate whose subject equals `Identity Publisher`,
-   trust that certificate in *Trusted People* on the test PC, then double-click the `.msix`.
-   The private key of that test certificate never leaves the owner's machine.
-5. Run the app from the Start menu and check the tray, the Panel hotkey, single instance, paste
-   into another app, and the data folder. Uninstall from Settings > Apps.
+| Variable | Value |
+|---|---|
+| `MSIX_IDENTITY_NAME` | `Package/Identity/Name` |
+| `MSIX_PUBLISHER` | `Publisher` (`CN=...`) |
+| `MSIX_PUBLISHER_DISPLAY_NAME` | `PublisherDisplayName` |
+
+If any is empty the step prints a notice and skips. The logos are rendered on Linux (`cairosvg` is hard to
+install on the Windows runner) and handed to the Windows job. The MSIX is unsigned (the Store signs it) and is
+kept as the workflow artifact `windows-msix` for 30 days. It is **not** attached to the GitHub Release.
+
+**By hand,** on a Windows PC with the Windows SDK (it provides `MakeAppx.exe` and `SignTool.exe` under
+`C:\Program Files (x86)\Windows Kits\10\bin\<version>\x64\`):
+
+1. Build the release exe: `cargo build --release -p snipdeck-app --locked` (needs `SNIPDECK_LICENCE_PUBLIC_KEY`,
+   see [`licensing.md`](licensing.md)).
+2. Stage a folder `dist\msix\` with `snipdeck.exe` (the renamed exe), `Assets\*.png`
+   (`python3 scripts/make_msix_assets.py`) and the filled manifest:
+   `python3 scripts/msix_manifest.py --identity-name ... --publisher "CN=..." --publisher-display-name ... --version 1.0.0 --out dist\msix\AppxManifest.xml`.
+3. `MakeAppx.exe pack /o /d dist\msix /p dist\Snipdeck.msix`.
+
+### Sideload test with a self-signed certificate
+
+Use a **test** certificate whose subject equals the manifest's `Publisher`. Its private key stays on your PC.
+
+```powershell
+$cert = New-SelfSignedCertificate -Type Custom -Subject "CN=SnipdeckTest" -KeyUsage DigitalSignature `
+  -FriendlyName "Snipdeck test" -CertStoreLocation "Cert:\CurrentUser\My" `
+  -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
+# Build the package with --publisher "CN=SnipdeckTest", then sign it:
+signtool sign /fd SHA256 /a /sha1 $cert.Thumbprint dist\Snipdeck.msix
+# Trust the certificate (administrator PowerShell), then install:
+Export-Certificate -Cert $cert -FilePath dist\SnipdeckTest.cer
+Import-Certificate -FilePath dist\SnipdeckTest.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
+Add-AppxPackage dist\Snipdeck.msix
+```
+
+Then check: Start menu entry and icon, tray, the Panel hotkey, single instance, paste into another app, the
+Start with Windows toggle (Settings > Apps > Startup shows Snipdeck), and where the data folder is. Remove it with
+`Get-AppxPackage *Snipdeck* | Remove-AppxPackage` and remove the test certificate from Trusted People afterwards.
 
 For the Store you upload the package unsigned or with any signature: the Store signs it with its own
 certificate on publication. *Check before relying on it* (Partner Center may ask for a `.msixupload`
@@ -190,7 +260,8 @@ Nothing in this page has been run. Tick each when the owner has done it.
 - [ ] The test-signed package installs, starts, and shows the right name and icon in Start, the taskbar and Settings > Apps.
 - [ ] Tray icon, global hotkeys, single-instance lock and paste into other apps work inside the package (full trust).
 - [ ] Where the packaged app keeps its data folder, and what survives uninstall and update.
-- [ ] Start with Windows: the HKCU Run value does nothing in the package; the `StartupTask` route works once built (code change needed).
+- [ ] Start with Windows in the package: the `StartupTask` `SnipdeckStartup` toggles from the app and Settings > Apps > Startup.
+- [ ] Setup .exe: installs without a prompt, upgrades over an older version (and over one that ignores `--quit`), restarts Snipdeck after a silent upgrade, uninstalls, and the erase question deletes only `%LOCALAPPDATA%\Snipdeck`. `iscc` has never been run on this script.
 - [ ] The update check is off in the packaged build.
 - [ ] Partner Center: account verification, name reservation, upload format, certification of `runFullTrust`, current fee.
 - [ ] SignPath Foundation: acceptance, required wording, the artifact configuration, signed exe passes `signtool verify /pa`, publisher name shown in file properties.

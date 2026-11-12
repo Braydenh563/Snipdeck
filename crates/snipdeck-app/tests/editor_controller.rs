@@ -32,7 +32,7 @@ use snipdeck_platform::{
     file_dialog::{FakeFilePicker, PickKind},
     testing::{FakeClipboard, FakeKeyboard, FakeTiming},
 };
-use snipdeck_store::{BlobStore, ItemRepo, ListRepo, Store, TagRepo};
+use snipdeck_store::{BlobStore, ItemRepo, ListRepo, Store, TagRepo, TriggerRepo};
 
 #[path = "support/mod.rs"]
 mod support;
@@ -1608,4 +1608,146 @@ fn the_preview_look_follows_the_panel_layout_and_the_real_main_view() {
     // The Main window's Tile view is not a setting: the preview reads the view in force.
     r.ctl.main_set_view(ViewMode::Tile);
     assert_eq!(r.ctl.item_editor_preview_look().main_view, ViewMode::Tile);
+}
+
+// ---- Triggers -----------------------------------------------------------------------------------
+
+#[test]
+fn a_trigger_is_saved_read_back_and_cleared_by_blank() {
+    let mut r = pro();
+    let id = save_new(&mut r.ctl, ItemKind::Text, "Signature", "Best, A");
+    r.ctl.open_item_editor(id);
+    assert_eq!(view(&r.ctl).trigger, "");
+    r.ctl.item_editor_set_trigger(" ;sig ");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Signature", "Best, A"));
+    assert!(!r.ctl.item_editor_open());
+    let trigger = r.ctl.store().trigger_of(id).expect("read").expect("set");
+    assert_eq!(trigger.as_str(), ";sig");
+    r.ctl.open_item_editor(id);
+    assert_eq!(view(&r.ctl).trigger, ";sig", "read back");
+    r.ctl.item_editor_set_trigger("");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Signature", "Best, A"));
+    assert_eq!(r.ctl.store().trigger_of(id).expect("read"), None);
+}
+
+#[test]
+fn a_trigger_that_hides_another_is_saved_with_a_warning() {
+    let mut r = pro();
+    let first = save_new(&mut r.ctl, ItemKind::Text, "One", "1");
+    r.ctl.open_item_editor(first);
+    r.ctl.item_editor_set_trigger(";sig");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "One", "1"));
+    assert_eq!(
+        toast(&r.ctl),
+        ToastMessage::Saved {
+            list: "Email replies".into()
+        }
+    );
+    r.ctl.open_new_item(Origin::Main);
+    r.ctl.item_editor_set_trigger(";sig2");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Two", "2"));
+    assert!(!r.ctl.item_editor_open(), "still saved");
+    assert_eq!(
+        toast(&r.ctl),
+        ToastMessage::TriggerOverlaps {
+            other: "One".into()
+        }
+    );
+    assert_eq!(r.ctl.store().triggers().expect("all").len(), 2);
+    let t = r.ctl.view().toast.expect("a toast");
+    assert_eq!(
+        t.kind,
+        snipdeck_app::toast::ToastKind::Danger,
+        "a warning, with the icon"
+    );
+    assert_eq!(
+        r.ctl.toast_tick(t.seq),
+        Some(snipdeck_app::controller::TOAST_ERROR_HOLD),
+        "held longer than a neutral toast"
+    );
+}
+
+#[test]
+fn undoing_an_edit_restores_the_trigger_and_redo_sets_it_again() {
+    let mut r = pro();
+    let id = save_new(&mut r.ctl, ItemKind::Text, "One", "1");
+    r.ctl.open_item_editor(id);
+    r.ctl.item_editor_set_trigger(";old");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "One", "1"));
+    r.ctl.open_item_editor(id);
+    r.ctl.item_editor_set_trigger(";new");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "One", "1"));
+    let code = |r: &Rig| {
+        r.ctl
+            .store()
+            .trigger_of(id)
+            .expect("read")
+            .map(|t| t.as_str().to_owned())
+    };
+    assert_eq!(code(&r).as_deref(), Some(";new"));
+    r.ctl.undo();
+    assert_eq!(code(&r).as_deref(), Some(";old"), "undo");
+    r.ctl.redo();
+    assert_eq!(code(&r).as_deref(), Some(";new"), "redo");
+}
+
+#[test]
+fn trigger_clash_shows_an_error() {
+    let mut r = pro();
+    let first = save_new(&mut r.ctl, ItemKind::Text, "One", "1");
+    r.ctl.open_item_editor(first);
+    r.ctl.item_editor_set_trigger(";x");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "One", "1"));
+    r.ctl.open_new_item(Origin::Main);
+    r.ctl.item_editor_set_trigger(";x");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Two", "2"));
+    assert!(r.ctl.item_editor_open(), "the editor stays open");
+    assert_eq!(
+        view(&r.ctl).trigger_problem,
+        Some(EditorProblem::TriggerTaken)
+    );
+    // Nothing was written, and a bad code is refused too.
+    r.ctl.item_editor_set_trigger("has space");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Two", "2"));
+    assert_eq!(
+        view(&r.ctl).trigger_problem,
+        Some(EditorProblem::TriggerInvalid)
+    );
+    assert_eq!(r.ctl.store().triggers().expect("all").len(), 1);
+    // The item keeps its own code when it is saved again.
+    r.ctl.item_editor_cancel();
+    r.ctl.open_item_editor(first);
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "One", "1"));
+    assert!(!r.ctl.item_editor_open());
+}
+
+#[test]
+fn a_sensitive_item_keeps_no_trigger() {
+    let mut r = pro();
+    let id = save_new(&mut r.ctl, ItemKind::Text, "Plain", "x");
+    r.ctl.open_item_editor(id);
+    r.ctl.item_editor_set_trigger(";p");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Plain", "x"));
+    r.ctl.open_item_editor(id);
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&EditorInput {
+        sensitive: true,
+        ..typed(&v, "Plain", "x")
+    });
+    assert!(
+        !r.ctl.item_editor_open(),
+        "saved: the code was dropped, not refused"
+    );
+    assert_eq!(r.ctl.store().triggers().expect("all").len(), 0);
 }

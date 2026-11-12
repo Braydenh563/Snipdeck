@@ -209,6 +209,140 @@ pub trait TargetSource {
     }
 }
 
+/// The typed-trigger service: the keyboard hook that watches what is typed for abbreviations.
+///
+/// The controller tells it whether anyone wants it (`set_enabled`) and which triggers exist
+/// (`set_triggers`); while it is disabled the implementation must hold no keyboard hook at all.
+pub trait TypingControl {
+    /// Installs the hook (`true`) or removes it (`false`). Idempotent. Returns `false` only when
+    /// the hook was wanted and could not be installed.
+    fn set_enabled(&mut self, on: bool) -> bool;
+    /// The triggers to watch for, as of now, and the candidates a typed prefix is matched
+    /// against for suggestions (empty when suggestions are off).
+    fn set_triggers(
+        &mut self,
+        matcher: snipdeck_core::Matcher,
+        candidates: Vec<snipdeck_core::Candidate>,
+    );
+    /// Hint number `id` is really on screen: the hook may take a plain `Tab` for it. Only the UI
+    /// thread raises the flag, and only after showing the hint.
+    fn hint_up(&mut self, id: u64);
+    /// The generation of the running worker (see `typing_worker::next_generation`); a hint number
+    /// from another generation is stale. 0 while none runs.
+    fn generation(&self) -> u64;
+    /// Hint number `id` was taken down: the hook stops taking a plain `Tab` for it. A newer
+    /// hint's flag is left alone.
+    fn hint_down(&mut self, id: u64);
+    /// The expansion for `fired` was not sent (a Snipdeck window, an excluded app, a skipped
+    /// route): the code stays in the app, so the next trigger needs a boundary of its own.
+    fn not_expanded(&mut self, fired: snipdeck_core::Fired);
+}
+
+/// A [`TypingControl`] that records what it was told. Cloning shares the state.
+#[derive(Debug, Clone, Default)]
+pub struct FakeTyping {
+    enabled: Rc<RefCell<Vec<bool>>>,
+    triggers: Rc<Cell<u32>>,
+    candidates: Rc<RefCell<Vec<snipdeck_core::Candidate>>>,
+    up: Rc<RefCell<Vec<u64>>>,
+    generation: Rc<Cell<u64>>,
+    hint: Rc<RefCell<Vec<u64>>>,
+    skipped: Rc<RefCell<Vec<snipdeck_core::Fired>>>,
+    fail_start: Rc<Cell<bool>>,
+}
+
+impl FakeTyping {
+    /// Makes every later turn-on fail, as a hook Windows refuses to install does.
+    pub fn fail_start(&self, fail: bool) {
+        self.fail_start.set(fail);
+    }
+
+    /// The candidates last handed over.
+    #[must_use]
+    pub fn candidates(&self) -> Vec<snipdeck_core::Candidate> {
+        self.candidates.borrow().clone()
+    }
+
+    /// Makes the fake report `generation` as the running worker's.
+    pub fn set_generation(&self, generation: u64) {
+        self.generation.set(generation);
+    }
+
+    /// Every `hint_up` call, in order.
+    #[must_use]
+    pub fn hint_up_history(&self) -> Vec<u64> {
+        self.up.borrow().clone()
+    }
+
+    /// Every `hint_down` call, in order.
+    #[must_use]
+    pub fn hint_history(&self) -> Vec<u64> {
+        self.hint.borrow().clone()
+    }
+
+    /// The triggers reported as not expanded, in order.
+    #[must_use]
+    pub fn not_expanded_history(&self) -> Vec<snipdeck_core::Fired> {
+        self.skipped.borrow().clone()
+    }
+
+    /// Every `set_enabled` call, in order.
+    #[must_use]
+    pub fn enabled_history(&self) -> Vec<bool> {
+        self.enabled.borrow().clone()
+    }
+
+    /// Whether the hook was ever asked to be installed.
+    #[must_use]
+    pub fn ever_enabled(&self) -> bool {
+        self.enabled.borrow().contains(&true)
+    }
+
+    /// How many trigger lists were handed over.
+    #[must_use]
+    pub fn trigger_lists(&self) -> u32 {
+        self.triggers.get()
+    }
+}
+
+impl TypingControl for FakeTyping {
+    fn set_enabled(&mut self, on: bool) -> bool {
+        self.enabled.borrow_mut().push(on);
+        !(on && self.fail_start.get())
+    }
+
+    fn set_triggers(
+        &mut self,
+        _matcher: snipdeck_core::Matcher,
+        candidates: Vec<snipdeck_core::Candidate>,
+    ) {
+        self.triggers.set(self.triggers.get() + 1);
+        *self.candidates.borrow_mut() = candidates;
+    }
+
+    fn hint_up(&mut self, id: u64) {
+        self.up.borrow_mut().push(id);
+    }
+
+    fn generation(&self) -> u64 {
+        self.generation.get()
+    }
+
+    fn hint_down(&mut self, id: u64) {
+        self.hint.borrow_mut().push(id);
+    }
+
+    fn not_expanded(&mut self, fired: snipdeck_core::Fired) {
+        self.skipped.borrow_mut().push(fired);
+    }
+}
+
+/// A Target change waiting for a flag: see [`FakeTargets::switch_when`].
+type TargetSwitch = (
+    std::sync::Arc<std::sync::atomic::AtomicBool>,
+    Option<Target>,
+);
+
 /// A scripted Target. Cloning shares the state, so a test keeps a handle after handing the
 /// source to the controller.
 #[derive(Debug, Clone, Default)]
@@ -218,6 +352,9 @@ pub struct FakeTargets {
     caret: Rc<Cell<Option<ScreenRect>>>,
     cursor: Rc<Cell<Option<(i32, i32)>>>,
     monitors: Rc<RefCell<Vec<crate::frame::Monitor>>>,
+    /// A Target change that happens once the flag is raised (from another thread, as a typed
+    /// key would be).
+    switch: Rc<RefCell<Option<TargetSwitch>>>,
 }
 
 impl FakeTargets {
@@ -230,7 +367,13 @@ impl FakeTargets {
             caret: Rc::default(),
             cursor: Rc::default(),
             monitors: Rc::default(),
+            switch: Rc::default(),
         }
+    }
+
+    /// Changes the Target to `target` the first time it is read after `flag` is raised.
+    pub fn switch_when(&self, flag: std::sync::Arc<std::sync::atomic::AtomicBool>, target: Target) {
+        *self.switch.borrow_mut() = Some((flag, Some(target)));
     }
 
     /// Adds a monitor [`monitor_at`](TargetSource::monitor_at) can find (none: the host cannot
@@ -263,6 +406,14 @@ impl FakeTargets {
 
 impl TargetSource for FakeTargets {
     fn current(&self) -> Option<Target> {
+        let raised = self
+            .switch
+            .borrow()
+            .as_ref()
+            .is_some_and(|(flag, _)| flag.load(std::sync::atomic::Ordering::SeqCst));
+        if raised && let Some((_, target)) = self.switch.borrow_mut().take() {
+            *self.current.borrow_mut() = target;
+        }
         self.current.borrow().clone()
     }
 

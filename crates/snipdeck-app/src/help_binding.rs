@@ -43,6 +43,12 @@ use crate::{
 pub const REPO_URL: &str = "https://github.com/Braydenh563/Snipdeck";
 /// "Check for updates" opens this page; the app fetches nothing itself.
 pub const RELEASES_URL: &str = "https://github.com/Braydenh563/Snipdeck/releases";
+/// The page "Check for updates" opens now: the Store's updates page in the packaged build (the
+/// Store does the updating), [`RELEASES_URL`] otherwise.
+fn updates_url() -> &'static str {
+    snipdeck_platform::startup_task::updates_url(crate::platform::is_packaged(), RELEASES_URL)
+}
+
 /// The user guide, opened in the browser by [`HelpTopic::Guide`].
 pub const GUIDE_URL: &str = "https://github.com/Braydenh563/Snipdeck/blob/main/docs/user-guide.md";
 /// The Microsoft Store page; the link stays hidden while this is `None`.
@@ -316,7 +322,7 @@ where
 
     /// Draws the Tips tab: one card per [`tips::TIPS`] entry, with the words of the language
     /// selected for the UI now.
-    fn sync_tips(&self, window: &ui::HelpWindow) {
+    fn sync_tips(&self, window: &ui::HelpWindow, pro: bool) {
         let words = ui::TipTexts::get(window);
         let (titles, firsts, seconds, images) = (
             words.get_titles(),
@@ -324,7 +330,9 @@ where
             words.get_second_lines(),
             words.get_images(),
         );
-        let shown: Vec<String> = titles.iter().map(|t| t.to_string()).collect();
+        let mut shown: Vec<String> = titles.iter().map(|t| t.to_string()).collect();
+        // The marks follow the plan: a new plan redraws the cards.
+        shown.push(pro.to_string());
         if *self.tips_shown.borrow() == shown {
             return;
         }
@@ -333,6 +341,7 @@ where
             first_line: firsts.row_data(i).unwrap_or_default(),
             second_line: seconds.row_data(i).unwrap_or_default(),
             picture: images.row_data(i).unwrap_or_default(),
+            locked: !pro && tips::TIPS[i].feature.is_some(),
         });
         window.set_tips(model(cards));
         *self.tips_shown.borrow_mut() = shown;
@@ -344,7 +353,7 @@ where
             .ok()
             .and_then(|i| tips::TIPS.get(i).copied());
         if let Some(tip) = tip {
-            self.controller.borrow_mut().try_tip(tip.action);
+            self.controller.borrow_mut().try_tip(tip);
             redraw_all();
         }
     }
@@ -366,7 +375,7 @@ where
                 controller.settings_toast(),
             )
         };
-        self.sync_tips(&window);
+        self.sync_tips(&window, matches!(tier, Tier::Pro));
         window.set_dark(look.dark);
         set_look(
             &window,
@@ -643,7 +652,7 @@ where
             crate::onboarding_binding::request_open();
         });
         wire!(on_source_requested, |core| core.open_url(REPO_URL));
-        wire!(on_releases_requested, |core| core.open_url(RELEASES_URL));
+        wire!(on_releases_requested, |core| core.open_url(updates_url()));
         wire!(on_store_requested, |core| {
             if let Some(url) = STORE_URL {
                 core.open_url(url);
@@ -708,6 +717,7 @@ fn ui_group(window: &ui::HelpWindow, group: &shortcuts::Group) -> ui::ShortcutGr
             title: line.title.as_str().into(),
             keys: model(line.keys.iter().map(|k| k.as_str().into())),
             spoken: line.spoken.as_str().into(),
+            plain: line.plain,
         })),
     }
 }

@@ -40,15 +40,12 @@ where
             })
             .collect();
         match action {
-            MainAction::Use | MainAction::Copy => {
-                let mode = if action == MainAction::Use {
-                    snipdeck_core::UseMode::Paste
-                } else {
-                    snipdeck_core::UseMode::Copy
-                };
+            MainAction::Use => {
                 let id = items.first().copied()?;
-                return Some(self.use_item(id, mode));
+                return Some(self.use_item(id, snipdeck_core::UseMode::Paste));
             }
+            // Every selected row, joined as `copy_items` does for Ctrl+C and the Panel's bulk bar.
+            MainAction::Copy => return self.copy_items(&items),
             MainAction::Edit => {
                 if let Some(id) = items.first() {
                     self.open_item_editor(*id);
@@ -201,8 +198,8 @@ where
     pub(super) fn restore(&mut self, targets: &[Key]) {
         let limit = self.board_limit();
         let done = self.store.atomically(|b| {
-            for key in targets {
-                b.restore_with(Trashable::from(*key), limit)?;
+            for entry in targets.iter().filter_map(|k| k.trashable()) {
+                b.restore_with(entry, limit)?;
             }
             Ok(())
         });
@@ -227,8 +224,8 @@ where
         // Steps may name what goes for good.
         self.clear_history();
         let done = self.store.atomically(|b| {
-            for key in targets {
-                b.purge_entry(Trashable::from(*key))?;
+            for entry in targets.iter().filter_map(|k| k.trashable()) {
+                b.purge_entry(entry)?;
             }
             Ok(())
         });

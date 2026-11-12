@@ -39,7 +39,7 @@ use crate::plan::{
     AssetRef, ContentHasher, Library, Plan, PlanBoard, PlanFile, PlanFormat, PlanItem, PlanList,
     Source, apply, existing_hashes,
 };
-use crate::report::{ImportReport, Warning};
+use crate::report::{ImportReport, Note, Warning};
 
 /// What to do with items that are already in the library.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -236,10 +236,11 @@ pub fn import_archive<L: Library, R: Read + Seek>(
         });
     }
     if built.truncated > 0 {
-        report.warn(Warning::Note(format!(
-            "{} item(s) had a title or source app longer than {TITLE_CHARS} or {SOURCE_APP_CHARS} characters; it was cut",
-            built.truncated
-        )));
+        report.warn(Warning::Note(Note::TitleCut {
+            count: built.truncated,
+            title_chars: TITLE_CHARS,
+            source_chars: SOURCE_APP_CHARS,
+        }));
     }
     if manifest.sensitive_omitted > 0 {
         report.warn(Warning::SensitiveOmittedByExport {

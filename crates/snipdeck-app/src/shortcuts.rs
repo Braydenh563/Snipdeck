@@ -24,16 +24,19 @@ pub enum Scope {
     Picker,
     /// The item, list and board editors.
     Editors,
+    /// The window that asks for the master password.
+    Unlock,
 }
 
 impl Scope {
     /// Every scope, in the order the list shows them.
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::Anywhere,
         Self::Main,
         Self::Panel,
         Self::Picker,
         Self::Editors,
+        Self::Unlock,
     ];
 }
 
@@ -46,6 +49,13 @@ pub enum Keys {
     Custom {
         /// The key caps.
         caps: &'static [&'static str],
+        /// What assistive technology reads.
+        spoken: &'static str,
+    },
+    /// Not keys at all but a word ("Trigger", "Hello"): shown as plain text, not as a cap.
+    Plain {
+        /// The word.
+        text: &'static str,
         /// What assistive technology reads.
         spoken: &'static str,
     },
@@ -62,6 +72,9 @@ pub struct Shortcut {
     pub keys: Keys,
 }
 
+/// Between two alternatives in a `Custom` list of caps ("Up" or "Down"); the list draws it as the word "or".
+pub const ALT: &str = "|";
+
 const fn row(scope: Scope, chord: &'static str) -> Shortcut {
     Shortcut {
         scope,
@@ -76,6 +89,13 @@ const fn custom(scope: Scope, caps: &'static [&'static str], spoken: &'static st
     }
 }
 
+const fn plain(scope: Scope, text: &'static str, spoken: &'static str) -> Shortcut {
+    Shortcut {
+        scope,
+        keys: Keys::Plain { text, spoken },
+    }
+}
+
 const fn global(action: HotkeyAction) -> Shortcut {
     Shortcut {
         scope: Scope::Anywhere,
@@ -83,18 +103,22 @@ const fn global(action: HotkeyAction) -> Shortcut {
     }
 }
 
-use Scope::{Editors, Main, Panel, Picker};
+use Scope::{Anywhere, Editors, Main, Panel, Picker, Unlock};
 
 /// Every shortcut, in the order of `ShortcutTexts.titles` (a test in `tests/help_window.rs` checks the
 /// length) and grouped by scope in the order of [`Scope::ALL`].
-pub const CATALOGUE: [Shortcut; 63] = [
+pub const CATALOGUE: [Shortcut; 81] = [
     // Anywhere in Windows.
     global(HotkeyAction::TogglePanel),
     global(HotkeyAction::Picker),
     global(HotkeyAction::Capture),
     global(HotkeyAction::PasteNext),
+    // Typed in any program (Windows only): the Trigger field of an item, and the suggestion hint.
+    plain(Anywhere, "Trigger", "The item's trigger"),
+    custom(Anywhere, &["Tab"], "Tab while the suggestion hint shows"),
     // Main window.
     row(Main, "Ctrl+K"),
+    row(Main, "Ctrl+Shift+P"),
     row(Main, "Ctrl+N"),
     row(Main, "Ctrl+Shift+N"),
     row(Main, "Ctrl+F"),
@@ -104,25 +128,51 @@ pub const CATALOGUE: [Shortcut; 63] = [
     row(Main, "Enter"),
     row(Main, "Shift+Enter"),
     row(Main, "Ctrl+E"),
+    row(Main, "F2"),
     row(Main, "Ctrl+D"),
     row(Main, "Ctrl+P"),
     row(Main, "Del"),
     row(Main, "Ctrl+A"),
+    row(Main, "Ctrl+Space"),
     row(Main, "Ctrl+Z"),
     row(Main, "Ctrl+Y"),
     row(Main, "Ctrl+W"),
     row(Main, "Ctrl+B"),
-    custom(Main, &["Alt", "Up", "Down"], "Alt+Up or Alt+Down"),
+    custom(
+        Main,
+        &["Alt", "Up", ALT, "Alt", "Down"],
+        "Alt+Up or Alt+Down",
+    ),
+    custom(Main, &["Space"], "Hold Space"),
+    // Groups in the Main window.
+    row(Main, "Ctrl+G"),
+    custom(
+        Main,
+        &["Left", ALT, "Right", ALT, "Enter"],
+        "Left, Right or Enter on a group header",
+    ),
+    row(Main, "F2"),
+    row(Main, "Alt+Up"),
+    row(Main, "Alt+Down"),
+    row(Main, "Del"),
     // Panel.
     custom(Panel, &["A-Z"], "Type"),
-    custom(Panel, &["Up", "Down"], "Up or Down"),
-    custom(Panel, &["PgUp", "PgDn"], "PageUp or PageDown"),
+    custom(Panel, &["Up", ALT, "Down"], "Up or Down"),
+    custom(Panel, &["PgUp", ALT, "PgDn"], "PageUp or PageDown"),
     row(Panel, "Enter"),
     row(Panel, "Shift+Enter"),
-    custom(Panel, &["Alt", "Up", "Down"], "Alt+Up or Alt+Down"),
+    custom(
+        Panel,
+        &["Alt", "Up", ALT, "Alt", "Down"],
+        "Alt+Up or Alt+Down",
+    ),
     custom(Panel, &["Alt", "1-9"], "Alt+1 to 9"),
     custom(Panel, &["Space"], "Hold Space"),
-    custom(Panel, &["Shift", "Up", "Down"], "Shift+Up or Shift+Down"),
+    custom(
+        Panel,
+        &["Shift", "Up", ALT, "Shift", "Down"],
+        "Shift+Up or Shift+Down",
+    ),
     row(Panel, "Ctrl+A"),
     row(Panel, "Ctrl+Tab"),
     row(Panel, "Ctrl+Shift+Tab"),
@@ -144,18 +194,34 @@ pub const CATALOGUE: [Shortcut; 63] = [
     row(Panel, "Ctrl+/"),
     row(Panel, "F1"),
     row(Panel, "Esc"),
+    // Groups.
+    row(Panel, "Ctrl+G"),
+    custom(
+        Panel,
+        &["Left", ALT, "Right", ALT, "Enter", ALT, "Space"],
+        "Left, Right, Enter or Space on a group header",
+    ),
+    row(Panel, "F2"),
+    custom(
+        Panel,
+        &["Alt", "Up", ALT, "Alt", "Down"],
+        "Alt+Up or Alt+Down on a group header",
+    ),
+    custom(Panel, &["Shift", "F10"], "Shift+F10 or the Menu key"),
     // Picker.
-    custom(Picker, &["Up", "Down"], "Up or Down"),
+    custom(Picker, &["Up", ALT, "Down"], "Up or Down"),
     row(Picker, "Enter"),
     row(Picker, "Shift+Enter"),
     custom(Picker, &["Alt", "1-9"], "Alt+1 to 9"),
-    row(Picker, "Tab"),
+    custom(Picker, &["Tab", ALT, "Shift", "Tab"], "Tab or Shift+Tab"),
     row(Picker, "Ctrl+E"),
     row(Picker, "Esc"),
     // Editors.
     row(Editors, "Ctrl+Enter"),
     row(Editors, "Ctrl+P"),
     row(Editors, "Esc"),
+    // The unlock window.
+    plain(Unlock, "Hello", "Unlock with Windows Hello"),
 ];
 
 /// One line the list shows.
@@ -167,6 +233,8 @@ pub struct Line {
     pub keys: Vec<String>,
     /// The keys spoken; empty = off.
     pub spoken: String,
+    /// A word rather than keys: drawn as plain text.
+    pub plain: bool,
 }
 
 /// The lines of one scope.
@@ -186,6 +254,7 @@ impl Keys {
                 caps.iter().map(|c| (*c).to_owned()).collect(),
                 spoken.to_owned(),
             ),
+            Self::Plain { text, spoken } => (vec![text.to_owned()], spoken.to_owned()),
             Self::Global(action) => crate::commands::chord_caps(hotkeys, action),
         }
     }
@@ -214,6 +283,7 @@ fn matches(line: &Line, words: &[String]) -> bool {
     let key_words: Vec<String> = line
         .keys
         .iter()
+        .filter(|k| *k != ALT)
         .map(|k| k.to_lowercase())
         .chain(
             line.spoken
@@ -252,6 +322,7 @@ pub fn groups_of(
                     title: title.clone(),
                     keys,
                     spoken,
+                    plain: matches!(shortcut.keys, Keys::Plain { .. }),
                 }
             })
             .filter(|line| matches(line, &words))
@@ -550,5 +621,100 @@ mod tests {
                 "docs/user-guide.md has no `| Item editor |` row for {chord}"
             );
         }
+    }
+
+    /// The lower-case words of a key text: "Alt+1" and "Alt+1 to 9" both give `alt` and `1`.
+    fn atoms(text: &str) -> Vec<String> {
+        text.split(|c: char| !c.is_alphanumeric())
+            .filter(|w| !w.is_empty())
+            .map(|w| match w.to_lowercase().as_str() {
+                "pageup" => "pgup".to_owned(),
+                "pagedown" => "pgdn".to_owned(),
+                "delete" => "del".to_owned(),
+                "escape" => "esc".to_owned(),
+                other => other.to_owned(),
+            })
+            .collect()
+    }
+
+    /// The scope a "Where" cell of the guide's keyboard table names.
+    fn guide_scopes(cell: &str) -> Vec<Scope> {
+        let mut scopes = Vec::new();
+        for part in cell.split(", ") {
+            let scope = match part {
+                "Anywhere" | "Any program (Typing on)" | "Any program (Suggest on)" => {
+                    Scope::Anywhere
+                }
+                "Main window" => Scope::Main,
+                "Panel" => Scope::Panel,
+                "Picker" => Scope::Picker,
+                "Item editor" | "Fill form" => Scope::Editors,
+                "Unlock window" => Scope::Unlock,
+                other => panic!(
+                    "the guide's keyboard table names a place this test does not know: {other}"
+                ),
+            };
+            scopes.push(scope);
+        }
+        scopes
+    }
+
+    /// The keys and words of every row of `scope` as the list shows them with the install's hotkeys.
+    fn listed(scope: Scope) -> Vec<Vec<String>> {
+        let hotkeys = Hotkeys::new_install();
+        CATALOGUE
+            .iter()
+            .filter(|s| s.scope == scope)
+            .map(|s| {
+                let (caps, spoken) = s.keys.resolve(&hotkeys);
+                atoms(&format!("{} {spoken}", caps.join(" ")))
+            })
+            .collect()
+    }
+
+    #[test]
+    fn every_shortcut_in_the_guides_keyboard_table_is_in_the_list() {
+        let guide = include_str!("../../../docs/user-guide.md");
+        let table: Vec<&str> = guide
+            .lines()
+            .skip_while(|l| !l.starts_with("## Keyboard reference"))
+            .skip(1)
+            .take_while(|l| !l.starts_with("## "))
+            .filter(|l| l.starts_with('|'))
+            .skip(2)
+            .collect();
+        assert!(
+            table.len() > 40,
+            "the table was found: {} rows",
+            table.len()
+        );
+        let mut missing = Vec::new();
+        for line in table {
+            let cells: Vec<&str> = line.trim_matches('|').split('|').map(str::trim).collect();
+            let (where_, keys) = (cells[0], cells[1]);
+            // A cell with keys in code spans: each span is a key or chord. Without spans (a trigger,
+            // a button, "none until you set one") the words of the cell must be in the row.
+            let spans: Vec<&str> = keys.split('`').skip(1).step_by(2).collect();
+            let wanted: Vec<Vec<String>> = if spans.is_empty() {
+                if keys.starts_with("none") {
+                    continue;
+                }
+                vec![atoms(keys.trim_matches('*').trim_start_matches("the "))]
+            } else {
+                spans.iter().map(|k| atoms(k)).collect()
+            };
+            for scope in guide_scopes(where_) {
+                let rows = listed(scope);
+                for key in &wanted {
+                    if !rows.iter().any(|row| key.iter().all(|a| row.contains(a))) {
+                        missing.push(format!("{keys} ({where_})"));
+                    }
+                }
+            }
+        }
+        assert!(
+            missing.is_empty(),
+            "the guide's keyboard table lists keys the shortcuts list lacks: {missing:#?}"
+        );
     }
 }

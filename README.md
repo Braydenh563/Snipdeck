@@ -22,8 +22,8 @@
 ---
 
 > [!NOTE]
-> Snipdeck 1.0.0 is released. It is not code-signed, so Windows SmartScreen asks you to confirm the first
-> start (More info, then Run anyway).
+> Snipdeck 1.0.0 is nearly ready: the first release is being tested on Windows. Setup is not code-signed
+> yet, so Windows SmartScreen asks you to confirm it (More info, then Run anyway).
 
 ## What it is
 
@@ -35,20 +35,28 @@ You arrange the deck yourself: boards hold lists, lists hold items. It is not a 
 
 ## Install
 
-1. Download `snipdeck-v<version>-windows-x64.zip` from [Releases](https://github.com/Braydenh563/Snipdeck/releases/latest)
-   and unzip it.
-2. Double-click `Snipdeck.bat`.
+1. Download `Snipdeck-Setup-<version>.exe` from [Releases](https://github.com/Braydenh563/Snipdeck/releases/latest).
+2. Run it. It installs for your Windows account only, so it does not ask for an administrator password.
+3. Start Snipdeck from the Start menu. Setup offers to start it for you when it finishes.
 
-The first start downloads the app once and checks it. After that Snipdeck starts straight away, offline. You
-do not need Rust, Visual Studio or git.
+To update, run the newer Setup file: it closes Snipdeck, replaces it and keeps your library. To uninstall, use
+Settings > Apps > Installed apps > Snipdeck. Your library stays unless you choose to erase it there.
 
-The download is not code-signed. If Windows says it protected your PC, choose More info, then Run anyway.
-Check the download against the `.sha256` file on the release page.
+Setup is not code-signed yet. If Windows says it protected your PC, choose More info, then Run anyway. Check
+the download against the `.sha256` file on the release page.
 
-You need Windows 10 (1903 or newer) or Windows 11, 64-bit.
+You need Windows 10 (1903 or newer) or Windows 11, 64-bit. A Microsoft Store version is on the way.
 
 <details>
-<summary>Launcher commands, and how to uninstall</summary>
+<summary>Portable zip (no install)</summary>
+
+Download `snipdeck-v<version>-windows-x64.zip` instead, unzip it anywhere and double-click `Snipdeck.bat`. You do
+not need Rust, Visual Studio or git. Use one copy only: the installed app and the zip share the same library in
+`%LOCALAPPDATA%\Snipdeck`.
+</details>
+
+<details>
+<summary>Portable zip: launcher commands, and how to uninstall it</summary>
 
 Type these as `Snipdeck.bat <command>`, or double-click the matching file in `tools\launcher\commands`.
 
@@ -76,7 +84,7 @@ More in [`tools/launcher/README.md`](tools/launcher/README.md).
 - **Six kinds of item.** Text, code, link, template, image and file.
 - **Templates.** Insert `{date}`, `{time}` or your own date format. Supporter adds fields and choices that ask you
   for a value each time.
-- **Quick capture.** Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>2</kbd> to save the clipboard text as a new item.
+- **Quick capture.** Choose a hotkey for it in Settings (it is off until you do), then press it to save the clipboard text as a new item.
 - **Recent inbox.** On by default for new installs (one switch turns it off). Keeps what you copy for 7 days (last 200 copies), skips password managers and
   Sensitive items, and lets you save a copy to a list.
 - **Import.** Bring in a `.snipdeck` file, a Ditto database, a CopyQ export or a folder of `.txt` and `.md`
@@ -136,10 +144,10 @@ Rendered from the app's own interface, in light or dark to match your GitHub the
 
 | Hotkey | Action |
 |---|---|
-| <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Space</kbd> | Show or hide the Panel |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Y</kbd> | Show or hide the Panel |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> | Open the Picker |
-| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>2</kbd> | Save the clipboard text as a new item |
-| <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd> | Paste the next pinned item or list item (Supporter) |
+| *none until you set one* | Save the clipboard text as a new item (Settings > Shortcuts) |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>U</kbd> | Paste the next pinned item or list item (Supporter) |
 
 Change any of them in Settings. If another program owns a hotkey, Snipdeck says so and the rest keep working.
 
@@ -149,7 +157,7 @@ Change any of them in Settings. If another program owns a hotkey, Snipdeck says 
 | Where | Keys | Action |
 |---|---|---|
 | Panel, Main window | <kbd>Enter</kbd>, <kbd>Shift</kbd>+<kbd>Enter</kbd> | Paste, or copy only |
-| Panel, Picker | <kbd>1</kbd> to <kbd>9</kbd> | Use that row while the search box is empty |
+| Panel, Picker | <kbd>Alt</kbd>+<kbd>1</kbd> to <kbd>Alt</kbd>+<kbd>9</kbd> | Use that row (digits without <kbd>Alt</kbd> are search text) |
 | Panel, Main window | <kbd>Ctrl</kbd>+<kbd>E</kbd> or <kbd>F2</kbd> | Edit the selected item |
 | Panel, Main window | <kbd>Ctrl</kbd>+<kbd>F</kbd> | Search |
 | Picker | <kbd>Tab</kbd> | Switch between All, This board and Pinned |
@@ -165,7 +173,7 @@ The full list is in the [user guide](docs/user-guide.md#keyboard-reference).
 <details>
 <summary>If the Panel is hidden</summary>
 
-Closing the Panel hides it to the tray and Snipdeck keeps running. Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Space</kbd>,
+Closing the Panel hides it to the tray and Snipdeck keeps running. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Y</kbd> (or the hotkey you chose in Settings),
 left-click the tray icon, or right-click it and choose **Open Panel**. Starting Snipdeck a second time also
 brings the running copy forward.
 </details>
@@ -199,15 +207,12 @@ See [`docs/licensing.md`](docs/licensing.md).
 
 Snipdeck is built in the open and these are planned, in no promised order.
 
-- A compact dock, so the Panel can sit as a slim bar with drag grips.
-- Drag the sidebar wider or narrower, and drag several rows at once.
-- Select-and-delete from the Main window header, and paste or drop text to create an item.
-- Groups inside a list.
-- Optional typed shortcuts that expand into a snippet (off by default, and never in programs on your no-paste list).
-- More placeholders such as `{uuid}` and date maths like `{date+7d}`, plus paste transforms (plain text, change
-  case, trim).
-- Import from TextExpander, Espanso, PhraseExpress and Beeftext.
-- Windows Hello quick unlock, and a colour picker with an eyedropper.
+- Snipdeck in the Microsoft Store.
+- Rules per app, such as a default list or paste style for each program.
+- Sync a library folder between your PCs.
+- Share a board with someone else.
+- A command line to get or paste a snippet from scripts.
+- An optional paste action that rewrites text with a local AI model, off by default and never online.
 
 Have an idea? Open an issue.
 

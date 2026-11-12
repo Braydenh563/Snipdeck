@@ -1335,3 +1335,83 @@ fn the_preview_draws_the_main_tile_view_and_the_cards_panel_layout_the_user_has(
         assert_eq!(ed.get_preview_main_view(), snipdeck_ui::MainView::Tile);
     });
 }
+
+#[test]
+fn trigger_clash_shows_an_error() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        type_text(ed.window(), "First");
+        ed.set_content("one".into());
+        ed.set_trigger(";sig".into());
+        save(&ed);
+        assert!(!r.editor_shown(), "a free trigger saves");
+
+        menu(&r, "New item");
+        let ed = r.ed();
+        type_text(ed.window(), "Second");
+        ed.set_content("two".into());
+        ed.set_trigger(";sig".into());
+        settle();
+        save(&ed);
+        assert!(r.editor_shown(), "refused: the editor stays");
+        assert_eq!(
+            ed.get_trigger_error().as_str(),
+            "Another snippet already uses this trigger."
+        );
+        // A different code saves.
+        ed.set_trigger(";sig2".into());
+        settle();
+        save(&ed);
+        assert!(!r.editor_shown());
+    });
+}
+
+#[test]
+fn a_one_character_trigger_gets_a_warning_under_the_field() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        // Tall enough that every field is on screen (off-screen ones are not in the tree).
+        ed.window().set_size(slint::PhysicalSize::new(900, 2400));
+        assert_eq!(
+            ed.get_trigger_warning().to_string(),
+            "",
+            "no warning at first"
+        );
+        ed.set_trigger(";".into());
+        settle();
+        let warning = ed.get_trigger_warning().to_string();
+        assert!(warning.contains("one-character"), "{warning}");
+        // Announced, not only drawn: a text element carrying the warning is in the tree.
+        let _ = find(&ed, &warning, AccessibleRole::Text);
+        ed.set_trigger(";s".into());
+        settle();
+        assert_eq!(ed.get_trigger_warning().to_string(), "", "two do not");
+        ed.set_trigger("".into());
+        settle();
+        assert_eq!(ed.get_trigger_warning().to_string(), "", "none either");
+    });
+}
+
+#[test]
+fn trigger_field_hidden_for_sensitive() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        // Tall enough that every field is on screen (off-screen ones are not in the tree).
+        ed.window().set_size(slint::PhysicalSize::new(900, 2400));
+        settle();
+        assert!(!missing(&ed, "Trigger", AccessibleRole::TextInput));
+        click(
+            ed.window(),
+            &find(&ed, "Sensitive item", AccessibleRole::Switch),
+        );
+        assert!(ed.get_sensitive());
+        settle();
+        assert!(missing(&ed, "Trigger", AccessibleRole::TextInput));
+    });
+}

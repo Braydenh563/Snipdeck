@@ -579,6 +579,8 @@ fn template_choice_is_a_radio_group_with_one_checked_option() {
 fn template_choice_keyboard_navigation() {
     let ui = start(FormGallery::new);
     ui.invoke_focus_choice();
+    // The focus request is handled by a change handler, which the real event loop runs between events.
+    settle();
     assert_eq!(ui.get_tf_choice(), 1);
     press(ui.window(), &key(Key::DownArrow));
     assert_eq!(ui.get_tf_choice(), 2);

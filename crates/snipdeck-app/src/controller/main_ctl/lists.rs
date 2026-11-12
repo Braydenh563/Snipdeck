@@ -1,6 +1,6 @@
 //! Lists and boards: creating, moving, renaming, reordering and deleting.
 
-use super::super::history_ctl::move_recorded;
+use super::super::{group_ctl::Surface, history_ctl::move_recorded};
 use snipdeck_core::{BoardId, ItemId, ListId, ListSort, Placement};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::Trashable;
@@ -131,6 +131,14 @@ where
             return;
         }
         let from = self.main.cursor();
+        if self.main.group_at(from).is_some() {
+            // A header moves its whole group past the item or group beside it.
+            self.group_move_on(Surface::Main, from, delta);
+            return;
+        }
+        if self.main_move_item_on(from, delta) {
+            return;
+        }
         // Alt+Up on the first row lands on itself, not nowhere: the sorted-list offer is the same at both ends.
         let onto = from.saturating_add_signed(delta);
         self.main_drop_row(from, onto);
@@ -138,7 +146,7 @@ where
 
     /// Puts the cursor on item `id` among the rows now shown (a label filter can hide some of the
     /// list, so its place in the list is not its row).
-    pub(super) fn follow_moved_row(&mut self, id: ItemId) {
+    pub(in crate::controller) fn follow_moved_row(&mut self, id: ItemId) {
         if let Some(at) = self.main.keys().iter().position(|k| *k == Key::Item(id)) {
             self.main.set_cursor(at);
         }
@@ -188,6 +196,17 @@ where
     /// by hand; in a list that sorts itself a toast offers to switch it to manual order.
     pub fn main_drop_row(&mut self, from: usize, onto: usize) {
         self.main_fresh();
+        // A header dragged (or an item dropped on one) is a group move or join.
+        let dragged = self.main.group_at(from).map(|r| r.group.id);
+        if self.group_drop_on(Surface::Main, from, onto) {
+            if let Some(at) =
+                dragged.and_then(|g| self.main.keys().iter().position(|k| *k == Key::Group(g)))
+            {
+                self.main.set_cursor(at);
+                self.announce_placed(at + 1, self.main.keys().len());
+            }
+            return;
+        }
         if !self.main.reorderable() {
             if !self.main.searching()
                 && let Some(list) = self.main.open_list()

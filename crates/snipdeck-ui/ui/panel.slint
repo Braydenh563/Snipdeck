@@ -32,6 +32,7 @@ import { ListView } from "std-widgets.slint";
 import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette } from "theme.slint";
 import { Icons } from "icons.slint";
 import { Icon } from "components/icon.slint";
+import { GroupHeader } from "components/group-header.slint";
 import { ItemCard, ItemKind, ItemCardVariant } from "components/item-card.slint";
 import { DeckEdge, DeckEdgePosition } from "components/deck-edge.slint";
 import { OverlayScrollbar } from "components/scrollbar.slint";
@@ -85,6 +86,15 @@ export struct PanelRow {
     formatted: bool,
     // How many "Deleted · Undo" rows lie above this one: the row numbers (and Alt+N) count live rows only.
     ghosts-before: int,
+    // A group's header, not an item: `title` is its name, `group-count` its items, `group-collapsed` whether they are hidden.
+    is-header: bool,
+    group-count: int,
+    group-collapsed: bool,
+    // The item sits under a group's header: the card is indented.
+    grouped: bool,
+    // Its place among the group's items (1 = first) and how many the group has; 0 = not in a group.
+    set-position: int,
+    set-size: int,
 }
 
 // One entry of the Recent inbox (SPEC 5.6), as `snipdeck-app`'s `RecentRowView`: the start of the copied text, the
@@ -188,6 +198,25 @@ export component PanelWindow inherits Window {
     in property <[TabItem]> tabs;
     in property <[PinnedItem]> pinned;
     in property <[PanelRow]> rows;
+    // A group header that should start renaming (the controller counts requests in `rename-seq`).
+    in property <int> rename-row: -1;
+    in property <int> rename-seq: 0;
+    // The row whose group header is being renamed (-1: none). Only that header clears it, so a rename that hands
+    // over to another header keeps the keys with the new one.
+    property <int> header-renaming-row: -1;
+    // Ctrl+G, or the item menu: group the marked rows (else row `i`). A header: fold or unfold (`group-toggled`), set
+    // folded or unfolded (`group-collapsed-set`), rename (`group-renamed`).
+    callback group-requested(int);
+    callback group-toggled(int);
+    callback group-collapsed-set(int, bool);
+    callback group-renamed(int, string);
+    callback group-rename-ended();
+    // The name a new group starts with.
+    public pure function group-default-name() -> string { return @tr("Group"); }
+    public pure function group-announcement(name: string, count: int) -> string {
+        // Folded or open is spoken from the header's expanded state, so the label does not repeat it.
+        return @tr("group {}, {} item" | "group {}, {} items" % count, name, count);
+    }
     // The Recent inbox (SPEC 5.6): `recent-available` while clipboard history is on shows the clock tab at the far left
     // of the tab row. `recent-open` is the clock tab being the selected one (the panel sets it; the host is told).
     in property <bool> recent-available: false;
@@ -496,6 +525,8 @@ export component PanelWindow inherits Window {
     // that is collapsed away is "not visible" to Slint and would lose the keys, so the focus waits in `rest` and the
     // first character opens the search and moves into it).
     function focus-typing() {
+        // The keys go back to the Panel: no header rename holds them any more.
+        root.header-renaming-row = -1;
         if (root.search-shown) {
             search.focus();
         } else {
@@ -590,10 +621,13 @@ export component PanelWindow inherits Window {
     property <PanelLayout> eff-layout: root.layout == PanelLayout.cards && root.searching ? PanelLayout.list : root.layout;
     property <length> row-gap: root.eff-layout == PanelLayout.compact ? 0px : Space.s1 + Space.s0-5;
     // Cards: 2 columns from 288px wide, 1 below (set from `changed` handlers: the window's width follows its layout).
+    // A list with group headers stays one column wide, so a header spans the whole width.
+    in property <bool> has-groups: false;
     property <int> cols: 1;
     function update-cols() {
-        root.cols = root.eff-layout == PanelLayout.cards && root.width >= 288px ? 2 : 1;
+        root.cols = root.eff-layout == PanelLayout.cards && root.width >= 288px && !root.has-groups ? 2 : 1;
     }
+    changed has-groups => { root.update-cols(); }
     property <length> col-gap: Space.s1 + Space.s0-5;
     // Rows (Cards: pairs of tiles) in the list, and how many tiles group `g` holds.
     property <int> row-groups: floor((root.rows.length + root.cols - 1) / root.cols);
@@ -1088,6 +1122,11 @@ export component PanelWindow inherits Window {
                 if (event.text == Key.Tab || event.text == Key.Backtab) {
                     self.tab-back = event.text == Key.Backtab || event.modifiers.shift;
                 }
+                // A group header's name is being typed: its field takes every key (Enter keeps, Esc cancels). Once the
+                // Panel's own list or search has the focus again (the header went away mid-rename), the keys are theirs.
+                if (root.header-renaming-row >= 0 && !self.has-focus && !rest.has-focus && !search.has-focus) {
+                    return reject;
+                }
                 if (root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.recent-menu-open || root.recent-save-open || root.list-delete-open || root.clear-list-open || root.board-delete-open || root.new-menu-open || root.pinned-menu-open) {
                     // The menu (or the confirmation) owns the keyboard; Esc closes it.
                     if (event.text == Key.Escape) {
@@ -1202,6 +1241,10 @@ export component PanelWindow inherits Window {
                     }
                     if ((event.text == "e" || event.text == "E") && root.sel >= 0 && !root.list-hidden) {
                         root.edit-requested(root.sel);
+                        return accept;
+                    }
+                    if ((event.text == "g" || event.text == "G") && root.sel >= 0 && !root.searching && !root.list-hidden) {
+                        root.group-requested(root.sel);
                         return accept;
                     }
                     if ((event.text == "d" || event.text == "D") && root.sel >= 0 && !root.list-hidden) {
@@ -1358,6 +1401,13 @@ export component PanelWindow inherits Window {
                         root.selection-extended(-1);
                         return accept;
                     }
+                }
+                // A group's header: Left folds it, Right unfolds it, Enter or Space does the other.
+                if (root.search-focused && !root.searching && !root.list-hidden && root.sel >= 0 && root.sel < root.rows.length
+                    && root.rows[root.sel].is-header && !event.modifiers.control && !event.modifiers.alt && !event.modifiers.shift) {
+                    if (event.text == Key.LeftArrow) { root.group-collapsed-set(root.sel, true); return accept; }
+                    if (event.text == Key.RightArrow) { root.group-collapsed-set(root.sel, false); return accept; }
+                    if (event.text == Key.Return || event.text == " ") { root.group-toggled(root.sel); return accept; }
                 }
                 // Cards, search empty: Left and Right step one tile (Up and Down a whole row of tiles).
                 if (root.eff-layout == PanelLayout.cards && root.search-focused && !root.searching && !root.list-hidden
@@ -1902,8 +1952,8 @@ export component PanelWindow inherits Window {
                                     property <PanelRow> item: root.rows[self.i];
                                     horizontal-stretch: 1;
                                     // A deleted row collapses to one compact line ("Deleted “title” · Undo").
-                                    preferred-height: item.deleted-pending ? root.ghost-h : card.preferred-height;
-                                    min-height: item.deleted-pending ? root.ghost-h : card.preferred-height;
+                                    preferred-height: item.deleted-pending || item.is-header ? root.ghost-h : card.preferred-height;
+                                    min-height: item.deleted-pending || item.is-header ? root.ghost-h : card.preferred-height;
 
                                     // The row being dragged over this one: a drop lands after it when coming from above.
                                     property <int> row-from: -1;
@@ -1923,13 +1973,44 @@ export component PanelWindow inherits Window {
                                             allow-move: !root.searching && !root.list-hidden && !root.delete-mode && !root.select-mode;
                                             data: root.row-payload(i);
 
-                                            card := ItemCard {
+                                            // A group's header takes the place of a card.
+                                            if item.is-header: GroupHeader {
                                                 x: 0px;
                                                 y: 0px;
                                                 width: parent.width;
+                                                height: root.ghost-h;
+                                                name: item.title;
+                                                collapsed: item.group-collapsed;
+                                                count-text: @tr("{} item" | "{} items" % item.group-count, item.group-count);
+                                                a11y-label: root.group-announcement(item.title, item.group-count);
+                                                rename-label: @tr("Group name");
+                                                selected: i == root.sel;
+                                                rename-request: root.rename-row == i ? root.rename-seq : 0;
+                                                toggled => { root.selected-index = i; root.group-toggled(i); }
+                                                rename-started => { root.header-renaming-row = i; }
+                                                renamed(text) => {
+                                                    if (root.header-renaming-row == i) { root.header-renaming-row = -1; }
+                                                    root.group-renamed(i, text);
+                                                }
+                                                rename-ended => {
+                                                    if (root.header-renaming-row == i) { root.header-renaming-row = -1; }
+                                                    root.group-rename-ended();
+                                                    root.focus-typing();
+                                                }
+                                                menu-requested(x, y) => {
+                                                    root.item-menu-x = self.absolute-position.x + x;
+                                                    root.item-menu-y = self.absolute-position.y + y;
+                                                    root.context-menu-requested(i, x, y);
+                                                }
+                                            }
+
+                                            card := ItemCard {
+                                                x: item.grouped ? Space.s3 : 0px;
+                                                y: 0px;
+                                                width: parent.width - self.x;
                                                 height: item.deleted-pending ? root.ghost-h : self.preferred-height;
                                                 // The collapsed row's covered card is neither seen nor read.
-                                                visible: !item.deleted-pending;
+                                                visible: !item.deleted-pending && !item.is-header;
                                                 variant: root.eff-layout == PanelLayout.compact ? ItemCardVariant.compact : root.eff-layout == PanelLayout.cards ? ItemCardVariant.tile : ItemCardVariant.comfortable;
                                                 edit-action: !(root.layout == PanelLayout.compact && root.narrow);
                                                 copy-action: root.pastes;
@@ -1958,6 +2039,8 @@ export component PanelWindow inherits Window {
                                                 label: item.label;
                                                 label-name: item.label-name;
                                                 stack-position: item.stack-position;
+                                                set-position: item.set-position;
+                                                set-size: item.set-size;
                                                 formatted: item.formatted;
                                                 selected: root.delete-mode ? false : root.marked-count > 0 || root.select-mode ? item.marked : i == root.sel;
                                                 masked-hint: @tr("Hidden. Hold Space to reveal.");

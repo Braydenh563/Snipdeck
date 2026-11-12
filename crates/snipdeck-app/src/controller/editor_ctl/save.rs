@@ -1,8 +1,8 @@
 //! Saving the item, and the library key made on the first sensitive item.
 
-use snipdeck_core::{Feature, Item, ItemKind, Name, Placement, Tag};
+use snipdeck_core::{Feature, Item, ItemKind, Name, Placement, Tag, Trigger};
 use snipdeck_store::{
-    ItemRepo, TagRepo, Trashable,
+    ItemRepo, TagRepo, Trashable, TriggerRepo,
     crypto::{CryptoError, KeyProviderError},
     name_key,
 };
@@ -37,11 +37,18 @@ where
         };
         slot.problems = Problems::default();
         match self.save_item(&mut slot, input) {
-            Ok(list) => {
+            Ok((list, overlaps)) => {
                 self.clear_draft(&slot);
-                self.show_toast(Toast {
-                    kind: ToastKind::Success,
-                    message: ToastMessage::Saved { list },
+                self.show_toast(if let Some(other) = overlaps {
+                    Toast {
+                        kind: ToastKind::Danger,
+                        message: ToastMessage::TriggerOverlaps { other },
+                    }
+                } else {
+                    Toast {
+                        kind: ToastKind::Success,
+                        message: ToastMessage::Saved { list },
+                    }
                 });
                 self.library_changed();
             }
@@ -60,8 +67,9 @@ where
         &mut self,
         slot: &mut ItemEditorSlot,
         input: &EditorInput,
-    ) -> Result<String, ()> {
+    ) -> Result<(String, Option<String>), ()> {
         let now = self.clock.now();
+        let mut overlaps: Option<String> = None;
         let new = slot.is_new();
         // A new item takes any kind; an existing text item any text kind; the rest keep theirs.
         let kind = if new
@@ -125,6 +133,27 @@ where
                 }
             }
         }
+        // A Sensitive item has no trigger (a short code must not release a secret).
+        let mut trigger: Option<Trigger> = None;
+        if !sensitive && !slot.trigger.is_empty() {
+            if let Ok(t) = Trigger::new(&slot.trigger) {
+                let taken = self
+                    .store
+                    .trigger_holder(&t)
+                    .ok()
+                    .flatten()
+                    .is_some_and(|holder| slot.target != ItemTarget::Item(holder));
+                if taken {
+                    slot.problems.trigger = Some(EditorProblem::TriggerTaken);
+                    refused = true;
+                } else {
+                    trigger = Some(t);
+                }
+            } else {
+                slot.problems.trigger = Some(EditorProblem::TriggerInvalid);
+                refused = true;
+            }
+        }
         let list = slot.lists.get(input.list_index).cloned();
         if refused {
             return Err(());
@@ -158,7 +187,12 @@ where
                         b.insert_tag(tag)?;
                     }
                     let formats = build_formats(b, sensitive, text.as_deref(), source.as_ref())?;
-                    b.insert_item(&item, &formats, Placement::First)
+                    b.insert_item(&item, &formats, Placement::First)?;
+                    if trigger.is_some() {
+                        let codes = b.set_trigger(item.id, trigger.as_ref())?;
+                        overlaps = overlap_title(b, &codes)?;
+                    }
+                    Ok(())
                 });
                 if done.is_ok() {
                     recorded = Some((
@@ -193,7 +227,12 @@ where
                             Some(t) => Some(build_formats(b, sensitive, Some(t), None)?),
                             None => None,
                         };
-                        b.update_item(&item, formats.as_ref())
+                        b.update_item(&item, formats.as_ref())?;
+                        if trigger.is_some() || !slot.original_trigger.is_empty() {
+                            let codes = b.set_trigger(id, trigger.as_ref())?;
+                            overlaps = overlap_title(b, &codes)?;
+                        }
+                        Ok(())
                     });
                     if done.is_ok() {
                         recorded = edit_step(
@@ -201,6 +240,9 @@ where
                             &item,
                             slot.original_text.as_deref(),
                             text.as_deref(),
+                            (Trigger::new(&slot.original_trigger).ok() != trigger).then(|| {
+                                (Trigger::new(&slot.original_trigger).ok(), trigger.clone())
+                            }),
                         );
                     }
                     done
@@ -213,7 +255,7 @@ where
                 if let Some((action, changes)) = recorded {
                     self.record_step(action, changes);
                 }
-                Ok(list_name)
+                Ok((list_name, overlaps))
             }
             Err(e) => self.save_failed(slot, SaveFailure::of(&e)),
         }
@@ -224,7 +266,7 @@ where
         &mut self,
         slot: &mut ItemEditorSlot,
         failure: SaveFailure,
-    ) -> Result<String, ()> {
+    ) -> Result<(String, Option<String>), ()> {
         slot.problems.banner = Some(EditorProblem::Save(failure));
         self.show_toast(Toast {
             kind: ToastKind::Danger,
@@ -295,7 +337,12 @@ fn edit_step(
     after: &Item,
     old_text: Option<&str>,
     new_text: Option<&str>,
+    triggers: Option<(Option<Trigger>, Option<Trigger>)>,
 ) -> Option<(Action, Vec<Change>)> {
+    let (old_trigger, new_trigger) = match triggers {
+        Some((old, new)) => (Some(old), Some(new)),
+        None => (None, None),
+    };
     let (old, new) = match new_text {
         None => (None, None),
         Some(new) => {
@@ -309,7 +356,8 @@ fn edit_step(
     let mut same = after.clone();
     same.label = before.label;
     same.updated_at = before.updated_at;
-    let colour_only = new.is_none() && same == *before && after.label != before.label;
+    let colour_only =
+        new.is_none() && old_trigger.is_none() && same == *before && after.label != before.label;
     let action = if colour_only {
         Action::Colour
     } else {
@@ -321,13 +369,29 @@ fn edit_step(
             before: Box::new(Snap {
                 item: before.clone(),
                 text: old,
+                trigger: old_trigger,
             }),
             after: Box::new(Snap {
                 item: after.clone(),
                 text: new,
+                trigger: new_trigger,
             }),
         }],
     ))
+}
+
+/// The title of the item that owns the first of these overlapping codes, for the "Saved, but" toast.
+fn overlap_title<B: TriggerRepo + ItemRepo>(
+    b: &B,
+    codes: &[Trigger],
+) -> snipdeck_store::Result<Option<String>> {
+    let Some(code) = codes.first() else {
+        return Ok(None);
+    };
+    Ok(match b.trigger_holder(code)? {
+        Some(id) => Some(b.item(id)?.title),
+        None => Some(String::new()),
+    })
 }
 
 #[cfg(test)]
@@ -350,7 +414,7 @@ mod tests {
         let before = item();
         let mut after = before.clone();
         after.label = Some(ItemLabel::Blue);
-        let (action, changes) = edit_step(&before, &after, Some("hi"), None).unwrap();
+        let (action, changes) = edit_step(&before, &after, Some("hi"), None, None).unwrap();
         assert_eq!(action, Action::Colour);
         assert_eq!(changes.len(), 1);
     }
@@ -359,7 +423,7 @@ mod tests {
     fn a_text_change_keeps_both_texts_and_a_sensitive_one_is_not_recorded() {
         let before = item();
         let after = before.clone();
-        let (action, changes) = edit_step(&before, &after, Some("old"), Some("new")).unwrap();
+        let (action, changes) = edit_step(&before, &after, Some("old"), Some("new"), None).unwrap();
         assert_eq!(action, Action::Edit);
         let Change::Update {
             before: b,
@@ -374,7 +438,7 @@ mod tests {
         );
         let mut secret = before.clone();
         secret.sensitive = true;
-        assert!(edit_step(&before, &secret, Some("old"), Some("new")).is_none());
-        assert!(edit_step(&before, &after, None, Some("new")).is_none());
+        assert!(edit_step(&before, &secret, Some("old"), Some("new"), None).is_none());
+        assert!(edit_step(&before, &after, None, Some("new"), None).is_none());
     }
 }

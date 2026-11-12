@@ -29,6 +29,7 @@ pub mod keys;
 pub mod payload;
 pub mod pipeline;
 pub mod route;
+pub mod startup_task;
 pub mod system_look;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;

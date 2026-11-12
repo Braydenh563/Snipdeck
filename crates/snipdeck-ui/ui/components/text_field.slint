@@ -41,6 +41,8 @@ export component TextField inherits VerticalLayout {
     in property <string> label;
     // Non-empty: error state, shown as an icon plus this text under the box.
     in property <string> error;
+    // Spoken hint shown when there is no error (a helper or a warning).
+    in property <string> description;
     in property <bool> enabled: true;
     in property <bool> read-only: false;
     in property <bool> single-line: true;
@@ -124,7 +126,7 @@ export component TextField inherits VerticalLayout {
     // A password is never handed to a screen reader or other accessibility client.
     accessible-value: root.input-type == InputType.password ? "" : root.text;
     accessible-placeholder-text: root.placeholder;
-    accessible-description: root.error;
+    accessible-description: root.error != "" ? root.error : root.description;
     accessible-enabled: root.enabled;
     accessible-read-only: root.read-only;
     accessible-action-set-value(v) => {
@@ -198,7 +200,8 @@ export component TextField inherits VerticalLayout {
                 viewport := Rectangle {
                     horizontal-stretch: 1;
                     min-width: 0px;
-                    clip: true;
+                    // No `clip` here: the Flickable clips its content, and a clipping Rectangle between it and an
+                    // outer scroll view makes Slint skip the field when Tab-ing while it is scrolled out of view.
 
                     flick := Flickable {
                         width: parent.width;

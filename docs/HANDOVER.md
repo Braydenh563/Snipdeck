@@ -5,17 +5,37 @@ reliability and UX work first. PR #5 (`claude/compassionate-pascal-pod8ux`) stay
 Do not merge, tag or run `release.yml`. Version and CHANGELOG already say 1.0.0; keep them, but fix the CHANGELOG
 date at the real release. The owner capped this session at 96% weekly usage; the limit resets 2026-10-24T07:00Z.
 
-## Now (2026-11-09, hand-off; finish everything in PR #5)
+## Next: a real Windows installer + Microsoft Store package (owner ask, 2026-11-12)
+Owner: "I want a proper windows installer ... download the app as an actual app and not just the project where I have
+to run the .bat file. We plan on adding it to the Microsoft store but also a regular installer (exe or msi)."
+Decision (Claude, recorded once): two channels from one release build.
+1. **Regular installer: per-user Inno Setup `.exe`** (`Snipdeck-Setup-<ver>.exe`): no admin prompt, installs to
+   `%LOCALAPPDATA%\Programs\Snipdeck`, Start-menu shortcut, optional desktop shortcut and "start with Windows",
+   Apps & features uninstall entry that keeps the library (erase is a separate choice), in-place upgrade that closes
+   the running app first (single-instance mutex), signed when SignPath is set up. Reason: the simplest thing for a
+   home user, upgrades cleanly, builds on the GitHub Windows runner (Inno Setup is preinstalled). MSI (WiX) only if
+   a business asks for Group Policy deployment.
+2. **Microsoft Store: MSIX** from the existing scaffold (`packaging/msix/AppxManifest.xml`, `scripts/make_msix_assets.py`,
+   `docs/packaging.md` section 1): Store signs it; autostart via the `StartupTask` extension; no self-update in the
+   Store build; check data paths under MSIX file-system virtualisation.
+Existing: `release.yml` builds only a portable zip (+ SHA-256, attestation); the `.bat` launcher in `tools/launcher`
+is the developer route. Plan (next session, workflow):
+- Scout: how the app finds its data dir and portable mode, autostart code, single-instance mutex, version source,
+  `release.yml`/`release-build.yml` steps, the MSIX manifest's gaps.
+- Build: `packaging/inno/snipdeck.iss` + a `scripts/` check; release.yml job "Windows installer" (iscc), upload
+  `.exe` + SHA-256 + attestation; MSIX job with `makeappx` (unsigned for Store upload, test-signed for sideload);
+  app changes for installed mode (autostart path, upgrade handling, "running from install dir" detection).
+- Docs: README "Install" first (download the Setup .exe), packaging.md, a Windows wizard section for the owner
+  (install, upgrade over an older version, uninstall keeps data, Store package sideload test).
+- Windows-only: everything above is unverified until the owner runs it.
+
+## Now (2026-11-11 evening; v1.1 work complete in PR #5)
 Branch `claude/compassionate-pascal-pod8ux`, PR https://github.com/braydenh563/snipdeck/pull/5. Keep all work on this branch and PR; never merge, tag or release.
-State (pushed a75342c, full gate green): Panel v2, Symbols 1-7, UX quick wins, importers backend, rebuild safety, shared look slices 1-8 (DESIGN.md) all done. v1.0.1 slice 1 (paste to create text/link, secret paste opens Sensitive editor, Ctrl+C, toast Edit) and slice 2 (paste images/files, drop files from Explorer into the shown list) done and reviewed.
-State 2026-11-11 01:25: PR head de273b1+ pushed; full suite green on de273b1 (first gate run broke only because a cache prune deleted a test binary mid-run: never prune while builds run). Merged: v1.1 1, 2a (Ctrl+Enter cause: clipped focused Title in a Flickable loses focus; fixed f508e86), 3a, 5a, 9, platform layers of 5b/7/8, 2b core parser. Agents on /tmp/target-panel (shared lock, RAM allows one UI build): wt/v11-fill (2b app+UI, coordinator WIP 520d7e0 + agent 1f4304f), wt/v11-tips (slice 4; content docs/reviews/v11-tips.md). Next UI lane: 7 rich paste app (platform read_rich, add route::Target.password for 5b), 3b groups UI, 5b app (typing::backspace_count, TypingHook, focus_is_password off UI thread), 6, 8 app (store crypto/hello.rs SealedKey + platform HelloAuthenticator); Final. Disk: ~3.6 GB free; /tmp/target-199 deleted (recreate for 1.99.1 clippy only when no agent builds). Owner 2026-11-10: no budget mode, run to done.
-CI: kaomoji golden fixed (1a0210e); advisories fixed: pulldown-cmark 0.13.6, rusqlite 0.41.1; deny ignores pin-utils (unsafe-libyaml ignore removed with serde-saphyr, v1.1 slice 9).
-Queue (`.claude/work-order.md`; spec `docs/reviews/v101-spec.md`): O50 header Select/Delete, slice 5 Recent rich captures, slice 6 Main quick-add + multi-row drag, slice 7 O54 sidebar + O30 sort, slice 8 A25 + search suggestions; importer Settings UI wiring; trimmed v1.1; Final (full gate, ux-auditor + blind-tester, docs, retro).
-Known v1.1 leftovers: per-tab file drop needs IDropTarget; large drops read on the UI thread (`.claude/remaining/v101-s2.md`); Main item-menu Copy copies only the first of several rows.
-Push rules: read the gate's `failed: none` before pushing; also run `cargo +1.99.1 clippy --workspace --all-targets` (own target dir) and, for Windows code, `cargo clippy -p snipdeck-app --target x86_64-pc-windows-gnu` (target + MinGW installed here; reinstall in a fresh container with `rustup target add x86_64-pc-windows-gnu` and `apt-get install gcc-mingw-w64-x86-64`).
-Working rules: one cargo build at a time (15 GB RAM), `CARGO_BUILD_JOBS=1 -j1`, shared `CARGO_TARGET_DIR=/tmp/target-panel`; agents 2-hour box, targeted tests; coordinator runs `cargo test --workspace --no-fail-fast` then `scripts/gate.sh --full` per push; goldens regenerate with `UPDATE_GOLDEN=1` and must be opened; wait for agents to go idle before merging their branch.
-Windows checks for the owner: wizard `tools/windows-test/tests/m3-app.json` steps 39-42 (paste/copy/drop) plus earlier: tray Open Picker, Recent paste, hotkeys, dock-right, Symbols paste/PNG/Save, Menu key/Shift+F10, Rebuild under AV/OneDrive, Quick check 13-18.
-Owner-only (hook blocks CI edits): release.yml:147 and release-build.yml:49 must also copy `THIRD_PARTY_NOTICES.md`; CI step `python3 scripts/symbols.py --check`; `cargo deny` for serde_yaml_ng.
+State: all v1.1 work is merged into the PR head: placeholders and fill-ins, paste transforms, importers with Settings wiring, groups inside a list (Panel and Main, keyboard, Narrator, header menu fold/move), typed-trigger expansion and suggest-as-you-type (opt-in), rich paste, Windows Hello unlock, tips, in-app help and shortcut lists, final audits 1 and 2, blind-test and ux-auditor fixes (Settings search gap, wrapping toasts, shortcut rows that wrap, "or" between alternative keys, palette that scales with text, group header selected state, accessible descriptions, warning toasts). Worker branches `claude/v11-*` are merged and can be deleted by the owner.
+Windows-only, unverified until the owner runs `tools/windows-test` (wizard `tests/m3-app.json`): steps 39-86 (typing 68-70, Hello 71-77, Narrator groups 78, Main groups 79-86); kaomoji, quick check, Ctrl+Enter in the Template editor, typed expansion with dead keys, the suggest hint, rich paste into Word/Outlook/Notepad/WordPad, Narrator on group headers.
+Owner-only (hook blocks CI edits): dismiss the CodeQL test-password alerts (false positives, explained on the PR); close the secret-scanning alert as "Used in tests" (the fake key is now split with `concat!`); release.yml:147 and release-build.yml:49 must also copy `THIRD_PARTY_NOTICES.md`; add a CI step `python3 scripts/symbols.py --check`; review the `deny.toml` ignores.
+Known leftovers: per-tab file drop needs IDropTarget; large drops read on the UI thread (`.claude/remaining/v101-s2.md`); Main item-menu Copy copies only the first of several rows.
+Build rules: shared `CARGO_TARGET_DIR=/tmp/target-panel`, `CARGO_PROFILE_DEV_DEBUG=0`, snipdeck-ui `-j1`, app `-j2`; CI runs Rust 1.99, so also run `cargo +1.99.1 fmt/clippy/doc` (own target dir `/tmp/target-199`); Windows: `cargo check -p snipdeck-app --target x86_64-pc-windows-gnu` (`/tmp/target-win`). Goldens regenerate with `UPDATE_GOLDEN=1` and must be opened. After merging a branch that touches `@tr`: `python3 scripts/i18n.py extract && check`, then `python3 scripts/codemap.py`.
 
 ## Session 2026-10-24 (owner away, autonomous; resume here)
 - Owner order: 1 merge fix branches + verify; 2 Panel redesign: owner picks from mock-ups BEFORE building

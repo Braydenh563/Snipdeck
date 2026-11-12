@@ -23,7 +23,13 @@ where
 {
     /// "Try it" on a card of Help > Tips: runs the card's command, and brings the Main window
     /// forward first when the command shows its result there.
-    pub fn try_tip(&mut self, action: crate::tips::TipAction) {
+    pub fn try_tip(&mut self, tip: crate::tips::Tip) {
+        let action = tip.action;
+        // A Supporter card on the Free plan: the way to get the feature, not a dead end.
+        if tip.feature.is_some_and(|f| !self.entitlements.allows(f)) {
+            self.pending.push(Effect::OpenLicence);
+            return;
+        }
         if action.opens_main() {
             self.pending.push(Effect::OpenMainWindow);
         }
@@ -58,6 +64,13 @@ where
             Command::PasteNext => {
                 self.paste_next();
             }
+            Command::GroupItems => self.main_group_marked(cursor),
+            Command::FoldGroup => self.main_group_collapse(cursor, None),
+            Command::RenameGroup => self.main_group_rename_start(cursor),
+            Command::UngroupGroup => self.main_group_ungroup(cursor),
+            Command::DeleteGroup => self.main_group_delete(cursor),
+            Command::MoveGroupUp => self.main_move_group(cursor, -1),
+            Command::MoveGroupDown => self.main_move_group(cursor, 1),
             Command::SelectAll => self.main_select_all(),
             Command::TakeScreenshot => {
                 let effects = self.take_screenshot();

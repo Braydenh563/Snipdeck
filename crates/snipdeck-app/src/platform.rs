@@ -34,8 +34,9 @@ mod imp {
             screen,
             single_instance::{Acquired, SingleInstance},
             system_look::{SystemLookWatcher, WinSystemLook},
-            target::TargetTracker,
+            target::{PasswordProbe, TargetTracker},
             tray::WinTray,
+            typing_hook::TypingHook,
             window_style,
         },
     };
@@ -43,12 +44,14 @@ mod imp {
     use std::sync::Arc;
 
     use super::{Callbacks, Host, Start, WatchGate};
+    use crate::typing_worker::{Env, Out, TypingList, Update};
     use crate::{
         controller::Services,
         frame::{Monitor, Rect},
-        host::{HotkeyBackend, HotkeyFailure, TargetSource, action_of},
+        host::{HotkeyBackend, HotkeyFailure, TargetSource, TypingControl, action_of},
         placement::PopupHost,
     };
+    use snipdeck_core::{Candidate, Matcher};
     use snipdeck_platform::{chord::Chord, system_look::SystemLookSource};
 
     pub(super) fn system_look() -> Arc<dyn SystemLookSource> {
@@ -164,21 +167,186 @@ mod imp {
         }
     }
 
+    /// The typing hook and the worker that turns its keys into completed triggers. Nothing runs
+    /// until [`TypingControl::set_enabled`] turns it on (UNVERIFIED on Windows).
+    struct WinTyping {
+        on_typed: Arc<dyn Fn(Out) + Send + Sync>,
+        list: Option<(Matcher, Vec<Candidate>)>,
+        running: Option<Running>,
+        /// The generation of the running worker (see `typing_worker::next_generation`).
+        generation: u64,
+    }
+
+    struct Running {
+        hook: TypingHook,
+        tab: Arc<std::sync::atomic::AtomicU64>,
+        updates: std::sync::mpsc::Sender<Update>,
+        worker: std::thread::JoinHandle<()>,
+    }
+
+    impl WinTyping {
+        fn new(on_typed: Arc<dyn Fn(Out) + Send + Sync>) -> Self {
+            Self {
+                on_typed,
+                list: None,
+                running: None,
+                generation: 0,
+            }
+        }
+
+        fn start(&mut self) -> Result<Running, String> {
+            let (hook, events) = TypingHook::start().map_err(|e| format!("typing hook: {e}"))?;
+            let (updates, rx) = std::sync::mpsc::channel();
+            if let Some((matcher, candidates)) = &self.list {
+                let _ = updates.send(Update::List(TypingList {
+                    matcher: matcher.clone(),
+                    candidates: candidates.clone(),
+                }));
+            }
+            let on_typed = Arc::clone(&self.on_typed);
+            let generation = crate::typing_worker::next_generation();
+            self.generation = generation;
+            let tab = hook.tab_flag();
+            let env = Env::new(
+                hook.sent(),
+                hook.lost(),
+                Arc::clone(&tab),
+                Arc::new(snipdeck_platform::windows::typing_hook::foreground_window),
+                Arc::new(|| {
+                    use snipdeck_platform::{
+                        keys::{Key, KeyEvent},
+                        pipeline::Keyboard,
+                    };
+                    let tab = |down| KeyEvent {
+                        key: Key::Tab,
+                        down,
+                    };
+                    // The hook ignores injected keys, so this Tab is not swallowed again.
+                    let _ = snipdeck_platform::windows::keyboard::WinKeyboard
+                        .send(&[tab(true), tab(false)]);
+                }),
+                generation,
+            );
+            let worker = std::thread::Builder::new()
+                .name("snipdeck-typing-worker".into())
+                .spawn(move || {
+                    // Made on this thread: the probe blocks and must stay off the UI thread.
+                    let probe = PasswordProbe::new();
+                    crate::typing_worker::run(
+                        &events,
+                        &rx,
+                        &env,
+                        || probe.focus_is_password(),
+                        |typed| on_typed(typed),
+                    );
+                })
+                .map_err(|e| format!("typing worker: {e}"))?;
+            Ok(Running {
+                hook,
+                tab,
+                updates,
+                worker,
+            })
+        }
+    }
+
+    impl TypingControl for WinTyping {
+        #[allow(
+            clippy::print_stderr,
+            reason = "a hook that cannot be installed has no other place to say so"
+        )]
+        fn set_enabled(&mut self, on: bool) -> bool {
+            if on == self.running.is_some() {
+                return true;
+            }
+            if on {
+                match self.start() {
+                    Ok(running) => self.running = Some(running),
+                    Err(e) => {
+                        eprintln!("snipdeck: {e}");
+                        return false;
+                    }
+                }
+            } else if let Some(running) = self.running.take() {
+                // Unhooking drops the event sender, which ends the worker. It is not joined: it
+                // may be inside the password probe (which can block on the other app), and this
+                // runs on the UI thread. A late result it still delivers meets the settings gate.
+                running.hook.stop();
+                drop(running.updates);
+                drop(running.worker);
+            }
+            true
+        }
+
+        fn set_triggers(&mut self, matcher: Matcher, candidates: Vec<Candidate>) {
+            if let Some(running) = &self.running {
+                let _ = running.updates.send(Update::List(TypingList {
+                    matcher: matcher.clone(),
+                    candidates: candidates.clone(),
+                }));
+            }
+            self.list = Some((matcher, candidates));
+        }
+
+        fn generation(&self) -> u64 {
+            if self.running.is_some() {
+                self.generation
+            } else {
+                0
+            }
+        }
+
+        fn hint_up(&mut self, id: u64) {
+            // Hints of a worker from before the last switch-off never arm the new hook.
+            if crate::typing_worker::generation_of(id) != self.generation {
+                return;
+            }
+            if let Some(running) = &self.running {
+                let _ = running.tab.compare_exchange(
+                    0,
+                    id,
+                    std::sync::atomic::Ordering::SeqCst,
+                    std::sync::atomic::Ordering::SeqCst,
+                );
+            }
+        }
+
+        fn hint_down(&mut self, id: u64) {
+            if let Some(running) = &self.running {
+                // Only this hint's own flag: a newer hint's stays.
+                let _ = running.tab.compare_exchange(
+                    id,
+                    0,
+                    std::sync::atomic::Ordering::SeqCst,
+                    std::sync::atomic::Ordering::SeqCst,
+                );
+            }
+        }
+
+        fn not_expanded(&mut self, fired: snipdeck_core::Fired) {
+            if let Some(running) = &self.running {
+                let _ = running.updates.send(Update::NotExpanded(fired));
+            }
+        }
+    }
+
     pub(super) fn connect(callbacks: Callbacks, single_instance: bool) -> Result<Start, String> {
         let Callbacks {
             on_hotkey,
             on_second,
+            on_quit,
             on_target_changed,
             on_tray,
             on_look_changed,
             on_clipboard_change,
+            on_typed,
         } = callbacks;
         // Before any window exists: the tray's window, menu and icon are made ahead of the UI
         // toolkit, which would otherwise be too late to make the process DPI aware.
         let _ = snipdeck_platform::windows::dpi::enable_per_monitor_awareness();
         let mut keep_alive: Vec<Box<dyn std::any::Any>> = Vec::new();
         if single_instance {
-            match SingleInstance::acquire(super::APP_ID, on_second) {
+            match SingleInstance::acquire(super::APP_ID, on_second, on_quit) {
                 Ok(Acquired::First(guard)) => keep_alive.push(Box::new(guard)),
                 Ok(Acquired::Second) => return Ok(Start::AlreadyRunning),
                 Err(e) => return Err(format!("single-instance guard: {e}")),
@@ -230,6 +398,7 @@ mod imp {
             popups: Rc::new(Popups(popup_tracker)),
             tray,
             recent_gate,
+            typing: Box::new(WinTyping::new(Arc::from(on_typed))),
             warnings,
             keep_alive,
         })))
@@ -270,10 +439,12 @@ mod imp {
         let _ = (
             callbacks.on_hotkey,
             callbacks.on_second,
+            callbacks.on_quit,
             callbacks.on_target_changed,
             callbacks.on_tray,
             callbacks.on_look_changed,
             callbacks.on_clipboard_change,
+            callbacks.on_typed,
         );
         Ok(Start::Run(Box::new(Host {
             services: Services {
@@ -291,6 +462,7 @@ mod imp {
             // No tray off Windows: closing the Panel quits the dev build.
             tray: None,
             recent_gate: WatchGate::new(),
+            typing: Box::new(crate::host::FakeTyping::default()),
             warnings: Vec::new(),
             keep_alive: Vec::new(),
         })))
@@ -312,6 +484,59 @@ pub fn system_look() -> Arc<dyn SystemLookSource> {
 pub fn attach_parent_console() {
     #[cfg(windows)]
     snipdeck_platform::windows::console::attach_parent_console();
+}
+
+/// `--quit`: asks the Snipdeck running in this Windows session to quit, as the tray's Quit does,
+/// and returns at once. Nothing is opened or created but the existing quit event; whether or not
+/// one is running (or can be asked: an elevated one cannot be signalled from a normal process),
+/// this prints nothing and the caller exits 0. Does nothing off Windows.
+/// Unverified on Windows.
+pub fn ask_to_quit() {
+    #[cfg(windows)]
+    let _ = snipdeck_platform::windows::single_instance::ask_to_quit(APP_ID);
+}
+
+/// Whether the app runs from an installed MSIX / Store package; never off Windows.
+#[must_use]
+pub fn is_packaged() -> bool {
+    #[cfg(windows)]
+    {
+        snipdeck_platform::windows::package::is_packaged()
+    }
+    #[cfg(not(windows))]
+    {
+        false
+    }
+}
+
+/// Whether Windows started this process as the package's startup task, which cannot pass
+/// `--hidden`. The first call asks Windows (the answer exists only once), so `main` calls it
+/// before anything else; later calls return the kept answer. Unverified on Windows.
+#[must_use]
+pub fn launched_by_startup_task() -> bool {
+    #[cfg(windows)]
+    {
+        snipdeck_platform::windows::package::launched_by_startup_task()
+    }
+    #[cfg(not(windows))]
+    {
+        false
+    }
+}
+
+/// Windows Hello on this machine; none elsewhere.
+#[must_use]
+pub fn hello() -> Option<std::sync::Arc<dyn snipdeck_platform::hello::HelloAuthenticator>> {
+    #[cfg(windows)]
+    {
+        Some(std::sync::Arc::new(
+            snipdeck_platform::windows::hello::WindowsHello,
+        ))
+    }
+    #[cfg(not(windows))]
+    {
+        None
+    }
 }
 
 /// The file dialog of this machine: the Windows Open dialog; none elsewhere (the item editor then
@@ -340,6 +565,9 @@ pub struct Callbacks {
     pub on_hotkey: Box<dyn Fn(HotkeyAction) + Send>,
     /// A second launch asked this instance to show itself (service thread).
     pub on_second: Box<dyn Fn() + Send>,
+    /// `snipdeck.exe --quit` asked this instance to quit (service thread); do what the tray's
+    /// Quit does.
+    pub on_quit: Box<dyn Fn() + Send>,
     /// The foreground window changed (UI thread).
     pub on_target_changed: Box<dyn Fn()>,
     /// The user used the tray icon (tray thread).
@@ -349,6 +577,9 @@ pub struct Callbacks {
     pub on_look_changed: Box<dyn Fn() + Send>,
     /// The clipboard changed and the Recent inbox is listening (clipboard thread).
     pub on_clipboard_change: Box<dyn Fn(ClipboardChange) + Send>,
+    /// A typed trigger completed, and whether the focused element is a password box (typing
+    /// worker thread).
+    pub on_typed: Box<dyn Fn(crate::typing_worker::Out) + Send + Sync>,
 }
 
 /// The platform services the app runs on.
@@ -370,6 +601,8 @@ pub struct Host {
     pub tray: Option<Box<dyn Tray>>,
     /// Switches the clipboard listener of the Recent inbox on and off.
     pub recent_gate: WatchGate,
+    /// Installs and removes the typing hook (typed-trigger expansion and suggestions).
+    pub typing: Box<dyn crate::host::TypingControl>,
     /// Services that failed to start but are not essential: print them.
     pub warnings: Vec<String>,
     /// Kept alive for the life of the process (the single-instance claim, the colour-mode
@@ -410,10 +643,12 @@ mod tests {
         let callbacks = Callbacks {
             on_hotkey: Box::new(|_| {}),
             on_second: Box::new(|| {}),
+            on_quit: Box::new(|| {}),
             on_target_changed: Box::new(|| {}),
             on_tray: Box::new(|_| {}),
             on_look_changed: Box::new(|| {}),
             on_clipboard_change: Box::new(|_| {}),
+            on_typed: Box::new(|_| {}),
         };
         let Ok(Start::Run(host)) = connect(callbacks, true) else {
             panic!("the dev host always starts")

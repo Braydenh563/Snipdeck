@@ -192,6 +192,9 @@ export component ItemCard inherits Rectangle {
     in property <string> label-name;
     // 1-based place in the paste stack (SPEC 5.1); 0 = not marked. Drawn as an icon plus a number, never colour alone.
     in property <int> stack-position: 0;
+    // Its place in a group of items (1 = first) and the group's size; 0 = not in a group.
+    in property <int> set-position: 0;
+    in property <int> set-size: 0;
     // The item keeps HTML or RTF next to its text: a small "Formatted" mark sits left of the stack mark (not on tiles,
     // which have no room; the accessible description says it there too).
     in property <bool> formatted: false;
@@ -452,6 +455,9 @@ export component ItemCard inherits Rectangle {
     accessible-description: (root.has-label ? (root.described == "" ? @tr("label: {}", root.label-name) : root.described + ", " + @tr("label: {}", root.label-name)) : root.described) + (root.formatted && !root.sensitive ? (root.described == "" && !root.has-label ? "" : ", ") + @tr("Formatted") : "");
     accessible-item-selectable: true;
     accessible-item-selected: root.selected;
+    // A group's item says "n of m" to a screen reader; -1 is not a number, so a loose row says nothing.
+    accessible-item-index: root.set-position > 0 ? root.set-position - 1 : -1;
+    accessible-item-count: root.set-size > 0 ? root.set-size : -1;
     accessible-action-default => {
         root.pull();
         root.use();

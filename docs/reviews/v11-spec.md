@@ -219,7 +219,7 @@ Read-only survey of d1daa43; nothing built or run; line numbers from that tip. T
   signature (RSA PKCS#1 v1.5, deterministic) of a fixed challenge, sealed with `crypto/aead.rs`, opened into
   `open_with_key` (`keys.rs:194`). Nothing new on disk. Reason: the key is protected, not only the UI; a restart forgets
   the copy, as decided.
-- **Decision:** after each password unlock Hello is asked once to seal the copy. Reason: the KEK needs a signature,
+- **Decision:** after each password unlock Hello is asked once to seal the copy (turning Hello on asks twice, to check the signature repeats). Reason: the KEK needs a signature,
   which needs the user; password unlocks are rare.
 - **Decision:** 7 days fixed, from the last password unlock, injected clock. Reason: no new setting.
 - **Decision:** Hello cancel, failure or a removed PIN falls back to the password and drops the copy.

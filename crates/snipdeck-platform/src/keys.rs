@@ -62,6 +62,9 @@ pub enum Key {
     Left,
     /// `Backspace`: erases a typed trigger before the item is pasted over it.
     Backspace,
+    /// `Tab`: given back to the app when the typing hook swallowed one for a suggestion hint
+    /// that was gone by then.
+    Tab,
     /// An unassigned virtual key, pressed and released while `Alt` or `Win` is held so that
     /// releasing it does not open a menu bar or the Start menu.
     Mask,

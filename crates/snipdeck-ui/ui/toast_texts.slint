@@ -59,6 +59,15 @@ export global ToastTexts {
     pure public function master-password-removed-not-open() -> string {
         return @tr("Master password removed. Snipdeck couldn't open the library just now. Restart Snipdeck to use your sensitive items.");
     }
+    pure public function hello-turned-off() -> string {
+        return @tr("Windows Hello didn't work, so it was turned off. You can turn it on again in Settings.");
+    }
+    pure public function hello-not-turned-on() -> string {
+        return @tr("Windows Hello was not turned on.");
+    }
+    pure public function hello-enrol-failed() -> string {
+        return @tr("Windows Hello didn't work, so it was not turned on.");
+    }
     pure public function locked-editor-closed() -> string {
         return @tr("Your library locked after a while. The sensitive item you were editing was closed without saving.");
     }
@@ -169,7 +178,7 @@ export global ToastTexts {
         return @tr("Restored {} item" | "Restored {} items" % count, count);
     }
     // The words of the app-wide undo history. `kind` is the action: 0 add, 1 paste, 2 drop,
-    // 3 edit, 4 delete, 5 move, 6 reorder, 7 colour, 8 pin, 9 tag, 10 duplicate.
+    // 3 edit, 4 delete, 5 move, 6 reorder, 7 colour, 8 pin, 9 tag, 10 duplicate, 11 group.
     pure public function action-word(kind: int) -> string {
         return kind == 0 ? @tr("add")
             : kind == 1 ? @tr("paste")
@@ -181,7 +190,8 @@ export global ToastTexts {
             : kind == 7 ? @tr("colour change")
             : kind == 8 ? @tr("pin")
             : kind == 9 ? @tr("tag change")
-            : @tr("duplicate");
+            : kind == 10 ? @tr("duplicate")
+            : @tr("group change");
     }
     pure public function undone(action: string) -> string {
         return @tr("Undid {}", action);
@@ -343,8 +353,23 @@ export global ToastTexts {
     pure public function autostart-failed() -> string {
         return @tr("Couldn't change the Windows start-up entry.");
     }
+    pure public function autostart-switched-off() -> string {
+        return @tr("Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there.");
+    }
+    pure public function autostart-policy() -> string {
+        return @tr("Your organisation's policy keeps Snipdeck from starting with Windows.");
+    }
     pure public function cannot-open-log() -> string {
         return @tr("Couldn't open the log folder.");
+    }
+    pure public function trigger-overlaps(other: string) -> string {
+        // An untitled item (or one gone meanwhile) has no name to show: the general wording.
+        return other == ""
+            ? @tr("Saved. This trigger overlaps another trigger, so one of them may never fire.")
+            : @tr("Saved. This trigger overlaps the trigger of “{}”, so one of them may never fire.", other);
+    }
+    pure public function typing-unavailable() -> string {
+        return @tr("Couldn't start typing triggers. Nothing will be expanded or suggested.");
     }
     pure public function key-unavailable() -> string {
         return @tr("Couldn't open the encryption key. Nothing was saved.");

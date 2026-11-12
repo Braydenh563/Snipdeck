@@ -18,6 +18,8 @@ export component FormField inherits VerticalLayout {
     in property <string> label;
     in property <string> helper;
     in property <string> error;
+    // A warning (not an error): icon plus warning colour, announced politely when it appears.
+    in property <string> warning;
 
     spacing: Space.s1;
     alignment: start;
@@ -39,6 +41,26 @@ export component FormField inherits VerticalLayout {
         font-size: Type.sm;
         wrap: word-wrap;
         accessible-role: none;
+    }
+    if root.warning != "": HorizontalLayout {
+        spacing: Space.s1;
+        alignment: start;
+        Icon {
+            source: Icons.warning;
+            tint: Theme.warning-fg;
+            y: (Type.line-sm - self.height) / 2;
+        }
+        Text {
+            horizontal-stretch: 1;
+            text: root.warning;
+            color: Theme.warning-fg;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            wrap: word-wrap;
+            accessible-role: AccessibleRole.text;
+            accessible-label: root.warning;
+            accessible-live-region: polite;
+        }
     }
     if root.error != "": FieldError { text: root.error; }
 }
@@ -141,6 +163,9 @@ export component FormSection inherits VerticalLayout {
     }
     VerticalLayout {
         visible: root.shown;
+        // Prose, tables and lists in a section keep their own minimum height; a hidden section must take none of it
+        // (the Settings search used to leave a blank gap above the first match), so say so with the minimum too.
+        min-height: root.shown ? self.preferred-height : 0px;
         max-height: root.shown ? 100000px : 0px;
         spacing: 0px;
         @children
@@ -154,8 +179,11 @@ export component SettingRow inherits Rectangle {
     // Not empty = a Free plan cannot use this yet: the lock badge with this text (the word "Supporter") shows by the title.
     in property <string> locked-text;
 
+    // Other words the Settings search also finds this row by (for a related row that is not always shown).
+    in property <string> search-also;
+
     // The Settings search hides a row whose title does not hold the query (a hidden row takes no space).
-    property <bool> shown: SettingsFilter.shows(root.title);
+    property <bool> shown: SettingsFilter.shows(root.title) || (root.search-also != "" && SettingsFilter.shows(root.search-also));
     visible: root.shown;
     max-height: root.shown ? 100000px : 0px;
     // A Rectangle does not take its height from the layout inside it, so say it: wrapped text makes the row taller.
@@ -416,6 +444,54 @@ export component SelectField inherits VerticalLayout {
             background: transparent;
         }
 
+
+        scope := FocusScope {
+            enabled: root.enabled;
+            focus-on-click: false;
+            key-pressed(event) => {
+                if (!root.open) {
+                    if (event.text == Key.DownArrow || event.text == Key.UpArrow || event.text == "\n" || event.text == " ") {
+                        root.toggle();
+                        return accept;
+                    }
+                    return reject;
+                }
+                if (event.text == Key.Escape) {
+                    root.open = false;
+                    return accept;
+                }
+                if (event.text == Key.DownArrow) {
+                    root.hl = min(root.options.length - 1, root.hl + 1);
+                    return accept;
+                }
+                if (event.text == Key.UpArrow) {
+                    root.hl = max(0, root.hl - 1);
+                    return accept;
+                }
+                if (event.text == Key.Home) {
+                    root.hl = 0;
+                    return accept;
+                }
+                if (event.text == Key.End) {
+                    root.hl = root.options.length - 1;
+                    return accept;
+                }
+                if (event.text == "\n" || event.text == " ") {
+                    root.pick(root.hl);
+                    return accept;
+                }
+                if (event.text == Key.Tab || event.text == Key.Backtab) {
+                    root.open = false;
+                }
+                return reject;
+            }
+            changed has-focus => {
+                if (!self.has-focus) {
+                    root.open = false;
+                }
+            }
+        }
+
         touch := TouchArea {
             enabled: root.enabled;
             clicked => { root.toggle(); }
@@ -443,53 +519,6 @@ export component SelectField inherits VerticalLayout {
                 count: root.options.length;
                 pointer-entered => { root.hl = i; }
                 activated => { root.pick(i); }
-            }
-        }
-    }
-
-    scope := FocusScope {
-        enabled: root.enabled;
-        focus-on-click: false;
-        key-pressed(event) => {
-            if (!root.open) {
-                if (event.text == Key.DownArrow || event.text == Key.UpArrow || event.text == "\n" || event.text == " ") {
-                    root.toggle();
-                    return accept;
-                }
-                return reject;
-            }
-            if (event.text == Key.Escape) {
-                root.open = false;
-                return accept;
-            }
-            if (event.text == Key.DownArrow) {
-                root.hl = min(root.options.length - 1, root.hl + 1);
-                return accept;
-            }
-            if (event.text == Key.UpArrow) {
-                root.hl = max(0, root.hl - 1);
-                return accept;
-            }
-            if (event.text == Key.Home) {
-                root.hl = 0;
-                return accept;
-            }
-            if (event.text == Key.End) {
-                root.hl = root.options.length - 1;
-                return accept;
-            }
-            if (event.text == "\n" || event.text == " ") {
-                root.pick(root.hl);
-                return accept;
-            }
-            if (event.text == Key.Tab || event.text == Key.Backtab) {
-                root.open = false;
-            }
-            return reject;
-        }
-        changed has-focus => {
-            if (!self.has-focus) {
-                root.open = false;
             }
         }
     }

@@ -67,6 +67,10 @@ struct Rig {
 }
 
 fn rig(settings: Settings) -> Rig {
+    rig_on(settings, Tier::Pro)
+}
+
+fn rig_on(settings: Settings, tier: Tier) -> Rig {
     let ctl: Rc<RefCell<Ctl>> = Rc::new(RefCell::new(
         Controller::new(
             demo::store(now()).expect("demo store"),
@@ -78,7 +82,7 @@ fn rig(settings: Settings) -> Rig {
             Box::new(FakeTargets::new(Some(demo::target()))),
             Box::new(FixedClock::new(now())),
             settings,
-            Entitlements::new(Tier::Pro),
+            Entitlements::new(tier),
         )
         .expect("controller"),
     ));
@@ -139,7 +143,7 @@ fn the_shortcut_texts_have_one_title_per_shortcut_and_one_name_per_scope() {
 }
 
 #[test]
-fn the_tab_lists_every_shortcut_in_five_groups_with_the_note_under_the_global_ones() {
+fn the_tab_lists_every_shortcut_in_six_groups_with_the_note_under_the_global_ones() {
     on_ui_thread(|| {
         let r = rig(Settings::default());
         let shown = r.shown();
@@ -151,7 +155,8 @@ fn the_tab_lists_every_shortcut_in_five_groups_with_the_note_under_the_global_on
                 "Main window",
                 "Panel",
                 "Picker",
-                "Editors"
+                "Editors",
+                "Unlock window"
             ]
         );
         let total: usize = shown.iter().map(|(_, lines)| lines.len()).sum();
@@ -279,6 +284,75 @@ fn try_it_runs_the_tip_action() {
 
         // A stale index does nothing.
         r.ui.invoke_try_tip_requested(99);
-        assert!(r.ctl.borrow_mut().take_pending().is_empty());
+        assert_eq!(r.ctl.borrow_mut().take_pending(), Vec::new());
+    });
+}
+
+#[test]
+fn on_the_free_plan_the_supporter_cards_are_marked_and_try_it_opens_the_licence() {
+    on_ui_thread(|| {
+        let pro = rig_on(Settings::default(), Tier::Pro);
+        pro.binding.refresh();
+        assert!(pro.ui.get_tips().iter().all(|c| !c.locked));
+
+        let r = rig_on(Settings::default(), Tier::Free);
+        r.ui.set_tab(3);
+        r.binding.refresh();
+        let cards: Vec<_> = r.ui.get_tips().iter().collect();
+        let locked: Vec<usize> = (0..cards.len()).filter(|&i| cards[i].locked).collect();
+        let wanted: Vec<usize> = (0..TIPS.len())
+            .filter(|&i| TIPS[i].feature.is_some())
+            .collect();
+        assert_eq!(
+            locked, wanted,
+            "a card is marked exactly when its feature is Supporter"
+        );
+        // The three the blind test hit: paste next, the templates, the master password.
+        let titles: Vec<&str> = locked.iter().map(|&i| cards[i].title.as_str()).collect();
+        assert_eq!(
+            titles,
+            [
+                "Paste several in order",
+                "Fill in the blanks",
+                "Keep secrets secret"
+            ]
+        );
+        for &i in &locked {
+            let _ = r.ctl.borrow_mut().take_pending();
+            r.ui.invoke_try_tip_requested(i32::try_from(i).expect("index"));
+            assert_eq!(
+                r.ctl.borrow_mut().take_pending(),
+                vec![Effect::OpenLicence],
+                "{}: Try it on Free is the licence page, not a dead end",
+                cards[i].title
+            );
+        }
+        // A free card still does its own thing.
+        let _ = r.ctl.borrow_mut().take_pending();
+        r.ui.invoke_try_tip_requested(2);
+        assert!(
+            r.ctl
+                .borrow_mut()
+                .take_pending()
+                .contains(&Effect::OpenMainWindow)
+        );
+    });
+}
+
+#[test]
+fn the_recent_card_says_what_recent_holds() {
+    on_ui_thread(|| {
+        let r = rig(Settings::default());
+        r.binding.refresh();
+        let cards: Vec<_> = r.ui.get_tips().iter().collect();
+        let capture = cards
+            .iter()
+            .find(|c| c.title.as_str() == "Grab text as you go")
+            .expect("the capture card");
+        assert!(
+            capture.second_line.contains("copy in other programs"),
+            "{}",
+            capture.second_line
+        );
     });
 }

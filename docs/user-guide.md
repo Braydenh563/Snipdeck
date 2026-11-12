@@ -51,6 +51,11 @@ becomes a new item at the top of the current list. Text over 5 MB is refused. Th
 from anywhere, saving whatever text is on the clipboard when you press it; it is off until you set a shortcut in
 Settings, **Shortcuts**.
 
+**Formatting.** Pasting into the Panel or the Main window (`Ctrl+V`), **Save from clipboard** and the Capture
+shortcut keep the formatting (HTML and RTF) beside the text. Such an item pastes formatted into Word or Outlook and as
+plain text into Notepad, and its row shows a **Formatted** mark. In the editor, changing the text removes the
+formatting when you save, and the editor says so first; **Remove formatting** drops it and keeps the text.
+
 ### Templates
 
 A template is an item whose text has placeholders. Snipdeck fills them in when you use the item. In the
@@ -77,12 +82,19 @@ that is too short gives its last day (`{date+1mo}` on 31 January is 28 or 29 Feb
 `{date}` and `{time}` use your computer's time zone. `{clipboard}` inserts the clipboard text. Type `{{` and `}}` for literal braces. Any other braces are an error, and the editor says so when
 you save.
 
+On the Free plan the **Placeholders** list in the editor marks every Supporter placeholder with a **Supporter**
+badge. You can still type one. When you save, the editor refuses and says the text needs Supporter. The message
+sits under the text box, with a **Get Supporter…** button right below it that opens the Supporter dialog. Remove
+the placeholder to save on the Free plan.
+
 In the Fill in template window, each `{uuid}` shows as "(new ID)" in the preview: the real ID is made when you insert.
 
 When you use a template with `{field}`, `{choice}`, `{multiline}`, `{pickdate}` or `{optional}`, a **Fill in template** window
 opens. Fill the fields, check the preview and press `Ctrl+Enter` to insert. `Esc` cancels. In a multi-line box `Enter`
 adds a line; `Ctrl+Enter` still inserts. A date that is not a real day (such as 2026-02-30) is marked on its box and
-nothing is inserted until you fix it or clear it. The tick box is switched with `Space`.
+nothing is inserted until you fix it or clear it. `Enter` moves to the next box, and on the last box it inserts.
+The tick box is switched with `Space`. The form opens for any template that asks something, even when every
+question has a default: the defaults are already filled in.
 
 ### Sensitive items
 
@@ -157,6 +169,28 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
 - **Lists.** Add a list with **Add list** in the sidebar, or the **+** tab in the Panel. **Edit list** sets the name, a colour and the sort: manual, most
   used or recently used. Move a list with `Alt+Up` or `Alt+Down` while it is selected in the sidebar.
 - **Order of items.** Select a row and press `Alt+Up` or `Alt+Down`, in the Main window or the Panel, or choose **Move up** / **Move down** in the snippet's menu.
+- **Groups.** A list sorted by hand (Manual) can hold named groups of items, in the Panel and in the Main window.
+  - **Make one.** Select two or more rows and press `Ctrl+G`, or choose **Group…** from the item menu (the row
+    at the cursor when nothing is selected). The rows gather under a header and its name opens for typing: type a
+    name and press `Enter` (the default is "Group"). In a list that sorts itself, **Group…** offers to switch to
+    Manual first.
+  - **Read the header.** It shows the name, how many items the group holds and an arrow. A screen reader reads it
+    as "group, 3 items" and says whether it is expanded or collapsed.
+  - **Fold or unfold a group.** Click the header, or press `Left` to fold and `Right` to unfold. `Enter` toggles it
+    (in the Panel `Space` does too). A folded group hides its items and stays folded.
+  - **Rename.** Press `F2` on the header, press `Ctrl+G` on it with nothing selected, or choose **Rename group**.
+  - **Ungroup or delete.** **Ungroup** dissolves the group and keeps its items. **Delete group** (or `Delete`
+    on the header) moves the group and its items to the Trash, and `Ctrl+Z` brings them all back in one step.
+  - **Move.** Drag a header to move the whole group, or press `Alt+Up` or `Alt+Down` on it. Dropping an item on a
+    header adds it to that group.
+  - **Search.** Searching lists every match, even inside a folded group, under the group's header in the Panel;
+    the Main window shows a flat list of matches with no headers.
+  - **Layout.** A list that holds groups is drawn as rows, so a header spans the width; the Tile view button
+    rests (greyed out) until the list has no groups. `Alt+1` to `Alt+9` count items only, never headers.
+  - **Main window.** The command palette (`Ctrl+K`) has the same actions, and the header's menu has Rename group,
+    Ungroup and Delete group.
+  - **Undo.** `Ctrl+Z` takes back a grouping, a rename, an ungroup, a delete and a drag of a header or of an
+    item onto one.
 - **Move.** Choose **Move to list…** from the item menu to move one or more selected items.
 - **Paste as…** Choose **Paste as…** from the item menu (text items, one at a time) to paste the text changed: **Plain
   text**, **UPPERCASE**, **lowercase**, **Title Case**, **Trimmed** (no space at the ends) or **slug-like-this** (`my-title`).
@@ -202,7 +236,7 @@ only if the Free plan has room for it.
 
 ## Commands and shortcuts
 
-- **All commands.** Press `Ctrl+K` (or `Ctrl+Shift+P`) in the Main window, or choose **All commands…** in
+- **Commands.** Press `Ctrl+K` (or `Ctrl+Shift+P`) in the Main window, or choose **Commands…** in
   the Panel menu. Type a few letters, such as "new" or "hotkeys", and press `Enter`. The palette lists the
   actions of the app, so you never need to remember where one lives.
 - **Keyboard shortcuts.** Press `Ctrl+/` to see every shortcut. It is also a tab in the Help window.
@@ -229,6 +263,13 @@ The Recent inbox keeps the text you copy in other programs, so you can find it a
   for your account). Without a master password the inbox works as usual; with one, the library locked means
   the inbox shows **Recent copies are locked** and collects nothing until you unlock.
 
+## Symbols
+
+The Panel's **Symbols** tab (the smiley next to Recent) holds emoji, kaomoji and icons. Type in **Search emoji,
+kaomoji, icons** or pick **Emoji**, **Kaomoji** or **Icons** and a group. Click a symbol to paste it into the app you
+were typing in, the same as an item; `Shift`+click copies it instead. **Recently used** keeps the ones you use. To hide
+the tab and its `Ctrl+K` command, turn off **Show Symbols tab** in Settings.
+
 ## Help and the welcome tour
 
 Press `F1` or open **Help** in the Main window to see the Help window. **Troubleshoot** is a checklist that finds
@@ -251,7 +292,7 @@ back.
 
 ### Tips
 
-The **Tips** tab of the Help window has ten short cards on what Snipdeck can do. Each has a title, two lines, a
+The **Tips** tab of the Help window has eleven short cards on what Snipdeck can do. Each has a title, two lines, a
 picture and a **Try it** button that runs the action for you (for example, showing the Panel). Open it from the
 tray icon's menu (**Tips**), from Help, from the last page of the welcome tour, or from the **More tips** card in
 the **Getting started** list. Snipdeck never shows a badge or a reminder about tips; they wait until you look.
@@ -271,20 +312,33 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   Settings > Accessibility > Text size in Windows) or a fixed 100, 125, 150 or 175 %. **Reduce motion** turns off
   sliding and fading. It is also off when Windows has **Animation effects** off. **Panel width** is 260 to 480
   pixels. You can also drag the Panel's edges.
-- **Panel.** **Show the Panel in the taskbar and Alt+Tab** gives the Panel a taskbar button and an Alt+Tab entry while it is on screen (off by default). A paste from a Panel reached with Alt+Tab still goes to the app you were in before.
-  **Hide the panel when it loses focus** hides an unpinned Panel when you switch to another app (on by default).
-  **Start with Windows** starts Snipdeck hidden in the tray when you sign in. **Keep running in the tray when the
-  window closes** is on by default. Turn it off and closing the Panel or the Main window quits Snipdeck.
-- **Panel dock.** **Dock to** fixes the Panel against Floating, Left edge, Right edge, Top edge or Bottom edge
-  of the monitor it is on. The edge the taskbar is on is never used. You can also drag the Panel by its header
-  to within a few pixels of an edge: a strip marks the edge, and the Panel docks there when you let go. The
-  Panel's menu names the edge it would dock to ("Dock to the right edge"). **Open a docked panel by** is Off, Hover, Click or Hover and click. Off keeps a docked
-  Panel open. The other choices fold it into a thin strip, and the Panel shortcut opens it too. **Hover delay**
-  (0 to 2000 ms, default 150) is how long the pointer rests on the strip. **Leave delay** (0 to 5000 ms, default
-  400) is how long it stays off the Panel before it folds.
+- **Panel layout.** **Layout** is List, Cards (two per row) or Compact. **Search field** is Appears when you type
+  or Always shown. **Lists** are Tabs or a Menu in the board picker. **Quick-use numbers** numbers the first nine
+  rows for `Alt+1` to `Alt+9`. **Show Symbols tab** shows or hides the Symbols tab and its `Ctrl+K` command.
+- **Opening the Panel.** **Tray icon click opens** the Panel or the Main window. **Panel opens** where you left it,
+  at the mouse or at the text cursor. **After a paste or copy** hides the Panel or keeps it open.
+  **Hide the panel when it loses focus** hides an unpinned Panel when you switch to another app (on by
+  default). **Show the Panel in the taskbar and Alt+Tab** gives the Panel a taskbar button and an Alt+Tab entry
+  while it is on screen (off by default); a paste from a Panel reached with Alt+Tab still goes to the app you
+  were in before. **Keep Panel visible during screenshots** leaves it on screen for Take screenshot.
+  **Picker position** is the side of your text cursor the Picker opens on. **Start with Windows** starts Snipdeck
+  hidden in the tray when you sign in, and **When Windows starts** can open the Panel as well. **Keep running in
+  the tray when the window closes** is on by default. Turn it off and closing the Panel or the Main window quits
+  Snipdeck.
+- **Docking** is also in Opening the Panel. **Dock to** fixes the Panel against Floating, Left edge, Right edge,
+  Top edge or Bottom edge of the monitor it is on. The edge the taskbar is on is never used. You can also drag
+  the Panel by its header to within a few pixels of an edge: a strip marks the edge, and the Panel docks there
+  when you let go. The Panel's menu names the edge it would dock to ("Dock to the right edge"). **Open a docked
+  panel by** is Off, Hover, Click or Hover and click. Off keeps a docked Panel open. The other choices fold it
+  into a thin strip, and the Panel shortcut opens it too. **Hover delay** (0 to 2000 ms, default 150) is how long
+  the pointer rests on the strip. **Leave delay** (0 to 5000 ms, default 400) is how long it stays off the Panel
+  before it folds.
+- **Typing.** **Expand abbreviations as I type** and **Suggest snippets as I type**, both off by default. See
+  [Triggers and typing](#triggers-and-typing-windows).
 - **Privacy.** **Keep a Recent inbox of what you copy** and the programs it never keeps copies from. **Clear the
   clipboard after copying a sensitive item** sets the seconds (30 by default, `0`
-  never clears it). **Master password** sets, changes or removes the password (Supporter). Below them is a
+  never clears it). **Master password** sets, changes or removes the password (Supporter). With a password set,
+  **Unlock with Windows Hello** appears under it (see [Windows Hello](#windows-hello-supporter-windows)). Below them is a
   short summary of what is stored and where.
 - **Programs.** One row per program, by file name, such as `windowsterminal.exe`, with the key Snipdeck presses to
   paste there: **Ctrl+V**, **Ctrl+Shift+V**, **Shift+Insert**, or **Never paste** (Snipdeck copies instead).
@@ -301,8 +355,37 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   table. To turn on Supporter, paste your key (it starts with `SNIP1.`) and press **Activate**. See
   [Free and Supporter](#free-and-supporter) and [`licensing.md`](licensing.md).
 
-The page lists its groups in this order: Shortcuts, Appearance, Panel, Privacy, Programs, Licence, Backups and
-your data. Press `F1` or choose **Help** at the bottom of the page to open this guide.
+The page lists its groups in this order: Shortcuts, Appearance, Panel layout, Opening the Panel, Privacy,
+Programs, Typing, Backups and your data, Licence. Press `F1` or choose **Help** at the bottom of the page to open this guide.
+
+## Triggers and typing (Windows)
+
+A **trigger** is a short code you give an item, such as `;sig`. It is 1 to 32 characters with no spaces, and
+no two items share one. Set it in the item editor, in the **Trigger** box. A Sensitive item shows "Sensitive items can't be typed in, so they have no trigger." there instead. Items
+imported from Espanso or similar tools keep their abbreviations as triggers.
+
+Two options under **Typing** in Settings use triggers while you type in other programs. Both are off by
+default, and both work only on Windows (not yet tested on a real PC). On other systems Settings says "Typing triggers work on Windows only."
+
+- **Expand abbreviations as I type.** When you type a trigger in another program, Snipdeck deletes it and
+  pastes the item. A trigger must begin after a space or punctuation (or at the start of a line) and fires on
+  its last character: no extra key is needed. If the item has fill-in fields, the form opens first.
+- **Suggest snippets as I type.** After you type the first two characters of a trigger, a small hint at the
+  text cursor shows the item's title and "Tab to insert". Press `Tab` to insert it. Snipdeck takes `Tab` only while the hint shows; any other key carries on as
+  usual, and `Esc` (like the arrow keys, `Enter` and `Delete`) clears what you typed so the hint goes away. The hint also goes if you stop typing for about 5 seconds. If several triggers match, the most used item is offered. No text cursor, no hint.
+
+The hint shows only while what you typed is the start of a trigger. It needs at least two characters, and it
+waits for a space, punctuation or the start of a line, like a trigger does. When you have typed the whole
+trigger, the item is pasted instead of hinted. Only trigger codes count, never titles.
+
+In the item editor, the **Trigger** box has the same rules: 1 to 32 characters with no spaces, and no two
+items share one. A one-character trigger shows a warning, because it fires every time you type it, even inside words; two or more characters are safer. If you save a code that another trigger starts with, or that starts another trigger, a message says "Saved. This trigger overlaps the trigger of “Title”, so one of them may never fire." with the other item's title (without a title it says "another trigger"). The item is still saved.
+
+If Snipdeck cannot start the typing watcher, a message says "Couldn't start typing triggers. Nothing will be expanded or suggested."
+
+Nothing expands in password boxes, in programs set to **Never paste**, in programs running as administrator,
+while Snipdeck is in front, or for sensitive items. Sensitive items are never suggested either. Snipdeck keeps only the last 32 characters you typed, in
+memory, and never writes them to disk or the log. The typing watcher runs only while one of the options is on.
 
 ## Master password (Supporter)
 
@@ -325,6 +408,45 @@ shows how strong it looks.
 
 If Windows cannot protect a key on your PC, the master password is not available. See
 [`troubleshooting.md`](troubleshooting.md) and [`crypto.md`](crypto.md).
+
+## Windows Hello (Supporter, Windows)
+
+With a master password set, Windows Hello can unlock the library with your face, fingerprint or PIN instead of
+typing the password. It needs a Supporter plan and a PC where Windows Hello is set up. The option is hidden
+otherwise. If you do not see it, check those three things (a master password, Supporter, Hello set up in
+Windows). The Master password row mentions Hello too, and searching Settings for "Hello" finds that row.
+
+- **Turn it on.** Settings, under **Privacy**, below **Master password**: switch on **Unlock with Windows
+  Hello**. Windows asks for Hello twice, one after the other, to check it repeats (the row's description says so). If you cancel or it fails,
+  the switch goes back off and a message says "Windows Hello was not turned on." (or "didn't work, so it was
+  not turned on."). The same happens if the library locks, or the plan changes, before it finishes. You can
+  turn it off the same way. Settings search finds it too.
+- **Unlock.** When the library is locked and Snipdeck asks for the password, press **Unlock with Windows
+  Hello** and use your face, fingerprint or PIN. The password box stays there: the password always works.
+- **When the password is needed.** After Snipdeck restarts, and 7 days after the last time you typed the
+  password. After a password unlock, Windows asks for Hello once so the next unlock can use it.
+- **When Hello is cancelled.** If you cancel the prompt, the unlock window says "Windows Hello was cancelled.
+  Use your master password." The button stays, so you can try again.
+- **When Hello fails.** If it fails or the PIN was removed, the unlock window says "Windows Hello did not
+  unlock Snipdeck. Use your master password." The button goes away and the password box stays. **Unlock with
+  Windows Hello** stays switched on, and the next password unlock sets Hello up again. If it fails twice in a
+  row after password unlocks, or Hello gives different answers each time, Snipdeck turns it off and says so
+  (a message, and a line in the unlock window). Turn it on again in Settings.
+- **A changed Hello.** If you reset your PIN or change your face or fingerprint, Windows makes a new
+  credential and the old copy no longer opens. The unlock window says "Your Windows Hello PIN, face or fingerprint changed. Unlock with your
+  password once to set Windows Hello up again." Type your password. Snipdeck then asks Hello twice to check it repeats,
+  and the next unlock can use Hello. Snipdeck asks only right after a password unlock. Opening Settings or
+  the unlock window never puts up a Hello prompt. If you cancel that prompt, Hello stays on and it asks again
+  after your next password unlock.
+- **Lock.** The library still locks after 15 minutes without use, as described above. Hello is another way
+  back in; locking does not turn it off. Closing the unlock window stops a Hello prompt under way.
+- **Change, remove or erase.** Changing the master password re-seals the Hello copy with one prompt. Setting or
+  removing the password, or erasing the library, turns Hello off. If the licence stops being Supporter, the
+  saved Hello copy is dropped and only the password unlocks.
+
+Hello never stores your key or password on disk. Snipdeck keeps an encrypted copy of the key in memory only,
+which a restart forgets. The details are in [`crypto.md`](crypto.md). This part works only on Windows and has
+not yet been tested on a real PC.
 
 ## Free and Supporter
 
@@ -358,6 +480,13 @@ read it. To export one list as text, see [Organise](#organise).
 - **Ditto database:** the database file Ditto keeps.
 - **CopyQ export:** the JSON file CopyQ saves.
 - **Folder of .txt and .md files:** every text and Markdown file in the folder becomes one item.
+- **Espanso (folder)** or **Espanso (single .yml file):** Espanso's configuration folder (its `match` files) or
+  one match file. Each file becomes a list. Files whose name starts with `_` (Espanso treats them as switched off),
+  matches with only a `regex` trigger, and matches with no text are left out, and the preview says why.
+- **Beeftext export:** the JSON file Beeftext exports.
+- **TextExpander export (CSV)** and **PhraseExpress export (CSV):** the CSV file each program exports.
+
+From Espanso, Beeftext, TextExpander and PhraseExpress, each snippet's abbreviation is kept as its trigger.
 
 Snipdeck reads the source first and shows a preview before it changes anything: how many items and lists will
 be added, how many new boards will be made, how many items you already have (these are skipped), and a **Will
@@ -365,6 +494,8 @@ not be imported** list with the reason for each item left out, such as a file ov
 picture or file that CopyQ or Ditto holds, or a sensitive item that this PC has no key for. Choose **Import**
 to go ahead or **Cancel** to leave your library as it was. Everything arrives under one new board named after the
 file or folder. The Free plan's board limit still applies, and the preview says when an import would pass it.
+Notes in the preview, such as which item they belong to ("entry 3", "Ditto clip 7" or a file name with the
+match number), are shown in your language like the rest of Snipdeck.
 
 **Restore.** Restoring a backup in Settings shows the same preview. A restore puts each board back under its
 own name.
@@ -390,21 +521,26 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Panel | `Ctrl+Tab`, `Ctrl+Shift+Tab` | Next or previous list |
 | Panel | `Ctrl+F` | Focus the search box |
 | Panel | `Ctrl+D` | Duplicate |
-| Panel | `Ctrl+K` | All commands (opens them in the Main window) |
+| Panel | `Ctrl+K` | Commands (opens them in the Main window) |
 | Panel | `Ctrl+N`, `Ctrl+Shift+N` | New item, new list |
 | Panel | `Ctrl+,` | Settings |
 | Panel | `Ctrl+/` | Show the keyboard shortcuts |
 | Panel | `Ctrl+W` | Hide the Panel |
-| Panel | `Ctrl+Z` | Undo the delete (search box empty) |
+| Panel | `Ctrl+Z` | Undo the last delete, grouping, group rename, ungroup or group drag (search box empty) |
 | Panel | `Ctrl+E`, `F2` | Edit the selected item |
 | Panel | `Ctrl+P` | Pin or unpin the selected item |
+| Panel | `Ctrl+G` | Group the selected rows |
+| Panel | `Left`, `Right`, `Enter` or `Space` (on a group header) | Fold or unfold the group |
+| Panel | `Alt+Up`, `Alt+Down` (on a group header) | Move the whole group |
+| Panel | `Menu`, `Shift+F10` (on a group header) | Open its menu: Rename group, Ungroup, Delete group |
+| Panel | `F2`, or `Ctrl+G` with nothing selected (on a group header) | Rename the group |
 | Panel | `Delete` | Move the selected item to the Trash (not while searching) |
 | Panel | `Menu`, `Shift+F10` | Open the item menu |
 | Panel | `Esc` | Clear the search; with nothing to clear, hide the Panel |
 | Picker | `Tab`, `Shift+Tab` | Change scope |
 | Picker | `Alt+1` to `Alt+9` | Use that row |
 | Picker | `Ctrl+E`, `Esc` | Edit, close |
-| Main window | `Ctrl+K`, `Ctrl+Shift+P` | All commands |
+| Main window | `Ctrl+K`, `Ctrl+Shift+P` | Commands |
 | Main window | `Ctrl+/` | Show the keyboard shortcuts |
 | Main window | `Ctrl+N`, `Ctrl+Shift+N` | New item (the quick-add box in an open list), new list |
 | Main window | `Ctrl+,` | Settings |
@@ -419,9 +555,17 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Main window | `Delete` | Move to the Trash (in the Trash: delete for good) |
 | Main window | `Ctrl+A`, `Ctrl+Space` | Select all, toggle a row |
 | Main window | `Alt+Up`, `Alt+Down` | Move an item or list |
+| Main window | `Ctrl+G` | Group the selected rows (the row at the cursor when none is selected) |
+| Main window | `Left`, `Right`, `Enter` (on a group header) | Fold or unfold the group |
+| Main window | `F2` (on a group header) | Rename the group |
+| Main window | `Alt+Up`, `Alt+Down` (on a group header) | Move the whole group |
+| Main window | `Delete` (on a group header) | Move the group and its items to the Trash |
 | Panel | `Alt+Up`, `Alt+Down` | Move the selected item |
 | Panel, Main window | `Space` (hold) | Reveal a sensitive item |
 | Main window | `F1` | Open the Help window |
+| Any program (Typing on) | the item's trigger | Replace the trigger with the item |
+| Any program (Suggest on) | `Tab` while the hint shows | Insert the suggested item |
+| Unlock window | **Unlock with Windows Hello** | Unlock with face, fingerprint or PIN |
 | Item editor | `Ctrl+Enter` | Save |
 | Item editor | `Ctrl+P` | Preview on or off |
 | Fill form | `Ctrl+Enter`, `Esc` | Insert, cancel |

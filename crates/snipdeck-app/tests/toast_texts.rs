@@ -129,10 +129,17 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::SwitchToManual { .. } => 98,
         ToastMessage::FileMoved => 99,
         ToastMessage::FilesTooLarge => 100,
+        ToastMessage::HelloTurnedOff => 101,
+        ToastMessage::HelloNotTurnedOn => 102,
+        ToastMessage::HelloEnrolFailed => 103,
+        ToastMessage::TriggerOverlaps { .. } => 104,
+        ToastMessage::TypingUnavailable => 105,
+        ToastMessage::AutostartSwitchedOff => 106,
+        ToastMessage::AutostartPolicy => 107,
     }
 }
 
-const VARIANTS: usize = 101;
+const VARIANTS: usize = 108;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -227,6 +234,8 @@ fn samples() -> Vec<ToastMessage> {
         M::FolderNotOpened,
         M::MailNotOpened,
         M::AutostartFailed,
+        M::AutostartSwitchedOff,
+        M::AutostartPolicy,
         M::CannotOpenLog,
         M::KeyUnavailable,
         M::ItemGone,
@@ -300,9 +309,16 @@ fn samples() -> Vec<ToastMessage> {
         M::TooManyFiles,
         M::FileMoved,
         M::FilesTooLarge,
+        M::TriggerOverlaps {
+            other: s("Signature"),
+        },
+        M::TypingUnavailable,
         M::SwitchToManual {
             list: snipdeck_core::ListId::generate(),
         },
+        M::HelloTurnedOff,
+        M::HelloNotTurnedOn,
+        M::HelloEnrolFailed,
     ]
 }
 
@@ -427,6 +443,23 @@ fn what_a_toast_carries_reaches_its_sentence() {
         assert_eq!(
             said(ToastMessage::FilesTooLarge),
             "Some files were left out: together they are over 64 MB."
+        );
+        assert_eq!(
+            said(ToastMessage::TriggerOverlaps {
+                other: "Signature".into()
+            }),
+            "Saved. This trigger overlaps the trigger of “Signature”, so one of them may never fire."
+        );
+        assert_eq!(
+            said(ToastMessage::TriggerOverlaps {
+                other: String::new()
+            }),
+            "Saved. This trigger overlaps another trigger, so one of them may never fire.",
+            "an untitled item is not named as “”"
+        );
+        assert_eq!(
+            said(ToastMessage::TypingUnavailable),
+            "Couldn't start typing triggers. Nothing will be expanded or suggested."
         );
         assert_eq!(said(ToastMessage::DockSet(None)), "Panel floats again");
         assert_eq!(

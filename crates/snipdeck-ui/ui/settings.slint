@@ -248,7 +248,9 @@ component PasteRuleList inherits VerticalLayout {
 export component SettingsPage inherits Window {
     title: @tr("Settings");
     background: Theme.bg-app;
-    min-width: 420px;
+    // Grows with the text size: at 225% a row needs about 760 px or its title wraps one word per line.
+    out property <length> min-window-width: max(420px, 340px * SystemLook.text-scale);
+    min-width: root.min-window-width;
     min-height: 360px;
     preferred-width: root.wanted-width;
     preferred-height: root.wanted-height;
@@ -293,6 +295,8 @@ export component SettingsPage inherits Window {
     in-out property <bool> screenshot-keep-panel: false;
     in-out property <bool> dock-full-edge: false;
     in-out property <bool> recent-history: false;
+    in-out property <bool> expand-triggers: false;
+    in-out property <bool> suggest-triggers: false;
     // How many copies and how many days the history keeps (the description names them).
     in property <int> recent-max-entries: 200;
     in property <int> recent-max-days: 7;
@@ -353,6 +357,8 @@ export component SettingsPage inherits Window {
     in property <string> import-problem;
     // The Windows clipboard history is offered as an import source (Windows only).
     in property <bool> import-history-available: false;
+    // False off Windows: typed triggers need the Windows keyboard hook, so the Typing switches are off.
+    in property <bool> typing-available: false;
     in property <int> import-boards: 0;
     in property <int> import-lists: 0;
     in property <int> import-items: 0;
@@ -373,6 +379,9 @@ export component SettingsPage inherits Window {
     in property <bool> master-locked: false;
     // This plan may set a master password (Supporter).
     in property <bool> master-allowed: false;
+    // Windows Hello unlock: offered only with a master password set, on a Supporter plan, on a PC where Hello is ready.
+    in property <bool> hello-offered: false;
+    in-out property <bool> hello-unlock: false;
     in property <int> master-idle-minutes: 15;
     in property <int> master-min-length: 8;
     // What the host found wrong with the last attempt; the host clears it when the form closes.
@@ -413,7 +422,10 @@ export component SettingsPage inherits Window {
     callback panel-start-visible-chosen(index: int);
     callback autostart-toggled(on: bool);
     callback close-to-tray-toggled(on: bool);
+    callback hello-unlock-toggled(on: bool);
     callback recent-history-toggled(on: bool);
+    callback expand-triggers-toggled(on: bool);
+    callback suggest-triggers-toggled(on: bool);
     callback recent-history-cleared();
     callback panel-in-taskbar-toggled(on: bool);
     callback panel-hide-on-blur-toggled(on: bool);
@@ -471,22 +483,24 @@ export component SettingsPage inherits Window {
 
     property <string> hotkey-names-text: root.hotkey-names[0] + " " + root.hotkey-names[1] + " " + root.hotkey-names[2] + " " + root.hotkey-names[3];
     // Titles of section 0 (Shortcuts), for the search. A test checks that every row title is in here.
-    property <string> keys-0: root.hotkey-names-text;
+    property <string> keys-0: @tr("Shortcuts") + " " + root.hotkey-names-text;
     // Titles of section 1 (Appearance), for the search. A test checks that every row title is in here.
-    property <string> keys-1: @tr("Theme") + " " + @tr("Main list density") + " " + @tr("Accent colour") + " " + @tr("Text size") + " " + @tr("Language") + " " + @tr("Reduce motion") + " " + @tr("Panel width");
+    property <string> keys-1: @tr("Appearance") + " " + @tr("Theme") + " " + @tr("Main list density") + " " + @tr("Accent colour") + " " + @tr("Text size") + " " + @tr("Language") + " " + @tr("Reduce motion") + " " + @tr("Panel width");
     // Titles of section 2 (Panel layout), for the search. A test checks that every row title is in here.
-    property <string> keys-2: @tr("Layout") + " " + @tr("Search field") + " " + @tr("Lists") + " " + @tr("Quick-use numbers") + " " + @tr("Show Symbols tab");
+    property <string> keys-2: @tr("Panel layout") + " " + @tr("Layout") + " " + @tr("Search field") + " " + @tr("Lists") + " " + @tr("Quick-use numbers") + " " + @tr("Show Symbols tab");
     // Titles of section 3 (Opening the Panel), for the search. A test checks that every row title is in here.
-    property <string> keys-3: @tr("Tray icon click opens") + " " + @tr("Panel opens") + " " + @tr("After a paste or copy") + " " + @tr("Hide the panel when it loses focus") + " " + @tr("Show the Panel in the taskbar and Alt+Tab") + " " + @tr("Keep Panel visible during screenshots") + " " + @tr("Dock to") + " " + @tr("Docked panel uses the full edge") + " " + @tr("Open a docked panel by") + " " + @tr("Hover delay") + " " + @tr("Leave delay") + " " + @tr("Picker position") + " " + @tr("Start with Windows") + " " + @tr("When Windows starts") + " " + @tr("Keep running in the tray when the window closes");
+    property <string> keys-3: @tr("Opening the Panel") + " " + @tr("Tray icon click opens") + " " + @tr("Panel opens") + " " + @tr("After a paste or copy") + " " + @tr("Hide the panel when it loses focus") + " " + @tr("Show the Panel in the taskbar and Alt+Tab") + " " + @tr("Keep Panel visible during screenshots") + " " + @tr("Dock to") + " " + @tr("Docked panel uses the full edge") + " " + @tr("Open a docked panel by") + " " + @tr("Hover delay") + " " + @tr("Leave delay") + " " + @tr("Picker position") + " " + @tr("Start with Windows") + " " + @tr("When Windows starts") + " " + @tr("Keep running in the tray when the window closes");
     // Titles of section 4 (Privacy), for the search. A test checks that every row title is in here.
-    property <string> keys-4: @tr("Keep a Recent inbox of what you copy") + " " + @tr("Clear recent history") + " " + @tr("Clear the clipboard after copying a sensitive item") + " " + @tr("Master password");
+    property <string> keys-4: @tr("Privacy") + " " + @tr("fingerprint face PIN biometric lock") + " " + @tr("Keep a Recent inbox of what you copy") + " " + @tr("Clear recent history") + " " + @tr("Clear the clipboard after copying a sensitive item") + " " + @tr("Master password") + " " + @tr("Unlock with Windows Hello");
     // Titles of section 5 (Programs), for the search. A test checks that every row title is in here.
-    property <string> keys-5: @tr("Programs");
-    // Titles of section 6 (Backups and your data), for the search. A test checks that every row title is in here.
-    property <string> keys-6: @tr("Backups to keep") + " " + @tr("Export library") + " " + @tr("Import") + " " + @tr("Erase library") + " " + @tr("Also forget the encryption key");
-    // Titles of section 7 (Licence), for the search. A test checks that every row title is in here.
-    property <string> keys-7: @tr("Get Supporter");
-    property <string> keys-all: root.keys-0 + " " + root.keys-1 + " " + root.keys-2 + " " + root.keys-3 + " " + root.keys-4 + " " + root.keys-5 + " " + root.keys-6 + " " + root.keys-7;
+    property <string> keys-5: @tr("Programs") + " " + @tr("never paste excluded apps");
+    // Titles of section 6 (Typing), for the search. A test checks that every row title is in here.
+    property <string> keys-6: @tr("Typing") + " " + @tr("Expand abbreviations as I type") + " " + @tr("Suggest snippets as I type") + " " + @tr("trigger triggers text expansion autocomplete shortcode");
+    // Titles of section 7 (Backups and your data), for the search. A test checks that every row title is in here.
+    property <string> keys-7: @tr("Backups and your data") + " " + @tr("Backups to keep") + " " + @tr("Export library") + " " + @tr("Import") + " " + @tr("Erase library") + " " + @tr("Also forget the encryption key");
+    // Titles of section 8 (Licence), for the search. A test checks that every row title is in here.
+    property <string> keys-8: @tr("Licence") + " " + @tr("Get Supporter") + " " + @tr("license supporter upgrade key");
+    property <string> keys-all: root.keys-0 + " " + root.keys-1 + " " + root.keys-2 + " " + root.keys-3 + " " + root.keys-4 + " " + root.keys-5 + " " + root.keys-6 + " " + root.keys-7 + " " + root.keys-8;
 
     function reveal-field(y: length, h: length) {
         page.reveal(y - page.absolute-position.y, h);
@@ -585,7 +599,7 @@ export component SettingsPage inherits Window {
                         width: 240px * SystemLook.text-scale;
                         label: @tr("Jump to a section");
                         placeholder: @tr("Jump to a section");
-                        options: [@tr("Shortcuts"), @tr("Appearance"), @tr("Panel layout"), @tr("Opening the Panel"), @tr("Privacy"), @tr("Programs"), @tr("Backups and your data"), @tr("Licence")];
+                        options: [@tr("Shortcuts"), @tr("Appearance"), @tr("Panel layout"), @tr("Opening the Panel"), @tr("Privacy"), @tr("Programs"), @tr("Typing"), @tr("Backups and your data"), @tr("Licence")];
                         current: -1;
                         chosen(i) => { SettingsFilter.jump-target = i; SettingsFilter.jump-seq += 1; }
                         changed has-focus => {
@@ -757,7 +771,7 @@ export component SettingsPage inherits Window {
                     located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     SettingRow {
                         title: @tr("Layout");
-                        description: @tr("How the Panel lists your snippets: one per row, two per row as cards, or tight rows. A search shows rows in every layout.");
+                        description: @tr("How the Panel lists your items: one per row, two per row as cards, or tight rows. A search shows rows in every layout.");
                         Segmented {
                             width: 320px * SystemLook.text-scale;
                             label: @tr("Layout");
@@ -785,7 +799,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Lists");
-                        description: @tr("Tabs put each list of the board in a row under the header. Menu moves them into the board picker and gives the space back to your snippets.");
+                        description: @tr("Tabs put each list of the board in a row under the header. Menu moves them into the board picker and gives the space back to your items.");
                         Segmented {
                             width: 200px * SystemLook.text-scale;
                             label: @tr("Lists");
@@ -799,7 +813,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Quick-use numbers");
-                        description: @tr("Numbers the first nine rows so pressing 1 to 9 uses that snippet.");
+                        description: @tr("Numbers the first nine rows so pressing Alt+1 to 9 uses that item.");
                         Toggle {
                             a11y-label: @tr("Quick-use numbers");
                             checked <=> root.show-numbers;
@@ -1116,6 +1130,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Master password");
+                        search-also: @tr("Unlock with Windows Hello");
                         description: root.master-state == 0
                             ? @tr("Snipdeck can't protect a key on this PC, so a master password is not available.")
                             : root.master-state == 3
@@ -1125,8 +1140,8 @@ export component SettingsPage inherits Window {
                                 ? @tr("A master password is on and your sensitive items are locked.")
                                 : @tr("A master password is on. Snipdeck asks for it when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes))
                             : root.master-allowed
-                            ? @tr("Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes)
-                            : @tr("A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes);
+                            ? @tr("Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. With a Supporter plan on Windows, you can then also unlock with Windows Hello.", root.master-idle-minutes)
+                            : @tr("A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. With a Supporter plan on Windows, you can then also unlock with Windows Hello.", root.master-idle-minutes);
                         HorizontalLayout {
                             spacing: Space.s2;
                             if root.master-state != 2: Button {
@@ -1161,6 +1176,18 @@ export component SettingsPage inherits Window {
                                 changed has-focus => {
                                     if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                                 }
+                            }
+                        }
+                    }
+                    if root.hello-offered: SettingRow {
+                        title: @tr("Unlock with Windows Hello");
+                        description: @tr("Use your face, fingerprint or PIN instead of typing the master password. Windows asks for Hello twice when you turn this on. The password is still asked after a restart and every 7 days, and it always works.");
+                        Toggle {
+                            a11y-label: @tr("Unlock with Windows Hello");
+                            checked <=> root.hello-unlock;
+                            toggled(on) => { root.hello-unlock-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }
                         }
                     }
@@ -1217,10 +1244,54 @@ export component SettingsPage inherits Window {
                 }
 
                 FormSection {
-                    title: @tr("Backups and your data");
+                    title: @tr("Typing");
                     index: 6;
                     gap: Space.s6;
                     search-text: root.keys-6;
+                    located(y) => { page.scroll-to(y - body.absolute-position.y); }
+                    if !root.typing-available: Text {
+                        text: @tr("Typing triggers work on Windows only.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                        accessible-role: AccessibleRole.text;
+                    }
+                    SettingRow {
+                        title: @tr("Expand abbreviations as I type");
+                        description: @tr("When you type an item's trigger in another program, Snipdeck replaces it with the item's text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items.");
+                        Toggle {
+                            a11y-label: @tr("Expand abbreviations as I type");
+                            a11y-description: root.typing-available ? "" : @tr("Typing triggers work on Windows only.");
+                            enabled: root.typing-available;
+                            checked <=> root.expand-triggers;
+                            toggled(on) => { root.expand-triggers-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Suggest snippets as I type");
+                        description: @tr("After you type the first two characters of a trigger, a small hint at the text cursor offers the item. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows.");
+                        Toggle {
+                            a11y-label: @tr("Suggest snippets as I type");
+                            a11y-description: root.typing-available ? "" : @tr("Typing triggers work on Windows only.");
+                            enabled: root.typing-available;
+                            checked <=> root.suggest-triggers;
+                            toggled(on) => { root.suggest-triggers-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                }
+
+                FormSection {
+                    title: @tr("Backups and your data");
+                    index: 7;
+                    gap: Space.s6;
+                    search-text: root.keys-7;
                     located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     Text {
                         text: @tr("Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything.", root.backups-keep);
@@ -1617,9 +1688,9 @@ export component SettingsPage inherits Window {
 
                 FormSection {
                     title: @tr("Licence");
-                    index: 7;
+                    index: 8;
                     gap: Space.s6;
-                    search-text: root.keys-7;
+                    search-text: root.keys-8;
                     located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     SettingRow {
                         title: root.pro ? @tr("Snipdeck Supporter") : @tr("Free plan");
