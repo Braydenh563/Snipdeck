@@ -188,6 +188,37 @@ like images) with a 1 px system-text outline; everything else maps to `SystemCol
 show 9 swatches (4 tints, base, 4 shades) in rows of floor((W-16)/44). Hints: the schemes header tooltip
 "Hue partners keep the lightness: check contrast below". The 48×48 swatch is not a button (no action).
 
+### 3.0a Choosing a colour by hand (owner, 2026-11-12, verbatim: "I also want to be able to manually select
+colours in a wheel or gradient and or manually type in colours liek for rgb or hex code etc so I can find
+their other values or save them as an item")
+
+This replaces the folded "Adjust" disclosure: the picker is **open by default** (`colour_adjust_open`
+defaults to `true`; the disclosure is renamed **Picker** and still remembers its state).
+- **Square or Wheel** (segmented control, remembered in `colour_picker_style`: `"square"` | `"wheel"`):
+  *Square* is the saturation × brightness gradient with the hue and alpha sliders below (as sketched).
+  *Wheel* is an HSB hue wheel (hue round the rim, saturation from centre to edge, 160 px at 1x, scales
+  with text) with a brightness slider and the alpha slider below. Both are drawn by
+  `snipdeck_colour::render_square(hue, w, h)` / `render_wheel(brightness, d)` into an RGBA buffer shown
+  as a Slint `Image` (re-rendered only when hue or brightness changes), with a ring marker at the current
+  colour. Pointer maths are pure and tested: `wheel_at(x, y, d) -> Option<(hue, sat)>` (None outside
+  the disc) and `wheel_point(hue, sat, d) -> (x, y)`, `square_at` / `square_point` likewise. Dragging
+  updates the current colour live (no recents push until a copy, paste or save).
+- **Keyboard:** the square or wheel is one tab stop: arrows move saturation/brightness (square) or
+  hue/saturation (wheel) by 1, Shift by 10; Page Up/Down step brightness by 10. Sliders as usual.
+  Narrator reads "Saturation 73 percent, brightness 84 percent" (square) or "Hue 215 degrees,
+  saturation 73 percent" (wheel) on each change, plus the hex.
+- **Type values:** under the picker, a **Values** row with a model select (HEX · RGB · HSL · HSB · CMYK,
+  remembered in `colour_input_model`) and one number field per channel (R G B 0-255; H 0-360, S/L/B
+  0-100; C M Y K 0-100; plus A 0-100 when alpha is not 100), or one hex field for HEX. Up/Down step 1,
+  Shift ×10; an out-of-range value is clamped on commit (Enter or focus leave) and a non-number keeps the
+  old value with the field's error text. Every committed change updates every format row, the schemes and
+  contrast at once. The free-text input field at the top still takes any whole colour literal (paste
+  `rgb(58, 123, 213)`, `#3a7bd5`, `hsl(...)`, `oklch(...)`, a CSS name).
+- **Save as an item** from here: Ctrl+S / Save (D6a), the same as for a picked colour.
+- Settings additions (§4): `colour_picker_style` (`"square"`), `colour_input_model` (`"hex"`).
+  Ownership: the render and pointer functions go to the colour crate (slice 1); the Picker UI, Values row
+  and their bindings to slice 3.
+
 ### 3.1 Keys and clicks (one tab stop per group, roving selection inside, as the Symbols grid)
 
 Focus order: input field, eyedropper button, recents, format rows, other-colour field, Swap, scheme
@@ -254,7 +285,9 @@ opens Paste as (D6a); accessible description "Colour swatch".
 | `colour_current` | String (`#rrggbb[aa]`) | `"#2870d4"` (`accent.default`) | restored when the tab opens |
 | `colour_contrast_with` | String | `"#ffffff"` | the "other" contrast colour |
 | `colour_scheme` | `snipdeck_colour::Scheme` | `"complementary"` | the select's value |
-| `colour_adjust_open` | bool | false | the Adjust disclosure |
+| `colour_adjust_open` | bool | true | the Picker disclosure (§3.0a) |
+| `colour_picker_style` | `"square"` \| `"wheel"` | `"square"` | §3.0a |
+| `colour_input_model` | `"hex"` \| `"rgb"` \| `"hsl"` \| `"hsb"` \| `"cmyk"` | `"hex"` | §3.0a Values row |
 | `colour_copy_on_pick` | bool | true | D9; Settings > Panel "Copy a colour picked from the screen" |
 | `colour_save_list` | `Option<ListId>` | `None` | D6a home list; `None` or a deleted id: the next save creates "Colours" |
 | `hotkeys.eyedropper` | String | `""` (off) | `HotkeyAction::Eyedropper`, legacy chord also `""` |
@@ -592,7 +625,7 @@ Overlay foreground activation after a hotkey (and the `RegisterHotKey` fallback)
 with Night light; DRM captured black; `CAPTUREBLT` cost; mixed-DPI loupe size; Narrator on the overlay
 title and swatch labels; `#3a7bd5` pasted into Figma's hex field (if it wants no `#`, add "HEX (no #)" to
 the row menu, not a format); first overlay frame on three 4K monitors (< 250 ms, logged, not timed).
-**Later:** HSL wheel option; DXGI HDR capture; APCA (WCAG 3 draft); a separate note field (D6a migration).
+**Later:** DXGI HDR capture; APCA (WCAG 3 draft); a separate note field (D6a migration).
 
 **Sources** (standard references, not fetched for this note): WCAG 2.2 https://www.w3.org/TR/WCAG22/ ·
 CSS Color 4 https://www.w3.org/TR/css-color-4/ · OKLab https://bottosson.github.io/posts/oklab/ · Win32 BitBlt,
