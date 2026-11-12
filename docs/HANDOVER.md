@@ -34,7 +34,8 @@ Hub session_01NKjURuyvhApCqnss7v9Php coordinates four branches into PR #5 (none 
 - `claude/dock-redesign` (Fable, PAUSED by the owner overnight): re-verify rounds 1-3 in `docs/reviews/dock-redesign-reverify*.md`; at d37d9c9 all R-items fixed. Three minors open (legacy full-height raw read in `placement()` no-entry branch; `in_size_loop` must compare `hwndMoveSize` with the Panel HWND; SPEC.md:72 "a docked Panel that tucks"). Give them to Sonnet, gate, merge.
 - `claude/editor-preview` (Sonnet): PR-branch merge + Tab walk + refill test, gate running.
 - `claude/colour-tool` (Sonnet): fixing C1-C24 (`docs/reviews/colour-tool-reverify.md`).
-- Owner bug sweep (workflow, worktree `.claude/worktrees/slide-fix`, commits 902ce1b..695eb2d): visual and files groups left.
+- Owner bug sweep: STOPPED 16:05 UTC (budget line); pushed to `claude/owner-bug-sweep` at de38d92 (902ce1b..695eb2d done: tooltips/menus in window, rail glyph, window focus, quick-add paste; de38d92 = ungated WIP of the visual group: scrollbar, form, panel). Left: finish+test visual group (scrollbar blank space, drag affordance, toggle pill), files group (all file types, glitchy scrolling), slide transparency, then a reviewer, then merge.
+- Usage: weekly 70% at 16:05 UTC on 2026-11-12 (budget mode: one agent, Sonnet, no Opus); resets 2026-11-14 07:00 UTC. Editor-preview: 2cae27e gated, two test items sent back. Colour: told to finish its item and stop.
 - LAST, only when the owner says go: Fable full-app audit + blind usability tests on Haiku, Sonnet and Opus (same goals, no source/docs), see `.claude/now.md` Inbox.
 
 ## Earlier (2026-11-11 evening; v1.1 work complete in PR #5)
