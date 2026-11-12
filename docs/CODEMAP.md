@@ -3586,90 +3586,6 @@ guide_scopes | crates/snipdeck-app/src/shortcuts.rs:641
 listed | crates/snipdeck-app/src/shortcuts.rs:663
 every_shortcut_in_the_guides_keyboard_table_is_in_the_list | crates/snipdeck-app/src/shortcuts.rs:676
 
-### crates/snipdeck-app/src/shortcuts.rs
-
-Scope | crates/snipdeck-app/src/shortcuts.rs:16
-impl Scope | crates/snipdeck-app/src/shortcuts.rs:31
-Keys | crates/snipdeck-app/src/shortcuts.rs:45
-Shortcut | crates/snipdeck-app/src/shortcuts.rs:68
-ALT | crates/snipdeck-app/src/shortcuts.rs:76
-row | crates/snipdeck-app/src/shortcuts.rs:78
-custom | crates/snipdeck-app/src/shortcuts.rs:85
-plain | crates/snipdeck-app/src/shortcuts.rs:92
-global | crates/snipdeck-app/src/shortcuts.rs:99
-CATALOGUE | crates/snipdeck-app/src/shortcuts.rs:110
-Line | crates/snipdeck-app/src/shortcuts.rs:229
-Group | crates/snipdeck-app/src/shortcuts.rs:242
-impl Keys | crates/snipdeck-app/src/shortcuts.rs:249
-resolve | crates/snipdeck-app/src/shortcuts.rs:250
-words | crates/snipdeck-app/src/shortcuts.rs:265
-matches | crates/snipdeck-app/src/shortcuts.rs:281
-groups_of | crates/snipdeck-app/src/shortcuts.rs:306
-groups | crates/snipdeck-app/src/shortcuts.rs:339
-tests | crates/snipdeck-app/src/shortcuts.rs:344
-fixture | crates/snipdeck-app/src/shortcuts.rs:348
-found | crates/snipdeck-app/src/shortcuts.rs:369
-an_empty_query_lists_every_line_in_catalogue_order | crates/snipdeck-app/src/shortcuts.rs:385
-the_filter_matches_the_action_name_ignoring_case | crates/snipdeck-app/src/shortcuts.rs:392
-every_word_of_the_query_must_match | crates/snipdeck-app/src/shortcuts.rs:400
-the_filter_matches_the_chord_however_it_is_typed | crates/snipdeck-app/src/shortcuts.rs:406
-a_key_is_found_by_its_cap_and_by_what_it_is_called_aloud | crates/snipdeck-app/src/shortcuts.rs:416
-a_single_letter_matches_a_key_or_a_word_start_not_the_middle_of_words | crates/snipdeck-app/src/shortcuts.rs:428
-the_global_hotkeys_follow_the_settings_and_a_hotkey_that_is_off_shows_no_keys | crates/snipdeck-app/src/shortcuts.rs:436
-a_group_with_no_matching_line_is_left_out | crates/snipdeck-app/src/shortcuts.rs:455
-a_query_of_only_a_plus_looks_for_the_plus_key | crates/snipdeck-app/src/shortcuts.rs:463
-the_real_catalogue_is_grouped_by_scope_in_order_and_lists_the_panels_keep_open_key | crates/snipdeck-app/src/shortcuts.rs:469
-the_main_window_keys_match_the_commands_that_have_a_shortcut | crates/snipdeck-app/src/shortcuts.rs:486
-header_keys | crates/snipdeck-app/src/shortcuts.rs:554
-every_key_in_the_panels_header_comment_has_a_row_in_the_list | crates/snipdeck-app/src/shortcuts.rs:581
-the_user_guide_lists_every_editor_shortcut | crates/snipdeck-app/src/shortcuts.rs:610
-atoms | crates/snipdeck-app/src/shortcuts.rs:627
-guide_scopes | crates/snipdeck-app/src/shortcuts.rs:641
-listed | crates/snipdeck-app/src/shortcuts.rs:663
-every_shortcut_in_the_guides_keyboard_table_is_in_the_list | crates/snipdeck-app/src/shortcuts.rs:676
-
-### crates/snipdeck-app/src/shortcuts.rs
-
-Scope | crates/snipdeck-app/src/shortcuts.rs:16
-impl Scope | crates/snipdeck-app/src/shortcuts.rs:31
-Keys | crates/snipdeck-app/src/shortcuts.rs:45
-Shortcut | crates/snipdeck-app/src/shortcuts.rs:68
-ALT | crates/snipdeck-app/src/shortcuts.rs:76
-row | crates/snipdeck-app/src/shortcuts.rs:78
-custom | crates/snipdeck-app/src/shortcuts.rs:85
-plain | crates/snipdeck-app/src/shortcuts.rs:92
-global | crates/snipdeck-app/src/shortcuts.rs:99
-CATALOGUE | crates/snipdeck-app/src/shortcuts.rs:110
-Line | crates/snipdeck-app/src/shortcuts.rs:229
-Group | crates/snipdeck-app/src/shortcuts.rs:242
-impl Keys | crates/snipdeck-app/src/shortcuts.rs:249
-resolve | crates/snipdeck-app/src/shortcuts.rs:250
-words | crates/snipdeck-app/src/shortcuts.rs:265
-matches | crates/snipdeck-app/src/shortcuts.rs:281
-groups_of | crates/snipdeck-app/src/shortcuts.rs:306
-groups | crates/snipdeck-app/src/shortcuts.rs:339
-tests | crates/snipdeck-app/src/shortcuts.rs:344
-fixture | crates/snipdeck-app/src/shortcuts.rs:348
-found | crates/snipdeck-app/src/shortcuts.rs:369
-an_empty_query_lists_every_line_in_catalogue_order | crates/snipdeck-app/src/shortcuts.rs:385
-the_filter_matches_the_action_name_ignoring_case | crates/snipdeck-app/src/shortcuts.rs:392
-every_word_of_the_query_must_match | crates/snipdeck-app/src/shortcuts.rs:400
-the_filter_matches_the_chord_however_it_is_typed | crates/snipdeck-app/src/shortcuts.rs:406
-a_key_is_found_by_its_cap_and_by_what_it_is_called_aloud | crates/snipdeck-app/src/shortcuts.rs:416
-a_single_letter_matches_a_key_or_a_word_start_not_the_middle_of_words | crates/snipdeck-app/src/shortcuts.rs:428
-the_global_hotkeys_follow_the_settings_and_a_hotkey_that_is_off_shows_no_keys | crates/snipdeck-app/src/shortcuts.rs:436
-a_group_with_no_matching_line_is_left_out | crates/snipdeck-app/src/shortcuts.rs:455
-a_query_of_only_a_plus_looks_for_the_plus_key | crates/snipdeck-app/src/shortcuts.rs:463
-the_real_catalogue_is_grouped_by_scope_in_order_and_lists_the_panels_keep_open_key | crates/snipdeck-app/src/shortcuts.rs:469
-the_main_window_keys_match_the_commands_that_have_a_shortcut | crates/snipdeck-app/src/shortcuts.rs:486
-header_keys | crates/snipdeck-app/src/shortcuts.rs:554
-every_key_in_the_panels_header_comment_has_a_row_in_the_list | crates/snipdeck-app/src/shortcuts.rs:581
-the_user_guide_lists_every_editor_shortcut | crates/snipdeck-app/src/shortcuts.rs:610
-atoms | crates/snipdeck-app/src/shortcuts.rs:627
-guide_scopes | crates/snipdeck-app/src/shortcuts.rs:641
-listed | crates/snipdeck-app/src/shortcuts.rs:663
-every_shortcut_in_the_guides_keyboard_table_is_in_the_list | crates/snipdeck-app/src/shortcuts.rs:676
-
 ### crates/snipdeck-app/src/starter.rs
 
 STARTER_BOARD | crates/snipdeck-app/src/starter.rs:13
@@ -8333,8 +8249,6 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/src/settings_binding.rs` (inline) | 16 |
 | `crates/snipdeck-app/src/settings_store.rs` (inline) | 15 |
 | `crates/snipdeck-app/src/shortcuts.rs` (inline) | 14 |
-| `crates/snipdeck-app/src/shortcuts.rs` (inline) | 14 |
-| `crates/snipdeck-app/src/shortcuts.rs` (inline) | 14 |
 | `crates/snipdeck-app/src/starter.rs` (inline) | 8 |
 | `crates/snipdeck-app/src/symbols_panel.rs` (inline) | 9 |
 | `crates/snipdeck-app/src/text_scale.rs` (inline) | 1 |
@@ -8349,10 +8263,6 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/tests/budget.rs` | 4 |
 | `crates/snipdeck-app/tests/crash_hook.rs` | 1 |
 | `crates/snipdeck-app/tests/editor_controller.rs` | 51 |
-| `crates/snipdeck-app/tests/editor_controller.rs` | 51 |
-| `crates/snipdeck-app/tests/editor_controller.rs` | 51 |
-| `crates/snipdeck-app/tests/editor_window.rs` | 34 |
-| `crates/snipdeck-app/tests/editor_window.rs` | 34 |
 | `crates/snipdeck-app/tests/editor_window.rs` | 34 |
 | `crates/snipdeck-app/tests/fill_window.rs` | 14 |
 | `crates/snipdeck-app/tests/help_window.rs` | 8 |

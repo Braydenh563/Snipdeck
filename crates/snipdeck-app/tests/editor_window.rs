@@ -782,6 +782,9 @@ fn a_free_user_sees_prompted_fields_refused_with_the_pro_toast() {
         let r = rig_tier(Tier::Free);
         menu(&r, "New item");
         let ed = r.ed();
+        // Tall enough that the last placeholder chips are in view (the Preview strip took a row above the form).
+        ed.window().set_size(slint::LogicalSize::new(560.0, 1400.0));
+        settle();
         assert!(!ed.get_prompted_available());
         click(
             ed.window(),
