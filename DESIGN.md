@@ -286,6 +286,7 @@ One row, `components/item-card.slint`, used by the Panel, the Picker and the Mai
 ### Panel
 - Width: default 320, min 260, max 480. Height: free. Floating and docked sizes are separate and each is kept until resized; "Docked panel uses the full edge" stretches a side dock to the work area.
 - The top 24px is a grab strip across the whole width (a 36 x 4 pill in its middle, `text-tertiary`, `text-primary` on hover, accent while dragged; move cursor). It and the header's empty space drag the Panel.
+- The Panel menu (kebab) opens under the header. Too tall for that, it uses its dense 28px rows; still too tall, it rises over the header; it scrolls only when the window itself is too short for it.
 - Header: 40px. Tab bar: 32px. Padding: 8px.
 - **Target footer** (32px): "Pastes into **Outlook** · New message". It always shows where a click will go, and reads "Copies to clipboard" when no target is known.
 - Docked to an edge it auto-hides to a **6px tab** in the board's accent colour, and reveals on hover after 150ms or by hotkey. It docks only when the cursor itself is held at the screen edge (preview: accent frame and "Release to dock"); the tab reveals when the pointer is within 12px of it.

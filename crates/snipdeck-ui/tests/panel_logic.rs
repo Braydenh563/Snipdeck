@@ -2157,7 +2157,20 @@ ui_tests! {
         let kebab_right = kebab.absolute_position().x + kebab.size().width;
         let window = ui.window().size();
         assert!(mp.x >= 0.0 && mp.x + ms.width <= window.width as f32, "inside the window: {mp:?} {ms:?}");
-        assert!(mp.y >= kebab.absolute_position().y + kebab.size().height - 8.0, "below the button");
+        // This menu is too tall to hang under the header of a 560px Panel: it rises over the header rather than
+        // scroll, and stays inside the window.
+        assert!(
+            mp.y >= 8.0 - 0.5 && mp.y + ms.height <= window.height as f32 - 8.0 + 0.5,
+            "inside the window top to bottom: {mp:?} {ms:?}"
+        );
+        // With the room for it, it hangs below the button.
+        ui.window().set_size(slint::LogicalSize::new(320.0, 640.0));
+        settle();
+        let (menu, kebab) = (find(&ui, "Panel menu", AccessibleRole::List), find(&ui, "More", AccessibleRole::Button));
+        assert!(
+            menu.absolute_position().y >= kebab.absolute_position().y + kebab.size().height - 8.0,
+            "below the button"
+        );
         assert!(
             (mp.x + ms.width - kebab_right).abs() <= 0.5,
             "right edge is the kebab's: menu {} kebab {kebab_right}",
