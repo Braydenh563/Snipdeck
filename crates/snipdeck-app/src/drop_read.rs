@@ -4,7 +4,7 @@
 //! (`Controller::drop_read_done`, on the UI thread). Slint-free except for the hand-back.
 //!
 //! The files are read in chunks of about [`CHUNK_BYTES`], in the order they were dropped, each
-//! under the same size limits as a file chosen in the editor ([`item_editor::read_source`]); only
+//! under the same size limits as a file chosen in the editor ([`crate::item_editor::read_source`]); only
 //! one chunk is in memory at a time, because the controller stores a chunk before the next is
 //! asked for. [`spawn`] says where a job runs: on the calling thread until [`use_threads`] is
 //! called, which the app does once at start.
