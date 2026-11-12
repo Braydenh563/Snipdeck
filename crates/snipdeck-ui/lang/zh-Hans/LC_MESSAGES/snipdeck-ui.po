@@ -8,10 +8,10 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 msgid "#3a7bd5, rgb(58, 123, 213), royalblue"
-msgstr ""
+msgstr "#3a7bd5, rgb(58, 123, 213), royalblue"
 
 msgid "#ffffff"
-msgstr ""
+msgstr "#ffffff"
 
 msgid "(new ID)"
 msgstr "(新ID)"
@@ -71,7 +71,7 @@ msgid "A one-character trigger fires every time you type it, even inside words. 
 msgstr "单个字符的触发词每次输入都会触发，连单词中间也不例外。使用两个或更多字符更安全。"
 
 msgid "A palette tab with a colour picker, every colour format, contrast checks and saved colours. Turn it off to hide the tab and its Ctrl+K commands."
-msgstr ""
+msgstr "包含取色器、所有颜色格式、对比度检查和已保存颜色的调色板标签页。关闭后将隐藏该标签页及其 Ctrl+K 命令。"
 
 msgid "A small window you can drag anywhere."
 msgstr "可以拖到任意位置的小窗口。"
@@ -98,16 +98,16 @@ msgid "A trigger is 1 to 32 characters with no spaces."
 msgstr "触发词为 1 到 32 个字符，不含空格。"
 
 msgid "AA"
-msgstr ""
+msgstr "AA"
 
 msgid "AA large"
-msgstr ""
+msgstr "AA 大号文本"
 
 msgid "AAA"
-msgstr ""
+msgstr "AAA"
 
 msgid "AAA large"
-msgstr ""
+msgstr "AAA 大号文本"
 
 msgid "About"
 msgstr "关于"
@@ -173,7 +173,7 @@ msgid "After a paste or copy"
 msgstr "粘贴或复制后"
 
 msgid "After you pick a colour with the eyedropper it is copied in your default format. Windows only."
-msgstr ""
+msgstr "用吸管取色后，会以默认格式复制该颜色。仅限 Windows。"
 
 msgid "After you type the first two characters of a trigger, a small hint at the text cursor offers the item. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
 msgstr "输入触发词的前两个字符后，文本光标处会出现一个小提示，推荐对应的项目。按 Tab 键插入；按其他任何键则照常输入。仅在提示显示时才会占用 Tab 键。"
@@ -192,7 +192,7 @@ msgid "All {} recent copies are removed. This can't be undone."
 msgstr "将删除全部 {} 条最近复制的内容。此操作无法撤销。"
 
 msgid "Alpha"
-msgstr ""
+msgstr "透明度"
 
 msgid "Also forget the encryption key"
 msgstr "同时忘记加密密钥"
@@ -219,7 +219,7 @@ msgid "An item is open in the editor, so the pasted text was not added. Close it
 msgstr "编辑器中已打开一个项目，所以粘贴的文本没有添加。请先关闭它，再重新粘贴。"
 
 msgid "Analogous"
-msgstr ""
+msgstr "邻近色"
 
 msgid "Angry"
 msgstr "生气"
@@ -324,7 +324,7 @@ msgid "Bottom edge"
 msgstr "底边"
 
 msgid "Brightness"
-msgstr ""
+msgstr "亮度"
 
 msgid "Bring in items from a Snipdeck file or another clipboard manager. You see what will be added before anything is written."
 msgstr "从 Snipdeck 文件或其他剪贴板管理器导入片段。写入前可先查看将要添加的内容。"
@@ -345,7 +345,7 @@ msgid "Built on"
 msgstr "构建日期"
 
 msgid "CMYK"
-msgstr ""
+msgstr "CMYK"
 
 msgid "Cancel"
 msgstr "取消"
@@ -456,7 +456,7 @@ msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
 msgstr "点击或按 Enter 粘贴。Shift+点击或 Shift+Enter 为复制。"
 
 msgid "Click or Enter picks · Esc cancels · arrows move"
-msgstr ""
+msgstr "点击或按 Enter 取色 · Esc 取消 · 方向键移动"
 
 msgid "Click pastes into {} · Shift+click copies"
 msgstr "点击粘贴到 {} · Shift+点击为复制"
@@ -501,7 +501,7 @@ msgid "Colour label"
 msgstr "颜色标签"
 
 msgid "Colours"
-msgstr ""
+msgstr "颜色"
 
 msgid "Comfortable"
 msgstr "舒适"
@@ -531,13 +531,13 @@ msgid "Compact view"
 msgstr "紧凑视图"
 
 msgid "Complementary"
-msgstr ""
+msgstr "互补色"
 
 msgid "Content"
 msgstr "内容"
 
 msgid "Contrast"
-msgstr ""
+msgstr "对比度"
 
 msgid "Control Enter"
 msgstr "Ctrl Enter"
@@ -570,25 +570,25 @@ msgid "Copy SVG"
 msgstr "复制 SVG"
 
 msgid "Copy a colour picked from the screen"
-msgstr ""
+msgstr "复制从屏幕上取到的颜色"
 
 msgid "Copy all"
 msgstr "全部复制"
 
 msgid "Copy as"
-msgstr ""
+msgstr "复制为"
 
 msgid "Copy as CSS variables"
-msgstr ""
+msgstr "复制为 CSS 变量"
 
 msgid "Copy as…"
-msgstr ""
+msgstr "复制为…"
 
 msgid "Copy diagnostic report"
 msgstr "复制诊断报告"
 
 msgid "Copy only"
-msgstr ""
+msgstr "仅复制"
 
 msgid "Copy selected item"
 msgstr "复制所选片段"
@@ -702,7 +702,7 @@ msgid "Couldn't open your email app."
 msgstr "无法打开你的邮件应用。"
 
 msgid "Couldn't pick a colour from the screen."
-msgstr ""
+msgstr "无法从屏幕上取色。"
 
 msgid "Couldn't reach the clipboard. Another app may be using it."
 msgstr "无法访问剪贴板。可能有其他应用正在使用它。"
@@ -1131,10 +1131,10 @@ msgid "For example, Work"
 msgstr "例如：工作"
 
 msgid "Format"
-msgstr ""
+msgstr "格式"
 
 msgid "Formats"
-msgstr ""
+msgstr "格式"
 
 msgid "Formatted"
 msgstr "带格式"
@@ -1209,19 +1209,19 @@ msgid "Group…"
 msgstr "分组…"
 
 msgid "HDR is on for this screen: values are approximate"
-msgstr ""
+msgstr "此屏幕已开启 HDR：数值仅为近似值"
 
 msgid "HDR is on for this screen: {} is approximate."
-msgstr ""
+msgstr "此屏幕已开启 HDR：{} 为近似值。"
 
 msgid "HEX"
-msgstr ""
+msgstr "HEX"
 
 msgid "HSB"
-msgstr ""
+msgstr "HSB"
 
 msgid "HSL"
-msgstr ""
+msgstr "HSL"
 
 msgid "Handy for forms you fill field by field."
 msgstr "适合逐个字段填写的表单。"
@@ -1296,13 +1296,13 @@ msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "面板展开的宽度，范围为 {} 至 {} 像素。"
 
 msgid "Hue"
-msgstr ""
+msgstr "色相"
 
 msgid "Hue and saturation"
-msgstr ""
+msgstr "色相和饱和度"
 
 msgid "Hue {} degrees, saturation {} percent"
-msgstr ""
+msgstr "色相 {} 度，饱和度 {}%"
 
 msgid "Icon"
 msgstr "图标"
@@ -1530,10 +1530,10 @@ msgid "Main window"
 msgstr "主窗口"
 
 msgid "Make current"
-msgstr ""
+msgstr "设为当前颜色"
 
 msgid "Make default format"
-msgstr ""
+msgstr "设为默认格式"
 
 msgid "Make it fit your screen"
 msgstr "适配你的屏幕"
@@ -1661,7 +1661,7 @@ msgid_plural "Moved {} items to {}"
 msgstr[0] "已将 {} 个片段移到 {}"
 
 msgid "Name"
-msgstr ""
+msgstr "名称"
 
 msgid "Names can have at most {} characters."
 msgstr "名称最多 {} 个字符。"
@@ -1700,7 +1700,7 @@ msgid "New list"
 msgstr "新建列表"
 
 msgid "New list…"
-msgstr ""
+msgstr "新建列表…"
 
 msgid "New name for {}"
 msgstr "{} 的新名称"
@@ -1796,7 +1796,7 @@ msgid "No target: click copies"
 msgstr "无目标：点击为复制"
 
 msgid "Not a colour. Try {}"
-msgstr ""
+msgstr "不是颜色。试试 {}"
 
 msgid "Not included"
 msgstr "未包含"
@@ -1874,13 +1874,13 @@ msgid "Off keeps a panel docked to the left or right at the height you dropped i
 msgstr "关闭：停靠在左侧或右侧的面板保持你放下时的高度。开启：面板占满整条边。"
 
 msgid "On black"
-msgstr ""
+msgstr "在黑色上"
 
 msgid "On this colour"
-msgstr ""
+msgstr "在此颜色上"
 
 msgid "On white"
-msgstr ""
+msgstr "在白色上"
 
 msgid "One hotkey turns copied text into an item."
 msgstr "一个快捷键即可将复制的文本变为片段。"
@@ -1916,13 +1916,13 @@ msgid "Open data folder"
 msgstr "打开数据文件夹"
 
 msgid "Open in Colours"
-msgstr ""
+msgstr "在“颜色”中打开"
 
 msgid "Open logs folder"
 msgstr "打开日志文件夹"
 
 msgid "Open the Colours list"
-msgstr ""
+msgstr "打开“颜色”列表"
 
 msgid "Open the Microsoft Store page"
 msgstr "打开 Microsoft Store 页面"
@@ -1967,7 +1967,7 @@ msgid "Orange"
 msgstr "橙色"
 
 msgid "Other colour"
-msgstr ""
+msgstr "其他颜色"
 
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
 msgstr "在该文件夹之外，Snipdeck 只会写入 Windows 开机启动项（如果你开启了它），以及在你使用片段时写入剪贴板。"
@@ -2042,7 +2042,7 @@ msgid "Paste next pastes the next item each time you press it."
 msgstr "“粘贴下一个”每按一次就粘贴下一项。"
 
 msgid "Paste or copy"
-msgstr ""
+msgstr "粘贴或复制"
 
 msgid "Paste several in order"
 msgstr "按顺序粘贴多项"
@@ -2123,10 +2123,10 @@ msgid "PhraseExpress export (CSV)"
 msgstr "PhraseExpress 导出文件（CSV）"
 
 msgid "Pick a colour from the screen"
-msgstr ""
+msgstr "从屏幕上取色"
 
 msgid "Pick a colour from the screen (Ctrl+I)"
-msgstr ""
+msgstr "从屏幕上取色（Ctrl+I）"
 
 msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
 msgstr "选择面板的位置。你可以随时在设置中更改，还可设置其他边缘、切换应用时隐藏以及任务栏按钮。"
@@ -2141,7 +2141,7 @@ msgid "Picker position"
 msgstr "选择器位置"
 
 msgid "Picker style"
-msgstr ""
+msgstr "选择器样式"
 
 msgid "Picture"
 msgstr "图片"
@@ -2237,7 +2237,7 @@ msgid "Quit"
 msgstr "退出"
 
 msgid "RGB"
-msgstr ""
+msgstr "RGB"
 
 msgid "Ready. Press Test to check it."
 msgstr "已就绪。按“测试”进行检查。"
@@ -2303,7 +2303,7 @@ msgid "Remove from paste stack"
 msgstr "从粘贴堆栈中移除"
 
 msgid "Remove from recents"
-msgstr ""
+msgstr "从“最近”中移除"
 
 msgid "Remove master password"
 msgstr "移除主密码"
@@ -2398,10 +2398,10 @@ msgid "Sad"
 msgstr "难过"
 
 msgid "Saturation and brightness"
-msgstr ""
+msgstr "饱和度和亮度"
 
 msgid "Saturation {} percent, brightness {} percent"
-msgstr ""
+msgstr "饱和度 {}%，亮度 {}%"
 
 msgid "Save"
 msgstr "保存"
@@ -2425,16 +2425,16 @@ msgid "Save the clipboard as an item"
 msgstr "将剪贴板保存为片段"
 
 msgid "Save to"
-msgstr ""
+msgstr "保存到"
 
 msgid "Save to Colours"
-msgstr ""
+msgstr "保存到“颜色”"
 
 msgid "Save to Colours (Ctrl+S)"
-msgstr ""
+msgstr "保存到“颜色”（Ctrl+S）"
 
 msgid "Save to a list (Ctrl+Shift+S)"
-msgstr ""
+msgstr "保存到列表（Ctrl+Shift+S）"
 
 msgid "Save to…"
 msgstr "保存到…"
@@ -2443,10 +2443,10 @@ msgid "Save what you paste often."
 msgstr "保存你经常粘贴的内容。"
 
 msgid "Saved"
-msgstr ""
+msgstr "已保存"
 
 msgid "Saved colours"
-msgstr ""
+msgstr "已保存的颜色"
 
 msgid "Saved to {}"
 msgstr "已保存到 {}"
@@ -2476,10 +2476,10 @@ msgid "Saving…"
 msgstr "正在保存…"
 
 msgid "Scheme"
-msgstr ""
+msgstr "配色方案"
 
 msgid "Schemes"
-msgstr ""
+msgstr "配色方案"
 
 msgid "Scope"
 msgstr "范围"
@@ -2626,7 +2626,7 @@ msgid "Show"
 msgstr "显示"
 
 msgid "Show Colours tab"
-msgstr ""
+msgstr "显示“颜色”标签页"
 
 msgid "Show Panel"
 msgstr "显示面板"
@@ -2797,10 +2797,10 @@ msgid "Space"
 msgstr "空格"
 
 msgid "Split-complementary"
-msgstr ""
+msgstr "分裂互补色"
 
 msgid "Square"
-msgstr ""
+msgstr "方形"
 
 msgid "Start stack"
 msgstr "开始堆栈"
@@ -2842,7 +2842,7 @@ msgid "Surprise"
 msgstr "惊讶"
 
 msgid "Swap the two colours"
-msgstr ""
+msgstr "交换两种颜色"
 
 msgid "Switch this list to Manual order?"
 msgstr "要将此列表切换为手动排序吗?"
@@ -2914,7 +2914,7 @@ msgid "Test {}"
 msgstr "测试 {}"
 
 msgid "Tetradic"
-msgstr ""
+msgstr "四角配色"
 
 msgid "Text"
 msgstr "文本"
@@ -3148,7 +3148,7 @@ msgid "Tile view"
 msgstr "平铺视图"
 
 msgid "Tints & shades"
-msgstr ""
+msgstr "明暗层次"
 
 msgid "Tips"
 msgstr "提示"
@@ -3190,7 +3190,7 @@ msgid "Tray icon click opens"
 msgstr "点击托盘图标时打开"
 
 msgid "Triadic"
-msgstr ""
+msgstr "三角配色"
 
 msgid "Trigger"
 msgstr "触发词"
@@ -3238,7 +3238,7 @@ msgid "Typing triggers work on Windows only."
 msgstr "键入触发仅适用于 Windows。"
 
 msgid "UI"
-msgstr ""
+msgstr "UI"
 
 msgid "UPPERCASE"
 msgstr "大写"
@@ -3349,7 +3349,7 @@ msgid "User guide"
 msgstr "用户指南"
 
 msgid "Values as"
-msgstr ""
+msgstr "数值格式"
 
 msgid "Version"
 msgstr "版本"
@@ -3358,7 +3358,7 @@ msgid "View"
 msgstr "视图"
 
 msgid "View list"
-msgstr ""
+msgstr "查看列表"
 
 msgid "Violet"
 msgstr "紫罗兰色"
@@ -3391,7 +3391,7 @@ msgid "What you changed in this item has not been saved."
 msgstr "此片段的更改尚未保存。"
 
 msgid "Wheel"
-msgstr ""
+msgstr "色轮"
 
 msgid "When Windows starts"
 msgstr "Windows 启动时"
@@ -3545,7 +3545,7 @@ msgid "collapse expand hide show toggle section"
 msgstr "折叠 展开 隐藏 显示 切换 区段"
 
 msgid "color picker palette hex rgb hsl swatch contrast scheme"
-msgstr ""
+msgstr "颜色 取色器 调色板 hex rgb hsl 色板 对比度 配色 color picker"
 
 msgid "colour change"
 msgstr "颜色更改"
@@ -3560,7 +3560,7 @@ msgid "creates “{}” in {}"
 msgstr "创建“{}”(在 {})"
 
 msgid "default"
-msgstr ""
+msgstr "默认"
 
 msgid "delete"
 msgstr "删除"
@@ -3596,10 +3596,10 @@ msgid "everything home show"
 msgstr "全部 首页 显示"
 
 msgid "eyedropper color pick sample screen"
-msgstr ""
+msgstr "吸管 取色 颜色 采样 屏幕 eyedropper color pick"
 
 msgid "fail"
-msgstr ""
+msgstr "未通过"
 
 msgid "favourite favorite keep"
 msgstr "置顶 收藏 保留"
@@ -3660,13 +3660,13 @@ msgid "navigation rail collapse expand lists panel left width"
 msgstr "导航 侧边栏 折叠 展开 列表 面板 左侧 宽度"
 
 msgid "near {}"
-msgstr ""
+msgstr "接近 {}"
 
 msgid "never paste excluded apps"
 msgstr "从不粘贴 排除的程序"
 
 msgid "no close name"
-msgstr ""
+msgstr "无相近名称"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"
@@ -3678,7 +3678,7 @@ msgid "or"
 msgstr "或"
 
 msgid "pass"
-msgstr ""
+msgstr "通过"
 
 msgid "paste"
 msgstr "粘贴"
@@ -3777,7 +3777,7 @@ msgid_plural "{n} matches in {}"
 msgstr[0] "在 {} 中有 {n} 个匹配项"
 
 msgid "{}"
-msgstr ""
+msgstr "{}"
 
 msgid "{} (Enter)"
 msgstr "{}（Enter）"
@@ -3806,7 +3806,7 @@ msgid "{} d ago"
 msgstr "{} 天前"
 
 msgid "{} degrees"
-msgstr ""
+msgstr "{} 度"
 
 msgid "{} file in this archive is not known to this version and was left out."
 msgid_plural "{} files in this archive are not known to this version and were left out."
@@ -3870,7 +3870,7 @@ msgid "{} min ago"
 msgstr "{} 分钟前"
 
 msgid "{} needs a number"
-msgstr ""
+msgstr "{} 需要一个数字"
 
 msgid "{} new board will be made"
 msgid_plural "{} new boards will be made"
@@ -3883,7 +3883,7 @@ msgid "{} of {} · next: {}"
 msgstr "{} / {} · 下一项：{}"
 
 msgid "{} percent"
-msgstr ""
+msgstr "{}%"
 
 msgid "{} picture or file that no snippet uses was left out."
 msgid_plural "{} pictures or files that no snippet uses were left out."
@@ -3905,7 +3905,7 @@ msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "备份中不包含 {} 项敏感项目。"
 
 msgid "{} · {}"
-msgstr ""
+msgstr "{} · {}"
 
 msgid "{} — press Tab to insert"
 msgstr "{} — 按 Tab 插入"
@@ -3914,7 +3914,7 @@ msgid "{}, match {}"
 msgstr "{}，第 {} 项"
 
 msgid "{}, {}"
-msgstr ""
+msgstr "{}，{}"
 
 msgid "{}, {} of {}"
 msgstr "{}，第 {} 项（共 {} 项）"
@@ -3965,7 +3965,7 @@ msgid "{}: {} has no Snipdeck equivalent and was left as written."
 msgstr "{}：{} 在 Snipdeck 中没有对应项，已保持原样。"
 
 msgid "{}: {} to 1. AA text {}. AA large text {}. AAA text {}. AAA large text {}. Interface parts {}."
-msgstr ""
+msgstr "{}：{} 比 1。AA 文本{}。AA 大号文本{}。AAA 文本{}。AAA 大号文本{}。界面部件{}。"
 
 msgid "{}: {} was not kept as a trigger, because a snippet has one trigger."
 msgstr "{}：{} 未保留为触发词，因为一个片段只有一个触发词。"
