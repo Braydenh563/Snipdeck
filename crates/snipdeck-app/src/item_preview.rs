@@ -24,6 +24,17 @@ pub struct PreviewWords<'a> {
     pub new_id: &'a str,
 }
 
+/// How the user's own lists draw a card: the Preview shows it the same way.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PreviewLook {
+    /// The Panel's layout.
+    pub panel_layout: crate::settings::PanelLayout,
+    /// The Main window's view.
+    pub main_view: crate::main_window::ViewMode,
+    /// The Panel numbers its rows.
+    pub show_numbers: bool,
+}
+
 /// A link split for display.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LinkDisplay {
@@ -54,6 +65,9 @@ pub struct CardPreview {
     /// Why the expansion or the link cannot be shown (the same refusal Save would give).
     pub problem: Option<EditorProblem>,
 }
+
+/// What the note says of a sensitive template that does not parse: nothing it could quote.
+const SENSITIVE_WHY: &str = "a placeholder is not valid";
 
 /// The card for `input`. `now` is the moment `{date}` and `{time}` show; `tz` and `locale` are
 /// the user's. `prompted_allowed` is false when Save would refuse a prompted placeholder here
@@ -107,6 +121,11 @@ pub fn card_of(
                 card.expanded = Some(expand(&template, now, tz, locale, words));
             }
             Ok(_) => {}
+            // The parser's explanation quotes the text (`unknown placeholder {hunter2}`): a sensitive
+            // item's note says nothing of it.
+            Err(_) if sensitive => {
+                card.problem = Some(EditorProblem::Template(SENSITIVE_WHY.to_owned()))
+            }
             Err(e) => card.problem = Some(EditorProblem::Template(e.kind.to_string())),
         },
         _ => {}
@@ -346,6 +365,25 @@ mod secret_tests {
         let c = sensitive(ItemKind::Link, "", "https://hunter2-secret.example/x");
         assert!(c.link.is_none());
         assert_no_secret(&c, "hunter2");
+    }
+
+    #[test]
+    fn a_sensitive_template_that_does_not_parse_quotes_nothing() {
+        for text in [
+            "pw {hunter2-secret}",
+            "{choice:x|hunter2-secret|hunter2-secret}",
+            "{field:hunter2-secret|a|b}",
+            "x {hunter2-secret",
+            "{datetime:hunter2-secret%}",
+        ] {
+            let c = sensitive(ItemKind::Template, "", text);
+            assert!(
+                matches!(c.problem, Some(EditorProblem::Template(_))),
+                "{text}: {:?}",
+                c.problem
+            );
+            assert_no_secret(&c, "hunter2");
+        }
     }
 
     #[test]

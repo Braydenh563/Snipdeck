@@ -30,7 +30,7 @@ use crate::{
     item_editor::{
         AttachmentView, EditorInput, EditorProblem, ItemEditorView, SaveFailure, Source,
     },
-    item_preview::{self, CardPreview, PreviewWords},
+    item_preview::{self, CardPreview, PreviewLook, PreviewWords},
 };
 
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
@@ -133,6 +133,15 @@ impl ItemEditorSlot {
 
     fn is_new(&self) -> bool {
         self.target == ItemTarget::New
+    }
+
+    /// Whether the template text `content` is new or changed here, so a free user may not
+    /// introduce prompted placeholders in it (a template that already had them can still be
+    /// saved with another title). Save and Preview ask the same question.
+    fn template_introduced(&self, content: &str) -> bool {
+        self.is_new()
+            || self.original_kind != ItemKind::Template
+            || self.original_text.as_deref() != Some(content)
     }
 
     /// The draft of `input` in this editor.
@@ -265,10 +274,8 @@ where
     ) -> Option<CardPreview> {
         let slot = self.item_editor.as_ref()?;
         // The refusal Save would give a free user who has just added a prompted placeholder.
-        let introduced = slot.is_new()
-            || slot.original_kind != ItemKind::Template
-            || slot.original_text.as_deref() != Some(input.content.as_str());
-        let prompted_allowed = self.entitlements.allows(Feature::PromptedFields) || !introduced;
+        let prompted_allowed = self.entitlements.allows(Feature::PromptedFields)
+            || !slot.template_introduced(&input.content);
         Some(item_preview::card_of(
             input,
             prompted_allowed,
@@ -277,6 +284,16 @@ where
             Locale::for_tag(&self.settings.language),
             words,
         ))
+    }
+
+    /// How the user's own Panel and Main list draw a card, for the editor's Preview.
+    #[must_use]
+    pub fn item_editor_preview_look(&self) -> PreviewLook {
+        PreviewLook {
+            panel_layout: self.settings.panel_layout,
+            main_view: self.main.view_mode(),
+            show_numbers: self.settings.show_numbers,
+        }
     }
 
     // ---- Editing -------------------------------------------------------------------------------

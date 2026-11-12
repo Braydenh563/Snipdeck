@@ -416,14 +416,14 @@ where
         let controller = self.controller.borrow();
         let card = controller.item_editor_preview(&input, words);
         // The cards are drawn the way the user's own Panel and Main list draw them.
-        let settings = controller.settings();
-        w.set_preview_panel_card(match settings.panel_layout {
-            crate::settings::PanelLayout::Compact => 0,
-            crate::settings::PanelLayout::List => 1,
-            crate::settings::PanelLayout::Cards => 2,
+        let look = controller.item_editor_preview_look();
+        w.set_preview_panel_layout(match look.panel_layout {
+            crate::settings::PanelLayout::List => ui::PanelLayout::List,
+            crate::settings::PanelLayout::Cards => ui::PanelLayout::Cards,
+            crate::settings::PanelLayout::Compact => ui::PanelLayout::Compact,
         });
-        w.set_preview_main_compact(settings.row_density == crate::settings::RowDensity::Compact);
-        w.set_preview_show_numbers(settings.show_numbers);
+        w.set_preview_main_view(crate::main_binding::ui_view(look.main_view));
+        w.set_preview_show_numbers(look.show_numbers);
         drop(controller);
         set_preview(w, card.as_ref());
     }

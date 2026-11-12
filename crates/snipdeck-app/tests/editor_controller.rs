@@ -1596,3 +1596,16 @@ fn typed_default() -> EditorInput {
         label: None,
     }
 }
+
+#[test]
+fn the_preview_look_follows_the_panel_layout_and_the_real_main_view() {
+    use snipdeck_app::{main_window::ViewMode, settings::PanelLayout};
+    let mut r = rig(Tier::Free);
+    let look = r.ctl.item_editor_preview_look();
+    assert_eq!(look.panel_layout, PanelLayout::List);
+    assert_eq!(look.main_view, ViewMode::Comfortable);
+    assert!(look.show_numbers);
+    // The Main window's Tile view is not a setting: the preview reads the view in force.
+    r.ctl.main_set_view(ViewMode::Tile);
+    assert_eq!(r.ctl.item_editor_preview_look().main_view, ViewMode::Tile);
+}

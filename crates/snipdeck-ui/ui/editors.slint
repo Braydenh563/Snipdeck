@@ -18,6 +18,8 @@ import { Icons } from "icons.slint";
 import { ListIcons } from "list-icons.slint";
 import { Icon } from "components/icon.slint";
 import { ItemCard, ItemKind, ItemCardVariant } from "components/item-card.slint";
+import { PanelLayout } from "panel.slint";
+import { MainView } from "main_window.slint";
 import { Button, ButtonVariant, ButtonSize } from "components/button.slint";
 import { IconButton, IconButtonSize } from "components/icon-button.slint";
 import { TextField, FieldError } from "components/text_field.slint";
@@ -522,11 +524,12 @@ component PreviewPane inherits Rectangle {
     in property <string> expanded;
     in property <string> link-host;
     in property <string> note;
-    in property <int> panel-card: 1;
-    in property <bool> main-compact: false;
+    in property <PanelLayout> panel-layout: PanelLayout.list;
+    in property <MainView> main-view: MainView.comfortable;
     in property <bool> show-numbers: true;
     in property <bool> dirty: false;
-    property <ItemCardVariant> panel-variant: root.panel-card == 0 ? ItemCardVariant.compact : root.panel-card == 2 ? ItemCardVariant.tile : ItemCardVariant.comfortable;
+    property <ItemCardVariant> panel-variant: root.panel-layout == PanelLayout.compact ? ItemCardVariant.compact : root.panel-layout == PanelLayout.cards ? ItemCardVariant.tile : ItemCardVariant.comfortable;
+    property <ItemCardVariant> main-variant: root.main-view == MainView.compact ? ItemCardVariant.compact : root.main-view == MainView.tile ? ItemCardVariant.tile : ItemCardVariant.comfortable;
 
     background: Theme.bg-app;
     accessible-role: groupbox;
@@ -578,10 +581,12 @@ component PreviewPane inherits Rectangle {
             FormField {
                 label: @tr("Main list");
                 Rectangle {
-                    height: main-card.preferred-height;
+                    height: main-card.height;
                     main-card := ItemCard {
-                        width: parent.width;
-                        variant: root.main-compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
+                        width: root.main-variant == ItemCardVariant.tile ? min(parent.width, 200px) : parent.width;
+                        height: self.preferred-height;
+                        inline-tile: root.main-variant == ItemCardVariant.tile;
+                        variant: root.main-variant;
                         numbered: false;
                         masked-hint: @tr("Hidden. Hold Space to reveal.");
                         kind: root.card-kind;
@@ -718,10 +723,9 @@ export component ItemEditor inherits Window {
     in property <string> preview-expanded;
     in property <string> preview-link;
     in property <string> preview-note;
-    // How the user's own lists draw a card: the Panel's layout (0 compact, 1 comfortable, 2 card), the Main view (compact or
-    // comfortable) and whether the Panel numbers its rows.
-    in property <int> preview-panel-card: 1;
-    in property <bool> preview-main-compact: false;
+    // How the user's own lists draw a card: the Panel's layout, the Main view and whether the Panel numbers its rows.
+    in property <PanelLayout> preview-panel-layout: PanelLayout.list;
+    in property <MainView> preview-main-view: MainView.comfortable;
     in property <bool> preview-show-numbers: true;
     // The caption of a Link's "(new ID)" stand-in, passed to the host so the sample result is translated.
     out property <string> preview-new-id: @tr("(new ID)");
@@ -778,9 +782,20 @@ export component ItemEditor inherits Window {
         : root.kind-index == 4 ? ItemKind.image : ItemKind.file;
     // Preview off: the form again, with the cursor in its first field. An Image or File item has no text field to
     // type in (More options closed), so the focus stays on the toggle rather than falling out of the window.
+    // Asks the path field (inside a conditional, so not nameable from here) for focus; cleared when the kind changes
+    // so a field made later does not take focus on its own.
+    property <int> source-focus-request: 0;
+    changed kind-index => { root.source-focus-request = 0; }
     function back-to-form() {
         root.preview-on = false;
-        if (root.more-shown || root.text-kind) {
+        if (root.title-error != "") {
+            title-field.focus();
+            title-field.set-cursor(1000000);
+        } else if (root.text-kind && root.content-shown-error != "") {
+            content-field.focus();
+        } else if (!root.text-kind && root.source-shown-error != "") {
+            root.source-focus-request += 1;
+        } else if (root.more-shown || root.text-kind) {
             root.focus-title();
         } else {
             preview-toggle.take-focus();
@@ -937,8 +952,8 @@ export component ItemEditor inherits Window {
                 expanded: root.preview-expanded;
                 link-host: root.preview-link;
                 note: root.preview-note;
-                panel-card: root.preview-panel-card;
-                main-compact: root.preview-main-compact;
+                panel-layout: root.preview-panel-layout;
+                main-view: root.preview-main-view;
                 show-numbers: root.preview-show-numbers;
                 dirty: root.dirty;
             }
@@ -1048,6 +1063,7 @@ export component ItemEditor inherits Window {
                                         placeholder: @tr("Path to the file");
                                         error: root.source-shown-error;
                                         text <=> root.source-path;
+                                        focus-request: root.source-focus-request;
                                         edited(t) => { root.touch(); }
                                         accepted(t) => { root.try-save(); }
                                         changed has-focus => {

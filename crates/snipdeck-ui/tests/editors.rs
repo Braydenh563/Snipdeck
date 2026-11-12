@@ -6,8 +6,8 @@
 
 use slint::{ComponentHandle, ModelRc, VecModel, platform::Key};
 use snipdeck_ui::{
-    BoardEditor, HelpWindow, ItemEditor, ListEditor, OnboardingWindow, SettingsPage, SystemLook,
-    TagManager,
+    BoardEditor, HelpWindow, ItemEditor, ListEditor, MainView, OnboardingWindow, PanelLayout,
+    SettingsPage, SystemLook, TagManager,
     testing::{Frame, Harness, assert_golden},
 };
 
@@ -162,8 +162,8 @@ fn item_editor_preview_dark_sensitive_and_in_the_users_layouts() {
         c.set_preview_on(true);
         c.set_preview_title("Bank card".into());
         c.set_preview_mask("••••••••".into());
-        c.set_preview_panel_card(2);
-        c.set_preview_main_compact(true);
+        c.set_preview_panel_layout(PanelLayout::Cards);
+        c.set_preview_main_view(MainView::Compact);
         c.set_preview_show_numbers(false);
     });
     assert_golden("item-editor-preview-sensitive-dark", &render(&h));

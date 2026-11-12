@@ -1145,3 +1145,115 @@ fn leaving_preview_on_an_image_item_keeps_the_keyboard_in_the_window() {
         assert!(!r.editor_shown(), "Escape reached the editor");
     });
 }
+
+// ---- Where the keyboard lands -------------------------------------------------------------------
+// The test backend cannot say which element has the focus, so these type a letter and see which field took it.
+
+fn preview_on(ed: &ItemEditor) {
+    chord(ed.window(), &[Key::Control], "p");
+    settle();
+    assert!(ed.get_preview_on());
+}
+
+#[test]
+fn a_save_refused_in_preview_puts_the_keyboard_in_the_field_that_holds_the_error() {
+    on_ui_thread(|| {
+        // Content missing: the text field.
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        preview_on(&ed);
+        save(&ed);
+        assert!(!ed.get_preview_on());
+        type_text(ed.window(), "x");
+        assert_eq!(ed.get_content(), "x", "the text field has the focus");
+        assert_eq!(ed.get_item_title(), "");
+
+        // A title that is too long: the title field, even with More options closed.
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        ed.set_content("body".into());
+        ed.set_item_title("t".repeat(500).into());
+        preview_on(&ed);
+        save(&ed);
+        assert!(!ed.get_preview_on());
+        assert_ne!(ed.get_title_error(), "");
+        type_text(ed.window(), "x");
+        assert!(
+            ed.get_item_title().ends_with('x'),
+            "the title field has the focus"
+        );
+        assert_eq!(ed.get_content(), "body");
+
+        // A missing file: the path field.
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        click(
+            ed.window(),
+            &find(&ed, "Image", AccessibleRole::RadioButton),
+        );
+        settle();
+        preview_on(&ed);
+        save(&ed);
+        assert!(!ed.get_preview_on());
+        type_text(ed.window(), "x");
+        assert_eq!(ed.get_source_path(), "x", "the path field has the focus");
+    });
+}
+
+#[test]
+fn tab_walks_the_form_and_the_preview_without_a_trap() {
+    const TABS: usize = 40;
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+
+        // Preview off: a full walk reaches the text and the title, and the keyboard is still in the window.
+        let (mut text_seen, mut title_seen) = (false, false);
+        for _ in 0..TABS {
+            press(ed.window(), &key(Key::Tab));
+            type_text(ed.window(), "§");
+            text_seen |= ed.get_content().contains('§');
+            title_seen |= ed.get_item_title().contains('§');
+        }
+        assert!(
+            text_seen && title_seen,
+            "Tab reaches the text and the title"
+        );
+        chord(ed.window(), &[Key::Control], "p");
+        settle();
+        assert!(ed.get_preview_on(), "Ctrl+P still works after a full walk");
+
+        // Preview on: Tab and Shift+Tab edit nothing, and Ctrl+P is still heard after both walks.
+        let (content, title) = (ed.get_content(), ed.get_item_title());
+        for _ in 0..TABS {
+            press(ed.window(), &key(Key::Tab));
+            type_text(ed.window(), "§");
+        }
+        chord(ed.window(), &[Key::Shift], &key(Key::Tab));
+        for _ in 0..TABS {
+            chord(ed.window(), &[Key::Shift], &key(Key::Tab));
+            type_text(ed.window(), "§");
+        }
+        assert_eq!(
+            (ed.get_content(), ed.get_item_title()),
+            (content, title),
+            "nothing was typed into the hidden form"
+        );
+        assert!(ed.get_preview_on());
+        chord(ed.window(), &[Key::Control], "p");
+        settle();
+        assert!(!ed.get_preview_on(), "Ctrl+P leaves Preview after the walk");
+
+        // Back on the form the keyboard types into the first field.
+        let before = ed.get_content().len() + ed.get_item_title().len();
+        type_text(ed.window(), "y");
+        assert_eq!(
+            ed.get_content().len() + ed.get_item_title().len(),
+            before + 1
+        );
+    });
+}
