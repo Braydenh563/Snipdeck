@@ -9,6 +9,7 @@ pub mod binding;
 pub mod capture;
 pub mod cli;
 pub mod colours_panel;
+pub mod colour_words;
 pub mod command_binding;
 pub mod commands;
 pub mod controller;

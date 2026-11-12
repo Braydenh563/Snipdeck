@@ -37,6 +37,7 @@ import { Menu, MenuEntry } from "components/menu.slint";
 import { SuggestDropdown, SuggestRow } from "components/suggest-dropdown.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
 import { Chooser, ChoiceEntry } from "components/chooser.slint";
+import { ColourBlock, ColourFormatCell } from "components/colour_block.slint";
 import { MenuTexts } from "menu_texts.slint";
 import { GroupHeader } from "components/group-header.slint";
 import { LabelChip } from "components/label-chip.slint";
@@ -291,6 +292,16 @@ export component MainWindow inherits Window {
     in property <[ChoiceEntry]> recent-targets;
     in property <int> count-trash: -1;
     in property <[MainRow]> rows;
+    // The Colour block (colour-spec D6a): while the cursor is on an item that is one colour (never in the Trash, with
+    // several rows selected, or for a Sensitive item) the host sets `colour-block-shown`, the colour and its formats.
+    // Copying a format and "Open in Colours" act on the cursor row; the host words every text.
+    in property <bool> colour-block-shown: false;
+    in property <color> colour-block-swatch;
+    in property <[ColourFormatCell]> colour-block-formats;
+    // The Panel's Colours tab is switched on, so "Open in Colours" has somewhere to go.
+    in property <bool> colour-can-open: true;
+    // The "Paste as…" choices of a colour row: the host fills them in `colour-choices-requested`.
+    in property <[ChoiceEntry]> colour-choices;
     // The colour labels the items in the view carry (the filter row), and the active filter (-1 none).
     in property <[LabelChipEntry]> label-chips;
     in property <int> label-filter: -1;
@@ -391,6 +402,14 @@ export component MainWindow inherits Window {
     callback move-chosen(int);
     // "Paste as…" picked choice `i` (in the order of the core `Transform::ALL`) for the row the chooser opened on.
     callback paste-as-chosen(int);
+    // A colour row's "Paste as…" is opening for row `index`: the host fills `colour-choices` before this returns.
+    callback colour-choices-requested(int);
+    // Choice `format` (an index into the host's formats) of a colour row's "Paste as…"; `copy` when Shift was held.
+    callback colour-chosen(int, bool);
+    // The Colour block copied format `format` of the colour on row `index`.
+    callback colour-copied(int, int);
+    // "Open in Colours" on row `index`: the Panel shows the colour on its Colours tab.
+    callback colour-open-requested(int);
     callback tag-toggled(int, bool);
     callback reveal-requested(int, bool);
     callback settings-requested();
@@ -594,6 +613,8 @@ export component MainWindow inherits Window {
     property <bool> chooser-tags: false;
     // The chooser holds the "Paste as…" choices.
     property <bool> chooser-paste: false;
+    // ... and they are a colour row's formats.
+    property <bool> chooser-colour: false;
     property <length> chooser-x: 0px;
     property <length> chooser-y: 0px;
     // What the confirmation dialog is asking: 0 none, 1 delete a list, 2 delete a tag, 3 empty the Trash,
@@ -814,6 +835,10 @@ export component MainWindow inherits Window {
     function open-chooser(tags: bool, paste: bool, index: int) {
         root.chooser-tags = tags;
         root.chooser-paste = paste;
+        root.chooser-colour = paste && root.rows[index].has-swatch;
+        if (root.chooser-colour) {
+            root.colour-choices-requested(index);
+        }
         root.chooser-x = min(max(root.item-menu-x, root.sidebar-w), max(root.sidebar-w, root.width - 240px));
         root.chooser-y = min(root.item-menu-y, max(0px, root.height - 300px));
         root.chooser-open = true;
@@ -896,6 +921,7 @@ export component MainWindow inherits Window {
         { text: root.use-label, icon: Icons.arrow-bend-down-left, shortcut: "Enter", disabled: root.multi },
         { text: @tr("Copy"), icon: Icons.copy, shortcut: "Shift+Enter", disabled: root.multi },
         { text: MenuTexts.item-paste-as(), icon: Icons.text-t, disabled: root.multi || root.rows[root.item-menu-index].kind == ItemKind.image || root.rows[root.item-menu-index].kind == ItemKind.file },
+        { text: MenuTexts.item-open-in-colours(), icon: Icons.palette, hidden: root.multi || !root.colour-can-open || !root.rows[root.item-menu-index].has-swatch },
         { separator: true },
         { text: @tr("Edit"), icon: Icons.pencil-simple, shortcut: "Ctrl+E", disabled: root.multi },
         { text: @tr("Duplicate"), icon: Icons.files, shortcut: "Ctrl+D" },
@@ -942,22 +968,24 @@ export component MainWindow inherits Window {
             root.act(ItemAction.copy, index);
         } else if (i == 2) {
             root.act(ItemAction.paste-as, index);
-        } else if (i == 4) {
-            root.act(ItemAction.edit, index);
+        } else if (i == 3) {
+            root.colour-open-requested(index);
         } else if (i == 5) {
-            root.act(ItemAction.duplicate, index);
+            root.act(ItemAction.edit, index);
         } else if (i == 6) {
+            root.act(ItemAction.duplicate, index);
+        } else if (i == 7) {
             root.act(ItemAction.pin, index);
-        } else if (i == 7 || i == 8) {
+        } else if (i == 8 || i == 9) {
             root.cursor = index;
-            root.item-reorder-requested(i == 7 ? -1 : 1);
-        } else if (i == 9) {
-            root.act(ItemAction.move, index);
+            root.item-reorder-requested(i == 8 ? -1 : 1);
         } else if (i == 10) {
-            root.act(ItemAction.tag, index);
+            root.act(ItemAction.move, index);
         } else if (i == 11) {
+            root.act(ItemAction.tag, index);
+        } else if (i == 12) {
             root.group-requested(index);
-        } else if (i == 13) {
+        } else if (i == 14) {
             root.act(ItemAction.delete, index);
         }
         if (!root.chooser-open && !root.confirm-shown) {
@@ -2344,6 +2372,19 @@ export component MainWindow inherits Window {
                     }
                 }
 
+                // ---- Colour block: the cursor is on an item that is one colour (colour-spec D6a) -----------
+                // Only where the window is tall enough to keep a useful list above it; the item menu's "Paste as…"
+                // reaches the same formats from the keyboard.
+                if root.colour-block-shown && !root.in-trash && !root.multi && !root.recent-shown && root.height >= 520px: ColourBlock {
+                    swatch: root.colour-block-swatch;
+                    heading: @tr("Colour");
+                    open-text: MenuTexts.item-open-in-colours();
+                    formats: root.colour-block-formats;
+                    can-open: root.colour-can-open;
+                    copied(format) => { root.colour-copied(root.cur, format); }
+                    open-requested => { root.colour-open-requested(root.cur); }
+                }
+
                 // ---- Bulk-action bar: appears with two or more items selected --------------------
                 if root.multi: Rectangle {
                     height: max(Space.s8 + Space.s2, Type.line-base + Space.s4);
@@ -2796,7 +2837,7 @@ export component MainWindow inherits Window {
         y: root.chooser-y;
         width: 240px * SystemLook.text-scale;
         multi: root.chooser-tags;
-        entries: root.chooser-paste ? root.paste-choices : root.chooser-tags ? root.tag-choices : root.lists;
+        entries: root.chooser-paste ? (root.chooser-colour ? root.colour-choices : root.paste-choices) : root.chooser-tags ? root.tag-choices : root.lists;
         label: root.chooser-paste ? MenuTexts.item-paste-as() : root.chooser-tags ? @tr("Tags") : @tr("Move to list");
         empty-text: root.chooser-tags ? @tr("No tags yet") : @tr("No lists yet");
         init => {
@@ -2806,7 +2847,11 @@ export component MainWindow inherits Window {
         chosen(i) => {
             if (root.chooser-paste) {
                 root.chooser-open = false;
-                root.paste-as-chosen(i);
+                if (root.chooser-colour) {
+                    root.colour-chosen(i, self.shift);
+                } else {
+                    root.paste-as-chosen(i);
+                }
                 items-scope.focus();
             } else if (root.chooser-tags) {
                 root.tag-toggled(i, !root.tag-choices[i].checked);

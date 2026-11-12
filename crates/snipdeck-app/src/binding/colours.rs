@@ -476,6 +476,13 @@ where
         self.act(|ctl| ctl.set_colour(c));
     }
 
+    /// A drag step: the colour changes but is not written to the settings until the pointer is
+    /// released (`on_settled`).
+    fn set_picked_live(self: &Rc<Self>, c: Rgba8, st: panel::Hsb) {
+        self.colours.inner.borrow_mut().held = Some((c, st));
+        self.act(|ctl| ctl.set_colour_live(c));
+    }
+
     /// The picker's state for the colour now.
     fn picker_state(&self) -> (Rgba8, panel::Hsb) {
         let current = self.colour_view().current;
@@ -735,12 +742,20 @@ where
         // The surface and the sliders.
         {
             let core = Rc::clone(self);
-            state.on_surface_moved(move |x, y, _done| {
+            state.on_surface_moved(move |x, y, done| {
                 let (current, st) = core.picker_state();
                 let style = core.colour_view().style;
                 let (c, next) = panel::pick_hsb(style, x, y, st, current.a);
-                core.set_picked(c, next);
+                if done {
+                    core.set_picked(c, next);
+                } else {
+                    core.set_picked_live(c, next);
+                }
             });
+        }
+        {
+            let core = Rc::clone(self);
+            state.on_settled(move || core.act(Controller::settle_colour));
         }
         {
             let core = Rc::clone(self);
@@ -764,7 +779,7 @@ where
             state.on_hue_moved(move |h| {
                 let (current, st) = core.picker_state();
                 let next = (h.min(359.999), st.1, st.2);
-                core.set_picked(hsb_colour(next, current.a), next);
+                core.set_picked_live(hsb_colour(next, current.a), next);
             });
         }
         {
@@ -772,7 +787,7 @@ where
             state.on_bri_moved(move |b| {
                 let (current, st) = core.picker_state();
                 let next = (st.0, st.1, b.clamp(0.0, 100.0));
-                core.set_picked(hsb_colour(next, current.a), next);
+                core.set_picked_live(hsb_colour(next, current.a), next);
             });
         }
         {
@@ -785,7 +800,7 @@ where
                     reason = "clamped to 0..=100 first, so the result is 0..=255"
                 )]
                 let a = (a.clamp(0.0, 100.0) / 100.0 * 255.0).round() as u8;
-                core.act(|ctl| ctl.set_colour(Rgba8 { a, ..c }));
+                core.act(|ctl| ctl.set_colour_live(Rgba8 { a, ..c }));
             });
         }
         // Typed values.

@@ -310,8 +310,9 @@ pub enum ChooseLabel {
     Colour(Option<snipdeck_core::ItemLabel>),
     /// A "Paste as..." choice.
     Transform(snipdeck_core::template::transform::Transform),
-    /// A "Paste as..." choice of a colour item: the format and its value, already worded.
-    Verbatim(String),
+    /// A "Paste as..." choice of a colour item: the format and the colour written in it (the
+    /// window words the format; `Name` is translated there).
+    ColourFormat(snipdeck_colour::Format, String),
 }
 
 /// One row of the Move or Colour choice.

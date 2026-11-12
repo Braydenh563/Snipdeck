@@ -18,6 +18,7 @@ use snipdeck_platform::{
 };
 
 mod colour_ctl;
+mod colour_main;
 mod commands_ctl;
 mod create_ctl;
 mod dock_ctl;
@@ -45,6 +46,7 @@ mod use_ctl;
 mod views;
 
 pub use colour_ctl::{ColourView, SaveList, SaveTarget};
+pub use colour_main::{ColourBlock, colour_formats};
 pub use create_ctl::DropRun;
 pub use history_ctl::HistoryView;
 pub use library::Library;
@@ -158,6 +160,9 @@ struct Undo {
     /// The toast reports a new item (saved or quick-added): Undo moves it to the Trash and the
     /// toast's Edit button opens it in the editor.
     adds: Option<ItemId>,
+    /// The list that save made (the first colour saved makes "Colours"): Undo trashes it too, so
+    /// no empty list is left behind.
+    list: Option<ListId>,
 }
 
 struct ActiveToast {
@@ -281,6 +286,11 @@ pub struct Controller<S, C, K, T> {
     colour: snipdeck_colour::Rgba8,
     colour_other: snipdeck_colour::Rgba8,
     colours_list_name: String,
+    /// The list `make_list_for_save` made last, taken by the save that asked for it.
+    colour_made_list: Option<ListId>,
+    /// The colour items of the home list, kept until the library changes (every redraw of the
+    /// Colours tab asks for them; a drag redraws on each pointer event).
+    colour_saved_cache: std::cell::RefCell<Option<Vec<(ItemId, snipdeck_colour::Rgba8)>>>,
     session: Session,
     saver: Option<SettingsSaver>,
     /// Where the edge dock is (see [`crate::dock`]).
@@ -481,6 +491,8 @@ where
             colour,
             colour_other,
             colours_list_name: String::from("Colours"),
+            colour_made_list: None,
+            colour_saved_cache: std::cell::RefCell::new(None),
             session: Session::default(),
             hotkey_problems: Vec::new(),
             saver: None,

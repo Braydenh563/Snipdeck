@@ -621,6 +621,30 @@ where
             .main_action(action_of(action), index(i)));
         wire!(on_move_chosen, |ctl, i| ctl.main_move_to(index(i)));
         wire!(on_paste_as_chosen, |ctl, i| ctl.main_paste_as(index(i)));
+        wire!(on_colour_copied, |ctl, row, format| ctl
+            .main_colour_copy(index(row), index(format)));
+        wire!(on_colour_chosen, |ctl, format, copy| ctl
+            .main_colour_paste_as(index(format), copy));
+        wire!(on_colour_open_requested, |ctl, row| ctl
+            .main_open_in_colours(index(row)));
+        {
+            // A colour row's "Paste as…" lists its formats; the window asks just before it opens
+            // the chooser, so they are in place by then.
+            let core = Rc::clone(&core);
+            let weak = window.as_weak();
+            window.on_colour_choices_requested(move |row| {
+                let Some(window) = weak.upgrade() else {
+                    return;
+                };
+                let choices = core.controller.borrow().main_colour_choices(index(row));
+                let name = window.global::<ui::ColourTexts>().invoke_format_name();
+                window.set_colour_choices(model(choices.iter().map(|(f, value)| ui::ChoiceEntry {
+                    label: crate::colour_words::choice_text(*f, &name, value).into(),
+                    count: -1,
+                    ..Default::default()
+                })));
+            });
+        }
         wire!(on_tag_toggled, |ctl, i, on| ctl
             .main_toggle_tag(index(i), on));
         wire!(on_reveal_requested, |ctl, i, on| ctl
@@ -1118,6 +1142,23 @@ fn set_label_filter(window: &ui::MainWindow, screen: &MainScreen) {
     window.set_label_filter(crate::binding::label_index(screen.label_filter));
 }
 
+/// The Colour block under the list: its swatch and the colour in every format.
+fn set_colour_block(window: &ui::MainWindow, block: Option<&crate::controller::ColourBlock>) {
+    window.set_colour_block_shown(block.is_some());
+    let Some(block) = block else {
+        return;
+    };
+    let c = block.colour;
+    window.set_colour_block_swatch(slint::Color::from_argb_u8(c.a, c.r, c.g, c.b));
+    let name = window.global::<ui::ColourTexts>().invoke_format_name();
+    window.set_colour_block_formats(model(block.formats.iter().map(|(f, value)| {
+        ui::ColourFormatCell {
+            label: crate::colour_words::format_word(*f, &name),
+            value: value.as_str().into(),
+        }
+    })));
+}
+
 /// The sidebar's lists, with their colour marks and icons.
 fn set_side_lists(window: &ui::MainWindow, screen: &MainScreen) {
     let icons = ui::ListIcons::get(window).get_all();
@@ -1141,6 +1182,10 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     crate::text_scale::apply(&window.global::<ui::SystemLook<'_>>());
     if differs(&|p| look_key(p) == look_key(screen)) {
         apply_look(window, screen);
+    }
+    window.set_colour_can_open(screen.colours_tab);
+    if differs(&|p| p.colour_block == screen.colour_block) {
+        set_colour_block(window, screen.colour_block.as_ref());
     }
     if differs(&|p| p.panel_hotkey == screen.panel_hotkey) {
         window.set_panel_hotkey(screen.panel_hotkey.as_str().into());
@@ -1409,7 +1454,7 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
     );
     let (label, label_name) = crate::binding::label_fields(row.label);
     let marks = row.marks.fields();
-    let (swatch, has_swatch) = crate::binding::swatch_fields(&row.preview, row.sensitive);
+    let (swatch, has_swatch) = crate::colour_words::swatch_of_kind(row.kind, &row.preview, row.sensitive);
     ui::MainRow {
         kind: item_kind_of(row.kind, row.sensitive),
         title: row

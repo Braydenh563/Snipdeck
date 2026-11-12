@@ -475,6 +475,8 @@ export component PanelWindow inherits Window {
     in property <string> stack-next-title: "";
     callback stack-started();
     callback stack-ended();
+    // Shift was held when the item menu's row was chosen (a colour's Paste as then copies).
+    in-out property <bool> item-menu-shift: false;
     callback item-menu-activated(int);
     callback item-menu-dismissed();
     callback list-menu-requested(int);
@@ -2890,7 +2892,10 @@ export component PanelWindow inherits Window {
             label: @tr("Item actions");
             icons: false;
             init => { self.focus-menu(); }
-            activated(i) => { root.item-menu-activated(i); }
+            activated(i) => {
+                root.item-menu-shift = self.shift;
+                root.item-menu-activated(i);
+            }
             dismissed => { root.item-menu-dismissed(); }
         }
 

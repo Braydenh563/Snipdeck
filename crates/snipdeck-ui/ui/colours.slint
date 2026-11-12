@@ -173,6 +173,8 @@ export global ColourState {
     callback picker-toggled(bool);
     callback style-picked(int);
     callback model-picked(int);
+    // The pointer was released after a drag of a slider: the colour is remembered.
+    callback settled();
     // x and y as fractions of the surface; `done` is the pointer going up.
     callback surface-moved(float, float, bool);
     callback hue-moved(float);
@@ -616,6 +618,7 @@ component TrackSlider inherits Rectangle {
     in property <brush> track;
     in property <bool> checker: false;
     callback moved(float);
+    callback released();
     height: Space.hit-min;
     forward-focus: scope;
     accessible-role: slider;
@@ -634,10 +637,10 @@ component TrackSlider inherits Rectangle {
     scope := FocusScope {
         key-pressed(event) => {
             let big = event.modifiers.shift ? 10.0 : 1.0;
-            if (event.text == Key.LeftArrow || event.text == Key.DownArrow) { root.nudge(-big); return accept; }
-            if (event.text == Key.RightArrow || event.text == Key.UpArrow) { root.nudge(big); return accept; }
-            if (event.text == Key.Home) { root.moved(0); return accept; }
-            if (event.text == Key.End) { root.moved(root.max-value); return accept; }
+            if (event.text == Key.LeftArrow || event.text == Key.DownArrow) { root.nudge(-big); root.released(); return accept; }
+            if (event.text == Key.RightArrow || event.text == Key.UpArrow) { root.nudge(big); root.released(); return accept; }
+            if (event.text == Key.Home) { root.moved(0); root.released(); return accept; }
+            if (event.text == Key.End) { root.moved(root.max-value); root.released(); return accept; }
             return reject;
         }
     }
@@ -691,8 +694,14 @@ component TrackSlider inherits Rectangle {
             if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
                 scope.focus();
             }
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.up) {
+                root.released();
+            }
         }
-        clicked => { self.at(self.mouse-x); }
+        clicked => {
+            self.at(self.mouse-x);
+            root.released();
+        }
         moved => {
             if (self.pressed) {
                 self.at(self.mouse-x);
@@ -1168,6 +1177,7 @@ export component ColoursView inherits Rectangle {
                         value-text: @tr("{} degrees", round(ColourState.hue));
                         track: @linear-gradient(90deg, #ff0000 0%, #ffff00 16.67%, #00ff00 33.33%, #00ffff 50%, #0000ff 66.67%, #ff00ff 83.33%, #ff0000 100%);
                         moved(v) => { ColourState.hue-moved(v); }
+                        released => { ColourState.settled(); }
                     }
                     if ColourState.picker-style == 1: TrackSlider {
                         label: @tr("Brightness");
@@ -1175,6 +1185,7 @@ export component ColoursView inherits Rectangle {
                         value-text: @tr("{} percent", round(ColourState.bri));
                         track: @linear-gradient(90deg, #000000 0%, #ffffff 100%);
                         moved(v) => { ColourState.bri-moved(v); }
+                        released => { ColourState.settled(); }
                     }
                     TrackSlider {
                         label: @tr("Alpha");
@@ -1183,6 +1194,7 @@ export component ColoursView inherits Rectangle {
                         checker: true;
                         track: @linear-gradient(90deg, ColourState.current.with-alpha(0) 0%, ColourState.current.with-alpha(1) 100%);
                         moved(v) => { ColourState.alpha-moved(v); }
+                        released => { ColourState.settled(); }
                     }
                     // ---- Values: the model, then one field per channel, wrapped to the width -------------
                     Rectangle {

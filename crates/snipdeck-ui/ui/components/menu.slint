@@ -130,6 +130,8 @@ export component Menu inherits Rectangle {
     in property <length> menu-max-h: 100000px;
     callback activated(int);
     callback dismissed();
+    // Shift was held on the key that chose the row (read inside `activated`); false for a click.
+    out property <bool> shift: false;
 
     // True once the keyboard moved the highlight, false again when the pointer does: only then the row shows the ring.
     property <bool> by-key: false;
@@ -228,7 +230,9 @@ export component Menu inherits Rectangle {
                 return accept;
             }
             if (event.text == Key.Return || event.text == " ") {
+                root.shift = event.modifiers.shift;
                 root.activate(root.current);
+                root.shift = false;
                 return accept;
             }
             if (event.text == Key.Escape) {

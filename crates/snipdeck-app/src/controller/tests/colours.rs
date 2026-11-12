@@ -526,7 +526,7 @@ mod item_menu {
         assert_eq!(choose.entries.len(), Fmt::ALL.len());
         assert_eq!(
             choose.entries[1].label,
-            ChooseLabel::Verbatim("RGB  rgb(58, 123, 213)".into())
+            ChooseLabel::ColourFormat(Fmt::Rgb, "rgb(58, 123, 213)".into())
         );
         // Choosing RGB pastes it that way, and it counts as a use of the item.
         assert_eq!(uses(&w, id), 0);
@@ -536,6 +536,25 @@ mod item_menu {
             w.ctl.services().keyboard.sent.len() + w.ctl.services().clipboard.written.len() > 0,
             "the use went to the keyboard or the clipboard"
         );
+    }
+
+    #[test]
+    fn shift_on_paste_as_copies_the_format_and_sends_no_keys() {
+        let mut w = world();
+        let id = quick(&mut w, "#3a7bd5");
+        let at = row_of(&w, id);
+        w.ctl.open_item_menu(at, false);
+        let entries = w.ctl.view().item_menu.expect("menu");
+        let paste_as = entries
+            .iter()
+            .position(|e| *e == ItemMenuEntry::PasteAs)
+            .expect("Paste as");
+        w.ctl.choose_item_menu(paste_as);
+        let keys = w.ctl.services().keyboard.sent.len();
+        w.ctl.choose_item_menu_as(1, true);
+        assert_eq!(w.ctl.services().keyboard.sent.len(), keys, "no paste keys");
+        assert!(w.ctl.services().clipboard.written.len() > 0);
+        assert_eq!(uses(&w, id), 1);
     }
 
     #[test]
@@ -662,4 +681,62 @@ fn save_to_new_list_makes_a_list_named_by_the_translated_default_and_saves_into_
         w.ctl.colour_save_targets().last().unwrap().name,
         "Neue Liste 2"
     );
+}
+
+#[test]
+fn undoing_the_first_save_takes_the_new_list_with_it() {
+    let mut w = world();
+    assert!(colours_list(&w).is_none());
+    w.ctl.save_colour(BLUE, SaveTarget::Home);
+    assert!(colours_list(&w).is_some());
+    w.ctl.main_undo();
+    assert!(colours_list(&w).is_none(), "the empty list is gone");
+    assert!(!w.ctl.colour_view().has_saved_list);
+    assert!(w.ctl.settings().colour_save_list.is_none());
+    // The next save makes it again.
+    assert!(w.ctl.save_colour(BLUE, SaveTarget::Home));
+    assert!(colours_list(&w).is_some());
+}
+
+#[test]
+fn undoing_a_later_save_keeps_the_list() {
+    let mut w = world();
+    w.ctl.save_colour(BLUE, SaveTarget::Home);
+    w.ctl.save_colour(Rgba8::rgb(1, 2, 3), SaveTarget::Home);
+    w.ctl.main_undo();
+    assert!(colours_list(&w).is_some());
+    assert_eq!(w.ctl.saved_colours().len(), 1);
+}
+
+#[test]
+fn a_drag_changes_the_colour_without_a_settings_update_until_it_settles() {
+    let mut w = world();
+    let before = w.ctl.settings().colour_current.clone();
+    for i in 0..50u8 {
+        w.ctl.set_colour_live(Rgba8::rgb(i, 2, 3));
+    }
+    assert_eq!(w.ctl.colour_view().current, Rgba8::rgb(49, 2, 3));
+    assert_eq!(
+        w.ctl.settings().colour_current,
+        before,
+        "nothing written per move"
+    );
+    w.ctl.settle_colour();
+    assert_eq!(
+        w.ctl.settings().colour_current,
+        Rgba8::rgb(49, 2, 3).to_hex()
+    );
+}
+
+#[test]
+fn the_saved_strip_is_read_once_until_the_library_changes() {
+    let mut w = world();
+    w.ctl.save_colour(BLUE, SaveTarget::Home);
+    assert_eq!(w.ctl.saved_colours().len(), 1);
+    // A second read comes from the cache; a save refreshes it.
+    assert_eq!(w.ctl.saved_colours().len(), 1);
+    w.ctl.save_colour(Rgba8::rgb(1, 2, 3), SaveTarget::Home);
+    assert_eq!(w.ctl.saved_colours().len(), 2);
+    w.ctl.main_undo();
+    assert_eq!(w.ctl.saved_colours().len(), 1);
 }

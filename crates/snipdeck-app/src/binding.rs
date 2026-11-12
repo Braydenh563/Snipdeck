@@ -404,7 +404,11 @@ where
     /// loop, during which timers and hotkeys reach the controller).
     fn item_menu_chosen(self: &Rc<Self>, index: usize, dark: bool) {
         if !self.controller.borrow().symbol_menu_open() {
-            self.act_effects(|ctl| ctl.choose_item_menu(index));
+            let copy = self
+                .window
+                .upgrade()
+                .is_some_and(|w| w.get_item_menu_shift());
+            self.act_effects(|ctl| ctl.choose_item_menu_as(index, copy));
             return;
         }
         let choice =
@@ -523,6 +527,12 @@ where
         let Some(window) = self.window.upgrade() else {
             return;
         };
+        // The eyedropper's result first: its toast is part of the view built below, so it shows
+        // with this frame and not with the next unrelated redraw.
+        let picked = self.controller.borrow_mut().poll_eyedropper();
+        if !picked.is_empty() {
+            self.apply(&picked);
+        }
         let view = self.controller.borrow().view();
         render(&window, self.shown.borrow().as_ref(), &view);
         // A new group's name follows the language the window is in now.
@@ -538,10 +548,6 @@ where
         }
         self.arm_dock();
         self.arm_screen_clip();
-        let picked = self.controller.borrow_mut().poll_eyedropper();
-        if !picked.is_empty() {
-            self.apply(&picked);
-        }
         self.sync_colours(&window);
         if let Some(toast) = &view.toast
             && self.controller.borrow_mut().claim_toast_timer(toast.seq)
@@ -1658,7 +1664,14 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
                         wording::item_label_name(*label).into()
                     }
                     crate::controller::ChooseLabel::Colour(None) => "No label".into(),
-                    crate::controller::ChooseLabel::Verbatim(text) => text.as_str().into(),
+                    crate::controller::ChooseLabel::ColourFormat(f, value) => {
+                        let name: SharedString = if *f == snipdeck_colour::Format::Name {
+                            window.global::<ui::ColourTexts<'_>>().invoke_format_name()
+                        } else {
+                            f.label().into()
+                        };
+                        format!("{name}  {value}").into()
+                    }
                     crate::controller::ChooseLabel::Transform(t) => {
                         wording::transform_name(window, *t).into()
                     }

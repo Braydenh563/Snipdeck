@@ -408,6 +408,12 @@ where
     /// The user chose row `index` of the item menu. The menu closes (a line stays open).
     #[allow(clippy::too_many_lines, reason = "one arm per row of the item menu")]
     pub fn choose_item_menu(&mut self, index: usize) -> Vec<Effect> {
+        self.choose_item_menu_as(index, false)
+    }
+
+    /// [`choose_item_menu`](Self::choose_item_menu) with Shift: a colour's "Paste as" copies the
+    /// format to the clipboard instead of pasting it.
+    pub fn choose_item_menu_as(&mut self, index: usize, copy: bool) -> Vec<Effect> {
         if let PanelMenu::PasteAs(id) = self.menu {
             self.menu = PanelMenu::None;
             self.menu_targets.clear();
@@ -415,7 +421,8 @@ where
                 let Some(format) = snipdeck_colour::Format::ALL.get(index).copied() else {
                     return Vec::new();
                 };
-                let used = self.use_colour_item(id, c, format, UseMode::Paste);
+                let mode = if copy { UseMode::Copy } else { UseMode::Paste };
+                let used = self.use_colour_item(id, c, format, mode);
                 return self.after_use(&used);
             }
             let Some(transform) = Transform::ALL.get(index).copied() else {

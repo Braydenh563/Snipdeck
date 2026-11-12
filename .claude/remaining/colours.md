@@ -8,10 +8,11 @@
 - Window tests `tests/colours_window.rs` (renders to `target/colours-shots`).
 
 ## Next
-- Swatch tile on Panel cards/rows and Main window rows; Main window detail Colour block.
-- Panel keys in the Colours tab: Ctrl+S, Ctrl+Shift+S, Ctrl+I.
-- `hotkeys.eyedropper` global chord (skipped; the palette command covers it).
-- UI goldens for the tab (the window test writes PNGs, nothing is compared yet).
+- Not done (review #33): the global `hotkeys.eyedropper` chord / `HotkeyAction::Eyedropper` (D10); "pick from anywhere" needs the Panel or the palette first. The eyedropper always hides and restores the Panel (see the comment in `eyedrop_ctl.rs`).
+- Not done: a per-swatch Ctrl+S (the Panel's Ctrl+S saves the current colour first; a swatch saves through its menu).
+- Not done: the R/G/B/C/M... channel letters are spoken (TextField `label`) but not drawn.
+- Scroll-into-view on focus is wired for the chip grids and the format list only, not the sliders, selects or buttons.
+- Windows-only and never run: the Win32 eyedropper (button-up capture, HDR bit logic, the wizard in `tools/windows-test/`).
 
 ## Blocked
 - Eyedropper has never run on Windows; owner must try it (`tools/windows-test/`).

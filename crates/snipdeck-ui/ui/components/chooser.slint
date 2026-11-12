@@ -28,6 +28,8 @@ export component Chooser inherits Rectangle {
     in-out property <int> current: 0;
     callback chosen(int);
     callback dismissed();
+    // Shift was held on the key that chose the row (read inside `chosen`); false for a click.
+    out property <bool> shift: false;
 
     public function focus-chooser() {
         scope.focus();
@@ -82,7 +84,9 @@ export component Chooser inherits Rectangle {
                 return accept;
             }
             if ((event.text == Key.Return || event.text == " ") && root.current >= 0 && root.current < root.entries.length) {
+                root.shift = event.modifiers.shift;
                 root.chosen(root.current);
+                root.shift = false;
                 return accept;
             }
             if (event.text == Key.Escape) {

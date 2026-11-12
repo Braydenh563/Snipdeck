@@ -128,6 +128,10 @@ pub struct MainScreen {
     pub accent: Option<crate::accent::Accent>,
     /// Animations are off.
     pub reduced_motion: bool,
+    /// The Colour block under the list: the cursor is on a colour item (colour-spec D6a).
+    pub colour_block: Option<super::ColourBlock>,
+    /// The Panel's Colours tab is switched on: "Open in Colours" has somewhere to go.
+    pub colours_tab: bool,
     /// The open board's name.
     pub board_name: String,
     /// The board menu while it is open.
@@ -263,6 +267,8 @@ where
             high_contrast: look.high_contrast,
             accent: self.accent(),
             reduced_motion: look.reduce_motion,
+            colour_block: self.main_colour_block(),
+            colours_tab: self.settings.show_colours_tab,
             board_name: self.main.board_name().to_owned(),
             board_menu: self
                 .main

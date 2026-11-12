@@ -1,0 +1,141 @@
+import { Theme, Type, Radius, Space, Fonts, SystemLook } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+import { Button } from "button.slint";
+
+// One format of the Colour block: the label ("HEX", "OKLCH"; the host words "Name") and the colour written that way.
+export struct ColourFormatCell {
+    label: string,
+    value: string,
+}
+
+// The Main window's Colour block (colour-spec D6a): under the item list, while the cursor is on an item whose text is
+// one colour. A swatch, the colour in every format (a click or Enter on a cell copies that format) and the button
+// that opens the colour in the Panel's Colours tab. The host words every text (`heading`, `open-text`, `copy-text`).
+export component ColourBlock inherits Rectangle {
+    in property <color> swatch;
+    in property <string> heading;
+    in property <string> open-text;
+    in property <[ColourFormatCell]> formats;
+    in property <bool> can-open: true;
+    callback copied(int);
+    callback open-requested();
+
+    property <length> row-h: max(Space.hit, Type.line-base + Space.s2);
+    property <length> head-h: max(Space.s8, Type.line-base + Space.s3);
+    property <int> rows: (root.formats.length + 1) / 2;
+    property <length> label-w: 56px * SystemLook.text-scale;
+
+    height: root.head-h + root.rows * root.row-h + 2 * Space.s2;
+    background: Theme.bg-surface;
+    accessible-role: groupbox;
+    accessible-label: root.heading;
+
+    Rectangle {
+        y: 0;
+        height: 1px;
+        background: Theme.border-subtle;
+    }
+
+    HorizontalLayout {
+        y: Space.s2;
+        height: root.head-h;
+        padding-left: Space.s3;
+        padding-right: Space.s3;
+        spacing: Space.s2;
+        Rectangle {
+            width: Space.s6 * SystemLook.text-scale;
+            height: self.width;
+            y: (parent.height - self.height) / 2;
+            background: root.swatch;
+            border-radius: Radius.sm;
+            border-width: 1px;
+            border-color: Theme.border-subtle;
+            accessible-role: none;
+        }
+        Text {
+            text: root.heading;
+            font-family: Fonts.sans;
+            font-size: Type.base;
+            font-weight: Type.semibold;
+            color: Theme.text-primary;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        Rectangle { horizontal-stretch: 1; }
+        if root.can-open: Button {
+            icon: Icons.palette;
+            text: root.open-text;
+            y: (parent.height - self.height) / 2;
+            clicked => { root.open-requested(); }
+        }
+    }
+
+    for cell[i] in root.formats: Rectangle {
+        x: Space.s2 + mod(i, 2) * (root.width - 2 * Space.s2) / 2;
+        y: Space.s2 + root.head-h + floor(i / 2) * root.row-h;
+        width: (root.width - 2 * Space.s2) / 2;
+        height: root.row-h;
+        border-radius: Radius.sm;
+        background: touch.pressed ? Theme.bg-selected : touch.has-hover ? Theme.bg-hover : transparent;
+        forward-focus: scope;
+        accessible-role: button;
+        accessible-label: @tr("Copy {} {}", cell.label, cell.value);
+        accessible-action-default => { root.copied(i); }
+
+        HorizontalLayout {
+            padding-left: Space.s2;
+            padding-right: Space.s2;
+            spacing: Space.s2;
+            Text {
+                width: root.label-w;
+                text: cell.label;
+                font-family: Fonts.sans;
+                font-size: Type.sm;
+                font-weight: Type.medium;
+                color: Theme.text-secondary;
+                vertical-alignment: center;
+                overflow: elide;
+                accessible-role: none;
+            }
+            Text {
+                horizontal-stretch: 1;
+                text: cell.value;
+                font-family: Fonts.mono;
+                font-size: Type.sm;
+                color: Theme.text-primary;
+                vertical-alignment: center;
+                overflow: elide;
+                accessible-role: none;
+            }
+            Icon {
+                source: Icons.copy;
+                size: Space.s4 * SystemLook.text-scale;
+                tint: touch.has-hover || scope.has-focus ? Theme.text-primary : Theme.text-tertiary;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+
+        Rectangle {
+            border-width: scope.has-focus ? 2px : 0px;
+            border-color: Theme.focus-ring;
+            border-radius: Radius.sm;
+            background: transparent;
+        }
+
+        touch := TouchArea {
+            clicked => { root.copied(i); }
+        }
+
+        scope := FocusScope {
+            focus-on-click: false;
+            key-pressed(event) => {
+                if (event.text == " " || event.text == "\n") {
+                    root.copied(i);
+                    return accept;
+                }
+                return reject;
+            }
+        }
+    }
+}

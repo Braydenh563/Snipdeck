@@ -118,6 +118,19 @@ where
         self.update_settings(|s| s.colour_current = c.to_hex());
     }
 
+    /// Like [`set_colour`](Self::set_colour) for a drag in progress: the colour changes in memory
+    /// only, with no settings update per pointer event. [`settle_colour`](Self::settle_colour)
+    /// remembers it when the pointer is released.
+    pub fn set_colour_live(&mut self, c: Rgba8) {
+        self.colour = c;
+    }
+
+    /// The pointer was released: the colour being looked at is remembered.
+    pub fn settle_colour(&mut self) {
+        let c = self.colour;
+        self.update_settings(|s| s.colour_current = c.to_hex());
+    }
+
     /// Sets the second colour of the contrast section.
     pub fn set_contrast_with(&mut self, c: Rgba8) {
         self.colour_other = c;
@@ -237,6 +250,7 @@ where
                 d
             }
         };
+        let made_list = self.colour_made_list.take();
         let text = saved_text(c, self.settings.colour_format);
         let mut item = Item::new(
             destination.id,
@@ -266,7 +280,7 @@ where
         if self.library_changed() {
             self.model.select_item(id);
         }
-        self.show_saved_toast(
+        self.show_saved_toast_made(
             Toast {
                 kind: ToastKind::Success,
                 message: ToastMessage::Saved {
@@ -274,6 +288,7 @@ where
                 },
             },
             id,
+            made_list,
         );
         true
     }
@@ -321,6 +336,7 @@ where
         let made = self.make_list_for_save(&name)?;
         let id = made.id.to_string();
         self.update_settings(|s| s.colour_save_list = Some(id));
+        self.colour_saved_cache.take();
         Some(made)
     }
 
@@ -366,6 +382,7 @@ where
                 .map_err(|_| ())
         });
         if let Ok(list) = made {
+            self.colour_made_list = Some(list.id);
             self.main.mark_stale();
             Some(Destination {
                 id: list.id,
@@ -416,6 +433,15 @@ where
     /// The colour items of the home list, in list order, at most 24.
     #[must_use]
     pub fn saved_colours(&self) -> Vec<(ItemId, Rgba8)> {
+        if let Some(kept) = self.colour_saved_cache.borrow().as_ref() {
+            return kept.clone();
+        }
+        let found = self.read_saved_colours();
+        *self.colour_saved_cache.borrow_mut() = Some(found.clone());
+        found
+    }
+
+    fn read_saved_colours(&self) -> Vec<(ItemId, Rgba8)> {
         let Some(list) = self.home_list_id() else {
             return Vec::new();
         };

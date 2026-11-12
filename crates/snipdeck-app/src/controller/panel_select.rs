@@ -426,11 +426,7 @@ where
                 entries: snipdeck_colour::Format::ALL
                     .iter()
                     .map(|f| ChooseEntry {
-                        label: ChooseLabel::Verbatim(format!(
-                            "{}  {}",
-                            f.label(),
-                            snipdeck_colour::format(c, *f)
-                        )),
+                        label: ChooseLabel::ColourFormat(*f, snipdeck_colour::format(c, *f)),
                         checked: false,
                     })
                     .collect(),

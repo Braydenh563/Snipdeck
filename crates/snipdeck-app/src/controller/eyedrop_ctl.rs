@@ -77,6 +77,10 @@ where
             }),
         );
         if started.is_ok() {
+            // The Panel always hides first and the platform waits SETTLE (150 ms) so its pixels are
+            // gone from the screenshot the eyedropper takes. Hiding even when the Panel is not on
+            // screen is a no-op, and a cancel shows it again: the cost of that is a brief flash
+            // when the Panel was already hidden (a palette command from the Main window).
             vec![Effect::HidePanel]
         } else {
             self.show_toast(Toast {
