@@ -124,7 +124,7 @@ pub fn card_of(
             // The parser's explanation quotes the text (`unknown placeholder {hunter2}`): a sensitive
             // item's note says nothing of it.
             Err(_) if sensitive => {
-                card.problem = Some(EditorProblem::Template(SENSITIVE_WHY.to_owned()))
+                card.problem = Some(EditorProblem::Template(SENSITIVE_WHY.to_owned()));
             }
             Err(e) => card.problem = Some(EditorProblem::Template(e.kind.to_string())),
         },
