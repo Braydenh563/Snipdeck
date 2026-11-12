@@ -111,7 +111,7 @@ const GAP: u32 = 24;
 const MIN_WIDTH: u32 = 96;
 
 /// `logical` pixels at `scale`, rounded.
-fn scaled(logical: u32, scale: f32) -> u32 {
+pub(crate) fn scaled(logical: u32, scale: f32) -> u32 {
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
@@ -123,7 +123,7 @@ fn scaled(logical: u32, scale: f32) -> u32 {
 }
 
 /// `v` as a signed coordinate, saturating.
-fn signed(v: u32) -> i32 {
+pub(crate) fn signed(v: u32) -> i32 {
     i32::try_from(v).unwrap_or(i32::MAX)
 }
 

@@ -24,7 +24,8 @@ tempfile.workspace = true
 testing = []
 
 [target.'cfg(windows)'.dependencies]
-windows.workspace = true
+# `Win32_Graphics_Dwm` (DwmFlush) and `Win32_Devices_Display` (HDR query) are for the eyedropper.
+windows = { workspace = true, features = ["Win32_Devices_Display", "Win32_Graphics_Dwm"] }
 
 [lints]
 workspace = true
