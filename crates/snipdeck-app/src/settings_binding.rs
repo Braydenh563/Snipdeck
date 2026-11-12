@@ -738,6 +738,8 @@ struct PageView {
     panel_switcher_index: i32,
     show_numbers: bool,
     show_symbols_tab: bool,
+    show_colours_tab: bool,
+    colour_copy_on_pick: bool,
     tray_click_index: i32,
     panel_open_at_index: i32,
     panel_open_at_enabled: bool,
@@ -1004,6 +1006,8 @@ where
         panel_switcher_index: i32::from(settings.panel_switcher == PanelSwitcher::Menu),
         show_numbers: settings.show_numbers,
         show_symbols_tab: settings.show_symbols_tab,
+        show_colours_tab: settings.show_colours_tab,
+        colour_copy_on_pick: settings.colour_copy_on_pick,
         tray_click_index: i32::from(settings.tray_click == TrayClick::Main),
         panel_open_at_index: match settings.panel_open_at {
             PanelOpenAt::Last => 0,
@@ -1828,6 +1832,10 @@ where
             .act(|ctl| ctl.update_settings(|s| s.show_numbers = on)));
         wire!(on_show_symbols_tab_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.show_symbols_tab = on)));
+        wire!(on_show_colours_tab_toggled, |core, on| core
+            .act(|ctl| ctl.update_settings(|s| s.show_colours_tab = on)));
+        wire!(on_colour_copy_on_pick_toggled, |core, on| core
+            .act(|ctl| ctl.update_settings(|s| s.colour_copy_on_pick = on)));
         wire!(on_tray_click_chosen, |core, i| core.act(|ctl| ctl
             .update_settings(|s| {
                 s.tray_click = if i == 1 {
@@ -2067,6 +2075,12 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.show_symbols_tab == view.show_symbols_tab) {
         window.set_show_symbols_tab(view.show_symbols_tab);
+    }
+    if differs(&|p| p.show_colours_tab == view.show_colours_tab) {
+        window.set_show_colours_tab(view.show_colours_tab);
+    }
+    if differs(&|p| p.colour_copy_on_pick == view.colour_copy_on_pick) {
+        window.set_colour_copy_on_pick(view.colour_copy_on_pick);
     }
     if differs(&|p| p.tray_click_index == view.tray_click_index) {
         window.set_tray_click_index(view.tray_click_index);

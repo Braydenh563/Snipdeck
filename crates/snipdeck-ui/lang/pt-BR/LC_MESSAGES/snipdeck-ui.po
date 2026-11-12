@@ -70,6 +70,9 @@ msgstr "Um novo ID aleatório a cada vez"
 msgid "A one-character trigger fires every time you type it, even inside words. Two or more characters are safer."
 msgstr "Um gatilho de um único caractere dispara toda vez que você o digita, até no meio de palavras. Dois ou mais caracteres são mais seguros."
 
+msgid "A palette tab with a colour picker, every colour format, contrast checks and saved colours. Turn it off to hide the tab and its Ctrl+K commands."
+msgstr ""
+
 msgid "A small window you can drag anywhere."
 msgstr "Uma janela pequena que você pode arrastar para qualquer lugar."
 
@@ -168,6 +171,9 @@ msgstr "Adiciona um trecho de texto a {}"
 
 msgid "After a paste or copy"
 msgstr "Depois de colar ou copiar"
+
+msgid "After you pick a colour with the eyedropper it is copied in your default format. Windows only."
+msgstr ""
 
 msgid "After you type the first two characters of a trigger, a small hint at the text cursor offers the item. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
 msgstr "Ao digitar os dois primeiros caracteres de um gatilho, uma pequena dica junto ao cursor de texto oferece o item. Pressione Tab para inseri-lo; qualquer outra tecla segue normalmente. O Tab só é capturado enquanto a dica está visível."
@@ -563,6 +569,9 @@ msgstr "Copiar PNG"
 
 msgid "Copy SVG"
 msgstr "Copiar SVG"
+
+msgid "Copy a colour picked from the screen"
+msgstr ""
 
 msgid "Copy all"
 msgstr "Copiar tudo"
@@ -2101,6 +2110,9 @@ msgstr "Pessoas e corpo"
 msgid "PhraseExpress export (CSV)"
 msgstr "Exportação do PhraseExpress (CSV)"
 
+msgid "Pick a colour from the screen"
+msgstr ""
+
 msgid "Pick a colour from the screen (Ctrl+I)"
 msgstr ""
 
@@ -2599,6 +2611,9 @@ msgstr "Diminuir o atraso ao sair"
 
 msgid "Show"
 msgstr "Mostrar"
+
+msgid "Show Colours tab"
+msgstr ""
 
 msgid "Show Panel"
 msgstr "Mostrar painel"
@@ -3517,6 +3532,9 @@ msgstr "área de transferência salvar capturar captura de tela"
 msgid "collapse expand hide show toggle section"
 msgstr "recolher expandir ocultar mostrar alternar seção"
 
+msgid "color picker palette hex rgb hsl swatch contrast scheme"
+msgstr ""
+
 msgid "colour change"
 msgstr "mudança de cor"
 
@@ -3564,6 +3582,9 @@ msgstr "todos marcar escolher selecionar"
 
 msgid "everything home show"
 msgstr "tudo início mostrar"
+
+msgid "eyedropper color pick sample screen"
+msgstr ""
 
 msgid "fail"
 msgstr ""

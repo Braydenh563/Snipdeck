@@ -375,3 +375,41 @@ mod eyedropper {
         assert!(w.ctl.start_eyedropper().is_empty());
     }
 }
+
+mod commands {
+    use snipdeck_platform::eyedrop::FakeEyedropper;
+
+    use super::*;
+    use crate::commands::Command;
+
+    #[test]
+    fn the_colours_command_shows_the_panel_on_the_tab() {
+        let mut w = world();
+        w.ctl.run_command(Command::Colours, 0);
+        let effects = w.ctl.take_pending();
+        assert!(effects.contains(&Effect::ShowPanel));
+        assert!(effects.contains(&Effect::ShowColours));
+        assert!(!effects.contains(&Effect::HidePanel));
+    }
+
+    #[test]
+    fn the_pick_command_starts_the_eyedropper_after_showing_the_tab() {
+        let mut w = world();
+        let fake = FakeEyedropper::default();
+        w.ctl
+            .set_eyedropper(Some(Box::new(fake.clone())), std::sync::Arc::new(|| {}));
+        w.ctl.run_command(Command::PickColour, 0);
+        let effects = w.ctl.take_pending();
+        assert_eq!(effects.last(), Some(&Effect::HidePanel));
+        assert_eq!(fake.starts().len(), 1);
+    }
+
+    #[test]
+    fn both_do_nothing_while_the_tab_is_off() {
+        let mut w = world();
+        w.ctl.update_settings(|s| s.show_colours_tab = false);
+        w.ctl.run_command(Command::Colours, 0);
+        w.ctl.run_command(Command::PickColour, 0);
+        assert!(w.ctl.take_pending().is_empty());
+    }
+}

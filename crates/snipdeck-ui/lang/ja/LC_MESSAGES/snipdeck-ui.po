@@ -70,6 +70,9 @@ msgstr "毎回新しいランダムなID"
 msgid "A one-character trigger fires every time you type it, even inside words. Two or more characters are safer."
 msgstr "1文字のトリガーは、単語の途中でも入力するたびに実行されます。2文字以上のほうが安全です。"
 
+msgid "A palette tab with a colour picker, every colour format, contrast checks and saved colours. Turn it off to hide the tab and its Ctrl+K commands."
+msgstr ""
+
 msgid "A small window you can drag anywhere."
 msgstr "好きな場所にドラッグできる小さなウィンドウです。"
 
@@ -168,6 +171,9 @@ msgstr "{} にテキストのスニペットを追加します"
 
 msgid "After a paste or copy"
 msgstr "貼り付けやコピーの後"
+
+msgid "After you pick a colour with the eyedropper it is copied in your default format. Windows only."
+msgstr ""
 
 msgid "After you type the first two characters of a trigger, a small hint at the text cursor offers the item. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
 msgstr "トリガーの最初の 2 文字を入力すると、テキストカーソルの位置に小さなヒントが表示され、アイテムを提案します。Tab キーで挿入でき、それ以外のキーは通常どおり動作します。Tab キーは、ヒントが表示されている間だけ使われます。"
@@ -562,6 +568,9 @@ msgstr "PNG をコピー"
 
 msgid "Copy SVG"
 msgstr "SVG をコピー"
+
+msgid "Copy a colour picked from the screen"
+msgstr ""
 
 msgid "Copy all"
 msgstr "すべてコピー"
@@ -2095,6 +2104,9 @@ msgstr "人と体"
 msgid "PhraseExpress export (CSV)"
 msgstr "PhraseExpress のエクスポート（CSV）"
 
+msgid "Pick a colour from the screen"
+msgstr ""
+
 msgid "Pick a colour from the screen (Ctrl+I)"
 msgstr ""
 
@@ -2591,6 +2603,9 @@ msgstr "離れたときの待ち時間を短くする"
 
 msgid "Show"
 msgstr "表示"
+
+msgid "Show Colours tab"
+msgstr ""
 
 msgid "Show Panel"
 msgstr "パネルを表示"
@@ -3508,6 +3523,9 @@ msgstr "クリップボード 保存 取得 スクリーンショット"
 msgid "collapse expand hide show toggle section"
 msgstr "折りたたみ 展開 隠す 表示 切り替え セクション"
 
+msgid "color picker palette hex rgb hsl swatch contrast scheme"
+msgstr ""
+
 msgid "colour change"
 msgstr "色の変更"
 
@@ -3555,6 +3573,9 @@ msgstr "すべて 選択 マーク"
 
 msgid "everything home show"
 msgstr "すべて ホーム 表示"
+
+msgid "eyedropper color pick sample screen"
+msgstr ""
 
 msgid "fail"
 msgstr ""

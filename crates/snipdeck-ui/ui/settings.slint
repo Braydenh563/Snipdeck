@@ -274,6 +274,8 @@ export component SettingsPage inherits Window {
     in property <int> panel-switcher-index: 0;
     in-out property <bool> show-numbers: true;
     in-out property <bool> show-symbols-tab: true;
+    in-out property <bool> show-colours-tab: true;
+    in-out property <bool> colour-copy-on-pick: true;
     // Opening the Panel: 0 tray click opens the Panel, 1 the Main window; 0 where you left it, 1 at the mouse, 2 at the
     // text cursor (off while the Panel is docked); 0 hide after a paste or copy, 1 keep open; 0 stay in the tray, 1 show
     // the Panel at start (off without Start with Windows).
@@ -416,6 +418,8 @@ export component SettingsPage inherits Window {
     callback panel-switcher-chosen(index: int);
     callback show-numbers-toggled(on: bool);
     callback show-symbols-tab-toggled(on: bool);
+    callback show-colours-tab-toggled(on: bool);
+    callback colour-copy-on-pick-toggled(on: bool);
     callback tray-click-chosen(index: int);
     callback panel-open-at-chosen(index: int);
     callback panel-hide-after-use-chosen(index: int);
@@ -487,7 +491,7 @@ export component SettingsPage inherits Window {
     // Titles of section 1 (Appearance), for the search. A test checks that every row title is in here.
     property <string> keys-1: @tr("Appearance") + " " + @tr("Theme") + " " + @tr("Main list density") + " " + @tr("Accent colour") + " " + @tr("Text size") + " " + @tr("Language") + " " + @tr("Reduce motion") + " " + @tr("Panel width");
     // Titles of section 2 (Panel layout), for the search. A test checks that every row title is in here.
-    property <string> keys-2: @tr("Panel layout") + " " + @tr("Layout") + " " + @tr("Search field") + " " + @tr("Lists") + " " + @tr("Quick-use numbers") + " " + @tr("Show Symbols tab");
+    property <string> keys-2: @tr("Panel layout") + " " + @tr("Layout") + " " + @tr("Search field") + " " + @tr("Lists") + " " + @tr("Quick-use numbers") + " " + @tr("Show Symbols tab") + " " + @tr("Show Colours tab") + " " + @tr("Copy a colour picked from the screen");
     // Titles of section 3 (Opening the Panel), for the search. A test checks that every row title is in here.
     property <string> keys-3: @tr("Opening the Panel") + " " + @tr("Tray icon click opens") + " " + @tr("Panel opens") + " " + @tr("After a paste or copy") + " " + @tr("Hide the panel when it loses focus") + " " + @tr("Show the Panel in the taskbar and Alt+Tab") + " " + @tr("Keep Panel visible during screenshots") + " " + @tr("Dock to") + " " + @tr("Docked panel uses the full edge") + " " + @tr("Open a docked panel by") + " " + @tr("Hover delay") + " " + @tr("Leave delay") + " " + @tr("Picker position") + " " + @tr("Start with Windows") + " " + @tr("When Windows starts") + " " + @tr("Keep running in the tray when the window closes");
     // Titles of section 4 (Privacy), for the search. A test checks that every row title is in here.
@@ -830,6 +834,30 @@ export component SettingsPage inherits Window {
                             a11y-label: @tr("Show Symbols tab");
                             checked <=> root.show-symbols-tab;
                             toggled(on) => { root.show-symbols-tab-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Show Colours tab");
+                        description: @tr("A palette tab with a colour picker, every colour format, contrast checks and saved colours. Turn it off to hide the tab and its Ctrl+K commands.");
+                        Toggle {
+                            a11y-label: @tr("Show Colours tab");
+                            checked <=> root.show-colours-tab;
+                            toggled(on) => { root.show-colours-tab-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Copy a colour picked from the screen");
+                        description: @tr("After you pick a colour with the eyedropper it is copied in your default format. Windows only.");
+                        Toggle {
+                            a11y-label: @tr("Copy a colour picked from the screen");
+                            checked <=> root.colour-copy-on-pick;
+                            toggled(on) => { root.colour-copy-on-pick-toggled(on); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }

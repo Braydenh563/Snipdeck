@@ -212,6 +212,8 @@ where
             &ctl.settings().hotkeys,
             self.shown.borrow().as_ref(),
             ctl.settings().show_symbols_tab,
+            ctl.settings().show_colours_tab,
+            ctl.eyedropper_state().0,
             query,
         );
     }

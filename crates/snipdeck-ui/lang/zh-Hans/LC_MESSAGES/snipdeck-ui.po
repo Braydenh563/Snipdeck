@@ -70,6 +70,9 @@ msgstr "每次生成新的随机ID"
 msgid "A one-character trigger fires every time you type it, even inside words. Two or more characters are safer."
 msgstr "单个字符的触发词每次输入都会触发，连单词中间也不例外。使用两个或更多字符更安全。"
 
+msgid "A palette tab with a colour picker, every colour format, contrast checks and saved colours. Turn it off to hide the tab and its Ctrl+K commands."
+msgstr ""
+
 msgid "A small window you can drag anywhere."
 msgstr "可以拖到任意位置的小窗口。"
 
@@ -168,6 +171,9 @@ msgstr "向 {} 添加文本片段"
 
 msgid "After a paste or copy"
 msgstr "粘贴或复制后"
+
+msgid "After you pick a colour with the eyedropper it is copied in your default format. Windows only."
+msgstr ""
 
 msgid "After you type the first two characters of a trigger, a small hint at the text cursor offers the item. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
 msgstr "输入触发词的前两个字符后，文本光标处会出现一个小提示，推荐对应的项目。按 Tab 键插入；按其他任何键则照常输入。仅在提示显示时才会占用 Tab 键。"
@@ -562,6 +568,9 @@ msgstr "复制 PNG"
 
 msgid "Copy SVG"
 msgstr "复制 SVG"
+
+msgid "Copy a colour picked from the screen"
+msgstr ""
 
 msgid "Copy all"
 msgstr "全部复制"
@@ -2095,6 +2104,9 @@ msgstr "人物与身体"
 msgid "PhraseExpress export (CSV)"
 msgstr "PhraseExpress 导出文件（CSV）"
 
+msgid "Pick a colour from the screen"
+msgstr ""
+
 msgid "Pick a colour from the screen (Ctrl+I)"
 msgstr ""
 
@@ -2591,6 +2603,9 @@ msgstr "缩短离开延迟"
 
 msgid "Show"
 msgstr "显示"
+
+msgid "Show Colours tab"
+msgstr ""
 
 msgid "Show Panel"
 msgstr "显示面板"
@@ -3508,6 +3523,9 @@ msgstr "剪贴板 保存 抓取 截图"
 msgid "collapse expand hide show toggle section"
 msgstr "折叠 展开 隐藏 显示 切换 区段"
 
+msgid "color picker palette hex rgb hsl swatch contrast scheme"
+msgstr ""
+
 msgid "colour change"
 msgstr "颜色更改"
 
@@ -3555,6 +3573,9 @@ msgstr "全部 标记 选择 全选"
 
 msgid "everything home show"
 msgstr "全部 首页 显示"
+
+msgid "eyedropper color pick sample screen"
+msgstr ""
 
 msgid "fail"
 msgstr ""

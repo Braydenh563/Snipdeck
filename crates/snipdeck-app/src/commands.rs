@@ -24,6 +24,10 @@ pub enum Command {
     ShowPanel,
     /// Show the Panel on its Symbols tab (emoji, kaomoji, icons).
     Symbols,
+    /// Show the Panel on its Colours tab.
+    Colours,
+    /// Show the Panel on its Colours tab and start the screen eyedropper.
+    PickColour,
     /// Open the Picker.
     OpenPicker,
     /// Quick capture.
@@ -104,12 +108,14 @@ pub enum Command {
 
 impl Command {
     /// Every command, in the order of `CommandTexts.all`.
-    pub const ALL: [Self; 43] = [
+    pub const ALL: [Self; 45] = [
         Self::NewItem,
         Self::NewList,
         Self::Search,
         Self::ShowPanel,
         Self::Symbols,
+        Self::Colours,
+        Self::PickColour,
         Self::OpenPicker,
         Self::QuickCapture,
         Self::PasteNext,
@@ -291,6 +297,10 @@ pub struct Context<'a> {
     pub in_trash: bool,
     /// The Panel's Symbols tab is on (the `show_symbols_tab` setting).
     pub symbols: bool,
+    /// The Panel's Colours tab is on (the `show_colours_tab` setting).
+    pub colours: bool,
+    /// This machine has a screen eyedropper (Windows).
+    pub eyedropper: bool,
     /// A list is open (groups live in lists).
     pub in_list: bool,
     /// The cursor is on a group's header; `None` on an item.
@@ -334,6 +344,8 @@ pub fn available(command: Command, ctx: &Context<'_>) -> bool {
         Command::PinItem => ctx.has_item && !ctx.in_trash && !ctx.item_pinned,
         Command::UnpinItem => ctx.has_item && !ctx.in_trash && ctx.item_pinned,
         Command::Symbols => ctx.symbols,
+        Command::Colours => ctx.colours,
+        Command::PickColour => ctx.colours && ctx.eyedropper,
         Command::GroupItems => ctx.has_item && ctx.in_list,
         Command::FoldGroup
         | Command::RenameGroup
@@ -413,6 +425,8 @@ mod tests {
             ("Search", "find filter"),
             ("Show Panel", "open toggle"),
             ("Symbols", "emoji kaomoji icons smiley"),
+            ("Colours", "color picker palette hex swatch"),
+            ("Pick a colour from the screen", "eyedropper color pick"),
             ("Open Picker", "quick find paste"),
             ("Quick capture", "clipboard save"),
             ("Paste next item", "stack queue"),
@@ -455,6 +469,8 @@ mod tests {
             item_pinned: false,
             in_trash: false,
             symbols: true,
+            colours: true,
+            eyedropper: true,
             in_list: true,
             group: None,
         }

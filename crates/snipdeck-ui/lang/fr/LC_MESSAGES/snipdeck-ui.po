@@ -70,6 +70,9 @@ msgstr "Un nouvel ID aléatoire à chaque fois"
 msgid "A one-character trigger fires every time you type it, even inside words. Two or more characters are safer."
 msgstr "Un raccourci d'un seul caractère s'active à chaque fois que vous le tapez, même au milieu d'un mot. Deux caractères ou plus sont plus sûrs."
 
+msgid "A palette tab with a colour picker, every colour format, contrast checks and saved colours. Turn it off to hide the tab and its Ctrl+K commands."
+msgstr ""
+
 msgid "A small window you can drag anywhere."
 msgstr "Une petite fenêtre que vous pouvez faire glisser n'importe où."
 
@@ -168,6 +171,9 @@ msgstr "Ajoute un extrait de texte à {}"
 
 msgid "After a paste or copy"
 msgstr "Après un collage ou une copie"
+
+msgid "After you pick a colour with the eyedropper it is copied in your default format. Windows only."
+msgstr ""
 
 msgid "After you type the first two characters of a trigger, a small hint at the text cursor offers the item. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
 msgstr "Quand vous tapez les deux premiers caractères d’un raccourci, une petite info-bulle près du curseur propose l’élément. Appuyez sur Tab pour l’insérer ; toute autre touche fonctionne comme d’habitude. Tab n’est pris que tant que l’info-bulle est affichée."
@@ -563,6 +569,9 @@ msgstr "Copier le PNG"
 
 msgid "Copy SVG"
 msgstr "Copier le SVG"
+
+msgid "Copy a colour picked from the screen"
+msgstr ""
 
 msgid "Copy all"
 msgstr "Tout copier"
@@ -2101,6 +2110,9 @@ msgstr "Personnes et corps"
 msgid "PhraseExpress export (CSV)"
 msgstr "Export PhraseExpress (CSV)"
 
+msgid "Pick a colour from the screen"
+msgstr ""
+
 msgid "Pick a colour from the screen (Ctrl+I)"
 msgstr ""
 
@@ -2599,6 +2611,9 @@ msgstr "Raccourcir le délai de sortie"
 
 msgid "Show"
 msgstr "Afficher"
+
+msgid "Show Colours tab"
+msgstr ""
 
 msgid "Show Panel"
 msgstr "Afficher le panneau"
@@ -3517,6 +3532,9 @@ msgstr "presse-papiers enregistrer capturer copie d'écran"
 msgid "collapse expand hide show toggle section"
 msgstr "réduire développer masquer afficher basculer section"
 
+msgid "color picker palette hex rgb hsl swatch contrast scheme"
+msgstr ""
+
 msgid "colour change"
 msgstr "changement de couleur"
 
@@ -3564,6 +3582,9 @@ msgstr "tous marquer choisir sélectionner"
 
 msgid "everything home show"
 msgstr "tout accueil afficher"
+
+msgid "eyedropper color pick sample screen"
+msgstr ""
 
 msgid "fail"
 msgstr ""
