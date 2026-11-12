@@ -1098,7 +1098,13 @@ fn preview_of_a_sensitive_item_never_shows_its_text() {
             ed.set_content(text.into());
             ed.set_sensitive(true);
             click(ed.window(), &find(&ed, "Preview", AccessibleRole::Button));
-            assert!(ed.get_preview_on(), "kind {kind} err={:?} {:?} {:?}", ed.get_content_error(), ed.get_title_error(), ed.get_privacy_error());
+            assert!(
+                ed.get_preview_on(),
+                "kind {kind} err={:?} {:?} {:?}",
+                ed.get_content_error(),
+                ed.get_title_error(),
+                ed.get_privacy_error()
+            );
             for shown in [
                 ed.get_preview_title(),
                 ed.get_preview_excerpt(),
@@ -1111,5 +1117,31 @@ fn preview_of_a_sensitive_item_never_shows_its_text() {
             click(ed.window(), &find(&ed, "Preview", AccessibleRole::Button));
             assert!(!ed.get_preview_on(), "kind {kind} did not turn off");
         }
+    });
+}
+
+#[test]
+fn leaving_preview_on_an_image_item_keeps_the_keyboard_in_the_window() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        ed.set_kind_index(4);
+        settle();
+        let toggle = find(&ed, "Preview", AccessibleRole::Button);
+        click(ed.window(), &toggle);
+        assert!(ed.get_preview_on());
+        chord(ed.window(), &[Key::Control], "p");
+        settle();
+        assert!(!ed.get_preview_on());
+        // Focus is somewhere in the window: Ctrl+P still reaches it, and Esc (nothing typed) closes the editor.
+        chord(ed.window(), &[Key::Control], "p");
+        settle();
+        assert!(ed.get_preview_on(), "Ctrl+P still works after leaving");
+        chord(ed.window(), &[Key::Control], "p");
+        settle();
+        press(ed.window(), &key(Key::Escape));
+        settle();
+        assert!(!r.editor_shown(), "Escape reached the editor");
     });
 }

@@ -119,6 +119,72 @@ fn item_editor_preview_of_a_template() {
 }
 
 #[test]
+fn item_editor_preview_at_the_narrowest_width_with_long_values() {
+    let long = "https://a-very-long-subdomain-name.another-quite-long-label.example-company-internal.example.com/path";
+    // A fixed height: the pane scrolls, so the window's own fit (the form's height) is not what shows here.
+    let h = item((420, 700), false);
+    let c = &h.component;
+    {
+        c.set_kind_index(2);
+        c.set_item_title("Docs".into());
+        c.set_content(long.into());
+        c.set_preview_on(true);
+        c.set_preview_title("Docs".into());
+        c.set_preview_excerpt(long.into());
+        c.set_preview_link(
+            "a-very-long-subdomain-name.another-quite-long-label.example-company-internal.example.com"
+                .into(),
+        );
+    }
+    assert_golden("item-editor-preview-narrow-long-host-light", &render(&h));
+    drop(h);
+
+    let token = "Supercalifragilisticexpialidocious_Supercalifragilisticexpialidocious_Supercalifragilistic";
+    let h = item_fit(420, false, |c| {
+        c.set_kind_index(3);
+        c.set_item_title("Token".into());
+        c.set_content(token.into());
+        c.set_preview_on(true);
+        c.set_preview_title("Token".into());
+        c.set_preview_excerpt(token.into());
+        c.set_preview_expanded(token.into());
+    });
+    assert_golden("item-editor-preview-narrow-long-token-light", &render(&h));
+}
+
+#[test]
+fn item_editor_preview_dark_sensitive_and_in_the_users_layouts() {
+    let h = item_fit(560, true, |c| {
+        c.set_kind_index(0);
+        c.set_item_title("Bank card".into());
+        c.set_sensitive(true);
+        c.set_label_index(5);
+        c.set_preview_on(true);
+        c.set_preview_title("Bank card".into());
+        c.set_preview_mask("••••••••".into());
+        c.set_preview_panel_card(2);
+        c.set_preview_main_compact(true);
+        c.set_preview_show_numbers(false);
+    });
+    assert_golden("item-editor-preview-sensitive-dark", &render(&h));
+}
+
+#[test]
+fn item_editor_preview_at_225_percent_text_size() {
+    let h = item((1100, 1500), false);
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    h.component.set_kind_index(3);
+    h.component.set_item_title("Invoice reminder".into());
+    h.component.set_preview_on(true);
+    h.component.set_preview_title("Invoice reminder".into());
+    h.component
+        .set_preview_excerpt("Invoice {field:Number} is due on {date}.".into());
+    h.component
+        .set_preview_expanded("Invoice ‹Number› is due on 2026-03-04.".into());
+    assert_golden("item-editor-preview-scale-light", &render(&h));
+}
+
+#[test]
 fn item_editor_each_kind() {
     let h = item_fit(ITEM.0, false, |c| {
         c.set_kind_index(1);
