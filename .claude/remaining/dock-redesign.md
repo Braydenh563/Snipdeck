@@ -49,3 +49,14 @@ Design: `docs/reviews/dock-redesign.md`. Decisions: `.claude/now.md`. Owner chec
 - Legacy full-height docks mended in `geometry_on` for the docked size too, and on a drag to another monitor. Two tests.
 - Docs: full screen per monitor; new install unpinned; Off hides a docked Panel like a floating one.
 - Open: `scripts/gate.sh --full` on the final head; send its three lines to the coordinator. No PR, no merge.
+
+## Paused (hub relayed the owner's request to pause overnight) at d37d9c97
+
+Done and pushed: rounds 1 and 2 (hub's round-3 re-verify confirmed all five round-2 items). No gate --full has completed on any head of this branch; the run on d37d9c97 was stopped. Not gated: do not merge on the strength of this file.
+
+Open, verified against the code, nothing written yet (tests first):
+1. `panel.rs` `placement()`: the branch for a monitor with no stored entry clamps the raw newest entry, so a legacy full-height dock (edge Some, along None) floats screen-tall at first show on another monitor. Factor the mend out of `geometry_on` into a helper (PanelGeometry + work area + scale) and use it there. Test: legacy entry on a monitor that is gone, hidden start, pointer on the other monitor, ordinary height. Limit to state: the gone monitor's work area is unknown, so "full" can only be judged against the target monitor (a 1040 legacy height carried to a 1380 work area would stay).
+2. `screen.rs` `in_size_loop()` reads `GUI_INMOVESIZE` for the whole UI thread: a move/size loop on the Main or Settings window counts as the Panel's. Compare `GUITHREADINFO.hwndMoveSize` with the Panel's HWND (`TargetTracker` holds it in `panel`; needs a getter); `Some(false)` when another window is in the loop. Pure comparison in `win_logic` with a unit test.
+3. `docs/SPEC.md:72`: "only a docked Panel is always on top" -> "only a docked Panel that tucks is always on top" (`topmost()` falls back to the pin when the trigger is Off).
+
+Then: fmt, codemap, Windows clippy of snipdeck-platform, app lib tests, `scripts/gate.sh --full` once, send its three lines to the hub, final report to the owner. No PR, no merge.
