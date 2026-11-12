@@ -246,6 +246,8 @@ pub struct Drag {
     phase: DragPhase,
     /// The cursor's offset inside the window that follows it.
     grab: (i32, i32),
+    /// The width of the window `grab` was measured on.
+    grab_w: u32,
     /// Where the cursor was pressed.
     press: (i32, i32),
     /// Where the cursor was last seen.
@@ -281,6 +283,7 @@ impl Drag {
         Self {
             phase: docked.map_or(DragPhase::Float, DragPhase::Slide),
             grab: sub(cursor, (window.x, window.y)),
+            grab_w: window.w,
             press: cursor,
             cursor,
             candidate: None,
@@ -318,7 +321,9 @@ impl Drag {
     /// The window follows the cursor at its floating size from now on.
     fn float(&mut self, ctx: &DragCtx<'_>) -> DragStep {
         // The cursor keeps its place across the header when the width changes under it.
-        let (old_w, new_w) = (i64::from(self.frame.w.max(1)), i64::from(ctx.floating.0));
+        // Measured from the window the header was pressed on: a preview in between (another
+        // width) must not shift it.
+        let (old_w, new_w) = (i64::from(self.grab_w.max(1)), i64::from(ctx.floating.0));
         let across = i64::from(self.grab.0) * new_w / old_w;
         let limit = |v: i64, len: u32| {
             i32::try_from(v.clamp(0, i64::from(len.saturating_sub(1)))).unwrap_or(0)
@@ -327,6 +332,7 @@ impl Drag {
             limit(across, ctx.floating.0),
             limit(i64::from(self.grab.1), ctx.floating.1),
         );
+        self.grab_w = ctx.floating.0;
         self.phase = DragPhase::Float;
         self.candidate = None;
         let (x, y) = sub(self.cursor, self.grab);
@@ -449,6 +455,7 @@ mod tests {
             hover_delay_ms: 150,
             leave_delay_ms: 400,
             full_edge: false,
+            ..DockSettings::default()
         }
     }
 

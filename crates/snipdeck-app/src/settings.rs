@@ -1554,6 +1554,7 @@ mod tests {
                 hover_delay_ms: 300,
                 leave_delay_ms: 900,
                 full_edge: true,
+                ..DockSettings::default()
             },
             ..Settings::default()
         };
@@ -1618,6 +1619,7 @@ mod tests {
             h: 500,
             edge: None,
             pre_dock: None,
+            docked: None,
             along: None,
             other_along: Vec::new(),
         };

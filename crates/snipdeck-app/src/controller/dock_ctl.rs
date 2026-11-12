@@ -61,6 +61,12 @@ where
         self.dock.is_collapsed()
     }
 
+    /// A hover or leave delay is running.
+    #[must_use]
+    pub fn dock_needs_tick(&self) -> bool {
+        self.dock.needs_tick()
+    }
+
     pub(super) fn stored_geometry(&self, monitor: &Monitor) -> Option<&PanelGeometry> {
         self.settings
             .panel_geometry
