@@ -214,6 +214,7 @@ where
             ctl.settings().show_symbols_tab,
             ctl.settings().show_colours_tab,
             ctl.eyedropper_state().0,
+            ctl.has_saved_list(),
             query,
         );
     }
@@ -637,7 +638,7 @@ where
                     return;
                 };
                 let choices = core.controller.borrow().main_colour_choices(index(row));
-                let name = window.global::<ui::ColourTexts>().invoke_format_name();
+                let name = window.global::<ui::ColourTexts<'_>>().invoke_format_name();
                 window.set_colour_choices(model(choices.iter().map(|(f, value)| ui::ChoiceEntry {
                     label: crate::colour_words::choice_text(*f, &name, value).into(),
                     count: -1,
@@ -1150,7 +1151,7 @@ fn set_colour_block(window: &ui::MainWindow, block: Option<&crate::controller::C
     };
     let c = block.colour;
     window.set_colour_block_swatch(slint::Color::from_argb_u8(c.a, c.r, c.g, c.b));
-    let name = window.global::<ui::ColourTexts>().invoke_format_name();
+    let name = window.global::<ui::ColourTexts<'_>>().invoke_format_name();
     window.set_colour_block_formats(model(block.formats.iter().map(|(f, value)| {
         ui::ColourFormatCell {
             label: crate::colour_words::format_word(*f, &name),

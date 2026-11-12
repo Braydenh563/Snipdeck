@@ -32,6 +32,7 @@ pub fn context<'a>(
     symbols: bool,
     colours: bool,
     eyedropper: bool,
+    saved_colours: bool,
 ) -> Context<'a> {
     let row = screen.and_then(|s| s.rows.get(s.cursor.min(s.rows.len().saturating_sub(1))));
     Context {
@@ -43,6 +44,7 @@ pub fn context<'a>(
         symbols,
         colours,
         eyedropper,
+        saved_colours,
         in_list: screen.is_some_and(|s| matches!(s.section, Section::List(_))),
         group: screen.and_then(|s| s.cursor_group),
     }
@@ -57,11 +59,12 @@ pub fn rows(
     symbols: bool,
     colours: bool,
     eyedropper: bool,
+    saved_colours: bool,
     query: &str,
 ) -> Vec<ui::PaletteRow> {
     commands::entries(
         &texts(window),
-        &context(hotkeys, screen, symbols, colours, eyedropper),
+        &context(hotkeys, screen, symbols, colours, eyedropper, saved_colours),
         query,
     )
     .into_iter()
@@ -88,10 +91,20 @@ pub fn fill(
     symbols: bool,
     colours: bool,
     eyedropper: bool,
+    saved_colours: bool,
     query: &str,
 ) {
     window.set_palette_rows(model(
-        rows(window, hotkeys, screen, symbols, colours, eyedropper, query).into_iter(),
+        rows(
+            window,
+            hotkeys,
+            screen,
+            symbols,
+            colours,
+            eyedropper,
+            saved_colours,
+            query,
+        ).into_iter(),
     ));
 }
 

@@ -48,24 +48,41 @@ fn alpha_percent(c: Rgba8) -> f64 {
     f64::from(c.a) / 255.0 * 100.0
 }
 
-/// The fields the Values row shows for `c`: the model's channels, plus A (0 to 100) when the colour is not
-/// opaque. `hue` stands for the hue of a grey, so the row does not jump to red.
-#[must_use]
-pub fn channels(c: Rgba8, model: InputModel, st: Hsb) -> Vec<Channel> {
+/// The typed values of the HSL or CMYK row as the user left them (percent, hue in degrees): the 8-bit
+/// colour cannot give them back (L=0 is black whatever S was). Kept next to the colour they made.
+pub type Memo = Vec<f64>;
+
+/// The raw (unrounded) values of `model`'s fields for `c`: the memo when it is for this model, else
+/// read from the colour (HSB from the picker's own state).
+fn base(c: Rgba8, model: InputModel, st: Hsb, memo: Option<&[f64]>) -> Vec<f64> {
     let hue = f64::from(st.0);
-    let mut values: Vec<f64> = match model {
+    match model {
         InputModel::Hex => Vec::new(),
         InputModel::Rgb => vec![f64::from(c.r), f64::from(c.g), f64::from(c.b)],
-        InputModel::Hsl => {
-            let v = to_hsl(c);
-            vec![if v.s > 0.0 { v.h } else { hue }, v.s * 100.0, v.l * 100.0]
-        }
+        InputModel::Hsl => match memo.filter(|m| m.len() == 3) {
+            Some(m) => m.to_vec(),
+            None => {
+                let v = to_hsl(c);
+                vec![if v.s > 0.0 { v.h } else { hue }, v.s * 100.0, v.l * 100.0]
+            }
+        },
         InputModel::Hsb => vec![hue, f64::from(st.1), f64::from(st.2)],
-        InputModel::Cmyk => {
-            let v = to_cmyk(c);
-            vec![v.c * 100.0, v.m * 100.0, v.y * 100.0, v.k * 100.0]
-        }
-    };
+        InputModel::Cmyk => match memo.filter(|m| m.len() == 4) {
+            Some(m) => m.to_vec(),
+            None => {
+                let v = to_cmyk(c);
+                vec![v.c * 100.0, v.m * 100.0, v.y * 100.0, v.k * 100.0]
+            }
+        },
+    }
+}
+
+/// The fields the Values row shows for `c`: the model's channels, plus A (0 to 100) when the colour is not
+/// opaque. `st` stands for the hue of a grey, so the row does not jump to red; `memo` is what was last typed
+/// or stepped in the HSL or CMYK row, while it still makes `c`.
+#[must_use]
+pub fn channels(c: Rgba8, model: InputModel, st: Hsb, memo: Option<&[f64]>) -> Vec<Channel> {
+    let mut values = base(c, model, st, memo);
     // A hue that rounds to 360 reads 0, as the format rows do.
     if matches!(model, InputModel::Hsl | InputModel::Hsb) && values[0].round() >= 360.0 {
         values[0] = 0.0;
@@ -102,7 +119,8 @@ fn number(text: &str) -> Option<f64> {
 /// `c` with field `index` of `model` set to `text` (clamped to the field's range). The hex field takes any
 /// colour literal. `st` is the picker's own hue, saturation and brightness: HSB edits start from
 /// it, and an HSL edit of a grey keeps its hue. Returns the new colour and the new `st` (a typed hue
-/// is kept even where the colour has none).
+/// is kept even where the colour has none). The third part is the HSL or CMYK row's values to keep next
+/// to the colour (`memo` is what it held).
 ///
 /// # Errors
 /// [`Reject`] when the text is not a number or the field does not exist.
@@ -112,15 +130,16 @@ pub fn commit(
     index: usize,
     text: &str,
     st: Hsb,
-) -> Result<(Rgba8, Hsb), Reject> {
-    let shown = channels(c, model, st);
+    memo: Option<&[f64]>,
+) -> Result<(Rgba8, Hsb, Option<Memo>), Reject> {
+    let shown = channels(c, model, st, memo);
     let Some(field) = shown.get(index) else {
         return Err(Reject::NoSuchChannel);
     };
     let label = field.label;
     if model == InputModel::Hex {
         let c = parse(text).map_err(|_| Reject::NotANumber(label))?;
-        return Ok((c, hsb(c, st.0)));
+        return Ok((c, hsb(c, st.0), None));
     }
     let v = number(text).ok_or(Reject::NotANumber(label))?;
     if label == "A" {
@@ -130,7 +149,7 @@ pub fn commit(
             clippy::cast_sign_loss,
             reason = "clamped to 0..=255 above"
         )]
-        return Ok((Rgba8 { a: a as u8, ..c }, st));
+        return Ok((Rgba8 { a: a as u8, ..c }, st, memo.map(<[f64]>::to_vec)));
     }
     let max = spec(model)[index].1;
     let v = v.clamp(0.0, max);
@@ -151,16 +170,20 @@ pub fn commit(
             }
         }
         InputModel::Hsl => {
-            let mut h = to_hsl(c);
-            if h.s <= 0.0 {
-                h.h = hue;
-            }
-            let h = match index {
-                0 => Hsl { h: v, ..h },
-                1 => Hsl { s: v / 100.0, ..h },
-                _ => Hsl { l: v / 100.0, ..h },
-            };
-            from_hsl(h, c.a)
+            let mut now = base(c, model, st, memo);
+            now[index] = v;
+            let made = from_hsl(
+                Hsl {
+                    h: now[0],
+                    s: now[1] / 100.0,
+                    l: now[2] / 100.0,
+                },
+                c.a,
+            );
+            // A typed hue stays where the user put it, even on a grey; any other edit keeps the hue.
+            #[allow(clippy::cast_possible_truncation, reason = "0..=360 fits an f32")]
+            let keep = if index == 0 { v as f32 } else { st.0 };
+            return Ok((made, hsb(made, keep), Some(now)));
         }
         InputModel::Hsb => {
             let h = Hsv {
@@ -178,24 +201,24 @@ pub fn commit(
                 reason = "0..=360 and 0..=100 fit an f32"
             )]
             let next = (h.h as f32, (h.s * 100.0) as f32, (h.v * 100.0) as f32);
-            return Ok((from_hsv(h, c.a), next));
+            return Ok((from_hsv(h, c.a), next, None));
         }
         InputModel::Cmyk => {
-            let k = to_cmyk(c);
-            let k = match index {
-                0 => Cmyk { c: v / 100.0, ..k },
-                1 => Cmyk { m: v / 100.0, ..k },
-                2 => Cmyk { y: v / 100.0, ..k },
-                _ => Cmyk { k: v / 100.0, ..k },
-            };
-            from_cmyk(k, c.a)
+            let mut now = base(c, model, st, memo);
+            now[index] = v;
+            let made = from_cmyk(
+                Cmyk {
+                    c: now[0] / 100.0,
+                    m: now[1] / 100.0,
+                    y: now[2] / 100.0,
+                    k: now[3] / 100.0,
+                },
+                c.a,
+            );
+            return Ok((made, hsb(made, st.0), Some(now)));
         }
     };
-    // A typed hue stays where the user put it, even on a grey; any other edit keeps the hue.
-    let typed_hue = matches!(model, InputModel::Hsl) && index == 0;
-    #[allow(clippy::cast_possible_truncation, reason = "0..=360 fits an f32")]
-    let keep = if typed_hue { v as f32 } else { st.0 };
-    Ok((made, hsb(made, keep)))
+    Ok((made, hsb(made, st.0), None))
 }
 
 /// Field `index` moved by `delta` (Up and Down: 1, with Shift 10). The hex field does not step.
@@ -208,13 +231,14 @@ pub fn step(
     index: usize,
     delta: i32,
     st: Hsb,
-) -> Result<(Rgba8, Hsb), Reject> {
-    let shown = channels(c, model, st);
+    memo: Option<&[f64]>,
+) -> Result<(Rgba8, Hsb, Option<Memo>), Reject> {
+    let shown = channels(c, model, st, memo);
     let Some(field) = shown.get(index) else {
         return Err(Reject::NoSuchChannel);
     };
     if model == InputModel::Hex {
-        return Ok((c, st));
+        return Ok((c, st, None));
     }
     let now = number(&field.text).ok_or(Reject::NotANumber(field.label))?;
     // A hue wraps round; the rest stop at their ends (`commit` clamps).
@@ -224,7 +248,7 @@ pub fn step(
     } else {
         next
     };
-    commit(c, model, index, &whole(next), st)
+    commit(c, model, index, &whole(next), st, memo)
 }
 
 /// The hue, saturation and brightness (0..360, 0..100, 0..100) of `c`, keeping `hue` when `c` has none.
@@ -355,7 +379,7 @@ mod tests {
     const BLUE: Rgba8 = Rgba8::rgb(58, 123, 213);
 
     fn texts(c: Rgba8, m: InputModel) -> Vec<String> {
-        channels(c, m, st(c)).into_iter().map(|c| c.text).collect()
+        channels(c, m, st(c), None).into_iter().map(|c| c.text).collect()
     }
 
     #[test]
@@ -366,12 +390,12 @@ mod tests {
         assert_eq!(texts(BLUE, InputModel::Hsb), ["215", "73", "84"]);
         assert_eq!(texts(BLUE, InputModel::Cmyk), ["73", "42", "0", "16"]);
         let half = Rgba8 { a: 128, ..BLUE };
-        let rgb = channels(half, InputModel::Rgb, st(half));
+        let rgb = channels(half, InputModel::Rgb, st(half), None);
         assert_eq!(
             rgb.last().map(|c| (c.label, c.text.as_str())),
             Some(("A", "50"))
         );
-        assert_eq!(channels(half, InputModel::Hex, st(half)).len(), 1);
+        assert_eq!(channels(half, InputModel::Hex, st(half), None).len(), 1);
     }
 
     #[test]
@@ -379,31 +403,31 @@ mod tests {
         let grey = Rgba8::rgb(128, 128, 128);
         assert_eq!(texts(grey, InputModel::Hsl)[0], "0");
         assert_eq!(
-            channels(grey, InputModel::Hsb, (215.0, 0.0, 50.0))[0].text,
+            channels(grey, InputModel::Hsb, (215.0, 0.0, 50.0), None)[0].text,
             "215"
         );
     }
 
     #[test]
     fn a_typed_value_changes_one_channel_and_clamps() {
-        let c = commit(BLUE, InputModel::Rgb, 0, "255", st(BLUE))
+        let c = commit(BLUE, InputModel::Rgb, 0, "255", st(BLUE), None)
             .map(|r| r.0)
             .unwrap();
         assert_eq!(c, Rgba8::rgb(255, 123, 213));
         assert_eq!(
-            commit(BLUE, InputModel::Rgb, 1, "999", st(BLUE))
+            commit(BLUE, InputModel::Rgb, 1, "999", st(BLUE), None)
                 .map(|r| r.0)
                 .unwrap(),
             Rgba8::rgb(58, 255, 213)
         );
         assert_eq!(
-            commit(BLUE, InputModel::Rgb, 2, "-4", st(BLUE))
+            commit(BLUE, InputModel::Rgb, 2, "-4", st(BLUE), None)
                 .map(|r| r.0)
                 .unwrap(),
             Rgba8::rgb(58, 123, 0)
         );
         assert_eq!(
-            commit(BLUE, InputModel::Hsb, 2, "100", st(BLUE))
+            commit(BLUE, InputModel::Hsb, 2, "100", st(BLUE), None)
                 .map(|r| r.0)
                 .unwrap(),
             from_hsv(
@@ -419,15 +443,15 @@ mod tests {
     #[test]
     fn a_bad_value_is_rejected_by_field_name() {
         assert_eq!(
-            commit(BLUE, InputModel::Rgb, 1, "green", st(BLUE)).map(|r| r.0),
+            commit(BLUE, InputModel::Rgb, 1, "green", st(BLUE), None).map(|r| r.0),
             Err(Reject::NotANumber("G"))
         );
         assert_eq!(
-            commit(BLUE, InputModel::Hex, 0, "#12", st(BLUE)).map(|r| r.0),
+            commit(BLUE, InputModel::Hex, 0, "#12", st(BLUE), None).map(|r| r.0),
             Err(Reject::NotANumber("HEX"))
         );
         assert_eq!(
-            commit(BLUE, InputModel::Rgb, 9, "1", st(BLUE)).map(|r| r.0),
+            commit(BLUE, InputModel::Rgb, 9, "1", st(BLUE), None).map(|r| r.0),
             Err(Reject::NoSuchChannel)
         );
     }
@@ -435,13 +459,13 @@ mod tests {
     #[test]
     fn the_hex_field_takes_any_colour_literal_and_a_percent_sign_is_allowed() {
         assert_eq!(
-            commit(BLUE, InputModel::Hex, 0, "rgb(1, 2, 3)", st(BLUE))
+            commit(BLUE, InputModel::Hex, 0, "rgb(1, 2, 3)", st(BLUE), None)
                 .map(|r| r.0)
                 .unwrap(),
             Rgba8::rgb(1, 2, 3)
         );
         assert_eq!(
-            commit(BLUE, InputModel::Hsl, 1, "50%", st(BLUE))
+            commit(BLUE, InputModel::Hsl, 1, "50%", st(BLUE), None)
                 .map(|r| r.0)
                 .unwrap(),
             from_hsl(
@@ -457,10 +481,10 @@ mod tests {
     #[test]
     fn alpha_is_a_percentage() {
         let half = Rgba8 { a: 255, ..BLUE };
-        let translucent = commit(half, InputModel::Rgb, 3, "50", st(half)).map(|r| r.0);
+        let translucent = commit(half, InputModel::Rgb, 3, "50", st(half), None).map(|r| r.0);
         assert_eq!(translucent, Err(Reject::NoSuchChannel));
         let half = Rgba8 { a: 128, ..BLUE };
-        let c = commit(half, InputModel::Rgb, 3, "100", st(half))
+        let c = commit(half, InputModel::Rgb, 3, "100", st(half), None)
             .map(|r| r.0)
             .unwrap();
         assert_eq!(c.a, 255);
@@ -469,31 +493,31 @@ mod tests {
     #[test]
     fn stepping_moves_by_one_or_ten_and_the_hue_wraps() {
         assert_eq!(
-            step(BLUE, InputModel::Rgb, 0, 1, st(BLUE))
+            step(BLUE, InputModel::Rgb, 0, 1, st(BLUE), None)
                 .map(|r| r.0)
                 .unwrap(),
             Rgba8::rgb(59, 123, 213)
         );
         assert_eq!(
-            step(BLUE, InputModel::Rgb, 0, -10, st(BLUE))
+            step(BLUE, InputModel::Rgb, 0, -10, st(BLUE), None)
                 .map(|r| r.0)
                 .unwrap(),
             Rgba8::rgb(48, 123, 213)
         );
         let white = Rgba8::rgb(255, 255, 255);
         assert_eq!(
-            step(white, InputModel::Rgb, 0, 1, st(white))
+            step(white, InputModel::Rgb, 0, 1, st(white), None)
                 .map(|r| r.0)
                 .unwrap(),
             Rgba8::rgb(255, 255, 255)
         );
         let red = Rgba8::rgb(255, 0, 0);
-        let back = step(red, InputModel::Hsb, 0, -1, st(red))
+        let back = step(red, InputModel::Hsb, 0, -1, st(red), None)
             .map(|r| r.0)
             .unwrap();
-        assert_eq!(channels(back, InputModel::Hsb, st(back))[0].text, "359");
+        assert_eq!(channels(back, InputModel::Hsb, st(back), None)[0].text, "359");
         assert_eq!(
-            step(BLUE, InputModel::Hex, 0, 1, st(BLUE))
+            step(BLUE, InputModel::Hex, 0, 1, st(BLUE), None)
                 .map(|r| r.0)
                 .unwrap(),
             BLUE
@@ -547,7 +571,7 @@ mod tests {
     fn a_hue_that_rounds_to_360_reads_0() {
         let c = Rgba8::rgb(255, 0, 2);
         for model in [InputModel::Hsl, InputModel::Hsb] {
-            assert_eq!(channels(c, model, st(c))[0].text, "0", "{model:?}");
+            assert_eq!(channels(c, model, st(c), None)[0].text, "0", "{model:?}");
         }
     }
 
@@ -577,19 +601,27 @@ mod tests {
     fn a_typed_hue_sticks_on_a_grey_and_a_step_moves_from_it() {
         let grey = Rgba8::rgb(128, 128, 128);
         for model in [InputModel::Hsl, InputModel::Hsb] {
-            let (c, next) = commit(grey, model, 0, "120", st(grey)).unwrap();
+            let (c, next, memo) = commit(grey, model, 0, "120", st(grey), None).unwrap();
             assert_eq!(c, grey, "{model:?}");
-            assert_eq!(channels(c, model, next)[0].text, "120", "{model:?}");
-            let (c, up) = step(c, model, 0, 1, next).unwrap();
-            assert_eq!(channels(c, model, up)[0].text, "121", "{model:?}");
+            assert_eq!(
+                channels(c, model, next, memo.as_deref())[0].text,
+                "120",
+                "{model:?}"
+            );
+            let (c, up, memo) = step(c, model, 0, 1, next, memo.as_deref()).unwrap();
+            assert_eq!(
+                channels(c, model, up, memo.as_deref())[0].text,
+                "121",
+                "{model:?}"
+            );
         }
         // Low chroma: the 8-bit colour cannot hold one degree, the field still advances.
         let low = Rgba8::rgb(58, 60, 62);
-        let (c, a) = step(low, InputModel::Hsb, 0, 1, st(low)).unwrap();
-        let (c, b) = step(c, InputModel::Hsb, 0, 1, a).unwrap();
+        let (c, a, _) = step(low, InputModel::Hsb, 0, 1, st(low), None).unwrap();
+        let (c, b, _) = step(c, InputModel::Hsb, 0, 1, a, None).unwrap();
         assert!(b.0 - st(low).0 > 1.5, "{} -> {}", st(low).0, b.0);
         assert_eq!(
-            channels(c, InputModel::Hsb, b)[0].text,
+            channels(c, InputModel::Hsb, b, None)[0].text,
             whole(f64::from(b.0))
         );
     }
@@ -597,13 +629,13 @@ mod tests {
     #[test]
     fn brightness_to_zero_and_back_keeps_the_colour() {
         let start = st(BLUE);
-        let (black, state) = commit(BLUE, InputModel::Hsb, 2, "0", start).unwrap();
+        let (black, state, _) = commit(BLUE, InputModel::Hsb, 2, "0", start, None).unwrap();
         assert_eq!(black, Rgba8::rgb(0, 0, 0));
         assert!(
             (state.1 - start.1).abs() < 1e-3,
             "saturation kept at 0 brightness"
         );
-        let (restored, _) = commit(black, InputModel::Hsb, 2, &start.2.to_string(), state).unwrap();
+        let (restored, ..) = commit(black, InputModel::Hsb, 2, &start.2.to_string(), state, None).unwrap();
         assert_eq!(restored, BLUE);
     }
 
@@ -643,5 +675,43 @@ mod tests {
         );
         let pair = snipdeck_colour::scheme(BLUE, Scheme::Complementary);
         assert_eq!(scheme_layout(Scheme::Complementary, pair.clone()), pair);
+    }
+
+    /// Steps `field` of `model` `n` times the way the window does: the memo carried from one to the next.
+    fn stepped(c: Rgba8, model: InputModel, field: usize, n: i32) -> (Rgba8, Vec<String>) {
+        let (mut c, mut st, mut memo) = (c, hsb(c, 0.0), None::<Memo>);
+        for _ in 0..n {
+            (c, st, memo) = step(c, model, field, 1, st, memo.as_deref()).unwrap();
+        }
+        let texts = channels(c, model, st, memo.as_deref())
+            .into_iter()
+            .map(|c| c.text)
+            .collect();
+        (c, texts)
+    }
+
+    #[test]
+    fn hsl_and_cmyk_fields_advance_where_the_8_bit_colour_cannot_hold_the_step() {
+        // HSL hue of a near-grey: the colour barely changes, the field keeps counting.
+        let (_, t) = stepped(Rgba8::rgb(58, 60, 62), InputModel::Hsl, 0, 3);
+        assert_eq!(t[0], "213");
+        // HSL saturation of a dark red.
+        let (_, t) = stepped(Rgba8::rgb(30, 20, 20), InputModel::Hsl, 1, 3);
+        assert_eq!(t[1], "23");
+        // CMYK cyan of a dark blue-grey (K about 90).
+        let (_, t) = stepped(Rgba8::rgb(13, 20, 25), InputModel::Cmyk, 0, 3);
+        assert_eq!(t[0], "51");
+    }
+
+    #[test]
+    fn typing_lightness_or_black_to_the_end_keeps_the_other_channels() {
+        let (black, _, memo) = commit(BLUE, InputModel::Hsl, 2, "0", st(BLUE), None).unwrap();
+        assert_eq!(black, Rgba8::rgb(0, 0, 0));
+        let (back, ..) = commit(black, InputModel::Hsl, 2, "53", st(black), memo.as_deref()).unwrap();
+        assert_eq!(back, BLUE, "L back gives the colour, not a grey");
+        let (black, _, memo) = commit(BLUE, InputModel::Cmyk, 3, "100", st(BLUE), None).unwrap();
+        assert_eq!(black, Rgba8::rgb(0, 0, 0));
+        let (back, ..) = commit(black, InputModel::Cmyk, 3, "16", st(black), memo.as_deref()).unwrap();
+        assert_eq!(back, BLUE);
     }
 }

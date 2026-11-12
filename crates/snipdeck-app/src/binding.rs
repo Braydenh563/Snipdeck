@@ -1928,7 +1928,7 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
     // The windowed first line replaces the preview only for a marked row; a sensitive row never has one.
     let marked = row.preview_mark.as_ref().filter(|_| !row.sensitive);
     let (label, label_name) = label_fields(row.label);
-    let (swatch, has_swatch) = swatch_fields(&row.preview, row.sensitive);
+    let (swatch, has_swatch) = crate::colour_words::swatch_of_kind(row.kind, &row.preview, row.sensitive);
     ui::PanelRow {
         kind: item_kind(row),
         title: row.title.as_str().into(),

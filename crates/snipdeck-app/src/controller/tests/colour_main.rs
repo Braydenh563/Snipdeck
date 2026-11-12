@@ -137,11 +137,9 @@ mod main_window {
         let choices = w.ctl.main_colour_choices(row);
         assert_eq!(choices.len(), 7);
         assert_eq!(choices[2], (Fmt::Hsl, "hsl(215, 64%, 53%)".to_owned()));
-        assert!(
-            w.ctl
-                .main_colour_choices(open_row(&mut w, w.ids[0]))
-                .is_empty()
-        );
+        let other = w.ids[0];
+        let other_row = open_row(&mut w, other);
+        assert!(w.ctl.main_colour_choices(other_row).is_empty());
         let row = open_row(&mut w, id);
         // Enter pastes (Ctrl+V goes out).
         w.ctl.main_action(crate::controller::MainAction::PasteAs, row);

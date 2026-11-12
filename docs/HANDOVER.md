@@ -29,6 +29,11 @@ is the developer route. Plan (next session, workflow):
   (install, upgrade over an older version, uninstall keeps data, Store package sideload test).
 - Windows-only: everything above is unverified until the owner runs it.
 
+## Colour tool (branch `claude/colour-tool`, 2026-11-12; see `.claude/remaining/colours.md`)
+Built: the Panel's Colours tab (wheel/square picker, typed channels in every format, schemes, contrast, save to any list, copy as any format, CSS variables), the swatch tile on cards, the Main detail Colour block, Picker "Paste as", the Saved colours command. Maths in `crates/snipdeck-colour`.
+NOT done: the global eyedropper hotkey (`hotkeys.eyedropper`, review #33): "pick from anywhere" starts from the Panel button or the palette command, never a chord. Per-swatch Ctrl+S, and the Win32 button-up eyedropper leak when a key ends the run during a press (C14), are also left.
+Windows-only, never run: the Win32 eyedropper (button-up capture, HDR bit logic), the `tools/windows-test` wizard steps for it, the hand-drawn icons, and the order of the eyedropper toast against the redraw (review #17).
+
 ## Now (2026-11-11 evening; v1.1 work complete in PR #5)
 Branch `claude/compassionate-pascal-pod8ux`, PR https://github.com/braydenh563/snipdeck/pull/5. Keep all work on this branch and PR; never merge, tag or release.
 State: all v1.1 work is merged into the PR head: placeholders and fill-ins, paste transforms, importers with Settings wiring, groups inside a list (Panel and Main, keyboard, Narrator, header menu fold/move), typed-trigger expansion and suggest-as-you-type (opt-in), rich paste, Windows Hello unlock, tips, in-app help and shortcut lists, final audits 1 and 2, blind-test and ux-auditor fixes (Settings search gap, wrapping toasts, shortcut rows that wrap, "or" between alternative keys, palette that scales with text, group header selected state, accessible descriptions, warning toasts). Worker branches `claude/v11-*` are merged and can be deleted by the owner.

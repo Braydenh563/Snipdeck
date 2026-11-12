@@ -44,6 +44,16 @@ impl Inner {
         self.held = Some((c, st));
         st
     }
+
+    /// What the HSL or CMYK row last held, while it still makes `c` in `model`.
+    fn memo(&self, c: Rgba8, model: InputModel) -> Option<panel::Memo> {
+        match &self.typed {
+            Some((m, was, values)) if *m == model && (was.r, was.g, was.b) == (c.r, c.g, c.b) => {
+                Some(values.clone())
+            }
+            _ => None,
+        }
+    }
 }
 
 /// Everything a redraw of the tab depends on besides the surface.
@@ -58,10 +68,13 @@ struct Drawn {
     target: String,
     values_error: String,
     held: Option<(Rgba8, panel::Hsb)>,
+    typed: Option<(InputModel, Rgba8, panel::Memo)>,
 }
 
 #[derive(Default)]
 struct Inner {
+    /// The HSL or CMYK values as last typed or stepped, next to the colour they made.
+    typed: Option<(InputModel, Rgba8, panel::Memo)>,
     /// The hue the picker surfaces show, kept when the colour is a grey or black.
     held: Option<(Rgba8, panel::Hsb)>,
     /// The next redraw leaves the input line alone (the text in it made the colour).
@@ -210,6 +223,9 @@ impl Glue {
             })
             .collect();
         s.state(c);
+        // The ids behind the Save to… entries follow the lists even where no name changed (a list
+        // deleted and another made with the same name).
+        s.lists = lists.iter().map(|l| l.id).collect();
         let key = key_of(view, &s, pastes, eyedropper, &names, &target);
         if s.drawn.as_ref() == Some(&key) && !s.fresh {
             // Nothing to draw: a typed literal that is the colour already must not leave its flag.
@@ -217,7 +233,6 @@ impl Glue {
             s.typing_other = false;
             return;
         }
-        s.lists = lists.iter().map(|l| l.id).collect();
         let changed = s.last_colour != Some(c);
         s.last_colour = Some(c);
 
@@ -370,7 +385,7 @@ fn picker(state: &ui::ColourState<'_>, s: &mut Inner, view: &ColourView) {
     state.set_sat(sat);
     state.set_bri(bri);
     state.set_alpha(f32::from(c.a) / 255.0 * 100.0);
-    let shown: Vec<ui::ColourChannel> = panel::channels(c, view.input_model, s.state(c))
+    let shown: Vec<ui::ColourChannel> = panel::channels(c, view.input_model, s.state(c), s.memo(c, view.input_model).as_deref())
         .into_iter()
         .map(|ch| ui::ColourChannel {
             label: ch.label.into(),
@@ -418,6 +433,7 @@ fn key_of(
         target: target.to_owned(),
         values_error: s.values_error.clone(),
         held: s.held,
+        typed: s.typed.clone(),
     }
 }
 
@@ -472,21 +488,31 @@ where
     /// Picker gestures and typed values set the colour and the hue, saturation and brightness it
     /// was made from.
     fn set_picked(self: &Rc<Self>, c: Rgba8, st: panel::Hsb) {
-        self.colours.inner.borrow_mut().held = Some((c, st));
+        {
+            let mut s = self.colours.inner.borrow_mut();
+            s.held = Some((c, st));
+            s.typed = None;
+        }
         self.act(|ctl| ctl.set_colour(c));
     }
 
     /// A drag step: the colour changes but is not written to the settings until the pointer is
     /// released (`on_settled`).
     fn set_picked_live(self: &Rc<Self>, c: Rgba8, st: panel::Hsb) {
-        self.colours.inner.borrow_mut().held = Some((c, st));
+        {
+            let mut s = self.colours.inner.borrow_mut();
+            s.held = Some((c, st));
+            s.typed = None;
+        }
         self.act(|ctl| ctl.set_colour_live(c));
     }
 
     /// The picker's state for the colour now.
-    fn picker_state(&self) -> (Rgba8, panel::Hsb) {
-        let current = self.colour_view().current;
-        (current, self.colours.inner.borrow_mut().state(current))
+    fn picker_state(&self) -> (Rgba8, panel::Hsb, Option<panel::Memo>) {
+        let view = self.colour_view();
+        let mut s = self.colours.inner.borrow_mut();
+        let st = s.state(view.current);
+        (view.current, st, s.memo(view.current, view.input_model))
     }
 
     /// The target of entry `i` of the Save to… menu: a list, "New list…" (the entry after the last
@@ -743,7 +769,7 @@ where
         {
             let core = Rc::clone(self);
             state.on_surface_moved(move |x, y, done| {
-                let (current, st) = core.picker_state();
+                let (current, st, _) = core.picker_state();
                 let style = core.colour_view().style;
                 let (c, next) = panel::pick_hsb(style, x, y, st, current.a);
                 if done {
@@ -760,7 +786,7 @@ where
         {
             let core = Rc::clone(self);
             state.on_surface_nudged(move |dx, dy| {
-                let (current, st) = core.picker_state();
+                let (current, st, _) = core.picker_state();
                 let style = core.colour_view().style;
                 let (c, next) = panel::nudge(style, st, dx, dy, current.a);
                 core.set_picked(c, next);
@@ -769,7 +795,7 @@ where
         {
             let core = Rc::clone(self);
             state.on_surface_paged(move |delta| {
-                let (current, st) = core.picker_state();
+                let (current, st, _) = core.picker_state();
                 let (c, next) = panel::page(st, delta, current.a);
                 core.set_picked(c, next);
             });
@@ -777,7 +803,7 @@ where
         {
             let core = Rc::clone(self);
             state.on_hue_moved(move |h| {
-                let (current, st) = core.picker_state();
+                let (current, st, _) = core.picker_state();
                 let next = (h.min(359.999), st.1, st.2);
                 core.set_picked_live(hsb_colour(next, current.a), next);
             });
@@ -785,7 +811,7 @@ where
         {
             let core = Rc::clone(self);
             state.on_bri_moved(move |b| {
-                let (current, st) = core.picker_state();
+                let (current, st, _) = core.picker_state();
                 let next = (st.0, st.1, b.clamp(0.0, 100.0));
                 core.set_picked_live(hsb_colour(next, current.a), next);
             });
@@ -807,32 +833,37 @@ where
         {
             let core = Rc::clone(self);
             state.on_channel_committed(move |i, text| {
-                let (current, st) = core.picker_state();
+                let (current, st, memo) = core.picker_state();
                 let model = core.colour_view().input_model;
                 let result = usize::try_from(i)
                     .map_err(|_| panel::Reject::NoSuchChannel)
-                    .and_then(|i| panel::commit(current, model, i, text.as_str(), st));
+                    .and_then(|i| panel::commit(current, model, i, text.as_str(), st, memo.as_deref()));
                 core.apply_channel(result);
             });
         }
         {
             let core = Rc::clone(self);
             state.on_channel_stepped(move |i, d| {
-                let (current, st) = core.picker_state();
+                let (current, st, memo) = core.picker_state();
                 let model = core.colour_view().input_model;
                 let result = usize::try_from(i)
                     .map_err(|_| panel::Reject::NoSuchChannel)
-                    .and_then(|i| panel::step(current, model, i, d, st));
+                    .and_then(|i| panel::step(current, model, i, d, st, memo.as_deref()));
                 core.apply_channel(result);
             });
         }
     }
 
-    fn apply_channel(self: &Rc<Self>, result: Result<(Rgba8, panel::Hsb), panel::Reject>) {
+    fn apply_channel(
+        self: &Rc<Self>,
+        result: Result<(Rgba8, panel::Hsb, Option<panel::Memo>), panel::Reject>,
+    ) {
         match result {
-            Ok((c, st)) => {
+            Ok((c, st, memo)) => {
                 self.colours.inner.borrow_mut().values_error.clear();
                 self.set_picked(c, st);
+                let model = self.colour_view().input_model;
+                self.colours.inner.borrow_mut().typed = memo.map(|m| (model, c, m));
             }
             Err(panel::Reject::NotANumber(label)) => {
                 if let Some(w) = self.window.upgrade() {

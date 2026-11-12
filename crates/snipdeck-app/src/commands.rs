@@ -304,6 +304,8 @@ pub struct Context<'a> {
     pub colours: bool,
     /// This machine has a screen eyedropper (Windows).
     pub eyedropper: bool,
+    /// The "Colours" list exists (something was saved), so "Saved colours" has somewhere to go.
+    pub saved_colours: bool,
     /// A list is open (groups live in lists).
     pub in_list: bool,
     /// The cursor is on a group's header; `None` on an item.
@@ -347,7 +349,8 @@ pub fn available(command: Command, ctx: &Context<'_>) -> bool {
         Command::PinItem => ctx.has_item && !ctx.in_trash && !ctx.item_pinned,
         Command::UnpinItem => ctx.has_item && !ctx.in_trash && ctx.item_pinned,
         Command::Symbols => ctx.symbols,
-        Command::Colours | Command::SavedColours => ctx.colours,
+        Command::Colours => ctx.colours,
+        Command::SavedColours => ctx.colours && ctx.saved_colours,
         Command::PickColour => ctx.colours && ctx.eyedropper,
         Command::GroupItems => ctx.has_item && ctx.in_list,
         Command::FoldGroup
@@ -475,6 +478,7 @@ mod tests {
             symbols: true,
             colours: true,
             eyedropper: true,
+            saved_colours: true,
             in_list: true,
             group: None,
         }
@@ -751,6 +755,38 @@ mod tests {
             !Command::SelectAll.needs_item(),
             "it works on an empty cursor too"
         );
+    }
+
+    #[test]
+    fn the_colour_commands_follow_the_tab_the_eyedropper_and_the_saved_list() {
+        let hotkeys = Hotkeys::default();
+        let ids = |ctx: &Context<'_>| -> Vec<Command> {
+            Command::ALL
+                .iter()
+                .copied()
+                .filter(|c| {
+                    matches!(
+                        c,
+                        Command::Colours | Command::SavedColours | Command::PickColour
+                    ) && available(*c, ctx)
+                })
+                .collect()
+        };
+        let mut c = ctx(&hotkeys);
+        assert_eq!(
+            ids(&c),
+            [Command::Colours, Command::SavedColours, Command::PickColour]
+        );
+        c.saved_colours = false;
+        assert_eq!(
+            ids(&c),
+            [Command::Colours, Command::PickColour],
+            "no Colours list yet: nothing to view"
+        );
+        c.eyedropper = false;
+        assert_eq!(ids(&c), [Command::Colours]);
+        c.colours = false;
+        assert!(ids(&c).is_empty(), "the tab off hides them all");
     }
 
     #[test]

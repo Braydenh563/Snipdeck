@@ -103,7 +103,8 @@ where
         if created {
             self.wire(&window);
         }
-        render(&window, self.shown.borrow().as_ref(), view, picker);
+        let can_open = self.controller.borrow().settings().show_colours_tab;
+        render(&window, self.shown.borrow().as_ref(), view, picker, can_open);
         *self.shown.borrow_mut() = Some(Shown {
             dark: view.dark,
             high_contrast: view.high_contrast,
@@ -163,6 +164,22 @@ where
         self.finish_use(item, UseMode::Paste);
     }
 
+    /// A colour row's "Paste as" chose format `format`: the colour is written that way, pasted
+    /// into the Target or (Shift) only copied. As for `use_row`, the window is off the screen
+    /// before the paste.
+    fn use_colour_row(&self, row: usize, format: usize, copy: bool) {
+        let item = self.controller.borrow_mut().picker_take(row);
+        if let Some(item) = item {
+            self.shell.hide();
+            let mode = if copy { UseMode::Copy } else { UseMode::Paste };
+            crate::trace!("picker uses a colour ({mode:?})");
+            self.controller
+                .borrow_mut()
+                .use_colour_item_as(item, format, mode);
+        }
+        redraw_all();
+    }
+
     fn finish_use(&self, item: Option<snipdeck_core::ItemId>, mode: UseMode) {
         if let Some(item) = item {
             self.shell.hide();
@@ -204,6 +221,32 @@ where
         wire!(on_dismissed, |core| core.act(Controller::dismiss_picker));
         wire!(on_help_requested, |core| core
             .act(|ctl| ctl.main_open_help(HelpTopic::Guide)));
+        wire!(on_colour_chosen, |core, row, format, copy| core
+            .use_colour_row(index(row), index(format), copy));
+        wire!(on_colour_open_requested, |core, row| {
+            core.act(|ctl| ctl.picker_open_in_colours(index(row)));
+        });
+        {
+            // "Paste as" of a colour row lists its formats; the window asks just before it opens
+            // the chooser, and the window grows to fit it once they are in place.
+            let weak = Rc::downgrade(self);
+            let handle = window.as_weak();
+            window.on_colour_choices_requested(move |row| {
+                let (Some(core), Some(window)) = (weak.upgrade(), handle.upgrade()) else {
+                    return;
+                };
+                let choices = core.controller.borrow().picker_colour_choices(index(row));
+                let name = window.global::<ui::ColourTexts<'_>>().invoke_format_name();
+                window.set_colour_choices(model(choices.iter().map(|(f, value)| {
+                    ui::ChoiceEntry {
+                        label: crate::colour_words::choice_text(*f, &name, value).into(),
+                        count: -1,
+                        ..Default::default()
+                    }
+                })));
+                redraw_all();
+            });
+        }
     }
 }
 
@@ -308,6 +351,8 @@ pub fn picker_place(board: &str, list: &str) -> String {
 #[must_use]
 pub fn picker_row(entry: &Entry, dark: bool) -> ui::PickerRow {
     let marks = entry.marks.fields();
+    let (swatch, has_swatch) =
+        crate::colour_words::swatch_of_kind(entry.kind, &entry.preview, entry.sensitive);
     ui::PickerRow {
         kind: item_kind_of(entry.kind, entry.sensitive),
         title: entry.title.as_str().into(),
@@ -336,11 +381,19 @@ pub fn picker_row(entry: &Entry, dark: bool) -> ui::PickerRow {
         list_name: picker_place(&entry.board, &entry.list).into(),
         list_color: list_color(entry.accent, dark),
         image: slint::Image::default(),
+        swatch,
+        has_swatch,
     }
 }
 
 /// Sets the window's properties from `picker`, skipping what `previous` already shows.
-fn render(window: &ui::PickerWindow, previous: Option<&Shown>, view: &View, picker: &PickerView) {
+fn render(
+    window: &ui::PickerWindow,
+    previous: Option<&Shown>,
+    view: &View,
+    picker: &PickerView,
+    can_open: bool,
+) {
     let differs = |same: &dyn Fn(&Shown) -> bool| previous.is_none_or(|p| !same(p));
     if differs(&|p| p.dark == view.dark) {
         window.set_dark(view.dark);
@@ -369,6 +422,7 @@ fn render(window: &ui::PickerWindow, previous: Option<&Shown>, view: &View, pick
         window.set_target_name(app.into());
         window.set_target_title(title.into());
     }
+    window.set_colour_can_open(can_open);
     if window.get_query().as_str() != picker.query {
         window.set_query(picker.query.as_str().into());
     }

@@ -457,6 +457,12 @@ where
             .unwrap_or_default()
     }
 
+    /// Whether the "Colours" list exists.
+    #[must_use]
+    pub fn has_saved_list(&self) -> bool {
+        self.home_list_id().is_some()
+    }
+
     /// "Saved colours": the Panel shows the home list, and the Colours tab steps aside.
     pub fn open_saved_colours(&mut self) -> Vec<Effect> {
         let Some(list) = self.home_list_id() else {
