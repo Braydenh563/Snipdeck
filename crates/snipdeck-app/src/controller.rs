@@ -828,10 +828,19 @@ where
             self.session.open_anchor = self.open_anchor_now();
         }
         self.visible = true;
-        // A Panel shown again is open: the host places it from the stored frame.
+        // A Panel shown again is open. A tucked dock is a 6 px tab until it is placed, so its
+        // open frame goes first; any other Panel is placed by the host from the stored frame.
+        let tucked = self.dock.is_collapsed();
         self.dock = DockState::Expanded;
         self.shown_at = self.clock.now();
-        vec![Effect::ShowPanel]
+        let mut effects: Vec<Effect> = if tucked {
+            let open = self.monitor.as_ref().and_then(|m| self.placement(m));
+            open.map(Effect::PlaceWindow).into_iter().collect()
+        } else {
+            Vec::new()
+        };
+        effects.push(Effect::ShowPanel);
+        effects
     }
 
     /// The Panel's window is not on screen although the controller thinks it is (it was

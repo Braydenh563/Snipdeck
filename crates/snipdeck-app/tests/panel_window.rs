@@ -2292,6 +2292,9 @@ fn a_new_group_takes_its_name_as_typed() {
 fn a_rename_handed_to_another_header_keeps_the_keys() {
     on_ui_thread(|| {
         let r = rig();
+        // Tall enough for both groups at once: the first header must be on screen to be renamed
+        // (a double-click needs it there), and at 480 the list scrolls to the second group.
+        r.window().set_size(slint::LogicalSize::new(320.0, 560.0));
         group_first_two(&r);
         press(r.window(), &key(Key::Return));
         // A second group from the next two items: its header opens its name for typing.

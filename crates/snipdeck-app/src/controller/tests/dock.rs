@@ -275,10 +275,14 @@ fn the_panel_hotkey_folds_and_unfolds_a_docked_panel_instead_of_hiding_it() {
         refocused + 1,
         "the keyboard goes back to the Target"
     );
-    // Tucked, the hotkey shows it like any Panel: it opens and takes the keyboard.
+    // Tucked, the hotkey shows it like any Panel: it comes out at its docked frame and takes
+    // the keyboard.
     assert_eq!(
         w.ctl.on_hotkey(HotkeyAction::TogglePanel),
-        [Effect::ShowPanel]
+        [
+            Effect::PlaceWindow(open_rect(DockEdge::Left)),
+            Effect::ShowPanel
+        ]
     );
     assert!(w.ctl.visible());
     assert!(!w.ctl.view().dock_collapsed);
@@ -442,7 +446,13 @@ fn showing_a_hidden_panel_opens_it_even_if_it_was_a_handle() {
     w.ctl.dock_event(DockEvent::Hotkey);
     assert!(w.ctl.view().dock_collapsed);
     w.ctl.hide();
-    assert_eq!(w.ctl.show(), [Effect::ShowPanel]);
+    assert_eq!(
+        w.ctl.show(),
+        [
+            Effect::PlaceWindow(open_rect(DockEdge::Right)),
+            Effect::ShowPanel
+        ]
+    );
     assert!(!w.ctl.view().dock_collapsed);
 }
 
