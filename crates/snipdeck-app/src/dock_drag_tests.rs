@@ -35,10 +35,24 @@ const DOCKED: (u32, u32) = (280, 600);
 fn ctx(monitor: &Monitor, ms: i64) -> DragCtx<'_> {
     DragCtx {
         monitor,
-        floating: FLOATING,
-        docked: DOCKED,
+        sizes: DragSizes {
+            floating: FLOATING,
+            side: DOCKED,
+            flat: DOCKED,
+        },
         full_edge: false,
         now: at(ms),
+    }
+}
+
+/// `ctx` with another floating size.
+fn sized(ctx: DragCtx<'_>, floating: (u32, u32)) -> DragCtx<'_> {
+    DragCtx {
+        sizes: DragSizes {
+            floating,
+            ..ctx.sizes
+        },
+        ..ctx
     }
 }
 
@@ -55,10 +69,7 @@ fn window(x: i32, y: i32, size: (u32, u32)) -> Rect {
 fn a_drag_through_the_middle_never_docks_whatever_the_panels_size() {
     let screen = screen();
     // As tall as the work area: its sides touch the top and the bottom all the way.
-    let tall = DragCtx {
-        floating: (320, 1040),
-        ..ctx(&screen, 0)
-    };
+    let tall = sized(ctx(&screen, 0), (320, 1040));
     let mut drag = Drag::begin((100, 10), window(60, 0, (320, 1040)), None);
     for (step, x) in (120..1800).step_by(40).enumerate() {
         let now = i64::try_from(step).unwrap_or(0) * 300;
@@ -246,10 +257,7 @@ fn crossing_to_another_monitor_docks_nothing_and_lands_at_that_monitors_size() {
     let _ = drag.moved((1960, 300), &ctx(&two, 48));
     let _ = drag.moved((2400, 300), &ctx(&two, 400));
     assert_eq!(drag.phase(), DragPhase::Float);
-    let there = DragCtx {
-        floating: (450, 600),
-        ..ctx(&two, 500)
-    };
+    let there = sized(ctx(&two, 500), (450, 600));
     assert_eq!(
         drag.released(&there),
         DragEnd::Floating(window(2300, 290, (450, 600)))
@@ -339,4 +347,34 @@ fn pushing_a_docked_panel_into_its_own_edge_keeps_it_docked() {
         let _ = drag.moved(away, &ctx(&screen, 200));
         assert_eq!(drag.phase(), DragPhase::Float, "{edge:?}");
     }
+}
+
+#[test]
+fn each_kind_of_edge_offers_the_size_the_panel_has_there() {
+    let screen = screen();
+    let sizes = DragSizes {
+        floating: FLOATING,
+        side: (280, 600),
+        flat: (420, 260),
+    };
+    let on = |ms| DragCtx {
+        sizes,
+        ..ctx(&screen, ms)
+    };
+    // Held at the right edge: the side dock's size.
+    let mut drag = Drag::begin((700, 310), window(600, 300, FLOATING), None);
+    let _ = drag.moved((1919, 500), &on(0));
+    let _ = drag.moved((1919, 500), &on(250));
+    assert_eq!(drag.phase(), DragPhase::Preview(DockEdge::Right));
+    assert_eq!((drag.frame().w, drag.frame().h), (280, 600));
+    // Held at the top edge: the top and bottom docks' size, not the side dock's.
+    let mut drag = Drag::begin((700, 310), window(600, 300, FLOATING), None);
+    let _ = drag.moved((900, 0), &on(0));
+    let _ = drag.moved((900, 0), &on(250));
+    assert_eq!(drag.phase(), DragPhase::Preview(DockEdge::Top));
+    assert_eq!((drag.frame().w, drag.frame().h), (420, 260));
+    assert_eq!(
+        drag.released(&on(300)),
+        DragEnd::Docked(DockEdge::Top, drag.frame())
+    );
 }

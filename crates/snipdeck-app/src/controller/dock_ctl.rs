@@ -10,7 +10,10 @@ use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 
 use super::{Controller, Effect, Library, PanelMenu, UseResult, neutral};
 use crate::{
-    dock::{self, DockAction, DockEvent, DockState, Drag, DragCtx, DragEnd, DragPhase, DragStep},
+    dock::{
+        self, DockAction, DockEvent, DockState, Drag, DragCtx, DragEnd, DragPhase, DragSizes,
+        DragStep,
+    },
     frame::{self, Monitor, Rect},
     host::ClipboardText,
     settings::{DockEdge, DockSettings, DockTrigger, PanelGeometry},
@@ -27,11 +30,10 @@ fn zone(logical: u32, scale: f32) -> i64 {
     i64::from(frame::scaled(logical, scale))
 }
 
-/// Where a drag step happens: the monitor and the Panel's two sizes there (physical pixels).
+/// Where a drag step happens: the monitor and the Panel's sizes there (physical pixels).
 struct DragPlace {
     monitor: Monitor,
-    floating: (u32, u32),
-    docked: (u32, u32),
+    sizes: DragSizes,
 }
 
 impl<S, C, K, T> Controller<S, C, K, T>
@@ -118,16 +120,49 @@ where
         let monitor = self.monitor.as_ref()?;
         let geometry = self.stored_geometry(monitor)?;
         let edge = geometry.edge?;
-        let open = frame::docked_rect(
+        let open = self.dock_open(geometry, edge, monitor);
+        let tab = frame::handle_rect(edge, monitor.work_area, open.along(edge), monitor.scale);
+        Some((open, tab, edge))
+    }
+
+    /// The size the Panel docks at on `edge` of `monitor`, from what `geometry` remembers there:
+    /// the size it was given on that kind of edge, else its floating size, never a full-height
+    /// one the user did not choose ([`frame::dock_size`]). `along` is where it will sit, `None`
+    /// for a dock that was stored without one.
+    pub(super) fn dock_size(
+        &self,
+        geometry: &PanelGeometry,
+        edge: DockEdge,
+        monitor: &Monitor,
+        along: Option<i32>,
+    ) -> (u32, u32) {
+        frame::dock_size(
+            edge,
+            geometry.docked_size(edge),
+            (geometry.w, geometry.h),
+            monitor.work_area,
+            monitor.scale,
+            DEFAULT_HEIGHT,
+            along,
+            self.settings.dock.full_edge,
+        )
+    }
+
+    /// The open Panel's frame on `monitor`, docked to `edge` as `geometry` remembers it.
+    pub(super) fn dock_open(
+        &self,
+        geometry: &PanelGeometry,
+        edge: DockEdge,
+        monitor: &Monitor,
+    ) -> Rect {
+        frame::docked_rect(
             edge,
             monitor.work_area,
-            geometry.docked.unwrap_or((geometry.w, geometry.h)),
+            self.dock_size(geometry, edge, monitor, geometry.along),
             monitor.scale,
             geometry.along,
             self.settings.dock.full_edge,
-        );
-        let tab = frame::handle_rect(edge, monitor.work_area, open.along(edge), monitor.scale);
-        Some((open, tab, edge))
+        )
     }
 
     /// The Panel is in use, so it stays out whatever the pointer does: it has the keyboard, or
@@ -253,15 +288,7 @@ where
         let Some(edge) = geometry.edge else {
             return Vec::new();
         };
-        let size = geometry.docked.unwrap_or((geometry.w, geometry.h));
-        let open = frame::docked_rect(
-            edge,
-            monitor.work_area,
-            size,
-            monitor.scale,
-            geometry.along,
-            self.settings.dock.full_edge,
-        );
+        let open = self.dock_open(geometry, edge, monitor);
         let rect = if collapsed {
             frame::handle_rect(edge, monitor.work_area, open.along(edge), monitor.scale)
         } else {
@@ -373,18 +400,20 @@ where
         })
     }
 
-    /// The Panel's floating and docked sizes on `monitor`. A monitor it never was on gets the
-    /// sizes of the one it is on, at that monitor's scale (the same logical size).
-    fn sizes_on(&self, monitor: &Monitor) -> ((u32, u32), (u32, u32)) {
-        let sizes = |g: &PanelGeometry| ((g.w, g.h), g.docked.unwrap_or((g.w, g.h)));
-        if let Some(g) = self.stored_geometry(monitor) {
-            return sizes(g);
-        }
-        let Some(from) = self.monitor.as_ref().filter(|m| m.id != monitor.id) else {
-            return sizes(&self.geometry_on(monitor));
+    /// The Panel's floating and docked sizes on `monitor`, for a drag. A monitor it never was
+    /// on gets the sizes of the one it is on, at that monitor's scale (the same logical size).
+    fn sizes_on(&self, monitor: &Monitor) -> DragSizes {
+        let (geometry, ratio) = if let Some(g) = self.stored_geometry(monitor) {
+            (g.clone(), 1.0)
+        } else if let Some(from) = self.monitor.as_ref().filter(|m| m.id != monitor.id) {
+            let valid = |s: f32| if s.is_finite() && s > 0.0 { s } else { 1.0 };
+            (
+                self.geometry_on(from),
+                f64::from(valid(monitor.scale)) / f64::from(valid(from.scale)),
+            )
+        } else {
+            (self.geometry_on(monitor), 1.0)
         };
-        let valid = |s: f32| if s.is_finite() && s > 0.0 { s } else { 1.0 };
-        let ratio = f64::from(valid(monitor.scale)) / f64::from(valid(from.scale));
         #[allow(
             clippy::cast_possible_truncation,
             clippy::cast_sign_loss,
@@ -396,8 +425,20 @@ where
                 (f64::from(h) * ratio).round() as u32,
             )
         };
-        let (floating, docked) = sizes(&self.geometry_on(from));
-        (convert(floating), convert(docked))
+        let here = PanelGeometry {
+            w: convert((geometry.w, geometry.h)).0,
+            h: convert((geometry.w, geometry.h)).1,
+            docked: geometry.docked.map(convert),
+            docked_flat: geometry.docked_flat.map(convert),
+            ..geometry
+        };
+        // The drag chooses where the Panel sits along the edge, so a side dock's height is the
+        // user's own; a top or bottom dock is still never as tall as the screen.
+        DragSizes {
+            floating: (here.w, here.h),
+            side: self.dock_size(&here, DockEdge::Left, monitor, Some(0)),
+            flat: self.dock_size(&here, DockEdge::Top, monitor, Some(0)),
+        }
     }
 
     /// Docks the Panel to `edge` on its monitor, or lets it float again (`None`): the menu and
@@ -419,11 +460,20 @@ where
         let mut geometry = self.geometry_on(&monitor);
         let floating = frame::clamp(Rect::of(&geometry), &monitor);
         let place = if let Some(edge) = edge {
-            let size = geometry.docked.unwrap_or((floating.w, floating.h));
             // Where it was on that edge before, else level with where it floats.
             let along = geometry
                 .along_for(edge)
                 .unwrap_or_else(|| floating.along(edge).start);
+            let size = self.dock_size(
+                &PanelGeometry {
+                    w: floating.w,
+                    h: floating.h,
+                    ..geometry.clone()
+                },
+                edge,
+                &monitor,
+                Some(along),
+            );
             let dock = |full_edge| {
                 frame::docked_rect(
                     edge,
@@ -437,7 +487,7 @@ where
             // Remembered at its own height even when the full edge is on, so that turning that
             // off gives the height back.
             let own = dock(false);
-            geometry.docked = Some((own.w, own.h));
+            geometry.set_docked_size(edge, (own.w, own.h));
             geometry.along = Some(own.along(edge).start);
             dock(self.settings.dock.full_edge)
         } else {
@@ -492,12 +542,8 @@ where
         } else {
             self.target.monitor_at(cursor.0, cursor.1).or(own)
         }?;
-        let (floating, docked) = self.sizes_on(&monitor);
-        Some(DragPlace {
-            monitor,
-            floating,
-            docked,
-        })
+        let sizes = self.sizes_on(&monitor);
+        Some(DragPlace { monitor, sizes })
     }
 
     /// Pointer down on the Panel's header: a drag starts. `window` is the Panel's frame now and
@@ -529,20 +575,14 @@ where
         let Some(cursor) = self.target.cursor().or(pointer) else {
             return Vec::new();
         };
-        let Some(DragPlace {
-            monitor,
-            floating,
-            docked,
-        }) = self.drag_ctx(&drag, cursor)
-        else {
+        let Some(DragPlace { monitor, sizes }) = self.drag_ctx(&drag, cursor) else {
             return Vec::new();
         };
         let step = drag.moved(
             cursor,
             &DragCtx {
                 monitor: &monitor,
-                floating,
-                docked,
+                sizes,
                 full_edge: self.settings.dock.full_edge,
                 now: self.clock.now(),
             },
@@ -562,18 +602,13 @@ where
         let Some(drag) = self.drag.take() else {
             return Vec::new();
         };
-        let Some(DragPlace {
-            monitor,
-            floating,
-            docked,
-        }) = self.drag_ctx(&drag, drag.cursor())
-        else {
+        let Some(DragPlace { monitor, sizes }) = self.drag_ctx(&drag, drag.cursor()) else {
             return Vec::new();
         };
+        let floating = sizes.floating;
         let end = drag.released(&DragCtx {
             monitor: &monitor,
-            floating,
-            docked,
+            sizes,
             full_edge: self.settings.dock.full_edge,
             now: self.clock.now(),
         });
@@ -605,12 +640,12 @@ where
                 let own = frame::docked_rect(
                     edge,
                     monitor.work_area,
-                    docked,
+                    sizes.docked_on(edge),
                     monitor.scale,
                     Some(drag.frame().along(edge).start),
                     false,
                 );
-                geometry.docked = Some((own.w, own.h));
+                geometry.set_docked_size(edge, (own.w, own.h));
                 geometry.along = Some(if self.settings.dock.full_edge && edge.vertical() {
                     stored
                         .as_ref()

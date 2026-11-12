@@ -139,6 +139,7 @@ impl Rect {
             edge,
             pre_dock: None,
             docked: None,
+            docked_flat: None,
             along: edge.map(|e| self.along(e).start),
             other_along: Vec::new(),
         }
@@ -346,6 +347,42 @@ pub fn dock_resize_allowed(edge: Edge, dock: DockEdge, full_edge: bool) -> bool 
         DockEdge::Bottom => Edge::Top,
     };
     !(full_edge && dock.vertical() && edge != inner)
+}
+
+/// The size (width, height) a Panel docks at on `edge`: the `stored` size it was given on that
+/// kind of edge, else its `floating` size, with a full-height size cut where it is not one the
+/// user chose. `default_height` is in logical pixels.
+///
+/// On a top or bottom edge a Panel as tall as the work area would cover the whole screen, with
+/// its far side out of reach, so it gets its floating height instead, or the default height
+/// when it floats that tall too. On a left or right edge a full-height size with no `along`
+/// is what an older version stored for every side dock: with `full_edge` off it is cut the same
+/// way. A side dock the user placed (it has an `along`) keeps whatever height it was given.
+#[must_use]
+#[allow(clippy::too_many_arguments, reason = "the dock's whole stored state")]
+pub fn dock_size(
+    edge: DockEdge,
+    stored: Option<(u32, u32)>,
+    floating: (u32, u32),
+    work_area: Rect,
+    scale: f32,
+    default_height: u32,
+    along: Option<i32>,
+    full_edge: bool,
+) -> (u32, u32) {
+    // Within a pixel or two of the work area's height: a full-height frame, or rounding of one.
+    let full = |h: u32| h.saturating_add(2) >= work_area.h;
+    let size = stored.unwrap_or(floating);
+    let legacy = edge.vertical() && !full_edge && along.is_none();
+    if !full(size.1) || (edge.vertical() && !legacy) {
+        return size;
+    }
+    let height = if full(floating.1) {
+        scaled(default_height, scale).min(work_area.h / 2)
+    } else {
+        floating.1
+    };
+    (size.0, height)
 }
 
 /// The work area last read for each monitor: the system sometimes fails to answer, and the
@@ -1009,6 +1046,133 @@ mod tests {
         assert!(dock_resize_allowed(Left, DockEdge::Right, true));
         // Top and bottom docks are not affected by it.
         assert!(dock_resize_allowed(Left, DockEdge::Top, true));
+    }
+
+    #[test]
+    fn an_old_full_height_side_dock_is_compact_when_the_full_edge_is_off() {
+        let work = area();
+        let old = Some((320, work.h));
+        assert_eq!(
+            dock_size(
+                DockEdge::Left,
+                old,
+                (320, work.h),
+                work,
+                1.0,
+                480,
+                None,
+                false
+            ),
+            (320, 480),
+            "it floats full height too: the default height"
+        );
+        assert_eq!(
+            dock_size(
+                DockEdge::Right,
+                old,
+                (340, 500),
+                work,
+                1.0,
+                480,
+                None,
+                false
+            ),
+            (320, 500),
+            "the height it floats at"
+        );
+        // On, or with an along the user chose, it is left alone.
+        assert_eq!(
+            dock_size(DockEdge::Left, old, (340, 500), work, 1.0, 480, None, true),
+            (320, work.h)
+        );
+        assert_eq!(
+            dock_size(
+                DockEdge::Left,
+                old,
+                (340, 500),
+                work,
+                1.0,
+                480,
+                Some(0),
+                false
+            ),
+            (320, work.h)
+        );
+    }
+
+    #[test]
+    fn a_top_or_bottom_dock_is_never_as_tall_as_the_screen() {
+        let work = area();
+        for edge in [DockEdge::Top, DockEdge::Bottom] {
+            assert_eq!(
+                dock_size(
+                    edge,
+                    Some((400, work.h)),
+                    (320, 500),
+                    work,
+                    1.0,
+                    480,
+                    Some(600),
+                    true
+                ),
+                (400, 500),
+                "{edge:?}: the height it floats at"
+            );
+            assert_eq!(
+                dock_size(
+                    edge,
+                    None,
+                    (320, work.h - 1),
+                    work,
+                    1.0,
+                    480,
+                    Some(600),
+                    false
+                ),
+                (320, 480),
+                "{edge:?}: it floats that tall too, so the default height"
+            );
+            assert_eq!(
+                dock_size(edge, None, (320, work.h), work, 1.5, 480, None, false),
+                (320, work.h / 2),
+                "{edge:?}: the default height at 150% is 720, held to half the work area"
+            );
+        }
+    }
+
+    #[test]
+    fn the_dock_size_leaves_everything_else_alone() {
+        let work = area();
+        for edge in [
+            DockEdge::Left,
+            DockEdge::Right,
+            DockEdge::Top,
+            DockEdge::Bottom,
+        ] {
+            for along in [None, Some(40)] {
+                for full_edge in [false, true] {
+                    assert_eq!(
+                        dock_size(
+                            edge,
+                            Some((300, 700)),
+                            (320, 500),
+                            work,
+                            1.0,
+                            480,
+                            along,
+                            full_edge
+                        ),
+                        (300, 700),
+                        "{edge:?} {along:?} {full_edge}: the size it was given there"
+                    );
+                    assert_eq!(
+                        dock_size(edge, None, (320, 500), work, 1.0, 480, along, full_edge),
+                        (320, 500),
+                        "{edge:?} {along:?} {full_edge}: never sized there, its floating size"
+                    );
+                }
+            }
+        }
     }
 
     #[test]

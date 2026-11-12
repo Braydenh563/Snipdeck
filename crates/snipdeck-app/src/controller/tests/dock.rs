@@ -1345,3 +1345,173 @@ fn each_edge_remembers_where_the_panel_sat_along_it() {
     let back = Settings::from_json(&w.ctl.settings().to_json());
     assert_eq!(back.panel_geometry, w.ctl.settings().panel_geometry);
 }
+
+#[test]
+fn moving_a_side_dock_to_the_bottom_does_not_bring_the_full_height_along() {
+    // What an older version stored for a side dock: the work area's full height.
+    let mut w = floating(DockTrigger::Off);
+    let work = display().work_area;
+    w.ctl.update_settings(|s| {
+        s.remember_panel_geometry(crate::settings::PanelGeometry {
+            pre_dock: Some((FLOATING.w, FLOATING.h)),
+            ..Rect {
+                x: 0,
+                y: 0,
+                w: FLOATING.w,
+                h: work.h,
+            }
+            .geometry(&display(), Some(DockEdge::Left))
+        });
+    });
+    assert_eq!(
+        w.ctl.settings().panel_geometry[0].docked,
+        Some((FLOATING.w, work.h)),
+        "a side dock is stored full height"
+    );
+    w.ctl.dock_to(Some(DockEdge::Bottom));
+    let pending = w.ctl.take_pending();
+    let [Effect::PlaceWindow(rect)] = pending.as_slice() else {
+        panic!("one placement")
+    };
+    assert_eq!(rect.h, FLOATING.h, "the height it floats at");
+    assert_eq!(
+        i64::from(rect.y) + i64::from(rect.h),
+        i64::from(work.y) + i64::from(work.h),
+        "flush with the bottom of the work area"
+    );
+    // Shown again later, a stored frame of the same kind still gives the same height.
+    assert_eq!(w.ctl.placement(&display()).map(|r| r.h), Some(FLOATING.h));
+}
+
+#[test]
+fn a_stored_bottom_dock_that_was_saved_full_height_reopens_at_the_panel_height() {
+    // What an older version could leave in settings.json: edge Bottom, full height, no pre_dock.
+    let mut w = floating(DockTrigger::Off);
+    let work = display().work_area;
+    w.ctl.update_settings(|s| {
+        s.remember_panel_geometry(
+            Rect {
+                x: 600,
+                y: work.y,
+                w: 320,
+                h: work.h,
+            }
+            .geometry(&display(), Some(DockEdge::Bottom)),
+        );
+    });
+    let rect = w.ctl.placement(&display()).expect("a stored frame");
+    assert_eq!(rect.h, 480, "the default height, not the whole screen");
+    assert_eq!(
+        i64::from(rect.y) + i64::from(rect.h),
+        i64::from(work.y) + i64::from(work.h)
+    );
+}
+
+#[test]
+fn an_old_full_height_side_dock_opens_compact_when_the_full_edge_is_off() {
+    let mut w = floating(DockTrigger::Off);
+    let work = display().work_area;
+    w.ctl.update_settings(|s| {
+        s.remember_panel_geometry(
+            Rect {
+                x: 0,
+                y: 0,
+                w: FLOATING.w,
+                h: work.h,
+            }
+            .geometry(&display(), Some(DockEdge::Left)),
+        );
+        s.panel_geometry[0].along = None;
+    });
+    let placed = w.ctl.placement(&display()).expect("a place");
+    assert_eq!((placed.w, placed.h), (FLOATING.w, 480));
+    assert_eq!(
+        placed.y,
+        i32::try_from((work.h - 480) / 2).unwrap(),
+        "centred"
+    );
+    w.ctl.set_dock_full_edge(true);
+    assert_eq!(w.ctl.placement(&display()).map(|r| r.h), Some(work.h));
+}
+
+#[test]
+fn a_side_dock_and_a_top_or_bottom_dock_each_keep_the_size_they_were_given() {
+    let mut w = floating(DockTrigger::Off);
+    let work = display().work_area;
+    // Docked right and made tall and narrow there.
+    w.ctl.dock_to(Some(DockEdge::Right));
+    w.ctl.take_pending();
+    let tall = Rect {
+        x: 1620,
+        y: 40,
+        w: 300,
+        h: 900,
+    };
+    assert_eq!(w.ctl.frame_changed(&display(), tall), Vec::new());
+    // To the bottom: never sized there, so its floating size, not the tall side dock's.
+    w.ctl.dock_to(Some(DockEdge::Bottom));
+    let pending = w.ctl.take_pending();
+    let [Effect::PlaceWindow(bottom)] = pending.as_slice() else {
+        panic!("one placement")
+    };
+    assert_eq!((bottom.w, bottom.h), (FLOATING.w, FLOATING.h));
+    // Made wide and low there.
+    let low = Rect {
+        x: 500,
+        y: i32::try_from(work.h).unwrap() - 260,
+        w: 440,
+        h: 260,
+    };
+    assert_eq!(w.ctl.frame_changed(&display(), low), Vec::new());
+    // Back to the right: the tall, narrow size, where it was along that edge.
+    w.ctl.dock_to(Some(DockEdge::Right));
+    assert_eq!(w.ctl.take_pending(), place(tall));
+    // To the top: the same kind of edge as the bottom, so the size it has there.
+    w.ctl.dock_to(Some(DockEdge::Top));
+    let pending = w.ctl.take_pending();
+    let [Effect::PlaceWindow(top)] = pending.as_slice() else {
+        panic!("one placement")
+    };
+    assert_eq!((top.w, top.h, top.y), (440, 260, 0));
+    // Both sizes are kept, apart.
+    let g = &w.ctl.settings().panel_geometry[0];
+    assert_eq!(
+        (g.docked, g.docked_flat),
+        (Some((300, 900)), Some((440, 260)))
+    );
+    assert_eq!((g.w, g.h), (FLOATING.w, FLOATING.h), "nor the floating one");
+}
+
+#[test]
+fn a_drag_to_the_bottom_edge_never_shows_a_panel_as_tall_as_the_screen() {
+    // A Panel that floats as tall as the screen, held at the bottom edge.
+    let mut w = floating(DockTrigger::Off);
+    let work = display().work_area;
+    w.ctl.frame_changed(
+        &display(),
+        Rect {
+            h: work.h,
+            y: 0,
+            ..FLOATING
+        },
+    );
+    press(
+        &mut w,
+        (700, 10),
+        Rect {
+            y: 0,
+            h: work.h,
+            ..FLOATING
+        },
+    );
+    pull(&mut w, (700, 600));
+    let bottom = i32::try_from(work.h).unwrap() - 1;
+    pull(&mut w, (700, bottom));
+    advance(&w, 1000);
+    let shown = pull(&mut w, (700, bottom));
+    let [Effect::PlaceWindow(rect)] = shown.as_slice() else {
+        panic!("the preview: {shown:?}")
+    };
+    assert_eq!(rect.h, 480, "the default height: it floats full height too");
+    assert_eq!(i64::from(rect.y) + i64::from(rect.h), i64::from(work.h));
+}

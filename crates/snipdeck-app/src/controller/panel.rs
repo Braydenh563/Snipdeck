@@ -740,6 +740,7 @@ where
             }
             let geometry = PanelGeometry {
                 docked: stored.as_ref().and_then(|g| g.docked),
+                docked_flat: stored.as_ref().and_then(|g| g.docked_flat),
                 ..clamped.geometry(monitor, None)
             }
             .remembering(stored.as_ref());
@@ -773,10 +774,10 @@ where
         if full {
             // A full-edge dock reports the work area's height back; the Panel's own height and
             // place along the edge stay remembered, so turning the full edge off gives them back.
-            let (_, h) = old.docked.unwrap_or((old.w, old.h));
-            geometry.docked = Some((place.w, h));
+            let (_, h) = self.dock_size(old, edge, monitor, old.along);
+            geometry.set_docked_size(edge, (place.w, h));
         } else {
-            geometry.docked = Some((place.w, place.h));
+            geometry.set_docked_size(edge, (place.w, place.h));
             geometry.along = Some(place.along(edge).start);
         }
         self.update_settings(|s| s.remember_panel_geometry(geometry));
@@ -798,14 +799,7 @@ where
             return Some(frame::clamp(Rect::of(last), monitor));
         };
         Some(match g.edge {
-            Some(edge) => frame::docked_rect(
-                edge,
-                monitor.work_area,
-                g.docked.unwrap_or((g.w, g.h)),
-                monitor.scale,
-                g.along,
-                self.settings.dock.full_edge,
-            ),
+            Some(edge) => self.dock_open(g, edge, monitor),
             None => frame::clamp(Rect::of(g), monitor),
         })
     }

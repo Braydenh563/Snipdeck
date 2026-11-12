@@ -127,8 +127,10 @@ impl DockState {
             (Self::Collapsed | Self::Parked | Self::Revealing { .. }, DockEvent::Hotkey) => {
                 self.expand()
             }
-            // The pointer is off the handle: from now on resting on it is asking for the Panel.
-            (Self::Parked, DockEvent::HandleHover(false)) => {
+            // The pointer is off the handle. A Panel that just collapsed under it listens from
+            // now on: resting on the handle is asking for the Panel again. One that was about to
+            // open does not.
+            (Self::Parked | Self::Revealing { .. }, DockEvent::HandleHover(false)) => {
                 *self = Self::Collapsed;
                 DockAction::None
             }
@@ -156,10 +158,6 @@ impl DockState {
                     *self = Self::Revealing { since: now };
                     DockAction::None
                 }
-            }
-            (Self::Revealing { .. }, DockEvent::HandleHover(false)) => {
-                *self = Self::Collapsed;
-                DockAction::None
             }
             (Self::Revealing { since }, DockEvent::Tick)
                 if elapsed_ms(now, since) >= hover_wait =>
@@ -221,16 +219,38 @@ pub enum DragPhase {
     Slide(DockEdge),
 }
 
+/// The Panel's sizes on a monitor (physical pixels): docking and undocking only ever choose
+/// between them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DragSizes {
+    /// While it floats.
+    pub floating: (u32, u32),
+    /// Docked to the left or the right edge.
+    pub side: (u32, u32),
+    /// Docked to the top or the bottom edge.
+    pub flat: (u32, u32),
+}
+
+impl DragSizes {
+    /// The size docked to `edge`.
+    #[must_use]
+    pub fn docked_on(&self, edge: DockEdge) -> (u32, u32) {
+        if edge.vertical() {
+            self.side
+        } else {
+            self.flat
+        }
+    }
+}
+
 /// What a drag step needs to know about the monitor it is on. For [`DragPhase::Slide`] that is
 /// the monitor the Panel is docked on; otherwise the one under the cursor.
 #[derive(Debug, Clone, Copy)]
 pub struct DragCtx<'a> {
     /// The monitor.
     pub monitor: &'a Monitor,
-    /// The Panel's floating size there (physical pixels).
-    pub floating: (u32, u32),
-    /// Its docked size there.
-    pub docked: (u32, u32),
+    /// The Panel's sizes there.
+    pub sizes: DragSizes,
     /// "Docked panel uses the full edge".
     pub full_edge: bool,
     /// The moment of the step, from the injected clock.
@@ -339,24 +359,27 @@ impl Drag {
         // The cursor keeps its place across the header when the width changes under it.
         // Measured from the window the header was pressed on: a preview in between (another
         // width) must not shift it.
-        let (old_w, new_w) = (i64::from(self.grab_w.max(1)), i64::from(ctx.floating.0));
+        let (old_w, new_w) = (
+            i64::from(self.grab_w.max(1)),
+            i64::from(ctx.sizes.floating.0),
+        );
         let across = i64::from(self.grab.0) * new_w / old_w;
         let limit = |v: i64, len: u32| {
             i32::try_from(v.clamp(0, i64::from(len.saturating_sub(1)))).unwrap_or(0)
         };
         self.grab = (
-            limit(across, ctx.floating.0),
-            limit(i64::from(self.grab.1), ctx.floating.1),
+            limit(across, ctx.sizes.floating.0),
+            limit(i64::from(self.grab.1), ctx.sizes.floating.1),
         );
-        self.grab_w = ctx.floating.0;
+        self.grab_w = ctx.sizes.floating.0;
         self.phase = DragPhase::Float;
         self.candidate = None;
         let (x, y) = sub(self.cursor, self.grab);
         self.frame = Rect {
             x,
             y,
-            w: ctx.floating.0,
-            h: ctx.floating.1,
+            w: ctx.sizes.floating.0,
+            h: ctx.sizes.floating.1,
         };
         DragStep::Place(self.frame)
     }
@@ -366,7 +389,7 @@ impl Drag {
         frame::docked_rect(
             edge,
             ctx.monitor.work_area,
-            ctx.docked,
+            ctx.sizes.docked_on(edge),
             ctx.monitor.scale,
             Some(if edge.vertical() { y } else { x }),
             ctx.full_edge,
@@ -455,8 +478,8 @@ impl Drag {
             DragPhase::Preview(edge) | DragPhase::Slide(edge) => DragEnd::Docked(edge, self.frame),
             DragPhase::Float => DragEnd::Floating(frame::clamp(
                 Rect {
-                    w: ctx.floating.0,
-                    h: ctx.floating.1,
+                    w: ctx.sizes.floating.0,
+                    h: ctx.sizes.floating.1,
                     ..self.frame
                 },
                 ctx.monitor,

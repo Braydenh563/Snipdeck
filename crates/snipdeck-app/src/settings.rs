@@ -59,11 +59,15 @@ pub struct PanelGeometry {
     /// `w h`; never written.
     #[serde(default, skip_serializing)]
     pub pre_dock: Option<(u32, u32)>,
-    /// The Panel's width and height while docked on this monitor. `x y w h` are its floating
-    /// frame, docked or not, so docking and undocking never change either size. Absent until
-    /// the Panel is docked there: it then docks at its floating size.
+    /// The Panel's width and height while docked to the left or right edge of this monitor.
+    /// `x y w h` are its floating frame, docked or not, so docking and undocking never change
+    /// either size. Absent until the Panel is docked there: it then docks at its floating size.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub docked: Option<(u32, u32)>,
+    /// The same for the top or bottom edge. Kept apart from the side docks' size: a tall side
+    /// dock is no guide to a dock that lies along the top or the bottom.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub docked_flat: Option<(u32, u32)>,
     /// Where the docked Panel starts along its edge (its top on a left or right edge, its left
     /// on a top or bottom one), in physical pixels. Only set while docked; absent in older files,
     /// which read as none: centred (or full height).
@@ -92,6 +96,25 @@ impl PanelGeometry {
         others.retain(|(e, _)| Some(*e) != self.edge);
         self.other_along = others;
         self
+    }
+
+    /// The size the Panel was given while docked to `edge` or the edge opposite, if it ever was.
+    #[must_use]
+    pub fn docked_size(&self, edge: DockEdge) -> Option<(u32, u32)> {
+        if edge.vertical() {
+            self.docked
+        } else {
+            self.docked_flat
+        }
+    }
+
+    /// Remembers `size` as the Panel's size while docked to `edge` or the edge opposite.
+    pub fn set_docked_size(&mut self, edge: DockEdge, size: (u32, u32)) {
+        if edge.vertical() {
+            self.docked = Some(size);
+        } else {
+            self.docked_flat = Some(size);
+        }
     }
 
     /// Where the Panel was last docked along `edge`: the live value when it is docked there, the
@@ -1134,8 +1157,10 @@ impl Settings {
             g.monitor_id = id.into();
             // An older file: `w h` was the docked size and `pre_dock` the floating one.
             if let Some(floating) = g.pre_dock.take() {
-                if g.edge.is_some() && g.docked.is_none() {
-                    g.docked = Some((g.w, g.h));
+                if let Some(edge) = g.edge
+                    && g.docked_size(edge).is_none()
+                {
+                    g.set_docked_size(edge, (g.w, g.h));
                 }
                 if floating.0 > 0 && floating.1 > 0 {
                     (g.w, g.h) = floating;
@@ -1143,10 +1168,12 @@ impl Settings {
             }
             g.w = g.w.min(PANEL_SIDE_LIMIT);
             g.h = g.h.min(PANEL_SIDE_LIMIT);
-            g.docked = g
-                .docked
-                .filter(|(w, h)| *w > 0 && *h > 0)
-                .map(|(w, h)| (w.min(PANEL_SIDE_LIMIT), h.min(PANEL_SIDE_LIMIT)));
+            let usable = |size: Option<(u32, u32)>| {
+                size.filter(|(w, h)| *w > 0 && *h > 0)
+                    .map(|(w, h)| (w.min(PANEL_SIDE_LIMIT), h.min(PANEL_SIDE_LIMIT)))
+            };
+            g.docked = usable(g.docked);
+            g.docked_flat = usable(g.docked_flat);
             kept.retain(|k| k.monitor_id != g.monitor_id);
             kept.push(g);
         }
@@ -1481,9 +1508,31 @@ mod tests {
             edge: Some(DockEdge::Right),
             pre_dock: None,
             docked: Some((320, 900)),
+            docked_flat: Some((440, 300)),
             along: Some(60),
             other_along: vec![(DockEdge::Top, 300)],
         });
+        let back = Settings::from_json(&settings.to_json());
+        assert_eq!(back.panel_geometry, settings.panel_geometry);
+    }
+
+    #[test]
+    fn an_old_top_or_bottom_dock_keeps_its_size_apart_from_a_side_docks() {
+        let settings = Settings::from_json(
+            r#"{"panel_geometry":[
+                {"monitor_id":"D1","x":600,"y":740,"w":400,"h":300,"edge":"bottom","pre_dock":[320,480],"along":600}
+            ]}"#,
+        );
+        let g = &settings.panel_geometry[0];
+        assert_eq!((g.w, g.h), (320, 480), "the floating size it had before");
+        assert_eq!(
+            g.docked_flat,
+            Some((400, 300)),
+            "the size of its bottom dock"
+        );
+        assert_eq!(g.docked, None, "no side dock was ever sized here");
+        assert_eq!(g.docked_size(DockEdge::Top), Some((400, 300)));
+        assert_eq!(g.docked_size(DockEdge::Left), None);
         let back = Settings::from_json(&settings.to_json());
         assert_eq!(back.panel_geometry, settings.panel_geometry);
     }
@@ -1633,6 +1682,7 @@ mod tests {
             edge: None,
             pre_dock: None,
             docked: None,
+            docked_flat: None,
             along: None,
             other_along: Vec::new(),
         };

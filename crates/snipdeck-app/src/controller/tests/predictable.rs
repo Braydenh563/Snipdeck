@@ -141,6 +141,7 @@ fn a_stored_frame_larger_than_the_work_area_is_shrunk_to_it() {
             edge: None,
             pre_dock: None,
             docked: None,
+            docked_flat: None,
             along: None,
             other_along: Vec::new(),
         });
