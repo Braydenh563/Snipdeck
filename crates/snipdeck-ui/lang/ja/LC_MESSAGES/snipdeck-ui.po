@@ -3547,6 +3547,9 @@ msgstr "折りたたみ 展開 隠す 表示 切り替え セクション"
 msgid "color picker palette hex rgb hsl swatch contrast scheme"
 msgstr "カラー ピッカー パレット 色 hex rgb hsl スウォッチ コントラスト 配色 color picker"
 
+msgid "colors palette swatches list library"
+msgstr "カラー 色 パレット スウォッチ リスト ライブラリ colors palette swatches"
+
 msgid "colour change"
 msgstr "色の変更"
 

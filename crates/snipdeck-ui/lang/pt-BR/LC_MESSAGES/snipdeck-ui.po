@@ -3556,6 +3556,9 @@ msgstr "recolher expandir ocultar mostrar alternar seção"
 msgid "color picker palette hex rgb hsl swatch contrast scheme"
 msgstr "cor cores seletor paleta hex rgb hsl amostra contraste esquema color picker"
 
+msgid "colors palette swatches list library"
+msgstr "cores paleta amostras lista biblioteca colors palette swatches"
+
 msgid "colour change"
 msgstr "mudança de cor"
 

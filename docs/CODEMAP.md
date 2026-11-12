@@ -281,42 +281,42 @@ command_of | crates/snipdeck-app/src/command_binding.rs:100
 ### crates/snipdeck-app/src/commands.rs
 
 Command | crates/snipdeck-app/src/commands.rs:16
-impl Command | crates/snipdeck-app/src/commands.rs:109
-from_id | crates/snipdeck-app/src/commands.rs:161
-id | crates/snipdeck-app/src/commands.rs:169
-shortcut | crates/snipdeck-app/src/commands.rs:180
-needs_item | crates/snipdeck-app/src/commands.rs:211
-chord_text | crates/snipdeck-app/src/commands.rs:227
-chord_caps | crates/snipdeck-app/src/commands.rs:233
-caps | crates/snipdeck-app/src/commands.rs:243
-spoken | crates/snipdeck-app/src/commands.rs:266
-Context | crates/snipdeck-app/src/commands.rs:289
-CursorGroup | crates/snipdeck-app/src/commands.rs:312
-Entry | crates/snipdeck-app/src/commands.rs:321
-available | crates/snipdeck-app/src/commands.rs:337
-rank | crates/snipdeck-app/src/commands.rs:362
-entries | crates/snipdeck-app/src/commands.rs:381
-tests | crates/snipdeck-app/src/commands.rs:418
-texts | crates/snipdeck-app/src/commands.rs:421
-ctx | crates/snipdeck-app/src/commands.rs:465
-labels | crates/snipdeck-app/src/commands.rs:479
-the_catalogue_ids_round_trip | crates/snipdeck-app/src/commands.rs:484
-an_empty_query_lists_what_applies_in_catalogue_order | crates/snipdeck-app/src/commands.rs:494
-palette_marks_label_prefix | crates/snipdeck-app/src/commands.rs:503
-item_commands_follow_the_cursor_and_the_trash | crates/snipdeck-app/src/commands.rs:516
-duplicate_is_offered_for_an_item_outside_the_trash_and_has_ctrl_d | crates/snipdeck-app/src/commands.rs:531
-the_filter_matches_names_and_synonyms_ignoring_case | crates/snipdeck-app/src/commands.rs:548
-a_name_match_outranks_a_synonym_match | crates/snipdeck-app/src/commands.rs:561
-take_screenshot_is_found_by_its_name_and_a_synonym | crates/snipdeck-app/src/commands.rs:580
-every_word_of_the_query_must_match | crates/snipdeck-app/src/commands.rs:591
-global_hotkeys_show_the_configured_chords | crates/snipdeck-app/src/commands.rs:599
-texts_with_groups | crates/snipdeck-app/src/commands.rs:619
-group_commands_are_offered_where_the_code_performs_them_and_carry_their_keys | crates/snipdeck-app/src/commands.rs:639
-new_list_and_new_item_have_their_own_chords | crates/snipdeck-app/src/commands.rs:701
-the_theme_commands_are_found_by_theme_dark_and_light_and_have_no_shortcut | crates/snipdeck-app/src/commands.rs:714
-paste_next_and_select_all_are_in_the_palette_with_their_keys | crates/snipdeck-app/src/commands.rs:733
-symbols_is_found_by_name_and_offered_only_while_the_tab_is_on | crates/snipdeck-app/src/commands.rs:753
-caps_and_speech_of_a_shortcut | crates/snipdeck-app/src/commands.rs:768
+impl Command | crates/snipdeck-app/src/commands.rs:111
+from_id | crates/snipdeck-app/src/commands.rs:164
+id | crates/snipdeck-app/src/commands.rs:172
+shortcut | crates/snipdeck-app/src/commands.rs:183
+needs_item | crates/snipdeck-app/src/commands.rs:214
+chord_text | crates/snipdeck-app/src/commands.rs:230
+chord_caps | crates/snipdeck-app/src/commands.rs:236
+caps | crates/snipdeck-app/src/commands.rs:246
+spoken | crates/snipdeck-app/src/commands.rs:269
+Context | crates/snipdeck-app/src/commands.rs:292
+CursorGroup | crates/snipdeck-app/src/commands.rs:315
+Entry | crates/snipdeck-app/src/commands.rs:324
+available | crates/snipdeck-app/src/commands.rs:340
+rank | crates/snipdeck-app/src/commands.rs:365
+entries | crates/snipdeck-app/src/commands.rs:384
+tests | crates/snipdeck-app/src/commands.rs:421
+texts | crates/snipdeck-app/src/commands.rs:424
+ctx | crates/snipdeck-app/src/commands.rs:469
+labels | crates/snipdeck-app/src/commands.rs:483
+the_catalogue_ids_round_trip | crates/snipdeck-app/src/commands.rs:488
+an_empty_query_lists_what_applies_in_catalogue_order | crates/snipdeck-app/src/commands.rs:498
+palette_marks_label_prefix | crates/snipdeck-app/src/commands.rs:507
+item_commands_follow_the_cursor_and_the_trash | crates/snipdeck-app/src/commands.rs:520
+duplicate_is_offered_for_an_item_outside_the_trash_and_has_ctrl_d | crates/snipdeck-app/src/commands.rs:535
+the_filter_matches_names_and_synonyms_ignoring_case | crates/snipdeck-app/src/commands.rs:552
+a_name_match_outranks_a_synonym_match | crates/snipdeck-app/src/commands.rs:565
+take_screenshot_is_found_by_its_name_and_a_synonym | crates/snipdeck-app/src/commands.rs:584
+every_word_of_the_query_must_match | crates/snipdeck-app/src/commands.rs:595
+global_hotkeys_show_the_configured_chords | crates/snipdeck-app/src/commands.rs:603
+texts_with_groups | crates/snipdeck-app/src/commands.rs:623
+group_commands_are_offered_where_the_code_performs_them_and_carry_their_keys | crates/snipdeck-app/src/commands.rs:643
+new_list_and_new_item_have_their_own_chords | crates/snipdeck-app/src/commands.rs:705
+the_theme_commands_are_found_by_theme_dark_and_light_and_have_no_shortcut | crates/snipdeck-app/src/commands.rs:718
+paste_next_and_select_all_are_in_the_palette_with_their_keys | crates/snipdeck-app/src/commands.rs:737
+symbols_is_found_by_name_and_offered_only_while_the_tab_is_on | crates/snipdeck-app/src/commands.rs:757
+caps_and_speech_of_a_shortcut | crates/snipdeck-app/src/commands.rs:772
 
 ### crates/snipdeck-app/src/controller.rs
 
@@ -8480,7 +8480,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/src/controller/history_ctl.rs` (inline) | 1 |
 | `crates/snipdeck-app/src/controller/tests/access.rs` | 12 |
 | `crates/snipdeck-app/src/controller/tests/capture_stack.rs` | 15 |
-| `crates/snipdeck-app/src/controller/tests/colours.rs` | 34 |
+| `crates/snipdeck-app/src/controller/tests/colours.rs` | 35 |
 | `crates/snipdeck-app/src/controller/tests/dock.rs` | 45 |
 | `crates/snipdeck-app/src/controller/tests/look_settings.rs` | 16 |
 | `crates/snipdeck-app/src/controller/tests/main_groups.rs` | 23 |

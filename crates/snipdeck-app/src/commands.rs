@@ -26,6 +26,8 @@ pub enum Command {
     Symbols,
     /// Show the Panel on its Colours tab.
     Colours,
+    /// Show the Panel on the list the Colours tab saves to ("Saved colours").
+    SavedColours,
     /// Show the Panel on its Colours tab and start the screen eyedropper.
     PickColour,
     /// Open the Picker.
@@ -108,13 +110,14 @@ pub enum Command {
 
 impl Command {
     /// Every command, in the order of `CommandTexts.all`.
-    pub const ALL: [Self; 45] = [
+    pub const ALL: [Self; 46] = [
         Self::NewItem,
         Self::NewList,
         Self::Search,
         Self::ShowPanel,
         Self::Symbols,
         Self::Colours,
+        Self::SavedColours,
         Self::PickColour,
         Self::OpenPicker,
         Self::QuickCapture,
@@ -344,7 +347,7 @@ pub fn available(command: Command, ctx: &Context<'_>) -> bool {
         Command::PinItem => ctx.has_item && !ctx.in_trash && !ctx.item_pinned,
         Command::UnpinItem => ctx.has_item && !ctx.in_trash && ctx.item_pinned,
         Command::Symbols => ctx.symbols,
-        Command::Colours => ctx.colours,
+        Command::Colours | Command::SavedColours => ctx.colours,
         Command::PickColour => ctx.colours && ctx.eyedropper,
         Command::GroupItems => ctx.has_item && ctx.in_list,
         Command::FoldGroup
@@ -426,6 +429,7 @@ mod tests {
             ("Show Panel", "open toggle"),
             ("Symbols", "emoji kaomoji icons smiley"),
             ("Colours", "color picker palette hex swatch"),
+            ("Saved colours", "colors palette swatches"),
             ("Pick a colour from the screen", "eyedropper color pick"),
             ("Open Picker", "quick find paste"),
             ("Quick capture", "clipboard save"),

@@ -69,6 +69,12 @@ where
                     self.pending.extend(effects);
                 }
             }
+            Command::SavedColours => {
+                if self.settings.show_colours_tab {
+                    let effects = self.open_saved_colours();
+                    self.pending.extend(effects);
+                }
+            }
             Command::OpenPicker => self.open_picker(),
             Command::QuickCapture => self.quick_capture(),
             Command::PasteNext => {

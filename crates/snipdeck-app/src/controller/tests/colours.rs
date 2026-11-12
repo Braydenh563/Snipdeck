@@ -464,6 +464,17 @@ mod commands {
     }
 
     #[test]
+    fn the_saved_colours_command_shows_the_home_list_and_leaves_the_tab() {
+        let mut w = world();
+        w.ctl.save_colour(BLUE, SaveTarget::Home);
+        w.ctl.run_command(Command::SavedColours, 0);
+        let effects = w.ctl.take_pending();
+        assert!(effects.contains(&Effect::ShowPanel));
+        assert!(effects.contains(&Effect::HideColours));
+        assert!(!effects.contains(&Effect::ShowColours));
+    }
+
+    #[test]
     fn the_pick_command_starts_the_eyedropper_after_showing_the_tab() {
         let mut w = world();
         let fake = FakeEyedropper::default();
