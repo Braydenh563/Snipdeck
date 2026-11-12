@@ -224,6 +224,64 @@ fn click_at(ui: &PanelWindow, at: LogicalPosition) {
     settle();
 }
 
+/// Counts how often the Panel asks its host to give the window the keyboard (a Panel is a no-activate window).
+fn count_keyboard_requests(ui: &PanelWindow) -> Rc<std::cell::Cell<u32>> {
+    let n = Rc::new(std::cell::Cell::new(0));
+    let seen = n.clone();
+    ui.on_keyboard_requested(move || seen.set(seen.get() + 1));
+    n
+}
+
+fn right_click_at(ui: &PanelWindow, at: LogicalPosition) {
+    move_to(ui, at);
+    for kind in [true, false] {
+        let button = PointerEventButton::Right;
+        ui.window().dispatch_event(if kind {
+            WindowEvent::PointerPressed {
+                position: at,
+                button,
+            }
+        } else {
+            WindowEvent::PointerReleased {
+                position: at,
+                button,
+            }
+        });
+    }
+}
+
+/// Clicks `item` of a context menu opened by a right-click at `opened_at`. The menu is drawn by Slint inside the
+/// window as plain text, and the testing backend reports an item's position inside the menu, whose corner sits at
+/// the click.
+fn click_menu_item(ui: &PanelWindow, opened_at: LogicalPosition, item: &ElementHandle) {
+    let c = centre(item);
+    click_at(
+        ui,
+        LogicalPosition::new(opened_at.x + c.x, opened_at.y + c.y),
+    );
+}
+
+/// An item of an open context menu.
+fn menu_item(ui: &PanelWindow, title: &str) -> Option<ElementHandle> {
+    ElementHandle::find_by_accessible_label(ui, title).next()
+}
+
+/// Role and label of every element, for a failure message.
+fn dump_roles(ui: &PanelWindow) -> Vec<String> {
+    ElementQuery::from_root(ui)
+        .match_predicate(|_| true)
+        .find_all()
+        .iter()
+        .filter_map(|e| {
+            Some(format!(
+                "{:?}:{}",
+                e.accessible_role()?,
+                e.accessible_label()?
+            ))
+        })
+        .collect()
+}
+
 // ---- Pointer helpers ---------------------------------------------------------------------------
 
 fn centre(e: &ElementHandle) -> LogicalPosition {
@@ -1866,7 +1924,13 @@ ui_tests! {
         take(&log);
         chord(ui.window(), &[Key::Control], "v");
         chord(ui.window(), &[Key::Control], "c");
-        assert!(take(&log).is_empty(), "a focused search field pastes and copies normally");
+        // The testing clipboard is shared by every test: a paste may legitimately edit the query. What must not
+        // fire are the Panel's own shortcuts.
+        let fired = take(&log);
+        assert!(
+            fired.iter().all(|line| line.starts_with("query:")),
+            "a focused search field pastes and copies normally: {fired:?}"
+        );
     }
 
     fn the_pointer_on_a_toast_or_its_undo_button_reports_hover() {
@@ -2970,6 +3034,142 @@ ui_tests! {
         take(&log);
         click_at(&ui, centre(&find(&ui, "Clear list", AccessibleRole::Button)));
         assert_eq!(take(&log), ["clear-confirmed"]);
+    }
+
+    // ---- Text entry: the no-activate Panel takes the keyboard for every field, and Paste works ---------
+
+    fn opening_quick_add_with_ctrl_n_takes_the_keyboard_for_the_box() {
+        let (ui, _log) = start();
+        ui.set_add_list_name("Work".into());
+        let gained = count_keyboard_requests(&ui);
+        settle();
+        gained.set(0);
+        chord(ui.window(), &[Key::Control], "n");
+        settle();
+        assert!(gained.get() >= 1, "the box holds focus, so the host must give the window the keyboard");
+    }
+
+    fn opening_quick_add_from_its_row_takes_the_keyboard_for_the_box() {
+        let (ui, _log) = start();
+        ui.set_add_list_name("Work".into());
+        settle();
+        let gained = count_keyboard_requests(&ui);
+        gained.set(0);
+        find(&ui, "New item in Work", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert!(gained.get() >= 1, "'+ New item' put the caret in the box; Windows must send the keys to it");
+    }
+
+    fn clicking_back_into_the_quick_add_box_after_the_window_lost_the_foreground_asks_again() {
+        let (ui, _log) = start();
+        ui.set_add_list_name("Work".into());
+        chord(ui.window(), &[Key::Control], "n");
+        settle();
+        let gained = count_keyboard_requests(&ui);
+        // Windows moved the foreground to another app: Slint drops the caret, so the next click is a focus change.
+        ui.window().dispatch_event(WindowEvent::WindowActiveChanged(false));
+        settle();
+        gained.set(0);
+        let field = find(&ui, "New item", AccessibleRole::TextInput);
+        click_at(&ui, centre(&field));
+        assert!(gained.get() >= 1, "the click must take the keyboard back");
+    }
+
+    fn clicking_back_into_the_search_box_after_the_window_lost_the_foreground_asks_again() {
+        let (ui, _log) = start();
+        chord(ui.window(), &[Key::Control], "f");
+        settle();
+        let gained = count_keyboard_requests(&ui);
+        ui.window().dispatch_event(WindowEvent::WindowActiveChanged(false));
+        settle();
+        gained.set(0);
+        let field = find(&ui, "Search snippets", AccessibleRole::TextInput);
+        click_at(&ui, centre(&field));
+        assert!(gained.get() >= 1, "the click must take the keyboard back");
+    }
+
+    fn ctrl_v_in_the_quick_add_box_pastes_the_text_and_is_not_a_paste_create() {
+        let (ui, log) = start();
+        ui.set_add_list_name("Work".into());
+        chord(ui.window(), &[Key::Control], "n");
+        settle();
+        type_text(ui.window(), "abc");
+        // The clipboard is filled from the field itself, so the test needs no OS clipboard.
+        chord(ui.window(), &[Key::Control], "a");
+        chord(ui.window(), &[Key::Control], "c");
+        press(ui.window(), &key(Key::End));
+        take(&log);
+        chord(ui.window(), &[Key::Control], "v");
+        settle();
+        assert_eq!(take(&log), Vec::<String>::new(), "no paste-create while a field holds the caret");
+        let field = find(&ui, "New item", AccessibleRole::TextInput);
+        assert_eq!(field.accessible_value().as_deref(), Some("abcabc"));
+    }
+
+    fn ctrl_v_on_the_list_with_no_field_in_use_still_asks_for_a_paste_create() {
+        let (ui, log) = start();
+        // The list owns the keys once the search box is not the focus (spec 2.11).
+        press(ui.window(), &key(Key::DownArrow));
+        take(&log);
+        chord(ui.window(), &[Key::Control], "v");
+        settle();
+        assert!(take(&log).contains(&"paste-create".to_string()), "the Panel's own shortcut is kept");
+    }
+
+    fn right_click_in_the_quick_add_box_offers_paste_and_pastes() {
+        let (ui, log) = start();
+        ui.set_add_list_name("Work".into());
+        chord(ui.window(), &[Key::Control], "n");
+        settle();
+        type_text(ui.window(), "abc");
+        chord(ui.window(), &[Key::Control], "a");
+        chord(ui.window(), &[Key::Control], "c");
+        press(ui.window(), &key(Key::End));
+        take(&log);
+        let field = find(&ui, "New item", AccessibleRole::TextInput);
+        right_click_at(&ui, centre(&field));
+        settle();
+        let paste = menu_item(&ui, "Paste").unwrap_or_else(|| {
+            panic!("no Paste in the context menu; elements: {:?}", dump_roles(&ui))
+        });
+        click_menu_item(&ui, centre(&field), &paste);
+        let field = find(&ui, "New item", AccessibleRole::TextInput);
+        assert_eq!(field.accessible_value().as_deref(), Some("abcabc"));
+        assert_eq!(take(&log), Vec::<String>::new(), "a menu paste is not a paste-create");
+    }
+
+    fn a_menu_paste_into_the_search_box_reports_the_new_query() {
+        let (ui, log) = start();
+        type_text(ui.window(), "xyz");
+        chord(ui.window(), &[Key::Control], "a");
+        chord(ui.window(), &[Key::Control], "c");
+        press(ui.window(), &key(Key::End));
+        take(&log);
+        let field = find(&ui, "Search snippets", AccessibleRole::TextInput);
+        right_click_at(&ui, centre(&field));
+        settle();
+        let paste = menu_item(&ui, "Paste").unwrap_or_else(|| panic!("no Paste; elements: {:?}", dump_roles(&ui)));
+        click_menu_item(&ui, centre(&field), &paste);
+        let lines = take(&log);
+        assert_eq!(
+            lines.iter().filter(|l| *l == "query:xyzxyz").count(),
+            1,
+            "the list filters on pasted text, once: {lines:?}"
+        );
+    }
+
+    fn the_context_menu_of_a_text_field_offers_cut_copy_paste_and_select_all() {
+        let (ui, _log) = start();
+        ui.set_add_list_name("Work".into());
+        chord(ui.window(), &[Key::Control], "n");
+        settle();
+        type_text(ui.window(), "abc");
+        let field = find(&ui, "New item", AccessibleRole::TextInput);
+        right_click_at(&ui, centre(&field));
+        settle();
+        for title in ["Cut", "Copy", "Paste", "Select all"] {
+            assert!(menu_item(&ui, title).is_some(), "{title} is in the menu: {:?}", dump_roles(&ui));
+        }
     }
 }
 

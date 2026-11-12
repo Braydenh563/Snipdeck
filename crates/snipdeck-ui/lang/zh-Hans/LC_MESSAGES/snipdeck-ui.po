@@ -719,6 +719,9 @@ msgstr "Ctrl+V"
 msgid "Current password"
 msgstr "当前密码"
 
+msgid "Cut"
+msgstr "剪切"
+
 msgid "Daily backups, a plain zip export, and your choice of theme."
 msgstr "每日备份、普通 zip 导出，以及你选择的主题。"
 
@@ -2369,6 +2372,9 @@ msgstr "查看提示"
 
 msgid "Select"
 msgstr "选择"
+
+msgid "Select all"
+msgstr "全选"
 
 msgid "Select all items"
 msgstr "选择所有项目"

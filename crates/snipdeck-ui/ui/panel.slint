@@ -538,11 +538,21 @@ export component PanelWindow inherits Window {
     // Counts the Shift+Tabs that wrap round to the footer's Open Snipdeck button.
     property <int> focus-open-ticks: 0;
     out property <bool> search-focused: search.has-focus || rest.has-focus;
-    // The search box took the focus (a click into it): the host gives the window the keyboard.
-    callback search-focus-gained();
+    // A text field of the Panel (search, quick add, symbol search, a group rename) took the caret: the host
+    // gives the window the keyboard. The Panel never activates on a click, so without this Windows keeps sending
+    // keys (Ctrl+V included) to the app that holds the foreground. (A TouchArea cannot report presses inside a
+    // field, the TextInput consumes them; a window that loses the foreground drops the caret, so the next click
+    // is a focus change again.)
+    callback keyboard-requested();
     changed search-focused => {
         if (root.search-focused) {
-            root.search-focus-gained();
+            root.keyboard-requested();
+        }
+    }
+    property <bool> quick-focused: quick.field-focused;
+    changed quick-focused => {
+        if (root.quick-focused) {
+            root.keyboard-requested();
         }
     }
     // The text of the tooltip on screen (empty = none), for tests and assistive checks.
@@ -1737,6 +1747,7 @@ export component PanelWindow inherits Window {
                         placeholder: @tr("Search snippets");
                         label: @tr("Search snippets");
                         clear-label: @tr("Clear search");
+                        release-on-blur: true;
                         edited(text) => {
                             root.search-user = true;
                             root.selected-index = 0;
@@ -1987,7 +1998,10 @@ export component PanelWindow inherits Window {
                                                 selected: i == root.sel;
                                                 rename-request: root.rename-row == i ? root.rename-seq : 0;
                                                 toggled => { root.selected-index = i; root.group-toggled(i); }
-                                                rename-started => { root.header-renaming-row = i; }
+                                                rename-started => {
+                                                    root.header-renaming-row = i;
+                                                    root.keyboard-requested();
+                                                }
                                                 renamed(text) => {
                                                     if (root.header-renaming-row == i) { root.header-renaming-row = -1; }
                                                     root.group-renamed(i, text);
@@ -2156,6 +2170,7 @@ export component PanelWindow inherits Window {
                         y: min(parent.height - self.box-h - Space.s1, root.rows.length == 0 ? parent.height : list.content-height + Space.s1);
                         list-name: root.add-list-name;
                         tab-stop: false;
+                        release-on-blur: true;
                         open-request: root.quick-add-request;
                         detect-kind(t) => { root.detect-kind(t) }
                         create(t, k, s) => { root.quick-add-requested(t, k, s); }
@@ -2295,7 +2310,12 @@ export component PanelWindow inherits Window {
                             root.symbol-menu-requested(i);
                         }
                         columns-changed(n) => { root.symbol-columns-changed(n); }
-                        focus-changed(on) => { root.symbol-search-focused = on; }
+                        focus-changed(on) => {
+                            root.symbol-search-focused = on;
+                            if (on) {
+                                root.keyboard-requested();
+                            }
+                        }
                         composing-changed(on) => { root.symbol-composing = on; }
                         hover-name(name) => { root.symbol-hover-name = name; }
                         tip(text, cx, bottom, on) => {

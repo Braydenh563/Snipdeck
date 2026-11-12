@@ -67,6 +67,24 @@ ui_tests! {
 // TextField / SearchField
 // ---------------------------------------------------------------------------------------------
 
+fn a_disabled_text_field_has_no_context_menu() {
+    let ui = start(InputsGallery::new);
+    let field = find(&ui, "Disabled field", AccessibleRole::TextInput);
+    let (p, s) = (field.absolute_position(), field.size());
+    let at = slint::LogicalPosition::new(p.x + s.width / 2.0, p.y + s.height / 2.0);
+    ui.window().dispatch_event(slint::platform::WindowEvent::PointerMoved { position: at });
+    for pressed in [true, false] {
+        let button = slint::platform::PointerEventButton::Right;
+        ui.window().dispatch_event(if pressed {
+            slint::platform::WindowEvent::PointerPressed { position: at, button }
+        } else {
+            slint::platform::WindowEvent::PointerReleased { position: at, button }
+        });
+    }
+    settle();
+    assert!(ElementHandle::find_by_accessible_label(&ui, "Paste").next().is_none(), "nothing can be pasted into a disabled field");
+}
+
 fn text_field_exposes_role_label_placeholder_value_and_error() {
     let ui = start(InputsGallery::new);
     let name = find(&ui, "Name", AccessibleRole::TextInput);

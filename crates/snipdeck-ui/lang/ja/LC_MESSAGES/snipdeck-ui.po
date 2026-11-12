@@ -719,6 +719,9 @@ msgstr "Ctrl+V"
 msgid "Current password"
 msgstr "現在のパスワード"
 
+msgid "Cut"
+msgstr "切り取り"
+
 msgid "Daily backups, a plain zip export, and your choice of theme."
 msgstr "毎日のバックアップ、シンプルな zip エクスポート、テーマの選択。"
 
@@ -2369,6 +2372,9 @@ msgstr "ヒントを見る"
 
 msgid "Select"
 msgstr "選択"
+
+msgid "Select all"
+msgstr "すべて選択"
 
 msgid "Select all items"
 msgstr "すべての項目を選択"

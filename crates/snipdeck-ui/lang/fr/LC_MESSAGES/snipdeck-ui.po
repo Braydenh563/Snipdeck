@@ -720,6 +720,9 @@ msgstr "Ctrl+V"
 msgid "Current password"
 msgstr "Mot de passe actuel"
 
+msgid "Cut"
+msgstr "Couper"
+
 msgid "Daily backups, a plain zip export, and your choice of theme."
 msgstr "Sauvegardes quotidiennes, export zip simple et choix du thème."
 
@@ -2377,6 +2380,9 @@ msgstr "Voir les astuces"
 
 msgid "Select"
 msgstr "Sélectionner"
+
+msgid "Select all"
+msgstr "Tout sélectionner"
 
 msgid "Select all items"
 msgstr "Sélectionner tous les éléments"

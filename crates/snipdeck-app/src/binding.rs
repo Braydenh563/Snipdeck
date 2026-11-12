@@ -1045,11 +1045,12 @@ where
             .dock_event(DockEvent::HandleClick));
         wire_effects!(on_panel_hovered, |ctl, on| ctl
             .dock_event(DockEvent::PanelHover(on)));
-        // A click into the search box is input to this process, so Windows lets the Panel take
-        // the keyboard for it (the window never activates on a click by itself).
+        // A click into a text field (search, quick add, symbol search) is input to this process, so
+        // Windows lets the Panel take the keyboard for it (the window never activates on a click by
+        // itself); without it Ctrl+V and typing go to the app that holds the foreground.
         {
             let core = Rc::clone(&core);
-            window.on_search_focus_gained(move || {
+            window.on_keyboard_requested(move || {
                 if let Some(window) = core.window.upgrade() {
                     let _ = core.host.activate(window.window());
                 }

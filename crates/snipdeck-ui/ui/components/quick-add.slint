@@ -28,7 +28,11 @@ export component QuickAdd inherits Rectangle {
     // Shows a "More options" button (the full editor) beside Cancel, for a window where Ctrl+Shift+N is another command.
     in property <bool> show-more: false;
 
+    // The box drops its Slint focus when the window loses the foreground (see `TextField.release-on-blur`).
+    in property <bool> release-on-blur: false;
     out property <string> text: field.text;
+    // The caret is in the box.
+    out property <bool> field-focused: field.has-focus;
     out property <length> box-h: root.expanded ? col.preferred-height + 2 * Space.s1 : Space.hit;
     property <bool> kind-touched: false;
     property <int> chosen-kind: 0;
@@ -143,6 +147,7 @@ export component QuickAdd inherits Rectangle {
                 placeholder: @tr("Add a snippet… (Enter to save)");
                 label: @tr("New item");
                 focus-request: root.open-request + root.local-n;
+                release-on-blur: root.release-on-blur;
             }
             HorizontalLayout {
                 spacing: Space.s2;

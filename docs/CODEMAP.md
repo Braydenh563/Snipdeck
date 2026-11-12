@@ -88,63 +88,63 @@ arm_idle_lock | crates/snipdeck-app/src/binding.rs:609
 arm_settings | crates/snipdeck-app/src/binding.rs:635
 impl Controller<S, C, K, T> | crates/snipdeck-app/src/binding.rs:655
 bind | crates/snipdeck-app/src/binding.rs:672
-Loggable | crates/snipdeck-app/src/binding.rs:1231
-log | crates/snipdeck-app/src/binding.rs:1232
-impl Loggable for i32 | crates/snipdeck-app/src/binding.rs:1235
-log | crates/snipdeck-app/src/binding.rs:1236
-impl Loggable for f32 | crates/snipdeck-app/src/binding.rs:1241
-log | crates/snipdeck-app/src/binding.rs:1242
-impl Loggable for bool | crates/snipdeck-app/src/binding.rs:1247
-log | crates/snipdeck-app/src/binding.rs:1248
-impl Loggable for ui::ResizeEdge | crates/snipdeck-app/src/binding.rs:1253
-log | crates/snipdeck-app/src/binding.rs:1254
-impl Loggable for SharedString | crates/snipdeck-app/src/binding.rs:1259
-log | crates/snipdeck-app/src/binding.rs:1260
-Shown | crates/snipdeck-app/src/binding.rs:1266
-impl std::fmt::Display for Shown<'_> | crates/snipdeck-app/src/binding.rs:1268
-fmt | crates/snipdeck-app/src/binding.rs:1269
-edge_of | crates/snipdeck-app/src/binding.rs:1285
-HintIds | crates/snipdeck-app/src/binding.rs:1301
-impl HintIds | crates/snipdeck-app/src/binding.rs:1306
-admit | crates/snipdeck-app/src/binding.rs:1308
-shown | crates/snipdeck-app/src/binding.rs:1317
-is_current | crates/snipdeck-app/src/binding.rs:1322
-take | crates/snipdeck-app/src/binding.rs:1327
-hint_id_tests | crates/snipdeck-app/src/binding.rs:1333
-an_old_hide_accept_or_show_is_ignored | crates/snipdeck-app/src/binding.rs:1337
-render_recent | crates/snipdeck-app/src/binding.rs:1355
-detect_kind_index | crates/snipdeck-app/src/binding.rs:1395
-kind_of_index | crates/snipdeck-app/src/binding.rs:1404
-index | crates/snipdeck-app/src/binding.rs:1412
-window_colour | crates/snipdeck-app/src/binding.rs:1420
-render | crates/snipdeck-app/src/binding.rs:1435
-render_app_menu | crates/snipdeck-app/src/binding.rs:1757
-model | crates/snipdeck-app/src/binding.rs:1786
-refreshed_model | crates/snipdeck-app/src/binding.rs:1794
-to_i32 | crates/snipdeck-app/src/binding.rs:1811
-tab_item | crates/snipdeck-app/src/binding.rs:1815
-list_icon_image | crates/snipdeck-app/src/binding.rs:1825
-label_fields | crates/snipdeck-app/src/binding.rs:1836
-label_index | crates/snipdeck-app/src/binding.rs:1848
-label_of | crates/snipdeck-app/src/binding.rs:1853
-MASKED_PREVIEW | crates/snipdeck-app/src/binding.rs:1862
-panel_row | crates/snipdeck-app/src/binding.rs:1866
-item_kind | crates/snipdeck-app/src/binding.rs:1931
-recent_kind | crates/snipdeck-app/src/binding.rs:1936
-recent_thumb | crates/snipdeck-app/src/binding.rs:1945
-item_kind_of | crates/snipdeck-app/src/binding.rs:1956
-Payload | crates/snipdeck-app/src/binding.rs:1974
-impl Payload | crates/snipdeck-app/src/binding.rs:1981
-into_transfer | crates/snipdeck-app/src/binding.rs:1982
-of | crates/snipdeck-app/src/binding.rs:1988
-tests | crates/snipdeck-app/src/binding.rs:1994
-row | crates/snipdeck-app/src/binding.rs:2000
-a_sensitive_row_is_masked_and_never_carries_a_preview_kind | crates/snipdeck-app/src/binding.rs:2023
-a_sensitive_row_never_carries_a_preview_mark_or_a_tag_hit | crates/snipdeck-app/src/binding.rs:2031
-kinds_map_one_to_one | crates/snipdeck-app/src/binding.rs:2059
-a_mixed_view_row_carries_its_list_name_and_colour | crates/snipdeck-app/src/binding.rs:2073
-indexes_never_wrap | crates/snipdeck-app/src/binding.rs:2093
-models_keep_their_order | crates/snipdeck-app/src/binding.rs:2100
+Loggable | crates/snipdeck-app/src/binding.rs:1232
+log | crates/snipdeck-app/src/binding.rs:1233
+impl Loggable for i32 | crates/snipdeck-app/src/binding.rs:1236
+log | crates/snipdeck-app/src/binding.rs:1237
+impl Loggable for f32 | crates/snipdeck-app/src/binding.rs:1242
+log | crates/snipdeck-app/src/binding.rs:1243
+impl Loggable for bool | crates/snipdeck-app/src/binding.rs:1248
+log | crates/snipdeck-app/src/binding.rs:1249
+impl Loggable for ui::ResizeEdge | crates/snipdeck-app/src/binding.rs:1254
+log | crates/snipdeck-app/src/binding.rs:1255
+impl Loggable for SharedString | crates/snipdeck-app/src/binding.rs:1260
+log | crates/snipdeck-app/src/binding.rs:1261
+Shown | crates/snipdeck-app/src/binding.rs:1267
+impl std::fmt::Display for Shown<'_> | crates/snipdeck-app/src/binding.rs:1269
+fmt | crates/snipdeck-app/src/binding.rs:1270
+edge_of | crates/snipdeck-app/src/binding.rs:1286
+HintIds | crates/snipdeck-app/src/binding.rs:1302
+impl HintIds | crates/snipdeck-app/src/binding.rs:1307
+admit | crates/snipdeck-app/src/binding.rs:1309
+shown | crates/snipdeck-app/src/binding.rs:1318
+is_current | crates/snipdeck-app/src/binding.rs:1323
+take | crates/snipdeck-app/src/binding.rs:1328
+hint_id_tests | crates/snipdeck-app/src/binding.rs:1334
+an_old_hide_accept_or_show_is_ignored | crates/snipdeck-app/src/binding.rs:1338
+render_recent | crates/snipdeck-app/src/binding.rs:1356
+detect_kind_index | crates/snipdeck-app/src/binding.rs:1396
+kind_of_index | crates/snipdeck-app/src/binding.rs:1405
+index | crates/snipdeck-app/src/binding.rs:1413
+window_colour | crates/snipdeck-app/src/binding.rs:1421
+render | crates/snipdeck-app/src/binding.rs:1436
+render_app_menu | crates/snipdeck-app/src/binding.rs:1758
+model | crates/snipdeck-app/src/binding.rs:1787
+refreshed_model | crates/snipdeck-app/src/binding.rs:1795
+to_i32 | crates/snipdeck-app/src/binding.rs:1812
+tab_item | crates/snipdeck-app/src/binding.rs:1816
+list_icon_image | crates/snipdeck-app/src/binding.rs:1826
+label_fields | crates/snipdeck-app/src/binding.rs:1837
+label_index | crates/snipdeck-app/src/binding.rs:1849
+label_of | crates/snipdeck-app/src/binding.rs:1854
+MASKED_PREVIEW | crates/snipdeck-app/src/binding.rs:1863
+panel_row | crates/snipdeck-app/src/binding.rs:1867
+item_kind | crates/snipdeck-app/src/binding.rs:1932
+recent_kind | crates/snipdeck-app/src/binding.rs:1937
+recent_thumb | crates/snipdeck-app/src/binding.rs:1946
+item_kind_of | crates/snipdeck-app/src/binding.rs:1957
+Payload | crates/snipdeck-app/src/binding.rs:1975
+impl Payload | crates/snipdeck-app/src/binding.rs:1982
+into_transfer | crates/snipdeck-app/src/binding.rs:1983
+of | crates/snipdeck-app/src/binding.rs:1989
+tests | crates/snipdeck-app/src/binding.rs:1995
+row | crates/snipdeck-app/src/binding.rs:2001
+a_sensitive_row_is_masked_and_never_carries_a_preview_kind | crates/snipdeck-app/src/binding.rs:2024
+a_sensitive_row_never_carries_a_preview_mark_or_a_tag_hit | crates/snipdeck-app/src/binding.rs:2032
+kinds_map_one_to_one | crates/snipdeck-app/src/binding.rs:2060
+a_mixed_view_row_carries_its_list_name_and_colour | crates/snipdeck-app/src/binding.rs:2074
+indexes_never_wrap | crates/snipdeck-app/src/binding.rs:2094
+models_keep_their_order | crates/snipdeck-app/src/binding.rs:2101
 
 ### crates/snipdeck-app/src/capture.rs
 
