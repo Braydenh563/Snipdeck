@@ -102,7 +102,7 @@ fn typing_a_colour_updates_every_format_and_the_contrast() {
     let hex = s.get_formats().row_data(0).expect("hex row");
     assert_eq!(hex.value.as_str(), "#ff0000");
     let hsl = s.get_formats().row_data(2).expect("hsl row");
-    assert!(hsl.value.contains("0"), "{}", hsl.value);
+    assert!(hsl.value.contains('0'), "{}", hsl.value);
     let white = s.get_contrast().row_data(0).expect("white row");
     assert_eq!(
         white.ratio.as_str(),

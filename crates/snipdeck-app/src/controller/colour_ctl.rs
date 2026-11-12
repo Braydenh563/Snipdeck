@@ -196,16 +196,16 @@ where
     /// Undo and Edit appears. Returns whether it was saved.
     pub fn save_colour(&mut self, c: Rgba8, to: SaveTarget) -> bool {
         let destination = match to {
-            SaveTarget::List(id) => match self.store.list(id) {
-                Ok(list) => Destination {
-                    id,
-                    name: list.name.as_str().to_owned(),
-                },
-                Err(_) => {
+            SaveTarget::List(id) => {
+                let Ok(list) = self.store.list(id) else {
                     self.show_toast(failed());
                     return false;
+                };
+                Destination {
+                    id,
+                    name: list.name.as_str().to_owned(),
                 }
-            },
+            }
             SaveTarget::Home => {
                 let Some(d) = self.home_list() else {
                     return false;

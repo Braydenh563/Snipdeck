@@ -236,21 +236,18 @@ fn chips(
     let recents = view.recents.clone();
     let scheme_colours = scheme(c, view.scheme);
     state.set_recents(model(
-        recents
-            .iter()
-            .map(|c| swatch(&t, *c, view.format))
-            .collect(),
+        recents.iter().map(|c| swatch(t, *c, view.format)).collect(),
     ));
     state.set_saved(model(
         view.saved
             .iter()
-            .map(|c| swatch(&t, *c, view.format))
+            .map(|c| swatch(t, *c, view.format))
             .collect(),
     ));
     state.set_scheme(model(
         scheme_colours
             .iter()
-            .map(|c| swatch(&t, *c, view.format))
+            .map(|c| swatch(t, *c, view.format))
             .collect(),
     ));
     let groups = [recents, view.saved.clone(), scheme_colours];
@@ -262,7 +259,7 @@ fn chips(
             .map(|f| ui::ColourFormatRow {
                 label: f.label().into(),
                 value: if *f == Format::Name {
-                    name_text(&t, c).into()
+                    name_text(t, c).into()
                 } else {
                     snipdeck_colour::format(c, *f).into()
                 },
@@ -274,11 +271,11 @@ fn chips(
 
     // Contrast.
     state.set_contrast(model(vec![
-        contrast_row(&t, t.invoke_white(), c, Rgba8::rgb(255, 255, 255)),
-        contrast_row(&t, t.invoke_black(), c, Rgba8::rgb(0, 0, 0)),
+        contrast_row(t, t.invoke_white(), c, Rgba8::rgb(255, 255, 255)),
+        contrast_row(t, t.invoke_black(), c, Rgba8::rgb(0, 0, 0)),
     ]));
     state.set_other(color(view.other));
-    state.set_other_row(contrast_row(&t, t.invoke_other(), c, view.other));
+    state.set_other_row(contrast_row(t, t.invoke_other(), c, view.other));
     groups
 }
 
@@ -439,13 +436,12 @@ where
         }
         {
             let core = Rc::clone(self);
-            state.on_input_accepted(move |text| match parse(text.as_str()) {
-                Ok(c) => {
+            state.on_input_accepted(move |text| {
+                if let Ok(c) = parse(text.as_str()) {
                     core.colours.inner.borrow_mut().input_error.clear();
                     core.colours.inner.borrow_mut().fresh = true;
                     core.act(|ctl| ctl.set_colour(c));
-                }
-                Err(_) => {
+                } else {
                     let Some(w) = core.window.upgrade() else {
                         return;
                     };
@@ -469,12 +465,11 @@ where
         }
         {
             let core = Rc::clone(self);
-            state.on_other_accepted(move |text| match parse(text.as_str()) {
-                Ok(c) => {
+            state.on_other_accepted(move |text| {
+                if let Ok(c) = parse(text.as_str()) {
                     core.colours.inner.borrow_mut().other_error.clear();
                     core.act(|ctl| ctl.set_contrast_with(c));
-                }
-                Err(_) => {
+                } else {
                     let Some(w) = core.window.upgrade() else {
                         return;
                     };

@@ -406,6 +406,7 @@ where
     }
 
     /// The user chose row `index` of the item menu. The menu closes (a line stays open).
+    #[allow(clippy::too_many_lines, reason = "one arm per row of the item menu")]
     pub fn choose_item_menu(&mut self, index: usize) -> Vec<Effect> {
         if let PanelMenu::PasteAs(id) = self.menu {
             self.menu = PanelMenu::None;
