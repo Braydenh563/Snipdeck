@@ -724,7 +724,7 @@ msgid "Date and time in a format you choose"
 msgstr "Datum und Uhrzeit in einem Format deiner Wahl"
 
 msgid "Dates are today's; a field you fill in when you use the item shows its name or default."
-msgstr "Datumsangaben sind von heute; ein Feld, das Sie beim Verwenden ausfüllen, zeigt seinen Namen oder Standardwert."
+msgstr "Datumsangaben sind von heute; ein Feld, das du beim Verwenden ausfüllst, zeigt seinen Namen oder Standardwert."
 
 msgid "Delete"
 msgstr "Löschen"
@@ -2012,13 +2012,7 @@ msgid "Preview"
 msgstr "Vorschau"
 
 msgid "Preview how this item will look (Ctrl+P)"
-msgstr "Vorschau, wie dieser Eintrag aussehen wird (Strg+P)"
-
-msgid "Preview, off. Show how this item will look"
-msgstr "Vorschau aus. Zeigt, wie dieser Eintrag aussehen wird"
-
-msgid "Preview, on. Back to editing"
-msgstr "Vorschau an. Zurück zum Bearbeiten"
+msgstr "Vorschau, wie dieser Textbaustein aussehen wird (Strg+P)"
 
 msgid "Previous list"
 msgstr "Vorherige Liste"
@@ -3036,7 +3030,7 @@ msgid "Unpin them the same way."
 msgstr "Löse sie auf dieselbe Weise."
 
 msgid "Unsaved: this is how the item will look once you save it."
-msgstr "Nicht gespeichert: So sieht der Eintrag nach dem Speichern aus."
+msgstr "Nicht gespeichert: So sieht der Textbaustein nach dem Speichern aus."
 
 msgid "Use"
 msgstr "Verwenden"

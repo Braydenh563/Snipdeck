@@ -2014,12 +2014,6 @@ msgstr "Vista previa"
 msgid "Preview how this item will look (Ctrl+P)"
 msgstr "Ver cómo quedará este elemento (Ctrl+P)"
 
-msgid "Preview, off. Show how this item will look"
-msgstr "Vista previa desactivada. Muestra cómo quedará este elemento"
-
-msgid "Preview, on. Back to editing"
-msgstr "Vista previa activada. Volver a editar"
-
 msgid "Previous list"
 msgstr "Lista anterior"
 

@@ -987,13 +987,15 @@ fn preview_shows_the_unsaved_item_from_the_button_and_ctrl_p_and_loses_nothing()
         let before = r.item_count();
 
         // The header button turns it on; the card is built from the typed, unsaved fields.
-        let toggle = find(
-            &ed,
-            "Preview, off. Show how this item will look",
-            AccessibleRole::Button,
-        );
+        let toggle = find(&ed, "Preview", AccessibleRole::Button);
+        assert_eq!(toggle.accessible_checked(), Some(false));
         click(ed.window(), &toggle);
         assert!(ed.get_preview_on());
+        assert_eq!(
+            find(&ed, "Preview", AccessibleRole::Button).accessible_checked(),
+            Some(true),
+            "the toggle is spoken as checked while Preview is on"
+        );
         assert_eq!(ed.get_preview_title(), "Hi {field:Who}, on {date}");
         assert_eq!(ed.get_preview_excerpt(), "Hi {field:Who}, on {date}");
         assert!(
@@ -1028,5 +1030,86 @@ fn preview_shows_the_unsaved_item_from_the_button_and_ctrl_p_and_loses_nothing()
         assert_eq!(r.item_count(), before + 1);
         menu(&r, "New item");
         assert!(!r.ed().get_preview_on());
+    });
+}
+
+#[test]
+fn a_save_refused_while_previewing_goes_back_to_the_form_and_shows_why() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        let before = r.item_count();
+
+        // The window's own check: no text.
+        chord(ed.window(), &[Key::Control], "p");
+        settle();
+        assert!(ed.get_preview_on());
+        save(&ed);
+        assert!(!ed.get_preview_on(), "a refused Save leaves Preview");
+        assert!(r.editor_shown());
+        assert_eq!(r.item_count(), before);
+
+        // The host's check: a link with no scheme passes the window and is refused by Save.
+        ed.set_kind_index(2);
+        ed.set_content("docs.example.com".into());
+        chord(ed.window(), &[Key::Control], "p");
+        settle();
+        assert!(ed.get_preview_on());
+        assert_ne!(ed.get_preview_note(), "", "the preview already says why");
+        save(&ed);
+        assert!(!ed.get_preview_on(), "a host refusal leaves Preview too");
+        assert_ne!(ed.get_content_error(), "");
+        assert!(r.editor_shown());
+        assert_eq!(r.item_count(), before);
+    });
+}
+
+#[test]
+fn ctrl_shift_p_does_not_toggle_preview_and_tags_close_when_it_opens() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        chord(ed.window(), &[Key::Control, Key::Shift], "P");
+        settle();
+        assert!(!ed.get_preview_on());
+        ed.set_tags_open(true);
+        chord(ed.window(), &[Key::Control], "p");
+        settle();
+        assert!(ed.get_preview_on());
+        assert!(!ed.get_tags_open(), "the hidden chooser is closed");
+    });
+}
+
+#[test]
+fn preview_of_a_sensitive_item_never_shows_its_text() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        for (kind, text) in [
+            (0, "hunter2-secret"),
+            (2, "https://hunter2-secret.example/x"),
+            (3, "pw {field:Who|hunter2-secret}"),
+        ] {
+            ed.set_kind_index(kind);
+            ed.set_item_title("".into());
+            ed.set_content(text.into());
+            ed.set_sensitive(true);
+            click(ed.window(), &find(&ed, "Preview", AccessibleRole::Button));
+            assert!(ed.get_preview_on(), "kind {kind} err={:?} {:?} {:?}", ed.get_content_error(), ed.get_title_error(), ed.get_privacy_error());
+            for shown in [
+                ed.get_preview_title(),
+                ed.get_preview_excerpt(),
+                ed.get_preview_expanded(),
+                ed.get_preview_link(),
+                ed.get_preview_note(),
+            ] {
+                assert!(!shown.contains("hunter2"), "kind {kind} shows {shown:?}");
+            }
+            click(ed.window(), &find(&ed, "Preview", AccessibleRole::Button));
+            assert!(!ed.get_preview_on(), "kind {kind} did not turn off");
+        }
     });
 }

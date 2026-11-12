@@ -75,17 +75,12 @@ pub fn card_of(
         ""
     };
     let excerpt = Item::preview_of(text, sensitive);
-    // A sensitive item's secret is never the title: untitled, it has none.
-    let title = if !input.title.trim().is_empty() {
-        input.title.trim().to_owned()
-    } else if sensitive {
-        String::new()
+    // Untitled, the card shows the first line of the stored preview: so cut like the lists cut
+    // it, and empty for a sensitive item (its secret is never the title).
+    let title = if input.title.trim().is_empty() {
+        excerpt.lines().next().unwrap_or_default().to_owned()
     } else {
-        text.trim_start()
-            .lines()
-            .next()
-            .unwrap_or_default()
-            .to_owned()
+        input.title.trim().to_owned()
     };
     let mut card = CardPreview {
         kind: input.kind,

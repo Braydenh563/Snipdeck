@@ -522,6 +522,11 @@ component PreviewPane inherits Rectangle {
     in property <string> expanded;
     in property <string> link-host;
     in property <string> note;
+    in property <int> panel-card: 1;
+    in property <bool> main-compact: false;
+    in property <bool> show-numbers: true;
+    in property <bool> dirty: false;
+    property <ItemCardVariant> panel-variant: root.panel-card == 0 ? ItemCardVariant.compact : root.panel-card == 2 ? ItemCardVariant.tile : ItemCardVariant.comfortable;
 
     background: Theme.bg-app;
     accessible-role: groupbox;
@@ -537,7 +542,7 @@ component PreviewPane inherits Rectangle {
             spacing: Space.s4;
             alignment: start;
 
-            Text {
+            if root.dirty: Text {
                 text: @tr("Unsaved: this is how the item will look once you save it.");
                 color: Theme.text-secondary;
                 font-family: Fonts.sans;
@@ -547,12 +552,15 @@ component PreviewPane inherits Rectangle {
             FormField {
                 label: @tr("Small panel");
                 Rectangle {
-                    height: panel-card.preferred-height;
-                    panel-card := ItemCard {
-                        width: min(parent.width, 360px);
+                    height: panel-item.height;
+                    panel-item := ItemCard {
+                        width: root.panel-variant == ItemCardVariant.tile ? min(parent.width, 149px) : min(parent.width, 360px);
+                        height: root.panel-variant == ItemCardVariant.tile ? 96px : self.preferred-height;
                         x: 0px;
-                        variant: ItemCardVariant.compact;
+                        variant: root.panel-variant;
                         number: 1;
+                        numbered: root.show-numbers;
+                        masked-hint: @tr("Hidden. Hold Space to reveal.");
                         kind: root.card-kind;
                         title: root.title;
                         preview: root.excerpt;
@@ -573,8 +581,9 @@ component PreviewPane inherits Rectangle {
                     height: main-card.preferred-height;
                     main-card := ItemCard {
                         width: parent.width;
-                        variant: ItemCardVariant.comfortable;
+                        variant: root.main-compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
                         numbered: false;
+                        masked-hint: @tr("Hidden. Hold Space to reveal.");
                         kind: root.card-kind;
                         title: root.title;
                         preview: root.excerpt;
@@ -708,6 +717,11 @@ export component ItemEditor inherits Window {
     in property <string> preview-expanded;
     in property <string> preview-link;
     in property <string> preview-note;
+    // How the user's own lists draw a card: the Panel's layout (0 compact, 1 comfortable, 2 card), the Main view (compact or
+    // comfortable) and whether the Panel numbers its rows.
+    in property <int> preview-panel-card: 1;
+    in property <bool> preview-main-compact: false;
+    in property <bool> preview-show-numbers: true;
     // The caption of a Link's "(new ID)" stand-in, passed to the host so the sample result is translated.
     out property <string> preview-new-id: @tr("(new ID)");
 
@@ -766,6 +780,7 @@ export component ItemEditor inherits Window {
             root.preview-on = false;
             root.focus-title();
         } else {
+            root.tags-open = false;
             root.preview-requested();
             root.preview-on = true;
             preview-toggle.take-focus();
@@ -805,9 +820,21 @@ export component ItemEditor inherits Window {
     function reveal-field(y: length, h: length) {
         flick.reveal(y - flick.absolute-position.y, h);
     }
+    // A refusal sits in the form, which Preview hides: go back to it and put the cursor where the fix is.
+    function leave-preview() {
+        if (root.preview-on) {
+            root.preview-on = false;
+            root.focus-title();
+        }
+    }
+    changed content-error => { if (root.content-error != "") { root.leave-preview(); } }
+    changed title-error => { if (root.title-error != "") { root.leave-preview(); } }
+    changed privacy-error => { if (root.privacy-error != "") { root.leave-preview(); } }
+    changed source-error => { if (root.source-error != "") { root.leave-preview(); } }
     function try-save() {
         root.show-errors = true;
         if (root.content-missing || root.source-missing || root.content-error != "" || root.title-error != "" || root.source-error != "") {
+            root.leave-preview();
             return;
         }
         root.save-requested();
@@ -834,7 +861,7 @@ export component ItemEditor inherits Window {
                 root.try-save();
                 return accept;
             }
-            if ((event.text == "p" || event.text == "P" || event.text == "\u{10}") && event.modifiers.control && !event.modifiers.alt && !root.discard-open) {
+            if ((event.text == "p" || event.text == "P" || event.text == "\u{10}") && event.modifiers.control && !event.modifiers.alt && !event.modifiers.shift && !root.discard-open) {
                 root.toggle-preview();
                 return accept;
             }
@@ -871,10 +898,12 @@ export component ItemEditor inherits Window {
                     preview-toggle := Button {
                         text: @tr("Preview");
                         icon: root.preview-on ? Icons.eye-slash : Icons.eye;
-                        variant: root.preview-on ? ButtonVariant.primary : ButtonVariant.secondary;
+                        variant: ButtonVariant.secondary;
+                        checkable: true;
+                        checked: root.preview-on;
                         size: ButtonSize.sm;
                         tooltip: root.preview-on ? @tr("Back to editing (Ctrl+P)") : @tr("Preview how this item will look (Ctrl+P)");
-                        a11y-label: root.preview-on ? @tr("Preview, on. Back to editing") : @tr("Preview, off. Show how this item will look");
+                        a11y-label: @tr("Preview");
                         clicked => { root.toggle-preview(); }
                     }
                 }
@@ -899,6 +928,10 @@ export component ItemEditor inherits Window {
                 expanded: root.preview-expanded;
                 link-host: root.preview-link;
                 note: root.preview-note;
+                panel-card: root.preview-panel-card;
+                main-compact: root.preview-main-compact;
+                show-numbers: root.preview-show-numbers;
+                dirty: root.dirty;
             }
             flick := FormScroll {
                 width: parent.width;

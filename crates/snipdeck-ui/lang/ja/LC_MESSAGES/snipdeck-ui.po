@@ -723,7 +723,7 @@ msgid "Date and time in a format you choose"
 msgstr "任意の形式の日付と時刻"
 
 msgid "Dates are today's; a field you fill in when you use the item shows its name or default."
-msgstr "日付は今日のものです。使用時に入力する項目には、名前または既定値が表示されます。"
+msgstr "日付は今日のものです。使用時に入力するフィールドには、名前または既定値が表示されます。"
 
 msgid "Delete"
 msgstr "削除"
@@ -2006,13 +2006,7 @@ msgid "Preview"
 msgstr "プレビュー"
 
 msgid "Preview how this item will look (Ctrl+P)"
-msgstr "この項目の表示をプレビュー (Ctrl+P)"
-
-msgid "Preview, off. Show how this item will look"
-msgstr "プレビューはオフ。この項目の表示を確認します"
-
-msgid "Preview, on. Back to editing"
-msgstr "プレビューはオン。編集に戻ります"
+msgstr "このスニペットの表示をプレビュー (Ctrl+P)"
 
 msgid "Previous list"
 msgstr "前のリスト"
@@ -3028,7 +3022,7 @@ msgid "Unpin them the same way."
 msgstr "ピン留めの解除も同じ操作です。"
 
 msgid "Unsaved: this is how the item will look once you save it."
-msgstr "未保存：保存すると項目はこのように表示されます。"
+msgstr "未保存：保存するとスニペットはこのように表示されます。"
 
 msgid "Use"
 msgstr "使用"

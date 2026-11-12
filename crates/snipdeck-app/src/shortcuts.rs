@@ -87,7 +87,7 @@ use Scope::{Editors, Main, Panel, Picker};
 
 /// Every shortcut, in the order of `ShortcutTexts.titles` (a test in `tests/help_window.rs` checks the
 /// length) and grouped by scope in the order of [`Scope::ALL`].
-pub const CATALOGUE: [Shortcut; 62] = [
+pub const CATALOGUE: [Shortcut; 63] = [
     // Anywhere in Windows.
     global(HotkeyAction::TogglePanel),
     global(HotkeyAction::Picker),
@@ -154,6 +154,7 @@ pub const CATALOGUE: [Shortcut; 62] = [
     row(Picker, "Esc"),
     // Editors.
     row(Editors, "Ctrl+Enter"),
+    row(Editors, "Ctrl+P"),
     row(Editors, "Esc"),
 ];
 
@@ -529,6 +530,25 @@ mod tests {
                     }
             });
             assert!(found, "{key} has no row under Panel in the shortcuts list");
+        }
+    }
+
+    /// The user guide's "Item editor" rows list every Editors shortcut (the guide is how a user
+    /// finds Preview without hunting for the button).
+    #[test]
+    fn the_user_guide_lists_every_editor_shortcut() {
+        let guide = include_str!("../../../docs/user-guide.md");
+        for s in CATALOGUE.iter().filter(|s| s.scope == Editors) {
+            let Keys::Chord(chord) = s.keys else { continue };
+            if chord == "Esc" {
+                continue;
+            }
+            assert!(
+                guide
+                    .lines()
+                    .any(|l| l.starts_with("| Item editor |") && l.contains(&format!("`{chord}`"))),
+                "docs/user-guide.md has no `| Item editor |` row for {chord}"
+            );
         }
     }
 }

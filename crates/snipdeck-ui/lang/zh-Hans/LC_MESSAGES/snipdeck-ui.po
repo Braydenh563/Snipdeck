@@ -2008,12 +2008,6 @@ msgstr "预览"
 msgid "Preview how this item will look (Ctrl+P)"
 msgstr "预览此项目的外观 (Ctrl+P)"
 
-msgid "Preview, off. Show how this item will look"
-msgstr "预览已关闭。显示此项目的外观"
-
-msgid "Preview, on. Back to editing"
-msgstr "预览已开启。返回编辑"
-
 msgid "Previous list"
 msgstr "上一个列表"
 
