@@ -43,6 +43,12 @@ use crate::{
 pub const REPO_URL: &str = "https://github.com/Braydenh563/Snipdeck";
 /// "Check for updates" opens this page; the app fetches nothing itself.
 pub const RELEASES_URL: &str = "https://github.com/Braydenh563/Snipdeck/releases";
+/// The page "Check for updates" opens now: the Store's updates page in the packaged build (the
+/// Store does the updating), [`RELEASES_URL`] otherwise.
+fn updates_url() -> &'static str {
+    snipdeck_platform::startup_task::updates_url(crate::platform::is_packaged(), RELEASES_URL)
+}
+
 /// The user guide, opened in the browser by [`HelpTopic::Guide`].
 pub const GUIDE_URL: &str = "https://github.com/Braydenh563/Snipdeck/blob/main/docs/user-guide.md";
 /// The Microsoft Store page; the link stays hidden while this is `None`.
@@ -646,7 +652,7 @@ where
             crate::onboarding_binding::request_open();
         });
         wire!(on_source_requested, |core| core.open_url(REPO_URL));
-        wire!(on_releases_requested, |core| core.open_url(RELEASES_URL));
+        wire!(on_releases_requested, |core| core.open_url(updates_url()));
         wire!(on_store_requested, |core| {
             if let Some(url) = STORE_URL {
                 core.open_url(url);

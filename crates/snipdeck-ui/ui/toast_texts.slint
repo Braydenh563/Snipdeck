@@ -353,6 +353,12 @@ export global ToastTexts {
     pure public function autostart-failed() -> string {
         return @tr("Couldn't change the Windows start-up entry.");
     }
+    pure public function autostart-switched-off() -> string {
+        return @tr("Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there.");
+    }
+    pure public function autostart-policy() -> string {
+        return @tr("Your organisation's policy keeps Snipdeck from starting with Windows.");
+    }
     pure public function cannot-open-log() -> string {
         return @tr("Couldn't open the log folder.");
     }

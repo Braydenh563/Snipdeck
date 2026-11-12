@@ -63,6 +63,33 @@ pub fn supporter_mailto() -> String {
     format!("mailto:{SUPPORTER_EMAIL}")
 }
 
+/// Why "Start with Windows" could not be changed.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum AutostartError {
+    /// The user switched Snipdeck off under Settings > Apps > Startup (the Store build): only
+    /// they can switch it back on.
+    #[error("Windows has the startup task switched off for this user")]
+    SwitchedOff,
+    /// The organisation's policy forbids it.
+    #[error("policy keeps the startup task off")]
+    Policy,
+    /// Anything else (the log has the text).
+    #[error("{0}")]
+    Other(String),
+}
+
+impl AutostartError {
+    /// The toast that tells the user, in their language.
+    #[must_use]
+    pub const fn toast(&self) -> ToastMessage {
+        match self {
+            Self::SwitchedOff => ToastMessage::AutostartSwitchedOff,
+            Self::Policy => ToastMessage::AutostartPolicy,
+            Self::Other(_) => ToastMessage::AutostartFailed,
+        }
+    }
+}
+
 /// What Settings asks of the machine. [`SystemHost`] is the real one; tests bring a fake.
 pub trait SettingsHost {
     /// Makes `hotkeys` the registered global shortcuts: the empty ones are removed, the others
@@ -74,7 +101,7 @@ pub trait SettingsHost {
     /// # Errors
     ///
     /// Why it could not be changed.
-    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), String>;
+    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), AutostartError>;
 
     /// Whether the "Start with Windows" entry exists now (the user may have deleted it outside
     /// Snipdeck). Where there is no such entry the setting is only remembered, so it reads `true`.
@@ -190,16 +217,27 @@ impl SettingsHost for SystemHost {
         apply_hotkeys(&mut **self.hotkeys.borrow_mut(), hotkeys)
     }
 
-    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), String> {
+    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), AutostartError> {
         #[cfg(windows)]
         {
-            let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+            use snipdeck_platform::{startup_task::Blocked, windows::package};
+            if package::is_packaged() {
+                // The package's startup task cannot carry `--hidden`: `main` reads the saved
+                // "When Windows starts" choice instead.
+                let _ = hidden;
+                return package::set_startup_task(on).map_err(|e| match e {
+                    package::TaskError::Blocked(Blocked::ByUser) => AutostartError::SwitchedOff,
+                    package::TaskError::Blocked(Blocked::ByPolicy) => AutostartError::Policy,
+                    package::TaskError::Os(e) => AutostartError::Other(e.to_string()),
+                });
+            }
+            let exe = std::env::current_exe().map_err(|e| AutostartError::Other(e.to_string()))?;
             snipdeck_platform::windows::autostart::set_enabled(
                 &exe,
                 if hidden { "--hidden" } else { "" },
                 on,
             )
-            .map_err(|e| e.to_string())
+            .map_err(|e| AutostartError::Other(e.to_string()))
         }
         #[cfg(not(windows))]
         {
@@ -212,7 +250,11 @@ impl SettingsHost for SystemHost {
     fn autostart_registered(&self) -> bool {
         #[cfg(windows)]
         {
-            snipdeck_platform::windows::autostart::is_enabled()
+            if snipdeck_platform::windows::package::is_packaged() {
+                snipdeck_platform::windows::package::startup_task_enabled()
+            } else {
+                snipdeck_platform::windows::autostart::is_enabled()
+            }
         }
         #[cfg(not(windows))]
         {
@@ -1368,7 +1410,7 @@ where
             self.controller.borrow().settings().autostart && self.host.autostart_registered();
         if rewrite && let Err(error) = self.host.set_autostart(true, !visible) {
             crate::trace!("autostart rewrite: {error}");
-            self.toast(ToastKind::Danger, ToastMessage::AutostartFailed);
+            self.toast(ToastKind::Danger, error.toast());
             self.force_redraw();
             return;
         }
@@ -1383,7 +1425,7 @@ where
             }
             Err(error) => {
                 crate::trace!("autostart {on}: {error}");
-                self.toast(ToastKind::Danger, ToastMessage::AutostartFailed);
+                self.toast(ToastKind::Danger, error.toast());
                 self.force_redraw();
             }
         }
@@ -2362,6 +2404,14 @@ impl SettingsUi {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn autostart_errors_pick_their_toast() {
+        use super::AutostartError as E;
+        assert_eq!(E::SwitchedOff.toast(), ToastMessage::AutostartSwitchedOff);
+        assert_eq!(E::Policy.toast(), ToastMessage::AutostartPolicy);
+        assert_eq!(E::Other("x".into()).toast(), ToastMessage::AutostartFailed);
+    }
+
     use super::*;
     use crate::host::FakeHotkeys;
 

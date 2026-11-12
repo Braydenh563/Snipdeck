@@ -3263,6 +3263,9 @@ msgstr "Windows no permite {} como atajo."
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows sigue el tamaño de texto de Windows (Configuración > Accesibilidad > Tamaño del texto). Elige un tamaño para usar ese en su lugar."
 
+msgid "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
+msgstr "Windows tiene Snipdeck desactivado en Configuración > Aplicaciones > Inicio. Actívalo allí."
+
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "Con el historial del portapapeles activado, Recientes guarda lo que copias en otros programas."
 
@@ -3292,6 +3295,9 @@ msgstr "Tu biblioteca se reconstruyó, pero la limpieza falló. Snipdeck la term
 
 msgid "Your old database is kept in the folder {}."
 msgstr "Tu base de datos anterior se conserva en la carpeta {}."
+
+msgid "Your organisation's policy keeps Snipdeck from starting with Windows."
+msgstr "La directiva de tu organización impide que Snipdeck se inicie con Windows."
 
 msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
 msgstr "Tus fragmentos sensibles estarán protegidos solo por Windows, como en el plan Gratis."

@@ -315,6 +315,8 @@ where
         ToastMessage::FolderNotOpened => t.invoke_folder_not_opened(),
         ToastMessage::MailNotOpened => t.invoke_mail_not_opened(),
         ToastMessage::AutostartFailed => t.invoke_autostart_failed(),
+        ToastMessage::AutostartSwitchedOff => t.invoke_autostart_switched_off(),
+        ToastMessage::AutostartPolicy => t.invoke_autostart_policy(),
         ToastMessage::CannotOpenLog => t.invoke_cannot_open_log(),
         ToastMessage::TypingUnavailable => t.invoke_typing_unavailable(),
         ToastMessage::TriggerOverlaps { other } => t.invoke_trigger_overlaps(other.into()),

@@ -3263,6 +3263,9 @@ msgstr "O Windows não permite {} como atalho."
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "O Windows segue o tamanho de texto do Windows (Configurações > Acessibilidade > Tamanho do texto). Escolha um tamanho para usar esse em vez disso."
 
+msgid "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
+msgstr "O Windows desativou o Snipdeck em Configurações > Aplicativos > Inicializar. Ative-o lá."
+
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "Com o histórico da área de transferência ativado, Recentes guarda o que você copia em outros programas."
 
@@ -3292,6 +3295,9 @@ msgstr "Sua biblioteca foi reconstruída, mas a limpeza falhou. O Snipdeck vai c
 
 msgid "Your old database is kept in the folder {}."
 msgstr "Seu banco de dados antigo foi mantido na pasta {}."
+
+msgid "Your organisation's policy keeps Snipdeck from starting with Windows."
+msgstr "A política da sua organização impede o Snipdeck de iniciar com o Windows."
 
 msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
 msgstr "Seus itens sensíveis serão protegidos somente pelo Windows, como no plano Gratuito."

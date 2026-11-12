@@ -3263,6 +3263,9 @@ msgstr "Windows n'autorise pas {} comme raccourci."
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows suit la taille du texte de Windows (Paramètres > Accessibilité > Taille du texte). Choisissez une taille pour utiliser celle-ci à la place."
 
+msgid "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
+msgstr "Windows a désactivé Snipdeck dans Paramètres > Applications > Démarrage. Réactivez-le à cet endroit."
+
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "Avec l’historique du presse-papiers activé, Récents garde ce que vous copiez dans d’autres programmes."
 
@@ -3292,6 +3295,9 @@ msgstr "Votre bibliothèque a été reconstruite, mais le nettoyage a échoué. 
 
 msgid "Your old database is kept in the folder {}."
 msgstr "Votre ancienne base de données est conservée dans le dossier {}."
+
+msgid "Your organisation's policy keeps Snipdeck from starting with Windows."
+msgstr "La stratégie de votre organisation empêche Snipdeck de démarrer avec Windows."
 
 msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
 msgstr "Vos extraits sensibles seront protégés par Windows seul, comme dans l'offre gratuite."

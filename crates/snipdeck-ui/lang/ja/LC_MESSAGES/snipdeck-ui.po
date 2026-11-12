@@ -3255,6 +3255,9 @@ msgstr "Windows では {} をショートカットに使えません。"
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows の文字サイズ（設定 > アクセシビリティ > 文字サイズ）に従います。サイズを選ぶと、そちらを使います。"
 
+msgid "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
+msgstr "Windows の [設定] > [アプリ] > [スタートアップ] で Snipdeck がオフになっています。そこでオンにしてください。"
+
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "クリップボード履歴をオンにすると、「最近」に他のプログラムでコピーした内容が残ります。"
 
@@ -3284,6 +3287,9 @@ msgstr "ライブラリを再構築しましたが、後片付けに失敗しま
 
 msgid "Your old database is kept in the folder {}."
 msgstr "以前のデータベースはフォルダー {} に残してあります。"
+
+msgid "Your organisation's policy keeps Snipdeck from starting with Windows."
+msgstr "組織のポリシーにより、Snipdeck は Windows と同時に起動できません。"
 
 msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
 msgstr "無料プランと同様に、機密スニペットは Windows の保護のみで守られます。"

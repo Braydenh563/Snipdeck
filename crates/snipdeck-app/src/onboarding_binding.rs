@@ -62,7 +62,7 @@ struct TourCore<C, K, T> {
     /// Why each shortcut (in [`HotkeyAction::ALL`] order) was refused; empty when it was not.
     conflicts: RefCell<Vec<String>>,
     /// The Start with Windows entry could not be changed.
-    autostart_failed: Cell<bool>,
+    autostart_failed: RefCell<Option<ToastMessage>>,
     /// The shortcuts the window shows now.
     shown_hotkeys: RefCell<Option<Vec<HotkeyRow>>>,
     /// The window has been drawn at least once.
@@ -192,10 +192,9 @@ where
         window.set_recent_max_entries(crate::recent::max_entries_count());
         window.set_recent_max_days(crate::recent::max_age_days());
         window.set_dock_edge_index(dock_edge_index(controller.dock_edge()));
-        window.set_notice(if self.autostart_failed.get() {
-            wording::toast_text(&window, &ToastMessage::AutostartFailed).into()
-        } else {
-            SharedString::new()
+        window.set_notice(match &*self.autostart_failed.borrow() {
+            Some(message) => wording::toast_text(&window, message).into(),
+            None => SharedString::new(),
         });
         drop(controller);
         arm_settings_save(&self.controller, &self.save_timer);
@@ -300,12 +299,12 @@ where
         let hidden = !self.controller.borrow().settings().panel_start_visible;
         match self.host.set_autostart(on, hidden) {
             Ok(()) => {
-                self.autostart_failed.set(false);
+                *self.autostart_failed.borrow_mut() = None;
                 self.act(|ctl| ctl.update_settings(|s| s.autostart = on));
             }
             Err(error) => {
                 crate::trace!("autostart {on}: {error}");
-                self.autostart_failed.set(true);
+                *self.autostart_failed.borrow_mut() = Some(error.toast());
                 // The redraw puts the switch the user flipped back to the stored value.
                 redraw_all();
             }
@@ -359,7 +358,7 @@ where
                 window: window.as_weak(),
                 host,
                 conflicts: RefCell::new(vec![String::new(); HotkeyAction::ALL.len()]),
-                autostart_failed: Cell::new(false),
+                autostart_failed: RefCell::new(None),
                 shown_hotkeys: RefCell::new(None),
                 drawn: Cell::new(false),
                 redraw: Rc::new(move || {

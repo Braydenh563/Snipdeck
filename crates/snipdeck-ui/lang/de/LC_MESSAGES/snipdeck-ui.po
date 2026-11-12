@@ -3263,6 +3263,9 @@ msgstr "Windows erlaubt {} nicht als Tastenkürzel."
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows folgt deiner Windows-Textgröße (Einstellungen > Erleichterte Bedienung > Textgröße). Wähle eine Größe, um stattdessen diese zu verwenden."
 
+msgid "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
+msgstr "Windows hat Snipdeck unter Einstellungen > Apps > Autostart ausgeschaltet. Schalte es dort wieder ein."
+
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "Mit eingeschaltetem Verlauf der Zwischenablage behält „Zuletzt verwendet“ alles, was du in anderen Programmen kopierst."
 
@@ -3292,6 +3295,9 @@ msgstr "Deine Bibliothek wurde neu aufgebaut, aber das Aufräumen ist fehlgeschl
 
 msgid "Your old database is kept in the folder {}."
 msgstr "Deine alte Datenbank bleibt im Ordner {} erhalten."
+
+msgid "Your organisation's policy keeps Snipdeck from starting with Windows."
+msgstr "Die Richtlinie deiner Organisation verhindert, dass Snipdeck mit Windows startet."
 
 msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
 msgstr "Deine vertraulichen Textbausteine werden nur durch Windows geschützt, wie im Kostenlos-Tarif."
