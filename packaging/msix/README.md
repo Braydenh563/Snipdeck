@@ -23,7 +23,17 @@ Fill a **copy**, for example `dist/msix/AppxManifest.xml`. Do not edit the templ
 Also check `MinVersion` and `MaxVersionTested` in `Dependencies`. They should name the Windows builds
 you actually tested on. The values in the template are placeholders, not a test result.
 
-Do not add a `startupTask` extension yet. The manifest comment says why.
+The manifest declares the `StartupTask` (`TaskId="SnipdeckStartup"`, disabled until the user turns on
+"Start with Windows"). The app drives it through the WinRT `StartupTask` API. Keep the id in step with the
+app; `scripts/installer_check.py` checks it. AppData virtualisation stays on: the Store build's data is per
+package and goes when the app is uninstalled.
+
+`scripts/msix_manifest.py` fills the tokens for you (CI uses it):
+
+```
+python3 scripts/msix_manifest.py --identity-name Pub.Snipdeck --publisher "CN=..." \
+  --publisher-display-name "Name" --version 1.0.0 --out dist/msix/AppxManifest.xml
+```
 
 ## Make the logos
 
