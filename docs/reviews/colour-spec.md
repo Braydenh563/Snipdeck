@@ -82,6 +82,35 @@ one strict CSS colour literal (`#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`, `rgb[a](
 so existing snippets like `#ffcc00` gain swatches too and nothing is stored. Rejected: a new ItemKind
 (schema V-bump for no data the text does not already hold); the 8 `ItemLabel` colours (not arbitrary).
 
+**D6a. Saved colours have a home, can go anywhere, and keep every detail (owner, 2026-11-12, verbatim:
+"I want to be able to save any colours and their attribuites and details to maybe a special list or area
+and maybe anywhere else I wish to access them in or desire to store them for easy copy and paste.")**
+- *Home:* a list named `Colours` (translated name, created on first save at the end of the board the Panel
+  shows, then remembered by id in `colour_save_list`; if that list is deleted, the next save creates a new
+  one). `Ctrl+S` and the tab's **Save** button save there; the toast says "Saved to Colours" with Open
+  and Undo. The tab's **Saved colours** button (and palette command "Saved colours") opens that list in the
+  Panel. A palette per project is just another list.
+- *Anywhere else:* **Save to…** (`Ctrl+Shift+S`, the button's split arrow, the swatch and format-row menus)
+  opens the same list chooser as the item menu's *Move to…* (`controller.rs` ~326, `panel_select.rs`
+  `move_to_list`), listing every board's lists plus "New list…". The chosen list becomes the default
+  for the rest of the session only; `colour_save_list` changes only through Settings > Colours > "Save
+  colours to".
+- *Every detail:* the item's text is the colour in the default format (so a click pastes it and the card
+  shows the swatch, D6). Every other format is exact maths on that value, so it is derived when shown, not
+  stored twice: nothing can drift. The title is the user's name for it, defaulting to the nearest CSS name
+  and the hex ("steelblue-ish #3A7BD5" is not used; plain "Royal blue #3A7BD5" style: nearest name in
+  title case + hex). The user renames it like any item; tags and the label work as usual.
+- *Copy any format from wherever it is stored:* for an item with a swatch, the item menu in the Panel, the
+  Main window and the Picker gains **Copy as ▸** HEX · RGB · HSL · HSB · CMYK · OKLCH · Name, and
+  **Open in Colours** (makes it the current colour so schemes and contrast show again). A click or Enter
+  pastes the stored text as for any item. Main window rows show the swatch too (moved here from Later).
+- *Copy a whole palette:* the list menu gains **Copy as CSS variables** when the list holds at least one
+  colour item: `:root {\n  --<slug-of-title>: <stored text>;\n}` in list order, slugs deduplicated with
+  `-2`, `-3`. Pure function `snipdeck_colour::css_variables(&[(title, literal)]) -> String` with tests.
+- *Ownership:* the chooser, Copy as, Open in Colours and the Main-row swatch go to slice 3; the
+  `css_variables` and `title_for` (nearest name + hex) functions and the `colour_save_list` setting to
+  slice 1.
+
 **D7. Recents: most recently used, 24 max, deduped by RGBA, in settings.** Pushed on paste, copy, save
 and eyedropper pick (not on typing or slider drags). Stamped by the injected `Clock`.
 
@@ -212,7 +241,7 @@ right shows P2's target line. The default format row carries the word "default" 
 `PanelRow` gains `swatch: color` and `has-swatch: bool` (set in `binding.rs::panel_row` from
 `snipdeck_colour::literal(&row.preview)` with the D6 conditions). `item-card.slint` draws the 24 px type
 tile filled with the colour (1 px `border.subtle`, checkerboard under alpha) instead of the Text glyph;
-the accessible description gains "Colour swatch". Main window rows: later.
+the accessible description gains "Colour swatch". Main window rows show it too (D6a).
 
 ## 4. Settings (all in `settings.json`, read with `field!`, no `version` bump)
 
@@ -226,6 +255,7 @@ the accessible description gains "Colour swatch". Main window rows: later.
 | `colour_scheme` | `snipdeck_colour::Scheme` | `"complementary"` | the select's value |
 | `colour_adjust_open` | bool | false | the Adjust disclosure |
 | `colour_copy_on_pick` | bool | true | D9; Settings > Panel "Copy a colour picked from the screen" |
+| `colour_save_list` | `Option<ListId>` | `None` | D6a home list; `None` or a deleted id: the next save creates "Colours" |
 | `hotkeys.eyedropper` | String | `""` (off) | `HotkeyAction::Eyedropper`, legacy chord also `""` |
 
 Migration: none. A missing field takes its default (`field!` is lenient); a bad entry in
