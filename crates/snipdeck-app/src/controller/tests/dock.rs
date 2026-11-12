@@ -324,13 +324,15 @@ fn the_pointer_near_the_tab_reveals_the_panel_and_leaving_tucks_it() {
     assert_eq!(w.ctl.dock_tick(), Vec::new());
     advance(&w, 400);
     assert_eq!(w.ctl.dock_tick(), place(handle(DockEdge::Right)));
-    // Twenty pixels from the tab is not near it, however long.
-    w.targets.set_cursor(Some((1894, 300)));
-    advance(&w, 5_000);
-    assert_eq!(w.ctl.dock_tick(), Vec::new());
-    assert!(w.ctl.view().dock_collapsed);
-    // Nine pixels from it is: the hover delay runs, then the Panel is out.
-    w.targets.set_cursor(Some((1905, 300)));
+    // In front of the tab is another window's scrollbar, not the tab: nothing, however long.
+    for x in [1894, 1905, 1913] {
+        w.targets.set_cursor(Some((x, 300)));
+        advance(&w, 5_000);
+        assert_eq!(w.ctl.dock_tick(), Vec::new(), "{x}");
+        assert!(w.ctl.view().dock_collapsed);
+    }
+    // On it: the hover delay runs, then the Panel is out.
+    w.targets.set_cursor(Some((1914, 300)));
     assert_eq!(w.ctl.dock_tick(), Vec::new());
     advance(&w, 5_149);
     assert_eq!(w.ctl.dock_tick(), Vec::new());
@@ -369,8 +371,7 @@ fn a_panel_in_use_stays_out_whatever_the_pointer_does() {
     assert_eq!(w.ctl.dock_tick(), Vec::new());
     advance(&w, 20_000);
     assert_eq!(w.ctl.dock_tick(), Vec::new());
-    w.ctl.set_panel_focused(false);
-    // A menu is open.
+    // A menu is open too.
     w.ctl.open_app_menu();
     advance(&w, 30_000);
     assert_eq!(w.ctl.dock_tick(), Vec::new());
@@ -378,6 +379,7 @@ fn a_panel_in_use_stays_out_whatever_the_pointer_does() {
     assert_eq!(w.ctl.dock_tick(), Vec::new());
     assert!(w.ctl.view().app_menu.is_some());
     w.ctl.close_app_menu();
+    w.ctl.set_panel_focused(false);
     // It is being dragged along its edge.
     press(&mut w, (1700, 110), open_rect(DockEdge::Right));
     advance(&w, 50_000);
@@ -501,15 +503,125 @@ fn a_floating_panel_never_collapses() {
 }
 
 #[test]
-fn leaving_the_panel_while_a_menu_is_open_neither_collapses_nor_closes_it() {
+fn a_window_that_reports_a_leave_under_an_open_menu_neither_collapses_nor_closes_it() {
+    // Where the cursor cannot be read the window says when the pointer leaves, and it may say
+    // so when the pointer only moved onto its own menu.
     let mut w = docked(DockTrigger::Both, DockEdge::Right);
+    w.targets.set_cursor(None);
     w.ctl.open_app_menu();
-    assert_eq!(w.ctl.dock_event(DockEvent::PanelHover(false)), Vec::new());
+    assert_eq!(w.ctl.dock_hover(DockEvent::PanelHover(false)), Vec::new());
     assert!(!w.ctl.dock_needs_tick(), "no leave delay runs under a menu");
     advance(&w, 5_000);
-    assert_eq!(w.ctl.dock_event(DockEvent::Tick), Vec::new());
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
     assert!(w.ctl.view().app_menu.is_some());
     assert!(!w.ctl.view().dock_collapsed);
+}
+
+#[test]
+fn an_open_menu_does_not_hold_the_panel_out_once_the_pointer_and_the_keyboard_are_gone() {
+    let mut w = docked(DockTrigger::Both, DockEdge::Right);
+    w.ctl.open_app_menu();
+    // On the menu (it is drawn inside the Panel): the Panel stays.
+    w.targets.set_cursor(Some((1700, 300)));
+    advance(&w, 10_000);
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    assert!(w.ctl.view().app_menu.is_some());
+    // The pointer went to another window and the Panel has not the keyboard: the leave delay
+    // runs like any other, and the menu goes with the Panel.
+    w.targets.set_cursor(Some((500, 500)));
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    advance(&w, 10_399);
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    advance(&w, 10_400);
+    assert_eq!(w.ctl.dock_tick(), place(handle(DockEdge::Right)));
+    assert_eq!(w.ctl.view().app_menu, None);
+}
+
+#[test]
+fn a_tucked_panel_stays_tucked_under_a_pointer_that_never_left_the_tab() {
+    // The close button of a Panel docked to the right is by the screen edge: the pointer that
+    // clicked it is on the tab the moment the Panel tucks.
+    for tuck in [0, 1, 2] {
+        let mut w = docked(DockTrigger::Both, DockEdge::Right);
+        w.ctl.set_panel_focused(true);
+        w.targets.set_cursor(Some((1916, 110)));
+        let tucked = match tuck {
+            0 => w.ctl.close(),
+            1 => w.ctl.on_hotkey(HotkeyAction::TogglePanel),
+            _ => w.ctl.dock_event(DockEvent::Pasted),
+        };
+        assert_eq!(tucked, place(handle(DockEdge::Right)), "{tuck}");
+        w.ctl.set_panel_focused(false);
+        for step in 1..=40 {
+            advance(&w, step * 50);
+            assert_eq!(w.ctl.dock_tick(), Vec::new(), "{tuck} at step {step}");
+        }
+        assert!(w.ctl.view().dock_collapsed);
+        // Off the tab and back on it: that is asking for the Panel.
+        w.targets.set_cursor(Some((1500, 110)));
+        assert_eq!(w.ctl.dock_tick(), Vec::new());
+        w.targets.set_cursor(Some((1916, 110)));
+        advance(&w, 3_000);
+        assert_eq!(w.ctl.dock_tick(), Vec::new());
+        advance(&w, 3_150);
+        assert_eq!(
+            w.ctl.dock_tick(),
+            place(open_rect(DockEdge::Right)),
+            "{tuck}"
+        );
+    }
+    // A click on the tab opens it without leaving first.
+    let mut w = docked(DockTrigger::Both, DockEdge::Right);
+    w.targets.set_cursor(Some((1916, 110)));
+    w.ctl.close();
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    assert_eq!(
+        w.ctl.dock_event(DockEvent::HandleClick),
+        place(open_rect(DockEdge::Right))
+    );
+}
+
+#[test]
+fn the_pointer_at_the_edge_beside_the_tab_opens_the_panel_once_and_it_stays() {
+    let mut w = docked(DockTrigger::Both, DockEdge::Right);
+    // Tucked by leaving it.
+    w.targets.set_cursor(Some((500, 500)));
+    w.ctl.dock_tick();
+    advance(&w, 400);
+    assert_eq!(w.ctl.dock_tick(), place(handle(DockEdge::Right)));
+    w.ctl.dock_tick();
+    // At the screen edge ten pixels above the tab (it spans 100 to 600): near enough.
+    w.targets.set_cursor(Some((1917, 90)));
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    advance(&w, 550);
+    assert_eq!(w.ctl.dock_tick(), place(open_rect(DockEdge::Right)));
+    // The pointer has not moved, and it is as near the open Panel as it was to the tab: the
+    // Panel must not tuck again (and then open again, for ever).
+    for step in 1..=100 {
+        advance(&w, 550 + step * 50);
+        assert_eq!(w.ctl.dock_tick(), Vec::new(), "step {step}");
+        assert!(!w.ctl.view().dock_collapsed, "step {step}");
+    }
+}
+
+#[test]
+fn the_hotkey_gives_a_panel_that_only_slid_out_the_keyboard_and_tucks_one_that_has_it() {
+    let mut w = docked(DockTrigger::Both, DockEdge::Right);
+    // Slid out under the pointer: the Target still has the keyboard.
+    w.targets.set_cursor(Some((1700, 300)));
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    // The hotkey there means "I want to type in it", not "go away".
+    assert_eq!(
+        w.ctl.on_hotkey(HotkeyAction::TogglePanel),
+        [Effect::ShowPanel]
+    );
+    assert!(!w.ctl.view().dock_collapsed);
+    // The window took the keyboard; the hotkey again tucks it.
+    w.ctl.set_panel_focused(true);
+    assert_eq!(
+        w.ctl.on_hotkey(HotkeyAction::TogglePanel),
+        place(handle(DockEdge::Right))
+    );
 }
 
 #[test]

@@ -505,6 +505,25 @@ pub fn near(point: (i32, i32), rect: Rect, margin: i64) -> bool {
     x >= left && x < right && y >= top && y < bottom
 }
 
+/// Whether the point is on the tucked tab `tab` of a Panel docked to `edge`, or at the screen
+/// edge within `margin` pixels past either end of it. Not in front of it: those pixels belong to
+/// whatever window is there.
+#[must_use]
+pub fn on_tab(point: (i32, i32), tab: Rect, edge: DockEdge, margin: i64) -> bool {
+    let (x, y) = (i64::from(point.0), i64::from(point.1));
+    let (along, across) = if edge.vertical() { (y, x) } else { (x, y) };
+    let (start, len, low, thick) = if edge.vertical() {
+        (tab.y, tab.h, tab.x, tab.w)
+    } else {
+        (tab.x, tab.w, tab.y, tab.h)
+    };
+    let (start, low) = (i64::from(start), i64::from(low));
+    along >= start - margin
+        && along < start + i64::from(len) + margin
+        && across >= low
+        && across < low + i64::from(thick)
+}
+
 /// `span` cut to `[low, low + len)`; the whole of it when nothing of `span` is inside.
 fn cut(span: Range<i32>, low: i32, len: u32) -> (i32, u32) {
     let high = i64::from(low) + i64::from(len);

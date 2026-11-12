@@ -84,11 +84,6 @@ where
     /// Something happened to the handle or the open Panel (or the hotkey, a paste or time):
     /// runs the state machine and returns the placement it asks for.
     pub fn dock_event(&mut self, event: DockEvent) -> Vec<Effect> {
-        // The pointer moving onto an open menu (or the window edge under it) is not leaving:
-        // a menu in use keeps the Panel open.
-        if event == DockEvent::PanelHover(false) && self.menu != PanelMenu::None {
-            return Vec::new();
-        }
         let config = self.dock_config();
         let now = self.clock.now();
         let action = self.dock.on(event, now, &config);
@@ -103,6 +98,11 @@ where
         if self.target.cursor().is_some() {
             return Vec::new();
         }
+        // A window may report a leave when the pointer only moved onto its own menu: under an
+        // open menu a leave is not believed.
+        if event == DockEvent::PanelHover(false) && self.menu != PanelMenu::None {
+            return Vec::new();
+        }
         self.dock_event(event)
     }
 
@@ -113,8 +113,8 @@ where
         self.visible && self.dock_active()
     }
 
-    /// The open docked Panel and its tucked tab, on its monitor.
-    fn dock_rects(&self) -> Option<(Rect, Rect)> {
+    /// The open docked Panel, its tucked tab and its edge, on its monitor.
+    fn dock_rects(&self) -> Option<(Rect, Rect, DockEdge)> {
         let monitor = self.monitor.as_ref()?;
         let geometry = self.stored_geometry(monitor)?;
         let edge = geometry.edge?;
@@ -127,13 +127,15 @@ where
             self.settings.dock.full_edge,
         );
         let tab = frame::handle_rect(edge, monitor.work_area, open.along(edge), monitor.scale);
-        Some((open, tab))
+        Some((open, tab, edge))
     }
 
-    /// The Panel is in use, so it stays out whatever the pointer does: a menu is open, it has
-    /// the keyboard, or it is being dragged.
+    /// The Panel is in use, so it stays out whatever the pointer does: it has the keyboard, or
+    /// it is being dragged. An open menu is not that by itself: it is drawn inside the Panel, so
+    /// the pointer on it is on the Panel, and one left open with the pointer and the keyboard
+    /// both gone must not keep the Panel out for ever.
     fn dock_held(&self) -> bool {
-        self.menu != PanelMenu::None || self.panel_focused || self.drag.is_some()
+        self.panel_focused || self.drag.is_some()
     }
 
     /// The Panel's window gained or lost the keyboard. A docked Panel that has it stays out.
@@ -143,8 +145,9 @@ where
 
     /// Time passed (the host calls this every [`dock::TICK`] while
     /// [`dock_live`](Self::dock_live)): reads where the pointer is, when it can be read, and
-    /// runs the hover and leave delays. The tucked tab reveals when the pointer is on it or
-    /// within [`dock::REVEAL_ZONE`]; the open Panel stays while the pointer is within
+    /// runs the hover and leave delays. The tucked tab reveals when the pointer is on it, or at
+    /// the screen edge within [`dock::REVEAL_ZONE`] of its ends ([`frame::on_tab`]), once it
+    /// has been off it since the Panel tucked; the open Panel stays while the pointer is within
     /// [`dock::KEEP_ZONE`] of it or it is in use.
     pub fn dock_tick(&mut self) -> Vec<Effect> {
         if !self.dock_live() {
@@ -152,9 +155,14 @@ where
         }
         let mut effects = Vec::new();
         let scale = self.monitor.as_ref().map_or(1.0, |m| m.scale);
-        if let (Some(cursor), Some((open, tab))) = (self.target.cursor(), self.dock_rects()) {
+        if let (Some(cursor), Some((open, tab, edge))) = (self.target.cursor(), self.dock_rects()) {
             let event = if self.dock.is_collapsed() {
-                DockEvent::HandleHover(frame::near(cursor, tab, zone(dock::REVEAL_ZONE, scale)))
+                DockEvent::HandleHover(frame::on_tab(
+                    cursor,
+                    tab,
+                    edge,
+                    zone(dock::REVEAL_ZONE, scale),
+                ))
             } else {
                 DockEvent::PanelHover(
                     self.dock_held() || frame::near(cursor, open, zone(dock::KEEP_ZONE, scale)),
@@ -176,7 +184,7 @@ where
             return Vec::new();
         }
         self.drag = None;
-        self.dock = DockState::Collapsed;
+        self.dock = DockState::Parked;
         self.panel_end_modes();
         self.panel_revealed = None;
         if std::mem::take(&mut self.panel_focused) {
@@ -224,6 +232,11 @@ where
             DockAction::Collapse => {
                 // A menu cannot stay open on a strip six pixels wide.
                 self.menu = PanelMenu::None;
+                if self.target.cursor().is_none() {
+                    // Nothing will say that the pointer is off the tab: the window reports only
+                    // its own enter and leave, so its next enter has to count.
+                    self.dock = DockState::Collapsed;
+                }
                 self.dock_place(true)
             }
         }

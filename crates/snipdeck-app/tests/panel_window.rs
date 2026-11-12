@@ -1602,6 +1602,8 @@ fn docked_rig(trigger: DockTrigger) -> Rig {
     open_menu(&r);
     click(r.window(), &menu_row(&r, "Dock to the left edge"));
     assert_eq!(r.ctl.borrow().dock_edge(), Some(DockEdge::Left));
+    // The Panel was just clicked in: it has the keyboard, so the hotkey tucks it.
+    r.binding.panel_focused(true);
     r
 }
 
@@ -1745,6 +1747,8 @@ fn a_click_on_the_handle_opens_the_panel_when_the_trigger_has_click() {
 fn the_open_panel_collapses_after_the_pointer_has_left_it_for_the_leave_delay() {
     on_ui_thread(|| {
         let r = docked_rig(DockTrigger::Both);
+        // Another window has the keyboard: only the pointer keeps the Panel out.
+        r.binding.panel_focused(false);
         // The pointer over a row: a child control. The Panel still counts as hovered.
         let row = ElementHandle::find_by_accessible_label(&r.ui, "Snippets")
             .next()

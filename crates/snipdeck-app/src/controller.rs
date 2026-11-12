@@ -794,8 +794,14 @@ where
         match action {
             // With the dock on, the Panel hotkey opens and tucks the Panel instead of hiding
             // the window: the tab is what keeps the Panel reachable. Opened by the hotkey it
-            // takes the keyboard like any shown Panel; tucked, it gives it back.
-            HotkeyAction::TogglePanel if self.dock_live() && self.dock_collapsed() => self.show(),
+            // takes the keyboard like any shown Panel; tucked, it gives it back. A Panel that
+            // only slid out under the pointer has not the keyboard yet: the hotkey gives it
+            // that, and tucks the Panel the next time.
+            HotkeyAction::TogglePanel
+                if self.dock_live() && (self.dock_collapsed() || !self.panel_focused) =>
+            {
+                self.show()
+            }
             HotkeyAction::TogglePanel if self.dock_live() => self.dock_tuck(),
             HotkeyAction::TogglePanel if self.visible => self.hide(),
             HotkeyAction::TogglePanel => self.show(),

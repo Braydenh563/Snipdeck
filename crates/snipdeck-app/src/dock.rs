@@ -30,6 +30,10 @@ pub enum DockState {
     Expanded,
     /// Only the handle shows.
     Collapsed,
+    /// Only the handle shows, and the pointer has not been seen off it since the Panel
+    /// collapsed: resting there opens nothing (the handle appeared under the pointer, nobody
+    /// reached for it). A click and the hotkey still open it.
+    Parked,
     /// Collapsed, with the pointer on the handle since `since`: the hover delay is running.
     Revealing {
         /// When the pointer arrived.
@@ -75,10 +79,14 @@ fn elapsed_ms(now: Timestamp, since: Timestamp) -> i64 {
 }
 
 impl DockState {
-    /// Only the handle shows ([`Collapsed`](Self::Collapsed) or [`Revealing`](Self::Revealing)).
+    /// Only the handle shows ([`Collapsed`](Self::Collapsed), [`Parked`](Self::Parked) or
+    /// [`Revealing`](Self::Revealing)).
     #[must_use]
     pub const fn is_collapsed(self) -> bool {
-        matches!(self, Self::Collapsed | Self::Revealing { .. })
+        matches!(
+            self,
+            Self::Collapsed | Self::Parked | Self::Revealing { .. }
+        )
     }
 
     /// A delay is running, so the host should send [`DockEvent::Tick`] every [`TICK`].
@@ -116,7 +124,14 @@ impl DockState {
             (Self::Expanded | Self::Leaving { .. }, DockEvent::Hotkey | DockEvent::Pasted) => {
                 self.collapse()
             }
-            (Self::Collapsed | Self::Revealing { .. }, DockEvent::Hotkey) => self.expand(),
+            (Self::Collapsed | Self::Parked | Self::Revealing { .. }, DockEvent::Hotkey) => {
+                self.expand()
+            }
+            // The pointer is off the handle: from now on resting on it is asking for the Panel.
+            (Self::Parked, DockEvent::HandleHover(false)) => {
+                *self = Self::Collapsed;
+                DockAction::None
+            }
 
             (Self::Expanded, DockEvent::PanelHover(false)) => {
                 if leave_wait == 0 {
@@ -151,7 +166,7 @@ impl DockState {
             {
                 self.expand()
             }
-            (Self::Collapsed | Self::Revealing { .. }, DockEvent::HandleClick)
+            (Self::Collapsed | Self::Parked | Self::Revealing { .. }, DockEvent::HandleClick)
                 if cfg.trigger.click() =>
             {
                 self.expand()
@@ -166,7 +181,7 @@ impl DockState {
     }
 
     fn collapse(&mut self) -> DockAction {
-        *self = Self::Collapsed;
+        *self = Self::Parked;
         DockAction::Collapse
     }
 }
@@ -185,10 +200,14 @@ pub const DOCK_ARM: Duration = Duration::from_millis(200);
 pub const UNDOCK_PULL: u32 = 24;
 /// How often the host moves the window to the cursor while a drag is under way.
 pub const DRAG_TICK: Duration = Duration::from_millis(16);
-/// How far around the tucked tab the pointer already counts as on it (logical pixels).
+/// How far past each end of the tucked tab, along the screen edge, the pointer already counts
+/// as on it (logical pixels). Only along the edge: in front of the tab is another window (its
+/// scrollbar, on a right edge), and resting there must not open the Panel.
 pub const REVEAL_ZONE: u32 = 12;
-/// How far around the open Panel the pointer still counts as on it (logical pixels).
-pub const KEEP_ZONE: u32 = 8;
+/// How far around the open Panel the pointer still counts as on it (logical pixels). Not less
+/// than [`REVEAL_ZONE`]: a pointer that opened the Panel from beside the tab must not be one
+/// that has left it.
+pub const KEEP_ZONE: u32 = 16;
 
 /// Where a drag of the Panel is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -252,7 +271,7 @@ pub struct Drag {
     press: (i32, i32),
     /// Where the cursor was last seen.
     cursor: (i32, i32),
-    /// The edge the cursor is at, and since when.
+    /// The edge the cursor is at (within [`EDGE_ZONE`], and nearest to), and since when.
     candidate: Option<(DockEdge, Timestamp)>,
     /// The frame last asked for.
     frame: Rect,
@@ -370,8 +389,15 @@ impl Drag {
         match self.phase {
             DragPhase::Slide(edge) => {
                 let pulled = sub(cursor, self.press);
-                let across = if edge.vertical() { pulled.0 } else { pulled.1 };
-                if i64::from(across).abs() > px(UNDOCK_PULL, scale) {
+                // Only away from the edge: pushed into it the Panel has nowhere to go, and
+                // letting go of the edge there would dock it again a moment later.
+                let away = match edge {
+                    DockEdge::Left => pulled.0,
+                    DockEdge::Right => pulled.0.saturating_neg(),
+                    DockEdge::Top => pulled.1,
+                    DockEdge::Bottom => pulled.1.saturating_neg(),
+                };
+                if i64::from(away) > px(UNDOCK_PULL, scale) {
                     return self.float(ctx);
                 }
                 let rect = self.docked_at(edge, ctx);
@@ -385,17 +411,21 @@ impl Drag {
                 self.place(rect)
             }
             DragPhase::Float => {
-                let kept = self.candidate.filter(|(edge, _)| {
-                    frame::edge_gap(cursor, area, *edge) <= px(EDGE_EXIT, scale)
-                });
                 // A press that has not moved is a click, not a push to the edge.
                 let pushed = cursor != self.press;
-                self.candidate = kept.or_else(|| {
-                    if !pushed {
-                        return None;
-                    }
-                    frame::edge_at(cursor, area, ctx.monitor.taskbar, px(EDGE_ZONE, scale))
-                        .map(|edge| (edge, ctx.now))
+                let at = pushed
+                    .then(|| {
+                        frame::edge_at(cursor, area, ctx.monitor.taskbar, px(EDGE_ZONE, scale))
+                    })
+                    .flatten();
+                // The wait runs only while the cursor is in the zone of the same edge: out of
+                // it, or nearer another edge in a corner, it starts again.
+                self.candidate = at.map(|edge| {
+                    let since = self
+                        .candidate
+                        .filter(|(held, _)| *held == edge)
+                        .map_or(ctx.now, |(_, since)| since);
+                    (edge, since)
                 });
                 let armed = self.candidate.filter(|(_, since)| {
                     elapsed_ms(ctx.now, *since)
@@ -625,7 +655,7 @@ mod tests {
         assert!(state.needs_tick() && !state.is_collapsed());
         assert_eq!(state.on(Tick, at(399), &hover), DockAction::None);
         assert_eq!(state.on(Tick, at(400), &hover), DockAction::Collapse);
-        assert_eq!(state, DockState::Collapsed);
+        assert_eq!(state, DockState::Parked);
         assert!(!state.needs_tick());
     }
 
@@ -666,7 +696,7 @@ mod tests {
             state.on(PanelHover(false), at(0), &now),
             DockAction::Collapse
         );
-        assert_eq!(state, DockState::Collapsed);
+        assert_eq!(state, DockState::Parked);
     }
 
     #[test]
@@ -682,7 +712,7 @@ mod tests {
         let hover = cfg(DockTrigger::Hover);
         let mut state = DockState::Expanded;
         assert_eq!(state.on(Hotkey, at(0), &hover), DockAction::Collapse);
-        assert_eq!(state, DockState::Collapsed);
+        assert_eq!(state, DockState::Parked);
         assert_eq!(state.on(Hotkey, at(10), &hover), DockAction::Expand);
         assert_eq!(state, DockState::Expanded);
     }
@@ -698,7 +728,7 @@ mod tests {
         assert_eq!(revealing.on(Hotkey, at(50), &hover), DockAction::Expand);
         let mut leaving = DockState::Leaving { since: at(0) };
         assert_eq!(leaving.on(Hotkey, at(50), &hover), DockAction::Collapse);
-        assert_eq!(leaving, DockState::Collapsed);
+        assert_eq!(leaving, DockState::Parked);
     }
 
     #[test]
@@ -707,7 +737,7 @@ mod tests {
         for start in [DockState::Expanded, DockState::Leaving { since: at(0) }] {
             let mut state = start;
             assert_eq!(state.on(Pasted, at(10), &hover), DockAction::Collapse);
-            assert_eq!(state, DockState::Collapsed);
+            assert_eq!(state, DockState::Parked);
         }
     }
 
@@ -750,6 +780,51 @@ mod tests {
         let hover = cfg(DockTrigger::Hover);
         let mut state = DockState::Revealing { since: at(1000) };
         assert_eq!(state.on(Tick, at(0), &hover), DockAction::None);
+    }
+
+    #[test]
+    fn a_panel_that_just_collapsed_ignores_a_pointer_that_never_left_the_handle() {
+        let cfg = cfg(DockTrigger::Both);
+        for close in [Hotkey, Pasted] {
+            let mut state = DockState::Expanded;
+            assert_eq!(state.on(close, at(0), &cfg), DockAction::Collapse);
+            assert_eq!(state, DockState::Parked);
+            // The handle appeared under the pointer: that is not a hover.
+            assert_eq!(state.on(HandleHover(true), at(50), &cfg), DockAction::None);
+            assert_eq!(state.on(Tick, at(5_000), &cfg), DockAction::None);
+            assert!(state.is_collapsed() && !state.needs_tick(), "{close:?}");
+            // Off it and back on: now it is one.
+            assert_eq!(
+                state.on(HandleHover(false), at(5_100), &cfg),
+                DockAction::None
+            );
+            assert_eq!(state, DockState::Collapsed);
+            assert_eq!(
+                state.on(HandleHover(true), at(5_200), &cfg),
+                DockAction::None
+            );
+            assert_eq!(state.on(Tick, at(5_350), &cfg), DockAction::Expand);
+        }
+        // Leaving the open Panel collapses it the same way.
+        let mut left = DockState::Expanded;
+        left.on(PanelHover(false), at(0), &cfg);
+        assert_eq!(left.on(Tick, at(400), &cfg), DockAction::Collapse);
+        assert_eq!(left, DockState::Parked);
+        // A click and the hotkey need no leaving first.
+        for open in [HandleClick, Hotkey] {
+            let mut state = DockState::Parked;
+            assert_eq!(
+                state.on(open, at(100), &cfg),
+                DockAction::Expand,
+                "{open:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_open_panel_is_kept_wherever_the_tab_would_reveal_it() {
+        // Else a pointer between the two zones would open and close the Panel for ever.
+        const { assert!(KEEP_ZONE >= REVEAL_ZONE) };
     }
 
     /// Every way of feeding up to five events, 100 ms apart, to a dock in each trigger mode.
@@ -814,7 +889,7 @@ mod tests {
                             }
                             DockAction::Collapse => {
                                 assert!(
-                                    !before.is_collapsed() && state == DockState::Collapsed,
+                                    !before.is_collapsed() && state == DockState::Parked,
                                     "{story}"
                                 );
                             }

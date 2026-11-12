@@ -281,3 +281,62 @@ fn a_panel_dropped_half_off_screen_is_pulled_inside() {
         DragEnd::Floating(window(1620, 640, FLOATING))
     );
 }
+
+#[test]
+fn the_wait_counts_only_while_the_cursor_is_in_the_edge_zone() {
+    let screen = screen();
+    let mut drag = Drag::begin((500, 300), window(400, 290, FLOATING), None);
+    // Along the top, with the strip under the cursor: it touches the zone once, then rides a
+    // few pixels below it for as long as it likes.
+    let _ = drag.moved((600, 2), &ctx(&screen, 0));
+    let _ = drag.moved((640, 9), &ctx(&screen, 100));
+    let _ = drag.moved((700, 10), &ctx(&screen, 250));
+    assert_eq!(drag.phase(), DragPhase::Float, "ten pixels down is not at the edge");
+    let _ = drag.moved((760, 8), &ctx(&screen, 2_000));
+    assert_eq!(drag.phase(), DragPhase::Float);
+    // Back in the zone: the wait counts from now.
+    let _ = drag.moved((800, 3), &ctx(&screen, 2_100));
+    let _ = drag.moved((800, 3), &ctx(&screen, 2_299));
+    assert_eq!(drag.preview(), None);
+    let _ = drag.moved((800, 3), &ctx(&screen, 2_300));
+    assert_eq!(drag.preview(), Some(DockEdge::Top));
+}
+
+#[test]
+fn a_corner_offers_the_edge_the_cursor_settled_at_not_the_one_it_touched_first() {
+    let screen = screen();
+    let mut drag = Drag::begin((500, 300), window(400, 290, FLOATING), None);
+    // Into the corner along the top, then down the left side: all within the zone of one or the
+    // other, never 200 ms at either.
+    let _ = drag.moved((3, 0), &ctx(&screen, 0));
+    let _ = drag.moved((2, 1), &ctx(&screen, 100));
+    let _ = drag.moved((0, 3), &ctx(&screen, 150));
+    let _ = drag.moved((0, 3), &ctx(&screen, 250));
+    assert_eq!(drag.preview(), None, "the top was left 100 ms ago; the left has had 100 ms");
+    let _ = drag.moved((0, 3), &ctx(&screen, 350));
+    assert_eq!(drag.preview(), Some(DockEdge::Left));
+}
+
+#[test]
+fn pushing_a_docked_panel_into_its_own_edge_keeps_it_docked() {
+    let screen = screen();
+    for (edge, docked_at, press, into, away) in [
+        (DockEdge::Left, window(0, 200, DOCKED), (140, 210), (0, 210), (165, 210)),
+        (
+            DockEdge::Right,
+            window(1640, 200, DOCKED),
+            (1700, 210),
+            (1919, 210),
+            (1675, 210),
+        ),
+        (DockEdge::Top, window(600, 0, DOCKED), (700, 100), (700, 0), (700, 125)),
+    ] {
+        let mut drag = Drag::begin(press, docked_at, Some(edge));
+        // Far more than the pull that undocks, but towards the edge: nothing to leave.
+        assert_eq!(drag.moved(into, &ctx(&screen, 100)), DragStep::None, "{edge:?}");
+        assert_eq!(drag.phase(), DragPhase::Slide(edge));
+        // Away from it by more than the pull: it floats.
+        let _ = drag.moved(away, &ctx(&screen, 200));
+        assert_eq!(drag.phase(), DragPhase::Float, "{edge:?}");
+    }
+}
