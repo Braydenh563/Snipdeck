@@ -207,15 +207,12 @@ See [`docs/licensing.md`](docs/licensing.md).
 
 Snipdeck is built in the open and these are planned, in no promised order.
 
-- A compact dock, so the Panel can sit as a slim bar with drag grips.
-- Drag the sidebar wider or narrower, and drag several rows at once.
-- Select-and-delete from the Main window header, and paste or drop text to create an item.
-- Groups inside a list.
-- Optional typed shortcuts that expand into a snippet (off by default, and never in programs on your no-paste list).
-- More placeholders such as `{uuid}` and date maths like `{date+7d}`, plus paste transforms (plain text, change
-  case, trim).
-- Import from TextExpander, Espanso, PhraseExpress and Beeftext.
-- Windows Hello quick unlock, and a colour picker with an eyedropper.
+- Snipdeck in the Microsoft Store.
+- Rules per app, such as a default list or paste style for each program.
+- Sync a library folder between your PCs.
+- Share a board with someone else.
+- A command line to get or paste a snippet from scripts.
+- An optional paste action that rewrites text with a local AI model, off by default and never online.
 
 Have an idea? Open an issue.
 
