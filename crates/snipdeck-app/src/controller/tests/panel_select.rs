@@ -629,6 +629,33 @@ fn main_copy_selection_copies_one_item_or_joins_many() {
 }
 
 #[test]
+fn the_item_menu_copy_joins_every_selected_row_in_display_order() {
+    let mut w = world();
+    w.ctl.main_open(crate::main_window::Section::All);
+    w.ctl.main_select_all();
+    w.ctl.services.clipboard.written.clear();
+    assert!(
+        w.ctl
+            .main_action(crate::controller::MainAction::Copy, 0)
+            .is_none()
+    );
+    let text = match &w.ctl.services.clipboard.written[0].data()[0] {
+        Data::Text(t) => t.clone(),
+        other => panic!("{other:?}"),
+    };
+    for want in ["first", "second", "third", "https://example.com"] {
+        assert!(text.lines().any(|l| l == want), "{want} in {text:?}");
+    }
+    // One row still copies the way its Copy button does: counted as a use.
+    w.ctl
+        .main_open(crate::main_window::Section::List(w.links_list));
+    let before = uses(&w, w.ids[4]);
+    let used = w.ctl.main_action(crate::controller::MainAction::Copy, 0);
+    assert!(matches!(used, Some(UseResult::Done(_))), "{used:?}");
+    assert_eq!(uses(&w, w.ids[4]), before + 1);
+}
+
+#[test]
 fn undo_falls_back_to_the_trash_when_the_history_step_is_gone() {
     let mut w = pasting("a fresh note");
     w.ctl.paste_create(Origin::Panel);
