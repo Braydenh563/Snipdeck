@@ -826,7 +826,7 @@ where
     /// The Panel is about to be shown and its window cannot say what monitor it is on: it does
     /// not exist before the first show (the host makes it once its event loop runs). Places it
     /// at the anchor a [`show`](Self::show) read, once; else, the first time, where it was
-    /// left on the monitor it was last left on ([`find_monitor`](Self::find_monitor)), so that
+    /// left on the monitor it was last left on (`find_monitor`), so that
     /// the window is made there and not wherever the system puts a new one.
     pub fn restore_anchor(&mut self) -> Vec<Effect> {
         let Some(anchor) = self.session.open_anchor.take() else {

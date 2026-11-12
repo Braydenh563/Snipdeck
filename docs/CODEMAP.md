@@ -372,51 +372,52 @@ FRESH_LEAVE_MS | crates/snipdeck-app/src/controller/dock_ctl.rs:30
 RESIZE_QUIET_MS | crates/snipdeck-app/src/controller/dock_ctl.rs:33
 zone | crates/snipdeck-app/src/controller/dock_ctl.rs:36
 DragPlace | crates/snipdeck-app/src/controller/dock_ctl.rs:41
-impl Controller<S, C, K, T> | crates/snipdeck-app/src/controller/dock_ctl.rs:46
-dock_edge | crates/snipdeck-app/src/controller/dock_ctl.rs:55
-dock_config | crates/snipdeck-app/src/controller/dock_ctl.rs:60
-dock_active | crates/snipdeck-app/src/controller/dock_ctl.rs:70
-dock_collapsed | crates/snipdeck-app/src/controller/dock_ctl.rs:76
-dock_needs_tick | crates/snipdeck-app/src/controller/dock_ctl.rs:82
-stored_geometry | crates/snipdeck-app/src/controller/dock_ctl.rs:86
-dock_event | crates/snipdeck-app/src/controller/dock_ctl.rs:95
-dock_hover | crates/snipdeck-app/src/controller/dock_ctl.rs:106
-dock_covered | crates/snipdeck-app/src/controller/dock_ctl.rs:133
-dock_live | crates/snipdeck-app/src/controller/dock_ctl.rs:140
-dock_rects | crates/snipdeck-app/src/controller/dock_ctl.rs:145
-dock_size | crates/snipdeck-app/src/controller/dock_ctl.rs:158
-dock_open | crates/snipdeck-app/src/controller/dock_ctl.rs:178
-dock_held | crates/snipdeck-app/src/controller/dock_ctl.rs:198
-resize_goes_on | crates/snipdeck-app/src/controller/dock_ctl.rs:214
-dock_on_monitor | crates/snipdeck-app/src/controller/dock_ctl.rs:240
-dock_area_refresh | crates/snipdeck-app/src/controller/dock_ctl.rs:258
-set_panel_focused | crates/snipdeck-app/src/controller/dock_ctl.rs:289
-dock_tick | crates/snipdeck-app/src/controller/dock_ctl.rs:299
-dock_tuck | crates/snipdeck-app/src/controller/dock_ctl.rs:348
-dock_after_use | crates/snipdeck-app/src/controller/dock_ctl.rs:365
-after_use | crates/snipdeck-app/src/controller/dock_ctl.rs:380
-dock_act | crates/snipdeck-app/src/controller/dock_ctl.rs:395
-dock_place | crates/snipdeck-app/src/controller/dock_ctl.rs:414
-open_anchor_now | crates/snipdeck-app/src/controller/dock_ctl.rs:436
-frame_at | crates/snipdeck-app/src/controller/dock_ctl.rs:458
-dock_resync | crates/snipdeck-app/src/controller/dock_ctl.rs:504
-open_frame | crates/snipdeck-app/src/controller/dock_ctl.rs:513
-geometry_on | crates/snipdeck-app/src/controller/dock_ctl.rs:533
-find_monitor | crates/snipdeck-app/src/controller/dock_ctl.rs:557
-sizes_on | crates/snipdeck-app/src/controller/dock_ctl.rs:572
-dock_to | crates/snipdeck-app/src/controller/dock_ctl.rs:623
-set_dock_full_edge | crates/snipdeck-app/src/controller/dock_ctl.rs:693
-dragging | crates/snipdeck-app/src/controller/dock_ctl.rs:705
-shown_edge | crates/snipdeck-app/src/controller/dock_ctl.rs:711
-drag_ctx | crates/snipdeck-app/src/controller/dock_ctl.rs:723
-drag_begin | crates/snipdeck-app/src/controller/dock_ctl.rs:738
-drag_let_go | crates/snipdeck-app/src/controller/dock_ctl.rs:753
-drag_move | crates/snipdeck-app/src/controller/dock_ctl.rs:770
-drag_end | crates/snipdeck-app/src/controller/dock_ctl.rs:800
-reset_panel_geometry | crates/snipdeck-app/src/controller/dock_ctl.rs:900
-dock_target | crates/snipdeck-app/src/controller/dock_ctl.rs:915
-dock_toggle | crates/snipdeck-app/src/controller/dock_ctl.rs:928
-take_pending | crates/snipdeck-app/src/controller/dock_ctl.rs:939
+mend_full_height | crates/snipdeck-app/src/controller/dock_ctl.rs:50
+impl Controller<S, C, K, T> | crates/snipdeck-app/src/controller/dock_ctl.rs:66
+dock_edge | crates/snipdeck-app/src/controller/dock_ctl.rs:75
+dock_config | crates/snipdeck-app/src/controller/dock_ctl.rs:80
+dock_active | crates/snipdeck-app/src/controller/dock_ctl.rs:90
+dock_collapsed | crates/snipdeck-app/src/controller/dock_ctl.rs:96
+dock_needs_tick | crates/snipdeck-app/src/controller/dock_ctl.rs:102
+stored_geometry | crates/snipdeck-app/src/controller/dock_ctl.rs:106
+dock_event | crates/snipdeck-app/src/controller/dock_ctl.rs:115
+dock_hover | crates/snipdeck-app/src/controller/dock_ctl.rs:126
+dock_covered | crates/snipdeck-app/src/controller/dock_ctl.rs:153
+dock_live | crates/snipdeck-app/src/controller/dock_ctl.rs:160
+dock_rects | crates/snipdeck-app/src/controller/dock_ctl.rs:165
+dock_size | crates/snipdeck-app/src/controller/dock_ctl.rs:178
+dock_open | crates/snipdeck-app/src/controller/dock_ctl.rs:198
+dock_held | crates/snipdeck-app/src/controller/dock_ctl.rs:218
+resize_goes_on | crates/snipdeck-app/src/controller/dock_ctl.rs:234
+dock_on_monitor | crates/snipdeck-app/src/controller/dock_ctl.rs:260
+dock_area_refresh | crates/snipdeck-app/src/controller/dock_ctl.rs:278
+set_panel_focused | crates/snipdeck-app/src/controller/dock_ctl.rs:309
+dock_tick | crates/snipdeck-app/src/controller/dock_ctl.rs:319
+dock_tuck | crates/snipdeck-app/src/controller/dock_ctl.rs:368
+dock_after_use | crates/snipdeck-app/src/controller/dock_ctl.rs:385
+after_use | crates/snipdeck-app/src/controller/dock_ctl.rs:400
+dock_act | crates/snipdeck-app/src/controller/dock_ctl.rs:415
+dock_place | crates/snipdeck-app/src/controller/dock_ctl.rs:434
+open_anchor_now | crates/snipdeck-app/src/controller/dock_ctl.rs:456
+frame_at | crates/snipdeck-app/src/controller/dock_ctl.rs:478
+dock_resync | crates/snipdeck-app/src/controller/dock_ctl.rs:524
+open_frame | crates/snipdeck-app/src/controller/dock_ctl.rs:533
+geometry_on | crates/snipdeck-app/src/controller/dock_ctl.rs:553
+find_monitor | crates/snipdeck-app/src/controller/dock_ctl.rs:564
+sizes_on | crates/snipdeck-app/src/controller/dock_ctl.rs:579
+dock_to | crates/snipdeck-app/src/controller/dock_ctl.rs:630
+set_dock_full_edge | crates/snipdeck-app/src/controller/dock_ctl.rs:700
+dragging | crates/snipdeck-app/src/controller/dock_ctl.rs:712
+shown_edge | crates/snipdeck-app/src/controller/dock_ctl.rs:718
+drag_ctx | crates/snipdeck-app/src/controller/dock_ctl.rs:730
+drag_begin | crates/snipdeck-app/src/controller/dock_ctl.rs:745
+drag_let_go | crates/snipdeck-app/src/controller/dock_ctl.rs:760
+drag_move | crates/snipdeck-app/src/controller/dock_ctl.rs:777
+drag_end | crates/snipdeck-app/src/controller/dock_ctl.rs:807
+reset_panel_geometry | crates/snipdeck-app/src/controller/dock_ctl.rs:907
+dock_target | crates/snipdeck-app/src/controller/dock_ctl.rs:922
+dock_toggle | crates/snipdeck-app/src/controller/dock_ctl.rs:935
+take_pending | crates/snipdeck-app/src/controller/dock_ctl.rs:946
 
 ### crates/snipdeck-app/src/controller/editor_ctl.rs
 
@@ -839,9 +840,9 @@ frame_changed | crates/snipdeck-app/src/controller/panel.rs:712
 frame_moved | crates/snipdeck-app/src/controller/panel.rs:720
 remember_frame | crates/snipdeck-app/src/controller/panel.rs:724
 placement | crates/snipdeck-app/src/controller/panel.rs:813
-restore_anchor | crates/snipdeck-app/src/controller/panel.rs:829
-restore_frame | crates/snipdeck-app/src/controller/panel.rs:868
-restore_on | crates/snipdeck-app/src/controller/panel.rs:876
+restore_anchor | crates/snipdeck-app/src/controller/panel.rs:831
+restore_frame | crates/snipdeck-app/src/controller/panel.rs:870
+restore_on | crates/snipdeck-app/src/controller/panel.rs:878
 
 ### crates/snipdeck-app/src/controller/panel_ctl.rs
 
@@ -5590,38 +5591,40 @@ WS_EX_TOOLWINDOW | crates/snipdeck-platform/src/win_logic.rs:279
 WS_EX_APPWINDOW | crates/snipdeck-platform/src/win_logic.rs:281
 panel_ex_style | crates/snipdeck-platform/src/win_logic.rs:287
 ZStep | crates/snipdeck-platform/src/win_logic.rs:297
-raise_steps | crates/snipdeck-platform/src/win_logic.rs:312
-ClassNames | crates/snipdeck-platform/src/win_logic.rs:327
-impl ClassNames | crates/snipdeck-platform/src/win_logic.rs:331
-claim | crates/snipdeck-platform/src/win_logic.rs:334
-tests | crates/snipdeck-platform/src/win_logic.rs:344
-a_class_name_belongs_to_one_handler_type | crates/snipdeck-platform/src/win_logic.rs:348
-ev | crates/snipdeck-platform/src/win_logic.rs:359
-m | crates/snipdeck-platform/src/win_logic.rs:363
-nothing_down | crates/snipdeck-platform/src/win_logic.rs:367
-keys_map_to_the_documented_virtual_keys | crates/snipdeck-platform/src/win_logic.rs:372
-extended_flag_is_set_only_for_extended_keys | crates/snipdeck-platform/src/win_logic.rs:386
-held_modifiers_merge_left_and_right | crates/snipdeck-platform/src/win_logic.rs:402
-expand_presses_the_left_key_and_releases_the_left_key_when_none_is_down | crates/snipdeck-platform/src/win_logic.rs:418
-expand_releases_the_right_hand_key_the_user_holds | crates/snipdeck-platform/src/win_logic.rs:437
-expand_releases_both_variants_when_both_are_down | crates/snipdeck-platform/src/win_logic.rs:446
-expand_keeps_the_mask_press_before_the_alt_release | crates/snipdeck-platform/src/win_logic.rs:455
-left_down_reports_keys_still_pressed_after_a_partial_send | crates/snipdeck-platform/src/win_logic.rs:473
-facts | crates/snipdeck-platform/src/win_logic.rs:488
-edit_and_document_controls_accept_text | crates/snipdeck-platform/src/win_logic.rs:500
-a_terminal_with_only_text_pattern_accepts_text | crates/snipdeck-platform/src/win_logic.rs:510
-a_plain_focusable_control_does_not | crates/snipdeck-platform/src/win_logic.rs:518
-value_pattern_decides_by_read_only | crates/snipdeck-platform/src/win_logic.rs:527
-unfocusable_or_disabled_elements_never_accept | crates/snipdeck-platform/src/win_logic.rs:542
-integrity_gate_blocks_higher_and_unreadable | crates/snipdeck-platform/src/win_logic.rs:559
-exe_file_name_takes_the_last_component | crates/snipdeck-platform/src/win_logic.rs:568
-shell_classes_are_not_targets | crates/snipdeck-platform/src/win_logic.rs:580
-a_window_is_full_screen_when_it_covers_its_monitor_and_has_no_frame | crates/snipdeck-platform/src/win_logic.rs:602
-the_alt_tab_switcher_is_not_a_target | crates/snipdeck-platform/src/win_logic.rs:630
-alt_tabbing_to_the_panel_keeps_the_app_the_user_came_from_as_the_target | crates/snipdeck-platform/src/win_logic.rs:647
-raising_the_panel_goes_through_the_topmost_band_unless_it_is_pinned_there | crates/snipdeck-platform/src/win_logic.rs:670
-panel_style_is_noactivate_toolwindow_and_not_appwindow | crates/snipdeck-platform/src/win_logic.rs:680
-panel_style_with_taskbar_has_appwindow_and_no_toolwindow | crates/snipdeck-platform/src/win_logic.rs:690
+size_loop_on_panel | crates/snipdeck-platform/src/win_logic.rs:309
+raise_steps | crates/snipdeck-platform/src/win_logic.rs:321
+ClassNames | crates/snipdeck-platform/src/win_logic.rs:336
+impl ClassNames | crates/snipdeck-platform/src/win_logic.rs:340
+claim | crates/snipdeck-platform/src/win_logic.rs:343
+tests | crates/snipdeck-platform/src/win_logic.rs:353
+a_size_loop_counts_only_on_the_panel_window | crates/snipdeck-platform/src/win_logic.rs:357
+a_class_name_belongs_to_one_handler_type | crates/snipdeck-platform/src/win_logic.rs:365
+ev | crates/snipdeck-platform/src/win_logic.rs:376
+m | crates/snipdeck-platform/src/win_logic.rs:380
+nothing_down | crates/snipdeck-platform/src/win_logic.rs:384
+keys_map_to_the_documented_virtual_keys | crates/snipdeck-platform/src/win_logic.rs:389
+extended_flag_is_set_only_for_extended_keys | crates/snipdeck-platform/src/win_logic.rs:403
+held_modifiers_merge_left_and_right | crates/snipdeck-platform/src/win_logic.rs:419
+expand_presses_the_left_key_and_releases_the_left_key_when_none_is_down | crates/snipdeck-platform/src/win_logic.rs:435
+expand_releases_the_right_hand_key_the_user_holds | crates/snipdeck-platform/src/win_logic.rs:454
+expand_releases_both_variants_when_both_are_down | crates/snipdeck-platform/src/win_logic.rs:463
+expand_keeps_the_mask_press_before_the_alt_release | crates/snipdeck-platform/src/win_logic.rs:472
+left_down_reports_keys_still_pressed_after_a_partial_send | crates/snipdeck-platform/src/win_logic.rs:490
+facts | crates/snipdeck-platform/src/win_logic.rs:505
+edit_and_document_controls_accept_text | crates/snipdeck-platform/src/win_logic.rs:517
+a_terminal_with_only_text_pattern_accepts_text | crates/snipdeck-platform/src/win_logic.rs:527
+a_plain_focusable_control_does_not | crates/snipdeck-platform/src/win_logic.rs:535
+value_pattern_decides_by_read_only | crates/snipdeck-platform/src/win_logic.rs:544
+unfocusable_or_disabled_elements_never_accept | crates/snipdeck-platform/src/win_logic.rs:559
+integrity_gate_blocks_higher_and_unreadable | crates/snipdeck-platform/src/win_logic.rs:576
+exe_file_name_takes_the_last_component | crates/snipdeck-platform/src/win_logic.rs:585
+shell_classes_are_not_targets | crates/snipdeck-platform/src/win_logic.rs:597
+a_window_is_full_screen_when_it_covers_its_monitor_and_has_no_frame | crates/snipdeck-platform/src/win_logic.rs:619
+the_alt_tab_switcher_is_not_a_target | crates/snipdeck-platform/src/win_logic.rs:647
+alt_tabbing_to_the_panel_keeps_the_app_the_user_came_from_as_the_target | crates/snipdeck-platform/src/win_logic.rs:664
+raising_the_panel_goes_through_the_topmost_band_unless_it_is_pinned_there | crates/snipdeck-platform/src/win_logic.rs:687
+panel_style_is_noactivate_toolwindow_and_not_appwindow | crates/snipdeck-platform/src/win_logic.rs:697
+panel_style_with_taskbar_has_appwindow_and_no_toolwindow | crates/snipdeck-platform/src/win_logic.rs:707
 
 ### crates/snipdeck-platform/src/windows/autostart.rs
 
@@ -5953,13 +5956,13 @@ describe_window | crates/snipdeck-platform/src/windows/paint_diag.rs:139
 
 ### crates/snipdeck-platform/src/windows/screen.rs
 
-MonitorFacts | crates/snipdeck-platform/src/windows/screen.rs:28
-cursor_position | crates/snipdeck-platform/src/windows/screen.rs:41
-primary_button_down | crates/snipdeck-platform/src/windows/screen.rs:52
-in_size_loop | crates/snipdeck-platform/src/windows/screen.rs:66
-clipboard_picture_state | crates/snipdeck-platform/src/windows/screen.rs:81
-monitor_at | crates/snipdeck-platform/src/windows/screen.rs:96
-rect | crates/snipdeck-platform/src/windows/screen.rs:130
+MonitorFacts | crates/snipdeck-platform/src/windows/screen.rs:29
+cursor_position | crates/snipdeck-platform/src/windows/screen.rs:42
+primary_button_down | crates/snipdeck-platform/src/windows/screen.rs:53
+in_size_loop | crates/snipdeck-platform/src/windows/screen.rs:68
+clipboard_picture_state | crates/snipdeck-platform/src/windows/screen.rs:88
+monitor_at | crates/snipdeck-platform/src/windows/screen.rs:103
+rect | crates/snipdeck-platform/src/windows/screen.rs:137
 
 ### crates/snipdeck-platform/src/windows/single_instance.rs
 
@@ -6031,49 +6034,50 @@ hwnd_from | crates/snipdeck-platform/src/windows/target.rs:204
 TargetTracker | crates/snipdeck-platform/src/windows/target.rs:209
 impl TargetTracker | crates/snipdeck-platform/src/windows/target.rs:217
 install | crates/snipdeck-platform/src/windows/target.rs:232
-set_panel | crates/snipdeck-platform/src/windows/target.rs:272
-register_popup | crates/snipdeck-platform/src/windows/target.rs:282
-current | crates/snipdeck-platform/src/windows/target.rs:306
-begin_text_entry | crates/snipdeck-platform/src/windows/target.rs:330
-begin_text_entry_in | crates/snipdeck-platform/src/windows/target.rs:337
-end_text_entry | crates/snipdeck-platform/src/windows/target.rs:356
-refocus_target | crates/snipdeck-platform/src/windows/target.rs:371
-caret | crates/snipdeck-platform/src/windows/target.rs:389
-probe | crates/snipdeck-platform/src/windows/target.rs:404
-focus_is_password | crates/snipdeck-platform/src/windows/target.rs:432
-automation_focus | crates/snipdeck-platform/src/windows/target.rs:446
-uia | crates/snipdeck-platform/src/windows/target.rs:462
-PasswordProbe | crates/snipdeck-platform/src/windows/target.rs:479
-impl Default for PasswordProbe | crates/snipdeck-platform/src/windows/target.rs:485
-default | crates/snipdeck-platform/src/windows/target.rs:486
-impl PasswordProbe | crates/snipdeck-platform/src/windows/target.rs:491
-new | crates/snipdeck-platform/src/windows/target.rs:494
-focus_is_password | crates/snipdeck-platform/src/windows/target.rs:505
-impl Drop for TargetTracker | crates/snipdeck-platform/src/windows/target.rs:516
-drop | crates/snipdeck-platform/src/windows/target.rs:517
-ProbeGuard | crates/snipdeck-platform/src/windows/target.rs:535
-impl Drop for ProbeGuard<'_> | crates/snipdeck-platform/src/windows/target.rs:537
-drop | crates/snipdeck-platform/src/windows/target.rs:538
-ComGuard | crates/snipdeck-platform/src/windows/target.rs:573
-impl ComGuard | crates/snipdeck-platform/src/windows/target.rs:577
-init | crates/snipdeck-platform/src/windows/target.rs:578
-impl Drop for ComGuard | crates/snipdeck-platform/src/windows/target.rs:591
-drop | crates/snipdeck-platform/src/windows/target.rs:592
-UiaState | crates/snipdeck-platform/src/windows/target.rs:600
-Uia | crates/snipdeck-platform/src/windows/target.rs:609
-impl Uia | crates/snipdeck-platform/src/windows/target.rs:614
-create | crates/snipdeck-platform/src/windows/target.rs:615
-focused_element | crates/snipdeck-platform/src/windows/target.rs:654
-gui_thread_focus | crates/snipdeck-platform/src/windows/target.rs:686
-gui_thread_caret | crates/snipdeck-platform/src/windows/target.rs:703
-window_title | crates/snipdeck-platform/src/windows/target.rs:731
-process_exe_name | crates/snipdeck-platform/src/windows/target.rs:744
-window_exe_name | crates/snipdeck-platform/src/windows/target.rs:766
-open_process | crates/snipdeck-platform/src/windows/target.rs:778
-process_integrity | crates/snipdeck-platform/src/windows/target.rs:787
-integrity_level | crates/snipdeck-platform/src/windows/target.rs:793
-fullscreen_covers | crates/snipdeck-platform/src/windows/target.rs:834
-covers_monitor | crates/snipdeck-platform/src/windows/target.rs:867
+panel | crates/snipdeck-platform/src/windows/target.rs:272
+set_panel | crates/snipdeck-platform/src/windows/target.rs:278
+register_popup | crates/snipdeck-platform/src/windows/target.rs:288
+current | crates/snipdeck-platform/src/windows/target.rs:312
+begin_text_entry | crates/snipdeck-platform/src/windows/target.rs:336
+begin_text_entry_in | crates/snipdeck-platform/src/windows/target.rs:343
+end_text_entry | crates/snipdeck-platform/src/windows/target.rs:362
+refocus_target | crates/snipdeck-platform/src/windows/target.rs:377
+caret | crates/snipdeck-platform/src/windows/target.rs:395
+probe | crates/snipdeck-platform/src/windows/target.rs:410
+focus_is_password | crates/snipdeck-platform/src/windows/target.rs:438
+automation_focus | crates/snipdeck-platform/src/windows/target.rs:452
+uia | crates/snipdeck-platform/src/windows/target.rs:468
+PasswordProbe | crates/snipdeck-platform/src/windows/target.rs:485
+impl Default for PasswordProbe | crates/snipdeck-platform/src/windows/target.rs:491
+default | crates/snipdeck-platform/src/windows/target.rs:492
+impl PasswordProbe | crates/snipdeck-platform/src/windows/target.rs:497
+new | crates/snipdeck-platform/src/windows/target.rs:500
+focus_is_password | crates/snipdeck-platform/src/windows/target.rs:511
+impl Drop for TargetTracker | crates/snipdeck-platform/src/windows/target.rs:522
+drop | crates/snipdeck-platform/src/windows/target.rs:523
+ProbeGuard | crates/snipdeck-platform/src/windows/target.rs:541
+impl Drop for ProbeGuard<'_> | crates/snipdeck-platform/src/windows/target.rs:543
+drop | crates/snipdeck-platform/src/windows/target.rs:544
+ComGuard | crates/snipdeck-platform/src/windows/target.rs:579
+impl ComGuard | crates/snipdeck-platform/src/windows/target.rs:583
+init | crates/snipdeck-platform/src/windows/target.rs:584
+impl Drop for ComGuard | crates/snipdeck-platform/src/windows/target.rs:597
+drop | crates/snipdeck-platform/src/windows/target.rs:598
+UiaState | crates/snipdeck-platform/src/windows/target.rs:606
+Uia | crates/snipdeck-platform/src/windows/target.rs:615
+impl Uia | crates/snipdeck-platform/src/windows/target.rs:620
+create | crates/snipdeck-platform/src/windows/target.rs:621
+focused_element | crates/snipdeck-platform/src/windows/target.rs:660
+gui_thread_focus | crates/snipdeck-platform/src/windows/target.rs:692
+gui_thread_caret | crates/snipdeck-platform/src/windows/target.rs:709
+window_title | crates/snipdeck-platform/src/windows/target.rs:737
+process_exe_name | crates/snipdeck-platform/src/windows/target.rs:750
+window_exe_name | crates/snipdeck-platform/src/windows/target.rs:772
+open_process | crates/snipdeck-platform/src/windows/target.rs:784
+process_integrity | crates/snipdeck-platform/src/windows/target.rs:793
+integrity_level | crates/snipdeck-platform/src/windows/target.rs:799
+fullscreen_covers | crates/snipdeck-platform/src/windows/target.rs:840
+covers_monitor | crates/snipdeck-platform/src/windows/target.rs:873
 
 ### crates/snipdeck-platform/src/windows/tray.rs
 
@@ -8261,7 +8265,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/src/controller/history_ctl.rs` (inline) | 1 |
 | `crates/snipdeck-app/src/controller/tests/access.rs` | 13 |
 | `crates/snipdeck-app/src/controller/tests/capture_stack.rs` | 15 |
-| `crates/snipdeck-app/src/controller/tests/dock.rs` | 85 |
+| `crates/snipdeck-app/src/controller/tests/dock.rs` | 86 |
 | `crates/snipdeck-app/src/controller/tests/look_settings.rs` | 16 |
 | `crates/snipdeck-app/src/controller/tests/main_groups.rs` | 23 |
 | `crates/snipdeck-app/src/controller/tests/menus_frame.rs` | 21 |
@@ -8396,7 +8400,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-platform/src/tray.rs` (inline) | 17 |
 | `crates/snipdeck-platform/src/typing.rs` (inline) | 10 |
 | `crates/snipdeck-platform/src/win_formats.rs` (inline) | 43 |
-| `crates/snipdeck-platform/src/win_logic.rs` (inline) | 23 |
+| `crates/snipdeck-platform/src/win_logic.rs` (inline) | 24 |
 | `crates/snipdeck-platform/src/windows/clipboard.rs` (inline) | 7 |
 | `crates/snipdeck-platform/src/windows/dpapi.rs` (inline) | 4 |
 | `crates/snipdeck-platform/src/windows/dpi.rs` (inline) | 3 |
