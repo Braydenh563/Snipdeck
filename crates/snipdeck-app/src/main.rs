@@ -699,8 +699,9 @@ fn restore_frame(window: &PanelWindow) {
     {
         with_binding(|b| b.restore_frame(&monitor));
     } else {
-        // The first show after a `--hidden` start: the window cannot say where it is yet, but
-        // "Panel opens" at the mouse or the text cursor needs no monitor of its own.
+        // The window cannot say where it is: before its first show it does not exist (the
+        // event loop makes it). The controller places it itself: at the mouse or the text
+        // cursor when "Panel opens" says so, else, the first time, where it was last left.
         with_binding(Binding::restore_anchor);
     }
 }

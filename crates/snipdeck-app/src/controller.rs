@@ -293,6 +293,8 @@ pub struct Controller<S, C, K, T> {
     unplaced: bool,
     /// The button was read as down during this resize: only then is "up" believed.
     resize_button_seen: bool,
+    /// The system's size loop was seen running in this resize: its end is then the resize's.
+    resize_loop_seen: bool,
     /// When this resize began, or the window last reported a new size in it.
     resize_at: Timestamp,
     /// The Panel was just docked from a menu or from Settings and the pointer has not been on
@@ -493,6 +495,7 @@ where
             resizing: false,
             unplaced: true,
             resize_button_seen: false,
+            resize_loop_seen: false,
             resize_at: shown_at,
             dock_fresh: false,
             docked_at: shown_at,

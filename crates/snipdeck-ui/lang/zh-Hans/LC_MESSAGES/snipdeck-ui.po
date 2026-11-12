@@ -1762,8 +1762,8 @@ msgstr "关闭"
 msgid "Off keeps a panel docked to the left or right at the height you dropped it. On stretches it over the whole edge."
 msgstr "关闭：停靠在左侧或右侧的面板保持你放下时的高度。开启：面板占满整条边。"
 
-msgid "Off: a docked panel does not tuck. Otherwise it tucks into a thin tab at its edge, and the panel shortcut opens it too."
-msgstr "关闭：停靠的面板不会收起。否则它会收成边缘上的一条细标签，面板快捷键也能打开它。"
+msgid "Off: a docked panel does not tuck and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the panel shortcut opens it too."
+msgstr "关闭：停靠的面板不会收起，而是像浮动面板一样隐藏。否则它会收成边缘上的一条细标签，面板快捷键也能打开它。"
 
 msgid "One hotkey turns copied text into an item."
 msgstr "一个快捷键即可将复制的文本变为片段。"

@@ -209,6 +209,12 @@ pub trait TargetSource {
     fn primary_down(&self) -> Option<bool> {
         None
     }
+    /// Whether the system's own size loop runs on the Panel's window: it starts a moment
+    /// after a resize is asked for and ends when the grip is let go. `None` (the default)
+    /// means the host cannot tell.
+    fn size_loop(&self) -> Option<bool> {
+        None
+    }
     /// The monitor under a physical point, if the host can tell.
     fn monitor_at(&self, _x: i32, _y: i32) -> Option<crate::frame::Monitor> {
         None
@@ -364,6 +370,7 @@ pub struct FakeTargets {
     caret: Rc<Cell<Option<ScreenRect>>>,
     cursor: Rc<Cell<Option<(i32, i32)>>>,
     primary: Rc<Cell<Option<bool>>>,
+    size_loop: Rc<Cell<Option<bool>>>,
     fullscreen: Rc<RefCell<Option<String>>>,
     monitors: Rc<RefCell<Vec<crate::frame::Monitor>>>,
     /// A Target change that happens once the flag is raised (from another thread, as a typed
@@ -381,6 +388,7 @@ impl FakeTargets {
             caret: Rc::default(),
             cursor: Rc::default(),
             primary: Rc::default(),
+            size_loop: Rc::default(),
             fullscreen: Rc::default(),
             monitors: Rc::default(),
             switch: Rc::default(),
@@ -411,6 +419,11 @@ impl FakeTargets {
     /// Sets what the host reads for the primary mouse button (`None`: it cannot be read).
     pub fn set_primary_down(&self, down: Option<bool>) {
         self.primary.set(down);
+    }
+
+    /// Sets whether the system's size loop runs on the Panel (`None`: the host cannot tell).
+    pub fn set_size_loop(&self, running: Option<bool>) {
+        self.size_loop.set(running);
     }
 
     /// Sets the monitor a full-screen app covers (`None`: there is none).
@@ -459,6 +472,10 @@ impl TargetSource for FakeTargets {
 
     fn cursor(&self) -> Option<(i32, i32)> {
         self.cursor.get()
+    }
+
+    fn size_loop(&self) -> Option<bool> {
+        self.size_loop.get()
     }
 
     fn primary_down(&self) -> Option<bool> {

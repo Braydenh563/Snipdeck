@@ -699,6 +699,7 @@ where
         }
         self.resizing = true;
         self.resize_button_seen = false;
+        self.resize_loop_seen = false;
         self.resize_at = self.clock.now();
         vec![Effect::ResizeWindow(edge)]
     }
@@ -830,8 +831,13 @@ where
             if !self.unplaced {
                 return Vec::new();
             }
-            let known = self.monitor.clone();
-            return match known.or_else(|| self.find_monitor()) {
+            // Asked now, not when the app started: a monitor may have gone since. With none
+            // the Panel was ever on left, it opens on the one the pointer is on.
+            let pointed = |ctl: &Self| {
+                let (x, y) = ctl.target.cursor()?;
+                ctl.target.monitor_at(x, y)
+            };
+            return match self.find_monitor().or_else(|| pointed(self)) {
                 Some(monitor) => self.restore_on(&monitor),
                 None => Vec::new(),
             };

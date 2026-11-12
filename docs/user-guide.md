@@ -329,7 +329,7 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   With Off a docked Panel does not tuck: it shows and hides like a floating one. The other choices tuck it into a thin tab at its edge, and the Panel shortcut
   opens it too. **Hover delay** (0 to 2000 ms, default 150) is how long the pointer rests on the tab. **Leave
   delay** (0 to 5000 ms, default 400) is how long it stays off the Panel before it tucks. While a full-screen
-  app is in front the tab stays out of its way; the Panel shortcut still opens the Panel. Started hidden, a
+  app covers the monitor the Panel is on, the tab stays out of its way; the Panel shortcut still opens the Panel. Started hidden, a
   docked Panel that tucks is there as its tab.
 - **Typing.** **Expand abbreviations as I type** and **Suggest snippets as I type**, both off by default. See
   [Triggers and typing](#triggers-and-typing-windows).

@@ -1931,6 +1931,55 @@ fn the_first_show_puts_the_panel_where_it_was_left_before_its_window_exists() {
 }
 
 #[test]
+fn the_first_show_after_a_hidden_start_asks_again_where_the_monitors_are() {
+    // Left floating on the second monitor, with an older place on the first.
+    let mut before = floating(DockTrigger::Both);
+    let there = Rect {
+        x: 2400,
+        y: 200,
+        w: 480,
+        h: 750,
+    };
+    assert_eq!(
+        before.ctl.frame_changed(&second_display(), there),
+        Vec::new()
+    );
+    let mut w = world_with(Some(outlook()), before.ctl.settings().clone());
+    w.targets.add_monitor(display());
+    w.targets.add_monitor(second_display());
+    assert_eq!(w.ctl.start_hidden(), [Effect::HidePanel]);
+    // The second monitor is unplugged while the Panel is hidden; then the hotkey.
+    w.targets.set_monitors(vec![display()]);
+    w.ctl.show();
+    assert_eq!(
+        w.ctl.restore_anchor(),
+        place(FLOATING),
+        "where it was left on the monitor that is still there"
+    );
+
+    // No monitor it was ever on is left: it opens on the one the pointer is on, at the size
+    // it had, inside that monitor.
+    let mut settings = before.ctl.settings().clone();
+    settings
+        .panel_geometry
+        .retain(|g| g.monitor_id == second_display().id);
+    let mut w = world_with(Some(outlook()), settings);
+    w.targets.add_monitor(second_display());
+    assert_eq!(w.ctl.start_hidden(), [Effect::HidePanel]);
+    w.targets.set_monitors(vec![display()]);
+    w.targets.set_cursor(Some((500, 300)));
+    w.ctl.show();
+    assert_eq!(
+        w.ctl.restore_anchor(),
+        place(frame::clamp(there, &display()))
+    );
+    assert!(
+        display().holds(1440, 200),
+        "the fixture is on the first monitor"
+    );
+}
+
+#[test]
 fn the_tray_click_tucks_an_open_dock_and_opens_a_tucked_one() {
     use snipdeck_platform::tray::TrayEvent;
     let mut w = docked(DockTrigger::Both, DockEdge::Right);
@@ -2166,6 +2215,101 @@ fn sliding_a_dock_an_older_version_stored_full_height_keeps_it_compact() {
         w.ctl.settings().panel_geometry[0].docked,
         Some((340, FLOATING.h))
     );
+}
+
+#[test]
+fn a_dock_an_older_version_stored_full_height_is_left_at_an_ordinary_height_when_dragged_away() {
+    let mut w = old_full_height_dock(DockEdge::Right);
+    w.targets.add_monitor(display());
+    w.targets.add_monitor(second_display());
+    let opened = w.ctl.restore_frame(&display());
+    let [Effect::PlaceWindow(open)] = opened[..] else {
+        panic!("one placement, got {opened:?}");
+    };
+    press(&mut w, (1700, open.y + 10), open);
+    pull(&mut w, (2400, 300));
+    pull(&mut w, (3000, 500));
+    w.ctl.drag_end();
+    let left = w
+        .ctl
+        .settings()
+        .panel_geometry
+        .iter()
+        .find(|g| g.monitor_id == display().id)
+        .expect("the place on the monitor it left");
+    assert_eq!(left.edge, None);
+    assert_eq!(
+        left.h, 480,
+        "back on that monitor it floats at an ordinary height, not as tall as the screen"
+    );
+}
+
+#[test]
+fn a_full_height_docked_size_an_older_version_stored_does_not_come_back_on_the_next_dock() {
+    // The floating size was kept apart; only the docked size was as tall as the screen.
+    let mut settings = Settings::default();
+    settings.dock.trigger = DockTrigger::Both;
+    settings
+        .panel_geometry
+        .push(crate::settings::PanelGeometry {
+            docked: Some((340, 1040)),
+            along: None,
+            ..FLOATING.geometry(&display(), Some(DockEdge::Left))
+        });
+    let mut w = world_with(Some(outlook()), settings);
+    w.ctl.restore_frame(&display());
+    w.ctl.dock_to(None);
+    assert_eq!(w.ctl.take_pending(), place(FLOATING));
+    w.ctl.dock_to(Some(DockEdge::Left));
+    let docked = w.ctl.take_pending();
+    let [Effect::PlaceWindow(open)] = docked[..] else {
+        panic!("one placement, got {docked:?}");
+    };
+    assert_eq!(
+        (open.w, open.h),
+        (340, FLOATING.h),
+        "the full edge is off: the dock is as tall as the Panel floats"
+    );
+    assert_eq!(
+        w.ctl.settings().panel_geometry[0].docked,
+        Some((340, FLOATING.h))
+    );
+}
+
+#[test]
+fn a_resize_lasts_as_long_as_the_windows_own_size_loop() {
+    // The button reads as up throughout (a window of higher privilege is in front), and the
+    // grip is pulled past the widest the Panel goes: no size report comes. The window's own
+    // size loop still says that the resize goes on.
+    let mut w = docked(DockTrigger::Both, DockEdge::Right);
+    w.targets.set_primary_down(Some(false));
+    // The system starts the loop a moment after it is asked to.
+    w.targets.set_size_loop(Some(false));
+    assert_eq!(
+        w.ctl.resize(frame::Edge::Left),
+        vec![Effect::ResizeWindow(frame::Edge::Left)]
+    );
+    w.targets.set_cursor(Some((1300, 300)));
+    advance(&w, 50);
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    w.targets.set_size_loop(Some(true));
+    for step in 2..=60_i64 {
+        advance(&w, step * 50);
+        assert_eq!(w.ctl.dock_tick(), Vec::new(), "step {step}");
+    }
+    assert!(
+        !w.ctl.view().dock_collapsed,
+        "three seconds without a size report, and still out"
+    );
+    // The grip is let go: the loop ends, the hold with it, and the leave delay runs as ever.
+    w.targets.set_size_loop(Some(false));
+    advance(&w, 3_050);
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    advance(&w, 3_050 + 399);
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    advance(&w, 3_050 + 400);
+    assert_eq!(w.ctl.dock_tick().len(), 1, "it tucks");
+    assert!(w.ctl.view().dock_collapsed);
 }
 
 #[test]

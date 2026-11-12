@@ -202,13 +202,24 @@ where
         self.panel_focused || self.drag.is_some() || self.resizing
     }
 
-    /// Whether the OS resize that was started is still under way. It lasts as long as its
-    /// button is down. "Up" is believed only once the button was seen down in this resize:
-    /// under a window of higher privilege Windows reports every button as up, a held grip
-    /// too. Until then the window's own reports of a new size say that it goes on, and it is
-    /// over [`RESIZE_QUIET_MS`] after the last of them. Where the button cannot be read at
-    /// all a resize holds nothing.
+    /// Whether the OS resize that was started is still under way. It lasts as long as the
+    /// system's size loop on the window, where the host can see that loop: once seen
+    /// running, its end is the end. Before it is seen (the system starts it a moment after it
+    /// is asked to), and where the host cannot see it, the resize lasts as long as its button
+    /// is down. "Up" is believed only once the button was seen down in this resize: under a
+    /// window of higher privilege Windows reports every button as up, a held grip too. Until
+    /// then the window's own reports of a new size say that it goes on, and it is over
+    /// [`RESIZE_QUIET_MS`] after the last of them. Where neither can be read a resize holds
+    /// nothing.
     fn resize_goes_on(&mut self) -> bool {
+        match self.target.size_loop() {
+            Some(true) => {
+                self.resize_loop_seen = true;
+                return true;
+            }
+            Some(false) if self.resize_loop_seen => return false,
+            _ => {}
+        }
         match self.target.primary_down() {
             Some(true) => {
                 self.resize_button_seen = true;
@@ -524,11 +535,18 @@ where
             frame::clamp(self.open_frame(monitor), monitor).geometry(monitor, None)
         });
         let area = monitor.work_area;
-        if geometry.edge.is_some()
-            && geometry.along.is_none()
-            && geometry.h.saturating_add(2) >= area.h
-        {
-            geometry.h = frame::scaled(DEFAULT_HEIGHT, monitor.scale).min(area.h / 2);
+        let full = |h: u32| h.saturating_add(2) >= area.h;
+        if geometry.edge.is_some() && geometry.along.is_none() {
+            if full(geometry.h) {
+                geometry.h = frame::scaled(DEFAULT_HEIGHT, monitor.scale).min(area.h / 2);
+            }
+            // Its side-dock size was as tall as the screen for the same reason: the full
+            // edge stretches the window now, not the size the Panel keeps.
+            if let Some((w, h)) = geometry.docked
+                && full(h)
+            {
+                geometry.docked = Some((w, geometry.h));
+            }
         }
         geometry
     }
@@ -542,10 +560,11 @@ where
             self.target
                 .monitor_at(centre(g.x, g.w), centre(g.y, g.h))
                 .filter(|m| m.id == g.monitor_id)
-        })?;
-        self.monitor = Some(found.clone());
+        });
+        // One found earlier may have gone since: it is not kept.
+        self.monitor.clone_from(&found);
         self.dock_resync();
-        Some(found)
+        found
     }
 
     /// The Panel's floating and docked sizes on `monitor`, for a drag. A monitor it never was
@@ -841,6 +860,12 @@ where
         };
         let now_docked = geometry.edge;
         self.dock = DockState::Expanded;
+        // What the Panel keeps on the monitor it left, read as everything else reads it (an
+        // older version's full-height dock at an ordinary height).
+        let left_as_read = left
+            .as_ref()
+            .filter(|old| self.stored_geometry(old).is_some())
+            .map(|old| self.geometry_on(old));
         self.update_settings(|s| {
             if now_docked.is_some() && (now_docked != was_docked || left.is_some()) {
                 s.dock.docked_by_choice();
@@ -853,7 +878,7 @@ where
                 let undocked = PanelGeometry {
                     edge: None,
                     along: None,
-                    ..g.clone()
+                    ..left_as_read.clone().unwrap_or_else(|| g.clone())
                 }
                 .remembering(Some(g));
                 *g = undocked;

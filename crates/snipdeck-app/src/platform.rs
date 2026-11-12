@@ -89,6 +89,11 @@ mod imp {
             Some(screen::primary_button_down())
         }
 
+        fn size_loop(&self) -> Option<bool> {
+            // Asked on the UI thread, the Panel's own.
+            Some(screen::in_size_loop())
+        }
+
         fn monitor_at(&self, x: i32, y: i32) -> Option<Monitor> {
             monitor_under(x, y)
         }

@@ -238,14 +238,16 @@ impl Binding {
         (self.restore_frame)(monitor);
     }
 
-    /// The Panel is shown but its window cannot say what monitor it is on (the first show of a
-    /// `--hidden` start): place it at the mouse or the text cursor, if the user asked for that.
+    /// The Panel is shown but its window cannot say what monitor it is on (it does not exist
+    /// before its first show): place it at the mouse or the text cursor, if the user asked for
+    /// that; else, the first time, where it was last left, on a monitor that is still there.
     pub fn restore_anchor(&self) {
         (self.restore_anchor)();
     }
 
-    /// The app started with the Panel not shown and its window has been placed: a docked Panel
-    /// that tucks becomes its tab, any other is hidden.
+    /// The app started with the Panel not shown; its window is not made yet. A Panel last left
+    /// docked, with a dock that tucks, becomes its tab on that monitor (placed here, before
+    /// the host shows the window); any other is hidden.
     pub fn start_hidden(&self) {
         (self.start_hidden)();
     }
