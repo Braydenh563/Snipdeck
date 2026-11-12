@@ -100,6 +100,11 @@ where
         if self.target.cursor().is_some() {
             return Vec::new();
         }
+        if event == DockEvent::PanelHover(true) {
+            self.dock_fresh = false;
+        } else if event == DockEvent::PanelHover(false) && self.dock_fresh {
+            return Vec::new();
+        }
         // A window may report a leave when the pointer only moved onto its own menu: under an
         // open menu a leave is not believed.
         if event == DockEvent::PanelHover(false) && self.menu != PanelMenu::None {
@@ -166,11 +171,67 @@ where
     }
 
     /// The Panel is in use, so it stays out whatever the pointer does: it has the keyboard, or
-    /// it is being dragged. An open menu is not that by itself: it is drawn inside the Panel, so
-    /// the pointer on it is on the Panel, and one left open with the pointer and the keyboard
-    /// both gone must not keep the Panel out for ever.
-    fn dock_held(&self) -> bool {
-        self.panel_focused || self.drag.is_some()
+    /// it is being dragged or resized. An open menu is not that by itself: it is drawn inside
+    /// the Panel, so the pointer on it is on the Panel, and one left open with the pointer and
+    /// the keyboard both gone must not keep the Panel out for ever.
+    fn dock_held(&mut self) -> bool {
+        // A resize lasts as long as its button is down; where that cannot be read it holds
+        // nothing.
+        if self.resizing && self.target.primary_down() != Some(true) {
+            self.resizing = false;
+        }
+        self.panel_focused || self.drag.is_some() || self.resizing
+    }
+
+    /// The Panel is on `monitor` now (the system moved its window there), or `monitor` is not
+    /// what it was (its work area changed): the dock follows what is remembered for it. A
+    /// Panel that is not docked there opens floating where it was left.
+    pub(super) fn dock_on_monitor(&mut self, monitor: &Monitor) -> Vec<Effect> {
+        self.monitor = Some(monitor.clone());
+        let config = self.dock_config();
+        let _ = self.dock.apply_config(&config);
+        if self.dock_edge().is_some() {
+            self.dock_place(self.dock.is_collapsed())
+        } else {
+            self.placement(monitor)
+                .map(Effect::PlaceWindow)
+                .into_iter()
+                .collect()
+        }
+    }
+
+    /// The work area of the Panel's monitor changed since the dock's timer last looked (the
+    /// taskbar moved or changed size; no window is told): the dock is placed again. Only a
+    /// change seen by the same reader counts, so two readers that disagree cannot make it
+    /// place for ever.
+    fn dock_area_refresh(&mut self) -> Vec<Effect> {
+        if self.drag.is_some() {
+            return Vec::new();
+        }
+        let Some((open, tab, _)) = self.dock_rects() else {
+            return Vec::new();
+        };
+        let on = if self.dock.is_collapsed() { tab } else { open };
+        let centre = |start: i32, len: u32| start.saturating_add_unsigned(len / 2);
+        let Some(now) = self
+            .target
+            .monitor_at(centre(on.x, on.w), centre(on.y, on.h))
+        else {
+            return Vec::new();
+        };
+        let before = self.dock_area_seen.replace((now.id.clone(), now.work_area));
+        let Some(own) = self.monitor.clone().filter(|m| m.id == now.id) else {
+            return Vec::new();
+        };
+        let changed = before.is_some_and(|(id, area)| id == now.id && area != now.work_area);
+        if !changed || own.work_area == now.work_area {
+            return Vec::new();
+        }
+        self.dock_on_monitor(&Monitor {
+            work_area: now.work_area,
+            taskbar: now.taskbar,
+            ..own
+        })
     }
 
     /// The Panel's window gained or lost the keyboard. A docked Panel that has it stays out.
@@ -188,8 +249,9 @@ where
         if !self.dock_live() {
             return Vec::new();
         }
-        let mut effects = Vec::new();
+        let mut effects = self.dock_area_refresh();
         let scale = self.monitor.as_ref().map_or(1.0, |m| m.scale);
+        let held = self.dock_held();
         if let (Some(cursor), Some((open, tab, edge))) = (self.target.cursor(), self.dock_rects()) {
             let event = if self.dock.is_collapsed() {
                 DockEvent::HandleHover(frame::on_tab(
@@ -199,12 +261,14 @@ where
                     zone(dock::REVEAL_ZONE, scale),
                 ))
             } else {
-                DockEvent::PanelHover(
-                    self.dock_held() || frame::near(cursor, open, zone(dock::KEEP_ZONE, scale)),
-                )
+                let on = frame::near(cursor, open, zone(dock::KEEP_ZONE, scale));
+                if on {
+                    self.dock_fresh = false;
+                }
+                DockEvent::PanelHover(held || on || self.dock_fresh)
             };
             effects.extend(self.dock_event(event));
-        } else if self.dock_held() && !self.dock.is_collapsed() {
+        } else if (held || self.dock_fresh) && !self.dock.is_collapsed() {
             effects.extend(self.dock_event(DockEvent::PanelHover(true)));
         }
         effects.extend(self.dock_event(DockEvent::Tick));
@@ -219,6 +283,7 @@ where
             return Vec::new();
         }
         self.drag = None;
+        self.dock_fresh = false;
         self.dock = DockState::Parked;
         self.panel_end_modes();
         self.panel_revealed = None;
@@ -267,6 +332,7 @@ where
             DockAction::Collapse => {
                 // A menu cannot stay open on a strip six pixels wide.
                 self.menu = PanelMenu::None;
+                self.dock_fresh = false;
                 if self.target.cursor().is_none() {
                     // Nothing will say that the pointer is off the tab: the window reports only
                     // its own enter and leave, so its next enter has to count.
@@ -496,8 +562,10 @@ where
         };
         geometry.edge = edge;
         // Open before the settings change, so that undocking does not look like a collapsed
-        // Panel losing its trigger.
+        // Panel losing its trigger. Docked from a menu or from Settings the pointer is not on
+        // the Panel: it stays out until the pointer has been.
         self.dock = DockState::Expanded;
+        self.dock_fresh = edge.is_some();
         self.update_settings(|s| {
             s.remember_panel_geometry(geometry.remembering(stored.as_ref()));
         });
@@ -556,13 +624,27 @@ where
         }
         let cursor = self.target.cursor().unwrap_or(pointer);
         self.drag = Some(Drag::begin(cursor, window, self.dock_edge()));
+        self.drag_button_seen = false;
+        self.dock_fresh = false;
     }
 
     /// The host can tell that the button a drag was started with is up again, although the
-    /// window never said so: the drag is over.
+    /// window never said so: the drag is over. "Up" is believed only once the button was seen
+    /// down in this drag: under a window of higher privilege Windows reports every button as
+    /// up, and a drag must not end on its first step there.
     #[must_use]
-    pub fn drag_let_go(&self) -> bool {
-        self.drag.is_some() && self.target.primary_down() == Some(false)
+    pub fn drag_let_go(&mut self) -> bool {
+        if self.drag.is_none() {
+            return false;
+        }
+        match self.target.primary_down() {
+            Some(true) => {
+                self.drag_button_seen = true;
+                false
+            }
+            Some(false) => self.drag_button_seen,
+            None => false,
+        }
     }
 
     /// The drag goes on: the cursor is read (else `pointer` is used) and the window follows
@@ -676,7 +758,9 @@ where
             s.remember_panel_geometry(geometry.remembering(stored.as_ref()));
         });
         self.monitor = Some(monitor);
-        if now_docked != was_docked || left.is_some() {
+        // Only a dock made or left is news: a floating Panel dropped on another monitor floats
+        // as it did.
+        if now_docked != was_docked {
             self.show_toast(neutral(ToastMessage::DockSet(now_docked)));
         }
         vec![Effect::PlaceWindow(place)]

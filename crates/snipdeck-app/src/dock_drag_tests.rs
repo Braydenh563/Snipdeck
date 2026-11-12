@@ -127,8 +127,16 @@ fn a_press_that_does_not_move_never_docks() {
     let screen = screen();
     // A floating Panel at the top of the screen, pressed on the top pixels of its header.
     let mut drag = Drag::begin((500, 2), window(400, 0, FLOATING), None);
-    assert_eq!(drag.moved((500, 2), &ctx(&screen, 5000)), DragStep::None);
-    assert_eq!(drag.phase(), DragPhase::Float);
+    // However often it is looked at and however long it is held.
+    for ms in [0, 200, 5000] {
+        assert_eq!(drag.moved((500, 2), &ctx(&screen, ms)), DragStep::None, "{ms}");
+        assert_eq!(drag.phase(), DragPhase::Float, "{ms}");
+        assert_eq!(drag.preview(), None, "{ms}");
+    }
+    assert_eq!(
+        drag.released(&ctx(&screen, 5100)),
+        DragEnd::Floating(window(400, 0, FLOATING))
+    );
 }
 
 #[test]
@@ -260,7 +268,8 @@ fn crossing_to_another_monitor_docks_nothing_and_lands_at_that_monitors_size() {
     let there = sized(ctx(&two, 500), (450, 600));
     assert_eq!(
         drag.released(&there),
-        DragEnd::Floating(window(2300, 290, (450, 600)))
+        // 100 of 300 across the header is 150 of 450, and 10 down it is 15 at 150 %.
+        DragEnd::Floating(window(2250, 285, (450, 600)))
     );
 }
 
@@ -377,4 +386,80 @@ fn each_kind_of_edge_offers_the_size_the_panel_has_there() {
         drag.released(&on(300)),
         DragEnd::Docked(DockEdge::Top, drag.frame())
     );
+}
+
+#[test]
+fn a_panel_dragged_to_a_monitor_of_another_scale_stays_under_the_cursor() {
+    // A 320 x 400 Panel at 200 %, held by the middle of its header.
+    let hi = Monitor {
+        id: "hi".to_owned(),
+        work_area: Rect {
+            x: 0,
+            y: 0,
+            w: 3840,
+            h: 2100,
+        },
+        taskbar: None,
+        scale: 2.0,
+    };
+    let lo = Monitor {
+        id: "lo".to_owned(),
+        work_area: Rect {
+            x: 3840,
+            y: 0,
+            w: 1920,
+            h: 1040,
+        },
+        taskbar: None,
+        scale: 1.0,
+    };
+    let on = |monitor, floating, ms| sized(ctx(monitor, ms), floating);
+    let mut drag = Drag::begin((1320, 420), window(1000, 400, (640, 800)), None);
+    assert_eq!(
+        drag.moved((2000, 500), &on(&hi, (640, 800), 0)),
+        DragStep::Move(1680, 480)
+    );
+    // Over the seam: the window is 320 wide there, and the cursor is still half way across
+    // its header and as far down it (10 logical pixels).
+    let there = window(3840, 490, (320, 400));
+    assert_eq!(
+        drag.moved((4000, 500), &on(&lo, (320, 400), 16)),
+        DragStep::Place(there)
+    );
+    assert_eq!(
+        drag.moved((4100, 520), &on(&lo, (320, 400), 32)),
+        DragStep::Move(3940, 510)
+    );
+    assert_eq!(
+        drag.released(&on(&lo, (320, 400), 48)),
+        DragEnd::Floating(window(3940, 510, (320, 400)))
+    );
+    // And back: measured again, not left at the small monitor's offset.
+    let mut drag = Drag::begin((4000, 500), there, None);
+    let _ = drag.moved((3900, 500), &on(&lo, (320, 400), 0));
+    assert_eq!(
+        drag.moved((3000, 500), &on(&hi, (640, 800), 16)),
+        DragStep::Place(window(2680, 480, (640, 800)))
+    );
+}
+
+#[test]
+fn a_dock_narrower_than_the_floating_panel_is_shown_under_the_cursor() {
+    let screen = screen();
+    let narrow = DragCtx {
+        sizes: DragSizes {
+            floating: FLOATING,
+            side: DOCKED,
+            flat: (260, 300),
+        },
+        ..ctx(&screen, 0)
+    };
+    // Held near the right end of a 300 wide header, then at the top edge.
+    let mut drag = Drag::begin((880, 310), window(600, 300, FLOATING), None);
+    let _ = drag.moved((900, 0), &narrow);
+    let step = drag.moved((900, 0), &DragCtx { now: at(250), ..narrow });
+    // 280 of 300 across is 242 of 260.
+    assert_eq!(step, DragStep::Place(window(658, 0, (260, 300))));
+    let shown = drag.frame();
+    assert!((shown.x..shown.x + 260).contains(&900), "{shown:?}");
 }

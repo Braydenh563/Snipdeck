@@ -604,8 +604,8 @@ where
                 };
                 let let_go = core
                     .controller
-                    .try_borrow()
-                    .is_ok_and(|ctl| ctl.drag_let_go());
+                    .try_borrow_mut()
+                    .is_ok_and(|mut ctl| ctl.drag_let_go());
                 if let_go {
                     core.drag_finish();
                 } else {

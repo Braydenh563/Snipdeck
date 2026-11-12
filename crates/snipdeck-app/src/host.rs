@@ -357,6 +357,7 @@ pub struct FakeTargets {
     refocused: Rc<Cell<u32>>,
     caret: Rc<Cell<Option<ScreenRect>>>,
     cursor: Rc<Cell<Option<(i32, i32)>>>,
+    primary: Rc<Cell<Option<bool>>>,
     monitors: Rc<RefCell<Vec<crate::frame::Monitor>>>,
     /// A Target change that happens once the flag is raised (from another thread, as a typed
     /// key would be).
@@ -372,6 +373,7 @@ impl FakeTargets {
             refocused: Rc::default(),
             caret: Rc::default(),
             cursor: Rc::default(),
+            primary: Rc::default(),
             monitors: Rc::default(),
             switch: Rc::default(),
         }
@@ -396,6 +398,16 @@ impl FakeTargets {
     /// Sets where the mouse is (`None`: it cannot be read).
     pub fn set_cursor(&self, cursor: Option<(i32, i32)>) {
         self.cursor.set(cursor);
+    }
+
+    /// Sets what the host reads for the primary mouse button (`None`: it cannot be read).
+    pub fn set_primary_down(&self, down: Option<bool>) {
+        self.primary.set(down);
+    }
+
+    /// Replaces the monitors the host knows.
+    pub fn set_monitors(&self, monitors: Vec<crate::frame::Monitor>) {
+        *self.monitors.borrow_mut() = monitors;
     }
 
     /// Changes the Target, as the user switching windows would.
@@ -434,6 +446,10 @@ impl TargetSource for FakeTargets {
 
     fn cursor(&self) -> Option<(i32, i32)> {
         self.cursor.get()
+    }
+
+    fn primary_down(&self) -> Option<bool> {
+        self.primary.get()
     }
 
     fn monitor_at(&self, x: i32, y: i32) -> Option<crate::frame::Monitor> {

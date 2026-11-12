@@ -287,6 +287,9 @@ pub struct Drag {
     grab: (i32, i32),
     /// The width of the window `grab` was measured on.
     grab_w: u32,
+    /// 1000 logical pixels at the scale of the monitor `grab` was measured on (0 until the
+    /// first step says what monitor that is).
+    grab_unit: i64,
     /// Where the cursor was pressed.
     press: (i32, i32),
     /// Where the cursor was last seen.
@@ -320,6 +323,7 @@ impl Drag {
             phase: docked.map_or(DragPhase::Float, DragPhase::Slide),
             grab: sub(cursor, (window.x, window.y)),
             grab_w: window.w,
+            grab_unit: 0,
             press: cursor,
             cursor,
             candidate: None,
@@ -364,14 +368,24 @@ impl Drag {
             i64::from(ctx.sizes.floating.0),
         );
         let across = i64::from(self.grab.0) * new_w / old_w;
+        // And its place down the header when the monitor's scale does: the header is that
+        // much taller or shorter there.
+        let unit = px(1000, ctx.monitor.scale);
+        let old_unit = if self.grab_unit > 0 {
+            self.grab_unit
+        } else {
+            unit
+        };
+        let down = i64::from(self.grab.1) * unit / old_unit;
         let limit = |v: i64, len: u32| {
             i32::try_from(v.clamp(0, i64::from(len.saturating_sub(1)))).unwrap_or(0)
         };
         self.grab = (
             limit(across, ctx.sizes.floating.0),
-            limit(i64::from(self.grab.1), ctx.sizes.floating.1),
+            limit(down, ctx.sizes.floating.1),
         );
         self.grab_w = ctx.sizes.floating.0;
+        self.grab_unit = unit;
         self.phase = DragPhase::Float;
         self.candidate = None;
         let (x, y) = sub(self.cursor, self.grab);
@@ -385,11 +399,16 @@ impl Drag {
     }
 
     fn docked_at(&self, edge: DockEdge, ctx: &DragCtx<'_>) -> Rect {
-        let (x, y) = sub(self.cursor, self.grab);
+        let size = ctx.sizes.docked_on(edge);
+        // The cursor keeps its place across the header at the docked width too: on a top or
+        // bottom edge a narrower dock would otherwise be shown beside the cursor, not under it.
+        let across = i64::from(self.grab.0) * i64::from(size.0) / i64::from(self.grab_w.max(1));
+        let across = i32::try_from(across).unwrap_or(self.grab.0);
+        let (x, y) = sub(self.cursor, (across, self.grab.1));
         frame::docked_rect(
             edge,
             ctx.monitor.work_area,
-            ctx.sizes.docked_on(edge),
+            size,
             ctx.monitor.scale,
             Some(if edge.vertical() { y } else { x }),
             ctx.full_edge,
@@ -409,6 +428,9 @@ impl Drag {
     pub fn moved(&mut self, cursor: (i32, i32), ctx: &DragCtx<'_>) -> DragStep {
         self.cursor = cursor;
         let (area, scale) = (ctx.monitor.work_area, ctx.monitor.scale);
+        if self.grab_unit == 0 {
+            self.grab_unit = px(1000, scale);
+        }
         match self.phase {
             DragPhase::Slide(edge) => {
                 let pulled = sub(cursor, self.press);
@@ -436,6 +458,12 @@ impl Drag {
             DragPhase::Float => {
                 // A press that has not moved is a click, not a push to the edge.
                 let pushed = cursor != self.press;
+                if pushed && self.resized_under(ctx) {
+                    // Onto a monitor with another scale or another floating size: Windows
+                    // resizes the window there, so the offset the cursor holds it by is
+                    // measured again.
+                    return self.float(ctx);
+                }
                 let at = pushed
                     .then(|| {
                         frame::edge_at(cursor, area, ctx.monitor.taskbar, px(EDGE_ZONE, scale))
@@ -473,18 +501,23 @@ impl Drag {
     /// The button came up: where the Panel ends. A floating Panel is pulled inside the work
     /// area of the monitor it was dropped on, at its floating size there.
     #[must_use]
-    pub fn released(self, ctx: &DragCtx<'_>) -> DragEnd {
+    pub fn released(mut self, ctx: &DragCtx<'_>) -> DragEnd {
         match self.phase {
             DragPhase::Preview(edge) | DragPhase::Slide(edge) => DragEnd::Docked(edge, self.frame),
-            DragPhase::Float => DragEnd::Floating(frame::clamp(
-                Rect {
-                    w: ctx.sizes.floating.0,
-                    h: ctx.sizes.floating.1,
-                    ..self.frame
-                },
-                ctx.monitor,
-            )),
+            DragPhase::Float => {
+                if self.resized_under(ctx) {
+                    let _ = self.float(ctx);
+                }
+                DragEnd::Floating(frame::clamp(self.frame, ctx.monitor))
+            }
         }
+    }
+
+    /// The floating window is not what `ctx` says it is there: another size, or a monitor of
+    /// another scale than the one the grab was measured on.
+    fn resized_under(&self, ctx: &DragCtx<'_>) -> bool {
+        (self.frame.w, self.frame.h) != ctx.sizes.floating
+            || (self.grab_unit > 0 && self.grab_unit != px(1000, ctx.monitor.scale))
     }
 }
 

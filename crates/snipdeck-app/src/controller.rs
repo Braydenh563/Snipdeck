@@ -280,8 +280,21 @@ pub struct Controller<S, C, K, T> {
     monitor: Option<Monitor>,
     /// The drag of the Panel under way, if any (see [`crate::dock::Drag`]).
     drag: Option<crate::dock::Drag>,
+    /// The primary button was seen held down during this drag: only then does seeing it up
+    /// end the drag (a host that cannot read it under an elevated window always says "up").
+    drag_button_seen: bool,
     /// The Panel's window has the keyboard: a docked Panel then stays out.
     panel_focused: bool,
+    /// An OS resize of the Panel was started and its button is still down: a docked Panel
+    /// stays out meanwhile, wherever the pointer goes.
+    resizing: bool,
+    /// The Panel was just docked from a menu or from Settings and the pointer has not been on
+    /// it since: it stays out until it has, so that it does not tuck away under the hand that
+    /// docked it.
+    dock_fresh: bool,
+    /// The work area the dock's timer last read for the Panel's monitor: a change in it (the
+    /// taskbar moved) places the dock again.
+    dock_area_seen: Option<(String, crate::frame::Rect)>,
     /// Placements decided outside a Panel gesture, waiting for the binding.
     pending: Vec<Effect>,
     /// The master password: whether one is set, whether its prompt is open, the idle clock.
@@ -462,7 +475,11 @@ where
             dock: DockState::default(),
             monitor: None,
             drag: None,
+            drag_button_seen: false,
             panel_focused: false,
+            resizing: false,
+            dock_fresh: false,
+            dock_area_seen: None,
             pending: Vec::new(),
             lock: lock_ctl::LockState::new(shown_at),
             recent_gate: None,

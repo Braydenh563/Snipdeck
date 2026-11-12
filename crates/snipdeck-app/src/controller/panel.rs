@@ -697,6 +697,7 @@ where
         {
             return Vec::new();
         }
+        self.resizing = true;
         vec![Effect::ResizeWindow(edge)]
     }
 
@@ -723,9 +724,18 @@ where
             // the user chose, and storing it would change the size the Panel comes back with.
             return Vec::new();
         }
-        if self.dock_collapsed() || self.dragging() {
-            // The dock's tab is not a frame the user chose, and a drag remembers its own end.
+        if self.dragging() {
+            // A drag remembers its own end.
             return Vec::new();
+        }
+        if self.dock_collapsed() {
+            // The dock's tab is not a frame the user chose. But the system may have moved it:
+            // its monitor went away, or that monitor's work area changed. The dock then
+            // follows what is remembered for where it is now.
+            if self.monitor.as_ref() == Some(monitor) {
+                return Vec::new();
+            }
+            return self.dock_on_monitor(monitor);
         }
         self.monitor = Some(monitor.clone());
         let stored = self.stored_geometry(monitor).cloned();
@@ -820,6 +830,11 @@ where
             return Vec::new();
         };
         let (on, frame) = self.frame_at(anchor, &fallback);
+        if self.stored_geometry(&on).is_some_and(|g| g.edge.is_some()) {
+            // The Panel is docked on the monitor under the anchor: it opens at its edge there,
+            // not floating at the anchor with that edge's dock still in force.
+            return self.restore_on(&on);
+        }
         self.monitor = Some(on);
         vec![Effect::PlaceWindow(frame)]
     }
@@ -832,6 +847,11 @@ where
         if self.session.open_anchor.is_some() {
             return self.restore_anchor();
         }
+        self.restore_on(monitor)
+    }
+
+    /// Puts the Panel where the user left it on `monitor`.
+    fn restore_on(&mut self, monitor: &Monitor) -> Vec<Effect> {
         self.monitor = Some(monitor.clone());
         self.dock_resync();
         self.placement(monitor)

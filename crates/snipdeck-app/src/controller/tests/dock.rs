@@ -34,6 +34,8 @@ fn docked(trigger: DockTrigger, edge: DockEdge) -> World {
     let mut w = floating(trigger);
     w.ctl.dock_to(Some(edge));
     w.ctl.take_pending();
+    // The pointer has been on it since: a Panel docked from a menu waits for that.
+    w.ctl.dock_hover(DockEvent::PanelHover(true));
     w
 }
 
@@ -741,9 +743,11 @@ fn a_press_on_a_floating_header_changes_nothing_about_docking() {
     let mut w = floating(DockTrigger::Click);
     w.ctl.frame_changed(&display(), at_edge);
     press(&mut w, (2, 110), at_edge);
-    advance(&w, 5_000);
-    assert_eq!(pull(&mut w, (2, 110)), Vec::new());
-    assert_eq!(w.ctl.view().dock_preview, None);
+    for ms in [0, 200, 5_000] {
+        advance(&w, ms);
+        assert_eq!(pull(&mut w, (2, 110)), Vec::new(), "{ms}");
+        assert_eq!(w.ctl.view().dock_preview, None, "{ms}");
+    }
     assert_eq!(w.ctl.drag_end(), place(at_edge));
     assert_eq!(w.ctl.dock_edge(), None);
     // No drag at all: moves and releases do nothing.
@@ -1029,10 +1033,11 @@ fn crossing_to_another_monitor_docks_nothing_and_the_panel_floats_there() {
     advance(&w, 2_000);
     pull(&mut w, (2600, 400));
     assert_eq!(w.ctl.view().dock_preview, None);
-    // The same logical size at 150 %, where it was dropped.
+    // The same logical size at 150 %, under the cursor as it was held: 100 of 320 across the
+    // header is 150 of 480, and 10 down it is 15.
     let there = Rect {
-        x: 2500,
-        y: 390,
+        x: 2450,
+        y: 385,
         w: 480,
         h: 750,
     };
@@ -1514,4 +1519,214 @@ fn a_drag_to_the_bottom_edge_never_shows_a_panel_as_tall_as_the_screen() {
     };
     assert_eq!(rect.h, 480, "the default height: it floats full height too");
     assert_eq!(i64::from(rect.y) + i64::from(rect.h), i64::from(work.h));
+}
+
+#[test]
+fn a_drag_ends_when_the_button_is_seen_up_after_it_was_seen_down() {
+    let mut w = floating(DockTrigger::Off);
+    assert!(!w.ctl.drag_let_go(), "no drag");
+    w.targets.set_primary_down(Some(true));
+    press(&mut w, (700, 110), FLOATING);
+    assert!(!w.ctl.drag_let_go());
+    pull(&mut w, (900, 300));
+    assert!(!w.ctl.drag_let_go());
+    w.targets.set_primary_down(Some(false));
+    assert!(
+        w.ctl.drag_let_go(),
+        "the window never said so, the host does"
+    );
+    assert!(w.ctl.dragging(), "asking ends nothing by itself");
+    let dropped = Rect {
+        x: 800,
+        y: 290,
+        ..FLOATING
+    };
+    assert_eq!(w.ctl.drag_end(), place(dropped));
+    assert!(!w.ctl.drag_let_go(), "no drag any more");
+}
+
+#[test]
+fn a_button_that_never_reads_as_down_does_not_end_the_drag() {
+    // In front of a window of higher privilege Windows answers "up" for every button.
+    let mut w = floating(DockTrigger::Off);
+    w.targets.set_primary_down(Some(false));
+    press(&mut w, (700, 110), FLOATING);
+    for step in 1..=20 {
+        assert!(!w.ctl.drag_let_go(), "step {step}");
+        pull(&mut w, (700 + step * 10, 110));
+    }
+    assert!(w.ctl.dragging());
+    // Nor where the button cannot be read at all.
+    w.targets.set_primary_down(None);
+    assert!(!w.ctl.drag_let_go());
+    // The window's own pointer-up is what ends it.
+    assert_eq!(w.ctl.drag_end().len(), 1);
+    // A drag seen down and ended says nothing about the next one.
+    w.targets.set_primary_down(Some(true));
+    press(&mut w, (1000, 110), Rect { x: 900, ..FLOATING });
+    assert!(!w.ctl.drag_let_go());
+    w.ctl.drag_end();
+    w.targets.set_primary_down(Some(false));
+    press(&mut w, (1000, 110), Rect { x: 900, ..FLOATING });
+    assert!(!w.ctl.drag_let_go(), "this drag never saw the button down");
+}
+
+#[test]
+fn a_tucked_panel_the_system_moved_to_another_monitor_opens_where_it_is_remembered_there() {
+    // Tucked on a monitor that went away: Windows moves the tab's window to the one left.
+    let mut w = docked(DockTrigger::Both, DockEdge::Right);
+    w.ctl.set_panel_focused(true);
+    assert_eq!(w.ctl.close(), place(handle(DockEdge::Right)));
+    w.ctl.set_panel_focused(false);
+    let moved = Rect {
+        x: 1920,
+        y: 100,
+        w: 6,
+        h: 500,
+    };
+    let there = w.ctl.placement(&second_display()).expect("a place");
+    assert_eq!(w.ctl.frame_moved(&second_display(), moved), place(there));
+    assert!(second_display().holds(there.x, there.y), "{there:?}");
+    assert!(
+        there.w > 6,
+        "the Panel, not its tab: it is not docked there"
+    );
+    assert!(!w.ctl.view().dock_collapsed);
+    assert_eq!(w.ctl.dock_edge(), None);
+    assert_eq!(
+        w.ctl.settings().panel_geometry[0].edge,
+        Some(DockEdge::Right),
+        "the first monitor still remembers its dock"
+    );
+}
+
+/// `display()` with its work area starting 200 px lower (a taskbar or an app bar took the top).
+fn lowered_display() -> frame::Monitor {
+    frame::Monitor {
+        work_area: Rect {
+            x: 0,
+            y: 200,
+            w: 1920,
+            h: 840,
+        },
+        ..display()
+    }
+}
+
+#[test]
+fn a_tucked_panel_follows_a_work_area_that_changed_under_it() {
+    let lowered = lowered_display();
+    let open = frame::docked_rect(
+        DockEdge::Right,
+        lowered.work_area,
+        (FLOATING.w, FLOATING.h),
+        1.0,
+        Some(FLOATING.y),
+        false,
+    );
+    assert_eq!(open.y, 200, "pulled inside the new work area");
+    let tab = frame::handle_rect(
+        DockEdge::Right,
+        lowered.work_area,
+        open.along(DockEdge::Right),
+        1.0,
+    );
+    // The window reports a move (Windows shifted it): the tab is placed on the new area.
+    let mut w = docked(DockTrigger::Both, DockEdge::Right);
+    w.ctl.dock_event(DockEvent::Hotkey);
+    assert!(w.ctl.view().dock_collapsed);
+    assert_eq!(
+        w.ctl.frame_moved(&lowered, handle(DockEdge::Right)),
+        place(tab)
+    );
+    assert_eq!(w.ctl.frame_moved(&lowered, tab), Vec::new(), "once");
+    assert_eq!(w.ctl.dock_event(DockEvent::HandleClick), place(open));
+    // No window is told when only the taskbar moves: the dock's timer sees it.
+    let mut w = docked(DockTrigger::Both, DockEdge::Right);
+    w.ctl.dock_event(DockEvent::Hotkey);
+    w.targets.set_monitors(vec![display()]);
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    w.targets.set_monitors(vec![lowered]);
+    assert_eq!(w.ctl.dock_tick(), place(tab));
+    assert_eq!(w.ctl.dock_tick(), Vec::new(), "once");
+    assert!(w.ctl.view().dock_collapsed);
+}
+
+#[test]
+fn a_resize_under_way_holds_the_docked_panel_out() {
+    let mut w = docked(DockTrigger::Both, DockEdge::Right);
+    w.targets.set_primary_down(Some(true));
+    assert_eq!(
+        w.ctl.resize(frame::Edge::Left),
+        vec![Effect::ResizeWindow(frame::Edge::Left)]
+    );
+    // Past the widest the Panel goes, the pointer is well outside it.
+    w.targets.set_cursor(Some((1300, 300)));
+    for step in 1..=40 {
+        advance(&w, step * 50);
+        assert_eq!(w.ctl.dock_tick(), Vec::new(), "step {step}");
+    }
+    assert!(!w.ctl.view().dock_collapsed);
+    // The button comes up out there: from then the leave delay runs as ever.
+    w.targets.set_primary_down(Some(false));
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    advance(&w, 2_399);
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    advance(&w, 2_400);
+    assert_eq!(w.ctl.dock_tick(), place(handle(DockEdge::Right)));
+    // A button held for something else afterwards holds nothing.
+    w.targets.set_cursor(Some((1000, 300)));
+    w.targets.set_primary_down(Some(true));
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    assert!(w.ctl.view().dock_collapsed);
+}
+
+#[test]
+fn a_panel_docked_from_the_menu_stays_out_until_the_pointer_has_been_on_it() {
+    let mut w = floating(DockTrigger::Both);
+    // The pointer is where the menu row was, or over the Settings window.
+    w.targets.set_cursor(Some((1000, 300)));
+    w.ctl.dock_to(Some(DockEdge::Right));
+    assert_eq!(w.ctl.take_pending(), place(open_rect(DockEdge::Right)));
+    for step in 1..=100 {
+        advance(&w, step * 50);
+        assert_eq!(w.ctl.dock_tick(), Vec::new(), "step {step}");
+    }
+    assert!(!w.ctl.view().dock_collapsed, "its toast can be read");
+    // On it, then off it: now it tucks as ever.
+    w.targets.set_cursor(Some((1700, 300)));
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    w.targets.set_cursor(Some((1000, 300)));
+    advance(&w, 6_000);
+    assert_eq!(w.ctl.dock_tick(), Vec::new());
+    advance(&w, 6_400);
+    assert_eq!(w.ctl.dock_tick(), place(handle(DockEdge::Right)));
+}
+
+#[test]
+fn a_floating_panel_dropped_on_another_monitor_is_not_said_to_float_again() {
+    let mut w = floating(DockTrigger::Both);
+    w.targets.add_monitor(display());
+    w.targets.add_monitor(second_display());
+    press(&mut w, (700, 110), FLOATING);
+    pull(&mut w, (2600, 400));
+    w.ctl.drag_end();
+    assert_eq!(w.ctl.dock_edge(), None);
+    assert_eq!(
+        w.ctl.view().toast,
+        None,
+        "it floated before and it floats now"
+    );
+    // A dock that was left behind is still news.
+    let mut w = docked(DockTrigger::Both, DockEdge::Right);
+    w.targets.add_monitor(display());
+    w.targets.add_monitor(second_display());
+    press(&mut w, (1700, 110), open_rect(DockEdge::Right));
+    pull(&mut w, (1600, 110));
+    pull(&mut w, (3000, 500));
+    w.ctl.drag_end();
+    assert_eq!(
+        w.ctl.view().toast.map(|t| t.message),
+        Some(ToastMessage::DockSet(None))
+    );
 }
