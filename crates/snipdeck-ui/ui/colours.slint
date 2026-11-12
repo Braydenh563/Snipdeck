@@ -761,9 +761,13 @@ export component ColoursView inherits Rectangle {
                     padding-left: Space.s2;
                     padding-right: Space.s2;
                     padding-bottom: Space.s2;
-                    Surface {
-                        // A square is wide; a wheel is a disc.
+                    Rectangle {
+                        // A square is wide; a wheel is a disc, centred.
                         height: ColourState.picker-style == 1 ? 168px * SystemLook.text-scale : 120px * SystemLook.text-scale;
+                    Surface {
+                        x: ColourState.picker-style == 1 ? (parent.width - self.width) / 2 : 0px;
+                        width: ColourState.picker-style == 1 ? parent.height : parent.width;
+                        height: parent.height;
                         source: ColourState.surface;
                         marker-x: ColourState.marker-x;
                         marker-y: ColourState.marker-y;
@@ -774,6 +778,7 @@ export component ColoursView inherits Rectangle {
                         nudged(dx, dy) => {
                             ColourState.surface-nudged(dx, dy);
                         }
+                    }
                     }
                     if ColourState.picker-style == 0: TrackSlider {
                         label: @tr("Hue");
@@ -838,40 +843,35 @@ export component ColoursView inherits Rectangle {
                 }
 
                 // ---- Saved ----------------------------------------------------------------------
-                Rectangle {
-                    height: Space.s8;
-                    SectionTitle {
-                        text: @tr("Saved");
-                        width: 80px;
+                SectionTitle { text: @tr("Saved"); }
+                HorizontalLayout {
+                    padding-left: Space.s2;
+                    padding-right: Space.s2;
+                    spacing: Space.s1;
+                    Button {
+                        text: @tr("Save");
+                        size: ButtonSize.sm;
+                        tooltip: @tr("Save to Colours (Ctrl+S)");
+                        clicked => { ColourState.save(-1); }
                     }
-                    HorizontalLayout {
-                        x: 80px;
-                        width: parent.width - 80px - Space.s2;
-                        spacing: Space.s1;
-                        alignment: end;
-                        Button {
-                            text: @tr("Save");
-                            size: ButtonSize.sm;
-                            tooltip: @tr("Save to Colours (Ctrl+S)");
-                            clicked => { ColourState.save(-1); }
+                    Button {
+                        text: @tr("Save to…");
+                        size: ButtonSize.sm;
+                        variant: ButtonVariant.secondary;
+                        tooltip: @tr("Save to a list (Ctrl+Shift+S)");
+                        clicked => {
+                            root.popup-x = Space.s2;
+                            root.popup-y = Space.s12;
+                            root.popup = 3;
                         }
-                        Button {
-                            text: @tr("Save to…");
-                            size: ButtonSize.sm;
-                            variant: ButtonVariant.secondary;
-                            tooltip: @tr("Save to a list (Ctrl+Shift+S)");
-                            clicked => {
-                                root.popup-x = Space.s2;
-                                root.popup-y = Space.s12;
-                                root.popup = 3;
-                            }
-                        }
-                        Button {
-                            text: @tr("Saved colours");
-                            size: ButtonSize.sm;
-                            variant: ButtonVariant.ghost;
-                            clicked => { ColourState.open-saved(); }
-                        }
+                    }
+                    Rectangle { horizontal-stretch: 1; }
+                    Button {
+                        text: @tr("View list");
+                        size: ButtonSize.sm;
+                        variant: ButtonVariant.ghost;
+                        tooltip: @tr("Open the Colours list");
+                        clicked => { ColourState.open-saved(); }
                     }
                 }
                 if ColourState.saved.length > 0: ChipGrid {

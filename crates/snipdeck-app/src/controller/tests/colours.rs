@@ -272,3 +272,106 @@ fn a_colour_picked_from_the_screen_is_current_remembered_and_copied_when_asked()
     assert!(w.ctl.services().clipboard.written.is_empty());
     assert_eq!(w.ctl.colour_view().recents, [BLUE], "still remembered");
 }
+
+// ---- The screen eyedropper ---------------------------------------------------------------
+
+mod eyedropper {
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+
+    use snipdeck_platform::eyedrop::{EyedropOutcome, FakeEyedropper};
+
+    use super::*;
+
+    /// A world whose eyedropper is `fake`; the second value counts the wake-ups.
+    fn with(fake: &FakeEyedropper) -> (World, Arc<AtomicUsize>) {
+        let mut w = world();
+        let wakes = Arc::new(AtomicUsize::new(0));
+        let counter = Arc::clone(&wakes);
+        w.ctl.set_eyedropper(
+            Some(Box::new(fake.clone())),
+            Arc::new(move || {
+                counter.fetch_add(1, Ordering::SeqCst);
+            }),
+        );
+        (w, wakes)
+    }
+
+    #[test]
+    fn start_hides_the_panel_and_a_pick_comes_back_as_the_current_colour() {
+        let fake = FakeEyedropper::answering(EyedropOutcome::Picked {
+            rgb: [58, 123, 213],
+            hdr: false,
+        });
+        let (mut w, wakes) = with(&fake);
+        assert_eq!(w.ctl.start_eyedropper(), vec![Effect::HidePanel]);
+        assert_eq!(fake.starts().len(), 1);
+        assert_eq!(wakes.load(Ordering::SeqCst), 1);
+        let effects = w.ctl.poll_eyedropper();
+        assert_eq!(effects, vec![Effect::ShowPanel, Effect::ShowColours]);
+        assert_eq!(w.ctl.colour_view().current, BLUE);
+        assert_eq!(w.ctl.colour_view().recents.first(), Some(&BLUE));
+        assert!(w.ctl.poll_eyedropper().is_empty(), "taken once");
+    }
+
+    #[test]
+    fn a_pick_is_copied_in_the_default_format_when_the_setting_says_so() {
+        let fake = FakeEyedropper::answering(EyedropOutcome::Picked {
+            rgb: [58, 123, 213],
+            hdr: false,
+        });
+        let (mut w, _) = with(&fake);
+        w.ctl.start_eyedropper();
+        w.ctl.poll_eyedropper();
+        assert_eq!(written(&w, 0), "#3a7bd5");
+    }
+
+    #[test]
+    fn a_cancel_brings_the_panel_back_and_changes_nothing() {
+        let fake = FakeEyedropper::answering(EyedropOutcome::Cancelled);
+        let (mut w, _) = with(&fake);
+        let before = w.ctl.colour_view().current;
+        w.ctl.start_eyedropper();
+        assert_eq!(
+            w.ctl.poll_eyedropper(),
+            vec![Effect::ShowPanel, Effect::ShowColours]
+        );
+        assert_eq!(w.ctl.colour_view().current, before);
+    }
+
+    #[test]
+    fn a_failure_says_so_and_brings_the_panel_back() {
+        let fake = FakeEyedropper::answering(EyedropOutcome::Failed("BitBlt 5".into()));
+        let (mut w, _) = with(&fake);
+        w.ctl.start_eyedropper();
+        assert_eq!(
+            w.ctl.poll_eyedropper(),
+            vec![Effect::ShowPanel, Effect::ShowColours]
+        );
+        assert!(matches!(
+            w.ctl.view().toast.map(|t| t.message),
+            Some(ToastMessage::EyedropFailed)
+        ));
+    }
+
+    #[test]
+    fn a_second_start_while_one_runs_does_nothing() {
+        let fake = FakeEyedropper::default();
+        let (mut w, _) = with(&fake);
+        assert_eq!(w.ctl.start_eyedropper(), vec![Effect::HidePanel]);
+        assert_eq!(w.ctl.eyedropper_state(), (true, true));
+        assert!(w.ctl.start_eyedropper().is_empty());
+        assert_eq!(fake.starts().len(), 1);
+        assert!(fake.complete(EyedropOutcome::Cancelled));
+        assert_eq!(w.ctl.eyedropper_state(), (true, false));
+    }
+
+    #[test]
+    fn without_an_eyedropper_the_button_is_absent_and_start_does_nothing() {
+        let mut w = world();
+        assert_eq!(w.ctl.eyedropper_state(), (false, false));
+        assert!(w.ctl.start_eyedropper().is_empty());
+    }
+}

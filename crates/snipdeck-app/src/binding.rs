@@ -68,6 +68,11 @@ pub(crate) fn redraw_all() {
     }
 }
 
+/// Redraws every bound window from another thread (the eyedropper's, when its run ends).
+pub fn redraw_from_any_thread() {
+    let _ = slint::invoke_from_event_loop(redraw_all);
+}
+
 /// Runs the timer chain of toast `seq`: each tick advances the toast and redraws the windows.
 pub(crate) fn arm_toast<S, C, K, T>(
     controller: Weak<RefCell<Controller<S, C, K, T>>>,

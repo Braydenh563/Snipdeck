@@ -1894,6 +1894,9 @@ msgstr "データフォルダーを開く"
 msgid "Open logs folder"
 msgstr "ログフォルダーを開く"
 
+msgid "Open the Colours list"
+msgstr ""
+
 msgid "Open the Microsoft Store page"
 msgstr "Microsoft Store のページを開く"
 
@@ -3317,6 +3320,9 @@ msgstr "バージョン"
 
 msgid "View"
 msgstr "表示"
+
+msgid "View list"
+msgstr ""
 
 msgid "Violet"
 msgstr "バイオレット"

@@ -1900,6 +1900,9 @@ msgstr "Abrir a pasta de dados"
 msgid "Open logs folder"
 msgstr "Abrir pasta de logs"
 
+msgid "Open the Colours list"
+msgstr ""
+
 msgid "Open the Microsoft Store page"
 msgstr "Abrir a página da Microsoft Store"
 
@@ -3325,6 +3328,9 @@ msgstr "Versão"
 
 msgid "View"
 msgstr "Exibir"
+
+msgid "View list"
+msgstr ""
 
 msgid "Violet"
 msgstr "Violeta"

@@ -1894,6 +1894,9 @@ msgstr "打开数据文件夹"
 msgid "Open logs folder"
 msgstr "打开日志文件夹"
 
+msgid "Open the Colours list"
+msgstr ""
+
 msgid "Open the Microsoft Store page"
 msgstr "打开 Microsoft Store 页面"
 
@@ -3317,6 +3320,9 @@ msgstr "版本"
 
 msgid "View"
 msgstr "视图"
+
+msgid "View list"
+msgstr ""
 
 msgid "Violet"
 msgstr "紫罗兰色"

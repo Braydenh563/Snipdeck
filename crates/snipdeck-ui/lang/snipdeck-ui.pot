@@ -244,7 +244,7 @@ msgstr[1] ""
 msgid "All {} recent copies are removed. This can't be undone."
 msgstr ""
 
-#: ui/colours.slint:794
+#: ui/colours.slint:799
 msgid "Alpha"
 msgstr ""
 
@@ -420,7 +420,7 @@ msgstr ""
 msgid "Bottom edge"
 msgstr ""
 
-#: ui/colours.slint:787
+#: ui/colours.slint:792
 msgid "Brightness"
 msgstr ""
 
@@ -1700,11 +1700,11 @@ msgstr ""
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr ""
 
-#: ui/colours.slint:779
+#: ui/colours.slint:784
 msgid "Hue"
 msgstr ""
 
-#: ui/colours.slint:771
+#: ui/colours.slint:775
 msgid "Hue and saturation"
 msgstr ""
 
@@ -2526,6 +2526,10 @@ msgstr ""
 msgid "Open logs folder"
 msgstr ""
 
+#: ui/colours.slint:873
+msgid "Open the Colours list"
+msgstr ""
+
 #: ui/help.slint:499
 msgid "Open the Microsoft Store page"
 msgstr ""
@@ -2982,7 +2986,7 @@ msgstr ""
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr ""
 
-#: ui/colours.slint:823 ui/colours.slint:826 ui/editors.slint:1641 ui/main_window.slint:1031 ui/main_window.slint:2776 ui/symbols.slint:40
+#: ui/colours.slint:828 ui/colours.slint:831 ui/editors.slint:1641 ui/main_window.slint:1031 ui/main_window.slint:2776 ui/symbols.slint:40
 msgid "Recently used"
 msgstr ""
 
@@ -3154,11 +3158,11 @@ msgstr ""
 msgid "Sad"
 msgstr ""
 
-#: ui/colours.slint:771
+#: ui/colours.slint:775
 msgid "Saturation and brightness"
 msgstr ""
 
-#: ui/colours.slint:853 ui/editors.slint:1285 ui/editors.slint:1662 ui/shortcut_texts.slint:100
+#: ui/colours.slint:852 ui/editors.slint:1285 ui/editors.slint:1662 ui/shortcut_texts.slint:100
 msgid "Save"
 msgstr ""
 
@@ -3194,15 +3198,15 @@ msgstr ""
 msgid "Save to Colours"
 msgstr ""
 
-#: ui/colours.slint:855
+#: ui/colours.slint:854
 msgid "Save to Colours (Ctrl+S)"
 msgstr ""
 
-#: ui/colours.slint:862
+#: ui/colours.slint:861
 msgid "Save to a list (Ctrl+Shift+S)"
 msgstr ""
 
-#: ui/colours.slint:859 ui/main_window.slint:2643 ui/main_window.slint:2668 ui/panel.slint:2881 ui/panel.slint:2904
+#: ui/colours.slint:858 ui/main_window.slint:2643 ui/main_window.slint:2668 ui/panel.slint:2881 ui/panel.slint:2904
 msgid "Save to…"
 msgstr ""
 
@@ -3210,11 +3214,11 @@ msgstr ""
 msgid "Save what you paste often."
 msgstr ""
 
-#: ui/colours.slint:844
+#: ui/colours.slint:846
 msgid "Saved"
 msgstr ""
 
-#: ui/colours.slint:870 ui/colours.slint:879
+#: ui/colours.slint:879
 msgid "Saved colours"
 msgstr ""
 
@@ -4414,7 +4418,7 @@ msgstr ""
 msgid "User guide"
 msgstr ""
 
-#: ui/colours.slint:809
+#: ui/colours.slint:814
 msgid "Values as"
 msgstr ""
 
@@ -4424,6 +4428,10 @@ msgstr ""
 
 #: ui/main_window.slint:1528 ui/main_window.slint:1530 ui/main_window.slint:2552 ui/main_window.slint:2749
 msgid "View"
+msgstr ""
+
+#: ui/colours.slint:870
+msgid "View list"
 msgstr ""
 
 #: ui/editors.slint:1131 ui/editors.slint:1510 ui/settings.slint:698
@@ -5016,7 +5024,7 @@ msgstr ""
 msgid "{} d ago"
 msgstr ""
 
-#: ui/colours.slint:782
+#: ui/colours.slint:787
 msgid "{} degrees"
 msgstr ""
 
@@ -5124,7 +5132,7 @@ msgstr ""
 msgid "{} of {} · next: {}"
 msgstr ""
 
-#: ui/colours.slint:789 ui/colours.slint:796
+#: ui/colours.slint:794 ui/colours.slint:801
 msgid "{} percent"
 msgstr ""
 

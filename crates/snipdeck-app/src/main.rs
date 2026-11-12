@@ -319,6 +319,17 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         .borrow_mut()
         .set_screen_clip_host(Box::new(snipdeck_app::screen_clip::SystemScreenClip));
 
+    // The screen eyedropper of the Colours tab: Windows only (UNVERIFIED there), no button elsewhere.
+    #[cfg(windows)]
+    let eyedropper: Option<Box<dyn snipdeck_platform::eyedrop::Eyedropper>> =
+        Some(Box::new(snipdeck_platform::windows::eyedrop::WinEyedropper::new()));
+    #[cfg(not(windows))]
+    let eyedropper: Option<Box<dyn snipdeck_platform::eyedrop::Eyedropper>> = None;
+    controller.borrow_mut().set_eyedropper(
+        eyedropper,
+        std::sync::Arc::new(snipdeck_app::binding::redraw_from_any_thread),
+    );
+
     let hotkeys = Rc::new(RefCell::new(hotkeys));
     // Resuming after "Pause hotkeys" registers the chords in force then, not the launch ones.
     let chords_now = {
