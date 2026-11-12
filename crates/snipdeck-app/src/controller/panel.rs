@@ -415,21 +415,7 @@ where
     /// format to the clipboard instead of pasting it.
     pub fn choose_item_menu_as(&mut self, index: usize, copy: bool) -> Vec<Effect> {
         if let PanelMenu::PasteAs(id) = self.menu {
-            self.menu = PanelMenu::None;
-            self.menu_targets.clear();
-            if let Some(c) = self.colour_of_item(id) {
-                let Some(format) = snipdeck_colour::Format::ALL.get(index).copied() else {
-                    return Vec::new();
-                };
-                let mode = if copy { UseMode::Copy } else { UseMode::Paste };
-                let used = self.use_colour_item(id, c, format, mode);
-                return self.after_use(&used);
-            }
-            let Some(transform) = Transform::ALL.get(index).copied() else {
-                return Vec::new();
-            };
-            let used = self.use_item_as(id, transform);
-            return self.after_use(&used);
+            return self.choose_paste_as(id, index, copy);
         }
         if matches!(self.menu, PanelMenu::Move | PanelMenu::Colour) {
             self.choose_second_level(index);
@@ -517,6 +503,26 @@ where
             | ItemMenuEntry::PasteAs
             | ItemMenuEntry::Separator => Vec::new(),
         }
+    }
+
+    /// Entry `index` of item `id`'s "Paste as" menu: a colour's format (copied with Shift), or a text
+    /// transform.
+    fn choose_paste_as(&mut self, id: ItemId, index: usize, copy: bool) -> Vec<Effect> {
+        self.menu = PanelMenu::None;
+        self.menu_targets.clear();
+        if let Some(c) = self.colour_of_item(id) {
+            let Some(format) = snipdeck_colour::Format::ALL.get(index).copied() else {
+                return Vec::new();
+            };
+            let mode = if copy { UseMode::Copy } else { UseMode::Paste };
+            let used = self.use_colour_item(id, c, format, mode);
+            return self.after_use(&used);
+        }
+        let Some(transform) = Transform::ALL.get(index).copied() else {
+            return Vec::new();
+        };
+        let used = self.use_item_as(id, transform);
+        self.after_use(&used)
     }
 
     /// The item menu's Move up / Move down on item `id`.

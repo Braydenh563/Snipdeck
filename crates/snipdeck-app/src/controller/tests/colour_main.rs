@@ -11,7 +11,7 @@ const BLUE: Rgba8 = Rgba8::rgb(58, 123, 213);
 
 /// Adds a snippet through the quick-add box (the Main window's open list is not needed: the
 /// Panel's list takes it) and returns its id.
-fn quick(w: &mut World, text: &str, sensitive: bool) -> ItemId {
+fn quick(w: &mut World, text: &str) -> ItemId {
     // The fixed clock gives every item one creation time, so the new item is the one not there before.
     let before: Vec<ItemId> = w
         .ctl
@@ -24,7 +24,7 @@ fn quick(w: &mut World, text: &str, sensitive: bool) -> ItemId {
     assert!(w.ctl.quick_add(
         text,
         Some(ItemKind::Text),
-        sensitive,
+        false,
         crate::item_editor::Origin::Panel
     ));
     w.ctl
@@ -41,7 +41,7 @@ fn quick(w: &mut World, text: &str, sensitive: bool) -> ItemId {
 /// cursor on that row. Returns the row too.
 fn on_colour_row() -> (World, ItemId, usize) {
     let mut w = world();
-    let id = quick(&mut w, "#3a7bd5", false);
+    let id = quick(&mut w, "#3a7bd5");
     let row = open_row(&mut w, id);
     (w, id, row)
 }
@@ -91,8 +91,9 @@ mod main_window {
         let plain_row = open_row(&mut w, plain);
         assert_ne!(plain_row, row);
         assert_eq!(w.ctl.main_screen().colour_block, None);
-        // A Sensitive item that holds a colour literal.
-        let secret = quick(&mut w, "#ff0000", true);
+        // A Sensitive item (its text is hidden, so it holds no colour literal).
+        let secret = quick(&mut w, "#ff0000");
+        super::make_sensitive(&mut w, secret);
         open_row(&mut w, secret);
         assert_eq!(w.ctl.main_screen().colour_block, None);
         // Two rows selected.
@@ -194,7 +195,7 @@ mod main_window {
                 ..Settings::new_install()
             },
         );
-        let id = quick(&mut w, "#3a7bd5", false);
+        let id = quick(&mut w, "#3a7bd5");
         let row = open_row(&mut w, id);
         let screen = w.ctl.main_screen();
         assert!(screen.colour_block.is_some(), "still copyable");
@@ -213,7 +214,7 @@ mod picker {
 
     fn open_on_colour() -> (World, ItemId) {
         let mut w = world();
-        let id = quick(&mut w, "#3a7bd5", false);
+        let id = quick(&mut w, "#3a7bd5");
         w.ctl.open_picker();
         w.ctl.picker_query("3a7bd5");
         (w, id)
@@ -293,7 +294,7 @@ mod picker {
                 ..Settings::new_install()
             },
         );
-        quick(&mut w, "#3a7bd5", false);
+        quick(&mut w, "#3a7bd5");
         w.ctl.open_picker();
         w.ctl.picker_query("3a7bd5");
         assert!(!w.ctl.picker_open_in_colours(0));

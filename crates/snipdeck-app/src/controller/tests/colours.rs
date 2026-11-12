@@ -553,7 +553,7 @@ mod item_menu {
         let keys = w.ctl.services().keyboard.sent.len();
         w.ctl.choose_item_menu_as(1, true);
         assert_eq!(w.ctl.services().keyboard.sent.len(), keys, "no paste keys");
-        assert!(w.ctl.services().clipboard.written.len() > 0);
+        assert!(!w.ctl.services().clipboard.written.is_empty());
         assert_eq!(uses(&w, id), 1);
     }
 

@@ -484,6 +484,21 @@ mod tests {
     }
 
     #[test]
+    fn a_colour_result_has_a_swatch_and_a_secret_or_other_text_does_not() {
+        let mut colour = entry(false);
+        colour.preview = "#3a7bd5".into();
+        let row = picker_row(&colour, false);
+        assert!(row.has_swatch);
+        assert_eq!(row.swatch, slint::Color::from_rgb_u8(0x3a, 0x7b, 0xd5));
+        assert!(!picker_row(&entry(false), false).has_swatch);
+        colour.sensitive = true;
+        assert!(!picker_row(&colour, false).has_swatch);
+        colour.sensitive = false;
+        colour.kind = snipdeck_core::ItemKind::Link;
+        assert!(!picker_row(&colour, false).has_swatch);
+    }
+
+    #[test]
     fn picker_place_uses_middle_dot() {
         let row = picker_row(&entry(false), false);
         assert_eq!(row.list_name.as_str(), "Work \u{b7} Logins");

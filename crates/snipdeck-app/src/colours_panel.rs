@@ -59,21 +59,23 @@ fn base(c: Rgba8, model: InputModel, st: Hsb, memo: Option<&[f64]>) -> Vec<f64> 
     match model {
         InputModel::Hex => Vec::new(),
         InputModel::Rgb => vec![f64::from(c.r), f64::from(c.g), f64::from(c.b)],
-        InputModel::Hsl => match memo.filter(|m| m.len() == 3) {
-            Some(m) => m.to_vec(),
-            None => {
+        InputModel::Hsl => {
+            if let Some(m) = memo.filter(|m| m.len() == 3) {
+                m.to_vec()
+            } else {
                 let v = to_hsl(c);
                 vec![if v.s > 0.0 { v.h } else { hue }, v.s * 100.0, v.l * 100.0]
             }
-        },
+        }
         InputModel::Hsb => vec![hue, f64::from(st.1), f64::from(st.2)],
-        InputModel::Cmyk => match memo.filter(|m| m.len() == 4) {
-            Some(m) => m.to_vec(),
-            None => {
+        InputModel::Cmyk => {
+            if let Some(m) = memo.filter(|m| m.len() == 4) {
+                m.to_vec()
+            } else {
                 let v = to_cmyk(c);
                 vec![v.c * 100.0, v.m * 100.0, v.y * 100.0, v.k * 100.0]
             }
-        },
+        }
     }
 }
 
@@ -714,13 +716,21 @@ mod tests {
     fn typing_lightness_or_black_to_the_end_keeps_the_other_channels() {
         let (black, _, memo) = commit(BLUE, InputModel::Hsl, 2, "0", st(BLUE), None).unwrap();
         assert_eq!(black, Rgba8::rgb(0, 0, 0));
-        let (back, ..) =
+        let (again, ..) =
             commit(black, InputModel::Hsl, 2, "53", st(black), memo.as_deref()).unwrap();
-        assert_eq!(back, BLUE, "L back gives the colour, not a grey");
+        assert!(
+            near(again, BLUE),
+            "L back gives the colour, not a grey: {again:?}"
+        );
         let (black, _, memo) = commit(BLUE, InputModel::Cmyk, 3, "100", st(BLUE), None).unwrap();
         assert_eq!(black, Rgba8::rgb(0, 0, 0));
-        let (back, ..) =
+        let (again, ..) =
             commit(black, InputModel::Cmyk, 3, "16", st(black), memo.as_deref()).unwrap();
-        assert_eq!(back, BLUE);
+        assert!(near(again, BLUE), "{again:?}");
+    }
+
+    /// Within one step of 8 bits per channel (a typed whole percent is not the exact value).
+    fn near(a: Rgba8, b: Rgba8) -> bool {
+        a.r.abs_diff(b.r) <= 1 && a.g.abs_diff(b.g) <= 1 && a.b.abs_diff(b.b) <= 1
     }
 }

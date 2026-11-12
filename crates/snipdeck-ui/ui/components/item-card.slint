@@ -176,6 +176,8 @@ export component ItemCard inherits Rectangle {
     // A colour value in the text: the type tile is filled with it.
     in property <color> swatch: transparent;
     in property <bool> has-swatch: false;
+    // The colour is not opaque (an alpha below 255): the tile then shows a checkerboard under it.
+    property <bool> swatch-translucent: root.has-swatch && root.swatch != root.swatch.with-alpha(1);
     // Search: the name of the tag that matched when the title and the preview show no match; the preview line
     // then reads "tag: <name>". Ignored for a sensitive item.
     in property <string> tag-hit;
@@ -666,24 +668,47 @@ export component ItemCard inherits Rectangle {
             }
         }
 
-        // The type tile (images use the crop above instead).
+        // The type tile (images use the crop above instead). A colour value fills it: the opaque colour in a strip on
+        // the left, and on the right the colour as it is over a checkerboard, so a translucent (or fully clear) colour
+        // never leaves the tile empty.
         if !root.is-image: Rectangle {
             x: root.tile-x;
             y: root.tile-y;
             width: root.q-tile-size;
             height: root.q-tile-size;
             border-radius: root.comfortable ? Radius.md : Radius.sm;
-            background: root.has-swatch ? root.swatch : root.kind-tile;
-            border-width: root.has-swatch ? 1px : Theme.hc-border != transparent ? 1px : 0px;
-            border-color: root.has-swatch && Theme.hc-border == transparent ? Theme.border-subtle : Theme.hc-border;
+            clip: root.has-swatch;
+            background: root.has-swatch ? root.swatch.with-alpha(1) : root.kind-tile;
+            border-width: root.has-swatch ? 0px : Theme.hc-border != transparent ? 1px : 0px;
+            border-color: Theme.hc-border;
             accessible-role: AccessibleRole.image;
-            accessible-label: root.has-swatch ? @tr("Colour") : root.kind-name;
+            accessible-label: root.has-swatch ? @tr("{}, colour {}", root.kind-name, root.preview) : root.kind-name;
             if !root.has-swatch: Icon {
                 source: root.glyph;
                 tint: root.kind-glyph;
                 size: Space.s4;
                 x: (parent.width - self.width) / 2;
                 y: (parent.height - self.height) / 2;
+            }
+            if root.swatch-translucent: Rectangle {
+                x: parent.width * 0.4;
+                width: parent.width * 0.6;
+                height: parent.height;
+                background: #ffffff;
+                for i in 15: Rectangle {
+                    x: mod(i, 3) * parent.width / 3;
+                    y: floor(i / 3) * parent.height / 5;
+                    width: parent.width / 3;
+                    height: parent.height / 5;
+                    background: #c8c8c8;
+                    visible: mod(floor(i / 3) + mod(i, 3), 2) == 1;
+                }
+                Rectangle { background: root.swatch; }
+            }
+            if root.has-swatch: Rectangle {
+                border-width: 1px;
+                border-color: Theme.hc-border != transparent ? Theme.hc-border : Theme.border-subtle;
+                border-radius: parent.border-radius;
             }
         }
 

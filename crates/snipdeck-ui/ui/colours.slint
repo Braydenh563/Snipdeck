@@ -88,8 +88,9 @@ export global ColourTexts {
     pure public function surface-square(sat: int, bri: int) -> string {
         return @tr("Saturation {} percent, brightness {} percent", sat, bri);
     }
-    pure public function surface-wheel(hue: int, sat: int) -> string {
-        return @tr("Hue {} degrees, saturation {} percent", hue, sat);
+    // The wheel's increment and decrement change the brightness, so the spoken value names it too.
+    pure public function surface-wheel(hue: int, sat: int, bri: int) -> string {
+        return @tr("Hue {} degrees, saturation {} percent, brightness {} percent", hue, sat, bri);
     }
     pure public function swatch-label(hex: string, name: string) -> string { return @tr("{}, {}", hex, name); }
     pure public function use-hint-copy() -> string { return @tr("Click copies"); }
@@ -145,8 +146,10 @@ export global ColourState {
     in-out property <int> save-to-ticks: 0;
     in-out property <int> type-ticks: 0;
     in-out property <string> typed;
-    // A text field of the tab has the keyboard (the Panel leaves Ctrl+C and typing to it).
+    // A text field of the tab has the keyboard (the Panel leaves Ctrl+C, Ctrl+Z and typing to it).
     in-out property <bool> text-focused: false;
+    // A drop-down list of the tab ("Values as", "Scheme") is open: Esc closes just the list, not the Panel.
+    in-out property <bool> dropdown-open: false;
     // Callbacks.
     callback input-edited(string);
     callback input-accepted(string);
@@ -278,6 +281,7 @@ component ChipGrid inherits Rectangle {
     in property <string> group-label;
     in property <int> focus-request: 0;
     in-out property <int> selected: -1;
+    out property <bool> has-focus: scope.has-focus;
     out property <string> focus-label: (scope.has-focus && root.selected >= 0 && root.selected < root.chips.length) ? root.chips[root.selected].label : "";
     callback used(int);
     callback copied(int);
@@ -428,12 +432,15 @@ component FormatList inherits Rectangle {
     in property <string> use-hint;
     in property <int> focus-request: 0;
     in-out property <int> selected: -1;
+    out property <bool> has-focus: scope.has-focus;
     out property <string> focus-label: (scope.has-focus && root.selected >= 0 && root.selected < root.rows.length) ? root.rows[root.selected].label + " " + root.rows[root.selected].value : "";
     callback used(int);
     callback copied(int);
     // The row, then where to open a menu (absolute).
     callback menu(int, length, length);
     callback tip(string, length, length, bool);
+    // The pointer is on (or left) a row: its text, for the footer.
+    callback hovered(string, bool);
     callback focus-text(string);
     callback reveal(length, length);
 
@@ -570,6 +577,9 @@ component FormatList inherits Rectangle {
             row-touch := TouchArea {
                 width: parent.width - Space.hit - Space.s1;
                 mouse-cursor: pointer;
+                changed has-hover => {
+                    root.hovered(f.label == "Name" ? ColourTexts.format-name() + " " + f.value : f.label + " " + f.value, self.has-hover);
+                }
                 pointer-event(event) => {
                     if (event.button == PointerEventButton.left && event.kind == PointerEventKind.up
                         && self.mouse-x >= 0 && self.mouse-x <= self.width && self.mouse-y >= 0 && self.mouse-y <= self.height) {
@@ -617,10 +627,14 @@ component TrackSlider inherits Rectangle {
     in property <string> value-text;
     in property <brush> track;
     in property <bool> checker: false;
+    // Each time this goes up the slider takes the keyboard (Save to… gives it back when it closes).
+    in property <int> focus-request: 0;
+    out property <bool> has-focus: scope.has-focus;
     callback moved(float);
     callback released();
     height: Space.hit-min;
     forward-focus: scope;
+    changed focus-request => { scope.focus(); }
     accessible-role: slider;
     accessible-label: root.label;
     accessible-value: root.value-text;
@@ -724,10 +738,17 @@ component Surface inherits Rectangle {
     callback nudged(int, int);
     // Page Up and Page Down, and a screen reader's increment and decrement: brightness by this many percent.
     callback paged(int);
+    in property <int> focus-request: 0;
+    out property <bool> has-focus: scope.has-focus;
     forward-focus: scope;
+    changed focus-request => { scope.focus(); }
     accessible-role: slider;
     accessible-label: root.label;
     accessible-value: root.value-text;
+    // The axis the increment and decrement actions move (the brightness, in percent), in both modes.
+    accessible-value-minimum: 0;
+    accessible-value-maximum: 100;
+    accessible-value-step: 1;
     accessible-action-increment => { root.paged(1); }
     accessible-action-decrement => { root.paged(-1); }
 
@@ -932,6 +953,13 @@ component ChannelField inherits FocusScope {
     callback stepped(int);
     // The field gained or lost the keyboard.
     callback focus-changed(bool);
+    // `refocus` counts up to hand the keyboard back to the field whose `index` is `refocus-index`.
+    in property <int> index;
+    in property <int> refocus-index: -1;
+    in property <int> refocus: 0;
+    changed refocus => {
+        if (root.refocus-index == root.index) { tf.focus(); }
+    }
     // The grid gives it the height of the caption, a gap and TextField's box: Type.line-xs + 2px + max(Space.hit,
     // Type.line-base + 2 * Space.s1).
     forward-focus: tf;
@@ -997,6 +1025,19 @@ export component ColoursView inherits Rectangle {
     property <int> channel-focus: -1;
     property <string> hover-text;
     property <string> focus-text;
+    // Where the keyboard last was, so Save to… can hand it back: 0 the input line, 1 recents, 2 saved, 3 scheme,
+    // 4 formats, 5 the picker disclosure, 6 the surface, 7 the hue or brightness slider, 8 alpha, 9 a Values field,
+    // 10 the other colour, 11 the Save to… button.
+    property <int> last-stop: 0;
+    property <int> last-channel: 0;
+    property <int> channel-refocus: 0;
+    property <int> surface-focus: 0;
+    property <int> slider-focus: 0;
+    property <int> alpha-focus: 0;
+    // The inline drop-downs ("Values as", "Scheme"): Esc closes the list, not the Panel.
+    property <bool> model-open: false;
+    property <bool> scheme-open: false;
+    property <bool> any-dropdown: root.model-open || root.scheme-open;
     property <int> popup-now: ColourState.popup;
     property <int> save-to-now: ColourState.save-to-ticks;
     property <int> type-now: ColourState.type-ticks;
@@ -1004,24 +1045,20 @@ export component ColoursView inherits Rectangle {
 
     background: Theme.bg-surface;
 
-    init => { ColourState.text-focused = false; ColourState.popup = 0; }
+    init => { ColourState.text-focused = false; ColourState.popup = 0; ColourState.dropdown-open = false; }
     changed typing => { ColourState.text-focused = root.typing; }
+    changed any-dropdown => { ColourState.dropdown-open = root.any-dropdown; }
     // A popup that closes gives the keyboard back to where it came from.
     changed popup-now => {
         if (root.popup-now == 0) {
-            if (root.popup-from == 1) { root.recents-focus += 1; }
-            if (root.popup-from == 2) { root.saved-focus += 1; }
-            if (root.popup-from == 3) { root.scheme-focus += 1; }
-            if (root.popup-from == 4) { root.formats-focus += 1; }
-            // Opened by Ctrl+Shift+S or the button: the keyboard goes to the input line, so keys still reach the Panel.
-            if (root.popup-from == 0) { input.focus(); }
+            root.restore-focus(root.popup-from);
             root.popup-from = 0;
         }
     }
-    // Ctrl+Shift+S.
+    // Ctrl+Shift+S: the menu gives the keyboard back to the control that had it.
     changed save-to-now => {
         root.save-ctx = 0;
-        root.popup-from = 0;
+        root.popup-from = root.last-stop;
         root.open-popup(3, root.absolute-position.x + Space.s2, root.absolute-position.y + Space.s12);
     }
     // A printable key with no field focused starts the input line.
@@ -1040,6 +1077,49 @@ export component ColoursView inherits Rectangle {
     }
     function reveal(top: length, h: length) {
         scroll.reveal(top - scroll.absolute-position.y, h);
+    }
+    // The last recent went: its grid (and the keyboard in it) is gone, so the next stop takes the keyboard and the
+    // footer forgets the removed colour.
+    function recents-gone() {
+        root.focus-text = "";
+        root.hover-text = "";
+        if (ColourState.saved.length > 0) {
+            root.saved-focus += 1;
+        } else {
+            root.formats-focus += 1;
+        }
+    }
+    // Hands the keyboard to a stop (the codes of `last-stop`); a stop that is no longer there falls back to the input.
+    function restore-focus(stop: int) {
+        if (stop == 1) {
+            if (ColourState.recents.length > 0) {
+                root.recents-focus += 1;
+            } else {
+                root.recents-gone();
+            }
+        } else if (stop == 2 && ColourState.saved.length > 0) {
+            root.saved-focus += 1;
+        } else if (stop == 3) {
+            root.scheme-focus += 1;
+        } else if (stop == 4) {
+            root.formats-focus += 1;
+        } else if (stop == 5) {
+            pick-scope.focus();
+        } else if (stop == 6 && ColourState.picker-open) {
+            root.surface-focus += 1;
+        } else if (stop == 7 && ColourState.picker-open) {
+            root.slider-focus += 1;
+        } else if (stop == 8 && ColourState.picker-open) {
+            root.alpha-focus += 1;
+        } else if (stop == 9 && ColourState.picker-open && root.last-channel < ColourState.channels.length) {
+            root.channel-refocus += 1;
+        } else if (stop == 10) {
+            other-field.focus();
+        } else if (stop == 11) {
+            save-to.take-focus();
+        } else {
+            input.focus();
+        }
     }
 
     VerticalLayout {
@@ -1069,6 +1149,7 @@ export component ColoursView inherits Rectangle {
                     placeholder: @tr("#3a7bd5, rgb(58, 123, 213), royalblue");
                     error: ColourState.input-error;
                     focus-request: root.input-focus;
+                    changed has-focus => { if (self.has-focus) { root.last-stop = 0; } }
                     edited(t) => { ColourState.input-edited(t); }
                     accepted(t) => { ColourState.input-accepted(t); }
                 }
@@ -1132,6 +1213,7 @@ export component ColoursView inherits Rectangle {
                     }
                     Rectangle {
                         x: Space.s1;
+                        y: 0px;
                         width: parent.disc-w;
                         height: Space.s8;
                         border-radius: Radius.sm;
@@ -1143,6 +1225,7 @@ export component ColoursView inherits Rectangle {
                         accessible-expanded: ColourState.picker-open;
                         accessible-action-default => { ColourState.picker-toggled(!ColourState.picker-open); }
                         pick-scope := FocusScope {
+                            changed has-focus => { if (self.has-focus) { root.last-stop = 5; } }
                             key-pressed(event) => {
                                 if (event.text == Key.Return || event.text == " ") {
                                     ColourState.picker-toggled(!ColourState.picker-open);
@@ -1199,12 +1282,14 @@ export component ColoursView inherits Rectangle {
                             width: ColourState.picker-style == 1 ? parent.height : parent.width;
                             height: parent.height;
                             source: ColourState.surface;
+                            focus-request: root.surface-focus;
+                            changed has-focus => { if (self.has-focus) { root.last-stop = 6; } }
                             marker-x: ColourState.marker-x;
                             marker-y: ColourState.marker-y;
                             wheel: ColourState.picker-style == 1;
                             label: ColourState.picker-style == 1 ? @tr("Hue and saturation") : @tr("Saturation and brightness");
                             value-text: ColourState.picker-style == 1
-                                ? ColourTexts.surface-wheel(round(ColourState.hue), round(ColourState.sat))
+                                ? ColourTexts.surface-wheel(round(ColourState.hue), round(ColourState.sat), round(ColourState.bri))
                                 : ColourTexts.surface-square(round(ColourState.sat), round(ColourState.bri));
                             moved(x, y, done) => { ColourState.surface-moved(x, y, done); }
                             nudged(dx, dy) => { ColourState.surface-nudged(dx, dy); }
@@ -1213,6 +1298,8 @@ export component ColoursView inherits Rectangle {
                     }
                     if ColourState.picker-style == 0: TrackSlider {
                         label: @tr("Hue");
+                        focus-request: root.slider-focus;
+                        changed has-focus => { if (self.has-focus) { root.last-stop = 7; } }
                         value: ColourState.hue;
                         max-value: 360;
                         value-text: @tr("{} degrees", round(ColourState.hue));
@@ -1222,6 +1309,8 @@ export component ColoursView inherits Rectangle {
                     }
                     if ColourState.picker-style == 1: TrackSlider {
                         label: @tr("Brightness");
+                        focus-request: root.slider-focus;
+                        changed has-focus => { if (self.has-focus) { root.last-stop = 7; } }
                         value: ColourState.bri;
                         value-text: @tr("{} percent", round(ColourState.bri));
                         track: @linear-gradient(90deg, #000000 0%, #ffffff 100%);
@@ -1230,6 +1319,8 @@ export component ColoursView inherits Rectangle {
                     }
                     TrackSlider {
                         label: @tr("Alpha");
+                        focus-request: root.alpha-focus;
+                        changed has-focus => { if (self.has-focus) { root.last-stop = 8; } }
                         value: ColourState.alpha;
                         value-text: @tr("{} percent", round(ColourState.alpha));
                         checker: true;
@@ -1245,6 +1336,7 @@ export component ColoursView inherits Rectangle {
                             width: min(120px * SystemLook.text-scale, parent.width);
                             options: [ColourTexts.model-name(0), ColourTexts.model-name(1), ColourTexts.model-name(2), ColourTexts.model-name(3), ColourTexts.model-name(4)];
                             current: ColourState.input-model;
+                            open <=> root.model-open;
                             label: @tr("Values as");
                             chosen(i) => { ColourState.model-picked(i); }
                         }
@@ -1264,11 +1356,16 @@ export component ColoursView inherits Rectangle {
                             height: values.row-h;
                             label: ch.label;
                             value: ch.text;
+                            index: i;
+                            refocus-index: root.last-channel;
+                            refocus: root.channel-refocus;
                             committed(t) => { ColourState.channel-committed(i, t); }
                             stepped(d) => { ColourState.channel-stepped(i, d); }
                             focus-changed(f) => {
                                 if (f) {
                                     root.channel-focus = i;
+                                    root.last-channel = i;
+                                    root.last-stop = 9;
                                 } else if (root.channel-focus == i) {
                                     root.channel-focus = -1;
                                 }
@@ -1286,9 +1383,15 @@ export component ColoursView inherits Rectangle {
                     can-remove: true;
                     focus-request: root.recents-focus;
                     selected <=> root.recent-sel;
+                    changed has-focus => { if (self.has-focus) { root.last-stop = 1; } }
                     used(i) => { ColourState.swatch-used(0, i); }
                     copied(i) => { ColourState.swatch-copied(0, i); }
-                    removed(i) => { ColourState.swatch-removed(0, i); }
+                    removed(i) => {
+                        ColourState.swatch-removed(0, i);
+                        if (ColourState.recents.length == 0) {
+                            root.recents-gone();
+                        }
+                    }
                     menu(i, x, y) => {
                         root.popup-group = 0;
                         root.popup-index = i;
@@ -1320,9 +1423,10 @@ export component ColoursView inherits Rectangle {
                         size: ButtonSize.sm;
                         variant: ButtonVariant.secondary;
                         tooltip: @tr("Save to a list (Ctrl+Shift+S)");
+                        changed has-focus => { if (self.has-focus) { root.last-stop = 11; } }
                         clicked => {
                             root.save-ctx = 0;
-                            root.popup-from = 0;
+                            root.popup-from = 11;
                             root.open-popup(3, self.absolute-position.x, self.absolute-position.y + self.height);
                         }
                     }
@@ -1341,6 +1445,7 @@ export component ColoursView inherits Rectangle {
                     group-label: @tr("Saved colours");
                     focus-request: root.saved-focus;
                     selected <=> root.saved-sel;
+                    changed has-focus => { if (self.has-focus) { root.last-stop = 2; } }
                     used(i) => { ColourState.swatch-used(1, i); }
                     copied(i) => { ColourState.swatch-copied(1, i); }
                     menu(i, x, y) => {
@@ -1364,6 +1469,7 @@ export component ColoursView inherits Rectangle {
                     use-hint: ColourState.use-hint;
                     focus-request: root.formats-focus;
                     selected <=> root.format-sel;
+                    changed has-focus => { if (self.has-focus) { root.last-stop = 4; } }
                     used(i) => { ColourState.format-used(i); }
                     copied(i) => { ColourState.format-copied(i); }
                     menu(i, x, y) => {
@@ -1371,7 +1477,11 @@ export component ColoursView inherits Rectangle {
                         root.popup-from = 4;
                         root.open-popup(2, x, y);
                     }
-                    tip(t, x, y, on) => { root.tip(t, x, y, on); }
+                    tip(t, x, y, on) => {
+                        root.hover-text = on ? t : (root.hover-text == t ? "" : root.hover-text);
+                        root.tip(t, x, y, on);
+                    }
+                    hovered(t, on) => { root.hover-text = on ? t : (root.hover-text == t ? "" : root.hover-text); }
                     focus-text(t) => { root.focus-text = t; }
                     reveal(top, h) => { root.reveal(top, h); }
                 }
@@ -1395,6 +1505,7 @@ export component ColoursView inherits Rectangle {
                         monospace: true;
                         label: @tr("Other colour");
                         placeholder: @tr("#ffffff");
+                        changed has-focus => { if (self.has-focus) { root.last-stop = 10; } }
                         error: ColourState.other-error;
                         edited(t) => { ColourState.other-edited(t); }
                         accepted(t) => { ColourState.other-accepted(t); }
@@ -1419,6 +1530,7 @@ export component ColoursView inherits Rectangle {
                         width: parent.width - 2 * Space.s2;
                         options: [ColourTexts.scheme-name(0), ColourTexts.scheme-name(1), ColourTexts.scheme-name(2), ColourTexts.scheme-name(3), ColourTexts.scheme-name(4), ColourTexts.scheme-name(5)];
                         current: ColourState.scheme-index;
+                        open <=> root.scheme-open;
                         label: @tr("Scheme");
                         chosen(i) => { ColourState.scheme-picked(i); }
                     }
@@ -1432,6 +1544,7 @@ export component ColoursView inherits Rectangle {
                     group-label: ColourTexts.scheme-name(ColourState.scheme-index);
                     focus-request: root.scheme-focus;
                     selected <=> root.scheme-sel;
+                    changed has-focus => { if (self.has-focus) { root.last-stop = 3; } }
                     used(i) => { ColourState.swatch-used(2, i); }
                     copied(i) => { ColourState.swatch-copied(2, i); }
                     menu(i, x, y) => {
@@ -1454,10 +1567,12 @@ export component ColoursView inherits Rectangle {
         // ---- The route line: what the pointer or the keyboard is on, else where a click goes ------------
         Rectangle {
             height: Space.s8;
-            Text {
+            route := Text {
                 x: Space.s2;
                 width: parent.width - 2 * Space.s2;
                 height: parent.height;
+                accessible-role: AccessibleRole.text;
+                accessible-label: self.text;
                 text: root.hover-text != "" ? root.hover-text : root.focus-text != "" ? root.focus-text : ColourState.use-hint;
                 font-family: Fonts.sans;
                 font-size: Type.sm;

@@ -566,6 +566,8 @@ export component PanelWindow inherits Window {
     property <bool> pastes: root.target-name != "";
     property <string> use-label: root.pastes ? @tr("Paste") : @tr("Copy");
     property <bool> searching: root.query != "";
+    // Nothing matches the query in a list that is on screen (the footer then says what Enter creates).
+    property <bool> no-results: root.rows.length == 0 && root.searching && !root.list-hidden;
     // The list under the tabs is not what is on show (the Recent inbox or the Symbols tab): its shortcuts stand down.
     property <bool> list-hidden: root.recent-open || root.symbols-open || root.colours-open;
     // The search was opened (the header icon, Ctrl+F, a typed character) and not closed again. With a query it is
@@ -946,6 +948,12 @@ export component PanelWindow inherits Window {
         if (root.symbols-open) {
             root.close-symbols();
         }
+        // The search box is hidden while the tab is open: a query nobody can see must not catch Esc or Enter.
+        root.search-user = false;
+        if (root.query != "") {
+            root.query = "";
+            root.query-changed("");
+        }
         root.colours-open = true;
         root.colours-toggled(true);
     }
@@ -1174,6 +1182,10 @@ export component PanelWindow inherits Window {
                 if (root.header-renaming-row >= 0 && !self.has-focus && !rest.has-focus && !search.has-focus) {
                     return reject;
                 }
+                // An open drop-down of the Colours tab ("Values as", "Scheme") is closed by the Esc it gets itself.
+                if (root.colours-open && ColourState.dropdown-open && event.text == Key.Escape) {
+                    return reject;
+                }
                 // A popup of the Colours tab (a chip's menu, Save to…) owns the keyboard; Esc closes it.
                 if (root.colours-open && ColourState.popup != 0) {
                     if (event.text == Key.Escape) {
@@ -1302,11 +1314,11 @@ export component PanelWindow inherits Window {
                         return accept;
                     }
                     // Typed text in the search field undoes itself; with an empty field Ctrl+Z is the history's Undo.
-                    if ((event.text == "z" || event.text == "Z") && !event.modifiers.shift && root.query == "") {
+                    if ((event.text == "z" || event.text == "Z") && !event.modifiers.shift && root.query == "" && !(root.colours-open && ColourState.text-focused)) {
                         root.undo-requested();
                         return accept;
                     }
-                    if ((((event.text == "z" || event.text == "Z") && event.modifiers.shift) || event.text == "y" || event.text == "Y") && root.query == "") {
+                    if ((((event.text == "z" || event.text == "Z") && event.modifiers.shift) || event.text == "y" || event.text == "Y") && root.query == "" && !(root.colours-open && ColourState.text-focused)) {
                         root.redo-requested();
                         return accept;
                     }
@@ -2570,7 +2582,7 @@ export component PanelWindow inherits Window {
                 if !root.stack-visible && !(root.marked-count > 0 && !root.list-hidden): footer := Rectangle {
                     height: max(Space.s8, Type.line-sm + Space.s3);
                     accessible-role: AccessibleRole.text;
-                    accessible-label: root.rows.length == 0 && root.searching ? @tr("Enter creates “{}” in {}", root.query, root.add-list-name)
+                    accessible-label: root.no-results ? @tr("Enter creates “{}” in {}", root.query, root.add-list-name)
                         : root.pastes
                         ? (root.target-title != "" ? @tr("Pastes into {} · {}", root.target-name, root.target-title) : @tr("Pastes into {}", root.target-name))
                         : @tr("No target: click copies");
@@ -2614,7 +2626,7 @@ export component PanelWindow inherits Window {
                             status-touch := TouchArea {
                                 mouse-cursor: MouseCursor.default;
                                 changed has-hover => {
-                                    root.tip-set(status.how, self.absolute-position.x + Space.s6, self.absolute-position.y - tooltip.preferred-height - Space.s2, self.has-hover && !(root.rows.length == 0 && root.searching));
+                                    root.tip-set(status.how, self.absolute-position.x + Space.s6, self.absolute-position.y - tooltip.preferred-height - Space.s2, self.has-hover && !(root.no-results));
                                 }
                             }
                             HorizontalLayout {
@@ -2631,7 +2643,7 @@ export component PanelWindow inherits Window {
                                     overflow: elide;
                                     accessible-role: AccessibleRole.text;
                                 }
-                                if !(root.symbols-open && (root.symbol-hover-name != "" || root.symbol-selected-name != "")) && !(root.rows.length == 0 && root.searching): Icon {
+                                if !(root.symbols-open && (root.symbol-hover-name != "" || root.symbol-selected-name != "")) && !(root.no-results): Icon {
                                     source: root.pastes ? Icons.arrow-bend-down-left : Icons.clipboard;
                                     tint: Theme.text-secondary;
                                     size: Space.s4 * SystemLook.text-scale;
@@ -2639,14 +2651,14 @@ export component PanelWindow inherits Window {
                                 }
                                 // No results: the footer says what Enter does (spec 2.6): the Enter keycap, then "creates “q” in List",
                                 // or without " in List" when that would not fit (the empty state already names the list).
-                                if root.rows.length == 0 && root.searching: Rectangle {
+                                if root.no-results: Rectangle {
                                     width: enter-cap.min-width;
                                     enter-cap := Keycap {
                                         text: "Enter";
                                         y: (parent.height - self.height) / 2;
                                     }
                                 }
-                                if root.rows.length == 0 && root.searching: Text {
+                                if root.no-results: Text {
                                     horizontal-stretch: 1;
                                     min-width: 0px;
                                     text: status.names-list ? @tr("creates “{}” in {}", root.query, root.add-list-name) : @tr("creates “{}”", root.query);
@@ -2657,7 +2669,7 @@ export component PanelWindow inherits Window {
                                     overflow: elide;
                                     accessible-role: AccessibleRole.none;
                                 }
-                                if !(root.symbols-open && (root.symbol-hover-name != "" || root.symbol-selected-name != "")) && !(root.rows.length == 0 && root.searching): Text {
+                                if !(root.symbols-open && (root.symbol-hover-name != "" || root.symbol-selected-name != "")) && !(root.no-results): Text {
                                     text: root.pastes ? @tr("Pastes into") : @tr("No target:");
                                     font-family: Fonts.sans;
                                     font-size: Type.sm;
@@ -2666,7 +2678,7 @@ export component PanelWindow inherits Window {
                                     overflow: elide;
                                     accessible-role: AccessibleRole.none;
                                 }
-                                if !(root.symbols-open && (root.symbol-hover-name != "" || root.symbol-selected-name != "")) && !(root.rows.length == 0 && root.searching): Text {
+                                if !(root.symbols-open && (root.symbol-hover-name != "" || root.symbol-selected-name != "")) && !(root.no-results): Text {
                                     horizontal-stretch: 1;
                                     min-width: 0px;
                                     text: root.pastes ? root.target-name : @tr("click copies");

@@ -211,10 +211,12 @@ where
             &window,
             &ctl.settings().hotkeys,
             self.shown.borrow().as_ref(),
-            ctl.settings().show_symbols_tab,
-            ctl.settings().show_colours_tab,
-            ctl.eyedropper_state().0,
-            ctl.has_saved_list(),
+            crate::command_binding::Offers {
+                symbols: ctl.settings().show_symbols_tab,
+                colours: ctl.settings().show_colours_tab,
+                eyedropper: ctl.eyedropper_state().0,
+                saved_colours: ctl.has_saved_list(),
+            },
             query,
         );
     }

@@ -10,7 +10,11 @@
     reason = "test code: a failure is a failed test"
 )]
 
-use std::{cell::RefCell, path::Path, rc::Rc};
+use std::{
+    cell::{Cell, RefCell},
+    path::Path,
+    rc::Rc,
+};
 
 use i_slint_backend_testing::{AccessibleRole, ElementHandle, ElementQuery};
 use i_slint_core::{
@@ -28,10 +32,10 @@ use snipdeck_app::{
     screenshot::write_png,
     settings::{Settings, Theme},
 };
-use snipdeck_colour::{Format, Rgba8, contrast_ratio, ratio_text};
+use snipdeck_colour::{Format, Rgba8, contrast_ratio, format, ratio_text};
 use snipdeck_core::Timestamp;
 use snipdeck_ui::{
-    ColourState, PanelWindow,
+    ColourState, PanelWindow, SystemLook,
     testing::{Frame, Harness},
 };
 
@@ -195,24 +199,147 @@ fn the_dark_tab_renders_too() {
     shot("wheel-420", &r.frame());
 }
 
+fn channel_texts(r: &Rig) -> Vec<String> {
+    r.state()
+        .get_channels()
+        .iter()
+        .map(|c| c.text.to_string())
+        .collect()
+}
+
+/// Every format row (but the localised Name) says what the crate says for the current colour.
+fn assert_rows_follow_the_colour(r: &Rig) {
+    let cur = r.ctl.borrow().colour_view().current;
+    let rows = r.state().get_formats();
+    for (i, f) in Format::ALL
+        .iter()
+        .enumerate()
+        .filter(|(_, f)| **f != Format::Name)
+    {
+        assert_eq!(
+            rows.row_data(i).unwrap().value.as_str(),
+            format(cur, *f),
+            "the {f:?} row follows {cur:?}"
+        );
+    }
+}
+
 #[test]
 fn brightness_to_zero_and_back_keeps_the_colour_and_the_values_row_says_so() {
     let r = rig(false, (320, 640));
     let blue = Rgba8::rgb(58, 123, 213);
     r.state().invoke_input_edited("#3a7bd5".into());
-    let (hue, sat, bri) = {
-        let s = r.state();
-        (s.get_hue(), 0.0_f32, s.get_bri())
-    };
+    r.state().invoke_model_picked(3); // HSB
+    let start = channel_texts(&r);
+    assert_eq!(start.len(), 3, "H, S and B: {start:?}");
+    let bri = r.state().get_bri();
     r.state().invoke_bri_moved(0.0);
     assert_eq!(
         r.ctl.borrow().colour_view().current,
         Rgba8::rgb(0, 0, 0),
         "black"
     );
+    let black = channel_texts(&r);
+    assert_eq!(
+        black[0], start[0],
+        "the hue is still there on black: {black:?}"
+    );
+    assert_eq!(black[1], start[1], "and so is the saturation: {black:?}");
+    assert_eq!(black[2], "0", "brightness reads 0: {black:?}");
     r.state().invoke_bri_moved(bri);
     assert_eq!(r.ctl.borrow().colour_view().current, blue);
-    let _ = (hue, sat);
+    assert_eq!(channel_texts(&r), start, "the Values row is what it was");
+    assert_rows_follow_the_colour(&r);
+}
+
+fn number_at(r: &Rig, i: usize) -> f64 {
+    r.state()
+        .get_channels()
+        .row_data(i)
+        .unwrap()
+        .text
+        .parse()
+        .unwrap()
+}
+
+#[test]
+fn committing_an_hsl_channel_updates_the_other_rows() {
+    let r = rig(false, (320, 640));
+    r.state().invoke_input_edited("#3a7bd5".into());
+    r.state().invoke_model_picked(2); // HSL
+    assert_eq!(channel_texts(&r).len(), 3);
+    let before = r.ctl.borrow().colour_view().current;
+    r.state().invoke_channel_committed(2, "20".into());
+    let after = r.ctl.borrow().colour_view().current;
+    assert_ne!(after, before, "L=20 darkens the colour");
+    assert!(after.b < before.b);
+    assert_eq!(channel_texts(&r)[2], "20", "the typed lightness stays");
+    assert_rows_follow_the_colour(&r);
+    let hex = r
+        .state()
+        .get_formats()
+        .row_data(0)
+        .unwrap()
+        .value
+        .to_string();
+    assert_eq!(hex, format(after, Format::Hex));
+    // The saturation moves the other rows too.
+    r.state().invoke_channel_committed(1, "10".into());
+    assert_ne!(r.ctl.borrow().colour_view().current, after);
+    assert_eq!(channel_texts(&r)[1], "10");
+    assert_rows_follow_the_colour(&r);
+}
+
+#[test]
+fn stepping_hsl_hue_on_a_grey_blue_and_hsl_saturation_on_a_dark_red_both_advance() {
+    let r = rig(false, (320, 640));
+    r.state().invoke_input_edited("rgb(58, 60, 62)".into());
+    r.state().invoke_model_picked(2); // HSL
+    let h = number_at(&r, 0);
+    r.state().invoke_channel_stepped(0, 1);
+    assert!(
+        (number_at(&r, 0) - (h + 1.0)).abs() < 0.5,
+        "H {h} -> {}",
+        number_at(&r, 0)
+    );
+    r.state().invoke_channel_stepped(0, 10);
+    assert!((number_at(&r, 0) - (h + 11.0)).abs() < 0.5, "and again");
+    assert_rows_follow_the_colour(&r);
+
+    r.state().invoke_input_edited("rgb(30, 20, 20)".into());
+    let s = number_at(&r, 1);
+    r.state().invoke_channel_stepped(1, 1);
+    assert!(
+        (number_at(&r, 1) - (s + 1.0)).abs() < 0.5,
+        "S {s} -> {}",
+        number_at(&r, 1)
+    );
+    assert_rows_follow_the_colour(&r);
+}
+
+#[test]
+fn committing_and_stepping_a_cmyk_channel_updates_the_other_rows() {
+    let r = rig(false, (320, 640));
+    r.state().invoke_input_edited("rgb(13, 20, 25)".into());
+    r.state().invoke_model_picked(4); // CMYK
+    assert_eq!(channel_texts(&r).len(), 4);
+    let c = number_at(&r, 0);
+    r.state().invoke_channel_stepped(0, 1);
+    assert!(
+        (number_at(&r, 0) - (c + 1.0)).abs() < 0.5,
+        "C {c} -> {}",
+        number_at(&r, 0)
+    );
+    assert_rows_follow_the_colour(&r);
+    let before = r.ctl.borrow().colour_view().current;
+    r.state().invoke_channel_committed(3, "0".into());
+    assert_ne!(
+        r.ctl.borrow().colour_view().current,
+        before,
+        "K=0 lightens it"
+    );
+    assert_eq!(channel_texts(&r)[3], "0");
+    assert_rows_follow_the_colour(&r);
 }
 
 #[test]
@@ -498,8 +625,8 @@ fn ctrl_s_saves_and_ctrl_shift_s_asks_where_and_ctrl_c_copies() {
     assert_eq!(r.state().get_popup(), 0);
     assert_eq!(
         r.focus_label().as_deref(),
-        Some("Colour"),
-        "the keyboard is in the input line"
+        Some("Hue"),
+        "the keyboard goes back to where Ctrl+Shift+S found it"
     );
     r.state().invoke_input_edited("#ff0000".into());
     r.tab_to("Picker");
@@ -704,4 +831,506 @@ fn shots_at_both_widths_with_recents_and_saved() {
             &r.frame(),
         );
     }
+}
+
+// ---- Real keys in the Values fields, the channel letters and the geometry ------------------------
+
+impl Rig {
+    fn set_text_scale(&self, scale: f32) {
+        SystemLook::get(&self.h.component).set_text_scale(scale);
+        self.settle();
+    }
+
+    fn by_label(&self, role: AccessibleRole, label: &str) -> ElementHandle {
+        self.rows(role)
+            .into_iter()
+            .find(|e| e.accessible_label().as_deref() == Some(label))
+            .unwrap_or_else(|| panic!("no {role:?} named {label:?}"))
+    }
+
+    /// The footer line under the tab.
+    fn footer(&self) -> String {
+        ElementQuery::from_root(&self.h.component)
+            .match_id("ColoursView::route")
+            .find_first()
+            .expect("the footer line")
+            .accessible_label()
+            .unwrap_or_default()
+            .to_string()
+    }
+
+    fn pointer_to(&self, x: f32, y: f32) {
+        self.h
+            .component
+            .window()
+            .dispatch_event(WindowEvent::PointerMoved {
+                position: slint::LogicalPosition::new(x, y),
+            });
+        self.settle();
+    }
+
+    /// Calls `f` each time the Panel asks to close.
+    fn count_closes(&self) -> Rc<Cell<u32>> {
+        let n = Rc::new(Cell::new(0));
+        let c = Rc::clone(&n);
+        self.h
+            .component
+            .on_close_requested(move || c.set(c.get() + 1));
+        n
+    }
+}
+
+fn rects_overlap(a: &ElementHandle, b: &ElementHandle) -> bool {
+    let (pa, sa, pb, sb) = (
+        a.absolute_position(),
+        a.size(),
+        b.absolute_position(),
+        b.size(),
+    );
+    pa.x < pb.x + sb.width - 0.5
+        && pb.x < pa.x + sa.width - 0.5
+        && pa.y < pb.y + sb.height - 0.5
+        && pb.y < pa.y + sa.height - 0.5
+}
+
+#[test]
+fn up_and_down_keys_in_a_values_field_step_it_and_shift_steps_ten() {
+    let r = rig(false, (320, 640));
+    r.state().invoke_input_edited("#3a7bd5".into());
+    r.state().invoke_model_picked(3); // HSB
+    r.settle();
+    r.tab_to("H");
+    let before = number_at(&r, 0);
+    r.press(&key(Key::UpArrow));
+    assert!(
+        (number_at(&r, 0) - (before + 1.0)).abs() < 0.5,
+        "Up steps the hue: {before} -> {}",
+        number_at(&r, 0)
+    );
+    let field = r.by_label(AccessibleRole::TextInput, "H");
+    assert_eq!(
+        field.accessible_value().as_deref(),
+        Some(r.state().get_channels().row_data(0).unwrap().text.as_str()),
+        "the field shows the stepped number"
+    );
+    r.press(&key(Key::DownArrow));
+    assert!((number_at(&r, 0) - before).abs() < 0.5);
+    r.chord(&[Key::Shift], &key(Key::UpArrow));
+    assert!(
+        (number_at(&r, 0) - (before + 10.0)).abs() < 0.5,
+        "Shift+Up steps ten"
+    );
+    r.chord(&[Key::Shift], &key(Key::DownArrow));
+    assert!((number_at(&r, 0) - before).abs() < 0.5);
+    assert_eq!(
+        r.focus_label().as_deref(),
+        Some("H"),
+        "the keyboard stays in the field"
+    );
+}
+
+#[test]
+fn every_values_field_draws_its_channel_letter_and_nothing_clips_or_overlaps() {
+    for (width, scale) in [(260_u32, 1.0_f32), (260, 1.5), (320, 1.5), (480, 1.0)] {
+        for (model, count) in [(4, 5), (3, 4), (1, 4)] {
+            let r = rig(false, (width, 1100));
+            r.set_text_scale(scale);
+            r.state().invoke_input_edited("#3a7bd5aa".into());
+            r.state().invoke_model_picked(model);
+            r.settle();
+            let fields = ElementQuery::from_root(&r.h.component)
+                .match_type_name("ChannelField")
+                .find_all();
+            let captions = ElementQuery::from_root(&r.h.component)
+                .match_id("ChannelField::cap")
+                .find_all();
+            let at = format!("model {model} at {width}px, text x{scale}");
+            assert_eq!(fields.len(), count, "{at}");
+            assert_eq!(
+                captions.len(),
+                fields.len(),
+                "a letter above each field, {at}"
+            );
+            let frame = r.frame();
+            for f in &fields {
+                let (fp, fs) = (f.absolute_position(), f.size());
+                let tf = f
+                    .query_descendants()
+                    .match_type_name("TextField")
+                    .find_first()
+                    .expect("the box");
+                let (tp, ts) = (tf.absolute_position(), tf.size());
+                assert!(
+                    tp.y + ts.height <= fp.y + fs.height + 0.5
+                        && tp.x + ts.width <= fp.x + fs.width + 0.5,
+                    "the box stays inside its cell, {at}"
+                );
+                let cap = f
+                    .query_descendants()
+                    .match_id("ChannelField::cap")
+                    .find_first()
+                    .expect("its letter");
+                let (cp, cs) = (cap.absolute_position(), cap.size());
+                assert!(
+                    cs.width > 4.0 && cs.height > 8.0,
+                    "the letter has room, {at}"
+                );
+                assert!(
+                    cp.y >= fp.y - 0.5 && cp.y + cs.height <= tp.y + 0.5,
+                    "the letter sits above the box, {at}"
+                );
+                // Something is drawn in the caption's rectangle.
+                let (x0, y0) = (cp.x.max(0.0) as u32, cp.y.max(0.0) as u32);
+                let (x1, y1) = (
+                    ((cp.x + cs.width) as u32).min(frame.width),
+                    ((cp.y + cs.height) as u32).min(frame.height),
+                );
+                let back = frame.pixel(x0, y0);
+                let ink = (y0..y1)
+                    .flat_map(|y| (x0..x1).map(move |x| (x, y)))
+                    .filter(|&(x, y)| frame.pixel(x, y) != back)
+                    .count();
+                assert!(ink >= 3, "the letter is drawn ({ink} pixels), {at}");
+                assert!(
+                    fp.x >= 0.0 && fp.x + fs.width <= width as f32 - 5.0,
+                    "inside the tab, {at}"
+                );
+            }
+            for (i, a) in fields.iter().enumerate() {
+                for b in &fields[i + 1..] {
+                    assert!(!rects_overlap(a, b), "fields overlap, {at}");
+                }
+            }
+            if scale > 1.4 && width == 260 {
+                shot(&format!("channels-{model}-{width}-x{scale}"), &frame);
+            }
+        }
+    }
+}
+
+#[test]
+fn the_picker_disclosure_and_the_style_switch_do_not_overlap_at_any_width_or_text_size() {
+    for (width, scale) in [(260_u32, 1.0_f32), (260, 1.5), (320, 1.75), (480, 1.0)] {
+        let r = rig(false, (width, 1100));
+        r.set_text_scale(scale);
+        let at = format!("{width}px, text x{scale}");
+        shot(&format!("picker-row-{width}-x{scale}"), &r.frame());
+        let disclosure = r.by_label(AccessibleRole::Button, "Picker");
+        let switch = r.by_label(AccessibleRole::RadioGroup, "Picker style");
+        assert!(
+            !rects_overlap(&disclosure, &switch),
+            "disclosure and switch overlap at {at}: {:?} {:?} / {:?} {:?}",
+            disclosure.absolute_position(),
+            disclosure.size(),
+            switch.absolute_position(),
+            switch.size()
+        );
+        let sw = switch.absolute_position().x + switch.size().width;
+        assert!(
+            switch.absolute_position().x >= 0.0 && sw <= width as f32,
+            "the switch is inside the window at {at}"
+        );
+        let values_as = r.by_label(AccessibleRole::Combobox, "Values as");
+        assert!(
+            values_as.absolute_position().x + values_as.size().width <= width as f32,
+            "Values as fits at {at}"
+        );
+        assert!(!rects_overlap(&values_as, &switch), "{at}");
+        shot(&format!("picker-row-{width}-x{scale}"), &r.frame());
+    }
+}
+
+#[test]
+fn the_contrast_marks_grow_with_the_text_size() {
+    let height_at = |scale: f32| {
+        let r = rig(false, (480, 1600));
+        r.state().invoke_input_edited("#3a7bd5".into());
+        r.set_text_scale(scale);
+        let line = r
+            .rows(AccessibleRole::ListItem)
+            .into_iter()
+            .find(|e| {
+                e.accessible_label()
+                    .is_some_and(|l| l.starts_with("On white"))
+            })
+            .expect("the white line");
+        line.size().height
+    };
+    let (normal, large) = (height_at(1.0), height_at(1.75));
+    assert!(
+        large >= normal + 10.0,
+        "a mark is taller at 175%: {large} vs {normal}"
+    );
+}
+
+// ---- Focus after the last recent goes, dropdowns, undo, footer, accessible range ----------------
+
+#[test]
+fn deleting_the_last_recent_keeps_the_keyboard_alive_and_esc_still_closes_the_panel() {
+    let r = rig(false, (320, 640));
+    let closes = r.count_closes();
+    r.state().invoke_input_edited("#3a7bd5".into());
+    r.state().invoke_format_used(0);
+    r.settle();
+    assert_eq!(r.state().get_recents().row_count(), 1);
+    let removed = r
+        .state()
+        .get_recents()
+        .row_data(0)
+        .unwrap()
+        .label
+        .to_string();
+    r.tab_to("Recently used");
+    assert!(
+        r.footer().starts_with(&removed),
+        "the footer names the chip: {}",
+        r.footer()
+    );
+    r.press(&key(Key::Delete));
+    assert_eq!(r.state().get_recents().row_count(), 0);
+    let now = r.focus_label();
+    assert!(
+        matches!(now.as_deref(), Some("Formats" | "Saved colours")),
+        "the keyboard moved to the next stop, not nowhere: {now:?}"
+    );
+    assert_ne!(r.footer(), removed, "the footer forgot the removed colour");
+    r.press(&key(Key::Escape));
+    assert_eq!(closes.get(), 1, "Esc still reaches the Panel");
+}
+
+#[test]
+fn removing_the_last_recent_from_its_menu_keeps_the_keyboard_alive_too() {
+    let r = rig(false, (320, 640));
+    let closes = r.count_closes();
+    r.state().invoke_input_edited("#3a7bd5".into());
+    r.state().invoke_format_used(0);
+    r.settle();
+    r.tab_to("Recently used");
+    r.chord(&[Key::Shift], &key(Key::F10));
+    assert_eq!(r.state().get_popup(), 1);
+    for _ in 0..5 {
+        r.press(&key(Key::DownArrow));
+    }
+    r.press(&key(Key::Return)); // Remove from recents
+    assert_eq!(r.state().get_popup(), 0);
+    assert_eq!(r.state().get_recents().row_count(), 0);
+    let now = r.focus_label();
+    assert!(
+        matches!(now.as_deref(), Some("Formats" | "Saved colours")),
+        "the keyboard is on a live stop: {now:?}"
+    );
+    r.press(&key(Key::Escape));
+    assert_eq!(closes.get(), 1);
+}
+
+#[test]
+fn save_to_from_its_button_gives_the_keyboard_back_to_the_button() {
+    let r = rig(false, (320, 640));
+    r.state().invoke_input_edited("#3a7bd5".into());
+    r.tab_to("Save to…");
+    r.press(&key(Key::Return));
+    assert_eq!(r.state().get_popup(), 3, "the button opens Save to…");
+    r.press(&key(Key::Escape));
+    assert_eq!(r.state().get_popup(), 0);
+    assert_eq!(r.focus_label().as_deref(), Some("Save to…"));
+    // Choosing a list gives it back too.
+    r.press(&key(Key::Return));
+    r.press(&key(Key::DownArrow));
+    r.press(&key(Key::Return));
+    assert_eq!(r.state().get_popup(), 0);
+    assert_eq!(r.focus_label().as_deref(), Some("Save to…"));
+    // Ctrl+Shift+S from the Formats list returns to the Formats list.
+    r.tab_to("Formats");
+    r.chord(&[Key::Control, Key::Shift], "S");
+    assert_eq!(r.state().get_popup(), 3);
+    r.press(&key(Key::Escape));
+    assert_eq!(r.focus_label().as_deref(), Some("Formats"));
+}
+
+#[test]
+fn esc_with_a_drop_down_open_closes_only_the_list() {
+    for label in ["Values as", "Scheme"] {
+        let r = rig(false, (320, 640));
+        let closes = r.count_closes();
+        r.tab_to(label);
+        r.press(&key(Key::DownArrow));
+        assert!(r.state().get_dropdown_open(), "{label} is open");
+        r.press(&key(Key::Escape));
+        assert!(!r.state().get_dropdown_open(), "{label} closed");
+        assert_eq!(
+            closes.get(),
+            0,
+            "the Panel stays for the Esc that closed {label}"
+        );
+        assert!(r.h.component.get_colours_open());
+        r.press(&key(Key::Escape));
+        assert_eq!(closes.get(), 1, "the next Esc closes the Panel ({label})");
+    }
+}
+
+#[test]
+fn ctrl_z_and_ctrl_y_in_a_field_never_run_the_librarys_undo_or_redo() {
+    let r = rig(false, (320, 640));
+    let (undos, redos) = (Rc::new(Cell::new(0_u32)), Rc::new(Cell::new(0_u32)));
+    {
+        let u = Rc::clone(&undos);
+        r.h.component.on_undo_requested(move || u.set(u.get() + 1));
+        let d = Rc::clone(&redos);
+        r.h.component.on_redo_requested(move || d.set(d.get() + 1));
+    }
+    r.state().invoke_input_edited("#3a7bd5".into());
+    r.state().invoke_model_picked(1); // RGB
+    r.settle();
+    for field in ["Colour", "R"] {
+        r.tab_to(field);
+        assert!(r.state().get_text_focused(), "{field} is a text field");
+        r.chord(&[Key::Control], "z");
+        r.chord(&[Key::Control, Key::Shift], "Z");
+        r.chord(&[Key::Control], "y");
+        assert_eq!(
+            (undos.get(), redos.get()),
+            (0, 0),
+            "typing in {field} is not the library's history"
+        );
+    }
+    // Off the fields, the shortcuts are the library's.
+    r.tab_to("Picker");
+    assert!(!r.state().get_text_focused());
+    r.chord(&[Key::Control], "z");
+    assert_eq!(undos.get(), 1);
+    r.chord(&[Key::Control], "y");
+    assert_eq!(redos.get(), 1);
+}
+
+#[test]
+fn hovering_a_format_row_shows_its_text_in_the_footer() {
+    let r = rig(false, (320, 1500));
+    r.state().invoke_input_edited("#3a7bd5".into());
+    r.settle();
+    let hint = r.state().get_use_hint().to_string();
+    assert_eq!(r.footer(), hint, "nothing hovered: where a click goes");
+    let hint_for_rows = hint.clone();
+    let row = r
+        .rows(AccessibleRole::ListItem)
+        .into_iter()
+        .find(|e| {
+            e.accessible_description().as_deref() == Some(hint_for_rows.as_str())
+                && e.accessible_label().is_some_and(|l| l.starts_with("RGB,"))
+        })
+        .expect("the RGB row");
+    let (p, sz) = (row.absolute_position(), row.size());
+    r.pointer_to(p.x + 60.0, p.y + sz.height / 2.0);
+    let rgb = r.state().get_formats().row_data(1).unwrap();
+    assert_eq!(r.footer(), format!("{} {}", rgb.label, rgb.value));
+    r.pointer_to(p.x + sz.width - 14.0, p.y + sz.height / 2.0);
+    assert_eq!(r.footer(), "Copy", "the copy glyph says what it does");
+    r.pointer_to(2.0, 2.0);
+    assert_eq!(
+        r.footer(),
+        hint,
+        "and the hint is back when the pointer leaves"
+    );
+}
+
+#[test]
+fn the_surface_announces_a_range_and_increment_and_decrement_agree_with_the_spoken_value() {
+    for (style, name) in [(0, "Saturation and brightness"), (1, "Hue and saturation")] {
+        let r = rig(false, (420, 700));
+        r.state().invoke_input_edited("#3a7bd5".into());
+        r.state().invoke_style_picked(style);
+        r.settle();
+        let surface = r.by_label(AccessibleRole::Slider, name);
+        assert_eq!(surface.accessible_value_minimum(), Some(0.0), "{name}");
+        assert_eq!(surface.accessible_value_maximum(), Some(100.0), "{name}");
+        assert_eq!(surface.accessible_value_step(), Some(1.0), "{name}");
+        let said = |e: &ElementHandle| e.accessible_value().unwrap().to_string();
+        let before = said(&surface);
+        surface.invoke_accessible_decrement_action();
+        r.settle();
+        let after = said(&r.by_label(AccessibleRole::Slider, name));
+        assert_ne!(before, after, "{name}: the colour changed, so the words do");
+        let bri = r.state().get_bri().round();
+        assert!(
+            after.contains(&format!("brightness {bri} percent")),
+            "{name}: {after:?} names the new brightness {bri}"
+        );
+        r.by_label(AccessibleRole::Slider, name)
+            .invoke_accessible_increment_action();
+        r.settle();
+        assert_eq!(
+            said(&r.by_label(AccessibleRole::Slider, name)),
+            before,
+            "{name}: and back"
+        );
+    }
+}
+
+// ---- The cards -------------------------------------------------------------------------------------
+
+#[test]
+fn a_colour_card_paints_its_colour_and_a_checker_for_a_clear_one_and_names_its_kind() {
+    let r = rig(false, (320, 900));
+    for text in ["#3a7bd5", "#ff000000"] {
+        assert!(r.ctl.borrow_mut().quick_add(
+            text,
+            Some(snipdeck_core::ItemKind::Text),
+            false,
+            snipdeck_app::item_editor::Origin::Panel
+        ));
+    }
+    r.h.component.invoke_close_colours();
+    r._binding.redraw();
+    r.settle();
+    let tile = |hex: &str| {
+        r.rows(AccessibleRole::Image)
+            .into_iter()
+            .find(|e| {
+                e.accessible_label()
+                    .is_some_and(|l| l.ends_with(&format!(", colour {hex}")))
+            })
+            .unwrap_or_else(|| panic!("a colour tile for {hex}"))
+    };
+    let frame = r.frame();
+    let pixels = |e: &ElementHandle, from: f32| {
+        let (p, s) = (e.absolute_position(), e.size());
+        // Inside the rounded corners (the radius is at most 8px).
+        let inset = 8.0;
+        let (x0, x1) = (
+            (p.x + (s.width * from).max(inset)) as u32,
+            (p.x + s.width - inset) as u32,
+        );
+        let (y0, y1) = ((p.y + inset) as u32, (p.y + s.height - inset) as u32);
+        let mut seen = Vec::new();
+        for y in y0..y1 {
+            for x in x0..x1 {
+                let px = frame.pixel(x, y);
+                if !seen.contains(&px) {
+                    seen.push(px);
+                }
+            }
+        }
+        seen
+    };
+    let opaque = tile("#3a7bd5");
+    assert!(
+        !opaque.accessible_label().unwrap().starts_with("Colour"),
+        "the kind name leads the label: {:?}",
+        opaque.accessible_label()
+    );
+    assert_eq!(
+        pixels(&opaque, 0.0),
+        vec![[0x3a, 0x7b, 0xd5]],
+        "an opaque colour is one flat fill"
+    );
+    let clear = tile("#ff000000");
+    let left = pixels(&clear, 0.0);
+    assert!(
+        left.contains(&[255, 0, 0]),
+        "the opaque colour shows in a strip: {left:?}"
+    );
+    let right = pixels(&clear, 0.45);
+    assert!(
+        right.contains(&[255, 255, 255]) && right.contains(&[200, 200, 200]),
+        "a checker under the clear colour: {right:?}"
+    );
 }

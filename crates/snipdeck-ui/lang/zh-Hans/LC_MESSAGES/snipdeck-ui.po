@@ -545,6 +545,9 @@ msgstr "Ctrl Enter"
 msgid "Control N"
 msgstr "Ctrl N"
 
+msgid "Control O"
+msgstr "Ctrl O"
+
 msgid "Copied"
 msgstr "已复制"
 
@@ -604,6 +607,9 @@ msgstr "复制该片段"
 
 msgid "Copy the result"
 msgstr "复制结果"
+
+msgid "Copy {} {}"
+msgstr "复制{} {}"
 
 msgid "CopyQ export"
 msgstr "CopyQ 导出"
@@ -1301,8 +1307,8 @@ msgstr "色相"
 msgid "Hue and saturation"
 msgstr "色相和饱和度"
 
-msgid "Hue {} degrees, saturation {} percent"
-msgstr "色相 {} 度，饱和度 {}%"
+msgid "Hue {} degrees, saturation {} percent, brightness {} percent"
+msgstr "色相 {} 度，饱和度 {}%，亮度 {}%"
 
 msgid "Icon"
 msgstr "图标"
@@ -2603,6 +2609,9 @@ msgstr "设置…"
 
 msgid "Shift Enter"
 msgstr "Shift Enter"
+
+msgid "Shift F10"
+msgstr "Shift F10"
 
 msgid "Shift+Insert"
 msgstr "Shift+Insert"
@@ -3912,6 +3921,9 @@ msgstr "{} · {}"
 
 msgid "{} — press Tab to insert"
 msgstr "{} — 按 Tab 插入"
+
+msgid "{}, colour {}"
+msgstr "{}，颜色 {}"
 
 msgid "{}, match {}"
 msgstr "{}，第 {} 项"

@@ -546,6 +546,9 @@ msgstr "Ctrl Enter"
 msgid "Control N"
 msgstr "Ctrl N"
 
+msgid "Control O"
+msgstr "Ctrl O"
+
 msgid "Copied"
 msgstr "Copié"
 
@@ -605,6 +608,9 @@ msgstr "Copier l'extrait"
 
 msgid "Copy the result"
 msgstr "Copier le résultat"
+
+msgid "Copy {} {}"
+msgstr "Copier {} {}"
 
 msgid "CopyQ export"
 msgstr "Export CopyQ"
@@ -1302,8 +1308,8 @@ msgstr "Teinte"
 msgid "Hue and saturation"
 msgstr "Teinte et saturation"
 
-msgid "Hue {} degrees, saturation {} percent"
-msgstr "Teinte {} degrés, saturation {} pour cent"
+msgid "Hue {} degrees, saturation {} percent, brightness {} percent"
+msgstr "Teinte {} degrés, saturation {} pour cent, luminosité {} pour cent"
 
 msgid "Icon"
 msgstr "Icône"
@@ -2611,6 +2617,9 @@ msgstr "Paramètres…"
 
 msgid "Shift Enter"
 msgstr "Shift Enter"
+
+msgid "Shift F10"
+msgstr "Maj F10"
 
 msgid "Shift+Insert"
 msgstr "Shift+Insert"
@@ -3939,6 +3948,9 @@ msgstr "{} · {}"
 
 msgid "{} — press Tab to insert"
 msgstr "{} : appuyez sur Tab pour insérer"
+
+msgid "{}, colour {}"
+msgstr "{}, couleur {}"
 
 msgid "{}, match {}"
 msgstr "{}, correspondance {}"

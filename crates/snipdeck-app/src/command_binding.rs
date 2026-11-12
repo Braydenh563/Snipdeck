@@ -24,15 +24,29 @@ pub fn texts(window: &ui::MainWindow) -> Vec<(String, String)> {
         .collect()
 }
 
+/// Which optional command families this install offers.
+#[derive(Debug, Clone, Copy)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "one independent availability flag per command family, read as a checklist"
+)]
+pub struct Offers {
+    /// The Symbols tab is on.
+    pub symbols: bool,
+    /// The Colours tab is on.
+    pub colours: bool,
+    /// This machine has a screen eyedropper.
+    pub eyedropper: bool,
+    /// The "Colours" list exists.
+    pub saved_colours: bool,
+}
+
 /// What the palette may offer for the screen the Main window shows now.
 #[must_use]
 pub fn context<'a>(
     hotkeys: &'a Hotkeys,
     screen: Option<&MainScreen>,
-    symbols: bool,
-    colours: bool,
-    eyedropper: bool,
-    saved_colours: bool,
+    offers: Offers,
 ) -> Context<'a> {
     let row = screen.and_then(|s| s.rows.get(s.cursor.min(s.rows.len().saturating_sub(1))));
     Context {
@@ -41,10 +55,10 @@ pub fn context<'a>(
         has_item: row.is_some_and(|r| r.header.is_none()),
         item_pinned: row.is_some_and(|r| r.pinned),
         in_trash: screen.is_some_and(|s| s.section == Section::Trash),
-        symbols,
-        colours,
-        eyedropper,
-        saved_colours,
+        symbols: offers.symbols,
+        colours: offers.colours,
+        eyedropper: offers.eyedropper,
+        saved_colours: offers.saved_colours,
         in_list: screen.is_some_and(|s| matches!(s.section, Section::List(_))),
         group: screen.and_then(|s| s.cursor_group),
     }
@@ -56,31 +70,24 @@ pub fn rows(
     window: &ui::MainWindow,
     hotkeys: &Hotkeys,
     screen: Option<&MainScreen>,
-    symbols: bool,
-    colours: bool,
-    eyedropper: bool,
-    saved_colours: bool,
+    offers: Offers,
     query: &str,
 ) -> Vec<ui::PaletteRow> {
-    commands::entries(
-        &texts(window),
-        &context(hotkeys, screen, symbols, colours, eyedropper, saved_colours),
-        query,
-    )
-    .into_iter()
-    .map(|entry| {
-        let (mark_before, mark_text) =
-            crate::search_mark::word_mark(&entry.label, query).unwrap_or_default();
-        ui::PaletteRow {
-            id: entry.command.id(),
-            label: entry.label.as_str().into(),
-            keys: model(entry.keys.iter().map(|k| k.as_str().into())),
-            spoken: entry.spoken.as_str().into(),
-            mark_before: mark_before.into(),
-            mark_text: mark_text.into(),
-        }
-    })
-    .collect()
+    commands::entries(&texts(window), &context(hotkeys, screen, offers), query)
+        .into_iter()
+        .map(|entry| {
+            let (mark_before, mark_text) =
+                crate::search_mark::word_mark(&entry.label, query).unwrap_or_default();
+            ui::PaletteRow {
+                id: entry.command.id(),
+                label: entry.label.as_str().into(),
+                keys: model(entry.keys.iter().map(|k| k.as_str().into())),
+                spoken: entry.spoken.as_str().into(),
+                mark_before: mark_before.into(),
+                mark_text: mark_text.into(),
+            }
+        })
+        .collect()
 }
 
 /// Fills the palette of `window` with the rows for `query`.
@@ -88,24 +95,11 @@ pub fn fill(
     window: &ui::MainWindow,
     hotkeys: &Hotkeys,
     screen: Option<&MainScreen>,
-    symbols: bool,
-    colours: bool,
-    eyedropper: bool,
-    saved_colours: bool,
+    offers: Offers,
     query: &str,
 ) {
     window.set_palette_rows(model(
-        rows(
-            window,
-            hotkeys,
-            screen,
-            symbols,
-            colours,
-            eyedropper,
-            saved_colours,
-            query,
-        )
-        .into_iter(),
+        rows(window, hotkeys, screen, offers, query).into_iter(),
     ));
 }
 

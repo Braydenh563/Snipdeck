@@ -545,6 +545,9 @@ msgstr "Ctrl Enter"
 msgid "Control N"
 msgstr "Ctrl N"
 
+msgid "Control O"
+msgstr "Ctrl O"
+
 msgid "Copied"
 msgstr "コピーしました"
 
@@ -604,6 +607,9 @@ msgstr "スニペットをコピー"
 
 msgid "Copy the result"
 msgstr "結果をコピー"
+
+msgid "Copy {} {}"
+msgstr "{} {} をコピー"
 
 msgid "CopyQ export"
 msgstr "CopyQ エクスポート"
@@ -1301,8 +1307,8 @@ msgstr "色相"
 msgid "Hue and saturation"
 msgstr "色相と彩度"
 
-msgid "Hue {} degrees, saturation {} percent"
-msgstr "色相 {} 度、彩度 {} パーセント"
+msgid "Hue {} degrees, saturation {} percent, brightness {} percent"
+msgstr "色相 {} 度、彩度 {} パーセント、明度 {} パーセント"
 
 msgid "Icon"
 msgstr "アイコン"
@@ -2603,6 +2609,9 @@ msgstr "設定…"
 
 msgid "Shift Enter"
 msgstr "Shift Enter"
+
+msgid "Shift F10"
+msgstr "Shift F10"
 
 msgid "Shift+Insert"
 msgstr "Shift+Insert"
@@ -3912,6 +3921,9 @@ msgstr "{} · {}"
 
 msgid "{} — press Tab to insert"
 msgstr "{} — Tab キーで挿入"
+
+msgid "{}, colour {}"
+msgstr "{}、色 {}"
 
 msgid "{}, match {}"
 msgstr "{}、{} 番目のエントリ"

@@ -357,6 +357,71 @@ ui_tests! {
         assert_eq!(ui.get_query(), "", "the shortcut is not search text");
     }
 
+    fn a_colour_row_offers_paste_as_by_keyboard_and_open_in_colours() {
+        let (ui, log) = start();
+        let colour = snipdeck_ui::PickerRow {
+            swatch: slint::Color::from_rgb_u8(0x3a, 0x7b, 0xd5),
+            has_swatch: true,
+            ..fixture::sample_rows().remove(3)
+        };
+        fixture::set_rows(&ui, vec![fixture::sample_rows().remove(0), colour]);
+        ui.set_colour_can_open(true);
+        {
+            let log = log.clone();
+            let weak = ui.as_weak();
+            ui.on_colour_choices_requested(move |row| {
+                log.borrow_mut().push(format!("choices:{row}"));
+                let entry = |label: &str| snipdeck_ui::ChoiceEntry {
+                    label: label.into(),
+                    count: -1,
+                    ..Default::default()
+                };
+                weak.unwrap().set_colour_choices(slint::ModelRc::new(slint::VecModel::from(
+                    vec![entry("HEX  #3a7bd5"), entry("RGB  rgb(58, 123, 213)")],
+                )));
+            });
+        }
+        {
+            let log = log.clone();
+            ui.on_colour_chosen(move |row, format, copy| {
+                log.borrow_mut().push(format!("chosen:{row}:{format}:{copy}"));
+            });
+        }
+        {
+            let log = log.clone();
+            ui.on_colour_open_requested(move |row| log.borrow_mut().push(format!("open:{row}")));
+        }
+        // A row that is no colour has no chooser and no Open in Colours.
+        press(ui.window(), &key(Key::Menu));
+        chord(ui.window(), &[Key::Control], "o");
+        assert!(take(&log).is_empty());
+
+        press(ui.window(), &key(Key::DownArrow));
+        take(&log);
+        chord(ui.window(), &[Key::Control], "o");
+        assert_eq!(take(&log), ["open:1"]);
+
+        // Menu opens the chooser; Down + Enter chooses the second format and pastes.
+        press(ui.window(), &key(Key::Menu));
+        assert_eq!(take(&log), ["choices:1"]);
+        press(ui.window(), &key(Key::DownArrow));
+        press(ui.window(), &key(Key::Return));
+        assert_eq!(take(&log), ["chosen:1:1:false"]);
+        assert!(take(&log).is_empty(), "the chooser closed and the Picker stays open");
+
+        // Shift+F10 opens it too; Shift+Enter copies; Esc backs out without using anything.
+        chord(ui.window(), &[Key::Shift], &key(Key::F10));
+        assert_eq!(take(&log), ["choices:1"]);
+        chord(ui.window(), &[Key::Shift], &key(Key::Return));
+        assert_eq!(take(&log), ["chosen:1:0:true"]);
+        press(ui.window(), &key(Key::Menu));
+        take(&log);
+        press(ui.window(), &key(Key::Escape));
+        assert!(take(&log).is_empty(), "Esc closes only the chooser");
+        press(ui.window(), &key(Key::Return));
+        assert_eq!(take(&log), ["use:1"], "the keyboard is back in the search");
+    }
+
     fn a_click_on_a_row_uses_it() {
         let (ui, log) = start();
         let design = rows(&ui)

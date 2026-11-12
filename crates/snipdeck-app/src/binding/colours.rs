@@ -871,6 +871,8 @@ where
                 self.set_picked(c, st);
                 let model = self.colour_view().input_model;
                 self.colours.inner.borrow_mut().typed = memo.map(|m| (model, c, m));
+                // `set_picked` drew the rows before the memo was kept: draw them again with it.
+                self.act(|_| ());
             }
             Err(panel::Reject::NotANumber(label)) => {
                 if let Some(w) = self.window.upgrade() {
