@@ -1759,22 +1759,22 @@ PreviewWords | crates/snipdeck-app/src/item_preview.rs:22
 LinkDisplay | crates/snipdeck-app/src/item_preview.rs:29
 CardPreview | crates/snipdeck-app/src/item_preview.rs:39
 card_of | crates/snipdeck-app/src/item_preview.rs:61
-expand | crates/snipdeck-app/src/item_preview.rs:103
-link_display | crates/snipdeck-app/src/item_preview.rs:132
-tests | crates/snipdeck-app/src/item_preview.rs:152
-now | crates/snipdeck-app/src/item_preview.rs:158
-input | crates/snipdeck-app/src/item_preview.rs:162
-card | crates/snipdeck-app/src/item_preview.rs:174
-the_title_is_the_first_line_when_blank | crates/snipdeck-app/src/item_preview.rs:179
-the_excerpt_is_cut_like_a_stored_preview | crates/snipdeck-app/src/item_preview.rs:188
-a_sensitive_item_shows_no_excerpt | crates/snipdeck-app/src/item_preview.rs:195
-colour_and_kind_carry_over | crates/snipdeck-app/src/item_preview.rs:205
-a_template_expands_with_defaults_the_fixed_clock_and_stand_ins | crates/snipdeck-app/src/item_preview.rs:214
-a_template_that_does_not_parse_says_why_instead_of_expanding | crates/snipdeck-app/src/item_preview.rs:227
-an_empty_template_or_link_is_not_a_problem_yet | crates/snipdeck-app/src/item_preview.rs:234
-a_link_resolves_to_its_host | crates/snipdeck-app/src/item_preview.rs:242
-a_bad_link_gives_the_refusal_save_would_give | crates/snipdeck-app/src/item_preview.rs:255
-an_image_or_file_has_no_text_card_fields | crates/snipdeck-app/src/item_preview.rs:263
+expand | crates/snipdeck-app/src/item_preview.rs:111
+link_display | crates/snipdeck-app/src/item_preview.rs:142
+tests | crates/snipdeck-app/src/item_preview.rs:168
+now | crates/snipdeck-app/src/item_preview.rs:174
+input | crates/snipdeck-app/src/item_preview.rs:178
+card | crates/snipdeck-app/src/item_preview.rs:190
+the_title_is_the_first_line_when_blank | crates/snipdeck-app/src/item_preview.rs:195
+the_excerpt_is_cut_like_a_stored_preview | crates/snipdeck-app/src/item_preview.rs:204
+a_sensitive_item_shows_no_excerpt | crates/snipdeck-app/src/item_preview.rs:211
+colour_and_kind_carry_over | crates/snipdeck-app/src/item_preview.rs:221
+a_template_expands_with_defaults_the_fixed_clock_and_stand_ins | crates/snipdeck-app/src/item_preview.rs:230
+a_template_that_does_not_parse_says_why_instead_of_expanding | crates/snipdeck-app/src/item_preview.rs:243
+an_empty_template_or_link_is_not_a_problem_yet | crates/snipdeck-app/src/item_preview.rs:250
+a_link_resolves_to_its_host | crates/snipdeck-app/src/item_preview.rs:258
+a_bad_link_gives_the_refusal_save_would_give | crates/snipdeck-app/src/item_preview.rs:278
+an_image_or_file_has_no_text_card_fields | crates/snipdeck-app/src/item_preview.rs:286
 
 ### crates/snipdeck-app/src/key_provider.rs
 
@@ -7748,7 +7748,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/buttons.rs` | 4 |
 | `crates/snipdeck-ui/tests/deck.rs` | 13 |
 | `crates/snipdeck-ui/tests/deck_logic.rs` | 1 |
-| `crates/snipdeck-ui/tests/editors.rs` | 26 |
+| `crates/snipdeck-ui/tests/editors.rs` | 27 |
 | `crates/snipdeck-ui/tests/editors_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/fill.rs` | 10 |
 | `crates/snipdeck-ui/tests/fill_logic.rs` | 1 |
