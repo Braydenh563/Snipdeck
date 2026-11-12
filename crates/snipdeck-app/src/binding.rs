@@ -1656,6 +1656,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
                         wording::item_label_name(*label).into()
                     }
                     crate::controller::ChooseLabel::Colour(None) => "No label".into(),
+                    crate::controller::ChooseLabel::Verbatim(text) => text.as_str().into(),
                     crate::controller::ChooseLabel::Transform(t) => {
                         wording::transform_name(window, *t).into()
                     }
@@ -1722,6 +1723,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         window.set_list_menu_open(view.list_menu.is_some());
     }
     window.set_list_menu_sort(crate::main_binding::sort_index(view.list_menu_sort));
+    window.set_list_menu_css(view.list_menu_css);
     if differs(&|p| p.list_delete == view.list_delete)
         || window.get_list_delete_open() != view.list_delete.is_some()
     {

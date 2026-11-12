@@ -370,6 +370,13 @@ where
         vec![Effect::ShowPanel, Effect::ShowColours]
     }
 
+    /// The list holds at least one colour item.
+    pub(crate) fn list_has_colours(&self, list: ListId) -> bool {
+        self.store
+            .items(list)
+            .is_ok_and(|items| items.iter().any(|i| colour_of(i).is_some()))
+    }
+
     /// "Copy as CSS variables": the colour items of `list` as a `:root { … }` block on the
     /// clipboard, in list order. Returns false (copying nothing) when the list holds none.
     pub fn copy_list_as_css(&mut self, list: ListId) -> bool {

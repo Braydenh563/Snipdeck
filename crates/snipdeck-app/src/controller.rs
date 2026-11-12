@@ -630,6 +630,7 @@ where
             lists_in_menu: self.settings.panel_switcher == crate::settings::PanelSwitcher::Menu,
             list_menu: matches!(self.menu, PanelMenu::List(_)).then(|| LIST_MENU.to_vec()),
             list_menu_sort: self.list_menu_sort(),
+            list_menu_css: matches!(self.menu, PanelMenu::List(id) if self.list_has_colours(id)),
             list_delete: self.list_delete_view(),
             board_delete: self.board_delete_view(),
             hotkeys_paused: self.session.hotkeys_paused,

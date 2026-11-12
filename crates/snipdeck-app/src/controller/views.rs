@@ -280,6 +280,8 @@ pub struct View {
     pub list_menu: Option<Vec<ListMenuEntry>>,
     /// The sort of the list the list menu is open on (its "Sort by" row is checked).
     pub list_menu_sort: snipdeck_core::ListSort,
+    /// The list the list menu is open on holds a colour (its "Copy as CSS variables" row is on).
+    pub list_menu_css: bool,
     /// The shown list sorts itself and no search runs: moves are refused but offer manual order.
     pub reorder_offer: bool,
     /// The list menu's "Delete list…" confirmation while it asks (the Panel draws it; no
@@ -306,6 +308,8 @@ pub enum ChooseLabel {
     Colour(Option<snipdeck_core::ItemLabel>),
     /// A "Paste as..." choice.
     Transform(snipdeck_core::template::transform::Transform),
+    /// A "Paste as..." choice of a colour item: the format and its value, already worded.
+    Verbatim(String),
 }
 
 /// One row of the Move or Colour choice.

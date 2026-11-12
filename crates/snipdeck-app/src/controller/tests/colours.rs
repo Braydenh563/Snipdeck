@@ -413,3 +413,99 @@ mod commands {
         assert!(w.ctl.take_pending().is_empty());
     }
 }
+
+mod item_menu {
+    use super::*;
+    use crate::controller::{ChooseLabel, ItemMenuEntry};
+
+    fn row_of(w: &World, id: ItemId) -> usize {
+        w.ctl
+            .model()
+            .rows()
+            .iter()
+            .position(|r| r.id == id)
+            .expect("the new item is in the Panel's list")
+    }
+
+    #[test]
+    fn a_colour_item_offers_open_in_colours_and_formats_in_paste_as() {
+        let mut w = world();
+        let id = quick(&mut w, "#3a7bd5");
+        let at = row_of(&w, id);
+        w.ctl.open_item_menu(at, false);
+        let entries = w.ctl.view().item_menu.expect("menu");
+        assert!(entries.contains(&ItemMenuEntry::OpenInColours));
+        let paste_as = entries
+            .iter()
+            .position(|e| *e == ItemMenuEntry::PasteAs)
+            .expect("Paste as");
+        assert!(w.ctl.choose_item_menu(paste_as).is_empty());
+        let choose = w.ctl.view().choose_menu.expect("the second level");
+        assert_eq!(choose.entries.len(), Fmt::ALL.len());
+        assert_eq!(
+            choose.entries[1].label,
+            ChooseLabel::Verbatim("RGB  rgb(58, 123, 213)".into())
+        );
+        // Choosing RGB pastes it that way.
+        w.ctl.choose_item_menu(1);
+        assert!(
+            w.ctl.services().keyboard.sent.len() + w.ctl.services().clipboard.written.len() > 0,
+            "the use went to the keyboard or the clipboard"
+        );
+    }
+
+    #[test]
+    fn open_in_colours_makes_it_current_and_shows_the_tab() {
+        let mut w = world();
+        let id = quick(&mut w, "#3a7bd5");
+        let at = row_of(&w, id);
+        w.ctl.open_item_menu(at, false);
+        let entries = w.ctl.view().item_menu.expect("menu");
+        let open = entries
+            .iter()
+            .position(|e| *e == ItemMenuEntry::OpenInColours)
+            .expect("entry");
+        let effects = w.ctl.choose_item_menu(open);
+        assert_eq!(effects, vec![Effect::ShowPanel, Effect::ShowColours]);
+        assert_eq!(w.ctl.colour_view().current, BLUE);
+    }
+
+    #[test]
+    fn plain_text_has_no_open_in_colours_and_keeps_its_transforms() {
+        let mut w = world();
+        let id = quick(&mut w, "hello there");
+        let at = row_of(&w, id);
+        w.ctl.open_item_menu(at, false);
+        let entries = w.ctl.view().item_menu.expect("menu");
+        assert!(!entries.contains(&ItemMenuEntry::OpenInColours));
+    }
+}
+
+mod list_menu {
+    use super::*;
+    use crate::controller::{LIST_MENU, ListMenuEntry};
+
+    #[test]
+    fn copy_as_css_is_on_only_for_a_list_holding_a_colour_and_copies_the_block() {
+        let mut w = world();
+        let css = LIST_MENU
+            .iter()
+            .position(|e| *e == ListMenuEntry::CopyCss)
+            .expect("a CSS row");
+        // The demo's first list holds no colour.
+        w.ctl.open_list_menu(0);
+        assert!(!w.ctl.view().list_menu_css);
+        w.ctl.close_list_menu();
+        // Save a colour into the current list, then ask again.
+        let list = w.ctl.model().tabs()[0].id;
+        assert!(w.ctl.save_colour(BLUE, SaveTarget::List(list)));
+        w.ctl.open_list_menu(0);
+        assert!(w.ctl.view().list_menu_css);
+        let before = w.ctl.services().clipboard.written.len();
+        assert!(w.ctl.choose_list_menu(css).is_empty());
+        assert_eq!(w.ctl.services().clipboard.written.len(), before + 1);
+        let text = written(&w, before);
+        assert!(text.starts_with(":root {"), "{text}");
+        assert!(text.contains("#3a7bd5"), "{text}");
+    }
+}

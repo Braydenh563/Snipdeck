@@ -583,6 +583,7 @@ pub const fn item_menu_shortcut(entry: crate::controller::ItemMenuEntry) -> &'st
         | ItemMenuEntry::DeleteGroup
         | ItemMenuEntry::Stack { .. }
         | ItemMenuEntry::PasteAs
+        | ItemMenuEntry::OpenInColours
         | ItemMenuEntry::MoveTo
         | ItemMenuEntry::Colour
         | ItemMenuEntry::Sensitive { .. }
@@ -601,6 +602,7 @@ pub fn item_menu_label(window: &PanelWindow, entry: crate::controller::ItemMenuE
         ItemMenuEntry::Use => t.invoke_item_use(),
         ItemMenuEntry::Copy => t.invoke_item_copy(),
         ItemMenuEntry::PasteAs => t.invoke_item_paste_as(),
+        ItemMenuEntry::OpenInColours => t.invoke_item_open_in_colours(),
         ItemMenuEntry::Edit => t.invoke_item_edit(),
         ItemMenuEntry::Duplicate => t.invoke_item_duplicate(),
         ItemMenuEntry::Pin { pinned: false } => t.invoke_item_pin(),

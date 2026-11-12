@@ -576,6 +576,9 @@ msgstr ""
 msgid "Copy all"
 msgstr "Tout copier"
 
+msgid "Copy as CSS variables"
+msgstr ""
+
 msgid "Copy diagnostic report"
 msgstr "Copier le rapport de diagnostic"
 
@@ -1905,6 +1908,9 @@ msgstr "Ouvrir le dossier des sauvegardes"
 
 msgid "Open data folder"
 msgstr "Ouvrir le dossier de données"
+
+msgid "Open in Colours"
+msgstr ""
 
 msgid "Open logs folder"
 msgstr "Ouvrir le dossier des journaux"

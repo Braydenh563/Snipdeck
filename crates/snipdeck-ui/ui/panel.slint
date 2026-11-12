@@ -296,6 +296,8 @@ export component PanelWindow inherits Window {
     property <length> list-menu-y: 0px;
     // The open list's sort (0 Manual, 1 Most used, 2 Recently used): its "Sort by" row is checked.
     in property <int> list-menu-sort: 0;
+    // The open list holds a colour: its "Copy as CSS variables" row is on.
+    in property <bool> list-menu-css: false;
     property <image> list-menu-no-icon;
     property <[MenuEntry]> list-menu-entries: [
         { text: @tr("Edit list…"), icon: Icons.pencil-simple },
@@ -304,6 +306,8 @@ export component PanelWindow inherits Window {
         { text: @tr("Sort by: Manual"), icon: root.list-menu-sort == 0 ? Icons.check : root.list-menu-no-icon },
         { text: @tr("Sort by: Most used"), icon: root.list-menu-sort == 1 ? Icons.check : root.list-menu-no-icon },
         { text: @tr("Sort by: Recently used"), icon: root.list-menu-sort == 2 ? Icons.check : root.list-menu-no-icon },
+        { separator: true },
+        { text: @tr("Copy as CSS variables"), icon: Icons.copy, disabled: !root.list-menu-css },
     ];
     // The list menu's "Delete list…" confirmation (O52): the host sets `list-delete-open` after that row, and nothing
     // else opens (no list editor). `list-delete-name` and `list-delete-count` fill its words.

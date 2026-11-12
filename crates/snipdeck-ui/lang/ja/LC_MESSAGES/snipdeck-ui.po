@@ -575,6 +575,9 @@ msgstr ""
 msgid "Copy all"
 msgstr "すべてコピー"
 
+msgid "Copy as CSS variables"
+msgstr ""
+
 msgid "Copy diagnostic report"
 msgstr "診断レポートをコピー"
 
@@ -1899,6 +1902,9 @@ msgstr "バックアップフォルダーを開く"
 
 msgid "Open data folder"
 msgstr "データフォルダーを開く"
+
+msgid "Open in Colours"
+msgstr ""
 
 msgid "Open logs folder"
 msgstr "ログフォルダーを開く"
