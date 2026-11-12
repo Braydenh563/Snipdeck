@@ -41,3 +41,11 @@ Design: `docs/reviews/dock-redesign.md`. Decisions: `.claude/now.md`. Owner chec
   position and size when winit creates it); no flash and no stolen focus is the aim, unverified.
 - Reveal from just past an inner edge and a drag across a shared edge on a real two-monitor desk.
 - The resize hold under an elevated foreground window (button always reads up).
+
+## Round 2 (coordinator re-verify on 771b44b)
+
+- First show after a hidden start re-resolves monitors (`find_monitor` each time; pointer-monitor fallback). Test: `the_first_show_after_a_hidden_start_asks_again_where_the_monitors_are`.
+- Resize hold: size loop first (`TargetSource::size_loop`, Windows `GUI_INMOVESIZE`), then button, then 1 s quiet. Test: `a_resize_lasts_as_long_as_the_windows_own_size_loop`. Windows-unverified: whether timers tick inside the modal size loop.
+- Legacy full-height docks mended in `geometry_on` for the docked size too, and on a drag to another monitor. Two tests.
+- Docs: full screen per monitor; new install unpinned; Off hides a docked Panel like a floating one.
+- Open: `scripts/gate.sh --full` on the final head; send its three lines to the coordinator. No PR, no merge.
