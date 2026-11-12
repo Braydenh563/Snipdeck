@@ -67,6 +67,20 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 2026-11-10 v1.1 spec (docs/reviews/v11-spec.md) decisions taken as proposed, owner asleep: Hello = one extra Hello prompt after a password unlock (in-memory sealed key; nothing persisted); password every 7 days, no setting; suggest-as-you-type matches triggers only, one suggestion, Tab inserts; tips pictures are English golden crops; importers drop the "Name (abbr)" title once triggers exist; date units d w mo y h min. Reason: safest defaults, reversible later.
 
 ## Inbox
+- 2026-11-12 owner (verbatim): "I tried using the slide along the edge thingo and it went transparent for a little bit but then fixed itself" -> fixing now: the grip drag measured from the moving pill (jumps back and forth) and place() resized on every move.
+- 2026-11-12 owner (verbatim): "when I hover over the scrollbar (at least in the expanded icons list) it has some blank space to the left" -> fixing now.
+- 2026-11-12 owner (verbatim): "its kinda hard to tell where to click and hold to drag the small panel around"
+- 2026-11-12 owner (verbatim): "tooltips or explanations get cut off within the app borders" (Panel symbols grid: tooltip clipped at the window's left edge)
+- 2026-11-12 owner (verbatim): "can there be a way to preview changes?? maybe with a preview toggle?" (item editor)
+- 2026-11-12 owner (verbatim): "after saving changes, the small panel doesnt instantly properly show back but instead parts show but not all and the rest stays transparent"
+- 2026-11-12 owner (verbatim): "I keep trying to drag it around the middle of the screen but it keeps docking to an edge and when it does that it goes full height for a sec but then resets ot the default height and then also it reset my width I had it at as well"
+- 2026-11-12 owner (verbatim): "I pressed open snipdeck and it opened the main window but it didnt focus it so it just opened in the background"
+- 2026-11-12 owner (verbatim): "tooltips stillget cut off, also when collapsing the left sidebar in the main window, the top two icons are the same and are confusing" (Main rail collapsed: app logo-like layers icon above the identical layers "All items" icon; tooltip clipped at the window edge)
+- 2026-11-12 owner (verbatim): "this toggle pill is crushed and has no spacing around the text" (segmented toggle Text | Link | Template: no padding, labels touch the dividers)
+- 2026-11-12 owner (verbatim): "the popup menus get cut off at the top of the screen"
+- 2026-11-12 owner (verbatim): "when selected in the quick add text box on the small panel, I cant ctrl v paste into it" / "I cant right click and paste either"
+- 2026-11-12 owner (verbatim): "I cant drag the small panel across the edge to the corner and it starts spasaming left to right when it reaches here" / "now the window is sort of following my mouse along the edge and is spazaming in two positions in the middle" (same root cause as the slide flicker: fixed in fix-slide)
+- 2026-11-12 owner (verbatim): "also are any and all files and file types and image types accepted? they should be. also sometimes scrolling can be glitchy"
 - 2026-11-11 (coordinator) Tips: picture 01 crop cuts the first Panel row mid-text (help-tips-light.png); re-crop to a whole row in Final ux pass. Fixed in dc432fe (tips pictures end on row edges).
 - (Final UX) Main toolbar "Show Panel" uses Icons.sidebar-simple beside the new « sidebar toggle: two side-panel glyphs, different meanings. Consider a distinct Panel glyph.
 - 2026-11-07 owner (verbatim): "Im going to sleep, refine, and polish and finish absolutely everything, work with maximum token efficiency and effectiveness and minimal tokens while maximising productivity. be thorough and always use a critical and detailed expert eye. maximise ux, ensure functionality and learnability, usability and accessibility and more." / "good night and impress me :D" -> away mode on the existing work order; no merge/tag/release.

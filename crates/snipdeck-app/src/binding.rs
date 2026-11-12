@@ -94,11 +94,28 @@ const DOCK_REPLACE_AFTER: std::time::Duration = std::time::Duration::from_millis
 /// How long the Panel must hold still after a move for the drag to count as released.
 const DRAG_SETTLE: std::time::Duration = std::time::Duration::from_millis(250);
 
-/// Moves and sizes the window to `frame`.
+/// Moves and sizes the window to `frame`, touching only what differs (a slide moves the Panel on
+/// every pointer move; asking for the same size again each time made Windows resize the surface
+/// mid-drag), then draws it whole.
 fn place(window: &ui::PanelWindow, frame: Rect) {
     let w = window.window();
-    w.set_position(slint::PhysicalPosition::new(frame.x, frame.y));
-    w.set_size(slint::PhysicalSize::new(frame.w, frame.h));
+    let position = slint::PhysicalPosition::new(frame.x, frame.y);
+    if w.position() != position {
+        w.set_position(position);
+    }
+    let size = slint::PhysicalSize::new(frame.w, frame.h);
+    if w.size() != size {
+        w.set_size(size);
+    }
+    repaint_whole(window);
+}
+
+/// Damages the whole Panel so the next frame is drawn in full (O39). Windows drops a hidden
+/// window's pixels and Slint's software renderer presents only what changed, so a Panel shown
+/// again (after the item editor closes) or moved came back with see-through gaps.
+fn repaint_whole(window: &ui::PanelWindow) {
+    window.set_repaint_flip(!window.get_repaint_flip());
+    window.window().request_redraw();
 }
 
 /// What the host keeps after binding: the entry points for events that do not come from the
@@ -424,6 +441,7 @@ where
                     // A hidden Panel comes back where it was in the stack, behind the app in
                     // use; and one that is "shown" already (a second Open Panel) may be buried.
                     crate::native_window::raise(&window);
+                    repaint_whole(&window);
                     // Shown on purpose (the hotkey, the tray, a second launch): the user types
                     // next, so the Panel takes the keyboard. A dock-hover reveal never comes
                     // here, so the pointer passing over the edge steals nothing.
@@ -979,24 +997,45 @@ where
             window.on_toast_hover_changed(move |on| core.controller.borrow_mut().toast_hover(on));
         }
         {
-            let core = Rc::clone(&core);
-            window.on_along_begin(move || core.controller.borrow_mut().dock_slide_begin());
-        }
-        {
-            // The grip pill's drag: logical pixels along the edge since the press, the window
-            // frame is physical.
-            let core = Rc::clone(&core);
-            let window_weak = window.as_weak();
+            // The grip pill's drag. The pill moves with the window, so the distance is measured
+            // on screen from the press (`SlideDrag`), not inside the pill.
+            let press: Rc<Cell<Option<crate::dock::SlideDrag>>> = Rc::default();
+            let window_at = |w: &ui::PanelWindow| {
+                let p = w.window().position();
+                (p.x, p.y)
+            };
+            {
+                let (core, press, weak) = (Rc::clone(&core), Rc::clone(&press), window.as_weak());
+                window.on_along_begin(move || {
+                    if let Some(w) = weak.upgrade() {
+                        press.set(Some(crate::dock::SlideDrag::begin(
+                            core.host.cursor(),
+                            window_at(&w),
+                        )));
+                    }
+                    core.controller.borrow_mut().dock_slide_begin();
+                });
+            }
+            let (core, weak) = (Rc::clone(&core), window.as_weak());
             window.on_along_drag(move |delta| {
-                let scale = window_weak
-                    .upgrade()
-                    .map_or(1.0, |w| w.window().scale_factor());
+                let Some(w) = weak.upgrade() else {
+                    return;
+                };
+                // The pointer's offset is in logical pixels; the window frame is physical.
                 #[allow(
                     clippy::cast_possible_truncation,
                     reason = "a pointer delta of a few thousand pixels"
                 )]
-                let physical = (delta * scale).round() as i32;
-                core.act_effects(|ctl| ctl.dock_slide(physical));
+                let pointer = (delta * w.window().scale_factor()).round() as i32;
+                let drag = press.get().unwrap_or_else(|| {
+                    let begun = crate::dock::SlideDrag::begin(core.host.cursor(), window_at(&w));
+                    press.set(Some(begun));
+                    begun
+                });
+                // The same axis the pill measures: a side dock (1 left, 2 right) slides along y.
+                let vertical = w.get_dock_edge() <= 2;
+                let total = drag.total(core.host.cursor(), window_at(&w), pointer, vertical);
+                core.act_effects(|ctl| ctl.dock_slide(total));
             });
         }
         wire_effects!(on_resize_requested, |ctl, edge| ctl.resize(edge_of(edge)));

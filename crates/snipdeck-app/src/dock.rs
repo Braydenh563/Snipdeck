@@ -168,6 +168,44 @@ impl DockState {
     }
 }
 
+/// Where a grip-pill drag (sliding a docked Panel along its edge) is measured from. The pill
+/// moves with the window, so the pointer's offset inside it is not the distance dragged once
+/// the window has moved: counted that way, each move undid half of the last and the Panel
+/// jumped between two places until released. The distance is taken from the cursor on screen
+/// instead, or, where the cursor is unknown, from the pointer's offset plus how far the window
+/// has moved since the press.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SlideDrag {
+    cursor: Option<(i32, i32)>,
+    window: (i32, i32),
+}
+
+impl SlideDrag {
+    /// The press: the cursor on screen (if known) and the window's top-left, physical pixels.
+    #[must_use]
+    pub fn begin(cursor: Option<(i32, i32)>, window: (i32, i32)) -> Self {
+        Self { cursor, window }
+    }
+
+    /// Physical pixels dragged along the edge since the press. `pointer` is the pointer's
+    /// offset from where it was pressed, measured inside the window (physical); `vertical` is
+    /// a slide along a side edge (y), otherwise along x.
+    #[must_use]
+    pub fn total(
+        &self,
+        cursor: Option<(i32, i32)>,
+        window: (i32, i32),
+        pointer: i32,
+        vertical: bool,
+    ) -> i32 {
+        let along = |p: (i32, i32)| if vertical { p.1 } else { p.0 };
+        match (self.cursor, cursor) {
+            (Some(from), Some(to)) => along(to).saturating_sub(along(from)),
+            _ => pointer.saturating_add(along(window).saturating_sub(along(self.window))),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -603,5 +641,28 @@ mod tests {
                 });
             }
         }
+    }
+
+    #[test]
+    fn a_slide_is_measured_on_screen_not_inside_the_moving_pill() {
+        // Pressed at x 500 with the window at x 300 (a top dock slides along x).
+        let drag = SlideDrag::begin(Some((500, 10)), (300, 0));
+        // The pointer moves 50 right: the window has not moved yet.
+        assert_eq!(drag.total(Some((550, 10)), (300, 0), 50, false), 50);
+        // The window followed; the pointer moves 10 more. Inside the pill that reads as 10, but
+        // the drag is 60 from the press (counting 10 sent the Panel back: the flicker).
+        assert_eq!(drag.total(Some((560, 10)), (350, 0), 10, false), 60);
+        // A side dock slides along y.
+        let side = SlideDrag::begin(Some((5, 400)), (0, 200));
+        assert_eq!(side.total(Some((9, 380)), (0, 200), -20, true), -20);
+    }
+
+    #[test]
+    fn without_the_cursor_a_slide_adds_how_far_the_window_has_moved() {
+        let drag = SlideDrag::begin(None, (300, 0));
+        assert_eq!(drag.total(None, (300, 0), 50, false), 50);
+        assert_eq!(drag.total(None, (350, 0), 10, false), 60);
+        // A cursor known only now still uses the window's offset.
+        assert_eq!(drag.total(Some((1, 1)), (350, 0), 10, false), 60);
     }
 }
