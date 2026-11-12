@@ -1768,8 +1768,8 @@ msgstr "Désactivé"
 msgid "Off keeps a panel docked to the left or right at the height you dropped it. On stretches it over the whole edge."
 msgstr "Désactivé : un panneau ancré à gauche ou à droite garde la hauteur où vous l'avez déposé. Activé : il occupe tout le bord."
 
-msgid "Off leaves a docked panel at its full size: it shows and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the panel shortcut opens it too."
-msgstr "Désactivé : un panneau ancré garde sa taille entière et s'affiche et se masque comme un panneau flottant. Sinon, il se replie en un onglet fin sur son bord, et le raccourci du panneau l'ouvre aussi."
+msgid "Off: a docked panel does not tuck. Otherwise it tucks into a thin tab at its edge, and the panel shortcut opens it too."
+msgstr "Désactivé : un panneau ancré ne se replie pas. Sinon, il se replie en un onglet fin sur son bord, et le raccourci du panneau l'ouvre aussi."
 
 msgid "One hotkey turns copied text into an item."
 msgstr "Un raccourci transforme le texte copié en extrait."

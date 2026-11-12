@@ -1768,8 +1768,8 @@ msgstr "Desactivado"
 msgid "Off keeps a panel docked to the left or right at the height you dropped it. On stretches it over the whole edge."
 msgstr "Desactivado: un panel acoplado a la izquierda o a la derecha mantiene la altura en que lo soltaste. Activado: ocupa todo el borde."
 
-msgid "Off leaves a docked panel at its full size: it shows and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the panel shortcut opens it too."
-msgstr "Desactivado: un panel acoplado conserva su tamaño completo y se muestra y se oculta como uno flotante. Si no, se recoge en una pestaña fina en su borde, y el atajo del panel también lo abre."
+msgid "Off: a docked panel does not tuck. Otherwise it tucks into a thin tab at its edge, and the panel shortcut opens it too."
+msgstr "Desactivado: un panel acoplado no se recoge. Si no, se recoge en una pestaña fina en su borde, y el atajo del panel también lo abre."
 
 msgid "One hotkey turns copied text into an item."
 msgstr "Un atajo convierte el texto copiado en un elemento."

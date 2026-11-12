@@ -1762,8 +1762,8 @@ msgstr "オフ"
 msgid "Off keeps a panel docked to the left or right at the height you dropped it. On stretches it over the whole edge."
 msgstr "オフ: 左右に固定したパネルは、置いた位置の高さのままです。オン: 端の全長に広がります。"
 
-msgid "Off leaves a docked panel at its full size: it shows and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the panel shortcut opens it too."
-msgstr "オフ: 固定したパネルは元の大きさのままで、フローティングのパネルと同じように表示と非表示が切り替わります。それ以外: 端の細いタブに収まり、パネルのショートカットでも開きます。"
+msgid "Off: a docked panel does not tuck. Otherwise it tucks into a thin tab at its edge, and the panel shortcut opens it too."
+msgstr "オフ: 固定したパネルはタブに収まりません。それ以外: 端の細いタブに収まり、パネルのショートカットでも開きます。"
 
 msgid "One hotkey turns copied text into an item."
 msgstr "ホットキー1つで、コピーしたテキストをスニペットにできます。"

@@ -326,7 +326,7 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   that it will; pull back and it floats again. Dragging a docked Panel slides it along its edge, and pulling it
   away from the edge floats it at the size it had floating. The Panel's menu names the edge it would dock to
   ("Dock to the right edge"). **Open a docked panel by** is Off, Hover, Click or Hover and click (the default).
-  Off leaves a docked Panel at its full size, shown and hidden like a floating one. The other choices tuck it into a thin tab at its edge, and the Panel shortcut
+  With Off a docked Panel does not tuck: it shows and hides like a floating one. The other choices tuck it into a thin tab at its edge, and the Panel shortcut
   opens it too. **Hover delay** (0 to 2000 ms, default 150) is how long the pointer rests on the tab. **Leave
   delay** (0 to 5000 ms, default 400) is how long it stays off the Panel before it tucks. While a full-screen
   app is in front the tab stays out of its way; the Panel shortcut still opens the Panel. Started hidden, a
