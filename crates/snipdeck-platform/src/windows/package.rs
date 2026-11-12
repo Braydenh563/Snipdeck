@@ -43,7 +43,7 @@ pub fn is_packaged() -> bool {
         let mut length = 0_u32;
         // SAFETY: `length` is a valid out-pointer and no buffer is passed, so the call only
         // reports the size it would need (or that there is no package).
-        let code = unsafe { GetCurrentPackageFullName(&mut length, None) };
+        let code = unsafe { GetCurrentPackageFullName(&raw mut length, None) };
         // A process with identity answers "buffer too small" for a zero-length buffer; one without
         // answers APPMODEL_ERROR_NO_PACKAGE.
         code != APPMODEL_ERROR_NO_PACKAGE
