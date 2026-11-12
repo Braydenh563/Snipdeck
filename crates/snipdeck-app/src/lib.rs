@@ -18,6 +18,7 @@ pub mod dock;
 pub mod doctor;
 pub mod drafts;
 pub mod drop_batch;
+pub mod drop_read;
 pub mod editor_binding;
 pub mod failure;
 pub mod fill;

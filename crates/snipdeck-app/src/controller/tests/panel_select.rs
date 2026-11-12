@@ -851,6 +851,50 @@ fn a_drop_to_a_given_list_targets_that_list() {
 }
 
 #[test]
+fn a_drop_read_in_two_chunks_is_one_step_with_the_first_file_on_top() {
+    use crate::drop_read::ReadDone;
+    let dir = tempfile::tempdir().expect("dir");
+    let mut w = world();
+    let paths = files_in(
+        &dir,
+        &[("one.txt", b"1"), ("two.txt", b"2"), ("three.txt", b"3")],
+    );
+    let mut run = w
+        .ctl
+        .drop_begin(&paths, Origin::Panel, None)
+        .expect("a drop to read");
+    assert_eq!(
+        w.ctl.view().rows.len(),
+        4,
+        "nothing is added before the files are read"
+    );
+    let all = run.next_job().run();
+    assert_eq!(all.read.len(), 3);
+    let mut read = all.read.into_iter();
+    let first = ReadDone {
+        read: vec![read.next().unwrap(), read.next().unwrap()],
+        rest: vec![paths[2].clone().into()],
+    };
+    let run = w.ctl.drop_read_done(run, first).expect("one file is left");
+    assert_eq!(w.ctl.view().rows.len(), 4, "still nothing in the list");
+    let last = ReadDone {
+        read: vec![read.next().unwrap()],
+        rest: Vec::new(),
+    };
+    assert!(w.ctl.drop_read_done(run, last).is_none());
+    let rows = w.ctl.view().rows;
+    assert_eq!(rows.len(), 7);
+    let titles: Vec<_> = rows.iter().take(3).map(|r| r.title.as_str()).collect();
+    assert_eq!(titles, ["one.txt", "two.txt", "three.txt"]);
+    w.ctl.toast_action();
+    assert_eq!(
+        w.ctl.view().rows.len(),
+        4,
+        "one Undo takes the whole drop back"
+    );
+}
+
+#[test]
 fn a_drag_over_the_window_names_the_list_until_it_ends() {
     let mut w = world();
     assert_eq!(w.ctl.drop_hint(), None);

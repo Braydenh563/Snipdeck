@@ -264,6 +264,7 @@ fn run(args: &Args) -> Result<(), String> {
         // Argon2id takes a moment on purpose: a master password step works its key out on a
         // worker thread, and the window waits with a status instead of freezing.
         master_job::set_offload(Rc::new(master_job::Threads));
+        snipdeck_app::drop_read::use_threads();
         // Windows Hello prompts wait for a person, so they run on a worker too.
         hello_job::use_worker_threads();
         if let Some(hello) = platform::hello() {

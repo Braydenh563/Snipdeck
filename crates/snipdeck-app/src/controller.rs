@@ -41,6 +41,7 @@ mod trigger_ctl;
 mod use_ctl;
 mod views;
 
+pub use create_ctl::DropRun;
 pub use history_ctl::HistoryView;
 pub use library::Library;
 pub use lock_ctl::{MasterProblem, MasterState};
