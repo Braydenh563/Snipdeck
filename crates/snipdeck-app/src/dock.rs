@@ -294,7 +294,8 @@ pub struct Drag {
     press: (i32, i32),
     /// Where the cursor was last seen.
     cursor: (i32, i32),
-    /// The edge the cursor is at (within [`EDGE_ZONE`], and nearest to), and since when.
+    /// The edge the cursor is at (within [`EDGE_ZONE`] of it: the nearest when it came there,
+    /// kept while it stays in that zone), and since when.
     candidate: Option<(DockEdge, Timestamp)>,
     /// The frame last asked for.
     frame: Rect,
@@ -434,15 +435,18 @@ impl Drag {
         match self.phase {
             DragPhase::Slide(edge) => {
                 let pulled = sub(cursor, self.press);
-                // Only away from the edge: pushed into it the Panel has nowhere to go, and
-                // letting go of the edge there would dock it again a moment later.
+                // Away from the edge it leaves. Pushed into the edge it has nowhere to go (and
+                // letting go of the edge there would dock it again a moment later), unless
+                // the cursor does: past an edge another monitor begins at, it is on its way
+                // there.
                 let away = match edge {
                     DockEdge::Left => pulled.0,
                     DockEdge::Right => pulled.0.saturating_neg(),
                     DockEdge::Top => pulled.1,
                     DockEdge::Bottom => pulled.1.saturating_neg(),
                 };
-                if i64::from(away) > px(UNDOCK_PULL, scale) {
+                let past = frame::edge_gap(cursor, area, edge).saturating_neg();
+                if i64::from(away).max(past) > px(UNDOCK_PULL, scale) {
                     return self.float(ctx);
                 }
                 let rect = self.docked_at(edge, ctx);
@@ -458,25 +462,27 @@ impl Drag {
             DragPhase::Float => {
                 // A press that has not moved is a click, not a push to the edge.
                 let pushed = cursor != self.press;
-                if pushed && self.resized_under(ctx) {
-                    // Onto a monitor with another scale or another floating size: Windows
-                    // resizes the window there, so the offset the cursor holds it by is
-                    // measured again.
+                if pushed && self.rescaled_under(ctx) {
+                    // Onto a monitor of another scale: Windows resizes the window there, so
+                    // the offset the cursor holds it by is measured again. Another size at
+                    // the same scale waits for the drop: a cursor wobbling over the seam must
+                    // not resize the window each time it crosses.
                     return self.float(ctx);
                 }
-                let at = pushed
-                    .then(|| {
-                        frame::edge_at(cursor, area, ctx.monitor.taskbar, px(EDGE_ZONE, scale))
-                    })
-                    .flatten();
-                // The wait runs only while the cursor is in the zone of the same edge: out of
-                // it, or nearer another edge in a corner, it starts again.
-                self.candidate = at.map(|edge| {
-                    let since = self
-                        .candidate
-                        .filter(|(held, _)| *held == edge)
-                        .map_or(ctx.now, |(_, since)| since);
-                    (edge, since)
+                let zone = px(EDGE_ZONE, scale);
+                // The edge the cursor came to is kept while it stays in that edge's zone, even
+                // where another edge is nearer (a hand wobbles in a corner); out of it, the
+                // nearest edge is the one, and its wait starts.
+                let held = self.candidate.filter(|(edge, _)| {
+                    pushed
+                        && Some(*edge) != ctx.monitor.taskbar
+                        && frame::edge_gap(cursor, area, *edge) <= zone
+                });
+                self.candidate = held.or_else(|| {
+                    pushed
+                        .then(|| frame::edge_at(cursor, area, ctx.monitor.taskbar, zone))
+                        .flatten()
+                        .map(|edge| (edge, ctx.now))
                 });
                 let armed = self.candidate.filter(|(_, since)| {
                     elapsed_ms(ctx.now, *since)
@@ -516,8 +522,12 @@ impl Drag {
     /// The floating window is not what `ctx` says it is there: another size, or a monitor of
     /// another scale than the one the grab was measured on.
     fn resized_under(&self, ctx: &DragCtx<'_>) -> bool {
-        (self.frame.w, self.frame.h) != ctx.sizes.floating
-            || (self.grab_unit > 0 && self.grab_unit != px(1000, ctx.monitor.scale))
+        (self.frame.w, self.frame.h) != ctx.sizes.floating || self.rescaled_under(ctx)
+    }
+
+    /// The monitor in `ctx` has another scale than the one the grab was measured on.
+    fn rescaled_under(&self, ctx: &DragCtx<'_>) -> bool {
+        self.grab_unit > 0 && self.grab_unit != px(1000, ctx.monitor.scale)
     }
 }
 

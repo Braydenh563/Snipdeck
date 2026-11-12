@@ -3195,8 +3195,8 @@ msgstr "このスニペットの変更は保存されていません。"
 msgid "When Windows starts"
 msgstr "Windows の起動時"
 
-msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel tucks into its tab instead."
-msgstr "ピンがオフのとき、ほかのアプリに切り替えるとすぐにパネルが隠れます。ピン留めしたパネルは隠れず、固定したパネルは代わりにタブへ収まります。"
+msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel that tucks goes to its tab instead."
+msgstr "ピンがオフのとき、ほかのアプリに切り替えるとすぐにパネルが隠れます。ピン留めしたパネルは隠れず、タブに収まる設定の固定パネルは代わりにタブへ収まります。"
 
 msgid "When you type an item's trigger in another program, Snipdeck replaces it with the item's text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items."
 msgstr "他のプログラムでアイテムのトリガーを入力すると、Snipdeck がそれをアイテムのテキストに置き換えます。そのために押したキーを監視しますが、保持するのは直近の数文字だけで、メモリ内にのみ置き、ディスクには保存しません。\nパスワード欄、「貼り付けない」に設定したプログラム、管理者として実行中のプログラム、Snipdeck が前面にあるとき、機密アイテムでは何も展開されません。"

@@ -93,8 +93,14 @@ mod imp {
             monitor_under(x, y)
         }
 
-        fn fullscreen_in_front(&self) -> bool {
-            snipdeck_platform::windows::target::fullscreen_in_front()
+        fn fullscreen_on(&self, monitor: &Monitor) -> bool {
+            // Any point of the monitor names it: the middle of its work area.
+            let area = monitor.work_area;
+            let middle = |start: i32, len: u32| start.saturating_add_unsigned(len / 2);
+            snipdeck_platform::windows::target::fullscreen_covers(
+                middle(area.x, area.w),
+                middle(area.y, area.h),
+            )
         }
     }
 

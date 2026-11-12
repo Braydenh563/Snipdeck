@@ -544,7 +544,9 @@ pub fn near(point: (i32, i32), rect: Rect, margin: i64) -> bool {
 
 /// Whether the point is on the tucked tab `tab` of a Panel docked to `edge`, or at the screen
 /// edge within `margin` pixels past either end of it. Not in front of it: those pixels belong to
-/// whatever window is there.
+/// whatever window is there. Behind it, by one more tab's thickness: where another monitor
+/// begins at that edge nothing stops the pointer on the tab, and a quick one is already just
+/// past it.
 #[must_use]
 pub fn on_tab(point: (i32, i32), tab: Rect, edge: DockEdge, margin: i64) -> bool {
     let (x, y) = (i64::from(point.0), i64::from(point.1));
@@ -554,11 +556,15 @@ pub fn on_tab(point: (i32, i32), tab: Rect, edge: DockEdge, margin: i64) -> bool
     } else {
         (tab.x, tab.w, tab.y, tab.h)
     };
-    let (start, low) = (i64::from(start), i64::from(low));
+    let (start, low, thick) = (i64::from(start), i64::from(low), i64::from(thick));
+    let (from, to) = match edge {
+        DockEdge::Left | DockEdge::Top => (low - thick, low + thick),
+        DockEdge::Right | DockEdge::Bottom => (low, low + 2 * thick),
+    };
     along >= start - margin
         && along < start + i64::from(len) + margin
-        && across >= low
-        && across < low + i64::from(thick)
+        && across >= from
+        && across < to
 }
 
 /// `span` cut to `[low, low + len)`; the whole of it when nothing of `span` is inside.
@@ -1474,6 +1480,34 @@ mod tests {
         assert!(!near((158, 230), rect, 8));
         assert!(near((92, 192), rect, 8));
         assert!(!near((91, 230), rect, 8));
+    }
+
+    #[test]
+    fn the_tab_takes_the_pointer_on_it_past_its_ends_and_just_past_its_edge() {
+        // A right dock's tab: x 1914..1920, y 100..700.
+        let right = handle_rect(DockEdge::Right, at(0, 0, 1920, 1040), 100..700, 1.0);
+        assert!(on_tab((1914, 100), right, DockEdge::Right, 12));
+        assert!(on_tab((1919, 699), right, DockEdge::Right, 12));
+        assert!(!on_tab((1913, 300), right, DockEdge::Right, 12), "in front");
+        // Past its ends, along the edge.
+        assert!(on_tab((1919, 88), right, DockEdge::Right, 12));
+        assert!(!on_tab((1919, 87), right, DockEdge::Right, 12));
+        assert!(on_tab((1919, 711), right, DockEdge::Right, 12));
+        assert!(!on_tab((1919, 712), right, DockEdge::Right, 12));
+        // Past the edge, where another monitor begins: one more tab's thickness.
+        assert!(on_tab((1920, 300), right, DockEdge::Right, 12));
+        assert!(on_tab((1925, 300), right, DockEdge::Right, 12));
+        assert!(!on_tab((1926, 300), right, DockEdge::Right, 12));
+
+        // A top dock's tab on a monitor that begins at y 0, with another above it.
+        let top = handle_rect(DockEdge::Top, at(0, 0, 1920, 1040), 400..1000, 1.0);
+        assert!(on_tab((500, 0), top, DockEdge::Top, 12));
+        assert!(on_tab((500, 5), top, DockEdge::Top, 12));
+        assert!(!on_tab((500, 6), top, DockEdge::Top, 12), "in front");
+        assert!(on_tab((500, -6), top, DockEdge::Top, 12));
+        assert!(!on_tab((500, -7), top, DockEdge::Top, 12));
+        assert!(on_tab((388, 0), top, DockEdge::Top, 12));
+        assert!(!on_tab((387, 0), top, DockEdge::Top, 12));
     }
 
     #[test]

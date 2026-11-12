@@ -3203,8 +3203,8 @@ msgstr "As alterações neste trecho não foram salvas."
 msgid "When Windows starts"
 msgstr "Quando o Windows inicia"
 
-msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel tucks into its tab instead."
-msgstr "Com o alfinete desativado, o painel se oculta assim que você muda para outro aplicativo. Um painel fixado permanece, e um painel encaixado se recolhe em sua aba."
+msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel that tucks goes to its tab instead."
+msgstr "Com o alfinete desativado, o painel se oculta assim que você muda para outro aplicativo. Um painel fixado permanece, e um painel encaixado que se recolhe vai para sua aba."
 
 msgid "When you type an item's trigger in another program, Snipdeck replaces it with the item's text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items."
 msgstr "Quando você digita o gatilho de um item em outro programa, o Snipdeck o substitui pelo texto do item. Para isso, o Snipdeck observa as teclas pressionadas e guarda apenas os últimos caracteres na memória, nunca no disco.\nNada é expandido em campos de senha, em programas definidos como “Nunca colar”, em programas executados como administrador, enquanto o Snipdeck está em primeiro plano nem em itens confidenciais."

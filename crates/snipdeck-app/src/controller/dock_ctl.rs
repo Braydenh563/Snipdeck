@@ -28,6 +28,9 @@ const OPEN_INSET: u32 = 48;
 /// How long after a docking a leave reported by the window is the window having moved from
 /// under the pointer. Only used where the cursor cannot be read on screen.
 const FRESH_LEAVE_MS: i64 = 250;
+/// How long after its last size report (milliseconds) a resize whose button cannot be trusted
+/// is taken to be over.
+const RESIZE_QUIET_MS: i64 = 1_000;
 
 /// `logical` pixels at `scale`, for a zone around a rectangle.
 fn zone(logical: u32, scale: f32) -> i64 {
@@ -124,8 +127,9 @@ where
         self.dock_event(event)
     }
 
-    /// A full-screen app is in front and the Panel has not the keyboard: the docked Panel is
-    /// out of its way, not above it and not sliding out under a pointer at the screen edge.
+    /// A full-screen app covers the Panel's monitor and the Panel has not the keyboard: the
+    /// docked Panel is out of its way, not above it and not sliding out under a pointer at the
+    /// screen edge.
     pub(super) fn dock_covered(&self) -> bool {
         self.fullscreen && !self.panel_focused
     }
@@ -192,12 +196,31 @@ where
     /// the Panel, so the pointer on it is on the Panel, and one left open with the pointer and
     /// the keyboard both gone must not keep the Panel out for ever.
     fn dock_held(&mut self) -> bool {
-        // A resize lasts as long as its button is down; where that cannot be read it holds
-        // nothing.
-        if self.resizing && self.target.primary_down() != Some(true) {
-            self.resizing = false;
+        if self.resizing {
+            self.resizing = self.resize_goes_on();
         }
         self.panel_focused || self.drag.is_some() || self.resizing
+    }
+
+    /// Whether the OS resize that was started is still under way. It lasts as long as its
+    /// button is down. "Up" is believed only once the button was seen down in this resize:
+    /// under a window of higher privilege Windows reports every button as up, a held grip
+    /// too. Until then the window's own reports of a new size say that it goes on, and it is
+    /// over [`RESIZE_QUIET_MS`] after the last of them. Where the button cannot be read at
+    /// all a resize holds nothing.
+    fn resize_goes_on(&mut self) -> bool {
+        match self.target.primary_down() {
+            Some(true) => {
+                self.resize_button_seen = true;
+                true
+            }
+            Some(false) if self.resize_button_seen => false,
+            Some(false) => {
+                let quiet = self.clock.now().as_millisecond() - self.resize_at.as_millisecond();
+                quiet < RESIZE_QUIET_MS
+            }
+            None => false,
+        }
     }
 
     /// The Panel is on `monitor` now (the system moved its window there), or `monitor` is not
@@ -269,10 +292,14 @@ where
         let mut effects = self.dock_area_refresh();
         let scale = self.monitor.as_ref().map_or(1.0, |m| m.scale);
         let held = self.dock_held();
-        self.fullscreen = self.target.fullscreen_in_front();
+        self.fullscreen = self
+            .monitor
+            .as_ref()
+            .is_some_and(|m| self.target.fullscreen_on(m));
         if self.dock_covered() {
-            // A full-screen app is in front: the pointer at its edge is the app's, and a Panel
-            // left open over it goes to its tab (which is under the app until that ends).
+            // A full-screen app covers this monitor: the pointer at its edge is the app's, and
+            // a Panel left open over it goes to its tab (which is under the app until that
+            // ends). One on another monitor is not in the way.
             let event = if self.dock.is_collapsed() {
                 DockEvent::HandleHover(false)
             } else {
@@ -473,33 +500,59 @@ where
 
     /// The floating Panel's frame on `monitor`: what was stored, else a default.
     pub(super) fn open_frame(&self, monitor: &Monitor) -> Rect {
-        self.stored_geometry(monitor).map_or_else(
-            || {
-                // Off every edge, so that it reads as floating.
-                let inset = i32::try_from(frame::scaled(OPEN_INSET, monitor.scale)).unwrap_or(0);
-                Rect {
-                    x: monitor.work_area.x.saturating_add(inset),
-                    y: monitor.work_area.y.saturating_add(inset),
-                    w: frame::scaled(self.settings.panel_width, monitor.scale),
-                    h: frame::scaled(DEFAULT_HEIGHT, monitor.scale),
-                }
-            },
-            Rect::of,
-        )
+        if self.stored_geometry(monitor).is_some() {
+            return Rect::of(&self.geometry_on(monitor));
+        }
+        // Off every edge, so that it reads as floating.
+        let inset = i32::try_from(frame::scaled(OPEN_INSET, monitor.scale)).unwrap_or(0);
+        Rect {
+            x: monitor.work_area.x.saturating_add(inset),
+            y: monitor.work_area.y.saturating_add(inset),
+            w: frame::scaled(self.settings.panel_width, monitor.scale),
+            h: frame::scaled(DEFAULT_HEIGHT, monitor.scale),
+        }
     }
 
     /// What is remembered for `monitor`, or a floating Panel at the default place there.
-    fn geometry_on(&self, monitor: &Monitor) -> PanelGeometry {
-        self.stored_geometry(monitor).cloned().unwrap_or_else(|| {
+    ///
+    /// An older version stored a docked Panel's frame as its only size: such an entry (docked,
+    /// with no place along its edge) that is as tall as the work area is not a floating
+    /// height the user chose, and reads as the default height. Whatever is stored from it
+    /// next (a slide, a resize, an undock) keeps that.
+    pub(super) fn geometry_on(&self, monitor: &Monitor) -> PanelGeometry {
+        let mut geometry = self.stored_geometry(monitor).cloned().unwrap_or_else(|| {
             frame::clamp(self.open_frame(monitor), monitor).geometry(monitor, None)
-        })
+        });
+        let area = monitor.work_area;
+        if geometry.edge.is_some()
+            && geometry.along.is_none()
+            && geometry.h.saturating_add(2) >= area.h
+        {
+            geometry.h = frame::scaled(DEFAULT_HEIGHT, monitor.scale).min(area.h / 2);
+        }
+        geometry
+    }
+
+    /// Finds the monitor the Panel was last left on, when nothing has said where it is (its
+    /// window does not exist yet): the newest stored place whose monitor the host still finds
+    /// there. `None` where the host cannot tell, or every such monitor is gone.
+    pub(super) fn find_monitor(&mut self) -> Option<Monitor> {
+        let centre = |start: i32, len: u32| start.saturating_add_unsigned(len / 2);
+        let found = self.settings.panel_geometry.iter().rev().find_map(|g| {
+            self.target
+                .monitor_at(centre(g.x, g.w), centre(g.y, g.h))
+                .filter(|m| m.id == g.monitor_id)
+        })?;
+        self.monitor = Some(found.clone());
+        self.dock_resync();
+        Some(found)
     }
 
     /// The Panel's floating and docked sizes on `monitor`, for a drag. A monitor it never was
     /// on gets the sizes of the one it is on, at that monitor's scale (the same logical size).
     fn sizes_on(&self, monitor: &Monitor) -> DragSizes {
-        let (geometry, ratio) = if let Some(g) = self.stored_geometry(monitor) {
-            (g.clone(), 1.0)
+        let (geometry, ratio) = if self.stored_geometry(monitor).is_some() {
+            (self.geometry_on(monitor), 1.0)
         } else if let Some(from) = self.monitor.as_ref().filter(|m| m.id != monitor.id) {
             let valid = |s: f32| if s.is_finite() && s > 0.0 { s } else { 1.0 };
             (
@@ -528,10 +581,17 @@ where
             ..geometry
         };
         // The drag chooses where the Panel sits along the edge, so a side dock's height is the
-        // user's own; a top or bottom dock is still never as tall as the screen.
+        // user's own. Not the full height an older version stored for a dock that is still as
+        // it left it (docked, with no place along its edge): that one stays as compact as it
+        // opened. A top or bottom dock is never as tall as the screen.
+        let placed = if here.edge.is_some() {
+            here.along
+        } else {
+            Some(0)
+        };
         DragSizes {
             floating: (here.w, here.h),
-            side: self.dock_size(&here, DockEdge::Left, monitor, Some(0)),
+            side: self.dock_size(&here, DockEdge::Left, monitor, placed),
             flat: self.dock_size(&here, DockEdge::Top, monitor, Some(0)),
         }
     }
@@ -587,6 +647,8 @@ where
             dock(self.settings.dock.full_edge)
         } else {
             geometry.along = None;
+            (geometry.x, geometry.y) = (floating.x, floating.y);
+            (geometry.w, geometry.h) = (floating.w, floating.h);
             floating
         };
         geometry.edge = edge;
@@ -636,7 +698,9 @@ where
     }
 
     /// What a drag step needs for the cursor at `cursor`: the monitor (the Panel's own while
-    /// it slides along its edge, else the one under the cursor) and the sizes there.
+    /// it slides along its edge, even with the cursor pushed past that edge onto the next
+    /// monitor: the drag machine lets go of the edge there; else the one under the cursor)
+    /// and the sizes there.
     fn drag_ctx(&self, drag: &Drag, cursor: (i32, i32)) -> Option<DragPlace> {
         let own = self.monitor.clone();
         let monitor = if matches!(drag.phase(), DragPhase::Slide(_)) {
@@ -731,7 +795,9 @@ where
         let left = self.monitor.clone().filter(|m| m.id != monitor.id);
         let was_docked = self.dock_edge();
         let stored = self.stored_geometry(&monitor).cloned();
-        let mut geometry = stored.clone().unwrap_or_else(|| {
+        let mut geometry = if stored.is_some() {
+            self.geometry_on(&monitor)
+        } else {
             // A monitor it never was on: it floats where it was dropped.
             frame::clamp(
                 Rect {
@@ -742,7 +808,7 @@ where
                 &monitor,
             )
             .geometry(&monitor, None)
-        });
+        };
         let place = match end {
             DragEnd::Floating(rect) => {
                 (geometry.x, geometry.y, geometry.w, geometry.h) = (rect.x, rect.y, rect.w, rect.h);
@@ -801,20 +867,6 @@ where
             self.show_toast(neutral(ToastMessage::DockSet(now_docked)));
         }
         vec![Effect::PlaceWindow(place)]
-    }
-
-    /// The drag ended without a release the app saw (the window went away): the Panel goes back
-    /// to where it is remembered.
-    pub fn drag_cancel(&mut self) -> Vec<Effect> {
-        if self.drag.take().is_none() {
-            return Vec::new();
-        }
-        self.monitor
-            .as_ref()
-            .and_then(|m| self.placement(m))
-            .map(Effect::PlaceWindow)
-            .into_iter()
-            .collect()
     }
 
     /// "Reset size and position": forgets what was remembered for the Panel's current monitor (and

@@ -213,9 +213,10 @@ pub trait TargetSource {
     fn monitor_at(&self, _x: i32, _y: i32) -> Option<crate::frame::Monitor> {
         None
     }
-    /// Whether a full-screen app, game or presentation is in front. `false` (the default)
-    /// where the host cannot tell.
-    fn fullscreen_in_front(&self) -> bool {
+    /// Whether a full-screen app, game or presentation covers `monitor`. Only that monitor: one
+    /// on another screen is not in the Panel's way. `false` (the default) where the host cannot
+    /// tell.
+    fn fullscreen_on(&self, _monitor: &crate::frame::Monitor) -> bool {
         false
     }
 }
@@ -363,7 +364,7 @@ pub struct FakeTargets {
     caret: Rc<Cell<Option<ScreenRect>>>,
     cursor: Rc<Cell<Option<(i32, i32)>>>,
     primary: Rc<Cell<Option<bool>>>,
-    fullscreen: Rc<Cell<bool>>,
+    fullscreen: Rc<RefCell<Option<String>>>,
     monitors: Rc<RefCell<Vec<crate::frame::Monitor>>>,
     /// A Target change that happens once the flag is raised (from another thread, as a typed
     /// key would be).
@@ -412,9 +413,9 @@ impl FakeTargets {
         self.primary.set(down);
     }
 
-    /// Sets whether a full-screen app is in front.
-    pub fn set_fullscreen(&self, on: bool) {
-        self.fullscreen.set(on);
+    /// Sets the monitor a full-screen app covers (`None`: there is none).
+    pub fn set_fullscreen(&self, on: Option<&crate::frame::Monitor>) {
+        *self.fullscreen.borrow_mut() = on.map(|m| m.id.clone());
     }
 
     /// Replaces the monitors the host knows.
@@ -464,8 +465,8 @@ impl TargetSource for FakeTargets {
         self.primary.get()
     }
 
-    fn fullscreen_in_front(&self) -> bool {
-        self.fullscreen.get()
+    fn fullscreen_on(&self, monitor: &crate::frame::Monitor) -> bool {
+        self.fullscreen.borrow().as_ref() == Some(&monitor.id)
     }
 
     fn monitor_at(&self, x: i32, y: i32) -> Option<crate::frame::Monitor> {

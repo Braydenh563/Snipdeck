@@ -1619,7 +1619,7 @@ mod tests {
         // A choice an old file did make is kept.
         let click = Settings::from_json(r#"{"dock":{"trigger":"click"}}"#);
         assert_eq!(click.dock.trigger, DockTrigger::Click);
-        // "Stay open" chosen since then is kept across a save and a load.
+        // "Off" chosen since then is kept across a save and a load.
         let mut chosen = old;
         chosen.dock.trigger = DockTrigger::Off;
         let back = Settings::from_json(&chosen.to_json());
@@ -1653,7 +1653,7 @@ mod tests {
         floating.panel_geometry[0].edge = None;
         floating.sanitize();
         assert_eq!(floating.dock.trigger, DockTrigger::Both);
-        // "Stay open" picked in Settings is a choice and survives the next dock.
+        // "Off" picked in Settings is a choice and survives the next dock.
         let mut chosen = old;
         chosen.dock.choose(DockTrigger::Off);
         chosen.dock.docked_by_choice();

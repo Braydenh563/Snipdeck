@@ -3195,8 +3195,8 @@ msgstr "此片段的更改尚未保存。"
 msgid "When Windows starts"
 msgstr "Windows 启动时"
 
-msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel tucks into its tab instead."
-msgstr "图钉关闭时，切换到其他应用后面板会立即隐藏。已固定的面板不会隐藏，已停靠的面板则会收成标签。"
+msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel that tucks goes to its tab instead."
+msgstr "图钉关闭时，切换到其他应用后面板会立即隐藏。已固定的面板不会隐藏，会收起的停靠面板则收成标签。"
 
 msgid "When you type an item's trigger in another program, Snipdeck replaces it with the item's text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items."
 msgstr "在其他程序中输入项目的触发词时，Snipdeck 会将其替换为该项目的文本。为此 Snipdeck 会监视你按下的按键，只在内存中保留最后几个字符，绝不写入磁盘。\n在密码框、设为“从不粘贴”的程序、以管理员身份运行的程序、Snipdeck 位于前台时以及敏感项目中不会展开。"

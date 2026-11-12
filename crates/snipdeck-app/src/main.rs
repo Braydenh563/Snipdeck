@@ -461,12 +461,19 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         &startup_chords.registrable(supporter_at_start),
     ));
 
-    // A docked Panel that tucks is never wholly hidden: started hidden, it is its tab at the
-    // screen edge, which needs the window shown and placed like any first show.
-    let starts_tucked = start_hidden && controller.borrow().starts_tucked();
-    if start_hidden && !starts_tucked {
-        controller.borrow_mut().hide();
+    if start_hidden {
+        // A docked Panel that tucks is never wholly hidden: it starts as its tab at the screen
+        // edge, on the monitor it was last left on. The controller places the tab before the
+        // window is shown, so the window is made there and the open Panel never flashes.
+        with_binding(Binding::start_hidden);
         frames_armed.set(true);
+        if controller.borrow().visible() {
+            window
+                .show()
+                .map_err(|e| format!("showing the Panel: {e}"))?;
+            snipdeck_app::trace!("first show (tab)");
+            attach_now();
+        }
     } else {
         window
             .show()
@@ -475,15 +482,10 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         restore_frame(&window);
         frames_armed.set(true);
         attach_now();
-        if start_hidden {
-            // Its tab where it is docked on this monitor; hidden where it is not.
-            with_binding(Binding::start_hidden);
-        } else {
-            // A first run (nothing in the library, tour not seen) opens the welcome tour.
-            let tour_due = controller.borrow().tour_due();
-            if tour_due && let Err(e) = onboarding_ui.open() {
-                eprintln!("snipdeck: cannot open the welcome tour: {e}");
-            }
+        // A first run (nothing in the library, tour not seen) opens the welcome tour.
+        let tour_due = controller.borrow().tour_due();
+        if tour_due && let Err(e) = onboarding_ui.open() {
+            eprintln!("snipdeck: cannot open the welcome tour: {e}");
         }
     }
     // The backup, the Trash purge (30 days, SPEC 5.7a) and the weekly check start 2 s after the

@@ -3203,8 +3203,8 @@ msgstr "Los cambios en este fragmento no se han guardado."
 msgid "When Windows starts"
 msgstr "Al iniciar Windows"
 
-msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel tucks into its tab instead."
-msgstr "Con la chincheta desactivada, el panel se oculta en cuanto cambias a otra aplicación. Un panel fijado se queda, y uno acoplado se recoge en su pestaña."
+msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel that tucks goes to its tab instead."
+msgstr "Con la chincheta desactivada, el panel se oculta en cuanto cambias a otra aplicación. Un panel fijado se queda, y uno acoplado que se recoge pasa a su pestaña."
 
 msgid "When you type an item's trigger in another program, Snipdeck replaces it with the item's text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items."
 msgstr "Cuando escribes el atajo de un elemento en otro programa, Snipdeck lo sustituye por el texto del elemento. Para ello Snipdeck observa las teclas que pulsas y guarda solo los últimos caracteres en memoria, nunca en disco.\nNo se expande nada en cuadros de contraseña, en programas configurados como «Nunca pegar», en programas que se ejecutan como administrador, mientras Snipdeck está en primer plano ni en elementos confidenciales."

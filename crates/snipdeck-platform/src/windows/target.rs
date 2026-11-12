@@ -30,8 +30,10 @@ use std::ffi::c_void;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::rc::Rc;
 
-use windows::Win32::Foundation::{HANDLE, HWND, POINT};
-use windows::Win32::Graphics::Gdi::ClientToScreen;
+use windows::Win32::Foundation::{HANDLE, HWND, POINT, RECT};
+use windows::Win32::Graphics::Gdi::{
+    ClientToScreen, GetMonitorInfoW, MONITOR_DEFAULTTONULL, MONITORINFO, MonitorFromPoint,
+};
 use windows::Win32::Security::{
     GetSidSubAuthority, GetSidSubAuthorityCount, GetTokenInformation, TOKEN_MANDATORY_LABEL,
     TOKEN_QUERY, TokenIntegrityLevel,
@@ -55,9 +57,11 @@ use windows::Win32::UI::Shell::{
     QUNS_BUSY, QUNS_PRESENTATION_MODE, QUNS_RUNNING_D3D_FULL_SCREEN, SHQueryUserNotificationState,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    EVENT_SYSTEM_FOREGROUND, GUITHREADINFO, GetClassNameW, GetDesktopWindow, GetForegroundWindow,
-    GetGUIThreadInfo, GetShellWindow, GetWindowTextW, GetWindowThreadProcessId, IsWindow,
-    SetForegroundWindow, WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS,
+    EVENT_SYSTEM_FOREGROUND, GA_ROOT, GUITHREADINFO, GWL_EXSTYLE, GWL_STYLE, GetAncestor,
+    GetClassNameW, GetDesktopWindow, GetForegroundWindow, GetGUIThreadInfo, GetShellWindow,
+    GetWindowLongW, GetWindowRect, GetWindowTextW, GetWindowThreadProcessId, IsWindow,
+    IsWindowVisible, SetForegroundWindow, WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS,
+    WindowFromPoint,
 };
 use windows::core::{BOOL, Owned, PWSTR};
 
@@ -833,5 +837,79 @@ pub fn fullscreen_in_front() -> bool {
     matches!(
         state,
         Ok(QUNS_BUSY | QUNS_RUNNING_D3D_FULL_SCREEN | QUNS_PRESENTATION_MODE)
+    )
+}
+
+/// Whether a full-screen window (a game, a video, a slide show) covers the monitor that holds
+/// the physical point `(x, y)`: the foreground window, or the window in the middle of that
+/// monitor (a video left playing on a second screen is not in front, and covers it all the
+/// same). Only that monitor: [`fullscreen_in_front`] speaks for the whole session. The
+/// desktop, the shell and this process's own windows never count.
+#[must_use]
+pub fn fullscreen_covers(x: i32, y: i32) -> bool {
+    // SAFETY: plain call; a point on no monitor gives a null handle.
+    let monitor = unsafe { MonitorFromPoint(POINT { x, y }, MONITOR_DEFAULTTONULL) };
+    if monitor.is_invalid() {
+        return false;
+    }
+    let mut info = MONITORINFO {
+        cbSize: u32::try_from(size_of::<MONITORINFO>()).unwrap_or(0),
+        ..Default::default()
+    };
+    // SAFETY: `info` is initialised with its size, as the call requires, and outlives the call.
+    if !unsafe { GetMonitorInfoW(monitor, &raw mut info) }.as_bool() {
+        return false;
+    }
+    let area = info.rcMonitor;
+    let middle = POINT {
+        x: area.left.midpoint(area.right),
+        y: area.top.midpoint(area.bottom),
+    };
+    // SAFETY: no preconditions; each gives a null handle when there is no such window.
+    let (front, there) = unsafe {
+        (
+            GetForegroundWindow(),
+            GetAncestor(WindowFromPoint(middle), GA_ROOT),
+        )
+    };
+    [front, there]
+        .into_iter()
+        .any(|hwnd| covers_monitor(hwnd, area))
+}
+
+/// Whether `hwnd` is another program's visible window that is full-screen on the monitor with
+/// the bounds `area` ([`win_logic::is_fullscreen_window`]).
+fn covers_monitor(hwnd: HWND, area: RECT) -> bool {
+    if hwnd.is_invalid() || is_shell_surface(hwnd) {
+        return false;
+    }
+    let mut pid = 0u32;
+    // SAFETY: `pid` is a valid out-parameter; a stale handle leaves it 0.
+    unsafe { GetWindowThreadProcessId(hwnd, Some(&raw mut pid)) };
+    // SAFETY: no arguments, no preconditions.
+    if pid == 0 || pid == unsafe { GetCurrentProcessId() } {
+        return false;
+    }
+    // SAFETY: a stale handle makes the call return false.
+    if !unsafe { IsWindowVisible(hwnd) }.as_bool() {
+        return false;
+    }
+    let mut frame = RECT::default();
+    // SAFETY: `frame` is a valid RECT that outlives the call; a stale handle is an error.
+    if unsafe { GetWindowRect(hwnd, &raw mut frame) }.is_err() {
+        return false;
+    }
+    // SAFETY: plain reads of the window's style words; a stale handle gives 0.
+    let (style, ex_style) = unsafe {
+        (
+            GetWindowLongW(hwnd, GWL_STYLE),
+            GetWindowLongW(hwnd, GWL_EXSTYLE),
+        )
+    };
+    win_logic::is_fullscreen_window(
+        (frame.left, frame.top, frame.right, frame.bottom),
+        (area.left, area.top, area.right, area.bottom),
+        style.cast_unsigned(),
+        ex_style.cast_unsigned(),
     )
 }

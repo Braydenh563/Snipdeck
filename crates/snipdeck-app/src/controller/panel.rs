@@ -698,6 +698,8 @@ where
             return Vec::new();
         }
         self.resizing = true;
+        self.resize_button_seen = false;
+        self.resize_at = self.clock.now();
         vec![Effect::ResizeWindow(edge)]
     }
 
@@ -723,6 +725,10 @@ where
             // Minimised (Windows parks it far off screen), or not yet laid out: not a place
             // the user chose, and storing it would change the size the Panel comes back with.
             return Vec::new();
+        }
+        if resized && self.resizing {
+            // A resize under way says so with each new size.
+            self.resize_at = self.clock.now();
         }
         if self.dragging() {
             // A drag remembers its own end.
@@ -780,7 +786,7 @@ where
             )
         };
         let place = dock(self.settings.dock.full_edge);
-        let mut geometry = old.clone();
+        let mut geometry = self.geometry_on(monitor);
         if full {
             // A full-edge dock reports the work area's height back; the Panel's own height and
             // place along the edge stay remembered, so turning the full edge off gives them back.
@@ -814,13 +820,23 @@ where
         })
     }
 
-    /// Places the Panel at the anchor a [`show`](Self::show) read, once; nothing when it read
-    /// none. For a first show whose window cannot say what monitor it is on yet (a `--hidden`
-    /// start): the anchor needs no monitor of the window's, only the last known one for the size.
+    /// The Panel is about to be shown and its window cannot say what monitor it is on: it does
+    /// not exist before the first show (the host makes it once its event loop runs). Places it
+    /// at the anchor a [`show`](Self::show) read, once; else, the first time, where it was
+    /// left on the monitor it was last left on ([`find_monitor`](Self::find_monitor)), so that
+    /// the window is made there and not wherever the system puts a new one.
     pub fn restore_anchor(&mut self) -> Vec<Effect> {
         let Some(anchor) = self.session.open_anchor.take() else {
-            return Vec::new();
+            if !self.unplaced {
+                return Vec::new();
+            }
+            let known = self.monitor.clone();
+            return match known.or_else(|| self.find_monitor()) {
+                Some(monitor) => self.restore_on(&monitor),
+                None => Vec::new(),
+            };
         };
+        self.unplaced = false;
         let (x, y) = anchor.point();
         let Some(fallback) = self
             .monitor
@@ -853,6 +869,7 @@ where
     /// Puts the Panel where the user left it on `monitor`.
     fn restore_on(&mut self, monitor: &Monitor) -> Vec<Effect> {
         self.monitor = Some(monitor.clone());
+        self.unplaced = false;
         self.dock_resync();
         self.placement(monitor)
             .map(Effect::PlaceWindow)

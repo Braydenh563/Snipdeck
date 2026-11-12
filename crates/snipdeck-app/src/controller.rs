@@ -285,9 +285,16 @@ pub struct Controller<S, C, K, T> {
     drag_button_seen: bool,
     /// The Panel's window has the keyboard: a docked Panel then stays out.
     panel_focused: bool,
-    /// An OS resize of the Panel was started and its button is still down: a docked Panel
+    /// An OS resize of the Panel was started and is not known to be over: a docked Panel
     /// stays out meanwhile, wherever the pointer goes.
     resizing: bool,
+    /// Nothing has placed the Panel's window yet: the first show does, where the window
+    /// itself cannot say what monitor it is on (it does not exist before that show).
+    unplaced: bool,
+    /// The button was read as down during this resize: only then is "up" believed.
+    resize_button_seen: bool,
+    /// When this resize began, or the window last reported a new size in it.
+    resize_at: Timestamp,
     /// The Panel was just docked from a menu or from Settings and the pointer has not been on
     /// it since: it stays out until it has, so that it does not tuck away under the hand that
     /// docked it.
@@ -297,8 +304,9 @@ pub struct Controller<S, C, K, T> {
     /// The work area the dock's timer last read for the Panel's monitor: a change in it (the
     /// taskbar moved) places the dock again.
     dock_area_seen: Option<(String, crate::frame::Rect)>,
-    /// A full-screen app was in front at the last dock tick: the docked Panel keeps out of its
-    /// way (not topmost, no reveal under the pointer) unless it has the keyboard.
+    /// A full-screen app covered the Panel's monitor at the last dock tick: the docked Panel
+    /// keeps out of its way (not topmost, no reveal under the pointer) unless it has the
+    /// keyboard.
     fullscreen: bool,
     /// Placements decided outside a Panel gesture, waiting for the binding.
     pending: Vec<Effect>,
@@ -483,6 +491,9 @@ where
             drag_button_seen: false,
             panel_focused: false,
             resizing: false,
+            unplaced: true,
+            resize_button_seen: false,
+            resize_at: shown_at,
             dock_fresh: false,
             docked_at: shown_at,
             dock_area_seen: None,
@@ -848,8 +859,8 @@ where
 
     /// Whether the Panel's window is kept above the others: pinned, or docked with a tab that
     /// must stay reachable. It steps down while one of the app's own windows has the focus, and
-    /// a docked one while a full-screen app is in front (unless it has the keyboard: the hotkey
-    /// still opens it there).
+    /// a docked one while a full-screen app covers its monitor (unless it has the keyboard: the
+    /// hotkey still opens it there).
     #[must_use]
     pub fn topmost(&self) -> bool {
         // A dock that tucks is above the others whatever the pin says, and under a full-screen
@@ -874,27 +885,20 @@ where
         }
     }
 
-    /// The app started with the Panel not shown, and the window has been placed where it was
-    /// left ([`restore_frame`](Self::restore_frame)): a docked Panel that tucks starts as its
-    /// tab, which is always there; any other stays hidden.
+    /// The app started with the Panel not shown. A docked Panel that tucks starts as its tab,
+    /// which is always there ([`visible`](Self::visible) stays true: the host shows the
+    /// window); any other stays hidden. Nothing has said what monitor the Panel is on yet (it
+    /// has no window): it is the one the Panel was last left on, where the host can find it.
     pub fn start_hidden(&mut self) -> Vec<Effect> {
+        if self.monitor.is_none() {
+            self.find_monitor();
+        }
         if self.dock_live() {
+            self.unplaced = false;
             self.dock_tuck()
         } else {
             self.hide()
         }
-    }
-
-    /// Whether a start with the Panel hidden shows the window all the same, as the tab of a
-    /// docked Panel: some monitor has it docked and the dock tucks.
-    #[must_use]
-    pub fn starts_tucked(&self) -> bool {
-        self.settings.dock.trigger != crate::settings::DockTrigger::Off
-            && self
-                .settings
-                .panel_geometry
-                .iter()
-                .any(|g| g.edge.is_some())
     }
 
     /// Shows the Panel (a second launch, the tray, the toggle hotkey). The Target is read

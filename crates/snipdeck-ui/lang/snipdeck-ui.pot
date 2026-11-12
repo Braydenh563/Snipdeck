@@ -4263,7 +4263,7 @@ msgid "When Windows starts"
 msgstr ""
 
 #: ui/settings.slint:893
-msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel tucks into its tab instead."
+msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel that tucks goes to its tab instead."
 msgstr ""
 
 #: ui/settings.slint:1262

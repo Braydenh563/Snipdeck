@@ -3203,8 +3203,8 @@ msgstr "Deine Änderungen an diesem Textbaustein wurden nicht gespeichert."
 msgid "When Windows starts"
 msgstr "Beim Start von Windows"
 
-msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel tucks into its tab instead."
-msgstr "Ist die Pinnnadel aus, blendet sich das Panel aus, sobald du zu einer anderen App wechselst. Ein angeheftetes Panel bleibt, ein angedocktes zieht sich stattdessen zu seinem Reiter zurück."
+msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel that tucks goes to its tab instead."
+msgstr "Ist die Pinnnadel aus, blendet sich das Panel aus, sobald du zu einer anderen App wechselst. Ein angeheftetes Panel bleibt, und ein angedocktes, das sich zurückzieht, geht stattdessen zu seinem Reiter."
 
 msgid "When you type an item's trigger in another program, Snipdeck replaces it with the item's text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items."
 msgstr "Wenn du das Kürzel eines Eintrags in einem anderen Programm tippst, ersetzt Snipdeck es durch den Text des Eintrags. Dafür beobachtet Snipdeck die gedrückten Tasten und behält nur die letzten Zeichen im Arbeitsspeicher, nie auf der Festplatte.\nIn Passwortfeldern, in Programmen mit „Nie einfügen“, in Programmen mit Administratorrechten, solange Snipdeck im Vordergrund ist, und bei vertraulichen Einträgen wird nichts erweitert."

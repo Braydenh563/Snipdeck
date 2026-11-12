@@ -3203,8 +3203,8 @@ msgstr "Les modifications de cet extrait n'ont pas été enregistrées."
 msgid "When Windows starts"
 msgstr "Au démarrage de Windows"
 
-msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel tucks into its tab instead."
-msgstr "Quand l'épingle est désactivée, le panneau se masque dès que tu passes à une autre application. Un panneau épinglé reste, et un panneau ancré se replie en son onglet."
+msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel that tucks goes to its tab instead."
+msgstr "Quand l'épingle est désactivée, le panneau se masque dès que tu passes à une autre application. Un panneau épinglé reste, et un panneau ancré qui se replie devient son onglet."
 
 msgid "When you type an item's trigger in another program, Snipdeck replaces it with the item's text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items."
 msgstr "Quand vous tapez le raccourci d’un élément dans un autre programme, Snipdeck le remplace par le texte de l’élément. Pour cela, Snipdeck surveille les touches pressées et ne garde que les derniers caractères en mémoire, jamais sur le disque.\nRien n’est développé dans les champs de mot de passe, dans les programmes réglés sur « Ne jamais coller », dans les programmes exécutés en administrateur, quand Snipdeck est au premier plan ni pour les éléments sensibles."

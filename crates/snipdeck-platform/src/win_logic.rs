@@ -204,6 +204,30 @@ pub fn is_shell_surface_class(class: &str) -> bool {
     SHELL_CLASSES.iter().any(|c| c.eq_ignore_ascii_case(class))
 }
 
+/// `WS_DLGFRAME | WS_THICKFRAME`: a window that has either can be moved or sized by its frame.
+const FRAMED_STYLES: u32 = 0x0040_0000 | 0x0004_0000;
+/// `WS_EX_WINDOWEDGE | WS_EX_TOOLWINDOW`.
+const FRAMED_EX_STYLES: u32 = 0x0000_0100 | 0x0000_0080;
+
+/// Whether a window is full-screen on a monitor: it covers the whole of it and has no frame (a
+/// game, a video, a slide show, a browser after F11). `window` and `monitor` are
+/// `(left, top, right, bottom)` in physical pixels, `style` and `ex_style` the window's.
+///
+/// A maximised window covers the whole monitor too where the taskbar hides itself, but it
+/// keeps its frame styles, so it does not count.
+pub fn is_fullscreen_window(
+    window: (i32, i32, i32, i32),
+    monitor: (i32, i32, i32, i32),
+    style: u32,
+    ex_style: u32,
+) -> bool {
+    let covers = window.0 <= monitor.0
+        && window.1 <= monitor.1
+        && window.2 >= monitor.2
+        && window.3 >= monitor.3;
+    covers && style & FRAMED_STYLES == 0 && ex_style & FRAMED_EX_STYLES == 0
+}
+
 /// Window classes of the Alt+Tab switcher and Task View. Explorer shows one of them as the
 /// foreground window while the user picks a window, then destroys it: as a Target it would be
 /// gone by the time the user pastes, so Alt+Tab to the Panel would leave nothing to paste into.
@@ -572,6 +596,34 @@ mod tests {
         ] {
             assert!(!is_shell_surface_class(class), "{class}");
         }
+    }
+
+    #[test]
+    fn a_window_is_full_screen_when_it_covers_its_monitor_and_has_no_frame() {
+        const POPUP: u32 = 0x8000_0000 | 0x1000_0000;
+        const OVERLAPPED_FRAME: u32 = 0x00C0_0000 | 0x0004_0000 | 0x1000_0000;
+        let monitor = (1920, 0, 4480, 1440);
+        // A game or a video: a borderless window over the whole monitor.
+        assert!(is_fullscreen_window(monitor, monitor, POPUP, 0));
+        // One that spans more than the monitor still covers it.
+        assert!(is_fullscreen_window((0, 0, 4480, 1440), monitor, POPUP, 0));
+        // Maximised where the taskbar hides: as large (and a frame larger), but framed.
+        assert!(!is_fullscreen_window(
+            (1912, -8, 4488, 1448),
+            monitor,
+            OVERLAPPED_FRAME,
+            0x0000_0100
+        ));
+        // Borderless but smaller, or on the monitor beside this one.
+        assert!(!is_fullscreen_window(
+            (1920, 0, 4480, 1400),
+            monitor,
+            POPUP,
+            0
+        ));
+        assert!(!is_fullscreen_window((0, 0, 1920, 1080), monitor, POPUP, 0));
+        // A tool window (an overlay, a widget bar) is not an app in front.
+        assert!(!is_fullscreen_window(monitor, monitor, POPUP, 0x0000_0080));
     }
 
     #[test]

@@ -103,6 +103,55 @@ fn panel_drag_held_at_an_edge_says_release_to_dock() {
     }
 }
 
+/// A drag held at the top edge: the Panel is shown as short as a top dock is, and the frame and the badge fit
+/// in it.
+#[test]
+fn panel_drag_held_at_the_top_edge_fits_a_short_dock() {
+    let h = list_panel((SIZE.0, 260), false);
+    h.component.set_dragging(true);
+    h.component.set_dock_preview(3);
+    assert_golden("panel-dock-preview-top-light", &render(&h));
+}
+
+/// "Release to dock" is text on the accent badge: 4.5:1 in both themes, and the badge 3:1 against the Panel.
+#[test]
+fn release_to_dock_reads_on_its_badge_in_both_themes() {
+    for (dark, bg) in [(false, APP_LIGHT), (true, APP_DARK)] {
+        let h = panel(SIZE, dark);
+        h.component.set_dragging(true);
+        h.component.set_dock_preview(2);
+        let f = render(&h);
+        // The badge is in the middle of the Panel; its fill is the colour most of its middle wears.
+        let (mid_x, mid_y) = (SIZE.0 / 2, SIZE.1 / 2);
+        let pixels: Vec<[u8; 3]> = (mid_x - 30..mid_x + 30)
+            .flat_map(|x| (mid_y - 6..mid_y + 6).map(move |y| (x, y)))
+            .map(|(x, y)| f.pixel(x, y))
+            .collect();
+        let mut counts = std::collections::HashMap::new();
+        for p in &pixels {
+            *counts.entry(*p).or_insert(0_usize) += 1;
+        }
+        let fill = counts
+            .into_iter()
+            .max_by_key(|&(_, n)| n)
+            .map(|(p, _)| p)
+            .expect("pixels");
+        let label = pixels
+            .iter()
+            .map(|p| contrast(*p, fill))
+            .fold(0.0_f64, f64::max);
+        assert!(
+            label >= 4.5,
+            "dark={dark}: the label is {label:.2}:1 on its badge"
+        );
+        assert!(
+            contrast(fill, bg) >= 3.0,
+            "dark={dark}: the badge is {:.2}:1 against the Panel",
+            contrast(fill, bg)
+        );
+    }
+}
+
 /// A floating Panel while it is dragged: only the pill says so.
 #[test]
 fn panel_dragged_floating_shows_the_accent_pill_and_no_frame() {
