@@ -7,6 +7,8 @@
     clippy::expect_used,
     clippy::unwrap_used,
     clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
     reason = "test code: a failure is a failed test"
 )]
 
@@ -49,7 +51,7 @@ type Ctl = Controller<
 struct Rig {
     h: Harness<PanelWindow>,
     ctl: Rc<RefCell<Ctl>>,
-    _binding: Binding,
+    binding: Binding,
 }
 
 fn rig(dark: bool, size: (u32, u32)) -> Rig {
@@ -70,7 +72,7 @@ fn rig(dark: bool, size: (u32, u32)) -> Rig {
     Rig {
         h,
         ctl,
-        _binding: binding,
+        binding,
     }
 }
 
@@ -1279,7 +1281,7 @@ fn a_colour_card_paints_its_colour_and_a_checker_for_a_clear_one_and_names_its_k
         ));
     }
     r.h.component.invoke_close_colours();
-    r._binding.redraw();
+    r.binding.redraw();
     r.settle();
     let tile = |hex: &str| {
         r.rows(AccessibleRole::Image)
