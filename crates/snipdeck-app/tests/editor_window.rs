@@ -749,6 +749,9 @@ fn a_sensitive_item_made_in_the_window_is_stored_encrypted_and_never_drafted() {
         let ed = r.ed();
         type_text(ed.window(), "Vault");
         ed.set_content("WINDOW-NEEDLE-4411".into());
+        // Tall enough that Privacy, the last field under "More options", is in view.
+        ed.window().set_size(slint::LogicalSize::new(560.0, 1400.0));
+        settle();
         let toggle = find(&ed, "Sensitive item", AccessibleRole::Switch);
         click(ed.window(), &toggle);
         assert!(ed.get_sensitive());

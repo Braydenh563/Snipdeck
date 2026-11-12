@@ -237,6 +237,9 @@ msgstr "Am Textcursor"
 msgid "Back"
 msgstr "Zurück"
 
+msgid "Back to editing (Ctrl+P)"
+msgstr "Zurück zum Bearbeiten (Strg+P)"
+
 msgid "Back up now"
 msgstr "Jetzt sichern"
 
@@ -719,6 +722,9 @@ msgstr "Datenbank neu aufgebaut: {} Textbausteine wiederhergestellt. Neuere Text
 
 msgid "Date and time in a format you choose"
 msgstr "Datum und Uhrzeit in einem Format deiner Wahl"
+
+msgid "Dates are today's; a field you fill in when you use the item shows its name or default."
+msgstr "Datumsangaben sind von heute; ein Feld, das Sie beim Verwenden ausfüllen, zeigt seinen Namen oder Standardwert."
 
 msgid "Delete"
 msgstr "Löschen"
@@ -1374,6 +1380,9 @@ msgstr "Protokolle werden nur geschrieben, wenn Snipdeck abstürzt, enthalten ke
 msgid "Love"
 msgstr "Liebe"
 
+msgid "Main list"
+msgstr "Hauptliste"
+
 msgid "Main list density"
 msgstr "Dichte der Hauptlisten"
 
@@ -1777,6 +1786,9 @@ msgstr "Benutzerhandbuch öffnen (F1)"
 msgid "Opening the Panel"
 msgstr "Das Panel öffnen"
 
+msgid "Opens"
+msgstr "Öffnet"
+
 msgid "Opens in your browser."
 msgstr "Öffnet sich in deinem Browser."
 
@@ -1999,6 +2011,15 @@ msgstr "Drücke dein Panel-Tastenkürzel in einer beliebigen App, um deine Textb
 msgid "Preview"
 msgstr "Vorschau"
 
+msgid "Preview how this item will look (Ctrl+P)"
+msgstr "Vorschau, wie dieser Eintrag aussehen wird (Strg+P)"
+
+msgid "Preview, off. Show how this item will look"
+msgstr "Vorschau aus. Zeigt, wie dieser Eintrag aussehen wird"
+
+msgid "Preview, on. Back to editing"
+msgstr "Vorschau an. Zurück zum Bearbeiten"
+
 msgid "Previous list"
 msgstr "Vorherige Liste"
 
@@ -2167,6 +2188,9 @@ msgid "Restored {} item from the backup"
 msgid_plural "Restored {} items from the backup"
 msgstr[0] "{} Textbaustein aus der Sicherung wiederhergestellt"
 msgstr[1] "{} Textbausteine aus der Sicherung wiederhergestellt"
+
+msgid "Result with sample values"
+msgstr "Ergebnis mit Beispielwerten"
 
 msgid "Results"
 msgstr "Ergebnisse"
@@ -2428,6 +2452,9 @@ msgstr "Schiefergrau"
 
 msgid "Slide the panel along the edge"
 msgstr "Panel am Rand entlang verschieben"
+
+msgid "Small panel"
+msgstr "Kleines Panel"
 
 msgid "Smileys & Emotion"
 msgstr "Smileys & Emotionen"
@@ -2942,6 +2969,9 @@ msgstr "Schaltest du das aus, beendet das Schließen des Panels oder des Hauptfe
 msgid "Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off."
 msgstr "Schaltet das Gleiten und Ein- und Ausblenden in Snipdeck aus. Es ist auch aus, wenn Windows die Animationseffekte deaktiviert hat."
 
+msgid "Type"
+msgstr "Typ"
+
 msgid "Type a command"
 msgstr "Befehl eingeben"
 
@@ -3004,6 +3034,9 @@ msgstr "Ausgewählten Textbaustein lösen"
 
 msgid "Unpin them the same way."
 msgstr "Löse sie auf dieselbe Weise."
+
+msgid "Unsaved: this is how the item will look once you save it."
+msgstr "Nicht gespeichert: So sieht der Eintrag nach dem Speichern aus."
 
 msgid "Use"
 msgstr "Verwenden"

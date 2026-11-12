@@ -237,6 +237,9 @@ msgstr "En el cursor de texto"
 msgid "Back"
 msgstr "Atrás"
 
+msgid "Back to editing (Ctrl+P)"
+msgstr "Volver a editar (Ctrl+P)"
+
 msgid "Back up now"
 msgstr "Hacer copia ahora"
 
@@ -719,6 +722,9 @@ msgstr "Base de datos reconstruida: {} elementos restaurados. No se pudieron lee
 
 msgid "Date and time in a format you choose"
 msgstr "Fecha y hora en el formato que elijas"
+
+msgid "Dates are today's; a field you fill in when you use the item shows its name or default."
+msgstr "Las fechas son las de hoy; un campo que rellenas al usar el elemento muestra su nombre o valor predeterminado."
 
 msgid "Delete"
 msgstr "Eliminar"
@@ -1374,6 +1380,9 @@ msgstr "Los registros solo se escriben cuando Snipdeck se cierra por un error, n
 msgid "Love"
 msgstr "Amor"
 
+msgid "Main list"
+msgstr "Lista principal"
+
 msgid "Main list density"
 msgstr "Densidad de las listas principales"
 
@@ -1777,6 +1786,9 @@ msgstr "Abrir la guía del usuario (F1)"
 msgid "Opening the Panel"
 msgstr "Apertura del panel"
 
+msgid "Opens"
+msgstr "Abre"
+
 msgid "Opens in your browser."
 msgstr "Se abre en el navegador."
 
@@ -1999,6 +2011,15 @@ msgstr "Pulsa el atajo del panel en cualquier aplicación para mostrar tus eleme
 msgid "Preview"
 msgstr "Vista previa"
 
+msgid "Preview how this item will look (Ctrl+P)"
+msgstr "Ver cómo quedará este elemento (Ctrl+P)"
+
+msgid "Preview, off. Show how this item will look"
+msgstr "Vista previa desactivada. Muestra cómo quedará este elemento"
+
+msgid "Preview, on. Back to editing"
+msgstr "Vista previa activada. Volver a editar"
+
 msgid "Previous list"
 msgstr "Lista anterior"
 
@@ -2167,6 +2188,9 @@ msgid "Restored {} item from the backup"
 msgid_plural "Restored {} items from the backup"
 msgstr[0] "Restaurado {} elemento de la copia de seguridad"
 msgstr[1] "Restaurados {} elementos de la copia de seguridad"
+
+msgid "Result with sample values"
+msgstr "Resultado con valores de ejemplo"
 
 msgid "Results"
 msgstr "Resultados"
@@ -2428,6 +2452,9 @@ msgstr "Pizarra"
 
 msgid "Slide the panel along the edge"
 msgstr "Deslizar el panel a lo largo del borde"
+
+msgid "Small panel"
+msgstr "Panel pequeño"
 
 msgid "Smileys & Emotion"
 msgstr "Emoticonos y emociones"
@@ -2942,6 +2969,9 @@ msgstr "Si lo desactivas, al cerrar el panel o la ventana principal se cierra Sn
 msgid "Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off."
 msgstr "Desactiva los deslizamientos y desvanecimientos en Snipdeck. También se desactiva cuando Windows tiene desactivados los efectos de animación."
 
+msgid "Type"
+msgstr "Tipo"
+
 msgid "Type a command"
 msgstr "Escribe un comando"
 
@@ -3004,6 +3034,9 @@ msgstr "Desfijar el elemento seleccionado"
 
 msgid "Unpin them the same way."
 msgstr "Desfíjalos del mismo modo."
+
+msgid "Unsaved: this is how the item will look once you save it."
+msgstr "Sin guardar: así se verá el elemento una vez guardado."
 
 msgid "Use"
 msgstr "Usar"
