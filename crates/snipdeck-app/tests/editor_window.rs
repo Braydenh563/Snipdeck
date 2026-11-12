@@ -1230,22 +1230,44 @@ fn tab_walks_the_form_and_the_preview_without_a_trap() {
         settle();
         assert!(ed.get_preview_on(), "Ctrl+P still works after a full walk");
 
-        // Preview on: after every Tab and Shift+Tab the window still hears Ctrl+P (twice: off, then on again).
-        // A hidden item cannot keep the focus, so a key that finds nothing to take it would be lost here.
-        let flips = |what: &str| {
-            for want in [false, true] {
+        // Preview on: one continuous walk each way edits nothing in the hidden form.
+        let (content, title) = (ed.get_content(), ed.get_item_title());
+        for _ in 0..TABS {
+            press(ed.window(), &key(Key::Tab));
+            type_text(ed.window(), "§");
+        }
+        for _ in 0..TABS {
+            chord(ed.window(), &[Key::Shift], &key(Key::Tab));
+            type_text(ed.window(), "§");
+        }
+        assert_eq!(
+            (ed.get_content(), ed.get_item_title()),
+            (content, title),
+            "nothing was typed into the hidden form"
+        );
+
+        // At every depth the keyboard is still in the window: open Preview (the focus starts on the toggle), press
+        // Tab k times, and Ctrl+P must still leave Preview. Then the same with Shift+Tab.
+        for shift in [false, true] {
+            for k in 1..=TABS {
+                assert!(ed.get_preview_on());
+                for _ in 0..k {
+                    if shift {
+                        chord(ed.window(), &[Key::Shift], &key(Key::Tab));
+                    } else {
+                        press(ed.window(), &key(Key::Tab));
+                    }
+                }
                 chord(ed.window(), &[Key::Control], "p");
                 settle();
-                assert_eq!(ed.get_preview_on(), want, "Ctrl+P after {what}");
+                assert!(
+                    !ed.get_preview_on(),
+                    "Ctrl+P leaves Preview after {k} {}",
+                    if shift { "Shift+Tab" } else { "Tab" }
+                );
+                chord(ed.window(), &[Key::Control], "p");
+                settle();
             }
-        };
-        for i in 0..TABS {
-            press(ed.window(), &key(Key::Tab));
-            flips(&format!("Tab {i}"));
-        }
-        for i in 0..TABS {
-            chord(ed.window(), &[Key::Shift], &key(Key::Tab));
-            flips(&format!("Shift+Tab {i}"));
         }
         assert!(ed.get_preview_on());
         chord(ed.window(), &[Key::Control], "p");
@@ -1416,5 +1438,49 @@ fn trigger_field_hidden_for_sensitive() {
         assert!(ed.get_sensitive());
         settle();
         assert!(missing(&ed, "Trigger", AccessibleRole::TextInput));
+    });
+}
+
+#[test]
+fn a_focus_request_left_by_a_refused_file_does_not_survive_opening_a_file_item() {
+    on_ui_thread(|| {
+        let r = rig();
+        let files = tempfile::tempdir().expect("dir");
+        let path = files.path().join("notes.txt");
+        fs::write(&path, b"file body").expect("write");
+        // A saved File item to open later.
+        menu(&r, "New item");
+        let ed = r.ed();
+        click(ed.window(), &find(&ed, "File", AccessibleRole::RadioButton));
+        ed.set_source_path(path.to_str().expect("utf8").into());
+        ed.set_item_title("Notes".into());
+        settle();
+        save(&ed);
+        assert!(!r.editor_shown());
+        let id = r.id("Notes");
+
+        // A new File item refused in Preview leaves a request for the path field.
+        menu(&r, "New item");
+        let ed = r.ed();
+        click(ed.window(), &find(&ed, "File", AccessibleRole::RadioButton));
+        settle();
+        preview_on(&ed);
+        save(&ed);
+        assert_eq!(ed.get_source_focus_request(), 1);
+        press(ed.window(), &key(Key::Escape));
+        if ed.get_discard_open() {
+            find(&ed, "Discard", AccessibleRole::Button).invoke_accessible_default_action();
+        }
+        settle();
+        assert!(!r.editor_shown());
+
+        // The saved File item opens with the same kind as the window had: only the fill can clear the request.
+        r.ctl.borrow_mut().open_item_editor(id);
+        r.editor.redraw();
+        settle();
+        let ed = r.ed();
+        assert_eq!(ed.get_kind_index(), 5);
+        assert!(!ed.get_is_new());
+        assert_eq!(ed.get_source_focus_request(), 0);
     });
 }
