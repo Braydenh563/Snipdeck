@@ -969,3 +969,56 @@ fn the_editor_fields_have_roles_labels_and_big_enough_targets() {
         let _ = (&r.ctl, &r.data);
     });
 }
+
+#[test]
+fn preview_shows_the_unsaved_item_from_the_button_and_ctrl_p_and_loses_nothing() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        assert!(!ed.get_preview_on(), "a fresh editor opens on the form");
+        ed.set_kind_index(3);
+        ed.set_item_title("".into());
+        ed.set_content("Hi {field:Who}, on {date}".into());
+        ed.set_label_index(2);
+        let before = r.item_count();
+
+        // The header button turns it on; the card is built from the typed, unsaved fields.
+        let toggle = find(&ed, "Preview, off. Show how this item will look", AccessibleRole::Button);
+        click(ed.window(), &toggle);
+        assert!(ed.get_preview_on());
+        assert_eq!(ed.get_preview_title(), "Hi {field:Who}, on {date}");
+        assert_eq!(ed.get_preview_excerpt(), "Hi {field:Who}, on {date}");
+        assert!(
+            ed.get_preview_expanded().starts_with("Hi ‹Who›, on 2026-10-1"),
+            "{}",
+            ed.get_preview_expanded()
+        );
+        assert_eq!(ed.get_preview_link(), "");
+        assert_eq!(r.item_count(), before, "previewing saves nothing");
+
+        // Ctrl+P turns it off; every field is as it was and the item is still unsaved.
+        chord(ed.window(), &[Key::Control], "p");
+        settle();
+        assert!(!ed.get_preview_on());
+        assert_eq!(ed.get_content(), "Hi {field:Who}, on {date}");
+        assert_eq!(ed.get_kind_index(), 3);
+        assert_eq!(ed.get_label_index(), 2);
+
+        // A change made after the first look shows on the next one; Ctrl+P also turns it on.
+        ed.set_kind_index(2);
+        ed.set_content("https://docs.example.com/a?b=1".into());
+        chord(ed.window(), &[Key::Control], "p");
+        settle();
+        assert!(ed.get_preview_on());
+        assert_eq!(ed.get_preview_link(), "docs.example.com");
+        assert_eq!(ed.get_preview_expanded(), "");
+
+        // Save still works from the preview (Ctrl+Enter), and a fresh editor starts on the form.
+        save(&ed);
+        assert!(!r.editor_shown());
+        assert_eq!(r.item_count(), before + 1);
+        menu(&r, "New item");
+        assert!(!r.ed().get_preview_on());
+    });
+}
