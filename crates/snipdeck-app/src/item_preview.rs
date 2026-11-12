@@ -96,9 +96,8 @@ pub fn card_of(
         ItemKind::Link => match item_editor::check_link(text) {
             // A sensitive link's host is as secret as the link.
             Ok(url) if !sensitive => card.link = Some(link_display(&url)),
-            Ok(_) => {}
             Err(p) if !text.trim().is_empty() => card.problem = Some(p),
-            Err(_) => {}
+            _ => {}
         },
         ItemKind::Template if !text.trim().is_empty() => match Template::parse(text) {
             Ok(_) if item_editor::check_template(text, prompted_allowed, true).is_err() => {
