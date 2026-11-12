@@ -5,6 +5,30 @@ reliability and UX work first. PR #5 (`claude/compassionate-pascal-pod8ux`) stay
 Do not merge, tag or run `release.yml`. Version and CHANGELOG already say 1.0.0; keep them, but fix the CHANGELOG
 date at the real release. The owner capped this session at 96% weekly usage; the limit resets 2026-10-24T07:00Z.
 
+## Next: a real Windows installer + Microsoft Store package (owner ask, 2026-11-12)
+Owner: "I want a proper windows installer ... download the app as an actual app and not just the project where I have
+to run the .bat file. We plan on adding it to the Microsoft store but also a regular installer (exe or msi)."
+Decision (Claude, recorded once): two channels from one release build.
+1. **Regular installer: per-user Inno Setup `.exe`** (`Snipdeck-Setup-<ver>.exe`): no admin prompt, installs to
+   `%LOCALAPPDATA%\Programs\Snipdeck`, Start-menu shortcut, optional desktop shortcut and "start with Windows",
+   Apps & features uninstall entry that keeps the library (erase is a separate choice), in-place upgrade that closes
+   the running app first (single-instance mutex), signed when SignPath is set up. Reason: the simplest thing for a
+   home user, upgrades cleanly, builds on the GitHub Windows runner (Inno Setup is preinstalled). MSI (WiX) only if
+   a business asks for Group Policy deployment.
+2. **Microsoft Store: MSIX** from the existing scaffold (`packaging/msix/AppxManifest.xml`, `scripts/make_msix_assets.py`,
+   `docs/packaging.md` section 1): Store signs it; autostart via the `StartupTask` extension; no self-update in the
+   Store build; check data paths under MSIX file-system virtualisation.
+Existing: `release.yml` builds only a portable zip (+ SHA-256, attestation); the `.bat` launcher in `tools/launcher`
+is the developer route. Plan (next session, workflow):
+- Scout: how the app finds its data dir and portable mode, autostart code, single-instance mutex, version source,
+  `release.yml`/`release-build.yml` steps, the MSIX manifest's gaps.
+- Build: `packaging/inno/snipdeck.iss` + a `scripts/` check; release.yml job "Windows installer" (iscc), upload
+  `.exe` + SHA-256 + attestation; MSIX job with `makeappx` (unsigned for Store upload, test-signed for sideload);
+  app changes for installed mode (autostart path, upgrade handling, "running from install dir" detection).
+- Docs: README "Install" first (download the Setup .exe), packaging.md, a Windows wizard section for the owner
+  (install, upgrade over an older version, uninstall keeps data, Store package sideload test).
+- Windows-only: everything above is unverified until the owner runs it.
+
 ## Now (2026-11-11 evening; v1.1 work complete in PR #5)
 Branch `claude/compassionate-pascal-pod8ux`, PR https://github.com/braydenh563/snipdeck/pull/5. Keep all work on this branch and PR; never merge, tag or release.
 State: all v1.1 work is merged into the PR head: placeholders and fill-ins, paste transforms, importers with Settings wiring, groups inside a list (Panel and Main, keyboard, Narrator, header menu fold/move), typed-trigger expansion and suggest-as-you-type (opt-in), rich paste, Windows Hello unlock, tips, in-app help and shortcut lists, final audits 1 and 2, blind-test and ux-auditor fixes (Settings search gap, wrapping toasts, shortcut rows that wrap, "or" between alternative keys, palette that scales with text, group header selected state, accessible descriptions, warning toasts). Worker branches `claude/v11-*` are merged and can be deleted by the owner.
