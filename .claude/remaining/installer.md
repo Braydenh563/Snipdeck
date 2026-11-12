@@ -1,4 +1,4 @@
 # installer agent
-Done: snipdeck.iss, installer_check + tests, msix_manifest + tests, manifest + msix README, gate wiring.
-Next: release.yml, release-build.yml, docs/packaging.md.
-Blocked: iscc / makeappx cannot run here (Linux); everything Windows-side unverified.
+Done: all deliverables 1-7.
+Next: owner runs iscc/makeappx on Windows.
+Blocked: no Windows here.
