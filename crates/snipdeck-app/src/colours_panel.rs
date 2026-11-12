@@ -3,8 +3,8 @@
 //! Docs: `docs/reviews/colour-spec.md` §3.0a.
 
 use snipdeck_colour::{
-    Cmyk, Hsl, Hsv, InputModel, PickerStyle, Rgba8, from_cmyk, from_hsl, from_hsv, parse, square_at,
-    square_point, to_cmyk, to_hsl, to_hsv, wheel_at, wheel_point,
+    Cmyk, Hsl, Hsv, InputModel, PickerStyle, Rgba8, from_cmyk, from_hsl, from_hsv, parse,
+    square_at, square_point, to_cmyk, to_hsl, to_hsv, wheel_at, wheel_point,
 };
 
 /// One typed channel of the Values row.
@@ -54,11 +54,7 @@ pub fn channels(c: Rgba8, model: InputModel, hue: f32) -> Vec<Channel> {
         InputModel::Rgb => vec![f64::from(c.r), f64::from(c.g), f64::from(c.b)],
         InputModel::Hsl => {
             let v = to_hsl(c);
-            vec![
-                if v.s > 0.0 { v.h } else { hue },
-                v.s * 100.0,
-                v.l * 100.0,
-            ]
+            vec![if v.s > 0.0 { v.h } else { hue }, v.s * 100.0, v.l * 100.0]
         }
         InputModel::Hsb => {
             let v = to_hsv(c);
@@ -221,14 +217,21 @@ pub fn step(
 pub fn hsb(c: Rgba8, hue: f32) -> (f32, f32, f32) {
     let v = to_hsv(c);
     #[allow(clippy::cast_possible_truncation, reason = "0..=360 fits an f32")]
-    let (h, s, b) = (v.h as f32, (v.s * 100.0) as f32, (v.v * 100.0) as f32);
-    (if s > 0.0 && b > 0.0 { h } else { hue }, s, b)
+    let (hh, sat, bri) = (v.h as f32, (v.s * 100.0) as f32, (v.v * 100.0) as f32);
+    (if sat > 0.0 && bri > 0.0 { hh } else { hue }, sat, bri)
 }
 
 /// The colour under a pointer at the unit position `(x, y)` of the picker surface (0..1 each). A drag past the
 /// edge of the wheel stays on the rim at the same angle.
 #[must_use]
-pub fn pick(style: PickerStyle, x: f32, y: f32, hue: f32, bri: f32, alpha: u8) -> (Rgba8, f32, f32) {
+pub fn pick(
+    style: PickerStyle,
+    x: f32,
+    y: f32,
+    hue: f32,
+    bri: f32,
+    alpha: u8,
+) -> (Rgba8, f32, f32) {
     match style {
         PickerStyle::Square => {
             let (sat, bri) = square_at(x, y, 1.0, 1.0);
@@ -283,8 +286,16 @@ pub fn nudge(
     #[allow(clippy::cast_precision_loss, reason = "a few steps")]
     let (dx, dy) = (dx as f32, dy as f32);
     let (h, s, b) = match style {
-        PickerStyle::Square => (hue, (sat + dx).clamp(0.0, 100.0), (bri + dy).clamp(0.0, 100.0)),
-        PickerStyle::Wheel => ((hue + dx).rem_euclid(360.0), (sat + dy).clamp(0.0, 100.0), bri),
+        PickerStyle::Square => (
+            hue,
+            (sat + dx).clamp(0.0, 100.0),
+            (bri + dy).clamp(0.0, 100.0),
+        ),
+        PickerStyle::Wheel => (
+            (hue + dx).rem_euclid(360.0),
+            (sat + dy).clamp(0.0, 100.0),
+            bri,
+        ),
     };
     (colour_of(h, s, b, alpha), h)
 }
@@ -308,7 +319,10 @@ mod tests {
         assert_eq!(texts(BLUE, InputModel::Cmyk), ["73", "42", "0", "16"]);
         let half = Rgba8 { a: 128, ..BLUE };
         let rgb = channels(half, InputModel::Rgb, 0.0);
-        assert_eq!(rgb.last().map(|c| (c.label, c.text.as_str())), Some(("A", "50")));
+        assert_eq!(
+            rgb.last().map(|c| (c.label, c.text.as_str())),
+            Some(("A", "50"))
+        );
         assert_eq!(channels(half, InputModel::Hex, 0.0).len(), 1);
     }
 
@@ -444,17 +458,20 @@ mod tests {
         let (c, hue, bri) = pick(PickerStyle::Wheel, 0.7, 0.3, 0.0, 100.0, 255);
         let (h, s, _) = hsb(c, hue);
         let (mx, my) = marker(PickerStyle::Wheel, h, s, bri);
-        assert!((mx - 0.7).abs() < 0.02 && (my - 0.3).abs() < 0.02, "{mx} {my}");
+        assert!(
+            (mx - 0.7).abs() < 0.02 && (my - 0.3).abs() < 0.02,
+            "{mx} {my}"
+        );
     }
 
     #[test]
     fn arrow_keys_move_saturation_brightness_and_hue_by_steps() {
         let start = hsb(Rgba8::rgb(255, 0, 0), 0.0);
         let (c, _) = nudge(PickerStyle::Square, start, 0, -10, 255);
-        assert_eq!(hsb(c, 0.0).2.round(), 90.0);
+        assert!((hsb(c, 0.0).2 - 90.0).abs() < 0.5);
         let (_, hue) = nudge(PickerStyle::Wheel, start, -1, 0, 255);
         assert!((hue - 359.0).abs() < 1e-3);
         let (c, _) = nudge(PickerStyle::Wheel, start, 0, -10, 255);
-        assert_eq!(hsb(c, 0.0).1.round(), 90.0);
+        assert!((hsb(c, 0.0).1 - 90.0).abs() < 0.5);
     }
 }

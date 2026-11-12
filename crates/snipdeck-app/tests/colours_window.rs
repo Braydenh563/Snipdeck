@@ -46,9 +46,7 @@ fn rig(dark: bool, size: (u32, u32)) -> Rig {
         theme: if dark { Theme::Dark } else { Theme::Light },
         ..Settings::new_install()
     };
-    let ctl = Rc::new(RefCell::new(
-        demo::controller(settings, now).expect("demo"),
-    ));
+    let ctl = Rc::new(RefCell::new(demo::controller(settings, now).expect("demo")));
     let h = Harness::new(PanelWindow::new, size.0, size.1);
     let binding = Controller::bind(
         &ctl,
@@ -111,7 +109,10 @@ fn typing_a_colour_updates_every_format_and_the_contrast() {
         ratio_text(contrast_ratio(red, Rgba8::rgb(255, 255, 255)))
     );
     assert!(!s.get_current_translucent());
-    assert!(has_pixel(&r.h.render_settled(), [255, 0, 0]), "the swatch paints the colour");
+    assert!(
+        has_pixel(&r.h.render_settled(), [255, 0, 0]),
+        "the swatch paints the colour"
+    );
 }
 
 #[test]
@@ -120,7 +121,10 @@ fn a_half_typed_colour_changes_nothing_and_enter_reports_it() {
     let before = r.ctl.borrow().colour_view().current;
     r.state().invoke_input_edited("#ff".into());
     assert_eq!(r.ctl.borrow().colour_view().current, before);
-    assert!(r.state().get_input_error().is_empty(), "no scolding while typing");
+    assert!(
+        r.state().get_input_error().is_empty(),
+        "no scolding while typing"
+    );
     r.state().invoke_input_accepted("#ff".into());
     assert!(!r.state().get_input_error().is_empty());
     assert_eq!(r.ctl.borrow().colour_view().current, before);

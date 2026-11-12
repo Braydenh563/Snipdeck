@@ -2195,10 +2195,23 @@ mod tests {
         let d = Settings::default();
         assert!(d.show_colours_tab && d.colour_adjust_open && d.colour_copy_on_pick);
         assert_eq!(
-            (d.colour_format, d.colour_scheme, d.colour_picker_style, d.colour_input_model),
-            (Format::Hex, Scheme::Complementary, PickerStyle::Square, InputModel::Hex)
+            (
+                d.colour_format,
+                d.colour_scheme,
+                d.colour_picker_style,
+                d.colour_input_model
+            ),
+            (
+                Format::Hex,
+                Scheme::Complementary,
+                PickerStyle::Square,
+                InputModel::Hex
+            )
         );
-        assert_eq!((d.colour_current.as_str(), d.colour_contrast_with.as_str()), ("#2870d4", "#ffffff"));
+        assert_eq!(
+            (d.colour_current.as_str(), d.colour_contrast_with.as_str()),
+            ("#2870d4", "#ffffff")
+        );
         assert_eq!(d.colour_save_list, None);
         let set = Settings {
             colour_format: Format::Oklch,

@@ -17,10 +17,12 @@ use snipdeck_platform::{
     tray::TrayEvent,
 };
 
+mod colour_ctl;
 mod commands_ctl;
 mod create_ctl;
 mod dock_ctl;
 mod editor_ctl;
+mod eyedrop_ctl;
 mod group_ctl;
 mod history_ctl;
 mod library;
@@ -33,8 +35,6 @@ mod panel_select;
 mod recent_ctl;
 mod screen_clip_ctl;
 mod settings_ctl;
-mod colour_ctl;
-mod eyedrop_ctl;
 pub use eyedrop_ctl::Wake as EyedropWake;
 mod symbol_ctl;
 #[cfg(test)]
@@ -44,6 +44,7 @@ mod trigger_ctl;
 mod use_ctl;
 mod views;
 
+pub use colour_ctl::{ColourView, SaveTarget};
 pub use create_ctl::DropRun;
 pub use history_ctl::HistoryView;
 pub use library::Library;
@@ -52,7 +53,6 @@ pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice, TagRenameE
 pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, ListMenuEntry};
 pub use panel_select::LABELS;
 pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
-pub use colour_ctl::{ColourView, SaveTarget};
 pub use symbol_ctl::{IconExport, IconSave, SaveOutcome, SymbolChoice, SymbolMenuEntry};
 pub use trigger_ctl::{HintOutcome, TypedOutcome};
 pub use views::{
@@ -419,7 +419,8 @@ where
         model.set_target(target.current());
         let shown_at = clock.now();
         let pinned = settings.panel_pinned;
-        let colour = colour_ctl::colour_or(&settings.colour_current, crate::settings::DEFAULT_COLOUR);
+        let colour =
+            colour_ctl::colour_or(&settings.colour_current, crate::settings::DEFAULT_COLOUR);
         let colour_other = colour_ctl::colour_or(&settings.colour_contrast_with, "#ffffff");
         let mut main = MainModel::new();
         main.set_view_mode(ViewMode::from(settings.row_density));
@@ -501,7 +502,7 @@ where
             screen_clip_host: None,
             eyedropper: None,
             eyedrop_texts: snipdeck_platform::eyedrop::EyedropTexts::default(),
-            eyedrop_mailbox: Default::default(),
+            eyedrop_mailbox: std::sync::Arc::default(),
             eyedrop_wake: None,
         })
     }

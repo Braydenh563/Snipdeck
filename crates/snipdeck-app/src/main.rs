@@ -321,8 +321,9 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
 
     // The screen eyedropper of the Colours tab: Windows only (UNVERIFIED there), no button elsewhere.
     #[cfg(windows)]
-    let eyedropper: Option<Box<dyn snipdeck_platform::eyedrop::Eyedropper>> =
-        Some(Box::new(snipdeck_platform::windows::eyedrop::WinEyedropper::new()));
+    let eyedropper: Option<Box<dyn snipdeck_platform::eyedrop::Eyedropper>> = Some(Box::new(
+        snipdeck_platform::windows::eyedrop::WinEyedropper::new(),
+    ));
     #[cfg(not(windows))]
     let eyedropper: Option<Box<dyn snipdeck_platform::eyedrop::Eyedropper>> = None;
     controller.borrow_mut().set_eyedropper(

@@ -37,13 +37,24 @@ fn colours_list(w: &World) -> Option<snipdeck_core::ListId> {
 
 /// Adds a snippet through the quick-add box and returns its id.
 fn quick(w: &mut World, text: &str) -> ItemId {
-    assert!(w.ctl.quick_add(text, Some(ItemKind::Text), false, crate::item_editor::Origin::Panel));
+    assert!(w.ctl.quick_add(
+        text,
+        Some(ItemKind::Text),
+        false,
+        crate::item_editor::Origin::Panel
+    ));
     w.ctl
         .store()
         .all_items()
         .expect("items")
         .into_iter()
-        .find(|i| crate::usecase::item_text(w.ctl.store(), i.id).ok().flatten().as_deref() == Some(text))
+        .find(|i| {
+            crate::usecase::item_text(w.ctl.store(), i.id)
+                .ok()
+                .flatten()
+                .as_deref()
+                == Some(text)
+        })
         .expect("the new item")
         .id
 }
@@ -137,24 +148,43 @@ fn the_other_colour_swaps_and_the_choices_are_remembered() {
     assert_eq!((v.current, v.other), (Rgba8::rgb(0, 0, 0), BLUE));
     w.ctl.set_colour_format(Fmt::Hsl);
     w.ctl.set_colour_format(Fmt::Name);
-    assert_eq!(w.ctl.colour_view().format, Fmt::Hsl, "Name cannot be the default");
+    assert_eq!(
+        w.ctl.colour_view().format,
+        Fmt::Hsl,
+        "Name cannot be the default"
+    );
     w.ctl.set_colour_scheme(snipdeck_colour::Scheme::Triadic);
-    assert_eq!(w.ctl.settings().colour_scheme, snipdeck_colour::Scheme::Triadic);
+    assert_eq!(
+        w.ctl.settings().colour_scheme,
+        snipdeck_colour::Scheme::Triadic
+    );
 }
 
 #[test]
 fn ctrl_s_makes_the_colours_list_once_at_the_end_and_titles_an_exact_name() {
     let mut w = world();
-    let before = w.ctl.store().lists(w.ctl.store().boards().unwrap()[0].id).unwrap().len();
+    let before = w
+        .ctl
+        .store()
+        .lists(w.ctl.store().boards().unwrap()[0].id)
+        .unwrap()
+        .len();
     assert!(w.ctl.save_colour(BLUE, SaveTarget::Home));
     let list = colours_list(&w).expect("remembered by id");
-    let lists = w.ctl.store().lists(w.ctl.store().boards().unwrap()[0].id).unwrap();
+    let lists = w
+        .ctl
+        .store()
+        .lists(w.ctl.store().boards().unwrap()[0].id)
+        .unwrap();
     assert_eq!(lists.len(), before + 1);
     assert_eq!(lists.last().unwrap().id, list, "at the end of the board");
     assert_eq!(lists.last().unwrap().name.as_str(), "Colours");
     assert_eq!(items_of(&w, list), [(String::new(), "#3a7bd5".to_owned())]);
 
-    assert!(w.ctl.save_colour(Rgba8::rgb(0x41, 0x69, 0xe1), SaveTarget::Home));
+    assert!(
+        w.ctl
+            .save_colour(Rgba8::rgb(0x41, 0x69, 0xe1), SaveTarget::Home)
+    );
     assert_eq!(colours_list(&w), Some(list), "the same list again");
     assert_eq!(
         items_of(&w, list)[1],
@@ -169,7 +199,11 @@ fn a_default_format_that_would_round_the_colour_saves_the_hex_instead() {
     w.ctl.set_colour_format(Fmt::Hsl);
     assert!(w.ctl.save_colour(BLUE, SaveTarget::Home));
     let list = colours_list(&w).unwrap();
-    assert_eq!(items_of(&w, list)[0].1, "#3a7bd5", "hsl(215, 65%, 53%) is not #3a7bd5");
+    assert_eq!(
+        items_of(&w, list)[0].1,
+        "#3a7bd5",
+        "hsl(215, 65%, 53%) is not #3a7bd5"
+    );
     // An exact format is kept as chosen.
     w.ctl.set_colour_format(Fmt::Rgb);
     assert!(w.ctl.save_colour(BLUE, SaveTarget::Home));
@@ -205,7 +239,10 @@ fn saved_colours_are_the_colour_items_of_the_home_list() {
     w.ctl.save_colour(BLUE, SaveTarget::Home);
     w.ctl.save_colour(red, SaveTarget::Home);
     let saved = w.ctl.saved_colours();
-    assert_eq!(saved.iter().map(|(_, c)| *c).collect::<Vec<_>>(), [BLUE, red]);
+    assert_eq!(
+        saved.iter().map(|(_, c)| *c).collect::<Vec<_>>(),
+        [BLUE, red]
+    );
     assert_eq!(w.ctl.colour_of_item(saved[0].0), Some(BLUE));
     // A plain snippet is not a colour.
     assert_eq!(w.ctl.colour_of_item(w.ids[0]), None);
@@ -218,7 +255,11 @@ fn a_snippet_that_is_only_a_colour_literal_is_a_colour_anywhere() {
     let id = quick(&mut w, "  rgb(10, 20, 30) ");
     assert_eq!(w.ctl.colour_of_item(id), Some(Rgba8::rgb(10, 20, 30)));
     let bare = quick(&mut w, "red");
-    assert_eq!(w.ctl.colour_of_item(bare), None, "a bare keyword is a word, not a swatch");
+    assert_eq!(
+        w.ctl.colour_of_item(bare),
+        None,
+        "a bare keyword is a word, not a swatch"
+    );
 }
 
 #[test]
@@ -236,8 +277,10 @@ fn open_in_colours_makes_it_current_and_shows_the_tab() {
 #[test]
 fn copy_list_as_css_variables_names_each_colour_and_dedupes() {
     let mut w = world();
-    w.ctl.save_colour(Rgba8::rgb(0x41, 0x69, 0xe1), SaveTarget::Home);
-    w.ctl.save_colour(Rgba8::rgb(0x41, 0x69, 0xe1), SaveTarget::Home);
+    w.ctl
+        .save_colour(Rgba8::rgb(0x41, 0x69, 0xe1), SaveTarget::Home);
+    w.ctl
+        .save_colour(Rgba8::rgb(0x41, 0x69, 0xe1), SaveTarget::Home);
     w.ctl.save_colour(BLUE, SaveTarget::Home);
     let list = colours_list(&w).unwrap();
     assert!(w.ctl.copy_list_as_css(list));

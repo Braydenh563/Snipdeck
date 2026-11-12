@@ -1834,8 +1834,9 @@ where
             .act(|ctl| ctl.update_settings(|s| s.show_symbols_tab = on)));
         wire!(on_show_colours_tab_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.show_colours_tab = on)));
-        wire!(on_colour_copy_on_pick_toggled, |core, on| core
-            .act(|ctl| ctl.update_settings(|s| s.colour_copy_on_pick = on)));
+        wire!(on_colour_copy_on_pick_toggled, |core, on| {
+            core.act(|ctl| ctl.update_settings(|s| s.colour_copy_on_pick = on));
+        });
         wire!(on_tray_click_chosen, |core, i| core.act(|ctl| ctl
             .update_settings(|s| {
                 s.tray_click = if i == 1 {

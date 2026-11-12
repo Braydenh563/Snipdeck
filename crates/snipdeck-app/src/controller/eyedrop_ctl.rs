@@ -76,15 +76,14 @@ where
                 }
             }),
         );
-        match started {
-            Ok(()) => vec![Effect::HidePanel],
-            Err(_) => {
-                self.show_toast(Toast {
-                    kind: ToastKind::Danger,
-                    message: ToastMessage::EyedropFailed,
-                });
-                Vec::new()
-            }
+        if started.is_ok() {
+            vec![Effect::HidePanel]
+        } else {
+            self.show_toast(Toast {
+                kind: ToastKind::Danger,
+                message: ToastMessage::EyedropFailed,
+            });
+            Vec::new()
         }
     }
 

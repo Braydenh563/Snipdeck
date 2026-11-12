@@ -206,10 +206,12 @@ where
                     return false;
                 }
             },
-            SaveTarget::Home => match self.home_list() {
-                Some(d) => d,
-                None => return false,
-            },
+            SaveTarget::Home => {
+                let Some(d) = self.home_list() else {
+                    return false;
+                };
+                d
+            }
         };
         let text = saved_text(c, self.settings.colour_format);
         let mut item = Item::new(
@@ -222,7 +224,9 @@ where
         let id = item.id;
         let stored = Inline::new(text.into_bytes())
             .map_err(|_| ())
-            .and_then(|inline| Formats::new(vec![ItemFormat::Text(Content::Inline(inline))]).map_err(|_| ()))
+            .and_then(|inline| {
+                Formats::new(vec![ItemFormat::Text(Content::Inline(inline))]).map_err(|_| ())
+            })
             .and_then(|formats| {
                 self.store
                     .insert_item(&item, &formats, Placement::Last)
@@ -266,7 +270,11 @@ where
         let board = self
             .model
             .board()
-            .filter(|b| self.store.boards().is_ok_and(|all| all.iter().any(|x| x.id == *b)))
+            .filter(|b| {
+                self.store
+                    .boards()
+                    .is_ok_and(|all| all.iter().any(|x| x.id == *b))
+            })
             .or_else(|| {
                 self.store
                     .boards()
@@ -277,27 +285,26 @@ where
             self.show_toast(super::neutral(ToastMessage::NoListToSave));
             return None;
         };
-        let made = Name::new(&self.colours_list_name).map_err(|_| ()).and_then(|name| {
-            let list = List::new(board, name, self.clock.now());
-            self.store
-                .insert_list(&list, Placement::Last)
-                .map(|()| list)
-                .map_err(|_| ())
-        });
-        match made {
-            Ok(list) => {
-                let id = list.id.to_string();
-                self.update_settings(|s| s.colour_save_list = Some(id));
-                self.main.mark_stale();
-                Some(Destination {
-                    id: list.id,
-                    name: list.name.as_str().to_owned(),
-                })
-            }
-            Err(()) => {
-                self.show_toast(failed());
-                None
-            }
+        let made = Name::new(&self.colours_list_name)
+            .map_err(|_| ())
+            .and_then(|name| {
+                let list = List::new(board, name, self.clock.now());
+                self.store
+                    .insert_list(&list, Placement::Last)
+                    .map(|()| list)
+                    .map_err(|_| ())
+            });
+        if let Ok(list) = made {
+            let id = list.id.to_string();
+            self.update_settings(|s| s.colour_save_list = Some(id));
+            self.main.mark_stale();
+            Some(Destination {
+                id: list.id,
+                name: list.name.as_str().to_owned(),
+            })
+        } else {
+            self.show_toast(failed());
+            None
         }
     }
 
@@ -391,7 +398,10 @@ where
         if pairs.is_empty() {
             return false;
         }
-        let refs: Vec<(&str, &str)> = pairs.iter().map(|(a, b)| (a.as_str(), b.as_str())).collect();
+        let refs: Vec<(&str, &str)> = pairs
+            .iter()
+            .map(|(a, b)| (a.as_str(), b.as_str()))
+            .collect();
         let Some(payload) = Payload::new(vec![Data::Text(css_variables(&refs))]) else {
             return false;
         };
