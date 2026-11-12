@@ -1,11 +1,9 @@
 # Colours tab and screen eyedropper: build spec (2026-11-12)
 
-Design only; nothing here is built. Owner, 2026-10-20: "a colour picker and eyedrop tool that i can use
+Design only. Owner, 2026-10-20: "a colour picker and eyedrop tool that i can use
 to copy colours from anywhere on my computer and then I can get the details like the rgb cmyk, hex etc
 for that colour as well as see accompanying colour schemes and contrast". 2026-11-12: "I like to save
-and copy colours I see for when I do things like web design as I am an interaction design student".
-
-Pattern to copy: the Symbols tab (`docs/reviews/symbols-spec.md`). Builder reference files:
+and copy colours I see for when I do things like web design as I am an interaction design student". Pattern to copy: the Symbols tab (`docs/reviews/symbols-spec.md`). Builder reference files:
 | New file | Copy the shape of |
 |---|---|
 | `crates/snipdeck-colour/` (new crate) | `crates/snipdeck-symbols/` (pure crate, `recents.rs`, `tests/`) |
@@ -30,10 +28,11 @@ Pattern to copy: the Symbols tab (`docs/reviews/symbols-spec.md`). Builder refer
 4. I check whether white text on my button colour passes WCAG AA, and against my page background.
 5. I get complementary, analogous, triadic, split-complementary, tetradic and tint/shade colours, and
    take any of them as the current colour or copy it.
-6. I save a colour to the list I am looking at (Ctrl+S) and build a project palette as a list; its cards
-   show a swatch.
-7. I find colours I used recently without saving them.
-8. I can do all of it with the keyboard and Narrator, at 175 % text size, in my language.
+6. I save a colour, with my own name or note, to my Colours list (Ctrl+S) or any list (Ctrl+Shift+S);
+   wherever it lives a click pastes it, one more click copies any other format, and "Open in Colours"
+   shows its schemes and contrast again.
+7. I find colours I used recently without saving them, and do all of it by keyboard, with Narrator, at
+   175 % text size, in my language.
 
 ## 2. Decisions (written once, with reasons)
 
@@ -74,8 +73,8 @@ the UI hint: a complementary colour is a hue partner, not a contrast partner (fo
 glyph that differs in shape (check / x) plus the word in its accessible name: never colour alone. A
 ratio is never rounded up into a pass: #777777 on white is 4.478 and shows "4.47:1", AA fail.
 
-**D6. Saved colour = a Text item; a palette = a list. No schema change.** Ctrl+S calls `quick_add` with
-the colour in the default format (same path, toast, Undo as Symbols' "Add to list"). The card's type tile
+**D6. Saved colour = a Text item; a palette = a list. No schema change.** Saving calls `quick_add` with
+the colour's text (D6a; same path, toast, Undo as Symbols' "Add to list"). The card's type tile
 becomes a swatch when the item is not sensitive, its kind is Text or Code, and its whole trimmed text is
 one strict CSS colour literal (`#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`, `rgb[a]()`, `hsl[a]()`,
 `oklch()`; never a bare keyword such as "red", never hex without `#`). Derived from content at view time,
@@ -85,31 +84,36 @@ so existing snippets like `#ffcc00` gain swatches too and nothing is stored. Rej
 **D6a. Saved colours have a home, can go anywhere, and keep every detail (owner, 2026-11-12, verbatim:
 "I want to be able to save any colours and their attribuites and details to maybe a special list or area
 and maybe anywhere else I wish to access them in or desire to store them for easy copy and paste.")**
-- *Home:* a list named `Colours` (translated name, created on first save at the end of the board the Panel
-  shows, then remembered by id in `colour_save_list`; if that list is deleted, the next save creates a new
-  one). `Ctrl+S` and the tab's **Save** button save there; the toast says "Saved to Colours" with Open
-  and Undo. The tab's **Saved colours** button (and palette command "Saved colours") opens that list in the
-  Panel. A palette per project is just another list.
-- *Anywhere else:* **Save to…** (`Ctrl+Shift+S`, the button's split arrow, the swatch and format-row menus)
-  opens the same list chooser as the item menu's *Move to…* (`controller.rs` ~326, `panel_select.rs`
-  `move_to_list`), listing every board's lists plus "New list…". The chosen list becomes the default
-  for the rest of the session only; `colour_save_list` changes only through Settings > Colours > "Save
-  colours to".
-- *Every detail:* the item's text is the colour in the default format (so a click pastes it and the card
-  shows the swatch, D6). Every other format is exact maths on that value, so it is derived when shown, not
-  stored twice: nothing can drift. The title is the user's name for it, defaulting to the nearest CSS name
-  and the hex ("steelblue-ish #3A7BD5" is not used; plain "Royal blue #3A7BD5" style: nearest name in
-  title case + hex). The user renames it like any item; tags and the label work as usual.
-- *Copy any format from wherever it is stored:* for an item with a swatch, the item menu in the Panel, the
-  Main window and the Picker gains **Copy as ▸** HEX · RGB · HSL · HSB · CMYK · OKLCH · Name, and
-  **Open in Colours** (makes it the current colour so schemes and contrast show again). A click or Enter
-  pastes the stored text as for any item. Main window rows show the swatch too (moved here from Later).
-- *Copy a whole palette:* the list menu gains **Copy as CSS variables** when the list holds at least one
-  colour item: `:root {\n  --<slug-of-title>: <stored text>;\n}` in list order, slugs deduplicated with
-  `-2`, `-3`. Pure function `snipdeck_colour::css_variables(&[(title, literal)]) -> String` with tests.
-- *Ownership:* the chooser, Copy as, Open in Colours and the Main-row swatch go to slice 3; the
-  `css_variables` and `title_for` (nearest name + hex) functions and the `colour_save_list` setting to
-  slice 1.
+- *Home: a real list, not a palette store.* A list named `Colours` (translated name), created on first
+  save at the end of the board the Panel shows and remembered by id in `colour_save_list` (deleted: the
+  next save makes a new one). Reason over a palette area with its own storage: a list already gets search,
+  the Picker, backups, export/import, undo, tags and Main-window editing; a board would spend one of
+  Free's 5. One click from the tab: its **Saved** button (and palette command "Saved colours") switches
+  the Panel to that list; the tab's **Saved** strip (below Recently used) shows its first 24 colour items
+  as swatches (click = make current). A palette per project is just another list.
+- *Anywhere else:* **Save to…** (`Ctrl+Shift+S`, the Save button's split arrow, the swatch and format-row
+  menus) opens the list chooser of the item menu's *Move to…* (`panel_select.rs` `move_to_list`): every
+  board's lists plus "New list…". `Ctrl+S` and the Save button always save to the home list; toast
+  "Saved to Colours" with Undo and Edit (Edit opens the item editor for the name/note).
+- *Every detail, stored once:* the item's text is the colour in the default format, **unless that format
+  would round it** (`parse(format(c, f)) != c`, true for HSL/HSB/CMYK and alpha): then the hex. Every other
+  format is exact maths on that value, derived when shown, so nothing drifts. Name and note are the item
+  **title** (default `title_for(c)`: the keyword when exact, else empty, so the card shows the value and
+  the derived "near royalblue"); the user writes "Brand primary · buttons on light" there. Reason: `Item`
+  has no note field; a separate one would be migration V-next (`ALTER TABLE items ADD COLUMN note TEXT NOT
+  NULL DEFAULT ''`, FTS triggers rebuilt, export format bumped) for text the title already carries and
+  searches. Tags and the colour label work as usual.
+- *Copy any format from wherever it is stored* (any item whose text passes D6 is a colour item):
+  | Where | Click / Enter | Other formats | Reopen |
+  |---|---|---|---|
+  | Panel card (List, Cards, Compact) | pastes the stored text (Shift copies), as any item | click the swatch tile (24×24 button, own hit box) or item menu **Paste as…**: for a colour item it lists HEX · RGB · HSL · HSB · CMYK · OKLCH · Name with their values instead of the text transforms; Enter pastes, Shift+Enter copies | item menu **Open in Colours** |
+  | Picker row | pastes the stored text | Menu key → the same Paste as list | Open in Colours (shows the Panel) |
+  | Main window | row shows the swatch; detail pane shows a Colour block: swatch, the 7 formats each with a copy button, "Open in Colours" | the block's copy buttons; item menu Paste as | the block's button |
+  Keyboard path everywhere is the item menu (Menu / Shift+F10), so the swatch tile is a mouse shortcut, not a
+  second tab stop.
+- *Copy a whole palette:* the list menu gains **Copy as CSS variables** when the list holds a colour item:
+  `:root {\n  --<slug-of-title-or-hex>: <stored text>;\n}` in list order, slugs deduplicated with `-2`,
+  `-3`. Pure `snipdeck_colour::css_variables(&[(title, literal)]) -> String`.
 
 **D7. Recents: most recently used, 24 max, deduped by RGBA, in settings.** Pushed on paste, copy, save
 and eyedropper pick (not on typing or slider drags). Stamped by the injected `Clock`.
@@ -120,22 +124,19 @@ that captures black also *shows* black, hover effects do not flicker away under 
 loupe never samples itself. Reason for raw Win32/GDI over a Slint window: a full-screen software-rendered
 Slint frame per mouse move at 4K is a measured-nowhere risk; GDI repaints only the two loupe rectangles.
 
-**D9. After a pick: copy in the default format and show the Colours tab (setting, on).** "Copy the
-picked colour" (`colour_copy_on_pick`, default on): the owner's words are "copy colours from anywhere".
-No paste: after an overlay the Target is not trustworthy. Toast "Copied #3a7bd5".
+**D9. After a pick: copy in the default format and show the Colours tab** (`colour_copy_on_pick`, on):
+"copy colours from anywhere". No paste: after an overlay the Target is not trustworthy.
 
 **D10. Global hotkey "Pick a colour from the screen": off until the user sets a chord.** Same rule as
 Capture (`docs/reviews/default-chords.md`): Win+ chords are reserved, Ctrl+Alt is AltGr, and the
 obvious Ctrl+Shift+C is Inspect in Chrome and Edge. Inside the Colours tab, Ctrl+I (Photoshop/Figma use
 I for the eyedropper; Ctrl+I is unused in `shortcuts.rs`).
 
-**D11. Free for everyone.** `docs/licensing.md` makes Supporter about convenience across the library
-(boards, prompted fields, paste stack); Symbols is free; a colour picker is an everyday utility that
-Windows' own PowerToys gives free, and gating it would be the first paywalled Panel tab. No `Feature` key.
+**D11. Free for everyone, no `Feature` key.** Supporter is library convenience (`docs/licensing.md`);
+Symbols is free; PowerToys gives a picker free; it would be the first paywalled Panel tab.
 
-**D12. Colour maths in a new pure crate `crates/snipdeck-colour`** (deps: `serde` only). Not in
-`snipdeck-core` (about the user's library) nor `snipdeck-symbols` (catalog data). The workspace's
-`members = ["crates/*"]` picks it up.
+**D12. Maths in a new pure crate `crates/snipdeck-colour`** (deps: `serde`), not `snipdeck-core` (the
+user's library) nor `snipdeck-symbols` (catalog data); `members = ["crates/*"]` picks it up.
 
 ## 3. UI: the Colours tab (Panel 260-480, default 320; P2 tokens)
 
@@ -151,6 +152,7 @@ Windows' own PowerToys gives free, and gating it would be the first paywalled Pa
 │ ⚠ Not a colour. Try #3a7bd5 or rgb(58, 123, 213)   (only while invalid, h20, role alert)
 │ RECENTLY USED                                 │ header h24
 │ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■                           │ 24×24 swatches in 28×28 hits, wraps, ≤ 3 rows
+│ SAVED            [Save ▾]  [Saved colours ›]  │ D6a: home-list swatches (one row), Save split button
 │ FORMATS                                       │
 │ HEX    #3a7bd5                    default [⧉] │ rows h28; label col 56 type.sm; value mono, elided
 │ RGB    rgb(58, 123, 213)                  [⧉] │ [⧉] = copy button on hover/selection/focus
@@ -194,7 +196,7 @@ select, scheme swatches, Adjust disclosure, S/B area, hue, alpha. `Tab`/`Shift+T
 | Where | Input | Action |
 |---|---|---|
 | anywhere in the tab | Ctrl+I | start the eyedropper |
-| anywhere in the tab | Ctrl+S | save the current colour (default format) to the shown list |
+| anywhere in the tab | Ctrl+S / Ctrl+Shift+S | save the current colour to the Colours list / Save to… any list (D6a) |
 | not in a text field | Ctrl+C | copy the current colour in the default format |
 | not in a text field | a printable character | goes to the input field (replaces its text), as Symbols' search |
 | anywhere | Esc | in a field with unapplied text: revert it; else P2 §2.10 (hide the Panel) |
@@ -204,13 +206,13 @@ select, scheme swatches, Adjust disclosure, S/B area, hue, alpha. `Tab`/`Shift+T
 | format rows | Up/Down, Home/End | move |
 | format rows | click, Enter | paste into the Target; copy when there is none |
 | format rows | Shift+click, Shift+Enter, copy button | copy only |
-| format rows | right-click, Menu, Shift+F10 | Paste into "X" · Copy · Make default format (not Name) · Save to "List" |
+| format rows | right-click, Menu, Shift+F10 | Paste into "X" · Copy · Make default format (not Name) · Save to Colours · Save to… |
 | recents / scheme swatches | arrows, Home/End | move (2-D for wrapped rows) |
 | swatches | click, Enter, Space | make current (does not push recents) |
 | swatches | Shift+click, Shift+Enter | copy in the default format |
-| swatches | Ctrl+S | save that swatch to the shown list |
+| swatches | Ctrl+S / Ctrl+Shift+S | save that swatch to Colours / Save to… |
 | recents | Delete | remove from recents |
-| swatches | right-click, Menu | Make current · Copy as ▸ (6 formats + Name) · Save to "List" · Remove (recents) |
+| swatches | right-click, Menu | Make current · Copy as ▸ (6 formats + Name) · Save to Colours · Save to… · Remove (recents) |
 | S/B area | Left/Right, Up/Down | saturation, brightness ±1 %; Shift ±10 %; drag/click sets both |
 | hue / alpha | Left/Right | ±1° / ±1 %; Shift ±10; Home/End to the ends; drag |
 | Swap | click, Enter, Space | exchange current and other |
@@ -238,10 +240,9 @@ right shows P2's target line. The default format row carries the word "default" 
 
 ### 3.3 Cards
 
-`PanelRow` gains `swatch: color` and `has-swatch: bool` (set in `binding.rs::panel_row` from
-`snipdeck_colour::literal(&row.preview)` with the D6 conditions). `item-card.slint` draws the 24 px type
-tile filled with the colour (1 px `border.subtle`, checkerboard under alpha) instead of the Text glyph;
-the accessible description gains "Colour swatch". Main window rows show it too (D6a).
+`PanelRow`/`MainRow` gain `swatch: color`, `has-swatch: bool` (from `snipdeck_colour::literal(&row.preview)`,
+D6 rules). The 24 px type tile is the colour (1 px `border.subtle`, checker under alpha), a button that
+opens Paste as (D6a); accessible description "Colour swatch".
 
 ## 4. Settings (all in `settings.json`, read with `field!`, no `version` bump)
 
@@ -266,26 +267,23 @@ behaviour is checked by the existing `from_json` path; slice 1 adds a round-trip
 ## 5. Colour maths: `crates/snipdeck-colour` (pure Rust, `#![forbid(unsafe_code)]`)
 
 ```rust
-// lib.rs re-exports everything below.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+// lib.rs re-exports everything below. Derives: Rgba8 (Debug, Clone, Copy, PartialEq, Eq, Hash); Hsl, Hsv,
+// Cmyk, Oklch, Named (Debug, Clone, Copy, PartialEq); Format, Scheme, Marks (+ Eq; Format and Scheme also
+// serde, `rename_all` "lowercase" / "kebab-case"); ParseError, RecentColour (Debug, Clone, PartialEq, Eq; RecentColour serde).
 pub struct Rgba8 { pub r: u8, pub g: u8, pub b: u8, pub a: u8 }
 impl Rgba8 {
     pub const fn rgb(r: u8, g: u8, b: u8) -> Self;          // a = 255
     pub fn to_hex(self) -> String;                          // "#3a7bd5" or "#3a7bd580"
     pub fn from_hex(text: &str) -> Option<Self>;            // exactly "#rrggbb" / "#rrggbbaa" (settings)
 }
-#[derive(Debug, Clone, Copy, PartialEq)] pub struct Hsl { pub h: f64, pub s: f64, pub l: f64 }   // h 0..360, s,l 0..1
-#[derive(Debug, Clone, Copy, PartialEq)] pub struct Hsv { pub h: f64, pub s: f64, pub v: f64 }
-#[derive(Debug, Clone, Copy, PartialEq)] pub struct Cmyk { pub c: f64, pub m: f64, pub y: f64, pub k: f64 }
-#[derive(Debug, Clone, Copy, PartialEq)] pub struct Oklch { pub l: f64, pub c: f64, pub h: f64 }  // l 0..1
+pub struct Hsl { pub h: f64, pub s: f64, pub l: f64 }   // h 0..360, s,l 0..1
+pub struct Hsv { pub h: f64, pub s: f64, pub v: f64 }
+pub struct Cmyk { pub c: f64, pub m: f64, pub y: f64, pub k: f64 }
+pub struct Oklch { pub l: f64, pub c: f64, pub h: f64 }  // l 0..1
 pub fn to_hsl(c: Rgba8) -> Hsl;   pub fn from_hsl(v: Hsl, a: u8) -> Rgba8;
 pub fn to_hsv(c: Rgba8) -> Hsv;   pub fn from_hsv(v: Hsv, a: u8) -> Rgba8;     // the S/B area and hue slider
 pub fn to_cmyk(c: Rgba8) -> Cmyk; pub fn from_cmyk(v: Cmyk, a: u8) -> Rgba8;
-pub fn to_oklch(c: Rgba8) -> Oklch;
-pub fn from_oklch(v: Oklch, a: u8) -> Rgba8;   // gamut-maps by chroma reduction (below)
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "lowercase")]
+pub fn to_oklch(c: Rgba8) -> Oklch; pub fn from_oklch(v: Oklch, a: u8) -> Rgba8;   // gamut-maps by chroma reduction
 pub enum Format { Hex, Rgb, Hsl, Hsb, Cmyk, Oklch, Name }
 impl Format {
     pub const ALL: [Self; 7];                  // display order = the rows
@@ -293,42 +291,30 @@ impl Format {
     pub const fn label(self) -> &'static str;  // "HEX","RGB","HSL","HSB","CMYK","OKLCH"; Name's label is @tr in Slint
 }
 pub fn format(c: Rgba8, f: Format) -> String;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParseError { Empty, UnknownName, BadHex, BadFunction, OutOfRange }
 pub fn parse(text: &str) -> Result<Rgba8, ParseError>;  // lenient: the input fields
 pub fn literal(text: &str) -> Option<Rgba8>;             // strict: card swatches (D6), ≤ 64 bytes
-
-#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Named { pub name: &'static str, pub rgb: Rgba8, pub exact: bool, pub distance: f64 }
 pub fn nearest_name(c: Rgba8) -> Named;                   // ignores alpha
 pub fn named(name: &str) -> Option<Rgba8>;                // ASCII case-insensitive
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "kebab-case")]
 pub enum Scheme { Complementary, Analogous, Triadic, SplitComplementary, Tetradic, TintsShades }
 impl Scheme { pub const ALL: [Self; 6]; }
 pub fn scheme(c: Rgba8, s: Scheme) -> Vec<Rgba8>;         // base first, then the others (below)
-
 pub fn relative_luminance(c: Rgba8) -> f64;               // alpha ignored
 pub fn contrast_ratio(fg: Rgba8, bg: Rgba8) -> f64;       // fg composited over opaque bg first
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Marks { pub aa: bool, pub aa_large: bool, pub aaa: bool, pub aaa_large: bool, pub ui: bool }
 pub fn marks(ratio: f64) -> Marks;
 pub fn ratio_text(ratio: f64) -> String;                  // truncated to 2 dp: "4.47"
-
 // recents.rs (shape of snipdeck_symbols::recents)
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct RecentColour { pub hex: String, pub used_at: i64 }   // ms since epoch, injected clock
 pub struct ColourRecents { /* private */ }
-impl ColourRecents {
-    pub const MAX: usize = 24;
-    pub fn from_saved(saved: &[RecentColour]) -> Self;   // drops bad hex and duplicates
-    pub fn push(&mut self, c: Rgba8, now_ms: i64);        // to the front; dedupe by RGBA; cap 24
-    pub fn remove(&mut self, c: Rgba8);
-    pub fn list(&self) -> Vec<Rgba8>;
-    pub fn to_saved(&self) -> Vec<RecentColour>;
-}
+impl ColourRecents {  // MAX = 24; from_saved drops bad hex and duplicates; push: front, dedupe by RGBA, cap
+    pub const MAX: usize = 24; pub fn from_saved(saved: &[RecentColour]) -> Self; pub fn push(&mut self, c: Rgba8, now_ms: i64);
+    pub fn remove(&mut self, c: Rgba8); pub fn list(&self) -> Vec<Rgba8>; pub fn to_saved(&self) -> Vec<RecentColour>; }
+// saved.rs (D6a)
+pub fn saved_text(c: Rgba8, f: Format) -> String;  // format(c, f) if parse() gives c back exactly, else to_hex()
+pub fn title_for(c: Rgba8) -> String;              // the keyword when exact, else ""
+pub fn css_variables(items: &[(&str, &str)]) -> String;   // (title, stored text) → ":root { --slug: value; }"
 ```
 
 **Conversions.** sRGB transfer: linear = c/12.92 if c ≤ 0.04045 else ((c+0.055)/1.055)^2.4. OKLab: Björn
@@ -413,29 +399,21 @@ pub struct Shot { pub bounds: crate::route::ScreenRect, pub scale: f32, pub hdr:
 pub fn sample(shots: &[Shot], x: i32, y: i32) -> Option<[u8; 3]>;         // physical px; None in a gap
 pub fn loupe_cells(shots: &[Shot], x: i32, y: i32, n: u32) -> Vec<Option<[u8; 3]>>; // n×n, row-major, n odd
 pub fn loupe_rect(cursor: (i32, i32), monitor: crate::route::ScreenRect, scale: f32, zoom: u32) -> crate::route::ScreenRect;
-pub const ZOOMS: [u32; 5] = [4, 8, 12, 16, 24];   // logical px per sampled pixel; default 8
-pub const CELLS: u32 = 11;
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub const ZOOMS: [u32; 5] = [4, 8, 12, 16, 24]; pub const CELLS: u32 = 11;  // logical px per sampled pixel (default 8)
+// Nav, Input, Step: #[derive(Debug, Clone, Copy, PartialEq, Eq)]; EyedropOutcome: the same without Copy.
 pub enum Nav { Left, Right, Up, Down }
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Input { Moved(i32, i32), Key { nav: Nav, shift: bool }, Pick, Cancel, Wheel(i32), LostFocus, DisplayChanged, TimedOut }
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Step { Redraw, MoveCursor(i32, i32), Picked([u8; 3]), Cancelled, Nothing }
 pub struct Session { /* cursor, zoom index, the union of shot bounds */ }
-impl Session {
-    pub fn new(shots: &[Shot], cursor: (i32, i32)) -> Self;
-    pub fn on(&mut self, shots: &[Shot], input: Input) -> Step;  // nudge 1 px, Shift 10 px; never into a gap
-    pub fn cursor(&self) -> (i32, i32);  pub fn zoom(&self) -> u32;
-}
+impl Session { pub fn new(shots: &[Shot], cursor: (i32, i32)) -> Self; pub fn cursor(&self) -> (i32, i32); pub fn zoom(&self) -> u32;
+    pub fn on(&mut self, shots: &[Shot], input: Input) -> Step; }  // nudge 1 px, Shift 10 px; never into a gap
 pub struct EyedropTexts { pub hint: String, pub hdr_note: String }          // translated by the app
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EyedropOutcome { Picked { rgb: [u8; 3], hdr: bool }, Cancelled, Failed(String) }
 pub type EyedropDone = Box<dyn FnOnce(EyedropOutcome) + Send>;
 pub trait Eyedropper {
     /// Waits `settle`, captures, shows the overlay; `done` is called once, on the eyedropper thread.
     fn start(&mut self, texts: EyedropTexts, settle: std::time::Duration, done: EyedropDone) -> Result<(), crate::error::PlatformError>;
-    fn running(&self) -> bool;
-}
+    fn running(&self) -> bool; }
 pub struct FakeEyedropper { /* scripted outcomes, records starts */ }  // like FakeFilePicker
 ```
 
@@ -531,7 +509,7 @@ calls `start_eyedropper`. Non-Windows builds use no eyedropper (`None`); the but
   7. Set a chord for "Pick a colour from the screen"; press it over Figma/Chrome; Narrator on: what it reads.
   8. Click another app's window mid-pick (focus lost) → cancels; Win+L during a pick → no stuck overlay.
   9. Night light on: the value is unchanged.
-  10. Save to list (Ctrl+S): the card shows the swatch; a sensitive copy of it does not.
+  10. Ctrl+S: "Colours" list appears with a swatch card; its swatch tile's Paste as pastes rgb() into Notepad.
 
 ## 8. Slices (one seam commit, then three in parallel, disjoint files)
 
@@ -547,6 +525,8 @@ passes the gate, and owns nothing afterwards except what the table gives slice 1
 - `controller/views.rs`: `Effect::ShowColours`; `binding.rs` arm `Effect::ShowColours =>
   window.invoke_open_colours()`, `main.rs:650` arm; `panel.slint`: `public function open-colours() {}`
   and `in property <bool> colours-available` (both no-ops).
+- `controller/panel.rs`: `ItemMenuEntry::OpenInColours`, `ListMenuEntry::CopyAsCss`, `PanelMenu::PasteColourAs(ItemId)`;
+  `wording.rs` labels for them; `PanelRow`/`MainRow` `swatch`/`has-swatch` fields (filled by slices 3/1).
 - `toast.rs`: `ToastMessage::EyedropFailed`, `ToastMessage::EyedropHdr { hex: String }`,
   `ToastMessage::ColourNotParsed`; `wording.rs::toast_text` arms and `toast_texts.slint` functions.
 - New files with signatures only: `controller/colour_ctl.rs`, `controller/eyedrop_ctl.rs`,
@@ -568,9 +548,18 @@ impl Controller<S, C, K, T> {
     pub fn set_colour_scheme(&mut self, s: Scheme);
     pub fn set_colour_adjust_open(&mut self, open: bool);
     pub fn use_colour(&mut self, c: Rgba8, f: Format, mode: UseMode) -> UseResult; // pipeline::use_item, toast, recents
-    pub fn save_colour_to_list(&mut self, c: Rgba8, origin: Origin) -> bool;       // quick_add(format(c, default))
     pub fn forget_recent_colour(&mut self, c: Rgba8);
     pub(crate) fn colour_picked(&mut self, c: Rgba8, hdr: bool) -> Vec<Effect>;  // current, recents, copy if setting, HDR toast
+}
+// controller/saved_colour_ctl.rs (slice 1 fills; D6a)
+pub enum SaveTarget { Home, List(ListId) }
+impl Controller<S, C, K, T> {
+    pub fn save_colour(&mut self, c: Rgba8, to: SaveTarget) -> bool;  // saved_text + title_for, quick_add path, recents
+    pub fn colour_of_item(&self, id: ItemId) -> Option<Rgba8>;        // D6 rule on the item's text
+    pub fn saved_colours(&self) -> Vec<(ItemId, Rgba8)>;              // home list, list order, ≤ 24
+    pub fn open_saved_colours(&mut self) -> Vec<Effect>;              // Panel shows the home list
+    pub fn open_item_in_colours(&mut self, id: ItemId) -> Vec<Effect>;// set current, [ShowPanel, ShowColours]
+    pub fn copy_list_as_css(&mut self, list: ListId) -> bool;
 }
 // controller/eyedrop_ctl.rs (slice 2 fills)
 impl Controller<S, C, K, T> {
@@ -590,35 +579,21 @@ functions returning their `@tr` English text.
 
 | Slice | Owns after the seam | Acceptance |
 |---|---|---|
-| **1. Colour maths + settings** | `crates/snipdeck-colour/**`, `settings.rs`, `settings_binding.rs`, `settings.slint` (Settings > Panel: "Show Colours tab", "Copy a colour picked from the screen"; the Shortcuts row appears from `ALL`) | §5.1 vectors and properties pass; settings tests; `cargo doc` clean; no `todo!()` left; settings goldens updated and looked at |
+| **1. Colour maths, settings, saved colours** | `crates/snipdeck-colour/**` (incl. `saved_text`, `title_for`, `css_variables`), `settings.rs`, `settings_binding.rs`, `settings.slint` (Settings > Panel: "Show Colours tab", "Copy a colour picked from the screen"; the Shortcuts row appears from `ALL`), `controller/saved_colour_ctl.rs`, `controller/panel.rs` + `panel_select.rs` (Paste as for colour items, Open in Colours, Save to… chooser, Copy as CSS variables), `picker.rs`, `main_window.slint`, `main_binding.rs` (row swatch, detail Colour block), `controller/tests/saved_colours.rs` | §5.1 vectors and properties; settings tests; saving rounds-safe (HSL default stores hex); home list created once and re-created after deletion; Paste as lists 7 values; Main goldens; `cargo doc` clean; no `todo!()` left |
 | **2. Eyedropper + app wiring** | `snipdeck-platform/src/eyedrop.rs`, `windows/eyedrop.rs`, `windows/mod.rs`, `snipdeck-platform/Cargo.toml` (windows features: `Win32_Graphics_Dwm`, `Win32_Devices_Display`), `controller/eyedrop_ctl.rs`, `controller.rs`, `platform.rs`, `host.rs`, `main.rs`, `controller/tests/eyedrop.rs`, `tools/windows-test/tests/colour.json` + its test page | portable tests (§7) on Linux; controller eyedrop tests with `FakeEyedropper`; Windows `cargo check` in CI; `reviewer` on the unsafe Win32 code (every `unsafe` has SAFETY, every handle freed on every path); wizard steps 2-9 written |
 | **3. Colours tab + cards + i18n** | `colours.slint`, `panel.slint`, `components/item-card.slint`, icons (`palette.svg`, `eyedropper.svg`, `arrows-left-right.svg` from Phosphor Regular, then `python3 scripts/ui_icons.py`), `controller/colour_ctl.rs`, `controller/tests/colours.rs`, `colours_binding.rs`, `binding.rs`, `commands.rs` + `controller/commands_ctl.rs` (palette "Colours", "Pick a colour from the screen"), `toast.rs`, `wording.rs`, `toast_texts.slint`, translation catalogs, `crates/snipdeck-ui/tests/colours.rs` + goldens, `DESIGN.md` (§4 Colour swatch component), `docs/SPEC.md` (5.1 Colours tab, §6 table row "Colours tab and eyedropper ✓ ✓") | goldens and measurements of §7; controller tests; every string `@tr` and `python3 scripts/i18n.py` passes for the six languages (CSS keywords and format labels untranslated); `ux-auditor` and `blind-tester` on the running tab; Narrator labels listed in the PR |
 
-Order of merge: seam, then any order; slice 3's goldens are taken after slice 1 is merged (they show the
-real format text). Each slice keeps `.claude/remaining/<agent>.md`, commits at least every 20 minutes and
-runs `scripts/gate.sh --staged` before each commit.
+Merge: seam, then any order; slice 3's goldens after slice 1 lands (real format text). Each slice keeps
+`.claude/remaining/<agent>.md`, commits every ≤ 20 minutes, runs `scripts/gate.sh --staged` before each.
 
 ## 9. Unverified until measured or run on Windows
 
-Foreground activation of the overlay after a hotkey (and the `RegisterHotKey` fallback); GDI capture
-values on HDR monitors and with Night light; DRM regions captured black; `CAPTUREBLT` cost and flicker;
-mixed-DPI loupe size; Narrator reading the overlay title and the swatch labels; paste of `#3a7bd5` into
-Figma's hex field (Figma may want it without `#`: if the owner reports that, add a "HEX (no #)" copy
-in the row menu, not a new format); time to first overlay frame on three 4K monitors (target < 250 ms,
-logged, not a timed test).
+Overlay foreground activation after a hotkey (and the `RegisterHotKey` fallback); GDI values on HDR and
+with Night light; DRM captured black; `CAPTUREBLT` cost; mixed-DPI loupe size; Narrator on the overlay
+title and swatch labels; `#3a7bd5` pasted into Figma's hex field (if it wants no `#`, add "HEX (no #)" to
+the row menu, not a format); first overlay frame on three 4K monitors (< 250 ms, logged, not timed).
+**Later:** HSL wheel option; DXGI HDR capture; APCA (WCAG 3 draft); a separate note field (D6a migration).
 
-## Later (not in these slices)
-
-"Copy list as CSS variables" for a palette list; swatches in Main window rows and the Picker; "Open in
-Colours" on a swatch card's menu; HSL wheel option; DXGI HDR capture; APCA contrast (WCAG 3 draft).
-
-## Sources
-
-- WCAG 2.2 contrast (1.4.3, 1.4.6, 1.4.11) and relative luminance: https://www.w3.org/TR/WCAG22/#dfn-relative-luminance
-- CSS Color 4 (`oklch()`, named colours, gamut mapping): https://www.w3.org/TR/css-color-4/
-- OKLab matrices: https://bottosson.github.io/posts/oklab/
-- BitBlt / CAPTUREBLT: https://learn.microsoft.com/windows/win32/api/wingdi/nf-wingdi-bitblt
-- CreateDIBSection: https://learn.microsoft.com/windows/win32/api/wingdi/nf-wingdi-createdibsection
-- Advanced colour info: https://learn.microsoft.com/windows/win32/api/wingdi/ns-wingdi-displayconfig_get_advanced_color_info
-- SetWindowDisplayAffinity: https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-setwindowdisplayaffinity
-- (Sources listed as the standard references; none was fetched for this note.)
+**Sources** (standard references, not fetched for this note): WCAG 2.2 https://www.w3.org/TR/WCAG22/ ·
+CSS Color 4 https://www.w3.org/TR/css-color-4/ · OKLab https://bottosson.github.io/posts/oklab/ · Win32 BitBlt,
+CreateDIBSection, DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO, SetWindowDisplayAffinity: https://learn.microsoft.com/windows/win32/api/
