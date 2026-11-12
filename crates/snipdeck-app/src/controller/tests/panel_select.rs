@@ -875,8 +875,10 @@ fn a_drop_read_in_two_chunks_is_one_step_with_the_first_file_on_top() {
         read: vec![read.next().unwrap(), read.next().unwrap()],
         rest: vec![paths[2].clone().into()],
     };
-    let run = w.ctl.drop_read_done(run, first).expect("one file is left");
+    let mut run = w.ctl.drop_read_done(run, first).expect("one file is left");
     assert_eq!(w.ctl.view().rows.len(), 4, "still nothing in the list");
+    // As the driver does: the files left are taken for the next read before it is handed back.
+    let _second = run.next_job();
     let last = ReadDone {
         read: vec![read.next().unwrap()],
         rest: Vec::new(),

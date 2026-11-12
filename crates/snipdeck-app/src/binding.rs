@@ -1212,7 +1212,7 @@ where
                                 run,
                                 Rc::new(move |run, done| {
                                     if core.controller.try_borrow_mut().is_err() {
-                                        return Err((run, done));
+                                        return Err(Box::new((run, done)));
                                     }
                                     Ok(core.act(|ctl| ctl.drop_read_done(run, done)))
                                 }),

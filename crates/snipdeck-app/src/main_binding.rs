@@ -888,7 +888,7 @@ fn watch_place<S, C, K, T>(
                                         return Ok(None);
                                     };
                                     let Ok(mut c) = c.try_borrow_mut() else {
-                                        return Err((run, done));
+                                        return Err(Box::new((run, done)));
                                     };
                                     let next = c.drop_read_done(run, done);
                                     drop(c);

@@ -144,19 +144,17 @@ where
                 run.skipped += 1;
                 continue;
             };
-            match self.made_from_source(source, run.list, run.now) {
-                Ok(made) => run.ready.push(made),
-                Err(_) => {
-                    self.show_toast(failed());
-                    return None;
-                }
-            }
+            let Ok(made) = self.made_from_source(source, run.list, run.now) else {
+                self.show_toast(failed());
+                return None;
+            };
+            run.ready.push(made);
         }
         run.todo.extend(done.rest);
         if !run.todo.is_empty() {
             return Some(run);
         }
-        self.insert_made(run.ready, run.skipped, run.list, Action::Drop);
+        self.insert_made(&run.ready, run.skipped, run.list, Action::Drop);
         None
     }
 
@@ -240,12 +238,12 @@ where
                 }
             }
         }
-        self.insert_made(ready, skipped, list, action);
+        self.insert_made(&ready, skipped, list, action);
     }
 
     /// Inserts the items made from files or a picture (`ready`, in order) at the top of `list`,
     /// in one short transaction with the first on top, and says so.
-    fn insert_made(&mut self, ready: Vec<Made>, skipped: usize, list: ListId, action: Action) {
+    fn insert_made(&mut self, ready: &[Made], skipped: usize, list: ListId, action: Action) {
         if ready.is_empty() {
             self.show_toast(neutral(ToastMessage::FilesNotAdded));
             return;

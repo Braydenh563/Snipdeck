@@ -149,8 +149,12 @@ pub fn spawn(job: ReadJob, finish: Finish) {
 }
 
 /// Offers a result to the controller: `Ok(next)` when it took it (`next` is the drop again if
-/// there are more files to read), `Err` with both handed back when the controller was busy.
-pub type Apply = Rc<dyn Fn(DropRun, ReadDone) -> Result<Option<DropRun>, (DropRun, ReadDone)>>;
+/// there are more files to read), `Err` with both handed back (boxed: they are large) when the
+/// controller was busy.
+pub type Apply = Rc<dyn Fn(DropRun, ReadDone) -> Result<Option<DropRun>, Busy>>;
+
+/// A result the controller could not take yet: the drop and what was read, to offer again.
+pub type Busy = Box<(DropRun, ReadDone)>;
 
 /// Reads the rest of `run` chunk by chunk, each result applied on the UI thread by `apply`.
 pub fn drive(mut run: DropRun, apply: Apply) {
@@ -162,7 +166,8 @@ fn settle(run: DropRun, done: ReadDone, apply: &Apply) {
     match apply(run, done) {
         Ok(Some(next)) => drive(next, Rc::clone(apply)),
         Ok(None) => {}
-        Err((run, done)) => {
+        Err(back) => {
+            let (run, done) = *back;
             let apply = Rc::clone(apply);
             slint::Timer::single_shot(RETRY, move || settle(run, done, &apply));
         }
