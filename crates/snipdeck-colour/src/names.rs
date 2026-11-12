@@ -1,4 +1,12 @@
 //! The 148 CSS Color 4 keywords and the nearest-name search.
+#![allow(
+    clippy::many_single_char_names,
+    reason = "r/g/b, l/a/b and h/s/v are the conventional names"
+)]
+#![allow(
+    clippy::unreadable_literal,
+    reason = "CSS colour table: 0xrrggbb literals read as hex colours"
+)]
 
 use crate::model::{Rgba8, to_oklab};
 
@@ -168,11 +176,11 @@ pub struct Named {
     pub rgb: Rgba8,
     /// Whether the colour's RGB equals the keyword's exactly.
     pub exact: bool,
-    /// Euclidean distance in OKLab (0 when exact).
+    /// Euclidean distance in `OKLab` (0 when exact).
     pub distance: f64,
 }
 
-/// The keyword nearest to `c` by OKLab distance; alpha is ignored. Ties go to the alphabetically
+/// The keyword nearest to `c` by `OKLab` distance; alpha is ignored. Ties go to the alphabetically
 /// first keyword (`aqua` before `cyan`, `gray` before `grey`).
 pub fn nearest_name(c: Rgba8) -> Named {
     let (l, a, b) = to_oklab(c);
@@ -186,10 +194,18 @@ pub fn nearest_name(c: Rgba8) -> Named {
         }
     }
     let exact = (best.1.r, best.1.g, best.1.b) == (c.r, c.g, c.b);
-    Named { name: best.0, rgb: best.1, exact, distance: if exact { 0.0 } else { best.2 } }
+    Named {
+        name: best.0,
+        rgb: best.1,
+        exact,
+        distance: if exact { 0.0 } else { best.2 },
+    }
 }
 
 /// The colour of a CSS keyword (ASCII case-insensitive), opaque. `transparent` is not a keyword here.
 pub fn named(name: &str) -> Option<Rgba8> {
-    KEYWORDS.iter().find(|(k, _)| k.eq_ignore_ascii_case(name)).map(|&(_, hex)| rgb_of(hex))
+    KEYWORDS
+        .iter()
+        .find(|(k, _)| k.eq_ignore_ascii_case(name))
+        .map(|&(_, hex)| rgb_of(hex))
 }

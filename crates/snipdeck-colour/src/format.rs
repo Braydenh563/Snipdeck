@@ -27,7 +27,15 @@ pub enum Format {
 
 impl Format {
     /// Every format in display order (the rows).
-    pub const ALL: [Self; 7] = [Self::Hex, Self::Rgb, Self::Hsl, Self::Hsb, Self::Cmyk, Self::Oklch, Self::Name];
+    pub const ALL: [Self; 7] = [
+        Self::Hex,
+        Self::Rgb,
+        Self::Hsl,
+        Self::Hsb,
+        Self::Cmyk,
+        Self::Oklch,
+        Self::Name,
+    ];
 
     /// Whether the format may be the default copy format (everything but [`Format::Name`]).
     pub const fn can_be_default(self) -> bool {
@@ -94,7 +102,13 @@ pub fn format(c: Rgba8, f: Format) -> String {
             if c.a == 255 {
                 format!("hsl({}, {}%, {}%)", hue0(v.h), pct(v.s), pct(v.l))
             } else {
-                format!("hsla({}, {}%, {}%, {})", hue0(v.h), pct(v.s), pct(v.l), alpha(c.a))
+                format!(
+                    "hsla({}, {}%, {}%, {})",
+                    hue0(v.h),
+                    pct(v.s),
+                    pct(v.l),
+                    alpha(c.a)
+                )
             }
         }
         Format::Hsb => {
@@ -103,7 +117,13 @@ pub fn format(c: Rgba8, f: Format) -> String {
         }
         Format::Cmyk => {
             let v = to_cmyk(c);
-            format!("cmyk({}%, {}%, {}%, {}%)", pct(v.c), pct(v.m), pct(v.y), pct(v.k))
+            format!(
+                "cmyk({}%, {}%, {}%, {}%)",
+                pct(v.c),
+                pct(v.m),
+                pct(v.y),
+                pct(v.k)
+            )
         }
         Format::Oklch => oklch_text(c),
         Format::Name => nearest_name(c).name.to_owned(),

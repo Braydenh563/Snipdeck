@@ -3868,6 +3868,137 @@ attachment_name_text | crates/snipdeck-app/src/wording.rs:773
 attachment_detail_text | crates/snipdeck-app/src/wording.rs:789
 editor_problem_text | crates/snipdeck-app/src/wording.rs:810
 
+### crates/snipdeck-colour/src/contrast.rs
+
+relative_luminance | crates/snipdeck-colour/src/contrast.rs:6
+contrast_ratio | crates/snipdeck-colour/src/contrast.rs:13
+Marks | crates/snipdeck-colour/src/contrast.rs:38
+marks | crates/snipdeck-colour/src/contrast.rs:52
+ratio_text | crates/snipdeck-colour/src/contrast.rs:63
+
+### crates/snipdeck-colour/src/format.rs
+
+Format | crates/snipdeck-colour/src/format.rs:10
+impl Format | crates/snipdeck-colour/src/format.rs:28
+can_be_default | crates/snipdeck-colour/src/format.rs:41
+label | crates/snipdeck-colour/src/format.rs:47
+num | crates/snipdeck-colour/src/format.rs:61
+pct | crates/snipdeck-colour/src/format.rs:75
+hue0 | crates/snipdeck-colour/src/format.rs:80
+alpha | crates/snipdeck-colour/src/format.rs:85
+format | crates/snipdeck-colour/src/format.rs:90
+oklch_text | crates/snipdeck-colour/src/format.rs:133
+
+### crates/snipdeck-colour/src/lib.rs
+
+contrast | crates/snipdeck-colour/src/lib.rs:28
+format | crates/snipdeck-colour/src/lib.rs:29
+model | crates/snipdeck-colour/src/lib.rs:30
+names | crates/snipdeck-colour/src/lib.rs:31
+parse | crates/snipdeck-colour/src/lib.rs:32
+picker | crates/snipdeck-colour/src/lib.rs:33
+recents | crates/snipdeck-colour/src/lib.rs:34
+saved | crates/snipdeck-colour/src/lib.rs:35
+scheme | crates/snipdeck-colour/src/lib.rs:36
+
+### crates/snipdeck-colour/src/model.rs
+
+Rgba8 | crates/snipdeck-colour/src/model.rs:13
+impl Rgba8 | crates/snipdeck-colour/src/model.rs:24
+rgb | crates/snipdeck-colour/src/model.rs:26
+to_hex | crates/snipdeck-colour/src/model.rs:31
+from_hex | crates/snipdeck-colour/src/model.rs:40
+Hsl | crates/snipdeck-colour/src/model.rs:61
+Hsv | crates/snipdeck-colour/src/model.rs:72
+Cmyk | crates/snipdeck-colour/src/model.rs:83
+Oklch | crates/snipdeck-colour/src/model.rs:96
+unit_to_u8 | crates/snipdeck-colour/src/model.rs:111
+channel | crates/snipdeck-colour/src/model.rs:115
+decode | crates/snipdeck-colour/src/model.rs:119
+encode | crates/snipdeck-colour/src/model.rs:128
+linear | crates/snipdeck-colour/src/model.rs:138
+near_zero | crates/snipdeck-colour/src/model.rs:142
+hue_of | crates/snipdeck-colour/src/model.rs:146
+from_hue | crates/snipdeck-colour/src/model.rs:157
+to_hsl | crates/snipdeck-colour/src/model.rs:177
+from_hsl | crates/snipdeck-colour/src/model.rs:194
+to_hsv | crates/snipdeck-colour/src/model.rs:201
+from_hsv | crates/snipdeck-colour/src/model.rs:220
+to_cmyk | crates/snipdeck-colour/src/model.rs:227
+from_cmyk | crates/snipdeck-colour/src/model.rs:248
+to_oklab | crates/snipdeck-colour/src/model.rs:260
+oklab_to_linear | crates/snipdeck-colour/src/model.rs:272
+to_oklch | crates/snipdeck-colour/src/model.rs:284
+linear_of | crates/snipdeck-colour/src/model.rs:293
+in_gamut | crates/snipdeck-colour/src/model.rs:298
+from_oklch | crates/snipdeck-colour/src/model.rs:304
+from_oklch_rounded | crates/snipdeck-colour/src/model.rs:313
+oklch_to_rgba | crates/snipdeck-colour/src/model.rs:317
+
+### crates/snipdeck-colour/src/names.rs
+
+KEYWORDS | crates/snipdeck-colour/src/names.rs:14
+rgb_of | crates/snipdeck-colour/src/names.rs:165
+Named | crates/snipdeck-colour/src/names.rs:172
+nearest_name | crates/snipdeck-colour/src/names.rs:185
+named | crates/snipdeck-colour/src/names.rs:206
+
+### crates/snipdeck-colour/src/parse.rs
+
+ParseError | crates/snipdeck-colour/src/parse.rs:10
+impl std::fmt::Display for ParseError | crates/snipdeck-colour/src/parse.rs:23
+fmt | crates/snipdeck-colour/src/parse.rs:24
+Unit | crates/snipdeck-colour/src/parse.rs:38
+token | crates/snipdeck-colour/src/parse.rs:46
+fraction | crates/snipdeck-colour/src/parse.rs:72
+percent_like | crates/snipdeck-colour/src/parse.rs:81
+hue | crates/snipdeck-colour/src/parse.rs:88
+alpha | crates/snipdeck-colour/src/parse.rs:95
+rgb_channel | crates/snipdeck-colour/src/parse.rs:99
+function | crates/snipdeck-colour/src/parse.rs:107
+hex_digits | crates/snipdeck-colour/src/parse.rs:166
+bare_triple | crates/snipdeck-colour/src/parse.rs:189
+parse | crates/snipdeck-colour/src/parse.rs:212
+literal | crates/snipdeck-colour/src/parse.rs:259
+
+### crates/snipdeck-colour/src/picker.rs
+
+PickerStyle | crates/snipdeck-colour/src/picker.rs:18
+InputModel | crates/snipdeck-colour/src/picker.rs:29
+px | crates/snipdeck-colour/src/picker.rs:43
+fl | crates/snipdeck-colour/src/picker.rs:56
+render_square | crates/snipdeck-colour/src/picker.rs:61
+render_wheel | crates/snipdeck-colour/src/picker.rs:77
+wheel_at | crates/snipdeck-colour/src/picker.rs:104
+wheel_point | crates/snipdeck-colour/src/picker.rs:118
+square_at | crates/snipdeck-colour/src/picker.rs:125
+square_point | crates/snipdeck-colour/src/picker.rs:137
+
+### crates/snipdeck-colour/src/recents.rs
+
+RecentColour | crates/snipdeck-colour/src/recents.rs:8
+ColourRecents | crates/snipdeck-colour/src/recents.rs:17
+impl ColourRecents | crates/snipdeck-colour/src/recents.rs:21
+from_saved | crates/snipdeck-colour/src/recents.rs:26
+push | crates/snipdeck-colour/src/recents.rs:40
+remove | crates/snipdeck-colour/src/recents.rs:47
+list | crates/snipdeck-colour/src/recents.rs:52
+to_saved | crates/snipdeck-colour/src/recents.rs:57
+
+### crates/snipdeck-colour/src/saved.rs
+
+saved_text | crates/snipdeck-colour/src/saved.rs:11
+title_for | crates/snipdeck-colour/src/saved.rs:21
+slug | crates/snipdeck-colour/src/saved.rs:30
+css_variables | crates/snipdeck-colour/src/saved.rs:45
+
+### crates/snipdeck-colour/src/scheme.rs
+
+Scheme | crates/snipdeck-colour/src/scheme.rs:9
+impl Scheme | crates/snipdeck-colour/src/scheme.rs:25
+rotations | crates/snipdeck-colour/src/scheme.rs:36
+scheme | crates/snipdeck-colour/src/scheme.rs:51
+
 ### crates/snipdeck-core/build.rs
 
 key_selection | crates/snipdeck-core/build.rs:13
@@ -7366,6 +7497,17 @@ hexs | design/tools/palette.py:40
 lum | design/tools/palette.py:42
 contrast | design/tools/palette.py:49
 
+### scripts/bump_version.py
+
+parse | scripts/bump_version.py:26
+workspace_version | scripts/bump_version.py:35
+set_workspace_version | scripts/bump_version.py:45
+set_lock_versions | scripts/bump_version.py:54
+roll_changelog | scripts/bump_version.py:67
+members | scripts/bump_version.py:77
+bump | scripts/bump_version.py:86
+main | scripts/bump_version.py:108
+
 ### scripts/codemap.py
 
 is_test | scripts/codemap.py:58
@@ -8010,6 +8152,10 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/tests/support/mod.rs` | 0 |
 | `crates/snipdeck-app/tests/toast_texts.rs` | 5 |
 | `crates/snipdeck-app/tests/unlock_window.rs` | 24 |
+| `crates/snipdeck-colour/tests/parsing.rs` | 9 |
+| `crates/snipdeck-colour/tests/properties.rs` | 12 |
+| `crates/snipdeck-colour/tests/saved_recents_picker.rs` | 10 |
+| `crates/snipdeck-colour/tests/vectors.rs` | 9 |
 | `crates/snipdeck-core/src/board.rs` (inline) | 1 |
 | `crates/snipdeck-core/src/content.rs` (inline) | 5 |
 | `crates/snipdeck-core/src/entitlements.rs` (inline) | 4 |
@@ -8152,6 +8298,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/symbols.rs` | 12 |
 | `crates/snipdeck-ui/tests/tray_texts.rs` | 1 |
 | `crates/snipdeck-ui/tests/ux_fit.rs` | 7 |
+| `scripts/test_bump_version.py` | 6 |
 | `scripts/test_i18n.py` | 16 |
 | `scripts/test_installer_check.py` | 16 |
 | `scripts/test_msix_manifest.py` | 7 |

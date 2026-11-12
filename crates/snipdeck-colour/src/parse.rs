@@ -1,6 +1,8 @@
 //! Parsing colour text: lenient for the input fields, strict for card swatches.
 
-use crate::model::{Cmyk, Hsl, Hsv, Oklch, Rgba8, from_cmyk, from_hsl, from_hsv, from_oklch, unit_to_u8};
+use crate::model::{
+    Cmyk, Hsl, Hsv, Oklch, Rgba8, from_cmyk, from_hsl, from_hsv, from_oklch_rounded, unit_to_u8,
+};
 use crate::names::named;
 
 /// Why [`parse`] rejected a text.
@@ -120,15 +122,28 @@ fn function(name: &str, args: &str) -> Result<Rgba8, ParseError> {
             a: alpha(toks.get(3))?,
         }),
         "hsl" | "hsla" if count_ok(3) => {
-            let v = Hsl { h: hue(toks[0])?, s: percent_like(toks[1])?, l: percent_like(toks[2])? };
+            let v = Hsl {
+                h: hue(toks[0])?,
+                s: percent_like(toks[1])?,
+                l: percent_like(toks[2])?,
+            };
             Ok(from_hsl(v, alpha(toks.get(3))?))
         }
         "hsb" | "hsv" if count_ok(3) => {
-            let v = Hsv { h: hue(toks[0])?, s: percent_like(toks[1])?, v: percent_like(toks[2])? };
+            let v = Hsv {
+                h: hue(toks[0])?,
+                s: percent_like(toks[1])?,
+                v: percent_like(toks[2])?,
+            };
             Ok(from_hsv(v, alpha(toks.get(3))?))
         }
         "cmyk" if count_ok(4) => {
-            let v = Cmyk { c: fraction(toks[0])?, m: fraction(toks[1])?, y: fraction(toks[2])?, k: fraction(toks[3])? };
+            let v = Cmyk {
+                c: fraction(toks[0])?,
+                m: fraction(toks[1])?,
+                y: fraction(toks[2])?,
+                k: fraction(toks[3])?,
+            };
             Ok(from_cmyk(v, alpha(toks.get(4))?))
         }
         "oklch" if count_ok(3) => {
@@ -137,8 +152,12 @@ fn function(name: &str, args: &str) -> Result<Rgba8, ParseError> {
                 (v, Unit::None) => v,
                 (_, Unit::Angle) => return Err(ParseError::BadFunction),
             };
-            let v = Oklch { l: fraction(toks[0])?, c: chroma.max(0.0), h: hue(toks[2])? };
-            Ok(from_oklch(v, alpha(toks.get(3))?))
+            let v = Oklch {
+                l: fraction(toks[0])?,
+                c: chroma.max(0.0),
+                h: hue(toks[2])?,
+            };
+            Ok(from_oklch_rounded(v, alpha(toks.get(3))?))
         }
         _ => Err(ParseError::BadFunction),
     }
@@ -157,19 +176,31 @@ fn hex_digits(d: &str) -> Result<Rgba8, ParseError> {
             b: nib(2) * 17,
             a: if d.len() == 4 { nib(3) * 17 } else { 255 },
         }),
-        6 | 8 => Ok(Rgba8 { r: byte(0), g: byte(2), b: byte(4), a: if d.len() == 8 { byte(6) } else { 255 } }),
+        6 | 8 => Ok(Rgba8 {
+            r: byte(0),
+            g: byte(2),
+            b: byte(4),
+            a: if d.len() == 8 { byte(6) } else { 255 },
+        }),
         _ => Err(ParseError::BadHex),
     }
 }
 
 fn bare_triple(text: &str) -> Result<Rgba8, ParseError> {
-    let parts: Vec<&str> = text.split(|c: char| c == ',' || c.is_whitespace()).filter(|t| !t.is_empty()).collect();
+    let parts: Vec<&str> = text
+        .split(|c: char| c == ',' || c.is_whitespace())
+        .filter(|t| !t.is_empty())
+        .collect();
     if parts.len() != 3 {
         return Err(ParseError::BadFunction);
     }
     let mut out = [0u8; 3];
     for (slot, p) in out.iter_mut().zip(&parts) {
-        *slot = p.parse::<u32>().ok().and_then(|v| u8::try_from(v).ok()).ok_or(ParseError::OutOfRange)?;
+        *slot = p
+            .parse::<u32>()
+            .ok()
+            .and_then(|v| u8::try_from(v).ok())
+            .ok_or(ParseError::OutOfRange)?;
     }
     Ok(Rgba8::rgb(out[0], out[1], out[2]))
 }
@@ -187,19 +218,31 @@ pub fn parse(text: &str) -> Result<Rgba8, ParseError> {
         return hex_digits(d);
     }
     if let Some(open) = t.find('(') {
-        let inner = t[open + 1..].strip_suffix(')').ok_or(ParseError::BadFunction)?;
+        let inner = t[open + 1..]
+            .strip_suffix(')')
+            .ok_or(ParseError::BadFunction)?;
         return function(t[..open].trim(), inner);
     }
     if t == "transparent" {
-        return Ok(Rgba8 { r: 0, g: 0, b: 0, a: 0 });
+        return Ok(Rgba8 {
+            r: 0,
+            g: 0,
+            b: 0,
+            a: 0,
+        });
     }
     if let Some(c) = named(&t) {
         return Ok(c);
     }
     if let Some(d) = t.strip_prefix("0x") {
-        return if d.len() == 6 { hex_digits(d) } else { Err(ParseError::BadHex) };
+        return if d.len() == 6 {
+            hex_digits(d)
+        } else {
+            Err(ParseError::BadHex)
+        };
     }
-    if t.bytes().all(|b| b.is_ascii_digit() || b == b',' || b.is_ascii_whitespace())
+    if t.bytes()
+        .all(|b| b.is_ascii_digit() || b == b',' || b.is_ascii_whitespace())
         && t.contains(|c: char| c == ',' || c.is_whitespace())
     {
         return bare_triple(&t);
