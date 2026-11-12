@@ -27,6 +27,13 @@ fn zone(logical: u32, scale: f32) -> i64 {
     i64::from(frame::scaled(logical, scale))
 }
 
+/// Where a drag step happens: the monitor and the Panel's two sizes there (physical pixels).
+struct DragPlace {
+    monitor: Monitor,
+    floating: (u32, u32),
+    docked: (u32, u32),
+}
+
 impl<S, C, K, T> Controller<S, C, K, T>
 where
     S: Library,
@@ -465,11 +472,7 @@ where
 
     /// What a drag step needs for the cursor at `cursor`: the monitor (the Panel's own while
     /// it slides along its edge, else the one under the cursor) and the sizes there.
-    fn drag_ctx(
-        &self,
-        drag: &Drag,
-        cursor: (i32, i32),
-    ) -> Option<(Monitor, (u32, u32), (u32, u32))> {
+    fn drag_ctx(&self, drag: &Drag, cursor: (i32, i32)) -> Option<DragPlace> {
         let own = self.monitor.clone();
         let monitor = if matches!(drag.phase(), DragPhase::Slide(_)) {
             own
@@ -477,7 +480,11 @@ where
             self.target.monitor_at(cursor.0, cursor.1).or(own)
         }?;
         let (floating, docked) = self.sizes_on(&monitor);
-        Some((monitor, floating, docked))
+        Some(DragPlace {
+            monitor,
+            floating,
+            docked,
+        })
     }
 
     /// Pointer down on the Panel's header: a drag starts. `window` is the Panel's frame now and
@@ -509,7 +516,12 @@ where
         let Some(cursor) = self.target.cursor().or(pointer) else {
             return Vec::new();
         };
-        let Some((monitor, floating, docked)) = self.drag_ctx(&drag, cursor) else {
+        let Some(DragPlace {
+            monitor,
+            floating,
+            docked,
+        }) = self.drag_ctx(&drag, cursor)
+        else {
             return Vec::new();
         };
         let step = drag.moved(
@@ -537,7 +549,12 @@ where
         let Some(drag) = self.drag.take() else {
             return Vec::new();
         };
-        let Some((monitor, floating, docked)) = self.drag_ctx(&drag, drag.cursor()) else {
+        let Some(DragPlace {
+            monitor,
+            floating,
+            docked,
+        }) = self.drag_ctx(&drag, drag.cursor())
+        else {
             return Vec::new();
         };
         let end = drag.released(&DragCtx {

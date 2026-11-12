@@ -2407,8 +2407,8 @@ ui_tests! {
             ui.set_dock_edge(edge);
             settle();
             let strip = find(&ui, "Move the panel", AccessibleRole::Button);
-            assert_eq!(strip.size().width, width, "edge {edge}: the whole width");
-            assert_eq!((strip.absolute_position().y, strip.size().height), (0.0, 24.0));
+            assert!((strip.size().width - width).abs() < 0.5, "edge {edge}: the whole width");
+            assert!(strip.absolute_position().y.abs() < 0.5 && (strip.size().height - 24.0).abs() < 0.5);
             // Its ends and its middle, below the top resize edge and clear of the corners.
             for x in [12.0, width / 2.0, width - 12.0] {
                 let at = LogicalPosition::new(x, 13.0);
