@@ -1169,7 +1169,7 @@ fn a_save_refused_in_preview_puts_the_keyboard_in_the_field_that_holds_the_error
         assert_eq!(ed.get_content(), "x", "the text field has the focus");
         assert_eq!(ed.get_item_title(), "");
 
-        // A title that is too long: the title field, even with More options closed.
+        // A title that is too long: the title field.
         let r = rig();
         menu(&r, "New item");
         let ed = r.ed();
@@ -1227,22 +1227,23 @@ fn tab_walks_the_form_and_the_preview_without_a_trap() {
         settle();
         assert!(ed.get_preview_on(), "Ctrl+P still works after a full walk");
 
-        // Preview on: Tab and Shift+Tab edit nothing, and Ctrl+P is still heard after both walks.
-        let (content, title) = (ed.get_content(), ed.get_item_title());
-        for _ in 0..TABS {
+        // Preview on: after every Tab and Shift+Tab the window still hears Ctrl+P (twice: off, then on again).
+        // A hidden item cannot keep the focus, so a key that finds nothing to take it would be lost here.
+        let flips = |what: &str| {
+            for want in [false, true] {
+                chord(ed.window(), &[Key::Control], "p");
+                settle();
+                assert_eq!(ed.get_preview_on(), want, "Ctrl+P after {what}");
+            }
+        };
+        for i in 0..TABS {
             press(ed.window(), &key(Key::Tab));
-            type_text(ed.window(), "§");
+            flips(&format!("Tab {i}"));
         }
-        chord(ed.window(), &[Key::Shift], &key(Key::Tab));
-        for _ in 0..TABS {
+        for i in 0..TABS {
             chord(ed.window(), &[Key::Shift], &key(Key::Tab));
-            type_text(ed.window(), "§");
+            flips(&format!("Shift+Tab {i}"));
         }
-        assert_eq!(
-            (ed.get_content(), ed.get_item_title()),
-            (content, title),
-            "nothing was typed into the hidden form"
-        );
         assert!(ed.get_preview_on());
         chord(ed.window(), &[Key::Control], "p");
         settle();
@@ -1255,5 +1256,82 @@ fn tab_walks_the_form_and_the_preview_without_a_trap() {
             ed.get_content().len() + ed.get_item_title().len(),
             before + 1
         );
+    });
+}
+
+#[test]
+fn with_both_a_text_and_a_title_refused_the_text_gets_the_keyboard_first() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        ed.set_kind_index(2);
+        ed.set_content("docs.example.com".into());
+        ed.set_item_title("t".repeat(500).into());
+        preview_on(&ed);
+        save(&ed);
+        assert!(!ed.get_preview_on());
+        assert_ne!(ed.get_content_error(), "");
+        assert_ne!(ed.get_title_error(), "");
+        type_text(ed.window(), "x");
+        assert_eq!(
+            ed.get_content().len(),
+            "docs.example.com".len() + 1,
+            "the letter went into the text, the first error in reading order"
+        );
+        assert_eq!(ed.get_item_title().len(), 500);
+    });
+}
+
+#[test]
+fn a_focus_request_from_a_refused_image_does_not_reach_the_next_editor() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        click(
+            ed.window(),
+            &find(&ed, "Image", AccessibleRole::RadioButton),
+        );
+        settle();
+        preview_on(&ed);
+        save(&ed);
+        assert_eq!(
+            ed.get_source_focus_request(),
+            1,
+            "the refusal asked for the path field"
+        );
+        press(ed.window(), &key(Key::Escape));
+        if ed.get_discard_open() {
+            find(&ed, "Discard", AccessibleRole::Button).invoke_accessible_default_action();
+        }
+        settle();
+        assert!(!r.editor_shown(), "the editor is closed");
+        menu(&r, "New item");
+        assert_eq!(
+            r.ed().get_source_focus_request(),
+            0,
+            "a new editor starts with no request"
+        );
+    });
+}
+
+#[test]
+fn the_preview_draws_the_main_tile_view_and_the_cards_panel_layout_the_user_has() {
+    on_ui_thread(|| {
+        let r = rig();
+        {
+            let mut ctl = r.ctl.borrow_mut();
+            ctl.update_settings(|s| s.panel_layout = snipdeck_app::settings::PanelLayout::Cards);
+            ctl.main_set_view(snipdeck_app::main_window::ViewMode::Tile);
+        }
+        menu(&r, "New item");
+        let ed = r.ed();
+        preview_on(&ed);
+        assert_eq!(
+            ed.get_preview_panel_layout(),
+            snipdeck_ui::PanelLayout::Cards
+        );
+        assert_eq!(ed.get_preview_main_view(), snipdeck_ui::MainView::Tile);
     });
 }

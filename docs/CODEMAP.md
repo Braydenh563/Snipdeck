@@ -1247,9 +1247,9 @@ apply_state | crates/snipdeck-app/src/editor_binding.rs:484
 set_preview | crates/snipdeck-app/src/editor_binding.rs:504
 set_tags | crates/snipdeck-app/src/editor_binding.rs:529
 fill | crates/snipdeck-app/src/editor_binding.rs:542
-bring_to_front | crates/snipdeck-app/src/editor_binding.rs:586
-tests | crates/snipdeck-app/src/editor_binding.rs:594
-more_options_opened_by_a_refusal_counts_as_a_change_once | crates/snipdeck-app/src/editor_binding.rs:598
+bring_to_front | crates/snipdeck-app/src/editor_binding.rs:588
+tests | crates/snipdeck-app/src/editor_binding.rs:596
+more_options_opened_by_a_refusal_counts_as_a_change_once | crates/snipdeck-app/src/editor_binding.rs:600
 
 ### crates/snipdeck-app/src/failure.rs
 
@@ -7640,7 +7640,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/tests/budget.rs` | 4 |
 | `crates/snipdeck-app/tests/crash_hook.rs` | 1 |
 | `crates/snipdeck-app/tests/editor_controller.rs` | 46 |
-| `crates/snipdeck-app/tests/editor_window.rs` | 28 |
+| `crates/snipdeck-app/tests/editor_window.rs` | 31 |
 | `crates/snipdeck-app/tests/fill_window.rs` | 14 |
 | `crates/snipdeck-app/tests/help_window.rs` | 6 |
 | `crates/snipdeck-app/tests/history.rs` | 17 |

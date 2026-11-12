@@ -541,6 +541,8 @@ fn set_tags(w: &ui::ItemEditor, tags: &[(String, bool)]) {
 /// Puts the starting values of a freshly opened editor into the window.
 fn fill(w: &ui::ItemEditor, view: &ItemEditorView) {
     let fields = &view.fields;
+    // Before the values that make or drop the path field.
+    w.invoke_clear_focus_requests();
     w.set_is_new(view.is_new);
     w.set_more_open(view.more_open);
     w.set_kind_index(to_i32(kind_index(fields.kind)));

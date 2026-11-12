@@ -583,8 +583,9 @@ component PreviewPane inherits Rectangle {
                 Rectangle {
                     height: main-card.height;
                     main-card := ItemCard {
-                        width: root.main-variant == ItemCardVariant.tile ? min(parent.width, 200px) : parent.width;
+                        width: root.main-variant == ItemCardVariant.tile ? min(parent.width, 200px * SystemLook.text-scale) : parent.width;
                         height: self.preferred-height;
+                        x: 0px;
                         inline-tile: root.main-variant == ItemCardVariant.tile;
                         variant: root.main-variant;
                         numbered: false;
@@ -784,17 +785,21 @@ export component ItemEditor inherits Window {
     // type in (More options closed), so the focus stays on the toggle rather than falling out of the window.
     // Asks the path field (inside a conditional, so not nameable from here) for focus; cleared when the kind changes
     // so a field made later does not take focus on its own.
-    property <int> source-focus-request: 0;
+    out property <int> source-focus-request: 0;
     changed kind-index => { root.source-focus-request = 0; }
+    // The host starts filling the window for another item: a request left from the last one must not reach a path
+    // field that the new values make (its init would take the focus from the title).
+    public function clear-focus-requests() { root.source-focus-request = 0; }
     function back-to-form() {
         root.preview-on = false;
-        if (root.title-error != "") {
-            title-field.focus();
-            title-field.set-cursor(1000000);
-        } else if (root.text-kind && root.content-shown-error != "") {
+        // The first error in reading order: the text or path, then the title.
+        if (root.text-kind && root.content-shown-error != "") {
             content-field.focus();
         } else if (!root.text-kind && root.source-shown-error != "") {
             root.source-focus-request += 1;
+        } else if (root.title-error != "") {
+            title-field.focus();
+            title-field.set-cursor(1000000);
         } else if (root.more-shown || root.text-kind) {
             root.focus-title();
         } else {
