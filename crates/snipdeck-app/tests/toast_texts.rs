@@ -119,6 +119,8 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::NotRefreshed => 88,
         ToastMessage::IconNotAddable => 89,
         ToastMessage::IconSaved { .. } => 90,
+        ToastMessage::EyedropFailed => 108,
+        ToastMessage::EyedropHdr { .. } => 109,
         ToastMessage::AddedTo { .. } => 91,
         ToastMessage::LooksSecret => 92,
         ToastMessage::PasteNotAddedEditorOpen => 93,
@@ -139,7 +141,7 @@ const fn position(message: &ToastMessage) -> usize {
     }
 }
 
-const VARIANTS: usize = 108;
+const VARIANTS: usize = 110;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -297,6 +299,8 @@ fn samples() -> Vec<ToastMessage> {
         M::IconSaved {
             name: s("trash.svg"),
         },
+        M::EyedropFailed,
+        M::EyedropHdr { hex: s("#3a7bd5") },
         M::AddedTo {
             list: s("Notes"),
             count: 1,

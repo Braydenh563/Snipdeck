@@ -672,6 +672,9 @@ impl WindowPlace {
     pub const MIN_SIDE: u32 = 200;
 }
 
+/// The colour the Colours tab starts on (`accent.default`).
+pub const DEFAULT_COLOUR: &str = "#2870d4";
+
 /// The user's settings.
 #[allow(
     clippy::struct_excessive_bools,
@@ -789,6 +792,28 @@ pub struct Settings {
     pub panel_start_visible: bool,
     /// The symbols the user used last, newest first, at most 24 (the Symbols tab's Recent strip).
     pub symbols_recent: Vec<snipdeck_symbols::RecentEntry>,
+    /// The Panel shows its Colours tab (picker, formats, schemes, contrast). On by default.
+    pub show_colours_tab: bool,
+    /// The colours used last, newest first, at most 24 (the Colours tab's "Recently used" strip).
+    pub colours_recent: Vec<snipdeck_colour::RecentColour>,
+    /// The format a colour is copied and saved in by default (never `Name`: it is lossy).
+    pub colour_format: snipdeck_colour::Format,
+    /// The colour the Colours tab shows, `#rrggbb[aa]`; restored when the tab opens.
+    pub colour_current: String,
+    /// The second colour of the contrast section, `#rrggbb[aa]`.
+    pub colour_contrast_with: String,
+    /// The scheme the Colours tab lays out.
+    pub colour_scheme: snipdeck_colour::Scheme,
+    /// The picker (wheel or square) is open in the Colours tab.
+    pub colour_adjust_open: bool,
+    /// Which picker surface shows.
+    pub colour_picker_style: snipdeck_colour::PickerStyle,
+    /// Which channel set the Values row edits.
+    pub colour_input_model: snipdeck_colour::InputModel,
+    /// A colour picked from the screen is copied at once.
+    pub colour_copy_on_pick: bool,
+    /// The list saved colours go to (`ListId` text); `None` or a deleted list: the next save makes one.
+    pub colour_save_list: Option<String>,
 }
 
 impl Default for Settings {
@@ -840,6 +865,17 @@ impl Default for Settings {
             panel_hide_after_use: false,
             panel_start_visible: false,
             symbols_recent: Vec::new(),
+            show_colours_tab: true,
+            colours_recent: Vec::new(),
+            colour_format: snipdeck_colour::Format::Hex,
+            colour_current: DEFAULT_COLOUR.to_owned(),
+            colour_contrast_with: "#ffffff".to_owned(),
+            colour_scheme: snipdeck_colour::Scheme::Complementary,
+            colour_adjust_open: true,
+            colour_picker_style: snipdeck_colour::PickerStyle::Square,
+            colour_input_model: snipdeck_colour::InputModel::Hex,
+            colour_copy_on_pick: true,
+            colour_save_list: None,
         }
     }
 }
@@ -974,6 +1010,34 @@ impl Settings {
         field!(tray_click);
         field!(panel_open_at);
         field!(symbols_recent);
+        field!(show_colours_tab);
+        // One bad recent must not drop the rest.
+        if let Some(serde_json::Value::Array(items)) = map.get("colours_recent") {
+            settings.colours_recent = items
+                .iter()
+                .filter_map(|v| serde_json::from_value(v.clone()).ok())
+                .collect();
+        }
+        field!(colour_format);
+        if !settings.colour_format.can_be_default() {
+            settings.colour_format = snipdeck_colour::Format::Hex;
+        }
+        for (key, slot) in [
+            ("colour_current", &mut settings.colour_current),
+            ("colour_contrast_with", &mut settings.colour_contrast_with),
+        ] {
+            if let Some(text) = map.get(key).and_then(serde_json::Value::as_str)
+                && snipdeck_colour::Rgba8::from_hex(text).is_some()
+            {
+                text.clone_into(slot);
+            }
+        }
+        field!(colour_scheme);
+        field!(colour_adjust_open);
+        field!(colour_picker_style);
+        field!(colour_input_model);
+        field!(colour_copy_on_pick);
+        field!(colour_save_list);
         field!(panel_hide_after_use);
         field!(panel_start_visible);
         settings
@@ -2123,6 +2187,42 @@ mod tests {
             let text = format!(r#"{{"panel_open_at":"{word}"}}"#);
             assert_eq!(Settings::from_json(&text).panel_open_at, at, "{word}");
         }
+    }
+
+    #[test]
+    fn the_colour_settings_default_round_trip_and_survive_bad_entries() {
+        use snipdeck_colour::{Format, InputModel, PickerStyle, Scheme};
+        let d = Settings::default();
+        assert!(d.show_colours_tab && d.colour_adjust_open && d.colour_copy_on_pick);
+        assert_eq!(
+            (d.colour_format, d.colour_scheme, d.colour_picker_style, d.colour_input_model),
+            (Format::Hex, Scheme::Complementary, PickerStyle::Square, InputModel::Hex)
+        );
+        assert_eq!((d.colour_current.as_str(), d.colour_contrast_with.as_str()), ("#2870d4", "#ffffff"));
+        assert_eq!(d.colour_save_list, None);
+        let set = Settings {
+            colour_format: Format::Oklch,
+            colour_scheme: Scheme::Triadic,
+            colour_picker_style: PickerStyle::Wheel,
+            colour_input_model: InputModel::Cmyk,
+            colour_current: "#3a7bd580".to_owned(),
+            colour_save_list: Some("0192a3b4-0000-7000-8000-000000000001".to_owned()),
+            colours_recent: vec![snipdeck_colour::RecentColour {
+                hex: "#3a7bd5".to_owned(),
+                used_at: 1_789_000_000_000,
+            }],
+            ..Settings::default()
+        };
+        assert_eq!(Settings::from_json(&set.to_json()), set);
+        // "name" is not a usable default; a bad colour takes the default; one bad recent goes alone.
+        let odd = Settings::from_json(
+            r##"{"colour_format":"name","colour_current":"blurple","colour_contrast_with":"#000000",
+            "colours_recent":[{"hex":"#112233","used_at":5},{"nonsense":1},{"hex":"zzz","used_at":6}]}"##,
+        );
+        assert_eq!(odd.colour_format, Format::Hex);
+        assert_eq!(odd.colour_current, d.colour_current);
+        assert_eq!(odd.colour_contrast_with, "#000000");
+        assert_eq!(odd.colours_recent.len(), 2);
     }
 
     #[test]

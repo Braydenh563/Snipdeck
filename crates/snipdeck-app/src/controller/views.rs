@@ -25,6 +25,8 @@ pub enum Effect {
     ShowPanel,
     /// Open the Panel's Symbols tab (after a `ShowPanel`; the palette's "Symbols").
     ShowSymbols,
+    /// Open the Panel's Colours tab (after a `ShowPanel`; "Open in Colours", a colour picked from the screen).
+    ShowColours,
     /// Hide the Panel.
     HidePanel,
     /// Start the OS window drag from the Panel header.
@@ -266,6 +268,8 @@ pub struct View {
     pub show_numbers: bool,
     /// The Symbols tab is offered (the `show_symbols_tab` setting).
     pub symbols_available: bool,
+    /// The Colours tab is offered (the `show_colours_tab` setting).
+    pub colours_available: bool,
     /// The Panel's layout (Settings > Panel > Layout).
     pub layout: crate::settings::PanelLayout,
     /// The search field is always shown (Settings > Panel > Search field).

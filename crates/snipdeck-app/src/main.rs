@@ -666,6 +666,7 @@ fn effect_handler(
         // The binding has already acted: placed the window, or opened the item editor.
         Effect::HidePanel
         | Effect::ShowSymbols
+        | Effect::ShowColours
         | Effect::PlaceWindow(_)
         | Effect::NewItem
         | Effect::EditItem(_) => {}

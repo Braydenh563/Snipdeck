@@ -353,6 +353,8 @@ where
         ToastMessage::NotRefreshed => t.invoke_not_refreshed(),
         ToastMessage::IconNotAddable => t.invoke_icon_not_addable(),
         ToastMessage::IconSaved { name } => t.invoke_icon_saved(name.into()),
+        ToastMessage::EyedropFailed => t.invoke_eyedrop_failed(),
+        ToastMessage::EyedropHdr { hex } => t.invoke_eyedrop_hdr(hex.into()),
     };
     text.into()
 }

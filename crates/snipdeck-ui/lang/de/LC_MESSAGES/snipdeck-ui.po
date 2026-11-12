@@ -7,6 +7,12 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "#3a7bd5, rgb(58, 123, 213), royalblue"
+msgstr ""
+
+msgid "#ffffff"
+msgstr ""
+
 msgid "(new ID)"
 msgstr "(neue ID)"
 
@@ -88,6 +94,18 @@ msgstr "Ein Titel darf keine Zeilenumbrüche oder Steuerzeichen enthalten."
 msgid "A trigger is 1 to 32 characters with no spaces."
 msgstr "Ein Kürzel hat 1 bis 32 Zeichen ohne Leerzeichen."
 
+msgid "AA"
+msgstr ""
+
+msgid "AA large"
+msgstr ""
+
+msgid "AAA"
+msgstr ""
+
+msgid "AAA large"
+msgstr ""
+
 msgid "About"
 msgstr "Info"
 
@@ -168,6 +186,9 @@ msgstr[1] "Alle {n} Elemente kommen in den Papierkorb. Du kannst sie {} Tage lan
 msgid "All {} recent copies are removed. This can't be undone."
 msgstr "Alle {} zuletzt kopierten Einträge werden entfernt. Das lässt sich nicht rückgängig machen."
 
+msgid "Alpha"
+msgstr ""
+
 msgid "Also forget the encryption key"
 msgstr "Auch den Verschlüsselungsschlüssel vergessen"
 
@@ -191,6 +212,9 @@ msgstr "Ein Bild-Textbaustein enthält ein PNG-Bild. Wähle eine PNG-Datei oder 
 
 msgid "An item is open in the editor, so the pasted text was not added. Close it, then paste again."
 msgstr "Im Editor ist ein Element geöffnet, daher wurde der eingefügte Text nicht hinzugefügt. Schließen Sie es und fügen Sie erneut ein."
+
+msgid "Analogous"
+msgstr ""
 
 msgid "Angry"
 msgstr "Wütend"
@@ -294,6 +318,9 @@ msgstr "Boards und Listen"
 msgid "Bottom edge"
 msgstr "Unterer Rand"
 
+msgid "Brightness"
+msgstr ""
+
 msgid "Bring in items from a Snipdeck file or another clipboard manager. You see what will be added before anything is written."
 msgstr "Textbausteine aus einer Snipdeck-Datei oder einem anderen Zwischenablage-Manager übernehmen. Du siehst vorab, was hinzugefügt wird, bevor etwas geschrieben wird."
 
@@ -311,6 +338,9 @@ msgstr "Durchsuchen…"
 
 msgid "Built on"
 msgstr "Erstellt am"
+
+msgid "CMYK"
+msgstr ""
 
 msgid "Cancel"
 msgstr "Abbrechen"
@@ -420,6 +450,9 @@ msgstr "Klick kopiert"
 msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
 msgstr "Klick oder Enter fügt ein. Shift+Klick oder Shift+Enter kopiert."
 
+msgid "Click or Enter picks · Esc cancels · arrows move"
+msgstr ""
+
 msgid "Click pastes into {} · Shift+click copies"
 msgstr "Klick fügt in {} ein · Shift+Klick kopiert"
 
@@ -462,6 +495,9 @@ msgstr "Farbe"
 msgid "Colour label"
 msgstr "Farbmarkierung"
 
+msgid "Colours"
+msgstr ""
+
 msgid "Comfortable"
 msgstr "Komfortabel"
 
@@ -489,8 +525,14 @@ msgstr "Kompakt"
 msgid "Compact view"
 msgstr "Kompakte Ansicht"
 
+msgid "Complementary"
+msgstr ""
+
 msgid "Content"
 msgstr "Inhalt"
+
+msgid "Contrast"
+msgstr ""
 
 msgid "Control Enter"
 msgstr "Ctrl Enter"
@@ -527,6 +569,9 @@ msgstr "Alle kopieren"
 
 msgid "Copy diagnostic report"
 msgstr "Diagnosebericht kopieren"
+
+msgid "Copy only"
+msgstr ""
 
 msgid "Copy selected item"
 msgstr "Ausgewählten Textbaustein kopieren"
@@ -638,6 +683,9 @@ msgstr "Dieser Textbaustein konnte nicht geöffnet werden."
 
 msgid "Couldn't open your email app."
 msgstr "Deine E-Mail-App konnte nicht geöffnet werden."
+
+msgid "Couldn't pick a colour from the screen."
+msgstr ""
 
 msgid "Couldn't reach the clipboard. Another app may be using it."
 msgstr "Auf die Zwischenablage kann nicht zugegriffen werden. Eine andere App verwendet sie vielleicht."
@@ -1065,6 +1113,12 @@ msgstr "Zum Beispiel E-Mail-Antworten"
 msgid "For example, Work"
 msgstr "Zum Beispiel Arbeit"
 
+msgid "Format"
+msgstr ""
+
+msgid "Formats"
+msgstr ""
+
 msgid "Formatted"
 msgstr "Formatiert"
 
@@ -1137,6 +1191,21 @@ msgstr "Ausgewählte Zeilen gruppieren"
 msgid "Group…"
 msgstr "Gruppieren…"
 
+msgid "HDR is on for this screen: values are approximate"
+msgstr ""
+
+msgid "HDR is on for this screen: {} is approximate."
+msgstr ""
+
+msgid "HEX"
+msgstr ""
+
+msgid "HSB"
+msgstr ""
+
+msgid "HSL"
+msgstr ""
+
 msgid "Handy for forms you fill field by field."
 msgstr "Praktisch für Formulare, die du Feld für Feld ausfüllst."
 
@@ -1208,6 +1277,12 @@ msgstr "Wie das Panel deine Einträge auflistet: einer pro Zeile, zwei pro Zeile
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "Wie breit sich das Panel öffnet, von {} bis {} Pixel."
+
+msgid "Hue"
+msgstr ""
+
+msgid "Hue and saturation"
+msgstr ""
 
 msgid "Icon"
 msgstr "Symbol"
@@ -1437,6 +1512,12 @@ msgstr "Dichte der Hauptlisten: Kompakt"
 msgid "Main window"
 msgstr "Hauptfenster"
 
+msgid "Make current"
+msgstr ""
+
+msgid "Make default format"
+msgstr ""
+
 msgid "Make it fit your screen"
 msgstr "An deinen Bildschirm anpassen"
 
@@ -1563,6 +1644,9 @@ msgid "Moved {} item to {}"
 msgid_plural "Moved {} items to {}"
 msgstr[0] "{} Textbaustein nach {} verschoben"
 msgstr[1] "{} Textbausteine nach {} verschoben"
+
+msgid "Name"
+msgstr ""
 
 msgid "Names can have at most {} characters."
 msgstr "Namen dürfen höchstens {} Zeichen haben."
@@ -1693,6 +1777,9 @@ msgstr "Kein Ziel:"
 msgid "No target: click copies"
 msgstr "Kein Ziel: Klick kopiert"
 
+msgid "Not a colour. Try {}"
+msgstr ""
+
 msgid "Not included"
 msgstr "Nicht enthalten"
 
@@ -1767,6 +1854,15 @@ msgstr "„Aus“ lässt ein angedocktes Panel geöffnet. Sonst klappt es zu ein
 
 msgid "Off keeps a panel docked to the left or right at the height you dropped it. On stretches it over the whole edge."
 msgstr "Aus: Ein links oder rechts angedocktes Panel behält die Höhe, in der du es losgelassen hast. Ein: Es füllt den ganzen Rand."
+
+msgid "On black"
+msgstr ""
+
+msgid "On this colour"
+msgstr ""
+
+msgid "On white"
+msgstr ""
 
 msgid "One hotkey turns copied text into an item."
 msgstr "Ein Tastenkürzel macht kopierten Text zu einem Textbaustein."
@@ -1846,6 +1942,9 @@ msgstr "Optional: Die erste Zeile des Textes wird verwendet"
 msgid "Orange"
 msgstr "Orange"
 
+msgid "Other colour"
+msgstr ""
+
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
 msgstr "Außerhalb dieses Ordners schreibt Snipdeck nur den Windows-Autostart-Eintrag (wenn du ihn einschaltest) und die Zwischenablage, wenn du einen Textbaustein verwendest."
 
@@ -1917,6 +2016,9 @@ msgstr "Nächsten Eintrag einfügen"
 
 msgid "Paste next pastes the next item each time you press it."
 msgstr "„Nächstes einfügen“ fügt bei jedem Druck das nächste Element ein."
+
+msgid "Paste or copy"
+msgstr ""
 
 msgid "Paste several in order"
 msgstr "Mehrere der Reihe nach einfügen"
@@ -1996,6 +2098,9 @@ msgstr "Menschen & Körper"
 msgid "PhraseExpress export (CSV)"
 msgstr "PhraseExpress-Export (CSV)"
 
+msgid "Pick a colour from the screen (Ctrl+I)"
+msgstr ""
+
 msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
 msgstr "Wähle, wo das Panel sitzt. Du kannst das jederzeit in den Einstellungen ändern, ebenso die anderen Ränder, das Ausblenden beim Wechsel der App und die Taskleistenschaltfläche."
 
@@ -2007,6 +2112,9 @@ msgstr "Auswahl"
 
 msgid "Picker position"
 msgstr "Position der Auswahl"
+
+msgid "Picker style"
+msgstr ""
 
 msgid "Picture"
 msgstr "Bild"
@@ -2101,6 +2209,9 @@ msgstr "Schnellwahl-Nummern"
 msgid "Quit"
 msgstr "Beenden"
 
+msgid "RGB"
+msgstr ""
+
 msgid "Ready. Press Test to check it."
 msgstr "Bereit. Drücke Test, um es zu prüfen."
 
@@ -2163,6 +2274,9 @@ msgstr "Aus Zuletzt entfernen"
 
 msgid "Remove from paste stack"
 msgstr "Aus dem Einfügestapel entfernen"
+
+msgid "Remove from recents"
+msgstr ""
 
 msgid "Remove master password"
 msgstr "Hauptpasswort entfernen"
@@ -2258,6 +2372,9 @@ msgstr "SNIP1."
 msgid "Sad"
 msgstr "Traurig"
 
+msgid "Saturation and brightness"
+msgstr ""
+
 msgid "Save"
 msgstr "Speichern"
 
@@ -2279,11 +2396,29 @@ msgstr "Aus der Zwischenablage speichern"
 msgid "Save the clipboard as an item"
 msgstr "Zwischenablage als Textbaustein speichern"
 
+msgid "Save to"
+msgstr ""
+
+msgid "Save to Colours"
+msgstr ""
+
+msgid "Save to Colours (Ctrl+S)"
+msgstr ""
+
+msgid "Save to a list (Ctrl+Shift+S)"
+msgstr ""
+
 msgid "Save to…"
 msgstr "Speichern in…"
 
 msgid "Save what you paste often."
 msgstr "Speichere, was du oft einfügst."
+
+msgid "Saved"
+msgstr ""
+
+msgid "Saved colours"
+msgstr ""
 
 msgid "Saved to {}"
 msgstr "Gespeichert in {}"
@@ -2311,6 +2446,12 @@ msgstr "Beim Speichern geänderten Texts wird die Formatierung entfernt."
 
 msgid "Saving…"
 msgstr "Wird gespeichert…"
+
+msgid "Scheme"
+msgstr ""
+
+msgid "Schemes"
+msgstr ""
 
 msgid "Scope"
 msgstr "Bereich"
@@ -2624,6 +2765,12 @@ msgstr "Quellcode"
 msgid "Space"
 msgstr "Leertaste"
 
+msgid "Split-complementary"
+msgstr ""
+
+msgid "Square"
+msgstr ""
+
 msgid "Start stack"
 msgstr "Stapel starten"
 
@@ -2662,6 +2809,9 @@ msgstr "Supporter"
 
 msgid "Surprise"
 msgstr "Überraschung"
+
+msgid "Swap the two colours"
+msgstr ""
 
 msgid "Switch this list to Manual order?"
 msgstr "Diese Liste auf manuelle Reihenfolge umstellen?"
@@ -2731,6 +2881,9 @@ msgstr "Test"
 
 msgid "Test {}"
 msgstr "{} testen"
+
+msgid "Tetradic"
+msgstr ""
 
 msgid "Text"
 msgstr "Text"
@@ -2963,6 +3116,9 @@ msgstr "Dieser Text ist {}. Alles über 16 KB wird hier nur zum Lesen geöffnet;
 msgid "Tile view"
 msgstr "Kachelansicht"
 
+msgid "Tints & shades"
+msgstr ""
+
 msgid "Tips"
 msgstr "Tipps"
 
@@ -3001,6 +3157,9 @@ msgstr "Reisen & Orte"
 
 msgid "Tray icon click opens"
 msgstr "Klick auf das Tray-Symbol öffnet"
+
+msgid "Triadic"
+msgstr ""
 
 msgid "Trigger"
 msgstr "Kürzel"
@@ -3046,6 +3205,9 @@ msgstr "Tippen"
 
 msgid "Typing triggers work on Windows only."
 msgstr "Kürzel beim Tippen funktionieren nur unter Windows."
+
+msgid "UI"
+msgstr ""
 
 msgid "UPPERCASE"
 msgstr "GROSSBUCHSTABEN"
@@ -3155,6 +3317,9 @@ msgstr "{} für {} verwenden"
 msgid "User guide"
 msgstr "Benutzerhandbuch"
 
+msgid "Values as"
+msgstr ""
+
 msgid "Version"
 msgstr "Version"
 
@@ -3190,6 +3355,9 @@ msgstr "Deine Änderungen wurden nicht gespeichert."
 
 msgid "What you changed in this item has not been saved."
 msgstr "Deine Änderungen an diesem Textbaustein wurden nicht gespeichert."
+
+msgid "Wheel"
+msgstr ""
 
 msgid "When Windows starts"
 msgstr "Beim Start von Windows"
@@ -3355,6 +3523,9 @@ msgstr "legt „{}“ an"
 msgid "creates “{}” in {}"
 msgstr "legt „{}“ in {} an"
 
+msgid "default"
+msgstr ""
+
 msgid "delete"
 msgstr "Löschen"
 
@@ -3387,6 +3558,9 @@ msgstr "alle markieren auswählen"
 
 msgid "everything home show"
 msgstr "alles Start anzeigen"
+
+msgid "fail"
+msgstr ""
 
 msgid "favourite favorite keep"
 msgstr "Favorit favorisieren behalten"
@@ -3447,8 +3621,14 @@ msgstr "Name Titel ändern bearbeiten Abschnitt"
 msgid "navigation rail collapse expand lists panel left width"
 msgstr "navigation leiste einklappen ausklappen listen panel links breite"
 
+msgid "near {}"
+msgstr ""
+
 msgid "never paste excluded apps"
 msgstr "nie einfügen ausgeschlossene Programme"
+
+msgid "no close name"
+msgstr ""
 
 msgid "notepad.exe"
 msgstr "notepad.exe"
@@ -3458,6 +3638,9 @@ msgstr "öffnen umschalten Deck ausblenden"
 
 msgid "or"
 msgstr "oder"
+
+msgid "pass"
+msgstr ""
 
 msgid "paste"
 msgstr "Einfügen"
@@ -3558,6 +3741,9 @@ msgid_plural "{n} matches in {}"
 msgstr[0] "{n} Treffer in {}"
 msgstr[1] "{n} Treffer in {}"
 
+msgid "{}"
+msgstr ""
+
 msgid "{} (Enter)"
 msgstr "{} (Eingabe)"
 
@@ -3585,6 +3771,9 @@ msgstr "{} konnte nicht gelesen werden und wurde übersprungen."
 
 msgid "{} d ago"
 msgstr "vor {} T."
+
+msgid "{} degrees"
+msgstr ""
 
 msgid "{} file in this archive is not known to this version and was left out."
 msgid_plural "{} files in this archive are not known to this version and were left out."
@@ -3654,6 +3843,9 @@ msgstr[1] "{} Treffer in allen Boards"
 msgid "{} min ago"
 msgstr "vor {} Min."
 
+msgid "{} needs a number"
+msgstr ""
+
 msgid "{} new board will be made"
 msgid_plural "{} new boards will be made"
 msgstr[0] "{} neues Board wird erstellt"
@@ -3664,6 +3856,9 @@ msgstr "{} der Prüfungen brauchen einen Blick."
 
 msgid "{} of {} · next: {}"
 msgstr "{} von {} · als Nächstes: {}"
+
+msgid "{} percent"
+msgstr ""
 
 msgid "{} picture or file that no snippet uses was left out."
 msgid_plural "{} pictures or files that no snippet uses were left out."
@@ -3693,6 +3888,9 @@ msgstr "{} – mit Tab einfügen"
 
 msgid "{}, match {}"
 msgstr "{}, Eintrag {}"
+
+msgid "{}, {}"
+msgstr ""
 
 msgid "{}, {} of {}"
 msgstr "{}, {} von {}"
@@ -3741,6 +3939,9 @@ msgstr "{}: {} (eine Shell-, Skript- oder Zufallsvariable oder eine, die Snipdec
 
 msgid "{}: {} has no Snipdeck equivalent and was left as written."
 msgstr "{}: {} hat in Snipdeck keine Entsprechung und blieb unverändert."
+
+msgid "{}: {} to 1. AA text {}, AAA text {}"
+msgstr ""
 
 msgid "{}: {} was not kept as a trigger, because a snippet has one trigger."
 msgstr "{}: {} wurde nicht als Auslöser übernommen, weil ein Textbaustein nur einen Auslöser hat."

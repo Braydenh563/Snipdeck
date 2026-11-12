@@ -36,6 +36,7 @@ use use_paste::make_sensitive;
 
 mod access;
 mod capture_stack;
+mod colours;
 mod dock;
 mod look_settings;
 mod main_groups;

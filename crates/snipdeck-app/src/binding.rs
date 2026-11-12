@@ -36,6 +36,8 @@ use crate::{
     wording,
 };
 
+mod colours;
+
 type ProblemsFn = dyn Fn(&[HotkeyProblem]);
 type FrameFn = dyn Fn(&Monitor, Rect);
 type MonitorFn = dyn Fn(&Monitor);
@@ -265,6 +267,8 @@ struct Core<S, C, K, T> {
     dock_timer: slint::Timer,
     /// Looks at the clipboard while "Take screenshot" waits for its picture.
     screen_clip_timer: slint::Timer,
+    /// What the Colours tab remembers between redraws.
+    colours: colours::Glue,
 }
 
 impl<S, C, K, T> Core<S, C, K, T>
@@ -301,6 +305,7 @@ where
                 idle_timer: Cell::new(false),
                 dock_timer: slint::Timer::default(),
                 screen_clip_timer: slint::Timer::default(),
+                colours: colours::Glue::default(),
             }
         });
         register_redraw(&core.redraw);
@@ -448,6 +453,7 @@ where
                     self.activate_soon();
                 }
                 Effect::ShowSymbols => window.invoke_open_symbols(),
+                Effect::ShowColours => window.invoke_open_colours(),
                 Effect::HidePanel => {
                     // Back to the Target first, while the Panel still holds the foreground:
                     // hiding it first would leave the choice of the next window to Windows.
@@ -525,6 +531,11 @@ where
         }
         self.arm_dock();
         self.arm_screen_clip();
+        let picked = self.controller.borrow_mut().poll_eyedropper();
+        if !picked.is_empty() {
+            self.apply(&picked);
+        }
+        self.sync_colours(&window);
         if let Some(toast) = &view.toast
             && self.controller.borrow_mut().claim_toast_timer(toast.seq)
         {
@@ -677,6 +688,7 @@ where
     ) -> Binding {
         let core = Core::new(this, window, host, Box::new(on_effect));
         core.act(|ctl| ctl.set_group_name(&window.invoke_group_default_name()));
+        core.wire_colours(window);
         core.sync();
         {
             // Where the other windows open over the Panel, while it is shown.
@@ -1691,6 +1703,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     }
     window.set_show_numbers(view.show_numbers);
     window.set_symbols_available(view.symbols_available);
+    window.set_colours_available(view.colours_available);
     window.set_layout(match view.layout {
         crate::settings::PanelLayout::List => ui::PanelLayout::List,
         crate::settings::PanelLayout::Cards => ui::PanelLayout::Cards,

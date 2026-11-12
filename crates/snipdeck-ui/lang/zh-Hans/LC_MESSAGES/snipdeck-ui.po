@@ -7,6 +7,12 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
+msgid "#3a7bd5, rgb(58, 123, 213), royalblue"
+msgstr ""
+
+msgid "#ffffff"
+msgstr ""
+
 msgid "(new ID)"
 msgstr "(新ID)"
 
@@ -88,6 +94,18 @@ msgstr "标题不能包含换行或控制字符。"
 msgid "A trigger is 1 to 32 characters with no spaces."
 msgstr "触发词为 1 到 32 个字符，不含空格。"
 
+msgid "AA"
+msgstr ""
+
+msgid "AA large"
+msgstr ""
+
+msgid "AAA"
+msgstr ""
+
+msgid "AAA large"
+msgstr ""
+
 msgid "About"
 msgstr "关于"
 
@@ -167,6 +185,9 @@ msgstr[0] "{n} 个项目将移入回收站。{} 天内可以恢复。"
 msgid "All {} recent copies are removed. This can't be undone."
 msgstr "将删除全部 {} 条最近复制的内容。此操作无法撤销。"
 
+msgid "Alpha"
+msgstr ""
+
 msgid "Also forget the encryption key"
 msgstr "同时忘记加密密钥"
 
@@ -190,6 +211,9 @@ msgstr "图片片段保存的是 PNG 图片。请选择 PNG 文件，或将此�
 
 msgid "An item is open in the editor, so the pasted text was not added. Close it, then paste again."
 msgstr "编辑器中已打开一个项目，所以粘贴的文本没有添加。请先关闭它，再重新粘贴。"
+
+msgid "Analogous"
+msgstr ""
 
 msgid "Angry"
 msgstr "生气"
@@ -293,6 +317,9 @@ msgstr "看板和列表"
 msgid "Bottom edge"
 msgstr "底边"
 
+msgid "Brightness"
+msgstr ""
+
 msgid "Bring in items from a Snipdeck file or another clipboard manager. You see what will be added before anything is written."
 msgstr "从 Snipdeck 文件或其他剪贴板管理器导入片段。写入前可先查看将要添加的内容。"
 
@@ -310,6 +337,9 @@ msgstr "浏览…"
 
 msgid "Built on"
 msgstr "构建日期"
+
+msgid "CMYK"
+msgstr ""
 
 msgid "Cancel"
 msgstr "取消"
@@ -419,6 +449,9 @@ msgstr "点击为复制"
 msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
 msgstr "点击或按 Enter 粘贴。Shift+点击或 Shift+Enter 为复制。"
 
+msgid "Click or Enter picks · Esc cancels · arrows move"
+msgstr ""
+
 msgid "Click pastes into {} · Shift+click copies"
 msgstr "点击粘贴到 {} · Shift+点击为复制"
 
@@ -461,6 +494,9 @@ msgstr "颜色"
 msgid "Colour label"
 msgstr "颜色标签"
 
+msgid "Colours"
+msgstr ""
+
 msgid "Comfortable"
 msgstr "舒适"
 
@@ -488,8 +524,14 @@ msgstr "紧凑"
 msgid "Compact view"
 msgstr "紧凑视图"
 
+msgid "Complementary"
+msgstr ""
+
 msgid "Content"
 msgstr "内容"
+
+msgid "Contrast"
+msgstr ""
 
 msgid "Control Enter"
 msgstr "Ctrl Enter"
@@ -526,6 +568,9 @@ msgstr "全部复制"
 
 msgid "Copy diagnostic report"
 msgstr "复制诊断报告"
+
+msgid "Copy only"
+msgstr ""
 
 msgid "Copy selected item"
 msgstr "复制所选片段"
@@ -637,6 +682,9 @@ msgstr "无法打开此片段。"
 
 msgid "Couldn't open your email app."
 msgstr "无法打开你的邮件应用。"
+
+msgid "Couldn't pick a colour from the screen."
+msgstr ""
 
 msgid "Couldn't reach the clipboard. Another app may be using it."
 msgstr "无法访问剪贴板。可能有其他应用正在使用它。"
@@ -1064,6 +1112,12 @@ msgstr "例如：邮件回复"
 msgid "For example, Work"
 msgstr "例如：工作"
 
+msgid "Format"
+msgstr ""
+
+msgid "Formats"
+msgstr ""
+
 msgid "Formatted"
 msgstr "带格式"
 
@@ -1136,6 +1190,21 @@ msgstr "将所选的行分组"
 msgid "Group…"
 msgstr "分组…"
 
+msgid "HDR is on for this screen: values are approximate"
+msgstr ""
+
+msgid "HDR is on for this screen: {} is approximate."
+msgstr ""
+
+msgid "HEX"
+msgstr ""
+
+msgid "HSB"
+msgstr ""
+
+msgid "HSL"
+msgstr ""
+
 msgid "Handy for forms you fill field by field."
 msgstr "适合逐个字段填写的表单。"
 
@@ -1207,6 +1276,12 @@ msgstr "面板列出项目的方式：每行一个、每行两个卡片，或紧
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "面板展开的宽度，范围为 {} 至 {} 像素。"
+
+msgid "Hue"
+msgstr ""
+
+msgid "Hue and saturation"
+msgstr ""
 
 msgid "Icon"
 msgstr "图标"
@@ -1433,6 +1508,12 @@ msgstr "主列表密度：紧凑"
 msgid "Main window"
 msgstr "主窗口"
 
+msgid "Make current"
+msgstr ""
+
+msgid "Make default format"
+msgstr ""
+
 msgid "Make it fit your screen"
 msgstr "适配你的屏幕"
 
@@ -1557,6 +1638,9 @@ msgstr[0] "已将 {} 个片段移到回收站"
 msgid "Moved {} item to {}"
 msgid_plural "Moved {} items to {}"
 msgstr[0] "已将 {} 个片段移到 {}"
+
+msgid "Name"
+msgstr ""
 
 msgid "Names can have at most {} characters."
 msgstr "名称最多 {} 个字符。"
@@ -1687,6 +1771,9 @@ msgstr "无目标："
 msgid "No target: click copies"
 msgstr "无目标：点击为复制"
 
+msgid "Not a colour. Try {}"
+msgstr ""
+
 msgid "Not included"
 msgstr "未包含"
 
@@ -1761,6 +1848,15 @@ msgstr "选择“关闭”则已停靠的面板保持展开。否则它会收成
 
 msgid "Off keeps a panel docked to the left or right at the height you dropped it. On stretches it over the whole edge."
 msgstr "关闭：停靠在左侧或右侧的面板保持你放下时的高度。开启：面板占满整条边。"
+
+msgid "On black"
+msgstr ""
+
+msgid "On this colour"
+msgstr ""
+
+msgid "On white"
+msgstr ""
 
 msgid "One hotkey turns copied text into an item."
 msgstr "一个快捷键即可将复制的文本变为片段。"
@@ -1840,6 +1936,9 @@ msgstr "可选：使用文本的第一行"
 msgid "Orange"
 msgstr "橙色"
 
+msgid "Other colour"
+msgstr ""
+
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
 msgstr "在该文件夹之外，Snipdeck 只会写入 Windows 开机启动项（如果你开启了它），以及在你使用片段时写入剪贴板。"
 
@@ -1911,6 +2010,9 @@ msgstr "粘贴下一个项目"
 
 msgid "Paste next pastes the next item each time you press it."
 msgstr "“粘贴下一个”每按一次就粘贴下一项。"
+
+msgid "Paste or copy"
+msgstr ""
 
 msgid "Paste several in order"
 msgstr "按顺序粘贴多项"
@@ -1990,6 +2092,9 @@ msgstr "人物与身体"
 msgid "PhraseExpress export (CSV)"
 msgstr "PhraseExpress 导出文件（CSV）"
 
+msgid "Pick a colour from the screen (Ctrl+I)"
+msgstr ""
+
 msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
 msgstr "选择面板的位置。你可以随时在设置中更改，还可设置其他边缘、切换应用时隐藏以及任务栏按钮。"
 
@@ -2001,6 +2106,9 @@ msgstr "选择器"
 
 msgid "Picker position"
 msgstr "选择器位置"
+
+msgid "Picker style"
+msgstr ""
 
 msgid "Picture"
 msgstr "图片"
@@ -2095,6 +2203,9 @@ msgstr "快速使用编号"
 msgid "Quit"
 msgstr "退出"
 
+msgid "RGB"
+msgstr ""
+
 msgid "Ready. Press Test to check it."
 msgstr "已就绪。按“测试”进行检查。"
 
@@ -2157,6 +2268,9 @@ msgstr "从“最近”中移除"
 
 msgid "Remove from paste stack"
 msgstr "从粘贴堆栈中移除"
+
+msgid "Remove from recents"
+msgstr ""
 
 msgid "Remove master password"
 msgstr "移除主密码"
@@ -2250,6 +2364,9 @@ msgstr "SNIP1."
 msgid "Sad"
 msgstr "难过"
 
+msgid "Saturation and brightness"
+msgstr ""
+
 msgid "Save"
 msgstr "保存"
 
@@ -2271,11 +2388,29 @@ msgstr "从剪贴板保存"
 msgid "Save the clipboard as an item"
 msgstr "将剪贴板保存为片段"
 
+msgid "Save to"
+msgstr ""
+
+msgid "Save to Colours"
+msgstr ""
+
+msgid "Save to Colours (Ctrl+S)"
+msgstr ""
+
+msgid "Save to a list (Ctrl+Shift+S)"
+msgstr ""
+
 msgid "Save to…"
 msgstr "保存到…"
 
 msgid "Save what you paste often."
 msgstr "保存你经常粘贴的内容。"
+
+msgid "Saved"
+msgstr ""
+
+msgid "Saved colours"
+msgstr ""
 
 msgid "Saved to {}"
 msgstr "已保存到 {}"
@@ -2303,6 +2438,12 @@ msgstr "保存修改后的文本会清除格式。"
 
 msgid "Saving…"
 msgstr "正在保存…"
+
+msgid "Scheme"
+msgstr ""
+
+msgid "Schemes"
+msgstr ""
 
 msgid "Scope"
 msgstr "范围"
@@ -2616,6 +2757,12 @@ msgstr "源代码"
 msgid "Space"
 msgstr "空格"
 
+msgid "Split-complementary"
+msgstr ""
+
+msgid "Square"
+msgstr ""
+
 msgid "Start stack"
 msgstr "开始堆栈"
 
@@ -2654,6 +2801,9 @@ msgstr "Supporter"
 
 msgid "Surprise"
 msgstr "惊讶"
+
+msgid "Swap the two colours"
+msgstr ""
 
 msgid "Switch this list to Manual order?"
 msgstr "要将此列表切换为手动排序吗?"
@@ -2723,6 +2873,9 @@ msgstr "测试"
 
 msgid "Test {}"
 msgstr "测试 {}"
+
+msgid "Tetradic"
+msgstr ""
 
 msgid "Text"
 msgstr "文本"
@@ -2955,6 +3108,9 @@ msgstr "此文本为 {}。超过 16 KB 的内容将在此以只读方式打开�
 msgid "Tile view"
 msgstr "平铺视图"
 
+msgid "Tints & shades"
+msgstr ""
+
 msgid "Tips"
 msgstr "提示"
 
@@ -2993,6 +3149,9 @@ msgstr "旅行与地点"
 
 msgid "Tray icon click opens"
 msgstr "点击托盘图标时打开"
+
+msgid "Triadic"
+msgstr ""
 
 msgid "Trigger"
 msgstr "触发词"
@@ -3038,6 +3197,9 @@ msgstr "输入"
 
 msgid "Typing triggers work on Windows only."
 msgstr "键入触发仅适用于 Windows。"
+
+msgid "UI"
+msgstr ""
 
 msgid "UPPERCASE"
 msgstr "大写"
@@ -3147,6 +3309,9 @@ msgstr "将 {} 用于 {}"
 msgid "User guide"
 msgstr "用户指南"
 
+msgid "Values as"
+msgstr ""
+
 msgid "Version"
 msgstr "版本"
 
@@ -3182,6 +3347,9 @@ msgstr "更改尚未保存。"
 
 msgid "What you changed in this item has not been saved."
 msgstr "此片段的更改尚未保存。"
+
+msgid "Wheel"
+msgstr ""
 
 msgid "When Windows starts"
 msgstr "Windows 启动时"
@@ -3346,6 +3514,9 @@ msgstr "创建“{}”"
 msgid "creates “{}” in {}"
 msgstr "创建“{}”(在 {})"
 
+msgid "default"
+msgstr ""
+
 msgid "delete"
 msgstr "删除"
 
@@ -3378,6 +3549,9 @@ msgstr "全部 标记 选择 全选"
 
 msgid "everything home show"
 msgstr "全部 首页 显示"
+
+msgid "fail"
+msgstr ""
 
 msgid "favourite favorite keep"
 msgstr "置顶 收藏 保留"
@@ -3437,8 +3611,14 @@ msgstr "名称 标题 更改 编辑 区段"
 msgid "navigation rail collapse expand lists panel left width"
 msgstr "导航 侧边栏 折叠 展开 列表 面板 左侧 宽度"
 
+msgid "near {}"
+msgstr ""
+
 msgid "never paste excluded apps"
 msgstr "从不粘贴 排除的程序"
+
+msgid "no close name"
+msgstr ""
 
 msgid "notepad.exe"
 msgstr "notepad.exe"
@@ -3448,6 +3628,9 @@ msgstr "打开 切换 卡组 隐藏"
 
 msgid "or"
 msgstr "或"
+
+msgid "pass"
+msgstr ""
 
 msgid "paste"
 msgstr "粘贴"
@@ -3545,6 +3728,9 @@ msgid "{n} match in {}"
 msgid_plural "{n} matches in {}"
 msgstr[0] "在 {} 中有 {n} 个匹配项"
 
+msgid "{}"
+msgstr ""
+
 msgid "{} (Enter)"
 msgstr "{}（Enter）"
 
@@ -3570,6 +3756,9 @@ msgstr "{} 无法读取，已跳过。"
 
 msgid "{} d ago"
 msgstr "{} 天前"
+
+msgid "{} degrees"
+msgstr ""
 
 msgid "{} file in this archive is not known to this version and was left out."
 msgid_plural "{} files in this archive are not known to this version and were left out."
@@ -3632,6 +3821,9 @@ msgstr[0] "所有看板中有 {} 个匹配项"
 msgid "{} min ago"
 msgstr "{} 分钟前"
 
+msgid "{} needs a number"
+msgstr ""
+
 msgid "{} new board will be made"
 msgid_plural "{} new boards will be made"
 msgstr[0] "将新建 {} 个看板"
@@ -3641,6 +3833,9 @@ msgstr "有 {} 项检查需要留意。"
 
 msgid "{} of {} · next: {}"
 msgstr "{} / {} · 下一项：{}"
+
+msgid "{} percent"
+msgstr ""
 
 msgid "{} picture or file that no snippet uses was left out."
 msgid_plural "{} pictures or files that no snippet uses were left out."
@@ -3666,6 +3861,9 @@ msgstr "{} — 按 Tab 插入"
 
 msgid "{}, match {}"
 msgstr "{}，第 {} 项"
+
+msgid "{}, {}"
+msgstr ""
 
 msgid "{}, {} of {}"
 msgstr "{}，第 {} 项（共 {} 项）"
@@ -3714,6 +3912,9 @@ msgstr "{}：{}（shell、脚本或随机变量，或 Snipdeck 不认识的变�
 
 msgid "{}: {} has no Snipdeck equivalent and was left as written."
 msgstr "{}：{} 在 Snipdeck 中没有对应项，已保持原样。"
+
+msgid "{}: {} to 1. AA text {}, AAA text {}"
+msgstr ""
 
 msgid "{}: {} was not kept as a trigger, because a snippet has one trigger."
 msgstr "{}：{} 未保留为触发词，因为一个片段只有一个触发词。"

@@ -9,6 +9,7 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+snipdeck-colour.workspace = true
 snipdeck-core.workspace = true
 # `testing`: the fakes are the dev platform behind `--demo` and `--screenshot` off Windows.
 snipdeck-platform = { path = "../snipdeck-platform", features = ["testing"] }

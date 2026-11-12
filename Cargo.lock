@@ -4587,6 +4587,7 @@ dependencies = [
  "serde",
  "serde_json",
  "slint",
+ "snipdeck-colour",
  "snipdeck-core",
  "snipdeck-platform",
  "snipdeck-portable",

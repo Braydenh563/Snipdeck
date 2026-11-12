@@ -1,0 +1,1136 @@
+// The Panel's Colours tab (docs/reviews/colour-spec.md §3): the current colour, a hand picker (square or wheel),
+// typed values, the format rows, contrast, schemes, recents and saved colours. The host (colours_binding.rs) owns
+// every value: this file draws `ColourState` and reports gestures through its callbacks. The maths is the
+// snipdeck-colour crate; nothing here converts a colour.
+import { ScrollView } from "std-widgets.slint";
+import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook } from "theme.slint";
+import { Icons } from "icons.slint";
+import { Icon } from "components/icon.slint";
+import { IconButton } from "components/icon-button.slint";
+import { Button, ButtonVariant, ButtonSize } from "components/button.slint";
+import { TextField } from "components/text_field.slint";
+import { Segmented, SelectField, FormScroll } from "components/form.slint";
+import { Menu, MenuEntry } from "components/menu.slint";
+
+// One colour chip: `hex` is its text (what a click uses), `label` the spoken name ("#3a7bd5, near royalblue").
+export struct ColourSwatch {
+    color: color,
+    hex: string,
+    label: string,
+    translucent: bool,
+}
+
+// One format row: HEX, RGB, HSL, HSB, CMYK, OKLCH, Name.
+export struct ColourFormatRow {
+    label: string,
+    value: string,
+    is-default: bool,
+    can-be-default: bool,
+}
+
+// One contrast line ("on white", "on black", "on other"). `bg` is the background the "Aa" sample sits on.
+export struct ColourContrastRow {
+    name: string,
+    bg: color,
+    ratio: string,
+    aa: bool,
+    aa-large: bool,
+    aaa: bool,
+    aaa-large: bool,
+    ui: bool,
+    speak: string,
+}
+
+// One typed channel of the Values row ("R", "G", "B", "HEX").
+export struct ColourChannel {
+    label: string,
+    text: string,
+}
+
+// The words Rust builds sentences from (it cannot reach the catalogs).
+export global ColourTexts {
+    pure public function format-name() -> string { return @tr("Name"); }
+    pure public function near(name: string) -> string { return @tr("near {}", name); }
+    pure public function exact(name: string) -> string { return @tr("{}", name); }
+    pure public function no-name() -> string { return @tr("no close name"); }
+    pure public function not-a-colour(sample: string) -> string {
+        return @tr("Not a colour. Try {}", sample);
+    }
+    pure public function value-error(label: string) -> string {
+        return @tr("{} needs a number", label);
+    }
+    pure public function white() -> string { return @tr("On white"); }
+    pure public function black() -> string { return @tr("On black"); }
+    pure public function other() -> string { return @tr("On this colour"); }
+    pure public function colours-list() -> string { return @tr("Colours"); }
+    pure public function scheme-name(i: int) -> string {
+        return i == 0 ? @tr("Complementary")
+            : i == 1 ? @tr("Analogous")
+            : i == 2 ? @tr("Triadic")
+            : i == 3 ? @tr("Split-complementary")
+            : i == 4 ? @tr("Tetradic")
+            : @tr("Tints & shades");
+    }
+    pure public function model-name(i: int) -> string {
+        return i == 0 ? @tr("HEX") : i == 1 ? @tr("RGB") : i == 2 ? @tr("HSL") : i == 3 ? @tr("HSB") : @tr("CMYK");
+    }
+    pure public function use-hint-paste(target: string) -> string {
+        return @tr("Click pastes into {} · Shift+click copies", target);
+    }
+    pure public function contrast-speak(name: string, ratio: string, aa: bool, aaa: bool) -> string {
+        return @tr("{}: {} to 1. AA text {}, AAA text {}", name, ratio, aa ? @tr("pass") : @tr("fail"), aaa ? @tr("pass") : @tr("fail"));
+    }
+    pure public function swatch-label(hex: string, name: string) -> string { return @tr("{}, {}", hex, name); }
+    pure public function use-hint-copy() -> string { return @tr("Click copies"); }
+    pure public function eyedrop-hint() -> string { return @tr("Click or Enter picks · Esc cancels · arrows move"); }
+    pure public function eyedrop-hdr-note() -> string { return @tr("HDR is on for this screen: values are approximate"); }
+}
+
+export global ColourState {
+    // The colour being looked at, its names and the text of the input line.
+    in property <color> current: #3a7bd5;
+    in property <bool> current-translucent: false;
+    in property <string> current-label;
+    in property <string> name-text;
+    in-out property <string> input-text;
+    in property <string> input-error;
+    in property <string> values-error;
+    // Chips.
+    in property <[ColourSwatch]> recents;
+    in property <[ColourSwatch]> saved;
+    in property <[ColourSwatch]> scheme;
+    // Format rows and contrast.
+    in property <[ColourFormatRow]> formats;
+    in property <[ColourContrastRow]> contrast;
+    in-out property <string> other-text;
+    in property <string> other-error;
+    in property <color> other: #ffffff;
+    in property <ColourContrastRow> other-row;
+    // Picker. `surface` is the rendered square or wheel; the marker is a fraction of it.
+    in-out property <bool> picker-open: true;
+    in-out property <int> picker-style: 0;
+    in-out property <int> input-model: 0;
+    in-out property <int> scheme-index: 0;
+    in property <image> surface;
+    in property <float> marker-x: 0.5;
+    in property <float> marker-y: 0.5;
+    in property <float> hue: 0;
+    in property <float> bri: 100;
+    in property <float> alpha: 100;
+    in property <[ColourChannel]> channels;
+    // The Target line and the eyedropper.
+    in property <string> use-hint;
+    in property <bool> eyedropper-available: false;
+    in property <bool> eyedropper-running: false;
+    // Lists a colour can be saved to (names; the host maps the index back).
+    in property <[string]> list-names;
+    // Callbacks.
+    callback input-edited(string);
+    callback input-accepted(string);
+    callback other-edited(string);
+    callback other-accepted(string);
+    callback eyedropper();
+    // group: 0 recents, 1 saved, 2 scheme. Shift+click is `swatch-copied`.
+    callback swatch-used(int, int);
+    callback swatch-copied(int, int);
+    callback swatch-saved(int, int, int);
+    callback swatch-removed(int, int);
+    callback format-used(int);
+    callback format-copied(int);
+    callback format-made-default(int);
+    callback format-saved(int, int);
+    callback save(int);
+    callback open-saved();
+    callback swap();
+    callback scheme-picked(int);
+    callback picker-toggled(bool);
+    callback style-picked(int);
+    callback model-picked(int);
+    // x and y as fractions of the surface; `done` is the pointer going up.
+    callback surface-moved(float, float, bool);
+    callback hue-moved(float);
+    callback bri-moved(float);
+    callback alpha-moved(float);
+    callback channel-committed(int, string);
+    callback channel-stepped(int, int);
+    callback surface-nudged(int, int);
+}
+
+// A checkerboard to show under a translucent colour.
+component Checker inherits Rectangle {
+    in property <length> cell: 6px;
+    background: #ffffff;
+    clip: true;
+    for i in 72: Rectangle {
+        x: (mod(i, 6) * 2 + 1 - mod(floor(i / 6), 2)) * root.cell;
+        y: floor(i / 6) * root.cell;
+        width: root.cell;
+        height: root.cell;
+        background: #c8c8c8;
+    }
+}
+
+component SectionTitle inherits Rectangle {
+    in property <string> text;
+    in property <string> hint;
+    height: Space.s6;
+    Text {
+        x: Space.s2;
+        text: root.text;
+        color: Theme.text-secondary;
+        font-family: Fonts.sans;
+        font-size: Type.xs;
+        font-weight: Type.semibold;
+        vertical-alignment: center;
+        height: parent.height;
+        accessible-role: AccessibleRole.text;
+    }
+}
+
+// A colour tile: the colour over a checkerboard, a hairline so white shows on light and black on dark.
+component Tile inherits Rectangle {
+    in property <color> tint;
+    in property <bool> translucent: false;
+    in property <length> corner: Radius.sm;
+    border-radius: root.corner;
+    clip: true;
+    if root.translucent: Checker {
+        width: parent.width;
+        height: parent.height;
+    }
+    Rectangle { background: root.tint; }
+    Rectangle {
+        border-width: 1px;
+        border-color: Theme.hc-border != transparent ? Theme.hc-border : Theme.border-default;
+        border-radius: root.corner;
+    }
+}
+
+// A wrapping grid of chips. A click calls `used`, Shift+click `copied`, right-click `menu`. One tab stop; the
+// arrows move the roving selection, Enter and Space use it, Shift+Enter copies it.
+component ChipGrid inherits Rectangle {
+    in property <[ColourSwatch]> chips;
+    in property <length> tile: 24px;
+    in property <length> cell-w: 28px;
+    in property <length> cell-h: 28px;
+    in property <bool> captions: false;
+    in property <string> group-label;
+    in-out property <int> selected: -1;
+    callback used(int);
+    callback copied(int);
+    callback menu(int, length, length);
+    callback tip(string, length, length, bool);
+
+    property <int> columns: max(1, floor((root.width - 2 * Space.s2) / root.cell-w));
+    property <int> rows: ceil(root.chips.length / root.columns);
+    preferred-height: root.rows * root.cell-h;
+    min-height: root.rows * root.cell-h;
+    forward-focus: scope;
+    accessible-role: list;
+    accessible-label: root.group-label;
+
+    function step(delta: int) {
+        let n = root.chips.length;
+        if (n > 0) {
+            root.selected = min(max((root.selected < 0 ? 0 : root.selected) + delta, 0), n - 1);
+        }
+    }
+
+    scope := FocusScope {
+        key-pressed(event) => {
+            if (event.text == Key.LeftArrow) { root.step(-1); return accept; }
+            if (event.text == Key.RightArrow) { root.step(1); return accept; }
+            if (event.text == Key.UpArrow) { root.step(-root.columns); return accept; }
+            if (event.text == Key.DownArrow) { root.step(root.columns); return accept; }
+            if (event.text == Key.Home) { root.selected = 0; return accept; }
+            if (event.text == Key.End) { root.selected = root.chips.length - 1; return accept; }
+            if ((event.text == "\n" || event.text == " ") && root.selected >= 0 && root.selected < root.chips.length) {
+                if (event.modifiers.shift) {
+                    root.copied(root.selected);
+                } else {
+                    root.used(root.selected);
+                }
+                return accept;
+            }
+            return reject;
+        }
+        for chip[i] in root.chips: Rectangle {
+            x: Space.s2 + mod(i, root.columns) * root.cell-w;
+            y: floor(i / root.columns) * root.cell-h;
+            width: root.cell-w;
+            height: root.cell-h;
+            accessible-role: list-item;
+            accessible-label: chip.label;
+            accessible-description: root.group-label;
+            accessible-item-index: i;
+            accessible-item-count: root.chips.length;
+            accessible-action-default => { root.used(i); }
+            Rectangle {
+                border-radius: Radius.md;
+                background: touch.has-hover ? Theme.bg-hover : transparent;
+                border-width: (root.selected == i && scope.has-focus) ? 2px : 0px;
+                border-color: Theme.focus-ring;
+            }
+            Tile {
+                x: (parent.width - self.width) / 2;
+                y: root.captions ? Space.s0-5 : (parent.height - self.height) / 2;
+                width: root.tile;
+                height: root.tile;
+                tint: chip.color;
+                translucent: chip.translucent;
+            }
+            if root.captions: Text {
+                y: Space.s0-5 + root.tile + Space.s0-5;
+                width: parent.width;
+                text: chip.hex;
+                horizontal-alignment: center;
+                font-family: Fonts.mono;
+                font-size: Type.xs;
+                color: Theme.text-secondary;
+                overflow: elide;
+            }
+            touch := TouchArea {
+                mouse-cursor: pointer;
+                changed has-hover => {
+                    root.tip(chip.label, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover);
+                }
+                pointer-event(event) => {
+                    if (event.button == PointerEventButton.left && event.kind == PointerEventKind.up
+                        && self.mouse-x >= 0 && self.mouse-x <= self.width && self.mouse-y >= 0 && self.mouse-y <= self.height) {
+                        root.selected = i;
+                        if (event.modifiers.shift) {
+                            root.copied(i);
+                        } else {
+                            root.used(i);
+                        }
+                    } else if (event.button == PointerEventButton.right && event.kind == PointerEventKind.up) {
+                        root.selected = i;
+                        root.menu(i, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+                    }
+                }
+            }
+        }
+    }
+}
+
+// A slider on a painted track (hue, brightness, alpha). `value` is 0..max; the host owns it.
+component TrackSlider inherits Rectangle {
+    in property <float> value;
+    in property <float> max-value: 100;
+    in property <string> label;
+    in property <string> value-text;
+    in property <brush> track;
+    in property <bool> checker: false;
+    callback moved(float);
+    height: Space.s5;
+    forward-focus: scope;
+    accessible-role: slider;
+    accessible-label: root.label;
+    accessible-value: root.value-text;
+    accessible-value-minimum: 0;
+    accessible-value-maximum: root.max-value;
+    accessible-value-step: 1;
+
+    function nudge(delta: float) {
+        root.moved(min(max(root.value + delta, 0), root.max-value));
+    }
+    accessible-action-increment => { root.nudge(1); }
+    accessible-action-decrement => { root.nudge(-1); }
+
+    scope := FocusScope {
+        key-pressed(event) => {
+            let big = event.modifiers.shift ? 10.0 : 1.0;
+            if (event.text == Key.LeftArrow || event.text == Key.DownArrow) { root.nudge(-big); return accept; }
+            if (event.text == Key.RightArrow || event.text == Key.UpArrow) { root.nudge(big); return accept; }
+            if (event.text == Key.Home) { root.moved(0); return accept; }
+            if (event.text == Key.End) { root.moved(root.max-value); return accept; }
+            return reject;
+        }
+    }
+    Rectangle {
+        x: Space.s2;
+        y: (parent.height - self.height) / 2;
+        width: parent.width - 2 * Space.s2;
+        height: Space.s3;
+        border-radius: Radius.sm;
+        clip: true;
+        if root.checker: Checker {
+            width: parent.width;
+            height: parent.height;
+            cell: 4px;
+        }
+        Rectangle { background: root.track; }
+        Rectangle {
+            border-width: 1px;
+            border-color: Theme.border-default;
+            border-radius: Radius.sm;
+        }
+    }
+    thumb := Rectangle {
+        property <length> run: root.width - 2 * Space.s2;
+        x: Space.s2 + (root.value / root.max-value) * self.run - self.width / 2;
+        y: (parent.height - self.height) / 2;
+        width: Space.s4;
+        height: Space.s4;
+        border-radius: Radius.lg;
+        background: transparent;
+        border-width: 2px;
+        border-color: scope.has-focus ? Theme.focus-ring : Theme.text-primary;
+        Rectangle {
+            border-radius: Radius.lg;
+            border-width: 1px;
+            border-color: Theme.bg-surface;
+        }
+    }
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        function at(x: length) {
+            let run = root.width - 2 * Space.s2;
+            root.moved(min(max((x - Space.s2) / run, 0), 1) * root.max-value);
+        }
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                scope.focus();
+            }
+        }
+        clicked => { self.at(self.mouse-x); }
+        moved => {
+            if (self.pressed) {
+                self.at(self.mouse-x);
+            }
+        }
+    }
+}
+
+// The square or wheel: the image, a ring at the colour, a drag and the arrow keys.
+component Surface inherits Rectangle {
+    in property <image> source;
+    in property <float> marker-x;
+    in property <float> marker-y;
+    in property <bool> wheel: false;
+    in property <string> label;
+    in property <string> value-text;
+    callback moved(float, float, bool);
+    // Arrow keys: dx, dy in steps (Shift is ten).
+    callback nudged(int, int);
+    forward-focus: scope;
+    accessible-role: slider;
+    accessible-label: root.label;
+    accessible-value: root.value-text;
+
+    scope := FocusScope {
+        key-pressed(event) => {
+            let big = event.modifiers.shift ? 10 : 1;
+            if (event.text == Key.LeftArrow) { root.nudged(-big, 0); return accept; }
+            if (event.text == Key.RightArrow) { root.nudged(big, 0); return accept; }
+            if (event.text == Key.UpArrow) { root.nudged(0, big); return accept; }
+            if (event.text == Key.DownArrow) { root.nudged(0, -big); return accept; }
+            if (event.text == Key.PageUp) { root.nudged(0, 10); return accept; }
+            if (event.text == Key.PageDown) { root.nudged(0, -10); return accept; }
+            return reject;
+        }
+    }
+    area := Rectangle {
+        width: parent.width;
+        height: parent.height;
+        border-radius: root.wheel ? self.width / 2 : Radius.md;
+        clip: true;
+        Image {
+            width: parent.width;
+            height: parent.height;
+            source: root.source;
+            image-fit: fill;
+        }
+        Rectangle {
+            border-radius: parent.border-radius;
+            border-width: 1px;
+            border-color: Theme.border-default;
+        }
+    }
+    marker := Rectangle {
+        x: root.marker-x * root.width - self.width / 2;
+        y: root.marker-y * root.height - self.height / 2;
+        width: Space.s4;
+        height: Space.s4;
+        border-radius: Radius.lg;
+        border-width: 2px;
+        border-color: #ffffff;
+        background: transparent;
+        Rectangle {
+            width: parent.width + 2px;
+            height: parent.height + 2px;
+            x: -1px;
+            y: -1px;
+            border-radius: Radius.lg;
+            border-width: 1px;
+            border-color: #000000;
+        }
+        Rectangle {
+            width: parent.width + 2px;
+            height: parent.height + 2px;
+            x: -1px;
+            y: -1px;
+            border-radius: Radius.lg;
+            border-width: scope.has-focus ? 2px : 0px;
+            border-color: Theme.focus-ring;
+        }
+    }
+    touch := TouchArea {
+        mouse-cursor: crosshair;
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                scope.focus();
+                root.moved(self.mouse-x / self.width, self.mouse-y / self.height, false);
+            } else if (event.button == PointerEventButton.left && event.kind == PointerEventKind.up) {
+                root.moved(self.mouse-x / self.width, self.mouse-y / self.height, true);
+            }
+        }
+        moved => {
+            if (self.pressed) {
+                root.moved(self.mouse-x / self.width, self.mouse-y / self.height, false);
+            }
+        }
+    }
+}
+
+// A little pass/fail mark: a word and a check or a cross, so a result is never colour alone.
+component Mark inherits Rectangle {
+    in property <string> text;
+    in property <bool> pass;
+    width: txt.preferred-width + Space.s4 + Space.s1;
+    height: Space.s5;
+    HorizontalLayout {
+        spacing: Space.s0-5;
+        alignment: start;
+        txt := Text {
+            text: root.text;
+            font-family: Fonts.sans;
+            font-size: Type.xs;
+            color: Theme.text-secondary;
+            vertical-alignment: center;
+        }
+        if root.pass: Icon {
+            source: Icons.check;
+            tint: Theme.success-fg;
+        }
+        if !root.pass: Text {
+            text: "×";
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            font-weight: Type.semibold;
+            color: Theme.danger-fg;
+            vertical-alignment: center;
+        }
+    }
+}
+
+component ContrastLine inherits Rectangle {
+    in property <ColourContrastRow> data;
+    in property <color> fg;
+    height: Space.s12 - Space.s1;
+    accessible-role: list-item;
+    accessible-label: root.data.speak;
+    Tile {
+        x: Space.s2;
+        y: Space.s1;
+        width: Space.s12 - Space.s2;
+        height: Space.s6;
+        tint: root.data.bg;
+        Text {
+            text: "Aa";
+            color: root.fg;
+            font-family: Fonts.sans;
+            font-size: Type.md;
+            font-weight: Type.semibold;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            width: parent.width;
+            height: parent.height;
+        }
+    }
+    Text {
+        x: Space.s12 + Space.s2;
+        y: Space.s1;
+        height: Space.s6;
+        text: root.data.name;
+        font-family: Fonts.sans;
+        font-size: Type.sm;
+        color: Theme.text-primary;
+        vertical-alignment: center;
+    }
+    Text {
+        x: parent.width - Space.s2 - self.preferred-width;
+        y: Space.s1;
+        height: Space.s6;
+        text: root.data.ratio + ":1";
+        font-family: Fonts.mono;
+        font-size: Type.sm;
+        font-weight: Type.semibold;
+        color: Theme.text-primary;
+        vertical-alignment: center;
+    }
+    HorizontalLayout {
+        x: Space.s2;
+        y: Space.s6 + Space.s1 + Space.s0-5;
+        width: parent.width - 2 * Space.s2;
+        spacing: Space.s2;
+        alignment: start;
+        Mark { text: @tr("AA"); pass: root.data.aa; }
+        Mark { text: @tr("AA large"); pass: root.data.aa-large; }
+        Mark { text: @tr("AAA"); pass: root.data.aaa; }
+        Mark { text: @tr("AAA large"); pass: root.data.aaa-large; }
+        Mark { text: @tr("UI"); pass: root.data.ui; }
+    }
+}
+
+// One typed channel: a labelled field, committed on Enter or when it loses the focus; Up and Down step it.
+component ChannelField inherits FocusScope {
+    in property <string> label;
+    in property <string> value;
+    callback committed(string);
+    callback stepped(int);
+    forward-focus: tf;
+    horizontal-stretch: 1;
+    min-width: Space.s12 + Space.s2;
+
+    changed value => { tf.text = root.value; }
+    init => { tf.text = root.value; }
+
+    key-pressed(event) => {
+        if (event.text == Key.UpArrow) { root.stepped(event.modifiers.shift ? 10 : 1); return accept; }
+        if (event.text == Key.DownArrow) { root.stepped(event.modifiers.shift ? -10 : -1); return accept; }
+        return reject;
+    }
+    tf := TextField {
+        label: root.label;
+        monospace: true;
+        accepted(t) => { root.committed(t); }
+        changed has-focus => {
+            if (!self.has-focus && self.text != root.value) {
+                root.committed(self.text);
+            }
+        }
+    }
+}
+
+// A line of text under a field, in the danger colour, with a leading glyph so it is not colour alone.
+component ErrorLine inherits Rectangle {
+    in property <string> text;
+    height: root.text == "" ? 0px : Type.line-sm + Space.s1;
+    visible: root.text != "";
+    Text {
+        x: Space.s2;
+        width: parent.width - 2 * Space.s2;
+        text: "⚠ " + root.text;
+        font-family: Fonts.sans;
+        font-size: Type.sm;
+        color: Theme.danger-fg;
+        wrap: word-wrap;
+        accessible-role: AccessibleRole.text;
+    }
+}
+
+export component ColoursView inherits Rectangle {
+    // Popups: 0 none, 1 a chip's menu, 2 a format row's menu, 3 the Save-to list.
+    callback tip(string, length, length, bool);
+    property <int> popup: 0;
+    property <int> popup-group: 0;
+    property <int> popup-index: 0;
+    property <length> popup-x: 0px;
+    property <length> popup-y: 0px;
+    property <int> recent-sel: -1;
+    property <int> saved-sel: -1;
+    property <int> scheme-sel: -1;
+
+    background: Theme.bg-surface;
+
+    function save-targets() -> [MenuEntry] {
+        return [{ text: ColourTexts.colours-list(), icon: Icons.palette }];
+    }
+
+    VerticalLayout {
+        // ---- The current colour, pinned ------------------------------------------------------------
+        Rectangle {
+            height: Space.s12 + Space.s6;
+            background: Theme.bg-surface;
+            Tile {
+                x: Space.s2;
+                y: Space.s2;
+                width: Space.s12;
+                height: Space.s12;
+                corner: Radius.md;
+                tint: ColourState.current;
+                translucent: ColourState.current-translucent;
+                accessible-role: AccessibleRole.image;
+                accessible-label: ColourState.current-label;
+            }
+            input := TextField {
+                x: Space.s12 + Space.s4;
+                y: Space.s2;
+                width: parent.width - self.x - (ColourState.eyedropper-available ? Space.s8 + Space.s2 : Space.s2);
+                text <=> ColourState.input-text;
+                monospace: true;
+                label: @tr("Colour");
+                placeholder: @tr("#3a7bd5, rgb(58, 123, 213), royalblue");
+                edited(t) => { ColourState.input-edited(t); }
+                accepted(t) => { ColourState.input-accepted(t); }
+            }
+            if ColourState.eyedropper-available: IconButton {
+                x: parent.width - Space.s8 - Space.s2;
+                y: Space.s2;
+                icon: Icons.eyedropper;
+                tooltip: @tr("Pick a colour from the screen (Ctrl+I)");
+                own-tooltip: true;
+                enabled: !ColourState.eyedropper-running;
+                clicked => { ColourState.eyedropper(); }
+            }
+            Text {
+                x: Space.s12 + Space.s4 + Space.s2;
+                y: parent.height - Space.s6 - Space.s1;
+                width: parent.width - self.x - Space.s2;
+                height: Space.s6;
+                text: ColourState.name-text;
+                font-family: Fonts.sans;
+                font-size: Type.sm;
+                color: Theme.text-secondary;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+        }
+        ErrorLine { text: ColourState.input-error; }
+
+        // ---- Everything else scrolls ---------------------------------------------------------------
+        FormScroll {
+            vertical-stretch: 1;
+            content-height: body.preferred-height;
+            content-width: self.viewport-width;
+
+            body := VerticalLayout {
+                x: 0px;
+                width: parent.viewport-width;
+                alignment: start;
+                spacing: Space.s1;
+
+                // ---- Picker ----------------------------------------------------------------------
+                Rectangle {
+                    height: Space.s8;
+                    Rectangle {
+                        x: Space.s1;
+                        width: 120px;
+                        height: parent.height;
+                        border-radius: Radius.sm;
+                        background: pick-touch.has-hover ? Theme.bg-hover : transparent;
+                        HorizontalLayout {
+                            padding-left: Space.s1;
+                            spacing: Space.s1;
+                            alignment: start;
+                            Icon {
+                                source: ColourState.picker-open ? Icons.caret-down : Icons.caret-right;
+                                tint: Theme.text-secondary;
+                            }
+                            Text {
+                                text: @tr("Picker");
+                                font-family: Fonts.sans;
+                                font-size: Type.xs;
+                                font-weight: Type.semibold;
+                                color: Theme.text-secondary;
+                                vertical-alignment: center;
+                            }
+                        }
+                        pick-touch := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { ColourState.picker-toggled(!ColourState.picker-open); }
+                        }
+                        accessible-role: button;
+                        accessible-label: @tr("Picker");
+                        accessible-expanded: ColourState.picker-open;
+                        accessible-action-default => { ColourState.picker-toggled(!ColourState.picker-open); }
+                    }
+                    if ColourState.picker-open: Segmented {
+                        x: parent.width - self.width - Space.s2;
+                        y: (parent.height - self.height) / 2;
+                        width: 160px;
+                        options: [@tr("Square"), @tr("Wheel")];
+                        current: ColourState.picker-style;
+                        label: @tr("Picker style");
+                        chosen(i) => { ColourState.style-picked(i); }
+                    }
+                }
+                if ColourState.picker-open: VerticalLayout {
+                    spacing: Space.s2;
+                    padding-left: Space.s2;
+                    padding-right: Space.s2;
+                    padding-bottom: Space.s2;
+                    Surface {
+                        // A square is wide; a wheel is a disc.
+                        height: ColourState.picker-style == 1 ? 168px * SystemLook.text-scale : 120px * SystemLook.text-scale;
+                        source: ColourState.surface;
+                        marker-x: ColourState.marker-x;
+                        marker-y: ColourState.marker-y;
+                        wheel: ColourState.picker-style == 1;
+                        label: ColourState.picker-style == 1 ? @tr("Hue and saturation") : @tr("Saturation and brightness");
+                        value-text: ColourState.current-label;
+                        moved(x, y, done) => { ColourState.surface-moved(x, y, done); }
+                        nudged(dx, dy) => {
+                            ColourState.surface-nudged(dx, dy);
+                        }
+                    }
+                    if ColourState.picker-style == 0: TrackSlider {
+                        label: @tr("Hue");
+                        value: ColourState.hue;
+                        max-value: 360;
+                        value-text: @tr("{} degrees", round(ColourState.hue));
+                        track: @linear-gradient(90deg, #ff0000 0%, #ffff00 16.67%, #00ff00 33.33%, #00ffff 50%, #0000ff 66.67%, #ff00ff 83.33%, #ff0000 100%);
+                        moved(v) => { ColourState.hue-moved(v); }
+                    }
+                    if ColourState.picker-style == 1: TrackSlider {
+                        label: @tr("Brightness");
+                        value: ColourState.bri;
+                        value-text: @tr("{} percent", round(ColourState.bri));
+                        track: @linear-gradient(90deg, #000000 0%, #ffffff 100%);
+                        moved(v) => { ColourState.bri-moved(v); }
+                    }
+                    TrackSlider {
+                        label: @tr("Alpha");
+                        value: ColourState.alpha;
+                        value-text: @tr("{} percent", round(ColourState.alpha));
+                        checker: true;
+                        track: @linear-gradient(90deg, ColourState.current.with-alpha(0) 0%, ColourState.current.with-alpha(1) 100%);
+                        moved(v) => { ColourState.alpha-moved(v); }
+                    }
+                    // ---- Values: one field per channel of the chosen model --------------------------
+                    HorizontalLayout {
+                        spacing: Space.s2;
+                        alignment: stretch;
+                        SelectField {
+                            width: 76px;
+                            options: [ColourTexts.model-name(0), ColourTexts.model-name(1), ColourTexts.model-name(2), ColourTexts.model-name(3), ColourTexts.model-name(4)];
+                            current: ColourState.input-model;
+                            label: @tr("Values as");
+                            chosen(i) => { ColourState.model-picked(i); }
+                        }
+                        for ch[i] in ColourState.channels: ChannelField {
+                            label: ch.label;
+                            value: ch.text;
+                            committed(t) => { ColourState.channel-committed(i, t); }
+                            stepped(d) => { ColourState.channel-stepped(i, d); }
+                        }
+                    }
+                    ErrorLine { text: ColourState.values-error; }
+                }
+
+                // ---- Recently used --------------------------------------------------------------
+                if ColourState.recents.length > 0: SectionTitle { text: @tr("Recently used"); }
+                if ColourState.recents.length > 0: ChipGrid {
+                    chips: ColourState.recents;
+                    group-label: @tr("Recently used");
+                    selected <=> root.recent-sel;
+                    used(i) => { ColourState.swatch-used(0, i); }
+                    copied(i) => { ColourState.swatch-copied(0, i); }
+                    menu(i, x, y) => {
+                        root.popup-group = 0;
+                        root.popup-index = i;
+                        root.popup-x = x;
+                        root.popup-y = y;
+                        root.popup = 1;
+                    }
+                    tip(t, x, y, on) => { root.tip(t, x, y, on); }
+                }
+
+                // ---- Saved ----------------------------------------------------------------------
+                Rectangle {
+                    height: Space.s8;
+                    SectionTitle {
+                        text: @tr("Saved");
+                        width: 80px;
+                    }
+                    HorizontalLayout {
+                        x: 80px;
+                        width: parent.width - 80px - Space.s2;
+                        spacing: Space.s1;
+                        alignment: end;
+                        Button {
+                            text: @tr("Save");
+                            size: ButtonSize.sm;
+                            tooltip: @tr("Save to Colours (Ctrl+S)");
+                            clicked => { ColourState.save(-1); }
+                        }
+                        Button {
+                            text: @tr("Save to…");
+                            size: ButtonSize.sm;
+                            variant: ButtonVariant.secondary;
+                            tooltip: @tr("Save to a list (Ctrl+Shift+S)");
+                            clicked => {
+                                root.popup-x = Space.s2;
+                                root.popup-y = Space.s12;
+                                root.popup = 3;
+                            }
+                        }
+                        Button {
+                            text: @tr("Saved colours");
+                            size: ButtonSize.sm;
+                            variant: ButtonVariant.ghost;
+                            clicked => { ColourState.open-saved(); }
+                        }
+                    }
+                }
+                if ColourState.saved.length > 0: ChipGrid {
+                    chips: ColourState.saved;
+                    group-label: @tr("Saved colours");
+                    selected <=> root.saved-sel;
+                    used(i) => { ColourState.swatch-used(1, i); }
+                    copied(i) => { ColourState.swatch-copied(1, i); }
+                    menu(i, x, y) => {
+                        root.popup-group = 1;
+                        root.popup-index = i;
+                        root.popup-x = x;
+                        root.popup-y = y;
+                        root.popup = 1;
+                    }
+                    tip(t, x, y, on) => { root.tip(t, x, y, on); }
+                }
+
+                // ---- Formats --------------------------------------------------------------------
+                SectionTitle { text: @tr("Formats"); }
+                for f[i] in ColourState.formats: Rectangle {
+                    height: Space.hit;
+                    accessible-role: list-item;
+                    accessible-label: f.label + ", " + f.value;
+                    accessible-description: ColourState.use-hint;
+                    accessible-action-default => { ColourState.format-used(i); }
+                    Rectangle {
+                        x: Space.s1;
+                        width: parent.width - 2 * Space.s1;
+                        border-radius: Radius.sm;
+                        background: row-touch.has-hover ? Theme.bg-hover : transparent;
+                    }
+                    Text {
+                        x: Space.s2;
+                        width: Space.s12 + Space.s1;
+                        height: parent.height;
+                        text: f.label == "Name" ? ColourTexts.format-name() : f.label;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        font-weight: Type.semibold;
+                        color: Theme.text-secondary;
+                        vertical-alignment: center;
+                    }
+                    Text {
+                        x: Space.s12 + Space.s4;
+                        width: parent.width - self.x - (f.is-default ? 72px : 0px) - Space.s8 - Space.s2;
+                        height: parent.height;
+                        text: f.value;
+                        font-family: Fonts.mono;
+                        font-size: Type.sm;
+                        color: Theme.text-primary;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                    if f.is-default: Text {
+                        x: parent.width - Space.s8 - Space.s2 - 68px;
+                        width: 64px;
+                        height: parent.height;
+                        text: @tr("default");
+                        font-family: Fonts.sans;
+                        font-size: Type.xs;
+                        color: Theme.text-tertiary;
+                        horizontal-alignment: right;
+                        vertical-alignment: center;
+                    }
+                    row-touch := TouchArea {
+                        width: parent.width - Space.s8 - Space.s2;
+                        mouse-cursor: pointer;
+                        pointer-event(event) => {
+                            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.up
+                                && self.mouse-x >= 0 && self.mouse-x <= self.width && self.mouse-y >= 0 && self.mouse-y <= self.height) {
+                                if (event.modifiers.shift) {
+                                    ColourState.format-copied(i);
+                                } else {
+                                    ColourState.format-used(i);
+                                }
+                            } else if (event.button == PointerEventButton.right && event.kind == PointerEventKind.up) {
+                                root.popup-index = i;
+                                root.popup-x = self.absolute-position.x - root.absolute-position.x + self.mouse-x;
+                                root.popup-y = self.absolute-position.y - root.absolute-position.y + self.mouse-y;
+                                root.popup = 2;
+                            }
+                        }
+                    }
+                    IconButton {
+                        x: parent.width - Space.s8 - Space.s1;
+                        y: (parent.height - self.height) / 2;
+                        icon: Icons.copy;
+                        tooltip: @tr("Copy");
+                        clicked => { ColourState.format-copied(i); }
+                    }
+                }
+
+                // ---- Contrast -------------------------------------------------------------------
+                SectionTitle { text: @tr("Contrast"); }
+                for c[i] in ColourState.contrast: ContrastLine {
+                    data: c;
+                    fg: ColourState.current;
+                }
+                ContrastLine {
+                    data: ColourState.other-row;
+                    fg: ColourState.current;
+                }
+                Rectangle {
+                    height: Space.s8 + Space.s1;
+                    HorizontalLayout {
+                        x: Space.s2;
+                        width: parent.width - 2 * Space.s2;
+                        spacing: Space.s2;
+                        TextField {
+                            text <=> ColourState.other-text;
+                            monospace: true;
+                            label: @tr("Other colour");
+                            placeholder: @tr("#ffffff");
+                            edited(t) => { ColourState.other-edited(t); }
+                            accepted(t) => { ColourState.other-accepted(t); }
+                        }
+                        IconButton {
+                            y: Space.s0-5;
+                            icon: Icons.arrows-left-right;
+                            tooltip: @tr("Swap the two colours");
+                            clicked => { ColourState.swap(); }
+                        }
+                    }
+                }
+                ErrorLine { text: ColourState.other-error; }
+
+                // ---- Schemes --------------------------------------------------------------------
+                SectionTitle { text: @tr("Schemes"); }
+                Rectangle {
+                    height: Space.s8 + Space.s1;
+                    SelectField {
+                        x: Space.s2;
+                        width: parent.width - 2 * Space.s2;
+                        options: [ColourTexts.scheme-name(0), ColourTexts.scheme-name(1), ColourTexts.scheme-name(2), ColourTexts.scheme-name(3), ColourTexts.scheme-name(4), ColourTexts.scheme-name(5)];
+                        current: ColourState.scheme-index;
+                        label: @tr("Scheme");
+                        chosen(i) => { ColourState.scheme-picked(i); }
+                    }
+                }
+                ChipGrid {
+                    chips: ColourState.scheme;
+                    tile: Space.s12 - Space.s8 + Space.s8 - Space.s0-5 * 2;
+                    cell-w: 60px;
+                    cell-h: 68px;
+                    captions: true;
+                    group-label: ColourTexts.scheme-name(ColourState.scheme-index);
+                    selected <=> root.scheme-sel;
+                    used(i) => { ColourState.swatch-used(2, i); }
+                    copied(i) => { ColourState.swatch-copied(2, i); }
+                    menu(i, x, y) => {
+                        root.popup-group = 2;
+                        root.popup-index = i;
+                        root.popup-x = x;
+                        root.popup-y = y;
+                        root.popup = 1;
+                    }
+                    tip(t, x, y, on) => { root.tip(t, x, y, on); }
+                }
+                Rectangle { height: Space.s2; }
+            }
+        }
+
+        // ---- The route line -----------------------------------------------------------------------
+        Rectangle {
+            height: Space.s8;
+            Text {
+                x: Space.s2;
+                width: parent.width - 2 * Space.s2;
+                height: parent.height;
+                text: ColourState.use-hint;
+                font-family: Fonts.sans;
+                font-size: Type.sm;
+                color: Theme.text-secondary;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+        }
+    }
+
+    // ---- Popups -----------------------------------------------------------------------------------
+    if root.popup != 0: TouchArea {
+        width: parent.width;
+        height: parent.height;
+        clicked => { root.popup = 0; }
+    }
+    if root.popup == 1: Menu {
+        x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
+        y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2);
+        label: @tr("Colour");
+        icons: false;
+        entries: [
+            { text: @tr("Make current") },
+            { text: @tr("Copy") },
+            { text: @tr("Save to Colours") },
+            { text: @tr("Remove from recents"), hidden: root.popup-group != 0 },
+        ];
+        init => { self.focus-menu(); }
+        dismissed => { root.popup = 0; }
+        activated(i) => {
+            root.popup = 0;
+            if (i == 0) {
+                ColourState.swatch-used(root.popup-group, root.popup-index);
+            } else if (i == 1) {
+                ColourState.swatch-copied(root.popup-group, root.popup-index);
+            } else if (i == 2) {
+                ColourState.swatch-saved(root.popup-group, root.popup-index, -1);
+            } else {
+                ColourState.swatch-removed(root.popup-group, root.popup-index);
+            }
+        }
+    }
+    if root.popup == 2: Menu {
+        x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
+        y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2);
+        label: @tr("Format");
+        icons: false;
+        entries: [
+            { text: ColourState.use-hint != "" && ColourState.formats.length > root.popup-index ? @tr("Paste or copy") : @tr("Copy") },
+            { text: @tr("Copy only") },
+            { text: @tr("Make default format"), hidden: !ColourState.formats[root.popup-index].can-be-default || ColourState.formats[root.popup-index].is-default },
+            { text: @tr("Save to Colours") },
+        ];
+        init => { self.focus-menu(); }
+        dismissed => { root.popup = 0; }
+        activated(i) => {
+            root.popup = 0;
+            if (i == 0) {
+                ColourState.format-used(root.popup-index);
+            } else if (i == 1) {
+                ColourState.format-copied(root.popup-index);
+            } else if (i == 2) {
+                ColourState.format-made-default(root.popup-index);
+            } else {
+                ColourState.format-saved(root.popup-index, -1);
+            }
+        }
+    }
+    if root.popup == 3: Menu {
+        x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
+        y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2);
+        label: @tr("Save to");
+        icons: false;
+        menu-max-h: root.height - Space.s4;
+        entries: [
+            { text: ColourState.list-names.length > 0 ? ColourState.list-names[0] : "", hidden: ColourState.list-names.length < 1 },
+            { text: ColourState.list-names.length > 1 ? ColourState.list-names[1] : "", hidden: ColourState.list-names.length < 2 },
+            { text: ColourState.list-names.length > 2 ? ColourState.list-names[2] : "", hidden: ColourState.list-names.length < 3 },
+            { text: ColourState.list-names.length > 3 ? ColourState.list-names[3] : "", hidden: ColourState.list-names.length < 4 },
+            { text: ColourState.list-names.length > 4 ? ColourState.list-names[4] : "", hidden: ColourState.list-names.length < 5 },
+            { text: ColourState.list-names.length > 5 ? ColourState.list-names[5] : "", hidden: ColourState.list-names.length < 6 },
+            { text: ColourState.list-names.length > 6 ? ColourState.list-names[6] : "", hidden: ColourState.list-names.length < 7 },
+            { text: ColourState.list-names.length > 7 ? ColourState.list-names[7] : "", hidden: ColourState.list-names.length < 8 },
+        ];
+        init => { self.focus-menu(); }
+        dismissed => { root.popup = 0; }
+        activated(i) => {
+            root.popup = 0;
+            ColourState.save(i);
+        }
+    }
+}

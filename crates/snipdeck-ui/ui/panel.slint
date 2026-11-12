@@ -54,6 +54,7 @@ import { Keycap } from "components/keycap.slint";
 import { DockHandle } from "components/dock-handle.slint";
 import { QuickAdd } from "components/quick-add.slint";
 import { SymbolsView, SymbolRow } from "symbols.slint";
+import { ColoursView } from "colours.slint";
 
 // One row of the list, as `snipdeck-app`'s `Row`. The quick-use number is the row's position
 // (1-9 for the first nine, used with Alt+N); `masked-preview` stands in for a sensitive item's preview.
@@ -225,6 +226,10 @@ export component PanelWindow inherits Window {
     // `symbols-open` is it being the selected one. The host builds the grid as rows and owns the selection.
     in property <bool> symbols-available: false;
     in-out property <bool> symbols-open: false;
+    // The Colours tab (docs/reviews/colour-spec.md): after the Symbols tab. Its content is the `ColourState` global.
+    in property <bool> colours-available: false;
+    in-out property <bool> colours-open: false;
+    callback colours-toggled(bool);
     in property <[SymbolRow]> symbol-rows;
     // 0 All, 1 Emoji, 2 Kaomoji, 3 Icons.
     in-out property <int> symbol-kind: 0;
@@ -553,15 +558,15 @@ export component PanelWindow inherits Window {
     property <string> use-label: root.pastes ? @tr("Paste") : @tr("Copy");
     property <bool> searching: root.query != "";
     // The list under the tabs is not what is on show (the Recent inbox or the Symbols tab): its shortcuts stand down.
-    property <bool> list-hidden: root.recent-open || root.symbols-open;
+    property <bool> list-hidden: root.recent-open || root.symbols-open || root.colours-open;
     // The search was opened (the header icon, Ctrl+F, a typed character) and not closed again. With a query it is
     // open whatever this says. `search-block` is the expanded block that replaces the tabs and the pinned strip;
     // `search-always` shows a 44px strip under the header instead and leaves them.
     property <bool> search-user: false;
-    property <bool> search-block: !root.search-always && !root.symbols-open && (root.search-user || root.searching);
-    property <bool> search-shown: (root.search-always && !root.symbols-open) || root.search-block;
+    property <bool> search-block: !root.search-always && !root.symbols-open && !root.colours-open && (root.search-user || root.searching);
+    property <bool> search-shown: (root.search-always && !root.symbols-open && !root.colours-open) || root.search-block;
     property <length> search-status-h: max(Space.s5, Type.line-sm + Space.s1);
-    property <length> search-h: root.symbols-open ? 0px : root.search-always ? search.box-height + Space.s2
+    property <length> search-h: (root.symbols-open || root.colours-open) ? 0px : root.search-always ? search.box-height + Space.s2
         : root.search-block ? Space.s2 + search.box-height + Space.s1 + root.search-status-h + Space.s1 : 0px;
     // The header's New menu (Save from clipboard, New note, New list).
     property <bool> new-menu-open: false;
@@ -918,8 +923,31 @@ export component PanelWindow inherits Window {
             return;
         }
         root.close-recent();
+        root.close-colours();
         root.symbols-open = true;
         root.symbols-toggled(true);
+    }
+
+    // The Colours tab opened from outside (the command palette, "Open in Colours"); a no-op while the tab is off.
+    public function open-colours() {
+        if (!root.colours-available || root.colours-open) {
+            return;
+        }
+        root.close-recent();
+        if (root.symbols-open) {
+            root.close-symbols();
+        }
+        root.colours-open = true;
+        root.colours-toggled(true);
+    }
+
+    function close-colours() {
+        if (!root.colours-open) {
+            return;
+        }
+        root.colours-open = false;
+        root.colours-toggled(false);
+        root.focus-typing();
     }
 
     function close-symbols() {
@@ -942,6 +970,7 @@ export component PanelWindow inherits Window {
             return;
         }
         root.close-symbols();
+        root.close-colours();
         root.recent-open = true;
         root.recent-selected = 0;
         root.recent-toggled(true);
@@ -985,6 +1014,7 @@ export component PanelWindow inherits Window {
     function pick-tab(index: int) {
         root.close-recent();
         root.close-symbols();
+        root.close-colours();
         root.current-tab = index;
         // A list switch leaves the search.
         root.search-user = false;
@@ -1003,12 +1033,15 @@ export component PanelWindow inherits Window {
     // Ctrl+Tab: the lists in turn, then the Symbols tab (when it is offered), then round again.
     function cycle-tab(dir: int) {
         let lists = root.tabs.length;
-        let stops = lists + (root.symbols-available ? 1 : 0);
+        let stops = lists + (root.symbols-available ? 1 : 0) + (root.colours-available ? 1 : 0);
         if (stops <= 1) {
             return;
         }
-        let next = mod((root.symbols-open ? lists : root.current-tab) + dir + stops, stops);
-        if (next == lists) {
+        let here = root.colours-open ? stops - 1 : root.symbols-open ? lists : root.current-tab;
+        let next = mod(here + dir + stops, stops);
+        if (next == stops - 1 && root.colours-available) {
+            root.open-colours();
+        } else if (next == lists) {
             root.open-symbols();
         } else {
             root.pick-tab(next);
@@ -1037,7 +1070,7 @@ export component PanelWindow inherits Window {
 
     // The header icon and Ctrl+F: expands the search (a no-op when it is always shown) and selects its text.
     function open-search() {
-        if (root.symbols-open) {
+        if (root.symbols-open || root.colours-open) {
             return;
         }
         root.search-user = true;
@@ -1071,6 +1104,11 @@ export component PanelWindow inherits Window {
     changed symbols-available => {
         if (!root.symbols-available) {
             root.symbols-open = false;
+        }
+    }
+    changed colours-available => {
+        if (!root.colours-available) {
+            root.colours-open = false;
         }
     }
     changed recent-available => {
@@ -1470,7 +1508,7 @@ export component PanelWindow inherits Window {
                     root.symbol-typed-ticks += 1;
                     return accept;
                 }
-                if (!root.symbols-open && !search.has-focus && event.text != " " && root.printable(event.text)) {
+                if (!root.symbols-open && !root.colours-open && !search.has-focus && event.text != " " && root.printable(event.text)) {
                     root.type-into-search(event.text);
                     return accept;
                 }
@@ -1858,6 +1896,18 @@ export component PanelWindow inherits Window {
                                 root.close-symbols();
                             } else {
                                 root.open-symbols();
+                            }
+                        }
+                    }
+                    if root.colours-available: colours-tab := ClockTab {
+                        label: @tr("Colours");
+                        glyph: Icons.palette;
+                        selected: root.colours-open;
+                        clicked => {
+                            if (root.colours-open) {
+                                root.close-colours();
+                            } else {
+                                root.open-colours();
                             }
                         }
                     }
@@ -2262,6 +2312,13 @@ export component PanelWindow inherits Window {
                             action-text: root.recent-locked ? @tr("Unlock") : "";
                             action => { root.recent-unlock-requested(); }
                         }
+                    }
+
+                    // ---- The Colours tab: picker, values, formats, contrast, schemes (colours.slint) -------------------
+                    if root.colours-open: ColoursView {
+                        width: parent.width;
+                        height: parent.height;
+                        tip(text, cx, bottom, on) => { root.tip-set(text, cx, bottom, on); }
                     }
 
                     // ---- The Symbols tab: emoji, kaomoji and icons; click pastes, Shift+click copies -------------------
