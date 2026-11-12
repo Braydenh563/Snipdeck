@@ -31,8 +31,8 @@ msgstr "175%"
 msgid "A PNG picture. Snipdeck keeps its own copy."
 msgstr "PNG 图片。Snipdeck 会保存自己的副本。"
 
-msgid "A Panel that a shortcut or the tray showed hides after a paste or copy. A pinned Panel stays, and a docked one folds back to its edge."
-msgstr "通过快捷键或托盘显示的面板会在粘贴或复制后隐藏。已置顶的面板会保持显示，已停靠的面板会收回到边缘。"
+msgid "A Panel that a shortcut or the tray showed hides after a paste or copy. A pinned Panel stays, and a docked one tucks back into its tab after a paste."
+msgstr "通过快捷键或托盘显示的面板会在粘贴或复制后隐藏。已置顶的面板会保持显示，已停靠的面板会在粘贴后收回成标签。"
 
 msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. With a Supporter plan on Windows, you can then also unlock with Windows Hello."
 msgstr "Supporter 功能。在 Windows 自身保护之上，为你的敏感片段添加密码。首次使用敏感片段时要求输入，此后若 {} 分钟未使用，再次使用时也会要求输入。在 Windows 上使用 Supporter 套餐时，你还可以用 Windows Hello 解锁。"
@@ -238,6 +238,9 @@ msgstr "至少 {} 个字符。几个无关的单词组合起来是个不错的�
 
 msgid "At the mouse"
 msgstr "鼠标位置"
+
+msgid "At the right edge of the screen. It tucks into a thin tab and slides out when the pointer comes to it."
+msgstr "位于屏幕右边缘。它会收成一条细标签，指针移到标签上时滑出。"
 
 msgid "At the text cursor"
 msgstr "文本光标处"
@@ -857,6 +860,12 @@ msgstr "停靠在右侧"
 msgid "Done"
 msgstr "完成"
 
+msgid "Drag along the edge to move. Pull away from the edge to float."
+msgstr "沿边缘拖动可移动。拖离边缘可变为浮动。"
+
+msgid "Drag to move. Hold at a screen edge to dock."
+msgstr "拖动可移动。在屏幕边缘停住可停靠。"
+
 msgid "Drop to add to {}"
 msgstr "松开以添加到 {}"
 
@@ -1019,14 +1028,8 @@ msgstr "按颜色标签筛选"
 msgid "Find anything by typing"
 msgstr "输入即可找到任何内容"
 
-msgid "Fixed against the right edge of the screen, full height."
-msgstr "固定在屏幕右边缘，占满整个高度。"
-
 msgid "Fixed placeholders filled in when you paste."
 msgstr "粘贴时会填入固定占位符。"
-
-msgid "Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere."
-msgstr "将面板固定在其所在显示器的某条屏幕边缘。选择“浮动”则可放在任意位置。"
 
 msgid "Flags"
 msgstr "旗帜"
@@ -1193,11 +1196,11 @@ msgstr "悬停和点击"
 msgid "Hover delay"
 msgstr "悬停延迟"
 
-msgid "How long the pointer rests on the strip before the panel opens, from 0 to {} milliseconds."
-msgstr "指针停在细条上多久后面板展开，范围为 0 至 {} 毫秒。"
+msgid "How long the pointer rests on the tab before the panel opens, from 0 to {} milliseconds."
+msgstr "指针在标签上停留多久后打开面板，0 到 {} 毫秒。"
 
-msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
-msgstr "指针离开已展开的面板多久后面板收起，范围为 0 至 {} 毫秒。"
+msgid "How long the pointer stays off the open panel before it tucks away, from 0 to {} milliseconds."
+msgstr "指针离开已打开的面板多久后收起，0 到 {} 毫秒。"
 
 msgid "How tall the item rows are in the Main window lists. Compact shows one line per item."
 msgstr "主窗口列表中片段行的高度。紧凑模式每个片段显示一行。"
@@ -1756,11 +1759,11 @@ msgstr "物体"
 msgid "Off"
 msgstr "关闭"
 
-msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
-msgstr "选择“关闭”则已停靠的面板保持展开。否则它会收成一条细条，面板快捷键同样可以将其展开。"
-
 msgid "Off keeps a panel docked to the left or right at the height you dropped it. On stretches it over the whole edge."
 msgstr "关闭：停靠在左侧或右侧的面板保持你放下时的高度。开启：面板占满整条边。"
+
+msgid "Off: a docked panel does not tuck and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the panel shortcut opens it too."
+msgstr "关闭：停靠的面板不会收起，而是像浮动面板一样隐藏。否则它会收成边缘上的一条细标签，面板快捷键也能打开它。"
 
 msgid "One hotkey turns copied text into an item."
 msgstr "一个快捷键即可将复制的文本变为片段。"
@@ -2077,6 +2080,12 @@ msgstr "程序"
 msgid "Prompt for a value or a choice each time you paste."
 msgstr "每次粘贴时询问值或选项。"
 
+msgid "Pull away from the edge to float."
+msgstr "拖离边缘可变为浮动。"
+
+msgid "Puts the panel at one edge of the screen, on the monitor it is on. Dragging it to an edge and holding it there does the same. Floating lets it sit anywhere."
+msgstr "把面板放到它所在显示器的屏幕一侧边缘。把它拖到边缘并停住也一样。浮动则可放在任意位置。"
+
 msgid "Queue several items, then paste them one per hotkey press."
 msgstr "排队多个片段，然后每按一次快捷键粘贴一个。"
 
@@ -2145,6 +2154,9 @@ msgstr "重做 {} (Ctrl+Y)"
 
 msgid "Reduce motion"
 msgstr "减少动画"
+
+msgid "Release to dock"
+msgstr "松开即可停靠"
 
 msgid "Remove formatting"
 msgstr "清除格式"
@@ -2495,9 +2507,6 @@ msgstr "跳过"
 
 msgid "Slate"
 msgstr "石板灰"
-
-msgid "Slide the panel along the edge"
-msgstr "沿边缘滑动面板"
 
 msgid "Smileys & Emotion"
 msgstr "笑脸与情绪"
@@ -3186,8 +3195,8 @@ msgstr "此片段的更改尚未保存。"
 msgid "When Windows starts"
 msgstr "Windows 启动时"
 
-msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
-msgstr "图钉关闭时，切换到其他应用后面板会立即隐藏。已固定的面板不会隐藏。"
+msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel that tucks goes to its tab instead."
+msgstr "图钉关闭时，切换到其他应用后面板会立即隐藏。已固定的面板不会隐藏，会收起的停靠面板则收成标签。"
 
 msgid "When you type an item's trigger in another program, Snipdeck replaces it with the item's text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items."
 msgstr "在其他程序中输入项目的触发词时，Snipdeck 会将其替换为该项目的文本。为此 Snipdeck 会监视你按下的按键，只在内存中保留最后几个字符，绝不写入磁盘。\n在密码框、设为“从不粘贴”的程序、以管理员身份运行的程序、Snipdeck 位于前台时以及敏感项目中不会展开。"

@@ -319,14 +319,18 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   hidden in the tray when you sign in, and **When Windows starts** can open the Panel as well. **Keep running in
   the tray when the window closes** is on by default. Turn it off and closing the Panel or the Main window quits
   Snipdeck.
-- **Docking** is also in Opening the Panel. **Dock to** fixes the Panel against Floating, Left edge, Right edge,
-  Top edge or Bottom edge of the monitor it is on. The edge the taskbar is on is never used. You can also drag
-  the Panel by its header to within a few pixels of an edge: a strip marks the edge, and the Panel docks there
-  when you let go. The Panel's menu names the edge it would dock to ("Dock to the right edge"). **Open a docked
-  panel by** is Off, Hover, Click or Hover and click. Off keeps a docked Panel open. The other choices fold it
-  into a thin strip, and the Panel shortcut opens it too. **Hover delay** (0 to 2000 ms, default 150) is how long
-  the pointer rests on the strip. **Leave delay** (0 to 5000 ms, default 400) is how long it stays off the Panel
-  before it folds.
+- **Docking** is also in Opening the Panel. **Dock to** puts the Panel at the Left edge, Right edge, Top edge or
+  Bottom edge of the monitor it is on, or leaves it Floating. The edge the taskbar is on is never used. You can
+  also drag the Panel by the strip across its top: it floats wherever you drop it, and docks only when you push
+  the pointer itself against a screen edge and hold it there for a moment. A frame and "Release to dock" show
+  that it will; pull back and it floats again. Dragging a docked Panel slides it along its edge, and pulling it
+  away from the edge floats it at the size it had floating. The Panel's menu names the edge it would dock to
+  ("Dock to the right edge"). **Open a docked panel by** is Off, Hover, Click or Hover and click (the default).
+  With Off a docked Panel does not tuck: it shows and hides like a floating one. The other choices tuck it into a thin tab at its edge, and the Panel shortcut
+  opens it too. **Hover delay** (0 to 2000 ms, default 150) is how long the pointer rests on the tab. **Leave
+  delay** (0 to 5000 ms, default 400) is how long it stays off the Panel before it tucks. While a full-screen
+  app covers the monitor the Panel is on, the tab stays out of its way; the Panel shortcut still opens the Panel. Started hidden, a
+  docked Panel that tucks is there as its tab.
 - **Typing.** **Expand abbreviations as I type** and **Suggest snippets as I type**, both off by default. See
   [Triggers and typing](#triggers-and-typing-windows).
 - **Privacy.** **Keep a Recent inbox of what you copy** and the programs it never keeps copies from. **Clear the

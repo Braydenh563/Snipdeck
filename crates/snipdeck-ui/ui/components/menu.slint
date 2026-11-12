@@ -128,6 +128,9 @@ export component Menu inherits Rectangle {
     in-out property <int> current: -1;
     // The tallest the menu may be; a taller one scrolls (the Panel keeps it inside its window).
     in property <length> menu-max-h: 100000px;
+    // The room the host would like the menu to fit in: a taller menu uses the dense rows. A host whose menu may
+    // grow past this before it scrolls (the Panel's own menu rises over the header) sets it lower than `menu-max-h`.
+    in property <length> dense-above: root.menu-max-h;
     callback activated(int);
     callback dismissed();
 
@@ -186,9 +189,9 @@ export component Menu inherits Rectangle {
 
     // Sized to its rows (label, shortcut and the fixed gaps), never to the window: at least 180px, at most 320px.
     // A host that sets `width` itself overrides this.
-    // 32px rows; the old 28px when the 32px menu would be taller than `menu-max-h` (before it falls back to scrolling).
+    // 32px rows; the old 28px when the 32px menu would be taller than `dense-above` (before it falls back to scrolling).
     property <length> full-h: 2 * Space.s1 + root.action-count() * Space.s8 + (root.entries.length - root.action-count()) * (Space.s2 + 1px);
-    property <length> row-h: root.full-h > root.menu-max-h ? Space.hit : Space.s8;
+    property <length> row-h: root.full-h > root.dense-above ? Space.hit : Space.s8;
     // More rows lie below the visible part: the cue shows (a hairline and a caret at the bottom edge).
     property <bool> more-below: flick.content-height + flick.content-y > flick.height + Space.s1 + 1px;
     // A host in a narrow window caps the width so the menu stays inside it; the rows elide.

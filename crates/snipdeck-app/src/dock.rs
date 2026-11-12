@@ -14,7 +14,10 @@ use std::time::Duration;
 
 use snipdeck_core::Timestamp;
 
-use crate::settings::{DockSettings, DockTrigger};
+use crate::{
+    frame::{self, Monitor, Rect},
+    settings::{DockEdge, DockSettings, DockTrigger},
+};
 
 /// How often the host sends [`DockEvent::Tick`] while a delay is running.
 pub const TICK: Duration = Duration::from_millis(50);
@@ -27,6 +30,10 @@ pub enum DockState {
     Expanded,
     /// Only the handle shows.
     Collapsed,
+    /// Only the handle shows, and the pointer has not been seen off it since the Panel
+    /// collapsed: resting there opens nothing (the handle appeared under the pointer, nobody
+    /// reached for it). A click and the hotkey still open it.
+    Parked,
     /// Collapsed, with the pointer on the handle since `since`: the hover delay is running.
     Revealing {
         /// When the pointer arrived.
@@ -72,10 +79,14 @@ fn elapsed_ms(now: Timestamp, since: Timestamp) -> i64 {
 }
 
 impl DockState {
-    /// Only the handle shows ([`Collapsed`](Self::Collapsed) or [`Revealing`](Self::Revealing)).
+    /// Only the handle shows ([`Collapsed`](Self::Collapsed), [`Parked`](Self::Parked) or
+    /// [`Revealing`](Self::Revealing)).
     #[must_use]
     pub const fn is_collapsed(self) -> bool {
-        matches!(self, Self::Collapsed | Self::Revealing { .. })
+        matches!(
+            self,
+            Self::Collapsed | Self::Parked | Self::Revealing { .. }
+        )
     }
 
     /// A delay is running, so the host should send [`DockEvent::Tick`] every [`TICK`].
@@ -113,7 +124,16 @@ impl DockState {
             (Self::Expanded | Self::Leaving { .. }, DockEvent::Hotkey | DockEvent::Pasted) => {
                 self.collapse()
             }
-            (Self::Collapsed | Self::Revealing { .. }, DockEvent::Hotkey) => self.expand(),
+            (Self::Collapsed | Self::Parked | Self::Revealing { .. }, DockEvent::Hotkey) => {
+                self.expand()
+            }
+            // The pointer is off the handle. A Panel that just collapsed under it listens from
+            // now on: resting on the handle is asking for the Panel again. One that was about to
+            // open does not.
+            (Self::Parked | Self::Revealing { .. }, DockEvent::HandleHover(false)) => {
+                *self = Self::Collapsed;
+                DockAction::None
+            }
 
             (Self::Expanded, DockEvent::PanelHover(false)) => {
                 if leave_wait == 0 {
@@ -139,16 +159,12 @@ impl DockState {
                     DockAction::None
                 }
             }
-            (Self::Revealing { .. }, DockEvent::HandleHover(false)) => {
-                *self = Self::Collapsed;
-                DockAction::None
-            }
             (Self::Revealing { since }, DockEvent::Tick)
                 if elapsed_ms(now, since) >= hover_wait =>
             {
                 self.expand()
             }
-            (Self::Collapsed | Self::Revealing { .. }, DockEvent::HandleClick)
+            (Self::Collapsed | Self::Parked | Self::Revealing { .. }, DockEvent::HandleClick)
                 if cfg.trigger.click() =>
             {
                 self.expand()
@@ -163,46 +179,355 @@ impl DockState {
     }
 
     fn collapse(&mut self) -> DockAction {
-        *self = Self::Collapsed;
+        *self = Self::Parked;
         DockAction::Collapse
     }
 }
 
-/// Where a grip-pill drag (sliding a docked Panel along its edge) is measured from. The pill
-/// moves with the window, so the pointer's offset inside it is not the distance dragged once
-/// the window has moved: counted that way, each move undid half of the last and the Panel
-/// jumped between two places until released. The distance is taken from the cursor on screen
-/// instead, or, where the cursor is unknown, from the pointer's offset plus how far the window
-/// has moved since the press.
+/// How close to an edge of the work area the cursor must be for a drag to offer the dock
+/// there, in logical pixels. Only the cursor counts: the window's own sides never dock it.
+pub const EDGE_ZONE: u32 = 4;
+/// How far from that edge the cursor must go for the offer to end (logical pixels): wider
+/// than [`EDGE_ZONE`], so the offer does not flicker at the zone's border.
+pub const EDGE_EXIT: u32 = 12;
+/// How long the cursor must stay at the edge before the dock is offered: crossing from one
+/// monitor to the next, or brushing an edge, docks nothing.
+pub const DOCK_ARM: Duration = Duration::from_millis(200);
+/// How far across the edge (logical pixels) a docked Panel must be pulled to leave it; less
+/// than that slides it along the edge.
+pub const UNDOCK_PULL: u32 = 24;
+/// How often the host moves the window to the cursor while a drag is under way.
+pub const DRAG_TICK: Duration = Duration::from_millis(16);
+/// How far past each end of the tucked tab, along the screen edge, the pointer already counts
+/// as on it (logical pixels). Only along the edge: in front of the tab is another window (its
+/// scrollbar, on a right edge), and resting there must not open the Panel.
+pub const REVEAL_ZONE: u32 = 12;
+/// How far around the open Panel the pointer still counts as on it (logical pixels). Not less
+/// than [`REVEAL_ZONE`]: a pointer that opened the Panel from beside the tab must not be one
+/// that has left it.
+pub const KEEP_ZONE: u32 = 16;
+
+/// Where a drag of the Panel is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SlideDrag {
-    cursor: Option<(i32, i32)>,
-    window: (i32, i32),
+pub enum DragPhase {
+    /// The window follows the cursor; released now, it floats where it is.
+    Float,
+    /// The cursor has stayed at this edge: the window is shown docked there; released now, it
+    /// docks.
+    Preview(DockEdge),
+    /// A docked Panel being slid along its edge; released now, it stays docked.
+    Slide(DockEdge),
 }
 
-impl SlideDrag {
-    /// The press: the cursor on screen (if known) and the window's top-left, physical pixels.
+/// The Panel's sizes on a monitor (physical pixels): docking and undocking only ever choose
+/// between them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DragSizes {
+    /// While it floats.
+    pub floating: (u32, u32),
+    /// Docked to the left or the right edge.
+    pub side: (u32, u32),
+    /// Docked to the top or the bottom edge.
+    pub flat: (u32, u32),
+}
+
+impl DragSizes {
+    /// The size docked to `edge`.
     #[must_use]
-    pub fn begin(cursor: Option<(i32, i32)>, window: (i32, i32)) -> Self {
-        Self { cursor, window }
+    pub fn docked_on(&self, edge: DockEdge) -> (u32, u32) {
+        if edge.vertical() {
+            self.side
+        } else {
+            self.flat
+        }
+    }
+}
+
+/// What a drag step needs to know about the monitor it is on. For [`DragPhase::Slide`] that is
+/// the monitor the Panel is docked on; otherwise the one under the cursor.
+#[derive(Debug, Clone, Copy)]
+pub struct DragCtx<'a> {
+    /// The monitor.
+    pub monitor: &'a Monitor,
+    /// The Panel's sizes there.
+    pub sizes: DragSizes,
+    /// "Docked panel uses the full edge".
+    pub full_edge: bool,
+    /// The moment of the step, from the injected clock.
+    pub now: Timestamp,
+}
+
+/// What the host does to the window after a drag step.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DragStep {
+    /// Nothing: the window is where it should be.
+    None,
+    /// Move the window's top-left here; its size stays.
+    Move(i32, i32),
+    /// Place the window at this frame (a size may change: the preview, or leaving an edge).
+    Place(Rect),
+}
+
+/// How a drag ended.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DragEnd {
+    /// The Panel floats at this frame (inside the work area).
+    Floating(Rect),
+    /// The Panel is docked to the edge, at this frame.
+    Docked(DockEdge, Rect),
+}
+
+/// A drag of the Panel by its header, driven by the cursor on screen. The app moves the window
+/// itself, so it knows where the cursor is and when the button comes up; the dock is decided by
+/// the cursor alone ([`EDGE_ZONE`], [`DOCK_ARM`]). All positions are physical pixels.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Drag {
+    phase: DragPhase,
+    /// The cursor's offset inside the window that follows it.
+    grab: (i32, i32),
+    /// The width of the window `grab` was measured on.
+    grab_w: u32,
+    /// 1000 logical pixels at the scale of the monitor `grab` was measured on (0 until the
+    /// first step says what monitor that is).
+    grab_unit: i64,
+    /// Where the cursor was pressed.
+    press: (i32, i32),
+    /// Where the cursor was last seen.
+    cursor: (i32, i32),
+    /// The edge the cursor is at (within [`EDGE_ZONE`] of it: the nearest when it came there,
+    /// kept while it stays in that zone), and since when.
+    candidate: Option<(DockEdge, Timestamp)>,
+    /// The frame last asked for.
+    frame: Rect,
+}
+
+fn px(logical: u32, scale: f32) -> i64 {
+    let scale = if scale.is_finite() && scale > 0.0 {
+        f64::from(scale)
+    } else {
+        1.0
+    };
+    #[allow(clippy::cast_possible_truncation, reason = "a few pixels, rounded")]
+    let pixels = (f64::from(logical) * scale).round() as i64;
+    pixels
+}
+
+fn sub(a: (i32, i32), b: (i32, i32)) -> (i32, i32) {
+    (a.0.saturating_sub(b.0), a.1.saturating_sub(b.1))
+}
+
+impl Drag {
+    /// The press: the cursor on screen, the window's frame, and the edge it is docked to.
+    #[must_use]
+    pub fn begin(cursor: (i32, i32), window: Rect, docked: Option<DockEdge>) -> Self {
+        Self {
+            phase: docked.map_or(DragPhase::Float, DragPhase::Slide),
+            grab: sub(cursor, (window.x, window.y)),
+            grab_w: window.w,
+            grab_unit: 0,
+            press: cursor,
+            cursor,
+            candidate: None,
+            frame: window,
+        }
     }
 
-    /// Physical pixels dragged along the edge since the press. `pointer` is the pointer's
-    /// offset from where it was pressed, measured inside the window (physical); `vertical` is
-    /// a slide along a side edge (y), otherwise along x.
+    /// Where the drag is.
     #[must_use]
-    pub fn total(
-        &self,
-        cursor: Option<(i32, i32)>,
-        window: (i32, i32),
-        pointer: i32,
-        vertical: bool,
-    ) -> i32 {
-        let along = |p: (i32, i32)| if vertical { p.1 } else { p.0 };
-        match (self.cursor, cursor) {
-            (Some(from), Some(to)) => along(to).saturating_sub(along(from)),
-            _ => pointer.saturating_add(along(window).saturating_sub(along(self.window))),
+    pub const fn phase(&self) -> DragPhase {
+        self.phase
+    }
+
+    /// The edge the Panel docks to if released now, while that is being shown.
+    #[must_use]
+    pub const fn preview(&self) -> Option<DockEdge> {
+        match self.phase {
+            DragPhase::Preview(edge) => Some(edge),
+            _ => None,
         }
+    }
+
+    /// The frame last asked for.
+    #[must_use]
+    pub const fn frame(&self) -> Rect {
+        self.frame
+    }
+
+    /// Where the cursor was last seen.
+    #[must_use]
+    pub const fn cursor(&self) -> (i32, i32) {
+        self.cursor
+    }
+
+    /// The window follows the cursor at its floating size from now on.
+    fn float(&mut self, ctx: &DragCtx<'_>) -> DragStep {
+        // The cursor keeps its place across the header when the width changes under it.
+        // Measured from the window the header was pressed on: a preview in between (another
+        // width) must not shift it.
+        let (old_w, new_w) = (
+            i64::from(self.grab_w.max(1)),
+            i64::from(ctx.sizes.floating.0),
+        );
+        let across = i64::from(self.grab.0) * new_w / old_w;
+        // And its place down the header when the monitor's scale does: the header is that
+        // much taller or shorter there.
+        let unit = px(1000, ctx.monitor.scale);
+        let old_unit = if self.grab_unit > 0 {
+            self.grab_unit
+        } else {
+            unit
+        };
+        let down = i64::from(self.grab.1) * unit / old_unit;
+        let limit = |v: i64, len: u32| {
+            i32::try_from(v.clamp(0, i64::from(len.saturating_sub(1)))).unwrap_or(0)
+        };
+        self.grab = (
+            limit(across, ctx.sizes.floating.0),
+            limit(down, ctx.sizes.floating.1),
+        );
+        self.grab_w = ctx.sizes.floating.0;
+        self.grab_unit = unit;
+        self.phase = DragPhase::Float;
+        self.candidate = None;
+        let (x, y) = sub(self.cursor, self.grab);
+        self.frame = Rect {
+            x,
+            y,
+            w: ctx.sizes.floating.0,
+            h: ctx.sizes.floating.1,
+        };
+        DragStep::Place(self.frame)
+    }
+
+    fn docked_at(&self, edge: DockEdge, ctx: &DragCtx<'_>) -> Rect {
+        let size = ctx.sizes.docked_on(edge);
+        // The cursor keeps its place across the header at the docked width too: on a top or
+        // bottom edge a narrower dock would otherwise be shown beside the cursor, not under it.
+        let across = i64::from(self.grab.0) * i64::from(size.0) / i64::from(self.grab_w.max(1));
+        let across = i32::try_from(across).unwrap_or(self.grab.0);
+        let (x, y) = sub(self.cursor, (across, self.grab.1));
+        frame::docked_rect(
+            edge,
+            ctx.monitor.work_area,
+            size,
+            ctx.monitor.scale,
+            Some(if edge.vertical() { y } else { x }),
+            ctx.full_edge,
+        )
+    }
+
+    fn place(&mut self, rect: Rect) -> DragStep {
+        if rect == self.frame {
+            return DragStep::None;
+        }
+        self.frame = rect;
+        DragStep::Place(rect)
+    }
+
+    /// The cursor is at `cursor` (or time passed with it still: the host calls this every
+    /// [`DRAG_TICK`]). Says where the window goes.
+    pub fn moved(&mut self, cursor: (i32, i32), ctx: &DragCtx<'_>) -> DragStep {
+        self.cursor = cursor;
+        let (area, scale) = (ctx.monitor.work_area, ctx.monitor.scale);
+        if self.grab_unit == 0 {
+            self.grab_unit = px(1000, scale);
+        }
+        match self.phase {
+            DragPhase::Slide(edge) => {
+                let pulled = sub(cursor, self.press);
+                // Away from the edge it leaves. Pushed into the edge it has nowhere to go (and
+                // letting go of the edge there would dock it again a moment later), unless
+                // the cursor does: past an edge another monitor begins at, it is on its way
+                // there.
+                let away = match edge {
+                    DockEdge::Left => pulled.0,
+                    DockEdge::Right => pulled.0.saturating_neg(),
+                    DockEdge::Top => pulled.1,
+                    DockEdge::Bottom => pulled.1.saturating_neg(),
+                };
+                let past = frame::edge_gap(cursor, area, edge).saturating_neg();
+                if i64::from(away).max(past) > px(UNDOCK_PULL, scale) {
+                    return self.float(ctx);
+                }
+                let rect = self.docked_at(edge, ctx);
+                self.place(rect)
+            }
+            DragPhase::Preview(edge) => {
+                if frame::edge_gap(cursor, area, edge) > px(EDGE_EXIT, scale) {
+                    return self.float(ctx);
+                }
+                let rect = self.docked_at(edge, ctx);
+                self.place(rect)
+            }
+            DragPhase::Float => {
+                // A press that has not moved is a click, not a push to the edge.
+                let pushed = cursor != self.press;
+                if pushed && self.rescaled_under(ctx) {
+                    // Onto a monitor of another scale: Windows resizes the window there, so
+                    // the offset the cursor holds it by is measured again. Another size at
+                    // the same scale waits for the drop: a cursor wobbling over the seam must
+                    // not resize the window each time it crosses.
+                    return self.float(ctx);
+                }
+                let zone = px(EDGE_ZONE, scale);
+                // The edge the cursor came to is kept while it stays in that edge's zone, even
+                // where another edge is nearer (a hand wobbles in a corner); out of it, the
+                // nearest edge is the one, and its wait starts.
+                let held = self.candidate.filter(|(edge, _)| {
+                    pushed
+                        && Some(*edge) != ctx.monitor.taskbar
+                        && frame::edge_gap(cursor, area, *edge) <= zone
+                });
+                self.candidate = held.or_else(|| {
+                    pushed
+                        .then(|| frame::edge_at(cursor, area, ctx.monitor.taskbar, zone))
+                        .flatten()
+                        .map(|edge| (edge, ctx.now))
+                });
+                let armed = self.candidate.filter(|(_, since)| {
+                    elapsed_ms(ctx.now, *since)
+                        >= i64::try_from(DOCK_ARM.as_millis()).unwrap_or(i64::MAX)
+                });
+                if let Some((edge, _)) = armed {
+                    self.phase = DragPhase::Preview(edge);
+                    let rect = self.docked_at(edge, ctx);
+                    self.frame = rect;
+                    return DragStep::Place(rect);
+                }
+                let (x, y) = sub(cursor, self.grab);
+                if (x, y) == (self.frame.x, self.frame.y) {
+                    return DragStep::None;
+                }
+                self.frame = Rect { x, y, ..self.frame };
+                DragStep::Move(x, y)
+            }
+        }
+    }
+
+    /// The button came up: where the Panel ends. A floating Panel is pulled inside the work
+    /// area of the monitor it was dropped on, at its floating size there.
+    #[must_use]
+    pub fn released(mut self, ctx: &DragCtx<'_>) -> DragEnd {
+        match self.phase {
+            DragPhase::Preview(edge) | DragPhase::Slide(edge) => DragEnd::Docked(edge, self.frame),
+            DragPhase::Float => {
+                if self.resized_under(ctx) {
+                    let _ = self.float(ctx);
+                }
+                DragEnd::Floating(frame::clamp(self.frame, ctx.monitor))
+            }
+        }
+    }
+
+    /// The floating window is not what `ctx` says it is there: another size, or a monitor of
+    /// another scale than the one the grab was measured on.
+    fn resized_under(&self, ctx: &DragCtx<'_>) -> bool {
+        (self.frame.w, self.frame.h) != ctx.sizes.floating || self.rescaled_under(ctx)
+    }
+
+    /// The monitor in `ctx` has another scale than the one the grab was measured on.
+    fn rescaled_under(&self, ctx: &DragCtx<'_>) -> bool {
+        self.grab_unit > 0 && self.grab_unit != px(1000, ctx.monitor.scale)
     }
 }
 
@@ -223,6 +548,7 @@ mod tests {
             hover_delay_ms: 150,
             leave_delay_ms: 400,
             full_edge: false,
+            ..DockSettings::default()
         }
     }
 
@@ -395,7 +721,7 @@ mod tests {
         assert!(state.needs_tick() && !state.is_collapsed());
         assert_eq!(state.on(Tick, at(399), &hover), DockAction::None);
         assert_eq!(state.on(Tick, at(400), &hover), DockAction::Collapse);
-        assert_eq!(state, DockState::Collapsed);
+        assert_eq!(state, DockState::Parked);
         assert!(!state.needs_tick());
     }
 
@@ -436,7 +762,7 @@ mod tests {
             state.on(PanelHover(false), at(0), &now),
             DockAction::Collapse
         );
-        assert_eq!(state, DockState::Collapsed);
+        assert_eq!(state, DockState::Parked);
     }
 
     #[test]
@@ -452,7 +778,7 @@ mod tests {
         let hover = cfg(DockTrigger::Hover);
         let mut state = DockState::Expanded;
         assert_eq!(state.on(Hotkey, at(0), &hover), DockAction::Collapse);
-        assert_eq!(state, DockState::Collapsed);
+        assert_eq!(state, DockState::Parked);
         assert_eq!(state.on(Hotkey, at(10), &hover), DockAction::Expand);
         assert_eq!(state, DockState::Expanded);
     }
@@ -468,7 +794,7 @@ mod tests {
         assert_eq!(revealing.on(Hotkey, at(50), &hover), DockAction::Expand);
         let mut leaving = DockState::Leaving { since: at(0) };
         assert_eq!(leaving.on(Hotkey, at(50), &hover), DockAction::Collapse);
-        assert_eq!(leaving, DockState::Collapsed);
+        assert_eq!(leaving, DockState::Parked);
     }
 
     #[test]
@@ -477,7 +803,7 @@ mod tests {
         for start in [DockState::Expanded, DockState::Leaving { since: at(0) }] {
             let mut state = start;
             assert_eq!(state.on(Pasted, at(10), &hover), DockAction::Collapse);
-            assert_eq!(state, DockState::Collapsed);
+            assert_eq!(state, DockState::Parked);
         }
     }
 
@@ -520,6 +846,51 @@ mod tests {
         let hover = cfg(DockTrigger::Hover);
         let mut state = DockState::Revealing { since: at(1000) };
         assert_eq!(state.on(Tick, at(0), &hover), DockAction::None);
+    }
+
+    #[test]
+    fn a_panel_that_just_collapsed_ignores_a_pointer_that_never_left_the_handle() {
+        let cfg = cfg(DockTrigger::Both);
+        for close in [Hotkey, Pasted] {
+            let mut state = DockState::Expanded;
+            assert_eq!(state.on(close, at(0), &cfg), DockAction::Collapse);
+            assert_eq!(state, DockState::Parked);
+            // The handle appeared under the pointer: that is not a hover.
+            assert_eq!(state.on(HandleHover(true), at(50), &cfg), DockAction::None);
+            assert_eq!(state.on(Tick, at(5_000), &cfg), DockAction::None);
+            assert!(state.is_collapsed() && !state.needs_tick(), "{close:?}");
+            // Off it and back on: now it is one.
+            assert_eq!(
+                state.on(HandleHover(false), at(5_100), &cfg),
+                DockAction::None
+            );
+            assert_eq!(state, DockState::Collapsed);
+            assert_eq!(
+                state.on(HandleHover(true), at(5_200), &cfg),
+                DockAction::None
+            );
+            assert_eq!(state.on(Tick, at(5_350), &cfg), DockAction::Expand);
+        }
+        // Leaving the open Panel collapses it the same way.
+        let mut left = DockState::Expanded;
+        left.on(PanelHover(false), at(0), &cfg);
+        assert_eq!(left.on(Tick, at(400), &cfg), DockAction::Collapse);
+        assert_eq!(left, DockState::Parked);
+        // A click and the hotkey need no leaving first.
+        for open in [HandleClick, Hotkey] {
+            let mut state = DockState::Parked;
+            assert_eq!(
+                state.on(open, at(100), &cfg),
+                DockAction::Expand,
+                "{open:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_open_panel_is_kept_wherever_the_tab_would_reveal_it() {
+        // Else a pointer between the two zones would open and close the Panel for ever.
+        const { assert!(KEEP_ZONE >= REVEAL_ZONE) };
     }
 
     /// Every way of feeding up to five events, 100 ms apart, to a dock in each trigger mode.
@@ -584,7 +955,7 @@ mod tests {
                             }
                             DockAction::Collapse => {
                                 assert!(
-                                    !before.is_collapsed() && state == DockState::Collapsed,
+                                    !before.is_collapsed() && state == DockState::Parked,
                                     "{story}"
                                 );
                             }
@@ -643,26 +1014,5 @@ mod tests {
         }
     }
 
-    #[test]
-    fn a_slide_is_measured_on_screen_not_inside_the_moving_pill() {
-        // Pressed at x 500 with the window at x 300 (a top dock slides along x).
-        let drag = SlideDrag::begin(Some((500, 10)), (300, 0));
-        // The pointer moves 50 right: the window has not moved yet.
-        assert_eq!(drag.total(Some((550, 10)), (300, 0), 50, false), 50);
-        // The window followed; the pointer moves 10 more. Inside the pill that reads as 10, but
-        // the drag is 60 from the press (counting 10 sent the Panel back: the flicker).
-        assert_eq!(drag.total(Some((560, 10)), (350, 0), 10, false), 60);
-        // A side dock slides along y.
-        let side = SlideDrag::begin(Some((5, 400)), (0, 200));
-        assert_eq!(side.total(Some((9, 380)), (0, 200), -20, true), -20);
-    }
-
-    #[test]
-    fn without_the_cursor_a_slide_adds_how_far_the_window_has_moved() {
-        let drag = SlideDrag::begin(None, (300, 0));
-        assert_eq!(drag.total(None, (300, 0), 50, false), 50);
-        assert_eq!(drag.total(None, (350, 0), 10, false), 60);
-        // A cursor known only now still uses the window's offset.
-        assert_eq!(drag.total(Some((1, 1)), (350, 0), 10, false), 60);
-    }
+    include!("dock_drag_tests.rs");
 }

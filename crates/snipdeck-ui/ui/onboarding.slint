@@ -383,7 +383,7 @@ export component OnboardingWindow inherits Window {
                         }
                         PanelChoice {
                             label: @tr("Docked to the right");
-                            hint: @tr("Fixed against the right edge of the screen, full height.");
+                            hint: @tr("At the right edge of the screen. It tucks into a thin tab and slides out when the pointer comes to it.");
                             docked: true;
                             selected: root.dock-edge-index == 2;
                             chosen => { root.dock-edge-chosen(2); }

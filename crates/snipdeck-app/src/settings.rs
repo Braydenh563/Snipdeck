@@ -34,7 +34,7 @@ const PANEL_SIDE_LIMIT: u32 = 16_384;
 
 /// Where the Panel sat on one monitor the last time the user moved or resized it. Physical
 /// pixels in desktop coordinates, as the OS reports them; `monitor_id` names the monitor.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PanelGeometry {
     /// The monitor this is for (its device name and size, see `frame::Monitor::id`).
     pub monitor_id: String,
@@ -54,10 +54,20 @@ pub struct PanelGeometry {
         skip_serializing_if = "Option::is_none"
     )]
     pub edge: Option<DockEdge>,
-    /// The width and height the Panel had before it was docked, so that undocking (or dragging it
-    /// off its edge) gives them back. Only set while docked.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    /// The floating size an older version kept here while the Panel was docked (`x y w h` held
+    /// the docked frame then). Read only, so that [`Settings::sanitize`] can move it to
+    /// `w h`; never written.
+    #[serde(default, skip_serializing)]
     pub pre_dock: Option<(u32, u32)>,
+    /// The Panel's width and height while docked to the left or right edge of this monitor.
+    /// `x y w h` are its floating frame, docked or not, so docking and undocking never change
+    /// either size. Absent until the Panel is docked there: it then docks at its floating size.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub docked: Option<(u32, u32)>,
+    /// The same for the top or bottom edge. Kept apart from the side docks' size: a tall side
+    /// dock is no guide to a dock that lies along the top or the bottom.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub docked_flat: Option<(u32, u32)>,
     /// Where the docked Panel starts along its edge (its top on a left or right edge, its left
     /// on a top or bottom one), in physical pixels. Only set while docked; absent in older files,
     /// which read as none: centred (or full height).
@@ -86,6 +96,25 @@ impl PanelGeometry {
         others.retain(|(e, _)| Some(*e) != self.edge);
         self.other_along = others;
         self
+    }
+
+    /// The size the Panel was given while docked to `edge` or the edge opposite, if it ever was.
+    #[must_use]
+    pub fn docked_size(&self, edge: DockEdge) -> Option<(u32, u32)> {
+        if edge.vertical() {
+            self.docked
+        } else {
+            self.docked_flat
+        }
+    }
+
+    /// Remembers `size` as the Panel's size while docked to `edge` or the edge opposite.
+    pub fn set_docked_size(&mut self, edge: DockEdge, size: (u32, u32)) {
+        if edge.vertical() {
+            self.docked = Some(size);
+        } else {
+            self.docked_flat = Some(size);
+        }
     }
 
     /// Where the Panel was last docked along `edge`: the live value when it is docked there, the
@@ -198,28 +227,58 @@ pub struct DockSettings {
     pub leave_delay_ms: u32,
     /// A Panel docked left or right takes the work area's full height instead of keeping its own.
     pub full_edge: bool,
+    /// Set once the trigger is this version's default or the user's choice. Absent in older
+    /// files, whose `off` was the default and not a choice: [`DockSettings::sanitize`] turns
+    /// that into `both`, at once when no Panel is docked and otherwise the next time the user
+    /// docks one ([`docked_by_choice`](Self::docked_by_choice)).
+    #[serde(default)]
+    pub tucks_by_default: bool,
 }
 
 impl Default for DockSettings {
     fn default() -> Self {
         Self {
-            trigger: DockTrigger::Off,
+            trigger: DockTrigger::Both,
             hover_delay_ms: 150,
             leave_delay_ms: 400,
             full_edge: false,
+            tucks_by_default: true,
         }
     }
 }
 
 impl DockSettings {
-    /// Puts both delays in range.
-    pub fn sanitize(&mut self) {
+    /// Puts both delays in range, and gives a file from before the dock tucked by default
+    /// that default. `docked` says whether a Panel is docked on any monitor: one docked under
+    /// the old rules (often by a dock nobody asked for) stays open as it was, and does not
+    /// turn into a tab on the first launch of this version.
+    pub fn sanitize(&mut self, docked: bool) {
+        if !(docked && self.trigger == DockTrigger::Off) {
+            self.docked_by_choice();
+        }
         self.hover_delay_ms = self
             .hover_delay_ms
             .clamp(*HOVER_DELAY_MS.start(), *HOVER_DELAY_MS.end());
         self.leave_delay_ms = self
             .leave_delay_ms
             .clamp(*LEAVE_DELAY_MS.start(), *LEAVE_DELAY_MS.end());
+    }
+
+    /// The user docked the Panel: from now on the trigger is theirs or this version's default,
+    /// so an old file's `off` that nobody chose becomes `both`.
+    pub fn docked_by_choice(&mut self) {
+        if !self.tucks_by_default {
+            if self.trigger == DockTrigger::Off {
+                self.trigger = DockTrigger::Both;
+            }
+            self.tucks_by_default = true;
+        }
+    }
+
+    /// The user picked `trigger` in Settings: a choice, whatever the file was before.
+    pub fn choose(&mut self, trigger: DockTrigger) {
+        self.trigger = trigger;
+        self.tucks_by_default = true;
     }
 }
 
@@ -1034,7 +1093,8 @@ impl Settings {
             (WindowPlace::MIN_SIDE..=PANEL_SIDE_LIMIT).contains(&p.w)
                 && (WindowPlace::MIN_SIDE..=PANEL_SIDE_LIMIT).contains(&p.h)
         });
-        self.dock.sanitize();
+        self.dock
+            .sanitize(self.panel_geometry.iter().any(|g| g.edge.is_some()));
         self.sanitize_programs();
         let mut seen = std::collections::BTreeSet::new();
         self.no_history_apps = self
@@ -1113,8 +1173,25 @@ impl Settings {
                 continue;
             }
             g.monitor_id = id.into();
+            // An older file: `w h` was the docked size and `pre_dock` the floating one.
+            if let Some(floating) = g.pre_dock.take() {
+                if let Some(edge) = g.edge
+                    && g.docked_size(edge).is_none()
+                {
+                    g.set_docked_size(edge, (g.w, g.h));
+                }
+                if floating.0 > 0 && floating.1 > 0 {
+                    (g.w, g.h) = floating;
+                }
+            }
             g.w = g.w.min(PANEL_SIDE_LIMIT);
             g.h = g.h.min(PANEL_SIDE_LIMIT);
+            let usable = |size: Option<(u32, u32)>| {
+                size.filter(|(w, h)| *w > 0 && *h > 0)
+                    .map(|(w, h)| (w.min(PANEL_SIDE_LIMIT), h.min(PANEL_SIDE_LIMIT)))
+            };
+            g.docked = usable(g.docked);
+            g.docked_flat = usable(g.docked_flat);
             kept.retain(|k| k.monitor_id != g.monitor_id);
             kept.push(g);
         }
@@ -1447,12 +1524,66 @@ mod tests {
             w: 400,
             h: 700,
             edge: Some(DockEdge::Right),
-            pre_dock: Some((320, 480)),
-            along: None,
-            other_along: Vec::new(),
+            pre_dock: None,
+            docked: Some((320, 900)),
+            docked_flat: Some((440, 300)),
+            along: Some(60),
+            other_along: vec![(DockEdge::Top, 300)],
         });
         let back = Settings::from_json(&settings.to_json());
         assert_eq!(back.panel_geometry, settings.panel_geometry);
+    }
+
+    #[test]
+    fn an_old_top_or_bottom_dock_keeps_its_size_apart_from_a_side_docks() {
+        let settings = Settings::from_json(
+            r#"{"panel_geometry":[
+                {"monitor_id":"D1","x":600,"y":740,"w":400,"h":300,"edge":"bottom","pre_dock":[320,480],"along":600}
+            ]}"#,
+        );
+        let g = &settings.panel_geometry[0];
+        assert_eq!((g.w, g.h), (320, 480), "the floating size it had before");
+        assert_eq!(
+            g.docked_flat,
+            Some((400, 300)),
+            "the size of its bottom dock"
+        );
+        assert_eq!(g.docked, None, "no side dock was ever sized here");
+        assert_eq!(g.docked_size(DockEdge::Top), Some((400, 300)));
+        assert_eq!(g.docked_size(DockEdge::Left), None);
+        let back = Settings::from_json(&settings.to_json());
+        assert_eq!(back.panel_geometry, settings.panel_geometry);
+    }
+
+    #[test]
+    fn an_old_docked_geometry_becomes_a_floating_size_and_a_docked_size() {
+        let settings = Settings::from_json(
+            r#"{"panel_geometry":[
+                {"monitor_id":"D1","x":0,"y":30,"w":340,"h":1040,"edge":"left","pre_dock":[320,480],"along":30},
+                {"monitor_id":"D2","x":10,"y":20,"w":300,"h":500},
+                {"monitor_id":"D3","x":0,"y":0,"w":300,"h":500,"edge":"top"}
+            ]}"#,
+        );
+        let g = &settings.panel_geometry[0];
+        assert_eq!((g.w, g.h), (320, 480), "the floating size it had before");
+        assert_eq!(g.docked, Some((340, 1040)), "the docked size it has now");
+        assert_eq!(
+            (g.edge, g.along, g.pre_dock),
+            (Some(DockEdge::Left), Some(30), None)
+        );
+        let floating = &settings.panel_geometry[1];
+        assert_eq!((floating.w, floating.h, floating.docked), (300, 500, None));
+        let no_memory = &settings.panel_geometry[2];
+        assert_eq!(
+            (no_memory.w, no_memory.h, no_memory.docked),
+            (300, 500, None)
+        );
+        let json = settings.to_json();
+        assert!(!json.contains("pre_dock"), "never written again: {json}");
+        assert_eq!(
+            Settings::from_json(&json).panel_geometry,
+            settings.panel_geometry
+        );
     }
 
     #[test]
@@ -1461,16 +1592,74 @@ mod tests {
             r#"{"panel_geometry":[{"monitor_id":"D1","x":0,"y":0,"w":320,"h":1040,"edge":"left","pre_dock":[320,480]}],"dock":{"trigger":"hover"}}"#,
         );
         let g = &settings.panel_geometry[0];
-        assert_eq!((g.edge, g.along, g.h), (Some(DockEdge::Left), None, 1040));
+        assert_eq!((g.edge, g.along), (Some(DockEdge::Left), None));
         assert!(!settings.dock.full_edge, "the compact dock is the default");
         assert_eq!(settings.dock.trigger, DockTrigger::Hover);
     }
 
     #[test]
-    fn the_dock_is_off_by_default_with_the_documented_delays() {
+    fn a_docked_panel_tucks_by_default_with_the_documented_delays() {
         let dock = Settings::default().dock;
-        assert_eq!(dock.trigger, DockTrigger::Off);
+        assert_eq!(dock.trigger, DockTrigger::Both);
         assert_eq!((dock.hover_delay_ms, dock.leave_delay_ms), (150, 400));
+        assert_eq!(
+            Settings::from_json("{}").dock,
+            dock,
+            "a file with no dock section"
+        );
+    }
+
+    #[test]
+    fn an_old_files_off_was_the_default_and_becomes_both_once() {
+        // Written by a version whose default was off: nobody chose it.
+        let old = Settings::from_json(r#"{"dock":{"trigger":"off","hover_delay_ms":300}}"#);
+        assert_eq!(old.dock.trigger, DockTrigger::Both);
+        assert_eq!(old.dock.hover_delay_ms, 300);
+        assert!(old.dock.tucks_by_default);
+        // A choice an old file did make is kept.
+        let click = Settings::from_json(r#"{"dock":{"trigger":"click"}}"#);
+        assert_eq!(click.dock.trigger, DockTrigger::Click);
+        // "Off" chosen since then is kept across a save and a load.
+        let mut chosen = old;
+        chosen.dock.trigger = DockTrigger::Off;
+        let back = Settings::from_json(&chosen.to_json());
+        assert_eq!(back.dock.trigger, DockTrigger::Off);
+    }
+
+    #[test]
+    fn an_old_file_with_the_panel_docked_does_not_tuck_until_it_is_docked_again() {
+        // The old default was a Panel docked to the right edge that stayed open, and the old
+        // dock took a Panel that only came near an edge: neither was asked to become a tab.
+        let old = Settings::from_json(
+            r#"{"dock":{"trigger":"off"},"panel_geometry":[
+                {"monitor_id":"D1","x":1600,"y":0,"w":320,"h":1040,"edge":"right"}
+            ]}"#,
+        );
+        assert_eq!(
+            old.dock.trigger,
+            DockTrigger::Off,
+            "it stays open, as it was"
+        );
+        assert!(!old.dock.tucks_by_default);
+        let back = Settings::from_json(&old.to_json());
+        assert_eq!(back.dock, old.dock, "and still after a save and a load");
+        // Docked again by the user, it tucks like any dock of this version.
+        let mut again = old.clone();
+        again.dock.docked_by_choice();
+        assert_eq!(again.dock.trigger, DockTrigger::Both);
+        assert!(again.dock.tucks_by_default);
+        // Undocked, there is nothing left to protect: the default is in force.
+        let mut floating = old.clone();
+        floating.panel_geometry[0].edge = None;
+        floating.sanitize();
+        assert_eq!(floating.dock.trigger, DockTrigger::Both);
+        // "Off" picked in Settings is a choice and survives the next dock.
+        let mut chosen = old;
+        chosen.dock.choose(DockTrigger::Off);
+        chosen.dock.docked_by_choice();
+        assert_eq!(chosen.dock.trigger, DockTrigger::Off);
+        let back = Settings::from_json(&chosen.to_json());
+        assert_eq!(back.dock.trigger, DockTrigger::Off);
     }
 
     #[test]
@@ -1481,6 +1670,7 @@ mod tests {
                 hover_delay_ms: 300,
                 leave_delay_ms: 900,
                 full_edge: true,
+                ..DockSettings::default()
             },
             ..Settings::default()
         };
@@ -1545,6 +1735,8 @@ mod tests {
             h: 500,
             edge: None,
             pre_dock: None,
+            docked: None,
+            docked_flat: None,
             along: None,
             other_along: Vec::new(),
         };
