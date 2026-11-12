@@ -8,7 +8,7 @@ import { Icons } from "icons.slint";
 import { Icon } from "components/icon.slint";
 import { IconButton } from "components/icon-button.slint";
 import { Button, ButtonVariant, ButtonSize } from "components/button.slint";
-import { TextField } from "components/text_field.slint";
+import { TextField, FieldError } from "components/text_field.slint";
 import { Segmented, SelectField, FormScroll } from "components/form.slint";
 import { Menu, MenuEntry } from "components/menu.slint";
 
@@ -77,8 +77,19 @@ export global ColourTexts {
     pure public function use-hint-paste(target: string) -> string {
         return @tr("Click pastes into {} · Shift+click copies", target);
     }
-    pure public function contrast-speak(name: string, ratio: string, aa: bool, aaa: bool) -> string {
-        return @tr("{}: {} to 1. AA text {}, AAA text {}", name, ratio, aa ? @tr("pass") : @tr("fail"), aaa ? @tr("pass") : @tr("fail"));
+    pure function pass-word(ok: bool) -> string { return ok ? @tr("pass") : @tr("fail"); }
+    // "On white: 4.22 to 1. AA text fail. AA large text pass. AAA text fail. AAA large text fail. Interface parts pass."
+    pure public function contrast-speak(name: string, ratio: string, aa: bool, aa-large: bool, aaa: bool, aaa-large: bool, ui: bool) -> string {
+        return @tr("{}: {} to 1. AA text {}. AA large text {}. AAA text {}. AAA large text {}. Interface parts {}.", name, ratio, pass-word(aa), pass-word(aa-large), pass-word(aaa), pass-word(aaa-large), pass-word(ui));
+    }
+    pure public function list-in-board(board: string, list: string) -> string { return @tr("{} · {}", board, list); }
+    pure public function new-list-entry() -> string { return @tr("New list…"); }
+    pure public function new-list-name() -> string { return @tr("New list"); }
+    pure public function surface-square(sat: int, bri: int) -> string {
+        return @tr("Saturation {} percent, brightness {} percent", sat, bri);
+    }
+    pure public function surface-wheel(hue: int, sat: int) -> string {
+        return @tr("Hue {} degrees, saturation {} percent", hue, sat);
     }
     pure public function swatch-label(hex: string, name: string) -> string { return @tr("{}, {}", hex, name); }
     pure public function use-hint-copy() -> string { return @tr("Click copies"); }
@@ -115,6 +126,7 @@ export global ColourState {
     in property <float> marker-x: 0.5;
     in property <float> marker-y: 0.5;
     in property <float> hue: 0;
+    in property <float> sat: 100;
     in property <float> bri: 100;
     in property <float> alpha: 100;
     in property <[ColourChannel]> channels;
@@ -123,8 +135,18 @@ export global ColourState {
     in property <bool> eyedropper-available: false;
     in property <bool> has-saved-list: false;
     in property <bool> eyedropper-running: false;
-    // Lists a colour can be saved to (names; the host maps the index back).
-    in property <[string]> list-names;
+    // "Save to…": every list of every board, then "New list…" (the host maps the index back).
+    in property <[MenuEntry]> save-targets;
+    // "Copy as…": one entry per format, in the order of `formats`.
+    in property <[MenuEntry]> copy-as;
+    // Open popup: 0 none, 1 a chip's menu, 2 a format row's menu, 3 Save to…, 4 Copy as…. The Panel closes it on Esc.
+    in-out property <int> popup: 0;
+    // Ctrl+Shift+S asks the tab to open Save to…; a printable key asks it to type `typed` into the input line.
+    in-out property <int> save-to-ticks: 0;
+    in-out property <int> type-ticks: 0;
+    in-out property <string> typed;
+    // A text field of the tab has the keyboard (the Panel leaves Ctrl+C and typing to it).
+    in-out property <bool> text-focused: false;
     // Callbacks.
     callback input-edited(string);
     callback input-accepted(string);
@@ -134,12 +156,16 @@ export global ColourState {
     // group: 0 recents, 1 saved, 2 scheme. Shift+click is `swatch-copied`.
     callback swatch-used(int, int);
     callback swatch-copied(int, int);
+    // group, index, format (the order of `formats`).
+    callback swatch-copied-as(int, int, int);
     callback swatch-saved(int, int, int);
     callback swatch-removed(int, int);
     callback format-used(int);
     callback format-copied(int);
     callback format-made-default(int);
     callback format-saved(int, int);
+    // Ctrl+C: the current colour in the default format.
+    callback copy-current();
     callback save(int);
     callback open-saved();
     callback swap();
@@ -155,6 +181,8 @@ export global ColourState {
     callback channel-committed(int, string);
     callback channel-stepped(int, int);
     callback surface-nudged(int, int);
+    // Page Up / Page Down: brightness by this many percent.
+    callback surface-paged(int);
 }
 
 // A checkerboard to show under a translucent colour.
@@ -207,23 +235,62 @@ component Tile inherits Rectangle {
     }
 }
 
+// A focus indicator for a marker or thumb that sits on a painted track or surface: the focus ring is sandwiched
+// between a white outer hairline and whatever the control already draws inside it, so it reads on any colour
+// (WCAG 1.4.11), blue included.
+component FocusHalo inherits Rectangle {
+    in property <bool> shown;
+    // The gap between the control's edge and the ring's inner edge.
+    in property <length> inset: 0px;
+    visible: root.shown;
+    Rectangle {
+        x: -(root.inset + 2px);
+        y: -(root.inset + 2px);
+        width: parent.width + 2 * (root.inset + 2px);
+        height: parent.height + 2 * (root.inset + 2px);
+        border-radius: Radius.lg;
+        border-width: 2px;
+        border-color: Theme.focus-ring;
+    }
+    Rectangle {
+        x: -(root.inset + 3px);
+        y: -(root.inset + 3px);
+        width: parent.width + 2 * (root.inset + 3px);
+        height: parent.height + 2 * (root.inset + 3px);
+        border-radius: Radius.lg;
+        border-width: 1px;
+        border-color: #ffffff;
+    }
+}
+
 // A wrapping grid of chips. A click calls `used`, Shift+click `copied`, right-click `menu`. One tab stop; the
-// arrows move the roving selection, Enter and Space use it, Shift+Enter copies it.
+// arrows move the roving selection (chip 0 is selected when the grid takes the focus), Enter and Space use it,
+// Shift+Enter copies it, Menu or Shift+F10 opens its menu at the chip, Delete removes it (a recent).
 component ChipGrid inherits Rectangle {
     in property <[ColourSwatch]> chips;
     in property <length> tile: 24px;
     in property <length> cell-w: 28px;
     in property <length> cell-h: 28px;
     in property <bool> captions: false;
+    in property <bool> can-remove: false;
     in property <string> group-label;
+    in property <int> focus-request: 0;
     in-out property <int> selected: -1;
+    out property <string> focus-label: (scope.has-focus && root.selected >= 0 && root.selected < root.chips.length) ? root.chips[root.selected].label : "";
     callback used(int);
     callback copied(int);
+    callback removed(int);
+    // The chip, then where to open a menu (absolute).
     callback menu(int, length, length);
     callback tip(string, length, length, bool);
+    // The text of the chip the keyboard is on (for the footer).
+    callback focus-text(string);
+    // The selected chip's top (absolute) and height, so the tab can scroll it into view.
+    callback reveal(length, length);
 
     property <int> columns: max(1, floor((root.width - 2 * Space.s2) / root.cell-w));
     property <int> rows: ceil(root.chips.length / root.columns);
+    property <int> count: root.chips.length;
     preferred-height: root.rows * root.cell-h;
     min-height: root.rows * root.cell-h;
     forward-focus: scope;
@@ -236,8 +303,31 @@ component ChipGrid inherits Rectangle {
             root.selected = min(max((root.selected < 0 ? 0 : root.selected) + delta, 0), n - 1);
         }
     }
+    function ok() -> bool {
+        return root.selected >= 0 && root.selected < root.chips.length;
+    }
+    changed count => {
+        if (root.selected >= root.count) {
+            root.selected = root.count - 1;
+        }
+    }
+    changed focus-request => { scope.focus(); }
+    changed focus-label => { root.focus-text(root.focus-label); }
+    changed selected => {
+        if (scope.has-focus && root.ok()) {
+            root.reveal(root.absolute-position.y + floor(root.selected / root.columns) * root.cell-h, root.cell-h);
+        }
+    }
 
     scope := FocusScope {
+        changed has-focus => {
+            if (self.has-focus && root.selected < 0 && root.chips.length > 0) {
+                root.selected = 0;
+            }
+            if (self.has-focus && root.ok()) {
+                root.reveal(root.absolute-position.y + floor(root.selected / root.columns) * root.cell-h, root.cell-h);
+            }
+        }
         key-pressed(event) => {
             if (event.text == Key.LeftArrow) { root.step(-1); return accept; }
             if (event.text == Key.RightArrow) { root.step(1); return accept; }
@@ -245,12 +335,22 @@ component ChipGrid inherits Rectangle {
             if (event.text == Key.DownArrow) { root.step(root.columns); return accept; }
             if (event.text == Key.Home) { root.selected = 0; return accept; }
             if (event.text == Key.End) { root.selected = root.chips.length - 1; return accept; }
-            if ((event.text == "\n" || event.text == " ") && root.selected >= 0 && root.selected < root.chips.length) {
+            if ((event.text == Key.Return || event.text == " ") && root.ok()) {
                 if (event.modifiers.shift) {
                     root.copied(root.selected);
                 } else {
                     root.used(root.selected);
                 }
+                return accept;
+            }
+            if ((event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) && root.ok()) {
+                root.menu(root.selected,
+                    root.absolute-position.x + Space.s2 + (mod(root.selected, root.columns) + 0.5) * root.cell-w,
+                    root.absolute-position.y + (floor(root.selected / root.columns) + 0.5) * root.cell-h);
+                return accept;
+            }
+            if (event.text == Key.Delete && root.can-remove && root.ok()) {
+                root.removed(root.selected);
                 return accept;
             }
             return reject;
@@ -265,6 +365,8 @@ component ChipGrid inherits Rectangle {
             accessible-description: root.group-label;
             accessible-item-index: i;
             accessible-item-count: root.chips.length;
+            accessible-item-selectable: true;
+            accessible-item-selected: root.selected == i;
             accessible-action-default => { root.used(i); }
             Rectangle {
                 border-radius: Radius.md;
@@ -299,6 +401,7 @@ component ChipGrid inherits Rectangle {
                     if (event.button == PointerEventButton.left && event.kind == PointerEventKind.up
                         && self.mouse-x >= 0 && self.mouse-x <= self.width && self.mouse-y >= 0 && self.mouse-y <= self.height) {
                         root.selected = i;
+                        scope.focus();
                         if (event.modifiers.shift) {
                             root.copied(i);
                         } else {
@@ -306,6 +409,7 @@ component ChipGrid inherits Rectangle {
                         }
                     } else if (event.button == PointerEventButton.right && event.kind == PointerEventKind.up) {
                         root.selected = i;
+                        scope.focus();
                         root.menu(i, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
                     }
                 }
@@ -314,7 +418,196 @@ component ChipGrid inherits Rectangle {
     }
 }
 
-// A slider on a painted track (hue, brightness, alpha). `value` is 0..max; the host owns it.
+// The format rows (HEX, RGB, ...). One tab stop; Up and Down, Home and End move the roving selection (row 0 is
+// selected when the list takes the focus), Enter uses the row, Shift+Enter copies it, Menu or Shift+F10 opens its
+// menu at the row. The copy glyph at the right is the pointer's shortcut for Shift+click and is not a tab stop.
+component FormatList inherits Rectangle {
+    in property <[ColourFormatRow]> rows;
+    in property <string> use-hint;
+    in property <int> focus-request: 0;
+    in-out property <int> selected: -1;
+    out property <string> focus-label: (scope.has-focus && root.selected >= 0 && root.selected < root.rows.length) ? root.rows[root.selected].label + " " + root.rows[root.selected].value : "";
+    callback used(int);
+    callback copied(int);
+    // The row, then where to open a menu (absolute).
+    callback menu(int, length, length);
+    callback tip(string, length, length, bool);
+    callback focus-text(string);
+    callback reveal(length, length);
+
+    property <length> row-h: Space.hit;
+    // The label column is as wide as the widest label ("Name" translates to something longer in some languages).
+    property <length> label-w: label-measure.preferred-width;
+    property <length> default-w: default-measure.preferred-width;
+    property <int> count: root.rows.length;
+    height: root.rows.length * root.row-h;
+    preferred-height: root.rows.length * root.row-h;
+    forward-focus: scope;
+    accessible-role: list;
+    accessible-label: @tr("Formats");
+
+    label-measure := VerticalLayout {
+        visible: false;
+        for f in root.rows: Text {
+            text: f.label == "Name" ? ColourTexts.format-name() : f.label;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            font-weight: Type.semibold;
+        }
+    }
+    default-measure := Text {
+        visible: false;
+        text: @tr("default");
+        font-family: Fonts.sans;
+        font-size: Type.xs;
+    }
+
+    function step(delta: int) {
+        let n = root.rows.length;
+        if (n > 0) {
+            root.selected = min(max((root.selected < 0 ? 0 : root.selected) + delta, 0), n - 1);
+        }
+    }
+    function ok() -> bool {
+        return root.selected >= 0 && root.selected < root.rows.length;
+    }
+    changed count => {
+        if (root.selected >= root.count) {
+            root.selected = root.count - 1;
+        }
+    }
+    changed focus-request => { scope.focus(); }
+    changed focus-label => { root.focus-text(root.focus-label); }
+    changed selected => {
+        if (scope.has-focus && root.ok()) {
+            root.reveal(root.absolute-position.y + root.selected * root.row-h, root.row-h);
+        }
+    }
+
+    scope := FocusScope {
+        changed has-focus => {
+            if (self.has-focus && root.selected < 0 && root.rows.length > 0) {
+                root.selected = 0;
+            }
+            if (self.has-focus && root.ok()) {
+                root.reveal(root.absolute-position.y + root.selected * root.row-h, root.row-h);
+            }
+        }
+        key-pressed(event) => {
+            if (event.text == Key.DownArrow) { root.step(1); return accept; }
+            if (event.text == Key.UpArrow) { root.step(-1); return accept; }
+            if (event.text == Key.Home) { root.selected = 0; return accept; }
+            if (event.text == Key.End) { root.selected = root.rows.length - 1; return accept; }
+            if (event.text == Key.Return && root.ok()) {
+                if (event.modifiers.shift) {
+                    root.copied(root.selected);
+                } else {
+                    root.used(root.selected);
+                }
+                return accept;
+            }
+            if ((event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) && root.ok()) {
+                root.menu(root.selected, root.absolute-position.x + Space.s8, root.absolute-position.y + (root.selected + 0.5) * root.row-h);
+                return accept;
+            }
+            return reject;
+        }
+        for f[i] in root.rows: Rectangle {
+            y: i * root.row-h;
+            width: root.width;
+            height: root.row-h;
+            accessible-role: list-item;
+            accessible-label: f.label + ", " + f.value;
+            accessible-description: root.use-hint;
+            accessible-item-index: i;
+            accessible-item-count: root.rows.length;
+            accessible-item-selectable: true;
+            accessible-item-selected: root.selected == i;
+            accessible-action-default => { root.used(i); }
+            Rectangle {
+                x: Space.s1;
+                width: parent.width - 2 * Space.s1;
+                border-radius: Radius.sm;
+                background: row-touch.has-hover ? Theme.bg-hover : transparent;
+                border-width: (root.selected == i && scope.has-focus) ? 2px : 0px;
+                border-color: Theme.focus-ring;
+            }
+            Text {
+                x: Space.s2;
+                width: root.label-w;
+                height: parent.height;
+                text: f.label == "Name" ? ColourTexts.format-name() : f.label;
+                font-family: Fonts.sans;
+                font-size: Type.sm;
+                font-weight: Type.semibold;
+                color: Theme.text-secondary;
+                vertical-alignment: center;
+            }
+            Text {
+                x: Space.s2 + root.label-w + Space.s2;
+                width: parent.width - self.x - Space.hit - Space.s1 - (f.is-default ? root.default-w + Space.s2 : 0px);
+                height: parent.height;
+                text: f.value;
+                font-family: Fonts.mono;
+                font-size: Type.sm;
+                color: Theme.text-primary;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+            if f.is-default: Text {
+                x: parent.width - Space.hit - Space.s1 - root.default-w - Space.s1;
+                width: root.default-w;
+                height: parent.height;
+                text: @tr("default");
+                font-family: Fonts.sans;
+                font-size: Type.xs;
+                color: Theme.text-tertiary;
+                horizontal-alignment: right;
+                vertical-alignment: center;
+            }
+            row-touch := TouchArea {
+                width: parent.width - Space.hit - Space.s1;
+                mouse-cursor: pointer;
+                pointer-event(event) => {
+                    if (event.button == PointerEventButton.left && event.kind == PointerEventKind.up
+                        && self.mouse-x >= 0 && self.mouse-x <= self.width && self.mouse-y >= 0 && self.mouse-y <= self.height) {
+                        root.selected = i;
+                        scope.focus();
+                        if (event.modifiers.shift) {
+                            root.copied(i);
+                        } else {
+                            root.used(i);
+                        }
+                    } else if (event.button == PointerEventButton.right && event.kind == PointerEventKind.up) {
+                        root.selected = i;
+                        scope.focus();
+                        root.menu(i, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+                    }
+                }
+            }
+            // A pointer shortcut, not a tab stop: the keyboard copies with Shift+Enter or the row menu.
+            copy-touch := TouchArea {
+                x: parent.width - Space.hit - Space.s1;
+                width: Space.hit;
+                mouse-cursor: pointer;
+                accessible-role: none;
+                clicked => { root.copied(i); }
+                changed has-hover => {
+                    root.tip(@tr("Copy"), self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover);
+                }
+                Icon {
+                    source: Icons.copy;
+                    tint: copy-touch.has-hover ? Theme.text-primary : Theme.text-secondary;
+                    x: (parent.width - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
+                }
+            }
+        }
+    }
+}
+
+// A slider on a painted track (hue, brightness, alpha). `value` is 0..max; the host owns it. The hit area is
+// 24px tall (Space.hit-min); the painted track stays 12px, centred.
 component TrackSlider inherits Rectangle {
     in property <float> value;
     in property <float> max-value: 100;
@@ -323,7 +616,7 @@ component TrackSlider inherits Rectangle {
     in property <brush> track;
     in property <bool> checker: false;
     callback moved(float);
-    height: Space.s5;
+    height: Space.hit-min;
     forward-focus: scope;
     accessible-role: slider;
     accessible-label: root.label;
@@ -376,11 +669,16 @@ component TrackSlider inherits Rectangle {
         border-radius: Radius.lg;
         background: transparent;
         border-width: 2px;
-        border-color: scope.has-focus ? Theme.focus-ring : Theme.text-primary;
+        border-color: Theme.text-primary;
         Rectangle {
             border-radius: Radius.lg;
             border-width: 1px;
             border-color: Theme.bg-surface;
+        }
+        FocusHalo {
+            width: parent.width;
+            height: parent.height;
+            shown: scope.has-focus;
         }
     }
     touch := TouchArea {
@@ -403,7 +701,8 @@ component TrackSlider inherits Rectangle {
     }
 }
 
-// The square or wheel: the image, a ring at the colour, a drag and the arrow keys.
+// The square or wheel: the image, a ring at the colour, a drag and the arrow keys. Page Up and Page Down step the
+// brightness by ten percent in both modes.
 component Surface inherits Rectangle {
     in property <image> source;
     in property <float> marker-x;
@@ -414,10 +713,14 @@ component Surface inherits Rectangle {
     callback moved(float, float, bool);
     // Arrow keys: dx, dy in steps (Shift is ten).
     callback nudged(int, int);
+    // Page Up and Page Down, and a screen reader's increment and decrement: brightness by this many percent.
+    callback paged(int);
     forward-focus: scope;
     accessible-role: slider;
     accessible-label: root.label;
     accessible-value: root.value-text;
+    accessible-action-increment => { root.paged(1); }
+    accessible-action-decrement => { root.paged(-1); }
 
     scope := FocusScope {
         key-pressed(event) => {
@@ -426,8 +729,8 @@ component Surface inherits Rectangle {
             if (event.text == Key.RightArrow) { root.nudged(big, 0); return accept; }
             if (event.text == Key.UpArrow) { root.nudged(0, big); return accept; }
             if (event.text == Key.DownArrow) { root.nudged(0, -big); return accept; }
-            if (event.text == Key.PageUp) { root.nudged(0, 10); return accept; }
-            if (event.text == Key.PageDown) { root.nudged(0, -10); return accept; }
+            if (event.text == Key.PageUp) { root.paged(10); return accept; }
+            if (event.text == Key.PageDown) { root.paged(-10); return accept; }
             return reject;
         }
     }
@@ -466,14 +769,11 @@ component Surface inherits Rectangle {
             border-width: 1px;
             border-color: #000000;
         }
-        Rectangle {
-            width: parent.width + 2px;
-            height: parent.height + 2px;
-            x: -1px;
-            y: -1px;
-            border-radius: Radius.lg;
-            border-width: scope.has-focus ? 2px : 0px;
-            border-color: Theme.focus-ring;
+        FocusHalo {
+            width: parent.width;
+            height: parent.height;
+            inset: 1px;
+            shown: scope.has-focus;
         }
     }
     touch := TouchArea {
@@ -525,10 +825,16 @@ component Mark inherits Rectangle {
     }
 }
 
+// One contrast line: the sample, the name, the ratio, then the five marks, which wrap onto a second line when the
+// Panel is narrow (under about 360px).
 component ContrastLine inherits Rectangle {
     in property <ColourContrastRow> data;
     in property <color> fg;
-    height: Space.s12 - Space.s1;
+    property <length> left: Space.s2;
+    property <length> limit: root.width - Space.s2;
+    property <length> gap: Space.s2;
+    property <length> top: Space.s6 + Space.s1;
+    height: m5.y + m5.height + Space.s0-5;
     accessible-role: list-item;
     accessible-label: root.data.speak;
     Tile {
@@ -570,17 +876,39 @@ component ContrastLine inherits Rectangle {
         color: Theme.text-primary;
         vertical-alignment: center;
     }
-    HorizontalLayout {
-        x: Space.s2;
-        y: Space.s6 + Space.s1 + Space.s0-5;
-        width: parent.width - 2 * Space.s2;
-        spacing: Space.s2;
-        alignment: start;
-        Mark { text: @tr("AA"); pass: root.data.aa; }
-        Mark { text: @tr("AA large"); pass: root.data.aa-large; }
-        Mark { text: @tr("AAA"); pass: root.data.aaa; }
-        Mark { text: @tr("AAA large"); pass: root.data.aaa-large; }
-        Mark { text: @tr("UI"); pass: root.data.ui; }
+    m1 := Mark {
+        x: root.left;
+        y: root.top;
+        text: @tr("AA");
+        pass: root.data.aa;
+    }
+    m2 := Mark {
+        property <bool> wrap: m1.x + m1.width + root.gap + self.width > root.limit;
+        x: self.wrap ? root.left : m1.x + m1.width + root.gap;
+        y: self.wrap ? m1.y + m1.height : m1.y;
+        text: @tr("AA large");
+        pass: root.data.aa-large;
+    }
+    m3 := Mark {
+        property <bool> wrap: m2.x + m2.width + root.gap + self.width > root.limit;
+        x: self.wrap ? root.left : m2.x + m2.width + root.gap;
+        y: self.wrap ? m2.y + m2.height : m2.y;
+        text: @tr("AAA");
+        pass: root.data.aaa;
+    }
+    m4 := Mark {
+        property <bool> wrap: m3.x + m3.width + root.gap + self.width > root.limit;
+        x: self.wrap ? root.left : m3.x + m3.width + root.gap;
+        y: self.wrap ? m3.y + m3.height : m3.y;
+        text: @tr("AAA large");
+        pass: root.data.aaa-large;
+    }
+    m5 := Mark {
+        property <bool> wrap: m4.x + m4.width + root.gap + self.width > root.limit;
+        x: self.wrap ? root.left : m4.x + m4.width + root.gap;
+        y: self.wrap ? m4.y + m4.height : m4.y;
+        text: @tr("UI");
+        pass: root.data.ui;
     }
 }
 
@@ -590,9 +918,9 @@ component ChannelField inherits FocusScope {
     in property <string> value;
     callback committed(string);
     callback stepped(int);
+    // The field gained or lost the keyboard.
+    callback focus-changed(bool);
     forward-focus: tf;
-    horizontal-stretch: 1;
-    min-width: Space.s12 + Space.s2;
 
     changed value => { tf.text = root.value; }
     init => { tf.text = root.value; }
@@ -607,6 +935,7 @@ component ChannelField inherits FocusScope {
         monospace: true;
         accepted(t) => { root.committed(t); }
         changed has-focus => {
+            root.focus-changed(self.has-focus);
             if (!self.has-focus && self.text != root.value) {
                 root.committed(self.text);
             }
@@ -614,94 +943,130 @@ component ChannelField inherits FocusScope {
     }
 }
 
-// A line of text under a field, in the danger colour, with a leading glyph so it is not colour alone.
-component ErrorLine inherits Rectangle {
-    in property <string> text;
-    height: root.text == "" ? 0px : Type.line-sm + Space.s1;
-    visible: root.text != "";
-    Text {
-        x: Space.s2;
-        width: parent.width - 2 * Space.s2;
-        text: "⚠ " + root.text;
-        font-family: Fonts.sans;
-        font-size: Type.sm;
-        color: Theme.danger-fg;
-        wrap: word-wrap;
-        accessible-role: AccessibleRole.text;
-    }
-}
-
 export component ColoursView inherits Rectangle {
-    // Popups: 0 none, 1 a chip's menu, 2 a format row's menu, 3 the Save-to list.
     callback tip(string, length, length, bool);
-    property <int> popup: 0;
+    // Which popup `ColourState.popup` has open: whose chip or row it is, where it opened (relative to this view),
+    // where the keyboard goes back to when it closes (1 recents, 2 saved, 3 scheme, 4 formats) and what "Save to…"
+    // saves (0 the current colour, 1 the chip, 2 the format row).
     property <int> popup-group: 0;
     property <int> popup-index: 0;
     property <length> popup-x: 0px;
     property <length> popup-y: 0px;
+    property <int> popup-from: 0;
+    property <int> save-ctx: 0;
     property <int> recent-sel: -1;
     property <int> saved-sel: -1;
     property <int> scheme-sel: -1;
+    property <int> format-sel: -1;
+    // Focus requests (a counter each: ids inside `if` blocks are out of reach).
+    property <int> recents-focus: 0;
+    property <int> saved-focus: 0;
+    property <int> scheme-focus: 0;
+    property <int> formats-focus: 0;
+    property <int> input-focus: 0;
+    property <int> channel-focus: -1;
+    property <string> hover-text;
+    property <string> focus-text;
+    property <int> popup-now: ColourState.popup;
+    property <int> save-to-now: ColourState.save-to-ticks;
+    property <int> type-now: ColourState.type-ticks;
+    property <bool> typing: input.has-focus || other-field.has-focus || root.channel-focus >= 0;
 
     background: Theme.bg-surface;
 
-    function save-targets() -> [MenuEntry] {
-        return [{ text: ColourTexts.colours-list(), icon: Icons.palette }];
+    init => { ColourState.text-focused = false; ColourState.popup = 0; }
+    changed typing => { ColourState.text-focused = root.typing; }
+    // A popup that closes gives the keyboard back to where it came from.
+    changed popup-now => {
+        if (root.popup-now == 0) {
+            if (root.popup-from == 1) { root.recents-focus += 1; }
+            if (root.popup-from == 2) { root.saved-focus += 1; }
+            if (root.popup-from == 3) { root.scheme-focus += 1; }
+            if (root.popup-from == 4) { root.formats-focus += 1; }
+            // Opened by Ctrl+Shift+S or the button: the keyboard goes to the input line, so keys still reach the Panel.
+            if (root.popup-from == 0) { input.focus(); }
+            root.popup-from = 0;
+        }
+    }
+    // Ctrl+Shift+S.
+    changed save-to-now => {
+        root.save-ctx = 0;
+        root.popup-from = 0;
+        root.open-popup(3, root.absolute-position.x + Space.s2, root.absolute-position.y + Space.s12);
+    }
+    // A printable key with no field focused starts the input line.
+    changed type-now => {
+        input.focus();
+        ColourState.input-text = ColourState.typed;
+        input.set-cursor(ColourState.typed.character-count);
+        ColourState.input-edited(ColourState.typed);
+    }
+
+    // `x` and `y` are absolute.
+    function open-popup(kind: int, x: length, y: length) {
+        root.popup-x = x - root.absolute-position.x;
+        root.popup-y = y - root.absolute-position.y;
+        ColourState.popup = kind;
+    }
+    function reveal(top: length, h: length) {
+        scroll.reveal(top - scroll.absolute-position.y, h);
     }
 
     VerticalLayout {
         // ---- The current colour, pinned ------------------------------------------------------------
-        Rectangle {
-            height: Space.s12 + Space.s6;
-            background: Theme.bg-surface;
-            Tile {
-                x: Space.s2;
-                y: Space.s2;
+        HorizontalLayout {
+            padding: Space.s2;
+            spacing: Space.s2;
+            VerticalLayout {
+                alignment: start;
                 width: Space.s12;
-                height: Space.s12;
-                corner: Radius.md;
-                tint: ColourState.current;
-                translucent: ColourState.current-translucent;
-                accessible-role: AccessibleRole.image;
-                accessible-label: ColourState.current-label;
+                Tile {
+                    height: Space.s12;
+                    corner: Radius.md;
+                    tint: ColourState.current;
+                    translucent: ColourState.current-translucent;
+                    accessible-role: AccessibleRole.image;
+                    accessible-label: ColourState.current-label;
+                }
             }
-            input := TextField {
-                x: Space.s12 + Space.s4;
-                y: Space.s2;
-                width: parent.width - self.x - (ColourState.eyedropper-available ? Space.s8 + Space.s2 : Space.s2);
-                text <=> ColourState.input-text;
-                monospace: true;
-                label: @tr("Colour");
-                placeholder: @tr("#3a7bd5, rgb(58, 123, 213), royalblue");
-                edited(t) => { ColourState.input-edited(t); }
-                accepted(t) => { ColourState.input-accepted(t); }
+            VerticalLayout {
+                spacing: Space.s1;
+                alignment: start;
+                input := TextField {
+                    text <=> ColourState.input-text;
+                    monospace: true;
+                    label: @tr("Colour");
+                    placeholder: @tr("#3a7bd5, rgb(58, 123, 213), royalblue");
+                    error: ColourState.input-error;
+                    focus-request: root.input-focus;
+                    edited(t) => { ColourState.input-edited(t); }
+                    accepted(t) => { ColourState.input-accepted(t); }
+                }
+                if ColourState.input-error == "": Text {
+                    height: Space.s6;
+                    text: ColourState.name-text;
+                    font-family: Fonts.sans;
+                    font-size: Type.sm;
+                    color: Theme.text-secondary;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
             }
-            if ColourState.eyedropper-available: IconButton {
-                x: parent.width - Space.s8 - Space.s2;
-                y: Space.s2;
-                icon: Icons.eyedropper;
-                tooltip: @tr("Pick a colour from the screen (Ctrl+I)");
-                own-tooltip: true;
-                enabled: !ColourState.eyedropper-running;
-                clicked => { ColourState.eyedropper(); }
-            }
-            Text {
-                x: Space.s12 + Space.s4 + Space.s2;
-                y: parent.height - Space.s6 - Space.s1;
-                width: parent.width - self.x - Space.s2;
-                height: Space.s6;
-                text: ColourState.name-text;
-                font-family: Fonts.sans;
-                font-size: Type.sm;
-                color: Theme.text-secondary;
-                vertical-alignment: center;
-                overflow: elide;
+            if ColourState.eyedropper-available: VerticalLayout {
+                alignment: start;
+                width: Space.s8;
+                IconButton {
+                    icon: Icons.eyedropper;
+                    tooltip: @tr("Pick a colour from the screen (Ctrl+I)");
+                    own-tooltip: true;
+                    enabled: !ColourState.eyedropper-running;
+                    clicked => { ColourState.eyedropper(); }
+                }
             }
         }
-        ErrorLine { text: ColourState.input-error; }
 
         // ---- Everything else scrolls ---------------------------------------------------------------
-        FormScroll {
+        scroll := FormScroll {
             vertical-stretch: 1;
             content-height: body.preferred-height;
             content-width: self.viewport-width;
@@ -721,6 +1086,21 @@ export component ColoursView inherits Rectangle {
                         height: parent.height;
                         border-radius: Radius.sm;
                         background: pick-touch.has-hover ? Theme.bg-hover : transparent;
+                        border-width: pick-scope.has-focus ? 2px : 0px;
+                        border-color: Theme.focus-ring;
+                        accessible-role: button;
+                        accessible-label: @tr("Picker");
+                        accessible-expanded: ColourState.picker-open;
+                        accessible-action-default => { ColourState.picker-toggled(!ColourState.picker-open); }
+                        pick-scope := FocusScope {
+                            key-pressed(event) => {
+                                if (event.text == Key.Return || event.text == " ") {
+                                    ColourState.picker-toggled(!ColourState.picker-open);
+                                    return accept;
+                                }
+                                return reject;
+                            }
+                        }
                         HorizontalLayout {
                             padding-left: Space.s1;
                             spacing: Space.s1;
@@ -740,12 +1120,11 @@ export component ColoursView inherits Rectangle {
                         }
                         pick-touch := TouchArea {
                             mouse-cursor: pointer;
-                            clicked => { ColourState.picker-toggled(!ColourState.picker-open); }
+                            clicked => {
+                                pick-scope.focus();
+                                ColourState.picker-toggled(!ColourState.picker-open);
+                            }
                         }
-                        accessible-role: button;
-                        accessible-label: @tr("Picker");
-                        accessible-expanded: ColourState.picker-open;
-                        accessible-action-default => { ColourState.picker-toggled(!ColourState.picker-open); }
                     }
                     if ColourState.picker-open: Segmented {
                         x: parent.width - self.width - Space.s2;
@@ -765,21 +1144,22 @@ export component ColoursView inherits Rectangle {
                     Rectangle {
                         // A square is wide; a wheel is a disc, centred.
                         height: ColourState.picker-style == 1 ? 168px * SystemLook.text-scale : 120px * SystemLook.text-scale;
-                    Surface {
-                        x: ColourState.picker-style == 1 ? (parent.width - self.width) / 2 : 0px;
-                        width: ColourState.picker-style == 1 ? parent.height : parent.width;
-                        height: parent.height;
-                        source: ColourState.surface;
-                        marker-x: ColourState.marker-x;
-                        marker-y: ColourState.marker-y;
-                        wheel: ColourState.picker-style == 1;
-                        label: ColourState.picker-style == 1 ? @tr("Hue and saturation") : @tr("Saturation and brightness");
-                        value-text: ColourState.current-label;
-                        moved(x, y, done) => { ColourState.surface-moved(x, y, done); }
-                        nudged(dx, dy) => {
-                            ColourState.surface-nudged(dx, dy);
+                        Surface {
+                            x: ColourState.picker-style == 1 ? (parent.width - self.width) / 2 : 0px;
+                            width: ColourState.picker-style == 1 ? parent.height : parent.width;
+                            height: parent.height;
+                            source: ColourState.surface;
+                            marker-x: ColourState.marker-x;
+                            marker-y: ColourState.marker-y;
+                            wheel: ColourState.picker-style == 1;
+                            label: ColourState.picker-style == 1 ? @tr("Hue and saturation") : @tr("Saturation and brightness");
+                            value-text: ColourState.picker-style == 1
+                                ? ColourTexts.surface-wheel(round(ColourState.hue), round(ColourState.sat))
+                                : ColourTexts.surface-square(round(ColourState.sat), round(ColourState.bri));
+                            moved(x, y, done) => { ColourState.surface-moved(x, y, done); }
+                            nudged(dx, dy) => { ColourState.surface-nudged(dx, dy); }
+                            paged(d) => { ColourState.surface-paged(d); }
                         }
-                    }
                     }
                     if ColourState.picker-style == 0: TrackSlider {
                         label: @tr("Hue");
@@ -804,25 +1184,44 @@ export component ColoursView inherits Rectangle {
                         track: @linear-gradient(90deg, ColourState.current.with-alpha(0) 0%, ColourState.current.with-alpha(1) 100%);
                         moved(v) => { ColourState.alpha-moved(v); }
                     }
-                    // ---- Values: one field per channel of the chosen model --------------------------
-                    HorizontalLayout {
-                        spacing: Space.s2;
-                        alignment: stretch;
+                    // ---- Values: the model, then one field per channel, wrapped to the width -------------
+                    Rectangle {
+                        height: Space.s8 + Space.s1;
                         SelectField {
-                            width: 76px;
+                            x: 0px;
+                            width: 120px;
                             options: [ColourTexts.model-name(0), ColourTexts.model-name(1), ColourTexts.model-name(2), ColourTexts.model-name(3), ColourTexts.model-name(4)];
                             current: ColourState.input-model;
                             label: @tr("Values as");
                             chosen(i) => { ColourState.model-picked(i); }
                         }
+                    }
+                    values := Rectangle {
+                        property <int> n: ColourState.channels.length;
+                        property <int> maxcols: max(1, floor((self.width + Space.s2) / (Space.s12 + Space.s2 + Space.s2)));
+                        property <int> nrows: max(1, ceil(self.n / self.maxcols));
+                        property <int> cols: max(1, ceil(self.n / self.nrows));
+                        property <length> cell: (self.width - (self.cols - 1) * Space.s2) / self.cols;
+                        height: self.nrows * Space.hit + (self.nrows - 1) * Space.s2;
                         for ch[i] in ColourState.channels: ChannelField {
+                            x: mod(i, values.cols) * (values.cell + Space.s2);
+                            y: floor(i / values.cols) * (Space.hit + Space.s2);
+                            width: values.cell;
+                            height: Space.hit;
                             label: ch.label;
                             value: ch.text;
                             committed(t) => { ColourState.channel-committed(i, t); }
                             stepped(d) => { ColourState.channel-stepped(i, d); }
+                            focus-changed(f) => {
+                                if (f) {
+                                    root.channel-focus = i;
+                                } else if (root.channel-focus == i) {
+                                    root.channel-focus = -1;
+                                }
+                            }
                         }
                     }
-                    ErrorLine { text: ColourState.values-error; }
+                    if ColourState.values-error != "": FieldError { text: ColourState.values-error; }
                 }
 
                 // ---- Recently used --------------------------------------------------------------
@@ -830,17 +1229,24 @@ export component ColoursView inherits Rectangle {
                 if ColourState.recents.length > 0: ChipGrid {
                     chips: ColourState.recents;
                     group-label: @tr("Recently used");
+                    can-remove: true;
+                    focus-request: root.recents-focus;
                     selected <=> root.recent-sel;
                     used(i) => { ColourState.swatch-used(0, i); }
                     copied(i) => { ColourState.swatch-copied(0, i); }
+                    removed(i) => { ColourState.swatch-removed(0, i); }
                     menu(i, x, y) => {
                         root.popup-group = 0;
                         root.popup-index = i;
-                        root.popup-x = x;
-                        root.popup-y = y;
-                        root.popup = 1;
+                        root.popup-from = 1;
+                        root.open-popup(1, x, y);
                     }
-                    tip(t, x, y, on) => { root.tip(t, x, y, on); }
+                    tip(t, x, y, on) => {
+                        root.hover-text = on ? t : "";
+                        root.tip(t, x, y, on);
+                    }
+                    focus-text(t) => { root.focus-text = t; }
+                    reveal(top, h) => { root.reveal(top, h); }
                 }
 
                 // ---- Saved ----------------------------------------------------------------------
@@ -855,15 +1261,15 @@ export component ColoursView inherits Rectangle {
                         tooltip: @tr("Save to Colours (Ctrl+S)");
                         clicked => { ColourState.save(-1); }
                     }
-                    Button {
+                    save-to := Button {
                         text: @tr("Save to…");
                         size: ButtonSize.sm;
                         variant: ButtonVariant.secondary;
                         tooltip: @tr("Save to a list (Ctrl+Shift+S)");
                         clicked => {
-                            root.popup-x = Space.s2;
-                            root.popup-y = Space.s12;
-                            root.popup = 3;
+                            root.save-ctx = 0;
+                            root.popup-from = 0;
+                            root.open-popup(3, self.absolute-position.x, self.absolute-position.y + self.height);
                         }
                     }
                     Rectangle { horizontal-stretch: 1; }
@@ -879,92 +1285,41 @@ export component ColoursView inherits Rectangle {
                 if ColourState.saved.length > 0: ChipGrid {
                     chips: ColourState.saved;
                     group-label: @tr("Saved colours");
+                    focus-request: root.saved-focus;
                     selected <=> root.saved-sel;
                     used(i) => { ColourState.swatch-used(1, i); }
                     copied(i) => { ColourState.swatch-copied(1, i); }
                     menu(i, x, y) => {
                         root.popup-group = 1;
                         root.popup-index = i;
-                        root.popup-x = x;
-                        root.popup-y = y;
-                        root.popup = 1;
+                        root.popup-from = 2;
+                        root.open-popup(1, x, y);
                     }
-                    tip(t, x, y, on) => { root.tip(t, x, y, on); }
+                    tip(t, x, y, on) => {
+                        root.hover-text = on ? t : "";
+                        root.tip(t, x, y, on);
+                    }
+                    focus-text(t) => { root.focus-text = t; }
+                    reveal(top, h) => { root.reveal(top, h); }
                 }
 
                 // ---- Formats --------------------------------------------------------------------
                 SectionTitle { text: @tr("Formats"); }
-                for f[i] in ColourState.formats: Rectangle {
-                    height: Space.hit;
-                    accessible-role: list-item;
-                    accessible-label: f.label + ", " + f.value;
-                    accessible-description: ColourState.use-hint;
-                    accessible-action-default => { ColourState.format-used(i); }
-                    Rectangle {
-                        x: Space.s1;
-                        width: parent.width - 2 * Space.s1;
-                        border-radius: Radius.sm;
-                        background: row-touch.has-hover ? Theme.bg-hover : transparent;
+                FormatList {
+                    rows: ColourState.formats;
+                    use-hint: ColourState.use-hint;
+                    focus-request: root.formats-focus;
+                    selected <=> root.format-sel;
+                    used(i) => { ColourState.format-used(i); }
+                    copied(i) => { ColourState.format-copied(i); }
+                    menu(i, x, y) => {
+                        root.popup-index = i;
+                        root.popup-from = 4;
+                        root.open-popup(2, x, y);
                     }
-                    Text {
-                        x: Space.s2;
-                        width: Space.s12 + Space.s1;
-                        height: parent.height;
-                        text: f.label == "Name" ? ColourTexts.format-name() : f.label;
-                        font-family: Fonts.sans;
-                        font-size: Type.sm;
-                        font-weight: Type.semibold;
-                        color: Theme.text-secondary;
-                        vertical-alignment: center;
-                    }
-                    Text {
-                        x: Space.s12 + Space.s4;
-                        width: parent.width - self.x - (f.is-default ? 72px : 0px) - Space.s8 - Space.s2;
-                        height: parent.height;
-                        text: f.value;
-                        font-family: Fonts.mono;
-                        font-size: Type.sm;
-                        color: Theme.text-primary;
-                        vertical-alignment: center;
-                        overflow: elide;
-                    }
-                    if f.is-default: Text {
-                        x: parent.width - Space.s8 - Space.s2 - 68px;
-                        width: 64px;
-                        height: parent.height;
-                        text: @tr("default");
-                        font-family: Fonts.sans;
-                        font-size: Type.xs;
-                        color: Theme.text-tertiary;
-                        horizontal-alignment: right;
-                        vertical-alignment: center;
-                    }
-                    row-touch := TouchArea {
-                        width: parent.width - Space.s8 - Space.s2;
-                        mouse-cursor: pointer;
-                        pointer-event(event) => {
-                            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.up
-                                && self.mouse-x >= 0 && self.mouse-x <= self.width && self.mouse-y >= 0 && self.mouse-y <= self.height) {
-                                if (event.modifiers.shift) {
-                                    ColourState.format-copied(i);
-                                } else {
-                                    ColourState.format-used(i);
-                                }
-                            } else if (event.button == PointerEventButton.right && event.kind == PointerEventKind.up) {
-                                root.popup-index = i;
-                                root.popup-x = self.absolute-position.x - root.absolute-position.x + self.mouse-x;
-                                root.popup-y = self.absolute-position.y - root.absolute-position.y + self.mouse-y;
-                                root.popup = 2;
-                            }
-                        }
-                    }
-                    IconButton {
-                        x: parent.width - Space.s8 - Space.s1;
-                        y: (parent.height - self.height) / 2;
-                        icon: Icons.copy;
-                        tooltip: @tr("Copy");
-                        clicked => { ColourState.format-copied(i); }
-                    }
+                    tip(t, x, y, on) => { root.tip(t, x, y, on); }
+                    focus-text(t) => { root.focus-text = t; }
+                    reveal(top, h) => { root.reveal(top, h); }
                 }
 
                 // ---- Contrast -------------------------------------------------------------------
@@ -977,29 +1332,29 @@ export component ColoursView inherits Rectangle {
                     data: ColourState.other-row;
                     fg: ColourState.current;
                 }
-                Rectangle {
-                    height: Space.s8 + Space.s1;
-                    HorizontalLayout {
-                        x: Space.s2;
-                        width: parent.width - 2 * Space.s2;
-                        spacing: Space.s2;
-                        TextField {
-                            text <=> ColourState.other-text;
-                            monospace: true;
-                            label: @tr("Other colour");
-                            placeholder: @tr("#ffffff");
-                            edited(t) => { ColourState.other-edited(t); }
-                            accepted(t) => { ColourState.other-accepted(t); }
-                        }
+                HorizontalLayout {
+                    padding-left: Space.s2;
+                    padding-right: Space.s2;
+                    spacing: Space.s2;
+                    other-field := TextField {
+                        text <=> ColourState.other-text;
+                        monospace: true;
+                        label: @tr("Other colour");
+                        placeholder: @tr("#ffffff");
+                        error: ColourState.other-error;
+                        edited(t) => { ColourState.other-edited(t); }
+                        accepted(t) => { ColourState.other-accepted(t); }
+                    }
+                    VerticalLayout {
+                        alignment: start;
+                        width: Space.s8;
                         IconButton {
-                            y: Space.s0-5;
                             icon: Icons.arrows-left-right;
                             tooltip: @tr("Swap the two colours");
                             clicked => { ColourState.swap(); }
                         }
                     }
                 }
-                ErrorLine { text: ColourState.other-error; }
 
                 // ---- Schemes --------------------------------------------------------------------
                 SectionTitle { text: @tr("Schemes"); }
@@ -1016,35 +1371,40 @@ export component ColoursView inherits Rectangle {
                 }
                 ChipGrid {
                     chips: ColourState.scheme;
-                    tile: Space.s12 - Space.s8 + Space.s8 - Space.s0-5 * 2;
+                    tile: Space.s12 - Space.s0-5 * 2;
                     cell-w: 60px;
                     cell-h: 68px;
                     captions: true;
                     group-label: ColourTexts.scheme-name(ColourState.scheme-index);
+                    focus-request: root.scheme-focus;
                     selected <=> root.scheme-sel;
                     used(i) => { ColourState.swatch-used(2, i); }
                     copied(i) => { ColourState.swatch-copied(2, i); }
                     menu(i, x, y) => {
                         root.popup-group = 2;
                         root.popup-index = i;
-                        root.popup-x = x;
-                        root.popup-y = y;
-                        root.popup = 1;
+                        root.popup-from = 3;
+                        root.open-popup(1, x, y);
                     }
-                    tip(t, x, y, on) => { root.tip(t, x, y, on); }
+                    tip(t, x, y, on) => {
+                        root.hover-text = on ? t : "";
+                        root.tip(t, x, y, on);
+                    }
+                    focus-text(t) => { root.focus-text = t; }
+                    reveal(top, h) => { root.reveal(top, h); }
                 }
                 Rectangle { height: Space.s2; }
             }
         }
 
-        // ---- The route line -----------------------------------------------------------------------
+        // ---- The route line: what the pointer or the keyboard is on, else where a click goes ------------
         Rectangle {
             height: Space.s8;
             Text {
                 x: Space.s2;
                 width: parent.width - 2 * Space.s2;
                 height: parent.height;
-                text: ColourState.use-hint;
+                text: root.hover-text != "" ? root.hover-text : root.focus-text != "" ? root.focus-text : ColourState.use-hint;
                 font-family: Fonts.sans;
                 font-size: Type.sm;
                 color: Theme.text-secondary;
@@ -1055,40 +1415,53 @@ export component ColoursView inherits Rectangle {
     }
 
     // ---- Popups -----------------------------------------------------------------------------------
-    if root.popup != 0: TouchArea {
+    if ColourState.popup != 0: TouchArea {
         width: parent.width;
         height: parent.height;
-        clicked => { root.popup = 0; }
+        clicked => { ColourState.popup = 0; }
     }
-    if root.popup == 1: Menu {
+    // A chip's menu: Make current, Copy as…, Save to Colours, Save to…, Remove from recents (recents only).
+    if ColourState.popup == 1: Menu {
         x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
         y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2);
+        max-w: root.width - Space.s4;
+        menu-max-h: root.height - Space.s4;
         label: @tr("Colour");
         icons: false;
         entries: [
             { text: @tr("Make current") },
-            { text: @tr("Copy") },
+            { text: @tr("Copy as…") },
             { text: @tr("Save to Colours") },
+            { text: @tr("Save to…") },
             { text: @tr("Remove from recents"), hidden: root.popup-group != 0 },
         ];
         init => { self.focus-menu(); }
-        dismissed => { root.popup = 0; }
+        dismissed => { ColourState.popup = 0; }
         activated(i) => {
-            root.popup = 0;
             if (i == 0) {
+                ColourState.popup = 0;
                 ColourState.swatch-used(root.popup-group, root.popup-index);
             } else if (i == 1) {
-                ColourState.swatch-copied(root.popup-group, root.popup-index);
+                // No submenus: the formats are a menu of their own, opened in place.
+                ColourState.popup = 4;
             } else if (i == 2) {
+                ColourState.popup = 0;
                 ColourState.swatch-saved(root.popup-group, root.popup-index, -1);
+            } else if (i == 3) {
+                root.save-ctx = 1;
+                ColourState.popup = 3;
             } else {
+                ColourState.popup = 0;
                 ColourState.swatch-removed(root.popup-group, root.popup-index);
             }
         }
     }
-    if root.popup == 2: Menu {
+    // A format row's menu.
+    if ColourState.popup == 2: Menu {
         x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
         y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2);
+        max-w: root.width - Space.s4;
+        menu-max-h: root.height - Space.s4;
         label: @tr("Format");
         icons: false;
         entries: [
@@ -1096,43 +1469,65 @@ export component ColoursView inherits Rectangle {
             { text: @tr("Copy only") },
             { text: @tr("Make default format"), hidden: !ColourState.formats[root.popup-index].can-be-default || ColourState.formats[root.popup-index].is-default },
             { text: @tr("Save to Colours") },
+            { text: @tr("Save to…") },
         ];
         init => { self.focus-menu(); }
-        dismissed => { root.popup = 0; }
+        dismissed => { ColourState.popup = 0; }
         activated(i) => {
-            root.popup = 0;
             if (i == 0) {
+                ColourState.popup = 0;
                 ColourState.format-used(root.popup-index);
             } else if (i == 1) {
+                ColourState.popup = 0;
                 ColourState.format-copied(root.popup-index);
             } else if (i == 2) {
+                ColourState.popup = 0;
                 ColourState.format-made-default(root.popup-index);
-            } else {
+            } else if (i == 3) {
+                ColourState.popup = 0;
                 ColourState.format-saved(root.popup-index, -1);
+            } else {
+                root.save-ctx = 2;
+                ColourState.popup = 3;
             }
         }
     }
-    if root.popup == 3: Menu {
+    // Save to…: every list of every board, then "New list…" (built by the host).
+    if ColourState.popup == 3: Menu {
         x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
         y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2);
+        max-w: root.width - Space.s4;
+        menu-max-h: root.height - Space.s4;
         label: @tr("Save to");
         icons: false;
-        menu-max-h: root.height - Space.s4;
-        entries: [
-            { text: ColourState.list-names.length > 0 ? ColourState.list-names[0] : "", hidden: ColourState.list-names.length < 1 },
-            { text: ColourState.list-names.length > 1 ? ColourState.list-names[1] : "", hidden: ColourState.list-names.length < 2 },
-            { text: ColourState.list-names.length > 2 ? ColourState.list-names[2] : "", hidden: ColourState.list-names.length < 3 },
-            { text: ColourState.list-names.length > 3 ? ColourState.list-names[3] : "", hidden: ColourState.list-names.length < 4 },
-            { text: ColourState.list-names.length > 4 ? ColourState.list-names[4] : "", hidden: ColourState.list-names.length < 5 },
-            { text: ColourState.list-names.length > 5 ? ColourState.list-names[5] : "", hidden: ColourState.list-names.length < 6 },
-            { text: ColourState.list-names.length > 6 ? ColourState.list-names[6] : "", hidden: ColourState.list-names.length < 7 },
-            { text: ColourState.list-names.length > 7 ? ColourState.list-names[7] : "", hidden: ColourState.list-names.length < 8 },
-        ];
+        entries: ColourState.save-targets;
         init => { self.focus-menu(); }
-        dismissed => { root.popup = 0; }
+        dismissed => { ColourState.popup = 0; }
         activated(i) => {
-            root.popup = 0;
-            ColourState.save(i);
+            ColourState.popup = 0;
+            if (root.save-ctx == 1) {
+                ColourState.swatch-saved(root.popup-group, root.popup-index, i);
+            } else if (root.save-ctx == 2) {
+                ColourState.format-saved(root.popup-index, i);
+            } else {
+                ColourState.save(i);
+            }
+        }
+    }
+    // Copy as…: the chip's colour in one of the formats.
+    if ColourState.popup == 4: Menu {
+        x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
+        y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2);
+        max-w: root.width - Space.s4;
+        menu-max-h: root.height - Space.s4;
+        label: @tr("Copy as");
+        icons: false;
+        entries: ColourState.copy-as;
+        init => { self.focus-menu(); }
+        dismissed => { ColourState.popup = 0; }
+        activated(i) => {
+            ColourState.popup = 0;
+            ColourState.swatch-copied-as(root.popup-group, root.popup-index, i);
         }
     }
 }

@@ -3,7 +3,7 @@
 //! Docs: `docs/reviews/colour-spec.md` §3.0a.
 
 use snipdeck_colour::{
-    Cmyk, Hsl, Hsv, InputModel, PickerStyle, Rgba8, from_cmyk, from_hsl, from_hsv, parse,
+    Cmyk, Hsl, Hsv, InputModel, PickerStyle, Rgba8, Scheme, from_cmyk, from_hsl, from_hsv, parse,
     square_at, square_point, to_cmyk, to_hsl, to_hsv, wheel_at, wheel_point,
 };
 
@@ -325,6 +325,25 @@ pub fn nudge(
     (colour_of(h, s, b, alpha), (h, s, b))
 }
 
+/// Page Up and Page Down on the surface: brightness by `delta` (10) in the square and in the wheel.
+#[must_use]
+pub fn page(hsb: Hsb, delta: i32, alpha: u8) -> (Rgba8, Hsb) {
+    let (hue, sat, bri) = hsb;
+    #[allow(clippy::cast_precision_loss, reason = "a few steps")]
+    let bri = (bri + delta as f32).clamp(0.0, 100.0);
+    (colour_of(hue, sat, bri, alpha), (hue, sat, bri))
+}
+
+/// The scheme's colours as the chips show them: [`snipdeck_colour::scheme`] gives the base first, then
+/// the tints and the shades; Tints & shades read light to dark (tint 4 .. 1, base, shade 1 .. 4).
+#[must_use]
+pub fn scheme_layout(which: Scheme, mut colours: Vec<Rgba8>) -> Vec<Rgba8> {
+    if which == Scheme::TintsShades && colours.len() == 9 {
+        colours[..5].reverse();
+    }
+    colours
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -584,7 +603,45 @@ mod tests {
             (state.1 - start.1).abs() < 1e-3,
             "saturation kept at 0 brightness"
         );
-        let (back, _) = commit(black, InputModel::Hsb, 2, &start.2.to_string(), state).unwrap();
-        assert_eq!(back, BLUE);
+        let (restored, _) = commit(black, InputModel::Hsb, 2, &start.2.to_string(), state).unwrap();
+        assert_eq!(restored, BLUE);
+    }
+
+    #[test]
+    fn page_up_and_down_step_brightness_by_ten_in_the_square_and_the_wheel() {
+        let start = (215.0, 73.0, 50.0);
+        for _ in [PickerStyle::Square, PickerStyle::Wheel] {
+            let (_, up) = page(start, 10, 255);
+            assert!((up.2 - 60.0).abs() < 1e-3 && (up.0 - 215.0).abs() < 1e-3);
+            assert!((up.1 - 73.0).abs() < 1e-3, "saturation stays");
+            let (_, down) = page(start, -10, 255);
+            assert!((down.2 - 40.0).abs() < 1e-3);
+        }
+        assert!(
+            (page((0.0, 50.0, 95.0), 10, 255).1.2 - 100.0).abs() < 1e-3,
+            "stops at 100"
+        );
+    }
+
+    #[test]
+    fn tints_and_shades_lay_out_light_to_dark_and_other_schemes_keep_their_order() {
+        let tints = snipdeck_colour::scheme(BLUE, Scheme::TintsShades);
+        let shown = scheme_layout(Scheme::TintsShades, tints.clone());
+        assert_eq!(shown.len(), 9);
+        assert_eq!(shown[4], BLUE, "the base sits in the middle");
+        let (t1, t4) = (tints[1], tints[4]);
+        let (s1, s4) = (tints[5], tints[8]);
+        assert_eq!(
+            (shown[0], shown[3], shown[5], shown[8]),
+            (t4, t1, s1, s4),
+            "tints 4 to 1, base, shades 1 to 4"
+        );
+        let luma = |c: Rgba8| u32::from(c.r) + u32::from(c.g) + u32::from(c.b);
+        assert!(
+            shown.windows(2).all(|w| luma(w[0]) >= luma(w[1])),
+            "light to dark"
+        );
+        let pair = snipdeck_colour::scheme(BLUE, Scheme::Complementary);
+        assert_eq!(scheme_layout(Scheme::Complementary, pair.clone()), pair);
     }
 }

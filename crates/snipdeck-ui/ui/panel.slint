@@ -54,7 +54,7 @@ import { Keycap } from "components/keycap.slint";
 import { DockHandle } from "components/dock-handle.slint";
 import { QuickAdd } from "components/quick-add.slint";
 import { SymbolsView, SymbolRow } from "symbols.slint";
-import { ColoursView } from "colours.slint";
+import { ColoursView, ColourState } from "colours.slint";
 
 // One row of the list, as `snipdeck-app`'s `Row`. The quick-use number is the row's position
 // (1-9 for the first nine, used with Alt+N); `masked-preview` stands in for a sensitive item's preview.
@@ -1172,6 +1172,14 @@ export component PanelWindow inherits Window {
                 if (root.header-renaming-row >= 0 && !self.has-focus && !rest.has-focus && !search.has-focus) {
                     return reject;
                 }
+                // A popup of the Colours tab (a chip's menu, Save to…) owns the keyboard; Esc closes it.
+                if (root.colours-open && ColourState.popup != 0) {
+                    if (event.text == Key.Escape) {
+                        ColourState.popup = 0;
+                        return accept;
+                    }
+                    return reject;
+                }
                 if (root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.recent-menu-open || root.recent-save-open || root.list-delete-open || root.clear-list-open || root.board-delete-open || root.new-menu-open || root.pinned-menu-open) {
                     // The menu (or the confirmation) owns the keyboard; Esc closes it.
                     if (event.text == Key.Escape) {
@@ -1225,6 +1233,26 @@ export component PanelWindow inherits Window {
                     }
                     if (root.symbols-open && (event.text == "s" || event.text == "S")) {
                         root.symbol-add-requested(root.symbol-selected);
+                        return accept;
+                    }
+                    // The Colours tab: Ctrl+S saves the colour, Ctrl+Shift+S asks where, Ctrl+I picks from the screen,
+                    // Ctrl+C copies it (in a field, Ctrl+C is the field's own).
+                    if (root.colours-open && (event.text == "s" || event.text == "S")) {
+                        if (event.modifiers.shift) {
+                            ColourState.save-to-ticks += 1;
+                        } else {
+                            ColourState.save(-1);
+                        }
+                        return accept;
+                    }
+                    if (root.colours-open && (event.text == "i" || event.text == "I") && !event.modifiers.shift) {
+                        if (ColourState.eyedropper-available && !ColourState.eyedropper-running) {
+                            ColourState.eyedropper();
+                        }
+                        return accept;
+                    }
+                    if (root.colours-open && (event.text == "c" || event.text == "C") && !event.modifiers.shift && !ColourState.text-focused) {
+                        ColourState.copy-current();
                         return accept;
                     }
                     if ((event.text == "a" || event.text == "A") && !root.searching && !root.list-hidden) {
@@ -1513,6 +1541,11 @@ export component PanelWindow inherits Window {
                 if (root.symbols-open && !root.symbol-search-focused && !switcher.has-focus && !kebab.has-focus && event.text != " " && root.printable(event.text)) {
                     root.symbol-typed = event.text;
                     root.symbol-typed-ticks += 1;
+                    return accept;
+                }
+                if (root.colours-open && !ColourState.text-focused && !switcher.has-focus && !kebab.has-focus && event.text != " " && root.printable(event.text)) {
+                    ColourState.typed = event.text;
+                    ColourState.type-ticks += 1;
                     return accept;
                 }
                 if (!root.symbols-open && !root.colours-open && !search.has-focus && event.text != " " && root.printable(event.text)) {

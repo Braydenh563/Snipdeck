@@ -4,7 +4,7 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use slint::{Global, ModelRc, SharedString, VecModel};
+use slint::{Global, Model, ModelRc, SharedString, VecModel};
 use snipdeck_colour::{
     Format, InputModel, PickerStyle, Rgba8, Scheme, contrast_ratio, from_hsv, marks, nearest_name,
     parse, ratio_text, render_square, render_wheel, scheme,
@@ -15,7 +15,7 @@ use snipdeck_ui as ui;
 use super::Core;
 use crate::{
     colours_panel as panel,
-    controller::{ColourView, Controller, Library, SaveTarget},
+    controller::{ColourView, Controller, Library, SaveList, SaveTarget},
     host::ClipboardText,
 };
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
@@ -120,7 +120,15 @@ fn contrast_row(
     let m = marks(ratio);
     let text = ratio_text(ratio);
     ui::ColourContrastRow {
-        speak: t.invoke_contrast_speak(name.clone(), text.as_str().into(), m.aa, m.aaa),
+        speak: t.invoke_contrast_speak(
+            name.clone(),
+            text.as_str().into(),
+            m.aa,
+            m.aa_large,
+            m.aaa,
+            m.aaa_large,
+            m.ui,
+        ),
         name,
         bg: color(bg),
         ratio: text.into(),
@@ -181,7 +189,7 @@ impl Glue {
         &self,
         window: &ui::PanelWindow,
         view: &ColourView,
-        lists: &[(ListId, String)],
+        lists: &[SaveList],
         eyedropper: (bool, bool),
     ) {
         let state = ui::ColourState::get(window);
@@ -190,7 +198,17 @@ impl Glue {
         let c = view.current;
         let target = window.get_target_name().to_string();
         let pastes = !target.is_empty();
-        let names: Vec<String> = lists.iter().map(|(_, n)| n.clone()).collect();
+        let names: Vec<String> = lists
+            .iter()
+            .map(|l| {
+                if l.several_boards {
+                    t.invoke_list_in_board(l.board.as_str().into(), l.name.as_str().into())
+                        .to_string()
+                } else {
+                    l.name.clone()
+                }
+            })
+            .collect();
         s.state(c);
         let key = key_of(view, &s, pastes, eyedropper, &names, &target);
         if s.drawn.as_ref() == Some(&key) && !s.fresh {
@@ -199,7 +217,7 @@ impl Glue {
             s.typing_other = false;
             return;
         }
-        s.lists = lists.iter().map(|(id, _)| *id).collect();
+        s.lists = lists.iter().map(|l| l.id).collect();
         let changed = s.last_colour != Some(c);
         s.last_colour = Some(c);
 
@@ -232,10 +250,30 @@ impl Glue {
         state.set_has_saved_list(view.has_saved_list);
         state.set_eyedropper_available(eyedropper.0);
         state.set_eyedropper_running(eyedropper.1);
-        state.set_list_names(model(
-            names
+        // "Save to…": every list of every board, then "New list…".
+        let mut targets: Vec<ui::MenuEntry> = names
+            .iter()
+            .map(|n| ui::MenuEntry {
+                text: n.as_str().into(),
+                ..Default::default()
+            })
+            .collect();
+        targets.push(ui::MenuEntry {
+            text: t.invoke_new_list_entry(),
+            ..Default::default()
+        });
+        state.set_save_targets(model(targets));
+        state.set_copy_as(model(
+            Format::ALL
                 .iter()
-                .map(|n| SharedString::from(n.as_str()))
+                .map(|f| ui::MenuEntry {
+                    text: if *f == Format::Name {
+                        t.invoke_format_name()
+                    } else {
+                        f.label().into()
+                    },
+                    ..Default::default()
+                })
                 .collect(),
         ));
         s.drawn = Some(key);
@@ -250,7 +288,7 @@ fn chips(
 ) -> [Vec<Rgba8>; 3] {
     let c = view.current;
     let recents = view.recents.clone();
-    let scheme_colours = scheme(c, view.scheme);
+    let scheme_colours = panel::scheme_layout(view.scheme, scheme(c, view.scheme));
     state.set_recents(model(
         recents.iter().map(|c| swatch(t, *c, view.format)).collect(),
     ));
@@ -329,17 +367,37 @@ fn picker(state: &ui::ColourState<'_>, s: &mut Inner, view: &ColourView) {
     state.set_marker_x(mx);
     state.set_marker_y(my);
     state.set_hue(hue);
+    state.set_sat(sat);
     state.set_bri(bri);
     state.set_alpha(f32::from(c.a) / 255.0 * 100.0);
-    state.set_channels(model(
-        panel::channels(c, view.input_model, s.state(c))
-            .into_iter()
-            .map(|ch| ui::ColourChannel {
-                label: ch.label.into(),
-                text: ch.text.into(),
-            })
-            .collect(),
-    ));
+    let shown: Vec<ui::ColourChannel> = panel::channels(c, view.input_model, s.state(c))
+        .into_iter()
+        .map(|ch| ui::ColourChannel {
+            label: ch.label.into(),
+            text: ch.text.into(),
+        })
+        .collect();
+    set_channels(state, shown);
+}
+
+/// Puts the Values row's fields in the window. The same fields (same labels, same count) are updated
+/// where they stand: replacing the model would rebuild the field being typed in and drop its focus.
+fn set_channels(state: &ui::ColourState<'_>, shown: Vec<ui::ColourChannel>) {
+    let current = state.get_channels();
+    let same_fields = current.row_count() == shown.len()
+        && shown
+            .iter()
+            .enumerate()
+            .all(|(i, ch)| current.row_data(i).is_some_and(|c| c.label == ch.label));
+    if same_fields {
+        for (i, ch) in shown.into_iter().enumerate() {
+            if current.row_data(i).is_some_and(|c| c.text != ch.text) {
+                current.set_row_data(i, ch);
+            }
+        }
+    } else {
+        state.set_channels(model(shown));
+    }
 }
 
 fn key_of(
@@ -379,6 +437,7 @@ where
             hdr_note: texts.invoke_eyedrop_hdr_note().to_string(),
         });
         ctl.set_colours_list_name(&texts.invoke_colours_list());
+        ctl.set_new_list_base(&texts.invoke_new_list_name());
     }
 
     /// Draws the Colours tab (a no-op while it is not the one shown).
@@ -423,11 +482,19 @@ where
         (current, self.colours.inner.borrow_mut().state(current))
     }
 
+    /// The target of entry `i` of the Save to… menu: a list, "New list…" (the entry after the last
+    /// list), or the home list for a negative index.
     fn save_target(&self, i: i32) -> SaveTarget {
-        usize::try_from(i)
-            .ok()
-            .and_then(|i| self.colours.inner.borrow().lists.get(i).copied())
-            .map_or(SaveTarget::Home, SaveTarget::List)
+        let Ok(i) = usize::try_from(i) else {
+            return SaveTarget::Home;
+        };
+        self.colours
+            .inner
+            .borrow()
+            .lists
+            .get(i)
+            .copied()
+            .map_or(SaveTarget::NewList, SaveTarget::List)
     }
 
     #[allow(
@@ -527,6 +594,34 @@ where
                         ctl.after_use(&used)
                     });
                 }
+            });
+        }
+        {
+            let core = Rc::clone(self);
+            state.on_swatch_copied_as(move |group, i, format| {
+                if let Some(c) = core.chip(group, i)
+                    && let Some(f) = usize::try_from(format)
+                        .ok()
+                        .and_then(|f| Format::ALL.get(f).copied())
+                {
+                    core.act_effects(|ctl| {
+                        let used = ctl.use_colour(c, f, UseMode::Copy);
+                        ctl.after_use(&used)
+                    });
+                }
+            });
+        }
+        {
+            let core = Rc::clone(self);
+            state.on_copy_current(move || {
+                core.act_effects(|ctl| {
+                    let (c, f) = {
+                        let v = ctl.colour_view();
+                        (v.current, v.format)
+                    };
+                    let used = ctl.use_colour(c, f, UseMode::Copy);
+                    ctl.after_use(&used)
+                });
             });
         }
         {
@@ -653,6 +748,14 @@ where
                 let (current, st) = core.picker_state();
                 let style = core.colour_view().style;
                 let (c, next) = panel::nudge(style, st, dx, dy, current.a);
+                core.set_picked(c, next);
+            });
+        }
+        {
+            let core = Rc::clone(self);
+            state.on_surface_paged(move |delta| {
+                let (current, st) = core.picker_state();
+                let (c, next) = panel::page(st, delta, current.a);
                 core.set_picked(c, next);
             });
         }

@@ -33,6 +33,21 @@ pub enum SaveTarget {
     Home,
     /// Any list (the chooser of "Save to…").
     List(ListId),
+    /// A new list at the end of the board the Panel shows, named by the translated "New list".
+    NewList,
+}
+
+/// One list "Save to…" offers: any list of any board.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SaveList {
+    /// The list.
+    pub id: ListId,
+    /// Its name.
+    pub name: String,
+    /// The name of its board.
+    pub board: String,
+    /// More than one board exists, so the board is worth showing next to the name.
+    pub several_boards: bool,
 }
 
 /// What the Colours tab shows, as plain data.
@@ -209,6 +224,12 @@ where
                     name: list.name.as_str().to_owned(),
                 }
             }
+            SaveTarget::NewList => {
+                let Some(d) = self.new_list_for_save() else {
+                    return false;
+                };
+                d
+            }
             SaveTarget::Home => {
                 let Some(d) = self.home_list() else {
                     return false;
@@ -296,36 +317,55 @@ where
                 name: list.name.as_str().to_owned(),
             });
         }
-        let board = self
+        let name = self.colours_list_name.clone();
+        let made = self.make_list_for_save(&name)?;
+        let id = made.id.to_string();
+        self.update_settings(|s| s.colour_save_list = Some(id));
+        Some(made)
+    }
+
+    /// A new list for "Save to… New list…": named by the translated "New list" and the first
+    /// free number, at the end of the board the Panel shows.
+    fn new_list_for_save(&mut self) -> Option<Destination> {
+        let board = self.save_board()?;
+        let taken: Vec<String> = self
+            .store
+            .lists(board)
+            .ok()?
+            .iter()
+            .map(|l| l.name.as_str().to_owned())
+            .collect();
+        let name =
+            crate::starter::numbered_name(&self.new_list_base, taken.iter().map(String::as_str));
+        self.make_list_for_save(&name)
+    }
+
+    /// The board a list made for a save goes on: the one the Panel shows, else the first. A
+    /// toast says so when the library has none.
+    fn save_board(&mut self) -> Option<snipdeck_core::BoardId> {
+        let boards = self.store.boards().ok().unwrap_or_default();
+        let shown = self
             .model
             .board()
-            .filter(|b| {
-                self.store
-                    .boards()
-                    .is_ok_and(|all| all.iter().any(|x| x.id == *b))
-            })
-            .or_else(|| {
-                self.store
-                    .boards()
-                    .ok()
-                    .and_then(|all| all.first().map(|b| b.id))
-            });
-        let Some(board) = board else {
+            .filter(|b| boards.iter().any(|x| x.id == *b))
+            .or_else(|| boards.first().map(|b| b.id));
+        if shown.is_none() {
             self.show_toast(super::neutral(ToastMessage::NoListToSave));
-            return None;
-        };
-        let made = Name::new(&self.colours_list_name)
-            .map_err(|_| ())
-            .and_then(|name| {
-                let list = List::new(board, name, self.clock.now());
-                self.store
-                    .insert_list(&list, Placement::Last)
-                    .map(|()| list)
-                    .map_err(|_| ())
-            });
+        }
+        shown
+    }
+
+    /// Inserts a list called `name` at the end of the save board. A toast on failure.
+    fn make_list_for_save(&mut self, name: &str) -> Option<Destination> {
+        let board = self.save_board()?;
+        let made = Name::new(name).map_err(|_| ()).and_then(|name| {
+            let list = List::new(board, name, self.clock.now());
+            self.store
+                .insert_list(&list, Placement::Last)
+                .map(|()| list)
+                .map_err(|_| ())
+        });
         if let Ok(list) = made {
-            let id = list.id.to_string();
-            self.update_settings(|s| s.colour_save_list = Some(id));
             self.main.mark_stale();
             Some(Destination {
                 id: list.id,
@@ -345,14 +385,32 @@ where
         colour_of(&item)
     }
 
-    /// The lists of the board the Panel shows, for the "Save to…" chooser.
+    /// Every list of every board, in board and list order, for the "Save to…" chooser.
     #[must_use]
-    pub fn colour_save_targets(&self) -> Vec<(ListId, String)> {
-        self.model
-            .tabs()
-            .into_iter()
-            .map(|t| (t.id, t.name))
+    pub fn colour_save_targets(&self) -> Vec<SaveList> {
+        let boards = self.store.boards().unwrap_or_default();
+        let several_boards = boards.len() > 1;
+        boards
+            .iter()
+            .flat_map(|board| {
+                self.store
+                    .lists(board.id)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(move |l| SaveList {
+                        id: l.id,
+                        name: l.name.as_str().to_owned(),
+                        board: board.name.as_str().to_owned(),
+                        several_boards,
+                    })
+            })
             .collect()
+    }
+
+    /// Sets the words a list made by "Save to… New list…" is named from, translated by the window
+    /// layer.
+    pub fn set_new_list_base(&mut self, base: &str) {
+        base.clone_into(&mut self.new_list_base);
     }
 
     /// The colour items of the home list, in list order, at most 24.
@@ -387,7 +445,7 @@ where
         Vec::new()
     }
 
-    /// Pastes or copies colour item `id` written as `f` (Paste as): like [`use_colour`] and the
+    /// Pastes or copies colour item `id` written as `f` (Paste as): like [`Self::use_colour`] and the
     /// item counts as used, so Most used and Recently used move.
     pub fn use_colour_item(&mut self, id: ItemId, c: Rgba8, f: Format, mode: UseMode) -> UseResult {
         let result = self.use_colour(c, f, mode);

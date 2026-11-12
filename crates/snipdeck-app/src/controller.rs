@@ -44,7 +44,7 @@ mod trigger_ctl;
 mod use_ctl;
 mod views;
 
-pub use colour_ctl::{ColourView, SaveTarget};
+pub use colour_ctl::{ColourView, SaveList, SaveTarget};
 pub use create_ctl::DropRun;
 pub use history_ctl::HistoryView;
 pub use library::Library;

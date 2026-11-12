@@ -36,6 +36,8 @@ snipdeck-core = { workspace = true, features = ["licence-issuer"] }
 snipdeck-store = { path = "../snipdeck-store", features = ["testing"] }
 # Slint's headless platform for the window tests (one process per test file).
 i-slint-backend-testing = "=1.18.1"
+# The focus holder, for the Tab-order test of the Colours tab (the same item tree the window uses).
+i-slint-core = { version = "=1.18.1", default-features = false }
 tempfile.workspace = true
 # A Ditto database fixture for the import preview test.
 rusqlite.workspace = true

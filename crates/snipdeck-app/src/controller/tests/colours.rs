@@ -582,3 +582,73 @@ mod list_menu {
         assert!(text.contains("#3a7bd5"), "{text}");
     }
 }
+
+fn other_board(w: &mut World) -> snipdeck_core::ListId {
+    let now = at("2026-10-17T09:00:00Z");
+    let board = snipdeck_core::Board::new(Name::new("Play").expect("n"), now);
+    w.ctl
+        .store
+        .insert_board(&board, Placement::Last)
+        .expect("board");
+    let list = snipdeck_core::List::new(board.id, Name::new("Palette").expect("n"), now);
+    w.ctl
+        .store
+        .insert_list(&list, Placement::Last)
+        .expect("list");
+    list.id
+}
+
+#[test]
+fn save_to_offers_every_list_of_every_board_and_saves_to_one_on_another_board() {
+    let mut w = world();
+    let palette = other_board(&mut w);
+    let targets = w.ctl.colour_save_targets();
+    let names: Vec<&str> = targets.iter().map(|t| t.name.as_str()).collect();
+    assert_eq!(names, ["Replies", "Links", "Palette"]);
+    assert!(targets.iter().all(|t| t.several_boards));
+    assert_eq!(targets[2].board, "Play");
+    assert!(w.ctl.save_colour(BLUE, SaveTarget::List(palette)));
+    assert_eq!(items_of(&w, palette).last().unwrap().1, "#3a7bd5");
+}
+
+#[test]
+fn save_to_offers_a_ninth_list() {
+    let mut w = world();
+    let board = w.ctl.store().boards().expect("boards")[0].id;
+    let now = at("2026-10-17T09:00:00Z");
+    let mut newest = None;
+    for n in 0..10 {
+        let extra =
+            snipdeck_core::List::new(board, Name::new(&format!("Extra {n}")).expect("n"), now);
+        w.ctl
+            .store
+            .insert_list(&extra, Placement::Last)
+            .expect("list");
+        newest = Some(extra.id);
+    }
+    let targets = w.ctl.colour_save_targets();
+    assert_eq!(targets.len(), 12, "two lists and ten more");
+    let ninth = targets[8].id;
+    assert!(w.ctl.save_colour(BLUE, SaveTarget::List(ninth)));
+    assert_eq!(items_of(&w, ninth).len(), 1);
+    assert!(w.ctl.save_colour(BLUE, SaveTarget::List(newest.unwrap())));
+}
+
+#[test]
+fn save_to_new_list_makes_a_list_named_by_the_translated_default_and_saves_into_it() {
+    let mut w = world();
+    w.ctl.set_new_list_base("Neue Liste");
+    let before = w.ctl.colour_save_targets().len();
+    assert!(w.ctl.save_colour(BLUE, SaveTarget::NewList));
+    let targets = w.ctl.colour_save_targets();
+    assert_eq!(targets.len(), before + 1);
+    let made = targets.last().unwrap();
+    assert_eq!(made.name, "Neue Liste 1");
+    assert_eq!(items_of(&w, made.id).last().unwrap().1, "#3a7bd5");
+    assert_eq!(colours_list(&w), None, "the home list was not made");
+    assert!(w.ctl.save_colour(BLUE, SaveTarget::NewList));
+    assert_eq!(
+        w.ctl.colour_save_targets().last().unwrap().name,
+        "Neue Liste 2"
+    );
+}

@@ -575,7 +575,13 @@ msgstr ""
 msgid "Copy all"
 msgstr "全部复制"
 
+msgid "Copy as"
+msgstr ""
+
 msgid "Copy as CSS variables"
+msgstr ""
+
+msgid "Copy as…"
 msgstr ""
 
 msgid "Copy diagnostic report"
@@ -1295,6 +1301,9 @@ msgstr ""
 msgid "Hue and saturation"
 msgstr ""
 
+msgid "Hue {} degrees, saturation {} percent"
+msgstr ""
+
 msgid "Icon"
 msgstr "图标"
 
@@ -1689,6 +1698,9 @@ msgstr "在 {} 中新建项目"
 
 msgid "New list"
 msgstr "新建列表"
+
+msgid "New list…"
+msgstr ""
 
 msgid "New name for {}"
 msgstr "{} 的新名称"
@@ -2386,6 +2398,9 @@ msgid "Sad"
 msgstr "难过"
 
 msgid "Saturation and brightness"
+msgstr ""
+
+msgid "Saturation {} percent, brightness {} percent"
 msgstr ""
 
 msgid "Save"
@@ -3889,6 +3904,9 @@ msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "备份中不包含 {} 项敏感项目。"
 
+msgid "{} · {}"
+msgstr ""
+
 msgid "{} — press Tab to insert"
 msgstr "{} — 按 Tab 插入"
 
@@ -3946,7 +3964,7 @@ msgstr "{}：{}（shell、脚本或随机变量，或 Snipdeck 不认识的变�
 msgid "{}: {} has no Snipdeck equivalent and was left as written."
 msgstr "{}：{} 在 Snipdeck 中没有对应项，已保持原样。"
 
-msgid "{}: {} to 1. AA text {}, AAA text {}"
+msgid "{}: {} to 1. AA text {}. AA large text {}. AAA text {}. AAA large text {}. Interface parts {}."
 msgstr ""
 
 msgid "{}: {} was not kept as a trigger, because a snippet has one trigger."

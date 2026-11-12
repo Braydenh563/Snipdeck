@@ -576,7 +576,13 @@ msgstr ""
 msgid "Copy all"
 msgstr "Tout copier"
 
+msgid "Copy as"
+msgstr ""
+
 msgid "Copy as CSS variables"
+msgstr ""
+
+msgid "Copy as…"
 msgstr ""
 
 msgid "Copy diagnostic report"
@@ -1296,6 +1302,9 @@ msgstr ""
 msgid "Hue and saturation"
 msgstr ""
 
+msgid "Hue {} degrees, saturation {} percent"
+msgstr ""
+
 msgid "Icon"
 msgstr "Icône"
 
@@ -1695,6 +1704,9 @@ msgstr "Nouvel élément dans {}"
 
 msgid "New list"
 msgstr "Nouvelle liste"
+
+msgid "New list…"
+msgstr ""
 
 msgid "New name for {}"
 msgstr "Nouveau nom pour {}"
@@ -2394,6 +2406,9 @@ msgid "Sad"
 msgstr "Triste"
 
 msgid "Saturation and brightness"
+msgstr ""
+
+msgid "Saturation {} percent, brightness {} percent"
 msgstr ""
 
 msgid "Save"
@@ -3916,6 +3931,9 @@ msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "{} extrait sensible ne figurait pas dans la sauvegarde."
 msgstr[1] "{} extraits sensibles ne figuraient pas dans la sauvegarde."
 
+msgid "{} · {}"
+msgstr ""
+
 msgid "{} — press Tab to insert"
 msgstr "{} : appuyez sur Tab pour insérer"
 
@@ -3973,7 +3991,7 @@ msgstr "{} : {} (une variable de shell, de script ou aléatoire, ou une variable
 msgid "{}: {} has no Snipdeck equivalent and was left as written."
 msgstr "{} : {} n’a pas d’équivalent dans Snipdeck et a été laissé tel quel."
 
-msgid "{}: {} to 1. AA text {}, AAA text {}"
+msgid "{}: {} to 1. AA text {}. AA large text {}. AAA text {}. AAA large text {}. Interface parts {}."
 msgstr ""
 
 msgid "{}: {} was not kept as a trigger, because a snippet has one trigger."
