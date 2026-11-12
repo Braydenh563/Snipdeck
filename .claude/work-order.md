@@ -1,5 +1,5 @@
 mode: continue
-status: active
+status: done
 max-continues: 300
 max-idle-minutes: 60
 started: 2026-11-07 (resumed)
