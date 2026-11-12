@@ -1246,6 +1246,29 @@ fn tab_walks_the_form_and_the_preview_without_a_trap() {
             "nothing was typed into the hidden form"
         );
 
+        assert!(ed.get_preview_on());
+        chord(ed.window(), &[Key::Control], "p");
+        settle();
+        assert!(!ed.get_preview_on(), "Ctrl+P leaves Preview after the walk");
+
+        // Back on the form the keyboard types into the first field.
+        let before = ed.get_content().len() + ed.get_item_title().len();
+        type_text(ed.window(), "y");
+        assert_eq!(
+            ed.get_content().len() + ed.get_item_title().len(),
+            before + 1
+        );
+    });
+}
+
+#[test]
+fn ctrl_p_preview_flips_survive_a_tab_depth_loop() {
+    const TABS: usize = 40;
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        preview_on(&ed);
         // At every depth the keyboard is still in the window: open Preview (the focus starts on the toggle), press
         // Tab k times, and Ctrl+P must still leave Preview. Then the same with Shift+Tab.
         for shift in [false, true] {
@@ -1269,18 +1292,6 @@ fn tab_walks_the_form_and_the_preview_without_a_trap() {
                 settle();
             }
         }
-        assert!(ed.get_preview_on());
-        chord(ed.window(), &[Key::Control], "p");
-        settle();
-        assert!(!ed.get_preview_on(), "Ctrl+P leaves Preview after the walk");
-
-        // Back on the form the keyboard types into the first field.
-        let before = ed.get_content().len() + ed.get_item_title().len();
-        type_text(ed.window(), "y");
-        assert_eq!(
-            ed.get_content().len() + ed.get_item_title().len(),
-            before + 1
-        );
     });
 }
 
@@ -1467,6 +1478,9 @@ fn a_focus_request_left_by_a_refused_file_does_not_survive_opening_a_file_item()
         preview_on(&ed);
         save(&ed);
         assert_eq!(ed.get_source_focus_request(), 1);
+        // Preview on again, and the editor closes that way (an open editor is raised, never refilled, so the
+        // reused window is the next fill).
+        preview_on(&ed);
         press(ed.window(), &key(Key::Escape));
         if ed.get_discard_open() {
             find(&ed, "Discard", AccessibleRole::Button).invoke_accessible_default_action();
@@ -1474,13 +1488,15 @@ fn a_focus_request_left_by_a_refused_file_does_not_survive_opening_a_file_item()
         settle();
         assert!(!r.editor_shown());
 
-        // The saved File item opens with the same kind as the window had: only the fill can clear the request.
+        // The saved File item opens with the same kind as the window had (so the kind change cannot clear the
+        // request) and with Preview left on: only the fill can clear both.
         r.ctl.borrow_mut().open_item_editor(id);
         r.editor.redraw();
         settle();
         let ed = r.ed();
         assert_eq!(ed.get_kind_index(), 5);
         assert!(!ed.get_is_new());
+        assert!(!ed.get_preview_on(), "a refill opens on the form");
         assert_eq!(ed.get_source_focus_request(), 0);
     });
 }
