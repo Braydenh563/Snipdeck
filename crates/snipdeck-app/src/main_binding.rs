@@ -875,9 +875,28 @@ fn watch_place<S, C, K, T>(
                         let Ok(mut c) = c.try_borrow_mut() else {
                             return false;
                         };
-                        c.drop_create(paths, crate::item_editor::Origin::Main, None);
+                        let started = c.drop_begin(paths, crate::item_editor::Origin::Main, None);
                         drop(c);
                         crate::binding::redraw_all();
+                        if let Some(run) = started {
+                            // The files are read off the UI thread; the window stays alive.
+                            let controller = controller.clone();
+                            crate::drop_read::drive(
+                                run,
+                                Rc::new(move |run, done| {
+                                    let Some(c) = controller.upgrade() else {
+                                        return Ok(None);
+                                    };
+                                    let Ok(mut c) = c.try_borrow_mut() else {
+                                        return Err((run, done));
+                                    };
+                                    let next = c.drop_read_done(run, done);
+                                    drop(c);
+                                    crate::binding::redraw_all();
+                                    Ok(next)
+                                }),
+                            );
+                        }
                         true
                     });
                 }

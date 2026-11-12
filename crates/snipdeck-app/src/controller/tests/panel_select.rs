@@ -629,6 +629,33 @@ fn main_copy_selection_copies_one_item_or_joins_many() {
 }
 
 #[test]
+fn the_item_menu_copy_joins_every_selected_row_in_display_order() {
+    let mut w = world();
+    w.ctl.main_open(crate::main_window::Section::All);
+    w.ctl.main_select_all();
+    w.ctl.services.clipboard.written.clear();
+    assert!(
+        w.ctl
+            .main_action(crate::controller::MainAction::Copy, 0)
+            .is_none()
+    );
+    let text = match &w.ctl.services.clipboard.written[0].data()[0] {
+        Data::Text(t) => t.clone(),
+        other => panic!("{other:?}"),
+    };
+    for want in ["first", "second", "third", "https://example.com"] {
+        assert!(text.lines().any(|l| l == want), "{want} in {text:?}");
+    }
+    // One row still copies the way its Copy button does: counted as a use.
+    w.ctl
+        .main_open(crate::main_window::Section::List(w.links_list));
+    let before = uses(&w, w.ids[4]);
+    let used = w.ctl.main_action(crate::controller::MainAction::Copy, 0);
+    assert!(matches!(used, Some(UseResult::Done(_))), "{used:?}");
+    assert_eq!(uses(&w, w.ids[4]), before + 1);
+}
+
+#[test]
 fn undo_falls_back_to_the_trash_when_the_history_step_is_gone() {
     let mut w = pasting("a fresh note");
     w.ctl.paste_create(Origin::Panel);
@@ -821,6 +848,50 @@ fn a_drop_to_a_given_list_targets_that_list() {
     );
     assert_eq!(w.ctl.view().rows.len(), 6);
     assert!(w.ctl.history_view().undo.is_some());
+}
+
+#[test]
+fn a_drop_read_in_two_chunks_is_one_step_with_the_first_file_on_top() {
+    use crate::drop_read::ReadDone;
+    let dir = tempfile::tempdir().expect("dir");
+    let mut w = world();
+    let paths = files_in(
+        &dir,
+        &[("one.txt", b"1"), ("two.txt", b"2"), ("three.txt", b"3")],
+    );
+    let mut run = w
+        .ctl
+        .drop_begin(&paths, Origin::Panel, None)
+        .expect("a drop to read");
+    assert_eq!(
+        w.ctl.view().rows.len(),
+        4,
+        "nothing is added before the files are read"
+    );
+    let all = run.next_job().run();
+    assert_eq!(all.read.len(), 3);
+    let mut read = all.read.into_iter();
+    let first = ReadDone {
+        read: vec![read.next().unwrap(), read.next().unwrap()],
+        rest: vec![paths[2].clone().into()],
+    };
+    let run = w.ctl.drop_read_done(run, first).expect("one file is left");
+    assert_eq!(w.ctl.view().rows.len(), 4, "still nothing in the list");
+    let last = ReadDone {
+        read: vec![read.next().unwrap()],
+        rest: Vec::new(),
+    };
+    assert!(w.ctl.drop_read_done(run, last).is_none());
+    let rows = w.ctl.view().rows;
+    assert_eq!(rows.len(), 7);
+    let titles: Vec<_> = rows.iter().take(3).map(|r| r.title.as_str()).collect();
+    assert_eq!(titles, ["one.txt", "two.txt", "three.txt"]);
+    w.ctl.toast_action();
+    assert_eq!(
+        w.ctl.view().rows.len(),
+        4,
+        "one Undo takes the whole drop back"
+    );
 }
 
 #[test]

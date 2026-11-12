@@ -1202,9 +1202,22 @@ where
                         if core.controller.try_borrow_mut().is_err() {
                             return false;
                         }
-                        core.act(|ctl| {
-                            ctl.drop_create(paths, crate::item_editor::Origin::Panel, None);
+                        let started = core.act(|ctl| {
+                            ctl.drop_begin(paths, crate::item_editor::Origin::Panel, None)
                         });
+                        if let Some(run) = started {
+                            // The files are read off the UI thread; the Panel stays alive.
+                            let core = Rc::clone(&core);
+                            crate::drop_read::drive(
+                                run,
+                                Rc::new(move |run, done| {
+                                    if core.controller.try_borrow_mut().is_err() {
+                                        return Err((run, done));
+                                    }
+                                    Ok(core.act(|ctl| ctl.drop_read_done(run, done)))
+                                }),
+                            );
+                        }
                         true
                     });
                 })
