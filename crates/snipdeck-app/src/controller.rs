@@ -278,15 +278,10 @@ pub struct Controller<S, C, K, T> {
     dock: DockState,
     /// The monitor the Panel is on, as the host last reported it.
     monitor: Option<Monitor>,
-    /// A drag from the header is under way on a docked Panel: the first move undocks it.
-    drag_started: bool,
-    /// A drag from the header is under way (until the window settles): only then does a move
-    /// near an edge preview a dock.
-    dragging: bool,
-    /// The edge the drag under way would dock to if released now (O32).
-    dock_preview: Option<DockEdge>,
-    /// Where along its edge the docked Panel was when the grip pill was pressed (physical px).
-    slide_origin: Option<i32>,
+    /// The drag of the Panel under way, if any (see [`crate::dock::Drag`]).
+    drag: Option<crate::dock::Drag>,
+    /// The Panel's window has the keyboard: a docked Panel then stays out.
+    panel_focused: bool,
     /// Placements decided outside a Panel gesture, waiting for the binding.
     pending: Vec<Effect>,
     /// The master password: whether one is set, whether its prompt is open, the idle clock.
@@ -466,10 +461,8 @@ where
             saver: None,
             dock: DockState::default(),
             monitor: None,
-            drag_started: false,
-            dragging: false,
-            dock_preview: None,
-            slide_origin: None,
+            drag: None,
+            panel_focused: false,
             pending: Vec::new(),
             lock: lock_ctl::LockState::new(shown_at),
             recent_gate: None,
@@ -568,14 +561,16 @@ where
             rows_reorderable: self.model.reorderable(),
             reorder_offer: self.model.sorts_itself(),
             on_top: self.on_top,
-            topmost: self.on_top && !self.own_window_active,
+            // A docked Panel that tucks is topmost like a pinned one: its tab must stay
+            // reachable over the other windows.
+            topmost: (self.on_top || self.dock_active()) && !self.own_window_active,
             dock_collapsed: self.dock.is_collapsed(),
-            dock_vertical: self.dock_edge().is_none_or(DockEdge::vertical),
-            dock_edge: self.dock_edge(),
+            dock_vertical: self.shown_edge().is_none_or(DockEdge::vertical),
+            dock_edge: self.shown_edge(),
             dock_full_edge: self.settings.dock.full_edge,
-            dock_slide: self.dock_slide_offered(),
+            dragging: self.drag.is_some(),
             dock_target: self.dock_target(),
-            dock_preview: self.dock_preview,
+            dock_preview: self.drag.and_then(|d| d.preview()),
             dark: self.look().dark,
             high_contrast: self.look().high_contrast,
             accent: self.accent(),
@@ -797,11 +792,11 @@ where
             return Vec::new();
         }
         match action {
-            // With the dock on, the Panel hotkey opens and closes the handle instead of
-            // hiding the window: the handle is what keeps the Panel reachable.
-            HotkeyAction::TogglePanel if self.visible && self.dock_active() => {
-                self.dock_event(crate::dock::DockEvent::Hotkey)
-            }
+            // With the dock on, the Panel hotkey opens and tucks the Panel instead of hiding
+            // the window: the tab is what keeps the Panel reachable. Opened by the hotkey it
+            // takes the keyboard like any shown Panel; tucked, it gives it back.
+            HotkeyAction::TogglePanel if self.dock_live() && self.dock_collapsed() => self.show(),
+            HotkeyAction::TogglePanel if self.dock_live() => self.dock_tuck(),
             HotkeyAction::TogglePanel if self.visible => self.hide(),
             HotkeyAction::TogglePanel => self.show(),
             HotkeyAction::Picker if self.picker.is_some() => {
@@ -864,6 +859,8 @@ where
     /// Hides the Panel (Esc with nothing to clear, the close button, the toggle hotkey).
     pub fn hide(&mut self) -> Vec<Effect> {
         self.visible = false;
+        self.drag = None;
+        self.panel_focused = false;
         self.panel_end_modes();
         self.blur_hide = false;
         self.panel_revealed = None;
@@ -898,6 +895,10 @@ where
     /// The close button or Esc on an empty search. With `close_to_tray` on and a tray icon to
     /// get it back from, the Panel hides; otherwise closing it quits the app.
     pub fn close(&mut self) -> Vec<Effect> {
+        if self.dock_live() {
+            // A docked Panel that tucks is never in the way: closing it tucks it.
+            return self.dock_tuck();
+        }
         if self.settings.close_to_tray && self.session.tray_available {
             self.hide_with_hint()
         } else {
@@ -938,13 +939,6 @@ where
                 Vec::new()
             }
         }
-    }
-
-    /// The user is dragging the Panel by its header.
-    pub fn drag(&mut self) -> Vec<Effect> {
-        self.drag_started = self.dock_edge().is_some();
-        self.dragging = true;
-        vec![Effect::DragWindow]
     }
 
     /// The foreground window changed: the footer and the use label follow it. While the Picker
@@ -990,6 +984,8 @@ where
     fn hides_on_blur(&self) -> bool {
         self.visible
             && !self.on_top
+            // A docked Panel tucks instead: its tab is how it comes back.
+            && !self.dock_active()
             && self.settings.panel_hide_on_blur
             // The snipping overlay takes the foreground itself; a Panel kept on screen for it stays.
             && !self.screen_clip.waiting()

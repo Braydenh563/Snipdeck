@@ -138,6 +138,7 @@ impl Rect {
             h: self.h,
             edge,
             pre_dock: None,
+            docked: None,
             along: edge.map(|e| self.along(e).start),
             other_along: Vec::new(),
         }
@@ -157,7 +158,8 @@ impl Rect {
     }
 }
 
-fn scaled(logical: u32, scale: f32) -> u32 {
+/// `logical` pixels at `scale`, rounded, at least one.
+pub fn scaled(logical: u32, scale: f32) -> u32 {
     let scale = if scale.is_finite() && scale > 0.0 {
         scale
     } else {
@@ -346,81 +348,6 @@ pub fn dock_resize_allowed(edge: Edge, dock: DockEdge, full_edge: bool) -> bool 
     !(full_edge && dock.vertical() && edge != inner)
 }
 
-/// The size (width, height) a Panel brings to a dock on `edge`, from the `size` it has now (or
-/// has stored), the `pre_dock` size it had before it was docked and a `default_height`
-/// (logical pixels).
-///
-/// A Panel docked left or right is as tall as the work area, so its frame is no guide to the
-/// height of a top or bottom dock: taken as it is, that dock would cover the whole screen with
-/// its bottom out of reach. A full-height size on a top or bottom edge therefore falls back to
-/// the size before docking, or to the default height when that was full height too. A left or
-/// right dock ignores the height anyway.
-#[must_use]
-pub fn dock_size(
-    edge: DockEdge,
-    size: (u32, u32),
-    pre_dock: Option<(u32, u32)>,
-    work_area: Rect,
-    scale: f32,
-    default_height: u32,
-) -> (u32, u32) {
-    full_height_cut(
-        !edge.vertical(),
-        size,
-        pre_dock,
-        work_area,
-        scale,
-        default_height,
-    )
-}
-
-/// [`dock_size`] for a Panel that may be docked compact: a left or right dock stored full
-/// height with no `along` (an older version's, or one left from the full edge) is not a size
-/// the user chose once `full_edge` is off, so it too falls back to the size before docking, or
-/// to the default height.
-#[must_use]
-#[allow(clippy::too_many_arguments, reason = "the dock's whole stored state")]
-pub fn dock_size_for(
-    edge: DockEdge,
-    size: (u32, u32),
-    pre_dock: Option<(u32, u32)>,
-    work_area: Rect,
-    scale: f32,
-    default_height: u32,
-    along: Option<i32>,
-    full_edge: bool,
-) -> (u32, u32) {
-    let legacy_full = edge.vertical() && !full_edge && along.is_none();
-    full_height_cut(
-        !edge.vertical() || legacy_full,
-        size,
-        pre_dock,
-        work_area,
-        scale,
-        default_height,
-    )
-}
-
-fn full_height_cut(
-    cut_full: bool,
-    size: (u32, u32),
-    pre_dock: Option<(u32, u32)>,
-    work_area: Rect,
-    scale: f32,
-    default_height: u32,
-) -> (u32, u32) {
-    // Within a pixel or two of the work area's height: a side dock's frame (or rounding of one).
-    let full = |h: u32| h.saturating_add(2) >= work_area.h;
-    if !cut_full || !full(size.1) {
-        return size;
-    }
-    let height = pre_dock
-        .map(|(_, h)| h)
-        .filter(|h| !full(*h))
-        .unwrap_or_else(|| scaled(default_height, scale).min(work_area.h / 2));
-    (size.0, height)
-}
-
 /// The work area last read for each monitor: the system sometimes fails to answer, and the
 /// whole monitor is the wrong stand-in (a Panel docked to its bottom edge then ends under the
 /// taskbar, out of reach).
@@ -532,39 +459,50 @@ pub fn nearest_dock_edge(frame: Rect, work_area: Rect, taskbar: Option<DockEdge>
     nearest(&|e| matches!(e, DockEdge::Left | DockEdge::Right) != horizontal)
 }
 
-/// How close (logical pixels) a dragged Panel's side must come to an edge of the work area
-/// for the drop to dock it there.
-pub const DOCK_SNAP: u32 = 16;
-
-/// The edge a drag would dock the Panel to when it is released now: the edge of `work_area`
-/// that the same side of `frame` lies within [`DOCK_SNAP`] of (at `scale`), the nearer one in
-/// a corner, never the `taskbar` edge. `None` away from every edge.
+/// How far inside `work_area` the point is from `edge`, in pixels: 0 on the edge itself,
+/// negative beyond it.
 #[must_use]
-pub fn dock_preview(
-    frame: Rect,
+pub fn edge_gap(point: (i32, i32), work_area: Rect, edge: DockEdge) -> i64 {
+    let (x, y) = (i64::from(point.0), i64::from(point.1));
+    let (left, top) = (i64::from(work_area.x), i64::from(work_area.y));
+    // The last pixel inside, which is as far as a cursor goes on the edge of the screen.
+    let right = left + i64::from(work_area.w) - 1;
+    let bottom = top + i64::from(work_area.h) - 1;
+    match edge {
+        DockEdge::Left => x - left,
+        DockEdge::Right => right - x,
+        DockEdge::Top => y - top,
+        DockEdge::Bottom => bottom - y,
+    }
+}
+
+/// The edge of `work_area` the cursor at `point` is at: within `zone` pixels of it. The nearer
+/// one in a corner (left or right on a tie), never the `taskbar` edge. `None` anywhere else,
+/// whatever size or place the Panel has: only the cursor docks it.
+#[must_use]
+pub fn edge_at(
+    point: (i32, i32),
     work_area: Rect,
     taskbar: Option<DockEdge>,
-    scale: f32,
+    zone: i64,
 ) -> Option<DockEdge> {
-    let far = |start: i32, len: u32| i64::from(start) + i64::from(len);
-    let snap = i64::from(scaled(DOCK_SNAP, scale));
-    [
-        (i64::from(frame.x) - i64::from(work_area.x), DockEdge::Left),
-        (
-            far(work_area.x, work_area.w) - far(frame.x, frame.w),
-            DockEdge::Right,
-        ),
-        (i64::from(frame.y) - i64::from(work_area.y), DockEdge::Top),
-        (
-            far(work_area.y, work_area.h) - far(frame.y, frame.h),
-            DockEdge::Bottom,
-        ),
-    ]
-    .into_iter()
-    .map(|(gap, edge)| (gap.abs(), edge))
-    .filter(|(gap, edge)| *gap <= snap && Some(*edge) != taskbar)
-    .min_by_key(|(gap, _)| *gap)
-    .map(|(_, edge)| edge)
+    DockEdge::ALL
+        .into_iter()
+        .filter(|edge| Some(*edge) != taskbar)
+        .map(|edge| (edge_gap(point, work_area, edge), edge))
+        .filter(|(gap, _)| *gap <= zone)
+        .min_by_key(|(gap, _)| *gap)
+        .map(|(_, edge)| edge)
+}
+
+/// Whether the point is on `rect` or within `margin` pixels of it.
+#[must_use]
+pub fn near(point: (i32, i32), rect: Rect, margin: i64) -> bool {
+    let (x, y) = (i64::from(point.0), i64::from(point.1));
+    let (left, top) = (i64::from(rect.x) - margin, i64::from(rect.y) - margin);
+    let right = i64::from(rect.x) + i64::from(rect.w) + margin;
+    let bottom = i64::from(rect.y) + i64::from(rect.h) + margin;
+    x >= left && x < right && y >= top && y < bottom
 }
 
 /// `span` cut to `[low, low + len)`; the whole of it when nothing of `span` is inside.
@@ -1055,39 +993,6 @@ mod tests {
     }
 
     #[test]
-    fn an_old_full_height_side_dock_is_compact_when_the_full_edge_is_off() {
-        let work = area();
-        let old = (320, work.h);
-        assert_eq!(
-            dock_size_for(DockEdge::Left, old, None, work, 1.0, 480, None, false),
-            (320, 480),
-            "no pre-dock size: the default height"
-        );
-        assert_eq!(
-            dock_size_for(
-                DockEdge::Right,
-                old,
-                Some((340, 500)),
-                work,
-                1.0,
-                480,
-                None,
-                false
-            ),
-            (320, 500)
-        );
-        // On, or with an along the user chose, it is left alone.
-        assert_eq!(
-            dock_size_for(DockEdge::Left, old, None, work, 1.0, 480, None, true),
-            old
-        );
-        assert_eq!(
-            dock_size_for(DockEdge::Left, old, None, work, 1.0, 480, Some(0), false),
-            old
-        );
-    }
-
-    #[test]
     fn a_docked_panel_keeps_the_panel_width_limits_and_stays_inside() {
         assert_eq!(
             docked_rect(DockEdge::Left, area(), (9000, 480), 1.0, None, true).w,
@@ -1175,71 +1080,6 @@ mod tests {
             true,
         );
         assert_eq!(i64::from(right.x) + i64::from(right.w), 1860);
-    }
-
-    #[test]
-    fn a_top_or_bottom_dock_never_reuses_a_full_height_frame_from_a_side_dock() {
-        let work = area();
-        // A Panel docked left or right is as tall as the work area; its stored frame says so.
-        let from_side = (320, 1040);
-        for edge in [DockEdge::Top, DockEdge::Bottom] {
-            // The size it had before docking comes back.
-            assert_eq!(
-                dock_size(edge, from_side, Some((340, 500)), work, 1.0, 480),
-                (320, 500),
-                "{edge:?}"
-            );
-            // Without one it starts at the default height, scaled.
-            assert_eq!(dock_size(edge, from_side, None, work, 1.0, 480), (320, 480));
-            // At 150 % the work area is 1.5 times larger in pixels, and so is the default.
-            let big = at(0, 0, 2880, 1560);
-            assert_eq!(
-                dock_size(edge, (480, 1560), None, big, 1.5, 480),
-                (480, 720)
-            );
-            // A pre-dock size that was itself full height is no use either.
-            assert_eq!(
-                dock_size(edge, from_side, Some((320, 1040)), work, 1.0, 480),
-                (320, 480)
-            );
-            let rect = docked_rect(
-                edge,
-                work,
-                dock_size(edge, from_side, None, work, 1.0, 480),
-                1.0,
-                None,
-                true,
-            );
-            assert!(rect.h < work.h, "{edge:?}: {rect:?}");
-        }
-    }
-
-    #[test]
-    fn the_dock_size_leaves_everything_else_alone() {
-        let work = area();
-        // A side dock ignores the height anyway.
-        for edge in [DockEdge::Left, DockEdge::Right] {
-            assert_eq!(
-                dock_size(edge, (320, 1040), Some((300, 500)), work, 1.0, 480),
-                (320, 1040)
-            );
-        }
-        // A floating Panel of ordinary height keeps it for a top or bottom dock.
-        assert_eq!(
-            dock_size(
-                DockEdge::Bottom,
-                (320, 600),
-                Some((300, 500)),
-                work,
-                1.0,
-                480
-            ),
-            (320, 600)
-        );
-        // A work area shorter than the default height still gets a frame that fits.
-        let low = at(0, 0, 1000, 300);
-        let (_, h) = dock_size(DockEdge::Top, (320, 300), None, low, 1.0, 480);
-        assert!(h <= 300);
     }
 
     #[test]
@@ -1397,48 +1237,60 @@ mod tests {
     }
 
     #[test]
-    fn a_drag_previews_the_edge_its_side_comes_within_the_snap_of() {
-        let work = area();
+    fn only_a_cursor_at_an_edge_is_at_an_edge() {
+        let work = Rect {
+            x: 0,
+            y: 0,
+            w: 1920,
+            h: 1040,
+        };
+        assert_eq!(edge_at((0, 500), work, None, 4), Some(DockEdge::Left));
+        assert_eq!(edge_at((4, 500), work, None, 4), Some(DockEdge::Left));
+        assert_eq!(edge_at((5, 500), work, None, 4), None);
+        assert_eq!(edge_at((1919, 500), work, None, 4), Some(DockEdge::Right));
+        assert_eq!(edge_at((1915, 500), work, None, 4), Some(DockEdge::Right));
+        assert_eq!(edge_at((1914, 500), work, None, 4), None);
+        assert_eq!(edge_at((900, 0), work, None, 4), Some(DockEdge::Top));
+        assert_eq!(edge_at((900, 1039), work, None, 4), Some(DockEdge::Bottom));
+        assert_eq!(edge_at((900, 500), work, None, 4), None);
+        // The taskbar's edge is never one, and a cursor over the taskbar is past the area.
+        assert_eq!(edge_at((900, 1039), work, Some(DockEdge::Bottom), 4), None);
+        assert_eq!(edge_at((900, 1070), work, Some(DockEdge::Bottom), 4), None);
+        // A corner: the nearer edge, the side on a tie.
+        assert_eq!(edge_at((0, 0), work, None, 4), Some(DockEdge::Left));
+        assert_eq!(edge_at((3, 1), work, None, 4), Some(DockEdge::Top));
         assert_eq!(
-            dock_preview(at(10, 300, 320, 480), work, None, 1.0),
+            edge_at((2, 1039), work, Some(DockEdge::Bottom), 4),
             Some(DockEdge::Left)
         );
-        assert_eq!(dock_preview(at(17, 300, 320, 480), work, None, 1.0), None);
-        assert_eq!(
-            dock_preview(at(1590, 300, 320, 480), work, None, 1.0),
-            Some(DockEdge::Right)
-        );
-        assert_eq!(
-            dock_preview(at(800, 12, 320, 480), work, None, 1.0),
-            Some(DockEdge::Top)
-        );
-        assert_eq!(
-            dock_preview(at(800, 550, 320, 480), work, None, 1.0),
-            Some(DockEdge::Bottom)
-        );
-        // Never the taskbar edge: nothing near it, the side in a corner.
-        assert_eq!(
-            dock_preview(at(800, 550, 320, 480), work, Some(DockEdge::Bottom), 1.0),
-            None
-        );
-        assert_eq!(
-            dock_preview(at(4, 555, 320, 480), work, Some(DockEdge::Bottom), 1.0),
-            Some(DockEdge::Left)
-        );
-        // In a corner the nearer edge wins; the snap grows with the scale.
-        assert_eq!(
-            dock_preview(at(8, 3, 320, 480), work, None, 1.0),
-            Some(DockEdge::Top)
-        );
-        assert_eq!(
-            dock_preview(at(30, 300, 320, 480), work, None, 2.0),
-            Some(DockEdge::Left)
-        );
-        // A frame past the edge (half off screen) still previews it.
-        assert_eq!(
-            dock_preview(at(-8, 300, 320, 480), work, None, 1.0),
-            Some(DockEdge::Left)
-        );
+        // A monitor that does not start at the origin.
+        let second = Rect {
+            x: -1280,
+            y: 200,
+            w: 1280,
+            h: 720,
+        };
+        assert_eq!(edge_at((-1279, 500), second, None, 4), Some(DockEdge::Left));
+        assert_eq!(edge_at((-2, 500), second, None, 4), Some(DockEdge::Right));
+        assert_eq!(edge_at((-600, 202), second, None, 4), Some(DockEdge::Top));
+        assert_eq!(edge_at((-600, 500), second, None, 4), None);
+    }
+
+    #[test]
+    fn a_point_is_near_a_rect_within_the_margin() {
+        let rect = Rect {
+            x: 100,
+            y: 200,
+            w: 50,
+            h: 60,
+        };
+        assert!(near((100, 200), rect, 0));
+        assert!(near((149, 259), rect, 0));
+        assert!(!near((150, 230), rect, 0));
+        assert!(near((157, 230), rect, 8));
+        assert!(!near((158, 230), rect, 8));
+        assert!(near((92, 192), rect, 8));
+        assert!(!near((91, 230), rect, 8));
     }
 
     #[test]

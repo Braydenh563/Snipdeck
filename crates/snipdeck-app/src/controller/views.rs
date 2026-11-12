@@ -27,8 +27,9 @@ pub enum Effect {
     ShowSymbols,
     /// Hide the Panel.
     HidePanel,
-    /// Start the OS window drag from the Panel header.
-    DragWindow,
+    /// Move the Panel's window so that its top-left is here (physical pixels); its size
+    /// stays. A drag step: the app moves the window itself.
+    MoveWindow(i32, i32),
     /// Show the Main window, creating it the first time (the tray's "Open Snipdeck").
     OpenMainWindow,
     /// Switch the global hotkeys off (`true`) or back on (`false`), per the settings.
@@ -213,8 +214,8 @@ pub struct View {
     pub dock_edge: Option<DockEdge>,
     /// A side dock takes the whole edge: its ends do not resize and it does not slide.
     pub dock_full_edge: bool,
-    /// The header's grip pill is shown (the docked Panel can slide along its edge).
-    pub dock_slide: bool,
+    /// The Panel is being dragged by its header.
+    pub dragging: bool,
     /// The edge the kebab's "Dock" row would dock a floating Panel to (`None` while docked or
     /// before the monitor is known): the row names it.
     pub dock_target: Option<DockEdge>,

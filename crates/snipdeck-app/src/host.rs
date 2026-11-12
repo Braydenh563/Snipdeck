@@ -203,6 +203,12 @@ pub trait TargetSource {
     fn cursor(&self) -> Option<(i32, i32)> {
         None
     }
+    /// Whether the primary mouse button is held down, wherever the pointer is. `None` (the
+    /// default) means the host cannot tell: a drag then ends only on the window's own
+    /// pointer-up.
+    fn primary_down(&self) -> Option<bool> {
+        None
+    }
     /// The monitor under a physical point, if the host can tell.
     fn monitor_at(&self, _x: i32, _y: i32) -> Option<crate::frame::Monitor> {
         None

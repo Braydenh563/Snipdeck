@@ -1,16 +1,16 @@
 //! The edge dock's half of the [`Controller`] (SPEC 5.1 "Edge dock with reveal"): it feeds the
 //! pure state machine of [`crate::dock`] with what the window and the hotkey report, turns its
 //! answer into window placements (the handle strip or the open Panel, from [`crate::frame`]),
-//! and keeps the edge each monitor was docked to. Slint-free: `binding` wires the handle's and
-//! the Panel's pointer callbacks to [`Controller::dock_event`] and runs the timer that sends
-//! the ticks.
+//! and keeps the edge each monitor was docked to. It also runs the drag ([`crate::dock::Drag`]):
+//! the app moves the window from the cursor, and the cursor alone decides a dock. Slint-free:
+//! `binding` runs the timers that call [`Controller::dock_tick`] and [`Controller::drag_move`].
 
 use snipdeck_core::UseOutcome;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 
 use super::{Controller, Effect, Library, PanelMenu, UseResult, neutral};
 use crate::{
-    dock::{DockAction, DockEvent, DockState},
+    dock::{self, DockAction, DockEvent, DockState, Drag, DragCtx, DragEnd, DragPhase, DragStep},
     frame::{self, Monitor, Rect},
     host::ClipboardText,
     settings::{DockEdge, DockSettings, DockTrigger, PanelGeometry},
@@ -19,6 +19,13 @@ use crate::{
 
 /// The height a Panel starts with when nothing was stored for its monitor (logical pixels).
 pub(super) const DEFAULT_HEIGHT: u32 = 480;
+/// How far from the work area's corner a Panel with no stored place opens (logical pixels).
+const OPEN_INSET: u32 = 48;
+
+/// `logical` pixels at `scale`, for a zone around a rectangle.
+fn zone(logical: u32, scale: f32) -> i64 {
+    i64::from(frame::scaled(logical, scale))
+}
 
 impl<S, C, K, T> Controller<S, C, K, T>
 where
@@ -54,13 +61,6 @@ where
         self.dock.is_collapsed()
     }
 
-    /// A hover or leave delay is running: the host sends [`DockEvent::Tick`] every
-    /// [`crate::dock::TICK`] while this is true.
-    #[must_use]
-    pub fn dock_needs_tick(&self) -> bool {
-        self.dock.needs_tick()
-    }
-
     pub(super) fn stored_geometry(&self, monitor: &Monitor) -> Option<&PanelGeometry> {
         self.settings
             .panel_geometry
@@ -80,6 +80,96 @@ where
         let now = self.clock.now();
         let action = self.dock.on(event, now, &config);
         self.dock_act(action)
+    }
+
+    /// The window reported the pointer on or off the handle or the Panel. Only used where
+    /// the cursor cannot be read on screen: where it can, [`dock_tick`](Self::dock_tick) looks
+    /// for itself, and a window's own enter and leave (which a click-through or a covered
+    /// strip can miss) would only disagree with it.
+    pub fn dock_hover(&mut self, event: DockEvent) -> Vec<Effect> {
+        if self.target.cursor().is_some() {
+            return Vec::new();
+        }
+        self.dock_event(event)
+    }
+
+    /// The Panel is docked, may tuck away and is on screen: the host calls
+    /// [`dock_tick`](Self::dock_tick) every [`dock::TICK`] while this is true.
+    #[must_use]
+    pub fn dock_live(&self) -> bool {
+        self.visible && self.dock_active()
+    }
+
+    /// The open docked Panel and its tucked tab, on its monitor.
+    fn dock_rects(&self) -> Option<(Rect, Rect)> {
+        let monitor = self.monitor.as_ref()?;
+        let geometry = self.stored_geometry(monitor)?;
+        let edge = geometry.edge?;
+        let open = frame::docked_rect(
+            edge,
+            monitor.work_area,
+            geometry.docked.unwrap_or((geometry.w, geometry.h)),
+            monitor.scale,
+            geometry.along,
+            self.settings.dock.full_edge,
+        );
+        let tab = frame::handle_rect(edge, monitor.work_area, open.along(edge), monitor.scale);
+        Some((open, tab))
+    }
+
+    /// The Panel is in use, so it stays out whatever the pointer does: a menu is open, it has
+    /// the keyboard, or it is being dragged.
+    fn dock_held(&self) -> bool {
+        self.menu != PanelMenu::None || self.panel_focused || self.drag.is_some()
+    }
+
+    /// The Panel's window gained or lost the keyboard. A docked Panel that has it stays out.
+    pub fn set_panel_focused(&mut self, focused: bool) {
+        self.panel_focused = focused;
+    }
+
+    /// Time passed (the host calls this every [`dock::TICK`] while
+    /// [`dock_live`](Self::dock_live)): reads where the pointer is, when it can be read, and
+    /// runs the hover and leave delays. The tucked tab reveals when the pointer is on it or
+    /// within [`dock::REVEAL_ZONE`]; the open Panel stays while the pointer is within
+    /// [`dock::KEEP_ZONE`] of it or it is in use.
+    pub fn dock_tick(&mut self) -> Vec<Effect> {
+        if !self.dock_live() {
+            return Vec::new();
+        }
+        let mut effects = Vec::new();
+        let scale = self.monitor.as_ref().map_or(1.0, |m| m.scale);
+        if let (Some(cursor), Some((open, tab))) = (self.target.cursor(), self.dock_rects()) {
+            let event = if self.dock.is_collapsed() {
+                DockEvent::HandleHover(frame::near(cursor, tab, zone(dock::REVEAL_ZONE, scale)))
+            } else {
+                DockEvent::PanelHover(
+                    self.dock_held() || frame::near(cursor, open, zone(dock::KEEP_ZONE, scale)),
+                )
+            };
+            effects.extend(self.dock_event(event));
+        } else if self.dock_held() && !self.dock.is_collapsed() {
+            effects.extend(self.dock_event(DockEvent::PanelHover(true)));
+        }
+        effects.extend(self.dock_event(DockEvent::Tick));
+        effects
+    }
+
+    /// Tucks the open docked Panel away (the close button, Esc, the Panel hotkey) and gives
+    /// the keyboard back to the Target when the Panel had it. The window stays: the tab is the
+    /// way back.
+    pub(super) fn dock_tuck(&mut self) -> Vec<Effect> {
+        if self.dock.is_collapsed() {
+            return Vec::new();
+        }
+        self.drag = None;
+        self.dock = DockState::Collapsed;
+        self.panel_end_modes();
+        self.panel_revealed = None;
+        if std::mem::take(&mut self.panel_focused) {
+            self.target.refocus();
+        }
+        self.dock_act(DockAction::Collapse)
     }
 
     /// A use from the Panel ended with `result`: a paste collapses a docked Panel (a copy
@@ -137,18 +227,7 @@ where
         let Some(edge) = geometry.edge else {
             return Vec::new();
         };
-        // A frame stored as full height (a side dock's, or one an older version saved for a
-        // top or bottom dock) is not the height of a top or bottom dock.
-        let size = frame::dock_size_for(
-            edge,
-            (geometry.w, geometry.h),
-            geometry.pre_dock,
-            monitor.work_area,
-            monitor.scale,
-            DEFAULT_HEIGHT,
-            geometry.along,
-            self.settings.dock.full_edge,
-        );
+        let size = geometry.docked.unwrap_or((geometry.w, geometry.h));
         let open = frame::docked_rect(
             edge,
             monitor.work_area,
@@ -244,35 +323,62 @@ where
         }
     }
 
-    /// Where the Panel is on `monitor` when it is open: what was stored, else a default.
+    /// The floating Panel's frame on `monitor`: what was stored, else a default.
     pub(super) fn open_frame(&self, monitor: &Monitor) -> Rect {
         self.stored_geometry(monitor).map_or_else(
             || {
-                let scale = f64::from(monitor.scale.max(0.1));
-                #[allow(
-                    clippy::cast_possible_truncation,
-                    clippy::cast_sign_loss,
-                    reason = "a small positive pixel count, rounded"
-                )]
-                let px = |logical: u32| (f64::from(logical) * scale).round() as u32;
-                // Off every edge: flush with the corner it would be in snap range of the
-                // dock, and a drag from there would end up docked and stretched.
-                let inset = i32::try_from(px(crate::frame::DOCK_SNAP * 3)).unwrap_or(0);
+                // Off every edge, so that it reads as floating.
+                let inset = i32::try_from(frame::scaled(OPEN_INSET, monitor.scale)).unwrap_or(0);
                 Rect {
                     x: monitor.work_area.x.saturating_add(inset),
                     y: monitor.work_area.y.saturating_add(inset),
-                    w: px(self.settings.panel_width),
-                    h: px(DEFAULT_HEIGHT),
+                    w: frame::scaled(self.settings.panel_width, monitor.scale),
+                    h: frame::scaled(DEFAULT_HEIGHT, monitor.scale),
                 }
             },
             Rect::of,
         )
     }
 
-    /// Docks the Panel to `edge` on its monitor, or lets it float again (`None`). The edge is
-    /// remembered for that monitor and the Panel is placed flush with it; the placement is
-    /// queued for [`take_pending`](Self::take_pending). Does nothing before the Panel's
-    /// monitor is known.
+    /// What is remembered for `monitor`, or a floating Panel at the default place there.
+    fn geometry_on(&self, monitor: &Monitor) -> PanelGeometry {
+        self.stored_geometry(monitor).cloned().unwrap_or_else(|| {
+            frame::clamp(self.open_frame(monitor), monitor).geometry(monitor, None)
+        })
+    }
+
+    /// The Panel's floating and docked sizes on `monitor`. A monitor it never was on gets the
+    /// sizes of the one it is on, at that monitor's scale (the same logical size).
+    fn sizes_on(&self, monitor: &Monitor) -> ((u32, u32), (u32, u32)) {
+        let sizes = |g: &PanelGeometry| ((g.w, g.h), g.docked.unwrap_or((g.w, g.h)));
+        if let Some(g) = self.stored_geometry(monitor) {
+            return sizes(g);
+        }
+        let Some(from) = self.monitor.as_ref().filter(|m| m.id != monitor.id) else {
+            return sizes(&self.geometry_on(monitor));
+        };
+        let valid = |s: f32| if s.is_finite() && s > 0.0 { s } else { 1.0 };
+        let ratio = f64::from(valid(monitor.scale)) / f64::from(valid(from.scale));
+        #[allow(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "a window length in pixels, rounded and never negative"
+        )]
+        let convert = |(w, h): (u32, u32)| {
+            (
+                (f64::from(w) * ratio).round() as u32,
+                (f64::from(h) * ratio).round() as u32,
+            )
+        };
+        let (floating, docked) = sizes(&self.geometry_on(from));
+        (convert(floating), convert(docked))
+    }
+
+    /// Docks the Panel to `edge` on its monitor, or lets it float again (`None`): the menu and
+    /// Settings rows. The edge is remembered for that monitor; the Panel keeps its docked size
+    /// there (its floating size the first time) and goes back to its floating frame when it
+    /// leaves. The placement is queued for [`take_pending`](Self::take_pending). Does nothing
+    /// before the Panel's monitor is known.
     pub fn dock_to(&mut self, edge: Option<DockEdge>) {
         let Some(monitor) = self.monitor.clone() else {
             return;
@@ -282,65 +388,42 @@ where
             self.show_toast(neutral(ToastMessage::TaskbarEdge));
             return;
         }
-        let mut base = self.open_frame(&monitor);
+        self.drag = None;
         let stored = self.stored_geometry(&monitor).cloned();
-        let earlier = stored
-            .as_ref()
-            .filter(|g| g.edge.is_some())
-            .and_then(|g| g.pre_dock);
-        // The size to give back when the Panel leaves its edge: the one it had when it was
-        // docked, kept while it stays docked (a docked frame is as tall as the screen).
-        let pre_dock = edge.map(|_| earlier.unwrap_or((base.w, base.h)));
-        if let (None, Some((w, h))) = (edge, earlier) {
-            base = Rect { w, h, ..base };
-        }
-        // Where along the edge the Panel lands: where it was dropped (its top, or its left), or
-        // where it already was on that same edge; none centres it.
-        // Docked elsewhere before, it goes back to where it was on that edge.
-        let along = match (edge, &stored) {
-            (Some(e), Some(g)) if g.edge.is_some() => g.along_for(e),
-            (Some(e), _) => Some(base.along(e).start),
-            (None, _) => None,
-        };
-        // `remembered` is the Panel at its own height even when the full edge is on, so that
-        // turning that off gives the height back; `place` is what the window gets now.
-        let (place, remembered) = if let Some(edge) = edge {
-            let size = frame::dock_size_for(
-                edge,
-                (base.w, base.h),
-                earlier,
-                monitor.work_area,
-                monitor.scale,
-                DEFAULT_HEIGHT,
-                along,
-                self.settings.dock.full_edge,
-            );
+        let mut geometry = self.geometry_on(&monitor);
+        let floating = frame::clamp(Rect::of(&geometry), &monitor);
+        let place = if let Some(edge) = edge {
+            let size = geometry.docked.unwrap_or((floating.w, floating.h));
+            // Where it was on that edge before, else level with where it floats.
+            let along = geometry
+                .along_for(edge)
+                .unwrap_or_else(|| floating.along(edge).start);
             let dock = |full_edge| {
                 frame::docked_rect(
                     edge,
                     monitor.work_area,
                     size,
                     monitor.scale,
-                    along,
+                    Some(along),
                     full_edge,
                 )
             };
-            (dock(self.settings.dock.full_edge), dock(false))
+            // Remembered at its own height even when the full edge is on, so that turning that
+            // off gives the height back.
+            let own = dock(false);
+            geometry.docked = Some((own.w, own.h));
+            geometry.along = Some(own.along(edge).start);
+            dock(self.settings.dock.full_edge)
         } else {
-            let place = frame::clamp(base, &monitor);
-            (place, place)
+            geometry.along = None;
+            floating
         };
+        geometry.edge = edge;
         // Open before the settings change, so that undocking does not look like a collapsed
         // Panel losing its trigger.
         self.dock = DockState::Expanded;
         self.update_settings(|s| {
-            s.remember_panel_geometry(
-                PanelGeometry {
-                    pre_dock,
-                    ..remembered.geometry(&monitor, edge)
-                }
-                .remembering(stored.as_ref()),
-            );
+            s.remember_panel_geometry(geometry.remembering(stored.as_ref()));
         });
         self.pending.push(Effect::PlaceWindow(place));
         self.show_toast(neutral(ToastMessage::DockSet(edge)));
@@ -356,77 +439,186 @@ where
         }
     }
 
-    /// Whether the docked Panel can slide along its edge: not while floating or collapsed, and
-    /// not a side dock that takes the full edge (it has nowhere to go).
-    fn dock_slidable(&self) -> bool {
-        self.dock_edge()
-            .is_some_and(|e| !(e.vertical() && self.settings.dock.full_edge))
-            && !self.dock_collapsed()
-    }
+    // ---- The drag ------------------------------------------------------------------------------
 
-    /// Whether the header's grip pill is offered: the Panel can slide.
+    /// A drag of the Panel is under way.
     #[must_use]
-    pub fn dock_slide_offered(&self) -> bool {
-        self.dock_slidable()
+    pub fn dragging(&self) -> bool {
+        self.drag.is_some()
     }
 
-    /// The grip pill was pressed: where the Panel is along its edge now is the origin the
-    /// drag's offsets count from.
-    pub fn dock_slide_begin(&mut self) {
-        self.slide_origin = self
-            .dock_slidable()
-            .then(|| {
-                let monitor = self.monitor.as_ref()?;
-                let g = self.stored_geometry(monitor)?;
-                Some(Rect::of(g).along(g.edge?).start)
-            })
-            .flatten();
+    /// The edge the Panel shows itself docked to: its own, or while it is dragged the one the
+    /// drag has it on (none once it is pulled off, the offered one at an edge).
+    pub(super) fn shown_edge(&self) -> Option<DockEdge> {
+        match self.drag.map(|d| d.phase()) {
+            Some(DragPhase::Float) => None,
+            Some(DragPhase::Preview(edge) | DragPhase::Slide(edge)) => Some(edge),
+            None => self.dock_edge(),
+        }
     }
 
-    /// The grip pill has been dragged `total` physical pixels along the edge since the press
-    /// ([`dock_slide_begin`](Self::dock_slide_begin); the drag begins itself if the press was
-    /// missed). Each call places the Panel at origin plus `total`, so queued or repeated
-    /// moves land in the same place. It stays on its edge and inside the work area, and the
-    /// place is remembered. Nothing happens while the Panel cannot slide.
-    pub fn dock_slide(&mut self, total: i32) -> Vec<Effect> {
-        if !self.dock_slidable() {
-            return Vec::new();
-        }
-        if self.slide_origin.is_none() {
-            self.dock_slide_begin();
-        }
-        let (Some(monitor), Some(origin)) = (self.monitor.clone(), self.slide_origin) else {
-            return Vec::new();
-        };
-        let Some(g) = self.stored_geometry(&monitor).cloned() else {
-            return Vec::new();
-        };
-        let Some(edge) = g.edge else {
-            return Vec::new();
-        };
-        let now = Rect::of(&g);
-        let moved = frame::docked_rect(
-            edge,
-            monitor.work_area,
-            (now.w, now.h),
-            monitor.scale,
-            Some(origin.saturating_add(total)),
-            false,
-        );
-        self.update_settings(|s| {
-            s.remember_panel_geometry(
-                PanelGeometry {
-                    pre_dock: g.pre_dock,
-                    ..moved.geometry(&monitor, Some(edge))
-                }
-                .remembering(Some(&g)),
-            );
-        });
-        if moved == now {
-            Vec::new()
+    /// What a drag step needs for the cursor at `cursor`: the monitor (the Panel's own while
+    /// it slides along its edge, else the one under the cursor) and the sizes there.
+    fn drag_ctx(&self, drag: &Drag, cursor: (i32, i32)) -> Option<(Monitor, (u32, u32), (u32, u32))> {
+        let own = self.monitor.clone();
+        let monitor = if matches!(drag.phase(), DragPhase::Slide(_)) {
+            own
         } else {
-            vec![Effect::PlaceWindow(moved)]
+            self.target.monitor_at(cursor.0, cursor.1).or(own)
+        }?;
+        let (floating, docked) = self.sizes_on(&monitor);
+        Some((monitor, floating, docked))
+    }
+
+    /// Pointer down on the Panel's header: a drag starts. `window` is the Panel's frame now and
+    /// `pointer` where the host saw the press on screen, used when the cursor cannot be read.
+    /// From here the host calls [`drag_move`](Self::drag_move) every [`dock::DRAG_TICK`] and on
+    /// each pointer move, and [`drag_end`](Self::drag_end) when the button comes up.
+    pub fn drag_begin(&mut self, pointer: (i32, i32), window: Rect) {
+        if self.dock_collapsed() || self.monitor.is_none() {
+            return;
         }
+        let cursor = self.target.cursor().unwrap_or(pointer);
+        self.drag = Some(Drag::begin(cursor, window, self.dock_edge()));
+    }
+
+    /// The host can tell that the button a drag was started with is up again, although the
+    /// window never said so: the drag is over.
+    #[must_use]
+    pub fn drag_let_go(&self) -> bool {
+        self.drag.is_some() && self.target.primary_down() == Some(false)
+    }
+
+    /// The drag goes on: the cursor is read (else `pointer` is used) and the window follows
+    /// it. It docks nothing by itself: at an edge the Panel is shown docked there, and
+    /// [`drag_end`](Self::drag_end) decides.
+    pub fn drag_move(&mut self, pointer: Option<(i32, i32)>) -> Vec<Effect> {
+        let Some(mut drag) = self.drag else {
+            return Vec::new();
+        };
+        let Some(cursor) = self.target.cursor().or(pointer) else {
+            return Vec::new();
+        };
+        let Some((monitor, floating, docked)) = self.drag_ctx(&drag, cursor) else {
+            return Vec::new();
+        };
+        let step = drag.moved(
+            cursor,
+            &DragCtx {
+                monitor: &monitor,
+                floating,
+                docked,
+                full_edge: self.settings.dock.full_edge,
+                now: self.clock.now(),
+            },
+        );
+        self.drag = Some(drag);
+        match step {
+            DragStep::None => Vec::new(),
+            DragStep::Move(x, y) => vec![Effect::MoveWindow(x, y)],
+            DragStep::Place(rect) => vec![Effect::PlaceWindow(rect)],
+        }
+    }
+
+    /// The button came up: the Panel docks to the edge it was shown on, or floats where it
+    /// was dropped. Its floating frame and its docked size are remembered apart, so neither
+    /// gesture changes the other's size.
+    pub fn drag_end(&mut self) -> Vec<Effect> {
+        let Some(drag) = self.drag.take() else {
+            return Vec::new();
+        };
+        let Some((monitor, floating, docked)) = self.drag_ctx(&drag, drag.cursor()) else {
+            return Vec::new();
+        };
+        let end = drag.released(&DragCtx {
+            monitor: &monitor,
+            floating,
+            docked,
+            full_edge: self.settings.dock.full_edge,
+            now: self.clock.now(),
+        });
+        let left = self.monitor.clone().filter(|m| m.id != monitor.id);
+        let was_docked = self.dock_edge();
+        let stored = self.stored_geometry(&monitor).cloned();
+        let mut geometry = stored.clone().unwrap_or_else(|| {
+            // A monitor it never was on: it floats where it was dropped.
+            frame::clamp(
+                Rect {
+                    w: floating.0,
+                    h: floating.1,
+                    ..drag.frame()
+                },
+                &monitor,
+            )
+            .geometry(&monitor, None)
+        });
+        let place = match end {
+            DragEnd::Floating(rect) => {
+                (geometry.x, geometry.y, geometry.w, geometry.h) = (rect.x, rect.y, rect.w, rect.h);
+                geometry.edge = None;
+                geometry.along = None;
+                rect
+            }
+            DragEnd::Docked(edge, rect) => {
+                geometry.edge = Some(edge);
+                // The full edge stretches the window, not the size the Panel keeps.
+                let own = frame::docked_rect(
+                    edge,
+                    monitor.work_area,
+                    docked,
+                    monitor.scale,
+                    Some(drag.frame().along(edge).start),
+                    false,
+                );
+                geometry.docked = Some((own.w, own.h));
+                geometry.along = Some(if self.settings.dock.full_edge && edge.vertical() {
+                    stored
+                        .as_ref()
+                        .and_then(|g| g.along_for(edge))
+                        .unwrap_or_else(|| own.along(edge).start)
+                } else {
+                    own.along(edge).start
+                });
+                rect
+            }
+        };
+        let now_docked = geometry.edge;
+        self.dock = DockState::Expanded;
+        self.update_settings(|s| {
+            // Dragged to another monitor, it is no longer docked on the one it left.
+            if let Some(old) = left.as_ref()
+                && let Some(g) = s.panel_geometry.iter_mut().find(|g| g.monitor_id == old.id)
+                && g.edge.is_some()
+            {
+                let undocked = PanelGeometry {
+                    edge: None,
+                    along: None,
+                    ..g.clone()
+                }
+                .remembering(Some(g));
+                *g = undocked;
+            }
+            s.remember_panel_geometry(geometry.remembering(stored.as_ref()));
+        });
+        self.monitor = Some(monitor);
+        if now_docked != was_docked || left.is_some() {
+            self.show_toast(neutral(ToastMessage::DockSet(now_docked)));
+        }
+        vec![Effect::PlaceWindow(place)]
+    }
+
+    /// The drag ended without a release the app saw (the window went away): the Panel goes back
+    /// to where it is remembered.
+    pub fn drag_cancel(&mut self) -> Vec<Effect> {
+        if self.drag.take().is_none() {
+            return Vec::new();
+        }
+        self.monitor
+            .as_ref()
+            .and_then(|m| self.placement(m))
+            .map(Effect::PlaceWindow)
+            .into_iter()
+            .collect()
     }
 
     /// "Reset size and position": forgets what was remembered for the Panel's current monitor (and
@@ -437,10 +629,8 @@ where
             return Vec::new();
         };
         self.dock = DockState::Expanded;
-        // A gesture in flight ends here: its flags must not dock or resize the placement.
-        self.drag_started = false;
-        self.dragging = false;
-        self.dock_preview = None;
+        // A gesture in flight ends here: it must not dock or resize the placement.
+        self.drag = None;
         self.update_settings(|s| s.panel_geometry.retain(|g| g.monitor_id != monitor.id));
         let place = frame::clamp(self.open_frame(&monitor), &monitor);
         vec![Effect::PlaceWindow(place)]
@@ -468,26 +658,6 @@ where
         } else if let Some(edge) = self.dock_target() {
             self.dock_to(Some(edge));
         }
-    }
-
-    /// The Panel stopped moving after a drag (`frame_moved` went quiet): a drag released near
-    /// an allowed edge ([`frame::dock_preview`]) docks there. Nothing happens after a move that
-    /// was not a drag (a restore, a placement), so a Panel kept near an edge stays floating.
-    pub fn frame_settled(&mut self, monitor: &Monitor, frame: Rect) -> Vec<Effect> {
-        if !std::mem::take(&mut self.dragging) {
-            return Vec::new();
-        }
-        self.monitor = Some(monitor.clone());
-        let preview = self.dock_preview.take();
-        if preview.is_some()
-            && self.dock_edge().is_none()
-            && preview
-                == frame::dock_preview(frame, monitor.work_area, monitor.taskbar, monitor.scale)
-        {
-            self.dock_to(preview);
-            return self.take_pending();
-        }
-        Vec::new()
     }
 
     /// Placements queued by a change that did not come from the Panel window (the Settings

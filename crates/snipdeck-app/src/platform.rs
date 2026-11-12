@@ -85,6 +85,10 @@ mod imp {
             screen::cursor_position()
         }
 
+        fn primary_down(&self) -> Option<bool> {
+            Some(screen::primary_button_down())
+        }
+
         fn monitor_at(&self, x: i32, y: i32) -> Option<Monitor> {
             monitor_under(x, y)
         }

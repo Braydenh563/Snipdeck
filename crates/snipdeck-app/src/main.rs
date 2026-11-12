@@ -630,14 +630,6 @@ fn effect_handler(
                 eprintln!("snipdeck: cannot open the list editor: {e}");
             }
         }
-        Effect::DragWindow => {
-            if let Some(window) = window.upgrade() {
-                // The Panel has no OS caption: the header starts the move itself.
-                let _ = window
-                    .window()
-                    .with_winit_window(winit::window::Window::drag_window);
-            }
-        }
         Effect::ResizeWindow(edge) => {
             if let Some(window) = window.upgrade() {
                 // No OS frame either: a grip starts the OS resize loop. The window's own
@@ -666,6 +658,7 @@ fn effect_handler(
         // The binding has already acted: placed the window, or opened the item editor.
         Effect::HidePanel
         | Effect::ShowSymbols
+        | Effect::MoveWindow(..)
         | Effect::PlaceWindow(_)
         | Effect::NewItem
         | Effect::EditItem(_) => {}
@@ -760,6 +753,9 @@ fn watch_window_events(window: &PanelWindow, binding: Binding, armed: Rc<Cell<bo
                         binding.frame_changed(&monitor, rect);
                     }
                 }
+            }
+            if let WindowEvent::Focused(focused) = event {
+                binding.panel_focused(*focused);
             }
             if !tracing {
                 return EventResult::Propagate;

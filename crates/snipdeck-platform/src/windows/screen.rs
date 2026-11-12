@@ -15,7 +15,8 @@ use windows::Win32::System::DataExchange::{
 };
 use windows::Win32::System::Ole::{CF_BITMAP, CF_DIB, CF_DIBV5};
 use windows::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
-use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
+use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON, VK_RBUTTON};
+use windows::Win32::UI::WindowsAndMessaging::{GetCursorPos, GetSystemMetrics, SM_SWAPBUTTON};
 
 use crate::route::ScreenRect;
 
@@ -39,6 +40,19 @@ pub fn cursor_position() -> Option<(i32, i32)> {
     // SAFETY: `at` is a valid POINT that outlives the call.
     unsafe { GetCursorPos(&raw mut at) }.ok()?;
     Some((at.x, at.y))
+}
+
+/// Whether the primary mouse button (the left one, or the right one for a left-handed mouse) is
+/// held down right now, wherever the pointer is. The Panel's drag ends on it when the window
+/// never saw the button come up.
+#[must_use]
+pub fn primary_button_down() -> bool {
+    // SAFETY: no preconditions.
+    let swapped = unsafe { GetSystemMetrics(SM_SWAPBUTTON) } != 0;
+    let key = if swapped { VK_RBUTTON } else { VK_LBUTTON };
+    // SAFETY: no preconditions. The high bit says the physical button is down.
+    let state = unsafe { GetAsyncKeyState(i32::from(key.0)) };
+    state < 0
 }
 
 /// The clipboard's change count and whether it holds a picture, for waiting on a screenshot.
