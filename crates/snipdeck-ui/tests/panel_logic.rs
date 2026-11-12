@@ -1667,6 +1667,60 @@ ui_tests! {
         }
     }
 
+    fn ctrl_tab_walks_through_symbols_and_colours_and_wraps_both_ways() {
+        let (ui, log) = start();
+        ui.set_symbols_available(true);
+        ui.set_colours_available(true);
+        settle();
+        take(&log);
+        // Three lists, then Symbols, then Colours, then the first list again.
+        for expect in [1, 2] {
+            chord(ui.window(), &[Key::Control], &key(Key::Tab));
+            assert_eq!(ui.get_current_tab(), expect);
+        }
+        chord(ui.window(), &[Key::Control], &key(Key::Tab));
+        assert!(ui.get_symbols_open() && !ui.get_colours_open(), "Symbols after the last list");
+        chord(ui.window(), &[Key::Control], &key(Key::Tab));
+        assert!(ui.get_colours_open() && !ui.get_symbols_open(), "Colours after Symbols");
+        chord(ui.window(), &[Key::Control], &key(Key::Tab));
+        assert!(!ui.get_colours_open() && !ui.get_symbols_open(), "and round to the first list");
+        assert_eq!(ui.get_current_tab(), 0);
+        // Backwards: the first list goes back to Colours, then Symbols, then the last list.
+        chord(ui.window(), &[Key::Control, Key::Shift], &key(Key::Tab));
+        assert!(ui.get_colours_open(), "Ctrl+Shift+Tab from the first list lands on Colours");
+        chord(ui.window(), &[Key::Control, Key::Shift], &key(Key::Backtab));
+        assert!(ui.get_symbols_open() && !ui.get_colours_open(), "then Symbols");
+        chord(ui.window(), &[Key::Control, Key::Shift], &key(Key::Tab));
+        assert!(!ui.get_symbols_open() && !ui.get_colours_open());
+        assert_eq!(ui.get_current_tab(), 2, "then the last list");
+
+        // Switched off in Settings: the tab goes, and Ctrl+Tab skips it.
+        chord(ui.window(), &[Key::Control], &key(Key::Tab));
+        chord(ui.window(), &[Key::Control], &key(Key::Tab));
+        assert!(ui.get_colours_open());
+        ui.set_colours_available(false);
+        settle();
+        assert!(!ui.get_colours_open(), "the open tab closes with the setting");
+        for _ in 0..8 {
+            chord(ui.window(), &[Key::Control], &key(Key::Tab));
+            assert!(!ui.get_colours_open());
+        }
+    }
+
+    fn opening_colours_clears_a_search_the_tab_hides() {
+        let (ui, log) = start();
+        ui.set_colours_available(true);
+        settle();
+        type_text(ui.window(), "zz");
+        assert_eq!(ui.get_query(), "zz");
+        take(&log);
+        ui.invoke_open_colours();
+        settle();
+        assert!(ui.get_colours_open());
+        assert_eq!(ui.get_query(), "", "a query nobody can see is gone");
+        assert_eq!(take(&log), ["query:"], "the host hears it");
+    }
+
     fn the_smallest_window_loses_the_tab_rows_32_with_the_menu_switcher() {
         let (ui, _log) = start();
         ui.set_lists_in_menu(true);

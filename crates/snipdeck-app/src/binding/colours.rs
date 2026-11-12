@@ -385,13 +385,18 @@ fn picker(state: &ui::ColourState<'_>, s: &mut Inner, view: &ColourView) {
     state.set_sat(sat);
     state.set_bri(bri);
     state.set_alpha(f32::from(c.a) / 255.0 * 100.0);
-    let shown: Vec<ui::ColourChannel> = panel::channels(c, view.input_model, s.state(c), s.memo(c, view.input_model).as_deref())
-        .into_iter()
-        .map(|ch| ui::ColourChannel {
-            label: ch.label.into(),
-            text: ch.text.into(),
-        })
-        .collect();
+    let shown: Vec<ui::ColourChannel> = panel::channels(
+        c,
+        view.input_model,
+        s.state(c),
+        s.memo(c, view.input_model).as_deref(),
+    )
+    .into_iter()
+    .map(|ch| ui::ColourChannel {
+        label: ch.label.into(),
+        text: ch.text.into(),
+    })
+    .collect();
     set_channels(state, shown);
 }
 
@@ -837,7 +842,9 @@ where
                 let model = core.colour_view().input_model;
                 let result = usize::try_from(i)
                     .map_err(|_| panel::Reject::NoSuchChannel)
-                    .and_then(|i| panel::commit(current, model, i, text.as_str(), st, memo.as_deref()));
+                    .and_then(|i| {
+                        panel::commit(current, model, i, text.as_str(), st, memo.as_deref())
+                    });
                 core.apply_channel(result);
             });
         }

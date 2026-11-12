@@ -12,6 +12,15 @@ const BLUE: Rgba8 = Rgba8::rgb(58, 123, 213);
 /// Adds a snippet through the quick-add box (the Main window's open list is not needed: the
 /// Panel's list takes it) and returns its id.
 fn quick(w: &mut World, text: &str, sensitive: bool) -> ItemId {
+    // The fixed clock gives every item one creation time, so the new item is the one not there before.
+    let before: Vec<ItemId> = w
+        .ctl
+        .store()
+        .all_items()
+        .expect("items")
+        .iter()
+        .map(|i| i.id)
+        .collect();
     assert!(w.ctl.quick_add(
         text,
         Some(ItemKind::Text),
@@ -23,8 +32,8 @@ fn quick(w: &mut World, text: &str, sensitive: bool) -> ItemId {
         .all_items()
         .expect("items")
         .into_iter()
-        .max_by_key(|i| i.created_at)
         .map(|i| i.id)
+        .find(|id| !before.contains(id))
         .expect("the new item")
 }
 
@@ -71,7 +80,7 @@ mod main_window {
         assert_eq!(formats.len(), 7);
         assert_eq!(block.formats[0].1, "#3a7bd5");
         assert_eq!(block.formats[1].1, "rgb(58, 123, 213)");
-        assert_eq!(block.formats[6], (Fmt::Name, "steelblue".to_owned()));
+        assert_eq!(block.formats[6], (Fmt::Name, "royalblue".to_owned()));
     }
 
     #[test]
@@ -94,7 +103,8 @@ mod main_window {
         w.ctl.main_select(row, SelectMode::Replace);
         assert!(w.ctl.main_screen().colour_block.is_some());
         // Trashed: the Trash lists it, the block does not.
-        w.ctl.main_action(crate::controller::MainAction::Delete, row);
+        w.ctl
+            .main_action(crate::controller::MainAction::Delete, row);
         w.ctl.main_open(Section::Trash);
         w.ctl.main_select(0, SelectMode::Replace);
         assert_eq!(w.ctl.main_screen().colour_block, None);
@@ -118,7 +128,7 @@ mod main_window {
         assert_eq!(w.ctl.colour_view().recents, [BLUE]);
         // The last format is the keyword.
         w.ctl.main_colour_copy(row, 6);
-        assert_eq!(written(&w, 1), "steelblue");
+        assert_eq!(written(&w, 1), "royalblue");
     }
 
     #[test]
@@ -136,19 +146,21 @@ mod main_window {
         let (mut w, id, row) = on_colour_row();
         let choices = w.ctl.main_colour_choices(row);
         assert_eq!(choices.len(), 7);
-        assert_eq!(choices[2], (Fmt::Hsl, "hsl(215, 64%, 53%)".to_owned()));
+        assert_eq!(choices[2], (Fmt::Hsl, "hsl(215, 65%, 53%)".to_owned()));
         let other = w.ids[0];
         let other_row = open_row(&mut w, other);
         assert!(w.ctl.main_colour_choices(other_row).is_empty());
         let row = open_row(&mut w, id);
         // Enter pastes (Ctrl+V goes out).
-        w.ctl.main_action(crate::controller::MainAction::PasteAs, row);
+        w.ctl
+            .main_action(crate::controller::MainAction::PasteAs, row);
         let result = w.ctl.main_colour_paste_as(2, false);
         assert_eq!(result, Some(UseResult::Done(UseOutcome::Pasted)));
-        assert_eq!(written(&w, 0), "hsl(215, 64%, 53%)");
+        assert_eq!(written(&w, 0), "hsl(215, 65%, 53%)");
         assert_eq!(w.ctl.services().keyboard.sent.len(), 1);
         // Shift+Enter copies: no new keys.
-        w.ctl.main_action(crate::controller::MainAction::PasteAs, row);
+        w.ctl
+            .main_action(crate::controller::MainAction::PasteAs, row);
         let result = w.ctl.main_colour_paste_as(0, true);
         assert_eq!(result, Some(UseResult::Done(UseOutcome::Copied)));
         assert_eq!(written(&w, 1), "#3a7bd5");

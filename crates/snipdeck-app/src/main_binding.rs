@@ -639,10 +639,12 @@ where
                 };
                 let choices = core.controller.borrow().main_colour_choices(index(row));
                 let name = window.global::<ui::ColourTexts<'_>>().invoke_format_name();
-                window.set_colour_choices(model(choices.iter().map(|(f, value)| ui::ChoiceEntry {
-                    label: crate::colour_words::choice_text(*f, &name, value).into(),
-                    count: -1,
-                    ..Default::default()
+                window.set_colour_choices(model(choices.iter().map(|(f, value)| {
+                    ui::ChoiceEntry {
+                        label: crate::colour_words::choice_text(*f, &name, value).into(),
+                        count: -1,
+                        ..Default::default()
+                    }
                 })));
             });
         }
@@ -1455,7 +1457,8 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
     );
     let (label, label_name) = crate::binding::label_fields(row.label);
     let marks = row.marks.fields();
-    let (swatch, has_swatch) = crate::colour_words::swatch_of_kind(row.kind, &row.preview, row.sensitive);
+    let (swatch, has_swatch) =
+        crate::colour_words::swatch_of_kind(row.kind, &row.preview, row.sensitive);
     ui::MainRow {
         kind: item_kind_of(row.kind, row.sensitive),
         title: row

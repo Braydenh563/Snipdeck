@@ -379,7 +379,10 @@ mod tests {
     const BLUE: Rgba8 = Rgba8::rgb(58, 123, 213);
 
     fn texts(c: Rgba8, m: InputModel) -> Vec<String> {
-        channels(c, m, st(c), None).into_iter().map(|c| c.text).collect()
+        channels(c, m, st(c), None)
+            .into_iter()
+            .map(|c| c.text)
+            .collect()
     }
 
     #[test]
@@ -515,7 +518,10 @@ mod tests {
         let back = step(red, InputModel::Hsb, 0, -1, st(red), None)
             .map(|r| r.0)
             .unwrap();
-        assert_eq!(channels(back, InputModel::Hsb, st(back), None)[0].text, "359");
+        assert_eq!(
+            channels(back, InputModel::Hsb, st(back), None)[0].text,
+            "359"
+        );
         assert_eq!(
             step(BLUE, InputModel::Hex, 0, 1, st(BLUE), None)
                 .map(|r| r.0)
@@ -635,7 +641,8 @@ mod tests {
             (state.1 - start.1).abs() < 1e-3,
             "saturation kept at 0 brightness"
         );
-        let (restored, ..) = commit(black, InputModel::Hsb, 2, &start.2.to_string(), state, None).unwrap();
+        let (restored, ..) =
+            commit(black, InputModel::Hsb, 2, &start.2.to_string(), state, None).unwrap();
         assert_eq!(restored, BLUE);
     }
 
@@ -707,11 +714,13 @@ mod tests {
     fn typing_lightness_or_black_to_the_end_keeps_the_other_channels() {
         let (black, _, memo) = commit(BLUE, InputModel::Hsl, 2, "0", st(BLUE), None).unwrap();
         assert_eq!(black, Rgba8::rgb(0, 0, 0));
-        let (back, ..) = commit(black, InputModel::Hsl, 2, "53", st(black), memo.as_deref()).unwrap();
+        let (back, ..) =
+            commit(black, InputModel::Hsl, 2, "53", st(black), memo.as_deref()).unwrap();
         assert_eq!(back, BLUE, "L back gives the colour, not a grey");
         let (black, _, memo) = commit(BLUE, InputModel::Cmyk, 3, "100", st(BLUE), None).unwrap();
         assert_eq!(black, Rgba8::rgb(0, 0, 0));
-        let (back, ..) = commit(black, InputModel::Cmyk, 3, "16", st(black), memo.as_deref()).unwrap();
+        let (back, ..) =
+            commit(black, InputModel::Cmyk, 3, "16", st(black), memo.as_deref()).unwrap();
         assert_eq!(back, BLUE);
     }
 }

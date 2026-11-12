@@ -104,7 +104,13 @@ where
             self.wire(&window);
         }
         let can_open = self.controller.borrow().settings().show_colours_tab;
-        render(&window, self.shown.borrow().as_ref(), view, picker, can_open);
+        render(
+            &window,
+            self.shown.borrow().as_ref(),
+            view,
+            picker,
+            can_open,
+        );
         *self.shown.borrow_mut() = Some(Shown {
             dark: view.dark,
             high_contrast: view.high_contrast,

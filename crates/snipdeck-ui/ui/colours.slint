@@ -808,7 +808,8 @@ component Mark inherits Rectangle {
     in property <string> text;
     in property <bool> pass;
     width: txt.preferred-width + Space.s4 + Space.s1;
-    height: Space.s5;
+    // Follows the text size: the word and the glyph are Type.xs and Type.sm high.
+    height: max(Space.s5, Type.line-xs + Space.s1);
     HorizontalLayout {
         spacing: Space.s0-5;
         alignment: start;
@@ -921,7 +922,9 @@ component ContrastLine inherits Rectangle {
     }
 }
 
-// One typed channel: a labelled field, committed on Enter or when it loses the focus; Up and Down step it.
+// One typed channel: a small caption with the channel letter above a field, committed on Enter or when it loses the
+// focus; Up and Down step it (Shift is ten). The keys are taken in the capture phase: a TextInput otherwise reads
+// Up and Down as a move of the caret and never lets them through.
 component ChannelField inherits FocusScope {
     in property <string> label;
     in property <string> value;
@@ -929,24 +932,42 @@ component ChannelField inherits FocusScope {
     callback stepped(int);
     // The field gained or lost the keyboard.
     callback focus-changed(bool);
+    // The grid gives it the height of the caption, a gap and TextField's box: Type.line-xs + 2px + max(Space.hit,
+    // Type.line-base + 2 * Space.s1).
     forward-focus: tf;
 
     changed value => { tf.text = root.value; }
     init => { tf.text = root.value; }
 
-    key-pressed(event) => {
+    capture-key-pressed(event) => {
         if (event.text == Key.UpArrow) { root.stepped(event.modifiers.shift ? 10 : 1); return accept; }
         if (event.text == Key.DownArrow) { root.stepped(event.modifiers.shift ? -10 : -1); return accept; }
         return reject;
     }
-    tf := TextField {
-        label: root.label;
-        monospace: true;
-        accepted(t) => { root.committed(t); }
-        changed has-focus => {
-            root.focus-changed(self.has-focus);
-            if (!self.has-focus && self.text != root.value) {
-                root.committed(self.text);
+    VerticalLayout {
+        spacing: Space.s0-5;
+        alignment: start;
+        cap := Text {
+            height: Type.line-xs;
+            text: root.label;
+            font-family: Fonts.sans;
+            font-size: Type.xs;
+            font-weight: Type.semibold;
+            color: Theme.text-secondary;
+            vertical-alignment: center;
+            overflow: elide;
+            // The field below carries the spoken name.
+            accessible-role: AccessibleRole.none;
+        }
+        tf := TextField {
+            label: root.label;
+            monospace: true;
+            accepted(t) => { root.committed(t); }
+            changed has-focus => {
+                root.focus-changed(self.has-focus);
+                if (!self.has-focus && self.text != root.value) {
+                    root.committed(self.text);
+                }
             }
         }
     }
@@ -1087,12 +1108,32 @@ export component ColoursView inherits Rectangle {
                 spacing: Space.s1;
 
                 // ---- Picker ----------------------------------------------------------------------
+                // The disclosure on the left and the style switch on the right; when they do not fit side by side
+                // (a narrow Panel or large text) the switch drops under the disclosure.
                 Rectangle {
-                    height: Space.s8;
+                    property <length> disc-w: disc-row.preferred-width + Space.s2;
+                    property <length> seg-w: max(160px * SystemLook.text-scale, 2 * (max(seg-square.preferred-width, seg-wheel.preferred-width) + Space.s4 + Space.s2));
+                    property <bool> stacked: ColourState.picker-open && Space.s1 + self.disc-w + Space.s2 + self.seg-w + Space.s2 > self.width;
+                    height: Space.s8 + (self.stacked ? max(Space.hit, Type.line-base + Space.s2) + Space.s1 : 0px);
+                    // Measures for the switch: the same font the options use.
+                    seg-square := Text {
+                        visible: false;
+                        text: @tr("Square");
+                        font-family: Fonts.sans;
+                        font-size: Type.base;
+                        font-weight: Type.semibold;
+                    }
+                    seg-wheel := Text {
+                        visible: false;
+                        text: @tr("Wheel");
+                        font-family: Fonts.sans;
+                        font-size: Type.base;
+                        font-weight: Type.semibold;
+                    }
                     Rectangle {
                         x: Space.s1;
-                        width: 120px;
-                        height: parent.height;
+                        width: parent.disc-w;
+                        height: Space.s8;
                         border-radius: Radius.sm;
                         background: pick-touch.has-hover ? Theme.bg-hover : transparent;
                         border-width: pick-scope.has-focus ? 2px : 0px;
@@ -1110,7 +1151,7 @@ export component ColoursView inherits Rectangle {
                                 return reject;
                             }
                         }
-                        HorizontalLayout {
+                        disc-row := HorizontalLayout {
                             padding-left: Space.s1;
                             spacing: Space.s1;
                             alignment: start;
@@ -1135,10 +1176,10 @@ export component ColoursView inherits Rectangle {
                             }
                         }
                     }
-                    if ColourState.picker-open: Segmented {
-                        x: parent.width - self.width - Space.s2;
-                        y: (parent.height - self.height) / 2;
-                        width: 160px;
+                    if ColourState.picker-open: seg := Segmented {
+                        x: parent.stacked ? Space.s2 : parent.width - self.width - Space.s2;
+                        y: parent.stacked ? Space.s8 : (Space.s8 - self.height) / 2;
+                        width: min(parent.seg-w, parent.width - 2 * Space.s2);
                         options: [@tr("Square"), @tr("Wheel")];
                         current: ColourState.picker-style;
                         label: @tr("Picker style");
@@ -1201,7 +1242,7 @@ export component ColoursView inherits Rectangle {
                         height: Space.s8 + Space.s1;
                         SelectField {
                             x: 0px;
-                            width: 120px;
+                            width: min(120px * SystemLook.text-scale, parent.width);
                             options: [ColourTexts.model-name(0), ColourTexts.model-name(1), ColourTexts.model-name(2), ColourTexts.model-name(3), ColourTexts.model-name(4)];
                             current: ColourState.input-model;
                             label: @tr("Values as");
@@ -1214,12 +1255,13 @@ export component ColoursView inherits Rectangle {
                         property <int> nrows: max(1, ceil(self.n / self.maxcols));
                         property <int> cols: max(1, ceil(self.n / self.nrows));
                         property <length> cell: (self.width - (self.cols - 1) * Space.s2) / self.cols;
-                        height: self.nrows * Space.hit + (self.nrows - 1) * Space.s2;
+                        property <length> row-h: Type.line-xs + Space.s0-5 + max(Space.hit, Type.line-base + 2 * Space.s1);
+                        height: self.nrows * self.row-h + (self.nrows - 1) * Space.s2;
                         for ch[i] in ColourState.channels: ChannelField {
                             x: mod(i, values.cols) * (values.cell + Space.s2);
-                            y: floor(i / values.cols) * (Space.hit + Space.s2);
+                            y: floor(i / values.cols) * (values.row-h + Space.s2);
                             width: values.cell;
-                            height: Space.hit;
+                            height: values.row-h;
                             label: ch.label;
                             value: ch.text;
                             committed(t) => { ColourState.channel-committed(i, t); }

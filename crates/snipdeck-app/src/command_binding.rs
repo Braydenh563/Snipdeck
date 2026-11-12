@@ -104,7 +104,8 @@ pub fn fill(
             eyedropper,
             saved_colours,
             query,
-        ).into_iter(),
+        )
+        .into_iter(),
     ));
 }
 
