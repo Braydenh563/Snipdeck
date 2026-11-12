@@ -56,6 +56,8 @@ pub struct ColourView {
     pub style: snipdeck_colour::PickerStyle,
     /// The channel set the Values row edits.
     pub input_model: snipdeck_colour::InputModel,
+    /// The home list exists, so "View list" has somewhere to go.
+    pub has_saved_list: bool,
 }
 
 /// The colour `text` (`#rrggbb[aa]`) names, else `fallback`.
@@ -82,6 +84,7 @@ where
             scheme: self.settings.colour_scheme,
             recents: ColourRecents::from_saved(&self.settings.colours_recent).list(),
             saved: self.saved_colours().into_iter().map(|(_, c)| c).collect(),
+            has_saved_list: self.home_list_id().is_some(),
             picker_open: self.settings.colour_adjust_open,
             style: self.settings.colour_picker_style,
             input_model: self.settings.colour_input_model,
@@ -233,6 +236,8 @@ where
                     .map_err(|_| ())
             });
         if stored.is_err() {
+            // The list may have been made a moment ago: show it either way.
+            self.library_changed();
             self.show_toast(failed());
             return false;
         }
@@ -252,9 +257,9 @@ where
         true
     }
 
-    /// The home list: the remembered one while it exists, else a new list at the end of the board
-    /// the Panel shows (or the first board). `None` (and a toast) when the library has no board.
-    fn home_list(&mut self) -> Option<Destination> {
+    /// The home list that exists now: the remembered one, else the first list on any board that
+    /// carries the home name (an import, or settings lost, leaves such a list behind).
+    fn home_list_id(&self) -> Option<ListId> {
         let remembered = self
             .settings
             .colour_save_list
@@ -262,6 +267,30 @@ where
             .and_then(|text| text.parse::<ListId>().ok())
             .and_then(|id| self.store.list(id).ok());
         if let Some(list) = remembered {
+            return Some(list.id);
+        }
+        if self.colours_list_name.is_empty() {
+            return None;
+        }
+        self.store.boards().ok()?.iter().find_map(|board| {
+            self.store
+                .lists(board.id)
+                .ok()?
+                .into_iter()
+                .find(|l| l.name.as_str() == self.colours_list_name)
+                .map(|l| l.id)
+        })
+    }
+
+    /// The home list: the one [`home_list_id`](Self::home_list_id) finds, else a new list at the
+    /// end of the board the Panel shows (or the first board). `None` (and a toast) when the
+    /// library has no board.
+    fn home_list(&mut self) -> Option<Destination> {
+        if let Some(list) = self.home_list_id().and_then(|id| self.store.list(id).ok()) {
+            let id = list.id.to_string();
+            if self.settings.colour_save_list.as_deref() != Some(id.as_str()) {
+                self.update_settings(|s| s.colour_save_list = Some(id));
+            }
             return Some(Destination {
                 id: list.id,
                 name: list.name.as_str().to_owned(),
@@ -329,12 +358,7 @@ where
     /// The colour items of the home list, in list order, at most 24.
     #[must_use]
     pub fn saved_colours(&self) -> Vec<(ItemId, Rgba8)> {
-        let Some(list) = self
-            .settings
-            .colour_save_list
-            .as_deref()
-            .and_then(|text| text.parse::<ListId>().ok())
-        else {
+        let Some(list) = self.home_list_id() else {
             return Vec::new();
         };
         self.store
@@ -349,23 +373,33 @@ where
             .unwrap_or_default()
     }
 
-    /// "Saved colours": the Panel shows the home list.
+    /// "Saved colours": the Panel shows the home list, and the Colours tab steps aside.
     pub fn open_saved_colours(&mut self) -> Vec<Effect> {
-        let Some(list) = self
-            .settings
-            .colour_save_list
-            .as_deref()
-            .and_then(|text| text.parse::<ListId>().ok())
-        else {
+        let Some(list) = self.home_list_id() else {
             return Vec::new();
         };
         if let Ok(l) = self.store.list(list)
             && self.model.select_board(&self.store, l.board_id).is_ok()
             && self.model.select_list(&self.store, list).is_ok()
         {
-            return vec![Effect::ShowPanel];
+            return vec![Effect::ShowPanel, Effect::HideColours];
         }
         Vec::new()
+    }
+
+    /// Pastes or copies colour item `id` written as `f` (Paste as): like [`use_colour`] and the
+    /// item counts as used, so Most used and Recently used move.
+    pub fn use_colour_item(&mut self, id: ItemId, c: Rgba8, f: Format, mode: UseMode) -> UseResult {
+        let result = self.use_colour(c, f, mode);
+        if matches!(result, UseResult::Done(_)) {
+            let now = self.clock.now();
+            if let Err(error) = self.store.record_use(id, now) {
+                crate::trace!("counting a colour paste failed: {error}");
+            }
+            self.queue.used(id);
+            self.refresh_logged("a paste");
+        }
+        result
     }
 
     /// "Open in Colours": the item's colour becomes current and the Panel shows the tab.

@@ -459,6 +459,7 @@ where
                 }
                 Effect::ShowSymbols => window.invoke_open_symbols(),
                 Effect::ShowColours => window.invoke_open_colours(),
+                Effect::HideColours => window.invoke_close_colours(),
                 Effect::HidePanel => {
                     // Back to the Target first, while the Panel still holds the foreground:
                     // hiding it first would leave the choice of the next window to Windows.
@@ -528,6 +529,7 @@ where
         self.controller
             .borrow_mut()
             .set_group_name(&window.invoke_group_default_name());
+        Self::refresh_words(&mut self.controller.borrow_mut(), &window);
         // Placements decided by another window (Settings docking the Panel, the dock being
         // switched off) are carried out here, where the Panel's window is.
         let pending = self.controller.borrow_mut().take_pending();

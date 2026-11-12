@@ -16,6 +16,20 @@ fn hex(h: &str) -> Rgba8 {
 }
 
 #[test]
+fn saved_hsb_and_cmyk_are_hex_so_the_card_rule_sees_a_colour() {
+    for h in ["#ff0000", "#ffffff", "#000000", "#3a7bd5"] {
+        for f in [Format::Hsb, Format::Cmyk] {
+            let c = hex(h);
+            assert_eq!(
+                snipdeck_colour::literal(&saved_text(c, f)),
+                Some(c),
+                "{h} {f:?}"
+            );
+        }
+    }
+}
+
+#[test]
 fn saved_text_never_rounds() {
     let c = hex("#3a7bd5");
     assert_eq!(saved_text(c, Format::Hex), "#3a7bd5");

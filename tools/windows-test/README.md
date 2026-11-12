@@ -165,6 +165,18 @@ the `theme` setting, and that a damaged `settings.json` is kept as `settings.jso
 steps. Writing settings has no step yet: nothing in the app changes a setting until the Settings window exists (M4).
 Nothing here has run on Windows.
 
+## Colours: the screen eyedropper
+
+`tests\colour.json` (part id `COLOUR`, pick it under *Advanced options*; it is in neither the v1 check nor the Quick
+check) runs the real app (`target\release\snipdeck-app.exe`) on an empty library in `spikes-results\colour-data` and checks
+the Colours tab and the Windows eyedropper (`docs/reviews/colour-spec.md` sections 6 and 7): hex paste, pick on a test page,
+the button-up staying out of the window underneath (pick on left button-up, cancel on right button-up, Esc, arrow keys),
+two monitors at 100% and 150%, a monitor at a negative position, HDR, focus loss, the keyboard fallback, protected video,
+Night light and Ctrl+S. The test page is `assets\colour-test.html`: three flat squares (#3a7bd5, #ff0000, #ffffff) and a
+click counter that shows any click, right-click or context menu that reaches the page. Steps 4 and 5 are the ones that
+must pass; the multi-monitor, HDR, DRM and Night light steps are optional (S skips). No step is automated. Nothing here
+has run on Windows. The global eyedropper shortcut and Narrator (spec step 7) are not covered: the shortcut is not built.
+
 ## Render and shortcut diagnostic (`diag-render.ps1`)
 
 A separate, short run (about 10 minutes) for the render glitches and the shortcuts

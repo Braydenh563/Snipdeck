@@ -49,7 +49,7 @@ fn alpha_percent(c: Rgba8) -> f64 {
 #[must_use]
 pub fn channels(c: Rgba8, model: InputModel, hue: f32) -> Vec<Channel> {
     let hue = f64::from(hue);
-    let values: Vec<f64> = match model {
+    let mut values: Vec<f64> = match model {
         InputModel::Hex => Vec::new(),
         InputModel::Rgb => vec![f64::from(c.r), f64::from(c.g), f64::from(c.b)],
         InputModel::Hsl => {
@@ -69,6 +69,10 @@ pub fn channels(c: Rgba8, model: InputModel, hue: f32) -> Vec<Channel> {
             vec![v.c * 100.0, v.m * 100.0, v.y * 100.0, v.k * 100.0]
         }
     };
+    // A hue that rounds to 360 reads 0, as the format rows do.
+    if matches!(model, InputModel::Hsl | InputModel::Hsb) && values[0].round() >= 360.0 {
+        values[0] = 0.0;
+    }
     let mut out: Vec<Channel> = if model == InputModel::Hex {
         vec![Channel {
             label: "HEX",
@@ -462,6 +466,14 @@ mod tests {
             (mx - 0.7).abs() < 0.02 && (my - 0.3).abs() < 0.02,
             "{mx} {my}"
         );
+    }
+
+    #[test]
+    fn a_hue_that_rounds_to_360_reads_0() {
+        let c = Rgba8::rgb(255, 0, 2);
+        for model in [InputModel::Hsl, InputModel::Hsb] {
+            assert_eq!(channels(c, model, 0.0)[0].text, "0", "{model:?}");
+        }
     }
 
     #[test]

@@ -61,17 +61,18 @@ use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::Accessibility::NotifyWinEvent;
 use windows::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    GetKeyState, HOT_KEY_MODIFIERS, MOD_SHIFT, RegisterHotKey, SetFocus, UnregisterHotKey, VK_DOWN,
-    VK_ESCAPE, VK_LEFT, VK_RETURN, VK_RIGHT, VK_SHIFT, VK_SPACE, VK_UP,
+    GetKeyState, HOT_KEY_MODIFIERS, MOD_SHIFT, RegisterHotKey, ReleaseCapture, SetCapture,
+    SetFocus, UnregisterHotKey, VK_DOWN, VK_ESCAPE, VK_LEFT, VK_RETURN, VK_RIGHT, VK_SHIFT,
+    VK_SPACE, VK_UP,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     CHILDID_SELF, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW,
     EVENT_OBJECT_NAMECHANGE, GetForegroundWindow, GetMessageW, IDC_CROSS, IsWindow, KillTimer,
     LoadCursorW, MSG, OBJID_WINDOW, PostQuitMessage, RegisterClassExW, SW_SHOW, SetCursorPos,
     SetForegroundWindow, SetTimer, SetWindowTextW, ShowWindow, TranslateMessage, UnregisterClassW,
-    WM_ACTIVATEAPP, WM_CLOSE, WM_DISPLAYCHANGE, WM_ERASEBKGND, WM_HOTKEY, WM_KEYDOWN,
-    WM_LBUTTONDOWN, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_PAINT, WM_RBUTTONDOWN, WM_TIMER, WNDCLASSEXW,
-    WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
+    WM_ACTIVATEAPP, WM_CAPTURECHANGED, WM_CLOSE, WM_DISPLAYCHANGE, WM_ERASEBKGND, WM_HOTKEY,
+    WM_KEYDOWN, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_PAINT,
+    WM_RBUTTONDOWN, WM_RBUTTONUP, WM_TIMER, WNDCLASSEXW, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
 };
 use windows::core::{BOOL, HSTRING, PCWSTR, w};
 
@@ -423,8 +424,6 @@ fn monitors() -> Vec<MonitorFacts> {
     list
 }
 
-/// The GDI device names (`\\.\DISPLAY1`) of the monitors in HDR (advanced colour) mode. Empty
-/// when the display configuration cannot be read: the pick is then not marked approximate.
 /// The active display paths, `None` when the display configuration cannot be read.
 fn active_paths() -> Option<Vec<DISPLAYCONFIG_PATH_INFO>> {
     // The configuration can change between the size query and the read: retry a few times.
@@ -466,6 +465,8 @@ fn active_paths() -> Option<Vec<DISPLAYCONFIG_PATH_INFO>> {
     None
 }
 
+/// The GDI device names (`\\.\DISPLAY1`) of the monitors in HDR (advanced colour) mode. Empty
+/// when the display configuration cannot be read: the pick is then not marked approximate.
 fn hdr_devices() -> Vec<String> {
     let Some(paths) = active_paths() else {
         return Vec::new();
@@ -500,10 +501,9 @@ fn hdr_devices() -> Vec<String> {
         if unsafe { DisplayConfigGetDeviceInfo(&raw mut colour.header) } != 0 {
             continue;
         }
-        // SAFETY: the union is plain bits; `value` is its whole-word view. Bit 1 is
-        // `advancedColorEnabled` (bit 0 is `advancedColorSupported`).
-        let enabled = unsafe { colour.Anonymous.value } & 0b10 != 0;
-        if enabled {
+        // SAFETY: the union is plain bits; `value` is its whole-word view.
+        let value = unsafe { colour.Anonymous.value };
+        if is_hdr(value) {
             let len = name
                 .viewGdiDeviceName
                 .iter()
@@ -513,6 +513,15 @@ fn hdr_devices() -> Vec<String> {
         }
     }
     devices
+}
+
+/// Is a monitor with these `DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO` bits in HDR mode? Bit 0 is
+/// `advancedColorSupported`, bit 1 `advancedColorEnabled`, bit 2 `wideColorEnforced`: advanced
+/// colour that is on only because wide colour is enforced (SDR, wide gamut) is not HDR.
+fn is_hdr(value: u32) -> bool {
+    const ENABLED: u32 = 0b10;
+    const WIDE_COLOR_ENFORCED: u32 = 0b100;
+    value & ENABLED != 0 && value & WIDE_COLOR_ENFORCED == 0
 }
 
 /// Copies one monitor. Returns the portable shot and the surface the overlay paints from.
@@ -651,6 +660,8 @@ struct Run {
     texts: EyedropTexts,
     /// The overlay had its chance to take the foreground, so losing it now is the user leaving.
     armed: bool,
+    /// The mouse button held on the overlay, if any.
+    press: Press,
     /// The colour last put in the window title (`None`: the title without a colour).
     title: Option<[u8; 3]>,
     /// A title has been set at all (the first one has no colour to compare with).
@@ -718,6 +729,7 @@ fn try_run(texts: &EyedropTexts, settle: Duration) -> Result<EyedropOutcome, Err
         armed: false,
         title: None,
         title_set: false,
+        press: Press::default(),
         outcome: None,
     };
     let handles = open_overlays(&mut state, &facts)?;
@@ -895,6 +907,58 @@ fn current_loupe(run: &Run) -> Option<ScreenRect> {
         shot.scale,
         run.session.zoom(),
     ))
+}
+
+/// A mouse button that picks (left) or cancels (right).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Button {
+    Left,
+    Right,
+}
+
+/// Which button is held on the overlay. A pick or cancel happens when that button is let go, so
+/// the button-up is swallowed by the overlay and never reaches (or opens a context menu in) the
+/// window underneath, which a decision on the button-down would let through.
+#[derive(Debug, Default)]
+struct Press {
+    held: Option<Button>,
+}
+
+impl Press {
+    /// A button went down. True when it starts a press (the overlay then captures the mouse);
+    /// a second button pressed while one is held is ignored.
+    fn down(&mut self, button: Button) -> bool {
+        if self.held.is_some() {
+            return false;
+        }
+        self.held = Some(button);
+        true
+    }
+
+    /// A button went up: the decision when it is the one held, `None` for any other.
+    fn up(&mut self, button: Button) -> Option<Input> {
+        if self.held != Some(button) {
+            return None;
+        }
+        self.held = None;
+        Some(match button {
+            Button::Left => Input::Pick,
+            Button::Right => Input::Cancel,
+        })
+    }
+
+    /// The mouse capture was lost (another window took it): the press is over, with no decision.
+    fn lost(&mut self) {
+        self.held = None;
+    }
+}
+
+/// Runs `f` on the run's press state; `None` when the run is gone or busy.
+fn with_press<T>(f: impl FnOnce(&mut Press) -> T) -> Option<T> {
+    RUN.with(|slot| {
+        let mut slot = slot.try_borrow_mut().ok()?;
+        slot.as_mut().map(|run| f(&mut run.press))
+    })
 }
 
 /// Gives `input` (if any; `None` only refreshes the title) to the session and says what follows.
@@ -1113,11 +1177,40 @@ fn handle(hwnd: HWND, msg: u32, wparam: WPARAM) -> Option<LRESULT> {
             Some(LRESULT(0))
         }
         WM_MOUSEMOVE => input(mouse_input()),
-        WM_LBUTTONDOWN => {
-            apply(&feed(mouse_input()));
-            input(Some(Input::Pick))
+        WM_LBUTTONDOWN | WM_RBUTTONDOWN => {
+            let button = if msg == WM_LBUTTONDOWN {
+                Button::Left
+            } else {
+                Button::Right
+            };
+            if with_press(|p| p.down(button)).unwrap_or(false) {
+                // SAFETY: a live window of this thread; the mouse is ours until the button-up.
+                let _ = unsafe { SetCapture(hwnd) };
+            }
+            input(mouse_input())
         }
-        WM_RBUTTONDOWN | WM_CLOSE => input(Some(Input::Cancel)),
+        WM_LBUTTONUP | WM_RBUTTONUP => {
+            let button = if msg == WM_LBUTTONUP {
+                Button::Left
+            } else {
+                Button::Right
+            };
+            // Always swallowed (no default handling, so no context menu from the right button).
+            match with_press(|p| p.up(button)).flatten() {
+                Some(decision) => {
+                    // SAFETY: no preconditions; the capture this window set on the button-down.
+                    let _ = unsafe { ReleaseCapture() };
+                    apply(&feed(mouse_input()));
+                    input(Some(decision))
+                }
+                None => Some(LRESULT(0)),
+            }
+        }
+        WM_CAPTURECHANGED => {
+            with_press(Press::lost);
+            Some(LRESULT(0))
+        }
+        WM_CLOSE => input(Some(Input::Cancel)),
         WM_MOUSEWHEEL => {
             // The high word of wParam is the signed wheel delta.
             let word = u16::try_from((wparam.0 >> 16) & 0xFFFF).unwrap_or(0);
@@ -1500,6 +1593,42 @@ mod tests {
             h: 5,
         };
         assert!(client_rect(outside, monitor).is_none());
+    }
+
+    #[test]
+    fn a_button_down_alone_decides_nothing_and_the_matching_up_does() {
+        let mut press = Press::default();
+        assert!(press.down(Button::Left));
+        // Nothing is decided by the down; a wrong button's up is not the decision either.
+        assert_eq!(press.up(Button::Right), None);
+        assert_eq!(press.up(Button::Left), Some(Input::Pick));
+        // The press is over: a stray second up decides nothing.
+        assert_eq!(press.up(Button::Left), None);
+
+        assert!(press.down(Button::Right));
+        assert_eq!(press.up(Button::Right), Some(Input::Cancel));
+    }
+
+    #[test]
+    fn a_second_button_while_one_is_held_is_ignored_and_lost_capture_ends_the_press() {
+        let mut press = Press::default();
+        assert!(press.down(Button::Left));
+        assert!(!press.down(Button::Right));
+        assert_eq!(press.up(Button::Right), None);
+        press.lost();
+        assert_eq!(press.up(Button::Left), None);
+        // A new press works after the capture was lost.
+        assert!(press.down(Button::Right));
+        assert_eq!(press.up(Button::Right), Some(Input::Cancel));
+    }
+
+    #[test]
+    fn advanced_colour_is_hdr_only_when_enabled_and_not_just_wide_colour_enforced() {
+        assert!(!is_hdr(0b000));
+        assert!(!is_hdr(0b001)); // supported, off
+        assert!(is_hdr(0b011)); // supported and enabled
+        assert!(!is_hdr(0b111)); // enabled only because wide colour is enforced: SDR
+        assert!(!is_hdr(0b100));
     }
 
     #[test]

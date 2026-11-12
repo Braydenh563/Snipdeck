@@ -679,6 +679,7 @@ fn effect_handler(
         Effect::HidePanel
         | Effect::ShowSymbols
         | Effect::ShowColours
+        | Effect::HideColours
         | Effect::PlaceWindow(_)
         | Effect::NewItem
         | Effect::EditItem(_) => {}

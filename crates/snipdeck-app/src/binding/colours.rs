@@ -214,6 +214,7 @@ impl Glue {
         } else {
             t.invoke_use_hint_copy()
         });
+        state.set_has_saved_list(view.has_saved_list);
         state.set_eyedropper_available(eyedropper.0);
         state.set_eyedropper_running(eyedropper.1);
         state.set_list_names(model(
@@ -354,6 +355,17 @@ where
     K: Keyboard + 'static,
     T: Timing + 'static,
 {
+    /// The words the controller keeps for things made later (the home list's name, the eyedropper
+    /// overlay's texts), in the language the window is in now.
+    pub(super) fn refresh_words(ctl: &mut Controller<S, C, K, T>, window: &ui::PanelWindow) {
+        let texts = ui::ColourTexts::get(window);
+        ctl.set_eyedrop_texts(snipdeck_platform::eyedrop::EyedropTexts {
+            hint: texts.invoke_eyedrop_hint().to_string(),
+            hdr_note: texts.invoke_eyedrop_hdr_note().to_string(),
+        });
+        ctl.set_colours_list_name(&texts.invoke_colours_list());
+    }
+
     /// Draws the Colours tab (a no-op while it is not the one shown).
     pub(super) fn sync_colours(&self, window: &ui::PanelWindow) {
         if !window.get_colours_open() {
@@ -402,17 +414,7 @@ where
     )]
     pub(super) fn wire_colours(self: &Rc<Self>, window: &ui::PanelWindow) {
         let state = ui::ColourState::get(window);
-        self.act(|ctl| {
-            ctl.set_eyedrop_texts(snipdeck_platform::eyedrop::EyedropTexts {
-                hint: ui::ColourTexts::get(window)
-                    .invoke_eyedrop_hint()
-                    .to_string(),
-                hdr_note: ui::ColourTexts::get(window)
-                    .invoke_eyedrop_hdr_note()
-                    .to_string(),
-            });
-            ctl.set_colours_list_name(&ui::ColourTexts::get(window).invoke_colours_list());
-        });
+        self.act(|ctl| Self::refresh_words(ctl, window));
 
         {
             let core = Rc::clone(self);

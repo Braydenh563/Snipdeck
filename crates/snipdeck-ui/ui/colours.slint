@@ -121,6 +121,7 @@ export global ColourState {
     // The Target line and the eyedropper.
     in property <string> use-hint;
     in property <bool> eyedropper-available: false;
+    in property <bool> has-saved-list: false;
     in property <bool> eyedropper-running: false;
     // Lists a colour can be saved to (names; the host maps the index back).
     in property <[string]> list-names;
@@ -871,6 +872,7 @@ export component ColoursView inherits Rectangle {
                         size: ButtonSize.sm;
                         variant: ButtonVariant.ghost;
                         tooltip: @tr("Open the Colours list");
+                        enabled: ColourState.has-saved-list;
                         clicked => { ColourState.open-saved(); }
                     }
                 }

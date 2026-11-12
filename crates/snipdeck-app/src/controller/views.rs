@@ -27,6 +27,8 @@ pub enum Effect {
     ShowSymbols,
     /// Open the Panel's Colours tab (after a `ShowPanel`; "Open in Colours", a colour picked from the screen).
     ShowColours,
+    /// The Colours tab steps aside so the list under it shows.
+    HideColours,
     /// Hide the Panel.
     HidePanel,
     /// Start the OS window drag from the Panel header.

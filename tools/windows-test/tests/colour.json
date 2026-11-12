@@ -1,0 +1,133 @@
+{
+  "id": "COLOUR",
+  "title": "Colours tab and the screen eyedropper (docs/reviews/colour-spec.md, sections 6 and 7)",
+  "friendly": "Colours: the screen eyedropper",
+  "note": "docs/reviews/colour-spec.md section 6 and 7; crates/snipdeck-platform/src/windows/eyedrop.rs. Test page: tools/windows-test/assets/colour-test.html. Not in the v1 check or the Quick check: pick it under Advanced options (part id COLOUR). Not covered yet: the global eyedropper shortcut and Narrator (the shortcut is not built; the palette command stands in for it).",
+  "dir": ".",
+  "exe": "snipdeck-app",
+  "captureLines": [
+    "snipdeck:",
+    "snipdeck-log"
+  ],
+  "setup": [
+    "This runs the real Snipdeck app (cargo build --release at the repo root, then target\\release\\snipdeck-app.exe) on an empty library in spikes-results\\colour-data, so your own data is never touched. Close your normal Snipdeck first (tray icon > Quit).",
+    "Nothing in this section has ever run on Windows. A failed step is expected to find a bug: write what you saw in the note (n).",
+    "Have Notepad open. The test page is tools\\windows-test\\assets\\colour-test.html (three flat squares #3a7bd5, #ff0000, #ffffff and a click counter): double-click it to open it in your browser.",
+    "The Colours tab and its eyedropper button are in the Panel; ? then l shows what the app printed."
+  ],
+  "tests": [
+    {
+      "id": "1",
+      "title": "Type a colour and paste it as hex",
+      "do": "Click into Notepad so its cursor is blinking. Open the Panel, open the Colours tab (the third tab icon), type #3A7BD5 into the colour box and press Enter. With Notepad still the window you were in, click the HEX row.",
+      "expect": "The box shows #3a7bd5 with a blue swatch; clicking HEX types #3a7bd5 into Notepad at the cursor.",
+      "launch": {
+        "args": [
+          "--data-dir",
+          "spikes-results\\colour-data"
+        ],
+        "env": {
+          "SNIPDECK_LOG": "1"
+        }
+      }
+    },
+    {
+      "id": "2",
+      "title": "Eyedropper: the Panel hides, a loupe follows the mouse, a left click picks",
+      "do": "Open the test page: double-click tools\\windows-test\\assets\\colour-test.html in the Snipdeck folder (it opens in your browser; leave it in the middle of the screen, not full screen). Open the Panel on the Colours tab and click the eyedropper button (the crosshair next to the colour box). Move the mouse over the blue square. Left-click the middle of it.",
+      "expect": "On the click the Panel hides, the screen looks frozen with a cross cursor and a magnifier box next to the mouse showing a grid of pixels, a colour swatch and #rrggbb. After the click the overlay goes, the Panel comes back on the Colours tab showing #3a7bd5 (a one-pixel difference in the shade is a failure to record, not a pass). If the copy-on-pick setting is on (it is on in a new library), the hex text is also on the clipboard: paste it into Notepad to see.",
+      "gate": true
+    },
+    {
+      "id": "3",
+      "title": "Pick red and white",
+      "do": "Start the eyedropper again. Click the middle of the red square. Start it again and click the middle of the white square.",
+      "expect": "The Colours tab shows #ff0000 after the first pick and #ffffff after the second. Both appear in the recently used row.",
+      "gate": true
+    },
+    {
+      "id": "4",
+      "title": "The click does not go to the page underneath (left button)",
+      "do": "Look at the counter at the bottom right of the test page and note the Left clicks number. Start the eyedropper and left-click the blue square. Look at the counter again.",
+      "expect": "Left clicks has NOT changed and the last event is unchanged: the whole click (press and release) was taken by the overlay, nothing reached the page. A pick that counts as a page click is a failure.",
+      "gate": true
+    },
+    {
+      "id": "5",
+      "title": "Right-click cancels, with no menu on the page underneath",
+      "do": "Note the right clicks and menus numbers on the test page. Start the eyedropper and right-click on the test page. Wait a second after letting go.",
+      "expect": "The overlay goes and the Panel comes back with the colour unchanged. The page shows NO context menu, and the right clicks and menus numbers have not changed.",
+      "gate": true
+    },
+    {
+      "id": "6",
+      "title": "Esc cancels, arrow keys move one pixel, Shift+arrow ten",
+      "do": "Start the eyedropper. Press the Right arrow once, then Shift+Right once, then Left once. Watch the mouse cursor and the loupe. Press Esc.",
+      "expect": "The cursor moves one pixel, then ten, then one back (the loupe follows). Esc ends the pick, the Panel comes back, and the colour is unchanged. Enter or Space (instead of Esc) would pick the colour under the cursor.",
+      "gate": true
+    },
+    {
+      "id": "6a",
+      "title": "The keyboard still works when the overlay was not given the focus",
+      "do": "Open Notepad as administrator (Start, type Notepad, right-click it, Run as administrator) and click into it. Open the Panel on the Colours tab and click the eyedropper button, so the elevated window is in front when the pick starts. Press an arrow key, then Esc.",
+      "expect": "Even if Windows refuses to give the overlay the keyboard, the arrow key still moves the cursor and Esc still ends the pick (the Panel comes back). Record in the note whether the overlay had the focus (the loupe appears either way).",
+      "optional": true
+    },
+    {
+      "id": "7",
+      "title": "Two monitors at 100% and 150%",
+      "do": "Needs two monitors; press S to skip with one. In Settings > System > Display set one monitor to 100% and the other to 150%. Drag the test page to the 100% monitor, start the eyedropper and pick the blue square. Do the same with the page on the 150% monitor. Then start it again, move the mouse over the edge between the monitors, and press the arrow keys until the cursor crosses.",
+      "expect": "On both monitors the loupe is sharp (not blurry) and about the same physical size; the pick on each gives #3a7bd5. The cursor and loupe follow the mouse across the edge, and the loupe flips to the other side of the cursor near a screen edge instead of leaving the screen.",
+      "optional": true
+    },
+    {
+      "id": "8",
+      "title": "A monitor left of or above the main one",
+      "do": "Needs two monitors; press S to skip with one. In Settings > System > Display drag the second monitor so it sits to the LEFT of (or above) the main one, then press Apply. Put the test page on that second monitor, start the eyedropper and pick the red square.",
+      "expect": "The pick gives #ff0000 on the monitor with the negative position, and the loupe appears next to the mouse there.",
+      "optional": true
+    },
+    {
+      "id": "9",
+      "title": "HDR monitor",
+      "do": "Needs a monitor with HDR; press S to skip without one. Turn on Settings > System > Display > HDR for it, put the test page on it, start the eyedropper and pick the blue square. Note the hex shown.",
+      "expect": "The loupe shows a second line saying HDR is on and values are approximate. Write in the note which hex it read for the blue square (the exact value is not expected to match #3a7bd5). A monitor that is only wide-gamut with HDR off must NOT show that line.",
+      "optional": true
+    },
+    {
+      "id": "10",
+      "title": "Mouse button held down, then dragged away",
+      "do": "Start the eyedropper. Press and HOLD the left button on the blue square, move the mouse slowly onto the red square, and only then let go.",
+      "expect": "Nothing happens while the button is held. On letting go the pick uses the red square (#ff0000), not the blue one, and the test page counters do not change.",
+      "optional": true
+    },
+    {
+      "id": "11",
+      "title": "Another app's window takes the focus: the pick cancels",
+      "do": "Start the eyedropper. Press Alt+Tab, or Win+D, or click the taskbar. Then start the eyedropper again and press Win+L, unlock the PC and look at the screen.",
+      "expect": "Taking the focus away cancels the pick: the overlay is gone and the Panel is back. After Win+L and unlocking there is no overlay left on any monitor and no stuck cross cursor.",
+      "optional": true
+    },
+    {
+      "id": "12",
+      "title": "Protected video shows black",
+      "do": "Needs a video with copy protection (Netflix or a similar service in Edge); press S to skip. Play a video, then start the eyedropper over it.",
+      "expect": "The frozen overlay shows the video area black, so the pick would read black. Nothing crashes.",
+      "optional": true
+    },
+    {
+      "id": "13",
+      "title": "Night light does not change the value",
+      "do": "Turn on Night light (Settings > System > Display > Night light > Turn on now). Start the eyedropper and pick the white square. Turn Night light off again.",
+      "expect": "The pick still reads #ffffff.",
+      "optional": true
+    },
+    {
+      "id": "14",
+      "title": "Save the picked colour with Ctrl+S",
+      "do": "Pick the blue square with the eyedropper. In the Colours tab press Ctrl+S. Open the main Snipdeck window and look for a list called Colours. Right-click the saved colour and use Paste as in Notepad.",
+      "expect": "A Colours list exists with the colour as a swatch card; Paste as types an rgb(...) value into Notepad.",
+      "optional": true
+    }
+  ]
+}

@@ -415,7 +415,7 @@ where
                 let Some(format) = snipdeck_colour::Format::ALL.get(index).copied() else {
                     return Vec::new();
                 };
-                let used = self.use_colour(c, format, UseMode::Paste);
+                let used = self.use_colour_item(id, c, format, UseMode::Paste);
                 return self.after_use(&used);
             }
             let Some(transform) = Transform::ALL.get(index).copied() else {

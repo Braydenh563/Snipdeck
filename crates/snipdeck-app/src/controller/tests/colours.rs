@@ -275,6 +275,34 @@ fn open_in_colours_makes_it_current_and_shows_the_tab() {
 }
 
 #[test]
+fn view_list_leaves_the_tab_and_is_off_until_a_list_exists() {
+    let mut w = world();
+    assert!(!w.ctl.colour_view().has_saved_list);
+    assert!(w.ctl.open_saved_colours().is_empty());
+    w.ctl.save_colour(BLUE, SaveTarget::Home);
+    assert!(w.ctl.colour_view().has_saved_list);
+    let list = colours_list(&w).unwrap();
+    let links = w.ctl.view().tabs.iter().position(|t| t.id == w.links_list);
+    w.ctl.select_tab(links.expect("the Links tab"));
+    let effects = w.ctl.open_saved_colours();
+    assert_eq!(effects, [Effect::ShowPanel, Effect::HideColours]);
+    let view = w.ctl.view();
+    assert_eq!(view.tabs[view.current_tab].id, list);
+}
+
+#[test]
+fn an_existing_list_named_colours_is_the_home_when_the_setting_is_gone() {
+    let mut w = world();
+    assert!(w.ctl.save_colour(BLUE, SaveTarget::Home));
+    let made = colours_list(&w).unwrap();
+    w.ctl.update_settings(|s| s.colour_save_list = None);
+    assert_eq!(w.ctl.colour_view().saved, [BLUE], "found by its name");
+    assert!(w.ctl.save_colour(Rgba8::rgb(255, 0, 0), SaveTarget::Home));
+    assert_eq!(colours_list(&w), Some(made), "no second Colours list");
+    assert_eq!(items_of(&w, made).len(), 2);
+}
+
+#[test]
 fn copy_list_as_css_variables_names_each_colour_and_dedupes() {
     let mut w = world();
     w.ctl
@@ -489,8 +517,10 @@ mod item_menu {
             choose.entries[1].label,
             ChooseLabel::Verbatim("RGB  rgb(58, 123, 213)".into())
         );
-        // Choosing RGB pastes it that way.
+        // Choosing RGB pastes it that way, and it counts as a use of the item.
+        assert_eq!(uses(&w, id), 0);
         w.ctl.choose_item_menu(1);
+        assert_eq!(uses(&w, id), 1);
         assert!(
             w.ctl.services().keyboard.sent.len() + w.ctl.services().clipboard.written.len() > 0,
             "the use went to the keyboard or the clipboard"
