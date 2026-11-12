@@ -35,20 +35,28 @@ You arrange the deck yourself: boards hold lists, lists hold items. It is not a 
 
 ## Install
 
-1. Download `snipdeck-v<version>-windows-x64.zip` from [Releases](https://github.com/Braydenh563/Snipdeck/releases/latest)
-   and unzip it.
-2. Double-click `Snipdeck.bat`.
+1. Download `Snipdeck-Setup-<version>.exe` from [Releases](https://github.com/Braydenh563/Snipdeck/releases/latest).
+2. Run it. It installs for your Windows account only, so it does not ask for an administrator password.
+3. Start Snipdeck from the Start menu. Setup offers to start it for you when it finishes.
 
-The first start downloads the app once and checks it. After that Snipdeck starts straight away, offline. You
-do not need Rust, Visual Studio or git.
+To update, run the newer Setup file: it closes Snipdeck, replaces it and keeps your library. To uninstall, use
+Settings > Apps > Installed apps > Snipdeck. Your library stays unless you choose to erase it there.
 
-The download is not code-signed. If Windows says it protected your PC, choose More info, then Run anyway.
-Check the download against the `.sha256` file on the release page.
+Setup is not code-signed yet. If Windows says it protected your PC, choose More info, then Run anyway. Check
+the download against the `.sha256` file on the release page.
 
-You need Windows 10 (1903 or newer) or Windows 11, 64-bit.
+You need Windows 10 (1903 or newer) or Windows 11, 64-bit. A Microsoft Store version is on the way.
 
 <details>
-<summary>Launcher commands, and how to uninstall</summary>
+<summary>Portable zip (no install)</summary>
+
+Download `snipdeck-v<version>-windows-x64.zip` instead, unzip it anywhere and double-click `Snipdeck.bat`. You do
+not need Rust, Visual Studio or git. Use one copy only: the installed app and the zip share the same library in
+`%LOCALAPPDATA%\Snipdeck`.
+</details>
+
+<details>
+<summary>Portable zip: launcher commands, and how to uninstall it</summary>
 
 Type these as `Snipdeck.bat <command>`, or double-click the matching file in `tools\launcher\commands`.
 

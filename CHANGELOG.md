@@ -9,6 +9,13 @@ All notable changes to Snipdeck are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Windows installer**: `Snipdeck-Setup-<version>.exe` installs Snipdeck for your account (no administrator
+  prompt) with a Start-menu entry, an optional desktop icon and an Apps & features entry. Running a newer Setup
+  closes Snipdeck, upgrades it and keeps your library; uninstalling keeps the library unless you choose to erase it.
+  The portable zip stays available.
+- **Microsoft Store package** (groundwork): the release build can make an MSIX for Partner Center. In the Store
+  build, "Start with Windows" uses Windows' own startup list and "Check for updates" opens the Store.
+- `snipdeck.exe --quit` asks a running Snipdeck to quit cleanly (Setup uses it to upgrade).
 - **Groups in the Main window**: in a list sorted by hand, `Ctrl+G` groups the selected rows under a named,
   foldable header, as in the Panel. `Left`, `Right` and `Enter` fold a header, `F2` renames it, `Delete` moves the
   group and its items to the Trash, and `Alt+Up` / `Alt+Down` (or a drag) moves the whole group. The command
