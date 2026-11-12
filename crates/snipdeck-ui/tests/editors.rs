@@ -100,6 +100,25 @@ fn item_editor_text_light_and_dark() {
 }
 
 #[test]
+fn item_editor_preview_of_a_template() {
+    let h = item_fit(560, false, |c| {
+        c.set_kind_index(3);
+        c.set_item_title("Invoice reminder".into());
+        c.set_content("A gentle reminder that invoice {field:Number} is due on {date}.".into());
+        c.set_label_index(3);
+        c.set_preview_on(true);
+        c.set_preview_title("Invoice reminder".into());
+        c.set_preview_excerpt(
+            "A gentle reminder that invoice {field:Number} is due on {date}.".into(),
+        );
+        c.set_preview_expanded(
+            "A gentle reminder that invoice ‹Number› is due on 2026-03-04.".into(),
+        );
+    });
+    assert_golden("item-editor-preview-template-light", &render(&h));
+}
+
+#[test]
 fn item_editor_each_kind() {
     let h = item_fit(ITEM.0, false, |c| {
         c.set_kind_index(1);
