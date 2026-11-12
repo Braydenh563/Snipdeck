@@ -68,6 +68,9 @@ export struct PanelRow {
     // The match in the preview's first line (`preview` is then that line, cut around it) and the tag that matched.
     preview-before: string,
     preview-match: string,
+    // A colour value in the text (`#3a7bd5`, `rgb(...)`): the type tile shows the colour.
+    swatch: color,
+    has-swatch: bool,
     tag-hit: string,
     masked-preview: string,
     // Mixed views (search): the list the row lives in, with its colour.
@@ -2085,6 +2088,8 @@ export component PanelWindow inherits Window {
                                                 preview: item.preview;
                                                 preview-before: item.preview-before;
                                                 preview-match: item.preview-match;
+                                                swatch: item.swatch;
+                                                has-swatch: item.has-swatch;
                                                 tag-hit: item.tag-hit;
                                                 masked-preview: item.masked-preview;
                                                 image: item.image;
