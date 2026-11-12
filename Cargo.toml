@@ -42,6 +42,8 @@ unicode-normalization = "0.1.25"
 unicode-segmentation = "1.13.3"
 # Windows backend of `snipdeck-platform`. Add a feature here when a new Win32 module needs one.
 windows = { version = "0.62.2", features = [
+    "ApplicationModel",
+    "ApplicationModel_Activation",
     "ApplicationModel_DataTransfer",
     "Foundation",
     "Foundation_Collections",
@@ -53,6 +55,7 @@ windows = { version = "0.62.2", features = [
     "Win32_Graphics_Gdi",
     "Win32_Security",
     "Win32_Security_Cryptography",
+    "Win32_Storage_Packaging_Appx",
     "Win32_System_Com",
     "Win32_System_Console",
     "Win32_System_DataExchange",

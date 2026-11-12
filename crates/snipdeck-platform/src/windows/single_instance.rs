@@ -5,8 +5,12 @@
 //! - A named auto-reset event (`Local\Snipdeck.raise-<app_id>`) is how a later launch reaches the
 //!   first. The first instance waits on it from a thread and calls `on_second` (on that thread)
 //!   once per signal; the second sets it and gets [`Acquired::Second`], so the app can exit.
+//! - A second named auto-reset event (`Local\Snipdeck.quit-<app_id>`) is how `snipdeck.exe --quit`
+//!   asks the first to quit. The same thread waits on it and calls `on_quit` once per signal.
+//!   [`ask_to_quit`] only opens and sets it; it never creates the event or the mutex, so a
+//!   `--quit` with nothing running leaves nothing behind.
 //!
-//! Every launch creates-or-opens the event *before* the mutex, so a second launch can signal even
+//! Every launch creates-or-opens the events *before* the mutex, so a second launch can signal even
 //! if the first has not started waiting yet: an auto-reset event stays set until a waiter takes it.
 //! If the first instance is elevated, a normal-integrity launch is denied access to both objects;
 //! that is reported as [`Acquired::Second`] too (there is a running instance), although it cannot
@@ -17,15 +21,17 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::thread::JoinHandle;
 
 use windows::Win32::Foundation::{
-    CloseHandle, ERROR_ACCESS_DENIED, ERROR_ALREADY_EXISTS, GetLastError, HANDLE, WAIT_OBJECT_0,
+    CloseHandle, ERROR_ACCESS_DENIED, ERROR_ALREADY_EXISTS, ERROR_FILE_NOT_FOUND, GetLastError,
+    HANDLE, WAIT_OBJECT_0,
 };
 use windows::Win32::System::Threading::{
-    CreateEventW, CreateMutexW, INFINITE, SetEvent, WaitForMultipleObjects,
+    CreateEventW, CreateMutexW, EVENT_MODIFY_STATE, INFINITE, OpenEventW, SetEvent,
+    WaitForMultipleObjects,
 };
 use windows::core::{HSTRING, PCWSTR};
 
 use crate::error::Error;
-use crate::instance_names::{mutex_name, raise_event_name};
+use crate::instance_names::{mutex_name, quit_event_name, raise_event_name};
 
 /// A kernel handle closed on drop.
 struct Handle(HANDLE);
@@ -87,6 +93,7 @@ pub struct SingleInstance {
     thread: Option<JoinHandle<()>>,
     stop: Handle,
     raise: Handle,
+    quit: Handle,
     _mutex: Handle,
 }
 
@@ -102,19 +109,34 @@ impl SingleInstance {
     /// `on_second` runs on the listener thread each time a later launch signals this instance
     /// (raise the panel from there, for example by posting to the UI thread). A panic in it is
     /// caught and ignored. It is never called for the launch that returns [`Acquired::Second`].
+    /// `on_quit` runs on the same thread each time `snipdeck.exe --quit` ([`ask_to_quit`]) signals
+    /// this instance; hand it to the UI thread and quit the way the tray's Quit does.
     ///
     /// # Errors
     ///
     /// [`Error::Unavailable`] for an invalid `app_id` or if the listener thread cannot be started;
     /// [`Error::Os`] if an event or mutex cannot be created for a reason other than access denied.
-    pub fn acquire(app_id: &str, on_second: impl Fn() + Send + 'static) -> Result<Acquired, Error> {
+    pub fn acquire(
+        app_id: &str,
+        on_second: impl Fn() + Send + 'static,
+        on_quit: impl Fn() + Send + 'static,
+    ) -> Result<Acquired, Error> {
         let mutex_name = HSTRING::from(mutex_name(app_id).map_err(app_id_error)?);
         let event_name = HSTRING::from(raise_event_name(app_id).map_err(app_id_error)?);
+        let quit_name = HSTRING::from(quit_event_name(app_id).map_err(app_id_error)?);
 
         // SAFETY: `event_name` is a NUL-terminated wide string that outlives the call; default
         // security attributes; auto-reset (`bmanualreset == false`), initially not signaled.
         let created = unsafe { CreateEventW(None, false, false, PCWSTR(event_name.as_ptr())) };
         let raise = match created {
+            Ok(h) => Handle(h),
+            Err(e) if e.code() == ERROR_ACCESS_DENIED.to_hresult() => return Ok(Acquired::Second),
+            Err(e) => return Err(Error::from_windows("CreateEventW", &e)),
+        };
+
+        // SAFETY: as above, for the quit event.
+        let created = unsafe { CreateEventW(None, false, false, PCWSTR(quit_name.as_ptr())) };
+        let quit = match created {
             Ok(h) => Handle(h),
             Err(e) if e.code() == ERROR_ACCESS_DENIED.to_hresult() => return Ok(Acquired::Second),
             Err(e) => return Err(Error::from_windows("CreateEventW", &e)),
@@ -149,10 +171,11 @@ impl SingleInstance {
             // The thread borrows the raw handle values. They stay valid because `Drop` joins the
             // thread before the `Handle`s close.
             let raise_raw = Borrowed(raise.raw());
+            let quit_raw = Borrowed(quit.raw());
             let stop_raw = Borrowed(stop.raw());
             std::thread::Builder::new()
                 .name("snipdeck-single-instance".into())
-                .spawn(move || listen(raise_raw, stop_raw, &on_second))
+                .spawn(move || listen(raise_raw, quit_raw, stop_raw, &on_second, &on_quit))
                 .map_err(|_| Error::Unavailable("could not start the single-instance thread"))?
         };
 
@@ -160,22 +183,65 @@ impl SingleInstance {
             thread: Some(thread),
             stop,
             raise,
+            quit,
             _mutex: mutex,
         }))
     }
 }
 
-/// Waits for the raise event (call `on_second`) or the stop event (return). Never panics.
-fn listen(raise: Borrowed, stop: Borrowed, on_second: &dyn Fn()) {
-    let handles = [raise.0, stop.0];
+/// Asks the Snipdeck running in this Windows session to quit, as the tray's Quit does. Returns at
+/// once; it does not wait for the app to go.
+///
+/// `Ok(true)`: the request was delivered. `Ok(false)`: nothing to ask: no Snipdeck is running in
+/// this session (the event does not exist), or it runs elevated and this process may not signal it
+/// (access denied), so it cannot be asked either. Nothing is created: only an existing event is
+/// opened. **Unverified on Windows.**
+///
+/// # Errors
+///
+/// [`Error::Unavailable`] for an invalid `app_id`; [`Error::Os`] for any other failure to open or
+/// set the event.
+pub fn ask_to_quit(app_id: &str) -> Result<bool, Error> {
+    let name = HSTRING::from(quit_event_name(app_id).map_err(app_id_error)?);
+    // SAFETY: `name` is a NUL-terminated wide string that outlives the call; the handle is not
+    // inheritable and is closed below through `Handle`.
+    let opened = unsafe { OpenEventW(EVENT_MODIFY_STATE, false, PCWSTR(name.as_ptr())) };
+    let event = match opened {
+        Ok(h) => Handle(h),
+        Err(e)
+            if e.code() == ERROR_FILE_NOT_FOUND.to_hresult()
+                || e.code() == ERROR_ACCESS_DENIED.to_hresult() =>
+        {
+            return Ok(false);
+        }
+        Err(e) => return Err(Error::from_windows("OpenEventW", &e)),
+    };
+    // SAFETY: `event` is a valid event handle opened with `EVENT_MODIFY_STATE`.
+    unsafe { SetEvent(event.raw()) }.map_err(|e| Error::from_windows("SetEvent", &e))?;
+    Ok(true)
+}
+
+/// Waits for the raise event (call `on_second`), the quit event (call `on_quit`) or the stop event
+/// (return). Never panics.
+fn listen(
+    raise: Borrowed,
+    quit: Borrowed,
+    stop: Borrowed,
+    on_second: &dyn Fn(),
+    on_quit: &dyn Fn(),
+) {
+    let handles = [raise.0, quit.0, stop.0];
     loop {
-        // SAFETY: both handles are valid, open event handles (owned by the `SingleInstance`, which
-        // joins this thread before closing them); the slice has two elements, `bwaitall == false`.
+        // SAFETY: all handles are valid, open event handles (owned by the `SingleInstance`, which
+        // joins this thread before closing them); the slice has three elements,
+        // `bwaitall == false`.
         let signaled = unsafe { WaitForMultipleObjects(&handles, false, INFINITE) };
         if signaled == WAIT_OBJECT_0 {
             let _ = catch_unwind(AssertUnwindSafe(on_second));
+        } else if signaled.0 == WAIT_OBJECT_0.0 + 1 {
+            let _ = catch_unwind(AssertUnwindSafe(on_quit));
         } else {
-            // The stop event (index 1), or WAIT_FAILED / abandoned: stop listening.
+            // The stop event (index 2), or WAIT_FAILED / abandoned: stop listening.
             break;
         }
     }
@@ -193,6 +259,7 @@ impl Drop for SingleInstance {
             std::mem::forget(thread);
             std::mem::forget(std::mem::replace(&mut self.stop, Handle::null()));
             std::mem::forget(std::mem::replace(&mut self.raise, Handle::null()));
+            std::mem::forget(std::mem::replace(&mut self.quit, Handle::null()));
             return;
         }
         let _ = thread.join();

@@ -13,6 +13,7 @@
 //! | [`screen`] | Mouse position and the work area and scale of the monitor under a point |
 //! | [`hotkey`] | Global hotkeys on a dedicated thread |
 //! | [`autostart`] | Start with Windows (`HKCU\...\Run`) |
+//! | [`package`] | Packaged (MSIX / Store) mode: package identity, startup-task launch and autostart |
 //! | [`single_instance`] | One running instance; a second launch signals the first |
 //! | [`console`] | Attach to the parent's console so `--help` and `--check-db` can print |
 //! | [`dpi`] | Per-monitor DPI awareness for windows created before the UI toolkit's |
@@ -36,6 +37,7 @@ pub mod hello;
 mod hidden_window;
 pub mod hotkey;
 pub mod keyboard;
+pub mod package;
 pub mod paint_diag;
 pub mod screen;
 pub mod single_instance;
