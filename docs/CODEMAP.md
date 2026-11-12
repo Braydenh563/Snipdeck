@@ -7398,6 +7398,20 @@ problems_of | scripts/i18n.py:188
 load | scripts/i18n.py:211
 main | scripts/i18n.py:219
 
+### scripts/installer_check.py
+
+sections | scripts/installer_check.py:29
+defines | scripts/installer_check.py:45
+expand | scripts/installer_check.py:65
+setup_dict | scripts/installer_check.py:69
+entry_fields | scripts/installer_check.py:79
+rust_mutex | scripts/installer_check.py:90
+asset_files | scripts/installer_check.py:102
+check_iss | scripts/installer_check.py:114
+check_manifest | scripts/installer_check.py:175
+run | scripts/installer_check.py:210
+main | scripts/installer_check.py:220
+
 ### scripts/make_logo.py
 
 icon_svg | scripts/make_logo.py:31
@@ -7412,6 +7426,14 @@ main | scripts/make_logo.py:97
 
 scaled | scripts/make_msix_assets.py:29
 main | scripts/make_msix_assets.py:34
+
+### scripts/msix_manifest.py
+
+ManifestError | scripts/msix_manifest.py:22
+msix_version | scripts/msix_manifest.py:26
+attr | scripts/msix_manifest.py:34
+fill | scripts/msix_manifest.py:39
+main | scripts/msix_manifest.py:68
 
 ### scripts/readme_shots.py
 
@@ -8131,6 +8153,8 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/tray_texts.rs` | 1 |
 | `crates/snipdeck-ui/tests/ux_fit.rs` | 7 |
 | `scripts/test_i18n.py` | 16 |
+| `scripts/test_installer_check.py` | 16 |
+| `scripts/test_msix_manifest.py` | 7 |
 | `scripts/test_symbols.py` | 24 |
 | `spikes/s3-longtext/src/viewer.rs` (inline) | 1 |
 | `spikes/s4-mica/src/appearance.rs` (inline) | 8 |
