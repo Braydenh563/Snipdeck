@@ -583,9 +583,145 @@ pub fn place_of(
 #[cfg(not(windows))]
 pub fn raise_window(_window: &slint::Window) {}
 
+/// How long to wait between looks for a native window that is not created yet, and how many.
+const HANDLE_POLL: std::time::Duration = std::time::Duration::from_millis(10);
+const HANDLE_POLLS: u32 = 30;
+/// One more try after Windows refused to change the foreground.
+const FOREGROUND_RETRY: std::time::Duration = std::time::Duration::from_millis(80);
+
+/// What [`ActivationWait::step`] wants next.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    not(windows),
+    allow(dead_code, reason = "only the Windows path waits for a native window")
+)]
+enum Activation {
+    /// The window is in the foreground, or there is nothing more to try.
+    Finished,
+    /// Look again after this long.
+    Again(std::time::Duration),
+}
+
+/// Bringing a just-shown window to the foreground. Slint makes the native window on a later
+/// event-loop turn than `show()`, so the first look may find no handle: wait for it, a little.
+#[derive(Debug)]
+#[cfg_attr(
+    not(windows),
+    allow(dead_code, reason = "only the Windows path waits for a native window")
+)]
+struct ActivationWait {
+    handle_polls: u32,
+    refusals_left: u32,
+}
+
+#[cfg_attr(
+    not(windows),
+    allow(dead_code, reason = "only the Windows path waits for a native window")
+)]
+impl ActivationWait {
+    const fn new() -> Self {
+        Self {
+            handle_polls: HANDLE_POLLS,
+            refusals_left: 1,
+        }
+    }
+
+    /// One look: `handle` is the window's native handle if it exists yet; `activate` asks Windows
+    /// for the foreground and says whether it was given.
+    fn step(&mut self, handle: Option<isize>, activate: impl FnOnce(isize) -> bool) -> Activation {
+        let Some(handle) = handle else {
+            return if self.handle_polls == 0 {
+                Activation::Finished
+            } else {
+                self.handle_polls -= 1;
+                Activation::Again(HANDLE_POLL)
+            };
+        };
+        if activate(handle) || self.refusals_left == 0 {
+            Activation::Finished
+        } else {
+            self.refusals_left -= 1;
+            Activation::Again(FOREGROUND_RETRY)
+        }
+    }
+}
+
+/// Brings an ordinary window (Main, the editors, Help) that was just shown to the foreground and
+/// focuses it. Call it in the handler of the click that asked for the window, so Windows still
+/// counts the request as input; windows other than the Panel are created activatable, but
+/// `show()` alone leaves them behind the app in use. Windows only, and not verified there yet.
+#[cfg(windows)]
+pub fn activate_regular<C: slint::ComponentHandle + 'static>(window: &C) {
+    drive_activation(window.as_weak(), ActivationWait::new());
+}
+
+#[cfg(windows)]
+fn drive_activation<C: slint::ComponentHandle + 'static>(
+    weak: slint::Weak<C>,
+    mut wait: ActivationWait,
+) {
+    let Some(window) = weak.upgrade() else {
+        return;
+    };
+    let outcome = wait.step(handle_of(window.window()), |hwnd| {
+        let accepted = snipdeck_platform::windows::window_style::bring_to_foreground(hwnd);
+        crate::trace!("foreground for window {hwnd:#x}: {accepted}");
+        accepted
+    });
+    if let Activation::Again(after) = outcome {
+        slint::Timer::single_shot(after, move || drive_activation(weak, wait));
+    }
+}
+
+/// Un-minimises the window and asks the OS to focus it (off Windows, through winit).
+#[cfg(not(windows))]
+pub fn activate_regular<C: slint::ComponentHandle + 'static>(window: &C) {
+    let _ = window.window().with_winit_window(|w| {
+        w.set_minimized(false);
+        w.focus_window();
+    });
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn activation_waits_for_the_native_window_then_asks_once() {
+        let mut wait = ActivationWait::new();
+        let mut asked = Vec::new();
+        let mut look = |wait: &mut ActivationWait, handle: Option<isize>| {
+            wait.step(handle, |h| {
+                asked.push(h);
+                true
+            })
+        };
+        assert_eq!(look(&mut wait, None), Activation::Again(HANDLE_POLL));
+        assert_eq!(look(&mut wait, None), Activation::Again(HANDLE_POLL));
+        assert_eq!(look(&mut wait, Some(7)), Activation::Finished);
+        assert_eq!(asked, [7], "asked once, with the handle that appeared");
+    }
+
+    #[test]
+    fn activation_gives_up_on_a_window_that_never_appears() {
+        let mut wait = ActivationWait::new();
+        for _ in 0..HANDLE_POLLS {
+            assert_eq!(wait.step(None, |_| true), Activation::Again(HANDLE_POLL));
+        }
+        assert_eq!(
+            wait.step(None, |_| panic!("no window")),
+            Activation::Finished
+        );
+    }
+
+    #[test]
+    fn a_refused_foreground_is_retried_once() {
+        let mut wait = ActivationWait::new();
+        assert_eq!(
+            wait.step(Some(3), |_| false),
+            Activation::Again(FOREGROUND_RETRY)
+        );
+        assert_eq!(wait.step(Some(3), |_| false), Activation::Finished);
+    }
 
     #[test]
     fn a_window_gaining_the_focus_is_reported_once() {

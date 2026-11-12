@@ -185,6 +185,7 @@ Icons: **Phosphor (Regular)**, MIT licence, 16px in rows and 20px in toolbars. T
 | Paste stack position | `stack-simple` | card badge | `stack` (that is a board) |
 | Move to list | `folder` | | |
 | Board / list / tag | `stack` / `rows` / `tag` | sidebar, empty states | |
+| All items (every item, whatever the board) | `tray` | sidebar first row, its empty state | `stack` (that is a board) |
 | List view / card view | `rows` / `squares-four` | Main window toolbar | `squares-four` for anything else |
 | Compact view | `list-bullets` | Main window toolbar | dense one-line rows |
 | Recent | `clock` | | |

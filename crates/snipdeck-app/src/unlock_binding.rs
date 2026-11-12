@@ -23,7 +23,7 @@ use crate::{
     controller::{Controller, MasterProblem},
     hello_job::{HelloFailure, HelloJob},
     host::ClipboardText,
-    main_binding::{create_window, raise, set_look},
+    main_binding::{create_window, set_look},
     native_window::fit_when_settled,
 };
 
@@ -437,7 +437,7 @@ impl UnlockUi {
             crate::native_window::place_over_owner(window.window());
             window.show()?;
             fit_when_settled(window);
-            raise(window.window());
+            crate::native_window::activate_regular(window);
             Ok(())
         });
         OPENER.with(|o| {

@@ -651,6 +651,13 @@
       "title": "Quit from the command line closes the running Snipdeck",
       "do": "Start Snipdeck. Change something in the library (for example add a snippet or rename a list) and, without waiting, open a Command Prompt or PowerShell window in the folder that holds the program. Run the program with --quit (for a build from source that is target\\release\\snipdeck-app.exe --quit; for an installed copy it is snipdeck.exe --quit). Watch the tray, then start Snipdeck again. Then run the same command a second time with Snipdeck closed.",
       "expect": "The command returns to the prompt at once and prints nothing. Within 2 seconds the tray icon goes away and the Panel closes, as if you had chosen Quit in the tray menu. After you start Snipdeck again, the library has the edit you made just before the command. With Snipdeck closed, the command still returns at once, prints nothing and its exit code is 0 (in PowerShell, $LASTEXITCODE shows 0), and it does not start a window or leave Snipdeck running."
+    },
+    {
+      "id": "88",
+      "v1": false,
+      "title": "Open Snipdeck from the Panel footer brings the main window to the front with the focus",
+      "do": "Start Snipdeck with the main window closed and Notepad in front with some text typed in it. Press the Panel hotkey, click Open Snipdeck at the bottom of the Panel (first time since the app started). Note what is in front and where the typing cursor is. Close the main window, put Notepad in front again, open the Panel and click Open Snipdeck a second time. Then minimise the main window, open the Panel and click Open Snipdeck a third time. Afterwards open ? then l and look for lines starting 'foreground for window'.",
+      "expect": "Each time the main window is in front of every other window, not minimised, and its title bar looks active; typing goes to it (not to Notepad). The log has one 'foreground for window 0x...: true' line per click (a 'false' line followed by a second line 'true' about a tenth of a second later is also fine; a flashing taskbar button with no focus is a failure: write down which click it was)."
     }
   ]
 }

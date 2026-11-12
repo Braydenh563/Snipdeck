@@ -293,6 +293,39 @@ pub const fn raise_steps(was_topmost: bool) -> &'static [ZStep] {
     }
 }
 
+/// One step of bringing an ordinary (activatable) window to the foreground.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActivateStep {
+    /// `ShowWindow(SW_RESTORE)`: un-minimise.
+    Restore,
+    /// `SetForegroundWindow`: activate and focus.
+    Foreground,
+    /// The z-order raise of [`raise_steps`], so the window at least sits above the other windows.
+    Raise,
+    /// `FlashWindowEx` on the taskbar button: the window is there, tell the user.
+    Flash,
+}
+
+/// The steps that bring `Main` and the other ordinary windows to the foreground: restore if
+/// minimised, then `SetForegroundWindow`. Runs inside the click that asked for it, while the
+/// process still holds the input that lets Windows accept the change; no synthetic key press
+/// (winit's `focus_window` injects an Alt tap, which can open the menu of the app in front).
+#[must_use]
+pub const fn activate_steps(minimized: bool) -> &'static [ActivateStep] {
+    if minimized {
+        &[ActivateStep::Restore, ActivateStep::Foreground]
+    } else {
+        &[ActivateStep::Foreground]
+    }
+}
+
+/// What to do when `SetForegroundWindow` was refused: the window goes above the others without
+/// the focus, and its taskbar button flashes.
+#[must_use]
+pub const fn activate_fallback() -> &'static [ActivateStep] {
+    &[ActivateStep::Raise, ActivateStep::Flash]
+}
+
 /// Which Rust type owns each window class name in this process.
 ///
 /// A window class is registered once per name and keeps the window procedure of its first
@@ -621,6 +654,19 @@ mod tests {
             raise_steps(true),
             [ZStep::Topmost],
             "a pinned Panel stays on top"
+        );
+    }
+
+    #[test]
+    fn activating_a_window_restores_it_first_and_falls_back_to_raise_and_flash() {
+        assert_eq!(
+            activate_steps(true),
+            [ActivateStep::Restore, ActivateStep::Foreground]
+        );
+        assert_eq!(activate_steps(false), [ActivateStep::Foreground]);
+        assert_eq!(
+            activate_fallback(),
+            [ActivateStep::Raise, ActivateStep::Flash]
         );
     }
 

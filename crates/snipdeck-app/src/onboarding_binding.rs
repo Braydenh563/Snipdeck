@@ -22,7 +22,7 @@ use crate::{
     controller::Controller,
     host::ClipboardText,
     hotkey_health::{self, HotkeyHealth},
-    main_binding::{create_window, raise, set_look},
+    main_binding::{create_window, set_look},
     native_window::fit_when_settled,
     settings::{HotkeyAction, Hotkeys},
     settings_binding::{
@@ -485,7 +485,7 @@ impl OnboardingUi {
                 fit_when_settled(window);
                 // The window was hidden, so it skipped the redraws; draw it now that it is up.
                 binding.redraw();
-                raise(window.window());
+                crate::native_window::activate_regular(window);
                 Ok(())
             })
         };

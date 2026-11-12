@@ -38,7 +38,7 @@ use crate::{
     },
     host::{self, ClipboardText, HotkeyBackend, HotkeyFailure, HotkeyProblem},
     hotkey_health::{self, HotkeyHealth},
-    main_binding::{create_window, raise, set_look},
+    main_binding::{create_window, set_look},
     native_window::fit_when_settled,
     settings::{
         DockEdge, DockTrigger, HotkeyAction, Hotkeys, PanelLayout, PanelOpenAt, PanelSearch,
@@ -2341,7 +2341,7 @@ impl SettingsUi {
                 crate::unlock_binding::refresh_hello(&controller);
                 // The page was hidden, so it skipped the redraws; draw it now that it is up.
                 binding.redraw();
-                raise(window.window());
+                crate::native_window::activate_regular(window);
                 Ok(())
             })
         };

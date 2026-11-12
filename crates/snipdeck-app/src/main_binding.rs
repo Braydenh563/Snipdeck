@@ -350,7 +350,7 @@ where
         let _ = window.show();
         crate::ownership::opened(crate::ownership::Win::TagManager);
         fit_when_settled(&window);
-        raise(window.window());
+        crate::native_window::activate_regular(&window);
     }
 
     /// Shows, updates or hides the list or board editor to match `screen.editor`.
@@ -386,7 +386,7 @@ where
                     fit_when_settled(&window);
                     // Shown again after a close, the window would stay behind the Main
                     // window (it was created un-activated): bring it up.
-                    raise(window.window());
+                    crate::native_window::activate_regular(&window);
                     window.invoke_focus_name();
                 }
             }
@@ -409,7 +409,7 @@ where
                     fit_when_settled(&window);
                     // Shown again after a close, the window would stay behind the Main
                     // window (it was created un-activated): bring it up.
-                    raise(window.window());
+                    crate::native_window::activate_regular(&window);
                     window.invoke_focus_name();
                 }
             }
@@ -1023,7 +1023,7 @@ impl MainUi {
                     watch_place(window, &controller);
                 }
                 fit_when_settled(window);
-                raise(window.window());
+                crate::native_window::activate_regular(window);
                 Ok(())
             })
         };
@@ -1091,14 +1091,6 @@ impl MainUi {
     pub fn window(&self) -> Option<ui::MainWindow> {
         (self.window)()
     }
-}
-
-/// Un-minimises the window and asks the OS to focus it (it was created un-activated).
-pub(crate) fn raise(window: &slint::Window) {
-    let _ = window.with_winit_window(|w| {
-        w.set_minimized(false);
-        w.focus_window();
-    });
 }
 
 // ---- Screen -> window --------------------------------------------------------------------------
