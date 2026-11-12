@@ -759,6 +759,49 @@ ui_tests! {
         assert!(ui.get_scroll_y().abs() < f32::EPSILON, "back at the top");
     }
 
+    fn wheeling_back_toward_the_selected_row_moves_the_list_by_the_wheel_step_only() {
+        let (ui, _log) = start();
+        fixture::set_rows(&ui, fixture::numbered_rows(40));
+        let _ = rows(&ui);
+        ui.set_selected_index(3);
+        let _ = rows(&ui);
+        wait(1000);
+        let _ = rows(&ui);
+        // Inside the list, clear of the header and the footer.
+        let over_list = || LogicalPosition::new(160.0, 300.0);
+        let wheel = |dy: f32| {
+            ui.window().dispatch_event(WindowEvent::PointerScrolled {
+                position: over_list(),
+                delta_x: 0.0,
+                delta_y: dy,
+            });
+            wait(1000);
+            let _ = rows(&ui);
+            wait(100);
+        };
+        // Far away from the selection: its row is no longer instantiated.
+        wheel(-1500.0);
+        let far = ui.get_scroll_y();
+        assert!(far < -1000.0, "scrolled away: {far}");
+        // Back toward it in small steps: each step is the wheel step, also on the step that brings the selected
+        // row back into the ListView (it must not snap itself into view).
+        let mut at = far;
+        for step in 0..120 {
+            wheel(20.0);
+            let now = ui.get_scroll_y();
+            if now > -0.5 {
+                break;
+            }
+            assert!(
+                ((now - at) - 20.0).abs() < 0.5,
+                "step {step}: the list moved {} for a 20px wheel step (from {at} to {now})",
+                now - at
+            );
+            at = now;
+        }
+        assert!(at > -300.0, "got back to the top region: {at}");
+    }
+
     // ---- Lists ---------------------------------------------------------------------------------
 
     fn ctrl_tab_cycles_the_lists_and_leaves_the_search() {

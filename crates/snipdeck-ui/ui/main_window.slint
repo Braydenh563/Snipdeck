@@ -583,6 +583,9 @@ export component MainWindow inherits Window {
     // Roving focus in the Recent list: one tab stop (`items-scope`), the active row clamped to the list.
     property <int> recent-cursor: 0;
     property <int> rcur: root.recent-rows.length == 0 ? -1 : min(max(root.recent-cursor, 0), root.recent-rows.length - 1);
+    // The recent list keeps its cursor row in view only after a cursor move (see `follow-cursor`).
+    property <bool> rfollow-cursor: true;
+    changed rcur => { root.rfollow-cursor = true; }
     function move-recent(to: int) {
         root.recent-cursor = min(max(to, 0), root.recent-rows.length - 1);
     }
@@ -968,6 +971,10 @@ export component MainWindow inherits Window {
     property <length> avg-row-h: root.rows.length == 0 ? Space.hit : max(Space.hit, list.content-height / root.rows.length);
     property <int> page-rows: max(1, floor(list.height / root.avg-row-h) - 1);
     property <int> last-cur: 0;
+    // Whether the lists keep the cursor row in view. A cursor move sets it; the wheel or the scrollbar clears it, so
+    // that scrolling away from the cursor and back never makes the cursor row snap itself into view (a row the
+    // ListView re-creates, or re-positions after a height re-estimate, would otherwise jump the list).
+    property <bool> follow-cursor: true;
 
     function reveal-list(y: length, h: length) {
         let top = root.cur == 0 ? 0px : root.edge-h;
@@ -994,6 +1001,7 @@ export component MainWindow inherits Window {
     // A jump of more than a page lands on a row the ListView has not instantiated yet: estimate its position
     // from the average row height; once the row exists, `reveal-*` places it exactly.
     changed cur => {
+        root.follow-cursor = true;
         let jump = abs(root.cur - root.last-cur) > root.page-rows;
         root.last-cur = root.cur;
         if (!root.tile && root.cur == 0) {
@@ -1911,6 +1919,7 @@ export component MainWindow inherits Window {
                             horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
                             accessible-label: @tr("Snippets");
                             visible: root.rows.length > 0;
+                            scrolled => { root.follow-cursor = false; }
 
                             for row[i] in root.list-model: Rectangle {
                                 property <bool> is-cursor: i == root.cur;
@@ -1919,13 +1928,13 @@ export component MainWindow inherits Window {
                                 height: (row.is-header ? root.header-h : card.preferred-height) + root.row-gap + (i == root.rows.length - 1 ? 2 * root.ring : 0px);
 
                                 init => {
-                                    if (self.is-cursor) { root.reveal-list(self.y, self.height); }
+                                    if (self.is-cursor && root.follow-cursor) { root.reveal-list(self.y, self.height); }
                                 }
                                 changed is-cursor => {
                                     if (self.is-cursor) { root.reveal-list(self.y, self.height); }
                                 }
                                 changed y => {
-                                    if (self.is-cursor) { root.reveal-list(self.y, self.height); }
+                                    if (self.is-cursor && root.follow-cursor) { root.reveal-list(self.y, self.height); }
                                 }
 
                                 row-drop := DropArea {
@@ -2021,7 +2030,10 @@ export component MainWindow inherits Window {
                             content-height: list.content-height;
                             visible-height: list.height;
                             enabled: list.visible;
-                            scroll-to(y) => { list.content-y = y; }
+                            scroll-to(y) => {
+                                root.follow-cursor = false;
+                                list.content-y = y;
+                            }
                         }
                         if root.rows.length > 0 && list.content-y < -1px: DeckEdge {
                             position: DeckEdgePosition.top;
@@ -2049,6 +2061,7 @@ export component MainWindow inherits Window {
                             horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
                             accessible-label: @tr("Snippets");
                             visible: root.rows.length > 0;
+                            scrolled => { root.follow-cursor = false; }
 
                             for r in root.grid-row-count: Rectangle {
                                 property <bool> has-cursor: floor(root.cur / root.cols) == r;
@@ -2057,13 +2070,13 @@ export component MainWindow inherits Window {
                                 height: max(self.need[0], self.need[1], self.need[2], self.need[3], self.need[4], self.need[5]) + root.tile-gap + (r == root.grid-row-count - 1 ? 2 * root.ring : 0px);
 
                                 init => {
-                                    if (self.has-cursor) { root.reveal-grid(self.y, self.height); }
+                                    if (self.has-cursor && root.follow-cursor) { root.reveal-grid(self.y, self.height); }
                                 }
                                 changed has-cursor => {
                                     if (self.has-cursor) { root.reveal-grid(self.y, self.height); }
                                 }
                                 changed y => {
-                                    if (self.has-cursor) { root.reveal-grid(self.y, self.height); }
+                                    if (self.has-cursor && root.follow-cursor) { root.reveal-grid(self.y, self.height); }
                                 }
 
                                 for c in root.cols: Rectangle {
@@ -2151,7 +2164,10 @@ export component MainWindow inherits Window {
                             content-height: grid.content-height;
                             visible-height: grid.height;
                             enabled: grid.visible;
-                            scroll-to(y) => { grid.content-y = y; }
+                            scroll-to(y) => {
+                                root.follow-cursor = false;
+                                grid.content-y = y;
+                            }
                         }
                         if root.rows.length > 0 && grid.content-y < -1px: DeckEdge {
                             position: DeckEdgePosition.top;
@@ -2212,6 +2228,7 @@ export component MainWindow inherits Window {
                                 width: parent.width;
                                 height: parent.height;
                                 accessible-label: @tr("Recent copies");
+                                scrolled => { root.rfollow-cursor = false; }
                                 for entry[i] in root.recent-rows: Rectangle {
                                     property <bool> is-active: i == root.rcur;
                                     function reveal() {
@@ -2225,13 +2242,13 @@ export component MainWindow inherits Window {
                                     }
                                     height: rcard.preferred-height + root.row-gap + (i == root.recent-rows.length - 1 ? 2 * root.ring : 0px);
                                     init => {
-                                        if (self.is-active) { self.reveal(); }
+                                        if (self.is-active && root.rfollow-cursor) { self.reveal(); }
                                     }
                                     changed is-active => {
                                         if (self.is-active) { self.reveal(); }
                                     }
                                     changed y => {
-                                        if (self.is-active) { self.reveal(); }
+                                        if (self.is-active && root.rfollow-cursor) { self.reveal(); }
                                     }
                                     rcard := ItemCard {
                                         x: root.ring;
@@ -2270,7 +2287,10 @@ export component MainWindow inherits Window {
                                 content-y: rlist.content-y;
                                 content-height: rlist.content-height;
                                 visible-height: rlist.height;
-                                scroll-to(y) => { rlist.content-y = y; }
+                                scroll-to(y) => {
+                                    root.rfollow-cursor = false;
+                                    rlist.content-y = y;
+                                }
                             }
                         }
                     }
@@ -2573,7 +2593,8 @@ export component MainWindow inherits Window {
             root.card-tip = "";
         }
     }
-    property <length> list-scroll: list.content-y;
+    out property <length> scroll-y: list.content-y;
+    property <length> list-scroll: root.scroll-y;
     changed rows => { root.card-tip = ""; }
     changed list-scroll => { root.card-tip = ""; }
     property <bool> tip-open: false;

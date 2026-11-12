@@ -824,7 +824,12 @@ export component PanelWindow inherits Window {
     // A jump of more than a page lands on a row the ListView has not instantiated yet, so its position
     // is unknown: estimate it from the average row height. Once the row exists, `reveal` places it exactly.
     property <int> last-sel: 0;
+    // Whether the list keeps the selected row in view. A selection move sets it; the wheel or the scrollbar clears
+    // it, so that scrolling away from the selection and back never makes its row snap itself into view (a row the
+    // ListView re-creates, or re-positions after a height re-estimate, would otherwise jump the list).
+    property <bool> follow-sel: true;
     changed sel => {
+        root.follow-sel = true;
         let jump = abs(root.sel - root.last-sel) > root.page-rows;
         root.last-sel = root.sel;
         if (root.sel == 0) {
@@ -1934,6 +1939,7 @@ export component PanelWindow inherits Window {
                         horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
                         accessible-label: @tr("Snippets");
                         visible: root.rows.length > 0 && !root.list-hidden;
+                        scrolled => { root.follow-sel = false; }
 
                         // Rows come in groups: one row each, or (Cards) a row of two tiles. Every layout draws its rows with this one
                         // ItemCard, so a row's tooltip, drag and actions are the same in all of them.
@@ -1943,13 +1949,13 @@ export component PanelWindow inherits Window {
                             height: grp.preferred-height + root.row-gap + (g == root.row-groups - 1 ? 2 * Space.s1 : 0px);
 
                             init => {
-                                if (self.has-sel) { root.reveal(self.y, self.height); }
+                                if (self.has-sel && root.follow-sel) { root.reveal(self.y, self.height); }
                             }
                             changed has-sel => {
                                 if (self.has-sel) { root.reveal(self.y, self.height); }
                             }
                             changed y => {
-                                if (self.has-sel) { root.reveal(self.y, self.height); }
+                                if (self.has-sel && root.follow-sel) { root.reveal(self.y, self.height); }
                             }
 
                             grp := HorizontalLayout {
@@ -2183,7 +2189,10 @@ export component PanelWindow inherits Window {
                         content-height: list.content-height;
                         visible-height: list.height;
                         enabled: list.visible;
-                        scroll-to(y) => { list.content-y = y; }
+                        scroll-to(y) => {
+                            root.follow-sel = false;
+                            list.content-y = y;
+                        }
                     }
 
                     // More cards below (or above) the fold: two card edges, never a fade.

@@ -12,9 +12,12 @@
 use std::{cell::RefCell, rc::Rc};
 
 use i_slint_backend_testing::{
-    AccessibleLiveness, AccessibleRole, ElementHandle, ElementQuery, ElementRoot,
+    AccessibleLiveness, AccessibleRole, ElementHandle, ElementQuery, ElementRoot, mock_elapsed_time,
 };
-use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel, platform::Key};
+use slint::{
+    ComponentHandle, LogicalPosition, Model, ModelRc, SharedString, VecModel,
+    platform::{Key, WindowEvent},
+};
 use snipdeck_ui::{Fonts, MainSection, MainView, MainWindow, PaletteRow, selection};
 
 #[path = "support/mod.rs"]
@@ -357,6 +360,44 @@ ui_tests! {
         );
     }
     // ---- Item area: keyboard -------------------------------------------------------------------
+
+    fn wheeling_back_toward_the_cursor_row_moves_the_list_by_the_wheel_step_only() {
+        let (ui, _log) = start();
+        fixture::set_rows(&ui, fixture::numbered_rows(60));
+        settle();
+        ui.set_cursor(3);
+        settle();
+        let wheel = |dy: f32| {
+            ui.window().dispatch_event(WindowEvent::PointerScrolled {
+                position: LogicalPosition::new(640.0, 350.0),
+                delta_x: 0.0,
+                delta_y: dy,
+            });
+            mock_elapsed_time(std::time::Duration::from_secs(1));
+            settle();
+            mock_elapsed_time(std::time::Duration::from_millis(100));
+            settle();
+        };
+        wheel(-2000.0);
+        let far = ui.get_scroll_y();
+        assert!(far < -1000.0, "scrolled away: {far}");
+        // Back toward the cursor row in 20px steps, including the one that brings its row back into the ListView.
+        let mut at = far;
+        for step in 0..150 {
+            wheel(20.0);
+            let now = ui.get_scroll_y();
+            if now > -0.5 {
+                break;
+            }
+            assert!(
+                ((now - at) - 20.0).abs() < 0.5,
+                "step {step}: the list moved {} for a 20px wheel step (from {at} to {now})",
+                now - at
+            );
+            at = now;
+        }
+        assert!(at > -400.0, "got back to the top region: {at}");
+    }
 
     fn the_item_area_is_one_tab_stop_and_arrows_move_the_cursor_and_report_the_selection() {
         let (ui, log) = start();

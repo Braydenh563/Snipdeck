@@ -132,3 +132,22 @@ export component FormControlsGallery inherits Window {
         }
     }
 }
+
+// A `Segmented` with no width of its own, at the start of a row like the kind choice in the quick-add box: the
+// control takes its preferred width, which is where a cell with no padding shows (labels touching the dividers).
+export component SegmentedFitGallery inherits Window {
+    background: Theme.bg-app;
+    preferred-width: 360px;
+    preferred-height: 80px;
+
+    HorizontalLayout {
+        padding: Space.s4;
+        alignment: start;
+
+        Segmented {
+            label: "Kind";
+            options: ["Text", "Link", "Template"];
+            current: 0;
+        }
+    }
+}

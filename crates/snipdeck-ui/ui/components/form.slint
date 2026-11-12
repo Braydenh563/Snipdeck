@@ -297,16 +297,21 @@ export component Segmented inherits Rectangle {
                 height: parent.height * 0.5;
                 background: Theme.border-strong;
             }
-            Text {
-                text: option;
-                color: Theme.text-primary;
-                font-family: Fonts.sans;
-                font-size: Type.base;
-                font-weight: i == root.current ? Type.semibold : Type.regular;
-                horizontal-alignment: center;
-                vertical-alignment: center;
-                overflow: elide;
-                accessible-role: none;
+            // The label sits 12px (as in a medium button) clear of the cell edge and so of the dividers.
+            HorizontalLayout {
+                padding-left: Space.s3;
+                padding-right: Space.s3;
+                label := Text {
+                    text: option;
+                    color: Theme.text-primary;
+                    font-family: Fonts.sans;
+                    font-size: Type.base;
+                    font-weight: i == root.current ? Type.semibold : Type.regular;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    accessible-role: none;
+                }
             }
             touch := TouchArea {
                 enabled: root.enabled;
