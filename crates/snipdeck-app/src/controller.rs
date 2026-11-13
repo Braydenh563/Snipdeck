@@ -437,6 +437,10 @@ where
     /// # Errors
     ///
     /// Any store error from loading the Panel.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one flat struct literal: every field of the controller starts here"
+    )]
     pub fn new(
         store: S,
         services: Services<C, K, T>,
