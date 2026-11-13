@@ -637,6 +637,10 @@ export component MainWindow inherits Window {
         root.narrow = root.auto-rail || root.sidebar-collapsed;
         root.toolbar-compact = root.width - root.sidebar-w < 560px * root.text-scale;
     }
+    // The Colour block needs room above the list. Set from `changed height` (not bound to `root.height`: the
+    // block changes the layout, and a binding on the height would loop).
+    property <bool> tall-enough: false;
+    changed height => { root.tall-enough = self.height >= 520px; }
     changed width => {
         root.update-narrow();
     }
@@ -2375,7 +2379,7 @@ export component MainWindow inherits Window {
                 // ---- Colour block: the cursor is on an item that is one colour (colour-spec D6a) -----------
                 // Only where the window is tall enough to keep a useful list above it; the item menu's "Paste as…"
                 // reaches the same formats from the keyboard.
-                if root.colour-block-shown && !root.in-trash && !root.multi && !root.recent-shown && root.height >= 520px: ColourBlock {
+                if root.colour-block-shown && !root.in-trash && !root.multi && !root.recent-shown && root.tall-enough: ColourBlock {
                     swatch: root.colour-block-swatch;
                     heading: @tr("Colour");
                     open-text: MenuTexts.item-open-in-colours();

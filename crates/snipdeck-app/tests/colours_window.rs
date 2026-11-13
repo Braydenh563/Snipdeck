@@ -69,11 +69,7 @@ fn rig(dark: bool, size: (u32, u32)) -> Rig {
         |_| {},
     );
     h.component.invoke_open_colours();
-    Rig {
-        h,
-        ctl,
-        binding,
-    }
+    Rig { h, ctl, binding }
 }
 
 impl Rig {
@@ -1335,4 +1331,50 @@ fn a_colour_card_paints_its_colour_and_a_checker_for_a_clear_one_and_names_its_k
         right.contains(&[255, 255, 255]) && right.contains(&[200, 200, 200]),
         "a checker under the clear colour: {right:?}"
     );
+}
+
+// ---- Goldens of the whole tab (light and dark, default and 150% text) ---------------------------
+
+/// The tab with three saved colours, drawn and compared to `crates/snipdeck-ui/tests/golden/colours-*.png`
+/// (`UPDATE_GOLDEN=1` rewrites them; open them), and measured: nothing drawn leaves the window sideways.
+#[test]
+fn the_colours_tab_light_and_dark_at_default_and_150_percent_text() {
+    for (dark, scale) in [(false, 1.0_f32), (false, 1.5), (true, 1.0), (true, 1.5)] {
+        let width = 320_u32;
+        let r = rig(dark, (width, 900));
+        r.set_text_scale(scale);
+        for c in ["#3a7bd5", "#ff0000", "#10b981"] {
+            r.state().invoke_input_edited(c.into());
+            r.state().invoke_format_used(0);
+            r.state().invoke_save(-1);
+        }
+        r.state().invoke_input_edited("#3a7bd5".into());
+        r.settle();
+        let at = format!("{} text x{scale}", if dark { "dark" } else { "light" });
+        let outside = ElementQuery::from_root(&r.h.component)
+            .match_predicate(|e| {
+                let (p, s) = (e.absolute_position(), e.size());
+                s.width > 0.5
+                    && s.height > 0.5
+                    && (p.x < -0.5 || p.x + s.width > width as f32 + 0.5)
+            })
+            .find_all();
+        assert!(
+            outside.is_empty(),
+            "{} element(s) leave the window sideways, {at}: {:?}",
+            outside.len(),
+            outside
+                .iter()
+                .map(|e| (e.type_name(), e.accessible_label()))
+                .collect::<Vec<_>>()
+        );
+        snipdeck_ui::testing::assert_golden(
+            &format!(
+                "colours-{}-x{}",
+                if dark { "dark" } else { "light" },
+                (scale * 100.0) as u32
+            ),
+            &r.frame(),
+        );
+    }
 }
