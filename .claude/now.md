@@ -2,6 +2,7 @@
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 ## Decisions
+- 2026-11-13 hub [D] Colour contrast with a translucent second colour: flatten it over opaque white before the WCAG ratio and say "(on white)". Reason: WCAG needs an opaque background; white matches how a page under a translucent colour is usually seen.
 - 2026-11-12 23:30 owner (verbatim): "Continue everything except for the fable stuff for now until 97% weekly usage". [D] Stop line 97% weekly (replaces the 85% default for this run). Fable audit stays paused. One Sonnet worker at a time: colour tool first, then the owner bug sweep, then task #5 (review, docs, full gate). Reason: owner instruction; budget mode keeps one agent.
 - 2026-11-12 dock redesign (docs/reviews/dock-redesign.md), owner: "I want it liek the toolbar with microsoft pc manager":
   - The Panel drag is app-driven from the screen cursor (polled at 16 ms), not the OS move loop. Reason: the OS loop gives no release event and no cursor, and lets Windows Snap resize the Panel.
