@@ -360,8 +360,8 @@ fn each_toggle_writes_settings_json_after_the_quiet_time() {
             ),
             (
                 "the dock trigger",
-                |r| r.ui.invoke_dock_trigger_chosen(3),
-                |s| s.dock.trigger == DockTrigger::Both,
+                |r| r.ui.invoke_dock_trigger_chosen(1),
+                |s| s.dock.trigger == DockTrigger::Hover,
             ),
             (
                 "the hover delay",
@@ -679,8 +679,8 @@ fn the_dock_group_shows_what_is_stored_and_holds_the_delays_in_range() {
                 r.ui.get_dock_hover_delay(),
                 r.ui.get_dock_leave_delay()
             ),
-            (0, 0, 150, 400),
-            "floating, off, 150 ms and 400 ms by default"
+            (0, 3, 150, 400),
+            "floating; a docked Panel tucks and opens on hover or a click; 150 ms and 400 ms by default"
         );
         r.ui.invoke_dock_trigger_chosen(2);
         r.ui.invoke_dock_hover_delay_chosen(99_999);

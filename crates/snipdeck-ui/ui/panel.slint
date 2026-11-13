@@ -3,7 +3,7 @@
 // region, search, New, keep on top, More, close), and its keyboard focus lives in the search field (collapsed to
 // nothing until it is used, or always shown) so typing always filters. Data comes in as plain structs and models that mirror `snipdeck-app`'s
 // `PanelModel` (rows, tabs, footer, use label); every gesture leaves as a callback. Nothing here talks
-// to the OS: not the window drag (`drag-requested`), nor the resize (`resize-requested`, fired by
+// to the OS: not the window drag (`drag-began`, `drag-moved`, `drag-ended`), nor the resize (`resize-requested`, fired by
 // invisible 6px grips on the four edges and corners), nor the menus (drawn inside the Panel, filled and
 // answered by the host).
 //
@@ -147,37 +147,40 @@ component ResizeGrip inherits TouchArea {
     }
 }
 
-// The header's grip pill (O28): drag it to slide a docked Panel along its edge without undocking. It sits in the
-// header like the other controls: a quiet pill that takes the accent on hover and while pressed.
-component GripPill inherits Rectangle {
-    in property <bool> vertical: true;
-    in property <string> a11y-label;
-    callback along-drag(length);
-    callback along-begin();
+// The grab strip: the whole top of the Panel, with a pill in its middle that says "grab here" (a note's title bar).
+// Pressing it (or any empty part of the header under it) drags the Panel; the app moves the window itself, so a
+// docked Panel slides along its edge, a pull across the edge undocks it, and holding it at a screen edge docks it.
+// The pill is quiet until hovered and accent while the Panel is dragged.
+component GrabStrip inherits Rectangle {
+    in property <bool> active: false;
+    // The pointer in window coordinates.
+    callback began(length, length);
+    callback moved(length, length);
+    callback ended();
     callback tip(bool);
 
-    width: root.vertical ? Space.s4 : Space.s8;
-    height: Space.s8;
-    accessible-role: button;
-    accessible-label: root.a11y-label;
-
-    Rectangle {
+    // No accessible role: the strip only answers a pointer drag, and a screen reader's "press" would do nothing.
+    // The keyboard docks, floats and resets the Panel from the More menu.
+    pill := Rectangle {
         x: (parent.width - self.width) / 2;
-        y: (parent.height - self.height) / 2;
-        width: root.vertical ? 6px : 20px;
-        height: root.vertical ? 20px : 6px;
-        border-radius: 3px;
-        background: touch.pressed ? Theme.accent : touch.has-hover ? Theme.text-primary : Theme.text-tertiary;
+        y: (parent.height - self.height) / 2 + 2px;
+        width: root.active || touch.has-hover ? 48px : 36px;
+        height: 4px;
+        border-radius: 2px;
+        background: root.active || touch.pressed ? Theme.accent : touch.has-hover ? Theme.text-primary : Theme.text-tertiary;
+        animate width { duration: Motion.quick; }
     }
     touch := TouchArea {
-        mouse-cursor: root.vertical ? MouseCursor.ns-resize : MouseCursor.ew-resize;
+        mouse-cursor: MouseCursor.move;
         pointer-event(event) => {
             if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
-                root.along-begin();
+                root.began(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+            } else if (event.kind == PointerEventKind.cancel || (event.button == PointerEventButton.left && event.kind == PointerEventKind.up)) {
+                root.ended();
             }
         }
         moved => {
-            root.along-drag(root.vertical ? self.mouse-y - self.pressed-y : self.mouse-x - self.pressed-x);
+            root.moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
         }
         changed has-hover => { root.tip(self.has-hover); }
     }
@@ -338,16 +341,16 @@ export component PanelWindow inherits Window {
     in property <bool> dock-vertical: true;
     in property <bool> dock-has-list-color: false;
     in property <color> dock-list-color: transparent;
-    // The edge a drag would dock to if released now (O32), in Settings' "Dock to" order: 0 none,
-    // 1 left, 2 right, 3 top, 4 bottom. Drawn as an accent strip along that edge.
+    // The edge the drag under way has the Panel on, shown docked there: released now, it docks. In Settings'
+    // "Dock to" order: 0 none, 1 left, 2 right, 3 top, 4 bottom. Drawn as an accent frame and "Release to dock".
     in property <int> dock-preview: 0;
     // The edge this Panel is docked to, in the same order (0 floating). A docked Panel resizes from its inner edge,
-    // its two ends and the inner corners only (O28), and shows the grip pill that slides it along the edge.
+    // its two ends and the inner corners only (O28).
     in property <int> dock-edge: 0;
     // A side dock that takes the whole edge (O28): only its inner edge resizes.
     in property <bool> dock-full-edge: false;
-    // The grip pill shows: the docked Panel can slide (not floating, not collapsed, not a full-edge side dock).
-    in property <bool> dock-slide: false;
+    // The Panel is being dragged by its header.
+    in property <bool> dragging: false;
 
     // ---- State both ways ----------------------------------------------------------------------
     in-out property <int> current-tab: 0;
@@ -499,10 +502,6 @@ export component PanelWindow inherits Window {
     callback delete-requested(int);
     // Pointer down on a resize grip: the host starts the OS resize from that edge or corner.
     callback resize-requested(ResizeEdge);
-    // The grip pill was dragged: `delta` more logical pixels along the docked edge, from where the press began (O28).
-    callback along-drag(delta: length);
-    // The pill was pressed: the drag's offsets count from where the Panel is now.
-    callback along-begin();
     callback pin-toggled(bool);
     callback toast-undo();
     callback toast-edit();
@@ -518,8 +517,11 @@ export component PanelWindow inherits Window {
     // The footer's "Open Snipdeck" button.
     callback open-requested();
     callback close-requested();
-    // Pointer down on the header: the host starts the OS window drag.
-    callback drag-requested();
+    // The header's drag: pointer down at (x, y) in the window, each move while it is held, and the release. The
+    // host moves the window itself from these (and from the cursor on screen, where it can read it).
+    callback drag-began(x: length, y: length);
+    callback drag-moved(x: length, y: length);
+    callback drag-ended();
     // The edge dock: the pointer entered or left the collapsed handle, the handle was clicked, and the pointer
     // entered or left the open Panel.
     callback handle-hovered(bool);
@@ -560,7 +562,7 @@ export component PanelWindow inherits Window {
         }
     }
     // The text of the tooltip on screen (empty = none), for tests and assistive checks.
-    out property <string> tooltip-shown: root.tip-open && !root.board-menu-open && !root.app-menu-open && !root.item-menu-open && !root.list-menu-open && !root.list-delete-open && !root.clear-list-open && !root.board-delete-open && !root.new-menu-open && !root.pinned-menu-open ? root.tip : "";
+    out property <string> tooltip-shown: root.tip-open && !root.board-menu-open && !root.app-menu-open && !root.item-menu-open && !root.list-menu-open && !root.list-delete-open && !root.clear-list-open && !root.board-delete-open && !root.new-menu-open && !root.pinned-menu-open && !root.dragging ? root.tip : "";
 
     // ---- Internals ----------------------------------------------------------------------------
     property <bool> pastes: root.target-name != "";
@@ -630,7 +632,10 @@ export component PanelWindow inherits Window {
     property <int> recent-menu-id: 0;
     property <length> recent-menu-x: 0px;
     property <length> recent-menu-y: 0px;
-    property <length> header-h: max(Space.s8 + Space.s2, max(Space.hit, Type.line-base + Space.s2) + Space.s2);
+    // The grab strip over the header's controls: the whole width, and tall enough to hit below the top resize edge.
+    out property <length> grab-h: 24px;
+    // The strip and the row of controls under it.
+    property <length> header-h: root.grab-h + max(Space.s8 + Space.s2, max(Space.hit, Type.line-base + Space.s2) + Space.s2);
     property <length> edge-h: 10px;
     // The layout the rows are drawn in: Cards give way to List rows while a query is typed (a match says where it lives, which
     // needs the width).
@@ -721,6 +726,16 @@ export component PanelWindow inherits Window {
             }
         }
     }
+    // A tooltip does not ride along with a dragged Panel, and is not back when the drag ends.
+    changed dragging => {
+        if (root.dragging) {
+            root.tip-set(root.tip, 0px, 0px, false);
+        }
+    }
+    // What the grab strip's tooltip says: a docked Panel slides along its edge and floats when pulled off it.
+    property <string> grab-tip: root.dock-edge == 0 ? @tr("Drag to move. Hold at a screen edge to dock.") : root.dock-full-edge && root.dock-edge <= 2 ? @tr("Pull away from the edge to float.") : @tr("Drag along the edge to move. Pull away from the edge to float.");
+    // The text it put up, so that it closes the same one after the Panel was docked under the pointer.
+    property <string> grab-tip-up: "";
     // The tooltip text a row put up (empty when none is from a row). A row that is deleted, replaced or scrolled away
     // while the pointer rests on it never reports the pointer leaving, so the tip is closed when the rows change.
     property <string> row-tip-text: "";
@@ -1585,17 +1600,39 @@ export component PanelWindow inherits Window {
             }
 
             VerticalLayout {
+                // ---- Grab strip (24): the whole width drags the Panel ----------
+                grab := GrabStrip {
+                    height: root.grab-h;
+                    active: root.dragging;
+                    began(x, y) => { root.drag-began(x, y); }
+                    moved(x, y) => { root.drag-moved(x, y); }
+                    ended => { root.drag-ended(); }
+                    tip(on) => {
+                        if (on && !root.dragging) {
+                            root.grab-tip-up = root.grab-tip;
+                            root.tip-set(root.grab-tip-up, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, true);
+                        } else {
+                            root.tip-set(root.grab-tip-up, 0px, 0px, false);
+                        }
+                    }
+                }
+
                 // ---- Header (40): board picker, drag region, search, New, keep on top, More, close ----------
                 Rectangle {
-                    height: root.header-h;
+                    height: root.header-h - root.grab-h;
 
-                    // Behind the controls: pressing anywhere else starts the window drag.
+                    // Behind the controls: pressing anywhere else drags the window.
                     TouchArea {
-                        mouse-cursor: MouseCursor.default;
+                        mouse-cursor: root.dragging ? MouseCursor.move : MouseCursor.default;
                         pointer-event(event) => {
                             if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
-                                root.drag-requested();
+                                root.drag-began(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+                            } else if (event.kind == PointerEventKind.cancel || (event.button == PointerEventButton.left && event.kind == PointerEventKind.up)) {
+                                root.drag-ended();
                             }
+                        }
+                        moved => {
+                            root.drag-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
                         }
                     }
 
@@ -1726,16 +1763,6 @@ export component PanelWindow inherits Window {
                             }
                             changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
                             changed has-focus => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
-                        }
-                        // O28: a docked Panel slides along its edge by this pill, and stays docked. Beside the
-                        // kebab, where the window controls are, not by the board picker (it read as a caret there).
-                        if root.dock-slide && !root.dock-collapsed: grip-pill := GripPill {
-                            vertical: root.dock-edge <= 2;
-                            a11y-label: @tr("Slide the panel along the edge");
-                            y: (parent.height - self.height) / 2;
-                            along-begin => { root.along-begin(); }
-                            along-drag(d) => { root.along-drag(d); }
-                            tip(on) => { root.tip-set(@tr("Slide the panel along the edge"), self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, on); }
                         }
                         kebab := IconButton {
                             icon: Icons.dots-three-bold;
@@ -2842,14 +2869,25 @@ export component PanelWindow inherits Window {
         }
         if root.app-menu-open: Menu {
             x: min(max(Space.s2, kebab.absolute-position.x + kebab.width - self.width), root.width - self.width - Space.s2);
-            y: root.header-h - Space.s1;
-            // Inside the window at any height: a taller menu scrolls.
-            menu-max-h: root.height - (root.header-h - Space.s1) - Space.s2;
+            // Under the header when it fits there (with the dense rows if need be); a menu too tall for that rises
+            // over the header rather than scroll, and scrolls only when the window itself is too short for it.
+            y: max(Space.s2, min(root.header-h - Space.s1, root.height - self.height - Space.s2));
+            dense-above: root.height - (root.header-h - Space.s1) - Space.s2;
+            menu-max-h: root.height - 2 * Space.s2;
             entries: root.app-menu-entries;
             label: @tr("Panel menu");
             init => { self.focus-menu(); }
             activated(i) => { root.app-menu-activated(i); }
             dismissed => { root.app-menu-dismissed(); }
+        }
+        // A menu too tall for the window rises over the kebab: a second click on the button still closes the menu,
+        // and does not choose the row that happens to be under the pointer.
+        if root.app-menu-open: TouchArea {
+            x: kebab.absolute-position.x;
+            y: kebab.absolute-position.y;
+            width: kebab.width;
+            height: kebab.height;
+            clicked => { root.app-menu-dismissed(); }
         }
 
         // ---- The New menu (header): under the button, kept inside the window.
@@ -3114,14 +3152,33 @@ export component PanelWindow inherits Window {
         }
     }
 
-    // The dock preview: an accent strip along the edge the drag would dock to.
+    // The dock preview: the Panel is shown docked while the drag holds it at an edge. An accent frame and a label
+    // say that letting go docks it there (pulling back takes it off again).
     if root.dock-preview > 0 && !root.dock-collapsed: Rectangle {
-        x: root.dock-preview == 2 ? root.width - self.width : 0;
-        y: root.dock-preview == 4 ? root.height - self.height : 0;
-        width: root.dock-preview <= 2 ? Space.s1 : root.width;
-        height: root.dock-preview >= 3 ? Space.s1 : root.height;
-        background: Theme.accent;
+        width: root.width;
+        height: root.height;
+        border-width: 2px;
+        border-color: Theme.accent;
+        background: transparent;
         accessible-role: none;
+        Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            width: release-label.preferred-width + Space.s6;
+            height: release-label.preferred-height + Space.s3;
+            border-radius: Radius.md;
+            background: Theme.accent;
+            release-label := Text {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                text: @tr("Release to dock");
+                color: Theme.text-on-accent;
+                font-family: Fonts.sans;
+                font-size: Type.sm;
+                font-weight: Type.medium;
+                accessible-role: text;
+            }
+        }
     }
 
     // The collapsed dock: a strip over the whole window, in the colour of the list on show.

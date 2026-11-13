@@ -1908,7 +1908,7 @@ where
         wire!(on_dock_edge_chosen, |core, i| core
             .act(|ctl| ctl.dock_to(dock_edge_of(i))));
         wire!(on_dock_trigger_chosen, |core, i| core.act(
-            |ctl| ctl.update_settings(|s| s.dock.trigger = dock_trigger_of(i))
+            |ctl| ctl.update_settings(|s| s.dock.choose(dock_trigger_of(i)))
         ));
         wire!(on_dock_hover_delay_chosen, |core, ms| core
             .act(|ctl| ctl.update_settings(

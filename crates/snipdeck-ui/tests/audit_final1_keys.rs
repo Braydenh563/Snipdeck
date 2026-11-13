@@ -791,3 +791,55 @@ fn typing_messages_are_live_regions_in_the_source() {
         "the suggest hint is not a live region"
     );
 }
+
+/// Every drawn `Text` names the app font. One that does not falls back to whatever the system has (one font on one
+/// machine, another on the next), so it looks different per machine and its goldens differ in CI. Zero-size
+/// live regions are not drawn; the gallery's i18n probe is a harness check, not app UI.
+#[test]
+fn every_drawn_text_names_the_app_font() {
+    fn walk(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                if path.file_name().is_some_and(|n| n != "gallery") {
+                    walk(&path, out);
+                }
+            } else if path.extension().is_some_and(|e| e == "slint") {
+                out.push(path);
+            }
+        }
+    }
+    let mut files = Vec::new();
+    walk(
+        &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("ui"),
+        &mut files,
+    );
+    let mut missing = Vec::new();
+    for file in files {
+        let src = std::fs::read_to_string(&file).unwrap();
+        let bytes = src.as_bytes();
+        for (at, _) in src.match_indices("Text {") {
+            let before = at.checked_sub(1).map(|i| bytes[i]);
+            if before.is_some_and(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_') {
+                continue;
+            }
+            let mut depth = 1;
+            let mut end = at + "Text {".len();
+            while depth > 0 && end < bytes.len() {
+                match bytes[end] {
+                    b'{' => depth += 1,
+                    b'}' => depth -= 1,
+                    _ => {}
+                }
+                end += 1;
+            }
+            let body = &src[at..end];
+            let undrawn = body.contains("width: 0px;") && body.contains("height: 0px;");
+            if !undrawn && !body.contains("font-family") {
+                let line = src[..at].lines().count() + 1;
+                missing.push(format!("{}:{line}", file.display()));
+            }
+        }
+    }
+    assert!(missing.is_empty(), "Text with no font-family: {missing:?}");
+}

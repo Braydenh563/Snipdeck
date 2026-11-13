@@ -85,8 +85,27 @@ mod imp {
             screen::cursor_position()
         }
 
+        fn primary_down(&self) -> Option<bool> {
+            Some(screen::primary_button_down())
+        }
+
+        fn size_loop(&self) -> Option<bool> {
+            // Asked on the UI thread, the Panel's own.
+            Some(screen::in_size_loop(self.0.panel()))
+        }
+
         fn monitor_at(&self, x: i32, y: i32) -> Option<Monitor> {
             monitor_under(x, y)
+        }
+
+        fn fullscreen_on(&self, monitor: &Monitor) -> bool {
+            // Any point of the monitor names it: the middle of its work area.
+            let area = monitor.work_area;
+            let middle = |start: i32, len: u32| start.saturating_add_unsigned(len / 2);
+            snipdeck_platform::windows::target::fullscreen_covers(
+                middle(area.x, area.w),
+                middle(area.y, area.h),
+            )
         }
     }
 

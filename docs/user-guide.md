@@ -40,6 +40,12 @@ goes into the list you were looking at.
 
 The editor shows a banner if it restored changes you had not saved. Text over 16 KB opens read-only.
 
+**Preview.** Press **Preview** (or `Ctrl+P`) to see the item as the Panel and the Main list will draw it, with the colour, the
+kind and your layout. A template also shows its result with sample values (dates are today's; a field you fill in when you use
+the item shows its name or default), and a link shows the address it opens. A sensitive item shows neither its text nor its
+address. Nothing is saved and nothing you typed is lost; press **Preview** again to go back to editing. If Save is refused, you
+are taken back to the field to fix.
+
 **Save text from the clipboard.** Copy something, then use **Save from clipboard** in an empty Panel. The text
 becomes a new item at the top of the current list. Text over 5 MB is refused. The Capture shortcut does the same
 from anywhere, saving whatever text is on the clipboard when you press it; it is off until you set a shortcut in
@@ -319,14 +325,18 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   hidden in the tray when you sign in, and **When Windows starts** can open the Panel as well. **Keep running in
   the tray when the window closes** is on by default. Turn it off and closing the Panel or the Main window quits
   Snipdeck.
-- **Docking** is also in Opening the Panel. **Dock to** fixes the Panel against Floating, Left edge, Right edge,
-  Top edge or Bottom edge of the monitor it is on. The edge the taskbar is on is never used. You can also drag
-  the Panel by its header to within a few pixels of an edge: a strip marks the edge, and the Panel docks there
-  when you let go. The Panel's menu names the edge it would dock to ("Dock to the right edge"). **Open a docked
-  panel by** is Off, Hover, Click or Hover and click. Off keeps a docked Panel open. The other choices fold it
-  into a thin strip, and the Panel shortcut opens it too. **Hover delay** (0 to 2000 ms, default 150) is how long
-  the pointer rests on the strip. **Leave delay** (0 to 5000 ms, default 400) is how long it stays off the Panel
-  before it folds.
+- **Docking** is also in Opening the Panel. **Dock to** puts the Panel at the Left edge, Right edge, Top edge or
+  Bottom edge of the monitor it is on, or leaves it Floating. The edge the taskbar is on is never used. You can
+  also drag the Panel by the strip across its top: it floats wherever you drop it, and docks only when you push
+  the pointer itself against a screen edge and hold it there for a moment. A frame and "Release to dock" show
+  that it will; pull back and it floats again. Dragging a docked Panel slides it along its edge, and pulling it
+  away from the edge floats it at the size it had floating. The Panel's menu names the edge it would dock to
+  ("Dock to the right edge"). **Open a docked panel by** is Off, Hover, Click or Hover and click (the default).
+  With Off a docked Panel does not tuck: it shows and hides like a floating one. The other choices tuck it into a thin tab at its edge, and the Panel shortcut
+  opens it too. **Hover delay** (0 to 2000 ms, default 150) is how long the pointer rests on the tab. **Leave
+  delay** (0 to 5000 ms, default 400) is how long it stays off the Panel before it tucks. While a full-screen
+  app covers the monitor the Panel is on, the tab stays out of its way; the Panel shortcut still opens the Panel. Started hidden, a
+  docked Panel that tucks is there as its tab.
 - **Typing.** **Expand abbreviations as I type** and **Suggest snippets as I type**, both off by default. See
   [Triggers and typing](#triggers-and-typing-windows).
 - **Privacy.** **Keep a Recent inbox of what you copy** and the programs it never keeps copies from. **Clear the
@@ -561,6 +571,7 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Any program (Suggest on) | `Tab` while the hint shows | Insert the suggested item |
 | Unlock window | **Unlock with Windows Hello** | Unlock with face, fingerprint or PIN |
 | Item editor | `Ctrl+Enter` | Save |
+| Item editor | `Ctrl+P` | Preview on or off |
 | Fill form | `Ctrl+Enter`, `Esc` | Insert, cancel |
 
 ## Drag and drop

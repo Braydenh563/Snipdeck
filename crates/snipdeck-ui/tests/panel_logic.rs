@@ -71,7 +71,9 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_help_requested, || "help".to_string());
     hook!(on_commands_requested, || "commands".to_string());
     hook!(on_shortcuts_requested, || "shortcuts".to_string());
-    hook!(on_drag_requested, || "drag".to_string());
+    hook!(on_drag_began, |_x, _y| "drag".to_string());
+    hook!(on_drag_moved, |_x, _y| "drag-move".to_string());
+    hook!(on_drag_ended, || "drop".to_string());
     hook!(on_pin_toggled, |on| format!("pin:{on}"));
     hook!(on_add_list_requested, || "add-list".to_string());
     hook!(on_add_from_clipboard, || "add-from-clipboard".to_string());
@@ -118,8 +120,6 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_pin_requested, |i| format!("pin:{i}"));
     hook!(on_delete_requested, |i| format!("delete:{i}"));
     hook!(on_resize_requested, |edge| format!("resize:{edge:?}"));
-    hook!(on_along_drag, |d| format!("slide:{d}"));
-    hook!(on_along_begin, || "slide-begin".to_string());
     hook!(on_pinned_copied, |i| format!("pinned-copy:{i}"));
     hook!(on_handle_hovered, |on| format!("handle-hover:{on}"));
     hook!(on_handle_clicked, || "handle-click".to_string());
@@ -164,6 +164,11 @@ fn find(root: &impl ElementRoot, label: &str, role: AccessibleRole) -> ElementHa
         .into_iter()
         .next()
         .unwrap_or_else(|| panic!("no {role:?} labelled {label:?}"))
+}
+
+/// The grab strip across the top of the Panel (it has no accessible role: it only answers a pointer drag).
+fn grab_strip(ui: &PanelWindow) -> Option<ElementHandle> {
+    ElementHandle::find_by_element_id(ui, "PanelWindow::grab").next()
 }
 
 fn missing(root: &impl ElementRoot, label: &str, role: AccessibleRole) -> bool {
@@ -270,8 +275,9 @@ fn wait(ms: u64) {
 
 /// An empty part of the body (no control under it, no tooltip anchor): the bottom, clear of the footer text.
 fn away(_ui: &PanelWindow) -> LogicalPosition {
-    // Empty header space between the board picker and the search button: a drag region, no tooltip, no hover.
-    LogicalPosition::new(92.0, 20.0)
+    // Empty header space between the board picker and the search button, under the grab strip: a drag region, no
+    // tooltip, no hover.
+    LogicalPosition::new(92.0, 44.0)
 }
 
 fn set_pinned(ui: &PanelWindow, items: Vec<PinnedItem>) {
@@ -870,10 +876,10 @@ ui_tests! {
         let (ui, log) = start();
         let w = ui.window();
         // Empty header space between the board switcher and the buttons.
-        let at = LogicalPosition::new(92.0, 10.0);
+        let at = LogicalPosition::new(92.0, 34.0);
         w.dispatch_event(WindowEvent::PointerPressed { position: at, button: PointerEventButton::Left });
         w.dispatch_event(WindowEvent::PointerReleased { position: at, button: PointerEventButton::Left });
-        assert_eq!(take(&log), ["drag"]);
+        assert_eq!(take(&log), ["drag", "drop"], "the press starts the drag and the release ends it");
 
         find(&ui, "Close panel (Esc)", AccessibleRole::Button).mock_single_click(PointerEventButton::Left);
         assert_eq!(take(&log), ["close"], "the close button is not a drag handle");
@@ -1397,14 +1403,16 @@ ui_tests! {
     fn the_smallest_window_depends_on_the_layout_and_the_lists_switcher() {
         let (ui, _log) = start();
         let min = |ui: &PanelWindow| ui.get_min_h();
-        // 296 plus the 32px "New item" row that floats over the foot of the list (audit 2, item 2).
-        assert!((min(&ui) - 328.0).abs() < 0.5, "List: {}", min(&ui));
+        // 320 (the 24px grab strip included) plus the 32px "New item" row that floats over the foot of the list
+        // (audit 2, item 2).
+        assert!((min(&ui) - 352.0).abs() < 0.5, "List: {}", min(&ui));
         ui.set_layout(PanelLayout::Compact);
-        assert!((min(&ui) - 240.0).abs() < 0.5, "Compact: {}", min(&ui));
+        // Grab strip 24, header 40, tabs 32, three 36px rows with 8 above and below, footer 32.
+        assert!((min(&ui) - 252.0).abs() < 0.5, "Compact: {}", min(&ui));
         ui.set_layout(PanelLayout::Cards);
         assert!((min(&ui) - 240.0).abs() < 0.5, "Cards: {}", min(&ui));
         ui.set_layout(PanelLayout::List);
-        assert!((min(&ui) - 328.0).abs() < 0.5);
+        assert!((min(&ui) - 352.0).abs() < 0.5);
     }
 
     fn at_the_minimum_height_two_rows_show_whole_with_the_pins_and_three_without_clear_of_new_item() {
@@ -1724,7 +1732,7 @@ ui_tests! {
     fn the_smallest_window_loses_the_tab_rows_32_with_the_menu_switcher() {
         let (ui, _log) = start();
         ui.set_lists_in_menu(true);
-        assert!((ui.get_min_h() - 296.0).abs() < 0.5, "List: {}", ui.get_min_h());
+        assert!((ui.get_min_h() - 320.0).abs() < 0.5, "List: {}", ui.get_min_h());
         ui.set_layout(PanelLayout::Compact);
         assert!((ui.get_min_h() - 240.0).abs() < 0.5, "Compact never goes under 240: {}", ui.get_min_h());
         ui.set_layout(PanelLayout::Cards);
@@ -2075,7 +2083,7 @@ ui_tests! {
 
     // ---- Chrome (Panel v2 spec 2.1-2.8) --------------------------------------------------------------
 
-    fn the_chrome_at_rest_is_104_tall_without_pins_and_140_with() {
+    fn the_chrome_at_rest_is_128_tall_without_pins_and_164_with() {
         let (ui, _log) = start();
         let height = ui.window().size().height as f32;
         let deck_top = |ui: &PanelWindow| {
@@ -2088,18 +2096,18 @@ ui_tests! {
         let footer = find(&ui, "Pastes into Outlook · New message", AccessibleRole::Text);
         assert!((footer.size().height - 32.0).abs() < 0.5, "footer 32 tall: {}", footer.size().height);
         let (tabs_y, strip) = deck_top(&ui);
-        assert!((tabs_y - 40.0).abs() < 0.5, "header is 40 tall: tabs start at {tabs_y}");
+        assert!((tabs_y - 64.0).abs() < 0.5, "grab strip 24 and header 40: tabs start at {tabs_y}");
         let (strip_y, strip_h) = strip.expect("pinned strip");
-        assert!((strip_y - 72.0).abs() < 0.5 && (strip_h - 36.0).abs() < 0.5, "tabs 32 then pins 36: {strip_y} {strip_h}");
-        let with_pins = 40.0 + 32.0 + strip_h + footer.size().height;
-        assert!((with_pins - 140.0).abs() < 0.5);
+        assert!((strip_y - 96.0).abs() < 0.5 && (strip_h - 36.0).abs() < 0.5, "tabs 32 then pins 36: {strip_y} {strip_h}");
+        let with_pins = 24.0 + 40.0 + 32.0 + strip_h + footer.size().height;
+        assert!((with_pins - 164.0).abs() < 0.5);
         set_pinned(&ui, Vec::new());
         assert!(missing(&ui, "Pinned snippets", AccessibleRole::List));
         let list = find(&ui, "Snippets", AccessibleRole::List);
-        // Header 40 + tabs 32 above the list; 32 of footer below it (the list ends above the footer).
-        assert!(list.absolute_position().y >= 72.0 && list.absolute_position().y < 72.0 + 40.0, "list starts under the tabs: {}", list.absolute_position().y);
+        // Grab strip 24 + header 40 + tabs 32 above the list; 32 of footer below it (the list ends above the footer).
+        assert!(list.absolute_position().y >= 96.0 && list.absolute_position().y < 96.0 + 40.0, "list starts under the tabs: {}", list.absolute_position().y);
         assert!(footer.absolute_position().y + footer.size().height <= height + 0.5);
-        assert!((40.0 + 32.0 + footer.size().height - 104.0).abs() < 0.5);
+        assert!((24.0 + 40.0 + 32.0 + footer.size().height - 128.0).abs() < 0.5);
     }
 
     fn open_snipdeck_is_a_footer_button_that_goes_icon_only_below_300px() {
@@ -2208,7 +2216,20 @@ ui_tests! {
         let kebab_right = kebab.absolute_position().x + kebab.size().width;
         let window = ui.window().size();
         assert!(mp.x >= 0.0 && mp.x + ms.width <= window.width as f32, "inside the window: {mp:?} {ms:?}");
-        assert!(mp.y >= kebab.absolute_position().y + kebab.size().height - 8.0, "below the button");
+        // This menu is too tall to hang under the header of a 560px Panel: it rises over the header rather than
+        // scroll, and stays inside the window.
+        assert!(
+            mp.y >= 8.0 - 0.5 && mp.y + ms.height <= window.height as f32 - 8.0 + 0.5,
+            "inside the window top to bottom: {mp:?} {ms:?}"
+        );
+        // With the room for it, it hangs below the button.
+        ui.window().set_size(slint::LogicalSize::new(320.0, 640.0));
+        settle();
+        let (menu, kebab) = (find(&ui, "Panel menu", AccessibleRole::List), find(&ui, "More", AccessibleRole::Button));
+        assert!(
+            menu.absolute_position().y >= kebab.absolute_position().y + kebab.size().height - 8.0,
+            "below the button"
+        );
         assert!(
             (mp.x + ms.width - kebab_right).abs() <= 0.5,
             "right edge is the kebab's: menu {} kebab {kebab_right}",
@@ -2374,8 +2395,8 @@ ui_tests! {
             ResizeEdge::BottomRight,
         ];
         // The header body still drags.
-        press_at(&ui, LogicalPosition::new(92.0, 20.0));
-        assert_eq!(take(&log), ["drag"]);
+        press_at(&ui, LogicalPosition::new(92.0, 44.0));
+        assert_eq!(take(&log), ["drag", "drop"]);
     }
 
     fn outer_grips_hidden_while_docked() {
@@ -2451,33 +2472,101 @@ ui_tests! {
         assert_eq!(take(&log), ["resize:Left"]);
     }
 
-    fn the_grip_pill_shows_only_while_docked_and_slides_without_a_drag_request() {
+    fn the_grab_strip_drags_the_panel_from_its_whole_width_floating_or_docked() {
         let (ui, log) = start();
-        assert!(missing(&ui, "Slide the panel along the edge", AccessibleRole::Button), "floating: no pill");
-        ui.set_dock_edge(1);
-        ui.set_dock_slide(true);
-        settle();
-        let pill = find(&ui, "Slide the panel along the edge", AccessibleRole::Button);
-        let c = centre(&pill);
-        ui.window().dispatch_event(WindowEvent::PointerMoved { position: c });
-        ui.window().dispatch_event(WindowEvent::PointerPressed { position: c, button: PointerEventButton::Left });
-        assert_eq!(take(&log), ["slide-begin"], "the press starts the slide");
-        let moved = LogicalPosition::new(c.x, c.y + 30.0);
-        ui.window().dispatch_event(WindowEvent::PointerMoved { position: moved });
-        // A second move event reports the total from the press, not another 30 on top.
-        ui.window().dispatch_event(WindowEvent::PointerMoved { position: moved });
-        ui.window().dispatch_event(WindowEvent::PointerReleased { position: moved, button: PointerEventButton::Left });
-        let seen = take(&log);
-        assert_eq!(seen, ["slide:30", "slide:30"], "an axis-locked slide, not the header's window drag");
-        // A press on the rest of the header still drags (undocks).
-        // (just right of the board picker, left of the pill: header space with no control)
+        let width = ui.window().size().to_logical(ui.window().scale_factor()).width;
+        for edge in [0, 1, 3] {
+            ui.set_dock_edge(edge);
+            settle();
+            let strip = grab_strip(&ui).expect("the grab strip");
+            assert!((strip.size().width - width).abs() < 0.5, "edge {edge}: the whole width");
+            assert!(strip.absolute_position().y.abs() < 0.5 && (strip.size().height - 24.0).abs() < 0.5);
+            // Its ends and its middle, below the top resize edge and clear of the corners.
+            for x in [12.0, width / 2.0, width - 12.0] {
+                let at = LogicalPosition::new(x, 13.0);
+                ui.window().dispatch_event(WindowEvent::PointerMoved { position: at });
+                ui.window().dispatch_event(WindowEvent::PointerPressed { position: at, button: PointerEventButton::Left });
+                assert_eq!(take(&log), ["drag"], "edge {edge} x {x}: the press starts the drag");
+                // The pointer may leave the strip while the button is held: the drag goes on.
+                let moved = LogicalPosition::new(x + 30.0, 200.0);
+                ui.window().dispatch_event(WindowEvent::PointerMoved { position: moved });
+                assert_eq!(take(&log), ["drag-move"]);
+                ui.window().dispatch_event(WindowEvent::PointerReleased { position: moved, button: PointerEventButton::Left });
+                assert_eq!(take(&log), ["drop"], "the release ends it");
+            }
+        }
+        // A press on the header's empty space under the strip drags too.
+        // (just right of the board picker: header space with no control)
         let picker = find(&ui, "Board: Work", AccessibleRole::Button);
         let gap = LogicalPosition::new(centre(&picker).x + picker.size().width / 2.0 + 2.0, centre(&picker).y);
         press_at(&ui, gap);
-        assert_eq!(take(&log), ["drag"]);
-        ui.set_dock_slide(false);
+        assert_eq!(take(&log), ["drag", "drop"]);
+        // The tucked tab has no strip.
+        ui.set_dock_edge(1);
+        ui.set_dock_collapsed(true);
         settle();
-        assert!(missing(&ui, "Slide the panel along the edge", AccessibleRole::Button));
+        assert!(grab_strip(&ui).is_none());
+    }
+
+    fn the_grab_strip_is_not_offered_to_a_screen_reader_as_a_button() {
+        let (ui, _log) = start();
+        let strip = grab_strip(&ui).expect("the grab strip");
+        assert_ne!(strip.accessible_role(), Some(AccessibleRole::Button), "a press on it would do nothing");
+        assert!(missing(&ui, "Move the panel", AccessibleRole::Button));
+    }
+
+    fn the_strips_tooltip_goes_when_a_drag_starts_and_says_what_a_docked_panel_can_do() {
+        let (ui, _log) = start();
+        let strip = LogicalPosition::new(160.0, 13.0);
+        move_to(&ui, strip);
+        wait(900);
+        assert_eq!(ui.get_tooltip_shown(), "Drag to move. Hold at a screen edge to dock.");
+        // The drag starts: no tooltip rides along under the pointer, and none is back when it ends.
+        ui.set_dragging(true);
+        settle();
+        assert_eq!(ui.get_tooltip_shown(), "");
+        ui.set_dragging(false);
+        settle();
+        assert_eq!(ui.get_tooltip_shown(), "");
+        // Docked, the strip says what a drag does there.
+        move_to(&ui, away(&ui));
+        wait(600);
+        ui.set_dock_edge(2);
+        settle();
+        move_to(&ui, strip);
+        wait(900);
+        assert_eq!(ui.get_tooltip_shown(), "Drag along the edge to move. Pull away from the edge to float.");
+        // Undocked under the pointer, the tooltip that is up still closes when the pointer leaves.
+        ui.set_dock_edge(0);
+        settle();
+        move_to(&ui, away(&ui));
+        wait(600);
+        assert_eq!(ui.get_tooltip_shown(), "");
+        // A side dock that takes the whole edge does not slide.
+        ui.set_dock_edge(1);
+        ui.set_dock_full_edge(true);
+        settle();
+        move_to(&ui, strip);
+        wait(900);
+        assert_eq!(ui.get_tooltip_shown(), "Pull away from the edge to float.");
+    }
+
+    fn a_second_click_on_the_kebab_closes_a_menu_that_has_risen_over_it() {
+        let (ui, log) = start();
+        ui.window().set_size(slint::LogicalSize::new(320.0, 328.0));
+        settle();
+        let kebab = centre(&find(&ui, "More", AccessibleRole::Button));
+        ui.set_app_menu_open(true);
+        settle();
+        let menu = find(&ui, "Panel menu", AccessibleRole::List);
+        let (top, left) = (menu.absolute_position().y, menu.absolute_position().x);
+        assert!(
+            top < kebab.y && kebab.y < top + menu.size().height && left < kebab.x && kebab.x < left + menu.size().width,
+            "the menu covers the button it came from"
+        );
+        take(&log);
+        click_at(&ui, kebab);
+        assert_eq!(take(&log), ["app-dismissed"], "the click closes the menu and chooses no row");
     }
 
     // ---- The edge dock ---------------------------------------------------------------------------
