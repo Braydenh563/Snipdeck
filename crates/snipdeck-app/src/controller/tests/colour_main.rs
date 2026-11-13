@@ -139,7 +139,7 @@ mod main_window {
         let plain = w.ids[0];
         let plain_row = open_row(&mut w, plain);
         assert_eq!(w.ctl.main_colour_copy(plain_row, 0), None);
-        assert!(w.ctl.services().clipboard.written.is_empty());
+        assert_eq!(w.ctl.services().clipboard.written.len(), 0);
     }
 
     #[test]
@@ -150,7 +150,7 @@ mod main_window {
         assert_eq!(choices[2], (Fmt::Hsl, "hsl(215, 65%, 53%)".to_owned()));
         let other = w.ids[0];
         let other_row = open_row(&mut w, other);
-        assert!(w.ctl.main_colour_choices(other_row).is_empty());
+        assert_eq!(w.ctl.main_colour_choices(other_row).len(), 0);
         let row = open_row(&mut w, id);
         // Enter pastes (Ctrl+V goes out).
         w.ctl
@@ -201,7 +201,7 @@ mod main_window {
         assert!(screen.colour_block.is_some(), "still copyable");
         assert!(!screen.colours_tab);
         w.ctl.main_open_in_colours(row);
-        assert!(w.ctl.take_pending().is_empty());
+        assert_eq!(w.ctl.take_pending().len(), 0);
         assert_eq!(
             w.ctl.main_colour_copy(row, 0),
             Some(UseResult::Done(UseOutcome::Copied))
@@ -227,8 +227,8 @@ mod picker {
         assert_eq!(choices.len(), 7);
         assert_eq!(choices[1], (Fmt::Rgb, "rgb(58, 123, 213)".to_owned()));
         w.ctl.picker_query("second");
-        assert!(w.ctl.picker_colour_choices(0).is_empty());
-        assert!(w.ctl.picker_colour_choices(9).is_empty());
+        assert_eq!(w.ctl.picker_colour_choices(0).len(), 0);
+        assert_eq!(w.ctl.picker_colour_choices(9).len(), 0);
     }
 
     #[test]
@@ -260,7 +260,7 @@ mod picker {
             w.ctl.use_colour_item_as(plain, 0, UseMode::Copy),
             UseResult::Failed
         );
-        assert!(w.ctl.services().clipboard.written.is_empty());
+        assert_eq!(w.ctl.services().clipboard.written.len(), 0);
     }
 
     #[test]
@@ -285,7 +285,7 @@ mod picker {
         w.ctl.picker_query("second");
         assert!(!w.ctl.picker_open_in_colours(0));
         assert!(w.ctl.picker().is_some());
-        assert!(w.ctl.take_pending().is_empty());
+        assert_eq!(w.ctl.take_pending().len(), 0);
 
         let mut w = world_with(
             Some(outlook()),

@@ -66,7 +66,7 @@ fn the_tab_starts_on_the_saved_colour_and_setting_it_pushes_no_recent() {
     w.ctl.set_colour(BLUE);
     assert_eq!(w.ctl.colour_view().current, BLUE);
     assert_eq!(w.ctl.settings().colour_current, "#3a7bd5");
-    assert!(w.ctl.colour_view().recents.is_empty());
+    assert_eq!(w.ctl.colour_view().recents.len(), 0);
 }
 
 #[test]
@@ -135,7 +135,7 @@ fn a_busy_clipboard_toasts_and_remembers_nothing() {
         w.ctl.use_colour(BLUE, Fmt::Hex, UseMode::Copy),
         UseResult::Failed
     );
-    assert!(w.ctl.colour_view().recents.is_empty());
+    assert_eq!(w.ctl.colour_view().recents.len(), 0);
 }
 
 #[test]
@@ -271,14 +271,14 @@ fn open_in_colours_makes_it_current_and_shows_the_tab() {
     let effects = w.ctl.open_item_in_colours(id);
     assert_eq!(effects, [Effect::ShowPanel, Effect::ShowColours]);
     assert_eq!(w.ctl.colour_view().current, BLUE);
-    assert!(w.ctl.open_item_in_colours(w.ids[0]).is_empty());
+    assert_eq!(w.ctl.open_item_in_colours(w.ids[0]).len(), 0);
 }
 
 #[test]
 fn view_list_leaves_the_tab_and_is_off_until_a_list_exists() {
     let mut w = world();
     assert!(!w.ctl.colour_view().has_saved_list);
-    assert!(w.ctl.open_saved_colours().is_empty());
+    assert_eq!(w.ctl.open_saved_colours().len(), 0);
     w.ctl.save_colour(BLUE, SaveTarget::Home);
     assert!(w.ctl.colour_view().has_saved_list);
     let list = colours_list(&w).unwrap();
@@ -340,7 +340,7 @@ fn a_colour_picked_from_the_screen_is_current_remembered_and_copied_when_asked()
         },
     );
     w.ctl.colour_picked(BLUE, false);
-    assert!(w.ctl.services().clipboard.written.is_empty());
+    assert_eq!(w.ctl.services().clipboard.written.len(), 0);
     assert_eq!(w.ctl.colour_view().recents, [BLUE], "still remembered");
 }
 
@@ -433,7 +433,7 @@ mod eyedropper {
         let (mut w, _) = with(&fake);
         assert_eq!(w.ctl.start_eyedropper(), vec![Effect::HidePanel]);
         assert_eq!(w.ctl.eyedropper_state(), (true, true));
-        assert!(w.ctl.start_eyedropper().is_empty());
+        assert_eq!(w.ctl.start_eyedropper().len(), 0);
         assert_eq!(fake.starts().len(), 1);
         assert!(fake.complete(EyedropOutcome::Cancelled));
         assert_eq!(w.ctl.eyedropper_state(), (true, false));
@@ -443,7 +443,7 @@ mod eyedropper {
     fn without_an_eyedropper_the_button_is_absent_and_start_does_nothing() {
         let mut w = world();
         assert_eq!(w.ctl.eyedropper_state(), (false, false));
-        assert!(w.ctl.start_eyedropper().is_empty());
+        assert_eq!(w.ctl.start_eyedropper().len(), 0);
     }
 }
 
@@ -492,7 +492,7 @@ mod commands {
         w.ctl.update_settings(|s| s.show_colours_tab = false);
         w.ctl.run_command(Command::Colours, 0);
         w.ctl.run_command(Command::PickColour, 0);
-        assert!(w.ctl.take_pending().is_empty());
+        assert_eq!(w.ctl.take_pending().len(), 0);
     }
 }
 
@@ -521,7 +521,7 @@ mod item_menu {
             .iter()
             .position(|e| *e == ItemMenuEntry::PasteAs)
             .expect("Paste as");
-        assert!(w.ctl.choose_item_menu(paste_as).is_empty());
+        assert_eq!(w.ctl.choose_item_menu(paste_as).len(), 0);
         let choose = w.ctl.view().choose_menu.expect("the second level");
         assert_eq!(choose.entries.len(), Fmt::ALL.len());
         assert_eq!(
@@ -553,7 +553,7 @@ mod item_menu {
         let keys = w.ctl.services().keyboard.sent.len();
         w.ctl.choose_item_menu_as(1, true);
         assert_eq!(w.ctl.services().keyboard.sent.len(), keys, "no paste keys");
-        assert!(!w.ctl.services().clipboard.written.is_empty());
+        assert_ne!(w.ctl.services().clipboard.written.len(), 0);
         assert_eq!(uses(&w, id), 1);
     }
 
@@ -605,7 +605,7 @@ mod list_menu {
         w.ctl.open_list_menu(0);
         assert!(w.ctl.view().list_menu_css);
         let before = w.ctl.services().clipboard.written.len();
-        assert!(w.ctl.choose_list_menu(css).is_empty());
+        assert_eq!(w.ctl.choose_list_menu(css).len(), 0);
         assert_eq!(w.ctl.services().clipboard.written.len(), before + 1);
         let text = written(&w, before);
         assert!(text.starts_with(":root {"), "{text}");
