@@ -85,7 +85,7 @@ fn shot(name: &str, frame: &Frame) {
 }
 
 fn has_pixel(frame: &Frame, rgb: [u8; 3]) -> bool {
-    frame.rgb.as_chunks::<3>().0.iter().any(|p| *p == rgb)
+    frame.rgb.as_chunks::<3>().0.contains(&rgb)
 }
 
 #[test]
