@@ -85,7 +85,7 @@ fn shot(name: &str, frame: &Frame) {
 }
 
 fn has_pixel(frame: &Frame, rgb: [u8; 3]) -> bool {
-    frame.rgb.chunks_exact(3).any(|p| p == rgb)
+    frame.rgb.as_chunks::<3>().0.iter().any(|p| *p == rgb)
 }
 
 #[test]
@@ -532,7 +532,11 @@ fn format_rows_are_one_stop_with_a_roving_selection_and_keys() {
         Some(label(0)),
         "stops at the top"
     );
-    assert!(r.ctl.borrow().colour_view().recents.is_empty());
+    assert_eq!(
+        r.ctl.borrow().colour_view().recents.len(),
+        0,
+        "no recents left"
+    );
     r.press(&key(Key::Return));
     assert_eq!(
         r.ctl.borrow().colour_view().recents,
