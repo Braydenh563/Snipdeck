@@ -956,7 +956,7 @@ mod tests {
     fn the_fake_records_every_start_with_its_texts_and_settle_time() {
         let fake = FakeEyedropper::answering(EyedropOutcome::Cancelled);
         let mut host = fake.clone();
-        assert!(fake.starts().is_empty());
+        assert_eq!(fake.starts().len(), 0);
         host.start(texts("one"), Duration::from_millis(150), recorder().1)
             .unwrap();
         host.start(texts("two"), Duration::ZERO, recorder().1)
@@ -977,7 +977,7 @@ mod tests {
         let (seen, done) = recorder();
         host.start(texts("x"), Duration::ZERO, done).unwrap();
         assert!(host.running());
-        assert!(seen.lock().unwrap().is_empty(), "done has not been called");
+        assert_eq!(seen.lock().unwrap().len(), 0, "done has not been called");
 
         let (other, other_done) = recorder();
         assert_eq!(
@@ -1010,7 +1010,7 @@ mod tests {
             host.start(texts("x"), Duration::ZERO, done),
             Err(Error::Unavailable("no screen"))
         );
-        assert!(seen.lock().unwrap().is_empty());
+        assert_eq!(seen.lock().unwrap().len(), 0);
         assert!(!host.running());
         // The script moves on: the next start runs.
         let (_seen, done) = recorder();
