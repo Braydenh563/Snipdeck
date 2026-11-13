@@ -8,16 +8,17 @@
 - Window tests `tests/colours_window.rs` (renders to `target/colours-shots`).
 
 ## Next
-- Not done (review #33): the global `hotkeys.eyedropper` chord / `HotkeyAction::Eyedropper` (D10); "pick from anywhere" needs the Panel or the palette first. The eyedropper always hides and restores the Panel (see the comment in `eyedrop_ctl.rs`).
-- Not done: a per-swatch Ctrl+S (the Panel's Ctrl+S saves the current colour first; a swatch saves through its menu).
-- Not done: the R/G/B/C/M... channel letters are spoken (TextField `label`) but not drawn.
-- Scroll-into-view on focus is wired for the chip grids and the format list only, not the sliders, selects or buttons.
+- Merge origin/claude/compassionate-pascal-pod8ux (dock redesign; every drawn Text needs `font-family: Fonts.sans`), regenerate goldens, i18n extract/check, codemap, `gate --full`, clippy 1.99.1.
+- Not done (review #33): the global `hotkeys.eyedropper` chord / `HotkeyAction::Eyedropper` (D10); "pick from anywhere" needs the Panel or the palette first. The eyedropper always hides and restores the Panel (see `eyedrop_ctl.rs`).
+- Not done: a per-swatch Ctrl+S (a swatch saves through its menu; the Panel's Ctrl+S saves the current colour).
+- Not done (C15 leftover): the card swatch tile is a passive image, not a button; reachable through the item menu.
+- Scroll-into-view on focus: chip grids and the format list only, not the sliders, selects or buttons.
+- C4, by design: the HSB and CMYK format texts have no alpha part, so they describe the opaque colour (alpha shows in HEX/RGB/HSL/OKLCH).
+- C14 deferred: a Win32 key press during an eyedropper press leaves the overlay destroyed while the mouse button is still held. Narrow, and not testable without Windows; do it with the Windows run of `tools/windows-test/`.
 - Windows-only and never run: the Win32 eyedropper (button-up capture, HDR bit logic, the wizard in `tools/windows-test/`).
 
-## Open review items (docs/reviews/colour-tool-reverify.md C1..C24), as of the stop for budget
-Done and tested (lib tests): C1 Rust side (HSL/CMYK keep float state, `colours_panel::Memo`), C2, C17, C18, C20, C23, C24 (commands part), Main Colour strip + Picker Paste as (C6, C15 partly).
-Slint agent was stopped mid-work: its edits to colours.slint / text_field.slint / item-card.slint / panel.slint / tests/colours_window.rs are in the tree UNTESTED (colours_window.rs had clippy cast errors at ~983 and a dropped `let line =` binding). Re-check each, then finish: C1(d) real Up/Down keys via capture-key-pressed plus a real-key window test, C3 channel letters, C5 window tests, C7/C13 focus after removing the last recent, C8 Save to… focus return, C9 Esc with a SelectField open, C10 Ctrl+Z/Y in the input must not undo the library, C11 format row hover text, C12 surface accessible range, C16 fixed widths at 260px/large text, C19 translucent swatch checker, C21 clear query on open-colours, C22 swatch accessible label, C24 panel_logic Ctrl+Tab test.
-Also open: C4 (HSB/CMYK texts drop alpha: document), C14 (Win32 key during a press), #35 goldens (Colours tab light/dark x 100%/150% plus a no-clip measurement), a Slint binding-loop warning in main_window.slint (search field / root layoutinfo, seen in the clippy build log), then merge origin/claude/compassionate-pascal-pod8ux (regenerate goldens), codemap, `gate --full`.
+## Review items C1..C24 (docs/reviews/colour-tool-reverify.md)
+All done and tested except C14 (above), C4 (documented) and the C15 leftover. Slint side: window tests in `tests/colours_window.rs` (40, including the Colours-tab goldens `colours-{light,dark}-x{100,150}` and a no-clip measurement; the harness now sets the text scale through `text_scale::apply`, since a bare `SystemLook` write is overwritten on redraw) and `tests/panel_logic.rs`. The main_window.slint binding loop is gone (`tall-enough` property set from `changed height`).
 
 ## Blocked
 - Eyedropper has never run on Windows; owner must try it (`tools/windows-test/`).
