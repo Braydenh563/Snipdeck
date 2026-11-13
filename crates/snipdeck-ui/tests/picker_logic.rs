@@ -394,7 +394,7 @@ ui_tests! {
         // A row that is no colour has no chooser and no Open in Colours.
         press(ui.window(), &key(Key::Menu));
         chord(ui.window(), &[Key::Control], "o");
-        assert!(take(&log).is_empty());
+        assert_eq!(take(&log).len(), 0);
 
         press(ui.window(), &key(Key::DownArrow));
         take(&log);
