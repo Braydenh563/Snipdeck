@@ -835,8 +835,15 @@ fn shots_at_both_widths_with_recents_and_saved() {
 
 impl Rig {
     fn set_text_scale(&self, scale: f32) {
-        SystemLook::get(&self.h.component).set_text_scale(scale);
+        // The binding re-applies the app's scale on every redraw, so set it where it comes from.
+        snipdeck_app::text_scale::configure(snipdeck_app::settings::TextSize::System);
+        snipdeck_app::text_scale::set_system(scale);
+        snipdeck_app::text_scale::apply(&SystemLook::get(&self.h.component));
         self.settle();
+        assert!(
+            (SystemLook::get(&self.h.component).get_text_scale() - scale).abs() < 1e-3,
+            "the window took the text scale"
+        );
     }
 
     fn by_label(&self, role: AccessibleRole, label: &str) -> ElementHandle {
@@ -1351,10 +1358,14 @@ fn the_colours_tab_light_and_dark_at_default_and_150_percent_text() {
         r.state().invoke_input_edited("#3a7bd5".into());
         r.settle();
         let at = format!("{} text x{scale}", if dark { "dark" } else { "light" });
+        // Below the Lists strip, which scrolls sideways on purpose.
+        let strip = r.by_label(AccessibleRole::TabList, "Lists");
+        let below = strip.absolute_position().y + strip.size().height - 0.5;
         let outside = ElementQuery::from_root(&r.h.component)
-            .match_predicate(|e| {
+            .match_predicate(move |e| {
                 let (p, s) = (e.absolute_position(), e.size());
-                s.width > 0.5
+                p.y >= below
+                    && s.width > 0.5
                     && s.height > 0.5
                     && (p.x < -0.5 || p.x + s.width > width as f32 + 0.5)
             })
@@ -1365,7 +1376,12 @@ fn the_colours_tab_light_and_dark_at_default_and_150_percent_text() {
             outside.len(),
             outside
                 .iter()
-                .map(|e| (e.type_name(), e.accessible_label()))
+                .map(|e| (
+                    e.type_name(),
+                    e.accessible_label(),
+                    e.absolute_position(),
+                    e.size()
+                ))
                 .collect::<Vec<_>>()
         );
         snipdeck_ui::testing::assert_golden(
