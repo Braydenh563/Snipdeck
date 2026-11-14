@@ -272,13 +272,14 @@ fn a_hue_slider_value_outside_the_wheel_is_held_at_its_ends_and_nan_is_zero() {
 fn a_list_replaced_by_one_of_the_same_name_is_where_save_to_puts_the_colour() {
     let r = rig(false, (320, 640));
     r.state().invoke_input_edited("#3a7bd5".into());
-    let (blue, red) = (Rgba8::rgb(0x3a, 0x7b, 0xd5), Rgba8::rgb(255, 0, 0));
     // The first save makes "Colours"; Undo takes it away; the next save makes it again: the same
-    // name on another id, so nothing the window draws changes.
-    assert!(r.ctl.borrow_mut().save_colour(blue, SaveTarget::Home));
+    // name on another id, so nothing the window draws changes. (Saves go through the window, which
+    // is what refreshes its Save to… entries.)
+    r.state().invoke_save(-1);
     r.settle();
     r.ctl.borrow_mut().main_undo();
-    assert!(r.ctl.borrow_mut().save_colour(red, SaveTarget::Home));
+    r.state().invoke_input_edited("#ff0000".into());
+    r.state().invoke_save(-1);
     r.settle();
     let targets = r.state().get_save_targets();
     // The made list is the last one, just before "New list…".
@@ -290,6 +291,7 @@ fn a_list_replaced_by_one_of_the_same_name_is_where_save_to_puts_the_colour() {
             .map(|i| targets.row_data(i).unwrap().text)
             .collect::<Vec<_>>()
     );
+    r.state().invoke_input_edited("#00ff00".into());
     r.state().invoke_save(i32::try_from(at).unwrap());
     r.settle();
     assert_eq!(
