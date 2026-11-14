@@ -89,6 +89,8 @@ fn rig_at(data: &Path, tier: Tier, provider: &SharedProvider) -> Rig {
         // "More options" open: the tests drive Kind, Title, Colour, Tags and Privacy too.
         Settings {
             editor_more_open: true,
+            // Answered, so the first-run Recent question does not cover the Panel the editor opens from.
+            recent_history_asked: true,
             ..Settings::default()
         },
         Entitlements::new(tier),
