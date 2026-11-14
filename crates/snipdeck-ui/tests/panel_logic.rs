@@ -2075,15 +2075,19 @@ ui_tests! {
         assert!(ui.get_search_focused());
         press(ui.window(), &key(Key::Tab));
         chord(ui.window(), &[Key::Control], "f");
+        // The testing clipboard is shared by every test, so fill it from the field itself first: the paste is then
+        // exactly "x" appended to "x", and nothing but the query changes.
+        type_text(ui.window(), "x");
+        chord(ui.window(), &[Key::Control], "a");
+        chord(ui.window(), &[Key::Control], "c");
+        press(ui.window(), &key(Key::End));
         take(&log);
         chord(ui.window(), &[Key::Control], "v");
         chord(ui.window(), &[Key::Control], "c");
-        // The testing clipboard is shared by every test: a paste may legitimately edit the query. What must not
-        // fire are the Panel's own shortcuts.
-        let fired = take(&log);
-        assert!(
-            fired.iter().all(|line| line.starts_with("query:")),
-            "a focused search field pastes and copies normally: {fired:?}"
+        assert_eq!(
+            take(&log),
+            ["query:xx"],
+            "a focused search field pastes and copies normally: only the query changes, no Panel shortcut fires"
         );
     }
 
