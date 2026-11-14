@@ -816,6 +816,54 @@ ui_tests! {
         assert_eq!(take(&log), Vec::<String>::new(), "tiles stay put in a sorted list");
     }
 
+    fn a_tile_dropped_in_the_gaps_of_the_grid_lands_on_the_neighbouring_tile() {
+        let (ui, log) = start();
+        ui.set_view(MainView::Tile);
+        settle();
+        let _ = take(&log);
+        let drag = |from: slint::LogicalPosition, to: slint::LogicalPosition| {
+            use slint::platform::{PointerEventButton, WindowEvent};
+            let w = ui.window();
+            w.dispatch_event(WindowEvent::PointerMoved { position: from });
+            w.dispatch_event(WindowEvent::PointerPressed { position: from, button: PointerEventButton::Left });
+            w.dispatch_event(WindowEvent::PointerMoved { position: slint::LogicalPosition::new(from.x + 12.0, from.y) });
+            w.dispatch_event(WindowEvent::PointerMoved { position: to });
+            w.dispatch_event(WindowEvent::PointerReleased { position: to, button: PointerEventButton::Left });
+            settle();
+            take(&log)
+        };
+        let first = by_role(&ui, AccessibleRole::ListItem)
+            .into_iter()
+            .find(|e| e.accessible_label().is_some_and(|l| l.starts_with("Thanks, received")))
+            .expect("the first tile");
+        let size = first.size();
+        let mut tiles: Vec<_> = by_role(&ui, AccessibleRole::ListItem)
+            .into_iter()
+            .filter(|e| (e.size().width - size.width).abs() < 1.0 && (e.size().height - size.height).abs() < 1.0)
+            .collect();
+        tiles.sort_by(|a, b| {
+            let (pa, pb) = (a.absolute_position(), b.absolute_position());
+            pa.y.total_cmp(&pb.y).then(pa.x.total_cmp(&pb.x))
+        });
+        assert!(tiles.len() >= 3, "the fixture shows tiles");
+        let (p0, p1) = (tiles[0].absolute_position(), tiles[1].absolute_position());
+        let at = |x: f32, y: f32| slint::LogicalPosition::new(x, y);
+        let from = |n: usize| {
+            let (p, s) = (tiles[n].absolute_position(), tiles[n].size());
+            at(p.x + s.width / 2.0, p.y + s.height / 2.0)
+        };
+        // Above the first tile (the top padding of the grid): the first slot.
+        let lines = drag(from(2), at(p0.x + size.width / 2.0, p0.y - 2.0));
+        assert_eq!(lines, ["row-dropped:2:0"], "the gap above the first tile");
+        // Between tile 0 and tile 1 (the column gap): it belongs to a neighbour, so a drop lands there.
+        let gap_x = p0.x + size.width + (p1.x - p0.x - size.width) / 2.0;
+        let lines = drag(from(2), at(gap_x, p0.y + size.height / 2.0));
+        assert!(
+            lines == ["row-dropped:2:0"] || lines == ["row-dropped:2:1"],
+            "the column gap between two tiles takes a drop: {lines:?}"
+        );
+    }
+
     fn alt_up_and_alt_down_ask_to_move_the_cursor_row_in_the_list_and_in_the_tile_grid() {
         let (ui, log) = start();
         for view in [MainView::Comfortable, MainView::Compact, MainView::Tile] {

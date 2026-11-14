@@ -2079,6 +2079,23 @@ export component MainWindow inherits Window {
                                     if (self.has-cursor && root.follow-cursor) { root.reveal-grid(self.y, self.height); }
                                 }
 
+                                // The gaps and the ring around a tile belong to it, so a drop there is not lost.
+                                for c in root.cols: Rectangle {
+                                    x: c == 0 ? 0px : root.ring + c * (root.tile-w + root.tile-gap) - root.tile-gap / 2;
+                                    width: (c == root.cols - 1 ? parent.width : root.ring + (c + 1) * (root.tile-w + root.tile-gap) - root.tile-gap / 2) - self.x;
+                                    height: parent.height;
+                                    if root.tile-index(r, c) < root.rows.length: DropArea {
+                                        enabled: root.rows-reorderable || root.reorder-offer;
+                                        can-drop(event) => {
+                                            root.payload-row(event.data) >= 0 && root.payload-row(event.data) != root.tile-index(r, c) ? DragAction.move : DragAction.none
+                                        }
+                                        dropped(event) => {
+                                            root.row-dropped(root.payload-row(event.data), root.tile-index(r, c));
+                                            return DragAction.move;
+                                        }
+                                    }
+                                }
+
                                 for c in root.cols: Rectangle {
                                     x: root.ring + c * (root.tile-w + root.tile-gap);
                                     y: root.ring;
