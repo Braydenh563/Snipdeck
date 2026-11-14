@@ -8,6 +8,10 @@
 //! under test on every platform.
 
 /// The window attributes the hook sets for one kind of window.
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "one independent window attribute per flag; the hook applies them one by one"
+)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Plan {
     /// Leave the window out of the taskbar and Alt+Tab (Windows).
