@@ -574,12 +574,31 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Item editor | `Ctrl+P` | Preview on or off |
 | Fill form | `Ctrl+Enter`, `Esc` | Insert, cancel |
 
+## Colours
+
+The Panel's **Colours** tab (after Symbols) is a colour picker. Pick on the gradient square or the hue wheel (the
+switch above it), set hue and transparency on the sliders, or type a value in any format (HEX, RGB, HSL, HSB or
+CMYK); the others follow as you type.
+
+- **Use a colour.** Each format has a row: click it to paste that text into the app you were typing in, or
+  `Shift`+click to copy it. The default format is marked.
+- **Recently used and Saved.** Click a swatch to make it the current colour (`Shift`+click copies it). **Save**
+  keeps the colour as an item in a list named **Colours**, or any list with **Save to…**. A colour item's menu has
+  **Open in Colours** and **Paste as…**; a list that holds colours has **Copy as CSS variables**.
+- **Contrast and schemes.** Contrast shows the ratio against white, black or any colour, with WCAG AA and AAA
+  marks. Schemes suggest matching colours.
+- **Pick a colour from the screen** (Windows): the screen freezes and the Panel steps aside; click any pixel.
+  Turn on **Copy a colour picked from the screen** in Settings ▸ **Panel layout** to copy it as well. It is also a `Ctrl+K` command.
+
+To hide the tab and its commands, turn off **Show Colours tab** in Settings ▸ **Panel layout**.
+
 ## Drag and drop
 
 Every drag has a keyboard or menu way to do the same thing.
 
 - **Reorder snippets:** drag a snippet onto another one, in the Panel or in the Main window (list or tile
-  view), in a list that is in manual order and with no search running. Keyboard: `Alt+Up` or `Alt+Down`, or
+  view), in a list that is in manual order and with no search running. Drop it in the gap above the first
+  item to make it the first. Keyboard: `Alt+Up` or `Alt+Down`, or
   **Move up** / **Move down** in the snippet's menu.
 - **Move to another list:** drag a snippet onto a list in the Main window's sidebar, or onto a list tab in the
   Panel. Keyboard: **Move to list** in the snippet's menu, or the list field in the editor.
