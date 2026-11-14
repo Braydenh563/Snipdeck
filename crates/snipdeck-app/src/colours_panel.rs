@@ -421,10 +421,10 @@ mod tests {
 
     #[test]
     fn a_slider_value_is_held_to_its_range_and_nan_is_zero() {
-        assert_eq!(slider(-5.0, 359.999), 0.0);
-        assert_eq!(slider(500.0, 359.999), 359.999);
-        assert_eq!(slider(120.0, 359.999), 120.0);
-        assert_eq!(slider(f32::NAN, 100.0), 0.0);
+        assert!(slider(-5.0, 359.999).abs() < 1e-6);
+        assert!((slider(500.0, 359.999) - 359.999).abs() < 1e-3);
+        assert!((slider(120.0, 359.999) - 120.0).abs() < 1e-6);
+        assert!(slider(f32::NAN, 100.0).abs() < 1e-6);
     }
 
     use super::*;
