@@ -145,6 +145,23 @@ fn start() -> (PanelWindow, Log) {
     (ui, log)
 }
 
+/// Drags the row at `from` and releases at `to`, as a pointer would; returns the log lines it produced.
+fn drag_row(ui: &PanelWindow, log: &Log, from: slint::LogicalPosition, to: slint::LogicalPosition) -> Vec<String> {
+    use slint::platform::{PointerEventButton, WindowEvent};
+    let w = ui.window();
+    let _ = take(log);
+    w.dispatch_event(WindowEvent::PointerMoved { position: from });
+    w.dispatch_event(WindowEvent::PointerPressed { position: from, button: PointerEventButton::Left });
+    w.dispatch_event(WindowEvent::PointerMoved { position: slint::LogicalPosition::new(from.x, from.y + 12.0) });
+    w.dispatch_event(WindowEvent::PointerMoved { position: to });
+    w.dispatch_event(WindowEvent::PointerReleased { position: to, button: PointerEventButton::Left });
+    settle();
+    take(log)
+        .into_iter()
+        .filter(|l| l.starts_with("row-drop"))
+        .collect()
+}
+
 fn take(log: &Log) -> Vec<String> {
     std::mem::take(&mut *log.borrow_mut())
 }
@@ -908,6 +925,55 @@ ui_tests! {
         ui.set_rows_reorderable(true);
         drag(&ui);
         assert_eq!(take(&log), ["row-drop:0:2"]);
+    }
+
+    fn dragging_a_row_to_the_top_slot_reaches_the_first_row_from_every_row() {
+        let (ui, log) = start();
+        ui.set_rows_reorderable(true);
+        let rows: Vec<_> = by_role(&ui, AccessibleRole::ListItem).into_iter().collect();
+        assert!(rows.len() >= 3, "the fixture shows rows");
+        let first = &rows[0];
+        let top = first.absolute_position();
+        let size = first.size();
+        let at = |dy: f32| slint::LogicalPosition::new(top.x + size.width / 2.0, top.y + dy);
+        // Row 2 and row 1 dropped on the upper half, the middle and just inside the top edge of row 0.
+        for (n, row) in rows.iter().enumerate().skip(1).take(2) {
+            for dy in [1.0, size.height / 4.0, size.height / 2.0] {
+                let lines = drag_row(&ui, &log, centre(row), at(dy));
+                assert_eq!(lines, [format!("row-drop:{n}:0")], "row {n} dropped {dy}px down the first row");
+            }
+        }
+        // Swapping rows 1 and 2 both ways.
+        let lines = drag_row(&ui, &log, centre(&rows[0]), centre(&rows[1]));
+        assert_eq!(lines, ["row-drop:0:1"]);
+        let lines = drag_row(&ui, &log, centre(&rows[1]), centre(&rows[0]));
+        assert_eq!(lines, ["row-drop:1:0"]);
+    }
+
+    fn a_row_dropped_in_the_gap_above_the_first_row_lands_in_the_top_slot() {
+        let (ui, log) = start();
+        ui.set_rows_reorderable(true);
+        let rows: Vec<_> = by_role(&ui, AccessibleRole::ListItem).into_iter().collect();
+        let first = &rows[0];
+        let top = first.absolute_position();
+        let size = first.size();
+        // Inside the list's top padding: above the first row's own edge.
+        let above = slint::LogicalPosition::new(top.x + size.width / 2.0, top.y - 2.0);
+        let lines = drag_row(&ui, &log, centre(&rows[2]), above);
+        assert_eq!(lines, ["row-drop:2:0"], "the top padding is part of the first slot");
+        // Between rows 0 and 1: from below it lands before row 1, from above (row 0 is the dragged one) it is a no-op slot
+        // for row 0 but a real one past row 1.
+        let between = |r: usize| {
+            let e = &rows[r];
+            slint::LogicalPosition::new(
+                e.absolute_position().x + e.size().width / 2.0,
+                e.absolute_position().y + e.size().height + 1.0,
+            )
+        };
+        let lines = drag_row(&ui, &log, centre(&rows[2]), between(0));
+        assert_eq!(lines, ["row-drop:2:1"], "up into the gap under row 0: before row 1");
+        let lines = drag_row(&ui, &log, centre(&rows[0]), between(1));
+        assert_eq!(lines, ["row-drop:0:1"], "down into the gap under row 1: after row 1");
     }
 
     fn alt_up_and_alt_down_ask_to_move_the_selected_row_and_plain_arrows_only_select() {

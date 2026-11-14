@@ -726,6 +726,21 @@ export component PanelWindow inherits Window {
             root.tip-set(root.tip, 0px, 0px, false);
         }
     }
+    // The row a drop in the gap before (`before`) or after row group `g` is reported onto: a drop lands after the row it
+    // comes down onto and before the one it comes up onto, so "between rows k-1 and k" is `onto k-1` from above and `onto k`
+    // from below. -1 when the drop would change nothing (or the row is not one that moves).
+    pure function gap-target(from: int, g: int, before: bool) -> int {
+        let first = g * root.cols;
+        let last = min(first + root.cols, root.rows.length) - 1;
+        if (from < 0 || from >= root.rows.length) { return -1; }
+        if (before) {
+            if (from < first) { return first - 1 == from ? -1 : first - 1; }
+            return from <= last ? -1 : first;
+        }
+        if (from < first) { return last; }
+        if (from <= last) { return -1; }
+        return last + 1 == from ? -1 : last + 1;
+    }
     // What the grab strip's tooltip says: a docked Panel slides along its edge and floats when pulled off it.
     property <string> grab-tip: root.dock-edge == 0 ? @tr("Drag to move. Hold at a screen edge to dock.") : root.dock-full-edge && root.dock-edge <= 2 ? @tr("Pull away from the edge to float.") : @tr("Drag along the edge to move. Pull away from the edge to float.");
     // The text it put up, so that it closes the same one after the Panel was docked under the pointer.
@@ -1983,6 +1998,31 @@ export component PanelWindow inherits Window {
                             }
                             changed y => {
                                 if (self.has-sel && root.follow-sel) { root.reveal(self.y, self.height); }
+                            }
+
+                            // The gaps around the row (above it, and the row gap below it) are drop targets too, so a row can be
+                            // dropped "between" rows and above the first one: the item lands in that gap, whatever side it came from.
+                            if root.rows-reorderable || root.reorder-offer: DropArea {
+                                x: 0px;
+                                y: 0px;
+                                width: parent.width;
+                                height: Space.s1;
+                                can-drop(event) => { root.gap-target(root.payload-row(event.data), g, true) >= 0 ? DragAction.move : DragAction.none }
+                                dropped(event) => {
+                                    root.row-dropped(root.payload-row(event.data), root.gap-target(root.payload-row(event.data), g, true));
+                                    return DragAction.move;
+                                }
+                            }
+                            if root.rows-reorderable || root.reorder-offer: DropArea {
+                                x: 0px;
+                                y: Space.s1 + grp.preferred-height;
+                                width: parent.width;
+                                height: parent.height - self.y;
+                                can-drop(event) => { root.gap-target(root.payload-row(event.data), g, false) >= 0 ? DragAction.move : DragAction.none }
+                                dropped(event) => {
+                                    root.row-dropped(root.payload-row(event.data), root.gap-target(root.payload-row(event.data), g, false));
+                                    return DragAction.move;
+                                }
                             }
 
                             grp := HorizontalLayout {

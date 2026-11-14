@@ -379,4 +379,34 @@ mod tests {
         let bare = Store::open_in_memory().expect("store");
         assert_eq!(default_list(&bare, None).expect("list"), None);
     }
+
+    #[test]
+    fn any_file_type_is_saved_and_only_a_png_becomes_an_image_item() {
+        let (mut store, notes, _) = library();
+        let to = dest(&store, notes);
+        let png = b"\x89PNG\r\n\x1a\nrest".to_vec();
+        let files = vec![
+            ("shot.png".to_owned(), png),
+            ("photo.jpg".to_owned(), vec![0xFF, 0xD8, 0xFF, 1]),
+            ("clip.webp".to_owned(), b"RIFFxxxxWEBP".to_vec()),
+            ("data.bin".to_owned(), vec![0, 1, 2]),
+            ("Makefile".to_owned(), b"all:".to_vec()),
+        ];
+        let Captured::Saved { .. } = capture_files(&mut store, &to, files, now()).expect("saved")
+        else {
+            panic!("nothing saved")
+        };
+        let items = store.items(notes).expect("items");
+        let kinds: Vec<_> = items.iter().map(|i| (i.title.as_str(), i.kind)).collect();
+        assert_eq!(
+            kinds,
+            [
+                ("shot.png", ItemKind::Image),
+                ("photo.jpg", ItemKind::File),
+                ("clip.webp", ItemKind::File),
+                ("data.bin", ItemKind::File),
+                ("Makefile", ItemKind::File),
+            ]
+        );
+    }
 }

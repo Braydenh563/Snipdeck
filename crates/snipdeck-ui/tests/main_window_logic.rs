@@ -641,6 +641,42 @@ ui_tests! {
         assert!(!ui.get_menu_open());
     }
 
+    fn dragging_a_row_up_to_the_top_slot_and_swapping_the_first_two_rows_works_in_the_list() {
+        let (ui, log) = start();
+        let _ = take(&log);
+        let rows: Vec<_> = by_role(&ui, AccessibleRole::ListItem)
+            .into_iter()
+            .filter(|e| e.accessible_label().is_some_and(|l| !l.is_empty()))
+            .collect();
+        // The cards, not the sidebar's lists: the widest items.
+        let widest = rows.iter().map(|e| e.size().width).fold(0.0f32, f32::max);
+        let mut rows: Vec<_> = rows.into_iter().filter(|e| e.size().width > widest * 0.9).collect();
+        rows.sort_by(|a, b| a.absolute_position().y.total_cmp(&b.absolute_position().y));
+        let (r0, r1, r2) = (rows[0].clone(), rows[1].clone(), rows[2].clone());
+        let drag = |from: slint::LogicalPosition, to: slint::LogicalPosition| {
+            use slint::platform::{PointerEventButton, WindowEvent};
+            let w = ui.window();
+            w.dispatch_event(WindowEvent::PointerMoved { position: from });
+            w.dispatch_event(WindowEvent::PointerPressed { position: from, button: PointerEventButton::Left });
+            w.dispatch_event(WindowEvent::PointerMoved { position: slint::LogicalPosition::new(from.x, from.y + 12.0) });
+            w.dispatch_event(WindowEvent::PointerMoved { position: to });
+            w.dispatch_event(WindowEvent::PointerReleased { position: to, button: PointerEventButton::Left });
+            settle();
+            take(&log)
+        };
+        let at = |e: &ElementHandle, dy: f32| {
+            slint::LogicalPosition::new(e.absolute_position().x + e.size().width / 2.0, e.absolute_position().y + dy)
+        };
+        // Row 2 and row 1 dropped on the top edge, upper half and middle of row 0: the first slot.
+        for dy in [-2.0, 1.0, r0.size().height / 4.0, r0.size().height / 2.0] {
+            assert_eq!(drag(centre_of(&r2), at(&r0, dy)), ["row-dropped:2:0"], "row 2, {dy}px");
+            assert_eq!(drag(centre_of(&r1), at(&r0, dy)), ["row-dropped:1:0"], "row 1, {dy}px");
+        }
+        // Swapping rows 1 and 2 (indexes 0 and 1) both ways.
+        assert_eq!(drag(centre_of(&r0), centre_of(&r1)), ["row-dropped:0:1"]);
+        assert_eq!(drag(centre_of(&r1), centre_of(&r0)), ["row-dropped:1:0"]);
+    }
+
     fn dragging_a_row_onto_a_row_a_list_or_a_list_onto_a_list_reports_the_drop() {
         let (ui, log) = start();
         let _ = take(&log);
