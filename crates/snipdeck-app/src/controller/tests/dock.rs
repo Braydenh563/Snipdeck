@@ -2400,7 +2400,10 @@ fn a_drag_only_moves_the_window_and_resizes_it_only_when_the_dock_is_offered_or_
         ms += wait;
         advance(w, ms);
         let effects = pull(w, cursor);
-        assert!(!w.ctl.view().dock_collapsed, "collapsed mid-drag at {cursor:?}");
+        assert!(
+            !w.ctl.view().dock_collapsed,
+            "collapsed mid-drag at {cursor:?}"
+        );
         steps.push(effects);
     };
     // Circles through the middle, fast and slow.
@@ -2443,6 +2446,9 @@ fn a_drag_only_moves_the_window_and_resizes_it_only_when_the_dock_is_offered_or_
     );
     assert_eq!(size, (FLOATING.w, FLOATING.h), "floating size again");
     for e in w.ctl.drag_end() {
-        assert!(matches!(e, Effect::PlaceWindow(_)), "the drop only places: {e:?}");
+        assert!(
+            matches!(e, Effect::PlaceWindow(_)),
+            "the drop only places: {e:?}"
+        );
     }
 }

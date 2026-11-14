@@ -715,7 +715,6 @@ fn watch_window_events(window: &PanelWindow, binding: Binding, armed: Rc<Cell<bo
     let tracing = snipdeck_app::trace::enabled();
     let mut cursor = (0.0, 0.0);
     let mut repaint = snipdeck_app::repaint::Watch::new();
-    let weak = window.as_weak();
     window
         .window()
         .on_winit_window_event(move |slint_window, event| {

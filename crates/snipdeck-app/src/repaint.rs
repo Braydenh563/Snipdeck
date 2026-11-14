@@ -157,6 +157,7 @@ pub fn follow(
 /// toast, the suggestion hint), which have no hook of their own. A window has one hook, so a
 /// window that has its own calls [`follow`] from it instead.
 pub fn watch(window: &slint::Window) {
+    use slint::winit_030::WinitWindowAccessor;
     let mut watch = Watch::new();
     window.on_winit_window_event(move |slint_window, event| {
         follow(&mut watch, slint_window, event);
@@ -242,7 +243,11 @@ mod tests {
         // was mapped, and Windows then asks for the whole window with nothing dirty in Slint.
         let mut w = Watch::new();
         assert_eq!(w.on_signal(OS), Action::DamageWhole);
-        assert_eq!(w.on_signal(OS), Action::DamageWhole, "every time it happens");
+        assert_eq!(
+            w.on_signal(OS),
+            Action::DamageWhole,
+            "every time it happens"
+        );
     }
 
     #[test]
@@ -296,7 +301,10 @@ mod tests {
             signal_of(&WindowEvent::Moved(PhysicalPosition::new(5, 6)), never),
             Signal::Other
         );
-        assert_eq!(signal_of(&WindowEvent::CloseRequested, never), Signal::Other);
+        assert_eq!(
+            signal_of(&WindowEvent::CloseRequested, never),
+            Signal::Other
+        );
         assert_eq!(signal_of(&WindowEvent::RedrawRequested, || true), OS);
         assert_eq!(signal_of(&WindowEvent::RedrawRequested, || false), PLAIN);
     }

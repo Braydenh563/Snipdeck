@@ -837,7 +837,6 @@ fn watch_place<S, C, K, T>(
     use slint::winit_030::{EventResult, winit::event::WindowEvent};
     let controller = Rc::downgrade(controller);
     // O39: Windows can drop or erase the window's pixels; the next frame is drawn whole then.
-    let weak = window.as_weak();
     let mut watch = crate::repaint::Watch::new();
     let batch = crate::drop_batch::DropBatch::default();
     let for_drops = controller.clone();

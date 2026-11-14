@@ -2600,8 +2600,7 @@ fn every_placement_dock_commit_and_show_draws_the_panel_whole() {
         assert!(whole, "a dock commit");
         r.binding.panel_focused(true);
 
-        let (whole, effects) =
-            drawn_whole_by(&r, |r| r.binding.hotkey(HotkeyAction::TogglePanel));
+        let (whole, effects) = drawn_whole_by(&r, |r| r.binding.hotkey(HotkeyAction::TogglePanel));
         assert!(
             effects.iter().any(|e| matches!(e, Effect::PlaceWindow(_))),
             "tucked: {effects:?}"
@@ -2615,8 +2614,7 @@ fn every_placement_dock_commit_and_show_draws_the_panel_whole() {
         if r.ui.window().is_visible() {
             r.binding.hotkey(HotkeyAction::TogglePanel);
         }
-        let (whole, effects) =
-            drawn_whole_by(&r, |r| r.binding.hotkey(HotkeyAction::TogglePanel));
+        let (whole, effects) = drawn_whole_by(&r, |r| r.binding.hotkey(HotkeyAction::TogglePanel));
         assert!(effects.contains(&Effect::ShowPanel), "{effects:?}");
         assert!(whole, "a show");
     });
