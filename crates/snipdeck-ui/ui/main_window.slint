@@ -978,6 +978,14 @@ export component MainWindow inherits Window {
     // that scrolling away from the cursor and back never makes the cursor row snap itself into view (a row the
     // ListView re-creates, or re-positions after a height re-estimate, would otherwise jump the list).
     property <bool> follow-cursor: true;
+    // Drag auto-scroll: -1 while an item is dragged over the top edge zone of the item area, 1 over the bottom one.
+    property <int> edge-dir: 0;
+    property <length> edge-band: 24px;
+    function drag-over(y: length) {
+        let top = root.tile ? grid.absolute-position.y : list.absolute-position.y;
+        let h = root.tile ? grid.height : list.height;
+        root.edge-dir = y < top + root.edge-band ? -1 : (y > top + h - root.edge-band ? 1 : 0);
+    }
 
     function reveal-list(y: length, h: length) {
         let top = root.cur == 0 ? 0px : root.edge-h;
@@ -1279,6 +1287,7 @@ export component MainWindow inherits Window {
                                         height: side-list.height;
                                         side-drop := DropArea {
                                             can-drop(event) => {
+                                            root.edge-dir = 0;
                                             list-from = root.payload-list(event.data);
                                                 (root.payload-row(event.data) >= 0 && !root.in-trash) || (root.payload-list(event.data) >= 0 && root.payload-list(event.data) != i) ? DragAction.move : DragAction.none
                                             }
@@ -1943,10 +1952,12 @@ export component MainWindow inherits Window {
                                 row-drop := DropArea {
                                     enabled: root.rows-reorderable || root.reorder-offer;
                                     can-drop(event) => {
+                                        root.drag-over(self.absolute-position.y + event.position.y);
                                         row-from = root.payload-row(event.data);
                                         row-from >= 0 && row-from != i ? DragAction.move : DragAction.none
                                     }
                                     dropped(event) => {
+                                        root.edge-dir = 0;
                                         if (row.is-header && event.position.y < self.height / 2) {
                                             root.row-dropped-above(root.payload-row(event.data), i);
                                         } else {
@@ -1956,6 +1967,7 @@ export component MainWindow inherits Window {
                                     }
 
                                     DragArea {
+                                        drag-finished(action) => { root.edge-dir = 0; }
                                         allow-move: !root.in-trash;
                                         data: root.row-payload(i);
 
@@ -2036,9 +2048,9 @@ export component MainWindow inherits Window {
                             y: list.y;
                             width: list.width;
                             height: list.height;
+                            dir: root.edge-dir;
                             up: list.content-y < -0.5px;
                             down: list.content-y > list.height - list.content-height + 0.5px;
-                            accepts(event) => { root.payload-row(event.data) >= 0 }
                             scroll(delta) => {
                                 root.follow-cursor = false;
                                 list.content-y = max(min(list.content-y - delta, 0px), min(list.height - list.content-height, 0px));
@@ -2107,9 +2119,11 @@ export component MainWindow inherits Window {
                                     if root.tile-index(r, c) < root.rows.length: DropArea {
                                         enabled: root.rows-reorderable || root.reorder-offer;
                                         can-drop(event) => {
+                                            root.drag-over(self.absolute-position.y + event.position.y);
                                             root.payload-row(event.data) >= 0 && root.payload-row(event.data) != root.tile-index(r, c) ? DragAction.move : DragAction.none
                                         }
                                         dropped(event) => {
+                                            root.edge-dir = 0;
                                             root.row-dropped(root.payload-row(event.data), root.tile-index(r, c));
                                             return DragAction.move;
                                         }
@@ -2137,15 +2151,18 @@ export component MainWindow inherits Window {
                                         property <int> tile-from: -1;
                                         enabled: root.rows-reorderable || root.reorder-offer;
                                         can-drop(event) => {
+                                            root.drag-over(self.absolute-position.y + event.position.y);
                                             tile-from = root.payload-row(event.data);
                                             tile-from >= 0 && tile-from != root.tile-index(r, c) ? DragAction.move : DragAction.none
                                         }
                                         dropped(event) => {
+                                            root.edge-dir = 0;
                                             root.row-dropped(root.payload-row(event.data), root.tile-index(r, c));
                                             return DragAction.move;
                                         }
 
                                     DragArea {
+                                        drag-finished(action) => { root.edge-dir = 0; }
                                         allow-move: !root.in-trash;
                                         data: root.row-payload(root.tile-index(r, c));
                                     tile-card := MainCard {
@@ -2200,9 +2217,9 @@ export component MainWindow inherits Window {
                             y: grid.y;
                             width: grid.width;
                             height: grid.height;
+                            dir: root.edge-dir;
                             up: grid.content-y < -0.5px;
                             down: grid.content-y > grid.height - grid.content-height + 0.5px;
-                            accepts(event) => { root.payload-row(event.data) >= 0 }
                             scroll(delta) => {
                                 root.follow-cursor = false;
                                 grid.content-y = max(min(grid.content-y - delta, 0px), min(grid.height - grid.content-height, 0px));
@@ -2645,6 +2662,7 @@ export component MainWindow inherits Window {
     }
     out property <length> scroll-y: list.content-y;
     out property <length> list-height: list.height;
+    out property <length> list-content-height: list.content-height;
     out property <length> grid-scroll-y: grid.content-y;
     property <length> list-scroll: root.scroll-y;
     changed rows => { root.card-tip = ""; }

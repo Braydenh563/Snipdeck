@@ -127,6 +127,9 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_row_dropped, |from, onto| format!(
         "row-drop:{from}:{onto}"
     ));
+    hook!(on_row_dropped_above, |from, onto| format!(
+        "row-drop-above:{from}:{onto}"
+    ));
     hook!(on_row_dropped_on_tab, |row, tab| format!(
         "row-on-tab:{row}:{tab}"
     ));
@@ -884,6 +887,41 @@ ui_tests! {
         let lines: Vec<_> = take(&log).into_iter().filter(|l| l.starts_with("row-drop")).collect();
         assert_eq!(lines.len(), 1, "one drop: {lines:?}");
         assert!(lines[0].ends_with(":0"), "dropped on the first row: {lines:?}");
+    }
+
+    fn an_item_dropped_on_the_top_half_of_a_group_header_lands_above_it_and_on_the_bottom_half_joins() {
+        let (ui, log) = start_quiet();
+        ui.set_rows_reorderable(true);
+        let mut rs = fixture::sample_rows();
+        rs.truncate(4);
+        rs.insert(
+            0,
+            snipdeck_ui::PanelRow {
+                title: "Replies".into(),
+                is_header: true,
+                group_count: 2,
+                ..Default::default()
+            },
+        );
+        rs[1].grouped = true;
+        rs[2].grouped = true;
+        fixture::set_rows(&ui, rs);
+        let _ = rows(&ui);
+        wait(1000);
+        let header = ElementHandle::find_by_accessible_label(&ui, "group Replies, 2 items")
+            .next()
+            .expect("the group header");
+        let (p, size) = (header.absolute_position(), header.size());
+        let at = |f: f32| LogicalPosition::new(p.x + size.width / 2.0, p.y + size.height * f);
+        let item = rows(&ui)
+            .into_iter()
+            .filter(|e| e.size().width > 200.0)
+            .max_by(|a, b| a.absolute_position().y.total_cmp(&b.absolute_position().y))
+            .expect("an item row");
+        let lines = drag_row(&ui, &log, centre(&item), at(0.2));
+        assert_eq!(lines, ["row-drop-above:4:0"], "the top half asks to land above the group");
+        let lines = drag_row(&ui, &log, centre(&item), at(0.8));
+        assert_eq!(lines, ["row-drop:4:0"], "the bottom half is the ordinary drop that joins");
     }
 
     fn wheeling_back_toward_the_selected_row_moves_the_list_by_the_wheel_step_only() {

@@ -808,12 +808,14 @@ where
         }
         let order = self.group_order(s, list);
         let old = self.group_of_item(s, id);
+        // A run is built from live members only (`groups_of`), so it always has a first item; were that
+        // ever not so, the ordinary drop is the fallback rather than a drop that silently does nothing.
         let Some(to) = run
             .items
             .first()
             .and_then(|first| place_before(&order, *first, &[id]))
         else {
-            return true;
+            return false;
         };
         self.place_item_in(s, id, list, to, None, old.as_ref());
         true

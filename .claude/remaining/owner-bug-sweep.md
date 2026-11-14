@@ -13,3 +13,4 @@ Drag-reorder: Panel had dead drop zones (4px above each row, row gap below): fix
 ## Round 3 (hub follow-up)
 - Done: EdgeScroll (components/edge-scroll.slint) drag auto-scroll in Main list, Main grid, Panel list + tests (top/bottom/leave/drop at index 0); drop on a header's top half lands above the group (row-dropped-above; controller tests Main + Panel).
 - Next: gate --staged, 1.99.1 clippy, push, report.
+- Round 3 fixes: edge scroll now driven by DropArea can-drop positions (no band overlay), so drops in the edge zone land on the row; header top/bottom half UI tests (Main, Panel); bottom test asserts content bound; empty-group case unreachable (groups_of lists live members only) -> falls back to ordinary drop.

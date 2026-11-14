@@ -549,10 +549,10 @@ group_drop_on | crates/snipdeck-app/src/controller/group_ctl.rs:592
 main_move_item_on | crates/snipdeck-app/src/controller/group_ctl.rs:679
 place_item_in | crates/snipdeck-app/src/controller/group_ctl.rs:738
 drop_above_group | crates/snipdeck-app/src/controller/group_ctl.rs:795
-finish_item_move | crates/snipdeck-app/src/controller/group_ctl.rs:823
-join_dropped | crates/snipdeck-app/src/controller/group_ctl.rs:836
-DragRow | crates/snipdeck-app/src/controller/group_ctl.rs:861
-place_before | crates/snipdeck-app/src/controller/group_ctl.rs:868
+finish_item_move | crates/snipdeck-app/src/controller/group_ctl.rs:825
+join_dropped | crates/snipdeck-app/src/controller/group_ctl.rs:838
+DragRow | crates/snipdeck-app/src/controller/group_ctl.rs:863
+place_before | crates/snipdeck-app/src/controller/group_ctl.rs:870
 
 ### crates/snipdeck-app/src/controller/history_ctl.rs
 
