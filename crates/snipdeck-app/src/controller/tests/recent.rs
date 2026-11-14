@@ -1,4 +1,4 @@
-//! The Recent inbox through the controller: on for a new install, off after an opt-out, what a clipboard change does with
+//! The Recent inbox through the controller: off until the first-run answer is Yes, off after a No, what a clipboard change does with
 //! the opt-in, pause, and promoting to a list. The clock is the fixed one the other controller
 //! tests use.
 
@@ -13,7 +13,7 @@ fn on() -> Settings {
     }
 }
 
-/// A world whose user switched Recent off (a new install has it on).
+/// A world whose user switched Recent off.
 fn off_world() -> World {
     world_with(
         None,
@@ -573,4 +573,94 @@ fn some_missing_files_still_paste_the_rest_and_say_so() {
         w.ctl.view().toast.expect("toast").message,
         ToastMessage::FileMoved
     );
+}
+
+// ---- The first-run question (Store policy 10.5: nothing is kept until Yes) ------------------
+
+/// A world as a new install starts: unanswered, with the key provider the inbox needs.
+fn new_install_world() -> World {
+    let mut w = world_with(None, Settings::new_install());
+    w.ctl.set_key_provider(Box::new(
+        snipdeck_store::crypto::MemoryKeyProvider::new().expect("provider"),
+    ));
+    w
+}
+
+/// What the next start reads back from the saved file.
+fn restarted(w: &World) -> Settings {
+    Settings::from_json(&w.ctl.settings().to_json())
+}
+
+#[test]
+fn a_new_install_asks_and_keeps_nothing_before_the_answer() {
+    use snipdeck_platform::clipboard_watch::WatchGate;
+    let mut w = new_install_world();
+    let gate = WatchGate::new();
+    w.ctl.set_recent_gate(gate.clone());
+    assert!(w.ctl.recent_question_due());
+    assert!(!w.ctl.recent_enabled());
+    assert!(!gate.is_open(), "the listener stays closed");
+    w.ctl.on_clipboard_change(&copied("before the answer"));
+    assert_eq!(w.ctl.store().recent().expect("recent").len(), 0);
+    assert!(w.ctl.view().recent_question, "the Panel shows the question");
+}
+
+#[test]
+fn the_question_waits_while_the_welcome_tour_is_on_screen() {
+    let mut w = new_install_world();
+    w.ctl.show_welcome_tour();
+    assert!(!w.ctl.recent_question_due());
+    w.ctl.tour_skip();
+    assert!(
+        w.ctl.recent_question_due(),
+        "skipping the tour is not an answer"
+    );
+}
+
+#[test]
+fn an_old_file_that_never_recorded_an_answer_is_asked_and_keeps_nothing() {
+    let old = Settings::from_json(r#"{"recent_history":true}"#);
+    let mut w = world_with(None, old);
+    w.ctl.set_key_provider(Box::new(
+        snipdeck_store::crypto::MemoryKeyProvider::new().expect("provider"),
+    ));
+    assert!(w.ctl.recent_question_due());
+    w.ctl.on_clipboard_change(&copied("an upgrade, unanswered"));
+    assert_eq!(w.ctl.store().recent().expect("recent").len(), 0);
+}
+
+#[test]
+fn yes_keeps_copies_is_saved_and_is_not_asked_again() {
+    let mut w = new_install_world();
+    w.ctl.set_recent_history(true);
+    assert!(!w.ctl.recent_question_due());
+    w.ctl.on_clipboard_change(&copied("after yes"));
+    assert_eq!(w.ctl.recent_entries().len(), 1);
+    let next_start = restarted(&w);
+    assert!(next_start.recent_history && next_start.recent_history_asked);
+}
+
+#[test]
+fn no_never_keeps_copies_is_saved_and_is_not_asked_again() {
+    let mut w = new_install_world();
+    w.ctl.set_recent_history(false);
+    assert!(!w.ctl.recent_question_due());
+    w.ctl.on_clipboard_change(&copied("after no"));
+    assert_eq!(w.ctl.store().recent().expect("recent").len(), 0);
+    let next_start = restarted(&w);
+    assert!(!next_start.recent_history && next_start.recent_history_asked);
+    let w2 = world_with(None, next_start);
+    assert!(!w2.ctl.recent_question_due(), "no prompt on the next start");
+}
+
+#[test]
+fn the_settings_switch_still_turns_the_inbox_on_and_off() {
+    let mut w = new_install_world();
+    w.ctl.set_recent_history(false);
+    w.ctl.set_recent_history(true);
+    w.ctl.on_clipboard_change(&copied("switched on"));
+    assert_eq!(w.ctl.recent_entries().len(), 1);
+    w.ctl.set_recent_history(false);
+    assert_eq!(w.ctl.recent_entries().len(), 0);
+    assert!(!w.ctl.recent_question_due());
 }

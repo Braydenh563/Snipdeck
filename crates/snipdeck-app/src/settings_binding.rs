@@ -157,6 +157,13 @@ pub trait SettingsHost {
         cfg!(windows)
     }
 
+    /// Whether this is the free-only Store package: no Get Supporter, no licence entry, every
+    /// feature on (Store policy 10.8). The real host asks whether the app runs from the package;
+    /// tests pass either answer.
+    fn free_only(&self) -> bool {
+        false
+    }
+
     /// Reads the text entries of the Windows clipboard history. May block until Windows answers.
     fn read_clipboard_history(&self) -> HistoryRead;
 }
@@ -213,6 +220,10 @@ impl SystemHost {
 }
 
 impl SettingsHost for SystemHost {
+    fn free_only(&self) -> bool {
+        crate::platform::is_packaged()
+    }
+
     fn apply_hotkeys(&self, hotkeys: &Hotkeys) -> Vec<HotkeyProblem> {
         apply_hotkeys(&mut **self.hotkeys.borrow_mut(), hotkeys)
     }
@@ -1760,6 +1771,7 @@ where
         ui::SettingsFilter::get(window).on_matches(|text, query| settings_match(&text, &query));
         window.set_import_history_available(core.host.clipboard_history_supported());
         window.set_typing_available(core.host.typing_supported());
+        window.set_free_only(core.host.free_only());
         core.refresh_backups();
         core.sync();
 
@@ -1882,7 +1894,7 @@ where
             |ctl| ctl.update_settings(|s| s.screenshot_keep_panel = on)
         ));
         wire!(on_recent_history_toggled, |core, on| core
-            .act(|ctl| ctl.update_settings(|s| s.recent_history = on)));
+            .act(|ctl| ctl.set_recent_history(on)));
         wire!(on_expand_triggers_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.expand_triggers = on)));
         wire!(on_suggest_triggers_toggled, |core, on| core

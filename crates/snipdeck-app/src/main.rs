@@ -820,6 +820,8 @@ fn open_library(args: &Args) -> Result<Library, String> {
     if args.demo {
         let settings = Settings {
             theme: if args.dark { Theme::Dark } else { Theme::Light },
+            // The demo keeps nothing, so it has no question to ask (screenshots stay clear).
+            recent_history_asked: true,
             ..Settings::new_install()
         };
         let store = demo::store(now).map_err(|e| format!("demo library: {e}"))?;
@@ -866,7 +868,11 @@ fn open_library(args: &Args) -> Result<Library, String> {
         Err(e) => eprintln!("snipdeck: could not create the first board: {e}"),
     }
     // The saved licence key, checked again on every start; none or a bad one is the Free plan.
-    let entitlements = snipdeck_app::licence_store::entitlements(&folder, now);
+    let entitlements = snipdeck_app::licence_store::entitlements(
+        snipdeck_app::platform::is_packaged(),
+        &folder,
+        now,
+    );
     Ok((store, settings, entitlements, Some(folder), saver_baseline))
 }
 

@@ -606,7 +606,7 @@ mod tests {
         assert_eq!(check_link(" https://a.b ").as_deref(), Ok("https://a.b"));
         for bad in [
             "example.com",
-            "figma.com/file/x",
+            "example.org/file/x",
             "https://",
             "://x",
             "1http://x",

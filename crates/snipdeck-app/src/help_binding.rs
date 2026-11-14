@@ -86,6 +86,11 @@ pub trait HelpHost {
 
     /// The third-party notices file, if the package has one.
     fn notices_file(&self) -> Option<PathBuf>;
+
+    /// Whether this is the free-only Store package, where the plan is not named.
+    fn free_only(&self) -> bool {
+        false
+    }
 }
 
 /// [`HelpHost`] on the real system.
@@ -108,6 +113,10 @@ pub(crate) fn launch(target: &OsStr) -> Result<(), String> {
 }
 
 impl HelpHost for SystemHelpHost {
+    fn free_only(&self) -> bool {
+        crate::platform::is_packaged()
+    }
+
     fn open_folder(&self, folder: &Path) -> Result<(), String> {
         launch(folder.as_os_str())
     }
@@ -387,6 +396,7 @@ where
         window.set_version(env!("CARGO_PKG_VERSION").into());
         window.set_build_date(build_date().into());
         window.set_supporter(matches!(tier, Tier::Pro));
+        window.set_free_only(self.host.free_only());
         window.set_source_url(REPO_URL.into());
         window.set_show_store_link(STORE_URL.is_some());
         window.set_has_notices(self.host.notices_file().is_some());
@@ -536,7 +546,9 @@ where
             let controller = self.controller.borrow();
             ReportInfo {
                 version: env!("CARGO_PKG_VERSION").to_owned(),
-                tier: if matches!(controller.tier(), Tier::Pro) {
+                tier: if self.host.free_only() {
+                    "Store (free)"
+                } else if matches!(controller.tier(), Tier::Pro) {
                     "Supporter"
                 } else {
                     "Free"

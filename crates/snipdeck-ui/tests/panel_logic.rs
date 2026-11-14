@@ -947,14 +947,14 @@ ui_tests! {
 
     fn the_footer_says_where_a_click_goes() {
         let (ui, _log) = start();
-        assert!(!missing(&ui, "Pastes into Outlook · New message", AccessibleRole::Text));
+        assert!(!missing(&ui, "Pastes into Mail · New message", AccessibleRole::Text));
         ui.set_target_title("".into());
         settle();
-        assert!(!missing(&ui, "Pastes into Outlook", AccessibleRole::Text));
+        assert!(!missing(&ui, "Pastes into Mail", AccessibleRole::Text));
         ui.set_target_name("".into());
         settle();
         assert!(!missing(&ui, "No target: click copies", AccessibleRole::Text));
-        assert!(missing(&ui, "Pastes into Outlook", AccessibleRole::Text));
+        assert!(missing(&ui, "Pastes into Mail", AccessibleRole::Text));
         // A search with no match: the footer says Enter creates the item from the query.
         fixture::set_rows(&ui, Vec::new());
         ui.set_query("invoice no. 7".into());
@@ -982,7 +982,7 @@ ui_tests! {
                 let phys = ui.window().size();
                 let px = |n: u32| f32::from(u16::try_from(n).unwrap_or(u16::MAX));
                 let win = slint::LogicalSize::new(px(phys.width), px(phys.height));
-                let footer = find(&ui, "Pastes into Outlook · New message", AccessibleRole::Text);
+                let footer = find(&ui, "Pastes into Mail · New message", AccessibleRole::Text);
                 let (pos, size) = (footer.absolute_position(), footer.size());
                 let ctx = format!("scale {scale}, text {text}");
                 assert!(pos.x >= -0.5 && pos.x + size.width <= win.width + 0.5, "{ctx}: footer inside horizontally {pos:?} {size:?} {win:?}");
@@ -1218,7 +1218,7 @@ ui_tests! {
         assert!((kind_box.absolute_position().x - r.absolute_position().x - 28.0).abs() < 0.5, "8 padding, 16 number, 4 gap");
         assert!((kind_box.absolute_position().y - top - 6.0).abs() < 0.5, "centred in 36: {}", kind_box.absolute_position().y - top);
         let title = all(&ui, "Design spec", AccessibleRole::Text).into_iter().find(|t| inside(t)).expect("title");
-        let preview = all(&ui, "figma.com/file/snipdeck-index-deck", AccessibleRole::Text).into_iter().find(|t| inside(t)).expect("preview");
+        let preview = all(&ui, "example.com/design/index-deck", AccessibleRole::Text).into_iter().find(|t| inside(t)).expect("preview");
         assert!(preview.absolute_position().x >= title.absolute_position().x + title.size().width + 7.5, "the preview follows the title on its line");
         let (ty, py) = (title.absolute_position().y + title.size().height / 2.0, preview.absolute_position().y + preview.size().height / 2.0);
         assert!((ty - py).abs() < 1.0, "one line: title centre {ty}, preview centre {py}");
@@ -1233,7 +1233,7 @@ ui_tests! {
             let (top, h) = (r.absolute_position().y, r.size().height);
             let inside = |e: &ElementHandle| e.absolute_position().y >= top - 0.5 && e.absolute_position().y < top + h;
             let title = all(ui, "Design spec", AccessibleRole::Text).into_iter().find(|t| inside(t)).expect("title");
-            let preview = all(ui, "figma.com/file/snipdeck-index-deck", AccessibleRole::Text).into_iter().find(|t| inside(t)).expect("preview");
+            let preview = all(ui, "example.com/design/index-deck", AccessibleRole::Text).into_iter().find(|t| inside(t)).expect("preview");
             (title.size().width, title.absolute_position().x, preview.size().width)
         };
         let idle = measure(&ui);
@@ -2039,7 +2039,7 @@ ui_tests! {
                 .find(|e| e.accessible_label().as_deref() == Some("Pinned snippets"));
             (tabs.absolute_position().y, strip.map(|e| (e.absolute_position().y, e.size().height)))
         };
-        let footer = find(&ui, "Pastes into Outlook · New message", AccessibleRole::Text);
+        let footer = find(&ui, "Pastes into Mail · New message", AccessibleRole::Text);
         assert!((footer.size().height - 32.0).abs() < 0.5, "footer 32 tall: {}", footer.size().height);
         let (tabs_y, strip) = deck_top(&ui);
         assert!((tabs_y - 64.0).abs() < 0.5, "grab strip 24 and header 40: tabs start at {tabs_y}");

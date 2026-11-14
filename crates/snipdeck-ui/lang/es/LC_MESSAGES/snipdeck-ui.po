@@ -1314,6 +1314,9 @@ msgstr "Mantener el panel visible durante las capturas"
 msgid "Keep a Recent inbox of what you copy"
 msgstr "Guardar una bandeja Recientes con lo que copias"
 
+msgid "Keep a Recent list of what you copy?"
+msgstr "¿Guardar una lista Reciente de lo que copias?"
+
 msgid "Keep editing"
 msgstr "Seguir editando"
 
@@ -1636,6 +1639,9 @@ msgstr "Lista siguiente"
 msgid "Next scope"
 msgstr "Siguiente ámbito"
 
+msgid "No"
+msgstr "No"
+
 msgid "No backup yet"
 msgstr "Aún no hay copias"
 
@@ -1707,9 +1713,6 @@ msgstr "Sin destino: el clic copia"
 
 msgid "Not included"
 msgstr "No incluido"
-
-msgid "Not now"
-msgstr "Ahora no"
 
 msgid "Not set"
 msgstr "Sin definir"
@@ -2151,6 +2154,9 @@ msgstr "Acciones de entradas recientes"
 
 msgid "Recent history cleared"
 msgstr "Historial reciente borrado"
+
+msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. Nothing is kept unless you say Yes, and you can change this any time in Settings."
+msgstr "Reciente guarda el texto que copias, solo en este equipo, de las últimas {} copias o {} días, lo que ocurra primero. Las contraseñas de los gestores de contraseñas y los elementos Sensibles nunca se guardan. No se guarda nada si no dices que Sí, y puedes cambiarlo cuando quieras en Ajustes."
 
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "Recientes guarda el texto que copias, solo en este equipo, durante las últimas {} copias o {} días, lo que ocurra primero. Las contraseñas de los gestores de contraseñas y los fragmentos sensibles nunca se guardan. Puedes cambiarlo cuando quieras en Configuración."

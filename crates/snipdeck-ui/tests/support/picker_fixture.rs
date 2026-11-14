@@ -59,7 +59,7 @@ pub fn sample_rows() -> Vec<PickerRow> {
         row(
             ItemKind::Link,
             "Design spec",
-            "figma.com/file/snipdeck-index-deck",
+            "example.com/design/index-deck",
             "Work",
             "Links",
             AMBER_600,
@@ -148,9 +148,9 @@ pub fn set_rows(ui: &PickerWindow, rows: Vec<PickerRow>) {
     ui.set_rows(ModelRc::new(VecModel::from(rows)));
 }
 
-/// The usual populated Picker, pasting into Outlook.
+/// The usual populated Picker, pasting into Mail.
 pub fn populate(ui: &PickerWindow) {
     set_rows(ui, sample_rows());
-    ui.set_target_name("Outlook".into());
+    ui.set_target_name("Mail".into());
     ui.set_target_title("New message".into());
 }

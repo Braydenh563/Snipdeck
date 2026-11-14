@@ -1310,6 +1310,9 @@ msgstr "スクリーンショット中もパネルを表示したままにする
 msgid "Keep a Recent inbox of what you copy"
 msgstr "コピーした内容を「最近」の受信箱に残す"
 
+msgid "Keep a Recent list of what you copy?"
+msgstr "コピーした内容の「最近」リストを残しますか？"
+
 msgid "Keep editing"
 msgstr "編集を続ける"
 
@@ -1630,6 +1633,9 @@ msgstr "次のリスト"
 msgid "Next scope"
 msgstr "次の範囲"
 
+msgid "No"
+msgstr "いいえ"
+
 msgid "No backup yet"
 msgstr "まだバックアップがありません"
 
@@ -1701,9 +1707,6 @@ msgstr "貼り付け先なし: クリックでコピー"
 
 msgid "Not included"
 msgstr "含まれない"
-
-msgid "Not now"
-msgstr "今はしない"
 
 msgid "Not set"
 msgstr "未設定"
@@ -2145,6 +2148,9 @@ msgstr "最近の項目の操作"
 
 msgid "Recent history cleared"
 msgstr "最近の履歴を消去しました"
+
+msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. Nothing is kept unless you say Yes, and you can change this any time in Settings."
+msgstr "「最近」は、コピーしたテキストを、直近 {} 件または {} 日間のどちらか先に達した分だけ、このコンピューターにのみ保存します。パスワード管理ツールからのパスワードや機密アイテムは保存されません。「はい」を選ぶまで何も保存されず、設定でいつでも変更できます。"
 
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "「最近」は、コピーしたテキストをこのコンピューターにのみ、直近 {} 回のコピーまたは {} 日間のどちらか早い方まで保持します。パスワードマネージャーのパスワードと機密スニペットは保持されません。設定でいつでも変更できます。"

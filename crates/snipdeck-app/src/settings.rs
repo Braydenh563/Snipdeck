@@ -807,10 +807,20 @@ pub struct Settings {
     /// `programs` on load, and then only mirrors them for the code that routes a paste.
     #[serde(skip_serializing)]
     pub no_paste_apps: Vec<String>,
-    /// The Recent inbox is on: Snipdeck keeps the text you copy (SPEC 5.6). On for a new install
-    /// ([`Settings::new_install`]); off in [`Settings::default`] and for any file that does not
-    /// say true.
+    /// The Recent inbox is on: Snipdeck keeps the text you copy (SPEC 5.6). Off until the user
+    /// says Yes (Store policy 10.5: opt in), so it is off in a new install, in
+    /// [`Settings::default`] and for any file that does not say true.
     pub recent_history: bool,
+    /// The user has answered "Keep a Recent list of what you copy?" (or set the Settings switch),
+    /// so the first-run question is not asked again. Together with `recent_history` this is the
+    /// three states: never chosen (asks), on, off.
+    ///
+    /// Migration: a file without this field means the user never answered, because the
+    /// question did not exist, and an older file cannot tell an explicit choice from the old
+    /// default that was written with every save. So a missing field is "ask", and
+    /// [`Settings::from_json`] then reads `recent_history` as off until the answer is Yes: an
+    /// upgrade where the user never chose is asked, and nothing is kept before they say Yes.
+    pub recent_history_asked: bool,
     /// Executable names that are never kept in the Recent inbox (lower case).
     pub no_history_apps: Vec<String>,
     /// The edge dock: when a docked Panel collapses to a handle, and the delays.
@@ -883,6 +893,7 @@ impl Default for Settings {
             programs: builtin_program_rules(),
             no_paste_apps: Vec::new(),
             recent_history: false,
+            recent_history_asked: false,
             no_history_apps: Vec::new(),
             dock: DockSettings::default(),
             onboarded: false,
@@ -904,13 +915,12 @@ impl Default for Settings {
 }
 
 impl Settings {
-    /// The settings of a new install, used only where there is no settings file: Recent on, the
-    /// Ctrl+Alt-free chords, the Panel unpinned and hiding after a paste or copy.
+    /// The settings of a new install, used only where there is no settings file: Recent off and
+    /// not yet asked (the Panel asks on first run), the Ctrl+Alt-free chords, the Panel unpinned and hiding after a paste or copy.
     #[must_use]
     pub fn new_install() -> Self {
         Self {
             hotkeys: Hotkeys::new_install(),
-            recent_history: true,
             panel_hide_after_use: true,
             // Unpinned, or hide-after-use and hide-on-blur would never fire on a new install.
             panel_pinned: false,
@@ -958,6 +968,8 @@ impl Settings {
                     ..Self::default()
                 }
             });
+        // Never answered means off, whatever an older file says (see `recent_history_asked`).
+        settings.recent_history &= settings.recent_history_asked;
         settings.fold_legacy_no_paste();
         settings.sanitize();
         settings
@@ -1019,6 +1031,7 @@ impl Settings {
             _ => {}
         }
         field!(recent_history);
+        field!(recent_history_asked);
         field!(no_history_apps);
         field!(dock);
         field!(onboarded);
@@ -1314,7 +1327,7 @@ mod tests {
     #[test]
     fn new_install_holds_the_new_values_and_default_the_legacy_ones() {
         let new = Settings::new_install();
-        assert!(new.recent_history && new.panel_hide_after_use);
+        assert!(!new.recent_history && !new.recent_history_asked && new.panel_hide_after_use);
         assert_eq!(new.hotkeys, Hotkeys::new_install());
         let old = Settings::default();
         assert!(!old.recent_history && !old.panel_hide_after_use);
@@ -1784,25 +1797,40 @@ mod tests {
     }
 
     #[test]
-    fn the_recent_inbox_is_on_for_a_new_install_and_off_for_a_file_that_never_said() {
-        assert!(Settings::new_install().recent_history, "new install");
-        assert!(!Settings::from_json("{}").recent_history, "existing file");
-        assert!(
-            !Settings::from_json("{ not json").recent_history,
-            "damaged file"
-        );
-        assert!(!Settings::from_json(r#"{"version":1,"theme":"dark"}"#).recent_history);
-        assert!(!Settings::from_json(r#"{"recent_history":false}"#).recent_history);
+    fn the_recent_inbox_is_off_and_unasked_for_a_new_install_and_a_file_that_never_said() {
+        let unasked = |s: &Settings| !s.recent_history && !s.recent_history_asked;
+        assert!(unasked(&Settings::new_install()), "new install");
+        assert!(unasked(&Settings::from_json("{}")), "existing file");
+        assert!(unasked(&Settings::from_json("{ not json")), "damaged file");
+        assert!(unasked(&Settings::from_json(
+            r#"{"version":1,"theme":"dark"}"#
+        )));
+        // An older file that says true but never recorded an answer is asked, and keeps nothing.
+        assert!(unasked(&Settings::from_json(r#"{"recent_history":true}"#)));
+        assert!(unasked(&Settings::from_json(
+            r#"{"recent_history":true,"recent_history_asked":"yes"}"#
+        )));
+        // A recorded No stays No, and a recorded Yes stays Yes.
+        let no = Settings::from_json(r#"{"recent_history":false,"recent_history_asked":true}"#);
+        assert!(!no.recent_history && no.recent_history_asked);
         let s = Settings::from_json(
-            r#"{"recent_history":true,"no_history_apps":[" KeePass.EXE ","keepass.exe",""]}"#,
+            r#"{"recent_history":true,"recent_history_asked":true,"no_history_apps":[" KeePass.EXE ","keepass.exe",""]}"#,
         );
-        assert!(s.recent_history);
+        assert!(s.recent_history && s.recent_history_asked);
         assert_eq!(s.no_history_apps, ["keepass.exe"]);
         // A bad field elsewhere keeps the opt-in and the exclusions.
-        let s =
-            Settings::from_json(r#"{"theme":5,"recent_history":true,"no_history_apps":["a.exe"]}"#);
+        let s = Settings::from_json(
+            r#"{"theme":5,"recent_history":true,"recent_history_asked":true,"no_history_apps":["a.exe"]}"#,
+        );
         assert!(s.recent_history);
         assert_eq!(s.no_history_apps, ["a.exe"]);
+        // The answer survives a save and a load.
+        let yes = Settings {
+            recent_history: true,
+            recent_history_asked: true,
+            ..Settings::new_install()
+        };
+        assert_eq!(Settings::from_json(&yes.to_json()), yes);
     }
 
     #[test]

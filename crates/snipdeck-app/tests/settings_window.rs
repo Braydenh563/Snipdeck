@@ -99,6 +99,8 @@ struct FakeHost {
     export_pick: RefCell<Option<ExportFolder>>,
     /// The owner window handles the export dialog was asked with.
     export_asked: Cell<u32>,
+    /// Whether this is the free-only Store package (no Supporter offer, no licence entry).
+    free_only: Cell<bool>,
 }
 
 impl SettingsHost for FakeHost {
@@ -159,6 +161,10 @@ impl SettingsHost for FakeHost {
         true
     }
 
+    fn free_only(&self) -> bool {
+        self.free_only.get()
+    }
+
     fn read_clipboard_history(&self) -> HistoryRead {
         self.history
             .borrow()
@@ -199,6 +205,16 @@ fn controller_on(store: Store, tier: Tier, clock: &FixedClock) -> Rc<RefCell<Ctl
 }
 
 fn rig_on(store: Store, tier: Tier, dir: tempfile::TempDir, with_data_dir: bool) -> Rig {
+    rig_packaged(store, tier, dir, with_data_dir, false)
+}
+
+fn rig_packaged(
+    store: Store,
+    tier: Tier,
+    dir: tempfile::TempDir,
+    with_data_dir: bool,
+    free_only: bool,
+) -> Rig {
     let clock = FixedClock::new(now());
     let ctl = controller_on(store, tier, &clock);
     ctl.borrow_mut().set_settings_saver(SettingsSaver::new(
@@ -210,6 +226,7 @@ fn rig_on(store: Store, tier: Tier, dir: tempfile::TempDir, with_data_dir: bool)
     snipdeck_app::text_scale::set_system(1.0);
     let host = Rc::new(FakeHost::default());
     *host.documents.borrow_mut() = Some(dir.path().join("Documents"));
+    host.free_only.set(free_only);
     let ui = SettingsPage::new().expect("settings page");
     // Tall, so the whole page is on screen.
     ui.window().set_size(slint::LogicalSize::new(640.0, 6000.0));
@@ -316,8 +333,8 @@ fn each_toggle_writes_settings_json_after_the_quiet_time() {
             ),
             (
                 "keep a Recent inbox",
-                |r| r.ui.invoke_recent_history_toggled(false),
-                |s| !s.recent_history,
+                |r| r.ui.invoke_recent_history_toggled(true),
+                |s| s.recent_history && s.recent_history_asked,
             ),
             (
                 "backups to keep",
@@ -1281,7 +1298,7 @@ fn a_good_licence_key_turns_pro_on_and_is_remembered() {
             Some(key.as_str())
         );
         assert_eq!(
-            licence_store::entitlements(r.dir.path(), now()).tier(),
+            licence_store::entitlements(false, r.dir.path(), now()).tier(),
             Tier::Pro,
             "the next start is Supporter"
         );
@@ -2042,6 +2059,43 @@ fn get_supporter_opens_the_email_app_with_the_one_named_address() {
     });
 }
 
+/// The Store package is free-only (Store policy 10.8): Settings offers no Supporter and no
+/// licence entry, and the unpackaged build keeps both.
+#[test]
+fn the_packaged_settings_page_has_no_get_supporter_and_no_licence_entry() {
+    on_ui_thread(|| {
+        let seen = |r: &Rig, label: &str| {
+            ElementHandle::find_by_accessible_label(&r.ui, label).count() > 0
+        };
+        let packaged = rig_packaged(
+            demo::store(now()).expect("demo"),
+            Tier::Pro,
+            tempfile::tempdir().expect("dir"),
+            true,
+            true,
+        );
+        assert!(packaged.ui.get_free_only());
+        for label in [
+            "Get Supporter\u{2026}",
+            "Get Supporter",
+            "Licence key",
+            "Activate",
+            "Free and Supporter compared",
+            "Free is fully usable. Supporter pays for convenience and supports the app.",
+        ] {
+            assert!(!seen(&packaged, label), "{label:?} must not be offered");
+        }
+        // The page itself is still there.
+        assert!(seen(&packaged, "Search settings"));
+
+        let github = rig();
+        assert!(!github.ui.get_free_only());
+        for label in ["Get Supporter\u{2026}", "Licence key", "Activate"] {
+            assert!(seen(&github, label), "{label:?} stays on the GitHub build");
+        }
+    });
+}
+
 #[test]
 fn the_free_is_fully_usable_line_is_readable_by_a_screen_reader() {
     on_ui_thread(|| {
@@ -2367,15 +2421,20 @@ fn each_new_choice_previews_its_own_source_and_a_wrong_file_is_a_problem() {
 }
 
 #[test]
-fn the_recent_inbox_is_on_for_a_new_install_can_be_switched_off_and_its_clear_button_empties_it() {
+fn the_recent_inbox_is_off_for_a_new_install_can_be_switched_on_and_its_clear_button_empties_it() {
     on_ui_thread(|| {
         let r = rig();
-        assert!(r.ui.get_recent_history(), "on for a new install");
+        assert!(!r.ui.get_recent_history(), "off until the user says Yes");
+        assert!(r.ctl.borrow().recent_question_due(), "and not yet asked");
         r.ctl.borrow_mut().set_key_provider(Box::new(
             snipdeck_store::crypto::MemoryKeyProvider::new().expect("provider"),
         ));
         r.ui.invoke_recent_history_toggled(false);
         assert!(!r.ctl.borrow().settings().recent_history);
+        assert!(
+            !r.ctl.borrow().recent_question_due(),
+            "the switch answers it"
+        );
         r.ui.invoke_recent_history_toggled(true);
         assert!(r.ctl.borrow().settings().recent_history);
         r.ctl

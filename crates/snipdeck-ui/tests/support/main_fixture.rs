@@ -44,7 +44,7 @@ pub fn sample_rows() -> Vec<MainRow> {
             ..row(
                 ItemKind::Link,
                 "Design spec",
-                "figma.com/file/snipdeck-index-deck",
+                "example.com/design/index-deck",
             )
         },
         row(

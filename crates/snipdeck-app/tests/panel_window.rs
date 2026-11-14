@@ -85,6 +85,19 @@ fn first_run_rig() -> Rig {
 }
 
 fn rig_on(store: Store, tray: bool, clipboard: Vec<snipdeck_platform::payload::Payload>) -> Rig {
+    // Answered, so the first-run Recent question does not cover the Panel in tests of other things.
+    let answered = Settings {
+        recent_history_asked: true,
+        ..Settings::default()
+    };
+    rig_settings(store, tray, clipboard, answered)
+}
+fn rig_settings(
+    store: Store,
+    tray: bool,
+    clipboard: Vec<snipdeck_platform::payload::Payload>,
+    settings: Settings,
+) -> Rig {
     let targets = FakeTargets::new(Some(demo::target()));
     let services = Services {
         clipboard: FakeClipboard {
@@ -101,7 +114,7 @@ fn rig_on(store: Store, tray: bool, clipboard: Vec<snipdeck_platform::payload::P
         services,
         Box::new(targets.clone()),
         Box::new(clock.clone()),
-        Settings::default(),
+        settings,
         Entitlements::new(Tier::Pro),
     )
     .expect("controller");
@@ -281,6 +294,50 @@ fn a_first_run_on_an_empty_library_has_a_board_and_working_controls() {
     });
 }
 
+/// Store policy 10.5: the first run asks, and nothing is kept until Yes. No stays No for good.
+#[test]
+fn the_first_run_asks_about_recent_and_the_answer_is_kept() {
+    on_ui_thread(|| {
+        let unasked = || {
+            rig_settings(
+                demo::store(now()).expect("demo store"),
+                true,
+                Vec::new(),
+                Settings::new_install(),
+            )
+        };
+        // A rig of another test has already answered: no question.
+        assert!(!rig().ui.get_recent_question_open());
+
+        let r = unasked();
+        assert!(r.ui.get_recent_question_open(), "a new install is asked");
+        assert!(
+            !r.ctl.borrow().settings().recent_history,
+            "nothing is kept yet"
+        );
+        assert!(
+            ElementHandle::find_by_accessible_label(&r.ui, "Keep a Recent list of what you copy?")
+                .count()
+                > 0
+        );
+        r.ui.invoke_recent_question_answered(true);
+        slint::platform::update_timers_and_animations();
+        assert!(!r.ui.get_recent_question_open(), "Yes closes the question");
+        assert!(r.ctl.borrow().settings().recent_history);
+        assert!(r.ctl.borrow().settings().recent_history_asked);
+
+        let r = unasked();
+        r.ui.invoke_recent_question_answered(false);
+        slint::platform::update_timers_and_animations();
+        assert!(!r.ui.get_recent_question_open(), "No closes the question");
+        assert!(!r.ctl.borrow().settings().recent_history);
+        assert!(
+            r.ctl.borrow().settings().recent_history_asked,
+            "and it is not asked again"
+        );
+    });
+}
+
 #[test]
 fn the_panel_shows_the_demo_library() {
     on_ui_thread(|| {
@@ -290,7 +347,7 @@ fn the_panel_shows_the_demo_library() {
         assert_eq!(r.ui.get_pinned().row_count(), 3);
         assert_eq!(r.ui.get_rows().row_count(), 6);
         assert_eq!(r.titles()[0], "Thanks, received");
-        assert_eq!(r.ui.get_target_name(), "Outlook");
+        assert_eq!(r.ui.get_target_name(), "Mail");
         assert_eq!(r.ui.get_target_title(), "New message");
         assert_eq!(r.ui.get_toast_text(), "");
         let sensitive = r.ui.get_rows().row_data(5).expect("row");
@@ -565,7 +622,7 @@ fn alt_3_pastes_the_third_item_and_counts_the_use() {
             );
         }
         assert_eq!(r.uses(2), 1);
-        assert_eq!(r.ui.get_toast_text(), "Pasted into Outlook");
+        assert_eq!(r.ui.get_toast_text(), "Pasted into Mail");
         assert_eq!(r.targets.refocus_count(), 1);
     });
 }
@@ -811,7 +868,7 @@ fn the_toast_walks_through_its_phases_on_mock_time_and_then_goes() {
     on_ui_thread(|| {
         let r = rig();
         chord(r.window(), &[Key::Alt], "1");
-        assert_eq!(r.ui.get_toast_text(), "Pasted into Outlook");
+        assert_eq!(r.ui.get_toast_text(), "Pasted into Mail");
         assert_eq!(r.ui.get_toast_phase(), snipdeck_ui::ToastPhase::Enter);
         i_slint_backend_testing::mock_elapsed_time(TOAST_ENTER);
         assert_eq!(r.ui.get_toast_phase(), snipdeck_ui::ToastPhase::Hold);

@@ -200,7 +200,7 @@ fn item_editor_each_kind() {
     let h = item_fit(ITEM.0, false, |c| {
         c.set_kind_index(2);
         c.set_item_title("Design spec".into());
-        c.set_content("figma.com/file/snipdeck-index-deck".into());
+        c.set_content("example.com/design/index-deck".into());
         c.set_content_error("A link needs a scheme such as https://".into());
     });
     assert_golden("item-editor-link-error-light", &render(&h));
