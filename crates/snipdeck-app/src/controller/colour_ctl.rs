@@ -14,7 +14,7 @@ use snipdeck_platform::{
     payload::{Data, Payload},
     pipeline::{Clipboard, Keyboard, Timing},
 };
-use snipdeck_store::{TrashRepo, Trashable};
+use snipdeck_store::Trashable;
 
 use super::{Controller, Effect, Library, UseResult, failed};
 use crate::host::ClipboardText;
