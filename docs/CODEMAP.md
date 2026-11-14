@@ -4025,13 +4025,13 @@ plain_items_have_no_template_source | crates/snipdeck-app/src/usecase.rs:777
 
 ### crates/snipdeck-app/src/window_kind.rs
 
-Plan | crates/snipdeck-app/src/window_kind.rs:12
-plan | crates/snipdeck-app/src/window_kind.rs:30
-tests | crates/snipdeck-app/src/window_kind.rs:40
-a_regular_window_is_in_the_taskbar_and_active | crates/snipdeck-app/src/window_kind.rs:44
-a_floating_window_is_skipped_and_not_activated | crates/snipdeck-app/src/window_kind.rs:51
-no_window_is_composed_see_through | crates/snipdeck-app/src/window_kind.rs:58
-only_regular_windows_get_the_icon | crates/snipdeck-app/src/window_kind.rs:65
+Plan | crates/snipdeck-app/src/window_kind.rs:16
+plan | crates/snipdeck-app/src/window_kind.rs:34
+tests | crates/snipdeck-app/src/window_kind.rs:44
+a_regular_window_is_in_the_taskbar_and_active | crates/snipdeck-app/src/window_kind.rs:48
+a_floating_window_is_skipped_and_not_activated | crates/snipdeck-app/src/window_kind.rs:55
+no_window_is_composed_see_through | crates/snipdeck-app/src/window_kind.rs:62
+only_regular_windows_get_the_icon | crates/snipdeck-app/src/window_kind.rs:69
 
 ### crates/snipdeck-app/src/wording.rs
 
