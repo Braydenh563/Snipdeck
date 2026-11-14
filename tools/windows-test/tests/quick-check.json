@@ -2,7 +2,7 @@
   "id": "QC",
   "quickOnly": true,
   "title": "Quick check: what changed lately and can only be judged on Windows",
-  "friendly": "Quick check (Recent, Alt+Tab, dock, Symbols, render flicker)",
+  "friendly": "Quick check (hotkey, one-click paste, Recent opt-in, Alt+Tab, dock, Symbols PNG, render flicker)",
   "note": "tools/windows-test/README.md, Quick check. Runs the real app on a new, empty test library in spikes-results\\qc-data (deleted at the start of each new run), so your own snippets are never touched.",
   "dir": ".",
   "exe": "snipdeck-app",
@@ -18,7 +18,7 @@
   ],
   "tests": [
     {
-      "id": "3",
+      "id": "1",
       "qc": true,
       "qcOnly": true,
       "gate": true,
@@ -31,11 +31,22 @@
           "SNIPDECK_LOG": "1"
         }
       },
+      "auto": "Invoke-QcHotkey",
+      "minutes": 0.5,
+      "title": "Panel v2: the hotkey shows and hides the Panel",
+      "do": "Click into a Notepad window so its cursor is blinking. Press {HOTKEY} to show the Panel. Press {HOTKEY} again.",
+      "expect": "The Panel appears on the first press and goes away on the second, and the Notepad cursor keeps blinking (the Panel does not take the keyboard). {HOTKEY} is the shortcut of this test library (a new install). An older Snipdeck keeps Ctrl+Alt+Space; that is not what is tested here. If the Panel asks \"Keep a Recent list of what you copy?\", leave it: step 3 answers it."
+    },
+    {
+      "id": "3",
+      "qc": true,
+      "qcOnly": true,
+      "gate": true,
       "auto": "Invoke-QcRecent",
-      "minutes": 1,
-      "title": "Recent is on for a new install: a normal copy appears",
-      "do": "In Notepad type the word quickcheck, press Ctrl+A, then Ctrl+C. Open the Panel with {HOTKEY} and look in its Recent list for quickcheck. (Settings > Keep a Recent inbox of what you copy should already be on.)",
-      "expect": "quickcheck is listed in Recent without you turning anything on."
+      "minutes": 1.5,
+      "title": "Recent asks first: nothing kept before Yes, a copy kept after",
+      "do": "In Notepad type beforeyes, press Ctrl+A, then Ctrl+C. Open the Panel with {HOTKEY}. It asks \"Keep a Recent list of what you copy?\" (if the welcome tour is open, close or skip it first; the question comes after it). Choose Yes. Now type quickcheck in Notepad, Ctrl+A, Ctrl+C, open the Panel and look in its Recent list.",
+      "expect": "The question appears once, on this new test library. After Yes, quickcheck is in Recent; beforeyes (copied before you answered) is NOT."
     },
     {
       "id": "4",
@@ -43,8 +54,18 @@
       "qcOnly": true,
       "minutes": 0.5,
       "title": "Recent ignores a password manager",
-      "do": "Open a password manager on this PC (KeePass, 1Password, Bitwarden, ...) and copy a password from it. Open the Panel and look in Recent. No password manager installed: press S to skip.",
+      "do": "Recent is on after step 3 (if step 3 failed, turn on Settings > Keep a Recent inbox of what you copy first). Open a password manager on this PC (KeePass, 1Password, Bitwarden, ...) and copy a password from it. Open the Panel and look in Recent. No password manager installed: press S to skip.",
       "expect": "The password is NOT in Recent. (The text you copied in Notepad is still there.)"
+    },
+    {
+      "id": "5",
+      "qc": true,
+      "qcOnly": true,
+      "gate": true,
+      "minutes": 1,
+      "title": "Panel v2: one click pastes, then the Panel hides",
+      "do": "Click into Notepad and put the cursor on an empty line. Open the Panel with {HOTKEY}. Click the quickcheck row once.",
+      "expect": "quickcheck is typed into Notepad at the cursor, and the Panel hides by itself right after (it is not pinned)."
     },
     {
       "id": "9",
@@ -84,15 +105,6 @@
       "title": "Symbols: Copy PNG into Word and Paint",
       "do": "In the Symbols tab open the Icons kind and click an icon (an icon click copies a PNG). Paste it into Word with Ctrl+V, then into Paint.",
       "expect": "The icon pastes as a picture in both. In Word the background is clear (the page shows through); in Paint it is a drawing in the theme's text colour. Note what Paint shows behind it."
-    },
-    {
-      "id": "17",
-      "qc": true,
-      "qcOnly": true,
-      "minutes": 3,
-      "title": "Symbols: sharpness at 125% and 150%",
-      "do": "Set Windows display scale to 125%, open the Panel Symbols tab and look at the grid. Repeat at 150%. Put the scale back afterwards.",
-      "expect": "Emoji and icons are crisp (no blur or jagged edges), the cells keep their 40px size and gaps, and nothing is cut off. Scrolling stays smooth."
     },
     {
       "id": "20",

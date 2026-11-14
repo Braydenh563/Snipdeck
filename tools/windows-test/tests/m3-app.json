@@ -651,6 +651,34 @@
       "title": "Quit from the command line closes the running Snipdeck",
       "do": "Start Snipdeck. Change something in the library (for example add a snippet or rename a list) and, without waiting, open a Command Prompt or PowerShell window in the folder that holds the program. Run the program with --quit (for a build from source that is target\\release\\snipdeck-app.exe --quit; for an installed copy it is snipdeck.exe --quit). Watch the tray, then start Snipdeck again. Then run the same command a second time with Snipdeck closed.",
       "expect": "The command returns to the prompt at once and prints nothing. Within 2 seconds the tray icon goes away and the Panel closes, as if you had chosen Quit in the tray menu. After you start Snipdeck again, the library has the edit you made just before the command. With Snipdeck closed, the command still returns at once, prints nothing and its exit code is 0 (in PowerShell, $LASTEXITCODE shows 0), and it does not start a window or leave Snipdeck running."
+    },
+    {
+      "id": "88",
+      "v1": false,
+      "title": "Symbols: emoji paste into Notepad and Word",
+      "do": "Open the Panel with the Panel shortcut and click the smiley tab. Click into Notepad, then click the grinning face 😀. Click into a Word document and click it again. Then search woman technologist and click 👩‍💻 (a joined emoji) in Notepad and in Word.",
+      "expect": "Each click types the emoji at the cursor and the Panel hides (unless pinned). 😀 and 👩‍💻 show as one picture each, not as separate parts (Notepad may draw the joined one as two or three pictures on an older Windows 10; note it if so)."
+    },
+    {
+      "id": "89",
+      "v1": false,
+      "title": "Symbols: kaomoji glyphs",
+      "do": "In the Symbols tab open the Kaomoji kind. Look at a few chips, including ones with box-drawing lines or Japanese characters. Click one into Notepad.",
+      "expect": "The chips show every character (no empty boxes or question marks), lines join up, and the pasted text matches what the chip shows."
+    },
+    {
+      "id": "90",
+      "v1": false,
+      "title": "Symbols: sharpness at 125% and 150%",
+      "do": "Set Windows display scale to 125%, open the Panel Symbols tab and look at the grid. Repeat at 150%. Put the scale back afterwards.",
+      "expect": "Emoji and icons are crisp (no blur or jagged edges), the cells keep their 40px size and gaps, and nothing is cut off. Scrolling stays smooth."
+    },
+    {
+      "id": "91",
+      "v1": false,
+      "title": "Symbols: flags paste as letter pairs",
+      "do": "In the Symbols tab search flag, or open the Flags group, and click a flag into Notepad.",
+      "expect": "Windows has no flag pictures: Notepad shows the flag as two letters (for example AU). The Panel grid may do the same. This is expected, not a failure; press F only if the cell is empty or the paste is wrong."
     }
   ]
 }

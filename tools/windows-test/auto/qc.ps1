@@ -54,41 +54,92 @@ function Enter-QcNotepad($Ctx) {
     return $np
 }
 
-# ---------------------------------------------------------------- step 3: Recent is on and keeps a normal copy
+# ---------------------------------------------------------------- step 1: the hotkey shows and hides the Panel
+
+function Invoke-QcHotkey($Ctx) {
+    if (-not (Test-AutoAppRunning $Ctx)) { return New-AutoResult 'unsure' 'the test app is not running' }
+    $chord = Get-QcPanelChord (Get-QcSettingsPath $Ctx)
+    if (-not $chord) { return New-AutoResult 'unsure' 'the settings file says the Panel shortcut is off' }
+    Enter-AutoHandsOff "Quick check step 1: press $chord twice and watch the Panel appear and go away"
+    $np = Enter-QcNotepad $Ctx
+    $startedVisible = [bool](Get-QcPanel $Ctx)
+    $checks = @()
+    Send-AutoKeys @($chord)
+    $flipped = Wait-QcPanel $Ctx (-not $startedVisible) 2500
+    $fg1 = Get-AutoForeground
+    $flipNote = 'it was hidden, now showing'
+    if ($startedVisible) { $flipNote = 'it was showing, now hidden' }
+    $checks += New-AutoCheck "first press $chord toggles the Panel" $flipped $flipNote
+    if ($flipped) {
+        $checks += Get-AutoFocusCheck $fg1 ([long]$np.Hwnd) $Ctx.App.proc.Id 'Notepad'
+        Send-AutoKeys @($chord)
+        $back = Wait-QcPanel $Ctx $startedVisible 2500
+        $checks += New-AutoCheck "second press $chord toggles it back" $back
+    }
+    # Leave the Panel hidden: the next steps say "open the Panel with the shortcut".
+    $null = Set-QcPanelVisible $Ctx $chord $false
+    return Resolve-AutoChecks $checks
+}
+
+# ---------------------------------------------------------------- step 3: Recent asks first, keeps nothing before Yes
+
+# The Panel's UI Automation elements whose name matches $Like, tried a few times (the Panel draws after it shows).
+function Find-QcPanelElements($Ctx, [string]$Like) {
+    for ($i = 0; $i -lt 8; $i++) {
+        $panel = Get-QcPanel $Ctx
+        if ($panel) {
+            $els = Get-AutoUiaElements $panel.Hwnd
+            if ($els) {
+                $hit = @($els | Where-Object { $_.Name -and $_.Name -like $Like })
+                if ($hit.Count -gt 0) { return $hit }
+            }
+        }
+        Wait-Auto 500
+    }
+    return @()
+}
+
+# Copies $Word from the scratch Notepad (selects all, types it, copies it).
+function Copy-QcWord($Ctx, [string]$Word) {
+    $null = Enter-QcNotepad $Ctx
+    Send-AutoKeys @('Ctrl+A', 'Delete')
+    Send-AutoText $Word
+    Wait-Auto 250
+    Send-AutoKeys @('Ctrl+A', 'Ctrl+C')
+    Wait-Auto 900
+}
 
 function Invoke-QcRecent($Ctx) {
     if (-not (Test-AutoAppRunning $Ctx)) { return New-AutoResult 'unsure' 'the test app is not running' }
     $chord = Get-QcPanelChord (Get-QcSettingsPath $Ctx)
     if (-not $chord) { return New-AutoResult 'unsure' 'the settings file says the Panel shortcut is off' }
-    Enter-AutoHandsOff 'Quick check step 3: type quickcheck in Notepad, copy it, open the Panel and look for it in Recent'
-    $np = Enter-QcNotepad $Ctx
-    Send-AutoKeys @('Ctrl+A', 'Delete')
-    Send-AutoText 'quickcheck'
-    Wait-Auto 250
-    Send-AutoKeys @('Ctrl+A', 'Ctrl+C')
-    Wait-Auto 900
-    $opened = Set-QcPanelVisible $Ctx $chord $true
-    $found = $false; $seen = 0
-    if ($opened) {
-        for ($i = 0; $i -lt 8 -and -not $found; $i++) {
-            $panel = Get-QcPanel $Ctx
-            if ($panel) {
-                $els = Get-AutoUiaElements $panel.Hwnd
-                if ($els) {
-                    $seen = @($els).Count
-                    foreach ($e in @($els)) { if ($e.Name -and $e.Name -like '*quickcheck*') { $found = $true; break } }
-                }
-            }
-            if (-not $found) { Wait-Auto 500 }
-        }
-    }
-    $null = Set-QcPanelVisible $Ctx $chord $false
+    Enter-AutoHandsOff 'Quick check step 3: copy beforeyes, answer Yes to the Recent question, copy quickcheck and look in Recent'
     $checks = @()
+    Copy-QcWord $Ctx 'beforeyes'
+    $opened = Set-QcPanelVisible $Ctx $chord $true
     $checks += New-AutoCheck 'the Panel opened' $opened
-    $detail = if ($found) { 'seen in the Panel' } else { "not seen among $seen Panel elements; it may be on another list, or the Panel text cannot be read" }
+    if (-not $opened) { return Resolve-AutoChecks $checks }
+    $yes = @(Find-QcPanelElements $Ctx 'Yes' | Where-Object { $_.Type -eq 'Button' -and $_.Rect })
+    if ($yes.Count -eq 0) {
+        $null = Set-QcPanelVisible $Ctx $chord $false
+        $checks += New-AutoCheck 'the Panel asks "Keep a Recent list of what you copy?"' $null 'no Yes button found (the welcome tour may be open, or the Panel text cannot be read)'
+        return Resolve-AutoChecks $checks
+    }
+    $checks += New-AutoCheck 'the Panel asks "Keep a Recent list of what you copy?"' $true
+    $r = $yes[0].Rect
+    $null = Invoke-AutoClick ([int](($r.L + $r.R) / 2)) ([int](($r.T + $r.B) / 2))
+    Wait-Auto 500
+    $null = Set-QcPanelVisible $Ctx $chord $false
+    Copy-QcWord $Ctx 'quickcheck'
+    $null = Set-QcPanelVisible $Ctx $chord $true
+    $found = (@(Find-QcPanelElements $Ctx '*quickcheck*').Count -gt 0)
+    $early = @(Find-QcPanelElements $Ctx '*beforeyes*').Count
+    $null = Set-QcPanelVisible $Ctx $chord $false
     $foundOk = $null
     if ($found) { $foundOk = $true }
-    $checks += New-AutoCheck 'quickcheck is in the Panel after a copy in Notepad' $foundOk $detail
+    $checks += New-AutoCheck 'quickcheck is in Recent after Yes' $foundOk 'not seen; it may be on another list, or the Panel text cannot be read'
+    # Absence is only evidence once the Panel text was read (quickcheck seen).
+    if ($found) { $checks += New-AutoCheck 'beforeyes (copied before Yes) is not in Recent' ($early -eq 0) "$early element(s) named beforeyes" }
     return Resolve-AutoChecks $checks
 }
 
