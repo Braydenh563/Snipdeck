@@ -329,6 +329,9 @@ export component SettingsPage inherits Window {
     in property <string> no-history-error;
     // Whether this library is Supporter (a valid licence key, or the demo).
     in property <bool> pro: false;
+    // The free-only Store package: every feature is on, so there is no Licence section, no key
+    // field and no Get Supporter (Store policy 10.8).
+    in property <bool> free-only: false;
     // Set by the host when `licence-submitted` was refused; the same words as the toast.
     in property <string> licence-error;
     // False in the demo, which has no data folder: backups and the data tools are off.
@@ -504,7 +507,7 @@ export component SettingsPage inherits Window {
     property <string> keys-7: @tr("Backups and your data") + " " + @tr("Backups to keep") + " " + @tr("Export library") + " " + @tr("Import") + " " + @tr("Erase library") + " " + @tr("Also forget the encryption key");
     // Titles of section 8 (Licence), for the search. A test checks that every row title is in here.
     property <string> keys-8: @tr("Licence") + " " + @tr("Get Supporter") + " " + @tr("license supporter upgrade key");
-    property <string> keys-all: root.keys-0 + " " + root.keys-1 + " " + root.keys-2 + " " + root.keys-3 + " " + root.keys-4 + " " + root.keys-5 + " " + root.keys-6 + " " + root.keys-7 + " " + root.keys-8;
+    property <string> keys-all: root.keys-0 + " " + root.keys-1 + " " + root.keys-2 + " " + root.keys-3 + " " + root.keys-4 + " " + root.keys-5 + " " + root.keys-6 + " " + root.keys-7 + (root.free-only ? "" : " " + root.keys-8);
 
     function reveal-field(y: length, h: length) {
         page.reveal(y - page.absolute-position.y, h);
@@ -603,7 +606,9 @@ export component SettingsPage inherits Window {
                         width: 240px * SystemLook.text-scale;
                         label: @tr("Jump to a section");
                         placeholder: @tr("Jump to a section");
-                        options: [@tr("Shortcuts"), @tr("Appearance"), @tr("Panel layout"), @tr("Opening the Panel"), @tr("Privacy"), @tr("Programs"), @tr("Typing"), @tr("Backups and your data"), @tr("Licence")];
+                        options: root.free-only
+                            ? [@tr("Shortcuts"), @tr("Appearance"), @tr("Panel layout"), @tr("Opening the Panel"), @tr("Privacy"), @tr("Programs"), @tr("Typing"), @tr("Backups and your data")]
+                            : [@tr("Shortcuts"), @tr("Appearance"), @tr("Panel layout"), @tr("Opening the Panel"), @tr("Privacy"), @tr("Programs"), @tr("Typing"), @tr("Backups and your data"), @tr("Licence")];
                         current: -1;
                         chosen(i) => { SettingsFilter.jump-target = i; SettingsFilter.jump-seq += 1; }
                         changed has-focus => {
@@ -1714,7 +1719,7 @@ export component SettingsPage inherits Window {
                     }
                 }
 
-                FormSection {
+                if !root.free-only: FormSection {
                     title: @tr("Licence");
                     index: 8;
                     gap: Space.s6;
@@ -1801,7 +1806,7 @@ export component SettingsPage inherits Window {
     }
 
     // Last, so it sits on top and traps the pointer.
-    Dialog {
+    if !root.free-only: Dialog {
         title: @tr("Get Supporter");
         body: @tr("Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included. Free stays fully usable; Supporter pays for convenience and supports the app. Can't afford it? Email me and I'll send a key, no questions.");
         open: root.supporter-open;

@@ -56,6 +56,30 @@ impl HelpHost for NoHost {
     }
 }
 
+/// The free-only Store package: the same machine, packaged.
+struct StoreHost;
+
+impl HelpHost for StoreHost {
+    fn open_folder(&self, folder: &Path) -> Result<(), String> {
+        NoHost.open_folder(folder)
+    }
+    fn open_url(&self, url: &str) -> Result<(), String> {
+        NoHost.open_url(url)
+    }
+    fn open_file(&self, file: &Path) -> Result<(), String> {
+        NoHost.open_file(file)
+    }
+    fn os_summary(&self) -> String {
+        NoHost.os_summary()
+    }
+    fn notices_file(&self) -> Option<PathBuf> {
+        None
+    }
+    fn free_only(&self) -> bool {
+        true
+    }
+}
+
 fn now() -> Timestamp {
     "2026-10-17T10:30:00Z".parse().expect("timestamp")
 }
@@ -354,5 +378,22 @@ fn the_recent_card_says_what_recent_holds() {
             "{}",
             capture.second_line
         );
+    });
+}
+
+#[test]
+fn the_help_window_names_no_plan_in_the_free_only_package() {
+    on_ui_thread(|| {
+        let github = rig(Settings::default());
+        assert!(
+            !github.ui.get_free_only(),
+            "the GitHub build names its plan"
+        );
+        let ctl = Rc::clone(&github.ctl);
+        let ui = HelpWindow::new().expect("help window");
+        let binding = HelpBinding::new(&ctl, &ui, None, Rc::new(StoreHost));
+        ui.show().expect("show");
+        binding.refresh();
+        assert!(ui.get_free_only(), "the Store package does not");
     });
 }

@@ -171,7 +171,13 @@ pub fn troubleshoot(folder: &Path, today: Date, os: &str) -> Outcome {
     }
     let info = ReportInfo {
         version: env!("CARGO_PKG_VERSION").to_owned(),
-        tier: tier_word(crate::licence_store::entitlements(folder, jiff::Timestamp::now()).tier()),
+        tier: if crate::platform::is_packaged() {
+            "Store (free)".to_owned()
+        } else {
+            tier_word(
+                crate::licence_store::entitlements(false, folder, jiff::Timestamp::now()).tier(),
+            )
+        },
         os: os.to_owned(),
         dpi: "n/a".to_owned(),
         flags: crate::help_binding::report_flags(&settings),

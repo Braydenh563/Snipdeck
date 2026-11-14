@@ -452,7 +452,7 @@ mod tests {
         let temp = tempfile::tempdir().expect("tempdir");
         let dir = temp.path();
         let fresh = read_settings(dir).settings;
-        assert!(fresh.recent_history && fresh.panel_hide_after_use);
+        assert!(!fresh.recent_history && !fresh.recent_history_asked && fresh.panel_hide_after_use);
         assert_eq!(fresh.hotkeys.toggle_panel, "Ctrl+Shift+Y");
         std::fs::write(dir.join(SETTINGS_FILE), "{}").expect("write");
         assert_eq!(read_settings(dir).settings, Settings::default());

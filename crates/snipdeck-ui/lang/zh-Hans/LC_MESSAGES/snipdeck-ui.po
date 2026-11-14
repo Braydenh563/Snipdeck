@@ -1415,6 +1415,9 @@ msgstr "截图时保持面板可见"
 msgid "Keep a Recent inbox of what you copy"
 msgstr "保留你复制内容的“最近”收件箱"
 
+msgid "Keep a Recent list of what you copy?"
+msgstr "要保留你复制内容的“最近”列表吗？"
+
 msgid "Keep editing"
 msgstr "继续编辑"
 
@@ -1747,6 +1750,9 @@ msgstr "下一个列表"
 msgid "Next scope"
 msgstr "下一个范围"
 
+msgid "No"
+msgstr "否"
+
 msgid "No backup yet"
 msgstr "尚无备份"
 
@@ -1821,9 +1827,6 @@ msgstr "不是颜色。试试 {}"
 
 msgid "Not included"
 msgstr "未包含"
-
-msgid "Not now"
-msgstr "以后再说"
 
 msgid "Not set"
 msgstr "未设置"
@@ -2301,6 +2304,9 @@ msgstr "最近条目操作"
 
 msgid "Recent history cleared"
 msgstr "已清除最近记录"
+
+msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. Nothing is kept unless you say Yes, and you can change this any time in Settings."
+msgstr "“最近”只在此电脑上保存你复制的文本，保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感项目绝不会保存。除非你选择“是”，否则不会保存任何内容，你也可以随时在设置中更改。"
 
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "“最近”会保留你复制的文本，仅保存在这台电脑上，最多保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感片段不会被保留。你可以随时在设置中更改。"

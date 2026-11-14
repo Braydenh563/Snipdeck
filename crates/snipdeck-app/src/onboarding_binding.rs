@@ -391,7 +391,7 @@ where
             .act(|ctl| ctl.dock_to(dock_edge_of(i))));
         wire!(on_autostart_toggled, |core, on| core.autostart_toggled(on));
         wire!(on_recent_history_toggled, |core, on| core
-            .act(|ctl| ctl.update_settings(|s| s.recent_history = on)));
+            .act(|ctl| ctl.set_recent_history(on)));
         wire!(on_close_to_tray_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.close_to_tray = on)));
         wire!(on_back_requested, |core| core.act(|ctl| {

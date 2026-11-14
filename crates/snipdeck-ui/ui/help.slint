@@ -72,6 +72,8 @@ export component HelpWindow inherits Window {
     in property <string> build-date;
     // Whether the Supporter plan is active; the page names the plan.
     in property <bool> supporter: false;
+    // The free-only Store package: the plan is not named (there is only one).
+    in property <bool> free-only: false;
     in property <string> source-url;
     // The Microsoft Store link and the third-party notices are hidden until the host has them.
     in property <bool> show-store-link: false;
@@ -442,7 +444,7 @@ export component HelpWindow inherits Window {
                                 accessible-role: text;
                             }
                         }
-                        SettingRow {
+                        if !root.free-only: SettingRow {
                             title: @tr("Licence");
                             Text {
                                 text: root.supporter ? @tr("Supporter") : @tr("Free");

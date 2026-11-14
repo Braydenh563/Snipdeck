@@ -8,6 +8,10 @@ Render first (any test failures from the 2x scale are expected and ignored):
     pip install pillow pyoxipng
     python3 scripts/readme_shots.py /tmp/shots
 
+Also writes the Microsoft Store screenshots to docs/images/store/: the same framed shots, scaled
+down if they do not fit and centred on an opaque 1920x1080 canvas (the Store wants at least
+1366x768; the README shots are narrower or shorter than that). They are never scaled up.
+
 Each shot gets rounded corners, a hairline border and a soft shadow on a transparent
 background, so it sits well on GitHub's light and dark pages. The hero image composes the
 Main window with the Panel and the Picker in front of it.
@@ -21,6 +25,7 @@ import oxipng  # pip install pyoxipng
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 OUT = Path(__file__).resolve().parent.parent / "docs" / "images"
+STORE_OUT = OUT / "store"
 RADIUS = 20  # 10 logical px at 2x
 PAD = 48  # room for the shadow
 
@@ -61,6 +66,23 @@ def framed(im: Image.Image, dark: bool) -> Image.Image:
     win = rounded(im, dark)
     canvas = shadow(win.size, dark)
     canvas.alpha_composite(win, (PAD, PAD))
+    return canvas
+
+
+STORE_SIZE = (1920, 1080)  # at least the Store's 1366x768 minimum
+STORE_MARGIN = 64
+STORE_SHOTS = ("main", "panel", "picker", "fill", "editor", "settings")
+STORE_BACKGROUND = {"light": (238, 241, 246, 255), "dark": (22, 24, 29, 255)}
+
+
+def store_shot(framed_im: Image.Image, theme: str) -> Image.Image:
+    """`framed_im` centred on the Store canvas, scaled down (never up) to leave a margin."""
+    box = (STORE_SIZE[0] - 2 * STORE_MARGIN, STORE_SIZE[1] - 2 * STORE_MARGIN)
+    im = framed_im.copy()
+    if im.width > box[0] or im.height > box[1]:
+        im.thumbnail(box, Image.LANCZOS)
+    canvas = Image.new("RGBA", STORE_SIZE, STORE_BACKGROUND[theme])
+    canvas.alpha_composite(im, ((STORE_SIZE[0] - im.width) // 2, (STORE_SIZE[1] - im.height) // 2))
     return canvas
 
 
@@ -113,7 +135,11 @@ def main() -> int:
             im = Image.open(f)
             if name == "settings":
                 im = trim_settings(im)
-            save(framed(im, theme == "dark"), OUT / f"{name}-{theme}.png")
+            shot = framed(im, theme == "dark")
+            save(shot, OUT / f"{name}-{theme}.png")
+            if name in STORE_SHOTS:
+                STORE_OUT.mkdir(parents=True, exist_ok=True)
+                save(store_shot(shot, theme), STORE_OUT / f"{name}-{theme}.png")
     for theme in ("light", "dark"):
         h = hero(src, theme)
         if h is not None:

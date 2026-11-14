@@ -244,7 +244,7 @@ only if the Free plan has room for it.
 
 ## Recent
 
-The Recent inbox keeps the text you copy in other programs, so you can find it again. It is **on by default for a new install** (an install that existed before keeps its choice). Passwords from password managers and Sensitive items are never kept.
+The Recent inbox keeps the text you copy in other programs, so you can find it again. The first time you open the Panel, Snipdeck **asks whether to keep a Recent list**; nothing is kept until you say Yes (a new install, or an upgrade where you never answered). Passwords from password managers and Sensitive items are never kept.
 
 - **Turn it off (or on).** Settings ▸ **Recent** ▸ **Keep a Recent inbox of what you copy**, or the **Clipboard
   history** step of the welcome tour. Nothing is collected while it is off.

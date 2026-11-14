@@ -300,6 +300,9 @@ pub struct View {
     pub fill: Option<FillView>,
     /// The Recent inbox (clock tab), while it is on in the settings.
     pub recent: Option<crate::recent::RecentView>,
+    /// The first-run question "Keep a Recent list of what you copy?" is due: unanswered, and
+    /// the welcome tour is not running. Nothing is kept until the answer is Yes.
+    pub recent_question: bool,
 }
 
 /// What a row of the Move or Colour choice says, before wording.

@@ -61,9 +61,14 @@ pub fn write(folder: &Path, token: &str) -> io::Result<()> {
         })
 }
 
-/// What the saved key entitles the user to: Supporter for a good key, Free for none or a bad one.
+/// What the user may do. The free-only Store package (`free_only`, the Store's policy 10.8: no
+/// unlock may be sold there) has every feature on and never reads a key. Otherwise a good saved
+/// key is Supporter and none or a bad one is Free.
 #[must_use]
-pub fn entitlements(folder: &Path, now: Timestamp) -> Entitlements {
+pub fn entitlements(free_only: bool, folder: &Path, now: Timestamp) -> Entitlements {
+    if free_only {
+        return Entitlements::new(snipdeck_core::Tier::Pro);
+    }
     read(folder)
         .and_then(|token| verify_embedded(&token, now).ok())
         .unwrap_or_default()
@@ -113,12 +118,32 @@ mod tests {
     #[test]
     fn no_file_or_a_bad_one_is_the_free_plan() {
         let dir = tempfile::tempdir().expect("dir");
-        assert_eq!(entitlements(dir.path(), now()).tier(), Tier::Free);
+        assert_eq!(entitlements(false, dir.path(), now()).tier(), Tier::Free);
         write(dir.path(), "SNIP1.not.a-key").expect("write");
         assert_eq!(read(dir.path()).as_deref(), Some("SNIP1.not.a-key"));
-        assert_eq!(entitlements(dir.path(), now()).tier(), Tier::Free);
+        assert_eq!(entitlements(false, dir.path(), now()).tier(), Tier::Free);
         write(dir.path(), "  \n").expect("write");
         assert_eq!(read(dir.path()), None, "blank means none");
+    }
+
+    #[test]
+    fn the_free_only_package_has_every_feature_without_a_key() {
+        use snipdeck_core::Feature;
+        let dir = tempfile::tempdir().expect("dir");
+        let all = [
+            Feature::UnlimitedBoards,
+            Feature::PromptedFields,
+            Feature::MasterPassword,
+            Feature::FloatingLists,
+            Feature::PasteStack,
+        ];
+        let packaged = entitlements(true, dir.path(), now());
+        assert_eq!(packaged.tier(), Tier::Pro);
+        assert!(all.iter().all(|f| packaged.allows(*f)));
+        // The same folder, unpackaged: no key means Free, as before.
+        let github = entitlements(false, dir.path(), now());
+        assert_eq!(github.tier(), Tier::Free);
+        assert!(all.iter().all(|f| !github.allows(*f)));
     }
 
     #[test]
@@ -142,7 +167,7 @@ mod tests {
         let dir = tempfile::tempdir().expect("dir");
         write(dir.path(), &format!("  {key}\n")).expect("write");
         assert_eq!(read(dir.path()).as_deref(), Some(key.as_str()));
-        assert_eq!(entitlements(dir.path(), now()).tier(), Tier::Pro);
+        assert_eq!(entitlements(false, dir.path(), now()).tier(), Tier::Pro);
         assert!(
             fs::read_dir(dir.path())
                 .unwrap()

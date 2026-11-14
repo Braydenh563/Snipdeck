@@ -38,8 +38,9 @@ first start.
   follows Windows.
 - **Import** from a `.snipdeck` file, Ditto, CopyQ, a folder of `.txt` and `.md` files, and Windows clipboard
   history, always after a preview. Export of the whole library, daily backups (1 to 60 kept) and restore.
-- **Recent inbox** (off by default): the last 200 copies or 7 days, skipping password managers and your
-  exclude list, with **Save to…**, **Pause history** and **Clear recent history**. Entries are encrypted on disk.
+- **Recent inbox**: Snipdeck asks the first time you open the Panel and keeps nothing until you say yes. The
+  last 200 copies or 7 days, skipping password managers and your exclude list, with **Save to…**, **Pause
+  history** and **Clear recent history**. Entries are encrypted on disk.
 - **Sensitive items**: hidden in lists until you hold `Space`, kept out of Windows clipboard history, encrypted
   on disk on every plan, and cleared from the clipboard after 30 seconds.
 - **Supporter**: pay what you want from A$5 (suggested A$8), once. Adds unlimited boards, templates that ask
@@ -65,8 +66,9 @@ first start.
   prompt) with a Start-menu entry, an optional desktop icon and an Apps & features entry. Running a newer Setup
   closes Snipdeck, upgrades it and keeps your library; uninstalling keeps the library unless you choose to erase it.
   The portable zip stays available.
-- **Microsoft Store package** (groundwork): the release build can make an MSIX for Partner Center. In the Store
-  build, "Start with Windows" uses Windows' own startup list and "Check for updates" opens the Store.
+- **Microsoft Store package**: the release build can make an MSIX for Partner Center. The Store build is free
+  with every feature unlocked and no Supporter or licence screens (Supporter stays on the GitHub build); "Start
+  with Windows" uses Windows' own startup list and "Check for updates" opens the Store.
 - `snipdeck.exe --quit` asks a running Snipdeck to quit cleanly (Setup uses it to upgrade).
 - **Groups in the Main window**: in a list sorted by hand, `Ctrl+G` groups the selected rows under a named,
   foldable header, as in the Panel. `Left`, `Right` and `Enter` fold a header, `F2` renames it, `Delete` moves the

@@ -1852,19 +1852,19 @@ ui_tests! {
         let _ = find(&ui, "Could not change the start-up entry.", AccessibleRole::Text);
     }
 
-    fn the_welcome_step_offers_to_keep_what_you_copy_on_by_default_and_fits_the_window() {
+    fn the_welcome_step_offers_to_keep_what_you_copy_off_until_yes_and_fits_the_window() {
         let (ui, log) = onboarding(0);
-        assert!(ui.get_recent_history(), "history is on for a new install");
+        assert!(!ui.get_recent_history(), "history is off until the person says Yes");
         let yes = find(&ui, "Yes", AccessibleRole::RadioButton);
-        let not_now = find(&ui, "Not now", AccessibleRole::RadioButton);
-        assert_eq!(yes.accessible_checked(), Some(true));
-        assert_eq!(not_now.accessible_checked(), Some(false));
-        not_now.invoke_accessible_default_action();
-        assert_eq!(take(&log), ["history:false"]);
+        let no = find(&ui, "No", AccessibleRole::RadioButton);
+        assert_eq!(yes.accessible_checked(), Some(false));
+        assert_eq!(no.accessible_checked(), Some(true));
+        yes.invoke_accessible_default_action();
+        assert_eq!(take(&log), ["history:true"]);
         // The host can put the value back.
         ui.set_recent_history(false);
         settle();
-        assert_eq!(not_now.accessible_checked(), Some(true));
+        assert_eq!(no.accessible_checked(), Some(true));
         // The choice is inside the window at the size it opens at (560 x 540), and a comfortable target.
         ui.window().set_size(slint::LogicalSize::new(560.0, 540.0));
         settle();

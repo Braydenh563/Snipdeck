@@ -423,7 +423,7 @@ fn use_pastes_the_item_through_the_controller_and_counts_it() {
             other => panic!("{other:?}"),
         };
         assert_eq!(r.ctl.borrow().store().item(id).unwrap().use_count, 1);
-        assert_eq!(r.ui.get_toast_text(), "Pasted into Outlook");
+        assert_eq!(r.ui.get_toast_text(), "Pasted into Mail");
     });
 }
 

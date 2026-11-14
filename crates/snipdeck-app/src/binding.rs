@@ -877,6 +877,8 @@ where
         wire!(on_tab_selected, |ctl, i| ctl.select_tab(index(i)));
         wire!(on_recent_unlock_requested, |ctl| ctl.request_unlock());
         wire!(on_recent_toggled, |ctl, open| ctl.set_recent_open(open));
+        wire!(on_recent_question_answered, |ctl, yes| ctl
+            .set_recent_history(yes));
         wire_effects!(on_recent_used, |ctl, id| {
             let used = ctl.recent_use(i64::from(id), UseMode::Paste);
             ctl.after_use(&used)
@@ -1485,6 +1487,12 @@ fn render_recent(window: &ui::PanelWindow, previous: Option<&View>, view: &View)
     let locked = view.recent.as_ref().is_some_and(|r| r.locked);
     if window.get_recent_locked() != locked {
         window.set_recent_locked(locked);
+    }
+    if window.get_recent_question_open() != view.recent_question {
+        window.set_recent_question_open(view.recent_question);
+    }
+    if window.get_recent_max_entries() != crate::recent::max_entries_count() {
+        window.set_recent_max_entries(crate::recent::max_entries_count());
     }
     if window.get_recent_days() != crate::recent::max_age_days() {
         window.set_recent_days(crate::recent::max_age_days());

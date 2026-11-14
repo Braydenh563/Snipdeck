@@ -1419,6 +1419,9 @@ msgstr "Panel bei Screenshots sichtbar lassen"
 msgid "Keep a Recent inbox of what you copy"
 msgstr "Einen Posteingang „Zuletzt“ für Kopiertes führen"
 
+msgid "Keep a Recent list of what you copy?"
+msgstr "Eine Liste „Zuletzt“ mit dem Kopierten führen?"
+
 msgid "Keep editing"
 msgstr "Weiter bearbeiten"
 
@@ -1753,6 +1756,9 @@ msgstr "Nächste Liste"
 msgid "Next scope"
 msgstr "Nächster Bereich"
 
+msgid "No"
+msgstr "Nein"
+
 msgid "No backup yet"
 msgstr "Noch keine Sicherung"
 
@@ -1827,9 +1833,6 @@ msgstr "Keine Farbe. Probiere {}"
 
 msgid "Not included"
 msgstr "Nicht enthalten"
-
-msgid "Not now"
-msgstr "Nicht jetzt"
 
 msgid "Not set"
 msgstr "Nicht festgelegt"
@@ -2307,6 +2310,9 @@ msgstr "Aktionen für Zuletzt Kopiertes"
 
 msgid "Recent history cleared"
 msgstr "Verlauf „Zuletzt“ gelöscht"
+
+msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. Nothing is kept unless you say Yes, and you can change this any time in Settings."
+msgstr "„Zuletzt“ speichert den Text, den du kopierst, nur auf diesem Computer, für die letzten {} Kopien oder {} Tage, je nachdem, was zuerst eintritt. Passwörter aus Passwortmanagern und vertrauliche Einträge werden nie gespeichert. Ohne dein Ja wird nichts gespeichert, und du kannst das jederzeit in den Einstellungen ändern."
 
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "„Zuletzt“ behält den kopierten Text, nur auf diesem Computer, für die letzten {} Kopien oder {} Tage, je nachdem, was zuerst eintritt. Passwörter aus Passwortmanagern und vertrauliche Textbausteine werden nie gespeichert. Du kannst das jederzeit in den Einstellungen ändern."

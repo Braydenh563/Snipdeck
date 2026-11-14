@@ -266,6 +266,8 @@ export component PanelWindow inherits Window {
     in property <bool> recent-locked: false;
     // The longest the entries are kept, in days.
     in property <int> recent-days: 7;
+    // How many copies the Recent list keeps (the first-run question names it).
+    in property <int> recent-max-entries: 200;
     in property <[RecentRow]> recent-rows;
     // The lists "Save to…" offers.
     in property <[ChoiceEntry]> recent-targets;
@@ -318,6 +320,9 @@ export component PanelWindow inherits Window {
     in property <bool> list-delete-open: false;
     // The board menu's "Delete board…" confirmation: the same words as the Main window's.
     in property <bool> board-delete-open: false;
+    // The one-time first-run question "Keep a Recent list of what you copy?" (Store policy 10.5: nothing is kept
+    // until Yes). The host sets it while the answer is unknown and the welcome tour is not on screen.
+    in property <bool> recent-question-open: false;
     in property <string> board-delete-name;
     in property <int> board-delete-count;
     in property <string> list-delete-name;
@@ -495,6 +500,8 @@ export component PanelWindow inherits Window {
     // The list delete confirmation: "Delete list", or Cancel / Esc / a click on the scrim.
     callback board-delete-confirmed();
     callback board-delete-dismissed();
+    // The first-run question was answered: true is Yes. Esc and a click on the scrim answer No.
+    callback recent-question-answered(bool);
     callback list-delete-confirmed();
     callback list-delete-dismissed();
     // Quick edit of row `index`: Ctrl+E, F2 or the item menu (SPEC 5.1). A double-click does nothing extra: the
@@ -860,6 +867,11 @@ export component PanelWindow inherits Window {
     }
     changed board-delete-open => {
         if (!root.board-delete-open) {
+            root.focus-typing();
+        }
+    }
+    changed recent-question-open => {
+        if (!root.recent-question-open) {
             root.focus-typing();
         }
     }
@@ -1242,10 +1254,13 @@ export component PanelWindow inherits Window {
                     }
                     return reject;
                 }
-                if (root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.recent-menu-open || root.recent-save-open || root.list-delete-open || root.clear-list-open || root.board-delete-open || root.new-menu-open || root.pinned-menu-open) {
+                if (root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.recent-menu-open || root.recent-save-open || root.list-delete-open || root.clear-list-open || root.board-delete-open || root.recent-question-open || root.new-menu-open || root.pinned-menu-open) {
                     // The menu (or the confirmation) owns the keyboard; Esc closes it.
                     if (event.text == Key.Escape) {
                         root.new-menu-open = false;
+                        if (root.recent-question-open) {
+                            root.recent-question-answered(false);
+                        }
                         root.pinned-menu-open = false;
                         if (root.list-delete-open) {
                             root.list-delete-dismissed();
@@ -3171,6 +3186,23 @@ export component PanelWindow inherits Window {
                 variant: ButtonVariant.danger;
                 text: @tr("Delete board");
                 clicked => { root.board-delete-confirmed(); }
+            }
+        }
+
+        // The first-run question about the Recent list: asked once, nothing is kept before Yes.
+        Dialog {
+            open: root.recent-question-open;
+            title: @tr("Keep a Recent list of what you copy?");
+            body: @tr("Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. Nothing is kept unless you say Yes, and you can change this any time in Settings.", root.recent-max-entries, root.recent-days);
+            dismissed => { root.recent-question-answered(false); }
+            Button {
+                text: @tr("No");
+                clicked => { root.recent-question-answered(false); }
+            }
+            Button {
+                variant: ButtonVariant.primary;
+                text: @tr("Yes");
+                clicked => { root.recent-question-answered(true); }
             }
         }
 

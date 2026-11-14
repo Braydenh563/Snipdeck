@@ -49,7 +49,7 @@ pub fn controller(settings: Settings, now: Timestamp) -> snipdeck_store::Result<
 #[must_use]
 pub fn target() -> Target {
     Target {
-        app: "OUTLOOK.EXE".into(),
+        app: "MAIL.EXE".into(),
         title: "New message".into(),
         elevated: false,
         focus: Focus::Caret,
@@ -128,7 +128,7 @@ pub fn seed(store: &mut Store, now: Timestamp) -> snipdeck_store::Result<()> {
         seed_item(
             ItemKind::Link,
             "Design spec",
-            "https://figma.com/file/snipdeck-index-deck",
+            "https://example.com/design/index-deck",
         ),
         Seed {
             sensitive: true,
@@ -235,14 +235,14 @@ mod tests {
     }
 
     #[test]
-    fn the_demo_controller_pastes_into_outlook() {
+    fn the_demo_controller_pastes_into_mail() {
         let ctl = controller(Settings::default(), now()).expect("controller");
         let view = ctl.view();
         assert_eq!(view.board_name, "Work");
         assert_eq!(
             view.footer,
             crate::panel::Footer::PastesInto {
-                app: "Outlook".into(),
+                app: "Mail".into(),
                 title: "New message".into()
             }
         );

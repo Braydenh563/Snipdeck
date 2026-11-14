@@ -11,7 +11,7 @@
 
 .EXAMPLE
   .\run-tests.ps1                      # the recommended "v1 check", with a few plain questions
-  .\run-tests.ps1 -Mode qc            # the Quick check: about 10 minutes, only what changed lately (tests\quick-check.json)
+  .\run-tests.ps1 -Mode qc            # the Quick check: about 14 minutes, only what changed lately (tests\quick-check.json)
   .\run-tests.ps1 -Spike S1 -Mode quick
   .\run-tests.ps1 -NoAuto              # never run steps automatically (-Auto: always, no questions)
   .\run-tests.ps1 -SelfTest            # validate the test files, no Windows needed

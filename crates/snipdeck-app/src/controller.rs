@@ -693,6 +693,7 @@ where
             }),
             fill: self.fill_view(),
             recent: self.recent_view(),
+            recent_question: self.recent_question_due(),
         }
     }
 

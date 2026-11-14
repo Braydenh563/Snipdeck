@@ -44,6 +44,23 @@ where
         self.settings.recent_history
     }
 
+    /// Whether the first-run question "Keep a Recent list of what you copy?" is due: the user has
+    /// not answered it (a new install, or a settings file from before the question) and the
+    /// welcome tour, which asks it too, is not on screen. Until the answer is Yes nothing is kept.
+    #[must_use]
+    pub fn recent_question_due(&self) -> bool {
+        !self.settings.recent_history_asked && self.session.tour.is_none()
+    }
+
+    /// Records the answer to the Recent question (or the Settings switch): `true` starts keeping
+    /// what is copied, `false` never does. Either way the question is not asked again.
+    pub fn set_recent_history(&mut self, on: bool) {
+        self.update_settings(|s| {
+            s.recent_history = on;
+            s.recent_history_asked = true;
+        });
+    }
+
     /// "Pause history" is on (tray; lasts until Snipdeck quits).
     #[must_use]
     pub fn recent_paused(&self) -> bool {

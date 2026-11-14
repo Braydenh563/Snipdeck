@@ -9,9 +9,9 @@ makes a network request; every icon and font it shows is packaged with it.
 |---|---|---|
 | Your library (boards, lists, items, tags, use counts) | `%LOCALAPPDATA%\Snipdeck\snipdeck.db` | SQLite, write-ahead log, `secure_delete` on so deleted rows are overwritten |
 | Large item content (images, files, long text) | `%LOCALAPPDATA%\Snipdeck\blobs\` | Content-addressed files, written atomically |
-| Recent inbox (on for a new install; off if you turn it off) | inside `snipdeck.db` | Up to 200 copies and 7 days of copied text, encrypted like Sensitive items (needs Windows key protection). Backups and exports leave it out |
+| Recent inbox (only after you say Yes; off if you turn it off) | inside `snipdeck.db` | Up to 200 copies and 7 days of copied text, encrypted like Sensitive items (needs Windows key protection). Backups and exports leave it out |
 | Settings | `%LOCALAPPDATA%\Snipdeck\settings.json` | Plain JSON you can read and edit |
-| Licence key (if you entered one) | `%LOCALAPPDATA%\Snipdeck\licence.key` | One line of text, checked offline at every start |
+| Licence key (if you entered one; the Store build has none) | `%LOCALAPPDATA%\Snipdeck\licence.key` | One line of text, checked offline at every start |
 | Daily backups | `%LOCALAPPDATA%\Snipdeck\backups\` | Zipped `.snipdeck` exports. The newest 7 are kept; you can choose 1 to 60 |
 | Exports and list text files (only when you ask) | Your Documents folder | A `.snipdeck` library export, or a `.txt` file from **Export as text** (no sensitive items) |
 | Trash | inside `snipdeck.db` | 30 days, then purged |
@@ -20,6 +20,10 @@ makes a network request; every icon and font it shows is packaged with it.
 
 The data folder never roams between PCs. Nothing is written outside it except the Windows autostart
 entry (if you turn it on), the clipboard when you use an item, and the files you ask for in Documents.
+
+**Microsoft Store build.** The same files, but Windows keeps them inside the app's own package folder
+(`%LOCALAPPDATA%\Packages\<Snipdeck package>\LocalCache\Local\Snipdeck`) and deletes them when you uninstall
+the app. Start with Windows is a Windows startup task you turn on in Settings, not a registry entry.
 
 ## Sensitive items
 
@@ -37,7 +41,9 @@ clipboard after 30 seconds, if nothing else has been copied since. Change the ti
 under **Privacy** in Settings. Pasting restores your own clipboard instead. A text file made by **Export as
 text** leaves sensitive items out, because it is plain text.
 
-**Recent inbox.** This is on for a new install and can be turned off in the welcome tour or in Settings; an install that existed before keeps its choice. When it is on, Snipdeck
+**Recent inbox.** Snipdeck asks the first time you open the Panel (a new install, or an upgrade where you never chose)
+whether to keep the text you copy. Nothing is kept until you say Yes, and you can change it any time in
+Settings; an install where you already chose keeps that choice. When it is on, Snipdeck
 keeps the text you copy in other programs, up to the last 200 copies and 7 days, in your library
 (`snipdeck.db`, on this computer only). Text from a Sensitive item, text Snipdeck copied itself, copies
 from programs that ask Windows to keep them out of clipboard history (password managers do), and copies from
@@ -53,11 +59,35 @@ history** in Settings deletes every entry now, **Pause history** in the tray sto
 turning the setting off stops it for good. Nothing in the inbox leaves your computer, and imports (Settings ▸ Your data ▸ Import…) read only the file or
 folder you choose.
 
+**Windows Hello (optional, with a master password).** If you turn it on, Snipdeck asks Windows Hello (your
+face, fingerprint or PIN) to unlock instead of typing the master password. Windows does the check; Snipdeck
+never sees your face, fingerprint or PIN and stores nothing from Hello on disk. It keeps an unlock key in memory
+only, sealed with a signature from a Hello key Windows holds for your account on this PC, and forgets it when
+Snipdeck quits ([`crypto.md`](crypto.md)).
+
+## Typing features (off unless you turn them on)
+
+**Expand abbreviations as I type** and **Suggest snippets as I type** are off for a new install. Only while one
+of them is on, Snipdeck installs a Windows keyboard hook (and a mouse hook, to notice when you click elsewhere)
+so it can see the characters you type in other programs and match them against your triggers. Typed text is
+never written to disk, logged or sent anywhere; Snipdeck only keeps the last few characters in memory to compare
+them, and ignores keys other programs simulate. Turn both off and the hooks are removed.
+
+## What Microsoft collects (Store build)
+
+Snipdeck itself sends nothing. When you get it from the Microsoft Store, the Store and Windows handle the
+download, install, updates and licence, and Windows may send crash and reliability reports. Microsoft shares
+counts and crash summaries with the developer in Partner Center (installs, crashes, ratings), not your
+snippets or your clipboard. That data is covered by the
+[Microsoft Privacy Statement](https://privacy.microsoft.com/privacystatement) and your Windows diagnostic
+settings (Settings ▸ Privacy & security ▸ Diagnostics & feedback).
+
 ## Removing everything
 
 1. Optional: export your library first (Settings ▸ Your data ▸ Export library).
 2. Quit Snipdeck from the tray icon.
-3. Delete `%LOCALAPPDATA%\Snipdeck`. That is all of it.
+3. Delete `%LOCALAPPDATA%\Snipdeck`. That is all of it. (Store build: uninstall the app; Windows deletes its
+   data.)
 
 Licence keys are verified offline ([`licensing.md`](licensing.md)). Vulnerabilities: see
 [`../SECURITY.md`](../SECURITY.md).
