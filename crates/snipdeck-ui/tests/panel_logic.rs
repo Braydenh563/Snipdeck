@@ -146,15 +146,28 @@ fn start() -> (PanelWindow, Log) {
 }
 
 /// Drags the row at `from` and releases at `to`, as a pointer would; returns the log lines it produced.
-fn drag_row(ui: &PanelWindow, log: &Log, from: slint::LogicalPosition, to: slint::LogicalPosition) -> Vec<String> {
+fn drag_row(
+    ui: &PanelWindow,
+    log: &Log,
+    from: slint::LogicalPosition,
+    to: slint::LogicalPosition,
+) -> Vec<String> {
     use slint::platform::{PointerEventButton, WindowEvent};
     let w = ui.window();
     let _ = take(log);
     w.dispatch_event(WindowEvent::PointerMoved { position: from });
-    w.dispatch_event(WindowEvent::PointerPressed { position: from, button: PointerEventButton::Left });
-    w.dispatch_event(WindowEvent::PointerMoved { position: slint::LogicalPosition::new(from.x, from.y + 12.0) });
+    w.dispatch_event(WindowEvent::PointerPressed {
+        position: from,
+        button: PointerEventButton::Left,
+    });
+    w.dispatch_event(WindowEvent::PointerMoved {
+        position: slint::LogicalPosition::new(from.x, from.y + 12.0),
+    });
     w.dispatch_event(WindowEvent::PointerMoved { position: to });
-    w.dispatch_event(WindowEvent::PointerReleased { position: to, button: PointerEventButton::Left });
+    w.dispatch_event(WindowEvent::PointerReleased {
+        position: to,
+        button: PointerEventButton::Left,
+    });
     settle();
     take(log)
         .into_iter()
