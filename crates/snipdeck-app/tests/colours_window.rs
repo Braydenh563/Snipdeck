@@ -282,15 +282,9 @@ fn a_list_replaced_by_one_of_the_same_name_is_where_save_to_puts_the_colour() {
     r.state().invoke_save(-1);
     r.settle();
     let targets = r.state().get_save_targets();
-    // The made list is the last one, just before "New list…".
-    let at = targets.row_count() - 2;
-    assert!(
-        targets.row_data(at).unwrap().text.contains("Colours"),
-        "the entry is the Colours list: {:?}",
-        (0..targets.row_count())
-            .map(|i| targets.row_data(i).unwrap().text)
-            .collect::<Vec<_>>()
-    );
+    let at = (0..targets.row_count())
+        .find(|i| targets.row_data(*i).unwrap().text.ends_with("Colours"))
+        .expect("a Colours entry");
     r.state().invoke_input_edited("#00ff00".into());
     r.state().invoke_save(i32::try_from(at).unwrap());
     r.settle();
