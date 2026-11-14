@@ -41,6 +41,7 @@ import { MenuTexts } from "menu_texts.slint";
 import { GroupHeader } from "components/group-header.slint";
 import { LabelChip } from "components/label-chip.slint";
 import { QuickAdd } from "components/quick-add.slint";
+import { EdgeScroll } from "components/edge-scroll.slint";
 import { CommandPalette, PaletteRow } from "components/command-palette.slint";
 import { CommandTexts } from "command_texts.slint";
 import { RecentRow, RecentText } from "panel.slint";
@@ -2024,6 +2025,19 @@ export component MainWindow inherits Window {
                                 }
                             }
                         }
+                        EdgeScroll {
+                            x: list.x;
+                            y: list.y;
+                            width: list.width;
+                            height: list.height;
+                            up: list.content-y < -0.5px;
+                            down: list.content-y > list.height - list.content-height + 0.5px;
+                            accepts(event) => { root.payload-row(event.data) >= 0 }
+                            scroll(delta) => {
+                                root.follow-cursor = false;
+                                list.content-y = max(min(list.content-y - delta, 0px), min(list.height - list.content-height, 0px));
+                            }
+                        }
 
                         list-bar := OverlayScrollbar {
                             content-y: list.content-y;
@@ -2173,6 +2187,19 @@ export component MainWindow inherits Window {
                                     }
                                     }
                                 }
+                            }
+                        }
+                        EdgeScroll {
+                            x: grid.x;
+                            y: grid.y;
+                            width: grid.width;
+                            height: grid.height;
+                            up: grid.content-y < -0.5px;
+                            down: grid.content-y > grid.height - grid.content-height + 0.5px;
+                            accepts(event) => { root.payload-row(event.data) >= 0 }
+                            scroll(delta) => {
+                                root.follow-cursor = false;
+                                grid.content-y = max(min(grid.content-y - delta, 0px), min(grid.height - grid.content-height, 0px));
                             }
                         }
 
@@ -2611,6 +2638,8 @@ export component MainWindow inherits Window {
         }
     }
     out property <length> scroll-y: list.content-y;
+    out property <length> list-height: list.height;
+    out property <length> grid-scroll-y: grid.content-y;
     property <length> list-scroll: root.scroll-y;
     changed rows => { root.card-tip = ""; }
     changed list-scroll => { root.card-tip = ""; }

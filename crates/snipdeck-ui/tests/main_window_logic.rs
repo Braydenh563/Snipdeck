@@ -816,6 +816,187 @@ ui_tests! {
         assert_eq!(take(&log), Vec::<String>::new(), "tiles stay put in a sorted list");
     }
 
+    fn dragging_a_row_at_the_edge_of_a_long_list_scrolls_it_and_stops_when_the_pointer_leaves() {
+        use slint::platform::{PointerEventButton, WindowEvent};
+        let (ui, log) = start();
+        fixture::set_rows(&ui, fixture::numbered_rows(60));
+        settle();
+        let area_top = by_role(&ui, AccessibleRole::ListItem)
+            .into_iter()
+            .filter(|e| e.size().width > 300.0 && e.absolute_position().x > 200.0)
+            .map(|e| e.absolute_position().y)
+            .fold(f32::MAX, f32::min)
+            - 4.0;
+        let tick = |ms: u64| {
+            mock_elapsed_time(std::time::Duration::from_millis(ms));
+            settle();
+        };
+        let wheel = |dy: f32| {
+            ui.window().dispatch_event(WindowEvent::PointerScrolled {
+                position: LogicalPosition::new(640.0, 350.0),
+                delta_x: 0.0,
+                delta_y: dy,
+            });
+            tick(1000);
+            tick(100);
+        };
+        wheel(-2000.0);
+        let far = ui.get_scroll_y();
+        assert!(far < -1000.0, "scrolled away: {far}");
+        let rows: Vec<_> = {
+            let mut v: Vec<_> = by_role(&ui, AccessibleRole::ListItem)
+                .into_iter()
+                .filter(|e| e.size().width > 300.0 && e.absolute_position().x > 200.0)
+                .collect();
+            v.sort_by(|a, b| a.absolute_position().y.total_cmp(&b.absolute_position().y));
+            v
+        };
+        let mid = &rows[rows.len() / 2];
+        let x = mid.absolute_position().x + mid.size().width / 2.0;
+        let start_at = LogicalPosition::new(x, mid.absolute_position().y + mid.size().height / 2.0);
+        let w = ui.window();
+        let _ = take(&log);
+        w.dispatch_event(WindowEvent::PointerMoved { position: start_at });
+        w.dispatch_event(WindowEvent::PointerPressed { position: start_at, button: PointerEventButton::Left });
+        w.dispatch_event(WindowEvent::PointerMoved { position: LogicalPosition::new(x + 12.0, start_at.y) });
+        // Out of the band: nothing scrolls.
+        let inside = LogicalPosition::new(x, start_at.y);
+        w.dispatch_event(WindowEvent::PointerMoved { position: inside });
+        let before = ui.get_scroll_y();
+        tick(500);
+        assert!((ui.get_scroll_y() - before).abs() < 0.5, "no scroll in the middle");
+        // Held 4px under the top edge of the item area: the list scrolls toward its top, one step a tick.
+        let at_top = LogicalPosition::new(x, area_top + 4.0);
+        w.dispatch_event(WindowEvent::PointerMoved { position: at_top });
+        for _ in 0..10 {
+            tick(16);
+        }
+        let after = ui.get_scroll_y();
+        assert!(after > before + 20.0, "held at the top edge: scrolled {before} -> {after}");
+        // Leaving the band stops it.
+        w.dispatch_event(WindowEvent::PointerMoved { position: inside });
+        tick(16);
+        let stopped = ui.get_scroll_y();
+        for _ in 0..30 {
+            tick(16);
+        }
+        assert!((ui.get_scroll_y() - stopped).abs() < 0.5, "stopped after leaving the band");
+        // Back in the band, long enough to reach the top, never past it.
+        w.dispatch_event(WindowEvent::PointerMoved { position: at_top });
+        for _ in 0..400 {
+            tick(16);
+        }
+        assert!(ui.get_scroll_y().abs() < 0.5, "reached the top: {}", ui.get_scroll_y());
+        // The drop on the first row lands at index 0 (the band is off at the top, so the row takes it).
+        let first_row = LogicalPosition::new(x, area_top + 12.0);
+        w.dispatch_event(WindowEvent::PointerMoved { position: first_row });
+        w.dispatch_event(WindowEvent::PointerReleased { position: first_row, button: PointerEventButton::Left });
+        settle();
+        let lines: Vec<_> = take(&log).into_iter().filter(|l| l.starts_with("row-dropped")).collect();
+        assert_eq!(lines.len(), 1, "one drop: {lines:?}");
+        assert!(lines[0].ends_with(":0"), "dropped on the first row: {lines:?}");
+    }
+
+    fn dragging_a_row_held_at_the_bottom_edge_scrolls_the_list_to_its_end_and_no_further() {
+        use slint::platform::{PointerEventButton, WindowEvent};
+        let (ui, log) = start();
+        fixture::set_rows(&ui, fixture::numbered_rows(60));
+        settle();
+        let cards = || {
+            let mut v: Vec<_> = by_role(&ui, AccessibleRole::ListItem)
+                .into_iter()
+                .filter(|e| e.size().width > 300.0 && e.absolute_position().x > 200.0)
+                .collect();
+            v.sort_by(|a, b| a.absolute_position().y.total_cmp(&b.absolute_position().y));
+            v
+        };
+        let area_top = cards().first().expect("rows").absolute_position().y - 4.0;
+        let area_bottom = area_top + ui.get_list_height();
+        let first = cards().remove(2);
+        let x = first.absolute_position().x + first.size().width / 2.0;
+        let from = LogicalPosition::new(x, first.absolute_position().y + first.size().height / 2.0);
+        let w = ui.window();
+        let _ = take(&log);
+        w.dispatch_event(WindowEvent::PointerMoved { position: from });
+        w.dispatch_event(WindowEvent::PointerPressed { position: from, button: PointerEventButton::Left });
+        w.dispatch_event(WindowEvent::PointerMoved { position: LogicalPosition::new(x + 12.0, from.y) });
+        let at_bottom = LogicalPosition::new(x, area_bottom - 4.0);
+        w.dispatch_event(WindowEvent::PointerMoved { position: at_bottom });
+        let mut last = ui.get_scroll_y();
+        for _ in 0..600 {
+            mock_elapsed_time(std::time::Duration::from_millis(16));
+            settle();
+            let now = ui.get_scroll_y();
+            assert!(now <= last + 0.5, "only ever toward the end: {last} -> {now}");
+            last = now;
+        }
+        let end = ui.get_scroll_y();
+        assert!(end < -1000.0, "scrolled down: {end}");
+        for _ in 0..30 {
+            mock_elapsed_time(std::time::Duration::from_millis(16));
+            settle();
+        }
+        assert!((ui.get_scroll_y() - end).abs() < 0.5, "stays at the end: {end} -> {}", ui.get_scroll_y());
+        w.dispatch_event(WindowEvent::PointerMoved { position: LogicalPosition::new(x + 1.0, area_top + 200.0) });
+        w.dispatch_event(WindowEvent::PointerReleased { position: LogicalPosition::new(x + 1.0, area_top + 200.0), button: PointerEventButton::Left });
+        settle();
+    }
+
+    fn dragging_a_tile_held_at_the_top_edge_of_the_grid_scrolls_it_up_and_a_drop_lands_on_the_first_tile() {
+        use slint::platform::{PointerEventButton, WindowEvent};
+        let (ui, log) = start();
+        ui.set_view(MainView::Tile);
+        fixture::set_rows(&ui, fixture::numbered_rows(60));
+        settle();
+        let tiles = || {
+            let mut v: Vec<_> = by_role(&ui, AccessibleRole::ListItem)
+                .into_iter()
+                .filter(|e| e.size().width > 100.0 && e.absolute_position().x > 200.0)
+                .collect();
+            v.sort_by(|a, b| a.absolute_position().y.total_cmp(&b.absolute_position().y));
+            v
+        };
+        let area_top = tiles().first().expect("tiles").absolute_position().y - 4.0;
+        let wheel = |dy: f32| {
+            ui.window().dispatch_event(WindowEvent::PointerScrolled {
+                position: LogicalPosition::new(640.0, 350.0),
+                delta_x: 0.0,
+                delta_y: dy,
+            });
+            mock_elapsed_time(std::time::Duration::from_secs(1));
+            settle();
+            mock_elapsed_time(std::time::Duration::from_millis(100));
+            settle();
+        };
+        wheel(-1500.0);
+        assert!(ui.get_grid_scroll_y() < -800.0, "scrolled away: {}", ui.get_grid_scroll_y());
+        let t = tiles();
+        let src = &t[t.len() / 2];
+        let from = LogicalPosition::new(
+            src.absolute_position().x + src.size().width / 2.0,
+            src.absolute_position().y + src.size().height / 2.0,
+        );
+        let w = ui.window();
+        let _ = take(&log);
+        w.dispatch_event(WindowEvent::PointerMoved { position: from });
+        w.dispatch_event(WindowEvent::PointerPressed { position: from, button: PointerEventButton::Left });
+        w.dispatch_event(WindowEvent::PointerMoved { position: LogicalPosition::new(from.x + 12.0, from.y) });
+        let at_top = LogicalPosition::new(from.x, area_top + 4.0);
+        w.dispatch_event(WindowEvent::PointerMoved { position: at_top });
+        for _ in 0..600 {
+            mock_elapsed_time(std::time::Duration::from_millis(16));
+            settle();
+        }
+        assert!(ui.get_grid_scroll_y().abs() < 0.5, "reached the top: {}", ui.get_grid_scroll_y());
+        let first = LogicalPosition::new(from.x, area_top + 60.0);
+        w.dispatch_event(WindowEvent::PointerMoved { position: first });
+        w.dispatch_event(WindowEvent::PointerReleased { position: first, button: PointerEventButton::Left });
+        settle();
+        let lines: Vec<_> = take(&log).into_iter().filter(|l| l.starts_with("row-dropped")).collect();
+        assert_eq!(lines.len(), 1, "one drop: {lines:?}");
+        assert!(lines[0].starts_with("row-dropped:") && lines[0].split(':').nth(2).is_some_and(|n| n.parse::<usize>().unwrap() < 6), "dropped on a tile of the first row: {lines:?}");
+    }
+
     fn a_tile_dropped_in_the_gaps_of_the_grid_lands_on_the_neighbouring_tile() {
         let (ui, log) = start();
         ui.set_view(MainView::Tile);
