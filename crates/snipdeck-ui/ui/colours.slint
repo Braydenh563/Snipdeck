@@ -62,6 +62,7 @@ export global ColourTexts {
     pure public function white() -> string { return @tr("On white"); }
     pure public function black() -> string { return @tr("On black"); }
     pure public function other() -> string { return @tr("On this colour"); }
+    pure public function other-flat() -> string { return @tr("On this colour (on white)"); }
     pure public function colours-list() -> string { return @tr("Colours"); }
     pure public function scheme-name(i: int) -> string {
         return i == 0 ? @tr("Complementary")

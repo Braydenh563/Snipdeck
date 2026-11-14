@@ -1897,6 +1897,9 @@ msgstr "黒の上"
 msgid "On this colour"
 msgstr "この色の上"
 
+msgid "On this colour (on white)"
+msgstr "この色の上（白の上）"
+
 msgid "On white"
 msgstr "白の上"
 

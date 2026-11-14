@@ -29,7 +29,7 @@ use slint::{
 };
 use snipdeck_app::{
     binding::Binding,
-    controller::Controller,
+    controller::{Controller, SaveTarget},
     demo,
     screenshot::write_png,
     settings::{Settings, Theme},
@@ -268,6 +268,57 @@ fn a_hue_slider_value_outside_the_wheel_is_held_at_its_ends_and_nan_is_zero() {
     assert!(hue(&r) == 0.0, "NaN reads as 0: {}", hue(&r));
 }
 
+#[test]
+fn a_list_replaced_by_one_of_the_same_name_is_where_save_to_puts_the_colour() {
+    let r = rig(false, (320, 640));
+    r.state().invoke_input_edited("#3a7bd5".into());
+    let (blue, red) = (Rgba8::rgb(0x3a, 0x7b, 0xd5), Rgba8::rgb(255, 0, 0));
+    // The first save makes "Colours"; Undo takes it away; the next save makes it again: the same
+    // name on another id, so nothing the window draws changes.
+    assert!(r.ctl.borrow_mut().save_colour(blue, SaveTarget::Home));
+    r.settle();
+    r.ctl.borrow_mut().main_undo();
+    assert!(r.ctl.borrow_mut().save_colour(red, SaveTarget::Home));
+    r.settle();
+    let targets = r.state().get_save_targets();
+    let at = (0..targets.row_count())
+        .find(|i| targets.row_data(*i).unwrap().text.as_str() == "Colours")
+        .expect("a Colours entry");
+    r.state().invoke_save(i32::try_from(at).unwrap());
+    r.settle();
+    assert_eq!(
+        r.ctl.borrow().colour_view().saved.len(),
+        2,
+        "the second colour joined the new list, not the one that is gone"
+    );
+}
+
+#[test]
+fn a_translucent_second_colour_is_judged_over_white_and_the_row_says_so() {
+    let r = rig(false, (320, 640));
+    r.state().invoke_input_edited("#3a7bd5".into());
+    let blue = Rgba8::rgb(0x3a, 0x7b, 0xd5);
+    let white = ratio_text(contrast_ratio(blue, Rgba8::rgb(255, 255, 255)));
+    for typed in ["#ffffff10", "transparent"] {
+        r.state().invoke_other_accepted(typed.into());
+        r.settle();
+        let row = r.state().get_other_row();
+        assert_eq!(
+            row.ratio.as_str(),
+            white,
+            "{typed}: over white, not over black"
+        );
+        assert!(row.name.contains("on white"), "{typed}: {:?}", row.name);
+    }
+    r.state().invoke_other_accepted("#000000".into());
+    r.settle();
+    assert!(
+        !r.state().get_other_row().name.contains("on white"),
+        "an opaque colour is not flattened"
+    );
+}
+
+#[test]
 fn number_at(r: &Rig, i: usize) -> f64 {
     r.state()
         .get_channels()

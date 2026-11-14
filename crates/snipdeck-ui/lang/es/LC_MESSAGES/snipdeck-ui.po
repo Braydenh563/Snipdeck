@@ -1903,6 +1903,9 @@ msgstr "Sobre negro"
 msgid "On this colour"
 msgstr "Sobre este color"
 
+msgid "On this colour (on white)"
+msgstr "Sobre este color (sobre blanco)"
+
 msgid "On white"
 msgstr "Sobre blanco"
 

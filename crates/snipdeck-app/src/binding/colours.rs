@@ -343,8 +343,20 @@ fn chips(
         contrast_row(t, t.invoke_white(), c, Rgba8::rgb(255, 255, 255)),
         contrast_row(t, t.invoke_black(), c, Rgba8::rgb(0, 0, 0)),
     ]));
+    // The ratio treats its background as opaque: a translucent second colour is laid over white
+    // first, and the row says so.
+    let flat = panel::over_white(view.other);
     state.set_other(color(view.other));
-    state.set_other_row(contrast_row(t, t.invoke_other(), c, view.other));
+    state.set_other_row(contrast_row(
+        t,
+        if view.other.a < 255 {
+            t.invoke_other_flat()
+        } else {
+            t.invoke_other()
+        },
+        c,
+        flat,
+    ));
     groups
 }
 

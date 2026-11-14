@@ -253,6 +253,18 @@ pub fn step(
     commit(c, model, index, &whole(next), st, memo)
 }
 
+/// `c` laid over opaque white, as a browser would paint it (the contrast ratio treats its
+/// background as opaque, so a translucent one is flattened first).
+#[must_use]
+pub fn over_white(c: Rgba8) -> Rgba8 {
+    let a = u16::from(c.a);
+    let mix = |v: u8| {
+        // Rounded like the 8-bit result a browser paints; at most 255 by construction.
+        u8::try_from((u16::from(v) * a + 255 * (255 - a) + 127) / 255).unwrap_or(255)
+    };
+    Rgba8::rgb(mix(c.r), mix(c.g), mix(c.b))
+}
+
 /// A slider value held to `0..=max`; NaN (a broken pointer event) reads as 0.
 pub fn slider(v: f32, max: f32) -> f32 {
     if v.is_nan() { 0.0 } else { v.clamp(0.0, max) }
@@ -377,6 +389,36 @@ pub fn scheme_layout(which: Scheme, mut colours: Vec<Rgba8>) -> Vec<Rgba8> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_translucent_colour_is_flattened_over_white() {
+        assert_eq!(over_white(Rgba8::rgb(1, 2, 3)), Rgba8::rgb(1, 2, 3));
+        let nearly_clear = Rgba8 {
+            r: 255,
+            g: 255,
+            b: 255,
+            a: 0x10,
+        };
+        assert_eq!(over_white(nearly_clear), Rgba8::rgb(255, 255, 255));
+        assert_eq!(
+            over_white(Rgba8 {
+                r: 0,
+                g: 0,
+                b: 0,
+                a: 0
+            }),
+            Rgba8::rgb(255, 255, 255)
+        );
+        assert_eq!(
+            over_white(Rgba8 {
+                r: 0,
+                g: 0,
+                b: 0,
+                a: 128
+            }),
+            Rgba8::rgb(127, 127, 127)
+        );
+    }
+
     #[test]
     fn a_slider_value_is_held_to_its_range_and_nan_is_zero() {
         assert_eq!(slider(-5.0, 359.999), 0.0);

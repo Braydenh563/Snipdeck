@@ -1897,6 +1897,9 @@ msgstr "在黑色上"
 msgid "On this colour"
 msgstr "在此颜色上"
 
+msgid "On this colour (on white)"
+msgstr "在此颜色上（在白色上）"
+
 msgid "On white"
 msgstr "在白色上"
 
