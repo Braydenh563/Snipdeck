@@ -281,9 +281,13 @@ fn a_list_replaced_by_one_of_the_same_name_is_where_save_to_puts_the_colour() {
     assert!(r.ctl.borrow_mut().save_colour(red, SaveTarget::Home));
     r.settle();
     let targets = r.state().get_save_targets();
-    let at = (0..targets.row_count())
-        .find(|i| targets.row_data(*i).unwrap().text.as_str() == "Colours")
-        .expect("a Colours entry");
+    // The made list is the last one, just before "New list…".
+    let at = targets.row_count() - 2;
+    assert!(
+        targets.row_data(at).unwrap().text.contains("Colours"),
+        "the entry is the Colours list: {:?}",
+        targets.row_data(at).unwrap().text
+    );
     r.state().invoke_save(i32::try_from(at).unwrap());
     r.settle();
     assert_eq!(
