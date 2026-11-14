@@ -2589,6 +2589,19 @@ fn every_placement_dock_commit_and_show_draws_the_panel_whole() {
         assert_eq!(effects, [Effect::PlaceWindow(kept)]);
         assert!(whole, "a placement");
 
+        // As `docked_rig`: 40 px from the left edge, at the size the window has.
+        r.ctl
+            .borrow_mut()
+            .update_settings(|s| s.dock.trigger = DockTrigger::Both);
+        r.binding.frame_changed(
+            &m,
+            Rect {
+                x: 40,
+                y: 300,
+                w: 320,
+                h: 480,
+            },
+        );
         let (whole, effects) = drawn_whole_by(&r, |r| {
             open_menu(r);
             click(r.window(), &menu_row(r, "Dock to the left edge"));
