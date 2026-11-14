@@ -32,5 +32,6 @@ Then: `scripts/gate.sh --full`, `cargo +1.99.1 clippy --workspace --all-targets 
 ## Blocked
 - Eyedropper has never run on Windows; owner must try it (`tools/windows-test/`).
 
-## WIP (unverified, tests not yet run)
-- Fixes 2, 4, 5 edited with tests (colour_ctl failed-insert trash; settings invalid-hex recents; panel::slider hue/bri/alpha). Fixes 1 (over_white, "(on white)") and 3 (same-name list replacement test) not started.
+## Re-verify fixes of 48495ee1: all five done
+1 translucent second colour flattened over white, row says "(on white)"; 2 failed insert trashes the made list; 3 same-name list replacement pinned; 4 invalid-hex recents dropped at load; 5 hue/bri/alpha held by `panel::slider` (NaN to 0).
+Next: merge the PR branch, gate --full, +1.99.1 clippy, report to the hub.
