@@ -16,12 +16,16 @@
 use slint::ComponentHandle;
 use snipdeck_ui::{HelpWindow, MainWindow, PanelWindow, TagManager, damage, testing::Harness};
 
-/// Draws until nothing is dirty, as the backend does between events.
+/// Draws until nothing is dirty, as the backend does between events, and until a frame asked
+/// for redraws nothing (the first frame after the window settles is drawn whole).
 fn settle<C: ComponentHandle>(h: &Harness<C>) {
     for _ in 0..16 {
         slint::platform::update_timers_and_animations();
         if h.damaged_area().is_none() {
-            return;
+            h.component.window().request_redraw();
+            if h.damaged_area() == Some(0) {
+                return;
+            }
         }
     }
     panic!("the window never stopped repainting");

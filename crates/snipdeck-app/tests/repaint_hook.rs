@@ -21,12 +21,17 @@ use snipdeck_ui::{TagManager, testing::Harness};
 const W: u32 = 420;
 const H: u32 = 520;
 
+/// A window that is drawn and idle: a frame asked for now redraws nothing (the first frame
+/// after the window settles is drawn whole, so it is drawn here, not in a test).
 fn settled() -> Harness<TagManager> {
     let tags = Harness::new(TagManager::new, W, H);
     for _ in 0..16 {
         slint::platform::update_timers_and_animations();
         if tags.damaged_area().is_none() {
-            return tags;
+            tags.component.window().request_redraw();
+            if tags.damaged_area() == Some(0) {
+                return tags;
+            }
         }
     }
     panic!("the window never stopped repainting");
