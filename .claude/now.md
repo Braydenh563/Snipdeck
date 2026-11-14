@@ -2,6 +2,7 @@
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 ## Decisions
+- 2026-11-14: Reviewer agents on the hub never check out a branch (read with `git diff`/`git show <ref>:<path>`, or a worktree): a reviewer's checkout moved the hub to a detached HEAD mid-gate and voided two gate runs.
 - 2026-11-14 (owner, answered): Store build is free-only: no Get Supporter, every feature unlocked when packaged; Supporter stays on the GitHub build. Reason: Store policy 10.8 restricts unlocks sold outside the Store.
 - 2026-11-14 (owner, answered): Recent inbox clipboard history asks on first run; nothing recorded until yes. Reason: Store policy 10.5 opt-in.
 - 2026-11-14 (owner, answered): Partner Center account type Individual (cannot convert later).
