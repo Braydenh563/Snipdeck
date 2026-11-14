@@ -8,7 +8,7 @@
 - Merged origin/claude/compassionate-pascal-pod8ux.
 
 ## Next
-- gate --full, 1.99.1 clippy, push, report to hub.
+- Hub review fixes 1,2,3,5 done (mark_whole in frame, hook tests + source check, RepaintNudge retired, const TRANSPARENT); gate --staged, 1.99.1 clippy, push, report.
 
 ## Blocked
 - Windows-only verification (owner runs Quick check 20-24).
