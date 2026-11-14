@@ -31,3 +31,6 @@ Then: `scripts/gate.sh --full`, `cargo +1.99.1 clippy --workspace --all-targets 
 
 ## Blocked
 - Eyedropper has never run on Windows; owner must try it (`tools/windows-test/`).
+
+## WIP (unverified, tests not yet run)
+- Fixes 2, 4, 5 edited with tests (colour_ctl failed-insert trash; settings invalid-hex recents; panel::slider hue/bri/alpha). Fixes 1 (over_white, "(on white)") and 3 (same-name list replacement test) not started.

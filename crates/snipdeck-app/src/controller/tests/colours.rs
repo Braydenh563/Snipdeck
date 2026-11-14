@@ -699,6 +699,25 @@ fn undoing_the_first_save_takes_the_new_list_with_it() {
 }
 
 #[test]
+fn a_failed_insert_after_the_list_was_made_takes_the_empty_list_away() {
+    let mut w = world();
+    assert!(colours_list(&w).is_none());
+    let lists = w.ctl.colour_save_targets().len();
+    crate::controller::colour_ctl::fail_next_insert();
+    assert!(!w.ctl.save_colour(BLUE, SaveTarget::Home));
+    assert!(colours_list(&w).is_none(), "no empty Colours list is left");
+    assert_eq!(
+        w.ctl.colour_save_targets().len(),
+        lists,
+        "nor in the Save to… entries"
+    );
+    assert!(!w.ctl.colour_view().has_saved_list);
+    // The next save works and makes the list again.
+    assert!(w.ctl.save_colour(BLUE, SaveTarget::Home));
+    assert_eq!(w.ctl.saved_colours().len(), 1);
+}
+
+#[test]
 fn undoing_a_later_save_keeps_the_list() {
     let mut w = world();
     w.ctl.save_colour(BLUE, SaveTarget::Home);

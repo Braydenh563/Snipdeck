@@ -809,7 +809,7 @@ where
             let core = Rc::clone(self);
             state.on_hue_moved(move |h| {
                 let (current, st, _) = core.picker_state();
-                let next = (h.min(359.999), st.1, st.2);
+                let next = (panel::slider(h, 359.999), st.1, st.2);
                 core.set_picked_live(hsb_colour(next, current.a), next);
             });
         }
@@ -817,7 +817,7 @@ where
             let core = Rc::clone(self);
             state.on_bri_moved(move |b| {
                 let (current, st, _) = core.picker_state();
-                let next = (st.0, st.1, b.clamp(0.0, 100.0));
+                let next = (st.0, st.1, panel::slider(b, 100.0));
                 core.set_picked_live(hsb_colour(next, current.a), next);
             });
         }
@@ -830,7 +830,7 @@ where
                     clippy::cast_sign_loss,
                     reason = "clamped to 0..=100 first, so the result is 0..=255"
                 )]
-                let a = (a.clamp(0.0, 100.0) / 100.0 * 255.0).round() as u8;
+                let a = (panel::slider(a, 100.0) / 100.0 * 255.0).round() as u8;
                 core.act(|ctl| ctl.set_colour_live(Rgba8 { a, ..c }));
             });
         }

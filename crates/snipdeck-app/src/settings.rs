@@ -1070,11 +1070,14 @@ impl Settings {
         field!(panel_open_at);
         field!(symbols_recent);
         field!(show_colours_tab);
-        // One bad recent must not drop the rest.
+        // One bad recent must not drop the rest; one whose hex is not a colour goes too.
         if let Some(serde_json::Value::Array(items)) = map.get("colours_recent") {
             settings.colours_recent = items
                 .iter()
-                .filter_map(|v| serde_json::from_value(v.clone()).ok())
+                .filter_map(|v| {
+                    serde_json::from_value::<snipdeck_colour::RecentColour>(v.clone()).ok()
+                })
+                .filter(|r| snipdeck_colour::Rgba8::from_hex(&r.hex).is_some())
                 .collect();
         }
         field!(colour_format);
@@ -2427,7 +2430,7 @@ mod tests {
         assert_eq!(odd.colour_format, Format::Hex);
         assert_eq!(odd.colour_current, d.colour_current);
         assert_eq!(odd.colour_contrast_with, "#000000");
-        assert_eq!(odd.colours_recent.len(), 2);
+        assert_eq!(odd.colours_recent.len(), 1);
     }
 
     #[test]

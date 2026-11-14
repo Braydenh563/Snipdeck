@@ -8,7 +8,7 @@ use snipdeck_colour::{
 };
 use snipdeck_core::{
     Content, Format as ItemFormat, Formats, Inline, Item, ItemId, ItemKind, List, ListId, Name,
-    Placement, UseMode,
+    Placement, Trashable, UseMode,
 };
 use snipdeck_platform::{
     payload::{Data, Payload},
@@ -263,6 +263,13 @@ where
         let stored = Inline::new(text.into_bytes())
             .map_err(|_| ())
             .and_then(|inline| {
+                if take_injected_failure() {
+                    Err(())
+                } else {
+                    Ok(inline)
+                }
+            })
+            .and_then(|inline| {
                 Formats::new(vec![ItemFormat::Text(Content::Inline(inline))]).map_err(|_| ())
             })
             .and_then(|formats| {
@@ -271,7 +278,16 @@ where
                     .map_err(|_| ())
             });
         if stored.is_err() {
-            // The list may have been made a moment ago: show it either way.
+            // A list made for this save would stay empty with nothing to Undo it, so it goes to the
+            // Trash again (as an Undo of the first save does), and the next save makes it anew.
+            if let Some(list) = made_list {
+                let gone = list.to_string();
+                // The toast below says the save failed; a failed trash is only logged by the refresh.
+                let _ = self.store.trash(Trashable::List(list), self.clock.now());
+                if self.settings.colour_save_list.as_deref() == Some(gone.as_str()) {
+                    self.update_settings(|s| s.colour_save_list = None);
+                }
+            }
             self.library_changed();
             self.show_toast(failed());
             return false;
@@ -548,4 +564,25 @@ pub(super) fn colour_of(item: &Item) -> Option<Rgba8> {
         return None;
     }
     literal(&item.preview)
+}
+
+#[cfg(test)]
+thread_local! {
+    static FAIL_INSERT: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Makes the next colour save fail where its item would be stored (the store has no such hook).
+#[cfg(test)]
+pub(crate) fn fail_next_insert() {
+    FAIL_INSERT.with(|f| f.set(true));
+}
+
+#[cfg(test)]
+fn take_injected_failure() -> bool {
+    FAIL_INSERT.with(|f| f.replace(false))
+}
+
+#[cfg(not(test))]
+const fn take_injected_failure() -> bool {
+    false
 }

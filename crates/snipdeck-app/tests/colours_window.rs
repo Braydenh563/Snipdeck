@@ -250,6 +250,24 @@ fn brightness_to_zero_and_back_keeps_the_colour_and_the_values_row_says_so() {
     assert_rows_follow_the_colour(&r);
 }
 
+#[test]
+fn a_hue_slider_value_outside_the_wheel_is_held_at_its_ends_and_nan_is_zero() {
+    let r = rig(false, (320, 640));
+    r.state().invoke_input_edited("#3a7bd5".into());
+    r.state().invoke_model_picked(3); // HSB
+    let hue = |r: &Rig| r.state().get_hue();
+    r.state().invoke_hue_moved(-5.0);
+    assert!(hue(&r) >= 0.0, "below the wheel is held at 0: {}", hue(&r));
+    r.state().invoke_hue_moved(500.0);
+    assert!(
+        hue(&r) <= 359.999,
+        "above the wheel is held at its top: {}",
+        hue(&r)
+    );
+    r.state().invoke_hue_moved(f32::NAN);
+    assert!(hue(&r) == 0.0, "NaN reads as 0: {}", hue(&r));
+}
+
 fn number_at(r: &Rig, i: usize) -> f64 {
     r.state()
         .get_channels()
