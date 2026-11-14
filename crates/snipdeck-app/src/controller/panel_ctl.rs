@@ -251,6 +251,14 @@ where
             .collect()
     }
 
+    /// A drag of row `from` ended on the top half of row `onto`: an item dropped there on a group's
+    /// header lands above the group instead of joining it; any other row takes it as a plain drop.
+    pub fn panel_drop_row_above(&mut self, from: usize, onto: usize) {
+        if !self.drop_above_group(super::group_ctl::Surface::Panel, from, onto) {
+            self.panel_drop_row(from, onto);
+        }
+    }
+
     /// A drag of Panel row `from` ended on row `onto`: the item takes that row's place; when `from`
     /// is one of several marked rows, every marked item moves there together, in their current
     /// order, as one history step. Like the Main window, only a list in manual order, with no

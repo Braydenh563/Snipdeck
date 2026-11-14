@@ -9,3 +9,7 @@ Drag-reorder: Panel had dead drop zones (4px above each row, row gap below): fix
 ## Round 2
 - Done: merged origin/claude/compassionate-pascal-pod8ux; strict search-paste assertion restored; Main grid gap DropAreas + test (failed at base).
 - Main list: no dead zone at base (row Rectangle incl. gap/ring is the DropArea); owner may have hit group-header join or no drag auto-scroll (unverified).
+
+## Round 3 (hub follow-up)
+- Done: EdgeScroll (components/edge-scroll.slint) drag auto-scroll in Main list, Main grid, Panel list + tests (top/bottom/leave/drop at index 0); drop on a header's top half lands above the group (row-dropped-above; controller tests Main + Panel).
+- Next: gate --staged, 1.99.1 clippy, push, report.

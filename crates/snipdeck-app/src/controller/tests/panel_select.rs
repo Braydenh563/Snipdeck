@@ -1502,6 +1502,23 @@ fn dragging_a_group_down_onto_the_next_group_moves_it_below() {
 }
 
 #[test]
+fn dropping_an_item_on_the_top_half_of_a_header_puts_it_above_the_group() {
+    let mut w = world();
+    two_groups(&mut w);
+    let before = shape(&w);
+    let n = before.len();
+    w.ctl.panel_drop_row_above(n - 1, 0);
+    let after = shape(&w);
+    assert_eq!(after.len(), n);
+    assert_eq!(after[0], before[n - 1], "the dropped row is now first");
+    assert_eq!(
+        &after[1..],
+        &before[..n - 1],
+        "everything else shifted down"
+    );
+}
+
+#[test]
 fn dragging_a_group_up_onto_the_group_above_moves_it_above() {
     let mut w = world();
     two_groups(&mut w);

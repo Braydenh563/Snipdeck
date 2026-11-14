@@ -371,6 +371,8 @@ export component PanelWindow inherits Window {
     pure callback payload-row(data-transfer) -> int;
     callback row-dropped-on-tab(int, int);
     callback row-dropped(int, int);
+    // An item dropped on the top half of a group header: it lands above the group instead of joining it.
+    callback row-dropped-above(int, int);
     // Alt+Up / Alt+Down: move the selected row by -1 or +1.
     callback item-reorder-requested(int);
     in property <bool> rows-reorderable;
@@ -2051,7 +2053,11 @@ export component PanelWindow inherits Window {
                                             row-from >= 0 && row-from != i ? DragAction.move : DragAction.none
                                         }
                                         dropped(event) => {
-                                            root.row-dropped(root.payload-row(event.data), i);
+                                            if (item.is-header && event.position.y < self.height / 2) {
+                                                root.row-dropped-above(root.payload-row(event.data), i);
+                                            } else {
+                                                root.row-dropped(root.payload-row(event.data), i);
+                                            }
                                             return DragAction.move;
                                         }
 
