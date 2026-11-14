@@ -24,6 +24,12 @@ pub enum Command {
     ShowPanel,
     /// Show the Panel on its Symbols tab (emoji, kaomoji, icons).
     Symbols,
+    /// Show the Panel on its Colours tab.
+    Colours,
+    /// Show the Panel on the list the Colours tab saves to ("Saved colours").
+    SavedColours,
+    /// Show the Panel on its Colours tab and start the screen eyedropper.
+    PickColour,
     /// Open the Picker.
     OpenPicker,
     /// Quick capture.
@@ -104,12 +110,15 @@ pub enum Command {
 
 impl Command {
     /// Every command, in the order of `CommandTexts.all`.
-    pub const ALL: [Self; 43] = [
+    pub const ALL: [Self; 46] = [
         Self::NewItem,
         Self::NewList,
         Self::Search,
         Self::ShowPanel,
         Self::Symbols,
+        Self::Colours,
+        Self::SavedColours,
+        Self::PickColour,
         Self::OpenPicker,
         Self::QuickCapture,
         Self::PasteNext,
@@ -291,6 +300,12 @@ pub struct Context<'a> {
     pub in_trash: bool,
     /// The Panel's Symbols tab is on (the `show_symbols_tab` setting).
     pub symbols: bool,
+    /// The Panel's Colours tab is on (the `show_colours_tab` setting).
+    pub colours: bool,
+    /// This machine has a screen eyedropper (Windows).
+    pub eyedropper: bool,
+    /// The "Colours" list exists (something was saved), so "Saved colours" has somewhere to go.
+    pub saved_colours: bool,
     /// A list is open (groups live in lists).
     pub in_list: bool,
     /// The cursor is on a group's header; `None` on an item.
@@ -334,6 +349,9 @@ pub fn available(command: Command, ctx: &Context<'_>) -> bool {
         Command::PinItem => ctx.has_item && !ctx.in_trash && !ctx.item_pinned,
         Command::UnpinItem => ctx.has_item && !ctx.in_trash && ctx.item_pinned,
         Command::Symbols => ctx.symbols,
+        Command::Colours => ctx.colours,
+        Command::SavedColours => ctx.colours && ctx.saved_colours,
+        Command::PickColour => ctx.colours && ctx.eyedropper,
         Command::GroupItems => ctx.has_item && ctx.in_list,
         Command::FoldGroup
         | Command::RenameGroup
@@ -413,6 +431,9 @@ mod tests {
             ("Search", "find filter"),
             ("Show Panel", "open toggle"),
             ("Symbols", "emoji kaomoji icons smiley"),
+            ("Colours", "color picker palette hex swatch"),
+            ("Saved colours", "colors palette swatches"),
+            ("Pick a colour from the screen", "eyedropper color pick"),
             ("Open Picker", "quick find paste"),
             ("Quick capture", "clipboard save"),
             ("Paste next item", "stack queue"),
@@ -455,6 +476,9 @@ mod tests {
             item_pinned: false,
             in_trash: false,
             symbols: true,
+            colours: true,
+            eyedropper: true,
+            saved_colours: true,
             in_list: true,
             group: None,
         }
@@ -731,6 +755,38 @@ mod tests {
             !Command::SelectAll.needs_item(),
             "it works on an empty cursor too"
         );
+    }
+
+    #[test]
+    fn the_colour_commands_follow_the_tab_the_eyedropper_and_the_saved_list() {
+        let hotkeys = Hotkeys::default();
+        let ids = |ctx: &Context<'_>| -> Vec<Command> {
+            Command::ALL
+                .iter()
+                .copied()
+                .filter(|c| {
+                    matches!(
+                        c,
+                        Command::Colours | Command::SavedColours | Command::PickColour
+                    ) && available(*c, ctx)
+                })
+                .collect()
+        };
+        let mut c = ctx(&hotkeys);
+        assert_eq!(
+            ids(&c),
+            [Command::Colours, Command::SavedColours, Command::PickColour]
+        );
+        c.saved_colours = false;
+        assert_eq!(
+            ids(&c),
+            [Command::Colours, Command::PickColour],
+            "no Colours list yet: nothing to view"
+        );
+        c.eyedropper = false;
+        assert_eq!(ids(&c), [Command::Colours]);
+        c.colours = false;
+        assert!(ids(&c).is_empty(), "the tab off hides them all");
     }
 
     #[test]

@@ -86,6 +86,8 @@ pub enum ItemMenuEntry {
     Copy,
     /// Open the "Paste as..." choices (plain text, UPPERCASE, ...) for the item.
     PasteAs,
+    /// Show the item's colour in the Colours tab (a colour item only).
+    OpenInColours,
     /// Edit the item in the item editor.
     Edit,
     /// Pin the item, or unpin it when `pinned`.
@@ -163,16 +165,20 @@ pub enum ListMenuEntry {
     /// "Sort by": the list orders itself so. The Panel's `Menu` has no sub-menus, so the three
     /// orders are three rows under a line; the open list's own is checked.
     SortBy(snipdeck_core::ListSort),
+    /// "Copy as CSS variables": the list's colours as a `:root` block (disabled while it holds none).
+    CopyCss,
 }
 
 /// The list tab menu's rows.
-pub const LIST_MENU: [ListMenuEntry; 6] = [
+pub const LIST_MENU: [ListMenuEntry; 8] = [
     ListMenuEntry::Edit,
     ListMenuEntry::Delete,
     ListMenuEntry::Separator,
     ListMenuEntry::SortBy(snipdeck_core::ListSort::Manual),
     ListMenuEntry::SortBy(snipdeck_core::ListSort::MostUsed),
     ListMenuEntry::SortBy(snipdeck_core::ListSort::RecentlyUsed),
+    ListMenuEntry::Separator,
+    ListMenuEntry::CopyCss,
 ];
 
 /// The kebab menu's rows. Help is a group of three rows under a line, because the Panel's
@@ -334,6 +340,9 @@ where
         {
             entries.push(ItemMenuEntry::PasteAs);
         }
+        if self.settings.show_colours_tab && self.colour_of_item(id).is_some() {
+            entries.push(ItemMenuEntry::OpenInColours);
+        }
         entries.extend([
             ItemMenuEntry::Separator,
             ItemMenuEntry::Edit,
@@ -397,15 +406,16 @@ where
     }
 
     /// The user chose row `index` of the item menu. The menu closes (a line stays open).
+    #[allow(clippy::too_many_lines, reason = "one arm per row of the item menu")]
     pub fn choose_item_menu(&mut self, index: usize) -> Vec<Effect> {
+        self.choose_item_menu_as(index, false)
+    }
+
+    /// [`choose_item_menu`](Self::choose_item_menu) with Shift: a colour's "Paste as" copies the
+    /// format to the clipboard instead of pasting it.
+    pub fn choose_item_menu_as(&mut self, index: usize, copy: bool) -> Vec<Effect> {
         if let PanelMenu::PasteAs(id) = self.menu {
-            self.menu = PanelMenu::None;
-            self.menu_targets.clear();
-            let Some(transform) = Transform::ALL.get(index).copied() else {
-                return Vec::new();
-            };
-            let used = self.use_item_as(id, transform);
-            return self.after_use(&used);
+            return self.choose_paste_as(id, index, copy);
         }
         if matches!(self.menu, PanelMenu::Move | PanelMenu::Colour) {
             self.choose_second_level(index);
@@ -450,6 +460,7 @@ where
                 let used = self.use_item(id, UseMode::Copy);
                 self.after_use(&used)
             }
+            ItemMenuEntry::OpenInColours => self.open_item_in_colours(id),
             ItemMenuEntry::Edit => vec![Effect::EditItem(id)],
             ItemMenuEntry::Duplicate => {
                 self.duplicate(&targets);
@@ -492,6 +503,26 @@ where
             | ItemMenuEntry::PasteAs
             | ItemMenuEntry::Separator => Vec::new(),
         }
+    }
+
+    /// Entry `index` of item `id`'s "Paste as" menu: a colour's format (copied with Shift), or a text
+    /// transform.
+    fn choose_paste_as(&mut self, id: ItemId, index: usize, copy: bool) -> Vec<Effect> {
+        self.menu = PanelMenu::None;
+        self.menu_targets.clear();
+        if let Some(c) = self.colour_of_item(id) {
+            let Some(format) = snipdeck_colour::Format::ALL.get(index).copied() else {
+                return Vec::new();
+            };
+            let mode = if copy { UseMode::Copy } else { UseMode::Paste };
+            let used = self.use_colour_item(id, c, format, mode);
+            return self.after_use(&used);
+        }
+        let Some(transform) = Transform::ALL.get(index).copied() else {
+            return Vec::new();
+        };
+        let used = self.use_item_as(id, transform);
+        self.after_use(&used)
     }
 
     /// The item menu's Move up / Move down on item `id`.
@@ -557,6 +588,10 @@ where
             }
             Some(ListMenuEntry::SortBy(sort)) => {
                 self.set_list_sort(id, *sort);
+                Vec::new()
+            }
+            Some(ListMenuEntry::CopyCss) => {
+                self.copy_list_as_css(id);
                 Vec::new()
             }
             Some(ListMenuEntry::Separator) => {

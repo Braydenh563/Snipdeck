@@ -422,6 +422,15 @@ where
                 }));
                 Some(ChooseMenu { entries })
             }
+            PanelMenu::PasteAs(id) if let Some(c) = self.colour_of_item(id) => Some(ChooseMenu {
+                entries: snipdeck_colour::Format::ALL
+                    .iter()
+                    .map(|f| ChooseEntry {
+                        label: ChooseLabel::ColourFormat(*f, snipdeck_colour::format(c, *f)),
+                        checked: false,
+                    })
+                    .collect(),
+            }),
             PanelMenu::PasteAs(_) => Some(ChooseMenu {
                 entries: Transform::ALL
                     .iter()

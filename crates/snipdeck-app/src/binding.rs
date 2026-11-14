@@ -36,6 +36,8 @@ use crate::{
     wording,
 };
 
+mod colours;
+
 type ProblemsFn = dyn Fn(&[HotkeyProblem]);
 type FrameFn = dyn Fn(&Monitor, Rect);
 type MonitorFn = dyn Fn(&Monitor);
@@ -64,6 +66,11 @@ pub(crate) fn redraw_all() {
     for redraw in all {
         redraw();
     }
+}
+
+/// Redraws every bound window from another thread (the eyedropper's, when its run ends).
+pub fn redraw_from_any_thread() {
+    let _ = slint::invoke_from_event_loop(redraw_all);
 }
 
 /// Runs the timer chain of toast `seq`: each tick advances the toast and redraws the windows.
@@ -278,6 +285,8 @@ struct Core<S, C, K, T> {
     drag_timer: slint::Timer,
     /// Looks at the clipboard while "Take screenshot" waits for its picture.
     screen_clip_timer: slint::Timer,
+    /// What the Colours tab remembers between redraws.
+    colours: colours::Glue,
 }
 
 impl<S, C, K, T> Core<S, C, K, T>
@@ -315,6 +324,7 @@ where
                 dock_timer: slint::Timer::default(),
                 drag_timer: slint::Timer::default(),
                 screen_clip_timer: slint::Timer::default(),
+                colours: colours::Glue::default(),
             }
         });
         register_redraw(&core.redraw);
@@ -408,7 +418,11 @@ where
     /// loop, during which timers and hotkeys reach the controller).
     fn item_menu_chosen(self: &Rc<Self>, index: usize, dark: bool) {
         if !self.controller.borrow().symbol_menu_open() {
-            self.act_effects(|ctl| ctl.choose_item_menu(index));
+            let copy = self
+                .window
+                .upgrade()
+                .is_some_and(|w| w.get_item_menu_shift());
+            self.act_effects(|ctl| ctl.choose_item_menu_as(index, copy));
             return;
         }
         let choice =
@@ -462,6 +476,8 @@ where
                     self.activate_soon();
                 }
                 Effect::ShowSymbols => window.invoke_open_symbols(),
+                Effect::ShowColours => window.invoke_open_colours(),
+                Effect::HideColours => window.invoke_close_colours(),
                 Effect::HidePanel => {
                     // Back to the Target first, while the Panel still holds the foreground:
                     // hiding it first would leave the choice of the next window to Windows.
@@ -533,12 +549,19 @@ where
         let Some(window) = self.window.upgrade() else {
             return;
         };
+        // The eyedropper's result first: its toast is part of the view built below, so it shows
+        // with this frame and not with the next unrelated redraw.
+        let picked = self.controller.borrow_mut().poll_eyedropper();
+        if !picked.is_empty() {
+            self.apply(&picked);
+        }
         let view = self.controller.borrow().view();
         render(&window, self.shown.borrow().as_ref(), &view);
         // A new group's name follows the language the window is in now.
         self.controller
             .borrow_mut()
             .set_group_name(&window.invoke_group_default_name());
+        Self::refresh_words(&mut self.controller.borrow_mut(), &window);
         // Placements decided by another window (Settings docking the Panel, the dock being
         // switched off) are carried out here, where the Panel's window is.
         let pending = self.controller.borrow_mut().take_pending();
@@ -547,6 +570,7 @@ where
         }
         self.arm_dock();
         self.arm_screen_clip();
+        self.sync_colours(&window);
         if let Some(toast) = &view.toast
             && self.controller.borrow_mut().claim_toast_timer(toast.seq)
         {
@@ -770,6 +794,7 @@ where
     ) -> Binding {
         let core = Core::new(this, window, host, Box::new(on_effect));
         core.act(|ctl| ctl.set_group_name(&window.invoke_group_default_name()));
+        core.wire_colours(window);
         core.sync();
         {
             // Where the other windows open over the Panel, while it is shown.
@@ -1735,6 +1760,14 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
                         wording::item_label_name(*label).into()
                     }
                     crate::controller::ChooseLabel::Colour(None) => "No label".into(),
+                    crate::controller::ChooseLabel::ColourFormat(f, value) => {
+                        let name: SharedString = if *f == snipdeck_colour::Format::Name {
+                            window.global::<ui::ColourTexts<'_>>().invoke_format_name()
+                        } else {
+                            f.label().into()
+                        };
+                        format!("{name}  {value}").into()
+                    }
                     crate::controller::ChooseLabel::Transform(t) => {
                         wording::transform_name(window, *t).into()
                     }
@@ -1787,6 +1820,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     }
     window.set_show_numbers(view.show_numbers);
     window.set_symbols_available(view.symbols_available);
+    window.set_colours_available(view.colours_available);
     window.set_layout(match view.layout {
         crate::settings::PanelLayout::List => ui::PanelLayout::List,
         crate::settings::PanelLayout::Cards => ui::PanelLayout::Cards,
@@ -1800,6 +1834,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         window.set_list_menu_open(view.list_menu.is_some());
     }
     window.set_list_menu_sort(crate::main_binding::sort_index(view.list_menu_sort));
+    window.set_list_menu_css(view.list_menu_css);
     if differs(&|p| p.list_delete == view.list_delete)
         || window.get_list_delete_open() != view.list_delete.is_some()
     {
@@ -1927,6 +1962,17 @@ pub(crate) fn list_icon_image(
         .unwrap_or_default()
 }
 
+/// The swatch of a card: the colour the item's text is, for a plain (not sensitive) text item, as
+/// the colour and whether there is one.
+pub(crate) fn swatch_fields(preview: &str, sensitive: bool) -> (slint::Color, bool) {
+    if sensitive {
+        return (slint::Color::default(), false);
+    }
+    snipdeck_colour::literal(preview).map_or((slint::Color::default(), false), |c| {
+        (slint::Color::from_argb_u8(c.a, c.r, c.g, c.b), true)
+    })
+}
+
 /// The row's colour label as the windows take it: -1 for none, else the position in
 /// [`ItemLabel::ALL`], with the label's name.
 pub(crate) fn label_fields(label: Option<ItemLabel>) -> (i32, SharedString) {
@@ -1978,6 +2024,8 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
     // The windowed first line replaces the preview only for a marked row; a sensitive row never has one.
     let marked = row.preview_mark.as_ref().filter(|_| !row.sensitive);
     let (label, label_name) = label_fields(row.label);
+    let (swatch, has_swatch) =
+        crate::colour_words::swatch_of_kind(row.kind, &row.preview, row.sensitive);
     ui::PanelRow {
         kind: item_kind(row),
         title: row.title.as_str().into(),
@@ -1994,6 +2042,8 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
         preview_before: marked
             .map_or_else(SharedString::new, |(before, ..)| before.as_str().into()),
         preview_match: marked.map_or_else(SharedString::new, |(_, found, _)| found.as_str().into()),
+        swatch,
+        has_swatch,
         tag_hit: row
             .tag_hit
             .as_deref()
@@ -2088,6 +2138,16 @@ impl Payload {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn swatch_follows_a_colour_literal_and_never_a_secret() {
+        let (c, on) = swatch_fields("#3a7bd5", false);
+        assert!(on);
+        assert_eq!(c, slint::Color::from_argb_u8(255, 0x3a, 0x7b, 0xd5));
+        assert!(!swatch_fields("#3a7bd5", true).1);
+        assert!(!swatch_fields("red", false).1);
+        assert!(!swatch_fields("see #3a7bd5 here", false).1);
+    }
+
     use super::*;
     use crate::panel::ListLabel;
     use slint::Model;

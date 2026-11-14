@@ -375,6 +375,13 @@ pub enum ToastMessage {
         /// The file name written, without its folder.
         name: String,
     },
+    /// "Couldn't pick a colour from the screen." (the eyedropper failed)
+    EyedropFailed,
+    /// "HDR is on for this screen: {hex} is approximate." (a colour picked on an HDR monitor)
+    EyedropHdr {
+        /// The picked colour, `#rrggbb`.
+        hex: String,
+    },
 }
 
 /// A toast: a style and a message.

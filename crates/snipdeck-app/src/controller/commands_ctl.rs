@@ -59,6 +59,22 @@ where
                     self.pending.extend(effects);
                 }
             }
+            Command::Colours | Command::PickColour => {
+                if self.settings.show_colours_tab {
+                    let mut effects = self.show();
+                    effects.push(Effect::ShowColours);
+                    if command == Command::PickColour {
+                        effects.extend(self.start_eyedropper());
+                    }
+                    self.pending.extend(effects);
+                }
+            }
+            Command::SavedColours => {
+                if self.settings.show_colours_tab {
+                    let effects = self.open_saved_colours();
+                    self.pending.extend(effects);
+                }
+            }
             Command::OpenPicker => self.open_picker(),
             Command::QuickCapture => self.quick_capture(),
             Command::PasteNext => {

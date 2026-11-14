@@ -530,6 +530,7 @@ where
 
     /// Reads the library again into the Panel (and tells the Main window to).
     pub(super) fn refresh_panel(&mut self) -> snipdeck_store::Result<()> {
+        self.colour_saved_cache.take();
         self.main.mark_stale();
         self.sync_typing(false);
         #[cfg(test)]

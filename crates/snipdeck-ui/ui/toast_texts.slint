@@ -449,6 +449,13 @@ export global ToastTexts {
         return @tr("Couldn't refresh the list on screen. Close and reopen the window to see the change.");
     }
     // Symbols tab: Add to list on an icon, and Save as... done.
+    // Colours tab: the screen eyedropper failed, or picked on an HDR monitor.
+    pure public function eyedrop-failed() -> string {
+        return @tr("Couldn't pick a colour from the screen.");
+    }
+    pure public function eyedrop-hdr(hex: string) -> string {
+        return @tr("HDR is on for this screen: {} is approximate.", hex);
+    }
     pure public function icon-not-addable() -> string {
         return @tr("Icons can't be added to a list yet.");
     }

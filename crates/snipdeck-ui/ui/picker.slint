@@ -11,6 +11,8 @@
 //   Alt+1-9         use the Nth row, whatever the search holds (bare digits are always search text)
 //   Tab             next scope (All, This board, Pinned), Shift+Tab previous
 //   Ctrl+E          asks the host to edit the selected snippet
+//   Menu, Shift+F10 on a colour row: "Paste as" (the colour in each format; Enter pastes, Shift+Enter copies, Esc back)
+//   Ctrl+O          on a colour row: open it in the Panel's Colours tab
 //   Esc             asks the host to close the Picker
 //
 // Rows are the Panel's quiet Compact rows with the place ("Board · List") inline on the title line. The selected row is a
@@ -24,6 +26,11 @@ import { EmptyState, EmptyStateKind } from "components/empty_state.slint";
 import { Tag } from "components/tag.slint";
 import { OverlayScrollbar } from "components/scrollbar.slint";
 import { KeyCombo } from "components/keycap.slint";
+import { Chooser, ChoiceEntry } from "components/chooser.slint";
+import { ColourTexts } from "colours.slint";
+import { MenuTexts } from "menu_texts.slint";
+
+export { ChoiceEntry }
 
 // One result, as `snipdeck-app` resolves it across boards. The breadcrumb is `board-name / list-name`; the
 // quick-use number is the row's position (1-9 for the first nine, used with Alt+N); `masked-preview` stands in for a
@@ -44,6 +51,9 @@ export struct PickerRow {
     list-name: string,
     list-color: color,
     image: image,
+    // A colour value in the text: the type tile shows the colour, and the row offers "Paste as" and "Open in Colours".
+    swatch: color,
+    has-swatch: bool,
 }
 
 // What the search covers. Tab cycles through these in order.
@@ -127,11 +137,21 @@ export component PickerWindow inherits Window {
     callback dismissed();
     // F1: the user guide.
     callback help-requested();
+    // "Paste as" opens for colour row `index`: the host fills `colour-choices` before this returns.
+    callback colour-choices-requested(int);
+    // Format `format` (an index into the host's formats) of colour row `row` chosen; `copy` when Shift was held.
+    callback colour-chosen(int, int, bool);
+    // Ctrl+O on colour row `index`: the Panel shows the colour on its Colours tab.
+    callback colour-open-requested(int);
+    // The formats of the colour on the row "Paste as" is open for, one choice each.
+    in property <[ChoiceEntry]> colour-choices;
+    // Whether the Panel's Colours tab is on (when it is not, there is nothing to open the colour in).
+    in property <bool> colour-can-open: false;
 
     // ---- Public -------------------------------------------------------------------------------
     // The window height that fits the current content: search, scopes, up to nine rows (or the empty
     // state) and the footer. The host sizes the window from this.
-    out property <length> content-height: main.preferred-height;
+    out property <length> content-height: max(main.preferred-height, root.colour-menu-open ? root.menu-top + root.menu-h + Space.s2 : 0px);
     out property <length> scroll-y: list.content-y;
     out property <bool> search-focused: search.has-focus;
     // The window lost the keyboard after having it (a click on another window): like any popup it
@@ -140,7 +160,7 @@ export component PickerWindow inherits Window {
     changed search-focused => {
         if (root.search-focused) {
             root.had-focus = true;
-        } else if (root.had-focus) {
+        } else if (root.had-focus && !root.colour-menu-open) {
             root.had-focus = false;
             root.dismissed();
         }
@@ -168,6 +188,12 @@ export component PickerWindow inherits Window {
     property <bool> searching: root.query != "";
     property <int> sel: root.rows.length == 0 ? -1 : min(max(root.selected-index, 0), root.rows.length - 1);
     property <int> used-index: -1;
+    // "Paste as" of a colour row: the chooser takes the keyboard from the search field while it is open.
+    property <bool> colour-menu-open: false;
+    property <int> colour-menu-row: -1;
+    property <bool> sel-colour: root.sel >= 0 && root.rows[root.sel].has-swatch;
+    property <length> menu-top: Space.s2 + search.box-height + Space.s0-5;
+    property <length> menu-h: 2 * Space.s1 + root.colour-choices.length * max(Space.hit, Type.line-base + Space.s2);
     // SPEC 5.2 and DESIGN.md §5: up to nine rows are visible; more scroll.
     property <int> max-rows: 9;
     // A quiet Compact ItemCard's height (36px at 100%, one text line plus padding when the text is larger).
@@ -277,6 +303,21 @@ export component PickerWindow inherits Window {
         }
     }
 
+    function open-colour-menu(row: int) {
+        if (row < 0 || row >= root.rows.length || !root.rows[row].has-swatch) {
+            return;
+        }
+        root.selected-index = row;
+        root.colour-menu-row = row;
+        root.colour-menu-open = true;
+        root.colour-choices-requested(row);
+    }
+
+    function close-colour-menu() {
+        root.colour-menu-open = false;
+        search.focus();
+    }
+
     function quick(n: int) {
         if (n < 1 || n > root.rows.length) {
             return;
@@ -323,6 +364,10 @@ export component PickerWindow inherits Window {
         forward-focus: search;
 
         capture-key-pressed(event) => {
+            // The chooser has the keyboard while it is open: its own keys (arrows, Enter, Esc) go through.
+            if (root.colour-menu-open) {
+                return reject;
+            }
             if (search.has-focus && !search.composing && suggest.handle-key(event)) {
                 return accept;
             }
@@ -331,6 +376,10 @@ export component PickerWindow inherits Window {
                     if (root.sel >= 0) {
                         root.edit-requested(root.sel);
                     }
+                    return accept;
+                }
+                if ((event.text == "o" || event.text == "O") && root.sel-colour && root.colour-can-open) {
+                    root.colour-open-requested(root.sel);
                     return accept;
                 }
                 return reject;
@@ -345,6 +394,10 @@ export component PickerWindow inherits Window {
                     return accept;
                 }
                 return reject;
+            }
+            if (root.sel-colour && (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10))) {
+                root.open-colour-menu(root.sel);
+                return accept;
             }
             if (event.text == Key.F1) {
                 root.help-requested();
@@ -474,6 +527,8 @@ export component PickerWindow inherits Window {
                         tag-hit: row.tag-hit;
                         masked-preview: row.masked-preview;
                         image: row.image;
+                        swatch: row.swatch;
+                        has-swatch: row.has-swatch;
                         // The place stays on the selected row too, left of its actions: the use label is in the footer.
                         list-name: row.board-name != "" ? row.board-name + " \u{b7} " + row.list-name : row.list-name;
                         list-color: row.list-color;
@@ -492,6 +547,9 @@ export component PickerWindow inherits Window {
                         edit => {
                             root.selected-index = i;
                             root.edit-requested(i);
+                        }
+                        context-menu-requested(x, y) => {
+                            root.open-colour-menu(i);
                         }
                     }
                 }
@@ -547,7 +605,17 @@ export component PickerWindow inherits Window {
                         key-label: @tr("Shift Enter");
                         text: @tr("Copy");
                     }
-                    if !root.narrow: Hint {
+                    if !root.narrow && root.sel-colour: Hint {
+                        keys: ["Shift", "F10"];
+                        key-label: @tr("Shift F10");
+                        text: MenuTexts.item-paste-as();
+                    }
+                    if !root.narrow && root.sel-colour && root.colour-can-open: Hint {
+                        keys: ["Ctrl", "O"];
+                        key-label: @tr("Control O");
+                        text: MenuTexts.item-open-in-colours();
+                    }
+                    if !root.narrow && !root.sel-colour: Hint {
                         keys: ["Alt", "1-9"];
                         key-label: @tr("Alt 1 to 9");
                         text: @tr("Use result N");
@@ -576,6 +644,31 @@ export component PickerWindow inherits Window {
         active: search.has-focus && root.query != "" && root.suggest-query == root.query;
         chosen(i) => { root.suggest-chosen(i); }
         dismissed => { root.suggest-dismissed(); }
+    }
+
+    // A click anywhere else closes the chooser.
+    if root.colour-menu-open: TouchArea {
+        clicked => { root.close-colour-menu(); }
+    }
+    if root.colour-menu-open: Chooser {
+        x: Space.s2;
+        y: root.menu-top;
+        width: min(root.width - 2 * Space.s2, 320px * SystemLook.text-scale);
+        entries: root.colour-choices;
+        label: MenuTexts.item-paste-as();
+        empty-text: "";
+        init => {
+            self.current = 0;
+            self.focus-chooser();
+        }
+        chosen(i) => {
+            let row = root.colour-menu-row;
+            let copy = self.shift;
+            root.close-colour-menu();
+            root.mark-used(row);
+            root.colour-chosen(row, i, copy);
+        }
+        dismissed => { root.close-colour-menu(); }
     }
 
     // The window outline: level 3 is the OS shadow plus a 1px `border-default` (DESIGN.md §6).

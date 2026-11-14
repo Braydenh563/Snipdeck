@@ -7,10 +7,12 @@ use crate::model::Rgba8;
 use crate::names::nearest_name;
 use crate::parse::parse;
 
-/// The text a saved colour item holds: `format(c, f)` when `parse` gives `c` back exactly, else hex.
+/// The text a saved colour item holds: `format(c, f)` when `parse` gives `c` back exactly, else
+/// hex. HSB and CMYK are always hex: the card rule (`literal`) does not see `hsb()` or `cmyk()`
+/// as a colour, so such an item would lose its swatch and its Paste as formats.
 pub fn saved_text(c: Rgba8, f: Format) -> String {
     let text = format(c, f);
-    if parse(&text) == Ok(c) {
+    if !matches!(f, Format::Hsb | Format::Cmyk) && parse(&text) == Ok(c) {
         text
     } else {
         c.to_hex()

@@ -29,6 +29,11 @@ is the developer route. Plan (next session, workflow):
   (install, upgrade over an older version, uninstall keeps data, Store package sideload test).
 - Windows-only: everything above is unverified until the owner runs it.
 
+## Colour tool (branch `claude/colour-tool`, 2026-11-12; see `.claude/remaining/colours.md`)
+Built: the Panel's Colours tab (wheel/square picker, typed channels in every format, schemes, contrast, save to any list, copy as any format, CSS variables), the swatch tile on cards, the Main detail Colour block, Picker "Paste as", the Saved colours command. Maths in `crates/snipdeck-colour`.
+NOT done: the global eyedropper hotkey (`hotkeys.eyedropper`, review #33): "pick from anywhere" starts from the Panel button or the palette command, never a chord. Per-swatch Ctrl+S, and the Win32 button-up eyedropper leak when a key ends the run during a press (C14), are also left.
+Windows-only, never run: the Win32 eyedropper (button-up capture, HDR bit logic), the `tools/windows-test` wizard steps for it, the hand-drawn icons, and the order of the eyedropper toast against the redraw (review #17).
+
 ## Now (2026-11-12 15:40 UTC; owner asleep, Fable paused to save usage)
 - `claude/render-flicker` (2026-11-14, Opus medium worker): drag flicker / see-through Panel fixed in code: windows opaque (`window_kind::TRANSPARENT`), whole frame after OS paints for every window (`repaint.rs`, `update_region.rs`). Write-up `docs/reviews/render-flicker-2026-11-14.md`. Unverified until the owner runs Quick check steps 20-24 on Windows.
 Hub session_01NKjURuyvhApCqnss7v9Php coordinates four branches into PR #5 (none merged yet):

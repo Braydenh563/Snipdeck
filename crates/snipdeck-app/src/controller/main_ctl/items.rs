@@ -409,7 +409,17 @@ where
             self.undo_step(Some(step));
         } else if let Some(id) = undo.adds {
             let now = self.clock.now();
-            let done = self.store.atomically(|b| b.trash(Trashable::Item(id), now));
+            let made = undo.list;
+            let done = self.store.atomically(|b| {
+                b.trash(Trashable::Item(id), now)?;
+                made.map_or(Ok(()), |list| b.trash(Trashable::List(list), now))
+            });
+            if let Some(list) = made {
+                let gone = list.to_string();
+                if self.settings.colour_save_list.as_deref() == Some(gone.as_str()) {
+                    self.update_settings(|s| s.colour_save_list = None);
+                }
+            }
             self.toast = None;
             if done.is_err() {
                 self.show_toast(failed());

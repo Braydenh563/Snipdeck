@@ -17,10 +17,13 @@ use snipdeck_platform::{
     tray::TrayEvent,
 };
 
+mod colour_ctl;
+mod colour_main;
 mod commands_ctl;
 mod create_ctl;
 mod dock_ctl;
 mod editor_ctl;
+mod eyedrop_ctl;
 mod group_ctl;
 mod history_ctl;
 mod library;
@@ -33,6 +36,7 @@ mod panel_select;
 mod recent_ctl;
 mod screen_clip_ctl;
 mod settings_ctl;
+pub use eyedrop_ctl::Wake as EyedropWake;
 mod symbol_ctl;
 #[cfg(test)]
 mod tests;
@@ -41,6 +45,8 @@ mod trigger_ctl;
 mod use_ctl;
 mod views;
 
+pub use colour_ctl::{ColourView, SaveList, SaveTarget};
+pub use colour_main::{ColourBlock, colour_formats};
 pub use create_ctl::DropRun;
 pub use history_ctl::HistoryView;
 pub use library::Library;
@@ -154,6 +160,9 @@ struct Undo {
     /// The toast reports a new item (saved or quick-added): Undo moves it to the Trash and the
     /// toast's Edit button opens it in the editor.
     adds: Option<ItemId>,
+    /// The list that save made (the first colour saved makes "Colours"): Undo trashes it too, so
+    /// no empty list is left behind.
+    list: Option<ListId>,
 }
 
 struct ActiveToast {
@@ -272,6 +281,16 @@ pub struct Controller<S, C, K, T> {
     /// (the Main window's binding sets them; see [`Controller::set_new_name_bases`]).
     new_list_base: String,
     new_board_base: String,
+    /// The Colours tab: the colour looked at, the second contrast colour, and the home list's
+    /// name in the language shown.
+    colour: snipdeck_colour::Rgba8,
+    colour_other: snipdeck_colour::Rgba8,
+    colours_list_name: String,
+    /// The list `make_list_for_save` made last, taken by the save that asked for it.
+    colour_made_list: Option<ListId>,
+    /// The colour items of the home list, kept until the library changes (every redraw of the
+    /// Colours tab asks for them; a drag redraws on each pointer event).
+    colour_saved_cache: std::cell::RefCell<Option<Vec<(ItemId, snipdeck_colour::Rgba8)>>>,
     session: Session,
     saver: Option<SettingsSaver>,
     /// Where the edge dock is (see [`crate::dock`]).
@@ -330,6 +349,11 @@ pub struct Controller<S, C, K, T> {
     /// "Take screenshot": the timing (pure) and the machine it runs on (see `screen_clip_ctl.rs`).
     screen_clip: crate::screen_clip::ScreenClipFlow,
     screen_clip_host: Option<Box<dyn crate::screen_clip::ScreenClipHost>>,
+    /// The screen eyedropper (Windows only), its words, and where its thread leaves the outcome.
+    eyedropper: Option<Box<dyn snipdeck_platform::eyedrop::Eyedropper>>,
+    eyedrop_texts: snipdeck_platform::eyedrop::EyedropTexts,
+    eyedrop_mailbox: eyedrop_ctl::Mailbox,
+    eyedrop_wake: Option<EyedropWake>,
 }
 
 /// Opens the folder of the crash reports in the file manager.
@@ -413,6 +437,10 @@ where
     /// # Errors
     ///
     /// Any store error from loading the Panel.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one flat struct literal: every field of the controller starts here"
+    )]
     pub fn new(
         store: S,
         services: Services<C, K, T>,
@@ -428,6 +456,9 @@ where
         model.set_target(target.current());
         let shown_at = clock.now();
         let pinned = settings.panel_pinned;
+        let colour =
+            colour_ctl::colour_or(&settings.colour_current, crate::settings::DEFAULT_COLOUR);
+        let colour_other = colour_ctl::colour_or(&settings.colour_contrast_with, "#ffffff");
         let mut main = MainModel::new();
         main.set_view_mode(ViewMode::from(settings.row_density));
         Ok(Self {
@@ -484,6 +515,11 @@ where
             os_look: SystemLook::default(),
             new_list_base: crate::starter::NEW_LIST.to_owned(),
             new_board_base: crate::starter::NEW_BOARD.to_owned(),
+            colour,
+            colour_other,
+            colours_list_name: String::from("Colours"),
+            colour_made_list: None,
+            colour_saved_cache: std::cell::RefCell::new(None),
             session: Session::default(),
             hotkey_problems: Vec::new(),
             saver: None,
@@ -511,6 +547,10 @@ where
             tray_history: None,
             screen_clip: crate::screen_clip::ScreenClipFlow::new(),
             screen_clip_host: None,
+            eyedropper: None,
+            eyedrop_texts: snipdeck_platform::eyedrop::EyedropTexts::default(),
+            eyedrop_mailbox: std::sync::Arc::default(),
+            eyedrop_wake: None,
         })
     }
 
@@ -634,11 +674,13 @@ where
             clear_list: self.clear_list_view(),
             show_numbers: self.settings.show_numbers,
             symbols_available: self.settings.show_symbols_tab,
+            colours_available: self.settings.show_colours_tab,
             layout: self.settings.panel_layout,
             search_always: self.settings.panel_search == crate::settings::PanelSearch::Always,
             lists_in_menu: self.settings.panel_switcher == crate::settings::PanelSwitcher::Menu,
             list_menu: matches!(self.menu, PanelMenu::List(_)).then(|| LIST_MENU.to_vec()),
             list_menu_sort: self.list_menu_sort(),
+            list_menu_css: matches!(self.menu, PanelMenu::List(id) if self.list_has_colours(id)),
             list_delete: self.list_delete_view(),
             board_delete: self.board_delete_view(),
             hotkeys_paused: self.session.hotkeys_paused,

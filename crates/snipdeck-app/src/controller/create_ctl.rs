@@ -324,6 +324,7 @@ where
             seq: self.toast_seq,
             step,
             adds: Some(first),
+            list: None,
         });
     }
 
