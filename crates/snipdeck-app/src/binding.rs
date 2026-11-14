@@ -112,8 +112,7 @@ fn place(window: &ui::PanelWindow, frame: Rect) {
 /// window's pixels and Slint's software renderer presents only what changed, so a Panel shown
 /// again (after the item editor closes) or moved came back with see-through gaps.
 fn repaint_whole(window: &ui::PanelWindow) {
-    window.set_repaint_flip(!window.get_repaint_flip());
-    window.window().request_redraw();
+    snipdeck_ui::damage::whole_window(window.window());
 }
 
 /// What the host keeps after binding: the entry points for events that do not come from the

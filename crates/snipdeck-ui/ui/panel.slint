@@ -47,7 +47,6 @@ import { Toast, ToastKind, ToastPhase, Skeleton, SkeletonKind, Tooltip } from "c
 import { Menu, MenuEntry } from "components/menu.slint";
 import { SuggestDropdown, SuggestRow } from "components/suggest-dropdown.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
-import { RepaintNudge } from "components/repaint.slint";
 import { Button, ButtonVariant, ButtonSize } from "components/button.slint";
 import { IconButton, IconButtonSize } from "components/icon-button.slint";
 import { Keycap } from "components/keycap.slint";
@@ -253,8 +252,6 @@ export component PanelWindow inherits Window {
     callback symbol-move(int);
     callback symbol-menu-requested(int);
     callback symbol-columns-changed(int);
-    // The host flips it to redraw the whole window (O39, see `RepaintNudge`).
-    in-out property <bool> repaint-flip: false;
     in property <bool> recent-paused: false;
     // The library is locked behind a master password: the list is empty and nothing is collected until it is unlocked.
     in property <bool> recent-locked: false;
@@ -1095,10 +1092,6 @@ export component PanelWindow inherits Window {
             root.recent-save-open = false;
         }
     }
-
-    // O39: flipping `repaint-flip` damages the whole window (the docked strip too), so a frame Windows threw away is
-    // drawn again whole. Transparent: nothing shows.
-    RepaintNudge { flip: root.repaint-flip; }
 
     // Reports the pointer being over the open Panel (anywhere in it, grips and menus included) without
     // taking any click: a TouchArea that is an ancestor sees pointer moves before its children do and

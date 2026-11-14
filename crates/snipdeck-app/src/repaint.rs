@@ -139,7 +139,8 @@ pub fn signal_of(
 
 /// Feeds one winit event of `window` to `watch` and acts on it. Every Snipdeck window's event
 /// hook calls this, before Slint handles the event: on `RedrawRequested` the whole-window
-/// damage is in place for the frame Slint draws next.
+/// damage is in place for the frame Slint draws next. It only marks there and asks for no frame
+/// (Slint always draws on `RedrawRequested`; asking again would draw one more, empty frame).
 pub fn follow(
     watch: &mut Watch,
     window: &slint::Window,
@@ -149,7 +150,7 @@ pub fn follow(
     match watch.on_signal(signal) {
         Action::None => {}
         Action::Request => window.request_redraw(),
-        Action::DamageWhole => snipdeck_ui::damage::whole_window(window),
+        Action::DamageWhole => snipdeck_ui::damage::mark_whole(window),
     }
 }
 

@@ -893,10 +893,10 @@ fn select_backend() -> Result<(), String> {
                     attributes
                 }
             };
-            // Opaque on every platform: see `Plan::transparent` (render flicker 2026-11-14).
+            // Opaque on every platform: see `window_kind::TRANSPARENT` (render flicker 2026-11-14).
             attributes
                 .with_active(plan.active)
-                .with_transparent(plan.transparent)
+                .with_transparent(window_kind::TRANSPARENT)
         })
         .select()
         .map_err(|e| format!("selecting the window backend: {e}"))

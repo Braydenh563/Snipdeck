@@ -30,7 +30,7 @@ is the developer route. Plan (next session, workflow):
 - Windows-only: everything above is unverified until the owner runs it.
 
 ## Now (2026-11-12 15:40 UTC; owner asleep, Fable paused to save usage)
-- `claude/render-flicker` (2026-11-14, Opus medium worker): drag flicker / see-through Panel fixed in code: windows opaque (`window_kind::Plan::transparent`), whole frame after OS paints for every window (`repaint.rs`, `update_region.rs`). Write-up `docs/reviews/render-flicker-2026-11-14.md`. Unverified until the owner runs Quick check steps 20-24 on Windows.
+- `claude/render-flicker` (2026-11-14, Opus medium worker): drag flicker / see-through Panel fixed in code: windows opaque (`window_kind::TRANSPARENT`), whole frame after OS paints for every window (`repaint.rs`, `update_region.rs`). Write-up `docs/reviews/render-flicker-2026-11-14.md`. Unverified until the owner runs Quick check steps 20-24 on Windows.
 Hub session_01NKjURuyvhApCqnss7v9Php coordinates four branches into PR #5 (none merged yet):
 - `claude/dock-redesign`: MERGED into the PR branch (44bbfe4, branch tip 7acbb06; rounds 1-3 re-verified, last minors fixed by Sonnet, gate --full passed). Windows-only and unverified: fullscreen_covers, GUI_INMOVESIZE timers in the modal size loop, MonitorFromPoint before the event loop.
 - `claude/editor-preview`: MERGED into the PR branch (0b84c6e, branch tip 59a4b93). Gate on 0b84c6e: failed none; `cargo +1.99.1 clippy` clean. Pushed.

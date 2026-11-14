@@ -2557,14 +2557,14 @@ fn f2_on_a_header_starts_its_rename_and_folding_under_the_cursor_keeps_a_row_sel
     });
 }
 
-/// Runs `step` and says whether it asked for the Panel to be drawn whole (`repaint-flip`
-/// toggled) and what effects it applied.
+/// Runs `step` and says whether it damaged a whole window (`damage::whole_window`; the test
+/// backend draws nothing, so the count is what can be seen) and what effects it applied.
 fn drawn_whole_by(r: &Rig, step: impl FnOnce(&Rig)) -> (bool, Vec<Effect>) {
     r.effects.borrow_mut().clear();
-    let before = r.ui.get_repaint_flip();
+    let before = snipdeck_ui::damage::marked_whole();
     step(r);
     (
-        r.ui.get_repaint_flip() != before,
+        snipdeck_ui::damage::marked_whole() != before,
         r.effects.borrow().clone(),
     )
 }

@@ -99,7 +99,7 @@ Cases that match the reports:
 
 ## The fix
 
-1. **Opaque windows** (`window_kind::Plan::transparent`, always `false`, applied with `with_transparent` in the
+1. **Opaque windows** (`window_kind::TRANSPARENT`, `false`, applied with `with_transparent` in the
    attributes hook). DWM then ignores the alpha channel: an erase shows the theme colour (what O52 meant), never
    the desktop. Every window background is an opaque palette colour (`bg.app`, `bg.overlay`,
    `design/tokens/palette.json`), so nothing needs per-pixel alpha. Mica (DESIGN.md §5, unbuilt) would need its
@@ -111,7 +111,12 @@ Cases that match the reports:
    `snipdeck-platform/src/windows/update_region.rs`, read before `DefWindowProcW` empties it). The Panel, the Main
    window, every regular window (`track_focus`) and every popup window (`popup_window::Shell::ensure`) follow
    it. Ordinary frames (hover, typing) stay partial.
-3. `SNIPDECK_DIAG=fix` is gone (the fix is permanent); the word still switches the render log on.
+3. **One way to damage a window whole** (`snipdeck_ui::damage`): `whole_window` (mark + ask for a frame) for
+   changes made outside a frame (`binding.rs` `place`, show, dock), `mark_whole` (mark only) inside
+   `RedrawRequested`, which Slint always answers with a frame (`winitwindowadapter.rs:1290`); asking there
+   again drew one more, empty frame. `RepaintNudge` (the `repaint-flip` rectangle in the Panel and the Main
+   window) is retired.
+4. `SNIPDECK_DIAG=fix` is gone (the fix is permanent); the word still switches the render log on.
 
 Tests (Linux, fakes and a fixed clock): `repaint::tests` (10), `window_kind::tests::no_window_is_composed_see_through`,
 the drag test above, the binding test above, `diag::tests`.
