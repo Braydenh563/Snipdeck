@@ -286,7 +286,9 @@ fn a_list_replaced_by_one_of_the_same_name_is_where_save_to_puts_the_colour() {
     assert!(
         targets.row_data(at).unwrap().text.contains("Colours"),
         "the entry is the Colours list: {:?}",
-        targets.row_data(at).unwrap().text
+        (0..targets.row_count())
+            .map(|i| targets.row_data(i).unwrap().text)
+            .collect::<Vec<_>>()
     );
     r.state().invoke_save(i32::try_from(at).unwrap());
     r.settle();
