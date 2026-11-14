@@ -7828,8 +7828,8 @@ main | scripts/make_logo.py:97
 
 ### scripts/make_msix_assets.py
 
-scaled | scripts/make_msix_assets.py:29
-main | scripts/make_msix_assets.py:34
+scaled | scripts/make_msix_assets.py:33
+main | scripts/make_msix_assets.py:38
 
 ### scripts/msix_manifest.py
 
@@ -8568,7 +8568,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `scripts/test_bump_version.py` | 6 |
 | `scripts/test_i18n.py` | 16 |
 | `scripts/test_installer_check.py` | 16 |
-| `scripts/test_msix_manifest.py` | 7 |
+| `scripts/test_msix_manifest.py` | 9 |
 | `scripts/test_symbols.py` | 24 |
 | `spikes/s3-longtext/src/viewer.rs` (inline) | 1 |
 | `spikes/s4-mica/src/appearance.rs` (inline) | 8 |

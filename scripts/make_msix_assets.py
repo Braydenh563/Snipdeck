@@ -5,7 +5,9 @@ Source: assets/logo/snipdeck-icon.svg, the full-size mark that scripts/make_logo
 rasterised with cairosvg in the same way make_logo.py rasterises its icons, so no new dependency.
 Sizes follow docs/packaging.md, section 1, "Logos".
 
-The output is generated: do not commit it. packaging/msix/.gitignore ignores Assets/.
+The package logos are generated: do not commit them. packaging/msix/.gitignore ignores Assets/.
+It also writes the 300x300 Store listing logo (Partner Center, Store listing, "1:1 app tile icon") to
+docs/images/store-logo-300.png. That one is committed: the owner uploads it by hand.
 """
 import sys
 from pathlib import Path
@@ -13,6 +15,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "assets/logo/snipdeck-icon.svg"
 OUT = ROOT / "packaging/msix/Assets"
+LISTING = ROOT / "docs/images/store-logo-300.png"
+LISTING_PX = 300
 
 # (file stem, size in px at 100 %). The stems are the names the manifest and MakeAppx expect.
 BASE = (
@@ -58,6 +62,8 @@ def main():
         for pct in SCALES:
             write(f"{stem}.scale-{pct}", scaled(px, pct))
     write(*UNPLATED)
+    LISTING.write_bytes(cairosvg.svg2png(bytestring=svg, output_width=LISTING_PX, output_height=LISTING_PX))
+    print(f"{LISTING.relative_to(ROOT)}  {LISTING_PX}x{LISTING_PX}")
 
 
 if __name__ == "__main__":

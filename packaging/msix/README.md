@@ -20,8 +20,9 @@ Fill a **copy**, for example `dist/msix/AppxManifest.xml`. Do not edit the templ
 | `{{PUBLISHER_DISPLAY_NAME}}` | Partner Center `PublisherDisplayName`. |
 | `{{VERSION}}` | Four parts, from `Cargo.toml` plus `.0`, for example `0.1.0.0`. Raise it for every upload. Keep the last part `0`. |
 
-Also check `MinVersion` and `MaxVersionTested` in `Dependencies`. They should name the Windows builds
-you actually tested on. The values in the template are placeholders, not a test result.
+`MaxVersionTested` in `Dependencies` is `10.0.26300.0`, the owner's Windows 11 PC on the first Windows run
+(`docs/spikes/windows-results-20261017.md`). Raise it only after a run on a newer build. `MinVersion` is
+Windows 10 1903, the same as the installer; no Windows 10 run exists yet.
 
 The manifest declares the `StartupTask` (`TaskId="SnipdeckStartup"`, disabled until the user turns on
 "Start with Windows"). The app drives it through the WinRT `StartupTask` API. Keep the id in step with the

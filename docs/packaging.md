@@ -80,7 +80,7 @@ The manifest template and the logo script are in [`packaging/msix/`](../packagin
 | `Properties DisplayName` | `Snipdeck` | |
 | `Properties PublisherDisplayName` | your Partner Center publisher name | |
 | `Properties Logo` | `Assets\StoreLogo.png` (50x50) | |
-| `Dependencies TargetDeviceFamily` | `Windows.Desktop`, `MinVersion="10.0.18362.0"` (Windows 10 1903, equal to the installer), `MaxVersionTested` a current build | Set `MinVersion` to what the app was tested on. |
+| `Dependencies TargetDeviceFamily` | `Windows.Desktop`, `MinVersion="10.0.18362.0"` (Windows 10 1903, equal to the installer), `MaxVersionTested="10.0.26300.0"` (the owner's Windows 11 PC, `docs/spikes/windows-results-20261017.md`) | Raise `MaxVersionTested` only after a run on a newer build. |
 | `Application Executable` | `snipdeck.exe` | |
 | `Application EntryPoint` | `Windows.FullTrustApplication` | |
 | `uap:VisualElements` | `DisplayName="Snipdeck"`, `Description`, `BackgroundColor="transparent"`, `Square44x44Logo`, `Square150x150Logo` | |

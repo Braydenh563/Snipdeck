@@ -38,12 +38,22 @@
   </Properties>
 
   <Dependencies>
-    <!-- MinVersion: the oldest Windows build the app was tested on. MaxVersionTested: the newest one tested. -->
-    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.18362.0" MaxVersionTested="10.0.22621.0" />
+    <!-- MinVersion: the oldest Windows build the app supports (1903, for AppData redirection).
+         MaxVersionTested: the newest build the app was run on. 26300 is the owner's Windows 11 PC
+         (docs/spikes/windows-results-20261017.md). Raise it only after a run on a newer build. -->
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.18362.0" MaxVersionTested="10.0.26300.0" />
   </Dependencies>
 
   <Resources>
+    <!-- One per shipped UI language: English plus every folder in crates/snipdeck-ui/lang/
+         (scripts/test_msix_manifest.py checks the two match). -->
     <Resource Language="en-us" />
+    <Resource Language="de" />
+    <Resource Language="es" />
+    <Resource Language="fr" />
+    <Resource Language="ja" />
+    <Resource Language="pt-BR" />
+    <Resource Language="zh-Hans" />
   </Resources>
 
   <Applications>

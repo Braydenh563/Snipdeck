@@ -61,5 +61,24 @@ class FillTests(unittest.TestCase):
                 self.assertEqual(mm.main(base + ["--version", "x", "--out", str(out)]), 1)
 
 
+NS = "{http://schemas.microsoft.com/appx/manifest/foundation/windows10}"
+LANG = pathlib.Path(__file__).resolve().parent.parent / "crates" / "snipdeck-ui" / "lang"
+
+
+class TemplateTests(unittest.TestCase):
+    def test_declares_every_shipped_locale(self):
+        root = ET.fromstring(mm.fill(TEMPLATE, *ARGS).encode())
+        declared = {r.get("Language").lower() for r in root.iter(NS + "Resource")}
+        shipped = {"en-us"} | {d.name.lower() for d in LANG.iterdir() if d.is_dir()}
+        self.assertEqual(declared, shipped)
+
+    def test_max_version_tested_is_a_tested_build_with_its_source(self):
+        root = ET.fromstring(mm.fill(TEMPLATE, *ARGS).encode())
+        family = root.find(NS + "Dependencies/" + NS + "TargetDeviceFamily")
+        tested = family.get("MaxVersionTested")
+        self.assertEqual(tested, "10.0.26300.0")
+        self.assertIn("windows-results-20261017.md", TEMPLATE)
+
+
 if __name__ == "__main__":
     unittest.main()
