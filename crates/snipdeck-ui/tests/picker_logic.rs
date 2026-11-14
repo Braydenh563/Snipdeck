@@ -391,10 +391,13 @@ ui_tests! {
             let log = log.clone();
             ui.on_colour_open_requested(move |row| log.borrow_mut().push(format!("open:{row}")));
         }
-        // A row that is no colour has no chooser and no Open in Colours.
+        // A row that is no colour has no chooser and no Open in Colours. The Menu key there opens the
+        // search field's own Cut/Copy/Paste menu instead; Esc closes it and leaves the Picker open.
         press(ui.window(), &key(Key::Menu));
         chord(ui.window(), &[Key::Control], "o");
         assert_eq!(take(&log).len(), 0);
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(take(&log).len(), 0, "Esc closed only the field's menu");
 
         press(ui.window(), &key(Key::DownArrow));
         take(&log);
