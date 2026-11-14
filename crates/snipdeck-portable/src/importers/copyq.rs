@@ -34,11 +34,13 @@
 //! imported; `CopyQ`'s other formats (images, HTML) are not part of this path.
 
 use std::collections::HashMap;
+use std::fmt;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use serde_json::Value;
+use serde::Deserialize;
+use serde::de::{self, DeserializeSeed, Deserializer, IgnoredAny, MapAccess, SeqAccess, Visitor};
 use snipdeck_core::{Name, Timestamp};
 use snipdeck_store::name_key;
 
@@ -137,37 +139,15 @@ pub(crate) fn import_copyq_bytes<L: Library>(
     let mut report = ImportReport::default();
     let (text, how) = decode_text(bytes);
     note_lossy(how, "the CopyQ file", &mut report);
-    let (tab, values) = parse(&text)?;
-
-    let mut tags = Tags::default();
-    let mut items = Vec::new();
-    let mut budget = MEMORY_BUDGET;
-    for (number, value) in values.iter().enumerate() {
-        if items.len() >= options.limits.max_items {
-            report.warn(Warning::Truncated {
-                reason: format!(
-                    "only the first {} items were read",
-                    options.limits.max_items
-                ),
-            });
-            break;
-        }
-        let label = format!("CopyQ item {}", number + 1);
-        match item_from(value, &label, now, &mut tags, &mut report) {
-            Some(item) => {
-                let len = item_len(&item);
-                if len > budget {
-                    report.warn(Warning::Truncated {
-                        reason: "reached the import memory limit".to_owned(),
-                    });
-                    break;
-                }
-                budget -= len;
-                items.push(item);
-            }
-            None => report.items_skipped += 1,
-        }
+    let scan = parse(&text, now, options.limits.max_items)?;
+    report.items_skipped += scan.skipped;
+    for warning in scan.report.warnings {
+        report.warn(warning);
     }
+    report.warnings_dropped += scan.report.warnings_dropped;
+    let tab = scan.tab;
+    let tags = scan.tags;
+    let items = scan.items;
 
     let mut plan = Plan {
         tags: tags.names,
@@ -209,32 +189,387 @@ fn item_len(item: &PlanItem) -> u64 {
         .sum()
 }
 
-/// The tab name and the item values of whichever accepted shape `text` has.
-fn parse(text: &str) -> Result<(Option<String>, Vec<Value>)> {
-    let whole: core::result::Result<Value, _> = serde_json::from_str(text);
-    match whole {
-        Ok(Value::Object(mut map)) => {
-            let tab = map.get("tab").and_then(Value::as_str).map(str::to_owned);
-            match map.remove("items") {
-                Some(Value::Array(items)) => Ok((tab, items)),
-                _ => Err(Error::malformed(
-                    "the CopyQ file",
-                    "an object needs an `items` array",
-                )),
+/// What one pass over the file collected. Items are turned into plan items as they are read, so
+/// no tree of the whole file ever exists; the scan stops at `max_items` items, at four times
+/// that many elements looked at, and at the memory budget.
+struct Scan {
+    items: Vec<PlanItem>,
+    tags: Tags,
+    report: ImportReport,
+    skipped: usize,
+    tab: Option<String>,
+    now: Timestamp,
+    max_items: usize,
+    looked_at: usize,
+    budget: u64,
+    stopped: bool,
+}
+
+impl Scan {
+    fn new(now: Timestamp, max_items: usize) -> Self {
+        Self {
+            items: Vec::new(),
+            tags: Tags::default(),
+            report: ImportReport::default(),
+            skipped: 0,
+            tab: None,
+            now,
+            max_items,
+            looked_at: 0,
+            budget: MEMORY_BUDGET,
+            stopped: false,
+        }
+    }
+
+    fn truncated(&mut self, reason: String) {
+        self.report.warn(Warning::Truncated { reason });
+        self.stopped = true;
+    }
+
+    /// Takes the next element. `false` means the scan is over (a cap was reached).
+    fn take(&mut self, entry: &Entry) -> bool {
+        if self.items.len() >= self.max_items {
+            self.truncated(format!("only the first {} items were read", self.max_items));
+            return false;
+        }
+        if self.looked_at >= self.max_items.saturating_mul(4) {
+            self.truncated(format!(
+                "stopped after looking at {} entries",
+                self.looked_at
+            ));
+            return false;
+        }
+        self.looked_at += 1;
+        let label = format!("CopyQ item {}", self.looked_at);
+        let now = self.now;
+        match item_from(entry, &label, now, &mut self.tags, &mut self.report) {
+            Some(item) => {
+                let len = item_len(&item);
+                if len > self.budget {
+                    self.truncated("reached the import memory limit".to_owned());
+                    return false;
+                }
+                self.budget -= len;
+                self.items.push(item);
+            }
+            None => self.skipped += 1,
+        }
+        true
+    }
+}
+
+/// The error a visitor returns to end the scan early; the caller checks `Scan::stopped`.
+fn stop<E: de::Error>() -> E {
+    E::custom("scan stopped at a limit")
+}
+
+/// One array element as far as the importer cares: nothing of an unexpected shape is kept, and
+/// an array of tags keeps only the first few strings.
+enum Entry {
+    Text(String),
+    Object {
+        text: Option<String>,
+        title: Option<String>,
+        tags: Vec<String>,
+        pinned: bool,
+    },
+    Other,
+}
+
+/// A value of any shape, reduced to what an item field can use.
+enum Lax {
+    Str(String),
+    Bool(bool),
+    Strs(Vec<String>),
+    Other,
+}
+
+/// An array element of `tags`: a string, or anything else (skipped, not kept).
+struct Leaf(Option<String>);
+
+fn drain_seq<'de, A: SeqAccess<'de>>(mut seq: A) -> core::result::Result<(), A::Error> {
+    while seq.next_element::<IgnoredAny>()?.is_some() {}
+    Ok(())
+}
+
+fn drain_map<'de, A: MapAccess<'de>>(mut map: A) -> core::result::Result<(), A::Error> {
+    while map.next_entry::<IgnoredAny, IgnoredAny>()?.is_some() {}
+    Ok(())
+}
+
+macro_rules! scalars_are_other {
+    ($result:expr) => {
+        fn visit_bool<E: de::Error>(self, _: bool) -> core::result::Result<Self::Value, E> {
+            Ok($result)
+        }
+        fn visit_i64<E: de::Error>(self, _: i64) -> core::result::Result<Self::Value, E> {
+            Ok($result)
+        }
+        fn visit_u64<E: de::Error>(self, _: u64) -> core::result::Result<Self::Value, E> {
+            Ok($result)
+        }
+        fn visit_f64<E: de::Error>(self, _: f64) -> core::result::Result<Self::Value, E> {
+            Ok($result)
+        }
+        fn visit_unit<E: de::Error>(self) -> core::result::Result<Self::Value, E> {
+            Ok($result)
+        }
+        fn visit_none<E: de::Error>(self) -> core::result::Result<Self::Value, E> {
+            Ok($result)
+        }
+    };
+}
+
+impl<'de> Deserialize<'de> for Leaf {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> core::result::Result<Self, D::Error> {
+        struct V;
+        impl<'de> Visitor<'de> for V {
+            type Value = Leaf;
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("any JSON value")
+            }
+            fn visit_str<E: de::Error>(self, v: &str) -> core::result::Result<Leaf, E> {
+                Ok(Leaf(Some(v.to_owned())))
+            }
+            fn visit_string<E: de::Error>(self, v: String) -> core::result::Result<Leaf, E> {
+                Ok(Leaf(Some(v)))
+            }
+            fn visit_seq<A: SeqAccess<'de>>(self, seq: A) -> core::result::Result<Leaf, A::Error> {
+                drain_seq(seq)?;
+                Ok(Leaf(None))
+            }
+            fn visit_map<A: MapAccess<'de>>(self, map: A) -> core::result::Result<Leaf, A::Error> {
+                drain_map(map)?;
+                Ok(Leaf(None))
+            }
+            scalars_are_other!(Leaf(None));
+        }
+        d.deserialize_any(V)
+    }
+}
+
+impl<'de> Deserialize<'de> for Lax {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> core::result::Result<Self, D::Error> {
+        struct V;
+        impl<'de> Visitor<'de> for V {
+            type Value = Lax;
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("any JSON value")
+            }
+            fn visit_str<E: de::Error>(self, v: &str) -> core::result::Result<Lax, E> {
+                Ok(Lax::Str(v.to_owned()))
+            }
+            fn visit_string<E: de::Error>(self, v: String) -> core::result::Result<Lax, E> {
+                Ok(Lax::Str(v))
+            }
+            fn visit_bool<E: de::Error>(self, v: bool) -> core::result::Result<Lax, E> {
+                Ok(Lax::Bool(v))
+            }
+            fn visit_seq<A: SeqAccess<'de>>(
+                self,
+                mut seq: A,
+            ) -> core::result::Result<Lax, A::Error> {
+                let mut out = Vec::new();
+                while let Some(Leaf(leaf)) = seq.next_element::<Leaf>()? {
+                    if let Some(tag) = leaf
+                        && out.len() <= MAX_TAGS_PER_ITEM
+                    {
+                        out.push(tag);
+                    }
+                }
+                Ok(Lax::Strs(out))
+            }
+            fn visit_i64<E: de::Error>(self, _: i64) -> core::result::Result<Lax, E> {
+                Ok(Lax::Other)
+            }
+            fn visit_u64<E: de::Error>(self, _: u64) -> core::result::Result<Lax, E> {
+                Ok(Lax::Other)
+            }
+            fn visit_f64<E: de::Error>(self, _: f64) -> core::result::Result<Lax, E> {
+                Ok(Lax::Other)
+            }
+            fn visit_unit<E: de::Error>(self) -> core::result::Result<Lax, E> {
+                Ok(Lax::Other)
+            }
+            fn visit_none<E: de::Error>(self) -> core::result::Result<Lax, E> {
+                Ok(Lax::Other)
+            }
+            fn visit_map<A: MapAccess<'de>>(self, map: A) -> core::result::Result<Lax, A::Error> {
+                drain_map(map)?;
+                Ok(Lax::Other)
             }
         }
-        Ok(Value::Array(items)) => Ok((None, items)),
-        Ok(other @ Value::String(_)) => Ok((None, vec![other])),
-        Ok(_) => Err(Error::malformed(
+        d.deserialize_any(V)
+    }
+}
+
+impl<'de> Deserialize<'de> for Entry {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> core::result::Result<Self, D::Error> {
+        struct V;
+        impl<'de> Visitor<'de> for V {
+            type Value = Entry;
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("any JSON value")
+            }
+            fn visit_str<E: de::Error>(self, v: &str) -> core::result::Result<Entry, E> {
+                Ok(Entry::Text(v.to_owned()))
+            }
+            fn visit_string<E: de::Error>(self, v: String) -> core::result::Result<Entry, E> {
+                Ok(Entry::Text(v))
+            }
+            fn visit_seq<A: SeqAccess<'de>>(self, seq: A) -> core::result::Result<Entry, A::Error> {
+                drain_seq(seq)?;
+                Ok(Entry::Other)
+            }
+            fn visit_map<A: MapAccess<'de>>(
+                self,
+                mut map: A,
+            ) -> core::result::Result<Entry, A::Error> {
+                let (mut text, mut title, mut tags, mut pinned) = (None, None, Vec::new(), false);
+                while let Some(key) = map.next_key::<String>()? {
+                    match (key.as_str(), map.next_value::<Lax>()?) {
+                        ("text", Lax::Str(v)) => text = Some(v),
+                        ("title", Lax::Str(v)) => title = Some(v),
+                        ("tags", Lax::Strs(v)) => tags = v,
+                        ("pinned", Lax::Bool(v)) => pinned = v,
+                        _ => {}
+                    }
+                }
+                Ok(Entry::Object {
+                    text,
+                    title,
+                    tags,
+                    pinned,
+                })
+            }
+            scalars_are_other!(Entry::Other);
+        }
+        d.deserialize_any(V)
+    }
+}
+
+fn scan_seq<'de, A: SeqAccess<'de>>(
+    scan: &mut Scan,
+    mut seq: A,
+) -> core::result::Result<(), A::Error> {
+    while let Some(entry) = seq.next_element::<Entry>()? {
+        if !scan.take(&entry) {
+            return Err(stop());
+        }
+    }
+    Ok(())
+}
+
+/// The items array: each element is handled as it is read.
+struct Items<'a>(&'a mut Scan);
+
+impl<'de> DeserializeSeed<'de> for Items<'_> {
+    /// Whether the value was an array.
+    type Value = bool;
+    fn deserialize<D: Deserializer<'de>>(self, d: D) -> core::result::Result<bool, D::Error> {
+        struct V<'a>(&'a mut Scan);
+        impl<'de> Visitor<'de> for V<'_> {
+            type Value = bool;
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("any JSON value")
+            }
+            fn visit_seq<A: SeqAccess<'de>>(self, seq: A) -> core::result::Result<bool, A::Error> {
+                scan_seq(self.0, seq)?;
+                Ok(true)
+            }
+            fn visit_str<E: de::Error>(self, _: &str) -> core::result::Result<bool, E> {
+                Ok(false)
+            }
+            fn visit_map<A: MapAccess<'de>>(self, map: A) -> core::result::Result<bool, A::Error> {
+                drain_map(map)?;
+                Ok(false)
+            }
+            scalars_are_other!(false);
+        }
+        d.deserialize_any(V(self.0))
+    }
+}
+
+/// What the whole file turned out to be.
+enum Shape {
+    /// An object; `items` says whether it had an `items` array.
+    Object {
+        items: bool,
+    },
+    Array,
+    /// A bare string: one item.
+    Text,
+    Scalar,
+}
+
+struct Top<'a>(&'a mut Scan);
+
+impl<'de> Visitor<'de> for Top<'_> {
+    type Value = Shape;
+    fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("any JSON value")
+    }
+    fn visit_seq<A: SeqAccess<'de>>(self, seq: A) -> core::result::Result<Shape, A::Error> {
+        scan_seq(self.0, seq)?;
+        Ok(Shape::Array)
+    }
+    fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> core::result::Result<Shape, A::Error> {
+        let mut items = false;
+        while let Some(key) = map.next_key::<String>()? {
+            match key.as_str() {
+                "tab" => {
+                    if let Lax::Str(v) = map.next_value::<Lax>()? {
+                        self.0.tab = Some(v);
+                    }
+                }
+                "items" => items = map.next_value_seed(Items(self.0))?,
+                _ => {
+                    map.next_value::<IgnoredAny>()?;
+                }
+            }
+        }
+        Ok(Shape::Object { items })
+    }
+    fn visit_str<E: de::Error>(self, v: &str) -> core::result::Result<Shape, E> {
+        self.0.take(&Entry::Text(v.to_owned()));
+        Ok(Shape::Text)
+    }
+    scalars_are_other!(Shape::Scalar);
+}
+
+/// The tab name and the items of whichever accepted shape `text` has, read in one pass.
+fn parse(text: &str, now: Timestamp, max_items: usize) -> Result<Scan> {
+    let mut scan = Scan::new(now, max_items);
+    let mut de = serde_json::Deserializer::from_str(text);
+    let first = Deserializer::deserialize_any(&mut de, Top(&mut scan));
+    let first = match first {
+        Ok(shape) => de.end().map(|()| shape),
+        Err(e) => Err(e),
+    };
+    match first {
+        Ok(Shape::Object { items: true } | Shape::Array | Shape::Text) => Ok(scan),
+        Ok(Shape::Object { .. }) => Err(Error::malformed(
+            "the CopyQ file",
+            "an object needs an `items` array",
+        )),
+        Ok(Shape::Scalar) => Err(Error::malformed(
             "the CopyQ file",
             "expected an object with `items`, an array, or one JSON value per line",
         )),
+        // A cap ended the scan on purpose: what was collected stands.
+        Err(_) if scan.stopped => Ok(scan),
         Err(whole_error) => {
             // JSON Lines: every non-blank line is a value.
-            let mut values = Vec::new();
+            let mut scan = Scan::new(now, max_items);
+            let mut any = false;
             for line in text.lines().map(str::trim).filter(|l| !l.is_empty()) {
-                match serde_json::from_str::<Value>(line) {
-                    Ok(v) => values.push(v),
+                any = true;
+                match serde_json::from_str::<Entry>(line) {
+                    Ok(entry) => {
+                        if !scan.take(&entry) {
+                            break;
+                        }
+                    }
                     Err(_) => {
                         return Err(Error::malformed(
                             "the CopyQ file",
@@ -243,50 +578,39 @@ fn parse(text: &str) -> Result<(Option<String>, Vec<Value>)> {
                     }
                 }
             }
-            if values.is_empty() {
+            if !any {
                 return Err(Error::malformed("the CopyQ file", "it is empty"));
             }
-            Ok((None, values))
+            Ok(scan)
         }
     }
 }
 
 fn item_from(
-    value: &Value,
+    entry: &Entry,
     label: &str,
     now: Timestamp,
     tags: &mut Tags,
     report: &mut ImportReport,
 ) -> Option<PlanItem> {
-    let (text, title, item_tags, pinned) = match value {
-        Value::String(s) => (s.as_str(), None, Vec::new(), false),
-        Value::Object(map) => {
-            let Some(text) = map.get("text").and_then(Value::as_str) else {
+    let (text, title, item_tags, pinned) = match entry {
+        Entry::Text(s) => (s.as_str(), None, &[][..], false),
+        Entry::Object {
+            text,
+            title,
+            tags,
+            pinned,
+        } => {
+            let Some(text) = text.as_deref() else {
                 report.warn(Warning::Unreadable {
                     name: label.to_owned(),
                     reason: "no `text` string".to_owned(),
                 });
                 return None;
             };
-            let item_tags = map
-                .get("tags")
-                .and_then(Value::as_array)
-                .map(|a| {
-                    a.iter()
-                        .filter_map(Value::as_str)
-                        .take(MAX_TAGS_PER_ITEM + 1)
-                        .map(str::to_owned)
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default();
-            (
-                text,
-                map.get("title").and_then(Value::as_str),
-                item_tags,
-                map.get("pinned").and_then(Value::as_bool).unwrap_or(false),
-            )
+            (text, title.as_deref(), tags.as_slice(), *pinned)
         }
-        _ => {
+        Entry::Other => {
             report.warn(Warning::Unreadable {
                 name: label.to_owned(),
                 reason: "not a string or an object".to_owned(),
@@ -316,8 +640,8 @@ fn item_from(
     if item_tags.len() > MAX_TAGS_PER_ITEM {
         tags.warn(report);
     }
-    for tag in item_tags.into_iter().take(MAX_TAGS_PER_ITEM) {
-        let Ok(name) = Name::new(&clean_label(&tag, Name::MAX_CHARS)) else {
+    for tag in item_tags.iter().take(MAX_TAGS_PER_ITEM) {
+        let Ok(name) = Name::new(&clean_label(tag, Name::MAX_CHARS)) else {
             continue;
         };
         if let Some(index) = tags.index_of(name, report) {

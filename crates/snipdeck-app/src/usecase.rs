@@ -6,10 +6,12 @@ use std::collections::BTreeMap;
 use snipdeck_core::{
     Entitlements, Feature, Format, Formats, Item, ItemId, ItemKind, Timestamp, UseMode, UseOutcome,
     template::{
-        Locale, Prompt, PromptKind, RenderContext, RenderError, Template, TemplateError, TimeZone,
+        Locale, Prompt, RenderContext, RenderError, Template, TemplateError, TimeZone,
+        transform::{self, Transform},
     },
 };
 use snipdeck_platform::{
+    keys::{Key, KeyEvent},
     payload::{Data, FilePayload, Payload},
     pipeline::{self, Clipboard, Env, Keyboard, Timing},
     route::Route,
@@ -36,20 +38,40 @@ pub struct UseRequest {
     pub tz: TimeZone,
     /// The date and clock style for `{date}` and `{time}`.
     pub locale: Locale,
+    /// A "Paste as..." transform: applied to the text (a template is rendered first) and the
+    /// item goes out as plain text only, with the caret left at the end.
+    pub transform: Option<Transform>,
+    /// Random bytes for each `{uuid}`; `None` draws them from the system.
+    pub uuids: Option<Vec<[u8; 16]>>,
+    /// Backspaces to send with the paste, to erase a typed trigger (0 for every other use).
+    pub erase: usize,
 }
+
+/// The most Left presses sent to put the caret at `{cursor}`.
+pub const MAX_CURSOR_PRESSES: usize = 512;
 
 /// What a use did.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Used {
     /// What happened, for the toast and the card pull.
     pub outcome: UseOutcome,
-    /// For a template with `{cursor}`: how many Left-arrow presses move the caret to it.
-    /// Not yet applied by the pipeline.
+    /// For a template with `{cursor}`: how many Left-arrow presses move the caret to it. Sent
+    /// after a paste (at most [`MAX_CURSOR_PRESSES`]); a copy has no caret to move.
     pub cursor_from_end: Option<usize>,
     /// Why the use could not be counted, when the paste or copy worked but the store refused the
     /// usage update. The use is best-effort bookkeeping: failing it must not turn a paste that
     /// happened into an error (the user would retry and paste twice). The host may log it.
     pub count_failed: Option<String>,
+}
+
+impl Used {
+    /// The diagnostic line for a use that worked but could not be counted (`SNIPDECK_LOG=1`).
+    #[must_use]
+    pub fn count_failed_line(&self) -> Option<String> {
+        self.count_failed
+            .as_ref()
+            .map(|why| format!("use not counted: {why}"))
+    }
 }
 
 /// Why a use did not happen.
@@ -64,7 +86,7 @@ pub enum UseError {
     /// The item's template no longer parses.
     #[error(transparent)]
     Template(#[from] TemplateError),
-    /// The template cannot be rendered: a Pro placeholder on Free, or too large.
+    /// The template cannot be rendered: a Supporter placeholder on Free, or too large.
     #[error(transparent)]
     Render(#[from] RenderError),
     /// The template needs answers the request did not carry: show the fill form.
@@ -73,6 +95,9 @@ pub enum UseError {
     /// The clipboard or key injection failed.
     #[error(transparent)]
     Platform(#[from] pipeline::Error),
+    /// The system gave no random numbers for `{uuid}`.
+    #[error("the system gave no random numbers")]
+    NoRandomness,
 }
 
 /// Uses an item. The use is counted only when it happened (pasted or copied); if counting it
@@ -92,10 +117,52 @@ where
     K: Keyboard,
     T: Timing,
 {
+    use_item_guarded(store, env, request, &|| true)
+}
+
+/// [`use_item`] that asks `proceed` right before the keys go out and calls the use off when it
+/// says no ([`pipeline::Error::Superseded`], as [`UseError::Platform`]).
+///
+/// # Errors
+///
+/// See [`UseError`].
+pub fn use_item_guarded<S, C, K, T>(
+    store: &mut S,
+    env: &mut Env<'_, C, K, T>,
+    request: &UseRequest,
+    proceed: &dyn Fn() -> bool,
+) -> Result<Used, UseError>
+where
+    S: ItemRepo + BlobStore,
+    C: Clipboard,
+    K: Keyboard,
+    T: Timing,
+{
     let item = store.item(request.item)?;
     let formats = store.formats(request.item)?;
     let (payload, cursor_from_end) = build_payload(store, &item, &formats, request)?;
-    let outcome = pipeline::use_item(env, &payload, request.mode, &request.route)?;
+    let outcome = pipeline::use_item_erasing(
+        env,
+        &payload,
+        request.mode,
+        &request.route,
+        request.erase,
+        proceed,
+    )?;
+    if matches!(outcome, UseOutcome::Pasted | UseOutcome::PastedNotRestored)
+        && let Some(n) = cursor_from_end.filter(|n| *n > 0)
+    {
+        // The paste happened: a failed caret move is not an error. Unverified on Windows
+        // (Fable v1 sweep A5).
+        let left = |down| KeyEvent {
+            key: Key::Left,
+            down,
+        };
+        let presses: Vec<KeyEvent> = (0..n.min(MAX_CURSOR_PRESSES))
+            .flat_map(|_| [left(true), left(false)])
+            .collect();
+        let _ = env.keyboard.send(&presses);
+    }
     // The paste or copy has happened: counting it is best-effort and never an error.
     let count_failed = store
         .record_use(item.id, request.now)
@@ -124,12 +191,29 @@ pub fn template_source<S: ItemRepo + BlobStore>(
     }
     let formats = store.formats(item.id)?;
     let text = text_of(store, &formats)?.ok_or(UseError::NotText)?;
-    let title = if item.title.trim().is_empty() {
-        text.lines().next().unwrap_or_default().to_owned()
-    } else {
+    let title = if !item.title.trim().is_empty() {
         item.title
+    } else if item.sensitive {
+        // The first line of a sensitive body is never put on the screen.
+        String::new()
+    } else {
+        text.lines().next().unwrap_or_default().to_owned()
     };
     Ok(Some((title, text)))
+}
+
+/// The text of `item`, or `None` when it holds none (an image, files). For a sensitive item
+/// this reads the real text, so the caller shows it only while the user holds it revealed.
+///
+/// # Errors
+///
+/// A store error (a locked key ring for a sensitive item), or [`UseError::NotText`].
+pub fn item_text<S: ItemRepo + BlobStore>(
+    store: &S,
+    item: ItemId,
+) -> Result<Option<String>, UseError> {
+    let formats = store.formats(item)?;
+    text_of(store, &formats)
 }
 
 fn text_of<S: BlobStore>(store: &S, formats: &Formats) -> Result<Option<String>, UseError> {
@@ -154,16 +238,25 @@ fn build_payload<S: BlobStore>(
     let mut data = Vec::new();
     for format in formats {
         match format {
+            // A transformed paste is plain text: no HTML, RTF, picture or files go with it.
+            Format::Html(_) | Format::Rtf(_) | Format::Png(_) | Format::Files(_)
+                if request.transform.is_some() => {}
             Format::Text(content) => {
                 let bytes = store.read(content)?;
                 let text = String::from_utf8(bytes.into_owned()).map_err(|_| UseError::NotText)?;
-                if item.kind == ItemKind::Template {
+                let mut text = if item.kind == ItemKind::Template {
                     let rendered = render_template(&text, request)?;
                     cursor = rendered.1;
-                    data.push(Data::Text(rendered.0));
+                    rendered.0
                 } else {
-                    data.push(Data::Text(text));
+                    text
+                };
+                if let Some(transform) = request.transform {
+                    text = transform::apply(transform, &text);
+                    // The transform can change lengths (`ß` is `SS`): no caret to restore.
+                    cursor = None;
                 }
+                data.push(Data::Text(text));
             }
             // A template's rich formats cannot be filled in: its text is what gets pasted.
             Format::Html(_) | Format::Rtf(_) if item.kind == ItemKind::Template => {}
@@ -206,23 +299,32 @@ fn render_template(text: &str, request: &UseRequest) -> Result<(String, Option<u
             return Err(RenderError::ProRequired(feature).into());
         }
     }
-    let missing: Vec<Prompt> = template
-        .prompts()
-        .into_iter()
-        .filter(|p| {
-            !request.answers.contains_key(&p.name)
-                && !matches!(
-                    p.kind,
-                    PromptKind::Field { default: Some(_) } | PromptKind::Choice { .. }
-                )
-        })
-        .collect();
-    if !missing.is_empty() {
-        return Err(UseError::NeedsAnswers(template.prompts()));
+    // Any prompt without an answer opens the form, whatever its kind: a default only prefills
+    // it, and a choice, date or tick box alone must still be asked (empty date = today).
+    let prompts = template.prompts();
+    if prompts
+        .iter()
+        .any(|p| !request.answers.contains_key(&p.name))
+    {
+        return Err(UseError::NeedsAnswers(prompts));
     }
+    let drawn;
+    let uuids = if let Some(given) = &request.uuids {
+        given.as_slice()
+    } else {
+        drawn = (0..template.uuid_count())
+            .map(|_| {
+                let mut bytes = [0u8; 16];
+                getrandom::fill(&mut bytes).map_err(|_| UseError::NoRandomness)?;
+                Ok(bytes)
+            })
+            .collect::<Result<Vec<_>, UseError>>()?;
+        drawn.as_slice()
+    };
     let mut ctx = RenderContext::new(request.now, &request.answers)
         .with_tz(request.tz.clone())
-        .with_locale(request.locale);
+        .with_locale(request.locale)
+        .with_uuids(uuids);
     if let Some(clipboard) = &request.clipboard_text {
         ctx = ctx.with_clipboard(clipboard);
     }
@@ -297,6 +399,9 @@ mod tests {
                 clipboard_text: None,
                 tz: TimeZone::UTC,
                 locale: Locale::for_tag("en"),
+                transform: None,
+                uuids: None,
+                erase: 0,
             }
         }
 
@@ -350,6 +455,12 @@ mod tests {
         }
         fn all_items(&self) -> snipdeck_store::Result<Vec<Item>> {
             self.0.all_items()
+        }
+        fn change_counter(&self) -> u64 {
+            self.0.change_counter()
+        }
+        fn usage_counter(&self) -> u64 {
+            self.0.usage_counter()
         }
         fn item(&self, id: ItemId) -> snipdeck_store::Result<Item> {
             self.0.item(id)
@@ -421,9 +532,14 @@ mod tests {
             used.count_failed
         );
         assert_eq!(w.store.item(id).expect("item").use_count, 0, "not counted");
+        assert!(
+            used.count_failed_line()
+                .is_some_and(|l| l.starts_with("use not counted:") && l.contains("disk full"))
+        );
         // A normal use reports nothing.
         let ok = w.run(&request).expect("used");
         assert_eq!(ok.count_failed, None);
+        assert_eq!(ok.count_failed_line(), None);
     }
 
     #[test]
@@ -459,6 +575,146 @@ mod tests {
         assert!(!text.contains('{'), "{text}");
     }
 
+    fn texts_written(w: &World) -> Vec<Vec<Data>> {
+        w.clipboard
+            .written
+            .iter()
+            .map(|p| p.data().to_vec())
+            .collect()
+    }
+
+    #[test]
+    fn paste_as_upper_is_plain_with_caret_at_end() {
+        // A template with a caret and an HTML twin: the transform keeps the text only and
+        // leaves the caret where the paste ends.
+        let mut w = World::new();
+        let id = w.add(ItemKind::Template, false, "Hi {cursor} straße");
+        let mut request = World::request(id, UseMode::Paste, PASTE);
+        request.transform = Some(Transform::Upper);
+        let used = w.run(&request).expect("used");
+        assert_eq!(texts_written(&w), [[Data::Text("HI  STRASSE".into())]]);
+        assert_eq!(used.cursor_from_end, None);
+        assert!(
+            w.keyboard.sent.iter().flatten().all(|e| e.key != Key::Left),
+            "no caret moves"
+        );
+
+        // Rich formats are left behind.
+        let mut w = World::new();
+        let id = w.add(ItemKind::Text, false, "plain words");
+        let existing = w.store.formats(id).expect("formats");
+        let mut formats: Vec<Format> = existing.into_iter().cloned().collect();
+        let html = snipdeck_core::Content::Inline(
+            snipdeck_core::Inline::new(b"<b>plain words</b>".to_vec()).expect("inline"),
+        );
+        formats.push(Format::Html(html));
+        let item = w.store.item(id).expect("item");
+        w.store
+            .update_item(&item, Some(&Formats::new(formats).expect("formats")))
+            .expect("set");
+        let mut request = World::request(id, UseMode::Paste, PASTE);
+        w.run(&request).expect("used");
+        assert_eq!(
+            w.clipboard.written[0].data().len(),
+            2,
+            "html goes along untransformed"
+        );
+        request.transform = Some(Transform::Title);
+        w.run(&request).expect("used");
+        assert_eq!(
+            w.clipboard.written[1].data(),
+            [Data::Text("Plain Words".into())]
+        );
+    }
+
+    #[test]
+    fn paste_as_on_a_sensitive_item_still_goes_out_private() {
+        let mut w = World::new();
+        let id = w.add(ItemKind::Text, true, "hunter2");
+        let mut request = World::request(id, UseMode::Copy, Route::Copy(CopyReason::NoTarget));
+        request.transform = Some(Transform::Upper);
+        w.run(&request).expect("used");
+        assert!(w.clipboard.written[0].is_private());
+        assert_eq!(
+            w.clipboard.written[0].data(),
+            [Data::Text("HUNTER2".into())]
+        );
+    }
+
+    #[test]
+    fn a_paste_as_on_a_picture_is_refused_not_pasted() {
+        let mut w = World::new();
+        let id = w.add(ItemKind::Text, false, "x");
+        let formats = vec![Format::Png(snipdeck_core::Content::Inline(
+            snipdeck_core::Inline::new(vec![1, 2, 3]).expect("inline"),
+        ))];
+        let item = w.store.item(id).expect("item");
+        w.store
+            .update_item(&item, Some(&Formats::new(formats).expect("formats")))
+            .expect("set");
+        let mut request = World::request(id, UseMode::Paste, PASTE);
+        request.transform = Some(Transform::Upper);
+        assert!(matches!(w.run(&request), Err(UseError::NotText)));
+        assert_eq!(w.clipboard.written.len(), 0);
+    }
+
+    #[test]
+    fn uuids_in_a_template_come_from_the_request_and_differ_per_occurrence() {
+        let mut w = World::new();
+        let id = w.add(ItemKind::Template, false, "{uuid}|{uuid}");
+        let mut request = World::request(id, UseMode::Copy, Route::Copy(CopyReason::NoTarget));
+        request.uuids = Some(vec![[0x11; 16], [0x22; 16]]);
+        w.run(&request).expect("used");
+        assert_eq!(
+            w.clipboard.written[0].data(),
+            [Data::Text(
+                "11111111-1111-4111-9111-111111111111|22222222-2222-4222-a222-222222222222".into()
+            )]
+        );
+        // Without bytes from the caller the system draws them: two distinct v4 ids.
+        let mut w = World::new();
+        let id = w.add(ItemKind::Template, false, "{uuid}|{uuid}");
+        w.run(&World::request(
+            id,
+            UseMode::Copy,
+            Route::Copy(CopyReason::NoTarget),
+        ))
+        .expect("used");
+        let Data::Text(text) = &w.clipboard.written[0].data()[0] else {
+            panic!("text")
+        };
+        let (a, b) = text.split_once('|').expect("two");
+        assert_ne!(a, b);
+        assert_eq!(a.len(), 36);
+        assert_eq!(a.as_bytes()[14], b'4');
+    }
+
+    #[test]
+    fn a_template_with_a_cursor_pastes_then_moves_the_caret_back() {
+        let mut w = World::new();
+        let id = w.add(ItemKind::Template, false, "Hi {cursor} there");
+        w.run(&World::request(id, UseMode::Paste, PASTE))
+            .expect("used");
+        let lefts: Vec<_> = w
+            .keyboard
+            .sent
+            .last()
+            .expect("sent")
+            .iter()
+            .map(|e| (e.key, e.down))
+            .collect();
+        let expected: Vec<_> = (0..6)
+            .flat_map(|_| [(Key::Left, true), (Key::Left, false)])
+            .collect();
+        assert_eq!(lefts, expected, "six Left pairs for ' there'");
+
+        let mut w = World::new();
+        let id = w.add(ItemKind::Template, false, "Hi {cursor} there");
+        let copy = World::request(id, UseMode::Copy, Route::Copy(CopyReason::NoTarget));
+        w.run(&copy).expect("used");
+        assert!(w.keyboard.sent.is_empty(), "a copy sends no keys");
+    }
+
     #[test]
     fn a_template_without_its_answers_asks_for_them_and_changes_nothing() {
         let mut w = World::new();
@@ -490,6 +746,31 @@ mod tests {
             Err(UseError::Render(RenderError::ProRequired(_)))
         ));
         assert_eq!(w.store.item(id).expect("item").use_count, 0);
+    }
+
+    #[test]
+    fn every_prompt_kind_opens_the_form_until_it_is_answered() {
+        for text in [
+            "Hi{optional:PS}, P.S.{/optional}",
+            "Due {pickdate:Due}",
+            "Size {choice:Size|S|M}",
+            "Hi {field:Name|there}",
+            "{multiline:Body|Dear all}",
+        ] {
+            let mut w = World::new();
+            let id = w.add(ItemKind::Template, false, text);
+            let mut request = World::request(id, UseMode::Copy, Route::Copy(CopyReason::NoTarget));
+            assert!(
+                matches!(w.run(&request), Err(UseError::NeedsAnswers(_))),
+                "{text} asks first"
+            );
+            let prompts = Template::parse(text).expect("parses").prompts();
+            request.answers = prompts
+                .iter()
+                .map(|p| (p.name.clone(), String::new()))
+                .collect();
+            w.run(&request).expect("answered, it renders");
+        }
     }
 
     #[test]

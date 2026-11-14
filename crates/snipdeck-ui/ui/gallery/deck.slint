@@ -12,10 +12,8 @@ struct DeckSample {
     title: string,
     preview: string,
     masked: string,
-    ext: string,
     number: int,
     selected: bool,
-    show-label: bool,
     revealed: bool,
     pulling: bool,
     // 0 = none, 1 = amber, 2 = violet (list colours are step 600 in light, 400 in dark).
@@ -34,13 +32,14 @@ component SampleCard inherits ItemCard {
     preview: root.s.preview;
     masked-preview: root.s.masked;
     masked-hint: "Hidden. Hold Space to reveal.";
-    extension: root.s.ext;
     number: root.s.number;
     selected: root.s.selected;
-    show-use-label: root.s.show-label;
-    use-label: "Paste";
     revealed: root.s.revealed;
     pulling: root.s.pulling;
+    // Copy, Edit, More and Use are the row's own actions: they show on hover and on the selected row.
+    show-actions: root.s.selected;
+    use-action: true;
+    use-tip: "Paste \{root.s.title}";
     list-name: root.s.list-name;
     list-color: root.s.list-hue == 1 ? (Palette.dark ? Primitives.amber-400 : Primitives.amber-600)
         : root.s.list-hue == 2 ? (Palette.dark ? Primitives.violet-400 : Primitives.violet-600) : transparent;
@@ -48,32 +47,34 @@ component SampleCard inherits ItemCard {
 
     use => { root.act("use", root.s.title); }
     copy => { root.act("copy", root.s.title); }
+    edit => { root.act("edit", root.s.title); }
     context-menu-requested(x, y) => { root.act("menu", root.s.title); }
+    picked(shift, control) => { root.act("pick", root.s.title); }
     reveal-requested(on) => { root.act(on ? "reveal" : "hide", root.s.title); }
 }
 
 global DeckSamples {
     out property <[DeckSample]> all: [
-        { kind: ItemKind.text, title: "Thanks, received", preview: "Thanks for sending this over. I'll review it today and get back to you by end of day.", masked: "", ext: "", number: 1, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
-        { kind: ItemKind.template, title: "Invoice reminder", preview: "A gentle reminder that invoice {Number} is due on {Date}. Please let me know if anything is unclear.", masked: "", ext: "", number: 2, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
-        { kind: ItemKind.code, title: "Retry helper", preview: "async fn retry<T>(f: impl Fn() -> T, n: usize) -> T { for _ in 0..n { if let Ok(v) = f() { return v; } } }", masked: "", ext: "", number: 3, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
-        { kind: ItemKind.link, title: "Design spec", preview: "figma.com/file/snipdeck-index-deck", masked: "", ext: "", number: 4, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
-        { kind: ItemKind.image, title: "Screenshot 14:02", preview: "1280 × 720 PNG, copied from the browser", masked: "", ext: "", number: 5, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
-        { kind: ItemKind.file, title: "Q3 report", preview: "report-q3-final.pdf", masked: "", ext: "PDF", number: 6, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
-        { kind: ItemKind.sensitive, title: "Server password", preview: "hunter2-correct-horse-7f3a", masked: "•••• •••• 7f3a", ext: "", number: 7, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
-        { kind: ItemKind.sensitive, title: "Revealed secret", preview: "hunter2-correct-horse-7f3a", masked: "•••• •••• 7f3a", ext: "", number: 8, selected: false, show-label: false, revealed: true, pulling: false, list-hue: 0, list-name: "" },
-        { kind: ItemKind.text, title: "Out of office", preview: "I'm out until Monday with limited access to email. For anything urgent, contact the team inbox.", masked: "", ext: "", number: 9, selected: true, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
-        { kind: ItemKind.text, title: "Meeting follow-up", preview: "Following up on today's call: the action items and owners are listed below.", masked: "", ext: "", number: 0, selected: false, show-label: true, revealed: false, pulling: false, list-hue: 0, list-name: "" },
-        { kind: ItemKind.text, title: "Home address", preview: "12 Quay Street, Wellington 6011", masked: "", ext: "", number: 0, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 1, list-name: "Addresses" },
-        { kind: ItemKind.code, title: "A very long snippet title that keeps going well past the width of the panel", preview: "SELECT id, name FROM customers WHERE created_at > now() - interval '7 days' ORDER BY created_at DESC", masked: "", ext: "", number: 0, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 2, list-name: "Work and projects" },
-        { kind: ItemKind.text, title: "Please send the invoice", preview: "Thank you for your help so far. Could you send last month's invoice when you have a moment? Payment reminder attached.", masked: "", ext: "", number: 0, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
-        { kind: ItemKind.text, title: "Pulled card", preview: "Used just now: lifted, with a check in the gutter.", masked: "", ext: "", number: 3, selected: false, show-label: false, revealed: false, pulling: true, list-hue: 0, list-name: "" },
+        { kind: ItemKind.text, title: "Thanks, received", preview: "Thanks for sending this over. I'll review it today and get back to you by end of day.", masked: "", number: 1, selected: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.template, title: "Invoice reminder", preview: "A gentle reminder that invoice {Number} is due on {Date}. Please let me know if anything is unclear.", masked: "", number: 2, selected: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.code, title: "Retry helper", preview: "async fn retry<T>(f: impl Fn() -> T, n: usize) -> T { for _ in 0..n { if let Ok(v) = f() { return v; } } }", masked: "", number: 3, selected: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.link, title: "Design spec", preview: "figma.com/file/snipdeck-index-deck", masked: "", number: 4, selected: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.image, title: "Screenshot 14:02", preview: "1280 × 720 PNG, copied from the browser", masked: "", number: 5, selected: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.file, title: "Q3 report", preview: "report-q3-final.pdf", masked: "", number: 6, selected: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.sensitive, title: "Server password", preview: "hunter2-correct-horse-7f3a", masked: "•••• •••• 7f3a", number: 7, selected: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.sensitive, title: "Revealed secret", preview: "hunter2-correct-horse-7f3a", masked: "•••• •••• 7f3a", number: 8, selected: false, revealed: true, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.text, title: "Out of office", preview: "I'm out until Monday with limited access to email. For anything urgent, contact the team inbox.", masked: "", number: 9, selected: true, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.text, title: "Meeting follow-up", preview: "Following up on today's call: the action items and owners are listed below.", masked: "", number: 0, selected: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.text, title: "Home address", preview: "12 Quay Street, Wellington 6011", masked: "", number: 0, selected: false, revealed: false, pulling: false, list-hue: 1, list-name: "Addresses" },
+        { kind: ItemKind.code, title: "A very long snippet title that keeps going well past the width of the panel", preview: "SELECT id, name FROM customers WHERE created_at > now() - interval '7 days' ORDER BY created_at DESC", masked: "", number: 0, selected: false, revealed: false, pulling: false, list-hue: 2, list-name: "Work and projects" },
+        { kind: ItemKind.text, title: "Please send the invoice", preview: "Thank you for your help so far. Could you send last month's invoice when you have a moment? Payment reminder attached.", masked: "", number: 0, selected: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.text, title: "Pulled card", preview: "Used just now: lifted, with a check in the gutter.", masked: "", number: 3, selected: false, revealed: false, pulling: true, list-hue: 0, list-name: "" },
     ];
     // Japanese/Chinese samples for `DeckCjkProbe` (measured, never rendered into a golden).
     out property <[DeckSample]> cjk: [
-        { kind: ItemKind.text, title: "請求書のお願い", preview: "お世話になっております。先月分の請求書をお送りいただけますでしょうか。支付发票提醒", masked: "", ext: "", number: 0, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
-        { kind: ItemKind.text, title: "短い", preview: "短い本文", masked: "", ext: "", number: 0, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 2, list-name: "仕事とプロジェクト" },
-        { kind: ItemKind.text, title: "請求書のお願いと支払い期限についての確認事項です", preview: "本日中にご返信をお願いいたします。", masked: "", ext: "", number: 0, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 2, list-name: "仕事とプロジェクト" },
+        { kind: ItemKind.text, title: "請求書のお願い", preview: "お世話になっております。先月分の請求書をお送りいただけますでしょうか。支付发票提醒", masked: "", number: 0, selected: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.text, title: "短い", preview: "短い本文", masked: "", number: 0, selected: false, revealed: false, pulling: false, list-hue: 2, list-name: "仕事とプロジェクト" },
+        { kind: ItemKind.text, title: "請求書のお願いと支払い期限についての確認事項です", preview: "本日中にご返信をお願いいたします。", masked: "", number: 0, selected: false, revealed: false, pulling: false, list-hue: 2, list-name: "仕事とプロジェクト" },
     ];
     // Subsets for the 225% gallery.
     out property <[DeckSample]> scale-compact: [all[0], all[1], all[5], all[10], all[11]];
@@ -93,10 +94,12 @@ component Caption inherits Text {
 // Columns: compact rows, comfortable cards, tiles.
 export component DeckGallery inherits Window {
     in property <bool> dark: false;
-    // The last gesture a card reported: "use", "copy", "menu", "reveal" or "hide", and which card.
+    // The last gesture a card reported: "use", "copy", "edit", "menu", "reveal" or "hide", and which card.
     in-out property <string> last-action;
     in-out property <string> last-title;
     in-out property <int> actions: 0;
+    // Selection mode, as the main window sets it: a click picks, the use button still uses.
+    in property <bool> pick-mode: false;
     width: 1064px;
     height: 1280px;
     background: Theme.bg-app;
@@ -115,6 +118,7 @@ export component DeckGallery inherits Window {
             for s in DeckSamples.all: SampleCard {
                 variant: ItemCardVariant.compact;
                 s: s;
+                pick-mode: root.pick-mode;
                 act(action, title) => {
                     root.last-action = action;
                     root.last-title = title;
@@ -131,6 +135,7 @@ export component DeckGallery inherits Window {
             for s in DeckSamples.all: SampleCard {
                 variant: ItemCardVariant.comfortable;
                 s: s;
+                pick-mode: root.pick-mode;
                 act(action, title) => {
                     root.last-action = action;
                     root.last-title = title;
@@ -151,6 +156,7 @@ export component DeckGallery inherits Window {
                     width: 176px;
                     variant: ItemCardVariant.tile;
                     s: s;
+                pick-mode: root.pick-mode;
                     act(action, title) => {
                         root.last-action = action;
                         root.last-title = title;
@@ -212,8 +218,6 @@ export component DeckPartsGallery inherits Window {
     // What was clicked last, e.g. "pinned:2", "sidebar:Work", "board-menu".
     in-out property <string> last;
     in-out property <int> events: 0;
-    // How far the pinned strip has scrolled (keyboard focus scrolls a chip into view).
-    out property <length> strip-scroll: strip.scroll-x;
     width: 640px;
     height: 600px;
     background: Theme.bg-app;
@@ -257,8 +261,13 @@ export component DeckPartsGallery inherits Window {
                 }
             }
             Caption { text: "Pinned strip"; }
-            strip := PinnedStrip {
+            PinnedStrip {
                 items: root.pinned;
+                more-label: "+\{root.pinned.length - 2} more";
+                more-clicked => {
+                    root.last = "pinned-more";
+                    root.events += 1;
+                }
                 use(i) => {
                     root.last = "pinned:\{i}";
                     root.events += 1;
@@ -347,6 +356,73 @@ export component DeckCjkProbe inherits Window {
         for s in DeckSamples.cjk: SampleCard {
             variant: ItemCardVariant.comfortable;
             s: s;
+        }
+    }
+}
+
+// A quiet ItemCard (Panel v2 look) wired to the gallery's counters, for the shared-look props: `where-inline`,
+// `use-action`, `inline-tile`, and `has-menu: false`.
+component QuietCard inherits ItemCard {
+    callback act(string);
+    kind: ItemKind.text;
+    title: "Thanks, received";
+    preview: "Thanks for sending this over. I'll review it today and get back to you by end of day.";
+    numbered: false;
+    use => { root.act("use"); }
+    copy => { root.act("copy"); }
+    edit => { root.act("edit"); }
+    context-menu-requested(x, y) => { root.act("menu"); }
+}
+
+// Four quiet cards: the Picker's compact row at rest and with its actions, the Main window's List row with a Use action, and
+// the inline-tile Card. Card order is the tree order the tests rely on.
+export component QuietCardGallery inherits Window {
+    in property <bool> dark: false;
+    in-out property <string> last-action;
+    in-out property <int> actions: 0;
+    width: 600px;
+    height: 400px;
+    background: Theme.bg-surface;
+    init => { Palette.dark = root.dark; }
+    changed dark => { Palette.dark = root.dark; }
+
+    VerticalLayout {
+        padding: Space.s4;
+        spacing: Space.s2;
+        alignment: start;
+        QuietCard {
+            variant: ItemCardVariant.compact;
+            where-inline: true;
+            has-menu: false;
+            list-name: "Work · Email replies";
+            list-color: Primitives.teal-600;
+            act(a) => { root.last-action = a; root.actions += 1; }
+        }
+        QuietCard {
+            variant: ItemCardVariant.compact;
+            where-inline: true;
+            has-menu: false;
+            show-actions: true;
+            selected: true;
+            list-name: "Work · Email replies";
+            list-color: Primitives.teal-600;
+            act(a) => { root.last-action = a; root.actions += 1; }
+        }
+        QuietCard {
+            variant: ItemCardVariant.comfortable;
+            use-action: true;
+            use-tip: "Paste into Outlook (Enter)";
+            show-actions: true;
+            act(a) => { root.last-action = a; root.actions += 1; }
+        }
+        HorizontalLayout {
+            alignment: start;
+            QuietCard {
+                width: 200px;
+                variant: ItemCardVariant.tile;
+                inline-tile: true;
+                act(a) => { root.last-action = a; root.actions += 1; }
+            }
         }
     }
 }

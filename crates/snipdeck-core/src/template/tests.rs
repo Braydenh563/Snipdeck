@@ -303,6 +303,24 @@ fn reusing_a_name_for_a_different_prompt_is_an_error() {
     );
 }
 
+#[test]
+fn more_than_sixteen_distinct_prompts_is_an_error_but_a_reused_name_is_not() {
+    let many = |n: usize| {
+        (0..n).fold(String::new(), |mut out, i| {
+            out.push_str("{field:F");
+            out.push_str(&i.to_string());
+            out.push('}');
+            out
+        })
+    };
+    assert!(Template::parse(&many(16)).is_ok());
+    assert_eq!(
+        parse_err(&many(17)).kind,
+        TemplateErrorKind::TooManyPrompts { max: 16 }
+    );
+    assert!(Template::parse(&format!("{} {{field:F0}}", many(16))).is_ok());
+}
+
 // ---- entitlements --------------------------------------------------------------------
 
 #[test]
@@ -383,9 +401,9 @@ fn near_misses_get_a_suggestion() {
 #[test]
 fn argument_rules_are_enforced() {
     assert_eq!(
-        parse_err("{date:%Y}").kind,
+        parse_err("{time:%Y}").kind,
         TemplateErrorKind::UnexpectedArgument {
-            placeholder: "date"
+            placeholder: "time"
         }
     );
     assert_eq!(
@@ -585,7 +603,7 @@ fn render_checked_enforces_the_entitlement_that_render_does_not() {
     let t = Template::parse("Hi {field:Name|there}").unwrap();
     let a = BTreeMap::new();
     let ctx = RenderContext::new(now(), &a);
-    // `render` is the unchecked primitive: it resolves Pro prompts for anyone.
+    // `render` is the unchecked primitive: it resolves Supporter prompts for anyone.
     assert_eq!(t.render(&ctx).text, "Hi there");
     assert_eq!(
         t.render_checked(&Entitlements::new(Tier::Free), &ctx),
@@ -678,9 +696,9 @@ fn placeholder_keys_are_trimmed_like_names_and_options() {
     );
     assert_eq!(parse_err("{ }").kind, TemplateErrorKind::EmptyPlaceholder);
     assert_eq!(
-        parse_err("{ date:%Y}").kind,
+        parse_err("{ time:%Y}").kind,
         TemplateErrorKind::UnexpectedArgument {
-            placeholder: "date"
+            placeholder: "time"
         }
     );
 }
@@ -821,7 +839,584 @@ proptest! {
                 let unique: std::collections::BTreeSet<_> = names.iter().collect();
                 prop_assert_eq!(unique.len(), names.len());
             }
-            Err(e) => prop_assert!(matches!(e.kind, TemplateErrorKind::ConflictingPrompt { .. }), "{e}"),
+            Err(e) => prop_assert!(
+                matches!(
+                    e.kind,
+                    TemplateErrorKind::ConflictingPrompt { .. } | TemplateErrorKind::TooManyPrompts { .. }
+                ),
+                "{e}"
+            ),
         }
     }
+}
+
+#[test]
+fn only_a_clipboard_placeholder_uses_the_clipboard() {
+    assert!(
+        Template::parse("a {clipboard} b")
+            .expect("parses")
+            .uses_clipboard()
+    );
+    assert!(
+        !Template::parse("{date} {cursor}")
+            .expect("parses")
+            .uses_clipboard()
+    );
+    assert!(
+        !Template::parse("{{clipboard}}")
+            .expect("parses")
+            .uses_clipboard()
+    );
+}
+
+// ---- {uuid} and date maths (v1.1 slice 2a) -----------------------------------------------
+
+fn render_at(at: &str, src: &str) -> String {
+    let ctx = RenderContext::new(at.parse().unwrap(), &NO_ANSWERS);
+    Template::parse(src).unwrap().render(&ctx).text
+}
+
+fn render_in(tz: &str, at: &str, src: &str) -> String {
+    // POSIX rules, not a zone name: the Linux build has no zone database.
+    let ctx = RenderContext::new(at.parse().unwrap(), &NO_ANSWERS)
+        .with_tz(TimeZone::posix(tz).expect("time zone"));
+    Template::parse(src).unwrap().render(&ctx).text
+}
+
+fn bytes_from(first: u8) -> [u8; 16] {
+    core::array::from_fn(|i| first.wrapping_add(u8::try_from(i).unwrap()))
+}
+
+#[test]
+fn uuid_renders_the_given_bytes_as_v4() {
+    let ids = [bytes_from(0)];
+    let ctx = RenderContext::new(now(), &NO_ANSWERS).with_uuids(&ids);
+    let out = Template::parse("id={uuid}").unwrap().render(&ctx).text;
+    // Byte 6 gets version 4 (0x06 -> 0x46), byte 8 the RFC 4122 variant (0x08 -> 0x88).
+    assert_eq!(out, "id=00010203-0405-4607-8809-0a0b0c0d0e0f");
+}
+
+#[test]
+fn each_uuid_occurrence_is_new() {
+    let ids = [bytes_from(0), bytes_from(16)];
+    let ctx = RenderContext::new(now(), &NO_ANSWERS).with_uuids(&ids);
+    let template = Template::parse("{uuid} {uuid}").unwrap();
+    assert_eq!(template.uuid_count(), 2);
+    let out = template.render(&ctx).text;
+    assert_eq!(
+        out,
+        "00010203-0405-4607-8809-0a0b0c0d0e0f 10111213-1415-4617-9819-1a1b1c1d1e1f"
+    );
+    // Without bytes it still renders (all-zero randomness), never fails.
+    assert_eq!(render("{uuid}"), "00000000-0000-4000-8000-000000000000");
+    assert_eq!(
+        parse_err("{uuid:x}").kind,
+        TemplateErrorKind::UnexpectedArgument {
+            placeholder: "uuid"
+        }
+    );
+}
+
+#[test]
+fn date_offsets_add_days_weeks_months_years() {
+    assert_eq!(render("{date+3d}"), "2026-10-20");
+    assert_eq!(render("{date-1w}"), "2026-10-10");
+    assert_eq!(render("{date+1mo}"), "2026-11-17");
+    assert_eq!(render("{date+1y}"), "2027-10-17");
+    assert_eq!(render("{date+1mo-1d}"), "2026-11-16");
+    assert_eq!(render("{ date + 3 d }"), "2026-10-20");
+    assert_eq!(render("{date-1w:%Y-%m-%d}"), "2026-10-10");
+    assert_eq!(render("{datetime+1mo:%F %H:%M}"), "2026-11-17 14:05");
+    assert_eq!(render("{datetime-0d:%F}"), "2026-10-17");
+}
+
+#[test]
+fn month_end_clamps() {
+    assert_eq!(
+        render_at("2026-01-31T10:00:00Z", "{date+1mo}"),
+        "2026-02-28"
+    );
+    assert_eq!(
+        render_at("2028-01-31T10:00:00Z", "{date+1mo}"),
+        "2028-02-29"
+    );
+    assert_eq!(render_at("2028-02-29T10:00:00Z", "{date+1y}"), "2029-02-28");
+    assert_eq!(
+        render_at("2026-03-31T10:00:00Z", "{date-1mo}"),
+        "2026-02-28"
+    );
+    assert_eq!(
+        render_at("2026-12-31T10:00:00Z", "{date+2mo}"),
+        "2027-02-28"
+    );
+}
+
+#[test]
+fn time_offsets_cross_midnight() {
+    assert_eq!(render_at("2026-10-17T23:30:00Z", "{time+90min}"), "01:00");
+    assert_eq!(
+        render_at("2026-10-17T23:30:00Z", "{datetime+90min:%F %H:%M}"),
+        "2026-10-18 01:00"
+    );
+    assert_eq!(render_at("2026-10-17T01:00:00Z", "{time-2h}"), "23:00");
+    assert_eq!(
+        render_at("2026-10-17T23:30:00Z", "{date+90min}"),
+        "2026-10-18"
+    );
+}
+
+#[test]
+fn offsets_follow_the_calendar_across_a_dst_change() {
+    // New York springs forward on 2026-03-08 at 02:00. 12:00 EST on the 7th.
+    let zone = "EST5EDT,M3.2.0,M11.1.0";
+    let at = "2026-03-07T17:00:00Z";
+    // A day is a wall-clock day: still 12:00 the next day, now EDT.
+    assert_eq!(
+        render_in(zone, at, "{datetime+1d:%F %H:%M %z}"),
+        "2026-03-08 12:00 -0400"
+    );
+    // 24 hours is elapsed time: one hour later on the wall clock.
+    assert_eq!(
+        render_in(zone, at, "{datetime+24h:%F %H:%M %z}"),
+        "2026-03-08 13:00 -0400"
+    );
+    // 02:30 on the 8th does not exist: the compatible reading is 03:30 EDT.
+    assert_eq!(
+        render_in(zone, "2026-03-07T07:30:00Z", "{datetime+1d:%F %H:%M}"),
+        "2026-03-08 03:30"
+    );
+    // Falling back on 2026-11-01: 12:00 EDT on the 31st plus a day is 12:00 EST.
+    assert_eq!(
+        render_in(zone, "2026-10-31T16:00:00Z", "{datetime+1d:%F %H:%M %z}"),
+        "2026-11-01 12:00 -0500"
+    );
+}
+
+#[test]
+fn date_takes_a_format_like_datetime() {
+    assert_eq!(render("{date:%d.%m.%Y}"), "17.10.2026");
+    assert_eq!(render("{date:%A}"), render("{datetime:%A}"));
+    assert_eq!(
+        parse_err("{time:%H}").kind,
+        TemplateErrorKind::UnexpectedArgument {
+            placeholder: "time"
+        }
+    );
+    assert_eq!(
+        parse_err("{date:}").kind,
+        TemplateErrorKind::MissingArgument {
+            placeholder: "date"
+        }
+    );
+    assert_eq!(
+        parse_err("{datetime+1d}").kind,
+        TemplateErrorKind::MissingArgument {
+            placeholder: "datetime"
+        }
+    );
+}
+
+#[test]
+fn offsets_past_the_bound_are_errors_with_a_span() {
+    let e = parse_err("a {date+101y}");
+    assert_eq!(e.span, 7..12, "{e}");
+    assert_eq!(
+        e.kind,
+        TemplateErrorKind::OffsetOutOfRange {
+            unit: "y",
+            max: 100
+        }
+    );
+    for (src, unit, max) in [
+        ("{date+1201mo}", "mo", 1200),
+        ("{date+36501d}", "d", 36500),
+        ("{date+5215w}", "w", 5214),
+        ("{time+876001h}", "h", 876_000),
+        ("{time-52560001min}", "min", 52_560_000),
+        ("{date+99999999999999999999d}", "d", 36500),
+    ] {
+        assert_eq!(
+            parse_err(src).kind,
+            TemplateErrorKind::OffsetOutOfRange { unit, max },
+            "{src}"
+        );
+    }
+    // The bound itself is fine.
+    assert!(Template::parse("{date+100y}").is_ok());
+    assert!(Template::parse("{date+1d+1d+1d+1d+1d+1d+1d+1d}").is_ok());
+    assert_eq!(
+        parse_err("{date+1d+1d+1d+1d+1d+1d+1d+1d+1d}").kind,
+        TemplateErrorKind::TooManyOffsets { max: 8 }
+    );
+    // The largest legal offsets render without failing.
+    assert_eq!(render("{date+100y+100y+100y}"), "2326-10-17");
+    assert_eq!(render("{date-100y}"), "1926-10-17");
+}
+
+#[test]
+fn unknown_units_get_a_hint() {
+    let TemplateErrorKind::UnknownOffsetUnit { found, hint } = parse_err("{date+3m}").kind else {
+        panic!("expected an unknown unit");
+    };
+    assert_eq!(found, "m");
+    assert!(hint.contains("mo") && hint.contains("min"), "{hint}");
+    for (src, found, hint) in [
+        ("{date+3days}", "days", "d"),
+        ("{date+2weeks}", "weeks", "w"),
+        ("{date+1M}", "M", "mo"),
+        ("{time+1hr}", "hr", "h"),
+        ("{date+1yr}", "yr", "y"),
+        ("{date+1x}", "x", "d, w, mo, y, h, min"),
+    ] {
+        let TemplateErrorKind::UnknownOffsetUnit { found: f, hint: h } = parse_err(src).kind else {
+            panic!("{src}");
+        };
+        assert_eq!(f, found);
+        assert!(h.contains(hint), "{src}: {h}");
+    }
+    // The span covers the term, sign to unit.
+    assert_eq!(parse_err("{date+3m}").span, 5..8);
+}
+
+#[test]
+fn a_malformed_offset_is_an_error_not_a_guess() {
+    for src in [
+        "{date+}",
+        "{date+d}",
+        "{date+3}",
+        "{date+3d5}",
+        "{date+-3d}",
+        "{date 3d}",
+        "{date+3 d x}",
+    ] {
+        assert!(Template::parse(src).is_err(), "{src}");
+    }
+    assert_eq!(parse_err("{date+3}").kind, TemplateErrorKind::BadOffset);
+    // Names that merely start with date are still unknown placeholders.
+    assert!(matches!(
+        parse_err("{dates+1d}").kind,
+        TemplateErrorKind::Unknown { .. }
+    ));
+}
+
+// ---- richer fill-ins: multiline, pickdate, optional sections -------------------------
+
+fn render_answered(src: &str, pairs: &[(&str, &str)]) -> Rendered {
+    let given = answers(pairs);
+    let ctx = RenderContext::new(now(), &given);
+    Template::parse(src).unwrap().render(&ctx)
+}
+
+fn kind_of(src: &str) -> PromptKind {
+    Template::parse(src).unwrap().prompts().remove(0).kind
+}
+
+#[test]
+fn multiline_answers_keep_their_newlines() {
+    let out = render_answered("Notes:\n{multiline:Body}", &[("Body", "one\ntwo\r\nthree")]);
+    assert_eq!(out.text, "Notes:\none\ntwo\r\nthree");
+    assert_eq!(
+        kind_of("{multiline:Body|hi}"),
+        PromptKind::Multiline {
+            default: Some("hi".to_owned())
+        }
+    );
+    assert_eq!(render("{multiline:Body|hi}"), "hi");
+    assert_eq!(render("{multiline:Body}"), "");
+}
+
+#[test]
+fn a_multiline_and_a_field_of_one_name_conflict() {
+    let e = parse_err("{field:A}{multiline:A}");
+    assert_eq!(
+        e.kind,
+        TemplateErrorKind::ConflictingPrompt { name: "A".into() }
+    );
+    // Same kind merges, first default wins.
+    let t = Template::parse("{multiline:A}{multiline:A|x}").unwrap();
+    assert_eq!(t.prompts().len(), 1);
+    assert_eq!(render("{multiline:A}{multiline:A|x}"), "xx");
+}
+
+#[test]
+fn pickdate_defaults_to_today_in_format() {
+    assert_eq!(render("{pickdate:When|%d %B %Y}"), "17 October 2026");
+    assert_eq!(render("{pickdate:When}"), "2026-10-17");
+    let out = render_with("{pickdate:When}", |c| {
+        c.with_locale(Locale::for_tag("en-US"))
+    });
+    assert_eq!(out.text, "10/17/2026");
+    // Today follows the zone: +10h is already the 18th.
+    let out = render_with("{pickdate:When|%F}", |c| {
+        c.with_tz(TimeZone::fixed(jiff::tz::offset(10)))
+    });
+    assert_eq!(out.text, "2026-10-18");
+}
+
+#[test]
+fn a_typed_pickdate_is_formatted() {
+    let out = render_answered("{pickdate:When|%A %e %b %Y}", &[("When", " 2027-02-28 ")]);
+    assert_eq!(out.text, "Sunday 28 Feb 2027");
+    // Blank means unanswered: today.
+    assert_eq!(
+        render_answered("{pickdate:When|%F}", &[("When", " ")]).text,
+        "2026-10-17"
+    );
+    // Not a real day renders nothing rather than a wrong date.
+    for bad in ["2027-02-30", "2027-2-3", "tomorrow", "2027/02/03"] {
+        assert_eq!(
+            render_answered("[{pickdate:When}]", &[("When", bad)]).text,
+            "[]",
+            "{bad}"
+        );
+        assert!(parse_pick_date(bad).is_none(), "{bad}");
+    }
+    assert!(parse_pick_date("2028-02-29").is_some());
+    assert_eq!(
+        today_text(&RenderContext::new(now(), &NO_ANSWERS)),
+        "2026-10-17"
+    );
+}
+
+#[test]
+fn a_bad_pickdate_format_is_an_error_at_its_place() {
+    for src in [
+        "x {pickdate:When|%Q}",
+        "{ pickdate : When |%Q}",
+        "{pickdate:Whén\u{3000}|%Q}",
+        "{pickdate:日本語 |é%Q}",
+    ] {
+        let e = parse_err(src);
+        assert_eq!(
+            e.kind,
+            TemplateErrorKind::UnknownFormatSpecifier { specifier: 'Q' }
+        );
+        assert!(src.is_char_boundary(e.span.start) && src.is_char_boundary(e.span.end));
+        assert_eq!(&src[e.span.clone()], "%Q", "{src}");
+    }
+    assert_eq!(
+        parse_err("{pickdate}").kind,
+        TemplateErrorKind::MissingArgument {
+            placeholder: "pickdate"
+        }
+    );
+    assert_eq!(
+        parse_err("{pickdate:|%F}").kind,
+        TemplateErrorKind::EmptyName
+    );
+}
+
+#[test]
+fn one_date_name_can_be_used_with_different_formats() {
+    let src = "{pickdate:A|%F} {pickdate:A} {pickdate:A|%d.%m.%y}";
+    let t = Template::parse(src).unwrap();
+    assert_eq!(t.prompts().len(), 1);
+    assert_eq!(
+        render_answered(src, &[("A", "2027-02-03")]).text,
+        "2027-02-03 2027-02-03 03.02.27"
+    );
+    assert_eq!(
+        parse_err("{field:A}{pickdate:A}").kind,
+        TemplateErrorKind::ConflictingPrompt { name: "A".into() }
+    );
+}
+
+#[test]
+fn the_format_keeps_its_spaces() {
+    assert_eq!(render("{pickdate:A| %F }"), " 2026-10-17 ");
+}
+
+#[test]
+fn a_date_that_cannot_be_shown_is_not_accepted() {
+    assert!(parse_pick_date("9999-12-31").is_none());
+    assert_eq!(
+        render_answered("[{pickdate:A}]", &[("A", "9999-12-31")]).text,
+        "[]"
+    );
+    for d in ["9999-12-30", "0001-01-01", "2027-03-14"] {
+        assert!(parse_pick_date(d).is_some(), "{d}");
+        assert!(
+            !render_answered("{pickdate:A|%F}", &[("A", d)])
+                .text
+                .is_empty(),
+            "{d}"
+        );
+    }
+}
+
+#[test]
+fn an_unanswered_pickdate_is_the_start_of_today_in_the_zone() {
+    let out = render_with("{pickdate:A|%F %H:%M}", |c| {
+        c.with_tz(TimeZone::fixed(jiff::tz::offset(-12)))
+    });
+    assert_eq!(out.text, "2026-10-17 00:00");
+}
+
+#[test]
+fn an_unticked_section_renders_nothing() {
+    let src = "Hi{optional:Sig}\n-- Bob{/optional}.";
+    assert_eq!(render(src), "Hi.");
+    assert_eq!(render_answered(src, &[("Sig", "false")]).text, "Hi.");
+    assert_eq!(render_answered(src, &[("Sig", "")]).text, "Hi.");
+    assert_eq!(render_answered(src, &[("Sig", "true")]).text, "Hi\n-- Bob.");
+    assert_eq!(
+        Template::parse(src).unwrap().prompts(),
+        vec![Prompt {
+            name: "Sig".into(),
+            kind: PromptKind::Toggle
+        }]
+    );
+}
+
+#[test]
+fn sections_do_not_nest() {
+    let src = "{optional:A}{optional:B}x{/optional}{/optional}";
+    let e = parse_err(src);
+    assert_eq!(e.kind, TemplateErrorKind::NestedSection);
+    assert_eq!(&src[e.span], "{optional:B}");
+    // Two in a row are fine.
+    assert_eq!(
+        render_answered(
+            "{optional:A}a{/optional}{optional:B}b{/optional}",
+            &[("A", "true"), ("B", "true")]
+        )
+        .text,
+        "ab"
+    );
+}
+
+#[test]
+fn an_unclosed_section_is_an_error() {
+    let src = "text {optional:A}never closed";
+    let e = parse_err(src);
+    assert_eq!(e.kind, TemplateErrorKind::UnclosedSection);
+    assert_eq!(&src[e.span], "{optional:A}");
+    assert_eq!(
+        parse_err("a{/optional}").kind,
+        TemplateErrorKind::UnmatchedSectionEnd
+    );
+    assert_eq!(
+        parse_err("{optional}x{/optional}").kind,
+        TemplateErrorKind::MissingArgument {
+            placeholder: "optional"
+        }
+    );
+    assert_eq!(
+        parse_err("{optional:A|b}x{/optional}").kind,
+        TemplateErrorKind::TooManyParts
+    );
+}
+
+#[test]
+fn a_cursor_in_an_unticked_section_is_ignored() {
+    let src = "ab{optional:A}[{cursor}]{/optional}cd";
+    assert_eq!(render_answered(src, &[]).cursor_from_end, None);
+    assert_eq!(render_answered(src, &[]).text, "abcd");
+    let on = render_answered(src, &[("A", "true")]);
+    assert_eq!(on.text, "ab[]cd");
+    assert_eq!(on.cursor_from_end, Some(3));
+    // Only one cursor in the whole template, inside or out.
+    assert_eq!(
+        parse_err("{cursor}{optional:A}{cursor}{/optional}").kind,
+        TemplateErrorKind::DuplicateCursor
+    );
+}
+
+#[test]
+fn a_cursor_outside_survives_an_unticked_section() {
+    let out = render_answered("a{optional:A}zz{/optional}{cursor}b", &[]);
+    assert_eq!((out.text.as_str(), out.cursor_from_end), ("ab", Some(1)));
+}
+
+#[test]
+fn a_section_can_hold_fields_and_a_name_can_be_reused_across_it() {
+    let src = "{field:Who}{optional:Extra}, {field:Who} again {field:What|x}{/optional}";
+    let t = Template::parse(src).unwrap();
+    let names: Vec<String> = t.prompts().into_iter().map(|p| p.name).collect();
+    assert_eq!(names, ["Who", "Extra", "What"]);
+    assert_eq!(render_answered(src, &[("Who", "Ann")]).text, "Ann");
+    assert_eq!(
+        render_answered(src, &[("Who", "Ann"), ("Extra", "true")]).text,
+        "Ann, Ann again x"
+    );
+    // The toggle's name cannot also be a field.
+    assert_eq!(
+        parse_err("{field:A}{optional:A}x{/optional}").kind,
+        TemplateErrorKind::ConflictingPrompt { name: "A".into() }
+    );
+    // Two sections of one name share one tick box.
+    let two = "{optional:A}1{/optional}-{optional:A}2{/optional}";
+    assert_eq!(Template::parse(two).unwrap().prompts().len(), 1);
+    assert_eq!(render_answered(two, &[("A", "true")]).text, "1-2");
+}
+
+#[test]
+fn braces_around_and_in_sections_are_escaped_as_before() {
+    let src = "{{{optional:A}{{x}}{/optional}}}";
+    assert_eq!(render_answered(src, &[]).text, "{}");
+    assert_eq!(render_answered(src, &[("A", "true")]).text, "{{x}}");
+    assert_eq!(escape("{optional:A}"), "{{optional:A}}");
+    assert_eq!(
+        render(&escape("{optional:A}x{/optional}")),
+        "{optional:A}x{/optional}"
+    );
+}
+
+#[test]
+fn uuids_stay_aligned_when_a_section_is_unticked() {
+    let ids = [[1u8; 16], [2u8; 16], [3u8; 16]];
+    let src = "{uuid}{optional:A}{uuid}{/optional}{uuid}";
+    let t = Template::parse(src).unwrap();
+    assert_eq!(t.uuid_count(), 3);
+    let given = answers(&[]);
+    let off = t.render(&RenderContext::new(now(), &given).with_uuids(&ids));
+    let id = |b: u8| {
+        uuid::Builder::from_random_bytes([b; 16])
+            .into_uuid()
+            .to_string()
+    };
+    assert_eq!(off.text, format!("{}{}", id(1), id(3)));
+}
+
+#[test]
+fn clipboard_inside_a_section_is_still_noticed() {
+    assert!(
+        Template::parse("{optional:A}{clipboard}{/optional}")
+            .unwrap()
+            .uses_clipboard()
+    );
+}
+
+#[test]
+fn the_new_prompts_are_supporter_and_count_toward_the_limit() {
+    for src in ["{multiline:A}", "{pickdate:A}", "{optional:A}x{/optional}"] {
+        let t = Template::parse(src).unwrap();
+        assert!(t.requires(Feature::PromptedFields), "{src}");
+        let free = Entitlements::new(Tier::Free);
+        assert!(t.check(&free).is_err(), "{src}");
+    }
+    let mut src = String::new();
+    for i in 0..MAX_PROMPTS {
+        let _ = std::fmt::Write::write_fmt(&mut src, format_args!("{{field:F{i}}}"));
+    }
+    assert!(Template::parse(&src).is_ok());
+    for extra in ["{multiline:X}", "{pickdate:X}", "{optional:X}y{/optional}"] {
+        let e = parse_err(&format!("{src}{extra}"));
+        assert_eq!(
+            e.kind,
+            TemplateErrorKind::TooManyPrompts { max: MAX_PROMPTS }
+        );
+    }
+}
+
+#[test]
+fn misspelled_new_keywords_get_a_hint() {
+    let e = parse_err("{multline:A}");
+    assert!(matches!(
+        e.kind,
+        TemplateErrorKind::Unknown {
+            suggestion: Some("multiline"),
+            ..
+        }
+    ));
 }

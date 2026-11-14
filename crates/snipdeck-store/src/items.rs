@@ -12,12 +12,12 @@ use zeroize::Zeroizing;
 use crate::batch::Ctx;
 use crate::blobs::Blobs;
 use crate::codec::{
-    content_from, flag, from_nanos, from_opt_nanos, id_bytes, id_from, nanos, not_found, payload,
-    raw_placement, require_item, require_list, require_new,
+    blob_refs, content_from, flag, from_nanos, from_opt_nanos, id_bytes, id_from, nanos, not_found,
+    payload, raw_placement, require_item, require_list, require_new,
 };
 use crate::crypto::{DataKey, Slot, decrypt_payload, encrypt_payload};
 use crate::rank::{self, ITEMS};
-use crate::{Error, Result, fts, keys};
+use crate::{Error, Result, fts, groups, keys};
 
 /// The tables a live item is read through: the item, its list and its board.
 const FROM_LIVE: &str =
@@ -30,7 +30,8 @@ const JOIN_LIVE: &str = "JOIN lists l ON l.id = i.list_id JOIN boards b ON b.id 
 const WHERE_LIVE: &str = "i.deleted_at IS NULL AND l.deleted_at IS NULL AND b.deleted_at IS NULL";
 
 const COLUMNS: &str = "i.id, i.list_id, i.title, i.kind, i.preview, i.pinned, i.sensitive, \
-     i.always_plain, i.use_count, i.last_used_at, i.source_app, i.created_at, i.updated_at";
+     i.always_plain, i.use_count, i.last_used_at, i.source_app, i.created_at, i.updated_at, \
+     i.label";
 
 struct ItemRow {
     id: Vec<u8>,
@@ -46,6 +47,7 @@ struct ItemRow {
     source_app: Option<String>,
     created_at: i64,
     updated_at: i64,
+    label: Option<String>,
 }
 
 impl ItemRow {
@@ -64,6 +66,7 @@ impl ItemRow {
             source_app: row.get(10)?,
             created_at: row.get(11)?,
             updated_at: row.get(12)?,
+            label: row.get(13)?,
         })
     }
 
@@ -82,6 +85,7 @@ impl ItemRow {
             use_count: u32::try_from(self.use_count)
                 .map_err(|_| Error::Corrupt("a use count is out of range".to_owned()))?,
             last_used_at: from_opt_nanos(self.last_used_at)?,
+            label: self.label.as_deref().map(str::parse).transpose()?,
             source_app: self.source_app,
             created_at: from_nanos(self.created_at)?,
             updated_at: from_nanos(self.updated_at)?,
@@ -180,18 +184,12 @@ fn check_item(item: &Item) -> Result<()> {
 
 /// Every blob hash the item's formats refer to.
 fn blob_hashes(conn: &Connection, id: [u8; 16]) -> Result<Vec<BlobRef>> {
-    let mut stmt = conn.prepare_cached(
+    blob_refs(
+        conn,
         "SELECT blob_hash FROM item_formats WHERE item_id = ?1 AND blob_hash IS NOT NULL
          UNION SELECT blob_hash FROM item_files WHERE item_id = ?1 AND blob_hash IS NOT NULL",
-    )?;
-    let hashes = stmt.query_map([id], |r| r.get::<_, Vec<u8>>(0))?;
-    hashes
-        .map(|hash| {
-            <[u8; 32]>::try_from(hash?)
-                .map(BlobRef::from_bytes)
-                .map_err(|_| Error::Corrupt("a blob hash is not 32 bytes".to_owned()))
-        })
-        .collect()
+        [id],
+    )
 }
 
 /// What [`write_formats`] did with the blobs it was given.
@@ -385,6 +383,63 @@ pub(crate) fn all_items(conn: &Connection) -> Result<Vec<Item>> {
     fetch(conn, "", &[], "b.rank, l.rank, i.rank")
 }
 
+/// [`ItemRepo::plain_formats`](crate::ItemRepo::plain_formats): two queries for all items.
+pub(crate) fn plain_formats(conn: &Connection) -> Result<Vec<(ItemId, Formats)>> {
+    type Part = (Vec<u8>, Option<Vec<u8>>, Option<Vec<u8>>, Option<i64>);
+    let mut files: HashMap<Vec<u8>, Vec<FileEntry>> = HashMap::new();
+    let mut stmt = conn.prepare_cached(&format!(
+        "SELECT f.item_id, f.name, f.inline_bytes, f.blob_hash, f.len
+         FROM item_files f JOIN items i ON i.id = f.item_id {JOIN_LIVE}
+         WHERE {WHERE_LIVE} AND i.encrypted = 0 ORDER BY f.item_id, f.idx"
+    ))?;
+    let rows = stmt.query_map([], |r| {
+        Ok((
+            r.get::<_, Vec<u8>>(0)?,
+            r.get::<_, String>(1)?,
+            (r.get(2)?, r.get(3)?, r.get(4)?),
+        ))
+    })?;
+    for row in rows {
+        let (id, name, (inline, hash, len)) = row?;
+        files
+            .entry(id)
+            .or_default()
+            .push(FileEntry::new(&name, content_from(inline, hash, len)?)?);
+    }
+
+    let mut stmt = conn.prepare_cached(&format!(
+        "SELECT f.item_id, f.kind, f.inline_bytes, f.blob_hash, f.len
+         FROM item_formats f JOIN items i ON i.id = f.item_id {JOIN_LIVE}
+         WHERE {WHERE_LIVE} AND i.encrypted = 0 ORDER BY f.item_id, f.idx"
+    ))?;
+    let rows = stmt.query_map([], |r| {
+        let part: Part = (r.get(0)?, r.get(2)?, r.get(3)?, r.get(4)?);
+        Ok((r.get::<_, String>(1)?, part))
+    })?;
+    let mut out: Vec<(ItemId, Vec<Format>)> = Vec::new();
+    let mut last: Option<Vec<u8>> = None;
+    for row in rows {
+        let (kind, (id, inline, hash, len)) = row?;
+        let format = match kind.parse::<FormatKind>()? {
+            FormatKind::Files => Format::Files(files.remove(&id).unwrap_or_default()),
+            FormatKind::Text => Format::Text(content_from(inline, hash, len)?),
+            FormatKind::Html => Format::Html(content_from(inline, hash, len)?),
+            FormatKind::Rtf => Format::Rtf(content_from(inline, hash, len)?),
+            FormatKind::Png => Format::Png(content_from(inline, hash, len)?),
+        };
+        if last.as_ref() != Some(&id) {
+            out.push((id_from(&id)?, Vec::new()));
+            last = Some(id);
+        }
+        if let Some((_, formats)) = out.last_mut() {
+            formats.push(format);
+        }
+    }
+    out.into_iter()
+        .map(|(id, formats)| Ok((id, Formats::new(formats)?)))
+        .collect()
+}
+
 pub(crate) fn item(conn: &Connection, id: ItemId) -> Result<Item> {
     fetch(conn, "AND i.id = ?1", &[&id_bytes(id)], "i.rank")?
         .pop()
@@ -426,11 +481,12 @@ pub(crate) fn insert_item(
     let encrypt = item.sensitive && key.is_some();
     let (id, list) = (id_bytes(item.id), id_bytes(item.list_id));
     let rank = rank::place(conn, ITEMS, Some(list), raw_placement(at), None)?;
+    let group = groups::inherited(conn, raw_placement(at))?;
     conn.execute(
         "INSERT INTO items (id, list_id, title, kind, preview, pinned, sensitive, always_plain,
                             use_count, last_used_at, source_app, rank, created_at, updated_at,
-                            encrypted)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+                            encrypted, label, group_id)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
         params![
             id,
             list,
@@ -446,7 +502,9 @@ pub(crate) fn insert_item(
             rank,
             created,
             updated,
-            flag(encrypt)
+            flag(encrypt),
+            item.label.map(snipdeck_core::ItemLabel::key),
+            group
         ],
     )?;
     let seq = conn.last_insert_rowid();
@@ -493,16 +551,17 @@ pub(crate) fn update_item(cx: &mut Ctx<'_>, item: &Item, formats: Option<&Format
         require_list(conn, item.list_id)?;
         let rank = rank::place(conn, ITEMS, Some(list), Placement::Last, Some(id))?;
         conn.execute(
-            "UPDATE items SET list_id = ?2, rank = ?3 WHERE id = ?1",
+            "UPDATE items SET list_id = ?2, rank = ?3, group_id = NULL WHERE id = ?1",
             params![id, list, rank],
         )?;
+        groups::prune(conn)?;
     }
     // `use_count` and `last_used_at` belong to `record_use`: an editor holding an item
     // loaded before a use must not roll the count back (review L12).
     conn.execute(
         "UPDATE items SET title = ?2, kind = ?3, preview = ?4, pinned = ?5, sensitive = ?6,
                 always_plain = ?7, source_app = ?8, created_at = ?9, updated_at = ?10,
-                encrypted = ?11
+                encrypted = ?11, label = ?12
          WHERE id = ?1",
         params![
             id,
@@ -515,10 +574,15 @@ pub(crate) fn update_item(cx: &mut Ctx<'_>, item: &Item, formats: Option<&Format
             item.source_app,
             created,
             updated,
-            flag(encrypted)
+            flag(encrypted),
+            item.label.map(snipdeck_core::ItemLabel::key)
         ],
     )?;
     write_tags(conn, id, &item.tags)?;
+    if item.sensitive {
+        // A Sensitive item has no trigger: a short code must not release a secret.
+        crate::triggers::free_item(conn, id)?;
+    }
 
     let seal = key.filter(|_| encrypted);
     let mut old = Vec::new();
@@ -583,10 +647,14 @@ pub(crate) fn move_item(
         raw_placement(at),
         Some(bytes),
     )?;
+    // After a member of the target list the item joins that member's group; anywhere else it
+    // leaves its own. (`rank::place` has already required the anchor to be in the target list.)
+    let group = groups::inherited(conn, raw_placement(at))?;
     conn.execute(
-        "UPDATE items SET list_id = ?2, rank = ?3 WHERE id = ?1",
-        params![bytes, list_bytes, rank],
+        "UPDATE items SET list_id = ?2, rank = ?3, group_id = ?4 WHERE id = ?1",
+        params![bytes, list_bytes, rank, group],
     )?;
+    groups::prune(conn)?;
     Ok(())
 }
 

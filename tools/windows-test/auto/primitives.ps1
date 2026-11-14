@@ -288,7 +288,7 @@ $script:AutoRegPaths = @{
 }
 $script:AutoVk = @{
     Ctrl = 0xA2; Shift = 0xA0; Alt = 0xA4; Win = 0x5B
-    Delete = 0x2E; End = 0x23; Home = 0x24; Esc = 0x1B; Enter = 0x0D; Tab = 0x09
+    Delete = 0x2E; End = 0x23; Home = 0x24; Esc = 0x1B; Enter = 0x0D; Tab = 0x09; Space = 0x20
 }
 
 function Initialize-AutoPrimitives([string]$StateDir) {

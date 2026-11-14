@@ -22,10 +22,12 @@
 //!   [`Error::EncryptionLocked`](crate::Error::EncryptionLocked).
 
 use snipdeck_core::{
-    Board, BoardId, Formats, Item, ItemId, List, ListId, Placement, Tag, TagId, Timestamp,
+    Board, BoardId, Formats, Group, GroupId, Item, ItemId, List, ListId, Placement, Tag, TagId,
+    Timestamp, Trigger,
 };
 
 use crate::Result;
+use crate::groups::{GroupDelete, GroupEnd, GroupRun};
 
 /// Boards.
 pub trait BoardRepo {
@@ -66,6 +68,63 @@ pub trait ListRepo {
     fn move_list(&mut self, id: ListId, board: BoardId, at: Placement<ListId>) -> Result<()>;
 }
 
+/// Groups: named, collapsible runs of contiguous items inside a list.
+///
+/// A group exists while it has a member; the members are read with [`GroupRepo::groups_of`],
+/// not from [`Item`]. See `groups.rs` for how moves and inserts decide membership.
+pub trait GroupRepo {
+    /// The list's groups that have a live member, with those members, top to bottom.
+    fn groups_of(&self, list: ListId) -> Result<Vec<GroupRun>>;
+
+    /// Adds `group` (its `list_id` names the list) with `members`, which must be live items
+    /// of that list; they gather directly below the topmost one, keeping list order.
+    /// Members of other groups leave them. Fails if `members` is empty.
+    fn create_group(&mut self, group: &Group, members: &[ItemId]) -> Result<()>;
+
+    /// Overwrites the group's name and collapsed flag.
+    fn update_group(&mut self, group: &Group) -> Result<()>;
+
+    /// Deletes the group: its items stay ungrouped or go to the trash, in one transaction.
+    fn delete_group(&mut self, id: GroupId, what: GroupDelete) -> Result<()>;
+
+    /// Moves the whole run to `at`. After a member of another group means after that group.
+    fn move_run(&mut self, id: GroupId, at: Placement<ItemId>) -> Result<()>;
+
+    /// Moves a live item of the group's list to the start or end of the group and makes it a
+    /// member (`First` is what undoing the move of a group's first item needs).
+    fn join_group(&mut self, item: ItemId, group: GroupId, end: GroupEnd) -> Result<()>;
+
+    /// Sets the item's group to exactly `group` (`None` leaves its group) and leaves its position
+    /// alone. The group must be one of the item's list. For undo, which must restore a
+    /// membership that a move would otherwise re-derive from the neighbour above.
+    fn set_item_group(&mut self, item: ItemId, group: Option<GroupId>) -> Result<()>;
+}
+
+/// Typed triggers: short codes such as `;sig` that stand for items.
+///
+/// A code belongs to one item and is case-sensitive. An item in the trash (or whose list or
+/// board is) keeps its code but is left out of [`TriggerRepo::triggers`] and can lose the code
+/// to another item; restoring it gives the code back if nobody took it meanwhile (check
+/// [`TriggerRepo::trigger_of`] after a restore). Purging removes it. A Sensitive item has none.
+pub trait TriggerRepo {
+    /// Every code of a live item and its item, sorted by code.
+    fn triggers(&self) -> Result<Vec<(Trigger, ItemId)>>;
+
+    /// The item's code, if it has one. Fails if the item is not live.
+    fn trigger_of(&self, item: ItemId) -> Result<Option<Trigger>>;
+
+    /// The item that uses this code, if any.
+    fn trigger_holder(&self, trigger: &Trigger) -> Result<Option<ItemId>>;
+
+    /// Gives the live item this code (`None` removes it), replacing any it had. Returns the
+    /// codes of other live items that are a prefix of the new one or start with it: typing the
+    /// longer fires the shorter first, so the caller should warn. Fails with
+    /// [`Error::TriggerTaken`](crate::Error::TriggerTaken) if another item uses the code and
+    /// [`Error::SensitiveTrigger`](crate::Error::SensitiveTrigger) for a Sensitive item; the
+    /// item then keeps what it had.
+    fn set_trigger(&mut self, item: ItemId, trigger: Option<&Trigger>) -> Result<Vec<Trigger>>;
+}
+
 /// Items and their content.
 pub trait ItemRepo {
     /// The list's live items, in manual order, without content.
@@ -74,8 +133,44 @@ pub trait ItemRepo {
     /// Every live item, without content, for the picker's in-memory search index.
     fn all_items(&self) -> Result<Vec<Item>>;
 
+    /// A number that grows whenever anything is written to the library, so a cache of what
+    /// was read can tell that it may be stale: equal values mean nothing was written in
+    /// between.
+    ///
+    /// It counts every row SQLite changed through this handle (boards, lists, items, tags,
+    /// the trash, the search tables), in a [`Store`](crate::Store) and in a
+    /// [`Batch`](crate::Batch) alike. It never decreases, and it is not undone by a rollback,
+    /// so a failed write can at worst cost one needless refresh. Reads leave it alone. A counted use ([`ItemRepo::record_use`]) and every write to the Recent inbox are left
+    /// out: they change nothing the search index covers. [`RecentRepo::recent_revision`](crate::RecentRepo::recent_revision) counts
+    /// those too. It is only comparable with values from the same open handle (it starts at a
+    /// small number on every open) and says nothing about writes by another process, which the single-writer
+    /// lock rules out.
+    fn change_counter(&self) -> u64;
+
+    /// A number that grows whenever a use is counted ([`ItemRepo::record_use`]): the one
+    /// write [`ItemRepo::change_counter`] ignores that still changes what an item list shows
+    /// (`use_count`, `last_used_at`). A cache of items pairs the two.
+    fn usage_counter(&self) -> u64;
+
     /// One live item, without content.
     fn item(&self, id: ItemId) -> Result<Item>;
+
+    /// The stored content of every live item that is not stored encrypted, as
+    /// `(item, formats)`, read in one pass over the tables instead of one
+    /// [`formats`](Self::formats) call per item. Encrypted items are left out, so nothing is
+    /// decrypted; an item with no stored format rows is left out too.
+    ///
+    /// The default asks item by item (and leaves out every sensitive item); [`Store`](crate::Store) and [`Batch`](crate::Batch) read
+    /// the tables directly.
+    fn plain_formats(&self) -> Result<Vec<(ItemId, Formats)>> {
+        let mut out = Vec::new();
+        for item in self.all_items()? {
+            if !item.sensitive {
+                out.push((item.id, self.formats(item.id)?));
+            }
+        }
+        Ok(out)
+    }
 
     /// The item's content, for using, editing or exporting it; decrypted if it is stored
     /// encrypted. Decrypted payloads too large to be inline are held in memory only and are
@@ -159,4 +254,14 @@ pub trait TrashRepo {
     /// Permanently deletes everything trashed before `cutoff`, and blobs no longer referenced.
     /// Returns how many trash entries were deleted.
     fn purge(&mut self, cutoff: Timestamp) -> Result<usize>;
+
+    /// Permanently deletes one trash entry (as [`trashed`](Self::trashed) lists it), with
+    /// everything inside it and the blobs nothing else uses: the Trash view's "Delete
+    /// forever".
+    ///
+    /// # Errors
+    ///
+    /// [`Error::NotFound`](crate::Error::NotFound) if `target` is not a trash entry (it is
+    /// live, inside a trashed parent, or already gone).
+    fn purge_entry(&mut self, target: Trashable) -> Result<()>;
 }

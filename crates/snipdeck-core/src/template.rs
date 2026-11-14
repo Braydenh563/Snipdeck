@@ -8,10 +8,10 @@
 //! # Which render method to call
 //!
 //! The app should use [`Template::render_checked`]: it enforces the user's [`Entitlements`]
-//! (prompted fields are Pro) and the output size limit, [`MAX_RENDERED_BYTES`], and reports
+//! (prompted fields are Supporter) and the output size limit, [`MAX_RENDERED_BYTES`], and reports
 //! both as a [`RenderError`]. [`Template::try_render`] does the size check only, for callers
 //! that have verified the entitlement themselves. [`Template::render`] is the unchecked
-//! primitive: it resolves Pro placeholders for anyone and, when the output would be over
+//! primitive: it resolves Supporter placeholders for anyone and, when the output would be over
 //! the limit, cuts it there instead of failing.
 //!
 //! # Syntax
@@ -20,11 +20,13 @@
 //! |---|---|---|
 //! | `{date}` | Free | the date in the context's [`Locale`] (ISO `2026-10-17` by default) |
 //! | `{time}` | Free | the time in the context's [`Locale`] (`14:05`, or `2:05 PM` for a 12-hour locale) |
-//! | `{datetime:FORMAT}` | Free | the date and time formatted by `FORMAT`, see below |
+//! | `{datetime:FORMAT}` / `{date:FORMAT}` | Free | the date and time formatted by `FORMAT`, see below |
+//! | `{date+3d}`, `{time-90min}`, `{datetime+1mo:%F}` | Free | the same, moved by an offset, see below |
+//! | `{uuid}` | Free | a random version 4 UUID, new for each use of the placeholder |
 //! | `{clipboard}` | Free | the clipboard text the caller supplied, or nothing |
 //! | `{cursor}` | Free | nothing; marks where the caret should land, see [`Rendered::cursor_from_end`] |
-//! | `{field:Name}` / `{field:Name\|default}` | Pro | the answer to a text prompt |
-//! | `{choice:Name\|a\|b\|c}` | Pro | the answer to a pick-one prompt |
+//! | `{field:Name}` / `{field:Name\|default}` | Supporter | the answer to a text prompt |
+//! | `{choice:Name\|a\|b\|c}` | Supporter | the answer to a pick-one prompt |
 //!
 //! `{{` and `}}` produce literal braces ([`escape`] does this for arbitrary text). Any other
 //! use of a brace is a [`TemplateError`] with the byte span of the problem: an unknown
@@ -34,6 +36,17 @@
 //! contain `{`, `}` or `|`. A name used twice is one prompt (see [`Template::prompts`]).
 //!
 //! Substituted text (clipboard, answers) is never parsed again.
+//!
+//! # Offsets
+//!
+//! `date`, `time` and `datetime` take one or more offsets straight after the keyword:
+//! a sign, a whole number and a unit, as in `{date+3d}`, `{date-1w:%Y-%m-%d}`,
+//! `{time+90min}` or `{date+1mo-1d}`. Units: `d` days, `w` weeks, `mo` months, `y` years
+//! (calendar arithmetic in the context's time zone; a month end clamps, so 31 January plus
+//! `1mo` is 28 February, and a wall-clock time that a clock change skips moves forward),
+//! and `h` hours, `min` minutes (elapsed time). At most [`MAX_OFFSETS`] offsets, each
+//! bounded (100 y, 1200 mo, 5214 w, 36500 d, 876000 h, 52560000 min), so rendering stays
+//! infallible. There is no `m` or `M`: it would be months or minutes.
 //!
 //! # `{datetime:FORMAT}`
 //!
@@ -68,6 +81,8 @@ use unicode_segmentation::UnicodeSegmentation as _;
 
 use crate::{Entitlements, Error, Feature, Timestamp};
 
+pub mod transform;
+
 #[cfg(test)]
 mod tests;
 
@@ -79,8 +94,16 @@ mod tests;
 /// this is a mistake, not a use case.
 pub const MAX_RENDERED_BYTES: usize = 16 * 1024 * 1024;
 
+/// The most distinct prompts (fields and choices) one template may have: the fill form
+/// validates and lists this many, so a template with more is refused when it is parsed.
+pub const MAX_PROMPTS: usize = 16;
+
+/// The most offsets one `{date+…}` may chain.
+pub const MAX_OFFSETS: usize = 8;
+
 /// Placeholder keywords, for hints in error messages.
-const KEYWORDS: [&str; 7] = [
+const KEYWORDS: [&str; 11] = [
+    "uuid",
     "date",
     "time",
     "datetime",
@@ -88,7 +111,13 @@ const KEYWORDS: [&str; 7] = [
     "cursor",
     "field",
     "choice",
+    "multiline",
+    "pickdate",
+    "optional",
 ];
+
+/// The answer that ticks an `{optional:Name}` section; any other answer, or none, leaves it out.
+pub const TOGGLE_ON: &str = "true";
 
 /// A parsed template. Build with [`Template::parse`].
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -100,13 +129,97 @@ pub struct Template {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Part {
     Text(String),
-    Date,
-    Time,
-    DateTime(Vec<DtPart>),
+    Date(Vec<Offset>),
+    Time(Vec<Offset>),
+    DateTime(Vec<Offset>, Vec<DtPart>),
+    Uuid,
     Clipboard,
     Cursor,
     /// Index into `Template::prompts`.
     Prompt(usize),
+    /// `{optional:Name}...{/optional}`: the prompt index of the tick box, and the inside.
+    /// Never nested.
+    Section(usize, Vec<Part>),
+    /// `{pickdate:Name|FORMAT}`: the prompt index and this use's format, if any.
+    PickDate(usize, Option<Vec<DtPart>>),
+}
+
+/// One `+3d` of a date placeholder, already checked against its unit's bound.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Offset {
+    amount: i64,
+    unit: Unit,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Unit {
+    Day,
+    Week,
+    Month,
+    Year,
+    Hour,
+    Minute,
+}
+
+impl Unit {
+    /// The unit written `word`, if it is one of `d w mo y h min`.
+    fn of(word: &str) -> Option<Self> {
+        Some(match word {
+            "d" => Self::Day,
+            "w" => Self::Week,
+            "mo" => Self::Month,
+            "y" => Self::Year,
+            "h" => Self::Hour,
+            "min" => Self::Minute,
+            _ => return None,
+        })
+    }
+
+    const fn word(self) -> &'static str {
+        match self {
+            Self::Day => "d",
+            Self::Week => "w",
+            Self::Month => "mo",
+            Self::Year => "y",
+            Self::Hour => "h",
+            Self::Minute => "min",
+        }
+    }
+
+    /// The largest amount, so that a chain of [`MAX_OFFSETS`] stays far inside jiff's range.
+    const fn max(self) -> u64 {
+        match self {
+            Self::Day => 36_500,
+            Self::Week => 5_214,
+            Self::Month => 1_200,
+            Self::Year => 100,
+            Self::Hour => 876_000,
+            Self::Minute => 52_560_000,
+        }
+    }
+
+    /// `when` moved by `amount` of this unit; `None` if the result is out of range.
+    fn apply(self, when: &Zoned, amount: i64) -> Option<Zoned> {
+        let span = jiff::Span::new();
+        let span = match self {
+            Self::Day => span.try_days(amount),
+            Self::Week => span.try_weeks(amount),
+            Self::Month => span.try_months(amount),
+            Self::Year => span.try_years(amount),
+            Self::Hour => span.try_hours(amount),
+            Self::Minute => span.try_minutes(amount),
+        }
+        .ok()?;
+        when.checked_add(span).ok()
+    }
+}
+
+/// `when` moved by each offset in turn. An offset that would leave the representable range
+/// (not reachable from a sane clock) is skipped, so rendering cannot fail.
+fn shifted(when: &Zoned, offsets: &[Offset]) -> Zoned {
+    offsets.iter().fold(when.clone(), |at, offset| {
+        offset.unit.apply(&at, offset.amount).unwrap_or(at)
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -160,6 +273,17 @@ pub enum PromptKind {
         /// The options, in the order written. Never empty.
         options: Vec<String>,
     },
+    /// Free text that may span lines (`{multiline:Name|default}`).
+    Multiline {
+        /// The text to pre-fill, from the first use that has one.
+        default: Option<String>,
+    },
+    /// A day typed as `YYYY-MM-DD` (`{pickdate:Name|FORMAT}`); unanswered it is today. Each
+    /// use has its own FORMAT (the `{datetime:…}` specifiers, else the locale's date style),
+    /// so the prompt itself carries nothing.
+    Date,
+    /// A tick box (`{optional:Name}...{/optional}`): answered [`TOGGLE_ON`] it is ticked.
+    Toggle,
 }
 
 /// The result of [`Template::render`].
@@ -245,6 +369,10 @@ pub struct RenderContext<'a> {
     pub clipboard: Option<&'a str>,
     /// Answers to the template's [`Prompt`]s, by name.
     pub answers: &'a BTreeMap<String, String>,
+    /// Random bytes for `{uuid}`, one entry per occurrence in order (see
+    /// [`Template::uuid_count`]); a missing entry renders as all-zero bytes. The caller draws
+    /// them, so rendering stays a pure function.
+    pub uuids: &'a [[u8; 16]],
 }
 
 impl<'a> RenderContext<'a> {
@@ -256,7 +384,15 @@ impl<'a> RenderContext<'a> {
             locale: Locale::default(),
             clipboard: None,
             answers,
+            uuids: &[],
         }
+    }
+
+    /// Supplies the random bytes for `{uuid}`, one `[u8; 16]` per occurrence.
+    #[must_use]
+    pub fn with_uuids(mut self, uuids: &'a [[u8; 16]]) -> Self {
+        self.uuids = uuids;
+        self
     }
 
     /// Shows times in `tz`.
@@ -300,7 +436,13 @@ pub enum TemplateErrorKind {
     Unterminated,
     /// `{}`.
     EmptyPlaceholder,
-    /// A `field` or `choice` without a name.
+    /// A `{optional:…}` that never meets its `{/optional}`.
+    UnclosedSection,
+    /// An `{optional:…}` inside another one; sections are flat.
+    NestedSection,
+    /// A `{/optional}` with no `{optional:…}` before it.
+    UnmatchedSectionEnd,
+    /// A `field`, `choice`, `multiline`, `pickdate` or `optional` without a name.
     EmptyName,
     /// A `choice` with no options.
     NoOptions,
@@ -313,7 +455,7 @@ pub enum TemplateErrorKind {
     },
     /// A `field` with more than a name and a default (`{field:Name|default|extra}`).
     TooManyParts,
-    /// A second `{cursor}`.
+    /// A second `{cursor}`; sections are flat, so one inside a section plus one outside counts.
     DuplicateCursor,
     /// A `%` at the end of a `{datetime:…}` format.
     TrailingPercent,
@@ -329,7 +471,7 @@ pub enum TemplateErrorKind {
         /// The placeholder that takes none.
         placeholder: &'static str,
     },
-    /// `{datetime}`, `{field}` or `{choice}` without the part after the colon.
+    /// `{datetime}`, `{field}`, `{choice}`, `{multiline}`, `{pickdate}` or `{optional}` without the part after the colon.
     MissingArgument {
         /// The placeholder that needs one.
         placeholder: &'static str,
@@ -338,6 +480,32 @@ pub enum TemplateErrorKind {
     ConflictingPrompt {
         /// The name.
         name: String,
+    },
+    /// More than [`MAX_PROMPTS`] distinct prompts.
+    TooManyPrompts {
+        /// The limit, [`MAX_PROMPTS`].
+        max: usize,
+    },
+    /// An offset that is not a sign, a number and a unit (`{date+3}`, `{date+d}`).
+    BadOffset,
+    /// An offset unit that is not `d w mo y h min`.
+    UnknownOffsetUnit {
+        /// The unit as written.
+        found: String,
+        /// What to write instead.
+        hint: &'static str,
+    },
+    /// An offset over its unit's bound.
+    OffsetOutOfRange {
+        /// The unit.
+        unit: &'static str,
+        /// The largest amount allowed.
+        max: u64,
+    },
+    /// More than [`MAX_OFFSETS`] offsets in one placeholder.
+    TooManyOffsets {
+        /// The limit, [`MAX_OFFSETS`].
+        max: usize,
     },
     /// A `%x` in a `{datetime:…}` format that is not in the supported set.
     UnknownFormatSpecifier {
@@ -348,6 +516,7 @@ pub enum TemplateErrorKind {
 
 fn usage(keyword: &str) -> &'static str {
     match keyword {
+        "uuid" => "{uuid}",
         "date" => "{date}",
         "time" => "{time}",
         "datetime" => "{datetime:FORMAT}",
@@ -355,6 +524,9 @@ fn usage(keyword: &str) -> &'static str {
         "cursor" => "{cursor}",
         "field" => "{field:Name}",
         "choice" => "{choice:Name|a|b}",
+        "multiline" => "{multiline:Name|default}",
+        "pickdate" => "{pickdate:Name|FORMAT}",
+        "optional" => "{optional:Name}...{/optional}",
         _ => "",
     }
 }
@@ -366,13 +538,18 @@ impl fmt::Display for TemplateErrorKind {
             Self::Unterminated => f.write_str("`{` is never closed; write `{{` for a literal `{`"),
             Self::EmptyPlaceholder => f.write_str("empty placeholder `{}`"),
             Self::EmptyName => f.write_str("the prompt needs a name, e.g. `{field:Name}`"),
+            Self::UnclosedSection => {
+                f.write_str("`{optional:…}` is never closed; add `{/optional}` after the part")
+            }
+            Self::NestedSection => f.write_str("optional sections cannot be nested"),
+            Self::UnmatchedSectionEnd => f.write_str("`{/optional}` closes nothing"),
             Self::NoOptions => f.write_str("a choice needs options, e.g. `{choice:Name|a|b}`"),
             Self::EmptyOption => f.write_str("a choice option is empty"),
             Self::DuplicateOption { option } => {
                 write!(f, "the choice option `{option}` is listed twice")
             }
             Self::TooManyParts => {
-                f.write_str("a field takes a name and an optional default: `{field:Name|default}`")
+                f.write_str("a prompt takes a name and one more part: `{field:Name|default}`")
             }
             Self::DuplicateCursor => f.write_str("only one `{cursor}` is allowed"),
             Self::TrailingPercent => {
@@ -384,8 +561,10 @@ impl fmt::Display for TemplateErrorKind {
                     write!(f, ", did you mean `{}`?", usage(keyword))?;
                 }
                 f.write_str(
-                    ". Placeholders are {date}, {time}, {datetime:FORMAT}, {clipboard}, \
-                     {cursor}, {field:Name}, {field:Name|default} and {choice:Name|a|b}. \
+                    ". Placeholders are {uuid}, {date}, {time}, {datetime:FORMAT}, {clipboard}, \
+                     {cursor}, {field:Name}, {field:Name|default}, {choice:Name|a|b}, \
+                     {multiline:Name|default}, {pickdate:Name|FORMAT} and \
+                     {optional:Name}...{/optional}. \
                      To write a literal brace, double it: {{ or }}",
                 )
             }
@@ -404,6 +583,22 @@ impl fmt::Display for TemplateErrorKind {
                 "`{name}` is used for two different prompts; use the same kind and options \
                  each time, or pick another name"
             ),
+            Self::TooManyPrompts { max } => write!(
+                f,
+                "a template can ask for at most {max} different fields, choices, dates or sections"
+            ),
+            Self::BadOffset => {
+                f.write_str("an offset is a sign, a number and a unit, like `+3d` or `-90min`")
+            }
+            Self::UnknownOffsetUnit { found, hint } => {
+                write!(f, "unknown offset unit `{found}`; use {hint}")
+            }
+            Self::OffsetOutOfRange { unit, max } => {
+                write!(f, "an offset in `{unit}` can be at most {max}")
+            }
+            Self::TooManyOffsets { max } => {
+                write!(f, "a placeholder can have at most {max} offsets")
+            }
             Self::UnknownFormatSpecifier { specifier } => write!(
                 f,
                 "unknown date format `%{specifier}`; supported: \
@@ -414,7 +609,7 @@ impl fmt::Display for TemplateErrorKind {
 }
 
 /// Why a template could not be rendered. Both cases leave the template and context as they
-/// were; show the user a message (or the Pro upsell) and let them try again.
+/// were; show the user a message (or the Supporter upsell) and let them try again.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum RenderError {
     /// The result would be longer than [`MAX_RENDERED_BYTES`].
@@ -423,8 +618,8 @@ pub enum RenderError {
         /// The limit, [`MAX_RENDERED_BYTES`].
         limit: usize,
     },
-    /// The template needs a Pro feature the entitlements do not include.
-    #[error("`{0}` needs Snipdeck Pro")]
+    /// The template needs a Supporter feature the entitlements do not include.
+    #[error("`{0}` needs Snipdeck Supporter")]
     ProRequired(Feature),
 }
 
@@ -442,6 +637,16 @@ struct Parser {
     prompts: Vec<Prompt>,
     prompt_index: HashMap<String, usize>,
     has_cursor: bool,
+    /// The open `{optional:…}`, if any; `parts` then holds its inside.
+    section: Option<OpenSection>,
+}
+
+/// An `{optional:…}` waiting for its `{/optional}`.
+struct OpenSection {
+    prompt: usize,
+    /// The parts before it, set aside while the inside is collected.
+    outer: Vec<Part>,
+    span: Range<usize>,
 }
 
 impl Template {
@@ -458,6 +663,7 @@ impl Template {
             prompts: Vec::new(),
             prompt_index: HashMap::new(),
             has_cursor: false,
+            section: None,
         };
         let bytes = src.as_bytes();
         let mut text = String::new();
@@ -498,6 +704,9 @@ impl Template {
         if !text.is_empty() {
             parser.parts.push(Part::Text(text));
         }
+        if let Some(open) = parser.section {
+            return err(open.span, TemplateErrorKind::UnclosedSection);
+        }
         Ok(Self {
             parts: parser.parts,
             prompts: parser.prompts,
@@ -510,13 +719,31 @@ impl Template {
         self.prompts.clone()
     }
 
+    /// Whether the template says `{clipboard}`: only then does a use need to read the clipboard.
+    pub fn uses_clipboard(&self) -> bool {
+        fn any(parts: &[Part]) -> bool {
+            parts.iter().any(|p| match p {
+                Part::Clipboard => true,
+                Part::Section(_, inner) => any(inner),
+                _ => false,
+            })
+        }
+        any(&self.parts)
+    }
+
+    /// How many `{uuid}` the template has: the number of `[u8; 16]` to pass in
+    /// [`RenderContext::uuids`].
+    pub fn uuid_count(&self) -> usize {
+        uuids_in(&self.parts)
+    }
+
     /// Whether using this template needs `feature`: only [`Feature::PromptedFields`], and only
-    /// if it has a `{field}` or `{choice}`.
+    /// if it has a prompt: `{field}`, `{choice}`, `{multiline}`, `{pickdate}` or `{optional}`.
     pub fn requires(&self, feature: Feature) -> bool {
         match feature {
             Feature::PromptedFields => !self.prompts.is_empty(),
             Feature::UnlimitedBoards
-            | Feature::SensitiveEncryption
+            | Feature::MasterPassword
             | Feature::FloatingLists
             | Feature::PasteStack => false,
         }
@@ -541,10 +768,12 @@ impl Template {
     ///
     /// Missing pieces degrade rather than fail: no clipboard renders as nothing, an
     /// unanswered field as its default (or nothing), an unanswered choice as its first
-    /// option. An answer is used as given, even if empty or not among a choice's options.
+    /// option, an unanswered `{pickdate}` as today, an unticked `{optional}` section as nothing.
+    /// An answer is used as given, even if empty or not among a choice's options.
     ///
-    /// This resolves `{field}` and `{choice}` for any tier, so a caller that forgets
-    /// [`Template::check`] gives Free users a Pro feature. If the output would exceed
+    /// This resolves every prompt (`{field}`, `{choice}`, `{multiline}`, `{pickdate}` and
+    /// `{optional}`) for any tier, so a caller that forgets
+    /// [`Template::check`] gives Free users a Supporter feature. If the output would exceed
     /// [`MAX_RENDERED_BYTES`] it is cut at that length (on a character boundary) rather than
     /// grown without bound; [`Template::try_render`] reports that instead.
     pub fn render(&self, ctx: &RenderContext<'_>) -> Rendered {
@@ -584,40 +813,76 @@ impl Template {
         self.try_render(ctx)
     }
 
-    /// Renders, stopping at [`MAX_RENDERED_BYTES`]; the flag says whether output was cut.
-    fn render_bounded(&self, ctx: &RenderContext<'_>) -> (Rendered, bool) {
-        let when = ctx.now.to_zoned(ctx.tz.clone());
-        let mut out = BoundedString::default();
-        let mut cursor = None;
-        for part in &self.parts {
+    fn render_parts(
+        &self,
+        parts: &[Part],
+        ctx: &RenderContext<'_>,
+        when: &Zoned,
+        state: &mut RenderState<'_>,
+    ) {
+        for part in parts {
+            let out = &mut state.out;
             match part {
                 Part::Text(text) => out.push_str(text),
-                Part::Date => out.push_str(&date_string(&when, ctx.locale.date)),
-                Part::Time => out.push_str(&time_string(&when, ctx.locale.clock)),
-                Part::DateTime(parts) => {
-                    for part in parts {
-                        match part {
-                            DtPart::Lit(text) => out.push_str(text),
-                            DtPart::Spec(spec) => {
-                                let mut piece = String::new();
-                                write_spec(&mut piece, &when, *spec);
-                                out.push_str(&piece);
-                            }
-                        }
-                    }
+                Part::Date(offsets) => {
+                    out.push_str(&date_string(&shifted(when, offsets), ctx.locale.date));
+                }
+                Part::Time(offsets) => {
+                    out.push_str(&time_string(&shifted(when, offsets), ctx.locale.clock));
+                }
+                Part::DateTime(offsets, parts) => {
+                    write_parts(out, &shifted(when, offsets), parts);
+                }
+                Part::Uuid => {
+                    let bytes = state.uuids.next().copied().unwrap_or_default();
+                    out.push_str(
+                        &uuid::Builder::from_random_bytes(bytes)
+                            .into_uuid()
+                            .to_string(),
+                    );
                 }
                 Part::Clipboard => out.push_str(ctx.clipboard.unwrap_or_default()),
-                Part::Cursor => cursor = Some(out.text.len()),
+                Part::Cursor => state.cursor = Some(out.text.len()),
                 Part::Prompt(index) => {
                     if let Some(prompt) = self.prompts.get(*index) {
                         out.push_str(answer(prompt, ctx.answers));
                     }
                 }
+                Part::PickDate(index, format) => {
+                    if let Some(prompt) = self.prompts.get(*index) {
+                        render_pick_date(out, prompt, format.as_deref(), ctx, when);
+                    }
+                }
+                Part::Section(index, inner) => {
+                    let ticked = self.prompts.get(*index).is_some_and(|prompt| {
+                        ctx.answers.get(&prompt.name).map(String::as_str) == Some(TOGGLE_ON)
+                    });
+                    if ticked {
+                        self.render_parts(inner, ctx, when, state);
+                    } else {
+                        // Keep the `{uuid}` draws aligned with their occurrences.
+                        for _ in 0..uuids_in(inner) {
+                            state.uuids.next();
+                        }
+                    }
+                }
             }
-            if out.cut {
+            if state.out.cut {
                 break;
             }
         }
+    }
+
+    /// Renders, stopping at [`MAX_RENDERED_BYTES`]; the flag says whether output was cut.
+    fn render_bounded(&self, ctx: &RenderContext<'_>) -> (Rendered, bool) {
+        let when = ctx.now.to_zoned(ctx.tz.clone());
+        let mut state = RenderState {
+            out: BoundedString::default(),
+            cursor: None,
+            uuids: ctx.uuids.iter(),
+        };
+        self.render_parts(&self.parts, ctx, &when, &mut state);
+        let RenderState { out, cursor, .. } = state;
         let cursor_from_end = cursor.map(|at| graphemes_after(&out.text, at));
         let cut = out.cut;
         (
@@ -627,6 +892,89 @@ impl Template {
             },
             cut,
         )
+    }
+}
+
+/// `{uuid}`s in `parts`, including those inside sections (ticked or not).
+fn uuids_in(parts: &[Part]) -> usize {
+    parts
+        .iter()
+        .map(|p| match p {
+            Part::Uuid => 1,
+            Part::Section(_, inner) => uuids_in(inner),
+            _ => 0,
+        })
+        .sum()
+}
+
+struct RenderState<'a> {
+    out: BoundedString,
+    cursor: Option<usize>,
+    uuids: core::slice::Iter<'a, [u8; 16]>,
+}
+
+fn write_parts(out: &mut BoundedString, when: &Zoned, parts: &[DtPart]) {
+    for part in parts {
+        match part {
+            DtPart::Lit(text) => out.push_str(text),
+            DtPart::Spec(spec) => {
+                let mut piece = String::new();
+                write_spec(&mut piece, when, *spec);
+                out.push_str(&piece);
+            }
+        }
+    }
+}
+
+/// Parses a typed `YYYY-MM-DD` (surrounding spaces ignored): the check for a `pickdate` answer.
+pub fn parse_pick_date(text: &str) -> Option<jiff::civil::Date> {
+    let text = text.trim();
+    let well_formed = text.len() == 10
+        && text.char_indices().all(|(i, c)| match i {
+            4 | 7 => c == '-',
+            _ => c.is_ascii_digit(),
+        });
+    let date: jiff::civil::Date = if well_formed {
+        text.parse().ok()?
+    } else {
+        return None;
+    };
+    // Only a day that can be shown: the last day of year 9999 is past the latest instant.
+    date.to_zoned(TimeZone::UTC).ok().map(|_| date)
+}
+
+/// The text a `pickdate` shows before the user types: today in `ctx.tz` as `YYYY-MM-DD`.
+pub fn today_text(ctx: &RenderContext<'_>) -> String {
+    date_string(&ctx.now.to_zoned(ctx.tz.clone()), DateStyle::Iso)
+}
+
+/// Writes a `pickdate` answer: today if unanswered or blank, nothing if it is not a real date.
+fn render_pick_date(
+    out: &mut BoundedString,
+    prompt: &Prompt,
+    format: Option<&[DtPart]>,
+    ctx: &RenderContext<'_>,
+    today: &Zoned,
+) {
+    let given = ctx.answers.get(&prompt.name).map_or("", |a| a.trim());
+    let date = if given.is_empty() {
+        today.date()
+    } else if let Some(date) = parse_pick_date(given) {
+        date
+    } else {
+        return;
+    };
+    // The start of that day in the user's zone; a day the zone cannot show falls back to UTC.
+    let Some(when) = date
+        .to_zoned(ctx.tz.clone())
+        .or_else(|_| date.to_zoned(TimeZone::UTC))
+        .ok()
+    else {
+        return;
+    };
+    match format {
+        Some(parts) => write_parts(out, &when, parts),
+        None => out.push_str(&date_string(&when, ctx.locale.date)),
     }
 }
 
@@ -662,8 +1010,11 @@ fn answer<'a>(prompt: &'a Prompt, answers: &'a BTreeMap<String, String>) -> &'a 
         return given;
     }
     match &prompt.kind {
-        PromptKind::Field { default } => default.as_deref().unwrap_or_default(),
+        PromptKind::Field { default } | PromptKind::Multiline { default } => {
+            default.as_deref().unwrap_or_default()
+        }
         PromptKind::Choice { options } => options.first().map_or("", String::as_str),
+        PromptKind::Date | PromptKind::Toggle => "",
     }
 }
 
@@ -678,14 +1029,29 @@ impl Parser {
         if body.trim().is_empty() {
             return err(span, TemplateErrorKind::EmptyPlaceholder);
         }
+        if body.trim() == "/optional" {
+            let Some(open) = self.section.take() else {
+                return err(span, TemplateErrorKind::UnmatchedSectionEnd);
+            };
+            let inner = core::mem::replace(&mut self.parts, open.outer);
+            self.parts.push(Part::Section(open.prompt, inner));
+            return Ok(());
+        }
         let (raw_key, arg) = match body.split_once(':') {
             Some((key, arg)) => (key, Some(arg)),
             None => (body, None),
         };
-        let key = raw_key.trim();
+        let (key, offsets) = split_offsets(raw_key, span.start + 1)?;
+        // `{date:FORMAT}` is `{datetime:FORMAT}`.
+        let key = if key == "date" && arg.is_some() {
+            "datetime"
+        } else {
+            key
+        };
         let simple = match key {
-            "date" => Some(("date", Part::Date)),
-            "time" => Some(("time", Part::Time)),
+            "uuid" => Some(("uuid", Part::Uuid)),
+            "date" => Some(("date", Part::Date(offsets.clone()))),
+            "time" => Some(("time", Part::Time(offsets.clone()))),
             "clipboard" => Some(("clipboard", Part::Clipboard)),
             "cursor" => Some(("cursor", Part::Cursor)),
             _ => None,
@@ -707,57 +1073,23 @@ impl Parser {
             "datetime" => {
                 let format = arg.unwrap_or_default();
                 if format.is_empty() {
-                    return err(
-                        span,
-                        TemplateErrorKind::MissingArgument {
-                            placeholder: "datetime",
-                        },
-                    );
+                    let placeholder = if raw_key.trim_start().starts_with("date")
+                        && !raw_key.trim_start().starts_with("datetime")
+                    {
+                        "date"
+                    } else {
+                        "datetime"
+                    };
+                    return err(span, TemplateErrorKind::MissingArgument { placeholder });
                 }
                 // The format starts after the opening brace, the (padded) key and the colon.
                 let parts = parse_format(format, span.start + 1 + raw_key.len() + 1)?;
-                self.parts.push(Part::DateTime(parts));
+                self.parts.push(Part::DateTime(offsets, parts));
                 Ok(())
             }
-            "field" | "choice" => {
-                let Some(arg) = arg else {
-                    let placeholder = if key == "field" { "field" } else { "choice" };
-                    return err(span, TemplateErrorKind::MissingArgument { placeholder });
-                };
-                let mut pieces = arg.split('|').map(str::trim);
-                let name = pieces.next().unwrap_or_default();
-                if name.is_empty() {
-                    return err(span, TemplateErrorKind::EmptyName);
-                }
-                let kind = if key == "field" {
-                    let default = pieces.next().filter(|d| !d.is_empty());
-                    if pieces.next().is_some() {
-                        return err(span, TemplateErrorKind::TooManyParts);
-                    }
-                    PromptKind::Field {
-                        default: default.map(str::to_owned),
-                    }
-                } else {
-                    let options: Vec<String> = pieces.map(str::to_owned).collect();
-                    if options.is_empty() {
-                        return err(span, TemplateErrorKind::NoOptions);
-                    }
-                    if options.iter().any(String::is_empty) {
-                        return err(span, TemplateErrorKind::EmptyOption);
-                    }
-                    if let Some(option) = options
-                        .iter()
-                        .enumerate()
-                        .find_map(|(i, option)| options[..i].contains(option).then_some(option))
-                    {
-                        let option = option.clone();
-                        return err(span, TemplateErrorKind::DuplicateOption { option });
-                    }
-                    PromptKind::Choice { options }
-                };
-                let index = self.add_prompt(name, kind, span)?;
-                self.parts.push(Part::Prompt(index));
-                Ok(())
+            "field" | "choice" | "multiline" | "pickdate" | "optional" => {
+                let arg_at = span.start + 1 + raw_key.len() + 1;
+                self.prompt_placeholder(key, arg, arg_at, span)
             }
             _ => err(
                 span,
@@ -767,6 +1099,101 @@ impl Parser {
                 },
             ),
         }
+    }
+    /// Handles `{field}`, `{choice}`, `{multiline}`, `{pickdate}` and `{optional}`.
+    fn prompt_placeholder(
+        &mut self,
+        key: &str,
+        arg: Option<&str>,
+        arg_at: usize,
+        span: Range<usize>,
+    ) -> Result<(), TemplateError> {
+        let placeholder = KEYWORDS
+            .iter()
+            .find(|&&k| k == key)
+            .copied()
+            .unwrap_or("field");
+        let Some(arg) = arg else {
+            return err(span, TemplateErrorKind::MissingArgument { placeholder });
+        };
+        if key == "pickdate" {
+            return self.pickdate(arg, arg_at, span);
+        }
+        let mut pieces = arg.split('|').map(str::trim);
+        let name = pieces.next().unwrap_or_default();
+        if name.is_empty() {
+            return err(span, TemplateErrorKind::EmptyName);
+        }
+        let kind = if matches!(key, "field" | "multiline" | "pickdate" | "optional") {
+            let extra = pieces.next().filter(|d| !d.is_empty());
+            if pieces.next().is_some() || (key == "optional" && extra.is_some()) {
+                return err(span, TemplateErrorKind::TooManyParts);
+            }
+            let extra = extra.map(str::to_owned);
+            match key {
+                "field" => PromptKind::Field { default: extra },
+                "multiline" => PromptKind::Multiline { default: extra },
+                _ => PromptKind::Toggle,
+            }
+        } else {
+            let options: Vec<String> = pieces.map(str::to_owned).collect();
+            if options.is_empty() {
+                return err(span, TemplateErrorKind::NoOptions);
+            }
+            if options.iter().any(String::is_empty) {
+                return err(span, TemplateErrorKind::EmptyOption);
+            }
+            if let Some(option) = options
+                .iter()
+                .enumerate()
+                .find_map(|(i, option)| options[..i].contains(option).then_some(option))
+            {
+                let option = option.clone();
+                return err(span, TemplateErrorKind::DuplicateOption { option });
+            }
+            PromptKind::Choice { options }
+        };
+        if key == "optional" {
+            if self.section.is_some() {
+                return err(span, TemplateErrorKind::NestedSection);
+            }
+            let prompt = self.add_prompt(name, kind, span.clone())?;
+            let outer = core::mem::take(&mut self.parts);
+            self.section = Some(OpenSection {
+                prompt,
+                outer,
+                span,
+            });
+            return Ok(());
+        }
+        let index = self.add_prompt(name, kind, span)?;
+        self.parts.push(Part::Prompt(index));
+        Ok(())
+    }
+
+    /// `{pickdate:Name|FORMAT}`. Like `{datetime:FORMAT}`, the format is everything after the
+    /// first `|`, untrimmed, so its error span is exact.
+    fn pickdate(
+        &mut self,
+        arg: &str,
+        arg_at: usize,
+        span: Range<usize>,
+    ) -> Result<(), TemplateError> {
+        let (name, format) = match arg.split_once('|') {
+            Some((name, format)) => (name, Some((format, arg_at + name.len() + 1))),
+            None => (arg, None),
+        };
+        let name = name.trim();
+        if name.is_empty() {
+            return err(span, TemplateErrorKind::EmptyName);
+        }
+        let format = match format {
+            Some((format, at)) if !format.is_empty() => Some(parse_format(format, at)?),
+            _ => None,
+        };
+        let index = self.add_prompt(name, PromptKind::Date, span)?;
+        self.parts.push(Part::PickDate(index, format));
+        Ok(())
     }
 
     /// Registers a prompt use and returns its index, merging with an earlier use of the name.
@@ -778,6 +1205,9 @@ impl Parser {
     ) -> Result<usize, TemplateError> {
         let Some(&index) = self.prompt_index.get(name) else {
             let index = self.prompts.len();
+            if index >= MAX_PROMPTS {
+                return err(span, TemplateErrorKind::TooManyPrompts { max: MAX_PROMPTS });
+            }
             self.prompt_index.insert(name.to_owned(), index);
             self.prompts.push(Prompt {
                 name: name.to_owned(),
@@ -792,16 +1222,132 @@ impl Parser {
             return err(span, conflict());
         };
         match (&mut existing.kind, kind) {
-            (PromptKind::Field { default }, PromptKind::Field { default: later }) => {
+            (PromptKind::Field { default }, PromptKind::Field { default: later })
+            | (PromptKind::Multiline { default }, PromptKind::Multiline { default: later }) => {
                 if default.is_none() {
                     *default = later;
                 }
             }
             (PromptKind::Choice { options }, PromptKind::Choice { options: later })
                 if *options == later => {}
+            (PromptKind::Date, PromptKind::Date) | (PromptKind::Toggle, PromptKind::Toggle) => {}
             _ => return err(span, conflict()),
         }
         Ok(index)
+    }
+}
+
+/// Splits `{date+3d-1w}`'s key into the keyword and its offsets. `raw_key` is the text before
+/// the first `:`, starting at byte `at` of the source. A key with no `+` or `-` after a
+/// date keyword comes back whole (an unknown name is reported by the caller).
+fn split_offsets(raw_key: &str, at: usize) -> Result<(&str, Vec<Offset>), TemplateError> {
+    let key = raw_key.trim();
+    let Some(sign) = key.find(['+', '-']) else {
+        return Ok((key, Vec::new()));
+    };
+    let head = key[..sign].trim_end();
+    if !matches!(head, "date" | "time" | "datetime") {
+        return Ok((key, Vec::new()));
+    }
+    let lead = raw_key.len() - raw_key.trim_start().len();
+    Ok((head, parse_offsets(&key[sign..], at + lead + sign)?))
+}
+
+/// Parses `+3d-1w`; `at` is where `text` starts in the source.
+fn parse_offsets(text: &str, at: usize) -> Result<Vec<Offset>, TemplateError> {
+    let bytes = text.as_bytes();
+    let mut offsets = Vec::new();
+    let mut i = 0;
+    loop {
+        while bytes.get(i).is_some_and(u8::is_ascii_whitespace) {
+            i += 1;
+        }
+        if i >= bytes.len() {
+            return Ok(offsets);
+        }
+        let start = i;
+        let bad = |end: usize| {
+            err(
+                at + start..at + end.max(start + 1),
+                TemplateErrorKind::BadOffset,
+            )
+        };
+        let negative = match bytes.get(i) {
+            Some(b'+') => false,
+            Some(b'-') => true,
+            _ => return bad(i + 1),
+        };
+        i += 1;
+        while bytes.get(i).is_some_and(u8::is_ascii_whitespace) {
+            i += 1;
+        }
+        let digits = i;
+        while bytes.get(i).is_some_and(u8::is_ascii_digit) {
+            i += 1;
+        }
+        if i == digits {
+            return bad(i);
+        }
+        let amount = text[digits..i].parse::<u64>().unwrap_or(u64::MAX);
+        while bytes.get(i).is_some_and(u8::is_ascii_whitespace) {
+            i += 1;
+        }
+        let word = i;
+        while bytes.get(i).is_some_and(u8::is_ascii_alphabetic) {
+            i += 1;
+        }
+        if i == word {
+            return bad(i);
+        }
+        let span = at + start..at + i;
+        let Some(unit) = Unit::of(&text[word..i]) else {
+            return err(
+                span,
+                TemplateErrorKind::UnknownOffsetUnit {
+                    found: text[word..i].to_owned(),
+                    hint: unit_hint(&text[word..i]),
+                },
+            );
+        };
+        if amount > unit.max() {
+            return err(
+                span,
+                TemplateErrorKind::OffsetOutOfRange {
+                    unit: unit.word(),
+                    max: unit.max(),
+                },
+            );
+        }
+        if offsets.len() == MAX_OFFSETS {
+            return err(span, TemplateErrorKind::TooManyOffsets { max: MAX_OFFSETS });
+        }
+        // Bounded above, so it fits an `i64`.
+        let amount = i64::try_from(amount).unwrap_or_default();
+        offsets.push(Offset {
+            amount: if negative { -amount } else { amount },
+            unit,
+        });
+        // The next thing must be whitespace or the next sign.
+        if bytes
+            .get(i)
+            .is_some_and(|b| !b.is_ascii_whitespace() && !matches!(b, b'+' | b'-'))
+        {
+            return err(at + i..at + i + 1, TemplateErrorKind::BadOffset);
+        }
+    }
+}
+
+/// What to write instead of the unit `found`.
+fn unit_hint(found: &str) -> &'static str {
+    match found.to_ascii_lowercase().as_str() {
+        "m" => "`mo` for months or `min` for minutes",
+        "day" | "days" => "`d` for days",
+        "week" | "weeks" | "wk" => "`w` for weeks",
+        "month" | "months" => "`mo` for months",
+        "year" | "years" | "yr" | "yrs" => "`y` for years",
+        "hour" | "hours" | "hr" | "hrs" => "`h` for hours",
+        "minute" | "minutes" | "mins" => "`min` for minutes",
+        _ => "one of d, w, mo, y, h, min",
     }
 }
 

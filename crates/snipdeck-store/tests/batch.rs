@@ -241,7 +241,7 @@ fn a_panic_rolls_back_and_leaves_the_store_usable() {
     }));
     assert!(crashed.is_err());
     assert_eq!(snapshot(&s), before);
-    assert!(blob_files(dir.path()).is_empty());
+    assert_eq!(blob_files(dir.path()).len(), 0);
     healthy(&s);
     // No transaction was left open: a new one starts and commits.
     s.transaction(|b| fill(b, blob(5)).map(drop)).unwrap();

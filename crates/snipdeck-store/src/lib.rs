@@ -16,6 +16,18 @@
     reason = "every storage call can fail with I/O or SQLite errors; `repo` states the shared rules"
 )]
 
+// The `testing` feature lowers the Argon2 cost floor for stored key records (`crypto::keyring`) and
+// exports an in-memory key provider. It is for tests only: a build with optimisations and no debug
+// assertions (the release profile) must never carry it, so one that does not compile is the
+// guard. Release-mode runs of the integration tests are therefore unsupported; use the debug
+// profile. `tests/release_guard.rs` checks that the shipped app never enables the feature.
+#[cfg(all(feature = "testing", not(debug_assertions), not(test)))]
+compile_error!(
+    "snipdeck-store's `testing` feature lowers the Argon2 floor and must not be built in a release \
+     profile; it is enabled only by dev-dependencies (see tests/release_guard.rs)"
+);
+
+mod aside;
 mod batch;
 mod blobs;
 mod boards;
@@ -23,19 +35,31 @@ mod codec;
 pub mod crypto;
 mod error;
 mod fts;
+mod groups;
 mod items;
 mod keys;
 mod migrations;
 mod rank;
+mod recent;
 mod repo;
 mod schema;
 mod store;
 mod tags;
 mod trash;
+mod triggers;
 
+pub use aside::{finish_rebuild, set_aside, undo_set_aside};
 pub use batch::Batch;
 pub use blobs::BlobStore;
-pub use error::{Error, Result};
-pub use repo::{BoardRepo, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable};
-pub use store::{GcReport, Store};
+pub use error::{Error, Result, Trouble};
+pub use groups::{GroupDelete, GroupEnd, GroupRun};
+pub use recent::{
+    BLOB_BUDGET, RecentContent, RecentEntry, RecentImage, RecentKind, RecentPayload, RecentRepo,
+    RecentThumb, THUMB_MAX_BYTES,
+};
+pub use repo::{
+    BoardRepo, GroupRepo, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable,
+    TriggerRepo,
+};
+pub use store::{Closed, FolderLock, GcReport, OpenLockedError, Store};
 pub use tags::name_key;

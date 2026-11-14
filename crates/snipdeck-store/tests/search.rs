@@ -64,7 +64,7 @@ fn the_last_word_matches_as_a_prefix_and_all_words_are_required() {
     item(&mut s, l.id, "Quarterly plan", "hiring");
     assert_eq!(found(&s, "quart").len(), 2);
     assert_eq!(found(&s, "quarterly rep"), ["Quarterly report"]);
-    assert!(found(&s, "quarterly zebra").is_empty());
+    assert_eq!(found(&s, "quarterly zebra").len(), 0);
 }
 
 #[test]
@@ -82,7 +82,7 @@ fn limit_caps_the_results() {
         item(&mut s, l.id, &format!("note {i}"), "common");
     }
     assert_eq!(s.search("common", 3).unwrap().len(), 3);
-    assert!(s.search("common", 0).unwrap().is_empty());
+    assert_eq!(s.search("common", 0).unwrap().len(), 0);
 }
 
 #[test]
@@ -90,7 +90,7 @@ fn trashed_items_are_not_found_until_restored() {
     let (mut s, l) = setup();
     let it = item(&mut s, l.id, "Temp", "ephemeral");
     s.trash(Trashable::Item(it.id), at(1)).unwrap();
-    assert!(found(&s, "ephemeral").is_empty());
+    assert_eq!(found(&s, "ephemeral").len(), 0);
     s.restore(Trashable::Item(it.id)).unwrap();
     assert_eq!(found(&s, "ephemeral"), ["Temp"]);
 }
@@ -103,8 +103,8 @@ fn sensitive_items_match_on_their_title_only() {
     s.insert_item(&it, &text_formats("hunter2 correct horse"), Placement::Last)
         .unwrap();
     assert_eq!(found(&s, "bank"), ["Bank login"]);
-    assert!(found(&s, "hunter2").is_empty());
-    assert!(found(&s, "horse").is_empty());
+    assert_eq!(found(&s, "hunter2").len(), 0);
+    assert_eq!(found(&s, "horse").len(), 0);
 }
 
 #[test]
@@ -260,7 +260,7 @@ fn no_user_input_produces_a_syntax_error() {
 fn an_empty_query_finds_nothing() {
     let (mut s, l) = setup();
     item(&mut s, l.id, "x", "y");
-    assert!(s.search("", 10).unwrap().is_empty());
-    assert!(s.search("   ", 10).unwrap().is_empty());
-    assert!(s.search("!!!", 10).unwrap().is_empty());
+    assert_eq!(s.search("", 10).unwrap().len(), 0);
+    assert_eq!(s.search("   ", 10).unwrap().len(), 0);
+    assert_eq!(s.search("!!!", 10).unwrap().len(), 0);
 }

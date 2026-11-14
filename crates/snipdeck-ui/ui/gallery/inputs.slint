@@ -127,7 +127,6 @@ export component TabsGallery inherits Window {
     in-out property <int> current: 1;
     in-out property <int> picked: -1;
     in-out property <int> adds: 0;
-    in-out property <int> drops: 0;
     out property <length> overflow-scroll-x: overflow.scroll-x;
     out property <length> end-scroll-x: overflow-end.scroll-x;
     out property <bool> bar-has-focus: bar.has-focus;
@@ -171,7 +170,6 @@ export component TabsGallery inherits Window {
             current <=> root.current;
             selected(i) => { root.picked = i; }
             add-clicked => { root.adds += 1; }
-            dropped(i) => { root.drops += 1; }
         }
         Caption { text: "hover on Code, keyboard focus on active tab"; }
         ListTabBar {
@@ -194,6 +192,8 @@ export component TabsGallery inherits Window {
         overflow := ListTabBar {
             label: "Lists overflow";
             add-label: "Add list overflow";
+            scroll-left-label: "Tabs left";
+            scroll-right-label: "Tabs right";
             tabs: root.many;
             current: 0;
         }
@@ -225,7 +225,9 @@ export component FormGallery inherits Window {
     out property <bool> hk-recording: hk.recording;
     out property <bool> hk-has-focus: hk.has-focus;
     public function focus-hk() { hk.focus(); }
-    public function focus-choice() { choice.focus(); }
+    // As the fill form does: the list's own Tab stop takes focus through `focus-request`.
+    property <int> choice-focus: 0;
+    public function focus-choice() { root.choice-focus += 1; }
 
     width: 700px;
     height: 680px;
@@ -293,6 +295,7 @@ export component FormGallery inherits Window {
                 required-text: "Required";
                 choices: ["Short", "Medium", "Long"];
                 choice-index <=> root.tf-choice;
+                focus-request: root.choice-focus;
                 chosen(i) => { root.tf-chosen += 1; }
             }
             TemplateField {

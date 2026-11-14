@@ -132,8 +132,237 @@ function Invoke-SelfTest {
             return ($o.Yes -and $o.WhatIf -and ($o.Command -eq 'uninstall') -and [bool]$bad.Error)
         }
 
+        Test-Case 'options: build and update are commands; run takes app flags' {
+            $b = Read-Options @('build')
+            $u = Read-Options @('update')
+            $uBad = Read-Options @('update', '--dark')
+            $r = Read-Options @('--dark')
+            return (($b.Command -eq 'build') -and ($u.Command -eq 'update') -and -not $u.Error -and [bool]$uBad.Error -and ($r.Command -eq '') -and ($r.Pass -contains '--dark'))
+        }
+
+        # 6b. release download path (no network): asset resolver, pin file, SHA-256 compare
+        $relJson = [System.IO.File]::ReadAllText([System.IO.Path]::Combine($dir, 'tests', 'release.json'))
+        Test-Case 'release: latest-release API url' {
+            return ((Get-ReleaseApiUrl) -eq 'https://api.github.com/repos/Braydenh563/Snipdeck/releases/latest')
+        }
+        Test-Case 'release: asset resolver on the saved sample JSON' {
+            $a = Get-ReleaseAsset ($relJson | ConvertFrom-Json)
+            if (-not $a) { return 'no asset found' }
+            $okName = ($a.ZipName -eq 'snipdeck-v0.1.0-windows-x64.zip') -and ($a.Tag -eq 'v0.1.0') -and ($a.Size -eq 23456789)
+            $okUrl = ($a.ZipUrl -eq 'https://github.com/Braydenh563/Snipdeck/releases/download/v0.1.0/snipdeck-v0.1.0-windows-x64.zip') -and ($a.ShaName -eq 'snipdeck-v0.1.0-windows-x64.zip.sha256') -and ($a.ShaUrl -like '*/v0.1.0/snipdeck-v0.1.0-windows-x64.zip.sha256')
+            return ($okName -and $okUrl)
+        }
+        Test-Case 'release: resolver returns nothing without a zip or a sidecar' {
+            $none = '{"tag_name":"v1","assets":[]}' | ConvertFrom-Json
+            $noAssets = '{"tag_name":"v1"}' | ConvertFrom-Json
+            $noSide = '{"tag_name":"v1","assets":[{"name":"snipdeck-v1-windows-x64.zip","size":5,"browser_download_url":"https://example.invalid/a.zip"}]}' | ConvertFrom-Json
+            $other = '{"tag_name":"v1","assets":[{"name":"other.zip","browser_download_url":"https://example.invalid/o.zip"},{"name":"other.zip.sha256","browser_download_url":"https://example.invalid/o.sha"}]}' | ConvertFrom-Json
+            return (($null -eq (Get-ReleaseAsset $null)) -and ($null -eq (Get-ReleaseAsset $none)) -and ($null -eq (Get-ReleaseAsset $noAssets)) -and ($null -eq (Get-ReleaseAsset $noSide)) -and ($null -eq (Get-ReleaseAsset $other)))
+        }
+        $h1 = ('ab' * 32)
+        $h2 = ('CD' * 32)
+        $pinText = "# comment`n`n$h1  snipdeck-v0.1.0-windows-x64.zip`n$h2 *snipdeck-v0.2.0-windows-x64.zip`nnot a pin line`n"
+        Test-Case 'release: pin file parser' {
+            $pins = Read-PinFile $pinText
+            return (((Get-PinnedHash $pins 'snipdeck-v0.1.0-windows-x64.zip') -eq $h1) -and ((Get-PinnedHash $pins 'snipdeck-v0.2.0-windows-x64.zip') -eq $h2.ToLowerInvariant()) -and ((Get-PinnedHash $pins 'snipdeck-v9-windows-x64.zip') -eq '') -and ((Get-PinnedHash (Read-PinFile '') 'x.zip') -eq '') -and ((Get-PinnedHash (Read-PinFile $null) 'x.zip') -eq ''))
+        }
+        Test-Case 'release: pin file problems are reported, comments and blanks are not' {
+            return ((@(Get-PinFileProblems $pinText).Count -eq 1) -and (@(Get-PinFileProblems "# only a comment`n`n").Count -eq 0) -and (@(Get-PinFileProblems "$h1  a.zip`n$h1  a.zip`n").Count -eq 1))
+        }
+        Test-Case 'release: the pin file shipped in the repo is well formed' {
+            $shipped = [System.IO.File]::ReadAllText([System.IO.Path]::Combine($dir, 'release-sha256.txt'))
+            $probs = @(Get-PinFileProblems $shipped)
+            if ($probs.Count -gt 0) { return ($probs -join '; ') }
+            return $true
+        }
+        Test-Case 'release: sidecar parser' {
+            $name = 'snipdeck-v0.1.0-windows-x64.zip'
+            return (((Read-ShaSidecar "$h1  $name`r`n" $name) -eq $h1) -and ((Read-ShaSidecar "$($h2.ToUpperInvariant()) *$name" $name) -eq $h2.ToLowerInvariant()) -and ((Read-ShaSidecar "$h1  other.zip" $name) -eq '') -and ((Read-ShaSidecar 'garbage' $name) -eq '') -and ((Read-ShaSidecar '' $name) -eq '') -and ((Read-ShaSidecar "$h1" $name) -eq $h1))
+        }
+        $shaFile = [System.IO.Path]::Combine($tmp, 'abc.bin')
+        [System.IO.File]::WriteAllBytes($shaFile, [System.Text.Encoding]::ASCII.GetBytes('abc'))
+        $abc = 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'
+        Test-Case 'release: SHA-256 compare on a temp file' {
+            return ((Test-FileSha256 $shaFile $abc) -and (Test-FileSha256 $shaFile $abc.ToUpperInvariant()) -and -not (Test-FileSha256 $shaFile ('0' * 64)) -and -not (Test-FileSha256 $shaFile 'abc') -and -not (Test-FileSha256 $shaFile '') -and -not (Test-FileSha256 ([System.IO.Path]::Combine($tmp, 'missing.bin')) $abc))
+        }
+        Test-Case 'uninstall: target list has the app and leftover downloads, data only with --data (no real folders)' {
+            $rr = [System.IO.Path]::Combine($tmp, 'fakeroot')
+            $dd = [System.IO.Path]::Combine($tmp, 'fakedata', 'Snipdeck')
+            $left = @('snipdeck-dl-' + ('a' * 32), 'snipdeck-dl-nothex', 'other-folder')
+            $keep = @(Get-UninstallTargets $rr $dd $tmp $left $false)
+            $all = @(Get-UninstallTargets $rr $dd $tmp $left $true)
+            $kinds = ($keep | ForEach-Object { $_.Kind }) -join ','
+            $paths = @($keep | ForEach-Object { $_.Path })
+            $okApp = ($paths -contains [System.IO.Path]::Combine($rr, 'app')) -and ($paths -contains ([System.IO.Path]::Combine($rr, 'app') + '.new')) -and ($paths -contains [System.IO.Path]::Combine($tmp, 'snipdeck-dl-' + ('a' * 32)))
+            $okSkip = ($paths -notcontains [System.IO.Path]::Combine($tmp, 'snipdeck-dl-nothex')) -and ($paths -notcontains [System.IO.Path]::Combine($tmp, 'other-folder'))
+            $okData = ($paths -notcontains $dd) -and (@($all | Where-Object { $_.Path -eq $dd -and $_.Kind -eq 'data' }).Count -eq 1) -and ($all.Count -eq ($keep.Count + 1))
+            if (-not ($okApp -and $okSkip -and $okData)) { return "kinds=$kinds app=$okApp skip=$okSkip data=$okData" }
+            return (-not (Test-Path -LiteralPath $rr))
+        }
+        Test-Case 'uninstall: options accept --data and -Yes' {
+            $o = Read-Options @('uninstall', '--data', '-Yes')
+            return ($o.RemoveData -and $o.Yes -and -not $o.Error -and ($o.Command -eq 'uninstall'))
+        }
+        Test-Case 'release: HTTP status is read from an error record' {
+            $fake = [pscustomobject]@{ Exception = [pscustomobject]@{ Response = [pscustomobject]@{ StatusCode = 404 } } }
+            $none = [pscustomobject]@{ Exception = [pscustomobject]@{ Response = $null } }
+            return (((Get-HttpStatus $fake) -eq 404) -and ((Get-HttpStatus $none) -eq 0) -and ((Get-HttpStatus $null) -eq 0))
+        }
+
+        # 6c. security review fixes (2026-10-18): checkout detection, reinstall guard, unpinned refusal, process names,
+        # user-name scrubbing, backup manifest, release zip entries, installer signatures
+        Test-Case 'checkout: Cargo.toml plus crates\ is a source checkout, a release folder is not' {
+            $saved = $script:RepoRoot
+            try {
+                $co = [System.IO.Path]::Combine($tmp, 'sc-checkout')
+                New-Item -ItemType Directory -Path ([System.IO.Path]::Combine($co, 'crates')) -Force | Out-Null
+                [System.IO.File]::WriteAllText([System.IO.Path]::Combine($co, 'Cargo.toml'), '[workspace]')
+                $half = [System.IO.Path]::Combine($tmp, 'sc-half')
+                New-Item -ItemType Directory -Path $half -Force | Out-Null
+                [System.IO.File]::WriteAllText([System.IO.Path]::Combine($half, 'Cargo.toml'), '[workspace]')
+                $rel = [System.IO.Path]::Combine($tmp, 'sc-release')
+                New-Item -ItemType Directory -Path $rel -Force | Out-Null
+                $script:RepoRoot = $co
+                $a = Test-SourceCheckout
+                $script:RepoRoot = $half
+                $b = Test-SourceCheckout
+                $script:RepoRoot = $rel
+                $c = Test-SourceCheckout
+                return ($a -and -not $b -and -not $c)
+            } finally { $script:RepoRoot = $saved }
+        }
+        Test-Case 'reinstall: a dry run in a checkout deletes nothing (app\, target\, dist\ stay)' {
+            $savedRoot = $script:RepoRoot
+            $savedOpt = $script:Opt
+            try {
+                $rr = [System.IO.Path]::Combine($tmp, 'ri-root')
+                foreach ($d in @('crates', 'app', 'target', 'dist')) { New-Item -ItemType Directory -Path ([System.IO.Path]::Combine($rr, $d)) -Force | Out-Null }
+                [System.IO.File]::WriteAllText([System.IO.Path]::Combine($rr, 'Cargo.toml'), '[workspace]')
+                [System.IO.File]::WriteAllText([System.IO.Path]::Combine($rr, 'app', 'snipdeck.exe'), 'x')
+                $script:RepoRoot = $rr
+                $script:Opt = @{ Yes = $false; WhatIf = $true; AllowUnpinned = $false }
+                $rcs = @(Invoke-ReinstallPrebuilt @() 6>$null)
+                $kept = (Test-Path -LiteralPath ([System.IO.Path]::Combine($rr, 'app', 'snipdeck.exe'))) -and (Test-Path -LiteralPath ([System.IO.Path]::Combine($rr, 'target'))) -and (Test-Path -LiteralPath ([System.IO.Path]::Combine($rr, 'dist')))
+                return ($kept -and ($rcs[$rcs.Count - 1] -eq 0))
+            } finally { $script:RepoRoot = $savedRoot; $script:Opt = $savedOpt }
+        }
+        Test-Case 'unpinned release: refused unattended, allowed only with --allow-unpinned' {
+            $none = (Get-UnpinnedDecision $false $false $false)
+            $yesOnly = (Get-UnpinnedDecision $false $true $true)
+            $person = (Get-UnpinnedDecision $false $true $false)
+            $flag = (Get-UnpinnedDecision $true $false $false)
+            if (-not (($none -eq 'refuse') -and ($yesOnly -eq 'refuse') -and ($person -eq 'ask') -and ($flag -eq 'allow'))) { return "none=$none yes=$yesOnly person=$person flag=$flag" }
+            $savedOpt = $script:Opt
+            try {
+                $asset = [pscustomobject]@{ ZipName = 'snipdeck-v0.1.0-windows-x64.zip' }
+                $script:Opt = @{ Yes = $true; WhatIf = $false; AllowUnpinned = $false }
+                $refused = -not (Confirm-UnpinnedRelease $asset 6>$null)
+                $script:Opt = @{ Yes = $true; WhatIf = $false; AllowUnpinned = $true }
+                $allowed = [bool](Confirm-UnpinnedRelease $asset 6>$null)
+                return ($refused -and $allowed)
+            } finally { $script:Opt = $savedOpt }
+        }
+        Test-Case 'options: --stale is parsed for run and build, refused for backup and with --rebuild' {
+            $r = Read-Options @('run', '--stale')
+            $b = Read-Options @('build', '--no-rebuild')
+            $x = Read-Options @('backup', '--stale')
+            $c = Read-Options @('build', '--stale', '--rebuild')
+            return ($r.Stale -and -not $r.Error -and $b.Stale -and -not $b.Error -and [bool]$x.Error -and [bool]$c.Error)
+        }
+        Test-Case 'unpinned release: --allow-unpinned is parsed for update and refused for backup' {
+            $u = Read-Options @('update', '--allow-unpinned')
+            $b = Read-Options @('backup', '--allow-unpinned')
+            return ($u.AllowUnpinned -and -not $u.Error -and [bool]$b.Error)
+        }
+        Test-Case 'release: a download url on another host is not accepted' {
+            $evil = '{"tag_name":"v1","assets":[{"name":"snipdeck-v1-windows-x64.zip","size":5,"browser_download_url":"https://evil.example/Braydenh563/Snipdeck/releases/download/v1/snipdeck-v1-windows-x64.zip"},{"name":"snipdeck-v1-windows-x64.zip.sha256","browser_download_url":"https://github.com/Braydenh563/Snipdeck/releases/download/v1/snipdeck-v1-windows-x64.zip.sha256"}]}' | ConvertFrom-Json
+            return ($null -eq (Get-ReleaseAsset $evil))
+        }
+        Test-Case 'processes: both the source build and the portable app count as running' {
+            $n = @(Get-AppProcessNames)
+            return (($n -contains 'snipdeck-app') -and ($n -contains 'snipdeck') -and ($n.Count -eq 2))
+        }
+        Test-Case 'user name scrubbing: any case, either slash, 8.3 short form' {
+            $prof = @('C:\Users\Alice Example')
+            $in = 'a C:\USERS\alice example\x b c:/users/Alice Example/y c C:\Users\ALICEE~1\z d C:\Other\keep'
+            $want = 'a %USERPROFILE%\x b %USERPROFILE%/y c %USERPROFILE%\z d C:\Other\keep'
+            $got = Hide-UserName $in $prof
+            if ($got -ne $want) { return "got: $got" }
+            return ((Hide-UserName 'C:\x' $prof) -eq 'C:\x')
+        }
+        Test-Case 'log lines are scrubbed of the profile folder' {
+            $prof = $env:USERPROFILE
+            if (-not $prof) { $prof = $env:HOME }
+            if ((-not $prof) -or $prof.Length -le 3) { return $true }
+            $savedOn = $script:LogOn
+            $savedPath = $script:LogPath
+            try {
+                $lp = [System.IO.Path]::Combine($tmp, 'scrub.log')
+                $script:LogPath = $lp
+                $script:LogOn = $true
+                Write-Log 'INFO' ('opened ' + $prof.ToUpperInvariant() + [System.IO.Path]::DirectorySeparatorChar + 'x')
+                Write-LogRaw ('raw ' + $prof.ToLowerInvariant() + "`r`n")
+                $text = [System.IO.File]::ReadAllText($lp)
+                return (($text.IndexOf($prof, [System.StringComparison]::OrdinalIgnoreCase) -lt 0) -and $text.Contains('%USERPROFILE%'))
+            } finally { $script:LogOn = $savedOn; $script:LogPath = $savedPath }
+        }
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        $newZip = {
+            param([string]$Path, [string[]]$Names)
+            $z = [System.IO.Compression.ZipFile]::Open($Path, 'Create')
+            try {
+                foreach ($n in $Names) {
+                    $e = $z.CreateEntry($n)
+                    $w = New-Object System.IO.StreamWriter($e.Open())
+                    $w.Write('x')
+                    $w.Dispose()
+                }
+            } finally { $z.Dispose() }
+        }
+        Test-Case 'restore: a backup zip must hold snipdeck-backup.json' {
+            $good = [System.IO.Path]::Combine($tmp, 'bk-good.zip')
+            $bad = [System.IO.Path]::Combine($tmp, 'bk-nomanifest.zip')
+            & $newZip $good @('settings.json', 'snipdeck-backup.json')
+            & $newZip $bad @('settings.json', 'notes.txt')
+            $g = Test-BackupZip $good
+            $b = Test-BackupZip $bad
+            return ($g.Ok -and ($g.Count -eq 2) -and -not $b.Ok -and ($b.Error -like '*snipdeck-backup.json*'))
+        }
+        Test-Case 'restore: a backup zip with an entry outside the data folder is refused' {
+            $evil = [System.IO.Path]::Combine($tmp, 'bk-evil.zip')
+            & $newZip $evil @('snipdeck-backup.json', '../outside.txt')
+            return (-not (Test-BackupZip $evil).Ok)
+        }
+        Test-Case 'release zip: unsafe entry names are reported, safe zips pass' {
+            $ok = [System.IO.Path]::Combine($tmp, 'rz-ok.zip')
+            $evil = [System.IO.Path]::Combine($tmp, 'rz-evil.zip')
+            & $newZip $ok @('snipdeck.exe', 'docs/readme.txt')
+            & $newZip $evil @('snipdeck.exe', '../evil.dll')
+            return (((Test-ZipEntries $ok) -eq '') -and ((Test-ZipEntries $evil) -eq '../evil.dll'))
+        }
+        Test-Case 'installer signature: only a valid signature from an allowed signer passes' {
+            $ms = 'CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US'
+            $a = Get-SignatureVerdict 'Valid' $ms @('Microsoft Corporation') $true
+            $lookalike = Get-SignatureVerdict 'Valid' 'CN=Microsoft Corporation Ltd, O=Evil' @('Microsoft Corporation') $true
+            $unsigned = Get-SignatureVerdict 'NotSigned' '' @('Microsoft Corporation') $true
+            $tampered = Get-SignatureVerdict 'HashMismatch' $ms @('Microsoft Corporation') $true
+            $anyValid = Get-SignatureVerdict 'Valid' 'CN=Someone' @() $false
+            $unsignedOk = Get-SignatureVerdict 'NotSigned' '' @() $false
+            $untrusted = Get-SignatureVerdict 'UnknownError' 'CN=Someone' @() $false
+            return ($a -and -not $lookalike -and -not $unsigned -and -not $tampered -and $anyValid -and $unsignedOk -and -not $untrusted)
+        }
+        Test-Case 'installer download folders are random and registered for cleanup' {
+            $d1 = New-DownloadFolder
+            $d2 = New-DownloadFolder
+            try {
+                return ($d1 -and $d2 -and ($d1 -ne $d2) -and ((Split-Path -Leaf $d1) -match '^snipdeck-dl-[0-9a-f]{32}$') -and (Test-KnownDeletable $d1))
+            } finally {
+                foreach ($d in @($d1, $d2)) { if ($d) { Remove-OwnedFolder $d } }
+            }
+        }
+
         # 7. every launcher script parses, and is ASCII
-        foreach ($f in @('snipdeck.ps1', 'lib.ps1', 'cli.ps1', 'core.ps1', 'build.ps1', 'data.ps1', 'selftest.ps1')) {
+        foreach ($f in @('snipdeck.ps1', 'lib.ps1', 'cli.ps1', 'core.ps1', 'build.ps1', 'release.ps1', 'data.ps1', 'selftest.ps1')) {
             Test-Case "parses and is ASCII: $f" {
                 $p = [System.IO.Path]::Combine($dir, $f)
                 $tokens = $null

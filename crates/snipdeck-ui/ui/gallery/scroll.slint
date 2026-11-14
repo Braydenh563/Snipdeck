@@ -1,0 +1,41 @@
+import { Theme, Space, Type, Fonts, Palette } from "../theme.slint";
+import { OverlayScrollbar } from "../components/scrollbar.slint";
+
+// A list that scrolls under an `OverlayScrollbar`, in a window of its own: the screenshot and the logic tests of the bar.
+export component ScrollbarGallery inherits Window {
+    background: Theme.bg-surface;
+    preferred-width: 280px;
+    preferred-height: 200px;
+
+    in property <bool> dark: false;
+    in property <int> rows: 20;
+    out property <bool> bar-shown: bar.shown;
+    out property <length> thumb-y: bar.thumb-y;
+    out property <length> thumb-h: bar.thumb-h;
+    out property <length> bar-w: bar.strip-w;
+    out property <length> scrolled: flick.content-y;
+
+    init => { Palette.dark = root.dark; }
+    changed dark => { Palette.dark = root.dark; }
+
+    flick := Flickable {
+        content-height: root.rows * 28px;
+        for i in root.rows: Rectangle {
+            y: i * 28px;
+            height: 28px;
+            Text {
+                x: Space.s3;
+                text: "Row \{i + 1}";
+                color: Theme.text-primary;
+                font-family: Fonts.sans;
+                font-size: Type.base;
+            }
+        }
+    }
+    bar := OverlayScrollbar {
+        content-y: flick.content-y;
+        content-height: flick.content-height;
+        visible-height: flick.height;
+        scroll-to(y) => { flick.content-y = y; }
+    }
+}

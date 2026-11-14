@@ -1,0 +1,43 @@
+import { Theme, Space } from "../theme.slint";
+
+// DESIGN.md §5 Panel: the strip a docked Panel collapses to. The window is exactly this component, a
+// few pixels thick (6px, set by the host) along one screen edge, in the accent colour of the list on
+// show, with a grabber of three 2px dots in the middle so it reads as something to point at. Hovering it
+// or clicking it opens the Panel (the app decides which, from the Dock setting); the handle only
+// reports. It never takes keyboard focus: the Panel hotkey is the keyboard way in, which the accessible
+// name says. The 6px thickness is the design's, an exception to the 24px hit-target rule: the strip
+// sits against the screen edge, where a pointer cannot overshoot it.
+export component DockHandle inherits Rectangle {
+    // The strip's colour: a list accent, or the theme accent.
+    in property <color> accent: Theme.accent;
+    // The strip runs up and down (left and right edges); false across (top and bottom).
+    in property <bool> vertical: true;
+    // The accessible name: what this is and how to open it from the keyboard.
+    in property <string> label;
+    out property <bool> has-hover: touch.has-hover;
+    callback hovered(on: bool);
+    callback clicked();
+
+    property <length> dot: Space.s0-5;
+    property <length> gap: Space.s0-5;
+    property <length> grabber: 3 * root.dot + 2 * root.gap;
+
+    background: root.accent;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+
+    for n in 3: Rectangle {
+        x: root.vertical ? (root.width - root.dot) / 2 : (root.width - root.grabber) / 2 + n * (root.dot + root.gap);
+        y: root.vertical ? (root.height - root.grabber) / 2 + n * (root.dot + root.gap) : (root.height - root.dot) / 2;
+        width: root.dot;
+        height: root.dot;
+        background: Theme.text-on-accent;
+    }
+
+    touch := TouchArea {
+        mouse-cursor: MouseCursor.pointer;
+        clicked => { root.clicked(); }
+        changed has-hover => { root.hovered(self.has-hover); }
+    }
+}

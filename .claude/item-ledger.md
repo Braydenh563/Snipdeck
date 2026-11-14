@@ -6,3 +6,71 @@ date | item | type | rung | rework | note
 2026-10-18 | M3 Panel window + snipdeck-app controller/bin skeleton | feature | sonnet | 1 | 
 2026-10-18 | Opus security review 2 (9 findings) | security | opus | 0 | 
 2026-10-18 | Win32 tray review: 13 findings fixed | bug | sonnet | 0 | 
+2026-10-18 | Merge step 9 tray | merge | sonnet | 0 | 
+2026-10-18 | Merge step 6 maintenance | merge | sonnet | 1 | 
+2026-10-18 | Step 4 Panel binding (kebab, resize, quick edit) | feature | sonnet | 0 | 
+2026-10-18 | Step 7 Settings window | feature | sonnet | 0 | 
+2026-10-18 | Security review fixes 1-11,13 | fix | sonnet | 0 | 
+2026-10-19 | CI: settings goldens after the website-icons row removal | fix | fable | 0 | 
+2026-10-24 | Panel D v2/v3 mock-ups | design | opus | 1 | 
+2026-10-24 | Non-Panel UX: shortcut search, Ctrl+Shift+P, theme, density, audit, palette | feature | sonnet | 0 | 
+2026-10-24 | Reviewer on non-Panel UX diff: 3 findings sent to implementer (shortcut gaps, Panel density no-op, pin toast) | review | sonnet | 1 | 
+2026-10-24 | Alt+Tab to the Panel: label + Target kept across switcher | feature | sonnet | 0 | 
+2026-10-24 | Picker placement setting (below/above/right/left) | feature | sonnet | 0 | 
+2026-10-24 | Dock: last good work area, no full-height top/bottom dock | bug | sonnet | 0 | 
+2026-10-24 | Review fixes: Panel keys in shortcuts, density label, keep-open toast | ui | sonnet | 0 | 
+2026-10-25 | Feedback audit: confirmations + error toasts (rework: unlock toast, picker/fill tests mislabelled pre-existing) | ui | sonnet | 2 | 
+2026-10-25 | Panel v2 spec: D v3 default, List/Cards/Compact, search, lists menu, opening options | design | opus | 0 | 
+2026-10-25 | Show/hide/move/resize predictability (vanished monitor, parked frames, Reset ends drag) | bug | sonnet | 0 | 
+2026-10-25 | Review fixes F: toast latest-wins, refresh notice last, palette label, Picker docs | bug | sonnet | 1 | 
+2026-10-25 | Panel v2 slice 1: tokens + docs | design | sonnet | 0 | 
+2026-10-25 | Panel v2 slice 2: settings model | feature | sonnet | 0 | 
+2026-10-25 | Panel v2 slice 3: quiet List row | ui | sonnet | 0 | 
+2026-10-25 | Panel v2 slice 4: header, search, footer, chrome | ui | sonnet | 0 | 
+2026-10-25 | Symbols slices 1-3 (data, art, crate) | feature | sonnet | 0 | 
+2026-10-26 | New-install defaults (Recent on, chords, unpinned, hide-after-use) | feature | sonnet | 2 | 
+2026-10-26 | Symbols slice 4 controller | feature | sonnet | 1 | 
+2026-10-26 | Panel v2 slices 5-6 + 6b items 1,3,4 | ui | sonnet | 0 | 
+2026-11-07 | Panel v2 leftovers (Paste stack row, focus order, 225% chips, copy glyph, zero-pixel goldens) | ui | sonnet | 1 | 
+2026-11-07 | Shared-look spec addendum | design | opus | 0 | 
+2026-11-07 | Reviewer on Symbols slice 4 | review | opus | 0 | 
+2026-11-07 | UX audit quick wins 2,3,5,9,11,15,18 | ui | sonnet | 1 | 
+2026-11-07 | v1.1 importers backend | feature | sonnet | 0 | 
+2026-11-07 | Symbols slice 5 Panel tab + save-as review fixes | ui | sonnet | 2 | 
+2026-11-07 | Translations of 110 new strings x6 | docs | sonnet | 0 | 
+2026-11-07 | Importer hardening H2/M7/M8 | security | sonnet | 0 | 
+2026-11-07 | Panel v2 audit 2 fixes | ui | sonnet | 1 | 
+2026-11-08 | Symbols slice 6 + review fixes M3-M6 L10 | feature | sonnet | 0 | 
+2026-11-08 | Rebuild-from-backup safety (store + app) | security | sonnet | 2 | 
+2026-11-08 | Shared look slices 1-4 | ui | sonnet | 0 | 
+2026-11-08 | Shared look slices 5-6 (+menu density fix, app test fixes) | ui | sonnet | 2 | 
+2026-11-08 | Shared look slices 1-8 (Main, Picker, palette, editors, menus, Settings) | ui | sonnet | 2 | 
+2026-11-09 | v1.0.1 slice 1: paste to create, Ctrl+C, toast Edit | feature | sonnet | 1 | 
+2026-11-09 | v1.0.1 slice 2: paste images/files, drop files | feature | sonnet | 2 | 
+2026-11-09 | v1.0.1 O50: Select/Delete strip, Clear list | ui | sonnet | 3 | 
+2026-11-10 | v1.0.1 slice 7: sidebar resize/collapse, sort menus, Manual offer | ui | sonnet | 1 | 
+2026-11-10 | Tick U9 in fable-analysis | docs | opus | 0 | 
+2026-11-10 | v1.0.1 slice 5 Recent rich captures | feature | sonnet | 2 | 
+2026-11-10 | v1.0.1 slice 6 Main quick-add + multi-row drag | feature | sonnet | 1 | 
+2026-11-10 | v1.1 slice 9 serde-saphyr + 3a groups data | feature | sonnet | 1 | 
+2026-11-10 | v1.1 slice 5a triggers data | feature | sonnet | 1 | 
+2026-11-10 | v1.0.1 slice 8 A25 + search suggestions | feature | sonnet | 1 | 
+2026-11-10 | Empty state keycaps beside the button (owner feedback) | ui | opus | 0 | 
+2026-11-10 | v1.1 slice 8 Hello platform+crypto layer | security | sonnet | 1 | 
+2026-11-10 | v1.1 slice 2b core parser | feature | sonnet | 1 | 
+2026-11-10 | v1.1 slices 5b+7 platform layer | feature | sonnet | 1 | 
+2026-11-11 | v1.1 slices 1+2a importers, uuid, date maths, paste as | ui | sonnet | 2 | 
+2026-11-11 | v1.1 slice 2b fill-form kinds | ui | sonnet | 1 | 
+2026-11-11 | v1.1 slice 4 tips | ui | sonnet | 0 | 
+2026-11-11 | final audit 1: min window widths follow text size | ui | sonnet | 0 | 
+2026-11-11 | polish: tips picture crops, Show Panel icon, scroll-focus tests | ui | sonnet | 0 | 
+2026-11-11 | Align placeholder chip column | ui | sonnet | 0 | 
+2026-11-11 | v1.1 groups inside a list (3b UI) | feature | sonnet | 2 | 
+2026-11-11 | Blind-test UI fixes: Supporter marks, licence route | ui | sonnet | 0 | 
+2026-11-11 | Editor footer reflow + importer note i18n | ui | sonnet | 0 | 
+2026-11-11 | Audit 1b keyboard walk merge (Tab-order fixes, goldens) | review | opus | 2 | 
+2026-11-11 | Groups in the Main window | feature | sonnet | 2 | 
+2026-11-11 | Final UX audit (v1.1 surfaces) | review | opus | 0 | 
+2026-11-11 | Blind-test fixes (README hotkeys, wording, Hello prerequisites, header menu) | docs | sonnet | 1 | 
+2026-11-11 | ux-auditor findings (search gap, toast wrap, shortcuts clip, keycap or, palette width, header a11y, descriptions) | ui | sonnet | 1 | 
+2026-11-12 | Final polish: ux-auditor re-check fixes (group rename keys, Main header height, toast kind) | review | opus | 1 | 

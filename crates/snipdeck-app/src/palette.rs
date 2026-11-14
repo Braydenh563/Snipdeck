@@ -32,6 +32,12 @@ fn parse_hex(text: &str) -> Option<[u8; 3]> {
     Some([byte(0)?, byte(2)?, byte(4)?])
 }
 
+/// A palette primitive by name (`teal-600`).
+#[must_use]
+pub fn primitive(name: &str) -> Option<[u8; 3]> {
+    PRIMITIVES.get(name).copied()
+}
+
 /// The colour of a list's accent: step 600 on light, step 400 on dark. A list without an accent
 /// is slate.
 #[must_use]
@@ -99,5 +105,78 @@ mod tests {
         assert_eq!(parse_hex("#04848"), None);
         assert_eq!(parse_hex("#04848é"), None);
         assert_eq!(parse_hex("#GG8484"), None);
+    }
+
+    // --- Panel v2 tokens (docs/reviews/panel-v2-spec.md section 1/2.9): the checks `palette.py` runs, repeated from
+    // the generated JSON so CI fails when a token drifts below its contrast floor.
+
+    fn theme_colour(theme: &str, token: &str) -> [u8; 3] {
+        let value: serde_json::Value = serde_json::from_str(PALETTE_JSON).unwrap();
+        let hex = value["themes"][theme][token]
+            .as_str()
+            .unwrap_or_else(|| panic!("{theme} theme has no token `{token}`"));
+        parse_hex(hex).unwrap()
+    }
+
+    fn luminance([r, g, b]: [u8; 3]) -> f64 {
+        let channel = |c: u8| {
+            let c = f64::from(c) / 255.0;
+            if c <= 0.04045 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            }
+        };
+        0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+    }
+
+    fn contrast(theme: &str, fg: &str, bg: &str) -> f64 {
+        let (a, b) = (
+            luminance(theme_colour(theme, fg)),
+            luminance(theme_colour(theme, bg)),
+        );
+        (a.max(b) + 0.05) / (a.min(b) + 0.05)
+    }
+
+    #[test]
+    fn type_tile_glyphs_read_on_their_tile_in_both_themes() {
+        for theme in ["light", "dark"] {
+            for kind in [
+                "text",
+                "template",
+                "code",
+                "link",
+                "sensitive",
+                "image",
+                "file",
+            ] {
+                let ratio = contrast(
+                    theme,
+                    &format!("kind.{kind}.glyph"),
+                    &format!("kind.{kind}.tile"),
+                );
+                assert!(ratio >= 4.5, "{theme} {kind} glyph on tile {ratio:.2}");
+            }
+        }
+    }
+
+    #[test]
+    fn search_mark_is_readable_and_stays_visible_on_every_row_fill() {
+        for theme in ["light", "dark"] {
+            let text = contrast(theme, "search.mark-text", "search.mark");
+            assert!(text >= 4.5, "{theme} mark text {text:.2}");
+            for fill in ["bg.selected", "bg.surface", "bg.hover"] {
+                let ratio = contrast(theme, "search.mark", fill);
+                assert!(ratio >= 1.3, "{theme} mark vs {fill} {ratio:.2}");
+            }
+        }
+    }
+
+    #[test]
+    fn toast_action_reads_on_the_ink_fill() {
+        for theme in ["light", "dark"] {
+            let ratio = contrast(theme, "toast.action", "ink.default");
+            assert!(ratio >= 4.5, "{theme} toast action {ratio:.2}");
+        }
     }
 }

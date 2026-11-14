@@ -18,7 +18,8 @@ use std::path::Path;
 use common::*;
 use rusqlite::Connection;
 use snipdeck_portable::{
-    Error, ImportOptions, MergeStrategy, Warning, import_copyq_json, import_ditto, import_folder,
+    Error, HistoryEntry, ImportOptions, MergeStrategy, Warning, import_copyq_json, import_ditto,
+    import_entries, import_folder,
 };
 use snipdeck_store::{BlobStore, BoardRepo, ItemRepo, ListRepo, Store, TagRepo};
 
@@ -165,6 +166,23 @@ fn folder_skips_empty_binary_and_oversized_files() {
     assert!(kinds.contains(&"unreadable") && kinds.contains(&"too large"));
 }
 
+/// Wave 3c review: duplicates are counted apart from the other skips.
+#[test]
+fn duplicates_are_counted_apart_from_other_skips() {
+    let dir = tempfile::tempdir().unwrap();
+    write(dir.path(), "a.txt", "same");
+    write(dir.path(), "empty.txt", "");
+    let mut s = store();
+    let opts = ImportOptions {
+        merge: MergeStrategy::SkipDuplicates,
+        ..ImportOptions::default()
+    };
+    let first = import_folder(&mut s, dir.path(), at(1), &opts).unwrap();
+    assert_eq!((first.duplicates_skipped, first.items_skipped), (0, 1));
+    let second = import_folder(&mut s, dir.path(), at(2), &opts).unwrap();
+    assert_eq!((second.duplicates_skipped, second.items_skipped), (1, 2));
+}
+
 /// Security review 2, finding 6: the 5 MB limit is on the text that gets stored, not on the
 /// bytes in the file. Bad bytes become three-byte U+FFFD, and UTF-16 can grow by half.
 #[test]
@@ -236,6 +254,40 @@ fn folder_does_not_follow_symbolic_links_or_open_special_files() {
             "only the link counts; the pipe is not a file"
         );
     }
+}
+
+#[cfg(unix)]
+#[test]
+fn folder_carries_on_past_an_unreadable_subfolder() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("root");
+    write(&root, "top.txt", "top");
+    write(&root.join("good"), "a.txt", "fine");
+    write(&root.join("locked"), "b.txt", "hidden");
+    let locked = root.join("locked");
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).unwrap();
+    let readable = fs::read_dir(&locked).is_ok();
+    let outcome = if readable {
+        None
+    } else {
+        let mut s = store();
+        Some(import_folder(&mut s, &root, at(9), &ImportOptions::default()).map(|r| (s, r)))
+    };
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
+    // Running as root: the permission bits do not apply, so there is nothing to test.
+    let Some(outcome) = outcome else { return };
+    let (s, report) = outcome.unwrap();
+    assert_eq!(s.all_items().unwrap().len(), 2, "{:?}", report.warnings);
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::Unreadable { name, .. } if name == "locked")),
+        "{:?}",
+        report.warnings
+    );
 }
 
 #[test]
@@ -925,4 +977,261 @@ fn copyq_skip_duplicates_applies() {
     };
     let (_, report) = copyq(json, &opts);
     assert_eq!((report.items_added, report.items_skipped), (2, 1));
+}
+
+// ---------------------------------------------------------------- dry run
+
+#[test]
+fn dry_run_reports_exactly_what_a_real_import_adds_and_writes_nothing() {
+    let dir = tempfile::tempdir().unwrap();
+    write(dir.path(), "a.txt", "alpha");
+    write(dir.path(), "b.md", "beta");
+    write(dir.path(), "sub/c.txt", "gamma");
+    let mut s = store();
+    let before = (s.boards().unwrap().len(), s.tags().unwrap().len());
+    let dry = ImportOptions {
+        dry_run: true,
+        ..ImportOptions::default()
+    };
+    let preview = import_folder(&mut s, dir.path(), at(9), &dry).unwrap();
+    assert_eq!((s.boards().unwrap().len(), s.tags().unwrap().len()), before);
+    assert!(contents(&s).is_empty());
+
+    let real = import_folder(&mut s, dir.path(), at(9), &ImportOptions::default()).unwrap();
+    assert_eq!(preview.items_added, 3);
+    assert_eq!(
+        (
+            preview.boards_added,
+            preview.lists_added,
+            preview.items_added
+        ),
+        (real.boards_added, real.lists_added, real.items_added)
+    );
+}
+
+#[test]
+fn dry_run_counts_duplicates_as_skipped() {
+    let dir = tempfile::tempdir().unwrap();
+    write(dir.path(), "a.txt", "alpha");
+    let mut s = store();
+    import_folder(&mut s, dir.path(), at(9), &ImportOptions::default()).unwrap();
+    let dry = ImportOptions {
+        dry_run: true,
+        merge: MergeStrategy::SkipDuplicates,
+        ..ImportOptions::default()
+    };
+    let preview = import_folder(&mut s, dir.path(), at(10), &dry).unwrap();
+    assert_eq!((preview.items_added, preview.items_skipped), (0, 1));
+    assert_eq!(contents(&s).len(), 1);
+}
+
+// ---------------------------------------------------------------- clipboard history
+
+fn clip(text: &str, secs: Option<i64>) -> HistoryEntry {
+    HistoryEntry {
+        text: text.to_owned(),
+        timestamp: secs.map(at),
+    }
+}
+
+#[test]
+fn history_keeps_order_skips_blank_and_titles_from_first_line() {
+    let mut s = store();
+    let entries = [
+        clip("first\nsecond line", Some(5)),
+        clip("  \r\n\t ", None),
+        clip("", None),
+        clip("third", None),
+    ];
+    let report = import_entries(&mut s, &entries, "", at(9), &ImportOptions::default()).unwrap();
+    assert_healthy(&s);
+    assert_eq!(
+        (report.boards_added, report.lists_added, report.items_added),
+        (1, 1, 2)
+    );
+    assert_eq!(report.items_skipped, 2);
+    assert_eq!(
+        contents(&s),
+        [(
+            "Windows clipboard history".to_owned(),
+            "Windows clipboard history".to_owned(),
+            vec![
+                ("first".to_owned(), "first\nsecond line".to_owned()),
+                ("third".to_owned(), "third".to_owned()),
+            ]
+        )]
+    );
+    let item = first_item(&s);
+    assert_eq!(item.created_at, at(5));
+}
+
+#[test]
+fn history_board_name_comes_from_options_then_argument() {
+    let mut s = store();
+    let e = [clip("a", None)];
+    import_entries(
+        &mut s,
+        &e,
+        "Zwischenablage",
+        at(1),
+        &ImportOptions::default(),
+    )
+    .unwrap();
+    let opts = ImportOptions {
+        board_name: Some("Chosen".to_owned()),
+        ..ImportOptions::default()
+    };
+    import_entries(&mut s, &e, "Zwischenablage", at(2), &opts).unwrap();
+    let names: Vec<_> = s
+        .boards()
+        .unwrap()
+        .iter()
+        .map(|b| b.name.to_string())
+        .collect();
+    assert!(names.contains(&"Zwischenablage".to_owned()) && names.contains(&"Chosen".to_owned()));
+}
+
+#[test]
+fn history_skips_an_entry_over_the_text_limit_with_a_warning() {
+    let mut s = store();
+    let huge = "x".repeat(5 * 1024 * 1024 + 1);
+    let entries = [clip(&huge, None), clip("ok", None)];
+    let report = import_entries(&mut s, &entries, "", at(1), &ImportOptions::default()).unwrap();
+    assert_eq!((report.items_added, report.items_skipped), (1, 1));
+    assert!(report.warnings.iter().any(
+        |w| matches!(w, Warning::TooLarge { name, size } if name == "entry 1" && *size == 5 * 1024 * 1024 + 1)
+    ));
+}
+
+#[test]
+fn history_dry_run_writes_nothing_and_duplicates_are_skipped() {
+    let mut s = store();
+    let entries = [clip("same", None), clip("other", None)];
+    let dry = ImportOptions {
+        dry_run: true,
+        ..ImportOptions::default()
+    };
+    let preview = import_entries(&mut s, &entries, "", at(1), &dry).unwrap();
+    assert_eq!(preview.items_added, 2);
+    assert_eq!(counts(&s), (0, 0, 0, 0));
+
+    import_entries(&mut s, &entries, "", at(2), &ImportOptions::default()).unwrap();
+    let skip = ImportOptions {
+        merge: MergeStrategy::SkipDuplicates,
+        ..ImportOptions::default()
+    };
+    let again = import_entries(&mut s, &entries, "", at(3), &skip).unwrap();
+    assert_eq!((again.items_added, again.items_skipped), (0, 2));
+    assert_eq!(contents(&s).len(), 1);
+}
+
+#[test]
+fn history_with_nothing_importable_adds_no_board() {
+    let mut s = store();
+    let report = import_entries(&mut s, &[], "", at(1), &ImportOptions::default()).unwrap();
+    assert_eq!(report.boards_added, 0);
+    assert_eq!(counts(&s), (0, 0, 0, 0));
+}
+
+#[test]
+fn copyq_a_huge_array_of_junk_is_cut_off_at_the_scan_cap() {
+    // 2 MB of `0,` would be a million values; the cap is on items looked at, so the rest is
+    // never even visited, let alone kept.
+    let mut json = String::from("[");
+    json.push_str(&"0,".repeat(1_000_000));
+    json.push_str("0]");
+    let opts = ImportOptions {
+        limits: snipdeck_portable::Limits {
+            max_items: 10,
+            ..snipdeck_portable::Limits::default()
+        },
+        ..ImportOptions::default()
+    };
+    let (s, report) = copyq(json.as_bytes(), &opts);
+    assert_eq!(counts(&s), (0, 0, 0, 0));
+    assert_eq!(report.items_skipped, 40, "scan cap is 4 x max_items");
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::Truncated { .. })),
+        "{:?}",
+        report.warnings
+    );
+    assert!(report.warnings.len() <= snipdeck_portable::MAX_WARNINGS);
+}
+
+#[test]
+fn copyq_stops_reading_at_max_items_without_a_tree() {
+    let items: Vec<String> = (0..50).map(|i| format!("item {i}")).collect();
+    let json = serde_json::to_string(&items).unwrap();
+    let opts = ImportOptions {
+        limits: snipdeck_portable::Limits {
+            max_items: 5,
+            ..snipdeck_portable::Limits::default()
+        },
+        ..ImportOptions::default()
+    };
+    let (_, report) = copyq(json.as_bytes(), &opts);
+    assert_eq!(report.items_added, 5);
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::Truncated { .. }))
+    );
+}
+
+#[test]
+fn copyq_a_deeply_nested_array_is_skipped_not_recursed_into() {
+    let depth = 200_000;
+    let json = format!("{}{}", "[".repeat(depth), "]".repeat(depth));
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("deep.json");
+    fs::write(&path, json).unwrap();
+    let mut s = store();
+    // Nesting is skipped without being built or recursed into: one unreadable element, or a
+    // refusal; never a stack overflow and never an item.
+    match import_copyq_json(&mut s, &path, at(1), &ImportOptions::default()) {
+        Ok(report) => assert_eq!((report.items_added, report.items_skipped), (0, 1)),
+        Err(e) => assert!(matches!(e, Error::Malformed { .. }), "{e}"),
+    }
+    assert_eq!(counts(&s), (0, 0, 0, 0));
+}
+
+#[test]
+fn copyq_a_huge_tags_array_in_one_item_keeps_only_the_cap() {
+    let tags = format!("[{}]", r#""a","#.repeat(500_000) + r#""b""#);
+    let json = format!(r#"{{"items":[{{"text":"hello","tags":{tags}}}]}}"#);
+    let (s, report) = copyq(json.as_bytes(), &ImportOptions::default());
+    assert_eq!(report.items_added, 1);
+    assert!(report.tags_added <= 2, "{}", report.tags_added);
+    assert_healthy(&s);
+}
+
+#[test]
+fn ditto_reads_at_most_a_capped_number_of_groups() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("Data.db");
+    let d = Ditto::new(&path);
+    // 10 001 group rows from one statement; the importer reads the first 10 000 and says so.
+    d.0.execute_batch(
+        "WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 10001)
+         INSERT INTO Main (lID, lDate, mText, bIsGroup, lParentID)
+         SELECT i, 0, 'g' || i, 1, -1 FROM n;",
+    )
+    .unwrap();
+    d.clip(20_000, 1_700_000_000, Some("a clip"), false, 1);
+    drop(d);
+    let mut s = store();
+    let report = import_ditto(&mut s, &path, at(9), &ImportOptions::default()).unwrap();
+    assert_eq!(report.items_added, 1);
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::Truncated { reason } if reason.contains("groups"))),
+        "{:?}",
+        report.warnings
+    );
 }

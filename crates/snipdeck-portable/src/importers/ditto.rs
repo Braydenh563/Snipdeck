@@ -83,6 +83,10 @@ fn value_limit() -> i64 {
 /// a warning (its row must still be readable to find that out) instead of failing the import.
 const ROW_LIMIT: i32 = 64 * 1024 * 1024;
 
+/// The most group rows read; a real Ditto database has a handful. Later groups are ignored (their
+/// clips land in the history list).
+const MAX_GROUPS: usize = 10_000;
+
 /// Nested groups deeper than this are not followed (and a cycle in `lParentID` cannot loop).
 const MAX_GROUP_DEPTH: usize = 8;
 
@@ -103,7 +107,7 @@ pub fn import_ditto<L: Library>(
     check_schema(&conn, db_path)?;
 
     let mut report = ImportReport::default();
-    let groups = read_groups(&conn)?;
+    let groups = read_groups(&conn, &mut report)?;
     let mut clips = read_clips(&conn, options.limits.max_items, MEMORY_BUDGET, &mut report)?;
     fill_texts(&conn, &mut clips, MEMORY_BUDGET, &mut report)?;
 
@@ -214,6 +218,11 @@ fn open_read_only(path: &Path) -> Result<Connection> {
         rusqlite::config::DbConfig::SQLITE_DBCONFIG_ENABLE_TRIGGER,
         false,
     )?;
+    // Defensive mode (no writable schema, no shadow-table writes), page checks on every cell,
+    // and no memory-mapped file: a corrupt foreign file cannot be read past its pages.
+    conn.set_db_config(rusqlite::config::DbConfig::SQLITE_DBCONFIG_DEFENSIVE, true)?;
+    conn.pragma_update(None, "cell_size_check", true)?;
+    conn.pragma_update(None, "mmap_size", 0)?;
     conn.set_limit(Limit::SQLITE_LIMIT_LENGTH, ROW_LIMIT)?;
     conn.pragma_update(None, "query_only", true)?;
     conn.busy_timeout(std::time::Duration::from_secs(2))?;
@@ -311,13 +320,22 @@ fn bytes_at(row: &Row<'_>, index: usize) -> Option<Vec<u8>> {
     }
 }
 
-fn read_groups(conn: &Connection) -> Result<HashMap<i64, (String, i64)>> {
+fn read_groups(
+    conn: &Connection,
+    report: &mut ImportReport,
+) -> Result<HashMap<i64, (String, i64)>> {
     let mut stmt = conn.prepare(
         "SELECT lID, mText, lParentID FROM Main WHERE bIsGroup <> 0 AND bIsGroup IS NOT NULL",
     )?;
     let mut rows = stmt.query([])?;
     let mut groups = HashMap::new();
     while let Some(row) = rows.next()? {
+        if groups.len() >= MAX_GROUPS {
+            report.warn(Warning::Truncated {
+                reason: format!("only the first {MAX_GROUPS} groups were read"),
+            });
+            break;
+        }
         let Some(id) = int_at(row, 0) else { continue };
         let name = bytes_at(row, 1)
             .map(|b| String::from_utf8_lossy(&b).into_owned())

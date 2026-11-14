@@ -1,0 +1,403 @@
+// The Panel's Symbols tab (docs/reviews/symbols-spec.md §4): search, kind tabs, group strip, the grid
+// of emoji / kaomoji / icons, and the empty state. The host builds the grid as ROWS (a section header,
+// or a row of cells) and owns the selection; this file draws them and reports gestures.
+import { ListView } from "std-widgets.slint";
+import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook } from "theme.slint";
+import { Icons } from "icons.slint";
+import { Icon } from "components/icon.slint";
+import { SearchField } from "components/text_field.slint";
+import { Tab } from "components/tab.slint";
+import { EmptyState, EmptyStateKind } from "components/empty_state.slint";
+import { OverlayScrollbar } from "components/scrollbar.slint";
+import { DeckEdge, DeckEdgePosition } from "components/deck-edge.slint";
+
+// One symbol. `art` is its catalog number for `SymbolsView.art` (-1: no picture, draw `text`). `kind` is 0 emoji,
+// 1 kaomoji, 2 icon. `flat` numbers the cells in reading order: it is the selection index.
+export struct SymbolCell {
+    art: int,
+    text: string,
+    label: string,
+    kind: int,
+    wide: bool,
+    flat: int,
+}
+
+// One row of the grid. A header row has `header` set ("RECENTLY USED"); `link` is the "Show all" text at its right and
+// `link-kind` the kind tab it switches to. Other rows hold `cells`; `chips` marks kaomoji rows. `y` and `h` place the row
+// (the host sums them) so the selection can be scrolled into view.
+export struct SymbolRow {
+    header: string,
+    link: string,
+    link-kind: int,
+    cells: [SymbolCell],
+    chips: bool,
+    y: length,
+    h: length,
+}
+
+// The words the host puts on the grid's section headers and empty state (Rust cannot reach the catalogs).
+export global SymbolTexts {
+    pure public function recently-used() -> string { return @tr("Recently used"); }
+    pure public function show-all() -> string { return @tr("Show all"); }
+    pure public function kind-name(kind: int) -> string {
+        return kind == 0 ? @tr("Emoji") : kind == 1 ? @tr("Kaomoji") : @tr("Icons");
+    }
+    pure public function emoji-group(group: int) -> string {
+        return group == 0 ? @tr("Smileys & Emotion")
+            : group == 1 ? @tr("People & Body")
+            : group == 2 ? @tr("Animals & Nature")
+            : group == 3 ? @tr("Food & Drink")
+            : group == 4 ? @tr("Travel & Places")
+            : group == 5 ? @tr("Activities")
+            : group == 6 ? @tr("Objects")
+            : group == 7 ? @tr("Symbols")
+            : @tr("Flags");
+    }
+    pure public function kaomoji-group(group: int) -> string {
+        return group == 0 ? @tr("Joy")
+            : group == 1 ? @tr("Love")
+            : group == 2 ? @tr("Sad")
+            : group == 3 ? @tr("Angry")
+            : group == 4 ? @tr("Surprise")
+            : group == 5 ? @tr("Shrug")
+            : group == 6 ? @tr("Greet")
+            : group == 7 ? @tr("Sorry")
+            : group == 8 ? @tr("Animals")
+            : @tr("Actions");
+    }
+    pure public function no-match(query: string) -> string { return @tr("No symbols match “{}”", query); }
+    pure public function no-match-body() -> string { return @tr("Try another word, or a different kind."); }
+}
+
+export component SymbolsView inherits Rectangle {
+    in property <[SymbolRow]> rows;
+    // 0 All, 1 Emoji, 2 Kaomoji, 3 Icons.
+    in property <int> kind: 0;
+    in-out property <string> query <=> search.text;
+    // The keyboard-selected cell (flat index, -1 none) and the grid row that holds it.
+    in-out property <int> selected: 0;
+    in property <int> selected-row: -1;
+    // A group button or "Show all" asked for this row to be put at the top of the grid.
+    in property <int> top-row: -1;
+    in property <int> top-row-ticks: 0;
+    in property <string> empty-heading;
+    in property <string> empty-body;
+    // The route, for the tooltips: "Click pastes · Shift+click copies" (the host words it with the Target).
+    in property <string> use-hint;
+    // The chosen group of the strip (-1 none).
+    in property <int> group: -1;
+    // Emoji kind only: the strip of group buttons.
+    property <bool> strip-shown: root.kind == 1 && root.query == "";
+    out property <int> columns: max(1, floor((root.width - 2 * Space.s2) / Space.cell));
+    out property <length> side-pad: (root.width - root.columns * Space.cell) / 2;
+    out property <length> scroll-y: grid.content-y;
+    // Text typed while the focus was elsewhere in the Panel: appended to the search, which takes the focus.
+    in property <string> typed;
+    in property <int> typed-ticks: 0;
+    pure callback art(int) -> image;
+    callback query-edited(string);
+    callback kind-picked(int);
+    callback group-picked(int);
+    callback cell-used(int);
+    callback cell-copied(int);
+    callback cell-menu(int, length, length);
+    callback tip(string, length, length, bool);
+    callback columns-changed(int);
+    callback focus-changed(bool);
+    callback composing-changed(bool);
+    // The name of the cell under the pointer ("" when it leaves): the Panel's footer shows it.
+    callback hover-name(string);
+
+    public function focus-search() {
+        search.focus();
+    }
+    public function select-search() {
+        search.focus();
+        search.select-all();
+    }
+    // Scrolls so that the row [y, y + h) is fully visible.
+    function reveal(y: length, h: length) {
+        if (y == 0px) {
+            grid.content-y = 0px;
+        } else if (y + grid.content-y < 0px) {
+            grid.content-y = -y;
+        } else if (y + h + grid.content-y > grid.height) {
+            grid.content-y = grid.height - y - h;
+        }
+    }
+    changed selected-row => {
+        if (root.selected-row >= 0 && root.selected-row < root.rows.length) {
+            root.reveal(root.rows[root.selected-row].y, root.rows[root.selected-row].h);
+        }
+    }
+    changed top-row-ticks => {
+        if (root.top-row >= 0 && root.top-row < root.rows.length) {
+            grid.content-y = -root.rows[root.top-row].y;
+        }
+    }
+    changed rows => { grid.content-y = 0px; }
+    changed columns => { root.columns-changed(root.columns); }
+    changed typed-ticks => {
+        search.focus();
+        search.text = search.text + root.typed;
+        search.set-cursor(1000000);
+        root.query-edited(search.text);
+    }
+    init => {
+        search.focus();
+        // A change handler does not fire for the value a field has when it first appears.
+        root.focus-changed(search.has-focus);
+        root.columns-changed(root.columns);
+    }
+
+    background: Theme.bg-surface;
+
+    VerticalLayout {
+        // ---- Search (40) ------------------------------------------------------------------------------
+        Rectangle {
+            height: Space.s8 + Space.s2;
+            search := SearchField {
+                x: Space.s2;
+                y: Space.s1;
+                width: parent.width - 2 * Space.s2;
+                height: self.box-height;
+                min-box-h: Space.s8;
+                clearable: true;
+                placeholder: @tr("Search emoji, kaomoji, icons");
+                label: @tr("Search symbols");
+                clear-label: @tr("Clear search");
+                edited(text) => { root.query-edited(text); }
+                changed has-focus => { root.focus-changed(self.has-focus); }
+                changed composing => { root.composing-changed(self.composing); }
+            }
+        }
+
+        // ---- Kind tabs (32) ---------------------------------------------------------------------------
+        Rectangle {
+            height: max(Space.s8, Type.line-base + Space.s3);
+            accessible-role: tab-list;
+            accessible-label: @tr("Kinds of symbols");
+            Rectangle {
+                y: parent.height - 1px;
+                height: 1px;
+                background: Theme.border-subtle;
+            }
+            HorizontalLayout {
+                padding-left: Space.s2;
+                padding-right: Space.s2;
+                spacing: Space.s0-5;
+                alignment: start;
+                for name[i] in [@tr("All"), @tr("Emoji"), @tr("Kaomoji"), @tr("Icons")]: Tab {
+                    text: name;
+                    accent: Theme.accent;
+                    selected: root.kind == i;
+                    index: i;
+                    count: 4;
+                    clicked => { root.kind-picked(i); }
+                }
+            }
+        }
+
+        // ---- Group strip (28): emoji only ---------------------------------------------------------------
+        if root.strip-shown: Rectangle {
+            height: Space.hit;
+            HorizontalLayout {
+                padding-left: Space.s2;
+                padding-right: Space.s2;
+                for g[i] in [
+                    { label: SymbolTexts.emoji-group(0), icon: Icons.smiley },
+                    { label: SymbolTexts.emoji-group(1), icon: Icons.hand-waving },
+                    { label: SymbolTexts.emoji-group(2), icon: Icons.paw-print },
+                    { label: SymbolTexts.emoji-group(3), icon: Icons.hamburger },
+                    { label: SymbolTexts.emoji-group(4), icon: Icons.airplane },
+                    { label: SymbolTexts.emoji-group(5), icon: Icons.soccer-ball },
+                    { label: SymbolTexts.emoji-group(6), icon: Icons.lightbulb },
+                    { label: SymbolTexts.emoji-group(7), icon: Icons.heart },
+                    { label: SymbolTexts.emoji-group(8), icon: Icons.flag },
+                ]: Rectangle {
+                    horizontal-stretch: 1;
+                    min-width: Space.hit-min;
+                    max-width: Space.s8;
+                    property <bool> on: gtouch.has-hover || root.group == i;
+                    border-radius: Radius.md;
+                    background: gtouch.has-hover ? Theme.bg-hover : transparent;
+                    accessible-role: button;
+                    accessible-label: g.label;
+                    accessible-action-default => { root.group-picked(i); }
+                    Icon {
+                        source: g.icon;
+                        size: Space.s4;
+                        tint: parent.on ? Theme.text-primary : Theme.text-secondary;
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
+                    }
+                    gtouch := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { root.group-picked(i); }
+                        changed has-hover => { root.tip(g.label, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover); }
+                    }
+                }
+            }
+        }
+
+        // ---- The grid ---------------------------------------------------------------------------------
+        deck := Rectangle {
+            vertical-stretch: 1;
+            min-height: Space.s12;
+            clip: true;
+
+            grid := ListView {
+                x: 0px;
+                width: parent.width;
+                height: parent.height;
+                vertical-scrollbar-policy: ScrollBarPolicy.always-off;
+                horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
+                accessible-label: @tr("Symbols");
+                visible: root.rows.length > 0;
+
+                for row in root.rows: Rectangle {
+                    height: row.h;
+                    if row.header != "": Rectangle {
+                        Text {
+                            x: Space.s2;
+                            width: parent.width - 2 * Space.s2 - link.preferred-width;
+                            text: row.header;
+                            font-family: Fonts.sans;
+                            font-size: Type.xs;
+                            font-weight: Type.medium;
+                            color: Theme.text-secondary;
+                            vertical-alignment: center;
+                            overflow: elide;
+                            accessible-role: AccessibleRole.text;
+                        }
+                        link := Text {
+                            x: parent.width - Space.s2 - self.preferred-width;
+                            text: row.link;
+                            font-family: Fonts.sans;
+                            font-size: Type.xs;
+                            font-weight: Type.medium;
+                            color: link-touch.has-hover ? Theme.accent-text : Theme.text-secondary;
+                            vertical-alignment: center;
+                            accessible-role: AccessibleRole.button;
+                            accessible-label: row.link;
+                            accessible-action-default => { root.kind-picked(row.link-kind); }
+                            link-touch := TouchArea {
+                                enabled: row.link != "";
+                                mouse-cursor: pointer;
+                                clicked => { root.kind-picked(row.link-kind); }
+                            }
+                        }
+                    }
+                    if row.header == "": HorizontalLayout {
+                        padding-left: row.chips ? Space.s2 : root.side-pad;
+                        spacing: row.chips ? Space.s1 : 0px;
+                        alignment: start;
+                        for cell in row.cells: cbox := Rectangle {
+                            property <bool> chosen: cell.flat == root.selected;
+                            property <image> picture: cell.art >= 0 ? root.art(cell.art) : @image-url("../icons/x.svg");
+                            width: row.chips ? (cell.wide || row.cells.length == 1 ? parent.width - 2 * Space.s2 : (parent.width - 2 * Space.s2 - Space.s1) / 2) : Space.cell;
+                            height: row.chips ? row.h - Space.s1 : Space.cell;
+                            border-radius: Radius.md;
+                            background: self.chosen ? Theme.bg-selected : ctouch.has-hover ? Theme.bg-hover : transparent;
+                            accessible-role: list-item;
+                            accessible-label: cell.label;
+                            accessible-description: cell.kind == 0 ? @tr("Emoji") : cell.kind == 1 ? @tr("Kaomoji") : @tr("Icon");
+                            accessible-item-selectable: true;
+                            accessible-item-selected: self.chosen;
+                            accessible-action-default => { root.selected = cell.flat; root.cell-used(cell.flat); }
+                            animate background { duration: Motion.instant; easing: Motion.out; }
+
+                            if cell.kind == 0 && cell.art >= 0 && cbox.picture.width > 0: Image {
+                                source: cbox.picture;
+                                width: Space.s6;
+                                height: Space.s6;
+                                x: (parent.width - self.width) / 2;
+                                y: (parent.height - self.height) / 2;
+                                image-fit: contain;
+                            }
+                            if cell.kind == 2 && cell.art >= 0: Image {
+                                source: cbox.picture;
+                                colorize: Theme.text-primary;
+                                width: Space.s6;
+                                height: Space.s6;
+                                x: (parent.width - self.width) / 2;
+                                y: (parent.height - self.height) / 2;
+                                image-fit: contain;
+                            }
+                            // Kaomoji, and an emoji whose art is missing: the characters themselves.
+                            if cell.kind == 1 || (cell.kind == 0 && !(cell.art >= 0 && cbox.picture.width > 0)): Text {
+                                width: parent.width;
+                                height: parent.height;
+                                text: cell.text;
+                                font-family: Fonts.sans;
+                                font-size: cell.kind == 1 ? Type.base : Type.xl;
+                                color: Theme.text-primary;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                                overflow: elide;
+                                accessible-role: AccessibleRole.none;
+                            }
+                            // The focus ring of the selected cell (keyboard focus is in the search field).
+                            Rectangle {
+                                visible: cbox.chosen && search.has-focus;
+                                border-width: 2px;
+                                border-color: Theme.focus-ring;
+                                border-radius: Radius.md;
+                                background: transparent;
+                            }
+                            ctouch := TouchArea {
+                                mouse-cursor: pointer;
+                                changed has-hover => {
+                                    root.hover-name(self.has-hover ? cell.label : "");
+                                    root.tip(cell.label + (root.use-hint != "" ? " · " + root.use-hint : ""), self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover);
+                                }
+                                pointer-event(event) => {
+                                    if (event.button == PointerEventButton.left && event.kind == PointerEventKind.up
+                                        && self.mouse-x >= 0 && self.mouse-x <= self.width && self.mouse-y >= 0 && self.mouse-y <= self.height) {
+                                        root.selected = cell.flat;
+                                        if (event.modifiers.shift) {
+                                            root.cell-copied(cell.flat);
+                                        } else {
+                                            root.cell-used(cell.flat);
+                                        }
+                                    } else if (event.button == PointerEventButton.right && event.kind == PointerEventKind.up) {
+                                        root.selected = cell.flat;
+                                        root.cell-menu(cell.flat, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if root.rows.length > 0 && grid.content-y < -1px: DeckEdge {
+                position: DeckEdgePosition.top;
+                x: Space.s2;
+                y: Space.s1;
+                width: parent.width - 2 * Space.s2;
+            }
+            if root.rows.length > 0 && grid.content-height + grid.content-y > grid.height + 1px: DeckEdge {
+                position: DeckEdgePosition.bottom;
+                x: Space.s2;
+                y: grid.height - self.height;
+                width: parent.width - 2 * Space.s2;
+            }
+            OverlayScrollbar {
+                content-y: grid.content-y;
+                content-height: grid.content-height;
+                visible-height: grid.height;
+                enabled: grid.visible;
+                scroll-to(y) => { grid.content-y = y; }
+            }
+            if root.rows.length == 0: EmptyState {
+                quiet: true;
+                x: Space.s2;
+                width: parent.width - 2 * Space.s2;
+                height: parent.height;
+                kind: EmptyStateKind.search;
+                heading: root.empty-heading;
+                body: root.empty-body;
+            }
+        }
+    }
+}

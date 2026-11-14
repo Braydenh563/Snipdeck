@@ -106,13 +106,13 @@ fn empty_states_dark() {
 
 // ---------------------------------------------------------------------------------------------
 // Measured pixels (light theme). Palette values from design/tokens/palette.json:
-// focus.ring #438AF1, accent #2870D4, border.strong #7C7A76, text.secondary #5D5A57,
+// focus.ring #2870D4 (blue-600, 4.6:1; the same blue as the accent), accent #2870D4, border.strong #7C7A76, text.secondary #5D5A57,
 // bg.app #F5F3F1, bg.surface #FBFAF7, border.subtle #DEDCD8, teal-600 #048484, teal-400 #59BDBD.
 // Gallery geometry: the default field is at x 16..264, y 39..67; the forced-focus one at y 157..185;
 // the forced-hover one at y 98..126.
 // ---------------------------------------------------------------------------------------------
 
-const FOCUS_RING: [u8; 3] = [0x43, 0x8A, 0xF1];
+const FOCUS_RING: [u8; 3] = [0x28, 0x70, 0xD4];
 const ACCENT: [u8; 3] = [0x28, 0x70, 0xD4];
 const BORDER_STRONG: [u8; 3] = [0x7C, 0x7A, 0x76];
 const TEXT_SECONDARY: [u8; 3] = [0x5D, 0x5A, 0x57];

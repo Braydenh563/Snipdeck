@@ -17,6 +17,9 @@
 #[cfg(test)]
 mod key_selection;
 mod keys;
+// The signer is only compiled for the `snipdeck-licence-issuer` tool and for tests; the app never links it.
+#[cfg(any(test, feature = "licence-issuer"))]
+pub mod signing;
 #[cfg(test)]
 mod testing;
 
@@ -50,8 +53,8 @@ pub enum LicenceError {
     /// The token uses a format version this build does not understand; update Snipdeck.
     #[error("licence key format version {0} is not supported")]
     UnsupportedVersion(u64),
-    /// The token is validly signed but is not for the Pro tier.
-    #[error("licence key is not for Snipdeck Pro")]
+    /// The token is validly signed but is not for the Supporter tier.
+    #[error("licence key is not for Snipdeck Supporter")]
     WrongTier,
 }
 
@@ -65,14 +68,14 @@ pub struct Licence {
 }
 
 impl Licence {
-    /// The tier this licence grants: always Pro in format v1.
+    /// The tier this licence grants: always Supporter in format v1.
     pub const fn tier(&self) -> Tier {
         Tier::Pro
     }
 
     /// What the licence unlocks.
     ///
-    /// Pro unlocks every [`Feature`], so the token's `features` list does not narrow it; see
+    /// Supporter unlocks every [`Feature`], so the token's `features` list does not narrow it; see
     /// [`Licence::features`].
     pub const fn entitlements(&self) -> Entitlements {
         Entitlements::new(Tier::Pro)
@@ -181,30 +184,27 @@ pub fn verify_licence(token: &str, key: &VerifyingKey) -> Result<Licence, Licenc
 
 /// Verifies `token` against `key` and returns what it entitles the user to.
 ///
-/// `now` is unused in format v1 (licences never expire) and exists so callers are already
-/// passing the time when a revocation list arrives.
+/// Format v1 licences never expire, so no clock is involved.
 ///
 /// # Errors
 ///
 /// See [`LicenceError`].
-pub fn verify(
-    token: &str,
-    key: &VerifyingKey,
-    _now: Timestamp,
-) -> Result<Entitlements, LicenceError> {
+pub fn verify(token: &str, key: &VerifyingKey) -> Result<Entitlements, LicenceError> {
     verify_licence(token, key).map(|licence| licence.entitlements())
 }
 
 /// Like [`verify`], against the public key compiled into this build ([`LICENCE_PUBLIC_KEY`]).
+/// `_now` is ignored; it stays only so the app's existing calls compile, and goes when they
+/// are updated.
 ///
 /// # Errors
 ///
 /// See [`LicenceError`]; also [`LicenceError::Malformed`] if the compiled-in key is not a
 /// valid curve point, which a unit test rules out for every build.
-pub fn verify_embedded(token: &str, now: Timestamp) -> Result<Entitlements, LicenceError> {
+pub fn verify_embedded(token: &str, _now: Timestamp) -> Result<Entitlements, LicenceError> {
     let key = VerifyingKey::from_bytes(&LICENCE_PUBLIC_KEY)
         .map_err(|_| LicenceError::Malformed("compiled-in public key is invalid"))?;
-    verify(token, &key, now)
+    verify(token, &key)
 }
 
 /// Accepts `SNIP1`; reports `SNIP<n>` for other numbers as an unsupported version and
@@ -245,7 +245,8 @@ fn decode_signature(text: &str) -> Result<Signature, LicenceError> {
 mod tests {
     use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 
-    use super::testing::{dev_signing_key, other_signing_key, payload, sign};
+    use super::signing::sign_token as sign;
+    use super::testing::{dev_signing_key, other_signing_key, payload};
     use super::*;
     use crate::Tier;
 
@@ -265,7 +266,7 @@ mod tests {
 
     #[test]
     fn valid_token_grants_pro_with_every_feature() {
-        let entitlements = verify(&valid_token(), &dev_key(), NOW).unwrap();
+        let entitlements = verify(&valid_token(), &dev_key()).unwrap();
         assert_eq!(entitlements.tier(), Tier::Pro);
         for &feature in Feature::ALL {
             assert!(entitlements.allows(feature));

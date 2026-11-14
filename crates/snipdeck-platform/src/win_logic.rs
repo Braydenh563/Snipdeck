@@ -28,6 +28,12 @@ pub const VK_RWIN: u16 = 0x5C;
 pub const VK_V: u16 = 0x56;
 /// `VK_INSERT`.
 pub const VK_INSERT: u16 = 0x2D;
+/// `VK_BACK`.
+pub const VK_BACK: u16 = 0x08;
+/// `VK_TAB`.
+pub const VK_TAB: u16 = 0x09;
+/// `VK_LEFT`.
+pub const VK_LEFT: u16 = 0x25;
 /// The unassigned virtual key (0xE8) used to mask a lone `Alt` / `Win` release.
 pub const VK_MASK: u16 = 0xE8;
 
@@ -67,6 +73,10 @@ pub const fn key_to_vk(key: Key) -> VirtualKey {
         Key::Modifier(modifier) => modifier_variants(modifier)[0],
         Key::V => plain(VK_V),
         Key::Insert => extended(VK_INSERT),
+        // Unverified on Windows (Fable v1 sweep A5): the arrow keys are extended keys.
+        Key::Left => extended(VK_LEFT),
+        Key::Backspace => plain(VK_BACK),
+        Key::Tab => plain(VK_TAB),
         Key::Mask => plain(VK_MASK),
     }
 }
@@ -127,6 +137,10 @@ pub const UIA_EDIT: i32 = 50004;
 pub const UIA_DOCUMENT: i32 = 50030;
 
 /// What UI Automation said about the focused element.
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "one field per UI Automation property"
+)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ElementFacts {
     /// `UIA_ControlTypePropertyId`.
@@ -139,6 +153,8 @@ pub struct ElementFacts {
     pub value_read_only: Option<bool>,
     /// The element supports `TextPattern`.
     pub has_text_pattern: bool,
+    /// `IsPassword`: a password box (typed-trigger expansion must not run in it).
+    pub password: bool,
 }
 
 /// Whether the focused element can take pasted text.
@@ -188,6 +204,75 @@ pub fn is_shell_surface_class(class: &str) -> bool {
     SHELL_CLASSES.iter().any(|c| c.eq_ignore_ascii_case(class))
 }
 
+/// `WS_DLGFRAME | WS_THICKFRAME`: a window that has either can be moved or sized by its frame.
+const FRAMED_STYLES: u32 = 0x0040_0000 | 0x0004_0000;
+/// `WS_EX_WINDOWEDGE | WS_EX_TOOLWINDOW`.
+const FRAMED_EX_STYLES: u32 = 0x0000_0100 | 0x0000_0080;
+
+/// Whether a window is full-screen on a monitor: it covers the whole of it and has no frame (a
+/// game, a video, a slide show, a browser after F11). `window` and `monitor` are
+/// `(left, top, right, bottom)` in physical pixels, `style` and `ex_style` the window's.
+///
+/// A maximised window covers the whole monitor too where the taskbar hides itself, but it
+/// keeps its frame styles, so it does not count.
+pub fn is_fullscreen_window(
+    window: (i32, i32, i32, i32),
+    monitor: (i32, i32, i32, i32),
+    style: u32,
+    ex_style: u32,
+) -> bool {
+    let covers = window.0 <= monitor.0
+        && window.1 <= monitor.1
+        && window.2 >= monitor.2
+        && window.3 >= monitor.3;
+    covers && style & FRAMED_STYLES == 0 && ex_style & FRAMED_EX_STYLES == 0
+}
+
+/// Window classes of the Alt+Tab switcher and Task View. Explorer shows one of them as the
+/// foreground window while the user picks a window, then destroys it: as a Target it would be
+/// gone by the time the user pastes, so Alt+Tab to the Panel would leave nothing to paste into.
+const SWITCHER_CLASSES: &[&str] = &[
+    "MultitaskingViewFrame",
+    "XamlExplorerHostIslandWindow",
+    "TaskSwitcherWnd",
+    "TaskSwitcherOverlayWnd",
+    "ForegroundStaging",
+];
+
+/// Whether a window of this class (case-insensitive) is the Alt+Tab switcher or Task View, which
+/// is neither a Target nor a reason to forget the Target.
+pub fn is_task_switcher_class(class: &str) -> bool {
+    SWITCHER_CLASSES
+        .iter()
+        .any(|c| c.eq_ignore_ascii_case(class))
+}
+
+/// What kind of window just became the foreground window, for the Target tracker.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ForegroundKind {
+    /// The Panel, a Snipdeck popup or any window of this process.
+    Own,
+    /// The Alt+Tab switcher or Task View.
+    Switcher,
+    /// The desktop or a taskbar surface.
+    Shell,
+    /// Any other application window.
+    Foreign,
+}
+
+/// The Target (a window handle value, 0 for none) after `hwnd` became the foreground window: the
+/// last foreign window the user was in. Snipdeck's own windows and the Alt+Tab switcher leave it
+/// alone, the desktop and taskbar clear it (keys injected there go nowhere useful), and any other
+/// window becomes it.
+#[must_use]
+pub const fn next_target(current: isize, hwnd: isize, kind: ForegroundKind) -> isize {
+    match kind {
+        ForegroundKind::Own | ForegroundKind::Switcher => current,
+        ForegroundKind::Shell => 0,
+        ForegroundKind::Foreign => hwnd,
+    }
+}
+
 /// `WS_EX_NOACTIVATE`.
 pub const WS_EX_NOACTIVATE: u32 = 0x0800_0000;
 /// `WS_EX_TOOLWINDOW`.
@@ -195,11 +280,50 @@ pub const WS_EX_TOOLWINDOW: u32 = 0x0000_0080;
 /// `WS_EX_APPWINDOW`.
 pub const WS_EX_APPWINDOW: u32 = 0x0004_0000;
 
-/// The extended style the panel must have: never activated by a click, no taskbar button, no
-/// Alt+Tab entry. winit adds `WS_EX_APPWINDOW` to top-level windows, which would override
-/// `WS_EX_TOOLWINDOW`, so it is stripped.
-pub const fn panel_ex_style(style: u32) -> u32 {
-    (style | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW) & !WS_EX_APPWINDOW
+/// The extended style the panel must have: never activated by a click. Without a taskbar
+/// button (`in_taskbar` false) it is also a tool window with no Alt+Tab entry, and
+/// `WS_EX_APPWINDOW` is stripped (winit adds it to top-level windows, and it would override
+/// `WS_EX_TOOLWINDOW`). With one it is an app window and not a tool window.
+pub const fn panel_ex_style(style: u32, in_taskbar: bool) -> u32 {
+    if in_taskbar {
+        (style | WS_EX_NOACTIVATE | WS_EX_APPWINDOW) & !WS_EX_TOOLWINDOW
+    } else {
+        (style | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW) & !WS_EX_APPWINDOW
+    }
+}
+
+/// One `SetWindowPos` z-order step of [`raise_steps`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ZStep {
+    /// `HWND_TOPMOST`: above every non-topmost window.
+    Topmost,
+    /// `HWND_NOTOPMOST`: leave the topmost band, staying at the top of the normal windows.
+    NotTopmost,
+}
+
+/// Whether the move or size loop a thread reports is the one on the Panel: the thread's other
+/// windows (Main, Settings) have loops of their own, which are not the Panel's resize.
+/// `in_loop` is `GUI_INMOVESIZE`, `loop_window` is `hwndMoveSize`, and `panel` is 0 until the
+/// Panel's window exists.
+#[must_use]
+pub const fn size_loop_on_panel(in_loop: bool, loop_window: isize, panel: isize) -> bool {
+    in_loop && panel != 0 && loop_window == panel
+}
+
+/// The z-order steps that bring a window to the front without activating it.
+///
+/// `ShowWindow` on a hidden non-activating window (the Panel) keeps the place the window had in
+/// the stack when it was hidden, which is behind whatever the user used since, and a process that
+/// is not in the foreground cannot just `SetForegroundWindow` its way to the top. Moving the
+/// window to the topmost band and back needs no activation. A window the user pinned on top
+/// (`was_topmost`) stays there: only the first step runs.
+#[must_use]
+pub const fn raise_steps(was_topmost: bool) -> &'static [ZStep] {
+    if was_topmost {
+        &[ZStep::Topmost]
+    } else {
+        &[ZStep::Topmost, ZStep::NotTopmost]
+    }
 }
 
 /// Which Rust type owns each window class name in this process.
@@ -230,6 +354,14 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_size_loop_counts_only_on_the_panel_window() {
+        assert!(size_loop_on_panel(true, 7, 7));
+        assert!(!size_loop_on_panel(true, 9, 7), "another window's loop");
+        assert!(!size_loop_on_panel(false, 7, 7), "no loop");
+        assert!(!size_loop_on_panel(true, 0, 0), "no Panel window yet");
+    }
+
+    #[test]
     fn a_class_name_belongs_to_one_handler_type() {
         use std::any::TypeId;
         struct A;
@@ -257,7 +389,10 @@ mod tests {
     fn keys_map_to_the_documented_virtual_keys() {
         assert_eq!(key_to_vk(Key::V), plain(0x56));
         assert_eq!(key_to_vk(Key::Insert), extended(0x2D));
+        assert_eq!(key_to_vk(Key::Left), extended(0x25));
         assert_eq!(key_to_vk(Key::Mask), plain(0xE8));
+        assert_eq!(key_to_vk(Key::Backspace), plain(0x08));
+        assert_eq!(key_to_vk(Key::Tab), plain(0x09));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Ctrl)), plain(0xA2));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Shift)), plain(0xA0));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Alt)), plain(0xA4));
@@ -374,6 +509,7 @@ mod tests {
             enabled: true,
             value_read_only: None,
             has_text_pattern: false,
+            password: false,
         }
     }
 
@@ -480,12 +616,109 @@ mod tests {
     }
 
     #[test]
+    fn a_window_is_full_screen_when_it_covers_its_monitor_and_has_no_frame() {
+        const POPUP: u32 = 0x8000_0000 | 0x1000_0000;
+        const OVERLAPPED_FRAME: u32 = 0x00C0_0000 | 0x0004_0000 | 0x1000_0000;
+        let monitor = (1920, 0, 4480, 1440);
+        // A game or a video: a borderless window over the whole monitor.
+        assert!(is_fullscreen_window(monitor, monitor, POPUP, 0));
+        // One that spans more than the monitor still covers it.
+        assert!(is_fullscreen_window((0, 0, 4480, 1440), monitor, POPUP, 0));
+        // Maximised where the taskbar hides: as large (and a frame larger), but framed.
+        assert!(!is_fullscreen_window(
+            (1912, -8, 4488, 1448),
+            monitor,
+            OVERLAPPED_FRAME,
+            0x0000_0100
+        ));
+        // Borderless but smaller, or on the monitor beside this one.
+        assert!(!is_fullscreen_window(
+            (1920, 0, 4480, 1400),
+            monitor,
+            POPUP,
+            0
+        ));
+        assert!(!is_fullscreen_window((0, 0, 1920, 1080), monitor, POPUP, 0));
+        // A tool window (an overlay, a widget bar) is not an app in front.
+        assert!(!is_fullscreen_window(monitor, monitor, POPUP, 0x0000_0080));
+    }
+
+    #[test]
+    fn the_alt_tab_switcher_is_not_a_target() {
+        for class in [
+            "MultitaskingViewFrame",
+            "multitaskingviewframe",
+            "XamlExplorerHostIslandWindow",
+            "TaskSwitcherWnd",
+            "TaskSwitcherOverlayWnd",
+            "ForegroundStaging",
+        ] {
+            assert!(is_task_switcher_class(class), "{class}");
+        }
+        for class in ["Notepad", "Shell_TrayWnd", "Chrome_WidgetWin_1", ""] {
+            assert!(!is_task_switcher_class(class), "{class}");
+        }
+    }
+
+    #[test]
+    fn alt_tabbing_to_the_panel_keeps_the_app_the_user_came_from_as_the_target() {
+        use ForegroundKind::{Foreign, Own, Shell, Switcher};
+        const OUTLOOK: isize = 0x10;
+        const SWITCHER: isize = 0x20;
+        const PANEL: isize = 0x30;
+        const BROWSER: isize = 0x40;
+        // Outlook in front; Alt+Tab opens the switcher (a foreground window of Explorer's),
+        // then the Panel is picked: Outlook stays the Target the whole way.
+        let mut target = next_target(0, OUTLOOK, Foreign);
+        assert_eq!(target, OUTLOOK);
+        target = next_target(target, SWITCHER, Switcher);
+        assert_eq!(target, OUTLOOK, "the switcher is no Target");
+        target = next_target(target, PANEL, Own);
+        assert_eq!(target, OUTLOOK, "the Panel is no Target");
+        // Alt+Tab on to another app: that one is the Target now.
+        target = next_target(target, SWITCHER, Switcher);
+        target = next_target(target, BROWSER, Foreign);
+        assert_eq!(target, BROWSER);
+        // A click on the desktop or taskbar means there is none.
+        assert_eq!(next_target(target, 0x50, Shell), 0);
+    }
+
+    #[test]
+    fn raising_the_panel_goes_through_the_topmost_band_unless_it_is_pinned_there() {
+        assert_eq!(raise_steps(false), [ZStep::Topmost, ZStep::NotTopmost]);
+        assert_eq!(
+            raise_steps(true),
+            [ZStep::Topmost],
+            "a pinned Panel stays on top"
+        );
+    }
+
+    #[test]
     fn panel_style_is_noactivate_toolwindow_and_not_appwindow() {
-        let style = panel_ex_style(WS_EX_APPWINDOW | 0x1);
+        let style = panel_ex_style(WS_EX_APPWINDOW | 0x1, false);
         assert_ne!(style & WS_EX_NOACTIVATE, 0);
         assert_ne!(style & WS_EX_TOOLWINDOW, 0);
         assert_eq!(style & WS_EX_APPWINDOW, 0);
         assert_eq!(style & 0x1, 0x1, "other bits are kept");
-        assert_eq!(panel_ex_style(style), style, "idempotent");
+        assert_eq!(panel_ex_style(style, false), style, "idempotent");
+    }
+
+    #[test]
+    fn panel_style_with_taskbar_has_appwindow_and_no_toolwindow() {
+        let style = panel_ex_style(WS_EX_TOOLWINDOW | 0x1, true);
+        assert_ne!(
+            style & WS_EX_NOACTIVATE,
+            0,
+            "a click still never activates it"
+        );
+        assert_ne!(style & WS_EX_APPWINDOW, 0);
+        assert_eq!(style & WS_EX_TOOLWINDOW, 0);
+        assert_eq!(style & 0x1, 0x1, "other bits are kept");
+        assert_eq!(panel_ex_style(style, true), style, "idempotent");
+        // Turning it off again gives the tool window back.
+        assert_eq!(
+            panel_ex_style(style, false) & (WS_EX_TOOLWINDOW | WS_EX_APPWINDOW),
+            WS_EX_TOOLWINDOW
+        );
     }
 }

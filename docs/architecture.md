@@ -69,7 +69,7 @@ to and no file overwrites another.
 `ItemKind` (text, template, code, link, image, file) describes content; `Item::sensitive` is
 separate. DESIGN.md's "Sensitive" leading row is a UI rule: draw the lock whenever the flag is
 set. One source of truth, and clearing the flag restores the real kind. A sensitive item's
-preview is empty, so no plaintext of it is stored outside its content, which Pro encrypts; the
+preview is empty, so no plaintext of it is stored outside its content, which Supporter encrypts; the
 `•••• 7f3a` hint in DESIGN.md is therefore not shown in v1.
 
 ### Order belongs to storage
@@ -91,10 +91,9 @@ Sorting by most used or recently used is done in memory from `use_count` and `la
 
 ### Entitlements are data
 `Entitlements` wraps a `Tier`; `allows(Feature)`, `require(Feature)` and
-`can_create_board(existing)` answer every SPEC §6 question. The `Feature` key names the upsell
-sheet. Storage never checks entitlements: the app checks before acting, and losing Pro never hides
-data (a Free user with five boards keeps them and can't add a sixth). Licence verification
-(Ed25519) goes in `snipdeck_core::licence` and returns `Entitlements`.
+`can_create_board(existing)` answer every SPEC §6 question. Losing paid features never hides data
+(a Free user with five boards keeps them and can't add a sixth). Licence verification is in
+`snipdeck_core::licence` and returns `Entitlements`; see [`licensing.md`](licensing.md).
 
 ### Stable keys, no serde in core
 Stored enums (`ItemKind`, `FormatKind`, `ListAccent`, `ListView`, `ListSort`, `Feature`) have a

@@ -1,0 +1,197 @@
+// The words of the Panel's menus and the Main window's use button. Rust picks the row (an
+// `AppMenuEntry`, an `ItemMenuEntry`, a `BoardMenuEntry`) and calls these functions
+// (`snipdeck_app::wording`) to get the words in the language selected for the UI. One function per
+// row. Rust keeps no English.
+export global MenuTexts {
+    // The kebab menu.
+    pure public function app-open() -> string {
+        return @tr("Open Snipdeck");
+    }
+    pure public function app-commands() -> string {
+        return @tr("Commands…");
+    }
+    pure public function app-new-snippet() -> string {
+        return @tr("New item");
+    }
+    pure public function app-screenshot() -> string {
+        return @tr("Take screenshot");
+    }
+    pure public function app-settings() -> string {
+        return @tr("Settings…");
+    }
+    pure public function app-paste-stack() -> string {
+        return @tr("Paste stack");
+    }
+    // The disabled row says why (audit 2, item 7): nothing is marked yet.
+    pure public function app-paste-stack-idle() -> string {
+        return @tr("Paste stack (mark items)");
+    }
+    pure public function app-dock() -> string {
+        return @tr("Dock to the nearest edge");
+    }
+    pure public function app-dock-left() -> string {
+        return @tr("Dock to the left edge");
+    }
+    pure public function app-dock-right() -> string {
+        return @tr("Dock to the right edge");
+    }
+    pure public function app-dock-top() -> string {
+        return @tr("Dock to the top edge");
+    }
+    pure public function app-dock-bottom() -> string {
+        return @tr("Dock to the bottom edge");
+    }
+    pure public function app-undock() -> string {
+        return @tr("Undock the panel");
+    }
+    pure public function app-pause-hotkeys() -> string {
+        return @tr("Pause hotkeys");
+    }
+    pure public function app-keep-on-top() -> string {
+        return @tr("Keep panel on top");
+    }
+    pure public function app-select-or-delete() -> string {
+        return @tr("Select or delete…");
+    }
+    pure public function app-reset-geometry() -> string {
+        return @tr("Reset size and position");
+    }
+    // "Paste as…" and its choices (the item menu's second level).
+    pure public function item-paste-as() -> string {
+        return @tr("Paste as…");
+    }
+    pure public function paste-as-plain() -> string {
+        return @tr("Plain text");
+    }
+    pure public function paste-as-upper() -> string {
+        return @tr("UPPERCASE");
+    }
+    pure public function paste-as-lower() -> string {
+        return @tr("lowercase");
+    }
+    pure public function paste-as-title() -> string {
+        return @tr("Title Case");
+    }
+    pure public function paste-as-trimmed() -> string {
+        return @tr("Trimmed");
+    }
+    pure public function paste-as-slug() -> string {
+        return @tr("slug-like-this");
+    }
+    pure public function item-move-to() -> string {
+        return @tr("Move to…");
+    }
+    pure public function item-colour() -> string {
+        return @tr("Colour");
+    }
+    pure public function item-sensitive() -> string {
+        return @tr("Sensitive");
+    }
+    pure public function app-troubleshoot() -> string {
+        return @tr("Troubleshoot…");
+    }
+    pure public function app-user-guide() -> string {
+        return @tr("User guide");
+    }
+    pure public function app-shortcuts() -> string {
+        return @tr("Keyboard shortcuts");
+    }
+    pure public function app-about() -> string {
+        return @tr("About Snipdeck");
+    }
+    pure public function app-quit() -> string {
+        return @tr("Quit");
+    }
+
+    // The item menu.
+    pure public function item-use() -> string {
+        return @tr("Use");
+    }
+    // The context menu of a symbol in the Panel's Symbols tab.
+    pure public function symbol-paste() -> string {
+        return @tr("Paste");
+    }
+    pure public function symbol-add(list: string) -> string {
+        return @tr("Add to “{}”", list);
+    }
+    pure public function symbol-add-no-list() -> string {
+        return @tr("Add to list");
+    }
+    pure public function symbol-copy-svg() -> string {
+        return @tr("Copy SVG");
+    }
+    pure public function symbol-copy-png() -> string {
+        return @tr("Copy PNG");
+    }
+    pure public function symbol-save-svg() -> string {
+        return @tr("Save as SVG…");
+    }
+    pure public function symbol-save-png() -> string {
+        return @tr("Save as PNG…");
+    }
+    pure public function item-copy() -> string {
+        return @tr("Copy");
+    }
+    pure public function item-edit() -> string {
+        return @tr("Edit…");
+    }
+    pure public function item-duplicate() -> string {
+        return @tr("Duplicate");
+    }
+    pure public function item-pin() -> string {
+        return @tr("Pin");
+    }
+    pure public function item-unpin() -> string {
+        return @tr("Unpin");
+    }
+    pure public function item-stack-add() -> string {
+        return @tr("Add to paste stack");
+    }
+    pure public function item-stack-remove() -> string {
+        return @tr("Remove from paste stack");
+    }
+    pure public function item-group() -> string {
+        return @tr("Group…");
+    }
+    pure public function group-rename() -> string {
+        return @tr("Rename group");
+    }
+    pure public function group-fold() -> string {
+        return @tr("Fold group");
+    }
+    pure public function group-open() -> string {
+        return @tr("Unfold group");
+    }
+    pure public function group-move-up() -> string {
+        return @tr("Move the group up");
+    }
+    pure public function group-move-down() -> string {
+        return @tr("Move the group down");
+    }
+    pure public function group-ungroup() -> string {
+        return @tr("Ungroup");
+    }
+    pure public function group-delete() -> string {
+        return @tr("Delete group");
+    }
+    pure public function item-trash() -> string {
+        return @tr("Delete");
+    }
+
+    // The board menu.
+    pure public function board-new() -> string {
+        return @tr("New board…");
+    }
+    pure public function board-rename() -> string {
+        return @tr("Rename board…");
+    }
+    pure public function board-move-up() -> string {
+        return @tr("Move board up");
+    }
+    pure public function board-move-down() -> string {
+        return @tr("Move board down");
+    }
+    pure public function board-delete() -> string {
+        return @tr("Delete board…");
+    }
+}

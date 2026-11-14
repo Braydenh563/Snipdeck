@@ -6,7 +6,10 @@ use std::collections::BTreeMap;
 
 use snipdeck_core::{
     ItemId, Timestamp, UseMode,
-    template::{Locale, Prompt, PromptKind, RenderContext, Template, TimeZone},
+    template::{
+        Locale, Prompt, PromptKind, RenderContext, TOGGLE_ON, Template, TimeZone, parse_pick_date,
+        transform::Transform,
+    },
 };
 
 /// How a field is answered.
@@ -16,6 +19,21 @@ pub enum FieldKind {
     Text,
     /// One of a fixed set (`{choice:Name|a|b}`).
     Choice,
+    /// Free text over several lines (`{multiline:Name|default}`).
+    Multiline,
+    /// A day typed as `YYYY-MM-DD` (`{pickdate:Name|FORMAT}`); left empty it is today.
+    Date,
+    /// A tick box (`{optional:Name}...{/optional}`): its value is [`TOGGLE_ON`] or empty.
+    Toggle,
+}
+
+/// Why a field stops the form from being submitted.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Missing {
+    /// A required field is empty (only whitespace counts as empty).
+    Empty,
+    /// A date field holds something that is not a real `YYYY-MM-DD` day.
+    BadDate,
 }
 
 /// One field of the form.
@@ -43,6 +61,7 @@ pub struct FillModel {
     title: String,
     template: Template,
     fields: Vec<Field>,
+    transform: Option<Transform>,
 }
 
 impl FillModel {
@@ -57,7 +76,21 @@ impl FillModel {
             title,
             template,
             fields,
+            transform: None,
         }
+    }
+
+    /// Pastes the filled template through `transform` ("Paste as...").
+    #[must_use]
+    pub fn with_transform(mut self, transform: Option<Transform>) -> Self {
+        self.transform = transform;
+        self
+    }
+
+    /// The "Paste as..." transform to apply once the form is submitted.
+    #[must_use]
+    pub fn transform(&self) -> Option<Transform> {
+        self.transform
     }
 
     /// The template item.
@@ -90,11 +123,19 @@ impl FillModel {
         let Some(field) = self.fields.get_mut(index) else {
             return;
         };
-        if field.kind == FieldKind::Choice {
-            let Some(chosen) = field.options.iter().position(|o| o == value) else {
+        match field.kind {
+            FieldKind::Choice => {
+                let Some(chosen) = field.options.iter().position(|o| o == value) else {
+                    return;
+                };
+                field.choice_index = chosen;
+            }
+            FieldKind::Toggle => {
+                let ticked = if value == TOGGLE_ON { TOGGLE_ON } else { "" };
+                ticked.clone_into(&mut field.value);
                 return;
-            };
-            field.choice_index = chosen;
+            }
+            FieldKind::Text | FieldKind::Multiline | FieldKind::Date => {}
         }
         value.clone_into(&mut field.value);
     }
@@ -107,12 +148,23 @@ impl FillModel {
         }
     }
 
-    /// The first required field that is empty (only whitespace counts as empty), if any.
+    /// The first field that stops the form, and why: a required field left empty, or a
+    /// date that is not a real day (an empty date is fine: it means today).
     #[must_use]
-    pub fn first_missing(&self) -> Option<usize> {
-        self.fields
-            .iter()
-            .position(|f| f.required && f.value.trim().is_empty())
+    pub fn first_missing(&self) -> Option<(usize, Missing)> {
+        self.fields.iter().enumerate().find_map(|(i, f)| {
+            let value = f.value.trim();
+            if f.required && value.is_empty() {
+                Some((i, Missing::Empty))
+            } else if f.kind == FieldKind::Date
+                && !value.is_empty()
+                && parse_pick_date(value).is_none()
+            {
+                Some((i, Missing::BadDate))
+            } else {
+                None
+            }
+        })
     }
 
     /// The answers by prompt name, for [`crate::usecase::UseRequest::answers`].
@@ -125,15 +177,28 @@ impl FillModel {
     }
 
     /// The template as it would be pasted with the answers so far (a field not answered yet
-    /// is empty in it).
+    /// is empty in it). Each `{uuid}` shows as [`preview_uuid`], which the window replaces with
+    /// a translated "(new ID)": the real one is drawn when the paste happens.
     #[must_use]
     pub fn preview(&self, now: Timestamp, tz: &TimeZone, locale: Locale) -> String {
         let answers = self.answers();
+        let uuids = vec![PREVIEW_UUID_BYTES; self.template.uuid_count()];
         let ctx = RenderContext::new(now, &answers)
             .with_tz(tz.clone())
-            .with_locale(locale);
+            .with_locale(locale)
+            .with_uuids(&uuids);
         self.template.render(&ctx).text
     }
+}
+
+const PREVIEW_UUID_BYTES: [u8; 16] = [0xA5; 16];
+
+/// The text a `{uuid}` has in [`FillModel::preview`]; the window swaps it for a translated label.
+#[must_use]
+pub fn preview_uuid() -> String {
+    uuid::Builder::from_random_bytes(PREVIEW_UUID_BYTES)
+        .into_uuid()
+        .to_string()
 }
 
 fn field_of(prompt: Prompt) -> Field {
@@ -154,6 +219,28 @@ fn field_of(prompt: Prompt) -> Field {
             choice_index: 0,
             required: false,
         },
+        PromptKind::Multiline { default } => Field {
+            label: prompt.name,
+            kind: FieldKind::Multiline,
+            required: default.is_none(),
+            value: default.unwrap_or_default(),
+            options: Vec::new(),
+            choice_index: 0,
+        },
+        PromptKind::Date => blank(prompt.name, FieldKind::Date),
+        PromptKind::Toggle => blank(prompt.name, FieldKind::Toggle),
+    }
+}
+
+/// A field that starts empty and may stay so: a date (today) or an unticked box.
+fn blank(label: String, kind: FieldKind) -> Field {
+    Field {
+        label,
+        kind,
+        value: String::new(),
+        options: Vec::new(),
+        choice_index: 0,
+        required: false,
     }
 }
 
@@ -176,6 +263,14 @@ mod tests {
 
     fn preview(m: &FillModel) -> String {
         m.preview(now(), &TimeZone::UTC, Locale::for_tag("en"))
+    }
+
+    #[test]
+    fn every_uuid_in_the_preview_is_the_marker_not_a_nil_id() {
+        let m = form("a {uuid} b {uuid}");
+        let marker = preview_uuid();
+        assert_ne!(marker, uuid::Uuid::nil().to_string());
+        assert_eq!(preview(&m), format!("a {marker} b {marker}"));
     }
 
     #[test]
@@ -238,14 +333,68 @@ mod tests {
     #[test]
     fn a_required_field_left_blank_is_missing() {
         let mut m = form("{field:Name} {field:Nick|friend}");
-        assert_eq!(m.first_missing(), Some(0));
+        assert_eq!(m.first_missing(), Some((0, Missing::Empty)));
         m.set_value(0, "   ");
-        assert_eq!(m.first_missing(), Some(0), "whitespace is not an answer");
+        assert_eq!(
+            m.first_missing(),
+            Some((0, Missing::Empty)),
+            "whitespace is not an answer"
+        );
         m.set_value(0, "Ada");
         assert_eq!(m.first_missing(), None);
         // A field with a default may be cleared on purpose.
         m.set_value(1, "");
         assert_eq!(m.first_missing(), None);
         assert_eq!(m.answers()["Nick"], "");
+    }
+
+    #[test]
+    fn multiline_answers_keep_their_newlines() {
+        let mut m = form("Note:\n{multiline:Body}");
+        assert_eq!(m.fields()[0].kind, FieldKind::Multiline);
+        assert_eq!(m.first_missing(), Some((0, Missing::Empty)));
+        m.set_value(0, "line one\nline two");
+        assert_eq!(m.first_missing(), None);
+        assert_eq!(preview(&m), "Note:\nline one\nline two");
+    }
+
+    #[test]
+    fn a_multiline_default_fills_the_box_and_is_not_required() {
+        let m = form("{multiline:Body|Hi}");
+        assert_eq!(
+            (m.fields()[0].value.as_str(), m.fields()[0].required),
+            ("Hi", false)
+        );
+    }
+
+    #[test]
+    fn an_empty_date_is_today_and_not_missing() {
+        let m = form("{pickdate:Due|%F}");
+        assert_eq!(m.fields()[0].kind, FieldKind::Date);
+        assert_eq!(m.first_missing(), None);
+        assert_eq!(preview(&m), "2026-10-18");
+    }
+
+    #[test]
+    fn a_bad_date_is_missing_with_a_reason() {
+        let mut m = form("{pickdate:Due|%F}");
+        m.set_value(0, "2026-02-30");
+        assert_eq!(m.first_missing(), Some((0, Missing::BadDate)));
+        m.set_value(0, "2026-03-01");
+        assert_eq!(m.first_missing(), None);
+        assert_eq!(preview(&m), "2026-03-01");
+    }
+
+    #[test]
+    fn a_toggle_takes_only_ticked_or_empty_and_drives_its_section() {
+        let mut m = form("Hi{optional:PS}, P.S. thanks{/optional}.");
+        assert_eq!(m.fields()[0].kind, FieldKind::Toggle);
+        assert_eq!(m.first_missing(), None);
+        assert_eq!(preview(&m), "Hi.");
+        m.set_value(0, TOGGLE_ON);
+        assert_eq!(preview(&m), "Hi, P.S. thanks.");
+        m.set_value(0, "yes please");
+        assert_eq!(m.fields()[0].value, "");
+        assert_eq!(preview(&m), "Hi.");
     }
 }

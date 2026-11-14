@@ -1,0 +1,7 @@
+# Pinned SHA-256 of each released portable zip. Format, one line per released version:
+#   <sha256>  <asset-name>
+# Example (not a real release):
+#   0000000000000000000000000000000000000000000000000000000000000000  snipdeck-v0.0.0-windows-x64.zip
+# Snipdeck.bat checks a downloaded zip against the .sha256 file published with the release AND against this file.
+# A release with no line here is checked against the published .sha256 file only (the launcher says so).
+# When a release is published, add its line here (the hash is in the release's .sha256 file) and commit it.

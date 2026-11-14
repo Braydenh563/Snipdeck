@@ -1,18 +1,162 @@
 # Changelog
 
 All notable changes to Snipdeck are recorded here. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project intends to follow
-[Semantic Versioning](https://semver.org/) once it has releases.
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows
+[Semantic Versioning](https://semver.org/) from 1.0.0.
 
-Snipdeck has had no release yet. Everything below is under development; milestones are defined in
-[`docs/PLAN.md`](docs/PLAN.md). "Unverified" marks Windows behaviour that no one has run on a real Windows
-machine.
+"Unverified" marks Windows behaviour that no one has run on a real Windows PC.
 
-## [Unreleased]
+## [Unreleased] (1.0.0)
+
+First release. Windows 10 (1903 or newer) and 11, 64-bit. Not code-signed, so Windows SmartScreen asks you to confirm the
+first start.
 
 ### Added
+- **The Panel**: a strip at the screen edge that never takes the focus from the app you are typing in. List
+  tabs, a pinned strip, search, a row menu (Use, Copy, Edit, Pin, Move, Colour, Sensitive, Delete), and a menu
+  of its own (Open Snipdeck, New snippet, Settings, Pause hotkeys, Quit).
+- A **New item** row in the Panel, multi-select with a bulk bar (move, colour, sensitive, delete), **Show
+  numbers**, and **Reset size and position**. Resize by dragging its edges (260 to 480 pixels wide); size and
+  place are remembered for each monitor. The keep-on-top button is a pin icon that looks pressed when on.
+- **Edge docking**: Floating, Left, Right, Top or Bottom, opened by hover, click or both, with hover and leave
+  delays. A docked Panel folds into a thin strip. Undocking brings back its earlier size.
+- **The Picker** (`Ctrl+Shift+Space`), the template fill form with a live preview, and quick capture
+  (`Ctrl+Shift+2`). `Alt+1` to `Alt+9` use that row. **Paste next** and **paste stack** (Supporter).
+- **The Main window**: boards, lists, tags, Pinned, Recent and Trash in a sidebar; compact, comfortable and
+  tile views; search; multi-select; move to list; tags; colour labels; list icons; drag and drop; keyboard
+  reordering; a **Hide Panel / Show Panel** button; Duplicate (`Ctrl+D`); Export as text.
+- **Undo and redo** for library changes: `Ctrl+Z`, `Ctrl+Y` and buttons in the header and toolbar. Deleting
+  also shows an Undo button for at least 5 seconds.
+- **The item editor** for text, code, link, template, image and file items. It opens at the height of its
+  form, and unsaved changes are kept as a draft that survives a crash. Editors for boards, lists and tags.
+- **The Trash** keeps deleted items, lists and boards for 30 days.
+- **Settings**: hotkeys with conflict messages, theme, accent colour, language, window behaviour, start with
+  Windows, tray, never-paste-into programs, licence, backups, export, import and erase. **Reduce motion** also
+  follows Windows.
+- **Import** from a `.snipdeck` file, Ditto, CopyQ, a folder of `.txt` and `.md` files, and Windows clipboard
+  history, always after a preview. Export of the whole library, daily backups (1 to 60 kept) and restore.
+- **Recent inbox** (off by default): the last 200 copies or 7 days, skipping password managers and your
+  exclude list, with **Save to…**, **Pause history** and **Clear recent history**. Entries are encrypted on disk.
+- **Sensitive items**: hidden in lists until you hold `Space`, kept out of Windows clipboard history, encrypted
+  on disk on every plan, and cleared from the clipboard after 30 seconds.
+- **Supporter**: pay what you want from A$5 (suggested A$8), once. Adds unlimited boards, templates that ask
+  for values, paste next, paste stack and a **master password**. Free has up to 5 boards.
+- Templates with `{date}`, `{time}`, `{clipboard}`, `{cursor}`, and fields and choices (Supporter).
+- A command palette (`Ctrl+K`), a shortcuts sheet (`Ctrl+/`), a welcome tour, a Getting started list, Help
+  (`F1`) with a Troubleshoot checklist and About, and **Take screenshot** in the Panel, tray and palette.
+- A tray icon with a translated menu. Left click toggles the Panel and double-click opens the Main window.
+- Overlay scrollbars on every scrolling surface.
+- Spanish, German, French, Brazilian Portuguese, Japanese and Simplified Chinese.
+- Screen-reader names on every icon button, status messages that are announced, a focus ring, and text that
+  follows the Windows text size.
+- `Snipdeck.bat`: double-click to download the latest release, check its SHA-256, unpack and start; later it
+  starts offline. Also `update`, `reinstall`, `backup`, `restore`, `doctor`, `logs` and `uninstall`.
+- `--check-db` and `--troubleshoot`. Crash reports (newest 10 kept) that never quote your snippets.
+- Releases carry a SHA-256 file and build provenance (`gh attestation verify`).
 
-**M3 (in progress): UI foundation, Panel and app shell**
+- Help > Troubleshoot has **Rebuild from backup…** for a damaged database: it sets the old file aside and
+  recovers the items it can read.
+- The Main window toolbar is grouped by function, the Panel's board menu has New board, Rename board and
+  Delete board, and the Help tools row is tidied.
+- **Windows installer**: `Snipdeck-Setup-<version>.exe` installs Snipdeck for your account (no administrator
+  prompt) with a Start-menu entry, an optional desktop icon and an Apps & features entry. Running a newer Setup
+  closes Snipdeck, upgrades it and keeps your library; uninstalling keeps the library unless you choose to erase it.
+  The portable zip stays available.
+- **Microsoft Store package** (groundwork): the release build can make an MSIX for Partner Center. In the Store
+  build, "Start with Windows" uses Windows' own startup list and "Check for updates" opens the Store.
+- `snipdeck.exe --quit` asks a running Snipdeck to quit cleanly (Setup uses it to upgrade).
+- **Groups in the Main window**: in a list sorted by hand, `Ctrl+G` groups the selected rows under a named,
+  foldable header, as in the Panel. `Left`, `Right` and `Enter` fold a header, `F2` renames it, `Delete` moves the
+  group and its items to the Trash, and `Alt+Up` / `Alt+Down` (or a drag) moves the whole group. The command
+  palette and the shortcuts list have the group actions. Search shows a flat list, and a list that holds groups is drawn as
+  rows, and the Tile view button rests until the list has no groups.
+- **More importers** in Settings > Import...: Espanso, Beeftext, TextExpander (CSV) and PhraseExpress (CSV), beside
+  Ditto and CopyQ, with the same preview, report and Undo. Their abbreviations are kept as triggers.
+- **More placeholders**: `{uuid}`, and date maths after `date`, `time` and `datetime`, for example `{date+3d}`,
+  `{date-1w:%Y-%m-%d}`, `{time+90min}`, `{datetime+1mo:%F %H:%M}` (units `d w mo y h min`, chainable).
+- **Paste as...** in the item menu: Plain text, UPPERCASE, lowercase, Title Case, Trimmed, slug.
+- **Richer fill-ins** (Supporter): `{multiline:Name|default}` (a box of several lines; Enter adds a line,
+  Ctrl+Enter pastes), `{pickdate:Name|FORMAT}` (a typed `YYYY-MM-DD` date, today when left empty; a date that does
+  not exist is refused on its field), and `{optional:Name}...{/optional}` (a tick box; the text inside pastes only
+  when ticked). The item editor offers all three as chips.
+- **Tips**: a fourth Help tab with ten cards (a title, two lines, a picture and a Try it button), reached from the
+  tray, Help, the last page of the welcome tour and a Getting started card.
+- **Rich paste**: pasting into the Panel or Main, and the capture hotkey, keep HTML and RTF beside the text, so the
+  item pastes formatted in Word or Outlook and as text in Notepad. Rows show a "Formatted" mark; editing the text
+  says the formatting will be removed, and "Remove formatting" drops it alone. Unverified on Windows.
+- **Groups inside a list**: mark rows and press Ctrl+G (or use the item menu) to gather them under a named,
+  collapsible header. Drag items into or out of a group, drag a whole group by its header, rename it in place, and
+  undo any of it. Search keeps the matches under their group's header. From the keyboard, Alt+Up/Down moves a
+  group, Space (like Enter) folds or opens it, and the header menu has Move up and Move down. Unverified with
+  Narrator on Windows.
+- **Typing triggers** (Settings > Typing, off by default): "Expand abbreviations as I type" replaces a trigger you
+  type in another program with its item, after a space, punctuation or the start of a line. Not in password
+  boxes, Never-paste programs, elevated programs or for Sensitive items; only the last 32 characters are kept, in
+  memory. If the watcher cannot start, a message says nothing will be expanded or suggested. Unverified on Windows.
+- **Suggest as you type** (Settings > Typing, off by default): after two characters of a trigger a small hint at the
+  text cursor names the item; Tab inserts it, and Tab is taken only while the hint shows. Esc or any key that is
+  not typing, or 5 seconds of quiet, drops the hint. Unverified on Windows.
+- **Trigger field in the item editor**: 1 to 32 characters without spaces, unique; a one-character trigger gets a
+  warning, saving an overlapping code shows a message naming the other item, and a Sensitive item shows that it
+  has no trigger. Windows-only behaviour is unverified.
+- **Windows Hello unlock** (Supporter): with a master password set, Settings > Privacy > **Unlock with Windows Hello**
+  lets your face, fingerprint or PIN unlock the library. Switching it on asks Hello twice to check it repeats.
+  Nothing is written to disk: an encrypted copy of the key lives in memory, so after a restart, and every 7 days,
+  the password is needed once (the next password unlock asks Hello once to set it up again). Cancelling an unlock
+  keeps the button for another try; a failure falls back to the password. A switch-on that is cancelled or fails
+  stays off ("Windows Hello was not turned on." or "...didn't work, so it was not turned on."). Changing the
+  password re-seals the copy; erasing the library, or setting or removing the password, turns Hello off. Settings
+  search finds it. Unverified on Windows.
+
+### Changed
+- Long toasts wrap onto several lines instead of being cut off, and their icon grows with the text size; warnings
+  are announced as warnings.
+- Settings search leaves no gap where hidden sections were, and the shortcut list wraps long names onto more lines.
+- Keys that are alternatives show "or" between them (Up or Down); keys pressed together sit side by side.
+- The command palette grows with the text size, so long command names stay whole.
+- A selected group header is shown by its fill alone, and a new group opens its name for typing (Enter keeps it).
+- A template with any question in it now always opens the fill form, even when every question has a default or
+  is a choice; the defaults fill the form in.
+- In the fill form, Space ticks a tick box and Enter moves on (or pastes on the last field), like every other
+  field.
+- The "Supporter" badge beside a locked feature is as tall as the control next to it, with its lock centred.
+- The item editor, Help, Settings and the fill form get wider at large text sizes (up to 225%), so buttons, tabs and
+  setting rows no longer overlap or clip.
+- Tips pictures end on a whole row, and the Main window's Show Panel button has its own icon.
+- The Template editor's placeholder list lines its descriptions up in one column, and stacks each name above its description in a narrow window.
+- Tips mark Supporter features with a badge, and a Free user's Try it on one opens the licence page. The item editor says which placeholders need Supporter and offers Get Supporter... beside the message.
+- The item editor's buttons move onto two rows when the window is narrow or the text is large, so none is cut off.
+- Import notes (a skipped match, a cut title, an unsupported field) are shown in your language.
+- The keyboard shortcuts list has an "Unlock window" group, and the guide's keyboard table gained the rows that were missing (Picker Shift+Tab, Main window Ctrl+Shift+P, F2, Ctrl+Space and Space, the group keys, typed triggers).
+- Tab and Shift+Tab reach every field in the item editor, Settings and the fill form, including text fields inside scrolling areas, dropdowns and template choices, and the focus ring is no longer cut off.
+
+### Fixed
+- **Open data folder** in Settings and Help opens the library folder again.
+- The first paste after a start pasted the previous clipboard content. The clipboard write is now confirmed
+  before the paste key is sent.
+- A window opened by the Panel or Main window no longer stays behind when you close it. A blur-hide of the
+  Panel no longer closes windows it opened.
+- Deleting a list or board shows one confirmation. Windows open without a white flash and beside the window
+  that opened them.
+- No see-through window after Alt+Tab or restore.
+- "Dock to the nearest edge" never picks the taskbar's edge.
+- The library syncs every commit to disk, so a power cut cannot roll back an edit or a Trash purge.
+
+### Security
+- No network access. Licence keys are checked offline against a public key built into the release.
+- Imported archives are size-limited; the launcher checks the download's SHA-256 against the release and a
+  pinned list, and starts the app without `cmd.exe`.
+
+Windows behaviour (focus, tray, IME, DPAPI, scaling) was developed on Linux and checked on a real PC only in
+part before this release.
+- YAML import parsing moved from `serde_yaml_ng` to `serde-saphyr` (deserialize only), so `unsafe-libyaml`
+  (RUSTSEC-2024-0449) is no longer in the build.
+
+## Development history before 1.0.0
+
+Internal milestones, kept for reference.
+
+**M3: UI foundation, Panel and app shell**
 - `snipdeck-ui`: design tokens generated from `design/tokens/palette.json`, light and dark themes (high
   contrast is read but only partly applied), IBM Plex fonts, Phosphor icons, and a component library (buttons, inputs, tabs, menus, dialogs,
   toasts, item cards, pinned strip, board switcher), with a headless test harness (software renderer, frozen
@@ -59,19 +203,19 @@ machine.
   user guide, development guide and troubleshooting pages under `docs/`.
 - `scripts/gate.sh` (fast checks, changed-file tests, full suite), `scripts/codemap.py`, `scripts/i18n.py`.
 
-### Changed
+**Earlier, changed**
 - The GPL licence is GPL-3.0-only (was AGPL in the first draft).
 - Windows paste restores the previous clipboard when the target has asked for the data (delayed rendering)
   instead of after a fixed 300 ms wait.
 - Inline text editing is capped at 16 KB and search matches title, tags and the first 64 characters, from
   the S3 measurements.
 
-### Fixed
-- Findings of the Opus reviews of M1 (29 in core and store), the M3 security review, the M3 component review
+**Earlier, fixed**
+- Findings of the independent reviews of M1 (29 in core and store), the M3 security review, the M3 component review
   and the Win32 tray review are fixed or tracked; see [`docs/reviews/`](docs/reviews/).
 - `Cargo.toml` `repository` points at `github.com/Braydenh563/Snipdeck` (the project was renamed from Backpack).
 
-### Security
+**Earlier, security**
 - Importers and the archive reader refuse decoy zip records, oversized values and views in Ditto databases,
   count memory while reading, keep imported sensitive payloads out of the blob folder and scrub them on
   rollback (second M3 security review).

@@ -1,6 +1,7 @@
 {
   "id": "M3",
   "title": "App shell: tray icon, close to tray, hotkey pause, Windows light/dark and high contrast",
+  "friendly": "The Snipdeck app: tray icon, closing, light and dark mode",
   "note": "docs/adr/0008-window-chrome-and-tray.md, crates/snipdeck-platform/src/windows/{tray,system_look,hidden_window}.rs, crates/snipdeck-app",
   "dir": ".",
   "exe": "snipdeck-app",
@@ -13,11 +14,12 @@
     "Nothing in this section has ever run on Windows. A failed step is expected to find a bug: write what you saw in the note (n).",
     "Windows 11 hides new tray icons in the overflow flyout (the ^ arrow). Drag the Snipdeck icon out onto the taskbar once so you can see it, or leave it in the flyout and open the flyout for each step.",
     "Have Notepad open with some text typed into it: several steps check that the Panel never takes the keyboard focus from it.",
-    "The Panel's close button is the small X in its header. 'l' shows what the app printed (lines starting 'snipdeck:' are warnings such as a missing tray icon or a hotkey that is taken)."
+    "The Panel's close button is the small X in its header. ? then l shows what the app printed (lines starting 'snipdeck:' are warnings such as a missing tray icon or a hotkey that is taken)."
   ],
   "tests": [
     {
       "id": "1",
+      "v1": true,
       "gate": true,
       "launch": {
         "args": [
@@ -26,18 +28,20 @@
         ]
       },
       "title": "Start-up: Panel and tray icon appear",
-      "do": "Wait for the Panel to appear, then find the Snipdeck icon in the notification area (look in the ^ flyout too). Hover over it for a second. Press 'l' to read the app log.",
+      "do": "Wait for the Panel to appear, then find the Snipdeck icon in the notification area (look in the ^ flyout too). Hover over it for a second. Press ? then l to read the app log.",
       "expect": "The Panel is on screen and the tray icon is visible; the tooltip reads 'Snipdeck'. The icon is the generic application icon for now (the exe has no icon resource yet): that is not a failure. The log has NO 'snipdeck: tray icon unavailable' and NO 'cannot show the tray icon' line. Hotkey lines are fine."
     },
     {
       "id": "2",
+      "v1": true,
       "gate": true,
       "title": "Left click toggles the Panel without taking focus",
       "do": "Click into Notepad and type a letter. Left-click the tray icon once: the Panel should hide. Left-click it again: the Panel shows. Look at the Panel's title area and at Notepad's title bar. Click the icon twice quickly.",
-      "expect": "One click = one change (hide, then show): never hide-then-show from one click. The Panel does not become the active window (Notepad's title bar stays the 'active' colour while the Panel shows). Clicking the tray icon itself makes the taskbar the foreground window, so typing needs a click back into Notepad first: that is Windows' behaviour, not a failure; the Panel must only never take the focus from Notepad on its own (hotkey Ctrl+Alt+Space instead of a tray click: the next letter still goes into Notepad). Two quick clicks end where they began. The Panel does not appear in Alt+Tab."
+      "expect": "One click = one change (hide, then show): never hide-then-show from one click. The Panel does not become the active window (Notepad's title bar stays the 'active' colour while the Panel shows). Clicking the tray icon itself makes the taskbar the foreground window, so typing needs a click back into Notepad first: that is Windows' behaviour, not a failure; the Panel must only never take the focus from Notepad on its own (hotkey Ctrl+Shift+Y instead of a tray click: the next letter still goes into Notepad). Two quick clicks end where they began. The Panel does not appear in Alt+Tab."
     },
     {
       "id": "3",
+      "v1": true,
       "gate": true,
       "title": "Right click menu",
       "do": "Right-click the tray icon. Look at the menu, then click on the desktop to dismiss it. Open it again and press Esc. Open it a third time and click 'Open Panel'.",
@@ -45,19 +49,22 @@
     },
     {
       "id": "4",
+      "v1": true,
       "title": "Keyboard use of the tray icon",
       "do": "Win+B, then arrow keys to the Snipdeck icon (open the ^ flyout with Enter if needed). Press Enter. Press Win+B again, arrow to the icon and press the Menu key (or Shift+F10).",
       "expect": "Enter on the icon toggles the Panel (same as a left click). Menu key / Shift+F10 opens the same menu. Enter or Esc closes it."
     },
     {
       "id": "5",
+      "v1": true,
       "gate": true,
       "title": "Pause hotkeys",
-      "do": "With the Panel shown, press Ctrl+Alt+Space (it should hide the Panel; press it again to show). Right-click the tray icon and choose 'Pause hotkeys'. Press Ctrl+Alt+Space. Open the menu again and look at 'Pause hotkeys'. Choose it again. Press Ctrl+Alt+Space.",
-      "expect": "While paused: Ctrl+Alt+Space does nothing, and 'Pause hotkeys' shows a check mark in the menu. After choosing it again: the check is gone and Ctrl+Alt+Space toggles the Panel again. The tray left click works the whole time. The log shows no 'cannot register' line after resuming (if it does, another app took the chord while paused: record it)."
+      "do": "With the Panel shown, press Ctrl+Shift+Y (it should hide the Panel; press it again to show). Right-click the tray icon and choose 'Pause hotkeys'. Press Ctrl+Shift+Y. Open the menu again and look at 'Pause hotkeys'. Choose it again. Press Ctrl+Shift+Y.",
+      "expect": "While paused: Ctrl+Shift+Y does nothing, and 'Pause hotkeys' shows a check mark in the menu. After choosing it again: the check is gone and Ctrl+Shift+Y toggles the Panel again. The tray left click works the whole time. The log shows no 'cannot register' line after resuming (if it does, another app took the chord while paused: record it)."
     },
     {
       "id": "6",
+      "v1": true,
       "gate": true,
       "title": "Close to tray",
       "do": "Click the X in the Panel header. Look at Task Manager (Ctrl+Shift+Esc): is snipdeck-app.exe still listed? Left-click the tray icon. (The Esc key on an empty search box is not tested: the Panel is non-activating and takes no keyboard focus yet, see the known gaps in docs/HANDOVER.md.)",
@@ -65,12 +72,14 @@
     },
     {
       "id": "7",
+      "v1": true,
       "title": "Open Snipdeck (stand-in)",
       "do": "Hide the Panel, then choose 'Open Snipdeck' from the tray menu.",
       "expect": "For now it shows the Panel (the main window does not exist yet, M4). Record if nothing happens."
     },
     {
       "id": "8",
+      "v1": true,
       "gate": true,
       "title": "Quit removes the icon at once",
       "do": "Choose 'Quit' in the tray menu. Check Task Manager. Move the mouse over the spot where the tray icon was (and the ^ flyout).",
@@ -78,6 +87,7 @@
     },
     {
       "id": "9",
+      "v1": true,
       "gate": true,
       "launch": {
         "args": [
@@ -91,12 +101,14 @@
     },
     {
       "id": "10",
+      "v1": true,
       "title": "Icon at other display scales",
       "do": "Settings > System > Display > Scale: set 150%, look at the tray icon, then 200%, then back to 100% (sign out is not needed on Windows 11).",
       "expect": "The icon stays sharp enough to recognise at each scale and the tooltip still shows; the right-click menu text is sharp, not blurry or stretched, at 150% and 200%. (It is the generic application icon until the exe gets its own.)"
     },
     {
       "id": "11",
+      "v1": true,
       "gate": true,
       "title": "Windows dark mode is followed live",
       "do": "Make sure no settings file forces a theme (the default is 'system'). Open Settings > Personalization > Colors > Choose your mode. Pick Dark, look at the Panel; pick Light, look again. Leave the Panel visible while you do it.",
@@ -104,21 +116,24 @@
     },
     {
       "id": "12",
+      "v1": true,
       "title": "Theme setting overrides Windows",
-      "do": "Quit Snipdeck from the tray. Create spikes-results\\m3-data\\settings.json containing {\"theme\": \"dark\"} (Notepad is fine). Set Windows to Light mode and relaunch with 'r'. Then change the file to {\"theme\": \"light\"}, set Windows to Dark, relaunch with 'r'.",
+      "do": "Quit Snipdeck from the tray. Create spikes-results\\m3-data\\settings.json containing {\"theme\": \"dark\"} (Notepad is fine). Set Windows to Light mode and relaunch with ? then r. Then change the file to {\"theme\": \"light\"}, set Windows to Dark, relaunch with ? then r.",
       "expect": "With theme=dark the Panel is dark although Windows is Light, and with theme=light the Panel is light although Windows is Dark; changing the Windows mode while it runs changes nothing. Afterwards restore your Windows mode."
     },
     {
       "id": "13",
+      "v1": true,
       "title": "High contrast",
       "do": "Press Left Alt + Left Shift + Print Screen and confirm (this turns on the default High Contrast theme). Look at the Panel while Snipdeck is running. Press the same keys again to turn it off.",
       "expect": "The Panel switches to the system high-contrast colours (window background, text, highlight) while it is on, and returns to normal when you turn it off, without restarting Snipdeck. Record what looks wrong: much of the Panel may still be drawn in its normal palette, because the UI components only partly read the high-contrast colours so far."
     },
     {
       "id": "14",
+      "v1": true,
       "gate": true,
       "title": "A damaged settings file is set aside, not lost",
-      "do": "Quit Snipdeck from the tray. Overwrite spikes-results\\m3-data\\settings.json with the text: { \"panel_width\": 400, \"no_paste_apps\": [\"keepass.exe\"  (cut off, no closing brackets). Relaunch with 'r'. Then look in spikes-results\\m3-data.",
+      "do": "Quit Snipdeck from the tray. Overwrite spikes-results\\m3-data\\settings.json with the text: { \"panel_width\": 400, \"no_paste_apps\": [\"keepass.exe\"  (cut off, no closing brackets). Relaunch with ? then r. Then look in spikes-results\\m3-data.",
       "expect": "Snipdeck starts normally using what could be salvaged from the file (only the no-paste list can be recovered from cut-off text, so keepass.exe is still excluded from auto-paste and everything else is at its default; no crash, no error dialog). The folder now has settings.json.bad with exactly the damaged text, and a NEW valid settings.json written at launch that holds those salvaged values. Quit and relaunch: keepass.exe is still excluded from auto-paste and no new .bad appears. A file with valid JSON but a wrong value type, such as {\"theme\": 7}, is also moved to .bad; {\"panel_width\": 9999} is not (it is just clamped). Also: a settings.json saved by Notepad as 'UTF-8 with BOM' (or 'Unicode', UTF-16) is read normally and is NOT moved to .bad."
     },
     {
@@ -130,20 +145,22 @@
     },
     {
       "id": "16",
+      "v1": true,
       "gate": true,
       "title": "A close request from outside quits the app, tray included",
-      "do": "With Snipdeck running (launch with 'r' if needed), open a terminal and run: taskkill /im snipdeck-app.exe  (no /f). Check Task Manager and the notification area.",
+      "do": "With Snipdeck running (launch with ? then r if needed), open a terminal and run: taskkill /im snipdeck-app.exe  (no /f). Check Task Manager and the notification area.",
       "expect": "The app exits within a second and the tray icon disappears with it. It must NOT keep running without a tray icon (that would be the hidden window being closed by the request)."
     },
     {
       "id": "17",
       "optional": true,
       "title": "Elevated: the icon returns after an Explorer restart",
-      "do": "Run the wizard (run-windows-tests.bat) as administrator so Snipdeck is elevated, launch step 9 again and restart Explorer as there.",
+      "do": "Run the wizard (right-click Test Snipdeck on Windows.bat, then Run as administrator) so Snipdeck is elevated, launch step 9 again and restart Explorer as there.",
       "expect": "The icon comes back although Snipdeck is elevated (TaskbarCreated is let through the integrity filter). If it does not, record it."
     },
     {
       "id": "18",
+      "v1": true,
       "gate": true,
       "launch": {
         "args": [
@@ -155,10 +172,11 @@
       },
       "title": "Demo: every Panel control answers a click (with the diagnostic log on)",
       "do": "Quit any Snipdeck still running (tray menu Quit, or Task Manager). The wizard starts the demo with SNIPDECK_LOG=1. Click, in this order, waiting a second after each: (1) the board name 'Work' top left, (2) 'Personal' in the menu that opens, (3) the board name again and 'Work', (4) the 'Addresses' tab, (5) the 'Email replies' tab, (6) the first pinned chip, (7) the first row, (8) the + after the tabs, (9) the pin button, (10) the X. Then press 'l'.",
-      "expect": "(1) a menu listing Work and Personal opens under the board name; (2) the Panel shows the Personal board (an Errands tab); (3) back on Work; (4)/(5) the rows change with the tab; (6)/(7) a toast says the item was pasted or copied; (8) a new 'New list' tab appears and is selected; (9) the pin button toggles its filled look; (10) the Panel hides to the tray. In the log ('l') every click shows a 'snipdeck-log ... pointer Pressed Left at physical (x, y) = logical (x, y), scale s' line followed by a 'snipdeck-log ... callback on_<name>' line (on_board_menu_requested, on_board_menu_activated (1), on_tab_selected (1), on_pinned_used (0), on_row_activated (0), on_add_list_requested, on_pin_toggled (false), on_close_requested and 'effect HidePanel'). Note the number of every click that did nothing, and copy the log lines around it into the note: a pointer line with no callback line means the click missed the control (scale or position), no pointer line at all means the window never got the click."
+      "expect": "(1) a menu listing Work and Personal opens under the board name; (2) the Panel shows the Personal board (an Errands tab); (3) back on Work; (4)/(5) the rows change with the tab; (6)/(7) a toast says the item was pasted or copied; (8) a new 'New list' tab appears and is selected; (9) the pin button toggles its filled look; (10) the Panel hides to the tray. In the log (? then l) every click shows a 'snipdeck-log ... pointer Pressed Left at physical (x, y) = logical (x, y), scale s' line followed by a 'snipdeck-log ... callback on_<name>' line (on_board_menu_requested, on_board_menu_activated (1), on_tab_selected (1), on_pinned_used (0), on_row_activated (0), on_add_list_requested, on_pin_toggled (false), on_close_requested and 'effect HidePanel'). Note the number of every click that did nothing, and copy the log lines around it into the note: a pointer line with no callback line means the click missed the control (scale or position), no pointer line at all means the window never got the click."
     },
     {
       "id": "19",
+      "v1": true,
       "gate": true,
       "launch": {
         "args": [
@@ -170,8 +188,469 @@
         }
       },
       "title": "First run on an empty real library is usable",
-      "do": "Quit Snipdeck. Delete the folder spikes-results\\m3-first-run if it exists (the wizard then starts on a brand-new library, as Snipdeck.bat with no command does on a new PC). Copy some text in Notepad. Click the board name, then the board in its menu, then 'Save from clipboard', then the + after the tabs. Press 'l'.",
+      "do": "Quit Snipdeck. Delete the folder spikes-results\\m3-first-run if it exists (the wizard then starts on a brand-new library, as Snipdeck.bat with no command does on a new PC). Copy some text in Notepad. Click the board name, then the board in its menu, then 'Save from clipboard', then the + after the tabs. Press ? then l.",
       "expect": "The board switcher reads 'My snippets' (not blank), its menu lists 'My snippets', the copied text appears as a row in the 'Snippets' list with a 'Saved' toast, and + adds a 'New list' tab. The log has 'real library; starter board made: true' on this first launch (false on the next)."
+    },
+    {
+      "id": "20",
+      "v1": true,
+      "title": "Windows open fully in view at 100, 150 and 225 % scaling",
+      "do": "Open the Panel, then the Main window (tray menu: Open Snipdeck) and Settings. In Windows Settings > System > Display > Scale choose 100%, then 150%, then 225% (225% needs Custom scaling and signing out and in once; the wizard continues where you left off afterwards). At each scale open the Panel, the Main window, Settings and one right-click menu and look at each. Put the scale back to your normal value at the end.",
+      "expect": "At every scale each window opens fully on screen near where you opened it, never partly off an edge. Settings fits the visible screen at 150% and 225% with its buttons reachable (it scrolls inside if needed). Text and icons are sharp and not cut off, and a menu is as wide as its longest item. Nothing has run on Windows yet: write what you saw in the note (? then n)."
+    },
+    {
+      "id": "21",
+      "v1": true,
+      "title": "The Windows file dialog opens in front and works (Import)",
+      "do": "In Settings find Your data and press Import. Choose a source that asks for a file or a folder (for example a folder with a few .txt files). When the Windows file dialog opens, press Cancel once. Open it again and pick the folder or file.",
+      "expect": "The Windows file dialog opens in front of Snipdeck, not hidden behind it, and the Panel does not appear on top of it. Cancel returns to Snipdeck with nothing changed. Picking a file or folder shows a preview of what would be added. Snipdeck stays responsive throughout."
+    },
+    {
+      "id": "22",
+      "v1": true,
+      "title": "Panel dock to a screen edge: fold and hover",
+      "do": "In Settings > Panel dock set Dock to = Right edge and Open a docked panel by = Hover. Move the pointer away and wait about half a second, then rest the pointer on the thin strip at the screen edge. Then try Click and Hover and click, and finally set Dock to back to Floating.",
+      "expect": "The Panel sits against the right edge of the monitor it is on. With Hover it folds into a thin strip after the Leave delay (about 0.4 s) and unfolds when the pointer rests on the strip for the Hover delay (about 0.15 s), without taking keyboard focus from Notepad. With Click it opens only on a click. Floating gives the free Panel back."
+    },
+    {
+      "id": "23",
+      "v1": true,
+      "title": "Dock from the lower middle of the screen",
+      "do": "Set Dock to = Floating. Drag the Panel so it sits in the lower middle of the screen, just above the taskbar and a little left of centre. Open the Panel's three-dots menu and read its dock row, then choose it. Choose the row again to undock.",
+      "expect": "The row reads Dock to the left edge (Dock to the right edge when the Panel is right of centre), never the bottom edge where the taskbar is. Choosing it moves the Panel once to that edge, full height, with no flicker and no snap back to floating. The second choice (Undock the panel) gives the floating Panel back where it was."
+    },
+    {
+      "id": "24",
+      "v1": true,
+      "title": "Drag the Panel to a screen edge to dock it",
+      "do": "With the Panel floating, drag it by its header until its right side is within about 16 px of the right edge of the screen, hold still for a moment, then release. Then drag it down until its bottom is next to the taskbar and release there. Finally, in Settings > Panel dock, pick Bottom edge.",
+      "expect": "Near the right edge a thin accent strip shows along the Panel's right side; about a quarter of a second after you stop moving, the Panel docks to the right edge. Next to the taskbar no strip shows and the Panel stays floating where you dropped it. Picking Bottom edge in Settings shows the message The taskbar is on that edge and the Panel stays floating."
+    },
+    {
+      "id": "25",
+      "v1": true,
+      "title": "Stray marks in text: send a crop",
+      "do": "Open the main window on All items and look at a list chip such as Snippets, then open an empty list to see This list is empty. If you see a stray dot or mark over or next to any letter, press Win+Shift+S, draw a tight box around the mark and the word, and paste the crop into your report together with the window name and your display scale (Settings > System > Display > Scale, for example 125%).",
+      "expect": "Normally there is no mark. The developers cannot reproduce one at 100% or 225% scale on their machine, so the crop plus the scale is what lets them find the cause."
+    },
+    {
+      "id": "26",
+      "v1": true,
+      "title": "No see-through window after Alt+Tab or restore (O39)",
+      "do": "Open the Main window and the Panel next to a busy window (for example Notepad with text). Press Alt+Tab to switch away from Main and back to it 20 times, then do the same with the Panel 20 times. Then minimise Main and restore it from the taskbar 5 times. Look at the whole window each time, not only the title bar.",
+      "expect": "At no point is any part of the Main window or the Panel see-through: the client area always shows the Snipdeck background and content, never the windows behind it, and never only the border and title bar. Write the step and the count in the note (n) if you ever saw it."
+    },
+    {
+      "id": "27",
+      "v1": true,
+      "launch": {
+        "args": [
+          "--data-dir",
+          "spikes-results\\m3-data"
+        ]
+      },
+      "title": "First paste after a cold start is the right item",
+      "do": "Close Snipdeck completely (tray icon, Quit), then start it again. Before doing anything else, copy the word OLDCLIP in Notepad (so it is the newest thing on your clipboard and at the top of Win+V). Click into an empty Notepad, then open the Snipdeck Panel and, as the very first action, click an item whose text is not OLDCLIP. Do this once right after start and once more after hiding and showing the Panel.",
+      "expect": "The item you clicked is pasted both times, never OLDCLIP. If the clipboard cannot take the item in time, nothing is pasted and a toast says the clipboard was busy; pressing the item again works. Report any case where OLDCLIP (or any other earlier clipboard text) is pasted instead."
+    },
+    {
+      "id": "28",
+      "v1": true,
+      "title": "Delete on a list or board shows only the confirmation (O52)",
+      "do": "In the Panel right-click a list tab and choose 'Delete list...'. Wait 3 seconds, then press Cancel. Do it again with the tab's Menu key (or Shift+F10) and press Esc. Then in the Main window open the board menu (click the board name) and choose 'Delete board...', wait 3 seconds and press Cancel.",
+      "expect": "Each time only the delete confirmation appears, inside the Panel or the Main window. No list editor or board editor window opens, before or after it, and nothing flashes behind it. Cancel and Esc close it and the list or board is still there. With only one board, 'Delete board...' is greyed out."
+    },
+    {
+      "id": "29",
+      "v1": true,
+      "title": "No white flash when a window opens (O52)",
+      "do": "Set Settings > Theme to Dark. Open each of these three times, closing it between: the list editor (Panel: right-click a tab, 'Edit list...'), the item editor (double-click a row), Settings, Troubleshoot (Panel kebab menu), the board editor (Main: board menu, 'Rename board...'), and the Move chooser (Main: right-click a row, Move to...). Watch each window as it appears. Then set Theme to Light and open the list editor and Settings again.",
+      "expect": "Every window appears in the theme's background colour from its first visible moment: no white or blank frame, not even for a split second, on the first open or on later ones. In Light the first colour is the light background, not pure white. Write any window that flashed in the note (n)."
+    },
+    {
+      "id": "30",
+      "v1": true,
+      "title": "Windows open beside the window they came from (O41)",
+      "do": "Put the Panel on the left of the screen with free space to its right. Open Settings from the Panel menu, close it, then open Troubleshoot and the item editor (New snippet). Then drag the Panel to the far right edge of the screen and open Settings again. Then drag the Panel to the middle of a small or 150 percent scaled screen so there is no room on either side, and open Settings once more. Finally open Settings from the Main window while the Main window is maximised.",
+      "expect": "With room to its right, each window opens just right of the Panel with a small even gap (about 8 px at 100 percent, scaled on other displays), lined up with the Panel's top, fully on the screen and clear of the taskbar. At the right edge it opens on the left of the Panel instead. With no room at the sides it opens below or above the Panel, or covers as little of it as it can. Over a maximised Main window it opens centred. It never opens half off screen or under the taskbar."
+    },
+    {
+      "id": "31",
+      "v1": true,
+      "title": "Take screenshot from the Panel, the tray and the palette (O48)",
+      "do": "Open Paint. Open the Panel menu and choose Take screenshot. Drag a rectangle over part of the screen with the snipping overlay, then paste into Paint with Ctrl+V. Repeat from the tray icon menu (Take screenshot) and from the command palette (type screenshot). Then turn on Settings > Keep Panel visible during screenshots and repeat once. Then start a screenshot, press Esc on the overlay without taking one, and wait a minute.",
+      "expect": "On choosing Take screenshot the Panel disappears at once, so it is not in front of the snipping overlay, and the overlay appears. When the snip is taken the clipboard holds the picture and the Panel is shown again within about half a second, without taking focus from the app in front. With the setting on, the Panel stays on screen during the snip. After Esc the Panel returns on its own after about 60 seconds. If the overlay cannot start, the Panel is shown at once with a toast saying so. No snippet is added by itself."
+    },
+    {
+      "id": "32",
+      "v1": true,
+      "title": "Closing Main closes what it opened (O53)",
+      "do": "Open the Main window. From it open Settings, the Troubleshoot window, the Tag manager and an item editor (type a few new words in the item's text, do not save), then a list editor (change its name, do not save). Also open the command palette (Ctrl+K). Close the Main window with its X button. Then open Main again from the tray, open the same item and the same list for editing. Next open the Panel, open Settings and an item editor from the Panel, and close Main: they must stay. Then close the Panel with its X button.",
+      "expect": "Closing Main closes Settings, Troubleshoot, the Tag manager, both editors and the palette together with it, with no question asked. Main opens again with no palette. The item editor and the list editor come back with the words you typed (the item editor says the draft was restored). Closing Main does not close the windows opened from the Panel. Closing the Panel then closes Settings and the editor opened from it. Write which window stayed open, if any, in the note (n)."
+    },
+    {
+      "id": "33",
+      "v1": true,
+      "title": "The Panel footer is fully visible at the regular size (O45)",
+      "do": "Open the Panel at its normal size (do not resize it). Look at the bottom strip. Then set Windows display scale to 125% and 150% (Settings > System > Display), sign out and in if asked, and open the Panel again each time.",
+      "expect": "The bottom strip (\\"
+    },
+    {
+      "id": "34",
+      "v1": true,
+      "title": "Reset size and position (O45)",
+      "do": "Drag the Panel to the other side of the screen and resize it very small. Open the Panel menu (the three dots) and choose 'Reset size and position'. Then press Ctrl+K in the Main window, type 'reset' and run 'Reset Panel size and position'. If you have two monitors, move the Panel to the second one first and check the first one's saved place is untouched.",
+      "expect": "The Panel jumps back to its default size and place at once, with no Undo message. It stays there after you close and reopen it. On a second monitor only that monitor's place is forgotten."
+    },
+    {
+      "id": "35",
+      "v1": true,
+      "title": "Add an item with the New item row (O45)",
+      "do": "In the Panel click '+ New item' under the last item (also try it in an empty list). Paste some text and press Enter. Then press Ctrl+N, paste a web address and click Create. Try Shift+Enter (new line) and Esc (cancel). Click the Sensitive switch before creating once.",
+      "expect": "The row is easy to see. The box opens with the cursor in it and the kind already set (Link for a web address). Enter or Create adds the item under the last one, selects it and clears the box. Shift+Enter makes a new line. Esc closes the box and keeps nothing. A Sensitive item shows hidden."
+    },
+    {
+      "id": "36",
+      "v1": true,
+      "title": "Select several items and act on them (O45)",
+      "do": "In the Panel Ctrl+click two rows, Shift+click a third, then press Ctrl+A and Shift+Down. Use the bar that appears: Move to..., Colour, Copy all, Delete. Paste after Copy all. Press Esc to clear. Hover a row and look for the three dots on it, and look at the selected row.",
+      "expect": "The bar says how many are selected. Move to and Colour ask once and change all of them. Copy all pastes the texts one after another. Delete removes them with an Undo message and no question. Esc clears the selection. The three dots show on the hovered and the selected row and open the row menu."
+    },
+    {
+      "id": "37",
+      "v1": true,
+      "title": "Show numbers (O45)",
+      "do": "Open the Panel menu (three dots) and switch 'Show numbers' off, then on. With it off press Alt+1 and 1 on a row.",
+      "expect": "With it off the row numbers are gone and the 1-9 keys still use rows. With it on they come back. The choice is kept after restarting."
+    },
+    {
+      "id": "38",
+      "v1": true,
+      "title": "Undo and redo (O47)",
+      "do": "Open the Panel. Delete an item (it shows an Undo message), then press Ctrl+Z and then Ctrl+Y. Pin an item, move one to another list, then press Ctrl+Z twice and Ctrl+Y once. Use the Undo and Redo buttons in the Panel header and in the Main toolbar. Hover the buttons. Delete a list in Main and press the Undo button on the message.",
+      "expect": "Ctrl+Z takes back the last change and says what it undid; Ctrl+Y brings it back. The Undo message button does the same for its own change. The header and toolbar buttons are greyed when there is nothing to undo or redo, and their tooltips name the change they would undo or redo. Write which change was not undone correctly in the note (n)."
+    },
+    {
+      "id": "39",
+      "v1": true,
+      "title": "Paste to create (O47)",
+      "do": "Copy some words in Notepad. Open the Panel (click a list row once so no text box has the focus) and press Ctrl+V. Then copy a web address (https://example.com) in your browser and press Ctrl+V in the Panel again. Do the same in the Main window with the item list focused. Press the Edit button on the 'Added to ...' message, then Undo on a second paste.",
+      "expect": "Each paste adds one item at the top of the list you are looking at; the words make a Text item and the address makes a Link. The message says 'Added to <list>' with Undo and Edit buttons; Edit opens that item in the editor; Undo moves it to the Trash. Ctrl+V with the cursor in the search box pastes into the box and adds nothing. Write what went wrong in the note (n)."
+    },
+    {
+      "id": "40",
+      "v1": true,
+      "title": "Paste a secret and Ctrl+C on items (O47)",
+      "do": "Copy a line like 'password: hunter2' (or a GitHub token starting ghp_) and press Ctrl+V on the Panel list. Then select one item and press Ctrl+C, paste it into Notepad. Mark three items (Ctrl+click) and press Ctrl+C, paste into Notepad. Try with a Sensitive item selected on its own.",
+      "expect": "The secret is not saved: the item editor opens with the text and Sensitive turned on, and a message says why. Ctrl+C on one item copies it like its Copy button (a Sensitive item is cleared from the clipboard after the usual time); with several items they are copied one per line and Sensitive ones are left out. Write what went wrong in the note (n)."
+    },
+    {
+      "id": "41",
+      "v1": true,
+      "title": "Paste a screenshot and files (O47)",
+      "do": "Press Win+Shift+S and snip part of the screen, then open the Panel (click a list row once) and press Ctrl+V. Then, in Explorer, select two files (one a .png picture, one a .txt) and press Ctrl+C, go back to the Panel and press Ctrl+V. Try a file bigger than 64 MB together with a small one. Press Undo on the message.",
+      "expect": "The screenshot becomes an Image item at the top. The two files become two items, in the order selected: the .png an Image item, the .txt a File item, with one message 'Added to <list>' and one Undo that removes both. The big file is skipped and the message says some files were skipped. Text copied from Excel or Word still makes a Text item, not a picture. Write what went wrong in the note (n)."
+    },
+    {
+      "id": "42",
+      "v1": true,
+      "title": "Drag files from Explorer onto the Panel and Main window (O47)",
+      "do": "Drag two files from Explorer over the Panel (do not drop yet), then drop them. Do the same over the Main window with a list open. Drag a file in and move it out again without dropping. Drop a folder.",
+      "expect": "While dragging, a message says 'Drop to add to <list>'; it goes when the drag leaves or ends. Dropping adds one item per file to the list shown, as one Undo step, wherever on the window you drop (a drop on a different tab still goes to the list shown). A drag that leaves adds nothing. A folder is skipped and the message says so. Dropping text or pictures from other programs is not supported in this version. Write what went wrong in the note (n)."
+    },
+    {
+      "id": "43",
+      "v1": true,
+      "title": "Compact dock keeps its height and slides along the edge (U22, O28)",
+      "do": "Drag the Panel by its header to a spot about halfway down the screen and let it snap to the left edge. Look at its height and where it sits. Pull its right edge, its top and bottom ends and its lower right corner. Try its left (screen-side) edge and left corners. Drag the small pill in the header up and down. Press and drag on the empty part of the header away from the edge. In Settings > Panel switch on 'Docked panel uses the full edge', then off. Repeat on the right edge.",
+      "expect": "The docked Panel keeps its own height at the height you dropped it; it does not stretch over the whole edge. The inner edge, both ends and the inner corners resize it with the OS resize cursor; the screen-side edge and its corners do nothing. The pill slides the Panel up and down along the edge, stops at the top and bottom of the work area and never undocks it. Dragging the rest of the header takes it off the edge. With the setting on it fills the whole edge; off, it returns to its own height. Quit and start Snipdeck: it comes back docked at the same spot. Write what went wrong in the note (n)."
+    },
+    {
+      "id": "44",
+      "v1": true,
+      "title": "Recent keeps a copied picture (slice 5)",
+      "do": "Turn on Recent history. In Snipping Tool take a region screenshot, and in Paint copy a selection. Open the Recent tab in the Panel and in the Main window.",
+      "expect": "Each copy is a row with a small thumbnail of the picture and its size (for example 640 x 360). Copying the same picture twice leaves one row at the top. Clicking a row pastes the picture into Paint with its transparency intact. Write which app's picture lost transparency in the note (n)."
+    },
+    {
+      "id": "45",
+      "v1": true,
+      "title": "Recent keeps copied files by path (slice 5)",
+      "do": "In Explorer select three files and press Ctrl+C. Open Recent. Then rename one file and click the row. Then copy a mail attachment out of Outlook.",
+      "expect": "The Explorer copy is one row with the file glyph and the file names. Clicking pastes the files into another folder. After the rename, clicking says 'File moved or deleted' and pastes nothing. The Outlook attachment copy creates no row. Use 'Save to...' on the row: it makes File items (PNG files make Image items)."
+    },
+    {
+      "id": "46",
+      "v1": true,
+      "title": "Recent keeps formatted text and honours the exclusion markers (slice 5)",
+      "do": "Copy a bold, coloured paragraph from Word, click its Recent row to paste into WordPad, then copy the same words from Notepad. Then copy a password in a password manager that sets the exclude marker, and copy a picture from it if it offers one.",
+      "expect": "The Word copy pastes into WordPad with bold and colour. The same words from Notepad leave one row (newest source app, plain). Nothing from the password manager appears, neither text nor picture nor files. Write any app whose copy was kept despite the marker in the note (n)."
+    },
+    {
+      "id": "50",
+      "v1": false,
+      "title": "Fill-ins: multi-line box, date and tick box, pasted into Outlook (v1.1 slice 2b)",
+      "do": "Make a Template with {multiline:Body}, {pickdate:Due|%F} and {optional:PS}P.S. thanks{/optional}. Use it from the Picker with an Outlook message open. In the form type two lines in the first box (Enter adds a line), type 2026-02-30 in the date and press Ctrl+Enter, correct it to a real day, tick the box with Space and press Ctrl+Enter.",
+      "expect": "Enter adds a line and does not submit. The bad date keeps the form open with an error under the date box and the focus there. After the fix the text pastes into Outlook with both lines, the date, and the P.S. line. Run it again with the box unticked and the date empty: no P.S., and today's date. A screen reader announces the tick box as a check box named PS."
+    },
+    {
+      "id": "51",
+      "v1": false,
+      "title": "Tray menu: Tips opens the Tips tab (v1.1 slice 4)",
+      "do": "Right-click the Snipdeck tray icon and choose Tips. Then press Tab to reach the first Try it button, press Enter, and scroll the list with the mouse wheel. Close Help, open the welcome tour from Help > About > Show, go to the last step and choose See the tips.",
+      "expect": "Tips sits in the tray menu between Open Snipdeck and Take screenshot. Choosing it opens the Help window on its fourth tab, Tips, with ten cards: a title, two lines, a picture and a Try it button each. Tab moves from card to card and keeps the focused button in view; Enter on the first card shows the Panel. The pictures are not cut off at the window's smallest size. The tour's See the tips button opens the same tab. Nothing in the window or the tray icon shows an unread badge or a prompt. Write anything that clips, overlaps or reads badly in Narrator in the note (n)."
+    },
+    {
+      "id": "52",
+      "v1": false,
+      "title": "Rich paste: a bold table from Word to Outlook and Notepad (v1.1 slice 7)",
+      "do": "In Word make a small table with a bold header row and copy it. Open the Panel and press Ctrl+V with no text box focused, then copy something else, press the capture hotkey after copying the table again. Look at the new rows, then paste the first one into an Outlook message and into Notepad. Open the item in the editor, type a letter and look above the buttons, then press Remove formatting on the other item.",
+      "expect": "Both new items have a Formatted mark on the row. In Outlook the table arrives with its bold header and borders; in Notepad it arrives as plain tab-separated text. In the editor a note reads Saving changed text removes the formatting and a Remove formatting button sits under the text. Remove formatting keeps the text, the mark disappears from the row, and the item now pastes as plain text in Outlook. Choosing Paste as > Plain text on a formatted item pastes plain text. A password copied from a browser still opens the editor with Sensitive on instead of saving. Write anything that looks wrong in the note (n)."
+    },
+    {
+      "id": "53",
+      "v1": false,
+      "title": "Rich paste: RTF from WordPad (v1.1 slice 7)",
+      "do": "In WordPad type a line, make one word bold and one word red, select all and copy. In the Panel press Ctrl+V with no text box focused. Paste the new item into WordPad and into Notepad.",
+      "expect": "The item gets a Formatted mark. WordPad shows the bold word and the red word; Notepad shows the plain line. Editing only the title in the editor and saving keeps the formatting."
+    },
+    {
+      "id": "54",
+      "v1": false,
+      "title": "Panel: groups inside a list (v1.1 slice 3b)",
+      "do": "Set a list to Manual sort. In the Panel mark three rows with Space, press Ctrl+G, type a name and press Enter. Press Left on the group header, then Right. Click the header. Press F2 on it and rename it. Drag the header to another place. Right-click the header and choose Ungroup. Group again, choose Delete group, then press Ctrl+Z. Type a word from a grouped item in the search box while the group is collapsed. With Narrator on, move to a header with the arrow keys.",
+      "expect": "The marked rows gather under a header showing the name, the item count and a chevron. Left collapses, Right expands, a click toggles; the focus ring shows on the header and Tab/arrows reach it. Rename edits in place. Dragging the header moves the whole group. Ungroup keeps the items. Delete group moves the group and its items to Trash in one step and Ctrl+Z brings the header and items back. Search lists matches even inside a collapsed group. Quick numbers count item rows only, never headers. Narrator reads a header as 'group, N items, collapsed' (or expanded). Write anything that looks wrong in the note (n)."
+    },
+    {
+      "id": "55",
+      "v1": false,
+      "title": "Typed trigger expands (v1.1 slice 5b)",
+      "do": "Settings > Typing: turn on \"Expand abbreviations as I type\". Give a snippet the trigger ;sig in its editor (Trigger field). In Notepad, Word, Chrome (a text box) and Windows Terminal type ;sig.",
+      "expect": "In each app the four characters are replaced by the snippet text (Terminal pastes with its own key). The clipboard has its old content back afterwards and the use count goes up by one."
+    },
+    {
+      "id": "56",
+      "v1": false,
+      "title": "Dead keys still compose with the hook on (v1.1 slice 5b)",
+      "do": "With a German keyboard layout and the setting on, in Notepad press the ^ key and then e.",
+      "expect": "ê appears, exactly as with the setting off. Also try ' then a on a US-International layout (á)."
+    },
+    {
+      "id": "57",
+      "v1": false,
+      "title": "No expansion in a password box (v1.1 slice 5b)",
+      "do": "With the setting on, open a sign-in page in Edge and type ;sig into the password box.",
+      "expect": "The text ;sig stays as typed; nothing is expanded or pasted. In the user-name box on the same page it does expand."
+    },
+    {
+      "id": "58",
+      "v1": false,
+      "title": "No expansion in a never-paste app (v1.1 slice 5b)",
+      "do": "In Settings > Programs set Notepad to never paste. With the setting on, type ;sig in Notepad.",
+      "expect": "The text ;sig stays as typed and nothing is pasted."
+    },
+    {
+      "id": "59",
+      "v1": false,
+      "title": "No expansion in an elevated window (v1.1 slice 5b)",
+      "do": "With the setting on, open an elevated (Run as administrator) Notepad and type ;sig.",
+      "expect": "The text ;sig stays as typed and nothing is pasted."
+    },
+    {
+      "id": "60",
+      "v1": false,
+      "title": "The hook is quiet (v1.1 slice 5b)",
+      "do": "With the setting on, type fast for a minute in Notepad and watch Windows Security (Defender) and Task Manager. Turn the setting off and check the hook is gone (type ;sig: no expansion).",
+      "expect": "Defender raises no warning, typing feels no slower, and Snipdeck's CPU stays near zero. With the setting off no expansion happens."
+    },
+    {
+      "id": "61",
+      "v1": false,
+      "title": "Suggestion hint at the caret (v1.1 slice 6)",
+      "do": "Turn on Settings > Typing > Suggest snippets as I type. Make an item with the trigger ;signature. In Notepad and then Word type ;s and look beside the caret. Type a letter that is not part of the trigger. Type ;s again, then click into the other app window and back.",
+      "expect": "After two characters a small hint appears under the caret with the item title and a Tab key chip. It never takes focus: the caret keeps blinking in the app and typing carries on. A letter that does not continue the code, or moving to another window, makes it go away. Near the bottom of the screen it flips above the caret. Note any app where it appears in the wrong place (n)."
+    },
+    {
+      "id": "62",
+      "v1": false,
+      "title": "Tab without a hint still moves focus (v1.1 slice 6)",
+      "do": "With the setting on, open a web page with a form in Edge and press Tab between fields without typing a trigger. Then type ;s in Notepad and press Tab while the hint shows.",
+      "expect": "Tab moves between the form fields as usual when no hint is showing. With the hint showing, Tab removes the typed ;s and inserts the item, and no tab character is typed."
+    },
+    {
+      "id": "63",
+      "v1": false,
+      "title": "Tab is not swallowed after a quick type-and-leave (typing fixes)",
+      "do": "Suggest on. In Notepad type ;s (hint shows) then quickly type a letter that is not in the trigger, then press Tab.",
+      "expect": "The hint goes away and Tab inserts a tab character as usual; it never does nothing."
+    },
+    {
+      "id": "64",
+      "v1": false,
+      "title": "Hint goes away on a mouse click inside the same window",
+      "do": "Type ;s so the hint shows, then click elsewhere in the same Notepad text, then press Tab.",
+      "expect": "The hint disappears at the click and Tab acts as a normal tab. Needs the mouse hook; if the hint stays until you type, report it."
+    },
+    {
+      "id": "65",
+      "v1": false,
+      "title": "Hint times out when idle",
+      "do": "Type ;s and leave the keyboard and mouse alone for about 6 seconds, then press Tab.",
+      "expect": "The hint disappears after roughly 5 seconds and Tab acts as a normal tab."
+    },
+    {
+      "id": "66",
+      "v1": false,
+      "title": "A swallowed Tab is given back",
+      "do": "Type ;s, then switch to another app with Alt+Tab at once and press Tab in it. The Tab is sent from the typing thread (SendInput) when the hint went away between the key press and its handling.",
+      "expect": "The other app receives exactly one Tab; no tab is lost or doubled."
+    },
+    {
+      "id": "67",
+      "v1": false,
+      "title": "Tab ignored when focus moved to a different window or a password box",
+      "do": "Type ;s in Notepad, click into a password field in a browser (or another window), press Tab.",
+      "expect": "No expansion happens in the other window; Tab behaves normally there."
+    },
+    {
+      "id": "68",
+      "v1": false,
+      "title": "Screen reader announces the suggest hint (live region)",
+      "do": "Turn on Narrator (Win+Ctrl+Enter). In Notepad type the start of a trigger so the hint shows, e.g. ;s.",
+      "expect": "Narrator reads the hint (the item title and 'press Tab to insert') without the focus leaving Notepad. If it stays silent, note it: the hint window is non-activating and the announcement relies on its live region."
+    },
+    {
+      "id": "69",
+      "v1": false,
+      "title": "One-character trigger warning is styled and announced",
+      "do": "With Narrator on, open an item's editor and type ; in the Trigger field.",
+      "expect": "A warning line with the warning icon and the warning colour appears under the field (same height rhythm as other field notes) and Narrator reads it politely. Choosing Sensitive replaces the field with one line saying Sensitive items have no trigger."
+    },
+    {
+      "id": "70",
+      "v1": false,
+      "title": "Esc takes the hint down and reaches the app; a hook that cannot start says so",
+      "do": "In Notepad type ;s so the hint shows, then press Esc. Then, if you can make hook installation fail (a policy or security product that blocks keyboard hooks), turn on Settings > Typing > Expand abbreviations as I type.",
+      "expect": "Esc hides the hint and Notepad still receives the Esc; Tab afterwards is a plain tab. When the hook cannot start, a red toast says 'Couldn't start typing triggers. Nothing will be expanded or suggested.' If you cannot make it fail, say so: this path is unverified."
+    },
+    {
+      "id": "71",
+      "v1": false,
+      "title": "Windows Hello: switch it on (two prompts)",
+      "do": "On a PC where Windows Hello has a PIN, face or fingerprint set up, with a Supporter licence and a master password set, open Settings > Security and turn on Unlock with Windows Hello. Answer the Windows Hello prompts. Then repeat, but cancel the first prompt.",
+      "expect": "Turning it on asks twice (the second checks that Hello answers the same way) and the switch stays on. If you cancel, the switch goes back off and a message says Windows Hello was not turned on; nothing says to look in Settings. Without a master password or on the Free plan the row is not shown. Write anything odd in the note (n)."
+    },
+    {
+      "id": "72",
+      "v1": false,
+      "title": "Windows Hello: lock, then unlock by face or fingerprint",
+      "do": "With Hello on, lock the library (idle lock or from the tray) and use a sensitive item so the unlock window opens. Press Unlock with Windows Hello and use your face or fingerprint. Then restart Snipdeck and open the unlock window again.",
+      "expect": "Hello unlocks and the window closes. After a restart the Hello button is not shown until the password has been typed once; after typing it Hello asks once to set itself up again. The Hello button sits on its own row above Cancel and Unlock."
+    },
+    {
+      "id": "73",
+      "v1": false,
+      "title": "Windows Hello: cancel, then retry",
+      "do": "Lock the library, open the unlock window, press Unlock with Windows Hello and cancel the Windows prompt. Press the button again and unlock. Then cancel again and type the master password instead.",
+      "expect": "After a cancel the window says Windows Hello was cancelled and to use the master password; the Hello button stays so you can try again. The retry unlocks. The master password always works."
+    },
+    {
+      "id": "74",
+      "v1": false,
+      "title": "Windows Hello: the prompt is in front of Snipdeck",
+      "do": "Press Unlock with Windows Hello and look at where the Windows Hello prompt appears.",
+      "expect": "The prompt is in front of the Snipdeck window and takes the keyboard, not hidden behind it. Write what you saw in the note (n)."
+    },
+    {
+      "id": "75",
+      "v1": false,
+      "title": "Windows Hello: a PC without Hello hides the option",
+      "do": "On a PC or user account with no Windows Hello set up, with a master password set, open Settings > Security and the unlock window.",
+      "expect": "The Unlock with Windows Hello row is not shown in Settings and the unlock window shows only the master password field."
+    },
+    {
+      "id": "76",
+      "v1": false,
+      "title": "Windows Hello: turn it off",
+      "do": "With Hello on, turn off Unlock with Windows Hello in Settings > Security, lock the library and open the unlock window.",
+      "expect": "The unlock window shows only the master password field. Turning it on again asks two prompts."
+    },
+    {
+      "id": "77",
+      "v1": false,
+      "title": "Windows Hello: change the password while Hello is on",
+      "do": "With Hello on, change the master password in Settings > Security. Lock, open the unlock window.",
+      "expect": "Either Hello still unlocks (the copy was sealed again) or the button is gone and the password is asked once and Hello sets itself up again; it never unlocks with the old password's data key wrongly, and the master password always works. Write which you saw in the note (n)."
+    },
+    {
+      "id": "78",
+      "v1": false,
+      "title": "Groups with Narrator: header, fold, move, member position",
+      "do": "Turn Narrator on (Win+Ctrl+Enter). In the Panel with a group of at least two items, Tab to the group header and listen. Press Space, then Enter, on it. Press Alt+Down, then Alt+Up. Move into the group with the arrow keys and listen to a member row.",
+      "expect": "The header reads its name, its item count and whether it is expanded or collapsed. Space and Enter each fold or unfold it, and Narrator says the new state. Alt+Up and Alt+Down move the group and Narrator announces its new place. A member row reads its position in the group, such as 1 of 2, and a row outside any group reads no position. Write what Narrator said for each in the note (n)."
+    },
+    {
+      "id": "79",
+      "v1": false,
+      "title": "Main groups: Ctrl+G groups the selected rows",
+      "do": "In the Main window open a list sorted by hand (Manual) with at least four items. Select two items with Ctrl+click, then press Ctrl+G. Then press Ctrl+G on a single row with nothing selected.",
+      "expect": "The two items sit under a new header named Group and its name opens for editing at once; Enter keeps the name. With nothing selected the row at the cursor becomes a group of its own. In a list that sorts itself, Ctrl+G offers to switch to Manual order instead. Ctrl+Z takes the grouping back in one step."
+    },
+    {
+      "id": "80",
+      "v1": false,
+      "title": "Main groups: fold and unfold with the keys and the mouse",
+      "do": "Put the cursor on a group header. Press Left, then Right, then Enter, then Enter again. Click the chevron on the header, then click the header itself.",
+      "expect": "Left folds the group and hides its items, Right opens it, Enter does the other each time, and a click on the chevron or the header does the same. The header's chevron turns with the state and the count stays visible. A folded group stays folded after you close and reopen the window."
+    },
+    {
+      "id": "81",
+      "v1": false,
+      "title": "Main groups: F2 renames a header",
+      "do": "Put the cursor on a header and press F2. Type a new name and press Enter. Press F2 again, type another name and press Esc. Choose Rename group from the header's right-click menu.",
+      "expect": "F2 opens the name in place with the old name selected. Enter keeps the new name, Esc leaves the old one, and the menu entry opens the same edit. An empty name changes nothing. Ctrl+Z undoes the rename."
+    },
+    {
+      "id": "82",
+      "v1": false,
+      "title": "Main groups: Delete on a header moves the group to the Trash, and Undo brings it back",
+      "do": "Put the cursor on a header of a group with items and press Del. Press Ctrl+Z (or choose Undo in the toast). Then open the Trash.",
+      "expect": "Del moves the group and all its items to the Trash with an Undo toast; nothing asks first. Ctrl+Z brings the header and every item back in place in one step. Before Undo the Trash lists the items. Choosing Ungroup from the header's menu instead keeps the items and removes only the header."
+    },
+    {
+      "id": "83",
+      "v1": false,
+      "title": "Main groups: drag a header with the mouse",
+      "do": "Drag a group header onto another row or group in the list, and drop it. Then drag a single item onto a header.",
+      "expect": "The header moves with all its items and lands where it was dropped. An item dropped on a header joins that group at its top. Each drop is one Undo step. In a list that sorts itself, the drop offers Manual order instead."
+    },
+    {
+      "id": "84",
+      "v1": false,
+      "title": "Main groups: Alt+Up and Alt+Down move a header",
+      "do": "Put the cursor on a group header and press Alt+Down, then Alt+Up. Try Alt+Up on the first group.",
+      "expect": "The whole group moves one place past the next group or loose row and the cursor stays on its header. At the top or bottom nothing moves and nothing breaks. Ctrl+Z puts it back in one step."
+    },
+    {
+      "id": "85",
+      "v1": false,
+      "title": "Main groups: the command palette has the group commands",
+      "do": "Press Ctrl+K. With the cursor on an item type group; with the cursor on a header type group again, and also try fold, rename, ungroup, delete and move.",
+      "expect": "On an item the palette offers Group selected items (Ctrl+G) and no header command. On a header it offers Fold or unfold group, Rename group (F2), Ungroup, Delete group (Del) and Move group up or down (Alt+Up, Alt+Down), and the move entries are missing at the first or last place. Each command does what its key does."
+    },
+    {
+      "id": "86",
+      "v1": false,
+      "title": "Main groups with Narrator: a header reads its name, count and state",
+      "do": "Turn Narrator on (Win+Ctrl+Enter). In the Main window arrow down to a group header, then fold it with Left and open it with Right, then arrow into a member row.",
+      "expect": "Narrator reads the header as group, its name, its item count (for example 3 items) and whether it is expanded or collapsed, and says the new state after Left and Right. A member row reads its position in the group. Write what Narrator said in the note (n)."
+    },
+    {
+      "id": "87",
+      "v1": false,
+      "title": "Quit from the command line closes the running Snipdeck",
+      "do": "Start Snipdeck. Change something in the library (for example add a snippet or rename a list) and, without waiting, open a Command Prompt or PowerShell window in the folder that holds the program. Run the program with --quit (for a build from source that is target\\release\\snipdeck-app.exe --quit; for an installed copy it is snipdeck.exe --quit). Watch the tray, then start Snipdeck again. Then run the same command a second time with Snipdeck closed.",
+      "expect": "The command returns to the prompt at once and prints nothing. Within 2 seconds the tray icon goes away and the Panel closes, as if you had chosen Quit in the tray menu. After you start Snipdeck again, the library has the edit you made just before the command. With Snipdeck closed, the command still returns at once, prints nothing and its exit code is 0 (in PowerShell, $LASTEXITCODE shows 0), and it does not start a window or leave Snipdeck running."
     }
   ]
 }

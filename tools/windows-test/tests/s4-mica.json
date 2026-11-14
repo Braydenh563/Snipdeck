@@ -1,6 +1,7 @@
 {
   "id": "S4",
   "title": "Mica chrome, rounded corners, theme / DPI / text size",
+  "friendly": "Window look: Windows 11 glass effect, light and dark, scaling",
   "note": "docs/spikes/S4-mica.md",
   "dir": "spikes/s4-mica",
   "exe": "s4-mica",
@@ -128,7 +129,7 @@
       "id": "12", "os": "win11", "optional": true,
       "title": "No white flash in dark mode",
       "launch": { "env": {} },
-      "do": "Switch Windows to dark mode, then press r (relaunch) five times, watching the first frame each time.",
+      "do": "Switch Windows to dark mode, then press ? and then r (restart the app) five times, watching the first frame each time.",
       "expect": "No white or light flash before the dark UI appears. Record any flash."
     },
     {

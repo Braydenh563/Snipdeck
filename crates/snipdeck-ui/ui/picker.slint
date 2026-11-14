@@ -8,31 +8,38 @@
 // focus):
 //   type            filters; a printable key typed while another control has focus moves into the search
 //   Up / Down       move the selection (PageUp / PageDown a page); Enter uses it, Shift+Enter copies only
-//   1-9             use the Nth row while the search is empty (digits are text once a query exists);
-//                   Alt+1-9 always uses the Nth row
+//   Alt+1-9         use the Nth row, whatever the search holds (bare digits are always search text)
 //   Tab             next scope (All, This board, Pinned), Shift+Tab previous
 //   Ctrl+E          asks the host to edit the selected snippet
 //   Esc             asks the host to close the Picker
 //
-// Limitation: matched characters are not highlighted. Slint 1.18 has no stable rich text, and an ItemCard title is
-// one Text; highlighting needs per-span Text elements inside the card.
+// Rows are the Panel's quiet Compact rows with the place ("Board · List") inline on the title line. The selected row is a
+// `bg-selected` fill (the keyboard lives in the search field, which carries the focus ring); it shows Copy and Edit.
 import { ListView } from "std-widgets.slint";
 import { Theme, Type, Space, Fonts, SystemLook, Palette } from "theme.slint";
 import { ItemCard, ItemKind, ItemCardVariant } from "components/item-card.slint";
 import { SearchField } from "components/text_field.slint";
+import { SuggestDropdown, SuggestRow } from "components/suggest-dropdown.slint";
 import { EmptyState, EmptyStateKind } from "components/empty_state.slint";
 import { Tag } from "components/tag.slint";
+import { OverlayScrollbar } from "components/scrollbar.slint";
 import { KeyCombo } from "components/keycap.slint";
 
 // One result, as `snipdeck-app` resolves it across boards. The breadcrumb is `board-name / list-name`; the
-// quick-use number is the row's position (1-9 for the first nine); `masked-preview` stands in for a
-// sensitive item's preview.
+// quick-use number is the row's position (1-9 for the first nine, used with Alt+N); `masked-preview` stands in for a
+// sensitive item's preview. In a search the marks say where the query matched (the host's `search_mark`): the title is
+// `mark-before` + `mark-text` + the rest, the preview (already windowed to the match) `preview-before` + `preview-match`,
+// and `tag-hit` names a tag that matched when neither shows it.
 export struct PickerRow {
     kind: ItemKind,
     title: string,
+    mark-before: string,
+    mark-text: string,
     preview: string,
+    preview-before: string,
+    preview-match: string,
+    tag-hit: string,
     masked-preview: string,
-    extension: string,
     board-name: string,
     list-name: string,
     list-color: color,
@@ -92,17 +99,34 @@ export component PickerWindow inherits Window {
 
     // ---- Gestures out -------------------------------------------------------------------------
     callback query-changed(string);
+    // Search suggestions (slice 8): every edit asks the host for suggestions (`suggest-requested`: the text and the
+    // caret as a byte offset); the host fills `suggestions`, takes the chosen row through `apply-suggestion` and
+    // empties the list on Esc (`suggest-dismissed`).
+    in property <[SuggestRow]> suggestions;
+    // The search text `suggestions` were made for: rows for any other text are stale and hidden.
+    in property <string> suggest-query;
+    out property <bool> suggest-open: suggest.open;
+    out property <int> suggest-current: suggest.current;
+    callback suggest-requested(string, int);
+    callback suggest-dismissed();
+    callback suggest-chosen(int);
     callback scope-changed(PickerScope);
     // Enter or a click used row `index`.
     callback row-activated(int);
     // Shift+Enter or Shift+click: copy only.
     callback row-copied(int);
-    // Digit 1-9 pressed (the app resolves it against the rows it sent).
+    // Alt+1-9 pressed (the app resolves it against the rows it sent).
     callback quick-use(int);
     callback selection-moved(int);
     // Ctrl+E on row `index`.
     callback edit-requested(int);
+    // Esc: the user closed the Picker; the keyboard goes back to the window it came from.
     callback close-requested();
+    // The window lost the keyboard to another window the user clicked: close it and leave the
+    // focus where they put it.
+    callback dismissed();
+    // F1: the user guide.
+    callback help-requested();
 
     // ---- Public -------------------------------------------------------------------------------
     // The window height that fits the current content: search, scopes, up to nine rows (or the empty
@@ -110,6 +134,17 @@ export component PickerWindow inherits Window {
     out property <length> content-height: main.preferred-height;
     out property <length> scroll-y: list.content-y;
     out property <bool> search-focused: search.has-focus;
+    // The window lost the keyboard after having it (a click on another window): like any popup it
+    // closes. Never having had it (Windows refused to activate it) closes nothing.
+    property <bool> had-focus: false;
+    changed search-focused => {
+        if (root.search-focused) {
+            root.had-focus = true;
+        } else if (root.had-focus) {
+            root.had-focus = false;
+            root.dismissed();
+        }
+    }
     // Holds row `index` in its pulled (used) state for the card's 700ms (keyboard use; a click pulls itself).
     public function mark-used(index: int) {
         root.used-index = index;
@@ -135,14 +170,15 @@ export component PickerWindow inherits Window {
     property <int> used-index: -1;
     // SPEC 5.2 and DESIGN.md §5: up to nine rows are visible; more scroll.
     property <int> max-rows: 9;
-    // A compact ItemCard's height (28px at 100%, one text line plus padding when the text is larger).
-    property <length> row-h: max(Space.hit, Type.line-base + Space.s1);
+    // A quiet Compact ItemCard's height (36px at 100%, one text line plus padding when the text is larger).
+    property <length> row-h: max(Space.s8 + Space.s1, Type.line-base + 2 * Space.s2);
     property <length> list-h: min(root.rows.length, root.max-rows) * root.row-h;
     property <length> empty-h: Space.s12 * 4 * SystemLook.text-scale;
     property <length> body-h: root.rows.length == 0 ? root.empty-h : root.list-h + 2 * Space.s1;
     property <int> page-rows: max(1, min(root.rows.length, root.max-rows) - 1);
 
-    // The footer drops its secondary hints when the window is narrow for the text size. Set from `changed`
+    // The footer drops its secondary hints (Copy, Scope) when the window is narrow for the text size; the use and
+    // Close hints stay, so the way in and the way out are always shown. Set from `changed`
     // handlers, not bound to `root.width`: a window's width follows its layout (see the Panel).
     property <bool> narrow: false;
     property <float> text-scale: SystemLook.text-scale;
@@ -254,6 +290,8 @@ export component PickerWindow inherits Window {
         search.focus();
         if (s != root.scope) {
             root.scope = s;
+            // Rows made for the old scope are closed.
+            root.suggest-dismissed();
             root.reset-results();
             root.scope-changed(s);
         }
@@ -273,10 +311,21 @@ export component PickerWindow inherits Window {
         root.query-changed(root.query);
     }
 
+    // A suggestion was chosen: the word at the caret is replaced (the host computed the text and the new caret).
+    public function apply-suggestion(text: string, caret: int) {
+        root.query = text;
+        search.set-cursor(caret);
+        root.reset-results();
+        root.query-changed(text);
+    }
+
     scope-keys := FocusScope {
         forward-focus: search;
 
         capture-key-pressed(event) => {
+            if (search.has-focus && !search.composing && suggest.handle-key(event)) {
+                return accept;
+            }
             if (event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
                 if (event.text == "e" || event.text == "E") {
                     if (root.sel >= 0) {
@@ -289,13 +338,17 @@ export component PickerWindow inherits Window {
             if (event.modifiers.meta || search.composing) {
                 return reject;
             }
-            // Alt+digit is quick-use whatever the query holds.
+            // Alt+digit is quick-use whatever the query holds; a bare digit is always search text.
             if (event.modifiers.alt) {
                 if (!event.modifiers.shift && root.digit(event.text) > 0) {
                     root.quick(root.digit(event.text));
                     return accept;
                 }
                 return reject;
+            }
+            if (event.text == Key.F1) {
+                root.help-requested();
+                return accept;
             }
             if (event.text == Key.Escape) {
                 root.close-requested();
@@ -329,11 +382,6 @@ export component PickerWindow inherits Window {
                 root.use-selected(event.modifiers.shift);
                 return accept;
             }
-            // Digits are quick-use only while there is no query; with one they are search text.
-            if (!root.searching && !event.modifiers.shift && root.digit(event.text) > 0) {
-                root.quick(root.digit(event.text));
-                return accept;
-            }
             if (!search.has-focus && event.text != " " && root.printable(event.text)) {
                 root.type-into-search(event.text);
                 return accept;
@@ -346,12 +394,14 @@ export component PickerWindow inherits Window {
             HorizontalLayout {
                 padding: Space.s2;
                 search := SearchField {
+                    expanded: suggest.open;
                     placeholder: @tr("Search all snippets");
                     label: @tr("Search all snippets");
                     clear-label: @tr("Clear search");
                     edited(text) => {
                         root.reset-results();
                         root.query-changed(text);
+                        root.suggest-requested(text, search.caret);
                     }
                 }
             }
@@ -408,20 +458,26 @@ export component PickerWindow inherits Window {
                     visible: root.rows.length > 0;
 
                     for row[i] in root.rows: ItemCard {
+                        where-inline: true;
+                        has-menu: false;
+                        show-actions: i == root.sel;
                         height: root.row-h;
                         variant: ItemCardVariant.compact;
                         kind: row.kind;
                         number: i < 9 ? i + 1 : 0;
                         title: row.title;
+                        mark-before: row.mark-before;
+                        mark-text: row.mark-text;
                         preview: row.preview;
+                        preview-before: row.preview-before;
+                        preview-match: row.preview-match;
+                        tag-hit: row.tag-hit;
                         masked-preview: row.masked-preview;
-                        extension: row.extension;
                         image: row.image;
-                        // The breadcrumb stays on the selected row too: the use label is in the footer.
-                        list-name: row.board-name != "" ? row.board-name + " / " + row.list-name : row.list-name;
+                        // The place stays on the selected row too, left of its actions: the use label is in the footer.
+                        list-name: row.board-name != "" ? row.board-name + " \u{b7} " + row.list-name : row.list-name;
                         list-color: row.list-color;
                         selected: i == root.sel;
-                        use-label: "";
                         masked-hint: @tr("Hidden. Open it in the Panel to reveal.");
                         pulling: i == root.used-index;
                         keyboard-focusable: false;
@@ -433,7 +489,21 @@ export component PickerWindow inherits Window {
                             root.selected-index = i;
                             root.row-copied(i);
                         }
+                        edit => {
+                            root.selected-index = i;
+                            root.edit-requested(i);
+                        }
                     }
+                }
+
+                list-bar := OverlayScrollbar {
+                    y: list.y;
+                    height: list.height;
+                    content-y: list.content-y;
+                    content-height: list.content-height;
+                    visible-height: list.height;
+                    enabled: list.visible;
+                    scroll-to(y) => { list.content-y = y; }
                 }
 
                 if root.rows.length == 0: EmptyState {
@@ -478,11 +548,16 @@ export component PickerWindow inherits Window {
                         text: @tr("Copy");
                     }
                     if !root.narrow: Hint {
+                        keys: ["Alt", "1-9"];
+                        key-label: @tr("Alt 1 to 9");
+                        text: @tr("Use result N");
+                    }
+                    if !root.narrow: Hint {
                         keys: ["Tab"];
                         key-label: @tr("Tab");
                         text: @tr("Scope");
                     }
-                    if !root.narrow: Hint {
+                    Hint {
                         keys: ["Esc"];
                         key-label: @tr("Escape");
                         text: @tr("Close");
@@ -490,6 +565,17 @@ export component PickerWindow inherits Window {
                 }
             }
         }
+    }
+
+    suggest := SuggestDropdown {
+        x: search.absolute-position.x;
+        y: search.absolute-position.y + search.box-height + Space.s0-5;
+        width: search.width;
+        label: @tr("Search suggestions");
+        rows: root.suggestions;
+        active: search.has-focus && root.query != "" && root.suggest-query == root.query;
+        chosen(i) => { root.suggest-chosen(i); }
+        dismissed => { root.suggest-dismissed(); }
     }
 
     // The window outline: level 3 is the OS shadow plus a 1px `border-default` (DESIGN.md §6).

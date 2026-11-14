@@ -51,6 +51,7 @@ fn start() -> (PickerWindow, Log) {
     hook!(on_selection_moved, |d| format!("move:{d}"));
     hook!(on_edit_requested, |i| format!("edit:{i}"));
     hook!(on_close_requested, || "close".to_string());
+    hook!(on_dismissed, || "dismissed".to_string());
     (ui, log)
 }
 
@@ -152,6 +153,22 @@ ui_tests! {
         assert_eq!(ui.get_query(), "ab", "the host decides what a re-summon shows");
     }
 
+    fn losing_the_keyboard_to_another_window_dismisses_without_the_escape_close() {
+        let (ui, log) = start();
+        // Start from a window that has no keyboard, then give it the keyboard as Windows does.
+        ui.window().dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(false));
+        settle();
+        ui.window().dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(true));
+        ui.invoke_focus_search();
+        settle();
+        assert!(ui.get_search_focused());
+        take(&log);
+        ui.window().dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(false));
+        settle();
+        assert!(!ui.get_search_focused(), "an inactive window holds no keyboard focus");
+        assert_eq!(take(&log), ["dismissed"], "click-away must not ask for a refocusing close");
+    }
+
     fn reset_gives_a_fresh_picker_for_the_next_summon() {
         let (ui, _log) = start();
         type_text(ui.window(), "ab");
@@ -234,8 +251,55 @@ ui_tests! {
             .expect("Design spec row");
         assert_eq!(
             design.accessible_description().map(|d| d.to_string()).as_deref(),
-            Some("Work / Links")
+            Some("Work \u{b7} Links")
         );
+    }
+
+    fn row_height_is_36() {
+        let (ui, _log) = start();
+        let items = rows(&ui);
+        assert_eq!(items.len(), 7);
+        for row in &items {
+            assert!(
+                (row.size().height - 36.0).abs() < 0.5,
+                "{:?} is {} tall",
+                row.accessible_label(),
+                row.size().height
+            );
+        }
+    }
+
+    fn selected_row_shows_copy_and_edit() {
+        let (ui, _log) = start();
+        ui.set_selected_index(2);
+        settle();
+        let _ = rows(&ui);
+        for name in ["Copy", "Edit"] {
+            let buttons = all(&ui, name, AccessibleRole::Button);
+            assert_eq!(buttons.len(), 1, "one {name} action, on the selected row only");
+            let at = buttons[0].absolute_position();
+            let row = &rows(&ui)[2];
+            assert!(
+                at.y >= row.absolute_position().y && at.y + buttons[0].size().height <= row.absolute_position().y + row.size().height + 0.5,
+                "{name} sits inside the selected row"
+            );
+            assert!(buttons[0].size().width >= 32.0 - 0.5 && buttons[0].size().height >= 32.0 - 0.5, "32 hit box");
+        }
+        assert!(missing(&ui, "More", AccessibleRole::Button), "the Picker has no More");
+        assert!(missing(&ui, "Use", AccessibleRole::Button), "and no Use action: the row click and Enter use");
+    }
+
+    fn edit_action_requests_edit() {
+        let (ui, log) = start();
+        ui.set_selected_index(3);
+        settle();
+        let _ = rows(&ui);
+        take(&log);
+        find(&ui, "Edit", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["edit:3"], "the action asks for Ctrl+E's edit, not a use");
+        assert_eq!(ui.get_selected_index(), 3);
+        find(&ui, "Copy", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["copy:3"]);
     }
 
     fn enter_uses_the_selected_row_and_shift_enter_only_copies() {
@@ -258,19 +322,20 @@ ui_tests! {
         assert!(take(&log).is_empty(), "no callbacks fired");
     }
 
-    fn digits_use_the_nth_row_only_while_the_search_is_empty() {
+    fn alt_digits_use_the_nth_row_and_bare_digits_are_always_search_text() {
         let (ui, log) = start();
-        press(ui.window(), "3");
+        chord(ui.window(), &[Key::Alt], "3");
         assert_eq!(take(&log), ["quick:3"]);
         assert_eq!(ui.get_selected_index(), 2, "the used row becomes the selection");
-        assert_eq!(ui.get_query(), "", "the digit is not search text");
+        assert_eq!(ui.get_query(), "", "Alt+digit is not search text");
 
-        press(ui.window(), "9");
+        chord(ui.window(), &[Key::Alt], "9");
         assert!(take(&log).is_empty(), "seven rows: there is no ninth");
 
-        type_text(ui.window(), "a3");
-        assert_eq!(ui.get_query(), "a3", "with a query, digits are text");
-        assert_eq!(take(&log), ["query:a", "query:a3"]);
+        // A bare digit, even with an empty search, filters: typing "2024" must never paste row 2.
+        type_text(ui.window(), "2024");
+        assert_eq!(ui.get_query(), "2024", "digits are text");
+        assert_eq!(take(&log), ["query:2", "query:20", "query:202", "query:2024"]);
     }
 
     fn alt_digit_uses_the_nth_row_even_with_a_query() {
@@ -313,9 +378,9 @@ ui_tests! {
         ui.set_selected_index(25);
         let _ = rows(&ui);
         settle();
-        // Rows are 28px: row 25 ends at 26 * 28 = 728; the nine-row window shows 252 of it.
+        // Rows are 36px: row 25 ends at 26 * 36 = 936; the nine-row window shows 324 of it.
         assert!(
-            (ui.get_scroll_y() + (26.0 * 28.0 - 9.0 * 28.0)).abs() < 1.0,
+            (ui.get_scroll_y() + (26.0 * 36.0 - 9.0 * 36.0)).abs() < 1.0,
             "row 26 is the last visible one: {}",
             ui.get_scroll_y()
         );
@@ -382,7 +447,7 @@ ui_tests! {
         fixture::set_rows(&ui, Vec::new());
         settle();
         assert!(!all(&ui, "No snippets yet", AccessibleRole::Text).is_empty());
-        assert!(rows(&ui).is_empty());
+        assert_eq!(rows(&ui).len(), 0);
 
         type_text(ui.window(), "zz");
         settle();
@@ -403,11 +468,11 @@ ui_tests! {
         let seven = ui.get_content_height();
         fixture::set_rows(&ui, fixture::numbered_rows(3));
         settle();
-        assert!((seven - ui.get_content_height() - 4.0 * 28.0).abs() < 0.5, "four rows less");
+        assert!((seven - ui.get_content_height() - 4.0 * 36.0).abs() < 0.5, "four rows less");
         fixture::set_rows(&ui, fixture::numbered_rows(40));
         settle();
         let nine = ui.get_content_height();
-        assert!((nine - seven - 2.0 * 28.0).abs() < 0.5, "nine rows is the cap: {nine} vs {seven}");
+        assert!((nine - seven - 2.0 * 36.0).abs() < 0.5, "nine rows is the cap: {nine} vs {seven}");
         fixture::set_rows(&ui, Vec::new());
         settle();
         assert!(
@@ -437,6 +502,9 @@ ui_tests! {
         assert!(!all(&ui, "Enter", AccessibleRole::Text).is_empty(), "and the key that does it");
         assert!(!all(&ui, "Shift Enter", AccessibleRole::Text).is_empty());
         assert!(!all(&ui, "Escape", AccessibleRole::Text).is_empty());
+        // Digits need Alt: the footer says so, and the number badges read as the key.
+        assert!(!all(&ui, "Alt 1 to 9", AccessibleRole::Text).is_empty(), "the footer names Alt+N");
+        assert!(!all(&ui, "Alt+1", AccessibleRole::Text).is_empty(), "the first badge reads as Alt+1");
     }
 
     fn the_footer_names_the_copy_route_when_there_is_no_target() {

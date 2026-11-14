@@ -170,8 +170,10 @@ export component MenuGallery inherits Window {
     in-out property <int> current: 1;
     in-out property <int> activated-index: -1;
     in-out property <int> dismissals: 0;
+    // Marks "Move to list" as checked (the check glyph in the icon column).
+    in property <bool> checked-row: false;
     width: 260px;
-    height: 200px;
+    height: 224px;
     background: Theme.bg-app;
     init => { Palette.dark = root.dark; menu.focus-menu(); }
     changed dark => { Palette.dark = root.dark; }
@@ -187,7 +189,7 @@ export component MenuGallery inherits Window {
             { text: "Edit", icon: Icons.pencil-simple, shortcut: "Ctrl+E" },
             { separator: true },
             { text: "Pin", icon: Icons.push-pin, shortcut: "", destructive: false, disabled: true },
-            { text: "Move to list", icon: Icons.folder, shortcut: "" },
+            { text: "Move to list", icon: Icons.folder, shortcut: "", checked: root.checked-row },
             { separator: true },
             { text: "Delete", icon: Icons.trash, shortcut: "Del", destructive: true },
         ];

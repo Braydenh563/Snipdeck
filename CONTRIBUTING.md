@@ -1,6 +1,6 @@
 # Contributing to Snipdeck
 
-Thanks for helping. Snipdeck is a work in progress ([`README.md`](README.md#what-works-today) says what
+Thanks for helping. Snipdeck is a work in progress ([`README.md`](README.md#features) says what
 exists). Read [`docs/SPEC.md`](docs/SPEC.md) for what it does, [`DESIGN.md`](DESIGN.md) for how it looks,
 [`docs/architecture.md`](docs/architecture.md) and [`docs/development.md`](docs/development.md) for how
 the code is split, and [`docs/PLAN.md`](docs/PLAN.md) for what is next. Everyone taking part follows the
@@ -34,6 +34,16 @@ scripts/gate.sh --changed  # plus the tests of the crates you touched
 scripts/gate.sh --staged   # check what is staged, not the working tree (use before a commit)
 scripts/gate.sh --full     # plus the whole test suite; run once before you push
 ```
+
+The fast checks are these three commands, and the gate runs them for you:
+
+```sh
+cargo fmt --all --check
+cargo clippy --workspace --all-targets --locked -- -D warnings
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
+```
+
+Tests are `cargo test --workspace --locked`.
 
 It prints three lines at the end (`ran`, `failed`, `skipped`); paste them in the pull request. CI also
 runs `cargo deny check` and a Windows `cargo check`:
@@ -94,7 +104,7 @@ Other generated files: `python3 scripts/ui_icons.py` after adding an icon SVG, a
 ## Testing on Windows
 
 Cloud CI compiles for Windows but cannot click, paste or use an IME. Treat any Windows behaviour as
-**unverified** until the test wizard has run it on a real Windows PC: double-click `run-windows-tests.bat`
+**unverified** until the test wizard has run it on a real Windows PC: double-click `Test Snipdeck on Windows.bat`
 in the repo root (details in [`tools/windows-test/README.md`](tools/windows-test/README.md)). A change that
 adds Windows-only behaviour adds its manual steps to `tools/windows-test/tests/`.
 

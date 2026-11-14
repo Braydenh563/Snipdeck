@@ -1,9 +1,10 @@
-import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { SystemLook, Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
 import { TextField, FieldError } from "text_field.slint";
+import { Checkbox } from "choice.slint";
 
-export enum TemplateFieldKind { text, choice, date, multiline }
+export enum TemplateFieldKind { text, choice, date, multiline, toggle }
 
 // DESIGN.md §4 TemplateField: one prompted placeholder of a template ({field:Name}, {choice:Name|a|b}) in the
 // fill-in form. A label row (the template glyph, the name, and the word for "required" when it is: never a
@@ -11,10 +12,13 @@ export enum TemplateFieldKind { text, choice, date, multiline }
 //   text    a TextField
 //   multiline  a multi-line TextField (Enter adds a line)
 //   choice  a list of options, one selected (Up / Down / Home / End move; one tab stop)
+//   toggle  a check box ({optional:Name}); `value` is "true" when ticked and "" when not. Space flips it; Enter moves on like the other fields;
+//           it is one Tab stop and its accessible label is the prompt name.
 //   date    a TextField with a calendar glyph; `placeholder` carries the format hint ("YYYY-MM-DD"). Parsing,
 //           locale and validation belong to the caller, which reports problems through `error`.
 //
-// The root is a FocusScope so the choice list can take keyboard focus (`focus()`); `enabled` is its built-in property.
+// The root is a FocusScope (its `enabled` is the built-in property); the choice list has its own Tab stop inside the
+// radio group, so a screen reader announces the group and not the form.
 export component TemplateField inherits FocusScope {
     in property <string> label;
     in property <TemplateFieldKind> kind: TemplateFieldKind.text;
@@ -43,55 +47,22 @@ export component TemplateField inherits FocusScope {
 
     // Never set: an empty image.
     property <image> no-icon;
-    property <bool> choice-focused: root.has-focus || root.show-focus;
+    property <bool> scope-focused: false;
+    property <bool> choice-focused: root.scope-focused || root.show-focus;
     property <string> full-label: root.label + (root.required ? ", " + root.required-text : "");
     // One option row: 28px at 100%, and one text line plus padding when the text is larger.
     property <length> row-h: max(Space.hit, Type.line-base + Space.s2);
 
     focus-on-click: false;
-    changed focus-request => {
-        if (root.kind == TemplateFieldKind.choice && root.focus-request > 0) {
-            root.focus();
-        }
-    }
-    init => {
-        if (root.kind == TemplateFieldKind.choice && root.focus-request > 0) {
-            root.focus();
-        }
-    }
     // Only the choice list is keyboard-operated here. For text and date the TextField inside is the Tab stop; this
     // scope would otherwise be an invisible stop in front of it that takes the typing and does nothing.
-    focus-on-tab-navigation: root.kind == TemplateFieldKind.choice;
+    focus-on-tab-navigation: false;
 
     function choose(index: int) {
         if (root.enabled && index >= 0 && index < root.choices.length && index != root.choice-index) {
             root.choice-index = index;
             root.chosen(index);
         }
-    }
-
-    key-pressed(event) => {
-        if (root.kind != TemplateFieldKind.choice) {
-            return reject;
-        }
-        if (event.text == Key.Return && !event.modifiers.control) {
-            root.accepted(root.choice-index >= 0 && root.choice-index < root.choices.length ? root.choices[root.choice-index] : "");
-            return accept;
-        }
-        if (event.text == Key.DownArrow) {
-            root.choose(root.choice-index < 0 ? 0 : root.choice-index + 1);
-            return accept;
-        } else if (event.text == Key.UpArrow) {
-            root.choose(root.choice-index < 0 ? 0 : root.choice-index - 1);
-            return accept;
-        } else if (event.text == Key.Home) {
-            root.choose(0);
-            return accept;
-        } else if (event.text == Key.End) {
-            root.choose(root.choices.length - 1);
-            return accept;
-        }
-        return reject;
     }
 
     VerticalLayout {
@@ -103,6 +74,7 @@ export component TemplateField inherits FocusScope {
             alignment: start;
             Icon {
                 source: Icons.brackets-curly;
+                size: Space.s4 * SystemLook.text-scale;
                 tint: Theme.accent-text;
                 y: (Type.line-sm - self.height) / 2;
             }
@@ -128,7 +100,7 @@ export component TemplateField inherits FocusScope {
             }
         }
 
-        if root.kind != TemplateFieldKind.choice: TextField {
+        if root.kind != TemplateFieldKind.choice && root.kind != TemplateFieldKind.toggle: TextField {
             text <=> root.value;
             label: root.full-label;
             placeholder: root.placeholder;
@@ -157,6 +129,44 @@ export component TemplateField inherits FocusScope {
             accessible-description: root.error;
             accessible-enabled: root.enabled;
             accessible-item-count: root.choices.length;
+
+            // The Tab stop of the list: a child of the radio group, so the screen reader announces the group.
+            choice-scope := FocusScope {
+                focus-on-click: false;
+                enabled: root.enabled;
+                property <int> request: root.focus-request;
+                changed request => {
+                    if (self.request > 0) {
+                        self.focus();
+                    }
+                }
+                changed has-focus => { root.scope-focused = self.has-focus; }
+                init => {
+                    if (root.focus-request > 0) {
+                        self.focus();
+                    }
+                }
+                key-pressed(event) => {
+                    if (event.text == Key.Return && !event.modifiers.control) {
+                        root.accepted(root.choice-index >= 0 && root.choice-index < root.choices.length ? root.choices[root.choice-index] : "");
+                        return accept;
+                    }
+                    if (event.text == Key.DownArrow) {
+                        root.choose(root.choice-index < 0 ? 0 : root.choice-index + 1);
+                        return accept;
+                    } else if (event.text == Key.UpArrow) {
+                        root.choose(root.choice-index < 0 ? 0 : root.choice-index - 1);
+                        return accept;
+                    } else if (event.text == Key.Home) {
+                        root.choose(0);
+                        return accept;
+                    } else if (event.text == Key.End) {
+                        root.choose(root.choices.length - 1);
+                        return accept;
+                    }
+                    return reject;
+                }
+            }
 
             VerticalLayout {
                 padding: Space.s0-5;
@@ -218,6 +228,20 @@ export component TemplateField inherits FocusScope {
             }
         }
 
-        if root.kind == TemplateFieldKind.choice && root.error != "": FieldError { text: root.error; }
+        if root.kind == TemplateFieldKind.toggle: Checkbox {
+            focus-request: root.focus-request;
+            text: @tr("Include");
+            a11y-label: root.label;
+            checked: root.value == "true";
+            enabled: root.enabled;
+            enter-flips: false;
+            entered => { root.accepted(root.value); }
+            toggled(on) => {
+                root.value = on ? "true" : "";
+                root.edited(root.value);
+            }
+        }
+
+        if (root.kind == TemplateFieldKind.choice || root.kind == TemplateFieldKind.toggle) && root.error != "": FieldError { text: root.error; }
     }
 }

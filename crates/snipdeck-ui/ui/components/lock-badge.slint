@@ -1,0 +1,44 @@
+import { Theme, Type, Space, Radius, Fonts } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+
+// A small "Supporter" pill with a lock, shown in place on a control a Free plan cannot use yet (Paste next chord,
+// the {field} and {choice} chips). Read as text, never as colour alone; `text` is translated by the host window.
+export component LockBadge inherits Rectangle {
+    in property <string> text;
+
+    // Its own height by default (beside a title); a host next to a small Button sets `height` to match it.
+    preferred-width: row.preferred-width;
+    preferred-height: row.preferred-height;
+    border-radius: Radius.sm;
+    border-width: 1px;
+    border-color: Theme.border-default;
+    background: Theme.bg-sunken;
+    accessible-role: AccessibleRole.text;
+    accessible-label: root.text;
+
+    row := HorizontalLayout {
+        padding-left: Space.s1 + Space.s0-5;
+        padding-right: Space.s1 + Space.s0-5;
+        padding-top: Space.s0-5;
+        padding-bottom: Space.s0-5;
+        spacing: Space.s1;
+        // A layout ignores `y`: centre the fixed-size icon in its own column.
+        VerticalLayout {
+            alignment: center;
+            Icon {
+                source: Icons.lock;
+                tint: Theme.text-secondary;
+                size: Type.sm;
+            }
+        }
+        Text {
+            text: root.text;
+            color: Theme.text-secondary;
+            font-family: Fonts.sans;
+            font-size: Type.xs;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+    }
+}

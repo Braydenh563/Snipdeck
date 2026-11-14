@@ -1,5 +1,6 @@
 import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
 import { Icon } from "icon.slint";
+import { Icons } from "../icons.slint";
 import { Keycap } from "keycap.slint";
 
 // One row of a Menu. A separator row has `separator: true` and ignores the rest.
@@ -12,10 +13,14 @@ export struct MenuEntry {
     destructive: bool,
     disabled: bool,
     separator: bool,
+    // A check in the icon column (in `accent-text`) in place of `icon`: the row is the chosen one.
+    checked: bool,
+    // Not drawn, not selectable, not counted (the host keeps the row's index stable and decides per open).
+    hidden: bool,
 }
 
-// DESIGN.md §4 MenuItem: 28px row with an optional icon, label and shortcut keycap. `current` is the
-// highlighted row (pointer hover or keyboard position, owned by Menu). Disabled rows are dimmed and
+// DESIGN.md §4 MenuItem: 32px row (radius 6) with an optional icon, label and shortcut keycap. `current` is the
+// highlighted row (pointer hover or keyboard position, owned by Menu). Disabled rows are `text-tertiary` and
 // ignore the pointer and the keyboard.
 export component MenuItem inherits Rectangle {
     in property <string> text;
@@ -23,7 +28,12 @@ export component MenuItem inherits Rectangle {
     in property <string> shortcut;
     in property <bool> destructive: false;
     in property <bool> disabled: false;
+    in property <bool> checked: false;
     in property <bool> current: false;
+    // The highlight is the keyboard's (not the pointer's or the host's): it adds the 2px focus ring.
+    in property <bool> ring: false;
+    // The row's height: 32, or 28 when the menu would not fit its window at 32.
+    in property <length> row-h: Space.s8;
     // Keep the 16px icon column even when this row has no icon (so labels line up).
     in property <bool> reserve-icon: true;
     // Position in the menu and the menu length, for assistive technology.
@@ -33,14 +43,15 @@ export component MenuItem inherits Rectangle {
     // The pointer moved onto an enabled row.
     callback pointer-entered();
 
-    property <color> fg: root.destructive ? Theme.danger-fg : Theme.text-primary;
+    // Disabled is `text-tertiary` on glyph and label, never an opacity (Panel v2 spec 2.1).
+    property <color> fg: root.disabled ? Theme.text-tertiary : root.destructive ? Theme.danger-fg : Theme.text-primary;
 
-    height: max(Space.hit, Type.line-base + Space.s2);
+    height: max(root.row-h, Type.line-base + Space.s2);
     background: root.current && !root.disabled ? Theme.bg-overlay-hover : transparent;
-    border-radius: Radius.sm;
-    border-width: root.current && !root.disabled && Theme.hc-border != transparent ? 1px : 0px;
-    border-color: Theme.hc-border;
-    opacity: root.disabled ? 0.45 : 1.0;
+    border-radius: Radius.md;
+    // The row the keyboard highlights carries the focus ring (WCAG 2.4.7); a pointer highlight is a fill only.
+    border-width: root.current && root.ring && !root.disabled ? 2px : 0px;
+    border-color: Theme.focus-ring;
     accessible-role: list-item;
     accessible-label: root.text;
     accessible-description: root.shortcut;
@@ -49,6 +60,8 @@ export component MenuItem inherits Rectangle {
     accessible-item-count: root.count;
     accessible-item-selectable: !root.disabled;
     accessible-item-selected: root.current && !root.disabled;
+    accessible-checkable: root.checked;
+    accessible-checked: root.checked;
     accessible-action-default => { if (!root.disabled) { root.activated(); } }
 
     animate background { duration: Motion.instant; easing: Motion.out; }
@@ -59,7 +72,12 @@ export component MenuItem inherits Rectangle {
         spacing: Space.s2;
         if root.reserve-icon || root.icon.width > 0: Rectangle {
             width: 16px;
-            if root.icon.width > 0: Icon {
+            if root.checked: Icon {
+                source: Icons.check;
+                tint: root.disabled ? Theme.text-tertiary : Theme.accent-text;
+                y: (parent.height - self.height) / 2;
+            }
+            if !root.checked && root.icon.width > 0: Icon {
                 source: root.icon;
                 tint: root.fg;
                 y: (parent.height - self.height) / 2;
@@ -108,8 +126,16 @@ export component Menu inherits Rectangle {
     in property <bool> icons: true;
     // Highlighted row (-1 = none).
     in-out property <int> current: -1;
+    // The tallest the menu may be; a taller one scrolls (the Panel keeps it inside its window).
+    in property <length> menu-max-h: 100000px;
+    // The room the host would like the menu to fit in: a taller menu uses the dense rows. A host whose menu may
+    // grow past this before it scrolls (the Panel's own menu rises over the header) sets it lower than `menu-max-h`.
+    in property <length> dense-above: root.menu-max-h;
     callback activated(int);
     callback dismissed();
+
+    // True once the keyboard moved the highlight, false again when the pointer does: only then the row shows the ring.
+    property <bool> by-key: false;
 
     public function focus-menu() {
         scope.focus();
@@ -118,7 +144,7 @@ export component Menu inherits Rectangle {
     // Separators before row `i`. Slint has no loop, so this adds up the first 24 entries; a menu is never longer
     // than that, and an entry past the end reads as "not a separator".
     pure function separators-before(i: int) -> int {
-        return (i > 0 && root.entries[0].separator ? 1 : 0) + (i > 1 && root.entries[1].separator ? 1 : 0) + (i > 2 && root.entries[2].separator ? 1 : 0) + (i > 3 && root.entries[3].separator ? 1 : 0) + (i > 4 && root.entries[4].separator ? 1 : 0) + (i > 5 && root.entries[5].separator ? 1 : 0) + (i > 6 && root.entries[6].separator ? 1 : 0) + (i > 7 && root.entries[7].separator ? 1 : 0) + (i > 8 && root.entries[8].separator ? 1 : 0) + (i > 9 && root.entries[9].separator ? 1 : 0) + (i > 10 && root.entries[10].separator ? 1 : 0) + (i > 11 && root.entries[11].separator ? 1 : 0) + (i > 12 && root.entries[12].separator ? 1 : 0) + (i > 13 && root.entries[13].separator ? 1 : 0) + (i > 14 && root.entries[14].separator ? 1 : 0) + (i > 15 && root.entries[15].separator ? 1 : 0) + (i > 16 && root.entries[16].separator ? 1 : 0) + (i > 17 && root.entries[17].separator ? 1 : 0) + (i > 18 && root.entries[18].separator ? 1 : 0) + (i > 19 && root.entries[19].separator ? 1 : 0) + (i > 20 && root.entries[20].separator ? 1 : 0) + (i > 21 && root.entries[21].separator ? 1 : 0) + (i > 22 && root.entries[22].separator ? 1 : 0) + (i > 23 && root.entries[23].separator ? 1 : 0);
+        return (i > 0 && (root.entries[0].separator || root.entries[0].hidden) ? 1 : 0) + (i > 1 && (root.entries[1].separator || root.entries[1].hidden) ? 1 : 0) + (i > 2 && (root.entries[2].separator || root.entries[2].hidden) ? 1 : 0) + (i > 3 && (root.entries[3].separator || root.entries[3].hidden) ? 1 : 0) + (i > 4 && (root.entries[4].separator || root.entries[4].hidden) ? 1 : 0) + (i > 5 && (root.entries[5].separator || root.entries[5].hidden) ? 1 : 0) + (i > 6 && (root.entries[6].separator || root.entries[6].hidden) ? 1 : 0) + (i > 7 && (root.entries[7].separator || root.entries[7].hidden) ? 1 : 0) + (i > 8 && (root.entries[8].separator || root.entries[8].hidden) ? 1 : 0) + (i > 9 && (root.entries[9].separator || root.entries[9].hidden) ? 1 : 0) + (i > 10 && (root.entries[10].separator || root.entries[10].hidden) ? 1 : 0) + (i > 11 && (root.entries[11].separator || root.entries[11].hidden) ? 1 : 0) + (i > 12 && (root.entries[12].separator || root.entries[12].hidden) ? 1 : 0) + (i > 13 && (root.entries[13].separator || root.entries[13].hidden) ? 1 : 0) + (i > 14 && (root.entries[14].separator || root.entries[14].hidden) ? 1 : 0) + (i > 15 && (root.entries[15].separator || root.entries[15].hidden) ? 1 : 0) + (i > 16 && (root.entries[16].separator || root.entries[16].hidden) ? 1 : 0) + (i > 17 && (root.entries[17].separator || root.entries[17].hidden) ? 1 : 0) + (i > 18 && (root.entries[18].separator || root.entries[18].hidden) ? 1 : 0) + (i > 19 && (root.entries[19].separator || root.entries[19].hidden) ? 1 : 0) + (i > 20 && (root.entries[20].separator || root.entries[20].hidden) ? 1 : 0) + (i > 21 && (root.entries[21].separator || root.entries[21].hidden) ? 1 : 0) + (i > 22 && (root.entries[22].separator || root.entries[22].hidden) ? 1 : 0) + (i > 23 && (root.entries[23].separator || root.entries[23].hidden) ? 1 : 0);
     }
 
     // Position of row `i` among the actions (separators are not items), and the number of actions.
@@ -130,7 +156,7 @@ export component Menu inherits Rectangle {
     }
 
     pure function selectable(i: int) -> bool {
-        return i >= 0 && i < root.entries.length && !root.entries[i].separator && !root.entries[i].disabled;
+        return i >= 0 && i < root.entries.length && !root.entries[i].separator && !root.entries[i].hidden && !root.entries[i].disabled;
     }
 
     // First selectable row after `from` in direction `dir` (+1 or -1), or -1.
@@ -146,6 +172,7 @@ export component Menu inherits Rectangle {
     }
 
     function move(dir: int) {
+        root.by-key = true;
         let ahead = root.find(root.current, dir);
         let wrapped = root.find(dir > 0 ? -1 : root.entries.length, dir);
         let target = ahead >= 0 ? ahead : wrapped;
@@ -160,12 +187,24 @@ export component Menu inherits Rectangle {
         }
     }
 
-    min-width: 200px;
-    height: lay.preferred-height;
+    // Sized to its rows (label, shortcut and the fixed gaps), never to the window: at least 180px, at most 320px.
+    // A host that sets `width` itself overrides this.
+    // 32px rows; the old 28px when the 32px menu would be taller than `dense-above` (before it falls back to scrolling).
+    property <length> full-h: 2 * Space.s1 + root.action-count() * Space.s8 + (root.entries.length - root.action-count()) * (Space.s2 + 1px);
+    property <length> row-h: root.full-h > root.dense-above ? Space.hit : Space.s8;
+    // More rows lie below the visible part: the cue shows (a hairline and a caret at the bottom edge).
+    property <bool> more-below: flick.content-height + flick.content-y > flick.height + Space.s1 + 1px;
+    // A host in a narrow window caps the width so the menu stays inside it; the rows elide.
+    in property <length> max-w: 320px;
+    property <length> text-w: text-measure.preferred-width;
+    property <length> key-w: key-measure.preferred-width;
+    width: min(max(180px, root.text-w + (root.key-w > 0px ? root.key-w + 2 * Space.s1 + 2px + Space.s2 : 0px)
+        + (root.icons ? 16px + Space.s2 : 0px) + 2 * Space.s2 + 2 * Space.s1 + 2px), min(320px, root.max-w));
+    height: min(lay.preferred-height, root.menu-max-h);
     background: Theme.bg-overlay;
     border-radius: Radius.lg;
     border-width: 1px;
-    border-color: Theme.border-default;
+    border-color: Theme.border-subtle;
     accessible-role: list;
     accessible-label: root.label;
     forward-focus: scope;
@@ -182,10 +221,12 @@ export component Menu inherits Rectangle {
                 return accept;
             }
             if (event.text == Key.Home) {
+                root.by-key = true;
                 root.current = root.find(-1, 1);
                 return accept;
             }
             if (event.text == Key.End) {
+                root.by-key = true;
                 root.current = root.find(root.entries.length, -1);
                 return accept;
             }
@@ -201,29 +242,92 @@ export component Menu inherits Rectangle {
         }
     }
 
+    // Unseen: the widest label and the widest shortcut, which a layout of zero-height texts reports.
+    text-measure := VerticalLayout {
+        visible: false;
+        for entry in root.entries: Text {
+            height: 0px;
+            text: entry.text;
+            font-family: Fonts.sans;
+            font-size: Type.base;
+        }
+    }
+    key-measure := VerticalLayout {
+        visible: false;
+        for entry in root.entries: Text {
+            height: 0px;
+            text: entry.shortcut;
+            font-family: Fonts.mono;
+            font-size: Type.xs;
+            font-weight: Type.medium;
+        }
+    }
+
+    flick := Flickable {
+        content-height: lay.preferred-height;
+        content-width: self.width;
     lay := VerticalLayout {
+        width: parent.width;
+        height: self.preferred-height;
         padding: Space.s1;
         alignment: start;
         for entry[i] in root.entries: Rectangle {
-            height: entry.separator ? Space.s2 + 1px : max(Space.hit, Type.line-base + Space.s2);
+            height: entry.hidden ? 0px : entry.separator ? Space.s2 + 1px : max(root.row-h, Type.line-base + Space.s2);
+            // Keyboard moves keep the highlighted row inside a scrolled menu.
+            property <bool> cur: root.current == i;
+            changed cur => {
+                if (self.cur) {
+                    if (self.y + flick.content-y < 0px) { flick.content-y = -self.y; }
+                    if (self.y + self.height + flick.content-y > flick.height) { flick.content-y = flick.height - self.y - self.height; }
+                }
+            }
             if entry.separator: Rectangle {
                 y: (parent.height - self.height) / 2;
                 height: 1px;
                 background: Theme.border-subtle;
             }
-            if !entry.separator: MenuItem {
+            if !entry.separator && !entry.hidden: MenuItem {
                 text: entry.text;
                 icon: entry.icon;
                 shortcut: entry.shortcut;
                 destructive: entry.destructive;
                 disabled: entry.disabled;
+                checked: entry.checked;
                 current: root.current == i;
+                ring: root.by-key;
+                row-h: root.row-h;
                 reserve-icon: root.icons;
                 index: root.action-index(i);
                 count: root.action-count();
-                pointer-entered => { root.current = i; }
+                pointer-entered => {
+                    root.by-key = false;
+                    root.current = i;
+                }
                 activated => { root.activate(i); }
             }
+        }
+    }
+}
+    // The cue that the menu scrolls: a hairline and a caret at the bottom edge while rows are hidden below.
+    more-cue := Rectangle {
+        visible: root.more-below;
+        y: parent.height - self.height - 1px;
+        x: 1px;
+        width: parent.width - 2px;
+        height: 20px;
+        background: Theme.bg-overlay;
+        border-radius: Radius.lg;
+        Rectangle {
+            width: parent.width;
+            height: 1px;
+            background: Theme.border-subtle;
+        }
+        Icon {
+            source: Icons.caret-down;
+            size: 16px;
+            tint: Theme.text-secondary;
+            x: (parent.width - self.width) / 2;
+            y: 2px;
         }
     }
 }

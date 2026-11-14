@@ -1,0 +1,103 @@
+import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, ListHue, ListAccent } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+
+// One entry of the colour-label filter row: the label's colour dot, its name and how many items in the view carry
+// it. `selected` is the active filter (single select): it adds a check and a 2px ring, so the state is never colour
+// alone. The name is always in the text. 28px tall (the hit target); one Tab stop; Space or Enter toggles.
+export component LabelChip inherits Rectangle {
+    in property <string> text;
+    in property <ListHue> hue: ListHue.blue;
+    // Hidden when negative.
+    in property <int> count: -1;
+    in property <bool> selected: false;
+    // Forces the focus ring (galleries and tests).
+    in property <bool> show-focus: false;
+    callback clicked();
+
+    property <bool> hovered: touch.has-hover;
+    property <bool> focused: scope.has-focus || root.show-focus;
+
+    height: max(Space.hit, Type.line-sm + Space.s2);
+    min-width: Space.hit;
+    forward-focus: scope;
+    border-radius: Radius.lg;
+    border-width: root.selected ? 2px : 1px;
+    border-color: root.selected ? Theme.text-primary : Theme.border-strong;
+    background: touch.pressed ? Theme.bg-sunken : root.selected ? Theme.bg-selected : root.hovered ? Theme.bg-hover : transparent;
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-value: root.count >= 0 ? "\{root.count}" : "";
+    accessible-checkable: true;
+    accessible-checked: root.selected;
+    accessible-action-default => { root.clicked(); }
+
+    animate background { duration: Motion.instant; easing: Motion.out; }
+
+    HorizontalLayout {
+        padding-left: Space.s2;
+        padding-right: Space.s2;
+        spacing: Space.s1;
+        alignment: center;
+        Rectangle {
+            width: Space.s2 * SystemLook.text-scale;
+            Rectangle {
+                y: (parent.height - self.height) / 2;
+                width: parent.width;
+                height: self.width;
+                border-radius: Radius.sm;
+                background: Theme.hc-border != transparent ? Theme.text-primary : ListAccent.color(root.hue);
+            }
+        }
+        Text {
+            text: root.text;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            font-weight: root.selected ? Type.medium : Type.regular;
+            color: root.selected ? Theme.text-on-selected : Theme.text-primary;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        if root.count >= 0: Text {
+            text: "\{root.count}";
+            font-family: Fonts.mono;
+            font-size: Type.xs;
+            color: root.selected ? Theme.text-secondary-on-selected : Theme.text-secondary;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        if root.selected: Icon {
+            source: Icons.check;
+            size: Space.s3 * SystemLook.text-scale;
+            tint: Theme.text-on-selected;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+
+    // 2px ring, 2px offset (DESIGN.md §2).
+    Rectangle {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        border-width: root.focused ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.lg + 2px;
+        background: transparent;
+    }
+
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+
+    scope := FocusScope {
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") {
+                root.clicked();
+                return accept;
+            }
+            return reject;
+        }
+    }
+}

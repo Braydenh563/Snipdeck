@@ -78,6 +78,72 @@ pub fn drop_files<P: AsRef<[u16]>>(paths: &[P]) -> Option<Vec<u8>> {
     Some(out)
 }
 
+/// The paths in `CF_HDROP` bytes: the inverse of [`drop_files`]. Reads the `DROPFILES` header's
+/// `pFiles` offset and `fWide` flag, then the NUL-separated list up to the empty entry that ends
+/// it (or the end of the bytes). Empty if the header is short or `pFiles` points outside the bytes.
+/// A narrow (ANSI) list is read as UTF-8, lossily: Explorer always offers the wide form.
+pub fn parse_drop_files(bytes: &[u8]) -> Vec<String> {
+    let header = |at: usize| -> Option<u32> {
+        Some(u32::from_le_bytes(bytes.get(at..at + 4)?.try_into().ok()?))
+    };
+    let (Some(start), Some(wide)) = (header(0), header(16)) else {
+        return Vec::new();
+    };
+    let Some(list) = usize::try_from(start)
+        .ok()
+        .filter(|&s| s >= 20)
+        .and_then(|s| bytes.get(s..))
+    else {
+        return Vec::new();
+    };
+    let mut paths = Vec::new();
+    if wide != 0 {
+        let units: Vec<u16> = list
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|&pair| u16::from_le_bytes(pair))
+            .collect();
+        for entry in units.split(|&unit| unit == 0) {
+            if entry.is_empty() {
+                break;
+            }
+            paths.push(String::from_utf16_lossy(entry));
+        }
+    } else {
+        for entry in list.split(|&byte| byte == 0) {
+            if entry.is_empty() {
+                break;
+            }
+            paths.push(String::from_utf8_lossy(entry).into_owned());
+        }
+    }
+    paths
+}
+
+/// The most files one paste or drop adds. More are refused outright, so a huge selection cannot
+/// freeze the window while it is read.
+pub const MAX_DROP_FILES: usize = 1000;
+
+/// The files on the clipboard.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ClipFiles {
+    /// The paths (empty when the clipboard holds no files).
+    Files(Vec<String>),
+    /// More than [`MAX_DROP_FILES`], or a list too big to read.
+    TooMany,
+}
+
+/// The files in `CF_HDROP` bytes, or [`ClipFiles::TooMany`] past [`MAX_DROP_FILES`].
+pub fn clip_files(bytes: &[u8]) -> ClipFiles {
+    let paths = parse_drop_files(bytes);
+    if paths.len() > MAX_DROP_FILES {
+        ClipFiles::TooMany
+    } else {
+        ClipFiles::Files(paths)
+    }
+}
+
 /// Whether `name` can be written directly inside the paste folder. Core validates names when an
 /// item is saved; this repeats core's own check (one Windows-valid path component) as the last
 /// guard before touching the disk.
@@ -89,16 +155,127 @@ pub fn is_plain_file_name(name: &str) -> bool {
         .is_ok()
 }
 
-/// Paste folders are `paste-<n>` inside `%TEMP%\Snipdeck`.
+/// `names` made distinct, ignoring case (Windows file names are): a repeat gets " (2)", " (3)"
+/// before its extension, so `a.txt` twice becomes `a.txt` and `a (2).txt`. Order is kept.
+pub fn distinct_names<S: AsRef<str>>(names: &[S]) -> Vec<String> {
+    let mut used = std::collections::HashSet::new();
+    names
+        .iter()
+        .map(|name| {
+            let name = name.as_ref();
+            if used.insert(name.to_lowercase()) {
+                return name.to_owned();
+            }
+            let (stem, ext) = match name.rfind('.') {
+                Some(dot) if dot > 0 => name.split_at(dot),
+                _ => (name, ""),
+            };
+            (2_u32..=u32::MAX)
+                .map(|n| format!("{stem} ({n}){ext}"))
+                .find(|candidate| used.insert(candidate.to_lowercase()))
+                .unwrap_or_else(|| name.to_owned())
+        })
+        .collect()
+}
+
+/// Paste folders are `paste-<random>` inside `%TEMP%\Snipdeck`; the older `paste-<n>` names of
+/// earlier versions count as ours too, so they are cleaned up.
 pub const PASTE_DIR_PREFIX: &str = "paste-";
 
-/// The `<n>` of a paste folder name, or `None` for any other name.
-pub fn paste_dir_number(name: &str) -> Option<u64> {
-    let digits = name.strip_prefix(PASTE_DIR_PREFIX)?;
-    if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
-        return None;
+/// Whether `name` is a paste folder of ours: the prefix and then only ASCII letters or digits.
+pub fn is_paste_dir_name(name: &str) -> bool {
+    name.strip_prefix(PASTE_DIR_PREFIX)
+        .is_some_and(|rest| !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_alphanumeric()))
+}
+
+/// The folder name for 16 random bytes: `paste-` and 32 hex digits, unpredictable to other users
+/// and processes.
+pub fn paste_dir_name(random: [u8; 16]) -> String {
+    use std::fmt::Write as _;
+    let mut name = String::from(PASTE_DIR_PREFIX);
+    for byte in random {
+        // Writing to a `String` cannot fail.
+        let _ = write!(name, "{byte:02x}");
     }
-    digits.parse().ok()
+    name
+}
+
+/// Creates a fresh, randomly named paste folder under `root` (which must exist). `random` supplies
+/// the 16 bytes, so a test can force a name clash.
+///
+/// # Errors
+///
+/// The I/O error if the folder cannot be created, or after 16 names were all taken.
+pub fn claim_paste_dir(
+    root: &std::path::Path,
+    mut random: impl FnMut() -> std::io::Result<[u8; 16]>,
+) -> std::io::Result<std::path::PathBuf> {
+    let mut last = None;
+    for _ in 0..16 {
+        let dir = root.join(paste_dir_name(random()?));
+        match std::fs::create_dir(&dir) {
+            Ok(()) => return Ok(dir),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => last = Some(error),
+            Err(error) => return Err(error),
+        }
+    }
+    Err(last.unwrap_or_else(|| std::io::Error::other("no free paste folder name")))
+}
+
+/// 16 bytes from the operating system's random generator.
+///
+/// # Errors
+///
+/// An I/O error if the system has no randomness.
+pub fn os_random() -> std::io::Result<[u8; 16]> {
+    let mut bytes = [0_u8; 16];
+    getrandom::fill(&mut bytes).map_err(|_| std::io::Error::other("no system randomness"))?;
+    Ok(bytes)
+}
+
+/// The most recently modified paste folder of ours under `root` (ties broken by name), if any.
+/// The clipboard or a snapshot about to be restored may still point into it, so a paste keeps it.
+pub fn newest_paste_dir(root: &std::path::Path) -> Option<std::path::PathBuf> {
+    let mut best: Option<(std::time::SystemTime, std::path::PathBuf)> = None;
+    for entry in std::fs::read_dir(root).ok()?.flatten() {
+        let ours = entry.file_name().to_str().is_some_and(is_paste_dir_name);
+        let Ok(kind) = entry.file_type() else {
+            continue;
+        };
+        if !ours || !kind.is_dir() {
+            continue;
+        }
+        let modified = entry
+            .metadata()
+            .and_then(|meta| meta.modified())
+            .unwrap_or(std::time::UNIX_EPOCH);
+        let candidate = (modified, entry.path());
+        if best.as_ref().is_none_or(|current| candidate > *current) {
+            best = Some(candidate);
+        }
+    }
+    best.map(|(_, path)| path)
+}
+
+/// Removes every paste folder of ours under `root` except `keep` (best effort: a file still open
+/// stays until a later call). Returns how many folders were removed. Other names are never
+/// touched.
+pub fn remove_paste_dirs(root: &std::path::Path, keep: Option<&std::path::Path>) -> usize {
+    let Ok(entries) = std::fs::read_dir(root) else {
+        return 0;
+    };
+    let mut removed = 0;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let ours = entry.file_name().to_str().is_some_and(is_paste_dir_name);
+        // `file_type` does not follow links: a link planted under our name is not entered.
+        let is_dir = entry.file_type().is_ok_and(|kind| kind.is_dir());
+        if ours && is_dir && Some(path.as_path()) != keep && std::fs::remove_dir_all(&path).is_ok()
+        {
+            removed += 1;
+        }
+    }
+    removed
 }
 
 /// The most memory one `CF_DIB` conversion may take for each of its two buffers (the decoded
@@ -213,18 +390,151 @@ fn over_white(channel: u8, alpha: u8) -> u8 {
     u8::try_from(blended).unwrap_or(u8::MAX)
 }
 
-/// How many paste folders stay on disk, the one being written included: the previous paste's
-/// folder is kept because the clipboard (or a snapshot about to be restored) may still point at
-/// it, or Explorer may still be copying from it.
-pub const KEPT_PASTE_DIRS: usize = 2;
+/// A PNG for `CF_DIB` / `CF_DIBV5` bytes: the inverse of [`png_to_dib`], for a screenshot or a
+/// picture copied from another program. Reads a `BITMAPINFOHEADER` or its V4/V5 successors with
+/// 16, 24 or 32 bits per pixel, `BI_RGB` or `BI_BITFIELDS`, bottom-up or top-down. The PNG has
+/// alpha only when a bit mask names it (a 32-bit `BI_RGB` pixel's fourth byte is unused, not
+/// transparency). Palette and compressed DIBs are refused.
+///
+/// `None` if the bytes are not such a DIB, are shorter than the header says, or the decoded
+/// pixels would need more than [`DIB_DECODE_LIMIT`] bytes. Sizes are checked from the header
+/// before anything is allocated.
+pub fn dib_to_png(dib: &[u8]) -> Option<Vec<u8>> {
+    dib_to_png_within(dib, DIB_DECODE_LIMIT)
+}
 
-/// The paste folder numbers to delete before a new paste folder is created: all but the newest
-/// `KEPT_PASTE_DIRS - 1` of `existing`, which may be in any order.
-pub fn stale_paste_dirs(existing: &[u64]) -> Vec<u64> {
-    let mut sorted = existing.to_vec();
-    sorted.sort_unstable_by(|a, b| b.cmp(a));
-    sorted.dedup();
-    sorted.split_off(sorted.len().min(KEPT_PASTE_DIRS - 1))
+/// A bit mask's channel: where it sits and how many bits it has.
+#[derive(Clone, Copy)]
+struct Mask {
+    shift: u32,
+    bits: u32,
+}
+
+impl Mask {
+    fn new(mask: u32) -> Option<Self> {
+        let bits = mask.count_ones();
+        // One contiguous run of at most 16 bits.
+        (bits > 0 && bits <= 16 && (mask >> mask.trailing_zeros()).count_ones() == bits).then_some(
+            Self {
+                shift: mask.trailing_zeros(),
+                bits,
+            },
+        )
+    }
+
+    /// The channel of `pixel` scaled to 0..=255.
+    fn get(self, pixel: u32) -> u8 {
+        let max = (1u32 << self.bits) - 1;
+        let value = (pixel >> self.shift) & max;
+        u8::try_from((value * 255 + max / 2) / max).unwrap_or(u8::MAX)
+    }
+}
+
+fn le_u32(bytes: &[u8], at: usize) -> Option<u32> {
+    Some(u32::from_le_bytes(bytes.get(at..at + 4)?.try_into().ok()?))
+}
+
+fn dib_to_png_within(dib: &[u8], limit: usize) -> Option<Vec<u8>> {
+    let header_size = usize::try_from(le_u32(dib, 0)?).ok()?;
+    if !matches!(header_size, 40 | 108 | 124) {
+        return None;
+    }
+    let width = i32::from_le_bytes(dib.get(4..8)?.try_into().ok()?);
+    let height = i32::from_le_bytes(dib.get(8..12)?.try_into().ok()?);
+    let planes = u16::from_le_bytes(dib.get(12..14)?.try_into().ok()?);
+    let bit_count = usize::from(u16::from_le_bytes(dib.get(14..16)?.try_into().ok()?));
+    let compression = le_u32(dib, 16)?;
+    let colors_used = usize::try_from(le_u32(dib, 32)?).ok()?;
+    if planes != 1 || width <= 0 || height == 0 || height == i32::MIN {
+        return None;
+    }
+    let top_down = height < 0;
+    let width = usize::try_from(width).ok()?;
+    let rows = usize::try_from(height.unsigned_abs()).ok()?;
+    let (default_masks, has_masks) = match (compression, bit_count) {
+        (0, 24) => ([0; 4], false),
+        (0, 32) => ([0x00FF_0000, 0x0000_FF00, 0x0000_00FF, 0], false),
+        (0, 16) => ([0x7C00, 0x03E0, 0x001F, 0], false),
+        // BI_BITFIELDS: three masks follow a 40-byte header; V4/V5 headers hold four.
+        (3, 16 | 32) => ([0; 4], true),
+        _ => return None,
+    };
+    let mut masks = default_masks;
+    let mut pixel_start = header_size;
+    if has_masks {
+        let count = if header_size == 40 { 3 } else { 4 };
+        for (i, mask) in masks.iter_mut().enumerate().take(count) {
+            *mask = le_u32(dib, 40 + 4 * i)?;
+        }
+        if header_size == 40 {
+            pixel_start += 12;
+        }
+    }
+    // A colour table before the pixels (rare for 16+ bits) is skipped.
+    pixel_start = pixel_start.checked_add(colors_used.checked_mul(4)?)?;
+    let bytes_per_pixel = bit_count / 8;
+    let stride = width.checked_mul(bit_count)?.checked_add(31)? / 32 * 4;
+    let has_alpha = bit_count != 24 && masks[3] != 0;
+    let channels = if has_alpha { 4 } else { 3 };
+    let out_len = width.checked_mul(rows)?.checked_mul(channels)?;
+    let dib_len = stride.checked_mul(rows)?;
+    if out_len > limit || dib_len > limit {
+        return None;
+    }
+    let pixel_end = pixel_start.checked_add(dib_len)?;
+    let data = dib.get(pixel_start..pixel_end)?;
+    let (r, g, b) = if bit_count == 24 {
+        (None, None, None)
+    } else {
+        (
+            Some(Mask::new(masks[0])?),
+            Some(Mask::new(masks[1])?),
+            Some(Mask::new(masks[2])?),
+        )
+    };
+    let a = if has_alpha {
+        Some(Mask::new(masks[3])?)
+    } else {
+        None
+    };
+    let mut pixels = Vec::new();
+    pixels.try_reserve_exact(out_len).ok()?;
+    for y in 0..rows {
+        let src_row = if top_down { y } else { rows - 1 - y };
+        let row = &data[src_row * stride..][..stride];
+        for pixel in row.chunks_exact(bytes_per_pixel).take(width) {
+            if let (Some(r), Some(g), Some(b)) = (r, g, b) {
+                let mut raw = [0u8; 4];
+                raw[..bytes_per_pixel].copy_from_slice(pixel);
+                let value = u32::from_le_bytes(raw);
+                pixels.extend_from_slice(&[r.get(value), g.get(value), b.get(value)]);
+                if let Some(a) = a {
+                    pixels.push(a.get(value));
+                }
+            } else {
+                pixels.extend_from_slice(&[pixel[2], pixel[1], pixel[0]]);
+            }
+        }
+    }
+    let mut out = Vec::new();
+    let mut encoder = png::Encoder::new(
+        &mut out,
+        u32::try_from(width).ok()?,
+        u32::try_from(rows).ok()?,
+    );
+    encoder.set_color(if has_alpha {
+        png::ColorType::Rgba
+    } else {
+        png::ColorType::Rgb
+    });
+    encoder.set_depth(png::BitDepth::Eight);
+    let mut writer = encoder.write_header().ok()?;
+    writer.write_image_data(&pixels).ok()?;
+    writer.finish().ok()?;
+    // The decoded pixels are content too.
+    pixels.fill(0);
+    std::hint::black_box(&pixels);
+    Some(out)
 }
 
 /// What a restore needs to know about the clipboard, read while Snipdeck holds it open.
@@ -423,14 +733,99 @@ mod tests {
     }
 
     #[test]
-    fn paste_dir_numbers_parse_only_our_folders() {
-        assert_eq!(paste_dir_number("paste-0"), Some(0));
-        assert_eq!(paste_dir_number("paste-42"), Some(42));
-        for other in [
-            "paste-", "paste-x", "paste--1", "paste-1a", "Paste-1", "other",
+    fn only_our_paste_folder_names_are_recognised() {
+        for ours in [
+            "paste-0",
+            "paste-42",
+            "paste-9f86d081884c7d659a2feaa0c55ad015",
         ] {
-            assert_eq!(paste_dir_number(other), None, "{other}");
+            assert!(is_paste_dir_name(ours), "{ours}");
         }
+        for other in [
+            "paste-",
+            "paste--1",
+            "paste-1.a",
+            "Paste-1",
+            "other",
+            "paste",
+        ] {
+            assert!(!is_paste_dir_name(other), "{other}");
+        }
+        assert_eq!(paste_dir_name([0xab; 16]).len(), "paste-".len() + 32);
+        assert!(is_paste_dir_name(&paste_dir_name([0; 16])));
+    }
+
+    #[test]
+    fn a_new_paste_folder_has_a_random_name_and_survives_a_name_clash() {
+        let root = tempfile::tempdir().unwrap();
+        let first = claim_paste_dir(root.path(), || Ok([1; 16])).unwrap();
+        let mut calls = 0;
+        let second = claim_paste_dir(root.path(), || {
+            calls += 1;
+            Ok([if calls == 1 { 1 } else { 2 }; 16])
+        })
+        .unwrap();
+        assert_ne!(first, second);
+        assert_eq!(calls, 2, "the clash was retried with a new name");
+        let a = claim_paste_dir(root.path(), os_random).unwrap();
+        let b = claim_paste_dir(root.path(), os_random).unwrap();
+        assert_ne!(a, b);
+        let always_taken = claim_paste_dir(root.path(), || Ok([1; 16]));
+        assert!(
+            always_taken.is_err(),
+            "gives up rather than looping forever"
+        );
+    }
+
+    #[test]
+    fn cleanup_removes_every_paste_folder_but_the_kept_one_and_nothing_else() {
+        let root = tempfile::tempdir().unwrap();
+        let old = claim_paste_dir(root.path(), || Ok([1; 16])).unwrap();
+        std::fs::write(old.join("secret.txt"), b"x").unwrap();
+        let legacy = root.path().join("paste-7");
+        std::fs::create_dir(&legacy).unwrap();
+        let keep = claim_paste_dir(root.path(), || Ok([2; 16])).unwrap();
+        let other = root.path().join("keep-me");
+        std::fs::create_dir(&other).unwrap();
+        let file = root.path().join("paste-file");
+        std::fs::write(&file, b"not a folder").unwrap();
+
+        assert_eq!(remove_paste_dirs(root.path(), Some(&keep)), 2);
+        assert!(!old.exists() && !legacy.exists());
+        assert!(keep.is_dir() && other.is_dir() && file.is_file());
+
+        assert_eq!(
+            remove_paste_dirs(root.path(), None),
+            1,
+            "the next-start cleanup"
+        );
+        assert!(!keep.exists() && other.is_dir());
+        assert_eq!(remove_paste_dirs(&root.path().join("missing"), None), 0);
+    }
+
+    #[test]
+    fn the_newest_paste_folder_is_the_one_a_paste_keeps() {
+        let root = tempfile::tempdir().unwrap();
+        assert_eq!(newest_paste_dir(root.path()), None);
+        let old = claim_paste_dir(root.path(), || Ok([1; 16])).unwrap();
+        let new = claim_paste_dir(root.path(), || Ok([2; 16])).unwrap();
+        let other = root.path().join("newer-but-not-ours");
+        std::fs::create_dir(&other).unwrap();
+        let t = std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_000_000);
+        let set = |dir: &std::path::Path, secs: u64| {
+            std::fs::File::open(dir)
+                .unwrap()
+                .set_modified(t + std::time::Duration::from_secs(secs))
+                .unwrap();
+        };
+        set(&old, 0);
+        set(&new, 10);
+        set(&other, 20);
+        assert_eq!(newest_paste_dir(root.path()), Some(new.clone()));
+        // The paste sequence: keep the newest, drop the rest, then claim a fresh one.
+        let keep = newest_paste_dir(root.path());
+        assert_eq!(remove_paste_dirs(root.path(), keep.as_deref()), 1);
+        assert!(new.is_dir() && !old.exists() && other.is_dir());
     }
 
     fn encode_png(width: u32, height: u32, color: png::ColorType, data: &[u8]) -> Vec<u8> {
@@ -494,6 +889,275 @@ mod tests {
     fn invalid_png_has_no_dib() {
         assert_eq!(png_to_dib(b"not a png"), None);
         assert_eq!(png_to_dib(&[]), None);
+    }
+
+    fn decode_png(bytes: &[u8]) -> (u32, u32, png::ColorType, Vec<u8>) {
+        let mut reader = png::Decoder::new(std::io::Cursor::new(bytes))
+            .read_info()
+            .unwrap();
+        let mut buf = vec![0; reader.output_buffer_size().unwrap()];
+        let info = reader.next_frame(&mut buf).unwrap();
+        buf.truncate(info.buffer_size());
+        (info.width, info.height, info.color_type, buf)
+    }
+
+    #[test]
+    fn dib_round_trips_through_png_for_1x1_odd_and_even_widths() {
+        let cases: [(u32, u32); 4] = [(1, 1), (3, 2), (4, 3), (5, 1)];
+        for (w, h) in cases {
+            let rgb: Vec<u8> = (0..u8::try_from(w * h * 3).unwrap())
+                .map(|i| i.wrapping_mul(7).wrapping_add(3))
+                .collect();
+            let png = encode_png(w, h, png::ColorType::Rgb, &rgb);
+            let back = dib_to_png(&png_to_dib(&png).unwrap()).unwrap();
+            let (bw, bh, color, pixels) = decode_png(&back);
+            assert_eq!((bw, bh, color), (w, h, png::ColorType::Rgb), "{w}x{h}");
+            assert_eq!(pixels, rgb, "{w}x{h}");
+        }
+    }
+
+    #[test]
+    fn dib_round_trip_of_alpha_is_composited_over_white() {
+        // png_to_dib drops alpha over white, so that is what comes back; opaque pixels are exact.
+        let rgba = [10, 20, 30, 255, 0, 0, 0, 0, 255, 0, 0, 128];
+        let png = encode_png(3, 1, png::ColorType::Rgba, &rgba);
+        let (w, h, _, pixels) = decode_png(&dib_to_png(&png_to_dib(&png).unwrap()).unwrap());
+        assert_eq!((w, h), (3, 1));
+        assert_eq!(pixels, [10, 20, 30, 255, 255, 255, 255, 127, 127]);
+    }
+
+    #[test]
+    fn dib_to_png_reads_top_down_and_bitfields() {
+        // 2x1, 32 bit, BI_BITFIELDS in a 40-byte header, masks after it, top-down (-1 height).
+        let mut dib = Vec::new();
+        dib.extend_from_slice(&40u32.to_le_bytes());
+        dib.extend_from_slice(&2i32.to_le_bytes());
+        dib.extend_from_slice(&(-1i32).to_le_bytes());
+        dib.extend_from_slice(&1u16.to_le_bytes());
+        dib.extend_from_slice(&32u16.to_le_bytes());
+        dib.extend_from_slice(&3u32.to_le_bytes());
+        dib.extend_from_slice(&[0; 20]);
+        for mask in [0x00FF_0000u32, 0x0000_FF00, 0x0000_00FF] {
+            dib.extend_from_slice(&mask.to_le_bytes());
+        }
+        // Pixels as B, G, R, X: red then blue.
+        dib.extend_from_slice(&[0, 0, 255, 0, 255, 0, 0, 0]);
+        let (w, h, color, pixels) = decode_png(&dib_to_png(&dib).unwrap());
+        assert_eq!((w, h, color), (2, 1, png::ColorType::Rgb));
+        assert_eq!(pixels, [255, 0, 0, 0, 0, 255]);
+    }
+
+    #[test]
+    fn dib_to_png_keeps_alpha_when_a_mask_names_it() {
+        // 1x1 BITMAPV5HEADER (124 bytes) 32 bit, BI_BITFIELDS with an alpha mask.
+        let mut dib = vec![0u8; 124];
+        dib[0..4].copy_from_slice(&124u32.to_le_bytes());
+        dib[4..8].copy_from_slice(&1i32.to_le_bytes());
+        dib[8..12].copy_from_slice(&1i32.to_le_bytes());
+        dib[12..14].copy_from_slice(&1u16.to_le_bytes());
+        dib[14..16].copy_from_slice(&32u16.to_le_bytes());
+        dib[16..20].copy_from_slice(&3u32.to_le_bytes());
+        for (at, mask) in [
+            (40, 0x00FF_0000u32),
+            (44, 0x0000_FF00),
+            (48, 0x0000_00FF),
+            (52, 0xFF00_0000),
+        ] {
+            dib[at..at + 4].copy_from_slice(&mask.to_le_bytes());
+        }
+        dib.extend_from_slice(&[30, 20, 10, 128]); // B G R A
+        let (_, _, color, pixels) = decode_png(&dib_to_png(&dib).unwrap());
+        assert_eq!(color, png::ColorType::Rgba);
+        assert_eq!(pixels, [10, 20, 30, 128]);
+    }
+
+    #[test]
+    fn dib_to_png_rejects_truncated_and_oversized() {
+        let png = encode_png(4, 4, png::ColorType::Rgb, &[9; 48]);
+        let dib = png_to_dib(&png).unwrap();
+        assert!(dib_to_png(&dib[..dib.len() - 1]).is_none());
+        assert!(dib_to_png(&dib[..30]).is_none());
+        assert!(dib_to_png(&[]).is_none());
+        // The header claims 30000 x 30000 pixels: refused from the header, before any allocation.
+        let mut huge = dib[..40].to_vec();
+        huge[4..8].copy_from_slice(&30_000i32.to_le_bytes());
+        huge[8..12].copy_from_slice(&30_000i32.to_le_bytes());
+        assert!(dib_to_png(&huge).is_none());
+        // A small image over a small limit.
+        assert!(dib_to_png_within(&dib, 10).is_none());
+        assert!(dib_to_png_within(&dib, DIB_DECODE_LIMIT).is_some());
+    }
+
+    #[test]
+    fn parse_drop_files_round_trips_drop_files() {
+        let names = [
+            "C:\\a\\b.txt",
+            "D:\\Ünï cödé\\日本語.png",
+            "E:\\x y\\😀.bin",
+        ];
+        let wide: Vec<Vec<u16>> = names.iter().map(|n| n.encode_utf16().collect()).collect();
+        let bytes = drop_files(&wide).unwrap();
+        assert_eq!(parse_drop_files(&bytes), names);
+    }
+
+    #[test]
+    fn parse_drop_files_survives_bad_input() {
+        assert_eq!(parse_drop_files(&[]), Vec::<String>::new());
+        assert_eq!(parse_drop_files(&[1, 2, 3]), Vec::<String>::new());
+        // pFiles pointing past the end.
+        let mut bytes = drop_files(&[[0x41u16]]).unwrap();
+        bytes[0..4].copy_from_slice(&999u32.to_le_bytes());
+        assert_eq!(parse_drop_files(&bytes), Vec::<String>::new());
+        // A list without its final terminator still yields what is complete.
+        let mut bytes = drop_files(&[[0x41u16], [0x42u16]]).unwrap();
+        bytes.truncate(bytes.len() - 2);
+        assert_eq!(parse_drop_files(&bytes), ["A", "B"]);
+        // The narrow (ANSI) form.
+        let mut narrow = drop_files(&[[0x41u16]]).unwrap()[..20].to_vec();
+        narrow[16..20].copy_from_slice(&0i32.to_le_bytes());
+        narrow.extend_from_slice(b"C:\\x.txt\0\0");
+        assert_eq!(parse_drop_files(&narrow), ["C:\\x.txt"]);
+    }
+
+    /// A 40-byte-header DIB of `width` x 1, `bits` per pixel, with `compression`, `colors_used`
+    /// and then `after` (masks, colour table, pixels).
+    fn small_dib(
+        width: i32,
+        height: i32,
+        bits: u16,
+        compression: u32,
+        colors_used: u32,
+    ) -> Vec<u8> {
+        let mut dib = Vec::new();
+        dib.extend_from_slice(&40u32.to_le_bytes());
+        dib.extend_from_slice(&width.to_le_bytes());
+        dib.extend_from_slice(&height.to_le_bytes());
+        dib.extend_from_slice(&1u16.to_le_bytes());
+        dib.extend_from_slice(&bits.to_le_bytes());
+        dib.extend_from_slice(&compression.to_le_bytes());
+        dib.extend_from_slice(&[0; 12]);
+        dib.extend_from_slice(&colors_used.to_le_bytes());
+        dib.extend_from_slice(&[0; 4]);
+        dib
+    }
+
+    #[test]
+    fn dib_to_png_refuses_overflowing_and_negative_extremes() {
+        for (w, h) in [
+            (i32::MAX, i32::MAX),
+            (i32::MAX, 1),
+            (1, i32::MAX),
+            (1, i32::MIN),
+            (0, 1),
+            (-1, 1),
+            (1, 0),
+        ] {
+            let mut dib = small_dib(w, h, 24, 0, 0);
+            dib.extend_from_slice(&[0; 16]);
+            assert_eq!(dib_to_png(&dib), None, "{w}x{h}");
+        }
+    }
+
+    #[test]
+    fn dib_to_png_reads_16_bit_pixels() {
+        // BI_RGB is 5-5-5: pure red is 0x7C00, pure blue 0x001F.
+        let mut dib = small_dib(2, 1, 16, 0, 0);
+        dib.extend_from_slice(&[0x00, 0x7C, 0x1F, 0x00]);
+        let (w, _, color, pixels) = decode_png(&dib_to_png(&dib).unwrap());
+        assert_eq!((w, color), (2, png::ColorType::Rgb));
+        assert_eq!(pixels, [255, 0, 0, 0, 0, 255]);
+        // BI_BITFIELDS 5-6-5: green 0x07E0.
+        let mut dib = small_dib(1, 1, 16, 3, 0);
+        for mask in [0xF800u32, 0x07E0, 0x001F] {
+            dib.extend_from_slice(&mask.to_le_bytes());
+        }
+        dib.extend_from_slice(&[0xE0, 0x07, 0, 0]);
+        let (_, _, _, pixels) = decode_png(&dib_to_png(&dib).unwrap());
+        assert_eq!(pixels, [0, 255, 0]);
+    }
+
+    #[test]
+    fn dib_to_png_reads_a_bi_rgb_v5_header_as_opaque() {
+        // The alpha byte of 32-bit BI_RGB pixels is unused, even in a V5 header.
+        let mut dib = vec![0u8; 124];
+        dib[0..4].copy_from_slice(&124u32.to_le_bytes());
+        dib[4..8].copy_from_slice(&1i32.to_le_bytes());
+        dib[8..12].copy_from_slice(&1i32.to_le_bytes());
+        dib[12..14].copy_from_slice(&1u16.to_le_bytes());
+        dib[14..16].copy_from_slice(&32u16.to_le_bytes());
+        dib.extend_from_slice(&[30, 20, 10, 0]); // B G R, unused
+        let (_, _, color, pixels) = decode_png(&dib_to_png(&dib).unwrap());
+        assert_eq!(color, png::ColorType::Rgb);
+        assert_eq!(pixels, [10, 20, 30]);
+    }
+
+    #[test]
+    fn dib_to_png_skips_a_colour_table_before_the_pixels() {
+        let mut dib = small_dib(1, 1, 24, 0, 2);
+        dib.extend_from_slice(&[9; 8]); // two table entries
+        dib.extend_from_slice(&[3, 2, 1, 0]); // B G R + padding
+        let (_, _, _, pixels) = decode_png(&dib_to_png(&dib).unwrap());
+        assert_eq!(pixels, [1, 2, 3]);
+        // A table the bytes do not hold is truncated input.
+        assert_eq!(dib_to_png(&small_dib(1, 1, 24, 0, 2)), None);
+    }
+
+    #[test]
+    fn parse_drop_files_handles_odd_lengths_and_a_low_offset() {
+        // An odd trailing byte after the last complete path is ignored.
+        let mut bytes = drop_files(&[[0x41u16]]).unwrap();
+        bytes.truncate(bytes.len() - 2);
+        bytes.push(0x42);
+        assert_eq!(parse_drop_files(&bytes), ["A"]);
+        // pFiles inside the header itself is not a list.
+        let mut bytes = drop_files(&[[0x41u16]]).unwrap();
+        for low in [0u32, 4, 19] {
+            bytes[0..4].copy_from_slice(&low.to_le_bytes());
+            assert_eq!(parse_drop_files(&bytes), Vec::<String>::new(), "{low}");
+        }
+    }
+
+    #[test]
+    fn clip_files_refuses_more_than_the_file_limit() {
+        let few: Vec<Vec<u16>> = (0..3).map(|i| vec![0x41 + i]).collect();
+        assert_eq!(
+            clip_files(&drop_files(&few).unwrap()),
+            ClipFiles::Files(vec!["A".into(), "B".into(), "C".into()])
+        );
+        let many: Vec<Vec<u16>> = (0..=MAX_DROP_FILES).map(|_| vec![0x41]).collect();
+        assert_eq!(clip_files(&drop_files(&many).unwrap()), ClipFiles::TooMany);
+        let at_limit: Vec<Vec<u16>> = (0..MAX_DROP_FILES).map(|_| vec![0x41]).collect();
+        assert!(matches!(
+            clip_files(&drop_files(&at_limit).unwrap()),
+            ClipFiles::Files(f) if f.len() == MAX_DROP_FILES
+        ));
+    }
+
+    #[test]
+    fn duplicate_names_get_a_counter_before_the_extension() {
+        assert_eq!(
+            distinct_names(&[
+                "a.txt",
+                "A.TXT",
+                "b",
+                "b",
+                "a.txt",
+                "a (2).txt",
+                ".env",
+                ".env"
+            ]),
+            [
+                "a.txt",
+                "A (2).TXT",
+                "b",
+                "b (2)",
+                "a (3).txt",
+                "a (2) (2).txt",
+                ".env",
+                ".env (2)"
+            ]
+        );
+        assert_eq!(distinct_names::<&str>(&[]), Vec::<String>::new());
     }
 
     #[test]
@@ -611,14 +1275,6 @@ mod tests {
         assert_eq!(dib_size(1, 1), Some(44));
         assert_eq!(dib_size(u32::MAX, 1), None);
         assert_eq!(dib_size(1, 1 << 31), None);
-    }
-
-    #[test]
-    fn paste_cleanup_keeps_the_previous_folder() {
-        assert_eq!(stale_paste_dirs(&[]), Vec::<u64>::new());
-        assert_eq!(stale_paste_dirs(&[7]), Vec::<u64>::new());
-        assert_eq!(stale_paste_dirs(&[3, 9, 5]), [5, 3]);
-        assert_eq!(stale_paste_dirs(&[2, 2, 1]), [1]);
     }
 
     fn written(ledger: &mut OwnerLedger, sequence: u32) -> u64 {

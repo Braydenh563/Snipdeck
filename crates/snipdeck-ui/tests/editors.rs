@@ -1,0 +1,786 @@
+//! Screenshot tests for the editors (item, list, board, tags) and the settings page, in the states the design calls
+//! out (light, dark, 225% text, errors, dialogs, long values, every item kind), plus pixel measurements.
+//!
+//! Goldens: `UPDATE_GOLDEN=1 cargo test -p snipdeck-ui --test editors`, then look at every PNG.
+//! Goldens use only glyphs IBM Plex has (Latin placeholders; no CJK): system fallback fonts differ per machine.
+
+use slint::{ComponentHandle, ModelRc, VecModel, platform::Key};
+use snipdeck_ui::{
+    BoardEditor, HelpWindow, ItemEditor, ListEditor, MainView, OnboardingWindow, PanelLayout,
+    SettingsPage, SystemLook, TagManager,
+    testing::{Frame, Harness, assert_golden},
+};
+
+#[path = "support/mod.rs"]
+mod support;
+use support::{chord, key, press, type_text};
+
+#[path = "support/editor_fixture.rs"]
+mod fixture;
+
+const ITEM: (u32, u32) = (560, 760);
+const SMALL: (u32, u32) = (460, 440);
+const SETTINGS: (u32, u32) = (640, 1000);
+const HELP: (u32, u32) = (600, 640);
+const ONBOARDING: (u32, u32) = (560, 540);
+
+// Palette values from design/tokens/palette.json.
+const APP_LIGHT: [u8; 3] = [0xF5, 0xF3, 0xF1];
+const SURFACE_LIGHT: [u8; 3] = [0xFB, 0xFA, 0xF7];
+
+fn item(size: (u32, u32), dark: bool) -> Harness<ItemEditor> {
+    let h = Harness::new(ItemEditor::new, size.0, size.1);
+    h.component.set_dark(dark);
+    fixture::text_item(&h.component);
+    h
+}
+
+fn render<C: ComponentHandle>(h: &Harness<C>) -> Frame {
+    h.render_settled()
+}
+
+/// An item editor at the height it asks for (`fit-height`), as the host opens it: the golden is the window as the user
+/// sees it, not a fixed 760 with a blank band above the footer.
+fn item_fit(width: u32, dark: bool, setup: impl Fn(&ItemEditor)) -> Harness<ItemEditor> {
+    let probe = item((width, 760), dark);
+    setup(&probe.component);
+    let _ = render(&probe);
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "a window height of 380 to 700"
+    )]
+    let height = probe.component.get_fit_height().ceil() as u32;
+    drop(probe);
+    let h = item((width, height), dark);
+    setup(&h.component);
+    h
+}
+
+#[test]
+fn editor_height_is_form_height() {
+    for (name, setup) in [
+        (
+            "text",
+            Box::new(|_: &ItemEditor| {}) as Box<dyn Fn(&ItemEditor)>,
+        ),
+        ("code", Box::new(|c: &ItemEditor| c.set_kind_index(1))),
+        ("template", Box::new(|c: &ItemEditor| c.set_kind_index(3))),
+    ] {
+        let h = item_fit(560, false, setup);
+        let f = render(&h);
+        let fit = h.component.get_fit_height();
+        assert!((380.0..=700.0).contains(&fit), "{name}: fit {fit}");
+        // The footer is the last 56 px or so; find the last row above it that is not the page background.
+        let footer_top = (0..f.height)
+            .rev()
+            .find(|&y| f.pixel(4, y) == APP_LIGHT)
+            .expect("page rows")
+            + 1;
+        let last_ink = (0..footer_top)
+            .rev()
+            .find(|&y| (0..f.width).any(|x| f.pixel(x, y) != APP_LIGHT))
+            .expect("content");
+        let blank = footer_top - 1 - last_ink;
+        assert!(
+            blank <= 24,
+            "{name}: {blank} blank px above the footer (window {})",
+            f.height
+        );
+    }
+}
+
+#[test]
+fn item_editor_text_light_and_dark() {
+    let h = item_fit(ITEM.0, false, |_| {});
+    assert_golden("item-editor-text-light", &render(&h));
+    drop(h);
+    let h = item_fit(ITEM.0, true, |c| c.set_sensitive(true));
+    assert_golden("item-editor-text-dark", &render(&h));
+}
+
+#[test]
+fn item_editor_preview_of_a_template() {
+    let h = item_fit(560, false, |c| {
+        c.set_kind_index(3);
+        c.set_item_title("Invoice reminder".into());
+        c.set_content("A gentle reminder that invoice {field:Number} is due on {date}.".into());
+        c.set_label_index(3);
+        c.set_preview_on(true);
+        c.set_preview_title("Invoice reminder".into());
+        c.set_preview_excerpt(
+            "A gentle reminder that invoice {field:Number} is due on {date}.".into(),
+        );
+        c.set_preview_expanded(
+            "A gentle reminder that invoice ‹Number› is due on 2026-03-04.".into(),
+        );
+    });
+    assert_golden("item-editor-preview-template-light", &render(&h));
+}
+
+#[test]
+fn item_editor_preview_at_the_narrowest_width_with_long_values() {
+    let long = "https://a-very-long-subdomain-name.another-quite-long-label.example-company-internal.example.com/path";
+    // A fixed height: the pane scrolls, so the window's own fit (the form's height) is not what shows here.
+    let h = item((420, 700), false);
+    let c = &h.component;
+    {
+        c.set_kind_index(2);
+        c.set_item_title("Docs".into());
+        c.set_content(long.into());
+        c.set_preview_on(true);
+        c.set_preview_title("Docs".into());
+        c.set_preview_excerpt(long.into());
+        c.set_preview_link(
+            "a-very-long-subdomain-name.another-quite-long-label.example-company-internal.example.com"
+                .into(),
+        );
+    }
+    assert_golden("item-editor-preview-narrow-long-host-light", &render(&h));
+    drop(h);
+
+    let token = "Supercalifragilisticexpialidocious_Supercalifragilisticexpialidocious_Supercalifragilistic";
+    let h = item_fit(420, false, |c| {
+        c.set_kind_index(3);
+        c.set_item_title("Token".into());
+        c.set_content(token.into());
+        c.set_preview_on(true);
+        c.set_preview_title("Token".into());
+        c.set_preview_excerpt(token.into());
+        c.set_preview_expanded(token.into());
+    });
+    assert_golden("item-editor-preview-narrow-long-token-light", &render(&h));
+}
+
+#[test]
+fn item_editor_preview_dark_sensitive_and_in_the_users_layouts() {
+    let h = item_fit(560, true, |c| {
+        c.set_kind_index(0);
+        c.set_item_title("Bank card".into());
+        c.set_sensitive(true);
+        c.set_label_index(5);
+        c.set_preview_on(true);
+        c.set_preview_title("Bank card".into());
+        c.set_preview_mask("••••••••".into());
+        c.set_preview_panel_layout(PanelLayout::Cards);
+        c.set_preview_main_view(MainView::Compact);
+        c.set_preview_show_numbers(false);
+    });
+    assert_golden("item-editor-preview-sensitive-dark", &render(&h));
+}
+
+#[test]
+fn item_editor_preview_at_225_percent_text_size() {
+    let h = item((1100, 1500), false);
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    h.component.set_kind_index(3);
+    h.component.set_item_title("Invoice reminder".into());
+    h.component.set_preview_on(true);
+    h.component.set_preview_title("Invoice reminder".into());
+    h.component
+        .set_preview_excerpt("Invoice {field:Number} is due on {date}.".into());
+    h.component
+        .set_preview_expanded("Invoice ‹Number› is due on 2026-03-04.".into());
+    assert_golden("item-editor-preview-scale-light", &render(&h));
+}
+
+#[test]
+fn item_editor_each_kind() {
+    let h = item_fit(ITEM.0, false, |c| {
+        c.set_kind_index(1);
+        c.set_item_title("Retry helper".into());
+        c.set_content(
+        "async fn retry<T>(f: impl Fn() -> T, n: usize) -> T {\n    for _ in 0..n { /* try */ }\n}"
+            .into(),
+    );
+    });
+    assert_golden("item-editor-code-light", &render(&h));
+    drop(h);
+
+    let h = item_fit(ITEM.0, false, |c| {
+        c.set_kind_index(2);
+        c.set_item_title("Design spec".into());
+        c.set_content("figma.com/file/snipdeck-index-deck".into());
+        c.set_content_error("A link needs a scheme such as https://".into());
+    });
+    assert_golden("item-editor-link-error-light", &render(&h));
+    drop(h);
+
+    let h = item_fit(560, false, |c| {
+        c.set_kind_index(3);
+        c.set_item_title("Invoice reminder".into());
+        c.set_content("A gentle reminder that invoice {field:Number} is due on {date}.".into());
+    });
+    assert_golden("item-editor-template-light", &render(&h));
+    drop(h);
+
+    let h = item_fit(560, false, |c| {
+        c.set_kind_index(3);
+        c.set_prompted_available(false);
+        c.set_content("Due on {date}.".into());
+    });
+    assert_golden("item-editor-template-free-light", &render(&h));
+    drop(h);
+
+    let h = item_fit(ITEM.0, false, |c| {
+        c.set_kind_index(4);
+        c.set_item_title("Screenshot 14:02".into());
+        c.set_preview(fixture::gradient());
+        c.set_attachment_name("screenshot-1402.png".into());
+        c.set_attachment_detail("1280 x 720 PNG, copied from the browser".into());
+    });
+    assert_golden("item-editor-image-light", &render(&h));
+    drop(h);
+
+    let h = item_fit(ITEM.0, true, |c| {
+        c.set_kind_index(5);
+        c.set_item_title("Q3 report".into());
+        c.set_attachment_name("report-q3-final.pdf".into());
+        c.set_attachment_detail("PDF, 2.4 MB. Pasting copies the file itself.".into());
+    });
+    assert_golden("item-editor-file-dark", &render(&h));
+}
+
+#[test]
+fn item_editor_new_item_shows_what_is_missing() {
+    let h = Harness::new(ItemEditor::new, ITEM.0, ITEM.1);
+    h.component.set_is_new(true);
+    h.component.set_list_names(fixture::list_names());
+    h.component.set_tags(fixture::tag_model(Vec::new()));
+    let _ = render(&h);
+    // Ctrl+Enter on an empty item: the content field says what is missing.
+    chord(h.component.window(), &[Key::Control], "\n");
+    assert_golden("item-editor-new-errors-light", &render(&h));
+}
+
+#[test]
+fn item_editor_new_file_with_a_path_problem_a_banner_and_a_restored_draft() {
+    let h = Harness::new(ItemEditor::new, ITEM.0, ITEM.1);
+    h.component.set_is_new(true);
+    h.component.set_kind_index(5);
+    h.component.set_can_browse(true);
+    h.component.set_item_title("Q3 report".into());
+    h.component
+        .set_source_path("C:\\Reports\\q3-final.pdf".into());
+    h.component
+        .set_source_error("There is no file at that path.".into());
+    h.component.set_restored(true);
+    h.component.set_banner(
+        "Snipdeck couldn't write to your library. Check that the disk has room.".into(),
+    );
+    h.component.set_list_names(fixture::list_names());
+    h.component.set_tags(fixture::tag_model(Vec::new()));
+    assert_golden("item-editor-new-file-light", &render(&h));
+}
+
+#[test]
+fn item_editor_sensitive_with_a_locked_library() {
+    let h = item((560, 900), false);
+    h.component.set_sensitive(true);
+    h.component
+        .set_privacy_error("Unlock your library to save this item.".into());
+    assert_golden("item-editor-sensitive-locked-light", &render(&h));
+}
+
+#[test]
+fn item_editor_long_values_and_the_inline_limit() {
+    let h = item((420, 760), false);
+    h.component.set_item_title(
+        "A very long item title that keeps going well past the width of the field and then some"
+            .into(),
+    );
+    h.component.set_content_large(true);
+    h.component.set_content_size("2.4 MB".into());
+    h.component.set_content(
+        "Supercalifragilisticexpialidocious_Supercalifragilisticexpialidocious_Snippet https://example.com/a/very/long/unbroken/path".into(),
+    );
+    h.component
+        .set_title_error("Titles can't be longer than 200 characters.".into());
+    assert_golden("item-editor-long-light", &render(&h));
+}
+
+/// "More options" open on an item with a trigger: the picture of the Tips card on triggers.
+#[test]
+fn item_editor_more_options_shows_the_trigger() {
+    let h = item((420, 900), false);
+    h.component.set_more_open(true);
+    h.component.set_item_title("Email signature".into());
+    h.component.set_trigger(";sig".into());
+    assert_golden("item-editor-trigger-light", &render(&h));
+}
+
+#[test]
+fn item_editor_at_225_percent_text_size() {
+    let h = item((1100, 1500), false);
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    assert_golden("item-editor-scale-light", &render(&h));
+}
+
+#[test]
+fn item_editor_template_placeholders_at_420px_and_225_percent_text_size() {
+    // The placeholder grid under pressure: the chip column is capped, so the help text wraps instead of leaving the window.
+    let h = item((420, 2600), false);
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    h.component.set_kind_index(3);
+    h.component.set_prompted_available(false);
+    h.component.set_content("Due on {date}.".into());
+    assert_golden("item-editor-template-narrow-scale-light", &render(&h));
+}
+
+/// Saving a template with a prompted field on the Free plan: the refusal sits under the text and a button beside it
+/// opens the way to get Supporter.
+#[test]
+fn item_editor_supporter_refusal_offers_get_supporter() {
+    let h = item(ITEM, false);
+    h.component.set_kind_index(3);
+    h.component.set_prompted_available(false);
+    h.component.set_content("Dear {field:Name}".into());
+    h.component.set_content_error(
+        "Fields that ask for a value are a Supporter feature. Remove them to save.".into(),
+    );
+    h.component.set_content_needs_supporter(true);
+    assert_golden("item-editor-needs-supporter-light", &render(&h));
+}
+
+/// The footer buttons (by their accessible label) as (left, top, right, bottom) in window pixels.
+fn footer_buttons(
+    h: &Harness<ItemEditor>,
+    labels: &[&str],
+    scale: f32,
+) -> Vec<(String, (f32, f32, f32, f32))> {
+    use i_slint_backend_testing::{AccessibleRole, ElementHandle};
+    labels
+        .iter()
+        .map(|label| {
+            let found: Vec<_> = ElementHandle::find_by_accessible_label(&h.component, label)
+                .filter(|e| e.accessible_role() == Some(AccessibleRole::Button))
+                .collect();
+            let e = found.last().unwrap_or_else(|| panic!("no button {label}"));
+            let (p, size) = (e.absolute_position(), e.size());
+            (
+                (*label).to_string(),
+                (
+                    p.x * scale,
+                    p.y * scale,
+                    (p.x + size.width) * scale,
+                    (p.y + size.height) * scale,
+                ),
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn the_editor_footer_reflows_at_420px_and_225_percent_text_size() {
+    let h = item((420, 2600), false);
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    h.component.set_is_new(false);
+    let _ = render(&h);
+    let boxes = footer_buttons(&h, &["Move to Trash", "Cancel", "Save"], 1.0);
+    for (name, b) in &boxes {
+        assert!(
+            b.0 >= 0.0 && b.2 <= 420.0,
+            "{name} leaves the window: {b:?}"
+        );
+    }
+    for (i, (an, a)) in boxes.iter().enumerate() {
+        for (bn, b) in &boxes[i + 1..] {
+            let apart = a.2 <= b.0 || b.2 <= a.0 || a.3 <= b.1 || b.3 <= a.1;
+            assert!(apart, "{an} overlaps {bn}: {a:?} {b:?}");
+        }
+    }
+    assert!(
+        boxes[0].1.3 <= boxes[1].1.1,
+        "Trash is on its own row above Cancel"
+    );
+}
+
+#[test]
+fn item_editor_asks_before_discarding_and_scrolls_to_the_focus() {
+    let h = item(ITEM, false);
+    let _ = render(&h);
+    h.component.invoke_focus_title();
+    type_text(h.component.window(), "!");
+    press(h.component.window(), &key(Key::Escape));
+    assert!(
+        h.component.get_discard_open(),
+        "Esc with unsaved changes asks first"
+    );
+    let f = render(&h);
+    assert_golden("item-editor-discard-light", &f);
+    // The 40% scrim covers the whole window, corners included.
+    for (x, y) in [
+        (2, 2),
+        (ITEM.0 - 3, 2),
+        (2, ITEM.1 - 3),
+        (ITEM.0 - 3, ITEM.1 - 3),
+    ] {
+        let p = f.pixel(x, y);
+        assert!(
+            p[0] < APP_LIGHT[0] - 40 && p[1] < APP_LIGHT[1] - 40,
+            "scrim at ({x}, {y}) is {p:?}, expected darker than the page"
+        );
+    }
+}
+
+#[test]
+fn item_editor_footer_is_a_surface_below_the_page() {
+    let h = item(ITEM, false);
+    let f = render(&h);
+    assert_eq!(f.pixel(4, 4), APP_LIGHT, "page background at the top left");
+    assert_eq!(
+        f.pixel(4, ITEM.1 - 4),
+        SURFACE_LIGHT,
+        "footer surface at the bottom left"
+    );
+}
+
+#[test]
+fn list_editor_new_existing_error_and_confirmation() {
+    let h = Harness::new(ListEditor::new, SMALL.0, SMALL.1);
+    h.component.set_is_new(true);
+    assert_golden("list-editor-new-light", &render(&h));
+    chord(h.component.window(), &[Key::Control], "\n");
+    assert_golden("list-editor-new-errors-light", &render(&h));
+    drop(h);
+
+    let h = Harness::new(ListEditor::new, SMALL.0, SMALL.1);
+    h.component.set_dark(true);
+    fixture::list_editor_existing(&h.component);
+    h.component
+        .set_name_error("A list named Email replies already exists.".into());
+    h.component.set_sort_index(1);
+    assert_golden("list-editor-existing-dark", &render(&h));
+    drop(h);
+
+    let h = Harness::new(ListEditor::new, SMALL.0, SMALL.1);
+    fixture::list_editor_existing(&h.component);
+    h.component.set_delete_open(true);
+    assert_golden("list-editor-delete-light", &render(&h));
+}
+
+#[test]
+fn board_editor_and_the_last_board() {
+    let h = Harness::new(BoardEditor::new, SMALL.0, SMALL.1);
+    h.component.set_name("Work".into());
+    h.component.set_accent(4);
+    h.component.set_item_count(42);
+    h.component.set_delete_open(true);
+    assert_golden("board-editor-delete-light", &render(&h));
+    drop(h);
+
+    let h = Harness::new(BoardEditor::new, SMALL.0, SMALL.1);
+    h.component.set_dark(true);
+    h.component.set_name("Personal".into());
+    h.component.set_can_delete(false);
+    h.component
+        .set_delete_hint("The last board can't be deleted.".into());
+    assert_golden("board-editor-last-dark", &render(&h));
+}
+
+#[test]
+fn tag_manager_rows_renaming_and_deleting() {
+    let h = Harness::new(TagManager::new, 440, 520);
+    fixture::tag_manager(&h.component);
+    assert_golden("tag-manager-light", &render(&h));
+    h.component.set_editing(1);
+    h.component.set_rename_text("meetings".into());
+    h.component
+        .set_rename_error("A tag named meetings already exists.".into());
+    assert_golden("tag-manager-rename-light", &render(&h));
+    h.component.set_editing(-1);
+    h.component.set_delete_index(0);
+    assert_golden("tag-manager-delete-light", &render(&h));
+    drop(h);
+
+    let h = Harness::new(TagManager::new, 440, 520);
+    h.component.set_dark(true);
+    h.component.set_tags(ModelRc::new(VecModel::default()));
+    assert_golden("tag-manager-empty-dark", &render(&h));
+}
+
+#[test]
+fn settings_page_light_dark_and_scaled() {
+    let h = Harness::new(SettingsPage::new, SETTINGS.0, SETTINGS.1);
+    fixture::settings(&h.component);
+    h.component.set_panel_start_visible_enabled(true); // follows autostart
+    assert_golden("settings-light", &render(&h));
+    drop(h);
+
+    let h = Harness::new(SettingsPage::new, SETTINGS.0, SETTINGS.1);
+    h.component.set_dark(true);
+    fixture::settings(&h.component);
+    h.component.set_theme_index(2);
+    h.component.set_autostart(false);
+    h.component.set_panel_start_visible_enabled(false); // follows autostart
+    assert_golden("settings-dark", &render(&h));
+    drop(h);
+
+    let h = Harness::new(SettingsPage::new, 1200, 1800);
+    fixture::settings(&h.component);
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    h.component.set_panel_start_visible_enabled(true);
+    assert_golden("settings-scale-light", &render(&h));
+}
+
+/// The rows of `frame` from physical `top` for `height` (the page is rendered whole, tall, and the
+/// golden shows the two Panel groups only).
+fn rows(frame: &Frame, top: u32, height: u32) -> Frame {
+    let row = frame.width as usize * 3;
+    let from = top as usize * row;
+    Frame {
+        width: frame.width,
+        height,
+        rgb: frame.rgb[from..from + height as usize * row].to_vec(),
+    }
+}
+
+/// Where the "Panel layout" group starts in the tall render and how tall it and "Opening the
+/// Panel" are together.
+const PANEL_GROUPS: (u32, u32) = (800, 1480);
+
+#[test]
+fn settings_page_panel_layout_and_opening_groups() {
+    let h = Harness::new(SettingsPage::new, SETTINGS.0, 2400);
+    fixture::settings(&h.component);
+    h.component.set_panel_layout_index(1);
+    h.component.set_panel_search_index(1);
+    h.component.set_panel_open_at_index(2);
+    h.component.set_panel_start_visible_enabled(true); // autostart is on in the fixture
+    assert_golden(
+        "settings-panel-layout-light",
+        &rows(&render(&h), PANEL_GROUPS.0, PANEL_GROUPS.1),
+    );
+    drop(h);
+
+    let h = Harness::new(SettingsPage::new, SETTINGS.0, 2400);
+    h.component.set_dark(true);
+    fixture::settings(&h.component);
+    h.component.set_theme_index(2);
+    h.component.set_panel_switcher_index(1);
+    h.component.set_tray_click_index(1);
+    h.component.set_panel_open_at_enabled(false);
+    h.component.set_panel_start_visible_enabled(true);
+    h.component.set_panel_start_visible_index(1);
+    assert_golden(
+        "settings-panel-layout-dark",
+        &rows(&render(&h), PANEL_GROUPS.0, PANEL_GROUPS.1),
+    );
+}
+
+#[test]
+fn settings_page_licence_backups_data_and_privacy() {
+    // Tall enough for every section.
+    let h = Harness::new(SettingsPage::new, SETTINGS.0, 2400);
+    fixture::settings(&h.component);
+    assert_golden("settings-full-light", &render(&h));
+    drop(h);
+
+    let h = Harness::new(SettingsPage::new, SETTINGS.0, 2400);
+    h.component.set_dark(true);
+    fixture::settings(&h.component);
+    h.component.set_pro(true);
+    h.component.set_erase_open(true);
+    h.component.set_toast_text("Backed up".into());
+    h.component.set_toast_kind(snipdeck_ui::ToastKind::Success);
+    assert_golden("settings-full-pro-erase-dark", &render(&h));
+    drop(h);
+
+    let h = Harness::new(SettingsPage::new, SETTINGS.0, 2400);
+    fixture::settings(&h.component);
+    h.component.set_has_data_folder(false);
+    h.component.set_backups(ModelRc::new(VecModel::default()));
+    h.component.set_licence_error(
+        "That licence key is not valid. Check that you copied all of it.".into(),
+    );
+    assert_golden("settings-demo-light", &render(&h));
+}
+
+#[test]
+fn settings_page_conflict_empty_and_narrow() {
+    let h = Harness::new(SettingsPage::new, 420, 900);
+    fixture::settings(&h.component);
+    let mut hotkeys = fixture::hotkeys();
+    hotkeys[1].conflict = "Another program already uses Ctrl+Shift+Space.".into();
+    h.component
+        .set_hotkeys(ModelRc::new(VecModel::from(hotkeys)));
+    h.component
+        .set_paste_rules(ModelRc::new(VecModel::default()));
+    h.component
+        .set_paste_rule_error("keepass.exe is already in the list.".into());
+    assert_golden("settings-conflict-narrow-light", &render(&h));
+}
+
+/// Hotkey health: one shortcut waiting for the "press it now" test, one heard, one that failed with
+/// its one-click alternatives (Settings and the welcome tour's shortcuts step).
+fn health_hotkeys() -> Vec<snipdeck_ui::HotkeySetting> {
+    let mut hotkeys = fixture::hotkeys();
+    hotkeys[0].state = 4;
+    hotkeys[1].state = 5;
+    hotkeys[2].state = 2;
+    hotkeys[2].conflict = "Another program already uses Ctrl+Shift+2.".into();
+    hotkeys[2].alternatives = ModelRc::new(VecModel::from(vec![
+        "Ctrl+Shift+G".into(),
+        "Ctrl+Shift+H".into(),
+        "Ctrl+Shift+F9".into(),
+    ]));
+    hotkeys
+}
+
+#[test]
+fn hotkey_health_in_settings_and_the_welcome_tour() {
+    let h = Harness::new(SettingsPage::new, SETTINGS.0, SETTINGS.1);
+    fixture::settings(&h.component);
+    h.component
+        .set_hotkeys(ModelRc::new(VecModel::from(health_hotkeys())));
+    assert_golden("settings-hotkey-health-light", &render(&h));
+    let h = Harness::new(OnboardingWindow::new, ONBOARDING.0, ONBOARDING.1);
+    fixture::onboarding(&h.component, 1);
+    h.component
+        .set_hotkeys(ModelRc::new(VecModel::from(health_hotkeys())));
+    assert_golden("onboarding-shortcuts-health-light", &render(&h));
+}
+
+#[test]
+fn settings_search_filters_rows_and_hides_empty_sections() {
+    use slint::Global;
+    for (query, name) in [
+        ("tray", "settings-search-tray-light"),
+        ("zzzz", "settings-search-none-light"),
+    ] {
+        let h = Harness::new(SettingsPage::new, SETTINGS.0, SETTINGS.1);
+        fixture::settings(&h.component);
+        snipdeck_ui::SettingsFilter::get(&h.component)
+            .on_matches(|text, query| text.to_lowercase().contains(&query.to_lowercase()));
+        snipdeck_ui::SettingsFilter::get(&h.component).set_query(query.into());
+        assert_golden(name, &render(&h));
+    }
+}
+
+#[test]
+fn settings_page_recording_a_shortcut() {
+    let h = Harness::new(SettingsPage::new, SETTINGS.0, SETTINGS.1);
+    fixture::settings(&h.component);
+    let _ = render(&h);
+    // Tab to the first recorder (the page itself is the first stop) and start recording with Enter.
+    press(h.component.window(), &key(Key::Tab));
+    press(h.component.window(), &key(Key::Tab));
+    press(h.component.window(), "\n");
+    assert_golden("settings-recording-light", &render(&h));
+}
+
+/// The welcome tour: every step light, and the first step dark. Goldens are generated by the owner
+/// (`UPDATE_GOLDEN=1 cargo test -p snipdeck-ui --test editors`), then looked at.
+#[test]
+fn onboarding_each_step_light_and_the_welcome_dark() {
+    for (step, name) in [
+        "onboarding-welcome-light",
+        "onboarding-shortcuts-light",
+        "onboarding-panel-light",
+        "onboarding-startup-light",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let h = Harness::new(OnboardingWindow::new, ONBOARDING.0, ONBOARDING.1);
+        fixture::onboarding(&h.component, i32::try_from(step).expect("step"));
+        assert_golden(name, &render(&h));
+    }
+    let h = Harness::new(OnboardingWindow::new, ONBOARDING.0, ONBOARDING.1);
+    h.component.set_dark(true);
+    fixture::onboarding(&h.component, 0);
+    assert_golden("onboarding-welcome-dark", &render(&h));
+}
+
+#[test]
+fn form_controls_in_every_state() {
+    use snipdeck_ui::FormControlsGallery;
+    let h = Harness::new(FormControlsGallery::new, 520, 760);
+    assert_golden("formctl-light", &render(&h));
+    h.component.invoke_focus_seg();
+    assert_golden("formctl-focus-segmented-light", &render(&h));
+    h.component.invoke_focus_num();
+    assert_golden("formctl-focus-stepper-light", &render(&h));
+    h.component.invoke_focus_sel();
+    h.component.set_sel_open(true);
+    assert_golden("formctl-select-open-light", &render(&h));
+    drop(h);
+
+    let h = Harness::new(FormControlsGallery::new, 520, 760);
+    h.component.set_dark(true);
+    h.component.set_sel(3);
+    h.component.set_num(480);
+    assert_golden("formctl-dark", &render(&h));
+    h.component.set_sel_open(true);
+    h.component.invoke_focus_sel();
+    assert_golden("formctl-select-open-dark", &render(&h));
+}
+
+#[test]
+fn help_troubleshoot_with_a_failing_row_light_and_dark() {
+    let h = Harness::new(HelpWindow::new, HELP.0, HELP.1);
+    fixture::help(&h.component);
+    assert_golden("help-troubleshoot-light", &render(&h));
+    drop(h);
+
+    let h = Harness::new(HelpWindow::new, HELP.0, HELP.1);
+    h.component.set_dark(true);
+    fixture::help(&h.component);
+    assert_golden("help-troubleshoot-dark", &render(&h));
+}
+
+#[test]
+fn help_about_light_and_dark() {
+    let h = Harness::new(HelpWindow::new, HELP.0, HELP.1);
+    fixture::help(&h.component);
+    h.component.set_tab(1);
+    h.component.set_has_notices(true);
+    assert_golden("help-about-light", &render(&h));
+    drop(h);
+
+    let h = Harness::new(HelpWindow::new, HELP.0, HELP.1);
+    h.component.set_dark(true);
+    fixture::help(&h.component);
+    h.component.set_tab(1);
+    assert_golden("help-about-dark", &render(&h));
+}
+
+/// The Tips tab: eleven cards (title, two lines, a picture, "Try it") in a scrolling list. The first
+/// four show at the Help window's opening size.
+#[test]
+fn help_tips_light_and_dark() {
+    let h = Harness::new(HelpWindow::new, HELP.0, HELP.1);
+    fixture::help(&h.component);
+    fixture::tips(&h.component);
+    h.component.set_tab(3);
+    assert_golden("help-tips-light", &render(&h));
+    drop(h);
+
+    let h = Harness::new(HelpWindow::new, HELP.0, HELP.1);
+    h.component.set_dark(true);
+    fixture::help(&h.component);
+    fixture::tips(&h.component);
+    h.component.set_tab(3);
+    assert_golden("help-tips-dark", &render(&h));
+}
+
+/// The Tips tab on the Free plan: the cards of Supporter features carry the Supporter mark beside the title.
+#[test]
+fn help_tips_free_plan_marks_the_supporter_cards() {
+    let h = Harness::new(HelpWindow::new, HELP.0, HELP.1 * 2);
+    fixture::help(&h.component);
+    fixture::tips_on(&h.component, true);
+    h.component.set_tab(3);
+    assert_golden("help-tips-free-light", &render(&h));
+}
+
+/// The Tips tab at the Help window's smallest size: the cards keep their picture and button and the
+/// list scrolls.
+#[test]
+fn help_tips_at_the_minimum_size() {
+    let h = Harness::new(HelpWindow::new, 420, 360);
+    fixture::help(&h.component);
+    fixture::tips(&h.component);
+    h.component.set_tab(3);
+    assert_golden("help-tips-min-light", &render(&h));
+}

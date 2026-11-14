@@ -366,6 +366,19 @@ fn an_overflowing_bar_scrolls_to_reveal_the_selected_tab() {
     assert!(ui.get_overflow_scroll_x() < -1.0);
 }
 
+fn an_overflowing_bar_shows_a_caret_on_each_side_that_has_more_tabs() {
+    let ui = start(TabsGallery::new);
+    settle();
+    // Scrolled to the start: more tabs lie to the right only.
+    assert!(missing(&ui, "Tabs left", AccessibleRole::Button));
+    find(&ui, "Tabs right", AccessibleRole::Button).invoke_accessible_default_action();
+    settle();
+    assert!(ui.get_overflow_scroll_x() < -1.0, "the caret scrolls the tabs");
+    let _ = find(&ui, "Tabs left", AccessibleRole::Button);
+    // A bar whose tabs all fit has no carets.
+    assert_eq!(all(&ui, "Tabs right", AccessibleRole::Button).len(), 1);
+}
+
 // ---------------------------------------------------------------------------------------------
 // HotkeyRecorder
 // ---------------------------------------------------------------------------------------------
@@ -566,6 +579,8 @@ fn template_choice_is_a_radio_group_with_one_checked_option() {
 fn template_choice_keyboard_navigation() {
     let ui = start(FormGallery::new);
     ui.invoke_focus_choice();
+    // The focus request is handled by a change handler, which the real event loop runs between events.
+    settle();
     assert_eq!(ui.get_tf_choice(), 1);
     press(ui.window(), &key(Key::DownArrow));
     assert_eq!(ui.get_tf_choice(), 2);

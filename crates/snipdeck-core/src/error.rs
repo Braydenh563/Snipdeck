@@ -15,6 +15,18 @@ pub enum Error {
     /// A [`Name`](crate::Name) contained a control character such as a newline.
     #[error("name contains a control character")]
     NameHasControlChar,
+    /// A [`Trigger`](crate::Trigger) was empty.
+    #[error("a trigger needs at least one character")]
+    EmptyTrigger,
+    /// A [`Trigger`](crate::Trigger) was longer than the matcher's buffer.
+    #[error("a trigger is longer than {max} characters")]
+    TriggerTooLong {
+        /// The limit that was exceeded.
+        max: usize,
+    },
+    /// A [`Trigger`](crate::Trigger) held whitespace or a control character.
+    #[error("a trigger cannot contain a space or control character")]
+    TriggerHasSpace,
     /// [`Formats`](crate::Formats) was given no formats.
     #[error("an item needs at least one format")]
     NoFormats,
@@ -47,7 +59,7 @@ pub enum Error {
         /// The rejected input.
         value: String,
     },
-    /// The action needs Snipdeck Pro; the UI answers this with the upsell sheet (SPEC §6).
-    #[error("`{0}` needs Snipdeck Pro")]
+    /// The action needs Snipdeck Supporter; the UI answers this with the upsell sheet (SPEC §6).
+    #[error("`{0}` needs Snipdeck Supporter")]
     ProRequired(Feature),
 }

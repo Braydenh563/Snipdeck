@@ -57,6 +57,14 @@ pub enum Key {
     V,
     /// The `Insert` key (an extended key on Windows).
     Insert,
+    /// The `Left` arrow (an extended key on Windows), pressed to move the caret back after a
+    /// paste (`{cursor}`).
+    Left,
+    /// `Backspace`: erases a typed trigger before the item is pasted over it.
+    Backspace,
+    /// `Tab`: given back to the app when the typing hook swallowed one for a suggestion hint
+    /// that was gone by then.
+    Tab,
     /// An unassigned virtual key, pressed and released while `Alt` or `Win` is held so that
     /// releasing it does not open a menu bar or the Start menu.
     Mask,
@@ -69,6 +77,22 @@ pub struct KeyEvent {
     pub key: Key,
     /// `true` for a press, `false` for a release.
     pub down: bool,
+}
+
+/// The most Backspaces one expansion injects; a trigger is far shorter.
+pub const MAX_BACKSPACES: usize = 64;
+
+/// `count` Backspace presses (each a press and a release), at most [`MAX_BACKSPACES`]. A typed
+/// trigger is erased with these before the item's normal paste.
+pub fn backspaces(count: usize) -> Vec<KeyEvent> {
+    (0..count.min(MAX_BACKSPACES))
+        .flat_map(|_| {
+            [true, false].map(|down| KeyEvent {
+                key: Key::Backspace,
+                down,
+            })
+        })
+        .collect()
 }
 
 /// The key chord a Target uses to paste.
@@ -101,10 +125,11 @@ impl PasteKey {
     }
 }
 
-/// Apps whose paste key is not `Ctrl+V`, by lower-case executable name. Everything else uses
-/// `Ctrl+V` (Windows Terminal, conhost, PowerShell and cmd accept it). **Unverified**: the
-/// terminal rows come from each app's documented defaults, not from a Windows run (S1 step 9).
-const PASTE_KEY_TABLE: &[(&str, PasteKey)] = &[
+/// Programs whose paste key is not `Ctrl+V`, by lower-case executable name: the rules a new
+/// settings file starts with (Settings > Programs). Everything else uses `Ctrl+V` (Windows
+/// Terminal, conhost, PowerShell and cmd accept it). **Unverified**: the terminal rows come
+/// from each app's documented defaults, not from a Windows run (S1 step 9).
+pub const BUILTIN_PASTE_KEYS: &[(&str, PasteKey)] = &[
     ("mintty.exe", PasteKey::ShiftInsert),
     ("putty.exe", PasteKey::ShiftInsert),
     ("kitty.exe", PasteKey::ShiftInsert),
@@ -112,12 +137,34 @@ const PASTE_KEY_TABLE: &[(&str, PasteKey)] = &[
     ("wezterm-gui.exe", PasteKey::CtrlShiftV),
 ];
 
-/// The paste key for the app with this executable file name (case-insensitive).
-pub fn paste_key_for(exe: &str) -> PasteKey {
-    PASTE_KEY_TABLE
+/// The paste key the user chose for one program.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PasteRule {
+    /// The executable file name (case-insensitive).
+    pub exe: String,
+    /// What to press there.
+    pub key: PasteKey,
+}
+
+/// [`BUILTIN_PASTE_KEYS`] as rules.
+pub fn builtin_paste_rules() -> Vec<PasteRule> {
+    BUILTIN_PASTE_KEYS
         .iter()
-        .find(|(name, _)| name.eq_ignore_ascii_case(exe))
-        .map_or(PasteKey::CtrlV, |&(_, key)| key)
+        .map(|&(exe, key)| PasteRule {
+            exe: exe.to_owned(),
+            key,
+        })
+        .collect()
+}
+
+/// The paste key for the app with this executable file name (case-insensitive): its rule, or
+/// `Ctrl+V` when it has none. The built-in table is not consulted here: a settings file starts
+/// with it as rules, so that removing a row means `Ctrl+V` again.
+pub fn paste_key_for(exe: &str, rules: &[PasteRule]) -> PasteKey {
+    rules
+        .iter()
+        .find(|r| r.exe.eq_ignore_ascii_case(exe))
+        .map_or(PasteKey::CtrlV, |r| r.key)
 }
 
 fn event(key: Key, down: bool) -> KeyEvent {
@@ -169,6 +216,20 @@ pub fn paste_sequence(held: Modifiers, paste: PasteKey) -> Vec<KeyEvent> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn backspaces_are_press_release_pairs_and_capped() {
+        use super::{Key, MAX_BACKSPACES, backspaces};
+        let four = backspaces(2);
+        assert_eq!(four.len(), 4);
+        assert!(four.iter().all(|e| e.key == Key::Backspace));
+        assert_eq!(
+            four.iter().map(|e| e.down).collect::<Vec<_>>(),
+            [true, false, true, false]
+        );
+        assert_eq!(backspaces(0).len(), 0);
+        assert_eq!(backspaces(10_000).len(), MAX_BACKSPACES * 2);
+    }
+
     use super::*;
 
     const DOWN: bool = true;
@@ -327,11 +388,33 @@ mod tests {
         }
     }
 
+    fn rule(exe: &str, key: PasteKey) -> PasteRule {
+        PasteRule {
+            exe: exe.into(),
+            key,
+        }
+    }
+
     #[test]
-    fn paste_key_table_is_case_insensitive_and_defaults_to_ctrl_v() {
-        assert_eq!(paste_key_for("MinTTY.exe"), PasteKey::ShiftInsert);
-        assert_eq!(paste_key_for("alacritty.exe"), PasteKey::CtrlShiftV);
-        assert_eq!(paste_key_for("notepad.exe"), PasteKey::CtrlV);
-        assert_eq!(paste_key_for(""), PasteKey::CtrlV);
+    fn a_rule_picks_the_paste_key_case_insensitively_and_the_rest_get_ctrl_v() {
+        let rules = [
+            rule("wt.exe", PasteKey::CtrlShiftV),
+            rule("mintty.exe", PasteKey::ShiftInsert),
+        ];
+        assert_eq!(paste_key_for("WT.exe", &rules), PasteKey::CtrlShiftV);
+        assert_eq!(paste_key_for("MinTTY.exe", &rules), PasteKey::ShiftInsert);
+        assert_eq!(paste_key_for("notepad.exe", &rules), PasteKey::CtrlV);
+        assert_eq!(paste_key_for("", &rules), PasteKey::CtrlV);
+        // No built-in fallback: with the row gone the program pastes with Ctrl+V.
+        assert_eq!(paste_key_for("mintty.exe", &[]), PasteKey::CtrlV);
+    }
+
+    #[test]
+    fn the_built_in_rules_are_what_a_new_settings_file_starts_with() {
+        let rules = builtin_paste_rules();
+        assert_eq!(rules.len(), BUILTIN_PASTE_KEYS.len());
+        assert_eq!(paste_key_for("MinTTY.exe", &rules), PasteKey::ShiftInsert);
+        assert_eq!(paste_key_for("alacritty.exe", &rules), PasteKey::CtrlShiftV);
+        assert_eq!(paste_key_for("notepad.exe", &rules), PasteKey::CtrlV);
     }
 }

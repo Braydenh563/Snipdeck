@@ -1,0 +1,620 @@
+//! The Symbols controller: use, add to a list, copy an icon, save it, and the recents.
+
+use std::path::PathBuf;
+
+use snipdeck_core::{ItemKind, UseMode, UseOutcome};
+use snipdeck_platform::file_dialog::{FakeFilePicker, SaveKind};
+use snipdeck_symbols::{Catalog, Kind, SymbolId};
+
+use super::*;
+use crate::controller::{
+    SymbolChoice, SymbolMenuEntry,
+    symbol_ctl::{IconExport, SaveOutcome},
+};
+
+fn emoji() -> SymbolId {
+    SymbolId::Emoji("1f600".into())
+}
+
+fn first_of(kind: Kind) -> SymbolId {
+    let c = Catalog::get();
+    c.symbols()[c.range(kind).start].id.clone()
+}
+
+fn written_text(w: &World, n: usize) -> String {
+    match &w.ctl.services().clipboard.written[n].data()[0] {
+        Data::Text(t) => t.clone(),
+        other => panic!("not text: {other:?}"),
+    }
+}
+
+/// The host's three steps: prepare, ask with the controller released, finish.
+fn save(w: &mut World, id: &SymbolId, export: IconExport, owner: Option<isize>) -> SaveOutcome {
+    let prepared = match w.ctl.prepare_icon_save(id, export) {
+        Ok(prepared) => prepared,
+        Err(outcome) => return outcome,
+    };
+    let answer = prepared.ask(owner);
+    w.ctl.finish_icon_save(&prepared, answer)
+}
+
+fn with_picker(w: &mut World, answer: Option<PathBuf>) -> FakeFilePicker {
+    let picker = FakeFilePicker::default();
+    picker.push_save(Ok(answer));
+    w.ctl.set_file_picker(Box::new(picker.clone()));
+    picker
+}
+
+#[test]
+fn a_click_with_a_target_pastes_the_emoji_text_and_remembers_it() {
+    let mut w = world();
+    let result = w.ctl.use_symbol(&emoji(), UseMode::Paste);
+    assert_eq!(result, UseResult::Done(UseOutcome::Pasted));
+    let services = w.ctl.services();
+    assert_eq!(
+        services.clipboard.written[0].data(),
+        [Data::Text("\u{1F600}".into())]
+    );
+    assert_eq!(services.keyboard.sent.len(), 1, "Ctrl+V went out");
+    assert!(services.timing.slept.contains(&REFOCUS_WAIT));
+    assert_eq!(w.targets.refocus_count(), 1);
+    assert_eq!(
+        w.ctl.symbol_recents(None),
+        [emoji()],
+        "the use is remembered"
+    );
+}
+
+#[test]
+fn shift_copies_and_no_target_copies_without_pressing_keys() {
+    let mut w = world();
+    assert_eq!(
+        w.ctl.use_symbol(&emoji(), UseMode::Copy),
+        UseResult::Done(UseOutcome::Copied)
+    );
+    assert_eq!(w.ctl.services().keyboard.sent.len(), 0);
+    assert_eq!(w.targets.refocus_count(), 0);
+
+    let mut w = world_with(None, Settings::default());
+    assert_eq!(
+        w.ctl.use_symbol(&emoji(), UseMode::Paste),
+        UseResult::Done(UseOutcome::Copied)
+    );
+    assert_eq!(w.ctl.services().keyboard.sent.len(), 0);
+    assert_eq!(written_text(&w, 0), "\u{1F600}");
+}
+
+#[test]
+fn using_a_symbol_does_not_touch_any_item_or_its_use_count() {
+    let mut w = world();
+    w.ctl.use_symbol(&emoji(), UseMode::Paste);
+    for id in w.ids.clone() {
+        assert_eq!(uses(&w, id), 0);
+    }
+}
+
+#[test]
+fn an_icon_is_not_text_so_using_it_fails_and_remembers_nothing() {
+    let mut w = world();
+    let icon = first_of(Kind::Icon);
+    assert_eq!(w.ctl.use_symbol(&icon, UseMode::Paste), UseResult::Failed);
+    assert_eq!(w.ctl.services().clipboard.written.len(), 0);
+    assert_eq!(w.ctl.symbol_recents(None), Vec::<SymbolId>::new());
+}
+
+#[test]
+fn a_busy_clipboard_toasts_and_remembers_nothing() {
+    let mut w = build(Opts {
+        clipboard_busy: true,
+        ..Opts::default()
+    });
+    assert_eq!(w.ctl.use_symbol(&emoji(), UseMode::Copy), UseResult::Failed);
+    assert_eq!(w.ctl.symbol_recents(None), Vec::<SymbolId>::new());
+}
+
+#[test]
+fn add_to_list_creates_a_text_item_at_the_end_of_the_shown_list() {
+    let mut w = world();
+    assert!(
+        w.ctl
+            .add_symbol_to_list(&emoji(), crate::item_editor::Origin::Panel)
+    );
+    let view = w.ctl.view();
+    assert_eq!(view.rows.len(), 5);
+    assert_eq!(view.rows[4].title, "\u{1F600}");
+    assert_eq!(view.rows[4].kind, ItemKind::Text);
+    assert_eq!(
+        view.toast.expect("toast").message,
+        ToastMessage::Saved {
+            list: "Replies".into()
+        }
+    );
+    assert_eq!(w.ctl.symbol_recents(None), [emoji()]);
+}
+
+#[test]
+fn add_to_list_with_no_list_says_so_and_adds_nothing() {
+    let now = at("2026-10-17T09:00:00Z");
+    let mut store = Store::open_in_memory().expect("store");
+    let board = snipdeck_core::Board::new(snipdeck_core::Name::new("Empty").expect("n"), now);
+    store
+        .insert_board(&board, snipdeck_core::Placement::Last)
+        .expect("board");
+    let mut ctl = Controller::new(
+        store,
+        Services {
+            clipboard: FakeClipboard::default(),
+            keyboard: FakeKeyboard::default(),
+            timing: FakeTiming::default(),
+        },
+        Box::new(FakeTargets::new(None)),
+        Box::new(FixedClock::new(now)),
+        Settings::default(),
+        snipdeck_core::Entitlements::new(snipdeck_core::Tier::Pro),
+    )
+    .expect("controller");
+    assert!(!ctl.add_symbol_to_list(&emoji(), crate::item_editor::Origin::Panel));
+    assert_eq!(
+        ctl.view().toast.expect("toast").message,
+        ToastMessage::NoListToSave
+    );
+    assert_eq!(ctl.symbol_recents(None), Vec::<SymbolId>::new());
+}
+
+#[test]
+fn copy_svg_writes_the_icon_markup_with_current_colour() {
+    let mut w = world();
+    let icon = first_of(Kind::Icon);
+    assert!(w.ctl.copy_icon_svg(&icon));
+    let text = written_text(&w, 0);
+    assert!(text.starts_with("<svg"), "{text}");
+    assert!(text.contains(r#"fill="currentColor""#));
+    assert_eq!(w.ctl.symbol_recents(Some(Kind::Icon)), [icon]);
+}
+
+#[test]
+fn copy_png_writes_a_decodable_64_pixel_png_in_the_given_colour() {
+    let mut w = world();
+    let icon = first_of(Kind::Icon);
+    assert!(w.ctl.copy_icon_png(&icon, [200, 10, 10, 255]));
+    let Data::Png(bytes) = &w.ctl.services().clipboard.written[0].data()[0] else {
+        panic!("not a PNG")
+    };
+    let (info, pixels) = decode(bytes);
+    assert_eq!((info.0, info.1), (64, 64));
+    assert!(
+        pixels
+            .chunks(4)
+            .any(|p| p[3] > 0 && p[0] == 200 && p[1] == 10),
+        "some opaque pixel has the colour"
+    );
+}
+
+fn decode(bytes: &[u8]) -> ((u32, u32), Vec<u8>) {
+    let mut reader = png::Decoder::new(std::io::Cursor::new(bytes))
+        .read_info()
+        .expect("png");
+    let mut buf = vec![0; reader.output_buffer_size().expect("size")];
+    let info = reader.next_frame(&mut buf).expect("frame");
+    buf.truncate(info.buffer_size());
+    ((info.width, info.height), buf)
+}
+
+#[test]
+fn copying_an_emoji_as_an_icon_does_nothing() {
+    let mut w = world();
+    assert!(!w.ctl.copy_icon_svg(&emoji()));
+    assert!(!w.ctl.copy_icon_png(&emoji(), [0, 0, 0, 255]));
+    assert_eq!(w.ctl.services().clipboard.written.len(), 0);
+}
+
+#[test]
+fn save_as_writes_the_file_the_picker_returns_and_suggests_the_icon_name() {
+    let dir = tempfile::tempdir().expect("dir");
+    let target = dir.path().join("out.svg");
+    let mut w = world();
+    let picker = with_picker(&mut w, Some(target.clone()));
+    let icon = first_of(Kind::Icon);
+    let SymbolId::Icon(name) = icon.clone() else {
+        panic!("not an icon")
+    };
+    let result = save(&mut w, &icon, IconExport::Svg, Some(9));
+    assert_eq!(result, SaveOutcome::Saved(target.clone()));
+    let text = std::fs::read_to_string(&target).expect("file");
+    assert!(text.starts_with("<svg"));
+    assert_eq!(picker.asked_save(), [(SaveKind::Svg, name, Some(9))]);
+    assert_eq!(w.ctl.symbol_recents(None), [icon]);
+}
+
+#[test]
+fn save_as_png_writes_a_png_of_the_chosen_size() {
+    let dir = tempfile::tempdir().expect("dir");
+    let target = dir.path().join("out.png");
+    let mut w = world();
+    let picker = with_picker(&mut w, Some(target.clone()));
+    let icon = first_of(Kind::Icon);
+    let result = save(
+        &mut w,
+        &icon,
+        IconExport::Png {
+            px: 128,
+            rgba: [200, 10, 10, 255],
+        },
+        None,
+    );
+    assert_eq!(result, SaveOutcome::Saved(target.clone()));
+    let (size, pixels) = decode(&std::fs::read(&target).expect("file"));
+    assert_eq!(size, (128, 128));
+    assert!(
+        pixels
+            .chunks(4)
+            .any(|p| p[3] > 0 && p[0] == 200 && p[1] == 10),
+        "some opaque pixel has the given text colour, not a fixed one"
+    );
+    assert_eq!(picker.asked_save()[0].0, SaveKind::Png);
+}
+
+#[test]
+fn cancelling_the_dialog_writes_nothing_and_remembers_nothing() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut w = world();
+    with_picker(&mut w, None);
+    let icon = first_of(Kind::Icon);
+    assert_eq!(
+        save(&mut w, &icon, IconExport::Svg, None),
+        SaveOutcome::Cancelled
+    );
+    assert_eq!(std::fs::read_dir(dir.path()).expect("dir").count(), 0);
+    assert_eq!(w.ctl.symbol_recents(None), Vec::<SymbolId>::new());
+}
+
+#[test]
+fn a_path_that_cannot_be_written_is_a_failure_with_a_toast() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut w = world();
+    with_picker(
+        &mut w,
+        Some(dir.path().join("no-such-folder").join("x.svg")),
+    );
+    let icon = first_of(Kind::Icon);
+    assert_eq!(
+        save(&mut w, &icon, IconExport::Svg, None),
+        SaveOutcome::Failed
+    );
+    assert!(w.ctl.view().toast.is_some());
+}
+
+#[test]
+fn without_a_file_dialog_save_as_is_unavailable() {
+    let mut w = world();
+    let icon = first_of(Kind::Icon);
+    assert_eq!(
+        save(&mut w, &icon, IconExport::Svg, None),
+        SaveOutcome::Unavailable
+    );
+}
+
+#[test]
+fn recents_are_newest_first_stamped_by_the_injected_clock_and_kept_in_settings() {
+    let mut w = world();
+    let a = emoji();
+    let b = SymbolId::Emoji("1f601".into());
+    w.ctl.use_symbol(&a, UseMode::Copy);
+    w.clock.set(at("2026-10-17T10:31:00Z"));
+    w.ctl.use_symbol(&b, UseMode::Copy);
+    w.clock.set(at("2026-10-17T10:32:00Z"));
+    w.ctl.use_symbol(&a, UseMode::Copy);
+    assert_eq!(w.ctl.symbol_recents(None), [a.clone(), b.clone()]);
+    let saved = &w.ctl.settings().symbols_recent;
+    assert_eq!(saved[0].id, a.key());
+    assert_eq!(
+        saved[0].used_at,
+        at("2026-10-17T10:32:00Z").as_millisecond()
+    );
+    assert_eq!(
+        saved[1].used_at,
+        at("2026-10-17T10:31:00Z").as_millisecond()
+    );
+}
+
+#[test]
+fn recents_round_trip_through_the_settings_file_and_drop_unknown_ids() {
+    let mut w = world();
+    w.ctl.use_symbol(&emoji(), UseMode::Copy);
+    let json = serde_json::to_string(w.ctl.settings()).expect("json");
+    let back = Settings::from_json(&json);
+    assert_eq!(back.symbols_recent, w.ctl.settings().symbols_recent);
+
+    let w2 = world_with(
+        Some(outlook()),
+        Settings {
+            symbols_recent: vec![
+                snipdeck_symbols::RecentEntry {
+                    id: "emoji:ffffff-not-real".into(),
+                    used_at: 5,
+                },
+                snipdeck_symbols::RecentEntry {
+                    id: emoji().key(),
+                    used_at: 4,
+                },
+            ],
+            ..Settings::default()
+        },
+    );
+    assert_eq!(w2.ctl.symbol_recents(None), [emoji()]);
+}
+
+/// Snipdeck's own clipboard writes are marked as own by the clipboard owner window (every write
+/// through the `Clipboard` trait, `clipboard_watch::ClipboardChange::own`), so the Recent inbox
+/// skips them. Symbols must use the same write calls as a snippet, not a path of their own.
+#[test]
+fn symbol_pastes_and_icon_copies_write_the_clipboard_like_a_snippet_does() {
+    let mut w = world();
+    let item = w.ids[0];
+    w.ctl.use_item(item, UseMode::Paste);
+    let snippet_log = w.ctl.services().clipboard.log.clone();
+    let mut w = world();
+    w.ctl.use_symbol(&emoji(), UseMode::Paste);
+    let strip = |log: &[String]| -> Vec<String> {
+        log.iter()
+            .map(|l| l.split(':').next().unwrap_or("").to_owned())
+            .collect()
+    };
+    assert_eq!(strip(&w.ctl.services().clipboard.log), strip(&snippet_log));
+
+    let mut w = world();
+    w.ctl.use_symbol(&emoji(), UseMode::Copy);
+    assert_eq!(strip(&w.ctl.services().clipboard.log), ["persistent"]);
+    let mut w = world();
+    assert!(w.ctl.copy_icon_svg(&first_of(Kind::Icon)));
+    assert_eq!(strip(&w.ctl.services().clipboard.log), ["persistent"]);
+}
+
+#[test]
+fn save_as_asks_with_no_controller_borrow_and_finishes_with_the_answer() {
+    // The dialog is asked on the value `prepare_icon_save` returned, not through the controller.
+    let dir = tempfile::tempdir().expect("dir");
+    let target = dir.path().join("out.svg");
+    let mut w = world();
+    let picker = with_picker(&mut w, Some(target.clone()));
+    let icon = first_of(Kind::Icon);
+    let prepared = w
+        .ctl
+        .prepare_icon_save(&icon, IconExport::Svg)
+        .expect("prepared");
+    assert!(picker.asked_save().is_empty(), "preparing opens nothing");
+    let answer = prepared.ask(None);
+    assert_eq!(picker.asked_save().len(), 1);
+    assert_eq!(
+        w.ctl.finish_icon_save(&prepared, answer),
+        SaveOutcome::Saved(target)
+    );
+}
+
+#[test]
+fn save_as_appends_the_kinds_extension_only_when_the_name_lacks_it() {
+    let icon = first_of(Kind::Icon);
+    for (typed, saved) in [
+        ("logo.v2", "logo.v2.svg"),
+        ("x.svg", "x.svg"),
+        ("X.SVG", "X.SVG"),
+        ("logo.txt", "logo.txt.svg"),
+        ("plain", "plain.svg"),
+    ] {
+        let dir = tempfile::tempdir().expect("dir");
+        let mut w = world();
+        with_picker(&mut w, Some(dir.path().join(typed)));
+        let outcome = save(&mut w, &icon, IconExport::Svg, None);
+        let written = dir.path().join(saved);
+        assert_eq!(outcome, SaveOutcome::Saved(written.clone()), "{typed}");
+        assert!(written.exists(), "{typed} -> {saved}");
+        assert_eq!(
+            w.ctl.view().toast.expect("toast").message,
+            ToastMessage::IconSaved { name: saved.into() }
+        );
+    }
+}
+
+#[test]
+fn save_as_leaves_no_temporary_file_and_replaces_an_existing_file_whole() {
+    let dir = tempfile::tempdir().expect("dir");
+    let target = dir.path().join("out.svg");
+    std::fs::write(&target, "old").expect("old file");
+    let mut w = world();
+    with_picker(&mut w, Some(target.clone()));
+    save(&mut w, &first_of(Kind::Icon), IconExport::Svg, None);
+    assert!(
+        std::fs::read_to_string(&target)
+            .expect("file")
+            .starts_with("<svg")
+    );
+    let names: Vec<_> = std::fs::read_dir(dir.path())
+        .expect("dir")
+        .map(|e| e.expect("entry").file_name())
+        .collect();
+    assert_eq!(names.len(), 1, "only the target remains: {names:?}");
+}
+
+#[test]
+fn a_dialog_that_fails_is_a_failure_with_a_toast_and_remembers_nothing() {
+    let mut w = world();
+    let picker = FakeFilePicker::default();
+    picker.push_save(Err(snipdeck_platform::error::Error::Unavailable(
+        "no dialog",
+    )));
+    w.ctl.set_file_picker(Box::new(picker));
+    let icon = first_of(Kind::Icon);
+    assert_eq!(
+        save(&mut w, &icon, IconExport::Svg, None),
+        SaveOutcome::Failed
+    );
+    assert!(w.ctl.view().toast.is_some());
+    assert_eq!(w.ctl.symbol_recents(None), Vec::<SymbolId>::new());
+}
+
+#[test]
+fn add_to_list_on_an_icon_says_icons_cannot_be_added_yet() {
+    let mut w = world();
+    let icon = first_of(Kind::Icon);
+    assert!(
+        !w.ctl
+            .add_symbol_to_list(&icon, crate::item_editor::Origin::Panel)
+    );
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::IconNotAddable
+    );
+    assert_eq!(w.ctl.view().rows.len(), 4, "nothing was added");
+}
+
+const INK: [u8; 4] = [1, 2, 3, 255];
+
+fn menu_of(w: &mut World, id: &SymbolId) -> Vec<SymbolMenuEntry> {
+    w.ctl.open_symbol_menu(id.clone());
+    w.ctl.view().symbol_menu.expect("the symbol menu is open")
+}
+
+#[test]
+fn the_menu_of_an_emoji_and_a_kaomoji_is_paste_copy_and_add_to_the_shown_list() {
+    let mut w = world();
+    let add = SymbolMenuEntry::AddToList {
+        list: Some("Replies".into()),
+        enabled: true,
+    };
+    for id in [emoji(), first_of(Kind::Kaomoji)] {
+        assert_eq!(
+            menu_of(&mut w, &id),
+            [SymbolMenuEntry::Paste, SymbolMenuEntry::Copy, add.clone()]
+        );
+        w.ctl.close_item_menu();
+        assert!(w.ctl.view().symbol_menu.is_none());
+    }
+}
+
+#[test]
+fn the_menu_of_an_icon_adds_copy_svg_copy_png_and_save_as_when_a_dialog_exists() {
+    let mut w = world();
+    let icon = first_of(Kind::Icon);
+    let without_dialog = menu_of(&mut w, &icon);
+    assert!(without_dialog.contains(&SymbolMenuEntry::CopySvg));
+    assert!(without_dialog.contains(&SymbolMenuEntry::CopyPng));
+    assert!(
+        !without_dialog.contains(&SymbolMenuEntry::SaveAsSvg),
+        "no file dialog, no Save as"
+    );
+    with_picker(&mut w, None);
+    let entries = menu_of(&mut w, &icon);
+    assert_eq!(
+        entries,
+        [
+            SymbolMenuEntry::Paste,
+            SymbolMenuEntry::Copy,
+            SymbolMenuEntry::AddToList {
+                list: Some("Replies".into()),
+                enabled: false,
+            },
+            SymbolMenuEntry::Separator,
+            SymbolMenuEntry::CopySvg,
+            SymbolMenuEntry::CopyPng,
+            SymbolMenuEntry::SaveAsSvg,
+            SymbolMenuEntry::SaveAsPng,
+        ]
+    );
+}
+
+#[test]
+fn choosing_paste_copy_and_add_runs_the_symbol_actions() {
+    let mut w = world();
+    w.ctl.open_symbol_menu(emoji());
+    assert!(matches!(
+        w.ctl.choose_symbol_menu(0, INK),
+        SymbolChoice::Done(_)
+    ));
+    assert_eq!(
+        w.ctl.services().keyboard.sent.len(),
+        1,
+        "Paste pressed Ctrl+V"
+    );
+    assert!(w.ctl.view().symbol_menu.is_none(), "the menu closed");
+    w.ctl.open_symbol_menu(emoji());
+    w.ctl.choose_symbol_menu(1, INK);
+    assert_eq!(
+        w.ctl.services().keyboard.sent.len(),
+        1,
+        "Copy pressed nothing"
+    );
+    assert_eq!(w.ctl.services().clipboard.written.len(), 2);
+    w.ctl.open_symbol_menu(emoji());
+    w.ctl.choose_symbol_menu(2, INK);
+    assert_eq!(w.ctl.view().rows.len(), 5, "Add to list added the item");
+}
+
+#[test]
+fn choosing_copy_svg_writes_the_svg_text_through_the_clipboard() {
+    let mut w = world();
+    let icon = first_of(Kind::Icon);
+    w.ctl.open_symbol_menu(icon.clone());
+    let at = menu_of(&mut w, &icon)
+        .iter()
+        .position(|e| *e == SymbolMenuEntry::CopySvg)
+        .expect("Copy SVG");
+    assert!(matches!(
+        w.ctl.choose_symbol_menu(at, INK),
+        SymbolChoice::Done(_)
+    ));
+    assert!(written_text(&w, 0).contains("<svg"));
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::Copied
+    );
+}
+
+#[test]
+fn choosing_copy_png_writes_a_png() {
+    let mut w = world();
+    let icon = first_of(Kind::Icon);
+    let at = menu_of(&mut w, &icon)
+        .iter()
+        .position(|e| *e == SymbolMenuEntry::CopyPng)
+        .expect("Copy PNG");
+    w.ctl.choose_symbol_menu(at, INK);
+    assert!(matches!(
+        w.ctl.services().clipboard.written[0].data()[0],
+        Data::Png(_)
+    ));
+}
+
+#[test]
+fn choosing_save_as_hands_back_the_save_and_the_fake_dialog_reaches_finish() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut w = world();
+    let picker = with_picker(&mut w, Some(dir.path().join("pick")));
+    let icon = first_of(Kind::Icon);
+    let at = menu_of(&mut w, &icon)
+        .iter()
+        .position(|e| *e == SymbolMenuEntry::SaveAsPng)
+        .expect("Save as PNG");
+    let SymbolChoice::Save(id, export) = w.ctl.choose_symbol_menu(at, INK) else {
+        panic!("Save as asks for the dialog");
+    };
+    assert_eq!(id, icon);
+    assert!(matches!(export, IconExport::Png { rgba: INK, .. }));
+    assert!(w.ctl.view().symbol_menu.is_none(), "the menu closed first");
+    assert_eq!(
+        save(&mut w, &id, export, Some(7)),
+        SaveOutcome::Saved(dir.path().join("pick.png"))
+    );
+    assert_eq!(picker.asked_save().len(), 1);
+}
+
+#[test]
+fn a_menu_entry_that_is_not_there_closes_the_menu_and_does_nothing() {
+    let mut w = world();
+    w.ctl.open_symbol_menu(emoji());
+    assert!(matches!(
+        w.ctl.choose_symbol_menu(99, INK),
+        SymbolChoice::None
+    ));
+    assert!(w.ctl.view().symbol_menu.is_none());
+    assert_eq!(w.ctl.services().clipboard.written.len(), 0);
+}

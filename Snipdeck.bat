@@ -16,7 +16,10 @@ if errorlevel 1 (
 )
 :havePS
 rem Started by double-click? Then the PowerShell side keeps the window open after information commands.
-echo %cmdcmdline% | find /i "%~nx0" >nul && set "SNIPDECK_DBLCLICK=1"
+rem The command line can hold special characters from the folder name: keep it inside quotes (quotes dropped) and test by substitution.
+set "CL=%cmdcmdline:"=%"
+call set "R=%%CL:%~nx0=%%"
+if not "%R%"=="%CL%" set "SNIPDECK_DBLCLICK=1"
 "%PS%" -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\launcher\snipdeck.ps1" %*
 set "CODE=%ERRORLEVEL%"
 if not "%CODE%"=="0" (

@@ -1,0 +1,139 @@
+{
+ "version": 1,
+ "note": "sha256 of every download; scripts/symbols.py refuses a mismatch. Re-pin with --pin after reviewing upstream changes.",
+ "sources": {
+  "emoji-test": {
+   "url": "https://www.unicode.org/Public/emoji/latest/emoji-test.txt",
+   "licence": "Unicode-3.0",
+   "what": "emoji set and order (Version 18.0 at pin time)",
+   "sha256": "8f3735cda1f92a779d78af67cf86066bb1f07143dc22f2ac29394d9bc57ab21a",
+   "bytes": 671655
+  },
+  "cldr-annotations-en": {
+   "url": "https://raw.githubusercontent.com/unicode-org/cldr-json/49.0.0/cldr-json/cldr-annotations-full/annotations/en/annotations.json",
+   "licence": "Unicode-3.0",
+   "what": "CLDR 49.0.0 names and keywords, en",
+   "sha256": "6b6b6e0e5f211bc31cf3fa39f385d80dea6cd19ee19bbc6db9071fce3ae5d360",
+   "bytes": 440667
+  },
+  "cldr-derived-en": {
+   "url": "https://raw.githubusercontent.com/unicode-org/cldr-json/49.0.0/cldr-json/cldr-annotations-derived-full/annotationsDerived/en/annotations.json",
+   "licence": "Unicode-3.0",
+   "what": "CLDR 49.0.0 derived annotations, en",
+   "sha256": "7aad034f689cb6553f8d7366bfee8c4ea2818c7776907bc5118aab575223dea3",
+   "bytes": 785793
+  },
+  "cldr-annotations-de": {
+   "url": "https://raw.githubusercontent.com/unicode-org/cldr-json/49.0.0/cldr-json/cldr-annotations-full/annotations/de/annotations.json",
+   "licence": "Unicode-3.0",
+   "what": "CLDR 49.0.0 names and keywords, de",
+   "sha256": "4cf155867afb33b66b935edaac882e316c9c96a675e9c4a39af35c07f382d87c",
+   "bytes": 452118
+  },
+  "cldr-derived-de": {
+   "url": "https://raw.githubusercontent.com/unicode-org/cldr-json/49.0.0/cldr-json/cldr-annotations-derived-full/annotationsDerived/de/annotations.json",
+   "licence": "Unicode-3.0",
+   "what": "CLDR 49.0.0 derived annotations, de",
+   "sha256": "f16e90bd7b197dbfa40ffc42ca284e01e4e614bd4f1c7874b67e244056699fb7",
+   "bytes": 753431
+  },
+  "cldr-annotations-es": {
+   "url": "https://raw.githubusercontent.com/unicode-org/cldr-json/49.0.0/cldr-json/cldr-annotations-full/annotations/es/annotations.json",
+   "licence": "Unicode-3.0",
+   "what": "CLDR 49.0.0 names and keywords, es",
+   "sha256": "f4149459f74207b235e673f62f5671c06ac97ae53f2c1d100e1eae40e54c5306",
+   "bytes": 407175
+  },
+  "cldr-derived-es": {
+   "url": "https://raw.githubusercontent.com/unicode-org/cldr-json/49.0.0/cldr-json/cldr-annotations-derived-full/annotationsDerived/es/annotations.json",
+   "licence": "Unicode-3.0",
+   "what": "CLDR 49.0.0 derived annotations, es",
+   "sha256": "d504c1a0db44fd17431b61bc4bcf07cf26ff1159d7d9fff9b7164736016bffd7",
+   "bytes": 683683
+  },
+  "cldr-annotations-fr": {
+   "url": "https://raw.githubusercontent.com/unicode-org/cldr-json/49.0.0/cldr-json/cldr-annotations-full/annotations/fr/annotations.json",
+   "licence": "Unicode-3.0",
+   "what": "CLDR 49.0.0 names and keywords, fr",
+   "sha256": "8448e38ec2e5a377dbaa0b9a552b46cb1d1674c972208836ab5ab52311600f1d",
+   "bytes": 470988
+  },
+  "cldr-derived-fr": {
+   "url": "https://raw.githubusercontent.com/unicode-org/cldr-json/49.0.0/cldr-json/cldr-annotations-derived-full/annotationsDerived/fr/annotations.json",
+   "licence": "Unicode-3.0",
+   "what": "CLDR 49.0.0 derived annotations, fr",
+   "sha256": "3d059cc0b6fd6b9f47f600b5e55e1c2940a42eafc554f346e1e23362bfb7a9b5",
+   "bytes": 789073
+  },
+  "cldr-annotations-ja": {
+   "url": "https://raw.githubusercontent.com/unicode-org/cldr-json/49.0.0/cldr-json/cldr-annotations-full/annotations/ja/annotations.json",
+   "licence": "Unicode-3.0",
+   "what": "CLDR 49.0.0 names and keywords, ja",
+   "sha256": "e42dacabf2eee0aab36c168c995efeaf8add896f8940c5ee86a809d85c2816e7",
+   "bytes": 440358
+  },
+  "cldr-derived-ja": {
+   "url": "https://raw.githubusercontent.com/unicode-org/cldr-json/49.0.0/cldr-json/cldr-annotations-derived-full/annotationsDerived/ja/annotations.json",
+   "licence": "Unicode-3.0",
+   "what": "CLDR 49.0.0 derived annotations, ja",
+   "sha256": "3d83cf7e4093f7fe77055dc21b1a3a65cd8f48a0249127552d58d3b058dbe4cd",
+   "bytes": 741036
+  },
+  "cldr-annotations-pt": {
+   "url": "https://raw.githubusercontent.com/unicode-org/cldr-json/49.0.0/cldr-json/cldr-annotations-full/annotations/pt/annotations.json",
+   "licence": "Unicode-3.0",
+   "what": "CLDR 49.0.0 names and keywords, pt",
+   "sha256": "a64a01f9906ec754487d4d903caa6fb62ee9613047a1c8cfd1c82a0216f0df5e",
+   "bytes": 453344
+  },
+  "cldr-derived-pt": {
+   "url": "https://raw.githubusercontent.com/unicode-org/cldr-json/49.0.0/cldr-json/cldr-annotations-derived-full/annotationsDerived/pt/annotations.json",
+   "licence": "Unicode-3.0",
+   "what": "CLDR 49.0.0 derived annotations, pt",
+   "sha256": "61e65e2bde4519835701c58382d8ca531216ad4fa1d8bc3804577a5d9f4a01f1",
+   "bytes": 723114
+  },
+  "cldr-annotations-zh": {
+   "url": "https://raw.githubusercontent.com/unicode-org/cldr-json/49.0.0/cldr-json/cldr-annotations-full/annotations/zh/annotations.json",
+   "licence": "Unicode-3.0",
+   "what": "CLDR 49.0.0 names and keywords, zh",
+   "sha256": "7d49968f977021fefe6ceea2613e0313de5ea416d8f3c0a8fe3032c9b7f2ebfb",
+   "bytes": 422486
+  },
+  "cldr-derived-zh": {
+   "url": "https://raw.githubusercontent.com/unicode-org/cldr-json/49.0.0/cldr-json/cldr-annotations-derived-full/annotationsDerived/zh/annotations.json",
+   "licence": "Unicode-3.0",
+   "what": "CLDR 49.0.0 derived annotations, zh",
+   "sha256": "1b86f6dd0b295e64efddaf6028151b6c5c95616b8c98c15f5727cff2b2429d48",
+   "bytes": 685122
+  },
+  "licence-unicode": {
+   "url": "https://raw.githubusercontent.com/unicode-org/cldr-json/49.0.0/LICENSE",
+   "licence": "Unicode-3.0",
+   "what": "licence text",
+   "sha256": "220ba0e1c43b99530d2d5bdb892a99dca0989414f51ab695ecd90163eaa1ec3b",
+   "bytes": 2033
+  },
+  "fluent-npm": {
+   "url": "https://registry.npmjs.org/@iconify-json/fluent-emoji-flat/-/fluent-emoji-flat-1.2.6.tgz",
+   "licence": "MIT",
+   "what": "Fluent Emoji Flat (microsoft/fluentui-emoji) repackaged as SVG bodies, 1.2.6",
+   "sha256": "7d064769dee690815f823bc5bcc511d957198caf9f5edd8dd9c1aa48a6aeb175",
+   "bytes": 1172438
+  },
+  "licence-fluent": {
+   "url": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/LICENSE",
+   "licence": "MIT",
+   "what": "licence text (Copyright (c) Microsoft Corporation)",
+   "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+   "bytes": 1141
+  },
+  "phosphor-npm": {
+   "url": "https://registry.npmjs.org/@phosphor-icons/core/-/core-2.1.1.tgz",
+   "licence": "MIT",
+   "what": "Phosphor icons and catalog, 2.1.1",
+   "sha256": "313332be6190b724da24107addd781799b48bf76b13963f24501112ffe1baadd",
+   "bytes": 1443064
+  }
+ }
+}

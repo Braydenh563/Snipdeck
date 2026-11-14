@@ -5,7 +5,12 @@
 //! Like the Panel, matching runs in memory over title, tags and the start of the content.
 
 use std::collections::HashMap;
+use std::rc::Rc;
 
+use crate::{
+    index_cache::IndexCache,
+    search_mark::{self, Marks},
+};
 use snipdeck_core::{BoardId, Item, ItemId, ItemKind, ListAccent, ListId, search::SearchIndex};
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TagRepo};
 
@@ -43,6 +48,8 @@ pub struct Entry {
     pub list: String,
     /// The list's colour, if it has one.
     pub accent: Option<ListAccent>,
+    /// In a search: where the query matched (shared-look spec decision 3).
+    pub marks: Marks,
 }
 
 struct Place {
@@ -57,13 +64,16 @@ struct Place {
 pub struct PickerModel {
     /// Every live item, in library order (board, list, manual order).
     places: Vec<Place>,
-    index: SearchIndex,
+    index: Rc<SearchIndex>,
+    suggest: Rc<crate::search_suggest::Index>,
     /// The board the Panel showed when the Picker opened (the "This board" scope).
     board: Option<BoardId>,
     query: String,
     scope: Scope,
     /// Positions in `places` of the current results, best first.
     results: Vec<usize>,
+    /// The tag that matched, for the results where one did (by position in `places`).
+    tag_hits: HashMap<usize, String>,
     selected: usize,
 }
 
@@ -83,32 +93,40 @@ impl PickerModel {
     /// # Errors
     ///
     /// Any store error.
+    #[cfg(test)]
     pub fn load<S>(store: &S, board: Option<BoardId>) -> snipdeck_store::Result<Self>
     where
         S: BoardRepo + ListRepo + ItemRepo + TagRepo,
     {
-        let tag_names: HashMap<_, _> = store
-            .tags()?
-            .into_iter()
-            .map(|t| (t.id, t.name.as_str().to_owned()))
-            .collect();
-        let mut by_list: HashMap<ListId, Vec<Item>> = HashMap::new();
-        for item in store.all_items()? {
+        Self::load_cached(store, board, &IndexCache::new())
+    }
+
+    /// Reads the whole library through `cache` (read again only when the library changed since).
+    /// `board` is the board the Panel shows, for the "This board" scope. Starts with an empty
+    /// query, the All scope and the first row selected.
+    ///
+    /// # Errors
+    ///
+    /// Any store error.
+    pub fn load_cached<S>(
+        store: &S,
+        board: Option<BoardId>,
+        cache: &IndexCache,
+    ) -> snipdeck_store::Result<Self>
+    where
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+    {
+        let snapshot = cache.snapshot(store)?;
+        let mut by_list: HashMap<ListId, Vec<&Item>> = HashMap::new();
+        for item in &snapshot.all {
             by_list.entry(item.list_id).or_default().push(item);
         }
         let mut places = Vec::new();
-        let mut index = SearchIndex::default();
-        for b in store.boards()? {
-            for l in store.lists(b.id)? {
+        for (b, lists) in &snapshot.boards {
+            for l in lists {
                 for item in by_list.remove(&l.id).unwrap_or_default() {
-                    index.upsert_with_tags(
-                        &item,
-                        item.tags
-                            .iter()
-                            .filter_map(|t| tag_names.get(t).map(String::as_str)),
-                    );
                     places.push(Place {
-                        item,
+                        item: item.clone(),
                         board: b.id,
                         board_name: b.name.as_str().to_owned(),
                         list_name: l.name.as_str().to_owned(),
@@ -117,13 +135,16 @@ impl PickerModel {
                 }
             }
         }
+        let index = Rc::clone(&snapshot.index);
         let mut model = Self {
             places,
             index,
+            suggest: Rc::clone(&snapshot.suggest),
             board,
             query: String::new(),
             scope: Scope::All,
             results: Vec::new(),
+            tag_hits: HashMap::new(),
             selected: 0,
         };
         model.search();
@@ -146,6 +167,7 @@ impl PickerModel {
             .map(|(n, p)| (p.item.id, n))
             .collect();
         let in_scope = |n: &usize| self.in_scope(&self.places[*n]);
+        let mut tag_hits = HashMap::new();
         self.results = if self.query.trim().is_empty() {
             // Nothing typed: what was used most recently first, then most used, then library order.
             let mut all: Vec<usize> = (0..self.places.len()).filter(in_scope).collect();
@@ -161,12 +183,25 @@ impl PickerModel {
             self.index
                 .query(&self.query, self.places.len())
                 .iter()
-                .filter_map(|hit| positions.get(&hit.id).copied())
+                .filter_map(|hit| {
+                    let n = positions.get(&hit.id).copied()?;
+                    if let Some(tag) = &hit.tag {
+                        tag_hits.insert(n, tag.clone());
+                    }
+                    Some(n)
+                })
                 .filter(in_scope)
                 .collect()
         };
+        self.tag_hits = tag_hits;
         self.results.truncate(RESULT_LIMIT);
         self.selected = 0;
+    }
+
+    /// The names the search suggestions are made of.
+    #[must_use]
+    pub fn suggest_index(&self) -> Rc<crate::search_suggest::Index> {
+        Rc::clone(&self.suggest)
     }
 
     /// Sets the search text; the selection returns to the first row.
@@ -200,15 +235,23 @@ impl PickerModel {
             .iter()
             .map(|n| {
                 let p = &self.places[*n];
+                let title = if p.item.title.trim().is_empty() {
+                    p.item.preview.lines().next().unwrap_or_default().to_owned()
+                } else {
+                    p.item.title.clone()
+                };
                 Entry {
                     id: p.item.id,
                     kind: p.item.kind,
                     sensitive: p.item.sensitive,
-                    title: if p.item.title.trim().is_empty() {
-                        p.item.preview.lines().next().unwrap_or_default().to_owned()
-                    } else {
-                        p.item.title.clone()
-                    },
+                    marks: search_mark::marks(
+                        &title,
+                        &p.item.preview,
+                        p.item.sensitive,
+                        self.tag_hits.get(n).map(String::as_str),
+                        &self.query,
+                    ),
+                    title,
                     preview: p.item.preview.clone(),
                     board: p.board_name.clone(),
                     list: p.list_name.clone(),
@@ -315,6 +358,21 @@ mod tests {
         let m = PickerModel::load(&store, None).expect("model");
         assert_eq!(m.item_at(0), Some(thanks));
         assert_eq!(m.item_at(1), Some(office));
+    }
+
+    #[test]
+    fn a_search_marks_the_match_and_no_query_marks_nothing() {
+        let (_store, mut m) = model();
+        assert!(m.rows().iter().all(|r| r.marks == Marks::default()));
+        m.set_query("shopping");
+        let rows = m.rows();
+        assert_ne!(rows.len(), 0, "the picker shows rows");
+        assert!(
+            rows.iter().all(|r| r.marks.title.is_some()
+                || r.marks.preview.is_some()
+                || r.marks.tag.is_some()),
+            "every hit shows where it matched"
+        );
     }
 
     #[test]

@@ -1,6 +1,7 @@
 {
   "id": "S2",
   "title": "IME and CJK input in Slint",
+  "friendly": "Typing Japanese, Chinese and Korean",
   "note": "docs/spikes/S2-ime.md",
   "dir": "spikes/s2-ime",
   "exe": "s2-ime",
@@ -11,7 +12,7 @@
   "captureLines": ["system fallback before override", "found (before window creation)"],
   "tests": [
     {
-      "id": "1", "gate": true,
+      "id": "1", "v1": true, "gate": true,
       "title": "Japanese: inline composition in LineEdit",
       "do": "Switch to JA. Click LineEdit (1). Type nihongo. Press Space. Press Enter.",
       "expect": "While typing, the kana appears INLINE in the field, highlighted, with no floating IME box. After Space: the kanji. After Enter: committed. Log: exactly one 'edited' event. NO 'accepted', NO 'key-pressed <Return>'. Latin is in Plex, kanji in Yu Gothic UI."
@@ -23,13 +24,13 @@
       "expect": "The candidate list is directly BELOW THE START of the composition in the LineEdit (not at the window corner, not at screen 0,0). Arrow Down moves within the list."
     },
     {
-      "id": "3", "gate": true,
+      "id": "3", "v1": true, "gate": true,
       "title": "Chinese Pinyin",
       "do": "Switch to ZH Pinyin. In LineEdit (1) type zhongwen, then press 1 or Space.",
       "expect": "Inline pinyin (zhong'wen) while typing; candidate bar under the field; the Chinese text is committed; one 'edited' event."
     },
     {
-      "id": "4", "gate": true,
+      "id": "4", "v1": true, "gate": true,
       "title": "Korean Hangul",
       "do": "Switch to KO (2-set). In LineEdit (1) type: gksrmf dlqfur",
       "expect": "Hangul input with the space in the right place. Each syllable shows inline while being composed. No doubled or reordered jamo."
@@ -65,7 +66,7 @@
       "expect": "The composition wraps to the next line correctly. Record where the candidate list appears and whether it covers the composition."
     },
     {
-      "id": "10", "gate": true,
+      "id": "10", "v1": true, "gate": true,
       "title": "Custom Plex TextInput",
       "do": "In PlexInput (3) repeat tests 1, 3 and 4.",
       "expect": "Same as 1, 3, 4. The red line below shows the raw composition while composing and is empty after commit. Latin in Plex, kana/kanji in Yu Gothic UI, hanzi in YaHei UI, Hangul in Malgun Gothic."
@@ -95,7 +96,7 @@
       "expect": "Known bug: the composing text is lost. Record the actual behaviour."
     },
     {
-      "id": "15", "gate": true,
+      "id": "15", "v1": true, "gate": true,
       "title": "Switching IME does not freeze the UI (#5206)",
       "do": "With the app focused and the IME set to English, press Win+Space to Microsoft Pinyin, then type. Repeat on Windows 10 if available.",
       "expect": "The heartbeat in the top line keeps counting and input appears. If the heartbeat STOPS, note the renderer and OS build and retry test 17's software renderer."

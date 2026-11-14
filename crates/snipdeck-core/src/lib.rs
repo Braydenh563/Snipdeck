@@ -19,12 +19,14 @@ mod content;
 mod entitlements;
 mod error;
 mod format;
+mod group;
 mod ids;
 mod item;
 mod list;
 mod name;
 mod placement;
 mod tag;
+mod trigger;
 mod usage;
 
 pub mod licence;
@@ -36,13 +38,17 @@ pub use content::{BlobRef, Content, INLINE_LIMIT, Inline};
 pub use entitlements::{Entitlements, Feature, Tier};
 pub use error::Error;
 pub use format::{FileEntry, Format, FormatKind, Formats};
-pub use ids::{BoardId, ItemId, ListId, TagId};
-pub use item::{Item, ItemKind};
+pub use group::Group;
+pub use ids::{BoardId, GroupId, ItemId, ListId, TagId};
+pub use item::{Item, ItemKind, ItemLabel};
 pub use jiff::Timestamp;
-pub use list::{List, ListAccent, ListSort, ListView};
+pub use list::{List, ListAccent, ListIcon, ListSort, ListView};
 pub use name::Name;
 pub use placement::Placement;
 pub use tag::Tag;
+pub use trigger::{
+    BUFFER_CHARS, Candidate, Fired, Matcher, SUGGEST_MIN_CHARS, Suggestion, Trigger, prefix_of,
+};
 pub use usage::{PasteFailure, UseMode, UseOutcome};
 
 /// The product name shown to users. The working name lives only here (SPEC header).

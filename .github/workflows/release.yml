@@ -1,0 +1,380 @@
+# Release: builds a version and publishes it as a GitHub Release.
+#
+# The usual route: push everything to main, then Actions -> Release -> Run workflow (on main) and type the
+# version without the v, e.g. 1.1.0. The workflow then:
+#   1. sets that version in Cargo.toml and Cargo.lock and renames CHANGELOG.md's "## [Unreleased]" section
+#      to "## [1.1.0] - <today>" (scripts/bump_version.py), commits "Release v1.1.0" to main and pushes it
+#      (skipped when there is nothing to change);
+#   2. creates the tag and the GitHub Release on that commit, with the changelog section as the notes;
+#   3. builds, smoke-tests and attaches the Setup .exe and the portable zip (+ SHA-256 and attestation).
+# A version lower than the one in Cargo.toml is refused. If main is protected against direct pushes, allow
+# github-actions to push or bump the version in a PR first (then step 1 has nothing to change).
+#
+# The other route still works: set the version yourself, then git tag v1.1.0 && git push origin v1.1.0
+# (the tag must match [workspace.package] version, so a v1.1.0 never calls itself 1.0.0).
+#
+# Needs the SNIPDECK_LICENCE_PUBLIC_KEY repository secret (docs/licensing.md): a release never embeds the
+# development key.
+#
+# Assets per release: the portable zip, the per-user Setup .exe (Inno Setup), their SHA-256 files and
+# build attestations. The Microsoft Store MSIX is built only when the repository variables MSIX_IDENTITY_NAME,
+# MSIX_PUBLISHER and MSIX_PUBLISHER_DISPLAY_NAME are set (docs/packaging.md); it is a workflow artifact
+# for Partner Center, never attached to the GitHub Release.
+#
+# This replaces the tag path of release-build.yml, which keeps only the dev build on main.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, e.g. 1.0.0 (no leading v)"
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  resolve-version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Resolve from the tag push or the manual input
+        id: resolve
+        # The typed version reaches the script as an environment variable, never spliced
+        # into its text (GitHub's script-injection guidance).
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then VERSION="$INPUT_VERSION"; else VERSION="${GITHUB_REF_NAME#v}"; fi
+          if ! printf %s "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+            echo "::error::'$VERSION' is not a version like 1.0.0"; exit 1
+          fi
+          # The app reports the workspace version (About, Troubleshoot report, crash log), so the release
+          # must say what the code says. A pushed tag must match it as it stands; a typed version is
+          # written into the code by the bump job, from main only, and may not go backwards.
+          CODE=$(sed -n '/^\[workspace.package\]/,/^\[/{s/^version = "\([^"]*\)"/\1/p}' Cargo.toml)
+          if [ -z "$INPUT_VERSION" ]; then
+            if [ "$VERSION" != "$CODE" ]; then
+              echo "::error::tag v$VERSION does not match [workspace.package] version $CODE in Cargo.toml"; exit 1
+            fi
+          else
+            if [ "$GITHUB_REF" != "refs/heads/$DEFAULT_BRANCH" ]; then
+              echo "::error::run the Release workflow on $DEFAULT_BRANCH (it commits the version there), not $GITHUB_REF_NAME"; exit 1
+            fi
+            # Same ordering as the bump script (a prerelease sorts below its release).
+            if ! python3 -I -c 'import sys; sys.path.insert(0, "scripts"); import bump_version as b; sys.exit(b.parse(sys.argv[1]) < b.parse(sys.argv[2]))' "$VERSION" "$CODE"; then
+              echo "::error::$VERSION is lower than the current version $CODE"; exit 1
+            fi
+            if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null 2>&1; then
+              echo "::error::tag v$VERSION already exists"; exit 1
+            fi
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+  # The manual route: write the typed version into the code and commit it to main. Always runs (a skipped
+  # job would skip everything after it); on a tag push it only reports the tagged commit. It runs no build
+  # and no dependency code: only scripts/bump_version.py (standard library) and git.
+  bump:
+    name: Set the version on main
+    needs: resolve-version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    outputs:
+      sha: ${{ steps.commit.outputs.sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          # The push below needs the token; this job checks out only the repository's own main.
+          persist-credentials: ${{ github.event_name == 'workflow_dispatch' }}
+      - name: Bump, commit and push
+        id: commit
+        env:
+          VERSION: ${{ needs.resolve-version.outputs.version }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            python3 -I scripts/bump_version.py "$VERSION" --date "$(date -u +%F)"
+            if ! git diff --quiet; then
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git commit -am "Release v$VERSION"
+              git push origin "HEAD:$GITHUB_REF_NAME"
+            fi
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "Release commit: \`$(git rev-parse --short HEAD)\`" >> "$GITHUB_STEP_SUMMARY"
+
+  github-release:
+    name: Create GitHub Release
+    needs: [resolve-version, bump]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          # The release commit, so the notes come from the renamed changelog section.
+          ref: ${{ needs.bump.outputs.sha }}
+          persist-credentials: false
+      - name: Extract the changelog entry for this version
+        id: changelog
+        env:
+          VERSION: ${{ needs.resolve-version.outputs.version }}
+        run: |
+          # The section under this version's header, up to the next "## ". Matched as text,
+          # so the dots in a version are not regex wildcards.
+          NOTES=$(awk -v v="$VERSION" 'index($0, "## [" v "]") == 1 || index($0, "## " v) == 1 {on = 1; next} on && /^## / {exit} on' CHANGELOG.md)
+          # A release body is capped at 125,000 characters.
+          if [ "$(printf %s "$NOTES" | wc -c)" -gt 120000 ]; then
+            NOTES="$(printf %s "$NOTES" | head -c 120000 | sed '$d')
+
+          The full list is in [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/v${VERSION}/CHANGELOG.md)."
+          fi
+          DELIM="notes_$(date +%s%N)"
+          { echo "notes<<$DELIM"; echo "$NOTES"; echo "$DELIM"; } >> "$GITHUB_OUTPUT"
+      - name: Create the release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          tag_name: ${{ needs.resolve-version.outputs.tag }}
+          # Only used on the manual route, where the tag does not exist yet: the commit the bump job pushed.
+          target_commitish: ${{ needs.bump.outputs.sha }}
+          body: ${{ steps.changelog.outputs.notes }}
+          generate_release_notes: ${{ steps.changelog.outputs.notes == '' }}
+
+  # The MSIX logo PNGs need cairosvg + the native cairo library, which is easy on Linux and a pain on the
+  # Windows runner, so they are rendered here and handed to windows-build. Skipped steps (variables unset)
+  # still leave this job green: a missing Store setup never blocks a release.
+  msix-assets:
+    name: MSIX logos
+    # After the release job: on the manual route the tag it checks out is created there.
+    needs: [resolve-version, github-release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      MSIX_IDENTITY_NAME: ${{ vars.MSIX_IDENTITY_NAME }}
+      MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER }}
+      MSIX_PUBLISHER_DISPLAY_NAME: ${{ vars.MSIX_PUBLISHER_DISPLAY_NAME }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.resolve-version.outputs.tag }}
+          persist-credentials: false
+      - name: Render the logos
+        if: ${{ env.MSIX_IDENTITY_NAME != '' && env.MSIX_PUBLISHER != '' && env.MSIX_PUBLISHER_DISPLAY_NAME != '' }}
+        run: |
+          pip install cairosvg
+          python3 scripts/make_msix_assets.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: msix-assets
+          path: packaging/msix/Assets
+          if-no-files-found: ignore
+          retention-days: 1
+
+  # Build and publish are split (security-v1.md M3): the build runs every dependency's
+  # build.rs with a read-only token that is not kept in .git/config; the publish job
+  # holds the write and attestation permissions and runs no repository code.
+  windows-build:
+    name: Windows zip, installer and MSIX (build)
+    needs: [resolve-version, github-release, msix-assets]
+    runs-on: windows-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.resolve-version.outputs.tag }}
+          persist-credentials: false
+      - run: rustup toolchain install stable --profile minimal
+      - name: Build (release profile, production licence key)
+        shell: pwsh
+        env:
+          SNIPDECK_LICENCE_PUBLIC_KEY: ${{ secrets.SNIPDECK_LICENCE_PUBLIC_KEY }}
+        run: |
+          if (-not $env:SNIPDECK_LICENCE_PUBLIC_KEY) { throw "SNIPDECK_LICENCE_PUBLIC_KEY secret is not set: a release cannot embed the development key (docs/licensing.md)" }
+          cargo build --release -p snipdeck-app --locked
+          if ($LASTEXITCODE -ne 0) { throw "cargo build exited $LASTEXITCODE" }
+      # Nothing ships that was never started: the built exe runs its headless library
+      # check on a fresh data folder and must exit cleanly, or the release stops here.
+      - name: Smoke test the built exe
+        shell: pwsh
+        run: |
+          $data = Join-Path $env:RUNNER_TEMP "snipdeck-smoke"
+          New-Item -ItemType Directory -Force $data | Out-Null
+          $p = Start-Process target\release\snipdeck-app.exe -ArgumentList "--check-db","--data-dir",$data -Wait -PassThru -NoNewWindow
+          if ($p.ExitCode -ne 0) { throw "snipdeck --check-db on a fresh folder exited $($p.ExitCode)" }
+      - name: Build the Setup installer (Inno Setup 6)
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.resolve-version.outputs.version }}
+        run: |
+          $iscc = (Get-Command iscc -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) {
+            $p = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"
+            if (Test-Path $p) { $iscc = $p }
+          }
+          if (-not $iscc) {
+            choco install innosetup -y --no-progress
+            $p = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"
+            if (Test-Path $p) { $iscc = $p }
+          }
+          if (-not $iscc) { throw "Inno Setup 6 (ISCC.exe) was not found and could not be installed" }
+          $exe = (Resolve-Path target\release\snipdeck-app.exe).Path
+          & $iscc "/DAppVersion=$env:VERSION" "/DSourceExe=$exe" packaging\inno\snipdeck.iss
+          if ($LASTEXITCODE -ne 0) { throw "iscc exited $LASTEXITCODE" }
+          $setup = Get-Item "dist\Snipdeck-Setup-$env:VERSION.exe"
+          $hash = (Get-FileHash $setup.FullName -Algorithm SHA256).Hash.ToLower()
+          "$hash  $($setup.Name)" | Set-Content "dist\$($setup.Name).sha256"
+          "SETUP=$($setup.FullName)" >> $env:GITHUB_ENV
+          "### $($setup.Name)`nSHA-256: ``$hash`` ($([math]::Round($setup.Length / 1MB, 2)) MB)`n" >> $env:GITHUB_STEP_SUMMARY
+      # Install silently into a temp folder, start the installed exe's headless check, uninstall,
+      # and require the exe to be gone. Nothing ships that does not install and remove cleanly.
+      - name: Smoke test the installer
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP "snipdeck-installed"
+          $data = Join-Path $env:RUNNER_TEMP "snipdeck-installed-data"
+          New-Item -ItemType Directory -Force $data | Out-Null
+          $p = Start-Process $env:SETUP -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/CURRENTUSER","/DIR=$dir" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Setup exited $($p.ExitCode)" }
+          $exe = Join-Path $dir "snipdeck.exe"
+          if (-not (Test-Path $exe)) { throw "Setup did not install $exe" }
+          $c = Start-Process $exe -ArgumentList "--check-db","--data-dir",$data -Wait -PassThru -NoNewWindow
+          if ($c.ExitCode -ne 0) { throw "installed snipdeck --check-db exited $($c.ExitCode)" }
+          $u = Start-Process (Join-Path $dir "unins000.exe") -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES" -Wait -PassThru
+          if ($u.ExitCode -ne 0) { throw "the uninstaller exited $($u.ExitCode)" }
+          # The uninstaller finishes in a copy of itself: give it a moment.
+          for ($i = 0; $i -lt 30 -and (Test-Path $exe); $i++) { Start-Sleep -Seconds 1 }
+          if (Test-Path $exe) { throw "the uninstaller left $exe behind" }
+      - name: Pack the zip and its SHA-256
+        shell: pwsh
+        env:
+          TAG: ${{ needs.resolve-version.outputs.tag }}
+        run: |
+          $name = "snipdeck-$env:TAG-windows-x64"
+          # Layout = what Snipdeck.bat expects: the exe in app\, the launcher in tools\launcher.
+          New-Item -ItemType Directory -Force dist\$name\app, dist\$name\tools | Out-Null
+          Copy-Item target\release\snipdeck-app.exe dist\$name\app\snipdeck.exe
+          Copy-Item Snipdeck.bat dist\$name\
+          Copy-Item tools\launcher dist\$name\tools\launcher -Recurse
+          Copy-Item README.md, LICENSE*, THIRD_PARTY_NOTICES.md, CHANGELOG.md, docs\user-guide.md dist\$name\ -ErrorAction SilentlyContinue
+          Compress-Archive -Path dist\$name\* -DestinationPath dist\$name.zip
+          $hash = (Get-FileHash dist\$name.zip -Algorithm SHA256).Hash.ToLower()
+          "$hash  $name.zip" | Set-Content dist\$name.zip.sha256
+          "ZIP=dist\$name.zip" >> $env:GITHUB_ENV
+          "SUM=dist\$name.zip.sha256" >> $env:GITHUB_ENV
+          $exe = Get-Item dist\$name\app\snipdeck.exe
+          $zip = Get-Item dist\$name.zip
+          "### $name`n| File | MB |`n|---|---|`n| snipdeck.exe | $([math]::Round($exe.Length / 1MB, 2)) |`n| zip | $([math]::Round($zip.Length / 1MB, 2)) |`n`nSHA-256: ``$hash``" >> $env:GITHUB_STEP_SUMMARY
+      # Microsoft Store package. Only when the three repository variables are set (Settings > Secrets
+      # and variables > Actions > Variables); values come from Partner Center > Product identity.
+      - name: MSIX package (skipped)
+        if: ${{ vars.MSIX_IDENTITY_NAME == '' || vars.MSIX_PUBLISHER == '' || vars.MSIX_PUBLISHER_DISPLAY_NAME == '' }}
+        shell: pwsh
+        run: |
+          Write-Output "::notice::MSIX skipped. Set the repository variables MSIX_IDENTITY_NAME, MSIX_PUBLISHER and MSIX_PUBLISHER_DISPLAY_NAME (values from Partner Center > Product identity) to build the Store package. See docs/packaging.md."
+      - name: Download the MSIX logos
+        if: ${{ vars.MSIX_IDENTITY_NAME != '' && vars.MSIX_PUBLISHER != '' && vars.MSIX_PUBLISHER_DISPLAY_NAME != '' }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: msix-assets
+          path: msix-assets
+      - name: Build the MSIX (unsigned, the Store signs it)
+        if: ${{ vars.MSIX_IDENTITY_NAME != '' && vars.MSIX_PUBLISHER != '' && vars.MSIX_PUBLISHER_DISPLAY_NAME != '' }}
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.resolve-version.outputs.version }}
+          MSIX_IDENTITY_NAME: ${{ vars.MSIX_IDENTITY_NAME }}
+          MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER }}
+          MSIX_PUBLISHER_DISPLAY_NAME: ${{ vars.MSIX_PUBLISHER_DISPLAY_NAME }}
+        run: |
+          $stage = "dist\msix-stage"
+          New-Item -ItemType Directory -Force $stage | Out-Null
+          Copy-Item target\release\snipdeck-app.exe "$stage\snipdeck.exe"
+          Copy-Item msix-assets "$stage\Assets" -Recurse
+          python scripts\msix_manifest.py --identity-name $env:MSIX_IDENTITY_NAME --publisher $env:MSIX_PUBLISHER --publisher-display-name $env:MSIX_PUBLISHER_DISPLAY_NAME --version $env:VERSION --out "$stage\AppxManifest.xml"
+          if ($LASTEXITCODE -ne 0) { throw "msix_manifest.py exited $LASTEXITCODE" }
+          # The newest Windows 10/11 SDK's x64 makeappx.exe.
+          $kits = Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10\bin"
+          $makeappx = Get-ChildItem $kits -Recurse -Filter makeappx.exe -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match '\\bin\\\d+(\.\d+)+\\x64\\' } |
+            Sort-Object { [version]([regex]::Match($_.FullName, '\\bin\\(\d+(?:\.\d+)+)\\x64\\').Groups[1].Value) } -Descending |
+            Select-Object -First 1
+          if (-not $makeappx) { throw "makeappx.exe was not found under $kits" }
+          $msix = "dist\Snipdeck-$env:VERSION-x64.msix"
+          & $makeappx.FullName pack /o /d $stage /p $msix
+          if ($LASTEXITCODE -ne 0) { throw "makeappx exited $LASTEXITCODE" }
+          Remove-Item $stage -Recurse -Force
+          $hash = (Get-FileHash $msix -Algorithm SHA256).Hash.ToLower()
+          "MSIX=$msix" >> $env:GITHUB_ENV
+          "### $msix`nSHA-256: ``$hash``. Unsigned: upload it to Partner Center (it is not attached to the GitHub Release).`n" >> $env:GITHUB_STEP_SUMMARY
+      - name: Keep the MSIX for Partner Center
+        if: ${{ env.MSIX != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-msix
+          path: ${{ env.MSIX }}
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-portable
+          path: |
+            ${{ env.ZIP }}
+            ${{ env.SUM }}
+            ${{ env.SETUP }}
+            ${{ env.SETUP }}.sha256
+          if-no-files-found: error
+          retention-days: 1
+
+  windows-publish:
+    name: Windows zip and installer (attest and upload)
+    needs: [resolve-version, windows-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      # Provenance: `gh attestation verify <zip> --repo Braydenh563/Snipdeck`.
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: windows-portable
+          path: dist
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: |
+            dist/*.zip
+            dist/*.exe
+      - name: Upload to the release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          tag_name: ${{ needs.resolve-version.outputs.tag }}
+          files: |
+            dist/*.zip
+            dist/*.exe
+            dist/*.sha256
+          fail_on_unmatched_files: true

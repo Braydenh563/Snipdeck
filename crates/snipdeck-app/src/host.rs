@@ -6,7 +6,11 @@
 use std::{cell::Cell, cell::RefCell, rc::Rc};
 
 use snipdeck_core::Timestamp;
-use snipdeck_platform::{chord::Chord, route::Target};
+use snipdeck_platform::win_formats::ClipFiles;
+use snipdeck_platform::{
+    chord::Chord,
+    route::{ScreenRect, Target},
+};
 
 use crate::settings::HotkeyAction;
 
@@ -56,6 +60,29 @@ impl Clock for FixedClock {
 pub trait ClipboardText {
     /// The clipboard's text, or `None` when it holds none or stays busy. Writes nothing.
     fn read_text(&mut self) -> Option<String>;
+    /// The clipboard's text with its HTML and RTF flavours (only next to text; over the size cap
+    /// they are dropped). Writes nothing.
+    fn read_rich(&mut self) -> snipdeck_platform::clipboard_watch::RichClip;
+    /// Whether the clipboard holds a picture (a screenshot, say).
+    fn has_image(&mut self) -> bool;
+    /// The clipboard's picture as PNG bytes (a screenshot, a copied image), or `None`. Writes
+    /// nothing.
+    fn read_png(&mut self) -> Option<Vec<u8>>;
+    /// The files copied in Explorer (no paths when there are none; too many is its own answer).
+    /// Writes nothing.
+    fn read_files(&mut self) -> ClipFiles;
+    /// Empties the clipboard if it still holds exactly `text` (so something the user copied
+    /// since is never lost). Whether it was cleared.
+    fn clear_if_text(&mut self, text: &str) -> bool;
+    /// The clipboard's sequence number, which changes whenever its contents do; `None` when it
+    /// cannot be read. Covers content that is not text (HTML, images, files).
+    fn sequence_number(&mut self) -> Option<u32>;
+    /// The sequence number read right after this clipboard's latest write (not now): the
+    /// reference for "nothing has touched the clipboard since our write". `None` before a write.
+    fn written_sequence(&mut self) -> Option<u32>;
+    /// Empties the clipboard, whatever formats it holds, if its sequence number is still
+    /// `sequence`. Whether it did.
+    fn clear_if_sequence(&mut self, sequence: u32) -> bool;
 }
 
 #[cfg(windows)]
@@ -63,16 +90,97 @@ impl ClipboardText for snipdeck_platform::windows::clipboard::WinClipboard {
     fn read_text(&mut self) -> Option<String> {
         Self::read_text(self)
     }
+    fn read_rich(&mut self) -> snipdeck_platform::clipboard_watch::RichClip {
+        Self::read_rich(self)
+    }
+    fn has_image(&mut self) -> bool {
+        Self::has_image(self)
+    }
+    fn read_png(&mut self) -> Option<Vec<u8>> {
+        Self::read_png(self)
+    }
+    fn read_files(&mut self) -> ClipFiles {
+        Self::read_files(self)
+    }
+    fn clear_if_text(&mut self, text: &str) -> bool {
+        Self::clear_if_text(self, text)
+    }
+    fn sequence_number(&mut self) -> Option<u32> {
+        Self::sequence_number(self)
+    }
+    fn written_sequence(&mut self) -> Option<u32> {
+        Self::written_sequence(self)
+    }
+    fn clear_if_sequence(&mut self, sequence: u32) -> bool {
+        Self::clear_if_sequence(self, sequence)
+    }
 }
 
 /// The fake clipboard "holds" what was last written to it (as a real one holds what the user
 /// last copied), so a test seeds it by pushing a payload onto `written`.
 impl ClipboardText for snipdeck_platform::testing::FakeClipboard {
     fn read_text(&mut self) -> Option<String> {
+        self.text_reads += 1;
         self.written.last()?.data().iter().find_map(|d| match d {
             snipdeck_platform::payload::Data::Text(text) => Some(text.clone()),
             _ => None,
         })
+    }
+    fn read_rich(&mut self) -> snipdeck_platform::clipboard_watch::RichClip {
+        let text = ClipboardText::read_text(self);
+        let (html, rtf) = if text.is_some() {
+            (self.held_html.clone(), self.held_rtf.clone())
+        } else {
+            (None, None)
+        };
+        snipdeck_platform::clipboard_watch::RichClip { text, html, rtf }
+    }
+    fn has_image(&mut self) -> bool {
+        self.written.last().is_some_and(|p| {
+            p.data()
+                .iter()
+                .any(|d| matches!(d, snipdeck_platform::payload::Data::Png(_)))
+        })
+    }
+    fn read_png(&mut self) -> Option<Vec<u8>> {
+        let written = self.written.last().and_then(|p| {
+            p.data().iter().find_map(|d| match d {
+                snipdeck_platform::payload::Data::Png(png) => Some(png.clone()),
+                _ => None,
+            })
+        });
+        written.or_else(|| self.held_png.clone())
+    }
+    fn read_files(&mut self) -> ClipFiles {
+        if self.files_too_many {
+            ClipFiles::TooMany
+        } else {
+            ClipFiles::Files(self.held_files.clone())
+        }
+    }
+    fn clear_if_text(&mut self, text: &str) -> bool {
+        if self.read_text().as_deref() != Some(text) || self.busy_for_clear() {
+            return false;
+        }
+        self.written.clear();
+        self.sequence += 1;
+        self.log.push("clear".into());
+        true
+    }
+    fn sequence_number(&mut self) -> Option<u32> {
+        Some(self.sequence)
+    }
+    fn written_sequence(&mut self) -> Option<u32> {
+        self.write_sequence
+    }
+    fn clear_if_sequence(&mut self, sequence: u32) -> bool {
+        if self.sequence != sequence || self.busy_for_clear() {
+            return false;
+        }
+        self.written.clear();
+        self.sequence += 1;
+        self.log.push("clear".into());
+        true
     }
 }
 
@@ -84,7 +192,174 @@ pub trait TargetSource {
     /// Makes the Target the foreground window again so injected keys reach it (the panel may
     /// have activated itself for text entry). `false` if there is no Target or Windows refused.
     fn refocus(&self) -> bool;
+    /// Where the Target's text caret is on the screen, in physical pixels, if it has a system
+    /// caret. Read before a popup takes the foreground. `None` (the default) means "unknown":
+    /// the Picker then opens at the mouse.
+    fn caret(&self) -> Option<ScreenRect> {
+        None
+    }
+    /// The mouse position in physical pixels, if it can be read. `None` (the default) leaves
+    /// the Panel where it was.
+    fn cursor(&self) -> Option<(i32, i32)> {
+        None
+    }
+    /// Whether the primary mouse button is held down, wherever the pointer is. `None` (the
+    /// default) means the host cannot tell: a drag then ends only on the window's own
+    /// pointer-up.
+    fn primary_down(&self) -> Option<bool> {
+        None
+    }
+    /// Whether the system's own size loop runs on the Panel's window: it starts a moment
+    /// after a resize is asked for and ends when the grip is let go. `None` (the default)
+    /// means the host cannot tell.
+    fn size_loop(&self) -> Option<bool> {
+        None
+    }
+    /// The monitor under a physical point, if the host can tell.
+    fn monitor_at(&self, _x: i32, _y: i32) -> Option<crate::frame::Monitor> {
+        None
+    }
+    /// Whether a full-screen app, game or presentation covers `monitor`. Only that monitor: one
+    /// on another screen is not in the Panel's way. `false` (the default) where the host cannot
+    /// tell.
+    fn fullscreen_on(&self, _monitor: &crate::frame::Monitor) -> bool {
+        false
+    }
 }
+
+/// The typed-trigger service: the keyboard hook that watches what is typed for abbreviations.
+///
+/// The controller tells it whether anyone wants it (`set_enabled`) and which triggers exist
+/// (`set_triggers`); while it is disabled the implementation must hold no keyboard hook at all.
+pub trait TypingControl {
+    /// Installs the hook (`true`) or removes it (`false`). Idempotent. Returns `false` only when
+    /// the hook was wanted and could not be installed.
+    fn set_enabled(&mut self, on: bool) -> bool;
+    /// The triggers to watch for, as of now, and the candidates a typed prefix is matched
+    /// against for suggestions (empty when suggestions are off).
+    fn set_triggers(
+        &mut self,
+        matcher: snipdeck_core::Matcher,
+        candidates: Vec<snipdeck_core::Candidate>,
+    );
+    /// Hint number `id` is really on screen: the hook may take a plain `Tab` for it. Only the UI
+    /// thread raises the flag, and only after showing the hint.
+    fn hint_up(&mut self, id: u64);
+    /// The generation of the running worker (see `typing_worker::next_generation`); a hint number
+    /// from another generation is stale. 0 while none runs.
+    fn generation(&self) -> u64;
+    /// Hint number `id` was taken down: the hook stops taking a plain `Tab` for it. A newer
+    /// hint's flag is left alone.
+    fn hint_down(&mut self, id: u64);
+    /// The expansion for `fired` was not sent (a Snipdeck window, an excluded app, a skipped
+    /// route): the code stays in the app, so the next trigger needs a boundary of its own.
+    fn not_expanded(&mut self, fired: snipdeck_core::Fired);
+}
+
+/// A [`TypingControl`] that records what it was told. Cloning shares the state.
+#[derive(Debug, Clone, Default)]
+pub struct FakeTyping {
+    enabled: Rc<RefCell<Vec<bool>>>,
+    triggers: Rc<Cell<u32>>,
+    candidates: Rc<RefCell<Vec<snipdeck_core::Candidate>>>,
+    up: Rc<RefCell<Vec<u64>>>,
+    generation: Rc<Cell<u64>>,
+    hint: Rc<RefCell<Vec<u64>>>,
+    skipped: Rc<RefCell<Vec<snipdeck_core::Fired>>>,
+    fail_start: Rc<Cell<bool>>,
+}
+
+impl FakeTyping {
+    /// Makes every later turn-on fail, as a hook Windows refuses to install does.
+    pub fn fail_start(&self, fail: bool) {
+        self.fail_start.set(fail);
+    }
+
+    /// The candidates last handed over.
+    #[must_use]
+    pub fn candidates(&self) -> Vec<snipdeck_core::Candidate> {
+        self.candidates.borrow().clone()
+    }
+
+    /// Makes the fake report `generation` as the running worker's.
+    pub fn set_generation(&self, generation: u64) {
+        self.generation.set(generation);
+    }
+
+    /// Every `hint_up` call, in order.
+    #[must_use]
+    pub fn hint_up_history(&self) -> Vec<u64> {
+        self.up.borrow().clone()
+    }
+
+    /// Every `hint_down` call, in order.
+    #[must_use]
+    pub fn hint_history(&self) -> Vec<u64> {
+        self.hint.borrow().clone()
+    }
+
+    /// The triggers reported as not expanded, in order.
+    #[must_use]
+    pub fn not_expanded_history(&self) -> Vec<snipdeck_core::Fired> {
+        self.skipped.borrow().clone()
+    }
+
+    /// Every `set_enabled` call, in order.
+    #[must_use]
+    pub fn enabled_history(&self) -> Vec<bool> {
+        self.enabled.borrow().clone()
+    }
+
+    /// Whether the hook was ever asked to be installed.
+    #[must_use]
+    pub fn ever_enabled(&self) -> bool {
+        self.enabled.borrow().contains(&true)
+    }
+
+    /// How many trigger lists were handed over.
+    #[must_use]
+    pub fn trigger_lists(&self) -> u32 {
+        self.triggers.get()
+    }
+}
+
+impl TypingControl for FakeTyping {
+    fn set_enabled(&mut self, on: bool) -> bool {
+        self.enabled.borrow_mut().push(on);
+        !(on && self.fail_start.get())
+    }
+
+    fn set_triggers(
+        &mut self,
+        _matcher: snipdeck_core::Matcher,
+        candidates: Vec<snipdeck_core::Candidate>,
+    ) {
+        self.triggers.set(self.triggers.get() + 1);
+        *self.candidates.borrow_mut() = candidates;
+    }
+
+    fn hint_up(&mut self, id: u64) {
+        self.up.borrow_mut().push(id);
+    }
+
+    fn generation(&self) -> u64 {
+        self.generation.get()
+    }
+
+    fn hint_down(&mut self, id: u64) {
+        self.hint.borrow_mut().push(id);
+    }
+
+    fn not_expanded(&mut self, fired: snipdeck_core::Fired) {
+        self.skipped.borrow_mut().push(fired);
+    }
+}
+
+/// A Target change waiting for a flag: see [`FakeTargets::switch_when`].
+type TargetSwitch = (
+    std::sync::Arc<std::sync::atomic::AtomicBool>,
+    Option<Target>,
+);
 
 /// A scripted Target. Cloning shares the state, so a test keeps a handle after handing the
 /// source to the controller.
@@ -92,6 +367,15 @@ pub trait TargetSource {
 pub struct FakeTargets {
     current: Rc<RefCell<Option<Target>>>,
     refocused: Rc<Cell<u32>>,
+    caret: Rc<Cell<Option<ScreenRect>>>,
+    cursor: Rc<Cell<Option<(i32, i32)>>>,
+    primary: Rc<Cell<Option<bool>>>,
+    size_loop: Rc<Cell<Option<bool>>>,
+    fullscreen: Rc<RefCell<Option<String>>>,
+    monitors: Rc<RefCell<Vec<crate::frame::Monitor>>>,
+    /// A Target change that happens once the flag is raised (from another thread, as a typed
+    /// key would be).
+    switch: Rc<RefCell<Option<TargetSwitch>>>,
 }
 
 impl FakeTargets {
@@ -101,7 +385,55 @@ impl FakeTargets {
         Self {
             current: Rc::new(RefCell::new(target)),
             refocused: Rc::default(),
+            caret: Rc::default(),
+            cursor: Rc::default(),
+            primary: Rc::default(),
+            size_loop: Rc::default(),
+            fullscreen: Rc::default(),
+            monitors: Rc::default(),
+            switch: Rc::default(),
         }
+    }
+
+    /// Changes the Target to `target` the first time it is read after `flag` is raised.
+    pub fn switch_when(&self, flag: std::sync::Arc<std::sync::atomic::AtomicBool>, target: Target) {
+        *self.switch.borrow_mut() = Some((flag, Some(target)));
+    }
+
+    /// Adds a monitor [`monitor_at`](TargetSource::monitor_at) can find (none: the host cannot
+    /// tell, as before).
+    pub fn add_monitor(&self, monitor: crate::frame::Monitor) {
+        self.monitors.borrow_mut().push(monitor);
+    }
+
+    /// Sets where the Target's caret is (`None`: it has none).
+    pub fn set_caret(&self, caret: Option<ScreenRect>) {
+        self.caret.set(caret);
+    }
+
+    /// Sets where the mouse is (`None`: it cannot be read).
+    pub fn set_cursor(&self, cursor: Option<(i32, i32)>) {
+        self.cursor.set(cursor);
+    }
+
+    /// Sets what the host reads for the primary mouse button (`None`: it cannot be read).
+    pub fn set_primary_down(&self, down: Option<bool>) {
+        self.primary.set(down);
+    }
+
+    /// Sets whether the system's size loop runs on the Panel (`None`: the host cannot tell).
+    pub fn set_size_loop(&self, running: Option<bool>) {
+        self.size_loop.set(running);
+    }
+
+    /// Sets the monitor a full-screen app covers (`None`: there is none).
+    pub fn set_fullscreen(&self, on: Option<&crate::frame::Monitor>) {
+        *self.fullscreen.borrow_mut() = on.map(|m| m.id.clone());
+    }
+
+    /// Replaces the monitors the host knows.
+    pub fn set_monitors(&self, monitors: Vec<crate::frame::Monitor>) {
+        *self.monitors.borrow_mut() = monitors;
     }
 
     /// Changes the Target, as the user switching windows would.
@@ -118,12 +450,48 @@ impl FakeTargets {
 
 impl TargetSource for FakeTargets {
     fn current(&self) -> Option<Target> {
+        let raised = self
+            .switch
+            .borrow()
+            .as_ref()
+            .is_some_and(|(flag, _)| flag.load(std::sync::atomic::Ordering::SeqCst));
+        if raised && let Some((_, target)) = self.switch.borrow_mut().take() {
+            *self.current.borrow_mut() = target;
+        }
         self.current.borrow().clone()
     }
 
     fn refocus(&self) -> bool {
         self.refocused.set(self.refocused.get() + 1);
         self.current.borrow().is_some()
+    }
+
+    fn caret(&self) -> Option<ScreenRect> {
+        self.caret.get()
+    }
+
+    fn cursor(&self) -> Option<(i32, i32)> {
+        self.cursor.get()
+    }
+
+    fn size_loop(&self) -> Option<bool> {
+        self.size_loop.get()
+    }
+
+    fn primary_down(&self) -> Option<bool> {
+        self.primary.get()
+    }
+
+    fn fullscreen_on(&self, monitor: &crate::frame::Monitor) -> bool {
+        self.fullscreen.borrow().as_ref() == Some(&monitor.id)
+    }
+
+    fn monitor_at(&self, x: i32, y: i32) -> Option<crate::frame::Monitor> {
+        self.monitors
+            .borrow()
+            .iter()
+            .find(|m| m.holds(x, y))
+            .cloned()
     }
 }
 
@@ -287,18 +655,35 @@ mod tests {
         assert_eq!(action_of(99), None);
     }
 
+    /// Every action has a chord (Capture is off by default, see `HotkeyAction::default_chord`).
+    fn all_on() -> Hotkeys {
+        Hotkeys {
+            capture: "Ctrl+Shift+2".into(),
+            ..Hotkeys::new_install()
+        }
+    }
+
     #[test]
-    fn every_default_hotkey_is_registered() {
+    fn every_default_hotkey_is_registered_and_capture_stays_off_until_set() {
         let mut backend = FakeHotkeys::default();
-        let problems = register_all(&mut backend, &Hotkeys::default());
+        let problems = register_all(&mut backend, &Hotkeys::new_install());
         assert_eq!(problems, Vec::new());
+        assert_eq!(backend.registered.len(), 3);
+        assert!(
+            backend
+                .registered
+                .iter()
+                .all(|(id, _)| *id != id_of(HotkeyAction::Capture))
+        );
+        let mut backend = FakeHotkeys::default();
+        assert_eq!(register_all(&mut backend, &all_on()), Vec::new());
         assert_eq!(backend.registered.len(), 4);
         let toggle = backend
             .registered
             .iter()
             .find(|(id, _)| *id == id_of(HotkeyAction::TogglePanel))
             .expect("toggle registered");
-        assert_eq!(toggle.1.to_string(), "Ctrl+Alt+Space");
+        assert_eq!(toggle.1.to_string(), "Ctrl+Shift+Y");
     }
 
     #[test]
@@ -307,7 +692,7 @@ mod tests {
             taken: vec!["Ctrl+Shift+Space".into()],
             ..FakeHotkeys::default()
         };
-        let problems = register_all(&mut backend, &Hotkeys::default());
+        let problems = register_all(&mut backend, &all_on());
         assert_eq!(
             problems,
             [HotkeyProblem {
@@ -324,7 +709,7 @@ mod tests {
         let mut backend = FakeHotkeys::default();
         let hotkeys = Hotkeys {
             capture: String::new(),
-            ..Hotkeys::default()
+            ..Hotkeys::new_install()
         };
         assert_eq!(register_all(&mut backend, &hotkeys), Vec::new());
         assert_eq!(backend.registered.len(), 3);
@@ -339,7 +724,7 @@ mod tests {
     #[test]
     fn pausing_removes_every_hotkey_and_resuming_registers_them_again() {
         let mut backend = FakeHotkeys::default();
-        let hotkeys = Hotkeys::default();
+        let hotkeys = all_on();
         assert_eq!(register_all(&mut backend, &hotkeys), Vec::new());
         assert_eq!(unregister_all(&mut backend), 0);
         assert_eq!(backend.registered, Vec::new());
@@ -351,7 +736,7 @@ mod tests {
     #[test]
     fn resuming_registers_the_chords_in_force_now_not_the_ones_from_start_up() {
         let mut backend = FakeHotkeys::default();
-        let at_start = Hotkeys::default();
+        let at_start = all_on();
         assert_eq!(register_all(&mut backend, &at_start), Vec::new());
         assert_eq!(
             set_paused(&mut backend, true, &at_start),
@@ -363,7 +748,7 @@ mod tests {
         let now = Hotkeys {
             picker: "Ctrl+Alt+P".into(),
             capture: String::new(),
-            ..Hotkeys::default()
+            ..Hotkeys::new_install()
         };
         assert_eq!(
             set_paused(&mut backend, false, &now),
@@ -381,9 +766,9 @@ mod tests {
     #[test]
     fn resuming_reports_a_chord_another_app_took_while_paused() {
         let mut backend = FakeHotkeys::default();
-        let hotkeys = Hotkeys::default();
+        let hotkeys = Hotkeys::new_install();
         let _ = set_paused(&mut backend, true, &hotkeys);
-        backend.taken.push("Ctrl+Alt+Space".into());
+        backend.taken.push("Ctrl+Shift+Y".into());
         let report = set_paused(&mut backend, false, &hotkeys);
         assert_eq!(report.problems.len(), 1);
         assert_eq!(report.problems[0].action, HotkeyAction::TogglePanel);

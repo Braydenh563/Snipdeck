@@ -31,12 +31,17 @@ pub fn render_demo(dark: bool) -> Result<Frame, String> {
         .map_err(|e| format!("timestamp: {e}"))?;
     let settings = Settings {
         theme: if dark { Theme::Dark } else { Theme::Light },
-        ..Settings::default()
+        ..Settings::new_install()
     };
     let controller = demo::controller(settings, now).map_err(|e| format!("demo library: {e}"))?;
     let controller = Rc::new(RefCell::new(controller));
     let harness = Harness::new(PanelWindow::new, SIZE.0, SIZE.1);
-    let _binding = Controller::bind(&controller, &harness.component, |_| {});
+    let _binding = Controller::bind(
+        &controller,
+        &harness.component,
+        std::rc::Rc::new(crate::placement::NoPopups),
+        |_| {},
+    );
     Ok(harness.render_settled())
 }
 

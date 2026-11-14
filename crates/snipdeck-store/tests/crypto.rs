@@ -16,7 +16,7 @@ use common::*;
 use rusqlite::Connection;
 use snipdeck_core::{Content, FileEntry, Format, Formats, INLINE_LIMIT, Item, ItemKind, Placement};
 use snipdeck_store::crypto::{CryptoError, KdfParams, KeyRing, MemoryKeyProvider};
-use snipdeck_store::{BlobStore, Error, ItemRepo, Store};
+use snipdeck_store::{BlobStore, Error, ItemRepo, Store, TrashRepo, Trashable};
 
 fn provider() -> MemoryKeyProvider {
     MemoryKeyProvider::new().unwrap()
@@ -61,7 +61,8 @@ fn a_key_ring_is_created_once_and_persisted() {
         let mut s = Store::open(dir.path()).unwrap();
         assert!(!s.key_ring_exists().unwrap());
         assert!(!s.is_unlocked());
-        s.create_key_ring(&ring(&p), Some("pw")).unwrap();
+        s.create_key_ring(&ring(&p), Some(common::pw("pw")))
+            .unwrap();
         assert!(s.key_ring_exists().unwrap());
         assert!(s.is_unlocked(), "creating unlocks");
         assert!(matches!(
@@ -76,14 +77,15 @@ fn a_key_ring_is_created_once_and_persisted() {
     assert!(s.key_ring_exists().unwrap());
     assert!(!s.is_unlocked(), "a new session starts locked");
     assert!(matches!(
-        s.unlock_key_ring(&ring(&p), Some("nope")),
+        s.unlock_key_ring(&ring(&p), Some(common::pw("nope"))),
         Err(Error::Crypto(CryptoError::WrongPassword))
     ));
     assert!(matches!(
         s.unlock_key_ring(&ring(&p), None),
         Err(Error::Crypto(CryptoError::PasswordRequired))
     ));
-    s.unlock_key_ring(&ring(&p), Some("pw")).unwrap();
+    s.unlock_key_ring(&ring(&p), Some(common::pw("pw")))
+        .unwrap();
     assert!(s.is_unlocked() && s.data_key().is_some());
     s.lock_key_ring();
     assert!(!s.is_unlocked() && s.data_key().is_none());
@@ -174,25 +176,17 @@ fn sensitive_items_are_stored_encrypted_and_read_back_in_plain_text() {
     assert_healthy(&s);
 }
 
-/// Every file under `dir` (database, WAL, blobs) is free of each needle.
+/// Every content file under `dir` (database, WAL, blobs) is free of each needle.
 fn assert_no_plaintext(dir: &std::path::Path, needles: &[&[u8]]) {
-    let mut stack = vec![dir.to_owned()];
-    while let Some(next) = stack.pop() {
-        for entry in std::fs::read_dir(&next).unwrap().flatten() {
-            let path = entry.path();
-            if path.is_dir() {
-                stack.push(path);
-                continue;
-            }
-            let bytes = std::fs::read(&path).unwrap();
-            for needle in needles {
-                assert!(
-                    !bytes.windows(needle.len()).any(|w| w == *needle),
-                    "{} holds {:?}",
-                    path.display(),
-                    String::from_utf8_lossy(&needle[..needle.len().min(20)])
-                );
-            }
+    for path in content_files(dir) {
+        let bytes = std::fs::read(&path).unwrap();
+        for needle in needles {
+            assert!(
+                !bytes.windows(needle.len()).any(|w| w == *needle),
+                "{} holds {:?}",
+                path.display(),
+                String::from_utf8_lossy(&needle[..needle.len().min(20)])
+            );
         }
     }
 }
@@ -271,7 +265,7 @@ fn without_a_key_ring_sensitive_items_are_kept_in_plain_text() {
         .unwrap();
     assert_eq!(s.formats(it.id).unwrap(), text_formats("hunter2"));
     assert_eq!(encrypted_flag(&raw(&dir), &it), 0);
-    assert!(s.search("hunter2", 5).unwrap().is_empty());
+    assert_eq!(s.search("hunter2", 5).unwrap().len(), 0);
 }
 
 #[test]
@@ -294,6 +288,23 @@ fn creating_the_key_ring_encrypts_existing_sensitive_items() {
 }
 
 #[test]
+fn plain_sensitive_items_are_reported_until_the_key_ring_encrypts_them() {
+    let p = provider();
+    let (_dir, mut s, l) = on_disk();
+    assert!(!s.has_plain_sensitive().unwrap());
+    item(&mut s, l.id, "open", "visible text");
+    assert!(!s.has_plain_sensitive().unwrap(), "a plain item is not one");
+    let it = secret_item(l.id, "Wifi");
+    s.insert_item(&it, &text_formats("hunter2"), Placement::Last)
+        .unwrap();
+    // A trashed one still counts: it is restorable, and still on disk.
+    s.trash(Trashable::Item(it.id), at(1)).unwrap();
+    assert!(s.has_plain_sensitive().unwrap());
+    s.create_key_ring(&ring(&p), None).unwrap();
+    assert!(!s.has_plain_sensitive().unwrap());
+}
+
+#[test]
 fn marking_an_item_sensitive_encrypts_it_and_clearing_the_flag_decrypts_it() {
     let p = provider();
     let (dir, mut s, l) = on_disk();
@@ -305,7 +316,7 @@ fn marking_an_item_sensitive_encrypts_it_and_clearing_the_flag_decrypts_it() {
     it.preview = String::new();
     s.update_item(&it, None).unwrap();
     assert_eq!(encrypted_flag(&raw(&dir), &it), 1);
-    assert!(s.search("ghp_ZQ9tokenSECRET", 5).unwrap().is_empty());
+    assert_eq!(s.search("ghp_ZQ9tokenSECRET", 5).unwrap().len(), 0);
     assert_eq!(
         s.formats(it.id).unwrap(),
         text_formats("ghp_ZQ9tokenSECRET")
@@ -362,23 +373,96 @@ fn changing_the_master_password_keeps_items_readable() {
     let mut s = store();
     let b = board(&mut s, "b");
     let l = list(&mut s, b.id, "l");
-    s.create_key_ring(&ring(&p), Some("old")).unwrap();
+    s.create_key_ring(&ring(&p), Some(common::pw("old")))
+        .unwrap();
     let it = secret_item(l.id, "x");
     s.insert_item(&it, &text_formats("kept"), Placement::Last)
         .unwrap();
     assert!(matches!(
-        s.change_master_password(&ring(&p), Some("wrong"), Some("new")),
+        s.change_master_password(
+            &ring(&p),
+            Some(common::pw("wrong")),
+            Some(common::pw("new"))
+        ),
         Err(Error::Crypto(CryptoError::WrongPassword))
     ));
-    s.change_master_password(&ring(&p), Some("old"), Some("new"))
+    s.change_master_password(&ring(&p), Some(common::pw("old")), Some(common::pw("new")))
         .unwrap();
     s.lock_key_ring();
     assert!(matches!(
-        s.unlock_key_ring(&ring(&p), Some("old")),
+        s.unlock_key_ring(&ring(&p), Some(common::pw("old"))),
         Err(Error::Crypto(CryptoError::WrongPassword))
     ));
-    s.unlock_key_ring(&ring(&p), Some("new")).unwrap();
+    s.unlock_key_ring(&ring(&p), Some(common::pw("new")))
+        .unwrap();
     assert_eq!(s.formats(it.id).unwrap(), text_formats("kept"));
+}
+
+#[test]
+fn the_slow_half_of_a_master_password_step_can_run_on_another_thread() {
+    let p = std::sync::Arc::new(provider());
+    let mut s = store();
+    let b = board(&mut s, "b");
+    let l = list(&mut s, b.id, "l");
+    let it = secret_item(l.id, "x");
+
+    // Set: the key and record are made off the store's thread, then installed.
+    let (key, record) = {
+        let p = p.clone();
+        std::thread::spawn(move || ring(&p).create(Some(common::pw("one"))).unwrap())
+            .join()
+            .unwrap()
+    };
+    s.install_key_ring(key, &record).unwrap();
+    assert!(s.is_unlocked());
+    s.insert_item(&it, &text_formats("kept"), Placement::Last)
+        .unwrap();
+    assert!(matches!(
+        s.install_key_ring(provider_key(&p), &record),
+        Err(Error::AlreadyExists { .. })
+    ));
+
+    // Change: the record is rebuilt off-thread from a copy, then written.
+    let old = s.key_record().unwrap().unwrap();
+    let (key, record) = {
+        let p = p.clone();
+        std::thread::spawn(move || {
+            ring(&p)
+                .rekey(&old, Some(common::pw("one")), Some(common::pw("two")))
+                .unwrap()
+        })
+        .join()
+        .unwrap()
+    };
+    s.replace_key_record(&record).unwrap();
+    s.open_with_key(key).unwrap();
+    s.lock_key_ring();
+
+    // Unlock: the key is derived off-thread, then handed over.
+    let stored = s.key_record().unwrap().unwrap();
+    let key = {
+        let p = p.clone();
+        std::thread::spawn(move || ring(&p).unlock(&stored, Some(common::pw("two"))).unwrap())
+            .join()
+            .unwrap()
+    };
+    s.open_with_key(key).unwrap();
+    assert_eq!(s.formats(it.id).unwrap(), text_formats("kept"));
+}
+
+fn provider_key(p: &MemoryKeyProvider) -> snipdeck_store::crypto::DataKey {
+    ring(p).create(None).unwrap().0
+}
+
+#[test]
+fn replacing_a_key_record_needs_a_key_ring() {
+    let p = provider();
+    let mut s = store();
+    let record = ring(&p).create(None).unwrap().1;
+    assert!(matches!(
+        s.replace_key_record(&record),
+        Err(Error::NotFound { .. })
+    ));
 }
 
 #[test]
@@ -546,4 +630,241 @@ fn staged_plaintext_shared_by_two_items_in_one_transaction_survives_until_the_en
         };
         assert_eq!(store.read(c).unwrap().as_ref(), secret.as_slice());
     }
+}
+
+// ---- Master password lifecycle (SPEC 5.7, V1-PLAN C3) -----------------------------------------
+
+#[test]
+fn the_store_says_whether_a_master_password_is_set() {
+    let p = provider();
+    let mut s = store();
+    assert!(
+        !s.has_master_password(&ring(&p)).unwrap(),
+        "no key ring: no password"
+    );
+    s.create_key_ring(&ring(&p), None).unwrap();
+    assert!(!s.has_master_password(&ring(&p)).unwrap());
+    s.change_master_password(&ring(&p), None, Some(common::pw("pw")))
+        .unwrap();
+    assert!(s.has_master_password(&ring(&p)).unwrap());
+    s.change_master_password(&ring(&p), Some(common::pw("pw")), None)
+        .unwrap();
+    assert!(!s.has_master_password(&ring(&p)).unwrap());
+}
+
+#[test]
+fn a_password_added_later_locks_a_restart_and_removing_it_opens_without_one() {
+    let p = provider();
+    let dir = tempfile::tempdir().unwrap();
+    let item;
+    {
+        let mut s = Store::open(dir.path()).unwrap();
+        let b = board(&mut s, "b");
+        let l = list(&mut s, b.id, "l");
+        s.create_key_ring(&ring(&p), None).unwrap();
+        item = secret_item(l.id, "x");
+        s.insert_item(&item, &text_formats("kept"), Placement::Last)
+            .unwrap();
+        s.change_master_password(&ring(&p), None, Some(common::pw("pw")))
+            .unwrap();
+        assert!(
+            s.is_unlocked(),
+            "setting a password does not lock the session"
+        );
+    }
+    let mut s = Store::open(dir.path()).unwrap();
+    assert!(s.has_master_password(&ring(&p)).unwrap());
+    assert!(matches!(
+        s.unlock_key_ring(&ring(&p), None),
+        Err(Error::Crypto(CryptoError::PasswordRequired))
+    ));
+    assert!(!s.is_unlocked());
+    assert!(matches!(s.formats(item.id), Err(Error::EncryptionLocked)));
+    s.unlock_key_ring(&ring(&p), Some(common::pw("pw")))
+        .unwrap();
+    assert_eq!(s.formats(item.id).unwrap(), text_formats("kept"));
+    s.change_master_password(&ring(&p), Some(common::pw("pw")), None)
+        .unwrap();
+    s.lock_key_ring();
+    s.unlock_key_ring(&ring(&p), None).unwrap();
+    assert_eq!(s.formats(item.id).unwrap(), text_formats("kept"));
+}
+
+#[test]
+fn a_wrong_current_password_changes_nothing_and_the_old_one_still_works() {
+    let p = provider();
+    let mut s = store();
+    s.create_key_ring(&ring(&p), Some(common::pw("old")))
+        .unwrap();
+    assert!(matches!(
+        s.change_master_password(&ring(&p), Some(common::pw("wrong")), None),
+        Err(Error::Crypto(CryptoError::WrongPassword))
+    ));
+    assert!(s.has_master_password(&ring(&p)).unwrap());
+    s.lock_key_ring();
+    s.unlock_key_ring(&ring(&p), Some(common::pw("old")))
+        .unwrap();
+}
+
+#[test]
+fn a_rekeyed_record_opens_with_the_new_password_while_the_old_record_still_opens_with_the_old() {
+    // A password change writes the new record over the old one only after this holds, so a
+    // wrong write cannot lock the user out: the record handed back is good before it is stored.
+    let p = provider();
+    let ring = ring(&p);
+    let (_, old) = ring.create(Some(common::pw("one"))).unwrap();
+    let (key, new) = ring
+        .rekey(&old, Some(common::pw("one")), Some(common::pw("two")))
+        .unwrap();
+    assert!(
+        ring.unlock(&new, Some(common::pw("two"))).is_ok(),
+        "the new record opens"
+    );
+    assert!(
+        ring.unlock(&new, Some(common::pw("one"))).is_err(),
+        "and only with the new password"
+    );
+    assert!(
+        ring.unlock(&old, Some(common::pw("one"))).is_ok(),
+        "the old record is untouched"
+    );
+    drop(key);
+}
+
+#[test]
+fn a_failed_key_setup_leaves_no_envelope_files_behind() {
+    let p = provider();
+    let (dir, mut s, l) = on_disk();
+    let big = s.put(vec![b'Q'; INLINE_LIMIT + 10]).unwrap();
+    let it = secret_item(l.id, "Bank");
+    s.insert_item(
+        &it,
+        &Formats::new(vec![Format::Png(big)]).unwrap(),
+        Placement::Last,
+    )
+    .unwrap();
+    let before = content_files(dir.path()).len();
+    // The envelope is written first; the row update then fails, so the commit never happens.
+    raw(&dir)
+        .execute_batch(
+            "CREATE TRIGGER boom BEFORE UPDATE OF encrypted ON items \
+             BEGIN SELECT RAISE(ABORT, 'boom'); END;",
+        )
+        .unwrap();
+    assert!(s.create_key_ring(&ring(&p), None).is_err());
+    assert_eq!(content_files(dir.path()).len(), before);
+}
+
+#[test]
+fn a_record_for_another_key_is_refused_and_the_old_one_stays() {
+    let p = provider();
+    let mut s = store();
+    let b = board(&mut s, "b");
+    let list = list(&mut s, b.id, "l");
+    s.create_key_ring(&ring(&p), Some(common::pw("pw")))
+        .unwrap();
+    let it = secret_item(list.id, "bank");
+    s.insert_item(&it, &text_formats("kept"), Placement::Last)
+        .unwrap();
+    let before = s.key_record().unwrap().unwrap();
+
+    // A record (and key) made for some other library.
+    let (other_key, other_record) = ring(&p).create(Some(common::pw("pw"))).unwrap();
+    for locked in [false, true] {
+        if locked {
+            s.lock_key_ring();
+        }
+        assert!(matches!(
+            s.replace_key_record_checked(&other_record, &other_key),
+            Err(Error::Invalid(_))
+        ));
+        assert_eq!(
+            s.key_record().unwrap().unwrap().as_bytes(),
+            before.as_bytes()
+        );
+    }
+    assert_eq!(s.previous_key_record().unwrap(), None);
+}
+
+#[test]
+fn a_record_for_the_same_key_replaces_and_keeps_the_previous_one() {
+    let p = provider();
+    let mut s = store();
+    let b = board(&mut s, "b");
+    let list = list(&mut s, b.id, "l");
+    s.create_key_ring(&ring(&p), Some(common::pw("one")))
+        .unwrap();
+    let it = secret_item(list.id, "bank");
+    s.insert_item(&it, &text_formats("kept"), Placement::Last)
+        .unwrap();
+    let old = s.key_record().unwrap().unwrap();
+
+    for locked in [false, true] {
+        let current = s.key_record().unwrap().unwrap();
+        let (pw_from, pw_to) = if locked {
+            ("two", "three")
+        } else {
+            ("one", "two")
+        };
+        let (key, record) = ring(&p)
+            .rekey(&current, Some(common::pw(pw_from)), Some(common::pw(pw_to)))
+            .unwrap();
+        if locked {
+            s.lock_key_ring();
+        }
+        s.replace_key_record_checked(&record, &key).unwrap();
+        assert_eq!(
+            s.key_record().unwrap().unwrap().as_bytes(),
+            record.as_bytes()
+        );
+        assert_eq!(
+            s.previous_key_record().unwrap().unwrap().as_bytes(),
+            current.as_bytes()
+        );
+    }
+    assert_ne!(old.as_bytes(), s.key_record().unwrap().unwrap().as_bytes());
+    s.unlock_key_ring(&ring(&p), Some(common::pw("three")))
+        .unwrap();
+    assert_eq!(s.formats(it.id).unwrap(), text_formats("kept"));
+}
+
+#[test]
+fn plain_formats_returns_every_unencrypted_live_item_in_one_pass() {
+    let prov = provider();
+    let (_dir, mut s, lst) = on_disk();
+    s.create_key_ring(&ring(&prov), None).unwrap();
+
+    let big = s.put(vec![b'Q'; INLINE_LIMIT + 10]).unwrap();
+    let rich = Formats::new(vec![
+        Format::Text(text("plain")),
+        Format::Png(big),
+        Format::Files(vec![
+            FileEntry::new("a.txt", text("file-a")).unwrap(),
+            FileEntry::new("b.txt", text("file-b")).unwrap(),
+        ]),
+    ])
+    .unwrap();
+    let first = Item::new(lst.id, "rich".to_owned(), ItemKind::Text, at(0));
+    s.insert_item(&first, &rich, Placement::Last).unwrap();
+    let second = Item::new(lst.id, "simple".to_owned(), ItemKind::Text, at(1));
+    s.insert_item(&second, &text_formats("two"), Placement::Last)
+        .unwrap();
+    let secret = secret_item(lst.id, "secret");
+    s.insert_item(&secret, &text_formats("hidden"), Placement::Last)
+        .unwrap();
+    let gone = Item::new(lst.id, "trashed".to_owned(), ItemKind::Text, at(2));
+    s.insert_item(&gone, &text_formats("gone"), Placement::Last)
+        .unwrap();
+    s.trash(Trashable::Item(gone.id), at(3)).unwrap();
+
+    let mut got = s.plain_formats().unwrap();
+    got.sort_by_key(|(id, _)| *id == second.id);
+    assert_eq!(got.len(), 2, "no encrypted and no trashed item");
+    assert_eq!(
+        got[0],
+        (first.id, rich),
+        "same as formats(), files and blob included"
+    );
+    assert_eq!(got[1], (second.id, text_formats("two")));
+    assert_eq!(s.formats(first.id).unwrap(), got[0].1);
 }

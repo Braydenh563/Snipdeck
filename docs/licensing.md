@@ -1,9 +1,55 @@
 # Licence keys
 
-Snipdeck Pro is unlocked by an offline, Ed25519-signed licence key (ADR-0005). There is no
+Snipdeck is free software (GPL-3.0-only). Free covers everyday use. **Supporter** is for people who want a
+few extra conveniences and want to support the project.
+
+## Free and Supporter
+
+| | Free | Supporter |
+|---|---|---|
+| Boards | Up to 5 | Unlimited |
+| Lists, items, Panel, Picker, save from the clipboard | Yes | Yes |
+| Templates with date, time and cursor | Yes | Yes |
+| Sensitive items, masked, and encryption on disk | Yes | Yes |
+| Backups, export, light and dark, 7 languages | Yes | Yes |
+| Dock to a screen edge | Yes | Yes |
+| Templates that ask for a value or a choice | No | Yes |
+| Master password | No | Yes |
+| Paste stack and Paste next | No | Yes |
+
+Encryption of sensitive items on disk is free for everyone, because it is security and not a convenience. Only
+the master password is a Supporter feature.
+
+## Get Supporter
+
+- **Pay what you want, from A$5.** The suggested price is A$8. You pay once, and every 1.x update is
+  included.
+- **Open Settings and choose Get Supporter…** It shows the price and an **Email me** button, which opens a
+  message to brayden.hoyle@outlook.com in your email app, to ask for a key.
+- **Can't afford it?** Ask for a key and say so. No questions.
+- **Turn it on.** Paste the key under **Licence** in Settings and press **Activate**. The key is checked on
+  your PC. Nothing is sent anywhere, and Snipdeck never goes online to check it.
+- **Nothing nags you.** There are no pop-ups, countdowns or trial limits. If you reach the 5-board limit, a
+  message says so. Nothing is hidden or deleted.
+
+## If your key stops working
+
+If a key is rejected, the window says why. Check that you pasted the whole line, which starts with `SNIP1.`.
+If it still fails, ask for a new one. If you stop using Supporter, your library stays as it is. You keep every
+item. Features that need Supporter simply stop working, and you can always unlock, change or remove a master
+password.
+
+## For developers
+
+**Supporter** is pay what you want, from A$5 (suggested A$8), one time, with every 1.x update. It
+adds more boards, templates that ask for values, a master password for encrypted items and paste next.
+Encrypting sensitive items on disk is free for everyone: it is security, not convenience.
+Supporter is unlocked by an offline, Ed25519-signed licence key (ADR-0005). There is no
 account, no phone-home and no clock check: a key either verifies against the public key
-compiled into the build or it does not. Anyone can rebuild Snipdeck without the check; the
-key exists so buyers can unlock the official build.
+compiled into the build or it does not. If you cannot afford it, ask for a key.
+
+The token's `tier` field holds the string `"pro"`: that is the internal id of the Supporter
+tier, kept so that keys already issued stay valid.
 
 Code: `crates/snipdeck-core/src/licence.rs`. Tests: the unit tests in that file and
 `crates/snipdeck-core/tests/licence.rs` (test vectors and fuzzing).
@@ -24,7 +70,7 @@ SNIP1.<base64url(payload)>.<base64url(signature)>
   | `issued` | integer | yes | Unix seconds when the key was issued. Kept for a future revocation list. |
   | `order` | string | yes | Seller's order id, 1 to 128 bytes. |
   | `email_hash` | string | no | Hash of the buyer's email, for support look-ups. Never the address. |
-  | `features` | string array | no | Feature keys (`paste-stack`, ...). Informational in v1: Pro allows all features. Unknown keys are ignored. |
+  | `features` | string array | no | Feature keys (`paste-stack`, ...). Informational in v1: Supporter allows all features. Unknown keys are ignored. |
 
   Unknown extra fields are ignored, so adding one later does not break old builds.
 * `signature` is the 64-byte Ed25519 signature over the ASCII bytes
@@ -81,18 +127,11 @@ crate is built**, by this policy (`src/licence/key_selection.rs`, unit tested):
 | **release** (`--release`, or a profile inheriting from it) | unset or blank | **the build fails**, with this section's name in the message |
 | any | the development key, not base64, not 32 bytes, or not a point on the curve | the build fails |
 
-The repository's development key (`DEVELOPMENT_PUBLIC_KEY`) belongs to a seed that is
-public, deliberately: it is in the tests and in this file, so anyone can mint a key that a
-development build accepts. It protects nothing and must never ship. A second guard in
-`keys.rs` is independent of the profile detection: a build with debug assertions off that
-still embeds the development key does not compile either. A release-mode `cargo test` checks
-the same rule (`release_builds_never_embed_the_development_key`), and a licence signed with
-the development seed is rejected by any build that embeds another key.
-
-Why an environment variable and not a cargo feature (the design choice): a feature such as
-`development-licence-key` has to be turned *off* for release, and "off by default" fails open
-the moment a CI file or a dependent crate turns it on. Here the only way to get a release is
-to supply a key, and no setting turns the development key on in a release.
+The repository's development key (`DEVELOPMENT_PUBLIC_KEY`) is for debug builds and tests
+only. Its seed is in the tests, so the vectors below are reproducible. Release builds refuse
+it, and a licence signed with the development seed is rejected by any build that embeds
+another key. The release-mode test `release_builds_never_embed_the_development_key` checks
+the rule.
 
 ## Release procedure
 
@@ -113,10 +152,9 @@ to supply a key, and no setting turns the development key on in a release.
 Running release-mode tests or timings locally (for example the 10k search timing test) needs
 a key too: use any valid public key, such as the throwaway
 `SNIPDECK_LICENCE_PUBLIC_KEY=Zr5+Myx6RTMyvZ0Kf32wVfXF7xoGraZtmLOftoEMRzo=` (the key of seed
-`[0x0b; 32]`; it is a test value, not a product key).
-
-Until a production key exists, nobody can produce a release build. That is the intended
-state.
+`[0x0b; 32]`; it is a test value, not a product key). A release build refuses this key (and
+the other published test keys) unless `SNIPDECK_ALLOW_TEST_LICENCE_KEY=1` is also set, so
+a copy of it in the release secret cannot ship; the official release never sets the opt-in.
 
 ## Production key: generation, storage, rotation
 
@@ -132,19 +170,54 @@ laptop that is not the signing machine.
 3. **Install the public key** as `SNIPDECK_LICENCE_PUBLIC_KEY` in the release workflow (see
    "Release procedure"); no source edit is needed. Check a production-signed test token
    verifies in the release build before publishing.
-4. **Rotate** if the private key is ever suspected exposed, or on a schedule you choose:
-   generate a new pair, ship a build that trusts **both** public keys (extend the verifier to
-   try each; the token format does not change), re-issue keys to buyers on request, and drop
-   the old key in a later release. Because licences are perpetual and offline, a leaked key
-   cannot be revoked in already-shipped builds; that is the accepted cost of no phone-home.
-5. **Revocation** (not in v1): a signed list of revoked `order` ids or an `issued` cut-off,
-   fetched opportunistically and verified against the same key. `verify` already takes `now`
-   and every licence carries `issued` and `order` for this.
+4. **Rotate** if the private key is ever suspected exposed: generate a new pair, ship a build
+   for the new public key, and re-issue keys to buyers on request. The token format does not
+   change. Licences are perpetual and offline, so there is no online check.
+
+## Keys for friends
+
+`tools/snipdeck-licence-issuer` (binary `snipdeck-licence-issuer`) makes the key pair and signs keys by hand.
+It is a workspace tool, not part of the app: the signing code lives in
+`snipdeck_core::licence::signing` behind the cargo feature `licence-issuer`, which only this tool
+enables.
+
+```sh
+# Once: make the key pair. Refuses to overwrite an existing key.
+cargo run -p snipdeck-licence-issuer -- genkey --out ~/snipdeck-licence-keys
+#   private.key  (mode 0600; secret)   public.key
+#   SNIPDECK_LICENCE_PUBLIC_KEY=<base64>   <- the exact value the release build takes
+
+# Per friend: print a key to send them.
+cargo run -p snipdeck-licence-issuer -- sign --key ~/snipdeck-licence-keys/private.key --order GIFT-alex
+
+# Check any key against a public key and show what it says.
+cargo run -p snipdeck-licence-issuer -- verify --public ~/snipdeck-licence-keys/public.key SNIP1.…
+```
+
+* `genkey` writes `private.key` **in clear text** (base64 of the seed; mode 0600 on Unix, and on
+  Windows it inherits the folder's permissions, so use a private folder). Keep the folder on an
+  **encrypted drive** (BitLocker, FileVault, LUKS) or move it to an offline token. The tool
+  refuses any folder inside a git work tree, so the key cannot be committed by accident.
+* `--order` must be 1 to 128 characters of `A-Z a-z 0-9 . _ -`; anything else is refused.
+  Use **`GIFT-<name>`** (`GIFT-alex`, `GIFT-sam-2`) for every key given away, one per
+  person. The order id is signed into the key.
+* `--email-hash HEX` (lower-case hex) is optional and never an address; `--issued UNIX`
+  fixes the issue time (default: now), for reproducible keys.
+* There is no `--expires`: format v1 has no expiry field, so every key is perpetual.
+* The key goes to the friend as the printed `SNIP1.…` text, one line.
+* **Where to keep `private.key`**: the same place as the production key ("Production key:
+  generation, storage, rotation"): a password manager or an offline encrypted volume, never in
+  this repository (`private.key` and `licence-keys/` are git-ignored as a safety net), CI or a
+  shared drive. On Windows the file inherits the folder's permissions, so make the folder
+  private.
+* Install `public.key`'s value as `SNIPDECK_LICENCE_PUBLIC_KEY` for the release build
+  ("Release procedure"). Keys signed by `private.key` verify only in builds that embed the
+  matching public key.
 
 ## Notes for the UI
 
 * Show a visible warning while `IS_DEVELOPMENT_KEY` is `true` (it is always `false` in a
   release build).
 * Store the token text as the user entered it; re-verify at every start (it is a few
-  microseconds of work). Never store "is Pro" as a flag.
+  microseconds of work).
 * A token that fails verification means Free: nothing is hidden or deleted (SPEC §6).

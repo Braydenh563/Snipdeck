@@ -2,18 +2,32 @@
 //! the keyboard selection and what a click will do. Pure data: the UI layer copies it into Slint
 //! models and translates the footer and use-label variants.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
-use snipdeck_core::{
-    Board, BoardId, Item, ItemId, ItemKind, List, ListAccent, ListId, ListSort, search::SearchIndex,
+use crate::{
+    index_cache::{IndexCache, Snapshot},
+    main_window::SelectMode,
+    search_mark,
 };
-use snipdeck_platform::route::{Policy, Route, Target, decide};
-use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TagRepo};
+use snipdeck_core::{
+    Board, BoardId, GroupId, Item, ItemId, ItemKind, ItemLabel, List, ListAccent, ListIcon, ListId,
+    ListSort, search::SearchIndex,
+};
+use snipdeck_platform::{
+    keys::{PasteRule, builtin_paste_rules},
+    route::{Policy, Route, Target, decide_with},
+};
+use snipdeck_store::{BoardRepo, GroupRepo, GroupRun, ItemRepo, ListRepo, TagRepo};
 
 /// How many search results the Panel shows.
 const SEARCH_LIMIT: usize = 50;
 
 /// One row of the item list.
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "independent row flags the view shows, not a state machine"
+)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Row {
     /// The item.
@@ -30,13 +44,58 @@ pub struct Row {
     pub preview: String,
     /// In mixed views (search): the list the item lives in.
     pub list: Option<ListLabel>,
+    /// In a search: the first match of the query in the title, as the text before it and the match.
+    pub title_mark: Option<(String, String)>,
+    /// In a search: the first match of the query in the first line of the preview, as the text
+    /// before it, the match and the text after it (the line is cut to a window around the match).
+    /// Never set for a sensitive item.
+    pub preview_mark: Option<(String, String, String)>,
+    /// In a search: the name of the tag that matched, when the title and the preview did not
+    /// show the match. Never set for a sensitive item.
+    pub tag_hit: Option<String>,
     /// Shown in the pinned strip too.
     pub pinned: bool,
+    /// The item's colour label.
+    pub label: Option<ItemLabel>,
+    /// In the multi-selection (Ctrl+click, Shift+click, Ctrl+A).
+    pub marked: bool,
+    /// Delete mode: the item is in the Trash and the row shows "Deleted · Undo" in its place until
+    /// the mode ends. Only the controller sets it.
+    pub deleted_pending: bool,
+    /// The item keeps HTML or RTF next to its text: the row shows a "Formatted" mark.
+    pub formatted: bool,
+    /// The row is a group's header, not an item (its `id` is the group's, never an item's).
+    pub header: Option<GroupHeader>,
+    /// The item is a member of a group shown above it: the card is indented.
+    pub grouped: bool,
+}
+
+impl Row {
+    /// An item row a click can use, edit or mark: not a header, not "Deleted · Undo".
+    #[must_use]
+    pub fn is_item(&self) -> bool {
+        self.header.is_none() && !self.deleted_pending
+    }
+}
+
+/// What a group's header row shows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GroupHeader {
+    /// The group.
+    pub group: GroupId,
+    /// Its name.
+    pub name: String,
+    /// How many items it holds (collapsed or not).
+    pub count: usize,
+    /// The items are hidden under the header.
+    pub collapsed: bool,
 }
 
 /// A list's name and accent, shown on rows in mixed views.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ListLabel {
+    /// The name of the board the list is on (search results say "Board · List").
+    pub board: String,
     /// The list's name.
     pub name: String,
     /// Its colour, if it has one.
@@ -52,6 +111,8 @@ pub struct Tab {
     pub name: String,
     /// Its colour.
     pub accent: Option<ListAccent>,
+    /// Its icon.
+    pub icon: Option<ListIcon>,
     /// The list currently shown.
     pub active: bool,
 }
@@ -87,13 +148,43 @@ pub struct PanelModel {
     lists: Vec<List>,
     list: Option<ListId>,
     items: Vec<Item>,
-    all: Vec<Item>,
+    /// The shown list's groups (empty when it is not in manual order: a group needs its order).
+    groups: Vec<GroupRun>,
+    /// Every item, the boards and the index, as read when the library last changed.
+    all: Rc<Snapshot>,
     list_labels: HashMap<ListId, ListLabel>,
-    index: SearchIndex,
+    index: Rc<SearchIndex>,
+    cache: IndexCache,
     query: String,
     selected: usize,
+    /// The multi-selection, as Main's `pick-mode` keeps one: the items marked with Ctrl+click,
+    /// Shift+click, Ctrl+A or Shift+Up/Down. Separate from the keyboard cursor `selected`.
+    marked: HashSet<ItemId>,
+    /// Where a Shift+click or Shift+arrow range starts.
+    anchor: Option<ItemId>,
     target: Option<Target>,
     policy: Policy,
+    /// The paste key of each program (Settings > Programs). Until the controller sets them
+    /// ([`set_paste_rules`](Self::set_paste_rules)) the built-in ones.
+    paste_rules: Vec<PasteRule>,
+    /// Delete mode: the rows deleted in it that still show as "Deleted · Undo". They belong to
+    /// one list and sit after the row that was above them (see [`Ghost`]).
+    ghosts: Vec<Ghost>,
+}
+
+/// A row deleted in Delete mode. The item is in the Trash; the row stays in
+/// [`PanelModel::rows`] (flagged `deleted_pending`) so the shown index and the model index are
+/// one and the same, until the mode ends or the shown list changes.
+#[derive(Debug, Clone)]
+struct Ghost {
+    /// The list the row was in: ghosts of other lists are not shown.
+    list: ListId,
+    /// The row that was shown above it (a live row or another ghost); `None` = it was first.
+    after: Option<ItemId>,
+    /// The row as it was.
+    row: Row,
+    /// The history step that Undo takes back.
+    step: Option<u64>,
 }
 
 impl PanelModel {
@@ -103,22 +194,42 @@ impl PanelModel {
     /// # Errors
     ///
     /// Any store error.
+    #[cfg(test)]
     pub fn load<S>(
         store: &S,
         board: Option<BoardId>,
         list: Option<ListId>,
     ) -> snipdeck_store::Result<Self>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
     {
-        let boards = store.boards()?;
+        Self::load_cached(store, board, list, &IndexCache::new())
+    }
+
+    /// Loads the Panel for `board` and `list` (the first of each when `None` or no longer
+    /// present), reading the library through `cache` (read again only when the library changed
+    /// since). The model keeps a handle on `cache` for its own reloads.
+    ///
+    /// # Errors
+    ///
+    /// Any store error.
+    pub fn load_cached<S>(
+        store: &S,
+        board: Option<BoardId>,
+        list: Option<ListId>,
+        cache: &IndexCache,
+    ) -> snipdeck_store::Result<Self>
+    where
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
+    {
+        let snapshot = cache.snapshot(store)?;
+        let boards: Vec<Board> = snapshot.boards.iter().map(|(b, _)| b.clone()).collect();
         let board = board
             .filter(|id| boards.iter().any(|b| b.id == *id))
             .or_else(|| boards.first().map(|b| b.id));
-        let lists = match board {
-            Some(id) => store.lists(id)?,
-            None => Vec::new(),
-        };
+        let lists = board
+            .and_then(|id| snapshot.boards.iter().find(|(b, _)| b.id == id))
+            .map_or_else(Vec::new, |(_, lists)| lists.clone());
         let list = list
             .filter(|id| lists.iter().any(|l| l.id == *id))
             .or_else(|| lists.first().map(|l| l.id));
@@ -126,46 +237,45 @@ impl PanelModel {
             Some(id) => store.items(id)?,
             None => Vec::new(),
         };
-        let all = store.all_items()?;
-        let tag_names: HashMap<_, _> = store
-            .tags()?
-            .into_iter()
-            .map(|t| (t.id, t.name.as_str().to_owned()))
-            .collect();
-        let mut index = SearchIndex::default();
-        for item in &all {
-            index.upsert_with_tags(
-                item,
-                item.tags
-                    .iter()
-                    .filter_map(|t| tag_names.get(t).map(String::as_str)),
-            );
-        }
-        let mut list_labels = HashMap::new();
-        for b in &boards {
-            for l in store.lists(b.id)? {
-                list_labels.insert(
+        let groups = match list {
+            Some(id) => store.groups_of(id)?,
+            None => Vec::new(),
+        };
+        let list_labels = snapshot
+            .boards
+            .iter()
+            .flat_map(|(b, lists)| lists.iter().map(move |l| (b, l)))
+            .map(|(b, l)| {
+                (
                     l.id,
                     ListLabel {
+                        board: b.name.as_str().to_owned(),
                         name: l.name.as_str().to_owned(),
                         accent: l.accent,
                     },
-                );
-            }
-        }
+                )
+            })
+            .collect();
+        let index = Rc::clone(&snapshot.index);
         Ok(Self {
             boards,
             board,
             lists,
             list,
             items,
-            all,
+            groups,
+            all: snapshot,
             list_labels,
             index,
+            cache: cache.clone(),
             query: String::new(),
             selected: 0,
+            ghosts: Vec::new(),
+            marked: HashSet::new(),
+            anchor: None,
             target: None,
             policy: Policy::default(),
+            paste_rules: builtin_paste_rules(),
         })
     }
 
@@ -177,7 +287,7 @@ impl PanelModel {
     /// Any store error; the model is left as it was.
     pub fn refresh<S>(&mut self, store: &S) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
     {
         self.reload(store, self.board, self.list, true)
     }
@@ -190,7 +300,7 @@ impl PanelModel {
     /// Any store error; the model is left as it was.
     pub fn select_list<S>(&mut self, store: &S, list: ListId) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
     {
         self.reload(store, self.board, Some(list), false)
     }
@@ -202,7 +312,7 @@ impl PanelModel {
     /// Any store error; the model is left as it was.
     pub fn select_board<S>(&mut self, store: &S, board: BoardId) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
     {
         self.reload(store, Some(board), None, false)
     }
@@ -215,14 +325,26 @@ impl PanelModel {
         keep_search: bool,
     ) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
     {
-        let mut next = Self::load(store, board, list)?;
+        let mut next = Self::load_cached(store, board, list, &self.cache)?;
         next.target = self.target.take();
         next.policy = std::mem::take(&mut self.policy);
         if keep_search {
             next.query = std::mem::take(&mut self.query);
             next.selected = self.selected;
+            // A refresh (an item added, moved, trashed) keeps the marks of items still shown here.
+            let here: HashSet<ItemId> = next.items.iter().map(|i| i.id).collect();
+            next.marked = self
+                .marked
+                .iter()
+                .copied()
+                .filter(|i| here.contains(i))
+                .collect();
+            next.anchor = self.anchor.filter(|a| next.marked.contains(a));
+        }
+        if keep_search && next.list == self.list {
+            next.ghosts = std::mem::take(&mut self.ghosts);
         }
         *self = next;
         Ok(())
@@ -249,6 +371,7 @@ impl PanelModel {
                 id: l.id,
                 name: l.name.as_str().to_owned(),
                 accent: l.accent,
+                icon: l.icon,
                 active: Some(l.id) == self.list,
             })
             .collect()
@@ -260,16 +383,44 @@ impl PanelModel {
         self.lists.iter().find(|l| Some(l.id) == self.list)
     }
 
+    /// The shown list orders itself (not manual) and no search runs: a move is refused, but the
+    /// refusal offers to switch the list to manual order.
+    #[must_use]
+    pub fn sorts_itself(&self) -> bool {
+        !self.searching() && self.list().is_some_and(|l| l.sort != ListSort::Manual)
+    }
+
     /// Whether a search is active.
     #[must_use]
     pub fn searching(&self) -> bool {
         !self.query.trim().is_empty()
     }
 
+    /// Whether the rows can be arranged by hand: the shown list is in manual order and no
+    /// search is running.
+    #[must_use]
+    pub fn reorderable(&self) -> bool {
+        !self.searching() && self.list().is_some_and(|l| l.sort == ListSort::Manual)
+    }
+
+    /// The shown list's items in manual order.
+    #[must_use]
+    pub fn manual_order(&self) -> Vec<ItemId> {
+        self.items.iter().map(|i| i.id).collect()
+    }
+
+    /// The names the search suggestions are made of (shared with the Picker's, built with the
+    /// search index).
+    #[must_use]
+    pub fn suggest_index(&self) -> Rc<crate::search_suggest::Index> {
+        Rc::clone(&self.all.suggest)
+    }
+
     /// Sets the search text; the selection returns to the first row.
     pub fn set_query(&mut self, query: &str) {
         query.clone_into(&mut self.query);
         self.selected = 0;
+        self.clear_marks();
     }
 
     /// The pinned items of the shown board's lists, as rows.
@@ -277,30 +428,251 @@ impl PanelModel {
     pub fn pinned(&self) -> Vec<Row> {
         let in_board: Vec<ListId> = self.lists.iter().map(|l| l.id).collect();
         self.all
+            .all
             .iter()
             .filter(|i| i.pinned && in_board.contains(&i.list_id))
-            .map(|i| self.row(i, 0, false))
+            .map(|i| self.row(i, 0, false, None))
             .collect()
     }
 
     /// The rows to show: the search results, or the shown list in its sort order.
     #[must_use]
     pub fn rows(&self) -> Vec<Row> {
-        let items: Vec<&Item> = if self.searching() {
-            self.index
-                .query(&self.query, SEARCH_LIMIT)
+        if !self.searching() {
+            let mut rows = self.list_rows();
+            self.place_ghosts(&mut rows);
+            return rows;
+        }
+        let found = self.index.query(&self.query, SEARCH_LIMIT);
+        let hits: Vec<(&Item, Option<&str>)> = found
+            .iter()
+            .filter_map(|hit| {
+                let item = self.all.all.iter().find(|i| i.id == hit.id)?;
+                Some((item, hit.tag.as_deref()))
+            })
+            .collect();
+        let manual = self.list().is_some_and(|l| l.sort == ListSort::Manual);
+        let mut rows = Vec::new();
+        let mut shown: Vec<GroupId> = Vec::new();
+        let mut number = 0;
+        for (item, tag) in &hits {
+            let run = if manual {
+                self.group_of(item.id)
+                    .filter(|r| !shown.contains(&r.group.id))
+            } else {
+                None
+            };
+            let Some(run) = run else {
+                if !manual || self.group_of(item.id).is_none() {
+                    rows.push(self.row(item, number, true, *tag));
+                    number += 1;
+                }
+                continue;
+            };
+            // A match inside a group: the group's header (open) with all its matches below it,
+            // even when the group is folded.
+            shown.push(run.group.id);
+            let mine: Vec<&(&Item, Option<&str>)> = hits
                 .iter()
-                .filter_map(|hit| self.all.iter().find(|i| i.id == hit.id))
+                .filter(|(i, _)| run.items.contains(&i.id))
+                .collect();
+            let mut header = Self::header_row(run);
+            header.header = header.header.map(|h| GroupHeader {
+                count: mine.len(),
+                collapsed: false,
+                ..h
+            });
+            rows.push(header);
+            for (member, tag) in mine {
+                let mut row = self.row(member, number, true, *tag);
+                row.grouped = true;
+                rows.push(row);
+                number += 1;
+            }
+        }
+        rows
+    }
+
+    /// The shown list's rows: items, with a header above each group (the group's items are
+    /// left out while it is collapsed). Quick numbers count item rows only. A list that orders
+    /// itself shows no groups: a group is a run of the manual order.
+    fn list_rows(&self) -> Vec<Row> {
+        let manual = self.list().is_some_and(|l| l.sort == ListSort::Manual);
+        let runs: HashMap<ItemId, &GroupRun> = if manual {
+            self.groups
+                .iter()
+                .flat_map(|run| run.items.iter().map(move |i| (*i, run)))
                 .collect()
         } else {
-            self.list_items()
+            HashMap::new()
         };
-        let mixed = self.searching();
-        items
-            .into_iter()
-            .enumerate()
-            .map(|(n, item)| self.row(item, n, mixed))
-            .collect()
+        let mut rows = Vec::new();
+        let mut open: Option<GroupId> = None;
+        let mut number = 0;
+        for item in self.list_items() {
+            let run = runs.get(&item.id).copied();
+            if let Some(run) = run.filter(|r| open != Some(r.group.id)) {
+                rows.push(Self::header_row(run));
+            }
+            open = run.map(|r| r.group.id);
+            if run.is_some_and(|r| r.group.collapsed) {
+                continue;
+            }
+            let mut row = self.row(item, number, false, None);
+            row.grouped = run.is_some();
+            rows.push(row);
+            number += 1;
+        }
+        rows
+    }
+
+    /// The header row of `run`.
+    fn header_row(run: &GroupRun) -> Row {
+        Row {
+            id: ItemId::from_uuid(*run.group.id.as_uuid()),
+            number: 0,
+            kind: ItemKind::Text,
+            sensitive: false,
+            title: run.group.name.as_str().to_owned(),
+            preview: String::new(),
+            list: None,
+            title_mark: None,
+            preview_mark: None,
+            tag_hit: None,
+            pinned: false,
+            label: None,
+            marked: false,
+            deleted_pending: false,
+            formatted: false,
+            header: Some(GroupHeader {
+                group: run.group.id,
+                name: run.group.name.as_str().to_owned(),
+                count: run.items.len(),
+                collapsed: run.group.collapsed,
+            }),
+            grouped: false,
+        }
+    }
+
+    /// The group whose header is shown at row `index`.
+    #[must_use]
+    pub fn group_at(&self, index: usize) -> Option<GroupRun> {
+        let header = self.rows().into_iter().nth(index)?.header?;
+        self.groups
+            .iter()
+            .find(|r| r.group.id == header.group)
+            .cloned()
+    }
+
+    /// The shown list's groups.
+    #[must_use]
+    pub fn groups(&self) -> &[GroupRun] {
+        &self.groups
+    }
+
+    /// The group item `id` belongs to, if any.
+    #[must_use]
+    pub fn group_of(&self, id: ItemId) -> Option<&GroupRun> {
+        self.groups.iter().find(|r| r.items.contains(&id))
+    }
+
+    /// Puts the "Deleted · Undo" rows of the shown list back, each after the row that was above it.
+    /// A ghost whose item is back (Undo from a toast, Ctrl+Z) is not shown twice.
+    fn place_ghosts(&self, rows: &mut Vec<Row>) {
+        let mut pending: Vec<&Ghost> = self
+            .ghosts
+            .iter()
+            .filter(|g| Some(g.list) == self.list && !rows.iter().any(|r| r.id == g.row.id))
+            .collect();
+        let ghost_row = |g: &Ghost| {
+            let mut row = g.row.clone();
+            row.deleted_pending = true;
+            row.marked = false;
+            row.number = 0;
+            row
+        };
+        while !pending.is_empty() {
+            let before = pending.len();
+            pending.retain(|g| {
+                let at = match g.after {
+                    None => Some(0),
+                    Some(a) => rows.iter().position(|r| r.id == a).map(|p| p + 1),
+                };
+                at.is_none_or(|at| {
+                    rows.insert(at, ghost_row(g));
+                    false
+                })
+            });
+            if pending.len() == before {
+                // Its neighbour is gone (moved away): the row goes last.
+                rows.extend(pending.iter().map(|g| ghost_row(g)));
+                break;
+            }
+        }
+    }
+
+    /// Delete mode: the shown row `index` (a live one) was just trashed; it keeps showing as
+    /// "Deleted · Undo" (`step` is what takes the delete back). Call before the refresh.
+    pub fn add_ghost(&mut self, index: usize, step: Option<u64>) {
+        if self.searching() {
+            return;
+        }
+        let (Some(list), rows) = (self.list, self.rows()) else {
+            return;
+        };
+        let Some(row) = rows.get(index).filter(|r| r.is_item()) else {
+            return;
+        };
+        let after = index.checked_sub(1).and_then(|i| rows.get(i)).map(|r| r.id);
+        let ghost = Ghost {
+            list,
+            after,
+            row: row.clone(),
+            step,
+        };
+        self.ghosts.retain(|g| g.row.id != ghost.row.id);
+        self.ghosts.push(ghost);
+    }
+
+    /// The history step of the ghost of item `id` (`Some(None)`: it had none), if there is one.
+    #[must_use]
+    pub fn ghost_step(&self, id: ItemId) -> Option<Option<u64>> {
+        self.ghosts.iter().find(|g| g.row.id == id).map(|g| g.step)
+    }
+
+    /// Forgets the ghost of item `id`.
+    pub fn remove_ghost(&mut self, id: ItemId) {
+        self.ghosts.retain(|g| g.row.id != id);
+    }
+
+    /// Forgets every "Deleted · Undo" row (the mode ended).
+    pub fn clear_ghosts(&mut self) {
+        self.ghosts.clear();
+    }
+
+    /// The index of the live row nearest to `at` (itself, else the next, else the previous one).
+    fn nearest_live(rows: &[Row], at: usize) -> Option<usize> {
+        let at = at.min(rows.len().checked_sub(1)?);
+        (at..rows.len())
+            .find(|&i| !rows[i].deleted_pending)
+            .or_else(|| (0..at).rev().find(|&i| !rows[i].deleted_pending))
+    }
+
+    /// `delta` live rows from `from`, stopping at the ends; "Deleted · Undo" rows are stepped over.
+    fn step_live(rows: &[Row], from: usize, delta: isize) -> usize {
+        let mut at = from;
+        let dir: isize = if delta < 0 { -1 } else { 1 };
+        for _ in 0..delta.unsigned_abs() {
+            let mut next = at.checked_add_signed(dir);
+            while let Some(n) = next.filter(|n| *n < rows.len()) {
+                if !rows[n].deleted_pending {
+                    at = n;
+                    break;
+                }
+                next = n.checked_add_signed(dir);
+            }
+        }
+        at
     }
 
     /// The shown list's items in its sort order, whatever the search says.
@@ -323,11 +695,16 @@ impl PanelModel {
         self.list_items().iter().map(|i| i.id).collect()
     }
 
-    fn row(&self, item: &Item, position: usize, mixed: bool) -> Row {
+    fn row(&self, item: &Item, position: usize, mixed: bool, hit_tag: Option<&str>) -> Row {
         let title = if item.title.trim().is_empty() {
             item.preview.lines().next().unwrap_or_default().to_owned()
         } else {
             item.title.clone()
+        };
+        let marks = if mixed {
+            search_mark::marks(&title, &item.preview, item.sensitive, hit_tag, &self.query)
+        } else {
+            search_mark::Marks::default()
         };
         Row {
             id: item.id,
@@ -339,10 +716,19 @@ impl PanelModel {
             sensitive: item.sensitive,
             title,
             preview: item.preview.clone(),
+            title_mark: marks.title,
+            preview_mark: marks.preview,
+            tag_hit: marks.tag,
             list: mixed
                 .then(|| self.list_labels.get(&item.list_id).cloned())
                 .flatten(),
             pinned: item.pinned,
+            label: item.label,
+            marked: self.marked.contains(&item.id),
+            deleted_pending: false,
+            formatted: self.all.rich.contains(&item.id),
+            header: None,
+            grouped: false,
         }
     }
 
@@ -350,25 +736,133 @@ impl PanelModel {
     #[must_use]
     pub fn selected(&self) -> Option<ItemId> {
         let rows = self.rows();
-        rows.get(self.selected.min(rows.len().saturating_sub(1)))
+        Self::nearest_live(&rows, self.selected)
+            .map(|i| &rows[i])
+            .filter(|r| r.header.is_none())
             .map(|r| r.id)
     }
 
     /// The position of the keyboard-selected row in [`rows`](Self::rows).
     #[must_use]
     pub fn selected_position(&self) -> Option<usize> {
-        let len = self.rows().len();
-        (len > 0).then(|| self.selected.min(len - 1))
+        Self::nearest_live(&self.rows(), self.selected)
+    }
+
+    /// Puts the keyboard cursor on shown row `at` (a header included).
+    pub fn select_row(&mut self, at: usize) {
+        self.selected = at;
+    }
+
+    /// Puts the selection on item `id` if it is among the rows shown.
+    pub fn select_item(&mut self, id: ItemId) {
+        if let Some(at) = self.rows().iter().position(|r| r.id == id) {
+            self.selected = at;
+        }
     }
 
     /// Moves the selection by `delta` rows, stopping at the ends.
     pub fn move_selection(&mut self, delta: isize) {
-        let len = self.rows().len();
-        if len == 0 {
+        let rows = self.rows();
+        let Some(from) = Self::nearest_live(&rows, self.selected) else {
             self.selected = 0;
             return;
+        };
+        self.selected = Self::step_live(&rows, from, delta);
+    }
+
+    /// Applies a click or key on row `index` to the multi-selection (the model Main's `pick-mode`
+    /// uses): replace, toggle, or extend from the anchor. The keyboard cursor follows. An index
+    /// past the end is ignored.
+    pub fn mark(&mut self, index: usize, mode: SelectMode) {
+        let rows = self.rows();
+        if rows.get(index).is_none_or(|r| !r.is_item()) {
+            return;
         }
-        self.selected = self.selected.saturating_add_signed(delta).min(len - 1);
+        let ids: Vec<ItemId> = rows.iter().map(|r| r.id).collect();
+        let id = ids[index];
+        match mode {
+            SelectMode::Replace => {
+                self.marked = HashSet::from([id]);
+                self.anchor = Some(id);
+            }
+            SelectMode::Toggle => {
+                if !self.marked.remove(&id) {
+                    self.marked.insert(id);
+                }
+                self.anchor = Some(id);
+            }
+            SelectMode::Extend => {
+                let from = self
+                    .anchor
+                    .and_then(|a| ids.iter().position(|i| *i == a))
+                    .unwrap_or(self.selected);
+                let (lo, hi) = (from.min(index), from.max(index));
+                self.marked = rows[lo..=hi]
+                    .iter()
+                    .filter(|r| r.is_item())
+                    .map(|r| r.id)
+                    .collect();
+                if self.anchor.is_none() {
+                    self.anchor = ids.get(from).copied();
+                }
+            }
+        }
+        self.selected = index;
+    }
+
+    /// Shift+Down / Shift+Up: moves the cursor by `delta` rows and extends the selection to it
+    /// from the anchor (the cursor row when nothing is marked yet).
+    pub fn extend_marks(&mut self, delta: isize) {
+        let rows = self.rows();
+        let Some(at) = Self::nearest_live(&rows, self.selected) else {
+            return;
+        };
+        if self.marked.is_empty() {
+            self.mark(at, SelectMode::Replace);
+        }
+        self.mark(Self::step_live(&rows, at, delta), SelectMode::Extend);
+    }
+
+    /// Ctrl+A: marks every row shown.
+    pub fn mark_all(&mut self) {
+        let rows: Vec<Row> = self.rows().into_iter().filter(Row::is_item).collect();
+        self.marked = rows.iter().map(|r| r.id).collect();
+        self.anchor = rows.first().map(|r| r.id);
+    }
+
+    /// Esc: marks nothing.
+    pub fn clear_marks(&mut self) {
+        self.marked.clear();
+        self.anchor = None;
+    }
+
+    /// How many rows are marked.
+    #[must_use]
+    pub fn marked_count(&self) -> usize {
+        self.rows().iter().filter(|r| r.marked).count()
+    }
+
+    /// The marked items in row order.
+    #[must_use]
+    pub fn marked_ids(&self) -> Vec<ItemId> {
+        self.rows()
+            .iter()
+            .filter(|r| r.marked)
+            .map(|r| r.id)
+            .collect()
+    }
+
+    /// What an action on row `index` applies to: the marked rows when `index` is one of them,
+    /// else just that row.
+    #[must_use]
+    pub fn targets(&self, index: usize) -> Vec<ItemId> {
+        let rows = self.rows();
+        match rows.get(index) {
+            Some(row) if !row.is_item() => Vec::new(),
+            Some(row) if row.marked => rows.iter().filter(|r| r.marked).map(|r| r.id).collect(),
+            Some(row) => vec![row.id],
+            None => Vec::new(),
+        }
     }
 
     /// The row for quick-use number `n` (1 to 9), if the list has it.
@@ -377,7 +871,10 @@ impl PanelModel {
         if !(1..=9).contains(&n) {
             return None;
         }
-        self.rows().get(usize::from(n) - 1).map(|r| r.id)
+        self.rows()
+            .iter()
+            .find(|r| r.number == n && !r.deleted_pending)
+            .map(|r| r.id)
     }
 
     /// Records the window that had focus before the Panel was clicked.
@@ -402,10 +899,16 @@ impl PanelModel {
         self.policy = policy;
     }
 
+    /// Sets the paste key of each program (`Settings::paste_rules`); programs without one get
+    /// `Ctrl+V`.
+    pub fn set_paste_rules(&mut self, rules: Vec<PasteRule>) {
+        self.paste_rules = rules;
+    }
+
     /// What a click would do now.
     #[must_use]
     pub fn route(&self) -> Route {
-        decide(self.target.as_ref(), &self.policy)
+        decide_with(self.target.as_ref(), &self.policy, &self.paste_rules)
     }
 
     /// "Paste" when a click pastes, "Copy" otherwise.
@@ -451,9 +954,11 @@ pub fn friendly_app_name(exe: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snipdeck_core::{Content, Format, Formats, Inline, Name, Placement, Timestamp};
+    use crate::controller::Library as _;
+    use snipdeck_core::{Content, Format, Formats, Inline, Name, Placement, Tag, Timestamp};
     use snipdeck_platform::route::Focus;
     use snipdeck_store::Store;
+    use snipdeck_store::TrashRepo as _;
 
     fn at() -> Timestamp {
         "2026-10-17T09:00:00Z".parse().expect("timestamp")
@@ -561,6 +1066,25 @@ mod tests {
         assert_eq!(rows[0].title, "first line");
     }
 
+    // A25 guard: the index is built inside the first load (measured well under 50 ms, so it is
+    // not deferred). Whatever happens to that timing later, a search typed the moment the model
+    // exists must find the library, never an empty "not ready yet" result.
+    #[test]
+    fn a_search_before_the_index_is_ready_still_finds() {
+        let mut f = fixture();
+        let id = add_to(&mut f, Which::Replies, "Thanks", "Thanks for your email");
+        let cache = IndexCache::new();
+        assert_eq!(
+            cache.rebuilds(),
+            0,
+            "nothing is built before the first load"
+        );
+        let mut model = PanelModel::load_cached(&f.store, None, None, &cache).expect("model");
+        model.set_query("thank");
+        let rows = model.rows();
+        assert_eq!(rows.first().map(|r| r.id), Some(id));
+    }
+
     #[test]
     fn search_spans_lists_and_labels_each_row_with_its_list() {
         let mut f = fixture();
@@ -575,9 +1099,71 @@ mod tests {
             rows[0].list.as_ref().map(|l| l.name.as_str()),
             Some("Links")
         );
+        assert_eq!(
+            rows[0].title_mark,
+            Some((String::new(), "Docs".into())),
+            "the match in the title is marked, in the title's own case"
+        );
+        assert!(
+            rows[0].list.as_ref().is_some_and(|l| !l.board.is_empty()),
+            "a result says which board it lives on"
+        );
         model.set_query("   ");
         assert!(!model.searching());
-        assert!(model.rows().iter().all(|r| r.list.is_none()));
+        assert!(
+            model
+                .rows()
+                .iter()
+                .all(|r| r.list.is_none() && r.title_mark.is_none())
+        );
+    }
+
+    #[test]
+    fn a_search_marks_the_preview_and_names_a_tag_only_when_just_the_tag_matched() {
+        let mut f = fixture();
+        let both = add_to(
+            &mut f,
+            Which::Replies,
+            "Greeting",
+            "Hello, Invoice 7 is due",
+        );
+        let tagged = add_to(&mut f, Which::Replies, "Other", "nothing here");
+        let secret = add_to(&mut f, Which::Replies, "Key", "Invoice secret");
+        let tag = Tag::new(Name::new("invoice").expect("name"));
+        f.store.insert_tag(&tag).expect("tag");
+        for id in [tagged, secret] {
+            let mut item = f.store.item(id).expect("item");
+            item.tags.insert(tag.id);
+            if id == secret {
+                item.sensitive = true;
+                item.preview.clear();
+            }
+            f.store.update_item(&item, None).expect("update");
+        }
+        let mut model = PanelModel::load(&f.store, None, None).expect("model");
+        model.set_query("invoice");
+        let rows = model.rows();
+        let row = |id| rows.iter().find(|r| r.id == id).expect("row");
+        assert_eq!(
+            row(both).preview_mark,
+            Some(("Hello, ".into(), "Invoice".into(), " 7 is due".into()))
+        );
+        assert_eq!(row(both).tag_hit, None);
+        assert_eq!(row(tagged).preview_mark, None);
+        assert_eq!(row(tagged).tag_hit.as_deref(), Some("invoice"));
+        assert_eq!(
+            row(secret).preview_mark,
+            None,
+            "a sensitive row shows no mark"
+        );
+        assert_eq!(row(secret).tag_hit, None, "nor the tag that matched");
+        model.set_query("");
+        assert!(
+            model
+                .rows()
+                .iter()
+                .all(|r| r.preview_mark.is_none() && r.tag_hit.is_none())
+        );
     }
 
     #[test]
@@ -663,6 +1249,27 @@ mod tests {
     }
 
     #[test]
+    fn a_programs_own_paste_key_decides_the_route() {
+        use snipdeck_platform::keys::PasteKey;
+        let f = fixture();
+        let mut model = PanelModel::load(&f.store, None, None).expect("model");
+        model.set_target(Some(target("wt.exe", Focus::Caret)));
+        let key = |model: &PanelModel| match model.route() {
+            Route::Paste { key } => Some(key),
+            Route::Copy(_) => None,
+        };
+        assert_eq!(key(&model), Some(PasteKey::CtrlV), "nothing says otherwise");
+        model.set_paste_rules(vec![PasteRule {
+            exe: "WT.exe".into(),
+            key: PasteKey::CtrlShiftV,
+        }]);
+        assert_eq!(key(&model), Some(PasteKey::CtrlShiftV));
+        // The built-in terminals are rules in the settings, not a second table.
+        model.set_target(Some(target("mintty.exe", Focus::Caret)));
+        assert_eq!(key(&model), Some(PasteKey::CtrlV));
+    }
+
+    #[test]
     fn select_list_switches_lists_and_ends_the_search() {
         let mut f = fixture();
         add_to(&mut f, Which::Replies, "Thanks", "thanks");
@@ -734,5 +1341,95 @@ mod tests {
         assert_eq!(friendly_app_name("notepad++.exe"), "Notepad++");
         assert_eq!(friendly_app_name("C:\\Windows\\notepad.exe"), "Notepad");
         assert_eq!(friendly_app_name(""), "");
+    }
+
+    fn five(f: &mut Fixture) -> Vec<ItemId> {
+        (0..5)
+            .map(|n| add_to(f, Which::Replies, &format!("Item {n}"), "text"))
+            .collect()
+    }
+
+    #[test]
+    fn ctrl_click_toggles_and_shift_click_extends_from_the_anchor() {
+        let mut f = fixture();
+        let ids = five(&mut f);
+        let mut model = PanelModel::load(&f.store, None, None).expect("model");
+        assert_eq!(model.marked_count(), 0);
+        model.mark(1, SelectMode::Toggle);
+        model.mark(3, SelectMode::Toggle);
+        assert_eq!(model.marked_ids(), vec![ids[1], ids[3]]);
+        model.mark(1, SelectMode::Toggle);
+        assert_eq!(
+            model.marked_ids(),
+            vec![ids[3]],
+            "a second Ctrl+click unmarks"
+        );
+        model.mark(0, SelectMode::Extend);
+        assert_eq!(
+            model.marked_ids(),
+            ids[0..=1].to_vec(),
+            "from the anchor (the last click, row 1) up to row 0"
+        );
+        assert!(model.rows()[1].marked);
+    }
+
+    #[test]
+    fn shift_arrows_extend_from_the_cursor_row_and_stop_at_the_ends() {
+        let mut f = fixture();
+        let ids = five(&mut f);
+        let mut model = PanelModel::load(&f.store, None, None).expect("model");
+        model.extend_marks(1);
+        model.extend_marks(1);
+        assert_eq!(model.marked_ids(), ids[0..=2].to_vec());
+        assert_eq!(model.selected(), Some(ids[2]));
+        model.extend_marks(-1);
+        assert_eq!(
+            model.marked_ids(),
+            ids[0..=1].to_vec(),
+            "shrinks back toward the anchor"
+        );
+        for _ in 0..9 {
+            model.extend_marks(1);
+        }
+        assert_eq!(model.marked_count(), 5);
+    }
+
+    #[test]
+    fn select_all_and_clear_and_a_search_end_the_selection() {
+        let mut f = fixture();
+        five(&mut f);
+        let mut model = PanelModel::load(&f.store, None, None).expect("model");
+        model.mark_all();
+        assert_eq!(model.marked_count(), 5);
+        model.clear_marks();
+        assert_eq!(model.marked_count(), 0);
+        model.mark_all();
+        model.set_query("Item 2");
+        assert_eq!(model.marked_count(), 0, "typing a query clears the marks");
+    }
+
+    #[test]
+    fn an_action_on_a_marked_row_applies_to_all_marked_rows() {
+        let mut f = fixture();
+        let ids = five(&mut f);
+        let mut model = PanelModel::load(&f.store, None, None).expect("model");
+        model.mark(1, SelectMode::Toggle);
+        model.mark(2, SelectMode::Toggle);
+        assert_eq!(model.targets(2), vec![ids[1], ids[2]]);
+        assert_eq!(model.targets(4), vec![ids[4]], "an unmarked row acts alone");
+    }
+
+    #[test]
+    fn a_refresh_keeps_the_marks_of_items_still_shown() {
+        let mut f = fixture();
+        let ids = five(&mut f);
+        let mut model = PanelModel::load(&f.store, None, None).expect("model");
+        model.mark(0, SelectMode::Toggle);
+        model.mark(1, SelectMode::Toggle);
+        f.store
+            .atomically(|b| b.trash(snipdeck_store::Trashable::Item(ids[0]), at()))
+            .expect("trash");
+        model.refresh(&f.store).expect("refresh");
+        assert_eq!(model.marked_ids(), vec![ids[1]]);
     }
 }

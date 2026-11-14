@@ -5,14 +5,19 @@ use std::time::Duration;
 
 use crate::{
     error::Error as ServiceError,
+    hello::{HelloAuthenticator, HelloAvailability, HelloError},
     keys::{KeyEvent, Modifiers},
     payload::Payload,
     pipeline::{Clipboard, Error, Keyboard, Timing},
     system_look::{SystemLook, SystemLookSource},
-    tray::{Gesture, MenuLine, Reaction, Tray, TrayEntry, TrayEvent, TrayModel},
+    tray::{Gesture, MenuLine, Reaction, Tray, TrayEntry, TrayEvent, TrayLabels, TrayModel},
 };
 
 /// A clipboard that records what the pipeline does to it.
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "a test double: each flag is one way to make it misbehave"
+)]
 #[derive(Default)]
 pub struct FakeClipboard {
     /// What was done, in order (`snapshot`, `transient:N`, `persistent:N`, `restore`).
@@ -29,6 +34,40 @@ pub struct FakeClipboard {
     pub fail_write: bool,
     /// What `restore` returns.
     pub restore_result: Option<Result<bool, Error>>,
+    /// The clipboard sequence number: it increases with every write and every clear.
+    pub sequence: u32,
+    /// How many times the text on the clipboard was read (`ClipboardText::read_text`).
+    pub text_reads: u32,
+    /// A picture on the clipboard that was copied elsewhere (`ClipboardText::read_png` falls
+    /// back to it when the latest write holds none).
+    pub held_png: Option<Vec<u8>>,
+    /// The HTML flavour (fragment) that rides with the copied text (`ClipboardText::read_rich`).
+    pub held_html: Option<String>,
+    /// The RTF flavour that rides with the copied text (`ClipboardText::read_rich`).
+    pub held_rtf: Option<Vec<u8>>,
+    /// Files copied in Explorer (`ClipboardText::read_files`).
+    pub held_files: Vec<String>,
+    /// The Explorer copy holds more files than a paste takes (`ClipFiles::TooMany`).
+    pub files_too_many: bool,
+    /// The sequence number right after the latest write.
+    pub write_sequence: Option<u32>,
+    /// How many clears fail with "busy" before one works (the clipboard is open elsewhere).
+    pub clear_busy: u32,
+    /// How many `write_confirmed` checks say "not yet" before one says yes.
+    pub unconfirmed_polls: u32,
+    /// `write_confirmed` never says yes (the write did not take).
+    pub never_confirm: bool,
+}
+
+impl FakeClipboard {
+    /// Whether this clear attempt finds the clipboard busy (uses up one of `clear_busy`).
+    pub fn busy_for_clear(&mut self) -> bool {
+        if self.clear_busy == 0 {
+            return false;
+        }
+        self.clear_busy -= 1;
+        true
+    }
 }
 
 impl Clipboard for FakeClipboard {
@@ -47,6 +86,8 @@ impl Clipboard for FakeClipboard {
             return Err(Error::Clipboard("busy".into()));
         }
         self.written.push(payload.clone());
+        self.sequence += 1;
+        self.write_sequence = Some(self.sequence);
         self.log.push(format!("transient:{}", payload.data().len()));
         Ok(())
     }
@@ -55,9 +96,21 @@ impl Clipboard for FakeClipboard {
             return Err(Error::Clipboard("busy".into()));
         }
         self.written.push(payload.clone());
+        self.sequence += 1;
+        self.write_sequence = Some(self.sequence);
         self.log
             .push(format!("persistent:{}", payload.data().len()));
         Ok(())
+    }
+    fn write_confirmed(&mut self, (): &()) -> bool {
+        if self.never_confirm {
+            return false;
+        }
+        if self.unconfirmed_polls > 0 {
+            self.unconfirmed_polls -= 1;
+            return false;
+        }
+        true
     }
     fn render_requested(&mut self, (): &()) -> bool {
         self.polls += 1;
@@ -191,7 +244,7 @@ impl FakeTray {
     }
 
     /// What the backend did, in order (`show`, `hide`, `tooltip:<text>`, `paused:<bool>`,
-    /// `readd`).
+    /// `labels:<open panel text>`, `readd`).
     #[must_use]
     pub fn log(&self) -> Vec<String> {
         lock(&self.state).log.clone()
@@ -213,6 +266,11 @@ impl FakeTray {
     /// The user left-clicks the icon.
     pub fn left_click(&self) {
         let _ = self.gesture(Gesture::Select);
+    }
+
+    /// The user double-clicks the icon.
+    pub fn double_click(&self) {
+        let _ = self.gesture(Gesture::DoubleSelect);
     }
 
     /// The user right-clicks the icon and the menu opens; returns it. Nothing is chosen until
@@ -308,17 +366,36 @@ impl Tray for FakeTray {
         state.log.push(format!("paused:{paused}"));
         Ok(())
     }
+
+    fn set_history(&mut self, available: bool, paused: bool) -> Result<(), ServiceError> {
+        let mut state = lock(&self.state);
+        state.model.set_history(available, paused);
+        state.log.push(format!("history:{available}:{paused}"));
+        Ok(())
+    }
+
+    fn set_labels(&mut self, labels: TrayLabels) -> Result<(), ServiceError> {
+        let mut state = lock(&self.state);
+        state.log.push(format!("labels:{}", labels.open_panel));
+        state.model.set_labels(labels);
+        Ok(())
+    }
 }
 
 /// A [`SystemLookSource`] a test sets. Cloning shares the value.
 #[derive(Debug, Clone, Default)]
-pub struct FakeSystemLook(Arc<Mutex<SystemLook>>);
+pub struct FakeSystemLook(Arc<Mutex<SystemLook>>, Arc<Mutex<Option<u32>>>);
 
 impl FakeSystemLook {
     /// A source that reports `look`.
     #[must_use]
     pub fn new(look: SystemLook) -> Self {
-        Self(Arc::new(Mutex::new(look)))
+        Self(Arc::new(Mutex::new(look)), Arc::default())
+    }
+
+    /// Changes Windows' text size to `percent` (`None`: never changed, 100 %).
+    pub fn set_text_scale_percent(&self, percent: Option<u32>) {
+        *lock(&self.1) = percent;
     }
 
     /// Changes what Windows "says".
@@ -330,6 +407,10 @@ impl FakeSystemLook {
 impl SystemLookSource for FakeSystemLook {
     fn read(&self) -> SystemLook {
         *lock(&self.0)
+    }
+
+    fn text_scale(&self) -> f32 {
+        crate::system_look::text_scale_from_percent(*lock(&self.1))
     }
 }
 
@@ -371,6 +452,15 @@ mod tests {
         assert!(tray.hotkeys_paused());
         tray.pick(TrayEntry::Quit);
         assert_eq!(rx.try_recv(), Ok(TrayEvent::Quit));
+    }
+
+    #[test]
+    fn a_double_click_asks_for_the_main_window() {
+        let (mut tray, rx) = tray();
+        tray.show().unwrap();
+        assert_eq!(rx.try_recv(), Ok(TrayEvent::IconPresent(true)));
+        tray.double_click();
+        assert_eq!(rx.try_recv(), Ok(TrayEvent::OpenSnipdeck));
     }
 
     #[test]
@@ -428,7 +518,175 @@ mod tests {
         handle.set(SystemLook {
             dark: true,
             high_contrast: None,
+            accent: None,
+            reduce_motion: true,
         });
         assert!(look.read().dark);
+        assert!(look.read().reduce_motion);
+    }
+
+    #[test]
+    fn the_fake_text_scale_follows_what_the_test_sets() {
+        let look = FakeSystemLook::default();
+        assert!((look.text_scale() - 1.0).abs() < f32::EPSILON);
+        look.clone().set_text_scale_percent(Some(150));
+        assert!((look.text_scale() - 1.5).abs() < f32::EPSILON);
+    }
+}
+
+/// A deterministic Hello for tests: set the outcomes, count the prompts. `Debug` hides the secret.
+pub struct FakeHello {
+    state: Mutex<FakeHelloState>,
+}
+
+struct FakeHelloState {
+    availability: HelloAvailability,
+    ensure: Result<(), HelloError>,
+    sign: Result<(), HelloError>,
+    secret: Vec<u8>,
+    jitter: bool,
+    prompts: usize,
+}
+
+impl std::fmt::Debug for FakeHello {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FakeHello")
+            .field("prompts", &self.prompts())
+            .finish_non_exhaustive()
+    }
+}
+
+impl Default for FakeHello {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl FakeHello {
+    /// Ready, everything succeeds, one fixed credential.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            state: Mutex::new(FakeHelloState {
+                availability: HelloAvailability::Ready,
+                ensure: Ok(()),
+                sign: Ok(()),
+                secret: b"fake-credential-1".to_vec(),
+                jitter: false,
+                prompts: 0,
+            }),
+        }
+    }
+
+    fn with<T>(&self, f: impl FnOnce(&mut FakeHelloState) -> T) -> T {
+        f(&mut self
+            .state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner))
+    }
+
+    /// Sets what `availability` says.
+    pub fn set_availability(&self, value: HelloAvailability) {
+        self.with(|s| s.availability = value);
+    }
+
+    /// Sets the outcome of `ensure_credential`.
+    pub fn set_ensure(&self, value: Result<(), HelloError>) {
+        self.with(|s| s.ensure = value);
+    }
+
+    /// Sets the outcome of `sign_challenge` (`Ok` signs normally).
+    pub fn set_sign(&self, value: Result<(), HelloError>) {
+        self.with(|s| s.sign = value);
+    }
+
+    /// Replaces the credential: later signatures differ, like a re-made Hello credential.
+    pub fn replace_credential(&self, secret: &[u8]) {
+        self.with(|s| s.secret = secret.to_vec());
+    }
+
+    /// Makes every signature different from the last, like a Hello that is not deterministic.
+    pub fn set_non_deterministic(&self, on: bool) {
+        self.with(|s| s.jitter = on);
+    }
+
+    /// How many times a signature was asked for.
+    #[must_use]
+    pub fn prompts(&self) -> usize {
+        self.with(|s| s.prompts)
+    }
+}
+
+impl HelloAuthenticator for FakeHello {
+    fn availability(&self) -> HelloAvailability {
+        self.with(|s| s.availability)
+    }
+
+    fn ensure_credential(&self) -> Result<(), HelloError> {
+        self.with(|s| s.ensure)
+    }
+
+    fn sign_challenge(&self, challenge: &[u8]) -> Result<zeroize::Zeroizing<Vec<u8>>, HelloError> {
+        self.with(|s| {
+            s.prompts += 1;
+            s.sign?;
+            let mut out = s.secret.clone();
+            out.extend_from_slice(challenge);
+            if s.jitter {
+                out.extend_from_slice(&s.prompts.to_le_bytes());
+            }
+            Ok(zeroize::Zeroizing::new(out))
+        })
+    }
+}
+
+#[cfg(test)]
+mod hello_tests {
+    use super::*;
+
+    #[test]
+    fn signatures_are_repeatable_until_the_credential_changes() {
+        let hello = FakeHello::new();
+        let a = hello.sign_challenge(b"c").unwrap();
+        assert_eq!(a, hello.sign_challenge(b"c").unwrap());
+        hello.replace_credential(b"other");
+        assert_ne!(a, hello.sign_challenge(b"c").unwrap());
+        assert_eq!(hello.prompts(), 3);
+    }
+
+    #[test]
+    fn non_deterministic_mode_differs_each_time() {
+        let hello = FakeHello::new();
+        hello.set_non_deterministic(true);
+        assert_ne!(
+            hello.sign_challenge(b"c").unwrap(),
+            hello.sign_challenge(b"c").unwrap()
+        );
+    }
+
+    #[test]
+    fn cancel_and_removed_map_to_errors() {
+        let hello = FakeHello::new();
+        hello.set_sign(Err(HelloError::Cancelled));
+        assert_eq!(hello.sign_challenge(b"c"), Err(HelloError::Cancelled));
+        hello.set_sign(Err(HelloError::Removed));
+        assert_eq!(hello.sign_challenge(b"c"), Err(HelloError::Removed));
+    }
+
+    #[test]
+    fn availability_and_ensure_follow_the_fake() {
+        let hello = FakeHello::new();
+        assert_eq!(hello.availability(), HelloAvailability::Ready);
+        hello.set_availability(HelloAvailability::NotSetUp);
+        assert_eq!(hello.availability(), HelloAvailability::NotSetUp);
+        hello.set_ensure(Err(HelloError::Cancelled));
+        assert_eq!(hello.ensure_credential(), Err(HelloError::Cancelled));
+    }
+
+    #[test]
+    fn debug_hides_the_secret() {
+        let hello = FakeHello::new();
+        assert!(!format!("{hello:?}").contains("fake-credential"));
+        assert!(!format!("{hello:?}").contains("102"));
     }
 }

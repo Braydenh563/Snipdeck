@@ -1,7 +1,8 @@
-import { Theme, Type, Space, Fonts } from "../theme.slint";
+import { Theme, Type, Space, Fonts, Radius } from "../theme.slint";
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
 import { Button, ButtonVariant } from "button.slint";
+import { KeyCombo } from "keycap.slint";
 
 export enum EmptyStateKind { list, board, search, inbox }
 
@@ -13,17 +14,56 @@ export component EmptyState inherits VerticalLayout {
     in property <string> heading;
     in property <string> body;
     in property <string> action-text;
+    // The key that does the same as a button, shown as caps beside it (["Ctrl", "N"]); `*-keys-label` is the
+    // spoken form ("Control N"). Beside, not under: a text line below the buttons reads as a second message.
+    in property <[string]> action-keys;
+    in property <string> action-keys-label;
+    in property <[string]> secondary-keys;
+    in property <string> secondary-keys-label;
+    // Panel v2 spec 2.7: a 40px glyph tile, a `type.md` heading, an outline button (36) and an optional ghost
+    // button under it; `caption` explains what the action will do.
+    in property <bool> quiet: false;
+    in property <string> caption;
+    in property <string> secondary-text;
+    // A second ghost button under the first (the Main window's empty deck: "Import…").
+    in property <string> tertiary-text;
+    // Whether the heading is a polite live region (a search that comes up empty is announced). Off where the host speaks it itself.
+    in property <bool> announce: true;
     callback action();
+    callback secondary();
+    callback tertiary();
 
-    padding: Space.s6;
-    spacing: Space.s3;
+    padding-left: Space.s6;
+    padding-right: Space.s6;
+    padding-top: Space.s6;
+    padding-bottom: root.quiet ? Space.s12 : Space.s6;
+    spacing: root.quiet ? Space.s2 : Space.s3;
     alignment: center;
 
-    HorizontalLayout {
+    if root.quiet: HorizontalLayout {
+        alignment: center;
+        Rectangle {
+            width: Space.s8 + Space.s2;
+            height: Space.s8 + Space.s2;
+            border-radius: Radius.lg;
+            background: Theme.bg-hover;
+            Icon {
+                source: root.kind == EmptyStateKind.list ? Icons.rows
+                    : root.kind == EmptyStateKind.board ? Icons.stack
+                    : root.kind == EmptyStateKind.search ? Icons.magnifying-glass
+                    : Icons.tray;
+                size: Space.s5;
+                tint: Theme.text-secondary;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+    }
+    if !root.quiet: HorizontalLayout {
         alignment: center;
         Icon {
-            source: root.kind == EmptyStateKind.list ? Icons.stack
-                : root.kind == EmptyStateKind.board ? Icons.squares-four
+            source: root.kind == EmptyStateKind.list ? Icons.rows
+                : root.kind == EmptyStateKind.board ? Icons.stack
                 : root.kind == EmptyStateKind.search ? Icons.magnifying-glass
                 : Icons.tray;
             size: Space.s8;
@@ -31,10 +71,11 @@ export component EmptyState inherits VerticalLayout {
         }
     }
     Text {
+        accessible-live-region: root.announce ? AccessibleLiveness.polite : AccessibleLiveness.off;
         text: root.heading;
         color: Theme.text-primary;
         font-family: Fonts.sans;
-        font-size: Type.xl;
+        font-size: root.quiet ? Type.md : Type.xl;
         font-weight: Type.semibold;
         horizontal-alignment: center;
         wrap: word-wrap;
@@ -43,16 +84,68 @@ export component EmptyState inherits VerticalLayout {
         text: root.body;
         color: Theme.text-secondary;
         font-family: Fonts.sans;
-        font-size: Type.base;
+        font-size: root.quiet ? Type.sm : Type.base;
         horizontal-alignment: center;
         wrap: word-wrap;
     }
     if root.action-text != "": HorizontalLayout {
         alignment: center;
-        Button {
+        spacing: Space.s2;
+        // A hidden twin of the caps on the left keeps the button itself centred.
+        if root.action-keys.length > 0: Rectangle {
+            visible: false;
+            width: action-twin.min-width;
+            action-twin := KeyCombo { keys: root.action-keys; }
+        }
+        if !root.quiet: Button {
             text: root.action-text;
             variant: ButtonVariant.primary;
             clicked => { root.action(); }
+        }
+        if root.quiet: Button {
+            text: root.action-text;
+            variant: ButtonVariant.secondary;
+            height: Space.s8 + Space.s1;
+            clicked => { root.action(); }
+        }
+        if root.action-keys.length > 0: VerticalLayout {
+            alignment: center;
+            KeyCombo { keys: root.action-keys; label: root.action-keys-label; }
+        }
+    }
+    if root.caption != "": Text {
+        text: root.caption;
+        color: Theme.text-secondary;
+        font-family: Fonts.sans;
+        font-size: Type.sm;
+        horizontal-alignment: center;
+        wrap: word-wrap;
+    }
+    if root.secondary-text != "": HorizontalLayout {
+        alignment: center;
+        spacing: Space.s2;
+        // A hidden twin of the caps on the left keeps the button itself centred.
+        if root.secondary-keys.length > 0: Rectangle {
+            visible: false;
+            width: secondary-twin.min-width;
+            secondary-twin := KeyCombo { keys: root.secondary-keys; }
+        }
+        Button {
+            text: root.secondary-text;
+            variant: ButtonVariant.ghost;
+            clicked => { root.secondary(); }
+        }
+        if root.secondary-keys.length > 0: VerticalLayout {
+            alignment: center;
+            KeyCombo { keys: root.secondary-keys; label: root.secondary-keys-label; }
+        }
+    }
+    if root.tertiary-text != "": HorizontalLayout {
+        alignment: center;
+        Button {
+            text: root.tertiary-text;
+            variant: ButtonVariant.ghost;
+            clicked => { root.tertiary(); }
         }
     }
 }

@@ -13,8 +13,10 @@
 //!
 //! **Ranking.** An item's field tier is the best field that matches: title, then tag, then
 //! content. A title match always outranks a tag match, which always outranks a content
-//! match, whatever their fuzzy scores; within a tier the fuzzy score decides, and equal
-//! scores keep the order the items were added in (the user's order).
+//! match, whatever their fuzzy scores; within a tier the fuzzy score decides. Equal scores
+//! go to the item used more often, then to the one used last, and only then keep the order the
+//! items were added in (the user's order). So the snippet you paste daily is the first of a
+//! tie, and a tie between two never-used items is still the user's order.
 //!
 //! **Order.** The index keeps items in insertion order. [`SearchIndex::upsert`] of a known
 //! item keeps its place; to reorder, rebuild with [`SearchIndex::new`].
@@ -59,6 +61,9 @@ pub struct Hit {
     /// Which characters of the title matched, as sorted character (not byte) positions, for
     /// highlighting. Empty if the match was on a tag or the content, or for an empty query.
     pub title_indices: Vec<u32>,
+    /// The name of the best matching tag when the match was on a tag (not the title). `None`
+    /// for a title or content match, or for an empty query.
+    pub tag: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -67,6 +72,10 @@ struct Entry {
     title: String,
     tags: Vec<String>,
     content: String,
+    /// How often the item was used, for ties.
+    use_count: u32,
+    /// When it was last used (Unix seconds), `i64::MIN` if never, for ties.
+    last_used: i64,
 }
 
 /// Which field matched, best last so the tier can be packed into a score.
@@ -82,6 +91,11 @@ enum Tier {
 pub struct SearchIndex {
     entries: Vec<Entry>,
     positions: HashMap<ItemId, usize>,
+}
+
+fn last_used_of(item: &Item) -> i64 {
+    item.last_used_at
+        .map_or(i64::MIN, crate::Timestamp::as_second)
 }
 
 fn truncated(text: &str, max_chars: usize) -> String {
@@ -133,6 +147,8 @@ impl SearchIndex {
                 .map(|tag| truncated(tag, FIELD_CHARS))
                 .collect(),
             content: truncated(&item.preview, CONTENT_CHARS),
+            use_count: item.use_count,
+            last_used: last_used_of(item),
         };
         let known = self
             .positions
@@ -144,6 +160,40 @@ impl SearchIndex {
             self.positions.insert(item.id, self.entries.len());
             self.entries.push(entry);
         }
+    }
+
+    /// Whether the use counts and last-use times (the tie-breakers) of `items` are the ones
+    /// indexed.
+    pub fn usage_is_current<'a>(&self, items: impl IntoIterator<Item = &'a Item>) -> bool {
+        items.into_iter().all(|item| {
+            self.positions
+                .get(&item.id)
+                .and_then(|&at| self.entries.get(at))
+                .is_none_or(|e| e.use_count == item.use_count && e.last_used == last_used_of(item))
+        })
+    }
+
+    /// Brings the use counts and last-use times (the tie-breakers) of `items` up to date
+    /// without touching what is searched. A counted use changes only these. Returns whether
+    /// any entry changed.
+    pub fn refresh_usage<'a>(&mut self, items: impl IntoIterator<Item = &'a Item>) -> bool {
+        let mut changed = false;
+        for item in items {
+            let Some(entry) = self
+                .positions
+                .get(&item.id)
+                .and_then(|&at| self.entries.get_mut(at))
+            else {
+                continue;
+            };
+            let last_used = last_used_of(item);
+            if entry.use_count != item.use_count || entry.last_used != last_used {
+                entry.use_count = item.use_count;
+                entry.last_used = last_used;
+                changed = true;
+            }
+        }
+        changed
     }
 
     /// Drops `id` from the index. Returns whether it was there.
@@ -191,6 +241,7 @@ impl SearchIndex {
                     id: entry.id,
                     score: 0,
                     title_indices: Vec::new(),
+                    tag: None,
                 })
                 .collect();
         }
@@ -201,9 +252,16 @@ impl SearchIndex {
             score_chunk(&self.entries, 0, &pattern)
         };
 
-        // Best score first; equal scores by position, i.e. the user's order.
-        let order =
-            |a: &(usize, u32), b: &(usize, u32)| (Reverse(a.1), a.0).cmp(&(Reverse(b.1), b.0));
+        // Best score first; equal scores by use count, then by last use, then by position,
+        // i.e. the user's order.
+        let rank = |a: &(usize, u32)| {
+            let (use_count, last_used) = self
+                .entries
+                .get(a.0)
+                .map_or((0, i64::MIN), |e| (e.use_count, e.last_used));
+            (Reverse(a.1), Reverse(use_count), Reverse(last_used), a.0)
+        };
+        let order = |a: &(usize, u32), b: &(usize, u32)| rank(a).cmp(&rank(b));
         if candidates.len() > limit {
             candidates.select_nth_unstable_by(limit - 1, order);
             candidates.truncate(limit);
@@ -218,18 +276,41 @@ impl SearchIndex {
                 let entry = self.entries.get(at)?;
                 let mut title_indices = Vec::new();
                 if score >> TIER_SHIFT == Tier::Title as u32 {
-                    pattern.indices(
-                        Utf32Str::new(&entry.title, &mut buf),
-                        &mut matcher,
-                        &mut title_indices,
-                    );
+                    // `Utf32Str::new` counts graphemes (a combining mark joins its base letter) and,
+                    // when every grapheme is ASCII, falls back to the raw bytes, so its indices
+                    // can point past the title's characters. Highlighting wants character
+                    // positions, so build the character haystack ourselves.
+                    let haystack = if entry.title.is_ascii() {
+                        Utf32Str::Ascii(entry.title.as_bytes())
+                    } else {
+                        buf.clear();
+                        buf.extend(entry.title.chars());
+                        Utf32Str::Unicode(&buf)
+                    };
+                    pattern.indices(haystack, &mut matcher, &mut title_indices);
                     title_indices.sort_unstable();
                     title_indices.dedup();
                 }
+                let tag = (score >> TIER_SHIFT == Tier::Tag as u32)
+                    .then(|| {
+                        let mut buf = Vec::new();
+                        entry
+                            .tags
+                            .iter()
+                            .filter_map(|tag| {
+                                pattern
+                                    .score(Utf32Str::new(tag, &mut buf), &mut matcher)
+                                    .map(|s| (s, tag))
+                            })
+                            .max_by_key(|(s, _)| *s)
+                            .map(|(_, tag)| tag.clone())
+                    })
+                    .flatten();
                 Some(Hit {
                     id: entry.id,
                     score,
                     title_indices,
+                    tag,
                 })
             })
             .collect()

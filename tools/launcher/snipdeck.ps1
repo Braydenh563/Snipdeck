@@ -1,19 +1,22 @@
 <#
 .SYNOPSIS
-  Snipdeck one-click launcher: run, demo, doctor, update, backup, restore, clean, uninstall, logs.
+  Snipdeck one-click launcher: run, demo, update, build, doctor, backup, restore, clean, uninstall, logs.
 
 .DESCRIPTION
   Start it with Snipdeck.bat in the repository root (double-click, or from a terminal with a command).
-  It checks the PC, installs what is missing (with your OK), builds a debug build, keeps a fast-start copy in
-  dist\, starts the app, and repairs known build failures on its own. Every step is logged to
-  %LOCALAPPDATA%\Snipdeck\logs. Run "Snipdeck.bat help" for the commands.
+  run (the default) starts app\snipdeck.exe; when it is missing it downloads the portable zip from the GitHub
+  Release, verifies its SHA-256 and unpacks it. It never checks for Rust, Visual Studio or git.
+  "build" is the developer path: it checks the PC, installs what is missing (with your OK), builds a debug
+  build, keeps a fast-start copy in dist\, starts the app, and repairs known build failures on its own.
+  Every step is logged to %LOCALAPPDATA%\Snipdeck\logs. Run "Snipdeck.bat help" for the commands.
 
   Works on Windows PowerShell 5.1 (built in) and PowerShell 7. The launcher has no param() block on purpose,
   so that "--whatif" and the app's own options pass through; see cli.ps1.
 
 .NOTES
   Files: lib.ps1 (pure helpers), cli.ps1 (arguments, help), core.ps1 (console, logging, process, checks),
-  build.ps1 (stamp, build, cache, launch), data.ps1 (backup, restore, uninstall, doctor, update),
+  release.ps1 (download, verify, unpack, run, update), build.ps1 (stamp, build, cache, launch),
+  data.ps1 (backup, restore, uninstall, doctor),
   selftest.ps1 ("snipdeck.ps1 selftest"), tests\ (sample cargo logs).
   This launcher has not yet been run on Windows by its owner; see docs/troubleshooting.md.
 #>
@@ -24,12 +27,13 @@ $script:LauncherVersion = '1'
 $script:LauncherDir = $PSScriptRoot
 $script:RepoRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($PSScriptRoot, '..', '..'))
 $script:TargetOverride = $null
-$script:Opt = @{ Yes = $false; WhatIf = $false; Rebuild = $false; Open = $false; RemoveTarget = $false; RemoveData = $false }
+$script:Opt = @{ Yes = $false; WhatIf = $false; Rebuild = $false; Stale = $false; Open = $false; RemoveTarget = $false; RemoveData = $false; AllowUnpinned = $false }
 
 . ([System.IO.Path]::Combine($PSScriptRoot, 'lib.ps1'))
 . ([System.IO.Path]::Combine($PSScriptRoot, 'cli.ps1'))
 . ([System.IO.Path]::Combine($PSScriptRoot, 'core.ps1'))
 . ([System.IO.Path]::Combine($PSScriptRoot, 'build.ps1'))
+. ([System.IO.Path]::Combine($PSScriptRoot, 'release.ps1'))
 . ([System.IO.Path]::Combine($PSScriptRoot, 'data.ps1'))
 . ([System.IO.Path]::Combine($PSScriptRoot, 'selftest.ps1'))
 
@@ -47,15 +51,18 @@ function Invoke-Main([string[]]$ArgList) {
 
     Start-Log $cmd
     Say ''
+    if ($cmd -eq 'build') { Say 'Developer build from source. Users do not need this: run Snipdeck.bat without arguments.' 'Yellow' }
     Say ("Snipdeck launcher v{0}   command: {1}" -f $script:LauncherVersion, $cmd) 'Cyan'
     if ($o.WhatIf) { Say 'Dry run (--whatif): nothing will be changed.' 'Yellow' }
     if (-not $script:OnWindows) { Say 'Note: this is not Windows. Snipdeck is Windows-first; some checks do not apply.' 'DarkGray' }
 
     switch ($cmd) {
-        'run' { return (Invoke-RunFlow $false @($o.Pass) $o.Rebuild) }
-        'demo' { return (Invoke-RunFlow $true @($o.Pass) $o.Rebuild) }
+        'run' { return (Invoke-RunPrebuilt $false @($o.Pass)) }
+        'demo' { return (Invoke-RunPrebuilt $true @($o.Pass)) }
+        'build' { return (Invoke-RunFlow $false @($o.Pass) $o.Rebuild) }
         'doctor' { return (Invoke-Doctor) }
-        'update' { return (Invoke-Update) }
+        'update' { return (Invoke-UpdatePrebuilt) }
+        'reinstall' { return (Invoke-ReinstallPrebuilt @($o.Pass)) }
         'backup' { return (Invoke-Backup) }
         'restore' { return (Invoke-Restore @($o.Pass)) }
         'clean' { return (Invoke-Clean) }
@@ -78,7 +85,7 @@ try {
     $exitCode = 1
 }
 if ($exitCode -eq 0 -and $env:SNIPDECK_DBLCLICK -eq '1') {
-    $quiet = @('run', 'demo', 'selftest')
+    $quiet = @('run', 'demo', 'build', 'update', 'reinstall', 'selftest')
     $first = ''
     if (@($args).Count -gt 0) { $first = ([string]$args[0]).ToLowerInvariant() }
     if ($first -and ($quiet -notcontains $first)) { Wait-ForEnter }
