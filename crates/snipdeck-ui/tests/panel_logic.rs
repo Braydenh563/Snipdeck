@@ -650,10 +650,34 @@ ui_tests! {
         take(&log);
         find(&ui, "Create item", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["quick-add:https://example.com:1:false"]);
+        settle();
+        assert!(
+            !missing(&ui, "New item in Work", AccessibleRole::Button),
+            "creating an item folds the box back to the row"
+        );
+        // Open again: the box is empty. Esc folds it back too.
+        chord(ui.window(), &[Key::Control], "n");
+        settle();
         type_text(ui.window(), "x");
         press(ui.window(), &key(Key::Escape));
         settle();
         assert!(!missing(&ui, "New item in Work", AccessibleRole::Button), "Esc folds the box back to the row");
+    }
+
+    fn enter_in_the_quick_add_box_folds_it_after_creating_and_a_new_item_opens_it_empty() {
+        let (ui, log) = start();
+        ui.set_add_list_name("Work".into());
+        chord(ui.window(), &[Key::Control], "n");
+        settle();
+        type_text(ui.window(), "one");
+        press(ui.window(), &key(Key::Return));
+        settle();
+        assert_eq!(take(&log), ["quick-add:one:0:false"]);
+        assert!(!missing(&ui, "New item in Work", AccessibleRole::Button), "folded after Enter");
+        chord(ui.window(), &[Key::Control], "n");
+        settle();
+        let field = find(&ui, "New item", AccessibleRole::TextInput);
+        assert_eq!(field.accessible_value().as_deref().unwrap_or(""), "", "reopens empty");
     }
 
     fn enter_uses_the_selected_row_and_shift_enter_only_copies() {

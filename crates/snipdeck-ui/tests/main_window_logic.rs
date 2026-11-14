@@ -1526,6 +1526,11 @@ ui_tests! {
         take(&log);
         press(ui.window(), &key(Key::Return));
         assert_eq!(take(&log), ["quick-add:a/b:0:false"], "typing a / does not jump to the search");
+        settle();
+        find(&ui, "New item in Email replies", AccessibleRole::Button);
+        assert!(ui.get_items_focused(), "creating folds the box and the focus goes back to the items");
+        chord(ui.window(), &[Key::Control], "n");
+        settle();
         find(&ui, "More options: open the full editor", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["quick-add-full:"]);
         press(ui.window(), &key(Key::Escape));

@@ -1,5 +1,5 @@
 // The quick-add row shared by the Panel and the Main window (O45): a text-labelled "+ New item" row that
-// opens an inline multi-line box. Paste or type, then Enter (or [Create]) saves; Shift+Enter is a newline,
+// opens an inline multi-line box. Paste or type, then Enter (or [Create]) saves and folds the box back; Shift+Enter is a newline,
 // Esc cancels. Below the box sit optional choices: the kind (auto-detected and preselected until the user
 // picks one) and a Sensitive switch. Nothing is asked of the user: untouched, the item is simply created.
 import { Theme, Type, Space, Radius, Fonts, SystemLook } from "../theme.slint";
@@ -24,7 +24,8 @@ export component QuickAdd inherits Rectangle {
     callback create(string, int, bool);
     // Ctrl+Shift+N inside the box: the full editor, prefilled with the text.
     callback full-editor(string);
-    callback cancelled();
+    // The box folded back to the row (Esc, or after Create): the host puts the keyboard back on its list.
+    callback closed();
     // Shows a "More options" button (the full editor) beside Cancel, for a window where Ctrl+Shift+N is another command.
     in property <bool> show-more: false;
 
@@ -57,7 +58,9 @@ export component QuickAdd inherits Rectangle {
         if (field.text != "") {
             root.create(field.text, root.kind, root.sensitive);
             root.reset();
-            root.local-n += 1;
+            // One-shot capture: the box folds back to the row once the item is made.
+            root.expanded = false;
+            root.closed();
         }
     }
     changed open-request => {
@@ -124,7 +127,7 @@ export component QuickAdd inherits Rectangle {
             if (event.text == Key.Escape) {
                 root.reset();
                 root.expanded = false;
-                root.cancelled();
+                root.closed();
                 return accept;
             }
             if (event.text == Key.Return && event.modifiers.control && event.modifiers.shift) {
@@ -181,7 +184,7 @@ export component QuickAdd inherits Rectangle {
                     clicked => {
                         root.reset();
                         root.expanded = false;
-                        root.cancelled();
+                        root.closed();
                     }
                 }
                 Button {

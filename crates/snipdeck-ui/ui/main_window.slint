@@ -1719,7 +1719,7 @@ export component MainWindow inherits Window {
                         detect-kind(t) => { root.detect-kind(t) }
                         create(t, k, s) => { root.quick-add-requested(t, k, s); }
                         full-editor(t) => { root.quick-add-full(t); }
-                        cancelled => { root.focus-items(); }
+                        closed => { root.focus-items(); }
                     }
                 }
 
