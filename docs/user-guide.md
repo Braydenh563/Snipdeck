@@ -457,6 +457,9 @@ not yet been tested on a real PC.
 Snipdeck is free software. Free covers everyday use. Supporter is pay what you want from A$5 (suggested A$8),
 one time, with every 1.x update. Free stays fully usable, and nothing nags you.
 
+**From the Microsoft Store?** That build is free with every Supporter feature already on, so it has no
+licence screens. Supporter is offered only on the GitHub download.
+
 | Feature | Free | Supporter |
 |---|---|---|
 | Boards | Up to 5 | Unlimited |
