@@ -18,8 +18,11 @@ first start.
 - A **New item** row in the Panel, multi-select with a bulk bar (move, colour, sensitive, delete), **Show
   numbers**, and **Reset size and position**. Resize by dragging its edges (260 to 480 pixels wide); size and
   place are remembered for each monitor. The keep-on-top button is a pin icon that looks pressed when on.
-- **Edge docking**: Floating, Left, Right, Top or Bottom, opened by hover, click or both, with hover and leave
-  delays. A docked Panel folds into a thin strip. Undocking brings back its earlier size.
+- **Edge docking**: the Panel floats wherever you drop it. Hold the pointer at a screen edge while dragging and a
+  frame with "Release to dock" shows where it will go; pull back to cancel. A docked Panel tucks into a thin tab
+  that opens on hover, click or both, with hover and leave delays, and stays open while you use it. Floating and
+  docked sizes are remembered apart for each monitor. The top of the Panel is a full-width grab strip.
+- **Preview** in the item editor (`Ctrl+P`): see the item as the Panel and the Main list draw it.
 - **The Picker** (`Ctrl+Shift+Space`), the template fill form with a live preview, and quick capture
   (`Ctrl+Shift+2`). `Alt+1` to `Alt+9` use that row. **Paste next** and **paste stack** (Supporter).
 - **The Main window**: boards, lists, tags, Pinned, Recent and Trash in a sidebar; compact, comfortable and
@@ -138,7 +141,9 @@ first start.
   Panel no longer closes windows it opened.
 - Deleting a list or board shows one confirmation. Windows open without a white flash and beside the window
   that opened them.
-- No see-through window after Alt+Tab or restore.
+- No see-through window after Alt+Tab or restore. Every window is drawn opaque and redraws in full after it is shown,
+  focused, resized or moved to another screen, so dragging no longer flickers and a docked or saved window no
+  longer stays partly see-through until clicked.
 - "Dock to the nearest edge" never picks the taskbar's edge.
 - The library syncs every commit to disk, so a power cut cannot roll back an edit or a Trash purge.
 
