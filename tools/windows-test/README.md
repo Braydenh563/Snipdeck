@@ -1,6 +1,6 @@
 # Test Snipdeck on Windows
 
-## Quick check (about 10 minutes)
+## Quick check (about 15 minutes)
 
 Double-click `Test Snipdeck on Windows.bat` and press **1**. It checks only what changed lately and can only be
 judged on Windows, on its own new empty test library (`spikes-results\qc-data`, deleted at the start of every new
@@ -11,21 +11,14 @@ what happened), **S** skip. Results go to the same place and format as the full 
 
 | # | What you do | Done for you |
 |---|---|---|
-| 1 | Press the Panel shortcut: it shows and hides, Notepad keeps the cursor. The screen names the key: **Ctrl+Shift+Y** on this new test library (read from `qc-data\settings.json` when it exists); if a normal Snipdeck is installed it also says what that one uses (an older install keeps **Ctrl+Alt+Space**) | Presses it twice and watches the Panel window |
-| 2 | Settings: Layout List / Cards / Compact | - |
 | 3 | Copy `quickcheck` in Notepad: it is in Recent (Recent is on in a new install) | Types, copies and looks for it in the Panel (falls back to you if it cannot read the Panel) |
 | 4 | Copy from a password manager: not in Recent (S if none installed) | - |
-| 5 | One click on a row pastes into Notepad and the Panel hides | - |
-| 6 | Pin keeps the Panel open | - |
-| 7 | Search marks the matching letters | - |
-| 8 | Settings: Lists = Menu (board-name menu switcher) | - |
 | 9 | Show the Panel in the taskbar and Alt+Tab: the paste goes to the window you were in before | - |
 | 10-11 | Dock to the taskbar's edge (the screen says which edge); the Panel stays clear of the taskbar | Measures the Panel against the screen's work area |
-| 13-18 | Symbols tab: paste 😀 and 👩‍💻 into Notepad and Word; kaomoji glyphs (box-drawing, CJK); Copy PNG into Word and Paint (transparency); the Save as dialog (no menu yet, skip with S); grid sharpness at 125% and 150%; flags paste as letter pairs | - |
-| 19 | Render diagnostic | Runs `diag-render.ps1 -Quick` (render checks only, about 3 minutes, a few yes/no questions), shows the path of the file it saves on the Desktop and puts a copy in the results zip |
+| 15, 17 | Symbols tab: Copy PNG into Word and Paint (transparency); sharpness at 125% and 150% | - |
 | 20-24 | Render flicker (`docs/reviews/render-flicker-2026-11-14.md`): drag in circles and past the dock outline, dock near the top-right corner, save an edit, slide along the edge, other windows off screen and back, Alt+Tab and minimise; nothing shows see-through | - |
 
-Steps 1, 3 and 11 are tried by the wizard first (mouse and keyboard move for a few seconds; hold Esc to stop). A
+Steps 3 and 11 are tried by the wizard first (mouse and keyboard move for a few seconds; hold Esc to stop). A
 check it cannot judge becomes the normal screen for you. The steps are in `tests\quick-check.json` (flag `qc`;
 `qcOnly` keeps them out of the other modes); the automations are in `auto\qc.ps1`. **Unverified:** none of this has
 run on Windows yet, and the automations only read the Panel by its window size and UI Automation text, so expect the

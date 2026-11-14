@@ -54,33 +54,6 @@ function Enter-QcNotepad($Ctx) {
     return $np
 }
 
-# ---------------------------------------------------------------- step 1: the hotkey shows and hides the Panel
-
-function Invoke-QcHotkey($Ctx) {
-    if (-not (Test-AutoAppRunning $Ctx)) { return New-AutoResult 'unsure' 'the test app is not running' }
-    $chord = Get-QcPanelChord (Get-QcSettingsPath $Ctx)
-    if (-not $chord) { return New-AutoResult 'unsure' 'the settings file says the Panel shortcut is off' }
-    Enter-AutoHandsOff "Quick check step 1: press $chord twice and watch the Panel appear and go away"
-    $np = Enter-QcNotepad $Ctx
-    $startedVisible = [bool](Get-QcPanel $Ctx)
-    $checks = @()
-    Send-AutoKeys @($chord)
-    $flipped = Wait-QcPanel $Ctx (-not $startedVisible) 2500
-    $fg1 = Get-AutoForeground
-    $flipNote = 'it was hidden, now showing'
-    if ($startedVisible) { $flipNote = 'it was showing, now hidden' }
-    $checks += New-AutoCheck "first press $chord toggles the Panel" $flipped $flipNote
-    if ($flipped) {
-        $checks += Get-AutoFocusCheck $fg1 ([long]$np.Hwnd) $Ctx.App.proc.Id 'Notepad'
-        Send-AutoKeys @($chord)
-        $back = Wait-QcPanel $Ctx $startedVisible 2500
-        $checks += New-AutoCheck "second press $chord toggles it back" $back
-    }
-    # Leave the Panel hidden: the next steps say "open the Panel with the shortcut".
-    $null = Set-QcPanelVisible $Ctx $chord $false
-    return Resolve-AutoChecks $checks
-}
-
 # ---------------------------------------------------------------- step 3: Recent is on and keeps a normal copy
 
 function Invoke-QcRecent($Ctx) {
@@ -158,35 +131,3 @@ function Invoke-QcDockWorkArea($Ctx) {
     return Resolve-AutoChecks $checks @() 'Look once at the docked Panel: no part of it is hidden behind the taskbar, and its bottom row is fully visible.'
 }
 
-# ---------------------------------------------------------------- step 12: the render diagnostic
-
-function Invoke-QcDiagnostic($Ctx) {
-    $script = Join-Path (Join-Path (Join-Path $Ctx.RepoRoot 'tools') 'windows-test') 'diag-render.ps1'
-    $ps = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
-    if (-not (Test-Path -LiteralPath $script)) { return New-AutoResult 'unsure' "not found: $script" }
-    if (-not (Test-Path -LiteralPath $ps)) { return New-AutoResult 'unsure' 'Windows PowerShell was not found' }
-    $marker = Join-Path (Join-Path (Join-Path $Ctx.RepoRoot 'spikes-results') 'diag') 'last-diag-path.txt'
-    Remove-Item -LiteralPath $marker -ErrorAction SilentlyContinue
-    $dataDir = Join-Path (Join-Path $Ctx.RepoRoot 'spikes-results') 'qc-data'
-    # The diagnostic starts the app itself (twice the same way), so the wizard's copy must be closed first.
-    Stop-App
-    Write-Host ''
-    Write-Host '  Starting the render diagnostic. Answer its questions in this window.' -ForegroundColor Cyan
-    & $ps -NoProfile -ExecutionPolicy Bypass -File $script -NoBuild -Quick -DataDir $dataDir
-    $code = $LASTEXITCODE
-    $file = ''
-    if (Test-Path -LiteralPath $marker) { $file = (Get-Content -LiteralPath $marker -TotalCount 1) }
-    if ($code -ne 0 -or -not $file -or -not (Test-Path -LiteralPath $file)) {
-        return New-AutoResult 'unsure' "the diagnostic did not finish (exit code $code)"
-    }
-    Write-Host ''
-    Write-Host "  Diagnostic file: $file" -ForegroundColor Green
-    $copy = ''
-    try {
-        $dest = Join-Path $Ctx.RunDir 'diag'
-        if (-not (Test-Path -LiteralPath $dest)) { New-Item -ItemType Directory -Path $dest | Out-Null }
-        Copy-Item -LiteralPath $file -Destination $dest -Force
-        $copy = ' (a copy is in the results zip)'
-    } catch { }
-    return New-AutoResult 'pass' "diagnostic file: $file$copy"
-}

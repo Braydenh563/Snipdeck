@@ -10,14 +10,10 @@
   The log never holds your snippets or window titles: only window sizes, positions, Windows
   messages, shortcut results and your y/n answers.
 
-  Add -Quick for the short form the Quick check of the test wizard uses (run A render checks only, about
-  3 minutes; no shortcut questions). It also writes spikes-results\diag\last-diag-path.txt.
-
   Windows PowerShell 5.1 compatible, ASCII only.
 #>
 param(
     [switch]$NoBuild,
-    [switch]$Quick,   # the Quick check of the test wizard: run A render checks only (about 3 minutes); no shortcut questions
     [string]$DataDir = ''
 )
 
@@ -177,7 +173,6 @@ function Render-Steps($Run) {
 Say ''
 Say 'Step 4. Run A: render logging. Snipdeck starts now. Do each numbered thing, then answer here.' Cyan
 $a = Run-App 'render' 'runA'
-if (-not $Quick) {
 Say '  Shortcuts first (focus Notepad or any text field before each one):' White
 Step $a 1 'Press Ctrl+Shift+Y. Press it again.' 'Did the Panel appear the first time and hide the second time?'
 Step $a 2 'Press Ctrl+Shift+Space, then Esc.' 'Did the Picker appear?'
@@ -186,7 +181,6 @@ Step $a 4 'Press Ctrl+Shift+2 (only if you set it in Settings > Shortcuts; else 
 Step $a 5 'Open Settings > Shortcuts and look at each row.' 'Does any row show a red message? (type the gist in the next question)'
 $why = Read-Host '     If a row shows a message, type what it says (or press Enter)'
 Mark $a "settings rows say: $why"
-}
 Say ''
 Say '  Now the render checks (same Snipdeck, still running):' White
 Render-Steps $a
@@ -223,8 +217,6 @@ foreach ($run in @($a)) {
     foreach ($e in ($entries | Sort-Object ms, seq)) { $lines.Add($e.text) }
 }
 [IO.File]::WriteAllLines($outFile, $lines)
-# The test wizard reads this to show the path and to put a copy in its results zip.
-try { [IO.File]::WriteAllText((Join-Path $work 'last-diag-path.txt'), $outFile) } catch {}
 Say ''
 Say "Done. Send this one file back: $outFile" Green
 try { Start-Process explorer.exe -ArgumentList "/select,`"$outFile`"" } catch {}
