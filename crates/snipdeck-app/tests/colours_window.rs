@@ -318,7 +318,6 @@ fn a_translucent_second_colour_is_judged_over_white_and_the_row_says_so() {
     );
 }
 
-#[test]
 fn number_at(r: &Rig, i: usize) -> f64 {
     r.state()
         .get_channels()
