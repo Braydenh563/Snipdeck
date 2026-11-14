@@ -8,12 +8,13 @@ use snipdeck_colour::{
 };
 use snipdeck_core::{
     Content, Format as ItemFormat, Formats, Inline, Item, ItemId, ItemKind, List, ListId, Name,
-    Placement, Trashable, UseMode,
+    Placement, UseMode,
 };
 use snipdeck_platform::{
     payload::{Data, Payload},
     pipeline::{Clipboard, Keyboard, Timing},
 };
+use snipdeck_store::{TrashRepo, Trashable};
 
 use super::{Controller, Effect, Library, UseResult, failed};
 use crate::host::ClipboardText;
