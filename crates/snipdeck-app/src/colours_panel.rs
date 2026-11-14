@@ -389,6 +389,8 @@ pub fn scheme_layout(which: Scheme, mut colours: Vec<Rgba8>) -> Vec<Rgba8> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
     fn a_translucent_colour_is_flattened_over_white() {
         assert_eq!(over_white(Rgba8::rgb(1, 2, 3)), Rgba8::rgb(1, 2, 3));
@@ -426,8 +428,6 @@ mod tests {
         assert!((slider(120.0, 359.999) - 120.0).abs() < 1e-6);
         assert!(slider(f32::NAN, 100.0).abs() < 1e-6);
     }
-
-    use super::*;
 
     fn st(c: Rgba8) -> Hsb {
         hsb(c, 0.0)
