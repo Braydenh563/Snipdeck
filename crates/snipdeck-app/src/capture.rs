@@ -384,7 +384,14 @@ mod tests {
     fn any_file_type_is_saved_and_only_a_png_becomes_an_image_item() {
         let (mut store, notes, _) = library();
         let to = dest(&store, notes);
-        let png = b"\x89PNG\r\n\x1a\nrest".to_vec();
+        let mut png = Vec::new();
+        let mut encoder = png::Encoder::new(&mut png, 1, 1);
+        encoder.set_color(png::ColorType::Rgb);
+        encoder.set_depth(png::BitDepth::Eight);
+        encoder
+            .write_header()
+            .and_then(|mut w| w.write_image_data(&[1, 2, 3]))
+            .expect("png");
         let files = vec![
             ("shot.png".to_owned(), png),
             ("photo.jpg".to_owned(), vec![0xFF, 0xD8, 0xFF, 1]),
