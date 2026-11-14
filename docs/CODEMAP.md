@@ -175,6 +175,7 @@ nothing_or_blank_text_saves_nothing | crates/snipdeck-app/src/capture.rs:321
 text_over_the_limit_is_refused_and_text_at_the_limit_is_kept | crates/snipdeck-app/src/capture.rs:331
 a_failed_write_leaves_no_item_behind | crates/snipdeck-app/src/capture.rs:353
 the_default_list_is_the_current_one_else_the_first_that_exists | crates/snipdeck-app/src/capture.rs:370
+any_file_type_is_saved_and_only_a_png_becomes_an_image_item | crates/snipdeck-app/src/capture.rs:384
 
 ### crates/snipdeck-app/src/cli.rs
 
@@ -8316,7 +8317,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 |---|---|
 | `crates/snipdeck-app/src/accent.rs` (inline) | 5 |
 | `crates/snipdeck-app/src/binding.rs` (inline) | 7 |
-| `crates/snipdeck-app/src/capture.rs` (inline) | 5 |
+| `crates/snipdeck-app/src/capture.rs` (inline) | 6 |
 | `crates/snipdeck-app/src/cli.rs` (inline) | 7 |
 | `crates/snipdeck-app/src/commands.rs` (inline) | 16 |
 | `crates/snipdeck-app/src/controller/editor_ctl/save.rs` (inline) | 2 |
