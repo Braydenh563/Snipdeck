@@ -9,3 +9,10 @@
 
 ## Consequences
 Two release pipelines in CI; no SmartScreen "unknown publisher" warning on the free channel.
+
+## Status note (2026-11-14)
+Two parts of this decision are not what shipped:
+- **Update check.** v1.0.0 has no in-app update check against GitHub Releases. "Check for updates" opens the
+  releases page, and in a packaged build the Store's updates page. The app makes no network requests.
+- **SmartScreen.** Signing does not remove the warning at once: SmartScreen reputation builds over time for a
+  new certificate (see [`packaging.md`](../packaging.md), SmartScreen expectations).

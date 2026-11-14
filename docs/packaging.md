@@ -174,13 +174,24 @@ or `.msixbundle`, which Visual Studio or `MakeAppx bundle` creates).
 
 | Step | Detail |
 |---|---|
-| 1. Account | Partner Center, **individual** developer account. One-off registration fee: HANDOVER notes US$19. *Check before relying on it* (fee, identity checks, how long verification takes). |
+| 1. Account | Partner Center, **individual** developer account. Microsoft's current page shows no registration fee for an individual account; older notes said US$19. *Check before relying on it* (fee, identity checks, how long verification takes). An individual account cannot later be converted to a company account (see [`store-submission.md`](store-submission.md)). |
 | 2. Reserve the name | Apps and games > New product > MSIX or PWA app. Reserve `Snipdeck`. The name is held for a limited time if you do not submit. *Check before relying on it.* |
 | 3. Copy the identity | Product management > Product identity. Put `Package/Identity/Name`, `Publisher` and `PublisherDisplayName` into the manifest. |
 | 4. Build | As above, with the real identity values and a version higher than any earlier upload. |
+| 4b. Pre-test with the Windows App Certification Kit | Microsoft advises this before every submission. Install the Windows SDK (it includes the kit), then in an administrator PowerShell, in a normal signed-in session (not a service): `cd "C:\Program Files (x86)\Windows Kits\10\App Certification Kit"`, `.\appcert.exe reset`, `.\appcert.exe test -appxpackagepath <path>\Snipdeck.msix -reportoutputpath <path>\wack-report.xml`. Or interactively: Start > Windows App Cert Kit > Validate a Windows app. Fix every FAILED item and record WARNINGs in the certification notes. The performance thresholds assume a low-power PC, so a pass on a fast PC is not proof. If the kit hangs on "Process Install Trace Files", close any Snipdeck window or tray icon the installer started. Keep the report out of the repo. Source: [Windows App Certification Kit](https://learn.microsoft.com/en-us/windows/uwp/debug-test-perf/windows-app-certification-kit). |
 | 5. Submit | Start a submission, upload the package, set price (paid or free), age rating, Store listing text and screenshots, privacy policy link ([`privacy.md`](privacy.md)), and notes for certification. |
 | 6. Certification | Describe `runFullTrust` plainly in the notes: the app reads and writes the clipboard, registers global hotkeys and pastes into other apps. |
 | 7. After it is live | Put the Store link in the About window constant and the README (see [`going-public.md`](going-public.md) section 5). |
+
+If you submit the Setup .exe instead of the MSIX (the MSI/EXE route), Microsoft runs these checks on it
+([certification process](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msi/app-certification-process)):
+- an HTTPS package URL that never changes once submitted; use the versioned GitHub release asset URL;
+- a malware scan: scan the installer with Microsoft Defender first;
+- a silent install: give `/VERYSILENT` as the installer parameter, and check that it installs as a standard user, adds a Start menu entry, and shows the right name, publisher and version in Installed apps;
+- a clean uninstall: the library left in `%LOCALAPPDATA%\Snipdeck` after a silent uninstall is user data, kept on purpose. Say so in the certification notes, because the check looks for files left behind;
+- a standalone installer (it already is), no bundled apps, and no drivers or services;
+- the app must not crash without a network connection;
+- signing is strongly advised (section 2).
 
 Supporter pricing for the Store build is a product decision, not a packaging one. Do not add a
 second licence path for it here.
@@ -263,6 +274,7 @@ Nothing in this page has been run. Tick each when the owner has done it.
 - [ ] Start with Windows in the package: the `StartupTask` `SnipdeckStartup` toggles from the app and Settings > Apps > Startup.
 - [ ] Setup .exe: installs without a prompt, upgrades over an older version (and over one that ignores `--quit`), restarts Snipdeck after a silent upgrade, uninstalls, and the erase question deletes only `%LOCALAPPDATA%\Snipdeck`. `iscc` has never been run on this script.
 - [ ] The update check is off in the packaged build.
+- [ ] Windows App Certification Kit: `appcert.exe test` on the MSIX passes (step 4b), and for the EXE route the silent install, standard-user install and uninstall checks above pass.
 - [ ] Partner Center: account verification, name reservation, upload format, certification of `runFullTrust`, current fee.
 - [ ] SignPath Foundation: acceptance, required wording, the artifact configuration, signed exe passes `signtool verify /pa`, publisher name shown in file properties.
 - [ ] Signed zip: SmartScreen behaviour on a clean PC, and the hash in `release-sha256.txt` matches.
