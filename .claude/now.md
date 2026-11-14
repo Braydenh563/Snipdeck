@@ -145,3 +145,4 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 2026-11-12 15:35 owner (verbatim): "maybe hold off on excess fable usage for now as I am going to sleep and want my other sessions and stuff to run through the night without hitting usage limits. I will want to continue it later though" -> done: Fable dock worker stopped (WIP pushed); the three round-3 minors go to Sonnet; the final Fable audit waits for the owner's word. Hub runs lean overnight (no Opus workflows over ~10 agents).
 - 2026-11-14 (owner, verbatim): "please continue to finish everything. Ill be going to work soon so I want you to push to finish everything by the time I get back. what is left?"
 - 2026-11-14 (owner, verbatim): "Also I give permission for fable to do the full app audit but dont use it for anything else. fix all of its finding after and then make sure everything is finished"
+- 2026-11-14 (owner, verbatim): "Im going to work 😃"
