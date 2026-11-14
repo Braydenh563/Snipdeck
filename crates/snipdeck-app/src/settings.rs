@@ -1082,10 +1082,28 @@ impl Settings {
         field!(tray_click);
         field!(panel_open_at);
         field!(symbols_recent);
-        field!(show_colours_tab);
+        settings.colour_fields(map);
+        field!(panel_hide_after_use);
+        field!(panel_start_visible);
+        settings
+    }
+
+    /// The Colours tab's fields, read one by one like the rest of [`Self::from_fields`].
+    fn colour_fields(&mut self, map: &serde_json::Map<String, serde_json::Value>) {
+        macro_rules! colour_field {
+            ($name:ident) => {
+                if let Some(v) = map
+                    .get(stringify!($name))
+                    .and_then(|v| serde_json::from_value(v.clone()).ok())
+                {
+                    self.$name = v;
+                }
+            };
+        }
+        colour_field!(show_colours_tab);
         // One bad recent must not drop the rest; one whose hex is not a colour goes too.
         if let Some(serde_json::Value::Array(items)) = map.get("colours_recent") {
-            settings.colours_recent = items
+            self.colours_recent = items
                 .iter()
                 .filter_map(|v| {
                     serde_json::from_value::<snipdeck_colour::RecentColour>(v.clone()).ok()
@@ -1093,13 +1111,13 @@ impl Settings {
                 .filter(|r| snipdeck_colour::Rgba8::from_hex(&r.hex).is_some())
                 .collect();
         }
-        field!(colour_format);
-        if !settings.colour_format.can_be_default() {
-            settings.colour_format = snipdeck_colour::Format::Hex;
+        colour_field!(colour_format);
+        if !self.colour_format.can_be_default() {
+            self.colour_format = snipdeck_colour::Format::Hex;
         }
         for (key, slot) in [
-            ("colour_current", &mut settings.colour_current),
-            ("colour_contrast_with", &mut settings.colour_contrast_with),
+            ("colour_current", &mut self.colour_current),
+            ("colour_contrast_with", &mut self.colour_contrast_with),
         ] {
             if let Some(text) = map.get(key).and_then(serde_json::Value::as_str)
                 && snipdeck_colour::Rgba8::from_hex(text).is_some()
@@ -1107,15 +1125,12 @@ impl Settings {
                 text.clone_into(slot);
             }
         }
-        field!(colour_scheme);
-        field!(colour_adjust_open);
-        field!(colour_picker_style);
-        field!(colour_input_model);
-        field!(colour_copy_on_pick);
-        field!(colour_save_list);
-        field!(panel_hide_after_use);
-        field!(panel_start_visible);
-        settings
+        colour_field!(colour_scheme);
+        colour_field!(colour_adjust_open);
+        colour_field!(colour_picker_style);
+        colour_field!(colour_input_model);
+        colour_field!(colour_copy_on_pick);
+        colour_field!(colour_save_list);
     }
 
     /// Turns the names an older file kept in `no_paste_apps` into "never paste" rules. Only on
