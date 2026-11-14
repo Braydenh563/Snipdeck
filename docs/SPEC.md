@@ -39,7 +39,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 | **Tag** | Free-form label across Boards; filterable. |
 | **Pinned** | Item shown in the panel's favourites strip, above list order. |
 | **Sensitive** | Item that is masked and excluded from history; its clipboard copy is cleared after N s (default 30, Settings > Privacy); encrypted at rest (all tiers). |
-| **Recent inbox** | Clipboard history (on for new installs; Settings and the welcome tour turn it off). Last 200 entries or 7 days (configurable). Promote → List. |
+| **Recent inbox** | Clipboard history (opt-in: asked on first run; nothing is kept until Yes; Settings and the welcome tour change it). Last 200 entries or 7 days (configurable). Promote → List. |
 | **Panel** | Small dockable, always-on-top, non-activating window showing a Board (lists as tabs). |
 | **Floating list** | A List detached from the Panel into its own mini-panel (Supporter). |
 | **Picker** | Hotkey-summoned, keyboard-first popup at the cursor: type to filter, Enter to paste. |
@@ -110,8 +110,8 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - OCR engine: **Windows.Media.Ocr** by default (zero bundle cost); optional **RapidOCR pack**
   (ONNX, downloaded on demand) for messy layouts / unsupported languages (ADR-0004).
 
-### 5.6 Recent inbox (on for new installs, one switch to turn off)
-- On by default for a **new install** only; a settings file from an older build that does not name `recent_history` keeps it off. The welcome tour (step 4) says so and has the switch. Default chords for a new install: Show/hide Panel `Ctrl+Shift+Y`, Picker `Ctrl+Shift+Space`, Paste next `Ctrl+Shift+U`, none use Ctrl+Alt (AltGr on many layouts; `docs/reviews/default-chords.md`); an existing file keeps its chords.
+### 5.6 Recent inbox (asked on first run, nothing kept until Yes)
+- **Opt-in.** The first time the Panel opens (after the welcome tour, if it runs) a Yes/No question asks "Keep a Recent list of what you copy?"; Esc or a click outside answers No. Nothing is recorded before Yes. A settings file without `recent_history_asked` (any older build) is asked too, because it cannot tell a choice from the old default. The welcome tour (step 4) can answer early, and Settings has the switch. Default chords for a new install: Show/hide Panel `Ctrl+Shift+Y`, Picker `Ctrl+Shift+Space`, Paste next `Ctrl+Shift+U`, none use Ctrl+Alt (AltGr on many layouts; `docs/reviews/default-chords.md`); an existing file keeps its chords.
 - Listens to clipboard changes; dedupes; skips sources that set
   `ExcludeClipboardContentFromMonitorProcessing` / `CanIncludeInClipboardHistory=0` (password managers),
   excluded apps, and Sensitive items.
@@ -152,7 +152,7 @@ Seeds a **Getting started** list whose cards teach by doing ("Click me to paste"
 
 ## 6. Free vs Supporter
 
-The paid tier is called Supporter (it was Pro; internal identifiers such as `Tier::Pro` keep the old name). Pay what you want from A$5, suggested A$8, one-time, every 1.x update included; a key is free on request ("Can't afford it? Email me"). Free stays fully usable and the code is GPL-3.0: Supporter pays for convenience and supports the app.
+The paid tier is called Supporter (it was Pro; internal identifiers such as `Tier::Pro` keep the old name). Pay what you want from A$5, suggested A$8, one-time, every 1.x update included; a key is free on request ("Can't afford it? Email me"). Free stays fully usable and the code is GPL-3.0: Supporter pays for convenience and supports the app. The **Microsoft Store build is free with every Supporter feature unlocked** (`licence_store::entitlements` returns Supporter when `platform::is_packaged()`), and shows no Get Supporter, licence or upsell UI; Supporter is sold on the GitHub build only.
 
 | Feature | Free | Supporter |
 |---|---|---|
@@ -211,8 +211,8 @@ Cargo workspace:
 Dependency rule: `app → ui, platform, store, core`; `store → core`; `platform → core`; `core` depends on nothing internal.
 
 ## 11. Distribution
-- **Microsoft Store** (paid listing) and **GitHub Releases + winget** (free, signed via SignPath Foundation).
-- In-app update check against GitHub Releases (user-confirmed); Store handles its own updates.
+- **Microsoft Store** (free, every feature unlocked: the packaged build has no Supporter or licence screens; Individual Partner Center account) and **GitHub Releases + winget** (free with optional Supporter, signed via SignPath Foundation).
+- No network update check: **Check for updates** opens the GitHub releases page, or the Store's updates page in the Store build; the Store handles its own updates.
 
 ## 12. Quality gates (CI, Windows runner)
 `cargo fmt --check`, `cargo clippy -D warnings`, unit + integration tests (store, templates,
