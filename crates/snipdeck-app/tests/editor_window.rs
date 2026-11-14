@@ -749,6 +749,9 @@ fn a_sensitive_item_made_in_the_window_is_stored_encrypted_and_never_drafted() {
         let ed = r.ed();
         type_text(ed.window(), "Vault");
         ed.set_content("WINDOW-NEEDLE-4411".into());
+        // Tall enough that Privacy, the last field under "More options", is in view.
+        ed.window().set_size(slint::LogicalSize::new(560.0, 1400.0));
+        settle();
         let toggle = find(&ed, "Sensitive item", AccessibleRole::Switch);
         click(ed.window(), &toggle);
         assert!(ed.get_sensitive());
@@ -779,6 +782,9 @@ fn a_free_user_sees_prompted_fields_refused_with_the_pro_toast() {
         let r = rig_tier(Tier::Free);
         menu(&r, "New item");
         let ed = r.ed();
+        // Tall enough that the last placeholder chips are in view (the Preview strip took a row above the form).
+        ed.window().set_size(slint::LogicalSize::new(560.0, 1400.0));
+        settle();
         assert!(!ed.get_prompted_available());
         click(
             ed.window(),
@@ -971,6 +977,402 @@ fn the_editor_fields_have_roles_labels_and_big_enough_targets() {
 }
 
 #[test]
+fn preview_shows_the_unsaved_item_from_the_button_and_ctrl_p_and_loses_nothing() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        assert!(!ed.get_preview_on(), "a fresh editor opens on the form");
+        ed.set_kind_index(3);
+        ed.set_item_title("".into());
+        ed.set_content("Hi {field:Who}, on {date}".into());
+        ed.set_label_index(2);
+        let before = r.item_count();
+
+        // The header button turns it on; the card is built from the typed, unsaved fields.
+        let toggle = find(&ed, "Preview", AccessibleRole::Button);
+        assert_eq!(toggle.accessible_checked(), Some(false));
+        click(ed.window(), &toggle);
+        assert!(ed.get_preview_on());
+        assert_eq!(
+            find(&ed, "Preview", AccessibleRole::Button).accessible_checked(),
+            Some(true),
+            "the toggle is spoken as checked while Preview is on"
+        );
+        assert_eq!(ed.get_preview_title(), "Hi {field:Who}, on {date}");
+        assert_eq!(ed.get_preview_excerpt(), "Hi {field:Who}, on {date}");
+        assert!(
+            ed.get_preview_expanded()
+                .starts_with("Hi ‹Who›, on 2026-10-1"),
+            "{}",
+            ed.get_preview_expanded()
+        );
+        assert_eq!(ed.get_preview_link(), "");
+        assert_eq!(r.item_count(), before, "previewing saves nothing");
+
+        // Ctrl+P turns it off; every field is as it was and the item is still unsaved.
+        chord(ed.window(), &[Key::Control], "p");
+        settle();
+        assert!(!ed.get_preview_on());
+        assert_eq!(ed.get_content(), "Hi {field:Who}, on {date}");
+        assert_eq!(ed.get_kind_index(), 3);
+        assert_eq!(ed.get_label_index(), 2);
+
+        // A change made after the first look shows on the next one; Ctrl+P also turns it on.
+        ed.set_kind_index(2);
+        ed.set_content("https://docs.example.com/a?b=1".into());
+        chord(ed.window(), &[Key::Control], "p");
+        settle();
+        assert!(ed.get_preview_on());
+        assert_eq!(ed.get_preview_link(), "docs.example.com");
+        assert_eq!(ed.get_preview_expanded(), "");
+
+        // Save still works from the preview (Ctrl+Enter), and a fresh editor starts on the form.
+        save(&ed);
+        assert!(!r.editor_shown());
+        assert_eq!(r.item_count(), before + 1);
+        menu(&r, "New item");
+        assert!(!r.ed().get_preview_on());
+    });
+}
+
+#[test]
+fn a_save_refused_while_previewing_goes_back_to_the_form_and_shows_why() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        let before = r.item_count();
+
+        // The window's own check: no text.
+        chord(ed.window(), &[Key::Control], "p");
+        settle();
+        assert!(ed.get_preview_on());
+        save(&ed);
+        assert!(!ed.get_preview_on(), "a refused Save leaves Preview");
+        assert!(r.editor_shown());
+        assert_eq!(r.item_count(), before);
+
+        // The host's check: a link with no scheme passes the window and is refused by Save.
+        ed.set_kind_index(2);
+        ed.set_content("docs.example.com".into());
+        chord(ed.window(), &[Key::Control], "p");
+        settle();
+        assert!(ed.get_preview_on());
+        assert_ne!(ed.get_preview_note(), "", "the preview already says why");
+        save(&ed);
+        assert!(!ed.get_preview_on(), "a host refusal leaves Preview too");
+        assert_ne!(ed.get_content_error(), "");
+        assert!(r.editor_shown());
+        assert_eq!(r.item_count(), before);
+    });
+}
+
+#[test]
+fn ctrl_shift_p_does_not_toggle_preview_and_tags_close_when_it_opens() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        chord(ed.window(), &[Key::Control, Key::Shift], "P");
+        settle();
+        assert!(!ed.get_preview_on());
+        ed.set_tags_open(true);
+        chord(ed.window(), &[Key::Control], "p");
+        settle();
+        assert!(ed.get_preview_on());
+        assert!(!ed.get_tags_open(), "the hidden chooser is closed");
+    });
+}
+
+#[test]
+fn preview_of_a_sensitive_item_never_shows_its_text() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        for (kind, text) in [
+            (0, "hunter2-secret"),
+            (2, "https://hunter2-secret.example/x"),
+            (3, "pw {field:Who|hunter2-secret}"),
+        ] {
+            ed.set_kind_index(kind);
+            ed.set_item_title("".into());
+            ed.set_content(text.into());
+            ed.set_sensitive(true);
+            click(ed.window(), &find(&ed, "Preview", AccessibleRole::Button));
+            assert!(
+                ed.get_preview_on(),
+                "kind {kind} err={:?} {:?} {:?}",
+                ed.get_content_error(),
+                ed.get_title_error(),
+                ed.get_privacy_error()
+            );
+            for shown in [
+                ed.get_preview_title(),
+                ed.get_preview_excerpt(),
+                ed.get_preview_expanded(),
+                ed.get_preview_link(),
+                ed.get_preview_note(),
+            ] {
+                assert!(!shown.contains("hunter2"), "kind {kind} shows {shown:?}");
+            }
+            click(ed.window(), &find(&ed, "Preview", AccessibleRole::Button));
+            assert!(!ed.get_preview_on(), "kind {kind} did not turn off");
+        }
+    });
+}
+
+#[test]
+fn leaving_preview_on_an_image_item_keeps_the_keyboard_in_the_window() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        ed.set_kind_index(4);
+        settle();
+        let toggle = find(&ed, "Preview", AccessibleRole::Button);
+        click(ed.window(), &toggle);
+        assert!(ed.get_preview_on());
+        chord(ed.window(), &[Key::Control], "p");
+        settle();
+        assert!(!ed.get_preview_on());
+        // Focus is somewhere in the window: Ctrl+P still reaches it, and Esc (nothing typed) closes the editor.
+        chord(ed.window(), &[Key::Control], "p");
+        settle();
+        assert!(ed.get_preview_on(), "Ctrl+P still works after leaving");
+        chord(ed.window(), &[Key::Control], "p");
+        settle();
+        press(ed.window(), &key(Key::Escape));
+        settle();
+        assert!(!r.editor_shown(), "Escape reached the editor");
+    });
+}
+
+// ---- Where the keyboard lands -------------------------------------------------------------------
+// The test backend cannot say which element has the focus, so these type a letter and see which field took it.
+
+fn preview_on(ed: &ItemEditor) {
+    chord(ed.window(), &[Key::Control], "p");
+    settle();
+    assert!(ed.get_preview_on());
+}
+
+#[test]
+fn a_save_refused_in_preview_puts_the_keyboard_in_the_field_that_holds_the_error() {
+    on_ui_thread(|| {
+        // Content missing: the text field.
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        preview_on(&ed);
+        save(&ed);
+        assert!(!ed.get_preview_on());
+        type_text(ed.window(), "x");
+        assert_eq!(ed.get_content(), "x", "the text field has the focus");
+        assert_eq!(ed.get_item_title(), "");
+
+        // A title that is too long: the title field.
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        ed.set_content("body".into());
+        ed.set_item_title("t".repeat(500).into());
+        preview_on(&ed);
+        save(&ed);
+        assert!(!ed.get_preview_on());
+        assert_ne!(ed.get_title_error(), "");
+        type_text(ed.window(), "x");
+        assert!(
+            ed.get_item_title().ends_with('x'),
+            "the title field has the focus"
+        );
+        assert_eq!(ed.get_content(), "body");
+
+        // A missing file: the path field.
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        click(
+            ed.window(),
+            &find(&ed, "Image", AccessibleRole::RadioButton),
+        );
+        settle();
+        preview_on(&ed);
+        save(&ed);
+        assert!(!ed.get_preview_on());
+        type_text(ed.window(), "x");
+        assert_eq!(ed.get_source_path(), "x", "the path field has the focus");
+    });
+}
+
+#[test]
+fn tab_walks_the_form_and_the_preview_without_a_trap() {
+    const TABS: usize = 40;
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+
+        // Preview off: a full walk reaches the text and the title, and the keyboard is still in the window.
+        let (mut text_seen, mut title_seen) = (false, false);
+        for _ in 0..TABS {
+            press(ed.window(), &key(Key::Tab));
+            type_text(ed.window(), "§");
+            text_seen |= ed.get_content().contains('§');
+            title_seen |= ed.get_item_title().contains('§');
+        }
+        assert!(
+            text_seen && title_seen,
+            "Tab reaches the text and the title"
+        );
+        chord(ed.window(), &[Key::Control], "p");
+        settle();
+        assert!(ed.get_preview_on(), "Ctrl+P still works after a full walk");
+
+        // Preview on: one continuous walk each way edits nothing in the hidden form.
+        let (content, title) = (ed.get_content(), ed.get_item_title());
+        for _ in 0..TABS {
+            press(ed.window(), &key(Key::Tab));
+            type_text(ed.window(), "§");
+        }
+        for _ in 0..TABS {
+            chord(ed.window(), &[Key::Shift], &key(Key::Tab));
+            type_text(ed.window(), "§");
+        }
+        assert_eq!(
+            (ed.get_content(), ed.get_item_title()),
+            (content, title),
+            "nothing was typed into the hidden form"
+        );
+
+        assert!(ed.get_preview_on());
+        chord(ed.window(), &[Key::Control], "p");
+        settle();
+        assert!(!ed.get_preview_on(), "Ctrl+P leaves Preview after the walk");
+
+        // Back on the form the keyboard types into the first field.
+        let before = ed.get_content().len() + ed.get_item_title().len();
+        type_text(ed.window(), "y");
+        assert_eq!(
+            ed.get_content().len() + ed.get_item_title().len(),
+            before + 1
+        );
+    });
+}
+
+#[test]
+fn ctrl_p_preview_flips_survive_a_tab_depth_loop() {
+    const TABS: usize = 40;
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        preview_on(&ed);
+        // At every depth the keyboard is still in the window: open Preview (the focus starts on the toggle), press
+        // Tab k times, and Ctrl+P must still leave Preview. Then the same with Shift+Tab.
+        for shift in [false, true] {
+            for k in 1..=TABS {
+                assert!(ed.get_preview_on());
+                for _ in 0..k {
+                    if shift {
+                        chord(ed.window(), &[Key::Shift], &key(Key::Tab));
+                    } else {
+                        press(ed.window(), &key(Key::Tab));
+                    }
+                }
+                chord(ed.window(), &[Key::Control], "p");
+                settle();
+                assert!(
+                    !ed.get_preview_on(),
+                    "Ctrl+P leaves Preview after {k} {}",
+                    if shift { "Shift+Tab" } else { "Tab" }
+                );
+                chord(ed.window(), &[Key::Control], "p");
+                settle();
+            }
+        }
+    });
+}
+
+#[test]
+fn with_both_a_text_and_a_title_refused_the_text_gets_the_keyboard_first() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        ed.set_kind_index(2);
+        ed.set_content("docs.example.com".into());
+        ed.set_item_title("t".repeat(500).into());
+        preview_on(&ed);
+        save(&ed);
+        assert!(!ed.get_preview_on());
+        assert_ne!(ed.get_content_error(), "");
+        assert_ne!(ed.get_title_error(), "");
+        type_text(ed.window(), "x");
+        assert_eq!(
+            ed.get_content().len(),
+            "docs.example.com".len() + 1,
+            "the letter went into the text, the first error in reading order"
+        );
+        assert_eq!(ed.get_item_title().len(), 500);
+    });
+}
+
+#[test]
+fn a_focus_request_from_a_refused_image_does_not_reach_the_next_editor() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        click(
+            ed.window(),
+            &find(&ed, "Image", AccessibleRole::RadioButton),
+        );
+        settle();
+        preview_on(&ed);
+        save(&ed);
+        assert_eq!(
+            ed.get_source_focus_request(),
+            1,
+            "the refusal asked for the path field"
+        );
+        press(ed.window(), &key(Key::Escape));
+        if ed.get_discard_open() {
+            find(&ed, "Discard", AccessibleRole::Button).invoke_accessible_default_action();
+        }
+        settle();
+        assert!(!r.editor_shown(), "the editor is closed");
+        menu(&r, "New item");
+        assert_eq!(
+            r.ed().get_source_focus_request(),
+            0,
+            "a new editor starts with no request"
+        );
+    });
+}
+
+#[test]
+fn the_preview_draws_the_main_tile_view_and_the_cards_panel_layout_the_user_has() {
+    on_ui_thread(|| {
+        let r = rig();
+        {
+            let mut ctl = r.ctl.borrow_mut();
+            ctl.update_settings(|s| s.panel_layout = snipdeck_app::settings::PanelLayout::Cards);
+            ctl.main_set_view(snipdeck_app::main_window::ViewMode::Tile);
+        }
+        menu(&r, "New item");
+        let ed = r.ed();
+        preview_on(&ed);
+        assert_eq!(
+            ed.get_preview_panel_layout(),
+            snipdeck_ui::PanelLayout::Cards
+        );
+        assert_eq!(ed.get_preview_main_view(), snipdeck_ui::MainView::Tile);
+    });
+}
+
+#[test]
 fn trigger_clash_shows_an_error() {
     on_ui_thread(|| {
         let r = rig();
@@ -1047,5 +1449,54 @@ fn trigger_field_hidden_for_sensitive() {
         assert!(ed.get_sensitive());
         settle();
         assert!(missing(&ed, "Trigger", AccessibleRole::TextInput));
+    });
+}
+
+#[test]
+fn a_focus_request_left_by_a_refused_file_does_not_survive_opening_a_file_item() {
+    on_ui_thread(|| {
+        let r = rig();
+        let files = tempfile::tempdir().expect("dir");
+        let path = files.path().join("notes.txt");
+        fs::write(&path, b"file body").expect("write");
+        // A saved File item to open later.
+        menu(&r, "New item");
+        let ed = r.ed();
+        click(ed.window(), &find(&ed, "File", AccessibleRole::RadioButton));
+        ed.set_source_path(path.to_str().expect("utf8").into());
+        ed.set_item_title("Notes".into());
+        settle();
+        save(&ed);
+        assert!(!r.editor_shown());
+        let id = r.id("Notes");
+
+        // A new File item refused in Preview leaves a request for the path field.
+        menu(&r, "New item");
+        let ed = r.ed();
+        click(ed.window(), &find(&ed, "File", AccessibleRole::RadioButton));
+        settle();
+        preview_on(&ed);
+        save(&ed);
+        assert_eq!(ed.get_source_focus_request(), 1);
+        // Preview on again, and the editor closes that way (an open editor is raised, never refilled, so the
+        // reused window is the next fill).
+        preview_on(&ed);
+        press(ed.window(), &key(Key::Escape));
+        if ed.get_discard_open() {
+            find(&ed, "Discard", AccessibleRole::Button).invoke_accessible_default_action();
+        }
+        settle();
+        assert!(!r.editor_shown());
+
+        // The saved File item opens with the same kind as the window had (so the kind change cannot clear the
+        // request) and with Preview left on: only the fill can clear both.
+        r.ctl.borrow_mut().open_item_editor(id);
+        r.editor.redraw();
+        settle();
+        let ed = r.ed();
+        assert_eq!(ed.get_kind_index(), 5);
+        assert!(!ed.get_is_new());
+        assert!(!ed.get_preview_on(), "a refill opens on the form");
+        assert_eq!(ed.get_source_focus_request(), 0);
     });
 }

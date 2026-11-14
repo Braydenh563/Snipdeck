@@ -91,8 +91,6 @@ pub(crate) fn arm_toast<S, C, K, T>(
 
 /// How long after a collapse the handle's frame is asked for once more (see `Core::apply`).
 const DOCK_REPLACE_AFTER: std::time::Duration = std::time::Duration::from_millis(50);
-/// How long the Panel must hold still after a move for the drag to count as released.
-const DRAG_SETTLE: std::time::Duration = std::time::Duration::from_millis(250);
 
 /// Moves and sizes the window to `frame`, touching only what differs (a slide moves the Panel on
 /// every pointer move; asking for the same size again each time made Windows resize the surface
@@ -134,8 +132,10 @@ pub struct Binding {
     typed_trigger: Rc<dyn Fn(crate::typing_worker::Out)>,
     frame_changed: Rc<FrameFn>,
     frame_moved: Rc<FrameFn>,
+    panel_focused: Rc<dyn Fn(bool)>,
     restore_frame: Rc<MonitorFn>,
     restore_anchor: Rc<dyn Fn()>,
+    start_hidden: Rc<dyn Fn()>,
     files_hover: Rc<dyn Fn(bool)>,
     file_dropped: Rc<dyn Fn(String)>,
 }
@@ -217,6 +217,11 @@ impl Binding {
         (self.frame_moved)(monitor, frame);
     }
 
+    /// The Panel's window gained or lost the keyboard: a docked Panel that has it stays out.
+    pub fn panel_focused(&self, focused: bool) {
+        (self.panel_focused)(focused);
+    }
+
     /// Files are being dragged over the Panel (`true`), or the drag left it (`false`).
     pub fn files_hover(&self, over: bool) {
         (self.files_hover)(over);
@@ -233,10 +238,18 @@ impl Binding {
         (self.restore_frame)(monitor);
     }
 
-    /// The Panel is shown but its window cannot say what monitor it is on (the first show of a
-    /// `--hidden` start): place it at the mouse or the text cursor, if the user asked for that.
+    /// The Panel is shown but its window cannot say what monitor it is on (it does not exist
+    /// before its first show): place it at the mouse or the text cursor, if the user asked for
+    /// that; else, the first time, where it was last left, on a monitor that is still there.
     pub fn restore_anchor(&self) {
         (self.restore_anchor)();
+    }
+
+    /// The app started with the Panel not shown; its window is not made yet. A Panel last left
+    /// docked, with a dock that tucks, becomes its tab on that monitor (placed here, before
+    /// the host shows the window); any other is hidden.
+    pub fn start_hidden(&self) {
+        (self.start_hidden)();
     }
 }
 
@@ -263,6 +276,7 @@ struct Core<S, C, K, T> {
     idle_timer: Cell<bool>,
     /// Sends the dock its ticks while a hover or leave delay runs.
     dock_timer: slint::Timer,
+    drag_timer: slint::Timer,
     /// Looks at the clipboard while "Take screenshot" waits for its picture.
     screen_clip_timer: slint::Timer,
 }
@@ -300,6 +314,7 @@ where
                 clipboard_timer: Cell::new(false),
                 idle_timer: Cell::new(false),
                 dock_timer: slint::Timer::default(),
+                drag_timer: slint::Timer::default(),
                 screen_clip_timer: slint::Timer::default(),
             }
         });
@@ -469,6 +484,14 @@ where
                     self.controller.borrow_mut().open_item_editor(*id);
                     redraw_all();
                 }
+                Effect::MoveWindow(x, y) => {
+                    let position = slint::PhysicalPosition::new(*x, *y);
+                    if window.window().position() != position {
+                        window.window().set_position(position);
+                        // Drawn whole after every move: no see-through gaps while it travels.
+                        repaint_whole(&window);
+                    }
+                }
                 Effect::PlaceWindow(frame) => {
                     place(&window, *frame);
                     if window.get_dock_collapsed() {
@@ -540,9 +563,11 @@ where
         self.arm_idle_lock();
     }
 
-    /// Runs the dock's tick timer while a hover or leave delay is running, and only then.
+    /// Runs the dock's timer while the Panel is docked, may tuck and is on screen, and only
+    /// then: each tick reads the pointer and runs the hover and leave delays. A tick that
+    /// changes nothing redraws nothing.
     fn arm_dock(self: &Rc<Self>) {
-        let needed = self.controller.borrow().dock_needs_tick();
+        let needed = self.controller.borrow().dock_live();
         if needed == self.dock_timer.running() {
             return;
         }
@@ -550,12 +575,81 @@ where
             let core = Rc::downgrade(self);
             self.dock_timer
                 .start(slint::TimerMode::Repeated, crate::dock::TICK, move || {
-                    if let Some(core) = core.upgrade() {
-                        core.act_effects(|ctl| ctl.dock_event(DockEvent::Tick));
+                    let Some(core) = core.upgrade() else {
+                        return;
+                    };
+                    let Ok(mut ctl) = core.controller.try_borrow_mut() else {
+                        return;
+                    };
+                    let topmost = ctl.topmost();
+                    let effects = ctl.dock_tick();
+                    // A full-screen app came in front or left: the window steps down or back up.
+                    let stepped = topmost != ctl.topmost();
+                    drop(ctl);
+                    if stepped || !effects.is_empty() {
+                        redraw_all();
+                        core.apply(&effects);
                     }
                 });
         } else {
             self.dock_timer.stop();
+        }
+    }
+
+    /// Runs the drag's timer while the Panel is dragged: the window follows the cursor even
+    /// when no pointer event arrives (the window moving under a still pointer reports none).
+    fn arm_drag(self: &Rc<Self>) {
+        if !self.controller.borrow().dragging() {
+            self.drag_timer.stop();
+            return;
+        }
+        if self.drag_timer.running() {
+            return;
+        }
+        let core = Rc::downgrade(self);
+        self.drag_timer.start(
+            slint::TimerMode::Repeated,
+            crate::dock::DRAG_TICK,
+            move || {
+                let Some(core) = core.upgrade() else {
+                    return;
+                };
+                let let_go = core
+                    .controller
+                    .try_borrow_mut()
+                    .is_ok_and(|mut ctl| ctl.drag_let_go());
+                if let_go {
+                    core.drag_finish();
+                } else {
+                    core.drag_step(None);
+                }
+            },
+        );
+    }
+
+    /// One step of the drag: the window goes where the controller says. Only a step that
+    /// changes what the Panel shows (the dock offered or taken away) redraws it.
+    fn drag_step(self: &Rc<Self>, pointer: Option<(i32, i32)>) {
+        let Ok(mut ctl) = self.controller.try_borrow_mut() else {
+            return;
+        };
+        let effects = ctl.drag_move(pointer);
+        let dragging = ctl.dragging();
+        drop(ctl);
+        if effects.iter().any(|e| matches!(e, Effect::PlaceWindow(_))) {
+            redraw_all();
+        }
+        self.apply(&effects);
+        if !dragging {
+            self.drag_timer.stop();
+        }
+    }
+
+    /// The button came up: the Panel docks or floats where it is.
+    fn drag_finish(self: &Rc<Self>) {
+        self.drag_timer.stop();
+        if self.controller.try_borrow_mut().is_ok() {
+            self.act_effects(Controller::drag_end);
         }
     }
 
@@ -663,7 +757,7 @@ where
     ///
     /// `on_effect` is called with every [`Effect`] after the window has acted on it (a
     /// `ShowPanel` has shown the window, a `HidePanel` has hidden it); the host handles the
-    /// rest (`OpenPicker`, `StartCapture`, `PasteNext`, `DragWindow`).
+    /// rest (`OpenPicker`, `StartCapture`, `PasteNext`).
     ///
     #[allow(
         clippy::too_many_lines,
@@ -997,54 +1091,54 @@ where
             window.on_toast_hover_changed(move |on| core.controller.borrow_mut().toast_hover(on));
         }
         {
-            // The grip pill's drag. The pill moves with the window, so the distance is measured
-            // on screen from the press (`SlideDrag`), not inside the pill.
-            let press: Rc<Cell<Option<crate::dock::SlideDrag>>> = Rc::default();
-            let window_at = |w: &ui::PanelWindow| {
-                let p = w.window().position();
-                (p.x, p.y)
-            };
-            {
-                let (core, press, weak) = (Rc::clone(&core), Rc::clone(&press), window.as_weak());
-                window.on_along_begin(move || {
-                    if let Some(w) = weak.upgrade() {
-                        press.set(Some(crate::dock::SlideDrag::begin(
-                            core.host.cursor(),
-                            window_at(&w),
-                        )));
-                    }
-                    core.controller.borrow_mut().dock_slide_begin();
-                });
-            }
-            let (core, weak) = (Rc::clone(&core), window.as_weak());
-            window.on_along_drag(move |delta| {
-                let Some(w) = weak.upgrade() else {
-                    return;
-                };
-                // The pointer's offset is in logical pixels; the window frame is physical.
+            // The header's drag. The app moves the window itself: the controller reads the
+            // cursor on screen (the pointer the window reports is only the fallback), a timer
+            // keeps the window following it, and the release is the window's own pointer-up or,
+            // where the host can tell, the button being up.
+            let on_screen = |w: &ui::PanelWindow, x: f32, y: f32| {
+                let (at, scale) = (w.window().position(), w.window().scale_factor());
                 #[allow(
                     clippy::cast_possible_truncation,
-                    reason = "a pointer delta of a few thousand pixels"
+                    reason = "a pointer offset inside the window, rounded"
                 )]
-                let pointer = (delta * w.window().scale_factor()).round() as i32;
-                let drag = press.get().unwrap_or_else(|| {
-                    let begun = crate::dock::SlideDrag::begin(core.host.cursor(), window_at(&w));
-                    press.set(Some(begun));
-                    begun
+                let px = |v: f32| (v * scale).round() as i32;
+                (at.x.saturating_add(px(x)), at.y.saturating_add(px(y)))
+            };
+            {
+                let (core, weak) = (Rc::clone(&core), window.as_weak());
+                window.on_drag_began(move |x, y| {
+                    let Some(w) = weak.upgrade() else {
+                        return;
+                    };
+                    let (at, size) = (w.window().position(), w.window().size());
+                    let frame = Rect {
+                        x: at.x,
+                        y: at.y,
+                        w: size.width,
+                        h: size.height,
+                    };
+                    core.act(|ctl| ctl.drag_begin(on_screen(&w, x, y), frame));
+                    core.arm_drag();
                 });
-                // The same axis the pill measures: a side dock (1 left, 2 right) slides along y.
-                let vertical = w.get_dock_edge() <= 2;
-                let total = drag.total(core.host.cursor(), window_at(&w), pointer, vertical);
-                core.act_effects(|ctl| ctl.dock_slide(total));
-            });
+            }
+            {
+                let (core, weak) = (Rc::clone(&core), window.as_weak());
+                window.on_drag_moved(move |x, y| {
+                    if let Some(w) = weak.upgrade() {
+                        core.drag_step(Some(on_screen(&w, x, y)));
+                    }
+                });
+            }
+            let core = Rc::clone(&core);
+            window.on_drag_ended(move || core.drag_finish());
         }
         wire_effects!(on_resize_requested, |ctl, edge| ctl.resize(edge_of(edge)));
         wire_effects!(on_handle_hovered, |ctl, on| ctl
-            .dock_event(DockEvent::HandleHover(on)));
+            .dock_hover(DockEvent::HandleHover(on)));
         wire_effects!(on_handle_clicked, |ctl| ctl
             .dock_event(DockEvent::HandleClick));
         wire_effects!(on_panel_hovered, |ctl, on| ctl
-            .dock_event(DockEvent::PanelHover(on)));
+            .dock_hover(DockEvent::PanelHover(on)));
         // A click into a text field (search, quick add, symbol search) is input to this process, so
         // Windows lets the Panel take the keyboard for it (the window never activates on a click by
         // itself); without it Ctrl+V and typing go to the app that holds the foreground.
@@ -1066,7 +1160,6 @@ where
                 slint::CloseRequestResponse::KeepWindowShown
             });
         }
-        wire_effects!(on_drag_requested, |ctl| ctl.drag());
 
         Binding {
             hotkey: {
@@ -1155,18 +1248,18 @@ where
             },
             frame_moved: {
                 let core = Rc::clone(&core);
-                // A drag ends when the moves stop: the window has no "drag ended" event.
-                let settle = slint::Timer::default();
                 Rc::new(move |monitor: &Monitor, frame| {
                     if core.controller.try_borrow_mut().is_ok() {
                         core.act_effects(|ctl| ctl.frame_moved(monitor, frame));
                     }
-                    let (core, monitor) = (Rc::clone(&core), monitor.clone());
-                    settle.start(slint::TimerMode::SingleShot, DRAG_SETTLE, move || {
-                        if core.controller.try_borrow_mut().is_ok() {
-                            core.act_effects(|ctl| ctl.frame_settled(&monitor, frame));
-                        }
-                    });
+                })
+            },
+            panel_focused: {
+                let core = Rc::clone(&core);
+                Rc::new(move |focused| {
+                    if let Ok(mut ctl) = core.controller.try_borrow_mut() {
+                        ctl.set_panel_focused(focused);
+                    }
                 })
             },
             restore_frame: {
@@ -1179,6 +1272,10 @@ where
             restore_anchor: {
                 let core = Rc::clone(&core);
                 Rc::new(move || core.act_effects(Controller::restore_anchor))
+            },
+            start_hidden: {
+                let core = Rc::clone(&core);
+                Rc::new(move || core.act_effects(Controller::start_hidden))
             },
             files_hover: {
                 let core = Rc::clone(&core);
@@ -1489,9 +1586,9 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     if differs(&|p| p.dock_edge == view.dock_edge) {
         window.set_dock_edge(crate::settings_binding::dock_edge_index(view.dock_edge));
     }
-    if differs(&|p| (p.dock_full_edge, p.dock_slide) == (view.dock_full_edge, view.dock_slide)) {
+    if differs(&|p| (p.dock_full_edge, p.dragging) == (view.dock_full_edge, view.dragging)) {
         window.set_dock_full_edge(view.dock_full_edge);
-        window.set_dock_slide(view.dock_slide);
+        window.set_dragging(view.dragging);
     }
     if differs(&|p| p.dock_preview == view.dock_preview) {
         window.set_dock_preview(crate::settings_binding::dock_edge_index(view.dock_preview));

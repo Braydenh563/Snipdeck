@@ -876,7 +876,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("After a paste or copy");
-                        description: @tr("A Panel that a shortcut or the tray showed hides after a paste or copy. A pinned Panel stays, and a docked one folds back to its edge.");
+                        description: @tr("A Panel that a shortcut or the tray showed hides after a paste or copy. A pinned Panel stays, and a docked one tucks back into its tab after a paste.");
                         Segmented {
                             width: 320px * SystemLook.text-scale;
                             label: @tr("After a paste or copy");
@@ -890,7 +890,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Hide the panel when it loses focus");
-                        description: @tr("When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays.");
+                        description: @tr("When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel that tucks goes to its tab instead.");
                         Toggle {
                             a11y-label: @tr("Hide the panel when it loses focus");
                             checked <=> root.panel-hide-on-blur;
@@ -926,7 +926,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Dock to");
-                        description: @tr("Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere.");
+                        description: @tr("Puts the panel at one edge of the screen, on the monitor it is on. Dragging it to an edge and holding it there does the same. Floating lets it sit anywhere.");
                         SelectField {
                             width: 200px * SystemLook.text-scale;
                             label: @tr("Dock to");
@@ -952,7 +952,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Open a docked panel by");
-                        description: @tr("Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too.");
+                        description: @tr("Off: a docked panel does not tuck and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the panel shortcut opens it too.");
                         Segmented {
                             width: 360px * SystemLook.text-scale;
                             label: @tr("Open a docked panel by");
@@ -966,7 +966,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Hover delay");
-                        description: @tr("How long the pointer rests on the strip before the panel opens, from 0 to {} milliseconds.", root.dock-hover-delay-max);
+                        description: @tr("How long the pointer rests on the tab before the panel opens, from 0 to {} milliseconds.", root.dock-hover-delay-max);
                         NumberStepper {
                             label: @tr("Hover delay");
                             decrease-label: @tr("Shorten the hover delay");
@@ -984,7 +984,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Leave delay");
-                        description: @tr("How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds.", root.dock-leave-delay-max);
+                        description: @tr("How long the pointer stays off the open panel before it tucks away, from 0 to {} milliseconds.", root.dock-leave-delay-max);
                         NumberStepper {
                             label: @tr("Leave delay");
                             decrease-label: @tr("Shorten the leave delay");

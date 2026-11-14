@@ -31,8 +31,8 @@ msgstr "175 %"
 msgid "A PNG picture. Snipdeck keeps its own copy."
 msgstr "Une image PNG. Snipdeck en garde sa propre copie."
 
-msgid "A Panel that a shortcut or the tray showed hides after a paste or copy. A pinned Panel stays, and a docked one folds back to its edge."
-msgstr "Un Panneau affiché par un raccourci ou par la zone de notification se masque après un collage ou une copie. Un Panneau épinglé reste affiché, et un Panneau ancré se replie sur son bord."
+msgid "A Panel that a shortcut or the tray showed hides after a paste or copy. A pinned Panel stays, and a docked one tucks back into its tab after a paste."
+msgstr "Un Panneau affiché par un raccourci ou par la zone de notification se masque après un collage ou une copie. Un Panneau épinglé reste affiché, et un Panneau ancré se replie en son onglet après un collage."
 
 msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. With a Supporter plan on Windows, you can then also unlock with Windows Hello."
 msgstr "Fonction Supporter. Ajoute un mot de passe à la protection de Windows pour vos extraits sensibles. Demandé lors de la première utilisation d'un extrait sensible, puis de nouveau après {} minutes sans utilisation. Avec un forfait Supporter sous Windows, vous pourrez aussi déverrouiller avec Windows Hello."
@@ -240,11 +240,17 @@ msgstr "Au moins {} caractères. Quelques mots sans rapport font un bon mot de p
 msgid "At the mouse"
 msgstr "À la souris"
 
+msgid "At the right edge of the screen. It tucks into a thin tab and slides out when the pointer comes to it."
+msgstr "Au bord droit de l'écran. Il se replie en un onglet fin et se déploie quand le pointeur l'atteint."
+
 msgid "At the text cursor"
 msgstr "Au curseur de texte"
 
 msgid "Back"
 msgstr "Retour"
+
+msgid "Back to editing (Ctrl+P)"
+msgstr "Retour à la modification (Ctrl+P)"
 
 msgid "Back up now"
 msgstr "Sauvegarder maintenant"
@@ -738,6 +744,9 @@ msgstr "Base de données reconstruite : {} extraits restaurés. Les extraits plu
 msgid "Date and time in a format you choose"
 msgstr "Date et heure dans le format de votre choix"
 
+msgid "Dates are today's; a field you fill in when you use the item shows its name or default."
+msgstr "Les dates sont celles d'aujourd'hui ; un champ à remplir à l'utilisation affiche son nom ou sa valeur par défaut."
+
 msgid "Delete"
 msgstr "Supprimer"
 
@@ -860,6 +869,12 @@ msgstr "Ancré à droite"
 
 msgid "Done"
 msgstr "Terminé"
+
+msgid "Drag along the edge to move. Pull away from the edge to float."
+msgstr "Faites glisser le long du bord pour déplacer. Éloignez-le du bord pour le rendre flottant."
+
+msgid "Drag to move. Hold at a screen edge to dock."
+msgstr "Faites glisser pour déplacer. Maintenez-le contre un bord de l'écran pour l'ancrer."
 
 msgid "Drop to add to {}"
 msgstr "Déposez pour ajouter à {}"
@@ -1023,14 +1038,8 @@ msgstr "Filtrer par libellé de couleur"
 msgid "Find anything by typing"
 msgstr "Tout trouver en tapant"
 
-msgid "Fixed against the right edge of the screen, full height."
-msgstr "Fixé contre le bord droit de l'écran, sur toute la hauteur."
-
 msgid "Fixed placeholders filled in when you paste."
 msgstr "Champs fixes remplis au moment du collage."
-
-msgid "Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere."
-msgstr "Place le panneau contre un bord de l'écran, sur le moniteur où il se trouve. « Flottant » le laisse n'importe où."
 
 msgid "Flags"
 msgstr "Drapeaux"
@@ -1197,11 +1206,11 @@ msgstr "Survol et clic"
 msgid "Hover delay"
 msgstr "Délai de survol"
 
-msgid "How long the pointer rests on the strip before the panel opens, from 0 to {} milliseconds."
-msgstr "Durée pendant laquelle le pointeur reste sur la bande avant l'ouverture du panneau, de 0 à {} millisecondes."
+msgid "How long the pointer rests on the tab before the panel opens, from 0 to {} milliseconds."
+msgstr "Durée pendant laquelle le pointeur reste sur l'onglet avant que le panneau s'ouvre, de 0 à {} millisecondes."
 
-msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
-msgstr "Durée pendant laquelle le pointeur reste hors du panneau ouvert avant qu'il ne se replie, de 0 à {} millisecondes."
+msgid "How long the pointer stays off the open panel before it tucks away, from 0 to {} milliseconds."
+msgstr "Durée pendant laquelle le pointeur reste hors du panneau ouvert avant qu'il se replie, de 0 à {} millisecondes."
 
 msgid "How tall the item rows are in the Main window lists. Compact shows one line per item."
 msgstr "Hauteur des lignes d'extraits dans les listes de la fenêtre principale. Compact affiche une ligne par extrait."
@@ -1427,6 +1436,9 @@ msgstr "Les journaux ne sont écrits que si Snipdeck plante, ne contiennent aucu
 
 msgid "Love"
 msgstr "Amour"
+
+msgid "Main list"
+msgstr "Liste principale"
 
 msgid "Main list density"
 msgstr "Densité des listes principales"
@@ -1765,11 +1777,11 @@ msgstr "Objets"
 msgid "Off"
 msgstr "Désactivé"
 
-msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
-msgstr "« Désactivé » laisse un panneau ancré ouvert. Sinon, il se replie en une fine bande, et le raccourci du panneau l'ouvre aussi."
-
 msgid "Off keeps a panel docked to the left or right at the height you dropped it. On stretches it over the whole edge."
 msgstr "Désactivé : un panneau ancré à gauche ou à droite garde la hauteur où vous l'avez déposé. Activé : il occupe tout le bord."
+
+msgid "Off: a docked panel does not tuck and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the panel shortcut opens it too."
+msgstr "Désactivé : un panneau ancré ne se replie pas et se masque comme un panneau flottant. Sinon, il se replie en un onglet fin sur son bord, et le raccourci du panneau l'ouvre aussi."
 
 msgid "One hotkey turns copied text into an item."
 msgstr "Un raccourci transforme le texte copié en extrait."
@@ -1839,6 +1851,9 @@ msgstr "Ouvrir le guide d'utilisation (F1)"
 
 msgid "Opening the Panel"
 msgstr "Ouverture du Panneau"
+
+msgid "Opens"
+msgstr "Ouvre"
 
 msgid "Opens in your browser."
 msgstr "S'ouvre dans votre navigateur."
@@ -2062,6 +2077,9 @@ msgstr "Appuyez sur votre raccourci du panneau dans n'importe quelle appli pour 
 msgid "Preview"
 msgstr "Aperçu"
 
+msgid "Preview how this item will look (Ctrl+P)"
+msgstr "Aperçu de cet élément (Ctrl+P)"
+
 msgid "Previous list"
 msgstr "Liste précédente"
 
@@ -2085,6 +2103,12 @@ msgstr "Programmes"
 
 msgid "Prompt for a value or a choice each time you paste."
 msgstr "Demande une valeur ou un choix à chaque collage."
+
+msgid "Pull away from the edge to float."
+msgstr "Éloignez-le du bord pour le rendre flottant."
+
+msgid "Puts the panel at one edge of the screen, on the monitor it is on. Dragging it to an edge and holding it there does the same. Floating lets it sit anywhere."
+msgstr "Place le panneau contre un bord de l'écran, sur le moniteur où il se trouve. Le faire glisser vers un bord et l'y maintenir fait la même chose. Flottant permet de le placer n'importe où."
 
 msgid "Queue several items, then paste them one per hotkey press."
 msgstr "Mettez plusieurs extraits en file d'attente, puis collez-les un par appui sur le raccourci."
@@ -2154,6 +2178,9 @@ msgstr "Rétablir {} (Ctrl+Y)"
 
 msgid "Reduce motion"
 msgstr "Réduire les animations"
+
+msgid "Release to dock"
+msgstr "Relâchez pour ancrer"
 
 msgid "Remove formatting"
 msgstr "Supprimer la mise en forme"
@@ -2236,6 +2263,9 @@ msgid "Restored {} item from the backup"
 msgid_plural "Restored {} items from the backup"
 msgstr[0] "{} extrait restauré depuis la sauvegarde"
 msgstr[1] "{} extraits restaurés depuis la sauvegarde"
+
+msgid "Result with sample values"
+msgstr "Résultat avec des valeurs d'exemple"
 
 msgid "Results"
 msgstr "Résultats"
@@ -2510,8 +2540,8 @@ msgstr "Passer"
 msgid "Slate"
 msgstr "Ardoise"
 
-msgid "Slide the panel along the edge"
-msgstr "Faire glisser le panneau le long du bord"
+msgid "Small panel"
+msgstr "Petit panneau"
 
 msgid "Smileys & Emotion"
 msgstr "Smileys et émotions"
@@ -3035,6 +3065,9 @@ msgstr "Si tu désactives cette option, fermer le panneau ou la fenêtre princip
 msgid "Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off."
 msgstr "Désactive les glissements et fondus dans Snipdeck. Elle est aussi désactivée quand les effets d'animation de Windows sont désactivés."
 
+msgid "Type"
+msgstr "Type"
+
 msgid "Type a command"
 msgstr "Saisissez une commande"
 
@@ -3128,6 +3161,9 @@ msgstr "Désépingler l'extrait sélectionné"
 msgid "Unpin them the same way."
 msgstr "Désépinglez-les de la même façon."
 
+msgid "Unsaved: this is how the item will look once you save it."
+msgstr "Non enregistré : voici l'aspect de l'élément une fois enregistré."
+
 msgid "Use"
 msgstr "Utiliser"
 
@@ -3200,8 +3236,8 @@ msgstr "Les modifications de cet extrait n'ont pas été enregistrées."
 msgid "When Windows starts"
 msgstr "Au démarrage de Windows"
 
-msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
-msgstr "Quand l'épingle est désactivée, le panneau se masque dès que tu passes à une autre application. Un panneau épinglé reste."
+msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel that tucks goes to its tab instead."
+msgstr "Quand l'épingle est désactivée, le panneau se masque dès que tu passes à une autre application. Un panneau épinglé reste, et un panneau ancré qui se replie devient son onglet."
 
 msgid "When you type an item's trigger in another program, Snipdeck replaces it with the item's text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items."
 msgstr "Quand vous tapez le raccourci d’un élément dans un autre programme, Snipdeck le remplace par le texte de l’élément. Pour cela, Snipdeck surveille les touches pressées et ne garde que les derniers caractères en mémoire, jamais sur le disque.\nRien n’est développé dans les champs de mot de passe, dans les programmes réglés sur « Ne jamais coller », dans les programmes exécutés en administrateur, quand Snipdeck est au premier plan ni pour les éléments sensibles."

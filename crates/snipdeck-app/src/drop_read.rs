@@ -202,7 +202,7 @@ mod tests {
             .map(|s| s.as_ref().map(|s| s.name.as_str()))
             .collect();
         assert_eq!(names, [Some("b.txt"), None, Some("a.txt"), None]);
-        assert!(done.rest.is_empty());
+        assert_eq!(done.rest, Vec::<std::path::PathBuf>::new());
     }
 
     #[test]
@@ -218,7 +218,7 @@ mod tests {
         assert_eq!(done.rest, paths[2..]);
         let more = ReadJob::with_budget(done.rest, 15).run();
         assert_eq!(more.read.len(), 2);
-        assert!(more.rest.is_empty());
+        assert_eq!(more.rest, Vec::<std::path::PathBuf>::new());
     }
 
     #[test]

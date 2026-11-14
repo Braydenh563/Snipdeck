@@ -15,6 +15,9 @@ export component Button inherits Rectangle {
     in property <ButtonSize> size: ButtonSize.md;
     in property <bool> enabled: true;
     in property <bool> loading: false;
+    // A toggle: `checked` draws the pressed (selected) fill and is spoken as the checked state.
+    in property <bool> checkable: false;
+    in property <bool> checked: false;
     // Overrides the spoken label (icon-only usage); defaults to `text`.
     in property <string> a11y-label;
     // Shown below the button after 500ms of hover or keyboard focus (DESIGN.md §4); empty = none.
@@ -60,8 +63,8 @@ export component Button inherits Rectangle {
         : root.variant == ButtonVariant.danger
         ? (root.pressed ? Theme.danger-solid.darker(0.3) : root.hovered ? Theme.danger-solid.darker(0.15) : Theme.danger-solid)
         : root.variant == ButtonVariant.secondary
-        ? (root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : Theme.bg-surface)
-        : (root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : transparent);
+        ? (root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : root.checked ? Theme.bg-selected : Theme.bg-surface)
+        : (root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : root.checked ? Theme.bg-selected : transparent);
     property <color> fg: root.variant == ButtonVariant.primary ? Theme.text-on-ink
         : root.variant == ButtonVariant.danger ? Theme.text-on-accent
         : Theme.text-primary;
@@ -80,6 +83,8 @@ export component Button inherits Rectangle {
     accessible-role: button;
     accessible-label: root.a11y-label != "" ? root.a11y-label : root.text;
     accessible-enabled: root.enabled;
+    accessible-checkable: root.checkable;
+    accessible-checked: root.checked;
     accessible-action-default => { if (root.active) { root.clicked(); } }
 
     animate background { duration: Motion.instant; easing: Motion.out; }

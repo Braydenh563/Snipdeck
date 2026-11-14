@@ -304,6 +304,14 @@ where
             }
         });
         let core = Rc::downgrade(self);
+        let weak = w.as_weak();
+        w.on_preview_requested(move || {
+            let (Some(core), Some(w)) = (core.upgrade(), weak.upgrade()) else {
+                return;
+            };
+            core.show_preview(&w);
+        });
+        let core = Rc::downgrade(self);
         w.on_paste_requested(move || {
             core.upgrade()
                 .is_some_and(|core| core.act(Controller::refuse_pasted_image))
@@ -411,6 +419,29 @@ where
         });
     }
 
+    /// Preview was switched on: the card, the sample result and the link are built from the fields
+    /// as they are now (nothing is saved) and put into the window.
+    fn show_preview(&self, w: &ui::ItemEditor) {
+        let input = read_input(w);
+        let new_id = w.get_preview_new_id();
+        let words = crate::item_preview::PreviewWords {
+            new_id: new_id.as_str(),
+        };
+        let controller = self.controller.borrow();
+        let card = controller.item_editor_preview(&input, words);
+        // The cards are drawn the way the user's own Panel and Main list draw them.
+        let look = controller.item_editor_preview_look();
+        w.set_preview_panel_layout(match look.panel_layout {
+            crate::settings::PanelLayout::List => ui::PanelLayout::List,
+            crate::settings::PanelLayout::Cards => ui::PanelLayout::Cards,
+            crate::settings::PanelLayout::Compact => ui::PanelLayout::Compact,
+        });
+        w.set_preview_main_view(crate::main_binding::ui_view(look.main_view));
+        w.set_preview_show_numbers(look.show_numbers);
+        drop(controller);
+        set_preview(w, card.as_ref());
+    }
+
     /// Browse: the file dialog runs with no borrow of the controller held (it has its own
     /// message loop), then its answer goes into the path field.
     fn browse(self: &Rc<Self>, w: &ui::ItemEditor) {
@@ -488,6 +519,31 @@ fn apply_state(w: &ui::ItemEditor, view: &ItemEditorView) {
     w.set_saved_content(view.saved_text.as_str().into());
 }
 
+/// Puts the Preview's values into the window (empty ones when there is no card).
+fn set_preview(w: &ui::ItemEditor, card: Option<&crate::item_preview::CardPreview>) {
+    let text = |s: &str| SharedString::from(s);
+    let Some(card) = card else {
+        w.set_preview_title(SharedString::new());
+        w.set_preview_excerpt(SharedString::new());
+        w.set_preview_expanded(SharedString::new());
+        w.set_preview_link(SharedString::new());
+        w.set_preview_note(SharedString::new());
+        return;
+    };
+    w.set_preview_title(text(&card.title));
+    w.set_preview_excerpt(text(&card.excerpt));
+    w.set_preview_mask(text(crate::binding::MASKED_PREVIEW));
+    w.set_preview_expanded(text(card.expanded.as_deref().unwrap_or_default()));
+    w.set_preview_link(text(card.link.as_ref().map_or("", |l| l.host.as_str())));
+    w.set_preview_note(
+        card.problem
+            .as_ref()
+            .map(|p| wording::editor_problem_text(w, p))
+            .unwrap_or_default()
+            .into(),
+    );
+}
+
 /// Shows the tag chips and how many are ticked.
 fn set_tags(w: &ui::ItemEditor, tags: &[(String, bool)]) {
     let entries = tags.iter().map(|(label, checked)| ui::ChoiceEntry {
@@ -504,6 +560,8 @@ fn set_tags(w: &ui::ItemEditor, tags: &[(String, bool)]) {
 /// Puts the starting values of a freshly opened editor into the window.
 fn fill(w: &ui::ItemEditor, view: &ItemEditorView) {
     let fields = &view.fields;
+    // Before the values that make or drop the path field.
+    w.invoke_clear_focus_requests();
     w.set_is_new(view.is_new);
     w.set_more_open(view.more_open);
     w.set_kind_index(to_i32(kind_index(fields.kind)));
@@ -541,6 +599,8 @@ fn fill(w: &ui::ItemEditor, view: &ItemEditorView) {
     }
     w.set_discard_open(false);
     w.set_tags_open(false);
+    // A fresh editor opens on the form.
+    w.set_preview_on(false);
     w.invoke_mark_clean();
 }
 

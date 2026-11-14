@@ -697,6 +697,10 @@ where
         {
             return Vec::new();
         }
+        self.resizing = true;
+        self.resize_button_seen = false;
+        self.resize_loop_seen = false;
+        self.resize_at = self.clock.now();
         vec![Effect::ResizeWindow(edge)]
     }
 
@@ -709,87 +713,95 @@ where
         self.remember_frame(monitor, frame, true)
     }
 
-    /// The Panel was only moved to `frame` (a drag in progress or ended). The size is clamped
-    /// and the place remembered, but the position is not pulled inside the work area and the
-    /// host is not told to place the window: a Panel straddling two monitors must be able to
-    /// cross, and answering every `Moved` could loop on rounding. The place is fitted when it
-    /// is restored ([`Self::placement`]) and when the Panel is next resized.
+    /// The Panel was only moved to `frame` (by the system: the app's own drag reports nothing
+    /// here). A floating Panel's place is remembered, but not pulled inside the work area and
+    /// the host is not told to place the window: answering every `Moved` could loop on
+    /// rounding. The place is fitted when it is restored ([`Self::placement`]).
     pub fn frame_moved(&mut self, monitor: &Monitor, frame: Rect) -> Vec<Effect> {
-        let effects = self.remember_frame(monitor, frame, false);
-        // Only a drag previews a dock: a restore or a placement near an edge must not.
-        self.dock_preview = (self.dragging && self.dock_edge().is_none())
-            .then(|| frame::dock_preview(frame, monitor.work_area, monitor.taskbar, monitor.scale))
-            .flatten();
-        effects
+        self.remember_frame(monitor, frame, false)
     }
 
-    fn remember_frame(
-        &mut self,
-        monitor: &Monitor,
-        frame: Rect,
-        clamp_position: bool,
-    ) -> Vec<Effect> {
+    fn remember_frame(&mut self, monitor: &Monitor, frame: Rect, resized: bool) -> Vec<Effect> {
         if frame.w == 0 || frame.h == 0 || frame::is_parked(frame) {
             // Minimised (Windows parks it far off screen), or not yet laid out: not a place
             // the user chose, and storing it would change the size the Panel comes back with.
             return Vec::new();
         }
-        if self.dock_collapsed() {
-            // The dock's handle strip is not a frame the user chose, and clamping it to the
-            // Panel's limits would undo the collapse (resizing is off while it shows).
+        if resized && self.resizing {
+            // A resize under way says so with each new size.
+            self.resize_at = self.clock.now();
+        }
+        if self.dragging() {
+            // A drag remembers its own end.
             return Vec::new();
         }
-        self.monitor = Some(monitor.clone());
-        let mut clamped = frame::clamp(frame, monitor);
-        if !clamp_position {
-            clamped = Rect {
-                x: frame.x,
-                y: frame.y,
-                ..clamped
-            };
-        }
-        let stored = self.stored_geometry(monitor).cloned();
-        let mut edge = stored.as_ref().and_then(|g| g.edge);
-        let mut pre_dock = stored.as_ref().and_then(|g| g.pre_dock);
-        // The first move of a drag that started on a docked Panel takes it off its edge.
-        let dragged = std::mem::take(&mut self.drag_started);
-        let mut resized = false;
-        if dragged && edge.is_some_and(|e| !frame::is_flush(e, monitor.work_area, clamped)) {
-            edge = None;
-            // It gets the size it had before it was docked, not the dock's full height.
-            if let Some((w, h)) = pre_dock.take() {
-                let (x, y) = (clamped.x, clamped.y);
-                clamped = frame::clamp(Rect { w, h, ..clamped }, monitor);
-                clamped.x = x;
-                clamped.y = y;
-                resized = true;
+        if self.dock_collapsed() {
+            // The dock's tab is not a frame the user chose. But the system may have moved it:
+            // its monitor went away, or that monitor's work area changed. The dock then
+            // follows what is remembered for where it is now.
+            if self.monitor.as_ref() == Some(monitor) {
+                return Vec::new();
             }
+            return self.dock_on_monitor(monitor);
         }
-        if edge.is_none() {
-            pre_dock = None;
+        self.monitor = Some(monitor.clone());
+        let stored = self.stored_geometry(monitor).cloned();
+        let Some((edge, old)) = stored.as_ref().and_then(|g| Some((g.edge?, g))) else {
+            let mut clamped = frame::clamp(frame, monitor);
+            if !resized {
+                clamped = Rect {
+                    x: frame.x,
+                    y: frame.y,
+                    ..clamped
+                };
+            }
+            let geometry = PanelGeometry {
+                docked: stored.as_ref().and_then(|g| g.docked),
+                docked_flat: stored.as_ref().and_then(|g| g.docked_flat),
+                ..clamped.geometry(monitor, None)
+            }
+            .remembering(stored.as_ref());
+            self.update_settings(|s| s.remember_panel_geometry(geometry));
+            return if clamped == frame {
+                Vec::new()
+            } else {
+                vec![Effect::PlaceWindow(clamped)]
+            };
+        };
+        // Docked: only a resize changes anything, and only the docked size and where the Panel
+        // sits along its edge. The floating frame is left alone.
+        let across = if edge.vertical() { frame.w } else { frame.h };
+        if !resized || across <= frame::scaled(frame::HANDLE_THICKNESS, monitor.scale) * 2 {
+            // A move, or a late report of the tucked tab.
+            return Vec::new();
         }
-        let mut geometry = PanelGeometry {
-            pre_dock,
-            ..clamped.geometry(monitor, edge)
-        }
-        .remembering(stored.as_ref());
-        // A full-edge dock reports the work area's height back; the Panel's own height (and
-        // place along the edge) stays remembered, so turning the full edge off gives it back.
-        if let (Some(e), Some(old)) = (edge, &stored)
-            && self.settings.dock.full_edge
-            && e.vertical()
-            && old.edge == edge
-            && !resized
-        {
-            (geometry.y, geometry.h, geometry.along) = (old.y, old.h, old.along);
+        let full = self.settings.dock.full_edge && edge.vertical();
+        let dock = |full_edge| {
+            frame::docked_rect(
+                edge,
+                monitor.work_area,
+                (frame.w, frame.h),
+                monitor.scale,
+                Some(frame.along(edge).start),
+                full_edge,
+            )
+        };
+        let place = dock(self.settings.dock.full_edge);
+        let mut geometry = self.geometry_on(monitor);
+        if full {
+            // A full-edge dock reports the work area's height back; the Panel's own height and
+            // place along the edge stay remembered, so turning the full edge off gives them back.
+            let (_, h) = self.dock_size(old, edge, monitor, old.along);
+            geometry.set_docked_size(edge, (place.w, h));
+        } else {
+            geometry.set_docked_size(edge, (place.w, place.h));
+            geometry.along = Some(place.along(edge).start);
         }
         self.update_settings(|s| s.remember_panel_geometry(geometry));
-        if resized {
-            vec![Effect::PlaceWindow(clamped)]
-        } else if clamped == frame || !clamp_position {
+        if place == frame {
             Vec::new()
         } else {
-            vec![Effect::PlaceWindow(clamped)]
+            vec![Effect::PlaceWindow(place)]
         }
     }
 
@@ -800,49 +812,39 @@ where
     #[must_use]
     pub fn placement(&self, monitor: &Monitor) -> Option<Rect> {
         let Some(g) = self.stored_geometry(monitor) else {
-            let last = self.settings.panel_geometry.last()?;
-            let (w, h) = last.pre_dock.unwrap_or((last.w, last.h));
-            return Some(frame::clamp(
-                Rect {
-                    w,
-                    h,
-                    ..Rect::of(last)
-                },
-                monitor,
-            ));
+            let mut last = self.settings.panel_geometry.last()?.clone();
+            // An older version's full-height dock is not as tall as this screen.
+            super::dock_ctl::mend_full_height(&mut last, monitor);
+            return Some(frame::clamp(Rect::of(&last), monitor));
         };
         Some(match g.edge {
-            Some(edge) => {
-                let size = frame::dock_size_for(
-                    edge,
-                    (g.w, g.h),
-                    g.pre_dock,
-                    monitor.work_area,
-                    monitor.scale,
-                    super::dock_ctl::DEFAULT_HEIGHT,
-                    g.along,
-                    self.settings.dock.full_edge,
-                );
-                frame::docked_rect(
-                    edge,
-                    monitor.work_area,
-                    size,
-                    monitor.scale,
-                    g.along,
-                    self.settings.dock.full_edge,
-                )
-            }
+            Some(edge) => self.dock_open(g, edge, monitor),
             None => frame::clamp(Rect::of(g), monitor),
         })
     }
 
-    /// Places the Panel at the anchor a [`show`](Self::show) read, once; nothing when it read
-    /// none. For a first show whose window cannot say what monitor it is on yet (a `--hidden`
-    /// start): the anchor needs no monitor of the window's, only the last known one for the size.
+    /// The Panel is about to be shown and its window cannot say what monitor it is on: it does
+    /// not exist before the first show (the host makes it once its event loop runs). Places it
+    /// at the anchor a [`show`](Self::show) read, once; else, the first time, where it was
+    /// left on the monitor it was last left on (`find_monitor`), so that
+    /// the window is made there and not wherever the system puts a new one.
     pub fn restore_anchor(&mut self) -> Vec<Effect> {
         let Some(anchor) = self.session.open_anchor.take() else {
-            return Vec::new();
+            if !self.unplaced {
+                return Vec::new();
+            }
+            // Asked now, not when the app started: a monitor may have gone since. With none
+            // the Panel was ever on left, it opens on the one the pointer is on.
+            let pointed = |ctl: &Self| {
+                let (x, y) = ctl.target.cursor()?;
+                ctl.target.monitor_at(x, y)
+            };
+            return match self.find_monitor().or_else(|| pointed(self)) {
+                Some(monitor) => self.restore_on(&monitor),
+                None => Vec::new(),
+            };
         };
+        self.unplaced = false;
         let (x, y) = anchor.point();
         let Some(fallback) = self
             .monitor
@@ -852,6 +854,11 @@ where
             return Vec::new();
         };
         let (on, frame) = self.frame_at(anchor, &fallback);
+        if self.stored_geometry(&on).is_some_and(|g| g.edge.is_some()) {
+            // The Panel is docked on the monitor under the anchor: it opens at its edge there,
+            // not floating at the anchor with that edge's dock still in force.
+            return self.restore_on(&on);
+        }
         self.monitor = Some(on);
         vec![Effect::PlaceWindow(frame)]
     }
@@ -864,7 +871,13 @@ where
         if self.session.open_anchor.is_some() {
             return self.restore_anchor();
         }
+        self.restore_on(monitor)
+    }
+
+    /// Puts the Panel where the user left it on `monitor`.
+    fn restore_on(&mut self, monitor: &Monitor) -> Vec<Effect> {
         self.monitor = Some(monitor.clone());
+        self.unplaced = false;
         self.dock_resync();
         self.placement(monitor)
             .map(Effect::PlaceWindow)

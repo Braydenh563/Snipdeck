@@ -2009,4 +2009,27 @@ ui_tests! {
         settle();
         assert!(missing(&ui, "No shortcut matches", AccessibleRole::Text));
     }
+
+    fn a_refused_path_asks_for_its_field_and_a_refill_clears_the_request() {
+        let (ui, _log) = item_editor();
+        ui.set_is_new(true);
+        ui.set_kind_index(4);
+        settle();
+        ui.set_preview_on(true);
+        ui.set_source_error("There is no file at that path.".into());
+        settle();
+        assert!(!ui.get_preview_on(), "the refusal leaves Preview");
+        assert_eq!(ui.get_source_focus_request(), 1, "the path field is asked for");
+        // The host fills the window for another item of the same kind: the request must not outlive the old one.
+        ui.invoke_clear_focus_requests();
+        ui.set_source_error("".into());
+        ui.set_is_new(false);
+        ui.set_is_new(true);
+        ui.invoke_focus_title();
+        settle();
+        assert_eq!(ui.get_source_focus_request(), 0);
+        type_text(ui.window(), "x");
+        assert_eq!(ui.get_source_path(), "", "the path field did not take the focus");
+        assert!(ui.get_item_title().ends_with('x'), "the title did");
+    }
 }

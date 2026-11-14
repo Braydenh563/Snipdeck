@@ -462,8 +462,18 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     ));
 
     if start_hidden {
-        controller.borrow_mut().hide();
+        // A docked Panel that tucks is never wholly hidden: it starts as its tab at the screen
+        // edge, on the monitor it was last left on. The controller places the tab before the
+        // window is shown, so the window is made there and the open Panel never flashes.
+        with_binding(Binding::start_hidden);
         frames_armed.set(true);
+        if controller.borrow().visible() {
+            window
+                .show()
+                .map_err(|e| format!("showing the Panel: {e}"))?;
+            snipdeck_app::trace!("first show (tab)");
+            attach_now();
+        }
     } else {
         window
             .show()
@@ -630,14 +640,6 @@ fn effect_handler(
                 eprintln!("snipdeck: cannot open the list editor: {e}");
             }
         }
-        Effect::DragWindow => {
-            if let Some(window) = window.upgrade() {
-                // The Panel has no OS caption: the header starts the move itself.
-                let _ = window
-                    .window()
-                    .with_winit_window(winit::window::Window::drag_window);
-            }
-        }
         Effect::ResizeWindow(edge) => {
             if let Some(window) = window.upgrade() {
                 // No OS frame either: a grip starts the OS resize loop. The window's own
@@ -666,6 +668,7 @@ fn effect_handler(
         // The binding has already acted: placed the window, or opened the item editor.
         Effect::HidePanel
         | Effect::ShowSymbols
+        | Effect::MoveWindow(..)
         | Effect::PlaceWindow(_)
         | Effect::NewItem
         | Effect::EditItem(_) => {}
@@ -696,8 +699,9 @@ fn restore_frame(window: &PanelWindow) {
     {
         with_binding(|b| b.restore_frame(&monitor));
     } else {
-        // The first show after a `--hidden` start: the window cannot say where it is yet, but
-        // "Panel opens" at the mouse or the text cursor needs no monitor of its own.
+        // The window cannot say where it is: before its first show it does not exist (the
+        // event loop makes it). The controller places it itself: at the mouse or the text
+        // cursor when "Panel opens" says so, else, the first time, where it was last left.
         with_binding(Binding::restore_anchor);
     }
 }
@@ -760,6 +764,9 @@ fn watch_window_events(window: &PanelWindow, binding: Binding, armed: Rc<Cell<bo
                         binding.frame_changed(&monitor, rect);
                     }
                 }
+            }
+            if let WindowEvent::Focused(focused) = event {
+                binding.panel_focused(*focused);
             }
             if !tracing {
                 return EventResult::Propagate;
