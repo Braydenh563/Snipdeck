@@ -29,7 +29,7 @@ use slint::{
 };
 use snipdeck_app::{
     binding::Binding,
-    controller::{Controller, SaveTarget},
+    controller::Controller,
     demo,
     screenshot::write_png,
     settings::{Settings, Theme},
