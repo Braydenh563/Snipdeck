@@ -20,7 +20,6 @@
 import { ListView } from "std-widgets.slint";
 import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette, ListHue } from "theme.slint";
 import { Icons } from "icons.slint";
-import { RepaintNudge } from "components/repaint.slint";
 import { Icon } from "components/icon.slint";
 import { KeyCombo } from "components/keycap.slint";
 import { ItemCard, ItemKind, ItemCardVariant } from "components/item-card.slint";
@@ -306,8 +305,6 @@ export component MainWindow inherits Window {
     in property <string> toast-edit-label;
 
     // ---- State both ways ----------------------------------------------------------------------
-    // The host flips it to redraw the whole window (see `RepaintNudge`).
-    in-out property <bool> repaint-flip: false;
     in-out property <MainSection> section: MainSection.all;
     // Which list or tag, when `section` is `list` or `tag`.
     in-out property <int> section-index: 0;
@@ -1100,8 +1097,6 @@ export component MainWindow inherits Window {
             }
             return reject;
         }
-
-        RepaintNudge { flip: root.repaint-flip; }
 
         HorizontalLayout {
             // ======== Sidebar ====================================================================

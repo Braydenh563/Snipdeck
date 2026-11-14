@@ -4,20 +4,20 @@
   Run from the repo folder, in a normal (not admin) PowerShell window:
       powershell -NoProfile -ExecutionPolicy Bypass -File tools\windows-test\diag-render.ps1
 
-  It builds Snipdeck (cargo build --release), runs it twice with SNIPDECK_DIAG set (first "render",
-  then "render,fix"), asks you to do a few things and answer y/n, and writes ONE text file on your
+  It builds Snipdeck (cargo build --release), runs it once with SNIPDECK_DIAG=render (the render fix of
+  docs/reviews/render-flicker-2026-11-14.md is always on now), asks you to do a few things and answer y/n, and writes ONE text file on your
   Desktop: Snipdeck-diag-<date>.txt. Send that file back. Nothing is sent anywhere by this script.
   The log never holds your snippets or window titles: only window sizes, positions, Windows
   messages, shortcut results and your y/n answers.
 
   Add -Quick for the short form the Quick check of the test wizard uses (run A render checks only, about
-  3 minutes; no shortcut questions, no run B). It also writes spikes-results\diag\last-diag-path.txt.
+  3 minutes; no shortcut questions). It also writes spikes-results\diag\last-diag-path.txt.
 
   Windows PowerShell 5.1 compatible, ASCII only.
 #>
 param(
     [switch]$NoBuild,
-    [switch]$Quick,   # the Quick check of the test wizard: run A render checks only (about 3 minutes); no shortcut questions, no run B
+    [switch]$Quick,   # the Quick check of the test wizard: run A render checks only (about 3 minutes); no shortcut questions
     [string]$DataDir = ''
 )
 
@@ -175,7 +175,7 @@ function Render-Steps($Run) {
 }
 
 Say ''
-Say 'Step 4. Run A: logging only (no fix). Snipdeck starts now. Do each numbered thing, then answer here.' Cyan
+Say 'Step 4. Run A: render logging. Snipdeck starts now. Do each numbered thing, then answer here.' Cyan
 $a = Run-App 'render' 'runA'
 if (-not $Quick) {
 Say '  Shortcuts first (focus Notepad or any text field before each one):' White
@@ -192,26 +192,18 @@ Say '  Now the render checks (same Snipdeck, still running):' White
 Render-Steps $a
 Stop-App $a
 
-$b = $null
-if (-not $Quick) {
-    Say ''
-    Say 'Step 5. Run B: the candidate fix switched on. Same render checks once more.' Cyan
-    $b = Run-App 'render,fix' 'runB'
-    Render-Steps $b
-    Stop-App $b
-}
 
-# ---------------------------------------------------------------- 6. One file
+# ---------------------------------------------------------------- 5. One file
 Say ''
-Say 'Step 6. Writing the result file...' Cyan
+Say 'Step 5. Writing the result file...' Cyan
 $lines = New-Object System.Collections.Generic.List[string]
 $lines.Add("Snipdeck diagnostic $stamp")
 $lines.Add("commit: " + ((& git -C $repo rev-parse --short HEAD 2>$null) -join ''))
 foreach ($h in $header) { $lines.Add($h) }
-foreach ($run in @($a, $b)) {
+foreach ($run in @($a)) {
     if (-not $run) { continue }
     $lines.Add('')
-    $lines.Add("==================== $($run.label) (SNIPDECK_DIAG=" + $(if ($run.label -eq 'runA') { 'render' } else { 'render,fix' }) + ") exit code $($run.proc.ExitCode)")
+    $lines.Add("==================== $($run.label) (SNIPDECK_DIAG=render) exit code $($run.proc.ExitCode)")
     # Merge the app's lines and the owner's markers by their +ms time.
     $entries = New-Object System.Collections.Generic.List[object]
     $seq = 0
