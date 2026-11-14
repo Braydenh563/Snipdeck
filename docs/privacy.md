@@ -41,7 +41,7 @@ clipboard after 30 seconds, if nothing else has been copied since. Change the ti
 under **Privacy** in Settings. Pasting restores your own clipboard instead. A text file made by **Export as
 text** leaves sensitive items out, because it is plain text.
 
-**Recent inbox.** Snipdeck asks the first time it starts (a new install, or an upgrade where you never chose)
+**Recent inbox.** Snipdeck asks the first time you open the Panel (a new install, or an upgrade where you never chose)
 whether to keep the text you copy. Nothing is kept until you say Yes, and you can change it any time in
 Settings; an install where you already chose keeps that choice. When it is on, Snipdeck
 keeps the text you copy in other programs, up to the last 200 copies and 7 days, in your library

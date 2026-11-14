@@ -85,7 +85,7 @@ More in [`tools/launcher/README.md`](tools/launcher/README.md).
 - **Templates.** Insert `{date}`, `{time}` or your own date format. Supporter adds fields and choices that ask you
   for a value each time.
 - **Quick capture.** Choose a hotkey for it in Settings (it is off until you do), then press it to save the clipboard text as a new item.
-- **Recent inbox.** On by default for new installs (one switch turns it off). Keeps what you copy for 7 days (last 200 copies), skips password managers and
+- **Recent inbox.** Asks first: nothing is kept until you say Yes (one switch in Settings changes it). Keeps what you copy for 7 days (last 200 copies), skips password managers and
   Sensitive items, and lets you save a copy to a list.
 - **Import.** Bring in a `.snipdeck` file, a Ditto database, a CopyQ export or a folder of `.txt` and `.md`
   files, after a preview of what it adds.

@@ -34,7 +34,7 @@ you can add a master password and unlock with Windows Hello.
 
 Optional features that ask first or are off until you turn them on:
 - Recent inbox keeps the text you copy in other programs (the last 200 copies, 7 days) so you can save it to a
-  list later. Snipdeck asks on first start and keeps nothing until you say Yes. It skips password managers
+  list later. Snipdeck asks the first time you open the Panel and keeps nothing until you say Yes. It skips password managers
   and Sensitive items, stays on this PC, is encrypted, and can be turned off in Settings.
 - Expand abbreviations as I type and Suggest snippets as I type watch your typing in other programs only
   while turned on. Typed text is never stored or sent.
