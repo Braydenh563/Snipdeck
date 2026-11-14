@@ -269,8 +269,8 @@ nudge | crates/snipdeck-app/src/colours_panel.rs:347
 page | crates/snipdeck-app/src/colours_panel.rs:373
 scheme_layout | crates/snipdeck-app/src/colours_panel.rs:383
 tests | crates/snipdeck-app/src/colours_panel.rs:391
-a_translucent_colour_is_flattened_over_white | crates/snipdeck-app/src/colours_panel.rs:393
-a_slider_value_is_held_to_its_range_and_nan_is_zero | crates/snipdeck-app/src/colours_panel.rs:423
+a_translucent_colour_is_flattened_over_white | crates/snipdeck-app/src/colours_panel.rs:395
+a_slider_value_is_held_to_its_range_and_nan_is_zero | crates/snipdeck-app/src/colours_panel.rs:425
 st | crates/snipdeck-app/src/colours_panel.rs:432
 texts | crates/snipdeck-app/src/colours_panel.rs:438
 each_model_lists_its_channels_and_adds_alpha_only_when_not_opaque | crates/snipdeck-app/src/colours_panel.rs:446
