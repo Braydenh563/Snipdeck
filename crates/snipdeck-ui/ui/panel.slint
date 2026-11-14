@@ -53,6 +53,7 @@ import { IconButton, IconButtonSize } from "components/icon-button.slint";
 import { Keycap } from "components/keycap.slint";
 import { DockHandle } from "components/dock-handle.slint";
 import { QuickAdd } from "components/quick-add.slint";
+import { EdgeScroll } from "components/edge-scroll.slint";
 import { SymbolsView, SymbolRow } from "symbols.slint";
 
 // One row of the list, as `snipdeck-app`'s `Row`. The quick-use number is the row's position
@@ -537,6 +538,7 @@ export component PanelWindow inherits Window {
     }
     // Scroll offset of the list (<= 0), for tests and for the app to persist.
     out property <length> scroll-y: list.content-y;
+    out property <length> list-height: list.height;
     // Counts the Shift+Tabs that wrap round to the footer's Open Snipdeck button.
     property <int> focus-open-ticks: 0;
     out property <bool> search-focused: search.has-focus || rest.has-focus;
@@ -2231,6 +2233,20 @@ export component PanelWindow inherits Window {
                                 // A short last row of tiles keeps the column width.
                                 if root.group-cells(g) < root.cols: Rectangle { horizontal-stretch: 1; }
                             }
+                        }
+                    }
+                    EdgeScroll {
+                        x: list.x;
+                        y: list.y;
+                        width: list.width;
+                        height: list.height;
+                        visible: list.visible;
+                        up: list.content-y < -0.5px;
+                        down: list.content-y > list.height - list.content-height + 0.5px;
+                        accepts(event) => { root.payload-row(event.data) >= 0 }
+                        scroll(delta) => {
+                            root.follow-sel = false;
+                            list.content-y = max(min(list.content-y - delta, 0px), min(list.height - list.content-height, 0px));
                         }
                     }
 
