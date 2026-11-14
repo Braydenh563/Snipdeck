@@ -33,11 +33,23 @@ that decide it are steps 20-24 of the Quick check (`tools/windows-test/tests/qui
    Its frames are throttled to the display rate by a timer (`frame_throttle.rs:53-84`), so the erased state can
    be composed by DWM for a frame or more before Slint's frame replaces it.
 
-So every resize of the Panel is "transparent, then solid". A drag resizes the Panel when the dock preview comes
-and when it goes (`dock.rs` `Drag::moved`, `DragStep::Place` at the docked size and back at the floating size),
-and a dock, an undock, a tuck, a reveal and the slide's re-place all resize it (`binding.rs` `place`). That is the
-"flickers between solid and transparent really fast" and "the slide along the edge went transparent for a little
-bit". The same alpha-0 composition is what makes every other render gap below **see-through** rather than merely
+Slint itself writes every pixel it draws with alpha 255 (`renderer/sw.rs:65,142`), so a frame Slint drew is
+solid. What is see-through is any pixel Windows painted (the erase) or that no Slint frame has covered yet. So:
+
+- Every resize of the Panel is "see-through, then solid": a dock, an undock, a tuck, a reveal
+  (`binding.rs` `place`), and a preview of a full-height floating Panel (`dock.rs` `Drag::moved`; the
+  usual preview keeps the floating size, pinned by
+  `a_drag_only_moves_the_window_and_never_resizes_it`). This is "the slide along the edge went transparent
+  for a little bit" (the slide ends in a re-place) and the dock in the corner.
+- **A plain drag does not resize**, so the "flickers between solid and transparent really fast" while dragging
+  is not explained by the erase above. With per-pixel alpha on, DWM composes from the window's redirection
+  surface by alpha on every move (one per 16 ms tick, `binding.rs` `DRAG_TICK`); any part of it that holds
+  alpha-0 pixels at that moment (an erase from an earlier resize not yet drawn over, a `WM_PAINT` that found
+  nothing dirty, see root cause 2) shows the desktop for that composition. This link is **inferred, not
+  measured**. With an opaque window DWM ignores alpha entirely, so whatever the exact source, no pixel can be
+  see-through; the worst left is a frame of the theme colour.
+
+The same alpha-0 composition is what makes every other render gap below **see-through** rather than merely
 blank.
 
 ## Root cause 2: a frame that follows an area Windows invalidated covers only what Slint thinks changed
@@ -73,7 +85,7 @@ Cases that match the reports:
 - **Opacity or visibility toggled per drag step**: no. `drag_move` returns only `MoveWindow` or `PlaceWindow`
   (`controller/dock_ctl.rs:777-805`); no layered style or `SetLayeredWindowAttributes` exists in the tree
   (`window_style.rs`). Pinned by the new test
-  `a_drag_only_moves_the_window_and_resizes_it_only_when_the_dock_is_offered_or_taken_away`.
+  `a_drag_only_moves_the_window_and_never_resizes_it`.
 - **`SWP_NOREDRAW` / `SWP_NOCOPYBITS` in the move loop**: not used. winit's `set_outer_position` uses
   `SWP_ASYNCWINDOWPOS | SWP_NOZORDER | SWP_NOSIZE | SWP_NOACTIVATE` and then invalidates the whole window without
   erase (`window.rs:199-209`); the frame that follows is drawn whole (`binding.rs` `repaint_whole` on every
@@ -111,6 +123,7 @@ the drag test above, the binding test above, `diag::tests`.
 - That `GetUpdateRect` during `RedrawRequested` sees the update region in every case. A `WM_PAINT` handled while
   winit is busy (`should_buffer`) is erased and validated before the app hears of it; a resize or a show that
   precedes it still owes a whole frame, but a bare uncover during a busy callback would not be caught.
+- The exact source of the alpha-0 pixels during a plain drag (no resize happens; see root cause 1).
 - Whether the resize erase is now visible as a theme-coloured blink during the preview. If so, the next step is
   to answer `WM_ERASEBKGND` with 1 once a window has presented a frame.
 - Multi-monitor corners with two scales (a DPI change during the drop).

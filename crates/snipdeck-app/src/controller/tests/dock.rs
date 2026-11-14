@@ -2388,10 +2388,10 @@ fn placed_size(effects: &[Effect]) -> Option<(u32, u32)> {
 }
 
 #[test]
-fn a_drag_only_moves_the_window_and_resizes_it_only_when_the_dock_is_offered_or_taken_away() {
+fn a_drag_only_moves_the_window_and_never_resizes_it() {
     // Render flicker (2026-11-14): Windows erases a window's whole client area on every resize,
-    // so a drag must never show, hide or collapse the Panel, and must change its size only
-    // when the dock preview comes or goes; never on a step along the edge or a wobble.
+    // so a drag must never show, hide, collapse or resize the Panel: not in circles, not when
+    // the dock preview comes or goes, not on a step along the edge or a wobble.
     let mut w = floating(DockTrigger::Both);
     press(&mut w, (700, 110), FLOATING);
     let mut steps: Vec<Vec<Effect>> = Vec::new();
@@ -2414,6 +2414,11 @@ fn a_drag_only_moves_the_window_and_resizes_it_only_when_the_dock_is_offered_or_
     // To the right edge and held: the preview comes.
     go(&mut w, &mut steps, (1919, 300), 16);
     go(&mut w, &mut steps, (1919, 300), 400);
+    assert_eq!(
+        w.ctl.view().dock_preview,
+        Some(DockEdge::Right),
+        "previewed"
+    );
     // Along the edge while previewed, and a wobble inside the exit distance.
     for y in (300..700).step_by(23) {
         go(&mut w, &mut steps, (1917, y), 16);
@@ -2421,6 +2426,7 @@ fn a_drag_only_moves_the_window_and_resizes_it_only_when_the_dock_is_offered_or_
     // Pulled well back: the preview goes.
     go(&mut w, &mut steps, (1500, 700), 16);
     go(&mut w, &mut steps, (1400, 650), 16);
+    assert_eq!(w.ctl.view().dock_preview, None, "pulled back");
 
     for effects in &steps {
         for e in effects {
@@ -2440,11 +2446,11 @@ fn a_drag_only_moves_the_window_and_resizes_it_only_when_the_dock_is_offered_or_
             size = now;
         }
     }
-    assert_eq!(
-        resizes, 2,
-        "one resize when the dock is offered and one when it is taken away"
+    assert_eq!(resizes, 0, "the preview keeps the floating size: {size:?}");
+    assert!(
+        steps.iter().any(|e| !e.is_empty()),
+        "the window followed the cursor"
     );
-    assert_eq!(size, (FLOATING.w, FLOATING.h), "floating size again");
     for e in w.ctl.drag_end() {
         assert!(
             matches!(e, Effect::PlaceWindow(_)),
