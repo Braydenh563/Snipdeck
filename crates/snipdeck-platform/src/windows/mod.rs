@@ -45,4 +45,5 @@ pub mod system_look;
 pub mod target;
 pub mod tray;
 pub mod typing_hook;
+pub mod update_region;
 pub mod window_style;

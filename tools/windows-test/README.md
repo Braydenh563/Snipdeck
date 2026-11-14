@@ -23,6 +23,7 @@ what happened), **S** skip. Results go to the same place and format as the full 
 | 10-11 | Dock to the taskbar's edge (the screen says which edge); the Panel stays clear of the taskbar | Measures the Panel against the screen's work area |
 | 13-18 | Symbols tab: paste 😀 and 👩‍💻 into Notepad and Word; kaomoji glyphs (box-drawing, CJK); Copy PNG into Word and Paint (transparency); the Save as dialog (no menu yet, skip with S); grid sharpness at 125% and 150%; flags paste as letter pairs | - |
 | 19 | Render diagnostic | Runs `diag-render.ps1 -Quick` (render checks only, about 3 minutes, a few yes/no questions), shows the path of the file it saves on the Desktop and puts a copy in the results zip |
+| 20-24 | Render flicker (`docs/reviews/render-flicker-2026-11-14.md`): drag in circles and past the dock outline, dock near the top-right corner, save an edit, slide along the edge, other windows off screen and back, Alt+Tab and minimise; nothing shows see-through | - |
 
 Steps 1, 3 and 11 are tried by the wizard first (mouse and keyboard move for a few seconds; hold Esc to stop). A
 check it cannot judge becomes the normal screen for you. The steps are in `tests\quick-check.json` (flag `qc`;
@@ -208,8 +209,8 @@ A separate, short run (about 10 minutes) for the render glitches and the shortcu
 
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\windows-test\diag-render.ps1
 
-It closes a running Snipdeck, builds, starts Snipdeck twice (`SNIPDECK_DIAG=render`, then `render,fix`, both
-with `SNIPDECK_LOG=1`) on the wizard's library (`spikes-results\m3-data`, else `spikes-results\diag\data`),
+It closes a running Snipdeck, builds, starts Snipdeck once (`SNIPDECK_DIAG=render` with `SNIPDECK_LOG=1`; the
+render fix is always on since 2026-11-14) on the wizard's library (`spikes-results\m3-data`, else `spikes-results\diag\data`),
 prints numbered steps with a y/n question each, and writes one file, `Desktop\Snipdeck-diag-<date>.txt`.
 `-NoBuild` skips the build; `-DataDir <folder>` picks another library.
 

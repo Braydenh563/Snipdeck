@@ -5,9 +5,8 @@
 //! - `render`: every window's paint, erase, move and size messages, its styles, DPI and DWM
 //!   attributes on first sight, and which redraws follow an area Windows invalidated
 //!   (`snipdeck_platform::windows::paint_diag`).
-//! - `fix` (implies `render`): additionally, a redraw that follows such an area damages the whole
-//!   window ([`snipdeck_ui::damage::whole_window`]), the candidate fix for hypothesis H1 of
-//!   `docs/reviews/render-glitch-analysis.md`, so one run with and one without tells it apart.
+//!   Such a redraw is always drawn whole now (`crate::repaint`); the old word `fix` and `all`
+//!   still switch `render` on, so an older script keeps working.
 //!
 //! Lines never carry window titles or item content.
 
@@ -20,20 +19,18 @@ use slint::winit_030::winit::event::WindowEvent;
 pub struct Diag {
     /// Log what Windows says about painting each window.
     pub render: bool,
-    /// Redraw a window whole after Windows invalidated part of it.
-    pub fix: bool,
 }
 
 impl Diag {
     /// Whether anything is on.
     #[must_use]
     pub const fn any(self) -> bool {
-        self.render || self.fix
+        self.render
     }
 }
 
 /// Reads `value` (the `SNIPDECK_DIAG` variable): a comma or space separated list of `render`,
-/// `fix` and `all`; case and unknown words are ignored. `fix` implies `render`.
+/// `fix` and `all` (both mean `render` now); case and unknown words are ignored.
 #[must_use]
 pub fn parse(value: Option<&str>) -> Diag {
     let mut diag = Diag::default();
@@ -43,11 +40,7 @@ pub fn parse(value: Option<&str>) -> Diag {
         .map(|w| w.trim().to_ascii_lowercase())
     {
         match word.as_str() {
-            "render" | "1" | "on" => diag.render = true,
-            "fix" | "all" => {
-                diag.render = true;
-                diag.fix = true;
-            }
+            "render" | "1" | "on" | "fix" | "all" => diag.render = true,
             _ => {}
         }
     }
@@ -85,11 +78,10 @@ pub fn start() {
         return;
     }
     crate::trace!(
-        "diag: SNIPDECK_DIAG render={} fix={}; backend winit, renderer software (softbuffer, GDI \
-         BitBlt of damaged rectangles only); every winit window is created transparent \
-         (DWM blur-behind), so undrawn pixels show through",
-        diag.render,
-        diag.fix
+        "diag: SNIPDECK_DIAG render={}; backend winit, renderer software (softbuffer, GDI \
+         BitBlt of damaged rectangles only); every window is created opaque (no DWM \
+         blur-behind) and drawn whole after Windows invalidated or erased part of it",
+        diag.render
     );
     #[cfg(windows)]
     {
@@ -152,18 +144,10 @@ pub fn window_event(name: &str, window: &slint::Window, event: &WindowEvent) {
             crate::trace!("diag window {name} hwnd={hwnd:#x}: occluded {occluded}");
         }
         WindowEvent::RedrawRequested if os_invalidated(hwnd) => {
-            if diag.fix {
-                snipdeck_ui::damage::whole_window(window);
-                crate::trace!(
-                    "diag window {name} hwnd={hwnd:#x}: redraw after Windows invalidated an \
-                     area; fix on: whole window damaged"
-                );
-            } else {
-                crate::trace!(
-                    "diag window {name} hwnd={hwnd:#x}: redraw after Windows invalidated an \
-                     area; fix off: only what Slint thinks changed is drawn"
-                );
-            }
+            crate::trace!(
+                "diag window {name} hwnd={hwnd:#x}: redraw after Windows invalidated an area: \
+                 drawn whole"
+            );
         }
         _ => {}
     }
@@ -209,20 +193,13 @@ mod tests {
     }
 
     #[test]
-    fn render_and_fix_are_read_from_a_list_and_fix_implies_render() {
-        let render = Diag {
-            render: true,
-            fix: false,
-        };
-        let both = Diag {
-            render: true,
-            fix: true,
-        };
+    fn render_is_read_from_a_list_and_the_old_fix_word_still_means_render() {
+        let render = Diag { render: true };
         assert_eq!(parse(Some("render")), render);
         assert_eq!(parse(Some(" RENDER ")), render);
-        assert_eq!(parse(Some("render,fix")), both);
-        assert_eq!(parse(Some("fix")), both);
-        assert_eq!(parse(Some("all")), both);
+        assert_eq!(parse(Some("render,fix")), render);
+        assert_eq!(parse(Some("fix")), render);
+        assert_eq!(parse(Some("all")), render);
         assert_eq!(parse(Some("render; other")), render);
     }
 

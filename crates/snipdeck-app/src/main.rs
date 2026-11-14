@@ -720,14 +720,9 @@ fn watch_window_events(window: &PanelWindow, binding: Binding, armed: Rc<Cell<bo
         .window()
         .on_winit_window_event(move |slint_window, event| {
             snipdeck_app::diag::window_event("panel", slint_window, event);
-            // O39: Windows may have dropped the window's pixels (Alt+Tab, restore): damage all of
-            // it, as the Main window does, so the next frame is drawn whole.
-            if repaint.on_signal(snipdeck_app::repaint::signal_of(event)) {
-                if let Some(w) = weak.upgrade() {
-                    w.set_repaint_flip(!w.get_repaint_flip());
-                }
-                slint_window.request_redraw();
-            }
+            // O39: Windows may have dropped or erased the window's pixels (a resize, a show, an
+            // area uncovered): the next frame is drawn whole, as for every Snipdeck window.
+            snipdeck_app::repaint::follow(&mut repaint, slint_window, event);
             // O52: the theme colour, not white, before a window's first frame.
             if matches!(event, WindowEvent::Resized(_)) {
                 snipdeck_app::native_window::paint_before_first_frame(slint_window);
@@ -899,7 +894,10 @@ fn select_backend() -> Result<(), String> {
                     attributes
                 }
             };
-            attributes.with_active(plan.active)
+            // Opaque on every platform: see `Plan::transparent` (render flicker 2026-11-14).
+            attributes
+                .with_active(plan.active)
+                .with_transparent(plan.transparent)
         })
         .select()
         .map_err(|e| format!("selecting the window backend: {e}"))

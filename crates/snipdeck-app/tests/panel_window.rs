@@ -2556,3 +2556,68 @@ fn f2_on_a_header_starts_its_rename_and_folding_under_the_cursor_keeps_a_row_sel
         assert!(row.is_some_and(|row| row.is_header), "on the header");
     });
 }
+
+/// Runs `step` and says whether it asked for the Panel to be drawn whole (`repaint-flip`
+/// toggled) and what effects it applied.
+fn drawn_whole_by(r: &Rig, step: impl FnOnce(&Rig)) -> (bool, Vec<Effect>) {
+    r.effects.borrow_mut().clear();
+    let before = r.ui.get_repaint_flip();
+    step(r);
+    (
+        r.ui.get_repaint_flip() != before,
+        r.effects.borrow().clone(),
+    )
+}
+
+#[test]
+fn every_placement_dock_commit_and_show_draws_the_panel_whole() {
+    // Render flicker (2026-11-14): after a geometry change, a dock or a show, Windows may have
+    // erased or dropped the Panel's pixels while nothing in the scene changed; the frame after
+    // must be drawn whole, not only what Slint thinks changed.
+    on_ui_thread(|| {
+        let r = rig();
+        let m = display();
+        let kept = Rect {
+            x: 300,
+            y: 120,
+            w: 410,
+            h: 700,
+        };
+        r.binding.frame_changed(&m, kept);
+        r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
+        let (whole, effects) = drawn_whole_by(&r, |r| r.binding.restore_frame(&m));
+        assert_eq!(effects, [Effect::PlaceWindow(kept)]);
+        assert!(whole, "a placement");
+
+        let (whole, effects) = drawn_whole_by(&r, |r| {
+            open_menu(r);
+            click(r.window(), &menu_row(r, "Dock to the left edge"));
+        });
+        assert!(
+            effects.iter().any(|e| matches!(e, Effect::PlaceWindow(_))),
+            "{effects:?}"
+        );
+        assert!(whole, "a dock commit");
+        r.binding.panel_focused(true);
+
+        let (whole, effects) =
+            drawn_whole_by(&r, |r| r.binding.hotkey(HotkeyAction::TogglePanel));
+        assert!(
+            effects.iter().any(|e| matches!(e, Effect::PlaceWindow(_))),
+            "tucked: {effects:?}"
+        );
+        assert!(whole, "the tuck");
+
+        // Undocked and hidden, then shown again (as after the item editor saves).
+        r.ctl.borrow_mut().dock_to(None);
+        let _ = r.ctl.borrow_mut().take_pending();
+        r.binding.hotkey(HotkeyAction::TogglePanel);
+        if r.ui.window().is_visible() {
+            r.binding.hotkey(HotkeyAction::TogglePanel);
+        }
+        let (whole, effects) =
+            drawn_whole_by(&r, |r| r.binding.hotkey(HotkeyAction::TogglePanel));
+        assert!(effects.contains(&Effect::ShowPanel), "{effects:?}");
+        assert!(whole, "a show");
+    });
+}

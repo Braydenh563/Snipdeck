@@ -200,6 +200,51 @@
       "title": "Render diagnostic",
       "do": "Answer the short yes/no questions the diagnostic asks (it opens the Panel, About, Edit and the Main window for you to look at). It needs about 3 minutes.",
       "expect": "The diagnostic file is saved on your Desktop and its path is shown. It is recorded in the results."
+    },
+    {
+      "id": "20",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 1,
+      "title": "Drag the Panel: no see-through flicker",
+      "do": "Open the Panel. Drag it by its top strip in slow circles in the middle of the screen for 5 seconds, then hold it against the right edge until the dock outline shows, then pull it back to the middle. Do this twice.",
+      "expect": "The Panel stays solid the whole time. When the dock outline comes and goes, the Panel may change size, but no part of it shows the desktop or the window behind it, not even for a moment. Press F if any part flickers see-through."
+    },
+    {
+      "id": "21",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 1,
+      "title": "Dock near the top-right corner: fully drawn without a click",
+      "do": "Drag the Panel into the top-right corner of the screen (both near the top and against the right edge) and let go so it docks. Do not move the mouse over it; wait 3 seconds. Repeat on the left edge near the top. If you have two screens, also try the corner where the screens meet.",
+      "expect": "Each time, the docked Panel is fully drawn within a moment: every item, the search box and the top strip. You never need to click it, hover it or switch windows to make it show. Press F if any part stays see-through or empty until you click."
+    },
+    {
+      "id": "22",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 1,
+      "title": "Save an edit: the Panel comes back fully drawn",
+      "do": "Open the Panel, open Edit on any item (right-click > Edit, or the item menu), change one letter, press Save. Do it three times, once with the Panel docked.",
+      "expect": "When the editor closes, the Panel shows again fully drawn straight away: no see-through areas, no items missing until you hover them."
+    },
+    {
+      "id": "23",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 1,
+      "title": "Slide along the edge: stays solid",
+      "do": "Dock the Panel on the right edge. Drag its top strip up and down along the edge (the Panel slides along it) for 5 seconds, then let go.",
+      "expect": "The Panel stays solid and fully drawn while it slides and after you let go. Press F if it goes see-through, even briefly."
+    },
+    {
+      "id": "24",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 2,
+      "title": "Other windows: off screen and back, Alt+Tab, minimise",
+      "do": "Open About, then Edit on an item, then the Main window's Tags window. Drag each one half off the bottom or right of the screen, let go, and drag it fully back. Then Alt+Tab away and back to the Main window, minimise it and restore it.",
+      "expect": "Every window is fully drawn after each step: the part that was off screen is drawn when it comes back, and nothing shows the desktop through the window. A short flash of the plain background colour while a window is resized is fine; see-through is not."
     }
   ]
 }

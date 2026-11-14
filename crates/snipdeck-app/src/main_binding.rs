@@ -836,7 +836,7 @@ fn watch_place<S, C, K, T>(
 {
     use slint::winit_030::{EventResult, winit::event::WindowEvent};
     let controller = Rc::downgrade(controller);
-    // O39: Windows can drop the window's pixels (Alt+Tab, restore); redraw all of it then.
+    // O39: Windows can drop or erase the window's pixels; the next frame is drawn whole then.
     let weak = window.as_weak();
     let mut watch = crate::repaint::Watch::new();
     let batch = crate::drop_batch::DropBatch::default();
@@ -902,12 +902,7 @@ fn watch_place<S, C, K, T>(
                 }
                 _ => {}
             }
-            if watch.on_signal(crate::repaint::signal_of(event))
-                && let Some(w) = weak.upgrade()
-            {
-                w.set_repaint_flip(!w.get_repaint_flip());
-                slint_window.request_redraw();
-            }
+            crate::repaint::follow(&mut watch, slint_window, event);
             if matches!(event, WindowEvent::Moved(_) | WindowEvent::Resized(_))
                 && let Some(controller) = controller.upgrade()
                 && let Ok(mut controller) = controller.try_borrow_mut()

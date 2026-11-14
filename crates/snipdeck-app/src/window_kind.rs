@@ -16,6 +16,12 @@ pub struct Plan {
     pub active: bool,
     /// Give the window the application icon (title bar and taskbar).
     pub window_icon: bool,
+    /// Ask for a window composed with per-pixel alpha. Never: Slint asks winit for one by
+    /// default, which on Windows turns on DWM blur-behind, and every pixel Windows itself paints
+    /// (the class-brush erase on a resize or a show, an area not yet drawn) then has alpha 0 and
+    /// shows the desktop through the window: the render flicker of 2026-11-14. Every Snipdeck
+    /// window has an opaque background, so nothing needs it.
+    pub transparent: bool,
 }
 
 /// The attributes for a regular window (`true`: Main, Settings, an editor) or a floating one
@@ -26,6 +32,7 @@ pub const fn plan(regular: bool) -> Plan {
         skip_taskbar: !regular,
         active: regular,
         window_icon: regular,
+        transparent: false,
     }
 }
 
@@ -45,6 +52,13 @@ mod tests {
         let p = plan(false);
         assert!(p.skip_taskbar);
         assert!(!p.active);
+    }
+
+    #[test]
+    fn no_window_is_composed_see_through() {
+        // An erase or an undrawn area must show the theme colour, never the desktop.
+        assert!(!plan(true).transparent);
+        assert!(!plan(false).transparent);
     }
 
     #[test]

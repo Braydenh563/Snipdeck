@@ -2378,3 +2378,71 @@ fn a_resize_holds_the_dock_out_where_the_button_always_reads_as_up() {
     assert_eq!(w.ctl.dock_tick().len(), 1, "it tucks");
     assert!(w.ctl.view().dock_collapsed);
 }
+
+/// The size of the window after `effects`, if they place it.
+fn placed_size(effects: &[Effect]) -> Option<(u32, u32)> {
+    effects.iter().rev().find_map(|e| match e {
+        Effect::PlaceWindow(r) => Some((r.w, r.h)),
+        _ => None,
+    })
+}
+
+#[test]
+fn a_drag_only_moves_the_window_and_resizes_it_only_when_the_dock_is_offered_or_taken_away() {
+    // Render flicker (2026-11-14): Windows erases a window's whole client area on every resize,
+    // so a drag must never show, hide or collapse the Panel, and must change its size only
+    // when the dock preview comes or goes; never on a step along the edge or a wobble.
+    let mut w = floating(DockTrigger::Both);
+    press(&mut w, (700, 110), FLOATING);
+    let mut steps: Vec<Vec<Effect>> = Vec::new();
+    let mut ms = 0;
+    let mut go = |w: &mut World, steps: &mut Vec<Vec<Effect>>, cursor: (i32, i32), wait: i64| {
+        ms += wait;
+        advance(w, ms);
+        let effects = pull(w, cursor);
+        assert!(!w.ctl.view().dock_collapsed, "collapsed mid-drag at {cursor:?}");
+        steps.push(effects);
+    };
+    // Circles through the middle, fast and slow.
+    for (i, x) in (400..1400).step_by(37).enumerate() {
+        let y = 200 + i32::try_from(i % 7).expect("small") * 60;
+        go(&mut w, &mut steps, (x, y), 16);
+    }
+    // To the right edge and held: the preview comes.
+    go(&mut w, &mut steps, (1919, 300), 16);
+    go(&mut w, &mut steps, (1919, 300), 400);
+    // Along the edge while previewed, and a wobble inside the exit distance.
+    for y in (300..700).step_by(23) {
+        go(&mut w, &mut steps, (1917, y), 16);
+    }
+    // Pulled well back: the preview goes.
+    go(&mut w, &mut steps, (1500, 700), 16);
+    go(&mut w, &mut steps, (1400, 650), 16);
+
+    for effects in &steps {
+        for e in effects {
+            assert!(
+                matches!(e, Effect::MoveWindow(..) | Effect::PlaceWindow(_)),
+                "a drag step only moves or places the window: {e:?}"
+            );
+        }
+    }
+    let mut size = (FLOATING.w, FLOATING.h);
+    let mut resizes = 0;
+    for effects in &steps {
+        if let Some(now) = placed_size(effects)
+            && now != size
+        {
+            resizes += 1;
+            size = now;
+        }
+    }
+    assert_eq!(
+        resizes, 2,
+        "one resize when the dock is offered and one when it is taken away"
+    );
+    assert_eq!(size, (FLOATING.w, FLOATING.h), "floating size again");
+    for e in w.ctl.drag_end() {
+        assert!(matches!(e, Effect::PlaceWindow(_)), "the drop only places: {e:?}");
+    }
+}

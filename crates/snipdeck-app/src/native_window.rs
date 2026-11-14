@@ -510,8 +510,12 @@ pub fn note_window_event(name: &str, window: &slint::Window, event: &winit::even
 /// Starts following the focus of a regular window; `name` is for the `SNIPDECK_DIAG` log.
 pub fn track_focus(window: &slint::Window, name: &'static str) {
     use slint::winit_030::EventResult;
+    // Every child window (About, Edit, Tags, Settings) is drawn whole after Windows dropped or
+    // erased its pixels, as the Panel and the Main window are (render flicker 2026-11-14).
+    let mut watch = crate::repaint::Watch::new();
     window.on_winit_window_event(move |slint_window, event| {
         note_window_event(name, slint_window, event);
+        crate::repaint::follow(&mut watch, slint_window, event);
         EventResult::Propagate
     });
 }
