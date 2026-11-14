@@ -188,6 +188,20 @@ fn dragging_an_item_onto_a_header_joins_that_group_at_its_top() {
 }
 
 #[test]
+fn dropping_an_item_on_the_top_half_of_the_first_header_puts_it_above_the_group() {
+    let mut w = open_replies();
+    group_first_two(&mut w);
+    w.ctl.main_drop_row_above(4, 0);
+    let rows = shape(&mut w);
+    assert_eq!(rows[0].0, "Greeting", "the item is the new first row");
+    assert!(!rows[0].1 && !rows[0].2, "it is an item outside any group");
+    assert_eq!(rows[1].0, "Group", "the group follows it");
+    w.ctl.undo();
+    assert_eq!(shape(&mut w)[0].0, "Group", "one Undo puts it back");
+    assert_eq!(shape(&mut w).len(), 5);
+}
+
+#[test]
 fn alt_arrows_on_a_header_move_the_whole_group_one_step() {
     let mut w = open_replies();
     two_groups(&mut w);

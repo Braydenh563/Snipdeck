@@ -191,6 +191,15 @@ where
         self.show_toast(neutral_toast(ToastMessage::SwitchToManual { list: id }));
     }
 
+    /// A drag of row `from` ended on the top half of row `onto`: an item dropped there on a group's
+    /// header lands above the group instead of joining it; any other row takes it as a plain drop.
+    pub fn main_drop_row_above(&mut self, from: usize, onto: usize) {
+        self.main_fresh();
+        if !self.drop_above_group(Surface::Main, from, onto) {
+            self.main_drop_row(from, onto);
+        }
+    }
+
     /// A drag of row `from` ended on row `onto`: the item takes that row's place and a toast says
     /// which place that is. Like Alt+Up / Alt+Down, only a list in manual order can be arranged
     /// by hand; in a list that sorts itself a toast offers to switch it to manual order.

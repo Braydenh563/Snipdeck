@@ -1,42 +1,20 @@
-// Drag auto-scroll for a list taller than its view: while an item is dragged and the pointer stays within `band`
-// of the top or bottom edge, `scroll` is called with a fixed step on every tick, until the pointer leaves the band,
-// the list reaches its end, or the drag ends. Lay it over the list (same x, y, width and height). A band that can
-// still scroll takes the drag; a drop released inside one is not taken, so no row is changed by accident.
+// Drag auto-scroll for a list taller than its view. The host sets `dir` from where an item is dragged over the list
+// (-1: within the edge zone at the top, 1: at the bottom, 0: elsewhere or no drag); while the list can still scroll
+// that way, `scroll` is called with a fixed step on every tick. It never takes a drop, so every row, gap and tile
+// under the pointer stays a drop target, the ones in the edge zone included.
 export component EdgeScroll inherits Rectangle {
-    // The edge zone, in px, and the distance moved per tick.
-    in property <length> band: 24px;
+    in property <int> dir;
     in property <length> step: 10px;
     in property <duration> tick: 16ms;
     // Whether the list can scroll toward its top (`up`) or its bottom (`down`) from where it is.
     in property <bool> up;
     in property <bool> down;
-    in property <bool> enabled: true;
-    // Whether the dragged payload is a row of this list (the host knows its payload).
-    callback accepts(event: DropEvent) -> bool;
     // Move the list by this much (negative: toward its top).
     callback scroll(delta: length);
 
-    top-band := DropArea {
-        x: 0px;
-        y: 0px;
-        width: parent.width;
-        height: min(root.band, parent.height / 2);
-        enabled: root.enabled && root.up;
-        can-drop(event) => { root.accepts(event) ? DragAction.move : DragAction.none }
-        dropped(event) => { DragAction.none }
-    }
-    bottom-band := DropArea {
-        x: 0px;
-        y: parent.height - self.height;
-        width: parent.width;
-        height: min(root.band, parent.height / 2);
-        enabled: root.enabled && root.down;
-        can-drop(event) => { root.accepts(event) ? DragAction.move : DragAction.none }
-        dropped(event) => { DragAction.none }
-    }
     Timer {
         interval: root.tick;
-        running: top-band.has-drag || bottom-band.has-drag;
-        triggered => { root.scroll(top-band.has-drag ? -root.step : root.step); }
+        running: (root.dir < 0 && root.up) || (root.dir > 0 && root.down);
+        triggered => { root.scroll(root.dir * root.step); }
     }
 }

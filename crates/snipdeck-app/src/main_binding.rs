@@ -754,6 +754,8 @@ where
             .main_reorder_list(index(i), isize::try_from(d).unwrap_or(0)));
         wire!(on_row_dropped, |ctl, from, onto| ctl
             .main_drop_row(index(from), index(onto)));
+        wire!(on_row_dropped_above, |ctl, from, onto| ctl
+            .main_drop_row_above(index(from), index(onto)));
         wire!(on_row_dropped_on_list, |ctl, row, list| ctl
             .main_drop_on_list(index(row), index(list)));
         wire!(on_list_dropped, |ctl, from, onto| ctl

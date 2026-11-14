@@ -217,6 +217,9 @@ fn start() -> (MainWindow, Log) {
     hook!(on_row_dropped, |from, onto| format!(
         "row-dropped:{from}:{onto}"
     ));
+    hook!(on_row_dropped_above, |from, onto| format!(
+        "row-dropped-above:{from}:{onto}"
+    ));
     hook!(on_row_dropped_on_list, |row, list| format!(
         "row-on-list:{row}:{list}"
     ));
@@ -931,15 +934,25 @@ ui_tests! {
             last = now;
         }
         let end = ui.get_scroll_y();
-        assert!(end < -1000.0, "scrolled down: {end}");
+        let bound = ui.get_list_height() - ui.get_list_content_height();
+        assert!(
+            (end - bound).abs() < 0.5,
+            "the viewport ends exactly at the content bound: {end} vs {bound}"
+        );
         for _ in 0..30 {
             mock_elapsed_time(std::time::Duration::from_millis(16));
             settle();
         }
-        assert!((ui.get_scroll_y() - end).abs() < 0.5, "stays at the end: {end} -> {}", ui.get_scroll_y());
-        w.dispatch_event(WindowEvent::PointerMoved { position: LogicalPosition::new(x + 1.0, area_top + 200.0) });
-        w.dispatch_event(WindowEvent::PointerReleased { position: LogicalPosition::new(x + 1.0, area_top + 200.0), button: PointerEventButton::Left });
+        assert!((ui.get_scroll_y() - bound).abs() < 0.5, "stays at the end: {}", ui.get_scroll_y());
+        // Released inside the band: the row under the pointer takes the drop.
+        w.dispatch_event(WindowEvent::PointerReleased { position: at_bottom, button: PointerEventButton::Left });
         settle();
+        let lines: Vec<_> = take(&log).into_iter().filter(|l| l.starts_with("row-dropped")).collect();
+        assert_eq!(lines.len(), 1, "a drop in the bottom band lands: {lines:?}");
+        assert!(
+            lines[0].ends_with(":59") || lines[0].ends_with(":58"),
+            "on one of the last rows: {lines:?}"
+        );
     }
 
     fn dragging_a_tile_held_at_the_top_edge_of_the_grid_scrolls_it_up_and_a_drop_lands_on_the_first_tile() {
@@ -995,6 +1008,53 @@ ui_tests! {
         let lines: Vec<_> = take(&log).into_iter().filter(|l| l.starts_with("row-dropped")).collect();
         assert_eq!(lines.len(), 1, "one drop: {lines:?}");
         assert!(lines[0].starts_with("row-dropped:") && lines[0].split(':').nth(2).is_some_and(|n| n.parse::<usize>().unwrap() < 6), "dropped on a tile of the first row: {lines:?}");
+    }
+
+    fn an_item_dropped_on_the_top_half_of_a_group_header_lands_above_it_and_on_the_bottom_half_joins() {
+        use slint::platform::{PointerEventButton, WindowEvent};
+        let (ui, log) = start();
+        let mut rows = fixture::sample_rows();
+        rows.truncate(4);
+        rows.insert(
+            0,
+            snipdeck_ui::MainRow {
+                title: "Replies".into(),
+                is_header: true,
+                group_count: 2,
+                ..Default::default()
+            },
+        );
+        rows[1].grouped = true;
+        rows[2].grouped = true;
+        fixture::set_rows(&ui, rows);
+        ui.set_has_groups(true);
+        settle();
+        let header = find(&ui, "group Replies, 2 items", AccessibleRole::Button);
+        let (p, size) = (header.absolute_position(), header.size());
+        let at = |f: f32| LogicalPosition::new(p.x + size.width / 2.0, p.y + size.height * f);
+        let mut cards: Vec<_> = by_role(&ui, AccessibleRole::ListItem)
+            .into_iter()
+            .filter(|e| e.size().width > 300.0 && e.absolute_position().x > 200.0)
+            .collect();
+        cards.sort_by(|a, b| a.absolute_position().y.total_cmp(&b.absolute_position().y));
+        let item = cards.last().expect("an item row");
+        let from = LogicalPosition::new(
+            item.absolute_position().x + item.size().width / 2.0,
+            item.absolute_position().y + item.size().height / 2.0,
+        );
+        let w = ui.window();
+        let drop_at = |to: LogicalPosition| {
+            let _ = take(&log);
+            w.dispatch_event(WindowEvent::PointerMoved { position: from });
+            w.dispatch_event(WindowEvent::PointerPressed { position: from, button: PointerEventButton::Left });
+            w.dispatch_event(WindowEvent::PointerMoved { position: LogicalPosition::new(from.x + 12.0, from.y) });
+            w.dispatch_event(WindowEvent::PointerMoved { position: to });
+            w.dispatch_event(WindowEvent::PointerReleased { position: to, button: PointerEventButton::Left });
+            settle();
+            take(&log).into_iter().filter(|l| l.starts_with("row-dropped")).collect::<Vec<_>>()
+        };
+        assert_eq!(drop_at(at(0.2)), ["row-dropped-above:4:0"], "top half: above the group");
+        assert_eq!(drop_at(at(0.8)), ["row-dropped:4:0"], "bottom half: joins the group");
     }
 
     fn a_tile_dropped_in_the_gaps_of_the_grid_lands_on_the_neighbouring_tile() {

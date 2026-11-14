@@ -52,6 +52,7 @@ import { IconButton, IconButtonSize } from "components/icon-button.slint";
 import { Keycap } from "components/keycap.slint";
 import { DockHandle } from "components/dock-handle.slint";
 import { QuickAdd } from "components/quick-add.slint";
+import { EdgeScroll } from "components/edge-scroll.slint";
 import { SymbolsView, SymbolRow } from "symbols.slint";
 import { ColoursView, ColourState } from "colours.slint";
 
@@ -379,6 +380,14 @@ export component PanelWindow inherits Window {
     pure callback payload-row(data-transfer) -> int;
     callback row-dropped-on-tab(int, int);
     callback row-dropped(int, int);
+    // Drag auto-scroll: -1 while an item is dragged over the top edge zone of the list, 1 over the bottom one.
+    property <int> edge-dir: 0;
+    property <length> edge-band: 24px;
+    function drag-over(y: length) {
+        root.edge-dir = y < list.absolute-position.y + root.edge-band ? -1 : (y > list.absolute-position.y + list.height - root.edge-band ? 1 : 0);
+    }
+    // An item dropped on the top half of a group header: it lands above the group instead of joining it.
+    callback row-dropped-above(int, int);
     // Alt+Up / Alt+Down: move the selected row by -1 or +1.
     callback item-reorder-requested(int);
     in property <bool> rows-reorderable;
@@ -548,6 +557,7 @@ export component PanelWindow inherits Window {
     }
     // Scroll offset of the list (<= 0), for tests and for the app to persist.
     out property <length> scroll-y: list.content-y;
+    out property <length> list-height: list.height;
     // Counts the Shift+Tabs that wrap round to the footer's Open Snipdeck button.
     property <int> focus-open-ticks: 0;
     out property <bool> search-focused: search.has-focus || rest.has-focus;
@@ -2104,8 +2114,12 @@ export component PanelWindow inherits Window {
                                 y: 0px;
                                 width: parent.width;
                                 height: Space.s1;
-                                can-drop(event) => { root.gap-target(root.payload-row(event.data), g, true) >= 0 ? DragAction.move : DragAction.none }
+                                can-drop(event) => {
+                                    root.drag-over(self.absolute-position.y + event.position.y);
+                                    root.gap-target(root.payload-row(event.data), g, true) >= 0 ? DragAction.move : DragAction.none
+                                }
                                 dropped(event) => {
+                                    root.edge-dir = 0;
                                     root.row-dropped(root.payload-row(event.data), root.gap-target(root.payload-row(event.data), g, true));
                                     return DragAction.move;
                                 }
@@ -2115,8 +2129,12 @@ export component PanelWindow inherits Window {
                                 y: Space.s1 + grp.preferred-height;
                                 width: parent.width;
                                 height: parent.height - self.y;
-                                can-drop(event) => { root.gap-target(root.payload-row(event.data), g, false) >= 0 ? DragAction.move : DragAction.none }
+                                can-drop(event) => {
+                                    root.drag-over(self.absolute-position.y + event.position.y);
+                                    root.gap-target(root.payload-row(event.data), g, false) >= 0 ? DragAction.move : DragAction.none
+                                }
                                 dropped(event) => {
+                                    root.edge-dir = 0;
                                     root.row-dropped(root.payload-row(event.data), root.gap-target(root.payload-row(event.data), g, false));
                                     return DragAction.move;
                                 }
@@ -2142,15 +2160,22 @@ export component PanelWindow inherits Window {
                                     row-drop := DropArea {
                                         enabled: root.rows-reorderable || root.reorder-offer;
                                         can-drop(event) => {
+                                            root.drag-over(self.absolute-position.y + event.position.y);
                                             row-from = root.payload-row(event.data);
                                             row-from >= 0 && row-from != i ? DragAction.move : DragAction.none
                                         }
                                         dropped(event) => {
-                                            root.row-dropped(root.payload-row(event.data), i);
+                                            root.edge-dir = 0;
+                                            if (item.is-header && event.position.y < self.height / 2) {
+                                                root.row-dropped-above(root.payload-row(event.data), i);
+                                            } else {
+                                                root.row-dropped(root.payload-row(event.data), i);
+                                            }
                                             return DragAction.move;
                                         }
 
                                         DragArea {
+                                            drag-finished(action) => { root.edge-dir = 0; }
                                             allow-move: !root.searching && !root.list-hidden && !root.delete-mode && !root.select-mode;
                                             data: root.row-payload(i);
 
@@ -2330,6 +2355,20 @@ export component PanelWindow inherits Window {
                                 // A short last row of tiles keeps the column width.
                                 if root.group-cells(g) < root.cols: Rectangle { horizontal-stretch: 1; }
                             }
+                        }
+                    }
+                    EdgeScroll {
+                        x: list.x;
+                        y: list.y;
+                        width: list.width;
+                        height: list.height;
+                        visible: list.visible;
+                        dir: root.edge-dir;
+                        up: list.content-y < -0.5px;
+                        down: list.content-y > list.height - list.content-height + 0.5px;
+                        scroll(delta) => {
+                            root.follow-sel = false;
+                            list.content-y = max(min(list.content-y - delta, 0px), min(list.height - list.content-height, 0px));
                         }
                     }
 

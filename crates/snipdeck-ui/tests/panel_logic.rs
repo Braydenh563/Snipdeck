@@ -127,6 +127,9 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_row_dropped, |from, onto| format!(
         "row-drop:{from}:{onto}"
     ));
+    hook!(on_row_dropped_above, |from, onto| format!(
+        "row-drop-above:{from}:{onto}"
+    ));
     hook!(on_row_dropped_on_tab, |row, tab| format!(
         "row-on-tab:{row}:{tab}"
     ));
@@ -817,6 +820,108 @@ ui_tests! {
         let _ = rows(&ui);
         settle();
         assert!(ui.get_scroll_y().abs() < f32::EPSILON, "back at the top");
+    }
+
+    fn dragging_a_row_held_at_the_top_edge_scrolls_a_long_list_up_and_a_drop_lands_in_the_first_slot() {
+        use slint::platform::{PointerEventButton, WindowEvent};
+        let (ui, log) = start_quiet();
+        ui.set_rows_reorderable(true);
+        fixture::set_rows(&ui, fixture::numbered_rows(40));
+        let _ = rows(&ui);
+        wait(1000);
+        let cards = || {
+            let mut v: Vec<_> = rows(&ui)
+                .into_iter()
+                .filter(|e| e.size().width > 200.0)
+                .collect();
+            v.sort_by(|a, b| a.absolute_position().y.total_cmp(&b.absolute_position().y));
+            v
+        };
+        let area_top = cards().first().expect("rows").absolute_position().y - 4.0;
+        ui.window().dispatch_event(WindowEvent::PointerScrolled {
+            position: LogicalPosition::new(160.0, 300.0),
+            delta_x: 0.0,
+            delta_y: -1500.0,
+        });
+        wait(1000);
+        let _ = rows(&ui);
+        wait(100);
+        assert!(ui.get_scroll_y() < -800.0, "scrolled away: {}", ui.get_scroll_y());
+        let c = cards();
+        let src = &c[c.len() / 2];
+        let from = LogicalPosition::new(
+            src.absolute_position().x + src.size().width / 2.0,
+            src.absolute_position().y + src.size().height / 2.0,
+        );
+        let w = ui.window();
+        let _ = take(&log);
+        w.dispatch_event(WindowEvent::PointerMoved { position: from });
+        w.dispatch_event(WindowEvent::PointerPressed { position: from, button: PointerEventButton::Left });
+        w.dispatch_event(WindowEvent::PointerMoved { position: LogicalPosition::new(from.x, from.y + 12.0) });
+        // Mid-list: nothing scrolls.
+        let before = ui.get_scroll_y();
+        wait(500);
+        assert!((ui.get_scroll_y() - before).abs() < 0.5, "no scroll mid-list");
+        let at_top = LogicalPosition::new(from.x, area_top + 4.0);
+        w.dispatch_event(WindowEvent::PointerMoved { position: at_top });
+        for _ in 0..10 {
+            wait(16);
+        }
+        assert!(ui.get_scroll_y() > before + 20.0, "scrolling at the edge: {before} -> {}", ui.get_scroll_y());
+        w.dispatch_event(WindowEvent::PointerMoved { position: from });
+        wait(16);
+        let stopped = ui.get_scroll_y();
+        for _ in 0..30 {
+            wait(16);
+        }
+        assert!((ui.get_scroll_y() - stopped).abs() < 0.5, "stopped after leaving the band");
+        w.dispatch_event(WindowEvent::PointerMoved { position: at_top });
+        for _ in 0..400 {
+            wait(16);
+        }
+        assert!(ui.get_scroll_y().abs() < 0.5, "reached the top: {}", ui.get_scroll_y());
+        let first = LogicalPosition::new(from.x, area_top + 20.0);
+        w.dispatch_event(WindowEvent::PointerMoved { position: first });
+        w.dispatch_event(WindowEvent::PointerReleased { position: first, button: PointerEventButton::Left });
+        settle();
+        let lines: Vec<_> = take(&log).into_iter().filter(|l| l.starts_with("row-drop")).collect();
+        assert_eq!(lines.len(), 1, "one drop: {lines:?}");
+        assert!(lines[0].ends_with(":0"), "dropped on the first row: {lines:?}");
+    }
+
+    fn an_item_dropped_on_the_top_half_of_a_group_header_lands_above_it_and_on_the_bottom_half_joins() {
+        let (ui, log) = start_quiet();
+        ui.set_rows_reorderable(true);
+        let mut rs = fixture::sample_rows();
+        rs.truncate(4);
+        rs.insert(
+            0,
+            snipdeck_ui::PanelRow {
+                title: "Replies".into(),
+                is_header: true,
+                group_count: 2,
+                ..Default::default()
+            },
+        );
+        rs[1].grouped = true;
+        rs[2].grouped = true;
+        fixture::set_rows(&ui, rs);
+        let _ = rows(&ui);
+        wait(1000);
+        let header = ElementHandle::find_by_accessible_label(&ui, "group Replies, 2 items")
+            .next()
+            .expect("the group header");
+        let (p, size) = (header.absolute_position(), header.size());
+        let at = |f: f32| LogicalPosition::new(p.x + size.width / 2.0, p.y + size.height * f);
+        let item = rows(&ui)
+            .into_iter()
+            .filter(|e| e.size().width > 200.0)
+            .max_by(|a, b| a.absolute_position().y.total_cmp(&b.absolute_position().y))
+            .expect("an item row");
+        let lines = drag_row(&ui, &log, centre(&item), at(0.2));
+        assert_eq!(lines, ["row-drop-above:4:0"], "the top half asks to land above the group");
+        let lines = drag_row(&ui, &log, centre(&item), at(0.8));
+        assert_eq!(lines, ["row-drop:4:0"], "the bottom half is the ordinary drop that joins");
     }
 
     fn wheeling_back_toward_the_selected_row_moves_the_list_by_the_wheel_step_only() {

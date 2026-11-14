@@ -729,9 +729,24 @@ where
         let Some(to) = to else {
             return true;
         };
+        self.place_item_in(Surface::Main, id, list, to, want, old.as_ref());
+        true
+    }
+
+    /// Item `id` of `list` goes to `to`, and into the group `want` (none: out of any group), as one
+    /// undo step (none when nothing changes), then the Main window follows it.
+    fn place_item_in(
+        &mut self,
+        s: Surface,
+        id: ItemId,
+        list: ListId,
+        to: Placement<ItemId>,
+        want: Option<snipdeck_core::GroupId>,
+        old: Option<&GroupRun>,
+    ) {
         let mut changes = vec![Change::Regroup {
             item: id,
-            group: old.as_ref().map(|r| r.group.clone()),
+            group: old.map(|r| r.group.clone()),
         }];
         let done = self.store.atomically(|b| {
             let spot = super::history_ctl::spot_of(b, id)?;
@@ -760,13 +775,49 @@ where
                 .find(|r| r.items.contains(&id))
                 .map(|r| r.group.id);
             // The step is the net change: nothing moved, nothing to undo.
-            Ok(spot != super::history_ctl::spot_of(b, id)?
-                || group != old.as_ref().map(|r| r.group.id))
+            Ok(spot != super::history_ctl::spot_of(b, id)? || group != old.map(|r| r.group.id))
         });
         if let Ok(true) = done {
             self.record_step(Action::Reorder, changes);
         }
-        self.finish_item_move(done.is_ok(), id);
+        if s == Surface::Main {
+            self.finish_item_move(done.is_ok(), id);
+        } else if done.is_ok() {
+            self.library_changed();
+        } else {
+            self.show_toast(failed());
+        }
+    }
+
+    /// An item dragged from Main row `from` onto the top half of the header at row `onto`: it lands
+    /// directly above that group, outside it (a drop on the lower half joins the group instead).
+    /// `false`: not that case, so the caller treats it as an ordinary drop.
+    pub(super) fn drop_above_group(&mut self, s: Surface, from: usize, onto: usize) -> bool {
+        if self.drag_row(s, onto) != Some(DragRow::Header) {
+            return false;
+        }
+        let Some(DragRow::Item { id, real: true }) = self.drag_row(s, from) else {
+            return false;
+        };
+        let (Some(list), Some(run)) = (self.group_list(s), self.group_row(s, onto)) else {
+            return false;
+        };
+        if !self.group_reorderable(s) {
+            self.offer_manual_for_group(s);
+            return true;
+        }
+        let order = self.group_order(s, list);
+        let old = self.group_of_item(s, id);
+        // A run is built from live members only (`groups_of`), so it always has a first item; were that
+        // ever not so, the ordinary drop is the fallback rather than a drop that silently does nothing.
+        let Some(to) = run
+            .items
+            .first()
+            .and_then(|first| place_before(&order, *first, &[id]))
+        else {
+            return false;
+        };
+        self.place_item_in(s, id, list, to, None, old.as_ref());
         true
     }
 

@@ -1078,6 +1078,8 @@ where
             .panel_move_selected(isize::try_from(delta).unwrap_or(0)));
         wire!(on_row_dropped, |ctl, from, onto| ctl
             .panel_drop_row(index(from), index(onto)));
+        wire!(on_row_dropped_above, |ctl, from, onto| ctl
+            .panel_drop_row_above(index(from), index(onto)));
         wire!(on_row_dropped_on_tab, |ctl, row, tab| ctl
             .panel_drop_on_tab(index(row), index(tab)));
         wire!(on_text_dropped, |ctl, text| ctl
