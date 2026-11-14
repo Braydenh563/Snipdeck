@@ -111,6 +111,13 @@ first start.
   password re-seals the copy; erasing the library, or setting or removing the password, turns Hello off. Settings
   search finds it. Unverified on Windows.
 
+- **Colours tab** in the Panel (Settings > Panel "Show Colours tab"): a colour picker (gradient square or hue
+  wheel, hue and alpha sliders, typed HEX, RGB, HSL, HSB and CMYK values), Recently used and Saved swatches, a
+  row per format that pastes into the target app (`Shift+click` copies), WCAG contrast checks and colour schemes.
+  Saved colours are items in a "Colours" list; a list of colours has Copy as CSS variables. **Pick a colour from
+  the screen** (Windows) freezes the screen so you can click any pixel; Settings can copy the picked
+  colour.
+
 ### Changed
 - Long toasts wrap onto several lines instead of being cut off, and their icon grows with the text size; warnings
   are announced as warnings.
@@ -134,6 +141,9 @@ first start.
 - Tab and Shift+Tab reach every field in the item editor, Settings and the fill form, including text fields inside scrolling areas, dropdowns and template choices, and the focus ring is no longer cut off.
 
 ### Fixed
+- Quick add in the Panel takes `Ctrl+V` and closes once the item is created.
+- Drag to reorder: an item can be dropped into the first slot of a list, and the gaps between rows and tiles
+  take a drop.
 - **Open data folder** in Settings and Help opens the library folder again.
 - The first paste after a start pasted the previous clipboard content. The clipboard write is now confirmed
   before the paste key is sent.
