@@ -29,7 +29,7 @@ use crate::{
     crash,
     doctor::{self, Check, DoctorHost, Fix, ReportInfo, Status},
     host::ClipboardText,
-    main_binding::{create_window, raise, set_look},
+    main_binding::{create_window, set_look},
     native_window::fit_when_settled,
     settings::{HotkeyAction, Hotkeys},
     settings_binding::action_name,
@@ -794,7 +794,7 @@ impl HelpUi {
                 fit_when_settled(window);
                 // The checks are fresh every time the window comes up.
                 binding.refresh();
-                raise(window.window());
+                crate::native_window::activate_regular(window);
                 Ok(())
             }
         };

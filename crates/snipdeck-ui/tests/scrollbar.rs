@@ -138,6 +138,29 @@ fn the_hit_strip_grows_to_24px_under_the_pointer() {
     assert_eq!(h.component.get_bar_w(), 24.0);
 }
 
+#[test]
+fn the_thumb_sits_in_the_middle_of_the_hover_well() {
+    let h = harness(20);
+    move_to(&h, at(100.0));
+    h.advance(std::time::Duration::from_millis(300));
+    let _ = h.render_settled();
+    let c = &h.component;
+    let well_mid = c.get_well_x() + c.get_well_w() / 2.0;
+    let thumb_mid = c.get_thumb_x() + c.get_thumb_w() / 2.0;
+    assert!(
+        (well_mid - thumb_mid).abs() < 0.5,
+        "well {}..{}, thumb {}..{}: a blank strip on one side",
+        c.get_well_x(),
+        c.get_well_x() + c.get_well_w(),
+        c.get_thumb_x(),
+        c.get_thumb_x() + c.get_thumb_w()
+    );
+    assert!(c.get_thumb_x() >= c.get_well_x());
+    assert!(c.get_thumb_x() + c.get_thumb_w() <= c.get_well_x() + c.get_well_w());
+    // The hit strip is still the 24px target.
+    assert_eq!(c.get_bar_w(), 24.0);
+}
+
 /// A gallery that has not been drawn yet, so the first render is a frame.
 fn undrawn(dark: bool) -> Harness<ScrollbarGallery> {
     let h = Harness::new(ScrollbarGallery::new, SIZE.0, SIZE.1);

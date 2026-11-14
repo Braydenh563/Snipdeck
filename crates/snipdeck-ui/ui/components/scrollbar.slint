@@ -1,8 +1,8 @@
 import { Theme, Space, Radius, Motion } from "../theme.slint";
 
 // A thin vertical scrollbar laid over the right edge of a scrollable surface (a ListView or a Flickable), in the
-// Windows 11 overlay style: a 3px thumb at rest that grows to 6px, with a 24px hit strip, under the pointer. It
-// is drawn only while the content is taller than the viewport, never reflows the content (place it as a sibling
+// Windows 11 overlay style: under the pointer a 3px thumb grows to 6px inside a faint 14px well, with a 24px hit
+// strip. It is drawn only while the content is taller than the viewport, never reflows the content (place it as a sibling
 // after the surface, with the parent's width and the surface's `y` and `height`), and never fades out.
 // The surface's own wheel handling is untouched: the bar passes scroll events through.
 // The bar only reports where it wants the content (`scroll-to`); the surface applies it, so a surface whose
@@ -31,6 +31,11 @@ export component OverlayScrollbar inherits Rectangle {
 
     // Idle: a strip as narrow as the thumb's margin, clear of the row buttons; hovered or dragged: the 24px target.
     out property <length> strip-w: root.active ? Space.hit-min : Space.s2;
+    // Where the drawn well and thumb sit (the thumb is centred in the well; the tests read these).
+    out property <length> well-x: well.x;
+    out property <length> well-w: well.width;
+    out property <length> thumb-x: thumb.x;
+    out property <length> thumb-w: thumb.width;
     // Fills its parent (like any child Rectangle); only the strip at the right edge takes pointer events.
     visible: root.shown && root.enabled;
 
@@ -38,17 +43,19 @@ export component OverlayScrollbar inherits Rectangle {
         return min(0px, max(-root.max-scroll, y));
     }
 
-    // The hover track: a faint well behind the thumb.
-    Rectangle {
-        x: root.width - root.strip-w;
-        width: root.strip-w;
+    // The hover track: a faint well hugging the thumb (the thumb centred in it), narrower than the hit strip, so no
+    // blank strip is left beside the thumb.
+    well := Rectangle {
+        x: root.width - self.width;
+        width: (root.active ? 6px : 3px) + 2 * Space.s1;
         background: Theme.bg-hover;
         border-radius: Radius.sm;
         opacity: root.active ? 1 : 0;
+        animate width { duration: Motion.quick; easing: Motion.out; }
         animate opacity { duration: Motion.fade; }
     }
 
-    Rectangle {
+    thumb := Rectangle {
         x: root.width - self.width - Space.s1;
         y: root.thumb-y;
         width: root.active ? 6px : 3px;

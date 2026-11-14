@@ -86,6 +86,66 @@ fn main_window_collapses_to_an_icon_rail_below_720px() {
     assert!(!h.component.get_rail(), "full sidebar at 760");
 }
 
+/// The ink of the glyph inside an element's box, resampled to a 12x12 mask (so a 16 px and a 20 px copy of the
+/// same icon give the same mask). Ink is any pixel that differs from the box's fill, sampled at its left edge (the corners are rounded).
+#[allow(
+    clippy::many_single_char_names,
+    clippy::similar_names,
+    reason = "pixel arithmetic: x/y/w/h and min/max of each axis read best short"
+)]
+fn glyph_mask(f: &Frame, e: &i_slint_backend_testing::ElementHandle) -> Vec<bool> {
+    const N: usize = 12;
+    let (p, s) = (e.absolute_position(), e.size());
+    let (x0, y0) = (p.x.round() as u32, p.y.round() as u32);
+    let (w, h) = (s.width.round() as u32, s.height.round() as u32);
+    let bg = f.pixel(x0 + 2, y0 + h / 2);
+    let ink = |x: u32, y: u32| {
+        let c = f.pixel(x0 + x, y0 + y);
+        c.iter()
+            .zip(bg)
+            .map(|(a, b)| u32::from(a.abs_diff(b)))
+            .sum::<u32>()
+            > 60
+    };
+    let pts: Vec<(u32, u32)> = (0..w)
+        .flat_map(|x| (0..h).map(move |y| (x, y)))
+        .filter(|&(x, y)| ink(x, y))
+        .collect();
+    assert!(!pts.is_empty(), "no glyph ink in {w}x{h} box");
+    let (mut minx, mut maxx, mut miny, mut maxy) = (u32::MAX, 0, u32::MAX, 0);
+    for &(x, y) in &pts {
+        (minx, maxx, miny, maxy) = (minx.min(x), maxx.max(x), miny.min(y), maxy.max(y));
+    }
+    let (bw, bh) = ((maxx - minx + 1) as usize, (maxy - miny + 1) as usize);
+    let mut mask = vec![false; N * N];
+    for &(x, y) in &pts {
+        let (cx, cy) = ((x - minx) as usize * N / bw, (y - miny) as usize * N / bh);
+        mask[cy * N + cx] = true;
+    }
+    mask
+}
+
+#[test]
+fn rail_top_two_icons_are_different_glyphs() {
+    use i_slint_backend_testing::ElementHandle;
+    let h = window((640, 520), false);
+    h.component.set_board_name("Work".into());
+    let f = render(&h);
+    assert!(h.component.get_rail());
+    let board = ElementHandle::find_by_accessible_label(&h.component, "Board: Work")
+        .next()
+        .expect("the rail has the board button");
+    let all = ElementHandle::find_by_accessible_label(&h.component, "All items")
+        .next()
+        .expect("the rail has the All items row");
+    let (a, b) = (glyph_mask(&f, &board), glyph_mask(&f, &all));
+    let differing = a.iter().zip(&b).filter(|(x, y)| x != y).count();
+    assert!(
+        differing >= 50, // the same glyph at two sizes differs in about 28, two glyphs in about 87
+        "board and All items show the same glyph ({differing} of 144 cells differ)"
+    );
+}
+
 #[test]
 fn main_window_empty_states() {
     let h = window(SIZE, false);

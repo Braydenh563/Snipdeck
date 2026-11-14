@@ -15,7 +15,7 @@ use i_slint_backend_testing::{AccessibleRole, ElementHandle, ElementQuery, Eleme
 use slint::{ComponentHandle, Global, ModelRc, VecModel, platform::Key};
 use snipdeck_ui::{
     BoardEditor, FormControlsGallery, HelpWindow, ItemEditor, ListEditor, OnboardingWindow,
-    SettingsFilter, SettingsPage, TagManager,
+    SegmentedFitGallery, SettingsFilter, SettingsPage, TagManager,
 };
 
 #[path = "support/mod.rs"]
@@ -1640,6 +1640,30 @@ ui_tests! {
         assert_eq!(disabled[0].accessible_enabled(), Some(false));
         disabled[0].invoke_accessible_default_action();
         assert_eq!(ui.get_changes(), 3);
+    }
+
+    fn a_segmented_control_keeps_air_around_every_label() {
+        // No width of its own, at the start of a row: the control is as wide as its cells want, which is where
+        // a bare label (text edge to cell edge, the divider 1.5px away) shows.
+        let ui = SegmentedFitGallery::new().expect("gallery");
+        ui.show().expect("show");
+        settle();
+        let labels: Vec<_> = ElementHandle::find_by_element_id(&ui, "Segmented::label").collect();
+        assert_eq!(labels.len(), 3, "one label per option");
+        for name in ["Text", "Link", "Template"] {
+            let cell = find(&ui, name, AccessibleRole::RadioButton);
+            let cell_x = cell.absolute_position().x;
+            let cell_w = cell.size().width;
+            let label = labels
+                .iter()
+                .find(|l| {
+                    let p = l.absolute_position().x;
+                    p >= cell_x - 0.5 && p <= cell_x + cell_w
+                })
+                .expect("a label inside the cell");
+            let gap = cell_w - label.size().width;
+            assert!(gap >= 2.0 * 8.0, "{name}: {gap}px of air around the label in a {cell_w}px cell");
+        }
     }
 
     fn the_select_field_opens_with_the_keyboard_and_the_highlight_chooses() {

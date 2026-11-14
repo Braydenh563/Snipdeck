@@ -23,13 +23,15 @@ use std::ffi::c_void;
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::UI::Shell::{DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass};
 use windows::Win32::UI::WindowsAndMessaging::{
-    GWL_EXSTYLE, GetForegroundWindow, GetWindowLongPtrW, HWND_NOTOPMOST, HWND_TOPMOST,
-    MA_NOACTIVATE, STYLESTRUCT, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE,
-    SWP_NOZORDER, SetWindowLongPtrW, SetWindowPos, WM_MOUSEACTIVATE, WM_NCDESTROY,
-    WM_STYLECHANGING, WS_EX_APPWINDOW, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
+    FLASHW_ALL, FLASHW_TIMERNOFG, FLASHWINFO, FlashWindowEx, GWL_EXSTYLE, GetForegroundWindow,
+    GetWindowLongPtrW, HWND_NOTOPMOST, HWND_TOPMOST, IsIconic, MA_NOACTIVATE, STYLESTRUCT,
+    SW_RESTORE, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER,
+    SetForegroundWindow, SetWindowLongPtrW, SetWindowPos, ShowWindow, WM_MOUSEACTIVATE,
+    WM_NCDESTROY, WM_STYLECHANGING, WS_EX_APPWINDOW, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
+    WS_EX_TOPMOST,
 };
 
-use crate::win_logic::{self, ZStep, panel_ex_style};
+use crate::win_logic::{self, ActivateStep, ZStep, panel_ex_style};
 
 const _: () = {
     assert!(win_logic::WS_EX_NOACTIVATE == WS_EX_NOACTIVATE.0);
@@ -167,6 +169,51 @@ pub fn raise_without_activating(hwnd: isize) -> bool {
         }
     }
     true
+}
+
+/// Brings the ordinary window `hwnd` (Main, the editors) to the foreground and focuses it, by
+/// [`win_logic::activate_steps`]; if Windows refuses, raises it and flashes its taskbar button
+/// ([`win_logic::activate_fallback`]). Call it on the thread that owns the window, inside the
+/// input handler that asked for it. Returns whether the window got the foreground.
+pub fn bring_to_foreground(hwnd: isize) -> bool {
+    if hwnd == 0 {
+        return false;
+    }
+    let handle = HWND(hwnd as *mut c_void);
+    // SAFETY: plain calls on a window handle of this thread; a stale handle makes them fail.
+    unsafe {
+        let mut accepted = false;
+        for step in win_logic::activate_steps(IsIconic(handle).as_bool()) {
+            match step {
+                ActivateStep::Restore => {
+                    let _ = ShowWindow(handle, SW_RESTORE);
+                }
+                ActivateStep::Foreground => accepted = SetForegroundWindow(handle).as_bool(),
+                ActivateStep::Raise | ActivateStep::Flash => {}
+            }
+        }
+        if !accepted {
+            for step in win_logic::activate_fallback() {
+                match step {
+                    ActivateStep::Raise => {
+                        raise_without_activating(hwnd);
+                    }
+                    ActivateStep::Flash => {
+                        let info = FLASHWINFO {
+                            cbSize: size_of::<FLASHWINFO>() as u32,
+                            hwnd: handle,
+                            dwFlags: FLASHW_ALL | FLASHW_TIMERNOFG,
+                            uCount: 3,
+                            dwTimeout: 0,
+                        };
+                        let _ = FlashWindowEx(&raw const info);
+                    }
+                    ActivateStep::Restore | ActivateStep::Foreground => {}
+                }
+            }
+        }
+        accepted
+    }
 }
 
 /// Puts the window `hwnd` just behind the foreground window, without activating it or moving it.

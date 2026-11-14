@@ -61,6 +61,10 @@ export component TextField inherits VerticalLayout {
     in property <bool> show-hover: false;
     in property <bool> show-focus: false;
     in property <bool> show-composing: false;
+    // Drops the Slint focus when the field loses it (the window lost the OS foreground). Slint keeps the focus item
+    // across a deactivation, so a click into the same field would be no focus change; with this the click is one
+    // (the Panel, a no-activate window, asks the host for the keyboard on it).
+    in property <bool> release-on-blur: false;
     // Counts up to ask for keyboard focus: each change to a value above 0 focuses the field and selects its text,
     // as Tab does (0 means no request).
     // A host that cannot name the field (one of a repeated set) uses this instead of `focus()`. A field created
@@ -95,6 +99,11 @@ export component TextField inherits VerticalLayout {
     // Puts the caret at a UTF-8 byte offset (also scrolls it into view).
     public function set-cursor(offset: int) { input.set-selection-offsets(offset, offset); }
 
+    changed has-focus => {
+        if (root.release-on-blur && !input.has-focus) {
+            input.clear-focus();
+        }
+    }
     changed focus-request => {
         if (root.focus-request > 0) {
             input.focus();
@@ -203,55 +212,90 @@ export component TextField inherits VerticalLayout {
                     // No `clip` here: the Flickable clips its content, and a clipping Rectangle between it and an
                     // outer scroll view makes Slint skip the field when Tab-ing while it is scrolled out of view.
 
-                    flick := Flickable {
-                        width: parent.width;
-                        height: parent.height;
-                        interactive: false;
-                        content-width: root.single-line ? max(self.width, input.preferred-width + root.caret-w) : self.width;
-                        content-height: root.single-line ? self.height : max(self.height, input.preferred-height);
-
-                        input := TextInput {
-                            x: 0px;
-                            y: 0px;
-                            width: flick.content-width;
-                            height: root.single-line ? flick.height : max(flick.height, self.preferred-height);
-                            single-line: root.single-line;
-                            wrap: root.single-line ? TextWrap.no-wrap : TextWrap.word-wrap;
-                            vertical-alignment: root.single-line ? TextVerticalAlignment.center : TextVerticalAlignment.top;
-                            enabled: root.enabled;
-                            read-only: root.read-only;
-                            input-type: root.input-type;
-                            color: Theme.text-primary;
-                            font-family: root.monospace ? Fonts.mono : Fonts.sans;
-                            font-size: Type.base;
-                            font-weight: Type.regular;
-                            text-cursor-width: root.caret-w;
-                            selection-background-color: Theme.accent;
-                            selection-foreground-color: Theme.text-on-accent;
-                            page-height: flick.height;
-                            // The wrapper carries the accessibility node; the inner one would duplicate it.
-                            accessible-role: none;
-
-                            cursor-position-changed(pos) => {
-                                root.cursor-x = pos.x;
-                                root.cursor-y = pos.y;
-                                root.reveal(pos.x, pos.y);
-                            }
-                            changed preedit-text => {
-                                // No cursor event while composing: keep the end of the composition visible.
-                                if (self.preedit-text != "" && root.single-line) {
-                                    root.reveal(root.cursor-x + measure.preferred-width, root.cursor-y);
+                    // Cut, Copy, Paste and Select all, as std-widgets' LineEdit has (a raw TextInput has no menu).
+                    // The Menu key and Shift+F10 open it too. Paste reads the clipboard itself, so it needs no
+                    // foreground; the menu takes the caret to the field first so a later key lands here.
+                    ContextMenuArea {
+                        enabled: root.enabled;
+                        Menu {
+                            if !root.read-only: MenuItem {
+                                title: @tr("Cut");
+                                enabled: input.anchor-position-byte-offset != input.cursor-position-byte-offset;
+                                activated => {
+                                    input.cut();
                                 }
                             }
-                            edited => { root.edited(self.text); }
-                            accepted => { root.accepted(self.text); }
-                            key-pressed(event) => {
-                                // Key press only: the matching release of an IME-consumed key still arrives (S2 F4).
-                                if (event.text == Key.Escape && root.clear-visible && self.preedit-text == "") {
-                                    root.clear();
-                                    return accept;
+                            MenuItem {
+                                title: @tr("Copy");
+                                enabled: input.anchor-position-byte-offset != input.cursor-position-byte-offset;
+                                activated => { input.copy(); }
+                            }
+                            if !root.read-only: MenuItem {
+                                title: @tr("Paste");
+                                activated => {
+                                    input.focus();
+                                    input.paste();
                                 }
-                                return reject;
+                            }
+                            MenuItem {
+                                title: @tr("Select all");
+                                enabled: input.text != "";
+                                activated => {
+                                    input.focus();
+                                    input.select-all();
+                                }
+                            }
+                        }
+                        flick := Flickable {
+                            width: parent.width;
+                            height: parent.height;
+                            interactive: false;
+                            content-width: root.single-line ? max(self.width, input.preferred-width + root.caret-w) : self.width;
+                            content-height: root.single-line ? self.height : max(self.height, input.preferred-height);
+
+                            input := TextInput {
+                                x: 0px;
+                                y: 0px;
+                                width: flick.content-width;
+                                height: root.single-line ? flick.height : max(flick.height, self.preferred-height);
+                                single-line: root.single-line;
+                                wrap: root.single-line ? TextWrap.no-wrap : TextWrap.word-wrap;
+                                vertical-alignment: root.single-line ? TextVerticalAlignment.center : TextVerticalAlignment.top;
+                                enabled: root.enabled;
+                                read-only: root.read-only;
+                                input-type: root.input-type;
+                                color: Theme.text-primary;
+                                font-family: root.monospace ? Fonts.mono : Fonts.sans;
+                                font-size: Type.base;
+                                font-weight: Type.regular;
+                                text-cursor-width: root.caret-w;
+                                selection-background-color: Theme.accent;
+                                selection-foreground-color: Theme.text-on-accent;
+                                page-height: flick.height;
+                                // The wrapper carries the accessibility node; the inner one would duplicate it.
+                                accessible-role: none;
+
+                                cursor-position-changed(pos) => {
+                                    root.cursor-x = pos.x;
+                                    root.cursor-y = pos.y;
+                                    root.reveal(pos.x, pos.y);
+                                }
+                                changed preedit-text => {
+                                    // No cursor event while composing: keep the end of the composition visible.
+                                    if (self.preedit-text != "" && root.single-line) {
+                                        root.reveal(root.cursor-x + measure.preferred-width, root.cursor-y);
+                                    }
+                                }
+                                edited => { root.edited(self.text); }
+                                accepted => { root.accepted(self.text); }
+                                key-pressed(event) => {
+                                    // Key press only: the matching release of an IME-consumed key still arrives (S2 F4).
+                                    if (event.text == Key.Escape && root.clear-visible && self.preedit-text == "") {
+                                        root.clear();
+                                        return accept;
+                                    }
+                                    return reject;
+                                }
                             }
                         }
                     }
