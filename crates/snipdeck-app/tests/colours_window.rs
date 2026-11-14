@@ -58,6 +58,8 @@ fn rig(dark: bool, size: (u32, u32)) -> Rig {
     let now: Timestamp = "2026-10-17T10:30:00Z".parse().expect("timestamp");
     let settings = Settings {
         theme: if dark { Theme::Dark } else { Theme::Light },
+        // Answered, so the first-run Recent question does not cover the Panel in tests of the Colours tab.
+        recent_history_asked: true,
         ..Settings::new_install()
     };
     let ctl = Rc::new(RefCell::new(demo::controller(settings, now).expect("demo")));
