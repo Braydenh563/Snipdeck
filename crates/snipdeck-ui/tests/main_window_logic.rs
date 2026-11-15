@@ -246,7 +246,38 @@ fn start() -> (MainWindow, Log) {
 macro_rules! ui_tests {
     ($(fn $name:ident() $body:block)*) => {
         $(
-            #[test]
+            fn the_sidebar_toggle_lives_in_the_sidebar_header() {
+        let (ui, _log) = start();
+        let sidebar_w = f64::from(ui.get_sidebar_width());
+        let toggle = find(&ui, "Collapse sidebar (Ctrl+B)", AccessibleRole::Button);
+        let board = find(&ui, "Board: Work", AccessibleRole::Button);
+        let (tp, tz) = (toggle.absolute_position(), toggle.size());
+        let (bp, bz) = (board.absolute_position(), board.size());
+        assert!(
+            f64::from(tp.x + tz.width) <= sidebar_w,
+            "inside the sidebar: right edge {} of {sidebar_w}",
+            tp.x + tz.width
+        );
+        assert!(
+            sidebar_w - f64::from(tp.x + tz.width) <= 12.0,
+            "right-aligned in the sidebar header"
+        );
+        assert!(tp.x > bp.x + bz.width, "after the board switcher, on its row");
+        let (tc, bc) = (tp.y + tz.height / 2.0, bp.y + bz.height / 2.0);
+        assert!((tc - bc).abs() <= 1.0, "same row: {tc} vs {bc}");
+        // On the rail it tops the rail, above the board button.
+        ui.set_sidebar_collapsed(true);
+        settle();
+        let toggle = find(&ui, "Expand sidebar (Ctrl+B)", AccessibleRole::Button);
+        let board = find(&ui, "Board: Work", AccessibleRole::Button);
+        assert!(toggle.absolute_position().y < board.absolute_position().y, "top of the rail");
+        assert!(
+            f64::from(toggle.absolute_position().x + toggle.size().width) <= 48.0,
+            "within the rail"
+        );
+    }
+
+    #[test]
             fn $name() {
                 on_ui_thread(|| $body);
             }
@@ -1754,6 +1785,25 @@ ui_tests! {
     }
 
     // ---- Toolbar -----------------------------------------------------------------------------------
+
+    fn the_search_clear_button_is_centred_smaller_than_the_box_and_inset_like_the_magnifier() {
+        let (ui, _log) = start();
+        chord(ui.window(), &[Key::Control], "f");
+        type_text(ui.window(), "inv");
+        settle();
+        let field = find(&ui, "Search snippets", AccessibleRole::TextInput);
+        let clear = find(&ui, "Clear search", AccessibleRole::Button);
+        let (fp, fz) = (field.absolute_position(), field.size());
+        let (cp, cz) = (clear.absolute_position(), clear.size());
+        let (fc, cc) = (fp.y + fz.height / 2.0, cp.y + cz.height / 2.0);
+        assert!((fc - cc).abs() <= 1.0, "the clear button is centred in the box: {cc} vs {fc}");
+        assert!(cz.height <= fz.height - 8.0, "smaller than the box: {} in {}", cz.height, fz.height);
+        let inset = (fp.x + fz.width) - (cp.x + cz.width);
+        // The glyph is centred in its button, so the button's inset plus its padding mirrors the
+        // magnifier's 8px inset on the left.
+        let glyph_inset = inset + (cz.width - 16.0 * 0.75) / 2.0;
+        assert!((glyph_inset - 10.0).abs() <= 2.0, "right inset mirrors the magnifier: {glyph_inset}");
+    }
 
     fn search_takes_ctrl_f_and_slash_reports_edits_and_clears() {
         let (ui, log) = start();

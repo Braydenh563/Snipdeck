@@ -414,6 +414,12 @@ msgstr "Liste „{}“ leeren?"
 msgid "Clear list…"
 msgstr "Liste leeren…"
 
+msgid "Clear recent emoji and colours"
+msgstr "Zuletzt verwendete Emojis und Farben löschen"
+
+msgid "Clear recent emoji and colours…"
+msgstr "Zuletzt verwendete Emojis und Farben löschen…"
+
 msgid "Clear recent history"
 msgstr "Verlauf der letzten Kopien leeren"
 
@@ -443,6 +449,9 @@ msgstr "Suche leeren, dann schließen"
 
 msgid "Clear the shortcut for {}"
 msgstr "Tastenkürzel für {} entfernen"
+
+msgid "Clear them"
+msgstr "Löschen"
 
 msgid "Click"
 msgstr "Klick"
@@ -1122,6 +1131,9 @@ msgstr "Zum Beispiel E-Mail-Antworten"
 msgid "For example, Work"
 msgstr "Zum Beispiel Arbeit"
 
+msgid "Forgets the emoji, symbols and colours you used lately. Searches are never kept, so there is nothing else to clear."
+msgstr "Vergisst die Emojis, Symbole und Farben, die du zuletzt benutzt hast. Suchanfragen werden nie gespeichert, es gibt also nichts weiter zu löschen."
+
 msgid "Format"
 msgstr "Format"
 
@@ -1397,6 +1409,9 @@ msgstr "Panel im Vordergrund halten (anheften)"
 
 msgid "Keep the Panel open"
 msgstr "Panel geöffnet lassen"
+
+msgid "Keep them"
+msgstr "Behalten"
 
 msgid "Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept."
 msgstr "Behält den kopierten Text für die letzten {} Kopien oder {} Tage, je nachdem, was zuerst eintritt, damit du ihn wiederfindest oder in einer Liste speichern kannst. Vertrauliche Textbausteine, Passwortmanager und die von dir ausgeschlossenen Apps werden nie gespeichert."
@@ -2247,6 +2262,9 @@ msgstr "„Zuletzt“ behält den kopierten Text, nur auf diesem Computer, für 
 
 msgid "Recently used"
 msgstr "Kürzlich verwendet"
+
+msgid "Recently used emoji and colours cleared"
+msgstr "Zuletzt verwendete Emojis und Farben gelöscht"
 
 msgid "Red"
 msgstr "Rot"

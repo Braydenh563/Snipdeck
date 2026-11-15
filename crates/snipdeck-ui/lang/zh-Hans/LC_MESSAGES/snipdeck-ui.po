@@ -413,6 +413,12 @@ msgstr "清空列表“{}”？"
 msgid "Clear list…"
 msgstr "清空列表…"
 
+msgid "Clear recent emoji and colours"
+msgstr "清除最近使用的表情符号和颜色"
+
+msgid "Clear recent emoji and colours…"
+msgstr "清除最近使用的表情符号和颜色…"
+
 msgid "Clear recent history"
 msgstr "清除最近记录"
 
@@ -442,6 +448,9 @@ msgstr "先清除搜索，然后关闭"
 
 msgid "Clear the shortcut for {}"
 msgstr "清除 {} 的快捷键"
+
+msgid "Clear them"
+msgstr "清除"
 
 msgid "Click"
 msgstr "点击"
@@ -1121,6 +1130,9 @@ msgstr "例如：邮件回复"
 msgid "For example, Work"
 msgstr "例如：工作"
 
+msgid "Forgets the emoji, symbols and colours you used lately. Searches are never kept, so there is nothing else to clear."
+msgstr "忘记最近使用的表情符号、符号和颜色。搜索内容从不保存，因此没有其他需要清除的内容。"
+
 msgid "Format"
 msgstr "格式"
 
@@ -1393,6 +1405,9 @@ msgstr "保持面板置顶(固定)"
 
 msgid "Keep the Panel open"
 msgstr "保持面板打开"
+
+msgid "Keep them"
+msgstr "保留"
 
 msgid "Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept."
 msgstr "保留你复制的文本，最多保留最近 {} 次复制或 {} 天，以先到者为准，方便你再次找到或保存到列表。敏感片段、密码管理器以及你排除的应用的内容不会被保留。"
@@ -2241,6 +2256,9 @@ msgstr "“最近”会保留你复制的文本，仅保存在这台电脑上，
 
 msgid "Recently used"
 msgstr "最近使用"
+
+msgid "Recently used emoji and colours cleared"
+msgstr "已清除最近使用的表情符号和颜色"
 
 msgid "Red"
 msgstr "红色"

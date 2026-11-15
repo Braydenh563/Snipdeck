@@ -1829,6 +1829,9 @@ where
         wire!(on_recent_history_cleared, |core| {
             core.act(Controller::recent_clear);
         });
+        wire!(on_picker_recents_cleared, |core| {
+            core.act(Controller::picker_recents_clear);
+        });
         wire!(on_reduce_motion_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.reduce_motion = on)));
         wire!(on_panel_width_chosen, |core, width| core

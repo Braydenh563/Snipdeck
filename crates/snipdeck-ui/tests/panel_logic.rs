@@ -2342,6 +2342,26 @@ ui_tests! {
         assert_eq!(ui.get_query(), "b");
     }
 
+    fn the_search_clear_button_is_centred_smaller_than_the_box_and_inset_like_the_magnifier() {
+        let (ui, _log) = start();
+        ui.set_search_always(true);
+        settle();
+        type_text(ui.window(), "a");
+        settle();
+        let field = find(&ui, "Search snippets", AccessibleRole::TextInput);
+        let clear = find(&ui, "Clear search", AccessibleRole::Button);
+        let (fp, fz) = (field.absolute_position(), field.size());
+        let (cp, cz) = (clear.absolute_position(), clear.size());
+        let (fc, cc) = (fp.y + fz.height / 2.0, cp.y + cz.height / 2.0);
+        assert!((fc - cc).abs() <= 1.0, "the clear button is centred in the box: {cc} vs {fc}");
+        assert!(cz.height <= fz.height - 8.0, "smaller than the box: {} in {}", cz.height, fz.height);
+        let inset = (fp.x + fz.width) - (cp.x + cz.width);
+        // The glyph is centred in its button, so the button's inset plus its padding mirrors the
+        // magnifier's 8px inset on the left.
+        let glyph_inset = inset + (cz.width - 16.0 * 0.75) / 2.0;
+        assert!((glyph_inset - 10.0).abs() <= 2.0, "right inset mirrors the magnifier: {glyph_inset}");
+    }
+
     fn search_always_keeps_the_tabs_and_pins_and_has_no_close_button_only_a_clear_one() {
         let (ui, log) = start();
         ui.set_search_always(true);

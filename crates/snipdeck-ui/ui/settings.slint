@@ -415,6 +415,8 @@ export component SettingsPage inherits Window {
     callback expand-triggers-toggled(on: bool);
     callback suggest-triggers-toggled(on: bool);
     callback recent-history-cleared();
+    callback picker-recents-cleared();
+    property <bool> picker-recents-asking: false;
     callback panel-in-taskbar-toggled(on: bool);
     callback panel-hide-on-blur-toggled(on: bool);
     callback screenshot-keep-panel-toggled(on: bool);
@@ -478,7 +480,7 @@ export component SettingsPage inherits Window {
     // Titles of section 3 (Opening the Panel), for the search. A test checks that every row title is in here.
     property <string> keys-3: @tr("Opening the Panel") + " " + @tr("Tray icon click opens") + " " + @tr("Panel opens") + " " + @tr("After a paste or copy") + " " + @tr("Hide the panel when it loses focus") + " " + @tr("Show the Panel in the taskbar and Alt+Tab") + " " + @tr("Keep Panel visible during screenshots") + " " + @tr("Dock to") + " " + @tr("Docked panel uses the full edge") + " " + @tr("Open a docked panel by") + " " + @tr("Hover delay") + " " + @tr("Leave delay") + " " + @tr("Picker position") + " " + @tr("Start with Windows") + " " + @tr("When Windows starts") + " " + @tr("Keep running in the tray when the window closes");
     // Titles of section 4 (Privacy), for the search. A test checks that every row title is in here.
-    property <string> keys-4: @tr("Privacy") + " " + @tr("fingerprint face PIN biometric lock") + " " + @tr("Keep a Recent inbox of what you copy") + " " + @tr("Clear recent history") + " " + @tr("Clear the clipboard after copying a sensitive item") + " " + @tr("Master password") + " " + @tr("Unlock with Windows Hello");
+    property <string> keys-4: @tr("Privacy") + " " + @tr("fingerprint face PIN biometric lock") + " " + @tr("Keep a Recent inbox of what you copy") + " " + @tr("Clear recent history") + " " + @tr("Clear recent emoji and colours") + " " + @tr("Clear the clipboard after copying a sensitive item") + " " + @tr("Master password") + " " + @tr("Unlock with Windows Hello");
     // Titles of section 5 (Programs), for the search. A test checks that every row title is in here.
     property <string> keys-5: @tr("Programs") + " " + @tr("never paste excluded apps");
     // Titles of section 6 (Typing), for the search. A test checks that every row title is in here.
@@ -1085,6 +1087,34 @@ export component SettingsPage inherits Window {
                             clicked => { root.recent-history-cleared(); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Clear recent emoji and colours");
+                        description: @tr("Forgets the emoji, symbols and colours you used lately. Searches are never kept, so there is nothing else to clear.");
+                        HorizontalLayout {
+                            spacing: Space.s2;
+                            alignment: end;
+                            if !root.picker-recents-asking: Button {
+                                text: @tr("Clear recent emoji and colours…");
+                                variant: ButtonVariant.ghost;
+                                clicked => { root.picker-recents-asking = true; }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                            if root.picker-recents-asking: Button {
+                                text: @tr("Keep them");
+                                clicked => { root.picker-recents-asking = false; }
+                            }
+                            if root.picker-recents-asking: Button {
+                                text: @tr("Clear them");
+                                variant: ButtonVariant.danger;
+                                clicked => {
+                                    root.picker-recents-asking = false;
+                                    root.picker-recents-cleared();
+                                }
                             }
                         }
                     }

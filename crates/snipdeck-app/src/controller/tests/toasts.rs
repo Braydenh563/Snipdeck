@@ -539,6 +539,22 @@ fn deleting_and_clearing_recent_entries_say_so() {
 }
 
 #[test]
+fn clearing_picker_recents_empties_emoji_and_colours_and_says_so() {
+    let mut w = world();
+    w.ctl.update_settings(|s| {
+        s.colours_recent = vec![snipdeck_colour::RecentColour {
+            hex: "#3a7bd5".into(),
+            used_at: 1,
+        }];
+        s.symbols_recent = vec![snipdeck_symbols::RecentEntry::default()];
+    });
+    w.ctl.picker_recents_clear();
+    assert!(w.ctl.settings().colours_recent.is_empty());
+    assert!(w.ctl.settings().symbols_recent.is_empty());
+    assert_eq!(shown(&w), Some(ToastMessage::PickerRecentsCleared));
+}
+
+#[test]
 fn docking_and_floating_again_say_which() {
     let mut w = world();
     w.ctl.frame_changed(

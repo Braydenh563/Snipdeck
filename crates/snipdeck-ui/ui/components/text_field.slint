@@ -191,7 +191,7 @@ export component TextField inherits VerticalLayout {
 
             HorizontalLayout {
                 padding-left: Space.s2;
-                padding-right: root.clear-visible ? Space.s0-5 : Space.s2;
+                padding-right: root.clear-visible ? Space.s1 : Space.s2;
                 padding-top: root.pad-y;
                 padding-bottom: root.pad-y;
                 spacing: Space.s2;
@@ -331,26 +331,32 @@ export component TextField inherits VerticalLayout {
                         accessible-role: none;
                     }
                 }
+                // A slot as tall as the field, so the layout cannot pin the button to the top; the button sits
+                // in its middle. The 24x20 target is the glyph (12px, a little under the magnifier's 16px) plus
+                // air, and ends 4px from the border: the glyph's centre mirrors the magnifier's.
                 if root.clear-visible: Rectangle {
                     width: Space.hit-min * SystemLook.text-scale;
-                    height: Space.hit-min * SystemLook.text-scale;
-                    y: root.single-line ? (parent.height - self.height) / 2 : (root.line-h - self.height) / 2;
-                    border-radius: Radius.sm;
-                    background: clear-touch.pressed ? Theme.bg-sunken : clear-touch.has-hover ? Theme.bg-hover : transparent;
-                    accessible-role: button;
-                    accessible-label: root.clear-label;
-                    accessible-action-default => { root.clear(); }
+                    clear-button := Rectangle {
+                        width: parent.width;
+                        height: Space.s5 * SystemLook.text-scale;
+                        y: root.single-line ? (parent.height - self.height) / 2 : (root.line-h - self.height) / 2;
+                        border-radius: Radius.sm;
+                        background: clear-touch.pressed ? Theme.bg-sunken : clear-touch.has-hover ? Theme.bg-hover : transparent;
+                        accessible-role: button;
+                        accessible-label: root.clear-label;
+                        accessible-action-default => { root.clear(); }
 
-                    Icon {
-                        source: Icons.x;
-                        size: Space.s4 * SystemLook.text-scale;
-                        tint: clear-touch.has-hover ? Theme.text-primary : Theme.text-secondary;
-                        x: (parent.width - self.width) / 2;
-                        y: (parent.height - self.height) / 2;
-                    }
-                    clear-touch := TouchArea {
-                        mouse-cursor: MouseCursor.default;
-                        clicked => { root.clear(); }
+                        Icon {
+                            source: Icons.x;
+                            size: Space.s3 * SystemLook.text-scale;
+                            tint: clear-touch.has-hover ? Theme.text-primary : Theme.text-secondary;
+                            x: (parent.width - self.width) / 2;
+                            y: (parent.height - self.height) / 2;
+                        }
+                        clear-touch := TouchArea {
+                            mouse-cursor: MouseCursor.default;
+                            clicked => { root.clear(); }
+                        }
                     }
                 }
             }

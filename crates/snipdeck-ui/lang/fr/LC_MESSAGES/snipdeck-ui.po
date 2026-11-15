@@ -414,6 +414,12 @@ msgstr "Vider la liste « {} » ?"
 msgid "Clear list…"
 msgstr "Vider la liste…"
 
+msgid "Clear recent emoji and colours"
+msgstr "Effacer les émojis et couleurs récents"
+
+msgid "Clear recent emoji and colours…"
+msgstr "Effacer les émojis et couleurs récents…"
+
 msgid "Clear recent history"
 msgstr "Effacer l'historique récent"
 
@@ -443,6 +449,9 @@ msgstr "Effacer la recherche, puis fermer"
 
 msgid "Clear the shortcut for {}"
 msgstr "Effacer le raccourci de {}"
+
+msgid "Clear them"
+msgstr "Effacer"
 
 msgid "Click"
 msgstr "Clic"
@@ -1122,6 +1131,9 @@ msgstr "Par exemple, Réponses e-mail"
 msgid "For example, Work"
 msgstr "Par exemple, Travail"
 
+msgid "Forgets the emoji, symbols and colours you used lately. Searches are never kept, so there is nothing else to clear."
+msgstr "Oublie les émojis, symboles et couleurs utilisés récemment. Les recherches ne sont jamais conservées : il n'y a rien d'autre à effacer."
+
 msgid "Format"
 msgstr "Format"
 
@@ -1397,6 +1409,9 @@ msgstr "Garder le panneau au premier plan (épingler)"
 
 msgid "Keep the Panel open"
 msgstr "Garder le Panneau ouvert"
+
+msgid "Keep them"
+msgstr "Garder"
 
 msgid "Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept."
 msgstr "Conserve le texte que vous copiez pour les {} dernières copies ou les {} derniers jours, selon la première limite atteinte, afin que vous puissiez le retrouver ou l'enregistrer dans une liste. Les extraits sensibles, les gestionnaires de mots de passe et les applications que vous excluez ne sont jamais conservés."
@@ -2247,6 +2262,9 @@ msgstr "Récents conserve le texte que vous copiez, sur cet ordinateur uniquemen
 
 msgid "Recently used"
 msgstr "Utilisés récemment"
+
+msgid "Recently used emoji and colours cleared"
+msgstr "Émojis et couleurs récents effacés"
 
 msgid "Red"
 msgstr "Rouge"

@@ -341,6 +341,7 @@ where
         ToastMessage::BoardSaved => t.invoke_board_saved(),
         ToastMessage::RecentDeleted => t.invoke_recent_deleted(),
         ToastMessage::RecentCleared => t.invoke_recent_cleared(),
+        ToastMessage::PickerRecentsCleared => t.invoke_picker_recents_cleared(),
         ToastMessage::DockSet(edge) => t.invoke_dock_set(match edge {
             None => 0,
             Some(DockEdge::Left) => 1,

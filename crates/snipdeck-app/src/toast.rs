@@ -342,6 +342,8 @@ pub enum ToastMessage {
     RecentDeleted,
     /// "Recent history cleared".
     RecentCleared,
+    /// "Recently used emoji and colours cleared".
+    PickerRecentsCleared,
     /// "File moved or deleted": a Recent entry's files are gone from where they were copied.
     FileMoved,
     /// "Some files were left out: together they are over 64 MB": a files entry passes the total cap.
