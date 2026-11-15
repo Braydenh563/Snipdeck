@@ -20,7 +20,8 @@ esac; done
 fast_checks() {
   cargo fmt --all --check &&
     cargo clippy --workspace --all-targets --locked -- -D warnings &&
-    RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
+    RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked &&
+    python3 scripts/third_party_notices.py --check
 }
 # --- ALL TESTS (from CI) ---
 all_tests() {

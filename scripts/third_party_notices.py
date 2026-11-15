@@ -2,7 +2,7 @@
 """Keeps the Rust-crate part of THIRD_PARTY_NOTICES.md complete.
 
   python3 scripts/third_party_notices.py          rewrite the generated section
-  python3 scripts/third_party_notices.py --check  fail if the section is stale (CI)
+  python3 scripts/third_party_notices.py --check  fail if the section is stale (run by scripts/gate.sh)
 
 The section between the BEGIN/END markers lists every crate that is linked into the Windows
 build (normal dependencies of the workspace crates, reached through `cargo metadata`, Slint
