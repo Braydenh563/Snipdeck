@@ -77,19 +77,27 @@ More in [`tools/launcher/README.md`](tools/launcher/README.md).
 
 - **Panel.** A small always-on-top window with your current board. It can dock to a screen edge and fold
   into a thin strip. Lists show as tabs, and pinned items sit in a strip under them.
+- **Colours tab.** A colour tool in the Panel: pick on a gradient square or hue wheel, type HEX, RGB, HSL, HSB
+  or CMYK, keep Recent and Saved colours, paste any format with one click, check contrast, and pick a colour
+  from anywhere on the screen with the eyedropper (Windows).
 - **Picker.** A search box at your text caret. It searches every board. Type, press <kbd>Enter</kbd>, done.
 - **Main window.** Boards, lists, tags, Pinned and Trash. Compact, comfortable and tile views, search,
-  multi-select, drag and drop, and keyboard reordering. A command palette (<kbd>Ctrl</kbd>+<kbd>K</kbd>) lists
-  every action.
+  multi-select, drag to reorder, and keyboard reordering. The sidebar folds with the button in its header
+  (<kbd>Ctrl</kbd>+<kbd>B</kbd>). A command palette (<kbd>Ctrl</kbd>+<kbd>K</kbd> or
+  <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>) lists every action.
+- **Quick add and preview.** Press <kbd>Ctrl</kbd>+<kbd>N</kbd> for a one-box quick add in the Panel or an open
+  list, and **Preview** in the editor shows the item as the Panel and the list draw it.
 - **Six kinds of item.** Text, code, link, template, image and file.
 - **Templates.** Insert `{date}`, `{time}` or your own date format. Fields and choices ask you
   for a value each time.
 - **Quick capture.** Choose a hotkey for it in Settings (it is off until you do), then press it to save the clipboard text as a new item.
-- **Recent inbox.** Asks first: nothing is kept until you say Yes (one switch in Settings changes it). Keeps what you copy for 7 days (last 200 copies), skips password managers and
+- **Recent copies.** Asks first: nothing is kept until you say Yes (one switch in Settings changes it). Keeps what you copy for 7 days (last 200 copies), skips password managers and
   Sensitive items, and lets you save a copy to a list.
-- **Import.** Bring in a `.snipdeck` file, a Ditto database, a CopyQ export or a folder of `.txt` and `.md`
-  files, after a preview of what it adds.
-- **Colour labels and list icons.** Eight label colours with a filter, and an icon for each list.
+- **Import.** Bring in a `.snipdeck` file or data from other expanders (Ditto, CopyQ, Espanso, Beeftext,
+  TextExpander, PhraseExpress, Windows clipboard history, or a folder of `.txt` and `.md` files), after a
+  preview of what it adds.
+- **Master password.** Optionally lock your encrypted items behind a password, with Windows Hello to unlock.
+- **Colour labels and list icons.** Eight label colours with a filter, and an icon for each list, tinted in the list's colour.
 - **Sensitive items.** Hidden in lists, kept out of Windows clipboard history, and encrypted on disk.
 - **Safe to change.** Deleted things stay in the Trash for 30 days, with Undo. Daily backups are automatic.
 - **Your way.** Light, dark or Windows theme, an accent colour, seven languages, and hotkeys you can change.
@@ -181,6 +189,7 @@ brings the running copy forward.
 ## Privacy
 
 Snipdeck works fully offline. It has no account, no server and no telemetry, and it opens no network port.
+Settings > Privacy can clear the Recent list and the recently used emoji and colours.
 Icons and fonts are packaged with the app. Your library stays on your PC in `%LOCALAPPDATA%\Snipdeck`.
 
 <details>
@@ -188,7 +197,7 @@ Icons and fonts are packaged with the app. Your library stays on your PC in `%LO
 
 - The library, large content, settings, backups and crash logs are all in that one folder.
 - Crash logs are never sent anywhere and do not quote your snippets.
-- The Recent inbox is off until you turn it on. Its entries stay on this PC and are encrypted on disk like Sensitive items. Backups and exports leave it out.
+- The Recent inbox keeps nothing until you answer its first-run question with Yes. Its entries stay on this PC and are encrypted on disk like Sensitive items. Backups and exports leave it out.
 - **Export:** Settings, Your data, Export library saves one `.snipdeck` file (a zip with JSON).
 - **Remove everything:** quit Snipdeck, then delete the folder.
 
