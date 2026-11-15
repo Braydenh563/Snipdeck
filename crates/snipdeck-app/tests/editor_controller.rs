@@ -1,6 +1,6 @@
 //! The item editor's controller half, without a window: opening it, the checks on Save, the
 //! write for every kind, the library key made on the first sensitive item, drafts, the read-only
-//! viewer for large text and the Free-tier gates. Over the demo library, the platform fakes, a
+//! viewer for large text. Over the demo library, the platform fakes, a
 //! frozen clock and a temporary data folder. The window itself is covered by `editor_window.rs`.
 
 #![allow(
@@ -20,18 +20,19 @@ use snipdeck_app::{
     item_editor::{
         EDIT_LIMIT_BYTES, EditorInput, EditorProblem, ItemEditorView, Origin, SaveFailure,
     },
+    item_preview::PreviewWords,
     settings::Settings,
     toast::{ToastKind, ToastMessage},
 };
 use snipdeck_core::{
-    Content, Entitlements, Feature, Format, FormatKind, Formats, Inline, Item, ItemId, ItemKind,
-    ItemLabel, Placement, Tier, Timestamp,
+    Content, Format, FormatKind, Formats, Inline, Item, ItemId, ItemKind, ItemLabel, Placement,
+    Timestamp,
 };
 use snipdeck_platform::{
     file_dialog::{FakeFilePicker, PickKind},
     testing::{FakeClipboard, FakeKeyboard, FakeTiming},
 };
-use snipdeck_store::{BlobStore, ItemRepo, ListRepo, Store, TagRepo};
+use snipdeck_store::{BlobStore, ItemRepo, ListRepo, Store, TagRepo, TriggerRepo};
 
 #[path = "support/mod.rs"]
 mod support;
@@ -51,7 +52,6 @@ struct Rig {
 
 fn controller(
     store: Store,
-    tier: Tier,
     dir: &Path,
     provider: &SharedProvider,
     with_keys: bool,
@@ -70,7 +70,6 @@ fn controller(
         Box::new(FakeTargets::new(Some(demo::target()))),
         Box::new(clock.clone()),
         Settings::default(),
-        Entitlements::new(tier),
     )
     .expect("controller");
     ctl.set_drafts(Drafts::in_data_dir(dir));
@@ -80,21 +79,16 @@ fn controller(
     (ctl, clock)
 }
 
-fn rig(tier: Tier) -> Rig {
+fn rig() -> Rig {
     let dir = tempfile::tempdir().expect("dir");
     let provider = SharedProvider::new();
     let (ctl, clock) = controller(
         demo::store(now()).expect("demo"),
-        tier,
         dir.path(),
         &provider,
         true,
     );
     Rig { ctl, clock, dir }
-}
-
-fn pro() -> Rig {
-    rig(Tier::Pro)
 }
 
 fn id_of(ctl: &Ctl, title: &str) -> ItemId {
@@ -151,7 +145,7 @@ fn save_new(ctl: &mut Ctl, kind: ItemKind, title: &str, content: &str) -> ItemId
 
 #[test]
 fn a_new_item_starts_in_the_list_the_origin_shows_with_that_boards_lists_to_choose_from() {
-    let mut r = pro();
+    let mut r = rig();
     r.ctl.open_new_item(Origin::Panel);
     let v = view(&r.ctl);
     assert!(v.is_new);
@@ -162,7 +156,6 @@ fn a_new_item_starts_in_the_list_the_origin_shows_with_that_boards_lists_to_choo
         (v.fields.title.as_str(), v.fields.content.as_str()),
         ("", "")
     );
-    assert!(v.prompted_available);
     assert!(!v.can_browse, "no file dialog was given");
     assert!(!v.restored);
 
@@ -186,7 +179,7 @@ fn a_new_item_starts_in_the_list_the_origin_shows_with_that_boards_lists_to_choo
 
 #[test]
 fn a_second_request_brings_the_open_editor_forward_and_keeps_it() {
-    let mut r = pro();
+    let mut r = rig();
     r.ctl.open_new_item(Origin::Main);
     let first = view(&r.ctl);
     r.ctl.open_item_editor(id_of(&r.ctl, "Office"));
@@ -204,7 +197,6 @@ fn a_library_with_no_list_says_so_instead_of_opening() {
     let provider = SharedProvider::new();
     let (mut ctl, _) = controller(
         Store::open_in_memory().expect("store"),
-        Tier::Pro,
         dir.path(),
         &provider,
         true,
@@ -216,7 +208,7 @@ fn a_library_with_no_list_says_so_instead_of_opening() {
 
 #[test]
 fn edit_opens_the_item_with_its_fields_and_the_main_window_and_picker_ask_the_same_way() {
-    let mut r = pro();
+    let mut r = rig();
     let office = id_of(&r.ctl, "Office");
     r.ctl.open_item_editor(office);
     let v = view(&r.ctl);
@@ -257,7 +249,7 @@ fn edit_opens_the_item_with_its_fields_and_the_main_window_and_picker_ask_the_sa
 
 #[test]
 fn an_items_colour_label_is_saved_read_back_and_cleared_by_none() {
-    let mut r = pro();
+    let mut r = rig();
     let office = id_of(&r.ctl, "Office");
     r.ctl.open_item_editor(office);
     assert_eq!(view(&r.ctl).fields.label, None, "unlabelled to start");
@@ -284,7 +276,7 @@ fn a_new_items_label_is_kept_in_its_draft() {
     let data = tempfile::tempdir().expect("dir");
     let provider = SharedProvider::new();
     {
-        let mut ctl = on_disk(Tier::Pro, &provider, true, data.path());
+        let mut ctl = on_disk(&provider, true, data.path());
         ctl.open_new_item(Origin::Main);
         let v = view(&ctl);
         ctl.item_editor_autosave(&EditorInput {
@@ -292,7 +284,7 @@ fn a_new_items_label_is_kept_in_its_draft() {
             ..typed(&v, "Unsaved", "text")
         });
     }
-    let mut ctl = on_disk(Tier::Pro, &provider, true, data.path());
+    let mut ctl = on_disk(&provider, true, data.path());
     ctl.open_new_item(Origin::Main);
     let v = view(&ctl);
     assert!(v.restored);
@@ -301,7 +293,7 @@ fn a_new_items_label_is_kept_in_its_draft() {
 
 #[test]
 fn an_item_that_is_gone_is_a_toast_not_an_editor() {
-    let mut r = pro();
+    let mut r = rig();
     r.ctl.open_item_editor(ItemId::generate());
     assert!(!r.ctl.item_editor_open());
     assert_eq!(toast(&r.ctl), ToastMessage::ItemGone);
@@ -311,7 +303,7 @@ fn an_item_that_is_gone_is_a_toast_not_an_editor() {
 
 #[test]
 fn a_new_text_item_is_saved_at_the_top_with_its_preview_and_a_toast() {
-    let mut r = pro();
+    let mut r = rig();
     let id = save_new(
         &mut r.ctl,
         ItemKind::Text,
@@ -340,7 +332,7 @@ fn a_new_text_item_is_saved_at_the_top_with_its_preview_and_a_toast() {
 
 #[test]
 fn code_link_and_template_items_round_trip() {
-    let mut r = pro();
+    let mut r = rig();
     let code = save_new(&mut r.ctl, ItemKind::Code, "Snippet", "fn main() {}\n");
     assert_eq!(r.ctl.store().item(code).expect("item").kind, ItemKind::Code);
     assert_eq!(text_of(&r.ctl, code), "fn main() {}\n");
@@ -389,7 +381,7 @@ fn tiny_png() -> Vec<u8> {
 
 #[test]
 fn a_new_image_item_keeps_its_own_copy_of_the_picture() {
-    let mut r = pro();
+    let mut r = rig();
     let files = tempfile::tempdir().expect("dir");
     let png = tiny_png();
     let path = write(files.path(), "logo.png", &png);
@@ -433,7 +425,7 @@ fn a_new_image_item_keeps_its_own_copy_of_the_picture() {
 
 #[test]
 fn a_new_file_item_keeps_the_file_under_its_name() {
-    let mut r = pro();
+    let mut r = rig();
     let files = tempfile::tempdir().expect("dir");
     let path = write(files.path(), "invoice.pdf", b"%PDF-1.7 data");
     r.ctl.open_new_item(Origin::Main);
@@ -467,7 +459,7 @@ fn a_new_file_item_keeps_the_file_under_its_name() {
 
 #[test]
 fn a_bad_file_is_refused_with_the_reason_and_nothing_is_saved() {
-    let mut r = pro();
+    let mut r = rig();
     let files = tempfile::tempdir().expect("dir");
     let before = r.ctl.store().all_items().expect("items").len();
     let sparse = files.path().join("huge.bin");
@@ -524,7 +516,7 @@ fn a_bad_file_is_refused_with_the_reason_and_nothing_is_saved() {
 
 #[test]
 fn fields_that_fail_the_checks_stay_open_with_the_reason() {
-    let mut r = pro();
+    let mut r = rig();
     r.ctl.open_new_item(Origin::Main);
     let v = view(&r.ctl);
     let save = |r: &mut Rig, kind, title: &str, content: &str| {
@@ -575,78 +567,11 @@ fn fields_that_fail_the_checks_stay_open_with_the_reason() {
     assert_eq!(r.ctl.store().all_items().expect("items").len(), 11);
 }
 
-// ---- Free tier ---------------------------------------------------------------------------------
-
-#[test]
-fn a_free_user_cannot_add_prompted_fields_and_is_told_why() {
-    let mut r = rig(Tier::Free);
-    r.ctl.open_new_item(Origin::Main);
-    let v = view(&r.ctl);
-    assert!(!v.prompted_available);
-    r.ctl.item_editor_save(&EditorInput {
-        kind: ItemKind::Template,
-        ..typed(&v, "Ask", "Dear {field:Name}")
-    });
-    assert!(r.ctl.item_editor_open());
-    assert_eq!(
-        view(&r.ctl).content_problem,
-        Some(EditorProblem::NeedsPro(Feature::PromptedFields))
-    );
-    let t = r.ctl.view().toast.expect("toast");
-    assert_eq!(
-        (t.kind, t.message),
-        (
-            ToastKind::Danger,
-            ToastMessage::NeedsPro(Feature::PromptedFields)
-        )
-    );
-    // A choice is prompted too; the free placeholders are fine.
-    r.ctl.item_editor_save(&EditorInput {
-        kind: ItemKind::Template,
-        ..typed(&view(&r.ctl), "Ask", "Size {choice:Size|S|M}")
-    });
-    assert!(r.ctl.item_editor_open());
-    r.ctl.item_editor_save(&EditorInput {
-        kind: ItemKind::Template,
-        ..typed(&view(&r.ctl), "Dated", "Today is {date} at {time}")
-    });
-    assert!(!r.ctl.item_editor_open());
-    // Switching an existing text item to a template that prompts is the same gate.
-    let office = id_of(&r.ctl, "Office");
-    r.ctl.open_item_editor(office);
-    let v = view(&r.ctl);
-    r.ctl.item_editor_save(&EditorInput {
-        kind: ItemKind::Template,
-        content: "Hi {field:Who}".into(),
-        ..v.fields
-    });
-    assert!(r.ctl.item_editor_open());
-    assert_eq!(
-        r.ctl.store().item(office).expect("item").kind,
-        ItemKind::Text,
-        "nothing changed"
-    );
-}
-
-#[test]
-fn a_free_user_can_still_retitle_a_template_that_already_prompts() {
-    let mut r = rig(Tier::Free);
-    let id = id_of(&r.ctl, "Invoice reminder");
-    r.ctl.open_item_editor(id);
-    let v = view(&r.ctl);
-    r.ctl.item_editor_save(&EditorInput {
-        title: "Invoice nudge".into(),
-        ..v.fields
-    });
-    assert!(!r.ctl.item_editor_open(), "saved");
-    assert_eq!(r.ctl.store().item(id).expect("item").title, "Invoice nudge");
-}
-
 #[test]
 fn a_free_user_marking_an_item_sensitive_gets_it_encrypted_like_everyone() {
     let data = tempfile::tempdir().expect("dir");
     let provider = SharedProvider::new();
-    let mut ctl = on_disk(Tier::Free, &provider, true, data.path());
+    let mut ctl = on_disk(&provider, true, data.path());
     assert!(!ctl.store().key_ring_exists().expect("ring"));
     let id = save_sensitive(&mut ctl, "Pin", SECRET);
     assert!(
@@ -666,7 +591,7 @@ fn a_free_user_marking_an_item_sensitive_gets_it_encrypted_like_everyone() {
 
 #[test]
 fn editing_changes_the_text_title_list_and_tags_and_leaves_the_use_count() {
-    let mut r = pro();
+    let mut r = rig();
     let id = id_of(&r.ctl, "Office");
     r.ctl.use_item(id, snipdeck_core::UseMode::Copy);
     r.clock.set("2026-10-17T11:00:00Z".parse().expect("time"));
@@ -714,7 +639,7 @@ fn editing_changes_the_text_title_list_and_tags_and_leaves_the_use_count() {
 
 #[test]
 fn a_new_tag_that_is_unticked_before_saving_is_never_made() {
-    let mut r = pro();
+    let mut r = rig();
     r.ctl.open_new_item(Origin::Main);
     r.ctl.item_editor_tag_added("temp");
     r.ctl.item_editor_tag_toggled(0);
@@ -735,7 +660,7 @@ fn a_new_tag_that_is_unticked_before_saving_is_never_made() {
 
 #[test]
 fn changing_only_the_title_keeps_the_other_formats_of_a_rich_item() {
-    let r = pro();
+    let r = rig();
     let list = r.ctl.store().all_items().expect("items")[0].list_id;
     let mut item = Item::new(list, "Rich".into(), ItemKind::Text, now());
     item.preview = "bold".into();
@@ -759,7 +684,7 @@ fn changing_only_the_title_keeps_the_other_formats_of_a_rich_item() {
         .expect("item");
     let dir = tempfile::tempdir().expect("dir");
     let provider = SharedProvider::new();
-    let (mut ctl, _) = controller(store, Tier::Pro, dir.path(), &provider, true);
+    let (mut ctl, _) = controller(store, dir.path(), &provider, true);
     ctl.open_item_editor(item.id);
     let v = view(&ctl);
     ctl.item_editor_save(&EditorInput {
@@ -802,7 +727,7 @@ fn rich_item_open() -> (Ctl, ItemId) {
         .expect("item");
     let dir = tempfile::tempdir().expect("dir");
     let provider = SharedProvider::new();
-    let (mut ctl, _) = controller(store, Tier::Pro, dir.path(), &provider, true);
+    let (mut ctl, _) = controller(store, dir.path(), &provider, true);
     std::mem::forget(dir);
     ctl.open_item_editor(item.id);
     (ctl, item.id)
@@ -844,7 +769,7 @@ fn remove_formatting_keeps_text() {
 
 #[test]
 fn deleting_from_the_editor_moves_the_item_to_the_trash_with_undo() {
-    let mut r = pro();
+    let mut r = rig();
     let id = id_of(&r.ctl, "Office");
     r.ctl.open_item_editor(id);
     r.ctl.item_editor_delete();
@@ -863,7 +788,7 @@ fn deleting_from_the_editor_moves_the_item_to_the_trash_with_undo() {
 
 #[test]
 fn a_write_that_fails_says_what_failed_and_changes_nothing() {
-    let mut r = pro();
+    let mut r = rig();
     let id = id_of(&r.ctl, "Office");
     r.ctl.open_item_editor(id);
     let v = view(&r.ctl);
@@ -895,7 +820,7 @@ fn a_write_that_fails_says_what_failed_and_changes_nothing() {
 
 /// A controller over the demo library kept on disk in `data` (seeded the first time), so a second
 /// controller on the same folder is a restart.
-fn on_disk(tier: Tier, provider: &SharedProvider, with_keys: bool, data: &Path) -> Ctl {
+fn on_disk(provider: &SharedProvider, with_keys: bool, data: &Path) -> Ctl {
     let mut store = Store::open(data).expect("store");
     if snipdeck_store::BoardRepo::boards(&store)
         .expect("boards")
@@ -903,7 +828,7 @@ fn on_disk(tier: Tier, provider: &SharedProvider, with_keys: bool, data: &Path) 
     {
         demo::seed(&mut store, now()).expect("seed");
     }
-    controller(store, tier, data, provider, with_keys).0
+    controller(store, data, provider, with_keys).0
 }
 
 const SECRET: &str = "ZQ9-correct-horse-battery";
@@ -927,7 +852,7 @@ fn save_sensitive(ctl: &mut Ctl, title: &str, secret: &str) -> ItemId {
 fn the_first_sensitive_item_makes_the_key_silently_and_is_stored_encrypted() {
     let data = tempfile::tempdir().expect("dir");
     let provider = SharedProvider::new();
-    let mut ctl = on_disk(Tier::Pro, &provider, true, data.path());
+    let mut ctl = on_disk(&provider, true, data.path());
     assert!(!ctl.store().key_ring_exists().expect("ring"));
     let id = save_sensitive(&mut ctl, "Vault code", SECRET);
     assert!(
@@ -955,11 +880,11 @@ fn a_sensitive_item_survives_a_restart_and_edits_back_to_the_same_text() {
     let data = tempfile::tempdir().expect("dir");
     let provider = SharedProvider::new();
     let id = {
-        let mut ctl = on_disk(Tier::Pro, &provider, true, data.path());
+        let mut ctl = on_disk(&provider, true, data.path());
         save_sensitive(&mut ctl, "Vault code", SECRET)
     };
     // A new run: the key is opened at start-up, then the item opens decrypted in the editor.
-    let mut ctl = on_disk(Tier::Pro, &provider, true, data.path());
+    let mut ctl = on_disk(&provider, true, data.path());
     assert!(!ctl.store().is_unlocked());
     ctl.unlock_library();
     assert!(ctl.store().is_unlocked());
@@ -987,10 +912,10 @@ fn opening_a_sensitive_item_opens_the_key_even_without_the_start_up_unlock() {
     let data = tempfile::tempdir().expect("dir");
     let provider = SharedProvider::new();
     let id = {
-        let mut ctl = on_disk(Tier::Pro, &provider, true, data.path());
+        let mut ctl = on_disk(&provider, true, data.path());
         save_sensitive(&mut ctl, "Vault code", SECRET)
     };
-    let mut ctl = on_disk(Tier::Pro, &provider, true, data.path());
+    let mut ctl = on_disk(&provider, true, data.path());
     ctl.open_item_editor(id);
     assert_eq!(view(&ctl).fields.content, SECRET);
 }
@@ -999,7 +924,7 @@ fn opening_a_sensitive_item_opens_the_key_even_without_the_start_up_unlock() {
 fn marking_an_existing_item_sensitive_encrypts_it_and_clearing_the_mark_decrypts_it() {
     let data = tempfile::tempdir().expect("dir");
     let provider = SharedProvider::new();
-    let mut ctl = on_disk(Tier::Pro, &provider, true, data.path());
+    let mut ctl = on_disk(&provider, true, data.path());
     let id = save_new(&mut ctl, ItemKind::Text, "Later secret", "plain-NEEDLE-77");
     assert_eq!(
         ctl.store().item(id).expect("item").preview,
@@ -1033,7 +958,7 @@ fn marking_an_existing_item_sensitive_encrypts_it_and_clearing_the_mark_decrypts
 fn without_key_protection_a_sensitive_item_is_refused_not_stored_in_the_clear() {
     let data = tempfile::tempdir().expect("dir");
     let provider = SharedProvider::new();
-    let mut ctl = on_disk(Tier::Pro, &provider, false, data.path());
+    let mut ctl = on_disk(&provider, false, data.path());
     let before = ctl.store().all_items().expect("items").len();
     ctl.open_new_item(Origin::Main);
     let v = view(&ctl);
@@ -1057,12 +982,12 @@ fn a_key_that_will_not_open_is_a_toast_at_start_and_when_opening() {
     let data = tempfile::tempdir().expect("dir");
     let provider = SharedProvider::new();
     let id = {
-        let mut ctl = on_disk(Tier::Pro, &provider, true, data.path());
+        let mut ctl = on_disk(&provider, true, data.path());
         save_sensitive(&mut ctl, "Vault code", SECRET)
     };
     // Another Windows user's protection cannot open the key.
     let stranger = SharedProvider::new();
-    let mut ctl = on_disk(Tier::Pro, &stranger, true, data.path());
+    let mut ctl = on_disk(&stranger, true, data.path());
     ctl.unlock_library();
     assert_eq!(toast(&ctl), ToastMessage::KeyUnavailable);
     ctl.open_item_editor(id);
@@ -1095,7 +1020,7 @@ fn start_up_encrypts_sensitive_items_an_earlier_version_left_in_plain_text() {
     let provider = SharedProvider::new();
     let id = seed_plain_sensitive(data.path(), "Old secret", SECRET);
     // Free: encryption is on for every plan, so the first start fixes the old item.
-    let mut ctl = on_disk(Tier::Free, &provider, true, data.path());
+    let mut ctl = on_disk(&provider, true, data.path());
     ctl.unlock_library();
     assert!(ctl.store().key_ring_exists().expect("ring"));
     assert!(ctl.store().is_unlocked());
@@ -1128,7 +1053,7 @@ fn start_up_leaves_a_library_without_sensitive_items_without_a_key() {
             .insert_item(&item, &formats, Placement::Last)
             .expect("item");
     }
-    let mut ctl = on_disk(Tier::Free, &provider, true, data.path());
+    let mut ctl = on_disk(&provider, true, data.path());
     ctl.unlock_library();
     assert!(!ctl.store().key_ring_exists().expect("ring"));
     assert!(ctl.view().toast.is_none());
@@ -1139,7 +1064,7 @@ fn start_up_without_key_protection_keeps_plain_sensitive_items_and_stays_quiet()
     let data = tempfile::tempdir().expect("dir");
     let provider = SharedProvider::new();
     let id = seed_plain_sensitive(data.path(), "Old secret", SECRET);
-    let mut ctl = on_disk(Tier::Free, &provider, false, data.path());
+    let mut ctl = on_disk(&provider, false, data.path());
     ctl.unlock_library();
     assert!(!ctl.store().key_ring_exists().expect("ring"));
     assert_eq!(text_of(&ctl, id), SECRET, "still readable");
@@ -1150,7 +1075,7 @@ fn start_up_without_key_protection_keeps_plain_sensitive_items_and_stays_quiet()
 
 #[test]
 fn text_over_16_kb_opens_read_only_and_saving_never_rewrites_it() {
-    let r = pro();
+    let r = rig();
     let big = format!("{}{}", "line of text\n".repeat(2000), "THE-END");
     assert!(big.len() > EDIT_LIMIT_BYTES);
     let list = r.ctl.store().all_items().expect("items")[0].list_id;
@@ -1180,7 +1105,7 @@ fn text_over_16_kb_opens_read_only_and_saving_never_rewrites_it() {
         .expect("insert");
     let dir = tempfile::tempdir().expect("dir");
     let provider = SharedProvider::new();
-    let (mut ctl, _) = controller(store, Tier::Pro, dir.path(), &provider, true);
+    let (mut ctl, _) = controller(store, dir.path(), &provider, true);
     ctl.open_item_editor(item.id);
     let v = view(&ctl);
     assert_eq!(v.large, Some(big.len() as u64), "read-only, with its size");
@@ -1227,7 +1152,7 @@ fn a_large_text_gets_no_draft() {
         .expect("insert");
     let dir = tempfile::tempdir().expect("dir");
     let provider = SharedProvider::new();
-    let (mut ctl, _) = controller(store, Tier::Pro, dir.path(), &provider, true);
+    let (mut ctl, _) = controller(store, dir.path(), &provider, true);
     ctl.open_item_editor(item.id);
     let v = view(&ctl);
     assert!(!ctl.item_editor_autosave(&EditorInput {
@@ -1254,7 +1179,7 @@ fn draft_files(dir: &Path) -> Vec<String> {
 
 #[test]
 fn a_draft_is_written_when_something_changed_and_not_before() {
-    let mut r = pro();
+    let mut r = rig();
     r.ctl.open_new_item(Origin::Main);
     let v = view(&r.ctl);
     r.ctl.item_editor_autosave(&v.fields);
@@ -1277,7 +1202,7 @@ fn a_draft_comes_back_when_the_editor_is_opened_again() {
     let provider = SharedProvider::new();
     {
         // The app is killed with the editor open: nothing but the draft survives.
-        let mut ctl = on_disk(Tier::Pro, &provider, true, data.path());
+        let mut ctl = on_disk(&provider, true, data.path());
         ctl.open_new_item(Origin::Main);
         ctl.item_editor_tag_added("later");
         let v = view(&ctl);
@@ -1287,7 +1212,7 @@ fn a_draft_comes_back_when_the_editor_is_opened_again() {
             ..typed(&v, "Unsaved", "let x = 1;")
         });
     }
-    let mut ctl = on_disk(Tier::Pro, &provider, true, data.path());
+    let mut ctl = on_disk(&provider, true, data.path());
     ctl.open_new_item(Origin::Main);
     let v = view(&ctl);
     assert!(v.restored);
@@ -1308,7 +1233,7 @@ fn a_draft_comes_back_when_the_editor_is_opened_again() {
 
 #[test]
 fn a_blur_hide_leaves_the_editor_it_opened_and_is_told_apart_from_a_close() {
-    let mut r = pro();
+    let mut r = rig();
     r.ctl.set_on_top(false);
     r.clock
         .set("2026-10-17T10:30:02Z".parse().expect("timestamp"));
@@ -1331,7 +1256,7 @@ fn a_blur_hide_leaves_the_editor_it_opened_and_is_told_apart_from_a_close() {
 
 #[test]
 fn parking_an_editor_closes_it_and_keeps_its_draft_for_the_next_open() {
-    let mut r = pro();
+    let mut r = rig();
     let id = id_of(&r.ctl, "Office");
     r.ctl.open_item_editor(id);
     let v = view(&r.ctl);
@@ -1356,7 +1281,7 @@ fn parking_an_editor_closes_it_and_keeps_its_draft_for_the_next_open() {
 
 #[test]
 fn discarding_removes_the_draft_and_an_edit_draft_belongs_to_its_item() {
-    let mut r = pro();
+    let mut r = rig();
     let id = id_of(&r.ctl, "Office");
     r.ctl.open_item_editor(id);
     let v = view(&r.ctl);
@@ -1406,7 +1331,7 @@ fn discarding_removes_the_draft_and_an_edit_draft_belongs_to_its_item() {
 
 #[test]
 fn a_draft_of_an_item_that_changed_since_is_stale_and_dropped() {
-    let mut r = pro();
+    let mut r = rig();
     let id = id_of(&r.ctl, "Office");
     let drafts = Drafts::in_data_dir(r.dir.path());
     let list = r.ctl.store().item(id).expect("item").list_id;
@@ -1430,7 +1355,7 @@ fn a_draft_of_an_item_that_changed_since_is_stale_and_dropped() {
 
 #[test]
 fn a_sensitive_item_never_has_a_draft_and_the_mark_removes_one_already_written() {
-    let mut r = pro();
+    let mut r = rig();
     r.ctl.open_new_item(Origin::Main);
     let v = view(&r.ctl);
     r.ctl
@@ -1464,7 +1389,7 @@ fn a_sensitive_item_never_has_a_draft_and_the_mark_removes_one_already_written()
 
 #[test]
 fn a_draft_that_cannot_be_written_is_reported_once() {
-    let mut r = pro();
+    let mut r = rig();
     // `drafts` is a file, so the folder cannot be made.
     fs::write(r.dir.path().join("drafts"), b"in the way").expect("write");
     r.ctl.open_new_item(Origin::Main);
@@ -1482,7 +1407,7 @@ fn a_draft_that_cannot_be_written_is_reported_once() {
 
 #[test]
 fn browse_hands_the_chosen_path_to_the_field_and_reports_a_dialog_that_failed() {
-    let mut r = pro();
+    let mut r = rig();
     assert!(r.ctl.file_picker().is_none());
     let picker = FakeFilePicker::answering(Ok(Some(r"C:\files\a.png".into())));
     picker.push(Ok(None));
@@ -1508,7 +1433,7 @@ fn browse_hands_the_chosen_path_to_the_field_and_reports_a_dialog_that_failed() 
 
 #[test]
 fn the_crash_toast_opens_the_log_folder_and_says_when_it_cannot() {
-    let mut r = pro();
+    let mut r = rig();
     let opened = Rc::new(RefCell::new(0));
     let count = Rc::clone(&opened);
     r.ctl.set_log_opener(Box::new(move || {
@@ -1544,4 +1469,233 @@ fn the_crash_toast_opens_the_log_folder_and_says_when_it_cannot() {
         r.ctl.store().item(id).is_ok(),
         "restored by the same button"
     );
+}
+
+const WORDS: PreviewWords<'static> = PreviewWords { new_id: "(new ID)" };
+
+#[test]
+fn the_preview_shows_the_unsaved_fields_without_saving_or_needing_a_save() {
+    let mut r = rig();
+    assert!(
+        r.ctl.item_editor_preview(&typed_default(), WORDS).is_none(),
+        "no editor open"
+    );
+    r.ctl.open_new_item(Origin::Main);
+    let v = view(&r.ctl);
+    let before = r.ctl.store().all_items().expect("items").len();
+    let mut input = typed(&v, "", "Dear {field:Who}, today is {date}");
+    input.kind = ItemKind::Template;
+    input.label = Some(ItemLabel::Teal);
+    let card = r.ctl.item_editor_preview(&input, WORDS).expect("a card");
+    assert_eq!(card.kind, ItemKind::Template);
+    assert_eq!(
+        card.title, "Dear {field:Who}, today is {date}",
+        "first line"
+    );
+    assert_eq!(card.label, Some(ItemLabel::Teal));
+    // The clock is the controller's fixed one (2026-10-17 10:30Z): any time zone puts the day
+    // between the 16th and the 18th.
+    let text = card.expanded.expect("expanded");
+    assert!(text.starts_with("Dear ‹Who›, today is 2026-10-1"), "{text}");
+    // Editing again shows at once, and nothing was written.
+    input.content = "https://example.com/a".to_owned();
+    input.kind = ItemKind::Link;
+    let card = r.ctl.item_editor_preview(&input, WORDS).expect("a card");
+    assert_eq!(card.link.map(|l| l.host).as_deref(), Some("example.com"));
+    assert_eq!(r.ctl.store().all_items().expect("items").len(), before);
+    assert!(
+        view(&r.ctl).fields.content.is_empty(),
+        "the controller's fields are untouched"
+    );
+}
+
+fn typed_default() -> EditorInput {
+    EditorInput {
+        kind: ItemKind::Text,
+        title: String::new(),
+        content: "x".to_owned(),
+        sensitive: false,
+        always_plain: false,
+        list_index: 0,
+        source_path: String::new(),
+        label: None,
+    }
+}
+
+#[test]
+fn the_preview_look_follows_the_panel_layout_and_the_real_main_view() {
+    use snipdeck_app::{main_window::ViewMode, settings::PanelLayout};
+    let mut r = rig();
+    let look = r.ctl.item_editor_preview_look();
+    assert_eq!(look.panel_layout, PanelLayout::List);
+    assert_eq!(look.main_view, ViewMode::Comfortable);
+    assert!(look.show_numbers);
+    // The Main window's Tile view is not a setting: the preview reads the view in force.
+    r.ctl.main_set_view(ViewMode::Tile);
+    assert_eq!(r.ctl.item_editor_preview_look().main_view, ViewMode::Tile);
+}
+
+// ---- Triggers -----------------------------------------------------------------------------------
+
+#[test]
+fn a_trigger_is_saved_read_back_and_cleared_by_blank() {
+    let mut r = rig();
+    let id = save_new(&mut r.ctl, ItemKind::Text, "Signature", "Best, A");
+    r.ctl.open_item_editor(id);
+    assert_eq!(view(&r.ctl).trigger, "");
+    r.ctl.item_editor_set_trigger(" ;sig ");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Signature", "Best, A"));
+    assert!(!r.ctl.item_editor_open());
+    let trigger = r.ctl.store().trigger_of(id).expect("read").expect("set");
+    assert_eq!(trigger.as_str(), ";sig");
+    r.ctl.open_item_editor(id);
+    assert_eq!(view(&r.ctl).trigger, ";sig", "read back");
+    r.ctl.item_editor_set_trigger("");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Signature", "Best, A"));
+    assert_eq!(r.ctl.store().trigger_of(id).expect("read"), None);
+}
+
+#[test]
+fn a_trigger_that_hides_another_is_saved_with_a_warning() {
+    let mut r = rig();
+    let first = save_new(&mut r.ctl, ItemKind::Text, "One", "1");
+    r.ctl.open_item_editor(first);
+    r.ctl.item_editor_set_trigger(";sig");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "One", "1"));
+    assert_eq!(
+        toast(&r.ctl),
+        ToastMessage::Saved {
+            list: "Email replies".into()
+        }
+    );
+    r.ctl.open_new_item(Origin::Main);
+    r.ctl.item_editor_set_trigger(";sig2");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Two", "2"));
+    assert!(!r.ctl.item_editor_open(), "still saved");
+    assert_eq!(
+        toast(&r.ctl),
+        ToastMessage::TriggerOverlaps {
+            other: "One".into()
+        }
+    );
+    assert_eq!(r.ctl.store().triggers().expect("all").len(), 2);
+    let t = r.ctl.view().toast.expect("a toast");
+    assert_eq!(
+        t.kind,
+        snipdeck_app::toast::ToastKind::Danger,
+        "a warning, with the icon"
+    );
+    assert_eq!(
+        r.ctl.toast_tick(t.seq),
+        Some(snipdeck_app::controller::TOAST_ERROR_HOLD),
+        "held longer than a neutral toast"
+    );
+}
+
+#[test]
+fn undoing_an_edit_restores_the_trigger_and_redo_sets_it_again() {
+    let mut r = rig();
+    let id = save_new(&mut r.ctl, ItemKind::Text, "One", "1");
+    r.ctl.open_item_editor(id);
+    r.ctl.item_editor_set_trigger(";old");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "One", "1"));
+    r.ctl.open_item_editor(id);
+    r.ctl.item_editor_set_trigger(";new");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "One", "1"));
+    let code = |r: &Rig| {
+        r.ctl
+            .store()
+            .trigger_of(id)
+            .expect("read")
+            .map(|t| t.as_str().to_owned())
+    };
+    assert_eq!(code(&r).as_deref(), Some(";new"));
+    r.ctl.undo();
+    assert_eq!(code(&r).as_deref(), Some(";old"), "undo");
+    r.ctl.redo();
+    assert_eq!(code(&r).as_deref(), Some(";new"), "redo");
+}
+
+#[test]
+fn trigger_clash_shows_an_error() {
+    let mut r = rig();
+    let first = save_new(&mut r.ctl, ItemKind::Text, "One", "1");
+    r.ctl.open_item_editor(first);
+    r.ctl.item_editor_set_trigger(";x");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "One", "1"));
+    r.ctl.open_new_item(Origin::Main);
+    r.ctl.item_editor_set_trigger(";x");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Two", "2"));
+    assert!(r.ctl.item_editor_open(), "the editor stays open");
+    assert_eq!(
+        view(&r.ctl).trigger_problem,
+        Some(EditorProblem::TriggerTaken)
+    );
+    // Nothing was written, and a bad code is refused too.
+    r.ctl.item_editor_set_trigger("has space");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Two", "2"));
+    assert_eq!(
+        view(&r.ctl).trigger_problem,
+        Some(EditorProblem::TriggerInvalid)
+    );
+    assert_eq!(r.ctl.store().triggers().expect("all").len(), 1);
+    // The item keeps its own code when it is saved again.
+    r.ctl.item_editor_cancel();
+    r.ctl.open_item_editor(first);
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "One", "1"));
+    assert!(!r.ctl.item_editor_open());
+}
+
+#[test]
+fn a_sensitive_item_keeps_no_trigger() {
+    let mut r = rig();
+    let id = save_new(&mut r.ctl, ItemKind::Text, "Plain", "x");
+    r.ctl.open_item_editor(id);
+    r.ctl.item_editor_set_trigger(";p");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Plain", "x"));
+    r.ctl.open_item_editor(id);
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&EditorInput {
+        sensitive: true,
+        ..typed(&v, "Plain", "x")
+    });
+    assert!(
+        !r.ctl.item_editor_open(),
+        "saved: the code was dropped, not refused"
+    );
+    assert_eq!(r.ctl.store().triggers().expect("all").len(), 0);
+}
+
+#[test]
+fn the_always_paste_as_plain_text_switch_is_saved_and_reopens_as_it_was() {
+    let mut r = rig();
+    let ctl = &mut r.ctl;
+    ctl.open_new_item(Origin::Main);
+    let v = view(ctl);
+    assert!(!v.fields.always_plain, "off by default");
+    ctl.item_editor_save(&EditorInput {
+        always_plain: true,
+        ..typed(&v, "Letter", "Dear all")
+    });
+    let id = id_of(ctl, "Letter");
+    assert!(ctl.store().item(id).expect("item").always_plain);
+    ctl.open_item_editor(id);
+    let v = view(ctl);
+    assert!(v.fields.always_plain, "the editor shows it on");
+    ctl.item_editor_save(&EditorInput {
+        always_plain: false,
+        ..v.fields
+    });
+    assert!(!ctl.store().item(id).expect("item").always_plain);
 }

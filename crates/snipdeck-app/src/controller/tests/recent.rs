@@ -1,4 +1,4 @@
-//! The Recent inbox through the controller: on for a new install, off after an opt-out, what a clipboard change does with
+//! The Recent inbox through the controller: off until the first-run answer is Yes, off after a No, what a clipboard change does with
 //! the opt-in, pause, and promoting to a list. The clock is the fixed one the other controller
 //! tests use.
 
@@ -13,7 +13,7 @@ fn on() -> Settings {
     }
 }
 
-/// A world whose user switched Recent off (a new install has it on).
+/// A world whose user switched Recent off.
 fn off_world() -> World {
     world_with(
         None,
@@ -92,6 +92,23 @@ fn switching_the_inbox_off_hides_what_was_kept() {
     assert_eq!(w.ctl.recent_entries().len(), 1);
     w.ctl.update_settings(|s| s.recent_history = false);
     assert_eq!(w.ctl.recent_entries().len(), 0);
+}
+
+#[test]
+fn an_entry_past_its_days_goes_at_the_next_prune_even_with_the_inbox_off() {
+    let mut w = recent_world();
+    w.ctl.on_clipboard_change(&copied("old"));
+    w.ctl.update_settings(|s| s.recent_history = false);
+    w.clock.set(at("2026-10-24T10:30:00Z"));
+    w.ctl.prune_recent();
+    assert_eq!(w.ctl.store().recent().expect("recent").len(), 1, "6 days");
+    w.clock.set(at("2026-10-25T10:31:00Z"));
+    w.ctl.prune_recent();
+    assert_eq!(
+        w.ctl.store().recent().expect("recent").len(),
+        0,
+        "past 7 days, with no new copy to trigger the pruning"
+    );
 }
 
 #[test]
@@ -469,6 +486,29 @@ fn using_a_rich_entry_writes_text_html_rtf() {
 }
 
 #[test]
+fn pasting_a_rich_entry_as_plain_text_writes_the_text_alone() {
+    use snipdeck_platform::payload::Data;
+    let mut w = recent_world_at_outlook();
+    w.ctl.on_clipboard_change(&ClipboardObservation {
+        html: Some("<b>bold</b>".to_owned()),
+        rtf: Some(b"{\\rtf1 bold}".to_vec()),
+        ..copied("bold")
+    });
+    let id = w.ctl.recent_entries()[0].id;
+    w.ctl.recent_use(id, UseMode::PastePlain);
+    let services = w.ctl.services();
+    assert_eq!(services.keyboard.sent.len(), 1, "Ctrl+V went out");
+    assert!(
+        services
+            .clipboard
+            .written
+            .iter()
+            .all(|p| p.data() == [Data::Text("bold".to_owned())]),
+        "no HTML or RTF was pasted"
+    );
+}
+
+#[test]
 fn promoting_an_image_makes_an_image_item() {
     use snipdeck_platform::payload::Data;
     let mut w = recent_world();
@@ -573,4 +613,94 @@ fn some_missing_files_still_paste_the_rest_and_say_so() {
         w.ctl.view().toast.expect("toast").message,
         ToastMessage::FileMoved
     );
+}
+
+// ---- The first-run question (Store policy 10.5: nothing is kept until Yes) ------------------
+
+/// A world as a new install starts: unanswered, with the key provider the inbox needs.
+fn new_install_world() -> World {
+    let mut w = world_with(None, Settings::new_install());
+    w.ctl.set_key_provider(Box::new(
+        snipdeck_store::crypto::MemoryKeyProvider::new().expect("provider"),
+    ));
+    w
+}
+
+/// What the next start reads back from the saved file.
+fn restarted(w: &World) -> Settings {
+    Settings::from_json(&w.ctl.settings().to_json())
+}
+
+#[test]
+fn a_new_install_asks_and_keeps_nothing_before_the_answer() {
+    use snipdeck_platform::clipboard_watch::WatchGate;
+    let mut w = new_install_world();
+    let gate = WatchGate::new();
+    w.ctl.set_recent_gate(gate.clone());
+    assert!(w.ctl.recent_question_due());
+    assert!(!w.ctl.recent_enabled());
+    assert!(!gate.is_open(), "the listener stays closed");
+    w.ctl.on_clipboard_change(&copied("before the answer"));
+    assert_eq!(w.ctl.store().recent().expect("recent").len(), 0);
+    assert!(w.ctl.view().recent_question, "the Panel shows the question");
+}
+
+#[test]
+fn the_question_waits_while_the_welcome_tour_is_on_screen() {
+    let mut w = new_install_world();
+    w.ctl.show_welcome_tour();
+    assert!(!w.ctl.recent_question_due());
+    w.ctl.tour_skip();
+    assert!(
+        w.ctl.recent_question_due(),
+        "skipping the tour is not an answer"
+    );
+}
+
+#[test]
+fn an_old_file_that_never_recorded_an_answer_is_asked_and_keeps_nothing() {
+    let old = Settings::from_json(r#"{"recent_history":true}"#);
+    let mut w = world_with(None, old);
+    w.ctl.set_key_provider(Box::new(
+        snipdeck_store::crypto::MemoryKeyProvider::new().expect("provider"),
+    ));
+    assert!(w.ctl.recent_question_due());
+    w.ctl.on_clipboard_change(&copied("an upgrade, unanswered"));
+    assert_eq!(w.ctl.store().recent().expect("recent").len(), 0);
+}
+
+#[test]
+fn yes_keeps_copies_is_saved_and_is_not_asked_again() {
+    let mut w = new_install_world();
+    w.ctl.set_recent_history(true);
+    assert!(!w.ctl.recent_question_due());
+    w.ctl.on_clipboard_change(&copied("after yes"));
+    assert_eq!(w.ctl.recent_entries().len(), 1);
+    let next_start = restarted(&w);
+    assert!(next_start.recent_history && next_start.recent_history_asked);
+}
+
+#[test]
+fn no_never_keeps_copies_is_saved_and_is_not_asked_again() {
+    let mut w = new_install_world();
+    w.ctl.set_recent_history(false);
+    assert!(!w.ctl.recent_question_due());
+    w.ctl.on_clipboard_change(&copied("after no"));
+    assert_eq!(w.ctl.store().recent().expect("recent").len(), 0);
+    let next_start = restarted(&w);
+    assert!(!next_start.recent_history && next_start.recent_history_asked);
+    let w2 = world_with(None, next_start);
+    assert!(!w2.ctl.recent_question_due(), "no prompt on the next start");
+}
+
+#[test]
+fn the_settings_switch_still_turns_the_inbox_on_and_off() {
+    let mut w = new_install_world();
+    w.ctl.set_recent_history(false);
+    w.ctl.set_recent_history(true);
+    w.ctl.on_clipboard_change(&copied("switched on"));
+    assert_eq!(w.ctl.recent_entries().len(), 1);
+    w.ctl.set_recent_history(false);
+    assert_eq!(w.ctl.recent_entries().len(), 0);
+    assert!(!w.ctl.recent_question_due());
 }

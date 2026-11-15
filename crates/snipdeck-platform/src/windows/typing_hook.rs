@@ -8,13 +8,16 @@
 //! ([`crate::typing::classify`]) and post the [`TypedEvent`] to a channel. Windows removes hooks
 //! that take too long, so nothing else happens there: no matching, no UI Automation, no locks.
 //!
-//! A change of foreground window posts a [`TypedEvent::Reset`] first. There is no mouse hook.
+//! A change of foreground window posts a [`TypedEvent::Reset`] first. A second hook
+//! (`WH_MOUSE_LL`) posts one on any mouse button press and clears the hint's `Tab` flag.
 //!
 //! Typed characters pass through the channel and are never logged or printed ([`TypedEvent`]'s
 //! `Debug` hides them). `stop` (or drop) unhooks and joins the thread.
 
 use std::cell::RefCell;
 use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender, SyncSender};
 use std::thread::JoinHandle;
 use std::time::Duration;
@@ -29,8 +32,9 @@ use windows::Win32::UI::Input::KeyboardAndMouse::{
 use windows::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, GetForegroundWindow, GetMessageW, GetWindowThreadProcessId, HHOOK,
     KBDLLHOOKSTRUCT, LLKHF_INJECTED, MSG, PM_NOREMOVE, PeekMessageW, PostThreadMessageW,
-    SetWindowsHookExW, UnhookWindowsHookEx, WH_KEYBOARD_LL, WM_KEYDOWN, WM_QUIT, WM_SYSKEYDOWN,
-    WM_USER,
+    SetWindowsHookExW, UnhookWindowsHookEx, WH_KEYBOARD_LL, WH_MOUSE_LL, WM_KEYDOWN,
+    WM_LBUTTONDOWN, WM_MBUTTONDOWN, WM_QUIT, WM_RBUTTONDOWN, WM_SYSKEYDOWN, WM_USER,
+    WM_XBUTTONDOWN,
 };
 
 use crate::error::Error;
@@ -54,6 +58,17 @@ const STOP_RETRY: Duration = Duration::from_millis(10);
 /// What the hook thread keeps between callbacks (the callback has no user-data pointer).
 struct Hooked {
     events: SyncSender<TypedEvent>,
+    /// Events handed to the channel so far (raised before the send, so a key pressed a moment ago
+    /// already counts).
+    sent: Arc<AtomicU64>,
+    /// Events counted in `sent` that could not be sent (the consumer is behind). The key still
+    /// happened, so the count stays raised; the consumer takes these in at the next reset.
+    lost: Arc<AtomicU64>,
+    /// The number of the suggestion hint that is up, 0 for none: a plain `Tab` is taken while it
+    /// is set. Only the UI thread sets it, after the hint is really on screen; whoever takes the
+    /// hint down clears it (compare-exchange on the number), and the hook clears it in the same
+    /// step that takes the `Tab` or sees a mouse click.
+    tab: Arc<AtomicU64>,
     foreground: isize,
     classifier: Classifier,
     /// An event was dropped because the consumer is behind: send a Reset before the next one.
@@ -67,6 +82,9 @@ thread_local! {
 /// A running hook. Dropping it stops it.
 #[derive(Debug)]
 pub struct TypingHook {
+    sent: Arc<AtomicU64>,
+    lost: Arc<AtomicU64>,
+    tab: Arc<AtomicU64>,
     thread_id: u32,
     thread: Option<JoinHandle<()>>,
 }
@@ -81,13 +99,22 @@ impl TypingHook {
     pub fn start() -> Result<(Self, Receiver<TypedEvent>), Error> {
         let (events, receiver) = mpsc::sync_channel(CHANNEL_SLOTS);
         let (ready_tx, ready) = mpsc::channel();
+        let sent = Arc::new(AtomicU64::new(0));
+        let hook_sent = Arc::clone(&sent);
+        let lost = Arc::new(AtomicU64::new(0));
+        let hook_lost = Arc::clone(&lost);
+        let tab = Arc::new(AtomicU64::new(0));
+        let hook_tab = Arc::clone(&tab);
         let thread = std::thread::Builder::new()
             .name("snipdeck-typing-hook".into())
-            .spawn(move || run(events, &ready_tx))
+            .spawn(move || run(events, (hook_sent, hook_lost), hook_tab, &ready_tx))
             .map_err(|_| Error::Unavailable("could not start the typing hook thread"))?;
         match ready.recv_timeout(Duration::from_secs(5)) {
             Ok(Ok(thread_id)) => Ok((
                 Self {
+                    sent,
+                    lost,
+                    tab,
                     thread_id,
                     thread: Some(thread),
                 },
@@ -99,6 +126,29 @@ impl TypingHook {
             }
             Err(_) => Err(Error::Unavailable("the typing hook thread did not start")),
         }
+    }
+
+    /// How many events the hook has handed to the channel. A consumer that has read exactly this
+    /// many knows no key has been pressed since: it uses that to drop an expansion when the user
+    /// kept typing.
+    #[must_use]
+    pub fn sent(&self) -> Arc<AtomicU64> {
+        Arc::clone(&self.sent)
+    }
+
+    /// Events counted in [`sent`](Self::sent) that never reached the channel.
+    #[must_use]
+    pub fn lost(&self) -> Arc<AtomicU64> {
+        Arc::clone(&self.lost)
+    }
+
+    /// The flag that tells the hook a suggestion hint is up: the hint's number, 0 for none. While
+    /// it is set, a plain `Tab` is swallowed (the flag goes back to 0 in the same step) and
+    /// reported as [`TypedEvent::Tab`] (with the hint's number); every other key passes through as before. A mouse
+    /// click also clears it and resets the typed context.
+    #[must_use]
+    pub fn tab_flag(&self) -> Arc<AtomicU64> {
+        Arc::clone(&self.tab)
     }
 
     /// Unhooks and joins the thread.
@@ -132,7 +182,12 @@ impl Drop for TypingHook {
     }
 }
 
-fn run(events: SyncSender<TypedEvent>, ready: &Sender<Result<u32, Error>>) {
+fn run(
+    events: SyncSender<TypedEvent>,
+    (sent, lost): (Arc<AtomicU64>, Arc<AtomicU64>),
+    tab: Arc<AtomicU64>,
+    ready: &Sender<Result<u32, Error>>,
+) {
     let mut msg = MSG::default();
     // SAFETY: `msg` is a valid out-pointer; peeking a message nobody posts creates the queue so
     // `PostThreadMessageW` from `stop` cannot fail with "no queue".
@@ -142,22 +197,24 @@ fn run(events: SyncSender<TypedEvent>, ready: &Sender<Result<u32, Error>>) {
     HOOKED.with(|state| {
         *state.borrow_mut() = Some(Hooked {
             events,
+            sent,
+            lost,
+            tab,
             foreground: 0,
             classifier: Classifier::new(),
             dropped: false,
         });
     });
     let hook = install();
-    let hook = match hook {
-        Ok(hook) => hook,
+    let (hook, mouse) = match hook {
+        Ok(hooks) => hooks,
         Err(error) => {
             let _ = ready.send(Err(error));
             return;
         }
     };
     if ready.send(Ok(thread_id)).is_err() {
-        // SAFETY: `hook` was returned by `SetWindowsHookExW` on this thread.
-        let _ = unsafe { UnhookWindowsHookEx(hook) };
+        unhook(hook, mouse);
         return;
     }
     loop {
@@ -167,18 +224,37 @@ fn run(events: SyncSender<TypedEvent>, ready: &Sender<Result<u32, Error>>) {
             break;
         }
     }
-    // SAFETY: `hook` was returned by `SetWindowsHookExW` on this thread.
-    let _ = unsafe { UnhookWindowsHookEx(hook) };
+    unhook(hook, mouse);
     HOOKED.with(|state| *state.borrow_mut() = None);
 }
 
-fn install() -> Result<HHOOK, Error> {
+/// The foreground window's handle as a number (0 for none): lets a consumer tell that the
+/// window it saw earlier is still the one in front.
+#[must_use]
+pub fn foreground_window() -> isize {
+    // SAFETY: no preconditions.
+    unsafe { GetForegroundWindow() }.0 as isize
+}
+
+fn unhook(keyboard: HHOOK, mouse: Option<HHOOK>) {
+    // SAFETY: both handles were returned by `SetWindowsHookExW` on this thread.
+    let _ = unsafe { UnhookWindowsHookEx(keyboard) };
+    if let Some(mouse) = mouse {
+        // SAFETY: as above.
+        let _ = unsafe { UnhookWindowsHookEx(mouse) };
+    }
+}
+
+/// Installs the keyboard hook and, best effort, a mouse hook: a click may move the focus into
+/// another field of the same window, which no keyboard event shows. Without it the hint still
+/// goes after a few idle seconds and the password check runs again at the `Tab`.
+fn install() -> Result<(HHOOK, Option<HHOOK>), Error> {
     // SAFETY: no preconditions.
     let module = unsafe { GetModuleHandleW(None) }
         .map_err(|error| Error::from_windows("GetModuleHandleW", &error))?;
     // SAFETY: `keyboard_proc` has the `HOOKPROC` signature and lives for the whole program; a
     // low-level hook needs a module handle but no DLL.
-    unsafe {
+    let keyboard = unsafe {
         SetWindowsHookExW(
             WH_KEYBOARD_LL,
             Some(keyboard_proc),
@@ -186,35 +262,91 @@ fn install() -> Result<HHOOK, Error> {
             0,
         )
     }
-    .map_err(|error| Error::from_windows("SetWindowsHookExW", &error))
+    .map_err(|error| Error::from_windows("SetWindowsHookExW", &error))?;
+    // SAFETY: as above, with `mouse_proc`.
+    let mouse =
+        unsafe { SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_proc), Some(HINSTANCE(module.0)), 0) }
+            .ok();
+    Ok((keyboard, mouse))
 }
 
-unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-    // A panic must not unwind across the FFI boundary; the event is simply lost.
+/// A mouse button went down: the focus may now be somewhere else in the same window. The hint
+/// is taken down (the flag first, synchronously) and the typed context is forgotten.
+unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    // A panic must not unwind across the FFI boundary.
     let _ = catch_unwind(AssertUnwindSafe(|| {
-        if code >= 0 && matches!(u32::try_from(wparam.0), Ok(WM_KEYDOWN | WM_SYSKEYDOWN)) {
-            // SAFETY: for a `WH_KEYBOARD_LL` call with `code >= 0`, `lparam` points to a
-            // `KBDLLHOOKSTRUCT` that is valid for the duration of the call.
-            let info = unsafe { *(lparam.0 as *const KBDLLHOOKSTRUCT) };
-            handle(&info);
+        let down = matches!(
+            u32::try_from(wparam.0),
+            Ok(WM_LBUTTONDOWN | WM_RBUTTONDOWN | WM_MBUTTONDOWN | WM_XBUTTONDOWN)
+        );
+        if code >= 0 && down {
+            HOOKED.with(|state| {
+                if let Some(hooked) = state.borrow_mut().as_mut() {
+                    hooked.tab.store(0, Ordering::SeqCst);
+                    hooked.sent.fetch_add(1, Ordering::SeqCst);
+                    if hooked.events.try_send(TypedEvent::Reset).is_err() {
+                        hooked.lost.fetch_add(1, Ordering::SeqCst);
+                        hooked.dropped = true;
+                    }
+                }
+            });
         }
     }));
     // SAFETY: passes the unchanged arguments on; the hook handle argument is ignored by Windows.
     unsafe { CallNextHookEx(None, code, wparam, lparam) }
 }
 
-fn handle(info: &KBDLLHOOKSTRUCT) {
+unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    // A panic must not unwind across the FFI boundary; the event is simply lost.
+    let swallowed = catch_unwind(AssertUnwindSafe(|| {
+        if code >= 0 && matches!(u32::try_from(wparam.0), Ok(WM_KEYDOWN | WM_SYSKEYDOWN)) {
+            // SAFETY: for a `WH_KEYBOARD_LL` call with `code >= 0`, `lparam` points to a
+            // `KBDLLHOOKSTRUCT` that is valid for the duration of the call.
+            let info = unsafe { *(lparam.0 as *const KBDLLHOOKSTRUCT) };
+            return handle(&info);
+        }
+        false
+    }))
+    .unwrap_or(false);
+    if swallowed {
+        // The hint's Tab: the app does not get it (a non-zero result ends the hook chain).
+        return LRESULT(1);
+    }
+    // SAFETY: passes the unchanged arguments on; the hook handle argument is ignored by Windows.
+    unsafe { CallNextHookEx(None, code, wparam, lparam) }
+}
+
+/// Takes one key press; returns whether the key must not reach the app (the hint's `Tab`).
+fn handle(info: &KBDLLHOOKSTRUCT) -> bool {
     if info.flags.0 & LLKHF_INJECTED.0 != 0 {
-        return;
+        return false;
     }
     // SAFETY: no preconditions.
     let foreground = unsafe { GetForegroundWindow() };
     let stroke = stroke_of(info, foreground);
+    let plain_tab = typing::is_plain_tab(stroke) && !async_down(VK_SHIFT.0);
     HOOKED.with(|state| {
         let mut guard = state.borrow_mut();
         let Some(hooked) = guard.as_mut() else {
-            return;
+            return false;
         };
+        // One step decides: the flag is read and cleared together, so a hint that comes down
+        // meanwhile cannot leave a swallow behind.
+        let live = if plain_tab && !hooked.dropped && hooked.foreground == foreground.0 as isize {
+            hooked.tab.swap(0, Ordering::SeqCst)
+        } else {
+            0
+        };
+        if live != 0 {
+            hooked.sent.fetch_add(1, Ordering::SeqCst);
+            if hooked.events.try_send(TypedEvent::Tab(live)).is_ok() {
+                return true;
+            }
+            // The worker is behind: the Tab goes on to the app, which makes anything pending
+            // stale, so the count stays raised and the worker takes it in at the reset.
+            hooked.lost.fetch_add(1, Ordering::SeqCst);
+            hooked.dropped = true;
+        }
         let mut pending = [None, None, None];
         if hooked.dropped {
             pending[0] = Some(TypedEvent::Reset);
@@ -227,12 +359,15 @@ fn handle(info: &KBDLLHOOKSTRUCT) {
         }
         pending[2] = hooked.classifier.classify(stroke);
         for event in pending.into_iter().flatten() {
+            hooked.sent.fetch_add(1, Ordering::SeqCst);
             hooked.dropped = hooked.events.try_send(event).is_err();
             if hooked.dropped {
+                hooked.lost.fetch_add(1, Ordering::SeqCst);
                 break;
             }
         }
-    });
+        false
+    })
 }
 
 fn async_down(vk: u16) -> bool {

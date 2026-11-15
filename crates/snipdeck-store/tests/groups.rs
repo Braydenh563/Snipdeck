@@ -324,3 +324,25 @@ fn a_restored_item_inside_a_run_never_splits_it() {
     assert_eq!(r.len(), 1);
     assert_eq!(r[0].1, [ids[0], ids[3], ids[1]], "joined rather than split");
 }
+
+#[test]
+fn set_item_group_sets_the_exact_membership_without_moving_the_item() {
+    let mut s = store();
+    let (l, ids) = five(&mut s);
+    let a = Group::new(l, name("A"));
+    s.create_group(&a, &ids[0..2]).unwrap(); // A B
+    // C sits right below the group: moving it back After B would make it a member.
+    s.move_item(ids[2], l, Placement::After(ids[1])).unwrap();
+    assert_eq!(runs(&s, l)[0].1, [ids[0], ids[1], ids[2]]);
+    s.set_item_group(ids[2], None).unwrap();
+    assert_eq!(runs(&s, l)[0].1, [ids[0], ids[1]], "C is out, in place");
+    assert_eq!(titles(&s, l), ["A", "B", "C", "D", "E"]);
+    s.set_item_group(ids[2], Some(a.id)).unwrap();
+    assert_eq!(runs(&s, l)[0].1, [ids[0], ids[1], ids[2]]);
+    // A group of another list, or none at all, is refused and changes nothing.
+    assert!(
+        s.set_item_group(ids[3], Some(Group::new(l, name("X")).id))
+            .is_err()
+    );
+    assert_healthy(&s);
+}

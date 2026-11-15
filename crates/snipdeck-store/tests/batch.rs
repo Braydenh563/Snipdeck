@@ -469,7 +469,7 @@ fn restore_and_trash_work_inside_a_transaction() {
     s.trash(Trashable::Item(item), at(1)).unwrap();
     s.transaction(|b| {
         assert_eq!(b.trashed().unwrap().len(), 1);
-        let revived = b.restore_with(Trashable::Item(item), Some(3))?;
+        let revived = b.restore_reporting(Trashable::Item(item))?;
         assert_eq!(revived, [Trashable::Item(item)]);
         b.trash(Trashable::List(list), at(2))?;
         Ok::<_, Error>(())

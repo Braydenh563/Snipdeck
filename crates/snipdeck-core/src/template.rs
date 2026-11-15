@@ -7,26 +7,24 @@
 //!
 //! # Which render method to call
 //!
-//! The app should use [`Template::render_checked`]: it enforces the user's [`Entitlements`]
-//! (prompted fields are Supporter) and the output size limit, [`MAX_RENDERED_BYTES`], and reports
-//! both as a [`RenderError`]. [`Template::try_render`] does the size check only, for callers
-//! that have verified the entitlement themselves. [`Template::render`] is the unchecked
-//! primitive: it resolves Supporter placeholders for anyone and, when the output would be over
-//! the limit, cuts it there instead of failing.
+//! The app should use [`Template::try_render`]: it enforces the output size limit,
+//! [`MAX_RENDERED_BYTES`], and reports it as a [`RenderError`]. [`Template::render`] is the
+//! unchecked primitive: when the output would be over the limit it cuts it there instead of
+//! failing.
 //!
 //! # Syntax
 //!
-//! | Placeholder | Tier | Renders as |
-//! |---|---|---|
-//! | `{date}` | Free | the date in the context's [`Locale`] (ISO `2026-10-17` by default) |
-//! | `{time}` | Free | the time in the context's [`Locale`] (`14:05`, or `2:05 PM` for a 12-hour locale) |
-//! | `{datetime:FORMAT}` / `{date:FORMAT}` | Free | the date and time formatted by `FORMAT`, see below |
-//! | `{date+3d}`, `{time-90min}`, `{datetime+1mo:%F}` | Free | the same, moved by an offset, see below |
-//! | `{uuid}` | Free | a random version 4 UUID, new for each use of the placeholder |
-//! | `{clipboard}` | Free | the clipboard text the caller supplied, or nothing |
-//! | `{cursor}` | Free | nothing; marks where the caret should land, see [`Rendered::cursor_from_end`] |
-//! | `{field:Name}` / `{field:Name\|default}` | Supporter | the answer to a text prompt |
-//! | `{choice:Name\|a\|b\|c}` | Supporter | the answer to a pick-one prompt |
+//! | Placeholder | Renders as |
+//! |---|---|
+//! | `{date}` | the date in the context's [`Locale`] (ISO `2026-10-17` by default) |
+//! | `{time}` | the time in the context's [`Locale`] (`14:05`, or `2:05 PM` for a 12-hour locale) |
+//! | `{datetime:FORMAT}` / `{date:FORMAT}` | the date and time formatted by `FORMAT`, see below |
+//! | `{date+3d}`, `{time-90min}`, `{datetime+1mo:%F}` | the same, moved by an offset, see below |
+//! | `{uuid}` | a random version 4 UUID, new for each use of the placeholder |
+//! | `{clipboard}` | the clipboard text the caller supplied, or nothing |
+//! | `{cursor}` | nothing; marks where the caret should land, see [`Rendered::cursor_from_end`] |
+//! | `{field:Name}` / `{field:Name\|default}` | the answer to a text prompt |
+//! | `{choice:Name\|a\|b\|c}` | the answer to a pick-one prompt |
 //!
 //! `{{` and `}}` produce literal braces ([`escape`] does this for arbitrary text). Any other
 //! use of a brace is a [`TemplateError`] with the byte span of the problem: an unknown
@@ -79,7 +77,7 @@ use jiff::Zoned;
 pub use jiff::tz::TimeZone;
 use unicode_segmentation::UnicodeSegmentation as _;
 
-use crate::{Entitlements, Error, Feature, Timestamp};
+use crate::Timestamp;
 
 pub mod transform;
 
@@ -427,6 +425,49 @@ pub struct TemplateError {
     pub kind: TemplateErrorKind,
 }
 
+/// Every placeholder as it is written, for the "unknown placeholder" message.
+pub const PLACEHOLDER_LIST: &str = "{uuid}, {date}, {time}, {datetime:FORMAT}, {clipboard}, \
+     {cursor}, {field:Name}, {field:Name|default}, {choice:Name|a|b}, \
+     {multiline:Name|default}, {pickdate:Name|FORMAT} and {optional:Name}...{/optional}";
+
+/// What to write instead of an offset unit Snipdeck does not know.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnitHint {
+    /// `m`: months or minutes?
+    MonthOrMinute,
+    /// `day`, `days`.
+    Days,
+    /// `week`, `weeks`, `wk`.
+    Weeks,
+    /// `month`, `months`.
+    Months,
+    /// `year`, `years`, `yr`, `yrs`.
+    Years,
+    /// `hour`, `hours`, `hr`, `hrs`.
+    Hours,
+    /// `minute`, `minutes`, `mins`.
+    Minutes,
+    /// Anything else: the list of units.
+    AnyUnit,
+}
+
+impl UnitHint {
+    /// The hint in English, with the units in backticks.
+    #[must_use]
+    pub const fn text(self) -> &'static str {
+        match self {
+            Self::MonthOrMinute => "`mo` for months or `min` for minutes",
+            Self::Days => "`d` for days",
+            Self::Weeks => "`w` for weeks",
+            Self::Months => "`mo` for months",
+            Self::Years => "`y` for years",
+            Self::Hours => "`h` for hours",
+            Self::Minutes => "`min` for minutes",
+            Self::AnyUnit => "one of d, w, mo, y, h, min",
+        }
+    }
+}
+
 /// What is wrong with a template.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TemplateErrorKind {
@@ -493,7 +534,7 @@ pub enum TemplateErrorKind {
         /// The unit as written.
         found: String,
         /// What to write instead.
-        hint: &'static str,
+        hint: UnitHint,
     },
     /// An offset over its unit's bound.
     OffsetOutOfRange {
@@ -514,7 +555,9 @@ pub enum TemplateErrorKind {
     },
 }
 
-fn usage(keyword: &str) -> &'static str {
+/// How a placeholder is written (`{date}`, `{field:Name}`), or "" for an unknown keyword.
+#[must_use]
+pub fn usage(keyword: &str) -> &'static str {
     match keyword {
         "uuid" => "{uuid}",
         "date" => "{date}",
@@ -560,12 +603,9 @@ impl fmt::Display for TemplateErrorKind {
                 if let Some(keyword) = suggestion {
                     write!(f, ", did you mean `{}`?", usage(keyword))?;
                 }
-                f.write_str(
-                    ". Placeholders are {uuid}, {date}, {time}, {datetime:FORMAT}, {clipboard}, \
-                     {cursor}, {field:Name}, {field:Name|default}, {choice:Name|a|b}, \
-                     {multiline:Name|default}, {pickdate:Name|FORMAT} and \
-                     {optional:Name}...{/optional}. \
-                     To write a literal brace, double it: {{ or }}",
+                write!(
+                    f,
+                    ". Placeholders are {PLACEHOLDER_LIST}. To write a literal brace, double it: {{{{ or }}}}"
                 )
             }
             Self::UnexpectedArgument { placeholder } => {
@@ -591,7 +631,7 @@ impl fmt::Display for TemplateErrorKind {
                 f.write_str("an offset is a sign, a number and a unit, like `+3d` or `-90min`")
             }
             Self::UnknownOffsetUnit { found, hint } => {
-                write!(f, "unknown offset unit `{found}`; use {hint}")
+                write!(f, "unknown offset unit `{found}`; use {}", hint.text())
             }
             Self::OffsetOutOfRange { unit, max } => {
                 write!(f, "an offset in `{unit}` can be at most {max}")
@@ -609,7 +649,7 @@ impl fmt::Display for TemplateErrorKind {
 }
 
 /// Why a template could not be rendered. Both cases leave the template and context as they
-/// were; show the user a message (or the Supporter upsell) and let them try again.
+/// were; show the user a message and let them try again.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum RenderError {
     /// The result would be longer than [`MAX_RENDERED_BYTES`].
@@ -618,9 +658,6 @@ pub enum RenderError {
         /// The limit, [`MAX_RENDERED_BYTES`].
         limit: usize,
     },
-    /// The template needs a Supporter feature the entitlements do not include.
-    #[error("`{0}` needs Snipdeck Supporter")]
-    ProRequired(Feature),
 }
 
 /// `text` with every brace doubled, so it parses back to exactly `text`.
@@ -737,45 +774,17 @@ impl Template {
         uuids_in(&self.parts)
     }
 
-    /// Whether using this template needs `feature`: only [`Feature::PromptedFields`], and only
-    /// if it has a prompt: `{field}`, `{choice}`, `{multiline}`, `{pickdate}` or `{optional}`.
-    pub fn requires(&self, feature: Feature) -> bool {
-        match feature {
-            Feature::PromptedFields => !self.prompts.is_empty(),
-            Feature::UnlimitedBoards
-            | Feature::MasterPassword
-            | Feature::FloatingLists
-            | Feature::PasteStack => false,
-        }
-    }
-
-    /// Checks `entitlements` allow every feature this template needs.
-    ///
-    /// # Errors
-    ///
-    /// [`Error::ProRequired`] naming the missing feature.
-    pub fn check(&self, entitlements: &Entitlements) -> Result<(), Error> {
-        for &feature in Feature::ALL {
-            if self.requires(feature) {
-                entitlements.require(feature)?;
-            }
-        }
-        Ok(())
-    }
-
-    /// Resolves the template **without** checking entitlements; prefer
-    /// [`Template::render_checked`].
+    /// Resolves the template, cutting the output at [`MAX_RENDERED_BYTES`]; prefer
+    /// [`Template::try_render`].
     ///
     /// Missing pieces degrade rather than fail: no clipboard renders as nothing, an
     /// unanswered field as its default (or nothing), an unanswered choice as its first
     /// option, an unanswered `{pickdate}` as today, an unticked `{optional}` section as nothing.
     /// An answer is used as given, even if empty or not among a choice's options.
     ///
-    /// This resolves every prompt (`{field}`, `{choice}`, `{multiline}`, `{pickdate}` and
-    /// `{optional}`) for any tier, so a caller that forgets
-    /// [`Template::check`] gives Free users a Supporter feature. If the output would exceed
-    /// [`MAX_RENDERED_BYTES`] it is cut at that length (on a character boundary) rather than
-    /// grown without bound; [`Template::try_render`] reports that instead.
+    /// If the output would exceed [`MAX_RENDERED_BYTES`] it is cut at that length (on a
+    /// character boundary) rather than grown without bound; [`Template::try_render`] reports
+    /// that instead.
     pub fn render(&self, ctx: &RenderContext<'_>) -> Rendered {
         self.render_bounded(ctx).0
     }
@@ -792,25 +801,6 @@ impl Template {
                 limit: MAX_RENDERED_BYTES,
             }),
         }
-    }
-
-    /// Resolves the template for a user with `entitlements`: the call the app should make.
-    ///
-    /// # Errors
-    ///
-    /// [`RenderError::ProRequired`] naming the first missing feature (see
-    /// [`Template::check`]), or [`RenderError::OutputTooLarge`] (see [`Template::try_render`]).
-    pub fn render_checked(
-        &self,
-        entitlements: &Entitlements,
-        ctx: &RenderContext<'_>,
-    ) -> Result<Rendered, RenderError> {
-        for &feature in Feature::ALL {
-            if self.requires(feature) && !entitlements.allows(feature) {
-                return Err(RenderError::ProRequired(feature));
-            }
-        }
-        self.try_render(ctx)
     }
 
     fn render_parts(
@@ -1338,16 +1328,16 @@ fn parse_offsets(text: &str, at: usize) -> Result<Vec<Offset>, TemplateError> {
 }
 
 /// What to write instead of the unit `found`.
-fn unit_hint(found: &str) -> &'static str {
+fn unit_hint(found: &str) -> UnitHint {
     match found.to_ascii_lowercase().as_str() {
-        "m" => "`mo` for months or `min` for minutes",
-        "day" | "days" => "`d` for days",
-        "week" | "weeks" | "wk" => "`w` for weeks",
-        "month" | "months" => "`mo` for months",
-        "year" | "years" | "yr" | "yrs" => "`y` for years",
-        "hour" | "hours" | "hr" | "hrs" => "`h` for hours",
-        "minute" | "minutes" | "mins" => "`min` for minutes",
-        _ => "one of d, w, mo, y, h, min",
+        "m" => UnitHint::MonthOrMinute,
+        "day" | "days" => UnitHint::Days,
+        "week" | "weeks" | "wk" => UnitHint::Weeks,
+        "month" | "months" => UnitHint::Months,
+        "year" | "years" | "yr" | "yrs" => UnitHint::Years,
+        "hour" | "hours" | "hr" | "hrs" => UnitHint::Hours,
+        "minute" | "minutes" | "mins" => UnitHint::Minutes,
+        _ => UnitHint::AnyUnit,
     }
 }
 

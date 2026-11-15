@@ -1,44 +1,36 @@
 mode: continue
-status: active
-max-continues: 300
+status: blocked (waiting on gate3, cloud workers, fixer, reviewer; monitor bxaup0qa0 wakes me)
+max-continues: 80
 max-idle-minutes: 60
-started: 2026-11-07 (resumed)
-resumed: 2026-11-09 after idle-guard stop during a long gate run (commits c7f28a7 since)
+finish-up-line: 97%   # owner: "until 97% weekly usage"
+started: 2026-11-14 13:40
 
-- [x] Answer artifact comments (crushed text, type logos)
-- [x] Panel design v2 on canvas: deep design pass on D, independent critique, publish for owner pick (no Panel build)
-- [x] Gate + push non-Panel UX agent work (shortcuts search, Ctrl+Shift+P, theme, density, audit, palette)
-- [x] Alt+Tab to the Panel as a setting (Windows-only; owner tests)
-- [x] Picker placement setting relative to the caret
-- [x] Dock fixes (covers a third of the screen, bottom invisible)
-- [x] Feedback audit: every action confirms or explains failure
-- [x] Show/hide/move/resize predictability (Reset size then drag broke list layout)
-- [x] Review fixes F (toast rule, library_changed refresh, palette label, Picker docs) + gate + push
-- [x] Panel v2 spec (Opus): D v3 default + layout options + access methods in Settings, research Win+V, Ditto, Raycast, PowerToys Run; docs/reviews/panel-v2-spec.md
-- [x] Panel v2 build: audit 2 fixed (940ff42); item 8 goes to the shared-look slices
-- [x] UX gap audit (Opus): docs/reviews/ux-gap-audit.md (d068c9d)
-- [x] Windows quick check: a ~10-minute wizard mode that runs every automatable step itself and asks the owner only for eye checks; one file to send back
-- [x] UX audit quick wins (audit 2,3,5,9,11,15,18): Recent click pastes; hotkey health with press-to-test + alternatives; template chips insert at caret; onboarding Floating/Docked + Recent offer; Supporter lock badges; Settings search + jump links; Open Picker in tray
-- [x] Defaults: Recent on for new installs; new non-AltGr default chords (decisions in now.md)
-- [x] Symbols library (slices 1-7 merged; Windows checks in quick-check 13-18) (spec first): emoji, kaomoji, icons; search, one click copies/pastes, add to a list, icons copy as SVG/PNG or save; licence-clean data; colour emoji rendering checked
-- [x] Carry the Panel v2 look (spec docs/reviews/shared-look-spec.md; slices 1-7 merged b70b909, DESIGN.md 5bdfdb0; slice 8 test cleanup on wt/look8b) to Main lists, Picker, command palette, editors, menus and Settings
-- [x] v1.0.1: Rebuild-from-backup safety (own blob dir for the set-aside db, WAL checkpoint on close, crash-safe move marker; .claude/inbox-archive.md): merged e075b10; Windows rename-under-lock unverified
-- [x] v1.0.1: sidebar resize (O54) [compact dock, grips, O50 done]
-- [x] v1.0.1: paste or drop to create an item, Ctrl+C on items (O47 a-c; slices 1-2 done); Main quick-add moves to slice 6
-- [x] v1.0.1 slice 6: Main quick-add + multi-row drag (merged 01a7292)
-- [x] v1.0.1 slice 8: A25, search suggestion dropdown (Picker, Panel, Main); empty-state keycaps (owner)
-- [x] Recent captures images, files and rich text (owner 2026-10-26), with size caps and the privacy markers
-- [x] v1.1: placeholders {uuid} + date maths, paste transforms, richer fill-ins
-- [x] v1.1: importers (TextExpander, Espanso, PhraseExpress, Beeftext): backend merged 947c9b4; Settings import chooser wiring + Note warnings display left
-- [ ] v1.1: groups inside a list (O46), tips window
-- [ ] v1.1: typed-trigger expansion (opt-in, off by default, honours Sensitive + never-paste list)
-- [ ] v1.1: suggest-as-you-type at the caret (opt-in), rich paste, Windows Hello unlock
-- [ ] Final: full gate, polish pass (ux-auditor + blind-tester on Panel, Settings, palette, shortcuts, toasts), docs, morning summary
-- [x] v1.1 light lane: slice 9 serde-saphyr + 3a groups data (merged ed7528b)
-- [x] v1.1 slice 5a triggers data (merged)
-- [x] v1.1 UI lane slices 1 + 2a (wt/v11-ui merged; Ctrl+Enter root cause fixed f508e86)
-- [x] v1.1 slice 8 platform layer (wt/v11-hello merged 9c44b6b; review fixed 867757c)
-- [x] v1.1 slice 2b core parser (wt/v11-fill f2463a1, reviewed+fixed; app sites in .claude/remaining/fill.md)
-- [x] v1.1 slice 2b app+UI (wt/v11-fill, agent; shares /tmp/target-panel lock with the Ctrl+Enter agent)
-- [x] v1.1 slice 4 tips (wt/v11-tips, agent)
-- [x] v1.1 slices 5b+7 platform layer (wt/v11-plat ebd01f2 merged locally; app build unchecked until next full gate)
+- [x] Push d0186e01 render merge + Store docs once gate --changed and 1.99.1 clippy pass
+- [x] colour-tool (merged locally, push pending gate): worker tidy (tests below use super::*), merge PR head; re-verify, merge, gate, push
+- [x] owner-bug-sweep: rounds 1-4 merged (aa4a232b, 92aecf09 parent), reviewed twice
+- [x] store-ready: merged 92aecf09 after review fixes (22176105); follow-up store-ready-2: Recent question goldens + ux-auditor
+- [x] Task 5 docs: CHANGELOG covers colour tool, preview, docking, render fix, quick add, reorder, Store (checked 2026-11-15); release dispatch [!] owner (needs main); gate --full + CI green moved to the final item
+- [x] all-free (store worker, claude/all-free): Supporter removed, Buy Me a Coffee link, docs, Recent goldens, ux-auditor; review (no checkout), merge, gate, push
+- [x] Full-app audit round 1 (Opus + Fable F1-F13 fixed and pushed; blind tests and round 2 tracked below): Opus pass done (12 fixed, 62c2063a..fc6cface + cleanup); Fable audit running (owner named it 2026-11-15) -> scratchpad/fable-audit.md; Sonnet fixes all findings; blind usability tests (Sonnet); gate, push
+- [x] Push audit fixes, pushed 2026-11-15 (gate --changed running -> scratchpad/gate.log; tests no-fail-fast ok, 1.99.1 clippy ok, Windows clippy ok; owner workflow edits merged 34673454)
+- [x] Merge origin/claude/all-free (3c2d9c44 + G1 fix e4c60f5f; gate2 running -> push) (reviewed MERGE-WITH-FIXES; workflow part done by owner) into the PR branch, resolve .po/CHANGELOG conflicts, gate, push
+- [ ] claude/edge-polish (store worker session_01NKjURwKPmGuEHMfw1o6HF4): Store 10.8.2 notes, stale msgid, collapsed-edge restyle, residual drag flicker, eyedropper leaves docked Panel in collapsed look; review, merge, gate, push
+- [ ] claude/popup-dismiss (bug-sweep worker session_01NKjURt5yHRvroJQUg7zQeb): toast close button, click-outside/Esc everywhere, More menu fills small Panel; review, merge, gate, push
+- [ ] claude/ui-polish-2 (bug-sweep worker, after popup-dismiss): clear emoji/colour recents, tooltip z/clipping, tinted list icons, collapse button into sidebar header, search x alignment, scroll glitches; review, merge, gate, push
+- [ ] Fable audit round 2 (scratchpad/fable-audit-2.md, 49 findings G1-G49): fix/fable2-ui done (2 commits, reviewer running); fix/fable2-data running; fix/fable2-tail stopped with WIP 7d8230cc -> cloud session after push; fix every finding (Sonnet agents, grouped by section), review, gate, push
+- [ ] README, docs and screenshots refreshed for the final UI (after ui-polish-2): regenerate screenshots, check README feature list and user guide
+- [ ] Open items from scratchpad/open-items.md: dead code (A26), CJK test silent skip -> explicit skip message, scroll-into-view for all colour-tool controls, HANDOVER rewrite (with docs refresh); eyedropper global hotkey, per-swatch Ctrl+S, OLE IDropTarget drops -> decide (build or record as post-1.0 in SPEC with reason)
+- [ ] Blind usability tests (Sonnet) on the merged build; fix
+- [ ] gate --full, CI green on PR #5, handover morning summary + retro
+
+## State 2026-11-15 late (for the next context)
+- Pushed: audit fixes up to 2a46... (origin has up to 2a469639? check `git log origin/claude/compassionate-pascal-pod8ux -1`). Local unpushed: all-free merge 3c2d9c44 + G1 e4c60f5f + pro() test fix da0a5971 + chores.
+- gate3 (`scripts/gate.sh --changed` on merged branch) running in background -> scratchpad/gate3.log; if `failed: none`, push (retry x4).
+- Fable round 2 complete: scratchpad/fable-audit-2.md, 49 findings G1-G49 (G1 fixed). Fixers (Sonnet, worktrees under .claude/worktrees/agent-*, base 450448ec):
+  - fix/fable2-data: G2-G4, G6-G11, G14, G19, G20, G25, G28-G33
+  - fix/fable2-ui: G5, G12, G13, G15-G18, G21, G24, G26, G27, G34-G43 (incl. all 234 untranslated strings)
+  - fix/fable2-tail: G44-G49
+  Each reports branch head; then reviewer (no checkout), merge into PR branch, gate, push.
+- Cloud workers: edge-polish (session_01NKjURwKPmGuEHMfw1o6HF4), popup-dismiss then ui-polish-2 (session_01NKjURt5yHRvroJQUg7zQeb); not pushed yet at 08:20.
+- Then: open items (scratchpad/open-items.md), README/docs/screenshots refresh, blind tests, gate --full, CI, handover morning summary, retro.
+- Disk: clean stale test binaries in /tmp/target-panel/debug/deps if under 2 GB free.

@@ -211,7 +211,12 @@ where
             &window,
             &ctl.settings().hotkeys,
             self.shown.borrow().as_ref(),
-            ctl.settings().show_symbols_tab,
+            crate::command_binding::Offers {
+                symbols: ctl.settings().show_symbols_tab,
+                colours: ctl.settings().show_colours_tab,
+                eyedropper: ctl.eyedropper_state().0,
+                saved_colours: ctl.has_saved_list(),
+            },
             query,
         );
     }
@@ -350,7 +355,7 @@ where
         let _ = window.show();
         crate::ownership::opened(crate::ownership::Win::TagManager);
         fit_when_settled(&window);
-        raise(window.window());
+        crate::native_window::activate_regular(&window);
     }
 
     /// Shows, updates or hides the list or board editor to match `screen.editor`.
@@ -386,7 +391,7 @@ where
                     fit_when_settled(&window);
                     // Shown again after a close, the window would stay behind the Main
                     // window (it was created un-activated): bring it up.
-                    raise(window.window());
+                    crate::native_window::activate_regular(&window);
                     window.invoke_focus_name();
                 }
             }
@@ -409,7 +414,7 @@ where
                     fit_when_settled(&window);
                     // Shown again after a close, the window would stay behind the Main
                     // window (it was created un-activated): bring it up.
-                    raise(window.window());
+                    crate::native_window::activate_regular(&window);
                     window.invoke_focus_name();
                 }
             }
@@ -619,6 +624,32 @@ where
             .main_action(action_of(action), index(i)));
         wire!(on_move_chosen, |ctl, i| ctl.main_move_to(index(i)));
         wire!(on_paste_as_chosen, |ctl, i| ctl.main_paste_as(index(i)));
+        wire!(on_colour_copied, |ctl, row, format| ctl
+            .main_colour_copy(index(row), index(format)));
+        wire!(on_colour_chosen, |ctl, format, copy| ctl
+            .main_colour_paste_as(index(format), copy));
+        wire!(on_colour_open_requested, |ctl, row| ctl
+            .main_open_in_colours(index(row)));
+        {
+            // A colour row's "Paste as…" lists its formats; the window asks just before it opens
+            // the chooser, so they are in place by then.
+            let core = Rc::clone(&core);
+            let weak = window.as_weak();
+            window.on_colour_choices_requested(move |row| {
+                let Some(window) = weak.upgrade() else {
+                    return;
+                };
+                let choices = core.controller.borrow().main_colour_choices(index(row));
+                let name = window.global::<ui::ColourTexts<'_>>().invoke_format_name();
+                window.set_colour_choices(model(choices.iter().map(|(f, value)| {
+                    ui::ChoiceEntry {
+                        label: crate::colour_words::choice_text(*f, &name, value).into(),
+                        count: -1,
+                        ..Default::default()
+                    }
+                })));
+            });
+        }
         wire!(on_tag_toggled, |ctl, i, on| ctl
             .main_toggle_tag(index(i), on));
         wire!(on_reveal_requested, |ctl, i, on| ctl
@@ -651,8 +682,17 @@ where
                 }
             }
         });
-        wire!(on_paste_create_requested, |ctl| ctl
-            .paste_create(crate::item_editor::Origin::Main));
+        {
+            let core = Rc::clone(&core);
+            window.on_paste_create_requested(move || {
+                crate::trace!("callback main on_paste_create_requested");
+                crate::native_window::note_opener(crate::native_window::Surface::Main);
+                let started = core.act(|ctl| ctl.paste_begin(crate::item_editor::Origin::Main));
+                if let Some(run) = started {
+                    read_run(&Rc::downgrade(&core.controller), run);
+                }
+            });
+        }
         wire!(on_copy_selection_requested, |ctl, i| ctl
             .main_copy_selection(index(i)));
         wire!(on_undo_requested, |ctl| ctl.undo());
@@ -703,12 +743,28 @@ where
                 core.run_command(id);
             });
         }
+        wire!(on_group_requested, |ctl, i| ctl.main_group_marked(index(i)));
+        wire!(on_group_toggled, |ctl, i| ctl
+            .main_group_collapse(index(i), None));
+        wire!(on_group_collapsed_set, |ctl, i, c| ctl
+            .main_group_collapse(index(i), Some(c)));
+        wire!(on_group_renamed, |ctl, i, name| ctl
+            .main_group_rename(index(i), name.as_str()));
+        wire!(on_group_rename_requested, |ctl, i| ctl
+            .main_group_rename_start(index(i)));
+        wire!(on_group_rename_ended, |ctl| ctl.main_group_rename_ended());
+        wire!(on_group_ungroup_requested, |ctl, i| ctl
+            .main_group_ungroup(index(i)));
+        wire!(on_group_delete_requested, |ctl, i| ctl
+            .main_group_delete(index(i)));
         wire!(on_item_reorder_requested, |ctl, d| ctl
             .main_reorder_items(isize::try_from(d).unwrap_or(0)));
         wire!(on_list_reorder_requested, |ctl, i, d| ctl
             .main_reorder_list(index(i), isize::try_from(d).unwrap_or(0)));
         wire!(on_row_dropped, |ctl, from, onto| ctl
             .main_drop_row(index(from), index(onto)));
+        wire!(on_row_dropped_above, |ctl, from, onto| ctl
+            .main_drop_row_above(index(from), index(onto)));
         wire!(on_row_dropped_on_list, |ctl, row, list| ctl
             .main_drop_on_list(index(row), index(list)));
         wire!(on_list_dropped, |ctl, from, onto| ctl
@@ -720,10 +776,7 @@ where
                     .borrow()
                     .as_ref()
                     .and_then(|s| s.rows.get(index(row)))
-                    .and_then(|r| match r.key {
-                        Key::Item(id) => Some(Payload::Item(id)),
-                        _ => None,
-                    })
+                    .and_then(|r| row_payload(r.key))
                     .map_or_else(slint::DataTransfer::default, Payload::into_transfer)
             });
         }
@@ -741,14 +794,13 @@ where
         }
         {
             let core = Rc::clone(&core);
-            window.on_payload_row(move |data| match Payload::of(&data) {
-                Some(Payload::Item(id)) => core.shown.borrow().as_ref().map_or(-1, |s| {
-                    s.rows
-                        .iter()
-                        .position(|r| r.key == Key::Item(id))
-                        .map_or(-1, to_i32)
-                }),
-                _ => -1,
+            window.on_payload_row(move |data| {
+                let Some(key) = Payload::of(&data).and_then(payload_key) else {
+                    return -1;
+                };
+                core.shown.borrow().as_ref().map_or(-1, |s| {
+                    s.rows.iter().position(|r| r.key == key).map_or(-1, to_i32)
+                })
             });
         }
         {
@@ -826,8 +878,7 @@ fn watch_place<S, C, K, T>(
 {
     use slint::winit_030::{EventResult, winit::event::WindowEvent};
     let controller = Rc::downgrade(controller);
-    // O39: Windows can drop the window's pixels (Alt+Tab, restore); redraw all of it then.
-    let weak = window.as_weak();
+    // O39: Windows can drop or erase the window's pixels; the next frame is drawn whole then.
     let mut watch = crate::repaint::Watch::new();
     let batch = crate::drop_batch::DropBatch::default();
     let for_drops = controller.clone();
@@ -865,20 +916,18 @@ fn watch_place<S, C, K, T>(
                         let Ok(mut c) = c.try_borrow_mut() else {
                             return false;
                         };
-                        c.drop_create(paths, crate::item_editor::Origin::Main, None);
+                        let started = c.drop_begin(paths, crate::item_editor::Origin::Main, None);
                         drop(c);
                         crate::binding::redraw_all();
+                        if let Some(run) = started {
+                            read_run(&controller, run);
+                        }
                         true
                     });
                 }
                 _ => {}
             }
-            if watch.on_signal(crate::repaint::signal_of(event))
-                && let Some(w) = weak.upgrade()
-            {
-                w.set_repaint_flip(!w.get_repaint_flip());
-                slint_window.request_redraw();
-            }
+            crate::repaint::follow(&mut watch, slint_window, event);
             if matches!(event, WindowEvent::Moved(_) | WindowEvent::Resized(_))
                 && let Some(controller) = controller.upgrade()
                 && let Ok(mut controller) = controller.try_borrow_mut()
@@ -994,7 +1043,7 @@ impl MainUi {
                     watch_place(window, &controller);
                 }
                 fit_when_settled(window);
-                raise(window.window());
+                crate::native_window::activate_regular(window);
                 Ok(())
             })
         };
@@ -1064,14 +1113,6 @@ impl MainUi {
     }
 }
 
-/// Un-minimises the window and asks the OS to focus it (it was created un-activated).
-pub(crate) fn raise(window: &slint::Window) {
-    let _ = window.with_winit_window(|w| {
-        w.set_minimized(false);
-        w.focus_window();
-    });
-}
-
 // ---- Screen -> window --------------------------------------------------------------------------
 
 /// The colour-label filter row.
@@ -1085,6 +1126,23 @@ fn set_label_filter(window: &ui::MainWindow, screen: &MainScreen) {
         }
     })));
     window.set_label_filter(crate::binding::label_index(screen.label_filter));
+}
+
+/// The Colour block under the list: its swatch and the colour in every format.
+fn set_colour_block(window: &ui::MainWindow, block: Option<&crate::controller::ColourBlock>) {
+    window.set_colour_block_shown(block.is_some());
+    let Some(block) = block else {
+        return;
+    };
+    let c = block.colour;
+    window.set_colour_block_swatch(slint::Color::from_argb_u8(c.a, c.r, c.g, c.b));
+    let name = window.global::<ui::ColourTexts<'_>>().invoke_format_name();
+    window.set_colour_block_formats(model(block.formats.iter().map(|(f, value)| {
+        ui::ColourFormatCell {
+            label: crate::colour_words::format_word(*f, &name),
+            value: value.as_str().into(),
+        }
+    })));
 }
 
 /// The sidebar's lists, with their colour marks and icons.
@@ -1110,6 +1168,10 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     crate::text_scale::apply(&window.global::<ui::SystemLook<'_>>());
     if differs(&|p| look_key(p) == look_key(screen)) {
         apply_look(window, screen);
+    }
+    window.set_colour_can_open(screen.colours_tab);
+    if differs(&|p| p.colour_block == screen.colour_block) {
+        set_colour_block(window, screen.colour_block.as_ref());
     }
     if differs(&|p| p.panel_hotkey == screen.panel_hotkey) {
         window.set_panel_hotkey(screen.panel_hotkey.as_str().into());
@@ -1245,6 +1307,16 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
         window.set_query(screen.query.as_str().into());
     }
     window.set_rows_reorderable(screen.reorderable);
+    window.set_has_groups(screen.rows.iter().any(|r| r.header.is_some()));
+    window.set_list_total(to_i32(list_total(&screen.rows)));
+    let rename_row = screen.rename_row.map_or(-1, to_i32);
+    if window.get_rename_row() != rename_row {
+        window.set_rename_row(rename_row);
+    }
+    let rename_seq = to_i32(usize::try_from(screen.rename_seq).unwrap_or(0));
+    if window.get_rename_seq() != rename_seq {
+        window.set_rename_seq(rename_seq);
+    }
     window.set_list_sort(sort_index(screen.list_sort));
     window.set_reorder_offer(screen.reorder_offer);
     // The window runs ahead of the setting while the splitter is dragged: only a change of the setting is pushed.
@@ -1327,6 +1399,35 @@ where
     );
 }
 
+/// What a dragged row carries: an item, or a group's header (a note or a header only; nothing else drags).
+fn row_payload(key: Key) -> Option<Payload> {
+    match key {
+        Key::Item(id) => Some(Payload::Item(id)),
+        Key::Group(id) => Some(Payload::Group(id)),
+        _ => None,
+    }
+}
+
+/// The row a dropped payload stands for.
+fn payload_key(payload: Payload) -> Option<Key> {
+    match payload {
+        Payload::Item(id) => Some(Key::Item(id)),
+        Payload::Group(id) => Some(Key::Group(id)),
+        Payload::List(_) => None,
+    }
+}
+
+/// The items a list holds: headers stand for their group's count (members folded away included) and the members
+/// shown under an open header are not counted twice.
+fn list_total(rows: &[crate::main_window::Row]) -> usize {
+    rows.iter()
+        .map(|r| match &r.header {
+            Some(h) => h.count,
+            None => usize::from(!r.grouped),
+        })
+        .sum()
+}
+
 fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
     let (list_name, color) = row.list.as_ref().map_or_else(
         || (SharedString::new(), slint::Color::default()),
@@ -1339,9 +1440,15 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
     );
     let (label, label_name) = crate::binding::label_fields(row.label);
     let marks = row.marks.fields();
+    let (swatch, has_swatch) =
+        crate::colour_words::swatch_of_kind(row.kind, &row.preview, row.sensitive);
     ui::MainRow {
         kind: item_kind_of(row.kind, row.sensitive),
-        title: row.title.as_str().into(),
+        title: row
+            .header
+            .as_ref()
+            .map_or(row.title.as_str(), |h| h.name.as_str())
+            .into(),
         mark_before: marks.mark_before.as_str().into(),
         mark_text: marks.mark_text.as_str().into(),
         preview: if row.sensitive {
@@ -1355,6 +1462,8 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
         },
         preview_before: marks.preview_before.as_str().into(),
         preview_match: marks.preview_match.as_str().into(),
+        swatch,
+        has_swatch,
         tag_hit: marks.tag_hit.as_str().into(),
         masked_preview: if row.sensitive {
             crate::binding::MASKED_PREVIEW.into()
@@ -1368,6 +1477,13 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
         image: slint::Image::default(),
         pinned: row.pinned,
         selected: row.selected,
+        is_header: row.header.is_some(),
+        group_count: row
+            .header
+            .as_ref()
+            .map_or(0, |h| i32::try_from(h.count).unwrap_or(i32::MAX)),
+        group_collapsed: row.header.as_ref().is_some_and(|h| h.collapsed),
+        grouped: row.grouped,
     }
 }
 
@@ -1529,7 +1645,7 @@ fn theme_of(index: i32) -> Theme {
     }
 }
 
-fn ui_view(view: ViewMode) -> ui::MainView {
+pub(crate) fn ui_view(view: ViewMode) -> ui::MainView {
     match view {
         ViewMode::Comfortable => ui::MainView::Comfortable,
         ViewMode::Compact => ui::MainView::Compact,
@@ -1556,6 +1672,7 @@ fn select_mode(mode: ui::SelectMode) -> SelectMode {
 fn action_of(action: ui::ItemAction) -> MainAction {
     match action {
         ui::ItemAction::Use => MainAction::Use,
+        ui::ItemAction::UsePlain => MainAction::UsePlain,
         ui::ItemAction::Copy => MainAction::Copy,
         ui::ItemAction::Edit => MainAction::Edit,
         ui::ItemAction::Pin => MainAction::Pin,
@@ -1585,6 +1702,35 @@ loggable_debug!(
     ui::ItemAction,
     ui::HelpPage
 );
+
+/// Reads the files of `run` (dropped, or pasted from Explorer) off the UI thread; the window
+/// stays alive, and each result is applied when the controller is free.
+fn read_run<S, C, K, T>(
+    controller: &std::rc::Weak<RefCell<Controller<S, C, K, T>>>,
+    run: crate::controller::DropRun,
+) where
+    S: Library + 'static,
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    let controller = controller.clone();
+    crate::drop_read::drive(
+        run,
+        Rc::new(move |run, done| {
+            let Some(c) = controller.upgrade() else {
+                return Ok(None);
+            };
+            let Ok(mut c) = c.try_borrow_mut() else {
+                return Err(Box::new((run, done)));
+            };
+            let next = c.drop_read_done(run, done);
+            drop(c);
+            crate::binding::redraw_all();
+            Ok(next)
+        }),
+    );
+}
 
 #[cfg(test)]
 mod tests {
@@ -1628,6 +1774,68 @@ mod tests {
     }
 
     #[test]
+    fn a_dragged_header_travels_as_a_group_payload_and_finds_its_row_again() {
+        use crate::main_window::Key;
+        let (item, group) = (
+            snipdeck_core::ItemId::generate(),
+            snipdeck_core::GroupId::generate(),
+        );
+        let rows = [Key::Group(group), Key::Item(item)];
+        for (at, key) in rows.iter().enumerate() {
+            let data = row_payload(*key).expect("a row drags").into_transfer();
+            let back = Payload::of(&data).and_then(payload_key);
+            assert_eq!(back, Some(*key));
+            assert_eq!(rows.iter().position(|k| Some(*k) == back), Some(at));
+        }
+        assert_eq!(
+            row_payload(Key::Board(snipdeck_core::BoardId::generate())),
+            None
+        );
+        assert_eq!(
+            payload_key(Payload::List(snipdeck_core::ListId::generate())),
+            None
+        );
+    }
+
+    #[test]
+    fn the_list_total_counts_items_not_headers_and_folded_members() {
+        use crate::main_window::{Key, Row};
+        use crate::panel::GroupHeader;
+        let item = |grouped: bool, header: Option<GroupHeader>| Row {
+            key: Key::Item(snipdeck_core::ItemId::generate()),
+            kind: snipdeck_core::ItemKind::Text,
+            sensitive: false,
+            title: String::new(),
+            preview: String::new(),
+            list: None,
+            pinned: false,
+            label: None,
+            selected: false,
+            marks: crate::search_mark::marks("", "", false, None, ""),
+            header,
+            grouped,
+        };
+        let head = |count, collapsed| {
+            Some(GroupHeader {
+                group: snipdeck_core::GroupId::generate(),
+                name: "G".into(),
+                count,
+                collapsed,
+            })
+        };
+        let rows = [
+            item(false, head(2, false)),
+            item(true, None),
+            item(true, None),
+            item(false, None),
+            item(false, None),
+            item(false, head(5, true)),
+        ];
+        assert_eq!(list_total(&rows), 9);
+        assert_eq!(list_total(&rows[3..5]), 2);
+    }
+
+    #[test]
     fn main_row_carries_the_marks_and_masks_a_secret() {
         use crate::main_window::{Key, Row};
         let mut row = Row {
@@ -1647,6 +1855,8 @@ mod tests {
                 None,
                 "report",
             ),
+            header: None,
+            grouped: false,
         };
         let mapped = main_row(&row, false);
         assert_eq!(mapped.mark_before.as_str(), "Q3 ");

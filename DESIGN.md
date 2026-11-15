@@ -14,7 +14,7 @@ Depth is soft and has only one level, so items read as things you can pick up. T
 precise and tabular. It should feel like a well-made physical tool, not a dashboard.
 
 **Signature details:** these make it Snipdeck rather than a generic list app.
-1. **Number cell.** Panel and Picker rows are numbered 1–9 in a mono cell before the tile (the quick-use key).
+1. **Number cell.** Panel and Picker rows are numbered 1–9 in a mono cell before the tile (shown with `Alt`: the quick-use key is `Alt+1` to `Alt+9`).
 2. **Ink, not blue, for commitment.** Primary buttons are near-black ink. Blue only ever means *selected, focused, a link, or a template field*.
 3. **The deck edge.** When more cards sit below the fold, two offset card edges peek out at the bottom of the list instead of a fade.
 4. **Card pull.** Using an item lifts its card slightly, as if you'd pulled it from the deck.
@@ -185,6 +185,7 @@ Icons: **Phosphor (Regular)**, MIT licence, 16px in rows and 20px in toolbars. T
 | Paste stack position | `stack-simple` | card badge | `stack` (that is a board) |
 | Move to list | `folder` | | |
 | Board / list / tag | `stack` / `rows` / `tag` | sidebar, empty states | |
+| All items (every item, whatever the board) | `tray` | sidebar first row, its empty state | `stack` (that is a board) |
 | List view / card view | `rows` / `squares-four` | Main window toolbar | `squares-four` for anything else |
 | Compact view | `list-bullets` | Main window toolbar | dense one-line rows |
 | Recent | `clock` | | |
@@ -210,7 +211,7 @@ Every icon-only control has a tooltip and an accessible label with the same word
 | Swatch | Pick a list/accent colour | 9 list hues; 8 for an item's colour label (with a "No label" cell) | default, selected (ring), focus |
 | IconPicker | Pick a list icon | "No icon" + 24 icons, one tab stop, arrow keys | default, hover, selected (ring), focus |
 | LabelChip | Filter the Main window by colour label | colour dot + name + count | default, hover, selected (ring + check), focus |
-| Tooltip | Name icon-only actions | — | delay 500ms, instant when moving between items |
+| Tooltip | Name icon-only actions | — | delay 500ms, instant when moving between items; wraps to the window width and is clamped inside the window |
 | Toast | Transient result ("Copied", "Pasted into Notepad"); the one **ink toast** (40 tall, `ink` fill, `text.on-ink`, radius 8) used by every surface, including the toast window | neutral · success (check) · danger (warning, with Undo) | enter, hold 2.5s, exit |
 | Skeleton | Loading placeholder matching the final shape | row · tile | — |
 | Menu / MenuItem | Context and overflow actions; also the Settings select popups | with icon, shortcut keycap, accent check (chosen row), destructive; rows 32px (radius 6), 28px when the menu would not fit its window at 32, then a scroll cue (hairline and caret) at the bottom edge | default, highlight (`bg.overlay-hover`; 2px `focus.ring` on a key highlight only, never on hover), disabled (`text.tertiary` glyph and label, no opacity) |
@@ -220,15 +221,14 @@ Every icon-only control has a tooltip and an accessible label with the same word
 |---|---|---|---|
 | **ItemCard** | number cell (Panel, Picker), type tile, title, preview, where line or inline place, row actions | The one row for the Panel, Picker and Main window | compact (36px; Picker, Panel Compact, Main compact) · comfortable (56px List row; Main list) · tile (96px min; Main cards, Panel Cards) |
 | DeckEdge | 2 offset card edges | Signals more cards below or above the fold | bottom · top |
-| ListTabBar | Tab ×N, overflow, + | Switch and reorder lists in the panel | scrollable, draggable (detach = Supporter) |
+| ListTabBar | Tab ×N, overflow, + | Switch and reorder lists in the panel | scrollable, draggable |
 | BoardSwitcher | Button + Menu | Change board | — |
 | PinnedStrip | Tag-style pinned items | One-click access to pinned items | horizontal scroll |
 | SidebarItem | icon, label, count | Main-window navigation | board, list (8px colour mark, optional list icon), tag, system |
 | TemplateField | label, TextField / choice | Fill in a prompted placeholder | text · choice · date |
 | HotkeyRecorder | Keycap combo, clear | Rebind shortcuts, detect conflicts | idle, recording, conflict |
 | EmptyState | heading, one sentence, primary action | Teach how to fill an empty surface | list, board, search, inbox |
-| Dialog | title, body, actions | Confirm, licence, import | default · destructive |
-| PlanTable | feature + one-line description, Free and Supporter columns | Settings > Licence and the Get Supporter dialog | tick (success-fg) or cross (text-secondary) with a note ("up to 5"); each row's accessible description says "Free: Included. Supporter: Not included." so state is never colour alone |
+| Dialog | title, body, actions | Confirm, import | default · destructive |
 | EditorToolbar | IconButtons, Menu | Text transforms / image tools | text · image |
 | **Symbols cell** | glyph (emoji or icon art, 24px) or kaomoji chip text (13px) | One emoji, icon or kaomoji in the Panel's Symbols grid | emoji / icon: 40×40 hit box · kaomoji chip: 2 per row, 36px high, a wide kaomoji takes the full row; radius 6; rest (transparent) · hover (`bg-hover`) · selected (`bg-selected`) · keyboard focus (2px `focus-ring`, drawn while the search field has focus) |
 
@@ -248,7 +248,7 @@ One row, `components/item-card.slint`, used by the Panel, the Picker and the Mai
 | compact | 36 (52 with a where line); title and preview on one line | 24×24, radius 4 | Picker (place inline), Panel Compact, Main compact |
 | tile | min 96 | 24×24, radius 4 | Panel Cards (149 wide, tile on top); Main cards (tile inline with the title, `inline-tile`) |
 
-- **Number cell:** 16px plus a 4px gap before the tile, the quick-use number (1–9) in `type.xs` mono. Panel and Picker only (`numbered`); the Main window leaves it out. 10+ stay empty; the setting "Quick-use numbers" removes it.
+- **Number cell:** 16px plus a 4px gap before the tile, the quick-use number (1–9, used with `Alt`) in `type.xs` mono. Panel and Picker only (`numbered`); the Main window leaves it out. 10+ stay empty; the setting "Quick-use numbers" removes it.
 - **Type tile (every kind, plain text included):** a Phosphor glyph (16) on the kind's tile fill (*Item type tiles*). Images show a centre crop with a 1px `border.subtle` instead. The name of the kind is the tile's tooltip and accessible name.
 
   | Content | Preview line |
@@ -284,10 +284,12 @@ One row, `components/item-card.slint`, used by the Panel, the Picker and the Mai
 - **Proximity:** 4px between related parts of a card, 6px between cards (comfortable), 0 with hairline dividers in compact mode, 16px between groups.
 
 ### Panel
-- Width: default 320, min 260, max 480. Height: free, or full height when docked.
-- Header: 40px. Tab bar: 32px. Padding: 8px.
+- Width: default 320, min 260, max 480. Height: free. Floating and docked sizes are separate and each is kept until resized; "Docked panel uses the full edge" stretches a side dock to the work area.
+- The top 24px is a grab strip across the whole width (a 36 x 4 pill in its middle, `text-tertiary`, `text-primary` on hover, accent while dragged; move cursor). It and the header's empty space drag the Panel. Its tooltip says what a drag does (floating: "Drag to move. Hold at a screen edge to dock."; docked: "Drag along the edge to move. Pull away from the edge to float."), and goes when a drag starts. It has no accessible role: it only answers a pointer drag, and the keyboard docks and floats the Panel from the More menu.
+- The Panel menu (kebab) opens under the header. Too tall for that, it uses its dense 28px rows; still too tall, it rises over the header; it scrolls only when the window itself is too short for it. A second click on the kebab closes the menu even where the menu has risen over it.
+- Header: 40px of controls under the 24px grab strip (64px in all). Tab bar: 32px. Padding: 8px.
 - **Target footer** (32px): "Pastes into **Outlook** · New message". It always shows where a click will go, and reads "Copies to clipboard" when no target is known.
-- Docked to an edge it auto-hides to a **6px tab** in the board's accent colour, and reveals on hover after 150ms or by hotkey.
+- Docked to an edge it auto-hides to a **6px tab** in the board's accent colour, and reveals on hover after 150ms or by hotkey. It docks only when the cursor itself is held at the screen edge (preview: accent frame and "Release to dock"); the tab reveals when the pointer is on it, or at the screen edge within 12px of its ends. The tab is there whenever the Panel is docked and tucks, a hidden start included. While a full-screen app covers the Panel's own monitor the docked Panel is not topmost and does not reveal under the pointer; the hotkey still opens it.
 - **Chrome** (header, tab bar, footer): solid `bg.app` baseline. Optional **Mica** enhancement on Windows 11 22621+ (`DWMWA_SYSTEMBACKDROP_TYPE = DWMSBT_MAINWINDOW`, software renderer, chrome transparent, cards opaque); it is switched off on Windows 10, with "Transparency effects" off, in high-contrast mode, and for the never-active panel unless the S4 workaround proves reliable. The main window (which is activated normally) is where Mica is expected to look right.
 - **DeckEdge:** when the list overflows, the bottom 10px shows two card edges, each 4px tall and inset 6px / 12px per side, in `bg.surface` with a `border.subtle` outline. The top edge shows the same once scrolled. No gradient fades.
 

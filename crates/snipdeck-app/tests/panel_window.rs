@@ -23,7 +23,7 @@ use snipdeck_app::{
     settings::{DockEdge, DockTrigger, HotkeyAction, Settings, Theme},
     settings_store::{FileSink, SettingsSaver},
 };
-use snipdeck_core::{Entitlements, ItemId, Tier, Timestamp};
+use snipdeck_core::{ItemId, Timestamp};
 use snipdeck_platform::{
     keys::{Key as PlatformKey, KeyEvent},
     payload::Data,
@@ -85,6 +85,19 @@ fn first_run_rig() -> Rig {
 }
 
 fn rig_on(store: Store, tray: bool, clipboard: Vec<snipdeck_platform::payload::Payload>) -> Rig {
+    // Answered, so the first-run Recent question does not cover the Panel in tests of other things.
+    let answered = Settings {
+        recent_history_asked: true,
+        ..Settings::default()
+    };
+    rig_settings(store, tray, clipboard, answered)
+}
+fn rig_settings(
+    store: Store,
+    tray: bool,
+    clipboard: Vec<snipdeck_platform::payload::Payload>,
+    settings: Settings,
+) -> Rig {
     let targets = FakeTargets::new(Some(demo::target()));
     let services = Services {
         clipboard: FakeClipboard {
@@ -101,8 +114,7 @@ fn rig_on(store: Store, tray: bool, clipboard: Vec<snipdeck_platform::payload::P
         services,
         Box::new(targets.clone()),
         Box::new(clock.clone()),
-        Settings::default(),
-        Entitlements::new(Tier::Pro),
+        settings,
     )
     .expect("controller");
     let ctl = Rc::new(RefCell::new(ctl));
@@ -281,6 +293,99 @@ fn a_first_run_on_an_empty_library_has_a_board_and_working_controls() {
     });
 }
 
+/// Store policy 10.5: the first run asks, and nothing is kept until Yes. No stays No for good.
+#[test]
+fn the_first_run_asks_about_recent_and_the_answer_is_kept() {
+    on_ui_thread(|| {
+        let unasked = || {
+            rig_settings(
+                demo::store(now()).expect("demo store"),
+                true,
+                Vec::new(),
+                Settings::new_install(),
+            )
+        };
+        // A rig of another test has already answered: no question.
+        assert!(!rig().ui.get_recent_question_open());
+
+        let r = unasked();
+        assert!(r.ui.get_recent_question_open(), "a new install is asked");
+        assert!(
+            !r.ctl.borrow().settings().recent_history,
+            "nothing is kept yet"
+        );
+        assert!(
+            ElementHandle::find_by_accessible_label(&r.ui, "Keep a Recent list of what you copy?")
+                .count()
+                > 0
+        );
+        r.ui.invoke_recent_question_answered(true);
+        slint::platform::update_timers_and_animations();
+        assert!(!r.ui.get_recent_question_open(), "Yes closes the question");
+        assert!(r.ctl.borrow().settings().recent_history);
+        assert!(r.ctl.borrow().settings().recent_history_asked);
+
+        let r = unasked();
+        r.ui.invoke_recent_question_answered(false);
+        slint::platform::update_timers_and_animations();
+        assert!(!r.ui.get_recent_question_open(), "No closes the question");
+        assert!(!r.ctl.borrow().settings().recent_history);
+        assert!(
+            r.ctl.borrow().settings().recent_history_asked,
+            "and it is not asked again"
+        );
+    });
+}
+
+/// A Panel on a new install: the Recent question is up.
+fn recent_question_rig() -> Rig {
+    rig_settings(
+        demo::store(now()).expect("demo store"),
+        true,
+        Vec::new(),
+        Settings::new_install(),
+    )
+}
+
+/// Esc on the first-run question is No: nothing is kept, and it is not asked again.
+#[test]
+fn escape_on_the_recent_question_answers_no() {
+    on_ui_thread(|| {
+        let r = recent_question_rig();
+        assert!(r.ui.get_recent_question_open());
+        press(r.window(), &key(Key::Escape));
+        slint::platform::update_timers_and_animations();
+        assert!(!r.ui.get_recent_question_open(), "Esc closes the question");
+        assert!(!r.ctl.borrow().settings().recent_history, "Esc is No");
+        assert!(r.ctl.borrow().settings().recent_history_asked);
+    });
+}
+
+/// By keyboard alone: focus starts inside the dialog (not on the Panel behind it), Tab reaches No and
+/// then Yes, and Space on Yes answers Yes. Enter on the card is not Yes: consent is never given by a
+/// stray key.
+#[test]
+fn the_recent_question_is_answered_by_keyboard_and_enter_alone_is_not_yes() {
+    on_ui_thread(|| {
+        let r = recent_question_rig();
+        press(r.window(), "\n");
+        slint::platform::update_timers_and_animations();
+        assert!(
+            r.ui.get_recent_question_open() && !r.ctl.borrow().settings().recent_history,
+            "Enter on the card does not say Yes"
+        );
+        press(r.window(), &key(Key::Tab));
+        press(r.window(), &key(Key::Tab));
+        press(r.window(), " ");
+        slint::platform::update_timers_and_animations();
+        assert!(!r.ui.get_recent_question_open(), "Tab, Tab, Space answers");
+        assert!(
+            r.ctl.borrow().settings().recent_history,
+            "the second button is Yes"
+        );
+    });
+}
+
 #[test]
 fn the_panel_shows_the_demo_library() {
     on_ui_thread(|| {
@@ -290,7 +395,7 @@ fn the_panel_shows_the_demo_library() {
         assert_eq!(r.ui.get_pinned().row_count(), 3);
         assert_eq!(r.ui.get_rows().row_count(), 6);
         assert_eq!(r.titles()[0], "Thanks, received");
-        assert_eq!(r.ui.get_target_name(), "Outlook");
+        assert_eq!(r.ui.get_target_name(), "Mail");
         assert_eq!(r.ui.get_target_title(), "New message");
         assert_eq!(r.ui.get_toast_text(), "");
         let sensitive = r.ui.get_rows().row_data(5).expect("row");
@@ -565,7 +670,7 @@ fn alt_3_pastes_the_third_item_and_counts_the_use() {
             );
         }
         assert_eq!(r.uses(2), 1);
-        assert_eq!(r.ui.get_toast_text(), "Pasted into Outlook");
+        assert_eq!(r.ui.get_toast_text(), "Pasted into Mail");
         assert_eq!(r.targets.refocus_count(), 1);
     });
 }
@@ -811,7 +916,7 @@ fn the_toast_walks_through_its_phases_on_mock_time_and_then_goes() {
     on_ui_thread(|| {
         let r = rig();
         chord(r.window(), &[Key::Alt], "1");
-        assert_eq!(r.ui.get_toast_text(), "Pasted into Outlook");
+        assert_eq!(r.ui.get_toast_text(), "Pasted into Mail");
         assert_eq!(r.ui.get_toast_phase(), snipdeck_ui::ToastPhase::Enter);
         i_slint_backend_testing::mock_elapsed_time(TOAST_ENTER);
         assert_eq!(r.ui.get_toast_phase(), snipdeck_ui::ToastPhase::Hold);
@@ -1145,7 +1250,7 @@ const MENU_ROWS: [&str; 17] = [
     "Paste stack (mark items)",
     "Dock to the nearest edge",
     "Keyboard shortcuts",
-    "All commands\u{2026}",
+    "Commands\u{2026}",
     "Settings\u{2026}",
     "Open Snipdeck",
     "New item",
@@ -1602,6 +1707,8 @@ fn docked_rig(trigger: DockTrigger) -> Rig {
     open_menu(&r);
     click(r.window(), &menu_row(&r, "Dock to the left edge"));
     assert_eq!(r.ctl.borrow().dock_edge(), Some(DockEdge::Left));
+    // The Panel was just clicked in: it has the keyboard, so the hotkey tucks it.
+    r.binding.panel_focused(true);
     r
 }
 
@@ -1745,6 +1852,8 @@ fn a_click_on_the_handle_opens_the_panel_when_the_trigger_has_click() {
 fn the_open_panel_collapses_after_the_pointer_has_left_it_for_the_leave_delay() {
     on_ui_thread(|| {
         let r = docked_rig(DockTrigger::Both);
+        // Another window has the keyboard: only the pointer keeps the Panel out.
+        r.binding.panel_focused(false);
         // The pointer over a row: a child control. The Panel still counts as hovered.
         let row = ElementHandle::find_by_accessible_label(&r.ui, "Snippets")
             .next()
@@ -2223,5 +2332,408 @@ fn alt_down_in_a_sorted_list_offers_manual_order_and_the_button_switches_it() {
         r.ui.invoke_toast_undo();
         slint::platform::update_timers_and_animations();
         assert!(r.ui.get_rows_reorderable(), "the button switched it");
+    });
+}
+
+/// Marks the first two rows and presses Ctrl+G.
+fn group_first_two(r: &Rig) {
+    {
+        let mut ctl = r.ctl.borrow_mut();
+        ctl.panel_mark(0, snipdeck_app::main_window::SelectMode::Toggle);
+        ctl.panel_mark(1, snipdeck_app::main_window::SelectMode::Toggle);
+    }
+    r.binding.redraw();
+    chord(r.window(), &[Key::Control], "g");
+}
+
+#[test]
+fn ctrl_g_groups_the_marked_rows() {
+    on_ui_thread(|| {
+        let r = rig();
+        let before = r.ui.get_rows().row_count();
+        group_first_two(&r);
+        let rows = r.ui.get_rows();
+        assert_eq!(rows.row_count(), before + 1, "a header was added");
+        let header = rows.row_data(0).expect("row");
+        assert!(header.is_header);
+        assert_eq!(header.group_count, 2);
+        assert!(rows.row_data(1).expect("row").grouped);
+    });
+}
+
+#[test]
+fn left_collapses_and_right_expands_a_header() {
+    on_ui_thread(|| {
+        let r = rig();
+        group_first_two(&r);
+        // The new header is selected and renaming: Enter ends the rename, then the keys are the list's.
+        press(r.window(), &key(Key::Return));
+        let count = r.ui.get_rows().row_count();
+        press(r.window(), &key(Key::LeftArrow));
+        assert_eq!(
+            r.ui.get_rows().row_count(),
+            count - 2,
+            "the items are hidden"
+        );
+        assert!(r.ui.get_rows().row_data(0).expect("row").group_collapsed);
+        press(r.window(), &key(Key::RightArrow));
+        assert_eq!(r.ui.get_rows().row_count(), count);
+    });
+}
+
+#[test]
+fn a_new_group_takes_its_name_as_typed() {
+    on_ui_thread(|| {
+        let r = rig();
+        group_first_two(&r);
+        // Ctrl+G opens the new header's name for typing: the keys go there, not to the search.
+        type_text(r.window(), "Hi");
+        press(r.window(), &key(Key::Return));
+        let header = r.ui.get_rows().row_data(0).expect("row");
+        assert!(header.is_header);
+        assert_eq!(header.title, "Hi", "the typed name is the group's");
+        assert_eq!(header.group_count, 2, "both items stay in the group");
+        assert_eq!(r.ui.get_query(), "", "the search got none of the typing");
+    });
+}
+
+#[test]
+fn a_rename_handed_to_another_header_keeps_the_keys() {
+    on_ui_thread(|| {
+        let r = rig();
+        // Tall enough for both groups at once: the first header must be on screen to be renamed
+        // (a double-click needs it there), and at 480 the list scrolls to the second group.
+        r.window().set_size(slint::LogicalSize::new(320.0, 560.0));
+        group_first_two(&r);
+        press(r.window(), &key(Key::Return));
+        // A second group from the next two items: its header opens its name for typing.
+        {
+            let mut ctl = r.ctl.borrow_mut();
+            ctl.panel_mark(3, snipdeck_app::main_window::SelectMode::Toggle);
+            ctl.panel_mark(4, snipdeck_app::main_window::SelectMode::Toggle);
+        }
+        r.binding.redraw();
+        chord(r.window(), &[Key::Control], "g");
+        let rows = r.ui.get_rows();
+        let headers: Vec<usize> = (0..rows.row_count())
+            .filter(|i| rows.row_data(*i).is_some_and(|row| row.is_header))
+            .collect();
+        assert_eq!(headers.len(), 2, "two groups");
+        // While the second header is renaming, the first one starts a rename (as a double-click does): the
+        // second one's late focus loss must not hand the keys back to the Panel.
+        r.ui.set_rename_row(i32::try_from(headers[0]).expect("row"));
+        r.ui.set_rename_seq(r.ui.get_rename_seq() + 1);
+        type_text(r.window(), "Zed");
+        press(r.window(), &key(Key::Return));
+        let first = r.ui.get_rows().row_data(headers[0]).expect("row");
+        assert_eq!(first.title, "Zed", "the typing went to the first header");
+        assert_eq!(r.ui.get_query(), "", "the search got none of the typing");
+    });
+}
+
+/// The labels (and whether each is greyed) of the item menu as drawn now.
+fn item_menu_rows(r: &Rig) -> Vec<(String, bool)> {
+    r.ui.get_item_menu_entries()
+        .iter()
+        .filter(|row| !row.separator)
+        .map(|row| (row.text.to_string(), row.disabled))
+        .collect()
+}
+
+fn choose_menu_row(r: &Rig, label: &str) {
+    let at =
+        r.ui.get_item_menu_entries()
+            .iter()
+            .position(|row| row.text == label)
+            .unwrap_or_else(|| panic!("no {label:?} row in {:?}", item_menu_rows(r)));
+    r.ui.invoke_item_menu_activated(i32::try_from(at).expect("index"));
+}
+
+#[test]
+fn the_header_menu_folds_opens_and_moves_the_group_for_a_mouse_user() {
+    on_ui_thread(|| {
+        let r = rig();
+        group_first_two(&r);
+        press(r.window(), &key(Key::Escape));
+        let count = r.ui.get_rows().row_count();
+
+        r.ui.invoke_context_menu_requested(0, 10.0, 10.0);
+        assert!(r.ui.get_item_menu_open());
+        let rows = item_menu_rows(&r);
+        let names: Vec<&str> = rows.iter().map(|(t, _)| t.as_str()).collect();
+        assert_eq!(
+            names,
+            [
+                "Rename group",
+                "Fold group",
+                "Move the group up",
+                "Move the group down",
+                "Ungroup",
+                "Delete group"
+            ]
+        );
+        assert!(rows[2].1, "Move the group up is greyed at the top");
+        assert!(!rows[3].1, "Move the group down is live");
+
+        choose_menu_row(&r, "Fold group");
+        assert_eq!(r.ui.get_rows().row_count(), count - 2, "the items hide");
+        r.ui.invoke_context_menu_requested(0, 10.0, 10.0);
+        assert!(
+            item_menu_rows(&r).iter().any(|(t, _)| t == "Unfold group"),
+            "a folded group offers Unfold group"
+        );
+        choose_menu_row(&r, "Unfold group");
+        assert_eq!(r.ui.get_rows().row_count(), count, "the items are back");
+
+        r.ui.invoke_context_menu_requested(0, 10.0, 10.0);
+        choose_menu_row(&r, "Move the group down");
+        assert!(
+            !r.ui.get_rows().row_data(0).expect("row").is_header,
+            "the group moved below the loose item"
+        );
+    });
+}
+
+#[test]
+fn header_is_announced_with_its_count() {
+    on_ui_thread(|| {
+        let r = rig();
+        group_first_two(&r);
+        // The new header opens its name for typing: Enter ends that, then the keys are the list's.
+        press(r.window(), &key(Key::Return));
+        let name = r.ui.get_rows().row_data(0).expect("row").title;
+        // Folded or open is the header's expanded state, not part of its label.
+        let label = format!("group {name}, 2 items");
+        let header = element(&r.ui, &label, AccessibleRole::Button);
+        assert_eq!(header.accessible_expanded(), Some(true));
+        press(r.window(), &key(Key::LeftArrow));
+        let header = element(&r.ui, &label, AccessibleRole::Button);
+        assert_eq!(header.accessible_expanded(), Some(false));
+    });
+}
+
+/// The list-item rows of the window, in tree order, with their position in a set and its size.
+fn list_rows(ui: &PanelWindow) -> Vec<(String, Option<usize>, Option<usize>)> {
+    use i_slint_backend_testing::ElementQuery;
+    ElementQuery::from_root(ui)
+        .match_predicate(|e| e.accessible_role() == Some(AccessibleRole::ListItem))
+        .find_all()
+        .into_iter()
+        .map(|e| {
+            (
+                e.accessible_label().unwrap_or_default().to_string(),
+                e.accessible_item_index(),
+                e.accessible_item_count(),
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn group_members_say_their_position_in_the_group_and_loose_rows_say_nothing() {
+    on_ui_thread(|| {
+        let r = rig();
+        group_first_two(&r);
+        r.window().set_size(slint::LogicalSize::new(360.0, 900.0));
+        slint::platform::update_timers_and_animations();
+        let rows = list_rows(&r.ui);
+        let name = |i: usize| r.ui.get_rows().row_data(i).expect("row").title.to_string();
+        let first = rows
+            .iter()
+            .find(|(l, ..)| l.starts_with(&name(1)))
+            .expect("first member");
+        let second = rows
+            .iter()
+            .find(|(l, ..)| l.starts_with(&name(2)))
+            .expect("second member");
+        assert_eq!((first.1, first.2), (Some(0), Some(2)), "{first:?}");
+        assert_eq!((second.1, second.2), (Some(1), Some(2)), "{second:?}");
+        let loose = rows
+            .iter()
+            .find(|(l, ..)| l.starts_with(&name(3)))
+            .expect("a loose row");
+        assert_eq!((loose.1, loose.2), (None, None), "{loose:?}");
+    });
+}
+
+/// Two groups, `[Group] a b [Second] c d`, with the cursor on the first header and the rename
+/// ended.
+fn two_groups_in_window(r: &Rig) {
+    group_first_two(r);
+    press(r.window(), &key(Key::Escape));
+    {
+        let mut ctl = r.ctl.borrow_mut();
+        ctl.panel_mark(3, snipdeck_app::main_window::SelectMode::Toggle);
+        ctl.panel_mark(4, snipdeck_app::main_window::SelectMode::Toggle);
+        ctl.group_marked(3);
+        ctl.group_rename(3, "Second");
+        ctl.group_rename_ended();
+        ctl.panel_clear_marks();
+    }
+    r.ctl.borrow_mut().move_selection(-100);
+    r.binding.redraw();
+    assert_eq!(
+        r.ui.get_selected_index(),
+        0,
+        "the cursor is on the first header"
+    );
+    r.ui.invoke_focus_search();
+}
+
+fn row_titles(r: &Rig) -> Vec<String> {
+    r.ui.get_rows()
+        .iter()
+        .map(|row| row.title.to_string())
+        .collect()
+}
+
+#[test]
+fn alt_down_on_a_header_moves_the_group_and_alt_up_brings_it_back() {
+    on_ui_thread(|| {
+        let r = rig();
+        two_groups_in_window(&r);
+        let before = row_titles(&r);
+        chord(r.window(), &[Key::Alt], &key(Key::DownArrow));
+        let after = row_titles(&r);
+        assert_eq!(
+            after,
+            [&before[3..6], &before[..3], &before[6..]].concat(),
+            "the first group went below the second, the loose rows stayed"
+        );
+        assert_eq!(
+            r.ui.get_selected_index(),
+            3,
+            "the cursor stays on the header"
+        );
+        chord(r.window(), &[Key::Alt], &key(Key::UpArrow));
+        assert_eq!(row_titles(&r), before);
+        assert_eq!(r.ui.get_selected_index(), 0);
+    });
+}
+
+#[test]
+fn enter_and_space_fold_and_unfold_a_header_and_up_down_walk_into_its_rows() {
+    on_ui_thread(|| {
+        let r = rig();
+        two_groups_in_window(&r);
+        let count = r.ui.get_rows().row_count();
+        press(r.window(), &key(Key::Return));
+        assert_eq!(r.ui.get_rows().row_count(), count - 2, "Enter folds");
+        press(r.window(), " ");
+        assert_eq!(r.ui.get_rows().row_count(), count, "Space unfolds");
+        press(r.window(), " ");
+        assert_eq!(r.ui.get_rows().row_count(), count - 2, "Space folds");
+        press(r.window(), &key(Key::DownArrow));
+        assert_eq!(
+            r.ui.get_selected_index(),
+            1,
+            "Down from a folded header goes to the next header"
+        );
+        press(r.window(), &key(Key::UpArrow));
+        press(r.window(), &key(Key::RightArrow));
+        press(r.window(), &key(Key::DownArrow));
+        assert_eq!(r.ui.get_selected_index(), 1, "into the first member");
+        assert!(r.ui.get_rows().row_data(1).expect("row").grouped);
+        press(r.window(), &key(Key::UpArrow));
+        assert_eq!(r.ui.get_selected_index(), 0, "and back to the header");
+    });
+}
+
+#[test]
+fn f2_on_a_header_starts_its_rename_and_folding_under_the_cursor_keeps_a_row_selected() {
+    on_ui_thread(|| {
+        let r = rig();
+        two_groups_in_window(&r);
+        press(r.window(), &key(Key::F2));
+        assert_eq!(
+            r.ui.get_rename_row(),
+            0,
+            "F2 renames the header, not an item editor"
+        );
+        press(r.window(), &key(Key::Escape));
+        // A member has the cursor and its group folds (the chevron): the cursor lands on the
+        // header, never on nothing.
+        r.ui.set_selected_index(1);
+        r.ui.invoke_group_toggled(0);
+        slint::platform::update_timers_and_animations();
+        let at = r.ui.get_selected_index();
+        let row = r.ui.get_rows().row_data(usize::try_from(at).unwrap());
+        assert!(row.is_some_and(|row| row.is_header), "on the header");
+    });
+}
+
+/// Runs `step` and says whether it damaged a whole window (`damage::whole_window`; the test
+/// backend draws nothing, so the count is what can be seen) and what effects it applied.
+fn drawn_whole_by(r: &Rig, step: impl FnOnce(&Rig)) -> (bool, Vec<Effect>) {
+    r.effects.borrow_mut().clear();
+    let before = snipdeck_ui::damage::marked_whole();
+    step(r);
+    (
+        snipdeck_ui::damage::marked_whole() != before,
+        r.effects.borrow().clone(),
+    )
+}
+
+#[test]
+fn every_placement_dock_commit_and_show_draws_the_panel_whole() {
+    // Render flicker (2026-11-14): after a geometry change, a dock or a show, Windows may have
+    // erased or dropped the Panel's pixels while nothing in the scene changed; the frame after
+    // must be drawn whole, not only what Slint thinks changed.
+    on_ui_thread(|| {
+        let r = rig();
+        let m = display();
+        let kept = Rect {
+            x: 300,
+            y: 120,
+            w: 410,
+            h: 700,
+        };
+        r.binding.frame_changed(&m, kept);
+        r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
+        let (whole, effects) = drawn_whole_by(&r, |r| r.binding.restore_frame(&m));
+        assert_eq!(effects, [Effect::PlaceWindow(kept)]);
+        assert!(whole, "a placement");
+
+        // As `docked_rig`: 40 px from the left edge, at the size the window has.
+        r.ctl
+            .borrow_mut()
+            .update_settings(|s| s.dock.trigger = DockTrigger::Both);
+        r.binding.frame_changed(
+            &m,
+            Rect {
+                x: 40,
+                y: 300,
+                w: 320,
+                h: 480,
+            },
+        );
+        let (whole, effects) = drawn_whole_by(&r, |r| {
+            open_menu(r);
+            click(r.window(), &menu_row(r, "Dock to the left edge"));
+        });
+        assert!(
+            effects.iter().any(|e| matches!(e, Effect::PlaceWindow(_))),
+            "{effects:?}"
+        );
+        assert!(whole, "a dock commit");
+        r.binding.panel_focused(true);
+
+        let (whole, effects) = drawn_whole_by(&r, |r| r.binding.hotkey(HotkeyAction::TogglePanel));
+        assert!(
+            effects.iter().any(|e| matches!(e, Effect::PlaceWindow(_))),
+            "tucked: {effects:?}"
+        );
+        assert!(whole, "the tuck");
+
+        // Undocked and hidden, then shown again (as after the item editor saves).
+        r.ctl.borrow_mut().dock_to(None);
+        let _ = r.ctl.borrow_mut().take_pending();
+        r.binding.hotkey(HotkeyAction::TogglePanel);
+        if r.ui.window().is_visible() {
+            r.binding.hotkey(HotkeyAction::TogglePanel);
+        }
+        let (whole, effects) = drawn_whole_by(&r, |r| r.binding.hotkey(HotkeyAction::TogglePanel));
+        assert!(effects.contains(&Effect::ShowPanel), "{effects:?}");
+        assert!(whole, "a show");
     });
 }

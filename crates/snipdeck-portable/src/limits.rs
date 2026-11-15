@@ -17,7 +17,10 @@ pub struct Limits {
     pub max_entries: usize,
     /// Largest uncompressed size of one entry, in bytes. Default 64 MiB.
     pub max_entry_bytes: u64,
-    /// Largest sum of all uncompressed sizes, in bytes. Default 1 GiB.
+    /// Largest sum of all uncompressed sizes, in bytes. Default 8 GiB: the app writes its own
+    /// library (backups, exports) under this same limit and reads it back under it, so it is
+    /// set well above what a library of attachments plausibly holds. Memory does not scale with
+    /// it (entries are streamed and checked one at a time); only disk does.
     pub max_total_bytes: u64,
     /// Largest `uncompressed / compressed` ratio of an entry larger than [`TEXT_LIMIT`] (5 MiB,
     /// the biggest legitimate text payload, which is exempt). Default 500; deflate cannot
@@ -29,7 +32,20 @@ pub struct Limits {
     pub max_items: usize,
 }
 
+/// The default [`Limits::max_total_bytes`]: 8 GiB.
+const DEFAULT_MAX_TOTAL_BYTES: u64 = 8 * 1024 * 1024 * 1024;
+
+/// What encrypting a payload adds to it (`SNENC2` 6 + nonce 24 + tag 16 = 46 bytes), rounded up.
+pub const ENVELOPE_OVERHEAD_BYTES: u64 = 64;
+
 impl Limits {
+    /// The largest attachment (one file, or one picture) that always fits in an entry, sensitive
+    /// or not: [`Limits::max_entry_bytes`] less [`ENVELOPE_OVERHEAD_BYTES`].
+    #[must_use]
+    pub const fn max_attachment_bytes(&self) -> u64 {
+        self.max_entry_bytes.saturating_sub(ENVELOPE_OVERHEAD_BYTES)
+    }
+
     /// Entries at or below this size are exempt from the ratio check: they cannot do harm, and
     /// a 5 MB text of repeated lines legitimately compresses by more than 500.
     pub(crate) const RATIO_FLOOR: u64 = TEXT_LIMIT;
@@ -44,10 +60,23 @@ impl Default for Limits {
         Self {
             max_entries: 200_000,
             max_entry_bytes: 64 * 1024 * 1024,
-            max_total_bytes: 1024 * 1024 * 1024,
+            max_total_bytes: DEFAULT_MAX_TOTAL_BYTES,
             max_ratio: 500,
             max_json_bytes: 64 * 1024 * 1024,
             max_items: 100_000,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_default_total_holds_a_library_that_the_old_1_gib_total_refused() {
+        // 30 recordings of 40 MiB (the audit's example) is 1.2 GiB.
+        let library = 30 * 40 * 1024 * 1024_u64;
+        assert!(library > 1024 * 1024 * 1024);
+        assert!(Limits::default().max_total_bytes >= library * 4);
     }
 }

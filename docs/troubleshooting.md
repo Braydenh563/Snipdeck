@@ -82,8 +82,8 @@ Settings, **Shortcuts**: an empty field means the hotkey is off.
 target runs as administrator, or when the program is set to **Never paste** under Settings, **Programs**. The message says
 which. The Panel footer shows where a click will go.
 
-**Ctrl+Shift+U does nothing (or an old Ctrl+Alt+V pastes in Word's Paste Special).** Paste next is a Supporter feature, so on the Free
-plan Snipdeck does not register the Paste next chord and other programs keep it (installs from before 1.1 may still have `Ctrl+Alt+V`; change it in Settings, **Shortcuts**). Enter a key in Settings, **Licence**.
+**Ctrl+Shift+U does nothing (or an old Ctrl+Alt+V pastes in Word's Paste Special).** Another program may already own the Paste next chord, or an install from before 1.1 may still
+have `Ctrl+Alt+V` (Word's Paste Special); change it in Settings, **Shortcuts**.
 
 **Text does not paste in my terminal.** Some terminals need another paste key. Settings, **Programs**, lists a row
 per program: add the program's file name and pick **Ctrl+Shift+V** or **Shift+Insert**.
@@ -133,7 +133,7 @@ print the Troubleshoot report. Add `--data-dir <folder>` for a library somewhere
 
 ## Locked library and the master password
 
-These apply when you have set a master password (a Supporter feature). Your other items always work. Only
+These apply when you have set a master password. Your other items always work. Only
 sensitive items are locked.
 
 **"Unlock your library to use this item" or "Unlock your library to save this item".** The library is
@@ -207,10 +207,6 @@ new PATH is picked up.
 **The first build is slow and `target/` is huge.** Slint and a bundled SQLite are compiled from source,
 and a debug `snipdeck-ui` build is about 4 GB. Set
 `CARGO_TARGET_DIR` to a scratch folder and delete it afterwards. Out-of-disk errors mid-build are this.
-
-**`release builds must embed the production licence public key`.** Release builds refuse to compile without
-`SNIPDECK_LICENCE_PUBLIC_KEY` on purpose (the development key must never ship). Run the demo as a debug build:
-`run-snipdeck-demo.bat` or `cargo run -p snipdeck-app -- --demo` (no `--release`).
 
 **Linker or C compiler errors.** Windows needs the Visual Studio C++ Build Tools; Linux needs a C compiler.
 `rust-toolchain.toml` selects stable; the minimum version is `rust-version` in `Cargo.toml`.

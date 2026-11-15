@@ -6,9 +6,9 @@ All notable changes to Snipdeck are recorded here. The format follows
 
 "Unverified" marks Windows behaviour that no one has run on a real Windows PC.
 
-## [1.0.0] - 2026-10-21
+## [Unreleased] (1.0.0)
 
-First release. Windows 10 and 11, 64-bit. Not code-signed, so Windows SmartScreen asks you to confirm the
+First release. Windows 10 (1903 or newer) and 11, 64-bit. Not code-signed, so Windows SmartScreen asks you to confirm the
 first start.
 
 ### Added
@@ -18,10 +18,16 @@ first start.
 - A **New item** row in the Panel, multi-select with a bulk bar (move, colour, sensitive, delete), **Show
   numbers**, and **Reset size and position**. Resize by dragging its edges (260 to 480 pixels wide); size and
   place are remembered for each monitor. The keep-on-top button is a pin icon that looks pressed when on.
-- **Edge docking**: Floating, Left, Right, Top or Bottom, opened by hover, click or both, with hover and leave
-  delays. A docked Panel folds into a thin strip. Undocking brings back its earlier size.
+- **Edge docking**: the Panel floats wherever you drop it. Hold the pointer at a screen edge while dragging and a
+  frame with "Release to dock" shows where it will go; pull back to cancel. A docked Panel tucks into a thin tab
+  that opens on hover, click or both, with hover and leave delays, and stays open while you use it. Floating and
+  docked sizes are remembered apart for each monitor. The top of the Panel is a full-width grab strip.
+- **Paste as plain text**: `Alt+Enter` or `Alt`+click in the Panel and the Picker pastes one item without its
+  formatting, and the editor has an **Always paste as plain text** switch per item (SPEC 5.1a). Items imported with
+  that setting now honour it. Unverified: whether `Alt`+click shows the target's menu bar on Windows.
+- **Preview** in the item editor (`Ctrl+P`): see the item as the Panel and the Main list draw it.
 - **The Picker** (`Ctrl+Shift+Space`), the template fill form with a live preview, and quick capture
-  (`Ctrl+Shift+2`). `Alt+1` to `Alt+9` use that row. **Paste next** and **paste stack** (Supporter).
+  (`Ctrl+Shift+2`). `Alt+1` to `Alt+9` use that row. **Paste next** and **paste stack**.
 - **The Main window**: boards, lists, tags, Pinned, Recent and Trash in a sidebar; compact, comfortable and
   tile views; search; multi-select; move to list; tags; colour labels; list icons; drag and drop; keyboard
   reordering; a **Hide Panel / Show Panel** button; Duplicate (`Ctrl+D`); Export as text.
@@ -31,17 +37,22 @@ first start.
   form, and unsaved changes are kept as a draft that survives a crash. Editors for boards, lists and tags.
 - **The Trash** keeps deleted items, lists and boards for 30 days.
 - **Settings**: hotkeys with conflict messages, theme, accent colour, language, window behaviour, start with
-  Windows, tray, never-paste-into programs, licence, backups, export, import and erase. **Reduce motion** also
+  Windows, tray, never-paste-into programs, support link, backups, export, import and erase. **Reduce motion** also
   follows Windows.
 - **Import** from a `.snipdeck` file, Ditto, CopyQ, a folder of `.txt` and `.md` files, and Windows clipboard
   history, always after a preview. Export of the whole library, daily backups (1 to 60 kept) and restore.
-- **Recent inbox** (off by default): the last 200 copies or 7 days, skipping password managers and your
-  exclude list, with **Save to…**, **Pause history** and **Clear recent history**. Entries are encrypted on disk.
+- **Recent inbox**: Snipdeck asks the first time you open the Panel and keeps nothing until you say yes. The
+  last 200 copies or 7 days, skipping password managers and your exclude list, with **Save to…**, **Pause
+  history** and **Clear recent history**. Entries are encrypted on disk.
 - **Sensitive items**: hidden in lists until you hold `Space`, kept out of Windows clipboard history, encrypted
   on disk on every plan, and cleared from the clipboard after 30 seconds.
-- **Supporter**: pay what you want from A$5 (suggested A$8), once. Adds unlimited boards, templates that ask
-  for values, paste next, paste stack and a **master password**. Free has up to 5 boards.
-- Templates with `{date}`, `{time}`, `{clipboard}`, `{cursor}`, and fields and choices (Supporter).
+- **Free, with an optional Buy Me a Coffee link**: every feature is on, on every build, with no licence key, no
+  tiers and no board limit. **Support Snipdeck** in Settings, Help > About and the command palette opens the donation
+  page in your browser; it is optional, keeps the app free and unlocks nothing, and the app handles no payment
+  data. Unlimited boards, templates that ask for values, paste next, paste stack and a **master password** are
+  there for everyone. Settings and libraries from builds that had a licence key still open; the old
+  `licence.key` file is ignored.
+- Templates with `{date}`, `{time}`, `{clipboard}`, `{cursor}`, and fields and choices.
 - A command palette (`Ctrl+K`), a shortcuts sheet (`Ctrl+/`), a welcome tour, a Getting started list, Help
   (`F1`) with a Troubleshoot checklist and About, and **Take screenshot** in the Panel, tray and palette.
 - A tray icon with a translated menu. Left click toggles the Panel and double-click opens the Main window.
@@ -58,8 +69,112 @@ first start.
   recovers the items it can read.
 - The Main window toolbar is grouped by function, the Panel's board menu has New board, Rename board and
   Delete board, and the Help tools row is tidied.
+- **Windows installer**: `Snipdeck-Setup-<version>.exe` installs Snipdeck for your account (no administrator
+  prompt) with a Start-menu entry, an optional desktop icon and an Apps & features entry. Running a newer Setup
+  closes Snipdeck, upgrades it and keeps your library; uninstalling keeps the library unless you choose to erase it.
+  The portable zip stays available.
+- **Microsoft Store package**: the release build can make an MSIX for Partner Center. The Store build is free
+  with every feature unlocked; "Start
+  with Windows" uses Windows' own startup list and "Check for updates" opens the Store.
+- `snipdeck.exe --quit` asks a running Snipdeck to quit cleanly (Setup uses it to upgrade).
+- **Groups in the Main window**: in a list sorted by hand, `Ctrl+G` groups the selected rows under a named,
+  foldable header, as in the Panel. `Left`, `Right` and `Enter` fold a header, `F2` renames it, `Delete` moves the
+  group and its items to the Trash, and `Alt+Up` / `Alt+Down` (or a drag) moves the whole group. The command
+  palette and the shortcuts list have the group actions. Search shows a flat list, and a list that holds groups is drawn as
+  rows, and the Tile view button rests until the list has no groups.
+- **More importers** in Settings > Import...: Espanso, Beeftext, TextExpander (CSV) and PhraseExpress (CSV), beside
+  Ditto and CopyQ, with the same preview, report and Undo. Their abbreviations are kept as triggers.
+- **More placeholders**: `{uuid}`, and date maths after `date`, `time` and `datetime`, for example `{date+3d}`,
+  `{date-1w:%Y-%m-%d}`, `{time+90min}`, `{datetime+1mo:%F %H:%M}` (units `d w mo y h min`, chainable).
+- **Paste as...** in the item menu: Plain text, UPPERCASE, lowercase, Title Case, Trimmed, slug.
+- **Richer fill-ins**: `{multiline:Name|default}` (a box of several lines; Enter adds a line,
+  Ctrl+Enter pastes), `{pickdate:Name|FORMAT}` (a typed `YYYY-MM-DD` date, today when left empty; a date that does
+  not exist is refused on its field), and `{optional:Name}...{/optional}` (a tick box; the text inside pastes only
+  when ticked). The item editor offers all three as chips.
+- **Tips**: a fourth Help tab with ten cards (a title, two lines, a picture and a Try it button), reached from the
+  tray, Help, the last page of the welcome tour and a Getting started card.
+- **Rich paste**: pasting into the Panel or Main, and the capture hotkey, keep HTML and RTF beside the text, so the
+  item pastes formatted in Word or Outlook and as text in Notepad. Rows show a "Formatted" mark; editing the text
+  says the formatting will be removed, and "Remove formatting" drops it alone. Unverified on Windows.
+- **Groups inside a list**: mark rows and press Ctrl+G (or use the item menu) to gather them under a named,
+  collapsible header. Drag items into or out of a group, drag a whole group by its header, rename it in place, and
+  undo any of it. Search keeps the matches under their group's header. From the keyboard, Alt+Up/Down moves a
+  group, Space (like Enter) folds or opens it, and the header menu has Move up and Move down. Unverified with
+  Narrator on Windows.
+- **Typing triggers** (Settings > Typing, off by default): "Expand abbreviations as I type" replaces a trigger you
+  type in another program with its item, after a space, punctuation or the start of a line. Not in password
+  boxes, Never-paste programs, elevated programs or for Sensitive items; only the last 32 characters are kept, in
+  memory. If the watcher cannot start, a message says nothing will be expanded or suggested. Unverified on Windows.
+- **Suggest as you type** (Settings > Typing, off by default): after two characters of a trigger a small hint at the
+  text cursor names the item; Tab inserts it, and Tab is taken only while the hint shows. Esc or any key that is
+  not typing, or 5 seconds of quiet, drops the hint. Unverified on Windows.
+- **Trigger field in the item editor**: 1 to 32 characters without spaces, unique; a one-character trigger gets a
+  warning, saving an overlapping code shows a message naming the other item, and a Sensitive item shows that it
+  has no trigger. Windows-only behaviour is unverified.
+- **Windows Hello unlock**: with a master password set, Settings > Privacy > **Unlock with Windows Hello**
+  lets your face, fingerprint or PIN unlock the library. Switching it on asks Hello twice to check it repeats.
+  Nothing is written to disk: an encrypted copy of the key lives in memory, so after a restart, and every 7 days,
+  the password is needed once (the next password unlock asks Hello once to set it up again). Cancelling an unlock
+  keeps the button for another try; a failure falls back to the password. A switch-on that is cancelled or fails
+  stays off ("Windows Hello was not turned on." or "...didn't work, so it was not turned on."). Changing the
+  password re-seals the copy; erasing the library, or setting or removing the password, turns Hello off. Settings
+  search finds it. Unverified on Windows.
+
+- **Colours tab** in the Panel (Settings > Panel "Show Colours tab"): a colour picker (gradient square or hue
+  wheel, hue and alpha sliders, typed HEX, RGB, HSL, HSB and CMYK values), Recently used and Saved swatches, a
+  row per format that pastes into the target app (`Shift+click` copies), WCAG contrast checks and colour schemes.
+  Saved colours are items in a "Colours" list; a list of colours has Copy as CSS variables. **Pick a colour from
+  the screen** (Windows) freezes the screen so you can click any pixel; Settings can copy the picked
+  colour.
+
+### Changed
+- Long toasts wrap onto several lines instead of being cut off, and their icon grows with the text size; warnings
+  are announced as warnings.
+- Settings search leaves no gap where hidden sections were, and the shortcut list wraps long names onto more lines.
+- Keys that are alternatives show "or" between them (Up or Down); keys pressed together sit side by side.
+- The command palette grows with the text size, so long command names stay whole.
+- A selected group header is shown by its fill alone, and a new group opens its name for typing (Enter keeps it).
+- A template with any question in it now always opens the fill form, even when every question has a default or
+  is a choice; the defaults fill the form in.
+- In the fill form, Space ticks a tick box and Enter moves on (or pastes on the last field), like every other
+  field.
+- The item editor, Help, Settings and the fill form get wider at large text sizes (up to 225%), so buttons, tabs and
+  setting rows no longer overlap or clip.
+- Tips pictures end on a whole row, and the Main window's Show Panel button has its own icon.
+- The Template editor's placeholder list lines its descriptions up in one column, and stacks each name above its description in a narrow window.
+- The item editor's buttons move onto two rows when the window is narrow or the text is large, so none is cut off.
+- Import notes (a skipped match, a cut title, an unsupported field) are shown in your language.
+- The keyboard shortcuts list has an "Unlock window" group, and the guide's keyboard table gained the rows that were missing (Picker Shift+Tab, Main window Ctrl+Shift+P, F2, Ctrl+Space and Space, the group keys, typed triggers).
+- Tab and Shift+Tab reach every field in the item editor, Settings and the fill form, including text fields inside scrolling areas, dropdowns and template choices, and the focus ring is no longer cut off.
 
 ### Fixed
+- **Paste as plain text** now also works on the Panel's Recent rows (`Alt+Enter`, `Alt`+click, and the row
+  menu) and in the Main window (`Alt+Enter`, `Alt`+click). Unverified: whether `Alt`+click shows the target's
+  menu bar on Windows.
+- Locking the library, and quitting, now delete the decrypted files a pasted sensitive Files item left in the
+  temp folder (a file the target still has open stays until the next start). Unverified on Windows.
+- Pasting a Word or Excel selection no longer says the clipboard could not be put back when only a picture
+  copy of it (a metafile) was skipped; and when a paste really cannot restore it, a plain toast says so.
+  Unverified on Windows.
+- Typing in the fill form of a sensitive item now counts as activity, so the master-password idle lock does
+  not fire mid-form.
+- A screenshot saved from the clipboard is titled in the language shown, not always in English.
+- Pasting files into the Panel or Main window reads them in the background, like dropping them, so a big
+  file no longer freezes the window.
+- Items left in Recent past their days are removed at the next maintenance tick, not only at the next copy.
+- Undo of an edit to a formatted item (HTML, RTF) brings the formatting back with the text.
+- The "too big" message for one big file names the same size in the editor wherever it was refused.
+- Quitting Snipdeck clears a sensitive copy that was still waiting for its timer, if the clipboard still holds it.
+- The idle lock closes the fill form of a sensitive template, and says so.
+- A paste whose previous clipboard could not be kept whole (a very large image, or a metafile) is reported as not restored, instead of quietly putting back only part of it. Unverified on Windows.
+- Pasted files are zeroed before their temporary folder is deleted. Unverified on Windows.
+- A backup or export that fails because an attachment is too big for the archive (64 MB a file) names the item in the toast and the log; the editor refuses such an attachment up front.
+- A library with more than 1 GB of attachments can be backed up and exported: the total limit of an archive is now 8 GB (a backup is read back under the same limit). Going over it says so, instead of naming whichever item crossed it.
+- A draft too big to be read back is no longer kept, and a stale one is zeroed on clear.
+- Template errors in the item editor and the Recent labels are translatable.
+- Quick add in the Panel takes `Ctrl+V` and closes once the item is created.
+- Drag to reorder: an item can be dropped into the first slot of a list, and the gaps between rows and tiles
+  take a drop.
 - **Open data folder** in Settings and Help opens the library folder again.
 - The first paste after a start pasted the previous clipboard content. The clipboard write is now confirmed
   before the paste key is sent.
@@ -67,17 +182,21 @@ first start.
   Panel no longer closes windows it opened.
 - Deleting a list or board shows one confirmation. Windows open without a white flash and beside the window
   that opened them.
-- No see-through window after Alt+Tab or restore.
+- No see-through window after Alt+Tab or restore. Every window is drawn opaque and redraws in full after it is shown,
+  focused, resized or moved to another screen, so dragging no longer flickers and a docked or saved window no
+  longer stays partly see-through until clicked.
 - "Dock to the nearest edge" never picks the taskbar's edge.
 - The library syncs every commit to disk, so a power cut cannot roll back an edit or a Trash purge.
 
 ### Security
-- No network access. Licence keys are checked offline against a public key built into the release.
+- No network access. The Support Snipdeck link only opens your browser when you press it.
 - Imported archives are size-limited; the launcher checks the download's SHA-256 against the release and a
   pinned list, and starts the app without `cmd.exe`.
 
 Windows behaviour (focus, tray, IME, DPAPI, scaling) was developed on Linux and checked on a real PC only in
 part before this release.
+- YAML import parsing moved from `serde_yaml_ng` to `serde-saphyr` (deserialize only), so `unsafe-libyaml`
+  (RUSTSEC-2024-0449) is no longer in the build.
 
 ## Development history before 1.0.0
 
@@ -111,8 +230,7 @@ Internal milestones, kept for reference.
 **M1: foundation (`snipdeck-core`, `snipdeck-store`, `snipdeck-portable`)**
 - Cargo workspace, CI (Linux fmt, clippy, tests, docs, `cargo deny`; Windows `cargo check`).
 - Core: boards, lists, items, formats, tags; template engine with `{date}`, `{time}`, `{datetime:FORMAT}`,
-  `{clipboard}`, `{cursor}`, and Pro prompts `{field:...}` and `{choice:...}`; in-memory fuzzy search;
-  Free/Pro entitlements; offline Ed25519 licence verification.
+  `{clipboard}`, `{cursor}`, and prompts `{field:...}` and `{choice:...}`; in-memory fuzzy search.
 - Store: SQLite with migrations and a pre-migration backup, FTS5 search, content-addressed blob store, ordering,
   30-day trash, transactions and batches, XChaCha20-Poly1305 encryption of sensitive items with an optional
   Argon2id master password and a `KeyProvider` trait.

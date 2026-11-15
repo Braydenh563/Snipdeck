@@ -33,7 +33,7 @@ use snipdeck_app::{
     crash, demo,
     drafts::Drafts,
     fill_binding::FillUi,
-    headless,
+    headless, hello_job,
     help_binding::{HelpUi, SystemHelpHost},
     host, key_provider,
     main_binding::{self, MainUi},
@@ -50,7 +50,7 @@ use snipdeck_app::{
     unlock_binding::UnlockUi,
     window_kind,
 };
-use snipdeck_core::{Entitlements, Tier, Timestamp};
+use snipdeck_core::Timestamp;
 use snipdeck_store::Store;
 use snipdeck_ui::PanelWindow;
 
@@ -99,6 +99,13 @@ fn main() -> ExitCode {
         println!("{}", cli::USAGE);
         return ExitCode::SUCCESS;
     }
+    if args.quit {
+        // Nothing else first: no library, data folder, log or window, and no mutex.
+        platform::ask_to_quit();
+        return ExitCode::SUCCESS;
+    }
+    // Windows says once how a packaged build was started; ask before anything else could.
+    let by_startup_task = platform::launched_by_startup_task();
     if args.check_db || args.troubleshoot {
         return headless(&args);
     }
@@ -111,7 +118,7 @@ fn main() -> ExitCode {
     );
     let outcome = match &args.screenshot {
         Some(path) => take_screenshot(path, args.dark),
-        None => run(&args),
+        None => run(&args, by_startup_task),
     };
     match outcome {
         Ok(()) => ExitCode::SUCCESS,
@@ -156,15 +163,20 @@ fn take_screenshot(path: &std::path::Path, dark: bool) -> Result<(), String> {
     clippy::too_many_lines,
     reason = "start-up is one ordered sequence: each step needs the one before"
 )]
-fn run(args: &Args) -> Result<(), String> {
+fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     // Events from service threads become calls on this thread, through the binding.
     let look = platform::system_look();
     let callbacks = Callbacks {
         on_hotkey: Box::new(|action| on_ui_thread(move |b| b.hotkey(action))),
         on_second: Box::new(|| on_ui_thread(Binding::show)),
+        // The same path as the tray's Quit, so pending saves flush after the event loop ends.
+        on_quit: Box::new(|| {
+            on_ui_thread(|b| b.tray(snipdeck_platform::tray::TrayEvent::Quit));
+        }),
         on_target_changed: Box::new(|| with_binding(Binding::target_changed)),
         on_tray: Box::new(|event| on_ui_thread(move |b| b.tray(event))),
         on_clipboard_change: Box::new(|change| on_ui_thread(move |b| b.clipboard_changed(change))),
+        on_typed: Box::new(|typed| on_ui_thread(move |b| b.typed_trigger(typed))),
         on_look_changed: {
             let look = Arc::clone(&look);
             // Read on the UI thread: the value is fresher than the one the watcher saw.
@@ -191,7 +203,7 @@ fn run(args: &Args) -> Result<(), String> {
     };
     // Only now: reading the settings may move a damaged file aside, and opening the library may
     // migrate it. A second launch (which stops just above) must not touch the running copy's files.
-    let (store, settings, entitlements, settings_folder, saver_baseline) = open_library(args)?;
+    let (store, settings, settings_folder, saver_baseline) = open_library(args)?;
     let Host {
         services,
         target,
@@ -200,6 +212,7 @@ fn run(args: &Args) -> Result<(), String> {
         popups,
         tray,
         recent_gate,
+        typing,
         warnings,
         keep_alive: _keep_alive,
     } = host;
@@ -218,6 +231,12 @@ fn run(args: &Args) -> Result<(), String> {
         .set_size(slint::LogicalSize::new(width, 480.0));
 
     let startup_chords = settings.hotkeys.clone();
+    // A startup task cannot pass `--hidden`: the saved "When Windows starts" choice stands in.
+    let start_hidden = args.hidden
+        || snipdeck_platform::startup_task::start_hidden(
+            by_startup_task,
+            settings.starts_visible(),
+        );
     // The text size, before any window draws: the setting over Windows' own.
     snipdeck_app::text_scale::configure(settings.text_size);
     snipdeck_app::text_scale::set_system(look.text_scale());
@@ -237,7 +256,6 @@ fn run(args: &Args) -> Result<(), String> {
         target,
         Box::new(host::SystemClock),
         settings,
-        entitlements,
     )
     .map_err(|e| format!("loading the library: {e}"))?;
     let controller = Rc::new(RefCell::new(controller));
@@ -245,6 +263,7 @@ fn run(args: &Args) -> Result<(), String> {
         let mut controller = controller.borrow_mut();
         controller.set_system_look(look.read());
         controller.set_recent_gate(recent_gate);
+        controller.set_typing(typing);
         controller.prune_recent();
         if let Some(saver) = saver {
             controller.set_settings_saver(saver);
@@ -261,12 +280,20 @@ fn run(args: &Args) -> Result<(), String> {
         // Argon2id takes a moment on purpose: a master password step works its key out on a
         // worker thread, and the window waits with a status instead of freezing.
         master_job::set_offload(Rc::new(master_job::Threads));
+        snipdeck_app::drop_read::use_threads();
+        // Windows Hello prompts wait for a person, so they run on a worker too.
+        hello_job::use_worker_threads();
+        if let Some(hello) = platform::hello() {
+            controller.set_hello(hello);
+        }
         if let Some(picker) = platform::file_picker() {
             controller.set_file_picker(picker);
         }
         controller.set_log_opener(Box::new(crash::open_log_folder));
         controller.unlock_library();
     }
+    // Whether Hello is ready is asked on its worker (it can block), so start-up does not wait.
+    snipdeck_app::unlock_binding::refresh_hello(&controller);
 
     // The tray makes closing the Panel safe (it hides, and the icon brings it back). Whether an
     // icon is in the notification area is reported by the tray itself (`TrayEvent::IconPresent`,
@@ -291,6 +318,18 @@ fn run(args: &Args) -> Result<(), String> {
         .borrow_mut()
         .set_screen_clip_host(Box::new(snipdeck_app::screen_clip::SystemScreenClip));
 
+    // The screen eyedropper of the Colours tab: Windows only (UNVERIFIED there), no button elsewhere.
+    #[cfg(windows)]
+    let eyedropper: Option<Box<dyn snipdeck_platform::eyedrop::Eyedropper>> = Some(Box::new(
+        snipdeck_platform::windows::eyedrop::WinEyedropper::new(),
+    ));
+    #[cfg(not(windows))]
+    let eyedropper: Option<Box<dyn snipdeck_platform::eyedrop::Eyedropper>> = None;
+    controller.borrow_mut().set_eyedropper(
+        eyedropper,
+        std::sync::Arc::new(snipdeck_app::binding::redraw_from_any_thread),
+    );
+
     let hotkeys = Rc::new(RefCell::new(hotkeys));
     // Resuming after "Pause hotkeys" registers the chords in force then, not the launch ones.
     let chords_now = {
@@ -299,14 +338,7 @@ fn run(args: &Args) -> Result<(), String> {
         move || {
             controller.upgrade().map_or_else(
                 || fallback.clone(),
-                |controller| {
-                    let controller = controller.borrow();
-                    // Paste next is registered with Supporter only.
-                    controller
-                        .settings()
-                        .hotkeys
-                        .registrable(controller.tier() == snipdeck_core::Tier::Pro)
-                },
+                |controller| controller.borrow().settings().hotkeys.clone(),
             )
         }
     };
@@ -417,11 +449,8 @@ fn run(args: &Args) -> Result<(), String> {
     let frames_armed = Rc::new(Cell::new(false));
     watch_window_events(&window, binding.clone(), Rc::clone(&frames_armed));
 
-    // Paste next is registered with Supporter only (it stays in the settings otherwise).
-    let supporter_at_start = controller.borrow().tier() == snipdeck_core::Tier::Pro;
     snipdeck_app::trace!(
-        "hotkeys at start: supporter={supporter_at_start} toggle_panel={:?} picker={:?} \
-         capture={:?} paste_next={:?} (paste next is registered with Supporter only; an empty \
+        "hotkeys at start: toggle_panel={:?} picker={:?} capture={:?} paste_next={:?} (an empty \
          chord is off)",
         startup_chords.toggle_panel,
         startup_chords.picker,
@@ -430,12 +459,22 @@ fn run(args: &Args) -> Result<(), String> {
     );
     report_hotkey_problems(&host::register_all(
         &mut **hotkeys.borrow_mut(),
-        &startup_chords.registrable(supporter_at_start),
+        &startup_chords,
     ));
 
-    if args.hidden {
-        controller.borrow_mut().hide();
+    if start_hidden {
+        // A docked Panel that tucks is never wholly hidden: it starts as its tab at the screen
+        // edge, on the monitor it was last left on. The controller places the tab before the
+        // window is shown, so the window is made there and the open Panel never flashes.
+        with_binding(Binding::start_hidden);
         frames_armed.set(true);
+        if controller.borrow().visible() {
+            window
+                .show()
+                .map_err(|e| format!("showing the Panel: {e}"))?;
+            snipdeck_app::trace!("first show (tab)");
+            attach_now();
+        }
     } else {
         window
             .show()
@@ -461,6 +500,8 @@ fn run(args: &Args) -> Result<(), String> {
     let ran = slint::run_event_loop_until_quit().map_err(|e| format!("event loop: {e}"));
     // An editor left open keeps what was typed since the last draft.
     item_editor.flush_draft();
+    // A sensitive copy still waiting for its clear timer would outlive the app.
+    controller.borrow_mut().clear_pending_clipboard_now();
     // Settings changed in the last moments are still waiting for their quiet time.
     if let Err(e) = controller.borrow_mut().flush_settings() {
         eprintln!("snipdeck: could not save the settings: {e}");
@@ -572,7 +613,7 @@ fn effect_handler(
                 eprintln!("snipdeck: cannot open the main window: {e}");
             }
         }
-        // The Panel's "All commands…" and Ctrl+K: the Main window, with the palette open.
+        // The Panel's "Commands…" and Ctrl+K: the Main window, with the palette open.
         Effect::OpenCommands => match main_ui.open() {
             Ok(()) => {
                 if let Some(window) = main_ui.window() {
@@ -586,6 +627,13 @@ fn effect_handler(
                 eprintln!("snipdeck: cannot open the settings: {e}");
             }
         }
+        // The optional support page, in the browser: the same opener as Help's links.
+        Effect::OpenSupport => {
+            use snipdeck_app::help_binding::{HelpHost, SUPPORT_URL, SystemHelpHost};
+            if let Err(e) = SystemHelpHost.open_url(SUPPORT_URL) {
+                eprintln!("snipdeck: cannot open the support page: {e}");
+            }
+        }
         // A locked sensitive item behind a master password: ask for it.
         Effect::OpenUnlock => {
             if let Err(e) = unlock_ui.open() {
@@ -595,14 +643,6 @@ fn effect_handler(
         Effect::OpenListEditor => {
             if let Err(e) = main_ui.bind() {
                 eprintln!("snipdeck: cannot open the list editor: {e}");
-            }
-        }
-        Effect::DragWindow => {
-            if let Some(window) = window.upgrade() {
-                // The Panel has no OS caption: the header starts the move itself.
-                let _ = window
-                    .window()
-                    .with_winit_window(winit::window::Window::drag_window);
             }
         }
         Effect::ResizeWindow(edge) => {
@@ -633,6 +673,9 @@ fn effect_handler(
         // The binding has already acted: placed the window, or opened the item editor.
         Effect::HidePanel
         | Effect::ShowSymbols
+        | Effect::ShowColours
+        | Effect::HideColours
+        | Effect::MoveWindow(..)
         | Effect::PlaceWindow(_)
         | Effect::NewItem
         | Effect::EditItem(_) => {}
@@ -663,8 +706,9 @@ fn restore_frame(window: &PanelWindow) {
     {
         with_binding(|b| b.restore_frame(&monitor));
     } else {
-        // The first show after a `--hidden` start: the window cannot say where it is yet, but
-        // "Panel opens" at the mouse or the text cursor needs no monitor of its own.
+        // The window cannot say where it is: before its first show it does not exist (the
+        // event loop makes it). The controller places it itself: at the mouse or the text
+        // cursor when "Panel opens" says so, else, the first time, where it was last left.
         with_binding(Binding::restore_anchor);
     }
 }
@@ -678,19 +722,13 @@ fn watch_window_events(window: &PanelWindow, binding: Binding, armed: Rc<Cell<bo
     let tracing = snipdeck_app::trace::enabled();
     let mut cursor = (0.0, 0.0);
     let mut repaint = snipdeck_app::repaint::Watch::new();
-    let weak = window.as_weak();
     window
         .window()
         .on_winit_window_event(move |slint_window, event| {
             snipdeck_app::diag::window_event("panel", slint_window, event);
-            // O39: Windows may have dropped the window's pixels (Alt+Tab, restore): damage all of
-            // it, as the Main window does, so the next frame is drawn whole.
-            if repaint.on_signal(snipdeck_app::repaint::signal_of(event)) {
-                if let Some(w) = weak.upgrade() {
-                    w.set_repaint_flip(!w.get_repaint_flip());
-                }
-                slint_window.request_redraw();
-            }
+            // O39: Windows may have dropped or erased the window's pixels (a resize, a show, an
+            // area uncovered): the next frame is drawn whole, as for every Snipdeck window.
+            snipdeck_app::repaint::follow(&mut repaint, slint_window, event);
             // O52: the theme colour, not white, before a window's first frame.
             if matches!(event, WindowEvent::Resized(_)) {
                 snipdeck_app::native_window::paint_before_first_frame(slint_window);
@@ -727,6 +765,9 @@ fn watch_window_events(window: &PanelWindow, binding: Binding, armed: Rc<Cell<bo
                         binding.frame_changed(&monitor, rect);
                     }
                 }
+            }
+            if let WindowEvent::Focused(focused) = event {
+                binding.panel_focused(*focused);
             }
             if !tracing {
                 return EventResult::Propagate;
@@ -768,29 +809,25 @@ fn report_hotkey_problems(problems: &[host::HotkeyProblem]) {
     with_binding(|b| b.hotkey_problems(problems));
 }
 
-/// What [`open_library`] returns: the library, the settings, what the user may do, and the data
+/// What [`open_library`] returns: the library, the settings, and the data
 /// folder (`None` only for the demo, which has none), and what the settings saver starts from
 /// (`None` when changes must not be written: the demo, `--dark`, and a settings file that could
 /// not be read or set aside).
-type Library = (
-    Store,
-    Settings,
-    Entitlements,
-    Option<PathBuf>,
-    Option<Settings>,
-);
+type Library = (Store, Settings, Option<PathBuf>, Option<Settings>);
 
-/// The library, the settings and what the user may do.
+/// The library and the settings.
 fn open_library(args: &Args) -> Result<Library, String> {
     let now = Timestamp::now();
     if args.demo {
         let settings = Settings {
             theme: if args.dark { Theme::Dark } else { Theme::Light },
+            // The demo keeps nothing, so it has no question to ask (screenshots stay clear).
+            recent_history_asked: true,
             ..Settings::new_install()
         };
         let store = demo::store(now).map_err(|e| format!("demo library: {e}"))?;
         snipdeck_app::trace!("demo library");
-        return Ok((store, settings, Entitlements::new(Tier::Pro), None, None));
+        return Ok((store, settings, None, None));
     }
     let folder = match &args.data_dir {
         Some(dir) => dir.clone(),
@@ -831,9 +868,7 @@ fn open_library(args: &Args) -> Result<Library, String> {
         Ok(made) => snipdeck_app::trace!("real library; starter board made: {made}"),
         Err(e) => eprintln!("snipdeck: could not create the first board: {e}"),
     }
-    // The saved licence key, checked again on every start; none or a bad one is the Free plan.
-    let entitlements = snipdeck_app::licence_store::entitlements(&folder, now);
-    Ok((store, settings, entitlements, Some(folder), saver_baseline))
+    Ok((store, settings, Some(folder), saver_baseline))
 }
 
 /// Winit with the software renderer; the Panel and the other floating windows are created
@@ -859,7 +894,10 @@ fn select_backend() -> Result<(), String> {
                     attributes
                 }
             };
-            attributes.with_active(plan.active)
+            // Opaque on every platform: see `window_kind::TRANSPARENT` (render flicker 2026-11-14).
+            attributes
+                .with_active(plan.active)
+                .with_transparent(window_kind::TRANSPARENT)
         })
         .select()
         .map_err(|e| format!("selecting the window backend: {e}"))

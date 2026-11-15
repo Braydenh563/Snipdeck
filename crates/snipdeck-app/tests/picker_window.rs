@@ -26,7 +26,7 @@ use snipdeck_app::{
     settings::{HotkeyAction, Settings},
     toast_binding::ToastUi,
 };
-use snipdeck_core::{Entitlements, ItemId, Tier, Timestamp};
+use snipdeck_core::{ItemId, Timestamp};
 use snipdeck_platform::{
     keys::{Key as PlatformKey, KeyEvent},
     payload::Data,
@@ -109,7 +109,6 @@ fn rig_at(scale: f32) -> Rig {
         Box::new(targets.clone()),
         Box::new(FixedClock::new(now())),
         Settings::default(),
-        Entitlements::new(Tier::Pro),
     )
     .expect("controller");
     let ctl = Rc::new(RefCell::new(ctl));
@@ -547,7 +546,7 @@ fn the_toast_shows_in_its_own_window_while_the_panel_is_hidden() {
             t.window().is_visible(),
             "the Panel is hidden, so the toast has its window"
         );
-        assert_eq!(t.get_text(), "Pasted into Outlook");
+        assert_eq!(t.get_text(), "Pasted into Mail");
         assert_eq!(t.get_kind(), snipdeck_ui::ToastKind::Success);
         let at = r.toasts.placed().expect("it was placed");
         assert!(
@@ -560,10 +559,10 @@ fn the_toast_shows_in_its_own_window_while_the_panel_is_hidden() {
             "24 px above the bottom of the work area"
         );
         assert_eq!(
-            element(&t, "Pasted into Outlook", AccessibleRole::Text)
+            element(&t, "Pasted into Mail", AccessibleRole::Text)
                 .accessible_label()
                 .as_deref(),
-            Some("Pasted into Outlook")
+            Some("Pasted into Mail")
         );
         // It leaves with the toast.
         for step in [
@@ -629,7 +628,7 @@ fn the_capture_and_paste_next_hotkeys_report_in_the_toast_window_while_the_panel
 
         // Paste next pastes the first pinned item and says where it went.
         r.binding.hotkey(HotkeyAction::PasteNext);
-        assert_eq!(t.get_text(), "Pasted into Outlook");
+        assert_eq!(t.get_text(), "Pasted into Mail");
         assert_eq!(r.ctl.borrow().services().keyboard.sent.len(), 1);
     });
 }

@@ -6,8 +6,8 @@
 
 use slint::{ComponentHandle, ModelRc, VecModel, platform::Key};
 use snipdeck_ui::{
-    BoardEditor, HelpWindow, ItemEditor, ListEditor, OnboardingWindow, SettingsPage, SystemLook,
-    TagManager,
+    BoardEditor, HelpWindow, ItemEditor, ListEditor, MainView, OnboardingWindow, PanelLayout,
+    SettingsPage, SystemLook, TagManager,
     testing::{Frame, Harness, assert_golden},
 };
 
@@ -100,6 +100,91 @@ fn item_editor_text_light_and_dark() {
 }
 
 #[test]
+fn item_editor_preview_of_a_template() {
+    let h = item_fit(560, false, |c| {
+        c.set_kind_index(3);
+        c.set_item_title("Invoice reminder".into());
+        c.set_content("A gentle reminder that invoice {field:Number} is due on {date}.".into());
+        c.set_label_index(3);
+        c.set_preview_on(true);
+        c.set_preview_title("Invoice reminder".into());
+        c.set_preview_excerpt(
+            "A gentle reminder that invoice {field:Number} is due on {date}.".into(),
+        );
+        c.set_preview_expanded(
+            "A gentle reminder that invoice ‹Number› is due on 2026-03-04.".into(),
+        );
+    });
+    assert_golden("item-editor-preview-template-light", &render(&h));
+}
+
+#[test]
+fn item_editor_preview_at_the_narrowest_width_with_long_values() {
+    let long = "https://a-very-long-subdomain-name.another-quite-long-label.example-company-internal.example.com/path";
+    // A fixed height: the pane scrolls, so the window's own fit (the form's height) is not what shows here.
+    let h = item((420, 700), false);
+    let c = &h.component;
+    {
+        c.set_kind_index(2);
+        c.set_item_title("Docs".into());
+        c.set_content(long.into());
+        c.set_preview_on(true);
+        c.set_preview_title("Docs".into());
+        c.set_preview_excerpt(long.into());
+        c.set_preview_link(
+            "a-very-long-subdomain-name.another-quite-long-label.example-company-internal.example.com"
+                .into(),
+        );
+    }
+    assert_golden("item-editor-preview-narrow-long-host-light", &render(&h));
+    drop(h);
+
+    let token = "Supercalifragilisticexpialidocious_Supercalifragilisticexpialidocious_Supercalifragilistic";
+    let h = item_fit(420, false, |c| {
+        c.set_kind_index(3);
+        c.set_item_title("Token".into());
+        c.set_content(token.into());
+        c.set_preview_on(true);
+        c.set_preview_title("Token".into());
+        c.set_preview_excerpt(token.into());
+        c.set_preview_expanded(token.into());
+    });
+    assert_golden("item-editor-preview-narrow-long-token-light", &render(&h));
+}
+
+#[test]
+fn item_editor_preview_dark_sensitive_and_in_the_users_layouts() {
+    let h = item_fit(560, true, |c| {
+        c.set_kind_index(0);
+        c.set_item_title("Bank card".into());
+        c.set_sensitive(true);
+        c.set_label_index(5);
+        c.set_preview_on(true);
+        c.set_preview_title("Bank card".into());
+        c.set_preview_mask("••••••••".into());
+        c.set_preview_panel_layout(PanelLayout::Cards);
+        c.set_preview_main_view(MainView::Compact);
+        c.set_preview_show_numbers(false);
+    });
+    assert_golden("item-editor-preview-sensitive-dark", &render(&h));
+}
+
+#[test]
+fn item_editor_preview_at_225_percent_text_size() {
+    let h = item((1100, 1500), false);
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    h.component.set_kind_index(3);
+    h.component.set_item_title("Invoice reminder".into());
+    h.component.set_preview_on(true);
+    h.component.set_preview_title("Invoice reminder".into());
+    h.component
+        .set_preview_excerpt("Invoice {field:Number} is due on {date}.".into());
+    h.component
+        .set_preview_expanded("Invoice ‹Number› is due on 2026-03-04.".into());
+    assert_golden("item-editor-preview-scale-light", &render(&h));
+}
+
+#[test]
 fn item_editor_each_kind() {
     let h = item_fit(ITEM.0, false, |c| {
         c.set_kind_index(1);
@@ -115,7 +200,7 @@ fn item_editor_each_kind() {
     let h = item_fit(ITEM.0, false, |c| {
         c.set_kind_index(2);
         c.set_item_title("Design spec".into());
-        c.set_content("figma.com/file/snipdeck-index-deck".into());
+        c.set_content("example.com/design/index-deck".into());
         c.set_content_error("A link needs a scheme such as https://".into());
     });
     assert_golden("item-editor-link-error-light", &render(&h));
@@ -127,14 +212,6 @@ fn item_editor_each_kind() {
         c.set_content("A gentle reminder that invoice {field:Number} is due on {date}.".into());
     });
     assert_golden("item-editor-template-light", &render(&h));
-    drop(h);
-
-    let h = item_fit(560, false, |c| {
-        c.set_kind_index(3);
-        c.set_prompted_available(false);
-        c.set_content("Due on {date}.".into());
-    });
-    assert_golden("item-editor-template-free-light", &render(&h));
     drop(h);
 
     let h = item_fit(ITEM.0, false, |c| {
@@ -214,11 +291,84 @@ fn item_editor_long_values_and_the_inline_limit() {
     assert_golden("item-editor-long-light", &render(&h));
 }
 
+/// "More options" open on an item with a trigger: the picture of the Tips card on triggers.
+#[test]
+fn item_editor_more_options_shows_the_trigger() {
+    let h = item((420, 900), false);
+    h.component.set_more_open(true);
+    h.component.set_item_title("Email signature".into());
+    h.component.set_trigger(";sig".into());
+    assert_golden("item-editor-trigger-light", &render(&h));
+}
+
 #[test]
 fn item_editor_at_225_percent_text_size() {
     let h = item((1100, 1500), false);
     h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
     assert_golden("item-editor-scale-light", &render(&h));
+}
+
+#[test]
+fn item_editor_template_placeholders_at_420px_and_225_percent_text_size() {
+    // The placeholder grid under pressure: the chip column is capped, so the help text wraps instead of leaving the window.
+    let h = item((420, 2600), false);
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    h.component.set_kind_index(3);
+    h.component.set_content("Due on {date}.".into());
+    assert_golden("item-editor-template-narrow-scale-light", &render(&h));
+}
+
+/// The footer buttons (by their accessible label) as (left, top, right, bottom) in window pixels.
+fn footer_buttons(
+    h: &Harness<ItemEditor>,
+    labels: &[&str],
+    scale: f32,
+) -> Vec<(String, (f32, f32, f32, f32))> {
+    use i_slint_backend_testing::{AccessibleRole, ElementHandle};
+    labels
+        .iter()
+        .map(|label| {
+            let found: Vec<_> = ElementHandle::find_by_accessible_label(&h.component, label)
+                .filter(|e| e.accessible_role() == Some(AccessibleRole::Button))
+                .collect();
+            let e = found.last().unwrap_or_else(|| panic!("no button {label}"));
+            let (p, size) = (e.absolute_position(), e.size());
+            (
+                (*label).to_string(),
+                (
+                    p.x * scale,
+                    p.y * scale,
+                    (p.x + size.width) * scale,
+                    (p.y + size.height) * scale,
+                ),
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn the_editor_footer_reflows_at_420px_and_225_percent_text_size() {
+    let h = item((420, 2600), false);
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    h.component.set_is_new(false);
+    let _ = render(&h);
+    let boxes = footer_buttons(&h, &["Move to Trash", "Cancel", "Save"], 1.0);
+    for (name, b) in &boxes {
+        assert!(
+            b.0 >= 0.0 && b.2 <= 420.0,
+            "{name} leaves the window: {b:?}"
+        );
+    }
+    for (i, (an, a)) in boxes.iter().enumerate() {
+        for (bn, b) in &boxes[i + 1..] {
+            let apart = a.2 <= b.0 || b.2 <= a.0 || a.3 <= b.1 || b.3 <= a.1;
+            assert!(apart, "{an} overlaps {bn}: {a:?} {b:?}");
+        }
+    }
+    assert!(
+        boxes[0].1.3 <= boxes[1].1.1,
+        "Trash is on its own row above Cancel"
+    );
 }
 
 #[test]
@@ -395,7 +545,7 @@ fn settings_page_panel_layout_and_opening_groups() {
 }
 
 #[test]
-fn settings_page_licence_backups_data_and_privacy() {
+fn settings_page_support_backups_data_and_privacy() {
     // Tall enough for every section.
     let h = Harness::new(SettingsPage::new, SETTINGS.0, 2400);
     fixture::settings(&h.component);
@@ -405,20 +555,16 @@ fn settings_page_licence_backups_data_and_privacy() {
     let h = Harness::new(SettingsPage::new, SETTINGS.0, 2400);
     h.component.set_dark(true);
     fixture::settings(&h.component);
-    h.component.set_pro(true);
     h.component.set_erase_open(true);
     h.component.set_toast_text("Backed up".into());
     h.component.set_toast_kind(snipdeck_ui::ToastKind::Success);
-    assert_golden("settings-full-pro-erase-dark", &render(&h));
+    assert_golden("settings-full-erase-dark", &render(&h));
     drop(h);
 
     let h = Harness::new(SettingsPage::new, SETTINGS.0, 2400);
     fixture::settings(&h.component);
     h.component.set_has_data_folder(false);
     h.component.set_backups(ModelRc::new(VecModel::default()));
-    h.component.set_licence_error(
-        "That licence key is not valid. Check that you copied all of it.".into(),
-    );
     assert_golden("settings-demo-light", &render(&h));
 }
 
@@ -470,11 +616,15 @@ fn hotkey_health_in_settings_and_the_welcome_tour() {
 #[test]
 fn settings_search_filters_rows_and_hides_empty_sections() {
     use slint::Global;
-    for (query, name) in [
-        ("tray", "settings-search-tray-light"),
-        ("zzzz", "settings-search-none-light"),
+    for (query, dark, name) in [
+        ("tray", false, "settings-search-tray-light"),
+        ("zzzz", false, "settings-search-none-light"),
+        // The optional Support section (it sits at the very end of the page).
+        ("donate", false, "settings-search-support-light"),
+        ("donate", true, "settings-search-support-dark"),
     ] {
         let h = Harness::new(SettingsPage::new, SETTINGS.0, SETTINGS.1);
+        h.component.set_dark(dark);
         fixture::settings(&h.component);
         snipdeck_ui::SettingsFilter::get(&h.component)
             .on_matches(|text, query| text.to_lowercase().contains(&query.to_lowercase()));
@@ -571,7 +721,7 @@ fn help_about_light_and_dark() {
     assert_golden("help-about-dark", &render(&h));
 }
 
-/// The Tips tab: ten cards (title, two lines, a picture, "Try it") in a scrolling list. The first
+/// The Tips tab: eleven cards (title, two lines, a picture, "Try it") in a scrolling list. The first
 /// four show at the Help window's opening size.
 #[test]
 fn help_tips_light_and_dark() {

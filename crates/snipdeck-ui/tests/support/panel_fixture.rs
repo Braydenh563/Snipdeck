@@ -40,7 +40,7 @@ pub fn sample_rows() -> Vec<PanelRow> {
         row(
             ItemKind::Link,
             "Design spec",
-            "figma.com/file/snipdeck-index-deck",
+            "example.com/design/index-deck",
         ),
         PanelRow {
             masked_preview: "•••• •••• 7f3a".into(),
@@ -186,7 +186,7 @@ pub fn app_menu() -> Vec<MenuEntry> {
         off("Paste stack (mark items)"),
         row("Dock to the nearest edge", ""),
         row("Keyboard shortcuts", "Ctrl+/"),
-        row("All commands\u{2026}", "Ctrl+K"),
+        row("Commands\u{2026}", "Ctrl+K"),
         row("Settings\u{2026}", ""),
         line(),
         row("Open Snipdeck", ""),
@@ -221,7 +221,7 @@ pub fn set_rows(ui: &PanelWindow, rows: Vec<PanelRow>) {
     ui.set_rows(ModelRc::new(VecModel::from(rows)));
 }
 
-/// The usual populated Panel: board "Work", three lists, three pinned items, six rows, pasting into Outlook.
+/// The usual populated Panel: board "Work", three lists, three pinned items, six rows, pasting into Mail.
 pub fn populate(ui: &PanelWindow) {
     ui.set_board_name("Work".into());
     ui.set_tabs(ModelRc::new(VecModel::from(tabs())));
@@ -229,6 +229,6 @@ pub fn populate(ui: &PanelWindow) {
     ui.set_board_menu_entries(ModelRc::new(VecModel::from(board_menu())));
     ui.set_app_menu_entries(ModelRc::new(VecModel::from(app_menu())));
     set_rows(ui, sample_rows());
-    ui.set_target_name("Outlook".into());
+    ui.set_target_name("Mail".into());
     ui.set_target_title("New message".into());
 }

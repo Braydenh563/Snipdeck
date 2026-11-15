@@ -1,7 +1,7 @@
-//! Binds the Settings page to the [`Controller`]: copies the settings, the licence tier and the
+//! Binds the Settings page to the [`Controller`]: copies the settings and the
 //! backups into the window, and turns every callback into a change of the settings (stored by the
 //! controller's quiet-time saver, see [`Controller::update_settings`]) or a call of one of the
-//! controller's Settings methods (licence, backup, restore, export, erase).
+//! controller's Settings methods (backup, restore, export, erase).
 //!
 //! Everything the page does to the machine goes through [`SettingsHost`], so tests run it against
 //! fakes: registering the global shortcuts, the Windows start-up entry, opening a folder.
@@ -38,29 +38,44 @@ use crate::{
     },
     host::{self, ClipboardText, HotkeyBackend, HotkeyFailure, HotkeyProblem},
     hotkey_health::{self, HotkeyHealth},
-    main_binding::{create_window, raise, set_look},
+    main_binding::{create_window, set_look},
     native_window::fit_when_settled,
     settings::{
         DockEdge, DockTrigger, HotkeyAction, Hotkeys, PanelLayout, PanelOpenAt, PanelSearch,
         PanelSwitcher, PickerSide, ProgramPaste, ProgramRule, RowDensity, Settings, TextSize,
         Theme, TrayClick,
     },
-    toast::{LicenceProblem, Toast, ToastKind, ToastMessage},
+    toast::{Toast, ToastKind, ToastMessage},
     wording::{self, LANGUAGE_NAMES, LANGUAGE_TAGS},
 };
 
 // ---- What the machine is asked to do -----------------------------------------------------------
 
-/// The address "Get Supporter" and "Email me" write to: the owner's, supplied 2026-10-20. The
-/// website's two mailto links in `site/index.html` carry the same one, and the test
-/// `get_supporter_opens_the_email_app_with_the_one_named_address` pins it.
-pub const SUPPORTER_EMAIL: &str = "brayden.hoyle@outlook.com";
+/// Why "Start with Windows" could not be changed.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum AutostartError {
+    /// The user switched Snipdeck off under Settings > Apps > Startup (the Store build): only
+    /// they can switch it back on.
+    #[error("Windows has the startup task switched off for this user")]
+    SwitchedOff,
+    /// The organisation's policy forbids it.
+    #[error("policy keeps the startup task off")]
+    Policy,
+    /// Anything else (the log has the text).
+    #[error("{0}")]
+    Other(String),
+}
 
-/// The link behind "Get Supporter": opens the user's email app with a new message to
-/// [`SUPPORTER_EMAIL`].
-#[must_use]
-pub fn supporter_mailto() -> String {
-    format!("mailto:{SUPPORTER_EMAIL}")
+impl AutostartError {
+    /// The toast that tells the user, in their language.
+    #[must_use]
+    pub const fn toast(&self) -> ToastMessage {
+        match self {
+            Self::SwitchedOff => ToastMessage::AutostartSwitchedOff,
+            Self::Policy => ToastMessage::AutostartPolicy,
+            Self::Other(_) => ToastMessage::AutostartFailed,
+        }
+    }
 }
 
 /// What Settings asks of the machine. [`SystemHost`] is the real one; tests bring a fake.
@@ -74,7 +89,7 @@ pub trait SettingsHost {
     /// # Errors
     ///
     /// Why it could not be changed.
-    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), String>;
+    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), AutostartError>;
 
     /// Whether the "Start with Windows" entry exists now (the user may have deleted it outside
     /// Snipdeck). Where there is no such entry the setting is only remembered, so it reads `true`.
@@ -90,7 +105,7 @@ pub trait SettingsHost {
     /// The file manager could not be started.
     fn open_folder(&self, folder: &Path) -> Result<(), String>;
 
-    /// Opens `url` (here, the `mailto:` link of Get Supporter) in the default program.
+    /// Opens `url` (here, the Support Snipdeck page) in the default browser.
     ///
     /// # Errors
     ///
@@ -123,6 +138,12 @@ pub trait SettingsHost {
     /// Whether this PC has a Windows clipboard history to offer as an import source (only
     /// Windows does). The source is left out of the "Import..." choices when it does not.
     fn clipboard_history_supported(&self) -> bool;
+
+    /// Whether typed triggers can work here (they need the Windows keyboard hook). The Typing
+    /// section turns its switches off and says so when this is false.
+    fn typing_supported(&self) -> bool {
+        cfg!(windows)
+    }
 
     /// Reads the text entries of the Windows clipboard history. May block until Windows answers.
     fn read_clipboard_history(&self) -> HistoryRead;
@@ -184,16 +205,27 @@ impl SettingsHost for SystemHost {
         apply_hotkeys(&mut **self.hotkeys.borrow_mut(), hotkeys)
     }
 
-    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), String> {
+    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), AutostartError> {
         #[cfg(windows)]
         {
-            let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+            use snipdeck_platform::{startup_task::Blocked, windows::package};
+            if package::is_packaged() {
+                // The package's startup task cannot carry `--hidden`: `main` reads the saved
+                // "When Windows starts" choice instead.
+                let _ = hidden;
+                return package::set_startup_task(on).map_err(|e| match e {
+                    package::TaskError::Blocked(Blocked::ByUser) => AutostartError::SwitchedOff,
+                    package::TaskError::Blocked(Blocked::ByPolicy) => AutostartError::Policy,
+                    package::TaskError::Os(e) => AutostartError::Other(e.to_string()),
+                });
+            }
+            let exe = std::env::current_exe().map_err(|e| AutostartError::Other(e.to_string()))?;
             snipdeck_platform::windows::autostart::set_enabled(
                 &exe,
                 if hidden { "--hidden" } else { "" },
                 on,
             )
-            .map_err(|e| e.to_string())
+            .map_err(|e| AutostartError::Other(e.to_string()))
         }
         #[cfg(not(windows))]
         {
@@ -206,7 +238,11 @@ impl SettingsHost for SystemHost {
     fn autostart_registered(&self) -> bool {
         #[cfg(windows)]
         {
-            snipdeck_platform::windows::autostart::is_enabled()
+            if snipdeck_platform::windows::package::is_packaged() {
+                snipdeck_platform::windows::package::startup_task_enabled()
+            } else {
+                snipdeck_platform::windows::autostart::is_enabled()
+            }
         }
         #[cfg(not(windows))]
         {
@@ -449,7 +485,6 @@ pub fn key_chips(value: &str) -> Vec<String> {
 pub(crate) fn try_register(
     host: &dyn SettingsHost,
     paused: bool,
-    supporter: bool,
     action: HotkeyAction,
     current: &Hotkeys,
     next: &Hotkeys,
@@ -457,14 +492,12 @@ pub(crate) fn try_register(
     if paused {
         return None;
     }
-    // Paste next is not registered on the Free plan (it stays in the settings).
-    let (current, next) = (current.registrable(supporter), next.registrable(supporter));
     let refused = host
-        .apply_hotkeys(&next)
+        .apply_hotkeys(next)
         .into_iter()
         .find(|p| p.action == action);
     if let Some(problem) = refused {
-        let _ = host.apply_hotkeys(&current);
+        let _ = host.apply_hotkeys(current);
         return Some(problem.failure);
     }
     None
@@ -551,9 +584,6 @@ where
 {
     match note {
         None => String::new(),
-        Some(RowNote::SupporterOnly) => ui::FormTexts::get(window)
-            .invoke_hotkey_supporter_only()
-            .into(),
         Some(RowNote::Failed(failure)) => {
             hotkey_refusal_text(window, HotkeyRefusal::Refused(failure), combo)
         }
@@ -597,10 +627,8 @@ struct HotkeyRow {
 /// Why a stored shortcut does nothing, shown on its Settings row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum RowNote {
-    /// Windows refused it at the last registration (start-up, resume, plan change).
+    /// Windows refused it at the last registration (start-up or resume).
     Failed(HotkeyFailure),
-    /// Paste next on the Free plan: kept in the settings, never registered.
-    SupporterOnly,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -632,7 +660,6 @@ struct ImportLines {
     lists: i32,
     items: i32,
     duplicates: i32,
-    blocked: bool,
     warnings: Vec<snipdeck_portable::Warning>,
     more: i32,
 }
@@ -658,7 +685,6 @@ impl ImportLines {
                 lines.lists = to_i32(p.lists);
                 lines.items = to_i32(p.items);
                 lines.duplicates = to_i32(p.duplicates);
-                lines.blocked = p.blocked_by_board_limit;
                 lines.warnings = p.warnings.iter().take(WARNINGS_SHOWN).cloned().collect();
                 lines.more =
                     to_i32(p.warnings.len().saturating_sub(WARNINGS_SHOWN) + p.warnings_dropped);
@@ -690,6 +716,8 @@ struct PageView {
     panel_switcher_index: i32,
     show_numbers: bool,
     show_symbols_tab: bool,
+    show_colours_tab: bool,
+    colour_copy_on_pick: bool,
     tray_click_index: i32,
     panel_open_at_index: i32,
     panel_open_at_enabled: bool,
@@ -703,6 +731,8 @@ struct PageView {
     screenshot_keep_panel: bool,
     dock_full_edge: bool,
     recent_history: bool,
+    expand_triggers: bool,
+    suggest_triggers: bool,
     reduce_motion: bool,
     panel_width: i32,
     dock_edge_index: i32,
@@ -715,12 +745,11 @@ struct PageView {
     paste_rule_error: String,
     no_history_apps: Vec<String>,
     no_history_error: String,
-    pro: bool,
-    licence_error: Option<LicenceProblem>,
     /// 0 = no key protection on this machine, 1 = no master password, 2 = one is set.
     master_state: i32,
     master_locked: bool,
-    master_allowed: bool,
+    hello_offered: bool,
+    hello_unlock: bool,
     has_data_folder: bool,
     backups: Vec<BackupLine>,
     last_backup: String,
@@ -734,7 +763,6 @@ struct PageState {
     hotkey_conflicts: [String; 4],
     paste_rule_error: String,
     no_history_error: String,
-    licence_error: Option<LicenceProblem>,
     backups: Vec<BackupFile>,
     import: Option<PendingImport>,
 }
@@ -879,12 +907,7 @@ where
                 HotkeyAction::Capture => &settings.hotkeys.capture,
                 HotkeyAction::PasteNext => &settings.hotkeys.paste_next,
             };
-            let supporter = controller.tier() == snipdeck_core::Tier::Pro;
-            let note = if value.is_empty() {
-                None
-            } else if action == HotkeyAction::PasteNext && !supporter {
-                Some(RowNote::SupporterOnly)
-            } else if controller.hotkeys_paused() {
+            let note = if value.is_empty() || controller.hotkeys_paused() {
                 None
             } else {
                 controller
@@ -892,12 +915,7 @@ where
                     .map(|p| RowNote::Failed(p.failure))
             };
             let conflict = state.hotkey_conflicts[i].clone();
-            let health = if matches!(note, Some(RowNote::SupporterOnly)) {
-                // Never registered on the Free plan: there is nothing to test.
-                None
-            } else {
-                Some(controller.hotkey_health(action))
-            };
+            let health = Some(controller.hotkey_health(action));
             let alternatives = if !value.is_empty()
                 && (!conflict.is_empty() || matches!(health, Some(HotkeyHealth::Failed(_))))
             {
@@ -952,6 +970,8 @@ where
         panel_switcher_index: i32::from(settings.panel_switcher == PanelSwitcher::Menu),
         show_numbers: settings.show_numbers,
         show_symbols_tab: settings.show_symbols_tab,
+        show_colours_tab: settings.show_colours_tab,
+        colour_copy_on_pick: settings.colour_copy_on_pick,
         tray_click_index: i32::from(settings.tray_click == TrayClick::Main),
         panel_open_at_index: match settings.panel_open_at {
             PanelOpenAt::Last => 0,
@@ -970,6 +990,8 @@ where
         screenshot_keep_panel: settings.screenshot_keep_panel,
         dock_full_edge: settings.dock.full_edge,
         recent_history: settings.recent_history,
+        expand_triggers: settings.expand_triggers,
+        suggest_triggers: settings.suggest_triggers,
         reduce_motion: settings.reduce_motion,
         panel_width: i32::try_from(settings.panel_width).unwrap_or(320),
         dock_edge_index: dock_edge_index(controller.dock_edge()),
@@ -986,8 +1008,6 @@ where
         paste_rule_error: state.paste_rule_error.clone(),
         no_history_apps: settings.no_history_apps.clone(),
         no_history_error: state.no_history_error.clone(),
-        pro: controller.tier() == snipdeck_core::Tier::Pro,
-        licence_error: state.licence_error,
         master_state: match controller.master_password_state() {
             MasterState::Unavailable => 0,
             MasterState::NotSet => 1,
@@ -995,7 +1015,8 @@ where
             MasterState::KeyUnavailable => 3,
         },
         master_locked: controller.library_locked(),
-        master_allowed: controller.master_password_allowed(),
+        hello_offered: controller.hello_offered(),
+        hello_unlock: controller.hello_enabled(),
         has_data_folder,
         backups: state
             .backups
@@ -1064,6 +1085,29 @@ where
     T: Timing + 'static,
 {
     /// Runs `f` on the controller, then redraws every window.
+    /// The Windows Hello switch. Turning it on asks Hello once to seal the open key; if that fails
+    /// the switch goes back off and the password is untouched.
+    fn hello_toggled(self: &Rc<Self>, on: bool) {
+        let job = self.act(|ctl| ctl.set_hello_unlock(on));
+        let Some(job) = job else {
+            return;
+        };
+        let core = Rc::clone(self);
+        crate::hello_job::run_job(
+            job,
+            Box::new(move |done| {
+                // An outcome of a step that was given up on (locked, switched off, a newer step)
+                // is dropped with its copy and must not undo the newer step.
+                if core.act(|ctl| ctl.hello_stale(&done)) {
+                    return;
+                }
+                // A switch-on that does not finish goes back off in the controller, with a message
+                // unless the user cancelled.
+                let _ = core.act(|ctl| ctl.finish_hello(done));
+            }),
+        );
+    }
+
     fn act<R>(self: &Rc<Self>, f: impl FnOnce(&mut Controller<Store, C, K, T>) -> R) -> R {
         let result = f(&mut self.controller.borrow_mut());
         redraw_all();
@@ -1213,30 +1257,10 @@ where
         try_register(
             self.host.as_ref(),
             controller.hotkeys_paused(),
-            controller.tier() == snipdeck_core::Tier::Pro,
             action,
             current,
             next,
         )
-    }
-
-    /// Registers the chords in force again: the plan may have changed, and Paste next is
-    /// registered with Supporter only. Does nothing while "Pause hotkeys" is on (resuming
-    /// registers them).
-    fn apply_hotkeys_for_tier(&self) {
-        let controller = self.controller.borrow();
-        if controller.hotkeys_paused() {
-            return;
-        }
-        let supporter = controller.tier() == snipdeck_core::Tier::Pro;
-        let chords = controller.settings().hotkeys.registrable(supporter);
-        drop(controller);
-        // A refusal here (Paste next taken by another app once Supporter is on) is reported like
-        // one at start-up, never dropped.
-        let problems = self.host.apply_hotkeys(&chords);
-        self.controller
-            .borrow_mut()
-            .report_hotkey_problems(&problems);
     }
 
     // ---- Text size -----------------------------------------------------------------------------
@@ -1331,7 +1355,7 @@ where
             self.controller.borrow().settings().autostart && self.host.autostart_registered();
         if rewrite && let Err(error) = self.host.set_autostart(true, !visible) {
             crate::trace!("autostart rewrite: {error}");
-            self.toast(ToastKind::Danger, ToastMessage::AutostartFailed);
+            self.toast(ToastKind::Danger, error.toast());
             self.force_redraw();
             return;
         }
@@ -1346,21 +1370,13 @@ where
             }
             Err(error) => {
                 crate::trace!("autostart {on}: {error}");
-                self.toast(ToastKind::Danger, ToastMessage::AutostartFailed);
+                self.toast(ToastKind::Danger, error.toast());
                 self.force_redraw();
             }
         }
     }
 
-    // ---- Licence, backups, data ------------------------------------------------------------
-
-    fn licence_submitted(self: &Rc<Self>, key: &str) {
-        let data_dir = self.data_dir.clone();
-        let result = self.act(|ctl| ctl.apply_licence(key, data_dir.as_deref()));
-        self.state.borrow_mut().licence_error = result.err();
-        self.apply_hotkeys_for_tier();
-        redraw_all();
-    }
+    // ---- Backups, data ----------------------------------------------------------------------
 
     /// The master password form's action. The passwords exist only in these arguments: they go
     /// to the controller and are not stored. A refusal is written to the page so it can say
@@ -1417,6 +1433,11 @@ where
             return;
         }
         let result = self.act(|ctl| ctl.finish_master(done));
+        if result.is_ok() {
+            // A changed password counts as an unlock: Hello (if on) seals a new copy, whether or
+            // not the Settings window is still there.
+            crate::unlock_binding::seal_open_key(&self.controller);
+        }
         let Some(window) = self.window.upgrade() else {
             return;
         };
@@ -1574,11 +1595,11 @@ where
         self.open_folder(&backups);
     }
 
-    /// Opens the email app for Get Supporter.
-    fn get_supporter(self: &Rc<Self>) {
-        if let Err(error) = self.host.open_url(&supporter_mailto()) {
-            crate::trace!("get supporter: {error}");
-            self.toast(ToastKind::Danger, ToastMessage::MailNotOpened);
+    /// Opens the optional Support Snipdeck page in the browser.
+    fn open_support(self: &Rc<Self>) {
+        if let Err(error) = self.host.open_url(crate::help_binding::SUPPORT_URL) {
+            crate::trace!("support page: {error}");
+            self.toast(ToastKind::Danger, ToastMessage::LinkNotOpened);
             redraw_all();
         }
     }
@@ -1665,16 +1686,14 @@ where
             }
         });
         register_redraw(&core.redraw);
-        ui::PlanTexts::get(window)
-            .set_board_limit(to_i32(snipdeck_core::Entitlements::FREE_BOARD_LIMIT));
         let follow = window.invoke_follow_windows_text();
-        window.set_free_board_limit(to_i32(snipdeck_core::Entitlements::FREE_BOARD_LIMIT));
         window.set_languages(model(
             std::iter::once(follow).chain(LANGUAGE_NAMES.iter().map(|n| SharedString::from(*n))),
         ));
         // The search field: Slint cannot test "contains", so the page asks here.
         ui::SettingsFilter::get(window).on_matches(|text, query| settings_match(&text, &query));
         window.set_import_history_available(core.host.clipboard_history_supported());
+        window.set_typing_available(core.host.typing_supported());
         core.refresh_backups();
         core.sync();
 
@@ -1743,6 +1762,11 @@ where
             .act(|ctl| ctl.update_settings(|s| s.show_numbers = on)));
         wire!(on_show_symbols_tab_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.show_symbols_tab = on)));
+        wire!(on_show_colours_tab_toggled, |core, on| core
+            .act(|ctl| ctl.update_settings(|s| s.show_colours_tab = on)));
+        wire!(on_colour_copy_on_pick_toggled, |core, on| {
+            core.act(|ctl| ctl.update_settings(|s| s.colour_copy_on_pick = on));
+        });
         wire!(on_tray_click_chosen, |core, i| core.act(|ctl| ctl
             .update_settings(|s| {
                 s.tray_click = if i == 1 {
@@ -1782,6 +1806,7 @@ where
                     .unwrap_or_default();
             })));
         wire!(on_autostart_toggled, |core, on| core.autostart_toggled(on));
+        wire!(on_hello_unlock_toggled, |core, on| core.hello_toggled(on));
         wire!(on_close_to_tray_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.close_to_tray = on)));
         wire!(on_panel_in_taskbar_toggled, |core, on| {
@@ -1796,7 +1821,11 @@ where
             |ctl| ctl.update_settings(|s| s.screenshot_keep_panel = on)
         ));
         wire!(on_recent_history_toggled, |core, on| core
-            .act(|ctl| ctl.update_settings(|s| s.recent_history = on)));
+            .act(|ctl| ctl.set_recent_history(on)));
+        wire!(on_expand_triggers_toggled, |core, on| core
+            .act(|ctl| ctl.update_settings(|s| s.expand_triggers = on)));
+        wire!(on_suggest_triggers_toggled, |core, on| core
+            .act(|ctl| ctl.update_settings(|s| s.suggest_triggers = on)));
         wire!(on_recent_history_cleared, |core| {
             core.act(Controller::recent_clear);
         });
@@ -1809,7 +1838,7 @@ where
         wire!(on_dock_edge_chosen, |core, i| core
             .act(|ctl| ctl.dock_to(dock_edge_of(i))));
         wire!(on_dock_trigger_chosen, |core, i| core.act(
-            |ctl| ctl.update_settings(|s| s.dock.trigger = dock_trigger_of(i))
+            |ctl| ctl.update_settings(|s| s.dock.choose(dock_trigger_of(i)))
         ));
         wire!(on_dock_hover_delay_chosen, |core, ms| core
             .act(|ctl| ctl.update_settings(
@@ -1839,8 +1868,6 @@ where
             .no_history_added(&name));
         wire!(on_no_history_app_removed, |core, i| core
             .no_history_removed(crate::binding::index(i)));
-        wire!(on_licence_submitted, |core, key| core
-            .licence_submitted(&key));
         {
             // Not through `wire!`: it traces every argument, and these are passwords.
             let core = Rc::clone(&core);
@@ -1856,7 +1883,7 @@ where
             i32::try_from(crate::master_password::IDLE_LOCK.as_secs() / 60).unwrap_or(15),
         );
         window.set_master_min_length(to_i32(crate::master_password::MIN_LEN));
-        wire!(on_supporter_requested, |core| core.get_supporter());
+        wire!(on_support_requested, |core| core.open_support());
         wire!(on_backup_now_requested, |core| core.backup_now());
         wire!(on_backup_restore_requested, |core, i| core
             .restore(crate::binding::index(i)));
@@ -1908,7 +1935,6 @@ fn render_import(window: &ui::SettingsPage, i: &ImportLines) {
     window.set_import_lists(i.lists);
     window.set_import_items(i.items);
     window.set_import_duplicates(i.duplicates);
-    window.set_import_blocked(i.blocked);
     window.set_import_warnings(model(
         i.warnings
             .iter()
@@ -1978,6 +2004,12 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     if differs(&|p| p.show_symbols_tab == view.show_symbols_tab) {
         window.set_show_symbols_tab(view.show_symbols_tab);
     }
+    if differs(&|p| p.show_colours_tab == view.show_colours_tab) {
+        window.set_show_colours_tab(view.show_colours_tab);
+    }
+    if differs(&|p| p.colour_copy_on_pick == view.colour_copy_on_pick) {
+        window.set_colour_copy_on_pick(view.colour_copy_on_pick);
+    }
     if differs(&|p| p.tray_click_index == view.tray_click_index) {
         window.set_tray_click_index(view.tray_click_index);
     }
@@ -2018,6 +2050,12 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.screenshot_keep_panel == view.screenshot_keep_panel) {
         window.set_screenshot_keep_panel(view.screenshot_keep_panel);
+    }
+    if differs(&|p| p.expand_triggers == view.expand_triggers) {
+        window.set_expand_triggers(view.expand_triggers);
+    }
+    if differs(&|p| p.suggest_triggers == view.suggest_triggers) {
+        window.set_suggest_triggers(view.suggest_triggers);
     }
     if differs(&|p| p.recent_history == view.recent_history) {
         window.set_recent_history(view.recent_history);
@@ -2075,25 +2113,17 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     if differs(&|p| p.no_history_error == view.no_history_error) {
         window.set_no_history_error(view.no_history_error.as_str().into());
     }
-    if differs(&|p| p.pro == view.pro) {
-        window.set_pro(view.pro);
-    }
-    if differs(&|p| p.licence_error == view.licence_error) {
-        window.set_licence_error(
-            view.licence_error
-                .map(|problem| wording::licence_problem_text(window, problem))
-                .unwrap_or_default()
-                .into(),
-        );
-    }
     if differs(&|p| p.master_state == view.master_state) {
         window.set_master_state(view.master_state);
     }
     if differs(&|p| p.master_locked == view.master_locked) {
         window.set_master_locked(view.master_locked);
     }
-    if differs(&|p| p.master_allowed == view.master_allowed) {
-        window.set_master_allowed(view.master_allowed);
+    if differs(&|p| p.hello_offered == view.hello_offered) {
+        window.set_hello_offered(view.hello_offered);
+    }
+    if differs(&|p| p.hello_unlock == view.hello_unlock) {
+        window.set_hello_unlock(view.hello_unlock);
     }
     if differs(&|p| p.has_data_folder == view.has_data_folder) {
         window.set_has_data_folder(view.has_data_folder);
@@ -2149,7 +2179,7 @@ pub fn request_open() {
 /// every time. Not generic: the host keeps one of these.
 pub struct SettingsUi {
     open: Box<dyn Fn() -> Result<(), slint::PlatformError>>,
-    window: Box<dyn Fn() -> Option<ui::SettingsPage>>,
+    window: Rc<dyn Fn() -> Option<ui::SettingsPage>>,
 }
 
 impl std::fmt::Debug for SettingsUi {
@@ -2212,15 +2242,17 @@ impl SettingsUi {
                 window.show()?;
                 crate::ownership::opened(crate::ownership::Win::Settings);
                 fit_when_settled(window);
+                // A PIN added or removed since the last look shows in the Hello row.
+                crate::unlock_binding::refresh_hello(&controller);
                 // The page was hidden, so it skipped the redraws; draw it now that it is up.
                 binding.redraw();
-                raise(window.window());
+                crate::native_window::activate_regular(window);
                 Ok(())
             })
         };
-        let window = {
+        let window: Rc<dyn Fn() -> Option<ui::SettingsPage>> = {
             let slot = Rc::clone(&slot);
-            Box::new(move || {
+            Rc::new(move || {
                 slot.borrow()
                     .as_ref()
                     .map(|(window, _)| window.clone_strong())
@@ -2259,6 +2291,14 @@ impl SettingsUi {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn autostart_errors_pick_their_toast() {
+        use super::AutostartError as E;
+        assert_eq!(E::SwitchedOff.toast(), ToastMessage::AutostartSwitchedOff);
+        assert_eq!(E::Policy.toast(), ToastMessage::AutostartPolicy);
+        assert_eq!(E::Other("x".into()).toast(), ToastMessage::AutostartFailed);
+    }
+
     use super::*;
     use crate::host::FakeHotkeys;
 

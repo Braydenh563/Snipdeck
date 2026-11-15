@@ -24,6 +24,12 @@ pub enum Command {
     ShowPanel,
     /// Show the Panel on its Symbols tab (emoji, kaomoji, icons).
     Symbols,
+    /// Show the Panel on its Colours tab.
+    Colours,
+    /// Show the Panel on the list the Colours tab saves to ("Saved colours").
+    SavedColours,
+    /// Show the Panel on its Colours tab and start the screen eyedropper.
+    PickColour,
     /// Open the Picker.
     OpenPicker,
     /// Quick capture.
@@ -44,6 +50,8 @@ pub enum Command {
     Troubleshoot,
     /// Open About.
     About,
+    /// Open the optional "Support Snipdeck" page in the browser.
+    Support,
     /// Comfortable rows (the row density setting).
     DensityComfortable,
     /// Compact rows (the row density setting).
@@ -86,16 +94,33 @@ pub enum Command {
     KeepPanelOpen,
     /// Fold the Main sidebar to its rail, or open it again (Ctrl+B).
     ToggleSidebar,
+    /// Group the selected items (the item under the cursor when none is selected) in the open list (Ctrl+G).
+    GroupItems,
+    /// Fold the group under the cursor, or unfold it.
+    FoldGroup,
+    /// Rename the group under the cursor (F2).
+    RenameGroup,
+    /// Dissolve the group under the cursor and keep its items.
+    UngroupGroup,
+    /// Move the group under the cursor and its items to the Trash (Del).
+    DeleteGroup,
+    /// Move the group under the cursor up one place (Alt+Up).
+    MoveGroupUp,
+    /// Move the group under the cursor down one place (Alt+Down).
+    MoveGroupDown,
 }
 
 impl Command {
     /// Every command, in the order of `CommandTexts.all`.
-    pub const ALL: [Self; 36] = [
+    pub const ALL: [Self; 47] = [
         Self::NewItem,
         Self::NewList,
         Self::Search,
         Self::ShowPanel,
         Self::Symbols,
+        Self::Colours,
+        Self::SavedColours,
+        Self::PickColour,
         Self::OpenPicker,
         Self::QuickCapture,
         Self::PasteNext,
@@ -106,6 +131,7 @@ impl Command {
         Self::Shortcuts,
         Self::Troubleshoot,
         Self::About,
+        Self::Support,
         Self::DensityComfortable,
         Self::DensityCompact,
         Self::ViewTile,
@@ -127,6 +153,13 @@ impl Command {
         Self::ResetPanel,
         Self::KeepPanelOpen,
         Self::ToggleSidebar,
+        Self::GroupItems,
+        Self::FoldGroup,
+        Self::RenameGroup,
+        Self::UngroupGroup,
+        Self::DeleteGroup,
+        Self::MoveGroupUp,
+        Self::MoveGroupDown,
     ];
 
     /// The command with palette id `id`.
@@ -158,14 +191,18 @@ impl Command {
             Self::Settings => "Ctrl+,",
             Self::UserGuide => "F1",
             Self::Shortcuts => "Ctrl+/",
-            Self::UseItem => "Enter",
+            Self::UseItem | Self::FoldGroup => "Enter",
             Self::CopyItem => "Shift+Enter",
             Self::DuplicateItem => "Ctrl+D",
             Self::EditItem => "Ctrl+E",
             Self::PinItem | Self::UnpinItem => "Ctrl+P",
-            Self::TrashItem => "Del",
+            Self::TrashItem | Self::DeleteGroup => "Del",
             Self::SelectAll => "Ctrl+A",
             Self::ToggleSidebar => "Ctrl+B",
+            Self::GroupItems => "Ctrl+G",
+            Self::RenameGroup => "F2",
+            Self::MoveGroupUp => "Alt+Up",
+            Self::MoveGroupDown => "Alt+Down",
             Self::ShowPanel => return chord_text(hotkeys, HotkeyAction::TogglePanel),
             Self::OpenPicker => return chord_text(hotkeys, HotkeyAction::Picker),
             Self::QuickCapture => return chord_text(hotkeys, HotkeyAction::Capture),
@@ -266,6 +303,25 @@ pub struct Context<'a> {
     pub in_trash: bool,
     /// The Panel's Symbols tab is on (the `show_symbols_tab` setting).
     pub symbols: bool,
+    /// The Panel's Colours tab is on (the `show_colours_tab` setting).
+    pub colours: bool,
+    /// This machine has a screen eyedropper (Windows).
+    pub eyedropper: bool,
+    /// The "Colours" list exists (something was saved), so "Saved colours" has somewhere to go.
+    pub saved_colours: bool,
+    /// A list is open (groups live in lists).
+    pub in_list: bool,
+    /// The cursor is on a group's header; `None` on an item.
+    pub group: Option<CursorGroup>,
+}
+
+/// The group whose header is under the cursor, and where it can go.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CursorGroup {
+    /// There is a group or loose item above to move past.
+    pub up: bool,
+    /// There is a group or loose item below to move past.
+    pub down: bool,
 }
 
 /// One row the palette shows.
@@ -296,6 +352,16 @@ pub fn available(command: Command, ctx: &Context<'_>) -> bool {
         Command::PinItem => ctx.has_item && !ctx.in_trash && !ctx.item_pinned,
         Command::UnpinItem => ctx.has_item && !ctx.in_trash && ctx.item_pinned,
         Command::Symbols => ctx.symbols,
+        Command::Colours => ctx.colours,
+        Command::SavedColours => ctx.colours && ctx.saved_colours,
+        Command::PickColour => ctx.colours && ctx.eyedropper,
+        Command::GroupItems => ctx.has_item && ctx.in_list,
+        Command::FoldGroup
+        | Command::RenameGroup
+        | Command::UngroupGroup
+        | Command::DeleteGroup => ctx.group.is_some(),
+        Command::MoveGroupUp => ctx.group.is_some_and(|g| g.up),
+        Command::MoveGroupDown => ctx.group.is_some_and(|g| g.down),
         _ => true,
     }
 }
@@ -368,6 +434,9 @@ mod tests {
             ("Search", "find filter"),
             ("Show Panel", "open toggle"),
             ("Symbols", "emoji kaomoji icons smiley"),
+            ("Colours", "color picker palette hex swatch"),
+            ("Saved colours", "colors palette swatches"),
+            ("Pick a colour from the screen", "eyedropper color pick"),
             ("Open Picker", "quick find paste"),
             ("Quick capture", "clipboard save"),
             ("Paste next item", "stack queue"),
@@ -378,6 +447,7 @@ mod tests {
             ("Keyboard shortcuts", "hotkeys keys cheat sheet"),
             ("Troubleshoot…", "diagnose"),
             ("About Snipdeck", "version"),
+            ("Support Snipdeck", "donate coffee"),
             ("Main list density: Comfortable", "view mode"),
             ("Main list density: Compact", "view mode"),
             ("Tile view", "view mode"),
@@ -410,6 +480,11 @@ mod tests {
             item_pinned: false,
             in_trash: false,
             symbols: true,
+            colours: true,
+            eyedropper: true,
+            saved_colours: true,
+            in_list: true,
+            group: None,
         }
     }
 
@@ -552,6 +627,88 @@ mod tests {
         );
     }
 
+    /// The catalogue's texts up to the group commands (the three view commands before them filled in).
+    fn texts_with_groups() -> Vec<(String, String)> {
+        let mut all = texts();
+        for filler in ["Reset Panel", "Keep Panel open", "Show or hide sidebar"] {
+            all.push((filler.to_owned(), String::new()));
+        }
+        for (label, words) in [
+            ("Group the selected rows", "make new folder"),
+            ("Fold or unfold a group", "collapse expand"),
+            ("Rename group", "name"),
+            ("Ungroup", "dissolve"),
+            ("Delete group", "remove trash"),
+            ("Move the group up", "reorder earlier"),
+            ("Move the group down", "reorder later"),
+        ] {
+            all.push((label.to_owned(), words.to_owned()));
+        }
+        all
+    }
+
+    #[test]
+    fn group_commands_are_offered_where_the_code_performs_them_and_carry_their_keys() {
+        let hotkeys = Hotkeys::new_install();
+        let found = |c: &Context<'_>| -> Vec<Command> {
+            entries(&texts_with_groups(), c, "")
+                .into_iter()
+                .map(|e| e.command)
+                .filter(|c| {
+                    matches!(
+                        c,
+                        Command::GroupItems
+                            | Command::FoldGroup
+                            | Command::RenameGroup
+                            | Command::UngroupGroup
+                            | Command::DeleteGroup
+                            | Command::MoveGroupUp
+                            | Command::MoveGroupDown
+                    )
+                })
+                .collect()
+        };
+        // On an item in a list: only "group". In All items, Pinned or the Trash there is nothing to group.
+        let mut c = ctx(&hotkeys);
+        assert_eq!(found(&c), [Command::GroupItems]);
+        c.in_list = false;
+        assert_eq!(found(&c), Vec::<Command>::new());
+        // On a header (not an item): the header commands, the moves only where there is a place to go.
+        let mut h = ctx(&hotkeys);
+        h.has_item = false;
+        h.group = Some(CursorGroup {
+            up: false,
+            down: true,
+        });
+        assert_eq!(
+            found(&h),
+            [
+                Command::FoldGroup,
+                Command::RenameGroup,
+                Command::UngroupGroup,
+                Command::DeleteGroup,
+                Command::MoveGroupDown
+            ]
+        );
+        h.group = Some(CursorGroup {
+            up: true,
+            down: false,
+        });
+        assert!(found(&h).contains(&Command::MoveGroupUp));
+        assert!(!found(&h).contains(&Command::MoveGroupDown));
+        for (command, keys) in [
+            (Command::GroupItems, Some("Ctrl+G")),
+            (Command::RenameGroup, Some("F2")),
+            (Command::DeleteGroup, Some("Del")),
+            (Command::MoveGroupUp, Some("Alt+Up")),
+            (Command::MoveGroupDown, Some("Alt+Down")),
+            (Command::FoldGroup, Some("Enter")),
+            (Command::UngroupGroup, None),
+        ] {
+            assert_eq!(command.shortcut(&hotkeys).as_deref(), keys, "{command:?}");
+        }
+    }
+
     #[test]
     fn new_list_and_new_item_have_their_own_chords() {
         let hotkeys = Hotkeys::new_install();
@@ -602,6 +759,38 @@ mod tests {
             !Command::SelectAll.needs_item(),
             "it works on an empty cursor too"
         );
+    }
+
+    #[test]
+    fn the_colour_commands_follow_the_tab_the_eyedropper_and_the_saved_list() {
+        let hotkeys = Hotkeys::default();
+        let ids = |ctx: &Context<'_>| -> Vec<Command> {
+            Command::ALL
+                .iter()
+                .copied()
+                .filter(|c| {
+                    matches!(
+                        c,
+                        Command::Colours | Command::SavedColours | Command::PickColour
+                    ) && available(*c, ctx)
+                })
+                .collect()
+        };
+        let mut c = ctx(&hotkeys);
+        assert_eq!(
+            ids(&c),
+            [Command::Colours, Command::SavedColours, Command::PickColour]
+        );
+        c.saved_colours = false;
+        assert_eq!(
+            ids(&c),
+            [Command::Colours, Command::PickColour],
+            "no Colours list yet: nothing to view"
+        );
+        c.eyedropper = false;
+        assert_eq!(ids(&c), [Command::Colours]);
+        c.colours = false;
+        assert!(ids(&c).is_empty(), "the tab off hides them all");
     }
 
     #[test]

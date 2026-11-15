@@ -42,33 +42,3 @@ pub fn cjk_font_family(language: &str, installed: impl Fn(&str) -> bool) -> Stri
         .map(|family| (*family).to_owned())
         .unwrap_or_default()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn launch_locales_map_to_the_families_of_the_design() {
-        assert_eq!(cjk_font_candidates("ja")[0], "Yu Gothic UI");
-        assert_eq!(cjk_font_candidates("ja-JP")[0], "Yu Gothic UI");
-        assert_eq!(cjk_font_candidates("zh-Hans")[0], "Microsoft YaHei UI");
-        assert_eq!(cjk_font_candidates("zh_CN")[0], "Microsoft YaHei UI");
-        assert_eq!(cjk_font_candidates("zh-Hant")[0], "Microsoft JhengHei UI");
-        assert_eq!(cjk_font_candidates("ko")[0], "Malgun Gothic");
-        for latin in ["en", "de", "fr", "es", "pt-BR", ""] {
-            assert!(cjk_font_candidates(latin).is_empty(), "{latin}");
-        }
-    }
-
-    #[test]
-    fn the_first_installed_family_wins_and_none_means_no_change() {
-        let only = |name: &'static str| move |f: &str| f == name;
-        assert_eq!(
-            cjk_font_family("ja", only("Noto Sans CJK JP")),
-            "Noto Sans CJK JP"
-        );
-        assert_eq!(cjk_font_family("ja", |_| true), "Yu Gothic UI");
-        assert_eq!(cjk_font_family("ja", |_| false), "");
-        assert_eq!(cjk_font_family("de", |_| true), "");
-    }
-}

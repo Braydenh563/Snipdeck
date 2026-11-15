@@ -1,0 +1,544 @@
+// The drag machine's tests; part of `dock::tests` (included there).
+
+fn screen() -> Monitor {
+    Monitor {
+        id: "one".to_owned(),
+        work_area: Rect {
+            x: 0,
+            y: 0,
+            w: 1920,
+            h: 1040,
+        },
+        taskbar: Some(DockEdge::Bottom),
+        scale: 1.0,
+    }
+}
+
+/// A second monitor to the right of [`screen`], at 150 %.
+fn second() -> Monitor {
+    Monitor {
+        id: "two".to_owned(),
+        work_area: Rect {
+            x: 1920,
+            y: 0,
+            w: 2560,
+            h: 1400,
+        },
+        taskbar: None,
+        scale: 1.5,
+    }
+}
+
+const FLOATING: (u32, u32) = (300, 400);
+const DOCKED: (u32, u32) = (280, 600);
+
+fn ctx(monitor: &Monitor, ms: i64) -> DragCtx<'_> {
+    DragCtx {
+        monitor,
+        sizes: DragSizes {
+            floating: FLOATING,
+            side: DOCKED,
+            flat: DOCKED,
+        },
+        full_edge: false,
+        now: at(ms),
+    }
+}
+
+/// `ctx` with another floating size.
+fn sized(ctx: DragCtx<'_>, floating: (u32, u32)) -> DragCtx<'_> {
+    DragCtx {
+        sizes: DragSizes {
+            floating,
+            ..ctx.sizes
+        },
+        ..ctx
+    }
+}
+
+fn window(x: i32, y: i32, size: (u32, u32)) -> Rect {
+    Rect {
+        x,
+        y,
+        w: size.0,
+        h: size.1,
+    }
+}
+
+#[test]
+fn a_drag_through_the_middle_never_docks_whatever_the_panels_size() {
+    let screen = screen();
+    // As tall as the work area: its sides touch the top and the bottom all the way.
+    let tall = sized(ctx(&screen, 0), (320, 1040));
+    let mut drag = Drag::begin((100, 10), window(60, 0, (320, 1040)), None);
+    for (step, x) in (120..1800).step_by(40).enumerate() {
+        let now = i64::try_from(step).unwrap_or(0) * 300;
+        let moved = drag.moved((x, 10 + 5), &DragCtx { now: at(now), ..tall });
+        assert_eq!(moved, DragStep::Move(x - 40, 5), "at {x}");
+        assert_eq!(drag.phase(), DragPhase::Float);
+    }
+    assert_eq!(
+        drag.released(&tall),
+        DragEnd::Floating(window(1600, 0, (320, 1040))),
+        "floats where it was dropped, at its own size"
+    );
+}
+
+#[test]
+fn the_dock_is_offered_only_after_the_cursor_stays_at_the_edge() {
+    let screen = screen();
+    let mut drag = Drag::begin((500, 300), window(400, 290, FLOATING), None);
+    // The window's own left side is far off screen: that docks nothing.
+    assert_eq!(drag.moved((40, 300), &ctx(&screen, 0)), DragStep::Move(-60, 290));
+    assert_eq!(drag.moved((5, 300), &ctx(&screen, 500)), DragStep::Move(-95, 290));
+    assert_eq!(drag.phase(), DragPhase::Float, "5 px from the edge is not at it");
+    assert_eq!(drag.moved((3, 300), &ctx(&screen, 1000)), DragStep::Move(-97, 290));
+    assert_eq!(drag.moved((3, 300), &ctx(&screen, 1199)), DragStep::None);
+    assert_eq!(drag.preview(), None, "not yet: 199 ms");
+    let shown = drag.moved((3, 300), &ctx(&screen, 1200));
+    assert_eq!(shown, DragStep::Place(window(0, 290, DOCKED)));
+    assert_eq!(drag.preview(), Some(DockEdge::Left));
+    assert_eq!(
+        drag.released(&ctx(&screen, 1300)),
+        DragEnd::Docked(DockEdge::Left, window(0, 290, DOCKED))
+    );
+}
+
+#[test]
+fn brushing_an_edge_docks_nothing() {
+    let screen = screen();
+    let mut drag = Drag::begin((500, 300), window(400, 290, FLOATING), None);
+    let _ = drag.moved((0, 300), &ctx(&screen, 0));
+    let _ = drag.moved((0, 310), &ctx(&screen, 150));
+    let _ = drag.moved((30, 310), &ctx(&screen, 180));
+    // Back at the edge: the wait starts again.
+    let _ = drag.moved((0, 310), &ctx(&screen, 250));
+    let _ = drag.moved((0, 310), &ctx(&screen, 400));
+    assert_eq!(drag.phase(), DragPhase::Float);
+    assert_eq!(
+        drag.released(&ctx(&screen, 420)),
+        DragEnd::Floating(window(0, 300, FLOATING)),
+        "dropped at the edge without the offer: it floats there, inside the work area"
+    );
+}
+
+#[test]
+fn a_press_that_does_not_move_never_docks() {
+    let screen = screen();
+    // A floating Panel at the top of the screen, pressed on the top pixels of its header.
+    let mut drag = Drag::begin((500, 2), window(400, 0, FLOATING), None);
+    // However often it is looked at and however long it is held.
+    for ms in [0, 200, 5000] {
+        assert_eq!(drag.moved((500, 2), &ctx(&screen, ms)), DragStep::None, "{ms}");
+        assert_eq!(drag.phase(), DragPhase::Float, "{ms}");
+        assert_eq!(drag.preview(), None, "{ms}");
+    }
+    assert_eq!(
+        drag.released(&ctx(&screen, 5100)),
+        DragEnd::Floating(window(400, 0, FLOATING))
+    );
+}
+
+#[test]
+fn pulling_back_from_the_edge_takes_the_offer_away() {
+    let screen = screen();
+    let mut drag = Drag::begin((500, 300), window(400, 290, FLOATING), None);
+    let _ = drag.moved((0, 300), &ctx(&screen, 0));
+    let _ = drag.moved((0, 300), &ctx(&screen, 200));
+    assert_eq!(drag.preview(), Some(DockEdge::Left));
+    // Inside the exit distance the offer holds, and the docked Panel follows along the edge.
+    assert_eq!(
+        drag.moved((12, 340), &ctx(&screen, 300)),
+        DragStep::Place(window(0, 330, DOCKED))
+    );
+    assert_eq!(drag.preview(), Some(DockEdge::Left));
+    // One pixel further: floating again, at the floating size, under the cursor.
+    assert_eq!(
+        drag.moved((13, 340), &ctx(&screen, 320)),
+        DragStep::Place(window(-87, 330, FLOATING))
+    );
+    assert_eq!(drag.preview(), None);
+    assert_eq!(
+        drag.released(&ctx(&screen, 400)),
+        DragEnd::Floating(window(0, 330, FLOATING))
+    );
+}
+
+#[test]
+fn a_corner_offers_one_edge_and_keeps_it() {
+    let screen = screen();
+    let mut drag = Drag::begin((500, 300), window(400, 290, FLOATING), None);
+    let _ = drag.moved((0, 0), &ctx(&screen, 0));
+    let _ = drag.moved((0, 0), &ctx(&screen, 200));
+    assert_eq!(drag.preview(), Some(DockEdge::Left), "a tie goes to the side");
+    // Wobbling in the corner, nearer the top now: the offer does not flip.
+    for (step, cursor) in [(3, 0), (0, 2), (4, 1), (1, 0)].into_iter().enumerate() {
+        let _ = drag.moved(cursor, &ctx(&screen, 300 + i64::try_from(step).unwrap_or(0) * 50));
+        assert_eq!(drag.preview(), Some(DockEdge::Left), "at {cursor:?}");
+    }
+
+    let mut top = Drag::begin((500, 300), window(400, 290, FLOATING), None);
+    let _ = top.moved((3, 0), &ctx(&screen, 0));
+    let _ = top.moved((3, 0), &ctx(&screen, 200));
+    assert_eq!(top.preview(), Some(DockEdge::Top), "the nearer edge");
+}
+
+#[test]
+fn the_taskbar_edge_is_never_offered() {
+    let screen = screen();
+    let mut drag = Drag::begin((500, 300), window(400, 290, FLOATING), None);
+    let _ = drag.moved((800, 1039), &ctx(&screen, 0));
+    let _ = drag.moved((800, 1039), &ctx(&screen, 1000));
+    assert_eq!(drag.phase(), DragPhase::Float);
+    // In the corner by the taskbar the side is offered.
+    let _ = drag.moved((1919, 1039), &ctx(&screen, 2000));
+    let _ = drag.moved((1919, 1039), &ctx(&screen, 2200));
+    assert_eq!(drag.preview(), Some(DockEdge::Right));
+}
+
+#[test]
+fn a_docked_panel_slides_along_its_edge_and_stays_docked() {
+    let screen = screen();
+    let mut drag = Drag::begin((100, 210), window(0, 200, DOCKED), Some(DockEdge::Left));
+    assert_eq!(drag.phase(), DragPhase::Slide(DockEdge::Left));
+    // The hand wobbles across the edge while it slides: still docked.
+    assert_eq!(
+        drag.moved((120, 400), &ctx(&screen, 100)),
+        DragStep::Place(window(0, 390, DOCKED))
+    );
+    assert_eq!(
+        drag.moved((80, 2000), &ctx(&screen, 200)),
+        DragStep::Place(window(0, 440, DOCKED)),
+        "it stops at the end of the edge"
+    );
+    assert_eq!(
+        drag.released(&ctx(&screen, 300)),
+        DragEnd::Docked(DockEdge::Left, window(0, 440, DOCKED))
+    );
+}
+
+#[test]
+fn pulling_a_docked_panel_off_its_edge_floats_it_at_its_floating_size() {
+    let screen = screen();
+    let mut drag = Drag::begin((140, 210), window(0, 200, DOCKED), Some(DockEdge::Left));
+    let _ = drag.moved((164, 210), &ctx(&screen, 100));
+    assert_eq!(drag.phase(), DragPhase::Slide(DockEdge::Left), "24 px is not a pull");
+    // 140 of 280 across the docked header is 150 of 300 across the floating one.
+    assert_eq!(
+        drag.moved((165, 212), &ctx(&screen, 120)),
+        DragStep::Place(window(15, 202, FLOATING))
+    );
+    assert_eq!(drag.phase(), DragPhase::Float);
+    assert_eq!(
+        drag.moved((700, 500), &ctx(&screen, 400)),
+        DragStep::Move(550, 490)
+    );
+    assert_eq!(
+        drag.released(&ctx(&screen, 500)),
+        DragEnd::Floating(window(550, 490, FLOATING))
+    );
+}
+
+#[test]
+fn a_full_edge_dock_is_previewed_at_the_full_height() {
+    let screen = screen();
+    let full = |ms| DragCtx {
+        full_edge: true,
+        ..ctx(&screen, ms)
+    };
+    let mut drag = Drag::begin((1500, 300), window(1400, 290, FLOATING), None);
+    let _ = drag.moved((1919, 300), &full(0));
+    assert_eq!(
+        drag.moved((1919, 300), &full(200)),
+        DragStep::Place(window(1640, 0, (280, 1040)))
+    );
+}
+
+#[test]
+fn crossing_to_another_monitor_docks_nothing_and_lands_at_that_monitors_size() {
+    let (one, two) = (screen(), second());
+    let mut drag = Drag::begin((1500, 300), window(1400, 290, FLOATING), None);
+    // Over the seam in a few ticks: the right edge of one, then the left edge of two.
+    let _ = drag.moved((1917, 300), &ctx(&one, 0));
+    let _ = drag.moved((1919, 300), &ctx(&one, 16));
+    let _ = drag.moved((1921, 300), &ctx(&two, 32));
+    let _ = drag.moved((1960, 300), &ctx(&two, 48));
+    let _ = drag.moved((2400, 300), &ctx(&two, 400));
+    assert_eq!(drag.phase(), DragPhase::Float);
+    let there = sized(ctx(&two, 500), (450, 600));
+    assert_eq!(
+        drag.released(&there),
+        // 100 of 300 across the header is 150 of 450, and 10 down it is 15 at 150 %.
+        DragEnd::Floating(window(2250, 285, (450, 600)))
+    );
+}
+
+#[test]
+fn the_edge_zone_scales_with_the_monitor() {
+    let two = second();
+    let mut drag = Drag::begin((2500, 300), window(2400, 290, FLOATING), None);
+    // 6 physical pixels are 4 logical ones at 150 %.
+    let _ = drag.moved((1926, 300), &ctx(&two, 0));
+    let _ = drag.moved((1926, 300), &ctx(&two, 200));
+    assert_eq!(drag.preview(), Some(DockEdge::Left));
+    // 18 physical pixels out is still inside the exit distance; 19 is not.
+    let _ = drag.moved((1938, 300), &ctx(&two, 300));
+    assert_eq!(drag.preview(), Some(DockEdge::Left));
+    let _ = drag.moved((1939, 300), &ctx(&two, 400));
+    assert_eq!(drag.preview(), None);
+}
+
+#[test]
+fn a_panel_dropped_half_off_screen_is_pulled_inside() {
+    let screen = screen();
+    let mut drag = Drag::begin((500, 300), window(400, 290, FLOATING), None);
+    let _ = drag.moved((1900, 1000), &ctx(&screen, 0));
+    assert_eq!(
+        drag.released(&ctx(&screen, 50)),
+        DragEnd::Floating(window(1620, 640, FLOATING))
+    );
+}
+
+#[test]
+fn the_wait_counts_only_while_the_cursor_is_in_the_edge_zone() {
+    let screen = screen();
+    let mut drag = Drag::begin((500, 300), window(400, 290, FLOATING), None);
+    // Along the top, with the strip under the cursor: it touches the zone once, then rides a
+    // few pixels below it for as long as it likes.
+    let _ = drag.moved((600, 2), &ctx(&screen, 0));
+    let _ = drag.moved((640, 9), &ctx(&screen, 100));
+    let _ = drag.moved((700, 10), &ctx(&screen, 250));
+    assert_eq!(drag.phase(), DragPhase::Float, "ten pixels down is not at the edge");
+    let _ = drag.moved((760, 8), &ctx(&screen, 2_000));
+    assert_eq!(drag.phase(), DragPhase::Float);
+    // Back in the zone: the wait counts from now.
+    let _ = drag.moved((800, 3), &ctx(&screen, 2_100));
+    let _ = drag.moved((800, 3), &ctx(&screen, 2_299));
+    assert_eq!(drag.preview(), None);
+    let _ = drag.moved((800, 3), &ctx(&screen, 2_300));
+    assert_eq!(drag.preview(), Some(DockEdge::Top));
+}
+
+#[test]
+fn a_wobble_in_a_corner_keeps_the_edge_the_cursor_came_to_first() {
+    let screen = screen();
+    let mut drag = Drag::begin((500, 300), window(400, 290, FLOATING), None);
+    // Into the corner along the top, where a hand wobbles: now nearer the top, now nearer the
+    // left, always within the zone of the top. The wait is not started again each time.
+    let _ = drag.moved((3, 0), &ctx(&screen, 0));
+    let _ = drag.moved((1, 2), &ctx(&screen, 100));
+    let _ = drag.moved((2, 1), &ctx(&screen, 150));
+    let _ = drag.moved((0, 3), &ctx(&screen, 199));
+    assert_eq!(drag.preview(), None);
+    let _ = drag.moved((0, 3), &ctx(&screen, 200));
+    assert_eq!(
+        drag.preview(),
+        Some(DockEdge::Top),
+        "200 ms at the edge it came to first"
+    );
+
+    // Out of that edge's zone, down the side: the side is the edge now, from when it was left.
+    let mut drag = Drag::begin((500, 300), window(400, 290, FLOATING), None);
+    let _ = drag.moved((3, 0), &ctx(&screen, 0));
+    let _ = drag.moved((0, 30), &ctx(&screen, 100));
+    let _ = drag.moved((0, 30), &ctx(&screen, 250));
+    assert_eq!(drag.preview(), None, "the left has had 150 ms");
+    let _ = drag.moved((0, 30), &ctx(&screen, 300));
+    assert_eq!(drag.preview(), Some(DockEdge::Left));
+}
+
+#[test]
+fn a_docked_panel_pushed_past_its_edge_onto_the_next_monitor_floats() {
+    // Docked to the edge the two monitors share, and dragged straight across it.
+    let one = screen();
+    let mut drag = Drag::begin((1700, 210), window(1640, 200, DOCKED), Some(DockEdge::Right));
+    assert_eq!(drag.moved((1919, 210), &ctx(&one, 16)), DragStep::None);
+    // A little over the seam is still a push into the edge.
+    assert_eq!(drag.moved((1930, 210), &ctx(&one, 32)), DragStep::None);
+    assert_eq!(drag.phase(), DragPhase::Slide(DockEdge::Right));
+    // Further than the pull that undocks: it leaves the edge, under the cursor.
+    assert_eq!(
+        drag.moved((1960, 210), &ctx(&one, 48)),
+        // 60 of 280 across the header is 64 of 300.
+        DragStep::Place(window(1896, 200, FLOATING))
+    );
+    assert_eq!(drag.phase(), DragPhase::Float);
+    // On the next monitor it is measured for that monitor, and dropped there it floats.
+    let two = second();
+    let there = sized(ctx(&two, 64), (450, 600));
+    let _ = drag.moved((3000, 500), &there);
+    assert!(matches!(
+        drag.released(&sized(ctx(&two, 80), (450, 600))),
+        DragEnd::Floating(Rect { w: 450, h: 600, .. })
+    ));
+}
+
+#[test]
+fn a_monitor_of_the_same_scale_resizes_nothing_until_the_drop() {
+    // Beside `screen`, at the same scale, where the Panel was left larger.
+    let (one, other) = (
+        screen(),
+        Monitor {
+            id: "three".to_owned(),
+            work_area: Rect {
+                x: 1920,
+                y: 0,
+                w: 1920,
+                h: 1040,
+            },
+            taskbar: None,
+            scale: 1.0,
+        },
+    );
+    let mut drag = Drag::begin((1500, 300), window(1400, 290, FLOATING), None);
+    let _ = drag.moved((1900, 300), &ctx(&one, 0));
+    // A wobble over the seam: the window only follows the cursor, at the size it has.
+    for (step, x) in [1930, 1910, 1926, 1912, 1940].into_iter().enumerate() {
+        let now = 16 + i64::try_from(step).unwrap_or(0) * 16;
+        let followed = if x >= 1920 {
+            drag.moved((x, 300), &sized(ctx(&other, now), (450, 600)))
+        } else {
+            drag.moved((x, 300), &ctx(&one, now))
+        };
+        assert_eq!(followed, DragStep::Move(x - 100, 290), "at {x}");
+    }
+    assert_eq!(
+        drag.moved((2400, 300), &sized(ctx(&other, 200), (450, 600))),
+        DragStep::Move(2300, 290)
+    );
+    // Dropped there, it takes the size it has on that monitor, still under the cursor.
+    assert_eq!(
+        drag.released(&sized(ctx(&other, 216), (450, 600))),
+        DragEnd::Floating(window(2250, 290, (450, 600)))
+    );
+}
+
+#[test]
+fn pushing_a_docked_panel_into_its_own_edge_keeps_it_docked() {
+    let screen = screen();
+    for (edge, docked_at, press, into, away) in [
+        (DockEdge::Left, window(0, 200, DOCKED), (140, 210), (0, 210), (165, 210)),
+        (
+            DockEdge::Right,
+            window(1640, 200, DOCKED),
+            (1700, 210),
+            (1919, 210),
+            (1675, 210),
+        ),
+        (DockEdge::Top, window(600, 0, DOCKED), (700, 100), (700, 0), (700, 125)),
+    ] {
+        let mut drag = Drag::begin(press, docked_at, Some(edge));
+        // Far more than the pull that undocks, but towards the edge: nothing to leave.
+        assert_eq!(drag.moved(into, &ctx(&screen, 100)), DragStep::None, "{edge:?}");
+        assert_eq!(drag.phase(), DragPhase::Slide(edge));
+        // Away from it by more than the pull: it floats.
+        let _ = drag.moved(away, &ctx(&screen, 200));
+        assert_eq!(drag.phase(), DragPhase::Float, "{edge:?}");
+    }
+}
+
+#[test]
+fn each_kind_of_edge_offers_the_size_the_panel_has_there() {
+    let screen = screen();
+    let sizes = DragSizes {
+        floating: FLOATING,
+        side: (280, 600),
+        flat: (420, 260),
+    };
+    let on = |ms| DragCtx {
+        sizes,
+        ..ctx(&screen, ms)
+    };
+    // Held at the right edge: the side dock's size.
+    let mut drag = Drag::begin((700, 310), window(600, 300, FLOATING), None);
+    let _ = drag.moved((1919, 500), &on(0));
+    let _ = drag.moved((1919, 500), &on(250));
+    assert_eq!(drag.phase(), DragPhase::Preview(DockEdge::Right));
+    assert_eq!((drag.frame().w, drag.frame().h), (280, 600));
+    // Held at the top edge: the top and bottom docks' size, not the side dock's.
+    let mut drag = Drag::begin((700, 310), window(600, 300, FLOATING), None);
+    let _ = drag.moved((900, 0), &on(0));
+    let _ = drag.moved((900, 0), &on(250));
+    assert_eq!(drag.phase(), DragPhase::Preview(DockEdge::Top));
+    assert_eq!((drag.frame().w, drag.frame().h), (420, 260));
+    assert_eq!(
+        drag.released(&on(300)),
+        DragEnd::Docked(DockEdge::Top, drag.frame())
+    );
+}
+
+#[test]
+fn a_panel_dragged_to_a_monitor_of_another_scale_stays_under_the_cursor() {
+    // A 320 x 400 Panel at 200 %, held by the middle of its header.
+    let hi = Monitor {
+        id: "hi".to_owned(),
+        work_area: Rect {
+            x: 0,
+            y: 0,
+            w: 3840,
+            h: 2100,
+        },
+        taskbar: None,
+        scale: 2.0,
+    };
+    let lo = Monitor {
+        id: "lo".to_owned(),
+        work_area: Rect {
+            x: 3840,
+            y: 0,
+            w: 1920,
+            h: 1040,
+        },
+        taskbar: None,
+        scale: 1.0,
+    };
+    let on = |monitor, floating, ms| sized(ctx(monitor, ms), floating);
+    let mut drag = Drag::begin((1320, 420), window(1000, 400, (640, 800)), None);
+    assert_eq!(
+        drag.moved((2000, 500), &on(&hi, (640, 800), 0)),
+        DragStep::Move(1680, 480)
+    );
+    // Over the seam: the window is 320 wide there, and the cursor is still half way across
+    // its header and as far down it (10 logical pixels).
+    let there = window(3840, 490, (320, 400));
+    assert_eq!(
+        drag.moved((4000, 500), &on(&lo, (320, 400), 16)),
+        DragStep::Place(there)
+    );
+    assert_eq!(
+        drag.moved((4100, 520), &on(&lo, (320, 400), 32)),
+        DragStep::Move(3940, 510)
+    );
+    assert_eq!(
+        drag.released(&on(&lo, (320, 400), 48)),
+        DragEnd::Floating(window(3940, 510, (320, 400)))
+    );
+    // And back: measured again, not left at the small monitor's offset.
+    let mut drag = Drag::begin((4000, 500), there, None);
+    let _ = drag.moved((3900, 500), &on(&lo, (320, 400), 0));
+    assert_eq!(
+        drag.moved((3000, 500), &on(&hi, (640, 800), 16)),
+        DragStep::Place(window(2680, 480, (640, 800)))
+    );
+}
+
+#[test]
+fn a_dock_narrower_than_the_floating_panel_is_shown_under_the_cursor() {
+    let screen = screen();
+    let narrow = DragCtx {
+        sizes: DragSizes {
+            floating: FLOATING,
+            side: DOCKED,
+            flat: (260, 300),
+        },
+        ..ctx(&screen, 0)
+    };
+    // Held near the right end of a 300 wide header, then at the top edge.
+    let mut drag = Drag::begin((880, 310), window(600, 300, FLOATING), None);
+    let _ = drag.moved((900, 0), &narrow);
+    let step = drag.moved((900, 0), &DragCtx { now: at(250), ..narrow });
+    // 280 of 300 across is 242 of 260.
+    assert_eq!(step, DragStep::Place(window(658, 0, (260, 300))));
+    let shown = drag.frame();
+    assert!((shown.x..shown.x + 260).contains(&900), "{shown:?}");
+}

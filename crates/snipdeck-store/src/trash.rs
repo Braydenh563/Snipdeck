@@ -6,15 +6,15 @@
 //!   (usually none).
 //! - `restore` clears the record's flag and those of its ancestors, so restoring an item inside
 //!   a trashed list brings the list (and board) back. Records inside that were trashed on
-//!   their own stay in the trash. [`Store::restore_with`] also enforces a live-board limit
-//!   and reports what it revived.
+//!   their own stay in the trash. [`Store::restore_reporting`] also reports what it
+//!   revived.
 //! - `trashed` lists the records whose parent is not itself trashed: one entry per deletion
 //!   the user made.
 //! - `purge` permanently deletes records trashed before the cutoff; for a list or board that
 //!   includes everything inside it, whatever the inner records' own timestamps.
 
 use rusqlite::{Connection, OptionalExtension, params};
-use snipdeck_core::{BoardId, Feature, ItemId, ListId, Timestamp};
+use snipdeck_core::{BoardId, ItemId, ListId, Timestamp};
 
 use crate::batch::Ctx;
 use crate::codec::{
@@ -180,12 +180,8 @@ pub(crate) fn purge_entry(cx: &mut Ctx<'_>, target: Trashable) -> Result<()> {
     Ok(())
 }
 
-/// [`Store::restore_with`](crate::Store::restore_with).
-pub(crate) fn restore_with(
-    cx: &mut Ctx<'_>,
-    target: Trashable,
-    max_live_boards: Option<usize>,
-) -> Result<Vec<Trashable>> {
+/// [`Store::restore_reporting`](crate::Store::restore_reporting).
+pub(crate) fn restore_reporting(cx: &mut Ctx<'_>, target: Trashable) -> Result<Vec<Trashable>> {
     let tx = cx.conn;
     let mut revived = Vec::new();
     let board = match target {
@@ -222,16 +218,6 @@ pub(crate) fn restore_with(
         |r| r.get(0),
     )?;
     if board_trashed {
-        if let Some(max) = max_live_boards {
-            let live: i64 = tx.query_row(
-                "SELECT count(*) FROM boards WHERE deleted_at IS NULL",
-                [],
-                |r| r.get(0),
-            )?;
-            if usize::try_from(live).unwrap_or(usize::MAX) >= max {
-                return Err(snipdeck_core::Error::ProRequired(Feature::UnlimitedBoards).into());
-            }
-        }
         revived.push(Trashable::Board(board));
     }
     for record in &revived {

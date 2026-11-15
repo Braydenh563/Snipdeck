@@ -22,7 +22,7 @@ use crate::{
     controller::Controller,
     host::ClipboardText,
     hotkey_health::{self, HotkeyHealth},
-    main_binding::{create_window, raise, set_look},
+    main_binding::{create_window, set_look},
     native_window::fit_when_settled,
     settings::{HotkeyAction, Hotkeys},
     settings_binding::{
@@ -62,7 +62,7 @@ struct TourCore<C, K, T> {
     /// Why each shortcut (in [`HotkeyAction::ALL`] order) was refused; empty when it was not.
     conflicts: RefCell<Vec<String>>,
     /// The Start with Windows entry could not be changed.
-    autostart_failed: Cell<bool>,
+    autostart_failed: RefCell<Option<ToastMessage>>,
     /// The shortcuts the window shows now.
     shown_hotkeys: RefCell<Option<Vec<HotkeyRow>>>,
     /// The window has been drawn at least once.
@@ -143,9 +143,6 @@ where
                     let value = chord_text(&settings.hotkeys, action);
                     let conflict = conflicts.get(i).cloned().unwrap_or_default();
                     let health = controller.hotkey_health(action);
-                    // Paste next is a Supporter feature: on Free it is never registered.
-                    let unregistered = action == HotkeyAction::PasteNext
-                        && controller.tier() != snipdeck_core::Tier::Pro;
                     let alternatives = if !value.is_empty()
                         && (!conflict.is_empty() || matches!(health, HotkeyHealth::Failed(_)))
                     {
@@ -157,14 +154,10 @@ where
                         keys: key_chips(value),
                         value: value.to_owned(),
                         conflict,
-                        state: if unregistered {
-                            0
-                        } else {
-                            crate::settings_binding::health_state(
-                                Some(health),
-                                controller.hotkey_test() == Some(action),
-                            )
-                        },
+                        state: crate::settings_binding::health_state(
+                            Some(health),
+                            controller.hotkey_test() == Some(action),
+                        ),
                         alternatives,
                     }
                 })
@@ -192,10 +185,9 @@ where
         window.set_recent_max_entries(crate::recent::max_entries_count());
         window.set_recent_max_days(crate::recent::max_age_days());
         window.set_dock_edge_index(dock_edge_index(controller.dock_edge()));
-        window.set_notice(if self.autostart_failed.get() {
-            wording::toast_text(&window, &ToastMessage::AutostartFailed).into()
-        } else {
-            SharedString::new()
+        window.set_notice(match &*self.autostart_failed.borrow() {
+            Some(message) => wording::toast_text(&window, message).into(),
+            None => SharedString::new(),
         });
         drop(controller);
         arm_settings_save(&self.controller, &self.save_timer);
@@ -229,21 +221,8 @@ where
                 return;
             }
         };
-        let (paused, supporter) = {
-            let controller = self.controller.borrow();
-            (
-                controller.hotkeys_paused(),
-                controller.tier() == snipdeck_core::Tier::Pro,
-            )
-        };
-        if let Some(failure) = try_register(
-            self.host.as_ref(),
-            paused,
-            supporter,
-            action,
-            &current,
-            &next,
-        ) {
+        let paused = self.controller.borrow().hotkeys_paused();
+        if let Some(failure) = try_register(self.host.as_ref(), paused, action, &current, &next) {
             self.refuse_hotkey(index, HotkeyRefusal::Refused(failure), combo);
             redraw_all();
             return;
@@ -274,22 +253,9 @@ where
         };
         let current = self.controller.borrow().settings().hotkeys.clone();
         let next = without_hotkey(&current, action);
-        let (paused, supporter) = {
-            let controller = self.controller.borrow();
-            (
-                controller.hotkeys_paused(),
-                controller.tier() == snipdeck_core::Tier::Pro,
-            )
-        };
+        let paused = self.controller.borrow().hotkeys_paused();
         // Taking a shortcut away cannot clash; a service that is down is not the user's problem here.
-        let _ = try_register(
-            self.host.as_ref(),
-            paused,
-            supporter,
-            action,
-            &current,
-            &next,
-        );
+        let _ = try_register(self.host.as_ref(), paused, action, &current, &next);
         self.set_conflict(index, String::new());
         self.act(|ctl| ctl.update_settings(|s| s.hotkeys = next));
     }
@@ -300,12 +266,12 @@ where
         let hidden = !self.controller.borrow().settings().panel_start_visible;
         match self.host.set_autostart(on, hidden) {
             Ok(()) => {
-                self.autostart_failed.set(false);
+                *self.autostart_failed.borrow_mut() = None;
                 self.act(|ctl| ctl.update_settings(|s| s.autostart = on));
             }
             Err(error) => {
                 crate::trace!("autostart {on}: {error}");
-                self.autostart_failed.set(true);
+                *self.autostart_failed.borrow_mut() = Some(error.toast());
                 // The redraw puts the switch the user flipped back to the stored value.
                 redraw_all();
             }
@@ -359,7 +325,7 @@ where
                 window: window.as_weak(),
                 host,
                 conflicts: RefCell::new(vec![String::new(); HotkeyAction::ALL.len()]),
-                autostart_failed: Cell::new(false),
+                autostart_failed: RefCell::new(None),
                 shown_hotkeys: RefCell::new(None),
                 drawn: Cell::new(false),
                 redraw: Rc::new(move || {
@@ -392,7 +358,7 @@ where
             .act(|ctl| ctl.dock_to(dock_edge_of(i))));
         wire!(on_autostart_toggled, |core, on| core.autostart_toggled(on));
         wire!(on_recent_history_toggled, |core, on| core
-            .act(|ctl| ctl.update_settings(|s| s.recent_history = on)));
+            .act(|ctl| ctl.set_recent_history(on)));
         wire!(on_close_to_tray_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.close_to_tray = on)));
         wire!(on_back_requested, |core| core.act(|ctl| {
@@ -486,7 +452,7 @@ impl OnboardingUi {
                 fit_when_settled(window);
                 // The window was hidden, so it skipped the redraws; draw it now that it is up.
                 binding.redraw();
-                raise(window.window());
+                crate::native_window::activate_regular(window);
                 Ok(())
             })
         };

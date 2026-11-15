@@ -37,9 +37,7 @@ Owner checklist for making the Snipdeck repository public. Do it in this order. 
 
 ## 2. Repository secret
 
-- [ ] Settings, Secrets and variables, Actions: add the repository secret `SNIPDECK_LICENCE_PUBLIC_KEY`. It
-      holds the public half of the production key only.
-- [ ] Never add the private key as a secret. Release builds fail without this secret, on purpose.
+- [x] No licence secret is needed any more (the licence key was removed 2026-11-15); `SNIPDECK_LICENCE_PUBLIC_KEY` can be deleted from the repository secrets.
 - [ ] Keep the secret out of fork pull requests: leave "Send secrets to workflows from fork pull requests" off.
 - [ ] Set Actions permissions to read-only by default. `release-build.yml` raises to `contents: write` itself.
 

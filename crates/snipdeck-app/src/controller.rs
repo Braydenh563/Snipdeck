@@ -8,7 +8,7 @@
 use std::time::Duration;
 
 use snipdeck_core::{
-    BoardId, Entitlements, ItemId, ListId, Timestamp,
+    BoardId, ItemId, ListId, Timestamp,
     template::{Locale, TimeZone},
 };
 use snipdeck_platform::{
@@ -17,10 +17,14 @@ use snipdeck_platform::{
     tray::TrayEvent,
 };
 
+mod colour_ctl;
+mod colour_main;
 mod commands_ctl;
 mod create_ctl;
 mod dock_ctl;
 mod editor_ctl;
+mod eyedrop_ctl;
+mod group_ctl;
 mod history_ctl;
 mod library;
 mod lock_ctl;
@@ -32,13 +36,18 @@ mod panel_select;
 mod recent_ctl;
 mod screen_clip_ctl;
 mod settings_ctl;
+pub use eyedrop_ctl::Wake as EyedropWake;
 mod symbol_ctl;
 #[cfg(test)]
 mod tests;
 mod toast_ctl;
+mod trigger_ctl;
 mod use_ctl;
 mod views;
 
+pub use colour_ctl::{ColourView, SaveList, SaveTarget};
+pub use colour_main::{ColourBlock, colour_formats};
+pub use create_ctl::DropRun;
 pub use history_ctl::HistoryView;
 pub use library::Library;
 pub use lock_ctl::{MasterProblem, MasterState};
@@ -47,6 +56,7 @@ pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, Lis
 pub use panel_select::LABELS;
 pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 pub use symbol_ctl::{IconExport, IconSave, SaveOutcome, SymbolChoice, SymbolMenuEntry};
+pub use trigger_ctl::{HintOutcome, TypedOutcome};
 pub use views::{
     BoardDeleteView, ChooseEntry, ChooseLabel, ChooseMenu, ClearListView, Effect, FillSubmission,
     FillView, ListDeleteView, PickerView, StackView, ToastPhase, ToastView, UseResult, View,
@@ -150,6 +160,9 @@ struct Undo {
     /// The toast reports a new item (saved or quick-added): Undo moves it to the Trash and the
     /// toast's Edit button opens it in the editor.
     adds: Option<ItemId>,
+    /// The list that save made (the first colour saved makes "Colours"): Undo trashes it too, so
+    /// no empty list is left behind.
+    list: Option<ListId>,
 }
 
 struct ActiveToast {
@@ -178,13 +191,15 @@ pub struct Controller<S, C, K, T> {
     /// (if the clipboard still holds exactly that text). Only a keyed hash of the text is kept,
     /// so the secret does not sit in memory for the wait.
     clipboard_clear: Option<PendingClear>,
+    /// A sensitive Files item was pasted: its decrypted files wait in the temp folder until the
+    /// lock or the quit deletes them.
+    secret_files_pasted: bool,
     /// The global hotkeys the last registration could not set up, for the Settings rows.
     hotkey_problems: Vec<crate::host::HotkeyProblem>,
     model: PanelModel,
     /// The search index shared by the Panel and the Picker, rebuilt only after a write.
     index_cache: crate::index_cache::IndexCache,
     settings: Settings,
-    entitlements: Entitlements,
     visible: bool,
     /// When the Panel was last shown (or created): the start of [`BLUR_GRACE`].
     shown_at: Timestamp,
@@ -200,6 +215,8 @@ pub struct Controller<S, C, K, T> {
     /// The template fill form, while it is open.
     fill: Option<FillModel>,
     fill_seq: u64,
+    /// A typed trigger to erase once the fill form is confirmed.
+    fill_erase: Option<views::FillErase>,
     /// Where "paste next" is in its run.
     queue: PasteQueue,
     /// The items marked for a paste stack, in marking order.
@@ -223,6 +240,13 @@ pub struct Controller<S, C, K, T> {
     /// the list), and a count that goes up with each delete.
     focus_row: Option<usize>,
     focus_seq: u64,
+    /// The header row that should start its inline rename (a group just made), and a counter
+    /// that tells the window it is a new request.
+    rename_panel: group_ctl::Rename,
+    /// The same for the Main window: each window has its own editor.
+    rename_main: group_ctl::Rename,
+    /// What a new group is called until the user renames it (the window's translated word).
+    group_name: String,
     /// The Main window's state.
     main: MainModel,
     /// The list or board editor, while one is open.
@@ -259,33 +283,81 @@ pub struct Controller<S, C, K, T> {
     /// (the Main window's binding sets them; see [`Controller::set_new_name_bases`]).
     new_list_base: String,
     new_board_base: String,
+    /// The Colours tab: the colour looked at, the second contrast colour, and the home list's
+    /// name in the language shown.
+    colour: snipdeck_colour::Rgba8,
+    colour_other: snipdeck_colour::Rgba8,
+    colours_list_name: String,
+    /// The title of an item made from a picture with no file name, in the language shown.
+    pasted_image_title: String,
+    /// The list `make_list_for_save` made last, taken by the save that asked for it.
+    colour_made_list: Option<ListId>,
+    /// The colour items of the home list, kept until the library changes (every redraw of the
+    /// Colours tab asks for them; a drag redraws on each pointer event).
+    colour_saved_cache: std::cell::RefCell<Option<Vec<(ItemId, snipdeck_colour::Rgba8)>>>,
     session: Session,
     saver: Option<SettingsSaver>,
     /// Where the edge dock is (see [`crate::dock`]).
     dock: DockState,
     /// The monitor the Panel is on, as the host last reported it.
     monitor: Option<Monitor>,
-    /// A drag from the header is under way on a docked Panel: the first move undocks it.
-    drag_started: bool,
-    /// A drag from the header is under way (until the window settles): only then does a move
-    /// near an edge preview a dock.
-    dragging: bool,
-    /// The edge the drag under way would dock to if released now (O32).
-    dock_preview: Option<DockEdge>,
-    /// Where along its edge the docked Panel was when the grip pill was pressed (physical px).
-    slide_origin: Option<i32>,
+    /// The drag of the Panel under way, if any (see [`crate::dock::Drag`]).
+    drag: Option<crate::dock::Drag>,
+    /// The primary button was seen held down during this drag: only then does seeing it up
+    /// end the drag (a host that cannot read it under an elevated window always says "up").
+    drag_button_seen: bool,
+    /// The Panel's window has the keyboard: a docked Panel then stays out.
+    panel_focused: bool,
+    /// An OS resize of the Panel was started and is not known to be over: a docked Panel
+    /// stays out meanwhile, wherever the pointer goes.
+    resizing: bool,
+    /// Nothing has placed the Panel's window yet: the first show does, where the window
+    /// itself cannot say what monitor it is on (it does not exist before that show).
+    unplaced: bool,
+    /// The button was read as down during this resize: only then is "up" believed.
+    resize_button_seen: bool,
+    /// The system's size loop was seen running in this resize: its end is then the resize's.
+    resize_loop_seen: bool,
+    /// When this resize began, or the window last reported a new size in it.
+    resize_at: Timestamp,
+    /// The Panel was just docked from a menu or from Settings and the pointer has not been on
+    /// it since: it stays out until it has, so that it does not tuck away under the hand that
+    /// docked it.
+    dock_fresh: bool,
+    /// When the Panel was last docked from a menu or from Settings.
+    docked_at: Timestamp,
+    /// The work area the dock's timer last read for the Panel's monitor: a change in it (the
+    /// taskbar moved) places the dock again.
+    dock_area_seen: Option<(String, crate::frame::Rect)>,
+    /// A full-screen app covered the Panel's monitor at the last dock tick: the docked Panel
+    /// keeps out of its way (not topmost, no reveal under the pointer) unless it has the
+    /// keyboard.
+    fullscreen: bool,
     /// Placements decided outside a Panel gesture, waiting for the binding.
     pending: Vec<Effect>,
     /// The master password: whether one is set, whether its prompt is open, the idle clock.
     lock: lock_ctl::LockState,
     /// Switches the clipboard listener of the Recent inbox (see `recent_ctl.rs`).
     recent_gate: Option<snipdeck_platform::clipboard_watch::WatchGate>,
+    /// The typed-trigger service (keyboard hook), once the host hands it over.
+    typing: Option<Box<dyn crate::host::TypingControl>>,
+    /// The trigger list last sent to the typing service, so an unchanged list is not sent again.
+    typing_sent: Vec<(snipdeck_core::Trigger, snipdeck_core::ItemId)>,
+    /// Whether the candidate list handed over was built with suggestions on.
+    typing_suggest: bool,
+    /// Whether the typing service was last told to run.
+    typing_on: Option<bool>,
     /// Told whether clipboard history is on and whether it is paused, for the tray menu's
     /// "Pause history" entry (see `recent_ctl.rs`).
     tray_history: Option<recent_ctl::HistorySink>,
     /// "Take screenshot": the timing (pure) and the machine it runs on (see `screen_clip_ctl.rs`).
     screen_clip: crate::screen_clip::ScreenClipFlow,
     screen_clip_host: Option<Box<dyn crate::screen_clip::ScreenClipHost>>,
+    /// The screen eyedropper (Windows only), its words, and where its thread leaves the outcome.
+    eyedropper: Option<Box<dyn snipdeck_platform::eyedrop::Eyedropper>>,
+    eyedrop_texts: snipdeck_platform::eyedrop::EyedropTexts,
+    eyedrop_mailbox: eyedrop_ctl::Mailbox,
+    eyedrop_wake: Option<EyedropWake>,
 }
 
 /// Opens the folder of the crash reports in the file manager.
@@ -369,13 +441,16 @@ where
     /// # Errors
     ///
     /// Any store error from loading the Panel.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one flat struct literal: every field of the controller starts here"
+    )]
     pub fn new(
         store: S,
         services: Services<C, K, T>,
         target: Box<dyn TargetSource>,
         clock: Box<dyn Clock>,
         settings: Settings,
-        entitlements: Entitlements,
     ) -> snipdeck_store::Result<Self> {
         let index_cache = crate::index_cache::IndexCache::new();
         let mut model = PanelModel::load_cached(&store, None, None, &index_cache)?;
@@ -384,6 +459,9 @@ where
         model.set_target(target.current());
         let shown_at = clock.now();
         let pinned = settings.panel_pinned;
+        let colour =
+            colour_ctl::colour_or(&settings.colour_current, crate::settings::DEFAULT_COLOUR);
+        let colour_other = colour_ctl::colour_or(&settings.colour_contrast_with, "#ffffff");
         let mut main = MainModel::new();
         main.set_view_mode(ViewMode::from(settings.row_density));
         Ok(Self {
@@ -393,10 +471,10 @@ where
             clock,
             tz: TimeZone::system(),
             clipboard_clear: None,
+            secret_files_pasted: false,
             model,
             index_cache,
             settings,
-            entitlements,
             visible: true,
             shown_at,
             on_top: pinned,
@@ -406,6 +484,7 @@ where
             toast_seq: 0,
             picker: None,
             fill: None,
+            fill_erase: None,
             fill_seq: 0,
             queue: PasteQueue::default(),
             stack: Vec::new(),
@@ -418,6 +497,9 @@ where
             delete_list: None,
             focus_row: None,
             focus_seq: 0,
+            rename_panel: group_ctl::Rename::default(),
+            rename_main: group_ctl::Rename::default(),
+            group_name: String::from("Group"),
             main,
             editor: None,
             editor_seq: 0,
@@ -436,21 +518,43 @@ where
             os_look: SystemLook::default(),
             new_list_base: crate::starter::NEW_LIST.to_owned(),
             new_board_base: crate::starter::NEW_BOARD.to_owned(),
+            colour,
+            colour_other,
+            colours_list_name: String::from("Colours"),
+            pasted_image_title: crate::capture::PASTED_IMAGE_TITLE.to_owned(),
+            colour_made_list: None,
+            colour_saved_cache: std::cell::RefCell::new(None),
             session: Session::default(),
             hotkey_problems: Vec::new(),
             saver: None,
             dock: DockState::default(),
             monitor: None,
-            drag_started: false,
-            dragging: false,
-            dock_preview: None,
-            slide_origin: None,
+            drag: None,
+            drag_button_seen: false,
+            panel_focused: false,
+            resizing: false,
+            unplaced: true,
+            resize_button_seen: false,
+            resize_loop_seen: false,
+            resize_at: shown_at,
+            dock_fresh: false,
+            docked_at: shown_at,
+            dock_area_seen: None,
+            fullscreen: false,
             pending: Vec::new(),
             lock: lock_ctl::LockState::new(shown_at),
             recent_gate: None,
+            typing: None,
+            typing_sent: Vec::new(),
+            typing_suggest: false,
+            typing_on: None,
             tray_history: None,
             screen_clip: crate::screen_clip::ScreenClipFlow::new(),
             screen_clip_host: None,
+            eyedropper: None,
+            eyedrop_texts: snipdeck_platform::eyedrop::EyedropTexts::default(),
+            eyedrop_mailbox: std::sync::Arc::default(),
+            eyedrop_wake: None,
         })
     }
 
@@ -475,6 +579,29 @@ where
 
     // ---- Reading -----------------------------------------------------------------------------
 
+    /// The fill form's view, with a sensitive template's text masked (the Picker and the
+    /// lists mask it the same way; an unreadable item masks too).
+    fn fill_view(&self) -> Option<FillView> {
+        self.fill.as_ref().map(|f| {
+            let masked = self.store.item(f.item()).is_ok_and(|i| i.sensitive);
+            FillView {
+                seq: self.fill_seq,
+                title: f.title().to_owned(),
+                fields: f.fields().to_vec(),
+                preview: if masked {
+                    String::new()
+                } else {
+                    f.preview(
+                        self.clock.now(),
+                        &self.tz,
+                        Locale::for_tag(&self.settings.language),
+                    )
+                },
+                masked,
+            }
+        })
+    }
+
     /// Everything the window shows now.
     #[must_use]
     pub fn view(&self) -> View {
@@ -498,6 +625,10 @@ where
                     .collect();
             }
         }
+        let rename_row = self.rename_panel.group.and_then(|g| {
+            rows.iter()
+                .position(|r| r.header.as_ref().is_some_and(|h| h.group == g))
+        });
         View {
             board_name,
             current_tab: tabs.iter().position(|t| t.active).unwrap_or(0),
@@ -512,14 +643,16 @@ where
             rows_reorderable: self.model.reorderable(),
             reorder_offer: self.model.sorts_itself(),
             on_top: self.on_top,
-            topmost: self.on_top && !self.own_window_active,
+            // A docked Panel that tucks is topmost like a pinned one: its tab must stay
+            // reachable over the other windows.
+            topmost: self.topmost(),
             dock_collapsed: self.dock.is_collapsed(),
-            dock_vertical: self.dock_edge().is_none_or(DockEdge::vertical),
-            dock_edge: self.dock_edge(),
+            dock_vertical: self.shown_edge().is_none_or(DockEdge::vertical),
+            dock_edge: self.shown_edge(),
             dock_full_edge: self.settings.dock.full_edge,
-            dock_slide: self.dock_slide_offered(),
+            dragging: self.drag.is_some(),
             dock_target: self.dock_target(),
-            dock_preview: self.dock_preview,
+            dock_preview: self.drag.and_then(|d| d.preview()),
             dark: self.look().dark,
             high_contrast: self.look().high_contrast,
             accent: self.accent(),
@@ -538,16 +671,20 @@ where
             marked_count: self.model.marked_count(),
             focus_row: self.focus_row,
             focus_seq: self.focus_seq,
+            rename_row,
+            rename_seq: self.rename_panel.seq,
             select_mode: self.select_mode,
             delete_mode: self.delete_mode,
             clear_list: self.clear_list_view(),
             show_numbers: self.settings.show_numbers,
             symbols_available: self.settings.show_symbols_tab,
+            colours_available: self.settings.show_colours_tab,
             layout: self.settings.panel_layout,
             search_always: self.settings.panel_search == crate::settings::PanelSearch::Always,
             lists_in_menu: self.settings.panel_switcher == crate::settings::PanelSwitcher::Menu,
             list_menu: matches!(self.menu, PanelMenu::List(_)).then(|| LIST_MENU.to_vec()),
             list_menu_sort: self.list_menu_sort(),
+            list_menu_css: matches!(self.menu, PanelMenu::List(id) if self.list_has_colours(id)),
             list_delete: self.list_delete_view(),
             board_delete: self.board_delete_view(),
             hotkeys_paused: self.session.hotkeys_paused,
@@ -558,27 +695,9 @@ where
                 selected: p.selected(),
                 footer: self.model.footer(),
             }),
-            fill: self.fill.as_ref().map(|f| {
-                // A sensitive template's text must not reach the window (the Picker and the
-                // lists mask it the same way); an unreadable item masks too.
-                let masked = self.store.item(f.item()).is_ok_and(|i| i.sensitive);
-                FillView {
-                    seq: self.fill_seq,
-                    title: f.title().to_owned(),
-                    fields: f.fields().to_vec(),
-                    preview: if masked {
-                        String::new()
-                    } else {
-                        f.preview(
-                            self.clock.now(),
-                            &self.tz,
-                            Locale::for_tag(&self.settings.language),
-                        )
-                    },
-                    masked,
-                }
-            }),
+            fill: self.fill_view(),
             recent: self.recent_view(),
+            recent_question: self.recent_question_due(),
         }
     }
 
@@ -758,13 +877,17 @@ where
             return Vec::new();
         }
         match action {
-            // With the dock on, the Panel hotkey opens and closes the handle instead of
-            // hiding the window: the handle is what keeps the Panel reachable.
-            HotkeyAction::TogglePanel if self.visible && self.dock_active() => {
-                self.dock_event(crate::dock::DockEvent::Hotkey)
+            // With the dock on, the Panel hotkey opens and tucks the Panel instead of hiding
+            // the window: the tab is what keeps the Panel reachable. Opened by the hotkey it
+            // takes the keyboard like any shown Panel; tucked, it gives it back. A Panel that
+            // only slid out under the pointer has not the keyboard yet: the hotkey gives it
+            // that, and tucks the Panel the next time.
+            HotkeyAction::TogglePanel
+                if self.dock_live() && (self.dock_collapsed() || !self.panel_focused) =>
+            {
+                self.show()
             }
-            HotkeyAction::TogglePanel if self.visible => self.hide(),
-            HotkeyAction::TogglePanel => self.show(),
+            HotkeyAction::TogglePanel => self.toggle(),
             HotkeyAction::Picker if self.picker.is_some() => {
                 self.close_picker();
                 Vec::new()
@@ -784,6 +907,50 @@ where
         }
     }
 
+    /// Whether the Panel's window is kept above the others: pinned, or docked with a tab that
+    /// must stay reachable. It steps down while one of the app's own windows has the focus, and
+    /// a docked one while a full-screen app covers its monitor (unless it has the keyboard: the
+    /// hotkey still opens it there).
+    #[must_use]
+    pub fn topmost(&self) -> bool {
+        // A dock that tucks is above the others whatever the pin says, and under a full-screen
+        // app whatever the pin says: its tab has no business over a game.
+        let above = if self.dock_active() {
+            !self.dock_covered()
+        } else {
+            self.on_top
+        };
+        above && !self.own_window_active
+    }
+
+    /// Shows a Panel that is hidden or tucked, and puts an open one away: a docked Panel that
+    /// tucks goes to its tab (the tab is the way back), any other hides.
+    fn toggle(&mut self) -> Vec<Effect> {
+        if self.dock_live() && !self.dock_collapsed() {
+            self.dock_tuck()
+        } else if self.visible && !self.dock_live() {
+            self.hide()
+        } else {
+            self.show()
+        }
+    }
+
+    /// The app started with the Panel not shown. A docked Panel that tucks starts as its tab,
+    /// which is always there ([`visible`](Self::visible) stays true: the host shows the
+    /// window); any other stays hidden. Nothing has said what monitor the Panel is on yet (it
+    /// has no window): it is the one the Panel was last left on, where the host can find it.
+    pub fn start_hidden(&mut self) -> Vec<Effect> {
+        if self.monitor.is_none() {
+            self.find_monitor();
+        }
+        if self.dock_live() {
+            self.unplaced = false;
+            self.dock_tuck()
+        } else {
+            self.hide()
+        }
+    }
+
     /// Shows the Panel (a second launch, the tray, the toggle hotkey). The Target is read
     /// first, while it still has the focus.
     pub fn show(&mut self) -> Vec<Effect> {
@@ -794,10 +961,19 @@ where
             self.session.open_anchor = self.open_anchor_now();
         }
         self.visible = true;
-        // A Panel shown again is open: the host places it from the stored frame.
+        // A Panel shown again is open. A tucked dock is a 6 px tab until it is placed, so its
+        // open frame goes first; any other Panel is placed by the host from the stored frame.
+        let tucked = self.dock.is_collapsed();
         self.dock = DockState::Expanded;
         self.shown_at = self.clock.now();
-        vec![Effect::ShowPanel]
+        let mut effects: Vec<Effect> = if tucked {
+            let open = self.monitor.as_ref().and_then(|m| self.placement(m));
+            open.map(Effect::PlaceWindow).into_iter().collect()
+        } else {
+            Vec::new()
+        };
+        effects.push(Effect::ShowPanel);
+        effects
     }
 
     /// The Panel's window is not on screen although the controller thinks it is (it was
@@ -825,6 +1001,8 @@ where
     /// Hides the Panel (Esc with nothing to clear, the close button, the toggle hotkey).
     pub fn hide(&mut self) -> Vec<Effect> {
         self.visible = false;
+        self.drag = None;
+        self.panel_focused = false;
         self.panel_end_modes();
         self.blur_hide = false;
         self.panel_revealed = None;
@@ -859,6 +1037,10 @@ where
     /// The close button or Esc on an empty search. With `close_to_tray` on and a tray icon to
     /// get it back from, the Panel hides; otherwise closing it quits the app.
     pub fn close(&mut self) -> Vec<Effect> {
+        if self.dock_live() {
+            // A docked Panel that tucks is never in the way: closing it tucks it.
+            return self.dock_tuck();
+        }
         if self.settings.close_to_tray && self.session.tray_available {
             self.hide_with_hint()
         } else {
@@ -873,8 +1055,10 @@ where
             TrayEvent::TogglePanel if self.settings.tray_click == TrayClick::Main => {
                 vec![Effect::OpenMainWindow]
             }
-            TrayEvent::TogglePanel if self.visible => self.hide(),
-            TrayEvent::TogglePanel | TrayEvent::OpenPanel => self.show(),
+            // The click on the tray took the keyboard from the Panel, so unlike the hotkey it
+            // cannot go by that: an open dock tucks, a tucked one opens.
+            TrayEvent::TogglePanel => self.toggle(),
+            TrayEvent::OpenPanel => self.show(),
             TrayEvent::OpenPicker => {
                 self.open_picker();
                 Vec::new()
@@ -899,13 +1083,6 @@ where
                 Vec::new()
             }
         }
-    }
-
-    /// The user is dragging the Panel by its header.
-    pub fn drag(&mut self) -> Vec<Effect> {
-        self.drag_started = self.dock_edge().is_some();
-        self.dragging = true;
-        vec![Effect::DragWindow]
     }
 
     /// The foreground window changed: the footer and the use label follow it. While the Picker
@@ -935,6 +1112,7 @@ where
         {
             self.picker = None;
             self.fill = None;
+            self.fill_erase = None;
         }
         self.on_target_changed();
         if self.hides_on_blur() {
@@ -950,6 +1128,8 @@ where
     fn hides_on_blur(&self) -> bool {
         self.visible
             && !self.on_top
+            // A docked Panel tucks instead: its tab is how it comes back.
+            && !self.dock_active()
             && self.settings.panel_hide_on_blur
             // The snipping overlay takes the foreground itself; a Panel kept on screen for it stays.
             && !self.screen_clip.waiting()

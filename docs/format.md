@@ -206,7 +206,7 @@ changing anything**, and a failure leaves the library exactly as it was:
 2. **Sizes.** Each entry's declared uncompressed size, the total of all of them and the
    compression ratio of large entries are checked against limits *before* decompression, and the
    bytes actually produced are checked again while decompressing, because headers can lie.
-   The reference reader's defaults: 200 000 entries, 64 MiB per entry, 1 GiB in total, ratio
+   The reference reader's defaults: 200 000 entries, 64 MiB per entry, 8 GiB in total, ratio
    500:1 for entries over 5 MiB, 64 MiB for `items.json`, 1 MiB for `manifest.json`, 100 000
    items.
 3. **Manifest.** `format` and `format_version` first; then the counts against the data.

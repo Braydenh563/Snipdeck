@@ -83,6 +83,9 @@ pub trait ClipboardText {
     /// Empties the clipboard, whatever formats it holds, if its sequence number is still
     /// `sequence`. Whether it did.
     fn clear_if_sequence(&mut self, sequence: u32) -> bool;
+    /// Deletes the decrypted files that earlier file pastes left in the temp folder (a file
+    /// another app still has open stays). Nothing for a clipboard that makes none.
+    fn forget_pasted_files(&mut self) {}
 }
 
 #[cfg(windows)]
@@ -113,6 +116,9 @@ impl ClipboardText for snipdeck_platform::windows::clipboard::WinClipboard {
     }
     fn clear_if_sequence(&mut self, sequence: u32) -> bool {
         Self::clear_if_sequence(self, sequence)
+    }
+    fn forget_pasted_files(&mut self) {
+        Self::forget_pasted_files(self);
     }
 }
 
@@ -173,6 +179,9 @@ impl ClipboardText for snipdeck_platform::testing::FakeClipboard {
     fn written_sequence(&mut self) -> Option<u32> {
         self.write_sequence
     }
+    fn forget_pasted_files(&mut self) {
+        self.pasted_files_forgotten += 1;
+    }
     fn clear_if_sequence(&mut self, sequence: u32) -> bool {
         if self.sequence != sequence || self.busy_for_clear() {
             return false;
@@ -203,11 +212,163 @@ pub trait TargetSource {
     fn cursor(&self) -> Option<(i32, i32)> {
         None
     }
+    /// Whether the primary mouse button is held down, wherever the pointer is. `None` (the
+    /// default) means the host cannot tell: a drag then ends only on the window's own
+    /// pointer-up.
+    fn primary_down(&self) -> Option<bool> {
+        None
+    }
+    /// Whether the system's own size loop runs on the Panel's window: it starts a moment
+    /// after a resize is asked for and ends when the grip is let go. `None` (the default)
+    /// means the host cannot tell.
+    fn size_loop(&self) -> Option<bool> {
+        None
+    }
     /// The monitor under a physical point, if the host can tell.
     fn monitor_at(&self, _x: i32, _y: i32) -> Option<crate::frame::Monitor> {
         None
     }
+    /// Whether a full-screen app, game or presentation covers `monitor`. Only that monitor: one
+    /// on another screen is not in the Panel's way. `false` (the default) where the host cannot
+    /// tell.
+    fn fullscreen_on(&self, _monitor: &crate::frame::Monitor) -> bool {
+        false
+    }
 }
+
+/// The typed-trigger service: the keyboard hook that watches what is typed for abbreviations.
+///
+/// The controller tells it whether anyone wants it (`set_enabled`) and which triggers exist
+/// (`set_triggers`); while it is disabled the implementation must hold no keyboard hook at all.
+pub trait TypingControl {
+    /// Installs the hook (`true`) or removes it (`false`). Idempotent. Returns `false` only when
+    /// the hook was wanted and could not be installed.
+    fn set_enabled(&mut self, on: bool) -> bool;
+    /// The triggers to watch for, as of now, and the candidates a typed prefix is matched
+    /// against for suggestions (empty when suggestions are off).
+    fn set_triggers(
+        &mut self,
+        matcher: snipdeck_core::Matcher,
+        candidates: Vec<snipdeck_core::Candidate>,
+    );
+    /// Hint number `id` is really on screen: the hook may take a plain `Tab` for it. Only the UI
+    /// thread raises the flag, and only after showing the hint.
+    fn hint_up(&mut self, id: u64);
+    /// The generation of the running worker (see `typing_worker::next_generation`); a hint number
+    /// from another generation is stale. 0 while none runs.
+    fn generation(&self) -> u64;
+    /// Hint number `id` was taken down: the hook stops taking a plain `Tab` for it. A newer
+    /// hint's flag is left alone.
+    fn hint_down(&mut self, id: u64);
+    /// The expansion for `fired` was not sent (a Snipdeck window, an excluded app, a skipped
+    /// route): the code stays in the app, so the next trigger needs a boundary of its own.
+    fn not_expanded(&mut self, fired: snipdeck_core::Fired);
+}
+
+/// A [`TypingControl`] that records what it was told. Cloning shares the state.
+#[derive(Debug, Clone, Default)]
+pub struct FakeTyping {
+    enabled: Rc<RefCell<Vec<bool>>>,
+    triggers: Rc<Cell<u32>>,
+    candidates: Rc<RefCell<Vec<snipdeck_core::Candidate>>>,
+    up: Rc<RefCell<Vec<u64>>>,
+    generation: Rc<Cell<u64>>,
+    hint: Rc<RefCell<Vec<u64>>>,
+    skipped: Rc<RefCell<Vec<snipdeck_core::Fired>>>,
+    fail_start: Rc<Cell<bool>>,
+}
+
+impl FakeTyping {
+    /// Makes every later turn-on fail, as a hook Windows refuses to install does.
+    pub fn fail_start(&self, fail: bool) {
+        self.fail_start.set(fail);
+    }
+
+    /// The candidates last handed over.
+    #[must_use]
+    pub fn candidates(&self) -> Vec<snipdeck_core::Candidate> {
+        self.candidates.borrow().clone()
+    }
+
+    /// Makes the fake report `generation` as the running worker's.
+    pub fn set_generation(&self, generation: u64) {
+        self.generation.set(generation);
+    }
+
+    /// Every `hint_up` call, in order.
+    #[must_use]
+    pub fn hint_up_history(&self) -> Vec<u64> {
+        self.up.borrow().clone()
+    }
+
+    /// Every `hint_down` call, in order.
+    #[must_use]
+    pub fn hint_history(&self) -> Vec<u64> {
+        self.hint.borrow().clone()
+    }
+
+    /// The triggers reported as not expanded, in order.
+    #[must_use]
+    pub fn not_expanded_history(&self) -> Vec<snipdeck_core::Fired> {
+        self.skipped.borrow().clone()
+    }
+
+    /// Every `set_enabled` call, in order.
+    #[must_use]
+    pub fn enabled_history(&self) -> Vec<bool> {
+        self.enabled.borrow().clone()
+    }
+
+    /// Whether the hook was ever asked to be installed.
+    #[must_use]
+    pub fn ever_enabled(&self) -> bool {
+        self.enabled.borrow().contains(&true)
+    }
+
+    /// How many trigger lists were handed over.
+    #[must_use]
+    pub fn trigger_lists(&self) -> u32 {
+        self.triggers.get()
+    }
+}
+
+impl TypingControl for FakeTyping {
+    fn set_enabled(&mut self, on: bool) -> bool {
+        self.enabled.borrow_mut().push(on);
+        !(on && self.fail_start.get())
+    }
+
+    fn set_triggers(
+        &mut self,
+        _matcher: snipdeck_core::Matcher,
+        candidates: Vec<snipdeck_core::Candidate>,
+    ) {
+        self.triggers.set(self.triggers.get() + 1);
+        *self.candidates.borrow_mut() = candidates;
+    }
+
+    fn hint_up(&mut self, id: u64) {
+        self.up.borrow_mut().push(id);
+    }
+
+    fn generation(&self) -> u64 {
+        self.generation.get()
+    }
+
+    fn hint_down(&mut self, id: u64) {
+        self.hint.borrow_mut().push(id);
+    }
+
+    fn not_expanded(&mut self, fired: snipdeck_core::Fired) {
+        self.skipped.borrow_mut().push(fired);
+    }
+}
+
+/// A Target change waiting for a flag: see [`FakeTargets::switch_when`].
+type TargetSwitch = (
+    std::sync::Arc<std::sync::atomic::AtomicBool>,
+    Option<Target>,
+);
 
 /// A scripted Target. Cloning shares the state, so a test keeps a handle after handing the
 /// source to the controller.
@@ -217,7 +378,13 @@ pub struct FakeTargets {
     refocused: Rc<Cell<u32>>,
     caret: Rc<Cell<Option<ScreenRect>>>,
     cursor: Rc<Cell<Option<(i32, i32)>>>,
+    primary: Rc<Cell<Option<bool>>>,
+    size_loop: Rc<Cell<Option<bool>>>,
+    fullscreen: Rc<RefCell<Option<String>>>,
     monitors: Rc<RefCell<Vec<crate::frame::Monitor>>>,
+    /// A Target change that happens once the flag is raised (from another thread, as a typed
+    /// key would be).
+    switch: Rc<RefCell<Option<TargetSwitch>>>,
 }
 
 impl FakeTargets {
@@ -229,8 +396,17 @@ impl FakeTargets {
             refocused: Rc::default(),
             caret: Rc::default(),
             cursor: Rc::default(),
+            primary: Rc::default(),
+            size_loop: Rc::default(),
+            fullscreen: Rc::default(),
             monitors: Rc::default(),
+            switch: Rc::default(),
         }
+    }
+
+    /// Changes the Target to `target` the first time it is read after `flag` is raised.
+    pub fn switch_when(&self, flag: std::sync::Arc<std::sync::atomic::AtomicBool>, target: Target) {
+        *self.switch.borrow_mut() = Some((flag, Some(target)));
     }
 
     /// Adds a monitor [`monitor_at`](TargetSource::monitor_at) can find (none: the host cannot
@@ -249,6 +425,26 @@ impl FakeTargets {
         self.cursor.set(cursor);
     }
 
+    /// Sets what the host reads for the primary mouse button (`None`: it cannot be read).
+    pub fn set_primary_down(&self, down: Option<bool>) {
+        self.primary.set(down);
+    }
+
+    /// Sets whether the system's size loop runs on the Panel (`None`: the host cannot tell).
+    pub fn set_size_loop(&self, running: Option<bool>) {
+        self.size_loop.set(running);
+    }
+
+    /// Sets the monitor a full-screen app covers (`None`: there is none).
+    pub fn set_fullscreen(&self, on: Option<&crate::frame::Monitor>) {
+        *self.fullscreen.borrow_mut() = on.map(|m| m.id.clone());
+    }
+
+    /// Replaces the monitors the host knows.
+    pub fn set_monitors(&self, monitors: Vec<crate::frame::Monitor>) {
+        *self.monitors.borrow_mut() = monitors;
+    }
+
     /// Changes the Target, as the user switching windows would.
     pub fn set(&self, target: Option<Target>) {
         *self.current.borrow_mut() = target;
@@ -263,6 +459,14 @@ impl FakeTargets {
 
 impl TargetSource for FakeTargets {
     fn current(&self) -> Option<Target> {
+        let raised = self
+            .switch
+            .borrow()
+            .as_ref()
+            .is_some_and(|(flag, _)| flag.load(std::sync::atomic::Ordering::SeqCst));
+        if raised && let Some((_, target)) = self.switch.borrow_mut().take() {
+            *self.current.borrow_mut() = target;
+        }
         self.current.borrow().clone()
     }
 
@@ -277,6 +481,18 @@ impl TargetSource for FakeTargets {
 
     fn cursor(&self) -> Option<(i32, i32)> {
         self.cursor.get()
+    }
+
+    fn size_loop(&self) -> Option<bool> {
+        self.size_loop.get()
+    }
+
+    fn primary_down(&self) -> Option<bool> {
+        self.primary.get()
+    }
+
+    fn fullscreen_on(&self, monitor: &crate::frame::Monitor) -> bool {
+        self.fullscreen.borrow().as_ref() == Some(&monitor.id)
     }
 
     fn monitor_at(&self, x: i32, y: i32) -> Option<crate::frame::Monitor> {

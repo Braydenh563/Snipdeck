@@ -3,12 +3,11 @@
 use super::*;
 
 #[test]
-fn close_hides_with_a_tray_icon_and_drag_asks_the_host() {
+fn close_hides_with_a_tray_icon_and_show_brings_it_back() {
     let mut w = world();
     with_tray(&mut w);
     assert_eq!(w.ctl.close(), [Effect::HidePanel]);
     assert!(!w.ctl.visible());
-    assert_eq!(w.ctl.drag(), [Effect::DragWindow]);
     assert_eq!(w.ctl.show(), [Effect::ShowPanel]);
 }
 

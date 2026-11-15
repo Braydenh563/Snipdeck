@@ -2,7 +2,7 @@
   "id": "QC",
   "quickOnly": true,
   "title": "Quick check: what changed lately and can only be judged on Windows",
-  "friendly": "Quick check (Panel v2, Recent, Alt+Tab, dock, render diagnostic)",
+  "friendly": "Quick check (hotkey, one-click paste, Recent opt-in, Alt+Tab, dock, Symbols PNG, render flicker)",
   "note": "tools/windows-test/README.md, Quick check. Runs the real app on a new, empty test library in spikes-results\\qc-data (deleted at the start of each new run), so your own snippets are never touched.",
   "dir": ".",
   "exe": "snipdeck-app",
@@ -35,17 +35,7 @@
       "minutes": 0.5,
       "title": "Panel v2: the hotkey shows and hides the Panel",
       "do": "Click into a Notepad window so its cursor is blinking. Press {HOTKEY} to show the Panel. Press {HOTKEY} again.",
-      "expect": "The Panel appears on the first press and goes away on the second, and the Notepad cursor keeps blinking (the Panel does not take the keyboard). {HOTKEY} is the shortcut of this test library (a new install). An older Snipdeck keeps Ctrl+Alt+Space; that is not what is tested here."
-    },
-    {
-      "id": "2",
-      "qc": true,
-      "qcOnly": true,
-      "gate": true,
-      "minutes": 1,
-      "title": "Panel v2: List, Cards and Compact",
-      "do": "Open Settings (tray icon menu > Settings, or the three dots in the Panel). Under Panel layout, set Layout to Cards. Look at the Panel. Set Layout to Compact and look again. Set it back to List.",
-      "expect": "Cards shows snippets as tiles, two per row. Compact shows tight one-line rows. List shows one row per snippet with a preview line. Each change shows in the Panel at once."
+      "expect": "The Panel appears on the first press and goes away on the second, and the Notepad cursor keeps blinking (the Panel does not take the keyboard). {HOTKEY} is the shortcut of this test library (a new install). An older Snipdeck keeps Ctrl+Alt+Space; that is not what is tested here. If the Panel asks \"Keep a Recent list of what you copy?\", leave it: step 3 answers it."
     },
     {
       "id": "3",
@@ -53,10 +43,10 @@
       "qcOnly": true,
       "gate": true,
       "auto": "Invoke-QcRecent",
-      "minutes": 1,
-      "title": "Recent is on for a new install: a normal copy appears",
-      "do": "In Notepad type the word quickcheck, press Ctrl+A, then Ctrl+C. Open the Panel with {HOTKEY} and look in its Recent list for quickcheck. (Settings > Keep a Recent inbox of what you copy should already be on.)",
-      "expect": "quickcheck is listed in Recent without you turning anything on."
+      "minutes": 1.5,
+      "title": "Recent asks first: nothing kept before Yes, a copy kept after",
+      "do": "In Notepad type beforeyes, press Ctrl+A, then Ctrl+C. Open the Panel with {HOTKEY}. It asks \"Keep a Recent list of what you copy?\" (if the welcome tour is open, close or skip it first; the question comes after it). Choose Yes. Now type quickcheck in Notepad, Ctrl+A, Ctrl+C, open the Panel and look in its Recent list.",
+      "expect": "The question appears once, on this new test library. After Yes, quickcheck is in Recent; beforeyes (copied before you answered) is NOT."
     },
     {
       "id": "4",
@@ -64,7 +54,7 @@
       "qcOnly": true,
       "minutes": 0.5,
       "title": "Recent ignores a password manager",
-      "do": "Open a password manager on this PC (KeePass, 1Password, Bitwarden, ...) and copy a password from it. Open the Panel and look in Recent. No password manager installed: press S to skip.",
+      "do": "Recent is on after step 3 (if step 3 failed, turn on Settings > Keep a Recent inbox of what you copy first). Open a password manager on this PC (KeePass, 1Password, Bitwarden, ...) and copy a password from it. Open the Panel and look in Recent. No password manager installed: press S to skip.",
       "expect": "The password is NOT in Recent. (The text you copied in Notepad is still there.)"
     },
     {
@@ -76,35 +66,6 @@
       "title": "Panel v2: one click pastes, then the Panel hides",
       "do": "Click into Notepad and put the cursor on an empty line. Open the Panel with {HOTKEY}. Click the quickcheck row once.",
       "expect": "quickcheck is typed into Notepad at the cursor, and the Panel hides by itself right after (it is not pinned)."
-    },
-    {
-      "id": "6",
-      "qc": true,
-      "qcOnly": true,
-      "gate": true,
-      "minutes": 0.5,
-      "title": "Panel v2: pin keeps the Panel open",
-      "do": "Open the Panel with {HOTKEY}. Click the pin button in its header. Click the quickcheck row. Then click the pin button again to unpin and click the row once more.",
-      "expect": "While pinned, the Panel stays open after the paste. After unpinning, the next paste hides it again."
-    },
-    {
-      "id": "7",
-      "qc": true,
-      "qcOnly": true,
-      "minutes": 0.5,
-      "title": "Panel v2: search highlights",
-      "do": "Open the Panel with {HOTKEY}. Type quick (the search field appears when you type). Press Esc.",
-      "expect": "Rows that do not match go away, the matching letters in quickcheck are marked, and Esc clears the search."
-    },
-    {
-      "id": "8",
-      "qc": true,
-      "qcOnly": true,
-      "gate": true,
-      "minutes": 1,
-      "title": "Panel v2: the Lists menu switcher",
-      "do": "Open Settings. Under Panel layout, set Lists to Menu. Look at the Panel header, then click the board name at the top left. Set Lists back to Tabs afterwards.",
-      "expect": "With Menu, the row of list tabs is gone and the board name opens a menu that includes the lists; choosing one switches to it. Tabs brings the row back."
     },
     {
       "id": "9",
@@ -137,24 +98,6 @@
       "expect": "No part of the Panel covers the taskbar or goes off the screen, and its bottom row can be seen in full."
     },
     {
-      "id": "13",
-      "qc": true,
-      "qcOnly": true,
-      "minutes": 1,
-      "title": "Symbols: emoji paste into Notepad and Word",
-      "do": "Open the Panel with {HOTKEY} and click the smiley tab. Click into Notepad, then click the grinning face 😀. Click into a Word document and click it again. Then search woman technologist and click 👩‍💻 (a joined emoji) in Notepad and in Word.",
-      "expect": "Each click types the emoji at the cursor and the Panel hides (unless pinned). 😀 and 👩‍💻 show as one picture each, not as separate parts (Notepad may draw the joined one as two or three pictures on an older Windows 10; note it if so)."
-    },
-    {
-      "id": "14",
-      "qc": true,
-      "qcOnly": true,
-      "minutes": 1,
-      "title": "Symbols: kaomoji glyphs",
-      "do": "In the Symbols tab open the Kaomoji kind. Look at a few chips, including ones with box-drawing lines or Japanese characters. Click one into Notepad.",
-      "expect": "The chips show every character (no empty boxes or question marks), lines join up, and the pasted text matches what the chip shows."
-    },
-    {
       "id": "15",
       "qc": true,
       "qcOnly": true,
@@ -164,42 +107,49 @@
       "expect": "The icon pastes as a picture in both. In Word the background is clear (the page shows through); in Paint it is a drawing in the theme's text colour. Note what Paint shows behind it."
     },
     {
-      "id": "16",
-      "qc": true,
-      "qcOnly": true,
-      "minutes": 0.5,
-      "title": "Symbols: Save as dialog",
-      "do": "There is no menu for Save as yet (planned, slice 6). Skip this step with S until it is built.",
-      "expect": "Once built: the Windows Save dialog opens on Pictures with a .svg or .png name; saving writes a file that opens in Paint or a browser."
-    },
-    {
-      "id": "17",
-      "qc": true,
-      "qcOnly": true,
-      "minutes": 3,
-      "title": "Symbols: sharpness at 125% and 150%",
-      "do": "Set Windows display scale to 125%, open the Panel Symbols tab and look at the grid. Repeat at 150%. Put the scale back afterwards.",
-      "expect": "Emoji and icons are crisp (no blur or jagged edges), the cells keep their 40px size and gaps, and nothing is cut off. Scrolling stays smooth."
-    },
-    {
-      "id": "18",
+      "id": "20",
       "qc": true,
       "qcOnly": true,
       "minutes": 1,
-      "title": "Symbols: flags paste as letter pairs",
-      "do": "In the Symbols tab search flag, or open the Flags group, and click a flag into Notepad.",
-      "expect": "Windows has no flag pictures: Notepad shows the flag as two letters (for example AU). The Panel grid may do the same. This is expected, not a failure; press F only if the cell is empty or the paste is wrong."
+      "title": "Drag the Panel: no see-through flicker",
+      "do": "Open the Panel. Drag it by its top strip in slow circles in the middle of the screen for 5 seconds, then hold it against the right edge until the dock outline shows, then pull it back to the middle. Do this twice.",
+      "expect": "The Panel stays solid the whole time. When the dock outline comes and goes, the Panel may change size, but no part of it shows the desktop or the window behind it, not even for a moment. Press F if any part flickers see-through."
     },
     {
-      "id": "19",
+      "id": "21",
       "qc": true,
       "qcOnly": true,
-      "auto": "Invoke-QcDiagnostic",
-      "autoTimeout": 900,
-      "minutes": 3,
-      "title": "Render diagnostic",
-      "do": "Answer the short yes/no questions the diagnostic asks (it opens the Panel, About, Edit and the Main window for you to look at). It needs about 3 minutes.",
-      "expect": "The diagnostic file is saved on your Desktop and its path is shown. It is recorded in the results."
+      "minutes": 1,
+      "title": "Dock near the top-right corner: fully drawn without a click",
+      "do": "Drag the Panel into the top-right corner of the screen (both near the top and against the right edge) and let go so it docks. Do not move the mouse over it; wait 3 seconds. Repeat on the left edge near the top. If you have two screens, also try the corner where the screens meet.",
+      "expect": "Each time, the docked Panel is fully drawn within a moment: every item, the search box and the top strip. You never need to click it, hover it or switch windows to make it show. Press F if any part stays see-through or empty until you click."
+    },
+    {
+      "id": "22",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 1,
+      "title": "Save an edit: the Panel comes back fully drawn",
+      "do": "Open the Panel, open Edit on any item (right-click > Edit, or the item menu), change one letter, press Save. Do it three times, once with the Panel docked.",
+      "expect": "When the editor closes, the Panel shows again fully drawn straight away: no see-through areas, no items missing until you hover them."
+    },
+    {
+      "id": "23",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 1,
+      "title": "Slide along the edge: stays solid",
+      "do": "Dock the Panel on the right edge. Drag its top strip up and down along the edge (the Panel slides along it) for 5 seconds, then let go.",
+      "expect": "The Panel stays solid and fully drawn while it slides and after you let go. Press F if it goes see-through, even briefly."
+    },
+    {
+      "id": "24",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 2,
+      "title": "Other windows: off screen and back, Alt+Tab, minimise",
+      "do": "Open About, then Edit on an item, then the Main window's Tags window. Drag each one half off the bottom or right of the screen, let go, and drag it fully back. Then Alt+Tab away and back to the Main window, minimise it and restore it.",
+      "expect": "Every window is fully drawn after each step: the part that was off screen is drawn when it comes back, and nothing shows the desktop through the window. A short flash of the plain background colour while a window is resized is fine; see-through is not."
     }
   ]
 }

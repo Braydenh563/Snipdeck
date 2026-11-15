@@ -4,7 +4,7 @@ use snipdeck_core::{BoardId, ListAccent, ListIcon, ListId, ListSort, Name, Place
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::Trashable;
 
-use super::super::{Controller, Library, Toast, ToastKind, ToastMessage, failed, success};
+use super::super::{Controller, Library, ToastMessage, failed, success};
 use super::{EditorSlot, EditorTarget, Opened, neutral_toast};
 use crate::{
     host::ClipboardText,
@@ -129,15 +129,8 @@ where
         self.open_editor(EditorTarget::Board(id), view);
     }
 
-    /// The board editor for a new board, or the board-limit toast on Free.
+    /// The board editor for a new board.
     pub(super) fn new_board(&mut self) {
-        if !self.entitlements.can_create_board(self.main.boards().len()) {
-            self.show_toast(Toast {
-                kind: ToastKind::Neutral,
-                message: ToastMessage::BoardLimit,
-            });
-            return;
-        }
         self.open_editor(
             EditorTarget::NewBoard,
             EditorView {
@@ -216,16 +209,6 @@ where
                 return;
             }
         };
-        if target == EditorTarget::NewBoard
-            && !self.entitlements.can_create_board(self.main.boards().len())
-        {
-            self.editor = None;
-            self.show_toast(Toast {
-                kind: ToastKind::Neutral,
-                message: ToastMessage::BoardLimit,
-            });
-            return;
-        }
         let now = self.clock.now();
         match self.write_editor(target, name, accent, icon, sort, now) {
             Ok(opened) => {

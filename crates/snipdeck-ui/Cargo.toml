@@ -7,6 +7,11 @@ license.workspace = true
 publish.workspace = true
 description = "Snipdeck UI: design tokens, Slint component library and headless screenshot testing"
 
+# The unit tests live in tests/lib_units.rs: a lib test target would compile the generated Slint
+# code a second time, alongside the lib, which runs CI runners and 16 GB machines out of memory.
+[lib]
+test = false
+
 [dependencies]
 png.workspace = true
 # `image-decoders` + `svg`: Phosphor icons are SVG; the winit backend enables the same features.

@@ -7,9 +7,16 @@ import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
 export component Tooltip inherits Rectangle {
     in property <string> text;
     in property <bool> open: false;
+    // The widest the tooltip may be (`limit-width`); longer text wraps to more lines. The host sets it to the room it
+    // has (the window's width less its margins), so a long name never runs past an edge.
+    in property <length> limit-width: 100000px;
     // DESIGN.md §4: how long hover must rest before the host sets `open`.
     out property <duration> show-delay: 500ms;
 
+    // Sized by its text: one line when it fits `limit-width`, wrapped otherwise. The host sets its width and
+    // height from these (it is placed, not laid out), then positions it.
+    preferred-width: min(label.preferred-width + 2 * Space.s2, root.limit-width);
+    preferred-height: label.preferred-height + 2 * Space.s1;
     background: Theme.ink;
     border-radius: Radius.sm;
     border-width: Theme.hc-border != transparent ? 1px : 0px;
@@ -18,18 +25,17 @@ export component Tooltip inherits Rectangle {
     accessible-role: AccessibleRole.none;
     animate opacity { duration: Motion.fade; easing: Motion.out; }
 
-    HorizontalLayout {
-        padding-left: Space.s2;
-        padding-right: Space.s2;
-        padding-top: Space.s1;
-        padding-bottom: Space.s1;
-        Text {
-            text: root.text;
-            color: Theme.text-on-ink;
-            font-family: Fonts.sans;
-            font-size: Type.sm;
-            font-weight: Type.medium;
-            vertical-alignment: center;
-        }
+    label := Text {
+        x: Space.s2;
+        y: Space.s1;
+        width: root.width - 2 * Space.s2;
+        height: root.height - 2 * Space.s1;
+        text: root.text;
+        wrap: word-wrap;
+        color: Theme.text-on-ink;
+        font-family: Fonts.sans;
+        font-size: Type.sm;
+        font-weight: Type.medium;
+        vertical-alignment: center;
     }
 }

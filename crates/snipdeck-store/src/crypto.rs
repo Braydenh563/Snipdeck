@@ -1,4 +1,4 @@
-//! Encryption of sensitive items at rest (SPEC §5.7, Supporter).
+//! Encryption of sensitive items at rest (SPEC §5.7).
 //!
 //! # Key hierarchy
 //!

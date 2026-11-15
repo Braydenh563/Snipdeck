@@ -278,14 +278,15 @@ mod tests {
 
     #[test]
     fn secrets_are_flagged_and_ordinary_text_is_not() {
+        // The fake tokens are split with `concat!` so secret scanners don't report them as leaks.
         let table = [
             (
                 "-----BEGIN RSA PRIVATE KEY-----\nabc\n-----END RSA PRIVATE KEY-----",
                 Some(Secret::PrivateKey),
             ),
-            ("AKIAIOSFODNN7EXAMPLE", Some(Secret::Token)),
+            (concat!("AKIA", "IOSFODNN7EXAMPLE"), Some(Secret::Token)),
             (
-                "ghp_abcdefghijklmnopqrstuvwxyz0123456789",
+                concat!("ghp_", "abcdefghijklmnopqrstuvwxyz0123456789"),
                 Some(Secret::Token),
             ),
             (
@@ -309,12 +310,24 @@ mod tests {
                 Some(Secret::Password),
             ),
             ("\"apiKey\" : \"abc\"", Some(Secret::Password)),
-            ("sk_live_abcdefghijklmnopqrstuv", Some(Secret::Token)),
-            ("sk_test_abcdefghijklmnopqrstuv", Some(Secret::Token)),
-            ("rk_live_abcdefghijklmnopqrstuv", Some(Secret::Token)),
-            ("glpat-abcdefghijklmnopqrstu", Some(Secret::Token)),
             (
-                "key=AIzaSyA1234567890abcdefghijklmnopqrstuv",
+                concat!("sk_live_", "abcdefghijklmnopqrstuv"),
+                Some(Secret::Token),
+            ),
+            (
+                concat!("sk_test_", "abcdefghijklmnopqrstuv"),
+                Some(Secret::Token),
+            ),
+            (
+                concat!("rk_live_", "abcdefghijklmnopqrstuv"),
+                Some(Secret::Token),
+            ),
+            (
+                concat!("glpat-", "abcdefghijklmnopqrstu"),
+                Some(Secret::Token),
+            ),
+            (
+                concat!("key=AI", "zaSyA1234567890abcdefghijklmnopqrstuv"),
                 Some(Secret::Token),
             ),
             ("Remember the password for the wifi", None),

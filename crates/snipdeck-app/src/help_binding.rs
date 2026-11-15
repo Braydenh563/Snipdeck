@@ -17,7 +17,6 @@ use std::{
 
 use jiff::civil::Date;
 use slint::{ComponentHandle, Global, Model, SharedString};
-use snipdeck_core::Tier;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_portable::backup;
 use snipdeck_store::{ItemRepo, Store};
@@ -29,7 +28,7 @@ use crate::{
     crash,
     doctor::{self, Check, DoctorHost, Fix, ReportInfo, Status},
     host::ClipboardText,
-    main_binding::{create_window, raise, set_look},
+    main_binding::{create_window, set_look},
     native_window::fit_when_settled,
     settings::{HotkeyAction, Hotkeys},
     settings_binding::action_name,
@@ -43,6 +42,16 @@ use crate::{
 pub const REPO_URL: &str = "https://github.com/Braydenh563/Snipdeck";
 /// "Check for updates" opens this page; the app fetches nothing itself.
 pub const RELEASES_URL: &str = "https://github.com/Braydenh563/Snipdeck/releases";
+/// The page "Check for updates" opens now: the Store's updates page in the packaged build (the
+/// Store does the updating), [`RELEASES_URL`] otherwise.
+fn updates_url() -> &'static str {
+    snipdeck_platform::startup_task::updates_url(crate::platform::is_packaged(), RELEASES_URL)
+}
+
+/// The optional "Support Snipdeck" page (Buy Me a Coffee), opened in the browser. Giving is
+/// voluntary: nothing in the app changes with it and the app handles no payment data.
+pub const SUPPORT_URL: &str = "https://buymeacoffee.com/braydenh563";
+
 /// The user guide, opened in the browser by [`HelpTopic::Guide`].
 pub const GUIDE_URL: &str = "https://github.com/Braydenh563/Snipdeck/blob/main/docs/user-guide.md";
 /// The Microsoft Store page; the link stays hidden while this is `None`.
@@ -344,7 +353,7 @@ where
             .ok()
             .and_then(|i| tips::TIPS.get(i).copied());
         if let Some(tip) = tip {
-            self.controller.borrow_mut().try_tip(tip.action);
+            self.controller.borrow_mut().try_tip(tip);
             redraw_all();
         }
     }
@@ -356,13 +365,12 @@ where
         if !window.window().is_visible() {
             return;
         }
-        let (look, accent, tier, toast): (_, _, _, Option<ToastView>) = {
+        let (look, accent, toast): (_, _, Option<ToastView>) = {
             let controller = self.controller.borrow();
             self.sync_shortcuts(&window, &controller.settings().hotkeys);
             (
                 controller.settings_look(),
                 controller.accent(),
-                controller.tier(),
                 controller.settings_toast(),
             )
         };
@@ -377,7 +385,6 @@ where
         window.set_has_data_folder(self.data_dir.is_some());
         window.set_version(env!("CARGO_PKG_VERSION").into());
         window.set_build_date(build_date().into());
-        window.set_supporter(matches!(tier, Tier::Pro));
         window.set_source_url(REPO_URL.into());
         window.set_show_store_link(STORE_URL.is_some());
         window.set_has_notices(self.host.notices_file().is_some());
@@ -527,12 +534,6 @@ where
             let controller = self.controller.borrow();
             ReportInfo {
                 version: env!("CARGO_PKG_VERSION").to_owned(),
-                tier: if matches!(controller.tier(), Tier::Pro) {
-                    "Supporter"
-                } else {
-                    "Free"
-                }
-                .to_owned(),
                 os: self.host.os_summary(),
                 dpi: format!("{:.0}%", window.window().scale_factor() * 100.0),
                 flags: report_flags(controller.settings()),
@@ -549,7 +550,10 @@ where
     }
 
     fn open_url(&self, url: &str) {
-        self.opened(self.host.open_url(url), "a link");
+        if let Err(error) = self.host.open_url(url) {
+            crate::trace!("help: cannot open a link: {error}");
+            self.danger_toast(ToastMessage::LinkNotOpened);
+        }
     }
 }
 
@@ -642,8 +646,9 @@ where
         wire!(on_tour_requested, |_core| {
             crate::onboarding_binding::request_open();
         });
+        wire!(on_support_requested, |core| core.open_url(SUPPORT_URL));
         wire!(on_source_requested, |core| core.open_url(REPO_URL));
-        wire!(on_releases_requested, |core| core.open_url(RELEASES_URL));
+        wire!(on_releases_requested, |core| core.open_url(updates_url()));
         wire!(on_store_requested, |core| {
             if let Some(url) = STORE_URL {
                 core.open_url(url);
@@ -708,6 +713,7 @@ fn ui_group(window: &ui::HelpWindow, group: &shortcuts::Group) -> ui::ShortcutGr
             title: line.title.as_str().into(),
             keys: model(line.keys.iter().map(|k| k.as_str().into())),
             spoken: line.spoken.as_str().into(),
+            plain: line.plain,
         })),
     }
 }
@@ -784,7 +790,7 @@ impl HelpUi {
                 fit_when_settled(window);
                 // The checks are fresh every time the window comes up.
                 binding.refresh();
-                raise(window.window());
+                crate::native_window::activate_regular(window);
                 Ok(())
             }
         };

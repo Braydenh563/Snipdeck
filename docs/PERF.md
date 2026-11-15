@@ -45,8 +45,8 @@ CARGO_PROFILE_DEV_OPT_LEVEL=3 CARGO_PROFILE_DEV_DEBUG=0 \
   cargo test -p snipdeck-app --test budget -- --ignored --nocapture
 ```
 
-(A real `--release` build needs the production licence key, so the test profile is built
-with optimisations instead.) This builds a 10,000 item library and prints the cold and warm Panel load and five searches,
+(The test profile is built
+with optimisations instead of a release build.) This builds a 10,000 item library and prints the cold and warm Panel load and five searches,
 and fails if one is over budget. Do not drop the opt-level: an unoptimised build is many times slower.
 Numbers depend on the machine, so compare runs on the same one. One run on a Linux VM
 (optimised, 10,000 items, 2026-10-19): Panel load cold 26 ms (builds the index), warm 19 ms;

@@ -17,12 +17,14 @@ import { Theme, Type, Space, Radius, Motion, Fonts, Palette, ListHue, SystemLook
 import { Icons } from "icons.slint";
 import { ListIcons } from "list-icons.slint";
 import { Icon } from "components/icon.slint";
+import { ItemCard, ItemKind, ItemCardVariant } from "components/item-card.slint";
+import { PanelLayout } from "panel.slint";
+import { MainView } from "main_window.slint";
 import { Button, ButtonVariant, ButtonSize } from "components/button.slint";
 import { IconButton, IconButtonSize } from "components/icon-button.slint";
 import { TextField, FieldError } from "components/text_field.slint";
 import { Toggle, Radio } from "components/choice.slint";
 import { Tag } from "components/tag.slint";
-import { LockBadge } from "components/lock-badge.slint";
 import { Swatch } from "components/swatch.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
 import { Chooser, ChoiceEntry } from "components/chooser.slint";
@@ -63,6 +65,8 @@ component Notice inherits Rectangle {
 }
 
 // The button row at the bottom of an editor: Delete at the left (when the thing exists), Cancel and Save at the right.
+// When the three do not fit side by side (a narrow window or a large text size), Delete moves to its own row above
+// Cancel and Save, so no label is ever clipped or overlaps another button.
 component EditorFooter inherits Rectangle {
     in property <bool> show-delete: false;
     in property <string> delete-label;
@@ -73,7 +77,14 @@ component EditorFooter inherits Rectangle {
     callback cancel();
     callback save();
 
-    height: row.preferred-height + 1px;
+    property <length> pad-x: Space.s4;
+    property <length> pad-top: Space.s3 + 1px;
+    property <length> pad-bottom: Space.s3;
+    property <bool> stacked: root.show-delete
+        && del.preferred-width + cancel.preferred-width + save.preferred-width + 3 * Space.s2 + 2 * root.pad-x > root.width;
+    property <length> top-row: root.stacked ? del.height + Space.s2 : 0px;
+
+    height: root.pad-top + root.top-row + save.height + root.pad-bottom + 1px;
     background: Theme.bg-surface;
 
     Rectangle {
@@ -81,31 +92,31 @@ component EditorFooter inherits Rectangle {
         height: 1px;
         background: Theme.border-subtle;
     }
-    row := HorizontalLayout {
-        padding: Space.s3;
-        padding-top: Space.s3 + 1px;
-        padding-left: Space.s4;
-        padding-right: Space.s4;
-        spacing: Space.s2;
-        if root.show-delete: Button {
-            text: root.delete-label;
-            icon: Icons.trash;
-            variant: ButtonVariant.ghost;
-            clicked => { root.delete(); }
-        }
-        Rectangle {
-            horizontal-stretch: 1;
-        }
-        Button {
-            text: root.cancel-label;
-            clicked => { root.cancel(); }
-        }
-        Button {
-            text: root.save-label;
-            tooltip: root.save-tooltip;
-            variant: ButtonVariant.primary;
-            clicked => { root.save(); }
-        }
+    del := Button {
+        visible: root.show-delete;
+        x: root.pad-x;
+        y: root.pad-top;
+        width: self.preferred-width;
+        text: root.delete-label;
+        icon: Icons.trash;
+        variant: ButtonVariant.ghost;
+        clicked => { root.delete(); }
+    }
+    cancel := Button {
+        x: save.x - Space.s2 - self.width;
+        y: root.pad-top + root.top-row;
+        width: self.preferred-width;
+        text: root.cancel-label;
+        clicked => { root.cancel(); }
+    }
+    save := Button {
+        x: root.width - root.pad-x - self.width;
+        y: root.pad-top + root.top-row;
+        width: self.preferred-width;
+        text: root.save-label;
+        tooltip: root.save-tooltip;
+        variant: ButtonVariant.primary;
+        clicked => { root.save(); }
     }
 }
 
@@ -115,7 +126,93 @@ component EditorFooter inherits Rectangle {
 struct PlaceholderHelp {
     token: string,
     help: string,
-    prompted: bool,
+}
+
+// The chip of one placeholder row, left-aligned in a cell `col` wide (the width of the widest chip, so the cells of all
+// the rows line up).
+component PlaceholderChip inherits Rectangle {
+    in property <string> token;
+    in property <bool> chip-enabled;
+    in property <length> cell-w;
+    callback chosen();
+    callback chip-focused(y: length, h: length);
+
+    min-width: root.cell-w;
+    // 0 = the natural width.
+    max-width: root.cell-w > 0px ? root.cell-w : 1000000px;
+    HorizontalLayout {
+        alignment: start;
+        Button {
+            size: ButtonSize.sm;
+            text: root.token;
+            a11y-label: @tr("Insert {}", root.token);
+            enabled: root.chip-enabled;
+            clicked => { root.chosen(); }
+            changed has-focus => {
+                if (self.has-focus) { root.chip-focused(self.absolute-position.y, self.height); }
+            }
+        }
+    }
+}
+
+component PlaceholderHelpText inherits Text {
+    horizontal-stretch: 1;
+    min-width: 0px;
+    min-height: max(24px, Type.line-sm + Space.s2);
+    color: Theme.text-secondary;
+    font-family: Fonts.sans;
+    font-size: Type.sm;
+    vertical-alignment: center;
+    wrap: word-wrap;
+    accessible-role: none;
+}
+
+// One line of the template placeholder help. The chips share one column (as wide as the longest token), so the help
+// text starts at the same x on every row. When the window is too narrow for the help to keep a readable width beside
+// them (a narrow window or a large text size), the help moves under the chip.
+component PlaceholderRow inherits VerticalLayout {
+    in property <string> token;
+    in property <string> help;
+    in property <bool> chip-enabled;
+    // The measured width of the widest chip, and the width the form has.
+    in property <length> chip-w;
+    in property <length> avail;
+    callback chosen();
+    callback chip-focused(y: length, h: length);
+
+    property <bool> stacked: root.chip-w + Space.s2 + 14 * Type.sm > root.avail;
+
+    if !root.stacked: HorizontalLayout {
+        spacing: Space.s2;
+        PlaceholderChip {
+            token: root.token; chip-enabled: root.chip-enabled; cell-w: root.chip-w;
+            chosen => { root.chosen(); }
+            chip-focused(y, h) => { root.chip-focused(y, h); }
+        }
+        PlaceholderHelpText { text: root.help; }
+    }
+    if root.stacked: VerticalLayout {
+        spacing: Space.s0-5;
+        HorizontalLayout {
+            alignment: start;
+            PlaceholderChip {
+                token: root.token; chip-enabled: root.chip-enabled; cell-w: 0px;
+                chosen => { root.chosen(); }
+                chip-focused(y, h) => { root.chip-focused(y, h); }
+            }
+        }
+        // A wrapped Text gets its height only once it has a width, so the row takes the height of the help at the
+        // width the form has.
+        Rectangle {
+            height: stacked-help.preferred-height;
+            stacked-help := PlaceholderHelpText {
+                x: 0px;
+                y: 0px;
+                width: parent.width;
+                text: root.help;
+            }
+        }
+    }
 }
 
 // The cell of the colour picker that means "no colour". Same size and states as `Swatch`.
@@ -196,7 +293,9 @@ component ColourPicker inherits Rectangle {
     accessible-label: root.label;
 
     HorizontalLayout {
-        spacing: Space.s1;
+        // The targets grow with the text size and the window cannot get wider than its minimum, so the gap shrinks
+        // by the same factor: nine targets at 2.25x still end inside the window (final-audit-2 re-audit).
+        spacing: Space.s1 / SystemLook.text-scale;
         alignment: start;
         NoColour {
             label: root.none-label;
@@ -506,18 +605,161 @@ component DisclosureRow inherits Rectangle {
     }
 }
 
+// The editor's Preview: the item as its cards will look in the small Panel and in the Main list, built by the host from
+// the fields as they are now (nothing is saved). A Template adds its result with sample values, a Link what it opens.
+// The cards are inert: a TouchArea above them swallows hover and clicks, so no action icon appears and nothing is used.
+component PreviewPane inherits Rectangle {
+    in property <ItemKind> card-kind: ItemKind.text;
+    in property <string> kind-name;
+    in property <string> title;
+    in property <string> excerpt;
+    in property <string> mask;
+    in property <int> label: -1;
+    in property <string> label-name;
+    // A Template's result, a Link's host, and why neither can be shown.
+    in property <string> expanded;
+    in property <string> link-host;
+    in property <string> note;
+    in property <PanelLayout> panel-layout: PanelLayout.list;
+    in property <MainView> main-view: MainView.comfortable;
+    in property <bool> show-numbers: true;
+    in property <bool> dirty: false;
+    property <ItemCardVariant> panel-variant: root.panel-layout == PanelLayout.compact ? ItemCardVariant.compact : root.panel-layout == PanelLayout.cards ? ItemCardVariant.tile : ItemCardVariant.comfortable;
+    property <ItemCardVariant> main-variant: root.main-view == MainView.compact ? ItemCardVariant.compact : root.main-view == MainView.tile ? ItemCardVariant.tile : ItemCardVariant.comfortable;
+
+    background: Theme.bg-app;
+    accessible-role: groupbox;
+    accessible-label: @tr("Preview");
+
+    FormScroll {
+        content-height: col.preferred-height;
+        content-width: self.viewport-width;
+        col := VerticalLayout {
+            x: 0px;
+            width: parent.viewport-width;
+            padding: Space.s4;
+            spacing: Space.s4;
+            alignment: start;
+
+            if root.dirty: Text {
+                text: @tr("Unsaved: this is how the item will look once you save it.");
+                color: Theme.text-secondary;
+                font-family: Fonts.sans;
+                font-size: Type.sm;
+                wrap: word-wrap;
+            }
+            FormField {
+                label: @tr("Small panel");
+                Rectangle {
+                    height: panel-item.height;
+                    panel-item := ItemCard {
+                        width: root.panel-variant == ItemCardVariant.tile ? min(parent.width, 149px) : min(parent.width, 360px);
+                        height: root.panel-variant == ItemCardVariant.tile ? 96px : self.preferred-height;
+                        x: 0px;
+                        variant: root.panel-variant;
+                        number: 1;
+                        numbered: root.show-numbers;
+                        masked-hint: @tr("Hidden. Hold Space to reveal.");
+                        kind: root.card-kind;
+                        title: root.title;
+                        preview: root.excerpt;
+                        masked-preview: root.mask;
+                        label: root.label;
+                        label-name: root.label-name;
+                        keyboard-focusable: false;
+                        has-menu: false;
+                        copy-action: false;
+                        edit-action: false;
+                    }
+                    TouchArea { }
+                }
+            }
+            FormField {
+                label: @tr("Main list");
+                Rectangle {
+                    height: main-card.height;
+                    main-card := ItemCard {
+                        width: root.main-variant == ItemCardVariant.tile ? min(parent.width, 200px * SystemLook.text-scale) : parent.width;
+                        height: self.preferred-height;
+                        x: 0px;
+                        inline-tile: root.main-variant == ItemCardVariant.tile;
+                        variant: root.main-variant;
+                        numbered: false;
+                        masked-hint: @tr("Hidden. Hold Space to reveal.");
+                        kind: root.card-kind;
+                        title: root.title;
+                        preview: root.excerpt;
+                        masked-preview: root.mask;
+                        label: root.label;
+                        label-name: root.label-name;
+                        keyboard-focusable: false;
+                        has-menu: false;
+                        copy-action: false;
+                        edit-action: false;
+                    }
+                    TouchArea { }
+                }
+            }
+            FormField {
+                label: @tr("Type");
+                Text {
+                    text: root.kind-name;
+                    color: Theme.text-primary;
+                    font-family: Fonts.sans;
+                    font-size: Type.base;
+                }
+            }
+            if root.expanded != "": FormField {
+                label: @tr("Result with sample values");
+                helper: @tr("Dates are today's; a field you fill in when you use the item shows its name or default.");
+                Rectangle {
+                    height: result.preferred-height + 2 * Space.s3;
+                    background: Theme.bg-sunken;
+                    border-radius: Radius.md;
+                    border-width: 1px;
+                    border-color: Theme.border-default;
+                    result := Text {
+                        x: Space.s3;
+                        y: Space.s3;
+                        width: parent.width - 2 * Space.s3;
+                        text: root.expanded;
+                        color: Theme.text-primary;
+                        font-family: Fonts.mono;
+                        font-size: Type.sm;
+                        wrap: char-wrap;
+                    }
+                }
+            }
+            if root.link-host != "": FormField {
+                label: @tr("Opens");
+                Text {
+                    text: root.link-host;
+                    color: Theme.text-primary;
+                    font-family: Fonts.mono;
+                    font-size: Type.base;
+                    // Wrapped, never cut: a long address stays readable in full.
+                    wrap: char-wrap;
+                }
+            }
+            if root.note != "": FieldError { text: root.note; }
+        }
+    }
+}
+
 export component ItemEditor inherits Window {
     title: root.is-new ? @tr("New item") : @tr("Edit item");
     background: Theme.bg-app;
-    min-width: 420px;
+    // Grows with the text size: at 225% the footer buttons need about 600 px.
+    out property <length> min-window-width: max(420px, 270px * SystemLook.text-scale);
+    min-width: root.min-window-width;
     min-height: 380px;
-    preferred-width: 560px;
+    preferred-width: max(560px, root.min-window-width);
     // Opens at the height of its form (More options closed), up to 700 px; the form scrolls past that.
-    preferred-height: min(700px, max(380px, form.preferred-height + footer.height));
+    preferred-height: min(700px, max(380px, form.preferred-height + footer.height + header.height));
 
     // The height the window wants for its form as it is now (More options open or closed), up to 700 px.
     // The host sets the window to it on open and on each toggle, cut to the screen's work area.
-    out property <length> fit-height: min(700px, max(380px, form.preferred-height + footer.height));
+    out property <length> fit-height: min(700px, max(380px, form.preferred-height + footer.height + header.height));
 
     in property <bool> dark: false;
     in property <bool> is-new: false;
@@ -527,6 +769,8 @@ export component ItemEditor inherits Window {
     // The text (kinds 0 to 3). Image and file items have no text to edit.
     in-out property <string> content;
     in-out property <bool> sensitive: false;
+    // "Always paste as plain text": a paste of this item drops its formatting (SPEC 5.1a); a copy keeps it.
+    in-out property <bool> always-plain: false;
     // "More options" (Title, Colour, Tags, Privacy) is open; the host remembers it in the settings.
     in-out property <bool> more-open: false;
     callback more-toggled(open: bool);
@@ -549,8 +793,6 @@ export component ItemEditor inherits Window {
     in property <image> preview;
     in property <string> attachment-name;
     in property <string> attachment-detail;
-    // False on the free plan: `{field}` and `{choice}` are marked Supporter in the placeholder help.
-    in property <bool> prompted-available: true;
     // A new Image or File item: the path of the file to keep a copy of, a problem with it, and whether the host can
     // open a file dialog (`browse-requested`).
     in-out property <string> source-path;
@@ -558,6 +800,16 @@ export component ItemEditor inherits Window {
     in property <bool> can-browse: false;
     // A problem with the Sensitive switch, and a failure of Save that belongs to no field ("The disk is full").
     in property <string> privacy-error;
+    // The Trigger field (typed in any app to insert the item; hidden for a Sensitive item) and a problem with it.
+    in-out property <string> trigger;
+    in property <string> trigger-error;
+    callback trigger-edited(text: string);
+    // The note under the Trigger field. One character is allowed but fires on every typing of it,
+    // inside words included, so it gets a warning instead.
+    out property <string> trigger-warning: root.trigger.character-count == 1
+        ? @tr("A one-character trigger fires every time you type it, even inside words. Two or more characters are safer.")
+        : "";
+    out property <string> trigger-helper: @tr("Type this in any app to insert the snippet. Turn it on in Settings, under Typing.");
     in property <string> banner;
     // The fields hold an unsaved draft from an earlier session.
     in property <bool> restored: false;
@@ -569,6 +821,23 @@ export component ItemEditor inherits Window {
     out property <bool> dirty: false;
     in-out property <bool> discard-open: false;
     in-out property <bool> tags-open: false;
+
+    // Preview: the item as its cards will look, from the fields as they are now. Turning it on asks the host
+    // (`preview-requested`) to fill the `preview-*` values; turning it off returns to the form with every field as it was.
+    in-out property <bool> preview-on: false;
+    callback preview-requested();
+    in property <string> preview-title;
+    in property <string> preview-excerpt;
+    in property <string> preview-mask;
+    in property <string> preview-expanded;
+    in property <string> preview-link;
+    in property <string> preview-note;
+    // How the user's own lists draw a card: the Panel's layout, the Main view and whether the Panel numbers its rows.
+    in property <PanelLayout> preview-panel-layout: PanelLayout.list;
+    in property <MainView> preview-main-view: MainView.comfortable;
+    in property <bool> preview-show-numbers: true;
+    // The caption of a Link's "(new ID)" stand-in, passed to the host so the sample result is translated.
+    out property <string> preview-new-id: @tr("(new ID)");
 
     // Fires only when the item passes the checks the window can make itself.
     callback save-requested();
@@ -611,8 +880,52 @@ export component ItemEditor inherits Window {
     }
 
     property <bool> text-kind: root.kind-index <= 3;
+    property <[string]> label-names: [@tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Orange"), @tr("Red"), @tr("Violet"), @tr("Slate")];
+    property <[string]> kind-names: [@tr("Text"), @tr("Code"), @tr("Link"), @tr("Template"), @tr("Image"), @tr("File")];
+    // The kind index of this window mapped to the card's kinds (a sensitive text item draws as the masked card).
+    property <ItemKind> card-kind: root.sensitive && root.text-kind ? ItemKind.sensitive
+        : root.kind-index == 0 ? ItemKind.text
+        : root.kind-index == 1 ? ItemKind.code
+        : root.kind-index == 2 ? ItemKind.link
+        : root.kind-index == 3 ? ItemKind.template
+        : root.kind-index == 4 ? ItemKind.image : ItemKind.file;
+    // Preview off: the form again, with the cursor in its first field. An Image or File item has no text field to
+    // type in (More options closed), so the focus stays on the toggle rather than falling out of the window.
+    // Asks the path field (inside a conditional, so not nameable from here) for focus; cleared when the kind changes
+    // so a field made later does not take focus on its own.
+    out property <int> source-focus-request: 0;
+    changed kind-index => { root.source-focus-request = 0; }
+    // The host starts filling the window for another item: a request left from the last one must not reach a path
+    // field that the new values make (its init would take the focus from the title).
+    public function clear-focus-requests() { root.source-focus-request = 0; }
+    function back-to-form() {
+        root.preview-on = false;
+        // The first error in reading order: the text or path, then the title.
+        if (root.text-kind && root.content-shown-error != "") {
+            content-field.focus();
+        } else if (!root.text-kind && root.source-shown-error != "") {
+            root.source-focus-request += 1;
+        } else if (root.title-error != "") {
+            title-field.focus();
+            title-field.set-cursor(1000000);
+        } else if (root.more-shown || root.text-kind) {
+            root.focus-title();
+        } else {
+            preview-toggle.take-focus();
+        }
+    }
+    function toggle-preview() {
+        if (root.preview-on) {
+            root.back-to-form();
+        } else {
+            root.tags-open = false;
+            root.preview-requested();
+            root.preview-on = true;
+            preview-toggle.take-focus();
+        }
+    }
     // A refusal that sits under "More options" opens it, so it is never hidden.
-    out property <bool> more-shown: root.more-open || root.title-error != "" || root.privacy-error != "";
+    out property <bool> more-shown: root.more-open || root.title-error != "" || root.privacy-error != "" || root.trigger-error != "";
     property <string> sensitive-base: @tr("Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard a little after you copy it (the time is in Settings).");
     property <string> sensitive-help: root.text-kind
         ? root.sensitive-base
@@ -631,12 +944,15 @@ export component ItemEditor inherits Window {
         { token: "{uuid}", help: @tr("A new random ID each time") },
         { token: "{clipboard}", help: @tr("What is on the clipboard") },
         { token: "{cursor}", help: @tr("Where the text cursor lands after pasting") },
-        { token: "{field:Name}", help: @tr("Asks for a value each time"), prompted: true },
-        { token: "{choice:Name|a|b}", help: @tr("Asks you to pick one of the options"), prompted: true },
-        { token: "{multiline:Name|default}", help: @tr("Asks for text over several lines"), prompted: true },
-        { token: "{pickdate:Name|FORMAT}", help: @tr("Asks for a date, today if left empty"), prompted: true },
-        { token: "{optional:Name}...{/optional}", help: @tr("A tick box; the text inside is pasted only when ticked"), prompted: true },
+        { token: "{field:Name}", help: @tr("Asks for a value each time") },
+        { token: "{choice:Name|a|b}", help: @tr("Asks you to pick one of the options") },
+        { token: "{multiline:Name|default}", help: @tr("Asks for text over several lines") },
+        { token: "{pickdate:Name|FORMAT}", help: @tr("Asks for a date, today if left empty") },
+        { token: "{optional:Name}...{/optional}", help: @tr("A tick box; the text inside is pasted only when ticked") },
     ];
+
+    // The longest token (by text), whose chip sets the width of the placeholder chip column.
+    property <string> widest-token: "{optional:Name}...{/optional}";
 
     function touch() {
         root.dirty = true;
@@ -645,9 +961,20 @@ export component ItemEditor inherits Window {
     function reveal-field(y: length, h: length) {
         flick.reveal(y - flick.absolute-position.y, h);
     }
+    // A refusal sits in the form, which Preview hides: go back to it and put the cursor where the fix is.
+    function leave-preview() {
+        if (root.preview-on) {
+            root.back-to-form();
+        }
+    }
+    changed content-error => { if (root.content-error != "") { root.leave-preview(); } }
+    changed title-error => { if (root.title-error != "") { root.leave-preview(); } }
+    changed privacy-error => { if (root.privacy-error != "") { root.leave-preview(); } }
+    changed source-error => { if (root.source-error != "") { root.leave-preview(); } }
     function try-save() {
         root.show-errors = true;
         if (root.content-missing || root.source-missing || root.content-error != "" || root.title-error != "" || root.source-error != "") {
+            root.leave-preview();
             return;
         }
         root.save-requested();
@@ -674,6 +1001,10 @@ export component ItemEditor inherits Window {
                 root.try-save();
                 return accept;
             }
+            if ((event.text == "p" || event.text == "P" || event.text == "\u{10}") && event.modifiers.control && !event.modifiers.alt && !event.modifiers.shift && !root.discard-open) {
+                root.toggle-preview();
+                return accept;
+            }
             if ((event.text == "v" || event.text == "V" || event.text == "\u{16}") && event.modifiers.control && !event.modifiers.alt && root.paste-requested()) {
                 return accept;
             }
@@ -696,8 +1027,56 @@ export component ItemEditor inherits Window {
         }
 
         VerticalLayout {
-            flick := FormScroll {
+            header := Rectangle {
+                height: header-row.preferred-height;
+                background: Theme.bg-app;
+                header-row := HorizontalLayout {
+                    padding: Space.s2;
+                    padding-left: Space.s4;
+                    padding-right: Space.s4;
+                    Rectangle { horizontal-stretch: 1; }
+                    preview-toggle := Button {
+                        text: @tr("Preview");
+                        icon: root.preview-on ? Icons.eye-slash : Icons.eye;
+                        variant: ButtonVariant.secondary;
+                        checkable: true;
+                        checked: root.preview-on;
+                        size: ButtonSize.sm;
+                        tooltip: root.preview-on ? @tr("Back to editing (Ctrl+P)") : @tr("Preview how this item will look (Ctrl+P)");
+                        a11y-label: @tr("Preview");
+                        clicked => { root.toggle-preview(); }
+                    }
+                }
+                Rectangle {
+                    y: parent.height - 1px;
+                    height: 1px;
+                    background: Theme.border-subtle;
+                }
+            }
+            Rectangle {
                 vertical-stretch: 1;
+            if root.preview-on: PreviewPane {
+                width: parent.width;
+                height: parent.height;
+                card-kind: root.card-kind;
+                kind-name: root.kind-names[root.kind-index];
+                title: root.preview-title;
+                excerpt: root.preview-excerpt;
+                mask: root.preview-mask;
+                label: root.label-index;
+                label-name: root.label-index >= 0 ? root.label-names[root.label-index] : "";
+                expanded: root.preview-expanded;
+                link-host: root.preview-link;
+                note: root.preview-note;
+                panel-layout: root.preview-panel-layout;
+                main-view: root.preview-main-view;
+                show-numbers: root.preview-show-numbers;
+                dirty: root.dirty;
+            }
+            flick := FormScroll {
+                width: parent.width;
+                height: parent.height;
+                visible: !root.preview-on;
                 content-height: form.preferred-height;
                 content-width: self.viewport-width;
 
@@ -746,7 +1125,8 @@ export component ItemEditor inherits Window {
                     // text field exists whatever the kind (a field inside an `if` cannot be focused from here).
                     Rectangle {
                         height: root.text-kind ? content-form.preferred-height : attachment.preferred-height;
-                        clip: true;
+                        // No `clip` here: a clipping Rectangle between the field and the scroll view makes Slint skip the
+                        // field when Tab-ing while it is scrolled out of view (see focus_traversal_repro.rs).
 
                         content-form := FormField {
                             width: parent.width;
@@ -800,6 +1180,7 @@ export component ItemEditor inherits Window {
                                         placeholder: @tr("Path to the file");
                                         error: root.source-shown-error;
                                         text <=> root.source-path;
+                                        focus-request: root.source-focus-request;
                                         edited(t) => { root.touch(); }
                                         accepted(t) => { root.try-save(); }
                                         changed has-focus => {
@@ -873,42 +1254,30 @@ export component ItemEditor inherits Window {
                             wrap: word-wrap;
                             accessible-role: none;
                         }
-                        for ph in root.placeholders: HorizontalLayout {
-                            spacing: Space.s2;
-                            Button {
+                        // The chips share one column (as wide as the longest token, capped so the help keeps room), so
+                        // the help text starts at the same x on every row. The probe below is never drawn: it only
+                        // measures the widest chip.
+                        Rectangle {
+                            height: 0px;
+                            chip-measure := Button {
                                 size: ButtonSize.sm;
-                                text: ph.token;
-                                a11y-label: @tr("Insert {}", ph.token);
-                                enabled: !root.content-large && (!ph.prompted || root.prompted-available);
-                                clicked => {
-                                    root.placeholder-chosen(ph.token, content-field.caret);
-                                    root.touch();
-                                }
-                                changed has-focus => {
-                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                                }
+                                text: root.widest-token;
+                                visible: false;
+                                x: 0px;
                             }
-                            // Top-aligned: a help text that wraps to two lines must not stretch the badge.
-                            if ph.prompted && !root.prompted-available: VerticalLayout {
-                                alignment: start;
-                                // As tall as the small Button chip beside it (`button.slint` height-px).
-                                LockBadge {
-                                    text: @tr("Supporter");
-                                    height: max(24px, Type.line-sm + Space.s2);
-                                }
+                        }
+                        for ph in root.placeholders: PlaceholderRow {
+                            token: ph.token;
+                            help: ph.help;
+                            chip-enabled: !root.content-large;
+                            chip-w: chip-measure.preferred-width;
+                            // The form's width less its side padding.
+                            avail: flick.viewport-width - Space.s4 * 2;
+                            chosen => {
+                                root.placeholder-chosen(ph.token, content-field.caret);
+                                root.touch();
                             }
-                            Text {
-                                horizontal-stretch: 1;
-                                min-width: 0px;
-                                min-height: max(24px, Type.line-sm + Space.s2);
-                                text: ph.help;
-                                color: Theme.text-secondary;
-                                font-family: Fonts.sans;
-                                font-size: Type.sm;
-                                vertical-alignment: center;
-                                wrap: word-wrap;
-                                accessible-role: none;
-                            }
+                            chip-focused(y, h) => { root.reveal-field(y, h); }
                         }
                     }
 
@@ -934,9 +1303,9 @@ export component ItemEditor inherits Window {
                     spacing: 0px;
                     more-toggle := DisclosureRow {
                         text: @tr("More options");
-                        summary: @tr("Title, colour, tags, privacy");
+                        summary: @tr("Title, colour, tags, trigger, privacy");
                         open: root.more-shown;
-                        a11y-label: root.more-shown ? @tr("Hide title, colour, tags and privacy") : @tr("Show title, colour, tags and privacy");
+                        a11y-label: root.more-shown ? @tr("Hide title, colour, tags, trigger and privacy") : @tr("Show title, colour, tags, trigger and privacy");
                         clicked => {
                             root.more-open = !root.more-shown;
                             root.more-toggled(root.more-open);
@@ -948,7 +1317,8 @@ export component ItemEditor inherits Window {
                     more-box := Rectangle {
                         height: root.more-shown ? more-col.preferred-height : 0px;
                         visible: root.more-shown;
-                        clip: true;
+                        // No `clip`: it sits between these fields and the scroll view, so Slint skipped them when Tab-ing
+                        // while they were scrolled out of view (the Trigger field at 2.25x). Hidden, `visible` covers it.
                         more-col := VerticalLayout {
                             width: parent.width;
                             spacing: Space.s4;
@@ -975,7 +1345,7 @@ export component ItemEditor inherits Window {
                             hues: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.violet, ListHue.slate];
                             label: @tr("Colour label");
                             none-label: @tr("No label");
-                            names: [@tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Orange"), @tr("Red"), @tr("Violet"), @tr("Slate")];
+                            names: root.label-names;
                             accent: root.label-index;
                             chosen(a) => {
                                 root.label-index = a;
@@ -1078,10 +1448,56 @@ export component ItemEditor inherits Window {
                             }
                         }
                     }
+
+                    FormField {
+                        label: @tr("Pasting");
+                        helper: @tr("A paste leaves out the formatting and sends only the text. Alt+Enter or Alt+click does this for one paste.");
+                        always-plain-toggle := Toggle {
+                            accessible-description: @tr("A paste leaves out the formatting and sends only the text. Alt+Enter or Alt+click does this for one paste.");
+                            text: @tr("Always paste as plain text");
+                            checked <=> root.always-plain;
+                            enabled: root.text-kind;
+                            toggled(v) => { root.touch(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+
+                    if root.sensitive: FormField {
+                        label: @tr("Trigger");
+                        Text {
+                            text: @tr("Sensitive items can't be typed in, so they have no trigger.");
+                            color: Theme.text-secondary;
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            wrap: word-wrap;
+                            accessible-role: AccessibleRole.text;
+                        }
+                    }
+                    if !root.sensitive: FormField {
+                        label: @tr("Trigger");
+                        helper: root.trigger-helper;
+                        warning: root.trigger-warning;
+                        error: root.trigger-error;
+                        trigger-field := TextField {
+                            label: @tr("Trigger");
+                            description: root.trigger-warning != "" ? root.trigger-warning : root.trigger-helper;
+                            error: root.trigger-error;
+                            placeholder: @tr("For example ;sig");
+                            text <=> root.trigger;
+                            edited(t) => { root.touch(); root.trigger-edited(t); }
+                            accepted(t) => { root.try-save(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
                         }
                     }
                     }
                 }
+            }
             }
 
             if root.banner != "": Rectangle {

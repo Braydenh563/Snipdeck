@@ -1,6 +1,6 @@
 # Encryption of sensitive items
 
-Code: `crates/snipdeck-store/src/crypto.rs` and `crypto/`. Supporter feature (SPEC §5.7).
+Code: `crates/snipdeck-store/src/crypto.rs` and `crypto/`. SPEC §5.7.
 
 ## Hierarchy
 
@@ -118,8 +118,8 @@ FTS5 option or the checkpoint off makes it fail.
 What is **not** guaranteed:
 
 * **Copies made earlier keep the plaintext:** the `snipdeck.db.pre-vN.bak` migration backups,
-  the daily `.snipdeck` backups (SPEC §5.7a), OS file history, cloud sync of a relocated data
-  folder, and file-system snapshots. The app should tell the user when they mark an existing
+  the daily `.snipdeck` backups (SPEC §5.7a), OS file history, cloud sync of the data
+  folder (a relocatable data folder is planned for v1.x), and file-system snapshots. The app should tell the user when they mark an existing
   item sensitive.
 * **Below the file system.** Zeroing a page or a file rewrites it through the file system; a
   copy-on-write file system, SSD wear levelling or a journaling layer may keep the old blocks.
@@ -128,6 +128,16 @@ What is **not** guaranteed:
 * **SQLite temporary files** (sorting, large transactions) may be written to the OS temp
   folder and are deleted, not zeroed. Snipdeck's queries over sensitive content are small, but
   this is outside the store's control.
+* **Pasted files.** Pasting a Files item (sensitive or not) writes its files, decrypted, to
+  `%TEMP%\Snipdeck\paste-<random>\`, because `CF_HDROP` needs real paths. The folder is kept while
+  the clipboard may point into it. The next paste and the next start zero each file, then delete
+  the folder; a file another program has open stays until a later run. After a **sensitive** Files
+  item was pasted, locking the library and quitting also delete these folders (a file the target
+  still has open stays). Until then the plaintext is readable by that Windows account, and the
+  zeroing has the same limit as the point above.
+* **Log-off and shutdown.** The clipboard clear for a copied sensitive item runs when Snipdeck
+  quits normally. When Windows ends the session or the process is killed it does not run, so a value
+  copied in the last seconds can stay on the clipboard (and in a clipboard-history tool).
 * **Process memory** still holds plaintext while an item is shown or decrypted (below).
 
 ## Windows Hello (v1.1)
@@ -136,10 +146,10 @@ Hello never holds the data key and nothing is written to disk. After a password 
 Hello once to sign a fixed challenge (`KeyCredentialManager`, RSA PKCS#1 v1.5, deterministic).
 `KEK = SHA-256("snipdeck-hello-kek-v1" || signature)` seals the data key with `aead.rs`
 (`store/crypto/hello.rs`, `SealedKey`) into an in-memory copy that also records the time of the
-password unlock. Sealing signs twice and refuses a Hello whose two signatures differ. A later Hello prompt re-signs the challenge and opens it. A restart
+password unlock. Turning Hello on signs twice (two prompts) and refuses a Hello whose two signatures differ; every later seal (after a password unlock) signs once. A later Hello prompt re-signs the challenge and opens it. A restart
 forgets the copy; after 7 days from the last password unlock (injected clock; a clock set back counts as
-expired) the copy is dropped and the password is asked, without a Hello prompt. Cancel, failure, a removed PIN or a wrong signature fall back to the
-password and drop the copy. Keys and signatures are zeroized after use.
+expired) the copy is dropped and the password is asked, without a Hello prompt. A cancelled unlock keeps the copy (the button stays for another try); failure, a removed PIN or a wrong signature (for example a PIN reset made a new credential) fall back to the
+password and drop the copy; the option stays on and the next password unlock seals a new copy (one prompt). A cancelled seal never turns Hello off and never counts. A seal that fails twice in a row after password unlocks, or a Hello that is not repeatable, turns the option off and says why (toast, and a line in the unlock window); turning Hello on that fails or is cancelled leaves the switch off. After a changed credential the unlock window says so once, and the next password unlock re-checks that the signature repeats before it seals. Only the first Hello answer after start-up seals; opening Settings or the unlock window later never prompts. The copy is bound to the stored key record it was sealed for: if the record changed (the library was erased, the key forgotten) the copy is refused, Hello is turned off and the password is asked. Erasing the library, removing or newly setting a password forgets the copy and switches Hello off; changing the password drops the copy and seals a new one at once (one Hello prompt). A switch-on cut short by a lock, or made while locked, goes back off with a message. Closing the unlock window stops a Hello unlock under way. Keys and signatures are zeroized after use, and so is the SHA-256 state that derives the wrapping key (sha2 `zeroize` feature).
 
 ## Limits and non-goals
 

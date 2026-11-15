@@ -96,6 +96,8 @@ pub fn hotkeys() -> Vec<HotkeySetting> {
 }
 
 pub fn settings(ui: &SettingsPage) {
+    // The Typing switches are stops only where typing works (Windows): walk them.
+    ui.set_typing_available(true);
     ui.set_hotkeys(ModelRc::new(VecModel::from(hotkeys())));
     ui.set_languages(strings(&[
         "Follow Windows",
@@ -125,7 +127,6 @@ pub fn settings(ui: &SettingsPage) {
         },
     ])));
     ui.set_last_backup("2026-10-18".into());
-    ui.set_pro(false);
     ui.set_has_data_folder(true);
     ui.set_backups(ModelRc::new(VecModel::from(vec![
         BackupRow {
@@ -169,7 +170,6 @@ pub fn help(ui: &HelpWindow) {
     ui.set_problems(2);
     ui.set_version("0.1.0".into());
     ui.set_build_date("2026-10-19".into());
-    ui.set_supporter(false);
     ui.set_source_url("https://github.com/Braydenh563/Snipdeck".into());
 }
 
@@ -185,6 +185,7 @@ pub fn shortcut_group(title: &str, note: &str, lines: &[(&str, &[&str])]) -> Sho
                     title: (*title).into(),
                     keys: strings(keys),
                     spoken: keys.join("+").into(),
+                    plain: false,
                 })
                 .collect::<Vec<_>>(),
         )),

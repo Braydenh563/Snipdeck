@@ -12,9 +12,12 @@
 use std::{cell::RefCell, rc::Rc};
 
 use i_slint_backend_testing::{
-    AccessibleLiveness, AccessibleRole, ElementHandle, ElementQuery, ElementRoot,
+    AccessibleLiveness, AccessibleRole, ElementHandle, ElementQuery, ElementRoot, mock_elapsed_time,
 };
-use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel, platform::Key};
+use slint::{
+    ComponentHandle, LogicalPosition, Model, ModelRc, SharedString, VecModel,
+    platform::{Key, WindowEvent},
+};
 use snipdeck_ui::{Fonts, MainSection, MainView, MainWindow, PaletteRow, selection};
 
 #[path = "support/mod.rs"]
@@ -214,6 +217,9 @@ fn start() -> (MainWindow, Log) {
     hook!(on_row_dropped, |from, onto| format!(
         "row-dropped:{from}:{onto}"
     ));
+    hook!(on_row_dropped_above, |from, onto| format!(
+        "row-dropped-above:{from}:{onto}"
+    ));
     hook!(on_row_dropped_on_list, |row, list| format!(
         "row-on-list:{row}:{list}"
     ));
@@ -249,7 +255,152 @@ macro_rules! ui_tests {
 }
 
 ui_tests! {
+
+    fn the_tile_button_is_off_and_unchecked_while_groups_draw_the_rows() {
+        let (ui, _log) = start();
+        ui.set_view(snipdeck_ui::MainView::Tile);
+        settle();
+        let tile = || find(&ui, "Tile view", AccessibleRole::Button);
+        assert_eq!(tile().accessible_enabled(), Some(true));
+        assert_eq!(tile().accessible_checked(), Some(true));
+        ui.set_has_groups(true);
+        settle();
+        assert_eq!(tile().accessible_enabled(), Some(false), "tiles cannot show groups");
+        assert_eq!(tile().accessible_checked(), Some(false), "and it is not announced as checked");
+        ui.set_has_groups(false);
+        settle();
+        assert_eq!(tile().accessible_checked(), Some(true), "the choice itself is kept");
+    }
+
+    fn a_header_made_with_a_rename_request_opens_its_editor_at_once() {
+        let (ui, _log) = start();
+        // Ctrl+G adds the header and asks for its rename in the same refresh: the header is born
+        // with the request, so the editor must open from the start value, not from a change.
+        ui.set_rename_row(0);
+        ui.set_rename_seq(1);
+        let mut rows = fixture::sample_rows();
+        rows.truncate(3);
+        rows.insert(
+            0,
+            snipdeck_ui::MainRow {
+                title: "Group".into(),
+                is_header: true,
+                group_count: 2,
+                ..Default::default()
+            },
+        );
+        rows[1].grouped = true;
+        rows[2].grouped = true;
+        fixture::set_rows(&ui, rows);
+        ui.set_has_groups(true);
+        settle();
+        assert!(!all(&ui, "Group name", AccessibleRole::TextInput).is_empty());
+    }
+
+    fn a_group_header_is_a_labelled_expandable_button_and_has_its_own_keys() {
+        let (ui, log) = start();
+        let header = |count: i32, collapsed: bool| snipdeck_ui::MainRow {
+            title: "Replies".into(),
+            is_header: true,
+            group_count: count,
+            group_collapsed: collapsed,
+            ..Default::default()
+        };
+        let mut rows = fixture::sample_rows();
+        rows.truncate(3);
+        rows.insert(0, header(2, false));
+        rows[1].grouped = true;
+        rows[2].grouped = true;
+        let model = fixture::set_rows(&ui, rows);
+        ui.set_has_groups(true);
+        ui.set_list_total(9);
+        settle();
+        // The footer counts items, not rows (a header is not an item; folded members still are).
+        assert!(ElementHandle::find_by_accessible_label(&ui, "9 items").next().is_some());
+        {
+            let l = log.clone();
+            ui.on_group_requested(move |i| l.borrow_mut().push(format!("group:{i}")));
+            let l = log.clone();
+            ui.on_group_toggled(move |i| l.borrow_mut().push(format!("toggle:{i}")));
+            let l = log.clone();
+            ui.on_group_collapsed_set(move |i, c| l.borrow_mut().push(format!("collapse:{i}:{c}")));
+            let l = log.clone();
+            ui.on_group_rename_requested(move |i| l.borrow_mut().push(format!("rename:{i}")));
+            let l = log.clone();
+            ui.on_group_delete_requested(move |i| l.borrow_mut().push(format!("delete:{i}")));
+        }
+        take(&log);
+        let button = find(&ui, "group Replies, 2 items", AccessibleRole::Button);
+        assert_eq!(button.accessible_expanded(), Some(true));
+        assert_eq!(button.accessible_expandable(), Some(true));
+        // Ctrl+G groups at the cursor row.
+        chord(ui.window(), &[Key::Control], "g");
+        settle();
+        assert_eq!(take(&log).last().map(String::as_str), Some("group:0"));
+        // The cursor is on the header: Left folds, Right unfolds, Enter toggles, F2 renames, Delete deletes the group.
+        press_key(&ui, Key::Home);
+        take(&log);
+        press_key(&ui, Key::LeftArrow);
+        press_key(&ui, Key::RightArrow);
+        press_key(&ui, Key::Return);
+        press_key(&ui, Key::F2);
+        press_key(&ui, Key::Delete);
+        assert_eq!(
+            take(&log),
+            ["collapse:0:true", "collapse:0:false", "toggle:0", "rename:0", "delete:0"]
+        );
+        // A click on the header toggles it.
+        press_at_centre(&ui, centre_of(&button));
+        assert_eq!(take(&log), ["toggle:0"]);
+        // A collapsed header says so.
+        let mut h = model.row_data(0).unwrap();
+        h.group_collapsed = true;
+        model.set_row_data(0, h);
+        settle();
+        assert_eq!(
+            find(&ui, "group Replies, 2 items", AccessibleRole::Button).accessible_expanded(),
+            Some(false)
+        );
+    }
     // ---- Item area: keyboard -------------------------------------------------------------------
+
+    fn wheeling_back_toward_the_cursor_row_moves_the_list_by_the_wheel_step_only() {
+        let (ui, _log) = start();
+        fixture::set_rows(&ui, fixture::numbered_rows(60));
+        settle();
+        ui.set_cursor(3);
+        settle();
+        let wheel = |dy: f32| {
+            ui.window().dispatch_event(WindowEvent::PointerScrolled {
+                position: LogicalPosition::new(640.0, 350.0),
+                delta_x: 0.0,
+                delta_y: dy,
+            });
+            mock_elapsed_time(std::time::Duration::from_secs(1));
+            settle();
+            mock_elapsed_time(std::time::Duration::from_millis(100));
+            settle();
+        };
+        wheel(-2000.0);
+        let far = ui.get_scroll_y();
+        assert!(far < -1000.0, "scrolled away: {far}");
+        // Back toward the cursor row in 20px steps, including the one that brings its row back into the ListView.
+        let mut at = far;
+        for step in 0..150 {
+            wheel(20.0);
+            let now = ui.get_scroll_y();
+            if now > -0.5 {
+                break;
+            }
+            assert!(
+                ((now - at) - 20.0).abs() < 0.5,
+                "step {step}: the list moved {} for a 20px wheel step (from {at} to {now})",
+                now - at
+            );
+            at = now;
+        }
+        assert!(at > -400.0, "got back to the top region: {at}");
+    }
 
     fn the_item_area_is_one_tab_stop_and_arrows_move_the_cursor_and_report_the_selection() {
         let (ui, log) = start();
@@ -283,6 +434,8 @@ ui_tests! {
         take(&log);
         press_key(&ui, Key::Return);
         shift(&ui, Key::Return);
+        chord(ui.window(), &[Key::Alt], &key(Key::Return));
+        settle();
         press_key(&ui, Key::F2);
         chord(ui.window(), &[Key::Control], "e");
         chord(ui.window(), &[Key::Control], "p");
@@ -293,6 +446,7 @@ ui_tests! {
             [
                 "action:Use:1",
                 "action:Copy:1",
+                "action:UsePlain:1",
                 "action:Edit:1",
                 "action:Edit:1",
                 "action:Pin:1",
@@ -493,6 +647,42 @@ ui_tests! {
         assert!(!ui.get_menu_open());
     }
 
+    fn dragging_a_row_up_to_the_top_slot_and_swapping_the_first_two_rows_works_in_the_list() {
+        let (ui, log) = start();
+        let _ = take(&log);
+        let rows: Vec<_> = by_role(&ui, AccessibleRole::ListItem)
+            .into_iter()
+            .filter(|e| e.accessible_label().is_some_and(|l| !l.is_empty()))
+            .collect();
+        // The cards, not the sidebar's lists: the widest items.
+        let widest = rows.iter().map(|e| e.size().width).fold(0.0f32, f32::max);
+        let mut rows: Vec<_> = rows.into_iter().filter(|e| e.size().width > widest * 0.9).collect();
+        rows.sort_by(|a, b| a.absolute_position().y.total_cmp(&b.absolute_position().y));
+        let (r0, r1, r2) = (rows[0].clone(), rows[1].clone(), rows[2].clone());
+        let drag = |from: slint::LogicalPosition, to: slint::LogicalPosition| {
+            use slint::platform::{PointerEventButton, WindowEvent};
+            let w = ui.window();
+            w.dispatch_event(WindowEvent::PointerMoved { position: from });
+            w.dispatch_event(WindowEvent::PointerPressed { position: from, button: PointerEventButton::Left });
+            w.dispatch_event(WindowEvent::PointerMoved { position: slint::LogicalPosition::new(from.x, from.y + 12.0) });
+            w.dispatch_event(WindowEvent::PointerMoved { position: to });
+            w.dispatch_event(WindowEvent::PointerReleased { position: to, button: PointerEventButton::Left });
+            settle();
+            take(&log)
+        };
+        let at = |e: &ElementHandle, dy: f32| {
+            slint::LogicalPosition::new(e.absolute_position().x + e.size().width / 2.0, e.absolute_position().y + dy)
+        };
+        // Row 2 and row 1 dropped on the top edge, upper half and middle of row 0: the first slot.
+        for dy in [-2.0, 1.0, r0.size().height / 4.0, r0.size().height / 2.0] {
+            assert_eq!(drag(centre_of(&r2), at(&r0, dy)), ["row-dropped:2:0"], "row 2, {dy}px");
+            assert_eq!(drag(centre_of(&r1), at(&r0, dy)), ["row-dropped:1:0"], "row 1, {dy}px");
+        }
+        // Swapping rows 1 and 2 (indexes 0 and 1) both ways.
+        assert_eq!(drag(centre_of(&r0), centre_of(&r1)), ["row-dropped:0:1"]);
+        assert_eq!(drag(centre_of(&r1), centre_of(&r0)), ["row-dropped:1:0"]);
+    }
+
     fn dragging_a_row_onto_a_row_a_list_or_a_list_onto_a_list_reports_the_drop() {
         let (ui, log) = start();
         let _ = take(&log);
@@ -630,6 +820,292 @@ ui_tests! {
         settle();
         drag(tile0, tile2);
         assert_eq!(take(&log), Vec::<String>::new(), "tiles stay put in a sorted list");
+    }
+
+    fn dragging_a_row_at_the_edge_of_a_long_list_scrolls_it_and_stops_when_the_pointer_leaves() {
+        use slint::platform::{PointerEventButton, WindowEvent};
+        let (ui, log) = start();
+        fixture::set_rows(&ui, fixture::numbered_rows(60));
+        settle();
+        let area_top = by_role(&ui, AccessibleRole::ListItem)
+            .into_iter()
+            .filter(|e| e.size().width > 300.0 && e.absolute_position().x > 200.0)
+            .map(|e| e.absolute_position().y)
+            .fold(f32::MAX, f32::min)
+            - 4.0;
+        let tick = |ms: u64| {
+            mock_elapsed_time(std::time::Duration::from_millis(ms));
+            settle();
+        };
+        let wheel = |dy: f32| {
+            ui.window().dispatch_event(WindowEvent::PointerScrolled {
+                position: LogicalPosition::new(640.0, 350.0),
+                delta_x: 0.0,
+                delta_y: dy,
+            });
+            tick(1000);
+            tick(100);
+        };
+        wheel(-2000.0);
+        let far = ui.get_scroll_y();
+        assert!(far < -1000.0, "scrolled away: {far}");
+        let rows: Vec<_> = {
+            let mut v: Vec<_> = by_role(&ui, AccessibleRole::ListItem)
+                .into_iter()
+                .filter(|e| e.size().width > 300.0 && e.absolute_position().x > 200.0)
+                .collect();
+            v.sort_by(|a, b| a.absolute_position().y.total_cmp(&b.absolute_position().y));
+            v
+        };
+        let mid = &rows[rows.len() / 2];
+        let x = mid.absolute_position().x + mid.size().width / 2.0;
+        let start_at = LogicalPosition::new(x, mid.absolute_position().y + mid.size().height / 2.0);
+        let w = ui.window();
+        let _ = take(&log);
+        w.dispatch_event(WindowEvent::PointerMoved { position: start_at });
+        w.dispatch_event(WindowEvent::PointerPressed { position: start_at, button: PointerEventButton::Left });
+        w.dispatch_event(WindowEvent::PointerMoved { position: LogicalPosition::new(x + 12.0, start_at.y) });
+        // Out of the band: nothing scrolls.
+        let inside = LogicalPosition::new(x, start_at.y);
+        w.dispatch_event(WindowEvent::PointerMoved { position: inside });
+        let before = ui.get_scroll_y();
+        tick(500);
+        assert!((ui.get_scroll_y() - before).abs() < 0.5, "no scroll in the middle");
+        // Held 4px under the top edge of the item area: the list scrolls toward its top, one step a tick.
+        let at_top = LogicalPosition::new(x, area_top + 4.0);
+        w.dispatch_event(WindowEvent::PointerMoved { position: at_top });
+        for _ in 0..10 {
+            tick(16);
+        }
+        let after = ui.get_scroll_y();
+        assert!(after > before + 20.0, "held at the top edge: scrolled {before} -> {after}");
+        // Leaving the band stops it.
+        w.dispatch_event(WindowEvent::PointerMoved { position: inside });
+        tick(16);
+        let stopped = ui.get_scroll_y();
+        for _ in 0..30 {
+            tick(16);
+        }
+        assert!((ui.get_scroll_y() - stopped).abs() < 0.5, "stopped after leaving the band");
+        // Back in the band, long enough to reach the top, never past it.
+        w.dispatch_event(WindowEvent::PointerMoved { position: at_top });
+        for _ in 0..400 {
+            tick(16);
+        }
+        assert!(ui.get_scroll_y().abs() < 0.5, "reached the top: {}", ui.get_scroll_y());
+        // The drop on the first row lands at index 0 (the band is off at the top, so the row takes it).
+        let first_row = LogicalPosition::new(x, area_top + 12.0);
+        w.dispatch_event(WindowEvent::PointerMoved { position: first_row });
+        w.dispatch_event(WindowEvent::PointerReleased { position: first_row, button: PointerEventButton::Left });
+        settle();
+        let lines: Vec<_> = take(&log).into_iter().filter(|l| l.starts_with("row-dropped")).collect();
+        assert_eq!(lines.len(), 1, "one drop: {lines:?}");
+        assert!(lines[0].ends_with(":0"), "dropped on the first row: {lines:?}");
+    }
+
+    fn dragging_a_row_held_at_the_bottom_edge_scrolls_the_list_to_its_end_and_no_further() {
+        use slint::platform::{PointerEventButton, WindowEvent};
+        let (ui, log) = start();
+        fixture::set_rows(&ui, fixture::numbered_rows(60));
+        settle();
+        let cards = || {
+            let mut v: Vec<_> = by_role(&ui, AccessibleRole::ListItem)
+                .into_iter()
+                .filter(|e| e.size().width > 300.0 && e.absolute_position().x > 200.0)
+                .collect();
+            v.sort_by(|a, b| a.absolute_position().y.total_cmp(&b.absolute_position().y));
+            v
+        };
+        let area_top = cards().first().expect("rows").absolute_position().y - 4.0;
+        let area_bottom = area_top + ui.get_list_height();
+        let first = cards().remove(2);
+        let x = first.absolute_position().x + first.size().width / 2.0;
+        let from = LogicalPosition::new(x, first.absolute_position().y + first.size().height / 2.0);
+        let w = ui.window();
+        let _ = take(&log);
+        w.dispatch_event(WindowEvent::PointerMoved { position: from });
+        w.dispatch_event(WindowEvent::PointerPressed { position: from, button: PointerEventButton::Left });
+        w.dispatch_event(WindowEvent::PointerMoved { position: LogicalPosition::new(x + 12.0, from.y) });
+        let at_bottom = LogicalPosition::new(x, area_bottom - 4.0);
+        w.dispatch_event(WindowEvent::PointerMoved { position: at_bottom });
+        let mut last = ui.get_scroll_y();
+        for _ in 0..600 {
+            mock_elapsed_time(std::time::Duration::from_millis(16));
+            settle();
+            let now = ui.get_scroll_y();
+            assert!(now <= last + 0.5, "only ever toward the end: {last} -> {now}");
+            last = now;
+        }
+        let end = ui.get_scroll_y();
+        let bound = ui.get_list_height() - ui.get_list_content_height();
+        assert!(
+            (end - bound).abs() < 0.5,
+            "the viewport ends exactly at the content bound: {end} vs {bound}"
+        );
+        for _ in 0..30 {
+            mock_elapsed_time(std::time::Duration::from_millis(16));
+            settle();
+        }
+        assert!((ui.get_scroll_y() - bound).abs() < 0.5, "stays at the end: {}", ui.get_scroll_y());
+        // Released inside the band: the row under the pointer takes the drop.
+        w.dispatch_event(WindowEvent::PointerReleased { position: at_bottom, button: PointerEventButton::Left });
+        settle();
+        let lines: Vec<_> = take(&log).into_iter().filter(|l| l.starts_with("row-dropped")).collect();
+        assert_eq!(lines.len(), 1, "a drop in the bottom band lands: {lines:?}");
+        assert!(
+            lines[0].ends_with(":59") || lines[0].ends_with(":58"),
+            "on one of the last rows: {lines:?}"
+        );
+    }
+
+    fn dragging_a_tile_held_at_the_top_edge_of_the_grid_scrolls_it_up_and_a_drop_lands_on_the_first_tile() {
+        use slint::platform::{PointerEventButton, WindowEvent};
+        let (ui, log) = start();
+        ui.set_view(MainView::Tile);
+        fixture::set_rows(&ui, fixture::numbered_rows(60));
+        settle();
+        let tiles = || {
+            let mut v: Vec<_> = by_role(&ui, AccessibleRole::ListItem)
+                .into_iter()
+                .filter(|e| e.size().width > 100.0 && e.absolute_position().x > 200.0)
+                .collect();
+            v.sort_by(|a, b| a.absolute_position().y.total_cmp(&b.absolute_position().y));
+            v
+        };
+        let area_top = tiles().first().expect("tiles").absolute_position().y - 4.0;
+        let wheel = |dy: f32| {
+            ui.window().dispatch_event(WindowEvent::PointerScrolled {
+                position: LogicalPosition::new(640.0, 350.0),
+                delta_x: 0.0,
+                delta_y: dy,
+            });
+            mock_elapsed_time(std::time::Duration::from_secs(1));
+            settle();
+            mock_elapsed_time(std::time::Duration::from_millis(100));
+            settle();
+        };
+        wheel(-1500.0);
+        assert!(ui.get_grid_scroll_y() < -800.0, "scrolled away: {}", ui.get_grid_scroll_y());
+        let t = tiles();
+        let src = &t[t.len() / 2];
+        let from = LogicalPosition::new(
+            src.absolute_position().x + src.size().width / 2.0,
+            src.absolute_position().y + src.size().height / 2.0,
+        );
+        let w = ui.window();
+        let _ = take(&log);
+        w.dispatch_event(WindowEvent::PointerMoved { position: from });
+        w.dispatch_event(WindowEvent::PointerPressed { position: from, button: PointerEventButton::Left });
+        w.dispatch_event(WindowEvent::PointerMoved { position: LogicalPosition::new(from.x + 12.0, from.y) });
+        let at_top = LogicalPosition::new(from.x, area_top + 4.0);
+        w.dispatch_event(WindowEvent::PointerMoved { position: at_top });
+        for _ in 0..600 {
+            mock_elapsed_time(std::time::Duration::from_millis(16));
+            settle();
+        }
+        assert!(ui.get_grid_scroll_y().abs() < 0.5, "reached the top: {}", ui.get_grid_scroll_y());
+        let first = LogicalPosition::new(from.x, area_top + 60.0);
+        w.dispatch_event(WindowEvent::PointerMoved { position: first });
+        w.dispatch_event(WindowEvent::PointerReleased { position: first, button: PointerEventButton::Left });
+        settle();
+        let lines: Vec<_> = take(&log).into_iter().filter(|l| l.starts_with("row-dropped")).collect();
+        assert_eq!(lines.len(), 1, "one drop: {lines:?}");
+        assert!(lines[0].starts_with("row-dropped:") && lines[0].split(':').nth(2).is_some_and(|n| n.parse::<usize>().unwrap() < 6), "dropped on a tile of the first row: {lines:?}");
+    }
+
+    fn an_item_dropped_on_the_top_half_of_a_group_header_lands_above_it_and_on_the_bottom_half_joins() {
+        use slint::platform::{PointerEventButton, WindowEvent};
+        let (ui, log) = start();
+        let mut rows = fixture::sample_rows();
+        rows.truncate(4);
+        rows.insert(
+            0,
+            snipdeck_ui::MainRow {
+                title: "Replies".into(),
+                is_header: true,
+                group_count: 2,
+                ..Default::default()
+            },
+        );
+        rows[1].grouped = true;
+        rows[2].grouped = true;
+        fixture::set_rows(&ui, rows);
+        ui.set_has_groups(true);
+        settle();
+        let header = find(&ui, "group Replies, 2 items", AccessibleRole::Button);
+        let (p, size) = (header.absolute_position(), header.size());
+        let at = |f: f32| LogicalPosition::new(p.x + size.width / 2.0, p.y + size.height * f);
+        let mut cards: Vec<_> = by_role(&ui, AccessibleRole::ListItem)
+            .into_iter()
+            .filter(|e| e.size().width > 300.0 && e.absolute_position().x > 200.0)
+            .collect();
+        cards.sort_by(|a, b| a.absolute_position().y.total_cmp(&b.absolute_position().y));
+        let item = cards.last().expect("an item row");
+        let from = LogicalPosition::new(
+            item.absolute_position().x + item.size().width / 2.0,
+            item.absolute_position().y + item.size().height / 2.0,
+        );
+        let w = ui.window();
+        let drop_at = |to: LogicalPosition| {
+            let _ = take(&log);
+            w.dispatch_event(WindowEvent::PointerMoved { position: from });
+            w.dispatch_event(WindowEvent::PointerPressed { position: from, button: PointerEventButton::Left });
+            w.dispatch_event(WindowEvent::PointerMoved { position: LogicalPosition::new(from.x + 12.0, from.y) });
+            w.dispatch_event(WindowEvent::PointerMoved { position: to });
+            w.dispatch_event(WindowEvent::PointerReleased { position: to, button: PointerEventButton::Left });
+            settle();
+            take(&log).into_iter().filter(|l| l.starts_with("row-dropped")).collect::<Vec<_>>()
+        };
+        assert_eq!(drop_at(at(0.2)), ["row-dropped-above:4:0"], "top half: above the group");
+        assert_eq!(drop_at(at(0.8)), ["row-dropped:4:0"], "bottom half: joins the group");
+    }
+
+    fn a_tile_dropped_in_the_gaps_of_the_grid_lands_on_the_neighbouring_tile() {
+        let (ui, log) = start();
+        ui.set_view(MainView::Tile);
+        settle();
+        let _ = take(&log);
+        let drag = |from: slint::LogicalPosition, to: slint::LogicalPosition| {
+            use slint::platform::{PointerEventButton, WindowEvent};
+            let w = ui.window();
+            w.dispatch_event(WindowEvent::PointerMoved { position: from });
+            w.dispatch_event(WindowEvent::PointerPressed { position: from, button: PointerEventButton::Left });
+            w.dispatch_event(WindowEvent::PointerMoved { position: slint::LogicalPosition::new(from.x + 12.0, from.y) });
+            w.dispatch_event(WindowEvent::PointerMoved { position: to });
+            w.dispatch_event(WindowEvent::PointerReleased { position: to, button: PointerEventButton::Left });
+            settle();
+            take(&log)
+        };
+        let first = by_role(&ui, AccessibleRole::ListItem)
+            .into_iter()
+            .find(|e| e.accessible_label().is_some_and(|l| l.starts_with("Thanks, received")))
+            .expect("the first tile");
+        let size = first.size();
+        let mut tiles: Vec<_> = by_role(&ui, AccessibleRole::ListItem)
+            .into_iter()
+            .filter(|e| (e.size().width - size.width).abs() < 1.0 && (e.size().height - size.height).abs() < 1.0)
+            .collect();
+        tiles.sort_by(|a, b| {
+            let (pa, pb) = (a.absolute_position(), b.absolute_position());
+            pa.y.total_cmp(&pb.y).then(pa.x.total_cmp(&pb.x))
+        });
+        assert!(tiles.len() >= 3, "the fixture shows tiles");
+        let (p0, p1) = (tiles[0].absolute_position(), tiles[1].absolute_position());
+        let at = |x: f32, y: f32| slint::LogicalPosition::new(x, y);
+        let from = |n: usize| {
+            let (p, s) = (tiles[n].absolute_position(), tiles[n].size());
+            at(p.x + s.width / 2.0, p.y + s.height / 2.0)
+        };
+        // Above the first tile (the top padding of the grid): the first slot.
+        let lines = drag(from(2), at(p0.x + size.width / 2.0, p0.y - 2.0));
+        assert_eq!(lines, ["row-dropped:2:0"], "the gap above the first tile");
+        // Between tile 0 and tile 1 (the column gap): it belongs to a neighbour, so a drop lands there.
+        let gap_x = p0.x + size.width + (p1.x - p0.x - size.width) / 2.0;
+        let lines = drag(from(2), at(gap_x, p0.y + size.height / 2.0));
+        assert!(
+            lines == ["row-dropped:2:0"] || lines == ["row-dropped:2:1"],
+            "the column gap between two tiles takes a drop: {lines:?}"
+        );
     }
 
     fn alt_up_and_alt_down_ask_to_move_the_cursor_row_in_the_list_and_in_the_tile_grid() {
@@ -1378,6 +1854,11 @@ ui_tests! {
         take(&log);
         press(ui.window(), &key(Key::Return));
         assert_eq!(take(&log), ["quick-add:a/b:0:false"], "typing a / does not jump to the search");
+        settle();
+        find(&ui, "New item in Email replies", AccessibleRole::Button);
+        assert!(ui.get_items_focused(), "creating folds the box and the focus goes back to the items");
+        chord(ui.window(), &[Key::Control], "n");
+        settle();
         find(&ui, "More options: open the full editor", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["quick-add-full:"]);
         press(ui.window(), &key(Key::Escape));
@@ -1585,6 +2066,36 @@ ui_tests! {
         settle();
         assert!(ui.get_rail());
         let _ = find(&ui, "Settings", AccessibleRole::Button);
+    }
+
+    fn rail_tooltips_stay_inside_the_window() {
+        let (ui, _log) = start();
+        ui.set_sidebar_collapsed(true);
+        settle();
+        assert!(ui.get_rail());
+        let win = ui.window().size().to_logical(ui.window().scale_factor());
+        let mut seen = 0;
+        for label in ["Settings", "Board: Work", "Expand sidebar (Ctrl+B)"] {
+            let Some(button) = all(&ui, label, AccessibleRole::Button).into_iter().next() else {
+                continue;
+            };
+            ui.window().dispatch_event(slint::platform::WindowEvent::PointerMoved {
+                position: centre_of(&button),
+            });
+            i_slint_backend_testing::mock_elapsed_time(std::time::Duration::from_millis(900));
+            settle();
+            let tips = ElementQuery::from_root(&ui).match_inherits("Tooltip").find_all();
+            let Some(tip) = tips.last() else { continue };
+            seen += 1;
+            let (p, z) = (tip.absolute_position(), tip.size());
+            assert!(p.x >= 8.0, "{label}: tooltip starts at x {}", p.x);
+            assert!(p.x + z.width <= win.width - 8.0, "{label}: tooltip ends at {}", p.x + z.width);
+            ui.window().dispatch_event(slint::platform::WindowEvent::PointerMoved {
+                position: slint::LogicalPosition::new(win.width - 2.0, win.height - 2.0),
+            });
+            settle();
+        }
+        assert!(seen >= 2, "tooltips measured: {seen}");
     }
 
     // ---- States ------------------------------------------------------------------------------------

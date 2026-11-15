@@ -3,7 +3,7 @@
 use std::{collections::BTreeMap, time::Duration};
 
 use snipdeck_core::{
-    Feature, ItemId, UseMode, UseOutcome,
+    ItemId, UseMode, UseOutcome,
     template::{Locale, Template, transform::Transform},
 };
 use snipdeck_platform::{
@@ -13,7 +13,7 @@ use snipdeck_platform::{
 
 use super::{
     CLIPBOARD_CLEAR_ATTEMPTS, CLIPBOARD_CLEAR_RETRY, ClipboardDigest, Controller, FillSubmission,
-    Library, PendingClear, REFOCUS_WAIT, StackView, UseResult, failed, neutral,
+    Library, PendingClear, REFOCUS_WAIT, StackView, UseResult, failed, neutral, views::FillErase,
 };
 use crate::{
     capture::{self, Captured},
@@ -24,6 +24,17 @@ use crate::{
     toast::{self, Toast, ToastKind, ToastMessage},
     usecase::{self, UseError, UseRequest},
 };
+
+/// A typed trigger to erase with a paste.
+pub(super) struct Erasing<'a> {
+    /// Backspaces to send.
+    pub(super) chars: usize,
+    /// The app the trigger was typed into: the paste only goes while it is still in front.
+    pub(super) app: Option<String>,
+    /// `false` once a key was typed after the trigger (none for a confirmed fill form, whose own
+    /// keystrokes the hook also sees).
+    pub(super) fresh: Option<&'a dyn Fn() -> bool>,
+}
 
 impl<S, C, K, T> Controller<S, C, K, T>
 where
@@ -53,6 +64,7 @@ where
     /// the window it came from.
     pub fn open_picker(&mut self) {
         self.fill = None;
+        self.fill_erase = None;
         self.on_target_changed();
         match PickerModel::load_cached(&self.store, self.model.board(), &self.index_cache) {
             Ok(picker) => self.picker = Some(picker),
@@ -161,6 +173,7 @@ where
         let (title, source) =
             usecase::template_source(&self.store, item)?.ok_or(UseError::NotText)?;
         let template = Template::parse(&source)?;
+        self.fill_erase = None;
         self.fill_seq += 1;
         self.fill = Some(FillModel::new(item, mode, title, template).with_transform(transform));
         Ok(())
@@ -176,12 +189,29 @@ where
     pub fn fill_changed(&mut self, index: usize, value: &str) {
         if let Some(fill) = &mut self.fill {
             fill.set_value(index, value);
+            // Typing the answers is use: the idle lock must not close the form under the user.
+            self.note_activity();
         }
+    }
+
+    /// Closes the fill form if it belongs to a sensitive template, as the lock does: the form
+    /// holds the decrypted template. Returns whether one was open.
+    pub(super) fn close_sensitive_fill(&mut self) -> bool {
+        let sensitive = self
+            .fill
+            .as_ref()
+            .is_some_and(|f| self.store.item(f.item()).map_or(true, |i| i.sensitive));
+        if sensitive {
+            self.fill = None;
+            self.fill_erase = None;
+        }
+        sensitive
     }
 
     /// Closes the fill form without using the template (Esc, the close button) and hands the
     /// focus back to the Target.
     pub fn cancel_fill(&mut self) {
+        self.fill_erase = None;
         if self.fill.take().is_some() {
             self.target.refocus();
         }
@@ -202,6 +232,7 @@ where
             mode: fill.mode(),
             answers: fill.answers(),
             transform: fill.transform(),
+            erase: self.fill_erase.take(),
         };
         self.fill = None;
         Some(submission)
@@ -209,11 +240,17 @@ where
 
     /// Re-runs the use that stopped for answers, now with them.
     pub fn run_fill(&mut self, submission: FillSubmission) -> UseResult {
-        self.run_use(
+        let erase = submission.erase.map(|e| Erasing {
+            chars: e.chars,
+            app: e.app,
+            fresh: None,
+        });
+        self.run_use_erasing(
             submission.item,
             submission.mode,
             submission.answers,
             submission.transform,
+            erase,
         )
     }
 
@@ -402,16 +439,9 @@ where
         }
     }
 
-    /// "Start stack": Paste next now walks the marked items. A Supporter feature.
+    /// "Start stack": Paste next now walks the marked items.
     pub fn start_stack(&mut self) {
         if self.stack.is_empty() {
-            return;
-        }
-        if !self.entitlements.allows(Feature::PasteStack) {
-            self.show_toast(Toast {
-                kind: ToastKind::Danger,
-                message: ToastMessage::NeedsPro(Feature::PasteStack),
-            });
             return;
         }
         self.queue.reset();
@@ -428,13 +458,6 @@ where
     /// The paste-next hotkey: pastes the next item of the pinned strip (when the board has
     /// pinned items) or of the list the Panel shows. See [`paste_next`].
     pub fn paste_next(&mut self) -> Option<UseResult> {
-        if !self.entitlements.allows(Feature::PasteStack) {
-            self.show_toast(Toast {
-                kind: ToastKind::Danger,
-                message: ToastMessage::NeedsPro(Feature::PasteStack),
-            });
-            return None;
-        }
         self.on_target_changed();
         let pinned = self.model.pinned();
         let (source, ids) = match (self.model.board(), self.model.list()) {
@@ -473,6 +496,21 @@ where
         answers: BTreeMap<String, String>,
         transform: Option<Transform>,
     ) -> UseResult {
+        self.run_use_erasing(item, mode, answers, transform, None)
+    }
+
+    /// [`run_use`](Self::run_use) that also erases a typed trigger: with the paste key, in one
+    /// injection, and only if the user has not typed on or changed window by then. A template
+    /// that needs answers erases nothing yet: the erase waits for the confirmed form.
+    pub(super) fn run_use_erasing(
+        &mut self,
+        item: ItemId,
+        mode: UseMode,
+        answers: BTreeMap<String, String>,
+        transform: Option<Transform>,
+        erase: Option<Erasing<'_>>,
+    ) -> UseResult {
+        let chars = erase.as_ref().map_or(0, |e| e.chars);
         let route = self.model.route();
         let pasted_into = self.model.target().map(|t| t.app.clone());
         if mode != UseMode::Copy && matches!(route, Route::Paste { .. }) && self.target.refocus() {
@@ -483,10 +521,10 @@ where
             mode,
             route: route.clone(),
             now: self.clock.now(),
-            entitlements: self.entitlements,
             answers,
             transform,
             uuids: None,
+            erase: chars,
             // Only a template that says `{clipboard}` reads what the user copied (A22).
             clipboard_text: if usecase::template_source(&self.store, item)
                 .ok()
@@ -506,7 +544,14 @@ where
             keyboard: &mut self.services.keyboard,
             timing: &mut self.services.timing,
         };
-        match usecase::use_item(&mut self.store, &mut env, &request) {
+        // Asked right before the keys go out: no key typed since the trigger, same app in front.
+        let target = &self.target;
+        let proceed = || {
+            erase.as_ref().is_none_or(|e| {
+                e.fresh.is_none_or(|fresh| fresh()) && target.current().map(|t| t.app) == e.app
+            })
+        };
+        match usecase::use_item_guarded(&mut self.store, &mut env, &request, &proceed) {
             Ok(used) => {
                 if let Some(line) = used.count_failed_line() {
                     crate::trace!("{line}");
@@ -523,13 +568,25 @@ where
                 self.refresh_logged("a paste");
                 UseResult::Done(used.outcome)
             }
-            Err(UseError::NeedsAnswers(_)) => match self.open_fill(item, mode, transform) {
-                Ok(()) => UseResult::NeedsAnswers,
-                Err(error) => {
-                    self.show_toast(toast::after_error(&error));
-                    UseResult::Failed
+            Err(UseError::Platform(snipdeck_platform::pipeline::Error::Superseded)) => {
+                UseResult::Cancelled
+            }
+            Err(UseError::NeedsAnswers(_)) => {
+                match self.open_fill(item, mode, transform) {
+                    Ok(()) => {
+                        // The typed code goes when the form is confirmed, not before.
+                        self.fill_erase = erase.filter(|e| e.chars > 0).map(|e| FillErase {
+                            chars: e.chars,
+                            app: e.app,
+                        });
+                        UseResult::NeedsAnswers
+                    }
+                    Err(error) => {
+                        self.show_toast(toast::after_error(&error));
+                        UseResult::Failed
+                    }
                 }
-            },
+            }
             Err(error) => {
                 self.show_toast(toast::after_error(&error));
                 UseResult::Failed
@@ -542,6 +599,13 @@ where
     /// clipboard leaves nothing to clear; one whose snapshot or restore failed
     /// ([`UseOutcome::PastedNotRestored`]) leaves the item there, so it is cleared like a copy.
     pub(super) fn schedule_clipboard_clear(&mut self, item: ItemId, outcome: UseOutcome) {
+        if self
+            .store
+            .item(item)
+            .is_ok_and(|i| i.sensitive && i.kind == snipdeck_core::ItemKind::File)
+        {
+            self.secret_files_pasted = true;
+        }
         let life = Duration::from_secs(u64::from(self.settings.clipboard_clear_secs));
         if life.is_zero()
             || matches!(outcome, UseOutcome::Pasted)
@@ -579,10 +643,31 @@ where
 
     /// Clears the clipboard if the wait is over and it still holds the copied text.
     pub fn clear_clipboard_if_due(&mut self) {
+        self.clear_clipboard(false);
+    }
+
+    /// Clears a pending sensitive copy now, whatever its due time (the app is quitting, and the
+    /// timer that would have done it dies with the event loop). A clipboard that someone else
+    /// has written to since is left alone, as for the timed clear.
+    pub fn clear_pending_clipboard_now(&mut self) {
+        self.clear_clipboard(true);
+        self.forget_secret_files();
+    }
+
+    /// Deletes the decrypted files a sensitive Files item left in the temp folder when it was
+    /// pasted (the lock and the quit call it). A file the target still holds open stays until
+    /// the next start. Nothing to do when no such item was pasted.
+    pub(super) fn forget_secret_files(&mut self) {
+        if std::mem::take(&mut self.secret_files_pasted) {
+            self.services.clipboard.forget_pasted_files();
+        }
+    }
+
+    fn clear_clipboard(&mut self, force: bool) {
         let Some(pending) = &self.clipboard_clear else {
             return;
         };
-        if self.clock.now() < pending.due {
+        if !force && self.clock.now() < pending.due {
             return;
         }
         let Some(mut pending) = self.clipboard_clear.take() else {
@@ -605,6 +690,7 @@ where
         // Still ours but not cleared: the clipboard was busy. Try again shortly (A6).
         if ours
             && !cleared
+            && !force
             && pending.attempts + 1 < CLIPBOARD_CLEAR_ATTEMPTS
             && let Ok(due) = self.clock.now().checked_add(CLIPBOARD_CLEAR_RETRY)
         {

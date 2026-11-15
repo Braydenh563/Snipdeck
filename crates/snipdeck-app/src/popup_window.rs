@@ -67,6 +67,7 @@ impl<W: ComponentHandle + 'static> Shell<W> {
             return Ok((window, false));
         }
         let window = make()?;
+        crate::repaint::watch(window.window());
         *self.window.borrow_mut() = Some(window.clone_strong());
         Ok((window, true))
     }

@@ -112,6 +112,16 @@ where
         let Some(text) = Catalog::get().get_symbol(id).and_then(|s| s.text.clone()) else {
             return UseResult::Failed;
         };
+        let result = self.use_text(text, mode);
+        if matches!(result, UseResult::Done(_)) {
+            self.remember_symbol(id);
+        }
+        result
+    }
+
+    /// Pastes `text` into the Target, or copies it (`mode` Copy, or no Target), and raises the
+    /// usual toast. Shared by the Symbols and Colours tabs; remembering the use is the caller's.
+    pub(super) fn use_text(&mut self, text: String, mode: UseMode) -> UseResult {
         let Some(payload) = Payload::new(vec![Data::Text(text)]) else {
             return UseResult::Failed;
         };
@@ -129,7 +139,6 @@ where
             Ok(outcome) => {
                 self.note_activity();
                 self.show_toast(toast::after_use(outcome, &route, pasted_into.as_deref()));
-                self.remember_symbol(id);
                 UseResult::Done(outcome)
             }
             Err(error) => {

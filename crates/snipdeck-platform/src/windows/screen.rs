@@ -14,10 +14,15 @@ use windows::Win32::System::DataExchange::{
     GetClipboardSequenceNumber, IsClipboardFormatAvailable,
 };
 use windows::Win32::System::Ole::{CF_BITMAP, CF_DIB, CF_DIBV5};
+use windows::Win32::System::Threading::GetCurrentThreadId;
 use windows::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
-use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
+use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON, VK_RBUTTON};
+use windows::Win32::UI::WindowsAndMessaging::{
+    GUI_INMOVESIZE, GUITHREADINFO, GetCursorPos, GetGUIThreadInfo, GetSystemMetrics, SM_SWAPBUTTON,
+};
 
 use crate::route::ScreenRect;
+use crate::win_logic;
 
 /// What is known of one monitor.
 #[derive(Debug, Clone, PartialEq)]
@@ -39,6 +44,41 @@ pub fn cursor_position() -> Option<(i32, i32)> {
     // SAFETY: `at` is a valid POINT that outlives the call.
     unsafe { GetCursorPos(&raw mut at) }.ok()?;
     Some((at.x, at.y))
+}
+
+/// Whether the primary mouse button (the left one, or the right one for a left-handed mouse) is
+/// held down right now, wherever the pointer is. The Panel's drag ends on it when the window
+/// never saw the button come up.
+#[must_use]
+pub fn primary_button_down() -> bool {
+    // SAFETY: no preconditions.
+    let swapped = unsafe { GetSystemMetrics(SM_SWAPBUTTON) } != 0;
+    let key = if swapped { VK_RBUTTON } else { VK_LBUTTON };
+    // SAFETY: no preconditions. The high bit says the physical button is down.
+    let state = unsafe { GetAsyncKeyState(i32::from(key.0)) };
+    state < 0
+}
+
+/// Whether the calling thread is inside the system's move or size loop (the one a window's
+/// border or caption starts, which runs until the button comes up): `GUI_INMOVESIZE`. Asked on
+/// the UI thread it says whether a resize of one of its windows is still under way, also
+/// where the button itself cannot be read. Only a loop on `panel` (its `HWND` value) counts: one
+/// on the thread's Main or Settings window is not the Panel's resize.
+#[must_use]
+pub fn in_size_loop(panel: isize) -> bool {
+    let mut info = GUITHREADINFO {
+        cbSize: u32::try_from(size_of::<GUITHREADINFO>()).unwrap_or(0),
+        ..Default::default()
+    };
+    // SAFETY: `info` is initialised with its size, as the call requires, and outlives the
+    // call; the thread id is the caller's own.
+    let read = unsafe { GetGUIThreadInfo(GetCurrentThreadId(), &raw mut info) };
+    read.is_ok()
+        && win_logic::size_loop_on_panel(
+            info.flags.contains(GUI_INMOVESIZE),
+            info.hwndMoveSize.0 as isize,
+            panel,
+        )
 }
 
 /// The clipboard's change count and whether it holds a picture, for waiting on a screenshot.

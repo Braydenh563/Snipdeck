@@ -9,8 +9,8 @@
 use std::{fs, io::Read, path::Path};
 
 use snipdeck_core::{
-    Content, Feature, FileEntry, Inline, ItemKind, ItemLabel,
-    template::{Template, TemplateError},
+    Content, FileEntry, Inline, ItemKind, ItemLabel,
+    template::{Template, TemplateError, TemplateErrorKind},
 };
 use snipdeck_platform::system_look::HighContrast;
 
@@ -25,10 +25,11 @@ pub const EDIT_LIMIT_BYTES: usize = 16 * 1024;
 pub const TITLE_MAX_CHARS: usize = 200;
 
 /// The largest file an Image or File item takes. It is the largest entry a `.snipdeck` archive
-/// reads back, so an item that is saved can always be exported and restored.
+/// reads back less the envelope a sensitive item's payload gains, so an item that is saved can
+/// always be exported and restored, sensitive or not.
 #[must_use]
 pub fn max_attachment_bytes() -> u64 {
-    snipdeck_portable::Limits::default().max_entry_bytes
+    snipdeck_portable::Limits::default().max_attachment_bytes()
 }
 
 /// The largest picture the editor decodes to show a preview, in pixels.
@@ -82,12 +83,24 @@ pub struct EditorInput {
     pub content: String,
     /// The Sensitive switch.
     pub sensitive: bool,
+    /// The "Always paste as plain text" switch (SPEC 5.1a).
+    pub always_plain: bool,
     /// The list chosen: an index into [`ItemEditorView::list_names`].
     pub list_index: usize,
     /// The path field of a new Image or File item.
     pub source_path: String,
     /// The colour label chosen, if any.
     pub label: Option<ItemLabel>,
+}
+
+/// What is wrong with a template, as data: the words come from the UI's `TemplateTexts`, so they
+/// follow the selected language.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TemplateProblem {
+    /// The template is sensitive, so the parser's explanation (which quotes the text) is not given.
+    Sensitive,
+    /// The parser's finding.
+    Parse(TemplateErrorKind),
 }
 
 /// Why the editor refuses something. The words are `wording::editor_problem_text`.
@@ -107,14 +120,16 @@ pub enum EditorProblem {
         /// The limit in KB.
         max_kb: usize,
     },
+    /// The trigger is not 1 to 32 characters without spaces.
+    TriggerInvalid,
+    /// Another item already has this trigger.
+    TriggerTaken,
     /// A link without a scheme such as `https://`.
     LinkNeedsScheme,
     /// A link with a space or a line break in it.
     LinkHasSpace,
-    /// The template does not parse; carries the parser's own explanation.
-    Template(String),
-    /// The text uses something Supporter (a prompted placeholder).
-    NeedsPro(Feature),
+    /// The template does not parse; carries what is wrong, worded by `wording` in the UI language.
+    Template(TemplateProblem),
     /// No file chosen.
     SourceEmpty,
     /// No file at that path.
@@ -251,6 +266,10 @@ pub struct ItemEditorView {
     pub source_problem: Option<EditorProblem>,
     /// The Sensitive switch is refused.
     pub privacy_problem: Option<EditorProblem>,
+    /// The Trigger is refused.
+    pub trigger_problem: Option<EditorProblem>,
+    /// The Trigger field as it stands.
+    pub trigger: String,
     /// A failure that belongs to no field.
     pub banner: Option<EditorProblem>,
     /// The text is over the editing cap: shown read-only; this is its size in bytes.
@@ -262,8 +281,6 @@ pub struct ItemEditorView {
     pub saved_text: String,
     /// What an existing Image or File holds.
     pub attachment: Option<AttachmentView>,
-    /// Prompted placeholders are available (Supporter).
-    pub prompted_available: bool,
     /// The app can open a file dialog.
     pub can_browse: bool,
     /// The fields hold a draft from an earlier session.
@@ -339,24 +356,15 @@ pub fn check_link(text: &str) -> Result<String, EditorProblem> {
     }
 }
 
-/// Checks template `text`: it must parse, and a Free user may not introduce prompted
-/// placeholders (`introduced`: the text is new or changed, so a template that already had them
-/// can still be saved with another title).
+/// Checks template `text`: it must parse.
 ///
 /// # Errors
 ///
-/// [`EditorProblem::Template`] or [`EditorProblem::NeedsPro`].
-pub fn check_template(
-    text: &str,
-    prompted_allowed: bool,
-    introduced: bool,
-) -> Result<(), EditorProblem> {
-    let template = Template::parse(text)
-        .map_err(|e: TemplateError| EditorProblem::Template(e.kind.to_string()))?;
-    if introduced && !prompted_allowed && template.requires(Feature::PromptedFields) {
-        return Err(EditorProblem::NeedsPro(Feature::PromptedFields));
-    }
-    Ok(())
+/// [`EditorProblem::Template`].
+pub fn check_template(text: &str) -> Result<(), EditorProblem> {
+    Template::parse(text)
+        .map(drop)
+        .map_err(|e: TemplateError| EditorProblem::Template(TemplateProblem::Parse(e.kind)))
 }
 
 /// `text` for a text kind: not blank and within the editing cap.
@@ -413,9 +421,7 @@ pub fn read_source(kind: ItemKind, path: &str) -> Result<Source, EditorProblem> 
     }
     let limit = max_attachment_bytes();
     if meta.len() > limit {
-        return Err(EditorProblem::SourceTooLarge {
-            max_mb: limit / (1024 * 1024),
-        });
+        return Err(too_large(limit));
     }
     let name = canonical
         .file_name()
@@ -435,6 +441,15 @@ pub fn read_source(kind: ItemKind, path: &str) -> Result<Source, EditorProblem> 
     Ok(Source { kind, name, bytes })
 }
 
+/// The "file too large" problem for `limit` bytes. The limit is a little under a whole number of
+/// megabytes (the entry limit less the envelope), so it is rounded up: both places that refuse
+/// a file say the same number.
+fn too_large(limit: u64) -> EditorProblem {
+    EditorProblem::SourceTooLarge {
+        max_mb: limit.div_ceil(1024 * 1024),
+    }
+}
+
 /// The whole file, but never more than `limit` bytes (a file that grows while it is read).
 fn read_bounded(path: &Path, limit: u64) -> Result<Vec<u8>, EditorProblem> {
     let file = fs::File::open(path).map_err(|_| EditorProblem::SourceUnreadable)?;
@@ -443,9 +458,7 @@ fn read_bounded(path: &Path, limit: u64) -> Result<Vec<u8>, EditorProblem> {
         .read_to_end(&mut bytes)
         .map_err(|_| EditorProblem::SourceUnreadable)?;
     if u64::try_from(bytes.len()).unwrap_or(u64::MAX) > limit {
-        return Err(EditorProblem::SourceTooLarge {
-            max_mb: limit / (1024 * 1024),
-        });
+        return Err(too_large(limit));
     }
     Ok(bytes)
 }
@@ -528,6 +541,26 @@ mod tests {
     use super::*;
 
     #[test]
+    fn both_ways_of_refusing_a_big_file_name_the_same_size() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("big.bin");
+        std::fs::write(&path, [1_u8; 3]).unwrap();
+        // The size check on the file's length, and the check on the bytes actually read.
+        let by_length = read_source(ItemKind::File, &path.to_string_lossy());
+        assert!(by_length.is_ok(), "a small file is fine");
+        let limit = max_attachment_bytes();
+        assert_eq!(
+            too_large(limit),
+            EditorProblem::SourceTooLarge { max_mb: 64 }
+        );
+        assert_eq!(
+            read_bounded(&path, 2),
+            Err(EditorProblem::SourceTooLarge { max_mb: 1 }),
+            "a file that grew while it was read"
+        );
+    }
+
+    #[test]
     fn a_placeholder_goes_in_at_the_caret_and_the_caret_lands_after_it() {
         let (text, caret) = insert_at_caret("Dear , thanks", 5, "{field:Name}");
         assert_eq!(text, "Dear {field:Name}, thanks");
@@ -598,7 +631,7 @@ mod tests {
         assert_eq!(check_link(" https://a.b ").as_deref(), Ok("https://a.b"));
         for bad in [
             "example.com",
-            "figma.com/file/x",
+            "example.org/file/x",
             "https://",
             "://x",
             "1http://x",
@@ -617,27 +650,16 @@ mod tests {
     }
 
     #[test]
-    fn templates_must_parse_and_prompts_are_pro() {
-        assert!(check_template("Dear {field:Name}, {date}", true, true).is_ok());
-        assert!(check_template("Today is {date}", false, true).is_ok());
-        assert_eq!(
-            check_template("Dear {field:Name}", false, true),
-            Err(EditorProblem::NeedsPro(Feature::PromptedFields))
-        );
-        assert_eq!(
-            check_template("Pick {choice:Size|S|M}", false, true),
-            Err(EditorProblem::NeedsPro(Feature::PromptedFields))
-        );
-        assert!(
-            check_template("Dear {field:Name}", false, false).is_ok(),
-            "a template that already had it can be saved again"
-        );
+    fn templates_must_parse_and_prompts_are_allowed() {
+        assert!(check_template("Dear {field:Name}, {date}").is_ok());
+        assert!(check_template("Pick {choice:Size|S|M}").is_ok());
+        assert!(check_template("Today is {date}").is_ok());
         assert!(matches!(
-            check_template("Broken {nope}", true, true),
+            check_template("Broken {nope}"),
             Err(EditorProblem::Template(_))
         ));
         assert!(matches!(
-            check_template("Open { here", true, false),
+            check_template("Open { here"),
             Err(EditorProblem::Template(_))
         ));
     }

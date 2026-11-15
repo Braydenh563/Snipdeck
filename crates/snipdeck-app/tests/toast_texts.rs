@@ -13,10 +13,9 @@ use snipdeck_app::{
     failure::Cause,
     history::Action,
     settings::{DockEdge, Theme},
-    toast::{LicenceProblem, ToastMessage},
-    wording::{licence_problem_text, toast_text},
+    toast::ToastMessage,
+    wording::toast_text,
 };
-use snipdeck_core::Feature;
 use snipdeck_ui::PanelWindow;
 
 #[path = "support/mod.rs"]
@@ -29,110 +28,117 @@ use support::on_ui_thread;
 const fn position(message: &ToastMessage) -> usize {
     match message {
         ToastMessage::Pasted { .. } => 0,
+        ToastMessage::PastedNotRestored { .. } => 107,
         ToastMessage::Copied => 1,
         ToastMessage::CopiedElevated { .. } => 2,
         ToastMessage::CopiedNothingFocused { .. } => 3,
         ToastMessage::CopiedExcluded { .. } => 4,
         ToastMessage::CopiedTargetGone => 5,
         ToastMessage::ClipboardBusy => 6,
-        ToastMessage::NeedsPro(_) => 7,
-        ToastMessage::TemplateBroken => 8,
-        ToastMessage::Locked => 9,
-        ToastMessage::Unlocked => 10,
-        ToastMessage::MasterPasswordSet => 11,
-        ToastMessage::MasterPasswordChanged => 12,
-        ToastMessage::MasterPasswordRemoved => 13,
-        ToastMessage::MasterPasswordChangedNotOpen => 14,
-        ToastMessage::MasterPasswordRemovedNotOpen => 15,
-        ToastMessage::UnlockFirst => 16,
-        ToastMessage::LockedEditorClosed => 17,
-        ToastMessage::Saved { .. } => 18,
-        ToastMessage::NothingToSave => 19,
-        ToastMessage::TooLargeToSave => 20,
-        ToastMessage::NoListToSave => 21,
-        ToastMessage::NothingToPasteNext => 22,
-        ToastMessage::PasteNextFinished => 23,
-        ToastMessage::HotkeyInUse { .. } => 24,
-        ToastMessage::HotkeyInvalid { .. } => 25,
-        ToastMessage::HotkeyUnavailable { .. } => 26,
-        ToastMessage::PanelHidden { .. } => 27,
-        ToastMessage::Failed => 28,
-        ToastMessage::WindowNotShown => 29,
-        ToastMessage::SettingsNotSaved => 30,
-        ToastMessage::ItemsTrashed { .. } => 31,
-        ToastMessage::ListTrashed { .. } => 32,
-        ToastMessage::BoardTrashed { .. } => 33,
-        ToastMessage::Restored { .. } => 34,
-        ToastMessage::ItemsMoved { .. } => 35,
-        ToastMessage::DeletedForever { .. } => 36,
-        ToastMessage::TrashEmptied => 37,
-        ToastMessage::BoardLimit => 38,
-        ToastMessage::LibraryProblem => 39,
-        ToastMessage::CrashedLastTime => 40,
-        ToastMessage::LicenceAccepted => 41,
-        ToastMessage::LicenceRejected(_) => 42,
-        ToastMessage::BackupMade => 43,
-        ToastMessage::BackupFailed(_) => 44,
-        ToastMessage::BackupRestored { .. } => 45,
-        ToastMessage::RestoreFailed(_) => 46,
-        ToastMessage::Imported { .. } => 47,
-        ToastMessage::ImportFailed(_) => 48,
-        ToastMessage::Exported { .. } => 49,
-        ToastMessage::ExportFailed(_) => 50,
-        ToastMessage::LibraryErased => 51,
-        ToastMessage::EraseFailed => 52,
-        ToastMessage::FolderNotOpened => 53,
-        ToastMessage::MailNotOpened => 54,
-        ToastMessage::AutostartFailed => 55,
-        ToastMessage::CannotOpenLog => 56,
-        ToastMessage::KeyUnavailable => 57,
-        ToastMessage::ItemGone => 58,
-        ToastMessage::ListGone => 59,
-        ToastMessage::StorageFailed => 60,
-        ToastMessage::NotSaved => 61,
-        ToastMessage::NotOpened => 62,
-        ToastMessage::DraftNotSaved => 63,
-        ToastMessage::ItemPlaced { .. } => 64,
-        ToastMessage::TaskbarEdge => 65,
-        ToastMessage::UseFailed(_) => 66,
-        ToastMessage::DailyBackupFailed(_) => 67,
-        ToastMessage::TrashPurgeFailed => 68,
-        ToastMessage::ChangeFailed(_) => 69,
-        ToastMessage::ScreenshotFailed => 70,
-        ToastMessage::Undone { .. } => 71,
-        ToastMessage::Redone { .. } => 72,
-        ToastMessage::DatabaseRebuilt { .. } => 73,
-        ToastMessage::RebuildNeedsRestart => 74,
-        ToastMessage::RebuildUnfinished => 75,
-        ToastMessage::ImageNotPasteable => 76,
-        ToastMessage::HotkeysFailed { .. } => 77,
-        ToastMessage::ThemeSet(_) => 78,
-        ToastMessage::PanelOnTop(_) => 79,
-        ToastMessage::Pinned(_) => 80,
-        ToastMessage::Duplicated => 81,
-        ToastMessage::ListAdded => 82,
-        ToastMessage::ListSaved => 83,
-        ToastMessage::BoardSaved => 84,
-        ToastMessage::RecentDeleted => 85,
-        ToastMessage::RecentCleared => 86,
-        ToastMessage::DockSet(_) => 87,
-        ToastMessage::NotRefreshed => 88,
-        ToastMessage::IconNotAddable => 89,
-        ToastMessage::IconSaved { .. } => 90,
-        ToastMessage::AddedTo { .. } => 91,
-        ToastMessage::LooksSecret => 92,
-        ToastMessage::PasteNotAddedEditorOpen => 93,
-        ToastMessage::AddedSomeFiles { .. } => 94,
-        ToastMessage::FilesNotAdded => 95,
-        ToastMessage::DropTo { .. } => 96,
-        ToastMessage::TooManyFiles => 97,
-        ToastMessage::SwitchToManual { .. } => 98,
-        ToastMessage::FileMoved => 99,
-        ToastMessage::FilesTooLarge => 100,
+        ToastMessage::TemplateBroken => 7,
+        ToastMessage::Locked => 8,
+        ToastMessage::Unlocked => 9,
+        ToastMessage::MasterPasswordSet => 10,
+        ToastMessage::MasterPasswordChanged => 11,
+        ToastMessage::MasterPasswordRemoved => 12,
+        ToastMessage::MasterPasswordChangedNotOpen => 13,
+        ToastMessage::MasterPasswordRemovedNotOpen => 14,
+        ToastMessage::UnlockFirst => 15,
+        ToastMessage::LockedEditorClosed => 16,
+        ToastMessage::LockedFillClosed => 106,
+        ToastMessage::Saved { .. } => 17,
+        ToastMessage::NothingToSave => 18,
+        ToastMessage::TooLargeToSave => 19,
+        ToastMessage::NoListToSave => 20,
+        ToastMessage::NothingToPasteNext => 21,
+        ToastMessage::PasteNextFinished => 22,
+        ToastMessage::HotkeyInUse { .. } => 23,
+        ToastMessage::HotkeyInvalid { .. } => 24,
+        ToastMessage::HotkeyUnavailable { .. } => 25,
+        ToastMessage::PanelHidden { .. } => 26,
+        ToastMessage::Failed => 27,
+        ToastMessage::WindowNotShown => 28,
+        ToastMessage::SettingsNotSaved => 29,
+        ToastMessage::ItemsTrashed { .. } => 30,
+        ToastMessage::ListTrashed { .. } => 31,
+        ToastMessage::BoardTrashed { .. } => 32,
+        ToastMessage::Restored { .. } => 33,
+        ToastMessage::ItemsMoved { .. } => 34,
+        ToastMessage::DeletedForever { .. } => 35,
+        ToastMessage::TrashEmptied => 36,
+        ToastMessage::LibraryProblem => 37,
+        ToastMessage::CrashedLastTime => 38,
+        ToastMessage::BackupMade => 39,
+        ToastMessage::BackupFailed(_) => 40,
+        ToastMessage::BackupRestored { .. } => 41,
+        ToastMessage::RestoreFailed(_) => 42,
+        ToastMessage::Imported { .. } => 43,
+        ToastMessage::ImportFailed(_) => 44,
+        ToastMessage::Exported { .. } => 45,
+        ToastMessage::ExportFailed(_) => 46,
+        ToastMessage::LibraryErased => 47,
+        ToastMessage::EraseFailed => 48,
+        ToastMessage::FolderNotOpened => 49,
+        ToastMessage::LinkNotOpened => 50,
+        ToastMessage::AutostartFailed => 51,
+        ToastMessage::CannotOpenLog => 52,
+        ToastMessage::KeyUnavailable => 53,
+        ToastMessage::ItemGone => 54,
+        ToastMessage::ListGone => 55,
+        ToastMessage::StorageFailed => 56,
+        ToastMessage::NotSaved => 57,
+        ToastMessage::NotOpened => 58,
+        ToastMessage::DraftNotSaved => 59,
+        ToastMessage::ItemPlaced { .. } => 60,
+        ToastMessage::TaskbarEdge => 61,
+        ToastMessage::UseFailed(_) => 62,
+        ToastMessage::DailyBackupFailed(_) => 63,
+        ToastMessage::TrashPurgeFailed => 64,
+        ToastMessage::ChangeFailed(_) => 65,
+        ToastMessage::ScreenshotFailed => 66,
+        ToastMessage::Undone { .. } => 67,
+        ToastMessage::Redone { .. } => 68,
+        ToastMessage::DatabaseRebuilt { .. } => 69,
+        ToastMessage::RebuildNeedsRestart => 70,
+        ToastMessage::RebuildUnfinished => 71,
+        ToastMessage::ImageNotPasteable => 72,
+        ToastMessage::HotkeysFailed { .. } => 73,
+        ToastMessage::ThemeSet(_) => 74,
+        ToastMessage::PanelOnTop(_) => 75,
+        ToastMessage::Pinned(_) => 76,
+        ToastMessage::Duplicated => 77,
+        ToastMessage::ListAdded => 78,
+        ToastMessage::ListSaved => 79,
+        ToastMessage::BoardSaved => 80,
+        ToastMessage::RecentDeleted => 81,
+        ToastMessage::RecentCleared => 82,
+        ToastMessage::DockSet(_) => 83,
+        ToastMessage::NotRefreshed => 84,
+        ToastMessage::IconNotAddable => 85,
+        ToastMessage::IconSaved { .. } => 86,
+        ToastMessage::EyedropFailed => 104,
+        ToastMessage::EyedropHdr { .. } => 105,
+        ToastMessage::AddedTo { .. } => 87,
+        ToastMessage::LooksSecret => 88,
+        ToastMessage::PasteNotAddedEditorOpen => 89,
+        ToastMessage::AddedSomeFiles { .. } => 90,
+        ToastMessage::FilesNotAdded => 91,
+        ToastMessage::DropTo { .. } => 92,
+        ToastMessage::TooManyFiles => 93,
+        ToastMessage::SwitchToManual { .. } => 94,
+        ToastMessage::FileMoved => 95,
+        ToastMessage::FilesTooLarge => 96,
+        ToastMessage::HelloTurnedOff => 97,
+        ToastMessage::HelloNotTurnedOn => 98,
+        ToastMessage::HelloEnrolFailed => 99,
+        ToastMessage::TriggerOverlaps { .. } => 100,
+        ToastMessage::TypingUnavailable => 101,
+        ToastMessage::AutostartSwitchedOff => 102,
+        ToastMessage::AutostartPolicy => 103,
     }
 }
 
-const VARIANTS: usize = 101;
+const VARIANTS: usize = 108;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -145,13 +151,13 @@ fn samples() -> Vec<ToastMessage> {
     use ToastMessage as M;
     vec![
         M::Pasted { app: s("Outlook") },
+        M::PastedNotRestored { app: s("Outlook") },
         M::Copied,
         M::CopiedElevated { app: s("Outlook") },
         M::CopiedNothingFocused { app: s("Outlook") },
         M::CopiedExcluded { app: s("Outlook") },
         M::CopiedTargetGone,
         M::ClipboardBusy,
-        M::NeedsPro(Feature::PromptedFields),
         M::TemplateBroken,
         M::Locked,
         M::Unlocked,
@@ -162,6 +168,7 @@ fn samples() -> Vec<ToastMessage> {
         M::MasterPasswordRemovedNotOpen,
         M::UnlockFirst,
         M::LockedEditorClosed,
+        M::LockedFillClosed,
         M::Saved { list: s("Notes") },
         M::NothingToSave,
         M::TooLargeToSave,
@@ -180,7 +187,6 @@ fn samples() -> Vec<ToastMessage> {
         M::HotkeysFailed {
             chords: s("Ctrl+Alt+Space, Ctrl+Alt+V"),
         },
-        M::NeedsPro(Feature::PasteStack),
         M::PanelHidden {
             chord: Some(s("Ctrl+Shift+Space")),
         },
@@ -197,11 +203,8 @@ fn samples() -> Vec<ToastMessage> {
         },
         M::DeletedForever { count: 1 },
         M::TrashEmptied,
-        M::BoardLimit,
         M::LibraryProblem,
         M::CrashedLastTime,
-        M::LicenceAccepted,
-        M::LicenceRejected(LicenceProblem::BadSignature),
         M::BackupMade,
         M::BackupFailed(Cause::Other),
         M::BackupRestored { items: 5 },
@@ -225,8 +228,10 @@ fn samples() -> Vec<ToastMessage> {
         M::LibraryErased,
         M::EraseFailed,
         M::FolderNotOpened,
-        M::MailNotOpened,
+        M::LinkNotOpened,
         M::AutostartFailed,
+        M::AutostartSwitchedOff,
+        M::AutostartPolicy,
         M::CannotOpenLog,
         M::KeyUnavailable,
         M::ItemGone,
@@ -288,6 +293,8 @@ fn samples() -> Vec<ToastMessage> {
         M::IconSaved {
             name: s("trash.svg"),
         },
+        M::EyedropFailed,
+        M::EyedropHdr { hex: s("#3a7bd5") },
         M::AddedTo {
             list: s("Notes"),
             count: 1,
@@ -300,9 +307,16 @@ fn samples() -> Vec<ToastMessage> {
         M::TooManyFiles,
         M::FileMoved,
         M::FilesTooLarge,
+        M::TriggerOverlaps {
+            other: s("Signature"),
+        },
+        M::TypingUnavailable,
         M::SwitchToManual {
             list: snipdeck_core::ListId::generate(),
         },
+        M::HelloTurnedOff,
+        M::HelloNotTurnedOn,
+        M::HelloEnrolFailed,
     ]
 }
 
@@ -343,6 +357,14 @@ fn what_a_toast_carries_reaches_its_sentence() {
             "Pasted into Outlook"
         );
         assert_eq!(said(ToastMessage::Pasted { app: String::new() }), "Pasted");
+        assert_eq!(
+            said(ToastMessage::PastedNotRestored { app: s("Outlook") }),
+            "Pasted into Outlook. Your earlier clipboard could not be put back."
+        );
+        assert_eq!(
+            said(ToastMessage::PastedNotRestored { app: String::new() }),
+            "Pasted. Your earlier clipboard could not be put back."
+        );
         assert_eq!(
             said(ToastMessage::CopiedElevated { app: String::new() }),
             "Copied. That app runs as administrator, so Snipdeck can't paste into it."
@@ -428,6 +450,23 @@ fn what_a_toast_carries_reaches_its_sentence() {
             said(ToastMessage::FilesTooLarge),
             "Some files were left out: together they are over 64 MB."
         );
+        assert_eq!(
+            said(ToastMessage::TriggerOverlaps {
+                other: "Signature".into()
+            }),
+            "Saved. This trigger overlaps the trigger of “Signature”, so one of them may never fire."
+        );
+        assert_eq!(
+            said(ToastMessage::TriggerOverlaps {
+                other: String::new()
+            }),
+            "Saved. This trigger overlaps another trigger, so one of them may never fire.",
+            "an untitled item is not named as “”"
+        );
+        assert_eq!(
+            said(ToastMessage::TypingUnavailable),
+            "Couldn't start typing triggers. Nothing will be expanded or suggested."
+        );
         assert_eq!(said(ToastMessage::DockSet(None)), "Panel floats again");
         assert_eq!(
             said(ToastMessage::DockSet(Some(DockEdge::Left))),
@@ -464,10 +503,6 @@ fn what_a_toast_carries_reaches_its_sentence() {
                 chords: s("Ctrl+Alt+Space, Ctrl+Alt+V")
             }),
             "These shortcuts are not working: Ctrl+Alt+Space, Ctrl+Alt+V. Settings > Shortcuts says why."
-        );
-        assert_eq!(
-            said(ToastMessage::NeedsPro(Feature::PasteStack)),
-            "Paste next and the paste stack are Supporter features."
         );
     });
 }
@@ -522,29 +557,6 @@ fn a_failure_toast_names_its_cause_and_ends_with_what_to_do() {
             said(ToastMessage::ImportFailed(Cause::NotArchive)).contains("isn't a file Snipdeck")
         );
         assert!(said(ToastMessage::ImportFailed(Cause::TooNew)).contains("newer Snipdeck"));
-    });
-}
-
-#[test]
-fn a_licence_problem_reads_the_same_as_a_toast_and_under_the_key_field() {
-    on_ui_thread(|| {
-        let ui = ui();
-        for problem in [
-            LicenceProblem::Empty,
-            LicenceProblem::NotAKey,
-            LicenceProblem::BadSignature,
-            LicenceProblem::NewerFormat,
-            LicenceProblem::WrongTier,
-            LicenceProblem::NotSaved,
-        ] {
-            let words = licence_problem_text(&ui, problem);
-            assert!(!words.is_empty(), "{problem:?}");
-            assert_eq!(
-                toast_text(&ui, &ToastMessage::LicenceRejected(problem)),
-                words,
-                "{problem:?}"
-            );
-        }
     });
 }
 

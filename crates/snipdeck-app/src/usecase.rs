@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 
 use snipdeck_core::{
-    Entitlements, Feature, Format, Formats, Item, ItemId, ItemKind, Timestamp, UseMode, UseOutcome,
+    Format, Formats, Item, ItemId, ItemKind, Timestamp, UseMode, UseOutcome,
     template::{
         Locale, Prompt, RenderContext, RenderError, Template, TemplateError, TimeZone,
         transform::{self, Transform},
@@ -28,8 +28,6 @@ pub struct UseRequest {
     pub route: Route,
     /// The moment of the use, for `{date}`, `{time}` and the usage count.
     pub now: Timestamp,
-    /// What the user may do.
-    pub entitlements: Entitlements,
     /// The user's answers to a template's prompts, by name.
     pub answers: BTreeMap<String, String>,
     /// The clipboard text for `{clipboard}`, read by the caller before the pipeline touches it.
@@ -43,6 +41,8 @@ pub struct UseRequest {
     pub transform: Option<Transform>,
     /// Random bytes for each `{uuid}`; `None` draws them from the system.
     pub uuids: Option<Vec<[u8; 16]>>,
+    /// Backspaces to send with the paste, to erase a typed trigger (0 for every other use).
+    pub erase: usize,
 }
 
 /// The most Left presses sent to put the caret at `{cursor}`.
@@ -84,7 +84,7 @@ pub enum UseError {
     /// The item's template no longer parses.
     #[error(transparent)]
     Template(#[from] TemplateError),
-    /// The template cannot be rendered: a Supporter placeholder on Free, or too large.
+    /// The template cannot be rendered: too large.
     #[error(transparent)]
     Render(#[from] RenderError),
     /// The template needs answers the request did not carry: show the fill form.
@@ -115,10 +115,39 @@ where
     K: Keyboard,
     T: Timing,
 {
+    use_item_guarded(store, env, request, &|| true)
+}
+
+/// [`use_item`] that asks `proceed` right before the keys go out and calls the use off when it
+/// says no ([`pipeline::Error::Superseded`], as [`UseError::Platform`]).
+///
+/// # Errors
+///
+/// See [`UseError`].
+pub fn use_item_guarded<S, C, K, T>(
+    store: &mut S,
+    env: &mut Env<'_, C, K, T>,
+    request: &UseRequest,
+    proceed: &dyn Fn() -> bool,
+) -> Result<Used, UseError>
+where
+    S: ItemRepo + BlobStore,
+    C: Clipboard,
+    K: Keyboard,
+    T: Timing,
+{
     let item = store.item(request.item)?;
     let formats = store.formats(request.item)?;
     let (payload, cursor_from_end) = build_payload(store, &item, &formats, request)?;
-    let outcome = pipeline::use_item(env, &payload, request.mode, &request.route)?;
+    let outcome = pipeline::use_item_erasing(
+        env,
+        &payload,
+        // An item set to "always paste as plain text" pastes plain whatever the caller asked.
+        item.effective_mode(request.mode),
+        &request.route,
+        request.erase,
+        proceed,
+    )?;
     if matches!(outcome, UseOutcome::Pasted | UseOutcome::PastedNotRestored)
         && let Some(n) = cursor_from_end.filter(|n| *n > 0)
     {
@@ -263,12 +292,6 @@ fn build_payload<S: BlobStore>(
 
 fn render_template(text: &str, request: &UseRequest) -> Result<(String, Option<usize>), UseError> {
     let template = Template::parse(text)?;
-    // Before asking anything: a Free user must not fill in a form they cannot use.
-    for &feature in Feature::ALL {
-        if template.requires(feature) && !request.entitlements.allows(feature) {
-            return Err(RenderError::ProRequired(feature).into());
-        }
-    }
     // Any prompt without an answer opens the form, whatever its kind: a default only prefills
     // it, and a choice, date or tick box alone must still be asked (empty date = today).
     let prompts = template.prompts();
@@ -298,14 +321,14 @@ fn render_template(text: &str, request: &UseRequest) -> Result<(String, Option<u
     if let Some(clipboard) = &request.clipboard_text {
         ctx = ctx.with_clipboard(clipboard);
     }
-    let rendered = template.render_checked(&request.entitlements, &ctx)?;
+    let rendered = template.try_render(&ctx)?;
     Ok((rendered.text, rendered.cursor_from_end))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snipdeck_core::{Board, Content, Inline, List, Name, Placement, Tier};
+    use snipdeck_core::{Board, Content, Inline, List, Name, Placement};
     use snipdeck_platform::{
         keys::PasteKey,
         route::{CopyReason, Route},
@@ -364,13 +387,13 @@ mod tests {
                 mode,
                 route,
                 now: at("2026-10-17T10:30:00Z"),
-                entitlements: Entitlements::new(Tier::Pro),
                 answers: BTreeMap::new(),
                 clipboard_text: None,
                 tz: TimeZone::UTC,
                 locale: Locale::for_tag("en"),
                 transform: None,
                 uuids: None,
+                erase: 0,
             }
         }
 
@@ -399,6 +422,46 @@ mod tests {
         let item = w.store.item(id).expect("item");
         assert_eq!(item.use_count, 1);
         assert_eq!(item.last_used_at, Some(request.now));
+    }
+
+    /// Gives item `id` an HTML flavour next to its text; optionally marks it always-plain.
+    fn add_html(w: &mut World, id: ItemId, always_plain: bool) {
+        let existing = w.store.formats(id).expect("formats");
+        let mut formats: Vec<Format> = existing.into_iter().cloned().collect();
+        formats.push(Format::Html(snipdeck_core::Content::Inline(
+            snipdeck_core::Inline::new(b"<b>hello</b>".to_vec()).expect("inline"),
+        )));
+        let mut item = w.store.item(id).expect("item");
+        item.always_plain = always_plain;
+        w.store
+            .update_item(&item, Some(&Formats::new(formats).expect("formats")))
+            .expect("set");
+    }
+
+    #[test]
+    fn an_always_plain_item_pastes_text_only_but_a_copy_keeps_its_formats() {
+        let mut w = World::new();
+        let id = w.add(ItemKind::Text, false, "hello");
+        add_html(&mut w, id, true);
+        w.run(&World::request(id, UseMode::Paste, PASTE))
+            .expect("used");
+        assert_eq!(texts_written(&w), [[Data::Text("hello".into())]]);
+        let copy = World::request(id, UseMode::Copy, Route::Copy(CopyReason::NoTarget));
+        w.run(&copy).expect("used");
+        assert_eq!(w.clipboard.written[1].data().len(), 2, "a copy stays rich");
+    }
+
+    #[test]
+    fn an_explicit_plain_paste_drops_the_formats_of_an_ordinary_item() {
+        let mut w = World::new();
+        let id = w.add(ItemKind::Text, false, "hello");
+        add_html(&mut w, id, false);
+        w.run(&World::request(id, UseMode::Paste, PASTE))
+            .expect("used");
+        assert_eq!(w.clipboard.written[0].data().len(), 2);
+        w.run(&World::request(id, UseMode::PastePlain, PASTE))
+            .expect("used");
+        assert_eq!(w.clipboard.written[1].data(), [Data::Text("hello".into())]);
     }
 
     #[test]
@@ -702,19 +765,6 @@ mod tests {
             .expect("a template");
         assert_eq!(title, "t");
         assert_eq!(text, "Hi {field:Name}");
-    }
-
-    #[test]
-    fn a_pro_placeholder_on_free_is_refused() {
-        let mut w = World::new();
-        let id = w.add(ItemKind::Template, false, "Hi {field:Name|there}");
-        let mut request = World::request(id, UseMode::Copy, Route::Copy(CopyReason::NoTarget));
-        request.entitlements = Entitlements::new(Tier::Free);
-        assert!(matches!(
-            w.run(&request),
-            Err(UseError::Render(RenderError::ProRequired(_)))
-        ));
-        assert_eq!(w.store.item(id).expect("item").use_count, 0);
     }
 
     #[test]

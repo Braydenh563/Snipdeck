@@ -38,11 +38,11 @@ pub enum AppMenuEntry {
     /// Redo the step taken back (Ctrl+Y); disabled while there is none.
     Redo,
     /// Start the paste stack of the marked items, or end it while it runs (checked while it
-    /// runs; disabled while nothing is marked). A Supporter feature, as everywhere.
+    /// runs; disabled while nothing is marked).
     PasteStack,
     /// Open the Main window.
     Open,
-    /// Open the Main window on its command palette ("All commands…", Ctrl+K).
+    /// Open the Main window on its command palette ("Commands…", Ctrl+K).
     Commands,
     /// Make a new snippet.
     NewSnippet,
@@ -86,6 +86,8 @@ pub enum ItemMenuEntry {
     Copy,
     /// Open the "Paste as..." choices (plain text, UPPERCASE, ...) for the item.
     PasteAs,
+    /// Show the item's colour in the Colours tab (a colour item only).
+    OpenInColours,
     /// Edit the item in the item editor.
     Edit,
     /// Pin the item, or unpin it when `pinned`.
@@ -123,6 +125,29 @@ pub enum ItemMenuEntry {
     },
     /// Move the item to the Trash, with an Undo toast.
     Trash,
+    /// Group the marked items (or this one) under a new header.
+    Group,
+    /// On a group header: rename it in place.
+    RenameGroup,
+    /// On a group header: fold the group, or open it when `folded` (the keys are Left, Right, Enter, Space).
+    ToggleGroup {
+        /// The group is folded now (the row reads "Unfold group").
+        folded: bool,
+    },
+    /// On a group header: move the group one place up (Alt+Up).
+    GroupUp {
+        /// The list is in manual order, no search runs and the group is not first.
+        enabled: bool,
+    },
+    /// On a group header: move the group one place down (Alt+Down).
+    GroupDown {
+        /// The list is in manual order, no search runs and the group is not last.
+        enabled: bool,
+    },
+    /// On a group header: remove the header, keep the items.
+    Ungroup,
+    /// On a group header: move the header and its items to the Trash.
+    DeleteGroup,
     /// A line between groups.
     Separator,
 }
@@ -140,16 +165,20 @@ pub enum ListMenuEntry {
     /// "Sort by": the list orders itself so. The Panel's `Menu` has no sub-menus, so the three
     /// orders are three rows under a line; the open list's own is checked.
     SortBy(snipdeck_core::ListSort),
+    /// "Copy as CSS variables": the list's colours as a `:root` block (disabled while it holds none).
+    CopyCss,
 }
 
 /// The list tab menu's rows.
-pub const LIST_MENU: [ListMenuEntry; 6] = [
+pub const LIST_MENU: [ListMenuEntry; 8] = [
     ListMenuEntry::Edit,
     ListMenuEntry::Delete,
     ListMenuEntry::Separator,
     ListMenuEntry::SortBy(snipdeck_core::ListSort::Manual),
     ListMenuEntry::SortBy(snipdeck_core::ListSort::MostUsed),
     ListMenuEntry::SortBy(snipdeck_core::ListSort::RecentlyUsed),
+    ListMenuEntry::Separator,
+    ListMenuEntry::CopyCss,
 ];
 
 /// The kebab menu's rows. Help is a group of three rows under a line, because the Panel's
@@ -282,6 +311,26 @@ where
     /// The rows of the item menu for `id`.
     pub(super) fn item_menu_entries(&self, id: ItemId) -> Vec<ItemMenuEntry> {
         let row = self.menu_row(id);
+        if row.as_ref().is_some_and(|r| r.header.is_some()) {
+            let at = self.model.rows().iter().position(|r| r.id == id);
+            return vec![
+                ItemMenuEntry::RenameGroup,
+                ItemMenuEntry::ToggleGroup {
+                    folded: at
+                        .and_then(|at| self.model.group_at(at))
+                        .is_some_and(|run| run.group.collapsed),
+                },
+                ItemMenuEntry::GroupUp {
+                    enabled: at.is_some_and(|at| self.can_move_group(at, -1)),
+                },
+                ItemMenuEntry::GroupDown {
+                    enabled: at.is_some_and(|at| self.can_move_group(at, 1)),
+                },
+                ItemMenuEntry::Ungroup,
+                ItemMenuEntry::Separator,
+                ItemMenuEntry::DeleteGroup,
+            ];
+        }
         let pinned = row.as_ref().is_some_and(|r| r.pinned);
         let mut entries = vec![ItemMenuEntry::Use, ItemMenuEntry::Copy];
         // Only text can be transformed.
@@ -290,6 +339,9 @@ where
             .is_some_and(|r| crate::item_editor::is_text_kind(r.kind))
         {
             entries.push(ItemMenuEntry::PasteAs);
+        }
+        if self.settings.show_colours_tab && self.colour_of_item(id).is_some() {
+            entries.push(ItemMenuEntry::OpenInColours);
         }
         entries.extend([
             ItemMenuEntry::Separator,
@@ -313,6 +365,7 @@ where
             ItemMenuEntry::MoveDown {
                 enabled: self.can_move_item(id, 1),
             },
+            ItemMenuEntry::Group,
             ItemMenuEntry::Separator,
             ItemMenuEntry::Trash,
         ]);
@@ -353,15 +406,16 @@ where
     }
 
     /// The user chose row `index` of the item menu. The menu closes (a line stays open).
+    #[allow(clippy::too_many_lines, reason = "one arm per row of the item menu")]
     pub fn choose_item_menu(&mut self, index: usize) -> Vec<Effect> {
+        self.choose_item_menu_as(index, false)
+    }
+
+    /// [`choose_item_menu`](Self::choose_item_menu) with Shift: a colour's "Paste as" copies the
+    /// format to the clipboard instead of pasting it.
+    pub fn choose_item_menu_as(&mut self, index: usize, copy: bool) -> Vec<Effect> {
         if let PanelMenu::PasteAs(id) = self.menu {
-            self.menu = PanelMenu::None;
-            self.menu_targets.clear();
-            let Some(transform) = Transform::ALL.get(index).copied() else {
-                return Vec::new();
-            };
-            let used = self.use_item_as(id, transform);
-            return self.after_use(&used);
+            return self.choose_paste_as(id, index, copy);
         }
         if matches!(self.menu, PanelMenu::Move | PanelMenu::Colour) {
             self.choose_second_level(index);
@@ -375,11 +429,6 @@ where
             return Vec::new();
         };
         if entry == ItemMenuEntry::Separator
-            || entry
-                == (ItemMenuEntry::Sensitive {
-                    on: false,
-                    enabled: false,
-                })
             || matches!(entry, ItemMenuEntry::Sensitive { enabled: false, .. })
         {
             return Vec::new();
@@ -411,6 +460,7 @@ where
                 let used = self.use_item(id, UseMode::Copy);
                 self.after_use(&used)
             }
+            ItemMenuEntry::OpenInColours => self.open_item_in_colours(id),
             ItemMenuEntry::Edit => vec![Effect::EditItem(id)],
             ItemMenuEntry::Duplicate => {
                 self.duplicate(&targets);
@@ -424,16 +474,8 @@ where
                 self.toggle_stack_mark(id);
                 Vec::new()
             }
-            ItemMenuEntry::MoveUp { enabled } => {
-                if enabled {
-                    self.panel_move_item(id, -1);
-                }
-                Vec::new()
-            }
-            ItemMenuEntry::MoveDown { enabled } => {
-                if enabled {
-                    self.panel_move_item(id, 1);
-                }
+            ItemMenuEntry::MoveUp { .. } | ItemMenuEntry::MoveDown { .. } => {
+                self.choose_move(id, entry);
                 Vec::new()
             }
             ItemMenuEntry::Trash => {
@@ -441,10 +483,61 @@ where
                 self.model.clear_marks();
                 Vec::new()
             }
+            ItemMenuEntry::Group => {
+                if let Some(at) = self.model.rows().iter().position(|r| r.id == id) {
+                    self.group_marked(at);
+                }
+                Vec::new()
+            }
+            ItemMenuEntry::RenameGroup
+            | ItemMenuEntry::ToggleGroup { .. }
+            | ItemMenuEntry::GroupUp { .. }
+            | ItemMenuEntry::GroupDown { .. }
+            | ItemMenuEntry::Ungroup
+            | ItemMenuEntry::DeleteGroup => {
+                self.choose_group_entry(id, entry);
+                Vec::new()
+            }
             ItemMenuEntry::MoveTo
             | ItemMenuEntry::Colour
             | ItemMenuEntry::PasteAs
             | ItemMenuEntry::Separator => Vec::new(),
+        }
+    }
+
+    /// Entry `index` of item `id`'s "Paste as" menu: a colour's format (copied with Shift), or a text
+    /// transform.
+    fn choose_paste_as(&mut self, id: ItemId, index: usize, copy: bool) -> Vec<Effect> {
+        self.menu = PanelMenu::None;
+        self.menu_targets.clear();
+        if let Some(c) = self.colour_of_item(id) {
+            let Some(format) = snipdeck_colour::Format::ALL.get(index).copied() else {
+                return Vec::new();
+            };
+            let mode = if copy { UseMode::Copy } else { UseMode::Paste };
+            let used = self.use_colour_item(id, c, format, mode);
+            return self.after_use(&used);
+        }
+        let Some(transform) = Transform::ALL.get(index).copied() else {
+            return Vec::new();
+        };
+        let used = self.use_item_as(id, transform);
+        self.after_use(&used)
+    }
+
+    /// The item menu's Move up / Move down on item `id`.
+    fn choose_move(&mut self, id: ItemId, entry: ItemMenuEntry) {
+        let (ItemMenuEntry::MoveUp { enabled } | ItemMenuEntry::MoveDown { enabled }) = entry
+        else {
+            return;
+        };
+        let delta = if matches!(entry, ItemMenuEntry::MoveUp { .. }) {
+            -1
+        } else {
+            1
+        };
+        if enabled {
+            self.panel_move_item(id, delta);
         }
     }
 
@@ -495,6 +588,10 @@ where
             }
             Some(ListMenuEntry::SortBy(sort)) => {
                 self.set_list_sort(id, *sort);
+                Vec::new()
+            }
+            Some(ListMenuEntry::CopyCss) => {
+                self.copy_list_as_css(id);
                 Vec::new()
             }
             Some(ListMenuEntry::Separator) => {
@@ -590,6 +687,10 @@ where
 
     /// F2 on row `index`. The Panel has no inline title field, so this opens the same editor.
     pub fn rename_row(&mut self, index: usize) -> Vec<Effect> {
+        if let Some(run) = self.model.group_at(index) {
+            self.start_group_rename(super::group_ctl::Surface::Panel, run.group.id);
+            return Vec::new();
+        }
         self.edit_row(index)
     }
 
@@ -631,6 +732,10 @@ where
         {
             return Vec::new();
         }
+        self.resizing = true;
+        self.resize_button_seen = false;
+        self.resize_loop_seen = false;
+        self.resize_at = self.clock.now();
         vec![Effect::ResizeWindow(edge)]
     }
 
@@ -643,87 +748,95 @@ where
         self.remember_frame(monitor, frame, true)
     }
 
-    /// The Panel was only moved to `frame` (a drag in progress or ended). The size is clamped
-    /// and the place remembered, but the position is not pulled inside the work area and the
-    /// host is not told to place the window: a Panel straddling two monitors must be able to
-    /// cross, and answering every `Moved` could loop on rounding. The place is fitted when it
-    /// is restored ([`Self::placement`]) and when the Panel is next resized.
+    /// The Panel was only moved to `frame` (by the system: the app's own drag reports nothing
+    /// here). A floating Panel's place is remembered, but not pulled inside the work area and
+    /// the host is not told to place the window: answering every `Moved` could loop on
+    /// rounding. The place is fitted when it is restored ([`Self::placement`]).
     pub fn frame_moved(&mut self, monitor: &Monitor, frame: Rect) -> Vec<Effect> {
-        let effects = self.remember_frame(monitor, frame, false);
-        // Only a drag previews a dock: a restore or a placement near an edge must not.
-        self.dock_preview = (self.dragging && self.dock_edge().is_none())
-            .then(|| frame::dock_preview(frame, monitor.work_area, monitor.taskbar, monitor.scale))
-            .flatten();
-        effects
+        self.remember_frame(monitor, frame, false)
     }
 
-    fn remember_frame(
-        &mut self,
-        monitor: &Monitor,
-        frame: Rect,
-        clamp_position: bool,
-    ) -> Vec<Effect> {
+    fn remember_frame(&mut self, monitor: &Monitor, frame: Rect, resized: bool) -> Vec<Effect> {
         if frame.w == 0 || frame.h == 0 || frame::is_parked(frame) {
             // Minimised (Windows parks it far off screen), or not yet laid out: not a place
             // the user chose, and storing it would change the size the Panel comes back with.
             return Vec::new();
         }
-        if self.dock_collapsed() {
-            // The dock's handle strip is not a frame the user chose, and clamping it to the
-            // Panel's limits would undo the collapse (resizing is off while it shows).
+        if resized && self.resizing {
+            // A resize under way says so with each new size.
+            self.resize_at = self.clock.now();
+        }
+        if self.dragging() {
+            // A drag remembers its own end.
             return Vec::new();
         }
-        self.monitor = Some(monitor.clone());
-        let mut clamped = frame::clamp(frame, monitor);
-        if !clamp_position {
-            clamped = Rect {
-                x: frame.x,
-                y: frame.y,
-                ..clamped
-            };
-        }
-        let stored = self.stored_geometry(monitor).cloned();
-        let mut edge = stored.as_ref().and_then(|g| g.edge);
-        let mut pre_dock = stored.as_ref().and_then(|g| g.pre_dock);
-        // The first move of a drag that started on a docked Panel takes it off its edge.
-        let dragged = std::mem::take(&mut self.drag_started);
-        let mut resized = false;
-        if dragged && edge.is_some_and(|e| !frame::is_flush(e, monitor.work_area, clamped)) {
-            edge = None;
-            // It gets the size it had before it was docked, not the dock's full height.
-            if let Some((w, h)) = pre_dock.take() {
-                let (x, y) = (clamped.x, clamped.y);
-                clamped = frame::clamp(Rect { w, h, ..clamped }, monitor);
-                clamped.x = x;
-                clamped.y = y;
-                resized = true;
+        if self.dock_collapsed() {
+            // The dock's tab is not a frame the user chose. But the system may have moved it:
+            // its monitor went away, or that monitor's work area changed. The dock then
+            // follows what is remembered for where it is now.
+            if self.monitor.as_ref() == Some(monitor) {
+                return Vec::new();
             }
+            return self.dock_on_monitor(monitor);
         }
-        if edge.is_none() {
-            pre_dock = None;
+        self.monitor = Some(monitor.clone());
+        let stored = self.stored_geometry(monitor).cloned();
+        let Some((edge, old)) = stored.as_ref().and_then(|g| Some((g.edge?, g))) else {
+            let mut clamped = frame::clamp(frame, monitor);
+            if !resized {
+                clamped = Rect {
+                    x: frame.x,
+                    y: frame.y,
+                    ..clamped
+                };
+            }
+            let geometry = PanelGeometry {
+                docked: stored.as_ref().and_then(|g| g.docked),
+                docked_flat: stored.as_ref().and_then(|g| g.docked_flat),
+                ..clamped.geometry(monitor, None)
+            }
+            .remembering(stored.as_ref());
+            self.update_settings(|s| s.remember_panel_geometry(geometry));
+            return if clamped == frame {
+                Vec::new()
+            } else {
+                vec![Effect::PlaceWindow(clamped)]
+            };
+        };
+        // Docked: only a resize changes anything, and only the docked size and where the Panel
+        // sits along its edge. The floating frame is left alone.
+        let across = if edge.vertical() { frame.w } else { frame.h };
+        if !resized || across <= frame::scaled(frame::HANDLE_THICKNESS, monitor.scale) * 2 {
+            // A move, or a late report of the tucked tab.
+            return Vec::new();
         }
-        let mut geometry = PanelGeometry {
-            pre_dock,
-            ..clamped.geometry(monitor, edge)
-        }
-        .remembering(stored.as_ref());
-        // A full-edge dock reports the work area's height back; the Panel's own height (and
-        // place along the edge) stays remembered, so turning the full edge off gives it back.
-        if let (Some(e), Some(old)) = (edge, &stored)
-            && self.settings.dock.full_edge
-            && e.vertical()
-            && old.edge == edge
-            && !resized
-        {
-            (geometry.y, geometry.h, geometry.along) = (old.y, old.h, old.along);
+        let full = self.settings.dock.full_edge && edge.vertical();
+        let dock = |full_edge| {
+            frame::docked_rect(
+                edge,
+                monitor.work_area,
+                (frame.w, frame.h),
+                monitor.scale,
+                Some(frame.along(edge).start),
+                full_edge,
+            )
+        };
+        let place = dock(self.settings.dock.full_edge);
+        let mut geometry = self.geometry_on(monitor);
+        if full {
+            // A full-edge dock reports the work area's height back; the Panel's own height and
+            // place along the edge stay remembered, so turning the full edge off gives them back.
+            let (_, h) = self.dock_size(old, edge, monitor, old.along);
+            geometry.set_docked_size(edge, (place.w, h));
+        } else {
+            geometry.set_docked_size(edge, (place.w, place.h));
+            geometry.along = Some(place.along(edge).start);
         }
         self.update_settings(|s| s.remember_panel_geometry(geometry));
-        if resized {
-            vec![Effect::PlaceWindow(clamped)]
-        } else if clamped == frame || !clamp_position {
+        if place == frame {
             Vec::new()
         } else {
-            vec![Effect::PlaceWindow(clamped)]
+            vec![Effect::PlaceWindow(place)]
         }
     }
 
@@ -734,49 +847,39 @@ where
     #[must_use]
     pub fn placement(&self, monitor: &Monitor) -> Option<Rect> {
         let Some(g) = self.stored_geometry(monitor) else {
-            let last = self.settings.panel_geometry.last()?;
-            let (w, h) = last.pre_dock.unwrap_or((last.w, last.h));
-            return Some(frame::clamp(
-                Rect {
-                    w,
-                    h,
-                    ..Rect::of(last)
-                },
-                monitor,
-            ));
+            let mut last = self.settings.panel_geometry.last()?.clone();
+            // An older version's full-height dock is not as tall as this screen.
+            super::dock_ctl::mend_full_height(&mut last, monitor);
+            return Some(frame::clamp(Rect::of(&last), monitor));
         };
         Some(match g.edge {
-            Some(edge) => {
-                let size = frame::dock_size_for(
-                    edge,
-                    (g.w, g.h),
-                    g.pre_dock,
-                    monitor.work_area,
-                    monitor.scale,
-                    super::dock_ctl::DEFAULT_HEIGHT,
-                    g.along,
-                    self.settings.dock.full_edge,
-                );
-                frame::docked_rect(
-                    edge,
-                    monitor.work_area,
-                    size,
-                    monitor.scale,
-                    g.along,
-                    self.settings.dock.full_edge,
-                )
-            }
+            Some(edge) => self.dock_open(g, edge, monitor),
             None => frame::clamp(Rect::of(g), monitor),
         })
     }
 
-    /// Places the Panel at the anchor a [`show`](Self::show) read, once; nothing when it read
-    /// none. For a first show whose window cannot say what monitor it is on yet (a `--hidden`
-    /// start): the anchor needs no monitor of the window's, only the last known one for the size.
+    /// The Panel is about to be shown and its window cannot say what monitor it is on: it does
+    /// not exist before the first show (the host makes it once its event loop runs). Places it
+    /// at the anchor a [`show`](Self::show) read, once; else, the first time, where it was
+    /// left on the monitor it was last left on (`find_monitor`), so that
+    /// the window is made there and not wherever the system puts a new one.
     pub fn restore_anchor(&mut self) -> Vec<Effect> {
         let Some(anchor) = self.session.open_anchor.take() else {
-            return Vec::new();
+            if !self.unplaced {
+                return Vec::new();
+            }
+            // Asked now, not when the app started: a monitor may have gone since. With none
+            // the Panel was ever on left, it opens on the one the pointer is on.
+            let pointed = |ctl: &Self| {
+                let (x, y) = ctl.target.cursor()?;
+                ctl.target.monitor_at(x, y)
+            };
+            return match self.find_monitor().or_else(|| pointed(self)) {
+                Some(monitor) => self.restore_on(&monitor),
+                None => Vec::new(),
+            };
         };
+        self.unplaced = false;
         let (x, y) = anchor.point();
         let Some(fallback) = self
             .monitor
@@ -786,6 +889,11 @@ where
             return Vec::new();
         };
         let (on, frame) = self.frame_at(anchor, &fallback);
+        if self.stored_geometry(&on).is_some_and(|g| g.edge.is_some()) {
+            // The Panel is docked on the monitor under the anchor: it opens at its edge there,
+            // not floating at the anchor with that edge's dock still in force.
+            return self.restore_on(&on);
+        }
         self.monitor = Some(on);
         vec![Effect::PlaceWindow(frame)]
     }
@@ -798,7 +906,13 @@ where
         if self.session.open_anchor.is_some() {
             return self.restore_anchor();
         }
+        self.restore_on(monitor)
+    }
+
+    /// Puts the Panel where the user left it on `monitor`.
+    fn restore_on(&mut self, monitor: &Monitor) -> Vec<Effect> {
         self.monitor = Some(monitor.clone());
+        self.unplaced = false;
         self.dock_resync();
         self.placement(monitor)
             .map(Effect::PlaceWindow)

@@ -23,7 +23,8 @@ where
 {
     /// "Try it" on a card of Help > Tips: runs the card's command, and brings the Main window
     /// forward first when the command shows its result there.
-    pub fn try_tip(&mut self, action: crate::tips::TipAction) {
+    pub fn try_tip(&mut self, tip: crate::tips::Tip) {
+        let action = tip.action;
         if action.opens_main() {
             self.pending.push(Effect::OpenMainWindow);
         }
@@ -53,11 +54,34 @@ where
                     self.pending.extend(effects);
                 }
             }
+            Command::Colours | Command::PickColour => {
+                if self.settings.show_colours_tab {
+                    let mut effects = self.show();
+                    effects.push(Effect::ShowColours);
+                    if command == Command::PickColour {
+                        effects.extend(self.start_eyedropper());
+                    }
+                    self.pending.extend(effects);
+                }
+            }
+            Command::SavedColours => {
+                if self.settings.show_colours_tab {
+                    let effects = self.open_saved_colours();
+                    self.pending.extend(effects);
+                }
+            }
             Command::OpenPicker => self.open_picker(),
             Command::QuickCapture => self.quick_capture(),
             Command::PasteNext => {
                 self.paste_next();
             }
+            Command::GroupItems => self.main_group_marked(cursor),
+            Command::FoldGroup => self.main_group_collapse(cursor, None),
+            Command::RenameGroup => self.main_group_rename_start(cursor),
+            Command::UngroupGroup => self.main_group_ungroup(cursor),
+            Command::DeleteGroup => self.main_group_delete(cursor),
+            Command::MoveGroupUp => self.main_move_group(cursor, -1),
+            Command::MoveGroupDown => self.main_move_group(cursor, 1),
             Command::SelectAll => self.main_select_all(),
             Command::TakeScreenshot => {
                 let effects = self.take_screenshot();
@@ -68,6 +92,7 @@ where
             Command::Shortcuts => self.main_open_help(HelpTopic::Shortcuts),
             Command::Troubleshoot => self.main_open_help(HelpTopic::Troubleshoot),
             Command::About => self.main_open_help(HelpTopic::About),
+            Command::Support => self.pending.push(Effect::OpenSupport),
             Command::DensityComfortable => self.set_row_density(RowDensity::Comfortable),
             Command::DensityCompact => self.set_row_density(RowDensity::Compact),
             Command::ViewTile => self.main_set_view(ViewMode::Tile),

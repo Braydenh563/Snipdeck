@@ -191,6 +191,25 @@ fn physical(logical: f32, scale: f32) -> u32 {
     pixels
 }
 
+/// Where the suggestion hint opens: under the Target's text caret, flipped above it when it would
+/// leave the work area. `None` with no caret (the hint never follows the mouse), or when no
+/// monitor can be read.
+#[must_use]
+pub fn place_hint(
+    host: &dyn PopupHost,
+    caret: Option<ScreenRect>,
+    logical: (f32, f32),
+) -> Option<Rect> {
+    let c = caret?;
+    let anchor = Anchor::Caret(Rect {
+        x: c.x,
+        y: c.y,
+        w: c.w,
+        h: c.h,
+    });
+    place_at(host, anchor, logical, PickerSide::Below)
+}
+
 /// Logical pixels between the toast window and the bottom of the work area.
 pub const TOAST_MARGIN: f32 = 24.0;
 

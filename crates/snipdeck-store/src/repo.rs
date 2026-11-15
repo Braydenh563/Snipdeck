@@ -37,10 +37,7 @@ pub trait BoardRepo {
     /// One live board.
     fn board(&self, id: BoardId) -> Result<Board>;
 
-    /// Adds a new board at `at`. The Free board limit is the caller's check
-    /// ([`Entitlements::can_create_board`](snipdeck_core::Entitlements::can_create_board));
-    /// restoring from the trash is limited by
-    /// [`Store::restore_with`](crate::Store::restore_with).
+    /// Adds a new board at `at`. There is no limit on boards.
     fn insert_board(&mut self, board: &Board, at: Placement<BoardId>) -> Result<()>;
 
     /// Overwrites a board.
@@ -93,6 +90,11 @@ pub trait GroupRepo {
     /// Moves a live item of the group's list to the start or end of the group and makes it a
     /// member (`First` is what undoing the move of a group's first item needs).
     fn join_group(&mut self, item: ItemId, group: GroupId, end: GroupEnd) -> Result<()>;
+
+    /// Sets the item's group to exactly `group` (`None` leaves its group) and leaves its position
+    /// alone. The group must be one of the item's list. For undo, which must restore a
+    /// membership that a move would otherwise re-derive from the neighbour above.
+    fn set_item_group(&mut self, item: ItemId, group: Option<GroupId>) -> Result<()>;
 }
 
 /// Typed triggers: short codes such as `;sig` that stand for items.
@@ -237,9 +239,8 @@ pub trait TrashRepo {
     /// Brings a record back to where it was. Restoring something whose parent is trashed
     /// restores the parent too; siblings trashed on their own stay in the trash.
     ///
-    /// This can bring a board back. On Free, call
-    /// [`Store::restore_with`](crate::Store::restore_with) with the board limit instead, so
-    /// restoring cannot exceed it.
+    /// To learn what was brought back, call
+    /// [`Store::restore_reporting`](crate::Store::restore_reporting).
     fn restore(&mut self, target: Trashable) -> Result<()>;
 
     /// Everything in the trash, most recently trashed first. Records trashed together with

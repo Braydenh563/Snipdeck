@@ -1,7 +1,7 @@
 //! What the toast says after a use. Variants carry the data; the UI layer owns the wording
 //! (`@tr`), so translations never live in Rust.
 
-use snipdeck_core::{Feature, UseOutcome};
+use snipdeck_core::UseOutcome;
 use snipdeck_platform::route::{CopyReason, Route};
 
 use crate::{
@@ -22,28 +22,16 @@ pub enum ToastKind {
     Danger,
 }
 
-/// Why a licence key was not accepted: one reason per toast, so the user knows what to fix.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LicenceProblem {
-    /// Nothing was pasted.
-    Empty,
-    /// The text is not shaped like a Snipdeck key (wrong prefix or parts).
-    NotAKey,
-    /// The key is well formed but was not signed by Snipdeck (mistyped, cut short or forged).
-    BadSignature,
-    /// The key comes from a newer Snipdeck.
-    NewerFormat,
-    /// The key is genuine but not for Supporter.
-    WrongTier,
-    /// The key is good but could not be saved next to the library.
-    NotSaved,
-}
-
 /// The message, before translation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ToastMessage {
     /// "Pasted into {app}".
     Pasted {
+        /// A readable app name.
+        app: String,
+    },
+    /// "Pasted into {app}. Your earlier clipboard could not be put back."
+    PastedNotRestored {
         /// A readable app name.
         app: String,
     },
@@ -68,8 +56,6 @@ pub enum ToastMessage {
     CopiedTargetGone,
     /// "Couldn't reach the clipboard. Another app may be using it."
     ClipboardBusy,
-    /// "This item uses a Supporter feature."
-    NeedsPro(Feature),
     /// "This template can't be read. Open it to fix it."
     TemplateBroken,
     /// "Unlock your library to use this item."
@@ -86,10 +72,19 @@ pub enum ToastMessage {
     MasterPasswordChangedNotOpen,
     /// "Master password removed. Snipdeck couldn't open the library just now; ..."
     MasterPasswordRemovedNotOpen,
+    /// "Windows Hello didn't work, so it was turned off. You can turn it on again in Settings."
+    HelloTurnedOff,
+    /// "Windows Hello was not turned on." (the user cancelled the prompt that turns it on)
+    HelloNotTurnedOn,
+    /// "Windows Hello didn't work, so it was not turned on." (the prompt that turns it on failed)
+    HelloEnrolFailed,
     /// "Unlock your library first, so a copy includes your sensitive items."
     UnlockFirst,
     /// "Your library locked. The sensitive item you were editing was closed without saving."
     LockedEditorClosed,
+    /// "Your library locked after a while. The form for the sensitive template you were filling in
+    /// was closed."
+    LockedFillClosed,
     /// "Saved to {list}" (quick capture).
     Saved {
         /// The list's name.
@@ -224,17 +219,11 @@ pub enum ToastMessage {
     },
     /// "The Trash is empty".
     TrashEmptied,
-    /// "The Free plan includes 5 boards. Supporter adds unlimited boards."
-    BoardLimit,
     /// "Snipdeck found a problem in your library. Export a copy to be safe." (the weekly check)
     LibraryProblem,
     /// "Snipdeck closed unexpectedly last time. Open the log?" The action opens the log folder
     /// (`crash::open_log_folder`).
     CrashedLastTime,
-    /// "Snipdeck Supporter is on. Thank you."
-    LicenceAccepted,
-    /// A licence key that was refused, and why.
-    LicenceRejected(LicenceProblem),
     /// "Backed up".
     BackupMade,
     /// "Couldn't make a backup: the disk is full. ..." (a backup the user asked for)
@@ -291,12 +280,24 @@ pub enum ToastMessage {
     EraseFailed,
     /// "Couldn't open the folder."
     FolderNotOpened,
-    /// "Couldn't open your email app." (Get Supporter)
-    MailNotOpened,
+    /// "Couldn't open the link." (a web page that did not open)
+    LinkNotOpened,
     /// "Couldn't change the Windows start-up entry."
     AutostartFailed,
+    /// "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
+    /// (the Store build; only the user can switch the startup task back on)
+    AutostartSwitchedOff,
+    /// "Your organisation's policy keeps Snipdeck from starting with Windows."
+    AutostartPolicy,
     /// "Couldn't open the log folder."
     CannotOpenLog,
+    /// "Saved. This trigger overlaps the trigger of “{other}”, so one of them may never fire."
+    TriggerOverlaps {
+        /// The title of the other item whose trigger overlaps.
+        other: String,
+    },
+    /// "Couldn't start typing triggers. Nothing will be expanded or suggested."
+    TypingUnavailable,
     /// "Couldn't unlock the encryption key. Nothing was saved."
     KeyUnavailable,
     /// "This item was deleted. Nothing was saved."
@@ -357,6 +358,13 @@ pub enum ToastMessage {
         /// The file name written, without its folder.
         name: String,
     },
+    /// "Couldn't pick a colour from the screen." (the eyedropper failed)
+    EyedropFailed,
+    /// "HDR is on for this screen: {hex} is approximate." (a colour picked on an HDR monitor)
+    EyedropHdr {
+        /// The picked colour, `#rrggbb`.
+        hex: String,
+    },
 }
 
 /// A toast: a style and a message.
@@ -384,12 +392,16 @@ pub fn after_use(outcome: UseOutcome, route: &Route, pasted_into: Option<&str>) 
         CopyReason::NoTarget => String::new(),
     };
     match (outcome, route) {
-        (UseOutcome::Pasted | UseOutcome::PastedNotRestored, _) => Toast {
+        (UseOutcome::Pasted, _) => Toast {
             kind: ToastKind::Success,
             message: ToastMessage::Pasted {
                 app: pasted_into.map(friendly_app_name).unwrap_or_default(),
             },
         },
+        // The paste went through; the clipboard the user had before it is gone. Say so.
+        (UseOutcome::PastedNotRestored, _) => neutral(ToastMessage::PastedNotRestored {
+            app: pasted_into.map(friendly_app_name).unwrap_or_default(),
+        }),
         (
             UseOutcome::Copied | UseOutcome::CopiedInstead(_),
             Route::Copy(reason @ CopyReason::Excluded { .. }),
@@ -416,9 +428,6 @@ pub fn after_error(error: &UseError) -> Toast {
     use snipdeck_store::Error as Store;
     let message = match error {
         UseError::Platform(_) => ToastMessage::ClipboardBusy,
-        UseError::Render(snipdeck_core::template::RenderError::ProRequired(feature)) => {
-            ToastMessage::NeedsPro(*feature)
-        }
         UseError::Template(_) | UseError::NotText | UseError::Render(_) => {
             ToastMessage::TemplateBroken
         }
@@ -454,6 +463,19 @@ mod tests {
         assert_eq!(
             toast.message,
             ToastMessage::Pasted {
+                app: "Notepad".into()
+            }
+        );
+    }
+
+    #[test]
+    fn a_paste_that_could_not_restore_the_clipboard_says_so() {
+        let restored = after_use(UseOutcome::Pasted, &PASTE, Some("NOTEPAD.EXE"));
+        let lost = after_use(UseOutcome::PastedNotRestored, &PASTE, Some("NOTEPAD.EXE"));
+        assert_ne!(lost, restored);
+        assert_eq!(
+            lost.message,
+            ToastMessage::PastedNotRestored {
                 app: "Notepad".into()
             }
         );

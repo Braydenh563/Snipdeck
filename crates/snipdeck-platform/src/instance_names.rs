@@ -1,8 +1,8 @@
 //! Names of the kernel objects that make Snipdeck a single-instance app.
 //!
 //! Portable so the naming rules are tested everywhere; `windows::single_instance` uses them.
-//! Both objects live in the per-session `Local\` namespace, so two users on one machine (fast user
-//! switching, Remote Desktop) can each run their own copy.
+//! All three objects live in the per-session `Local\` namespace, so two users on one machine (fast
+//! user switching, Remote Desktop) can each run their own copy.
 
 /// The longest `app_id` accepted.
 pub const MAX_APP_ID_LEN: usize = 64;
@@ -52,6 +52,16 @@ pub fn raise_event_name(app_id: &str) -> Result<String, AppIdError> {
     Ok(format!(r"Local\Snipdeck.raise-{app_id}"))
 }
 
+/// The named auto-reset event `snipdeck.exe --quit` signals: `Local\Snipdeck.quit-<app_id>`.
+///
+/// # Errors
+///
+/// See [`AppIdError`].
+pub fn quit_event_name(app_id: &str) -> Result<String, AppIdError> {
+    check(app_id)?;
+    Ok(format!(r"Local\Snipdeck.quit-{app_id}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -63,7 +73,12 @@ mod tests {
             raise_event_name("main").unwrap(),
             r"Local\Snipdeck.raise-main"
         );
+        assert_eq!(
+            quit_event_name("main").unwrap(),
+            r"Local\Snipdeck.quit-main"
+        );
         assert_ne!(mutex_name("main"), raise_event_name("main"));
+        assert_ne!(raise_event_name("main"), quit_event_name("main"));
     }
 
     #[test]
@@ -73,17 +88,26 @@ mod tests {
         assert!(mutex_name(&"a".repeat(64)).is_ok());
         for bad in ["a\\b", "a b", "a/b", "é", "a\0", "Global\\x"] {
             assert_eq!(raise_event_name(bad), Err(AppIdError::Character), "{bad:?}");
+            assert_eq!(quit_event_name(bad), Err(AppIdError::Character), "{bad:?}");
         }
         assert!(mutex_name("Dev.1_x-y").is_ok());
     }
 
     #[test]
     fn the_mutex_and_event_names_never_collide() {
-        // Mutexes and events share one kernel namespace; the prefixes differ (`Snipdeck-` against
-        // `Snipdeck.raise-`), so no pair of app ids can produce the same string.
-        for a in ["x", "x-raise", "raise-x", "a.b", ".raise-x"] {
-            for b in ["x", "x-raise", "raise-x", "a.b", ".raise-x"] {
-                assert_ne!(mutex_name(a).unwrap(), raise_event_name(b).unwrap());
+        // Mutexes and events share one kernel namespace; the prefixes differ (`Snipdeck-`,
+        // `Snipdeck.raise-`, `Snipdeck.quit-`), so no pair of app ids can produce the same string.
+        let ids = [
+            "x", "x-raise", "raise-x", "quit-x", "x-quit", "a.b", ".raise-x", ".quit-x",
+        ];
+        for a in ids {
+            for b in ids {
+                let m = mutex_name(a).unwrap();
+                let r = raise_event_name(b).unwrap();
+                let q = quit_event_name(b).unwrap();
+                assert_ne!(m, r);
+                assert_ne!(m, q);
+                assert_ne!(r, q);
             }
         }
     }

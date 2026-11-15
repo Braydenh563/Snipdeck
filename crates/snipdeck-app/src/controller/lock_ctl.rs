@@ -8,9 +8,6 @@
 //! an error. (The store takes `&str`, and the window's own text is a Slint string, so the plain
 //! text cannot be wiped from this side.)
 //!
-//! * Setting a password is a Supporter feature ([`Feature::MasterPassword`]). Changing it,
-//!   removing it and unlocking are always allowed, so a lapsed or missing licence never traps a
-//!   library behind a password the user cannot manage.
 //! * With a password set, the library starts locked and stays locked until the user types it. The
 //!   prompt opens the first time a locked sensitive item is needed ([`Effect::OpenUnlock`]), not
 //!   at start-up, so a tray app that starts with Windows does not greet the user with a dialog.
@@ -18,9 +15,11 @@
 
 use std::{sync::Arc, time::Duration};
 
-use snipdeck_core::{Feature, Timestamp};
+use snipdeck_core::Timestamp;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::crypto::{CryptoError, KdfParams, KeyProvider, KeyRecord, KeyRing};
+
+mod hello_ctl;
 
 use super::{Controller, Effect, Library, Toast, ToastKind, ToastMessage};
 use crate::{
@@ -54,10 +53,16 @@ pub enum MasterProblem {
     TooShort,
     /// The two typed copies of the new password differ.
     Mismatch,
-    /// Free plan: setting a master password is a Supporter feature.
-    SupporterOnly,
     /// No key protection on this machine.
     Unavailable,
+    /// Windows Hello did not unlock (cancelled, failed, removed or expired); the password does.
+    HelloFailed,
+    /// The user cancelled the Hello prompt (the button stays).
+    HelloCancelled,
+    /// Windows Hello changed since it was set up; the password unlocks and sets it up again.
+    HelloChanged,
+    /// Windows Hello was turned off because it did not work here.
+    HelloTurnedOff,
     /// The store refused, or the action does not fit the state. Nothing changed.
     Failed,
 }
@@ -89,6 +94,8 @@ pub(super) struct LockState {
     generation: u64,
     /// Cost of Argon2id for a new password; `None` is [`KdfParams::DEFAULT`]. Tests make it cheap.
     pub(super) kdf: Option<KdfParams>,
+    /// Windows Hello unlock (`hello_ctl.rs`).
+    hello: hello_ctl::HelloState,
 }
 
 impl LockState {
@@ -101,6 +108,7 @@ impl LockState {
             busy: None,
             generation: 0,
             kdf: None,
+            hello: hello_ctl::HelloState::default(),
         }
     }
 }
@@ -183,12 +191,6 @@ where
         }
     }
 
-    /// Whether this plan may set a master password ([`Feature::MasterPassword`]).
-    #[must_use]
-    pub fn master_password_allowed(&self) -> bool {
-        self.entitlements.allows(Feature::MasterPassword)
-    }
-
     /// A master password is set and the key is not open.
     #[must_use]
     pub fn library_locked(&self) -> bool {
@@ -249,6 +251,8 @@ where
     /// The user closed the unlock window without a password. The library stays locked.
     pub fn cancel_unlock(&mut self) {
         self.lock.prompt = false;
+        // A Hello unlock under way must not open the library after the user said no.
+        self.give_up_hello_unlock();
         // A password already being checked must not open the library after the user said no.
         if self.lock.busy == Some(MasterOp::Unlock) {
             self.invalidate_master();
@@ -318,7 +322,7 @@ where
     ///
     /// # Errors
     ///
-    /// [`MasterProblem::SupporterOnly`] on Free, [`MasterProblem::Unavailable`] without key
+    /// [`MasterProblem::Unavailable`] without key
     /// protection, [`MasterProblem::TooShort`], [`MasterProblem::Mismatch`], or
     /// [`MasterProblem::Failed`] (a password is already set, the store refused, or another step
     /// is running).
@@ -328,9 +332,6 @@ where
         again: &str,
     ) -> Result<MasterJob, MasterProblem> {
         self.check_idle()?;
-        if !self.master_password_allowed() {
-            return Err(MasterProblem::SupporterOnly);
-        }
         let provider = self.provider()?;
         if self.lock.set || self.lock.unreadable {
             return Err(MasterProblem::Failed);
@@ -436,12 +437,8 @@ where
                 self.store
                     .open_with_key(key)
                     .map_err(|_| MasterProblem::Failed)?;
-                self.lock.prompt = false;
-                self.note_activity();
-                self.sync_recent_gate();
-                // Unlocking answers the "locked" error on screen, so it replaces it.
-                self.show_toast(neutral(ToastMessage::Unlocked));
-                self.refresh_or_notice("unlocking");
+                self.note_password_unlock();
+                self.complete_unlock();
                 Ok(())
             }
             (MasterOp::Set { exists }, Some(record)) => {
@@ -452,6 +449,7 @@ where
                     // The password is set for good from here, whether or not the library
                     // opens now: a retry must ask for it, not offer to set it again.
                     self.lock.set = true;
+                    self.forget_hello();
                     self.store
                         .open_with_key(key)
                         .map_err(|_| MasterProblem::Failed)?;
@@ -460,6 +458,7 @@ where
                         .install_key_ring(key, &record)
                         .map_err(|_| MasterProblem::Failed)?;
                     self.lock.set = true;
+                    self.forget_hello();
                 }
                 self.note_activity();
                 self.show_toast(neutral(ToastMessage::MasterPasswordSet));
@@ -473,6 +472,9 @@ where
                 // The password is changed for good from here. The user just proved the old one,
                 // so the library opens if it was locked; if that fails the change still stands
                 // and the toast says the library is locked.
+                // The record changed, so a sealed copy no longer fits it: the password just
+                // proved counts as a fresh unlock, and the host seals a new copy (one prompt).
+                self.note_password_unlock();
                 let reopened = self.open_after_change(key);
                 self.note_activity();
                 self.show_toast(neutral(if reopened {
@@ -490,6 +492,7 @@ where
                 // or not the key opens now.
                 self.lock.set = false;
                 self.lock.prompt = false;
+                self.forget_hello();
                 let reopened = self.open_after_change(key);
                 self.note_activity();
                 self.show_toast(neutral(if reopened {
@@ -504,6 +507,16 @@ where
                 Err(MasterProblem::Failed)
             }
         }
+    }
+
+    /// The library is open after an unlock (password or Hello).
+    fn complete_unlock(&mut self) {
+        self.lock.prompt = false;
+        self.note_activity();
+        self.sync_recent_gate();
+        // Unlocking answers the "locked" error on screen, so it replaces it.
+        self.show_toast(neutral(ToastMessage::Unlocked));
+        self.refresh_or_notice("unlocking");
     }
 
     fn check_idle(&self) -> Result<(), MasterProblem> {
@@ -582,14 +595,22 @@ where
         }
         // A change or removal still being derived must not reopen what is being locked.
         self.invalidate_master();
+        // A Hello step under way is told to stop and its outcome is refused; the sealed copy stays
+        // (it is what Hello unlocks with).
+        self.give_up_hello_step(true);
         self.store.lock_key_ring();
         self.index_cache.forget_recent();
+        self.forget_secret_files();
         self.revealed = None;
         self.panel_revealed = None;
         self.sync_recent_gate();
         // An open editor of a sensitive item holds its text in the window: it closes, unsaved.
         if self.close_sensitive_item_editor() {
             self.show_toast(neutral(ToastMessage::LockedEditorClosed));
+        }
+        // The fill form of a sensitive template holds the decrypted template and its answers.
+        if self.close_sensitive_fill() {
+            self.show_toast(neutral(ToastMessage::LockedFillClosed));
         }
         self.refresh_or_notice("locking");
     }

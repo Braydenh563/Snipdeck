@@ -14,7 +14,7 @@ function New-Plan {
 
 function Test-StepInMode($T, [string]$RunMode, [string]$OsClass) {
     if ($T.os -and $T.os -ne 'any' -and $T.os -ne $OsClass) { return $false }
-    # The Quick check (about 10 minutes): only steps flagged "qc": true. Those steps ("qcOnly") never run in the other modes.
+    # The Quick check (about 14 minutes): only steps flagged "qc": true. Those steps ("qcOnly") never run in the other modes.
     if ($RunMode -eq 'qc') { return ($T.qc -eq $true) }
     if ($T.qcOnly -eq $true) { return $false }
     $isGate = ($T.gate -eq $true) -or [bool]$T.anyGroup

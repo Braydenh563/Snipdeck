@@ -36,6 +36,8 @@ use crate::{
     wording,
 };
 
+mod colours;
+
 type ProblemsFn = dyn Fn(&[HotkeyProblem]);
 type FrameFn = dyn Fn(&Monitor, Rect);
 type MonitorFn = dyn Fn(&Monitor);
@@ -66,6 +68,11 @@ pub(crate) fn redraw_all() {
     }
 }
 
+/// Redraws every bound window from another thread (the eyedropper's, when its run ends).
+pub fn redraw_from_any_thread() {
+    let _ = slint::invoke_from_event_loop(redraw_all);
+}
+
 /// Runs the timer chain of toast `seq`: each tick advances the toast and redraws the windows.
 pub(crate) fn arm_toast<S, C, K, T>(
     controller: Weak<RefCell<Controller<S, C, K, T>>>,
@@ -91,14 +98,28 @@ pub(crate) fn arm_toast<S, C, K, T>(
 
 /// How long after a collapse the handle's frame is asked for once more (see `Core::apply`).
 const DOCK_REPLACE_AFTER: std::time::Duration = std::time::Duration::from_millis(50);
-/// How long the Panel must hold still after a move for the drag to count as released.
-const DRAG_SETTLE: std::time::Duration = std::time::Duration::from_millis(250);
 
-/// Moves and sizes the window to `frame`.
+/// Moves and sizes the window to `frame`, touching only what differs (a slide moves the Panel on
+/// every pointer move; asking for the same size again each time made Windows resize the surface
+/// mid-drag), then draws it whole.
 fn place(window: &ui::PanelWindow, frame: Rect) {
     let w = window.window();
-    w.set_position(slint::PhysicalPosition::new(frame.x, frame.y));
-    w.set_size(slint::PhysicalSize::new(frame.w, frame.h));
+    let position = slint::PhysicalPosition::new(frame.x, frame.y);
+    if w.position() != position {
+        w.set_position(position);
+    }
+    let size = slint::PhysicalSize::new(frame.w, frame.h);
+    if w.size() != size {
+        w.set_size(size);
+    }
+    repaint_whole(window);
+}
+
+/// Damages the whole Panel so the next frame is drawn in full (O39). Windows drops a hidden
+/// window's pixels and Slint's software renderer presents only what changed, so a Panel shown
+/// again (after the item editor closes) or moved came back with see-through gaps.
+fn repaint_whole(window: &ui::PanelWindow) {
+    snipdeck_ui::damage::whole_window(window.window());
 }
 
 /// What the host keeps after binding: the entry points for events that do not come from the
@@ -114,10 +135,13 @@ pub struct Binding {
     tray: Rc<dyn Fn(TrayEvent)>,
     system_look: Rc<dyn Fn(SystemLook)>,
     clipboard_changed: Rc<dyn Fn(snipdeck_platform::clipboard_watch::ClipboardChange)>,
+    typed_trigger: Rc<dyn Fn(crate::typing_worker::Out)>,
     frame_changed: Rc<FrameFn>,
     frame_moved: Rc<FrameFn>,
+    panel_focused: Rc<dyn Fn(bool)>,
     restore_frame: Rc<MonitorFn>,
     restore_anchor: Rc<dyn Fn()>,
+    start_hidden: Rc<dyn Fn()>,
     files_hover: Rc<dyn Fn(bool)>,
     file_dropped: Rc<dyn Fn(String)>,
 }
@@ -174,6 +198,12 @@ impl Binding {
         (self.clipboard_changed)(change);
     }
 
+    /// The typing worker has something for the UI thread: a completed trigger, a suggestion to
+    /// show or take down, or `Tab` on the hint (see `Typed::password` and `Typed::still_current`).
+    pub fn typed_trigger(&self, out: crate::typing_worker::Out) {
+        (self.typed_trigger)(out);
+    }
+
     /// Windows' light / dark or high-contrast state is `look` (read at start-up, and again on
     /// every change notification; an unchanged look redraws nothing).
     pub fn system_look(&self, look: SystemLook) {
@@ -193,6 +223,11 @@ impl Binding {
         (self.frame_moved)(monitor, frame);
     }
 
+    /// The Panel's window gained or lost the keyboard: a docked Panel that has it stays out.
+    pub fn panel_focused(&self, focused: bool) {
+        (self.panel_focused)(focused);
+    }
+
     /// Files are being dragged over the Panel (`true`), or the drag left it (`false`).
     pub fn files_hover(&self, over: bool) {
         (self.files_hover)(over);
@@ -209,10 +244,18 @@ impl Binding {
         (self.restore_frame)(monitor);
     }
 
-    /// The Panel is shown but its window cannot say what monitor it is on (the first show of a
-    /// `--hidden` start): place it at the mouse or the text cursor, if the user asked for that.
+    /// The Panel is shown but its window cannot say what monitor it is on (it does not exist
+    /// before its first show): place it at the mouse or the text cursor, if the user asked for
+    /// that; else, the first time, where it was last left, on a monitor that is still there.
     pub fn restore_anchor(&self) {
         (self.restore_anchor)();
+    }
+
+    /// The app started with the Panel not shown; its window is not made yet. A Panel last left
+    /// docked, with a dock that tucks, becomes its tab on that monitor (placed here, before
+    /// the host shows the window); any other is hidden.
+    pub fn start_hidden(&self) {
+        (self.start_hidden)();
     }
 }
 
@@ -221,6 +264,10 @@ struct Core<S, C, K, T> {
     window: slint::Weak<ui::PanelWindow>,
     /// What the Panel asks of the machine: the keyboard for text entry, and to give it back.
     host: Rc<dyn PopupHost>,
+    /// The suggestion hint at the caret (made on first use).
+    hint: crate::suggest_hint::SuggestHint,
+    /// The number of the hint that is up, 0 for none.
+    hints: HintIds,
     on_effect: Box<dyn Fn(&Effect)>,
     /// What the window shows now, so a redraw sets only what changed (re-setting the rows
     /// model would reset the list's scroll position on every toast tick).
@@ -235,8 +282,11 @@ struct Core<S, C, K, T> {
     idle_timer: Cell<bool>,
     /// Sends the dock its ticks while a hover or leave delay runs.
     dock_timer: slint::Timer,
+    drag_timer: slint::Timer,
     /// Looks at the clipboard while "Take screenshot" waits for its picture.
     screen_clip_timer: slint::Timer,
+    /// What the Colours tab remembers between redraws.
+    colours: colours::Glue,
 }
 
 impl<S, C, K, T> Core<S, C, K, T>
@@ -258,6 +308,8 @@ where
             Self {
                 controller: Rc::clone(controller),
                 window: window.as_weak(),
+                hint: crate::suggest_hint::SuggestHint::new(Rc::clone(&host)),
+                hints: HintIds::default(),
                 host,
                 on_effect,
                 shown: RefCell::new(None),
@@ -270,18 +322,110 @@ where
                 clipboard_timer: Cell::new(false),
                 idle_timer: Cell::new(false),
                 dock_timer: slint::Timer::default(),
+                drag_timer: slint::Timer::default(),
                 screen_clip_timer: slint::Timer::default(),
+                colours: colours::Glue::default(),
             }
         });
         register_redraw(&core.redraw);
         core
     }
 
-    /// Runs `f` on the controller, then redraws.
+    /// Takes the suggestion hint down (if one is up) and lets the keyboard hook have `Tab`
+    /// back.
+    fn hint_down(&self) {
+        self.hint.hide_hint();
+        let id = self.hints.take();
+        if id != 0 {
+            self.controller.borrow_mut().hint_down(id);
+        }
+    }
+
+    /// What the typing worker found (SPEC slice 5b and 6): an expansion, or the suggestion hint.
+    fn typed(self: &Rc<Self>, out: crate::typing_worker::Out) {
+        use crate::{controller::HintOutcome, typing_worker::Out};
+        // Anything from a worker that is no longer the running one is stale.
+        if let Out::Show(_, id) | Out::Hide(id) | Out::Accept(_, id) = &out
+            && self.controller.borrow().hint_is_stale(*id)
+        {
+            return;
+        }
+        match out {
+            Out::Expand(typed) => {
+                self.hint_down();
+                self.act(|ctl| {
+                    let _ = ctl.expand_typed(&typed);
+                });
+            }
+            // Only the hint that is on screen is accepted: anything else was passed on or is
+            // old, and inserts nothing.
+            Out::Accept(typed, id) => {
+                let on_screen = self.hints.is_current(id);
+                if on_screen {
+                    self.hint_down();
+                }
+                let _ = self.act(|ctl| ctl.accept_hinted(&typed, on_screen));
+            }
+            // A hide for an older hint (a worker that was switched off and on again) is stale.
+            Out::Hide(id) if self.hints.is_current(id) => self.hint_down(),
+            Out::Hide(_) => {}
+            // A show older than one already seen is stale too.
+            Out::Show(_, id) if !self.hints.admit(id) => {}
+            Out::Show(typed, id) => {
+                let (outcome, look) = {
+                    let mut ctl = self.controller.borrow_mut();
+                    let outcome = ctl.suggest_typed(&typed);
+                    let view = ctl.view();
+                    let look = crate::suggest_hint::HintLook {
+                        dark: view.dark,
+                        high_contrast: view.high_contrast,
+                        accent: view.accent,
+                        reduced_motion: view.reduced_motion,
+                    };
+                    (outcome, look)
+                };
+                let up = match outcome {
+                    HintOutcome::Show { title, caret } => {
+                        self.hint.show_hint(&title, Some(caret), &look)
+                    }
+                    HintOutcome::Hide => {
+                        self.hint.hide_hint();
+                        false
+                    }
+                };
+                let replaced = self.hints.shown(if up { id } else { 0 });
+                let mut ctl = self.controller.borrow_mut();
+                if replaced != 0 && replaced != id {
+                    // The hint it replaces no longer takes a Tab.
+                    ctl.hint_down(replaced);
+                }
+                if up {
+                    // On screen for real: now the hook may take a Tab for it.
+                    ctl.hint_up(id);
+                }
+            }
+        }
+    }
+
     fn act<R>(self: &Rc<Self>, f: impl FnOnce(&mut Controller<S, C, K, T>) -> R) -> R {
         let result = f(&mut self.controller.borrow_mut());
         redraw_all();
         result
+    }
+
+    /// Reads the files of `run` (dropped, or pasted from Explorer) off the UI thread; the Panel
+    /// stays alive, and each result is applied here when the controller is free.
+    fn read_run(self: &Rc<Self>, run: crate::controller::DropRun) {
+        let core = Rc::clone(self);
+        crate::drop_read::drive(
+            run,
+            Rc::new(move |run, done| {
+                if core.controller.try_borrow_mut().is_err() {
+                    return Err(Box::new((run, done)));
+                }
+                Ok(core.act(|ctl| ctl.drop_read_done(run, done)))
+            }),
+        );
     }
 
     /// Row `index` of the open item or symbol menu was chosen. "Save as" of a symbol runs its
@@ -289,7 +433,11 @@ where
     /// loop, during which timers and hotkeys reach the controller).
     fn item_menu_chosen(self: &Rc<Self>, index: usize, dark: bool) {
         if !self.controller.borrow().symbol_menu_open() {
-            self.act_effects(|ctl| ctl.choose_item_menu(index));
+            let copy = self
+                .window
+                .upgrade()
+                .is_some_and(|w| w.get_item_menu_shift());
+            self.act_effects(|ctl| ctl.choose_item_menu_as(index, copy));
             return;
         }
         let choice =
@@ -336,12 +484,15 @@ where
                     // A hidden Panel comes back where it was in the stack, behind the app in
                     // use; and one that is "shown" already (a second Open Panel) may be buried.
                     crate::native_window::raise(&window);
+                    repaint_whole(&window);
                     // Shown on purpose (the hotkey, the tray, a second launch): the user types
                     // next, so the Panel takes the keyboard. A dock-hover reveal never comes
                     // here, so the pointer passing over the edge steals nothing.
                     self.activate_soon();
                 }
                 Effect::ShowSymbols => window.invoke_open_symbols(),
+                Effect::ShowColours => window.invoke_open_colours(),
+                Effect::HideColours => window.invoke_close_colours(),
                 Effect::HidePanel => {
                     // Back to the Target first, while the Panel still holds the foreground:
                     // hiding it first would leave the choice of the next window to Windows.
@@ -362,6 +513,14 @@ where
                 Effect::EditItem(id) => {
                     self.controller.borrow_mut().open_item_editor(*id);
                     redraw_all();
+                }
+                Effect::MoveWindow(x, y) => {
+                    let position = slint::PhysicalPosition::new(*x, *y);
+                    if window.window().position() != position {
+                        window.window().set_position(position);
+                        // Drawn whole after every move: no see-through gaps while it travels.
+                        repaint_whole(&window);
+                    }
                 }
                 Effect::PlaceWindow(frame) => {
                     place(&window, *frame);
@@ -405,8 +564,19 @@ where
         let Some(window) = self.window.upgrade() else {
             return;
         };
+        // The eyedropper's result first: its toast is part of the view built below, so it shows
+        // with this frame and not with the next unrelated redraw.
+        let picked = self.controller.borrow_mut().poll_eyedropper();
+        if !picked.is_empty() {
+            self.apply(&picked);
+        }
         let view = self.controller.borrow().view();
         render(&window, self.shown.borrow().as_ref(), &view);
+        // A new group's name follows the language the window is in now.
+        self.controller
+            .borrow_mut()
+            .set_group_name(&window.invoke_group_default_name());
+        Self::refresh_words(&mut self.controller.borrow_mut(), &window);
         // Placements decided by another window (Settings docking the Panel, the dock being
         // switched off) are carried out here, where the Panel's window is.
         let pending = self.controller.borrow_mut().take_pending();
@@ -415,6 +585,7 @@ where
         }
         self.arm_dock();
         self.arm_screen_clip();
+        self.sync_colours(&window);
         if let Some(toast) = &view.toast
             && self.controller.borrow_mut().claim_toast_timer(toast.seq)
         {
@@ -430,9 +601,11 @@ where
         self.arm_idle_lock();
     }
 
-    /// Runs the dock's tick timer while a hover or leave delay is running, and only then.
+    /// Runs the dock's timer while the Panel is docked, may tuck and is on screen, and only
+    /// then: each tick reads the pointer and runs the hover and leave delays. A tick that
+    /// changes nothing redraws nothing.
     fn arm_dock(self: &Rc<Self>) {
-        let needed = self.controller.borrow().dock_needs_tick();
+        let needed = self.controller.borrow().dock_live();
         if needed == self.dock_timer.running() {
             return;
         }
@@ -440,12 +613,81 @@ where
             let core = Rc::downgrade(self);
             self.dock_timer
                 .start(slint::TimerMode::Repeated, crate::dock::TICK, move || {
-                    if let Some(core) = core.upgrade() {
-                        core.act_effects(|ctl| ctl.dock_event(DockEvent::Tick));
+                    let Some(core) = core.upgrade() else {
+                        return;
+                    };
+                    let Ok(mut ctl) = core.controller.try_borrow_mut() else {
+                        return;
+                    };
+                    let topmost = ctl.topmost();
+                    let effects = ctl.dock_tick();
+                    // A full-screen app came in front or left: the window steps down or back up.
+                    let stepped = topmost != ctl.topmost();
+                    drop(ctl);
+                    if stepped || !effects.is_empty() {
+                        redraw_all();
+                        core.apply(&effects);
                     }
                 });
         } else {
             self.dock_timer.stop();
+        }
+    }
+
+    /// Runs the drag's timer while the Panel is dragged: the window follows the cursor even
+    /// when no pointer event arrives (the window moving under a still pointer reports none).
+    fn arm_drag(self: &Rc<Self>) {
+        if !self.controller.borrow().dragging() {
+            self.drag_timer.stop();
+            return;
+        }
+        if self.drag_timer.running() {
+            return;
+        }
+        let core = Rc::downgrade(self);
+        self.drag_timer.start(
+            slint::TimerMode::Repeated,
+            crate::dock::DRAG_TICK,
+            move || {
+                let Some(core) = core.upgrade() else {
+                    return;
+                };
+                let let_go = core
+                    .controller
+                    .try_borrow_mut()
+                    .is_ok_and(|mut ctl| ctl.drag_let_go());
+                if let_go {
+                    core.drag_finish();
+                } else {
+                    core.drag_step(None);
+                }
+            },
+        );
+    }
+
+    /// One step of the drag: the window goes where the controller says. Only a step that
+    /// changes what the Panel shows (the dock offered or taken away) redraws it.
+    fn drag_step(self: &Rc<Self>, pointer: Option<(i32, i32)>) {
+        let Ok(mut ctl) = self.controller.try_borrow_mut() else {
+            return;
+        };
+        let effects = ctl.drag_move(pointer);
+        let dragging = ctl.dragging();
+        drop(ctl);
+        if effects.iter().any(|e| matches!(e, Effect::PlaceWindow(_))) {
+            redraw_all();
+        }
+        self.apply(&effects);
+        if !dragging {
+            self.drag_timer.stop();
+        }
+    }
+
+    /// The button came up: the Panel docks or floats where it is.
+    fn drag_finish(self: &Rc<Self>) {
+        self.drag_timer.stop();
+        if self.controller.try_borrow_mut().is_ok() {
+            self.act_effects(Controller::drag_end);
         }
     }
 
@@ -553,7 +795,7 @@ where
     ///
     /// `on_effect` is called with every [`Effect`] after the window has acted on it (a
     /// `ShowPanel` has shown the window, a `HidePanel` has hidden it); the host handles the
-    /// rest (`OpenPicker`, `StartCapture`, `PasteNext`, `DragWindow`).
+    /// rest (`OpenPicker`, `StartCapture`, `PasteNext`).
     ///
     #[allow(
         clippy::too_many_lines,
@@ -566,6 +808,8 @@ where
         on_effect: impl Fn(&Effect) + 'static,
     ) -> Binding {
         let core = Core::new(this, window, host, Box::new(on_effect));
+        core.act(|ctl| ctl.set_group_name(&window.invoke_group_default_name()));
+        core.wire_colours(window);
         core.sync();
         {
             // Where the other windows open over the Panel, while it is shown.
@@ -613,6 +857,10 @@ where
             let used = ctl.activate_row(index(i), UseMode::Copy);
             ctl.after_use(&used)
         });
+        wire_effects!(on_row_plain, |ctl, i| {
+            let used = ctl.activate_row(index(i), UseMode::PastePlain);
+            ctl.after_use(&used)
+        });
         wire_effects!(on_quick_use, |ctl, n| {
             let used = ctl.quick_use(u8::try_from(n).unwrap_or(0));
             ctl.after_use(&used)
@@ -648,8 +896,14 @@ where
         wire!(on_tab_selected, |ctl, i| ctl.select_tab(index(i)));
         wire!(on_recent_unlock_requested, |ctl| ctl.request_unlock());
         wire!(on_recent_toggled, |ctl, open| ctl.set_recent_open(open));
+        wire!(on_recent_question_answered, |ctl, yes| ctl
+            .set_recent_history(yes));
         wire_effects!(on_recent_used, |ctl, id| {
             let used = ctl.recent_use(i64::from(id), UseMode::Paste);
+            ctl.after_use(&used)
+        });
+        wire_effects!(on_recent_plain, |ctl, id| {
+            let used = ctl.recent_use(i64::from(id), UseMode::PastePlain);
             ctl.after_use(&used)
         });
         wire_effects!(on_recent_copied, |ctl, id| {
@@ -781,6 +1035,14 @@ where
                 crate::main_window::SelectMode::Replace
             }
         ));
+        wire!(on_group_requested, |ctl, i| ctl.group_marked(index(i)));
+        wire!(on_group_toggled, |ctl, i| ctl
+            .group_collapse(index(i), None));
+        wire!(on_group_collapsed_set, |ctl, i, collapsed| ctl
+            .group_collapse(index(i), Some(collapsed)));
+        wire!(on_group_renamed, |ctl, i, name| ctl
+            .group_rename(index(i), name.as_str()));
+        wire!(on_group_rename_ended, |ctl| ctl.group_rename_ended());
         wire!(on_select_all_requested, |ctl| ctl.panel_mark_all());
         wire!(on_select_mode_changed, |ctl, on| ctl.panel_select_mode(on));
         wire!(on_delete_mode_changed, |ctl, on| ctl.panel_delete_mode(on));
@@ -841,6 +1103,8 @@ where
             .panel_move_selected(isize::try_from(delta).unwrap_or(0)));
         wire!(on_row_dropped, |ctl, from, onto| ctl
             .panel_drop_row(index(from), index(onto)));
+        wire!(on_row_dropped_above, |ctl, from, onto| ctl
+            .panel_drop_row_above(index(from), index(onto)));
         wire!(on_row_dropped_on_tab, |ctl, row, tab| ctl
             .panel_drop_on_tab(index(row), index(tab)));
         wire!(on_text_dropped, |ctl, text| ctl
@@ -860,8 +1124,17 @@ where
         wire!(on_delete_requested, |ctl, i| ctl.delete_row(index(i)));
         wire!(on_toast_undo, |ctl| ctl.toast_action());
         wire_effects!(on_toast_edit, |ctl| ctl.toast_edit());
-        wire!(on_paste_create_requested, |ctl| ctl
-            .paste_create(crate::item_editor::Origin::Panel));
+        {
+            let core = Rc::clone(&core);
+            window.on_paste_create_requested(move || {
+                crate::trace!("callback on_paste_create_requested");
+                crate::native_window::note_opener(crate::native_window::Surface::Panel);
+                let started = core.act(|ctl| ctl.paste_begin(crate::item_editor::Origin::Panel));
+                if let Some(run) = started {
+                    core.read_run(run);
+                }
+            });
+        }
         wire_effects!(on_copy_selection_requested, |ctl| {
             match ctl.panel_copy_selection() {
                 Some(used) => ctl.after_use(&used),
@@ -878,38 +1151,60 @@ where
             window.on_toast_hover_changed(move |on| core.controller.borrow_mut().toast_hover(on));
         }
         {
-            let core = Rc::clone(&core);
-            window.on_along_begin(move || core.controller.borrow_mut().dock_slide_begin());
-        }
-        {
-            // The grip pill's drag: logical pixels along the edge since the press, the window
-            // frame is physical.
-            let core = Rc::clone(&core);
-            let window_weak = window.as_weak();
-            window.on_along_drag(move |delta| {
-                let scale = window_weak
-                    .upgrade()
-                    .map_or(1.0, |w| w.window().scale_factor());
+            // The header's drag. The app moves the window itself: the controller reads the
+            // cursor on screen (the pointer the window reports is only the fallback), a timer
+            // keeps the window following it, and the release is the window's own pointer-up or,
+            // where the host can tell, the button being up.
+            let on_screen = |w: &ui::PanelWindow, x: f32, y: f32| {
+                let (at, scale) = (w.window().position(), w.window().scale_factor());
                 #[allow(
                     clippy::cast_possible_truncation,
-                    reason = "a pointer delta of a few thousand pixels"
+                    reason = "a pointer offset inside the window, rounded"
                 )]
-                let physical = (delta * scale).round() as i32;
-                core.act_effects(|ctl| ctl.dock_slide(physical));
-            });
+                let px = |v: f32| (v * scale).round() as i32;
+                (at.x.saturating_add(px(x)), at.y.saturating_add(px(y)))
+            };
+            {
+                let (core, weak) = (Rc::clone(&core), window.as_weak());
+                window.on_drag_began(move |x, y| {
+                    let Some(w) = weak.upgrade() else {
+                        return;
+                    };
+                    let (at, size) = (w.window().position(), w.window().size());
+                    let frame = Rect {
+                        x: at.x,
+                        y: at.y,
+                        w: size.width,
+                        h: size.height,
+                    };
+                    core.act(|ctl| ctl.drag_begin(on_screen(&w, x, y), frame));
+                    core.arm_drag();
+                });
+            }
+            {
+                let (core, weak) = (Rc::clone(&core), window.as_weak());
+                window.on_drag_moved(move |x, y| {
+                    if let Some(w) = weak.upgrade() {
+                        core.drag_step(Some(on_screen(&w, x, y)));
+                    }
+                });
+            }
+            let core = Rc::clone(&core);
+            window.on_drag_ended(move || core.drag_finish());
         }
         wire_effects!(on_resize_requested, |ctl, edge| ctl.resize(edge_of(edge)));
         wire_effects!(on_handle_hovered, |ctl, on| ctl
-            .dock_event(DockEvent::HandleHover(on)));
+            .dock_hover(DockEvent::HandleHover(on)));
         wire_effects!(on_handle_clicked, |ctl| ctl
             .dock_event(DockEvent::HandleClick));
         wire_effects!(on_panel_hovered, |ctl, on| ctl
-            .dock_event(DockEvent::PanelHover(on)));
-        // A click into the search box is input to this process, so Windows lets the Panel take
-        // the keyboard for it (the window never activates on a click by itself).
+            .dock_hover(DockEvent::PanelHover(on)));
+        // A click into a text field (search, quick add, symbol search) is input to this process, so
+        // Windows lets the Panel take the keyboard for it (the window never activates on a click by
+        // itself); without it Ctrl+V and typing go to the app that holds the foreground.
         {
             let core = Rc::clone(&core);
-            window.on_search_focus_gained(move || {
+            window.on_keyboard_requested(move || {
                 if let Some(window) = core.window.upgrade() {
                     let _ = core.host.activate(window.window());
                 }
@@ -925,7 +1220,6 @@ where
                 slint::CloseRequestResponse::KeepWindowShown
             });
         }
-        wire_effects!(on_drag_requested, |ctl| ctl.drag());
 
         Binding {
             hotkey: {
@@ -998,6 +1292,10 @@ where
                     },
                 )
             },
+            typed_trigger: {
+                let core = Rc::clone(&core);
+                Rc::new(move |out: crate::typing_worker::Out| core.typed(out))
+            },
             frame_changed: {
                 let core = Rc::clone(&core);
                 Rc::new(move |monitor: &Monitor, frame| {
@@ -1010,18 +1308,18 @@ where
             },
             frame_moved: {
                 let core = Rc::clone(&core);
-                // A drag ends when the moves stop: the window has no "drag ended" event.
-                let settle = slint::Timer::default();
                 Rc::new(move |monitor: &Monitor, frame| {
                     if core.controller.try_borrow_mut().is_ok() {
                         core.act_effects(|ctl| ctl.frame_moved(monitor, frame));
                     }
-                    let (core, monitor) = (Rc::clone(&core), monitor.clone());
-                    settle.start(slint::TimerMode::SingleShot, DRAG_SETTLE, move || {
-                        if core.controller.try_borrow_mut().is_ok() {
-                            core.act_effects(|ctl| ctl.frame_settled(&monitor, frame));
-                        }
-                    });
+                })
+            },
+            panel_focused: {
+                let core = Rc::clone(&core);
+                Rc::new(move |focused| {
+                    if let Ok(mut ctl) = core.controller.try_borrow_mut() {
+                        ctl.set_panel_focused(focused);
+                    }
                 })
             },
             restore_frame: {
@@ -1034,6 +1332,10 @@ where
             restore_anchor: {
                 let core = Rc::clone(&core);
                 Rc::new(move || core.act_effects(Controller::restore_anchor))
+            },
+            start_hidden: {
+                let core = Rc::clone(&core);
+                Rc::new(move || core.act_effects(Controller::start_hidden))
             },
             files_hover: {
                 let core = Rc::clone(&core);
@@ -1058,9 +1360,12 @@ where
                         if core.controller.try_borrow_mut().is_err() {
                             return false;
                         }
-                        core.act(|ctl| {
-                            ctl.drop_create(paths, crate::item_editor::Origin::Panel, None);
+                        let started = core.act(|ctl| {
+                            ctl.drop_begin(paths, crate::item_editor::Origin::Panel, None)
                         });
+                        if let Some(run) = started {
+                            core.read_run(run);
+                        }
                         true
                     });
                 })
@@ -1138,6 +1443,62 @@ fn edge_of(edge: ui::ResizeEdge) -> Edge {
     }
 }
 
+/// Which suggestion hint is on screen, and the newest hint number seen. A worker that was
+/// switched off and on again may still deliver for its old hints; their numbers tell them apart.
+#[derive(Default)]
+struct HintIds {
+    shown: std::cell::Cell<u64>,
+    newest: std::cell::Cell<u64>,
+}
+
+impl HintIds {
+    /// Whether a show for hint `id` is current (not older than one already seen); records it.
+    fn admit(&self, id: u64) -> bool {
+        if id < self.newest.get() {
+            return false;
+        }
+        self.newest.set(id);
+        true
+    }
+
+    /// Hint `id` is on screen (0: none is); returns the number it replaced, 0 for none.
+    fn shown(&self, id: u64) -> u64 {
+        self.shown.replace(id)
+    }
+
+    /// Whether hint `id` is the one on screen.
+    fn is_current(&self, id: u64) -> bool {
+        id != 0 && id == self.shown.get()
+    }
+
+    /// Takes the shown hint's number, leaving none.
+    fn take(&self) -> u64 {
+        self.shown.replace(0)
+    }
+}
+
+#[cfg(test)]
+mod hint_id_tests {
+    use super::HintIds;
+
+    #[test]
+    fn an_old_hide_accept_or_show_is_ignored() {
+        let ids = HintIds::default();
+        assert!(ids.admit(5));
+        assert_eq!(ids.shown(5), 0);
+        assert!(ids.is_current(5));
+        // A newer hint replaces it; everything addressed to the old number is stale.
+        assert!(ids.admit(9));
+        assert_eq!(ids.shown(9), 5, "the replaced hint is reported");
+        assert!(!ids.is_current(5), "an old Hide/Accept does not match");
+        assert!(!ids.admit(5), "an old Show is refused");
+        assert!(ids.is_current(9));
+        assert_eq!(ids.take(), 9);
+        assert!(!ids.is_current(9), "nothing is on screen after a take");
+        assert!(!ids.is_current(0));
+    }
+}
+
 /// The Recent inbox's tab and list.
 fn render_recent(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     let differs = |same: &dyn Fn(&View) -> bool| previous.is_none_or(|p| !same(p));
@@ -1148,6 +1509,12 @@ fn render_recent(window: &ui::PanelWindow, previous: Option<&View>, view: &View)
     let locked = view.recent.as_ref().is_some_and(|r| r.locked);
     if window.get_recent_locked() != locked {
         window.set_recent_locked(locked);
+    }
+    if window.get_recent_question_open() != view.recent_question {
+        window.set_recent_question_open(view.recent_question);
+    }
+    if window.get_recent_max_entries() != crate::recent::max_entries_count() {
+        window.set_recent_max_entries(crate::recent::max_entries_count());
     }
     if window.get_recent_days() != crate::recent::max_age_days() {
         window.set_recent_days(crate::recent::max_age_days());
@@ -1275,9 +1642,9 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     if differs(&|p| p.dock_edge == view.dock_edge) {
         window.set_dock_edge(crate::settings_binding::dock_edge_index(view.dock_edge));
     }
-    if differs(&|p| (p.dock_full_edge, p.dock_slide) == (view.dock_full_edge, view.dock_slide)) {
+    if differs(&|p| (p.dock_full_edge, p.dragging) == (view.dock_full_edge, view.dragging)) {
         window.set_dock_full_edge(view.dock_full_edge);
-        window.set_dock_slide(view.dock_slide);
+        window.set_dragging(view.dragging);
     }
     if differs(&|p| p.dock_preview == view.dock_preview) {
         window.set_dock_preview(crate::settings_binding::dock_edge_index(view.dock_preview));
@@ -1306,8 +1673,26 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             .map(|(i, r)| {
                 let mut row = panel_row(r, view.dark);
                 // Collapsed "Deleted · Undo" rows do not take a number: the live rows count 1, 2, 3.
-                row.ghosts_before =
-                    to_i32(view.rows[..i].iter().filter(|x| x.deleted_pending).count());
+                // Neither do group headers.
+                row.ghosts_before = to_i32(
+                    view.rows[..i]
+                        .iter()
+                        .filter(|x| x.deleted_pending || x.header.is_some())
+                        .count(),
+                );
+                // A group's items count off under their header: "2 of 5".
+                if r.grouped {
+                    let before = view.rows[..i]
+                        .iter()
+                        .rev()
+                        .take_while(|x| x.grouped)
+                        .count();
+                    let header = view.rows[..i - before]
+                        .last()
+                        .and_then(|x| x.header.as_ref());
+                    row.set_position = to_i32(before + 1);
+                    row.set_size = header.map_or(0, |h| to_i32(h.count));
+                }
                 row.stack_position = marked
                     .iter()
                     .position(|id| *id == r.id)
@@ -1408,6 +1793,14 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
                         wording::item_label_name(*label).into()
                     }
                     crate::controller::ChooseLabel::Colour(None) => "No label".into(),
+                    crate::controller::ChooseLabel::ColourFormat(f, value) => {
+                        let name: SharedString = if *f == snipdeck_colour::Format::Name {
+                            window.global::<ui::ColourTexts<'_>>().invoke_format_name()
+                        } else {
+                            f.label().into()
+                        };
+                        format!("{name}  {value}").into()
+                    }
                     crate::controller::ChooseLabel::Transform(t) => {
                         wording::transform_name(window, *t).into()
                     }
@@ -1425,9 +1818,11 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
                     entry,
                     ItemMenuEntry::MoveUp { enabled: false }
                         | ItemMenuEntry::MoveDown { enabled: false }
+                        | ItemMenuEntry::GroupUp { enabled: false }
+                        | ItemMenuEntry::GroupDown { enabled: false }
                 ),
                 separator: entry == ItemMenuEntry::Separator,
-                destructive: entry == ItemMenuEntry::Trash,
+                destructive: matches!(entry, ItemMenuEntry::Trash | ItemMenuEntry::DeleteGroup),
                 ..Default::default()
             });
             window.set_item_menu_entries(model(entries));
@@ -1441,6 +1836,9 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     );
     window.set_marked_count(to_i32(view.marked_count));
     window.set_trash_focus_row(view.focus_row.map_or(-1, to_i32));
+    window.set_has_groups(view.rows.iter().any(|r| r.header.is_some()));
+    window.set_rename_row(view.rename_row.map_or(-1, to_i32));
+    window.set_rename_seq(i32::try_from(view.rename_seq).unwrap_or(i32::MAX));
     window.set_trash_focus_seq(i32::try_from(view.focus_seq).unwrap_or(i32::MAX));
     window.set_select_mode(view.select_mode);
     window.set_delete_mode(view.delete_mode);
@@ -1455,6 +1853,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     }
     window.set_show_numbers(view.show_numbers);
     window.set_symbols_available(view.symbols_available);
+    window.set_colours_available(view.colours_available);
     window.set_layout(match view.layout {
         crate::settings::PanelLayout::List => ui::PanelLayout::List,
         crate::settings::PanelLayout::Cards => ui::PanelLayout::Cards,
@@ -1468,6 +1867,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         window.set_list_menu_open(view.list_menu.is_some());
     }
     window.set_list_menu_sort(crate::main_binding::sort_index(view.list_menu_sort));
+    window.set_list_menu_css(view.list_menu_css);
     if differs(&|p| p.list_delete == view.list_delete)
         || window.get_list_delete_open() != view.list_delete.is_some()
     {
@@ -1595,6 +1995,17 @@ pub(crate) fn list_icon_image(
         .unwrap_or_default()
 }
 
+/// The swatch of a card: the colour the item's text is, for a plain (not sensitive) text item, as
+/// the colour and whether there is one.
+pub(crate) fn swatch_fields(preview: &str, sensitive: bool) -> (slint::Color, bool) {
+    if sensitive {
+        return (slint::Color::default(), false);
+    }
+    snipdeck_colour::literal(preview).map_or((slint::Color::default(), false), |c| {
+        (slint::Color::from_argb_u8(c.a, c.r, c.g, c.b), true)
+    })
+}
+
 /// The row's colour label as the windows take it: -1 for none, else the position in
 /// [`ItemLabel::ALL`], with the label's name.
 pub(crate) fn label_fields(label: Option<ItemLabel>) -> (i32, SharedString) {
@@ -1646,6 +2057,8 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
     // The windowed first line replaces the preview only for a marked row; a sensitive row never has one.
     let marked = row.preview_mark.as_ref().filter(|_| !row.sensitive);
     let (label, label_name) = label_fields(row.label);
+    let (swatch, has_swatch) =
+        crate::colour_words::swatch_of_kind(row.kind, &row.preview, row.sensitive);
     ui::PanelRow {
         kind: item_kind(row),
         title: row.title.as_str().into(),
@@ -1662,6 +2075,8 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
         preview_before: marked
             .map_or_else(SharedString::new, |(before, ..)| before.as_str().into()),
         preview_match: marked.map_or_else(SharedString::new, |(_, found, _)| found.as_str().into()),
+        swatch,
+        has_swatch,
         tag_hit: row
             .tag_hit
             .as_deref()
@@ -1683,6 +2098,12 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
         deleted_pending: row.deleted_pending,
         formatted: row.formatted && !row.sensitive,
         ghosts_before: 0,
+        is_header: row.header.is_some(),
+        group_count: row.header.as_ref().map_or(0, |h| to_i32(h.count)),
+        group_collapsed: row.header.as_ref().is_some_and(|h| h.collapsed),
+        grouped: row.grouped,
+        set_position: 0,
+        set_size: 0,
     }
 }
 
@@ -1732,6 +2153,8 @@ pub(crate) fn item_kind_of(kind: ItemKind, sensitive: bool) -> ui::ItemKind {
 pub(crate) enum Payload {
     Item(snipdeck_core::ItemId),
     List(snipdeck_core::ListId),
+    /// A group's header, dragged in the Main window.
+    Group(snipdeck_core::GroupId),
 }
 
 impl Payload {
@@ -1748,6 +2171,16 @@ impl Payload {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn swatch_follows_a_colour_literal_and_never_a_secret() {
+        let (c, on) = swatch_fields("#3a7bd5", false);
+        assert!(on);
+        assert_eq!(c, slint::Color::from_argb_u8(255, 0x3a, 0x7b, 0xd5));
+        assert!(!swatch_fields("#3a7bd5", true).1);
+        assert!(!swatch_fields("red", false).1);
+        assert!(!swatch_fields("see #3a7bd5 here", false).1);
+    }
+
     use super::*;
     use crate::panel::ListLabel;
     use slint::Model;
@@ -1770,6 +2203,8 @@ mod tests {
             marked: false,
             deleted_pending: false,
             formatted: false,
+            header: None,
+            grouped: false,
         }
     }
 

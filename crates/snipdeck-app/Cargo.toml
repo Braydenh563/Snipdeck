@@ -9,6 +9,7 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+snipdeck-colour.workspace = true
 snipdeck-core.workspace = true
 # `testing`: the fakes are the dev platform behind `--demo` and `--screenshot` off Windows.
 snipdeck-platform = { path = "../snipdeck-platform", features = ["testing"] }
@@ -29,12 +30,12 @@ thiserror.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]
-# `licence-issuer`: the signer, so a test can mint a key the development public key accepts.
-snipdeck-core = { workspace = true, features = ["licence-issuer"] }
 # `testing`: the in-memory key provider, to give a library an encryption key.
 snipdeck-store = { path = "../snipdeck-store", features = ["testing"] }
 # Slint's headless platform for the window tests (one process per test file).
 i-slint-backend-testing = "=1.18.1"
+# The focus holder, for the Tab-order test of the Colours tab (the same item tree the window uses).
+i-slint-core = { version = "=1.18.1", default-features = false }
 tempfile.workspace = true
 # A Ditto database fixture for the import preview test.
 rusqlite.workspace = true

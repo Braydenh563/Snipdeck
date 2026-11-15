@@ -22,6 +22,7 @@ pub mod clipboard_history;
 pub mod clipboard_watch;
 pub mod command_line;
 pub mod error;
+pub mod eyedrop;
 pub mod file_dialog;
 pub mod hello;
 pub mod instance_names;
@@ -29,6 +30,7 @@ pub mod keys;
 pub mod payload;
 pub mod pipeline;
 pub mod route;
+pub mod startup_task;
 pub mod system_look;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;

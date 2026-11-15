@@ -7,7 +7,6 @@
 use std::path::{Path, PathBuf};
 
 use jiff::civil::Date;
-use snipdeck_core::Tier;
 use snipdeck_portable::backup;
 use snipdeck_store::{ItemRepo, Store};
 
@@ -171,7 +170,6 @@ pub fn troubleshoot(folder: &Path, today: Date, os: &str) -> Outcome {
     }
     let info = ReportInfo {
         version: env!("CARGO_PKG_VERSION").to_owned(),
-        tier: tier_word(crate::licence_store::entitlements(folder, jiff::Timestamp::now()).tier()),
         os: os.to_owned(),
         dpi: "n/a".to_owned(),
         flags: crate::help_binding::report_flags(&settings),
@@ -184,15 +182,6 @@ pub fn troubleshoot(folder: &Path, today: Date, os: &str) -> Outcome {
             Status::Warn | Status::Fail => 1,
         },
     }
-}
-
-fn tier_word(tier: Tier) -> String {
-    if matches!(tier, Tier::Pro) {
-        "Supporter"
-    } else {
-        "Free"
-    }
-    .to_owned()
 }
 
 /// The default data folder, or `dir` when given.

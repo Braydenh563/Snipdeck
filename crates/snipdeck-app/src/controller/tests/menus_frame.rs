@@ -383,6 +383,8 @@ fn a_stored_place_is_fitted_to_a_monitor_that_has_become_smaller() {
             h: 900,
             edge: None,
             pre_dock: None,
+            docked: None,
+            docked_flat: None,
             along: None,
             other_along: Vec::new(),
         });

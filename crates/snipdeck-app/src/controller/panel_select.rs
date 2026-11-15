@@ -121,7 +121,7 @@ where
             .rows()
             .into_iter()
             .nth(index)
-            .filter(|r| !r.deleted_pending)
+            .filter(crate::panel::Row::is_item)
     }
 
     /// The row delete button in Delete mode: the item goes to the Trash (one history step) and
@@ -187,21 +187,19 @@ where
             self.undo_step(Some(step));
             return;
         }
-        match self
+        if self
             .store
             .atomically(|b| b.restore(Trashable::Item(row.id)))
+            .is_ok()
         {
-            Ok(()) => {
-                self.show_toast(Toast {
-                    kind: ToastKind::Success,
-                    message: ToastMessage::Restored { count: 1 },
-                });
-                self.library_changed();
-            }
-            Err(error) => {
-                self.show_toast(super::main_ctl::restore_failed(&error));
-                self.refresh_logged("a failed undo of a deleted row");
-            }
+            self.show_toast(Toast {
+                kind: ToastKind::Success,
+                message: ToastMessage::Restored { count: 1 },
+            });
+            self.library_changed();
+        } else {
+            self.show_toast(super::failed());
+            self.refresh_logged("a failed undo of a deleted row");
         }
     }
 
@@ -368,7 +366,7 @@ where
     }
 
     /// Gives the items `ids` colour `label` (`None` clears it).
-    fn label_items(&mut self, ids: &[ItemId], label: Option<ItemLabel>) {
+    pub(super) fn label_items(&mut self, ids: &[ItemId], label: Option<ItemLabel>) {
         let now = self.clock.now();
         let done = self.store.atomically(|b| {
             for id in ids {
@@ -422,6 +420,15 @@ where
                 }));
                 Some(ChooseMenu { entries })
             }
+            PanelMenu::PasteAs(id) if let Some(c) = self.colour_of_item(id) => Some(ChooseMenu {
+                entries: snipdeck_colour::Format::ALL
+                    .iter()
+                    .map(|f| ChooseEntry {
+                        label: ChooseLabel::ColourFormat(*f, snipdeck_colour::format(c, *f)),
+                        checked: false,
+                    })
+                    .collect(),
+            }),
             PanelMenu::PasteAs(_) => Some(ChooseMenu {
                 entries: Transform::ALL
                     .iter()

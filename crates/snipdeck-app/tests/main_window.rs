@@ -28,10 +28,10 @@ use snipdeck_app::{
     native_window::{self, Surface},
     onboarding_binding::OnboardingUi,
     settings::{Hotkeys, Settings},
-    settings_binding::SettingsHost,
+    settings_binding::{AutostartError, SettingsHost},
 };
 use snipdeck_app::{commands::Command, host::HotkeyProblem};
-use snipdeck_core::{Entitlements, Tier, Timestamp};
+use snipdeck_core::Timestamp;
 use snipdeck_platform::{
     testing::{FakeClipboard, FakeKeyboard, FakeTiming},
     tray::TrayEvent,
@@ -61,17 +61,16 @@ fn now() -> Timestamp {
     "2026-10-17T10:30:00Z".parse().expect("timestamp")
 }
 
-fn controller(tier: Tier) -> Rc<RefCell<Ctl>> {
-    controller_on(demo::store(now()).expect("demo store"), tier)
+fn controller() -> Rc<RefCell<Ctl>> {
+    controller_on(demo::store(now()).expect("demo store"))
 }
 
-fn controller_on(store: Store, tier: Tier) -> Rc<RefCell<Ctl>> {
-    controller_with(store, tier, Vec::new())
+fn controller_on(store: Store) -> Rc<RefCell<Ctl>> {
+    controller_with(store, Vec::new())
 }
 
 fn controller_with(
     store: Store,
-    tier: Tier,
     clipboard: Vec<snipdeck_platform::payload::Payload>,
 ) -> Rc<RefCell<Ctl>> {
     Rc::new(RefCell::new(
@@ -89,7 +88,6 @@ fn controller_with(
             Box::new(FakeTargets::new(Some(demo::target()))),
             Box::new(FixedClock::new(now())),
             Settings::default(),
-            Entitlements::new(tier),
         )
         .expect("controller"),
     ))
@@ -104,17 +102,12 @@ fn rig_clipboard(text: &str) -> Rig {
         .expect("payload");
     rig_with(controller_with(
         demo::store(now()).expect("demo store"),
-        Tier::Pro,
         vec![clip],
     ))
 }
 
 fn rig() -> Rig {
-    rig_tier(Tier::Pro)
-}
-
-fn rig_tier(tier: Tier) -> Rig {
-    rig_with(controller(tier))
+    rig_with(controller())
 }
 
 /// A rig over the demo library with the tags `invoices` and `billing` added.
@@ -127,7 +120,7 @@ fn rig_with_tags() -> Rig {
             ))
             .unwrap();
     }
-    rig_with(controller_on(store, Tier::Pro))
+    rig_with(controller_on(store))
 }
 
 fn rig_with(ctl: Rc<RefCell<Ctl>>) -> Rig {
@@ -216,7 +209,7 @@ fn element<C: ComponentHandle>(ui: &C, label: &str, role: AccessibleRole) -> Ele
 #[test]
 fn the_panel_list_menu_opens_the_list_editor_without_the_main_window() {
     on_ui_thread(|| {
-        let ctl = controller(Tier::Pro);
+        let ctl = controller();
         let main_ui = MainUi::new(&ctl);
         assert!(main_ui.list_editor().is_none());
         let tab = ctl
@@ -245,7 +238,7 @@ fn the_panel_list_menu_opens_the_list_editor_without_the_main_window() {
 #[test]
 fn open_snipdeck_from_the_tray_creates_the_window_once_and_shows_it_again_after_it_is_closed() {
     on_ui_thread(|| {
-        let ctl = controller(Tier::Pro);
+        let ctl = controller();
         let main_ui = MainUi::new(&ctl);
         assert!(
             main_ui.window().is_none(),
@@ -423,7 +416,7 @@ fn use_pastes_the_item_through_the_controller_and_counts_it() {
             other => panic!("{other:?}"),
         };
         assert_eq!(r.ctl.borrow().store().item(id).unwrap().use_count, 1);
-        assert_eq!(r.ui.get_toast_text(), "Pasted into Outlook");
+        assert_eq!(r.ui.get_toast_text(), "Pasted into Mail");
     });
 }
 
@@ -521,7 +514,7 @@ fn the_undo_toast_stays_five_seconds_then_the_item_waits_in_the_trash() {
 #[test]
 fn the_panel_and_the_main_window_share_one_toast_and_one_timer() {
     on_ui_thread(|| {
-        let ctl = controller(Tier::Pro);
+        let ctl = controller();
         let panel = PanelWindow::new().expect("panel");
         let _panel_binding: Binding = Controller::bind(
             &ctl,
@@ -939,36 +932,6 @@ fn new_board_rename_and_delete_use_the_board_editor() {
 }
 
 #[test]
-fn the_free_plan_stops_a_sixth_board_with_a_toast() {
-    on_ui_thread(|| {
-        let r = rig_tier(Tier::Free);
-        let new_board_entry = |r: &Rig| {
-            r.ui.get_board_menu_entries()
-                .iter()
-                .position(|e| e.text.starts_with("New board"))
-                .unwrap()
-        };
-        // Two boards in the demo; add the third, fourth and fifth.
-        for name in ["Third", "Fourth", "Fifth"] {
-            r.ui.invoke_board_menu_requested();
-            r.ui.invoke_board_menu_activated(i32::try_from(new_board_entry(&r)).unwrap());
-            r.binding.board_editor().unwrap().set_name(name.into());
-            r.binding.board_editor().unwrap().invoke_save_requested();
-        }
-        assert_eq!(r.ctl.borrow().store().boards().unwrap().len(), 5);
-
-        r.ui.invoke_board_menu_requested();
-        r.ui.invoke_board_menu_activated(i32::try_from(new_board_entry(&r)).unwrap());
-        assert!(!r.binding.board_editor().unwrap().window().is_visible());
-        assert_eq!(
-            r.ui.get_toast_text(),
-            "The Free plan includes 5 boards. Supporter adds unlimited boards."
-        );
-        assert_eq!(r.ctl.borrow().store().boards().unwrap().len(), 5);
-    });
-}
-
-#[test]
 fn the_last_board_cannot_be_deleted_and_its_menu_entry_is_off() {
     on_ui_thread(|| {
         let r = rig();
@@ -1094,7 +1057,7 @@ impl SettingsHost for NoHost {
         Vec::new()
     }
 
-    fn set_autostart(&self, _on: bool, _hidden: bool) -> Result<(), String> {
+    fn set_autostart(&self, _on: bool, _hidden: bool) -> Result<(), AutostartError> {
         Ok(())
     }
 
@@ -1495,7 +1458,7 @@ fn ctrl_v_in_search_field_does_not_create_but_the_list_pastes() {
 #[test]
 fn a_move_in_a_sorted_list_offers_manual_order_through_the_keys() {
     on_ui_thread(|| {
-        let r = rig_tier(Tier::Pro);
+        let r = rig();
         let code = i32::try_from(
             r.list_names()
                 .iter()
@@ -1525,7 +1488,7 @@ fn a_move_in_a_sorted_list_offers_manual_order_through_the_keys() {
 #[test]
 fn dragging_a_row_in_a_sorted_list_offers_manual_order() {
     on_ui_thread(|| {
-        let r = rig_tier(Tier::Pro);
+        let r = rig();
         let code = i32::try_from(
             r.list_names()
                 .iter()

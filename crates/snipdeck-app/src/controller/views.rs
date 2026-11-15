@@ -25,10 +25,15 @@ pub enum Effect {
     ShowPanel,
     /// Open the Panel's Symbols tab (after a `ShowPanel`; the palette's "Symbols").
     ShowSymbols,
+    /// Open the Panel's Colours tab (after a `ShowPanel`; "Open in Colours", a colour picked from the screen).
+    ShowColours,
+    /// The Colours tab steps aside so the list under it shows.
+    HideColours,
     /// Hide the Panel.
     HidePanel,
-    /// Start the OS window drag from the Panel header.
-    DragWindow,
+    /// Move the Panel's window so that its top-left is here (physical pixels); its size
+    /// stays. A drag step: the app moves the window itself.
+    MoveWindow(i32, i32),
     /// Show the Main window, creating it the first time (the tray's "Open Snipdeck").
     OpenMainWindow,
     /// Switch the global hotkeys off (`true`) or back on (`false`), per the settings.
@@ -40,7 +45,7 @@ pub enum Effect {
     /// Start a new snippet. The Panel's binding opens the item editor on it
     /// ([`Controller::open_new_item`](crate::controller::Controller::open_new_item)); the host has nothing more to do.
     NewItem,
-    /// Show the Main window with the command palette open (the Panel's "All commands…" and Ctrl+K).
+    /// Show the Main window with the command palette open (the Panel's "Commands…" and Ctrl+K).
     OpenCommands,
     /// Open a help page (not built yet: the host logs it).
     OpenHelp(HelpTopic),
@@ -56,6 +61,8 @@ pub enum Effect {
     PlaceWindow(Rect),
     /// Show the window that asks for the master password (a locked sensitive item was needed).
     OpenUnlock,
+    /// Open the optional Support Snipdeck page in the browser.
+    OpenSupport,
 }
 
 /// How far a toast is through its life (the Slint `ToastPhase`).
@@ -142,6 +149,16 @@ pub struct FillSubmission {
     pub(super) mode: UseMode,
     pub(super) answers: BTreeMap<String, String>,
     pub(super) transform: Option<snipdeck_core::template::transform::Transform>,
+    /// A typed trigger to erase with the paste, once the form is confirmed.
+    pub(super) erase: Option<FillErase>,
+}
+
+/// A typed trigger waiting for its fill form: how many characters to erase, and the app they were
+/// typed into (the paste only goes there).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct FillErase {
+    pub(super) chars: usize,
+    pub(super) app: Option<String>,
 }
 
 /// How a use ended.
@@ -153,6 +170,9 @@ pub enum UseResult {
     NeedsAnswers,
     /// It did not happen; a toast says why.
     Failed,
+    /// It was called off before any key went out (the user typed on, or changed window): nothing
+    /// was sent or counted, and no toast.
+    Cancelled,
 }
 
 /// Everything the Panel window shows, as plain data.
@@ -198,8 +218,8 @@ pub struct View {
     pub dock_edge: Option<DockEdge>,
     /// A side dock takes the whole edge: its ends do not resize and it does not slide.
     pub dock_full_edge: bool,
-    /// The header's grip pill is shown (the docked Panel can slide along its edge).
-    pub dock_slide: bool,
+    /// The Panel is being dragged by its header.
+    pub dragging: bool,
     /// The edge the kebab's "Dock" row would dock a floating Panel to (`None` while docked or
     /// before the monitor is known): the row names it.
     pub dock_target: Option<DockEdge>,
@@ -237,6 +257,10 @@ pub struct View {
     pub focus_row: Option<usize>,
     /// See `focus_row`.
     pub focus_seq: u64,
+    /// The header row to open for rename (a group just made).
+    pub rename_row: Option<usize>,
+    /// See `rename_row`.
+    pub rename_seq: u64,
     /// The header's Select mode is on (rows show a checkbox).
     pub select_mode: bool,
     /// The header's Delete mode is on (rows show a delete button).
@@ -247,6 +271,8 @@ pub struct View {
     pub show_numbers: bool,
     /// The Symbols tab is offered (the `show_symbols_tab` setting).
     pub symbols_available: bool,
+    /// The Colours tab is offered (the `show_colours_tab` setting).
+    pub colours_available: bool,
     /// The Panel's layout (Settings > Panel > Layout).
     pub layout: crate::settings::PanelLayout,
     /// The search field is always shown (Settings > Panel > Search field).
@@ -257,6 +283,8 @@ pub struct View {
     pub list_menu: Option<Vec<ListMenuEntry>>,
     /// The sort of the list the list menu is open on (its "Sort by" row is checked).
     pub list_menu_sort: snipdeck_core::ListSort,
+    /// The list the list menu is open on holds a colour (its "Copy as CSS variables" row is on).
+    pub list_menu_css: bool,
     /// The shown list sorts itself and no search runs: moves are refused but offer manual order.
     pub reorder_offer: bool,
     /// The list menu's "Delete list…" confirmation while it asks (the Panel draws it; no
@@ -272,6 +300,9 @@ pub struct View {
     pub fill: Option<FillView>,
     /// The Recent inbox (clock tab), while it is on in the settings.
     pub recent: Option<crate::recent::RecentView>,
+    /// The first-run question "Keep a Recent list of what you copy?" is due: unanswered, and
+    /// the welcome tour is not running. Nothing is kept until the answer is Yes.
+    pub recent_question: bool,
 }
 
 /// What a row of the Move or Colour choice says, before wording.
@@ -283,6 +314,9 @@ pub enum ChooseLabel {
     Colour(Option<snipdeck_core::ItemLabel>),
     /// A "Paste as..." choice.
     Transform(snipdeck_core::template::transform::Transform),
+    /// A "Paste as..." choice of a colour item: the format and the colour written in it (the
+    /// window words the format; `Name` is translated there).
+    ColourFormat(snipdeck_colour::Format, String),
 }
 
 /// One row of the Move or Colour choice.

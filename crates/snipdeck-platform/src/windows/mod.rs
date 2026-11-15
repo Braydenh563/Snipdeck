@@ -10,9 +10,11 @@
 //! | [`window_style`] | Non-activating panel style and its `WM_STYLECHANGING` subclass |
 //! | [`erase`] | The theme colour a window shows before its first frame |
 //! | [`paint_diag`] | `SNIPDECK_DIAG=render`: paint, erase, move and DWM facts for a log |
+//! | [`eyedrop`] | `WinEyedropper`: [`crate::eyedrop::Eyedropper`] with a freeze-frame overlay per monitor |
 //! | [`screen`] | Mouse position and the work area and scale of the monitor under a point |
 //! | [`hotkey`] | Global hotkeys on a dedicated thread |
 //! | [`autostart`] | Start with Windows (`HKCU\...\Run`) |
+//! | [`package`] | Packaged (MSIX / Store) mode: package identity, startup-task launch and autostart |
 //! | [`single_instance`] | One running instance; a second launch signals the first |
 //! | [`console`] | Attach to the parent's console so `--help` and `--check-db` can print |
 //! | [`dpi`] | Per-monitor DPI awareness for windows created before the UI toolkit's |
@@ -31,11 +33,13 @@ pub mod console;
 pub mod dpapi;
 pub mod dpi;
 pub mod erase;
+pub mod eyedrop;
 pub mod file_dialog;
 pub mod hello;
 mod hidden_window;
 pub mod hotkey;
 pub mod keyboard;
+pub mod package;
 pub mod paint_diag;
 pub mod screen;
 pub mod single_instance;
@@ -43,4 +47,5 @@ pub mod system_look;
 pub mod target;
 pub mod tray;
 pub mod typing_hook;
+pub mod update_region;
 pub mod window_style;

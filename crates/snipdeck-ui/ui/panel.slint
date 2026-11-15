@@ -3,14 +3,14 @@
 // region, search, New, keep on top, More, close), and its keyboard focus lives in the search field (collapsed to
 // nothing until it is used, or always shown) so typing always filters. Data comes in as plain structs and models that mirror `snipdeck-app`'s
 // `PanelModel` (rows, tabs, footer, use label); every gesture leaves as a callback. Nothing here talks
-// to the OS: not the window drag (`drag-requested`), nor the resize (`resize-requested`, fired by
+// to the OS: not the window drag (`drag-began`, `drag-moved`, `drag-ended`), nor the resize (`resize-requested`, fired by
 // invisible 6px grips on the four edges and corners), nor the menus (drawn inside the Panel, filled and
 // answered by the host).
 //
 // Keyboard (all handled in `capture-key-pressed` on the window's FocusScope, so they work whichever
 // control has focus):
 //   type            filters; a printable key typed while another control has focus moves into the search
-//   Up / Down       move the selection (PageUp / PageDown a page; Cards: one row of tiles); Enter uses it, Shift+Enter copies
+//   Up / Down       move the selection (PageUp / PageDown a page; Cards: one row of tiles); Enter uses it, Shift+Enter copies, Alt+Enter pastes it as plain text
 //   Left / Right    Cards only, with an empty search: one tile back or on
 //   Alt+1-9         use the Nth row, whatever the search holds (bare digits are always search text)
 //   Space (held)    reveals the selected sensitive row while it is held (the eye on the row does the same by hand)
@@ -32,6 +32,7 @@ import { ListView } from "std-widgets.slint";
 import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette } from "theme.slint";
 import { Icons } from "icons.slint";
 import { Icon } from "components/icon.slint";
+import { GroupHeader } from "components/group-header.slint";
 import { ItemCard, ItemKind, ItemCardVariant } from "components/item-card.slint";
 import { DeckEdge, DeckEdgePosition } from "components/deck-edge.slint";
 import { OverlayScrollbar } from "components/scrollbar.slint";
@@ -46,13 +47,14 @@ import { Toast, ToastKind, ToastPhase, Skeleton, SkeletonKind, Tooltip } from "c
 import { Menu, MenuEntry } from "components/menu.slint";
 import { SuggestDropdown, SuggestRow } from "components/suggest-dropdown.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
-import { RepaintNudge } from "components/repaint.slint";
 import { Button, ButtonVariant, ButtonSize } from "components/button.slint";
 import { IconButton, IconButtonSize } from "components/icon-button.slint";
 import { Keycap } from "components/keycap.slint";
 import { DockHandle } from "components/dock-handle.slint";
 import { QuickAdd } from "components/quick-add.slint";
+import { EdgeScroll } from "components/edge-scroll.slint";
 import { SymbolsView, SymbolRow } from "symbols.slint";
+import { ColoursView, ColourState } from "colours.slint";
 
 // One row of the list, as `snipdeck-app`'s `Row`. The quick-use number is the row's position
 // (1-9 for the first nine, used with Alt+N); `masked-preview` stands in for a sensitive item's preview.
@@ -66,6 +68,9 @@ export struct PanelRow {
     // The match in the preview's first line (`preview` is then that line, cut around it) and the tag that matched.
     preview-before: string,
     preview-match: string,
+    // A colour value in the text (`#3a7bd5`, `rgb(...)`): the type tile shows the colour.
+    swatch: color,
+    has-swatch: bool,
     tag-hit: string,
     masked-preview: string,
     // Mixed views (search): the list the row lives in, with its colour.
@@ -85,6 +90,15 @@ export struct PanelRow {
     formatted: bool,
     // How many "Deleted · Undo" rows lie above this one: the row numbers (and Alt+N) count live rows only.
     ghosts-before: int,
+    // A group's header, not an item: `title` is its name, `group-count` its items, `group-collapsed` whether they are hidden.
+    is-header: bool,
+    group-count: int,
+    group-collapsed: bool,
+    // The item sits under a group's header: the card is indented.
+    grouped: bool,
+    // Its place among the group's items (1 = first) and how many the group has; 0 = not in a group.
+    set-position: int,
+    set-size: int,
 }
 
 // One entry of the Recent inbox (SPEC 5.6), as `snipdeck-app`'s `RecentRowView`: the start of the copied text, the
@@ -133,37 +147,40 @@ component ResizeGrip inherits TouchArea {
     }
 }
 
-// The header's grip pill (O28): drag it to slide a docked Panel along its edge without undocking. It sits in the
-// header like the other controls: a quiet pill that takes the accent on hover and while pressed.
-component GripPill inherits Rectangle {
-    in property <bool> vertical: true;
-    in property <string> a11y-label;
-    callback along-drag(length);
-    callback along-begin();
+// The grab strip: the whole top of the Panel, with a pill in its middle that says "grab here" (a note's title bar).
+// Pressing it (or any empty part of the header under it) drags the Panel; the app moves the window itself, so a
+// docked Panel slides along its edge, a pull across the edge undocks it, and holding it at a screen edge docks it.
+// The pill is quiet until hovered and accent while the Panel is dragged.
+component GrabStrip inherits Rectangle {
+    in property <bool> active: false;
+    // The pointer in window coordinates.
+    callback began(length, length);
+    callback moved(length, length);
+    callback ended();
     callback tip(bool);
 
-    width: root.vertical ? Space.s4 : Space.s8;
-    height: Space.s8;
-    accessible-role: button;
-    accessible-label: root.a11y-label;
-
-    Rectangle {
+    // No accessible role: the strip only answers a pointer drag, and a screen reader's "press" would do nothing.
+    // The keyboard docks, floats and resets the Panel from the More menu.
+    pill := Rectangle {
         x: (parent.width - self.width) / 2;
-        y: (parent.height - self.height) / 2;
-        width: root.vertical ? 6px : 20px;
-        height: root.vertical ? 20px : 6px;
-        border-radius: 3px;
-        background: touch.pressed ? Theme.accent : touch.has-hover ? Theme.text-primary : Theme.text-tertiary;
+        y: (parent.height - self.height) / 2 + 2px;
+        width: root.active || touch.has-hover ? 48px : 36px;
+        height: 4px;
+        border-radius: 2px;
+        background: root.active || touch.pressed ? Theme.accent : touch.has-hover ? Theme.text-primary : Theme.text-tertiary;
+        animate width { duration: Motion.quick; }
     }
     touch := TouchArea {
-        mouse-cursor: root.vertical ? MouseCursor.ns-resize : MouseCursor.ew-resize;
+        mouse-cursor: MouseCursor.move;
         pointer-event(event) => {
             if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
-                root.along-begin();
+                root.began(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+            } else if (event.kind == PointerEventKind.cancel || (event.button == PointerEventButton.left && event.kind == PointerEventKind.up)) {
+                root.ended();
             }
         }
         moved => {
-            root.along-drag(root.vertical ? self.mouse-y - self.pressed-y : self.mouse-x - self.pressed-x);
+            root.moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
         }
         changed has-hover => { root.tip(self.has-hover); }
     }
@@ -188,6 +205,25 @@ export component PanelWindow inherits Window {
     in property <[TabItem]> tabs;
     in property <[PinnedItem]> pinned;
     in property <[PanelRow]> rows;
+    // A group header that should start renaming (the controller counts requests in `rename-seq`).
+    in property <int> rename-row: -1;
+    in property <int> rename-seq: 0;
+    // The row whose group header is being renamed (-1: none). Only that header clears it, so a rename that hands
+    // over to another header keeps the keys with the new one.
+    property <int> header-renaming-row: -1;
+    // Ctrl+G, or the item menu: group the marked rows (else row `i`). A header: fold or unfold (`group-toggled`), set
+    // folded or unfolded (`group-collapsed-set`), rename (`group-renamed`).
+    callback group-requested(int);
+    callback group-toggled(int);
+    callback group-collapsed-set(int, bool);
+    callback group-renamed(int, string);
+    callback group-rename-ended();
+    // The name a new group starts with.
+    public pure function group-default-name() -> string { return @tr("Group"); }
+    public pure function group-announcement(name: string, count: int) -> string {
+        // Folded or open is spoken from the header's expanded state, so the label does not repeat it.
+        return @tr("group {}, {} item" | "group {}, {} items" % count, name, count);
+    }
     // The Recent inbox (SPEC 5.6): `recent-available` while clipboard history is on shows the clock tab at the far left
     // of the tab row. `recent-open` is the clock tab being the selected one (the panel sets it; the host is told).
     in property <bool> recent-available: false;
@@ -196,6 +232,10 @@ export component PanelWindow inherits Window {
     // `symbols-open` is it being the selected one. The host builds the grid as rows and owns the selection.
     in property <bool> symbols-available: false;
     in-out property <bool> symbols-open: false;
+    // The Colours tab (docs/reviews/colour-spec.md): after the Symbols tab. Its content is the `ColourState` global.
+    in property <bool> colours-available: false;
+    in-out property <bool> colours-open: false;
+    callback colours-toggled(bool);
     in property <[SymbolRow]> symbol-rows;
     // 0 All, 1 Emoji, 2 Kaomoji, 3 Icons.
     in-out property <int> symbol-kind: 0;
@@ -221,13 +261,13 @@ export component PanelWindow inherits Window {
     callback symbol-move(int);
     callback symbol-menu-requested(int);
     callback symbol-columns-changed(int);
-    // The host flips it to redraw the whole window (O39, see `RepaintNudge`).
-    in-out property <bool> repaint-flip: false;
     in property <bool> recent-paused: false;
     // The library is locked behind a master password: the list is empty and nothing is collected until it is unlocked.
     in property <bool> recent-locked: false;
     // The longest the entries are kept, in days.
     in property <int> recent-days: 7;
+    // How many copies the Recent list keeps (the first-run question names it).
+    in property <int> recent-max-entries: 200;
     in property <[RecentRow]> recent-rows;
     // The lists "Save to…" offers.
     in property <[ChoiceEntry]> recent-targets;
@@ -262,6 +302,8 @@ export component PanelWindow inherits Window {
     property <length> list-menu-y: 0px;
     // The open list's sort (0 Manual, 1 Most used, 2 Recently used): its "Sort by" row is checked.
     in property <int> list-menu-sort: 0;
+    // The open list holds a colour: its "Copy as CSS variables" row is on.
+    in property <bool> list-menu-css: false;
     property <image> list-menu-no-icon;
     property <[MenuEntry]> list-menu-entries: [
         { text: @tr("Edit list…"), icon: Icons.pencil-simple },
@@ -270,12 +312,17 @@ export component PanelWindow inherits Window {
         { text: @tr("Sort by: Manual"), icon: root.list-menu-sort == 0 ? Icons.check : root.list-menu-no-icon },
         { text: @tr("Sort by: Most used"), icon: root.list-menu-sort == 1 ? Icons.check : root.list-menu-no-icon },
         { text: @tr("Sort by: Recently used"), icon: root.list-menu-sort == 2 ? Icons.check : root.list-menu-no-icon },
+        { separator: true },
+        { text: @tr("Copy as CSS variables"), icon: Icons.copy, disabled: !root.list-menu-css },
     ];
     // The list menu's "Delete list…" confirmation (O52): the host sets `list-delete-open` after that row, and nothing
     // else opens (no list editor). `list-delete-name` and `list-delete-count` fill its words.
     in property <bool> list-delete-open: false;
     // The board menu's "Delete board…" confirmation: the same words as the Main window's.
     in property <bool> board-delete-open: false;
+    // The one-time first-run question "Keep a Recent list of what you copy?" (Store policy 10.5: nothing is kept
+    // until Yes). The host sets it while the answer is unknown and the welcome tour is not on screen.
+    in property <bool> recent-question-open: false;
     in property <string> board-delete-name;
     in property <int> board-delete-count;
     in property <string> list-delete-name;
@@ -297,16 +344,16 @@ export component PanelWindow inherits Window {
     in property <bool> dock-vertical: true;
     in property <bool> dock-has-list-color: false;
     in property <color> dock-list-color: transparent;
-    // The edge a drag would dock to if released now (O32), in Settings' "Dock to" order: 0 none,
-    // 1 left, 2 right, 3 top, 4 bottom. Drawn as an accent strip along that edge.
+    // The edge the drag under way has the Panel on, shown docked there: released now, it docks. In Settings'
+    // "Dock to" order: 0 none, 1 left, 2 right, 3 top, 4 bottom. Drawn as an accent frame and "Release to dock".
     in property <int> dock-preview: 0;
     // The edge this Panel is docked to, in the same order (0 floating). A docked Panel resizes from its inner edge,
-    // its two ends and the inner corners only (O28), and shows the grip pill that slides it along the edge.
+    // its two ends and the inner corners only (O28).
     in property <int> dock-edge: 0;
     // A side dock that takes the whole edge (O28): only its inner edge resizes.
     in property <bool> dock-full-edge: false;
-    // The grip pill shows: the docked Panel can slide (not floating, not collapsed, not a full-edge side dock).
-    in property <bool> dock-slide: false;
+    // The Panel is being dragged by its header.
+    in property <bool> dragging: false;
 
     // ---- State both ways ----------------------------------------------------------------------
     in-out property <int> current-tab: 0;
@@ -338,6 +385,14 @@ export component PanelWindow inherits Window {
     pure callback payload-row(data-transfer) -> int;
     callback row-dropped-on-tab(int, int);
     callback row-dropped(int, int);
+    // Drag auto-scroll: -1 while an item is dragged over the top edge zone of the list, 1 over the bottom one.
+    property <int> edge-dir: 0;
+    property <length> edge-band: 24px;
+    function drag-over(y: length) {
+        root.edge-dir = y < list.absolute-position.y + root.edge-band ? -1 : (y > list.absolute-position.y + list.height - root.edge-band ? 1 : 0);
+    }
+    // An item dropped on the top half of a group header: it lands above the group instead of joining it.
+    callback row-dropped-above(int, int);
     // Alt+Up / Alt+Down: move the selected row by -1 or +1.
     callback item-reorder-requested(int);
     in property <bool> rows-reorderable;
@@ -350,6 +405,8 @@ export component PanelWindow inherits Window {
     callback row-activated(int);
     // Shift+Enter or Shift+click: copy only.
     callback row-copied(int);
+    // Alt+Enter or Alt+click: paste as plain text.
+    callback row-plain(int);
     // Alt+1-9 pressed (the app resolves it with `PanelModel::quick_use`).
     callback quick-use(int);
     callback selection-moved(int);
@@ -363,6 +420,8 @@ export component PanelWindow inherits Window {
     callback recent-used(int);
     // Shift+click, Shift+Enter or the menu's Copy: copy only.
     callback recent-copied(int);
+    // Alt+Enter or Alt+click on a Recent row: paste it as plain text.
+    callback recent-plain(int);
     callback recent-deleted(int);
     callback recent-saved(int, int);
     callback recent-unlock-requested();
@@ -434,6 +493,8 @@ export component PanelWindow inherits Window {
     in property <string> stack-next-title: "";
     callback stack-started();
     callback stack-ended();
+    // Shift was held when the item menu's row was chosen (a colour's Paste as then copies).
+    in-out property <bool> item-menu-shift: false;
     callback item-menu-activated(int);
     callback item-menu-dismissed();
     callback list-menu-requested(int);
@@ -443,6 +504,8 @@ export component PanelWindow inherits Window {
     // The list delete confirmation: "Delete list", or Cancel / Esc / a click on the scrim.
     callback board-delete-confirmed();
     callback board-delete-dismissed();
+    // The first-run question was answered: true is Yes. Esc and a click on the scrim answer No.
+    callback recent-question-answered(bool);
     callback list-delete-confirmed();
     callback list-delete-dismissed();
     // Quick edit of row `index`: Ctrl+E, F2 or the item menu (SPEC 5.1). A double-click does nothing extra: the
@@ -456,10 +519,6 @@ export component PanelWindow inherits Window {
     callback delete-requested(int);
     // Pointer down on a resize grip: the host starts the OS resize from that edge or corner.
     callback resize-requested(ResizeEdge);
-    // The grip pill was dragged: `delta` more logical pixels along the docked edge, from where the press began (O28).
-    callback along-drag(delta: length);
-    // The pill was pressed: the drag's offsets count from where the Panel is now.
-    callback along-begin();
     callback pin-toggled(bool);
     callback toast-undo();
     callback toast-edit();
@@ -475,8 +534,11 @@ export component PanelWindow inherits Window {
     // The footer's "Open Snipdeck" button.
     callback open-requested();
     callback close-requested();
-    // Pointer down on the header: the host starts the OS window drag.
-    callback drag-requested();
+    // The header's drag: pointer down at (x, y) in the window, each move while it is held, and the release. The
+    // host moves the window itself from these (and from the cursor on screen, where it can read it).
+    callback drag-began(x: length, y: length);
+    callback drag-moved(x: length, y: length);
+    callback drag-ended();
     // The edge dock: the pointer entered or left the collapsed handle, the handle was clicked, and the pointer
     // entered or left the open Panel.
     callback handle-hovered(bool);
@@ -496,6 +558,8 @@ export component PanelWindow inherits Window {
     // that is collapsed away is "not visible" to Slint and would lose the keys, so the focus waits in `rest` and the
     // first character opens the search and moves into it).
     function focus-typing() {
+        // The keys go back to the Panel: no header rename holds them any more.
+        root.header-renaming-row = -1;
         if (root.search-shown) {
             search.focus();
         } else {
@@ -504,33 +568,46 @@ export component PanelWindow inherits Window {
     }
     // Scroll offset of the list (<= 0), for tests and for the app to persist.
     out property <length> scroll-y: list.content-y;
+    out property <length> list-height: list.height;
     // Counts the Shift+Tabs that wrap round to the footer's Open Snipdeck button.
     property <int> focus-open-ticks: 0;
     out property <bool> search-focused: search.has-focus || rest.has-focus;
-    // The search box took the focus (a click into it): the host gives the window the keyboard.
-    callback search-focus-gained();
+    // A text field of the Panel (search, quick add, symbol search, a group rename) took the caret: the host
+    // gives the window the keyboard. The Panel never activates on a click, so without this Windows keeps sending
+    // keys (Ctrl+V included) to the app that holds the foreground. (A TouchArea cannot report presses inside a
+    // field, the TextInput consumes them; a window that loses the foreground drops the caret, so the next click
+    // is a focus change again.)
+    callback keyboard-requested();
     changed search-focused => {
         if (root.search-focused) {
-            root.search-focus-gained();
+            root.keyboard-requested();
+        }
+    }
+    property <bool> quick-focused: quick.field-focused;
+    changed quick-focused => {
+        if (root.quick-focused) {
+            root.keyboard-requested();
         }
     }
     // The text of the tooltip on screen (empty = none), for tests and assistive checks.
-    out property <string> tooltip-shown: root.tip-open && !root.board-menu-open && !root.app-menu-open && !root.item-menu-open && !root.list-menu-open && !root.list-delete-open && !root.clear-list-open && !root.board-delete-open && !root.new-menu-open && !root.pinned-menu-open ? root.tip : "";
+    out property <string> tooltip-shown: root.tip-open && !root.board-menu-open && !root.app-menu-open && !root.item-menu-open && !root.list-menu-open && !root.list-delete-open && !root.clear-list-open && !root.board-delete-open && !root.new-menu-open && !root.pinned-menu-open && !root.dragging ? root.tip : "";
 
     // ---- Internals ----------------------------------------------------------------------------
     property <bool> pastes: root.target-name != "";
     property <string> use-label: root.pastes ? @tr("Paste") : @tr("Copy");
     property <bool> searching: root.query != "";
+    // Nothing matches the query in a list that is on screen (the footer then says what Enter creates).
+    property <bool> no-results: root.rows.length == 0 && root.searching && !root.list-hidden;
     // The list under the tabs is not what is on show (the Recent inbox or the Symbols tab): its shortcuts stand down.
-    property <bool> list-hidden: root.recent-open || root.symbols-open;
+    property <bool> list-hidden: root.recent-open || root.symbols-open || root.colours-open;
     // The search was opened (the header icon, Ctrl+F, a typed character) and not closed again. With a query it is
     // open whatever this says. `search-block` is the expanded block that replaces the tabs and the pinned strip;
     // `search-always` shows a 44px strip under the header instead and leaves them.
     property <bool> search-user: false;
-    property <bool> search-block: !root.search-always && !root.symbols-open && (root.search-user || root.searching);
-    property <bool> search-shown: (root.search-always && !root.symbols-open) || root.search-block;
+    property <bool> search-block: !root.search-always && !root.symbols-open && !root.colours-open && (root.search-user || root.searching);
+    property <bool> search-shown: (root.search-always && !root.symbols-open && !root.colours-open) || root.search-block;
     property <length> search-status-h: max(Space.s5, Type.line-sm + Space.s1);
-    property <length> search-h: root.symbols-open ? 0px : root.search-always ? search.box-height + Space.s2
+    property <length> search-h: (root.symbols-open || root.colours-open) ? 0px : root.search-always ? search.box-height + Space.s2
         : root.search-block ? Space.s2 + search.box-height + Space.s1 + root.search-status-h + Space.s1 : 0px;
     // The header's New menu (Save from clipboard, New note, New list).
     property <bool> new-menu-open: false;
@@ -583,17 +660,23 @@ export component PanelWindow inherits Window {
     property <int> recent-menu-id: 0;
     property <length> recent-menu-x: 0px;
     property <length> recent-menu-y: 0px;
-    property <length> header-h: max(Space.s8 + Space.s2, max(Space.hit, Type.line-base + Space.s2) + Space.s2);
+    // The grab strip over the header's controls: the whole width, and tall enough to hit below the top resize edge.
+    out property <length> grab-h: 24px;
+    // The strip and the row of controls under it.
+    property <length> header-h: root.grab-h + max(Space.s8 + Space.s2, max(Space.hit, Type.line-base + Space.s2) + Space.s2);
     property <length> edge-h: 10px;
     // The layout the rows are drawn in: Cards give way to List rows while a query is typed (a match says where it lives, which
     // needs the width).
     property <PanelLayout> eff-layout: root.layout == PanelLayout.cards && root.searching ? PanelLayout.list : root.layout;
     property <length> row-gap: root.eff-layout == PanelLayout.compact ? 0px : Space.s1 + Space.s0-5;
     // Cards: 2 columns from 288px wide, 1 below (set from `changed` handlers: the window's width follows its layout).
+    // A list with group headers stays one column wide, so a header spans the whole width.
+    in property <bool> has-groups: false;
     property <int> cols: 1;
     function update-cols() {
-        root.cols = root.eff-layout == PanelLayout.cards && root.width >= 288px ? 2 : 1;
+        root.cols = root.eff-layout == PanelLayout.cards && root.width >= 288px && !root.has-groups ? 2 : 1;
     }
+    changed has-groups => { root.update-cols(); }
     property <length> col-gap: Space.s1 + Space.s0-5;
     // Rows (Cards: pairs of tiles) in the list, and how many tiles group `g` holds.
     property <int> row-groups: floor((root.rows.length + root.cols - 1) / root.cols);
@@ -671,6 +754,31 @@ export component PanelWindow inherits Window {
             }
         }
     }
+    // A tooltip does not ride along with a dragged Panel, and is not back when the drag ends.
+    changed dragging => {
+        if (root.dragging) {
+            root.tip-set(root.tip, 0px, 0px, false);
+        }
+    }
+    // The row a drop in the gap before (`before`) or after row group `g` is reported onto: a drop lands after the row it
+    // comes down onto and before the one it comes up onto, so "between rows k-1 and k" is `onto k-1` from above and `onto k`
+    // from below. -1 when the drop would change nothing (or the row is not one that moves).
+    pure function gap-target(from: int, g: int, before: bool) -> int {
+        let first = g * root.cols;
+        let last = min(first + root.cols, root.rows.length) - 1;
+        if (from < 0 || from >= root.rows.length) { return -1; }
+        if (before) {
+            if (from < first) { return first - 1 == from ? -1 : first - 1; }
+            return from <= last ? -1 : first;
+        }
+        if (from < first) { return last; }
+        if (from <= last) { return -1; }
+        return last + 1 == from ? -1 : last + 1;
+    }
+    // What the grab strip's tooltip says: a docked Panel slides along its edge and floats when pulled off it.
+    property <string> grab-tip: root.dock-edge == 0 ? @tr("Drag to move. Hold at a screen edge to dock.") : root.dock-full-edge && root.dock-edge <= 2 ? @tr("Pull away from the edge to float.") : @tr("Drag along the edge to move. Pull away from the edge to float.");
+    // The text it put up, so that it closes the same one after the Panel was docked under the pointer.
+    property <string> grab-tip-up: "";
     // The tooltip text a row put up (empty when none is from a row). A row that is deleted, replaced or scrolled away
     // while the pointer rests on it never reports the pointer leaving, so the tip is closed when the rows change.
     property <string> row-tip-text: "";
@@ -766,6 +874,11 @@ export component PanelWindow inherits Window {
             root.focus-typing();
         }
     }
+    changed recent-question-open => {
+        if (!root.recent-question-open) {
+            root.focus-typing();
+        }
+    }
     changed board-menu-open => {
         if (!root.board-menu-open && !root.board-delete-open) {
             root.focus-typing();
@@ -780,7 +893,12 @@ export component PanelWindow inherits Window {
     // A jump of more than a page lands on a row the ListView has not instantiated yet, so its position
     // is unknown: estimate it from the average row height. Once the row exists, `reveal` places it exactly.
     property <int> last-sel: 0;
+    // Whether the list keeps the selected row in view. A selection move sets it; the wheel or the scrollbar clears
+    // it, so that scrolling away from the selection and back never makes its row snap itself into view (a row the
+    // ListView re-creates, or re-positions after a height re-estimate, would otherwise jump the list).
+    property <bool> follow-sel: true;
     changed sel => {
+        root.follow-sel = true;
         let jump = abs(root.sel - root.last-sel) > root.page-rows;
         root.last-sel = root.sel;
         if (root.sel == 0) {
@@ -863,6 +981,14 @@ export component PanelWindow inherits Window {
         }
     }
 
+    function use-selected-plain() {
+        if (root.sel < 0 || root.delete-mode) {
+            return;
+        }
+        root.mark-used(root.sel);
+        root.row-plain(root.sel);
+    }
+
     // Where the live row for Alt+N sits among the rows shown (the host fills it; without it, row N - 1).
     in property <[int]> quick-rows;
     function quick(n: int) {
@@ -884,8 +1010,37 @@ export component PanelWindow inherits Window {
             return;
         }
         root.close-recent();
+        root.close-colours();
         root.symbols-open = true;
         root.symbols-toggled(true);
+    }
+
+    // The Colours tab opened from outside (the command palette, "Open in Colours"); a no-op while the tab is off.
+    public function open-colours() {
+        if (!root.colours-available || root.colours-open) {
+            return;
+        }
+        root.close-recent();
+        if (root.symbols-open) {
+            root.close-symbols();
+        }
+        // The search box is hidden while the tab is open: a query nobody can see must not catch Esc or Enter.
+        root.search-user = false;
+        if (root.query != "") {
+            root.query = "";
+            root.query-changed("");
+        }
+        root.colours-open = true;
+        root.colours-toggled(true);
+    }
+
+    public function close-colours() {
+        if (!root.colours-open) {
+            return;
+        }
+        root.colours-open = false;
+        root.colours-toggled(false);
+        root.focus-typing();
     }
 
     function close-symbols() {
@@ -908,6 +1063,7 @@ export component PanelWindow inherits Window {
             return;
         }
         root.close-symbols();
+        root.close-colours();
         root.recent-open = true;
         root.recent-selected = 0;
         root.recent-toggled(true);
@@ -951,6 +1107,7 @@ export component PanelWindow inherits Window {
     function pick-tab(index: int) {
         root.close-recent();
         root.close-symbols();
+        root.close-colours();
         root.current-tab = index;
         // A list switch leaves the search.
         root.search-user = false;
@@ -969,12 +1126,15 @@ export component PanelWindow inherits Window {
     // Ctrl+Tab: the lists in turn, then the Symbols tab (when it is offered), then round again.
     function cycle-tab(dir: int) {
         let lists = root.tabs.length;
-        let stops = lists + (root.symbols-available ? 1 : 0);
+        let stops = lists + (root.symbols-available ? 1 : 0) + (root.colours-available ? 1 : 0);
         if (stops <= 1) {
             return;
         }
-        let next = mod((root.symbols-open ? lists : root.current-tab) + dir + stops, stops);
-        if (next == lists) {
+        let here = root.colours-open ? stops - 1 : root.symbols-open ? lists : root.current-tab;
+        let next = mod(here + dir + stops, stops);
+        if (next == stops - 1 && root.colours-available) {
+            root.open-colours();
+        } else if (next == lists) {
             root.open-symbols();
         } else {
             root.pick-tab(next);
@@ -1003,7 +1163,7 @@ export component PanelWindow inherits Window {
 
     // The header icon and Ctrl+F: expands the search (a no-op when it is always shown) and selects its text.
     function open-search() {
-        if (root.symbols-open) {
+        if (root.symbols-open || root.colours-open) {
             return;
         }
         root.search-user = true;
@@ -1039,6 +1199,11 @@ export component PanelWindow inherits Window {
             root.symbols-open = false;
         }
     }
+    changed colours-available => {
+        if (!root.colours-available) {
+            root.colours-open = false;
+        }
+    }
     changed recent-available => {
         if (!root.recent-available) {
             root.recent-open = false;
@@ -1046,10 +1211,6 @@ export component PanelWindow inherits Window {
             root.recent-save-open = false;
         }
     }
-
-    // O39: flipping `repaint-flip` damages the whole window (the docked strip too), so a frame Windows threw away is
-    // drawn again whole. Transparent: nothing shows.
-    RepaintNudge { flip: root.repaint-flip; }
 
     // Reports the pointer being over the open Panel (anywhere in it, grips and menus included) without
     // taking any click: a TouchArea that is an ancestor sees pointer moves before its children do and
@@ -1088,10 +1249,30 @@ export component PanelWindow inherits Window {
                 if (event.text == Key.Tab || event.text == Key.Backtab) {
                     self.tab-back = event.text == Key.Backtab || event.modifiers.shift;
                 }
-                if (root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.recent-menu-open || root.recent-save-open || root.list-delete-open || root.clear-list-open || root.board-delete-open || root.new-menu-open || root.pinned-menu-open) {
+                // A group header's name is being typed: its field takes every key (Enter keeps, Esc cancels). Once the
+                // Panel's own list or search has the focus again (the header went away mid-rename), the keys are theirs.
+                if (root.header-renaming-row >= 0 && !self.has-focus && !rest.has-focus && !search.has-focus) {
+                    return reject;
+                }
+                // An open drop-down of the Colours tab ("Values as", "Scheme") is closed by the Esc it gets itself.
+                if (root.colours-open && ColourState.dropdown-open && event.text == Key.Escape) {
+                    return reject;
+                }
+                // A popup of the Colours tab (a chip's menu, Save to…) owns the keyboard; Esc closes it.
+                if (root.colours-open && ColourState.popup != 0) {
+                    if (event.text == Key.Escape) {
+                        ColourState.popup = 0;
+                        return accept;
+                    }
+                    return reject;
+                }
+                if (root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.recent-menu-open || root.recent-save-open || root.list-delete-open || root.clear-list-open || root.board-delete-open || root.recent-question-open || root.new-menu-open || root.pinned-menu-open) {
                     // The menu (or the confirmation) owns the keyboard; Esc closes it.
                     if (event.text == Key.Escape) {
                         root.new-menu-open = false;
+                        if (root.recent-question-open) {
+                            root.recent-question-answered(false);
+                        }
                         root.pinned-menu-open = false;
                         if (root.list-delete-open) {
                             root.list-delete-dismissed();
@@ -1143,6 +1324,26 @@ export component PanelWindow inherits Window {
                         root.symbol-add-requested(root.symbol-selected);
                         return accept;
                     }
+                    // The Colours tab: Ctrl+S saves the colour, Ctrl+Shift+S asks where, Ctrl+I picks from the screen,
+                    // Ctrl+C copies it (in a field, Ctrl+C is the field's own).
+                    if (root.colours-open && (event.text == "s" || event.text == "S")) {
+                        if (event.modifiers.shift) {
+                            ColourState.save-to-ticks += 1;
+                        } else {
+                            ColourState.save(-1);
+                        }
+                        return accept;
+                    }
+                    if (root.colours-open && (event.text == "i" || event.text == "I") && !event.modifiers.shift) {
+                        if (ColourState.eyedropper-available && !ColourState.eyedropper-running) {
+                            ColourState.eyedropper();
+                        }
+                        return accept;
+                    }
+                    if (root.colours-open && (event.text == "c" || event.text == "C") && !event.modifiers.shift && !ColourState.text-focused) {
+                        ColourState.copy-current();
+                        return accept;
+                    }
                     if ((event.text == "a" || event.text == "A") && !root.searching && !root.list-hidden) {
                         root.select-all-requested();
                         return accept;
@@ -1188,11 +1389,11 @@ export component PanelWindow inherits Window {
                         return accept;
                     }
                     // Typed text in the search field undoes itself; with an empty field Ctrl+Z is the history's Undo.
-                    if ((event.text == "z" || event.text == "Z") && !event.modifiers.shift && root.query == "") {
+                    if ((event.text == "z" || event.text == "Z") && !event.modifiers.shift && root.query == "" && !(root.colours-open && ColourState.text-focused)) {
                         root.undo-requested();
                         return accept;
                     }
-                    if ((((event.text == "z" || event.text == "Z") && event.modifiers.shift) || event.text == "y" || event.text == "Y") && root.query == "") {
+                    if ((((event.text == "z" || event.text == "Z") && event.modifiers.shift) || event.text == "y" || event.text == "Y") && root.query == "" && !(root.colours-open && ColourState.text-focused)) {
                         root.redo-requested();
                         return accept;
                     }
@@ -1202,6 +1403,10 @@ export component PanelWindow inherits Window {
                     }
                     if ((event.text == "e" || event.text == "E") && root.sel >= 0 && !root.list-hidden) {
                         root.edit-requested(root.sel);
+                        return accept;
+                    }
+                    if ((event.text == "g" || event.text == "G") && root.sel >= 0 && !root.searching && !root.list-hidden) {
+                        root.group-requested(root.sel);
                         return accept;
                     }
                     if ((event.text == "d" || event.text == "D") && root.sel >= 0 && !root.list-hidden) {
@@ -1228,6 +1433,18 @@ export component PanelWindow inherits Window {
                 // Alt+1-9 uses the Nth row whatever the query holds; a bare digit is always search text.
                 if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift && !event.modifiers.meta && !root.list-hidden && root.digit(event.text) > 0) {
                     root.quick(root.digit(event.text));
+                    return accept;
+                }
+                // Alt+Enter pastes the selected row as plain text (SPEC 5.1a).
+                if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift && !event.modifiers.meta && event.text == Key.Return
+                    && root.search-focused && !root.list-hidden && !root.recent-open && !root.symbols-open && root.sel >= 0 && !search.composing) {
+                    root.use-selected-plain();
+                    return accept;
+                }
+                // Alt+Enter pastes the selected Recent row as plain text.
+                if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift && !event.modifiers.meta && event.text == Key.Return
+                    && root.search-focused && root.recent-open && root.pastes && root.rsel >= 0 && !search.composing) {
+                    root.recent-plain(root.recent-rows[root.rsel].id);
                     return accept;
                 }
                 if (event.modifiers.alt || event.modifiers.meta || search.composing || (root.symbols-open && root.symbol-composing)) {
@@ -1359,6 +1576,13 @@ export component PanelWindow inherits Window {
                         return accept;
                     }
                 }
+                // A group's header: Left folds it, Right unfolds it, Enter or Space does the other.
+                if (root.search-focused && !root.searching && !root.list-hidden && root.sel >= 0 && root.sel < root.rows.length
+                    && root.rows[root.sel].is-header && !event.modifiers.control && !event.modifiers.alt && !event.modifiers.shift) {
+                    if (event.text == Key.LeftArrow) { root.group-collapsed-set(root.sel, true); return accept; }
+                    if (event.text == Key.RightArrow) { root.group-collapsed-set(root.sel, false); return accept; }
+                    if (event.text == Key.Return || event.text == " ") { root.group-toggled(root.sel); return accept; }
+                }
                 // Cards, search empty: Left and Right step one tile (Up and Down a whole row of tiles).
                 if (root.eff-layout == PanelLayout.cards && root.search-focused && !root.searching && !root.list-hidden
                     && !event.modifiers.control && !event.modifiers.alt && !event.modifiers.shift) {
@@ -1420,7 +1644,12 @@ export component PanelWindow inherits Window {
                     root.symbol-typed-ticks += 1;
                     return accept;
                 }
-                if (!root.symbols-open && !search.has-focus && event.text != " " && root.printable(event.text)) {
+                if (root.colours-open && !ColourState.text-focused && !switcher.has-focus && !kebab.has-focus && event.text != " " && root.printable(event.text)) {
+                    ColourState.typed = event.text;
+                    ColourState.type-ticks += 1;
+                    return accept;
+                }
+                if (!root.symbols-open && !root.colours-open && !search.has-focus && event.text != " " && root.printable(event.text)) {
                     root.type-into-search(event.text);
                     return accept;
                 }
@@ -1443,17 +1672,39 @@ export component PanelWindow inherits Window {
             }
 
             VerticalLayout {
+                // ---- Grab strip (24): the whole width drags the Panel ----------
+                grab := GrabStrip {
+                    height: root.grab-h;
+                    active: root.dragging;
+                    began(x, y) => { root.drag-began(x, y); }
+                    moved(x, y) => { root.drag-moved(x, y); }
+                    ended => { root.drag-ended(); }
+                    tip(on) => {
+                        if (on && !root.dragging) {
+                            root.grab-tip-up = root.grab-tip;
+                            root.tip-set(root.grab-tip-up, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, true);
+                        } else {
+                            root.tip-set(root.grab-tip-up, 0px, 0px, false);
+                        }
+                    }
+                }
+
                 // ---- Header (40): board picker, drag region, search, New, keep on top, More, close ----------
                 Rectangle {
-                    height: root.header-h;
+                    height: root.header-h - root.grab-h;
 
-                    // Behind the controls: pressing anywhere else starts the window drag.
+                    // Behind the controls: pressing anywhere else drags the window.
                     TouchArea {
-                        mouse-cursor: MouseCursor.default;
+                        mouse-cursor: root.dragging ? MouseCursor.move : MouseCursor.default;
                         pointer-event(event) => {
                             if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
-                                root.drag-requested();
+                                root.drag-began(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+                            } else if (event.kind == PointerEventKind.cancel || (event.button == PointerEventButton.left && event.kind == PointerEventKind.up)) {
+                                root.drag-ended();
                             }
+                        }
+                        moved => {
+                            root.drag-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
                         }
                     }
 
@@ -1585,16 +1836,6 @@ export component PanelWindow inherits Window {
                             changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
                             changed has-focus => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
                         }
-                        // O28: a docked Panel slides along its edge by this pill, and stays docked. Beside the
-                        // kebab, where the window controls are, not by the board picker (it read as a caret there).
-                        if root.dock-slide && !root.dock-collapsed: grip-pill := GripPill {
-                            vertical: root.dock-edge <= 2;
-                            a11y-label: @tr("Slide the panel along the edge");
-                            y: (parent.height - self.height) / 2;
-                            along-begin => { root.along-begin(); }
-                            along-drag(d) => { root.along-drag(d); }
-                            tip(on) => { root.tip-set(@tr("Slide the panel along the edge"), self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, on); }
-                        }
                         kebab := IconButton {
                             icon: Icons.dots-three-bold;
                             size: IconButtonSize.sm;
@@ -1687,6 +1928,7 @@ export component PanelWindow inherits Window {
                         placeholder: @tr("Search snippets");
                         label: @tr("Search snippets");
                         clear-label: @tr("Clear search");
+                        release-on-blur: true;
                         edited(text) => {
                             root.search-user = true;
                             root.selected-index = 0;
@@ -1811,6 +2053,18 @@ export component PanelWindow inherits Window {
                             }
                         }
                     }
+                    if root.colours-available: colours-tab := ClockTab {
+                        label: @tr("Colours");
+                        glyph: Icons.palette;
+                        selected: root.colours-open;
+                        clicked => {
+                            if (root.colours-open) {
+                                root.close-colours();
+                            } else {
+                                root.open-colours();
+                            }
+                        }
+                    }
                     tab-bar := ListTabBar {
                         changed has-focus => { root.tabs-focused = self.has-focus; }
                         none-selected: root.list-hidden;
@@ -1873,6 +2127,7 @@ export component PanelWindow inherits Window {
                         horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
                         accessible-label: @tr("Snippets");
                         visible: root.rows.length > 0 && !root.list-hidden;
+                        scrolled => { root.follow-sel = false; }
 
                         // Rows come in groups: one row each, or (Cards) a row of two tiles. Every layout draws its rows with this one
                         // ItemCard, so a row's tooltip, drag and actions are the same in all of them.
@@ -1882,13 +2137,46 @@ export component PanelWindow inherits Window {
                             height: grp.preferred-height + root.row-gap + (g == root.row-groups - 1 ? 2 * Space.s1 : 0px);
 
                             init => {
-                                if (self.has-sel) { root.reveal(self.y, self.height); }
+                                if (self.has-sel && root.follow-sel) { root.reveal(self.y, self.height); }
                             }
                             changed has-sel => {
                                 if (self.has-sel) { root.reveal(self.y, self.height); }
                             }
                             changed y => {
-                                if (self.has-sel) { root.reveal(self.y, self.height); }
+                                if (self.has-sel && root.follow-sel) { root.reveal(self.y, self.height); }
+                            }
+
+                            // The gaps around the row (above it, and the row gap below it) are drop targets too, so a row can be
+                            // dropped "between" rows and above the first one: the item lands in that gap, whatever side it came from.
+                            if root.rows-reorderable || root.reorder-offer: DropArea {
+                                x: 0px;
+                                y: 0px;
+                                width: parent.width;
+                                height: Space.s1;
+                                can-drop(event) => {
+                                    root.drag-over(self.absolute-position.y + event.position.y);
+                                    root.gap-target(root.payload-row(event.data), g, true) >= 0 ? DragAction.move : DragAction.none
+                                }
+                                dropped(event) => {
+                                    root.edge-dir = 0;
+                                    root.row-dropped(root.payload-row(event.data), root.gap-target(root.payload-row(event.data), g, true));
+                                    return DragAction.move;
+                                }
+                            }
+                            if root.rows-reorderable || root.reorder-offer: DropArea {
+                                x: 0px;
+                                y: Space.s1 + grp.preferred-height;
+                                width: parent.width;
+                                height: parent.height - self.y;
+                                can-drop(event) => {
+                                    root.drag-over(self.absolute-position.y + event.position.y);
+                                    root.gap-target(root.payload-row(event.data), g, false) >= 0 ? DragAction.move : DragAction.none
+                                }
+                                dropped(event) => {
+                                    root.edge-dir = 0;
+                                    root.row-dropped(root.payload-row(event.data), root.gap-target(root.payload-row(event.data), g, false));
+                                    return DragAction.move;
+                                }
                             }
 
                             grp := HorizontalLayout {
@@ -1902,8 +2190,8 @@ export component PanelWindow inherits Window {
                                     property <PanelRow> item: root.rows[self.i];
                                     horizontal-stretch: 1;
                                     // A deleted row collapses to one compact line ("Deleted “title” · Undo").
-                                    preferred-height: item.deleted-pending ? root.ghost-h : card.preferred-height;
-                                    min-height: item.deleted-pending ? root.ghost-h : card.preferred-height;
+                                    preferred-height: item.deleted-pending || item.is-header ? root.ghost-h : card.preferred-height;
+                                    min-height: item.deleted-pending || item.is-header ? root.ghost-h : card.preferred-height;
 
                                     // The row being dragged over this one: a drop lands after it when coming from above.
                                     property <int> row-from: -1;
@@ -1911,25 +2199,66 @@ export component PanelWindow inherits Window {
                                     row-drop := DropArea {
                                         enabled: root.rows-reorderable || root.reorder-offer;
                                         can-drop(event) => {
+                                            root.drag-over(self.absolute-position.y + event.position.y);
                                             row-from = root.payload-row(event.data);
                                             row-from >= 0 && row-from != i ? DragAction.move : DragAction.none
                                         }
                                         dropped(event) => {
-                                            root.row-dropped(root.payload-row(event.data), i);
+                                            root.edge-dir = 0;
+                                            if (item.is-header && event.position.y < self.height / 2) {
+                                                root.row-dropped-above(root.payload-row(event.data), i);
+                                            } else {
+                                                root.row-dropped(root.payload-row(event.data), i);
+                                            }
                                             return DragAction.move;
                                         }
 
                                         DragArea {
+                                            drag-finished(action) => { root.edge-dir = 0; }
                                             allow-move: !root.searching && !root.list-hidden && !root.delete-mode && !root.select-mode;
                                             data: root.row-payload(i);
 
-                                            card := ItemCard {
+                                            // A group's header takes the place of a card.
+                                            if item.is-header: GroupHeader {
                                                 x: 0px;
                                                 y: 0px;
                                                 width: parent.width;
+                                                height: root.ghost-h;
+                                                name: item.title;
+                                                collapsed: item.group-collapsed;
+                                                count-text: @tr("{} item" | "{} items" % item.group-count, item.group-count);
+                                                a11y-label: root.group-announcement(item.title, item.group-count);
+                                                rename-label: @tr("Group name");
+                                                selected: i == root.sel;
+                                                rename-request: root.rename-row == i ? root.rename-seq : 0;
+                                                toggled => { root.selected-index = i; root.group-toggled(i); }
+                                                rename-started => {
+                                                    root.header-renaming-row = i;
+                                                    root.keyboard-requested();
+                                                }
+                                                renamed(text) => {
+                                                    if (root.header-renaming-row == i) { root.header-renaming-row = -1; }
+                                                    root.group-renamed(i, text);
+                                                }
+                                                rename-ended => {
+                                                    if (root.header-renaming-row == i) { root.header-renaming-row = -1; }
+                                                    root.group-rename-ended();
+                                                    root.focus-typing();
+                                                }
+                                                menu-requested(x, y) => {
+                                                    root.item-menu-x = self.absolute-position.x + x;
+                                                    root.item-menu-y = self.absolute-position.y + y;
+                                                    root.context-menu-requested(i, x, y);
+                                                }
+                                            }
+
+                                            card := ItemCard {
+                                                x: item.grouped ? Space.s3 : 0px;
+                                                y: 0px;
+                                                width: parent.width - self.x;
                                                 height: item.deleted-pending ? root.ghost-h : self.preferred-height;
                                                 // The collapsed row's covered card is neither seen nor read.
-                                                visible: !item.deleted-pending;
+                                                visible: !item.deleted-pending && !item.is-header;
                                                 variant: root.eff-layout == PanelLayout.compact ? ItemCardVariant.compact : root.eff-layout == PanelLayout.cards ? ItemCardVariant.tile : ItemCardVariant.comfortable;
                                                 edit-action: !(root.layout == PanelLayout.compact && root.narrow);
                                                 copy-action: root.pastes;
@@ -1950,6 +2279,8 @@ export component PanelWindow inherits Window {
                                                 preview: item.preview;
                                                 preview-before: item.preview-before;
                                                 preview-match: item.preview-match;
+                                                swatch: item.swatch;
+                                                has-swatch: item.has-swatch;
                                                 tag-hit: item.tag-hit;
                                                 masked-preview: item.masked-preview;
                                                 image: item.image;
@@ -1958,6 +2289,8 @@ export component PanelWindow inherits Window {
                                                 label: item.label;
                                                 label-name: item.label-name;
                                                 stack-position: item.stack-position;
+                                                set-position: item.set-position;
+                                                set-size: item.set-size;
                                                 formatted: item.formatted;
                                                 selected: root.delete-mode ? false : root.marked-count > 0 || root.select-mode ? item.marked : i == root.sel;
                                                 masked-hint: @tr("Hidden. Hold Space to reveal.");
@@ -1980,6 +2313,13 @@ export component PanelWindow inherits Window {
                                                 copy => {
                                                     root.selected-index = i;
                                                     root.row-copied(i);
+                                                }
+                                                plain-click: true;
+                                                use-plain => {
+                                                    if (!root.delete-mode && !root.select-mode) {
+                                                        root.selected-index = i;
+                                                        root.row-plain(i);
+                                                    }
                                                 }
                                                 context-menu-requested(x, y) => {
                                                     root.item-menu-x = self.absolute-position.x + x;
@@ -2063,6 +2403,20 @@ export component PanelWindow inherits Window {
                             }
                         }
                     }
+                    EdgeScroll {
+                        x: list.x;
+                        y: list.y;
+                        width: list.width;
+                        height: list.height;
+                        visible: list.visible;
+                        dir: root.edge-dir;
+                        up: list.content-y < -0.5px;
+                        down: list.content-y > list.height - list.content-height + 0.5px;
+                        scroll(delta) => {
+                            root.follow-sel = false;
+                            list.content-y = max(min(list.content-y - delta, 0px), min(list.height - list.content-height, 0px));
+                        }
+                    }
 
                     // The "+ New item" row: directly under the last item (or at the bottom of a short or empty list).
                     quick := QuickAdd {
@@ -2073,11 +2427,12 @@ export component PanelWindow inherits Window {
                         y: min(parent.height - self.box-h - Space.s1, root.rows.length == 0 ? parent.height : list.content-height + Space.s1);
                         list-name: root.add-list-name;
                         tab-stop: false;
+                        release-on-blur: true;
                         open-request: root.quick-add-request;
                         detect-kind(t) => { root.detect-kind(t) }
                         create(t, k, s) => { root.quick-add-requested(t, k, s); }
                         full-editor(t) => { root.quick-add-full(t); }
-                        cancelled => { root.focus-typing(); }
+                        closed => { root.focus-typing(); }
                     }
 
                     list-bar := OverlayScrollbar {
@@ -2085,7 +2440,10 @@ export component PanelWindow inherits Window {
                         content-height: list.content-height;
                         visible-height: list.height;
                         enabled: list.visible;
-                        scroll-to(y) => { list.content-y = y; }
+                        scroll-to(y) => {
+                            root.follow-sel = false;
+                            list.content-y = y;
+                        }
                     }
 
                     // More cards below (or above) the fold: two card edges, never a fade.
@@ -2149,6 +2507,11 @@ export component PanelWindow inherits Window {
                                         root.recent-selected = i;
                                         root.recent-copied(entry.id);
                                     }
+                                    plain-click: root.pastes;
+                                    use-plain => {
+                                        root.recent-selected = i;
+                                        root.recent-plain(entry.id);
+                                    }
                                     double-clicked => {
                                         root.recent-save-at(i, self.absolute-position.x + Space.s6, self.absolute-position.y + self.height);
                                     }
@@ -2179,6 +2542,13 @@ export component PanelWindow inherits Window {
                             action-text: root.recent-locked ? @tr("Unlock") : "";
                             action => { root.recent-unlock-requested(); }
                         }
+                    }
+
+                    // ---- The Colours tab: picker, values, formats, contrast, schemes (colours.slint) -------------------
+                    if root.colours-open: ColoursView {
+                        width: parent.width;
+                        height: parent.height;
+                        tip(text, cx, bottom, on) => { root.tip-set(text, cx, bottom, on); }
                     }
 
                     // ---- The Symbols tab: emoji, kaomoji and icons; click pastes, Shift+click copies -------------------
@@ -2212,7 +2582,12 @@ export component PanelWindow inherits Window {
                             root.symbol-menu-requested(i);
                         }
                         columns-changed(n) => { root.symbol-columns-changed(n); }
-                        focus-changed(on) => { root.symbol-search-focused = on; }
+                        focus-changed(on) => {
+                            root.symbol-search-focused = on;
+                            if (on) {
+                                root.keyboard-requested();
+                            }
+                        }
                         composing-changed(on) => { root.symbol-composing = on; }
                         hover-name(name) => { root.symbol-hover-name = name; }
                         tip(text, cx, bottom, on) => {
@@ -2386,7 +2761,7 @@ export component PanelWindow inherits Window {
                 if !root.stack-visible && !(root.marked-count > 0 && !root.list-hidden): footer := Rectangle {
                     height: max(Space.s8, Type.line-sm + Space.s3);
                     accessible-role: AccessibleRole.text;
-                    accessible-label: root.rows.length == 0 && root.searching ? @tr("Enter creates “{}” in {}", root.query, root.add-list-name)
+                    accessible-label: root.no-results ? @tr("Enter creates “{}” in {}", root.query, root.add-list-name)
                         : root.pastes
                         ? (root.target-title != "" ? @tr("Pastes into {} · {}", root.target-name, root.target-title) : @tr("Pastes into {}", root.target-name))
                         : @tr("No target: click copies");
@@ -2430,7 +2805,7 @@ export component PanelWindow inherits Window {
                             status-touch := TouchArea {
                                 mouse-cursor: MouseCursor.default;
                                 changed has-hover => {
-                                    root.tip-set(status.how, self.absolute-position.x + Space.s6, self.absolute-position.y - tooltip.preferred-height - Space.s2, self.has-hover && !(root.rows.length == 0 && root.searching));
+                                    root.tip-set(status.how, self.absolute-position.x + Space.s6, self.absolute-position.y - tooltip.preferred-height - Space.s2, self.has-hover && !(root.no-results));
                                 }
                             }
                             HorizontalLayout {
@@ -2447,7 +2822,7 @@ export component PanelWindow inherits Window {
                                     overflow: elide;
                                     accessible-role: AccessibleRole.text;
                                 }
-                                if !(root.symbols-open && (root.symbol-hover-name != "" || root.symbol-selected-name != "")) && !(root.rows.length == 0 && root.searching): Icon {
+                                if !(root.symbols-open && (root.symbol-hover-name != "" || root.symbol-selected-name != "")) && !(root.no-results): Icon {
                                     source: root.pastes ? Icons.arrow-bend-down-left : Icons.clipboard;
                                     tint: Theme.text-secondary;
                                     size: Space.s4 * SystemLook.text-scale;
@@ -2455,14 +2830,14 @@ export component PanelWindow inherits Window {
                                 }
                                 // No results: the footer says what Enter does (spec 2.6): the Enter keycap, then "creates “q” in List",
                                 // or without " in List" when that would not fit (the empty state already names the list).
-                                if root.rows.length == 0 && root.searching: Rectangle {
+                                if root.no-results: Rectangle {
                                     width: enter-cap.min-width;
                                     enter-cap := Keycap {
                                         text: "Enter";
                                         y: (parent.height - self.height) / 2;
                                     }
                                 }
-                                if root.rows.length == 0 && root.searching: Text {
+                                if root.no-results: Text {
                                     horizontal-stretch: 1;
                                     min-width: 0px;
                                     text: status.names-list ? @tr("creates “{}” in {}", root.query, root.add-list-name) : @tr("creates “{}”", root.query);
@@ -2473,7 +2848,7 @@ export component PanelWindow inherits Window {
                                     overflow: elide;
                                     accessible-role: AccessibleRole.none;
                                 }
-                                if !(root.symbols-open && (root.symbol-hover-name != "" || root.symbol-selected-name != "")) && !(root.rows.length == 0 && root.searching): Text {
+                                if !(root.symbols-open && (root.symbol-hover-name != "" || root.symbol-selected-name != "")) && !(root.no-results): Text {
                                     text: root.pastes ? @tr("Pastes into") : @tr("No target:");
                                     font-family: Fonts.sans;
                                     font-size: Type.sm;
@@ -2482,7 +2857,7 @@ export component PanelWindow inherits Window {
                                     overflow: elide;
                                     accessible-role: AccessibleRole.none;
                                 }
-                                if !(root.symbols-open && (root.symbol-hover-name != "" || root.symbol-selected-name != "")) && !(root.rows.length == 0 && root.searching): Text {
+                                if !(root.symbols-open && (root.symbol-hover-name != "" || root.symbol-selected-name != "")) && !(root.no-results): Text {
                                     horizontal-stretch: 1;
                                     min-width: 0px;
                                     text: root.pastes ? root.target-name : @tr("click copies");
@@ -2596,6 +2971,7 @@ export component PanelWindow inherits Window {
         if root.board-menu-open && !root.lists-in-menu: Menu {
             x: Space.s2;
             y: root.header-h - Space.s1;
+            menu-max-h: root.height - (root.header-h - Space.s1) - Space.s2;
             entries: root.board-menu-entries;
             label: @tr("Boards");
             icons: false;
@@ -2646,14 +3022,25 @@ export component PanelWindow inherits Window {
         }
         if root.app-menu-open: Menu {
             x: min(max(Space.s2, kebab.absolute-position.x + kebab.width - self.width), root.width - self.width - Space.s2);
-            y: root.header-h - Space.s1;
-            // Inside the window at any height: a taller menu scrolls.
-            menu-max-h: root.height - (root.header-h - Space.s1) - Space.s2;
+            // Under the header when it fits there (with the dense rows if need be); a menu too tall for that rises
+            // over the header rather than scroll, and scrolls only when the window itself is too short for it.
+            y: max(Space.s2, min(root.header-h - Space.s1, root.height - self.height - Space.s2));
+            dense-above: root.height - (root.header-h - Space.s1) - Space.s2;
+            menu-max-h: root.height - 2 * Space.s2;
             entries: root.app-menu-entries;
             label: @tr("Panel menu");
             init => { self.focus-menu(); }
             activated(i) => { root.app-menu-activated(i); }
             dismissed => { root.app-menu-dismissed(); }
+        }
+        // A menu too tall for the window rises over the kebab: a second click on the button still closes the menu,
+        // and does not choose the row that happens to be under the pointer.
+        if root.app-menu-open: TouchArea {
+            x: kebab.absolute-position.x;
+            y: kebab.absolute-position.y;
+            width: kebab.width;
+            height: kebab.height;
+            clicked => { root.app-menu-dismissed(); }
         }
 
         // ---- The New menu (header): under the button, kept inside the window.
@@ -2661,8 +3048,9 @@ export component PanelWindow inherits Window {
             clicked => { root.new-menu-open = false; }
         }
         if root.new-menu-open: Menu {
-            x: min(max(Space.s2, new-button.absolute-position.x), root.width - self.width - Space.s2);
+            x: max(Space.s2, min(new-button.absolute-position.x, root.width - self.width - Space.s2));
             y: root.header-h - Space.s1;
+            menu-max-h: root.height - (root.header-h - Space.s1) - Space.s2;
             entries: root.new-menu-entries;
             label: @tr("New");
             init => { self.focus-menu(); }
@@ -2685,7 +3073,8 @@ export component PanelWindow inherits Window {
         }
         if root.pinned-menu-open: Menu {
             x: root.width - self.width - Space.s2;
-            y: root.pinned-menu-y - Space.s1;
+            y: max(Space.s2, min(root.pinned-menu-y - Space.s1, root.height - self.height - Space.s2));
+            menu-max-h: root.height - 2 * Space.s2;
             entries: root.pinned-more-entries;
             label: @tr("More pinned snippets");
             icons: false;
@@ -2702,13 +3091,18 @@ export component PanelWindow inherits Window {
             clicked => { root.item-menu-dismissed(); }
         }
         if root.item-menu-open: Menu {
-            x: min(max(Space.s2, root.item-menu-x), root.width - self.width - Space.s2);
-            y: min(max(Space.s2, root.item-menu-y), root.height - self.height - Space.s2);
+            x: max(Space.s2, min(root.item-menu-x, root.width - self.width - Space.s2));
+            y: max(Space.s2, min(root.item-menu-y, root.height - self.height - Space.s2));
+            // Inside the window at any height (and top-docked, where the top is the screen's top): a taller menu scrolls.
+            menu-max-h: root.height - 2 * Space.s2;
             entries: root.item-menu-entries;
             label: @tr("Item actions");
             icons: false;
             init => { self.focus-menu(); }
-            activated(i) => { root.item-menu-activated(i); }
+            activated(i) => {
+                root.item-menu-shift = self.shift;
+                root.item-menu-activated(i);
+            }
             dismissed => { root.item-menu-dismissed(); }
         }
 
@@ -2717,8 +3111,9 @@ export component PanelWindow inherits Window {
             clicked => { root.list-menu-dismissed(); }
         }
         if root.list-menu-open: Menu {
-            x: min(max(Space.s2, root.list-menu-x), root.width - self.width - Space.s2);
-            y: min(max(Space.s2, root.list-menu-y), root.height - self.height - Space.s2);
+            x: max(Space.s2, min(root.list-menu-x, root.width - self.width - Space.s2));
+            y: max(Space.s2, min(root.list-menu-y, root.height - self.height - Space.s2));
+            menu-max-h: root.height - 2 * Space.s2;
             entries: root.list-menu-entries;
             max-w: root.width - 2 * Space.s2;
             label: @tr("List actions");
@@ -2735,9 +3130,15 @@ export component PanelWindow inherits Window {
             }
         }
         if root.recent-menu-open: Menu {
-            x: min(max(Space.s2, root.recent-menu-x), root.width - self.width - Space.s2);
-            y: min(max(Space.s2, root.recent-menu-y), root.height - self.height - Space.s2);
-            entries: [
+            x: max(Space.s2, min(root.recent-menu-x, root.width - self.width - Space.s2));
+            y: max(Space.s2, min(root.recent-menu-y, root.height - self.height - Space.s2));
+            menu-max-h: root.height - 2 * Space.s2;
+            entries: root.pastes ? [
+                { text: @tr("Save to…"), icon: Icons.folder },
+                { text: @tr("Copy"), icon: Icons.copy },
+                { text: @tr("Paste as plain text"), icon: Icons.clipboard },
+                { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
+            ] : [
                 { text: @tr("Save to…"), icon: Icons.folder },
                 { text: @tr("Copy"), icon: Icons.copy },
                 { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
@@ -2750,6 +3151,8 @@ export component PanelWindow inherits Window {
                     root.recent-save-open = true;
                 } else if (i == 1) {
                     root.recent-copied(root.recent-menu-id);
+                } else if (i == 2 && root.pastes) {
+                    root.recent-plain(root.recent-menu-id);
                 } else {
                     root.recent-deleted(root.recent-menu-id);
                 }
@@ -2757,8 +3160,8 @@ export component PanelWindow inherits Window {
             dismissed => { root.recent-menu-open = false; }
         }
         if root.recent-save-open: Chooser {
-            x: min(max(Space.s2, root.recent-menu-x), root.width - self.width - Space.s2);
-            y: min(max(Space.s2, root.recent-menu-y), root.height - self.height - Space.s2);
+            x: max(Space.s2, min(root.recent-menu-x, root.width - self.width - Space.s2));
+            y: max(Space.s2, min(root.recent-menu-y, root.height - self.height - Space.s2));
             width: min(240px, root.width - 2 * Space.s2);
             entries: root.recent-targets;
             label: @tr("Save to…");
@@ -2829,15 +3232,34 @@ export component PanelWindow inherits Window {
             }
         }
 
+        // The first-run question about the Recent list: asked once, nothing is kept before Yes.
+        Dialog {
+            open: root.recent-question-open;
+            title: @tr("Keep a Recent list of what you copy?");
+            body: @tr("Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. Nothing is kept unless you say Yes, and you can change this any time in Settings.", root.recent-max-entries, root.recent-days);
+            dismissed => { root.recent-question-answered(false); }
+            Button {
+                text: @tr("No");
+                clicked => { root.recent-question-answered(false); }
+            }
+            Button {
+                variant: ButtonVariant.primary;
+                text: @tr("Yes");
+                clicked => { root.recent-question-answered(true); }
+            }
+        }
+
         // The tooltip of whichever icon-only control is hovered or focused, centred under it and kept
         // inside the window. Above the menus' scrims, below nothing; it never takes pointer or focus.
         tooltip := Tooltip {
             text: root.tip;
             open: root.tooltip-shown != "";
+            limit-width: root.width - 2 * Space.s2;
             width: self.preferred-width;
             height: self.preferred-height;
-            x: min(max(Space.s2, root.tip-cx - self.width / 2), root.width - self.width - Space.s2);
-            y: root.tip-bottom + Space.s1;
+            // The edges win over the centring (max last), so a wide tip never starts left of the window.
+            x: max(Space.s2, min(root.tip-cx - self.width / 2, root.width - self.width - Space.s2));
+            y: max(Space.s2, min(root.tip-bottom + Space.s1, root.height - self.height - Space.s2));
         }
 
         // ---- Resize grips: invisible, last so they sit above the header's drag area and the menus' scrims.
@@ -2915,14 +3337,33 @@ export component PanelWindow inherits Window {
         }
     }
 
-    // The dock preview: an accent strip along the edge the drag would dock to.
+    // The dock preview: the Panel is shown docked while the drag holds it at an edge. An accent frame and a label
+    // say that letting go docks it there (pulling back takes it off again).
     if root.dock-preview > 0 && !root.dock-collapsed: Rectangle {
-        x: root.dock-preview == 2 ? root.width - self.width : 0;
-        y: root.dock-preview == 4 ? root.height - self.height : 0;
-        width: root.dock-preview <= 2 ? Space.s1 : root.width;
-        height: root.dock-preview >= 3 ? Space.s1 : root.height;
-        background: Theme.accent;
+        width: root.width;
+        height: root.height;
+        border-width: 2px;
+        border-color: Theme.accent;
+        background: transparent;
         accessible-role: none;
+        Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            width: release-label.preferred-width + Space.s6;
+            height: release-label.preferred-height + Space.s3;
+            border-radius: Radius.md;
+            background: Theme.accent;
+            release-label := Text {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                text: @tr("Release to dock");
+                color: Theme.text-on-accent;
+                font-family: Fonts.sans;
+                font-size: Type.sm;
+                font-weight: Type.medium;
+                accessible-role: text;
+            }
+        }
     }
 
     // The collapsed dock: a strip over the whole window, in the colour of the list on show.

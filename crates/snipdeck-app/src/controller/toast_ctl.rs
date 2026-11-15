@@ -80,17 +80,30 @@ where
             seq: self.toast_seq,
             step: Some(step),
             adds: None,
+            list: None,
         });
     }
 
     /// Shows `toast` ("Saved to …") for the new item `id`, with an Undo button that moves it to
     /// the Trash and an Edit button that opens it in the editor.
     pub fn show_saved_toast(&mut self, toast: Toast, id: snipdeck_core::ItemId) {
+        self.show_saved_toast_made(toast, id, None);
+    }
+
+    /// [`show_saved_toast`](Self::show_saved_toast) for a save that also made `list`: Undo
+    /// trashes the list with the item.
+    pub fn show_saved_toast_made(
+        &mut self,
+        toast: Toast,
+        id: snipdeck_core::ItemId,
+        list: Option<snipdeck_core::ListId>,
+    ) {
         self.show_toast(toast);
         self.undo = Some(Undo {
             seq: self.toast_seq,
             step: None,
             adds: Some(id),
+            list,
         });
     }
 

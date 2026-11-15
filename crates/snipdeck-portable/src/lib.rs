@@ -27,8 +27,7 @@
 //!
 //! An [`Error`] means the input is unusable and the library is unchanged. A [`Warning`] in the
 //! [`ImportReport`] means the import went ahead but left something out or changed something:
-//! sensitive items that need a key, lossy text decoding, skipped files, the Free-tier board
-//! limit. The caller decides what to tell the user.
+//! sensitive items that need a key, lossy text decoding, skipped files. The caller decides what to tell the user.
 
 #![forbid(unsafe_code)]
 #![allow(
@@ -56,6 +55,6 @@ pub use importers::{
     HistoryEntry, MEMORY_BUDGET, import_beeftext, import_copyq_json, import_ditto, import_entries,
     import_espanso, import_folder, import_phraseexpress_csv, import_textexpander_csv,
 };
-pub use limits::{Limits, TEXT_LIMIT};
+pub use limits::{ENVELOPE_OVERHEAD_BYTES, Limits, TEXT_LIMIT};
 pub use plan::Library;
-pub use report::{ImportReport, MAX_WARNINGS, Warning};
+pub use report::{ImportReport, MAX_WARNINGS, Note, Warning};

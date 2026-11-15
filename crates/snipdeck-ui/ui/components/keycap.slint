@@ -61,9 +61,22 @@ export component KeyCombo inherits Rectangle {
     row := HorizontalLayout {
         spacing: Space.s0-5;
         alignment: start;
-        for key in root.keys: Keycap {
-            text: key;
-            active: root.active;
+        // "|" between two caps is a divider: what follows is an alternative ("Up or Down"), not part of the chord.
+        for key in root.keys: HorizontalLayout {
+            padding-left: key == "|" ? Space.s1 : 0px;
+            padding-right: key == "|" ? Space.s1 : 0px;
+            if key == "|": Text {
+                text: @tr("or");
+                color: Theme.text-secondary;
+                font-family: Fonts.sans;
+                font-size: Type.xs;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+            if key != "|": Keycap {
+                text: key;
+                active: root.active;
+            }
         }
     }
 }

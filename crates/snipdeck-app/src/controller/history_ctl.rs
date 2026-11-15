@@ -2,9 +2,11 @@
 //! forward. The Main window and the Panel share one history (Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z and
 //! the two header buttons); the toast's Undo button takes back the step it was shown for.
 
-use snipdeck_core::{Item, ItemId, ListId, Placement, Timestamp};
+use snipdeck_core::{Group, Item, ItemId, ListId, Placement, Timestamp};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
-use snipdeck_store::{Batch, ItemRepo, TrashRepo, Trashable};
+use snipdeck_store::{
+    Batch, GroupDelete, GroupEnd, GroupRepo, ItemRepo, TrashRepo, Trashable, TriggerRepo,
+};
 
 use super::{Controller, Library, Toast, ToastKind, ToastMessage, failed};
 use crate::{
@@ -27,7 +29,19 @@ pub(super) fn snap(item: &Item) -> Snap {
     Snap {
         item: item.clone(),
         text: None,
+        formats: None,
+        trigger: None,
     }
+}
+
+/// Whether the bytes of every text, HTML, RTF and picture format in `formats` can still be read
+/// (blob files go when nothing refers to them for long enough).
+fn readable(b: &impl snipdeck_store::BlobStore, formats: &snipdeck_core::Formats) -> bool {
+    use snipdeck_core::Format;
+    formats.iter().all(|format| match format {
+        Format::Text(c) | Format::Html(c) | Format::Rtf(c) | Format::Png(c) => b.read(c).is_ok(),
+        Format::Files(files) => files.iter().all(|f| b.read(f.content()).is_ok()),
+    })
 }
 
 /// Where item `id` sits now: its list and the sibling before it.
@@ -89,12 +103,7 @@ pub(super) fn update_recorded<R: ItemRepo>(
 }
 
 /// Applies one change inside a transaction.
-fn apply(
-    b: &mut Batch<'_>,
-    change: &Change,
-    now: Timestamp,
-    board_limit: Option<usize>,
-) -> snipdeck_store::Result<()> {
+fn apply(b: &mut Batch<'_>, change: &Change, now: Timestamp) -> snipdeck_store::Result<()> {
     match change {
         Change::Trash(targets) => {
             for t in targets {
@@ -103,24 +112,67 @@ fn apply(
         }
         Change::Restore(targets) => {
             for t in targets {
-                b.restore_with(*t, board_limit)?;
+                b.restore_reporting(*t)?;
             }
         }
         Change::Update { after, .. } => {
-            let formats = match after.text.as_deref() {
-                Some(text) => Some(snipdeck_core::Formats::new(vec![
+            let formats = match (after.formats.as_ref(), after.text.as_deref()) {
+                // The formats the edit dropped, while all their bytes are still stored.
+                (Some(kept), _) if readable(b, kept) => Some(kept.clone()),
+                (_, Some(text)) => Some(snipdeck_core::Formats::new(vec![
                     snipdeck_core::Format::Text(snipdeck_store::BlobStore::put(
                         b,
                         text.as_bytes().to_vec(),
                     )?),
                 ])?),
-                None => None,
+                (_, None) => None,
             };
             b.update_item(&after.item, formats.as_ref())?;
+            if let Some(trigger) = &after.trigger {
+                // A code another item took in the meantime stays with that item.
+                match b.set_trigger(after.item.id, trigger.as_ref()) {
+                    Ok(_)
+                    | Err(
+                        snipdeck_store::Error::TriggerTaken(_)
+                        | snipdeck_store::Error::SensitiveTrigger,
+                    ) => {}
+                    Err(e) => return Err(e),
+                }
+            }
         }
         Change::Move { id, to, .. } => b.move_item(*id, to.0, to.1)?,
+        Change::Group { group, members } => b.create_group(group, members)?,
+        Change::Ungroup { group, .. } => b.delete_group(group.id, GroupDelete::Keep)?,
+        Change::Rename { after, .. } => b.update_group(after)?,
+        Change::MoveRun { group, to, .. } => b.move_run(*group, *to)?,
+        Change::Join { item, group, .. } => b.join_group(*item, *group, GroupEnd::First)?,
+        Change::Leave {
+            item,
+            from,
+            from_group,
+            ..
+        } => {
+            b.move_item(*item, from.0, from.1)?;
+            regroup(b, *item, from_group.as_ref())?;
+        }
+        Change::Regroup { item, group } => regroup(b, *item, group.as_ref())?,
     }
     Ok(())
+}
+
+/// Puts `item` in exactly `group` (made again, with the item alone, if it was emptied and
+/// pruned since) or in none, leaving its position alone.
+fn regroup<B: GroupRepo>(
+    b: &mut B,
+    item: ItemId,
+    group: Option<&Group>,
+) -> snipdeck_store::Result<()> {
+    match group {
+        None => b.set_item_group(item, None),
+        Some(g) => b
+            .set_item_group(item, Some(g.id))
+            .or_else(|_| b.create_group(g, &[item])),
+    }
 }
 
 impl<S, C, K, T> Controller<S, C, K, T>
@@ -161,10 +213,9 @@ where
             return;
         };
         let now = self.clock.now();
-        let limit = self.board_limit();
         let done = self.store.atomically(|b| {
             for change in &step.changes {
-                apply(b, change, now, limit)?;
+                apply(b, change, now)?;
             }
             Ok(())
         });
@@ -189,33 +240,29 @@ where
             return;
         };
         let now = self.clock.now();
-        let limit = self.board_limit();
         let changes = step.undo_changes();
         let done = self.store.atomically(|b| {
             for change in &changes {
-                apply(b, change, now, limit)?;
+                apply(b, change, now)?;
             }
             Ok(())
         });
-        match done {
-            Ok(()) => {
-                let message = restored_count(&step).map_or(
-                    ToastMessage::Undone {
-                        action: step.action,
-                    },
-                    |count| ToastMessage::Restored { count },
-                );
-                self.history.undone(step);
-                self.show_toast(Toast {
-                    kind: ToastKind::Success,
-                    message,
-                });
-                self.library_changed();
-            }
-            Err(error) => {
-                self.show_toast(super::main_ctl::restore_failed(&error));
-                self.refresh_logged("a failed undo");
-            }
+        if done.is_ok() {
+            let message = restored_count(&step).map_or(
+                ToastMessage::Undone {
+                    action: step.action,
+                },
+                |count| ToastMessage::Restored { count },
+            );
+            self.history.undone(step);
+            self.show_toast(Toast {
+                kind: ToastKind::Success,
+                message,
+            });
+            self.library_changed();
+        } else {
+            self.show_toast(super::failed());
+            self.refresh_logged("a failed undo");
         }
     }
 }

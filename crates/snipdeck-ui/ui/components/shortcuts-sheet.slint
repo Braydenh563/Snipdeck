@@ -8,13 +8,15 @@ component ShortcutLine inherits Rectangle {
     in property <string> title;
     in property <[string]> keys;
     in property <string> spoken;
+    in property <bool> plain;
 
-    min-height: max(Space.hit * SystemLook.text-scale + Space.s1, Type.line-base + Space.s2);
+    // A Rectangle does not take its height from the layout inside it: wrapped titles make the line taller.
+    min-height: max(Space.hit * SystemLook.text-scale + Space.s1, Type.line-base + Space.s2, row.preferred-height);
     accessible-role: groupbox;
     accessible-label: root.title;
     accessible-description: root.keys.length > 0 ? root.spoken : @tr("Off");
 
-    HorizontalLayout {
+    row := HorizontalLayout {
         padding-top: Space.s1;
         padding-bottom: Space.s1;
         spacing: Space.s4;
@@ -32,9 +34,16 @@ component ShortcutLine inherits Rectangle {
         VerticalLayout {
             alignment: center;
             horizontal-stretch: 0;
-            if root.keys.length > 0: KeyCombo {
+            if root.keys.length > 0 && !root.plain: KeyCombo {
                 keys: root.keys;
                 label: root.spoken;
+            }
+            if root.keys.length > 0 && root.plain: Text {
+                text: root.keys[0];
+                color: Theme.text-secondary;
+                font-family: Fonts.sans;
+                font-size: Type.sm;
+                accessible-role: none;
             }
             if root.keys.length == 0: Text {
                 text: @tr("Off");
@@ -57,6 +66,7 @@ export struct ShortcutLineData {
     title: string,
     keys: [string],
     spoken: string,
+    plain: bool,
 }
 
 // One group (Anywhere in Windows, Main window, Panel, Picker, Editors) with the lines that match the search.
@@ -82,6 +92,7 @@ export component ShortcutsSheet inherits VerticalLayout {
             title: line.title;
             keys: line.keys;
             spoken: line.spoken;
+            plain: line.plain;
         }
         if group.note != "": Text {
             text: group.note;

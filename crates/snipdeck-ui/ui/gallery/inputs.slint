@@ -225,7 +225,9 @@ export component FormGallery inherits Window {
     out property <bool> hk-recording: hk.recording;
     out property <bool> hk-has-focus: hk.has-focus;
     public function focus-hk() { hk.focus(); }
-    public function focus-choice() { choice.focus(); }
+    // As the fill form does: the list's own Tab stop takes focus through `focus-request`.
+    property <int> choice-focus: 0;
+    public function focus-choice() { root.choice-focus += 1; }
 
     width: 700px;
     height: 680px;
@@ -293,6 +295,7 @@ export component FormGallery inherits Window {
                 required-text: "Required";
                 choices: ["Short", "Medium", "Long"];
                 choice-index <=> root.tf-choice;
+                focus-request: root.choice-focus;
                 chosen(i) => { root.tf-chosen += 1; }
             }
             TemplateField {

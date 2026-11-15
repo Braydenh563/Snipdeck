@@ -14,7 +14,8 @@ use crate::{controller::Library, paste_create::kind_of_text};
 /// The largest text a capture saves (SPEC 5.4: over 5 MB is rejected with a toast).
 pub const MAX_TEXT_BYTES: usize = 5 * 1024 * 1024;
 
-/// The title of an item made from a picture that has no file name.
+/// The English title of an item made from a picture that has no file name; the window layer
+/// hands the controller the translated one.
 pub const PASTED_IMAGE_TITLE: &str = "Pasted image";
 
 /// The list a capture goes into.
@@ -168,9 +169,10 @@ pub fn capture_image<L: Library>(
     library: &mut L,
     list: &Destination,
     png: Vec<u8>,
+    title: &str,
     now: Timestamp,
 ) -> snipdeck_store::Result<Captured> {
-    let item = Item::new(list.id, PASTED_IMAGE_TITLE.to_owned(), ItemKind::Image, now);
+    let item = Item::new(list.id, title.to_owned(), ItemKind::Image, now);
     let id = item.id;
     library.atomically(|batch| {
         let formats = Formats::new(vec![Format::Png(batch.put(png)?)])?;
@@ -378,5 +380,42 @@ mod tests {
         }
         let bare = Store::open_in_memory().expect("store");
         assert_eq!(default_list(&bare, None).expect("list"), None);
+    }
+
+    #[test]
+    fn any_file_type_is_saved_and_only_a_png_becomes_an_image_item() {
+        let (mut store, notes, _) = library();
+        let to = dest(&store, notes);
+        let mut png = Vec::new();
+        let mut encoder = png::Encoder::new(&mut png, 1, 1);
+        encoder.set_color(png::ColorType::Rgb);
+        encoder.set_depth(png::BitDepth::Eight);
+        encoder
+            .write_header()
+            .and_then(|mut w| w.write_image_data(&[1, 2, 3]))
+            .expect("png");
+        let files = vec![
+            ("shot.png".to_owned(), png),
+            ("photo.jpg".to_owned(), vec![0xFF, 0xD8, 0xFF, 1]),
+            ("clip.webp".to_owned(), b"RIFFxxxxWEBP".to_vec()),
+            ("data.bin".to_owned(), vec![0, 1, 2]),
+            ("Makefile".to_owned(), b"all:".to_vec()),
+        ];
+        let Captured::Saved { .. } = capture_files(&mut store, &to, files, now()).expect("saved")
+        else {
+            panic!("nothing saved")
+        };
+        let items = store.items(notes).expect("items");
+        let kinds: Vec<_> = items.iter().map(|i| (i.title.as_str(), i.kind)).collect();
+        assert_eq!(
+            kinds,
+            [
+                ("shot.png", ItemKind::Image),
+                ("photo.jpg", ItemKind::File),
+                ("clip.webp", ItemKind::File),
+                ("data.bin", ItemKind::File),
+                ("Makefile", ItemKind::File),
+            ]
+        );
     }
 }

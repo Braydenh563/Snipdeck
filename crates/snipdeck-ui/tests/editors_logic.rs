@@ -15,7 +15,7 @@ use i_slint_backend_testing::{AccessibleRole, ElementHandle, ElementQuery, Eleme
 use slint::{ComponentHandle, Global, ModelRc, VecModel, platform::Key};
 use snipdeck_ui::{
     BoardEditor, FormControlsGallery, HelpWindow, ItemEditor, ListEditor, OnboardingWindow,
-    SettingsFilter, SettingsPage, TagManager,
+    SegmentedFitGallery, SettingsFilter, SettingsPage, TagManager,
 };
 
 #[path = "support/mod.rs"]
@@ -186,7 +186,7 @@ fn settings() -> (SettingsPage, Log) {
     // The host's "contains"; Slint has none.
     SettingsFilter::get(&ui)
         .on_matches(|text, query| text.to_lowercase().contains(&query.to_lowercase()));
-    // Tall enough that the whole page (with the plan table in Licence) is on screen: the testing backend only lists what is visible.
+    // Tall enough that the whole page is on screen: the testing backend only lists what is visible.
     ui.window().set_size(slint::LogicalSize::new(640.0, 6000.0));
     ui.show().expect("show");
     settle();
@@ -218,7 +218,7 @@ fn settings() -> (SettingsPage, Log) {
     }
     hook!(on_no_history_app_added, |n| format!("hist+:{n}"));
     hook!(on_no_history_app_removed, |i| format!("hist-:{i}"));
-    hook!(on_licence_submitted, |k| format!("licence:{k}"));
+    ui.on_support_requested(log_hook(&log, "support"));
     hook!(on_backup_restore_requested, |i| format!("restore:{i}"));
     hook!(on_erase_confirmed, |t, forget| format!(
         "erase:{t}:{forget}"
@@ -311,6 +311,38 @@ ui_tests! {
         assert_eq!(take(&log), ["save"]);
     }
 
+    fn the_trigger_field_speaks_its_helper_then_the_warning_and_the_error_wins() {
+        const HELPER: &str =
+            "Type this in any app to insert the snippet. Turn it on in Settings, under Typing.";
+        const ONE_CHAR: &str = "A one-character trigger fires every time you type it, even inside words. Two or more characters are safer.";
+        let (ui, _log) = item_editor();
+        ui.set_trigger("".into());
+        settle();
+        let desc = |ui: &ItemEditor| {
+            find(ui, "Trigger", AccessibleRole::TextInput).accessible_description()
+        };
+        assert_eq!(desc(&ui).as_deref(), Some(HELPER), "the helper is spoken");
+        ui.set_trigger(";".into());
+        settle();
+        assert_eq!(desc(&ui).as_deref(), Some(ONE_CHAR), "the warning replaces it");
+        ui.set_trigger_error("That trigger is taken.".into());
+        settle();
+        assert_eq!(
+            desc(&ui).as_deref(),
+            Some("That trigger is taken."),
+            "the error wins"
+        );
+        ui.set_trigger_error("".into());
+        ui.set_sensitive(true);
+        settle();
+        let reason = find(
+            &ui,
+            "Sensitive items can't be typed in, so they have no trigger.",
+            AccessibleRole::Text,
+        );
+        assert!(reason.accessible_label().is_some(), "the reason is a text node");
+    }
+
     fn escape_leaves_a_clean_editor_and_asks_before_discarding_changes() {
         let (ui, log) = item_editor();
         press_key(&ui, Key::Escape);
@@ -398,20 +430,6 @@ ui_tests! {
             find(&ui, "Template text", AccessibleRole::TextInput).accessible_value().as_deref(),
             Some("Due on {date}"),
         );
-
-        ui.set_prompted_available(false);
-        settle();
-        assert_eq!(find(&ui, "Insert {field:Name}", AccessibleRole::Button).accessible_enabled(), Some(false));
-        assert_eq!(find(&ui, "Insert {date}", AccessibleRole::Button).accessible_enabled(), Some(true));
-        for chip in ["{multiline:Name|default}", "{pickdate:Name|FORMAT}", "{optional:Name}...{/optional}"] {
-            let label = format!("Insert {chip}");
-            assert_eq!(find(&ui, &label, AccessibleRole::Button).accessible_enabled(), Some(false), "{chip}");
-        }
-        // The Supporter chips (field, choice, multiline, pickdate, optional) carry a lock badge in place.
-        let badges = ElementHandle::find_by_accessible_label(&ui, "Supporter")
-            .filter(|e| e.accessible_role() == Some(AccessibleRole::Text))
-            .count();
-        assert_eq!(badges, 5);
     }
 
     fn a_formatted_item_says_changed_text_loses_its_formatting_and_offers_to_remove_it_alone() {
@@ -687,14 +705,14 @@ ui_tests! {
         let (ui, _log) = item_editor();
         ui.set_more_open(false);
         settle();
-        let closed = find(&ui, "Show title, colour, tags and privacy", AccessibleRole::Button);
+        let closed = find(&ui, "Show title, colour, tags, trigger and privacy", AccessibleRole::Button);
         assert_eq!(closed.accessible_expanded(), Some(false));
         assert!((closed.size().height - 32.0).abs() < 0.5);
         let field = find(&ui, "Content", AccessibleRole::TextInput);
         assert!(closed.size().width >= field.size().width - 1.0, "the row spans the form");
         ui.set_more_open(true);
         settle();
-        let open = find(&ui, "Hide title, colour, tags and privacy", AccessibleRole::Button);
+        let open = find(&ui, "Hide title, colour, tags, trigger and privacy", AccessibleRole::Button);
         assert_eq!(open.accessible_expanded(), Some(true));
     }
 
@@ -716,11 +734,11 @@ ui_tests! {
         let (ui, log) = item_editor();
         ui.set_more_open(false);
         settle();
-        find(&ui, "Show title, colour, tags and privacy", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Show title, colour, tags, trigger and privacy", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
         assert!(ui.get_more_open());
         assert_eq!(take(&log), ["more:true"]);
-        find(&ui, "Hide title, colour, tags and privacy", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Hide title, colour, tags, trigger and privacy", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
         assert!(!ui.get_more_open());
         assert_eq!(take(&log), ["more:false"]);
@@ -754,10 +772,10 @@ ui_tests! {
         let (ui, _log) = item_editor();
         ui.set_more_open(false);
         settle();
-        assert!(!missing(&ui, "Show title, colour, tags and privacy", AccessibleRole::Button));
+        assert!(!missing(&ui, "Show title, colour, tags, trigger and privacy", AccessibleRole::Button));
         ui.set_title_error("Too long.".into());
         settle();
-        assert!(!missing(&ui, "Hide title, colour, tags and privacy", AccessibleRole::Button));
+        assert!(!missing(&ui, "Hide title, colour, tags, trigger and privacy", AccessibleRole::Button));
     }
 
     fn save_names_its_shortcut_in_a_tooltip() {
@@ -1212,32 +1230,20 @@ ui_tests! {
 
     fn every_settings_row_is_found_by_its_own_title() {
         let (ui, _log) = settings();
+        // The Windows Hello row shows only where Hello is offered: show it so it is searched too.
+        ui.set_hello_offered(true);
+        settle();
         let sections = [
-            "Shortcuts", "Appearance", "Panel layout", "Opening the Panel", "Privacy", "Programs",
-            "Backups and your data", "Licence",
-        ];
-        // The Licence section's plan table is a comparison, not settings: its rows are not searched.
-        let plan_table = [
-            "Free plan",
-            "Free and Supporter compared",
-            "Boards",
-            "Lists and items",
-            "Panel and Picker",
-            "Save from the clipboard",
-            "Dock to a screen edge",
-            "Templates with date, time and cursor",
-            "Sensitive items, masked",
-            "Encryption on disk",
-            "Backups, export, light and dark, 7 languages",
-            "Templates that ask",
-            "Paste stack",
+            "Shortcuts", "Appearance", "Panel layout", "Opening the Panel", "Privacy", "Programs", "Typing",
+            "Backups and your data", "Support",
         ];
         let titles: Vec<String> = by_role(&ui, AccessibleRole::Groupbox)
             .iter()
             .filter_map(|e| e.accessible_label().map(|l| l.to_string()))
-            .filter(|t| !sections.contains(&t.as_str()) && !plan_table.contains(&t.as_str()))
+            .filter(|t| !sections.contains(&t.as_str()))
             .collect();
         assert!(titles.len() > 30, "{titles:?}");
+        assert!(titles.iter().any(|t| t == "Unlock with Windows Hello"), "{titles:?}");
         let filter = SettingsFilter::get(&ui);
         let mut hidden = Vec::new();
         for title in titles {
@@ -1251,6 +1257,38 @@ ui_tests! {
             hidden.is_empty(),
             "the search hides {hidden:?} (a section's search text is out of step with its rows)"
         );
+    }
+
+    fn searching_hello_without_the_row_lands_on_the_master_password_hint() {
+        // Hello is not offered (no password or no Hello): the search still shows the Privacy
+        // section, with its Master password row, which says what Hello needs.
+        let (ui, _log) = settings();
+        ui.set_hello_offered(false);
+        settle();
+        SettingsFilter::get(&ui).set_query("Hello".into());
+        settle();
+        assert!(missing(&ui, "Unlock with Windows Hello", AccessibleRole::Groupbox));
+        assert!(!missing(&ui, "Master password", AccessibleRole::Groupbox));
+        assert!(!missing(&ui, "Privacy", AccessibleRole::Groupbox));
+    }
+
+    fn every_settings_section_is_found_by_its_own_title_and_a_few_plain_words() {
+        let (ui, _log) = settings();
+        ui.set_hello_offered(true);
+        settle();
+        let filter = SettingsFilter::get(&ui);
+        for (query, section) in [
+            ("Shortcuts", "Shortcuts"), ("Appearance", "Appearance"), ("Panel layout", "Panel layout"),
+            ("Opening the Panel", "Opening the Panel"), ("Privacy", "Privacy"), ("Programs", "Programs"),
+            ("Typing", "Typing"), ("Backups and your data", "Backups and your data"), ("Support", "Support"),
+            ("trigger", "Typing"), ("triggers", "Typing"), ("text expansion", "Typing"), ("autocomplete", "Typing"),
+            ("fingerprint", "Privacy"), ("PIN", "Privacy"), ("face", "Privacy"),
+            ("never paste", "Programs"), ("donate", "Support"), ("coffee", "Support"),
+        ] {
+            filter.set_query(query.into());
+            settle();
+            assert!(!missing(&ui, section, AccessibleRole::Groupbox), "\"{query}\" does not find {section}");
+        }
     }
 
     fn escape_ends_a_recording_first_and_then_closes_the_page() {
@@ -1445,20 +1483,11 @@ ui_tests! {
         let _ = find(&ui, "putty.exe is already in the list.", AccessibleRole::Text);
     }
 
-    fn the_licence_backup_and_data_sections_report_their_gestures() {
+    fn the_support_backup_and_data_sections_report_their_gestures() {
         let (ui, log) = settings();
-        // A key is typed, then Activate sends it.
-        find(&ui, "Activate", AccessibleRole::Button).invoke_accessible_default_action();
-        assert!(take(&log).is_empty(), "an empty field sends nothing");
-        find(&ui, "Licence key", AccessibleRole::TextInput).set_accessible_value("SNIP1.abc.def");
-        find(&ui, "Activate", AccessibleRole::Button).invoke_accessible_default_action();
-        assert_eq!(take(&log), ["licence:SNIP1.abc.def"]);
-        // Pro has nothing to type.
-        ui.set_pro(true);
-        settle();
-        assert!(ElementHandle::find_by_accessible_label(&ui, "Activate").next().is_none());
-        ui.set_pro(false);
-        settle();
+        // The Support row asks the host to open the donation page.
+        find(&ui, "Open the Support Snipdeck page in your browser", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["support"]);
 
         find(&ui, "Restore the backup of 2026-10-17", AccessibleRole::Button).invoke_accessible_default_action();
         find(&ui, "Back up now", AccessibleRole::Button).invoke_accessible_default_action();
@@ -1553,6 +1582,30 @@ ui_tests! {
         assert_eq!(disabled[0].accessible_enabled(), Some(false));
         disabled[0].invoke_accessible_default_action();
         assert_eq!(ui.get_changes(), 3);
+    }
+
+    fn a_segmented_control_keeps_air_around_every_label() {
+        // No width of its own, at the start of a row: the control is as wide as its cells want, which is where
+        // a bare label (text edge to cell edge, the divider 1.5px away) shows.
+        let ui = SegmentedFitGallery::new().expect("gallery");
+        ui.show().expect("show");
+        settle();
+        let labels: Vec<_> = ElementHandle::find_by_element_id(&ui, "Segmented::label").collect();
+        assert_eq!(labels.len(), 3, "one label per option");
+        for name in ["Text", "Link", "Template"] {
+            let cell = find(&ui, name, AccessibleRole::RadioButton);
+            let cell_x = cell.absolute_position().x;
+            let cell_w = cell.size().width;
+            let label = labels
+                .iter()
+                .find(|l| {
+                    let p = l.absolute_position().x;
+                    p >= cell_x - 0.5 && p <= cell_x + cell_w
+                })
+                .expect("a label inside the cell");
+            let gap = cell_w - label.size().width;
+            assert!(gap >= 2.0 * 8.0, "{name}: {gap}px of air around the label in a {cell_w}px cell");
+        }
     }
 
     fn the_select_field_opens_with_the_keyboard_and_the_highlight_chooses() {
@@ -1741,19 +1794,19 @@ ui_tests! {
         let _ = find(&ui, "Could not change the start-up entry.", AccessibleRole::Text);
     }
 
-    fn the_welcome_step_offers_to_keep_what_you_copy_on_by_default_and_fits_the_window() {
+    fn the_welcome_step_offers_to_keep_what_you_copy_off_until_yes_and_fits_the_window() {
         let (ui, log) = onboarding(0);
-        assert!(ui.get_recent_history(), "history is on for a new install");
+        assert!(!ui.get_recent_history(), "history is off until the person says Yes");
         let yes = find(&ui, "Yes", AccessibleRole::RadioButton);
-        let not_now = find(&ui, "Not now", AccessibleRole::RadioButton);
-        assert_eq!(yes.accessible_checked(), Some(true));
-        assert_eq!(not_now.accessible_checked(), Some(false));
-        not_now.invoke_accessible_default_action();
-        assert_eq!(take(&log), ["history:false"]);
+        let no = find(&ui, "No", AccessibleRole::RadioButton);
+        assert_eq!(yes.accessible_checked(), Some(false));
+        assert_eq!(no.accessible_checked(), Some(true));
+        yes.invoke_accessible_default_action();
+        assert_eq!(take(&log), ["history:true"]);
         // The host can put the value back.
         ui.set_recent_history(false);
         settle();
-        assert_eq!(not_now.accessible_checked(), Some(true));
+        assert_eq!(no.accessible_checked(), Some(true));
         // The choice is inside the window at the size it opens at (560 x 540), and a comfortable target.
         ui.window().set_size(slint::LogicalSize::new(560.0, 540.0));
         settle();
@@ -1897,5 +1950,28 @@ ui_tests! {
         fixture::shortcuts(&ui);
         settle();
         assert!(missing(&ui, "No shortcut matches", AccessibleRole::Text));
+    }
+
+    fn a_refused_path_asks_for_its_field_and_a_refill_clears_the_request() {
+        let (ui, _log) = item_editor();
+        ui.set_is_new(true);
+        ui.set_kind_index(4);
+        settle();
+        ui.set_preview_on(true);
+        ui.set_source_error("There is no file at that path.".into());
+        settle();
+        assert!(!ui.get_preview_on(), "the refusal leaves Preview");
+        assert_eq!(ui.get_source_focus_request(), 1, "the path field is asked for");
+        // The host fills the window for another item of the same kind: the request must not outlive the old one.
+        ui.invoke_clear_focus_requests();
+        ui.set_source_error("".into());
+        ui.set_is_new(false);
+        ui.set_is_new(true);
+        ui.invoke_focus_title();
+        settle();
+        assert_eq!(ui.get_source_focus_request(), 0);
+        type_text(ui.window(), "x");
+        assert_eq!(ui.get_source_path(), "", "the path field did not take the focus");
+        assert!(ui.get_item_title().ends_with('x'), "the title did");
     }
 }

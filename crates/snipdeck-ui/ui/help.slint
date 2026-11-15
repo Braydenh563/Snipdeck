@@ -1,5 +1,5 @@
 // The Help window (V1-PLAN step 7b): Troubleshoot (the doctor's checks and the data tools) and About (version,
-// licence, links). One regular window, opened from the Panel menu, the Main window and the crash toast.
+// links). One regular window, opened from the Panel menu, the Main window and the crash toast.
 //
 // The host fills `checks` (it runs the checks; this file only draws them), opens folders and links, and copies the
 // diagnostic report. Nothing is fetched from the network: the update link opens the releases page in the browser.
@@ -39,7 +39,9 @@ export struct HelpCheck {
 export component HelpWindow inherits Window {
     title: @tr("Help");
     background: Theme.bg-app;
-    min-width: 420px;
+    // Grows with the text size: at 225% the tab bar and the shortcut rows need about 600 px (final audit 1).
+    out property <length> min-window-width: max(420px, 270px * SystemLook.text-scale);
+    min-width: root.min-window-width;
     min-height: 360px;
     preferred-width: root.wanted-width;
     preferred-height: root.wanted-height;
@@ -65,8 +67,6 @@ export component HelpWindow inherits Window {
     in property <bool> has-data-folder: true;
     in property <string> version: "0.1.0";
     in property <string> build-date;
-    // Whether the Supporter plan is active; the page names the plan.
-    in property <bool> supporter: false;
     in property <string> source-url;
     // The Microsoft Store link and the third-party notices are hidden until the host has them.
     in property <bool> show-store-link: false;
@@ -92,6 +92,8 @@ export component HelpWindow inherits Window {
     callback source-requested();
     callback releases-requested();
     callback store-requested();
+    // "Support Snipdeck": the host opens the optional donation page in the browser.
+    callback support-requested();
     callback notices-requested();
     callback close-requested();
 
@@ -312,22 +314,26 @@ export component HelpWindow inherits Window {
                         accessible-description: tip.first-line + " " + tip.second-line;
                         min-height: body.preferred-height;
 
-                        property <bool> button-focused: try.has-focus;
-                        changed button-focused => {
-                            if (self.button-focused) { tips-scroll.reveal(card.y, card.height); }
-                        }
+                        // No manual `reveal` on focus: Slint scrolls the focused button into view itself, and passing
+                        // the card's content-relative y here fought that scroll and left the cards below it unreachable
+                        // by Tab (final-audit-1 #19).
 
                         body := VerticalLayout {
                             padding: Space.s3;
                             spacing: Space.s2;
-                            Text {
-                                text: tip.title;
-                                color: Theme.text-primary;
-                                font-family: Fonts.sans;
-                                font-size: Type.md;
-                                font-weight: Type.semibold;
-                                wrap: word-wrap;
-                                accessible-role: none;
+                            HorizontalLayout {
+                                spacing: Space.s2;
+                                Text {
+                                    text: tip.title;
+                                    color: Theme.text-primary;
+                                    font-family: Fonts.sans;
+                                    font-size: Type.md;
+                                    font-weight: Type.semibold;
+                                    wrap: word-wrap;
+                                    horizontal-stretch: 1;
+                                    min-width: 0px;
+                                    accessible-role: none;
+                                }
                             }
                             VerticalLayout {
                                 spacing: Space.s0-5;
@@ -351,7 +357,7 @@ export component HelpWindow inherits Window {
                             // The picture is a crop of the app drawn in the light theme, so it keeps a hairline of its own
                             // in the dark one. The words around it say everything it shows.
                             Rectangle {
-                                height: min(self.width, 320px) * 150 / 320;
+                                height: min(self.width, 320px) * tip.picture.height / tip.picture.width;
                                 horizontal-stretch: 1;
                                 min-width: 0px;
                                 Rectangle {
@@ -425,16 +431,6 @@ export component HelpWindow inherits Window {
                                 accessible-role: text;
                             }
                         }
-                        SettingRow {
-                            title: @tr("Licence");
-                            Text {
-                                text: root.supporter ? @tr("Supporter") : @tr("Free");
-                                color: Theme.text-primary;
-                                font-family: Fonts.sans;
-                                font-size: Type.base;
-                                accessible-role: text;
-                            }
-                        }
                     }
 
                     FormSection {
@@ -473,6 +469,15 @@ export component HelpWindow inherits Window {
                                 text: @tr("Open");
                                 a11y-label: @tr("Open the releases page");
                                 clicked => { root.releases-requested(); }
+                            }
+                        }
+                        SettingRow {
+                            title: @tr("Support Snipdeck");
+                            description: @tr("Optional. Snipdeck is free and stays free. This opens a donation page in your browser and unlocks nothing.");
+                            Button {
+                                text: @tr("Open");
+                                a11y-label: @tr("Open the Support Snipdeck page in your browser");
+                                clicked => { root.support-requested(); }
                             }
                         }
                         if root.show-store-link: SettingRow {

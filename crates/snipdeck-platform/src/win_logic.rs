@@ -30,6 +30,8 @@ pub const VK_V: u16 = 0x56;
 pub const VK_INSERT: u16 = 0x2D;
 /// `VK_BACK`.
 pub const VK_BACK: u16 = 0x08;
+/// `VK_TAB`.
+pub const VK_TAB: u16 = 0x09;
 /// `VK_LEFT`.
 pub const VK_LEFT: u16 = 0x25;
 /// The unassigned virtual key (0xE8) used to mask a lone `Alt` / `Win` release.
@@ -74,6 +76,7 @@ pub const fn key_to_vk(key: Key) -> VirtualKey {
         // Unverified on Windows (Fable v1 sweep A5): the arrow keys are extended keys.
         Key::Left => extended(VK_LEFT),
         Key::Backspace => plain(VK_BACK),
+        Key::Tab => plain(VK_TAB),
         Key::Mask => plain(VK_MASK),
     }
 }
@@ -201,6 +204,30 @@ pub fn is_shell_surface_class(class: &str) -> bool {
     SHELL_CLASSES.iter().any(|c| c.eq_ignore_ascii_case(class))
 }
 
+/// `WS_DLGFRAME | WS_THICKFRAME`: a window that has either can be moved or sized by its frame.
+const FRAMED_STYLES: u32 = 0x0040_0000 | 0x0004_0000;
+/// `WS_EX_WINDOWEDGE | WS_EX_TOOLWINDOW`.
+const FRAMED_EX_STYLES: u32 = 0x0000_0100 | 0x0000_0080;
+
+/// Whether a window is full-screen on a monitor: it covers the whole of it and has no frame (a
+/// game, a video, a slide show, a browser after F11). `window` and `monitor` are
+/// `(left, top, right, bottom)` in physical pixels, `style` and `ex_style` the window's.
+///
+/// A maximised window covers the whole monitor too where the taskbar hides itself, but it
+/// keeps its frame styles, so it does not count.
+pub fn is_fullscreen_window(
+    window: (i32, i32, i32, i32),
+    monitor: (i32, i32, i32, i32),
+    style: u32,
+    ex_style: u32,
+) -> bool {
+    let covers = window.0 <= monitor.0
+        && window.1 <= monitor.1
+        && window.2 >= monitor.2
+        && window.3 >= monitor.3;
+    covers && style & FRAMED_STYLES == 0 && ex_style & FRAMED_EX_STYLES == 0
+}
+
 /// Window classes of the Alt+Tab switcher and Task View. Explorer shows one of them as the
 /// foreground window while the user picks a window, then destroys it: as a Target it would be
 /// gone by the time the user pastes, so Alt+Tab to the Panel would leave nothing to paste into.
@@ -274,6 +301,15 @@ pub enum ZStep {
     NotTopmost,
 }
 
+/// Whether the move or size loop a thread reports is the one on the Panel: the thread's other
+/// windows (Main, Settings) have loops of their own, which are not the Panel's resize.
+/// `in_loop` is `GUI_INMOVESIZE`, `loop_window` is `hwndMoveSize`, and `panel` is 0 until the
+/// Panel's window exists.
+#[must_use]
+pub const fn size_loop_on_panel(in_loop: bool, loop_window: isize, panel: isize) -> bool {
+    in_loop && panel != 0 && loop_window == panel
+}
+
 /// The z-order steps that bring a window to the front without activating it.
 ///
 /// `ShowWindow` on a hidden non-activating window (the Panel) keeps the place the window had in
@@ -288,6 +324,39 @@ pub const fn raise_steps(was_topmost: bool) -> &'static [ZStep] {
     } else {
         &[ZStep::Topmost, ZStep::NotTopmost]
     }
+}
+
+/// One step of bringing an ordinary (activatable) window to the foreground.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActivateStep {
+    /// `ShowWindow(SW_RESTORE)`: un-minimise.
+    Restore,
+    /// `SetForegroundWindow`: activate and focus.
+    Foreground,
+    /// The z-order raise of [`raise_steps`], so the window at least sits above the other windows.
+    Raise,
+    /// `FlashWindowEx` on the taskbar button: the window is there, tell the user.
+    Flash,
+}
+
+/// The steps that bring `Main` and the other ordinary windows to the foreground: restore if
+/// minimised, then `SetForegroundWindow`. Runs inside the click that asked for it, while the
+/// process still holds the input that lets Windows accept the change; no synthetic key press
+/// (winit's `focus_window` injects an Alt tap, which can open the menu of the app in front).
+#[must_use]
+pub const fn activate_steps(minimized: bool) -> &'static [ActivateStep] {
+    if minimized {
+        &[ActivateStep::Restore, ActivateStep::Foreground]
+    } else {
+        &[ActivateStep::Foreground]
+    }
+}
+
+/// What to do when `SetForegroundWindow` was refused: the window goes above the others without
+/// the focus, and its taskbar button flashes.
+#[must_use]
+pub const fn activate_fallback() -> &'static [ActivateStep] {
+    &[ActivateStep::Raise, ActivateStep::Flash]
 }
 
 /// Which Rust type owns each window class name in this process.
@@ -316,6 +385,14 @@ impl ClassNames {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_size_loop_counts_only_on_the_panel_window() {
+        assert!(size_loop_on_panel(true, 7, 7));
+        assert!(!size_loop_on_panel(true, 9, 7), "another window's loop");
+        assert!(!size_loop_on_panel(false, 7, 7), "no loop");
+        assert!(!size_loop_on_panel(true, 0, 0), "no Panel window yet");
+    }
 
     #[test]
     fn a_class_name_belongs_to_one_handler_type() {
@@ -348,6 +425,7 @@ mod tests {
         assert_eq!(key_to_vk(Key::Left), extended(0x25));
         assert_eq!(key_to_vk(Key::Mask), plain(0xE8));
         assert_eq!(key_to_vk(Key::Backspace), plain(0x08));
+        assert_eq!(key_to_vk(Key::Tab), plain(0x09));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Ctrl)), plain(0xA2));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Shift)), plain(0xA0));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Alt)), plain(0xA4));
@@ -571,6 +649,34 @@ mod tests {
     }
 
     #[test]
+    fn a_window_is_full_screen_when_it_covers_its_monitor_and_has_no_frame() {
+        const POPUP: u32 = 0x8000_0000 | 0x1000_0000;
+        const OVERLAPPED_FRAME: u32 = 0x00C0_0000 | 0x0004_0000 | 0x1000_0000;
+        let monitor = (1920, 0, 4480, 1440);
+        // A game or a video: a borderless window over the whole monitor.
+        assert!(is_fullscreen_window(monitor, monitor, POPUP, 0));
+        // One that spans more than the monitor still covers it.
+        assert!(is_fullscreen_window((0, 0, 4480, 1440), monitor, POPUP, 0));
+        // Maximised where the taskbar hides: as large (and a frame larger), but framed.
+        assert!(!is_fullscreen_window(
+            (1912, -8, 4488, 1448),
+            monitor,
+            OVERLAPPED_FRAME,
+            0x0000_0100
+        ));
+        // Borderless but smaller, or on the monitor beside this one.
+        assert!(!is_fullscreen_window(
+            (1920, 0, 4480, 1400),
+            monitor,
+            POPUP,
+            0
+        ));
+        assert!(!is_fullscreen_window((0, 0, 1920, 1080), monitor, POPUP, 0));
+        // A tool window (an overlay, a widget bar) is not an app in front.
+        assert!(!is_fullscreen_window(monitor, monitor, POPUP, 0x0000_0080));
+    }
+
+    #[test]
     fn the_alt_tab_switcher_is_not_a_target() {
         for class in [
             "MultitaskingViewFrame",
@@ -617,6 +723,19 @@ mod tests {
             raise_steps(true),
             [ZStep::Topmost],
             "a pinned Panel stays on top"
+        );
+    }
+
+    #[test]
+    fn activating_a_window_restores_it_first_and_falls_back_to_raise_and_flash() {
+        assert_eq!(
+            activate_steps(true),
+            [ActivateStep::Restore, ActivateStep::Foreground]
+        );
+        assert_eq!(activate_steps(false), [ActivateStep::Foreground]);
+        assert_eq!(
+            activate_fallback(),
+            [ActivateStep::Raise, ActivateStep::Flash]
         );
     }
 

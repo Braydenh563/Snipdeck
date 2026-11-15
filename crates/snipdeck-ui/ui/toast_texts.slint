@@ -11,6 +11,9 @@ export global ToastTexts {
     pure public function pasted(app: string) -> string {
         return app == "" ? @tr("Pasted") : @tr("Pasted into {}", app);
     }
+    pure public function pasted-not-restored(app: string) -> string {
+        return app == "" ? @tr("Pasted. Your earlier clipboard could not be put back.") : @tr("Pasted into {}. Your earlier clipboard could not be put back.", app);
+    }
     pure public function copied() -> string {
         return @tr("Copied");
     }
@@ -28,12 +31,6 @@ export global ToastTexts {
     }
     pure public function clipboard-busy() -> string {
         return @tr("Couldn't reach the clipboard. Another app may be using it.");
-    }
-    pure public function needs-pro() -> string {
-        return @tr("This item uses a Supporter feature.");
-    }
-    pure public function needs-pro-paste-stack() -> string {
-        return @tr("Paste next and the paste stack are Supporter features.");
     }
     pure public function template-broken() -> string {
         return @tr("This template can't be read. Open it to fix it.");
@@ -59,8 +56,20 @@ export global ToastTexts {
     pure public function master-password-removed-not-open() -> string {
         return @tr("Master password removed. Snipdeck couldn't open the library just now. Restart Snipdeck to use your sensitive items.");
     }
+    pure public function hello-turned-off() -> string {
+        return @tr("Windows Hello didn't work, so it was turned off. You can turn it on again in Settings.");
+    }
+    pure public function hello-not-turned-on() -> string {
+        return @tr("Windows Hello was not turned on.");
+    }
+    pure public function hello-enrol-failed() -> string {
+        return @tr("Windows Hello didn't work, so it was not turned on.");
+    }
     pure public function locked-editor-closed() -> string {
         return @tr("Your library locked after a while. The sensitive item you were editing was closed without saving.");
+    }
+    pure public function locked-fill-closed() -> string {
+        return @tr("Your library locked after a while. The form for the sensitive template you were filling in was closed.");
     }
     pure public function unlock-first() -> string {
         return @tr("Unlock your library first, so your sensitive items are included. Nothing was done.");
@@ -169,7 +178,7 @@ export global ToastTexts {
         return @tr("Restored {} item" | "Restored {} items" % count, count);
     }
     // The words of the app-wide undo history. `kind` is the action: 0 add, 1 paste, 2 drop,
-    // 3 edit, 4 delete, 5 move, 6 reorder, 7 colour, 8 pin, 9 tag, 10 duplicate.
+    // 3 edit, 4 delete, 5 move, 6 reorder, 7 colour, 8 pin, 9 tag, 10 duplicate, 11 group.
     pure public function action-word(kind: int) -> string {
         return kind == 0 ? @tr("add")
             : kind == 1 ? @tr("paste")
@@ -181,7 +190,8 @@ export global ToastTexts {
             : kind == 7 ? @tr("colour change")
             : kind == 8 ? @tr("pin")
             : kind == 9 ? @tr("tag change")
-            : @tr("duplicate");
+            : kind == 10 ? @tr("duplicate")
+            : @tr("group change");
     }
     pure public function undone(action: string) -> string {
         return @tr("Undid {}", action);
@@ -214,9 +224,6 @@ export global ToastTexts {
     pure public function trash-emptied() -> string {
         return @tr("The Trash is empty");
     }
-    pure public function board-limit() -> string {
-        return @tr("The Free plan includes 5 boards. Supporter adds unlimited boards.");
-    }
     pure public function library-problem() -> string {
         return @tr("Snipdeck found a problem in your library. Export a copy to be safe.");
     }
@@ -225,9 +232,6 @@ export global ToastTexts {
     }
     pure public function crashed-last-time() -> string {
         return @tr("Snipdeck closed unexpectedly last time. Open the log?");
-    }
-    pure public function licence-accepted() -> string {
-        return @tr("Snipdeck Supporter is on. Thank you.");
     }
     pure public function backup-made() -> string {
         return @tr("Backed up");
@@ -242,6 +246,9 @@ export global ToastTexts {
         if (cause == 3) {
             return @tr("Couldn't make a backup: your library is locked. Unlock it, then use Back up now in Settings.");
         }
+        if (cause == 6) {
+            return @tr("Couldn't make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings.");
+        }
         return @tr("Couldn't make a backup. Check the disk has room, then use Back up now in Settings.");
     }
     // The daily run, not asked for by the user.
@@ -251,6 +258,9 @@ export global ToastTexts {
         }
         if (cause == 2) {
             return @tr("Couldn't make today's backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings.");
+        }
+        if (cause == 6) {
+            return @tr("Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings.");
         }
         return @tr("Couldn't make today's backup. Check the disk has room, then use Back up now in Settings.");
     }
@@ -326,6 +336,9 @@ export global ToastTexts {
         if (cause == 3) {
             return @tr("Couldn't export your library: it is locked. Unlock it, then try again.");
         }
+        if (cause == 6) {
+            return @tr("Couldn't export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then try again.");
+        }
         return @tr("Couldn't export your library. Check the disk has room, then try again.");
     }
     pure public function library-erased() -> string {
@@ -337,14 +350,29 @@ export global ToastTexts {
     pure public function folder-not-opened() -> string {
         return @tr("Couldn't open the folder.");
     }
-    pure public function mail-not-opened() -> string {
-        return @tr("Couldn't open your email app.");
+    pure public function link-not-opened() -> string {
+        return @tr("Couldn't open the link.");
     }
     pure public function autostart-failed() -> string {
         return @tr("Couldn't change the Windows start-up entry.");
     }
+    pure public function autostart-switched-off() -> string {
+        return @tr("Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there.");
+    }
+    pure public function autostart-policy() -> string {
+        return @tr("Your organisation's policy keeps Snipdeck from starting with Windows.");
+    }
     pure public function cannot-open-log() -> string {
         return @tr("Couldn't open the log folder.");
+    }
+    pure public function trigger-overlaps(other: string) -> string {
+        // An untitled item (or one gone meanwhile) has no name to show: the general wording.
+        return other == ""
+            ? @tr("Saved. This trigger overlaps another trigger, so one of them may never fire.")
+            : @tr("Saved. This trigger overlaps the trigger of “{}”, so one of them may never fire.", other);
+    }
+    pure public function typing-unavailable() -> string {
+        return @tr("Couldn't start typing triggers. Nothing will be expanded or suggested.");
     }
     pure public function key-unavailable() -> string {
         return @tr("Couldn't open the encryption key. Nothing was saved.");
@@ -424,30 +452,17 @@ export global ToastTexts {
         return @tr("Couldn't refresh the list on screen. Close and reopen the window to see the change.");
     }
     // Symbols tab: Add to list on an icon, and Save as... done.
+    // Colours tab: the screen eyedropper failed, or picked on an HDR monitor.
+    pure public function eyedrop-failed() -> string {
+        return @tr("Couldn't pick a colour from the screen.");
+    }
+    pure public function eyedrop-hdr(hex: string) -> string {
+        return @tr("HDR is on for this screen: {} is approximate.", hex);
+    }
     pure public function icon-not-addable() -> string {
         return @tr("Icons can't be added to a list yet.");
     }
     pure public function icon-saved(name: string) -> string {
         return @tr("Saved {}.", name);
-    }
-
-    // Why a licence key was refused: the toast, and the line under the key field.
-    pure public function licence-empty() -> string {
-        return @tr("Paste your licence key first.");
-    }
-    pure public function licence-not-a-key() -> string {
-        return @tr("That is not a Snipdeck licence key. A key starts with SNIP1.");
-    }
-    pure public function licence-bad-signature() -> string {
-        return @tr("That licence key is not valid. Check that you copied all of it.");
-    }
-    pure public function licence-newer-format() -> string {
-        return @tr("That key needs a newer Snipdeck. Update and try again.");
-    }
-    pure public function licence-wrong-tier() -> string {
-        return @tr("That key is not for Snipdeck Supporter.");
-    }
-    pure public function licence-not-saved() -> string {
-        return @tr("The key is valid but couldn't be saved, so Supporter will be off next time.");
     }
 }

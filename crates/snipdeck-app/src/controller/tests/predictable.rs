@@ -140,6 +140,8 @@ fn a_stored_frame_larger_than_the_work_area_is_shrunk_to_it() {
             h: 3000,
             edge: None,
             pre_dock: None,
+            docked: None,
+            docked_flat: None,
             along: None,
             other_along: Vec::new(),
         });
@@ -189,19 +191,16 @@ fn reset_ends_a_drag_in_flight_so_the_next_move_cannot_dock_or_resize_it() {
     w.ctl.dock_to(Some(DockEdge::Left));
     w.ctl.take_pending();
     // The header was pressed on the docked Panel; before it moved, Reset ran.
-    w.ctl.drag();
+    let docked = w.ctl.placement(&m).expect("a docked place");
+    w.targets.set_cursor(Some((docked.x + 100, docked.y + 10)));
+    w.ctl.drag_begin((docked.x + 100, docked.y + 10), docked);
     let effects = w.ctl.reset_panel_geometry();
-    let [Effect::PlaceWindow(default)] = effects.as_slice() else {
-        panic!("one placement, got {effects:?}");
-    };
-    // A stray move near the edge, then quiet: no preview, no dock.
-    let near_edge = Rect {
-        x: 4,
-        y: default.y,
-        ..*default
-    };
-    w.ctl.frame_moved(&m, near_edge);
+    assert!(matches!(effects.as_slice(), [Effect::PlaceWindow(_)]));
+    assert!(!w.ctl.dragging(), "the drag is over");
+    // The mouse goes on to the edge and the button comes up: no preview, no dock, no move.
+    w.targets.set_cursor(Some((0, 300)));
+    assert_eq!(w.ctl.drag_move(None), Vec::new());
     assert_eq!(w.ctl.view().dock_preview, None);
-    assert_eq!(w.ctl.frame_settled(&m, near_edge), Vec::new());
+    assert_eq!(w.ctl.drag_end(), Vec::new());
     assert_eq!(w.ctl.dock_edge(), None);
 }

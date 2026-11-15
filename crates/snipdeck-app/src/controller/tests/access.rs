@@ -309,3 +309,41 @@ fn a_window_that_cannot_name_its_monitor_still_gets_the_anchor_once() {
     assert_eq!(w.ctl.restore_anchor(), [Effect::PlaceWindow(at)]);
     assert_eq!(w.ctl.restore_anchor(), Vec::new(), "used once");
 }
+
+#[test]
+fn an_anchor_on_a_monitor_where_the_panel_is_docked_opens_it_at_its_edge_there() {
+    let mut w = opening_at(PanelOpenAt::Mouse);
+    let second = monitor(
+        "DISPLAY2",
+        Rect {
+            x: 1920,
+            y: 0,
+            w: 1280,
+            h: 984,
+        },
+        1.0,
+        None,
+    );
+    // Docked to the right edge of the second monitor some time ago; it floats on the first.
+    let docked = Rect {
+        x: 2880,
+        y: 200,
+        w: 320,
+        h: 500,
+    };
+    w.ctl.update_settings(|s| {
+        s.remember_panel_geometry(docked.geometry(&second, Some(DockEdge::Right)));
+        s.remember_panel_geometry(FLOATING.geometry(&display(), None));
+    });
+    assert_eq!(w.ctl.dock_edge(), None);
+    w.targets.add_monitor(second);
+    w.targets.set_cursor(Some((2500, 300)));
+    w.ctl.show();
+    // Not floating at the mouse with the second monitor's dock in force: at its edge.
+    assert_eq!(
+        w.ctl.restore_frame(&display()),
+        [Effect::PlaceWindow(docked)]
+    );
+    assert_eq!(w.ctl.dock_edge(), Some(DockEdge::Right));
+    assert_eq!(w.ctl.restore_anchor(), Vec::new(), "the anchor is used up");
+}

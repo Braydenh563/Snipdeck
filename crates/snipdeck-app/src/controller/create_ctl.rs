@@ -18,6 +18,7 @@ use super::history_ctl::item_targets;
 use super::{Controller, Library, Toast, ToastKind, ToastMessage, Undo, failed, neutral};
 use crate::{
     capture::{self, Captured},
+    drop_read::{ReadDone, ReadJob},
     history::{Action, Change},
     host::ClipboardText,
     item_editor::{self, Origin},
@@ -28,6 +29,30 @@ use crate::{
 struct Made {
     item: Item,
     formats: Formats,
+}
+
+/// A drop on its way in: the files still to read, and the items made from those that were read.
+/// The controller starts it ([`Controller::drop_begin`]), a [`ReadJob`] reads the next files
+/// (off the UI thread), and the controller takes the result ([`Controller::drop_read_done`]);
+/// the last result inserts the rows, as one history step.
+pub struct DropRun {
+    list: ListId,
+    now: snipdeck_core::Timestamp,
+    /// Not yet read, in drop order.
+    todo: Vec<PathBuf>,
+    /// Stored, in drop order.
+    ready: Vec<Made>,
+    skipped: usize,
+    /// The history step's name: a drop, or a paste.
+    action: Action,
+}
+
+impl DropRun {
+    /// The job that reads the files not yet read; they leave this drop until its result is
+    /// handed back.
+    pub fn next_job(&mut self) -> ReadJob {
+        ReadJob::new(std::mem::take(&mut self.todo))
+    }
 }
 
 impl<S, C, K, T> Controller<S, C, K, T>
@@ -41,44 +66,120 @@ where
     /// is on the clipboard in the list `origin` shows. Files (copied in Explorer) win over text,
     /// and text over a picture. Nothing is written to the clipboard.
     pub fn paste_create(&mut self, origin: Origin) {
+        let Some(run) = self.paste_begin(origin) else {
+            return;
+        };
+        self.read_inline(run);
+    }
+
+    /// [`paste_create`](Self::paste_create) for the windows: text and pictures are saved at once
+    /// (`None`), but files copied in Explorer are not read here. They come back as a drop to read
+    /// off the UI thread with [`DropRun::next_job`] and finish with
+    /// [`drop_read_done`](Self::drop_read_done), like files dropped on the window, so pasting ten
+    /// large files does not freeze it.
+    pub fn paste_begin(&mut self, origin: Origin) -> Option<DropRun> {
         self.main_fresh();
         let mut clip = Clip::default();
         match self.services.clipboard.read_files() {
             ClipFiles::TooMany => {
                 self.show_toast(neutral(ToastMessage::TooManyFiles));
-                return;
+                return None;
             }
-            ClipFiles::Files(paths) => clip.files = paths.into_iter().map(PathBuf::from).collect(),
+            ClipFiles::Files(paths) => {
+                if !paths.is_empty() {
+                    let mut run = self.drop_begin(&paths, origin, None)?;
+                    run.action = Action::Paste;
+                    return Some(run);
+                }
+            }
         }
-        if clip.files.is_empty() {
-            let rich = self.services.clipboard.read_rich();
-            (clip.text, clip.html, clip.rtf) = (rich.text, rich.html, rich.rtf);
-            if clip.text.as_deref().is_none_or(|t| t.trim().is_empty()) {
-                clip.png = self.services.clipboard.read_png();
-            }
+        let rich = self.services.clipboard.read_rich();
+        (clip.text, clip.html, clip.rtf) = (rich.text, rich.html, rich.rtf);
+        if clip.text.as_deref().is_none_or(|t| t.trim().is_empty()) {
+            clip.png = self.services.clipboard.read_png();
         }
         let list = self.new_item_list(origin);
         self.create_from(&clip, list, Action::Paste);
+        None
     }
 
-    /// Files were dropped on a window: makes items from them in `list`. Windows tells winit
-    /// where the files came from but not where on the window, so the callers pass `None`: the
-    /// list the window shows (so does a `list` that is gone).
+    /// Files were dropped on a window: makes items from them in `list`, reading them on the
+    /// calling thread (the windows read them off the UI thread with [`drop_begin`](Self::drop_begin)
+    /// instead). Windows tells winit where the files came from but not where on the window, so
+    /// the callers pass `None`: the list the window shows (so does a `list` that is gone).
     pub fn drop_create(&mut self, paths: &[String], origin: Origin, list: Option<ListId>) {
+        if let Some(run) = self.drop_begin(paths, origin, list) {
+            self.read_inline(run);
+        }
+    }
+
+    /// Reads the rest of `run` on the calling thread, a job at a time.
+    fn read_inline(&mut self, mut run: DropRun) {
+        loop {
+            let done = run.next_job().run();
+            match self.drop_read_done(run, done) {
+                Some(next) => run = next,
+                None => break,
+            }
+        }
+    }
+
+    /// Files were dropped on a window: checks them and names the list they go to. `None` when
+    /// there is nothing to do (a toast says why); otherwise the drop, to be read with
+    /// [`DropRun::next_job`] and finished with [`drop_read_done`](Self::drop_read_done).
+    pub fn drop_begin(
+        &mut self,
+        paths: &[String],
+        origin: Origin,
+        list: Option<ListId>,
+    ) -> Option<DropRun> {
         self.main_fresh();
         self.drop_end();
         if paths.len() > MAX_DROP_FILES {
             self.show_toast(neutral(ToastMessage::TooManyFiles));
-            return;
+            return None;
         }
-        let clip = Clip {
-            files: paths.iter().map(PathBuf::from).collect(),
-            ..Clip::default()
-        };
-        let target = list
+        if paths.is_empty() {
+            self.show_toast(neutral(ToastMessage::NothingToSave));
+            return None;
+        }
+        let Some(list) = list
             .filter(|l| self.store.list(*l).is_ok())
-            .or_else(|| self.new_item_list(origin));
-        self.create_from(&clip, target, Action::Drop);
+            .or_else(|| self.new_item_list(origin))
+        else {
+            self.show_toast(neutral(ToastMessage::NoListToSave));
+            return None;
+        };
+        Some(DropRun {
+            list,
+            now: self.clock.now(),
+            todo: paths.iter().map(PathBuf::from).collect(),
+            ready: Vec::new(),
+            skipped: 0,
+            action: Action::Drop,
+        })
+    }
+
+    /// The files `done` were read for `run`: their bytes are stored. Returns the drop again when
+    /// files are left to read; otherwise the rows go in, as one history step, and it is over.
+    pub fn drop_read_done(&mut self, mut run: DropRun, done: ReadDone) -> Option<DropRun> {
+        for source in done.read {
+            let Some(source) = source else {
+                run.skipped += 1;
+                continue;
+            };
+            let Ok(made) = self.made_from_source(source, run.list, run.now) else {
+                self.show_toast(failed());
+                return None;
+            };
+            run.ready.push(made);
+        }
+        run.todo.extend(done.rest);
+        if !run.todo.is_empty() {
+            return Some(run);
+        }
+        self.insert_made(&run.ready, run.skipped, run.list, run.action);
+        None
     }
 
     /// Files are being dragged over a window: the list the window shows (or `list`, when given
@@ -151,7 +252,7 @@ where
         let now = self.clock.now();
         let mut skipped = 0_usize;
         let mut ready: Vec<Made> = Vec::new();
-        for piece in pieces.iter().rev() {
+        for piece in &pieces {
             match self.prepare(piece, list, now) {
                 Ok(Some(made)) => ready.push(made),
                 Ok(None) => skipped += 1,
@@ -161,12 +262,18 @@ where
                 }
             }
         }
+        self.insert_made(&ready, skipped, list, action);
+    }
+
+    /// Inserts the items made from files or a picture (`ready`, in order) at the top of `list`,
+    /// in one short transaction with the first on top, and says so.
+    fn insert_made(&mut self, ready: &[Made], skipped: usize, list: ListId, action: Action) {
         if ready.is_empty() {
             self.show_toast(neutral(ToastMessage::FilesNotAdded));
             return;
         }
         let done = self.store.atomically(|batch| {
-            for made in &ready {
+            for made in ready.iter().rev() {
                 batch.insert_item(&made.item, &made.formats, Placement::First)?;
             }
             Ok(())
@@ -175,8 +282,7 @@ where
             self.show_toast(failed());
             return;
         }
-        let mut made: Vec<ItemId> = ready.iter().map(|m| m.item.id).collect();
-        made.reverse();
+        let made: Vec<ItemId> = ready.iter().map(|m| m.item.id).collect();
         self.finish_create(list, &made, skipped, action);
     }
 
@@ -242,6 +348,7 @@ where
             seq: self.toast_seq,
             step,
             adds: Some(first),
+            list: None,
         });
     }
 
@@ -263,12 +370,7 @@ where
                 if too_big || !item_editor::is_png(png) {
                     return Ok(None);
                 }
-                let item = Item::new(
-                    list,
-                    capture::PASTED_IMAGE_TITLE.to_owned(),
-                    ItemKind::Image,
-                    now,
-                );
+                let item = Item::new(list, self.pasted_image_title.clone(), ItemKind::Image, now);
                 (item, Format::Png(self.store.put(png.clone())?))
             }
             Piece::File(path) => {
@@ -276,24 +378,38 @@ where
                 else {
                     return Ok(None);
                 };
-                let kind = if item_editor::is_png(&source.bytes) {
-                    ItemKind::Image
-                } else {
-                    ItemKind::File
-                };
-                let item = Item::new(list, source.name.clone(), kind, now);
-                let content = self.store.put(source.bytes)?;
-                let format = if kind == ItemKind::Image {
-                    Format::Png(content)
-                } else {
-                    Format::Files(vec![FileEntry::new(&source.name, content)?])
-                };
-                (item, format)
+                return self.made_from_source(source, list, now).map(Some);
             }
         };
         Ok(Some(Made {
             item,
             formats: Formats::new(vec![format])?,
         }))
+    }
+
+    /// Stores the bytes of a file that was read and makes its item: a PNG file becomes an Image
+    /// item, any other a File item.
+    fn made_from_source(
+        &mut self,
+        source: item_editor::Source,
+        list: ListId,
+        now: snipdeck_core::Timestamp,
+    ) -> snipdeck_store::Result<Made> {
+        let kind = if item_editor::is_png(&source.bytes) {
+            ItemKind::Image
+        } else {
+            ItemKind::File
+        };
+        let item = Item::new(list, source.name.clone(), kind, now);
+        let content = self.store.put(source.bytes)?;
+        let format = if kind == ItemKind::Image {
+            Format::Png(content)
+        } else {
+            Format::Files(vec![FileEntry::new(&source.name, content)?])
+        };
+        Ok(Made {
+            item,
+            formats: Formats::new(vec![format])?,
+        })
     }
 }

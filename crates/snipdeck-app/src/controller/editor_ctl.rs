@@ -14,7 +14,9 @@
 
 use std::{collections::BTreeSet, path::PathBuf, rc::Rc, sync::Arc};
 
-use snipdeck_core::{Feature, Format, Formats, Item, ItemId, ItemKind, ListId, Tag, TagId};
+use snipdeck_core::{
+    Format, Formats, Item, ItemId, ItemKind, ListId, Tag, TagId, template::Locale,
+};
 use snipdeck_platform::file_dialog::FilePicker;
 use snipdeck_store::{
     BlobStore, ItemRepo,
@@ -28,6 +30,7 @@ use crate::{
     item_editor::{
         AttachmentView, EditorInput, EditorProblem, ItemEditorView, SaveFailure, Source,
     },
+    item_preview::{self, CardPreview, PreviewLook, PreviewWords},
 };
 
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
@@ -70,6 +73,7 @@ struct Problems {
     content: Option<EditorProblem>,
     source: Option<EditorProblem>,
     privacy: Option<EditorProblem>,
+    trigger: Option<EditorProblem>,
     banner: Option<EditorProblem>,
 }
 
@@ -90,6 +94,11 @@ pub(super) struct ItemEditorSlot {
     problems: Problems,
     original_kind: ItemKind,
     original_sensitive: bool,
+    /// The Trigger field as typed (empty: none); the window sends it with
+    /// [`item_editor_set_trigger`](Controller::item_editor_set_trigger).
+    trigger: String,
+    /// The item's trigger when the editor opened (empty: none).
+    original_trigger: String,
     /// The saved text of a text item up to the editing cap: what "changed" is measured against.
     /// A sensitive item's text is held here while its editor is open and no longer.
     original_text: Option<String>,
@@ -239,19 +248,57 @@ where
             content_problem: slot.problems.content.clone(),
             source_problem: slot.problems.source.clone(),
             privacy_problem: slot.problems.privacy.clone(),
+            trigger: slot.trigger.clone(),
+            trigger_problem: slot.problems.trigger.clone(),
             banner: slot.problems.banner.clone(),
             large: slot.large,
             formatted: slot.formatted,
             saved_text: slot.original_text.clone().unwrap_or_default(),
             attachment: slot.attachment.clone(),
-            prompted_available: self.entitlements.allows(Feature::PromptedFields),
             can_browse: self.editor_env.picker.is_some(),
             restored: slot.restored,
             more_open: self.settings.editor_more_open,
         })
     }
 
+    /// The card the open editor's `input` would make, built from the unsaved fields with the
+    /// controller's clock, time zone and language. `None` when no editor is open. Reads nothing
+    /// from the store and writes nothing.
+    #[must_use]
+    pub fn item_editor_preview(
+        &self,
+        input: &EditorInput,
+        words: PreviewWords<'_>,
+    ) -> Option<CardPreview> {
+        self.item_editor.as_ref()?;
+        Some(item_preview::card_of(
+            input,
+            self.clock.now(),
+            &self.tz,
+            Locale::for_tag(&self.settings.language),
+            words,
+        ))
+    }
+
+    /// How the user's own Panel and Main list draw a card, for the editor's Preview.
+    #[must_use]
+    pub fn item_editor_preview_look(&self) -> PreviewLook {
+        PreviewLook {
+            panel_layout: self.settings.panel_layout,
+            main_view: self.main.view_mode(),
+            show_numbers: self.settings.show_numbers,
+        }
+    }
+
     // ---- Editing -------------------------------------------------------------------------------
+
+    /// The Trigger field now holds `text` (blank: the item has no trigger). Checked on Save.
+    pub fn item_editor_set_trigger(&mut self, text: &str) {
+        if let Some(slot) = self.item_editor.as_mut() {
+            text.trim().clone_into(&mut slot.trigger);
+            slot.problems.trigger = None;
+        }
+    }
 
     /// A field was edited: refusals no longer apply.
     pub fn item_editor_edited(&mut self) {

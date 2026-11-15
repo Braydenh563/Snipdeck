@@ -351,13 +351,9 @@ impl Batch<'_> {
         self.scoped(|batch| f(batch))
     }
 
-    /// [`Store::restore_with`] inside the transaction.
-    pub fn restore_with(
-        &mut self,
-        target: Trashable,
-        max_live_boards: Option<usize>,
-    ) -> Result<Vec<Trashable>> {
-        self.writer(|cx| trash::restore_with(cx, target, max_live_boards))
+    /// [`Store::restore_reporting`] inside the transaction.
+    pub fn restore_reporting(&mut self, target: Trashable) -> Result<Vec<Trashable>> {
+        self.writer(|cx| trash::restore_reporting(cx, target))
     }
 
     /// [`Store::put_sensitive`] inside the transaction.
@@ -367,24 +363,14 @@ impl Batch<'_> {
 }
 
 impl Store {
-    /// [`TrashRepo::restore`] that refuses to bring a board back when `max_live_boards`
-    /// boards are already live, and says what it brought back (review M1).
+    /// [`TrashRepo::restore`] that says what it brought back (review M1).
     ///
-    /// Restoring a list or item inside a trashed board revives the board too, so the Free
-    /// board limit cannot be bypassed by trashing a board, creating another and restoring the
-    /// first. Storage stays free of entitlements: the app passes the limit
-    /// (`Some(Entitlements::FREE_BOARD_LIMIT)` on Free, `None` on Supporter). Over the limit it fails
-    /// with `Error::Core(ProRequired(Feature::UnlimitedBoards))`, the upsell path, and changes
-    /// nothing.
+    /// Restoring a list or item inside a trashed board revives the board too.
     ///
     /// Returns the records whose trash flag was cleared: the target (unless it was live),
     /// then its list and board if they were trashed. Empty if everything was live already.
-    pub fn restore_with(
-        &mut self,
-        target: Trashable,
-        max_live_boards: Option<usize>,
-    ) -> Result<Vec<Trashable>> {
-        self.writer(|cx| trash::restore_with(cx, target, max_live_boards))
+    pub fn restore_reporting(&mut self, target: Trashable) -> Result<Vec<Trashable>> {
+        self.writer(|cx| trash::restore_reporting(cx, target))
     }
 }
 
@@ -528,6 +514,10 @@ macro_rules! repo_impls {
             fn join_group(&mut self, item: ItemId, group: GroupId, end: GroupEnd) -> Result<()> {
                 self.writer(|cx| groups::join_group(cx, item, group, end))
             }
+
+            fn set_item_group(&mut self, item: ItemId, group: Option<GroupId>) -> Result<()> {
+                self.writer(|cx| groups::set_item_group(cx, item, group))
+            }
         }
 
         impl TriggerRepo for $ty {
@@ -576,7 +566,7 @@ macro_rules! repo_impls {
             }
 
             fn restore(&mut self, target: Trashable) -> Result<()> {
-                self.writer(|cx| trash::restore_with(cx, target, None))
+                self.writer(|cx| trash::restore_reporting(cx, target))
                     .map(drop)
             }
 

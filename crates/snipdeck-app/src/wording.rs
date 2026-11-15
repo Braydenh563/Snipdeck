@@ -8,17 +8,21 @@
 
 use slint::Global;
 use snipdeck_platform::tray::TrayLabels;
-use snipdeck_portable::Warning;
+use snipdeck_portable::{Note, Warning};
 use snipdeck_ui::{
-    FormTexts, ImportTexts, MenuTexts, PanelWindow, SettingsPage, ToastTexts, TrayTexts,
+    FormTexts, ImportTexts, MenuTexts, PanelWindow, SettingsPage, TemplateTexts, ToastTexts,
+    TrayTexts,
 };
 
-use snipdeck_core::{Feature, ItemKind, ItemLabel, ListIcon};
+use snipdeck_core::{
+    ItemKind, ItemLabel, ListIcon,
+    template::{PLACEHOLDER_LIST, TemplateErrorKind, UnitHint, usage},
+};
 
 use crate::{
-    item_editor::{AttachmentView, EditorProblem, SaveFailure},
+    item_editor::{AttachmentView, EditorProblem, SaveFailure, TemplateProblem},
     settings::{DockEdge, Theme},
-    toast::{LicenceProblem, ToastMessage},
+    toast::ToastMessage,
 };
 
 /// The tray menu's words in the language selected for the UI now (English until a bundled
@@ -98,12 +102,7 @@ pub fn list_icon_name(icon: ListIcon) -> &'static str {
 pub fn import_warning_text(window: &SettingsPage, warning: &Warning) -> String {
     let texts = ImportTexts::get(window);
     let count = |n: usize| i32::try_from(n).unwrap_or(i32::MAX);
-    let name = |name: &str| -> slint::SharedString {
-        match numbered_label(name) {
-            Some(n) => texts.invoke_clip_name(count(n)),
-            None => name.into(),
-        }
-    };
+    let name = |name: &str| entry_label(&texts, name);
     let text = match warning {
         Warning::NewerMinorVersion { found } => texts.invoke_newer_minor_version(found.into()),
         Warning::UnknownEntries { count: n } => texts.invoke_unknown_entries(count(*n)),
@@ -112,9 +111,6 @@ pub fn import_warning_text(window: &SettingsPage, warning: &Warning) -> String {
         Warning::CannotDecrypt { title } => texts.invoke_cannot_decrypt(title.into()),
         Warning::SensitiveOmittedByExport { count: n } => {
             texts.invoke_sensitive_omitted_by_export(i32::try_from(*n).unwrap_or(i32::MAX))
-        }
-        Warning::BoardLimit { limit, total } => {
-            texts.invoke_board_limit(count(*total), count(*limit))
         }
         Warning::LossyText { name: n } => texts.invoke_lossy_text(name(n)),
         Warning::TooLarge { name: n, size } => {
@@ -125,10 +121,81 @@ pub fn import_warning_text(window: &SettingsPage, warning: &Warning) -> String {
         Warning::SymlinkSkipped { name: n } => texts.invoke_symlink_skipped(name(n)),
         Warning::NonTextSkipped { count: n } => texts.invoke_non_text_skipped(count(*n)),
         Warning::Truncated { .. } => texts.invoke_truncated(),
-        // Free text from an importer: already a sentence, in English.
-        Warning::Note(note) => return note.clone(),
+        Warning::Note(note) => note_text(&texts, note, &count),
     };
     text.into()
+}
+
+/// The sentence for what an importer changed in one snippet or file.
+fn note_text(
+    texts: &ImportTexts<'_>,
+    note: &Note,
+    count: &dyn Fn(usize) -> i32,
+) -> slint::SharedString {
+    match note {
+        Note::UnmappedVariables { label, tokens } => {
+            texts.invoke_note_unmapped_variables(entry_label(texts, label), tokens.into())
+        }
+        Note::UnmappedEspansoVariables { label, tokens } => {
+            texts.invoke_note_unmapped_espanso_variables(entry_label(texts, label), tokens.into())
+        }
+        Note::VariablesDoNotFit { label } => {
+            texts.invoke_note_variables_do_not_fit(entry_label(texts, label))
+        }
+        Note::TriggerOnlyOne { label, triggers } => {
+            texts.invoke_note_trigger_only_one(entry_label(texts, label), triggers.into())
+        }
+        Note::TriggerNeedsSeparator { label, triggers } => {
+            texts.invoke_note_trigger_needs_separator(entry_label(texts, label), triggers.into())
+        }
+        Note::TriggerBadShape { label, triggers } => {
+            texts.invoke_note_trigger_bad_shape(entry_label(texts, label), triggers.into())
+        }
+        Note::DisabledFile { name } => texts.invoke_note_disabled_file(name.into()),
+        Note::NotAMatch { what } => texts.invoke_note_not_a_match(entry_label(texts, what)),
+        Note::RegexTriggerOnly { what } => {
+            texts.invoke_note_regex_trigger_only(entry_label(texts, what))
+        }
+        Note::NoTrigger { what } => texts.invoke_note_no_trigger(entry_label(texts, what)),
+        Note::MarkupKept { what } => texts.invoke_note_markup_kept(entry_label(texts, what)),
+        Note::NoText { what } => texts.invoke_note_no_text(entry_label(texts, what)),
+        Note::DateFormat { what, format } => {
+            texts.invoke_note_date_format(entry_label(texts, what), format.into())
+        }
+        Note::FormField { what, name } => {
+            texts.invoke_note_form_field(entry_label(texts, what), name.into())
+        }
+        Note::ColumnsCut { file } => texts.invoke_note_columns_cut(file.into()),
+        Note::TriggerTaken { title, trigger } => {
+            texts.invoke_note_trigger_taken(title.into(), trigger.into())
+        }
+        Note::TriggerOverlap {
+            title,
+            trigger,
+            others,
+        } => texts.invoke_note_trigger_overlap(title.into(), trigger.into(), others.into()),
+        Note::TitleCut {
+            count: n,
+            title_chars,
+            source_chars,
+        } => texts.invoke_note_title_cut(count(*n), count(*title_chars), count(*source_chars)),
+    }
+}
+
+/// An entry's name as the importers wrote it, in the UI language: "entry N" and "Ditto clip N" read
+/// "Clip N", and Espanso's "file.yml, match N" has its "match" translated.
+fn entry_label(texts: &ImportTexts<'_>, name: &str) -> slint::SharedString {
+    let count = |n: usize| i32::try_from(n).unwrap_or(i32::MAX);
+    if let Some(n) = numbered_label(name) {
+        return texts.invoke_clip_name(count(n));
+    }
+    if let Some((file, n)) = name
+        .rsplit_once(", match ")
+        .and_then(|(file, n)| Some((file, n.parse::<usize>().ok()?)))
+    {
+        return texts.invoke_match_name(file.into(), count(n));
+    }
+    name.into()
 }
 
 /// The N in "entry N" or "Ditto clip N", the labels the importers give a clip without a title.
@@ -153,14 +220,13 @@ where
     let count = |n: usize| i32::try_from(n).unwrap_or(i32::MAX);
     let text = match message {
         ToastMessage::Pasted { app } => t.invoke_pasted(app.into()),
+        ToastMessage::PastedNotRestored { app } => t.invoke_pasted_not_restored(app.into()),
         ToastMessage::Copied => t.invoke_copied(),
         ToastMessage::CopiedElevated { app } => t.invoke_copied_elevated(app.into()),
         ToastMessage::CopiedNothingFocused { app } => t.invoke_copied_nothing_focused(app.into()),
         ToastMessage::CopiedExcluded { app } => t.invoke_copied_excluded(app.into()),
         ToastMessage::CopiedTargetGone => t.invoke_copied_target_gone(),
         ToastMessage::ClipboardBusy => t.invoke_clipboard_busy(),
-        ToastMessage::NeedsPro(Feature::PasteStack) => t.invoke_needs_pro_paste_stack(),
-        ToastMessage::NeedsPro(_) => t.invoke_needs_pro(),
         ToastMessage::TemplateBroken => t.invoke_template_broken(),
         ToastMessage::Locked => t.invoke_locked(),
         ToastMessage::Unlocked => t.invoke_unlocked(),
@@ -168,8 +234,12 @@ where
         ToastMessage::MasterPasswordChanged => t.invoke_master_password_changed(),
         ToastMessage::MasterPasswordRemoved => t.invoke_master_password_removed(),
         ToastMessage::MasterPasswordChangedNotOpen => t.invoke_master_password_changed_not_open(),
+        ToastMessage::HelloTurnedOff => t.invoke_hello_turned_off(),
+        ToastMessage::HelloNotTurnedOn => t.invoke_hello_not_turned_on(),
+        ToastMessage::HelloEnrolFailed => t.invoke_hello_enrol_failed(),
         ToastMessage::MasterPasswordRemovedNotOpen => t.invoke_master_password_removed_not_open(),
         ToastMessage::LockedEditorClosed => t.invoke_locked_editor_closed(),
+        ToastMessage::LockedFillClosed => t.invoke_locked_fill_closed(),
         ToastMessage::UnlockFirst => t.invoke_unlock_first(),
         ToastMessage::Saved { list } => t.invoke_saved(list.into()),
         ToastMessage::AddedTo { list, .. } => t.invoke_added_to(list.into()),
@@ -210,11 +280,8 @@ where
         }
         ToastMessage::DeletedForever { .. } => t.invoke_deleted_forever(),
         ToastMessage::TrashEmptied => t.invoke_trash_emptied(),
-        ToastMessage::BoardLimit => t.invoke_board_limit(),
         ToastMessage::LibraryProblem => t.invoke_library_problem(),
         ToastMessage::CrashedLastTime => t.invoke_crashed_last_time(),
-        ToastMessage::LicenceAccepted => t.invoke_licence_accepted(),
-        ToastMessage::LicenceRejected(problem) => return licence_problem_text(window, *problem),
         ToastMessage::BackupMade => t.invoke_backup_made(),
         ToastMessage::BackupFailed(cause) => t.invoke_backup_failed(cause.code()),
         ToastMessage::DailyBackupFailed(cause) => t.invoke_daily_backup_failed(cause.code()),
@@ -244,9 +311,13 @@ where
         ToastMessage::LibraryErased => t.invoke_library_erased(),
         ToastMessage::EraseFailed => t.invoke_erase_failed(),
         ToastMessage::FolderNotOpened => t.invoke_folder_not_opened(),
-        ToastMessage::MailNotOpened => t.invoke_mail_not_opened(),
+        ToastMessage::LinkNotOpened => t.invoke_link_not_opened(),
         ToastMessage::AutostartFailed => t.invoke_autostart_failed(),
+        ToastMessage::AutostartSwitchedOff => t.invoke_autostart_switched_off(),
+        ToastMessage::AutostartPolicy => t.invoke_autostart_policy(),
         ToastMessage::CannotOpenLog => t.invoke_cannot_open_log(),
+        ToastMessage::TypingUnavailable => t.invoke_typing_unavailable(),
+        ToastMessage::TriggerOverlaps { other } => t.invoke_trigger_overlaps(other.into()),
         ToastMessage::KeyUnavailable => t.invoke_key_unavailable(),
         ToastMessage::ItemGone => t.invoke_item_gone(),
         ToastMessage::ListGone => t.invoke_list_gone(),
@@ -280,27 +351,10 @@ where
         ToastMessage::NotRefreshed => t.invoke_not_refreshed(),
         ToastMessage::IconNotAddable => t.invoke_icon_not_addable(),
         ToastMessage::IconSaved { name } => t.invoke_icon_saved(name.into()),
+        ToastMessage::EyedropFailed => t.invoke_eyedrop_failed(),
+        ToastMessage::EyedropHdr { hex } => t.invoke_eyedrop_hdr(hex.into()),
     };
     text.into()
-}
-
-/// Why a licence key was refused, in words (the toast and the line under the key field), in the
-/// language selected for the UI.
-#[must_use]
-pub fn licence_problem_text<C>(window: &C, problem: LicenceProblem) -> String
-where
-    for<'a> ToastTexts<'a>: Global<'a, C>,
-{
-    let t = ToastTexts::get(window);
-    match problem {
-        LicenceProblem::Empty => t.invoke_licence_empty(),
-        LicenceProblem::NotAKey => t.invoke_licence_not_a_key(),
-        LicenceProblem::BadSignature => t.invoke_licence_bad_signature(),
-        LicenceProblem::NewerFormat => t.invoke_licence_newer_format(),
-        LicenceProblem::WrongTier => t.invoke_licence_wrong_tier(),
-        LicenceProblem::NotSaved => t.invoke_licence_not_saved(),
-    }
-    .into()
 }
 
 /// The names of the interface languages Settings offers, each in its own language, after
@@ -494,16 +548,21 @@ pub const fn app_menu_shortcut(entry: crate::controller::AppMenuEntry) -> &'stat
 pub const fn item_menu_shortcut(entry: crate::controller::ItemMenuEntry) -> &'static str {
     use crate::controller::ItemMenuEntry;
     match entry {
-        ItemMenuEntry::Use => "Enter",
+        ItemMenuEntry::Use | ItemMenuEntry::ToggleGroup { .. } => "Enter",
         ItemMenuEntry::Copy => "Shift+Enter",
         ItemMenuEntry::Edit => "Ctrl+E",
         ItemMenuEntry::Duplicate => "Ctrl+D",
         ItemMenuEntry::Pin { .. } => "Ctrl+P",
         ItemMenuEntry::Trash => "Del",
-        ItemMenuEntry::MoveUp { .. } => "Alt+Up",
-        ItemMenuEntry::MoveDown { .. } => "Alt+Down",
-        ItemMenuEntry::Stack { .. }
+        ItemMenuEntry::MoveUp { .. } | ItemMenuEntry::GroupUp { .. } => "Alt+Up",
+        ItemMenuEntry::MoveDown { .. } | ItemMenuEntry::GroupDown { .. } => "Alt+Down",
+        ItemMenuEntry::Group => "Ctrl+G",
+        ItemMenuEntry::RenameGroup => "F2",
+        ItemMenuEntry::Ungroup
+        | ItemMenuEntry::DeleteGroup
+        | ItemMenuEntry::Stack { .. }
         | ItemMenuEntry::PasteAs
+        | ItemMenuEntry::OpenInColours
         | ItemMenuEntry::MoveTo
         | ItemMenuEntry::Colour
         | ItemMenuEntry::Sensitive { .. }
@@ -522,6 +581,7 @@ pub fn item_menu_label(window: &PanelWindow, entry: crate::controller::ItemMenuE
         ItemMenuEntry::Use => t.invoke_item_use(),
         ItemMenuEntry::Copy => t.invoke_item_copy(),
         ItemMenuEntry::PasteAs => t.invoke_item_paste_as(),
+        ItemMenuEntry::OpenInColours => t.invoke_item_open_in_colours(),
         ItemMenuEntry::Edit => t.invoke_item_edit(),
         ItemMenuEntry::Duplicate => t.invoke_item_duplicate(),
         ItemMenuEntry::Pin { pinned: false } => t.invoke_item_pin(),
@@ -534,6 +594,14 @@ pub fn item_menu_label(window: &PanelWindow, entry: crate::controller::ItemMenuE
         ItemMenuEntry::Sensitive { .. } => t.invoke_item_sensitive(),
         ItemMenuEntry::MoveUp { .. } => moves.invoke_menu_move_up(),
         ItemMenuEntry::MoveDown { .. } => moves.invoke_menu_move_down(),
+        ItemMenuEntry::Group => t.invoke_item_group(),
+        ItemMenuEntry::RenameGroup => t.invoke_group_rename(),
+        ItemMenuEntry::ToggleGroup { folded: false } => t.invoke_group_fold(),
+        ItemMenuEntry::ToggleGroup { folded: true } => t.invoke_group_open(),
+        ItemMenuEntry::GroupUp { .. } => t.invoke_group_move_up(),
+        ItemMenuEntry::GroupDown { .. } => t.invoke_group_move_down(),
+        ItemMenuEntry::Ungroup => t.invoke_group_ungroup(),
+        ItemMenuEntry::DeleteGroup => t.invoke_group_delete(),
         ItemMenuEntry::Separator => return String::new(),
     }
     .into()
@@ -721,12 +789,86 @@ where
     }
 }
 
+/// What is wrong with a template, in the language selected for the UI (the sentences are in the
+/// `TemplateTexts` global). The result has no final full stop: "This template can't be read: {}."
+/// adds it. The syntax of a placeholder is passed in as it is written, never translated.
+#[must_use]
+pub fn template_problem_text<C>(window: &C, problem: &TemplateProblem) -> String
+where
+    for<'a> TemplateTexts<'a>: Global<'a, C>,
+{
+    use TemplateErrorKind as K;
+    fn code(s: &str) -> slint::SharedString {
+        format!("`{s}`").into()
+    }
+    let t = TemplateTexts::get(window);
+    let kind = match problem {
+        TemplateProblem::Sensitive => return t.invoke_sensitive().into(),
+        TemplateProblem::Parse(kind) => kind,
+    };
+    let text = match kind {
+        K::UnmatchedClose => t.invoke_unmatched_close(code("}"), code("}}")),
+        K::Unterminated => t.invoke_unterminated(code("{"), code("{{")),
+        K::EmptyPlaceholder => t.invoke_empty_placeholder(code("{}")),
+        K::EmptyName => t.invoke_empty_name(code("{field:Name}")),
+        K::UnclosedSection => t.invoke_unclosed_section(code("{optional:…}"), code("{/optional}")),
+        K::NestedSection => t.invoke_nested_section(),
+        K::UnmatchedSectionEnd => t.invoke_unmatched_section_end(code("{/optional}")),
+        K::NoOptions => t.invoke_no_options(code("{choice:Name|a|b}")),
+        K::EmptyOption => t.invoke_empty_option(),
+        K::DuplicateOption { option } => t.invoke_duplicate_option(code(option)),
+        K::TooManyParts => t.invoke_too_many_parts(code("{field:Name|default}")),
+        K::DuplicateCursor => t.invoke_duplicate_cursor(code("{cursor}")),
+        K::TrailingPercent => t.invoke_trailing_percent(code("%"), code("%%")),
+        K::Unknown { found, suggestion } => {
+            let found = code(&format!("{{{found}}}"));
+            let help = t.invoke_braces_help(PLACEHOLDER_LIST.into(), code("{{"), code("}}"));
+            match suggestion {
+                Some(keyword) => t.invoke_unknown_suggest(found, code(usage(keyword)), help),
+                None => t.invoke_unknown(found, help),
+            }
+        }
+        K::UnexpectedArgument { placeholder } => {
+            t.invoke_unexpected_argument(code(&format!("{{{placeholder}}}")))
+        }
+        K::MissingArgument { placeholder } => {
+            t.invoke_missing_argument(code(placeholder), code(usage(placeholder)))
+        }
+        K::ConflictingPrompt { name } => t.invoke_conflicting_prompt(code(name)),
+        K::TooManyPrompts { max } => t.invoke_too_many_prompts(int(*max)),
+        K::BadOffset => t.invoke_bad_offset(code("+3d"), code("-90min")),
+        K::UnknownOffsetUnit { found, hint } => {
+            let hint = match hint {
+                UnitHint::MonthOrMinute => 0,
+                UnitHint::Days => 1,
+                UnitHint::Weeks => 2,
+                UnitHint::Months => 3,
+                UnitHint::Years => 4,
+                UnitHint::Hours => 5,
+                UnitHint::Minutes => 6,
+                UnitHint::AnyUnit => 7,
+            };
+            t.invoke_unknown_offset_unit(code(found), hint)
+        }
+        K::OffsetOutOfRange { unit, max } => {
+            t.invoke_offset_out_of_range(code(unit), max.to_string().into())
+        }
+        K::TooManyOffsets { max } => t.invoke_too_many_offsets(int(*max)),
+        K::UnknownFormatSpecifier { specifier } => t.invoke_unknown_format_specifier(
+            code(&format!("%{specifier}")),
+            "%Y %y %m %B %b %d %e %j %A %a %H %I %M %S %p %z %F %T %%".into(),
+        ),
+    };
+    text.into()
+}
+
 /// Why the item editor refuses something, in words.
 #[must_use]
 #[allow(clippy::too_many_lines, reason = "one match arm per problem")]
 pub fn editor_problem_text<C>(window: &C, problem: &EditorProblem) -> String
 where
     for<'a> FormTexts<'a>: Global<'a, C>,
+    for<'a> TemplateTexts<'a>: Global<'a, C>,
 {
     let t = FormTexts::get(window);
     match problem {
@@ -734,10 +876,13 @@ where
         EditorProblem::TitleHasControl => t.invoke_title_control_char(),
         EditorProblem::ContentEmpty => t.invoke_content_empty(),
         EditorProblem::ContentTooLong { max_kb } => t.invoke_content_too_long(int(*max_kb)),
+        EditorProblem::TriggerInvalid => t.invoke_trigger_invalid(),
+        EditorProblem::TriggerTaken => t.invoke_trigger_taken(),
         EditorProblem::LinkNeedsScheme => t.invoke_link_needs_scheme(),
         EditorProblem::LinkHasSpace => t.invoke_link_has_space(),
-        EditorProblem::Template(why) => t.invoke_template_unreadable(why.as_str().into()),
-        EditorProblem::NeedsPro(_) => t.invoke_needs_supporter(),
+        EditorProblem::Template(why) => {
+            t.invoke_template_unreadable(template_problem_text(window, why).into())
+        }
         EditorProblem::SourceEmpty => t.invoke_source_empty(),
         EditorProblem::SourceMissing => t.invoke_source_missing(),
         EditorProblem::SourceNotAFile => t.invoke_source_not_a_file(),

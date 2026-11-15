@@ -34,7 +34,7 @@ const PANEL_SIDE_LIMIT: u32 = 16_384;
 
 /// Where the Panel sat on one monitor the last time the user moved or resized it. Physical
 /// pixels in desktop coordinates, as the OS reports them; `monitor_id` names the monitor.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PanelGeometry {
     /// The monitor this is for (its device name and size, see `frame::Monitor::id`).
     pub monitor_id: String,
@@ -54,10 +54,20 @@ pub struct PanelGeometry {
         skip_serializing_if = "Option::is_none"
     )]
     pub edge: Option<DockEdge>,
-    /// The width and height the Panel had before it was docked, so that undocking (or dragging it
-    /// off its edge) gives them back. Only set while docked.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    /// The floating size an older version kept here while the Panel was docked (`x y w h` held
+    /// the docked frame then). Read only, so that [`Settings::sanitize`] can move it to
+    /// `w h`; never written.
+    #[serde(default, skip_serializing)]
     pub pre_dock: Option<(u32, u32)>,
+    /// The Panel's width and height while docked to the left or right edge of this monitor.
+    /// `x y w h` are its floating frame, docked or not, so docking and undocking never change
+    /// either size. Absent until the Panel is docked there: it then docks at its floating size.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub docked: Option<(u32, u32)>,
+    /// The same for the top or bottom edge. Kept apart from the side docks' size: a tall side
+    /// dock is no guide to a dock that lies along the top or the bottom.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub docked_flat: Option<(u32, u32)>,
     /// Where the docked Panel starts along its edge (its top on a left or right edge, its left
     /// on a top or bottom one), in physical pixels. Only set while docked; absent in older files,
     /// which read as none: centred (or full height).
@@ -86,6 +96,25 @@ impl PanelGeometry {
         others.retain(|(e, _)| Some(*e) != self.edge);
         self.other_along = others;
         self
+    }
+
+    /// The size the Panel was given while docked to `edge` or the edge opposite, if it ever was.
+    #[must_use]
+    pub fn docked_size(&self, edge: DockEdge) -> Option<(u32, u32)> {
+        if edge.vertical() {
+            self.docked
+        } else {
+            self.docked_flat
+        }
+    }
+
+    /// Remembers `size` as the Panel's size while docked to `edge` or the edge opposite.
+    pub fn set_docked_size(&mut self, edge: DockEdge, size: (u32, u32)) {
+        if edge.vertical() {
+            self.docked = Some(size);
+        } else {
+            self.docked_flat = Some(size);
+        }
     }
 
     /// Where the Panel was last docked along `edge`: the live value when it is docked there, the
@@ -198,28 +227,58 @@ pub struct DockSettings {
     pub leave_delay_ms: u32,
     /// A Panel docked left or right takes the work area's full height instead of keeping its own.
     pub full_edge: bool,
+    /// Set once the trigger is this version's default or the user's choice. Absent in older
+    /// files, whose `off` was the default and not a choice: [`DockSettings::sanitize`] turns
+    /// that into `both`, at once when no Panel is docked and otherwise the next time the user
+    /// docks one ([`docked_by_choice`](Self::docked_by_choice)).
+    #[serde(default)]
+    pub tucks_by_default: bool,
 }
 
 impl Default for DockSettings {
     fn default() -> Self {
         Self {
-            trigger: DockTrigger::Off,
+            trigger: DockTrigger::Both,
             hover_delay_ms: 150,
             leave_delay_ms: 400,
             full_edge: false,
+            tucks_by_default: true,
         }
     }
 }
 
 impl DockSettings {
-    /// Puts both delays in range.
-    pub fn sanitize(&mut self) {
+    /// Puts both delays in range, and gives a file from before the dock tucked by default
+    /// that default. `docked` says whether a Panel is docked on any monitor: one docked under
+    /// the old rules (often by a dock nobody asked for) stays open as it was, and does not
+    /// turn into a tab on the first launch of this version.
+    pub fn sanitize(&mut self, docked: bool) {
+        if !(docked && self.trigger == DockTrigger::Off) {
+            self.docked_by_choice();
+        }
         self.hover_delay_ms = self
             .hover_delay_ms
             .clamp(*HOVER_DELAY_MS.start(), *HOVER_DELAY_MS.end());
         self.leave_delay_ms = self
             .leave_delay_ms
             .clamp(*LEAVE_DELAY_MS.start(), *LEAVE_DELAY_MS.end());
+    }
+
+    /// The user docked the Panel: from now on the trigger is theirs or this version's default,
+    /// so an old file's `off` that nobody chose becomes `both`.
+    pub fn docked_by_choice(&mut self) {
+        if !self.tucks_by_default {
+            if self.trigger == DockTrigger::Off {
+                self.trigger = DockTrigger::Both;
+            }
+            self.tucks_by_default = true;
+        }
+    }
+
+    /// The user picked `trigger` in Settings: a choice, whatever the file was before.
+    pub fn choose(&mut self, trigger: DockTrigger) {
+        self.trigger = trigger;
+        self.tucks_by_default = true;
     }
 }
 
@@ -581,18 +640,6 @@ impl Hotkeys {
         }
     }
 
-    /// The chords to register with Windows. Paste next works with Supporter, so without it its
-    /// chord stays in the settings but is not registered: `Ctrl+Alt+V` is Paste Special in Word
-    /// and Excel and a Free user would only get an upsell.
-    #[must_use]
-    pub fn registrable(&self, supporter: bool) -> Self {
-        let mut chords = self.clone();
-        if !supporter {
-            chords.paste_next.clear();
-        }
-        chords
-    }
-
     /// The configured chord for `action`: `None` when it is off or not a valid chord.
     #[must_use]
     pub fn chord(&self, action: HotkeyAction) -> Option<Chord> {
@@ -672,6 +719,9 @@ impl WindowPlace {
     pub const MIN_SIDE: u32 = 200;
 }
 
+/// The colour the Colours tab starts on (`accent.default`).
+pub const DEFAULT_COLOUR: &str = "#2870d4";
+
 /// The user's settings.
 #[allow(
     clippy::struct_excessive_bools,
@@ -694,6 +744,9 @@ pub struct Settings {
     pub autostart: bool,
     /// Closing the main window hides it to the tray instead of quitting.
     pub close_to_tray: bool,
+    /// Unlock the library with Windows Hello (needs a master password; the password
+    /// stays the fallback). Off by default.
+    pub hello_unlock: bool,
     /// The Panel has a taskbar button (and an Alt+Tab entry). Off by default: the tray icon and
     /// the panel shortcut bring it back.
     pub panel_in_taskbar: bool,
@@ -719,6 +772,12 @@ pub struct Settings {
     pub text_size: TextSize,
     /// Seconds after copying a sensitive item before the clipboard is cleared (0 = never).
     pub clipboard_clear_secs: u32,
+    /// Typed abbreviations expand into their snippet in any app (Settings > Typing). Off until the
+    /// user asks: while off, no keyboard hook is installed.
+    pub expand_triggers: bool,
+    /// A hint at the caret offers a snippet after two characters that start a trigger. Off until
+    /// the user asks; it uses the same keyboard hook as `expand_triggers`.
+    pub suggest_triggers: bool,
     /// Where the Panel sat on each monitor it was moved or resized on; wins over `panel_width`
     /// there. Absent in older files.
     pub panel_geometry: Vec<PanelGeometry>,
@@ -739,10 +798,20 @@ pub struct Settings {
     /// `programs` on load, and then only mirrors them for the code that routes a paste.
     #[serde(skip_serializing)]
     pub no_paste_apps: Vec<String>,
-    /// The Recent inbox is on: Snipdeck keeps the text you copy (SPEC 5.6). On for a new install
-    /// ([`Settings::new_install`]); off in [`Settings::default`] and for any file that does not
-    /// say true.
+    /// The Recent inbox is on: Snipdeck keeps the text you copy (SPEC 5.6). Off until the user
+    /// says Yes (Store policy 10.5: opt in), so it is off in a new install, in
+    /// [`Settings::default`] and for any file that does not say true.
     pub recent_history: bool,
+    /// The user has answered "Keep a Recent list of what you copy?" (or set the Settings switch),
+    /// so the first-run question is not asked again. Together with `recent_history` this is the
+    /// three states: never chosen (asks), on, off.
+    ///
+    /// Migration: a file without this field means the user never answered, because the
+    /// question did not exist, and an older file cannot tell an explicit choice from the old
+    /// default that was written with every save. So a missing field is "ask", and
+    /// [`Settings::from_json`] then reads `recent_history` as off until the answer is Yes: an
+    /// upgrade where the user never chose is asked, and nothing is kept before they say Yes.
+    pub recent_history_asked: bool,
     /// Executable names that are never kept in the Recent inbox (lower case).
     pub no_history_apps: Vec<String>,
     /// The edge dock: when a docked Panel collapses to a handle, and the delays.
@@ -780,6 +849,28 @@ pub struct Settings {
     pub panel_start_visible: bool,
     /// The symbols the user used last, newest first, at most 24 (the Symbols tab's Recent strip).
     pub symbols_recent: Vec<snipdeck_symbols::RecentEntry>,
+    /// The Panel shows its Colours tab (picker, formats, schemes, contrast). On by default.
+    pub show_colours_tab: bool,
+    /// The colours used last, newest first, at most 24 (the Colours tab's "Recently used" strip).
+    pub colours_recent: Vec<snipdeck_colour::RecentColour>,
+    /// The format a colour is copied and saved in by default (never `Name`: it is lossy).
+    pub colour_format: snipdeck_colour::Format,
+    /// The colour the Colours tab shows, `#rrggbb[aa]`; restored when the tab opens.
+    pub colour_current: String,
+    /// The second colour of the contrast section, `#rrggbb[aa]`.
+    pub colour_contrast_with: String,
+    /// The scheme the Colours tab lays out.
+    pub colour_scheme: snipdeck_colour::Scheme,
+    /// The picker (wheel or square) is open in the Colours tab.
+    pub colour_adjust_open: bool,
+    /// Which picker surface shows.
+    pub colour_picker_style: snipdeck_colour::PickerStyle,
+    /// Which channel set the Values row edits.
+    pub colour_input_model: snipdeck_colour::InputModel,
+    /// A colour picked from the screen is copied at once.
+    pub colour_copy_on_pick: bool,
+    /// The list saved colours go to (`ListId` text); `None` or a deleted list: the next save makes one.
+    pub colour_save_list: Option<String>,
 }
 
 impl Default for Settings {
@@ -795,6 +886,7 @@ impl Default for Settings {
             language: String::new(),
             autostart: false,
             close_to_tray: true,
+            hello_unlock: false,
             panel_in_taskbar: false,
             panel_hide_on_blur: true,
             panel_pinned: true,
@@ -805,6 +897,8 @@ impl Default for Settings {
             reduce_motion: false,
             text_size: TextSize::System,
             clipboard_clear_secs: CLIPBOARD_CLEAR_SECS_DEFAULT,
+            expand_triggers: false,
+            suggest_triggers: false,
             panel_geometry: Vec::new(),
             main_window: None,
             main_sidebar_width: MAIN_SIDEBAR_WIDTH_DEFAULT,
@@ -812,6 +906,7 @@ impl Default for Settings {
             programs: builtin_program_rules(),
             no_paste_apps: Vec::new(),
             recent_history: false,
+            recent_history_asked: false,
             no_history_apps: Vec::new(),
             dock: DockSettings::default(),
             onboarded: false,
@@ -828,18 +923,28 @@ impl Default for Settings {
             panel_hide_after_use: false,
             panel_start_visible: false,
             symbols_recent: Vec::new(),
+            show_colours_tab: true,
+            colours_recent: Vec::new(),
+            colour_format: snipdeck_colour::Format::Hex,
+            colour_current: DEFAULT_COLOUR.to_owned(),
+            colour_contrast_with: "#ffffff".to_owned(),
+            colour_scheme: snipdeck_colour::Scheme::Complementary,
+            colour_adjust_open: true,
+            colour_picker_style: snipdeck_colour::PickerStyle::Square,
+            colour_input_model: snipdeck_colour::InputModel::Hex,
+            colour_copy_on_pick: true,
+            colour_save_list: None,
         }
     }
 }
 
 impl Settings {
-    /// The settings of a new install, used only where there is no settings file: Recent on, the
-    /// Ctrl+Alt-free chords, the Panel unpinned and hiding after a paste or copy.
+    /// The settings of a new install, used only where there is no settings file: Recent off and
+    /// not yet asked (the Panel asks on first run), the Ctrl+Alt-free chords, the Panel unpinned and hiding after a paste or copy.
     #[must_use]
     pub fn new_install() -> Self {
         Self {
             hotkeys: Hotkeys::new_install(),
-            recent_history: true,
             panel_hide_after_use: true,
             // Unpinned, or hide-after-use and hide-on-blur would never fire on a new install.
             panel_pinned: false,
@@ -887,6 +992,8 @@ impl Settings {
                     ..Self::default()
                 }
             });
+        // Never answered means off, whatever an older file says (see `recent_history_asked`).
+        settings.recent_history &= settings.recent_history_asked;
         settings.fold_legacy_no_paste();
         settings.sanitize();
         settings
@@ -915,6 +1022,7 @@ impl Settings {
         field!(language);
         field!(autostart);
         field!(close_to_tray);
+        field!(hello_unlock);
         field!(panel_in_taskbar);
         field!(panel_hide_on_blur);
         field!(panel_pinned);
@@ -925,6 +1033,8 @@ impl Settings {
         field!(reduce_motion);
         field!(text_size);
         field!(clipboard_clear_secs);
+        field!(expand_triggers);
+        field!(suggest_triggers);
         field!(panel_geometry);
         field!(main_window);
         field!(main_sidebar_width);
@@ -945,6 +1055,7 @@ impl Settings {
             _ => {}
         }
         field!(recent_history);
+        field!(recent_history_asked);
         field!(no_history_apps);
         field!(dock);
         field!(onboarded);
@@ -959,9 +1070,55 @@ impl Settings {
         field!(tray_click);
         field!(panel_open_at);
         field!(symbols_recent);
+        settings.colour_fields(map);
         field!(panel_hide_after_use);
         field!(panel_start_visible);
         settings
+    }
+
+    /// The Colours tab's fields, read one by one like the rest of [`Self::from_fields`].
+    fn colour_fields(&mut self, map: &serde_json::Map<String, serde_json::Value>) {
+        macro_rules! colour_field {
+            ($name:ident) => {
+                if let Some(v) = map
+                    .get(stringify!($name))
+                    .and_then(|v| serde_json::from_value(v.clone()).ok())
+                {
+                    self.$name = v;
+                }
+            };
+        }
+        colour_field!(show_colours_tab);
+        // One bad recent must not drop the rest; one whose hex is not a colour goes too.
+        if let Some(serde_json::Value::Array(items)) = map.get("colours_recent") {
+            self.colours_recent = items
+                .iter()
+                .filter_map(|v| {
+                    serde_json::from_value::<snipdeck_colour::RecentColour>(v.clone()).ok()
+                })
+                .filter(|r| snipdeck_colour::Rgba8::from_hex(&r.hex).is_some())
+                .collect();
+        }
+        colour_field!(colour_format);
+        if !self.colour_format.can_be_default() {
+            self.colour_format = snipdeck_colour::Format::Hex;
+        }
+        for (key, slot) in [
+            ("colour_current", &mut self.colour_current),
+            ("colour_contrast_with", &mut self.colour_contrast_with),
+        ] {
+            if let Some(text) = map.get(key).and_then(serde_json::Value::as_str)
+                && snipdeck_colour::Rgba8::from_hex(text).is_some()
+            {
+                text.clone_into(slot);
+            }
+        }
+        colour_field!(colour_scheme);
+        colour_field!(colour_adjust_open);
+        colour_field!(colour_picker_style);
+        colour_field!(colour_input_model);
+        colour_field!(colour_copy_on_pick);
+        colour_field!(colour_save_list);
     }
 
     /// Turns the names an older file kept in `no_paste_apps` into "never paste" rules. Only on
@@ -1019,7 +1176,8 @@ impl Settings {
             (WindowPlace::MIN_SIDE..=PANEL_SIDE_LIMIT).contains(&p.w)
                 && (WindowPlace::MIN_SIDE..=PANEL_SIDE_LIMIT).contains(&p.h)
         });
-        self.dock.sanitize();
+        self.dock
+            .sanitize(self.panel_geometry.iter().any(|g| g.edge.is_some()));
         self.sanitize_programs();
         let mut seen = std::collections::BTreeSet::new();
         self.no_history_apps = self
@@ -1098,8 +1256,25 @@ impl Settings {
                 continue;
             }
             g.monitor_id = id.into();
+            // An older file: `w h` was the docked size and `pre_dock` the floating one.
+            if let Some(floating) = g.pre_dock.take() {
+                if let Some(edge) = g.edge
+                    && g.docked_size(edge).is_none()
+                {
+                    g.set_docked_size(edge, (g.w, g.h));
+                }
+                if floating.0 > 0 && floating.1 > 0 {
+                    (g.w, g.h) = floating;
+                }
+            }
             g.w = g.w.min(PANEL_SIDE_LIMIT);
             g.h = g.h.min(PANEL_SIDE_LIMIT);
+            let usable = |size: Option<(u32, u32)>| {
+                size.filter(|(w, h)| *w > 0 && *h > 0)
+                    .map(|(w, h)| (w.min(PANEL_SIDE_LIMIT), h.min(PANEL_SIDE_LIMIT)))
+            };
+            g.docked = usable(g.docked);
+            g.docked_flat = usable(g.docked_flat);
             kept.retain(|k| k.monitor_id != g.monitor_id);
             kept.push(g);
         }
@@ -1222,7 +1397,7 @@ mod tests {
     #[test]
     fn new_install_holds_the_new_values_and_default_the_legacy_ones() {
         let new = Settings::new_install();
-        assert!(new.recent_history && new.panel_hide_after_use);
+        assert!(!new.recent_history && !new.recent_history_asked && new.panel_hide_after_use);
         assert_eq!(new.hotkeys, Hotkeys::new_install());
         let old = Settings::default();
         assert!(!old.recent_history && !old.panel_hide_after_use);
@@ -1432,12 +1607,66 @@ mod tests {
             w: 400,
             h: 700,
             edge: Some(DockEdge::Right),
-            pre_dock: Some((320, 480)),
-            along: None,
-            other_along: Vec::new(),
+            pre_dock: None,
+            docked: Some((320, 900)),
+            docked_flat: Some((440, 300)),
+            along: Some(60),
+            other_along: vec![(DockEdge::Top, 300)],
         });
         let back = Settings::from_json(&settings.to_json());
         assert_eq!(back.panel_geometry, settings.panel_geometry);
+    }
+
+    #[test]
+    fn an_old_top_or_bottom_dock_keeps_its_size_apart_from_a_side_docks() {
+        let settings = Settings::from_json(
+            r#"{"panel_geometry":[
+                {"monitor_id":"D1","x":600,"y":740,"w":400,"h":300,"edge":"bottom","pre_dock":[320,480],"along":600}
+            ]}"#,
+        );
+        let g = &settings.panel_geometry[0];
+        assert_eq!((g.w, g.h), (320, 480), "the floating size it had before");
+        assert_eq!(
+            g.docked_flat,
+            Some((400, 300)),
+            "the size of its bottom dock"
+        );
+        assert_eq!(g.docked, None, "no side dock was ever sized here");
+        assert_eq!(g.docked_size(DockEdge::Top), Some((400, 300)));
+        assert_eq!(g.docked_size(DockEdge::Left), None);
+        let back = Settings::from_json(&settings.to_json());
+        assert_eq!(back.panel_geometry, settings.panel_geometry);
+    }
+
+    #[test]
+    fn an_old_docked_geometry_becomes_a_floating_size_and_a_docked_size() {
+        let settings = Settings::from_json(
+            r#"{"panel_geometry":[
+                {"monitor_id":"D1","x":0,"y":30,"w":340,"h":1040,"edge":"left","pre_dock":[320,480],"along":30},
+                {"monitor_id":"D2","x":10,"y":20,"w":300,"h":500},
+                {"monitor_id":"D3","x":0,"y":0,"w":300,"h":500,"edge":"top"}
+            ]}"#,
+        );
+        let g = &settings.panel_geometry[0];
+        assert_eq!((g.w, g.h), (320, 480), "the floating size it had before");
+        assert_eq!(g.docked, Some((340, 1040)), "the docked size it has now");
+        assert_eq!(
+            (g.edge, g.along, g.pre_dock),
+            (Some(DockEdge::Left), Some(30), None)
+        );
+        let floating = &settings.panel_geometry[1];
+        assert_eq!((floating.w, floating.h, floating.docked), (300, 500, None));
+        let no_memory = &settings.panel_geometry[2];
+        assert_eq!(
+            (no_memory.w, no_memory.h, no_memory.docked),
+            (300, 500, None)
+        );
+        let json = settings.to_json();
+        assert!(!json.contains("pre_dock"), "never written again: {json}");
+        assert_eq!(
+            Settings::from_json(&json).panel_geometry,
+            settings.panel_geometry
+        );
     }
 
     #[test]
@@ -1446,16 +1675,74 @@ mod tests {
             r#"{"panel_geometry":[{"monitor_id":"D1","x":0,"y":0,"w":320,"h":1040,"edge":"left","pre_dock":[320,480]}],"dock":{"trigger":"hover"}}"#,
         );
         let g = &settings.panel_geometry[0];
-        assert_eq!((g.edge, g.along, g.h), (Some(DockEdge::Left), None, 1040));
+        assert_eq!((g.edge, g.along), (Some(DockEdge::Left), None));
         assert!(!settings.dock.full_edge, "the compact dock is the default");
         assert_eq!(settings.dock.trigger, DockTrigger::Hover);
     }
 
     #[test]
-    fn the_dock_is_off_by_default_with_the_documented_delays() {
+    fn a_docked_panel_tucks_by_default_with_the_documented_delays() {
         let dock = Settings::default().dock;
-        assert_eq!(dock.trigger, DockTrigger::Off);
+        assert_eq!(dock.trigger, DockTrigger::Both);
         assert_eq!((dock.hover_delay_ms, dock.leave_delay_ms), (150, 400));
+        assert_eq!(
+            Settings::from_json("{}").dock,
+            dock,
+            "a file with no dock section"
+        );
+    }
+
+    #[test]
+    fn an_old_files_off_was_the_default_and_becomes_both_once() {
+        // Written by a version whose default was off: nobody chose it.
+        let old = Settings::from_json(r#"{"dock":{"trigger":"off","hover_delay_ms":300}}"#);
+        assert_eq!(old.dock.trigger, DockTrigger::Both);
+        assert_eq!(old.dock.hover_delay_ms, 300);
+        assert!(old.dock.tucks_by_default);
+        // A choice an old file did make is kept.
+        let click = Settings::from_json(r#"{"dock":{"trigger":"click"}}"#);
+        assert_eq!(click.dock.trigger, DockTrigger::Click);
+        // "Off" chosen since then is kept across a save and a load.
+        let mut chosen = old;
+        chosen.dock.trigger = DockTrigger::Off;
+        let back = Settings::from_json(&chosen.to_json());
+        assert_eq!(back.dock.trigger, DockTrigger::Off);
+    }
+
+    #[test]
+    fn an_old_file_with_the_panel_docked_does_not_tuck_until_it_is_docked_again() {
+        // The old default was a Panel docked to the right edge that stayed open, and the old
+        // dock took a Panel that only came near an edge: neither was asked to become a tab.
+        let old = Settings::from_json(
+            r#"{"dock":{"trigger":"off"},"panel_geometry":[
+                {"monitor_id":"D1","x":1600,"y":0,"w":320,"h":1040,"edge":"right"}
+            ]}"#,
+        );
+        assert_eq!(
+            old.dock.trigger,
+            DockTrigger::Off,
+            "it stays open, as it was"
+        );
+        assert!(!old.dock.tucks_by_default);
+        let back = Settings::from_json(&old.to_json());
+        assert_eq!(back.dock, old.dock, "and still after a save and a load");
+        // Docked again by the user, it tucks like any dock of this version.
+        let mut again = old.clone();
+        again.dock.docked_by_choice();
+        assert_eq!(again.dock.trigger, DockTrigger::Both);
+        assert!(again.dock.tucks_by_default);
+        // Undocked, there is nothing left to protect: the default is in force.
+        let mut floating = old.clone();
+        floating.panel_geometry[0].edge = None;
+        floating.sanitize();
+        assert_eq!(floating.dock.trigger, DockTrigger::Both);
+        // "Off" picked in Settings is a choice and survives the next dock.
+        let mut chosen = old;
+        chosen.dock.choose(DockTrigger::Off);
+        chosen.dock.docked_by_choice();
+        assert_eq!(chosen.dock.trigger, DockTrigger::Off);
+        let back = Settings::from_json(&chosen.to_json());
+        assert_eq!(back.dock.trigger, DockTrigger::Off);
     }
 
     #[test]
@@ -1466,6 +1753,7 @@ mod tests {
                 hover_delay_ms: 300,
                 leave_delay_ms: 900,
                 full_edge: true,
+                ..DockSettings::default()
             },
             ..Settings::default()
         };
@@ -1530,6 +1818,8 @@ mod tests {
             h: 500,
             edge: None,
             pre_dock: None,
+            docked: None,
+            docked_flat: None,
             along: None,
             other_along: Vec::new(),
         };
@@ -1577,25 +1867,40 @@ mod tests {
     }
 
     #[test]
-    fn the_recent_inbox_is_on_for_a_new_install_and_off_for_a_file_that_never_said() {
-        assert!(Settings::new_install().recent_history, "new install");
-        assert!(!Settings::from_json("{}").recent_history, "existing file");
-        assert!(
-            !Settings::from_json("{ not json").recent_history,
-            "damaged file"
-        );
-        assert!(!Settings::from_json(r#"{"version":1,"theme":"dark"}"#).recent_history);
-        assert!(!Settings::from_json(r#"{"recent_history":false}"#).recent_history);
+    fn the_recent_inbox_is_off_and_unasked_for_a_new_install_and_a_file_that_never_said() {
+        let unasked = |s: &Settings| !s.recent_history && !s.recent_history_asked;
+        assert!(unasked(&Settings::new_install()), "new install");
+        assert!(unasked(&Settings::from_json("{}")), "existing file");
+        assert!(unasked(&Settings::from_json("{ not json")), "damaged file");
+        assert!(unasked(&Settings::from_json(
+            r#"{"version":1,"theme":"dark"}"#
+        )));
+        // An older file that says true but never recorded an answer is asked, and keeps nothing.
+        assert!(unasked(&Settings::from_json(r#"{"recent_history":true}"#)));
+        assert!(unasked(&Settings::from_json(
+            r#"{"recent_history":true,"recent_history_asked":"yes"}"#
+        )));
+        // A recorded No stays No, and a recorded Yes stays Yes.
+        let no = Settings::from_json(r#"{"recent_history":false,"recent_history_asked":true}"#);
+        assert!(!no.recent_history && no.recent_history_asked);
         let s = Settings::from_json(
-            r#"{"recent_history":true,"no_history_apps":[" KeePass.EXE ","keepass.exe",""]}"#,
+            r#"{"recent_history":true,"recent_history_asked":true,"no_history_apps":[" KeePass.EXE ","keepass.exe",""]}"#,
         );
-        assert!(s.recent_history);
+        assert!(s.recent_history && s.recent_history_asked);
         assert_eq!(s.no_history_apps, ["keepass.exe"]);
         // A bad field elsewhere keeps the opt-in and the exclusions.
-        let s =
-            Settings::from_json(r#"{"theme":5,"recent_history":true,"no_history_apps":["a.exe"]}"#);
+        let s = Settings::from_json(
+            r#"{"theme":5,"recent_history":true,"recent_history_asked":true,"no_history_apps":["a.exe"]}"#,
+        );
         assert!(s.recent_history);
         assert_eq!(s.no_history_apps, ["a.exe"]);
+        // The answer survives a save and a load.
+        let yes = Settings {
+            recent_history: true,
+            recent_history_asked: true,
+            ..Settings::new_install()
+        };
+        assert_eq!(Settings::from_json(&yes.to_json()), yes);
     }
 
     #[test]
@@ -1770,6 +2075,19 @@ mod tests {
     }
 
     #[test]
+    fn typing_features_are_off_by_default_and_kept() {
+        for s in [Settings::new_install(), Settings::from_json("{}")] {
+            assert!(!s.expand_triggers && !s.suggest_triggers);
+        }
+        let on = Settings {
+            expand_triggers: true,
+            suggest_triggers: true,
+            ..Settings::default()
+        };
+        assert_eq!(Settings::from_json(&on.to_json()), on);
+    }
+
+    #[test]
     fn the_clipboard_clear_time_defaults_to_thirty_seconds_and_zero_means_never() {
         assert_eq!(Settings::from_json("{}").clipboard_clear_secs, 30);
         assert_eq!(
@@ -1830,17 +2148,9 @@ mod tests {
     }
 
     #[test]
-    fn paste_next_is_registered_only_with_supporter() {
+    fn paste_next_has_a_default_chord() {
         let chords = Settings::new_install().hotkeys;
-        assert!(
-            chords.chord(HotkeyAction::PasteNext).is_some(),
-            "it stays in the settings"
-        );
-        let free = chords.registrable(false);
-        assert!(free.chord(HotkeyAction::PasteNext).is_none());
-        assert_eq!(free.toggle_panel, chords.toggle_panel);
-        assert_eq!(free.picker, chords.picker);
-        assert_eq!(chords.registrable(true), chords);
+        assert!(chords.chord(HotkeyAction::PasteNext).is_some());
     }
 
     #[test]
@@ -2095,6 +2405,55 @@ mod tests {
             let text = format!(r#"{{"panel_open_at":"{word}"}}"#);
             assert_eq!(Settings::from_json(&text).panel_open_at, at, "{word}");
         }
+    }
+
+    #[test]
+    fn the_colour_settings_default_round_trip_and_survive_bad_entries() {
+        use snipdeck_colour::{Format, InputModel, PickerStyle, Scheme};
+        let d = Settings::default();
+        assert!(d.show_colours_tab && d.colour_adjust_open && d.colour_copy_on_pick);
+        assert_eq!(
+            (
+                d.colour_format,
+                d.colour_scheme,
+                d.colour_picker_style,
+                d.colour_input_model
+            ),
+            (
+                Format::Hex,
+                Scheme::Complementary,
+                PickerStyle::Square,
+                InputModel::Hex
+            )
+        );
+        assert_eq!(
+            (d.colour_current.as_str(), d.colour_contrast_with.as_str()),
+            ("#2870d4", "#ffffff")
+        );
+        assert_eq!(d.colour_save_list, None);
+        let set = Settings {
+            colour_format: Format::Oklch,
+            colour_scheme: Scheme::Triadic,
+            colour_picker_style: PickerStyle::Wheel,
+            colour_input_model: InputModel::Cmyk,
+            colour_current: "#3a7bd580".to_owned(),
+            colour_save_list: Some("0192a3b4-0000-7000-8000-000000000001".to_owned()),
+            colours_recent: vec![snipdeck_colour::RecentColour {
+                hex: "#3a7bd5".to_owned(),
+                used_at: 1_789_000_000_000,
+            }],
+            ..Settings::default()
+        };
+        assert_eq!(Settings::from_json(&set.to_json()), set);
+        // "name" is not a usable default; a bad colour takes the default; one bad recent goes alone.
+        let odd = Settings::from_json(
+            r##"{"colour_format":"name","colour_current":"blurple","colour_contrast_with":"#000000",
+            "colours_recent":[{"hex":"#112233","used_at":5},{"nonsense":1},{"hex":"zzz","used_at":6}]}"##,
+        );
+        assert_eq!(odd.colour_format, Format::Hex);
+        assert_eq!(odd.colour_current, d.colour_current);
+        assert_eq!(odd.colour_contrast_with, "#000000");
+        assert_eq!(odd.colours_recent.len(), 1);
     }
 
     #[test]

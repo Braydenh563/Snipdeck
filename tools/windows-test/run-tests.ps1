@@ -11,7 +11,7 @@
 
 .EXAMPLE
   .\run-tests.ps1                      # the recommended "v1 check", with a few plain questions
-  .\run-tests.ps1 -Mode qc            # the Quick check: about 10 minutes, only what changed lately (tests\quick-check.json)
+  .\run-tests.ps1 -Mode qc            # the Quick check: about 14 minutes, only what changed lately (tests\quick-check.json)
   .\run-tests.ps1 -Spike S1 -Mode quick
   .\run-tests.ps1 -NoAuto              # never run steps automatically (-Auto: always, no questions)
   .\run-tests.ps1 -SelfTest            # validate the test files, no Windows needed
@@ -465,12 +465,6 @@ function Build-Spike($SpikeDef, [int]$N = 1, [int]$Of = 1) {
         try {
             # Not Start-Process -Wait: the MSVC linker leaves mspdbsrv.exe running and -Wait would wait for it too.
             # Waiting on the cargo process itself, 30 s at a time, lets us print a sign of life.
-            # A release build refuses to compile without a licence key. Test builds use the published
-            # throwaway test key (licence/key_selection.rs), set for this wizard process only.
-            if (-not $env:SNIPDECK_LICENCE_PUBLIC_KEY) {
-                $env:SNIPDECK_LICENCE_PUBLIC_KEY = 'Zr5+Myx6RTMyvZ0Kf32wVfXF7xoGraZtmLOftoEMRzo='
-                $env:SNIPDECK_ALLOW_TEST_LICENCE_KEY = '1'
-            }
             # Cargo runs in its own hidden console, so Ctrl+C pressed here (often meant as copy) cannot
             # cancel it. Its progress goes to $buildLog, which is echoed here as it grows.
             $null = New-Item -ItemType Directory -Force -Path $OutRoot

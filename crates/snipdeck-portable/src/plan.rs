@@ -28,7 +28,7 @@ use snipdeck_store::{
 };
 
 use crate::error::{Error, Result};
-use crate::report::{ImportReport, Warning};
+use crate::report::{ImportReport, Note, Warning};
 
 /// Everything this crate needs from storage; [`snipdeck_store::Store`] implements it.
 pub trait Library:
@@ -340,11 +340,10 @@ pub(crate) fn apply<L: Library>(
     plan: &mut Plan,
     fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
     mut report: ImportReport,
-    max_boards: Option<usize>,
     dry_run: bool,
 ) -> Result<ImportReport> {
     let written = lib.atomically(|batch| {
-        write(batch, plan, fetch, &mut report, max_boards)?;
+        write(batch, plan, fetch, &mut report)?;
         // A dry run does the real writes so its counts are exact, then fails the transaction
         // so none of it (blob files included) remains.
         if dry_run { Err(Error::DryRun) } else { Ok(()) }
@@ -360,17 +359,7 @@ fn write(
     plan: &mut Plan,
     fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
     report: &mut ImportReport,
-    max_boards: Option<usize>,
 ) -> Result<()> {
-    // Counted here, inside the transaction, so nothing can slip in between check and write.
-    if let Some(max) = max_boards
-        && !plan.boards.is_empty()
-        && lib.boards()?.len() + plan.boards.len() > max
-    {
-        return Err(
-            snipdeck_core::Error::ProRequired(snipdeck_core::Feature::UnlimitedBoards).into(),
-        );
-    }
     // Only tags that a kept item uses are created; existing tags are reused by name.
     let used: HashSet<usize> = plan
         .boards
@@ -432,22 +421,20 @@ fn write(
                 // import); the newcomer comes in without one, and the report says so.
                 if let Some(trigger) = plan_item.trigger.as_ref().filter(|_| !item.sensitive) {
                     if lib.trigger_holder(trigger)?.is_some() {
-                        report.warn(Warning::Note(format!(
-                            "`{}`: the trigger `{trigger}` is already used by another snippet; \
-                             imported without it",
-                            item.title
-                        )));
+                        report.warn(Warning::Note(Note::TriggerTaken {
+                            title: item.title.clone(),
+                            trigger: trigger.to_string(),
+                        }));
                     } else {
                         let overlap = lib.set_trigger(item.id, Some(trigger))?;
                         if !overlap.is_empty() {
                             let list: Vec<String> =
                                 overlap.iter().map(ToString::to_string).collect();
-                            report.warn(Warning::Note(format!(
-                                "`{}`: the trigger `{trigger}` and `{}` start alike, so the \
-                                 shorter one fires first",
-                                item.title,
-                                list.join("`, `")
-                            )));
+                            report.warn(Warning::Note(Note::TriggerOverlap {
+                                title: item.title.clone(),
+                                trigger: trigger.to_string(),
+                                others: list.join(", "),
+                            }));
                         }
                     }
                 }
@@ -656,7 +643,6 @@ mod tests {
             &mut two_boards(),
             &mut fetch,
             ImportReport::default(),
-            None,
             false,
         )
         .unwrap();
@@ -696,7 +682,6 @@ mod tests {
                 &mut two_boards(),
                 &mut fetch,
                 ImportReport::default(),
-                None,
                 false,
             )
             .unwrap_err();
@@ -730,7 +715,6 @@ mod tests {
             &mut plan,
             &mut fetch,
             ImportReport::default(),
-            None,
             false,
         )
         .unwrap();
@@ -750,7 +734,6 @@ mod tests {
             &mut two_boards(),
             &mut fetch,
             ImportReport::default(),
-            None,
             false,
         )
         .unwrap_err();

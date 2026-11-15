@@ -2,7 +2,7 @@
 
 use crate::history::{Action, Change};
 use snipdeck_core::template::transform::Transform;
-use snipdeck_core::{Feature, Item, ItemId, Name, Placement, Tag};
+use snipdeck_core::{Item, ItemId, Name, Placement, Tag};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::{ItemRepo, TrashRepo, Trashable};
 
@@ -10,7 +10,7 @@ use super::super::history_ctl::{item_targets, move_recorded, update_recorded};
 use super::super::{
     Controller, Library, Toast, ToastKind, ToastMessage, UseResult, change_failed, failed, success,
 };
-use super::{MainAction, TagRenameError, neutral_toast, restore_failed};
+use super::{MainAction, TagRenameError, neutral_toast};
 use crate::{
     host::ClipboardText,
     main_window::{Key, NameError},
@@ -40,15 +40,16 @@ where
             })
             .collect();
         match action {
-            MainAction::Use | MainAction::Copy => {
-                let mode = if action == MainAction::Use {
-                    snipdeck_core::UseMode::Paste
-                } else {
-                    snipdeck_core::UseMode::Copy
-                };
+            MainAction::Use => {
                 let id = items.first().copied()?;
-                return Some(self.use_item(id, mode));
+                return Some(self.use_item(id, snipdeck_core::UseMode::Paste));
             }
+            MainAction::UsePlain => {
+                let id = items.first().copied()?;
+                return Some(self.use_item(id, snipdeck_core::UseMode::PastePlain));
+            }
+            // Every selected row, joined as `copy_items` does for Ctrl+C and the Panel's bulk bar.
+            MainAction::Copy => return self.copy_items(&items),
             MainAction::Edit => {
                 if let Some(id) = items.first() {
                     self.open_item_editor(*id);
@@ -196,30 +197,25 @@ where
         }
     }
 
-    /// Brings `targets` back from the Trash. A board comes back only while the plan allows
-    /// another one.
+    /// Brings `targets` back from the Trash.
     pub(super) fn restore(&mut self, targets: &[Key]) {
-        let limit = self.board_limit();
         let done = self.store.atomically(|b| {
-            for key in targets {
-                b.restore_with(Trashable::from(*key), limit)?;
+            for entry in targets.iter().filter_map(|k| k.trashable()) {
+                b.restore_reporting(entry)?;
             }
             Ok(())
         });
-        match done {
-            Ok(()) => {
-                self.show_toast(Toast {
-                    kind: ToastKind::Success,
-                    message: ToastMessage::Restored {
-                        count: targets.len(),
-                    },
-                });
-                self.library_changed();
-            }
-            Err(error) => {
-                self.show_toast(restore_failed(&error));
-                self.refresh_logged("a failed restore");
-            }
+        if done.is_ok() {
+            self.show_toast(Toast {
+                kind: ToastKind::Success,
+                message: ToastMessage::Restored {
+                    count: targets.len(),
+                },
+            });
+            self.library_changed();
+        } else {
+            self.show_toast(failed());
+            self.refresh_logged("a failed restore");
         }
     }
 
@@ -227,8 +223,8 @@ where
         // Steps may name what goes for good.
         self.clear_history();
         let done = self.store.atomically(|b| {
-            for key in targets {
-                b.purge_entry(Trashable::from(*key))?;
+            for entry in targets.iter().filter_map(|k| k.trashable()) {
+                b.purge_entry(entry)?;
             }
             Ok(())
         });
@@ -241,12 +237,6 @@ where
             self.show_toast(failed());
             self.refresh_logged("a failed delete");
         }
-    }
-
-    /// The Free plan's live-board limit, for restoring a board; `None` on Supporter.
-    pub(in super::super) fn board_limit(&self) -> Option<usize> {
-        (!self.entitlements.allows(Feature::UnlimitedBoards))
-            .then_some(snipdeck_core::Entitlements::FREE_BOARD_LIMIT)
     }
 
     /// Ends an action: a failure is a toast; a success shows `confirmation` (if any) and then
@@ -412,7 +402,17 @@ where
             self.undo_step(Some(step));
         } else if let Some(id) = undo.adds {
             let now = self.clock.now();
-            let done = self.store.atomically(|b| b.trash(Trashable::Item(id), now));
+            let made = undo.list;
+            let done = self.store.atomically(|b| {
+                b.trash(Trashable::Item(id), now)?;
+                made.map_or(Ok(()), |list| b.trash(Trashable::List(list), now))
+            });
+            if let Some(list) = made {
+                let gone = list.to_string();
+                if self.settings.colour_save_list.as_deref() == Some(gone.as_str()) {
+                    self.update_settings(|s| s.colour_save_list = None);
+                }
+            }
             self.toast = None;
             if done.is_err() {
                 self.show_toast(failed());
