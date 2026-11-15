@@ -640,18 +640,6 @@ impl Hotkeys {
         }
     }
 
-    /// The chords to register with Windows. Paste next works with Supporter, so without it its
-    /// chord stays in the settings but is not registered: `Ctrl+Alt+V` is Paste Special in Word
-    /// and Excel and a Free user would only get an upsell.
-    #[must_use]
-    pub fn registrable(&self, supporter: bool) -> Self {
-        let mut chords = self.clone();
-        if !supporter {
-            chords.paste_next.clear();
-        }
-        chords
-    }
-
     /// The configured chord for `action`: `None` when it is off or not a valid chord.
     #[must_use]
     pub fn chord(&self, action: HotkeyAction) -> Option<Chord> {
@@ -756,7 +744,7 @@ pub struct Settings {
     pub autostart: bool,
     /// Closing the main window hides it to the tray instead of quitting.
     pub close_to_tray: bool,
-    /// Unlock the library with Windows Hello (Supporter; needs a master password; the password
+    /// Unlock the library with Windows Hello (needs a master password; the password
     /// stays the fallback). Off by default.
     pub hello_unlock: bool,
     /// The Panel has a taskbar button (and an Alt+Tab entry). Off by default: the tray icon and
@@ -2160,17 +2148,9 @@ mod tests {
     }
 
     #[test]
-    fn paste_next_is_registered_only_with_supporter() {
+    fn paste_next_has_a_default_chord() {
         let chords = Settings::new_install().hotkeys;
-        assert!(
-            chords.chord(HotkeyAction::PasteNext).is_some(),
-            "it stays in the settings"
-        );
-        let free = chords.registrable(false);
-        assert!(free.chord(HotkeyAction::PasteNext).is_none());
-        assert_eq!(free.toggle_panel, chords.toggle_panel);
-        assert_eq!(free.picker, chords.picker);
-        assert_eq!(chords.registrable(true), chords);
+        assert!(chords.chord(HotkeyAction::PasteNext).is_some());
     }
 
     #[test]

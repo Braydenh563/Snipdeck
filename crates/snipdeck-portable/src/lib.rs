@@ -27,8 +27,7 @@
 //!
 //! An [`Error`] means the input is unusable and the library is unchanged. A [`Warning`] in the
 //! [`ImportReport`] means the import went ahead but left something out or changed something:
-//! sensitive items that need a key, lossy text decoding, skipped files, the Free-tier board
-//! limit. The caller decides what to tell the user.
+//! sensitive items that need a key, lossy text decoding, skipped files. The caller decides what to tell the user.
 
 #![forbid(unsafe_code)]
 #![allow(

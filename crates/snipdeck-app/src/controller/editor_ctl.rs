@@ -15,7 +15,7 @@
 use std::{collections::BTreeSet, path::PathBuf, rc::Rc, sync::Arc};
 
 use snipdeck_core::{
-    Feature, Format, Formats, Item, ItemId, ItemKind, ListId, Tag, TagId, template::Locale,
+    Format, Formats, Item, ItemId, ItemKind, ListId, Tag, TagId, template::Locale,
 };
 use snipdeck_platform::file_dialog::FilePicker;
 use snipdeck_store::{
@@ -141,15 +141,6 @@ impl ItemEditorSlot {
         self.target == ItemTarget::New
     }
 
-    /// Whether the template text `content` is new or changed here, so a free user may not
-    /// introduce prompted placeholders in it (a template that already had them can still be
-    /// saved with another title). Save and Preview ask the same question.
-    fn template_introduced(&self, content: &str) -> bool {
-        self.is_new()
-            || self.original_kind != ItemKind::Template
-            || self.original_text.as_deref() != Some(content)
-    }
-
     /// The draft of `input` in this editor.
     fn draft_of(&self, input: &EditorInput) -> Draft {
         let list = self
@@ -264,7 +255,6 @@ where
             formatted: slot.formatted,
             saved_text: slot.original_text.clone().unwrap_or_default(),
             attachment: slot.attachment.clone(),
-            prompted_available: self.entitlements.allows(Feature::PromptedFields),
             can_browse: self.editor_env.picker.is_some(),
             restored: slot.restored,
             more_open: self.settings.editor_more_open,
@@ -280,13 +270,9 @@ where
         input: &EditorInput,
         words: PreviewWords<'_>,
     ) -> Option<CardPreview> {
-        let slot = self.item_editor.as_ref()?;
-        // The refusal Save would give a free user who has just added a prompted placeholder.
-        let prompted_allowed = self.entitlements.allows(Feature::PromptedFields)
-            || !slot.template_introduced(&input.content);
+        self.item_editor.as_ref()?;
         Some(item_preview::card_of(
             input,
-            prompted_allowed,
             self.clock.now(),
             &self.tz,
             Locale::for_tag(&self.settings.language),

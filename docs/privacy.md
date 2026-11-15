@@ -11,7 +11,7 @@ makes a network request; every icon and font it shows is packaged with it.
 | Large item content (images, files, long text) | `%LOCALAPPDATA%\Snipdeck\blobs\` | Content-addressed files, written atomically |
 | Recent inbox (only after you say Yes; off if you turn it off) | inside `snipdeck.db` | Up to 200 copies and 7 days of copied text, encrypted like Sensitive items (needs Windows key protection). Backups and exports leave it out |
 | Settings | `%LOCALAPPDATA%\Snipdeck\settings.json` | Plain JSON you can read and edit |
-| Licence key (if you entered one; the Store build has none) | `%LOCALAPPDATA%\Snipdeck\licence.key` | One line of text, checked offline at every start |
+| Nothing else | | Snipdeck has no licence key and no account. A `licence.key` file left by an older build is ignored; you can delete it |
 | Daily backups | `%LOCALAPPDATA%\Snipdeck\backups\` | Zipped `.snipdeck` exports. The newest 7 are kept; you can choose 1 to 60 |
 | Exports and list text files (only when you ask) | Your Documents folder | A `.snipdeck` library export, or a `.txt` file from **Export as text** (no sensitive items) |
 | Trash | inside `snipdeck.db` | 30 days, then purged |
@@ -31,7 +31,7 @@ Items marked sensitive are masked in the UI, excluded from Windows clipboard his
 clipboard, and encrypted at rest on every plan with a key protected by Windows DPAPI. Titles, tags and search
 text are not encrypted ([`crypto.md`](crypto.md)).
 
-**Master password (Supporter).** You can add a password on top of Windows' protection. Snipdeck asks for it
+**Master password.** You can add a password on top of Windows' protection. Snipdeck asks for it
 the first time you need a sensitive item, and again after 15 minutes without use. Snipdeck never stores the
 password. If you forget it, your sensitive items can never be opened again: there is no recovery key.
 While the library is locked, backups, exports and restores wait, so a copy never lacks your sensitive items.
@@ -76,7 +76,7 @@ them, and ignores keys other programs simulate. Turn both off and the hooks are 
 ## What Microsoft collects (Store build)
 
 Snipdeck itself sends nothing. When you get it from the Microsoft Store, the Store and Windows handle the
-download, install, updates and licence, and Windows may send crash and reliability reports. Microsoft shares
+download, install and updates, and Windows may send crash and reliability reports. Microsoft shares
 counts and crash summaries with the developer in Partner Center (installs, crashes, ratings), not your
 snippets or your clipboard. That data is covered by the
 [Microsoft Privacy Statement](https://privacy.microsoft.com/privacystatement) and your Windows diagnostic
@@ -89,5 +89,5 @@ settings (Settings ▸ Privacy & security ▸ Diagnostics & feedback).
 3. Delete `%LOCALAPPDATA%\Snipdeck`. That is all of it. (Store build: uninstall the app; Windows deletes its
    data.)
 
-Licence keys are verified offline ([`licensing.md`](licensing.md)). Vulnerabilities: see
+Snipdeck has no payment data. **Support Snipdeck** opens a donation page (buymeacoffee.com) in your browser only when you press it; that page, not Snipdeck, handles any payment, and nothing changes in the app either way. Vulnerabilities: see
 [`../SECURITY.md`](../SECURITY.md).

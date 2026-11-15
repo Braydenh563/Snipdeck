@@ -139,8 +139,7 @@ kept as the workflow artifact `windows-msix` for 30 days. It is **not** attached
 **By hand,** on a Windows PC with the Windows SDK (it provides `MakeAppx.exe` and `SignTool.exe` under
 `C:\Program Files (x86)\Windows Kits\10\bin\<version>\x64\`):
 
-1. Build the release exe: `cargo build --release -p snipdeck-app --locked` (needs `SNIPDECK_LICENCE_PUBLIC_KEY`,
-   see [`licensing.md`](licensing.md)).
+1. Build the release exe: `cargo build --release -p snipdeck-app --locked`.
 2. Stage a folder `dist\msix\` with `snipdeck.exe` (the renamed exe), `Assets\*.png`
    (`python3 scripts/make_msix_assets.py`) and the filled manifest:
    `python3 scripts/msix_manifest.py --identity-name ... --publisher "CN=..." --publisher-display-name ... --version 1.0.0 --out dist\msix\AppxManifest.xml`.
@@ -193,8 +192,9 @@ If you submit the Setup .exe instead of the MSIX (the MSI/EXE route), Microsoft 
 - the app must not crash without a network connection;
 - signing is strongly advised (section 2).
 
-Supporter pricing for the Store build is a product decision, not a packaging one. Do not add a
-second licence path for it here.
+Every build is free and identical in features (no licence key, no tiers). The optional Support Snipdeck
+link opens the donation page in the browser; `package::is_packaged()` only switches Start with Windows and
+Check for updates.
 
 ## 2. Code signing
 
@@ -242,8 +242,7 @@ Two manifests are needed because the publisher differs: the Store build uses the
 identity, the GitHub MSIX uses the signing certificate's subject. A sideloaded MSIX also needs the
 certificate chain to be trusted on the user's PC, which is why the zip stays the main download.
 
-Signing and the `SNIPDECK_LICENCE_PUBLIC_KEY` check are independent. Keep the existing "a release
-cannot embed the development key" guard in the build job.
+Signing is independent of the build job's other checks.
 
 ### Timestamping
 

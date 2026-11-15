@@ -2,8 +2,7 @@ use crate::{BoardId, Name, Timestamp};
 
 /// A top-level workspace such as "Work" or "Personal" (SPEC §4).
 ///
-/// Free users can create up to [`Entitlements::FREE_BOARD_LIMIT`](crate::Entitlements::FREE_BOARD_LIMIT)
-/// boards. Manual order is held by storage, not by this type.
+/// There is no limit on how many boards exist. Manual order is held by storage, not by this type.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Board {
     /// Identity.

@@ -32,7 +32,7 @@ If no release exists (HTTP 404) and the folder is a source checkout (`Cargo.toml
 `Snipdeck.bat build` is the source build with all its checks (Rust, MSVC target, Visual C++ tools, git, crates.io), the fast-start copy in `dist\` and the known-failure repairs. It prints "Developer build from source. Users do not need this: run Snipdeck.bat without arguments." There is no launcher command for `git pull`: pull yourself, then `Snipdeck.bat build`.
 
 - Logs: `%LOCALAPPDATA%\Snipdeck\logs` (newest 10). Backups: `Documents\Snipdeck-backups` (newest 10 per kind).
-- Debug build only (a release build needs the production licence key). Known cargo failures and their fixes are in `lib.ps1` (`Get-FailureTable`); sample logs and expected matches are in `tests/`.
+- Debug build only. Known cargo failures and their fixes are in `lib.ps1` (`Get-FailureTable`); sample logs and expected matches are in `tests/`.
 - Files: `lib.ps1` pure helpers, `cli.ps1` arguments, `core.ps1` console/logging/processes/checks, `release.ps1` download/verify/unpack/run/update, `build.ps1` stamp/build/cache/launch, `data.ps1` backup/restore/uninstall/doctor, `selftest.ps1` (`snipdeck.ps1 selftest`).
 - Tests without a network: `tests/release.json` (a saved GitHub "latest release" response) feeds the asset-name resolver check; the pin-file parser and the SHA-256 compare run on text and a temp file.
 

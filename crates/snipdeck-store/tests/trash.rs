@@ -441,60 +441,30 @@ fn purging_leaves_tags_alone() {
     assert_healthy(&s);
 }
 
-/// Review M1: a Free user with 5 boards trashes one, creates another (4 live, so allowed) and
-/// restores the first: that must not give 6 live boards.
+/// There is no board limit: restoring a board with five others live gives six.
 #[test]
-fn restore_cannot_revive_a_board_past_the_callers_limit() {
-    use snipdeck_core::{Entitlements, Feature, Tier};
-    let free = Entitlements::new(Tier::Free);
-    let limit = Some(Entitlements::FREE_BOARD_LIMIT);
+fn restore_can_revive_a_board_past_five_live_boards() {
     let mut s = store();
     let a = board(&mut s, "A");
     let a_list = list(&mut s, a.id, "inbox");
     let a_item = item(&mut s, a_list.id, "note", "note");
-    for name in ["B", "C", "D", "E"] {
+    for name in ["B", "C", "D", "E", "F"] {
         board(&mut s, name);
     }
     s.trash(Trashable::Board(a.id), at(1)).unwrap();
-    assert!(free.can_create_board(s.boards().unwrap().len()));
-    board(&mut s, "F");
-
-    for target in [
-        Trashable::Board(a.id),
-        Trashable::List(a_list.id),
-        Trashable::Item(a_item.id),
-    ] {
-        let err = s.restore_with(target, limit).unwrap_err();
-        assert!(
-            matches!(
-                err,
-                Error::Core(snipdeck_core::Error::ProRequired(Feature::UnlimitedBoards))
-            ),
-            "{target:?}: {err:?}"
-        );
-        assert_eq!(
-            board_names(&s),
-            ["B", "C", "D", "E", "F"],
-            "{target:?}: nothing revived"
-        );
-    }
-    assert_eq!(s.trashed().unwrap().len(), 1);
-
-    // Under the limit it works, and says what came back.
-    s.trash(Trashable::Board(s.boards().unwrap()[0].id), at(2))
-        .unwrap();
-    let revived = s.restore_with(Trashable::Item(a_item.id), limit).unwrap();
+    assert_eq!(board_names(&s), ["B", "C", "D", "E", "F"]);
+    let revived = s.restore_reporting(Trashable::Item(a_item.id)).unwrap();
     assert_eq!(revived, [Trashable::Board(a.id)]);
-    assert_eq!(board_names(&s), ["A", "C", "D", "E", "F"]);
+    assert_eq!(board_names(&s), ["A", "B", "C", "D", "E", "F"]);
 }
 
 #[test]
-fn restore_with_reports_every_record_it_brought_back() {
+fn restore_reporting_reports_every_record_it_brought_back() {
     let (mut s, b, l, it) = tree();
     s.trash(Trashable::Item(it[0].id), at(1)).unwrap();
     s.trash(Trashable::List(l.id), at(2)).unwrap();
     s.trash(Trashable::Board(b.id), at(3)).unwrap();
-    let revived = s.restore_with(Trashable::Item(it[0].id), None).unwrap();
+    let revived = s.restore_reporting(Trashable::Item(it[0].id)).unwrap();
     assert_eq!(
         revived,
         [
@@ -505,7 +475,7 @@ fn restore_with_reports_every_record_it_brought_back() {
     );
     // Restoring something live revives nothing.
     assert!(
-        s.restore_with(Trashable::Item(it[1].id), Some(0))
+        s.restore_reporting(Trashable::Item(it[1].id))
             .unwrap()
             .is_empty()
     );

@@ -38,7 +38,7 @@ pub enum AppMenuEntry {
     /// Redo the step taken back (Ctrl+Y); disabled while there is none.
     Redo,
     /// Start the paste stack of the marked items, or end it while it runs (checked while it
-    /// runs; disabled while nothing is marked). A Supporter feature, as everywhere.
+    /// runs; disabled while nothing is marked).
     PasteStack,
     /// Open the Main window.
     Open,

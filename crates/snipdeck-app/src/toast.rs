@@ -1,7 +1,7 @@
 //! What the toast says after a use. Variants carry the data; the UI layer owns the wording
 //! (`@tr`), so translations never live in Rust.
 
-use snipdeck_core::{Feature, UseOutcome};
+use snipdeck_core::UseOutcome;
 use snipdeck_platform::route::{CopyReason, Route};
 
 use crate::{
@@ -20,23 +20,6 @@ pub enum ToastKind {
     Success,
     /// It failed (shown with a warning icon).
     Danger,
-}
-
-/// Why a licence key was not accepted: one reason per toast, so the user knows what to fix.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LicenceProblem {
-    /// Nothing was pasted.
-    Empty,
-    /// The text is not shaped like a Snipdeck key (wrong prefix or parts).
-    NotAKey,
-    /// The key is well formed but was not signed by Snipdeck (mistyped, cut short or forged).
-    BadSignature,
-    /// The key comes from a newer Snipdeck.
-    NewerFormat,
-    /// The key is genuine but not for Supporter.
-    WrongTier,
-    /// The key is good but could not be saved next to the library.
-    NotSaved,
 }
 
 /// The message, before translation.
@@ -73,8 +56,6 @@ pub enum ToastMessage {
     CopiedTargetGone,
     /// "Couldn't reach the clipboard. Another app may be using it."
     ClipboardBusy,
-    /// "This item uses a Supporter feature."
-    NeedsPro(Feature),
     /// "This template can't be read. Open it to fix it."
     TemplateBroken,
     /// "Unlock your library to use this item."
@@ -238,17 +219,11 @@ pub enum ToastMessage {
     },
     /// "The Trash is empty".
     TrashEmptied,
-    /// "The Free plan includes 5 boards. Supporter adds unlimited boards."
-    BoardLimit,
     /// "Snipdeck found a problem in your library. Export a copy to be safe." (the weekly check)
     LibraryProblem,
     /// "Snipdeck closed unexpectedly last time. Open the log?" The action opens the log folder
     /// (`crash::open_log_folder`).
     CrashedLastTime,
-    /// "Snipdeck Supporter is on. Thank you."
-    LicenceAccepted,
-    /// A licence key that was refused, and why.
-    LicenceRejected(LicenceProblem),
     /// "Backed up".
     BackupMade,
     /// "Couldn't make a backup: the disk is full. ..." (a backup the user asked for)
@@ -305,8 +280,8 @@ pub enum ToastMessage {
     EraseFailed,
     /// "Couldn't open the folder."
     FolderNotOpened,
-    /// "Couldn't open your email app." (Get Supporter)
-    MailNotOpened,
+    /// "Couldn't open the link." (a web page that did not open)
+    LinkNotOpened,
     /// "Couldn't change the Windows start-up entry."
     AutostartFailed,
     /// "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
@@ -453,9 +428,6 @@ pub fn after_error(error: &UseError) -> Toast {
     use snipdeck_store::Error as Store;
     let message = match error {
         UseError::Platform(_) => ToastMessage::ClipboardBusy,
-        UseError::Render(snipdeck_core::template::RenderError::ProRequired(feature)) => {
-            ToastMessage::NeedsPro(*feature)
-        }
         UseError::Template(_) | UseError::NotText | UseError::Render(_) => {
             ToastMessage::TemplateBroken
         }

@@ -17,7 +17,6 @@ use std::{
 
 use jiff::civil::Date;
 use slint::{ComponentHandle, Global, Model, SharedString};
-use snipdeck_core::Tier;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_portable::backup;
 use snipdeck_store::{ItemRepo, Store};
@@ -48,6 +47,10 @@ pub const RELEASES_URL: &str = "https://github.com/Braydenh563/Snipdeck/releases
 fn updates_url() -> &'static str {
     snipdeck_platform::startup_task::updates_url(crate::platform::is_packaged(), RELEASES_URL)
 }
+
+/// The optional "Support Snipdeck" page (Buy Me a Coffee), opened in the browser. Giving is
+/// voluntary: nothing in the app changes with it and the app handles no payment data.
+pub const SUPPORT_URL: &str = "https://buymeacoffee.com/braydenh563";
 
 /// The user guide, opened in the browser by [`HelpTopic::Guide`].
 pub const GUIDE_URL: &str = "https://github.com/Braydenh563/Snipdeck/blob/main/docs/user-guide.md";
@@ -86,11 +89,6 @@ pub trait HelpHost {
 
     /// The third-party notices file, if the package has one.
     fn notices_file(&self) -> Option<PathBuf>;
-
-    /// Whether this is the free-only Store package, where the plan is not named.
-    fn free_only(&self) -> bool {
-        false
-    }
 }
 
 /// [`HelpHost`] on the real system.
@@ -113,10 +111,6 @@ pub(crate) fn launch(target: &OsStr) -> Result<(), String> {
 }
 
 impl HelpHost for SystemHelpHost {
-    fn free_only(&self) -> bool {
-        crate::platform::is_packaged()
-    }
-
     fn open_folder(&self, folder: &Path) -> Result<(), String> {
         launch(folder.as_os_str())
     }
@@ -331,7 +325,7 @@ where
 
     /// Draws the Tips tab: one card per [`tips::TIPS`] entry, with the words of the language
     /// selected for the UI now.
-    fn sync_tips(&self, window: &ui::HelpWindow, pro: bool) {
+    fn sync_tips(&self, window: &ui::HelpWindow) {
         let words = ui::TipTexts::get(window);
         let (titles, firsts, seconds, images) = (
             words.get_titles(),
@@ -339,9 +333,7 @@ where
             words.get_second_lines(),
             words.get_images(),
         );
-        let mut shown: Vec<String> = titles.iter().map(|t| t.to_string()).collect();
-        // The marks follow the plan: a new plan redraws the cards.
-        shown.push(pro.to_string());
+        let shown: Vec<String> = titles.iter().map(|t| t.to_string()).collect();
         if *self.tips_shown.borrow() == shown {
             return;
         }
@@ -350,7 +342,6 @@ where
             first_line: firsts.row_data(i).unwrap_or_default(),
             second_line: seconds.row_data(i).unwrap_or_default(),
             picture: images.row_data(i).unwrap_or_default(),
-            locked: !pro && tips::TIPS[i].feature.is_some(),
         });
         window.set_tips(model(cards));
         *self.tips_shown.borrow_mut() = shown;
@@ -374,17 +365,16 @@ where
         if !window.window().is_visible() {
             return;
         }
-        let (look, accent, tier, toast): (_, _, _, Option<ToastView>) = {
+        let (look, accent, toast): (_, _, Option<ToastView>) = {
             let controller = self.controller.borrow();
             self.sync_shortcuts(&window, &controller.settings().hotkeys);
             (
                 controller.settings_look(),
                 controller.accent(),
-                controller.tier(),
                 controller.settings_toast(),
             )
         };
-        self.sync_tips(&window, matches!(tier, Tier::Pro));
+        self.sync_tips(&window);
         window.set_dark(look.dark);
         set_look(
             &window,
@@ -395,8 +385,6 @@ where
         window.set_has_data_folder(self.data_dir.is_some());
         window.set_version(env!("CARGO_PKG_VERSION").into());
         window.set_build_date(build_date().into());
-        window.set_supporter(matches!(tier, Tier::Pro));
-        window.set_free_only(self.host.free_only());
         window.set_source_url(REPO_URL.into());
         window.set_show_store_link(STORE_URL.is_some());
         window.set_has_notices(self.host.notices_file().is_some());
@@ -546,14 +534,6 @@ where
             let controller = self.controller.borrow();
             ReportInfo {
                 version: env!("CARGO_PKG_VERSION").to_owned(),
-                tier: if self.host.free_only() {
-                    "Store (free)"
-                } else if matches!(controller.tier(), Tier::Pro) {
-                    "Supporter"
-                } else {
-                    "Free"
-                }
-                .to_owned(),
                 os: self.host.os_summary(),
                 dpi: format!("{:.0}%", window.window().scale_factor() * 100.0),
                 flags: report_flags(controller.settings()),
@@ -570,7 +550,10 @@ where
     }
 
     fn open_url(&self, url: &str) {
-        self.opened(self.host.open_url(url), "a link");
+        if let Err(error) = self.host.open_url(url) {
+            crate::trace!("help: cannot open a link: {error}");
+            self.danger_toast(ToastMessage::LinkNotOpened);
+        }
     }
 }
 
@@ -663,6 +646,7 @@ where
         wire!(on_tour_requested, |_core| {
             crate::onboarding_binding::request_open();
         });
+        wire!(on_support_requested, |core| core.open_url(SUPPORT_URL));
         wire!(on_source_requested, |core| core.open_url(REPO_URL));
         wire!(on_releases_requested, |core| core.open_url(updates_url()));
         wire!(on_store_requested, |core| {

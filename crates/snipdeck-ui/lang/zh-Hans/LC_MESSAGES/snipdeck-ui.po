@@ -40,9 +40,6 @@ msgstr "PNG 图片。Snipdeck 会保存自己的副本。"
 msgid "A Panel that a shortcut or the tray showed hides after a paste or copy. A pinned Panel stays, and a docked one tucks back into its tab after a paste."
 msgstr "通过快捷键或托盘显示的面板会在粘贴或复制后隐藏。已置顶的面板会保持显示，已停靠的面板会在粘贴后收回成标签。"
 
-msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. With a Supporter plan on Windows, you can then also unlock with Windows Hello."
-msgstr "Supporter 功能。在 Windows 自身保护之上，为你的敏感片段添加密码。首次使用敏感片段时要求输入，此后若 {} 分钟未使用，再次使用时也会要求输入。在 Windows 上使用 Supporter 套餐时，你还可以用 Windows Hello 解锁。"
-
 msgid "A docked Panel opens at its edge. Set Dock to Floating to choose where it opens."
 msgstr "已停靠的面板会在其边缘打开。将“停靠到”设为“浮动”，即可选择它的打开位置。"
 
@@ -57,9 +54,6 @@ msgstr "已开启主密码，敏感片段已锁定。"
 
 msgid "A master password is on. Snipdeck asks for it when you first use a sensitive item and again after {} minutes without use."
 msgstr "已开启主密码。首次使用敏感片段时，Snipdeck 会要求输入，此后若 {} 分钟未使用，再次使用时也会要求输入。"
-
-msgid "A master password is part of Supporter."
-msgstr "主密码是 Supporter 的功能之一。"
 
 msgid "A master password locks the whole deck."
 msgstr "主密码可以锁定整个卡组。"
@@ -127,9 +121,6 @@ msgstr "强调色"
 msgid "Actions"
 msgstr "操作"
 
-msgid "Activate"
-msgstr "激活"
-
 msgid "Activities"
 msgstr "活动"
 
@@ -166,8 +157,8 @@ msgstr "已添加到 {}"
 msgid "Added to {}. Some were skipped: folders, and files that are empty, too large or unreadable."
 msgstr "已添加到 {}。部分内容已跳过：文件夹，以及为空、太大或无法读取的文件。"
 
-msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. With a Supporter plan on Windows, you can then also unlock with Windows Hello."
-msgstr "在 Windows 自身保护之上，为你的敏感片段添加密码。首次使用敏感片段时要求输入，此后若 {} 分钟未使用，再次使用时也会要求输入。在 Windows 上使用 Supporter 套餐时，你还可以用 Windows Hello 解锁。"
+msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. On Windows, you can then also unlock with Windows Hello."
+msgstr "在 Windows 自带保护之外，为你的敏感项目再加一道密码。首次使用敏感项目时会要求输入，闲置 {} 分钟后会再次要求。在 Windows 上，之后也可以用 Windows Hello 解锁。"
 
 msgid "Adds a text snippet to {}"
 msgstr "向 {} 添加文本片段"
@@ -254,9 +245,6 @@ msgstr "输入时出现"
 msgid "Apply the new name"
 msgstr "应用新名称"
 
-msgid "As many as you like, of every kind."
-msgstr "每种类型均可添加任意数量。"
-
 msgid "Asks for a date, today if left empty"
 msgstr "询问日期，留空则为今天"
 
@@ -301,9 +289,6 @@ msgstr "备份与你的数据"
 
 msgid "Backups to keep"
 msgstr "保留的备份数"
-
-msgid "Backups, export, light and dark, 7 languages"
-msgstr "备份、导出、浅色和深色主题、7 种语言"
 
 msgid "Beeftext export"
 msgstr "Beeftext 导出文件"
@@ -719,14 +704,14 @@ msgstr "无法打开加密密钥。未保存任何内容。"
 msgid "Couldn't open the folder."
 msgstr "无法打开文件夹。"
 
+msgid "Couldn't open the link."
+msgstr "无法打开该链接。"
+
 msgid "Couldn't open the log folder."
 msgstr "无法打开日志文件夹。"
 
 msgid "Couldn't open this item."
 msgstr "无法打开此片段。"
-
-msgid "Couldn't open your email app."
-msgstr "无法打开你的邮件应用。"
 
 msgid "Couldn't pick a colour from the screen."
 msgstr "无法从屏幕上取色。"
@@ -814,9 +799,6 @@ msgstr "当前密码"
 
 msgid "Cut"
 msgstr "剪切"
-
-msgid "Daily backups, a plain zip export, and your choice of theme."
-msgstr "每日备份、普通 zip 导出，以及你选择的主题。"
 
 msgid "Dark"
 msgstr "深色"
@@ -929,9 +911,6 @@ msgstr "Ditto 数据库"
 msgid "Dock to"
 msgstr "停靠到"
 
-msgid "Dock to a screen edge"
-msgstr "停靠到屏幕边缘"
-
 msgid "Dock to the bottom edge"
 msgstr "停靠到下边缘"
 
@@ -1007,9 +986,6 @@ msgstr "编辑器"
 msgid "Edit…"
 msgstr "编辑…"
 
-msgid "Email me"
-msgstr "给我发邮件"
-
 msgid "Emoji"
 msgstr "表情符号"
 
@@ -1027,9 +1003,6 @@ msgstr "清空回收站…"
 
 msgid "Empty the Trash?"
 msgstr "要清空回收站吗？"
-
-msgid "Encryption on disk"
-msgstr "磁盘加密"
 
 msgid "End stack"
 msgstr "结束堆栈"
@@ -1067,9 +1040,6 @@ msgstr "Espanso（文件夹）"
 msgid "Espanso (single .yml file)"
 msgstr "Espanso（单个 .yml 文件）"
 
-msgid "Every Supporter feature is on. Thank you."
-msgstr "所有支持者功能均已开启。谢谢。"
-
 msgid "Every command, one search away"
 msgstr "每个命令，一搜即得"
 
@@ -1079,8 +1049,8 @@ msgstr "一切正常。"
 msgid "Everything in the Trash is deleted for good. This can't be undone."
 msgstr "回收站中的所有内容都将被永久删除，此操作无法撤销。"
 
-msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
-msgstr "资料库中的所有内容都会被删除：看板、列表、片段、图片、草稿和备份。如果需要副本，请先导出。你的设置和许可证会保留。"
+msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings stay."
+msgstr "资料库中的所有内容都会被删除：看板、列表、项目、图片、草稿和备份。如需副本，请先导出。你的设置会保留。"
 
 msgid "Expand abbreviations as I type"
 msgstr "输入时展开缩写"
@@ -1094,14 +1064,8 @@ msgstr "导出为文本"
 msgid "Export library"
 msgstr "导出资料库"
 
-msgid "Feature"
-msgstr "功能"
-
 msgid "Fields"
 msgstr "字段"
-
-msgid "Fields that ask for a value are a Supporter feature. Remove them to save."
-msgstr "要求输入值的字段属于 Supporter 功能。请将其移除后再保存。"
 
 msgid "File"
 msgstr "文件"
@@ -1124,9 +1088,6 @@ msgstr "按颜色标签筛选"
 msgid "Find anything by typing"
 msgstr "输入即可找到任何内容"
 
-msgid "Fixed placeholders filled in when you paste."
-msgstr "粘贴时会填入固定占位符。"
-
 msgid "Flags"
 msgstr "旗帜"
 
@@ -1138,9 +1099,6 @@ msgstr "折叠分组"
 
 msgid "Fold or unfold a group"
 msgstr "折叠或展开分组"
-
-msgid "Fold the Panel into a thin strip."
-msgstr "将面板折叠为细条。"
 
 msgid "Folder of .txt and .md files"
 msgstr "包含 .txt 和 .md 文件的文件夹"
@@ -1171,24 +1129,6 @@ msgstr "格式"
 
 msgid "Formatted"
 msgstr "带格式"
-
-msgid "Free"
-msgstr "免费"
-
-msgid "Free and Supporter compared"
-msgstr "免费版与 Supporter 对比"
-
-msgid "Free is fully usable. Supporter pays for convenience and supports the app."
-msgstr "免费版功能完整可用。Supporter 提供便利功能，并支持本应用。"
-
-msgid "Free plan"
-msgstr "免费版"
-
-msgid "Get Supporter"
-msgstr "获取 Supporter"
-
-msgid "Get Supporter…"
-msgstr "获取 Supporter…"
 
 msgid "Get started"
 msgstr "开始使用"
@@ -1270,9 +1210,6 @@ msgstr "帮助分区"
 
 msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard a little after you copy it (the time is in Settings)."
 msgstr "在列表中隐藏，直到按住空格键才显示；不记入剪贴板历史；复制后会在一段时间后从剪贴板清除（时间在设置中设定）。"
-
-msgid "Hidden on screen and kept out of clipboard history."
-msgstr "在屏幕上隐藏，并且不记入剪贴板历史。"
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "已隐藏。按住空格键即可显示。"
@@ -1376,9 +1313,6 @@ msgstr "导入…"
 
 msgid "Include"
 msgstr "包含"
-
-msgid "Included"
-msgstr "已包含"
 
 msgid "Insert"
 msgstr "粘贴"
@@ -1499,12 +1433,6 @@ msgstr "延长离开延迟"
 msgid "Library unlocked."
 msgstr "资料库已解锁。"
 
-msgid "Licence"
-msgstr "许可证"
-
-msgid "Licence key"
-msgstr "许可证密钥"
-
 msgid "Light"
 msgstr "浅色"
 
@@ -1535,17 +1463,11 @@ msgstr "列表已保存"
 msgid "Lists"
 msgstr "列表"
 
-msgid "Lists and items"
-msgstr "列表和片段"
-
 msgid "Lists hold your snippets."
 msgstr "列表用来存放你的片段。"
 
 msgid "Loading"
 msgstr "正在加载"
-
-msgid "Lock your encrypted items behind a password you choose."
-msgstr "用你设定的密码锁定加密片段。"
 
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "日志只在 Snipdeck 崩溃时写入，不含片段内容，也不会发送到任何地方。"
@@ -1840,9 +1762,6 @@ msgstr "无目标：点击为复制"
 msgid "Not a colour. Try {}"
 msgstr "不是颜色。试试 {}"
 
-msgid "Not included"
-msgstr "未包含"
-
 msgid "Not set"
 msgstr "未设置"
 
@@ -1924,9 +1843,6 @@ msgstr "在此颜色上（在白色上）"
 msgid "On white"
 msgstr "在白色上"
 
-msgid "One hotkey turns copied text into an item."
-msgstr "一个快捷键即可将复制的文本变为片段。"
-
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "只有文本、代码、链接和模板类型的片段可以设为敏感。"
 
@@ -1975,6 +1891,9 @@ msgstr "随处打开面板"
 msgid "Open the Picker at your cursor"
 msgstr "在光标处打开选择器"
 
+msgid "Open the Support Snipdeck page in your browser"
+msgstr "在浏览器中打开“支持 Snipdeck”页面"
+
 msgid "Open the item's menu"
 msgstr "打开项目菜单"
 
@@ -2005,6 +1924,9 @@ msgstr "打开"
 msgid "Opens in your browser."
 msgstr "在浏览器中打开。"
 
+msgid "Optional. Snipdeck is free and stays free. This opens a donation page in your browser and unlocks nothing."
+msgstr "自愿。Snipdeck 免费，并将一直免费。这会在浏览器中打开捐赠页面，不会解锁任何功能。"
+
 msgid "Optional: the first line of the text is used"
 msgstr "可选：使用文本的第一行"
 
@@ -2025,9 +1947,6 @@ msgstr "PNG，{} × {}，{}"
 
 msgid "Panel"
 msgstr "面板"
-
-msgid "Panel and Picker"
-msgstr "面板和选择器"
 
 msgid "Panel closes when you click away"
 msgstr "点击别处时面板会关闭"
@@ -2065,9 +1984,6 @@ msgstr "面板宽度"
 msgid "Paste"
 msgstr "粘贴"
 
-msgid "Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere."
-msgstr "粘贴许可证密钥即可开启支持者功能。密钥只在这台电脑上验证，不会发送到任何地方。"
-
 msgid "Paste as plain text"
 msgstr ""
 
@@ -2076,12 +1992,6 @@ msgstr "粘贴为…"
 
 msgid "Paste key for {}"
 msgstr "{} 的粘贴键"
-
-msgid "Paste next and the paste stack are Supporter features."
-msgstr "“粘贴下一个”和粘贴队列是 Supporter 功能。"
-
-msgid "Paste next is a Supporter feature, so this shortcut does nothing on the Free plan."
-msgstr "“粘贴下一个”是 Supporter 功能，因此在免费版中此快捷键不起作用。"
 
 msgid "Paste next item"
 msgstr "粘贴下一个项目"
@@ -2125,12 +2035,6 @@ msgstr "粘贴堆栈中的下一项"
 msgid "Paste the result"
 msgstr "粘贴结果"
 
-msgid "Paste with a click, or search at your caret."
-msgstr "单击即可粘贴，或在光标处搜索。"
-
-msgid "Paste your licence key first."
-msgstr "请先粘贴你的许可证密钥。"
-
 msgid "Pasted"
 msgstr "已粘贴"
 
@@ -2172,12 +2076,6 @@ msgstr "暂停热键"
 
 msgid "Paused"
 msgstr "已暂停"
-
-msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included."
-msgstr "可自定价格，最低 A$5，建议 A$8。一次性付费，包括所有 1.x 更新。"
-
-msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included. Free stays fully usable; Supporter pays for convenience and supports the app. Can't afford it? Email me and I'll send a key, no questions."
-msgstr "可自定价格，最低 A$5，建议 A$8。一次性付费，包括所有 1.x 更新。免费版功能完整可用；Supporter 提供便利功能，并支持本应用。买不起？给我发邮件，我会发给你一个密钥，不问缘由。"
 
 msgid "People & Body"
 msgstr "人物与身体"
@@ -2284,17 +2182,11 @@ msgstr "不纳入“最近”的程序"
 msgid "Programs"
 msgstr "程序"
 
-msgid "Prompt for a value or a choice each time you paste."
-msgstr "每次粘贴时询问值或选项。"
-
 msgid "Pull away from the edge to float."
 msgstr "拖离边缘可变为浮动。"
 
 msgid "Puts the panel at one edge of the screen, on the monitor it is on. Dragging it to an edge and holding it there does the same. Floating lets it sit anywhere."
 msgstr "把面板放到它所在显示器的屏幕一侧边缘。把它拖到边缘并停住也一样。浮动则可放在任意位置。"
-
-msgid "Queue several items, then paste them one per hotkey press."
-msgstr "排队多个片段，然后每按一次快捷键粘贴一个。"
 
 msgid "Quick capture"
 msgstr "快速捕获"
@@ -2475,9 +2367,6 @@ msgstr "右键单击或按菜单键查看列表操作"
 msgid "Rose"
 msgstr "玫瑰色"
 
-msgid "SNIP1."
-msgstr "SNIP1."
-
 msgid "Sad"
 msgstr "难过"
 
@@ -2500,9 +2389,6 @@ msgid "Save as SVG…"
 msgstr "另存为 SVG…"
 
 msgid "Save from clipboard"
-msgstr "从剪贴板保存"
-
-msgid "Save from the clipboard"
 msgstr "从剪贴板保存"
 
 msgid "Save the clipboard as an item"
@@ -2661,17 +2547,8 @@ msgstr "敏感"
 msgid "Sensitive item"
 msgstr "敏感片段"
 
-msgid "Sensitive items are encrypted on disk, on every plan."
-msgstr "无论哪种方案，敏感片段都会加密存储在磁盘上。"
-
 msgid "Sensitive items can't be typed in, so they have no trigger."
 msgstr "敏感项目无法通过键入插入，因此没有触发词。"
-
-msgid "Sensitive items, masked"
-msgstr "敏感片段，已隐藏"
-
-msgid "Separate workspaces, such as Work and Personal."
-msgstr "独立的工作区，例如“工作”和“个人”。"
 
 msgid "Set master password"
 msgstr "设置主密码"
@@ -2777,12 +2654,6 @@ msgstr "Snipdeck"
 
 msgid "Snipdeck (hotkeys paused)"
 msgstr "Snipdeck（热键已暂停）"
-
-msgid "Snipdeck Supporter"
-msgstr "Snipdeck 支持者"
-
-msgid "Snipdeck Supporter is on. Thank you."
-msgstr "Snipdeck Supporter 已开启。谢谢。"
 
 msgid "Snipdeck can't keep a file with that name. Rename the file and try again."
 msgstr "Snipdeck 无法保存该名称的文件。请重命名文件后重试。"
@@ -2925,8 +2796,11 @@ msgstr "强度：弱"
 msgid "Suggest snippets as I type"
 msgstr "输入时推荐片段"
 
-msgid "Supporter"
-msgstr "Supporter"
+msgid "Support"
+msgstr "支持"
+
+msgid "Support Snipdeck"
+msgstr "支持 Snipdeck"
 
 msgid "Surprise"
 msgstr "惊讶"
@@ -2988,12 +2862,6 @@ msgstr "模板文本"
 msgid "Templates ask for names, dates and options before they paste."
 msgstr "模板会在粘贴前询问姓名、日期和选项。"
 
-msgid "Templates that ask"
-msgstr "每次都会询问的模板"
-
-msgid "Templates with date, time and cursor"
-msgstr "包含日期、时间和光标位置的模板"
-
 msgid "Ten short tips"
 msgstr "十条简短提示"
 
@@ -3036,9 +2904,6 @@ msgstr "该文件来自较新版本的 Snipdeck。请更新 Snipdeck 后再导�
 msgid "That file is over {} MB, the most an item can hold."
 msgstr "该文件超过 {} MB，即单个片段可容纳的上限。"
 
-msgid "That is not a Snipdeck licence key. A key starts with SNIP1."
-msgstr "这不是 Snipdeck 许可证密钥。密钥以 SNIP1 开头。"
-
 msgid "That is too many files to add at once."
 msgstr "一次添加的文件太多。"
 
@@ -3063,15 +2928,6 @@ msgstr "这不是 TextExpander 的 CSV 导出文件。"
 msgid "That isn't an Espanso configuration."
 msgstr "这不是 Espanso 配置。"
 
-msgid "That key is not for Snipdeck Supporter."
-msgstr "该密钥不适用于 Snipdeck Supporter。"
-
-msgid "That key needs a newer Snipdeck. Update and try again."
-msgstr "该密钥需要更新版本的 Snipdeck。请更新后重试。"
-
-msgid "That licence key is not valid. Check that you copied all of it."
-msgstr "许可证密钥无效。请检查是否完整复制。"
-
 msgid "That list was deleted. Choose another list."
 msgstr "该列表已被删除。请选择其他列表。"
 
@@ -3087,12 +2943,6 @@ msgstr "该文本太大，无法保存。"
 msgid "That was the last one. Paste next starts again from the first."
 msgstr "这是最后一项。再次粘贴将从第一项重新开始。"
 
-msgid "The Free plan includes 5 boards. Supporter adds unlimited boards."
-msgstr "免费版包含 5 个看板。Supporter 可添加无限个看板。"
-
-msgid "The Free plan includes {} boards. This would go over that, so it needs Supporter."
-msgstr "免费版包含 {} 个看板。此操作将超出上限，需要 Supporter。"
-
 msgid "The Trash is empty"
 msgstr "回收站为空"
 
@@ -3107,9 +2957,6 @@ msgstr "导入已提前停止，因为源内容比 Snipdeck 一次能读取的�
 
 msgid "The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program's file name, for example notepad.exe."
 msgstr "Snipdeck 向每个程序粘贴时按下的键。大多数程序使用 Ctrl+V；有些终端需要其他键。选择“从不粘贴”则改为复制。请使用程序的文件名，例如 notepad.exe。"
-
-msgid "The key is valid but couldn't be saved, so Supporter will be off next time."
-msgstr "密钥有效，但无法保存，因此下次 Supporter 将关闭。"
 
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
 msgstr "该密钥用于打开你之前保存的导出文件中的加密项目。如果忘记它，这些项目将永远无法再打开。"
@@ -3206,9 +3053,6 @@ msgstr "此文件由更新版本的 Snipdeck 创建（格式 {}），因此本�
 
 msgid "This is your only board. Add another before deleting it."
 msgstr "这是你唯一的看板。请先添加另一个再删除它。"
-
-msgid "This item uses a Supporter feature."
-msgstr "此片段使用了 Supporter 功能。"
 
 msgid "This item was deleted, so nothing was saved."
 msgstr "此片段已被删除，因此未保存任何内容。"
@@ -3573,14 +3417,11 @@ msgstr "YYYY-MM-DD，留空表示今天"
 msgid "Yes"
 msgstr "是"
 
-msgid "You would have {} boards, and the Free plan includes {}."
-msgstr "你将拥有 {} 个看板，而免费版仅包含 {} 个。"
-
 msgid "Your Windows Hello PIN, face or fingerprint changed. Unlock with your password once to set Windows Hello up again."
 msgstr "你的 Windows Hello PIN、面部或指纹已更改。请先用密码解锁一次，以重新设置 Windows Hello。"
 
-msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
-msgstr "你的资料库位于同一个文件夹 %LOCALAPPDATA%\\Snipdeck 中：snipdeck.db（看板、列表、片段、标签和回收站）、blobs（图片、文件和长文本）、settings.json、你的许可证密钥、备份（按你选择保留的份数）和日志。"
+msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, backups (as many as you choose to keep) and logs."
+msgstr "你的资料库位于一个文件夹 %LOCALAPPDATA%\\Snipdeck 中：snipdeck.db（看板、列表、项目、标签和回收站）、blobs（图片、文件和长文本）、settings.json、backups（保留你选定的份数）和 logs。"
 
 msgid "Your library locked after a while. The form for the sensitive template you were filling in was closed."
 msgstr ""
@@ -3600,8 +3441,8 @@ msgstr "旧数据库已保留在文件夹 {} 中。"
 msgid "Your organisation's policy keeps Snipdeck from starting with Windows."
 msgstr "你所在组织的策略不允许 Snipdeck 随 Windows 启动。"
 
-msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
-msgstr "你的敏感片段仅由 Windows 保护，与免费版相同。"
+msgid "Your sensitive items will be protected by Windows alone."
+msgstr "你的敏感项目将仅由 Windows 保护。"
 
 msgid "Your shortcuts"
 msgstr "你的快捷键"
@@ -3727,6 +3568,12 @@ msgstr "诊断 检查 问题 修复"
 msgid "dissolve split remove group keep items section"
 msgstr "解散 拆分 移除 分组 保留 项目 区段"
 
+msgid "donate donation coffee tip"
+msgstr "捐赠 赞助 咖啡 打赏"
+
+msgid "donate donation coffee tip optional"
+msgstr "捐赠 赞助 咖啡 打赏 自愿"
+
 msgid "drop"
 msgstr "拖放"
 
@@ -3790,9 +3637,6 @@ msgstr "https://example.com"
 
 msgid "label: {}"
 msgstr "标签：{}"
-
-msgid "license supporter upgrade key"
-msgstr "许可证 支持者 升级 密钥"
 
 msgid "lowercase"
 msgstr "小写"
@@ -3923,14 +3767,8 @@ msgstr ""
 msgid "unknown placeholder {}, did you mean {}?"
 msgstr ""
 
-msgid "unlimited"
-msgstr "无限"
-
-msgid "up to {}"
-msgstr "最多 {} 个"
-
-msgid "version licence update"
-msgstr "版本 许可证 更新"
+msgid "version update"
+msgstr "版本 更新"
 
 msgid "view mode layout cards rows height spacing switch"
 msgstr "视图 模式 布局 卡片 行 高度 间距 切换"

@@ -143,9 +143,6 @@ where
                     let value = chord_text(&settings.hotkeys, action);
                     let conflict = conflicts.get(i).cloned().unwrap_or_default();
                     let health = controller.hotkey_health(action);
-                    // Paste next is a Supporter feature: on Free it is never registered.
-                    let unregistered = action == HotkeyAction::PasteNext
-                        && controller.tier() != snipdeck_core::Tier::Pro;
                     let alternatives = if !value.is_empty()
                         && (!conflict.is_empty() || matches!(health, HotkeyHealth::Failed(_)))
                     {
@@ -157,14 +154,10 @@ where
                         keys: key_chips(value),
                         value: value.to_owned(),
                         conflict,
-                        state: if unregistered {
-                            0
-                        } else {
-                            crate::settings_binding::health_state(
-                                Some(health),
-                                controller.hotkey_test() == Some(action),
-                            )
-                        },
+                        state: crate::settings_binding::health_state(
+                            Some(health),
+                            controller.hotkey_test() == Some(action),
+                        ),
                         alternatives,
                     }
                 })
@@ -228,21 +221,8 @@ where
                 return;
             }
         };
-        let (paused, supporter) = {
-            let controller = self.controller.borrow();
-            (
-                controller.hotkeys_paused(),
-                controller.tier() == snipdeck_core::Tier::Pro,
-            )
-        };
-        if let Some(failure) = try_register(
-            self.host.as_ref(),
-            paused,
-            supporter,
-            action,
-            &current,
-            &next,
-        ) {
+        let paused = self.controller.borrow().hotkeys_paused();
+        if let Some(failure) = try_register(self.host.as_ref(), paused, action, &current, &next) {
             self.refuse_hotkey(index, HotkeyRefusal::Refused(failure), combo);
             redraw_all();
             return;
@@ -273,22 +253,9 @@ where
         };
         let current = self.controller.borrow().settings().hotkeys.clone();
         let next = without_hotkey(&current, action);
-        let (paused, supporter) = {
-            let controller = self.controller.borrow();
-            (
-                controller.hotkeys_paused(),
-                controller.tier() == snipdeck_core::Tier::Pro,
-            )
-        };
+        let paused = self.controller.borrow().hotkeys_paused();
         // Taking a shortcut away cannot clash; a service that is down is not the user's problem here.
-        let _ = try_register(
-            self.host.as_ref(),
-            paused,
-            supporter,
-            action,
-            &current,
-            &next,
-        );
+        let _ = try_register(self.host.as_ref(), paused, action, &current, &next);
         self.set_conflict(index, String::new());
         self.act(|ctl| ctl.update_settings(|s| s.hotkeys = next));
     }

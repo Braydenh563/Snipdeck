@@ -157,7 +157,7 @@ impl Store {
         Ok(())
     }
 
-    /// Sets up encryption of sensitive items (Supporter): makes a new data key, stores the record
+    /// Sets up encryption of sensitive items: makes a new data key, stores the record
     /// that protects it (OS binding through `ring`'s provider, plus the master password if
     /// given), unlocks, and encrypts every sensitive item that is still in plain text.
     ///

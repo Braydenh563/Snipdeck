@@ -26,7 +26,7 @@ use snipdeck_app::{
     settings::{HotkeyAction, Settings},
     toast_binding::ToastUi,
 };
-use snipdeck_core::{Content, Entitlements, Format, Formats, Inline, Tier, Timestamp};
+use snipdeck_core::{Content, Format, Formats, Inline, Timestamp};
 use snipdeck_platform::{
     payload::Data,
     route::ScreenRect,
@@ -88,7 +88,6 @@ fn rig_on(store: Store) -> Rig {
             Box::new(targets.clone()),
             Box::new(FixedClock::new(now())),
             Settings::default(),
-            Entitlements::new(Tier::Pro),
         )
         .expect("controller"),
     ));

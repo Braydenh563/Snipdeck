@@ -23,7 +23,7 @@ use snipdeck_app::{
     settings::{DockEdge, DockTrigger, HotkeyAction, Settings, Theme},
     settings_store::{FileSink, SettingsSaver},
 };
-use snipdeck_core::{Entitlements, ItemId, Tier, Timestamp};
+use snipdeck_core::{ItemId, Timestamp};
 use snipdeck_platform::{
     keys::{Key as PlatformKey, KeyEvent},
     payload::Data,
@@ -115,7 +115,6 @@ fn rig_settings(
         Box::new(targets.clone()),
         Box::new(clock.clone()),
         settings,
-        Entitlements::new(Tier::Pro),
     )
     .expect("controller");
     let ctl = Rc::new(RefCell::new(ctl));
@@ -334,6 +333,55 @@ fn the_first_run_asks_about_recent_and_the_answer_is_kept() {
         assert!(
             r.ctl.borrow().settings().recent_history_asked,
             "and it is not asked again"
+        );
+    });
+}
+
+/// A Panel on a new install: the Recent question is up.
+fn recent_question_rig() -> Rig {
+    rig_settings(
+        demo::store(now()).expect("demo store"),
+        true,
+        Vec::new(),
+        Settings::new_install(),
+    )
+}
+
+/// Esc on the first-run question is No: nothing is kept, and it is not asked again.
+#[test]
+fn escape_on_the_recent_question_answers_no() {
+    on_ui_thread(|| {
+        let r = recent_question_rig();
+        assert!(r.ui.get_recent_question_open());
+        press(r.window(), &key(Key::Escape));
+        slint::platform::update_timers_and_animations();
+        assert!(!r.ui.get_recent_question_open(), "Esc closes the question");
+        assert!(!r.ctl.borrow().settings().recent_history, "Esc is No");
+        assert!(r.ctl.borrow().settings().recent_history_asked);
+    });
+}
+
+/// By keyboard alone: focus starts inside the dialog (not on the Panel behind it), Tab reaches No and
+/// then Yes, and Space on Yes answers Yes. Enter on the card is not Yes: consent is never given by a
+/// stray key.
+#[test]
+fn the_recent_question_is_answered_by_keyboard_and_enter_alone_is_not_yes() {
+    on_ui_thread(|| {
+        let r = recent_question_rig();
+        press(r.window(), "\n");
+        slint::platform::update_timers_and_animations();
+        assert!(
+            r.ui.get_recent_question_open() && !r.ctl.borrow().settings().recent_history,
+            "Enter on the card does not say Yes"
+        );
+        press(r.window(), &key(Key::Tab));
+        press(r.window(), &key(Key::Tab));
+        press(r.window(), " ");
+        slint::platform::update_timers_and_animations();
+        assert!(!r.ui.get_recent_question_open(), "Tab, Tab, Space answers");
+        assert!(
+            r.ctl.borrow().settings().recent_history,
+            "the second button is Yes"
         );
     });
 }

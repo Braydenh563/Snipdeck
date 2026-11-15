@@ -473,21 +473,6 @@ fn neutral_toast(message: ToastMessage) -> Toast {
     }
 }
 
-/// The toast for a restore that failed: a board past the Free limit says so.
-pub(super) fn restore_failed(error: &snipdeck_store::Error) -> Toast {
-    if matches!(
-        error,
-        snipdeck_store::Error::Core(snipdeck_core::Error::ProRequired(_))
-    ) {
-        Toast {
-            kind: ToastKind::Neutral,
-            message: ToastMessage::BoardLimit,
-        }
-    } else {
-        failed()
-    }
-}
-
 impl<C, K, T> Controller<snipdeck_store::Store, C, K, T>
 where
     C: Clipboard + ClipboardText,

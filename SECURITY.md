@@ -29,8 +29,6 @@ In scope:
 - **Sensitive items and encryption** (`snipdeck-store`, [`docs/crypto.md`](docs/crypto.md)): plaintext of
   a sensitive item stored or logged where the design says it is not, key handling, authentication of
   envelopes.
-- **Licence verification** (`snipdeck-core`, [`docs/licensing.md`](docs/licensing.md)): accepting a key that
-  was not signed by the build's public key.
 - **The clipboard and paste path** (`snipdeck-platform`, `snipdeck-app`): content leaking to history
   features that should exclude it, pasting into a window other than the Target, handling of other
   programs' clipboard data.
@@ -39,10 +37,8 @@ In scope:
 Out of scope:
 
 - Anyone who can already run code as you, or read your user profile, can read your library. The data
-  folder is protected by your operating system account and, for sensitive items with Supporter, by
+  folder is protected by your operating system account and, for sensitive items, by
   encryption (below); that is the whole model.
-- Licence enforcement as copy protection. The licence key unlocks convenience features; it is not a
-  security boundary ([ADR-0005](docs/adr/0005-licensing-and-pro.md)).
 - Findings that need a modified build, a debugger, or administrator rights on the same machine.
 - Features that do not exist yet (see the README status section).
 - Denial of service from a library you created yourself.
@@ -55,13 +51,11 @@ Out of scope:
   ([`docs/store.md`](docs/store.md)).
 - **Sensitive items:** masked in the UI and excluded from history; the clipboard is cleared after use (the
   masking and clearing are specified in SPEC §5.7 and not all built yet). Item payloads are encrypted with XChaCha20-Poly1305 under a
-  random data key, wrapped by the Windows account (DPAPI) and optionally sealed by a master password (a Supporter feature)
-  (Argon2id). The envelope is bound to the item and format. Titles, tags and search text are not
+  random data key, wrapped by the Windows account (DPAPI) and optionally sealed by a master password (Argon2id). The envelope is bound to the item and format. Titles, tags and search text are not
   encrypted.
 - **Untrusted input** (archives, importers) is read with hard size and count limits, never extracted to
   paths taken from the file, and checked before anything is written; imports are transactional. Hostile-input
   and property tests cover the parsers ([`docs/format.md`](docs/format.md)).
-- **Licence keys:** Ed25519 signatures verified offline.
 - **Memory safety:** Rust. `unsafe` is confined to the Windows platform layer, each block commented.
 
 Known limits, stated in [`docs/crypto.md`](docs/crypto.md): no recovery if the Windows key binding is lost;

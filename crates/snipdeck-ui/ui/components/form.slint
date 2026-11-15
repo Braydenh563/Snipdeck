@@ -4,7 +4,6 @@ import { Icon } from "icon.slint";
 import { StateColor } from "state-color.slint";
 import { FieldError } from "text_field.slint";
 import { OverlayScrollbar } from "scrollbar.slint";
-import { LockBadge } from "lock-badge.slint";
 import { MenuItem } from "menu.slint";
 
 // Form building blocks for the editors and the settings page (DESIGN.md §4). Every control here is one tab stop
@@ -176,8 +175,6 @@ export component FormSection inherits VerticalLayout {
 export component SettingRow inherits Rectangle {
     in property <string> title;
     in property <string> description;
-    // Not empty = a Free plan cannot use this yet: the lock badge with this text (the word "Supporter") shows by the title.
-    in property <string> locked-text;
 
     // Other words the Settings search also finds this row by (for a related row that is not always shown).
     in property <string> search-also;
@@ -212,10 +209,6 @@ export component SettingRow inherits Rectangle {
                     wrap: word-wrap;
                     vertical-alignment: center;
                     accessible-role: none;
-                }
-                if root.locked-text != "": VerticalLayout {
-                    alignment: center;
-                    LockBadge { text: root.locked-text; }
                 }
             }
             if root.description != "": Text {

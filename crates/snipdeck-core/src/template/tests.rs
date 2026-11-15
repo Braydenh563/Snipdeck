@@ -3,7 +3,6 @@ use std::collections::BTreeMap;
 use proptest::prelude::*;
 
 use super::*;
-use crate::{Entitlements, Error, Feature, Tier};
 
 fn now() -> Timestamp {
     // Saturday 17 October 2026, day 290 of the year.
@@ -321,27 +320,19 @@ fn more_than_sixteen_distinct_prompts_is_an_error_but_a_reused_name_is_not() {
     assert!(Template::parse(&format!("{} {{field:F0}}", many(16))).is_ok());
 }
 
-// ---- entitlements --------------------------------------------------------------------
+// ---- prompts ---------------------------------------------------------------------------
 
 #[test]
-fn static_templates_need_no_feature() {
+fn static_templates_have_no_prompts() {
     let t = Template::parse("{date} {time} {datetime:%Y} {clipboard} {cursor}").unwrap();
-    assert!(!t.requires(Feature::PromptedFields));
-    assert!(t.check(&Entitlements::new(Tier::Free)).is_ok());
     assert_eq!(t.prompts().len(), 0);
 }
 
 #[test]
-fn prompted_templates_need_pro() {
+fn prompted_templates_list_their_prompts() {
     for src in ["{field:A}", "x {choice:A|b|c}"] {
         let t = Template::parse(src).unwrap();
-        assert!(t.requires(Feature::PromptedFields));
-        assert!(!t.requires(Feature::PasteStack));
-        assert_eq!(
-            t.check(&Entitlements::new(Tier::Free)),
-            Err(Error::ProRequired(Feature::PromptedFields))
-        );
-        assert!(t.check(&Entitlements::new(Tier::Pro)).is_ok());
+        assert_eq!(t.prompts().len(), 1, "{src}");
     }
 }
 
@@ -596,44 +587,25 @@ fn prompt_answers_count_towards_the_limit() {
     ));
 }
 
-// ---- checked rendering -----------------------------------------------------------------
+// ---- bounded rendering -----------------------------------------------------------------
 
 #[test]
-fn render_checked_enforces_the_entitlement_that_render_does_not() {
+fn try_render_renders_prompts_for_everyone() {
     let t = Template::parse("Hi {field:Name|there}").unwrap();
     let a = BTreeMap::new();
     let ctx = RenderContext::new(now(), &a);
-    // `render` is the unchecked primitive: it resolves Supporter prompts for anyone.
     assert_eq!(t.render(&ctx).text, "Hi there");
-    assert_eq!(
-        t.render_checked(&Entitlements::new(Tier::Free), &ctx),
-        Err(RenderError::ProRequired(Feature::PromptedFields))
-    );
-    assert_eq!(
-        t.render_checked(&Entitlements::new(Tier::Pro), &ctx),
-        Ok(t.render(&ctx))
-    );
+    assert_eq!(t.try_render(&ctx), Ok(t.render(&ctx)));
 }
 
 #[test]
-fn render_checked_lets_free_users_render_static_templates() {
-    let t = Template::parse("{date} {clipboard}{cursor}").unwrap();
-    let a = BTreeMap::new();
-    let ctx = RenderContext::new(now(), &a).with_clipboard("x");
-    assert_eq!(
-        t.render_checked(&Entitlements::default(), &ctx),
-        Ok(t.render(&ctx))
-    );
-}
-
-#[test]
-fn render_checked_also_bounds_the_output() {
+fn try_render_bounds_the_output() {
     let t = Template::parse("{clipboard}{clipboard}").unwrap();
     let big = "a".repeat(MAX_RENDERED_BYTES);
     let a = BTreeMap::new();
     let ctx = RenderContext::new(now(), &a).with_clipboard(&big);
     assert!(matches!(
-        t.render_checked(&Entitlements::new(Tier::Pro), &ctx),
+        t.try_render(&ctx),
         Err(RenderError::OutputTooLarge { .. })
     ));
 }
@@ -1390,12 +1362,10 @@ fn clipboard_inside_a_section_is_still_noticed() {
 }
 
 #[test]
-fn the_new_prompts_are_supporter_and_count_toward_the_limit() {
+fn the_new_prompts_count_toward_the_limit() {
     for src in ["{multiline:A}", "{pickdate:A}", "{optional:A}x{/optional}"] {
         let t = Template::parse(src).unwrap();
-        assert!(t.requires(Feature::PromptedFields), "{src}");
-        let free = Entitlements::new(Tier::Free);
-        assert!(t.check(&free).is_err(), "{src}");
+        assert_eq!(t.prompts().len(), 1, "{src}");
     }
     let mut src = String::new();
     for i in 0..MAX_PROMPTS {

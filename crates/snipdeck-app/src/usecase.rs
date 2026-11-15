@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 
 use snipdeck_core::{
-    Entitlements, Feature, Format, Formats, Item, ItemId, ItemKind, Timestamp, UseMode, UseOutcome,
+    Format, Formats, Item, ItemId, ItemKind, Timestamp, UseMode, UseOutcome,
     template::{
         Locale, Prompt, RenderContext, RenderError, Template, TemplateError, TimeZone,
         transform::{self, Transform},
@@ -28,8 +28,6 @@ pub struct UseRequest {
     pub route: Route,
     /// The moment of the use, for `{date}`, `{time}` and the usage count.
     pub now: Timestamp,
-    /// What the user may do.
-    pub entitlements: Entitlements,
     /// The user's answers to a template's prompts, by name.
     pub answers: BTreeMap<String, String>,
     /// The clipboard text for `{clipboard}`, read by the caller before the pipeline touches it.
@@ -86,7 +84,7 @@ pub enum UseError {
     /// The item's template no longer parses.
     #[error(transparent)]
     Template(#[from] TemplateError),
-    /// The template cannot be rendered: a Supporter placeholder on Free, or too large.
+    /// The template cannot be rendered: too large.
     #[error(transparent)]
     Render(#[from] RenderError),
     /// The template needs answers the request did not carry: show the fill form.
@@ -294,12 +292,6 @@ fn build_payload<S: BlobStore>(
 
 fn render_template(text: &str, request: &UseRequest) -> Result<(String, Option<usize>), UseError> {
     let template = Template::parse(text)?;
-    // Before asking anything: a Free user must not fill in a form they cannot use.
-    for &feature in Feature::ALL {
-        if template.requires(feature) && !request.entitlements.allows(feature) {
-            return Err(RenderError::ProRequired(feature).into());
-        }
-    }
     // Any prompt without an answer opens the form, whatever its kind: a default only prefills
     // it, and a choice, date or tick box alone must still be asked (empty date = today).
     let prompts = template.prompts();
@@ -329,14 +321,14 @@ fn render_template(text: &str, request: &UseRequest) -> Result<(String, Option<u
     if let Some(clipboard) = &request.clipboard_text {
         ctx = ctx.with_clipboard(clipboard);
     }
-    let rendered = template.render_checked(&request.entitlements, &ctx)?;
+    let rendered = template.try_render(&ctx)?;
     Ok((rendered.text, rendered.cursor_from_end))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snipdeck_core::{Board, Content, Inline, List, Name, Placement, Tier};
+    use snipdeck_core::{Board, Content, Inline, List, Name, Placement};
     use snipdeck_platform::{
         keys::PasteKey,
         route::{CopyReason, Route},
@@ -395,7 +387,6 @@ mod tests {
                 mode,
                 route,
                 now: at("2026-10-17T10:30:00Z"),
-                entitlements: Entitlements::new(Tier::Pro),
                 answers: BTreeMap::new(),
                 clipboard_text: None,
                 tz: TimeZone::UTC,
@@ -774,19 +765,6 @@ mod tests {
             .expect("a template");
         assert_eq!(title, "t");
         assert_eq!(text, "Hi {field:Name}");
-    }
-
-    #[test]
-    fn a_pro_placeholder_on_free_is_refused() {
-        let mut w = World::new();
-        let id = w.add(ItemKind::Template, false, "Hi {field:Name|there}");
-        let mut request = World::request(id, UseMode::Copy, Route::Copy(CopyReason::NoTarget));
-        request.entitlements = Entitlements::new(Tier::Free);
-        assert!(matches!(
-            w.run(&request),
-            Err(UseError::Render(RenderError::ProRequired(_)))
-        ));
-        assert_eq!(w.store.item(id).expect("item").use_count, 0);
     }
 
     #[test]

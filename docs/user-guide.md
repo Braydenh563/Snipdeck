@@ -8,7 +8,7 @@ This guide says what the app is built to do.
 
 ## The idea in one minute
 
-- A **board** is a workspace, such as "Work" or "Personal". The Free plan has up to 5 boards.
+- A **board** is a workspace, such as "Work" or "Personal". There is no limit on boards.
 - A **list** is a group of items in a board, such as "Email replies". Lists show as tabs in the Panel. A new
   library starts with a board called "My snippets", a list called "Snippets" and a short **Getting started**
   list. Its four cards show how to paste, copy, try a template and open the menu. Delete the list when you
@@ -65,17 +65,17 @@ that setting). A copy (`Shift+Enter`, or no target window) keeps the formatting 
 A template is an item whose text has placeholders. Snipdeck fills them in when you use the item. In the
 editor, the **Placeholders** list inserts one for you.
 
-| Placeholder | What you get | Plan |
-|---|---|---|
-| `{date}`, `{time}` | Today's date, or the time | Free |
-| `{datetime:FORMAT}` | Date and time in a format you choose, such as `{datetime:%d %B %Y}` | Free |
-| `{uuid}` | A new random ID (version 4), different for each `{uuid}` and each use | Free |
-| `{cursor}` | Nothing. It marks where the text cursor ends up after pasting. | Free |
-| `{field:Name}` or `{field:Name\|default}` | Asks you for a value each time | Supporter |
-| `{choice:Name\|a\|b}` | Asks you to pick one of the options | Supporter |
-| `{multiline:Name}` or `{multiline:Name\|default}` | Asks for text over several lines | Supporter |
-| `{pickdate:Name}` or `{pickdate:Name\|FORMAT}` | Asks for a date typed as `YYYY-MM-DD`; left empty it is today. `FORMAT` is how it is written, such as `%d %B %Y`. | Supporter |
-| `{optional:Name}...{/optional}` | A tick box. The text inside is inserted only when it is ticked. Sections do not nest. | Supporter |
+| Placeholder | What you get |
+|---|---|
+| `{date}`, `{time}` | Today's date, or the time |
+| `{datetime:FORMAT}` | Date and time in a format you choose, such as `{datetime:%d %B %Y}` |
+| `{uuid}` | A new random ID (version 4), different for each `{uuid}` and each use |
+| `{cursor}` | Nothing. It marks where the text cursor ends up after pasting. |
+| `{field:Name}` or `{field:Name\|default}` | Asks you for a value each time |
+| `{choice:Name\|a\|b}` | Asks you to pick one of the options |
+| `{multiline:Name}` or `{multiline:Name\|default}` | Asks for text over several lines |
+| `{pickdate:Name}` or `{pickdate:Name\|FORMAT}` | Asks for a date typed as `YYYY-MM-DD`; left empty it is today. `FORMAT` is how it is written, such as `%d %B %Y`. |
+| `{optional:Name}...{/optional}` | A tick box. The text inside is inserted only when it is ticked. Sections do not nest. |
 
 `{date}`, `{time}` and `{datetime:FORMAT}` can move in time: add an offset such as `{date+3d}`,
 `{date-1w:%Y-%m-%d}`, `{time+90min}` or `{datetime+1mo:%d %B %Y %H:%M}`. The units are `d` (days), `w` (weeks),
@@ -85,11 +85,6 @@ that is too short gives its last day (`{date+1mo}` on 31 January is 28 or 29 Feb
 
 `{date}` and `{time}` use your computer's time zone. `{clipboard}` inserts the clipboard text. Type `{{` and `}}` for literal braces. Any other braces are an error, and the editor says so when
 you save.
-
-On the Free plan the **Placeholders** list in the editor marks every Supporter placeholder with a **Supporter**
-badge. You can still type one. When you save, the editor refuses and says the text needs Supporter. The message
-sits under the text box, with a **Get Supporter…** button right below it that opens the Supporter dialog. Remove
-the placeholder to save on the Free plan.
 
 In the Fill in template window, each `{uuid}` shows as "(new ID)" in the preview: the real ID is made when you insert.
 
@@ -110,8 +105,8 @@ sensitive. A sensitive item:
   copied it, Snipdeck clears it from the clipboard after 30 seconds, if nothing else has been copied since.
   Change the time, or turn this off, under **Privacy** in Settings.
 - Is masked in the fill form.
-- Is also encrypted on disk, on every plan, with a key protected by Windows. Supporter can add a master
-  password (see [Master password](#master-password-supporter)). The title, tags and search text are not
+- Is also encrypted on disk, with a key protected by Windows. You can add a master
+  password (see [Master password](#master-password)). The title, tags and search text are not
   encrypted. See [`crypto.md`](crypto.md).
 
 ## Paste an item
@@ -145,12 +140,12 @@ it switches to the opposite side when there is no room. Where an app shows no ca
 - `Alt+1` to `Alt+9` use that row, whatever the box holds. Digits without `Alt` are typed into the search.
 - `Ctrl+E` edits the selected item. `Esc` closes the Picker.
 
-### Paste next (Supporter)
+### Paste next
 
 `Ctrl+Shift+U` pastes the next item of the pinned strip (or, with nothing pinned, of the list you are looking
 at), one per press. After the last one, a message says so and the next press starts again.
 
-### Paste stack (Supporter)
+### Paste stack
 
 A paste stack is a queue you choose yourself.
 
@@ -160,7 +155,7 @@ A paste stack is a queue you choose yourself.
 3. Press `Ctrl+Shift+U` once for each item. The strip shows "2 of 5 · next: Title".
 
 `Esc` in the Panel, the **End stack** button, or pasting the last item ends the stack. **Clear** drops the
-marks before you start. On the Free plan, Start stack tells you it is a Supporter feature.
+marks before you start.
 
 ## Organise
 
@@ -170,7 +165,7 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
 - **Boards.** Open the board name at the top of the sidebar or the Panel. The menu lists your boards. In the
   Panel it has **New board**, **Rename board** and **Delete board** for the board you are on, so you can manage
   boards without opening the Main window. The Main window can also move a board up or down. Deleting a board
-  moves its lists and items to the Trash, and **Undo** brings it back. The Free plan stops at 5 boards.
+  moves its lists and items to the Trash, and **Undo** brings it back.
 - **Lists.** Add a list with **Add list** in the sidebar, or the **+** tab in the Panel. **Edit list** sets the name, a colour and the sort: manual, most
   used or recently used. Move a list with `Alt+Up` or `Alt+Down` while it is selected in the sidebar.
 - **Order of items.** Select a row and press `Alt+Up` or `Alt+Down`, in the Main window or the Panel, or choose **Move up** / **Move down** in the snippet's menu.
@@ -237,7 +232,7 @@ Deleting an item, list or board moves it to the **Trash**. A message with an **U
 5 seconds, and longer while the pointer is on it. `Ctrl+Z` does the same as the button. In a search box
 `Ctrl+Z` undoes your typing instead. Later, open **Trash** to restore items (`Enter` or **Restore**) or delete them for good. Deleted
 things are removed from the Trash after 30 days, and **Empty Trash** removes them at once. A board comes back
-only if the Free plan has room for it.
+like anything else.
 
 ## Commands and shortcuts
 
@@ -346,8 +341,8 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   [Triggers and typing](#triggers-and-typing-windows).
 - **Privacy.** **Keep a Recent inbox of what you copy** and the programs it never keeps copies from. **Clear the
   clipboard after copying a sensitive item** sets the seconds (30 by default, `0`
-  never clears it). **Master password** sets, changes or removes the password (Supporter). With a password set,
-  **Unlock with Windows Hello** appears under it (see [Windows Hello](#windows-hello-supporter-windows)). Below them is a
+  never clears it). **Master password** sets, changes or removes the password. With a password set,
+  **Unlock with Windows Hello** appears under it (see [Windows Hello](#windows-hello-windows)). Below them is a
   short summary of what is stored and where.
 - **Programs.** One row per program, by file name, such as `windowsterminal.exe`, with the key Snipdeck presses to
   paste there: **Ctrl+V**, **Ctrl+Shift+V**, **Shift+Insert**, or **Never paste** (Snipdeck copies instead).
@@ -358,14 +353,14 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   missing and never removes anything. **Back up now** makes one on demand. **Open data folder** and **Open backups
   folder** open them. **Export library** asks for a folder and saves one `.snipdeck` file there, named like
   `Snipdeck-library-20261018.snipdeck`. **Erase library** deletes every board, list, item and backup after
-  you type `DELETE`. Your settings and licence stay. Tick **Also forget the encryption key** only if you do not
+  you type `DELETE`. Your settings stay. Tick **Also forget the encryption key** only if you do not
   need encrypted items in old exports.
-- **Licence.** Shows your plan. **Get Supporter…** opens a dialog with the price and a Free and Supporter
-  table. To turn on Supporter, paste your key (it starts with `SNIP1.`) and press **Activate**. See
-  [Free and Supporter](#free-and-supporter) and [`licensing.md`](licensing.md).
+- **Support.** **Support Snipdeck** opens a donation page in your browser. It is optional
+  and unlocks nothing; Snipdeck handles no payment data. The same link is in Help ▸ About and the command
+  palette. See [Free, with an optional coffee](#free-with-an-optional-coffee).
 
 The page lists its groups in this order: Shortcuts, Appearance, Panel layout, Opening the Panel, Privacy,
-Programs, Typing, Backups and your data, Licence. Press `F1` or choose **Help** at the bottom of the page to open this guide.
+Programs, Typing, Backups and your data, Support. Press `F1` or choose **Help** at the bottom of the page to open this guide.
 
 ## Triggers and typing (Windows)
 
@@ -396,7 +391,7 @@ Nothing expands in password boxes, in programs set to **Never paste**, in progra
 while Snipdeck is in front, or for sensitive items. Sensitive items are never suggested either. Snipdeck keeps only the last 32 characters you typed, in
 memory, and never writes them to disk or the log. The typing watcher runs only while one of the options is on.
 
-## Master password (Supporter)
+## Master password
 
 Sensitive items are encrypted with a key that Windows protects. A master password adds a password on top.
 Set it under **Privacy** in Settings with **Set password…**. It needs at least 8 characters, and Snipdeck
@@ -412,17 +407,16 @@ shows how strong it looks.
   cannot reset it and keeps no recovery key. Your other items are not affected. Write the password down
   somewhere safe.
 - **Change or remove it** with **Change…** and **Remove…**. Both ask for the current password. After you
-  remove it, Windows alone protects the key, as on the Free plan. Only setting a password needs Supporter.
-  You can always unlock, change or remove one, so a missing licence never traps your library.
+  remove it, Windows alone protects the key.
 
 If Windows cannot protect a key on your PC, the master password is not available. See
 [`troubleshooting.md`](troubleshooting.md) and [`crypto.md`](crypto.md).
 
-## Windows Hello (Supporter, Windows)
+## Windows Hello (Windows)
 
 With a master password set, Windows Hello can unlock the library with your face, fingerprint or PIN instead of
-typing the password. It needs a Supporter plan and a PC where Windows Hello is set up. The option is hidden
-otherwise. If you do not see it, check those three things (a master password, Supporter, Hello set up in
+typing the password. It needs a PC where Windows Hello is set up. The option is hidden
+otherwise. If you do not see it, check those two things (a master password, Hello set up in
 Windows). The Master password row mentions Hello too, and searching Settings for "Hello" finds that row.
 
 - **Turn it on.** Settings, under **Privacy**, below **Master password**: switch on **Unlock with Windows
@@ -450,36 +444,21 @@ Windows). The Master password row mentions Hello too, and searching Settings for
 - **Lock.** The library still locks after 15 minutes without use, as described above. Hello is another way
   back in; locking does not turn it off. Closing the unlock window stops a Hello prompt under way.
 - **Change, remove or erase.** Changing the master password re-seals the Hello copy with one prompt. Setting or
-  removing the password, or erasing the library, turns Hello off. If the licence stops being Supporter, the
-  saved Hello copy is dropped and only the password unlocks.
+  removing the password, or erasing the library, turns Hello off.
 
 Hello never stores your key or password on disk. Snipdeck keeps an encrypted copy of the key in memory only,
 which a restart forgets. The details are in [`crypto.md`](crypto.md). This part works only on Windows and has
 not yet been tested on a real PC.
 
-## Free and Supporter
+## Free, with an optional coffee
 
-Snipdeck is free software. Free covers everyday use. Supporter is pay what you want from A$5 (suggested A$8),
-one time, with every 1.x update. Free stays fully usable, and nothing nags you.
+Snipdeck is free software, and every feature is on for everyone, on every build: unlimited boards, templates that
+ask for a value or a choice, a master password, paste stack and Paste next. There are no tiers, no licence keys
+and no limits, and nothing nags you.
 
-**From the Microsoft Store?** That build is free with every Supporter feature already on, so it has no
-licence screens. Supporter is offered only on the GitHub download.
-
-| Feature | Free | Supporter |
-|---|---|---|
-| Boards | Up to 5 | Unlimited |
-| Lists and items, Panel and Picker | Yes | Yes |
-| Save from the clipboard | Yes | Yes |
-| Dock to a screen edge | Yes | Yes |
-| Templates with date, time and cursor | Yes | Yes |
-| Sensitive items, masked | Yes | Yes |
-| Encryption on disk | Yes | Yes |
-| Backups, export, light and dark, 7 languages | Yes | Yes |
-| Templates that ask for a value or a choice | No | Yes |
-| Master password | No | Yes |
-| Paste stack, and Paste next | No | Yes |
-
-If you reach the board limit, a message says so. See [`licensing.md`](licensing.md).
+If you like it, **Support Snipdeck** (Settings ▸ Support, Help ▸ About, or the command palette) opens
+buymeacoffee.com/braydenh563 in your browser. That is optional and unlocks nothing.
+Snipdeck sends nothing and handles no payment data; the page does.
 
 ## Import and export
 
@@ -505,7 +484,7 @@ be added, how many new boards will be made, how many items you already have (the
 not be imported** list with the reason for each item left out, such as a file over 5 MB, an empty file, a
 picture or file that CopyQ or Ditto holds, or a sensitive item that this PC has no key for. Choose **Import**
 to go ahead or **Cancel** to leave your library as it was. Everything arrives under one new board named after the
-file or folder. The Free plan's board limit still applies, and the preview says when an import would pass it.
+file or folder.
 Notes in the preview, such as which item they belong to ("entry 3", "Ditto clip 7" or a file name with the
 match number), are shown in your language like the rest of Snipdeck.
 
@@ -526,7 +505,7 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Anywhere | `Ctrl+Shift+Y` | Show or hide the Panel |
 | Anywhere | `Ctrl+Shift+Space` | Open the Picker |
 | Anywhere | none until you set one | Save the clipboard text as a new item (Capture) |
-| Anywhere | `Ctrl+Shift+U` | Paste next, or the next item of a paste stack (Supporter; not registered on the Free plan) |
+| Anywhere | `Ctrl+Shift+U` | Paste next, or the next item of a paste stack |
 | Panel | `Up`, `Down`, `PageUp`, `PageDown` | Move the selection |
 | Panel | `Enter`, `Shift+Enter` | Use, or copy only |
 | Panel | `Alt+Enter` | Paste as plain text (an item, or a Recent row) |

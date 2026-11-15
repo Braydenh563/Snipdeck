@@ -2,8 +2,9 @@
 
 The text the owner pastes into Partner Center ▸ Store listing, and the certification notes. Rules it follows
 (`docs/store-submission.md` section 8, policy 10.1): plain text, no URLs or HTML in the description, every
-limit stated, no other products' names in the search terms. The Store build is free: every feature unlocked,
-no Get Supporter, no licence key (`.claude/now.md` Decisions, 2026-11-14).
+limit stated, no other products' names in the search terms. Every build is free: every feature on,
+no tiers and no licence key (owner decision 2026-11-15). The app has an optional "Support Snipdeck" link that opens a
+donation page in the browser; it unlocks nothing.
 
 The manifest declares seven UI languages (`packaging/msix/AppxManifest.xml`). Policy 10.7 asks for Store text in
 each declared language: the owner adds those listings in Partner Center (the text below is English only).
@@ -43,7 +44,7 @@ Optional features that ask first or are off until you turn them on:
 Requirements: Windows 10 version 1903 or newer, or Windows 11, 64-bit (x64). Interface in English, German,
 Spanish, French, Japanese, Portuguese (Brazil) and Simplified Chinese.
 
-Snipdeck is free software under the GPL-3.0 licence. Every feature is included in this version.
+Snipdeck is free software under the GPL-3.0 licence. Every feature is included. An optional Support Snipdeck link opens a donation page in your browser; it unlocks nothing.
 
 ## Product features (one per line, up to 20)
 

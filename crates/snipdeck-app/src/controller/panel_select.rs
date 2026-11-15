@@ -187,21 +187,19 @@ where
             self.undo_step(Some(step));
             return;
         }
-        match self
+        if self
             .store
             .atomically(|b| b.restore(Trashable::Item(row.id)))
+            .is_ok()
         {
-            Ok(()) => {
-                self.show_toast(Toast {
-                    kind: ToastKind::Success,
-                    message: ToastMessage::Restored { count: 1 },
-                });
-                self.library_changed();
-            }
-            Err(error) => {
-                self.show_toast(super::main_ctl::restore_failed(&error));
-                self.refresh_logged("a failed undo of a deleted row");
-            }
+            self.show_toast(Toast {
+                kind: ToastKind::Success,
+                message: ToastMessage::Restored { count: 1 },
+            });
+            self.library_changed();
+        } else {
+            self.show_toast(super::failed());
+            self.refresh_logged("a failed undo of a deleted row");
         }
     }
 

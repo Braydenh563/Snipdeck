@@ -24,7 +24,7 @@ use snipdeck_app::{
     settings::Settings,
     toast::ToastMessage,
 };
-use snipdeck_core::{Entitlements, ItemId, Tier, Timestamp, UseMode};
+use snipdeck_core::{ItemId, Timestamp, UseMode};
 use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
 use snipdeck_store::{ItemRepo, Store, crypto::KdfParams};
 
@@ -51,7 +51,7 @@ fn t0() -> Timestamp {
 }
 
 /// A controller on the demo library kept in `data`, on a clock the caller keeps.
-fn start(tier: Tier, provider: &SharedProvider, data: &Path, clock: &FixedClock) -> Ctl {
+fn start(provider: &SharedProvider, data: &Path, clock: &FixedClock) -> Ctl {
     let mut store = Store::open(data).expect("store");
     if snipdeck_store::BoardRepo::boards(&store)
         .expect("boards")
@@ -69,7 +69,6 @@ fn start(tier: Tier, provider: &SharedProvider, data: &Path, clock: &FixedClock)
         Box::new(FakeTargets::new(Some(demo::target()))),
         Box::new(clock.clone()),
         Settings::default(),
-        Entitlements::new(tier),
     )
     .expect("controller");
     ctl.set_drafts(Drafts::in_data_dir(data));
@@ -90,7 +89,7 @@ struct Rig {
 
 impl Rig {
     /// Restarts: a new controller on the same folder and key protection, at the same moment.
-    fn restart(self, tier: Tier) -> Self {
+    fn restart(self) -> Self {
         let Self {
             ctl,
             clock,
@@ -99,7 +98,7 @@ impl Rig {
             id,
         } = self;
         drop(ctl);
-        let ctl = start(tier, &provider, data.path(), &clock);
+        let ctl = start(&provider, data.path(), &clock);
         Self {
             ctl,
             clock,
@@ -129,12 +128,12 @@ impl Rig {
     }
 }
 
-/// A library with one sensitive item, on `tier`, key made and open, no password yet.
-fn rig(tier: Tier) -> Rig {
+/// A library with one sensitive item, key made and open, no password yet.
+fn rig() -> Rig {
     let data = tempfile::tempdir().expect("dir");
     let provider = SharedProvider::new();
     let clock = FixedClock::new(t0());
-    let mut ctl = start(tier, &provider, data.path(), &clock);
+    let mut ctl = start(&provider, data.path(), &clock);
     ctl.open_new_item(Origin::Main);
     let v = ctl.item_editor_view().expect("editor");
     ctl.item_editor_save(&EditorInput {
@@ -161,8 +160,8 @@ fn rig(tier: Tier) -> Rig {
     }
 }
 
-fn with_password(tier: Tier) -> Rig {
-    let mut r = rig(tier);
+fn with_password() -> Rig {
+    let mut r = rig();
     r.ctl
         .set_master_password(password(), password())
         .expect("set the password");
@@ -172,24 +171,8 @@ fn with_password(tier: Tier) -> Rig {
 // ---- Who may set it, and the checks ------------------------------------------------------------
 
 #[test]
-fn a_free_library_cannot_set_a_master_password() {
-    let mut r = rig(Tier::Free);
-    assert!(!r.ctl.master_password_allowed());
-    assert_eq!(
-        r.ctl.set_master_password(password(), password()),
-        Err(MasterProblem::SupporterOnly)
-    );
-    assert_eq!(r.ctl.master_password_state(), MasterState::NotSet);
-    assert!(!r.ctl.library_locked());
-    // Nothing changed: after a restart the key still opens without a password.
-    let r = r.restart(Tier::Free);
-    assert_eq!(r.secret().as_deref(), Some(SECRET));
-}
-
-#[test]
-fn a_supporter_library_sets_it_and_stays_open_for_the_session() {
-    let mut r = rig(Tier::Pro);
-    assert!(r.ctl.master_password_allowed());
+fn a_fresh_library_sets_a_master_password_and_stays_open_for_the_session() {
+    let mut r = rig();
     assert_eq!(r.ctl.master_password_state(), MasterState::NotSet);
     r.ctl
         .set_master_password(password(), password())
@@ -203,7 +186,7 @@ fn a_supporter_library_sets_it_and_stays_open_for_the_session() {
 
 #[test]
 fn a_new_password_must_be_long_enough_and_typed_twice() {
-    let mut r = rig(Tier::Pro);
+    let mut r = rig();
     assert_eq!(
         r.ctl.set_master_password("short", "short"),
         Err(MasterProblem::TooShort)
@@ -217,7 +200,7 @@ fn a_new_password_must_be_long_enough_and_typed_twice() {
         Err(MasterProblem::Mismatch)
     );
     assert_eq!(r.ctl.master_password_state(), MasterState::NotSet);
-    let r = r.restart(Tier::Pro);
+    let r = r.restart();
     assert!(!r.ctl.library_locked(), "no password was set by a refusal");
 }
 
@@ -235,7 +218,6 @@ fn a_machine_without_key_protection_cannot_set_one() {
         Box::new(FakeTargets::new(Some(demo::target()))),
         Box::new(clock),
         Settings::default(),
-        Entitlements::new(Tier::Pro),
     )
     .expect("controller");
     ctl.set_drafts(Drafts::in_data_dir(data.path()));
@@ -257,7 +239,7 @@ fn run_elsewhere(job: snipdeck_app::master_job::MasterJob) -> snipdeck_app::mast
 
 #[test]
 fn setting_a_password_changes_nothing_until_the_outcome_is_applied() {
-    let mut r = rig(Tier::Pro);
+    let mut r = rig();
     let job = r
         .ctl
         .begin_set_master_password(password(), password())
@@ -281,7 +263,7 @@ fn setting_a_password_changes_nothing_until_the_outcome_is_applied() {
     assert_eq!(r.ctl.master_busy(), None);
     assert_eq!(r.ctl.master_password_state(), MasterState::Set);
     assert_eq!(r.toast(), Some(ToastMessage::MasterPasswordSet));
-    let r = r.restart(Tier::Pro);
+    let r = r.restart();
     assert!(r.ctl.library_locked(), "the password was really stored");
 }
 
@@ -301,7 +283,6 @@ fn a_first_password_on_a_library_without_a_key_makes_the_key_off_the_controller(
         Box::new(FakeTargets::new(Some(demo::target()))),
         Box::new(clock),
         Settings::default(),
-        Entitlements::new(Tier::Pro),
     )
     .expect("controller");
     ctl.set_key_provider(Box::new(provider));
@@ -335,7 +316,6 @@ fn a_copy_while_the_first_password_is_derived_does_not_make_a_key_and_the_set_su
             recent_history: true,
             ..Settings::default()
         },
-        Entitlements::new(Tier::Pro),
     )
     .expect("controller");
     ctl.set_key_provider(Box::new(provider));
@@ -357,7 +337,7 @@ fn a_copy_while_the_first_password_is_derived_does_not_make_a_key_and_the_set_su
 
 #[test]
 fn a_wrong_password_comes_back_from_the_job_and_frees_the_controller() {
-    let mut r = with_password(Tier::Pro).restart(Tier::Pro);
+    let mut r = with_password().restart();
     let job = r
         .ctl
         .begin_unlock_with_password(support::pw("wrong"))
@@ -382,7 +362,7 @@ fn a_wrong_password_comes_back_from_the_job_and_frees_the_controller() {
 
 #[test]
 fn a_refused_step_never_becomes_busy_and_an_open_library_has_nothing_to_derive() {
-    let mut r = rig(Tier::Pro);
+    let mut r = rig();
     assert_eq!(
         r.ctl.begin_set_master_password("short", "short").err(),
         Some(MasterProblem::TooShort)
@@ -399,7 +379,7 @@ fn a_refused_step_never_becomes_busy_and_an_open_library_has_nothing_to_derive()
 
 #[test]
 fn changing_and_removing_run_the_same_way() {
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     let job = r
         .ctl
         .begin_change_master_password(password(), support::pw("another"), support::pw("another"))
@@ -419,7 +399,7 @@ fn changing_and_removing_run_the_same_way() {
 #[test]
 fn a_step_whose_worker_died_frees_the_controller_and_changes_nothing() {
     // The worker panicked or could not start: the app hands back a failed outcome.
-    let mut r = rig(Tier::Pro);
+    let mut r = rig();
     let job = r
         .ctl
         .begin_set_master_password(password(), password())
@@ -433,7 +413,7 @@ fn a_step_whose_worker_died_frees_the_controller_and_changes_nothing() {
     assert_eq!(r.ctl.master_password_state(), MasterState::NotSet);
 
     // An unlock that dies shows the generic problem, not support::pw("wrong"), and stays locked.
-    let mut r = with_password(Tier::Pro).restart(Tier::Pro);
+    let mut r = with_password().restart();
     let job = r
         .ctl
         .begin_unlock_with_password(password())
@@ -447,7 +427,7 @@ fn a_step_whose_worker_died_frees_the_controller_and_changes_nothing() {
 
 #[test]
 fn locking_while_a_change_is_being_derived_drops_the_outcome() {
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     let job = r
         .ctl
         .begin_change_master_password(password(), support::pw("another"), support::pw("another"))
@@ -475,7 +455,7 @@ fn locking_while_a_change_is_being_derived_drops_the_outcome() {
 
 #[test]
 fn locking_while_a_removal_is_being_derived_keeps_the_password() {
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     let job = r
         .ctl
         .begin_remove_master_password(password())
@@ -489,7 +469,7 @@ fn locking_while_a_removal_is_being_derived_keeps_the_password() {
 
 #[test]
 fn closing_the_prompt_while_the_password_is_checked_does_not_unlock() {
-    let mut r = with_password(Tier::Pro).restart(Tier::Pro);
+    let mut r = with_password().restart();
     r.ctl.request_unlock();
     let job = r
         .ctl
@@ -518,7 +498,7 @@ fn closing_the_prompt_while_the_password_is_checked_does_not_unlock() {
 
 #[test]
 fn an_old_outcome_never_frees_a_newer_step() {
-    let mut r = with_password(Tier::Pro).restart(Tier::Pro);
+    let mut r = with_password().restart();
     r.ctl.request_unlock();
     let old = run_elsewhere(
         r.ctl
@@ -545,7 +525,7 @@ fn an_old_outcome_never_frees_a_newer_step() {
 
 #[test]
 fn a_library_with_a_password_starts_locked_and_says_nothing() {
-    let r = with_password(Tier::Pro).restart(Tier::Pro);
+    let r = with_password().restart();
     assert_eq!(r.ctl.master_password_state(), MasterState::Set);
     assert!(r.ctl.library_locked());
     assert_eq!(r.secret(), None, "the text is out of reach");
@@ -555,7 +535,7 @@ fn a_library_with_a_password_starts_locked_and_says_nothing() {
 
 #[test]
 fn needing_a_locked_item_opens_the_prompt_and_the_right_password_unlocks() {
-    let mut r = with_password(Tier::Pro).restart(Tier::Pro);
+    let mut r = with_password().restart();
     let used = r.ctl.use_item(r.id, UseMode::Copy);
     assert!(matches!(used, snipdeck_app::controller::UseResult::Failed));
     assert_eq!(r.toast(), Some(ToastMessage::Locked));
@@ -582,7 +562,7 @@ fn needing_a_locked_item_opens_the_prompt_and_the_right_password_unlocks() {
 
 #[test]
 fn closing_the_prompt_leaves_the_library_locked_and_asking_again_reopens_it() {
-    let mut r = with_password(Tier::Pro).restart(Tier::Pro);
+    let mut r = with_password().restart();
     r.ctl.request_unlock();
     assert!(r.ctl.unlock_prompt_open());
     r.ctl.cancel_unlock();
@@ -595,18 +575,18 @@ fn closing_the_prompt_leaves_the_library_locked_and_asking_again_reopens_it() {
 
 #[test]
 fn an_unlocked_library_or_one_without_a_password_never_prompts() {
-    let mut r = rig(Tier::Pro);
+    let mut r = rig();
     r.ctl.request_unlock();
     assert!(!r.ctl.unlock_prompt_open());
     assert_eq!(r.ctl.take_pending(), Vec::<Effect>::new());
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     r.ctl.request_unlock();
     assert!(!r.ctl.unlock_prompt_open(), "open already");
 }
 
 #[test]
 fn duplicating_a_sensitive_row_while_locked_asks_for_the_password_and_copies_nothing() {
-    let mut r = with_password(Tier::Pro).restart(Tier::Pro);
+    let mut r = with_password().restart();
     let count = || r.ctl.store().all_items().expect("items").len();
     let before = count();
     let at = r
@@ -636,7 +616,7 @@ fn duplicating_a_sensitive_row_while_locked_asks_for_the_password_and_copies_not
 
 #[test]
 fn revealing_a_sensitive_row_while_locked_asks_for_the_password_instead() {
-    let mut r = with_password(Tier::Pro).restart(Tier::Pro);
+    let mut r = with_password().restart();
     let at = r
         .ctl
         .view()
@@ -656,7 +636,7 @@ fn revealing_a_sensitive_row_while_locked_asks_for_the_password_instead() {
 
 #[test]
 fn opening_a_locked_sensitive_item_in_the_editor_prompts() {
-    let mut r = with_password(Tier::Pro).restart(Tier::Pro);
+    let mut r = with_password().restart();
     r.ctl.open_item_editor(r.id);
     assert!(
         !r.ctl.item_editor_open(),
@@ -675,7 +655,7 @@ fn opening_a_locked_sensitive_item_in_the_editor_prompts() {
 
 #[test]
 fn changing_the_password_needs_the_current_one_and_keeps_every_item() {
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     let new = support::pw("marble");
     assert_eq!(
         r.ctl.change_master_password(support::pw("wrong"), new, new),
@@ -698,7 +678,7 @@ fn changing_the_password_needs_the_current_one_and_keeps_every_item() {
         .change_master_password(password(), new, new)
         .expect("change");
     assert_eq!(r.toast(), Some(ToastMessage::MasterPasswordChanged));
-    let mut r = r.restart(Tier::Pro);
+    let mut r = r.restart();
     assert_eq!(
         r.ctl.unlock_with_password(password()),
         Err(MasterProblem::WrongPassword),
@@ -710,7 +690,7 @@ fn changing_the_password_needs_the_current_one_and_keeps_every_item() {
 
 #[test]
 fn changing_the_password_from_a_locked_library_unlocks_it() {
-    let mut r = with_password(Tier::Pro).restart(Tier::Pro);
+    let mut r = with_password().restart();
     assert!(r.ctl.library_locked());
     let new = support::pw("marble");
     r.ctl
@@ -722,7 +702,7 @@ fn changing_the_password_from_a_locked_library_unlocks_it() {
 
 #[test]
 fn removing_the_password_needs_the_current_one_and_returns_to_the_os_key_alone() {
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     assert_eq!(
         r.ctl.remove_master_password(support::pw("wrong")),
         Err(MasterProblem::WrongPassword)
@@ -731,14 +711,14 @@ fn removing_the_password_needs_the_current_one_and_returns_to_the_os_key_alone()
     r.ctl.remove_master_password(password()).expect("remove");
     assert_eq!(r.ctl.master_password_state(), MasterState::NotSet);
     assert_eq!(r.toast(), Some(ToastMessage::MasterPasswordRemoved));
-    let r = r.restart(Tier::Pro);
+    let r = r.restart();
     assert!(!r.ctl.library_locked(), "opens at start-up again");
     assert_eq!(r.secret().as_deref(), Some(SECRET));
 }
 
 #[test]
 fn changing_or_removing_when_none_is_set_is_refused() {
-    let mut r = rig(Tier::Pro);
+    let mut r = rig();
     assert_eq!(
         r.ctl
             .change_master_password(password(), password(), password()),
@@ -752,32 +732,11 @@ fn changing_or_removing_when_none_is_set_is_refused() {
 
 #[test]
 fn setting_again_while_one_is_set_is_refused() {
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     assert_eq!(
         r.ctl
             .set_master_password("another phrase 9", "another phrase 9"),
         Err(MasterProblem::Failed)
-    );
-}
-
-#[test]
-fn a_lapsed_licence_can_still_unlock_change_and_remove() {
-    // Set as a Supporter, then the next run has no licence: the library must not be trapped.
-    let mut r = with_password(Tier::Pro).restart(Tier::Free);
-    assert!(r.ctl.library_locked());
-    r.ctl
-        .unlock_with_password(password())
-        .expect("unlock on Free");
-    let new = support::pw("marble");
-    r.ctl
-        .change_master_password(password(), new, new)
-        .expect("change on Free");
-    r.ctl.remove_master_password(new).expect("remove on Free");
-    assert_eq!(r.ctl.master_password_state(), MasterState::NotSet);
-    assert_eq!(
-        r.ctl.set_master_password(password(), password()),
-        Err(MasterProblem::SupporterOnly),
-        "but setting one again is Supporter"
     );
 }
 
@@ -854,7 +813,7 @@ fn typing_in_the_fill_form_of_a_sensitive_template_counts_as_activity() {
 
 #[test]
 fn the_library_locks_after_the_idle_time_and_asks_again() {
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     assert_eq!(r.ctl.idle_lock_wait(), Some(IDLE_LOCK));
     r.advance(just_before_idle(Duration::from_secs(1)));
     assert!(!r.ctl.lock_if_idle(), "a second early");
@@ -874,7 +833,7 @@ fn the_library_locks_after_the_idle_time_and_asks_again() {
 
 #[test]
 fn using_the_library_restarts_the_idle_count() {
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     r.advance(just_before_idle(Duration::from_mins(1)));
     let used = r.ctl.use_item(r.id, UseMode::Copy);
     assert!(matches!(used, snipdeck_app::controller::UseResult::Done(_)));
@@ -892,7 +851,7 @@ fn using_the_library_restarts_the_idle_count() {
 #[test]
 fn using_a_recent_entry_restarts_the_idle_count_and_closes_the_panel_like_an_item_use() {
     use snipdeck_app::{controller::Effect, recent::ClipboardObservation};
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     r.ctl.update_settings(|s| s.recent_history = true);
     r.ctl.update_settings(|s| s.panel_hide_after_use = true);
     r.ctl.set_on_top(false);
@@ -921,7 +880,7 @@ fn using_a_recent_entry_restarts_the_idle_count_and_closes_the_panel_like_an_ite
 
 #[test]
 fn locking_hides_a_revealed_row() {
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     let at = r
         .ctl
         .view()
@@ -940,7 +899,7 @@ fn locking_hides_a_revealed_row() {
 
 #[test]
 fn without_a_password_nothing_ever_locks() {
-    let mut r = rig(Tier::Pro);
+    let mut r = rig();
     assert_eq!(r.ctl.idle_lock_wait(), None);
     r.advance(IDLE_LOCK * 4);
     assert!(!r.ctl.lock_if_idle());
@@ -956,7 +915,7 @@ fn without_a_password_nothing_ever_locks() {
 
 #[test]
 fn locking_closes_a_sensitive_editor_so_no_plain_text_stays_on_screen() {
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     r.ctl.open_item_editor(r.id);
     assert!(r.ctl.item_editor_open());
     r.advance(IDLE_LOCK);
@@ -968,7 +927,7 @@ fn locking_closes_a_sensitive_editor_so_no_plain_text_stays_on_screen() {
 
 #[test]
 fn typing_in_a_sensitive_editor_counts_as_use() {
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     r.ctl.open_item_editor(r.id);
     r.advance(just_before_idle(Duration::from_secs(1)));
     r.ctl.item_editor_edited();
@@ -990,7 +949,7 @@ fn typing_in_a_sensitive_editor_counts_as_use() {
 
 #[test]
 fn a_plain_editor_stays_open_through_the_lock() {
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     r.ctl.open_new_item(Origin::Main);
     assert!(r.ctl.item_editor_open());
     r.advance(IDLE_LOCK);
@@ -1000,7 +959,7 @@ fn a_plain_editor_stays_open_through_the_lock() {
 
 #[test]
 fn erasing_the_library_closes_the_item_editor_and_forgets_the_old_index() {
-    let mut r = rig(Tier::Pro);
+    let mut r = rig();
     let before = r.ctl.view().rows.len();
     assert!(before > 0, "the demo library has rows");
     r.ctl.open_new_item(Origin::Main);
@@ -1021,7 +980,7 @@ fn erasing_the_library_closes_the_item_editor_and_forgets_the_old_index() {
 #[test]
 fn the_recent_gate_is_closed_right_after_unlocking_a_library_with_a_password() {
     use snipdeck_platform::clipboard_watch::WatchGate;
-    let r = with_password(Tier::Pro);
+    let r = with_password();
     let Rig {
         ctl,
         clock,
@@ -1030,7 +989,7 @@ fn the_recent_gate_is_closed_right_after_unlocking_a_library_with_a_password() {
         ..
     } = r;
     drop(ctl);
-    let mut ctl = start(Tier::Pro, &provider, data.path(), &clock);
+    let mut ctl = start(&provider, data.path(), &clock);
     assert!(
         ctl.library_locked(),
         "a password is set: locked after a restart"
@@ -1046,7 +1005,7 @@ fn the_recent_gate_is_closed_right_after_unlocking_a_library_with_a_password() {
 
 #[test]
 fn an_editor_switched_to_sensitive_is_closed_by_the_lock_too() {
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     r.ctl.open_new_item(Origin::Main);
     let v = r.ctl.item_editor_view().expect("editor");
     // The two-second tick hands over what the window holds, including the Sensitive switch.
@@ -1069,7 +1028,7 @@ fn an_editor_switched_to_sensitive_is_closed_by_the_lock_too() {
 
 #[test]
 fn a_change_opens_the_library_with_the_key_it_already_derived() {
-    let mut r = with_password(Tier::Pro).restart(Tier::Pro);
+    let mut r = with_password().restart();
     let new = support::pw("marble");
     r.provider.fail_unwraps_after(Some(1));
     assert_eq!(r.ctl.change_master_password(password(), new, new), Ok(()));
@@ -1078,7 +1037,7 @@ fn a_change_opens_the_library_with_the_key_it_already_derived() {
     assert!(!r.ctl.library_locked(), "opened by the change itself");
     assert_eq!(r.secret().as_deref(), Some(SECRET));
     r.provider.fail_unwraps_after(None);
-    let mut r = r.restart(Tier::Pro);
+    let mut r = r.restart();
     assert_eq!(
         r.ctl.unlock_with_password(password()),
         Err(MasterProblem::WrongPassword),
@@ -1092,7 +1051,7 @@ fn a_change_opens_the_library_with_the_key_it_already_derived() {
 
 #[test]
 fn a_removal_opens_the_library_with_the_key_it_already_derived() {
-    let mut r = with_password(Tier::Pro).restart(Tier::Pro);
+    let mut r = with_password().restart();
     r.provider.fail_unwraps_after(Some(1));
     assert_eq!(r.ctl.remove_master_password(password()), Ok(()));
     assert_eq!(r.toast(), Some(ToastMessage::MasterPasswordRemoved));
@@ -1100,7 +1059,7 @@ fn a_removal_opens_the_library_with_the_key_it_already_derived() {
     assert!(!r.ctl.library_locked());
     assert!(!r.ctl.unlock_prompt_open(), "no password left to ask for");
     r.provider.fail_unwraps_after(None);
-    let r = r.restart(Tier::Pro);
+    let r = r.restart();
     assert_eq!(r.secret().as_deref(), Some(SECRET), "opens by itself again");
 }
 
@@ -1108,9 +1067,9 @@ fn a_removal_opens_the_library_with_the_key_it_already_derived() {
 
 #[test]
 fn a_key_record_that_cannot_be_read_is_not_offered_a_password() {
-    let r = with_password(Tier::Pro);
+    let r = with_password();
     r.provider.fail_unwraps_after(Some(0));
-    let mut r = r.restart(Tier::Pro);
+    let mut r = r.restart();
     assert_eq!(r.toast(), Some(ToastMessage::KeyUnavailable));
     assert_eq!(r.ctl.master_password_state(), MasterState::KeyUnavailable);
     assert_eq!(
@@ -1119,7 +1078,7 @@ fn a_key_record_that_cannot_be_read_is_not_offered_a_password() {
         "not a second record over one that may hold a password"
     );
     r.provider.fail_unwraps_after(None);
-    let r = r.restart(Tier::Pro);
+    let r = r.restart();
     assert_eq!(
         r.ctl.master_password_state(),
         MasterState::Set,
@@ -1142,11 +1101,11 @@ fn backup_files(data: &Path) -> Vec<(std::path::PathBuf, Vec<u8>)> {
 
 #[test]
 fn a_locked_library_does_not_export_or_back_up_a_copy_without_its_sensitive_items() {
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     assert!(r.ctl.backup_now(r.data.path()), "a complete one while open");
     let before = backup_files(r.data.path());
     assert_eq!(before.len(), 1);
-    let mut r = r.restart(Tier::Pro);
+    let mut r = r.restart();
     let out = tempfile::tempdir().expect("dir");
 
     assert_eq!(r.ctl.export_library(out.path()), None);
@@ -1175,10 +1134,10 @@ fn a_locked_library_does_not_export_or_back_up_a_copy_without_its_sensitive_item
 
 #[test]
 fn a_locked_library_does_not_restore_a_backup_that_would_drop_sensitive_items() {
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     assert!(r.ctl.backup_now(r.data.path()));
     let file = backup_files(r.data.path()).remove(0).0;
-    let mut r = r.restart(Tier::Pro);
+    let mut r = r.restart();
 
     assert!(!r.ctl.restore_backup(&file));
     assert_eq!(r.toast(), Some(ToastMessage::UnlockFirst));
@@ -1190,7 +1149,7 @@ fn a_locked_library_does_not_restore_a_backup_that_would_drop_sensitive_items() 
 
 #[test]
 fn copying_a_locked_item_puts_nothing_on_the_clipboard() {
-    let mut r = with_password(Tier::Pro).restart(Tier::Pro);
+    let mut r = with_password().restart();
     let used = r.ctl.use_item(r.id, UseMode::Copy);
     assert!(matches!(used, snipdeck_app::controller::UseResult::Failed));
     assert_eq!(r.toast(), Some(ToastMessage::Locked));
@@ -1203,10 +1162,10 @@ fn copying_a_locked_item_puts_nothing_on_the_clipboard() {
 
 #[test]
 fn a_locked_library_does_not_import_a_snipdeck_file_that_would_drop_sensitive_items() {
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     assert!(r.ctl.backup_now(r.data.path()));
     let file = backup_files(r.data.path()).remove(0).0;
-    let mut r = r.restart(Tier::Pro);
+    let mut r = r.restart();
     let source = ImportSource::Snipdeck(file);
 
     assert!(!r.ctl.apply_import(&source));
@@ -1227,7 +1186,7 @@ fn while_locked_recent_is_hidden_and_collects_nothing_until_unlocked() {
         source_app: Some("notepad.exe".to_owned()),
         ..ClipboardObservation::default()
     };
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     r.ctl.update_settings(|s| s.recent_history = true);
     r.ctl.on_clipboard_change(&copied("before the lock"));
     assert_eq!(r.ctl.recent_entries().len(), 1);
@@ -1258,7 +1217,7 @@ fn while_locked_recent_is_hidden_and_collects_nothing_until_unlocked() {
 
 #[test]
 fn rebuilding_from_a_backup_refuses_while_the_library_is_locked() {
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     assert!(r.ctl.backup_now(r.data.path()));
     let backup = snipdeck_portable::backup::list_backups(r.data.path())
         .expect("list")
@@ -1285,7 +1244,7 @@ fn rebuilding_from_a_backup_refuses_while_the_library_is_locked() {
 
 #[test]
 fn rebuilding_an_encrypted_library_keeps_its_sensitive_items_readable() {
-    let mut r = rig(Tier::Pro);
+    let mut r = rig();
     assert!(r.ctl.backup_now(r.data.path()));
     let backup = snipdeck_portable::backup::list_backups(r.data.path())
         .expect("list")
@@ -1319,7 +1278,7 @@ fn rebuilding_an_encrypted_library_keeps_its_sensitive_items_readable() {
     );
     assert!(r.ctl.store().is_unlocked(), "still open for this session");
     // And it survives a restart: the fresh database holds the same key record.
-    let r = r.restart(Tier::Pro);
+    let r = r.restart();
     let vault = r
         .ctl
         .store()
@@ -1374,11 +1333,19 @@ mod hello {
     /// Hello on with a password set and the library locked.
     fn locked_with_hello() -> (Rig, Arc<FakeHello>) {
         let hello = fake();
-        let mut r = with_password(Tier::Pro);
+        let mut r = with_password();
         enable(&mut r, &hello);
         r.ctl.lock_now();
         assert!(r.ctl.library_locked());
         (r, hello)
+    }
+
+    /// The sealed copy is gone: the credential it was sealed for changed to `credential` (a new
+    /// one each call), so one try drops it.
+    fn lose_the_copy(r: &mut Rig, hello: &FakeHello, credential: &[u8]) {
+        hello.replace_credential(credential);
+        assert_eq!(open_by_hello(r), Err(HelloFailure::Mismatch));
+        assert!(!r.ctl.hello_unlock_available(), "the old copy is gone");
     }
 
     fn open_by_hello(r: &mut Rig) -> Result<(), HelloFailure> {
@@ -1405,7 +1372,7 @@ mod hello {
     #[test]
     fn restart_needs_the_password() {
         let (r, hello) = locked_with_hello();
-        let mut r = r.restart(Tier::Pro);
+        let mut r = r.restart();
         attach(&mut r.ctl, &hello);
         assert!(r.ctl.library_locked());
         assert!(
@@ -1492,7 +1459,7 @@ mod hello {
     fn a_hello_that_is_not_repeatable_is_not_used() {
         let hello = fake();
         hello.set_non_deterministic(true);
-        let mut r = with_password(Tier::Pro);
+        let mut r = with_password();
         attach(&mut r.ctl, &hello);
         let job = r.ctl.set_hello_unlock(true).expect("a step");
         assert_eq!(
@@ -1513,7 +1480,7 @@ mod hello {
     #[test]
     fn turning_hello_on_and_cancelling_leaves_the_switch_off_and_says_so() {
         let hello = fake();
-        let mut r = with_password(Tier::Pro);
+        let mut r = with_password();
         attach(&mut r.ctl, &hello);
         hello.set_sign(Err(HelloError::Cancelled));
         let job = r.ctl.set_hello_unlock(true).expect("a step");
@@ -1530,7 +1497,7 @@ mod hello {
     #[test]
     fn turning_hello_on_when_it_fails_says_why() {
         let hello = fake();
-        let mut r = with_password(Tier::Pro);
+        let mut r = with_password();
         attach(&mut r.ctl, &hello);
         hello.set_sign(Err(HelloError::Removed));
         let job = r.ctl.set_hello_unlock(true).expect("a step");
@@ -1555,7 +1522,7 @@ mod hello {
     fn a_hello_that_is_not_repeatable_does_not_get_turned_on_and_says_so() {
         let hello = fake();
         hello.set_non_deterministic(true);
-        let mut r = with_password(Tier::Pro);
+        let mut r = with_password();
         attach(&mut r.ctl, &hello);
         let job = r.ctl.set_hello_unlock(true).expect("a step");
         assert_eq!(
@@ -1570,10 +1537,7 @@ mod hello {
     fn a_seal_that_keeps_failing_after_password_unlocks_turns_hello_off_with_a_message() {
         let (mut r, hello) = locked_with_hello();
         // The copy is gone (a restart): each password unlock seals again.
-        r.ctl
-            .change_plan(snipdeck_core::Entitlements::new(Tier::Free));
-        r.ctl
-            .change_plan(snipdeck_core::Entitlements::new(Tier::Pro));
+        lose_the_copy(&mut r, &hello, b"credential 1");
         hello.set_sign(Err(HelloError::Removed));
         assert_eq!(password_then_seal(&mut r), Some(Err(HelloFailure::Failed)));
         assert!(r.ctl.settings().hello_unlock, "one failure is tolerated");
@@ -1582,10 +1546,7 @@ mod hello {
         hello.set_sign(Ok(()));
         assert_eq!(password_then_seal(&mut r), Some(Ok(())));
         r.ctl.lock_now();
-        r.ctl
-            .change_plan(snipdeck_core::Entitlements::new(Tier::Free));
-        r.ctl
-            .change_plan(snipdeck_core::Entitlements::new(Tier::Pro));
+        lose_the_copy(&mut r, &hello, b"credential 2");
         hello.set_sign(Err(HelloError::Removed));
         assert_eq!(password_then_seal(&mut r), Some(Err(HelloFailure::Failed)));
         assert!(r.ctl.settings().hello_unlock, "the count started again");
@@ -1606,10 +1567,7 @@ mod hello {
     #[test]
     fn a_cancelled_seal_after_a_password_unlock_never_counts() {
         let (mut r, hello) = locked_with_hello();
-        r.ctl
-            .change_plan(snipdeck_core::Entitlements::new(Tier::Free));
-        r.ctl
-            .change_plan(snipdeck_core::Entitlements::new(Tier::Pro));
+        lose_the_copy(&mut r, &hello, b"credential 3");
         hello.set_sign(Err(HelloError::Cancelled));
         for _ in 0..3 {
             assert_eq!(
@@ -1657,7 +1615,7 @@ mod hello {
     #[test]
     fn a_job_that_could_not_run_is_tagged_with_its_own_counter() {
         let hello = fake();
-        let mut r = with_password(Tier::Pro);
+        let mut r = with_password();
         r.ctl.set_hello(hello.clone());
         let ask = r.ctl.begin_hello_refresh().expect("a Hello");
         assert!(ask.failed().is_availability());
@@ -1669,7 +1627,7 @@ mod hello {
     #[test]
     fn an_availability_failure_never_stands_in_for_a_step() {
         let hello = fake();
-        let mut r = with_password(Tier::Pro);
+        let mut r = with_password();
         attach(&mut r.ctl, &hello);
         let step = r.ctl.set_hello_unlock(true).expect("a step");
         // The step is under way; an availability question fails (its job panicked) meanwhile.
@@ -1690,7 +1648,7 @@ mod hello {
     #[test]
     fn an_older_availability_answer_never_replaces_a_newer_one() {
         let hello = fake();
-        let mut r = with_password(Tier::Pro);
+        let mut r = with_password();
         r.ctl.set_hello(hello.clone());
         hello.set_availability(HelloAvailability::NotSetUp);
         let older = r.ctl.begin_hello_refresh().expect("a Hello");
@@ -1710,7 +1668,7 @@ mod hello {
     #[test]
     fn a_switch_on_cut_short_by_a_lock_goes_back_off_and_its_late_outcome_is_dropped() {
         let hello = fake();
-        let mut r = with_password(Tier::Pro);
+        let mut r = with_password();
         attach(&mut r.ctl, &hello);
         let step = r.ctl.set_hello_unlock(true).expect("step");
         // The library locks (hotkey or auto-lock) while the seal is on its way.
@@ -1736,7 +1694,7 @@ mod hello {
     #[test]
     fn turning_hello_on_while_the_library_is_locked_leaves_the_switch_off_and_says_so() {
         let hello = fake();
-        let mut r = with_password(Tier::Pro);
+        let mut r = with_password();
         attach(&mut r.ctl, &hello);
         r.ctl.lock_now();
         assert!(r.ctl.set_hello_unlock(true).is_none(), "no key to seal");
@@ -1748,7 +1706,7 @@ mod hello {
     fn erasing_the_library_forgets_the_hello_copy_and_switches_hello_off() {
         for forget_key in [false, true] {
             let hello = fake();
-            let mut r = with_password(Tier::Pro);
+            let mut r = with_password();
             enable(&mut r, &hello);
             r.ctl.lock_now();
             assert!(r.ctl.hello_unlock_available());
@@ -1772,7 +1730,7 @@ mod hello {
     #[test]
     fn setting_a_password_again_never_keeps_a_hello_copy() {
         let hello = fake();
-        let mut r = with_password(Tier::Pro);
+        let mut r = with_password();
         enable(&mut r, &hello);
         r.ctl.remove_master_password(password()).expect("removed");
         assert!(!r.ctl.settings().hello_unlock);
@@ -1834,29 +1792,23 @@ mod hello {
     }
 
     #[test]
-    fn a_plan_change_or_an_unusable_hello_reverts_a_switch_on_under_way() {
-        for plan_change in [true, false] {
-            let hello = fake();
-            let mut r = with_password(Tier::Pro);
-            attach(&mut r.ctl, &hello);
-            let step = r.ctl.set_hello_unlock(true).expect("step");
-            if plan_change {
-                r.ctl.change_plan(Entitlements::new(Tier::Free));
-            } else {
-                hello.set_availability(HelloAvailability::NotSetUp);
-                refresh(&mut r.ctl);
-            }
-            assert!(!r.ctl.settings().hello_unlock, "plan_change={plan_change}");
-            assert_eq!(r.toast(), Some(ToastMessage::HelloNotTurnedOn));
-            let late = step.run();
-            assert!(r.ctl.hello_stale(&late));
-        }
+    fn an_unusable_hello_reverts_a_switch_on_under_way() {
+        let hello = fake();
+        let mut r = with_password();
+        attach(&mut r.ctl, &hello);
+        let step = r.ctl.set_hello_unlock(true).expect("step");
+        hello.set_availability(HelloAvailability::NotSetUp);
+        refresh(&mut r.ctl);
+        assert!(!r.ctl.settings().hello_unlock);
+        assert_eq!(r.toast(), Some(ToastMessage::HelloNotTurnedOn));
+        let late = step.run();
+        assert!(r.ctl.hello_stale(&late));
     }
 
     #[test]
     fn the_turned_off_note_is_said_once() {
         let hello = fake();
-        let mut r = with_password(Tier::Pro);
+        let mut r = with_password();
         enable(&mut r, &hello);
         r.ctl.lock_now();
         hello.set_sign(Err(HelloError::Removed));
@@ -1873,7 +1825,7 @@ mod hello {
     #[test]
     fn changing_the_password_seals_a_new_copy_on_the_next_step() {
         let hello = fake();
-        let mut r = with_password(Tier::Pro);
+        let mut r = with_password();
         enable(&mut r, &hello);
         r.ctl
             .change_master_password(password(), support::pw("changed"), support::pw("changed"))
@@ -1891,7 +1843,7 @@ mod hello {
     #[test]
     fn a_quick_unlock_before_hello_answered_seals_once_it_has() {
         let hello = fake();
-        let mut r = with_password(Tier::Pro);
+        let mut r = with_password();
         enable(&mut r, &hello);
         r.ctl.lock_now();
         // As after a restart: Hello has not been asked yet.
@@ -1913,22 +1865,9 @@ mod hello {
     }
 
     #[test]
-    fn free_tier_has_no_hello() {
-        let hello = fake();
-        let r = with_password(Tier::Pro).restart(Tier::Free);
-        let mut r = r;
-        attach(&mut r.ctl, &hello);
-        assert!(!r.ctl.hello_offered());
-        assert!(r.ctl.set_hello_unlock(true).is_none());
-        assert!(!r.ctl.settings().hello_unlock);
-        assert!(r.ctl.begin_hello_seal().is_none());
-        assert_eq!(hello.prompts(), 0, "Hello is never asked");
-    }
-
-    #[test]
     fn it_is_offered_only_with_a_password_and_a_ready_hello() {
         let hello = fake();
-        let mut r = rig(Tier::Pro);
+        let mut r = rig();
         attach(&mut r.ctl, &hello);
         assert!(!r.ctl.hello_offered(), "no master password");
         r.ctl
@@ -1947,7 +1886,7 @@ mod hello {
     #[test]
     fn turning_it_on_asks_twice_and_each_later_seal_asks_once() {
         let hello = fake();
-        let mut r = with_password(Tier::Pro);
+        let mut r = with_password();
         attach(&mut r.ctl, &hello);
         assert_eq!(hello.prompts(), 0, "asking if it is ready is not a prompt");
         let job = r.ctl.set_hello_unlock(true).expect("step");
@@ -1964,7 +1903,7 @@ mod hello {
     #[test]
     fn locking_during_a_seal_stops_it_and_refuses_the_copy() {
         let hello = fake();
-        let mut r = with_password(Tier::Pro);
+        let mut r = with_password();
         attach(&mut r.ctl, &hello);
         let job = r.ctl.set_hello_unlock(true).expect("step");
         let before = hello.prompts();
@@ -1982,7 +1921,7 @@ mod hello {
     #[test]
     fn an_outcome_of_an_older_step_never_replaces_a_newer_one() {
         let hello = fake();
-        let mut r = with_password(Tier::Pro);
+        let mut r = with_password();
         attach(&mut r.ctl, &hello);
         let old = r.ctl.set_hello_unlock(true).expect("step");
         r.ctl.lock_now();
@@ -1997,20 +1936,6 @@ mod hello {
             .expect("the newer step still lands");
         r.ctl.lock_now();
         assert!(r.ctl.hello_unlock_available());
-    }
-
-    #[test]
-    fn a_plan_change_to_free_drops_the_copy_while_running() {
-        let (mut r, _hello) = locked_with_hello();
-        assert!(r.ctl.hello_unlock_available());
-        r.ctl.change_plan(Entitlements::new(Tier::Free));
-        assert!(!r.ctl.hello_enabled());
-        assert!(!r.ctl.hello_unlock_available());
-        r.ctl.change_plan(Entitlements::new(Tier::Pro));
-        assert!(
-            !r.ctl.hello_unlock_available(),
-            "the copy does not come back"
-        );
     }
 
     #[test]

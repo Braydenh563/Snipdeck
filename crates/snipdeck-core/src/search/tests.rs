@@ -417,9 +417,7 @@ const SPEC_BUDGET: Duration = Duration::from_millis(16);
 /// on a machine busy with other builds; worst single run 9 ms), so a regression to the budget
 /// is a regression worth failing on, while ordinary noise keeps a 4x margin.
 ///
-/// A release build needs a licence key (see `docs/licensing.md`); any valid public key will
-/// do for timing:
-/// `SNIPDECK_ALLOW_TEST_LICENCE_KEY=1 SNIPDECK_LICENCE_PUBLIC_KEY=Zr5+Myx6RTMyvZ0Kf32wVfXF7xoGraZtmLOftoEMRzo= cargo test --release -p snipdeck-core --lib search_10k -- --ignored --nocapture`.
+/// Run it with `cargo test --release -p snipdeck-core --lib search_10k -- --ignored --nocapture`.
 #[test]
 #[ignore = "timing test: run with --release -- --ignored"]
 #[allow(

@@ -26,7 +26,7 @@ use snipdeck_app::{
     settings::{HotkeyAction, Settings},
     toast_binding::ToastUi,
 };
-use snipdeck_core::{Entitlements, ItemId, Tier, Timestamp};
+use snipdeck_core::{ItemId, Timestamp};
 use snipdeck_platform::{
     keys::{Key as PlatformKey, KeyEvent},
     payload::Data,
@@ -109,7 +109,6 @@ fn rig_at(scale: f32) -> Rig {
         Box::new(targets.clone()),
         Box::new(FixedClock::new(now())),
         Settings::default(),
-        Entitlements::new(Tier::Pro),
     )
     .expect("controller");
     let ctl = Rc::new(RefCell::new(ctl));

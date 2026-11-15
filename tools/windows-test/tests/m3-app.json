@@ -537,7 +537,7 @@
       "id": "71",
       "v1": false,
       "title": "Windows Hello: switch it on (two prompts)",
-      "do": "On a PC where Windows Hello has a PIN, face or fingerprint set up, with a Supporter licence and a master password set, open Settings > Security and turn on Unlock with Windows Hello. Answer the Windows Hello prompts. Then repeat, but cancel the first prompt.",
+      "do": "On a PC where Windows Hello has a PIN, face or fingerprint set up, with a master password set, open Settings > Security and turn on Unlock with Windows Hello. Answer the Windows Hello prompts. Then repeat, but cancel the first prompt.",
       "expect": "Turning it on asks twice (the second checks that Hello answers the same way) and the switch stays on. If you cancel, the switch goes back off and a message says Windows Hello was not turned on; nothing says to look in Settings. Without a master password or on the Free plan the row is not shown. Write anything odd in the note (n)."
     },
     {

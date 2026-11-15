@@ -50,6 +50,8 @@ pub enum Command {
     Troubleshoot,
     /// Open About.
     About,
+    /// Open the optional "Support Snipdeck" page in the browser.
+    Support,
     /// Comfortable rows (the row density setting).
     DensityComfortable,
     /// Compact rows (the row density setting).
@@ -110,7 +112,7 @@ pub enum Command {
 
 impl Command {
     /// Every command, in the order of `CommandTexts.all`.
-    pub const ALL: [Self; 46] = [
+    pub const ALL: [Self; 47] = [
         Self::NewItem,
         Self::NewList,
         Self::Search,
@@ -129,6 +131,7 @@ impl Command {
         Self::Shortcuts,
         Self::Troubleshoot,
         Self::About,
+        Self::Support,
         Self::DensityComfortable,
         Self::DensityCompact,
         Self::ViewTile,
@@ -444,6 +447,7 @@ mod tests {
             ("Keyboard shortcuts", "hotkeys keys cheat sheet"),
             ("Troubleshoot…", "diagnose"),
             ("About Snipdeck", "version"),
+            ("Support Snipdeck", "donate coffee"),
             ("Main list density: Comfortable", "view mode"),
             ("Main list density: Compact", "view mode"),
             ("Tile view", "view mode"),

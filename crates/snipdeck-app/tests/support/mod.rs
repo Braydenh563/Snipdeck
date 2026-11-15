@@ -222,18 +222,6 @@ pub fn pw(label: &str) -> &'static str {
     Box::leak(hex.as_str()[..24].to_owned().into_boxed_str())
 }
 
-/// The published development licence seed (public by design; `docs/licensing.md`), assembled at
-/// run time rather than written as a byte literal.
-pub fn dev_seed() -> [u8; 32] {
-    let text = ["snipdeck", "development", "licence", "key"].join(" ");
-    text.as_bytes().try_into().unwrap()
-}
-
-/// A throwaway signing seed computed from `tag`, unrelated to the development key.
-pub fn derived_seed(tag: u8) -> [u8; 32] {
-    std::array::from_fn(|i| u8::try_from(i).unwrap().wrapping_mul(31).wrapping_add(tag))
-}
-
 /// The master-password steps in one call, for tests: `begin_*`, then the job's `run` (what the
 /// worker thread does), then `finish_master`.
 pub trait MasterSteps {
