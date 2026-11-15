@@ -575,6 +575,9 @@ where
                 UseResult::Done(used.outcome)
             }
             Err(UseError::Platform(snipdeck_platform::pipeline::Error::Superseded)) => {
+                // The clipboard is back as it was, but a sensitive Files item already wrote its
+                // plaintext copies: they go on the timer too (`Pasted` arms no clipboard clear).
+                self.schedule_clipboard_clear(item, UseOutcome::Pasted);
                 UseResult::Cancelled
             }
             // The paste was called off but the item is still on the clipboard: it is cleared
@@ -622,7 +625,10 @@ where
         // The plaintext copies go on the same timer as the clipboard, with or without a master
         // password; the clipboard's own clear below may not apply (a paste that restored it).
         if self.secret_files_pasted && !life.is_zero() {
-            self.secret_files_due = self.clock.now().checked_add(life).ok();
+            // Keep the earliest: a later use must not postpone the delete.
+            if self.secret_files_due.is_none() {
+                self.secret_files_due = self.clock.now().checked_add(life).ok();
+            }
         }
         if life.is_zero()
             || matches!(outcome, UseOutcome::Pasted)
@@ -633,14 +639,21 @@ where
         let Ok(due) = self.clock.now().checked_add(life) else {
             return;
         };
-        let digest = self
-            .services
-            .clipboard
-            .read_text()
-            .map(|text| ClipboardDigest::of(&text));
         // The sequence number right after OUR write, not now: anything that changed the
         // clipboard in between must not be mistaken for our content (A7).
         let sequence = self.services.clipboard.written_sequence();
+        // The text is hashed only while the clipboard is still as our write left it. After a
+        // restore (even a partial one) it holds the user's text, which must never be matched,
+        // and so never wiped.
+        let untouched = sequence.is_some() && self.services.clipboard.sequence_number() == sequence;
+        let digest = if untouched {
+            self.services
+                .clipboard
+                .read_text()
+                .map(|text| ClipboardDigest::of(&text))
+        } else {
+            None
+        };
         self.clipboard_clear = (digest.is_some() || sequence.is_some()).then_some(PendingClear {
             due,
             digest,
