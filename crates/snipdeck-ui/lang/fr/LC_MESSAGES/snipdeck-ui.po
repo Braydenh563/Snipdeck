@@ -915,6 +915,9 @@ msgstr "Abandonner"
 msgid "Discard your changes?"
 msgstr "Abandonner les modifications ?"
 
+msgid "Dismiss"
+msgstr "Fermer"
+
 msgid "Ditto database"
 msgstr "Base de données Ditto"
 

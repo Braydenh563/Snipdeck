@@ -675,6 +675,7 @@ where
         wire!(on_board_delete_dismissed, |ctl| ctl
             .main_board_delete_cancel());
         wire!(on_toast_undo, |ctl| ctl.toast_action());
+        wire!(on_toast_dismissed, |ctl| ctl.toast_dismiss());
         wire!(on_toast_edit, |ctl| {
             for effect in ctl.toast_edit() {
                 if let Effect::EditItem(id) = effect {

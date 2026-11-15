@@ -2100,16 +2100,31 @@ fn clearing_recent_emoji_and_colours_asks_first_then_clears_and_says_so() {
                 used_at: 1,
             }];
         });
-        element(&r.ui, "Clear recent emoji and colours…", AccessibleRole::Button)
-            .invoke_accessible_default_action();
-        assert_eq!(r.ctl.borrow().settings().colours_recent.len(), 1, "asked first");
+        element(
+            &r.ui,
+            "Clear recent emoji and colours…",
+            AccessibleRole::Button,
+        )
+        .invoke_accessible_default_action();
+        assert_eq!(
+            r.ctl.borrow().settings().colours_recent.len(),
+            1,
+            "asked first"
+        );
         element(&r.ui, "Keep them", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(r.ctl.borrow().settings().colours_recent.len(), 1, "kept");
-        element(&r.ui, "Clear recent emoji and colours…", AccessibleRole::Button)
-            .invoke_accessible_default_action();
+        element(
+            &r.ui,
+            "Clear recent emoji and colours…",
+            AccessibleRole::Button,
+        )
+        .invoke_accessible_default_action();
         element(&r.ui, "Clear them", AccessibleRole::Button).invoke_accessible_default_action();
         assert!(r.ctl.borrow().settings().colours_recent.is_empty());
-        assert_eq!(r.ui.get_toast_text(), "Recently used emoji and colours cleared");
+        assert_eq!(
+            r.ui.get_toast_text(),
+            "Recently used emoji and colours cleared"
+        );
     });
 }
 

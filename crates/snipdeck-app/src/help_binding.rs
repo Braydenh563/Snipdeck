@@ -611,6 +611,10 @@ where
                 });
             }};
         }
+        wire!(on_toast_dismissed, |core| {
+            core.controller.borrow_mut().toast_dismiss();
+            redraw_all();
+        });
         wire!(on_check_again_requested, |core| {
             core.run_checks();
             redraw_all();

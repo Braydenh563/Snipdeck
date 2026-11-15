@@ -453,6 +453,7 @@ export component MainWindow inherits Window {
     callback board-delete-dismissed();
     callback toast-undo();
     callback toast-edit();
+    callback toast-dismissed();
     // Ctrl+V on the item list: make an item from the clipboard text.
     callback paste-create-requested();
     // Ctrl+C on the item list: copy the selected rows (the row under the cursor with none selected).
@@ -2474,8 +2475,10 @@ export component MainWindow inherits Window {
                         height: self.preferred-height;
                         x: (parent.width - self.width) / 2;
                         y: parent.height - self.height - Space.s2;
-                        undo => { root.toast-undo(); }
-                        edit => { root.toast-edit(); }
+                        // The toast goes with its button: the focus goes back to the items first.
+                        undo => { root.focus-items(); root.toast-undo(); }
+                        edit => { root.focus-items(); root.toast-edit(); }
+                        dismissed => { root.focus-items(); root.toast-dismissed(); }
                         hover-changed(h) => { root.toast-hover-changed(h); }
                     }
                 }
@@ -2779,6 +2782,7 @@ export component MainWindow inherits Window {
     }
 
     if root.board-menu-open: Menu {
+        menu-max-h: root.height - root.bar-h - Space.s2;
         x: Space.s2;
         y: root.bar-h - Space.s1;
         entries: root.board-menu-entries;
@@ -2797,6 +2801,7 @@ export component MainWindow inherits Window {
         }
     }
     if root.recent-menu-open: Menu {
+        menu-max-h: root.height - 2 * Space.s2;
         x: max(0px, min(root.recent-menu-x, root.width - self.width - Space.s2));
         y: max(0px, min(root.recent-menu-y, root.height - self.height - Space.s2));
         entries: [
@@ -2839,6 +2844,7 @@ export component MainWindow inherits Window {
         dismissed => { root.close-menus(); }
     }
     if root.item-menu-open: Menu {
+        menu-max-h: root.height - 2 * Space.s2;
         x: max(0px, min(root.item-menu-x, root.width - self.width - Space.s2));
         y: max(0px, min(root.item-menu-y, root.height - self.height - Space.s2));
         entries: root.rows[root.item-menu-index].is-header ? root.group-entries : root.item-entries;
@@ -2851,6 +2857,7 @@ export component MainWindow inherits Window {
         dismissed => { root.close-menus(); }
     }
     if root.nav-menu-open: Menu {
+        menu-max-h: root.height - 2 * Space.s2;
         x: max(0px, min(root.nav-menu-x, root.width - self.width - Space.s2));
         y: max(0px, min(root.nav-menu-y, root.height - self.height - Space.s2));
         entries: root.nav-entries;
@@ -2863,6 +2870,7 @@ export component MainWindow inherits Window {
         dismissed => { root.close-menus(); }
     }
     if root.help-menu-open: Menu {
+        menu-max-h: root.height - 2 * Space.s2;
         x: Space.s2;
         y: max(0px, root.height - root.bar-h - self.height);
         entries: [
@@ -2896,6 +2904,7 @@ export component MainWindow inherits Window {
         dismissed => { root.close-menus(); }
     }
     if root.view-menu-open: Menu {
+        menu-max-h: root.height - root.bar-h - Space.s2;
         x: max(0px, min(view-button.absolute-position.x, root.width - self.width - Space.s2));
         y: root.bar-h - Space.s1;
         entries: [
@@ -2928,6 +2937,7 @@ export component MainWindow inherits Window {
         dismissed => { root.close-menus(); }
     }
     if root.sort-menu-open: Menu {
+        menu-max-h: root.height - root.sort-menu-y - Space.s2;
         x: max(0px, min(root.sort-menu-x, root.width - self.width - Space.s2));
         y: root.sort-menu-y;
         entries: [

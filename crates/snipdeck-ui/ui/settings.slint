@@ -333,6 +333,7 @@ export component SettingsPage inherits Window {
     // The date of the newest backup, already in words ("17 Oct 2026"); empty when there is none.
     in property <string> last-backup;
     // The toast the host is showing (the page is a window of its own, so it shows the shared toast too).
+    callback toast-dismissed();
     in property <string> toast-text;
     in property <ToastKind> toast-kind: ToastKind.neutral;
     in property <ToastPhase> toast-phase: ToastPhase.hold;
@@ -1748,6 +1749,7 @@ export component SettingsPage inherits Window {
         text: root.toast-text;
         kind: root.toast-kind;
         phase: root.toast-phase;
+        dismissed => { root.toast-dismissed(); }
         width: min(self.preferred-width, 480px, root.width - 2 * Space.s4);
         height: self.preferred-height;
         x: (root.width - self.width) / 2;

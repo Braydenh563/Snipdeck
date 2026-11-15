@@ -83,6 +83,7 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_pinned_used, |i| format!("pinned:{i}"));
     hook!(on_toast_undo, || "undo".to_string());
     hook!(on_toast_edit, || "toast-edit".to_string());
+    hook!(on_toast_dismissed, || "toast-dismissed".to_string());
     hook!(on_paste_create_requested, || "paste-create".to_string());
     hook!(on_copy_selection_requested, || "copy-selection".to_string());
     hook!(on_undo_requested, || "ctrl-z".to_string());
@@ -114,6 +115,8 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_app_menu_requested, || "app-menu".to_string());
     hook!(on_app_menu_activated, |i| format!("app:{i}"));
     hook!(on_app_menu_dismissed, || "app-dismissed".to_string());
+    hook!(on_item_menu_dismissed, || "item-dismissed".to_string());
+    hook!(on_list_menu_dismissed, || "list-dismissed".to_string());
     hook!(on_edit_requested, |i| format!("edit:{i}"));
     hook!(on_rename_requested, |i| format!("rename:{i}"));
     hook!(on_duplicate_requested, |i| format!("duplicate:{i}"));
@@ -255,6 +258,11 @@ fn row_button(ui: &PanelWindow, row: usize, label: &str) -> Option<ElementHandle
             let (p, s) = (b.absolute_position(), b.size());
             p.y >= rp.y - 0.5 && p.y + s.height <= rp.y + rs.height + 0.5 && p.x >= rp.x - 0.5
         })
+}
+
+fn ui_min_height() -> f32 {
+    let (ui, _log) = start();
+    ui.get_min_h()
 }
 
 fn click_at(ui: &PanelWindow, at: LogicalPosition) {
@@ -1823,6 +1831,51 @@ ui_tests! {
         }
     }
 
+    fn a_menu_never_covers_the_whole_panel_and_a_click_on_the_strip_left_closes_it() {
+        // The smallest and a tall Panel: the menu stops 48px short of the bottom, so there is always somewhere to click off it.
+        for height in [ui_min_height(), 560.0_f32, 900.0] {
+            let (ui, log) = start();
+            ui.window().set_size(slint::LogicalSize::new(320.0, height));
+            ui.set_app_menu_open(true);
+            settle();
+            let menu = find(&ui, "Panel menu", AccessibleRole::List);
+            let bottom = menu.absolute_position().y + menu.size().height;
+            assert!(bottom <= height - 48.0 + 0.5, "{height}: menu bottom {bottom} leaves under 48px");
+            take(&log);
+            click_at(&ui, LogicalPosition::new(100.0, height - 24.0));
+            assert!(take(&log).contains(&"app-dismissed".to_string()), "{height}: a click below the menu closes it");
+        }
+    }
+
+    fn escape_closes_the_item_and_list_and_app_menus() {
+        for menu in ["app", "item", "list"] {
+            let (ui, log) = start();
+            match menu {
+                "app" => ui.set_app_menu_open(true),
+                "item" => ui.set_item_menu_open(true),
+                _ => ui.set_list_menu_open(true),
+            }
+            settle();
+            take(&log);
+            press(ui.window(), &key(Key::Escape));
+            settle();
+            assert_eq!(
+                take(&log),
+                [format!("{menu}-dismissed")],
+                "{menu}: Escape closes the menu and does not ask to hide the Panel"
+            );
+        }
+    }
+
+    fn the_toast_has_a_close_button_that_asks_the_host_to_drop_it() {
+        let (ui, log) = start();
+        ui.set_toast_text("Copied".into());
+        settle();
+        take(&log);
+        find(&ui, "Dismiss", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["toast-dismissed"]);
+    }
+
     fn from_150_percent_keep_on_top_leaves_the_header_for_the_menu() {
         let (ui, _log) = start();
         assert!(!missing(&ui, "Keep panel on top", AccessibleRole::Button), "100 %: the header button");
@@ -2198,6 +2251,36 @@ ui_tests! {
         ui.set_toast_text("".into());
         settle();
         assert!(missing(&ui, "Copied", AccessibleRole::Text));
+    }
+
+    fn using_the_toast_close_from_the_keyboard_hands_the_focus_back_to_typing() {
+        let (ui, log) = start();
+        ui.set_search_always(true);
+        ui.set_toast_text("Copied".into());
+        ui.set_toast_undo_label("Undo".into());
+        settle();
+        take(&log);
+        // Tab until a toast button holds the focus (it tells the host by `hover-changed`), then on to the
+        // close button, the last of them.
+        let mut reached = false;
+        for _ in 0..40 {
+            press(ui.window(), &key(Key::Tab));
+            settle();
+            if take(&log).iter().any(|l| l == "hover:true") {
+                reached = true;
+                break;
+            }
+        }
+        assert!(reached, "Tab reaches the toast");
+        press(ui.window(), &key(Key::Tab));
+        settle();
+        press(ui.window(), "\n");
+        assert!(take(&log).contains(&"toast-dismissed".to_string()), "the close button was used");
+        // The host drops the toast, and the keys still go somewhere: the search field.
+        ui.set_toast_text("".into());
+        settle();
+        type_text(ui.window(), "z");
+        assert_eq!(ui.get_query(), "z", "the focus did not die with the toast");
     }
 
     fn toast_edit_button_shows_only_with_edit() {

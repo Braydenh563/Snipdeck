@@ -110,7 +110,10 @@ mod tests {
                 for name in ["bg.app", "bg.hover", "bg.selected"] {
                     let bg = theme_token(dark, name).expect("token");
                     let rgb = [tint.red(), tint.green(), tint.blue()];
-                    assert!(crate::accent::contrast(rgb, bg) >= 3.0, "{accent:?} {dark} {name}");
+                    assert!(
+                        crate::accent::contrast(rgb, bg) >= 3.0,
+                        "{accent:?} {dark} {name}"
+                    );
                 }
             }
         }
