@@ -3759,33 +3759,33 @@ export | crates/snipdeck-app/src/settings_binding.rs:1615
 erase | crates/snipdeck-app/src/settings_binding.rs:1639
 impl Controller<Store, C, K, T> | crates/snipdeck-app/src/settings_binding.rs:1653
 bind_settings | crates/snipdeck-app/src/settings_binding.rs:1665
-render_import | crates/snipdeck-app/src/settings_binding.rs:1928
-render | crates/snipdeck-app/src/settings_binding.rs:1951
-request_open | crates/snipdeck-app/src/settings_binding.rs:2172
-SettingsUi | crates/snipdeck-app/src/settings_binding.rs:2181
-impl std::fmt::Debug for SettingsUi | crates/snipdeck-app/src/settings_binding.rs:2186
-fmt | crates/snipdeck-app/src/settings_binding.rs:2187
-impl SettingsUi | crates/snipdeck-app/src/settings_binding.rs:2192
-new | crates/snipdeck-app/src/settings_binding.rs:2195
-open | crates/snipdeck-app/src/settings_binding.rs:2282
-window | crates/snipdeck-app/src/settings_binding.rs:2288
-tests | crates/snipdeck-app/src/settings_binding.rs:2294
-autostart_errors_pick_their_toast | crates/snipdeck-app/src/settings_binding.rs:2296
-the_refusal_sentences_read_in_english | crates/snipdeck-app/src/settings_binding.rs:2309
-only_the_exact_word_confirms_the_erase | crates/snipdeck-app/src/settings_binding.rs:2331
-the_settings_search_ignores_case_and_wants_every_word | crates/snipdeck-app/src/settings_binding.rs:2349
-a_new_shortcut_replaces_only_its_own_action | crates/snipdeck-app/src/settings_binding.rs:2357
-a_shortcut_another_action_has_is_refused_and_names_that_action | crates/snipdeck-app/src/settings_binding.rs:2366
-text_that_is_not_a_shortcut_is_refused | crates/snipdeck-app/src/settings_binding.rs:2378
-applying_the_hotkeys_removes_the_ones_that_are_off | crates/snipdeck-app/src/settings_binding.rs:2389
-a_shortcut_another_program_owns_is_reported_for_its_action | crates/snipdeck-app/src/settings_binding.rs:2407
-program_names_are_trimmed_lower_cased_and_not_repeated | crates/snipdeck-app/src/settings_binding.rs:2421
-a_program_list_has_a_sane_name_length_and_count | crates/snipdeck-app/src/settings_binding.rs:2441
-sizes_read_in_the_unit_a_person_would_use | crates/snipdeck-app/src/settings_binding.rs:2462
-the_dock_to_choice_maps_to_an_edge_and_back | crates/snipdeck-app/src/settings_binding.rs:2473
-the_trigger_segments_map_to_a_trigger_and_back | crates/snipdeck-app/src/settings_binding.rs:2486
-a_shortcut_splits_into_one_chip_per_key | crates/snipdeck-app/src/settings_binding.rs:2496
-every_language_has_a_name_and_a_tag | crates/snipdeck-app/src/settings_binding.rs:2503
+render_import | crates/snipdeck-app/src/settings_binding.rs:1929
+render | crates/snipdeck-app/src/settings_binding.rs:1952
+request_open | crates/snipdeck-app/src/settings_binding.rs:2173
+SettingsUi | crates/snipdeck-app/src/settings_binding.rs:2182
+impl std::fmt::Debug for SettingsUi | crates/snipdeck-app/src/settings_binding.rs:2187
+fmt | crates/snipdeck-app/src/settings_binding.rs:2188
+impl SettingsUi | crates/snipdeck-app/src/settings_binding.rs:2193
+new | crates/snipdeck-app/src/settings_binding.rs:2196
+open | crates/snipdeck-app/src/settings_binding.rs:2283
+window | crates/snipdeck-app/src/settings_binding.rs:2289
+tests | crates/snipdeck-app/src/settings_binding.rs:2295
+autostart_errors_pick_their_toast | crates/snipdeck-app/src/settings_binding.rs:2297
+the_refusal_sentences_read_in_english | crates/snipdeck-app/src/settings_binding.rs:2310
+only_the_exact_word_confirms_the_erase | crates/snipdeck-app/src/settings_binding.rs:2332
+the_settings_search_ignores_case_and_wants_every_word | crates/snipdeck-app/src/settings_binding.rs:2350
+a_new_shortcut_replaces_only_its_own_action | crates/snipdeck-app/src/settings_binding.rs:2358
+a_shortcut_another_action_has_is_refused_and_names_that_action | crates/snipdeck-app/src/settings_binding.rs:2367
+text_that_is_not_a_shortcut_is_refused | crates/snipdeck-app/src/settings_binding.rs:2379
+applying_the_hotkeys_removes_the_ones_that_are_off | crates/snipdeck-app/src/settings_binding.rs:2390
+a_shortcut_another_program_owns_is_reported_for_its_action | crates/snipdeck-app/src/settings_binding.rs:2408
+program_names_are_trimmed_lower_cased_and_not_repeated | crates/snipdeck-app/src/settings_binding.rs:2422
+a_program_list_has_a_sane_name_length_and_count | crates/snipdeck-app/src/settings_binding.rs:2442
+sizes_read_in_the_unit_a_person_would_use | crates/snipdeck-app/src/settings_binding.rs:2463
+the_dock_to_choice_maps_to_an_edge_and_back | crates/snipdeck-app/src/settings_binding.rs:2474
+the_trigger_segments_map_to_a_trigger_and_back | crates/snipdeck-app/src/settings_binding.rs:2487
+a_shortcut_splits_into_one_chip_per_key | crates/snipdeck-app/src/settings_binding.rs:2497
+every_language_has_a_name_and_a_tag | crates/snipdeck-app/src/settings_binding.rs:2504
 
 ### crates/snipdeck-app/src/settings_store.rs
 
