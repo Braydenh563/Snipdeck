@@ -256,7 +256,7 @@ export global ToastTexts {
             return @tr("Couldn't make a backup: your library is locked. Unlock it, then use Back up now in Settings.");
         }
         if (cause == 6) {
-            return @tr("Couldn't make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 1 GB in all). Remove or shrink the biggest files, then use Back up now in Settings.");
+            return @tr("Couldn't make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings.");
         }
         return @tr("Couldn't make a backup. Check the disk has room, then use Back up now in Settings.");
     }
@@ -269,7 +269,7 @@ export global ToastTexts {
             return @tr("Couldn't make today's backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings.");
         }
         if (cause == 6) {
-            return @tr("Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 1 GB in all). Remove or shrink the biggest files, then use Back up now in Settings.");
+            return @tr("Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings.");
         }
         return @tr("Couldn't make today's backup. Check the disk has room, then use Back up now in Settings.");
     }
@@ -346,7 +346,7 @@ export global ToastTexts {
             return @tr("Couldn't export your library: it is locked. Unlock it, then try again.");
         }
         if (cause == 6) {
-            return @tr("Couldn't export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 1 GB in all). Remove or shrink the biggest files, then try again.");
+            return @tr("Couldn't export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then try again.");
         }
         return @tr("Couldn't export your library. Check the disk has room, then try again.");
     }

@@ -65,7 +65,11 @@ impl Cause {
             Portable::Io(e) | Portable::File { source: e, .. } => Self::of_io(e),
             Portable::Sqlite(e) => Self::of_trouble(Trouble::of_sqlite(e)),
             Portable::FormatTooNew { .. } => Self::TooNew,
-            Portable::ItemTooLarge { .. } => Self::TooBig,
+            Portable::ItemTooLarge { .. }
+            | Portable::LimitExceeded {
+                what: "total uncompressed size",
+                ..
+            } => Self::TooBig,
             Portable::NotAnArchive(_)
             | Portable::UnsafeEntry { .. }
             | Portable::LimitExceeded { .. }
@@ -144,6 +148,21 @@ mod tests {
         };
         assert_eq!(Cause::of_portable(&error), Cause::TooBig);
         assert!(error.to_string().contains("Scan"), "the log names the item");
+    }
+
+    #[test]
+    fn a_library_over_the_total_is_too_big_and_names_no_item() {
+        let error = Portable::LimitExceeded {
+            what: "total uncompressed size",
+            limit: 8,
+        };
+        assert_eq!(Cause::of_portable(&error), Cause::TooBig);
+        // Another limit stays an archive problem.
+        let count = Portable::LimitExceeded {
+            what: "entry count",
+            limit: 8,
+        };
+        assert_eq!(Cause::of_portable(&count), Cause::NotArchive);
     }
 
     #[test]

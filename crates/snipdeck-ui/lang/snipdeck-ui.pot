@@ -849,7 +849,7 @@ msgid "Couldn't export your library. Check the disk has room, then try again."
 msgstr ""
 
 #: ui/toast_texts.slint:349
-msgid "Couldn't export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 1 GB in all). Remove or shrink the biggest files, then try again."
+msgid "Couldn't export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then try again."
 msgstr ""
 
 #: ui/toast_texts.slint:346
@@ -897,7 +897,7 @@ msgid "Couldn't make a backup. Check the disk has room, then use Back up now in 
 msgstr ""
 
 #: ui/toast_texts.slint:259
-msgid "Couldn't make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 1 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
+msgid "Couldn't make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
 msgstr ""
 
 #: ui/toast_texts.slint:253
@@ -933,7 +933,7 @@ msgid "Couldn't make today's backup. Check the disk has room, then use Back up n
 msgstr ""
 
 #: ui/toast_texts.slint:272
-msgid "Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 1 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
+msgid "Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
 msgstr ""
 
 #: ui/toast_texts.slint:269

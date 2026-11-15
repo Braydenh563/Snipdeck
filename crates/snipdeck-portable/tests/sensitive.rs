@@ -732,7 +732,7 @@ fn an_item_over_the_entry_limit_is_named_instead_of_failing_without_a_word() {
 }
 
 #[test]
-fn the_item_that_takes_the_total_over_the_limit_is_named() {
+fn a_total_over_the_limit_is_reported_as_the_total_and_names_no_item() {
     let limits = Limits {
         max_entry_bytes: 100_000,
         max_total_bytes: 150_000,
@@ -765,9 +765,9 @@ fn the_item_that_takes_the_total_over_the_limit_is_named() {
     assert!(
         matches!(
             &err,
-            Error::ItemTooLarge {
+            Error::LimitExceeded {
                 what: "total uncompressed size",
-                ..
+                limit: 150_000
             }
         ),
         "{err:?}"

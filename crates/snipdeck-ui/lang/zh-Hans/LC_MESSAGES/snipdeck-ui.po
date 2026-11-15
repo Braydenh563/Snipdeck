@@ -638,7 +638,7 @@ msgstr "无法全部删除。请退出 Snipdeck 后重试。"
 msgid "Couldn't export your library. Check the disk has room, then try again."
 msgstr "无法导出你的资料库。请检查磁盘空间，然后重试。"
 
-msgid "Couldn't export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 1 GB in all). Remove or shrink the biggest files, then try again."
+msgid "Couldn't export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then try again."
 msgstr ""
 
 msgid "Couldn't export your library: it is locked. Unlock it, then try again."
@@ -674,7 +674,7 @@ msgstr "无法导入：你的资料库已锁定。请先解锁，然后重试。
 msgid "Couldn't make a backup. Check the disk has room, then use Back up now in Settings."
 msgstr "无法创建备份。请检查磁盘空间，然后使用“设置”中的“立即备份”。"
 
-msgid "Couldn't make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 1 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
+msgid "Couldn't make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
 msgstr ""
 
 msgid "Couldn't make a backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
@@ -701,7 +701,7 @@ msgstr "无法完成此更改：你的资料库已锁定。请先解锁，然后
 msgid "Couldn't make today's backup. Check the disk has room, then use Back up now in Settings."
 msgstr "无法创建今天的备份。请检查磁盘空间，然后使用“设置”中的“立即备份”。"
 
-msgid "Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 1 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
+msgid "Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
 msgstr ""
 
 msgid "Couldn't make today's backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."

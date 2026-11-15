@@ -150,7 +150,8 @@ first start.
 - The idle lock closes the fill form of a sensitive template, and says so.
 - A paste whose previous clipboard could not be kept whole (a very large image, or a metafile) is reported as not restored, instead of quietly putting back only part of it. Unverified on Windows.
 - Pasted files are zeroed before their temporary folder is deleted. Unverified on Windows.
-- A backup or export that fails because an attachment is too big for the archive (64 MB a file, 1 GB in all) names the cause in the toast and the log; the editor refuses such an attachment up front.
+- A backup or export that fails because an attachment is too big for the archive (64 MB a file) names the item in the toast and the log; the editor refuses such an attachment up front.
+- A library with more than 1 GB of attachments can be backed up and exported: the total limit of an archive is now 8 GB (a backup is read back under the same limit). Going over it says so, instead of naming whichever item crossed it.
 - A draft too big to be read back is no longer kept, and a stale one is zeroed on clear.
 - Template errors in the item editor and the Recent labels are translatable.
 - Quick add in the Panel takes `Ctrl+V` and closes once the item is created.

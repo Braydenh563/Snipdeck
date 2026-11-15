@@ -639,7 +639,7 @@ msgstr "Impossible de tout effacer. Quittez Snipdeck et réessayez."
 msgid "Couldn't export your library. Check the disk has room, then try again."
 msgstr "Impossible d'exporter votre bibliothèque. Vérifiez que le disque a de la place, puis réessayez."
 
-msgid "Couldn't export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 1 GB in all). Remove or shrink the biggest files, then try again."
+msgid "Couldn't export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then try again."
 msgstr ""
 
 msgid "Couldn't export your library: it is locked. Unlock it, then try again."
@@ -675,7 +675,7 @@ msgstr "Impossible d'importer ce fichier : votre bibliothèque est verrouillée.
 msgid "Couldn't make a backup. Check the disk has room, then use Back up now in Settings."
 msgstr "Impossible de créer une sauvegarde. Vérifiez que le disque a de la place, puis utilisez Sauvegarder maintenant dans les paramètres."
 
-msgid "Couldn't make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 1 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
+msgid "Couldn't make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
 msgstr ""
 
 msgid "Couldn't make a backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
@@ -702,7 +702,7 @@ msgstr "Impossible d'effectuer cette modification : votre bibliothèque est verr
 msgid "Couldn't make today's backup. Check the disk has room, then use Back up now in Settings."
 msgstr "Impossible de créer la sauvegarde du jour. Vérifiez que le disque a de la place, puis utilisez Sauvegarder maintenant dans les paramètres."
 
-msgid "Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 1 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
+msgid "Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
 msgstr ""
 
 msgid "Couldn't make today's backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."

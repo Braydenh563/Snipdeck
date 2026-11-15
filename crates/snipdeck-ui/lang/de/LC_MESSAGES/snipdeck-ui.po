@@ -639,8 +639,8 @@ msgstr "Alles konnte nicht gelöscht werden. Beende Snipdeck und versuche es ern
 msgid "Couldn't export your library. Check the disk has room, then try again."
 msgstr "Deine Bibliothek konnte nicht exportiert werden. Prüfe, ob auf dem Datenträger Platz ist, und versuche es erneut."
 
-msgid "Couldn't export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 1 GB in all). Remove or shrink the biggest files, then try again."
-msgstr "Die Bibliothek konnte nicht exportiert werden: Ein Anhang oder alle Anhänge zusammen sind zu groß für eine .snipdeck-Datei (64 MB pro Datei, 1 GB insgesamt). Entferne oder verkleinere die größten Dateien und versuche es dann erneut."
+msgid "Couldn't export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then try again."
+msgstr "Die Bibliothek konnte nicht exportiert werden: Ein Anhang oder alle Anhänge zusammen sind zu groß für eine .snipdeck-Datei (64 MB pro Datei, 8 GB insgesamt). Entferne oder verkleinere die größten Dateien und versuche es dann erneut."
 
 msgid "Couldn't export your library: it is locked. Unlock it, then try again."
 msgstr "Deine Bibliothek konnte nicht exportiert werden: Sie ist gesperrt. Entsperre sie und versuche es erneut."
@@ -675,8 +675,8 @@ msgstr "Das konnte nicht importiert werden: Deine Bibliothek ist gesperrt. Entsp
 msgid "Couldn't make a backup. Check the disk has room, then use Back up now in Settings."
 msgstr "Die Sicherung konnte nicht erstellt werden. Prüfe, ob auf dem Datenträger Platz ist, und nutze dann Jetzt sichern in den Einstellungen."
 
-msgid "Couldn't make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 1 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
-msgstr "Die Sicherung ist fehlgeschlagen: Ein Anhang oder alle Anhänge zusammen sind zu groß für eine Sicherung (64 MB pro Datei, 1 GB insgesamt). Entferne oder verkleinere die größten Dateien und nutze dann in den Einstellungen „Jetzt sichern“."
+msgid "Couldn't make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
+msgstr "Die Sicherung ist fehlgeschlagen: Ein Anhang oder alle Anhänge zusammen sind zu groß für eine Sicherung (64 MB pro Datei, 8 GB insgesamt). Entferne oder verkleinere die größten Dateien und nutze dann in den Einstellungen „Jetzt sichern“."
 
 msgid "Couldn't make a backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
 msgstr "Die Sicherung konnte nicht erstellt werden: Die Sicherungsdatei ist in Benutzung oder nicht beschreibbar. Schließe andere Programme, die deinen Snipdeck-Ordner verwenden, und nutze dann Jetzt sichern in den Einstellungen."
@@ -702,8 +702,8 @@ msgstr "Die Änderung konnte nicht vorgenommen werden: Deine Bibliothek ist gesp
 msgid "Couldn't make today's backup. Check the disk has room, then use Back up now in Settings."
 msgstr "Die heutige Sicherung konnte nicht erstellt werden. Prüfe, ob auf dem Datenträger Platz ist, und nutze dann Jetzt sichern in den Einstellungen."
 
-msgid "Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 1 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
-msgstr "Die heutige Sicherung ist fehlgeschlagen: Ein Anhang oder alle Anhänge zusammen sind zu groß für eine Sicherung (64 MB pro Datei, 1 GB insgesamt). Entferne oder verkleinere die größten Dateien und nutze dann in den Einstellungen „Jetzt sichern“."
+msgid "Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
+msgstr "Die heutige Sicherung ist fehlgeschlagen: Ein Anhang oder alle Anhänge zusammen sind zu groß für eine Sicherung (64 MB pro Datei, 8 GB insgesamt). Entferne oder verkleinere die größten Dateien und nutze dann in den Einstellungen „Jetzt sichern“."
 
 msgid "Couldn't make today's backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
 msgstr "Die heutige Sicherung konnte nicht erstellt werden: Die Sicherungsdatei ist in Benutzung oder nicht beschreibbar. Schließe andere Programme, die deinen Snipdeck-Ordner verwenden, und nutze dann Jetzt sichern in den Einstellungen."

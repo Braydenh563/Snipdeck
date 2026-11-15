@@ -147,11 +147,12 @@ struct Exporter<'a, L, W: Write + Seek> {
     report: ExportReport,
 }
 
-/// An archive limit hit while writing one item's file becomes an error that names the item.
+/// An entry over the entry limit becomes an error that names the item that holds it. The total
+/// is not the fault of the item that happened to cross it, so that error stays as it is.
 fn name_the_item(error: Error, title: &str) -> Error {
     match error {
         Error::LimitExceeded {
-            what: what @ ("uncompressed entry size" | "total uncompressed size"),
+            what: what @ "uncompressed entry size",
             limit,
         } => Error::ItemTooLarge {
             title: title.to_owned(),
