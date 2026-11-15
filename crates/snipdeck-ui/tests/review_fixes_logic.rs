@@ -258,10 +258,13 @@ fn a_masked_secret_is_announced_with_how_to_reveal_it() {
 }
 
 // ---- 15. The 12-character title floor holds for CJK too ---------------------------------------------------------
+// Needs a Japanese font (`fc-list :lang=ja`). Without one the test prints "SKIPPED" to stderr and passes
+// vacuously; run `cargo test -- --nocapture` to see it.
 
-fn a_cjk_title_keeps_twelve_characters_next_to_a_list_label() {
+fn a_cjk_title_keeps_twelve_characters_next_to_a_list_label_needs_a_japanese_font() {
     use snipdeck_ui::DeckCjkProbe;
     if !has_cjk_font() {
+        eprintln!("SKIPPED: a_cjk_title_keeps_twelve_characters_next_to_a_list_label_needs_a_japanese_font: no Japanese font (fc-list :lang=ja)");
         return;
     }
     let ui = start(DeckCjkProbe::new);

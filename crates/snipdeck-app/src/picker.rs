@@ -87,20 +87,6 @@ impl std::fmt::Debug for PickerModel {
 }
 
 impl PickerModel {
-    /// Reads the whole library. `board` is the board the Panel shows, for the "This board"
-    /// scope. Starts with an empty query, the All scope and the first row selected.
-    ///
-    /// # Errors
-    ///
-    /// Any store error.
-    #[cfg(test)]
-    pub fn load<S>(store: &S, board: Option<BoardId>) -> snipdeck_store::Result<Self>
-    where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
-    {
-        Self::load_cached(store, board, &IndexCache::new())
-    }
-
     /// Reads the whole library through `cache` (read again only when the library changed since).
     /// `board` is the board the Panel shows, for the "This board" scope. Starts with an empty
     /// query, the All scope and the first row selected.
@@ -303,7 +289,7 @@ mod tests {
     fn model() -> (Store, PickerModel) {
         let store = demo::store(now()).expect("demo store");
         let work = store.boards().expect("boards")[0].id;
-        let model = PickerModel::load(&store, Some(work)).expect("model");
+        let model = PickerModel::load_cached(&store, Some(work), &IndexCache::new()).expect("model");
         (store, model)
     }
 
@@ -355,7 +341,7 @@ mod tests {
         store
             .record_use(thanks, "2026-10-18T09:06:00Z".parse().expect("time"))
             .expect("use");
-        let m = PickerModel::load(&store, None).expect("model");
+        let m = PickerModel::load_cached(&store, None, &IndexCache::new()).expect("model");
         assert_eq!(m.item_at(0), Some(thanks));
         assert_eq!(m.item_at(1), Some(office));
     }
@@ -415,7 +401,7 @@ mod tests {
     #[test]
     fn the_board_scope_without_a_board_is_empty() {
         let store = demo::store(now()).expect("demo store");
-        let mut m = PickerModel::load(&store, None).expect("model");
+        let mut m = PickerModel::load_cached(&store, None, &IndexCache::new()).expect("model");
         m.set_scope(Scope::Board);
         assert_eq!(m.rows(), Vec::new());
     }
@@ -454,7 +440,7 @@ mod tests {
                 .insert_item(&item, &formats, Placement::Last)
                 .expect("item");
         }
-        let mut m = PickerModel::load(&store, Some(board.id)).expect("model");
+        let mut m = PickerModel::load_cached(&store, Some(board.id), &IndexCache::new()).expect("model");
         assert_eq!(m.rows().len(), RESULT_LIMIT);
         m.set_query("snippet");
         assert_eq!(m.rows().len(), RESULT_LIMIT);
