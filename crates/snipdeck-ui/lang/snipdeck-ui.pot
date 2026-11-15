@@ -6,11 +6,11 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: ui/colours.slint:1150
+#: ui/colours.slint:1152
 msgid "#3a7bd5, rgb(58, 123, 213), royalblue"
 msgstr ""
 
-#: ui/colours.slint:1508
+#: ui/colours.slint:1510
 msgid "#ffffff"
 msgstr ""
 
@@ -130,19 +130,19 @@ msgstr ""
 msgid "A trigger is 1 to 32 characters with no spaces."
 msgstr ""
 
-#: ui/colours.slint:914
+#: ui/colours.slint:916
 msgid "AA"
 msgstr ""
 
-#: ui/colours.slint:921
+#: ui/colours.slint:923
 msgid "AA large"
 msgstr ""
 
-#: ui/colours.slint:928
+#: ui/colours.slint:930
 msgid "AAA"
 msgstr ""
 
-#: ui/colours.slint:935
+#: ui/colours.slint:937
 msgid "AAA large"
 msgstr ""
 
@@ -210,11 +210,11 @@ msgstr ""
 msgid "Add {} or {} to a snippet."
 msgstr ""
 
-#: ui/toast_texts.slint:84
+#: ui/toast_texts.slint:87
 msgid "Added to {}"
 msgstr ""
 
-#: ui/toast_texts.slint:87
+#: ui/toast_texts.slint:90
 msgid "Added to {}. Some were skipped: folders, and files that are empty, too large or unreadable."
 msgstr ""
 
@@ -256,7 +256,7 @@ msgstr[1] ""
 msgid "All {} recent copies are removed. This can't be undone."
 msgstr ""
 
-#: ui/colours.slint:1322
+#: ui/colours.slint:1324
 msgid "Alpha"
 msgstr ""
 
@@ -292,7 +292,7 @@ msgstr ""
 msgid "An Image item holds a PNG picture. Choose a PNG file, or add this one as a File."
 msgstr ""
 
-#: ui/toast_texts.slint:108
+#: ui/toast_texts.slint:111
 msgid "An item is open in the editor, so the pasted text was not added. Close it, then paste again."
 msgstr ""
 
@@ -384,7 +384,7 @@ msgstr ""
 msgid "Back up now"
 msgstr ""
 
-#: ui/toast_texts.slint:246
+#: ui/toast_texts.slint:249
 msgid "Backed up"
 msgstr ""
 
@@ -420,7 +420,7 @@ msgstr ""
 msgid "Board name"
 msgstr ""
 
-#: ui/toast_texts.slint:447
+#: ui/toast_texts.slint:450
 msgid "Board saved"
 msgstr ""
 
@@ -444,7 +444,7 @@ msgstr ""
 msgid "Bottom edge"
 msgstr ""
 
-#: ui/colours.slint:1312
+#: ui/colours.slint:1314
 msgid "Brightness"
 msgstr ""
 
@@ -612,7 +612,7 @@ msgstr ""
 msgid "Click"
 msgstr ""
 
-#: ui/colours.slint:97 ui/panel.slint:2554
+#: ui/colours.slint:99 ui/panel.slint:2554
 msgid "Click copies"
 msgstr ""
 
@@ -620,7 +620,7 @@ msgstr ""
 msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
 msgstr ""
 
-#: ui/colours.slint:98
+#: ui/colours.slint:100
 msgid "Click or Enter picks · Esc cancels · arrows move"
 msgstr ""
 
@@ -672,7 +672,7 @@ msgstr ""
 msgid "Collapse sidebar (Ctrl+B)"
 msgstr ""
 
-#: ui/colours.slint:1149 ui/colours.slint:1599 ui/editors.slint:1892 ui/editors.slint:1895 ui/main_window.slint:2466 ui/menu_texts.slint:88 ui/panel.slint:2677
+#: ui/colours.slint:1151 ui/colours.slint:1601 ui/editors.slint:1892 ui/editors.slint:1895 ui/main_window.slint:2466 ui/menu_texts.slint:88 ui/panel.slint:2677
 msgid "Colour"
 msgstr ""
 
@@ -728,7 +728,7 @@ msgstr ""
 msgid "Content"
 msgstr ""
 
-#: ui/colours.slint:1491
+#: ui/colours.slint:1493
 msgid "Contrast"
 msgstr ""
 
@@ -744,27 +744,27 @@ msgstr ""
 msgid "Control O"
 msgstr ""
 
-#: ui/toast_texts.slint:15
+#: ui/toast_texts.slint:18
 msgid "Copied"
 msgstr ""
 
-#: ui/toast_texts.slint:21
+#: ui/toast_texts.slint:24
 msgid "Copied. Nothing in {} can take text right now."
 msgstr ""
 
-#: ui/toast_texts.slint:24
+#: ui/toast_texts.slint:27
 msgid "Copied. Pasting into {} is turned off."
 msgstr ""
 
-#: ui/toast_texts.slint:27
+#: ui/toast_texts.slint:30
 msgid "Copied. The window you were using went away."
 msgstr ""
 
-#: ui/toast_texts.slint:18
+#: ui/toast_texts.slint:21
 msgid "Copied. {} runs as administrator, so Snipdeck can't paste into it."
 msgstr ""
 
-#: ui/colours.slint:609 ui/colours.slint:1638 ui/components/item-card.slint:906 ui/components/text_field.slint:229 ui/main_window.slint:929 ui/main_window.slint:2782 ui/menu_texts.slint:136 ui/panel.slint:595 ui/panel.slint:3125 ui/picker.slint:189 ui/picker.slint:625 ui/template_fill.slint:64
+#: ui/colours.slint:611 ui/colours.slint:1640 ui/components/item-card.slint:906 ui/components/text_field.slint:229 ui/main_window.slint:929 ui/main_window.slint:2782 ui/menu_texts.slint:136 ui/panel.slint:595 ui/panel.slint:3125 ui/picker.slint:189 ui/picker.slint:625 ui/template_fill.slint:64
 msgid "Copy"
 msgstr ""
 
@@ -784,7 +784,7 @@ msgstr ""
 msgid "Copy all"
 msgstr ""
 
-#: ui/colours.slint:1693
+#: ui/colours.slint:1695
 msgid "Copy as"
 msgstr ""
 
@@ -792,7 +792,7 @@ msgstr ""
 msgid "Copy as CSS variables"
 msgstr ""
 
-#: ui/colours.slint:1603
+#: ui/colours.slint:1605
 msgid "Copy as…"
 msgstr ""
 
@@ -800,7 +800,7 @@ msgstr ""
 msgid "Copy diagnostic report"
 msgstr ""
 
-#: ui/colours.slint:1639
+#: ui/colours.slint:1641
 msgid "Copy only"
 msgstr ""
 
@@ -832,35 +832,35 @@ msgstr ""
 msgid "CopyQ export"
 msgstr ""
 
-#: ui/toast_texts.slint:366
+#: ui/toast_texts.slint:369
 msgid "Couldn't change the Windows start-up entry."
 msgstr ""
 
-#: ui/toast_texts.slint:277
+#: ui/toast_texts.slint:280
 msgid "Couldn't clear old items out of the Trash. Check the disk has room, then restart Snipdeck to try again."
 msgstr ""
 
-#: ui/toast_texts.slint:357
+#: ui/toast_texts.slint:360
 msgid "Couldn't erase everything. Quit Snipdeck and try again."
 msgstr ""
 
-#: ui/toast_texts.slint:351
+#: ui/toast_texts.slint:354
 msgid "Couldn't export your library. Check the disk has room, then try again."
 msgstr ""
 
-#: ui/toast_texts.slint:349
+#: ui/toast_texts.slint:352
 msgid "Couldn't export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then try again."
 msgstr ""
 
-#: ui/toast_texts.slint:346
+#: ui/toast_texts.slint:349
 msgid "Couldn't export your library: it is locked. Unlock it, then try again."
 msgstr ""
 
-#: ui/toast_texts.slint:340
+#: ui/toast_texts.slint:343
 msgid "Couldn't export your library: the disk is full. Free up some space, then try again."
 msgstr ""
 
-#: ui/toast_texts.slint:343
+#: ui/toast_texts.slint:346
 msgid "Couldn't export your library: the folder can't be written to. Check it isn't read-only or in use, then try again."
 msgstr ""
 
@@ -868,115 +868,115 @@ msgstr ""
 msgid "Couldn't import that."
 msgstr ""
 
-#: ui/toast_texts.slint:333
+#: ui/toast_texts.slint:336
 msgid "Couldn't import that. Choose the file again, or try another one."
 msgstr ""
 
-#: ui/toast_texts.slint:328
+#: ui/toast_texts.slint:331
 msgid "Couldn't import that: it isn't a file Snipdeck can read, or it is damaged. Choose a .snipdeck export."
 msgstr ""
 
-#: ui/toast_texts.slint:331
+#: ui/toast_texts.slint:334
 msgid "Couldn't import that: it was made by a newer Snipdeck. Update Snipdeck, then try again."
 msgstr ""
 
-#: ui/toast_texts.slint:319
+#: ui/toast_texts.slint:322
 msgid "Couldn't import that: the disk is full. Free up some space, then try again."
 msgstr ""
 
-#: ui/toast_texts.slint:322
+#: ui/toast_texts.slint:325
 msgid "Couldn't import that: the file is in use by another program or can't be read. Close the program using it, then try again."
 msgstr ""
 
-#: ui/toast_texts.slint:325
+#: ui/toast_texts.slint:328
 msgid "Couldn't import that: your library is locked. Unlock it, then try again."
 msgstr ""
 
-#: ui/toast_texts.slint:261
+#: ui/toast_texts.slint:264
 msgid "Couldn't make a backup. Check the disk has room, then use Back up now in Settings."
 msgstr ""
 
-#: ui/toast_texts.slint:259
+#: ui/toast_texts.slint:262
 msgid "Couldn't make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
 msgstr ""
 
-#: ui/toast_texts.slint:253
+#: ui/toast_texts.slint:256
 msgid "Couldn't make a backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
 msgstr ""
 
-#: ui/toast_texts.slint:250
+#: ui/toast_texts.slint:253
 msgid "Couldn't make a backup: the disk is full. Free up some space, then use Back up now in Settings."
 msgstr ""
 
-#: ui/toast_texts.slint:256
+#: ui/toast_texts.slint:259
 msgid "Couldn't make a backup: your library is locked. Unlock it, then use Back up now in Settings."
 msgstr ""
 
-#: ui/toast_texts.slint:412
+#: ui/toast_texts.slint:415
 msgid "Couldn't make that change. Try again, or restart Snipdeck if it keeps happening."
 msgstr ""
 
-#: ui/toast_texts.slint:404
+#: ui/toast_texts.slint:407
 msgid "Couldn't make that change: the disk is full. Free up some space, then try again."
 msgstr ""
 
-#: ui/toast_texts.slint:407
+#: ui/toast_texts.slint:410
 msgid "Couldn't make that change: your library file is in use by another program. Close that program, then try again."
 msgstr ""
 
-#: ui/toast_texts.slint:410
+#: ui/toast_texts.slint:413
 msgid "Couldn't make that change: your library is locked. Unlock it, then try again."
 msgstr ""
 
-#: ui/toast_texts.slint:274
+#: ui/toast_texts.slint:277
 msgid "Couldn't make today's backup. Check the disk has room, then use Back up now in Settings."
 msgstr ""
 
-#: ui/toast_texts.slint:272
+#: ui/toast_texts.slint:275
 msgid "Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
 msgstr ""
 
-#: ui/toast_texts.slint:269
+#: ui/toast_texts.slint:272
 msgid "Couldn't make today's backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
 msgstr ""
 
-#: ui/toast_texts.slint:266
+#: ui/toast_texts.slint:269
 msgid "Couldn't make today's backup: the disk is full. Free up some space, then use Back up now in Settings."
 msgstr ""
 
-#: ui/toast_texts.slint:166
+#: ui/toast_texts.slint:169
 msgid "Couldn't open that window."
 msgstr ""
 
-#: ui/toast_texts.slint:387
+#: ui/toast_texts.slint:390
 msgid "Couldn't open the encryption key. Nothing was saved."
 msgstr ""
 
-#: ui/toast_texts.slint:360
+#: ui/toast_texts.slint:363
 msgid "Couldn't open the folder."
 msgstr ""
 
-#: ui/toast_texts.slint:375
+#: ui/toast_texts.slint:378
 msgid "Couldn't open the log folder."
 msgstr ""
 
-#: ui/toast_texts.slint:415
+#: ui/toast_texts.slint:418
 msgid "Couldn't open this item."
 msgstr ""
 
-#: ui/toast_texts.slint:363
+#: ui/toast_texts.slint:366
 msgid "Couldn't open your email app."
 msgstr ""
 
-#: ui/toast_texts.slint:466
+#: ui/toast_texts.slint:469
 msgid "Couldn't pick a colour from the screen."
 msgstr ""
 
-#: ui/toast_texts.slint:30
+#: ui/toast_texts.slint:33
 msgid "Couldn't reach the clipboard. Another app may be using it."
 msgstr ""
 
-#: ui/toast_texts.slint:461
+#: ui/toast_texts.slint:464
 msgid "Couldn't refresh the list on screen. Close and reopen the window to see the change."
 msgstr ""
 
@@ -984,71 +984,71 @@ msgstr ""
 msgid "Couldn't rename the tag."
 msgstr ""
 
-#: ui/toast_texts.slint:291
+#: ui/toast_texts.slint:294
 msgid "Couldn't reopen your library. Restart Snipdeck. Your files have not been changed."
 msgstr ""
 
-#: ui/toast_texts.slint:312
+#: ui/toast_texts.slint:315
 msgid "Couldn't restore that backup. Choose another backup, or try again."
 msgstr ""
 
-#: ui/toast_texts.slint:301
+#: ui/toast_texts.slint:304
 msgid "Couldn't restore that backup: a file is in use by another program. Close it, then try again."
 msgstr ""
 
-#: ui/toast_texts.slint:307
+#: ui/toast_texts.slint:310
 msgid "Couldn't restore that backup: it isn't a Snipdeck backup, or it is damaged. Choose another backup."
 msgstr ""
 
-#: ui/toast_texts.slint:310
+#: ui/toast_texts.slint:313
 msgid "Couldn't restore that backup: it was made by a newer Snipdeck. Update Snipdeck, then try again."
 msgstr ""
 
-#: ui/toast_texts.slint:298
+#: ui/toast_texts.slint:301
 msgid "Couldn't restore that backup: the disk is full. Free up some space, then try again."
 msgstr ""
 
-#: ui/toast_texts.slint:304
+#: ui/toast_texts.slint:307
 msgid "Couldn't restore that backup: your library is locked. Unlock it, then try again."
 msgstr ""
 
-#: ui/toast_texts.slint:418
+#: ui/toast_texts.slint:421
 msgid "Couldn't save a draft of what you typed."
 msgstr ""
 
-#: ui/toast_texts.slint:399
+#: ui/toast_texts.slint:402
 msgid "Couldn't save this item. Nothing was changed."
 msgstr ""
 
-#: ui/toast_texts.slint:169
+#: ui/toast_texts.slint:172
 msgid "Couldn't save your settings. Snipdeck will try again."
 msgstr ""
 
-#: ui/toast_texts.slint:421
+#: ui/toast_texts.slint:424
 msgid "Couldn't start the screenshot tool."
 msgstr ""
 
-#: ui/toast_texts.slint:384
+#: ui/toast_texts.slint:387
 msgid "Couldn't start typing triggers. Nothing will be expanded or suggested."
 msgstr ""
 
-#: ui/toast_texts.slint:151 ui/toast_texts.slint:163
+#: ui/toast_texts.slint:154 ui/toast_texts.slint:166
 msgid "Couldn't use this item. Try again, or restart Snipdeck if it keeps happening."
 msgstr ""
 
-#: ui/toast_texts.slint:155
+#: ui/toast_texts.slint:158
 msgid "Couldn't use this item: the disk is full. Free up some space, then try again."
 msgstr ""
 
-#: ui/toast_texts.slint:158
+#: ui/toast_texts.slint:161
 msgid "Couldn't use this item: your library file is in use by another program. Close that program, then try again."
 msgstr ""
 
-#: ui/toast_texts.slint:161
+#: ui/toast_texts.slint:164
 msgid "Couldn't use this item: your library is locked. Unlock it, then try again."
 msgstr ""
 
-#: ui/toast_texts.slint:396
+#: ui/toast_texts.slint:399
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr ""
 
@@ -1092,11 +1092,11 @@ msgstr ""
 msgid "Dark"
 msgstr ""
 
-#: ui/toast_texts.slint:283
+#: ui/toast_texts.slint:286
 msgid "Database rebuilt: {} items restored, {} recovered."
 msgstr ""
 
-#: ui/toast_texts.slint:283
+#: ui/toast_texts.slint:286
 msgid "Database rebuilt: {} items restored. Newer items could not be read."
 msgstr ""
 
@@ -1192,11 +1192,11 @@ msgstr ""
 msgid "Delete “{}”"
 msgstr ""
 
-#: ui/toast_texts.slint:178
+#: ui/toast_texts.slint:181
 msgid "Deleted board “{}”"
 msgstr ""
 
-#: ui/toast_texts.slint:225
+#: ui/toast_texts.slint:228
 msgid "Deleted for good"
 msgstr ""
 
@@ -1204,7 +1204,7 @@ msgstr ""
 msgid "Deleted items stay here for {} days before they are removed."
 msgstr ""
 
-#: ui/toast_texts.slint:175
+#: ui/toast_texts.slint:178
 msgid "Deleted list “{}”"
 msgstr ""
 
@@ -1280,7 +1280,7 @@ msgstr ""
 msgid "Drag to move. Hold at a screen edge to dock."
 msgstr ""
 
-#: ui/toast_texts.slint:102
+#: ui/toast_texts.slint:105
 msgid "Drop to add to {}"
 msgstr ""
 
@@ -1296,11 +1296,11 @@ msgstr ""
 msgid "Duplicate the item"
 msgstr ""
 
-#: ui/toast_texts.slint:438
+#: ui/toast_texts.slint:441
 msgid "Duplicated"
 msgstr ""
 
-#: ui/components/item-card.slint:896 ui/main_window.slint:933 ui/toast_texts.slint:111
+#: ui/components/item-card.slint:896 ui/main_window.slint:933 ui/toast_texts.slint:114
 msgid "Edit"
 msgstr ""
 
@@ -1472,7 +1472,7 @@ msgstr ""
 msgid "File"
 msgstr ""
 
-#: ui/toast_texts.slint:93
+#: ui/toast_texts.slint:96
 msgid "File moved or deleted"
 msgstr ""
 
@@ -1548,11 +1548,11 @@ msgstr ""
 msgid "For example, Work"
 msgstr ""
 
-#: ui/colours.slint:1635
+#: ui/colours.slint:1637
 msgid "Format"
 msgstr ""
 
-#: ui/colours.slint:457 ui/colours.slint:1467
+#: ui/colours.slint:459 ui/colours.slint:1469
 msgid "Formats"
 msgstr ""
 
@@ -1652,11 +1652,11 @@ msgstr ""
 msgid "Group…"
 msgstr ""
 
-#: ui/colours.slint:99
+#: ui/colours.slint:101
 msgid "HDR is on for this screen: values are approximate"
 msgstr ""
 
-#: ui/toast_texts.slint:469
+#: ui/toast_texts.slint:472
 msgid "HDR is on for this screen: {} is approximate."
 msgstr ""
 
@@ -1768,15 +1768,15 @@ msgstr ""
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr ""
 
-#: ui/colours.slint:1301
+#: ui/colours.slint:1303
 msgid "Hue"
 msgstr ""
 
-#: ui/colours.slint:1291
+#: ui/colours.slint:1293
 msgid "Hue and saturation"
 msgstr ""
 
-#: ui/colours.slint:94
+#: ui/colours.slint:96
 msgid "Hue {} degrees, saturation {} percent, brightness {} percent"
 msgstr ""
 
@@ -1788,7 +1788,7 @@ msgstr ""
 msgid "Icons"
 msgstr ""
 
-#: ui/toast_texts.slint:472
+#: ui/toast_texts.slint:475
 msgid "Icons can't be added to a list yet."
 msgstr ""
 
@@ -1800,7 +1800,7 @@ msgstr ""
 msgid "Image"
 msgstr ""
 
-#: ui/toast_texts.slint:288
+#: ui/toast_texts.slint:291
 msgid "Images can't be pasted here. Save the picture as a PNG and add it as an Image item."
 msgstr ""
 
@@ -1820,7 +1820,7 @@ msgstr ""
 msgid "Import into your library, see a preview first"
 msgstr ""
 
-#: ui/toast_texts.slint:315
+#: ui/toast_texts.slint:318
 msgid "Imported {} item"
 msgid_plural "Imported {} items"
 msgstr[0] ""
@@ -1860,11 +1860,11 @@ msgstr[1] ""
 msgid "Item actions"
 msgstr ""
 
-#: ui/toast_texts.slint:435
+#: ui/toast_texts.slint:438
 msgid "Item pinned"
 msgstr ""
 
-#: ui/toast_texts.slint:435
+#: ui/toast_texts.slint:438
 msgid "Item unpinned"
 msgstr ""
 
@@ -1994,7 +1994,7 @@ msgstr ""
 msgid "Lengthen the leave delay"
 msgstr ""
 
-#: ui/toast_texts.slint:45
+#: ui/toast_texts.slint:48
 msgid "Library unlocked."
 msgstr ""
 
@@ -2030,7 +2030,7 @@ msgstr ""
 msgid "List actions"
 msgstr ""
 
-#: ui/toast_texts.slint:441
+#: ui/toast_texts.slint:444
 msgid "List added"
 msgstr ""
 
@@ -2038,7 +2038,7 @@ msgstr ""
 msgid "List name"
 msgstr ""
 
-#: ui/toast_texts.slint:444
+#: ui/toast_texts.slint:447
 msgid "List saved"
 msgstr ""
 
@@ -2090,11 +2090,11 @@ msgstr ""
 msgid "Main window"
 msgstr ""
 
-#: ui/colours.slint:1602
+#: ui/colours.slint:1604
 msgid "Make current"
 msgstr ""
 
-#: ui/colours.slint:1640
+#: ui/colours.slint:1642
 msgid "Make default format"
 msgstr ""
 
@@ -2130,23 +2130,23 @@ msgstr ""
 msgid "Master password"
 msgstr ""
 
-#: ui/toast_texts.slint:51
+#: ui/toast_texts.slint:54
 msgid "Master password changed."
 msgstr ""
 
-#: ui/toast_texts.slint:57
+#: ui/toast_texts.slint:60
 msgid "Master password changed. Snipdeck couldn't open the library just now. Unlock it with the new password."
 msgstr ""
 
-#: ui/toast_texts.slint:54
+#: ui/toast_texts.slint:57
 msgid "Master password removed."
 msgstr ""
 
-#: ui/toast_texts.slint:60
+#: ui/toast_texts.slint:63
 msgid "Master password removed. Snipdeck couldn't open the library just now. Restart Snipdeck to use your sensitive items."
 msgstr ""
 
-#: ui/toast_texts.slint:48
+#: ui/toast_texts.slint:51
 msgid "Master password set."
 msgstr ""
 
@@ -2194,7 +2194,7 @@ msgstr ""
 msgid "Move board up"
 msgstr ""
 
-#: ui/main_window.slint:937 ui/toast_texts.slint:219
+#: ui/main_window.slint:937 ui/toast_texts.slint:222
 msgid "Move down"
 msgstr ""
 
@@ -2246,21 +2246,21 @@ msgstr ""
 msgid "Move to…"
 msgstr ""
 
-#: ui/main_window.slint:936 ui/toast_texts.slint:216
+#: ui/main_window.slint:936 ui/toast_texts.slint:219
 msgid "Move up"
 msgstr ""
 
-#: ui/toast_texts.slint:222
+#: ui/toast_texts.slint:225
 msgid "Moved to position {} of {}"
 msgstr ""
 
-#: ui/toast_texts.slint:172
+#: ui/toast_texts.slint:175
 msgid "Moved {} item to the Trash"
 msgid_plural "Moved {} items to the Trash"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/toast_texts.slint:212
+#: ui/toast_texts.slint:215
 msgid "Moved {} item to {}"
 msgid_plural "Moved {} items to {}"
 msgstr[0] ""
@@ -2478,7 +2478,7 @@ msgstr ""
 msgid "Nothing matches “{}”."
 msgstr ""
 
-#: ui/settings.slint:1585 ui/toast_texts.slint:315
+#: ui/settings.slint:1585 ui/toast_texts.slint:318
 msgid "Nothing new to import."
 msgstr ""
 
@@ -2498,27 +2498,27 @@ msgstr ""
 msgid "Nothing pinned yet"
 msgstr ""
 
-#: ui/toast_texts.slint:123
+#: ui/toast_texts.slint:126
 msgid "Nothing to paste next. Pin a snippet, or add one to this list."
 msgstr ""
 
-#: ui/toast_texts.slint:209
+#: ui/toast_texts.slint:212
 msgid "Nothing to redo"
 msgstr ""
 
-#: ui/toast_texts.slint:280
+#: ui/toast_texts.slint:283
 msgid "Nothing to restore: your library already has everything in that backup."
 msgstr ""
 
-#: ui/toast_texts.slint:114
+#: ui/toast_texts.slint:117
 msgid "Nothing to save. Copy some text first."
 msgstr ""
 
-#: ui/toast_texts.slint:206
+#: ui/toast_texts.slint:209
 msgid "Nothing to undo"
 msgstr ""
 
-#: ui/toast_texts.slint:90
+#: ui/toast_texts.slint:93
 msgid "Nothing was added. Folders, and files or pictures that are empty, too large or unreadable, are skipped."
 msgstr ""
 
@@ -2618,7 +2618,7 @@ msgstr ""
 msgid "Open logs folder"
 msgstr ""
 
-#: ui/colours.slint:1439
+#: ui/colours.slint:1441
 msgid "Open the Colours list"
 msgstr ""
 
@@ -2682,7 +2682,7 @@ msgstr ""
 msgid "Orange"
 msgstr ""
 
-#: ui/colours.slint:1507
+#: ui/colours.slint:1509
 msgid "Other colour"
 msgstr ""
 
@@ -2706,27 +2706,27 @@ msgstr ""
 msgid "Panel and Picker"
 msgstr ""
 
-#: ui/toast_texts.slint:430
+#: ui/toast_texts.slint:433
 msgid "Panel closes when you click away"
 msgstr ""
 
-#: ui/toast_texts.slint:457
+#: ui/toast_texts.slint:460
 msgid "Panel docked to the bottom edge"
 msgstr ""
 
-#: ui/toast_texts.slint:457
+#: ui/toast_texts.slint:460
 msgid "Panel docked to the left edge"
 msgstr ""
 
-#: ui/toast_texts.slint:457
+#: ui/toast_texts.slint:460
 msgid "Panel docked to the right edge"
 msgstr ""
 
-#: ui/toast_texts.slint:457
+#: ui/toast_texts.slint:460
 msgid "Panel docked to the top edge"
 msgstr ""
 
-#: ui/toast_texts.slint:457
+#: ui/toast_texts.slint:460
 msgid "Panel floats again"
 msgstr ""
 
@@ -2742,7 +2742,7 @@ msgstr ""
 msgid "Panel opens"
 msgstr ""
 
-#: ui/toast_texts.slint:430
+#: ui/toast_texts.slint:433
 msgid "Panel stays open"
 msgstr ""
 
@@ -2766,7 +2766,7 @@ msgstr ""
 msgid "Paste key for {}"
 msgstr ""
 
-#: ui/toast_texts.slint:36
+#: ui/toast_texts.slint:39
 msgid "Paste next and the paste stack are Supporter features."
 msgstr ""
 
@@ -2782,7 +2782,7 @@ msgstr ""
 msgid "Paste next pastes the next item each time you press it."
 msgstr ""
 
-#: ui/colours.slint:1638
+#: ui/colours.slint:1640
 msgid "Paste or copy"
 msgstr ""
 
@@ -2834,7 +2834,7 @@ msgstr ""
 msgid "Paste with a click, or search at your caret."
 msgstr ""
 
-#: ui/toast_texts.slint:480
+#: ui/toast_texts.slint:483
 msgid "Paste your licence key first."
 msgstr ""
 
@@ -2842,8 +2842,20 @@ msgstr ""
 msgid "Pasted"
 msgstr ""
 
+#: ui/colours.slint:90
+msgid "Pasted image"
+msgstr ""
+
 #: ui/toast_texts.slint:12
 msgid "Pasted into {}"
+msgstr ""
+
+#: ui/toast_texts.slint:15
+msgid "Pasted into {}. Your earlier clipboard could not be put back."
+msgstr ""
+
+#: ui/toast_texts.slint:15
+msgid "Pasted. Your earlier clipboard could not be put back."
 msgstr ""
 
 #: ui/panel.slint:2839
@@ -2902,7 +2914,7 @@ msgstr ""
 msgid "Pick a colour from the screen"
 msgstr ""
 
-#: ui/colours.slint:1172
+#: ui/colours.slint:1174
 msgid "Pick a colour from the screen (Ctrl+I)"
 msgstr ""
 
@@ -2914,7 +2926,7 @@ msgstr ""
 msgid "Pick one and it pastes where you were typing."
 msgstr ""
 
-#: ui/colours.slint:1225 ui/colours.slint:1247 ui/shortcut_texts.slint:11
+#: ui/colours.slint:1227 ui/colours.slint:1249 ui/shortcut_texts.slint:11
 msgid "Picker"
 msgstr ""
 
@@ -2922,7 +2934,7 @@ msgstr ""
 msgid "Picker position"
 msgstr ""
 
-#: ui/colours.slint:1269
+#: ui/colours.slint:1271
 msgid "Picker style"
 msgstr ""
 
@@ -3102,7 +3114,7 @@ msgstr ""
 msgid "Recent entry actions"
 msgstr ""
 
-#: ui/toast_texts.slint:453
+#: ui/toast_texts.slint:456
 msgid "Recent history cleared"
 msgstr ""
 
@@ -3114,7 +3126,7 @@ msgstr ""
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr ""
 
-#: ui/colours.slint:1380 ui/colours.slint:1383 ui/editors.slint:1928 ui/main_window.slint:1084 ui/main_window.slint:2914 ui/symbols.slint:40
+#: ui/colours.slint:1382 ui/colours.slint:1385 ui/editors.slint:1928 ui/main_window.slint:1084 ui/main_window.slint:2914 ui/symbols.slint:40
 msgid "Recently used"
 msgstr ""
 
@@ -3122,7 +3134,7 @@ msgstr ""
 msgid "Red"
 msgstr ""
 
-#: ui/toast_texts.slint:203
+#: ui/toast_texts.slint:206
 msgid "Redid {}"
 msgstr ""
 
@@ -3134,7 +3146,7 @@ msgstr ""
 msgid "Redo last change"
 msgstr ""
 
-#: ui/toast_texts.slint:209
+#: ui/toast_texts.slint:212
 msgid "Redo {} (Ctrl+Y)"
 msgstr ""
 
@@ -3162,7 +3174,7 @@ msgstr ""
 msgid "Remove from paste stack"
 msgstr ""
 
-#: ui/colours.slint:1606
+#: ui/colours.slint:1608
 msgid "Remove from recents"
 msgstr ""
 
@@ -3182,7 +3194,7 @@ msgstr ""
 msgid "Remove {} from the list"
 msgstr ""
 
-#: ui/toast_texts.slint:450
+#: ui/toast_texts.slint:453
 msgid "Removed from Recent"
 msgstr ""
 
@@ -3246,13 +3258,13 @@ msgstr ""
 msgid "Restored the changes you had not saved."
 msgstr ""
 
-#: ui/toast_texts.slint:181
+#: ui/toast_texts.slint:184
 msgid "Restored {} item"
 msgid_plural "Restored {} items"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/toast_texts.slint:280
+#: ui/toast_texts.slint:283
 msgid "Restored {} item from the backup"
 msgid_plural "Restored {} items from the backup"
 msgstr[0] ""
@@ -3294,15 +3306,15 @@ msgstr ""
 msgid "Sad"
 msgstr ""
 
-#: ui/colours.slint:1291
+#: ui/colours.slint:1293
 msgid "Saturation and brightness"
 msgstr ""
 
-#: ui/colours.slint:90
+#: ui/colours.slint:92
 msgid "Saturation {} percent, brightness {} percent"
 msgstr ""
 
-#: ui/colours.slint:1417 ui/editors.slint:1572 ui/editors.slint:1949 ui/shortcut_texts.slint:102
+#: ui/colours.slint:1419 ui/editors.slint:1572 ui/editors.slint:1949 ui/shortcut_texts.slint:102
 msgid "Save"
 msgstr ""
 
@@ -3330,23 +3342,23 @@ msgstr ""
 msgid "Save the clipboard as an item"
 msgstr ""
 
-#: ui/colours.slint:1671
+#: ui/colours.slint:1673
 msgid "Save to"
 msgstr ""
 
-#: ui/colours.slint:1604 ui/colours.slint:1641
+#: ui/colours.slint:1606 ui/colours.slint:1643
 msgid "Save to Colours"
 msgstr ""
 
-#: ui/colours.slint:1419
+#: ui/colours.slint:1421
 msgid "Save to Colours (Ctrl+S)"
 msgstr ""
 
-#: ui/colours.slint:1426
+#: ui/colours.slint:1428
 msgid "Save to a list (Ctrl+Shift+S)"
 msgstr ""
 
-#: ui/colours.slint:1423 ui/colours.slint:1605 ui/colours.slint:1642 ui/main_window.slint:2781 ui/main_window.slint:2806 ui/panel.slint:3124 ui/panel.slint:3147
+#: ui/colours.slint:1425 ui/colours.slint:1607 ui/colours.slint:1644 ui/main_window.slint:2781 ui/main_window.slint:2806 ui/panel.slint:3124 ui/panel.slint:3147
 msgid "Save to…"
 msgstr ""
 
@@ -3354,31 +3366,31 @@ msgstr ""
 msgid "Save what you paste often."
 msgstr ""
 
-#: ui/colours.slint:1411
+#: ui/colours.slint:1413
 msgid "Saved"
 msgstr ""
 
-#: ui/colours.slint:1446 ui/command_texts.slint:21
+#: ui/colours.slint:1448 ui/command_texts.slint:21
 msgid "Saved colours"
 msgstr ""
 
-#: ui/toast_texts.slint:81
+#: ui/toast_texts.slint:84
 msgid "Saved to {}"
 msgstr ""
 
-#: ui/toast_texts.slint:336
+#: ui/toast_texts.slint:339
 msgid "Saved {}"
 msgstr ""
 
-#: ui/toast_texts.slint:475
+#: ui/toast_texts.slint:478
 msgid "Saved {}."
 msgstr ""
 
-#: ui/toast_texts.slint:380
+#: ui/toast_texts.slint:383
 msgid "Saved. This trigger overlaps another trigger, so one of them may never fire."
 msgstr ""
 
-#: ui/toast_texts.slint:381
+#: ui/toast_texts.slint:384
 msgid "Saved. This trigger overlaps the trigger of “{}”, so one of them may never fire."
 msgstr ""
 
@@ -3398,11 +3410,11 @@ msgstr ""
 msgid "Saving…"
 msgstr ""
 
-#: ui/colours.slint:1535
+#: ui/colours.slint:1537
 msgid "Scheme"
 msgstr ""
 
-#: ui/colours.slint:1526
+#: ui/colours.slint:1528
 msgid "Schemes"
 msgstr ""
 
@@ -3590,7 +3602,7 @@ msgstr ""
 msgid "Shortcuts are not available right now. Try again in a moment."
 msgstr ""
 
-#: ui/toast_texts.slint:138
+#: ui/toast_texts.slint:141
 msgid "Shortcuts are unavailable, so {} is not active. Restart Snipdeck to try again."
 msgstr ""
 
@@ -3694,7 +3706,7 @@ msgstr ""
 msgid "Snipdeck Supporter"
 msgstr ""
 
-#: ui/toast_texts.slint:243
+#: ui/toast_texts.slint:246
 msgid "Snipdeck Supporter is on. Thank you."
 msgstr ""
 
@@ -3710,7 +3722,7 @@ msgstr ""
 msgid "Snipdeck can't read that file. It may be in use or protected."
 msgstr ""
 
-#: ui/toast_texts.slint:240
+#: ui/toast_texts.slint:243
 msgid "Snipdeck closed unexpectedly last time. Open the log?"
 msgstr ""
 
@@ -3742,7 +3754,7 @@ msgstr ""
 msgid "Snipdeck couldn't write to your library. Check that the disk has room."
 msgstr ""
 
-#: ui/toast_texts.slint:234
+#: ui/toast_texts.slint:237
 msgid "Snipdeck found a problem in your library. Export a copy to be safe."
 msgstr ""
 
@@ -3754,11 +3766,11 @@ msgstr ""
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr ""
 
-#: ui/toast_texts.slint:146
+#: ui/toast_texts.slint:149
 msgid "Snipdeck is still running. Click the tray icon to bring the panel back."
 msgstr ""
 
-#: ui/toast_texts.slint:146
+#: ui/toast_texts.slint:149
 msgid "Snipdeck is still running. Press {} or click the tray icon to bring the panel back."
 msgstr ""
 
@@ -3790,7 +3802,7 @@ msgstr ""
 msgid "Snippets"
 msgstr ""
 
-#: ui/toast_texts.slint:96
+#: ui/toast_texts.slint:99
 msgid "Some files were left out: together they are over 64 MB."
 msgstr ""
 
@@ -3838,7 +3850,7 @@ msgstr ""
 msgid "Split-complementary"
 msgstr ""
 
-#: ui/colours.slint:1203 ui/colours.slint:1267
+#: ui/colours.slint:1205 ui/colours.slint:1269
 msgid "Square"
 msgstr ""
 
@@ -3894,11 +3906,11 @@ msgstr ""
 msgid "Surprise"
 msgstr ""
 
-#: ui/colours.slint:1519
+#: ui/colours.slint:1521
 msgid "Swap the two colours"
 msgstr ""
 
-#: ui/toast_texts.slint:237
+#: ui/toast_texts.slint:240
 msgid "Switch this list to Manual order?"
 msgstr ""
 
@@ -4034,11 +4046,11 @@ msgstr ""
 msgid "That file is over {} MB, the most an item can hold."
 msgstr ""
 
-#: ui/toast_texts.slint:483
+#: ui/toast_texts.slint:486
 msgid "That is not a Snipdeck licence key. A key starts with SNIP1."
 msgstr ""
 
-#: ui/toast_texts.slint:99
+#: ui/toast_texts.slint:102
 msgid "That is too many files to add at once."
 msgstr ""
 
@@ -4070,19 +4082,19 @@ msgstr ""
 msgid "That isn't an Espanso configuration."
 msgstr ""
 
-#: ui/toast_texts.slint:492
+#: ui/toast_texts.slint:495
 msgid "That key is not for Snipdeck Supporter."
 msgstr ""
 
-#: ui/toast_texts.slint:489
+#: ui/toast_texts.slint:492
 msgid "That key needs a newer Snipdeck. Update and try again."
 msgstr ""
 
-#: ui/toast_texts.slint:486
+#: ui/toast_texts.slint:489
 msgid "That licence key is not valid. Check that you copied all of it."
 msgstr ""
 
-#: ui/form_texts.slint:129 ui/toast_texts.slint:393
+#: ui/form_texts.slint:129 ui/toast_texts.slint:396
 msgid "That list was deleted. Choose another list."
 msgstr ""
 
@@ -4094,15 +4106,15 @@ msgstr ""
 msgid "That path is a folder, not a file."
 msgstr ""
 
-#: ui/toast_texts.slint:117
+#: ui/toast_texts.slint:120
 msgid "That text is too large to save."
 msgstr ""
 
-#: ui/toast_texts.slint:129
+#: ui/toast_texts.slint:132
 msgid "That was the last one. Paste next starts again from the first."
 msgstr ""
 
-#: ui/toast_texts.slint:231
+#: ui/toast_texts.slint:234
 msgid "The Free plan includes 5 boards. Supporter adds unlimited boards."
 msgstr ""
 
@@ -4110,7 +4122,7 @@ msgstr ""
 msgid "The Free plan includes {} boards. This would go over that, so it needs Supporter."
 msgstr ""
 
-#: ui/main_window.slint:2409 ui/toast_texts.slint:228
+#: ui/main_window.slint:2409 ui/toast_texts.slint:231
 msgid "The Trash is empty"
 msgstr ""
 
@@ -4130,7 +4142,7 @@ msgstr ""
 msgid "The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program's file name, for example notepad.exe."
 msgstr ""
 
-#: ui/toast_texts.slint:495
+#: ui/toast_texts.slint:498
 msgid "The key is valid but couldn't be saved, so Supporter will be off next time."
 msgstr ""
 
@@ -4190,7 +4202,7 @@ msgstr ""
 msgid "The tag is removed from its items. The items themselves stay."
 msgstr ""
 
-#: ui/toast_texts.slint:126
+#: ui/toast_texts.slint:129
 msgid "The taskbar is on that edge. Pick another edge, or move the taskbar."
 msgstr ""
 
@@ -4206,15 +4218,15 @@ msgstr ""
 msgid "Theme"
 msgstr ""
 
-#: ui/command_texts.slint:38 ui/main_window.slint:2882 ui/toast_texts.slint:425
+#: ui/command_texts.slint:38 ui/main_window.slint:2882 ui/toast_texts.slint:428
 msgid "Theme: Dark"
 msgstr ""
 
-#: ui/command_texts.slint:37 ui/main_window.slint:2881 ui/toast_texts.slint:425
+#: ui/command_texts.slint:37 ui/main_window.slint:2881 ui/toast_texts.slint:428
 msgid "Theme: Light"
 msgstr ""
 
-#: ui/command_texts.slint:36 ui/main_window.slint:2880 ui/toast_texts.slint:425
+#: ui/command_texts.slint:36 ui/main_window.slint:2880 ui/toast_texts.slint:428
 msgid "Theme: System"
 msgstr ""
 
@@ -4226,11 +4238,11 @@ msgstr ""
 msgid "There is no file at that path."
 msgstr ""
 
-#: ui/toast_texts.slint:120
+#: ui/toast_texts.slint:123
 msgid "There is no list to save into. Add a list first."
 msgstr ""
 
-#: ui/toast_texts.slint:142
+#: ui/toast_texts.slint:145
 msgid "These shortcuts are not working: {}. Settings > Shortcuts says why."
 msgstr ""
 
@@ -4262,7 +4274,7 @@ msgstr ""
 msgid "This is your only board. Add another before deleting it."
 msgstr ""
 
-#: ui/toast_texts.slint:33
+#: ui/toast_texts.slint:36
 msgid "This item uses a Supporter feature."
 msgstr ""
 
@@ -4270,7 +4282,7 @@ msgstr ""
 msgid "This item was deleted, so nothing was saved."
 msgstr ""
 
-#: ui/toast_texts.slint:390
+#: ui/toast_texts.slint:393
 msgid "This item was deleted. Nothing was saved."
 msgstr ""
 
@@ -4278,11 +4290,11 @@ msgstr ""
 msgid "This list is empty"
 msgstr ""
 
-#: ui/toast_texts.slint:105
+#: ui/toast_texts.slint:108
 msgid "This looks like a password or key, so it was not saved. Check it, then save."
 msgstr ""
 
-#: ui/toast_texts.slint:39
+#: ui/toast_texts.slint:42
 msgid "This template can't be read. Open it to fix it."
 msgstr ""
 
@@ -4426,7 +4438,7 @@ msgstr ""
 msgid "Typing triggers work on Windows only."
 msgstr ""
 
-#: ui/colours.slint:942
+#: ui/colours.slint:944
 msgid "UI"
 msgstr ""
 
@@ -4434,7 +4446,7 @@ msgstr ""
 msgid "UPPERCASE"
 msgstr ""
 
-#: ui/toast_texts.slint:200
+#: ui/toast_texts.slint:203
 msgid "Undid {}"
 msgstr ""
 
@@ -4450,7 +4462,7 @@ msgstr ""
 msgid "Undo last change"
 msgstr ""
 
-#: ui/toast_texts.slint:206
+#: ui/toast_texts.slint:209
 msgid "Undo {} (Ctrl+Z)"
 msgstr ""
 
@@ -4490,7 +4502,7 @@ msgstr ""
 msgid "Unlock with Windows Hello (Windows only)"
 msgstr ""
 
-#: ui/toast_texts.slint:78
+#: ui/toast_texts.slint:81
 msgid "Unlock your library first, so your sensitive items are included. Nothing was done."
 msgstr ""
 
@@ -4502,7 +4514,7 @@ msgstr ""
 msgid "Unlock your library to see recent copies. Nothing is collected while it is locked."
 msgstr ""
 
-#: ui/toast_texts.slint:42
+#: ui/toast_texts.slint:45
 msgid "Unlock your library to use this item."
 msgstr ""
 
@@ -4578,7 +4590,7 @@ msgstr ""
 msgid "User guide"
 msgstr ""
 
-#: ui/colours.slint:1341
+#: ui/colours.slint:1343
 msgid "Values as"
 msgstr ""
 
@@ -4590,7 +4602,7 @@ msgstr ""
 msgid "View"
 msgstr ""
 
-#: ui/colours.slint:1436
+#: ui/colours.slint:1438
 msgid "View list"
 msgstr ""
 
@@ -4634,7 +4646,7 @@ msgstr ""
 msgid "What you changed in this item has not been saved."
 msgstr ""
 
-#: ui/colours.slint:1210 ui/colours.slint:1267
+#: ui/colours.slint:1212 ui/colours.slint:1269
 msgid "Wheel"
 msgstr ""
 
@@ -4690,11 +4702,11 @@ msgstr ""
 msgid "Windows Hello did not unlock Snipdeck. Use your master password."
 msgstr ""
 
-#: ui/toast_texts.slint:69
+#: ui/toast_texts.slint:72
 msgid "Windows Hello didn't work, so it was not turned on."
 msgstr ""
 
-#: ui/master_password.slint:70 ui/toast_texts.slint:63
+#: ui/master_password.slint:70 ui/toast_texts.slint:66
 msgid "Windows Hello didn't work, so it was turned off. You can turn it on again in Settings."
 msgstr ""
 
@@ -4702,7 +4714,7 @@ msgstr ""
 msgid "Windows Hello was cancelled. Use your master password."
 msgstr ""
 
-#: ui/toast_texts.slint:66
+#: ui/toast_texts.slint:69
 msgid "Windows Hello was not turned on."
 msgstr ""
 
@@ -4734,7 +4746,7 @@ msgstr ""
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr ""
 
-#: ui/toast_texts.slint:369
+#: ui/toast_texts.slint:372
 msgid "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
 msgstr ""
 
@@ -4762,27 +4774,27 @@ msgstr ""
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr ""
 
-#: ui/toast_texts.slint:75
+#: ui/toast_texts.slint:78
 msgid "Your library locked after a while. The form for the sensitive template you were filling in was closed."
 msgstr ""
 
-#: ui/toast_texts.slint:72
+#: ui/toast_texts.slint:75
 msgid "Your library locked after a while. The sensitive item you were editing was closed without saving."
 msgstr ""
 
-#: ui/toast_texts.slint:354
+#: ui/toast_texts.slint:357
 msgid "Your library was erased."
 msgstr ""
 
-#: ui/toast_texts.slint:294
+#: ui/toast_texts.slint:297
 msgid "Your library was rebuilt, but the cleanup failed. Snipdeck will finish it the next time it starts."
 msgstr ""
 
-#: ui/toast_texts.slint:284
+#: ui/toast_texts.slint:287
 msgid "Your old database is kept in the folder {}."
 msgstr ""
 
-#: ui/toast_texts.slint:372
+#: ui/toast_texts.slint:375
 msgid "Your organisation's policy keeps Snipdeck from starting with Windows."
 msgstr ""
 
@@ -4850,7 +4862,7 @@ msgstr ""
 msgid "a {} ends the format; write {} for a literal {}"
 msgstr ""
 
-#: ui/toast_texts.slint:186
+#: ui/toast_texts.slint:189
 msgid "add"
 msgstr ""
 
@@ -4916,7 +4928,7 @@ msgstr ""
 msgid "colors palette swatches list library"
 msgstr ""
 
-#: ui/toast_texts.slint:193
+#: ui/toast_texts.slint:196
 msgid "colour change"
 msgstr ""
 
@@ -4932,11 +4944,11 @@ msgstr ""
 msgid "creates “{}” in {}"
 msgstr ""
 
-#: ui/colours.slint:470 ui/colours.slint:571
+#: ui/colours.slint:472 ui/colours.slint:573
 msgid "default"
 msgstr ""
 
-#: ui/toast_texts.slint:190
+#: ui/toast_texts.slint:193
 msgid "delete"
 msgstr ""
 
@@ -4956,15 +4968,15 @@ msgstr ""
 msgid "dissolve split remove group keep items section"
 msgstr ""
 
-#: ui/toast_texts.slint:188
+#: ui/toast_texts.slint:191
 msgid "drop"
 msgstr ""
 
-#: ui/toast_texts.slint:196
+#: ui/toast_texts.slint:199
 msgid "duplicate"
 msgstr ""
 
-#: ui/toast_texts.slint:189
+#: ui/toast_texts.slint:192
 msgid "edit"
 msgstr ""
 
@@ -5012,7 +5024,7 @@ msgstr ""
 msgid "fingerprint face PIN biometric lock"
 msgstr ""
 
-#: ui/toast_texts.slint:197
+#: ui/toast_texts.slint:200
 msgid "group change"
 msgstr ""
 
@@ -5054,7 +5066,7 @@ msgstr ""
 msgid "make new folder together section collect"
 msgstr ""
 
-#: ui/toast_texts.slint:191
+#: ui/toast_texts.slint:194
 msgid "move"
 msgstr ""
 
@@ -5110,7 +5122,7 @@ msgstr ""
 msgid "pass"
 msgstr ""
 
-#: ui/toast_texts.slint:187
+#: ui/toast_texts.slint:190
 msgid "paste"
 msgstr ""
 
@@ -5122,7 +5134,7 @@ msgstr ""
 msgid "paste stack, number {}"
 msgstr ""
 
-#: ui/toast_texts.slint:194
+#: ui/toast_texts.slint:197
 msgid "pin"
 msgstr ""
 
@@ -5146,7 +5158,7 @@ msgstr ""
 msgid "remove trash discard section items"
 msgstr ""
 
-#: ui/toast_texts.slint:192
+#: ui/toast_texts.slint:195
 msgid "reorder"
 msgstr ""
 
@@ -5174,7 +5186,7 @@ msgstr ""
 msgid "stack queue sequence following paste"
 msgstr ""
 
-#: ui/toast_texts.slint:195
+#: ui/toast_texts.slint:198
 msgid "tag change"
 msgstr ""
 
@@ -5292,7 +5304,7 @@ msgid_plural "{} bytes"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/toast_texts.slint:135
+#: ui/toast_texts.slint:138
 msgid "{} can't be used as a shortcut. Choose another in Settings."
 msgstr ""
 
@@ -5312,7 +5324,7 @@ msgstr ""
 msgid "{} d ago"
 msgstr ""
 
-#: ui/colours.slint:1306
+#: ui/colours.slint:1308
 msgid "{} degrees"
 msgstr ""
 
@@ -5368,7 +5380,7 @@ msgstr ""
 msgid "{} is turned off in Espanso (its name starts with an underscore) and was skipped."
 msgstr ""
 
-#: ui/toast_texts.slint:132
+#: ui/toast_texts.slint:135
 msgid "{} is used by another app. Choose another in Settings."
 msgstr ""
 
@@ -5436,7 +5448,7 @@ msgstr ""
 msgid "{} of {} · next: {}"
 msgstr ""
 
-#: ui/colours.slint:1316 ui/colours.slint:1326
+#: ui/colours.slint:1318 ui/colours.slint:1328
 msgid "{} percent"
 msgstr ""
 
@@ -5462,7 +5474,7 @@ msgid_plural "{} sensitive items were left out when this file was made."
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/toast_texts.slint:285
+#: ui/toast_texts.slint:288
 msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] ""
@@ -5488,7 +5500,7 @@ msgstr ""
 msgid "{}, match {}"
 msgstr ""
 
-#: ui/colours.slint:96
+#: ui/colours.slint:98
 msgid "{}, {}"
 msgstr ""
 

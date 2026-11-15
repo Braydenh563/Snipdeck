@@ -258,6 +258,38 @@ fn quitting_leaves_a_clipboard_the_user_copied_over_alone() {
 }
 
 #[test]
+fn a_sensitive_copy_is_still_cleared_after_another_item_was_pasted_over_it() {
+    let mut w = world();
+    let (secret, other) = (w.ids[0], w.ids[1]);
+    make_sensitive(&mut w, secret);
+    w.ctl.activate_row(0, UseMode::Copy);
+    assert!(w.ctl.clipboard_clear_wait().is_some(), "armed by the copy");
+    // Within the timer window another item is pasted: the pipeline snapshots the clipboard (the
+    // secret), pastes, and puts the secret back under a new sequence number.
+    w.clock.set(at("2026-10-17T10:30:10Z"));
+    assert_eq!(
+        w.ctl.use_item(other, UseMode::Paste),
+        UseResult::Done(UseOutcome::Pasted)
+    );
+    // The restore is Windows-only; model its effect: the secret is back under a new sequence.
+    let held = w.ctl.services.clipboard.written[0].clone();
+    w.ctl.services.clipboard.written.clear();
+    w.ctl.services.clipboard.written.push(held);
+    w.ctl.services.clipboard.sequence += 1;
+    assert!(
+        w.ctl.services.clipboard.read_text().is_some(),
+        "the secret was put back"
+    );
+    w.clock.set(at("2026-10-17T10:30:31Z"));
+    w.ctl.clear_clipboard_if_due();
+    assert_eq!(
+        w.ctl.services.clipboard.read_text(),
+        None,
+        "the restored secret does not outlive the timer"
+    );
+}
+
+#[test]
 fn the_clipboard_clear_time_is_the_setting_and_zero_turns_it_off() {
     let mut w = world();
     let id = w.ids[0];

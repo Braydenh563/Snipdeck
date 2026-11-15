@@ -2137,8 +2137,17 @@ msgstr "Gib zuerst deinen Lizenzschlüssel ein."
 msgid "Pasted"
 msgstr "Eingefügt"
 
+msgid "Pasted image"
+msgstr ""
+
 msgid "Pasted into {}"
 msgstr "In {} eingefügt"
+
+msgid "Pasted into {}. Your earlier clipboard could not be put back."
+msgstr ""
+
+msgid "Pasted. Your earlier clipboard could not be put back."
+msgstr ""
 
 msgid "Pastes into"
 msgstr "Einfügen in"

@@ -2137,8 +2137,17 @@ msgstr "Collez d'abord votre clé de licence."
 msgid "Pasted"
 msgstr "Collé"
 
+msgid "Pasted image"
+msgstr ""
+
 msgid "Pasted into {}"
 msgstr "Collé dans {}"
+
+msgid "Pasted into {}. Your earlier clipboard could not be put back."
+msgstr ""
+
+msgid "Pasted. Your earlier clipboard could not be put back."
+msgstr ""
 
 msgid "Pastes into"
 msgstr "Colle dans"

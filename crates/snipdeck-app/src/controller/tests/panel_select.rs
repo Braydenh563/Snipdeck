@@ -503,6 +503,25 @@ fn paste_create_keeps_html_and_rtf() {
 }
 
 #[test]
+fn undoing_a_text_edit_brings_the_formatting_back() {
+    use snipdeck_core::FormatKind as K;
+    let mut w = pasting("bold words");
+    w.ctl.services.clipboard.held_html = Some("<b>bold</b> words".into());
+    w.ctl.services.clipboard.held_rtf = Some(b"{\\rtf1 bold words}".to_vec());
+    w.ctl.paste_create(Origin::Panel);
+    let id = w.ctl.view().rows[0].id;
+    let was = w.ctl.store.formats(id).expect("formats");
+    w.ctl.open_item_editor(id);
+    let mut input = w.ctl.item_editor_view().expect("editor").fields;
+    input.content = "other words".to_owned();
+    w.ctl.item_editor_save(&input);
+    assert_eq!(stored_kinds(&w, id), [K::Text], "an edit drops the formatting");
+    w.ctl.undo();
+    assert_eq!(stored_kinds(&w, id), [K::Text, K::Html, K::Rtf]);
+    assert_eq!(w.ctl.store.formats(id).expect("formats"), was);
+}
+
+#[test]
 fn a_secret_rich_paste_still_opens_the_sensitive_editor() {
     let secret = "ghp_abcdefghijklmnopqrstuvwxyz0123456789";
     let mut w = pasting(secret);
@@ -767,6 +786,51 @@ fn a_pasted_png_file_becomes_an_image_item() {
     w.ctl.paste_create(Origin::Panel);
     let id = w.ctl.view().rows[0].id;
     assert_eq!(w.ctl.store().item(id).expect("item").kind, ItemKind::Image);
+}
+
+#[test]
+fn pasted_files_are_read_by_a_job_and_the_items_arrive_with_its_result() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut w = world();
+    w.ctl.services.clipboard.held_files = files_in(&dir, &[("a.txt", b"one"), ("b.txt", b"two")]);
+    let before = w.ctl.view().rows.len();
+    let mut run = w
+        .ctl
+        .paste_begin(Origin::Panel)
+        .expect("files wait for a job");
+    assert_eq!(
+        w.ctl.view().rows.len(),
+        before,
+        "nothing is read or stored before the job runs"
+    );
+    assert!(w.ctl.history_view().undo.is_none());
+    let done = run.next_job().run();
+    assert!(
+        w.ctl.drop_read_done(run, done).is_none(),
+        "one chunk is all"
+    );
+    assert_eq!(w.ctl.view().rows.len(), before + 2);
+    assert!(w.ctl.history_view().undo.is_some(), "one history step");
+}
+
+#[test]
+fn pasted_text_is_saved_at_once_with_no_job() {
+    let mut w = pasting("a fresh note");
+    assert!(w.ctl.paste_begin(Origin::Panel).is_none());
+    assert_eq!(w.ctl.view().rows[0].preview, "a fresh note");
+}
+
+#[test]
+fn a_pasted_screenshot_is_titled_in_the_language_shown() {
+    let mut w = world();
+    w.ctl.set_pasted_image_title("Eingefügtes Bild");
+    w.ctl.services.clipboard.held_png = Some(tiny_png());
+    w.ctl.paste_create(Origin::Panel);
+    let id = w.ctl.view().rows[0].id;
+    assert_eq!(
+        w.ctl.store().item(id).expect("item").title,
+        "Eingefügtes Bild"
+    );
 }
 
 #[test]

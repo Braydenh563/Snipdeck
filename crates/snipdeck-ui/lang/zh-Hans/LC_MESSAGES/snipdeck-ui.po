@@ -2131,8 +2131,17 @@ msgstr "请先粘贴你的许可证密钥。"
 msgid "Pasted"
 msgstr "已粘贴"
 
+msgid "Pasted image"
+msgstr ""
+
 msgid "Pasted into {}"
 msgstr "已粘贴到 {}"
+
+msgid "Pasted into {}. Your earlier clipboard could not be put back."
+msgstr ""
+
+msgid "Pasted. Your earlier clipboard could not be put back."
+msgstr ""
 
 msgid "Pastes into"
 msgstr "粘贴到"

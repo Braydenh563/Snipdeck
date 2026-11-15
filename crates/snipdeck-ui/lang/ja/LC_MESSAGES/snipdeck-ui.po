@@ -2131,8 +2131,17 @@ msgstr "先にライセンスキーを貼り付けてください。"
 msgid "Pasted"
 msgstr "貼り付けました"
 
+msgid "Pasted image"
+msgstr ""
+
 msgid "Pasted into {}"
 msgstr "{} に貼り付けました"
+
+msgid "Pasted into {}. Your earlier clipboard could not be put back."
+msgstr ""
+
+msgid "Pasted. Your earlier clipboard could not be put back."
+msgstr ""
 
 msgid "Pastes into"
 msgstr "貼り付け先"

@@ -95,6 +95,23 @@ fn switching_the_inbox_off_hides_what_was_kept() {
 }
 
 #[test]
+fn an_entry_past_its_days_goes_at_the_next_prune_even_with_the_inbox_off() {
+    let mut w = recent_world();
+    w.ctl.on_clipboard_change(&copied("old"));
+    w.ctl.update_settings(|s| s.recent_history = false);
+    w.clock.set(at("2026-10-24T10:30:00Z"));
+    w.ctl.prune_recent();
+    assert_eq!(w.ctl.store().recent().expect("recent").len(), 1, "6 days");
+    w.clock.set(at("2026-10-25T10:31:00Z"));
+    w.ctl.prune_recent();
+    assert_eq!(
+        w.ctl.store().recent().expect("recent").len(),
+        0,
+        "past 7 days, with no new copy to trigger the pruning"
+    );
+}
+
+#[test]
 fn the_cap_holds_at_the_default() {
     let mut w = recent_world();
     for i in 0..=DEFAULT_MAX_ENTRIES {

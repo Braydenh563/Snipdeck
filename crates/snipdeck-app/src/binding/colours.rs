@@ -471,6 +471,7 @@ where
         });
         ctl.set_colours_list_name(&texts.invoke_colours_list());
         ctl.set_new_list_base(&texts.invoke_new_list_name());
+        ctl.set_pasted_image_title(&texts.invoke_pasted_image_title());
     }
 
     /// Draws the Colours tab (a no-op while it is not the one shown).
