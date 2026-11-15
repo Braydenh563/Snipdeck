@@ -565,7 +565,7 @@ fn convert(src: &str, vars: &[&Node], what: &str, report: &mut ImportReport) -> 
         literal(&mut tpl, &rest[..start]);
         match var_for(name, vars, what, report) {
             Some(Var::Placeholder(p)) => tpl.ph(&p),
-            Some(Var::Literal(t)) => tpl.lit(&t),
+            Some(Var::Literal(t)) => tpl.substitute(&t),
             None => {
                 tpl.lit(&rest[start..start + 2 + end + 2]);
                 if !unmapped.iter().any(|u| u == name) {
