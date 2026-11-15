@@ -34,3 +34,4 @@ started: 2026-11-14 13:40
 - Cloud workers: edge-polish (session_01NKjURwKPmGuEHMfw1o6HF4), popup-dismiss then ui-polish-2 (session_01NKjURt5yHRvroJQUg7zQeb); not pushed yet at 08:20.
 - Then: open items (scratchpad/open-items.md), README/docs/screenshots refresh, blind tests, gate --full, CI, handover morning summary, retro.
 - Disk: clean stale test binaries in /tmp/target-panel/debug/deps if under 2 GB free.
+- 09:53: gate3 passed, pushed 7e8f7de3. Cloud sessions: G44-G49 session_01NKjURwZusohoHJYzLvyjV2 -> claude/fable2-tail (local WIP 7d8230cc on fix/fable2-tail superseded); open items 1-3 + post-1.0 decisions session_01NKjURvq9PiPrQkMMB2go6K -> claude/open-items. fix/fable2-ui review MERGE-WITH-FIXES; follow-up fixer running in its worktree (G26, G34 rest, G13 gate hook, paste_root packaged-only, json cap 256 MiB + export guard, clear-recent-ask reset, keys.rs comment, Win+L draft). G21 (deny.toml note) left: do inline.
