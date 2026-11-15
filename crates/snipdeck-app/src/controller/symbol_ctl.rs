@@ -462,7 +462,7 @@ fn without_clobbering(path: PathBuf, ext: &str) -> PathBuf {
     let stem = named
         .file_stem()
         .map_or_else(String::new, |s| s.to_string_lossy().into_owned());
-    (2..)
+    (2..u32::MAX)
         .map(|n| named.with_file_name(format!("{stem} ({n}).{ext}")))
         .find(|candidate| !candidate.exists())
         .unwrap_or(named)

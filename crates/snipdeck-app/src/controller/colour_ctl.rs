@@ -16,7 +16,7 @@ use snipdeck_platform::{
 };
 use snipdeck_store::Trashable;
 
-use super::{Controller, Effect, Library, UseResult, failed};
+use super::{Controller, Effect, HomeCache, Library, UseResult, failed};
 use crate::host::ClipboardText;
 use crate::{
     capture::Destination,
@@ -314,18 +314,18 @@ where
     /// The home list that exists now: the remembered one, else the first list on any board that
     /// carries the home name (an import, or settings lost, leaves such a list behind).
     fn home_list_id(&self) -> Option<ListId> {
-        if let Some(kept) = self.colour_home_cache.get() {
+        if let HomeCache::Known(kept) = self.colour_home_cache.get() {
             return kept;
         }
         let found = self.find_home_list_id();
-        self.colour_home_cache.set(Some(found));
+        self.colour_home_cache.set(HomeCache::Known(found));
         found
     }
 
     /// Forgets what the colour view kept: the saved colours and the home list.
     pub(super) fn clear_colour_caches(&self) {
         self.colour_saved_cache.take();
-        self.colour_home_cache.set(None);
+        self.colour_home_cache.set(HomeCache::Unknown);
     }
 
     fn find_home_list_id(&self) -> Option<ListId> {

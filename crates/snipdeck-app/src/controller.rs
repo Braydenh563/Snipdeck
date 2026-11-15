@@ -113,6 +113,15 @@ pub struct Services<C, K, T> {
     pub timing: T,
 }
 
+/// What [`Controller::home_list_id`] knows about the colour home list.
+#[derive(Clone, Copy)]
+enum HomeCache {
+    /// Not looked up since the library last changed.
+    Unknown,
+    /// Looked up: the list, or `None` when there is none.
+    Known(Option<ListId>),
+}
+
 /// A keyed hash of a clipboard text: enough to tell whether the clipboard still holds it,
 /// without keeping the text itself.
 #[derive(Debug, Clone)]
@@ -298,9 +307,9 @@ pub struct Controller<S, C, K, T> {
     /// The colour items of the home list, kept until the library changes (every redraw of the
     /// Colours tab asks for them; a drag redraws on each pointer event).
     colour_saved_cache: std::cell::RefCell<Option<Vec<(ItemId, snipdeck_colour::Rgba8)>>>,
-    /// The colour home list found by [`Controller::home_list_id`] (`Some(None)`: there is none),
-    /// dropped together with `colour_saved_cache`: the colour view asks on every render.
-    colour_home_cache: std::cell::Cell<Option<Option<ListId>>>,
+    /// The colour home list found by [`Controller::home_list_id`], dropped together with
+    /// `colour_saved_cache`: the colour view asks on every render.
+    colour_home_cache: std::cell::Cell<HomeCache>,
     session: Session,
     saver: Option<SettingsSaver>,
     /// Where the edge dock is (see [`crate::dock`]).
@@ -535,7 +544,7 @@ where
             pasted_image_title: crate::capture::PASTED_IMAGE_TITLE.to_owned(),
             colour_made_list: None,
             colour_saved_cache: std::cell::RefCell::new(None),
-            colour_home_cache: std::cell::Cell::new(None),
+            colour_home_cache: std::cell::Cell::new(HomeCache::Unknown),
             session: Session::default(),
             hotkey_problems: Vec::new(),
             saver: None,

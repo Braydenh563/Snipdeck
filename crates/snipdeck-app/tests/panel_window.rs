@@ -714,22 +714,14 @@ fn escape_on_an_empty_search_hides_the_panel() {
 }
 
 #[test]
-fn ctrl_shift_p_flips_keep_on_top_in_the_controller_and_the_saved_setting() {
+fn ctrl_shift_p_is_the_palette_chord_and_leaves_keep_on_top_alone() {
+    // DESIGN.md shortcuts table: Ctrl+Shift+P opens Commands; the pin has no chord.
     on_ui_thread(|| {
         let r = rig();
         assert!(r.ctl.borrow().view().on_top);
         chord(r.window(), &[Key::Control, Key::Shift], "P");
-        assert!(
-            !r.ctl.borrow().view().on_top,
-            "the key reached the controller"
-        );
-        assert!(!r.ui.get_on_top());
-        assert!(
-            !r.ctl.borrow().settings().panel_pinned,
-            "and it is remembered"
-        );
-        chord(r.window(), &[Key::Control, Key::Shift], "P");
-        assert!(r.ctl.borrow().view().on_top);
+        assert!(r.ctl.borrow().view().on_top, "the pin is not flipped");
+        assert!(r.ui.get_on_top());
         assert!(r.ctl.borrow().settings().panel_pinned);
     });
 }
