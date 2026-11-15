@@ -1859,7 +1859,11 @@ ui_tests! {
             take(&log);
             press(ui.window(), &key(Key::Escape));
             settle();
-            assert!(!take(&log).is_empty(), "{menu}: Escape asks the host to close the menu");
+            assert_eq!(
+                take(&log),
+                [format!("{menu}-dismissed")],
+                "{menu}: Escape closes the menu and does not ask to hide the Panel"
+            );
         }
     }
 
@@ -2247,6 +2251,36 @@ ui_tests! {
         ui.set_toast_text("".into());
         settle();
         assert!(missing(&ui, "Copied", AccessibleRole::Text));
+    }
+
+    fn using_the_toast_close_from_the_keyboard_hands_the_focus_back_to_typing() {
+        let (ui, log) = start();
+        ui.set_search_always(true);
+        ui.set_toast_text("Copied".into());
+        ui.set_toast_undo_label("Undo".into());
+        settle();
+        take(&log);
+        // Tab until a toast button holds the focus (it tells the host by `hover-changed`), then on to the
+        // close button, the last of them.
+        let mut reached = false;
+        for _ in 0..40 {
+            press(ui.window(), &key(Key::Tab));
+            settle();
+            if take(&log).iter().any(|l| l == "hover:true") {
+                reached = true;
+                break;
+            }
+        }
+        assert!(reached, "Tab reaches the toast");
+        press(ui.window(), &key(Key::Tab));
+        settle();
+        press(ui.window(), "\n");
+        assert!(take(&log).contains(&"toast-dismissed".to_string()), "the close button was used");
+        // The host drops the toast, and the keys still go somewhere: the search field.
+        ui.set_toast_text("".into());
+        settle();
+        type_text(ui.window(), "z");
+        assert_eq!(ui.get_query(), "z", "the focus did not die with the toast");
     }
 
     fn toast_edit_button_shows_only_with_edit() {

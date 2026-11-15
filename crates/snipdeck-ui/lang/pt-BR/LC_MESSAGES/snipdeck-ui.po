@@ -892,7 +892,7 @@ msgid "Discard your changes?"
 msgstr "Descartar suas alterações?"
 
 msgid "Dismiss"
-msgstr "Dispensar"
+msgstr "Fechar"
 
 msgid "Ditto database"
 msgstr "Banco de dados do Ditto"

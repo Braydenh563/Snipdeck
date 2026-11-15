@@ -2616,9 +2616,10 @@ export component PanelWindow inherits Window {
                         height: self.preferred-height;
                         x: Space.s3;
                         y: parent.height - self.height - Space.s2;
-                        undo => { root.toast-undo(); }
-                        edit => { root.toast-edit(); }
-                        dismissed => { root.toast-dismissed(); }
+                        // The toast goes with its button: the focus goes back to typing first.
+                        undo => { root.focus-typing(); root.toast-undo(); }
+                        edit => { root.focus-typing(); root.toast-edit(); }
+                        dismissed => { root.focus-typing(); root.toast-dismissed(); }
                         hover-changed(h) => { root.toast-hover-changed(h); }
                     }
                 }

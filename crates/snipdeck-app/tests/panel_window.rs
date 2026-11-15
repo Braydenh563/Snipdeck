@@ -1322,6 +1322,19 @@ fn the_app_menu_in_a_560px_panel_leaves_a_clickable_strip_and_scrolls_to_quit() 
 }
 
 #[test]
+fn escape_closes_the_app_menu_and_leaves_the_panel_open() {
+    on_ui_thread(|| {
+        let r = rig();
+        open_menu_at(&r, 560.0);
+        assert!(r.ui.get_app_menu_open());
+        press(r.window(), &key(Key::Escape));
+        slint::platform::update_timers_and_animations();
+        assert!(!r.ui.get_app_menu_open(), "Esc closed the menu");
+        assert!(r.ui.window().is_visible(), "the Panel stayed up");
+    });
+}
+
+#[test]
 fn the_app_menu_at_the_minimum_height_shows_a_cue_and_end_reaches_quit() {
     on_ui_thread(|| {
         let r = rig();

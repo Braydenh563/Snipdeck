@@ -521,6 +521,18 @@ ui_tests! {
 
     // ---- Context menu, move and tag ------------------------------------------------------------
 
+    fn a_context_menu_in_the_shortest_window_stays_inside_it() {
+        let (ui, _log) = start();
+        ui.window().set_size(slint::LogicalSize::new(1040.0, 360.0));
+        settle();
+        press_key(&ui, Key::DownArrow);
+        press_key(&ui, Key::Menu);
+        assert!(ui.get_menu_open());
+        let menu = find(&ui, "Item actions", AccessibleRole::List);
+        let bottom = menu.absolute_position().y + menu.size().height;
+        assert!(bottom <= 360.0, "the menu bottom {bottom} is inside the 360px window");
+    }
+
     fn the_menu_key_opens_the_context_menu_and_move_to_list_opens_a_chooser() {
         let (ui, log) = start();
         press_key(&ui, Key::DownArrow);

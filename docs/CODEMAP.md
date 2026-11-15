@@ -8533,7 +8533,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/src/controller/tests/recent.rs` | 33 |
 | `crates/snipdeck-app/src/controller/tests/screen_clip.rs` | 10 |
 | `crates/snipdeck-app/src/controller/tests/symbols.rs` | 30 |
-| `crates/snipdeck-app/src/controller/tests/toasts.rs` | 38 |
+| `crates/snipdeck-app/src/controller/tests/toasts.rs` | 39 |
 | `crates/snipdeck-app/src/controller/tests/tray.rs` | 30 |
 | `crates/snipdeck-app/src/controller/tests/use_paste.rs` | 69 |
 | `crates/snipdeck-app/src/crash.rs` (inline) | 11 |
@@ -8610,8 +8610,8 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/tests/main_window.rs` | 51 |
 | `crates/snipdeck-app/tests/master_password.rs` | 81 |
 | `crates/snipdeck-app/tests/menu_form_texts.rs` | 3 |
-| `crates/snipdeck-app/tests/panel_window.rs` | 92 |
-| `crates/snipdeck-app/tests/picker_window.rs` | 19 |
+| `crates/snipdeck-app/tests/panel_window.rs` | 93 |
+| `crates/snipdeck-app/tests/picker_window.rs` | 20 |
 | `crates/snipdeck-app/tests/rebuild.rs` | 4 |
 | `crates/snipdeck-app/tests/recent_at_rest.rs` | 5 |
 | `crates/snipdeck-app/tests/repaint_hook.rs` | 4 |
