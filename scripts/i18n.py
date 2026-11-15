@@ -6,6 +6,8 @@
   python3 scripts/i18n.py check     fail if the .pot is stale, a locale lacks / has stale msgids, a
                                     plural entry has the wrong number of forms, or a translation
                                     changes the {} / {0} placeholders of its source
+  python3 scripts/i18n.py check --strict
+                                    also fail on any untranslated (empty msgstr) entry; the gate uses this
   python3 scripts/i18n.py todo LOCALE   print the untranslated entries of LOCALE as JSON
   python3 scripts/i18n.py apply LOCALE FILE
                                     fill LOCALE from a JSON file written by `todo` with a
@@ -292,6 +294,9 @@ def main(argv=None):
         problems += problems_of(lang, keys, plurals, have)
     for p in problems:
         print("error:", p)
+    if untranslated and "--strict" in argv:
+        print(f"error: {untranslated} untranslated entries (run `todo LOCALE`, then `apply`)")
+        return 1
     if untranslated:
         print(f"warning: {untranslated} untranslated entries (English fallback at run time)")
     return 1 if problems else 0

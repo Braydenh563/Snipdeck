@@ -68,7 +68,7 @@ msgid "A palette tab with a colour picker, every colour format, contrast checks 
 msgstr "Uma aba de paleta com seletor de cores, todos os formatos de cor, verificações de contraste e cores salvas. Desative para ocultar a aba e os comandos do Ctrl+K."
 
 msgid "A paste leaves out the formatting and sends only the text. Alt+Enter or Alt+click does this for one paste."
-msgstr ""
+msgstr "Ao colar, a formatação é omitida e só o texto é enviado. Alt+Enter ou Alt+clique faz isso para uma única colagem."
 
 msgid "A small window you can drag anywhere."
 msgstr "Uma janela pequena que você pode arrastar para qualquer lugar."
@@ -202,7 +202,7 @@ msgid "Alt+{}"
 msgstr "Alt+{}"
 
 msgid "Always paste as plain text"
-msgstr ""
+msgstr "Sempre colar como texto simples"
 
 msgid "Always shown"
 msgstr "Sempre visível"
@@ -625,7 +625,7 @@ msgid "Couldn't export your library. Check the disk has room, then try again."
 msgstr "Não foi possível exportar sua biblioteca. Verifique se há espaço no disco e tente novamente."
 
 msgid "Couldn't export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then try again."
-msgstr ""
+msgstr "Não foi possível exportar sua biblioteca: um anexo, ou todos os seus anexos juntos, são grandes demais para um arquivo .snipdeck (64 MB por arquivo, 8 GB no total). Remova ou reduza os maiores arquivos e tente de novo."
 
 msgid "Couldn't export your library: it is locked. Unlock it, then try again."
 msgstr "Não foi possível exportar sua biblioteca: ela está bloqueada. Desbloqueie-a e tente novamente."
@@ -661,7 +661,7 @@ msgid "Couldn't make a backup. Check the disk has room, then use Back up now in 
 msgstr "Não foi possível fazer o backup. Verifique se há espaço no disco e use Fazer backup agora em Configurações."
 
 msgid "Couldn't make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
-msgstr ""
+msgstr "Não foi possível fazer o backup: um anexo, ou todos os seus anexos juntos, são grandes demais para um backup (64 MB por arquivo, 8 GB no total). Remova ou reduza os maiores arquivos e use Fazer backup agora em Configurações."
 
 msgid "Couldn't make a backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
 msgstr "Não foi possível fazer o backup: o arquivo de backup está em uso ou não pode ser gravado. Feche outros programas que usam sua pasta do Snipdeck e use Fazer backup agora em Configurações."
@@ -688,7 +688,7 @@ msgid "Couldn't make today's backup. Check the disk has room, then use Back up n
 msgstr "Não foi possível fazer o backup de hoje. Verifique se há espaço no disco e use Fazer backup agora em Configurações."
 
 msgid "Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
-msgstr ""
+msgstr "Não foi possível fazer o backup de hoje: um anexo, ou todos os seus anexos juntos, são grandes demais para um backup (64 MB por arquivo, 8 GB no total). Remova ou reduza os maiores arquivos e use Fazer backup agora em Configurações."
 
 msgid "Couldn't make today's backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
 msgstr "Não foi possível fazer o backup de hoje: o arquivo de backup está em uso ou não pode ser gravado. Feche outros programas que usam sua pasta do Snipdeck e use Fazer backup agora em Configurações."
@@ -719,6 +719,9 @@ msgstr "Não foi possível escolher uma cor da tela."
 
 msgid "Couldn't reach the clipboard. Another app may be using it."
 msgstr "Não foi possível acessar a área de transferência. Outro aplicativo pode estar usando-a."
+
+msgid "Couldn't read your settings file, so Snipdeck is using the defaults. Changes to settings won't be saved until the file is fixed or removed."
+msgstr "Não foi possível ler seu arquivo de configurações, então o Snipdeck está usando os padrões. As alterações nas configurações não serão salvas até que o arquivo seja corrigido ou removido."
 
 msgid "Couldn't refresh the list on screen. Close and reopen the window to see the change."
 msgstr "Não foi possível atualizar a lista na tela. Feche e reabra a janela para ver a alteração."
@@ -1392,9 +1395,6 @@ msgstr "Continuar em execução na bandeja ao fechar a janela"
 msgid "Keep secrets secret"
 msgstr "Mantenha os segredos em segredo"
 
-msgid "Keep the Panel on top (pin)"
-msgstr "Manter o painel por cima (fixar)"
-
 msgid "Keep the Panel open"
 msgstr "Manter o Painel aberto"
 
@@ -1991,7 +1991,7 @@ msgid "Paste"
 msgstr "Colar"
 
 msgid "Paste as plain text"
-msgstr ""
+msgstr "Colar como texto simples"
 
 msgid "Paste as…"
 msgstr "Colar como…"
@@ -2030,7 +2030,7 @@ msgid "Paste the Nth result"
 msgstr "Colar o enésimo resultado"
 
 msgid "Paste the item as plain text"
-msgstr ""
+msgstr "Colar o item como texto simples"
 
 msgid "Paste the next item"
 msgstr "Colar o próximo trecho"
@@ -2045,16 +2045,16 @@ msgid "Pasted"
 msgstr "Colado"
 
 msgid "Pasted image"
-msgstr ""
+msgstr "Imagem colada"
 
 msgid "Pasted into {}"
 msgstr "Colado em {}"
 
 msgid "Pasted into {}. Your earlier clipboard could not be put back."
-msgstr ""
+msgstr "Colado em {}. Não foi possível restaurar sua área de transferência anterior."
 
 msgid "Pasted. Your earlier clipboard could not be put back."
-msgstr ""
+msgstr "Colado. Não foi possível restaurar sua área de transferência anterior."
 
 msgid "Pastes into"
 msgstr "Cola em"
@@ -2069,7 +2069,7 @@ msgid "Pastes the next item of the list in order."
 msgstr "Cola o próximo trecho da lista, em ordem."
 
 msgid "Pasting"
-msgstr ""
+msgstr "Colando"
 
 msgid "Path to the file"
 msgstr "Caminho do arquivo"
@@ -2144,7 +2144,7 @@ msgid "Placeholders"
 msgstr "Espaços reservados"
 
 msgid "Placeholders are {}. To write a literal brace, double it: {} or {}"
-msgstr ""
+msgstr "Os marcadores ficam entre {}. Para escrever uma chave literal, dobre-a: {} ou {}"
 
 msgid "Plain text"
 msgstr "Texto simples"
@@ -2316,9 +2316,6 @@ msgstr "Renomeie ou exclua etiquetas. Excluir uma etiqueta a remove dos seus tre
 
 msgid "Rename tag {}"
 msgstr "Renomear a etiqueta {}"
-
-msgid "Rename the item"
-msgstr "Renomear o item"
 
 msgid "Repeat the new password"
 msgstr "Repita a nova senha"
@@ -2671,6 +2668,9 @@ msgstr "O Snipdeck não consegue proteger uma chave neste PC, então a senha mes
 
 msgid "Snipdeck can't read that file. It may be in use or protected."
 msgstr "O Snipdeck não consegue ler esse arquivo. Ele pode estar em uso ou protegido."
+
+msgid "Snipdeck can't watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
+msgstr "O Snipdeck não consegue monitorar a área de transferência, então Recentes continuará vazio. Reinicie o Snipdeck para tentar de novo."
 
 msgid "Snipdeck closed unexpectedly last time. Open the log?"
 msgstr "O Snipdeck foi fechado inesperadamente da última vez. Abrir o log?"
@@ -3432,7 +3432,7 @@ msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (
 msgstr "Sua biblioteca fica em uma única pasta, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (quadros, listas, itens, tags e a Lixeira), blobs (imagens, arquivos e textos longos), settings.json, backups (quantos você quiser manter) e logs."
 
 msgid "Your library locked after a while. The form for the sensitive template you were filling in was closed."
-msgstr ""
+msgstr "Sua biblioteca foi bloqueada depois de um tempo. O formulário do modelo confidencial que você estava preenchendo foi fechado."
 
 msgid "Your library locked after a while. The sensitive item you were editing was closed without saving."
 msgstr "Sua biblioteca foi bloqueada depois de um tempo. O item sensível que você editava foi fechado sem salvar."
@@ -3452,50 +3452,53 @@ msgstr "A política da sua organização impede o Snipdeck de iniciar com o Wind
 msgid "Your sensitive items will be protected by Windows alone."
 msgstr "Seus itens sensíveis serão protegidos apenas pelo Windows."
 
+msgid "Your settings file was damaged. Snipdeck kept what it could read and saved the original as settings.json.bad."
+msgstr "Seu arquivo de configurações estava danificado. O Snipdeck manteve o que conseguiu ler e salvou o original como settings.json.bad."
+
 msgid "Your shortcuts"
 msgstr "Seus atalhos"
 
 msgid "`d` for days"
-msgstr ""
+msgstr "`d` para dias"
 
 msgid "`h` for hours"
-msgstr ""
+msgstr "`h` para horas"
 
 msgid "`min` for minutes"
-msgstr ""
+msgstr "`min` para minutos"
 
 msgid "`mo` for months"
-msgstr ""
+msgstr "`mo` para meses"
 
 msgid "`mo` for months or `min` for minutes"
-msgstr ""
+msgstr "`mo` para meses ou `min` para minutos"
 
 msgid "`w` for weeks"
-msgstr ""
+msgstr "`w` para semanas"
 
 msgid "`y` for years"
-msgstr ""
+msgstr "`y` para anos"
 
 msgid "a choice needs options, e.g. {}"
-msgstr ""
+msgstr "uma escolha precisa de opções, p. ex. {}"
 
 msgid "a choice option is empty"
-msgstr ""
+msgstr "uma opção da escolha está vazia"
 
 msgid "a placeholder can have at most {} offsets"
-msgstr ""
+msgstr "um marcador pode ter no máximo {} deslocamentos"
 
 msgid "a placeholder is not valid"
-msgstr ""
+msgstr "um marcador não é válido"
 
 msgid "a prompt takes a name and one more part: {}"
-msgstr ""
+msgstr "um prompt recebe um nome e mais uma parte: {}"
 
 msgid "a template can ask for at most {} different fields, choices, dates or sections"
-msgstr ""
+msgstr "um modelo pode pedir no máximo {} campos, escolhas, datas ou seções diferentes"
 
 msgid "a {} ends the format; write {} for a literal {}"
-msgstr ""
+msgstr "um {} encerra o formato; escreva {} para um {} literal"
 
 msgid "add"
 msgstr "adicionar"
@@ -3507,10 +3510,10 @@ msgid "add create snippet note write"
 msgstr "adicionar criar trecho nota escrever"
 
 msgid "an offset in {} can be at most {}"
-msgstr ""
+msgstr "um deslocamento em {} pode ser no máximo {}"
 
 msgid "an offset is a sign, a number and a unit, like {} or {}"
-msgstr ""
+msgstr "um deslocamento é um sinal, um número e uma unidade, como {} ou {}"
 
 msgid "and {} more"
 msgid_plural "and {} more"
@@ -3596,7 +3599,7 @@ msgid "emoji kaomoji icons smiley emoticon insert"
 msgstr "emoji kaomoji ícones smiley emoticon inserir"
 
 msgid "empty placeholder {}"
-msgstr ""
+msgstr "marcador vazio {}"
 
 msgid "every mark choose all"
 msgstr "todos marcar escolher selecionar"
@@ -3679,16 +3682,16 @@ msgid "notepad.exe"
 msgstr "notepad.exe"
 
 msgid "one of d, w, mo, y, h, min"
-msgstr ""
+msgstr "um entre d, w, mo, y, h, min"
 
 msgid "only one {} is allowed"
-msgstr ""
+msgstr "só é permitido um {}"
 
 msgid "open toggle deck hide"
 msgstr "abrir alternar deck ocultar"
 
 msgid "optional sections cannot be nested"
-msgstr ""
+msgstr "seções opcionais não podem ser aninhadas"
 
 msgid "or"
 msgstr "ou"
@@ -3751,10 +3754,10 @@ msgid "tag: {}"
 msgstr "etiqueta: {}"
 
 msgid "the choice option {} is listed twice"
-msgstr ""
+msgstr "a opção {} aparece duas vezes"
 
 msgid "the prompt needs a name, e.g. {}"
-msgstr ""
+msgstr "o prompt precisa de um nome, p. ex. {}"
 
 msgid "to insert"
 msgstr "para inserir"
@@ -3766,16 +3769,16 @@ msgid "tutorial intro onboarding basics learn"
 msgstr "tutorial introdução integração básico aprender"
 
 msgid "unknown date format {}; supported: {}"
-msgstr ""
+msgstr "formato de data desconhecido {}; aceitos: {}"
 
 msgid "unknown offset unit {}; use {}"
-msgstr ""
+msgstr "unidade de deslocamento desconhecida {}; use {}"
 
 msgid "unknown placeholder {}"
-msgstr ""
+msgstr "marcador desconhecido {}"
 
 msgid "unknown placeholder {}, did you mean {}?"
-msgstr ""
+msgstr "marcador desconhecido {}, você quis dizer {}?"
 
 msgid "version update"
 msgstr "versão atualização"
@@ -3833,10 +3836,10 @@ msgid "{} can't be used as a shortcut. Choose another in Settings."
 msgstr "{} não pode ser usado como atalho. Escolha outro em Configurações."
 
 msgid "{} closes nothing"
-msgstr ""
+msgstr "{} não fecha nada"
 
 msgid "{} closes nothing; write {} for a literal {}"
-msgstr ""
+msgstr "{} não fecha nada; escreva {} para um {} literal"
 
 msgid "{} could not be read and was skipped."
 msgstr "Não foi possível ler {} e ele foi ignorado."
@@ -3876,10 +3879,10 @@ msgid "{} is empty and was skipped."
 msgstr "{} está vazio e foi ignorado."
 
 msgid "{} is never closed; add {} after the part"
-msgstr ""
+msgstr "{} nunca é fechado; adicione {} depois da parte"
 
 msgid "{} is never closed; write {} for a literal {}"
-msgstr ""
+msgstr "{} nunca é fechado; escreva {} para um {} literal"
 
 msgid "{} is not valid UTF-8, so characters that could not be read were replaced."
 msgstr "{} não é UTF-8 válido, então os caracteres que não puderam ser lidos foram substituídos."
@@ -3891,7 +3894,7 @@ msgid "{} is used by another app. Choose another in Settings."
 msgstr "{} está em uso por outro app. Escolha outro em Configurações."
 
 msgid "{} is used for two different prompts; use the same kind and options each time, or pick another name"
-msgstr ""
+msgstr "{} é usado em dois prompts diferentes; use o mesmo tipo e as mesmas opções sempre, ou escolha outro nome"
 
 msgid "{} is {}, over the 5 MB limit for text, and was skipped."
 msgstr "{} tem {}, acima do limite de 5 MB para texto, e foi ignorado."
@@ -3928,7 +3931,7 @@ msgid "{} needs a number"
 msgstr "{} precisa de um número"
 
 msgid "{} needs an argument: {}"
-msgstr ""
+msgstr "{} precisa de um argumento: {}"
 
 msgid "{} new board will be made"
 msgid_plural "{} new boards will be made"
@@ -3968,7 +3971,7 @@ msgstr[0] "{} trecho sensível não estava no backup."
 msgstr[1] "{} trechos sensíveis não estavam no backup."
 
 msgid "{} takes no argument"
-msgstr ""
+msgstr "{} não aceita argumento"
 
 msgid "{} · {}"
 msgstr "{} · {}"

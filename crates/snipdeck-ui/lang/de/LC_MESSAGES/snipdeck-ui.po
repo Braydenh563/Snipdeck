@@ -720,6 +720,9 @@ msgstr "Vom Bildschirm konnte keine Farbe gewählt werden."
 msgid "Couldn't reach the clipboard. Another app may be using it."
 msgstr "Auf die Zwischenablage kann nicht zugegriffen werden. Eine andere App verwendet sie vielleicht."
 
+msgid "Couldn't read your settings file, so Snipdeck is using the defaults. Changes to settings won't be saved until the file is fixed or removed."
+msgstr "Deine Einstellungsdatei konnte nicht gelesen werden, daher verwendet Snipdeck die Standardwerte. Änderungen an den Einstellungen werden erst gespeichert, wenn die Datei repariert oder entfernt wurde."
+
 msgid "Couldn't refresh the list on screen. Close and reopen the window to see the change."
 msgstr "Die Liste auf dem Bildschirm konnte nicht aktualisiert werden. Schließe das Fenster und öffne es erneut, um die Änderung zu sehen."
 
@@ -1392,9 +1395,6 @@ msgstr "Beim Schließen des Fensters im Infobereich weiterlaufen"
 msgid "Keep secrets secret"
 msgstr "Geheimes geheim halten"
 
-msgid "Keep the Panel on top (pin)"
-msgstr "Panel im Vordergrund halten (anheften)"
-
 msgid "Keep the Panel open"
 msgstr "Panel geöffnet lassen"
 
@@ -1991,7 +1991,7 @@ msgid "Paste"
 msgstr "Einfügen"
 
 msgid "Paste as plain text"
-msgstr ""
+msgstr "Als reinen Text einfügen"
 
 msgid "Paste as…"
 msgstr "Einfügen als…"
@@ -2045,16 +2045,16 @@ msgid "Pasted"
 msgstr "Eingefügt"
 
 msgid "Pasted image"
-msgstr ""
+msgstr "Eingefügtes Bild"
 
 msgid "Pasted into {}"
 msgstr "In {} eingefügt"
 
 msgid "Pasted into {}. Your earlier clipboard could not be put back."
-msgstr ""
+msgstr "In {} eingefügt. Deine frühere Zwischenablage konnte nicht wiederhergestellt werden."
 
 msgid "Pasted. Your earlier clipboard could not be put back."
-msgstr ""
+msgstr "Eingefügt. Deine frühere Zwischenablage konnte nicht wiederhergestellt werden."
 
 msgid "Pastes into"
 msgstr "Einfügen in"
@@ -2316,9 +2316,6 @@ msgstr "Schlagwörter umbenennen oder löschen. Beim Löschen eines Schlagworts 
 
 msgid "Rename tag {}"
 msgstr "Schlagwort {} umbenennen"
-
-msgid "Rename the item"
-msgstr "Eintrag umbenennen"
 
 msgid "Repeat the new password"
 msgstr "Neues Passwort wiederholen"
@@ -2671,6 +2668,9 @@ msgstr "Snipdeck kann auf diesem PC keinen Schlüssel schützen, daher ist kein 
 
 msgid "Snipdeck can't read that file. It may be in use or protected."
 msgstr "Snipdeck kann diese Datei nicht lesen. Sie wird möglicherweise verwendet oder ist geschützt."
+
+msgid "Snipdeck can't watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
+msgstr "Snipdeck kann die Zwischenablage nicht beobachten, daher bleibt „Zuletzt“ leer. Starte Snipdeck neu, um es erneut zu versuchen."
 
 msgid "Snipdeck closed unexpectedly last time. Open the log?"
 msgstr "Snipdeck wurde beim letzten Mal unerwartet beendet. Protokoll öffnen?"
@@ -3451,6 +3451,9 @@ msgstr "Die Richtlinie deiner Organisation verhindert, dass Snipdeck mit Windows
 
 msgid "Your sensitive items will be protected by Windows alone."
 msgstr "Ihre sensiblen Einträge werden allein durch Windows geschützt."
+
+msgid "Your settings file was damaged. Snipdeck kept what it could read and saved the original as settings.json.bad."
+msgstr "Deine Einstellungsdatei war beschädigt. Snipdeck hat übernommen, was lesbar war, und das Original als settings.json.bad gespeichert."
 
 msgid "Your shortcuts"
 msgstr "Deine Tastenkürzel"
