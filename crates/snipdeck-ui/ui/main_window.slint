@@ -97,7 +97,7 @@ export enum MainView { comfortable, compact, tile }
 export enum SelectMode { replace, toggle, extend }
 // What the context menu, the bulk bar and the shortcuts ask for. The host applies it to the selection when
 // `selected-count` > 1, else to the row the index names.
-export enum ItemAction { use, copy, edit, duplicate, pin, move, tag, paste-as, delete, restore, delete-forever }
+export enum ItemAction { use, copy, edit, duplicate, pin, move, tag, paste-as, delete, restore, delete-forever, use-plain }
 
 // The pages the Help menu and its shortcuts open (the host's HelpTopic). "Show Panel" is not one: it has its own
 // callback. Named so the menu's row order and the keys (F1, Ctrl+/) cannot drift apart from the host's mapping.
@@ -827,7 +827,7 @@ export component MainWindow inherits Window {
 
     // Runs an action on the selection (or on `index` when it is the only one).
     function act(action: ItemAction, index: int) {
-        if (action == ItemAction.use || action == ItemAction.copy) {
+        if (action == ItemAction.use || action == ItemAction.copy || action == ItemAction.use-plain) {
             root.mark-used(index);
         }
         if (action == ItemAction.delete-forever) {
@@ -1829,6 +1829,11 @@ export component MainWindow inherits Window {
                                 root.paste-create-requested();
                                 return accept;
                             }
+                            // Alt+Enter pastes the selected item as plain text (SPEC 5.1a).
+                            if (event.modifiers.alt && !ctrl && !shift && event.text == Key.Return && root.rows.length > 0 && !root.in-trash && !root.use-copies) {
+                                root.act(ItemAction.use-plain, root.cur);
+                                return accept;
+                            }
                             if (event.modifiers.alt || root.rows.length == 0) {
                                 return reject;
                             }
@@ -2051,6 +2056,11 @@ export component MainWindow inherits Window {
                                                 root.act(root.in-trash ? ItemAction.restore : ItemAction.use, i);
                                             }
                                             copy => { root.act(ItemAction.copy, i); }
+                                            plain-click: !root.in-trash && !root.use-copies;
+                                            use-plain => {
+                                                root.cursor = i;
+                                                root.act(ItemAction.use-plain, i);
+                                            }
                                             edit => { root.act(ItemAction.edit, i); }
                                             tip(text, cx, bottom, on) => { root.card-tip-set(text, cx, bottom, on); }
                                             picked(shift, control) => { root.pick(i, shift, control); }
@@ -2222,6 +2232,11 @@ export component MainWindow inherits Window {
                                             root.act(root.in-trash ? ItemAction.restore : ItemAction.use, root.tile-index(r, c));
                                         }
                                         copy => { root.act(ItemAction.copy, root.tile-index(r, c)); }
+                                        plain-click: !root.in-trash && !root.use-copies;
+                                        use-plain => {
+                                            root.cursor = root.tile-index(r, c);
+                                            root.act(ItemAction.use-plain, root.tile-index(r, c));
+                                        }
                                         picked(shift, control) => { root.pick(root.tile-index(r, c), shift, control); }
                                         context-menu-requested(x, y) => {
                                             if (!root.rows[root.tile-index(r, c)].selected) {

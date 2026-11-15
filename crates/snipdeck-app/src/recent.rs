@@ -256,7 +256,7 @@ impl RecentCapture {
                 return skip(Skipped::Empty);
             };
             let thumb = thumbnail(preview.width, preview.height, &preview.rgba);
-            let label = format!("Image {width} \u{d7} {height}");
+            let label = format!("{width} \u{d7} {height}");
             let content = RecentContent::Image(RecentImage {
                 png,
                 width,
@@ -347,12 +347,13 @@ fn file_name_of(path: &str) -> &str {
     path.rsplit(['\\', '/']).next().unwrap_or(path)
 }
 
-/// The searchable label of a files entry: "3 files: a.pdf, b.txt, c.txt".
+/// The searchable label of a files entry: "a.pdf, b.txt, c.txt, \u{2026}". File names only: it is
+/// stored sealed as the entry's text, and an English "files" in it could be searched for in no
+/// other language.
 fn files_label(paths: &[String]) -> String {
     let names: Vec<&str> = paths.iter().take(3).map(|p| file_name_of(p)).collect();
     let more = if paths.len() > 3 { ", \u{2026}" } else { "" };
-    let noun = if paths.len() == 1 { "file" } else { "files" };
-    format!("{} {noun}: {}{more}", paths.len(), names.join(", "))
+    format!("{}{more}", names.join(", "))
 }
 
 /// `rgba` (`width` x `height`) shrunk to fit [`THUMB_SIDE`], averaging the source pixels that
@@ -899,6 +900,7 @@ mod tests {
         let row = row_view(&all[0], later);
         assert_eq!(row.kind, RecentKind::Image);
         assert_eq!(row.preview, "16 \u{d7} 16");
+        assert_eq!(all[0].text, "16 \u{d7} 16", "the label is the size alone");
         let thumb = row.thumb.expect("thumbnail");
         assert_eq!((thumb.width, thumb.height), (16, 16));
     }
@@ -934,7 +936,8 @@ mod tests {
         let all = store.recent().expect("recent");
         assert_eq!(all.len(), 1);
         assert_eq!(all[0].kind, RecentKind::Files);
-        assert_eq!(all[0].text, "2 files: a.TXT, B.pdf");
+        // The searchable label holds no English word, which no other language could search for.
+        assert_eq!(all[0].text, "a.TXT, B.pdf");
         let row = row_view(&all[0], later);
         assert_eq!(row.preview, "a.TXT, B.pdf");
     }

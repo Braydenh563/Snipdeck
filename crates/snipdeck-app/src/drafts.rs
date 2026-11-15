@@ -170,10 +170,19 @@ impl Drafts {
     ///
     /// # Errors
     ///
-    /// The folder or file could not be written.
+    /// The draft is over the size `load` reads back (256 KiB), or the folder or file
+    /// could not be written.
     pub fn save(&self, key: DraftKey, draft: &Draft) -> io::Result<()> {
         fs::create_dir_all(&self.dir)?;
         let bytes = serde_json::to_vec(draft).map_err(io::Error::other)?;
+        // A file `load` would refuse is never written: it could not be offered after a crash, and
+        // would only sit on the disk.
+        if bytes.len() as u64 > MAX_FILE_BYTES {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "the draft is too big to keep",
+            ));
+        }
         let path = self.path(key);
         let side = path.with_extension("json.tmp");
         // Flushed to disk before the rename can make it visible, as the settings file is.
@@ -207,7 +216,8 @@ fn overwrite_with_zeros(path: &Path) {
     let Ok(meta) = fs::metadata(path) else {
         return;
     };
-    if !meta.is_file() || meta.len() > MAX_FILE_BYTES {
+    // Any size: a draft over `MAX_FILE_BYTES` (written by an earlier version) is zeroed too.
+    if !meta.is_file() {
         return;
     }
     let Ok(mut file) = fs::OpenOptions::new().write(true).open(path) else {
@@ -240,6 +250,27 @@ mod tests {
             vec!["fresh".into()],
             String::new(),
         )
+    }
+
+    #[test]
+    fn a_draft_too_big_to_read_back_is_refused_and_a_stale_one_is_zeroed_on_clear() {
+        let dir = tempfile::tempdir().expect("dir");
+        let drafts = Drafts::in_data_dir(dir.path());
+        let key = DraftKey::New;
+        let big = "x".repeat(300 * 1024);
+        let refused = drafts.save(key, &draft(&big)).expect_err("too big");
+        assert_eq!(refused.kind(), io::ErrorKind::InvalidInput);
+        assert!(!drafts.path(key).exists(), "nothing was written");
+
+        // A file from an earlier version, over the limit `load` reads.
+        fs::create_dir_all(&drafts.dir).expect("dir");
+        fs::write(drafts.path(key), big.as_bytes()).expect("stale");
+        let alias = dir.path().join("alias.bin");
+        fs::hard_link(drafts.path(key), &alias).expect("link");
+        assert_eq!(drafts.load(key), None, "not offered");
+        drafts.clear(key).expect("clear");
+        assert!(!drafts.path(key).exists());
+        assert!(fs::read(&alias).expect("alias").iter().all(|b| *b == 0));
     }
 
     #[test]

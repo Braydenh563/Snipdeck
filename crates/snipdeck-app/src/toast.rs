@@ -30,6 +30,11 @@ pub enum ToastMessage {
         /// A readable app name.
         app: String,
     },
+    /// "Pasted into {app}. Your earlier clipboard could not be put back."
+    PastedNotRestored {
+        /// A readable app name.
+        app: String,
+    },
     /// "Copied".
     Copied,
     /// "Copied. {app} runs as administrator, so Snipdeck can't paste into it."
@@ -77,6 +82,9 @@ pub enum ToastMessage {
     UnlockFirst,
     /// "Your library locked. The sensitive item you were editing was closed without saving."
     LockedEditorClosed,
+    /// "Your library locked after a while. The form for the sensitive template you were filling in
+    /// was closed."
+    LockedFillClosed,
     /// "Saved to {list}" (quick capture).
     Saved {
         /// The list's name.
@@ -384,12 +392,16 @@ pub fn after_use(outcome: UseOutcome, route: &Route, pasted_into: Option<&str>) 
         CopyReason::NoTarget => String::new(),
     };
     match (outcome, route) {
-        (UseOutcome::Pasted | UseOutcome::PastedNotRestored, _) => Toast {
+        (UseOutcome::Pasted, _) => Toast {
             kind: ToastKind::Success,
             message: ToastMessage::Pasted {
                 app: pasted_into.map(friendly_app_name).unwrap_or_default(),
             },
         },
+        // The paste went through; the clipboard the user had before it is gone. Say so.
+        (UseOutcome::PastedNotRestored, _) => neutral(ToastMessage::PastedNotRestored {
+            app: pasted_into.map(friendly_app_name).unwrap_or_default(),
+        }),
         (
             UseOutcome::Copied | UseOutcome::CopiedInstead(_),
             Route::Copy(reason @ CopyReason::Excluded { .. }),
@@ -451,6 +463,19 @@ mod tests {
         assert_eq!(
             toast.message,
             ToastMessage::Pasted {
+                app: "Notepad".into()
+            }
+        );
+    }
+
+    #[test]
+    fn a_paste_that_could_not_restore_the_clipboard_says_so() {
+        let restored = after_use(UseOutcome::Pasted, &PASTE, Some("NOTEPAD.EXE"));
+        let lost = after_use(UseOutcome::PastedNotRestored, &PASTE, Some("NOTEPAD.EXE"));
+        assert_ne!(lost, restored);
+        assert_eq!(
+            lost.message,
+            ToastMessage::PastedNotRestored {
                 app: "Notepad".into()
             }
         );

@@ -14,7 +14,8 @@ use crate::{controller::Library, paste_create::kind_of_text};
 /// The largest text a capture saves (SPEC 5.4: over 5 MB is rejected with a toast).
 pub const MAX_TEXT_BYTES: usize = 5 * 1024 * 1024;
 
-/// The title of an item made from a picture that has no file name.
+/// The English title of an item made from a picture that has no file name; the window layer
+/// hands the controller the translated one.
 pub const PASTED_IMAGE_TITLE: &str = "Pasted image";
 
 /// The list a capture goes into.
@@ -168,9 +169,10 @@ pub fn capture_image<L: Library>(
     library: &mut L,
     list: &Destination,
     png: Vec<u8>,
+    title: &str,
     now: Timestamp,
 ) -> snipdeck_store::Result<Captured> {
-    let item = Item::new(list.id, PASTED_IMAGE_TITLE.to_owned(), ItemKind::Image, now);
+    let item = Item::new(list.id, title.to_owned(), ItemKind::Image, now);
     let id = item.id;
     library.atomically(|batch| {
         let formats = Formats::new(vec![Format::Png(batch.put(png)?)])?;

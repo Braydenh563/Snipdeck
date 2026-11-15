@@ -10,13 +10,17 @@ use slint::Global;
 use snipdeck_platform::tray::TrayLabels;
 use snipdeck_portable::{Note, Warning};
 use snipdeck_ui::{
-    FormTexts, ImportTexts, MenuTexts, PanelWindow, SettingsPage, ToastTexts, TrayTexts,
+    FormTexts, ImportTexts, MenuTexts, PanelWindow, SettingsPage, TemplateTexts, ToastTexts,
+    TrayTexts,
 };
 
-use snipdeck_core::{ItemKind, ItemLabel, ListIcon};
+use snipdeck_core::{
+    ItemKind, ItemLabel, ListIcon,
+    template::{PLACEHOLDER_LIST, TemplateErrorKind, UnitHint, usage},
+};
 
 use crate::{
-    item_editor::{AttachmentView, EditorProblem, SaveFailure},
+    item_editor::{AttachmentView, EditorProblem, SaveFailure, TemplateProblem},
     settings::{DockEdge, Theme},
     toast::ToastMessage,
 };
@@ -216,6 +220,7 @@ where
     let count = |n: usize| i32::try_from(n).unwrap_or(i32::MAX);
     let text = match message {
         ToastMessage::Pasted { app } => t.invoke_pasted(app.into()),
+        ToastMessage::PastedNotRestored { app } => t.invoke_pasted_not_restored(app.into()),
         ToastMessage::Copied => t.invoke_copied(),
         ToastMessage::CopiedElevated { app } => t.invoke_copied_elevated(app.into()),
         ToastMessage::CopiedNothingFocused { app } => t.invoke_copied_nothing_focused(app.into()),
@@ -234,6 +239,7 @@ where
         ToastMessage::HelloEnrolFailed => t.invoke_hello_enrol_failed(),
         ToastMessage::MasterPasswordRemovedNotOpen => t.invoke_master_password_removed_not_open(),
         ToastMessage::LockedEditorClosed => t.invoke_locked_editor_closed(),
+        ToastMessage::LockedFillClosed => t.invoke_locked_fill_closed(),
         ToastMessage::UnlockFirst => t.invoke_unlock_first(),
         ToastMessage::Saved { list } => t.invoke_saved(list.into()),
         ToastMessage::AddedTo { list, .. } => t.invoke_added_to(list.into()),
@@ -783,12 +789,86 @@ where
     }
 }
 
+/// What is wrong with a template, in the language selected for the UI (the sentences are in the
+/// `TemplateTexts` global). The result has no final full stop: "This template can't be read: {}."
+/// adds it. The syntax of a placeholder is passed in as it is written, never translated.
+#[must_use]
+pub fn template_problem_text<C>(window: &C, problem: &TemplateProblem) -> String
+where
+    for<'a> TemplateTexts<'a>: Global<'a, C>,
+{
+    use TemplateErrorKind as K;
+    fn code(s: &str) -> slint::SharedString {
+        format!("`{s}`").into()
+    }
+    let t = TemplateTexts::get(window);
+    let kind = match problem {
+        TemplateProblem::Sensitive => return t.invoke_sensitive().into(),
+        TemplateProblem::Parse(kind) => kind,
+    };
+    let text = match kind {
+        K::UnmatchedClose => t.invoke_unmatched_close(code("}"), code("}}")),
+        K::Unterminated => t.invoke_unterminated(code("{"), code("{{")),
+        K::EmptyPlaceholder => t.invoke_empty_placeholder(code("{}")),
+        K::EmptyName => t.invoke_empty_name(code("{field:Name}")),
+        K::UnclosedSection => t.invoke_unclosed_section(code("{optional:…}"), code("{/optional}")),
+        K::NestedSection => t.invoke_nested_section(),
+        K::UnmatchedSectionEnd => t.invoke_unmatched_section_end(code("{/optional}")),
+        K::NoOptions => t.invoke_no_options(code("{choice:Name|a|b}")),
+        K::EmptyOption => t.invoke_empty_option(),
+        K::DuplicateOption { option } => t.invoke_duplicate_option(code(option)),
+        K::TooManyParts => t.invoke_too_many_parts(code("{field:Name|default}")),
+        K::DuplicateCursor => t.invoke_duplicate_cursor(code("{cursor}")),
+        K::TrailingPercent => t.invoke_trailing_percent(code("%"), code("%%")),
+        K::Unknown { found, suggestion } => {
+            let found = code(&format!("{{{found}}}"));
+            let help = t.invoke_braces_help(PLACEHOLDER_LIST.into(), code("{{"), code("}}"));
+            match suggestion {
+                Some(keyword) => t.invoke_unknown_suggest(found, code(usage(keyword)), help),
+                None => t.invoke_unknown(found, help),
+            }
+        }
+        K::UnexpectedArgument { placeholder } => {
+            t.invoke_unexpected_argument(code(&format!("{{{placeholder}}}")))
+        }
+        K::MissingArgument { placeholder } => {
+            t.invoke_missing_argument(code(placeholder), code(usage(placeholder)))
+        }
+        K::ConflictingPrompt { name } => t.invoke_conflicting_prompt(code(name)),
+        K::TooManyPrompts { max } => t.invoke_too_many_prompts(int(*max)),
+        K::BadOffset => t.invoke_bad_offset(code("+3d"), code("-90min")),
+        K::UnknownOffsetUnit { found, hint } => {
+            let hint = match hint {
+                UnitHint::MonthOrMinute => 0,
+                UnitHint::Days => 1,
+                UnitHint::Weeks => 2,
+                UnitHint::Months => 3,
+                UnitHint::Years => 4,
+                UnitHint::Hours => 5,
+                UnitHint::Minutes => 6,
+                UnitHint::AnyUnit => 7,
+            };
+            t.invoke_unknown_offset_unit(code(found), hint)
+        }
+        K::OffsetOutOfRange { unit, max } => {
+            t.invoke_offset_out_of_range(code(unit), max.to_string().into())
+        }
+        K::TooManyOffsets { max } => t.invoke_too_many_offsets(int(*max)),
+        K::UnknownFormatSpecifier { specifier } => t.invoke_unknown_format_specifier(
+            code(&format!("%{specifier}")),
+            "%Y %y %m %B %b %d %e %j %A %a %H %I %M %S %p %z %F %T %%".into(),
+        ),
+    };
+    text.into()
+}
+
 /// Why the item editor refuses something, in words.
 #[must_use]
 #[allow(clippy::too_many_lines, reason = "one match arm per problem")]
 pub fn editor_problem_text<C>(window: &C, problem: &EditorProblem) -> String
 where
     for<'a> FormTexts<'a>: Global<'a, C>,
+    for<'a> TemplateTexts<'a>: Global<'a, C>,
 {
     let t = FormTexts::get(window);
     match problem {
@@ -800,7 +880,9 @@ where
         EditorProblem::TriggerTaken => t.invoke_trigger_taken(),
         EditorProblem::LinkNeedsScheme => t.invoke_link_needs_scheme(),
         EditorProblem::LinkHasSpace => t.invoke_link_has_space(),
-        EditorProblem::Template(why) => t.invoke_template_unreadable(why.as_str().into()),
+        EditorProblem::Template(why) => {
+            t.invoke_template_unreadable(template_problem_text(window, why).into())
+        }
         EditorProblem::SourceEmpty => t.invoke_source_empty(),
         EditorProblem::SourceMissing => t.invoke_source_missing(),
         EditorProblem::SourceNotAFile => t.invoke_source_not_a_file(),

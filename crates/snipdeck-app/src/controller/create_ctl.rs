@@ -43,6 +43,8 @@ pub struct DropRun {
     /// Stored, in drop order.
     ready: Vec<Made>,
     skipped: usize,
+    /// The history step's name: a drop, or a paste.
+    action: Action,
 }
 
 impl DropRun {
@@ -64,24 +66,41 @@ where
     /// is on the clipboard in the list `origin` shows. Files (copied in Explorer) win over text,
     /// and text over a picture. Nothing is written to the clipboard.
     pub fn paste_create(&mut self, origin: Origin) {
+        let Some(run) = self.paste_begin(origin) else {
+            return;
+        };
+        self.read_inline(run);
+    }
+
+    /// [`paste_create`](Self::paste_create) for the windows: text and pictures are saved at once
+    /// (`None`), but files copied in Explorer are not read here. They come back as a drop to read
+    /// off the UI thread with [`DropRun::next_job`] and finish with
+    /// [`drop_read_done`](Self::drop_read_done), like files dropped on the window, so pasting ten
+    /// large files does not freeze it.
+    pub fn paste_begin(&mut self, origin: Origin) -> Option<DropRun> {
         self.main_fresh();
         let mut clip = Clip::default();
         match self.services.clipboard.read_files() {
             ClipFiles::TooMany => {
                 self.show_toast(neutral(ToastMessage::TooManyFiles));
-                return;
+                return None;
             }
-            ClipFiles::Files(paths) => clip.files = paths.into_iter().map(PathBuf::from).collect(),
+            ClipFiles::Files(paths) => {
+                if !paths.is_empty() {
+                    let mut run = self.drop_begin(&paths, origin, None)?;
+                    run.action = Action::Paste;
+                    return Some(run);
+                }
+            }
         }
-        if clip.files.is_empty() {
-            let rich = self.services.clipboard.read_rich();
-            (clip.text, clip.html, clip.rtf) = (rich.text, rich.html, rich.rtf);
-            if clip.text.as_deref().is_none_or(|t| t.trim().is_empty()) {
-                clip.png = self.services.clipboard.read_png();
-            }
+        let rich = self.services.clipboard.read_rich();
+        (clip.text, clip.html, clip.rtf) = (rich.text, rich.html, rich.rtf);
+        if clip.text.as_deref().is_none_or(|t| t.trim().is_empty()) {
+            clip.png = self.services.clipboard.read_png();
         }
         let list = self.new_item_list(origin);
         self.create_from(&clip, list, Action::Paste);
+        None
     }
 
     /// Files were dropped on a window: makes items from them in `list`, reading them on the
@@ -89,9 +108,13 @@ where
     /// instead). Windows tells winit where the files came from but not where on the window, so
     /// the callers pass `None`: the list the window shows (so does a `list` that is gone).
     pub fn drop_create(&mut self, paths: &[String], origin: Origin, list: Option<ListId>) {
-        let Some(mut run) = self.drop_begin(paths, origin, list) else {
-            return;
-        };
+        if let Some(run) = self.drop_begin(paths, origin, list) {
+            self.read_inline(run);
+        }
+    }
+
+    /// Reads the rest of `run` on the calling thread, a job at a time.
+    fn read_inline(&mut self, mut run: DropRun) {
         loop {
             let done = run.next_job().run();
             match self.drop_read_done(run, done) {
@@ -133,6 +156,7 @@ where
             todo: paths.iter().map(PathBuf::from).collect(),
             ready: Vec::new(),
             skipped: 0,
+            action: Action::Drop,
         })
     }
 
@@ -154,7 +178,7 @@ where
         if !run.todo.is_empty() {
             return Some(run);
         }
-        self.insert_made(&run.ready, run.skipped, run.list, Action::Drop);
+        self.insert_made(&run.ready, run.skipped, run.list, run.action);
         None
     }
 
@@ -346,12 +370,7 @@ where
                 if too_big || !item_editor::is_png(png) {
                     return Ok(None);
                 }
-                let item = Item::new(
-                    list,
-                    capture::PASTED_IMAGE_TITLE.to_owned(),
-                    ItemKind::Image,
-                    now,
-                );
+                let item = Item::new(list, self.pasted_image_title.clone(), ItemKind::Image, now);
                 (item, Format::Png(self.store.put(png.clone())?))
             }
             Piece::File(path) => {
