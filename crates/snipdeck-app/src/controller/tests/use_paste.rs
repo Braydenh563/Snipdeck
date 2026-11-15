@@ -1476,6 +1476,10 @@ fn quitting_deletes_the_files_a_sensitive_files_item_left_in_the_temp_folder() {
     assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 1);
     w.ctl.clear_pending_clipboard_now();
     assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 1, "once");
+    assert_eq!(
+        w.ctl.services.clipboard.pasted_files_forgotten_waited, 1,
+        "the quit waits for the deletion"
+    );
 }
 
 #[test]
@@ -1499,6 +1503,10 @@ fn a_sensitive_files_paste_deletes_its_temp_files_on_the_clear_timer_without_a_l
     w.clock.set(at("2026-10-17T10:30:30Z"));
     w.ctl.clear_clipboard_if_due();
     assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 1);
+    assert_eq!(
+        w.ctl.services.clipboard.pasted_files_forgotten_waited, 0,
+        "the timer's deletion runs in the background"
+    );
     assert_eq!(w.ctl.clipboard_clear_wait(), None, "no timer left");
 }
 

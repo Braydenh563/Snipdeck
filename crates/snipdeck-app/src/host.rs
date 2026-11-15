@@ -103,6 +103,11 @@ pub trait ClipboardText {
     /// Deletes the decrypted files that earlier file pastes left in the temp folder (a file
     /// another app still has open stays). Nothing for a clipboard that makes none.
     fn forget_pasted_files(&mut self) {}
+    /// [`forget_pasted_files`](Self::forget_pasted_files), but returns only when it is done (the
+    /// quit, whose process would end under a background deletion).
+    fn forget_pasted_files_waiting(&mut self) {
+        self.forget_pasted_files();
+    }
 }
 
 #[cfg(windows)]
@@ -136,6 +141,9 @@ impl ClipboardText for snipdeck_platform::windows::clipboard::WinClipboard {
     }
     fn forget_pasted_files(&mut self) {
         Self::forget_pasted_files(self);
+    }
+    fn forget_pasted_files_waiting(&mut self) {
+        Self::forget_pasted_files_waiting(self);
     }
 }
 
@@ -198,6 +206,10 @@ impl ClipboardText for snipdeck_platform::testing::FakeClipboard {
     }
     fn forget_pasted_files(&mut self) {
         self.pasted_files_forgotten += 1;
+    }
+    fn forget_pasted_files_waiting(&mut self) {
+        self.pasted_files_forgotten += 1;
+        self.pasted_files_forgotten_waited += 1;
     }
     fn clear_if_sequence(&mut self, sequence: u32) -> bool {
         if self.sequence != sequence || self.busy_for_clear() {

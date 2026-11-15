@@ -708,12 +708,17 @@ where
     /// has written to since is left alone, as for the timed clear.
     pub fn clear_pending_clipboard_now(&mut self) {
         self.clear_clipboard(true);
-        self.forget_secret_files();
+        self.secret_files_due = None;
+        if std::mem::take(&mut self.secret_files_pasted) {
+            // The process ends right after: a background deletion would be cut short.
+            self.services.clipboard.forget_pasted_files_waiting();
+        }
     }
 
     /// Deletes the decrypted files a sensitive Files item left in the temp folder when it was
     /// pasted (the lock and the quit call it). A file the target still holds open stays until
-    /// the next start. Nothing to do when no such item was pasted.
+    /// the next start. Nothing to do when no such item was pasted. The deletion runs off the UI
+    /// thread.
     pub(super) fn forget_secret_files(&mut self) {
         self.secret_files_due = None;
         if std::mem::take(&mut self.secret_files_pasted) {

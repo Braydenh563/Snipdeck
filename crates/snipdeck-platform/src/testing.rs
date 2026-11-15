@@ -61,6 +61,9 @@ pub struct FakeClipboard {
     pub never_confirm: bool,
     /// How many times the app asked to delete the files that pastes left in the temp folder.
     pub pasted_files_forgotten: u32,
+    /// How many of those asks waited for the deletion to finish (the quit's) instead of leaving
+    /// it to a background thread.
+    pub pasted_files_forgotten_waited: u32,
 }
 
 impl FakeClipboard {

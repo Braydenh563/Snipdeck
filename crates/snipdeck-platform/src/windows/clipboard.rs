@@ -343,6 +343,19 @@ impl WinClipboard {
     /// ordinary file items stay: the clipboard may still point to them. Called when the
     /// clipboard clear is due, on lock and on quit.
     pub fn forget_pasted_files(&mut self) {
+        // Deleting folders can take a while (a big file, a busy disk): not on the UI thread.
+        if std::thread::Builder::new()
+            .name("forget-paste-files".into())
+            .spawn(forget_sensitive_paste_files)
+            .is_err()
+        {
+            forget_sensitive_paste_files();
+        }
+    }
+
+    /// [`forget_pasted_files`](Self::forget_pasted_files), returning once the files are gone (the
+    /// quit calls it, as the process would end under a background deletion).
+    pub fn forget_pasted_files_waiting(&mut self) {
         forget_sensitive_paste_files();
     }
 

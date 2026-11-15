@@ -34,6 +34,13 @@ pub trait BlobStore {
     ///
     /// Fails with [`Error::NotFound`](crate::Error::NotFound) if a blob file is missing.
     fn read<'a>(&self, content: &'a Content) -> Result<Cow<'a, [u8]>>;
+
+    /// Whether `content`'s bytes are still there, by length alone: nothing is read or hashed, so
+    /// it is cheap where [`read`](Self::read) of a large blob is not. A damaged file still
+    /// counts; only a read finds that.
+    fn is_stored(&self, content: &Content) -> bool {
+        self.read(content).is_ok()
+    }
 }
 
 /// A blob found by [`Blobs::list`].
@@ -325,6 +332,20 @@ impl Blobs {
             return Ok(Cow::Owned(bytes.to_vec()));
         }
         self.read(content)
+    }
+
+    /// [`Blobs::has`], or a transient payload of that length in memory; inline content is always there.
+    pub(crate) fn has_content(&self, content: &Content) -> bool {
+        match content {
+            Content::Inline(_) => true,
+            Content::Blob { blob, len } => {
+                self.plain
+                    .borrow()
+                    .get(blob)
+                    .is_some_and(|b| b.len() as u64 == *len)
+                    || self.has(blob, *len)
+            }
+        }
     }
 
     /// Whether a blob of `len` bytes is stored under `blob` (metadata only, no hashing).
@@ -848,6 +869,27 @@ mod tests {
             blobs.read(&content),
             Err(Error::NotFound { entity: "blob", .. })
         ));
+    }
+
+    #[test]
+    fn has_content_checks_the_length_without_reading() {
+        let (_dir, mut blobs) = blobs();
+        let inline = blobs.put(b"hi".to_vec()).unwrap();
+        assert!(blobs.has_content(&inline));
+        let content = blobs.put(big(1)).unwrap();
+        assert!(blobs.has_content(&content));
+        let Content::Blob { blob, len } = &content else {
+            panic!()
+        };
+        let path = blobs.path_of(blob).unwrap();
+        // Same length, other bytes: only a read notices, which is the point.
+        std::fs::write(&path, vec![7; usize::try_from(*len).unwrap()]).unwrap();
+        assert!(blobs.has_content(&content));
+        assert!(blobs.read(&content).is_err());
+        std::fs::write(&path, vec![1; INLINE_LIMIT]).unwrap();
+        assert!(!blobs.has_content(&content), "wrong length");
+        std::fs::remove_file(&path).unwrap();
+        assert!(!blobs.has_content(&content), "missing");
     }
 
     #[test]
