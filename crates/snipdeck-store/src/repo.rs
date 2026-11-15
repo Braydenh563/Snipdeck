@@ -22,8 +22,8 @@
 //!   [`Error::EncryptionLocked`](crate::Error::EncryptionLocked).
 
 use snipdeck_core::{
-    Board, BoardId, Formats, Group, GroupId, Item, ItemId, List, ListId, Placement, Tag, TagId,
-    Timestamp, Trigger,
+    Board, BoardId, Format, Formats, Group, GroupId, Item, ItemId, List, ListId, Placement, Tag,
+    TagId, Timestamp, Trigger,
 };
 
 use crate::Result;
@@ -167,6 +167,23 @@ pub trait ItemRepo {
             }
         }
         Ok(out)
+    }
+
+    /// The ids of the live, unencrypted items that hold an HTML or RTF format, found without
+    /// reading any content (the Panel's "rich" marker needs only the kinds).
+    ///
+    /// The default derives it from [`plain_formats`](Self::plain_formats);
+    /// [`Store`](crate::Store) and [`Batch`](crate::Batch) ask one query that reads no bytes.
+    fn rich_item_ids(&self) -> Result<Vec<ItemId>> {
+        Ok(self
+            .plain_formats()?
+            .into_iter()
+            .filter(|(_, f)| {
+                f.iter()
+                    .any(|f| matches!(f, Format::Html(_) | Format::Rtf(_)))
+            })
+            .map(|(id, _)| id)
+            .collect())
     }
 
     /// The item's content, for using, editing or exporting it; decrypted if it is stored

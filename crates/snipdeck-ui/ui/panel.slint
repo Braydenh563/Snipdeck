@@ -16,11 +16,10 @@
 //   Space (held)    reveals the selected sensitive row while it is held (the eye on the row does the same by hand)
 //   Ctrl+Tab        next list, Ctrl+Shift+Tab previous; Ctrl+F expands, focuses and selects the search
 //   Menu, Shift+F10 context menu of the selected row (on the focused kebab button: the Panel menu)
-//   Ctrl+K          all commands (the Main window's palette); Ctrl+/ the keyboard shortcuts; F1 the user guide
+//   Ctrl+K, Ctrl+Shift+P  all commands (the Main window's palette); Ctrl+/ the keyboard shortcuts; F1 the user guide
 //   Ctrl+A          select every row; Shift+Up, Shift+Down extend the selection
 //   Ctrl+D          duplicate the selected row
 //   Ctrl+P          pin or unpin the selected row
-//   Ctrl+Shift+P    keep the Panel on top or not (the pin button in the header)
 //   Ctrl+E, F2      edit / rename the selected row (a row has no double-click action: the first click already used it)
 //   Delete          delete the selected row while the search is empty (with a query it edits the text)
 //   Alt+Up, Alt+Down  move the selected row up or down (a list in manual order, no search)
@@ -426,7 +425,6 @@ export component PanelWindow inherits Window {
     callback recent-saved(int, int);
     callback recent-unlock-requested();
     callback add-list-requested();
-    callback new-item-requested();
     callback settings-requested();
     callback add-from-clipboard();
     // ---- Selection (O45): Ctrl+click, Shift+click, Ctrl+A, Shift+Up/Down; the bulk bar acts on it ----
@@ -1368,13 +1366,13 @@ export component PanelWindow inherits Window {
                         root.open-search();
                         return accept;
                     }
-                    if (event.text == "k" || event.text == "K") {
+                    if (event.text == "k" || event.text == "K" || (event.modifiers.shift && (event.text == "p" || event.text == "P"))) {
                         root.commands-requested();
                         return accept;
                     }
                     if (event.text == "n" || event.text == "N") {
                         if (event.modifiers.shift) {
-                            root.quick-add-full(quick.text);
+                            root.add-list-requested();
                         } else {
                             root.quick-add-request += 1;
                         }
@@ -1411,11 +1409,6 @@ export component PanelWindow inherits Window {
                     }
                     if ((event.text == "d" || event.text == "D") && root.sel >= 0 && !root.list-hidden) {
                         root.duplicate-requested(root.sel);
-                        return accept;
-                    }
-                    if ((event.text == "p" || event.text == "P") && event.modifiers.shift) {
-                        root.on-top = !root.on-top;
-                        root.pin-toggled(root.on-top);
                         return accept;
                     }
                     if ((event.text == "p" || event.text == "P") && root.sel >= 0 && !root.list-hidden) {
@@ -2426,6 +2419,7 @@ export component PanelWindow inherits Window {
                         width: parent.width - 2 * Space.s2;
                         y: min(parent.height - self.box-h - Space.s1, root.rows.length == 0 ? parent.height : list.content-height + Space.s1);
                         list-name: root.add-list-name;
+                        show-more: true;
                         tab-stop: false;
                         release-on-blur: true;
                         open-request: root.quick-add-request;

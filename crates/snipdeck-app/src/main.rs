@@ -46,6 +46,7 @@ use snipdeck_app::{
     settings::{Settings, Theme},
     settings_binding::{PanelTaskbar, SettingsUi, SystemHost},
     settings_store::{FileSink, SettingsSaver},
+    toast::Toast,
     toast_binding::ToastUi,
     unlock_binding::UnlockUi,
     window_kind,
@@ -177,6 +178,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         on_tray: Box::new(|event| on_ui_thread(move |b| b.tray(event))),
         on_clipboard_change: Box::new(|change| on_ui_thread(move |b| b.clipboard_changed(change))),
         on_typed: Box::new(|typed| on_ui_thread(move |b| b.typed_trigger(typed))),
+        on_session_lock: Box::new(|| on_ui_thread(Binding::session_locked)),
         on_look_changed: {
             let look = Arc::clone(&look);
             // Read on the UI thread: the value is fresher than the one the watcher saw.
@@ -203,7 +205,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     };
     // Only now: reading the settings may move a damaged file aside, and opening the library may
     // migrate it. A second launch (which stops just above) must not touch the running copy's files.
-    let (store, settings, settings_folder, saver_baseline) = open_library(args)?;
+    let (store, settings, settings_folder, saver_baseline, settings_toast) = open_library(args)?;
     let Host {
         services,
         target,
@@ -214,6 +216,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         recent_gate,
         typing,
         warnings,
+        clipboard_watch_failed,
         keep_alive: _keep_alive,
     } = host;
     for warning in &warnings {
@@ -265,6 +268,15 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         controller.set_recent_gate(recent_gate);
         controller.set_typing(typing);
         controller.prune_recent();
+        if let Some(toast) = settings_toast {
+            controller.show_toast(toast);
+        }
+        if clipboard_watch_failed {
+            controller.show_toast(Toast {
+                kind: snipdeck_app::toast::ToastKind::Danger,
+                message: snipdeck_app::toast::ToastMessage::ClipboardWatchFailed,
+            });
+        }
         if let Some(saver) = saver {
             controller.set_settings_saver(saver);
         }
@@ -813,7 +825,13 @@ fn report_hotkey_problems(problems: &[host::HotkeyProblem]) {
 /// folder (`None` only for the demo, which has none), and what the settings saver starts from
 /// (`None` when changes must not be written: the demo, `--dark`, and a settings file that could
 /// not be read or set aside).
-type Library = (Store, Settings, Option<PathBuf>, Option<Settings>);
+type Library = (
+    Store,
+    Settings,
+    Option<PathBuf>,
+    Option<Settings>,
+    Option<Toast>,
+);
 
 /// The library and the settings.
 fn open_library(args: &Args) -> Result<Library, String> {
@@ -827,7 +845,7 @@ fn open_library(args: &Args) -> Result<Library, String> {
         };
         let store = demo::store(now).map_err(|e| format!("demo library: {e}"))?;
         snipdeck_app::trace!("demo library");
-        return Ok((store, settings, None, None));
+        return Ok((store, settings, None, None, None));
     }
     let folder = match &args.data_dir {
         Some(dir) => dir.clone(),
@@ -838,6 +856,7 @@ fn open_library(args: &Args) -> Result<Library, String> {
     crash::set_data_dir(&folder);
     let loaded = snipdeck_app::paths::read_settings(&folder);
     let may_save = loaded.may_save();
+    let loaded_outcome = loaded.outcome;
     // A damaged file was moved aside: write the salvaged values back now, or the next launch would
     // find no file and fall back to the defaults (re-enabling pastes into apps the user excluded).
     let mut salvage_written = true;
@@ -868,7 +887,13 @@ fn open_library(args: &Args) -> Result<Library, String> {
         Ok(made) => snipdeck_app::trace!("real library; starter board made: {made}"),
         Err(e) => eprintln!("snipdeck: could not create the first board: {e}"),
     }
-    Ok((store, settings, Some(folder), saver_baseline))
+    Ok((
+        store,
+        settings,
+        Some(folder),
+        saver_baseline,
+        loaded_outcome.toast(),
+    ))
 }
 
 /// Winit with the software renderer; the Panel and the other floating windows are created

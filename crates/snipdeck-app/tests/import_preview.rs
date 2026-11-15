@@ -1,5 +1,5 @@
 //! Settings "Import...": the preview is a dry run that writes nothing, the real import adds
-//! exactly what was previewed, duplicates are counted and skipped, the Free board limit blocks,
+//! exactly what was previewed, duplicates are counted and skipped,
 //! and a file that is not what was chosen gives a problem instead of a panic. Frozen clock, no
 //! window.
 

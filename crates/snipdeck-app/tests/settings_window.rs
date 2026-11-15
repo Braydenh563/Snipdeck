@@ -2090,6 +2090,26 @@ fn the_recent_inbox_is_off_for_a_new_install_can_be_switched_on_and_its_clear_bu
     });
 }
 
+#[test]
+fn the_clear_recent_button_asks_first_and_cancel_clears_nothing() {
+    on_ui_thread(|| {
+        let r = rig();
+        let cleared = std::rc::Rc::new(std::cell::Cell::new(0_u32));
+        let seen = std::rc::Rc::clone(&cleared);
+        // The window's own handler is replaced: only the click path is under test.
+        r.ui.on_recent_history_cleared(move || seen.set(seen.get() + 1));
+        element(&r.ui, "Clear recent history", AccessibleRole::Button)
+            .invoke_accessible_default_action();
+        assert_eq!(cleared.get(), 0, "one click asks, it does not clear");
+        element(&r.ui, "Cancel", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(cleared.get(), 0, "Cancel clears nothing");
+        element(&r.ui, "Clear recent history", AccessibleRole::Button)
+            .invoke_accessible_default_action();
+        element(&r.ui, "Clear history", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(cleared.get(), 1, "the second button clears");
+    });
+}
+
 // ---- Master password (SPEC 5.7, V1-PLAN C3) ----------------------------------------------------
 
 fn password() -> &'static str {

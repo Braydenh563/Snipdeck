@@ -111,6 +111,7 @@ where
     /// has no `@tr`.
     pub fn set_colours_list_name(&mut self, name: &str) {
         name.clone_into(&mut self.colours_list_name);
+        self.clear_colour_caches();
     }
 
     /// Makes `c` the colour being looked at. Not a use: no recents push.
@@ -313,6 +314,21 @@ where
     /// The home list that exists now: the remembered one, else the first list on any board that
     /// carries the home name (an import, or settings lost, leaves such a list behind).
     fn home_list_id(&self) -> Option<ListId> {
+        if let Some(kept) = self.colour_home_cache.get() {
+            return kept;
+        }
+        let found = self.find_home_list_id();
+        self.colour_home_cache.set(Some(found));
+        found
+    }
+
+    /// Forgets what the colour view kept: the saved colours and the home list.
+    pub(super) fn clear_colour_caches(&self) {
+        self.colour_saved_cache.take();
+        self.colour_home_cache.set(None);
+    }
+
+    fn find_home_list_id(&self) -> Option<ListId> {
         let remembered = self
             .settings
             .colour_save_list
@@ -353,7 +369,7 @@ where
         let made = self.make_list_for_save(&name)?;
         let id = made.id.to_string();
         self.update_settings(|s| s.colour_save_list = Some(id));
-        self.colour_saved_cache.take();
+        self.clear_colour_caches();
         Some(made)
     }
 

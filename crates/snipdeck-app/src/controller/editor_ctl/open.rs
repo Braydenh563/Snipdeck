@@ -51,7 +51,7 @@ where
         }
     }
 
-    /// Ctrl+Shift+N in the quick-add field: the full editor on a new item whose content is `text`
+    /// Ctrl+Shift+Enter or More options in the quick-add field: the full editor on a new item whose content is `text`
     /// (a lone web address makes it a Link). The title stays empty: it comes from the first line.
     pub fn open_new_item_with(&mut self, origin: Origin, text: &str) {
         if self.raise_item_editor() {

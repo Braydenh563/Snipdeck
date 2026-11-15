@@ -129,7 +129,7 @@ where
         self.update_settings(|s| s.panel_pinned = on_top);
     }
 
-    /// The user switched the pin (the button, Ctrl+Shift+P, the palette): [`set_on_top`](Self::set_on_top)
+    /// The user switched the pin (the button, the palette): [`set_on_top`](Self::set_on_top)
     /// and a toast saying what the Panel does now. Nothing happens when it is already so.
     pub fn choose_on_top(&mut self, on_top: bool) {
         if self.on_top == on_top {
@@ -538,7 +538,7 @@ where
 
     /// Reads the library again into the Panel (and tells the Main window to).
     pub(super) fn refresh_panel(&mut self) -> snipdeck_store::Result<()> {
-        self.colour_saved_cache.take();
+        self.clear_colour_caches();
         self.main.mark_stale();
         self.sync_typing(false);
         #[cfg(test)]

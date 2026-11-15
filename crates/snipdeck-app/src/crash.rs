@@ -239,17 +239,7 @@ pub fn open_log_folder() -> io::Result<()> {
     let dir = data_dir().ok_or_else(|| io::Error::other("the data folder is not known"))?;
     let dir = logs_dir(&dir);
     fs::create_dir_all(&dir)?;
-    let opener = if cfg!(windows) {
-        "explorer"
-    } else if cfg!(target_os = "macos") {
-        "open"
-    } else {
-        "xdg-open"
-    };
-    std::process::Command::new(opener)
-        .arg(dir)
-        .spawn()
-        .map(drop)
+    crate::help_binding::launch(dir.as_os_str()).map_err(io::Error::other)
 }
 
 #[cfg(test)]

@@ -383,14 +383,14 @@ where
     }
 
     /// Restores `backup` (a file `backup::list_backups` found) into the library: what is missing
-    /// comes back, nothing is removed. A Free library stays within its board limit.
+    /// comes back, nothing is removed.
     pub fn restore_backup(&mut self, backup_file: &Path) -> bool {
         // Without the key the backup's sensitive items cannot be read, and they would be dropped.
         if self.copy_blocked_by_lock() {
             return false;
         }
         let source = ImportSource::Snipdeck(backup_file.to_path_buf());
-        // The shared import path: the board limit is enforced inside its transaction.
+        // The shared import path: one transaction, duplicates skipped.
         let restored = self.import_report(&source, BoardLayout::KeepBoards, false);
         let worked = restored.is_ok();
         match restored {

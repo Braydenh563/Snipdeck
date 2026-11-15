@@ -71,7 +71,8 @@ Snipdeck quits ([`crypto.md`](crypto.md)).
 of them is on, Snipdeck installs a Windows keyboard hook (and a mouse hook, to notice when you click elsewhere)
 so it can see the characters you type in other programs and match them against your triggers. Typed text is
 never written to disk, logged or sent anywhere; Snipdeck only keeps the last few characters in memory to compare
-them, and ignores keys other programs simulate. Turn both off and the hooks are removed.
+them, and ignores keys other programs simulate. A password typed at a terminal prompt (ssh, sudo) is not a password
+box Windows can identify, so a trigger could expand there: set that program to Never paste in Settings. Turn both off and the hooks are removed.
 
 ## What Microsoft collects (Store build)
 
@@ -86,7 +87,10 @@ settings (Settings ▸ Privacy & security ▸ Diagnostics & feedback).
 
 1. Optional: export your library first (Settings ▸ Your data ▸ Export library).
 2. Quit Snipdeck from the tray icon.
-3. Delete `%LOCALAPPDATA%\Snipdeck`. That is all of it. (Store build: uninstall the app; Windows deletes its
+3. Delete `%LOCALAPPDATA%\Snipdeck`: the library, daily backups, settings, drafts and logs. Uninstalling with
+   Setup removes the program and the temporary paste folder (`%USERPROFILE%\Snipdeck paste files`) and asks
+   whether to delete that folder too (default No; a silent uninstall never does); the portable zip has no
+   uninstaller. See "Uninstalling" in [`user-guide.md`](user-guide.md). (Store build: uninstall the app; Windows deletes its
    data.)
 
 Snipdeck has no payment data. **Support Snipdeck** opens a donation page (buymeacoffee.com) in your browser only when you press it; that page, not Snipdeck, handles any payment, and nothing changes in the app either way. Vulnerabilities: see

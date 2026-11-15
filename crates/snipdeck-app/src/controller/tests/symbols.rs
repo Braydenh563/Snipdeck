@@ -415,6 +415,22 @@ fn save_as_appends_the_kinds_extension_only_when_the_name_lacks_it() {
 }
 
 #[test]
+fn save_as_never_replaces_a_file_the_dialog_did_not_ask_about() {
+    let dir = tempfile::tempdir().expect("dir");
+    std::fs::write(dir.path().join("logo.v2.svg"), "precious").expect("old file");
+    let mut w = world();
+    with_picker(&mut w, Some(dir.path().join("logo.v2")));
+    let outcome = save(&mut w, &first_of(Kind::Icon), IconExport::Svg, None);
+    let free = dir.path().join("logo.v2 (2).svg");
+    assert_eq!(outcome, SaveOutcome::Saved(free.clone()));
+    assert!(free.exists());
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("logo.v2.svg")).expect("kept"),
+        "precious"
+    );
+}
+
+#[test]
 fn save_as_leaves_no_temporary_file_and_replaces_an_existing_file_whole() {
     let dir = tempfile::tempdir().expect("dir");
     let target = dir.path().join("out.svg");

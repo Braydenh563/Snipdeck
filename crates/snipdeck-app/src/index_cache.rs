@@ -21,7 +21,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use crate::search_suggest::Index;
-use snipdeck_core::{Board, Format, Item, ItemId, List, search::SearchIndex};
+use snipdeck_core::{Board, Item, ItemId, List, search::SearchIndex};
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, RecentEntry, RecentRepo, TagRepo};
 
 /// What the Panel and the Picker read from the library on every load, kept together: every
@@ -87,11 +87,21 @@ impl IndexCache {
             }
         }
         let all = store.all_items()?;
-        let mut boards = Vec::new();
-        for b in store.boards()? {
-            let lists = store.lists(b.id)?;
-            boards.push((b, lists));
-        }
+        // A counted use moves only the usage counter: the boards and lists are what they were.
+        let kept_boards = {
+            let state = self.0.borrow();
+            (state.built_at == Some(counter)).then(|| state.snapshot.boards.clone())
+        };
+        let boards = if let Some(boards) = kept_boards {
+            boards
+        } else {
+            let mut boards = Vec::new();
+            for b in store.boards()? {
+                let lists = store.lists(b.id)?;
+                boards.push((b, lists));
+            }
+            boards
+        };
         let reuse = {
             let state = self.0.borrow();
             (state.built_at == Some(counter)).then(|| Rc::clone(&state.snapshot.index))
@@ -100,17 +110,7 @@ impl IndexCache {
             let state = self.0.borrow();
             match (state.built_at == Some(counter)).then(|| Rc::clone(&state.snapshot.rich)) {
                 Some(rich) => rich,
-                None => Rc::new(
-                    store
-                        .plain_formats()?
-                        .into_iter()
-                        .filter(|(_, f)| {
-                            f.iter()
-                                .any(|f| matches!(f, Format::Html(_) | Format::Rtf(_)))
-                        })
-                        .map(|(id, _)| id)
-                        .collect(),
-                ),
+                None => Rc::new(store.rich_item_ids()?.into_iter().collect()),
             }
         };
         let (index, suggest, built) = if let Some(mut index) = reuse {
@@ -270,6 +270,36 @@ mod tests {
         assert_eq!(snapshot.index.len(), 2000);
         assert_eq!(cache.rebuilds(), 1);
         assert!(took < std::time::Duration::from_secs(2), "{took:?}");
+    }
+
+    #[test]
+    fn ten_thousand_items_with_rich_text_snapshot_without_reading_their_content() {
+        let (mut s, l) = seeded();
+        for n in 0..10_000 {
+            let item = Item::new(l, format!("item {n}"), ItemKind::Text, at());
+            let mut formats = vec![Format::Text(Content::Inline(
+                Inline::new(b"body".to_vec()).unwrap(),
+            ))];
+            if n % 100 == 0 {
+                formats.push(Format::Html(Content::Inline(
+                    Inline::new(b"<b>x</b>".to_vec()).unwrap(),
+                )));
+            }
+            s.insert_item(&item, &Formats::new(formats).unwrap(), Placement::Last)
+                .unwrap();
+        }
+        let cache = IndexCache::new();
+        let started = std::time::Instant::now();
+        let snapshot = cache.snapshot(&s).unwrap();
+        let took = started.elapsed();
+        assert_eq!(snapshot.index.len(), 10_000);
+        assert_eq!(
+            snapshot.rich.len(),
+            100,
+            "only the items with an HTML or RTF format"
+        );
+        // Generous: a debug build on a loaded machine. The old path read every format's bytes.
+        assert!(took < std::time::Duration::from_secs(20), "{took:?}");
     }
 
     #[test]

@@ -134,6 +134,7 @@ pub struct Binding {
     own_window_active: Rc<dyn Fn(bool)>,
     tray: Rc<dyn Fn(TrayEvent)>,
     system_look: Rc<dyn Fn(SystemLook)>,
+    session_locked: Rc<dyn Fn()>,
     clipboard_changed: Rc<dyn Fn(snipdeck_platform::clipboard_watch::ClipboardChange)>,
     typed_trigger: Rc<dyn Fn(crate::typing_worker::Out)>,
     frame_changed: Rc<FrameFn>,
@@ -202,6 +203,12 @@ impl Binding {
     /// show or take down, or `Tab` on the hint (see `Typed::password` and `Typed::still_current`).
     pub fn typed_trigger(&self, out: crate::typing_worker::Out) {
         (self.typed_trigger)(out);
+    }
+
+    /// Windows locked the session (Win+L) or is going to sleep: a library with a master password
+    /// locks now.
+    pub fn session_locked(&self) {
+        (self.session_locked)();
     }
 
     /// Windows' light / dark or high-contrast state is `look` (read at start-up, and again on
@@ -735,6 +742,14 @@ where
         });
     }
 
+    /// Windows locked the session or is going to sleep: a library with a master password locks at
+    /// once, instead of waiting for the idle time.
+    fn session_locked(self: &Rc<Self>) {
+        self.controller.borrow_mut().lock_now();
+        self.sync();
+        redraw_all();
+    }
+
     /// Keeps one timer running while a master password is set and the library is open; the
     /// controller's clock decides whether the idle time is up. Using the library moves the
     /// deadline, so the timer may fire early and then waits again for what is left.
@@ -1144,7 +1159,6 @@ where
         wire_effects!(on_open_requested, |ctl| ctl.open_main_window());
         wire!(on_undo_requested, |ctl| ctl.undo());
         wire!(on_redo_requested, |ctl| ctl.redo());
-        wire_effects!(on_new_item_requested, |_ctl| vec![Effect::NewItem]);
         wire_effects!(on_settings_requested, |_ctl| vec![Effect::OpenSettings]);
         {
             let core = Rc::clone(&core);
@@ -1279,6 +1293,10 @@ where
             system_look: {
                 let core = Rc::clone(&core);
                 Rc::new(move |look| core.act(|ctl| ctl.set_system_look(look)))
+            },
+            session_locked: {
+                let core = Rc::clone(&core);
+                Rc::new(move || core.session_locked())
             },
             clipboard_changed: {
                 let core = Rc::clone(&core);

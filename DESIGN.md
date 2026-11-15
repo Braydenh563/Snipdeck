@@ -304,6 +304,20 @@ One row, `components/item-card.slint`, used by the Panel, the Picker and the Mai
 | Item list | flex, min 320 | toolbar (view, sort, filter) + ItemCards / tiles. Toolbar controls are 32px tall; below 560px of item area (at 100% text size) the Commands and View buttons are icon-only (tooltips "Commands (Ctrl+K)", "View"). |
 | Detail | 400 (resizable 320–640) | preview, editor, metadata |
 
+### Shortcut conventions (Panel and Main window)
+
+One chord means one thing in every window; a window that lacks the thing leaves the chord unused.
+Chosen by the majority of the existing uses (Main window, command palette, user guide, shortcuts list):
+
+| Chord | Meaning everywhere |
+|---|---|
+| `Ctrl+K`, `Ctrl+Shift+P` | Commands (the palette; the Panel opens it in the Main window) |
+| `Ctrl+N` | New item (the quick-add box in an open list) |
+| `Ctrl+Shift+N` | New list. The full editor is the quick-add box's **More options** button or `Ctrl+Shift+Enter` |
+| `Ctrl+E`, `F2` | Edit the selected item (`F2` on a group header renames the group) |
+
+The Panel's keep-on-top pin has no chord: use the header button or the palette.
+
 ## 6. Depth
 
 The Index deck uses **one soft level** plus OS-level floating. Shadows are tinted with the warm neutral, never pure black. In dark mode, depth comes from **tone**, not shadow.

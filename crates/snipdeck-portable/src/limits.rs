@@ -26,7 +26,8 @@ pub struct Limits {
     /// the biggest legitimate text payload, which is exempt). Default 500; deflate cannot
     /// exceed about 1032.
     pub max_ratio: u64,
-    /// Largest uncompressed size of `items.json`, in bytes. Default 64 MiB.
+    /// Largest uncompressed size of `items.json`, in bytes. Default 512 MiB: it is read into
+    /// memory once, and 100 000 items of 5 MiB text each would not fit in the old 64 MiB.
     pub max_json_bytes: u64,
     /// Most items in the archive. Default 100 000.
     pub max_items: usize,
@@ -46,6 +47,16 @@ impl Limits {
         self.max_entry_bytes.saturating_sub(ENVELOPE_OVERHEAD_BYTES)
     }
 
+    /// The size cap for the entry called `name`: `items.json` has its own cap
+    /// ([`Limits::max_json_bytes`]); every other entry is held to [`Limits::max_entry_bytes`].
+    pub(crate) fn entry_cap(&self, name: &str) -> u64 {
+        if name == crate::archive::ITEMS {
+            self.max_json_bytes
+        } else {
+            self.max_entry_bytes
+        }
+    }
+
     /// Entries at or below this size are exempt from the ratio check: they cannot do harm, and
     /// a 5 MB text of repeated lines legitimately compresses by more than 500.
     pub(crate) const RATIO_FLOOR: u64 = TEXT_LIMIT;
@@ -62,7 +73,7 @@ impl Default for Limits {
             max_entry_bytes: 64 * 1024 * 1024,
             max_total_bytes: DEFAULT_MAX_TOTAL_BYTES,
             max_ratio: 500,
-            max_json_bytes: 64 * 1024 * 1024,
+            max_json_bytes: 512 * 1024 * 1024,
             max_items: 100_000,
         }
     }
@@ -78,5 +89,19 @@ mod tests {
         let library = 30 * 40 * 1024 * 1024_u64;
         assert!(library > 1024 * 1024 * 1024);
         assert!(Limits::default().max_total_bytes >= library * 4);
+    }
+
+    #[test]
+    fn items_json_has_its_own_entry_cap_above_the_attachment_cap() {
+        let l = Limits::default();
+        assert_eq!(l.entry_cap("items.json"), l.max_json_bytes);
+        assert_eq!(l.entry_cap("assets/abc"), l.max_entry_bytes);
+        assert!(l.entry_cap("items.json") > l.entry_cap("assets/abc"));
+    }
+
+    #[test]
+    fn the_default_json_cap_holds_a_library_of_many_large_text_items() {
+        // 200 items of a 2 MiB text each is 400 MiB of items.json; the old 64 MiB cap refused it.
+        assert!(Limits::default().max_json_bytes >= 200 * 2 * 1024 * 1024);
     }
 }

@@ -1022,7 +1022,7 @@ fn a_double_click_on_a_tab_opens_the_list_editor() {
     assert_eq!(editor.name, "Code");
 }
 
-// ---- Boards and the Free cap ----------------------------------------------------------------
+// ---- Boards ---------------------------------------------------------------------------------
 
 #[test]
 fn a_new_board_is_made_through_the_menu_and_opened() {
