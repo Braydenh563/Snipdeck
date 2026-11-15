@@ -1,6 +1,6 @@
 name: Windows build
 
-# Dev build of the portable zip (HANDOVER 9c): development licence key, debug profile, on every
+# Dev build of the portable zip (HANDOVER 9c): debug profile, on every
 # push to main and on demand, kept as an Actions artifact. Releases are built by release.yml.
 #
 # The owner can run it on any branch: Actions > Windows build > Run workflow > pick the branch. The
