@@ -197,3 +197,45 @@ fn the_submit_button_is_ink_and_a_required_field_in_error_has_a_danger_border() 
         "the invalid field's 1px border is danger-coloured"
     );
 }
+
+#[test]
+fn a_form_cut_to_a_small_height_keeps_its_footer_and_scrolls_its_fields() {
+    const SMALL: u32 = 320;
+    let h = form(WIDTH, false);
+    let many: Vec<_> = (0..12)
+        .map(|i| fixture::text(&format!("Field {i}"), "", false))
+        .collect();
+    fixture::set_fields(&h.component, many);
+    h.component.window().request_redraw();
+    let _ = h.render_settled();
+    let wanted = h.component.get_content_height();
+    assert!(
+        wanted > f32::from(SMALL as u16),
+        "twelve fields want more than {SMALL}px (got {wanted})"
+    );
+    h.component
+        .window()
+        .set_size(LogicalSize::new(WIDTH, SMALL));
+    h.component.window().request_redraw();
+    let f = h.render_settled();
+    assert_eq!(f.height, SMALL);
+    // The footer's primary button is still at the bottom, drawn in ink.
+    assert_eq!(
+        f.pixel(WIDTH - 16 - 4, f.height - FOOTER_H / 2),
+        INK_LIGHT,
+        "the footer stays inside the window"
+    );
+    // Focus on the last field scrolls it into view: its label differs from the first screen.
+    let before = f.rgb.clone();
+    h.component.invoke_focus_field(11);
+    let after = render_at(&h, SMALL);
+    assert_ne!(before, after.rgb, "the fields moved to show the last one");
+}
+
+fn render_at(h: &Harness<TemplateFillWindow>, height: u32) -> Frame {
+    h.component
+        .window()
+        .set_size(LogicalSize::new(WIDTH, height));
+    h.component.window().request_redraw();
+    h.render_settled()
+}

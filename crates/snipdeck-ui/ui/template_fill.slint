@@ -24,6 +24,7 @@ import { Icons } from "icons.slint";
 import { TemplateField, TemplateFieldKind } from "components/template_field.slint";
 import { Button, ButtonVariant } from "components/button.slint";
 import { IconButton } from "components/icon-button.slint";
+import { FormScroll } from "components/form.slint";
 import { KeyCombo } from "components/keycap.slint";
 
 // One prompt of the template. `value` is the answer (for a choice, the chosen option, kept in step with
@@ -205,39 +206,54 @@ export component TemplateFillWindow inherits Window {
             }
 
             // ---- The prompts ------------------------------------------------------------------------
-            VerticalLayout {
-                padding: Space.s4;
-                spacing: Space.s3;
-                alignment: start;
-                accessible-role: AccessibleRole.groupbox;
-                accessible-label: @tr("Fields");
+            // The fields scroll when the window is cut to the work area (the host never sizes it taller).
+            fields-scroll := FormScroll {
+                vertical-stretch: 1;
+                min-height: 2 * Space.hit;
+                preferred-height: fields-col.preferred-height;
+                content-height: fields-col.preferred-height;
+                content-width: self.viewport-width;
+                fields-col := VerticalLayout {
+                    x: 0px;
+                    width: parent.viewport-width;
+                    padding: Space.s4;
+                    spacing: Space.s3;
+                    alignment: start;
+                    accessible-role: AccessibleRole.groupbox;
+                    accessible-label: @tr("Fields");
 
-                for field[i] in root.fields: TemplateField {
-                    label: field.label;
-                    kind: field.kind;
-                    required: field.required;
-                    required-text: @tr("Required");
-                    placeholder: field.kind == TemplateFieldKind.date && field.placeholder == ""
-                        ? @tr("YYYY-MM-DD, empty for today") : field.placeholder;
-                    choices: field.options;
-                    choice-index: field.choice-index;
-                    value: field.value;
-                    error: field.error != "" ? field.error
-                        : root.show-errors && root.bad(i) ? @tr("This field is required") : "";
-                    focus-request: i == root.focus-target ? root.focus-seq : 0;
-                    init => {
-                        // A choice's answer is its chosen option, so the form never has to look it up.
-                        if (field.kind == TemplateFieldKind.choice && field.value == ""
-                            && field.choice-index >= 0 && field.choice-index < field.options.length) {
-                            root.fields[i].value = field.options[field.choice-index];
+                    for field[i] in root.fields: TemplateField {
+                        label: field.label;
+                        kind: field.kind;
+                        required: field.required;
+                        required-text: @tr("Required");
+                        placeholder: field.kind == TemplateFieldKind.date && field.placeholder == ""
+                            ? @tr("YYYY-MM-DD, empty for today") : field.placeholder;
+                        choices: field.options;
+                        choice-index: field.choice-index;
+                        value: field.value;
+                        error: field.error != "" ? field.error
+                            : root.show-errors && root.bad(i) ? @tr("This field is required") : "";
+                        focus-request: i == root.focus-target ? root.focus-seq : 0;
+                        changed has-focus => {
+                            if (self.has-focus) {
+                                fields-scroll.reveal(self.absolute-position.y - fields-scroll.absolute-position.y, self.height);
+                            }
                         }
+                        init => {
+                            // A choice's answer is its chosen option, so the form never has to look it up.
+                            if (field.kind == TemplateFieldKind.choice && field.value == ""
+                                && field.choice-index >= 0 && field.choice-index < field.options.length) {
+                                root.fields[i].value = field.options[field.choice-index];
+                            }
+                        }
+                        edited(v) => { root.edited(i, v); }
+                        chosen(index) => {
+                            root.fields[i].choice-index = index;
+                            root.edited(i, field.options[index]);
+                        }
+                        accepted(v) => { root.accepted(i); }
                     }
-                    edited(v) => { root.edited(i, v); }
-                    chosen(index) => {
-                        root.fields[i].choice-index = index;
-                        root.edited(i, field.options[index]);
-                    }
-                    accepted(v) => { root.accepted(i); }
                 }
             }
 
