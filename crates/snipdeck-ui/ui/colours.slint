@@ -1595,7 +1595,7 @@ export component ColoursView inherits Rectangle {
         x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
         y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2);
         max-w: root.width - Space.s4;
-        menu-max-h: root.height - Space.s4;
+        menu-max-h: root.height - Space.s4 - Space.menu-clear;
         label: @tr("Colour");
         icons: false;
         entries: [
@@ -1631,7 +1631,7 @@ export component ColoursView inherits Rectangle {
         x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
         y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2);
         max-w: root.width - Space.s4;
-        menu-max-h: root.height - Space.s4;
+        menu-max-h: root.height - Space.s4 - Space.menu-clear;
         label: @tr("Format");
         icons: false;
         entries: [
@@ -1667,7 +1667,7 @@ export component ColoursView inherits Rectangle {
         x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
         y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2);
         max-w: root.width - Space.s4;
-        menu-max-h: root.height - Space.s4;
+        menu-max-h: root.height - Space.s4 - Space.menu-clear;
         label: @tr("Save to");
         icons: false;
         entries: ColourState.save-targets;
@@ -1689,7 +1689,7 @@ export component ColoursView inherits Rectangle {
         x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
         y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2);
         max-w: root.width - Space.s4;
-        menu-max-h: root.height - Space.s4;
+        menu-max-h: root.height - Space.s4 - Space.menu-clear;
         label: @tr("Copy as");
         icons: false;
         entries: ColourState.copy-as;

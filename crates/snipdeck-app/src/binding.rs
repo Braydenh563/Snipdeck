@@ -1101,6 +1101,7 @@ where
         wire!(on_delete_requested, |ctl, i| ctl.delete_row(index(i)));
         wire!(on_toast_undo, |ctl| ctl.toast_action());
         wire_effects!(on_toast_edit, |ctl| ctl.toast_edit());
+        wire!(on_toast_dismissed, |ctl| ctl.toast_dismiss());
         wire!(on_paste_create_requested, |ctl| ctl
             .paste_create(crate::item_editor::Origin::Panel));
         wire_effects!(on_copy_selection_requested, |ctl| {

@@ -453,6 +453,7 @@ export component MainWindow inherits Window {
     callback board-delete-dismissed();
     callback toast-undo();
     callback toast-edit();
+    callback toast-dismissed();
     // Ctrl+V on the item list: make an item from the clipboard text.
     callback paste-create-requested();
     // Ctrl+C on the item list: copy the selected rows (the row under the cursor with none selected).
@@ -2454,6 +2455,7 @@ export component MainWindow inherits Window {
                         y: parent.height - self.height - Space.s2;
                         undo => { root.toast-undo(); }
                         edit => { root.toast-edit(); }
+                        dismissed => { root.toast-dismissed(); }
                         hover-changed(h) => { root.toast-hover-changed(h); }
                     }
                 }

@@ -190,6 +190,7 @@ fn start() -> (MainWindow, Log) {
         "copy-selection:{i}"
     ));
     hook!(on_toast_edit, || "toast-edit".to_string());
+    hook!(on_toast_dismissed, || "toast-dismissed".to_string());
     hook!(on_item_reorder_requested, |d| format!("reorder:{d}"));
     hook!(on_move_chosen, |i| format!("move:{i}"));
     hook!(on_paste_as_chosen, |i| format!("paste-as:{i}"));
@@ -2154,6 +2155,15 @@ ui_tests! {
         assert_eq!(take(&log), ["paste-create"]);
         chord(ui.window(), &[Key::Control], "c");
         assert_eq!(take(&log), ["copy-selection:0"]);
+    }
+
+    fn the_toast_has_a_close_button() {
+        let (ui, log) = start();
+        ui.set_toast_text("Copied".into());
+        settle();
+        take(&log);
+        find(&ui, "Dismiss", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["toast-dismissed"]);
     }
 
     fn the_toast_edit_button_shows_only_with_its_label() {

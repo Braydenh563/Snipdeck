@@ -83,6 +83,7 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_pinned_used, |i| format!("pinned:{i}"));
     hook!(on_toast_undo, || "undo".to_string());
     hook!(on_toast_edit, || "toast-edit".to_string());
+    hook!(on_toast_dismissed, || "toast-dismissed".to_string());
     hook!(on_paste_create_requested, || "paste-create".to_string());
     hook!(on_copy_selection_requested, || "copy-selection".to_string());
     hook!(on_undo_requested, || "ctrl-z".to_string());
@@ -255,6 +256,11 @@ fn row_button(ui: &PanelWindow, row: usize, label: &str) -> Option<ElementHandle
             let (p, s) = (b.absolute_position(), b.size());
             p.y >= rp.y - 0.5 && p.y + s.height <= rp.y + rs.height + 0.5 && p.x >= rp.x - 0.5
         })
+}
+
+fn ui_min_height() -> f32 {
+    let (ui, _log) = start();
+    ui.get_min_h()
 }
 
 fn click_at(ui: &PanelWindow, at: LogicalPosition) {
@@ -1821,6 +1827,47 @@ ui_tests! {
             assert!(bottom(&quit) <= bottom(&menu) + 0.5 && bottom(&quit) <= height, "{height}: Quit bottom {} (menu {})", bottom(&quit), bottom(&menu));
             assert!(quit.absolute_position().y >= menu.absolute_position().y, "{height}: Quit is not above the menu");
         }
+    }
+
+    fn a_menu_never_covers_the_whole_panel_and_a_click_on_the_strip_left_closes_it() {
+        // The smallest and a tall Panel: the menu stops 48px short of the bottom, so there is always somewhere to click off it.
+        for height in [ui_min_height(), 560.0_f32, 900.0] {
+            let (ui, log) = start();
+            ui.window().set_size(slint::LogicalSize::new(320.0, height));
+            ui.set_app_menu_open(true);
+            settle();
+            let menu = find(&ui, "Panel menu", AccessibleRole::List);
+            let bottom = menu.absolute_position().y + menu.size().height;
+            assert!(bottom <= height - 48.0 + 0.5, "{height}: menu bottom {bottom} leaves under 48px");
+            take(&log);
+            click_at(&ui, LogicalPosition::new(6.0, height - 6.0));
+            assert!(take(&log).contains(&"app-dismissed".to_string()), "{height}: a click below the menu closes it");
+        }
+    }
+
+    fn escape_closes_the_item_and_list_and_app_menus() {
+        for menu in ["app", "item", "list"] {
+            let (ui, log) = start();
+            match menu {
+                "app" => ui.set_app_menu_open(true),
+                "item" => ui.set_item_menu_open(true),
+                _ => ui.set_list_menu_open(true),
+            }
+            settle();
+            take(&log);
+            press(ui.window(), &key(Key::Escape));
+            settle();
+            assert!(!take(&log).is_empty(), "{menu}: Escape asks the host to close the menu");
+        }
+    }
+
+    fn the_toast_has_a_close_button_that_asks_the_host_to_drop_it() {
+        let (ui, log) = start();
+        ui.set_toast_text("Copied".into());
+        settle();
+        take(&log);
+        find(&ui, "Dismiss", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["toast-dismissed"]);
     }
 
     fn from_150_percent_keep_on_top_leaves_the_header_for_the_menu() {
