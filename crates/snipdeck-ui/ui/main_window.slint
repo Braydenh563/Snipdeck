@@ -557,8 +557,14 @@ export component MainWindow inherits Window {
     property <bool> narrow: false;
     property <float> text-scale: SystemLook.text-scale;
     // One height for every toolbar control (the standard Button height).
-    // Below 560px (at 100% text size) of item area the Commands and View buttons are icon-only (spec 3 Toolbar).
-    property <bool> toolbar-compact: false;
+    // The toolbar sheds its least valuable content as the item area (less the caption strip, at 100% text size) narrows,
+    // so every control keeps its hit target and its gap: the Ctrl K chips go below 736px, the Commands label below
+    // 658px, the View label below 608px, and the three view toggles below 574px (the View menu then holds all three).
+    property <bool> toolbar-keys: true;
+    property <bool> commands-compact: false;
+    property <bool> view-compact: false;
+    property <bool> toolbar-toggles: true;
+    property <length> caption-inset: SystemLook.caption-inset;
     property <length> ctl-h: max(Space.s8 * SystemLook.text-scale, Type.line-base + Space.s2);
     property <length> bar-h: max(Space.s8 + Space.s3, Type.line-base + Space.s2 + Space.s3);
     // A group header row: a full hit target inside its focus-ring inset, growing with the text size so its name never spills.
@@ -639,7 +645,11 @@ export component MainWindow inherits Window {
     function update-narrow() {
         root.auto-rail = root.width < 720px;
         root.narrow = root.auto-rail || root.sidebar-collapsed;
-        root.toolbar-compact = root.width - root.sidebar-w < 560px * root.text-scale;
+        let room = (root.width - root.sidebar-w - root.caption-inset) / root.text-scale;
+        root.toolbar-keys = room >= 736px;
+        root.commands-compact = room < 658px;
+        root.view-compact = room < 608px;
+        root.toolbar-toggles = room >= 574px;
     }
     // The Colour block needs room above the list. Set from `changed height` (not bound to `root.height`: the
     // block changes the layout, and a binding on the height would loop).
@@ -655,6 +665,9 @@ export component MainWindow inherits Window {
         root.update-narrow();
     }
     changed sidebar-width => {
+        root.update-narrow();
+    }
+    changed caption-inset => {
         root.update-narrow();
     }
     // Ctrl+B and the toolbar button. Below 720px the rail is automatic and wins, so there is nothing to fold.
@@ -1573,10 +1586,10 @@ export component MainWindow inherits Window {
                                 }
                                 commands-button := ToolbarButton {
                                     h: root.ctl-h;
-                                    compact: root.toolbar-compact;
+                                    compact: root.commands-compact;
                                     icon: Icons.keyboard;
                                     label: @tr("Commands");
-                                    keys: ["Ctrl", "K"];
+                                    keys: root.toolbar-keys ? ["Ctrl", "K"] : [];
                                     tooltip: @tr("Commands (Ctrl+K)");
                                     clicked => { root.open-palette(); }
                                 }
@@ -1593,7 +1606,7 @@ export component MainWindow inherits Window {
                                 }
                                 view-button := ToolbarButton {
                                     h: root.ctl-h;
-                                    compact: root.toolbar-compact;
+                                    compact: root.view-compact;
                                     icon: Icons.rows;
                                     label: @tr("View");
                                     caret: true;
@@ -1602,8 +1615,9 @@ export component MainWindow inherits Window {
                                     clicked => { root.open-view-menu(); }
                                 }
                                 Rectangle {
-                                    width: Space.s3;
+                                    width: root.toolbar-toggles ? Space.s3 : 0px;
                                     height: root.ctl-h;
+                                    visible: root.toolbar-toggles;
                                     Rectangle {
                                         width: 1px;
                                         height: root.ctl-h * 0.6;
@@ -1613,7 +1627,8 @@ export component MainWindow inherits Window {
                                     }
                                 }
                                 segmented := Rectangle {
-                                    width: seg-row.preferred-width;
+                                    width: root.toolbar-toggles ? seg-row.preferred-width : 0px;
+                                    visible: root.toolbar-toggles;
                                     height: root.ctl-h;
                                     background: Theme.bg-surface;
                                     border-width: 1px;
@@ -2704,15 +2719,15 @@ export component MainWindow inherits Window {
     }
 
     // ---- Tooltips for the icon-only toolbar buttons (500ms rest, instant between buttons) -----------
-    property <string> tip: root.toolbar-compact && (commands-button.has-hover || commands-button.has-focus) ? @tr("Commands (Ctrl+K)")
-        : root.toolbar-compact && (view-button.has-hover || view-button.has-focus) ? @tr("View")
+    property <string> tip: root.commands-compact && (commands-button.has-hover || commands-button.has-focus) ? @tr("Commands (Ctrl+K)")
+        : root.view-compact && (view-button.has-hover || view-button.has-focus) ? @tr("View")
         : view-comfortable.has-hover || view-comfortable.has-focus ? @tr("Comfortable view")
         : view-compact.has-hover || view-compact.has-focus ? @tr("Compact view")
         : view-tile.has-hover || view-tile.has-focus ? @tr("Tile view") : root.card-tip;
-    property <bool> toolbar-tip: (root.toolbar-compact && (commands-button.has-hover || commands-button.has-focus || view-button.has-hover || view-button.has-focus)) || view-comfortable.has-hover || view-comfortable.has-focus
+    property <bool> toolbar-tip: (root.commands-compact && (commands-button.has-hover || commands-button.has-focus)) || (root.view-compact && (view-button.has-hover || view-button.has-focus)) || view-comfortable.has-hover || view-comfortable.has-focus
         || view-compact.has-hover || view-compact.has-focus || view-tile.has-hover || view-tile.has-focus;
-    property <length> tip-x: root.toolbar-compact && (commands-button.has-hover || commands-button.has-focus) ? commands-button.absolute-position.x
-        : root.toolbar-compact && (view-button.has-hover || view-button.has-focus) ? view-button.absolute-position.x
+    property <length> tip-x: root.commands-compact && (commands-button.has-hover || commands-button.has-focus) ? commands-button.absolute-position.x
+        : root.view-compact && (view-button.has-hover || view-button.has-focus) ? view-button.absolute-position.x
         : view-comfortable.has-hover || view-comfortable.has-focus ? view-comfortable.absolute-position.x
         : view-compact.has-hover || view-compact.has-focus ? view-compact.absolute-position.x
         : view-tile.has-hover || view-tile.has-focus ? view-tile.absolute-position.x : root.card-tip-cx;
@@ -2913,6 +2928,8 @@ export component MainWindow inherits Window {
             { separator: true },
             { text: @tr("Main list density: Comfortable"), icon: root.view == MainView.comfortable ? Icons.check : root.no-icon },
             { text: @tr("Main list density: Compact"), icon: root.view == MainView.compact ? Icons.check : root.no-icon },
+            // The same three choices as the toggles beside it, which the toolbar drops when it is narrow.
+            { text: @tr("Tile view"), icon: root.view == MainView.tile && !root.has-groups ? Icons.check : root.no-icon, disabled: root.has-groups },
         ];
         label: @tr("View");
         init => {
@@ -2931,6 +2948,9 @@ export component MainWindow inherits Window {
             } else if (i == 5) {
                 root.view = MainView.compact;
                 root.view-changed(MainView.compact);
+            } else if (i == 6) {
+                root.view = MainView.tile;
+                root.view-changed(MainView.tile);
             }
         }
         dismissed => { root.close-menus(); }
