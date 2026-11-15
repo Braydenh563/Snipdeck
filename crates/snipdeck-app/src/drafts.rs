@@ -170,7 +170,7 @@ impl Drafts {
     ///
     /// # Errors
     ///
-    /// The draft is over the size `load` reads back ([`MAX_FILE_BYTES`]), or the folder or file
+    /// The draft is over the size `load` reads back (256 KiB), or the folder or file
     /// could not be written.
     pub fn save(&self, key: DraftKey, draft: &Draft) -> io::Result<()> {
         fs::create_dir_all(&self.dir)?;
