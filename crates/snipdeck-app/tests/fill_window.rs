@@ -425,11 +425,13 @@ fn multiline_enter_adds_a_line() {
 fn toggle_field_shows_a_check_box() {
     on_ui_thread(|| {
         let (_r, _p, form) = rich_form();
+        // The window is cut to a small work area here, so the fields scroll: focus brings the
+        // toggle into view before it can be found.
+        form.invoke_focus_field(2);
+        slint::platform::update_timers_and_animations();
         let tick = element(&form, "PS", AccessibleRole::Checkbox);
         assert_eq!(tick.accessible_checked(), Some(false));
         assert!(!form.get_preview().contains("P.S."));
-        form.invoke_focus_field(2);
-        slint::platform::update_timers_and_animations();
         press(form.window(), " ");
         assert_eq!(tick.accessible_checked(), Some(true));
         assert_eq!(form.get_fields().row_data(2).expect("field").value, "true");
