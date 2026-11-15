@@ -26,8 +26,10 @@ pub struct Limits {
     /// the biggest legitimate text payload, which is exempt). Default 500; deflate cannot
     /// exceed about 1032.
     pub max_ratio: u64,
-    /// Largest uncompressed size of `items.json`, in bytes. Default 512 MiB: it is read into
-    /// memory once, and 100 000 items of 5 MiB text each would not fit in the old 64 MiB.
+    /// Largest uncompressed size of `items.json`, in bytes. Default 256 MiB
+    /// ([`DEFAULT_MAX_JSON_BYTES`]): it is read into memory once, so an untrusted archive must not
+    /// ask for more. Export refuses to write a larger one ([`Limits::export_json_cap`]), so
+    /// the app's own archives always re-import under the default.
     pub max_json_bytes: u64,
     /// Most items in the archive. Default 100 000.
     pub max_items: usize,
@@ -35,6 +37,9 @@ pub struct Limits {
 
 /// The default [`Limits::max_total_bytes`]: 8 GiB.
 const DEFAULT_MAX_TOTAL_BYTES: u64 = 8 * 1024 * 1024 * 1024;
+
+/// The default [`Limits::max_json_bytes`]: 256 MiB.
+pub const DEFAULT_MAX_JSON_BYTES: u64 = 256 * 1024 * 1024;
 
 /// What encrypting a payload adds to it (`SNENC2` 6 + nonce 24 + tag 16 = 46 bytes), rounded up.
 pub const ENVELOPE_OVERHEAD_BYTES: u64 = 64;
@@ -57,6 +62,17 @@ impl Limits {
         }
     }
 
+    /// The largest `items.json` an export writes: these limits' cap, but never above the default
+    /// import cap, so an archive this app writes can always be read back with default limits.
+    #[must_use]
+    pub const fn export_json_cap(&self) -> u64 {
+        if self.max_json_bytes < DEFAULT_MAX_JSON_BYTES {
+            self.max_json_bytes
+        } else {
+            DEFAULT_MAX_JSON_BYTES
+        }
+    }
+
     /// Entries at or below this size are exempt from the ratio check: they cannot do harm, and
     /// a 5 MB text of repeated lines legitimately compresses by more than 500.
     pub(crate) const RATIO_FLOOR: u64 = TEXT_LIMIT;
@@ -73,7 +89,7 @@ impl Default for Limits {
             max_entry_bytes: 64 * 1024 * 1024,
             max_total_bytes: DEFAULT_MAX_TOTAL_BYTES,
             max_ratio: 500,
-            max_json_bytes: 512 * 1024 * 1024,
+            max_json_bytes: DEFAULT_MAX_JSON_BYTES,
             max_items: 100_000,
         }
     }
@@ -100,8 +116,26 @@ mod tests {
     }
 
     #[test]
+    fn export_never_writes_an_items_json_the_default_import_would_refuse() {
+        assert_eq!(DEFAULT_MAX_JSON_BYTES, 256 * 1024 * 1024);
+        assert_eq!(Limits::default().export_json_cap(), DEFAULT_MAX_JSON_BYTES);
+        let roomy = Limits {
+            max_json_bytes: u64::MAX,
+            ..Limits::default()
+        };
+        assert_eq!(roomy.export_json_cap(), DEFAULT_MAX_JSON_BYTES);
+        let tight = Limits {
+            max_json_bytes: 100,
+            ..Limits::default()
+        };
+        assert_eq!(tight.export_json_cap(), 100);
+    }
+
+    #[test]
     fn the_default_json_cap_holds_a_library_of_many_large_text_items() {
-        // 200 items of a 2 MiB text each is 400 MiB of items.json; the old 64 MiB cap refused it.
-        assert!(Limits::default().max_json_bytes >= 200 * 2 * 1024 * 1024);
+        // 100 items of a 2 MiB text each is 200 MiB of items.json; the old 64 MiB cap refused it.
+        // The cap is 256 MiB, not more: an untrusted import is read into memory whole.
+        assert!(Limits::default().max_json_bytes >= 100 * 2 * 1024 * 1024);
+        assert!(Limits::default().max_json_bytes <= 256 * 1024 * 1024);
     }
 }
