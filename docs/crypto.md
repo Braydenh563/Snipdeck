@@ -45,12 +45,14 @@ Default: **64 MiB (65 536 KiB), 3 passes, 1 lane**, 16-byte random salt, 32-byte
   the crate's own tests turn on through a dev-dependency on itself.
 * The 64 MiB is a transient allocation (zeroized on drop) during unlock; it is outside the
   40 MB idle-RAM budget of SPEC §9 only while unlocking.
-* **Typed master password (limit):** the unlock window overwrites the password field with
-  same-length filler before clearing it, but Slint offers no way to wipe its own copies (the
-  text-input edit buffer, undo history, shaped-text caches, freed allocations), so the typed
-  password can stay in freed UI memory until the allocator reuses it. Only the Rust-side copies
-  are zeroized. Not fixable without a toolkit change; same exposure as any process-memory read
-  by an attacker already running as the user.
+* **Typed master password (limit):** the unlock window clears the password field as soon as it is
+  submitted, but that only drops the toolkit's reference: Slint stores the text in an immutable,
+  reference-counted string that it frees without overwriting, and it keeps other copies (the
+  text-input edit buffer, undo history, shaped-text caches). Snipdeck cannot wipe any of them, so
+  the typed password can stay in freed UI memory until the allocator reuses it. (Overwriting the
+  field with filler first was tried and dropped: it allocates a new string and leaves the old
+  one untouched.) Only the Rust-side copies are zeroized. Not fixable without a toolkit change;
+  the exposure is that of any process-memory read by an attacker already running as the user.
 * **Measured** (release build, `cargo test -p snipdeck-store --release --lib -- --ignored
   --nocapture default_params`), 7 runs on a Linux cloud VM: min 238 ms, median 250 ms,
   max 253 ms. Re-measure on the reference Windows machine in milestone 2; adjust

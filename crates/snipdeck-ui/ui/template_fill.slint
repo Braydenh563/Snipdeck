@@ -235,11 +235,6 @@ export component TemplateFillWindow inherits Window {
                         error: field.error != "" ? field.error
                             : root.show-errors && root.bad(i) ? @tr("This field is required") : "";
                         focus-request: i == root.focus-target ? root.focus-seq : 0;
-                        changed has-focus => {
-                            if (self.has-focus) {
-                                fields-scroll.reveal(self.absolute-position.y - fields-scroll.absolute-position.y, self.height);
-                            }
-                        }
                         init => {
                             // A choice's answer is its chosen option, so the form never has to look it up.
                             if (field.kind == TemplateFieldKind.choice && field.value == ""

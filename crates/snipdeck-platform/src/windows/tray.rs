@@ -339,7 +339,8 @@ impl TrayHandler {
 
     fn drop_held_click(&self, hwnd: HWND) {
         let mut click = self.click.get();
-        click.double_select();
+        // SAFETY: reads a system setting.
+        click.double_select(self.now_ms(), u64::from(unsafe { GetDoubleClickTime() }));
         self.click.set(click);
         // SAFETY: our own window and timer id; a missing timer is only an error code.
         let _ = unsafe { KillTimer(Some(hwnd), CLICK_TIMER) };
@@ -375,10 +376,13 @@ impl TrayHandler {
             // A left click waits out the double-click time: a second click makes it a double.
             Gesture::Select => {
                 let mut click = self.click.get();
-                click.select(self.now_ms());
+                let held = click.select(self.now_ms());
                 self.click.set(click);
-                // SAFETY: `hwnd` is our own window, on this thread; the timer id is ours.
-                let _ = unsafe { SetTimer(Some(hwnd), CLICK_TIMER, GetDoubleClickTime(), None) };
+                if held {
+                    // SAFETY: `hwnd` is our own window, on this thread; the timer id is ours.
+                    let _ =
+                        unsafe { SetTimer(Some(hwnd), CLICK_TIMER, GetDoubleClickTime(), None) };
+                }
                 return;
             }
             Gesture::DoubleSelect => self.drop_held_click(hwnd),

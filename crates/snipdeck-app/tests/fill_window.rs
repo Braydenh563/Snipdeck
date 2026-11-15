@@ -13,7 +13,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use i_slint_backend_testing::{AccessibleRole, ElementHandle};
-use slint::{ComponentHandle, Model, platform::Key};
+use slint::{ComponentHandle, Global, Model, platform::Key};
 use snipdeck_app::{
     binding::Binding,
     controller::{Controller, Effect, HelpTopic, Services},
@@ -34,7 +34,7 @@ use snipdeck_platform::{
     tray::TrayEvent,
 };
 use snipdeck_store::{ItemRepo, Store};
-use snipdeck_ui::{PanelWindow, PickerWindow, TemplateFillWindow};
+use snipdeck_ui::{FormTexts, PanelWindow, PickerWindow, TemplateFillWindow};
 
 #[path = "support/mod.rs"]
 mod support;
@@ -439,6 +439,25 @@ fn toggle_field_shows_a_check_box() {
         press(form.window(), " ");
         assert_eq!(form.get_fields().row_data(2).expect("field").value, "");
         assert!(!form.get_preview().contains("P.S."));
+    });
+}
+
+#[test]
+fn a_required_field_with_only_spaces_is_flagged_and_focused_and_nothing_is_pasted() {
+    on_ui_thread(|| {
+        let (_r, _p, form) = rich_form();
+        // The window's own check only sees an empty string; the controller trims.
+        type_text(form.window(), "   ");
+        form.invoke_submit();
+        slint::platform::update_timers_and_animations();
+        assert!(form.window().is_visible(), "the form stays open");
+        let field = form.get_fields().row_data(0).expect("field");
+        assert_eq!(field.value.as_str(), "   ");
+        assert_eq!(
+            field.error.as_str(),
+            FormTexts::get(&form).invoke_field_required().as_str(),
+            "the spaces-only field says it is required"
+        );
     });
 }
 

@@ -657,6 +657,13 @@ matches:
           echo: " {x} "
       - name: clip
         type: clipboard
+  - trigger: ":echoonly"
+    replace: "A{{e}}B"
+    vars:
+      - name: e
+        type: echo
+        params:
+          echo: " {x} "
   - trigger: ":pick"
     replace: "Colour: {{c}}"
     vars:
@@ -744,6 +751,7 @@ fn espanso_maps_triggers_vars_forms_and_reports_the_rest() {
                 ItemKind::Template,
                 "A {{x}} B {clipboard}"
             ),
+            et("A {x} B", ":echoonly", ItemKind::Text, "A {x} B"),
             et(
                 "Colour: {choice:c|red|green}",
                 ":pick",
@@ -763,7 +771,7 @@ fn espanso_maps_triggers_vars_forms_and_reports_the_rest() {
     );
     // regex, image, empty
     assert_eq!(report.items_skipped, 3);
-    assert_eq!(report.items_added, 11);
+    assert_eq!(report.items_added, 12);
     let all = notes(&report).join("\n");
     for needle in ["shell", "regex", "image", "markdown", "%Q", "`:sign`"] {
         assert!(all.contains(needle), "{needle} not in {all}");

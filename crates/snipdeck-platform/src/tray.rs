@@ -251,16 +251,26 @@ pub const fn classify(code: u32) -> Option<Gesture> {
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct ClickDeferral {
     pending_since: Option<u64>,
+    /// Selects before this time are the tail of a double click and are ignored.
+    ignore_until: u64,
 }
 
 impl ClickDeferral {
-    /// A left click at `now_ms`: it is held.
-    pub fn select(&mut self, now_ms: u64) {
+    /// A left click at `now_ms`: it is held, unless it comes right after a double click (a
+    /// select that follows `WM_LBUTTONDBLCLK` is that double click's release). Returns whether
+    /// it is held.
+    pub fn select(&mut self, now_ms: u64) -> bool {
+        if now_ms < self.ignore_until {
+            return false;
+        }
         self.pending_since = Some(now_ms);
+        true
     }
 
-    /// A double click: the held click, if any, is dropped. Returns whether one was held.
-    pub fn double_select(&mut self) -> bool {
+    /// A double click at `now_ms`: the held click, if any, is dropped, and selects for the next
+    /// `wait_ms` are ignored. Returns whether a click was held.
+    pub fn double_select(&mut self, now_ms: u64, wait_ms: u64) -> bool {
+        self.ignore_until = now_ms.saturating_add(wait_ms);
         self.pending_since.take().is_some()
     }
 
@@ -590,9 +600,23 @@ mod tests {
     fn a_double_click_drops_the_held_click() {
         let mut d = ClickDeferral::default();
         d.select(1_000);
-        assert!(d.double_select());
+        assert!(d.double_select(1_200, 500));
         assert!(!d.release(5_000, 500), "the toggle never happens");
-        assert!(!d.double_select(), "nothing held, nothing dropped");
+        assert!(
+            !d.double_select(6_000, 500),
+            "nothing held, nothing dropped"
+        );
+    }
+
+    #[test]
+    fn a_select_after_the_double_click_is_ignored_for_the_double_click_time() {
+        let mut d = ClickDeferral::default();
+        d.select(1_000);
+        assert!(d.double_select(1_200, 500));
+        assert!(!d.select(1_250), "the release of the double click");
+        assert!(!d.release(5_000, 500), "so nothing toggles");
+        assert!(d.select(1_700), "a later click counts again");
+        assert!(d.release(2_200, 500));
     }
 
     #[test]
