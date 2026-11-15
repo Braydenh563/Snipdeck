@@ -100,7 +100,7 @@ mod tests {
     fn a_list_icon_is_tinted_only_where_it_keeps_three_to_one() {
         let mut tinted = 0;
         for dark in [false, true] {
-            for accent in ListAccent::ALL {
+            for &accent in ListAccent::ALL {
                 let tint = list_icon_tint(Some(accent), dark);
                 if tint.alpha() == 0 {
                     continue;
