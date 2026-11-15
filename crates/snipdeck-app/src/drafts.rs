@@ -152,15 +152,21 @@ impl Drafts {
     }
 
     /// The draft of `key`, if there is one this version can read. A damaged, oversized or
-    /// foreign file reads as "no draft" (and stays for the user to look at).
+    /// foreign file reads as "no draft" (and stays for the user to look at). When the draft is
+    /// unreadable but a finished side file is there, a crash fell between zeroing the old draft
+    /// and renaming the new one (see [`save`](Self::save)): the side file is the draft.
     #[must_use]
     pub fn load(&self, key: DraftKey) -> Option<Draft> {
         let path = self.path(key);
-        let meta = fs::metadata(&path).ok()?;
+        Self::read_file(&path).or_else(|| Self::read_file(&path.with_extension("json.tmp")))
+    }
+
+    fn read_file(path: &Path) -> Option<Draft> {
+        let meta = fs::metadata(path).ok()?;
         if !meta.is_file() || meta.len() > MAX_FILE_BYTES {
             return None;
         }
-        let bytes = fs::read(&path).ok()?;
+        let bytes = fs::read(path).ok()?;
         let draft: Draft = serde_json::from_slice(&bytes).ok()?;
         (draft.version == VERSION).then_some(draft)
     }
@@ -190,8 +196,9 @@ impl Drafts {
         file.write_all(&bytes).and_then(|()| file.sync_all())?;
         drop(file);
         // The draft being replaced may hold text the user has since marked sensitive: zero it
-        // before the rename unlinks it, or its blocks stay readable. (A crash between the two
-        // leaves the finished side file and no draft; that costs one autosave, not the item.)
+        // before the rename unlinks it, or its blocks stay readable. A crash between the two leaves a
+        // zero-filled draft (which does not parse) next to the finished side file; `load` falls
+        // back to the side file, so nothing is lost.
         overwrite_with_zeros(&path);
         fs::rename(&side, &path)
     }
@@ -276,6 +283,20 @@ mod tests {
             "the replaced draft was zeroed"
         );
         assert_eq!(drafts.load(key).expect("draft").content, "second");
+    }
+
+    #[test]
+    fn a_crash_between_zeroing_and_the_rename_still_loads_the_new_draft() {
+        let dir = tempfile::tempdir().expect("dir");
+        let drafts = Drafts::in_data_dir(dir.path());
+        let key = DraftKey::New;
+        drafts.save(key, &draft("old")).expect("save");
+        // The state a crash leaves: the old draft zero-filled, the new one finished on the side.
+        let path = drafts.path(key);
+        overwrite_with_zeros(&path);
+        let side = path.with_extension("json.tmp");
+        fs::write(&side, serde_json::to_vec(&draft("new")).expect("json")).expect("side");
+        assert_eq!(drafts.load(key).expect("recovered").content, "new");
     }
 
     #[test]
