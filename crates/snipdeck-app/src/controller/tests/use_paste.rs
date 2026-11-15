@@ -1443,3 +1443,24 @@ fn a_hint_from_another_worker_generation_is_stale() {
         "a newer one is not the running one either"
     );
 }
+
+#[test]
+fn quitting_deletes_the_files_a_sensitive_files_item_left_in_the_temp_folder() {
+    let mut w = world();
+    let id = w.ids[0];
+    // An ordinary item pasted leaves nothing to forget.
+    w.ctl.activate_row(0, UseMode::Paste);
+    w.ctl.clear_pending_clipboard_now();
+    assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 0);
+    // A sensitive Files item pasted does; the quit asks for them to go, once.
+    let mut item = w.ctl.store.item(id).expect("item");
+    item.sensitive = true;
+    item.kind = snipdeck_core::ItemKind::File;
+    item.preview.clear();
+    w.ctl.store.update_item(&item, None).expect("update");
+    w.ctl.activate_row(0, UseMode::Paste);
+    w.ctl.clear_pending_clipboard_now();
+    assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 1);
+    w.ctl.clear_pending_clipboard_now();
+    assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 1, "once");
+}

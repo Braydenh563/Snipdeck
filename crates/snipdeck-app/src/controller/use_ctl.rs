@@ -614,6 +614,13 @@ where
     /// clipboard leaves nothing to clear; one whose snapshot or restore failed
     /// ([`UseOutcome::PastedNotRestored`]) leaves the item there, so it is cleared like a copy.
     pub(super) fn schedule_clipboard_clear(&mut self, item: ItemId, outcome: UseOutcome) {
+        if self
+            .store
+            .item(item)
+            .is_ok_and(|i| i.sensitive && i.kind == snipdeck_core::ItemKind::File)
+        {
+            self.secret_files_pasted = true;
+        }
         let life = Duration::from_secs(u64::from(self.settings.clipboard_clear_secs));
         if life.is_zero()
             || matches!(outcome, UseOutcome::Pasted)
@@ -659,6 +666,16 @@ where
     /// has written to since is left alone, as for the timed clear.
     pub fn clear_pending_clipboard_now(&mut self) {
         self.clear_clipboard(true);
+        self.forget_secret_files();
+    }
+
+    /// Deletes the decrypted files a sensitive Files item left in the temp folder when it was
+    /// pasted (the lock and the quit call it). A file the target still holds open stays until
+    /// the next start. Nothing to do when no such item was pasted.
+    pub(super) fn forget_secret_files(&mut self) {
+        if std::mem::take(&mut self.secret_files_pasted) {
+            self.services.clipboard.forget_pasted_files();
+        }
     }
 
     fn clear_clipboard(&mut self, force: bool) {

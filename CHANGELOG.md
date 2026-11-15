@@ -146,6 +146,11 @@ first start.
 - Tab and Shift+Tab reach every field in the item editor, Settings and the fill form, including text fields inside scrolling areas, dropdowns and template choices, and the focus ring is no longer cut off.
 
 ### Fixed
+- **Paste as plain text** now also works on the Panel's Recent rows (`Alt+Enter`, `Alt`+click, and the row
+  menu) and in the Main window (`Alt+Enter`, `Alt`+click). Unverified: whether `Alt`+click shows the target's
+  menu bar on Windows.
+- Locking the library, and quitting, now delete the decrypted files a pasted sensitive Files item left in the
+  temp folder (a file the target still has open stays until the next start). Unverified on Windows.
 - Pasting a Word or Excel selection no longer says the clipboard could not be put back when only a picture
   copy of it (a metafile) was skipped; and when a paste really cannot restore it, a plain toast says so.
   Unverified on Windows.

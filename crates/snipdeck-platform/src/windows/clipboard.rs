@@ -325,6 +325,13 @@ impl WinClipboard {
         self.call(|| unsafe { GetClipboardSequenceNumber() }).ok()
     }
 
+    /// Deletes the decrypted files that file pastes left in `%TEMP%\Snipdeck` (best effort: a
+    /// file another app still has open stays until the next start). Called on lock and quit
+    /// after a sensitive file was pasted.
+    pub fn forget_pasted_files(&mut self) {
+        remove_paste_files();
+    }
+
     /// Empties the clipboard, whatever formats it holds, if its sequence number is still
     /// `sequence`. Whether it did.
     pub fn clear_if_sequence(&mut self, sequence: u32) -> bool {

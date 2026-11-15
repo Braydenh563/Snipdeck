@@ -191,6 +191,9 @@ pub struct Controller<S, C, K, T> {
     /// (if the clipboard still holds exactly that text). Only a keyed hash of the text is kept,
     /// so the secret does not sit in memory for the wait.
     clipboard_clear: Option<PendingClear>,
+    /// A sensitive Files item was pasted: its decrypted files wait in the temp folder until the
+    /// lock or the quit deletes them.
+    secret_files_pasted: bool,
     /// The global hotkeys the last registration could not set up, for the Settings rows.
     hotkey_problems: Vec<crate::host::HotkeyProblem>,
     model: PanelModel,
@@ -470,6 +473,7 @@ where
             clock,
             tz: TimeZone::system(),
             clipboard_clear: None,
+            secret_files_pasted: false,
             model,
             index_cache,
             settings,

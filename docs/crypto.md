@@ -131,8 +131,13 @@ What is **not** guaranteed:
 * **Pasted files.** Pasting a Files item (sensitive or not) writes its files, decrypted, to
   `%TEMP%\Snipdeck\paste-<random>\`, because `CF_HDROP` needs real paths. The folder is kept while
   the clipboard may point into it. The next paste and the next start zero each file, then delete
-  the folder; a file another program has open stays until a later run. Until then the plaintext
-  is readable by that Windows account, and the zeroing has the same limit as the point above.
+  the folder; a file another program has open stays until a later run. After a **sensitive** Files
+  item was pasted, locking the library and quitting also delete these folders (a file the target
+  still has open stays). Until then the plaintext is readable by that Windows account, and the
+  zeroing has the same limit as the point above.
+* **Log-off and shutdown.** The clipboard clear for a copied sensitive item runs when Snipdeck
+  quits normally. When Windows ends the session or the process is killed it does not run, so a value
+  copied in the last seconds can stay on the clipboard (and in a clipboard-history tool).
 * **Process memory** still holds plaintext while an item is shown or decrypted (below).
 
 ## Windows Hello (v1.1)

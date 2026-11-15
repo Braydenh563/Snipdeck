@@ -59,6 +59,8 @@ pub struct FakeClipboard {
     pub unconfirmed_polls: u32,
     /// `write_confirmed` never says yes (the write did not take).
     pub never_confirm: bool,
+    /// How many times the app asked to delete the files that pastes left in the temp folder.
+    pub pasted_files_forgotten: u32,
 }
 
 impl FakeClipboard {
