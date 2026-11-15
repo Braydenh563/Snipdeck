@@ -600,12 +600,17 @@ where
         self.give_up_hello_step(true);
         self.store.lock_key_ring();
         self.index_cache.forget_recent();
+        self.forget_secret_files();
         self.revealed = None;
         self.panel_revealed = None;
         self.sync_recent_gate();
         // An open editor of a sensitive item holds its text in the window: it closes, unsaved.
         if self.close_sensitive_item_editor() {
             self.show_toast(neutral(ToastMessage::LockedEditorClosed));
+        }
+        // The fill form of a sensitive template holds the decrypted template and its answers.
+        if self.close_sensitive_fill() {
+            self.show_toast(neutral(ToastMessage::LockedFillClosed));
         }
         self.refresh_or_notice("locking");
     }

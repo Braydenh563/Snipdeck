@@ -60,6 +60,44 @@ component ToastButton inherits Rectangle {
     }
 }
 
+// The toast's × (always there): dismisses it early. A 28px square, a 2px ring while it has the keyboard focus.
+component ToastClose inherits Rectangle {
+    out property <bool> focused: close-scope.has-focus;
+    callback activated();
+    width: Space.hit;
+    height: Space.hit;
+    border-radius: Radius.md;
+    background: close-touch.pressed ? Theme.ink-pressed : close-touch.has-hover ? Theme.ink-hover : transparent;
+    forward-focus: close-scope;
+    accessible-role: button;
+    accessible-label: @tr("Dismiss");
+    accessible-action-default => { root.activated(); }
+    Icon {
+        source: Icons.x;
+        tint: Theme.text-on-ink;
+        size: 18px;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+    }
+    Rectangle {
+        border-width: close-scope.has-focus ? 2px : 0px;
+        border-color: Theme.toast-action;
+        border-radius: Radius.md;
+        background: transparent;
+    }
+    close-touch := TouchArea { clicked => { root.activated(); } }
+    close-scope := FocusScope {
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n" || event.text == Key.Escape) {
+                root.activated();
+                return accept;
+            }
+            return reject;
+        }
+    }
+}
+
 // DESIGN.md §4 Toast, the ink toast (Panel v2 spec 2.8): 40 tall, `ink.default` fill, `text.on-ink`, radius 8, the action
 // in `toast.action`. Transient results ("Copied", "Pasted into Notepad"); the kind is carried by an icon only for success
 // (check) and danger (warning), neutral has none. A non-empty `undo-label` adds an action button. Announced politely.
@@ -75,12 +113,15 @@ export component Toast inherits Rectangle {
     out property <duration> hold-duration: 2500ms;
     callback undo();
     callback edit();
+    // The × was used: the host drops the toast now.
+    callback dismissed();
     // The pointer is on the toast or its button has focus: the host keeps the toast up while it is.
     callback hover-changed(hovered: bool);
 
     // An ancestor TouchArea keeps its hover while the pointer is on a child, so the toast does not
     // flicker as the pointer crosses onto the action, and the button still gets its clicks.
-    property <bool> button-focus: root.undo-focus || root.edit-focus;
+    property <bool> button-focus: root.undo-focus || root.edit-focus || root.close-focus;
+    property <bool> close-focus: false;
     property <bool> undo-focus: false;
     property <bool> edit-focus: false;
     property <bool> over: area.has-hover || root.button-focus;
@@ -136,7 +177,7 @@ export component Toast inherits Rectangle {
     area := TouchArea {
         row := HorizontalLayout {
             padding-left: Space.s3;
-            padding-right: (root.undo-label != "" || root.edit-label != "") ? Space.s1 : Space.s3;
+            padding-right: Space.s1;
             spacing: Space.s2;
             if root.has-icon: Rectangle {
                 // The icon grows with the text size, like the message beside it.
@@ -169,6 +210,14 @@ export component Toast inherits Rectangle {
                 label: root.edit-label;
                 activated => { root.edit(); }
                 changed focused => { root.edit-focus = self.focused; }
+            }
+            Rectangle {
+                width: Space.hit;
+                ToastClose {
+                    y: (parent.height - self.height) / 2;
+                    activated => { root.dismissed(); }
+                    changed focused => { root.close-focus = self.focused; }
+                }
             }
         }
     }

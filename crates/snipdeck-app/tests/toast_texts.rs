@@ -28,6 +28,7 @@ use support::on_ui_thread;
 const fn position(message: &ToastMessage) -> usize {
     match message {
         ToastMessage::Pasted { .. } => 0,
+        ToastMessage::PastedNotRestored { .. } => 107,
         ToastMessage::Copied => 1,
         ToastMessage::CopiedElevated { .. } => 2,
         ToastMessage::CopiedNothingFocused { .. } => 3,
@@ -44,6 +45,7 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::MasterPasswordRemovedNotOpen => 14,
         ToastMessage::UnlockFirst => 15,
         ToastMessage::LockedEditorClosed => 16,
+        ToastMessage::LockedFillClosed => 106,
         ToastMessage::Saved { .. } => 17,
         ToastMessage::NothingToSave => 18,
         ToastMessage::TooLargeToSave => 19,
@@ -136,7 +138,7 @@ const fn position(message: &ToastMessage) -> usize {
     }
 }
 
-const VARIANTS: usize = 106;
+const VARIANTS: usize = 108;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -149,6 +151,7 @@ fn samples() -> Vec<ToastMessage> {
     use ToastMessage as M;
     vec![
         M::Pasted { app: s("Outlook") },
+        M::PastedNotRestored { app: s("Outlook") },
         M::Copied,
         M::CopiedElevated { app: s("Outlook") },
         M::CopiedNothingFocused { app: s("Outlook") },
@@ -165,6 +168,7 @@ fn samples() -> Vec<ToastMessage> {
         M::MasterPasswordRemovedNotOpen,
         M::UnlockFirst,
         M::LockedEditorClosed,
+        M::LockedFillClosed,
         M::Saved { list: s("Notes") },
         M::NothingToSave,
         M::TooLargeToSave,
@@ -353,6 +357,14 @@ fn what_a_toast_carries_reaches_its_sentence() {
             "Pasted into Outlook"
         );
         assert_eq!(said(ToastMessage::Pasted { app: String::new() }), "Pasted");
+        assert_eq!(
+            said(ToastMessage::PastedNotRestored { app: s("Outlook") }),
+            "Pasted into Outlook. Your earlier clipboard could not be put back."
+        );
+        assert_eq!(
+            said(ToastMessage::PastedNotRestored { app: String::new() }),
+            "Pasted. Your earlier clipboard could not be put back."
+        );
         assert_eq!(
             said(ToastMessage::CopiedElevated { app: String::new() }),
             "Copied. That app runs as administrator, so Snipdeck can't paste into it."

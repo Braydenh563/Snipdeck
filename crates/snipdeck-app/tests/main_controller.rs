@@ -215,6 +215,27 @@ fn use_pastes_and_counts_through_the_controller_and_copy_only_copies() {
 }
 
 #[test]
+fn use_plain_pastes_without_formatting_and_counts() {
+    let (mut ctl, _clock) = rig();
+    let screen = ctl.main_screen();
+    let at = row_of(&screen, "Out of office");
+    let id = match screen.rows[at].key {
+        snipdeck_app::main_window::Key::Item(id) => id,
+        other => panic!("{other:?}"),
+    };
+    ctl.main_action(MainAction::UsePlain, at).expect("a use");
+    assert_eq!(ctl.store().item(id).unwrap().use_count, 1);
+    let written = &ctl.services().clipboard.written;
+    assert!(
+        written.iter().all(|p| p
+            .data()
+            .iter()
+            .all(|d| matches!(d, snipdeck_platform::payload::Data::Text(_)))),
+        "only plain text went out"
+    );
+}
+
+#[test]
 fn pin_toggles_one_row_or_the_whole_selection_and_the_panel_follows() {
     let mut ctl = seeded();
     let screen = ctl.main_screen();

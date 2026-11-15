@@ -383,7 +383,7 @@ where
             }
             RecentKind::Image => match self.store.recent_payload(entry.id) {
                 Ok(Some(RecentPayload::Image(png))) => {
-                    capture::capture_image(&mut self.store, &to, png, now)
+                    capture::capture_image(&mut self.store, &to, png, &self.pasted_image_title, now)
                 }
                 Ok(_) => Ok(Captured::Empty),
                 Err(e) => Err(e),

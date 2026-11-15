@@ -191,6 +191,9 @@ pub struct Controller<S, C, K, T> {
     /// (if the clipboard still holds exactly that text). Only a keyed hash of the text is kept,
     /// so the secret does not sit in memory for the wait.
     clipboard_clear: Option<PendingClear>,
+    /// A sensitive Files item was pasted: its decrypted files wait in the temp folder until the
+    /// lock or the quit deletes them.
+    secret_files_pasted: bool,
     /// The global hotkeys the last registration could not set up, for the Settings rows.
     hotkey_problems: Vec<crate::host::HotkeyProblem>,
     model: PanelModel,
@@ -285,6 +288,8 @@ pub struct Controller<S, C, K, T> {
     colour: snipdeck_colour::Rgba8,
     colour_other: snipdeck_colour::Rgba8,
     colours_list_name: String,
+    /// The title of an item made from a picture with no file name, in the language shown.
+    pasted_image_title: String,
     /// The list `make_list_for_save` made last, taken by the save that asked for it.
     colour_made_list: Option<ListId>,
     /// The colour items of the home list, kept until the library changes (every redraw of the
@@ -466,6 +471,7 @@ where
             clock,
             tz: TimeZone::system(),
             clipboard_clear: None,
+            secret_files_pasted: false,
             model,
             index_cache,
             settings,
@@ -515,6 +521,7 @@ where
             colour,
             colour_other,
             colours_list_name: String::from("Colours"),
+            pasted_image_title: crate::capture::PASTED_IMAGE_TITLE.to_owned(),
             colour_made_list: None,
             colour_saved_cache: std::cell::RefCell::new(None),
             session: Session::default(),

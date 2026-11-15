@@ -14,7 +14,7 @@ Depth is soft and has only one level, so items read as things you can pick up. T
 precise and tabular. It should feel like a well-made physical tool, not a dashboard.
 
 **Signature details:** these make it Snipdeck rather than a generic list app.
-1. **Number cell.** Panel and Picker rows are numbered 1–9 in a mono cell before the tile (the quick-use key).
+1. **Number cell.** Panel and Picker rows are numbered 1–9 in a mono cell before the tile (shown with `Alt`: the quick-use key is `Alt+1` to `Alt+9`).
 2. **Ink, not blue, for commitment.** Primary buttons are near-black ink. Blue only ever means *selected, focused, a link, or a template field*.
 3. **The deck edge.** When more cards sit below the fold, two offset card edges peek out at the bottom of the list instead of a fade.
 4. **Card pull.** Using an item lifts its card slightly, as if you'd pulled it from the deck.
@@ -248,7 +248,7 @@ One row, `components/item-card.slint`, used by the Panel, the Picker and the Mai
 | compact | 36 (52 with a where line); title and preview on one line | 24×24, radius 4 | Picker (place inline), Panel Compact, Main compact |
 | tile | min 96 | 24×24, radius 4 | Panel Cards (149 wide, tile on top); Main cards (tile inline with the title, `inline-tile`) |
 
-- **Number cell:** 16px plus a 4px gap before the tile, the quick-use number (1–9) in `type.xs` mono. Panel and Picker only (`numbered`); the Main window leaves it out. 10+ stay empty; the setting "Quick-use numbers" removes it.
+- **Number cell:** 16px plus a 4px gap before the tile, the quick-use number (1–9, used with `Alt`) in `type.xs` mono. Panel and Picker only (`numbered`); the Main window leaves it out. 10+ stay empty; the setting "Quick-use numbers" removes it.
 - **Type tile (every kind, plain text included):** a Phosphor glyph (16) on the kind's tile fill (*Item type tiles*). Images show a centre crop with a 1px `border.subtle` instead. The name of the kind is the tile's tooltip and accessible name.
 
   | Content | Preview line |
@@ -287,6 +287,7 @@ One row, `components/item-card.slint`, used by the Panel, the Picker and the Mai
 - Width: default 320, min 260, max 480. Height: free. Floating and docked sizes are separate and each is kept until resized; "Docked panel uses the full edge" stretches a side dock to the work area.
 - The top 24px is a grab strip across the whole width (a 36 x 4 pill in its middle, `text-tertiary`, `text-primary` on hover, accent while dragged; move cursor). It and the header's empty space drag the Panel. Its tooltip says what a drag does (floating: "Drag to move. Hold at a screen edge to dock."; docked: "Drag along the edge to move. Pull away from the edge to float."), and goes when a drag starts. It has no accessible role: it only answers a pointer drag, and the keyboard docks and floats the Panel from the More menu.
 - The Panel menu (kebab) opens under the header. Too tall for that, it uses its dense 28px rows; still too tall, it rises over the header; it scrolls only when the window itself is too short for it. A second click on the kebab closes the menu even where the menu has risen over it.
+- **Click-off strip (decided):** a Panel menu never reaches the bottom 48px (`Space.menu-clear`). Menus are dismissed by clicking off them, and a tall menu in a short Panel used to fill the whole window, leaving nowhere to click (owner report). A menu is moved up, or scrolls with its cue, only when it would otherwise cover that strip; one that fits above it stays where the pointer put it. Main-window menus are capped to the window height.
 - Header: 40px of controls under the 24px grab strip (64px in all). Tab bar: 32px. Padding: 8px.
 - **Target footer** (32px): "Pastes into **Outlook** · New message". It always shows where a click will go, and reads "Copies to clipboard" when no target is known.
 - Docked to an edge it auto-hides to a **6px tab** in the board's accent colour, and reveals on hover after 150ms or by hotkey. It docks only when the cursor itself is held at the screen edge (preview: accent frame and "Release to dock"); the tab reveals when the pointer is on it, or at the screen edge within 12px of its ends. The tab is there whenever the Panel is docked and tucks, a hidden start included. While a full-screen app covers the Panel's own monitor the docked Panel is not topmost and does not reveal under the pointer; the hotkey still opens it.

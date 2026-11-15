@@ -22,6 +22,9 @@ first start.
   frame with "Release to dock" shows where it will go; pull back to cancel. A docked Panel tucks into a thin tab
   that opens on hover, click or both, with hover and leave delays, and stays open while you use it. Floating and
   docked sizes are remembered apart for each monitor. The top of the Panel is a full-width grab strip.
+- **Paste as plain text**: `Alt+Enter` or `Alt`+click in the Panel and the Picker pastes one item without its
+  formatting, and the editor has an **Always paste as plain text** switch per item (SPEC 5.1a). Items imported with
+  that setting now honour it. Unverified: whether `Alt`+click shows the target's menu bar on Windows.
 - **Preview** in the item editor (`Ctrl+P`): see the item as the Panel and the Main list draw it.
 - **The Picker** (`Ctrl+Shift+Space`), the template fill form with a live preview, and quick capture
   (`Ctrl+Shift+2`). `Alt+1` to `Alt+9` use that row. **Paste next** and **paste stack**.
@@ -145,6 +148,30 @@ first start.
 - Tab and Shift+Tab reach every field in the item editor, Settings and the fill form, including text fields inside scrolling areas, dropdowns and template choices, and the focus ring is no longer cut off.
 
 ### Fixed
+- **Paste as plain text** now also works on the Panel's Recent rows (`Alt+Enter`, `Alt`+click, and the row
+  menu) and in the Main window (`Alt+Enter`, `Alt`+click). Unverified: whether `Alt`+click shows the target's
+  menu bar on Windows.
+- Locking the library, and quitting, now delete the decrypted files a pasted sensitive Files item left in the
+  temp folder (a file the target still has open stays until the next start). Unverified on Windows.
+- Pasting a Word or Excel selection no longer says the clipboard could not be put back when only a picture
+  copy of it (a metafile) was skipped; and when a paste really cannot restore it, a plain toast says so.
+  Unverified on Windows.
+- Typing in the fill form of a sensitive item now counts as activity, so the master-password idle lock does
+  not fire mid-form.
+- A screenshot saved from the clipboard is titled in the language shown, not always in English.
+- Pasting files into the Panel or Main window reads them in the background, like dropping them, so a big
+  file no longer freezes the window.
+- Items left in Recent past their days are removed at the next maintenance tick, not only at the next copy.
+- Undo of an edit to a formatted item (HTML, RTF) brings the formatting back with the text.
+- The "too big" message for one big file names the same size in the editor wherever it was refused.
+- Quitting Snipdeck clears a sensitive copy that was still waiting for its timer, if the clipboard still holds it.
+- The idle lock closes the fill form of a sensitive template, and says so.
+- A paste whose previous clipboard could not be kept whole (a very large image, or a metafile) is reported as not restored, instead of quietly putting back only part of it. Unverified on Windows.
+- Pasted files are zeroed before their temporary folder is deleted. Unverified on Windows.
+- A backup or export that fails because an attachment is too big for the archive (64 MB a file) names the item in the toast and the log; the editor refuses such an attachment up front.
+- A library with more than 1 GB of attachments can be backed up and exported: the total limit of an archive is now 8 GB (a backup is read back under the same limit). Going over it says so, instead of naming whichever item crossed it.
+- A draft too big to be read back is no longer kept, and a stale one is zeroed on clear.
+- Template errors in the item editor and the Recent labels are translatable.
 - Quick add in the Panel takes `Ctrl+V` and closes once the item is created.
 - Drag to reorder: an item can be dropped into the first slot of a list, and the gaps between rows and tiles
   take a drop.

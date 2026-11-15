@@ -441,6 +441,12 @@ where
             .collect()
     }
 
+    /// Sets the title an item made from a picture without a file name gets, translated by the
+    /// window layer.
+    pub fn set_pasted_image_title(&mut self, title: &str) {
+        title.clone_into(&mut self.pasted_image_title);
+    }
+
     /// Sets the words a list made by "Save to… New list…" is named from, translated by the window
     /// layer.
     pub fn set_new_list_base(&mut self, base: &str) {

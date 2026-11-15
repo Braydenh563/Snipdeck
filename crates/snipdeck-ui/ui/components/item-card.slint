@@ -251,6 +251,9 @@ export component ItemCard inherits Rectangle {
 
     callback use();
     callback copy();
+    // Alt+click: paste as plain text (SPEC 5.1a). Only fires where `plain-click` is on (the Panel and the Picker).
+    callback use-plain();
+    in property <bool> plain-click: false;
     // Row: the Edit action.
     callback edit();
     // Row: a tooltip should open (or close) for `text`, centred on x (window coordinates) above y.
@@ -850,6 +853,8 @@ export component ItemCard inherits Rectangle {
                             root.pull();
                             if (event.modifiers.shift) {
                                 root.copy();
+                            } else if (root.plain-click && event.modifiers.alt) {
+                                root.use-plain();
                             } else {
                                 root.use();
                             }

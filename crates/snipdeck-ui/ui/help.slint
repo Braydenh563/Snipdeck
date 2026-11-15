@@ -71,6 +71,7 @@ export component HelpWindow inherits Window {
     // The Microsoft Store link and the third-party notices are hidden until the host has them.
     in property <bool> show-store-link: false;
     in property <bool> has-notices: false;
+    callback toast-dismissed();
     in property <string> toast-text;
     in property <ToastKind> toast-kind: ToastKind.neutral;
     in property <ToastPhase> toast-phase: ToastPhase.hold;
@@ -527,6 +528,7 @@ export component HelpWindow inherits Window {
         text: root.toast-text;
         kind: root.toast-kind;
         phase: root.toast-phase;
+        dismissed => { root.toast-dismissed(); }
         width: min(self.preferred-width, 480px, root.width - 2 * Space.s4);
         height: self.preferred-height;
         x: (root.width - self.width) / 2;

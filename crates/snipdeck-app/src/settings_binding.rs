@@ -1876,6 +1876,8 @@ where
                 core.master_submitted(mode, &current, &new, &again);
             });
         }
+        wire!(on_toast_dismissed, |core| core
+            .act(Controller::toast_dismiss));
         wire!(on_master_unlock_requested, |core| core
             .act(Controller::request_unlock));
         window.on_master_strength(|password| crate::master_password::strength(&password).level());

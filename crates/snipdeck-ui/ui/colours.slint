@@ -86,6 +86,8 @@ export global ColourTexts {
     pure public function list-in-board(board: string, list: string) -> string { return @tr("{} · {}", board, list); }
     pure public function new-list-entry() -> string { return @tr("New list…"); }
     pure public function new-list-name() -> string { return @tr("New list"); }
+    // The title of an item made from a picture that has no file name (it is saved with the item).
+    pure public function pasted-image-title() -> string { return @tr("Pasted image"); }
     pure public function surface-square(sat: int, bri: int) -> string {
         return @tr("Saturation {} percent, brightness {} percent", sat, bri);
     }
@@ -1593,9 +1595,9 @@ export component ColoursView inherits Rectangle {
     // A chip's menu: Make current, Copy as…, Save to Colours, Save to…, Remove from recents (recents only).
     if ColourState.popup == 1: Menu {
         x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
-        y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2);
+        y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2 - Space.menu-clear);
         max-w: root.width - Space.s4;
-        menu-max-h: root.height - Space.s4;
+        menu-max-h: root.height - Space.s4 - Space.menu-clear;
         label: @tr("Colour");
         icons: false;
         entries: [
@@ -1629,9 +1631,9 @@ export component ColoursView inherits Rectangle {
     // A format row's menu.
     if ColourState.popup == 2: Menu {
         x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
-        y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2);
+        y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2 - Space.menu-clear);
         max-w: root.width - Space.s4;
-        menu-max-h: root.height - Space.s4;
+        menu-max-h: root.height - Space.s4 - Space.menu-clear;
         label: @tr("Format");
         icons: false;
         entries: [
@@ -1665,9 +1667,9 @@ export component ColoursView inherits Rectangle {
     // Save to…: every list of every board, then "New list…" (built by the host).
     if ColourState.popup == 3: Menu {
         x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
-        y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2);
+        y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2 - Space.menu-clear);
         max-w: root.width - Space.s4;
-        menu-max-h: root.height - Space.s4;
+        menu-max-h: root.height - Space.s4 - Space.menu-clear;
         label: @tr("Save to");
         icons: false;
         entries: ColourState.save-targets;
@@ -1687,9 +1689,9 @@ export component ColoursView inherits Rectangle {
     // Copy as…: the chip's colour in one of the formats.
     if ColourState.popup == 4: Menu {
         x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
-        y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2);
+        y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2 - Space.menu-clear);
         max-w: root.width - Space.s4;
-        menu-max-h: root.height - Space.s4;
+        menu-max-h: root.height - Space.s4 - Space.menu-clear;
         label: @tr("Copy as");
         icons: false;
         entries: ColourState.copy-as;

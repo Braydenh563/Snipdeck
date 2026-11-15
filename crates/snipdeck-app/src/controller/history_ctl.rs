@@ -29,8 +29,19 @@ pub(super) fn snap(item: &Item) -> Snap {
     Snap {
         item: item.clone(),
         text: None,
+        formats: None,
         trigger: None,
     }
+}
+
+/// Whether the bytes of every text, HTML, RTF and picture format in `formats` can still be read
+/// (blob files go when nothing refers to them for long enough).
+fn readable(b: &impl snipdeck_store::BlobStore, formats: &snipdeck_core::Formats) -> bool {
+    use snipdeck_core::Format;
+    formats.iter().all(|format| match format {
+        Format::Text(c) | Format::Html(c) | Format::Rtf(c) | Format::Png(c) => b.read(c).is_ok(),
+        Format::Files(files) => files.iter().all(|f| b.read(f.content()).is_ok()),
+    })
 }
 
 /// Where item `id` sits now: its list and the sibling before it.
@@ -105,14 +116,16 @@ fn apply(b: &mut Batch<'_>, change: &Change, now: Timestamp) -> snipdeck_store::
             }
         }
         Change::Update { after, .. } => {
-            let formats = match after.text.as_deref() {
-                Some(text) => Some(snipdeck_core::Formats::new(vec![
+            let formats = match (after.formats.as_ref(), after.text.as_deref()) {
+                // The formats the edit dropped, while all their bytes are still stored.
+                (Some(kept), _) if readable(b, kept) => Some(kept.clone()),
+                (_, Some(text)) => Some(snipdeck_core::Formats::new(vec![
                     snipdeck_core::Format::Text(snipdeck_store::BlobStore::put(
                         b,
                         text.as_bytes().to_vec(),
                     )?),
                 ])?),
-                None => None,
+                (_, None) => None,
             };
             b.update_item(&after.item, formats.as_ref())?;
             if let Some(trigger) = &after.trigger {

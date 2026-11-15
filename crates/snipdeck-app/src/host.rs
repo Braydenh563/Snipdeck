@@ -83,6 +83,9 @@ pub trait ClipboardText {
     /// Empties the clipboard, whatever formats it holds, if its sequence number is still
     /// `sequence`. Whether it did.
     fn clear_if_sequence(&mut self, sequence: u32) -> bool;
+    /// Deletes the decrypted files that earlier file pastes left in the temp folder (a file
+    /// another app still has open stays). Nothing for a clipboard that makes none.
+    fn forget_pasted_files(&mut self) {}
 }
 
 #[cfg(windows)]
@@ -113,6 +116,9 @@ impl ClipboardText for snipdeck_platform::windows::clipboard::WinClipboard {
     }
     fn clear_if_sequence(&mut self, sequence: u32) -> bool {
         Self::clear_if_sequence(self, sequence)
+    }
+    fn forget_pasted_files(&mut self) {
+        Self::forget_pasted_files(self);
     }
 }
 
@@ -172,6 +178,9 @@ impl ClipboardText for snipdeck_platform::testing::FakeClipboard {
     }
     fn written_sequence(&mut self) -> Option<u32> {
         self.write_sequence
+    }
+    fn forget_pasted_files(&mut self) {
+        self.pasted_files_forgotten += 1;
     }
     fn clear_if_sequence(&mut self, sequence: u32) -> bool {
         if self.sequence != sequence || self.busy_for_clear() {

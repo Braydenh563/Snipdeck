@@ -48,7 +48,6 @@ the Windows job compiles the workspace, and the SPEC's M1-relevant behaviours ea
 | CopyQ: the binary `.cpq` export is not parsed; JSON from `copyq eval` is, and is untested against a live CopyQ | Importer may not match real CopyQ output | Test with a real CopyQ install (Windows wizard step) or drop CopyQ from v1 |
 | Windows clipboard history importer not done | Listed in SPEC §5.9 | Needs the Windows platform layer (M2) |
 | `DataKey` is not `Clone`; portable uses `Library::data_key` / `KeySource::Library` | Awkward borrow | Revisit when the app crate owns the key lifecycle (M2/M5) |
-| Release builds need `SNIPDECK_LICENCE_PUBLIC_KEY` (guard, see `docs/licensing.md`); release-mode tests need a throwaway key | Intentional fail-closed behaviour | Set the real key in the M6 release pipeline; keep CI debug-only until then |
 | DPAPI `KeyProvider`, Argon2 timing on Windows | Provider contract is in `docs/crypto.md` | M2 |
 
 ## Windows gates

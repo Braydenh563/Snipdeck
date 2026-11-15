@@ -200,7 +200,7 @@ pub fn bring_to_foreground(hwnd: isize) -> bool {
                     }
                     ActivateStep::Flash => {
                         let info = FLASHWINFO {
-                            cbSize: size_of::<FLASHWINFO>() as u32,
+                            cbSize: u32::try_from(size_of::<FLASHWINFO>()).unwrap_or(0),
                             hwnd: handle,
                             dwFlags: FLASHW_ALL | FLASHW_TIMERNOFG,
                             uCount: 3,

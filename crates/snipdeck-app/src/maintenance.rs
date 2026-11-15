@@ -155,6 +155,11 @@ pub trait Jobs {
     ///
     /// A message for the log.
     fn check_integrity(&mut self) -> Result<Vec<String>, String>;
+
+    /// Applies the Recent inbox's retention (the entry cap and the days kept), so a long session
+    /// does not keep entries past their days and switching the inbox off does not stop it.
+    /// Best effort and quiet: the inbox is a convenience.
+    fn prune_recent(&mut self);
 }
 
 /// Why a job failed: the cause the person can act on, and the words for the log.
@@ -329,6 +334,10 @@ impl Maintenance {
         let mut outcomes = Vec::new();
         let mut changed = false;
 
+        // Every tick, not on a schedule: it is a quiet query, and the entries' days are counted
+        // from the clock now.
+        jobs.prune_recent();
+
         if !self.crash_checked {
             self.crash_checked = true;
             if let Some(newest) =
@@ -489,6 +498,10 @@ where
             .check_integrity()
             .map_err(|e| e.to_string())
     }
+
+    fn prune_recent(&mut self) {
+        self.controller.prune_recent();
+    }
 }
 
 /// Runs one [`Maintenance::tick`] on `controller` and hands each outcome to
@@ -564,6 +577,7 @@ mod tests {
         purges: Vec<Timestamp>,
         checks: usize,
         sweeps: usize,
+        prunes: usize,
         gc_result: Option<Result<usize, String>>,
         backup_result: Option<Result<BackupResult, JobError>>,
         purge_result: Option<Result<usize, String>>,
@@ -589,6 +603,9 @@ mod tests {
             self.checks += 1;
             self.integrity_result.clone().unwrap_or(Ok(Vec::new()))
         }
+        fn prune_recent(&mut self) {
+            self.prunes += 1;
+        }
     }
 
     fn rig(dir: &Path) -> (Maintenance, FixedClock) {
@@ -613,6 +630,17 @@ mod tests {
                 MaintenanceOutcome::IntegrityOk,
             ]
         );
+    }
+
+    #[test]
+    fn every_tick_prunes_the_recent_inbox_even_when_nothing_else_is_due() {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut m, clock) = rig(dir.path());
+        let mut jobs = FakeJobs::default();
+        m.tick(&mut jobs);
+        clock.set(at(t0() + 60));
+        assert!(m.tick(&mut jobs).is_empty(), "no other job is due");
+        assert_eq!(jobs.prunes, 2);
     }
 
     #[test]

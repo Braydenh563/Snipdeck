@@ -21,6 +21,7 @@ export component ToastWindow inherits Window {
     in property <string> edit-label;
     callback undo();
     callback edit();
+    callback dismissed();
     callback hover-changed(hovered: bool);
     // The size that fits the toast; the host sizes and places the window from it.
     out property <length> content-width: min(toast.preferred-width, 480px * SystemLook.text-scale);
@@ -44,6 +45,7 @@ export component ToastWindow inherits Window {
         edit-label: root.edit-label;
         undo => { root.undo(); }
         edit => { root.edit(); }
+        dismissed => { root.dismissed(); }
         hover-changed(h) => { root.hover-changed(h); }
     }
 }

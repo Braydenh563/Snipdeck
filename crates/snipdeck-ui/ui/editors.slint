@@ -769,6 +769,8 @@ export component ItemEditor inherits Window {
     // The text (kinds 0 to 3). Image and file items have no text to edit.
     in-out property <string> content;
     in-out property <bool> sensitive: false;
+    // "Always paste as plain text": a paste of this item drops its formatting (SPEC 5.1a); a copy keeps it.
+    in-out property <bool> always-plain: false;
     // "More options" (Title, Colour, Tags, Privacy) is open; the host remembers it in the settings.
     in-out property <bool> more-open: false;
     callback more-toggled(open: bool);
@@ -1439,6 +1441,21 @@ export component ItemEditor inherits Window {
                             accessible-description: root.sensitive-help;
                             text: @tr("Sensitive item");
                             checked <=> root.sensitive;
+                            enabled: root.text-kind;
+                            toggled(v) => { root.touch(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+
+                    FormField {
+                        label: @tr("Pasting");
+                        helper: @tr("A paste leaves out the formatting and sends only the text. Alt+Enter or Alt+click does this for one paste.");
+                        always-plain-toggle := Toggle {
+                            accessible-description: @tr("A paste leaves out the formatting and sends only the text. Alt+Enter or Alt+click does this for one paste.");
+                            text: @tr("Always paste as plain text");
+                            checked <=> root.always-plain;
                             enabled: root.text-kind;
                             toggled(v) => { root.touch(); }
                             changed has-focus => {

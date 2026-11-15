@@ -578,6 +578,24 @@ fn the_toast_shows_in_its_own_window_while_the_panel_is_hidden() {
 }
 
 #[test]
+fn the_toast_windows_close_button_drops_the_toast_and_hides_the_window() {
+    on_ui_thread(|| {
+        let r = rig();
+        let w = r.open();
+        type_text(w.window(), "out of office");
+        press(w.window(), &key(Key::Return));
+        let t = r.toasts.window().expect("a toast window was made");
+        assert!(t.window().is_visible());
+        t.invoke_dismissed();
+        assert!(!t.window().is_visible(), "the window went with the toast");
+        assert!(
+            r.ctl.borrow().view().toast.is_none(),
+            "the controller dropped it"
+        );
+    });
+}
+
+#[test]
 fn the_toast_window_stays_away_while_the_panel_shows_it() {
     on_ui_thread(|| {
         let r = rig();

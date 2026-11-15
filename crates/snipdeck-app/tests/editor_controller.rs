@@ -1515,6 +1515,7 @@ fn typed_default() -> EditorInput {
         title: String::new(),
         content: "x".to_owned(),
         sensitive: false,
+        always_plain: false,
         list_index: 0,
         source_path: String::new(),
         label: None,
@@ -1674,4 +1675,27 @@ fn a_sensitive_item_keeps_no_trigger() {
         "saved: the code was dropped, not refused"
     );
     assert_eq!(r.ctl.store().triggers().expect("all").len(), 0);
+}
+
+#[test]
+fn the_always_paste_as_plain_text_switch_is_saved_and_reopens_as_it_was() {
+    let mut r = rig();
+    let ctl = &mut r.ctl;
+    ctl.open_new_item(Origin::Main);
+    let v = view(ctl);
+    assert!(!v.fields.always_plain, "off by default");
+    ctl.item_editor_save(&EditorInput {
+        always_plain: true,
+        ..typed(&v, "Letter", "Dear all")
+    });
+    let id = id_of(ctl, "Letter");
+    assert!(ctl.store().item(id).expect("item").always_plain);
+    ctl.open_item_editor(id);
+    let v = view(ctl);
+    assert!(v.fields.always_plain, "the editor shows it on");
+    ctl.item_editor_save(&EditorInput {
+        always_plain: false,
+        ..v.fields
+    });
+    assert!(!ctl.store().item(id).expect("item").always_plain);
 }
