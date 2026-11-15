@@ -14,7 +14,7 @@ Depth is soft and has only one level, so items read as things you can pick up. T
 precise and tabular. It should feel like a well-made physical tool, not a dashboard.
 
 **Signature details:** these make it Snipdeck rather than a generic list app.
-1. **Number cell.** Panel and Picker rows are numbered 1–9 in a mono cell before the tile (the quick-use key).
+1. **Number cell.** Panel and Picker rows are numbered 1–9 in a mono cell before the tile (shown with `Alt`: the quick-use key is `Alt+1` to `Alt+9`).
 2. **Ink, not blue, for commitment.** Primary buttons are near-black ink. Blue only ever means *selected, focused, a link, or a template field*.
 3. **The deck edge.** When more cards sit below the fold, two offset card edges peek out at the bottom of the list instead of a fade.
 4. **Card pull.** Using an item lifts its card slightly, as if you'd pulled it from the deck.
@@ -249,7 +249,7 @@ One row, `components/item-card.slint`, used by the Panel, the Picker and the Mai
 | compact | 36 (52 with a where line); title and preview on one line | 24×24, radius 4 | Picker (place inline), Panel Compact, Main compact |
 | tile | min 96 | 24×24, radius 4 | Panel Cards (149 wide, tile on top); Main cards (tile inline with the title, `inline-tile`) |
 
-- **Number cell:** 16px plus a 4px gap before the tile, the quick-use number (1–9) in `type.xs` mono. Panel and Picker only (`numbered`); the Main window leaves it out. 10+ stay empty; the setting "Quick-use numbers" removes it.
+- **Number cell:** 16px plus a 4px gap before the tile, the quick-use number (1–9, used with `Alt`) in `type.xs` mono. Panel and Picker only (`numbered`); the Main window leaves it out. 10+ stay empty; the setting "Quick-use numbers" removes it.
 - **Type tile (every kind, plain text included):** a Phosphor glyph (16) on the kind's tile fill (*Item type tiles*). Images show a centre crop with a 1px `border.subtle` instead. The name of the kind is the tile's tooltip and accessible name.
 
   | Content | Preview line |

@@ -118,8 +118,8 @@ FTS5 option or the checkpoint off makes it fail.
 What is **not** guaranteed:
 
 * **Copies made earlier keep the plaintext:** the `snipdeck.db.pre-vN.bak` migration backups,
-  the daily `.snipdeck` backups (SPEC §5.7a), OS file history, cloud sync of a relocated data
-  folder, and file-system snapshots. The app should tell the user when they mark an existing
+  the daily `.snipdeck` backups (SPEC §5.7a), OS file history, cloud sync of the data
+  folder (a relocatable data folder is planned for v1.x), and file-system snapshots. The app should tell the user when they mark an existing
   item sensitive.
 * **Below the file system.** Zeroing a page or a file rewrites it through the file system; a
   copy-on-write file system, SSD wear levelling or a journaling layer may keep the old blocks.
