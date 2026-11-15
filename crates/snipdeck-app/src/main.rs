@@ -426,9 +426,9 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         })
     };
     // A window that cannot be opened says so in a toast (the release build has no console).
-    let window_failed: Rc<dyn Fn()> = {
+    let window_failed: Rc<dyn Fn(snipdeck_app::toast::ToastMessage)> = {
         let controller = Rc::downgrade(&controller);
-        Rc::new(move || {
+        Rc::new(move |message| {
             let controller = controller.clone();
             // Later: the effect runs inside a controller call, which still holds its borrow.
             slint::Timer::single_shot(std::time::Duration::ZERO, move || {
@@ -437,7 +437,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
                 {
                     controller.show_toast(snipdeck_app::toast::Toast {
                         kind: snipdeck_app::toast::ToastKind::Danger,
-                        message: snipdeck_app::toast::ToastMessage::WindowNotShown,
+                        message,
                     });
                 }
                 with_binding(Binding::redraw);
@@ -537,7 +537,12 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
             &controller,
         )
     });
-    let ran = slint::run_event_loop_until_quit().map_err(|e| format!("event loop: {e}"));
+    // The Panel is up by now: a failure of the loop at quit is logged, not reported as "could
+    // not start" (that message box is for failures before the first window).
+    let ran = slint::run_event_loop_until_quit();
+    if let Err(e) = &ran {
+        eprintln!("snipdeck: event loop: {e}");
+    }
     // An editor left open keeps what was typed since the last draft.
     item_editor.flush_draft();
     // A sensitive copy still waiting for its clear timer would outlive the app.
@@ -546,7 +551,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     if let Err(e) = controller.borrow_mut().flush_settings() {
         eprintln!("snipdeck: could not save the settings: {e}");
     }
-    ran
+    Ok(())
 }
 
 type SharedTray = Rc<RefCell<Option<Box<dyn snipdeck_platform::tray::Tray>>>>;
@@ -621,7 +626,7 @@ fn effect_handler(
     help_ui: Rc<HelpUi>,
     unlock_ui: Rc<UnlockUi>,
     attach_panel: Rc<dyn Fn()>,
-    window_failed: Rc<dyn Fn()>,
+    window_failed: Rc<dyn Fn(snipdeck_app::toast::ToastMessage)>,
 ) -> impl Fn(&Effect) + 'static {
     move |effect| match effect {
         Effect::Quit => {
@@ -652,7 +657,7 @@ fn effect_handler(
         Effect::OpenMainWindow => {
             if let Err(e) = main_ui.open() {
                 eprintln!("snipdeck: cannot open the main window: {e}");
-                window_failed();
+                window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
             }
         }
         // The Panel's "Commands…" and Ctrl+K: the Main window, with the palette open.
@@ -664,13 +669,13 @@ fn effect_handler(
             }
             Err(e) => {
                 eprintln!("snipdeck: cannot open the command palette: {e}");
-                window_failed();
+                window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
             }
         },
         Effect::OpenSettings => {
             if let Err(e) = settings_ui.open() {
                 eprintln!("snipdeck: cannot open the settings: {e}");
-                window_failed();
+                window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
             }
         }
         // The optional support page, in the browser: the same opener as Help's links.
@@ -678,20 +683,20 @@ fn effect_handler(
             use snipdeck_app::help_binding::{HelpHost, SUPPORT_URL, SystemHelpHost};
             if let Err(e) = SystemHelpHost.open_url(SUPPORT_URL) {
                 eprintln!("snipdeck: cannot open the support page: {e}");
-                window_failed();
+                window_failed(snipdeck_app::toast::ToastMessage::LinkNotOpened);
             }
         }
         // A locked sensitive item behind a master password: ask for it.
         Effect::OpenUnlock => {
             if let Err(e) = unlock_ui.open() {
                 eprintln!("snipdeck: cannot open the unlock window: {e}");
-                window_failed();
+                window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
             }
         }
         Effect::OpenListEditor => {
             if let Err(e) = main_ui.bind() {
                 eprintln!("snipdeck: cannot open the list editor: {e}");
-                window_failed();
+                window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
             }
         }
         Effect::ResizeWindow(edge) => {
@@ -717,7 +722,7 @@ fn effect_handler(
         Effect::OpenHelp(topic) => {
             if let Err(e) = help_ui.open(*topic) {
                 eprintln!("snipdeck: cannot open the help: {e}");
-                window_failed();
+                window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
             }
         }
         // The binding has already acted: placed the window, or opened the item editor.
