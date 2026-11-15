@@ -115,7 +115,7 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::BoardSaved => 80,
         ToastMessage::RecentDeleted => 81,
         ToastMessage::RecentCleared => 82,
-        ToastMessage::PickerRecentsCleared => 108,
+        ToastMessage::PickerRecentsCleared => 111,
         ToastMessage::DockSet(_) => 83,
         ToastMessage::NotRefreshed => 84,
         ToastMessage::IconNotAddable => 85,
