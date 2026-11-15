@@ -2990,7 +2990,7 @@ export component PanelWindow inherits Window {
             x: min(max(Space.s2, kebab.absolute-position.x + kebab.width - self.width), root.width - self.width - Space.s2);
             // Under the header when it fits there (with the dense rows if need be); a menu too tall for that rises
             // over the header rather than scroll, and scrolls only when the window itself is too short for it.
-            y: max(Space.s2, min(root.header-h - Space.s1, root.height - self.height - Space.s2));
+            y: max(Space.s2, min(root.header-h - Space.s1, root.height - self.height - Space.s2 - Space.menu-clear));
             dense-above: root.height - (root.header-h - Space.s1) - Space.s2 - Space.menu-clear;
             menu-max-h: root.height - 2 * Space.s2 - Space.menu-clear;
             entries: root.app-menu-entries;
@@ -3039,7 +3039,7 @@ export component PanelWindow inherits Window {
         }
         if root.pinned-menu-open: Menu {
             x: root.width - self.width - Space.s2;
-            y: max(Space.s2, min(root.pinned-menu-y - Space.s1, root.height - self.height - Space.s2));
+            y: max(Space.s2, min(root.pinned-menu-y - Space.s1, root.height - self.height - Space.s2 - Space.menu-clear));
             menu-max-h: root.height - 2 * Space.s2 - Space.menu-clear;
             entries: root.pinned-more-entries;
             label: @tr("More pinned snippets");
@@ -3058,7 +3058,7 @@ export component PanelWindow inherits Window {
         }
         if root.item-menu-open: Menu {
             x: max(Space.s2, min(root.item-menu-x, root.width - self.width - Space.s2));
-            y: max(Space.s2, min(root.item-menu-y, root.height - self.height - Space.s2));
+            y: max(Space.s2, min(root.item-menu-y, root.height - self.height - Space.s2 - Space.menu-clear));
             // Inside the window at any height (and top-docked, where the top is the screen's top): a taller menu scrolls.
             menu-max-h: root.height - 2 * Space.s2 - Space.menu-clear;
             entries: root.item-menu-entries;
@@ -3078,7 +3078,7 @@ export component PanelWindow inherits Window {
         }
         if root.list-menu-open: Menu {
             x: max(Space.s2, min(root.list-menu-x, root.width - self.width - Space.s2));
-            y: max(Space.s2, min(root.list-menu-y, root.height - self.height - Space.s2));
+            y: max(Space.s2, min(root.list-menu-y, root.height - self.height - Space.s2 - Space.menu-clear));
             menu-max-h: root.height - 2 * Space.s2 - Space.menu-clear;
             entries: root.list-menu-entries;
             max-w: root.width - 2 * Space.s2;
@@ -3097,7 +3097,7 @@ export component PanelWindow inherits Window {
         }
         if root.recent-menu-open: Menu {
             x: max(Space.s2, min(root.recent-menu-x, root.width - self.width - Space.s2));
-            y: max(Space.s2, min(root.recent-menu-y, root.height - self.height - Space.s2));
+            y: max(Space.s2, min(root.recent-menu-y, root.height - self.height - Space.s2 - Space.menu-clear));
             menu-max-h: root.height - 2 * Space.s2 - Space.menu-clear;
             entries: [
                 { text: @tr("Save to…"), icon: Icons.folder },

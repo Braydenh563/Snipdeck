@@ -115,6 +115,8 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_app_menu_requested, || "app-menu".to_string());
     hook!(on_app_menu_activated, |i| format!("app:{i}"));
     hook!(on_app_menu_dismissed, || "app-dismissed".to_string());
+    hook!(on_item_menu_dismissed, || "item-dismissed".to_string());
+    hook!(on_list_menu_dismissed, || "list-dismissed".to_string());
     hook!(on_edit_requested, |i| format!("edit:{i}"));
     hook!(on_rename_requested, |i| format!("rename:{i}"));
     hook!(on_duplicate_requested, |i| format!("duplicate:{i}"));
@@ -1840,7 +1842,7 @@ ui_tests! {
             let bottom = menu.absolute_position().y + menu.size().height;
             assert!(bottom <= height - 48.0 + 0.5, "{height}: menu bottom {bottom} leaves under 48px");
             take(&log);
-            click_at(&ui, LogicalPosition::new(6.0, height - 6.0));
+            click_at(&ui, LogicalPosition::new(100.0, height - 24.0));
             assert!(take(&log).contains(&"app-dismissed".to_string()), "{height}: a click below the menu closes it");
         }
     }
