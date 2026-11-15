@@ -361,6 +361,10 @@ pub struct Controller<S, C, K, T> {
     eyedrop_texts: snipdeck_platform::eyedrop::EyedropTexts,
     eyedrop_mailbox: eyedrop_ctl::Mailbox,
     eyedrop_wake: Option<EyedropWake>,
+    /// A pick is under way: the Panel is hidden for it and comes back when it ends, so neither
+    /// the dock (the pointer is away, picking) nor a blur (the overlay takes the foreground)
+    /// changes what the Panel is meanwhile.
+    eyedropping: bool,
 }
 
 /// Opens the folder of the crash reports in the file manager.
@@ -559,6 +563,7 @@ where
             eyedrop_texts: snipdeck_platform::eyedrop::EyedropTexts::default(),
             eyedrop_mailbox: std::sync::Arc::default(),
             eyedrop_wake: None,
+            eyedropping: false,
         })
     }
 
@@ -964,6 +969,12 @@ where
         if !self.visible {
             self.session.open_anchor = self.open_anchor_now();
         }
+        self.reveal_panel()
+    }
+
+    /// Puts the Panel on screen, open, where it is meant to be: the part of [`show`](Self::show)
+    /// that does not read the Target or the pointer (the eyedropper's return keeps both).
+    pub(super) fn reveal_panel(&mut self) -> Vec<Effect> {
         self.visible = true;
         // A Panel shown again is open. A tucked dock is a 6 px tab until it is placed, so its
         // open frame goes first; any other Panel is placed by the host from the stored frame.
@@ -1103,6 +1114,11 @@ where
     /// "Hide the panel when it loses focus" is on. Only the Panel does this: the Main window,
     /// Settings and the editors are ordinary windows that stay until closed.
     pub fn on_foreground_changed(&mut self) -> Vec<Effect> {
+        // The eyedropper's overlay, then whatever was under the pick point, takes the foreground
+        // for a moment: the Target stays where the user was and the Panel comes back on its own.
+        if self.eyedropping {
+            return Vec::new();
+        }
         // A held reveal ends with the focus: the key release goes to the window that has the
         // focus now (Alt+Tab away from the Panel), so it never arrives here.
         self.panel_revealed = None;

@@ -997,83 +997,181 @@ fn the_footer_is_32px_with_a_subtle_hairline_on_top() {
     }
 }
 
-// ---- The collapsed dock handle (DESIGN.md §5 Panel: a 6px tab in the list's accent colour) ----------
+// ---- The collapsed dock handle (DESIGN.md §5 Panel: a 6px raised tab with an accent grip) ---------
 
-const ON_ACCENT_LIGHT: [u8; 3] = [0xFB, 0xFA, 0xF7];
+const RAISED_LIGHT: [u8; 3] = [0xFB, 0xFA, 0xF7];
+const RAISED_DARK: [u8; 3] = [0x20, 0x1E, 0x1B];
+/// `border.strong`, the same in both themes: >= 4:1 against a white and a black wallpaper.
+const BORDER_STRONG: [u8; 3] = [0x7C, 0x7A, 0x76];
+const RAISED_HOVER_LIGHT: [u8; 3] = [0xEB, 0xE9, 0xE7];
 
-fn handle(size: (u32, u32), vertical: bool) -> Harness<PanelWindow> {
-    let h = panel(size, false);
-    h.component.set_dock_vertical(vertical);
+/// A collapsed Panel docked to `edge` (Settings' order: 1 left, 2 right, 3 top, 4 bottom).
+fn handle(size: (u32, u32), edge: i32, dark: bool) -> Harness<PanelWindow> {
+    let h = panel(size, dark);
+    h.component.set_dock_vertical(edge <= 2);
+    h.component.set_dock_edge(edge);
     h.component.set_dock_collapsed(true);
     h
 }
 
-#[test]
-fn a_vertical_handle_is_the_accent_colour_with_a_three_dot_grabber_in_the_middle() {
-    let (w, hgt) = (6, 480);
-    let h = handle((w, hgt), true);
-    let f = render(&h);
-    // Edge to edge, no outline and none of the panel behind it.
-    for (x, y) in [(0, 0), (5, 0), (0, 479), (5, 479), (2, 100), (3, 300)] {
-        assert_eq!(f.pixel(x, y), ACCENT, "strip at ({x}, {y})");
-    }
-    // Three 2px dots, 2px apart, centred: the group is 10px tall, so y 235-236, 239-240 and 243-244.
-    for (y, dot) in [
-        (235, true),
-        (236, true),
-        (237, false),
-        (238, false),
-        (240, true),
-        (244, true),
-        (245, false),
-    ] {
-        let wanted = if dot { ON_ACCENT_LIGHT } else { ACCENT };
-        assert_eq!(f.pixel(2, y), wanted, "x=2 y={y}");
-        assert_eq!(f.pixel(3, y), wanted, "x=3 y={y}");
-    }
-    assert_eq!(f.pixel(1, 240), ACCENT, "the dot is 2px wide, centred");
-    assert_eq!(f.pixel(4, 240), ACCENT, "the dot is 2px wide, centred");
+fn hover(h: &Harness<PanelWindow>, x: f32, y: f32) {
+    h.component
+        .window()
+        .dispatch_event(slint::platform::WindowEvent::PointerMoved {
+            position: slint::LogicalPosition::new(x, y),
+        });
+}
+
+/// The y range (inclusive) of `colour` in column `x`.
+fn run_in_column(f: &Frame, x: u32, height: u32, colour: [u8; 3]) -> Option<(u32, u32)> {
+    let ys: Vec<u32> = (0..height).filter(|&y| f.pixel(x, y) == colour).collect();
+    Some((*ys.first()?, *ys.last()?))
 }
 
 #[test]
-fn a_horizontal_handle_runs_its_dots_along_the_strip() {
-    let h = handle((480, 6), false);
-    let f = render(&h);
-    assert_eq!(f.pixel(0, 0), ACCENT);
-    assert_eq!(f.pixel(479, 5), ACCENT);
-    for (x, dot) in [
-        (235, true),
-        (236, true),
-        (238, false),
-        (240, true),
-        (244, true),
-        (245, false),
+fn a_right_handle_is_a_raised_tab_with_an_inner_border_and_rounded_inner_corners() {
+    for (dark, raised, border, app) in [
+        (false, RAISED_LIGHT, BORDER_STRONG, APP_LIGHT),
+        (true, RAISED_DARK, BORDER_STRONG, APP_DARK),
     ] {
-        let wanted = if dot { ON_ACCENT_LIGHT } else { ACCENT };
-        assert_eq!(f.pixel(x, 2), wanted, "x={x} y=2");
-        assert_eq!(f.pixel(x, 3), wanted, "x={x} y=3");
+        let h = handle((6, 480), 2, dark);
+        let f = render(&h);
+        // The inner (left) side is a 1px border; the screen side has none.
+        assert_eq!(f.pixel(0, 100), border, "inner border (dark={dark})");
+        for x in [1, 4, 5] {
+            assert_eq!(
+                f.pixel(x, 100),
+                raised,
+                "raised fill at x={x} (dark={dark})"
+            );
+        }
+        // The ends are bordered too, and the inner corners are rounded: the corner pixel is the window's.
+        assert_eq!(f.pixel(5, 0), border, "top end border (dark={dark})");
+        assert_eq!(f.pixel(5, 479), border, "bottom end border (dark={dark})");
+        assert_eq!(
+            f.pixel(0, 0),
+            app,
+            "top inner corner is rounded (dark={dark})"
+        );
+        assert_eq!(
+            f.pixel(0, 479),
+            app,
+            "bottom inner corner is rounded (dark={dark})"
+        );
+        // No full-height accent strip any more.
+        assert_ne!(
+            f.pixel(3, 100),
+            ACCENT,
+            "the strip is not the accent (dark={dark})"
+        );
     }
 }
 
 #[test]
-fn the_handle_wears_the_list_colour_unless_high_contrast_is_on() {
+fn the_grip_is_a_short_accent_pill_in_the_middle_that_grows_on_hover() {
+    let h = handle((6, 480), 2, false);
+    let f = render(&h);
+    // A 2px pill, 20px long, centred: x 2-3, y 230-249; its rounded 1px ends are blended, so the
+    // solid accent runs 231-248.
+    assert_eq!(run_in_column(&f, 2, 480, ACCENT), Some((231, 248)));
+    assert_eq!(run_in_column(&f, 3, 480, ACCENT), Some((231, 248)));
+    assert_eq!(f.pixel(1, 240), RAISED_LIGHT, "the pill is 2px wide");
+    assert_eq!(f.pixel(4, 240), RAISED_LIGHT, "the pill is 2px wide");
+
+    hover(&h, 3.0, 240.0);
+    let f = render(&h);
+    assert_eq!(
+        run_in_column(&f, 2, 480, ACCENT),
+        Some((225, 254)),
+        "hovered, the pill is 32px long (224-255, ends blended)"
+    );
+    assert_eq!(
+        f.pixel(3, 100),
+        RAISED_HOVER_LIGHT,
+        "hovered, the tab is filled with bg.overlay-hover"
+    );
+}
+
+#[test]
+fn a_left_handle_borders_its_right_side() {
+    let h = handle((6, 480), 1, false);
+    let f = render(&h);
+    assert_eq!(f.pixel(5, 100), BORDER_STRONG, "inner border");
+    assert_eq!(
+        f.pixel(0, 100),
+        RAISED_LIGHT,
+        "no border against the screen"
+    );
+    assert_eq!(f.pixel(0, 0), BORDER_STRONG, "top end border");
+    assert_eq!(f.pixel(5, 0), APP_LIGHT, "top inner corner is rounded");
+}
+
+#[test]
+fn a_top_handle_borders_its_bottom_side_and_runs_its_pill_along_the_strip() {
+    let h = handle((480, 6), 3, true);
+    let f = render(&h);
+    assert_eq!(f.pixel(100, 5), BORDER_STRONG, "inner border");
+    assert_eq!(f.pixel(100, 0), RAISED_DARK, "no border against the screen");
+    assert_eq!(f.pixel(0, 5), APP_DARK, "inner corner is rounded");
+    let xs: Vec<u32> = (0..480).filter(|&x| f.pixel(x, 2) == ACCENT).collect();
+    assert_eq!(
+        (xs[0], xs[xs.len() - 1]),
+        (231, 248),
+        "x 230-249, ends blended"
+    );
+}
+
+#[test]
+fn the_grip_wears_the_list_colour_unless_high_contrast_is_on() {
     let teal = slint::Color::from_rgb_u8(0x04, 0x84, 0x84);
-    let h = handle((6, 480), true);
+    let h = handle((6, 480), 2, false);
     h.component.set_dock_list_color(teal);
     h.component.set_dock_has_list_color(true);
-    assert_eq!(render(&h).pixel(0, 100), [0x04, 0x84, 0x84]);
+    let f = render(&h);
+    assert_eq!(f.pixel(2, 240), [0x04, 0x84, 0x84]);
+    assert_eq!(
+        f.pixel(3, 100),
+        RAISED_LIGHT,
+        "the list colour is only the grip"
+    );
 
     h.component.set_dock_has_list_color(false);
-    assert_eq!(render(&h).pixel(0, 100), ACCENT, "no accent: the theme's");
+    assert_eq!(render(&h).pixel(2, 240), ACCENT, "no accent: the theme's");
 
     h.component.set_dock_has_list_color(true);
     let look = h.component.global::<SystemLook<'_>>();
+    look.set_hc_window(slint::Color::from_rgb_u8(0, 0, 0));
+    look.set_hc_window_text(slint::Color::from_rgb_u8(0xFF, 0xFF, 0xFF));
+    look.set_hc_highlight(slint::Color::from_rgb_u8(0x1A, 0xEB, 0xFF));
     look.set_high_contrast(true);
-    assert_ne!(
-        render(&h).pixel(0, 100),
-        [0x04, 0x84, 0x84],
-        "high contrast keeps the system colours"
+    let f = render(&h);
+    assert_eq!(
+        f.pixel(2, 240),
+        [0x1A, 0xEB, 0xFF],
+        "high contrast: the grip is Highlight"
     );
+    assert_eq!(
+        f.pixel(0, 100),
+        [0xFF, 0xFF, 0xFF],
+        "high contrast: the border is WindowText"
+    );
+    assert_eq!(
+        f.pixel(3, 100),
+        [0, 0, 0],
+        "high contrast: the fill is Window"
+    );
+}
+
+#[test]
+fn collapsed_handle_goldens() {
+    for (name, edge, size, dark) in [
+        ("panel-dock-handle-right-light", 2, (6, 160), false),
+        ("panel-dock-handle-right-dark", 2, (6, 160), true),
+        ("panel-dock-handle-top-dark", 3, (160, 6), true),
+    ] {
+        let h = handle(size, edge, dark);
+        assert_golden(name, &render(&h));
+    }
 }
 
 /// Pixels of exactly `colour` in the header band (y < 40).

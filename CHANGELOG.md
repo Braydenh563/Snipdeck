@@ -128,6 +128,7 @@ first start.
   colour.
 
 ### Changed
+- The docked Panel's tab looks like the rest of the app: a raised strip with a thin border and rounded inner corners, and a short grip in the list's colour that grows under the mouse, instead of a full-length block of accent colour.
 - Long toasts wrap onto several lines instead of being cut off, and their icon grows with the text size; warnings
   are announced as warnings.
 - Settings search leaves no gap where hidden sections were, and the shortcut list wraps long names onto more lines.
@@ -172,6 +173,9 @@ first start.
 - A library with more than 1 GB of attachments can be backed up and exported: the total limit of an archive is now 8 GB (a backup is read back under the same limit). Going over it says so, instead of naming whichever item crossed it.
 - A draft too big to be read back is no longer kept, and a stale one is zeroed on clear.
 - Template errors in the item editor and the Recent labels are translatable.
+- Picking a colour from the screen with the Panel docked brings it back open: it no longer tucks away while you
+  pick and comes back as a full-height block of the list colour that closed on the next click.
+- Dragging the Panel no longer blinks dark: Windows' background fill no longer paints over a frame that was just drawn.
 - Quick add in the Panel takes `Ctrl+V` and closes once the item is created.
 - Drag to reorder: an item can be dropped into the first slot of a list, and the gaps between rows and tiles
   take a drop.

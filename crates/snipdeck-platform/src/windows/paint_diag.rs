@@ -218,7 +218,12 @@ unsafe extern "system" fn call_wnd_proc_hook(code: i32, wparam: WPARAM, lparam: 
         if let Some(cwp) = unsafe { (lparam.0 as *const CWPSTRUCT).as_ref() } {
             let hwnd = cwp.hwnd.0 as isize;
             let what = match cwp.message {
-                WM_ERASEBKGND => Some("WM_ERASEBKGND (class brush fills the update region)".into()),
+                // Logged before the window sees it: the erase subclass may still skip it. The count is
+                // of erases skipped before this one; it grows by one when this one is skipped too.
+                WM_ERASEBKGND => Some(format!(
+                    "WM_ERASEBKGND (class brush, unless a frame was just presented; skipped so far={})",
+                    super::erase::skipped_erases()
+                )),
                 WM_WINDOWPOSCHANGED => {
                     // SAFETY: for this message `lParam` points to a WINDOWPOS; checked for null.
                     unsafe { (cwp.lParam.0 as *const WINDOWPOS).as_ref() }.map(|p| {

@@ -147,6 +147,9 @@ pub fn follow(
     event: &slint::winit_030::winit::event::WindowEvent,
 ) {
     let signal = signal_of(event, || os_update(window));
+    if matches!(signal, Signal::Redraw { .. }) {
+        keep_frame_from_erase(window);
+    }
     match watch.on_signal(signal) {
         Action::None => {}
         Action::Request => window.request_redraw(),
@@ -164,6 +167,20 @@ pub fn watch(window: &slint::Window) {
         follow(&mut watch, slint_window, event);
         slint::winit_030::EventResult::Propagate
     });
+}
+
+/// The frame Slint draws for this `RedrawRequested` is presented before `DefWindowProcW` runs the
+/// erase Windows may owe: the window's subclass skips that erase, so the class brush never covers
+/// the new frame (a dark blink while the Panel is dragged). Installed on the window's first frame.
+fn keep_frame_from_erase(window: &slint::Window) {
+    #[cfg(windows)]
+    if let Some(hwnd) = crate::native_window::handle_of(window) {
+        use snipdeck_platform::windows::erase;
+        erase::guard_presented_frames(hwnd);
+        erase::frame_presented(hwnd);
+    }
+    #[cfg(not(windows))]
+    let _ = window;
 }
 
 /// Whether Windows holds an invalid area of `window` that it made itself (read in the middle of

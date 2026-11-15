@@ -3583,9 +3583,6 @@ msgstr "desfazer separar remover grupo manter itens seção"
 msgid "donate donation coffee tip"
 msgstr "doar doação café gorjeta"
 
-msgid "donate donation coffee tip optional"
-msgstr "doar doação café gorjeta opcional"
-
 msgid "drop"
 msgstr "soltar"
 

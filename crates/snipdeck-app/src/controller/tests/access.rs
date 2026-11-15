@@ -347,3 +347,61 @@ fn an_anchor_on_a_monitor_where_the_panel_is_docked_opens_it_at_its_edge_there()
     assert_eq!(w.ctl.dock_edge(), Some(DockEdge::Right));
     assert_eq!(w.ctl.restore_anchor(), Vec::new(), "the anchor is used up");
 }
+
+mod after_the_eyedropper {
+    use snipdeck_platform::eyedrop::{EyedropOutcome, FakeEyedropper};
+
+    use super::*;
+
+    fn picking(w: &mut World) {
+        let fake = FakeEyedropper::answering(EyedropOutcome::Picked {
+            rgb: [58, 123, 213],
+            hdr: false,
+        });
+        w.ctl
+            .set_eyedropper(Some(Box::new(fake)), std::sync::Arc::new(|| {}));
+    }
+
+    fn notepad() -> Target {
+        Target {
+            app: "notepad.exe".into(),
+            title: "Untitled".into(),
+            elevated: false,
+            focus: Focus::Caret,
+        }
+    }
+
+    #[test]
+    fn the_target_from_before_the_pick_is_kept_not_the_window_under_the_pick_point() {
+        let mut w = opening_at(PanelOpenAt::Last);
+        w.ctl.show();
+        picking(&mut w);
+        assert_eq!(w.ctl.model().target(), Some(&outlook()));
+        w.ctl.start_eyedropper();
+        // The pick point was over Notepad: the foreground moves there while the overlay closes.
+        w.targets.set(Some(notepad()));
+        w.ctl.on_foreground_changed();
+        w.ctl.poll_eyedropper();
+        assert_eq!(
+            w.ctl.model().target(),
+            Some(&outlook()),
+            "a paste still goes where the user was"
+        );
+    }
+
+    #[test]
+    fn a_panel_that_was_hidden_comes_back_where_it_was_left_not_at_the_mouse() {
+        let mut w = opening_at(PanelOpenAt::Mouse);
+        w.targets.set_cursor(Some((900, 700)));
+        picking(&mut w);
+        // The pick command from the Main window: the Panel is hidden.
+        w.ctl.start_eyedropper();
+        let effects = w.ctl.poll_eyedropper();
+        assert_eq!(effects, vec![Effect::ShowPanel, Effect::ShowColours]);
+        assert_eq!(
+            w.ctl.restore_frame(&display()),
+            [Effect::PlaceWindow(FLOATING)],
+            "the stored frame, not the pick point"
+        );
+    }
+}

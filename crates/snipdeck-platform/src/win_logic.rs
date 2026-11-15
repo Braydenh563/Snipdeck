@@ -382,6 +382,72 @@ impl ClassNames {
     }
 }
 
+/// Whether a `WM_ERASEBKGND` would paint over a frame the app has just presented (O52 follow-up).
+///
+/// winit answers `WM_PAINT` by sending `RedrawRequested`, in which Slint draws and presents a frame,
+/// and only then calls `DefWindowProcW`, whose `BeginPaint` sends `WM_ERASEBKGND` when Windows
+/// owes an erase. The class brush (the theme's window colour, near black in the dark theme) then
+/// fills the update region over the new frame, which stays until the next frame: a dark blink
+/// while the Panel is dragged. The window subclass asks this gate: inside a `WM_PAINT` of a window
+/// that has presented a frame during it, the erase is skipped; any other erase (before a first
+/// frame, outside a paint, or a paint winit buffered without a frame) still fills with the brush.
+#[derive(Debug, Default)]
+pub struct EraseGate {
+    /// The `WM_PAINT`s under way on this thread, innermost last: the window and whether a frame
+    /// was presented for it during the paint.
+    painting: Vec<(isize, bool)>,
+    /// The windows that have the subclass, so it is installed once each, not on every frame.
+    guarded: Vec<isize>,
+}
+
+impl EraseGate {
+    /// Whether `hwnd` still needs the subclass: `true` once, then `false` until it is
+    /// [`forget`](Self::forget)-ten (destroyed, or the install failed).
+    pub fn needs_guard(&mut self, hwnd: isize) -> bool {
+        if self.guarded.contains(&hwnd) {
+            return false;
+        }
+        self.guarded.push(hwnd);
+        true
+    }
+
+    /// `hwnd` lost its subclass (`WM_NCDESTROY`) or never got it: a handle Windows reuses for a
+    /// new window is guarded afresh.
+    pub fn forget(&mut self, hwnd: isize) {
+        self.guarded.retain(|&h| h != hwnd);
+        self.painting.retain(|p| p.0 != hwnd);
+    }
+
+    /// A `WM_PAINT` for `hwnd` starts.
+    pub fn paint_begin(&mut self, hwnd: isize) {
+        self.painting.push((hwnd, false));
+    }
+
+    /// A frame for `hwnd` is drawn and presented (`RedrawRequested`).
+    pub fn frame_presented(&mut self, hwnd: isize) {
+        if let Some(paint) = self.painting.iter_mut().rev().find(|p| p.0 == hwnd) {
+            paint.1 = true;
+        }
+    }
+
+    /// The `WM_PAINT` for `hwnd` that began last has been handled.
+    pub fn paint_end(&mut self, hwnd: isize) {
+        if let Some(at) = self.painting.iter().rposition(|p| p.0 == hwnd) {
+            self.painting.remove(at);
+        }
+    }
+
+    /// Whether the `WM_ERASEBKGND` `hwnd` is sent now should leave the window as it is.
+    #[must_use]
+    pub fn keep_frame(&self, hwnd: isize) -> bool {
+        self.painting
+            .iter()
+            .rev()
+            .find(|p| p.0 == hwnd)
+            .is_some_and(|p| p.1)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -766,5 +832,62 @@ mod tests {
             panel_ex_style(style, false) & (WS_EX_TOOLWINDOW | WS_EX_APPWINDOW),
             WS_EX_TOOLWINDOW
         );
+    }
+
+    #[test]
+    fn an_erase_after_the_frame_of_the_same_paint_keeps_the_frame() {
+        let mut gate = EraseGate::default();
+        gate.paint_begin(7);
+        assert!(!gate.keep_frame(7), "no frame yet: the brush fills");
+        gate.frame_presented(7);
+        assert!(
+            gate.keep_frame(7),
+            "the frame is up: the brush would paint over it"
+        );
+        gate.paint_end(7);
+        assert!(
+            !gate.keep_frame(7),
+            "outside a paint the erase runs as usual"
+        );
+    }
+
+    #[test]
+    fn a_paint_without_a_frame_still_erases() {
+        // winit buffered the paint (busy callback): no frame, so the brush is better than stale pixels.
+        let mut gate = EraseGate::default();
+        gate.paint_begin(7);
+        gate.paint_end(7);
+        gate.paint_begin(7);
+        assert!(!gate.keep_frame(7));
+    }
+
+    #[test]
+    fn a_frame_for_one_window_does_not_skip_another_windows_erase() {
+        let mut gate = EraseGate::default();
+        gate.frame_presented(9);
+        gate.paint_begin(7);
+        gate.frame_presented(9);
+        assert!(!gate.keep_frame(7));
+        assert!(!gate.keep_frame(9), "9 is not painting");
+        gate.paint_begin(9);
+        gate.frame_presented(9);
+        assert!(gate.keep_frame(9));
+        assert!(!gate.keep_frame(7));
+        gate.paint_end(9);
+        gate.paint_end(7);
+        assert!(gate.painting.is_empty());
+    }
+
+    #[test]
+    fn a_window_is_guarded_once_until_it_is_forgotten() {
+        let mut gate = EraseGate::default();
+        assert!(gate.needs_guard(7));
+        assert!(!gate.needs_guard(7), "every later frame: no second install");
+        assert!(gate.needs_guard(9), "another window");
+        gate.paint_begin(7);
+        gate.forget(7);
+        assert!(!gate.keep_frame(7), "a destroyed window's paint is dropped");
+        assert!(gate.needs_guard(7), "a reused handle is a new window");
+        assert!(!gate.needs_guard(9));
     }
 }

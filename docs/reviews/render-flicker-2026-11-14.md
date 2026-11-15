@@ -134,3 +134,23 @@ the drag test above, the binding test above, `diag::tests`.
 - Multi-monitor corners with two scales (a DPI change during the drop).
 
 Quick check steps 20-24 cover each of these.
+
+## Follow-up 2026-11-15: the dark blink while dragging
+
+The owner reported a subtle black flicker while moving the Panel, less than before. Source, from winit 0.30.13
+`event_loop.rs` (`WM_PAINT`): winit sends `RedrawRequested` (Slint draws and presents the frame) and only then calls
+`DefWindowProcW`, whose `BeginPaint` sends the `WM_ERASEBKGND` Windows owes. The class brush (O52, the theme's
+`bg.app`, `#110F0D` in dark) then fills the update region over the frame just presented, until the next frame
+16 ms later. The erase is owed whenever Windows invalidated part of the window itself (dragged back on screen,
+uncovered, a resize for the dock preview); the opaque-window fix turned that from see-through into near black.
+
+Fix: `snipdeck_platform::windows::erase::guard_presented_frames` subclasses every window (installed from
+`repaint::follow` on its first frame). Inside a `WM_PAINT` in which the app reported a presented frame
+(`erase::frame_presented`, also from `repaint::follow` on `RedrawRequested`) the erase answers 1 and paints nothing.
+Every other erase (before a first frame, outside a paint, a paint winit buffered without a frame) still uses the
+brush. The decision is `win_logic::EraseGate`, unit-tested on Linux. `SNIPDECK_DIAG=render` logs the count of
+skipped erases on each `WM_ERASEBKGND` line.
+
+Unverified (Windows only): that the blink is gone; that no paint now shows stale pixels where the brush used to
+fill (a frame that does not cover the update region; `repaint::Watch` draws whole when Windows holds an update
+region, so it should not). Owner step: Quick check 20-24 (`tools/windows-test/README.md`).
