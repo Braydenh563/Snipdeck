@@ -2133,6 +2133,44 @@ fn the_clear_recent_button_asks_first_and_cancel_clears_nothing() {
     });
 }
 
+#[test]
+fn clearing_recent_emoji_and_colours_asks_first_then_clears_and_says_so() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ctl.borrow_mut().update_settings(|s| {
+            s.colours_recent = vec![snipdeck_colour::RecentColour {
+                hex: "#3a7bd5".into(),
+                used_at: 1,
+            }];
+        });
+        element(
+            &r.ui,
+            "Clear recent emoji and colours…",
+            AccessibleRole::Button,
+        )
+        .invoke_accessible_default_action();
+        assert_eq!(
+            r.ctl.borrow().settings().colours_recent.len(),
+            1,
+            "asked first"
+        );
+        element(&r.ui, "Keep them", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(r.ctl.borrow().settings().colours_recent.len(), 1, "kept");
+        element(
+            &r.ui,
+            "Clear recent emoji and colours…",
+            AccessibleRole::Button,
+        )
+        .invoke_accessible_default_action();
+        element(&r.ui, "Clear them", AccessibleRole::Button).invoke_accessible_default_action();
+        assert!(r.ctl.borrow().settings().colours_recent.is_empty());
+        assert_eq!(
+            r.ui.get_toast_text(),
+            "Recently used emoji and colours cleared"
+        );
+    });
+}
+
 // ---- Master password (SPEC 5.7, V1-PLAN C3) ----------------------------------------------------
 
 fn password() -> &'static str {

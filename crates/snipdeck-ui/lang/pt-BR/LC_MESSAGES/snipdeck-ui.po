@@ -414,6 +414,12 @@ msgstr "Limpar a lista “{}”?"
 msgid "Clear list…"
 msgstr "Limpar lista…"
 
+msgid "Clear recent emoji and colours"
+msgstr "Limpar emojis e cores recentes"
+
+msgid "Clear recent emoji and colours…"
+msgstr "Limpar emojis e cores recentes…"
+
 msgid "Clear recent history"
 msgstr "Limpar histórico recente"
 
@@ -443,6 +449,9 @@ msgstr "Limpe a busca e feche"
 
 msgid "Clear the shortcut for {}"
 msgstr "Limpar o atalho de {}"
+
+msgid "Clear them"
+msgstr "Limpar"
 
 msgid "Click"
 msgstr "Clique"
@@ -909,6 +918,9 @@ msgstr "Descartar"
 msgid "Discard your changes?"
 msgstr "Descartar suas alterações?"
 
+msgid "Dismiss"
+msgstr "Fechar"
+
 msgid "Ditto database"
 msgstr "Banco de dados do Ditto"
 
@@ -1124,6 +1136,9 @@ msgstr "Por exemplo, Respostas de e-mail"
 
 msgid "For example, Work"
 msgstr "Por exemplo, Trabalho"
+
+msgid "Forgets the emoji, symbols and colours you used lately. Searches are never kept, so there is nothing else to clear."
+msgstr "Esquece os emojis, símbolos e cores que você usou recentemente. As buscas nunca são guardadas, então não há mais nada para limpar."
 
 msgid "Format"
 msgstr "Formato"
@@ -1397,6 +1412,9 @@ msgstr "Mantenha os segredos em segredo"
 
 msgid "Keep the Panel open"
 msgstr "Manter o Painel aberto"
+
+msgid "Keep them"
+msgstr "Manter"
 
 msgid "Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept."
 msgstr "Guarda o texto que você copia pelas últimas {} cópias ou {} dias, o que ocorrer primeiro, para que você possa encontrá-lo de novo ou salvá-lo em uma lista. Itens sensíveis, gerenciadores de senhas e os apps que você excluir nunca são guardados."
@@ -2247,6 +2265,9 @@ msgstr "Recentes guarda o texto que você copia, somente neste computador, pelas
 
 msgid "Recently used"
 msgstr "Usados recentemente"
+
+msgid "Recently used emoji and colours cleared"
+msgstr "Emojis e cores recentes limpos"
 
 msgid "Red"
 msgstr "Vermelho"

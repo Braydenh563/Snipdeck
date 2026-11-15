@@ -40,7 +40,7 @@ use crate::{
     native_window::{
         fit_logical, fit_when_settled, place_of, place_over_owner, restore_place, size_before_show,
     },
-    palette::list_color,
+    palette::{list_color, list_icon_tint},
     popup_window::set_look_globals,
     settings::Theme,
     wording,
@@ -675,6 +675,7 @@ where
         wire!(on_board_delete_dismissed, |ctl| ctl
             .main_board_delete_cancel());
         wire!(on_toast_undo, |ctl| ctl.toast_action());
+        wire!(on_toast_dismissed, |ctl| ctl.toast_dismiss());
         wire!(on_toast_edit, |ctl| {
             for effect in ctl.toast_edit() {
                 if let Effect::EditItem(id) = effect {
@@ -1145,13 +1146,14 @@ fn set_colour_block(window: &ui::MainWindow, block: Option<&crate::controller::C
     })));
 }
 
-/// The sidebar's lists, with their colour marks and icons.
+/// The sidebar's lists, with their icons and the colour that tints each (transparent where the list
+/// colour would not read against the rows: the default icon colour then).
 fn set_side_lists(window: &ui::MainWindow, screen: &MainScreen) {
     let icons = ui::ListIcons::get(window).get_all();
     window.set_lists(model(screen.lists.iter().map(|l| ui::ChoiceEntry {
         label: l.name.as_str().into(),
         count: to_i32(l.count),
-        color: list_color(l.accent, screen.dark),
+        color: list_icon_tint(l.accent, screen.dark),
         icon: crate::binding::list_icon_image(&icons, l.icon),
         checked: false,
     })));

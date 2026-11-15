@@ -457,6 +457,9 @@ export global ToastTexts {
     pure public function recent-cleared() -> string {
         return @tr("Recent history cleared");
     }
+    pure public function picker-recents-cleared() -> string {
+        return @tr("Recently used emoji and colours cleared");
+    }
     // The Panel was docked (1 left, 2 right, 3 top, 4 bottom) or floated (0).
     pure public function dock-set(edge: int) -> string {
         return edge == 1 ? @tr("Panel docked to the left edge") : (edge == 2 ? @tr("Panel docked to the right edge") : (edge == 3 ? @tr("Panel docked to the top edge") : (edge == 4 ? @tr("Panel docked to the bottom edge") : @tr("Panel floats again"))));

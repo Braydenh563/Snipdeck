@@ -1,0 +1,3 @@
+# ui-polish-2 (worker)
+Done (written, NOT yet built/tested as a whole): 1 clear recent emoji/colours (controller picker_recents_clear, toast, Settings row + inline confirm, i18n x6); 2 sidebar list icon tint (palette::list_icon_tint, SidebarItem); 3 sidebar toggle moved to sidebar header; 4 search clear x centred/smaller (text_field.slint).
+Next: build + run new tests (settings_window clearing_*, main_window_logic toggle/clear tests, panel_logic clear test, palette tests, toasts test); update goldens only for real diffs (UPDATE_GOLDEN per test); codemap.py; gate --changed; clippy 1.99.1 (earlier run was OOM-killed, not a lint); PR base claude/compassionate-pascal-pod8ux; message hub with SHA + gate lines; retro.

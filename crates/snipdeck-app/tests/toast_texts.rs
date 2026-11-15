@@ -115,6 +115,7 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::BoardSaved => 80,
         ToastMessage::RecentDeleted => 81,
         ToastMessage::RecentCleared => 82,
+        ToastMessage::PickerRecentsCleared => 108,
         ToastMessage::DockSet(_) => 83,
         ToastMessage::NotRefreshed => 84,
         ToastMessage::IconNotAddable => 85,
@@ -141,7 +142,7 @@ const fn position(message: &ToastMessage) -> usize {
     }
 }
 
-const VARIANTS: usize = 111;
+const VARIANTS: usize = 112;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -286,6 +287,7 @@ fn samples() -> Vec<ToastMessage> {
         M::BoardSaved,
         M::RecentDeleted,
         M::RecentCleared,
+        M::PickerRecentsCleared,
         M::DockSet(None),
         M::DockSet(Some(DockEdge::Left)),
         M::DockSet(Some(DockEdge::Right)),
@@ -451,6 +453,10 @@ fn what_a_toast_carries_reaches_its_sentence() {
         assert_eq!(said(ToastMessage::BoardSaved), "Board saved");
         assert_eq!(said(ToastMessage::RecentDeleted), "Removed from Recent");
         assert_eq!(said(ToastMessage::RecentCleared), "Recent history cleared");
+        assert_eq!(
+            said(ToastMessage::PickerRecentsCleared),
+            "Recently used emoji and colours cleared"
+        );
         assert_eq!(said(ToastMessage::FileMoved), "File moved or deleted");
         assert_eq!(
             said(ToastMessage::FilesTooLarge),

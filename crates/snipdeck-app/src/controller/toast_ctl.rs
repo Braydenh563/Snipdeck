@@ -107,6 +107,12 @@ where
         });
     }
 
+    /// The toast's ×: the toast goes now, and its Undo with it.
+    pub fn toast_dismiss(&mut self) {
+        self.toast = None;
+        self.undo = None;
+    }
+
     /// The toast's Edit button: opens the editor on the item the toast is about and closes the toast.
     pub fn toast_edit(&mut self) -> Vec<Effect> {
         let Some(undo) = self.undo.take() else {
