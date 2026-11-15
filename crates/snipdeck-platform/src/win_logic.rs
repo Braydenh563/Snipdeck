@@ -396,9 +396,28 @@ pub struct EraseGate {
     /// The `WM_PAINT`s under way on this thread, innermost last: the window and whether a frame
     /// was presented for it during the paint.
     painting: Vec<(isize, bool)>,
+    /// The windows that have the subclass, so it is installed once each, not on every frame.
+    guarded: Vec<isize>,
 }
 
 impl EraseGate {
+    /// Whether `hwnd` still needs the subclass: `true` once, then `false` until it is
+    /// [`forget`](Self::forget)-ten (destroyed, or the install failed).
+    pub fn needs_guard(&mut self, hwnd: isize) -> bool {
+        if self.guarded.contains(&hwnd) {
+            return false;
+        }
+        self.guarded.push(hwnd);
+        true
+    }
+
+    /// `hwnd` lost its subclass (`WM_NCDESTROY`) or never got it: a handle Windows reuses for a
+    /// new window is guarded afresh.
+    pub fn forget(&mut self, hwnd: isize) {
+        self.guarded.retain(|&h| h != hwnd);
+        self.painting.retain(|p| p.0 != hwnd);
+    }
+
     /// A `WM_PAINT` for `hwnd` starts.
     pub fn paint_begin(&mut self, hwnd: isize) {
         self.painting.push((hwnd, false));
@@ -857,5 +876,18 @@ mod tests {
         gate.paint_end(9);
         gate.paint_end(7);
         assert!(gate.painting.is_empty());
+    }
+
+    #[test]
+    fn a_window_is_guarded_once_until_it_is_forgotten() {
+        let mut gate = EraseGate::default();
+        assert!(gate.needs_guard(7));
+        assert!(!gate.needs_guard(7), "every later frame: no second install");
+        assert!(gate.needs_guard(9), "another window");
+        gate.paint_begin(7);
+        gate.forget(7);
+        assert!(!gate.keep_frame(7), "a destroyed window's paint is dropped");
+        assert!(gate.needs_guard(7), "a reused handle is a new window");
+        assert!(!gate.needs_guard(9));
     }
 }

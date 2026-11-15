@@ -120,11 +120,13 @@ where
         self.back_from_eyedropper()
     }
 
-    /// The Panel comes back on the Colours tab through [`show`](Controller::show), the one way a
-    /// Panel is shown: the controller's state (visible, a dock open, not tucked) and the window
-    /// (shown, at its open frame) agree whatever happened while it was hidden.
+    /// The Panel comes back on the Colours tab, open, so the controller's state (visible, a dock
+    /// open, not tucked) and the window (shown, at its open frame) agree. Unlike a
+    /// [`show`](Controller::show) it reads neither the Target (the window under the pick point
+    /// is not where the user was) nor the pointer (a Panel hidden before the pick comes back
+    /// where it was left, not at the pick point).
     pub(super) fn back_from_eyedropper(&mut self) -> Vec<Effect> {
-        let mut effects = self.show();
+        let mut effects = self.reveal_panel();
         effects.push(Effect::ShowColours);
         effects
     }

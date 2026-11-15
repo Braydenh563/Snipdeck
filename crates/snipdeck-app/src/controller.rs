@@ -965,6 +965,12 @@ where
         if !self.visible {
             self.session.open_anchor = self.open_anchor_now();
         }
+        self.reveal_panel()
+    }
+
+    /// Puts the Panel on screen, open, where it is meant to be: the part of [`show`](Self::show)
+    /// that does not read the Target or the pointer (the eyedropper's return keeps both).
+    pub(super) fn reveal_panel(&mut self) -> Vec<Effect> {
         self.visible = true;
         // A Panel shown again is open. A tucked dock is a 6 px tab until it is placed, so its
         // open frame goes first; any other Panel is placed by the host from the stored frame.
@@ -1104,6 +1110,11 @@ where
     /// "Hide the panel when it loses focus" is on. Only the Panel does this: the Main window,
     /// Settings and the editors are ordinary windows that stay until closed.
     pub fn on_foreground_changed(&mut self) -> Vec<Effect> {
+        // The eyedropper's overlay, then whatever was under the pick point, takes the foreground
+        // for a moment: the Target stays where the user was and the Panel comes back on its own.
+        if self.eyedropping {
+            return Vec::new();
+        }
         // A held reveal ends with the focus: the key release goes to the window that has the
         // focus now (Alt+Tab away from the Panel), so it never arrives here.
         self.panel_revealed = None;
@@ -1136,8 +1147,6 @@ where
             // A docked Panel tucks instead: its tab is how it comes back.
             && !self.dock_active()
             && self.settings.panel_hide_on_blur
-            // The eyedropper's overlay takes the foreground; the Panel comes back when it ends.
-            && !self.eyedropping
             // The snipping overlay takes the foreground itself; a Panel kept on screen for it stays.
             && !self.screen_clip.waiting()
             // The Picker and the fill form take the foreground themselves.

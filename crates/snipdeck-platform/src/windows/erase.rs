@@ -69,16 +69,20 @@ pub fn set_class_background(hwnd: isize, (r, g, b): (u8, u8, u8)) -> bool {
     true
 }
 
-/// Gives the window `hwnd` the subclass that keeps a presented frame from being erased. Call it
-/// on the thread that owns the window; again is harmless. Returns `false` for a null handle or
-/// when the subclass could not be installed. The subclass removes itself on `WM_NCDESTROY`.
+/// Gives the window `hwnd` the subclass that keeps a presented frame from being erased, once:
+/// later calls for the same window do nothing. Call it on the thread that owns the window.
+/// Returns whether the window has the subclass (`false` for a null handle, or when it could not
+/// be installed; the next call tries again). The subclass removes itself on `WM_NCDESTROY`.
 pub fn guard_presented_frames(hwnd: isize) -> bool {
     if hwnd == 0 {
         return false;
     }
+    if !GATE.with(|g| g.borrow_mut().needs_guard(hwnd)) {
+        return true;
+    }
     // SAFETY: `hwnd` is a window of this thread (caller contract); `erase_subclass_proc` matches
     // `SUBCLASSPROC` and stays valid for the life of the process.
-    unsafe {
+    let installed = unsafe {
         SetWindowSubclass(
             HWND(hwnd as *mut _),
             Some(erase_subclass_proc),
@@ -86,7 +90,11 @@ pub fn guard_presented_frames(hwnd: isize) -> bool {
             0,
         )
     }
-    .as_bool()
+    .as_bool();
+    if !installed {
+        GATE.with(|g| g.borrow_mut().forget(hwnd));
+    }
+    installed
 }
 
 /// A frame of `hwnd` is drawn and presented now (`RedrawRequested`, which Slint always answers
@@ -111,19 +119,27 @@ unsafe extern "system" fn erase_subclass_proc(
 ) -> LRESULT {
     let id = hwnd.0 as isize;
     match msg {
+        // `try_with`, never `with`: during thread teardown the gate may be gone while a window
+        // still gets a message, and a panic must not unwind into Windows. Without the gate the
+        // window behaves as if it had no subclass.
         WM_PAINT => {
-            GATE.with(|g| g.borrow_mut().paint_begin(id));
+            let _ = GATE.try_with(|g| g.borrow_mut().paint_begin(id));
             // SAFETY: forwards the message unchanged to the next procedure in the chain (winit's).
             let result = unsafe { DefSubclassProc(hwnd, msg, wparam, lparam) };
-            GATE.with(|g| g.borrow_mut().paint_end(id));
+            let _ = GATE.try_with(|g| g.borrow_mut().paint_end(id));
             return result;
         }
         // Non-zero: "erased". The frame just presented covers the window; the brush would not.
-        WM_ERASEBKGND if GATE.with(|g| g.borrow().keep_frame(id)) => {
-            SKIPPED.with(|n| n.set(n.get() + 1));
+        WM_ERASEBKGND
+            if GATE
+                .try_with(|g| g.borrow().keep_frame(id))
+                .unwrap_or(false) =>
+        {
+            let _ = SKIPPED.try_with(|n| n.set(n.get() + 1));
             return LRESULT(1);
         }
         WM_NCDESTROY => {
+            let _ = GATE.try_with(|g| g.borrow_mut().forget(id));
             // SAFETY: removes this very subclass from the window being destroyed; the chain is
             // still intact during this message.
             let _ = unsafe { RemoveWindowSubclass(hwnd, Some(erase_subclass_proc), SUBCLASS_ID) };

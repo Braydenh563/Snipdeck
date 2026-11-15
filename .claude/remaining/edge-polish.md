@@ -12,3 +12,7 @@ Blocked: Windows verification (owner).
 
 ## Eyedropper (owner bug)
 - done: `eyedropping` flag suspends dock events and blur-hide; outcome returns through `show()` + ShowColours; tests in controller/tests/dock.rs `mod eyedropper`; D25 quick check.
+
+## Review fixes (59b1280 review)
+- done: eyedropper return via reveal_panel() (no Target re-read, no re-anchor of a hidden Panel; foreground changes ignored during a pick), tests in tests/access.rs; erase subclass installed once per window (EraseGate::needs_guard/forget, test); subclass uses try_with.
+- noted, not fixed: light dock-tab corners show bg-app (opaque window; transparency needs a layered window or a window region).
