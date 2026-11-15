@@ -12,6 +12,8 @@
 //!   this also covers a start-up before Explorer. Only one attempt is made per announcement.
 //! - **Left click** (`NIN_SELECT` / `NIN_KEYSELECT`) gives [`TrayEvent::TogglePanel`]; a **double
 //!   click** (`WM_LBUTTONDBLCLK`) gives [`TrayEvent::OpenSnipdeck`].
+//!   A left click is held for the system double-click time ([`ClickDeferral`]) so a double click
+//!   does not also toggle the Panel; the message order is unverified on Windows.
 //! - **Right click** (`WM_CONTEXTMENU`) shows a popup menu with `TrackPopupMenu` at the click
 //!   position; the chosen entry becomes a [`TrayEvent`]. The window is made foreground first and
 //!   `WM_NULL` is posted afterwards, as the menu documentation requires, otherwise the menu does
@@ -31,7 +33,7 @@
 use std::cell::{Cell, RefCell};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use windows::Win32::Foundation::{GetLastError, HANDLE, HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
@@ -42,10 +44,11 @@ use windows::Win32::UI::Shell::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     AppendMenuW, ChangeWindowMessageFilterEx, CreatePopupMenu, DestroyMenu, GetCursorPos,
-    GetForegroundWindow, HICON, HMENU, IDI_APPLICATION, IMAGE_ICON, IsWindow, LR_SHARED,
-    LoadImageW, MF_CHECKED, MF_SEPARATOR, MF_STRING, MSGFLT_ALLOW, PostMessageW,
-    RegisterWindowMessageW, SetForegroundWindow, TPM_BOTTOMALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON,
-    TrackPopupMenu, WM_APP, WM_CLOSE, WM_CREATE, WM_DESTROY, WM_NULL,
+    GetDoubleClickTime, GetForegroundWindow, HICON, HMENU, IDI_APPLICATION, IMAGE_ICON, IsWindow,
+    KillTimer, LR_SHARED, LoadImageW, MF_CHECKED, MF_SEPARATOR, MF_STRING, MSGFLT_ALLOW,
+    PostMessageW, RegisterWindowMessageW, SetForegroundWindow, SetTimer, TPM_BOTTOMALIGN,
+    TPM_RETURNCMD, TPM_RIGHTBUTTON, TrackPopupMenu, WM_APP, WM_CLOSE, WM_CREATE, WM_DESTROY,
+    WM_NULL, WM_TIMER,
 };
 use windows::core::{HSTRING, PCWSTR, w};
 
@@ -53,8 +56,8 @@ use super::dpi;
 use super::hidden_window::{HiddenWindow, WindowHandler};
 use crate::error::Error;
 use crate::tray::{
-    MenuLine, Reaction, Tray, TrayEntry, TrayEvent, TrayLabels, TrayModel, classify, decode_anchor,
-    decode_callback,
+    ClickDeferral, Gesture, MenuLine, Reaction, Tray, TrayEntry, TrayEvent, TrayLabels, TrayModel,
+    classify, decode_anchor, decode_callback,
 };
 
 /// Wakes the window to drain the command channel.
@@ -63,6 +66,8 @@ const WM_COMMANDS: u32 = WM_APP + 1;
 const WM_TRAY: u32 = WM_APP + 2;
 /// The icon's id within this window.
 const ICON_ID: u32 = 1;
+/// The timer that releases a held left click.
+const CLICK_TIMER: usize = 1;
 /// How long a caller waits for the tray thread before reporting it unresponsive.
 const REPLY_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -160,6 +165,9 @@ struct TrayHandler {
     icon: HICON,
     /// Whether the shell currently has our icon.
     added: Cell<bool>,
+    /// A left click held back until the double-click time passes (see [`ClickDeferral`]).
+    click: Cell<ClickDeferral>,
+    started: Instant,
 }
 
 impl TrayHandler {
@@ -178,6 +186,8 @@ impl TrayHandler {
             taskbar_created,
             icon: load_icon(),
             added: Cell::new(false),
+            click: Cell::new(ClickDeferral::default()),
+            started: Instant::now(),
         }
     }
 
@@ -323,6 +333,35 @@ impl TrayHandler {
         }
     }
 
+    fn now_ms(&self) -> u64 {
+        u64::try_from(self.started.elapsed().as_millis()).unwrap_or(u64::MAX)
+    }
+
+    fn drop_held_click(&self, hwnd: HWND) {
+        let mut click = self.click.get();
+        click.double_select();
+        self.click.set(click);
+        // SAFETY: our own window and timer id; a missing timer is only an error code.
+        let _ = unsafe { KillTimer(Some(hwnd), CLICK_TIMER) };
+    }
+
+    /// The double-click time passed: a held left click now acts.
+    fn on_click_timer(&self, hwnd: HWND) {
+        // SAFETY: our own window and timer id.
+        let _ = unsafe { KillTimer(Some(hwnd), CLICK_TIMER) };
+        let mut click = self.click.get();
+        // The timer only runs while no double click came, so whatever is held is due (a timer
+        // may fire a few milliseconds early).
+        let due = click.release(self.now_ms(), 0);
+        self.click.set(click);
+        if due {
+            let reaction = self.model.borrow_mut().gesture(Gesture::Select);
+            if let Some(Reaction::Event(event)) = reaction {
+                self.emit(event);
+            }
+        }
+    }
+
     /// A callback from the shell for our icon.
     fn on_callback(&self, hwnd: HWND, wparam: WPARAM, lparam: LPARAM) {
         let (code, icon_id) = decode_callback(lparam.0);
@@ -332,6 +371,19 @@ impl TrayHandler {
         let Some(gesture) = classify(code) else {
             return;
         };
+        match gesture {
+            // A left click waits out the double-click time: a second click makes it a double.
+            Gesture::Select => {
+                let mut click = self.click.get();
+                click.select(self.now_ms());
+                self.click.set(click);
+                // SAFETY: `hwnd` is our own window, on this thread; the timer id is ours.
+                let _ = unsafe { SetTimer(Some(hwnd), CLICK_TIMER, GetDoubleClickTime(), None) };
+                return;
+            }
+            Gesture::DoubleSelect => self.drop_held_click(hwnd),
+            Gesture::ContextMenu => {}
+        }
         // Decide first and drop the borrow: the menu below runs a modal message loop.
         let reaction = self.model.borrow_mut().gesture(gesture);
         match reaction {
@@ -355,6 +407,10 @@ impl WindowHandler for TrayHandler {
             while let Ok(command) = self.commands.try_recv() {
                 self.serve(hwnd, command);
             }
+            return Some(LRESULT(0));
+        }
+        if msg == WM_TIMER && wparam.0 == CLICK_TIMER {
+            self.on_click_timer(hwnd);
             return Some(LRESULT(0));
         }
         if msg == WM_TRAY {

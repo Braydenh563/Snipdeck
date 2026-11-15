@@ -240,6 +240,42 @@ pub const fn classify(code: u32) -> Option<Gesture> {
     }
 }
 
+/// Holds a left click back until the system double-click time has passed without a second
+/// click, so a double click gives only [`TrayEvent::OpenSnipdeck`] and not a Panel toggle first.
+/// Time is whatever millisecond count the caller reads (an injected clock in the tests).
+///
+/// **Windows message order unverified:** this assumes `NIN_SELECT` for the first click arrives
+/// before `WM_LBUTTONDBLCLK` for the second (the shell sends the select on button-up and the
+/// double click on the second button-down); on a Windows machine, check that a double click
+/// opens only the Main window and a single click toggles after about the double-click time.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct ClickDeferral {
+    pending_since: Option<u64>,
+}
+
+impl ClickDeferral {
+    /// A left click at `now_ms`: it is held.
+    pub fn select(&mut self, now_ms: u64) {
+        self.pending_since = Some(now_ms);
+    }
+
+    /// A double click: the held click, if any, is dropped. Returns whether one was held.
+    pub fn double_select(&mut self) -> bool {
+        self.pending_since.take().is_some()
+    }
+
+    /// True once, when a held click is `wait_ms` old or more; the click is then released.
+    pub fn release(&mut self, now_ms: u64, wait_ms: u64) -> bool {
+        match self.pending_since {
+            Some(since) if now_ms.saturating_sub(since) >= wait_ms => {
+                self.pending_since = None;
+                true
+            }
+            _ => false,
+        }
+    }
+}
+
 /// Splits the `lParam` of a version-4 tray callback into (notification code, icon id): the low
 /// and high words.
 #[must_use]
@@ -536,6 +572,27 @@ mod tests {
             m.gesture(Gesture::Select),
             Some(Reaction::Event(TrayEvent::TogglePanel))
         );
+    }
+
+    #[test]
+    fn a_single_click_acts_after_the_double_click_time_and_not_before() {
+        let mut d = ClickDeferral::default();
+        d.select(1_000);
+        assert!(!d.release(1_499, 500), "still waiting for a second click");
+        assert!(
+            d.release(1_500, 500),
+            "the time passed with no second click"
+        );
+        assert!(!d.release(2_000, 500), "released once");
+    }
+
+    #[test]
+    fn a_double_click_drops_the_held_click() {
+        let mut d = ClickDeferral::default();
+        d.select(1_000);
+        assert!(d.double_select());
+        assert!(!d.release(5_000, 500), "the toggle never happens");
+        assert!(!d.double_select(), "nothing held, nothing dropped");
     }
 
     #[test]
