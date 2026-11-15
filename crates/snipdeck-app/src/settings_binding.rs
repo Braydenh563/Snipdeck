@@ -1120,6 +1120,8 @@ where
 
     fn act<R>(self: &Rc<Self>, f: impl FnOnce(&mut Controller<Store, C, K, T>) -> R) -> R {
         let result = f(&mut self.controller.borrow_mut());
+        // One read per user action (not per redraw): the entry may have been removed outside.
+        self.refresh_autostart();
         redraw_all();
         result
     }
@@ -1369,6 +1371,7 @@ where
     /// it is not brought back); if the rewrite fails nothing changes.
     fn panel_start_visible_chosen(self: &Rc<Self>, index: i32) {
         let visible = index == 1;
+        self.refresh_autostart();
         let rewrite =
             self.controller.borrow().settings().autostart && self.autostart_registered.get();
         if rewrite && let Err(error) = self.host.set_autostart(true, !visible) {
