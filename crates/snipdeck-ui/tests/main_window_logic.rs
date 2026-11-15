@@ -2068,6 +2068,40 @@ ui_tests! {
         let _ = find(&ui, "Settings", AccessibleRole::Button);
     }
 
+    fn a_toolbar_tooltip_goes_when_the_palette_opens_and_esc_closes_one_first() {
+        let (ui, log) = start();
+        let tips = |ui: &MainWindow| ElementQuery::from_root(ui).match_inherits("Tooltip").find_all().len();
+        let rest_on = |ui: &MainWindow, label: &str| {
+            let button = find(ui, label, AccessibleRole::Button);
+            ui.window().dispatch_event(WindowEvent::PointerMoved { position: centre_of(&button) });
+            mock_elapsed_time(std::time::Duration::from_millis(600));
+            settle();
+        };
+        rest_on(&ui, "Compact view");
+        assert_eq!(tips(&ui), 1, "the view button's tip is up after a rest");
+        chord(ui.window(), &[Key::Control], "k");
+        settle();
+        assert!(ui.get_palette_open());
+        assert_eq!(tips(&ui), 0, "no tip above the palette's scrim");
+        press_key(&ui, Key::Escape);
+        settle();
+        assert!(!ui.get_palette_open());
+        mock_elapsed_time(std::time::Duration::from_millis(600));
+        settle();
+        assert_eq!(tips(&ui), 0, "it does not come back when the palette closes");
+
+        rest_on(&ui, "Comfortable view");
+        assert_eq!(tips(&ui), 1);
+        take(&log);
+        press_key(&ui, Key::Escape);
+        settle();
+        assert_eq!(tips(&ui), 0, "Esc closes the tip");
+        assert_eq!(take(&log), Vec::<String>::new(), "and does nothing else on that press");
+        mock_elapsed_time(std::time::Duration::from_millis(600));
+        settle();
+        assert_eq!(tips(&ui), 0, "it stays closed while the pointer rests there");
+    }
+
     fn rail_tooltips_stay_inside_the_window() {
         let (ui, _log) = start();
         ui.set_sidebar_collapsed(true);

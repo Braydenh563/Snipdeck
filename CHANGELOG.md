@@ -154,7 +154,9 @@ first start.
   list now moves only when the highlight is out of view. Unverified on a Windows precision touchpad.
 - **Tooltips draw above everything in their window.** A tooltip no longer hides behind a later element (the heading
   title, the toolbar) or gets cut off by a narrow container (the collapsed sidebar): each window has one tooltip layer
-  drawn last, shifted to stay inside the window. Unverified on Windows.
+  drawn last, shifted to stay inside the window. Every tooltip in the app now uses it: it shows at once when moving
+  from one control to the next, goes when a menu, dialog or the command palette opens, closes on `Esc` (that press
+  does nothing else), and closes when its button is used. Unverified on Windows.
 - **Paste as plain text** now also works on the Panel's Recent rows (`Alt+Enter`, `Alt`+click, and the row
   menu) and in the Main window (`Alt+Enter`, `Alt`+click). Unverified: whether `Alt`+click shows the target's
   menu bar on Windows.

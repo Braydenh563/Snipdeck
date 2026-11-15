@@ -2708,6 +2708,35 @@ ui_tests! {
         assert_eq!(ui.get_tooltip_shown(), "More");
     }
 
+    fn escape_closes_a_showing_tooltip_and_does_nothing_else_on_that_press() {
+        let (ui, log) = start();
+        move_to(&ui, centre(&find(&ui, "More", AccessibleRole::Button)));
+        wait(600);
+        assert_eq!(ui.get_tooltip_shown(), "More");
+        take(&log);
+        press(ui.window(), &key(Key::Escape));
+        settle();
+        assert_eq!(ui.get_tooltip_shown(), "", "the tip goes");
+        assert_eq!(take(&log), Vec::<String>::new(), "and the Panel stays");
+        wait(1000);
+        assert_eq!(ui.get_tooltip_shown(), "", "it stays closed while the pointer rests there");
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(take(&log), ["close"], "with no tip, Esc hides the Panel as before");
+    }
+
+    fn a_menu_opening_hides_the_tooltip_and_it_stays_hidden_after() {
+        let (ui, _log) = start();
+        move_to(&ui, centre(&find(&ui, "More", AccessibleRole::Button)));
+        wait(600);
+        assert_eq!(ui.get_tooltip_shown(), "More");
+        ui.set_app_menu_open(true);
+        settle();
+        assert_eq!(ui.get_tooltip_shown(), "", "no tip above the menu");
+        ui.set_app_menu_open(false);
+        wait(600);
+        assert_eq!(ui.get_tooltip_shown(), "", "nor after it, until the pointer moves on");
+    }
+
     fn every_icon_only_control_in_the_panel_has_a_tooltip() {
         let (ui, _log) = start();
         set_pinned(&ui, fixture::pinned_n(12));

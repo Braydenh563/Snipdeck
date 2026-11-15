@@ -1,20 +1,23 @@
 import { Space } from "../theme.slint";
 import { Tooltip } from "tooltip.slint";
 
-// The window's one tooltip slot (DESIGN.md §4). A control that has rested under the pointer (or holds keyboard focus)
-// for `show-delay` calls `show` with its own box in window coordinates; the window's `TipLayer` draws the tooltip.
-// The layer is the window's last child, so nothing paints over a tooltip and no container clips it. A global is
-// one per window, so each window has its own slot.
+// The window's one tooltip (DESIGN.md §4). A control asks for it with `show` while it is hovered or holds keyboard
+// focus, and gives it back with `hide`; the window's `TipLayer` keeps the timing (500ms rest, at once when moving
+// from one control to another) and draws it. The layer is the window's last child, so nothing paints over a tooltip
+// and no container clips it. A global is one per window, so each window has its own.
 export global TipHost {
+    // What the layer shows, and the asking control's box in window coordinates.
     out property <string> text;
-    out property <bool> open;
-    // The anchoring control's box in window coordinates.
     out property <length> left;
     out property <length> top;
     out property <length> box-width;
     out property <length> box-height;
-    // Who holds the slot: each `show` hands out a new id, and only that id's `hide` closes the tooltip.
-    property <int> owner;
+    // A control is asking (`show` and no `hide` yet), and who: each `show` takes a new id, so only the latest asker's
+    // `hide` gives the tooltip back.
+    out property <bool> wanted;
+    out property <int> owner;
+    // The layer has it on screen (after the rest). The layer sets it.
+    in-out property <bool> open;
 
     public function show(text: string, left: length, top: length, box-width: length, box-height: length) -> int {
         self.owner += 1;
@@ -23,30 +26,122 @@ export global TipHost {
         self.top = top;
         self.box-width = box-width;
         self.box-height = box-height;
-        self.open = true;
+        self.wanted = true;
         return self.owner;
     }
-    // Closes the tooltip when `id` still holds the slot (another control may have taken it since).
     public function hide(id: int) {
         if (self.owner == id) {
-            self.open = false;
+            self.wanted = false;
         }
+    }
+    // Esc: closes a tooltip on screen, and says whether there was one (so that press does nothing else). The control
+    // keeps it closed until it asks again.
+    public function dismiss() -> bool {
+        let was = self.open;
+        self.wanted = false;
+        self.open = false;
+        return was;
     }
 }
 
-// Put this last in every `Window` whose controls use `tooltip` with `own-tooltip`. It covers the window but takes no
-// input. The tooltip sits below its control (4px gap), flips above when it would pass the bottom edge, is left
-// aligned to the control (right aligned when wider than it), and is shifted to stay 8px inside the window.
+// A control's side of `TipHost`: while `wanted` (hovered or focused), it asks for `text` under its box, and asks
+// again when the text changes. `close` gives it back at once (the control was used, so its name is not needed).
+export component TipSource {
+    in property <string> text;
+    in property <bool> wanted;
+    in property <length> left;
+    in property <length> top;
+    in property <length> box-width;
+    in property <length> box-height;
+    width: 0px;
+    height: 0px;
+    property <int> id: -1;
+    property <bool> asking: root.wanted && root.text != "";
+    changed asking => {
+        if (root.asking) {
+            root.id = TipHost.show(root.text, root.left, root.top, root.box-width, root.box-height);
+        } else {
+            TipHost.hide(root.id);
+        }
+    }
+    changed text => {
+        if (root.asking && TipHost.owner == root.id && TipHost.wanted) {
+            root.id = TipHost.show(root.text, root.left, root.top, root.box-width, root.box-height);
+        }
+    }
+    public function close() {
+        TipHost.hide(root.id);
+    }
+}
+
+// Put this last in every `Window` whose controls have tooltips. It covers the window but takes no input. The tooltip
+// is centred under its control (4px gap), flips above when it would pass the bottom edge, and is shifted to stay 8px
+// inside the window. `suppressed` (a menu, dialog or the palette is open) keeps it off screen.
 export component TipLayer inherits Rectangle {
+    in property <bool> suppressed: false;
+    // What is on screen: the tooltip's text, or "" (for tests and for the window to read).
+    out property <string> shown: TipHost.open && !root.suppressed ? TipHost.text : "";
     accessible-role: AccessibleRole.none;
 
-    if TipHost.open: Tooltip {
+    // DESIGN.md §4: the rest before a tooltip shows (the `Tooltip`'s `show-delay`); for a quarter second after a tooltip closes, the next one shows at once.
+    property <bool> warm: false;
+    property <bool> wanted: TipHost.wanted;
+    property <int> owner: TipHost.owner;
+    function ask() {
+        if (!TipHost.wanted) {
+            return;
+        }
+        warm-timer.running = false;
+        if (TipHost.open || root.warm) {
+            delay.running = false;
+            TipHost.open = true;
+        } else if (!delay.running) {
+            delay.running = true;
+        }
+    }
+    changed owner => { root.ask(); }
+    changed wanted => {
+        if (root.wanted) {
+            root.ask();
+        } else {
+            delay.running = false;
+            if (TipHost.open) {
+                TipHost.open = false;
+                root.warm = true;
+                warm-timer.running = true;
+            }
+        }
+    }
+    // A menu or dialog opening closes the tooltip; it does not come back when it closes.
+    changed suppressed => {
+        if (root.suppressed) {
+            TipHost.dismiss();
+        }
+    }
+    delay := Timer {
+        interval: 500ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            TipHost.open = TipHost.wanted && !root.suppressed;
+        }
+    }
+    warm-timer := Timer {
+        interval: 250ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            root.warm = false;
+        }
+    }
+
+    if root.shown != "": Tooltip {
         text: TipHost.text;
         open: true;
         limit-width: root.width - 2 * Space.s2;
         width: self.preferred-width;
         height: self.preferred-height;
-        x: max(Space.s2, min(TipHost.left + min(0px, TipHost.box-width - self.width), root.width - self.width - Space.s2));
+        x: max(Space.s2, min(TipHost.left + (TipHost.box-width - self.width) / 2, root.width - self.width - Space.s2));
         y: max(Space.s2, TipHost.top + TipHost.box-height + Space.s1 + self.height > root.height - Space.s2
             ? TipHost.top - Space.s1 - self.height
             : TipHost.top + TipHost.box-height + Space.s1);

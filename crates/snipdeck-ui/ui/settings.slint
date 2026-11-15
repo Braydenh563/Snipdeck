@@ -8,7 +8,7 @@
 //
 // Keyboard: Tab / Shift+Tab move between settings (the page scrolls to the focused one); each group of choices is
 // one tab stop with arrow keys. A shortcut recorder starts on Enter or Space and ends on Esc. Esc closes the page.
-import { TipLayer } from "components/tip-host.slint";
+import { TipHost, TipLayer } from "components/tip-host.slint";
 import { Theme, Type, Space, Radius, Motion, Fonts, Palette, SystemLook } from "theme.slint";
 import { Icons } from "icons.slint";
 import { Button, ButtonSize, ButtonVariant } from "components/button.slint";
@@ -524,6 +524,10 @@ export component SettingsPage inherits Window {
 
     scope := FocusScope {
         key-pressed(event) => {
+            // Esc first closes a tooltip on screen, and does nothing else on that press.
+            if (event.text == Key.Escape && TipHost.dismiss()) {
+                return accept;
+            }
             if (event.text == Key.F1) {
                 root.help-requested();
                 return accept;
@@ -1726,5 +1730,5 @@ export component SettingsPage inherits Window {
     }
 
     // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
-    TipLayer {}
+    TipLayer { suppressed: root.erase-open || root.import-open; }
 }

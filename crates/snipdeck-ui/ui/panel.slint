@@ -26,9 +26,9 @@
 //   Alt+Up, Alt+Down  move the selected row up or down (a list in manual order, no search)
 //   Esc             closes an open menu; else clears the search and collapses it; with nothing to clear, asks the host to hide the Panel
 //
-// Tooltips: every icon-only control reports hover and keyboard focus here; the Panel shows one
-// `Tooltip` after 500ms, and swaps it instantly while the pointer moves between controls.
-import { TipLayer } from "components/tip-host.slint";
+// Tooltips: every icon-only control reports hover and keyboard focus here; the window's `TipLayer` shows
+// one after 500ms, and swaps it instantly while the pointer moves between controls.
+import { TipHost, TipLayer } from "components/tip-host.slint";
 import { ListView } from "std-widgets.slint";
 import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette } from "theme.slint";
 import { Icons } from "icons.slint";
@@ -44,7 +44,7 @@ import { Chooser, ChoiceEntry } from "components/chooser.slint";
 import { ListsMenu } from "components/lists-menu.slint";
 import { SearchField } from "components/text_field.slint";
 import { EmptyState, EmptyStateKind } from "components/empty_state.slint";
-import { Toast, ToastKind, ToastPhase, Skeleton, SkeletonKind, Tooltip } from "components/feedback.slint";
+import { Toast, ToastKind, ToastPhase, Skeleton, SkeletonKind } from "components/feedback.slint";
 import { Menu, MenuEntry } from "components/menu.slint";
 import { SuggestDropdown, SuggestRow } from "components/suggest-dropdown.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
@@ -591,7 +591,9 @@ export component PanelWindow inherits Window {
         }
     }
     // The text of the tooltip on screen (empty = none), for tests and assistive checks.
-    out property <string> tooltip-shown: root.tip-open && !root.board-menu-open && !root.app-menu-open && !root.item-menu-open && !root.list-menu-open && !root.list-delete-open && !root.clear-list-open && !root.board-delete-open && !root.new-menu-open && !root.pinned-menu-open && !root.dragging ? root.tip : "";
+    // The tooltip on screen ("" for none). A menu, dialog or drag hides it.
+    out property <string> tooltip-shown: tips.shown;
+    property <bool> tips-suppressed: root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.list-delete-open || root.clear-list-open || root.board-delete-open || root.new-menu-open || root.pinned-menu-open || root.dragging;
 
     // ---- Internals ----------------------------------------------------------------------------
     property <bool> pastes: root.target-name != "";
@@ -726,34 +728,21 @@ export component PanelWindow inherits Window {
     property <length> grip: 6px;
     property <length> grip-corner: Space.s2;
 
-    // Tooltip state (DESIGN.md §4): the control that owns it reports hover or focus through `tip-set`;
-    // the text shows after the Tooltip's `show-delay`, but at once when it was just showing another one
-    // (`tip-warm`, for a quarter second after one closes).
+    // Tooltips (DESIGN.md §4): the control that owns one reports hover or focus through `tip-set` (an anchor point:
+    // the middle of its bottom edge) or `tip-box`; the window's `TipLayer` shows it after the rest, and at once when
+    // the pointer moves from one control to another.
     property <string> tip;
-    property <length> tip-cx;
-    property <length> tip-bottom;
-    property <bool> tip-open: false;
-    property <bool> tip-warm: false;
-    function tip-set(text: string, cx: length, bottom: length, on: bool) {
+    property <int> tip-id: -1;
+    function tip-box(text: string, left: length, top: length, box-width: length, box-height: length, on: bool) {
         if (on) {
             root.tip = text;
-            root.tip-cx = cx;
-            root.tip-bottom = bottom;
-            tip-warm-timer.running = false;
-            if (root.tip-open || root.tip-warm) {
-                tip-timer.running = false;
-                root.tip-open = true;
-            } else if (!tip-timer.running) {
-                tip-timer.running = true;
-            }
+            root.tip-id = TipHost.show(text, left, top, box-width, box-height);
         } else if (text == root.tip) {
-            tip-timer.running = false;
-            if (root.tip-open) {
-                root.tip-open = false;
-                root.tip-warm = true;
-                tip-warm-timer.running = true;
-            }
+            TipHost.hide(root.tip-id);
         }
+    }
+    function tip-set(text: string, cx: length, bottom: length, on: bool) {
+        root.tip-box(text, cx, bottom, 0px, 0px, on);
     }
     // A tooltip does not ride along with a dragged Panel, and is not back when the drag ends.
     changed dragging => {
@@ -797,22 +786,6 @@ export component PanelWindow inherits Window {
     property <string> symbol-typed: "";
     property <int> symbol-typed-ticks: 0;
     changed scroll-y => { root.row-tips-close(); }
-    tip-timer := Timer {
-        interval: tooltip.show-delay;
-        running: false;
-        triggered => {
-            self.running = false;
-            root.tip-open = true;
-        }
-    }
-    tip-warm-timer := Timer {
-        interval: 250ms;
-        running: false;
-        triggered => {
-            self.running = false;
-            root.tip-warm = false;
-        }
-    }
 
     property <bool> narrow: false;
     property <float> text-scale: SystemLook.text-scale;
@@ -1247,6 +1220,10 @@ export component PanelWindow inherits Window {
             }
 
             capture-key-pressed(event) => {
+                // Esc first closes a tooltip on screen, and does nothing else on that press.
+                if (event.text == Key.Escape && TipHost.dismiss()) {
+                    return accept;
+                }
                 if (event.text == Key.Tab || event.text == Key.Backtab) {
                     self.tab-back = event.text == Key.Backtab || event.modifiers.shift;
                 }
@@ -2806,7 +2783,7 @@ export component PanelWindow inherits Window {
                             status-touch := TouchArea {
                                 mouse-cursor: MouseCursor.default;
                                 changed has-hover => {
-                                    root.tip-set(status.how, self.absolute-position.x + Space.s6, self.absolute-position.y - tooltip.preferred-height - Space.s2, self.has-hover && !(root.no-results));
+                                    root.tip-box(status.how, self.absolute-position.x + Space.s6, self.absolute-position.y, 0px, self.height, self.has-hover && !(root.no-results));
                                 }
                             }
                             HorizontalLayout {
@@ -2900,7 +2877,7 @@ export component PanelWindow inherits Window {
                             animate background { duration: Motion.instant; easing: Motion.out; }
                             changed tip-on => {
                                 if (root.narrow) {
-                                    root.tip-set(@tr("Open Snipdeck"), self.absolute-position.x + self.width / 2, self.absolute-position.y - tooltip.preferred-height - Space.s2, self.tip-on);
+                                    root.tip-box(@tr("Open Snipdeck"), self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.tip-on);
                                 }
                             }
                             open-row := HorizontalLayout {
@@ -3250,18 +3227,6 @@ export component PanelWindow inherits Window {
             }
         }
 
-        // The tooltip of whichever icon-only control is hovered or focused, centred under it and kept
-        // inside the window. Above the menus' scrims, below nothing; it never takes pointer or focus.
-        tooltip := Tooltip {
-            text: root.tip;
-            open: root.tooltip-shown != "";
-            limit-width: root.width - 2 * Space.s2;
-            width: self.preferred-width;
-            height: self.preferred-height;
-            // The edges win over the centring (max last), so a wide tip never starts left of the window.
-            x: max(Space.s2, min(root.tip-cx - self.width / 2, root.width - self.width - Space.s2));
-            y: max(Space.s2, min(root.tip-bottom + Space.s1, root.height - self.height - Space.s2));
-        }
 
         // ---- Resize grips: invisible, last so they sit above the header's drag area and the menus' scrims.
         // Rows start 8px in and the header buttons 8px in from the right, so none of this overlaps a control.
@@ -3380,5 +3345,5 @@ export component PanelWindow inherits Window {
     }
 
     // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
-    TipLayer {}
+    tips := TipLayer { suppressed: root.tips-suppressed; }
 }

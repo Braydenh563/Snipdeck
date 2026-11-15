@@ -1,7 +1,7 @@
 import { Theme, Type, Radius, Space, Motion, Fonts, SystemLook } from "../theme.slint";
 import { Icon } from "icon.slint";
 import { StateColor } from "state-color.slint";
-import { TipHost } from "tip-host.slint";
+import { TipSource } from "tip-host.slint";
 
 export enum ButtonVariant { primary, secondary, ghost, danger }
 export enum ButtonSize { sm, md, lg }
@@ -33,32 +33,14 @@ export component Button inherits Rectangle {
 
     property <bool> active: root.enabled && !root.loading;
     out property <bool> has-hover: touch.has-hover && root.active;
-    property <bool> tip-wanted: root.tooltip != "" && (root.has-hover || root.has-focus);
-    property <bool> tip-open: false;
-    property <int> tip-id;
     // The window's tooltip layer draws it (`TipLayer`, last in the window), so it is never under a later sibling or clipped.
-    changed tip-open => {
-        if (root.tip-open) {
-            root.tip-id = TipHost.show(root.tooltip, root.absolute-position.x, root.absolute-position.y, root.width, root.height);
-        } else {
-            TipHost.hide(root.tip-id);
-        }
-    }
-    changed tip-wanted => {
-        if (!root.tip-wanted) {
-            root.tip-open = false;
-            tip-timer.running = false;
-        } else {
-            tip-timer.running = true;
-        }
-    }
-    tip-timer := Timer {
-        interval: 500ms;
-        running: false;
-        triggered => {
-            self.running = false;
-            root.tip-open = root.tip-wanted;
-        }
+    tip := TipSource {
+        text: root.tooltip;
+        wanted: root.tooltip != "" && (root.has-hover || root.has-focus);
+        left: root.absolute-position.x;
+        top: root.absolute-position.y;
+        box-width: root.width;
+        box-height: root.height;
     }
     // 24 / 28 / 32, and taller once the Windows text size makes the label taller (equal at 100%).
     property <length> height-px: root.size == ButtonSize.sm ? max(24px, Type.line-sm + Space.s2)
@@ -134,7 +116,7 @@ export component Button inherits Rectangle {
     touch := TouchArea {
         enabled: root.active;
         clicked => {
-            root.tip-open = false;
+            tip.close();
             root.clicked();
         }
     }
@@ -144,7 +126,7 @@ export component Button inherits Rectangle {
         focus-on-click: false;
         key-pressed(event) => {
             if (event.text == " " || event.text == "\n") {
-                root.tip-open = false;
+                tip.close();
                 root.clicked();
                 return accept;
             }
