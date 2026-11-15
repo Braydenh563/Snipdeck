@@ -37,6 +37,7 @@ use std::time::{Duration, Instant};
 
 use windows::Win32::Foundation::{GetLastError, HANDLE, HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows::Win32::UI::Input::KeyboardAndMouse::GetDoubleClickTime;
 use windows::Win32::UI::Shell::{
     NIF_ICON, NIF_MESSAGE, NIF_SHOWTIP, NIF_TIP, NIM_ADD, NIM_DELETE, NIM_MODIFY, NIM_SETVERSION,
     NOTIFY_ICON_DATA_FLAGS, NOTIFY_ICON_MESSAGE, NOTIFYICON_VERSION_4, NOTIFYICONDATAW,
@@ -44,11 +45,10 @@ use windows::Win32::UI::Shell::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     AppendMenuW, ChangeWindowMessageFilterEx, CreatePopupMenu, DestroyMenu, GetCursorPos,
-    GetDoubleClickTime, GetForegroundWindow, HICON, HMENU, IDI_APPLICATION, IMAGE_ICON, IsWindow,
-    KillTimer, LR_SHARED, LoadImageW, MF_CHECKED, MF_SEPARATOR, MF_STRING, MSGFLT_ALLOW,
-    PostMessageW, RegisterWindowMessageW, SetForegroundWindow, SetTimer, TPM_BOTTOMALIGN,
-    TPM_RETURNCMD, TPM_RIGHTBUTTON, TrackPopupMenu, WM_APP, WM_CLOSE, WM_CREATE, WM_DESTROY,
-    WM_NULL, WM_TIMER,
+    GetForegroundWindow, HICON, HMENU, IDI_APPLICATION, IMAGE_ICON, IsWindow, KillTimer, LR_SHARED,
+    LoadImageW, MF_CHECKED, MF_SEPARATOR, MF_STRING, MSGFLT_ALLOW, PostMessageW,
+    RegisterWindowMessageW, SetForegroundWindow, SetTimer, TPM_BOTTOMALIGN, TPM_RETURNCMD,
+    TPM_RIGHTBUTTON, TrackPopupMenu, WM_APP, WM_CLOSE, WM_CREATE, WM_DESTROY, WM_NULL, WM_TIMER,
 };
 use windows::core::{HSTRING, PCWSTR, w};
 

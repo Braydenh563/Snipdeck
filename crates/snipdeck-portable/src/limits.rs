@@ -27,7 +27,7 @@ pub struct Limits {
     /// exceed about 1032.
     pub max_ratio: u64,
     /// Largest uncompressed size of `items.json`, in bytes. Default 256 MiB
-    /// ([`DEFAULT_MAX_JSON_BYTES`]): it is read into memory once, so an untrusted archive must not
+    /// (256 MiB): it is read into memory once, so an untrusted archive must not
     /// ask for more. Export refuses to write a larger one ([`Limits::export_json_cap`]), so
     /// the app's own archives always re-import under the default.
     pub max_json_bytes: u64,

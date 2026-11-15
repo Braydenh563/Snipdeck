@@ -941,7 +941,7 @@ mod tests {
         std::fs::create_dir(&other).unwrap();
         let mut list = vec![secret.clone(), other.clone(), root.path().join("missing")];
         assert_eq!(remove_listed_paste_dirs(root.path(), &mut list), 1);
-        assert!(list.is_empty());
+        assert_eq!(list, Vec::<std::path::PathBuf>::new());
         assert!(!secret.exists());
         assert!(plain.is_dir() && other.is_dir(), "not on the list");
     }

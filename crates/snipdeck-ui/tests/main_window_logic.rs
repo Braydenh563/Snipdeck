@@ -190,6 +190,7 @@ fn start() -> (MainWindow, Log) {
         "copy-selection:{i}"
     ));
     hook!(on_toast_edit, || "toast-edit".to_string());
+    hook!(on_toast_dismissed, || "toast-dismissed".to_string());
     hook!(on_item_reorder_requested, |d| format!("reorder:{d}"));
     hook!(on_move_chosen, |i| format!("move:{i}"));
     hook!(on_paste_as_chosen, |i| format!("paste-as:{i}"));
@@ -255,6 +256,37 @@ macro_rules! ui_tests {
 }
 
 ui_tests! {
+    fn the_sidebar_toggle_lives_in_the_sidebar_header() {
+        let (ui, _log) = start();
+        let sidebar_w = f64::from(ui.get_sidebar_width());
+        let toggle = find(&ui, "Collapse sidebar (Ctrl+B)", AccessibleRole::Button);
+        let board = find(&ui, "Board: Work", AccessibleRole::Button);
+        let (tp, tz) = (toggle.absolute_position(), toggle.size());
+        let (bp, bz) = (board.absolute_position(), board.size());
+        assert!(
+            f64::from(tp.x + tz.width) <= sidebar_w,
+            "inside the sidebar: right edge {} of {sidebar_w}",
+            tp.x + tz.width
+        );
+        assert!(
+            sidebar_w - f64::from(tp.x + tz.width) <= 12.0,
+            "right-aligned in the sidebar header: right edge {} of {sidebar_w}",
+            tp.x + tz.width
+        );
+        assert!(tp.x > bp.x + bz.width, "after the board switcher, on its row");
+        let (tc, bc) = (tp.y + tz.height / 2.0, bp.y + bz.height / 2.0);
+        assert!((tc - bc).abs() <= 1.0, "same row: {tc} vs {bc}");
+        // On the rail it tops the rail, above the board button.
+        ui.set_sidebar_collapsed(true);
+        settle();
+        let toggle = find(&ui, "Expand sidebar (Ctrl+B)", AccessibleRole::Button);
+        let board = find(&ui, "Board: Work", AccessibleRole::Button);
+        assert!(toggle.absolute_position().y < board.absolute_position().y, "top of the rail");
+        assert!(
+            f64::from(toggle.absolute_position().x + toggle.size().width) <= 48.0,
+            "within the rail"
+        );
+    }
 
     fn the_tile_button_is_off_and_unchecked_while_groups_draw_the_rows() {
         let (ui, _log) = start();
@@ -522,6 +554,18 @@ ui_tests! {
     }
 
     // ---- Context menu, move and tag ------------------------------------------------------------
+
+    fn a_context_menu_in_the_shortest_window_stays_inside_it() {
+        let (ui, _log) = start();
+        ui.window().set_size(slint::LogicalSize::new(1040.0, 360.0));
+        settle();
+        press_key(&ui, Key::DownArrow);
+        press_key(&ui, Key::Menu);
+        assert!(ui.get_menu_open());
+        let menu = find(&ui, "Item actions", AccessibleRole::List);
+        let bottom = menu.absolute_position().y + menu.size().height;
+        assert!(bottom <= 360.0, "the menu bottom {bottom} is inside the 360px window");
+    }
 
     fn the_menu_key_opens_the_context_menu_and_move_to_list_opens_a_chooser() {
         let (ui, log) = start();
@@ -1755,6 +1799,25 @@ ui_tests! {
 
     // ---- Toolbar -----------------------------------------------------------------------------------
 
+    fn the_search_clear_button_is_centred_smaller_than_the_box_and_inset_like_the_magnifier() {
+        let (ui, _log) = start();
+        chord(ui.window(), &[Key::Control], "f");
+        type_text(ui.window(), "inv");
+        settle();
+        let field = find(&ui, "Search snippets", AccessibleRole::TextInput);
+        let clear = find(&ui, "Clear search", AccessibleRole::Button);
+        let (fp, fz) = (field.absolute_position(), field.size());
+        let (cp, cz) = (clear.absolute_position(), clear.size());
+        let (fc, cc) = (fp.y + fz.height / 2.0, cp.y + cz.height / 2.0);
+        assert!((fc - cc).abs() <= 1.0, "the clear button is centred in the box: {cc} vs {fc}");
+        assert!(cz.height <= fz.height - 4.0, "clear of the border: {} in {}", cz.height, fz.height);
+        let inset = (fp.x + fz.width) - (cp.x + cz.width);
+        // The glyph is centred in its button, so the button's inset plus its padding mirrors the
+        // magnifier's 8px inset on the left.
+        let glyph_inset = inset + (cz.width - 16.0 * 0.75) / 2.0;
+        assert!((glyph_inset - 10.0).abs() <= 2.0, "right inset mirrors the magnifier: {glyph_inset}");
+    }
+
     fn search_takes_ctrl_f_and_slash_reports_edits_and_clears() {
         let (ui, log) = start();
         assert!(!ui.get_search_focused());
@@ -2157,6 +2220,15 @@ ui_tests! {
         assert_eq!(take(&log), ["paste-create"]);
         chord(ui.window(), &[Key::Control], "c");
         assert_eq!(take(&log), ["copy-selection:0"]);
+    }
+
+    fn the_toast_has_a_close_button() {
+        let (ui, log) = start();
+        ui.set_toast_text("Copied".into());
+        settle();
+        take(&log);
+        find(&ui, "Dismiss", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["toast-dismissed"]);
     }
 
     fn the_toast_edit_button_shows_only_with_its_label() {

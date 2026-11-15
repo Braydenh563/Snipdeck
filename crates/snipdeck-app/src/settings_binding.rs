@@ -1120,6 +1120,8 @@ where
 
     fn act<R>(self: &Rc<Self>, f: impl FnOnce(&mut Controller<Store, C, K, T>) -> R) -> R {
         let result = f(&mut self.controller.borrow_mut());
+        // One read per user action (not per redraw): the entry may have been removed outside.
+        self.refresh_autostart();
         redraw_all();
         result
     }
@@ -1369,6 +1371,7 @@ where
     /// it is not brought back); if the rewrite fails nothing changes.
     fn panel_start_visible_chosen(self: &Rc<Self>, index: i32) {
         let visible = index == 1;
+        self.refresh_autostart();
         let rewrite =
             self.controller.borrow().settings().autostart && self.autostart_registered.get();
         if rewrite && let Err(error) = self.host.set_autostart(true, !visible) {
@@ -1869,6 +1872,9 @@ where
         wire!(on_recent_history_cleared, |core| {
             core.act(Controller::recent_clear);
         });
+        wire!(on_picker_recents_cleared, |core| {
+            core.act(Controller::picker_recents_clear);
+        });
         wire!(on_reduce_motion_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.reduce_motion = on)));
         wire!(on_panel_width_chosen, |core, width| core
@@ -1916,6 +1922,8 @@ where
                 core.master_submitted(mode, &current, &new, &again);
             });
         }
+        wire!(on_toast_dismissed, |core| core
+            .act(Controller::toast_dismiss));
         wire!(on_master_unlock_requested, |core| core
             .act(Controller::request_unlock));
         window.on_master_strength(|password| crate::master_password::strength(&password).level());
