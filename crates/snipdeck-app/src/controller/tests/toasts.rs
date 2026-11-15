@@ -575,8 +575,8 @@ fn clearing_picker_recents_empties_emoji_and_colours_and_says_so() {
         }];
     });
     w.ctl.picker_recents_clear();
-    assert!(w.ctl.settings().colours_recent.is_empty());
-    assert!(w.ctl.settings().symbols_recent.is_empty());
+    assert_eq!(w.ctl.settings().colours_recent, []);
+    assert_eq!(w.ctl.settings().symbols_recent, []);
     assert_eq!(shown(&w), Some(ToastMessage::PickerRecentsCleared));
 }
 
