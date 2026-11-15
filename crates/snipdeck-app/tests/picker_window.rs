@@ -588,7 +588,10 @@ fn the_toast_windows_close_button_drops_the_toast_and_hides_the_window() {
         assert!(t.window().is_visible());
         t.invoke_dismissed();
         assert!(!t.window().is_visible(), "the window went with the toast");
-        assert!(r.ctl.borrow().view().toast.is_none(), "the controller dropped it");
+        assert!(
+            r.ctl.borrow().view().toast.is_none(),
+            "the controller dropped it"
+        );
     });
 }
 

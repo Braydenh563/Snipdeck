@@ -130,11 +130,19 @@ fn dismissing_a_toast_drops_it_and_its_undo_and_edit() {
     assert!(w.ctl.view().toast.is_some_and(|t| t.undo));
     w.ctl.toast_dismiss();
     assert!(w.ctl.view().toast.is_none(), "the toast is gone");
-    assert_eq!(w.ctl.toast_tick(seq), None, "its timers have nothing left to do");
+    assert_eq!(
+        w.ctl.toast_tick(seq),
+        None,
+        "its timers have nothing left to do"
+    );
     assert!(w.ctl.toast_edit().is_empty(), "no Edit behind it");
     let rows = w.ctl.view().rows.len();
     w.ctl.main_undo();
-    assert_eq!(w.ctl.view().rows.len(), rows, "the Undo is gone with the toast");
+    assert_eq!(
+        w.ctl.view().rows.len(),
+        rows,
+        "the Undo is gone with the toast"
+    );
 }
 
 #[test]
