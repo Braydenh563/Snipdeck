@@ -2938,17 +2938,17 @@ tint_over | crates/snipdeck-app/src/palette.rs:71
 list_icon_tint | crates/snipdeck-app/src/palette.rs:87
 tests | crates/snipdeck-app/src/palette.rs:96
 a_list_icon_is_tinted_only_where_it_keeps_three_to_one | crates/snipdeck-app/src/palette.rs:100
-a_colour_too_close_to_the_row_falls_back_to_the_default_icon_colour | crates/snipdeck-app/src/palette.rs:121
-light_uses_step_600_and_dark_step_400 | crates/snipdeck-app/src/palette.rs:131
-every_accent_resolves_from_the_palette_file | crates/snipdeck-app/src/palette.rs:143
-no_accent_is_slate | crates/snipdeck-app/src/palette.rs:166
-hex_parsing_rejects_junk | crates/snipdeck-app/src/palette.rs:174
-theme_colour | crates/snipdeck-app/src/palette.rs:185
-luminance | crates/snipdeck-app/src/palette.rs:193
-contrast | crates/snipdeck-app/src/palette.rs:205
-type_tile_glyphs_read_on_their_tile_in_both_themes | crates/snipdeck-app/src/palette.rs:214
-search_mark_is_readable_and_stays_visible_on_every_row_fill | crates/snipdeck-app/src/palette.rs:236
-toast_action_reads_on_the_ink_fill | crates/snipdeck-app/src/palette.rs:248
+a_colour_too_close_to_the_row_falls_back_to_the_default_icon_colour | crates/snipdeck-app/src/palette.rs:124
+light_uses_step_600_and_dark_step_400 | crates/snipdeck-app/src/palette.rs:134
+every_accent_resolves_from_the_palette_file | crates/snipdeck-app/src/palette.rs:146
+no_accent_is_slate | crates/snipdeck-app/src/palette.rs:169
+hex_parsing_rejects_junk | crates/snipdeck-app/src/palette.rs:177
+theme_colour | crates/snipdeck-app/src/palette.rs:188
+luminance | crates/snipdeck-app/src/palette.rs:196
+contrast | crates/snipdeck-app/src/palette.rs:208
+type_tile_glyphs_read_on_their_tile_in_both_themes | crates/snipdeck-app/src/palette.rs:217
+search_mark_is_readable_and_stays_visible_on_every_row_fill | crates/snipdeck-app/src/palette.rs:239
+toast_action_reads_on_the_ink_fill | crates/snipdeck-app/src/palette.rs:251
 
 ### crates/snipdeck-app/src/panel.rs
 
@@ -8804,7 +8804,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/inputs_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/lib_units.rs` | 7 |
 | `crates/snipdeck-ui/tests/main_window.rs` | 27 |
-| `crates/snipdeck-ui/tests/main_window_logic.rs` | 1 |
+| `crates/snipdeck-ui/tests/main_window_logic.rs` | 0 |
 | `crates/snipdeck-ui/tests/no_paid_tier_strings.rs` | 2 |
 | `crates/snipdeck-ui/tests/panel.rs` | 56 |
 | `crates/snipdeck-ui/tests/panel_logic.rs` | 3 |
