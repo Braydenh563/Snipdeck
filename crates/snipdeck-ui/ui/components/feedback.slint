@@ -75,7 +75,7 @@ component ToastClose inherits Rectangle {
     Icon {
         source: Icons.x;
         tint: Theme.text-on-ink;
-        size: 14px;
+        size: 18px;
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
     }
@@ -214,7 +214,7 @@ export component Toast inherits Rectangle {
             Rectangle {
                 width: Space.hit;
                 ToastClose {
-                    y: max(0px, (Space.s8 + Space.s2 - self.height) / 2);
+                    y: (parent.height - self.height) / 2;
                     activated => { root.dismissed(); }
                     changed focused => { root.close-focus = self.focused; }
                 }
