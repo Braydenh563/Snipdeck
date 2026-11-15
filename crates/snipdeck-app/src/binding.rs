@@ -1139,6 +1139,7 @@ where
         wire!(on_delete_requested, |ctl, i| ctl.delete_row(index(i)));
         wire!(on_toast_undo, |ctl| ctl.toast_action());
         wire_effects!(on_toast_edit, |ctl| ctl.toast_edit());
+        wire!(on_toast_dismissed, |ctl| ctl.toast_dismiss());
         {
             let core = Rc::clone(&core);
             window.on_paste_create_requested(move || {

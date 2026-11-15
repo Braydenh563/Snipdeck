@@ -413,6 +413,12 @@ msgstr "リスト「{}」を空にしますか？"
 msgid "Clear list…"
 msgstr "リストを空にする…"
 
+msgid "Clear recent emoji and colours"
+msgstr "最近使った絵文字と色を消去"
+
+msgid "Clear recent emoji and colours…"
+msgstr "最近使った絵文字と色を消去…"
+
 msgid "Clear recent history"
 msgstr "最近の履歴を消去"
 
@@ -442,6 +448,9 @@ msgstr "検索をクリアしてから閉じる"
 
 msgid "Clear the shortcut for {}"
 msgstr "{} のショートカットを消去"
+
+msgid "Clear them"
+msgstr "消去する"
 
 msgid "Click"
 msgstr "クリック"
@@ -908,6 +917,9 @@ msgstr "破棄"
 msgid "Discard your changes?"
 msgstr "変更を破棄しますか？"
 
+msgid "Dismiss"
+msgstr "閉じる"
+
 msgid "Ditto database"
 msgstr "Ditto データベース"
 
@@ -1123,6 +1135,9 @@ msgstr "例: メールの返信"
 
 msgid "For example, Work"
 msgstr "例: 仕事"
+
+msgid "Forgets the emoji, symbols and colours you used lately. Searches are never kept, so there is nothing else to clear."
+msgstr "最近使った絵文字、記号、色を忘れます。検索語は保存されないため、ほかに消去するものはありません。"
 
 msgid "Format"
 msgstr "形式"
@@ -1393,6 +1408,9 @@ msgstr "秘密は秘密のままに"
 
 msgid "Keep the Panel open"
 msgstr "パネルを開いたままにする"
+
+msgid "Keep them"
+msgstr "残す"
 
 msgid "Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept."
 msgstr "コピーしたテキストを、直近 {} 回のコピーまたは {} 日間のどちらか早い方まで保持します。あとで見つけたり、リストに保存したりできます。機密スニペット、パスワードマネージャー、除外したアプリのテキストは保持されません。"
@@ -2241,6 +2259,9 @@ msgstr "「最近」は、コピーしたテキストをこのコンピュータ
 
 msgid "Recently used"
 msgstr "最近使ったもの"
+
+msgid "Recently used emoji and colours cleared"
+msgstr "最近使った絵文字と色を消去しました"
 
 msgid "Red"
 msgstr "赤"

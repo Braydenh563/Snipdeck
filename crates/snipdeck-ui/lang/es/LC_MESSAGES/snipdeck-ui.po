@@ -414,6 +414,12 @@ msgstr "¿Vaciar la lista «{}»?"
 msgid "Clear list…"
 msgstr "Vaciar lista…"
 
+msgid "Clear recent emoji and colours"
+msgstr "Borrar emojis y colores recientes"
+
+msgid "Clear recent emoji and colours…"
+msgstr "Borrar emojis y colores recientes…"
+
 msgid "Clear recent history"
 msgstr "Borrar historial reciente"
 
@@ -443,6 +449,9 @@ msgstr "Borra la búsqueda y luego cierra"
 
 msgid "Clear the shortcut for {}"
 msgstr "Borrar el atajo de {}"
+
+msgid "Clear them"
+msgstr "Borrar"
 
 msgid "Click"
 msgstr "Clic"
@@ -909,6 +918,9 @@ msgstr "Descartar"
 msgid "Discard your changes?"
 msgstr "¿Descartar los cambios?"
 
+msgid "Dismiss"
+msgstr "Descartar"
+
 msgid "Ditto database"
 msgstr "Base de datos de Ditto"
 
@@ -1124,6 +1136,9 @@ msgstr "Por ejemplo, Respuestas de correo"
 
 msgid "For example, Work"
 msgstr "Por ejemplo, Trabajo"
+
+msgid "Forgets the emoji, symbols and colours you used lately. Searches are never kept, so there is nothing else to clear."
+msgstr "Olvida los emojis, símbolos y colores que usaste hace poco. Las búsquedas nunca se guardan, así que no hay nada más que borrar."
 
 msgid "Format"
 msgstr "Formato"
@@ -1397,6 +1412,9 @@ msgstr "Mantén en secreto lo confidencial"
 
 msgid "Keep the Panel open"
 msgstr "Mantener el panel abierto"
+
+msgid "Keep them"
+msgstr "Conservar"
 
 msgid "Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept."
 msgstr "Guarda el texto que copias durante las últimas {} copias o {} días, lo que ocurra primero, para que puedas encontrarlo de nuevo o guardarlo en una lista. Los fragmentos sensibles, los gestores de contraseñas y las aplicaciones que excluyas nunca se guardan."
@@ -2247,6 +2265,9 @@ msgstr "Recientes guarda el texto que copias, solo en este equipo, durante las �
 
 msgid "Recently used"
 msgstr "Usados recientemente"
+
+msgid "Recently used emoji and colours cleared"
+msgstr "Emojis y colores recientes borrados"
 
 msgid "Red"
 msgstr "Rojo"

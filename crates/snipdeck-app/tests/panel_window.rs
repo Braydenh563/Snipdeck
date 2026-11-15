@@ -1283,26 +1283,46 @@ fn cue_visible(r: &Rig) -> bool {
 }
 
 #[test]
-fn the_app_menu_fits_a_560px_panel_with_quit_in_view_and_no_scroll() {
+fn the_app_menu_in_a_560px_panel_leaves_a_clickable_strip_and_scrolls_to_quit() {
+    // Owner report: the menu filled the whole Panel, leaving nowhere to click off it. It now stops 48px short of the
+    // bottom (dense 28px rows, a scroll cue), and End still brings Quit into view.
     on_ui_thread(|| {
         let r = rig();
         open_menu_at(&r, 560.0);
         let menu = element(&r.ui, "Panel menu", AccessibleRole::List);
-        let quit = menu_row(&r, "Quit");
-        let (m, q) = (menu.absolute_position(), quit.absolute_position());
+        let m = menu.absolute_position();
         assert!(
-            q.y + quit.size().height <= m.y + menu.size().height + 0.5,
-            "Quit lies inside the menu: row bottom {} menu bottom {}",
-            q.y + quit.size().height,
+            m.y + menu.size().height <= 560.0 - 48.0 + 0.5,
+            "a strip is left below the menu: menu bottom {}",
             m.y + menu.size().height
         );
-        assert!(!cue_visible(&r), "nothing scrolls, so no cue");
+        assert!(cue_visible(&r), "the menu scrolls, so the cue is drawn");
+        press(r.window(), &key(Key::End));
+        slint::platform::update_timers_and_animations();
+        let quit = menu_row(&r, "Quit");
+        assert!(
+            quit.absolute_position().y + quit.size().height <= m.y + menu.size().height + 0.5,
+            "End brings Quit inside the menu"
+        );
         // The rows use the dense 28px height when 32px would not fit.
         assert!(
             (quit.size().height - 28.0).abs() < 0.5,
             "28px rows: {}",
             quit.size().height
         );
+    });
+}
+
+#[test]
+fn escape_closes_the_app_menu_and_leaves_the_panel_open() {
+    on_ui_thread(|| {
+        let r = rig();
+        open_menu_at(&r, 560.0);
+        assert!(r.ui.get_app_menu_open());
+        press(r.window(), &key(Key::Escape));
+        slint::platform::update_timers_and_animations();
+        assert!(!r.ui.get_app_menu_open(), "Esc closed the menu");
+        assert!(r.ui.window().is_visible(), "the Panel stayed up");
     });
 }
 

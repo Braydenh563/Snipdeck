@@ -85,9 +85,16 @@ where
                 }
             });
             let edit = Weak::clone(&weak);
+            let dismiss = Weak::clone(&weak);
             window.on_undo(move || {
                 if let Some(core) = weak.upgrade() {
                     core.controller.borrow_mut().main_undo();
+                    redraw_all();
+                }
+            });
+            window.on_dismissed(move || {
+                if let Some(core) = dismiss.upgrade() {
+                    core.controller.borrow_mut().toast_dismiss();
                     redraw_all();
                 }
             });

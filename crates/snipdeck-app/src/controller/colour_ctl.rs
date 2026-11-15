@@ -16,7 +16,7 @@ use snipdeck_platform::{
 };
 use snipdeck_store::Trashable;
 
-use super::{Controller, Effect, HomeCache, Library, UseResult, failed};
+use super::{Controller, Effect, HomeCache, Library, UseResult, failed, success};
 use crate::host::ClipboardText;
 use crate::{
     capture::Destination,
@@ -189,6 +189,16 @@ where
         recents.remove(c);
         let saved = recents.to_saved();
         self.update_settings(|s| s.colours_recent = saved);
+    }
+
+    /// Forgets every recently used emoji, symbol and colour ("Clear recently used emoji and
+    /// colours" in Settings), and says so. Search text is never stored, so there is none to clear.
+    pub fn picker_recents_clear(&mut self) {
+        self.update_settings(|s| {
+            s.colours_recent.clear();
+            s.symbols_recent.clear();
+        });
+        self.show_toast(success(ToastMessage::PickerRecentsCleared));
     }
 
     /// Pushes `c` to the front of the recents, stamped by the injected clock.

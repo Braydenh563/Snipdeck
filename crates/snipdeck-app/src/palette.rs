@@ -51,9 +51,84 @@ pub fn list_color(accent: Option<ListAccent>, dark: bool) -> slint::Color {
     slint::Color::from_rgb_u8(r, g, b)
 }
 
+/// The least contrast a list's colour needs against a sidebar row to tint its icon (WCAG 1.4.11).
+pub const ICON_MIN_CONTRAST: f64 = 3.0;
+
+/// The theme's semantic colour (`bg.app`) from the palette file.
+fn theme_token(dark: bool, name: &str) -> Option<[u8; 3]> {
+    let value: serde_json::Value = serde_json::from_str(PALETTE_JSON).ok()?;
+    parse_hex(
+        value
+            .get("themes")?
+            .get(if dark { "dark" } else { "light" })?
+            .get(name)?
+            .as_str()?,
+    )
+}
+
+/// `c` when it keeps [`ICON_MIN_CONTRAST`] against every background in `bgs`, otherwise
+/// transparent, which a sidebar row reads as "use the default icon colour".
+fn tint_over(c: slint::Color, bgs: &[[u8; 3]]) -> slint::Color {
+    let rgb = [c.red(), c.green(), c.blue()];
+    if !bgs.is_empty()
+        && bgs
+            .iter()
+            .all(|bg| crate::accent::contrast(rgb, *bg) >= ICON_MIN_CONTRAST)
+    {
+        c
+    } else {
+        slint::Color::from_argb_u8(0, 0, 0, 0)
+    }
+}
+
+/// The colour that tints a list's icon in the sidebar: the list colour when it reads against the
+/// row at rest, hovered and selected, otherwise transparent (the default icon colour).
+#[must_use]
+pub fn list_icon_tint(accent: Option<ListAccent>, dark: bool) -> slint::Color {
+    let bgs: Vec<[u8; 3]> = ["bg.app", "bg.hover", "bg.selected"]
+        .iter()
+        .filter_map(|name| theme_token(dark, name))
+        .collect();
+    tint_over(list_color(accent, dark), &bgs)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_list_icon_is_tinted_only_where_it_keeps_three_to_one() {
+        let mut tinted = 0;
+        for dark in [false, true] {
+            for &accent in ListAccent::ALL {
+                let tint = list_icon_tint(Some(accent), dark);
+                if tint.alpha() == 0 {
+                    continue;
+                }
+                tinted += 1;
+                assert_eq!(tint, list_color(Some(accent), dark));
+                for name in ["bg.app", "bg.hover", "bg.selected"] {
+                    let bg = theme_token(dark, name).expect("token");
+                    let rgb = [tint.red(), tint.green(), tint.blue()];
+                    assert!(
+                        crate::accent::contrast(rgb, bg) >= 3.0,
+                        "{accent:?} {dark} {name}"
+                    );
+                }
+            }
+        }
+        assert!(tinted > 0, "some colours are readable");
+    }
+
+    #[test]
+    fn a_colour_too_close_to_the_row_falls_back_to_the_default_icon_colour() {
+        let row = [[0xF5, 0xF3, 0xF1]];
+        let pale = slint::Color::from_rgb_u8(0xF0, 0xEE, 0xEC);
+        assert_eq!(tint_over(pale, &row).alpha(), 0);
+        let strong = slint::Color::from_rgb_u8(0x19, 0x5A, 0xB3);
+        assert_eq!(tint_over(strong, &row), strong);
+        assert_eq!(tint_over(strong, &[]).alpha(), 0, "no row known: default");
+    }
 
     #[test]
     fn light_uses_step_600_and_dark_step_400() {

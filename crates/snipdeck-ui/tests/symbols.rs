@@ -249,6 +249,27 @@ fn emoji_320_light() {
     assert_golden("symbols-emoji-320-light", &render(&s));
 }
 
+/// Scrolled part-way: no stray outline lines over the first visible row (the old deck edge drew two there).
+#[test]
+fn emoji_320_dark_scrolled() {
+    let s = open(320, true, 1, emoji_rows);
+    let _ = render(&s);
+    let at = slint::LogicalPosition::new(150.0, 200.0);
+    s.h.component
+        .window()
+        .dispatch_event(WindowEvent::PointerMoved { position: at });
+    for _ in 0..3 {
+        s.h.component
+            .window()
+            .dispatch_event(WindowEvent::PointerScrolled {
+                position: at,
+                delta_x: 0.0,
+                delta_y: -60.0,
+            });
+    }
+    assert_golden("symbols-emoji-320-dark-scrolled", &render(&s));
+}
+
 #[test]
 fn emoji_280_light() {
     let s = open(280, false, 1, emoji_rows);

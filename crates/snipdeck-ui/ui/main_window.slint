@@ -453,6 +453,7 @@ export component MainWindow inherits Window {
     callback board-delete-dismissed();
     callback toast-undo();
     callback toast-edit();
+    callback toast-dismissed();
     // Ctrl+V on the item list: make an item from the clipboard text.
     callback paste-create-requested();
     // Ctrl+C on the item list: copy the selected rows (the row under the cursor with none selected).
@@ -1163,13 +1164,15 @@ export component MainWindow inherits Window {
                 accessible-label: @tr("Navigation");
 
                 VerticalLayout {
-                    // Board switcher, level with the toolbar.
+                    // Board switcher, level with the toolbar, and the fold button at the right end of the
+                    // same row. On the rail the fold button tops the rail and the board button sits under it.
                     Rectangle {
                         height: root.bar-h;
                         HorizontalLayout {
                             padding-left: root.narrow ? 0px : Space.s2;
                             padding-right: root.narrow ? 0px : Space.s2;
                             alignment: root.narrow ? center : start;
+                            spacing: Space.s2;
                             if !root.narrow: switcher := BoardSwitcher {
                                 horizontal-stretch: 0;
                                 board-name: root.board-name;
@@ -1178,15 +1181,31 @@ export component MainWindow inherits Window {
                                 y: (parent.height - self.height) / 2;
                                 menu-requested => { root.board-menu-requested(); }
                             }
-                            if root.narrow: IconButton {
+                            if !root.narrow: Rectangle { horizontal-stretch: 1; }
+                            if !root.auto-rail: sidebar-toggle := IconButton {
+                                horizontal-stretch: 0;
                                 scaled: true;
-                                icon: Icons.stack;
-                                tooltip: @tr("Board: {}", root.board-name);
+                                side-override: root.ctl-h;
+                                icon: root.sidebar-collapsed ? Icons.caret-double-right : Icons.caret-double-left;
+                                tooltip: root.sidebar-collapsed ? @tr("Expand sidebar (Ctrl+B)") : @tr("Collapse sidebar (Ctrl+B)");
                                 own-tooltip: true;
-                                active: root.board-menu-open;
+                                active: root.sidebar-collapsed;
                                 y: (parent.height - self.height) / 2;
-                                clicked => { root.board-menu-requested(); }
+                                clicked => { root.toggle-sidebar(); }
                             }
+                        }
+                    }
+                    if root.narrow: Rectangle {
+                        height: Space.hit + Space.s1;
+                        IconButton {
+                            scaled: true;
+                            icon: Icons.stack;
+                            tooltip: @tr("Board: {}", root.board-name);
+                            own-tooltip: true;
+                            active: root.board-menu-open;
+                            x: (parent.width - self.width) / 2;
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.board-menu-requested(); }
                         }
                     }
 
@@ -1670,17 +1689,6 @@ export component MainWindow inherits Window {
                         padding-left: root.pad;
                         padding-right: root.pad;
                         spacing: Space.s2;
-                        if !root.auto-rail: sidebar-toggle := IconButton {
-                            horizontal-stretch: 0;
-                            scaled: true;
-                            side-override: root.ctl-h;
-                            icon: root.sidebar-collapsed ? Icons.caret-double-right : Icons.caret-double-left;
-                            tooltip: root.sidebar-collapsed ? @tr("Expand sidebar (Ctrl+B)") : @tr("Collapse sidebar (Ctrl+B)");
-                            own-tooltip: true;
-                            active: root.sidebar-collapsed;
-                            y: (parent.height - self.height) / 2;
-                            clicked => { root.toggle-sidebar(); }
-                        }
                         Text {
                             horizontal-stretch: 1;
                             text: root.section-name();
@@ -2467,8 +2475,10 @@ export component MainWindow inherits Window {
                         height: self.preferred-height;
                         x: (parent.width - self.width) / 2;
                         y: parent.height - self.height - Space.s2;
-                        undo => { root.toast-undo(); }
-                        edit => { root.toast-edit(); }
+                        // The toast goes with its button: the focus goes back to the items first.
+                        undo => { root.focus-items(); root.toast-undo(); }
+                        edit => { root.focus-items(); root.toast-edit(); }
+                        dismissed => { root.focus-items(); root.toast-dismissed(); }
                         hover-changed(h) => { root.toast-hover-changed(h); }
                     }
                 }
@@ -2772,6 +2782,7 @@ export component MainWindow inherits Window {
     }
 
     if root.board-menu-open: Menu {
+        menu-max-h: root.height - root.bar-h - Space.s2;
         x: Space.s2;
         y: root.bar-h - Space.s1;
         entries: root.board-menu-entries;
@@ -2790,6 +2801,7 @@ export component MainWindow inherits Window {
         }
     }
     if root.recent-menu-open: Menu {
+        menu-max-h: root.height - 2 * Space.s2;
         x: max(0px, min(root.recent-menu-x, root.width - self.width - Space.s2));
         y: max(0px, min(root.recent-menu-y, root.height - self.height - Space.s2));
         entries: [
@@ -2832,6 +2844,7 @@ export component MainWindow inherits Window {
         dismissed => { root.close-menus(); }
     }
     if root.item-menu-open: Menu {
+        menu-max-h: root.height - 2 * Space.s2;
         x: max(0px, min(root.item-menu-x, root.width - self.width - Space.s2));
         y: max(0px, min(root.item-menu-y, root.height - self.height - Space.s2));
         entries: root.rows[root.item-menu-index].is-header ? root.group-entries : root.item-entries;
@@ -2844,6 +2857,7 @@ export component MainWindow inherits Window {
         dismissed => { root.close-menus(); }
     }
     if root.nav-menu-open: Menu {
+        menu-max-h: root.height - 2 * Space.s2;
         x: max(0px, min(root.nav-menu-x, root.width - self.width - Space.s2));
         y: max(0px, min(root.nav-menu-y, root.height - self.height - Space.s2));
         entries: root.nav-entries;
@@ -2856,6 +2870,7 @@ export component MainWindow inherits Window {
         dismissed => { root.close-menus(); }
     }
     if root.help-menu-open: Menu {
+        menu-max-h: root.height - 2 * Space.s2;
         x: Space.s2;
         y: max(0px, root.height - root.bar-h - self.height);
         entries: [
@@ -2889,6 +2904,7 @@ export component MainWindow inherits Window {
         dismissed => { root.close-menus(); }
     }
     if root.view-menu-open: Menu {
+        menu-max-h: root.height - root.bar-h - Space.s2;
         x: max(0px, min(view-button.absolute-position.x, root.width - self.width - Space.s2));
         y: root.bar-h - Space.s1;
         entries: [
@@ -2921,6 +2937,7 @@ export component MainWindow inherits Window {
         dismissed => { root.close-menus(); }
     }
     if root.sort-menu-open: Menu {
+        menu-max-h: root.height - root.sort-menu-y - Space.s2;
         x: max(0px, min(root.sort-menu-x, root.width - self.width - Space.s2));
         y: root.sort-menu-y;
         entries: [
