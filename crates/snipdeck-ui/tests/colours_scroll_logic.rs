@@ -8,7 +8,7 @@
     reason = "test code: a failure is a failed test"
 )]
 
-use i_slint_backend_testing::{AccessibleRole, ElementQuery};
+use i_slint_backend_testing::ElementQuery;
 use slint::{ComponentHandle, platform::Key};
 use snipdeck_ui::PanelWindow;
 
