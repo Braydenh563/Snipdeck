@@ -34,7 +34,6 @@ fn no_shipped_dependency_enables_the_store_testing_feature() {
         "../snipdeck-ui/Cargo.toml",
         "../snipdeck-platform/Cargo.toml",
         "../snipdeck-core/Cargo.toml",
-        "../../tools/snipdeck-licence-issuer/Cargo.toml",
         "../../Cargo.toml",
     ] {
         let text = manifest(member);

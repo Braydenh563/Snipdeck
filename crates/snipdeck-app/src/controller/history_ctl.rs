@@ -92,12 +92,7 @@ pub(super) fn update_recorded<R: ItemRepo>(
 }
 
 /// Applies one change inside a transaction.
-fn apply(
-    b: &mut Batch<'_>,
-    change: &Change,
-    now: Timestamp,
-    board_limit: Option<usize>,
-) -> snipdeck_store::Result<()> {
+fn apply(b: &mut Batch<'_>, change: &Change, now: Timestamp) -> snipdeck_store::Result<()> {
     match change {
         Change::Trash(targets) => {
             for t in targets {
@@ -106,7 +101,7 @@ fn apply(
         }
         Change::Restore(targets) => {
             for t in targets {
-                b.restore_with(*t, board_limit)?;
+                b.restore_reporting(*t)?;
             }
         }
         Change::Update { after, .. } => {
@@ -205,10 +200,9 @@ where
             return;
         };
         let now = self.clock.now();
-        let limit = self.board_limit();
         let done = self.store.atomically(|b| {
             for change in &step.changes {
-                apply(b, change, now, limit)?;
+                apply(b, change, now)?;
             }
             Ok(())
         });
@@ -233,33 +227,29 @@ where
             return;
         };
         let now = self.clock.now();
-        let limit = self.board_limit();
         let changes = step.undo_changes();
         let done = self.store.atomically(|b| {
             for change in &changes {
-                apply(b, change, now, limit)?;
+                apply(b, change, now)?;
             }
             Ok(())
         });
-        match done {
-            Ok(()) => {
-                let message = restored_count(&step).map_or(
-                    ToastMessage::Undone {
-                        action: step.action,
-                    },
-                    |count| ToastMessage::Restored { count },
-                );
-                self.history.undone(step);
-                self.show_toast(Toast {
-                    kind: ToastKind::Success,
-                    message,
-                });
-                self.library_changed();
-            }
-            Err(error) => {
-                self.show_toast(super::main_ctl::restore_failed(&error));
-                self.refresh_logged("a failed undo");
-            }
+        if done.is_ok() {
+            let message = restored_count(&step).map_or(
+                ToastMessage::Undone {
+                    action: step.action,
+                },
+                |count| ToastMessage::Restored { count },
+            );
+            self.history.undone(step);
+            self.show_toast(Toast {
+                kind: ToastKind::Success,
+                message,
+            });
+            self.library_changed();
+        } else {
+            self.show_toast(super::failed());
+            self.refresh_logged("a failed undo");
         }
     }
 }

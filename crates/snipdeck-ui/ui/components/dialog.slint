@@ -4,7 +4,7 @@ import { Icon } from "icon.slint";
 
 export enum DialogVariant { default, destructive }
 
-// DESIGN.md §4 Dialog: confirm, licence, import. Modal: a 40% scrim covers its parent and swallows pointer input.
+// DESIGN.md §4 Dialog: confirm, import. Modal: a 40% scrim covers its parent and swallows pointer input.
 // Place it as the LAST child of the window (or the panel) so it sits on top. Tab stays inside the card: after the
 // last action it comes back to the card itself (the first stop), and Shift+Tab on the card stays put. Disabling what
 // is behind while `open` is still good practice (the pointer is blocked by the scrim either way). When the dialog

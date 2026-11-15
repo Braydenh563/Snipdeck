@@ -150,7 +150,6 @@ fn add_to_list_with_no_list_says_so_and_adds_nothing() {
         Box::new(FakeTargets::new(None)),
         Box::new(FixedClock::new(now)),
         Settings::default(),
-        snipdeck_core::Entitlements::new(snipdeck_core::Tier::Pro),
     )
     .expect("controller");
     assert!(!ctl.add_symbol_to_list(&emoji(), crate::item_editor::Origin::Panel));

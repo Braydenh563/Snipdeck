@@ -18,7 +18,6 @@ import { Toggle } from "components/choice.slint";
 import { HotkeyRecorder } from "components/hotkey_recorder.slint";
 import { HotkeyHealthLine } from "components/hotkey_health.slint";
 import { Dialog } from "components/dialog.slint";
-import { PlanTable } from "components/plan-table.slint";
 import { ImportTexts } from "import_texts.slint";
 import { MasterPasswordForm, MasterMode, MasterProblem } from "master_password.slint";
 import { OverlayScrollbar } from "components/scrollbar.slint";
@@ -327,13 +326,6 @@ export component SettingsPage inherits Window {
     // The programs the Recent inbox never keeps copies from, and why the last add was refused.
     in property <[string]> no-history-apps;
     in property <string> no-history-error;
-    // Whether this library is Supporter (a valid licence key, or the demo).
-    in property <bool> pro: false;
-    // The free-only Store package: every feature is on, so there is no Licence section, no key
-    // field and no Get Supporter (Store policy 10.8).
-    in property <bool> free-only: false;
-    // Set by the host when `licence-submitted` was refused; the same words as the toast.
-    in property <string> licence-error;
     // False in the demo, which has no data folder: backups and the data tools are off.
     in property <bool> has-data-folder: true;
     // The daily backups, newest first.
@@ -344,8 +336,6 @@ export component SettingsPage inherits Window {
     in property <string> toast-text;
     in property <ToastKind> toast-kind: ToastKind.neutral;
     in property <ToastPhase> toast-phase: ToastPhase.hold;
-    // The "Get Supporter" dialog (price, what each plan includes, the email button) is open.
-    in-out property <bool> supporter-open: false;
     // The "Erase library" confirmation is open.
     in-out property <bool> erase-open: false;
     // The import preview (also used by Restore): what the import would do, worked out before anything is written.
@@ -356,8 +346,6 @@ export component SettingsPage inherits Window {
     in property <bool> import-restore: false;
     out property <string> import-title: root.import-restore ? @tr("Restore the backup of {}", root.import-name) : @tr("Import from {}", root.import-name);
     out property <string> import-confirm-label: root.import-restore ? @tr("Restore") : @tr("Import");
-    // The Free plan's board limit, set by the host from the entitlements.
-    in property <int> free-board-limit: 0;
     // Non-empty when the source could not be read; the preview then only offers Close.
     in property <string> import-problem;
     // The Windows clipboard history is offered as an import source (Windows only).
@@ -368,13 +356,10 @@ export component SettingsPage inherits Window {
     in property <int> import-lists: 0;
     in property <int> import-items: 0;
     in property <int> import-duplicates: 0;
-    // The Free plan's board limit would be passed.
-    in property <bool> import-blocked: false;
     // What will not be imported, already worded, and how many more there were.
     in property <[string]> import-warnings;
     in property <int> import-warnings-more: 0;
-    // What is typed in the licence field, in the erase confirmation, and its key switch.
-    in-out property <string> licence-text;
+    // What is typed in the erase confirmation, and its key switch.
     in-out property <string> erase-text;
     in-out property <bool> forget-key: false;
     property <int> erase-focus: 0;
@@ -382,9 +367,7 @@ export component SettingsPage inherits Window {
     in property <int> master-state: 1;
     // A password is set and the sensitive items are locked now.
     in property <bool> master-locked: false;
-    // This plan may set a master password (Supporter).
-    in property <bool> master-allowed: false;
-    // Windows Hello unlock: offered only with a master password set, on a Supporter plan, on a PC where Hello is ready.
+    // Windows Hello unlock: offered only with a master password set, on a PC where Hello is ready.
     in property <bool> hello-offered: false;
     in-out property <bool> hello-unlock: false;
     in property <int> master-idle-minutes: 15;
@@ -400,8 +383,6 @@ export component SettingsPage inherits Window {
     property <int> master-focus: 0;
     // The four sources are shown (after "Import…") and none is chosen yet.
     property <bool> import-choosing: false;
-    // Goes up when the Get Supporter dialog closes: its button takes the focus back.
-    property <int> supporter-focus: 0;
     // What the confirmation must be typed as, exactly.
     out property <string> erase-word: "DELETE";
 
@@ -451,14 +432,13 @@ export component SettingsPage inherits Window {
     callback paste-rule-removed(index: int);
     callback no-history-app-added(name: string);
     callback no-history-app-removed(index: int);
-    callback licence-submitted(key: string);
     // How strong the host finds a typed new password: 0 weak .. 3 strong. Pure: the page calls it as the user types.
     pure callback master-strength(password: string) -> int;
     // The form's action. The passwords exist only in this call; the host never stores them.
     callback master-submitted(mode: MasterMode, current: string, new: string, again: string);
     callback master-unlock-requested();
-    // "Email me" in the Get Supporter dialog: the host opens the email app (a mailto: link).
-    callback supporter-requested();
+    // "Support Snipdeck": the host opens the optional donation page in the browser.
+    callback support-requested();
     callback backup-now-requested();
     callback backup-restore-requested(index: int);
     callback open-data-folder-requested();
@@ -505,9 +485,9 @@ export component SettingsPage inherits Window {
     property <string> keys-6: @tr("Typing") + " " + @tr("Expand abbreviations as I type") + " " + @tr("Suggest snippets as I type") + " " + @tr("trigger triggers text expansion autocomplete shortcode");
     // Titles of section 7 (Backups and your data), for the search. A test checks that every row title is in here.
     property <string> keys-7: @tr("Backups and your data") + " " + @tr("Backups to keep") + " " + @tr("Export library") + " " + @tr("Import") + " " + @tr("Erase library") + " " + @tr("Also forget the encryption key");
-    // Titles of section 8 (Licence), for the search. A test checks that every row title is in here.
-    property <string> keys-8: @tr("Licence") + " " + @tr("Get Supporter") + " " + @tr("license supporter upgrade key");
-    property <string> keys-all: root.keys-0 + " " + root.keys-1 + " " + root.keys-2 + " " + root.keys-3 + " " + root.keys-4 + " " + root.keys-5 + " " + root.keys-6 + " " + root.keys-7 + (root.free-only ? "" : " " + root.keys-8);
+    // Titles of section 8 (Support), for the search. A test checks that every row title is in here.
+    property <string> keys-8: @tr("Support") + " " + @tr("Support Snipdeck ☕") + " " + @tr("donate donation coffee tip");
+    property <string> keys-all: root.keys-0 + " " + root.keys-1 + " " + root.keys-2 + " " + root.keys-3 + " " + root.keys-4 + " " + root.keys-5 + " " + root.keys-6 + " " + root.keys-7 + " " + root.keys-8;
 
     function reveal-field(y: length, h: length) {
         page.reveal(y - page.absolute-position.y, h);
@@ -536,12 +516,6 @@ export component SettingsPage inherits Window {
         root.master-problem = MasterProblem.none;
         // The button that opened the form is back, and takes the focus (WCAG 2.4.3).
         root.master-focus += 1;
-    }
-
-    function submit-licence() {
-        if (root.licence-text != "") {
-            root.licence-submitted(root.licence-text);
-        }
     }
 
     init => { Palette.dark = root.dark; }
@@ -606,9 +580,7 @@ export component SettingsPage inherits Window {
                         width: 240px * SystemLook.text-scale;
                         label: @tr("Jump to a section");
                         placeholder: @tr("Jump to a section");
-                        options: root.free-only
-                            ? [@tr("Shortcuts"), @tr("Appearance"), @tr("Panel layout"), @tr("Opening the Panel"), @tr("Privacy"), @tr("Programs"), @tr("Typing"), @tr("Backups and your data")]
-                            : [@tr("Shortcuts"), @tr("Appearance"), @tr("Panel layout"), @tr("Opening the Panel"), @tr("Privacy"), @tr("Programs"), @tr("Typing"), @tr("Backups and your data"), @tr("Licence")];
+                        options: [@tr("Shortcuts"), @tr("Appearance"), @tr("Panel layout"), @tr("Opening the Panel"), @tr("Privacy"), @tr("Programs"), @tr("Typing"), @tr("Backups and your data"), @tr("Support")];
                         current: -1;
                         chosen(i) => { SettingsFilter.jump-target = i; SettingsFilter.jump-seq += 1; }
                         changed has-focus => {
@@ -633,8 +605,6 @@ export component SettingsPage inherits Window {
                     for hk[i] in root.hotkeys: SettingRow {
                         title: root.hotkey-names[i];
                         description: root.hotkey-help[i];
-                        // "Paste the next item" is a Supporter feature: the chord can be set, but does nothing on Free.
-                        locked-text: (i == 3 && !root.pro) ? @tr("Supporter") : "";
                         VerticalLayout {
                             spacing: Space.s1;
                             HotkeyRecorder {
@@ -1172,15 +1142,13 @@ export component SettingsPage inherits Window {
                             ? (root.master-locked
                                 ? @tr("A master password is on and your sensitive items are locked.")
                                 : @tr("A master password is on. Snipdeck asks for it when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes))
-                            : root.master-allowed
-                            ? @tr("Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. With a Supporter plan on Windows, you can then also unlock with Windows Hello.", root.master-idle-minutes)
-                            : @tr("A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. With a Supporter plan on Windows, you can then also unlock with Windows Hello.", root.master-idle-minutes);
+                            : @tr("Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. On Windows, you can then also unlock with Windows Hello.", root.master-idle-minutes);
                         HorizontalLayout {
                             spacing: Space.s2;
                             if root.master-state != 2: Button {
                                 text: @tr("Set password…");
                                 focus-request: root.master-focus;
-                                enabled: root.master-allowed && root.master-state == 1 && root.master-mode == MasterMode.closed;
+                                enabled: root.master-state == 1 && root.master-mode == MasterMode.closed;
                                 clicked => { root.open-master(MasterMode.set); }
                                 changed has-focus => {
                                     if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
@@ -1237,7 +1205,7 @@ export component SettingsPage inherits Window {
                     }
                     for line in [
                         @tr("Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."),
-                        @tr("Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."),
+                        @tr("Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, backups (as many as you choose to keep) and logs."),
                         @tr("Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."),
                         @tr("Snipdeck never connects to the internet: every icon and font it shows is packaged with it."),
                         @tr("Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."),
@@ -1545,15 +1513,6 @@ export component SettingsPage inherits Window {
                             accessible-role: text;
                             accessible-label: root.import-problem;
                         }
-                        if root.import-problem == "" && root.import-blocked: Text {
-                            text: @tr("The Free plan includes {} boards. This would go over that, so it needs Supporter.", root.free-board-limit);
-                            color: Theme.danger-fg;
-                            font-family: Fonts.sans;
-                            font-size: Type.base;
-                            wrap: word-wrap;
-                            accessible-role: text;
-                            accessible-label: self.text;
-                        }
                         if root.import-problem == "" && root.import-items > 0: Text {
                             text: @tr("{} item in {} list will be added" | "{} items in {} lists will be added" % root.import-items, root.import-items, root.import-lists);
                             color: Theme.text-primary;
@@ -1631,7 +1590,7 @@ export component SettingsPage inherits Window {
                             if root.import-problem == "": Button {
                                 text: root.import-confirm-label;
                                 variant: ButtonVariant.primary;
-                                enabled: !root.import-blocked && (root.import-items > 0 || root.import-boards > 0);
+                                enabled: root.import-items > 0 || root.import-boards > 0;
                                 clicked => { root.import-confirmed(); }
                                 changed has-focus => {
                                     if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
@@ -1659,7 +1618,7 @@ export component SettingsPage inherits Window {
                         accessible-role: groupbox;
                         accessible-label: @tr("Erase library");
                         Text {
-                            text: @tr("Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay.");
+                            text: @tr("Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings stay.");
                             color: Theme.text-primary;
                             font-family: Fonts.sans;
                             font-size: Type.base;
@@ -1719,65 +1678,24 @@ export component SettingsPage inherits Window {
                     }
                 }
 
-                if !root.free-only: FormSection {
-                    title: @tr("Licence");
+                FormSection {
+                    title: @tr("Support");
                     index: 8;
                     gap: Space.s6;
                     search-text: root.keys-8;
                     located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     SettingRow {
-                        title: root.pro ? @tr("Snipdeck Supporter") : @tr("Free plan");
-                        description: root.pro
-                            ? @tr("Every Supporter feature is on. Thank you.")
-                            : @tr("Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere.");
-                    }
-                    if !root.pro: SettingRow {
-                        title: @tr("Get Supporter");
-                        description: @tr("Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included.");
+                        title: @tr("Support Snipdeck ☕");
+                        description: @tr("Optional. Snipdeck is free and stays free. This link opens a donation page in your browser, keeps the app going and unlocks nothing.");
                         Button {
-                            text: @tr("Get Supporter…");
-                            focus-request: root.supporter-focus;
-                            enabled: !root.supporter-open;
-                            clicked => { root.supporter-open = true; }
+                            text: @tr("Open");
+                            a11y-label: @tr("Open the Support Snipdeck page in your browser");
+                            clicked => { root.support-requested(); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }
                         }
                     }
-                    if !root.pro: HorizontalLayout {
-                        spacing: Space.s2;
-                        licence-key := TextField {
-                            text <=> root.licence-text;
-                            horizontal-stretch: 1;
-                            label: @tr("Licence key");
-                            placeholder: @tr("SNIP1.");
-                            error: root.licence-error;
-                            monospace: true;
-                            accepted(t) => { root.submit-licence(); }
-                            changed has-focus => {
-                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                            }
-                        }
-                        VerticalLayout {
-                            alignment: start;
-                            Button {
-                                text: @tr("Activate");
-                                variant: ButtonVariant.primary;
-                                clicked => { root.submit-licence(); }
-                                changed has-focus => {
-                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                                }
-                            }
-                        }
-                    }
-                    Text {
-                        text: @tr("Free is fully usable. Supporter pays for convenience and supports the app.");
-                        color: Theme.text-secondary;
-                        font-family: Fonts.sans;
-                        font-size: Type.sm;
-                        wrap: word-wrap;
-                    }
-                    PlanTable { }
                 }
                 HorizontalLayout {
                     alignment: end;
@@ -1803,52 +1721,5 @@ export component SettingsPage inherits Window {
         height: self.preferred-height;
         x: (root.width - self.width) / 2;
         y: root.height - self.height - Space.s4;
-    }
-
-    // Last, so it sits on top and traps the pointer.
-    if !root.free-only: Dialog {
-        title: @tr("Get Supporter");
-        body: @tr("Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included. Free stays fully usable; Supporter pays for convenience and supports the app. Can't afford it? Email me and I'll send a key, no questions.");
-        open: root.supporter-open;
-        fill: true;
-        dismissed => { root.supporter-open = false; }
-        // The button is off while the dialog is open, so the focus has to come back to it (WCAG 2.4.3).
-        closed => { root.supporter-focus += 1; }
-        accepted => { root.supporter-requested(); root.supporter-open = false; }
-        VerticalLayout {
-            horizontal-stretch: 1;
-            spacing: Space.s3;
-            Rectangle {
-                height: min(table.preferred-height, max(Space.s12 * 2, root.height - Space.s12 * 6));
-                // Short windows scroll the table instead of pushing the buttons off the screen.
-                plan-flick := Flickable {
-                    width: parent.width;
-                    height: parent.height;
-                    content-width: self.width;
-                    content-height: table.preferred-height;
-                    table := PlanTable { width: plan-flick.content-width; }
-                }
-
-                OverlayScrollbar {
-                    content-y: plan-flick.content-y;
-                    content-height: plan-flick.content-height;
-                    visible-height: plan-flick.height;
-                    scroll-to(y) => { plan-flick.content-y = y; }
-                }
-            }
-            HorizontalLayout {
-                spacing: Space.s2;
-                alignment: end;
-                Button {
-                    text: @tr("Close");
-                    clicked => { root.supporter-open = false; }
-                }
-                Button {
-                    text: @tr("Email me");
-                    variant: ButtonVariant.primary;
-                    clicked => { root.supporter-requested(); root.supporter-open = false; }
-                }
-            }
-        }
     }
 }

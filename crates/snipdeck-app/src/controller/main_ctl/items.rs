@@ -2,7 +2,7 @@
 
 use crate::history::{Action, Change};
 use snipdeck_core::template::transform::Transform;
-use snipdeck_core::{Feature, Item, ItemId, Name, Placement, Tag};
+use snipdeck_core::{Item, ItemId, Name, Placement, Tag};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::{ItemRepo, TrashRepo, Trashable};
 
@@ -10,7 +10,7 @@ use super::super::history_ctl::{item_targets, move_recorded, update_recorded};
 use super::super::{
     Controller, Library, Toast, ToastKind, ToastMessage, UseResult, change_failed, failed, success,
 };
-use super::{MainAction, TagRenameError, neutral_toast, restore_failed};
+use super::{MainAction, TagRenameError, neutral_toast};
 use crate::{
     host::ClipboardText,
     main_window::{Key, NameError},
@@ -193,30 +193,25 @@ where
         }
     }
 
-    /// Brings `targets` back from the Trash. A board comes back only while the plan allows
-    /// another one.
+    /// Brings `targets` back from the Trash.
     pub(super) fn restore(&mut self, targets: &[Key]) {
-        let limit = self.board_limit();
         let done = self.store.atomically(|b| {
             for entry in targets.iter().filter_map(|k| k.trashable()) {
-                b.restore_with(entry, limit)?;
+                b.restore_reporting(entry)?;
             }
             Ok(())
         });
-        match done {
-            Ok(()) => {
-                self.show_toast(Toast {
-                    kind: ToastKind::Success,
-                    message: ToastMessage::Restored {
-                        count: targets.len(),
-                    },
-                });
-                self.library_changed();
-            }
-            Err(error) => {
-                self.show_toast(restore_failed(&error));
-                self.refresh_logged("a failed restore");
-            }
+        if done.is_ok() {
+            self.show_toast(Toast {
+                kind: ToastKind::Success,
+                message: ToastMessage::Restored {
+                    count: targets.len(),
+                },
+            });
+            self.library_changed();
+        } else {
+            self.show_toast(failed());
+            self.refresh_logged("a failed restore");
         }
     }
 
@@ -238,12 +233,6 @@ where
             self.show_toast(failed());
             self.refresh_logged("a failed delete");
         }
-    }
-
-    /// The Free plan's live-board limit, for restoring a board; `None` on Supporter.
-    pub(in super::super) fn board_limit(&self) -> Option<usize> {
-        (!self.entitlements.allows(Feature::UnlimitedBoards))
-            .then_some(snipdeck_core::Entitlements::FREE_BOARD_LIMIT)
     }
 
     /// Ends an action: a failure is a toast; a success shows `confirmation` (if any) and then

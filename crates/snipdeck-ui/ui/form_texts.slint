@@ -89,9 +89,6 @@ export global FormTexts {
     pure public function template-unreadable(why: string) -> string {
         return @tr("This template can't be read: {}.", why);
     }
-    pure public function needs-supporter() -> string {
-        return @tr("Fields that ask for a value are a Supporter feature. Remove them to save.");
-    }
     pure public function source-empty() -> string {
         return @tr("Choose a file, or cancel.");
     }
@@ -165,9 +162,6 @@ export global FormTexts {
     }
     pure public function hotkey-invalid(combo: string) -> string {
         return @tr("Windows doesn't allow {} as a shortcut.", combo);
-    }
-    pure public function hotkey-supporter-only() -> string {
-        return @tr("Paste next is a Supporter feature, so this shortcut does nothing on the Free plan.");
     }
     pure public function hotkey-unavailable() -> string {
         return @tr("Shortcuts are not available right now. Try again in a moment.");

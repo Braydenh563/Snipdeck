@@ -35,7 +35,6 @@ pub fn slint_problem(problem: MasterProblem) -> ui::MasterProblem {
         MasterProblem::WrongPassword => ui::MasterProblem::WrongPassword,
         MasterProblem::TooShort => ui::MasterProblem::TooShort,
         MasterProblem::Mismatch => ui::MasterProblem::Mismatch,
-        MasterProblem::SupporterOnly => ui::MasterProblem::SupporterOnly,
         MasterProblem::Unavailable => ui::MasterProblem::Unavailable,
         MasterProblem::Failed => ui::MasterProblem::Failed,
         MasterProblem::HelloFailed => ui::MasterProblem::HelloFailed,

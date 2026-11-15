@@ -16,7 +16,6 @@ mod key;
 
 mod board;
 mod content;
-mod entitlements;
 mod error;
 mod format;
 mod group;
@@ -29,13 +28,11 @@ mod tag;
 mod trigger;
 mod usage;
 
-pub mod licence;
 pub mod search;
 pub mod template;
 
 pub use board::Board;
 pub use content::{BlobRef, Content, INLINE_LIMIT, Inline};
-pub use entitlements::{Entitlements, Feature, Tier};
 pub use error::Error;
 pub use format::{FileEntry, Format, FormatKind, Formats};
 pub use group::Group;

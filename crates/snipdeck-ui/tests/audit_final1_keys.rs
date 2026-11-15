@@ -360,13 +360,12 @@ fn help_keyboard_walk() {
 fn item_editor_keyboard_walk() {
     let mut all = Vec::new();
     for (s, w) in [(1.0f32, 560u32), (2.25, 608)] {
-        for (free, dark) in [(true, false), (false, true)] {
+        for dark in [false, true] {
             let h = Harness::new(ItemEditor::new, w, 900);
             scene!(h.component, s);
             h.component.set_dark(dark);
             editor::text_item(&h.component);
             h.component.set_kind_index(3);
-            h.component.set_prompted_available(!free);
             h.component
                 .set_content("Hello {field:Name}, due on {date}.".into());
             h.component.set_formatted(true);
@@ -378,7 +377,7 @@ fn item_editor_keyboard_walk() {
             let esc = || esc_fires(win, &fired);
             all.extend(audit(
                 &h,
-                &format!("item editor template free={free} at {s}x"),
+                &format!("item editor template dark={dark} at {s}x"),
                 dark,
                 80,
                 &esc,

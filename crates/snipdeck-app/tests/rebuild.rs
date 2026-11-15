@@ -18,7 +18,7 @@ use snipdeck_app::{
     settings::Settings,
     toast::ToastMessage,
 };
-use snipdeck_core::{Board, Entitlements, List, Name, Placement, Tier, Timestamp};
+use snipdeck_core::{Placement, Timestamp};
 use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
 use snipdeck_store::{BlobStore, BoardRepo, ItemRepo, ListRepo, Store};
 
@@ -31,10 +31,10 @@ fn now() -> Timestamp {
 fn start(dir: &Path) -> Ctl {
     let mut store = Store::open(dir).expect("store");
     demo::seed(&mut store, now()).expect("seed");
-    start_with(store, Tier::Pro)
+    start_with(store)
 }
 
-fn start_with(store: Store, tier: Tier) -> Ctl {
+fn start_with(store: Store) -> Ctl {
     Controller::new(
         store,
         Services {
@@ -45,7 +45,6 @@ fn start_with(store: Store, tier: Tier) -> Ctl {
         Box::new(FakeTargets::new(Some(demo::target()))),
         Box::new(FixedClock::new(now())),
         Settings::default(),
-        Entitlements::new(tier),
     )
     .expect("controller")
 }
@@ -247,7 +246,7 @@ fn after_a_rebuild_deleting_and_sweeping_keeps_the_damaged_copys_blobs() {
         "A big one",
         Some(snipdeck_core::INLINE_LIMIT + 1),
     );
-    let mut ctl = start_with(store, Tier::Pro);
+    let mut ctl = start_with(store);
     assert!(ctl.backup_now(dir.path()));
     let backup = newest_backup(dir.path());
     assert!(ctl.rebuild_from_backup(dir.path(), &backup));
@@ -289,41 +288,4 @@ fn after_a_rebuild_deleting_and_sweeping_keeps_the_damaged_copys_blobs() {
     };
     let bytes = old.read(content).expect("blob reads");
     assert_eq!(bytes.len(), snipdeck_core::INLINE_LIMIT + 1);
-}
-
-#[test]
-fn a_failing_import_rolls_back_to_the_original_library() {
-    let dir = tempfile::tempdir().expect("dir");
-    // A backup with more boards than the Free plan allows: the preview only reports the limit,
-    // the real import after the swap is refused.
-    let mut store = Store::open(dir.path()).expect("store");
-    demo::seed(&mut store, now()).expect("seed");
-    for n in 0..=Entitlements::FREE_BOARD_LIMIT {
-        let name = Name::new(&format!("Extra {n}")).expect("name");
-        let board = Board::new(name, now());
-        store.insert_board(&board, Placement::Last).expect("board");
-        let list = List::new(board.id, Name::new("Tab").expect("name"), now());
-        store.insert_list(&list, Placement::Last).expect("list");
-        add_text(&mut store, list.id, &format!("Extra item {n}"), None);
-    }
-    let mut pro = start_with(store, Tier::Pro);
-    assert!(pro.backup_now(dir.path()));
-    let backup = newest_backup(dir.path());
-    drop(pro);
-    let mut ctl = start_with(Store::open(dir.path()).expect("reopen"), Tier::Free);
-    let before = titles(&ctl);
-
-    assert!(!ctl.rebuild_from_backup(dir.path(), &backup));
-
-    assert_eq!(titles(&ctl), before, "the original library is back");
-    assert_eq!(damaged_files(dir.path()), Vec::<String>::new());
-    assert_no_marker(dir.path());
-    assert!(dir.path().join("snipdeck.db").exists());
-    assert!(matches!(
-        ctl.view().toast.expect("an error toast").message,
-        ToastMessage::RestoreFailed(_)
-    ));
-    // And the controller still works on the original.
-    add_item(&mut ctl, "Still writable");
-    assert!(titles(&ctl).iter().any(|t| t == "Still writable"));
 }

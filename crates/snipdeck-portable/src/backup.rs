@@ -14,8 +14,7 @@
 //!   in the folder, including folders and symbolic links with such names, is left alone, and
 //!   the file just written is never pruned.
 //! * **Sensitive items** are encrypted with the key given, or left out of the backup when there
-//!   is none; never written in plain text. A Free-tier library has no key, so its sensitive
-//!   items are not in its backups; the data folder holds them in the database itself.
+//!   is none; never written in plain text.
 //! * **Restore** is an ordinary import ([`crate::import_archive_path`] with `BoardLayout::KeepBoards`).
 
 use std::fs;

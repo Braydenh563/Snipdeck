@@ -23,7 +23,7 @@ use snipdeck_app::{
     settings::Settings,
     unlock_binding::UnlockBinding,
 };
-use snipdeck_core::{Entitlements, Tier, Timestamp};
+use snipdeck_core::Timestamp;
 use snipdeck_platform::{
     hello::{HelloAvailability, HelloError},
     testing::{FakeClipboard, FakeHello, FakeKeyboard, FakeTiming},
@@ -78,7 +78,6 @@ fn rig_with_clock(hello: Option<&std::sync::Arc<FakeHello>>) -> (Rig, FixedClock
         Box::new(FakeTargets::new(Some(demo::target()))),
         Box::new(clock.clone()),
         Settings::default(),
-        Entitlements::new(Tier::Pro),
     )
     .expect("controller");
     ctl.set_key_provider(Box::new(MemoryKeyProvider::new().expect("provider")));
@@ -126,6 +125,23 @@ fn has_text(ui: &UnlockWindow, text: &str) -> bool {
 
 fn settle() {
     slint::platform::update_timers_and_animations();
+}
+
+/// The sealed copy goes the way it does for real: Hello stops being ready, one question finds
+/// out, and the copy is dropped. With `back` Hello is ready again after, and the copy stays gone.
+fn lose_the_copy(r: &Rig, hello: &FakeHello, back: bool) {
+    let refresh = |availability| {
+        hello.set_availability(availability);
+        let job = r.ctl.borrow_mut().begin_hello_refresh().expect("job");
+        r.ctl
+            .borrow_mut()
+            .finish_hello(job.run())
+            .expect("answered");
+    };
+    refresh(HelloAvailability::NotSetUp);
+    if back {
+        refresh(HelloAvailability::Ready);
+    }
 }
 
 #[test]
@@ -557,10 +573,8 @@ fn the_outcome_of_a_step_given_up_on_shows_no_hello_error() {
             1,
             "Hello is being asked"
         );
-        // The step is given up on while the prompt is up (the plan changed, the copy goes).
-        r.ctl
-            .borrow_mut()
-            .change_plan(Entitlements::new(Tier::Free));
+        // The step is given up on while the prompt is up (the library is locked again).
+        r.ctl.borrow_mut().lock_now();
         assert!(snipdeck_app::hello_job::finish_held(0), "a job waits");
         snipdeck_app::hello_job::release_jobs();
         settle();
@@ -583,10 +597,7 @@ fn after_a_restart_hello_asks_nothing_at_open_and_once_after_the_first_password(
         let hello = std::sync::Arc::new(FakeHello::new());
         let r = rig_with(Some(&hello));
         // A restart forgets the in-memory copy; the option is still on.
-        r.ctl
-            .borrow_mut()
-            .change_plan(Entitlements::new(Tier::Free));
-        r.ctl.borrow_mut().change_plan(Entitlements::new(Tier::Pro));
+        lose_the_copy(&r, &hello, true);
         assert!(r.ctl.borrow().settings().hello_unlock);
         let before = hello.prompts();
         r.binding.prepare();
@@ -635,10 +646,7 @@ fn a_hello_turned_off_for_failing_says_why_in_the_unlock_window() {
     on_ui_thread(|| {
         let hello = std::sync::Arc::new(FakeHello::new());
         let r = rig_with(Some(&hello));
-        r.ctl
-            .borrow_mut()
-            .change_plan(Entitlements::new(Tier::Free));
-        r.ctl.borrow_mut().change_plan(Entitlements::new(Tier::Pro));
+        lose_the_copy(&r, &hello, true);
         hello.set_sign(Err(HelloError::Removed));
         for _ in 0..2 {
             type_text(r.ui.window(), password());
@@ -738,11 +746,9 @@ fn when_the_hello_button_disappears_the_focus_goes_to_the_password_field() {
         settle();
         type_text(r.ui.window(), "x");
         assert_eq!(r.ui.get_password(), "", "Tab moved the focus off the field");
-        // The copy goes while the window is open (the plan changed): the next redraw takes the
+        // The copy goes while the window is open (Hello is not ready any more): the next redraw takes the
         // button away and the focus goes back to the field.
-        r.ctl
-            .borrow_mut()
-            .change_plan(Entitlements::new(Tier::Free));
+        lose_the_copy(&r, &hello, false);
         r.binding.redraw();
         settle();
         assert!(hello_button(&r.ui).is_none(), "the button is gone");
@@ -761,9 +767,7 @@ fn a_redraw_never_leaves_a_hello_button_for_a_copy_that_is_gone() {
         let hello = std::sync::Arc::new(FakeHello::new());
         let r = rig_with(Some(&hello));
         assert!(hello_button(&r.ui).is_some());
-        r.ctl
-            .borrow_mut()
-            .change_plan(Entitlements::new(Tier::Free));
+        lose_the_copy(&r, &hello, false);
         assert!(
             hello_button(&r.ui).is_some(),
             "nothing redrew yet, so the window still shows it"
@@ -771,9 +775,9 @@ fn a_redraw_never_leaves_a_hello_button_for_a_copy_that_is_gone() {
         r.binding.redraw();
         settle();
         assert!(hello_button(&r.ui).is_none(), "the redraw removes it");
-        // Going back to a plan with the feature does not bring the dropped copy back: the button
-        // stays away until a password unlock seals a new one.
-        r.ctl.borrow_mut().change_plan(Entitlements::new(Tier::Pro));
+        // Hello being ready again does not bring the dropped copy back: the button stays away
+        // until a password unlock seals a new one.
+        lose_the_copy(&r, &hello, true);
         r.binding.redraw();
         settle();
         assert!(hello_button(&r.ui).is_none(), "no copy, so no button");
@@ -785,10 +789,7 @@ fn the_turned_off_line_shows_once_and_not_every_time_the_window_opens() {
     on_ui_thread(|| {
         let hello = std::sync::Arc::new(FakeHello::new());
         let r = rig_with(Some(&hello));
-        r.ctl
-            .borrow_mut()
-            .change_plan(Entitlements::new(Tier::Free));
-        r.ctl.borrow_mut().change_plan(Entitlements::new(Tier::Pro));
+        lose_the_copy(&r, &hello, true);
         hello.set_sign(Err(HelloError::Removed));
         for _ in 0..2 {
             type_text(r.ui.window(), password());

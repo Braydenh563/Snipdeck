@@ -90,7 +90,6 @@ fn quick_capture_without_any_list_says_so() {
         Box::new(FakeTargets::new(None)),
         Box::new(FixedClock::new(now)),
         Settings::default(),
-        Entitlements::new(Tier::Pro),
     )
     .expect("controller");
     ctl.on_hotkey(HotkeyAction::Capture);
@@ -158,22 +157,14 @@ fn ending_a_stack_forgets_the_marks_and_paste_next_goes_back_to_the_list() {
 }
 
 #[test]
-fn starting_a_stack_is_a_pro_feature_and_needs_marks() {
-    let mut w = build(Opts {
-        tier: Tier::Free,
-        ..Opts::default()
-    });
-    w.ctl.toggle_stack_mark(w.ids[0]);
-    w.ctl.start_stack();
-    assert_eq!(
-        w.ctl.view().toast.expect("toast").message,
-        ToastMessage::NeedsPro(Feature::PasteStack)
-    );
-    assert!(!w.ctl.view().stack.expect("marks stay").running);
-
+fn starting_a_stack_needs_marks() {
     let mut w = world();
     w.ctl.start_stack();
     assert_eq!(w.ctl.view().stack, None, "nothing marked, nothing starts");
+
+    w.ctl.toggle_stack_mark(w.ids[0]);
+    w.ctl.start_stack();
+    assert!(w.ctl.view().stack.expect("running").running);
 }
 
 #[test]
@@ -191,24 +182,6 @@ fn the_item_menu_marks_and_unmarks_for_the_stack() {
             .item_menu_entries(id)
             .contains(&ItemMenuEntry::Stack { marked: true })
     );
-}
-
-#[test]
-fn paste_next_is_a_pro_feature() {
-    let mut w = build(Opts {
-        tier: Tier::Free,
-        ..Opts::default()
-    });
-    w.ctl.on_hotkey(HotkeyAction::PasteNext);
-    let toast = w.ctl.view().toast.expect("toast");
-    assert_eq!(
-        (toast.kind, toast.message),
-        (
-            ToastKind::Danger,
-            ToastMessage::NeedsPro(Feature::PasteStack)
-        )
-    );
-    assert_eq!(pasted(&w), Vec::<String>::new());
 }
 
 #[test]
@@ -295,23 +268,4 @@ fn the_panel_menu_paste_stack_row_starts_and_ends_the_stack() {
     w.ctl.open_app_menu();
     w.ctl.choose_app_menu(row);
     assert_eq!(w.ctl.view().stack, None, "a second choice ends it");
-}
-
-#[test]
-fn the_panel_menu_paste_stack_row_is_a_supporter_feature() {
-    let row = APP_MENU
-        .iter()
-        .position(|e| *e == AppMenuEntry::PasteStack)
-        .expect("in menu");
-    let mut w = build(Opts {
-        tier: Tier::Free,
-        ..Opts::default()
-    });
-    w.ctl.toggle_stack_mark(w.ids[0]);
-    w.ctl.choose_app_menu(row);
-    assert_eq!(
-        w.ctl.view().toast.expect("toast").message,
-        ToastMessage::NeedsPro(Feature::PasteStack)
-    );
-    assert!(!w.ctl.view().stack.expect("marks stay").running);
 }

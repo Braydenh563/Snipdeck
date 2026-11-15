@@ -510,24 +510,6 @@ fn every_form_that_opens_is_a_new_one_for_the_window() {
 }
 
 #[test]
-fn a_free_user_is_told_about_pro_instead_of_being_asked() {
-    let mut w = build(Opts {
-        tier: Tier::Free,
-        ..Opts::default()
-    });
-    assert_eq!(w.ctl.activate_row(3, UseMode::Paste), UseResult::Failed);
-    assert!(w.ctl.view().fill.is_none());
-    let toast = w.ctl.view().toast.expect("toast");
-    assert_eq!(
-        (toast.kind, toast.message),
-        (
-            ToastKind::Danger,
-            ToastMessage::NeedsPro(Feature::PromptedFields)
-        )
-    );
-}
-
-#[test]
 fn a_program_rule_in_settings_decides_the_paste_key() {
     use crate::settings::{ProgramPaste, ProgramRule};
     use snipdeck_platform::keys::Modifier;

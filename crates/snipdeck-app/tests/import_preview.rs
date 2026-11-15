@@ -19,7 +19,7 @@ use snipdeck_app::{
     settings::Settings,
     toast::ToastMessage,
 };
-use snipdeck_core::{Board, Entitlements, List, Name, Placement, Tier, Timestamp};
+use snipdeck_core::{Board, List, Name, Placement, Timestamp};
 use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
 use snipdeck_portable::{ExportOptions, HistoryEntry, export_to_path};
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, Store};
@@ -30,7 +30,7 @@ fn now() -> Timestamp {
     "2026-10-17T10:30:00Z".parse().expect("timestamp")
 }
 
-fn rig_on(store: Store, tier: Tier) -> Ctl {
+fn rig_on(store: Store) -> Ctl {
     Controller::new(
         store,
         Services {
@@ -41,7 +41,6 @@ fn rig_on(store: Store, tier: Tier) -> Ctl {
         Box::new(FakeTargets::new(Some(demo::target()))),
         Box::new(FixedClock::new(now())),
         Settings::default(),
-        Entitlements::new(tier),
     )
     .expect("controller")
 }
@@ -79,13 +78,12 @@ fn snipdeck_file(dir: &Path) -> ImportSource {
 fn the_preview_writes_nothing_and_the_import_adds_exactly_what_it_showed() {
     let dir = tempfile::tempdir().unwrap();
     let source = folder_of(dir.path(), 4);
-    let mut ctl = rig_on(Store::open_in_memory().unwrap(), Tier::Pro);
+    let mut ctl = rig_on(Store::open_in_memory().unwrap());
     let before = counts(&ctl);
 
     let preview = ctl.preview_import(&source).unwrap();
     assert_eq!((preview.boards, preview.lists, preview.items), (1, 1, 4));
     assert_eq!(preview.duplicates, 0);
-    assert!(!preview.blocked_by_board_limit);
     assert_eq!(counts(&ctl), before, "a preview changes nothing");
     assert_eq!(
         ctl.preview_import(&source).unwrap(),
@@ -103,7 +101,7 @@ fn the_preview_writes_nothing_and_the_import_adds_exactly_what_it_showed() {
 fn what_is_already_in_the_library_is_counted_and_skipped() {
     let dir = tempfile::tempdir().unwrap();
     let source = folder_of(dir.path(), 3);
-    let mut ctl = rig_on(Store::open_in_memory().unwrap(), Tier::Pro);
+    let mut ctl = rig_on(Store::open_in_memory().unwrap());
     assert!(ctl.apply_import(&source));
     let after_first = counts(&ctl);
 
@@ -119,6 +117,9 @@ fn what_is_already_in_the_library_is_counted_and_skipped() {
     assert!(ctl.apply_import(&source));
     assert_eq!(counts(&ctl).1, after_first.1 + 1);
 }
+
+/// More boards than any one person is likely to keep: nothing caps the count.
+const MANY_BOARDS: usize = 12;
 
 /// Adds boards (each with one list) until the store holds `total`.
 fn add_boards_up_to(store: &mut Store, total: usize) {
@@ -136,7 +137,7 @@ fn add_boards_up_to(store: &mut Store, total: usize) {
 fn a_snipdeck_file_previews_its_boards_and_imports_them() {
     let dir = tempfile::tempdir().unwrap();
     let source = snipdeck_file(dir.path());
-    let mut ctl = rig_on(Store::open_in_memory().unwrap(), Tier::Pro);
+    let mut ctl = rig_on(Store::open_in_memory().unwrap());
     let preview = ctl.preview_import(&source).unwrap();
     assert_eq!(preview.boards, 1, "an import is one new board");
     assert!(preview.lists >= 2 && preview.items > 0);
@@ -146,32 +147,37 @@ fn a_snipdeck_file_previews_its_boards_and_imports_them() {
 }
 
 #[test]
-fn a_free_library_imports_a_many_board_archive_as_one_board() {
+fn a_many_board_archive_imports_as_one_board_and_a_big_library_is_never_refused() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("many.snipdeck");
-    // One board more than the Free plan allows.
     let mut many = demo::store(now()).unwrap();
-    add_boards_up_to(&mut many, Entitlements::FREE_BOARD_LIMIT + 1);
+    add_boards_up_to(&mut many, MANY_BOARDS + 1);
     export_to_path(&many, now(), &ExportOptions::default(), &path).unwrap();
     let source = ImportSource::Snipdeck(path.clone());
 
+    // A library that already holds many boards (none of the archive's items): nothing caps it.
     let mut mine = Store::open_in_memory().unwrap();
-    let own = Board::new(Name::new("Mine").unwrap(), now());
-    mine.insert_board(&own, Placement::Last).unwrap();
-    let mut ctl = rig_on(mine, Tier::Free);
+    add_boards_up_to(&mut mine, MANY_BOARDS);
+    let mut ctl = rig_on(mine);
     let before = ctl.store().boards().unwrap().len();
-    assert_eq!(before, 1);
+    assert_eq!(before, MANY_BOARDS);
     let preview = ctl.preview_import(&source).unwrap();
-    assert!(!preview.blocked_by_board_limit);
-    assert_eq!(preview.boards, 1);
+    assert_eq!(preview.boards, 1, "an import is one new board");
     assert!(ctl.apply_import(&source));
     assert_eq!(ctl.store().boards().unwrap().len(), before + 1);
-    // A restore keeps the boards (two with items), so this full Free library would pass the limit.
-    let mut theirs = Store::open_in_memory().unwrap();
-    add_boards_up_to(&mut theirs, Entitlements::FREE_BOARD_LIMIT);
-    let mut other = rig_on(theirs, Tier::Free);
-    assert!(other.preview_restore(&path).unwrap().blocked_by_board_limit);
-    assert!(!other.restore_backup(&path));
+    // A restore keeps every board of the backup.
+    assert!(ctl.preview_restore(&path).is_ok());
+    assert!(ctl.restore_backup(&path));
+}
+
+#[test]
+fn a_history_import_adds_a_board_to_a_library_of_many() {
+    let mut store = Store::open_in_memory().unwrap();
+    add_boards_up_to(&mut store, MANY_BOARDS);
+    let mut ctl = rig_on(store);
+    let before = counts(&ctl);
+    assert!(ctl.apply_import(&history_of(&["one"])));
+    assert_eq!(counts(&ctl).0, before.0 + 1, "one more board, no limit");
 }
 
 #[test]
@@ -182,51 +188,10 @@ fn only_real_duplicates_are_counted_as_duplicates() {
     };
     fs::write(folder.join("empty.txt"), "").unwrap();
     let source = ImportSource::Folder(folder);
-    let mut ctl = rig_on(Store::open_in_memory().unwrap(), Tier::Pro);
+    let mut ctl = rig_on(Store::open_in_memory().unwrap());
     assert!(ctl.apply_import(&source));
     let again = ctl.preview_import(&source).unwrap();
     assert_eq!((again.items, again.duplicates), (0, 1));
-}
-
-#[test]
-fn the_free_board_limit_blocks_the_preview_and_the_import_writes_nothing() {
-    let dir = tempfile::tempdir().unwrap();
-    // One board short of the Free plan's limit, so one more import fits and a second does not.
-    let mut store = demo::store(now()).unwrap();
-    add_boards_up_to(&mut store, Entitlements::FREE_BOARD_LIMIT - 1);
-    let mut ctl = rig_on(store, Tier::Free);
-    let first = folder_of(dir.path(), 2);
-    assert!(!ctl.preview_import(&first).unwrap().blocked_by_board_limit);
-    assert!(ctl.apply_import(&first));
-    assert_eq!(
-        ctl.store().boards().unwrap().len(),
-        Entitlements::FREE_BOARD_LIMIT
-    );
-
-    // A fourth board is over the limit.
-    let other = dir.path().join("more");
-    fs::create_dir_all(&other).unwrap();
-    fs::write(other.join("a.txt"), "something else").unwrap();
-    let second = ImportSource::Folder(other);
-    let before = counts(&ctl);
-    let preview = ctl.preview_import(&second).unwrap();
-    assert!(preview.blocked_by_board_limit);
-    assert_eq!(preview.items, 1, "the counts are still the file's");
-    assert!(!ctl.apply_import(&second));
-    assert_eq!(counts(&ctl), before, "a refused import writes nothing");
-    let toast = ctl.main_screen().toast.expect("a toast").message;
-    assert_eq!(toast, ToastMessage::BoardLimit);
-
-    // The same import on Pro is allowed.
-    let mut pro_store = demo::store(now()).unwrap();
-    add_boards_up_to(&mut pro_store, Entitlements::FREE_BOARD_LIMIT - 1);
-    let mut pro = rig_on(pro_store, Tier::Pro);
-    assert!(pro.apply_import(&first));
-    assert!(pro.apply_import(&second));
-    assert_eq!(
-        pro.store().boards().unwrap().len(),
-        Entitlements::FREE_BOARD_LIMIT + 1
-    );
 }
 
 #[test]
@@ -252,7 +217,7 @@ fn a_malformed_beeftext_file_is_not_this_kind() {
     let dir = tempfile::tempdir().unwrap();
     let junk = dir.path().join("junk.json");
     fs::write(&junk, b"{ not json").unwrap();
-    let mut ctl = rig_on(Store::open_in_memory().unwrap(), Tier::Pro);
+    let mut ctl = rig_on(Store::open_in_memory().unwrap());
     for (source, kind) in [
         (ImportSource::Beeftext(junk.clone()), ImportKind::Beeftext),
         (
@@ -274,7 +239,7 @@ fn a_file_that_is_not_what_was_chosen_is_a_problem_not_a_panic() {
     let dir = tempfile::tempdir().unwrap();
     let junk = dir.path().join("junk.bin");
     fs::write(&junk, b"definitely not an archive").unwrap();
-    let mut ctl = rig_on(Store::open_in_memory().unwrap(), Tier::Pro);
+    let mut ctl = rig_on(Store::open_in_memory().unwrap());
     let before = counts(&ctl);
 
     for (source, problem) in [
@@ -311,11 +276,10 @@ fn restore_keeps_the_backups_boards() {
     let ImportSource::Snipdeck(path) = snipdeck_file(dir.path()) else {
         unreachable!()
     };
-    let mut ctl = rig_on(Store::open_in_memory().unwrap(), Tier::Pro);
+    let mut ctl = rig_on(Store::open_in_memory().unwrap());
     let preview = ctl.preview_restore(&path).unwrap();
     assert!(ctl.restore_backup(&path));
     assert_eq!(counts(&ctl), (preview.boards, preview.items));
-    assert!(!ctl.preview_restore(&path).unwrap().blocked_by_board_limit);
 }
 
 /// Clipboard-history entries as the platform layer hands them over, newest first.
@@ -336,7 +300,7 @@ fn history_of(texts: &[&str]) -> ImportSource {
 fn the_clipboard_history_previews_and_imports_through_the_same_path_as_a_file() {
     let source = history_of(&["first copy", "second copy", "third copy"]);
     assert!(source.path().is_none() && source.kind().is_none());
-    let mut ctl = rig_on(Store::open_in_memory().unwrap(), Tier::Pro);
+    let mut ctl = rig_on(Store::open_in_memory().unwrap());
     let before = counts(&ctl);
 
     let preview = ctl.preview_import(&source).unwrap();
@@ -353,7 +317,7 @@ fn the_clipboard_history_previews_and_imports_through_the_same_path_as_a_file() 
 
 #[test]
 fn a_second_history_import_skips_what_is_already_there_and_blank_entries_are_listed() {
-    let mut ctl = rig_on(Store::open_in_memory().unwrap(), Tier::Pro);
+    let mut ctl = rig_on(Store::open_in_memory().unwrap());
     assert!(ctl.apply_import(&history_of(&["alpha", "beta"])));
     let after_first = counts(&ctl);
 
@@ -370,20 +334,8 @@ fn a_second_history_import_skips_what_is_already_there_and_blank_entries_are_lis
 }
 
 #[test]
-fn a_history_import_obeys_the_free_board_limit() {
-    let mut store = Store::open_in_memory().unwrap();
-    add_boards_up_to(&mut store, Entitlements::FREE_BOARD_LIMIT);
-    let mut ctl = rig_on(store, Tier::Free);
-    let source = history_of(&["one"]);
-    assert!(ctl.preview_import(&source).unwrap().blocked_by_board_limit);
-    let before = counts(&ctl);
-    assert!(!ctl.apply_import(&source));
-    assert_eq!(counts(&ctl), before);
-}
-
-#[test]
 fn a_history_import_names_its_board_as_the_caller_said() {
-    let mut ctl = rig_on(Store::open_in_memory().unwrap(), Tier::Pro);
+    let mut ctl = rig_on(Store::open_in_memory().unwrap());
     assert!(ctl.apply_import(&history_of(&["plain text"])));
     let names: Vec<String> = ctl
         .store()
@@ -400,7 +352,7 @@ fn a_history_import_names_its_board_as_the_caller_said() {
 
 #[test]
 fn a_history_of_only_blank_entries_previews_as_nothing_to_import() {
-    let mut ctl = rig_on(Store::open_in_memory().unwrap(), Tier::Pro);
+    let mut ctl = rig_on(Store::open_in_memory().unwrap());
     let preview = ctl.preview_import(&history_of(&["  ", "\n"])).unwrap();
     assert!(preview.is_empty());
     assert_eq!(preview.warnings.len(), 2);

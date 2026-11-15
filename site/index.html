@@ -13,14 +13,6 @@
 </head>
 <body>
 
-<!--
-  The Supporter address appears in 2 mailto: links in the #supporter section ("Get Supporter" and
-  "Email me"); it is the same one as SUPPORTER_EMAIL in crates/snipdeck-app/src/settings_binding.rs.
-
-  Editing the Free vs Supporter table: one <tr> per feature in #compare. Copy a row, change the name,
-  the one-line description and the two marks (use the #i-check or #i-x symbol, keep the sr-only word).
-  Source of truth for what is Supporter-only: crates/snipdeck-core/src/entitlements.rs (Feature enum).
--->
 
 <svg class="sr-only" aria-hidden="true" focusable="false" width="0" height="0">
   <!-- Phosphor Icons (Regular), MIT licence. Icons are inline, so the page makes no image requests for them. -->
@@ -41,7 +33,7 @@
         <li><a href="#tour">Tour</a></li>
         <li><a href="#hotkeys">Hotkeys</a></li>
         <li><a href="#privacy">Privacy</a></li>
-        <li><a href="#supporter">Supporter</a></li>
+        <li><a href="#free">Free</a></li>
         <li><a href="#install">Install</a></li>
         <li><a href="#faq">FAQ</a></li>
       </ul>
@@ -121,7 +113,7 @@
           <div class="step-text">
             <span class="step-num">3</span>
             <h3>Templates that ask</h3>
-            <p>Placeholders such as the date, the time and the cursor position work in Free. A template can also ask you for a name, a choice or a due date each time. It shows a preview before it pastes. Asking is a Supporter feature.</p>
+            <p>Placeholders such as the date, the time and the cursor position work everywhere. A template can also ask you for a name, a choice or a due date each time. It shows a preview before it pastes.</p>
           </div>
           <figure>
             <picture>
@@ -161,7 +153,7 @@
             <tr><td class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Space</kbd></td><td>Show or hide the Panel</td></tr>
             <tr><td class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Space</kbd></td><td>Open the Picker at your caret</td></tr>
             <tr><td class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>2</kbd></td><td>Save the clipboard text as a new item</td></tr>
-            <tr><td class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>V</kbd></td><td>Paste the next item in the stack <span class="tag">Supporter</span></td></tr>
+            <tr><td class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>V</kbd></td><td>Paste the next item in the stack</td></tr>
           </tbody>
         </table>
       </div>
@@ -191,7 +183,7 @@
       <ul class="plain-list">
         <li>Your library is a folder on your PC: <code>%LOCALAPPDATA%\Snipdeck</code>. Delete the folder and everything is gone.</li>
         <li>Export is a zip file with plain JSON, so other tools can read it.</li>
-        <li>Items you mark sensitive are masked on screen and kept out of Windows clipboard history. Both plans encrypt them on disk; Supporter adds a master password.</li>
+        <li>Items you mark sensitive are masked on screen and kept out of Windows clipboard history. They are encrypted on disk, and you can add a master password.</li>
         <li>The only download is the launcher fetching the app the first time you start it.</li>
         <li>This website uses no cookies, no analytics and nothing from other sites.</li>
       </ul>
@@ -199,108 +191,21 @@
     </div>
   </section>
 
-  <section id="supporter" aria-labelledby="supporter-title">
+  <section id="free" aria-labelledby="free-title">
     <div class="wrap">
-      <h2 id="supporter-title">Free and Supporter</h2>
-      <div class="supporter-grid">
+      <h2 id="free-title">Free, with an optional coffee</h2>
+      <div class="support-grid">
         <div class="prose">
-          <p>Free is fully usable, with up to 5 boards. Supporter pays for convenience and supports the app. Nothing nags you: no pop-ups, timers or reminders.</p>
+          <p>Every feature is on for everyone: unlimited boards, templates that ask for values, a master password, paste next and the paste stack. There are no tiers, no licence keys and nothing nags you: no pop-ups, timers or reminders.</p>
           <p>Snipdeck is open source under GPL-3.0, and the source is on GitHub.</p>
         </div>
         <div class="card">
-          <p class="price">Pay what you want, from A$5<small>Suggested A$8. One-time. All 1.x updates.</small></p>
-          <ul class="facts">
-            <li><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span>One payment, no subscription.</span></li>
-            <li><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span>Every 1.x update is included.</span></li>
-          </ul>
-          <div class="supporter-actions">
-            <a class="button button-quiet" href="mailto:brayden.hoyle@outlook.com">
-              <svg class="mark" aria-hidden="true" focusable="false"><use href="#i-mail"/></svg>
-              Get Supporter
-            </a>
+          <p>If Snipdeck saves you time, you can buy the developer a coffee. It is optional, it keeps the app going and it unlocks nothing.</p>
+          <div class="support-actions">
+            <a class="button button-quiet" href="https://buymeacoffee.com/braydenh563">Support Snipdeck &#9749;</a>
           </div>
-          <p class="free-key small">Can't afford it? <a href="mailto:brayden.hoyle@outlook.com">Email me</a> and I'll send a key, no questions.</p>
+          <p class="small">The link opens a donation page in your browser. Snipdeck itself handles no payment data.</p>
         </div>
-      </div>
-
-      <div class="table-block" id="compare">
-        <table>
-          <caption>What each tier includes</caption>
-          <thead>
-            <tr>
-              <th scope="col">Feature</th>
-              <th scope="col" class="tier">Free</th>
-              <th scope="col" class="tier">Supporter</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <th scope="row">Boards<span class="desc">Separate workspaces, such as Work and Personal.</span></th>
-              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included, </span><span class="note">up to 5</span></td>
-              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included, </span><span class="note">unlimited</span></td>
-            </tr>
-            <tr>
-              <th scope="row">Lists and items<span class="desc">As many as you like, of every kind.</span></th>
-              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
-              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
-            </tr>
-            <tr>
-              <th scope="row">Panel and Picker<span class="desc">Paste with a click, or search at your caret.</span></th>
-              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
-              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
-            </tr>
-            <tr>
-              <th scope="row">Save from the clipboard<span class="desc">One hotkey turns copied text into an item.</span></th>
-              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
-              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
-            </tr>
-            <tr>
-              <th scope="row">Dock to a screen edge<span class="desc">Fold the Panel into a thin strip.</span></th>
-              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
-              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
-            </tr>
-            <tr>
-              <th scope="row">Templates with date, time and cursor<span class="desc">Fixed placeholders filled in when you paste.</span></th>
-              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
-              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
-            </tr>
-            <tr>
-              <th scope="row">Sensitive items, masked<span class="desc">Hidden on screen and kept out of clipboard history.</span></th>
-              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
-              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
-            </tr>
-            <tr>
-              <th scope="row">Encryption on disk<span class="desc">Sensitive items are encrypted on disk, on every plan.</span></th>
-              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
-              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
-            </tr>
-            <tr>
-              <th scope="row">Backups, export, light and dark, 7 languages<span class="desc">Daily backups, a plain zip export, and your choice of theme.</span></th>
-              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
-              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
-            </tr>
-            <tr>
-              <th scope="row">Templates that ask<span class="desc">Prompt for a value or a choice each time you paste.</span></th>
-              <td class="tier"><svg class="mark mark-no" aria-hidden="true" focusable="false"><use href="#i-x"/></svg><span class="sr-only">Not included</span></td>
-              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
-            </tr>
-            <tr>
-              <th scope="row">Master password<span class="desc">Lock your encrypted items behind a password you choose.</span></th>
-              <td class="tier"><svg class="mark mark-no" aria-hidden="true" focusable="false"><use href="#i-x"/></svg><span class="sr-only">Not included</span></td>
-              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
-            </tr>
-            <tr>
-              <th scope="row">Paste stack<span class="desc">Queue several items, then paste them one per hotkey press.</span></th>
-              <td class="tier"><svg class="mark mark-no" aria-hidden="true" focusable="false"><use href="#i-x"/></svg><span class="sr-only">Not included</span></td>
-              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
-            </tr>
-            <!--
-              Plan items not gated in entitlements.rs today, so not listed: Recent inbox (C1), item colour labels (C4),
-              accent colour (C5), floating lists (in the Feature enum, not on the V1 ship list).
-              Add a row above when one is confirmed as Supporter-only.
-            -->
-          </tbody>
-        </table>
       </div>
     </div>
   </section>

@@ -13,12 +13,12 @@ use snipdeck_ui::{
     FormTexts, ImportTexts, MenuTexts, PanelWindow, SettingsPage, ToastTexts, TrayTexts,
 };
 
-use snipdeck_core::{Feature, ItemKind, ItemLabel, ListIcon};
+use snipdeck_core::{ItemKind, ItemLabel, ListIcon};
 
 use crate::{
     item_editor::{AttachmentView, EditorProblem, SaveFailure},
     settings::{DockEdge, Theme},
-    toast::{LicenceProblem, ToastMessage},
+    toast::ToastMessage,
 };
 
 /// The tray menu's words in the language selected for the UI now (English until a bundled
@@ -107,9 +107,6 @@ pub fn import_warning_text(window: &SettingsPage, warning: &Warning) -> String {
         Warning::CannotDecrypt { title } => texts.invoke_cannot_decrypt(title.into()),
         Warning::SensitiveOmittedByExport { count: n } => {
             texts.invoke_sensitive_omitted_by_export(i32::try_from(*n).unwrap_or(i32::MAX))
-        }
-        Warning::BoardLimit { limit, total } => {
-            texts.invoke_board_limit(count(*total), count(*limit))
         }
         Warning::LossyText { name: n } => texts.invoke_lossy_text(name(n)),
         Warning::TooLarge { name: n, size } => {
@@ -225,8 +222,6 @@ where
         ToastMessage::CopiedExcluded { app } => t.invoke_copied_excluded(app.into()),
         ToastMessage::CopiedTargetGone => t.invoke_copied_target_gone(),
         ToastMessage::ClipboardBusy => t.invoke_clipboard_busy(),
-        ToastMessage::NeedsPro(Feature::PasteStack) => t.invoke_needs_pro_paste_stack(),
-        ToastMessage::NeedsPro(_) => t.invoke_needs_pro(),
         ToastMessage::TemplateBroken => t.invoke_template_broken(),
         ToastMessage::Locked => t.invoke_locked(),
         ToastMessage::Unlocked => t.invoke_unlocked(),
@@ -279,11 +274,8 @@ where
         }
         ToastMessage::DeletedForever { .. } => t.invoke_deleted_forever(),
         ToastMessage::TrashEmptied => t.invoke_trash_emptied(),
-        ToastMessage::BoardLimit => t.invoke_board_limit(),
         ToastMessage::LibraryProblem => t.invoke_library_problem(),
         ToastMessage::CrashedLastTime => t.invoke_crashed_last_time(),
-        ToastMessage::LicenceAccepted => t.invoke_licence_accepted(),
-        ToastMessage::LicenceRejected(problem) => return licence_problem_text(window, *problem),
         ToastMessage::BackupMade => t.invoke_backup_made(),
         ToastMessage::BackupFailed(cause) => t.invoke_backup_failed(cause.code()),
         ToastMessage::DailyBackupFailed(cause) => t.invoke_daily_backup_failed(cause.code()),
@@ -313,7 +305,7 @@ where
         ToastMessage::LibraryErased => t.invoke_library_erased(),
         ToastMessage::EraseFailed => t.invoke_erase_failed(),
         ToastMessage::FolderNotOpened => t.invoke_folder_not_opened(),
-        ToastMessage::MailNotOpened => t.invoke_mail_not_opened(),
+        ToastMessage::LinkNotOpened => t.invoke_link_not_opened(),
         ToastMessage::AutostartFailed => t.invoke_autostart_failed(),
         ToastMessage::AutostartSwitchedOff => t.invoke_autostart_switched_off(),
         ToastMessage::AutostartPolicy => t.invoke_autostart_policy(),
@@ -357,25 +349,6 @@ where
         ToastMessage::EyedropHdr { hex } => t.invoke_eyedrop_hdr(hex.into()),
     };
     text.into()
-}
-
-/// Why a licence key was refused, in words (the toast and the line under the key field), in the
-/// language selected for the UI.
-#[must_use]
-pub fn licence_problem_text<C>(window: &C, problem: LicenceProblem) -> String
-where
-    for<'a> ToastTexts<'a>: Global<'a, C>,
-{
-    let t = ToastTexts::get(window);
-    match problem {
-        LicenceProblem::Empty => t.invoke_licence_empty(),
-        LicenceProblem::NotAKey => t.invoke_licence_not_a_key(),
-        LicenceProblem::BadSignature => t.invoke_licence_bad_signature(),
-        LicenceProblem::NewerFormat => t.invoke_licence_newer_format(),
-        LicenceProblem::WrongTier => t.invoke_licence_wrong_tier(),
-        LicenceProblem::NotSaved => t.invoke_licence_not_saved(),
-    }
-    .into()
 }
 
 /// The names of the interface languages Settings offers, each in its own language, after
@@ -828,7 +801,6 @@ where
         EditorProblem::LinkNeedsScheme => t.invoke_link_needs_scheme(),
         EditorProblem::LinkHasSpace => t.invoke_link_has_space(),
         EditorProblem::Template(why) => t.invoke_template_unreadable(why.as_str().into()),
-        EditorProblem::NeedsPro(_) => t.invoke_needs_supporter(),
         EditorProblem::SourceEmpty => t.invoke_source_empty(),
         EditorProblem::SourceMissing => t.invoke_source_missing(),
         EditorProblem::SourceNotAFile => t.invoke_source_not_a_file(),

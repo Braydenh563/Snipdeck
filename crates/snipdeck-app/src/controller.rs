@@ -8,7 +8,7 @@
 use std::time::Duration;
 
 use snipdeck_core::{
-    BoardId, Entitlements, ItemId, ListId, Timestamp,
+    BoardId, ItemId, ListId, Timestamp,
     template::{Locale, TimeZone},
 };
 use snipdeck_platform::{
@@ -197,7 +197,6 @@ pub struct Controller<S, C, K, T> {
     /// The search index shared by the Panel and the Picker, rebuilt only after a write.
     index_cache: crate::index_cache::IndexCache,
     settings: Settings,
-    entitlements: Entitlements,
     visible: bool,
     /// When the Panel was last shown (or created): the start of [`BLUR_GRACE`].
     shown_at: Timestamp,
@@ -447,7 +446,6 @@ where
         target: Box<dyn TargetSource>,
         clock: Box<dyn Clock>,
         settings: Settings,
-        entitlements: Entitlements,
     ) -> snipdeck_store::Result<Self> {
         let index_cache = crate::index_cache::IndexCache::new();
         let mut model = PanelModel::load_cached(&store, None, None, &index_cache)?;
@@ -471,7 +469,6 @@ where
             model,
             index_cache,
             settings,
-            entitlements,
             visible: true,
             shown_at,
             on_top: pinned,

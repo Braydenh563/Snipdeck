@@ -5,7 +5,6 @@ use snipdeck_core::{
     Board, Content, Format, Formats, Inline, Item, ItemId, ItemKind, List, ListAccent, ListId,
     Name, Placement, Timestamp,
 };
-use snipdeck_core::{Entitlements, Tier};
 use snipdeck_platform::{
     route::{Focus, Target},
     testing::{FakeClipboard, FakeKeyboard, FakeTiming},
@@ -41,7 +40,6 @@ pub fn controller(settings: Settings, now: Timestamp) -> snipdeck_store::Result<
         Box::new(FakeTargets::new(Some(target()))),
         Box::new(FixedClock::new(now)),
         settings,
-        Entitlements::new(Tier::Pro),
     )
 }
 

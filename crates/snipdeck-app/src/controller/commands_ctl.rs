@@ -25,11 +25,6 @@ where
     /// forward first when the command shows its result there.
     pub fn try_tip(&mut self, tip: crate::tips::Tip) {
         let action = tip.action;
-        // A Supporter card on the Free plan: the way to get the feature, not a dead end.
-        if tip.feature.is_some_and(|f| !self.entitlements.allows(f)) {
-            self.pending.push(Effect::OpenLicence);
-            return;
-        }
         if action.opens_main() {
             self.pending.push(Effect::OpenMainWindow);
         }
@@ -97,6 +92,7 @@ where
             Command::Shortcuts => self.main_open_help(HelpTopic::Shortcuts),
             Command::Troubleshoot => self.main_open_help(HelpTopic::Troubleshoot),
             Command::About => self.main_open_help(HelpTopic::About),
+            Command::Support => self.pending.push(Effect::OpenSupport),
             Command::DensityComfortable => self.set_row_density(RowDensity::Comfortable),
             Command::DensityCompact => self.set_row_density(RowDensity::Compact),
             Command::ViewTile => self.main_set_view(ViewMode::Tile),

@@ -59,7 +59,7 @@ fn settings_search_leaves_no_blank_gap() {
         for (query, section) in [
             ("as I type", "Typing"),
             ("backups", "Backups and your data"),
-            ("supporter", "Licence"),
+            ("donate", "Support"),
             ("programs", "Programs"),
         ] {
             let h = Harness::new(SettingsPage::new, width, 760);

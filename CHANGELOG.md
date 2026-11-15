@@ -24,7 +24,7 @@ first start.
   docked sizes are remembered apart for each monitor. The top of the Panel is a full-width grab strip.
 - **Preview** in the item editor (`Ctrl+P`): see the item as the Panel and the Main list draw it.
 - **The Picker** (`Ctrl+Shift+Space`), the template fill form with a live preview, and quick capture
-  (`Ctrl+Shift+2`). `Alt+1` to `Alt+9` use that row. **Paste next** and **paste stack** (Supporter).
+  (`Ctrl+Shift+2`). `Alt+1` to `Alt+9` use that row. **Paste next** and **paste stack**.
 - **The Main window**: boards, lists, tags, Pinned, Recent and Trash in a sidebar; compact, comfortable and
   tile views; search; multi-select; move to list; tags; colour labels; list icons; drag and drop; keyboard
   reordering; a **Hide Panel / Show Panel** button; Duplicate (`Ctrl+D`); Export as text.
@@ -34,7 +34,7 @@ first start.
   form, and unsaved changes are kept as a draft that survives a crash. Editors for boards, lists and tags.
 - **The Trash** keeps deleted items, lists and boards for 30 days.
 - **Settings**: hotkeys with conflict messages, theme, accent colour, language, window behaviour, start with
-  Windows, tray, never-paste-into programs, licence, backups, export, import and erase. **Reduce motion** also
+  Windows, tray, never-paste-into programs, support link, backups, export, import and erase. **Reduce motion** also
   follows Windows.
 - **Import** from a `.snipdeck` file, Ditto, CopyQ, a folder of `.txt` and `.md` files, and Windows clipboard
   history, always after a preview. Export of the whole library, daily backups (1 to 60 kept) and restore.
@@ -43,9 +43,13 @@ first start.
   history** and **Clear recent history**. Entries are encrypted on disk.
 - **Sensitive items**: hidden in lists until you hold `Space`, kept out of Windows clipboard history, encrypted
   on disk on every plan, and cleared from the clipboard after 30 seconds.
-- **Supporter**: pay what you want from A$5 (suggested A$8), once. Adds unlimited boards, templates that ask
-  for values, paste next, paste stack and a **master password**. Free has up to 5 boards.
-- Templates with `{date}`, `{time}`, `{clipboard}`, `{cursor}`, and fields and choices (Supporter).
+- **Free, with an optional Buy Me a Coffee link**: every feature is on, on every build, with no licence key, no
+  tiers and no board limit. **Support Snipdeck** in Settings, Help > About and the command palette opens the donation
+  page in your browser; it is optional, keeps the app free and unlocks nothing, and the app handles no payment
+  data. Unlimited boards, templates that ask for values, paste next, paste stack and a **master password** are
+  there for everyone. Settings and libraries from builds that had a licence key still open; the old
+  `licence.key` file is ignored.
+- Templates with `{date}`, `{time}`, `{clipboard}`, `{cursor}`, and fields and choices.
 - A command palette (`Ctrl+K`), a shortcuts sheet (`Ctrl+/`), a welcome tour, a Getting started list, Help
   (`F1`) with a Troubleshoot checklist and About, and **Take screenshot** in the Panel, tray and palette.
 - A tray icon with a translated menu. Left click toggles the Panel and double-click opens the Main window.
@@ -67,7 +71,7 @@ first start.
   closes Snipdeck, upgrades it and keeps your library; uninstalling keeps the library unless you choose to erase it.
   The portable zip stays available.
 - **Microsoft Store package**: the release build can make an MSIX for Partner Center. The Store build is free
-  with every feature unlocked and no Supporter or licence screens (Supporter stays on the GitHub build); "Start
+  with every feature unlocked; "Start
   with Windows" uses Windows' own startup list and "Check for updates" opens the Store.
 - `snipdeck.exe --quit` asks a running Snipdeck to quit cleanly (Setup uses it to upgrade).
 - **Groups in the Main window**: in a list sorted by hand, `Ctrl+G` groups the selected rows under a named,
@@ -80,7 +84,7 @@ first start.
 - **More placeholders**: `{uuid}`, and date maths after `date`, `time` and `datetime`, for example `{date+3d}`,
   `{date-1w:%Y-%m-%d}`, `{time+90min}`, `{datetime+1mo:%F %H:%M}` (units `d w mo y h min`, chainable).
 - **Paste as...** in the item menu: Plain text, UPPERCASE, lowercase, Title Case, Trimmed, slug.
-- **Richer fill-ins** (Supporter): `{multiline:Name|default}` (a box of several lines; Enter adds a line,
+- **Richer fill-ins**: `{multiline:Name|default}` (a box of several lines; Enter adds a line,
   Ctrl+Enter pastes), `{pickdate:Name|FORMAT}` (a typed `YYYY-MM-DD` date, today when left empty; a date that does
   not exist is refused on its field), and `{optional:Name}...{/optional}` (a tick box; the text inside pastes only
   when ticked). The item editor offers all three as chips.
@@ -104,7 +108,7 @@ first start.
 - **Trigger field in the item editor**: 1 to 32 characters without spaces, unique; a one-character trigger gets a
   warning, saving an overlapping code shows a message naming the other item, and a Sensitive item shows that it
   has no trigger. Windows-only behaviour is unverified.
-- **Windows Hello unlock** (Supporter): with a master password set, Settings > Privacy > **Unlock with Windows Hello**
+- **Windows Hello unlock**: with a master password set, Settings > Privacy > **Unlock with Windows Hello**
   lets your face, fingerprint or PIN unlock the library. Switching it on asks Hello twice to check it repeats.
   Nothing is written to disk: an encrypted copy of the key lives in memory, so after a restart, and every 7 days,
   the password is needed once (the next password unlock asks Hello once to set it up again). Cancelling an unlock
@@ -131,12 +135,10 @@ first start.
   is a choice; the defaults fill the form in.
 - In the fill form, Space ticks a tick box and Enter moves on (or pastes on the last field), like every other
   field.
-- The "Supporter" badge beside a locked feature is as tall as the control next to it, with its lock centred.
 - The item editor, Help, Settings and the fill form get wider at large text sizes (up to 225%), so buttons, tabs and
   setting rows no longer overlap or clip.
 - Tips pictures end on a whole row, and the Main window's Show Panel button has its own icon.
 - The Template editor's placeholder list lines its descriptions up in one column, and stacks each name above its description in a narrow window.
-- Tips mark Supporter features with a badge, and a Free user's Try it on one opens the licence page. The item editor says which placeholders need Supporter and offers Get Supporter... beside the message.
 - The item editor's buttons move onto two rows when the window is narrow or the text is large, so none is cut off.
 - Import notes (a skipped match, a cut title, an unsupported field) are shown in your language.
 - The keyboard shortcuts list has an "Unlock window" group, and the guide's keyboard table gained the rows that were missing (Picker Shift+Tab, Main window Ctrl+Shift+P, F2, Ctrl+Space and Space, the group keys, typed triggers).
@@ -160,7 +162,7 @@ first start.
 - The library syncs every commit to disk, so a power cut cannot roll back an edit or a Trash purge.
 
 ### Security
-- No network access. Licence keys are checked offline against a public key built into the release.
+- No network access. The Support Snipdeck link only opens your browser when you press it.
 - Imported archives are size-limited; the launcher checks the download's SHA-256 against the release and a
   pinned list, and starts the app without `cmd.exe`.
 
@@ -201,8 +203,7 @@ Internal milestones, kept for reference.
 **M1: foundation (`snipdeck-core`, `snipdeck-store`, `snipdeck-portable`)**
 - Cargo workspace, CI (Linux fmt, clippy, tests, docs, `cargo deny`; Windows `cargo check`).
 - Core: boards, lists, items, formats, tags; template engine with `{date}`, `{time}`, `{datetime:FORMAT}`,
-  `{clipboard}`, `{cursor}`, and Pro prompts `{field:...}` and `{choice:...}`; in-memory fuzzy search;
-  Free/Pro entitlements; offline Ed25519 licence verification.
+  `{clipboard}`, `{cursor}`, and prompts `{field:...}` and `{choice:...}`; in-memory fuzzy search.
 - Store: SQLite with migrations and a pre-migration backup, FTS5 search, content-addressed blob store, ordering,
   30-day trash, transactions and batches, XChaCha20-Poly1305 encryption of sensitive items with an optional
   Argon2id master password and a `KeyProvider` trait.

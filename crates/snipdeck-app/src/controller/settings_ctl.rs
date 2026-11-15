@@ -1,4 +1,4 @@
-//! The Settings window's half of the [`Controller`]: the licence key, the backups, the export
+//! The Settings window's half of the [`Controller`]: the backups, the export
 //! and "Erase library". Slint-free like the rest of the controller: `settings_binding` calls
 //! these from the page's callbacks and draws the toast each one raises.
 //!
@@ -11,7 +11,6 @@ use std::{
 };
 
 use jiff::tz::TimeZone;
-use snipdeck_core::{Entitlements, Feature, Tier, licence::verify_embedded};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_portable::{
     BoardLayout, ExportOptions, HistoryEntry, ImportOptions, ImportReport, KeySource,
@@ -27,7 +26,7 @@ use snipdeck_store::{
 };
 
 use super::{Controller, Toast, ToastKind, ToastMessage};
-use crate::{failure::Cause, host::ClipboardText, licence_store, starter, toast::LicenceProblem};
+use crate::{failure::Cause, host::ClipboardText, starter};
 
 /// Where an import reads from. Each variant is one kind of source the Settings "Import..." row
 /// offers; a new source (the Windows clipboard history, say) is one more variant, one arm in
@@ -128,8 +127,6 @@ pub struct ImportPreview {
     pub warnings: Vec<snipdeck_portable::Warning>,
     /// Warnings left out of `warnings` because there were too many.
     pub warnings_dropped: usize,
-    /// The Free plan's board limit would be passed, so the import is refused until Pro.
-    pub blocked_by_board_limit: bool,
 }
 
 impl ImportPreview {
@@ -234,21 +231,11 @@ fn problem_of(source: &ImportSource, error: &snipdeck_portable::Error) -> Import
     }
 }
 
-fn is_board_limit(error: &snipdeck_portable::Error) -> bool {
-    matches!(
-        error,
-        snipdeck_portable::Error::Core(snipdeck_core::Error::ProRequired(_))
-    )
-}
-
 /// Files and folders of the data folder that "Erase library" leaves: the settings (and the copies
-/// of a damaged file set aside), the licence key, the crash logs and the lock the running app
+/// of a damaged file set aside), the crash logs and the lock the running app
 /// holds. Everything else is the library.
 fn kept_by_erase(name: &str) -> bool {
-    name.starts_with("settings")
-        || name == licence_store::FILE
-        || name == "logs"
-        || name == "snipdeck.lock"
+    name.starts_with("settings") || name == "logs" || name == "snipdeck.lock"
 }
 
 /// Deletes everything in `folder` that is the library. Goes on past a file it cannot delete and
@@ -304,12 +291,6 @@ where
     K: Keyboard,
     T: Timing,
 {
-    /// Whether Settings shows the Supporter licence.
-    #[must_use]
-    pub fn tier(&self) -> Tier {
-        self.entitlements.tier()
-    }
-
     /// Today's local date by the controller's clock, for the Help window's checks.
     #[must_use]
     pub fn today(&self) -> jiff::civil::Date {
@@ -351,50 +332,6 @@ where
     #[must_use]
     pub fn settings_toast(&self) -> Option<super::ToastView> {
         self.toast_view()
-    }
-
-    /// Checks a pasted licence key. A good one turns Supporter on at once and is saved in `data_dir`
-    /// (`None` in the demo, which keeps nothing) so the next start is Supporter too; a bad one changes
-    /// nothing and raises a toast that says what is wrong with it.
-    ///
-    /// # Errors
-    ///
-    /// Why the key was not accepted. [`LicenceProblem::NotSaved`] means Supporter is on for this run only.
-    pub fn apply_licence(
-        &mut self,
-        token: &str,
-        data_dir: Option<&Path>,
-    ) -> Result<(), LicenceProblem> {
-        let token = token.trim();
-        let result = if token.is_empty() {
-            Err(LicenceProblem::Empty)
-        } else {
-            verify_embedded(token, self.clock.now())
-                .map_err(licence_store::problem_of)
-                .and_then(|entitlements| {
-                    self.change_plan(entitlements);
-                    match data_dir {
-                        Some(dir) => {
-                            licence_store::write(dir, token).map_err(|_| LicenceProblem::NotSaved)
-                        }
-                        None => Ok(()),
-                    }
-                })
-        };
-        match result {
-            Ok(()) => self.show_toast(Toast {
-                kind: ToastKind::Success,
-                message: ToastMessage::LicenceAccepted,
-            }),
-            Err(problem) => self.show_toast(danger(ToastMessage::LicenceRejected(problem))),
-        }
-        // Supporter lifts the Free caps the windows show. The real error stays on screen.
-        if result.is_ok() {
-            self.refresh_or_notice("a licence change");
-        } else {
-            self.refresh_logged("a licence change");
-        }
-        result
     }
 
     fn backup_options(&self) -> ExportOptions<'_> {
@@ -462,9 +399,6 @@ where
                 });
                 // After the toast: a failed refresh says the list is stale, which matters more.
                 self.refresh_or_notice("a restore");
-            }
-            Err(snipdeck_portable::Error::Core(snipdeck_core::Error::ProRequired(_))) => {
-                self.show_toast(danger(ToastMessage::BoardLimit));
             }
             Err(e) => self.show_toast(danger(ToastMessage::RestoreFailed(Cause::of_portable(&e)))),
         }
@@ -703,21 +637,17 @@ where
     }
 
     /// The importer options every Settings import uses: duplicates are skipped, a `.snipdeck`
-    /// lands as `layout` says (one new board for an import, its own boards for a restore), encrypted items open with the library's own key, and a Free library
-    /// stays within its board limit.
+    /// lands as `layout` says (one new board for an import, its own boards for a restore), encrypted items open with the library's own key.
     fn import_report(
         &mut self,
         source: &ImportSource,
         layout: BoardLayout,
         dry_run: bool,
     ) -> snipdeck_portable::Result<ImportReport> {
-        let max_boards = (!self.entitlements.allows(Feature::UnlimitedBoards))
-            .then_some(Entitlements::FREE_BOARD_LIMIT);
         let options = ImportOptions {
             merge: MergeStrategy::SkipDuplicates,
             layout,
             key: KeySource::Library,
-            max_boards,
             dry_run,
             ..ImportOptions::default()
         };
@@ -725,8 +655,7 @@ where
     }
 
     /// Works out what importing `source` would do, writing nothing: the preview the page shows
-    /// before the user agrees. Under the Free plan's board limit the counts are still those of
-    /// the file, and `blocked_by_board_limit` says the import would be refused.
+    /// before the user agrees.
     ///
     /// # Errors
     ///
@@ -754,24 +683,9 @@ where
         source: &ImportSource,
         layout: BoardLayout,
     ) -> Result<ImportPreview, ImportProblem> {
-        let (report, blocked) = match self.import_report(source, layout, true) {
-            Ok(report) => (report, false),
-            Err(e) if is_board_limit(&e) => {
-                // Refused for the limit: read it again without the limit for the counts.
-                let options = ImportOptions {
-                    merge: MergeStrategy::SkipDuplicates,
-                    layout,
-                    key: KeySource::Library,
-                    dry_run: true,
-                    ..ImportOptions::default()
-                };
-                let report = source
-                    .run(&mut self.store, self.clock.now(), &options)
-                    .map_err(|e| problem_of(source, &e))?;
-                (report, true)
-            }
-            Err(e) => return Err(problem_of(source, &e)),
-        };
+        let report = self
+            .import_report(source, layout, true)
+            .map_err(|e| problem_of(source, &e))?;
         Ok(ImportPreview {
             boards: report.boards_added,
             lists: report.lists_added,
@@ -780,7 +694,6 @@ where
             tags: report.tags_added,
             warnings: report.warnings,
             warnings_dropped: report.warnings_dropped,
-            blocked_by_board_limit: blocked,
         })
     }
 
@@ -802,10 +715,6 @@ where
                 });
                 self.refresh_or_notice("an import");
                 true
-            }
-            Err(e) if is_board_limit(&e) => {
-                self.show_toast(danger(ToastMessage::BoardLimit));
-                false
             }
             Err(e) => {
                 self.show_toast(danger(ToastMessage::ImportFailed(Cause::of_portable(&e))));
@@ -847,7 +756,7 @@ where
     }
 
     /// "Erase library": closes the library, deletes it from `data_dir` (everything but the
-    /// settings, the licence key and the logs) and opens a fresh empty one there. With
+    /// settings and the logs) and opens a fresh empty one there. With
     /// `forget_key` false the library's key record is carried over to the new library, so
     /// encrypted exports made earlier can still be opened. Returns whether everything went.
     ///

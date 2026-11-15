@@ -21,7 +21,6 @@ fn first_run(settings: Settings) -> Ctl {
         Box::new(FakeTargets::new(None)),
         Box::new(FixedClock::new(at("2026-10-17T10:30:00Z"))),
         settings,
-        Entitlements::new(Tier::Free),
     )
     .expect("controller")
 }

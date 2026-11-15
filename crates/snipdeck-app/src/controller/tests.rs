@@ -16,9 +16,9 @@ use crate::{
     picker::Scope,
 };
 use snipdeck_core::{
-    Board, Content, Format, Formats, Inline, Item, ItemKind, List, Name, Placement, Tier, Timestamp,
+    Board, Content, Format, Formats, Inline, Item, ItemKind, List, Name, Placement, Timestamp,
 };
-use snipdeck_core::{Feature, UseMode, UseOutcome};
+use snipdeck_core::{UseMode, UseOutcome};
 use snipdeck_platform::system_look::HighContrast;
 use snipdeck_platform::{
     keys::{Key, KeyEvent},
@@ -97,7 +97,6 @@ fn add(
 struct Opts {
     target: Option<Target>,
     settings: Settings,
-    tier: Tier,
     /// Indexes into `World::ids` of the items that are pinned.
     pinned: Vec<usize>,
     /// What is on the clipboard (as if the user had just copied it).
@@ -114,7 +113,6 @@ impl Default for Opts {
                 panel_pinned: true,
                 ..Settings::new_install()
             },
-            tier: Tier::Pro,
             pinned: Vec::new(),
             clipboard: None,
             clipboard_busy: false,
@@ -136,7 +134,6 @@ fn build(opts: Opts) -> World {
     let Opts {
         target,
         settings,
-        tier,
         pinned,
         clipboard,
         clipboard_busy,
@@ -196,7 +193,6 @@ fn build(opts: Opts) -> World {
         Box::new(targets.clone()),
         Box::new(clock.clone()),
         settings,
-        Entitlements::new(tier),
     )
     .expect("controller");
     // Never the machine's zone: a test's output must not depend on where it runs.

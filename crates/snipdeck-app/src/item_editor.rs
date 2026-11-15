@@ -9,7 +9,7 @@
 use std::{fs, io::Read, path::Path};
 
 use snipdeck_core::{
-    Content, Feature, FileEntry, Inline, ItemKind, ItemLabel,
+    Content, FileEntry, Inline, ItemKind, ItemLabel,
     template::{Template, TemplateError},
 };
 use snipdeck_platform::system_look::HighContrast;
@@ -117,8 +117,6 @@ pub enum EditorProblem {
     LinkHasSpace,
     /// The template does not parse; carries the parser's own explanation.
     Template(String),
-    /// The text uses something Supporter (a prompted placeholder).
-    NeedsPro(Feature),
     /// No file chosen.
     SourceEmpty,
     /// No file at that path.
@@ -270,8 +268,6 @@ pub struct ItemEditorView {
     pub saved_text: String,
     /// What an existing Image or File holds.
     pub attachment: Option<AttachmentView>,
-    /// Prompted placeholders are available (Supporter).
-    pub prompted_available: bool,
     /// The app can open a file dialog.
     pub can_browse: bool,
     /// The fields hold a draft from an earlier session.
@@ -347,24 +343,15 @@ pub fn check_link(text: &str) -> Result<String, EditorProblem> {
     }
 }
 
-/// Checks template `text`: it must parse, and a Free user may not introduce prompted
-/// placeholders (`introduced`: the text is new or changed, so a template that already had them
-/// can still be saved with another title).
+/// Checks template `text`: it must parse.
 ///
 /// # Errors
 ///
-/// [`EditorProblem::Template`] or [`EditorProblem::NeedsPro`].
-pub fn check_template(
-    text: &str,
-    prompted_allowed: bool,
-    introduced: bool,
-) -> Result<(), EditorProblem> {
-    let template = Template::parse(text)
-        .map_err(|e: TemplateError| EditorProblem::Template(e.kind.to_string()))?;
-    if introduced && !prompted_allowed && template.requires(Feature::PromptedFields) {
-        return Err(EditorProblem::NeedsPro(Feature::PromptedFields));
-    }
-    Ok(())
+/// [`EditorProblem::Template`].
+pub fn check_template(text: &str) -> Result<(), EditorProblem> {
+    Template::parse(text)
+        .map(drop)
+        .map_err(|e: TemplateError| EditorProblem::Template(e.kind.to_string()))
 }
 
 /// `text` for a text kind: not blank and within the editing cap.
@@ -625,27 +612,16 @@ mod tests {
     }
 
     #[test]
-    fn templates_must_parse_and_prompts_are_pro() {
-        assert!(check_template("Dear {field:Name}, {date}", true, true).is_ok());
-        assert!(check_template("Today is {date}", false, true).is_ok());
-        assert_eq!(
-            check_template("Dear {field:Name}", false, true),
-            Err(EditorProblem::NeedsPro(Feature::PromptedFields))
-        );
-        assert_eq!(
-            check_template("Pick {choice:Size|S|M}", false, true),
-            Err(EditorProblem::NeedsPro(Feature::PromptedFields))
-        );
-        assert!(
-            check_template("Dear {field:Name}", false, false).is_ok(),
-            "a template that already had it can be saved again"
-        );
+    fn templates_must_parse_and_prompts_are_allowed() {
+        assert!(check_template("Dear {field:Name}, {date}").is_ok());
+        assert!(check_template("Pick {choice:Size|S|M}").is_ok());
+        assert!(check_template("Today is {date}").is_ok());
         assert!(matches!(
-            check_template("Broken {nope}", true, true),
+            check_template("Broken {nope}"),
             Err(EditorProblem::Template(_))
         ));
         assert!(matches!(
-            check_template("Open { here", true, false),
+            check_template("Open { here"),
             Err(EditorProblem::Template(_))
         ));
     }

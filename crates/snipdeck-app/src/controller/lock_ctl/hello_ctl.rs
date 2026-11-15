@@ -146,22 +146,10 @@ where
         Some(HelloJob::availability(hello, state.availability_generation))
     }
 
-    /// The plan changed (a licence was applied): a copy for a plan without the feature is dropped.
-    pub fn change_plan(&mut self, entitlements: snipdeck_core::Entitlements) {
-        self.entitlements = entitlements;
-        if !self.master_password_allowed() {
-            self.give_up_hello_step(true);
-            self.lock.hello.drop_copy();
-        }
-    }
-
-    /// Whether Settings may offer "Unlock with Windows Hello": a Supporter with a master password
-    /// set on a PC where Hello is ready.
+    /// Whether Settings may offer "Unlock with Windows Hello": a master password set on a PC where Hello is ready.
     #[must_use]
     pub fn hello_offered(&self) -> bool {
-        self.lock.set
-            && self.master_password_allowed()
-            && self.lock.hello.availability == Some(HelloAvailability::Ready)
+        self.lock.set && self.lock.hello.availability == Some(HelloAvailability::Ready)
     }
 
     /// Hello is offered and the user turned it on.

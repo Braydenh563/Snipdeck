@@ -1,6 +1,6 @@
 //! The Main window's controller half, without a window: sections and counts, search,
-//! selection, the item actions, the Trash with its Undo, list and board editing, the Free
-//! 3-board cap and reordering, over the demo library, the platform fakes and a frozen clock.
+//! selection, the item actions, the Trash with its Undo, list and board editing and
+//! reordering, over the demo library, the platform fakes and a frozen clock.
 //! The window itself is covered by `main_window.rs`.
 
 #![allow(
@@ -24,9 +24,7 @@ use snipdeck_app::{
     settings::Settings,
     toast::ToastMessage,
 };
-use snipdeck_core::{
-    Entitlements, ItemLabel, ListAccent, ListIcon, ListSort, Name, Tag, Tier, Timestamp,
-};
+use snipdeck_core::{ItemLabel, ListAccent, ListIcon, ListSort, Name, Tag, Timestamp};
 use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
 use snipdeck_store::ListRepo as _;
 use snipdeck_store::{BoardRepo, ItemRepo, Store, TagRepo, TrashRepo};
@@ -37,11 +35,11 @@ fn now() -> Timestamp {
     "2026-10-17T10:30:00Z".parse().expect("timestamp")
 }
 
-fn rig(tier: Tier) -> (Ctl, FixedClock) {
-    rig_on(demo::store(now()).expect("demo store"), tier)
+fn rig() -> (Ctl, FixedClock) {
+    rig_on(demo::store(now()).expect("demo store"))
 }
 
-fn rig_on(store: Store, tier: Tier) -> (Ctl, FixedClock) {
+fn rig_on(store: Store) -> (Ctl, FixedClock) {
     let clock = FixedClock::new(now());
     let ctl = Controller::new(
         store,
@@ -56,14 +54,13 @@ fn rig_on(store: Store, tier: Tier) -> (Ctl, FixedClock) {
         Box::new(FakeTargets::new(Some(demo::target()))),
         Box::new(clock.clone()),
         Settings::default(),
-        Entitlements::new(tier),
     )
     .expect("controller");
     (ctl, clock)
 }
 
-fn pro() -> Ctl {
-    rig(Tier::Pro).0
+fn seeded() -> Ctl {
+    rig().0
 }
 
 fn titles(screen: &MainScreen) -> Vec<String> {
@@ -101,7 +98,7 @@ fn message(screen: &MainScreen) -> ToastMessage {
 
 #[test]
 fn the_demo_library_shows_its_sections_counts_and_lists() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let screen = ctl.main_screen();
     assert_eq!(screen.board_name, "Work");
     assert_eq!(screen.section, Section::All);
@@ -129,7 +126,7 @@ fn the_demo_library_shows_its_sections_counts_and_lists() {
 
 #[test]
 fn opening_a_list_a_system_view_or_a_board_changes_the_rows() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let screen = open_list(&mut ctl, "Addresses");
     assert_eq!(titles(&screen), ["Home address", "Office"]);
     assert_eq!(screen.section_index, 1);
@@ -165,7 +162,7 @@ fn opening_a_list_a_system_view_or_a_board_changes_the_rows() {
 
 #[test]
 fn search_covers_every_board_and_ends_when_a_section_opens() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     open_list(&mut ctl, "Code");
     ctl.main_set_query("milk");
     let screen = ctl.main_screen();
@@ -183,7 +180,7 @@ fn search_covers_every_board_and_ends_when_a_section_opens() {
 
 #[test]
 fn selection_modes_build_and_a_hostile_query_is_only_a_search() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.main_select(1, SelectMode::Replace);
     ctl.main_select(3, SelectMode::Extend);
     let screen = ctl.main_screen();
@@ -204,7 +201,7 @@ fn selection_modes_build_and_a_hostile_query_is_only_a_search() {
 
 #[test]
 fn use_pastes_and_counts_through_the_controller_and_copy_only_copies() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let screen = ctl.main_screen();
     let at = row_of(&screen, "Out of office");
     let id = match screen.rows[at].key {
@@ -219,7 +216,7 @@ fn use_pastes_and_counts_through_the_controller_and_copy_only_copies() {
 
 #[test]
 fn pin_toggles_one_row_or_the_whole_selection_and_the_panel_follows() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let screen = ctl.main_screen();
     let at = row_of(&screen, "Out of office");
     ctl.main_action(MainAction::Pin, at);
@@ -241,7 +238,7 @@ fn pin_toggles_one_row_or_the_whole_selection_and_the_panel_follows() {
 
 #[test]
 fn duplicate_copies_each_selected_item_next_to_it_unpinned_and_unused() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let screen = ctl.main_screen();
     let at = row_of(&screen, "Out of office");
     let id = match screen.rows[at].key {
@@ -275,7 +272,7 @@ fn duplicate_copies_each_selected_item_next_to_it_unpinned_and_unused() {
 
 #[test]
 fn export_list_writes_its_text_items_to_a_dated_file_and_skips_secrets() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let screen = ctl.main_screen();
     let code = list_index(&screen, "Code");
     let dir = tempfile::tempdir().expect("dir");
@@ -305,7 +302,7 @@ fn export_list_writes_its_text_items_to_a_dated_file_and_skips_secrets() {
 
 #[test]
 fn export_list_that_cannot_be_written_says_so() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let code = list_index(&ctl.main_screen(), "Code");
     let dir = tempfile::tempdir().expect("dir");
     let blocker = dir.path().join("file");
@@ -322,7 +319,7 @@ fn export_list_that_cannot_be_written_says_so() {
 
 #[test]
 fn move_sends_the_chosen_rows_to_the_end_of_a_list_on_the_open_board() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let screen = ctl.main_screen();
     let a = row_of(&screen, "Out of office");
     let b = row_of(&screen, "Meeting follow-up");
@@ -357,7 +354,7 @@ fn move_sends_the_chosen_rows_to_the_end_of_a_list_on_the_open_board() {
 #[test]
 fn paste_as_in_the_main_window_pastes_the_chosen_transform_for_the_row() {
     use snipdeck_core::template::transform::Transform;
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let screen = ctl.main_screen();
     let at = row_of(&screen, "Out of office");
     assert!(
@@ -389,7 +386,7 @@ fn tags_are_ticked_on_the_chosen_rows_and_unticked_again() {
     let tag = Tag::new(Name::new("invoices").unwrap());
     let mut store = demo::store(now()).unwrap();
     store.insert_tag(&tag).unwrap();
-    let (mut ctl, _) = rig_on(store, Tier::Pro);
+    let (mut ctl, _) = rig_on(store);
     let screen = ctl.main_screen();
     let at = row_of(&screen, "Invoice reminder");
     ctl.main_action(MainAction::Tag, at);
@@ -414,7 +411,7 @@ fn rig_with_tags() -> Ctl {
     store
         .insert_tag(&Tag::new(Name::new("billing").unwrap()))
         .unwrap();
-    rig_on(store, Tier::Pro).0
+    rig_on(store).0
 }
 
 fn tag_names(ctl: &mut Ctl) -> Vec<String> {
@@ -491,7 +488,7 @@ fn renaming_with_a_stale_index_does_nothing() {
 
 #[test]
 fn a_sensitive_row_shows_its_text_only_while_held_revealed() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let screen = ctl.main_screen();
     let at = row_of(&screen, "Server password");
     assert!(screen.rows[at].sensitive);
@@ -517,7 +514,7 @@ fn a_sensitive_row_shows_its_text_only_while_held_revealed() {
 
 #[test]
 fn delete_trashes_at_once_and_the_undo_toast_brings_it_back() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let screen = ctl.main_screen();
     let at = row_of(&screen, "Out of office");
     ctl.main_action(MainAction::Delete, at);
@@ -545,7 +542,7 @@ fn delete_trashes_at_once_and_the_undo_toast_brings_it_back() {
 
 #[test]
 fn a_delete_of_several_rows_is_one_toast_and_one_undo() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.main_select(0, SelectMode::Replace);
     ctl.main_select(2, SelectMode::Extend);
     ctl.main_action(MainAction::Delete, 0);
@@ -560,7 +557,7 @@ fn a_delete_of_several_rows_is_one_toast_and_one_undo() {
 
 #[test]
 fn the_undo_lasts_five_seconds_and_a_newer_toast_takes_it_away() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.main_action(MainAction::Delete, 0);
     let seq = ctl.main_screen().toast.unwrap().seq;
     // Fade-in, then the hold that makes the toast 5 s long, then the fade-out.
@@ -578,7 +575,7 @@ fn the_undo_lasts_five_seconds_and_a_newer_toast_takes_it_away() {
     );
 
     // A second delete, then a copy: the copy's toast replaces the Undo.
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.main_action(MainAction::Delete, 0);
     let at = row_of(&ctl.main_screen(), "Out of office");
     ctl.main_action(MainAction::Copy, at);
@@ -589,7 +586,7 @@ fn the_undo_lasts_five_seconds_and_a_newer_toast_takes_it_away() {
 
 #[test]
 fn the_trash_view_restores_deletes_for_good_and_empties() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.main_select(0, SelectMode::Replace);
     ctl.main_select(3, SelectMode::Extend);
     ctl.main_action(MainAction::Delete, 0);
@@ -621,7 +618,7 @@ fn the_trash_view_restores_deletes_for_good_and_empties() {
 
 #[test]
 fn the_trash_keeps_things_thirty_days_by_the_injected_clock() {
-    let (mut ctl, clock) = rig(Tier::Pro);
+    let (mut ctl, clock) = rig();
     ctl.main_action(MainAction::Delete, 0);
     clock.set("2026-11-15T10:30:00Z".parse().unwrap()); // 29 days later
     assert_eq!(ctl.purge_expired_trash().expect("purge"), 0);
@@ -635,7 +632,7 @@ fn the_trash_keeps_things_thirty_days_by_the_injected_clock() {
 
 #[test]
 fn the_new_list_and_new_board_names_start_from_the_words_the_window_layer_gave() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.set_new_name_bases("Neue Liste", "Neues Board");
     ctl.main_new_list();
     assert_eq!(
@@ -660,7 +657,7 @@ fn the_new_list_and_new_board_names_start_from_the_words_the_window_layer_gave()
 
 #[test]
 fn a_new_list_opens_the_editor_and_saving_adds_and_opens_it() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.main_new_list();
     let editor = ctl.main_screen().editor.expect("editor");
     assert_eq!(editor.kind, EditorKind::List);
@@ -701,7 +698,7 @@ fn a_new_list_opens_the_editor_and_saving_adds_and_opens_it() {
 
 #[test]
 fn a_cancelled_editor_changes_nothing() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.main_new_list();
     ctl.main_editor_close();
     assert!(ctl.main_screen().editor.is_none());
@@ -710,7 +707,7 @@ fn a_cancelled_editor_changes_nothing() {
 
 #[test]
 fn a_parked_list_editor_closes_and_comes_back_with_its_typed_fields() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let index = list_index(&ctl.main_screen(), "Addresses");
     ctl.main_edit_list(index);
     ctl.main_editor_park("Places (typed)", None, None, ListSort::RecentlyUsed);
@@ -727,7 +724,7 @@ fn a_parked_list_editor_closes_and_comes_back_with_its_typed_fields() {
 
 #[test]
 fn a_parked_editor_with_nothing_typed_leaves_no_draft() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let index = list_index(&ctl.main_screen(), "Addresses");
     ctl.main_edit_list(index);
     let editor = ctl.main_screen().editor.expect("editor");
@@ -740,7 +737,7 @@ fn a_parked_editor_with_nothing_typed_leaves_no_draft() {
 
 #[test]
 fn editing_a_list_renames_recolours_and_re_sorts_it() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let screen = ctl.main_screen();
     let index = list_index(&screen, "Addresses");
     ctl.main_edit_list(index);
@@ -759,7 +756,7 @@ fn editing_a_list_renames_recolours_and_re_sorts_it() {
 
 #[test]
 fn a_list_saved_with_an_icon_reads_back_with_it_and_none_clears_it() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let index = list_index(&ctl.main_screen(), "Addresses");
     ctl.main_edit_list(index);
     assert_eq!(ctl.main_screen().editor.unwrap().icon, None);
@@ -792,7 +789,7 @@ fn label_row(ctl: &mut Ctl, row: usize, label: ItemLabel) {
 
 #[test]
 fn filtering_by_label_shows_only_matching_items_and_clearing_restores_them() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let all = titles(&ctl.main_screen());
     assert!(all.len() >= 4);
     assert_eq!(
@@ -850,7 +847,7 @@ fn filtering_by_label_shows_only_matching_items_and_clearing_restores_them() {
 
 #[test]
 fn the_label_filter_applies_to_a_list_and_to_a_search() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     open_list(&mut ctl, "Addresses");
     label_row(&mut ctl, 0, ItemLabel::Blue);
     let in_list = ctl.main_screen().rows.len();
@@ -870,7 +867,7 @@ fn the_label_filter_applies_to_a_list_and_to_a_search() {
 
 #[test]
 fn deleting_a_list_trashes_it_with_its_items_and_undo_restores_it() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let screen = ctl.main_screen();
     let index = list_index(&screen, "Email replies");
     assert_eq!(
@@ -897,7 +894,7 @@ fn deleting_a_list_trashes_it_with_its_items_and_undo_restores_it() {
 
 #[test]
 fn the_editor_can_delete_a_list_after_its_confirmation() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let index = list_index(&ctl.main_screen(), "Code");
     ctl.main_edit_list(index);
     ctl.main_editor_delete();
@@ -919,7 +916,7 @@ fn tab_index(ctl: &Ctl, name: &str) -> usize {
 
 #[test]
 fn the_list_menu_opens_on_a_tab_and_closes_without_a_choice() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     assert_eq!(ctl.view().list_menu, None);
     ctl.open_list_menu(tab_index(&ctl, "Code"));
     assert_eq!(ctl.view().list_menu, Some(LIST_MENU.to_vec()));
@@ -932,7 +929,7 @@ fn the_list_menu_opens_on_a_tab_and_closes_without_a_choice() {
 
 #[test]
 fn the_list_menu_edits_the_list_it_was_opened_on() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.open_list_menu(tab_index(&ctl, "Code"));
     assert_eq!(ctl.choose_list_menu(0), vec![Effect::OpenListEditor]);
     assert_eq!(ctl.view().list_menu, None, "a choice closes the menu");
@@ -950,7 +947,7 @@ fn the_list_menu_edits_the_list_it_was_opened_on() {
 fn the_list_menu_delete_shows_only_the_panel_confirmation_then_trashes_with_undo() {
     // O52: "Delete list…" asked inside the list editor, which then appeared behind the
     // confirmation. Delete asks in the Panel and never opens the editor.
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let tabs = ctl.view().tabs.len();
     let code = tab_index(&ctl, "Code");
     let count = ctl.store().items(ctl.view().tabs[code].id).unwrap().len();
@@ -980,7 +977,7 @@ fn the_list_menu_delete_shows_only_the_panel_confirmation_then_trashes_with_undo
 
 #[test]
 fn cancelling_the_list_delete_keeps_the_list_and_opens_nothing() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let tabs = ctl.view().tabs.len();
     ctl.open_list_menu(tab_index(&ctl, "Code"));
     ctl.choose_list_menu(1);
@@ -997,7 +994,7 @@ fn cancelling_the_list_delete_keeps_the_list_and_opens_nothing() {
 
 #[test]
 fn a_double_click_on_a_tab_opens_the_list_editor() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let code = tab_index(&ctl, "Code");
     assert_eq!(ctl.edit_list_tab(code), vec![Effect::OpenListEditor]);
     let editor = ctl.main_screen().editor.expect("editor");
@@ -1008,7 +1005,7 @@ fn a_double_click_on_a_tab_opens_the_list_editor() {
 
 #[test]
 fn a_new_board_is_made_through_the_menu_and_opened() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.main_board_menu_open();
     let new = ctl
         .main_screen()
@@ -1044,7 +1041,7 @@ fn menu_index(ctl: &mut Ctl, entry: &snipdeck_app::controller::BoardMenuEntry) -
 #[test]
 fn renaming_the_open_board_uses_the_board_editor() {
     use snipdeck_app::controller::BoardMenuEntry;
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let rename = menu_index(&mut ctl, &BoardMenuEntry::Rename);
     ctl.main_board_menu_activate(rename);
     let editor = ctl.main_screen().editor.unwrap();
@@ -1059,7 +1056,7 @@ fn renaming_the_open_board_uses_the_board_editor() {
 #[test]
 fn deleting_a_board_asks_with_the_item_count_trashes_it_and_undo_restores_it() {
     use snipdeck_app::controller::BoardMenuEntry;
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let delete = menu_index(&mut ctl, &BoardMenuEntry::Delete { enabled: true });
     ctl.main_board_menu_activate(delete);
     let screen = ctl.main_screen();
@@ -1097,7 +1094,7 @@ fn deleting_a_board_asks_with_the_item_count_trashes_it_and_undo_restores_it() {
 #[test]
 fn cancelling_the_board_delete_keeps_the_board() {
     use snipdeck_app::controller::BoardMenuEntry;
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let delete = menu_index(&mut ctl, &BoardMenuEntry::Delete { enabled: true });
     ctl.main_board_menu_activate(delete);
     ctl.main_board_delete_cancel();
@@ -1109,7 +1106,7 @@ fn cancelling_the_board_delete_keeps_the_board() {
 #[test]
 fn the_last_board_cannot_be_deleted() {
     use snipdeck_app::controller::BoardMenuEntry;
-    let mut ctl = pro();
+    let mut ctl = seeded();
     // Delete Work, leaving Personal.
     let delete = menu_index(&mut ctl, &BoardMenuEntry::Delete { enabled: true });
     ctl.main_board_menu_activate(delete);
@@ -1124,63 +1121,46 @@ fn the_last_board_cannot_be_deleted() {
 }
 
 #[test]
-fn free_allows_five_boards_and_a_sixth_says_so() {
+fn a_deleted_board_comes_back_from_the_trash_however_many_boards_there_are() {
     use snipdeck_app::controller::BoardMenuEntry;
-    let (mut ctl, _) = rig(Tier::Free);
-    // Two boards in the demo; add the third, fourth and fifth.
-    for name in ["Third", "Fourth", "Fifth"] {
+    let mut ctl = seeded();
+    for n in 0..8 {
         let new = menu_index(&mut ctl, &BoardMenuEntry::New);
         ctl.main_board_menu_activate(new);
-        assert!(ctl.main_screen().editor.is_some());
-        ctl.main_editor_save(name, None, None, ListSort::Manual);
+        ctl.main_editor_save(&format!("Extra {n}"), None, None, ListSort::Manual);
     }
-    assert_eq!(ctl.store().boards().unwrap().len(), 5);
-
-    let new = menu_index(&mut ctl, &BoardMenuEntry::New);
-    ctl.main_board_menu_activate(new);
-    let screen = ctl.main_screen();
-    assert!(screen.editor.is_none(), "no editor for a sixth board");
-    assert_eq!(message(&screen), ToastMessage::BoardLimit);
-    assert_eq!(ctl.store().boards().unwrap().len(), 5);
-}
-
-#[test]
-fn undo_cannot_bring_a_board_back_past_the_free_limit() {
-    use snipdeck_app::controller::BoardMenuEntry;
-    let (mut ctl, _) = rig(Tier::Free);
-    for name in ["Third", "Fourth", "Fifth"] {
-        let new = menu_index(&mut ctl, &BoardMenuEntry::New);
-        ctl.main_board_menu_activate(new);
-        ctl.main_editor_save(name, None, None, ListSort::Manual);
-    }
-    // Delete the open board (Fifth), add another, then try to restore Fifth from the Trash.
+    let many = ctl.store().boards().unwrap().len();
+    assert_eq!(many, 10);
+    // Delete the open board, add another, then restore the first from the Trash.
     let delete = menu_index(&mut ctl, &BoardMenuEntry::Delete { enabled: true });
     ctl.main_board_menu_activate(delete);
     ctl.main_board_delete_confirm();
-    let fifth = ctl.store().trashed().unwrap()[0].target;
+    let gone = ctl.store().trashed().unwrap()[0].target;
     let new = menu_index(&mut ctl, &BoardMenuEntry::New);
     ctl.main_board_menu_activate(new);
     ctl.main_editor_save("Replacement", None, None, ListSort::Manual);
-    assert_eq!(ctl.store().boards().unwrap().len(), 5);
+    assert_eq!(ctl.store().boards().unwrap().len(), many);
     ctl.main_open(Section::Trash);
     let at = ctl
         .main_screen()
         .rows
         .iter()
-        .position(|r| r.key.trashable() == Some(fifth))
+        .position(|r| r.key.trashable() == Some(gone))
         .unwrap();
     ctl.main_action(MainAction::Restore, at);
-    let screen = ctl.main_screen();
-    assert_eq!(message(&screen), ToastMessage::BoardLimit);
-    assert_eq!(ctl.store().boards().unwrap().len(), 5, "still five");
-    assert_eq!(screen.counts.trash, 1, "it waits in the Trash");
+    assert_eq!(ctl.store().boards().unwrap().len(), many + 1);
+    assert_eq!(
+        ctl.main_screen().counts.trash,
+        0,
+        "nothing waits in the Trash"
+    );
 }
 
 // ---- Reordering -----------------------------------------------------------------------------
 
 #[test]
 fn alt_arrows_move_an_item_within_its_list_and_the_cursor_follows() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     open_list(&mut ctl, "Email replies");
     ctl.main_select(1, SelectMode::Replace);
     ctl.main_reorder_items(1);
@@ -1206,7 +1186,7 @@ fn alt_arrows_move_an_item_within_its_list_and_the_cursor_follows() {
 
 #[test]
 fn moving_an_item_by_the_keyboard_says_where_it_went_and_the_ends_say_nothing() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     open_list(&mut ctl, "Email replies");
     let total = ctl.main_screen().rows.len();
     ctl.main_select(0, SelectMode::Replace);
@@ -1224,7 +1204,7 @@ fn moving_an_item_by_the_keyboard_says_where_it_went_and_the_ends_say_nothing() 
 
 #[test]
 fn keyboard_moves_under_a_label_filter_swap_with_the_next_shown_row() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     open_list(&mut ctl, "Email replies");
     let all = titles(&ctl.main_screen());
     label_row(&mut ctl, 1, ItemLabel::Teal);
@@ -1248,7 +1228,7 @@ fn keyboard_moves_under_a_label_filter_swap_with_the_next_shown_row() {
 
 #[test]
 fn a_keyboard_move_does_not_move_a_multi_selection_or_replace_an_undo_toast() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     open_list(&mut ctl, "Email replies");
     let before = titles(&ctl.main_screen());
     ctl.main_select(0, SelectMode::Replace);
@@ -1273,7 +1253,7 @@ fn a_keyboard_move_does_not_move_a_multi_selection_or_replace_an_undo_toast() {
 
 #[test]
 fn repeated_keyboard_moves_update_one_toast() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     open_list(&mut ctl, "Email replies");
     ctl.main_select(0, SelectMode::Replace);
     ctl.main_reorder_items(1);
@@ -1297,7 +1277,7 @@ fn panel_selected_title(ctl: &Ctl) -> String {
 
 #[test]
 fn alt_arrows_in_the_panel_move_the_selected_row_and_say_where_it_went() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let before = panel_titles(&ctl);
     let total = before.len();
     ctl.panel_move_selected(-1);
@@ -1324,7 +1304,7 @@ fn alt_arrows_in_the_panel_move_the_selected_row_and_say_where_it_went() {
 
 #[test]
 fn the_panels_item_menu_moves_the_row_and_disables_the_ends() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let before = panel_titles(&ctl);
     ctl.open_item_menu(0, false);
     let menu = ctl.view().item_menu.expect("the item menu");
@@ -1355,7 +1335,7 @@ fn the_panels_item_menu_moves_the_row_and_disables_the_ends() {
 
 #[test]
 fn the_panels_move_entries_are_disabled_in_a_search_and_in_a_list_sorted_by_use() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.set_query("a");
     ctl.open_item_menu(0, false);
     let menu = ctl.view().item_menu.expect("the item menu");
@@ -1382,7 +1362,7 @@ fn the_panels_move_entries_are_disabled_in_a_search_and_in_a_list_sorted_by_use(
 
 #[test]
 fn dragging_a_row_onto_another_row_puts_it_in_that_place() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     open_list(&mut ctl, "Email replies");
     let before = titles(&ctl.main_screen());
     ctl.main_drop_row(0, 2);
@@ -1403,7 +1383,7 @@ fn dragging_a_row_onto_another_row_puts_it_in_that_place() {
 
 #[test]
 fn the_cursor_follows_a_dragged_row_when_a_label_filter_hides_others() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     open_list(&mut ctl, "Email replies");
     let titles_now = titles(&ctl.main_screen());
     label_row(&mut ctl, 1, ItemLabel::Teal);
@@ -1425,7 +1405,7 @@ fn the_cursor_follows_a_dragged_row_when_a_label_filter_hides_others() {
 
 #[test]
 fn a_row_can_be_dropped_on_a_list_from_a_view_that_cannot_reorder() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     assert!(!ctl.main_screen().reorderable, "All items");
     let first = ctl.main_screen().rows[0].title.clone();
     let code = list_index(&ctl.main_screen(), "Code");
@@ -1436,7 +1416,7 @@ fn a_row_can_be_dropped_on_a_list_from_a_view_that_cannot_reorder() {
 
 #[test]
 fn dragging_rows_does_nothing_in_a_system_view() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let before = titles(&ctl.main_screen());
     ctl.main_drop_row(0, 1);
     assert_eq!(titles(&ctl.main_screen()), before, "All items");
@@ -1444,7 +1424,7 @@ fn dragging_rows_does_nothing_in_a_system_view() {
 
 #[test]
 fn dropping_a_row_on_a_list_moves_the_item_to_its_end() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     open_list(&mut ctl, "Email replies");
     let first = titles(&ctl.main_screen())[0].clone();
     let code = list_index(&ctl.main_screen(), "Code");
@@ -1459,7 +1439,7 @@ fn dropping_a_row_on_a_list_moves_the_item_to_its_end() {
 
 #[test]
 fn dropping_a_row_on_its_own_list_does_nothing() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     open_list(&mut ctl, "Email replies");
     let before = titles(&ctl.main_screen());
     let own = list_index(&ctl.main_screen(), "Email replies");
@@ -1469,7 +1449,7 @@ fn dropping_a_row_on_its_own_list_does_nothing() {
 
 #[test]
 fn dragging_a_list_onto_another_puts_it_in_that_place() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.main_drop_list(2, 0);
     let names: Vec<_> = ctl
         .main_screen()
@@ -1490,7 +1470,7 @@ fn dragging_a_list_onto_another_puts_it_in_that_place() {
 
 #[test]
 fn text_dropped_on_the_panel_becomes_an_item_at_the_top_of_the_shown_list() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let before = ctl.view().rows.len();
     ctl.panel_drop_text("A dropped sentence.");
     let view = ctl.view();
@@ -1504,7 +1484,7 @@ fn text_dropped_on_the_panel_becomes_an_item_at_the_top_of_the_shown_list() {
 
 #[test]
 fn a_dropped_address_becomes_a_link_and_blank_text_saves_nothing() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.panel_drop_text("https://example.com/page");
     assert_eq!(ctl.view().rows[0].kind, snipdeck_core::ItemKind::Link);
     let count = ctl.view().rows.len();
@@ -1514,7 +1494,7 @@ fn a_dropped_address_becomes_a_link_and_blank_text_saves_nothing() {
 
 #[test]
 fn dropping_a_panel_row_on_a_tab_moves_the_item_to_that_lists_end() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let first = ctl.view().rows[0].title.clone();
     let tabs = ctl.view().tabs.clone();
     let other = tabs.iter().position(|t| !t.active).unwrap();
@@ -1533,7 +1513,7 @@ fn dropping_a_panel_row_on_a_tab_moves_the_item_to_that_lists_end() {
 
 #[test]
 fn dropping_a_panel_row_on_its_own_tab_does_nothing() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let before: Vec<_> = ctl.view().rows.iter().map(|r| r.title.clone()).collect();
     let own = ctl.view().tabs.iter().position(|t| t.active).unwrap();
     ctl.panel_drop_on_tab(0, own);
@@ -1547,7 +1527,7 @@ fn panel_titles(ctl: &Ctl) -> Vec<String> {
 
 #[test]
 fn main_quick_add_saves_to_the_open_list() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     open_list(&mut ctl, "Code");
     let before = titles(&ctl.main_screen());
     assert!(ctl.quick_add(
@@ -1571,7 +1551,7 @@ fn main_quick_add_saves_to_the_open_list() {
 
 #[test]
 fn dragging_a_marked_panel_row_moves_every_marked_row_in_one_step() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let before = panel_titles(&ctl);
     assert!(before.len() >= 4);
     ctl.panel_mark(0, SelectMode::Toggle);
@@ -1587,7 +1567,7 @@ fn dragging_a_marked_panel_row_moves_every_marked_row_in_one_step() {
 
 #[test]
 fn main_quick_add_selects_the_new_row_in_main_and_leaves_the_panel_alone() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     open_list(&mut ctl, "Code");
     let code_tab = ctl
         .view()
@@ -1610,7 +1590,7 @@ fn main_quick_add_selects_the_new_row_in_main_and_leaves_the_panel_alone() {
 
 #[test]
 fn dragging_marked_rows_onto_a_list_moves_them_all_in_one_undoable_step() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     open_list(&mut ctl, "Email replies");
     let before = titles(&ctl.main_screen());
     ctl.main_select(0, SelectMode::Replace);
@@ -1637,7 +1617,7 @@ fn dragging_marked_rows_onto_a_list_moves_them_all_in_one_undoable_step() {
 
 #[test]
 fn dragging_marked_panel_rows_onto_a_tab_moves_them_all_in_one_undoable_step() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let before = panel_titles(&ctl);
     ctl.panel_mark(0, SelectMode::Toggle);
     ctl.panel_mark(1, SelectMode::Toggle);
@@ -1663,7 +1643,7 @@ fn dragging_marked_panel_rows_onto_a_tab_moves_them_all_in_one_undoable_step() {
 
 #[test]
 fn dropping_a_panel_row_on_a_marked_row_changes_nothing() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let before = panel_titles(&ctl);
     ctl.panel_mark(0, SelectMode::Toggle);
     ctl.panel_mark(2, SelectMode::Toggle);
@@ -1674,7 +1654,7 @@ fn dropping_a_panel_row_on_a_marked_row_changes_nothing() {
 
 #[test]
 fn a_panel_drag_leaves_a_row_that_is_collapsed_to_deleted_behind() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let before = panel_titles(&ctl);
     ctl.panel_delete_mode(true);
     ctl.panel_delete_row(1);
@@ -1699,7 +1679,7 @@ fn a_panel_drag_leaves_a_row_that_is_collapsed_to_deleted_behind() {
 
 #[test]
 fn dragging_a_panel_row_onto_another_takes_its_place() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let before = panel_titles(&ctl);
     assert!(before.len() >= 3, "the demo list has rows to arrange");
     ctl.panel_drop_row(0, 2);
@@ -1713,7 +1693,7 @@ fn dragging_a_panel_row_onto_another_takes_its_place() {
 
 #[test]
 fn dragging_a_panel_row_onto_itself_or_out_of_range_does_nothing() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let before = panel_titles(&ctl);
     ctl.panel_drop_row(1, 1);
     ctl.panel_drop_row(0, 99);
@@ -1723,7 +1703,7 @@ fn dragging_a_panel_row_onto_itself_or_out_of_range_does_nothing() {
 
 #[test]
 fn the_moved_panel_row_stays_selected() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let moved = ctl.view().rows[0].title.clone();
     ctl.panel_drop_row(0, 2);
     let view = ctl.view();
@@ -1732,7 +1712,7 @@ fn the_moved_panel_row_stays_selected() {
 
 #[test]
 fn panel_rows_do_not_move_during_a_search_or_in_a_sorted_list() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let before = panel_titles(&ctl);
     ctl.set_query("a");
     assert!(!ctl.view().rows_reorderable);
@@ -1744,7 +1724,7 @@ fn panel_rows_do_not_move_during_a_search_or_in_a_sorted_list() {
 
 #[test]
 fn panel_rows_do_not_move_in_a_list_sorted_by_use() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let tab = ctl
         .view()
         .tabs
@@ -1763,7 +1743,7 @@ fn panel_rows_do_not_move_in_a_list_sorted_by_use() {
 
 #[test]
 fn items_do_not_move_in_a_sorted_list_a_search_or_a_system_view() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let before = titles(&ctl.main_screen());
     ctl.main_reorder_items(1);
     assert_eq!(titles(&ctl.main_screen()), before, "All items");
@@ -1780,7 +1760,7 @@ fn items_do_not_move_in_a_sorted_list_a_search_or_a_system_view() {
 #[test]
 fn lists_and_boards_reorder_with_the_same_steps() {
     use snipdeck_app::controller::BoardMenuEntry;
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.main_reorder_list(2, -1);
     let names: Vec<_> = ctl
         .main_screen()
@@ -1824,7 +1804,7 @@ fn lists_and_boards_reorder_with_the_same_steps() {
 
 #[test]
 fn an_empty_view_has_nothing_to_act_on() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.main_open(Section::Recent);
     assert!(ctl.main_action(MainAction::Delete, 0).is_none());
     assert_eq!(ctl.main_screen().counts.trash, 0);
@@ -1835,7 +1815,7 @@ fn an_empty_view_has_nothing_to_act_on() {
 #[test]
 fn maintenance_reports_a_damaged_library_and_a_crash_as_toasts() {
     use snipdeck_app::{maintenance::MaintenanceOutcome, toast::ToastKind};
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.report_maintenance(MaintenanceOutcome::IntegrityOk);
     assert!(ctl.main_screen().toast.is_none(), "a clean check is silent");
 
@@ -1854,7 +1834,7 @@ fn maintenance_reports_a_damaged_library_and_a_crash_as_toasts() {
 #[test]
 fn the_main_windows_help_entries_queue_the_same_effect_as_the_panels_kebab() {
     use snipdeck_app::controller::{Effect, HelpTopic};
-    let (mut ctl, _) = rig(Tier::Pro);
+    let (mut ctl, _) = rig();
     for topic in [
         HelpTopic::Troubleshoot,
         HelpTopic::Guide,
@@ -1874,7 +1854,7 @@ fn the_main_windows_help_entries_queue_the_same_effect_as_the_panels_kebab() {
 fn the_real_jobs_back_up_purge_and_check_the_library_on_the_injected_clock() {
     use snipdeck_app::maintenance::{self, Maintenance};
     let dir = tempfile::tempdir().unwrap();
-    let (mut ctl, clock) = rig(Tier::Pro);
+    let (mut ctl, clock) = rig();
     ctl.main_action(MainAction::Delete, 0);
     assert_eq!(ctl.main_screen().counts.trash, 1);
 
@@ -1898,7 +1878,7 @@ fn the_real_jobs_back_up_purge_and_check_the_library_on_the_injected_clock() {
 #[test]
 fn the_main_window_can_show_the_panel_again_and_names_its_hotkey() {
     use snipdeck_app::controller::Effect;
-    let (mut ctl, _) = rig(Tier::Pro);
+    let (mut ctl, _) = rig();
     // The rig's settings stand for an existing install, which keeps the older chord.
     assert_eq!(ctl.main_screen().panel_hotkey, "Ctrl+Alt+Space");
     // The Panel was closed: "Show Panel" asks the host to show it, as the tray does.
@@ -1915,7 +1895,7 @@ fn the_main_window_can_show_the_panel_again_and_names_its_hotkey() {
 #[test]
 fn the_panel_button_and_palette_hide_a_panel_that_is_showing() {
     use snipdeck_app::{commands::Command, controller::Effect};
-    let (mut ctl, _) = rig(Tier::Pro);
+    let (mut ctl, _) = rig();
     assert!(ctl.main_screen().panel_visible, "the Panel is up");
     ctl.main_toggle_panel();
     assert_eq!(ctl.take_pending(), [Effect::HidePanel]);
@@ -1943,7 +1923,7 @@ fn palette_commands_that_belong_to_other_windows_queue_the_menus_effects() {
         commands::Command,
         controller::{Effect, HelpTopic},
     };
-    let mut ctl = pro();
+    let mut ctl = seeded();
     for (command, effects) in [
         (Command::Settings, vec![Effect::OpenSettings]),
         (
@@ -1963,6 +1943,8 @@ fn palette_commands_that_belong_to_other_windows_queue_the_menus_effects() {
             vec![Effect::OpenHelp(HelpTopic::Troubleshoot)],
         ),
         (Command::About, vec![Effect::OpenHelp(HelpTopic::About)]),
+        // The optional support page: the shell opens it, nothing else changes.
+        (Command::Support, vec![Effect::OpenSupport]),
     ] {
         ctl.run_command(command, 0);
         assert_eq!(ctl.take_pending(), effects, "{command:?}");
@@ -1972,7 +1954,7 @@ fn palette_commands_that_belong_to_other_windows_queue_the_menus_effects() {
 #[test]
 fn palette_navigation_and_view_commands_change_the_main_screen() {
     use snipdeck_app::{commands::Command, main_window::ViewMode};
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.run_command(Command::GoTrash, 0);
     assert_eq!(ctl.main_screen().section, Section::Trash);
     ctl.run_command(Command::GoPinned, 0);
@@ -1992,7 +1974,7 @@ fn palette_navigation_and_view_commands_change_the_main_screen() {
 #[test]
 fn palette_item_commands_act_on_the_row_under_the_cursor() {
     use snipdeck_app::commands::Command;
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let before = ctl.main_screen();
     let target = before.rows[1].title.clone();
     let pinned = before.rows[1].pinned;
@@ -2010,7 +1992,7 @@ fn palette_item_commands_act_on_the_row_under_the_cursor() {
 #[test]
 fn the_palette_duplicate_command_puts_a_copy_after_the_row_under_the_cursor() {
     use snipdeck_app::commands::Command;
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let before = ctl.main_screen();
     let target = before.rows[1].title.clone();
 
@@ -2036,7 +2018,7 @@ fn the_palette_duplicate_command_puts_a_copy_after_the_row_under_the_cursor() {
 #[test]
 fn the_palette_new_list_command_opens_the_list_editor() {
     use snipdeck_app::{commands::Command, main_window::EditorKind};
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.run_command(Command::NewList, 0);
     let editor = ctl.main_screen().editor.expect("the list editor");
     assert_eq!(editor.kind, EditorKind::List);
@@ -2045,7 +2027,7 @@ fn the_palette_new_list_command_opens_the_list_editor() {
 
 #[test]
 fn opening_another_section_clears_the_label_filter() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     label_row(&mut ctl, 0, ItemLabel::Teal);
     ctl.main_set_label_filter(Some(ItemLabel::Teal));
     open_list(&mut ctl, "Addresses");
@@ -2062,7 +2044,7 @@ fn opening_another_section_clears_the_label_filter() {
 
 #[test]
 fn duplicating_a_labelled_item_keeps_its_label() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     label_row(&mut ctl, 0, ItemLabel::Teal);
     let screen = ctl.main_screen();
     let id = match screen.rows[0].key {
@@ -2086,7 +2068,7 @@ fn duplicating_a_labelled_item_keeps_its_label() {
 #[test]
 fn the_panel_board_menu_ends_with_new_rename_and_delete() {
     use snipdeck_app::controller::BoardMenuEntry;
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.open_board_menu();
     let menu = ctl.view().board_menu.expect("menu open");
     let boards = ctl.store().boards().unwrap().len();
@@ -2108,7 +2090,7 @@ fn the_panel_board_menu_ends_with_new_rename_and_delete() {
 
 #[test]
 fn the_panel_new_board_entry_opens_the_board_editor() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.open_board_menu();
     let new = ctl.view().board_menu.unwrap().len() - 4;
     let effects = ctl.choose_board(new + 1);
@@ -2121,7 +2103,7 @@ fn the_panel_new_board_entry_opens_the_board_editor() {
 
 #[test]
 fn the_panel_rename_entry_opens_the_editor_for_the_shown_board() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.open_board_menu();
     let rename = ctl.view().board_menu.unwrap().len() - 2;
     let name = ctl.view().board_name;
@@ -2136,7 +2118,7 @@ fn the_panel_rename_entry_opens_the_editor_for_the_shown_board() {
 #[test]
 fn the_panel_delete_entry_asks_then_trashes_and_is_off_for_the_last_board() {
     use snipdeck_app::controller::BoardMenuEntry;
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.open_board_menu();
     let delete = ctl.view().board_menu.unwrap().len() - 1;
     ctl.choose_board(delete);
@@ -2167,7 +2149,7 @@ fn toast_message(ctl: &mut Ctl) -> Option<ToastMessage> {
 
 #[test]
 fn pin_duplicate_and_drag_reorder_confirm_in_the_main_window() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let screen = ctl.main_screen();
     let at = row_of(&screen, "Out of office");
     ctl.main_action(MainAction::Pin, at);
@@ -2183,7 +2165,7 @@ fn pin_duplicate_and_drag_reorder_confirm_in_the_main_window() {
 
 #[test]
 fn dragging_a_row_in_manual_order_announces_where_it_went() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     open_list(&mut ctl, "Email replies");
     ctl.main_drop_row(0, 1);
     assert!(
@@ -2198,7 +2180,7 @@ fn dragging_a_row_in_manual_order_announces_where_it_went() {
 
 #[test]
 fn saving_a_new_list_or_board_from_the_editor_says_so() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.main_new_list();
     ctl.main_editor_save("Fresh list", None, None, ListSort::Manual);
     assert_eq!(toast_message(&mut ctl), Some(ToastMessage::ListSaved));
@@ -2219,7 +2201,7 @@ fn saving_a_new_list_or_board_from_the_editor_says_so() {
 
 #[test]
 fn sorting_from_the_header_matches_the_editor() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     open_list(&mut ctl, "Code");
     assert_eq!(ctl.main_screen().list_sort, ListSort::Manual);
     ctl.main_set_list_sort(ListSort::RecentlyUsed);
@@ -2236,7 +2218,7 @@ fn sorting_from_the_header_matches_the_editor() {
     open_list(&mut ctl, "Addresses");
     assert_eq!(ctl.main_screen().list_sort, ListSort::Manual);
     // And the rows follow the choice, exactly as when the editor makes it.
-    let mut other = pro();
+    let mut other = seeded();
     open_list(&mut other, "Code");
     let index = list_index(&other.main_screen(), "Code");
     other.main_edit_list(index);
@@ -2247,7 +2229,7 @@ fn sorting_from_the_header_matches_the_editor() {
 
 #[test]
 fn dragging_in_a_sorted_list_offers_manual() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let code = open_list(&mut ctl, "Code");
     let id = match code.section {
         Section::List(id) => id,
@@ -2292,7 +2274,7 @@ fn dragging_in_a_sorted_list_offers_manual() {
 
 #[test]
 fn a_drag_in_all_items_or_during_a_search_offers_nothing() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     ctl.main_drop_row(0, 1);
     assert!(ctl.main_screen().toast.is_none(), "All items");
     open_list(&mut ctl, "Email replies");
@@ -2303,7 +2285,7 @@ fn a_drag_in_all_items_or_during_a_search_offers_nothing() {
 
 #[test]
 fn the_panel_list_menu_sorts_and_a_panel_drag_in_a_sorted_list_offers_manual() {
-    let mut ctl = pro();
+    let mut ctl = seeded();
     let tab = tab_index(&ctl, "Code");
     ctl.select_tab(tab);
     ctl.open_list_menu(tab);

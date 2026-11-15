@@ -9,7 +9,7 @@
 //!
 //! Groups become lists. Variables map where Snipdeck has an equal: `#{clipboard}`,
 //! `#{cursor}`, `#{date}` (Beeftext's locale date, as Snipdeck's `{date}`), `#{time}` and
-//! `#{input:Description}` (as `{field:Description}`, a Supporter feature). Everything else
+//! `#{input:Description}` (as `{field:Description}`). Everything else
 //! (`#{dateTime:...}`, whose format is Qt's, `#{powershell:...}`, `#{combo:...}`,
 //! `#{envVar:...}`, `#{upper:...}`, ...) stays as written, with a note.
 //!

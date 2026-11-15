@@ -18,7 +18,7 @@ use snipdeck_app::{
     main_window::{Section, SelectMode},
     settings::Settings,
 };
-use snipdeck_core::{Entitlements, ItemId, ItemKind, ItemLabel, ListId, Tier, Timestamp};
+use snipdeck_core::{ItemId, ItemKind, ItemLabel, ListId, Timestamp};
 use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
 use snipdeck_store::{ItemRepo, Store};
 
@@ -39,7 +39,6 @@ fn rig() -> Ctl {
         Box::new(FakeTargets::new(Some(demo::target()))),
         Box::new(FixedClock::new(now())),
         Settings::default(),
-        Entitlements::new(Tier::Pro),
     )
     .expect("controller")
 }

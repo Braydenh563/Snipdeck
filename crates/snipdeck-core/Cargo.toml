@@ -8,14 +8,7 @@ license.workspace = true
 repository.workspace = true
 publish.workspace = true
 
-[features]
-# The licence signer (`licence::signing`), for the `snipdeck-licence-issuer` tool only. The app never
-# enables it, so no signing code is linked into Snipdeck itself.
-licence-issuer = []
-
 [dependencies]
-base64.workspace = true
-ed25519-dalek.workspace = true
 jiff.workspace = true
 nucleo-matcher.workspace = true
 serde.workspace = true
@@ -24,11 +17,6 @@ thiserror.workspace = true
 unicode-normalization.workspace = true
 unicode-segmentation.workspace = true
 uuid.workspace = true
-
-[build-dependencies]
-# `build.rs` validates the licence public key with the same code the tests use.
-base64.workspace = true
-ed25519-dalek.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true

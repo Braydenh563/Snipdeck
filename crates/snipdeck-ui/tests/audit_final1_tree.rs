@@ -143,7 +143,6 @@ fn interactive_elements_are_named_big_enough_and_inside_the_window() {
             ui.global::<SystemLook<'_>>().set_text_scale(s);
             editor::text_item(&ui);
             ui.set_kind_index(3);
-            ui.set_prompted_available(false);
             ui.set_formatted(true);
             ui.window().set_size(slint::LogicalSize::new(w, 900.0));
             ui.show().unwrap();

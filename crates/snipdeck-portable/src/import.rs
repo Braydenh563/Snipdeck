@@ -93,18 +93,9 @@ pub struct ImportOptions<'k> {
     pub key: KeySource<'k>,
     /// The name of the new board, instead of one derived from the file or folder name.
     pub board_name: Option<String>,
-    /// When set, a warning is reported if the import leaves more boards than this (the Free
-    /// tier's limit). Nothing is blocked: the caller decides. Use [`ImportOptions::max_boards`]
-    /// to enforce a limit.
-    pub free_board_limit: Option<usize>,
-    /// The most live boards the library may hold once the import is done (the Free tier's 5).
-    /// An import that would go past it is refused inside its transaction with
-    /// `ProRequired(UnlimitedBoards)` and changes nothing; the caller passes `None` on Pro. A
-    /// restore of boards the user already has cannot grow past the limit this way.
-    pub max_boards: Option<usize>,
     /// Limits for reading untrusted input.
     pub limits: Limits,
-    /// Run the whole import (validation, duplicate skipping, the board limit) and report what it
+    /// Run the whole import (validation, duplicate skipping) and report what it
     /// would add, then roll the transaction back so the library is unchanged. This is the
     /// preview the Settings import and Restore show before anything is written.
     pub dry_run: bool,
@@ -121,7 +112,7 @@ pub(crate) fn board_name(raw: &str, fallback: &str) -> Result<Name> {
     Ok(Name::new(&cleaned).or_else(|_| Name::new(fallback))?)
 }
 
-/// The common ending of every importer: skip duplicates, warn about the board limit, write the
+/// The common ending of every importer: skip duplicates, write the
 /// plan. `plan` must hold only in-memory payloads.
 pub(crate) fn finish<L: Library>(
     lib: &mut L,
@@ -135,35 +126,10 @@ pub(crate) fn finish<L: Library>(
         report.items_skipped += dropped;
         report.duplicates_skipped += dropped;
     }
-    warn_board_limit(lib, &plan, options, &mut report)?;
     let mut no_assets = |_: &AssetRef| -> Result<Vec<u8>> {
         Err(Error::malformed("import", "internal: no assets expected"))
     };
-    apply(
-        lib,
-        &mut plan,
-        &mut no_assets,
-        report,
-        options.max_boards,
-        options.dry_run,
-    )
-}
-
-fn warn_board_limit<L: Library>(
-    lib: &L,
-    plan: &Plan,
-    options: &ImportOptions<'_>,
-    report: &mut ImportReport,
-) -> Result<()> {
-    if let Some(limit) = options.free_board_limit
-        && !plan.boards.is_empty()
-    {
-        let total = lib.boards()?.len() + plan.boards.len();
-        if total > limit {
-            report.warn(Warning::BoardLimit { limit, total });
-        }
-    }
-    Ok(())
+    apply(lib, &mut plan, &mut no_assets, report, options.dry_run)
 }
 
 /// Imports the `.snipdeck` file at `path`. The default new board is named after the file.
@@ -198,7 +164,7 @@ pub fn import_archive_path<L: Library>(
 /// # Errors
 ///
 /// An [`Error`] naming the first problem; the library is unchanged. Warnings (sensitive items
-/// that need a key, unknown entries, the Free-tier board limit) go in the report instead.
+/// that need a key, unknown entries) go in the report instead.
 pub fn import_archive<L: Library, R: Read + Seek>(
     lib: &mut L,
     reader: R,
@@ -269,7 +235,6 @@ pub fn import_archive<L: Library, R: Read + Seek>(
         report.items_skipped += dropped;
         report.duplicates_skipped += dropped;
     }
-    warn_board_limit(lib, &plan, options, &mut report)?;
 
     let mut fetch = |asset: &AssetRef| -> Result<Vec<u8>> {
         // Encrypted payloads were decrypted into the plan; only plain assets are fetched.
@@ -284,14 +249,7 @@ pub fn import_archive<L: Library, R: Read + Seek>(
         }
         Ok(bytes)
     };
-    apply(
-        lib,
-        &mut plan,
-        &mut fetch,
-        report,
-        options.max_boards,
-        options.dry_run,
-    )
+    apply(lib, &mut plan, &mut fetch, report, options.dry_run)
 }
 
 /// Reads `manifest.json`: checks it is a Snipdeck manifest of a readable version before looking

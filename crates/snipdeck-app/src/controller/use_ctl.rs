@@ -3,7 +3,7 @@
 use std::{collections::BTreeMap, time::Duration};
 
 use snipdeck_core::{
-    Feature, ItemId, UseMode, UseOutcome,
+    ItemId, UseMode, UseOutcome,
     template::{Locale, Template, transform::Transform},
 };
 use snipdeck_platform::{
@@ -423,16 +423,9 @@ where
         }
     }
 
-    /// "Start stack": Paste next now walks the marked items. A Supporter feature.
+    /// "Start stack": Paste next now walks the marked items.
     pub fn start_stack(&mut self) {
         if self.stack.is_empty() {
-            return;
-        }
-        if !self.entitlements.allows(Feature::PasteStack) {
-            self.show_toast(Toast {
-                kind: ToastKind::Danger,
-                message: ToastMessage::NeedsPro(Feature::PasteStack),
-            });
             return;
         }
         self.queue.reset();
@@ -449,13 +442,6 @@ where
     /// The paste-next hotkey: pastes the next item of the pinned strip (when the board has
     /// pinned items) or of the list the Panel shows. See [`paste_next`].
     pub fn paste_next(&mut self) -> Option<UseResult> {
-        if !self.entitlements.allows(Feature::PasteStack) {
-            self.show_toast(Toast {
-                kind: ToastKind::Danger,
-                message: ToastMessage::NeedsPro(Feature::PasteStack),
-            });
-            return None;
-        }
         self.on_target_changed();
         let pinned = self.model.pinned();
         let (source, ids) = match (self.model.board(), self.model.list()) {
@@ -519,7 +505,6 @@ where
             mode,
             route: route.clone(),
             now: self.clock.now(),
-            entitlements: self.entitlements,
             answers,
             transform,
             uuids: None,

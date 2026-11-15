@@ -1,6 +1,6 @@
 # ADR-0005: GPL-3.0, Pro tier via offline key, CLA
 
-- Status: Accepted (2026-10-17)
+- Status: Accepted (2026-10-17); the Supporter tier and licence key were superseded on 2026-11-15 (see the status note)
 
 ## Decision
 - Code licensed **GPL-3.0-only** (replaces AGPL, whose network clause is irrelevant to a desktop app).
@@ -9,3 +9,9 @@
 
 ## Consequences
 Supporters pay what they want for convenience (Store, signed builds, updates) and to support the project; the key is not copy protection.
+
+## Status note (2026-11-15)
+The Supporter tier, the offline licence key and every entitlement check were removed. Owner decision: everything is
+free on every build, with an optional Buy Me a Coffee link that unlocks nothing and handles no payment data. What
+still stands from this ADR: the code is GPL-3.0-only and contributors sign the CLA. Old settings and libraries that
+mention a licence still load (unknown fields are ignored; a leftover `licence.key` file is never read).
