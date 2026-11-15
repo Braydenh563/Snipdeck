@@ -224,6 +224,36 @@ fn a_copied_sensitive_item_leaves_the_clipboard_after_thirty_seconds() {
 }
 
 #[test]
+fn quitting_clears_a_pending_sensitive_copy_at_once() {
+    let mut w = world();
+    let id = w.ids[0];
+    make_sensitive(&mut w, id);
+    w.ctl.activate_row(0, UseMode::Copy);
+    w.clock.set(at("2026-10-17T10:30:01Z"));
+    w.ctl.clear_pending_clipboard_now();
+    assert_eq!(w.ctl.services.clipboard.read_text(), None, "cleared before its time");
+    assert_eq!(w.ctl.clipboard_clear_wait(), None);
+}
+
+#[test]
+fn quitting_leaves_a_clipboard_the_user_copied_over_alone() {
+    let mut w = world();
+    let id = w.ids[0];
+    make_sensitive(&mut w, id);
+    w.ctl.activate_row(0, UseMode::Copy);
+    w.ctl.services.clipboard.written.clear();
+    w.ctl.services.clipboard.written.push(
+        snipdeck_platform::payload::Payload::new(vec![snipdeck_platform::payload::Data::Png(
+            vec![1, 2, 3],
+        )])
+        .expect("payload"),
+    );
+    w.ctl.services.clipboard.sequence += 1; // someone else wrote it
+    w.ctl.clear_pending_clipboard_now();
+    assert_eq!(w.ctl.services.clipboard.written.len(), 1, "left alone");
+}
+
+#[test]
 fn the_clipboard_clear_time_is_the_setting_and_zero_turns_it_off() {
     let mut w = world();
     let id = w.ids[0];

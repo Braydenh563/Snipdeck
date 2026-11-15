@@ -621,6 +621,10 @@ where
         if self.close_sensitive_item_editor() {
             self.show_toast(neutral(ToastMessage::LockedEditorClosed));
         }
+        // The fill form of a sensitive template holds the decrypted template and its answers.
+        if self.close_sensitive_fill() {
+            self.show_toast(neutral(ToastMessage::LockedFillClosed));
+        }
         self.refresh_or_notice("locking");
     }
 }

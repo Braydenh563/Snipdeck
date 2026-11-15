@@ -192,6 +192,20 @@ where
         }
     }
 
+    /// Closes the fill form if it belongs to a sensitive template, as the lock does: the form
+    /// holds the decrypted template. Returns whether one was open.
+    pub(super) fn close_sensitive_fill(&mut self) -> bool {
+        let sensitive = self
+            .fill
+            .as_ref()
+            .is_some_and(|f| self.store.item(f.item()).map_or(true, |i| i.sensitive));
+        if sensitive {
+            self.fill = None;
+            self.fill_erase = None;
+        }
+        sensitive
+    }
+
     /// Closes the fill form without using the template (Esc, the close button) and hands the
     /// focus back to the Target.
     pub fn cancel_fill(&mut self) {
@@ -635,10 +649,21 @@ where
 
     /// Clears the clipboard if the wait is over and it still holds the copied text.
     pub fn clear_clipboard_if_due(&mut self) {
+        self.clear_clipboard(false);
+    }
+
+    /// Clears a pending sensitive copy now, whatever its due time (the app is quitting, and the
+    /// timer that would have done it dies with the event loop). A clipboard that someone else
+    /// has written to since is left alone, as for the timed clear.
+    pub fn clear_pending_clipboard_now(&mut self) {
+        self.clear_clipboard(true);
+    }
+
+    fn clear_clipboard(&mut self, force: bool) {
         let Some(pending) = &self.clipboard_clear else {
             return;
         };
-        if self.clock.now() < pending.due {
+        if !force && self.clock.now() < pending.due {
             return;
         }
         let Some(mut pending) = self.clipboard_clear.take() else {
@@ -661,6 +686,7 @@ where
         // Still ours but not cleared: the clipboard was busy. Try again shortly (A6).
         if ours
             && !cleared
+            && !force
             && pending.attempts + 1 < CLIPBOARD_CLEAR_ATTEMPTS
             && let Ok(due) = self.clock.now().checked_add(CLIPBOARD_CLEAR_RETRY)
         {

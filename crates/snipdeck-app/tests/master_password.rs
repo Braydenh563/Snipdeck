@@ -784,6 +784,38 @@ fn a_lapsed_licence_can_still_unlock_change_and_remove() {
 // ---- The idle lock, on an injected clock -------------------------------------------------------
 
 #[test]
+fn the_idle_lock_closes_the_fill_form_of_a_sensitive_template() {
+    let mut r = with_password(Tier::Pro);
+    r.ctl.open_new_item(Origin::Main);
+    let v = r.ctl.item_editor_view().expect("editor");
+    r.ctl.item_editor_save(&EditorInput {
+        kind: snipdeck_core::ItemKind::Template,
+        sensitive: true,
+        title: "Letter".into(),
+        content: "Dear {field:Name}, the code is 4711".into(),
+        ..v.fields
+    });
+    assert!(!r.ctl.item_editor_open(), "saved");
+    let id = r
+        .ctl
+        .store()
+        .all_items()
+        .expect("items")
+        .into_iter()
+        .find(|i| i.title == "Letter")
+        .expect("the template")
+        .id;
+    r.ctl.use_item(id, UseMode::Copy);
+    assert!(r.ctl.fill().is_some(), "the form asks for the name");
+    r.advance(IDLE_LOCK);
+    assert!(r.ctl.lock_if_idle(), "due");
+    assert!(
+        r.ctl.fill().is_none(),
+        "the decrypted template is gone from the open form"
+    );
+}
+
+#[test]
 fn the_library_locks_after_the_idle_time_and_asks_again() {
     let mut r = with_password(Tier::Pro);
     assert_eq!(r.ctl.idle_lock_wait(), Some(IDLE_LOCK));
