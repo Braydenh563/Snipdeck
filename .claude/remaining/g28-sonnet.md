@@ -17,3 +17,25 @@ caches). Options:
 3. Second writer connection on a worker (WAL allows it). Breaks the folder-lock/change-counter
    invariants; not recommended.
 Busy state, refusal while running, and lock/quit handling reuse ArchiveState/archive_busy.
+
+## Review of 854ea80 (coordinator, MERGE-WITH-FIXES), all still open
+Medium
+1. Rebuild stale state during salvage: only erase checks archive_busy(). While busy, refuse library
+   writes, master-password steps, restore, import (toast), or a modal busy state; re-read the key
+   record in finish_rebuild and fail safely if it changed. Tests: password change and item add
+   during a rebuild. (Item adds are now re-cut into the salvage via change_counter, ee28f84.)
+2. gc_blobs during export/backup breaks the worker snapshot (NotFound; salvage silently dropped,
+   archive_ctl.rs ~515). Defer blob GC while archive_busy(), run it at job end. Test: replace an
+   image item's content between begin and run.
+3. Busy state: push archive_busy to every window on start/end (Help Back up now, rebuild, daily
+   backup); toast on Begun::Refused; own Cause/log text for the busy case (not Locked). New
+   strings: .pot plus all six .po translated.
+Low
+4. Join the forget-paste-files JoinHandle on quit (windows/clipboard.rs, lock_ctl.rs, use_ctl.rs).
+5. Log the panic payload in archive_job.rs `guarded`.
+6. history_ctl readable() checks length only: record the trade-off in SPEC.md.
+7. Quit mid-export leaves <name>.part: remove our own stale .part on next start/quit, or document.
+Tests: make an_export_cut_on_a_worker... change the library between begin and run; add tests
+for the Threads delivery seam, the panic path, spawn_backup updating Maintenance, the busy
+property. Plus restore/import apply + previews off-thread (options above).
+Then merge origin/claude/compassionate-pascal-pod8ux if it moved, gate --changed, push.
