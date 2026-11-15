@@ -1,5 +1,5 @@
 mode: continue
-status: active
+status: blocked (waiting on gate3, 3 fixer agents and 2 cloud workers; each notifies this session; set active on the next notification)
 max-continues: 80
 max-idle-minutes: 60
 finish-up-line: 97%   # owner: "until 97% weekly usage"
