@@ -2116,6 +2116,9 @@ msgstr "Coller la pile : {} marqué(s)"
 msgid "Paste the Nth result"
 msgstr "Coller le n-ième résultat"
 
+msgid "Paste the item as plain text"
+msgstr ""
+
 msgid "Paste the next item"
 msgstr "Coller l'extrait suivant"
 

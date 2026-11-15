@@ -330,7 +330,7 @@ pub fn scrub_dir(dir: &std::path::Path) {
             let Ok(mut file) = std::fs::OpenOptions::new().write(true).open(entry.path()) else {
                 continue;
             };
-            let zeros = [0_u8; 64 * 1024];
+            let zeros = vec![0_u8; 64 * 1024];
             let mut left = len;
             while left > 0 {
                 let step = usize::try_from(left).map_or(zeros.len(), |n| n.min(zeros.len()));
@@ -936,7 +936,10 @@ mod tests {
         assert_eq!(kept, [0xC0F0, 17]);
         assert!(incomplete, "the DIB is gone, so Paint would paste nothing");
         // A format that is a GDI handle and cannot be held.
-        assert!(walk(64 * MIB, &[(13, 20), (14, 500)]).1, "an enhanced metafile");
+        assert!(
+            walk(64 * MIB, &[(13, 20), (14, 500)]).1,
+            "an enhanced metafile"
+        );
         // Everything fits; Windows rebuilds CF_BITMAP and CF_PALETTE; an empty format is no loss.
         let (kept, incomplete) = walk(64 * MIB, &[(13, 20), (8, 100), (2, 4), (9, 4), (1, 0)]);
         assert_eq!(kept, [13, 8]);

@@ -45,7 +45,9 @@ fn samples() -> Vec<K> {
             found: "zzz".into(),
             suggestion: None,
         },
-        K::UnexpectedArgument { placeholder: "date" },
+        K::UnexpectedArgument {
+            placeholder: "date",
+        },
         K::MissingArgument {
             placeholder: "datetime",
         },
@@ -107,12 +109,23 @@ fn every_template_problem_has_words_in_english_and_follows_the_translation() {
             .collect();
         for (kind, text) in samples().iter().zip(&english) {
             assert!(!text.is_empty(), "{kind:?}");
-            assert!(!text.ends_with('.'), "the sentence around it adds the stop: {text}");
+            assert!(
+                !text.ends_with('.'),
+                "the sentence around it adds the stop: {text}"
+            );
             if !matches!(kind, K::Unknown { .. }) {
-                assert_eq!(*text, kind.to_string(), "the English is the parser's own words");
+                assert_eq!(
+                    *text,
+                    kind.to_string(),
+                    "the English is the parser's own words"
+                );
             }
         }
-        assert!(english[13].contains("did you mean `{date}`?"), "{}", english[13]);
+        assert!(
+            english[13].contains("did you mean `{date}`?"),
+            "{}",
+            english[13]
+        );
         assert_eq!(
             template_problem_text(&ui, &TemplateProblem::Sensitive),
             "a placeholder is not valid"

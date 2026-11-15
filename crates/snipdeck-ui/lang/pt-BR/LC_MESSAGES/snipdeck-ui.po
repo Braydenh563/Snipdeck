@@ -2116,6 +2116,9 @@ msgstr "Pilha de colagem: {} marcados"
 msgid "Paste the Nth result"
 msgstr "Colar o enésimo resultado"
 
+msgid "Paste the item as plain text"
+msgstr ""
+
 msgid "Paste the next item"
 msgstr "Colar o próximo trecho"
 

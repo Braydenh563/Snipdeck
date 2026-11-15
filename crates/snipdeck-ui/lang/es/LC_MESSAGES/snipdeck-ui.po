@@ -2116,6 +2116,9 @@ msgstr "Pila de pegado: {} marcados"
 msgid "Paste the Nth result"
 msgstr "Pega el resultado n"
 
+msgid "Paste the item as plain text"
+msgstr ""
+
 msgid "Paste the next item"
 msgstr "Pegar el siguiente fragmento"
 

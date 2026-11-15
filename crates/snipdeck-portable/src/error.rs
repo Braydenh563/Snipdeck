@@ -61,7 +61,9 @@ pub enum Error {
     /// An export or backup cannot hold an item: its attachment, or the library's attachments up to
     /// and including it, are over a limit of the archive. Names the item, so the person can shrink
     /// or remove it; the other cases of [`Error::LimitExceeded`] cannot be acted on this way.
-    #[error("the item \"{title}\" does not fit in the archive: {what} is over the limit of {limit}")]
+    #[error(
+        "the item \"{title}\" does not fit in the archive: {what} is over the limit of {limit}"
+    )]
     ItemTooLarge {
         /// The item's title.
         title: String,

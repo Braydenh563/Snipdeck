@@ -763,7 +763,13 @@ fn the_item_that_takes_the_total_over_the_limit_is_named() {
     )
     .expect_err("the second file passes the total");
     assert!(
-        matches!(&err, Error::ItemTooLarge { what: "total uncompressed size", .. }),
+        matches!(
+            &err,
+            Error::ItemTooLarge {
+                what: "total uncompressed size",
+                ..
+            }
+        ),
         "{err:?}"
     );
 }

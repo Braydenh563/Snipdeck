@@ -2110,6 +2110,9 @@ msgstr "粘贴堆栈：已标记 {} 项"
 msgid "Paste the Nth result"
 msgstr "粘贴第 N 个结果"
 
+msgid "Paste the item as plain text"
+msgstr ""
+
 msgid "Paste the next item"
 msgstr "粘贴下一个片段"
 

@@ -231,7 +231,11 @@ fn quitting_clears_a_pending_sensitive_copy_at_once() {
     w.ctl.activate_row(0, UseMode::Copy);
     w.clock.set(at("2026-10-17T10:30:01Z"));
     w.ctl.clear_pending_clipboard_now();
-    assert_eq!(w.ctl.services.clipboard.read_text(), None, "cleared before its time");
+    assert_eq!(
+        w.ctl.services.clipboard.read_text(),
+        None,
+        "cleared before its time"
+    );
     assert_eq!(w.ctl.clipboard_clear_wait(), None);
 }
 

@@ -147,6 +147,21 @@ struct Exporter<'a, L, W: Write + Seek> {
     report: ExportReport,
 }
 
+/// An archive limit hit while writing one item's file becomes an error that names the item.
+fn name_the_item(error: Error, title: &str) -> Error {
+    match error {
+        Error::LimitExceeded {
+            what: what @ ("uncompressed entry size" | "total uncompressed size"),
+            limit,
+        } => Error::ItemTooLarge {
+            title: title.to_owned(),
+            what,
+            limit,
+        },
+        other => other,
+    }
+}
+
 impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
     fn build_doc(&mut self) -> Result<ItemsDoc> {
         let tag_names: HashMap<TagId, String> = self
@@ -184,25 +199,7 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
                             Some(key)
                         }
                     };
-                    let formats = self.lib.formats(item.id)?;
-                    let mut format_dtos = Vec::with_capacity(formats.iter().count());
-                    for format in &formats {
-                        format_dtos.push(self.format_dto(item.id, format, key).map_err(
-                            |e| match e {
-                                Error::LimitExceeded {
-                                    what:
-                                        what @ ("uncompressed entry size"
-                                        | "total uncompressed size"),
-                                    limit,
-                                } => Error::ItemTooLarge {
-                                    title: item.title.clone(),
-                                    what,
-                                    limit,
-                                },
-                                other => other,
-                            },
-                        )?);
-                    }
+                    let format_dtos = self.item_formats(item.id, &item.title, key)?;
                     used_tags.extend(item.tags.iter().copied());
                     items.push(ItemDto {
                         id: item.id.to_string(),
@@ -265,6 +262,24 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
         tags.sort_by_key(|t| t.name.to_lowercase());
         self.report.tags = tags.len();
         Ok(ItemsDoc { tags, boards })
+    }
+
+    /// Every format of one item, with an archive limit error naming the item.
+    fn item_formats(
+        &mut self,
+        item: ItemId,
+        title: &str,
+        key: Option<&DataKey>,
+    ) -> Result<Vec<FormatDto>> {
+        let formats = self.lib.formats(item)?;
+        let mut dtos = Vec::with_capacity(formats.iter().count());
+        for format in &formats {
+            let dto = self
+                .format_dto(item, format, key)
+                .map_err(|e| name_the_item(e, title))?;
+            dtos.push(dto);
+        }
+        Ok(dtos)
     }
 
     fn format_dto(

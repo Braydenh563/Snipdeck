@@ -824,10 +824,10 @@ where
     for<'a> TemplateTexts<'a>: Global<'a, C>,
 {
     use TemplateErrorKind as K;
-    let t = TemplateTexts::get(window);
     fn code(s: &str) -> slint::SharedString {
         format!("`{s}`").into()
     }
+    let t = TemplateTexts::get(window);
     let kind = match problem {
         TemplateProblem::Sensitive => return t.invoke_sensitive().into(),
         TemplateProblem::Parse(kind) => kind,
@@ -837,9 +837,7 @@ where
         K::Unterminated => t.invoke_unterminated(code("{"), code("{{")),
         K::EmptyPlaceholder => t.invoke_empty_placeholder(code("{}")),
         K::EmptyName => t.invoke_empty_name(code("{field:Name}")),
-        K::UnclosedSection => {
-            t.invoke_unclosed_section(code("{optional:…}"), code("{/optional}"))
-        }
+        K::UnclosedSection => t.invoke_unclosed_section(code("{optional:…}"), code("{/optional}")),
         K::NestedSection => t.invoke_nested_section(),
         K::UnmatchedSectionEnd => t.invoke_unmatched_section_end(code("{/optional}")),
         K::NoOptions => t.invoke_no_options(code("{choice:Name|a|b}")),

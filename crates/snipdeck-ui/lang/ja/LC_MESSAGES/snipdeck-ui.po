@@ -2110,6 +2110,9 @@ msgstr "貼り付けスタック: {} 件選択中"
 msgid "Paste the Nth result"
 msgstr "N番目の結果を貼り付け"
 
+msgid "Paste the item as plain text"
+msgstr ""
+
 msgid "Paste the next item"
 msgstr "次のスニペットを貼り付け"
 

@@ -2116,6 +2116,9 @@ msgstr "Einfügestapel: {} markiert"
 msgid "Paste the Nth result"
 msgstr "Das n-te Ergebnis einfügen"
 
+msgid "Paste the item as plain text"
+msgstr "Eintrag als reinen Text einfügen"
+
 msgid "Paste the next item"
 msgstr "Nächsten Textbaustein einfügen"
 
