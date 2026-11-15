@@ -9,15 +9,16 @@ started: 2026-11-14 13:40
 - [x] colour-tool (merged locally, push pending gate): worker tidy (tests below use super::*), merge PR head; re-verify, merge, gate, push
 - [x] owner-bug-sweep: rounds 1-4 merged (aa4a232b, 92aecf09 parent), reviewed twice
 - [x] store-ready: merged 92aecf09 after review fixes (22176105); follow-up store-ready-2: Recent question goldens + ux-auditor
-- [ ] Task 5 (docs done: e1616e4c a3ff026b 92aecf09): CHANGELOG/SPEC/user-guide entries for colour tool, preview toggle, docking, render fix, quick add, reorder, Store build; release-build dispatch [!] 404: release-build.yml is not on main, so it cannot be dispatched until merge (owner); CI windows-check covers the Windows build; gate --full; CI green on PR #5
+- [x] Task 5 docs: CHANGELOG covers colour tool, preview, docking, render fix, quick add, reorder, Store (checked 2026-11-15); release dispatch [!] owner (needs main); gate --full + CI green moved to the final item
 - [ ] all-free (store worker, claude/all-free): Supporter removed, Buy Me a Coffee link, docs, Recent goldens, ux-auditor; review (no checkout), merge, gate, push
 - [ ] Full-app audit: Opus pass done (12 fixed, 62c2063a..fc6cface + cleanup); Fable audit running (owner named it 2026-11-15) -> scratchpad/fable-audit.md; Sonnet fixes all findings; blind usability tests (Sonnet); gate, push
 - [ ] Push audit fixes (gate --changed running -> scratchpad/gate.log; tests no-fail-fast ok, 1.99.1 clippy ok, Windows clippy ok; owner workflow edits merged 34673454)
 - [ ] Merge origin/claude/all-free (reviewed MERGE-WITH-FIXES; workflow part done by owner) into the PR branch, resolve .po/CHANGELOG conflicts, gate, push
 - [ ] claude/edge-polish (store worker session_01NKjURwKPmGuEHMfw1o6HF4): Store 10.8.2 notes, stale msgid, collapsed-edge restyle, residual drag flicker, eyedropper leaves docked Panel in collapsed look; review, merge, gate, push
 - [ ] claude/popup-dismiss (bug-sweep worker session_01NKjURt5yHRvroJQUg7zQeb): toast close button, click-outside/Esc everywhere, More menu fills small Panel; review, merge, gate, push
+- [ ] claude/ui-polish-2 (bug-sweep worker, after popup-dismiss): clear emoji/colour recents, tooltip z/clipping, tinted list icons, collapse button into sidebar header, search x alignment, scroll glitches; review, merge, gate, push
 - [ ] Blind usability tests (Sonnet) on the merged build; fix
-- [ ] Handover morning summary + retro
+- [ ] gate --full, CI green on PR #5, handover morning summary + retro
 
 ## State 2026-11-15 (for the next context)
 - Pushed: 73df0541 (Windows CI green). Local, unpushed: audit fixes 62c2063a..fc6cface.
