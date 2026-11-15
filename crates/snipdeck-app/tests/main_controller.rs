@@ -216,7 +216,7 @@ fn use_pastes_and_counts_through_the_controller_and_copy_only_copies() {
 
 #[test]
 fn use_plain_pastes_without_formatting_and_counts() {
-    let mut ctl = pro();
+    let (mut ctl, _clock) = rig();
     let screen = ctl.main_screen();
     let at = row_of(&screen, "Out of office");
     let id = match screen.rows[at].key {
