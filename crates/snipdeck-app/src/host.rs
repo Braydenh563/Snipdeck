@@ -3,7 +3,7 @@
 //! the global hotkeys. Each has a real implementation (the Windows backend, in `windows_host`)
 //! and a fake here, so the controller runs under test with no desktop.
 
-use std::{cell::Cell, cell::RefCell, rc::Rc};
+use std::{cell::Cell, cell::RefCell, rc::Rc, time::Duration, time::Instant};
 
 use snipdeck_core::Timestamp;
 use snipdeck_platform::win_formats::ClipFiles;
@@ -18,6 +18,10 @@ use crate::settings::HotkeyAction;
 pub trait Clock {
     /// The current moment.
     fn now(&self) -> Timestamp;
+
+    /// Time since an arbitrary fixed start, from a monotonic source: it never goes back when the
+    /// wall clock is set back. For measuring spans (the idle lock), not for dates.
+    fn elapsed(&self) -> Duration;
 }
 
 /// [`Clock`] on the system clock.
@@ -28,28 +32,41 @@ impl Clock for SystemClock {
     fn now(&self) -> Timestamp {
         Timestamp::now()
     }
+
+    fn elapsed(&self) -> Duration {
+        static START: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+        START.get_or_init(Instant::now).elapsed()
+    }
 }
 
 /// A clock that only moves when the test sets it. Cloning shares the same time.
 #[derive(Debug, Clone)]
-pub struct FixedClock(Rc<Cell<Timestamp>>);
+pub struct FixedClock(Rc<Cell<Timestamp>>, Rc<Cell<Duration>>);
 
 impl FixedClock {
     /// A clock stopped at `at`.
     #[must_use]
     pub fn new(at: Timestamp) -> Self {
-        Self(Rc::new(Cell::new(at)))
+        Self(Rc::new(Cell::new(at)), Rc::new(Cell::new(Duration::ZERO)))
     }
 
-    /// Moves the clock.
+    /// Moves the clock. The monotonic reading follows a move forward and ignores one back, like
+    /// a real wall clock that is set back.
     pub fn set(&self, at: Timestamp) {
-        self.0.set(at);
+        let before = self.0.replace(at);
+        if let Ok(by) = Duration::try_from(at.duration_since(before)) {
+            self.1.set(self.1.get() + by);
+        }
     }
 }
 
 impl Clock for FixedClock {
     fn now(&self) -> Timestamp {
         self.0.get()
+    }
+
+    fn elapsed(&self) -> Duration {
+        self.1.get()
     }
 }
 

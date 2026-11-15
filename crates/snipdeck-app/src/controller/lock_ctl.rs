@@ -15,7 +15,6 @@
 
 use std::{sync::Arc, time::Duration};
 
-use snipdeck_core::Timestamp;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::crypto::{CryptoError, KdfParams, KeyProvider, KeyRecord, KeyRing};
 
@@ -84,7 +83,7 @@ pub(super) struct LockState {
     /// The key record could not be read at the last look, so `set` is not known.
     unreadable: bool,
     /// The last time the user used the library; the idle lock counts from here.
-    active_at: std::cell::Cell<Timestamp>,
+    active_at: std::cell::Cell<Duration>,
     /// The unlock window is open.
     prompt: bool,
     /// A step whose key derivation is running elsewhere ([`MasterJob`]); no other starts.
@@ -99,7 +98,7 @@ pub(super) struct LockState {
 }
 
 impl LockState {
-    pub(super) fn new(now: Timestamp) -> Self {
+    pub(super) fn new(now: Duration) -> Self {
         Self {
             set: false,
             unreadable: false,
@@ -205,7 +204,7 @@ where
 
     /// Marks the user as active now, which restarts the idle count.
     pub(super) fn note_activity(&mut self) {
-        self.lock.active_at.set(self.clock.now());
+        self.lock.active_at.set(self.clock.elapsed());
     }
 
     /// For revealing a sensitive row: `false`, with the unlock window asked for, when the key is
@@ -571,15 +570,12 @@ where
         if !self.lock.set || !self.store.is_unlocked() {
             return None;
         }
-        let now = self.clock.now();
-        // A clock set back puts `now` before the last activity: the count restarts from now, so
-        // the lock is late by less than the idle time and never by the size of the change. (The
-        // clock is the wall clock; a monotonic one would also cover sleep.)
-        if self.lock.active_at.get() > now {
-            self.lock.active_at.set(now);
-        }
-        let due = self.lock.active_at.get().checked_add(IDLE_LOCK).ok()?;
-        Some(Duration::try_from(due.duration_since(now)).unwrap_or_default())
+        // Monotonic: a wall clock set back or forward neither delays nor hastens the lock.
+        let idle = self
+            .clock
+            .elapsed()
+            .saturating_sub(self.lock.active_at.get());
+        Some(IDLE_LOCK.saturating_sub(idle))
     }
 
     /// Locks the library if it has been idle for [`IDLE_LOCK`]. Returns whether it locked.

@@ -477,6 +477,7 @@ where
         model.set_paste_rules(settings.paste_rules());
         model.set_target(target.current());
         let shown_at = clock.now();
+        let idle_start = clock.elapsed();
         let pinned = settings.panel_pinned;
         let colour =
             colour_ctl::colour_or(&settings.colour_current, crate::settings::DEFAULT_COLOUR);
@@ -563,7 +564,7 @@ where
             dock_area_seen: None,
             fullscreen: false,
             pending: Vec::new(),
-            lock: lock_ctl::LockState::new(shown_at),
+            lock: lock_ctl::LockState::new(idle_start),
             recent_gate: None,
             typing: None,
             typing_sent: Vec::new(),

@@ -854,6 +854,26 @@ fn a_clock_moved_back_cannot_delay_the_idle_lock_past_the_idle_time() {
 }
 
 #[test]
+fn a_clock_moved_back_does_not_delay_the_idle_lock_at_all() {
+    let mut r = with_password();
+    r.advance(Duration::from_mins(1));
+    let back = r
+        .clock_now()
+        .checked_sub(Duration::from_hours(2))
+        .expect("earlier");
+    r.clock.set(back);
+    // Only the time that really passed counts: one minute is gone already.
+    assert_eq!(
+        r.ctl.idle_lock_wait(),
+        Some(IDLE_LOCK - Duration::from_mins(1))
+    );
+    r.advance(just_before_idle(Duration::from_secs(61)));
+    assert!(!r.ctl.lock_if_idle(), "a second early");
+    r.advance(Duration::from_secs(1));
+    assert!(r.ctl.lock_if_idle(), "due after the real idle time");
+}
+
+#[test]
 fn using_the_library_restarts_the_idle_count() {
     let mut r = with_password();
     r.advance(just_before_idle(Duration::from_mins(1)));
