@@ -735,7 +735,7 @@ fn setting_again_while_one_is_set_is_refused() {
     let mut r = with_password();
     assert_eq!(
         r.ctl
-            .set_master_password("another phrase 9", "another phrase 9"),
+            .set_master_password(support::pw("another"), support::pw("another")),
         Err(MasterProblem::Failed)
     );
 }
