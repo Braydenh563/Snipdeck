@@ -113,6 +113,11 @@ where
     /// Something happened to the handle or the open Panel (or the hotkey, a paste or time):
     /// runs the state machine and returns the placement it asks for.
     pub fn dock_event(&mut self, event: DockEvent) -> Vec<Effect> {
+        // The Panel is hidden for a pick and comes back open when it ends: nothing the pointer
+        // or time does meanwhile tucks it.
+        if self.eyedropping {
+            return Vec::new();
+        }
         let config = self.dock_config();
         let now = self.clock.now();
         let action = self.dock.on(event, now, &config);

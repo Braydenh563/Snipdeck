@@ -217,7 +217,7 @@ where
                 message: ToastMessage::EyedropHdr { hex: c.to_hex() },
             });
         }
-        vec![Effect::ShowPanel, Effect::ShowColours]
+        self.back_from_eyedropper()
     }
 
     // ---- Saving ----------------------------------------------------------------------------

@@ -77,6 +77,7 @@ where
             }),
         );
         if started.is_ok() {
+            self.eyedropping = true;
             // The Panel always hides first and the platform waits SETTLE (150 ms) so its pixels are
             // gone from the screenshot the eyedropper takes. Hiding even when the Panel is not on
             // screen is a no-op, and a cancel shows it again: the cost of that is a brief flash
@@ -99,19 +100,32 @@ where
             .lock()
             .ok()
             .and_then(|mut slot| slot.take());
+        let Some(outcome) = outcome else {
+            return Vec::new();
+        };
+        self.eyedropping = false;
         match outcome {
-            None => Vec::new(),
-            Some(EyedropOutcome::Picked { rgb, hdr }) => {
-                self.colour_picked(snipdeck_colour::Rgba8::rgb(rgb[0], rgb[1], rgb[2]), hdr)
+            EyedropOutcome::Picked { rgb, hdr } => {
+                return self
+                    .colour_picked(snipdeck_colour::Rgba8::rgb(rgb[0], rgb[1], rgb[2]), hdr);
             }
-            Some(EyedropOutcome::Cancelled) => vec![Effect::ShowPanel, Effect::ShowColours],
-            Some(EyedropOutcome::Failed(_)) => {
+            EyedropOutcome::Cancelled => {}
+            EyedropOutcome::Failed(_) => {
                 self.show_toast(Toast {
                     kind: ToastKind::Danger,
                     message: ToastMessage::EyedropFailed,
                 });
-                vec![Effect::ShowPanel, Effect::ShowColours]
             }
         }
+        self.back_from_eyedropper()
+    }
+
+    /// The Panel comes back on the Colours tab through [`show`](Controller::show), the one way a
+    /// Panel is shown: the controller's state (visible, a dock open, not tucked) and the window
+    /// (shown, at its open frame) agree whatever happened while it was hidden.
+    pub(super) fn back_from_eyedropper(&mut self) -> Vec<Effect> {
+        let mut effects = self.show();
+        effects.push(Effect::ShowColours);
+        effects
     }
 }

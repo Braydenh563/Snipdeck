@@ -3493,9 +3493,6 @@ msgstr "auflösen trennen entfernen Gruppe behalten Elemente Abschnitt"
 msgid "donate donation coffee tip"
 msgstr "spenden spende kaffee trinkgeld"
 
-msgid "donate donation coffee tip optional"
-msgstr "spenden spende kaffee trinkgeld freiwillig"
-
 msgid "drop"
 msgstr "Ablegen"
 

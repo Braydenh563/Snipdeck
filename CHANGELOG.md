@@ -125,6 +125,7 @@ first start.
   colour.
 
 ### Changed
+- The docked Panel's tab looks like the rest of the app: a raised strip with a thin border and rounded inner corners, and a short grip in the list's colour that grows under the mouse, instead of a full-length block of accent colour.
 - Long toasts wrap onto several lines instead of being cut off, and their icon grows with the text size; warnings
   are announced as warnings.
 - Settings search leaves no gap where hidden sections were, and the shortcut list wraps long names onto more lines.
@@ -145,6 +146,9 @@ first start.
 - Tab and Shift+Tab reach every field in the item editor, Settings and the fill form, including text fields inside scrolling areas, dropdowns and template choices, and the focus ring is no longer cut off.
 
 ### Fixed
+- Picking a colour from the screen with the Panel docked brings it back open: it no longer tucks away while you
+  pick and comes back as a full-height block of the list colour that closed on the next click.
+- Dragging the Panel no longer blinks dark: Windows' background fill no longer paints over a frame that was just drawn.
 - Quick add in the Panel takes `Ctrl+V` and closes once the item is created.
 - Drag to reorder: an item can be dropped into the first slot of a list, and the gaps between rows and tiles
   take a drop.

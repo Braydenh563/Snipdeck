@@ -2458,3 +2458,120 @@ fn a_drag_only_moves_the_window_and_never_resizes_it() {
         );
     }
 }
+
+// ---- The screen eyedropper from a docked Panel (owner bug 2026-11-15) -----------------------
+// The Panel hides while the overlay runs. The pointer is away picking and the foreground moves to
+// the overlay, which used to tuck the docked Panel (or blur-hide a floating one) behind the
+// controller's back: the pick then showed a full-size window in the tab's look, and the next
+// blur closed it.
+
+mod eyedropper {
+    use std::sync::Arc;
+
+    use snipdeck_platform::eyedrop::{EyedropOutcome, FakeEyedropper};
+
+    use super::*;
+
+    fn give(w: &mut World) -> FakeEyedropper {
+        let fake = FakeEyedropper::default();
+        w.ctl
+            .set_eyedropper(Some(Box::new(fake.clone())), Arc::new(|| {}));
+        fake
+    }
+
+    const PICK: EyedropOutcome = EyedropOutcome::Picked {
+        rgb: [4, 132, 132],
+        hdr: false,
+    };
+
+    #[test]
+    fn a_pick_from_a_docked_open_panel_brings_it_back_open_not_tucked() {
+        let mut w = docked(DockTrigger::Both, DockEdge::Right);
+        with_tray(&mut w);
+        w.ctl.set_on_top(false);
+        w.ctl.set_panel_focused(true);
+        let fake = give(&mut w);
+        assert_eq!(w.ctl.start_eyedropper(), vec![Effect::HidePanel]);
+        w.ctl.set_panel_focused(false);
+        // Picking far from the Panel, long past the leave delay; the overlay takes the foreground.
+        w.targets.set_cursor(Some((100, 100)));
+        for ms in [500, 1_000, 5_000] {
+            advance(&w, ms);
+            assert_eq!(w.ctl.dock_tick(), Vec::new(), "no tuck at {ms} ms");
+        }
+        assert_eq!(w.ctl.on_foreground_changed(), Vec::new());
+        assert_eq!(w.ctl.dock_hover(DockEvent::PanelHover(false)), Vec::new());
+        assert!(
+            !w.ctl.view().dock_collapsed,
+            "the tab look never shows on the open Panel"
+        );
+        assert!(fake.complete(PICK));
+        assert_eq!(
+            w.ctl.poll_eyedropper(),
+            vec![Effect::ShowPanel, Effect::ShowColours]
+        );
+        assert!(w.ctl.visible());
+        assert!(!w.ctl.view().dock_collapsed);
+        assert_eq!(
+            w.ctl.placement(&display()),
+            Some(open_rect(DockEdge::Right))
+        );
+    }
+
+    #[test]
+    fn an_escaped_pick_brings_the_docked_panel_back_open_too() {
+        let mut w = docked(DockTrigger::Both, DockEdge::Left);
+        let fake = give(&mut w);
+        w.ctl.start_eyedropper();
+        w.targets.set_cursor(Some((1500, 900)));
+        advance(&w, 5_000);
+        assert_eq!(w.ctl.dock_tick(), Vec::new());
+        assert!(fake.complete(EyedropOutcome::Cancelled));
+        assert_eq!(
+            w.ctl.poll_eyedropper(),
+            vec![Effect::ShowPanel, Effect::ShowColours]
+        );
+        assert!(!w.ctl.view().dock_collapsed);
+    }
+
+    #[test]
+    fn after_the_pick_the_dock_tucks_again_as_usual() {
+        let mut w = docked(DockTrigger::Both, DockEdge::Bottom);
+        let fake = give(&mut w);
+        w.ctl.start_eyedropper();
+        assert!(fake.complete(PICK));
+        w.ctl.poll_eyedropper();
+        // The pick is over: leaving the Panel tucks it after the leave delay, as before.
+        assert_eq!(w.ctl.dock_event(DockEvent::PanelHover(false)), Vec::new());
+        advance(&w, 5_000);
+        assert_eq!(
+            w.ctl.dock_event(DockEvent::Tick),
+            place(handle(DockEdge::Bottom))
+        );
+    }
+
+    #[test]
+    fn a_floating_panel_that_hides_on_blur_stays_through_the_pick() {
+        let mut w = floating(DockTrigger::Both);
+        with_tray(&mut w);
+        w.ctl.set_on_top(false);
+        advance(&w, 5_000);
+        let fake = give(&mut w);
+        w.ctl.start_eyedropper();
+        assert_eq!(
+            w.ctl.on_foreground_changed(),
+            Vec::new(),
+            "the overlay's foreground is no blur"
+        );
+        assert!(w.ctl.visible());
+        assert!(fake.complete(PICK));
+        assert_eq!(
+            w.ctl.poll_eyedropper(),
+            vec![Effect::ShowPanel, Effect::ShowColours]
+        );
+        assert!(w.ctl.visible());
+        // Afterwards a real blur hides it as before.
+        advance(&w, 10_000);
+        assert_eq!(w.ctl.on_foreground_changed(), [Effect::HidePanel]);
+    }
+}

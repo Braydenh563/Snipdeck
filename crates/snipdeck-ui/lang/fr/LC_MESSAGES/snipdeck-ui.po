@@ -3493,9 +3493,6 @@ msgstr "dissoudre séparer retirer groupe garder éléments section"
 msgid "donate donation coffee tip"
 msgstr "don donner café pourboire"
 
-msgid "donate donation coffee tip optional"
-msgstr "don donner café pourboire facultatif"
-
 msgid "drop"
 msgstr "dépôt"
 

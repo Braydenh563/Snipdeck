@@ -1580,7 +1580,7 @@ msgstr ""
 msgid "Heard it. This shortcut works."
 msgstr ""
 
-#: ui/help.slint:40 ui/main_window.slint:1417 ui/main_window.slint:1432 ui/main_window.slint:2853 ui/settings.slint:1703
+#: ui/help.slint:40 ui/main_window.slint:1417 ui/main_window.slint:1432 ui/main_window.slint:2853 ui/settings.slint:1704
 msgid "Help"
 msgstr ""
 
@@ -2446,7 +2446,7 @@ msgstr ""
 msgid "Only with Start with Windows: wait in the tray, or open the Panel as well."
 msgstr ""
 
-#: ui/help.slint:442 ui/help.slint:460 ui/help.slint:469 ui/help.slint:478 ui/help.slint:486 ui/help.slint:499 ui/settings.slint:1691
+#: ui/help.slint:442 ui/help.slint:460 ui/help.slint:469 ui/help.slint:478 ui/help.slint:486 ui/help.slint:499 ui/settings.slint:1692
 msgid "Open"
 msgstr ""
 
@@ -2502,7 +2502,7 @@ msgstr ""
 msgid "Open the Picker at your cursor"
 msgstr ""
 
-#: ui/help.slint:479 ui/settings.slint:1692
+#: ui/help.slint:479 ui/settings.slint:1693
 msgid "Open the Support Snipdeck page in your browser"
 msgstr ""
 
@@ -2530,7 +2530,7 @@ msgstr ""
 msgid "Open the user guide"
 msgstr ""
 
-#: ui/settings.slint:1705
+#: ui/settings.slint:1706
 msgid "Open the user guide (F1)"
 msgstr ""
 
@@ -2546,7 +2546,7 @@ msgstr ""
 msgid "Opens in your browser."
 msgstr ""
 
-#: ui/help.slint:476 ui/settings.slint:1689
+#: ui/help.slint:476 ui/settings.slint:1690
 msgid "Optional. Snipdeck is free and stays free. This opens a donation page in your browser and unlocks nothing."
 msgstr ""
 
@@ -4644,12 +4644,8 @@ msgstr ""
 msgid "dissolve split remove group keep items section"
 msgstr ""
 
-#: ui/settings.slint:489
+#: ui/command_texts.slint:33 ui/settings.slint:489 ui/settings.slint:1689
 msgid "donate donation coffee tip"
-msgstr ""
-
-#: ui/command_texts.slint:33
-msgid "donate donation coffee tip optional"
 msgstr ""
 
 #: ui/toast_texts.slint:179

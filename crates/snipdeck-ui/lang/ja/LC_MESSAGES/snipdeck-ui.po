@@ -3484,9 +3484,6 @@ msgstr "解除 分割 削除 グループ 項目を残す セクション"
 msgid "donate donation coffee tip"
 msgstr "寄付 支援 コーヒー 投げ銭"
 
-msgid "donate donation coffee tip optional"
-msgstr "寄付 支援 コーヒー 投げ銭 任意"
-
 msgid "drop"
 msgstr "ドロップ"
 

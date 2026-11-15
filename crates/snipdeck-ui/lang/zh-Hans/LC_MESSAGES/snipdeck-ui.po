@@ -3484,9 +3484,6 @@ msgstr "解散 拆分 移除 分组 保留 项目 区段"
 msgid "donate donation coffee tip"
 msgstr "捐赠 赞助 咖啡 打赏"
 
-msgid "donate donation coffee tip optional"
-msgstr "捐赠 赞助 咖啡 打赏 自愿"
-
 msgid "drop"
 msgstr "拖放"
 

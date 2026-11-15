@@ -18,7 +18,7 @@ what happened), **S** skip. Results go to the same place and format as the full 
 | 9 | Show the Panel in the taskbar and Alt+Tab: the paste goes to the window you were in before | - |
 | 10-11 | Dock to the taskbar's edge (the screen says which edge); the Panel stays clear of the taskbar | Measures the Panel against the screen's work area |
 | 15 | Symbols tab: Copy PNG into Word and Paint (transparency) | - |
-| 20-24 | Render flicker (`docs/reviews/render-flicker-2026-11-14.md`): drag in circles and past the dock outline, dock near the top-right corner, save an edit, slide along the edge, other windows off screen and back, Alt+Tab and minimise; nothing shows see-through | - |
+| 20-24 | Render flicker (`docs/reviews/render-flicker-2026-11-14.md`): drag in circles and past the dock outline, dock near the top-right corner, save an edit, slide along the edge, other windows off screen and back, Alt+Tab and minimise; nothing shows see-through, and in the dark theme a drag in circles shows no dark blink (2026-11-15 erase fix; if it still blinks, run once with `SNIPDECK_DIAG=render` and `SNIPDECK_LOG=1`, drag for 10 s, and send the log: `WM_ERASEBKGND` lines whose `skipped so far` count does not grow are erases still reaching the window) | - |
 
 Steps 1, 3 and 11 are tried by the wizard first (mouse and keyboard move for a few seconds; hold Esc to stop). A
 check it cannot judge becomes the normal screen for you. The steps are in `tests\quick-check.json` (flag `qc`;
@@ -67,6 +67,8 @@ strip. Open the Panel on a normal library or the Quick check's, and note P / F f
 | D21 | Dock the Panel, let it tuck, quit Snipdeck and start it with `--hidden` (or sign out and in with "Start with Windows" on) | The tab is at its edge from the start, without the Panel flashing open and without taking the keyboard; the mouse on it opens the Panel |
 | D22 | Docked and out: click the tray icon; click it again | The first click tucks the Panel to its tab, the second opens it |
 | D23 | With a settings file from the previous version in which the Panel was docked: start this version | The Panel is docked and stays open as before (no tab). Drag it off the edge and dock it again: from then on it tucks |
+| D24 | Docked and tucked, light and dark theme, then high contrast | The tab is a light (or dark) raised strip with a thin border on its inner side and a short coloured grip in the middle, not a block of colour; the grip grows under the mouse. In high contrast it uses the system colours |
+| D25 | Docked and open, on a list with a colour: Colours tab, pick from the screen, then again and press `Esc` | Each time the Panel comes back open in its normal look, on the Colours tab, with the keyboard; it is not a full-height block of the list colour, and the next click inside it does not close it |
 
 Known unknowns to watch: D2 (smoothness at the 16 ms poll), D7 (the tab receiving the mouse under other
 always-on-top windows), D16 (scaling change in mid-drag), and whether letting go of the mouse outside the Panel

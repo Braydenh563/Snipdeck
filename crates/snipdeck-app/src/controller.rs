@@ -353,6 +353,10 @@ pub struct Controller<S, C, K, T> {
     eyedrop_texts: snipdeck_platform::eyedrop::EyedropTexts,
     eyedrop_mailbox: eyedrop_ctl::Mailbox,
     eyedrop_wake: Option<EyedropWake>,
+    /// A pick is under way: the Panel is hidden for it and comes back when it ends, so neither
+    /// the dock (the pointer is away, picking) nor a blur (the overlay takes the foreground)
+    /// changes what the Panel is meanwhile.
+    eyedropping: bool,
 }
 
 /// Opens the folder of the crash reports in the file manager.
@@ -548,6 +552,7 @@ where
             eyedrop_texts: snipdeck_platform::eyedrop::EyedropTexts::default(),
             eyedrop_mailbox: std::sync::Arc::default(),
             eyedrop_wake: None,
+            eyedropping: false,
         })
     }
 
@@ -1124,6 +1129,8 @@ where
             // A docked Panel tucks instead: its tab is how it comes back.
             && !self.dock_active()
             && self.settings.panel_hide_on_blur
+            // The eyedropper's overlay takes the foreground; the Panel comes back when it ends.
+            && !self.eyedropping
             // The snipping overlay takes the foreground itself; a Panel kept on screen for it stays.
             && !self.screen_clip.waiting()
             // The Picker and the fill form take the foreground themselves.

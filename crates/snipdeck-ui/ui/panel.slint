@@ -338,8 +338,8 @@ export component PanelWindow inherits Window {
     in property <string> toast-undo-label;
     in property <string> toast-edit-label;
 
-    // The edge dock (SPEC 5.1): while `dock-collapsed` the whole window is a `DockHandle`, whose colour is the
-    // list on show (`dock-list-color`, when it has an accent) and whose grabber runs along the edge it is on.
+    // The edge dock (SPEC 5.1): while `dock-collapsed` the whole window is a `DockHandle`, whose grip is the colour
+    // of the list on show (`dock-list-color`, when it has an accent) and runs along the edge it is on.
     in property <bool> dock-collapsed: false;
     in property <bool> dock-vertical: true;
     in property <bool> dock-has-list-color: false;
@@ -3323,10 +3323,11 @@ export component PanelWindow inherits Window {
         }
     }
 
-    // The collapsed dock: a strip over the whole window, in the colour of the list on show.
+    // The collapsed dock: a raised tab over the whole window, its grip in the colour of the list on show.
     if root.dock-collapsed: DockHandle {
         width: root.width;
         height: root.height;
+        edge: root.dock-edge > 0 ? root.dock-edge : root.dock-vertical ? 2 : 4;
         accent: root.dock-has-list-color && !SystemLook.high-contrast ? root.dock-list-color : Theme.accent;
         vertical: root.dock-vertical;
         label: @tr("Snipdeck handle, press the Panel hotkey to open");
