@@ -322,6 +322,37 @@ fn a_translucent_second_colour_is_judged_over_white_and_the_row_says_so() {
     );
 }
 
+#[test]
+fn the_alpha_checkerboard_covers_the_whole_track_not_just_its_first_48_px() {
+    let r = rig(false, (320, 640));
+    r.state().invoke_input_edited("#000000".into());
+    r.settle();
+    let alpha = r.by_label(AccessibleRole::Slider, "Alpha");
+    let (p, sz) = (alpha.absolute_position(), alpha.size());
+    let frame = r.frame();
+    let y = (p.y + sz.height / 2.0) as u32;
+    // One sample per 4px cell, starting past the old 48px limit and ending short of the track end.
+    let start = p.x as u32 + 60;
+    let end = (p.x + sz.width) as u32 - 12;
+    assert!(
+        end > start + 40,
+        "the track is wide enough to test: {end} > {start}"
+    );
+    let lumas: Vec<i32> = (start..end)
+        .step_by(4)
+        .map(|x| frame.pixel(x + 2, y).iter().map(|&c| i32::from(c)).sum())
+        .collect();
+    // The overlay darkens the track smoothly; a checkerboard makes the steps alternate in sign.
+    let flips = lumas
+        .windows(3)
+        .filter(|w| (w[1] - w[0]).signum() * (w[2] - w[1]).signum() < 0)
+        .count();
+    assert!(
+        flips >= 4,
+        "squares alternate along the track, lumas {lumas:?}"
+    );
+}
+
 fn number_at(r: &Rig, i: usize) -> f64 {
     r.state()
         .get_channels()

@@ -25,6 +25,7 @@ const INK_LIGHT: [u8; 3] = [0x17, 0x16, 0x13];
 const DANGER_LIGHT: [u8; 3] = [0xAA, 0x1E, 0x25];
 
 const WIDTH: u32 = 440;
+const WIDTH_F: f32 = 440.0;
 
 fn form(width: u32, dark: bool) -> Harness<TemplateFillWindow> {
     let h = Harness::new(TemplateFillWindow::new, width, 1400);
@@ -196,4 +197,47 @@ fn the_submit_button_is_ink_and_a_required_field_in_error_has_a_danger_border() 
         edges, 2,
         "the invalid field's 1px border is danger-coloured"
     );
+}
+
+#[test]
+fn a_form_cut_to_a_small_height_keeps_its_footer_and_scrolls_its_fields() {
+    const SMALL: u32 = 320;
+    const SMALL_F: f32 = 320.0;
+    let h = form(WIDTH, false);
+    let many: Vec<_> = (0..12)
+        .map(|i| fixture::text(&format!("Field {i}"), "", false))
+        .collect();
+    fixture::set_fields(&h.component, many);
+    h.component.window().request_redraw();
+    let _ = h.render_settled();
+    let wanted = h.component.get_content_height();
+    assert!(
+        wanted > SMALL_F,
+        "twelve fields want more than {SMALL}px (got {wanted})"
+    );
+    h.component
+        .window()
+        .set_size(LogicalSize::new(WIDTH_F, SMALL_F));
+    h.component.window().request_redraw();
+    let f = h.render_settled();
+    assert_eq!(f.height, SMALL);
+    // The footer's primary button is still at the bottom, drawn in ink.
+    assert_eq!(
+        f.pixel(WIDTH - 16 - 4, f.height - FOOTER_H / 2),
+        INK_LIGHT,
+        "the footer stays inside the window"
+    );
+    // Focus on the last field scrolls it into view: its label differs from the first screen.
+    let before = f.rgb.clone();
+    h.component.invoke_focus_field(11);
+    let after = render_at(&h, SMALL_F);
+    assert_ne!(before, after.rgb, "the fields moved to show the last one");
+}
+
+fn render_at(h: &Harness<TemplateFillWindow>, height: f32) -> Frame {
+    h.component
+        .window()
+        .set_size(LogicalSize::new(WIDTH_F, height));
+    h.component.window().request_redraw();
+    h.render_settled()
 }
