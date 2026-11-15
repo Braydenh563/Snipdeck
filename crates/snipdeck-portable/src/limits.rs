@@ -53,7 +53,7 @@ impl Limits {
     }
 
     /// What the cap for the entry called `name` is called in a [`crate::Error::LimitExceeded`].
-    pub(crate) fn entry_cap_what(&self, name: &str) -> &'static str {
+    pub(crate) fn entry_cap_what(name: &str) -> &'static str {
         if name == crate::archive::ITEMS {
             "items.json size"
         } else {

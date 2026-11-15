@@ -409,7 +409,7 @@ impl Scan {
 
         if facts.size > limits.entry_cap(name) {
             return Err(Error::LimitExceeded {
-                what: limits.entry_cap_what(name),
+                what: Limits::entry_cap_what(name),
                 limit: limits.entry_cap(name),
             });
         }
@@ -484,7 +484,7 @@ impl<W: Write + Seek> ArchiveWriter<W> {
         }
         if size > self.limits.entry_cap(name) {
             return Err(Error::LimitExceeded {
-                what: self.limits.entry_cap_what(name),
+                what: Limits::entry_cap_what(name),
                 limit: self.limits.entry_cap(name),
             });
         }
