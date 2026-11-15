@@ -2550,6 +2550,9 @@ msgstr "敏感片段"
 msgid "Sensitive items can't be typed in, so they have no trigger."
 msgstr "敏感项目无法通过键入插入，因此没有触发词。"
 
+msgid "Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose."
+msgstr ""
+
 msgid "Set master password"
 msgstr "设置主密码"
 

@@ -2558,6 +2558,9 @@ msgstr "Trecho sensível"
 msgid "Sensitive items can't be typed in, so they have no trigger."
 msgstr "Itens sensíveis não podem ser digitados, então não têm gatilho."
 
+msgid "Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose."
+msgstr ""
+
 msgid "Set master password"
 msgstr "Definir senha mestra"
 

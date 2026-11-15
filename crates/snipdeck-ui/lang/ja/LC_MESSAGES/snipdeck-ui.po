@@ -2550,6 +2550,9 @@ msgstr "機密のスニペット"
 msgid "Sensitive items can't be typed in, so they have no trigger."
 msgstr "機密項目は入力による挿入ができないため、トリガーはありません。"
 
+msgid "Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose."
+msgstr ""
+
 msgid "Set master password"
 msgstr "マスターパスワードを設定"
 

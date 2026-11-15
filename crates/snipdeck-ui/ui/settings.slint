@@ -1302,6 +1302,14 @@ export component SettingsPage inherits Window {
                         wrap: word-wrap;
                         accessible-role: AccessibleRole.text;
                     }
+                    Text {
+                        text: @tr("Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                        accessible-role: AccessibleRole.text;
+                    }
                     SettingRow {
                         title: @tr("Backups to keep");
                         description: @tr("The oldest ones are deleted once there are more than this.");

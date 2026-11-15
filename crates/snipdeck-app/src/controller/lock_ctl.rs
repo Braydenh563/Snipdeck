@@ -84,7 +84,7 @@ pub(super) struct LockState {
     /// The key record could not be read at the last look, so `set` is not known.
     unreadable: bool,
     /// The last time the user used the library; the idle lock counts from here.
-    active_at: Timestamp,
+    active_at: std::cell::Cell<Timestamp>,
     /// The unlock window is open.
     prompt: bool,
     /// A step whose key derivation is running elsewhere ([`MasterJob`]); no other starts.
@@ -103,7 +103,7 @@ impl LockState {
         Self {
             set: false,
             unreadable: false,
-            active_at: now,
+            active_at: std::cell::Cell::new(now),
             prompt: false,
             busy: None,
             generation: 0,
@@ -205,7 +205,7 @@ where
 
     /// Marks the user as active now, which restarts the idle count.
     pub(super) fn note_activity(&mut self) {
-        self.lock.active_at = self.clock.now();
+        self.lock.active_at.set(self.clock.now());
     }
 
     /// For revealing a sensitive row: `false`, with the unlock window asked for, when the key is
@@ -571,8 +571,15 @@ where
         if !self.lock.set || !self.store.is_unlocked() {
             return None;
         }
-        let due = self.lock.active_at.checked_add(IDLE_LOCK).ok()?;
-        Some(Duration::try_from(due.duration_since(self.clock.now())).unwrap_or_default())
+        let now = self.clock.now();
+        // A clock set back puts `now` before the last activity: the count restarts from now, so
+        // the lock is late by less than the idle time and never by the size of the change. (The
+        // clock is the wall clock; a monotonic one would also cover sleep.)
+        if self.lock.active_at.get() > now {
+            self.lock.active_at.set(now);
+        }
+        let due = self.lock.active_at.get().checked_add(IDLE_LOCK).ok()?;
+        Some(Duration::try_from(due.duration_since(now)).unwrap_or_default())
     }
 
     /// Locks the library if it has been idle for [`IDLE_LOCK`]. Returns whether it locked.

@@ -160,6 +160,20 @@ password and drop the copy; the option stays on and the next password unlock sea
   string behind the field is not wiped from memory when the field is emptied.
 * No recovery if the OS binding is lost (new Windows profile, DPAPI master key reset) and no
   recovery key. A "recovery key" export would be a separate feature.
+* **Backups and exports do not carry the key (audit G4, decision).** A `.snipdeck` archive holds
+  sensitive payloads as `SNENC2` envelopes under the data key and no key record, so on another
+  PC or Windows profile every sensitive item is skipped on import ("encrypted with a key this
+  library does not have"). The key cannot be carried with the current design: the only stored
+  record (`SNKEY1`) is wrapped by DPAPI, which opens only for the same Windows account; the
+  password-sealed part exists only when a master password is set and is never separate from the
+  OS wrapper; and writing the data key itself into the archive would put the key next to the
+  ciphertext in a file people e-mail and upload. A portable record (password-sealed key
+  without the OS wrapper, or a recovery key) is a new key format and a new restore path, so it
+  is left as a feature. Decision: warn, do not carry. The Backups and your data page of
+  Settings says before any backup or export that sensitive items restore only for the same
+  Windows account on the same PC, and the import and restore preview names the skipped count
+  after the loss (`ImportTexts`). Chosen because it adds no key material outside the OS
+  binding and cannot make a backup less safe.
 * Encrypts item content only. Titles, tags and search text are not covered; the FTS index
   never receives the content of sensitive items (title-only indexing, architecture.md).
 * Process memory can still hold plaintext while an item is shown.

@@ -19,6 +19,7 @@
 //! | [`console`] | Attach to the parent's console so `--help` and `--check-db` can print |
 //! | [`dll_search`] | `SetDefaultDllDirectories`: application folder and System32 only |
 //! | [`message_box`] | A native message box for a start-up failure with no window |
+//! | [`shell_open`] | `ShellExecuteW` "open" with its result checked |
 //! | [`dpi`] | Per-monitor DPI awareness for windows created before the UI toolkit's |
 //! | [`dpapi`] | `CryptProtectData` wrappers for the sensitive-items key |
 //! | [`tray`] | `WinTray`: [`crate::tray::Tray`] via `Shell_NotifyIconW` (v4), menu, `TaskbarCreated` |
@@ -46,6 +47,7 @@ pub mod message_box;
 pub mod package;
 pub mod paint_diag;
 pub mod screen;
+pub mod shell_open;
 pub mod single_instance;
 pub mod system_look;
 pub mod target;
