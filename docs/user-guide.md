@@ -160,7 +160,8 @@ marks before you start.
 ## Organise
 
 Use the Main window. The sidebar lists **All items**, **Pinned**, your lists, your tags and the **Trash**. The
-toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable and tile views.
+toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable and tile views. The button at
+the right of the sidebar header (or `Ctrl+B`) folds the sidebar to a narrow rail and opens it again.
 
 - **Boards.** Open the board name at the top of the sidebar or the Panel. The menu lists your boards. In the
   Panel it has **New board**, **Rename board** and **Delete board** for the board you are on, so you can manage
@@ -224,7 +225,7 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
   row of chips above the items filters the view by label: choose a chip to show only those items, choose it
   again or *Clear filter* to show everything.
 - **List icon.** In the list editor, pick an icon under *Icon* (or *No icon*). It shows beside the list's name
-  on its tab and in the sidebar. Use the arrow keys to move through the icons.
+  on its tab and in the sidebar, tinted in the list's colour. Use the arrow keys to move through the icons.
 
 ### Trash and undo
 
@@ -341,7 +342,8 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   [Triggers and typing](#triggers-and-typing-windows).
 - **Privacy.** **Keep a Recent inbox of what you copy** and the programs it never keeps copies from. **Clear the
   clipboard after copying a sensitive item** sets the seconds (30 by default, `0`
-  never clears it). **Master password** sets, changes or removes the password. With a password set,
+  never clears it). **Clear recent emoji and colours…** forgets the recently used emoji and colours you have
+  picked (it asks first). **Master password** sets, changes or removes the password. With a password set,
   **Unlock with Windows Hello** appears under it (see [Windows Hello](#windows-hello-windows)). Below them is a
   short summary of what is stored and where.
 - **Programs.** One row per program, by file name, such as `windowsterminal.exe`, with the key Snipdeck presses to

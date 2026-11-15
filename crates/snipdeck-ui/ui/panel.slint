@@ -3233,7 +3233,7 @@ export component PanelWindow inherits Window {
         Dialog {
             open: root.recent-question-open;
             title: @tr("Keep a Recent list of what you copy?");
-            body: @tr("Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. Nothing is kept unless you say Yes, and you can change this any time in Settings.", root.recent-max-entries, root.recent-days);
+            body: @tr("Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept.", root.recent-max-entries, root.recent-days);
             dismissed => { root.recent-question-answered(false); }
             Button {
                 text: @tr("No");
