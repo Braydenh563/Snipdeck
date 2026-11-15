@@ -505,9 +505,13 @@ pub fn attach_parent_console() {
     snipdeck_platform::windows::console::attach_parent_console();
 }
 
-/// Limits where Windows looks for DLLs to the application folder and System32, so a library
-/// planted beside the exe is not loaded. Call first thing in `main`. Nothing happens off
-/// Windows. Unverified on Windows.
+/// Limits where Windows looks for DLLs that are loaded at run time (`LoadLibrary` and later
+/// loads) to the application folder and System32, so a library planted beside the exe is not
+/// loaded then. Call first thing in `main`. Nothing happens off Windows.
+///
+/// This does not cover the DLLs the exe links statically: the loader resolves those before
+/// `main` runs. That part is the `/DEPENDENTLOADFLAG:0x800` link argument that `build.rs` passes
+/// for the MSVC target. Both are unverified on Windows.
 pub fn harden_dll_search() {
     #[cfg(windows)]
     let _ = snipdeck_platform::windows::dll_search::restrict_dll_search();

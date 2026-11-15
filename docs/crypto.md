@@ -177,3 +177,13 @@ password and drop the copy; the option stays on and the next password unlock sea
 * Encrypts item content only. Titles, tags and search text are not covered; the FTS index
   never receives the content of sensitive items (title-only indexing, architecture.md).
 * Process memory can still hold plaintext while an item is shown.
+
+## DLL search order (audit G20)
+
+A DLL planted beside the exe must not load in place of a system one. Two parts, both **unverified
+on Windows** until the owner runs the Windows build and checks that it starts:
+
+- `build.rs` of `snipdeck-app` passes `/DEPENDENTLOADFLAG:0x800` to the MSVC linker, so the DLLs
+  the exe imports are looked for in System32 only. The loader resolves these before `main`.
+- `harden_dll_search` (`SetDefaultDllDirectories`, first thing in `main`) restricts later
+  `LoadLibrary` calls to the application folder and System32. It cannot cover the static imports.
