@@ -655,20 +655,27 @@ fn prepare(payload: &Payload, formats: &Formats) -> Result<Vec<Entry>, Error> {
     Ok(entries)
 }
 
-/// Where pasted files are written: `%USERPROFILE%\Snipdeck paste files`, not `%TEMP%`.
+/// Where pasted files are written: `%USERPROFILE%\Snipdeck paste files` in a packaged (Store)
+/// build, `%TEMP%\Snipdeck` otherwise.
 ///
-/// A packaged (Store) build writes new files under `AppData` (which holds `%TEMP%`) into a private
+/// A packaged build writes new files under `AppData` (which holds `%TEMP%`) into a private
 /// per-package copy that other programs cannot see (Microsoft Learn, "Flexible virtualization"),
 /// so a path on the clipboard into it would not exist for Explorer or a mail client. Outside
-/// `AppData` the write is real. Falls back to `%TEMP%\Snipdeck` when there is no profile folder.
-/// UNVERIFIED on a Store build until it runs there (docs/packaging.md).
+/// `AppData` the write is real. An unpackaged build has no such copy and keeps `%TEMP%`, as does
+/// a packaged one with no profile folder. UNVERIFIED on a Store build until it runs there
+/// (docs/packaging.md).
 fn paste_root() -> PathBuf {
-    std::env::var_os("USERPROFILE")
-        .filter(|p| !p.is_empty())
-        .map_or_else(
-            || std::env::temp_dir().join("Snipdeck"),
-            |profile| PathBuf::from(profile).join("Snipdeck paste files"),
-        )
+    paste_root_for(
+        super::package::is_packaged(),
+        std::env::var_os("USERPROFILE"),
+    )
+}
+
+fn paste_root_for(packaged: bool, profile: Option<std::ffi::OsString>) -> PathBuf {
+    profile.filter(|p| packaged && !p.is_empty()).map_or_else(
+        || std::env::temp_dir().join("Snipdeck"),
+        |profile| PathBuf::from(profile).join("Snipdeck paste files"),
+    )
 }
 
 /// Writes `files` into a fresh, randomly named `<paste_root>\paste-<random>\` and returns
@@ -1547,6 +1554,18 @@ fn read_global(handle: HGLOBAL, limit: usize) -> Option<Vec<u8>> {
 mod tests {
     //! These use the real clipboard, so they are ignored by default and serialised. Run on
     //! Windows with `cargo test -p snipdeck-platform -- --ignored clipboard`.
+
+    #[test]
+    fn paste_files_go_to_the_profile_only_when_packaged() {
+        let profile = || Some(std::ffi::OsString::from(r"C:\Users\a"));
+        assert_eq!(
+            super::paste_root_for(true, profile()),
+            std::path::PathBuf::from(r"C:\Users\a").join("Snipdeck paste files")
+        );
+        let temp = std::env::temp_dir().join("Snipdeck");
+        assert_eq!(super::paste_root_for(false, profile()), temp);
+        assert_eq!(super::paste_root_for(true, None), temp);
+    }
 
     use std::sync::{Mutex, PoisonError};
 
