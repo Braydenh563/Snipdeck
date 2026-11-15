@@ -2555,6 +2555,9 @@ msgstr "Vertraulicher Textbaustein"
 msgid "Sensitive items can't be typed in, so they have no trigger."
 msgstr "Vertrauliche Einträge lassen sich nicht eintippen, deshalb haben sie kein Kürzel."
 
+msgid "Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose."
+msgstr "Vertrauliche Elemente in einer Sicherung oder einem Export können nur von diesem Windows-Konto auf diesem PC wiederhergestellt werden. Auf einem anderen PC oder nach einer Neuinstallation von Windows werden sie übersprungen. Bewahren Sie von allem Vertraulichen, das Sie nicht verlieren dürfen, eine eigene Kopie auf."
+
 msgid "Set master password"
 msgstr "Hauptpasswort festlegen"
 
@@ -2692,6 +2695,9 @@ msgstr "Snipdeck konnte keinen Entwurf deiner Eingabe speichern."
 
 msgid "Snipdeck couldn't save this item. Nothing was changed."
 msgstr "Snipdeck konnte diesen Textbaustein nicht speichern. Es wurde nichts geändert."
+
+msgid "Snipdeck couldn't start.\n\n{}\n\nNothing was deleted. Close any program that may be using your Snipdeck folder, make sure the folder is not read-only, then start Snipdeck again. If you went back to an older version, install the newer one. Your backups are in the backups folder inside your Snipdeck folder."
+msgstr "Snipdeck konnte nicht gestartet werden.\n\n{}\n\nEs wurde nichts gelöscht. Schließen Sie alle Programme, die Ihren Snipdeck-Ordner verwenden könnten, stellen Sie sicher, dass der Ordner nicht schreibgeschützt ist, und starten Sie Snipdeck dann erneut. Wenn Sie zu einer älteren Version zurückgegangen sind, installieren Sie die neuere. Ihre Sicherungen liegen im Ordner „backups“ in Ihrem Snipdeck-Ordner."
 
 msgid "Snipdeck couldn't write to your library. Check that the disk has room."
 msgstr "Snipdeck konnte nicht in deine Bibliothek schreiben. Prüfe, ob auf dem Datenträger genug Platz ist."

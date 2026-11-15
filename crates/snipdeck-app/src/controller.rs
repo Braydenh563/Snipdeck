@@ -194,6 +194,9 @@ pub struct Controller<S, C, K, T> {
     /// A sensitive Files item was pasted: its decrypted files wait in the temp folder until the
     /// lock or the quit deletes them.
     secret_files_pasted: bool,
+    /// When the decrypted files of that paste are deleted (the clipboard clear's timer); none
+    /// when clearing is off, then the lock or the quit does it.
+    secret_files_due: Option<Timestamp>,
     /// The global hotkeys the last registration could not set up, for the Settings rows.
     hotkey_problems: Vec<crate::host::HotkeyProblem>,
     model: PanelModel,
@@ -479,6 +482,7 @@ where
             tz: TimeZone::system(),
             clipboard_clear: None,
             secret_files_pasted: false,
+            secret_files_due: None,
             model,
             index_cache,
             settings,

@@ -17,6 +17,9 @@
 //! | [`package`] | Packaged (MSIX / Store) mode: package identity, startup-task launch and autostart |
 //! | [`single_instance`] | One running instance; a second launch signals the first |
 //! | [`console`] | Attach to the parent's console so `--help` and `--check-db` can print |
+//! | [`dll_search`] | `SetDefaultDllDirectories`: application folder and System32 only |
+//! | [`message_box`] | A native message box for a start-up failure with no window |
+//! | [`shell_open`] | `ShellExecuteW` "open" with its result checked |
 //! | [`dpi`] | Per-monitor DPI awareness for windows created before the UI toolkit's |
 //! | [`dpapi`] | `CryptProtectData` wrappers for the sensitive-items key |
 //! | [`tray`] | `WinTray`: [`crate::tray::Tray`] via `Shell_NotifyIconW` (v4), menu, `TaskbarCreated` |
@@ -30,6 +33,7 @@ pub mod autostart;
 pub mod clipboard;
 pub mod clipboard_history;
 pub mod console;
+pub mod dll_search;
 pub mod dpapi;
 pub mod dpi;
 pub mod erase;
@@ -39,9 +43,11 @@ pub mod hello;
 mod hidden_window;
 pub mod hotkey;
 pub mod keyboard;
+pub mod message_box;
 pub mod package;
 pub mod paint_diag;
 pub mod screen;
+pub mod shell_open;
 pub mod single_instance;
 pub mod system_look;
 pub mod target;

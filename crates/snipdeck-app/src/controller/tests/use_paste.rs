@@ -323,6 +323,37 @@ fn a_sensitive_paste_whose_restore_failed_still_arms_the_clear_timer() {
 }
 
 #[test]
+fn a_partial_restore_leaves_the_users_restored_text_alone_when_the_timer_fires() {
+    use snipdeck_platform::payload::{Data, Payload};
+    let mut w = world();
+    let id = w.ids[0];
+    make_sensitive(&mut w, id);
+    w.ctl.services.clipboard.restore_result = Some(Err(
+        snipdeck_platform::pipeline::Error::Clipboard("one format failed".into()),
+    ));
+    assert_eq!(
+        w.ctl.activate_row(0, UseMode::Paste),
+        UseResult::Done(UseOutcome::PastedNotRestored)
+    );
+    // The restore put the user's text back before one other format failed: the clipboard now
+    // holds their text under a newer sequence number.
+    w.ctl.services.clipboard.written.clear();
+    w.ctl
+        .services
+        .clipboard
+        .written
+        .push(Payload::new(vec![Data::Text("the user's own text".into())]).expect("payload"));
+    w.ctl.services.clipboard.sequence += 1;
+    w.clock.set(at("2026-10-17T10:30:31Z"));
+    w.ctl.clear_clipboard_if_due();
+    assert_eq!(
+        w.ctl.services.clipboard.read_text().as_deref(),
+        Some("the user's own text"),
+        "only what Snipdeck put there is ever cleared"
+    );
+}
+
+#[test]
 fn a_sensitive_paste_that_restored_the_clipboard_arms_no_timer() {
     let mut w = world();
     let id = w.ids[0];
@@ -1445,4 +1476,101 @@ fn quitting_deletes_the_files_a_sensitive_files_item_left_in_the_temp_folder() {
     assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 1);
     w.ctl.clear_pending_clipboard_now();
     assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 1, "once");
+}
+
+#[test]
+fn a_sensitive_files_paste_deletes_its_temp_files_on_the_clear_timer_without_a_lock() {
+    let mut w = world();
+    let id = w.ids[0];
+    let mut item = w.ctl.store.item(id).expect("item");
+    item.sensitive = true;
+    item.kind = snipdeck_core::ItemKind::File;
+    item.preview.clear();
+    w.ctl.store.update_item(&item, None).expect("update");
+    w.ctl.activate_row(0, UseMode::Paste);
+    // The timer the host arms covers the files even though the clipboard needs no clear.
+    assert_eq!(w.ctl.clipboard_clear_wait(), Some(Duration::from_secs(30)));
+    w.clock.set(at("2026-10-17T10:30:29Z"));
+    w.ctl.clear_clipboard_if_due();
+    assert_eq!(
+        w.ctl.services.clipboard.pasted_files_forgotten, 0,
+        "not yet"
+    );
+    w.clock.set(at("2026-10-17T10:30:30Z"));
+    w.ctl.clear_clipboard_if_due();
+    assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 1);
+    assert_eq!(w.ctl.clipboard_clear_wait(), None, "no timer left");
+}
+
+/// Makes the first item a sensitive Files item.
+fn make_sensitive_files(w: &mut World) {
+    let mut item = w.ctl.store.item(w.ids[0]).expect("item");
+    item.sensitive = true;
+    item.kind = snipdeck_core::ItemKind::File;
+    item.preview.clear();
+    w.ctl.store.update_item(&item, None).expect("update");
+}
+
+#[test]
+fn a_called_off_sensitive_files_paste_still_deletes_its_temp_files_on_the_timer() {
+    use crate::controller::use_ctl::Erasing;
+    let mut w = world();
+    let id = w.ids[0];
+    make_sensitive_files(&mut w);
+    // The user typed on after the trigger: the paste is called off after the files were written.
+    let stale = || false;
+    let result = w.ctl.run_use_erasing(
+        id,
+        UseMode::Paste,
+        std::collections::BTreeMap::new(),
+        None,
+        Some(Erasing {
+            chars: 2,
+            app: None,
+            fresh: Some(&stale),
+        }),
+    );
+    assert_eq!(result, UseResult::Cancelled);
+    assert_eq!(w.ctl.clipboard_clear_wait(), Some(Duration::from_secs(30)));
+    w.clock.set(at("2026-10-17T10:30:30Z"));
+    w.ctl.clear_clipboard_if_due();
+    assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 1);
+}
+
+#[test]
+fn a_later_use_does_not_postpone_the_temp_file_delete() {
+    let mut w = world();
+    make_sensitive_files(&mut w);
+    w.ctl.activate_row(0, UseMode::Paste);
+    assert_eq!(w.ctl.clipboard_clear_wait(), Some(Duration::from_secs(30)));
+    w.clock.set(at("2026-10-17T10:30:20Z"));
+    w.ctl.activate_row(0, UseMode::Paste);
+    assert_eq!(
+        w.ctl.clipboard_clear_wait(),
+        Some(Duration::from_secs(10)),
+        "still due 30 s after the first paste"
+    );
+    w.clock.set(at("2026-10-17T10:30:30Z"));
+    w.ctl.clear_clipboard_if_due();
+    assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 1);
+}
+
+#[test]
+fn a_paste_that_restores_a_sensitive_clipboard_keeps_its_clear_armed() {
+    let mut w = world();
+    let (secret, plain) = (w.ids[0], w.ids[1]);
+    make_sensitive(&mut w, secret);
+    w.ctl.activate_row(0, UseMode::Copy);
+    let armed = w.ctl.clipboard_clear.as_ref().expect("armed").sequence;
+    assert_eq!(armed, w.ctl.services.clipboard.written_sequence());
+    // A plain item is pasted: the paste writes and then restores the clipboard, which moves the
+    // sequence number; the pending clear follows it.
+    assert_eq!(
+        w.ctl.activate_row(1, UseMode::Paste),
+        UseResult::Done(UseOutcome::Pasted)
+    );
+    let _ = plain;
+    let now = w.ctl.services.clipboard.sequence_number();
+    assert_ne!(now, armed, "the paste moved the number");
+    assert_eq!(w.ctl.clipboard_clear.as_ref().expect("armed").sequence, now);
 }

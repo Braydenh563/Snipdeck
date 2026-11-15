@@ -75,6 +75,8 @@ struct FakeHost {
     /// Whether the last autostart entry carries `--hidden`.
     autostart_hidden: Cell<Option<bool>>,
     autostart_fails: Cell<bool>,
+    /// How often the page asked Windows whether the start-up entry exists.
+    autostart_reads: Cell<u32>,
     /// The last "Panel taskbar button" the page asked for.
     taskbar: Cell<Option<bool>>,
     opened: RefCell<Vec<PathBuf>>,
@@ -110,6 +112,7 @@ impl SettingsHost for FakeHost {
     }
 
     fn autostart_registered(&self) -> bool {
+        self.autostart_reads.set(self.autostart_reads.get() + 1);
         self.autostart.get() == Some(true)
     }
 
@@ -1065,6 +1068,26 @@ fn start_with_windows_that_cannot_be_changed_says_so_and_keeps_the_old_value() {
         r.ui.invoke_autostart_toggled(true);
         assert_eq!(r.host.autostart.get(), Some(true));
         assert!(r.ctl.borrow().settings().autostart);
+    });
+}
+
+#[test]
+fn start_with_windows_shows_the_real_state_when_the_entry_was_removed_outside() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_autostart_toggled(true);
+        assert!(r.ui.get_autostart());
+        // The user switches Snipdeck off in Task Manager's Startup tab (or the entry is gone).
+        r.host.autostart.set(Some(false));
+        r.ui.invoke_panel_in_taskbar_toggled(true);
+        assert!(
+            !r.ui.get_autostart(),
+            "the page reads the entry, not the stored setting"
+        );
+        assert!(
+            r.ctl.borrow().settings().autostart,
+            "the stored choice stays until the user changes it"
+        );
     });
 }
 
@@ -3000,5 +3023,33 @@ fn the_typing_section_says_it_works_on_windows_only_where_it_does_not() {
         // The fake host stands in for a machine without the Windows keyboard hook.
         let r = rig();
         assert!(!r.ui.get_typing_available());
+    });
+}
+
+#[test]
+fn the_start_up_entry_is_read_once_when_the_page_opens_not_on_each_redraw() {
+    on_ui_thread(|| {
+        let r = rig();
+        let after_open = r.host.autostart_reads.get();
+        assert_eq!(after_open, 1, "read once when the page was made");
+        for _ in 0..5 {
+            r.binding.redraw();
+        }
+        assert_eq!(
+            r.host.autostart_reads.get(),
+            after_open,
+            "redraws read nothing"
+        );
+        r.binding.opened();
+        assert_eq!(
+            r.host.autostart_reads.get(),
+            after_open + 1,
+            "reread when it opens"
+        );
+        r.ui.invoke_autostart_toggled(true);
+        let after_toggle = r.host.autostart_reads.get();
+        r.binding.redraw();
+        assert_eq!(r.host.autostart_reads.get(), after_toggle);
+        assert!(r.ui.get_autostart(), "the toggle's result is shown");
     });
 }

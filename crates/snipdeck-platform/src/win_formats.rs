@@ -379,6 +379,32 @@ pub fn remove_paste_dirs(root: &std::path::Path, keep: Option<&std::path::Path>)
     removed
 }
 
+/// Removes the paste folders in `dirs` and no others (the ones that held a sensitive item's
+/// files), zeroing their files first. A path that is not a paste folder of ours directly under
+/// `root`, or is a link, is skipped. `dirs` is emptied. Returns how many were removed.
+pub fn remove_listed_paste_dirs(
+    root: &std::path::Path,
+    dirs: &mut Vec<std::path::PathBuf>,
+) -> usize {
+    let mut removed = 0;
+    for dir in dirs.drain(..) {
+        let ours = dir.parent() == Some(root)
+            && dir
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(is_paste_dir_name);
+        let is_dir = std::fs::symlink_metadata(&dir).is_ok_and(|meta| meta.is_dir());
+        if !(ours && is_dir) {
+            continue;
+        }
+        scrub_dir(&dir);
+        if std::fs::remove_dir_all(&dir).is_ok() {
+            removed += 1;
+        }
+    }
+    removed
+}
+
 /// The most memory one `CF_DIB` conversion may take for each of its two buffers (the decoded
 /// pixels and the DIB). Bigger images are offered as PNG only, so a huge screenshot, or a small
 /// PNG whose header claims a huge size, cannot exhaust memory at paste time.
@@ -902,6 +928,22 @@ mod tests {
         );
         assert!(!keep.exists() && other.is_dir());
         assert_eq!(remove_paste_dirs(&root.path().join("missing"), None), 0);
+    }
+
+    #[test]
+    fn listed_cleanup_removes_only_the_listed_folders() {
+        let root = tempfile::tempdir().unwrap();
+        let secret = claim_paste_dir(root.path(), || Ok([1; 16])).unwrap();
+        std::fs::write(secret.join("secret.txt"), b"x").unwrap();
+        // The folder a plain file item's persistent clipboard still points to.
+        let plain = claim_paste_dir(root.path(), || Ok([2; 16])).unwrap();
+        let other = root.path().join("keep-me");
+        std::fs::create_dir(&other).unwrap();
+        let mut list = vec![secret.clone(), other.clone(), root.path().join("missing")];
+        assert_eq!(remove_listed_paste_dirs(root.path(), &mut list), 1);
+        assert!(list.is_empty());
+        assert!(!secret.exists());
+        assert!(plain.is_dir() && other.is_dir(), "not on the list");
     }
 
     #[test]

@@ -96,9 +96,18 @@ pub trait HelpHost {
 pub struct SystemHelpHost;
 
 pub(crate) fn launch(target: &OsStr) -> Result<(), String> {
-    let opener = if cfg!(windows) {
-        "explorer"
-    } else if cfg!(target_os = "macos") {
+    // Windows: `ShellExecuteW`, whose result says whether the page or folder was opened.
+    #[cfg(windows)]
+    {
+        snipdeck_platform::windows::shell_open::open(target)
+    }
+    #[cfg(not(windows))]
+    launch_command(target)
+}
+
+#[cfg(not(windows))]
+fn launch_command(target: &OsStr) -> Result<(), String> {
+    let opener = if cfg!(target_os = "macos") {
         "open"
     } else {
         "xdg-open"

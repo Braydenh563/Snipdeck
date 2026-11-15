@@ -514,6 +514,28 @@ pub fn attach_parent_console() {
     snipdeck_platform::windows::console::attach_parent_console();
 }
 
+/// Limits where Windows looks for DLLs that are loaded at run time (`LoadLibrary` and later
+/// loads) to the application folder and System32, so a library planted beside the exe is not
+/// loaded then. Call first thing in `main`. Nothing happens off Windows.
+///
+/// This does not cover the DLLs the exe links statically: the loader resolves those before
+/// `main` runs. That part is the `/DEPENDENTLOADFLAG:0x800` link argument that `build.rs` passes
+/// for the MSVC target. Both are unverified on Windows.
+pub fn harden_dll_search() {
+    #[cfg(windows)]
+    let _ = snipdeck_platform::windows::dll_search::restrict_dll_search();
+}
+
+/// Shows a start-up failure in a native message box: the release Windows build has no console
+/// and no window yet, so this is the only way to tell the user. Nothing happens off Windows,
+/// where the failure is on stderr. Unverified on Windows.
+pub fn show_startup_failure(title: &str, text: &str) {
+    #[cfg(windows)]
+    snipdeck_platform::windows::message_box::show_error(title, text);
+    #[cfg(not(windows))]
+    let _ = (title, text);
+}
+
 /// `--quit`: asks the Snipdeck running in this Windows session to quit, as the tray's Quit does,
 /// and returns at once. Nothing is opened or created but the existing quit event; whether or not
 /// one is running (or can be asked: an elevated one cannot be signalled from a normal process),

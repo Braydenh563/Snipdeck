@@ -2555,6 +2555,9 @@ msgstr "Extrait sensible"
 msgid "Sensitive items can't be typed in, so they have no trigger."
 msgstr "Les éléments sensibles ne peuvent pas être saisis, ils n’ont donc pas de raccourci."
 
+msgid "Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose."
+msgstr "Les éléments sensibles d'une sauvegarde ou d'un export ne peuvent être restaurés que par ce compte Windows sur ce PC. Sur un autre PC, ou après une réinstallation de Windows, ils sont ignorés. Gardez votre propre copie de tout ce qui est sensible et que vous ne pouvez pas perdre."
+
 msgid "Set master password"
 msgstr "Définir le mot de passe principal"
 
@@ -2692,6 +2695,9 @@ msgstr "Snipdeck n'a pas pu enregistrer un brouillon de ce que vous avez tapé."
 
 msgid "Snipdeck couldn't save this item. Nothing was changed."
 msgstr "Snipdeck n'a pas pu enregistrer cet extrait. Rien n'a été modifié."
+
+msgid "Snipdeck couldn't start.\n\n{}\n\nNothing was deleted. Close any program that may be using your Snipdeck folder, make sure the folder is not read-only, then start Snipdeck again. If you went back to an older version, install the newer one. Your backups are in the backups folder inside your Snipdeck folder."
+msgstr "Snipdeck n'a pas pu démarrer.\n\n{}\n\nRien n'a été supprimé. Fermez tout programme qui pourrait utiliser votre dossier Snipdeck, vérifiez que le dossier n'est pas en lecture seule, puis relancez Snipdeck. Si vous êtes revenu à une version plus ancienne, installez la plus récente. Vos sauvegardes se trouvent dans le dossier backups de votre dossier Snipdeck."
 
 msgid "Snipdeck couldn't write to your library. Check that the disk has room."
 msgstr "Snipdeck n'a pas pu écrire dans votre bibliothèque. Vérifiez que le disque a de la place."

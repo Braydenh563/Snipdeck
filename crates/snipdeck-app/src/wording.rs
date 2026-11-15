@@ -25,6 +25,15 @@ use crate::{
     toast::ToastMessage,
 };
 
+/// The text of the message box shown when the app cannot start, in the language selected now.
+/// `details` is the reason the start-up code gave.
+#[must_use]
+pub fn startup_failure_text(window: &PanelWindow, details: &str) -> String {
+    ToastTexts::get(window)
+        .invoke_startup_failed(details.into())
+        .into()
+}
+
 /// The tray menu's words in the language selected for the UI now (English until a bundled
 /// translation is selected). `window` is any window of the UI: Slint globals are reached
 /// through a component.
