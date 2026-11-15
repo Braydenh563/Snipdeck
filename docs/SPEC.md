@@ -59,7 +59,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - **Favourites strip** of pinned items at top.
 - **Click behaviour (smart)**: click → paste into Target if a text-input Target is known, else copy + toast.
   `Shift+click` → copy only. There is no Paste button: the row is the paste target and the footer says where it goes. Hover or selection reveals **Copy** / **Edit** / **More** on the preview line (Copy is hidden when there is no target).
-- Keys when panel focused: `1`–`9` use Nth item, arrows navigate, `Enter` use, `F2` rename, `Del` delete.
+- Keys when panel focused: `Alt+1`–`Alt+9` use Nth item (bare digits are search text), arrows navigate, `Enter` use, `F2` rename, `Del` delete.
 - Add: **+ From clipboard**, `Ctrl+V` / drag-drop onto panel, **quick new note** (inline), global
   **save-selection** hotkey (copies selection under the hood, restores clipboard).
 - Reorder by drag (also `Alt+↑/↓`); per-list sort: Manual (default) / Most used / Recently used.

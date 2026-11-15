@@ -189,6 +189,8 @@ where
     pub fn fill_changed(&mut self, index: usize, value: &str) {
         if let Some(fill) = &mut self.fill {
             fill.set_value(index, value);
+            // Typing the answers is use: the idle lock must not close the form under the user.
+            self.note_activity();
         }
     }
 

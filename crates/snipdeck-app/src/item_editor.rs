@@ -434,9 +434,7 @@ pub fn read_source(kind: ItemKind, path: &str) -> Result<Source, EditorProblem> 
     }
     let limit = max_attachment_bytes();
     if meta.len() > limit {
-        return Err(EditorProblem::SourceTooLarge {
-            max_mb: limit.div_ceil(1024 * 1024),
-        });
+        return Err(too_large(limit));
     }
     let name = canonical
         .file_name()
@@ -456,6 +454,15 @@ pub fn read_source(kind: ItemKind, path: &str) -> Result<Source, EditorProblem> 
     Ok(Source { kind, name, bytes })
 }
 
+/// The "file too large" problem for `limit` bytes. The limit is a little under a whole number of
+/// megabytes (the entry limit less the envelope), so it is rounded up: both places that refuse
+/// a file say the same number.
+fn too_large(limit: u64) -> EditorProblem {
+    EditorProblem::SourceTooLarge {
+        max_mb: limit.div_ceil(1024 * 1024),
+    }
+}
+
 /// The whole file, but never more than `limit` bytes (a file that grows while it is read).
 fn read_bounded(path: &Path, limit: u64) -> Result<Vec<u8>, EditorProblem> {
     let file = fs::File::open(path).map_err(|_| EditorProblem::SourceUnreadable)?;
@@ -464,9 +471,7 @@ fn read_bounded(path: &Path, limit: u64) -> Result<Vec<u8>, EditorProblem> {
         .read_to_end(&mut bytes)
         .map_err(|_| EditorProblem::SourceUnreadable)?;
     if u64::try_from(bytes.len()).unwrap_or(u64::MAX) > limit {
-        return Err(EditorProblem::SourceTooLarge {
-            max_mb: limit / (1024 * 1024),
-        });
+        return Err(too_large(limit));
     }
     Ok(bytes)
 }
@@ -547,6 +552,26 @@ pub fn prefix_of(text: &str, max: usize) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn both_ways_of_refusing_a_big_file_name_the_same_size() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("big.bin");
+        std::fs::write(&path, [1_u8; 3]).unwrap();
+        // The size check on the file's length, and the check on the bytes actually read.
+        let by_length = read_source(ItemKind::File, &path.to_string_lossy());
+        assert!(by_length.is_ok(), "a small file is fine");
+        let limit = max_attachment_bytes();
+        assert_eq!(
+            too_large(limit),
+            EditorProblem::SourceTooLarge { max_mb: 64 }
+        );
+        assert_eq!(
+            read_bounded(&path, 2),
+            Err(EditorProblem::SourceTooLarge { max_mb: 1 }),
+            "a file that grew while it was read"
+        );
+    }
 
     #[test]
     fn a_placeholder_goes_in_at_the_caret_and_the_caret_lands_after_it() {
