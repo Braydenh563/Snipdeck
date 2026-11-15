@@ -524,6 +524,8 @@ where
             let now = self.clock.now();
             if let Err(error) = self.store.record_use(id, now) {
                 crate::trace!("counting a colour paste failed: {error}");
+            } else {
+                self.index_cache.note_use(id);
             }
             self.queue.used(id);
             self.refresh_logged("a paste");
