@@ -210,12 +210,12 @@ fn a_form_cut_to_a_small_height_keeps_its_footer_and_scrolls_its_fields() {
     let _ = h.render_settled();
     let wanted = h.component.get_content_height();
     assert!(
-        wanted > f32::from(SMALL as u16),
+        wanted > SMALL as f32,
         "twelve fields want more than {SMALL}px (got {wanted})"
     );
     h.component
         .window()
-        .set_size(LogicalSize::new(WIDTH, SMALL));
+        .set_size(LogicalSize::new(WIDTH as f32, SMALL as f32));
     h.component.window().request_redraw();
     let f = h.render_settled();
     assert_eq!(f.height, SMALL);
@@ -235,7 +235,7 @@ fn a_form_cut_to_a_small_height_keeps_its_footer_and_scrolls_its_fields() {
 fn render_at(h: &Harness<TemplateFillWindow>, height: u32) -> Frame {
     h.component
         .window()
-        .set_size(LogicalSize::new(WIDTH, height));
+        .set_size(LogicalSize::new(WIDTH as f32, height as f32));
     h.component.window().request_redraw();
     h.render_settled()
 }
