@@ -27,6 +27,7 @@ use slint::{
     winit_030::{WinitWindowAccessor, winit},
 };
 use snipdeck_app::{
+    archive_job,
     binding::Binding,
     cli::{self, Args},
     controller::{Controller, Effect},
@@ -312,6 +313,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         // Argon2id takes a moment on purpose: a master password step works its key out on a
         // worker thread, and the window waits with a status instead of freezing.
         master_job::set_offload(Rc::new(master_job::Threads));
+        archive_job::set_offload(Rc::new(archive_job::Threads));
         snipdeck_app::drop_read::use_threads();
         // Windows Hello prompts wait for a person, so they run on a worker too.
         hello_job::use_worker_threads();
@@ -585,10 +587,14 @@ where
         let Some(controller) = controller.upgrade() else {
             return;
         };
-        let reported =
-            maintenance::run(&mut maintenance.borrow_mut(), &mut controller.borrow_mut());
-        // A toast the run set is drawn (and its timer started) by a redraw; the borrow is released.
-        if reported > 0 {
+        let ran = maintenance::run(&mut maintenance.borrow_mut(), &mut controller.borrow_mut());
+        // The borrows are released: a daily backup goes to a worker now, and its toast is drawn
+        // when it comes back.
+        if let Some(job) = ran.backup {
+            maintenance::spawn_backup(job, &maintenance, &controller);
+        }
+        // A toast the run set is drawn (and its timer started) by a redraw.
+        if ran.outcomes > 0 {
             with_binding(Binding::redraw);
         }
     });

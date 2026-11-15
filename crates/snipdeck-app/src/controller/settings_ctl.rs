@@ -13,19 +13,20 @@ use std::{
 use jiff::tz::TimeZone;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_portable::{
-    BoardLayout, ExportOptions, HistoryEntry, ImportOptions, ImportReport, KeySource,
-    MergeStrategy, SensitivePolicy,
-    backup::{self, BackupOutcome},
-    export_to_path, import_archive_path, import_beeftext, import_copyq_json, import_ditto,
-    import_entries, import_espanso, import_folder, import_phraseexpress_csv,
-    import_textexpander_csv,
+    BoardLayout, HistoryEntry, ImportOptions, ImportReport, KeySource, MergeStrategy,
+    import_archive_path, import_beeftext, import_copyq_json, import_ditto, import_entries,
+    import_espanso, import_folder, import_phraseexpress_csv, import_textexpander_csv,
 };
 use snipdeck_store::{
     ItemRepo, Store,
     crypto::{DataKey, KeyRecord},
 };
 
-use super::{Controller, Toast, ToastKind, ToastMessage};
+use super::{
+    Controller, Toast, ToastKind, ToastMessage,
+    archive_ctl::{ArchiveEnd, Begun, Context, Rebuild},
+};
+use crate::archive_job::{ArchiveOp, Work};
 use crate::{failure::Cause, host::ClipboardText, starter};
 
 /// Where an import reads from. Each variant is one kind of source the Settings "Import..." row
@@ -261,7 +262,7 @@ fn wipe_library(folder: &Path) -> io::Result<()> {
 
 /// A name for an export made on `date` that no file in `folder` has yet:
 /// `Snipdeck-library-20261018.snipdeck`, then `...-2.snipdeck` and so on.
-fn export_path(folder: &Path, date: jiff::civil::Date) -> PathBuf {
+pub(super) fn export_path(folder: &Path, date: jiff::civil::Date) -> PathBuf {
     let stem = format!(
         "Snipdeck-library-{:04}{:02}{:02}",
         date.year(),
@@ -278,7 +279,7 @@ fn export_path(folder: &Path, date: jiff::civil::Date) -> PathBuf {
         .unwrap_or(first)
 }
 
-fn danger(message: ToastMessage) -> Toast {
+pub(super) fn danger(message: ToastMessage) -> Toast {
     Toast {
         kind: ToastKind::Danger,
         message,
@@ -334,54 +335,6 @@ where
         self.toast_view()
     }
 
-    fn backup_options(&self) -> ExportOptions<'_> {
-        // Encrypted with the library's key when it has one and it is unlocked; without a key the
-        // export leaves sensitive items out, so a backup never holds one in plain text.
-        ExportOptions {
-            sensitive: snipdeck_portable::Library::data_key(&self.store)
-                .map_or(SensitivePolicy::Skip, SensitivePolicy::Encrypt),
-            ..ExportOptions::default()
-        }
-    }
-
-    /// "Back up now": today's backup in `data_dir`, replacing the one already made today (the
-    /// daily run writes only when there is none, and the user asked for a fresh copy).
-    /// Returns whether it worked.
-    pub fn backup_now(&mut self, data_dir: &Path) -> bool {
-        // A copy of a locked library would lack its sensitive items and replace today's whole one.
-        if self.copy_blocked_by_lock() {
-            return false;
-        }
-        let now = self.clock.now();
-        let key = snipdeck_portable::Library::data_key(&self.store);
-        let made = match backup::run_if_due(
-            &self.store,
-            data_dir,
-            &now.to_zoned(TimeZone::system()),
-            usize::try_from(self.settings.backups_keep).unwrap_or(backup::DEFAULT_KEEP),
-            key,
-        ) {
-            Ok(BackupOutcome::Created { .. }) => Ok(()),
-            Ok(BackupOutcome::NotDue { existing }) => {
-                export_to_path(&self.store, now, &self.backup_options(), &existing).map(|_| ())
-            }
-            Err(e) => Err(e),
-        };
-        let worked = made.is_ok();
-        self.show_toast(match made {
-            Ok(()) => Toast {
-                kind: ToastKind::Success,
-                message: ToastMessage::BackupMade,
-            },
-            Err(e) => {
-                // The toast gives the cause; the log names an item that is too big.
-                crate::trace!("backup failed: {e}");
-                danger(ToastMessage::BackupFailed(Cause::of_portable(&e)))
-            }
-        });
-        worked
-    }
-
     /// Restores `backup` (a file `backup::list_backups` found) into the library: what is missing
     /// comes back, nothing is removed.
     pub fn restore_backup(&mut self, backup_file: &Path) -> bool {
@@ -409,21 +362,22 @@ where
         worked
     }
 
-    /// "Rebuild from backup…": sets the damaged library aside into the folder
-    /// `snipdeck.damaged-<stamp>/`
-    /// (database, log and blobs), opens a fresh one, restores `backup_file` into it and then
-    /// merges what the old database could still be read for. Nothing is deleted. Any failure
-    /// puts the original back and changes nothing. Returns whether it worked.
+    /// "Rebuild from backup…", first half: checks what must hold before anything is touched and
+    /// starts the salvage copy of what the damaged database can still give up (a temporary
+    /// archive, written off the UI thread). [`Self::finish_rebuild`] then sets the damaged
+    /// library aside into the folder `snipdeck.damaged-<stamp>/` (database, log and blobs), opens
+    /// a fresh one, restores `backup_file` into it and merges the salvage. Nothing is deleted. Any
+    /// failure puts the original back and changes nothing.
     ///
     /// An encrypted library keeps its key: the fresh database gets the same key record and is
     /// opened with the key already in memory, so sensitive items survive the rebuild.
-    pub fn rebuild_from_backup(&mut self, data_dir: &Path, backup_file: &Path) -> bool {
-        if self.copy_blocked_by_lock() {
-            return false;
+    pub fn begin_rebuild_from_backup(&mut self, data_dir: &Path, backup_file: &Path) -> Begun {
+        if self.archive_busy() || self.copy_blocked_by_lock() {
+            return Begun::Refused;
         }
         let failed = |ctl: &mut Self| {
             ctl.show_toast(danger(ToastMessage::RestoreFailed(Cause::Other)));
-            false
+            Begun::Finished(ArchiveEnd::Rebuilt(false))
         };
         // A key ring that cannot be read is a corrupt one: refuse rather than lose the key.
         let Ok(record) = self.store.key_record() else {
@@ -450,10 +404,40 @@ where
         if self.preview_restore(backup_file).is_err() {
             return failed(self);
         }
-        // Best effort: what the damaged database can still give up, as a temporary archive.
-        let now = self.clock.now();
         let salvage = data_dir.join("snipdeck.salvage.snipdeck");
-        let salvaged = export_to_path(&self.store, now, &self.backup_options(), &salvage).is_ok();
+        let job = self.archive_job(
+            ArchiveOp::Salvage,
+            Work::Salvage {
+                path: salvage.clone(),
+                now: self.clock.now(),
+            },
+        );
+        self.begin_running(
+            job,
+            Context::Rebuild(Box::new(Rebuild {
+                data_dir: data_dir.to_path_buf(),
+                backup_file: backup_file.to_path_buf(),
+                salvage,
+                carry,
+            })),
+        )
+    }
+
+    /// "Rebuild from backup…", second half, on the UI thread once the salvage copy is written
+    /// (or failed: a rebuild goes on without it). Whether it worked.
+    pub(super) fn finish_rebuild(&mut self, rebuild: Rebuild, salvaged: bool) -> bool {
+        let Rebuild {
+            data_dir,
+            backup_file,
+            salvage,
+            carry,
+        } = rebuild;
+        let data_dir = data_dir.as_path();
+        let backup_file = backup_file.as_path();
+        let failed = |ctl: &mut Self| {
+            ctl.show_toast(danger(ToastMessage::RestoreFailed(Cause::Other)));
+            false
+        };
         let sensitive_before = self.sensitive_count();
         let outcome =
             self.swap_in_rebuilt(data_dir, backup_file, salvaged.then_some(&salvage), carry);
@@ -727,38 +711,6 @@ where
         }
     }
 
-    /// Exports the whole library as one `.snipdeck` file in `folder`, under a name that does not
-    /// overwrite an earlier export. Sensitive items go in encrypted, or are left out when the
-    /// library has no key.
-    pub fn export_library(&mut self, folder: &Path) -> Option<PathBuf> {
-        if self.copy_blocked_by_lock() {
-            return None;
-        }
-        let now = self.clock.now();
-        let path = export_path(folder, now.to_zoned(TimeZone::system()).date());
-        let exported = fs::create_dir_all(folder)
-            .map_err(|e| Cause::of_io(&e))
-            .and_then(|()| {
-                export_to_path(&self.store, now, &self.backup_options(), &path)
-                    .map_err(|e| Cause::of_portable(&e))
-            });
-        if exported.is_ok() {
-            let file = path
-                .file_name()
-                .map(|n| n.to_string_lossy().into_owned())
-                .unwrap_or_default();
-            self.show_toast(Toast {
-                kind: ToastKind::Success,
-                message: ToastMessage::Exported { file },
-            });
-            Some(path)
-        } else {
-            let cause = exported.err().unwrap_or(Cause::Other);
-            self.show_toast(danger(ToastMessage::ExportFailed(cause)));
-            None
-        }
-    }
-
     /// "Erase library": closes the library, deletes it from `data_dir` (everything but the
     /// settings and the logs) and opens a fresh empty one there. With
     /// `forget_key` false the library's key record is carried over to the new library, so
@@ -766,6 +718,11 @@ where
     ///
     /// The caller has already asked the user to type DELETE; nothing here asks again.
     pub fn erase_library(&mut self, data_dir: &Path, forget_key: bool) -> bool {
+        // The library's files are being read by a worker: wait for it to end.
+        if self.archive_busy() {
+            self.show_toast(danger(ToastMessage::EraseFailed));
+            return false;
+        }
         let record = if forget_key {
             None
         } else if let Ok(record) = self.store.key_record() {
@@ -826,10 +783,10 @@ where
 }
 
 /// The key material an encrypted library carries over to its rebuilt database.
-struct Carry {
-    record: KeyRecord,
-    for_fresh: DataKey,
-    for_original: DataKey,
+pub(super) struct Carry {
+    pub(super) record: KeyRecord,
+    pub(super) for_fresh: DataKey,
+    pub(super) for_original: DataKey,
 }
 
 /// Why a rebuild did not complete.

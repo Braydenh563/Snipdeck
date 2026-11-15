@@ -18,9 +18,11 @@
 //! intervals survive a restart. A missing or damaged file just means "never ran".
 
 use std::{
+    cell::RefCell,
     fs,
     io::{self, Write as _},
     path::{Path, PathBuf},
+    rc::Rc,
     time::Duration,
 };
 
@@ -28,11 +30,12 @@ use jiff::{Zoned, tz::TimeZone};
 use serde::{Deserialize, Serialize};
 use snipdeck_core::Timestamp;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
-use snipdeck_portable::backup::{self, BackupOutcome};
+use snipdeck_portable::backup::BackupOutcome;
 use snipdeck_store::Store;
 
 use crate::{
-    controller::Controller,
+    archive_job::{self, ArchiveJob},
+    controller::{ArchiveEnd, Begun, Controller},
     crash,
     failure::Cause,
     host::{ClipboardText, Clock},
@@ -122,6 +125,20 @@ pub enum BackupResult {
     },
     /// Today's file already existed.
     NotDue,
+    /// A worker is writing it; [`Maintenance::backup_finished`] takes the outcome. Nothing else
+    /// starts a backup until then.
+    Started,
+}
+
+impl From<BackupOutcome> for BackupResult {
+    fn from(outcome: BackupOutcome) -> Self {
+        match outcome {
+            BackupOutcome::Created { pruned, .. } => Self::Created {
+                pruned: pruned.len(),
+            },
+            BackupOutcome::NotDue { .. } => Self::NotDue,
+        }
+    }
 }
 
 /// The three jobs, as the scheduler needs them. The app's implementation is [`ControllerJobs`];
@@ -294,6 +311,8 @@ pub struct Maintenance {
     clock: Box<dyn Clock>,
     state: State,
     crash_checked: bool,
+    /// A worker is writing the daily backup.
+    backup_running: bool,
 }
 
 impl std::fmt::Debug for Maintenance {
@@ -316,6 +335,7 @@ impl Maintenance {
             clock,
             state,
             crash_checked: false,
+            backup_running: false,
         }
     }
 
@@ -349,17 +369,9 @@ impl Maintenance {
             }
         }
 
-        if is_due(self.state.last_backup, seconds, INTERVAL) {
-            match jobs.backup(&now.to_zoned(TimeZone::system())) {
-                Ok(result) => {
-                    self.state.last_backup = Some(seconds);
-                    changed = true;
-                    if let BackupResult::Created { pruned } = result {
-                        outcomes.push(MaintenanceOutcome::BackupCreated { pruned });
-                    }
-                }
-                Err(e) => outcomes.push(MaintenanceOutcome::BackupFailed(e)),
-            }
+        if !self.backup_running && is_due(self.state.last_backup, seconds, INTERVAL) {
+            let result = jobs.backup(&now.to_zoned(TimeZone::system()));
+            changed |= self.take_backup(seconds, result, &mut outcomes);
         }
 
         if is_due(self.state.last_purge, seconds, INTERVAL) {
@@ -399,10 +411,57 @@ impl Maintenance {
             }
         }
 
-        if changed && let Err(e) = self.state.save(&self.data_dir) {
-            crate::trace!("maintenance: cannot save {STATE_FILE}: {e}");
+        if changed {
+            self.save();
         }
         outcomes
+    }
+
+    /// Takes what a backup came to. Whether the state changed.
+    fn take_backup(
+        &mut self,
+        seconds: i64,
+        result: Result<BackupResult, JobError>,
+        outcomes: &mut Vec<MaintenanceOutcome>,
+    ) -> bool {
+        match result {
+            Ok(BackupResult::Started) => {
+                self.backup_running = true;
+                false
+            }
+            Ok(result) => {
+                self.state.last_backup = Some(seconds);
+                if let BackupResult::Created { pruned } = result {
+                    outcomes.push(MaintenanceOutcome::BackupCreated { pruned });
+                }
+                true
+            }
+            Err(e) => {
+                outcomes.push(MaintenanceOutcome::BackupFailed(e));
+                false
+            }
+        }
+    }
+
+    /// The outcome of a backup a worker was writing ([`BackupResult::Started`]): the same
+    /// bookkeeping as for one that finished at once. A failure leaves the last-run time alone, so
+    /// the next tick tries again.
+    pub fn backup_finished(
+        &mut self,
+        result: Result<BackupResult, JobError>,
+    ) -> Vec<MaintenanceOutcome> {
+        self.backup_running = false;
+        let mut outcomes = Vec::new();
+        if self.take_backup(self.clock.now().as_second(), result, &mut outcomes) {
+            self.save();
+        }
+        outcomes
+    }
+
+    fn save(&self) {
+        if let Err(e) = self.state.save(&self.data_dir) {
+            crate::trace!("maintenance: cannot save {STATE_FILE}: {e}");
+        }
     }
 }
 
@@ -419,7 +478,7 @@ const LOCKED_MESSAGE: &str = "library locked, backup deferred";
 
 /// `Err` when the library has a key ring that is locked: a backup now would leave out its
 /// sensitive items.
-fn deferred_while_locked(key_ring_exists: bool, unlocked: bool) -> Result<(), JobError> {
+pub(crate) fn deferred_while_locked(key_ring_exists: bool, unlocked: bool) -> Result<(), JobError> {
     if key_ring_exists && !unlocked {
         Err(JobError::deferred())
     } else {
@@ -431,6 +490,8 @@ fn deferred_while_locked(key_ring_exists: bool, unlocked: bool) -> Result<(), Jo
 pub struct ControllerJobs<'a, C, K, T> {
     controller: &'a mut Controller<Store, C, K, T>,
     data_dir: &'a Path,
+    /// The daily backup, when it went to a worker: the host runs it ([`spawn_backup`]).
+    started: Option<ArchiveJob>,
 }
 
 impl<'a, C, K, T> ControllerJobs<'a, C, K, T> {
@@ -439,6 +500,7 @@ impl<'a, C, K, T> ControllerJobs<'a, C, K, T> {
         Self {
             controller,
             data_dir,
+            started: None,
         }
     }
 }
@@ -450,32 +512,13 @@ where
     T: Timing,
 {
     fn backup(&mut self, now: &Zoned) -> Result<BackupResult, JobError> {
-        let store = self.controller.store();
-        // A library with a key ring that is locked (idle timeout) would export without its
-        // sensitive items; such a backup would also count as today's and push the last complete
-        // one out of the newest 7. Defer instead: the failure leaves `last_backup` alone, so the
-        // next tick tries again, and the unlock makes it complete.
-        deferred_while_locked(
-            store.key_ring_exists().map_err(|e| JobError {
-                cause: Cause::of_store(&e),
-                detail: e.to_string(),
-            })?,
-            store.is_unlocked(),
-        )?;
-        // Encrypted with the library's key when it has one; a library with no key ring has no
-        // encrypted items, so a backup never holds a sensitive item in plain text.
-        let key = snipdeck_portable::Library::data_key(store);
-        let keep = usize::try_from(self.controller.settings().backups_keep)
-            .unwrap_or(backup::DEFAULT_KEEP);
-        match backup::run_if_due(store, self.data_dir, now, keep, key) {
-            Ok(BackupOutcome::Created { pruned, .. }) => Ok(BackupResult::Created {
-                pruned: pruned.len(),
-            }),
-            Ok(BackupOutcome::NotDue { .. }) => Ok(BackupResult::NotDue),
-            Err(e) => Err(JobError {
-                cause: Cause::of_portable(&e),
-                detail: e.to_string(),
-            }),
+        match self.controller.begin_daily_backup(self.data_dir, now)? {
+            Begun::Job(job) => {
+                self.started = Some(job);
+                Ok(BackupResult::Started)
+            }
+            Begun::Finished(ArchiveEnd::Daily(done)) => done.map(BackupResult::from),
+            Begun::Refused | Begun::Finished(_) => Err(JobError::deferred()),
         }
     }
 
@@ -504,24 +547,72 @@ where
     }
 }
 
+/// What one [`run`] did.
+#[derive(Debug)]
+pub struct Run {
+    /// How many outcomes were reported to the controller.
+    pub outcomes: usize,
+    /// The daily backup, when a worker is to write it: pass it to [`spawn_backup`] once no borrow
+    /// of the controller or the scheduler is held.
+    pub backup: Option<ArchiveJob>,
+}
+
 /// Runs one [`Maintenance::tick`] on `controller` and hands each outcome to
 /// [`Controller::report_maintenance`]. The host calls this from its timers.
 pub fn run<C, K, T>(
     maintenance: &mut Maintenance,
     controller: &mut Controller<Store, C, K, T>,
-) -> usize
+) -> Run
 where
     C: Clipboard + ClipboardText,
     K: Keyboard,
     T: Timing,
 {
     let data_dir = maintenance.data_dir.clone();
-    let outcomes = maintenance.tick(&mut ControllerJobs::new(controller, &data_dir));
+    let mut jobs = ControllerJobs::new(controller, &data_dir);
+    let outcomes = maintenance.tick(&mut jobs);
+    let backup = jobs.started.take();
     let count = outcomes.len();
     for outcome in outcomes {
         controller.report_maintenance(outcome);
     }
-    count
+    Run {
+        outcomes: count,
+        backup,
+    }
+}
+
+/// Hands the daily backup `job` to the archive offload. When it is done, on the UI thread, the
+/// controller raises its toast and `maintenance` notes the time. Returns whether anything was
+/// reported (so the host redraws); with the inline offload that is already known on return.
+pub fn spawn_backup<C, K, T>(
+    job: ArchiveJob,
+    maintenance: &Rc<RefCell<Maintenance>>,
+    controller: &Rc<RefCell<Controller<Store, C, K, T>>>,
+) where
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    let maintenance = Rc::clone(maintenance);
+    let controller = Rc::downgrade(controller);
+    archive_job::offload().run(
+        job,
+        Box::new(move |done| {
+            let Some(controller) = controller.upgrade() else {
+                return;
+            };
+            let mut controller = controller.borrow_mut();
+            if let ArchiveEnd::Daily(result) = controller.finish_archive(done) {
+                let outcomes = maintenance
+                    .borrow_mut()
+                    .backup_finished(result.map(BackupResult::from));
+                for outcome in outcomes {
+                    controller.report_maintenance(outcome);
+                }
+            }
+        }),
+    );
 }
 
 #[cfg(test)]

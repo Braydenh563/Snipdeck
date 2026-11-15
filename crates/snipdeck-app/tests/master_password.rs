@@ -30,7 +30,7 @@ use snipdeck_store::{ItemRepo, Store, crypto::KdfParams};
 
 #[path = "support/mod.rs"]
 mod support;
-use support::{MasterSteps as _, SharedProvider, assert_no_plaintext};
+use support::{ArchiveSteps as _, MasterSteps as _, SharedProvider, assert_no_plaintext};
 
 type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 
@@ -865,7 +865,7 @@ fn a_clock_moved_back_does_not_delay_the_idle_lock_at_all() {
     // Only the time that really passed counts: one minute is gone already.
     assert_eq!(
         r.ctl.idle_lock_wait(),
-        Some(IDLE_LOCK - Duration::from_mins(1))
+        Some(IDLE_LOCK.checked_sub(Duration::from_mins(1)).unwrap())
     );
     r.advance(just_before_idle(Duration::from_secs(61)));
     assert!(!r.ctl.lock_if_idle(), "a second early");

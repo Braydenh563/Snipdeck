@@ -10,6 +10,9 @@
 
 use std::{fs, path::Path};
 
+mod support;
+use support::ArchiveSteps as _;
+
 use snipdeck_app::{
     controller::{Controller, MainAction, Services},
     demo,

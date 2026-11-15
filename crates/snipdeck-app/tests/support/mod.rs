@@ -296,3 +296,53 @@ impl MasterSteps for Ctl {
         finish(self, Some(job))
     }
 }
+
+/// The archive jobs in one call, for tests: `begin_*`, then the job's `run` (what the worker
+/// thread does, here on this thread), then `finish_archive`. A job that ended at once (an
+/// in-memory library, or a refusal) is read as it is.
+pub trait ArchiveSteps {
+    fn backup_now(&mut self, data_dir: &std::path::Path) -> bool;
+    fn export_library(&mut self, folder: &std::path::Path) -> Option<std::path::PathBuf>;
+    fn rebuild_from_backup(&mut self, data_dir: &std::path::Path, backup: &std::path::Path)
+    -> bool;
+}
+
+fn end(
+    ctl: &mut Ctl,
+    begun: snipdeck_app::controller::Begun,
+) -> snipdeck_app::controller::ArchiveEnd {
+    use snipdeck_app::controller::{ArchiveEnd, Begun};
+    match begun {
+        Begun::Refused => ArchiveEnd::Ignored,
+        Begun::Finished(end) => end,
+        Begun::Job(job) => ctl.finish_archive(job.run()),
+    }
+}
+
+impl ArchiveSteps for Ctl {
+    fn backup_now(&mut self, data_dir: &std::path::Path) -> bool {
+        let begun = self.begin_backup_now(data_dir);
+        matches!(
+            end(self, begun),
+            snipdeck_app::controller::ArchiveEnd::BackupNow(true)
+        )
+    }
+    fn export_library(&mut self, folder: &std::path::Path) -> Option<std::path::PathBuf> {
+        let begun = self.begin_export(folder);
+        match end(self, begun) {
+            snipdeck_app::controller::ArchiveEnd::Exported(file) => file,
+            _ => None,
+        }
+    }
+    fn rebuild_from_backup(
+        &mut self,
+        data_dir: &std::path::Path,
+        backup: &std::path::Path,
+    ) -> bool {
+        let begun = self.begin_rebuild_from_backup(data_dir, backup);
+        matches!(
+            end(self, begun),
+            snipdeck_app::controller::ArchiveEnd::Rebuilt(true)
+        )
+    }
+}

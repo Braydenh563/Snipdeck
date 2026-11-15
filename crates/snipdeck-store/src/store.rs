@@ -203,6 +203,40 @@ impl Store {
         })
     }
 
+    /// A second, read-only view of the open database in `folder`, for work that must not hold
+    /// the UI thread (an export, a backup): its own connection, no folder lock, no migration and
+    /// no write of any kind. `key` is a copy of the unlocked data key
+    /// ([`Store::duplicate_data_key`]), so encrypted items read as they do from the main store.
+    ///
+    /// The database must already be open and migrated by a [`Store`] (WAL mode lets this reader
+    /// run beside its writer); a write through the result fails. A caller that needs one
+    /// consistent picture reads inside [`Store::begin_snapshot`].
+    pub fn open_reader(folder: impl AsRef<Path>, key: Option<DataKey>) -> Result<Self> {
+        let folder = folder.as_ref();
+        let conn = Connection::open_with_flags(
+            folder.join(DB_FILE),
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+        )?;
+        conn.busy_timeout(Duration::from_secs(5))?;
+        conn.pragma_update(None, "foreign_keys", true)?;
+        Ok(Self {
+            conn,
+            blobs: Blobs::on_disk(folder.join(BLOB_DIR)),
+            key,
+            quiet: Quiet::default(),
+            lock: None,
+        })
+    }
+
+    /// Starts a read transaction on a reader, so every read after the first sees the same
+    /// moment of the database. Ends when the reader is dropped. Does nothing useful on the main
+    /// store (which writes).
+    pub fn begin_snapshot(&self) -> Result<()> {
+        self.conn
+            .execute_batch("BEGIN; SELECT 1 FROM sqlite_master LIMIT 1;")?;
+        Ok(())
+    }
+
     /// Closes the store: folds the write-ahead log into the database
     /// (`wal_checkpoint(TRUNCATE)`, checked) and closes the connection, keeping the folder
     /// lock held in the returned [`Closed`].
@@ -621,6 +655,33 @@ mod tests {
     use super::*;
     use crate::BlobStore as _;
     use crate::blobs::FAIL_REMOVES;
+
+    #[test]
+    fn a_reader_sees_the_open_database_beside_its_writer_and_cannot_write() {
+        use crate::BoardRepo as _;
+        use snipdeck_core::{Board, Name, Placement, Timestamp};
+        let add = |store: &mut Store, name: &str| {
+            let board = Board::new(Name::new(name).unwrap(), Timestamp::from_second(0).unwrap());
+            store.insert_board(&board, Placement::Last).unwrap();
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = Store::open(dir.path()).unwrap();
+        let reader = Store::open_reader(dir.path(), None).unwrap();
+        let before = reader.boards().unwrap().len();
+        add(&mut store, "Later");
+        assert_eq!(
+            reader.boards().unwrap().len(),
+            before + 1,
+            "a commit shows without reopening"
+        );
+        reader.begin_snapshot().unwrap();
+        let held = reader.boards().unwrap().len();
+        add(&mut store, "After the snapshot");
+        assert_eq!(reader.boards().unwrap().len(), held, "one moment");
+        assert!(reader.conn.execute("DELETE FROM boards", []).is_err());
+        // The writer's lock is untouched: a reader takes none.
+        assert!(matches!(Store::open(dir.path()), Err(Error::Locked { .. })));
+    }
 
     #[test]
     fn the_integrity_check_reports_secure_delete_being_off() {

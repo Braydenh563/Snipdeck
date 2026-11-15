@@ -376,6 +376,8 @@ export component SettingsPage inherits Window {
     in-out property <MasterProblem> master-problem: MasterProblem.none;
     // The host is working out the key for the submitted form; the form waits.
     in property <bool> master-busy: false;
+    // A backup or an export is being written on a worker; both buttons wait for it.
+    in property <bool> backup-busy: false;
     // Which form is open under the row. The host sets it back to `closed` after a change worked.
     in-out property <MasterMode> master-mode: MasterMode.closed;
     // Go up to put the focus on the form's first field, and back on the row's button when the form closes.
@@ -1420,7 +1422,7 @@ export component SettingsPage inherits Window {
                         alignment: start;
                         Button {
                             text: @tr("Back up now");
-                            enabled: root.has-data-folder;
+                            enabled: root.has-data-folder && !root.backup-busy;
                             clicked => { root.backup-now-requested(); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
@@ -1450,7 +1452,7 @@ export component SettingsPage inherits Window {
                         description: @tr("Saves every board, list and item as one .snipdeck file in a folder you choose.");
                         Button {
                             text: @tr("Export library");
-                            enabled: root.has-data-folder;
+                            enabled: root.has-data-folder && !root.backup-busy;
                             clicked => { root.export-requested(); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }

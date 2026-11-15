@@ -33,8 +33,8 @@ use crate::{
     accent::AccentChoice,
     binding::{Loggable, Shown, arm_toast, model, redraw_all, register_redraw, to_i32},
     controller::{
-        Controller, HelpTopic, ImportKind, ImportPreview, ImportProblem, ImportSource, MasterState,
-        ToastPhase, ToastView,
+        ArchiveEnd, Controller, HelpTopic, ImportKind, ImportPreview, ImportProblem, ImportSource,
+        MasterState, ToastPhase, ToastView, spawn_archive,
     },
     host::{self, ClipboardText, HotkeyBackend, HotkeyFailure, HotkeyProblem},
     hotkey_health::{self, HotkeyHealth},
@@ -1474,9 +1474,22 @@ where
         let Some(dir) = self.data_dir.clone() else {
             return;
         };
-        self.act(|ctl| ctl.backup_now(&dir));
-        self.refresh_backups();
-        redraw_all();
+        let begun = self.act(|ctl| ctl.begin_backup_now(&dir));
+        self.show_busy();
+        let this = Rc::clone(self);
+        spawn_archive(&self.controller, begun, move |_| {
+            this.show_busy();
+            this.refresh_backups();
+            redraw_all();
+        });
+    }
+
+    /// Greys out "Back up now" and "Export library" while an archive job runs.
+    fn show_busy(&self) {
+        let busy = self.controller.borrow().archive_busy();
+        if let Some(window) = self.window.upgrade() {
+            window.set_backup_busy(busy);
+        }
     }
 
     /// "Restore" on a backup row: shows what the backup would add, the same preview as an import.
@@ -1647,12 +1660,18 @@ where
                 .documents_folder()
                 .unwrap_or_else(|| dir.join("exports")),
         };
-        let saved = self.act(|ctl| ctl.export_library(&folder));
-        if let Some(file) = saved
-            && let Some(parent) = file.parent()
-        {
-            self.open_folder(parent);
-        }
+        let begun = self.act(|ctl| ctl.begin_export(&folder));
+        self.show_busy();
+        let this = Rc::clone(self);
+        spawn_archive(&self.controller, begun, move |end| {
+            this.show_busy();
+            if let ArchiveEnd::Exported(Some(file)) = end
+                && let Some(parent) = file.parent()
+            {
+                this.open_folder(parent);
+            }
+            redraw_all();
+        });
     }
 
     fn erase(self: &Rc<Self>, typed: &str, forget_key: bool) {

@@ -24,7 +24,7 @@ use snipdeck_ui as ui;
 
 use crate::{
     binding::{arm_toast, model, redraw_all, register_redraw},
-    controller::{Controller, HelpTopic, ToastPhase, ToastView},
+    controller::{Controller, HelpTopic, ToastPhase, ToastView, spawn_archive},
     crash,
     doctor::{self, Check, DoctorHost, Fix, ReportInfo, Status},
     host::ClipboardText,
@@ -482,8 +482,12 @@ where
         match Fix::from_code(code) {
             Some(Fix::BackUpNow) => {
                 if let Some(dir) = self.data_dir.clone() {
-                    self.controller.borrow_mut().backup_now(&dir);
-                    self.run_checks();
+                    let begun = self.controller.borrow_mut().begin_backup_now(&dir);
+                    let this = Rc::clone(self);
+                    spawn_archive(&self.controller, begun, move |_| {
+                        this.run_checks();
+                        redraw_all();
+                    });
                 }
             }
             Some(Fix::OpenSettings) => crate::settings_binding::request_open(),
@@ -537,11 +541,15 @@ where
         else {
             return;
         };
-        self.controller
+        let begun = self
+            .controller
             .borrow_mut()
-            .rebuild_from_backup(&dir, &file.path);
-        self.run_checks();
-        redraw_all();
+            .begin_rebuild_from_backup(&dir, &file.path);
+        let this = Rc::clone(self);
+        spawn_archive(&self.controller, begun, move |_| {
+            this.run_checks();
+            redraw_all();
+        });
     }
 
     fn copy_report(self: &Rc<Self>) {

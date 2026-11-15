@@ -17,6 +17,7 @@ use snipdeck_platform::{
     tray::TrayEvent,
 };
 
+mod archive_ctl;
 mod colour_ctl;
 mod colour_main;
 mod commands_ctl;
@@ -45,6 +46,7 @@ mod trigger_ctl;
 mod use_ctl;
 mod views;
 
+pub use archive_ctl::{ArchiveEnd, Begun, spawn as spawn_archive};
 pub use colour_ctl::{ColourView, SaveList, SaveTarget};
 pub use colour_main::{ColourBlock, colour_formats};
 pub use create_ctl::DropRun;
@@ -352,6 +354,8 @@ pub struct Controller<S, C, K, T> {
     pending: Vec<Effect>,
     /// The master password: whether one is set, whether its prompt is open, the idle clock.
     lock: lock_ctl::LockState,
+    /// The archive step a worker is writing, if any.
+    archive: archive_ctl::ArchiveState,
     /// Switches the clipboard listener of the Recent inbox (see `recent_ctl.rs`).
     recent_gate: Option<snipdeck_platform::clipboard_watch::WatchGate>,
     /// The typed-trigger service (keyboard hook), once the host hands it over.
@@ -565,6 +569,7 @@ where
             fullscreen: false,
             pending: Vec::new(),
             lock: lock_ctl::LockState::new(idle_start),
+            archive: archive_ctl::ArchiveState::default(),
             recent_gate: None,
             typing: None,
             typing_sent: Vec::new(),
