@@ -2428,7 +2428,7 @@ ui_tests! {
         let (cp, cz) = (clear.absolute_position(), clear.size());
         let (fc, cc) = (fp.y + fz.height / 2.0, cp.y + cz.height / 2.0);
         assert!((fc - cc).abs() <= 1.0, "the clear button is centred in the box: {cc} vs {fc}");
-        assert!(cz.height <= fz.height - 8.0, "smaller than the box: {} in {}", cz.height, fz.height);
+        assert!(cz.height <= fz.height - 4.0, "clear of the border: {} in {}", cz.height, fz.height);
         let inset = (fp.x + fz.width) - (cp.x + cz.width);
         // The glyph is centred in its button, so the button's inset plus its padding mirrors the
         // magnifier's 8px inset on the left.

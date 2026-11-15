@@ -1181,18 +1181,17 @@ export component MainWindow inherits Window {
                                 y: (parent.height - self.height) / 2;
                                 menu-requested => { root.board-menu-requested(); }
                             }
-                            if !root.narrow: Rectangle { horizontal-stretch: 1; }
-                            if !root.auto-rail: sidebar-toggle := IconButton {
-                                horizontal-stretch: 0;
-                                scaled: true;
-                                side-override: root.ctl-h;
-                                icon: root.sidebar-collapsed ? Icons.caret-double-right : Icons.caret-double-left;
-                                tooltip: root.sidebar-collapsed ? @tr("Expand sidebar (Ctrl+B)") : @tr("Collapse sidebar (Ctrl+B)");
-                                own-tooltip: true;
-                                active: root.sidebar-collapsed;
-                                y: (parent.height - self.height) / 2;
-                                clicked => { root.toggle-sidebar(); }
-                            }
+                        }
+                        if !root.auto-rail: sidebar-toggle := IconButton {
+                            scaled: true;
+                            side-override: root.ctl-h;
+                            icon: root.sidebar-collapsed ? Icons.caret-double-right : Icons.caret-double-left;
+                            tooltip: root.sidebar-collapsed ? @tr("Expand sidebar (Ctrl+B)") : @tr("Collapse sidebar (Ctrl+B)");
+                            own-tooltip: true;
+                            active: root.sidebar-collapsed;
+                            x: root.narrow ? (parent.width - self.width) / 2 : parent.width - self.width - Space.s2;
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.toggle-sidebar(); }
                         }
                     }
                     if root.narrow: Rectangle {

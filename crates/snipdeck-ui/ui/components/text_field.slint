@@ -332,20 +332,25 @@ export component TextField inherits VerticalLayout {
                     }
                 }
                 // A slot as tall as the field, so the layout cannot pin the button to the top; the button sits
-                // in its middle. The 24x24 target (the minimum) holds the glyph (12px, a little under the magnifier's 16px)
-                // in its centre and ends 4px from the border: the glyph's centre mirrors the magnifier's.
+                // in its middle. The target is 24px tall; the glyph (12px, a little under the magnifier's 16px) sits in a 20px chip, plus
+                // air, and ends 4px from the border: the glyph's centre mirrors the magnifier's.
                 if root.clear-visible: Rectangle {
                     width: Space.hit-min * SystemLook.text-scale;
                     clear-button := Rectangle {
                         width: parent.width;
                         height: Space.hit-min * SystemLook.text-scale;
                         y: root.single-line ? (parent.height - self.height) / 2 : (root.line-h - self.height) / 2;
-                        border-radius: Radius.sm;
-                        background: clear-touch.pressed ? Theme.bg-sunken : clear-touch.has-hover ? Theme.bg-hover : transparent;
                         accessible-role: button;
                         accessible-label: root.clear-label;
                         accessible-action-default => { root.clear(); }
 
+                        // The visible chip is a little smaller than the 24px target.
+                        Rectangle {
+                            height: Space.s5 * SystemLook.text-scale;
+                            y: (parent.height - self.height) / 2;
+                            border-radius: Radius.sm;
+                            background: clear-touch.pressed ? Theme.bg-sunken : clear-touch.has-hover ? Theme.bg-hover : transparent;
+                        }
                         Icon {
                             source: Icons.x;
                             size: Space.s3 * SystemLook.text-scale;
