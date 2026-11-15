@@ -96,6 +96,8 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 2026-11-12: Colour tool UI and the editor preview toggle are built by cloud worker sessions (branches claude/colour-tool, claude/editor-preview), merged into PR #5 by the coordinator. Reason: this machine fits one snipdeck_ui compile at a time, so local parallel builds OOM; the local colour workflow wf_8676d216-bbf is superseded and not resumed.
 
 ## Inbox
+- 2026-11-15 owner (verbatim): "No keep working autonomously, I'm on break at work and I didn't mean to stop you / Start the fable agent" -> fixed now: work order active; second Fable full-app audit (read-only) on the merged state e8b6bc52 (audit fixes + all-free), report scratchpad/fable-audit-2.md.
+- 2026-11-15 owner (verbatim): "the title shows in front of the tooltip. tooltips and popups should be able to appear outside of the window I feel right?" (colour editor: "Formats" heading over the "Save to a list" tooltip) -> placed: ui-polish-2 item 2 (z-order everywhere; outside-window needs a separate OS window, see worker note).
 - 2026-11-15 owner (verbatim): "also tao finger trackpad scrolling on things like the command pallate doesnt work" -> placed: ui-polish-2 item 7.
 - 2026-11-15 owner (verbatim): "scrolling can be very glitchy" -> placed: ui-polish-2 (measure scroll repaint in lists and emoji grid).
 - 2026-11-15 owner (verbatim): "also is it possible to clear my recently searched and used stuff like emojis and the like?" -> placed: worker batch ui-polish-2 (Settings > Privacy: clear recent emoji/symbols and colours; search history is not stored).
