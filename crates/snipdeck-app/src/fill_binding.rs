@@ -170,25 +170,30 @@ where
             crate::trace!("fill form submitted");
             self.controller.borrow_mut().run_fill(submission);
         } else if let Some(window) = self.shell.window() {
-            self.flag_bad_date(&window);
+            self.flag_missing(&window);
         }
         redraw_all();
     }
 
-    /// The window cannot read a date, so when the form held one that is not a real day the
-    /// field says so and takes the focus (a required field left empty is flagged by the window).
-    fn flag_bad_date(&self, window: &ui::TemplateFillWindow) {
+    /// The window cannot trim or read a date, and unrolls its own check over 16 fields, so
+    /// the field the model stopped on says why and takes the focus: a required field left
+    /// empty (or with only spaces, or past the 16th) or a date that is not a real day.
+    fn flag_missing(&self, window: &ui::TemplateFillWindow) {
         let bad = self
             .controller
             .borrow()
             .fill()
             .and_then(crate::fill::FillModel::first_missing);
-        let Some((at, Missing::BadDate)) = bad else {
+        let Some((at, why)) = bad else {
             return;
         };
         let fields = window.get_fields();
         if let Some(mut field) = fields.row_data(at) {
-            field.error = window.global::<ui::FormTexts<'_>>().invoke_bad_date();
+            let texts = window.global::<ui::FormTexts<'_>>();
+            field.error = match why {
+                Missing::BadDate => texts.invoke_bad_date(),
+                Missing::Empty => texts.invoke_field_required(),
+            };
             fields.set_row_data(at, field);
             window.invoke_focus_field(crate::binding::to_i32(at));
         }

@@ -28,6 +28,11 @@ export global FormTexts {
         return @tr("Enter a real date as YYYY-MM-DD, or leave it empty for today.");
     }
 
+    // A required fill-form field left empty (or holding only spaces).
+    pure public function field-required() -> string {
+        return @tr("This field is required");
+    }
+
     // What a {uuid} shows in the fill form's preview; the real ID is drawn when the paste happens.
     pure public function new-id() -> string {
         return @tr("(new ID)");

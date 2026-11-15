@@ -349,6 +349,17 @@ mod tests {
     }
 
     #[test]
+    fn an_empty_required_field_past_the_sixteenth_is_found() {
+        let src: String = (1..=17).map(|i| format!("{{field:Field{i}}} ")).collect();
+        let mut m = form(&src);
+        let values: Vec<String> = (0..17)
+            .map(|i| if i == 16 { "   ".into() } else { "x".into() })
+            .collect();
+        m.set_values(&values);
+        assert_eq!(m.first_missing(), Some((16, Missing::Empty)));
+    }
+
+    #[test]
     fn multiline_answers_keep_their_newlines() {
         let mut m = form("Note:\n{multiline:Body}");
         assert_eq!(m.fields()[0].kind, FieldKind::Multiline);
