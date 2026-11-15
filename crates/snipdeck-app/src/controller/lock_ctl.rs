@@ -8,9 +8,6 @@
 //! an error. (The store takes `&str`, and the window's own text is a Slint string, so the plain
 //! text cannot be wiped from this side.)
 //!
-//! * Setting a password is a Supporter feature ([`Feature::MasterPassword`]). Changing it,
-//!   removing it and unlocking are always allowed, so a lapsed or missing licence never traps a
-//!   library behind a password the user cannot manage.
 //! * With a password set, the library starts locked and stays locked until the user types it. The
 //!   prompt opens the first time a locked sensitive item is needed ([`Effect::OpenUnlock`]), not
 //!   at start-up, so a tray app that starts with Windows does not greet the user with a dialog.
@@ -18,7 +15,7 @@
 
 use std::{sync::Arc, time::Duration};
 
-use snipdeck_core::{Feature, Timestamp};
+use snipdeck_core::Timestamp;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::crypto::{CryptoError, KdfParams, KeyProvider, KeyRecord, KeyRing};
 
@@ -56,8 +53,6 @@ pub enum MasterProblem {
     TooShort,
     /// The two typed copies of the new password differ.
     Mismatch,
-    /// Free plan: setting a master password is a Supporter feature.
-    SupporterOnly,
     /// No key protection on this machine.
     Unavailable,
     /// Windows Hello did not unlock (cancelled, failed, removed or expired); the password does.
@@ -196,12 +191,6 @@ where
         }
     }
 
-    /// Whether this plan may set a master password ([`Feature::MasterPassword`]).
-    #[must_use]
-    pub fn master_password_allowed(&self) -> bool {
-        self.entitlements.allows(Feature::MasterPassword)
-    }
-
     /// A master password is set and the key is not open.
     #[must_use]
     pub fn library_locked(&self) -> bool {
@@ -333,7 +322,7 @@ where
     ///
     /// # Errors
     ///
-    /// [`MasterProblem::SupporterOnly`] on Free, [`MasterProblem::Unavailable`] without key
+    /// [`MasterProblem::Unavailable`] without key
     /// protection, [`MasterProblem::TooShort`], [`MasterProblem::Mismatch`], or
     /// [`MasterProblem::Failed`] (a password is already set, the store refused, or another step
     /// is running).
@@ -343,9 +332,6 @@ where
         again: &str,
     ) -> Result<MasterJob, MasterProblem> {
         self.check_idle()?;
-        if !self.master_password_allowed() {
-            return Err(MasterProblem::SupporterOnly);
-        }
         let provider = self.provider()?;
         if self.lock.set || self.lock.unreadable {
             return Err(MasterProblem::Failed);

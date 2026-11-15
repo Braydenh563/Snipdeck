@@ -43,14 +43,6 @@ pub enum Warning {
         /// How many items the exporter left out.
         count: u64,
     },
-    /// The import leaves more boards than the Free tier allows. Nothing was blocked; the caller
-    /// decides what to tell the user.
-    BoardLimit {
-        /// The limit passed in the options.
-        limit: usize,
-        /// Boards after the import.
-        total: usize,
-    },
     /// A file was not valid UTF-8; invalid bytes were replaced with U+FFFD.
     LossyText {
         /// The file or item.
@@ -322,10 +314,6 @@ impl fmt::Display for Warning {
             Self::SensitiveOmittedByExport { count } => write!(
                 f,
                 "{count} sensitive item(s) were left out when this file was exported"
-            ),
-            Self::BoardLimit { limit, total } => write!(
-                f,
-                "you now have {total} boards; the Free plan includes {limit}"
             ),
             Self::LossyText { name } => write!(
                 f,

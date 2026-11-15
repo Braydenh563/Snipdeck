@@ -1,5 +1,5 @@
 // The Help window (V1-PLAN step 7b): Troubleshoot (the doctor's checks and the data tools) and About (version,
-// licence, links). One regular window, opened from the Panel menu, the Main window and the crash toast.
+// links). One regular window, opened from the Panel menu, the Main window and the crash toast.
 //
 // The host fills `checks` (it runs the checks; this file only draws them), opens folders and links, and copies the
 // diagnostic report. Nothing is fetched from the network: the update link opens the releases page in the browser.
@@ -8,7 +8,6 @@
 import { Theme, Type, Space, Radius, Fonts, Palette, SystemLook } from "theme.slint";
 import { Icons } from "icons.slint";
 import { Icon } from "components/icon.slint";
-import { LockBadge } from "components/lock-badge.slint";
 import { Button, ButtonSize, ButtonVariant } from "components/button.slint";
 import { Toast, ToastKind, ToastPhase } from "components/feedback.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
@@ -25,8 +24,6 @@ export struct TipCard {
     first-line: string,
     second-line: string,
     picture: image,
-    // A Supporter feature that the Free plan lacks: the card carries the Supporter mark.
-    locked: bool,
 }
 
 // One line of the Troubleshoot list, already in words (the doctor's English; see snipdeck-app `doctor`).
@@ -70,10 +67,6 @@ export component HelpWindow inherits Window {
     in property <bool> has-data-folder: true;
     in property <string> version: "0.1.0";
     in property <string> build-date;
-    // Whether the Supporter plan is active; the page names the plan.
-    in property <bool> supporter: false;
-    // The free-only Store package: the plan is not named (there is only one).
-    in property <bool> free-only: false;
     in property <string> source-url;
     // The Microsoft Store link and the third-party notices are hidden until the host has them.
     in property <bool> show-store-link: false;
@@ -99,6 +92,8 @@ export component HelpWindow inherits Window {
     callback source-requested();
     callback releases-requested();
     callback store-requested();
+    // "Support Snipdeck": the host opens the optional donation page in the browser.
+    callback support-requested();
     callback notices-requested();
     callback close-requested();
 
@@ -339,14 +334,6 @@ export component HelpWindow inherits Window {
                                     min-width: 0px;
                                     accessible-role: none;
                                 }
-                                // Beside the first line of the title, level with it.
-                                if tip.locked: VerticalLayout {
-                                    alignment: start;
-                                    LockBadge {
-                                        text: @tr("Supporter");
-                                        height: Type.line-base;
-                                    }
-                                }
                             }
                             VerticalLayout {
                                 spacing: Space.s0-5;
@@ -444,16 +431,6 @@ export component HelpWindow inherits Window {
                                 accessible-role: text;
                             }
                         }
-                        if !root.free-only: SettingRow {
-                            title: @tr("Licence");
-                            Text {
-                                text: root.supporter ? @tr("Supporter") : @tr("Free");
-                                color: Theme.text-primary;
-                                font-family: Fonts.sans;
-                                font-size: Type.base;
-                                accessible-role: text;
-                            }
-                        }
                     }
 
                     FormSection {
@@ -492,6 +469,15 @@ export component HelpWindow inherits Window {
                                 text: @tr("Open");
                                 a11y-label: @tr("Open the releases page");
                                 clicked => { root.releases-requested(); }
+                            }
+                        }
+                        SettingRow {
+                            title: @tr("Support Snipdeck");
+                            description: @tr("Optional. Snipdeck is free and stays free. This opens a donation page in your browser and unlocks nothing.");
+                            Button {
+                                text: @tr("Open");
+                                a11y-label: @tr("Open the Support Snipdeck page in your browser");
+                                clicked => { root.support-requested(); }
                             }
                         }
                         if root.show-store-link: SettingRow {

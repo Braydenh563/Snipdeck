@@ -186,7 +186,7 @@ fn settings() -> (SettingsPage, Log) {
     // The host's "contains"; Slint has none.
     SettingsFilter::get(&ui)
         .on_matches(|text, query| text.to_lowercase().contains(&query.to_lowercase()));
-    // Tall enough that the whole page (with the plan table in Licence) is on screen: the testing backend only lists what is visible.
+    // Tall enough that the whole page is on screen: the testing backend only lists what is visible.
     ui.window().set_size(slint::LogicalSize::new(640.0, 6000.0));
     ui.show().expect("show");
     settle();
@@ -218,7 +218,7 @@ fn settings() -> (SettingsPage, Log) {
     }
     hook!(on_no_history_app_added, |n| format!("hist+:{n}"));
     hook!(on_no_history_app_removed, |i| format!("hist-:{i}"));
-    hook!(on_licence_submitted, |k| format!("licence:{k}"));
+    ui.on_support_requested(log_hook(&log, "support"));
     hook!(on_backup_restore_requested, |i| format!("restore:{i}"));
     hook!(on_erase_confirmed, |t, forget| format!(
         "erase:{t}:{forget}"
@@ -430,20 +430,6 @@ ui_tests! {
             find(&ui, "Template text", AccessibleRole::TextInput).accessible_value().as_deref(),
             Some("Due on {date}"),
         );
-
-        ui.set_prompted_available(false);
-        settle();
-        assert_eq!(find(&ui, "Insert {field:Name}", AccessibleRole::Button).accessible_enabled(), Some(false));
-        assert_eq!(find(&ui, "Insert {date}", AccessibleRole::Button).accessible_enabled(), Some(true));
-        for chip in ["{multiline:Name|default}", "{pickdate:Name|FORMAT}", "{optional:Name}...{/optional}"] {
-            let label = format!("Insert {chip}");
-            assert_eq!(find(&ui, &label, AccessibleRole::Button).accessible_enabled(), Some(false), "{chip}");
-        }
-        // The Supporter chips (field, choice, multiline, pickdate, optional) carry a lock badge in place.
-        let badges = ElementHandle::find_by_accessible_label(&ui, "Supporter")
-            .filter(|e| e.accessible_role() == Some(AccessibleRole::Text))
-            .count();
-        assert_eq!(badges, 5);
     }
 
     fn a_formatted_item_says_changed_text_loses_its_formatting_and_offers_to_remove_it_alone() {
@@ -470,25 +456,6 @@ ui_tests! {
         ui.set_formatted(false);
         settle();
         assert!(!shown(&ui) && missing(&ui, "Remove formatting, keep the text", AccessibleRole::Button));
-    }
-
-    fn the_supporter_refusal_on_save_offers_the_way_to_get_supporter() {
-        let (ui, log) = item_editor();
-        ui.on_supporter_requested({
-            let log = log.clone();
-            move || log.borrow_mut().push("supporter".to_owned())
-        });
-        settle();
-        assert!(missing(&ui, "Get Supporter…", AccessibleRole::Button), "no refusal, no button");
-        ui.set_content_error("Fields that ask for a value are a Supporter feature. Remove them to save.".into());
-        ui.set_content_needs_supporter(true);
-        settle();
-        find(&ui, "Get Supporter…", AccessibleRole::Button).invoke_accessible_default_action();
-        settle();
-        assert_eq!(take(&log), ["supporter"]);
-        ui.set_content_needs_supporter(false);
-        settle();
-        assert!(missing(&ui, "Get Supporter…", AccessibleRole::Button));
     }
 
     fn the_list_select_opens_in_place_chooses_and_closes_with_escape() {
@@ -1268,28 +1235,12 @@ ui_tests! {
         settle();
         let sections = [
             "Shortcuts", "Appearance", "Panel layout", "Opening the Panel", "Privacy", "Programs", "Typing",
-            "Backups and your data", "Licence",
-        ];
-        // The Licence section's plan table is a comparison, not settings: its rows are not searched.
-        let plan_table = [
-            "Free plan",
-            "Free and Supporter compared",
-            "Boards",
-            "Lists and items",
-            "Panel and Picker",
-            "Save from the clipboard",
-            "Dock to a screen edge",
-            "Templates with date, time and cursor",
-            "Sensitive items, masked",
-            "Encryption on disk",
-            "Backups, export, light and dark, 7 languages",
-            "Templates that ask",
-            "Paste stack",
+            "Backups and your data", "Support",
         ];
         let titles: Vec<String> = by_role(&ui, AccessibleRole::Groupbox)
             .iter()
             .filter_map(|e| e.accessible_label().map(|l| l.to_string()))
-            .filter(|t| !sections.contains(&t.as_str()) && !plan_table.contains(&t.as_str()))
+            .filter(|t| !sections.contains(&t.as_str()))
             .collect();
         assert!(titles.len() > 30, "{titles:?}");
         assert!(titles.iter().any(|t| t == "Unlock with Windows Hello"), "{titles:?}");
@@ -1309,7 +1260,7 @@ ui_tests! {
     }
 
     fn searching_hello_without_the_row_lands_on_the_master_password_hint() {
-        // Hello is not offered (no password, Free plan or no Hello): the search still shows the Privacy
+        // Hello is not offered (no password or no Hello): the search still shows the Privacy
         // section, with its Master password row, which says what Hello needs.
         let (ui, _log) = settings();
         ui.set_hello_offered(false);
@@ -1329,10 +1280,10 @@ ui_tests! {
         for (query, section) in [
             ("Shortcuts", "Shortcuts"), ("Appearance", "Appearance"), ("Panel layout", "Panel layout"),
             ("Opening the Panel", "Opening the Panel"), ("Privacy", "Privacy"), ("Programs", "Programs"),
-            ("Typing", "Typing"), ("Backups and your data", "Backups and your data"), ("Licence", "Licence"),
+            ("Typing", "Typing"), ("Backups and your data", "Backups and your data"), ("Support", "Support"),
             ("trigger", "Typing"), ("triggers", "Typing"), ("text expansion", "Typing"), ("autocomplete", "Typing"),
             ("fingerprint", "Privacy"), ("PIN", "Privacy"), ("face", "Privacy"),
-            ("never paste", "Programs"), ("license", "Licence"),
+            ("never paste", "Programs"), ("donate", "Support"), ("coffee", "Support"),
         ] {
             filter.set_query(query.into());
             settle();
@@ -1532,20 +1483,11 @@ ui_tests! {
         let _ = find(&ui, "putty.exe is already in the list.", AccessibleRole::Text);
     }
 
-    fn the_licence_backup_and_data_sections_report_their_gestures() {
+    fn the_support_backup_and_data_sections_report_their_gestures() {
         let (ui, log) = settings();
-        // A key is typed, then Activate sends it.
-        find(&ui, "Activate", AccessibleRole::Button).invoke_accessible_default_action();
-        assert!(take(&log).is_empty(), "an empty field sends nothing");
-        find(&ui, "Licence key", AccessibleRole::TextInput).set_accessible_value("SNIP1.abc.def");
-        find(&ui, "Activate", AccessibleRole::Button).invoke_accessible_default_action();
-        assert_eq!(take(&log), ["licence:SNIP1.abc.def"]);
-        // Pro has nothing to type.
-        ui.set_pro(true);
-        settle();
-        assert!(ElementHandle::find_by_accessible_label(&ui, "Activate").next().is_none());
-        ui.set_pro(false);
-        settle();
+        // The Support row asks the host to open the donation page.
+        find(&ui, "Open the Support Snipdeck page in your browser", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["support"]);
 
         find(&ui, "Restore the backup of 2026-10-17", AccessibleRole::Button).invoke_accessible_default_action();
         find(&ui, "Back up now", AccessibleRole::Button).invoke_accessible_default_action();

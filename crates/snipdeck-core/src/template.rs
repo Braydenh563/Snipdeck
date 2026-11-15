@@ -7,26 +7,24 @@
 //!
 //! # Which render method to call
 //!
-//! The app should use [`Template::render_checked`]: it enforces the user's [`Entitlements`]
-//! (prompted fields are Supporter) and the output size limit, [`MAX_RENDERED_BYTES`], and reports
-//! both as a [`RenderError`]. [`Template::try_render`] does the size check only, for callers
-//! that have verified the entitlement themselves. [`Template::render`] is the unchecked
-//! primitive: it resolves Supporter placeholders for anyone and, when the output would be over
-//! the limit, cuts it there instead of failing.
+//! The app should use [`Template::try_render`]: it enforces the output size limit,
+//! [`MAX_RENDERED_BYTES`], and reports it as a [`RenderError`]. [`Template::render`] is the
+//! unchecked primitive: when the output would be over the limit it cuts it there instead of
+//! failing.
 //!
 //! # Syntax
 //!
-//! | Placeholder | Tier | Renders as |
-//! |---|---|---|
-//! | `{date}` | Free | the date in the context's [`Locale`] (ISO `2026-10-17` by default) |
-//! | `{time}` | Free | the time in the context's [`Locale`] (`14:05`, or `2:05 PM` for a 12-hour locale) |
-//! | `{datetime:FORMAT}` / `{date:FORMAT}` | Free | the date and time formatted by `FORMAT`, see below |
-//! | `{date+3d}`, `{time-90min}`, `{datetime+1mo:%F}` | Free | the same, moved by an offset, see below |
-//! | `{uuid}` | Free | a random version 4 UUID, new for each use of the placeholder |
-//! | `{clipboard}` | Free | the clipboard text the caller supplied, or nothing |
-//! | `{cursor}` | Free | nothing; marks where the caret should land, see [`Rendered::cursor_from_end`] |
-//! | `{field:Name}` / `{field:Name\|default}` | Supporter | the answer to a text prompt |
-//! | `{choice:Name\|a\|b\|c}` | Supporter | the answer to a pick-one prompt |
+//! | Placeholder | Renders as |
+//! |---|---|
+//! | `{date}` | the date in the context's [`Locale`] (ISO `2026-10-17` by default) |
+//! | `{time}` | the time in the context's [`Locale`] (`14:05`, or `2:05 PM` for a 12-hour locale) |
+//! | `{datetime:FORMAT}` / `{date:FORMAT}` | the date and time formatted by `FORMAT`, see below |
+//! | `{date+3d}`, `{time-90min}`, `{datetime+1mo:%F}` | the same, moved by an offset, see below |
+//! | `{uuid}` | a random version 4 UUID, new for each use of the placeholder |
+//! | `{clipboard}` | the clipboard text the caller supplied, or nothing |
+//! | `{cursor}` | nothing; marks where the caret should land, see [`Rendered::cursor_from_end`] |
+//! | `{field:Name}` / `{field:Name\|default}` | the answer to a text prompt |
+//! | `{choice:Name\|a\|b\|c}` | the answer to a pick-one prompt |
 //!
 //! `{{` and `}}` produce literal braces ([`escape`] does this for arbitrary text). Any other
 //! use of a brace is a [`TemplateError`] with the byte span of the problem: an unknown
@@ -79,7 +77,7 @@ use jiff::Zoned;
 pub use jiff::tz::TimeZone;
 use unicode_segmentation::UnicodeSegmentation as _;
 
-use crate::{Entitlements, Error, Feature, Timestamp};
+use crate::Timestamp;
 
 pub mod transform;
 
@@ -651,7 +649,7 @@ impl fmt::Display for TemplateErrorKind {
 }
 
 /// Why a template could not be rendered. Both cases leave the template and context as they
-/// were; show the user a message (or the Supporter upsell) and let them try again.
+/// were; show the user a message and let them try again.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum RenderError {
     /// The result would be longer than [`MAX_RENDERED_BYTES`].
@@ -660,9 +658,6 @@ pub enum RenderError {
         /// The limit, [`MAX_RENDERED_BYTES`].
         limit: usize,
     },
-    /// The template needs a Supporter feature the entitlements do not include.
-    #[error("`{0}` needs Snipdeck Supporter")]
-    ProRequired(Feature),
 }
 
 /// `text` with every brace doubled, so it parses back to exactly `text`.
@@ -779,45 +774,17 @@ impl Template {
         uuids_in(&self.parts)
     }
 
-    /// Whether using this template needs `feature`: only [`Feature::PromptedFields`], and only
-    /// if it has a prompt: `{field}`, `{choice}`, `{multiline}`, `{pickdate}` or `{optional}`.
-    pub fn requires(&self, feature: Feature) -> bool {
-        match feature {
-            Feature::PromptedFields => !self.prompts.is_empty(),
-            Feature::UnlimitedBoards
-            | Feature::MasterPassword
-            | Feature::FloatingLists
-            | Feature::PasteStack => false,
-        }
-    }
-
-    /// Checks `entitlements` allow every feature this template needs.
-    ///
-    /// # Errors
-    ///
-    /// [`Error::ProRequired`] naming the missing feature.
-    pub fn check(&self, entitlements: &Entitlements) -> Result<(), Error> {
-        for &feature in Feature::ALL {
-            if self.requires(feature) {
-                entitlements.require(feature)?;
-            }
-        }
-        Ok(())
-    }
-
-    /// Resolves the template **without** checking entitlements; prefer
-    /// [`Template::render_checked`].
+    /// Resolves the template, cutting the output at [`MAX_RENDERED_BYTES`]; prefer
+    /// [`Template::try_render`].
     ///
     /// Missing pieces degrade rather than fail: no clipboard renders as nothing, an
     /// unanswered field as its default (or nothing), an unanswered choice as its first
     /// option, an unanswered `{pickdate}` as today, an unticked `{optional}` section as nothing.
     /// An answer is used as given, even if empty or not among a choice's options.
     ///
-    /// This resolves every prompt (`{field}`, `{choice}`, `{multiline}`, `{pickdate}` and
-    /// `{optional}`) for any tier, so a caller that forgets
-    /// [`Template::check`] gives Free users a Supporter feature. If the output would exceed
-    /// [`MAX_RENDERED_BYTES`] it is cut at that length (on a character boundary) rather than
-    /// grown without bound; [`Template::try_render`] reports that instead.
+    /// If the output would exceed [`MAX_RENDERED_BYTES`] it is cut at that length (on a
+    /// character boundary) rather than grown without bound; [`Template::try_render`] reports
+    /// that instead.
     pub fn render(&self, ctx: &RenderContext<'_>) -> Rendered {
         self.render_bounded(ctx).0
     }
@@ -834,25 +801,6 @@ impl Template {
                 limit: MAX_RENDERED_BYTES,
             }),
         }
-    }
-
-    /// Resolves the template for a user with `entitlements`: the call the app should make.
-    ///
-    /// # Errors
-    ///
-    /// [`RenderError::ProRequired`] naming the first missing feature (see
-    /// [`Template::check`]), or [`RenderError::OutputTooLarge`] (see [`Template::try_render`]).
-    pub fn render_checked(
-        &self,
-        entitlements: &Entitlements,
-        ctx: &RenderContext<'_>,
-    ) -> Result<Rendered, RenderError> {
-        for &feature in Feature::ALL {
-            if self.requires(feature) && !entitlements.allows(feature) {
-                return Err(RenderError::ProRequired(feature));
-            }
-        }
-        self.try_render(ctx)
     }
 
     fn render_parts(

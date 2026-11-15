@@ -68,11 +68,6 @@ if ($running.Count -gt 0) {
 if (-not $NoBuild) {
     Say ''
     Say 'Step 2. Building Snipdeck (a few minutes the first time, seconds after that)...' Cyan
-    if (-not $env:SNIPDECK_LICENCE_PUBLIC_KEY) {
-        # The published throwaway test key the wizard uses (licence/key_selection.rs).
-        $env:SNIPDECK_LICENCE_PUBLIC_KEY = 'Zr5+Myx6RTMyvZ0Kf32wVfXF7xoGraZtmLOftoEMRzo='
-        $env:SNIPDECK_ALLOW_TEST_LICENCE_KEY = '1'
-    }
     Push-Location $repo
     try {
         & cargo build --release --color never 2>&1 | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }

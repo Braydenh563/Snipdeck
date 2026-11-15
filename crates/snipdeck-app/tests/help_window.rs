@@ -25,7 +25,7 @@ use snipdeck_app::{
     shortcuts::CATALOGUE,
     tips::TIPS,
 };
-use snipdeck_core::{Entitlements, Tier, Timestamp};
+use snipdeck_core::Timestamp;
 use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
 use snipdeck_store::Store;
 use snipdeck_ui::{HelpWindow, ShortcutTexts, TipTexts};
@@ -56,15 +56,19 @@ impl HelpHost for NoHost {
     }
 }
 
-/// The free-only Store package: the same machine, packaged.
-struct StoreHost;
+/// A host that remembers every address it was asked to open.
+#[derive(Default)]
+struct RecordingHost {
+    urls: RefCell<Vec<String>>,
+}
 
-impl HelpHost for StoreHost {
+impl HelpHost for RecordingHost {
     fn open_folder(&self, folder: &Path) -> Result<(), String> {
         NoHost.open_folder(folder)
     }
     fn open_url(&self, url: &str) -> Result<(), String> {
-        NoHost.open_url(url)
+        self.urls.borrow_mut().push(url.to_owned());
+        Ok(())
     }
     fn open_file(&self, file: &Path) -> Result<(), String> {
         NoHost.open_file(file)
@@ -74,9 +78,6 @@ impl HelpHost for StoreHost {
     }
     fn notices_file(&self) -> Option<PathBuf> {
         None
-    }
-    fn free_only(&self) -> bool {
-        true
     }
 }
 
@@ -91,10 +92,10 @@ struct Rig {
 }
 
 fn rig(settings: Settings) -> Rig {
-    rig_on(settings, Tier::Pro)
+    rig_on(settings)
 }
 
-fn rig_on(settings: Settings, tier: Tier) -> Rig {
+fn rig_on(settings: Settings) -> Rig {
     let ctl: Rc<RefCell<Ctl>> = Rc::new(RefCell::new(
         Controller::new(
             demo::store(now()).expect("demo store"),
@@ -106,7 +107,6 @@ fn rig_on(settings: Settings, tier: Tier) -> Rig {
             Box::new(FakeTargets::new(Some(demo::target()))),
             Box::new(FixedClock::new(now())),
             settings,
-            Entitlements::new(tier),
         )
         .expect("controller"),
     ));
@@ -313,57 +313,6 @@ fn try_it_runs_the_tip_action() {
 }
 
 #[test]
-fn on_the_free_plan_the_supporter_cards_are_marked_and_try_it_opens_the_licence() {
-    on_ui_thread(|| {
-        let pro = rig_on(Settings::default(), Tier::Pro);
-        pro.binding.refresh();
-        assert!(pro.ui.get_tips().iter().all(|c| !c.locked));
-
-        let r = rig_on(Settings::default(), Tier::Free);
-        r.ui.set_tab(3);
-        r.binding.refresh();
-        let cards: Vec<_> = r.ui.get_tips().iter().collect();
-        let locked: Vec<usize> = (0..cards.len()).filter(|&i| cards[i].locked).collect();
-        let wanted: Vec<usize> = (0..TIPS.len())
-            .filter(|&i| TIPS[i].feature.is_some())
-            .collect();
-        assert_eq!(
-            locked, wanted,
-            "a card is marked exactly when its feature is Supporter"
-        );
-        // The three the blind test hit: paste next, the templates, the master password.
-        let titles: Vec<&str> = locked.iter().map(|&i| cards[i].title.as_str()).collect();
-        assert_eq!(
-            titles,
-            [
-                "Paste several in order",
-                "Fill in the blanks",
-                "Keep secrets secret"
-            ]
-        );
-        for &i in &locked {
-            let _ = r.ctl.borrow_mut().take_pending();
-            r.ui.invoke_try_tip_requested(i32::try_from(i).expect("index"));
-            assert_eq!(
-                r.ctl.borrow_mut().take_pending(),
-                vec![Effect::OpenLicence],
-                "{}: Try it on Free is the licence page, not a dead end",
-                cards[i].title
-            );
-        }
-        // A free card still does its own thing.
-        let _ = r.ctl.borrow_mut().take_pending();
-        r.ui.invoke_try_tip_requested(2);
-        assert!(
-            r.ctl
-                .borrow_mut()
-                .take_pending()
-                .contains(&Effect::OpenMainWindow)
-        );
-    });
-}
-
-#[test]
 fn the_recent_card_says_what_recent_holds() {
     on_ui_thread(|| {
         let r = rig(Settings::default());
@@ -382,18 +331,29 @@ fn the_recent_card_says_what_recent_holds() {
 }
 
 #[test]
-fn the_help_window_names_no_plan_in_the_free_only_package() {
+fn the_about_page_support_row_opens_exactly_the_coffee_page_and_nothing_else() {
     on_ui_thread(|| {
-        let github = rig(Settings::default());
-        assert!(
-            !github.ui.get_free_only(),
-            "the GitHub build names its plan"
-        );
-        let ctl = Rc::clone(&github.ctl);
+        let r = rig(Settings::default());
+        let ctl = Rc::clone(&r.ctl);
         let ui = HelpWindow::new().expect("help window");
-        let binding = HelpBinding::new(&ctl, &ui, None, Rc::new(StoreHost));
+        let host = Rc::new(RecordingHost::default());
+        let binding = HelpBinding::new(&ctl, &ui, None, Rc::clone(&host) as Rc<dyn HelpHost>);
         ui.show().expect("show");
         binding.refresh();
-        assert!(ui.get_free_only(), "the Store package does not");
+        assert!(host.urls.borrow().is_empty(), "nothing opens by itself");
+        ui.invoke_support_requested();
+        assert_eq!(
+            *host.urls.borrow(),
+            ["https://buymeacoffee.com/braydenh563".to_owned()]
+        );
+        assert_eq!(
+            snipdeck_app::help_binding::SUPPORT_URL,
+            host.urls.borrow()[0]
+        );
+        assert_eq!(
+            r.ctl.borrow_mut().take_pending(),
+            Vec::new(),
+            "nothing unlocked"
+        );
     });
 }

@@ -1,7 +1,7 @@
-//! Binds the Settings page to the [`Controller`]: copies the settings, the licence tier and the
+//! Binds the Settings page to the [`Controller`]: copies the settings and the
 //! backups into the window, and turns every callback into a change of the settings (stored by the
 //! controller's quiet-time saver, see [`Controller::update_settings`]) or a call of one of the
-//! controller's Settings methods (licence, backup, restore, export, erase).
+//! controller's Settings methods (backup, restore, export, erase).
 //!
 //! Everything the page does to the machine goes through [`SettingsHost`], so tests run it against
 //! fakes: registering the global shortcuts, the Windows start-up entry, opening a folder.
@@ -45,23 +45,11 @@ use crate::{
         PanelSwitcher, PickerSide, ProgramPaste, ProgramRule, RowDensity, Settings, TextSize,
         Theme, TrayClick,
     },
-    toast::{LicenceProblem, Toast, ToastKind, ToastMessage},
+    toast::{Toast, ToastKind, ToastMessage},
     wording::{self, LANGUAGE_NAMES, LANGUAGE_TAGS},
 };
 
 // ---- What the machine is asked to do -----------------------------------------------------------
-
-/// The address "Get Supporter" and "Email me" write to: the owner's, supplied 2026-10-20. The
-/// website's two mailto links in `site/index.html` carry the same one, and the test
-/// `get_supporter_opens_the_email_app_with_the_one_named_address` pins it.
-pub const SUPPORTER_EMAIL: &str = "brayden.hoyle@outlook.com";
-
-/// The link behind "Get Supporter": opens the user's email app with a new message to
-/// [`SUPPORTER_EMAIL`].
-#[must_use]
-pub fn supporter_mailto() -> String {
-    format!("mailto:{SUPPORTER_EMAIL}")
-}
 
 /// Why "Start with Windows" could not be changed.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -117,7 +105,7 @@ pub trait SettingsHost {
     /// The file manager could not be started.
     fn open_folder(&self, folder: &Path) -> Result<(), String>;
 
-    /// Opens `url` (here, the `mailto:` link of Get Supporter) in the default program.
+    /// Opens `url` (here, the Support Snipdeck page) in the default browser.
     ///
     /// # Errors
     ///
@@ -155,13 +143,6 @@ pub trait SettingsHost {
     /// section turns its switches off and says so when this is false.
     fn typing_supported(&self) -> bool {
         cfg!(windows)
-    }
-
-    /// Whether this is the free-only Store package: no Get Supporter, no licence entry, every
-    /// feature on (Store policy 10.8). The real host asks whether the app runs from the package;
-    /// tests pass either answer.
-    fn free_only(&self) -> bool {
-        false
     }
 
     /// Reads the text entries of the Windows clipboard history. May block until Windows answers.
@@ -220,10 +201,6 @@ impl SystemHost {
 }
 
 impl SettingsHost for SystemHost {
-    fn free_only(&self) -> bool {
-        crate::platform::is_packaged()
-    }
-
     fn apply_hotkeys(&self, hotkeys: &Hotkeys) -> Vec<HotkeyProblem> {
         apply_hotkeys(&mut **self.hotkeys.borrow_mut(), hotkeys)
     }
@@ -508,7 +485,6 @@ pub fn key_chips(value: &str) -> Vec<String> {
 pub(crate) fn try_register(
     host: &dyn SettingsHost,
     paused: bool,
-    supporter: bool,
     action: HotkeyAction,
     current: &Hotkeys,
     next: &Hotkeys,
@@ -516,14 +492,12 @@ pub(crate) fn try_register(
     if paused {
         return None;
     }
-    // Paste next is not registered on the Free plan (it stays in the settings).
-    let (current, next) = (current.registrable(supporter), next.registrable(supporter));
     let refused = host
-        .apply_hotkeys(&next)
+        .apply_hotkeys(next)
         .into_iter()
         .find(|p| p.action == action);
     if let Some(problem) = refused {
-        let _ = host.apply_hotkeys(&current);
+        let _ = host.apply_hotkeys(current);
         return Some(problem.failure);
     }
     None
@@ -610,9 +584,6 @@ where
 {
     match note {
         None => String::new(),
-        Some(RowNote::SupporterOnly) => ui::FormTexts::get(window)
-            .invoke_hotkey_supporter_only()
-            .into(),
         Some(RowNote::Failed(failure)) => {
             hotkey_refusal_text(window, HotkeyRefusal::Refused(failure), combo)
         }
@@ -656,10 +627,8 @@ struct HotkeyRow {
 /// Why a stored shortcut does nothing, shown on its Settings row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum RowNote {
-    /// Windows refused it at the last registration (start-up, resume, plan change).
+    /// Windows refused it at the last registration (start-up or resume).
     Failed(HotkeyFailure),
-    /// Paste next on the Free plan: kept in the settings, never registered.
-    SupporterOnly,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -691,7 +660,6 @@ struct ImportLines {
     lists: i32,
     items: i32,
     duplicates: i32,
-    blocked: bool,
     warnings: Vec<snipdeck_portable::Warning>,
     more: i32,
 }
@@ -717,7 +685,6 @@ impl ImportLines {
                 lines.lists = to_i32(p.lists);
                 lines.items = to_i32(p.items);
                 lines.duplicates = to_i32(p.duplicates);
-                lines.blocked = p.blocked_by_board_limit;
                 lines.warnings = p.warnings.iter().take(WARNINGS_SHOWN).cloned().collect();
                 lines.more =
                     to_i32(p.warnings.len().saturating_sub(WARNINGS_SHOWN) + p.warnings_dropped);
@@ -778,12 +745,9 @@ struct PageView {
     paste_rule_error: String,
     no_history_apps: Vec<String>,
     no_history_error: String,
-    pro: bool,
-    licence_error: Option<LicenceProblem>,
     /// 0 = no key protection on this machine, 1 = no master password, 2 = one is set.
     master_state: i32,
     master_locked: bool,
-    master_allowed: bool,
     hello_offered: bool,
     hello_unlock: bool,
     has_data_folder: bool,
@@ -799,7 +763,6 @@ struct PageState {
     hotkey_conflicts: [String; 4],
     paste_rule_error: String,
     no_history_error: String,
-    licence_error: Option<LicenceProblem>,
     backups: Vec<BackupFile>,
     import: Option<PendingImport>,
 }
@@ -944,12 +907,7 @@ where
                 HotkeyAction::Capture => &settings.hotkeys.capture,
                 HotkeyAction::PasteNext => &settings.hotkeys.paste_next,
             };
-            let supporter = controller.tier() == snipdeck_core::Tier::Pro;
-            let note = if value.is_empty() {
-                None
-            } else if action == HotkeyAction::PasteNext && !supporter {
-                Some(RowNote::SupporterOnly)
-            } else if controller.hotkeys_paused() {
+            let note = if value.is_empty() || controller.hotkeys_paused() {
                 None
             } else {
                 controller
@@ -957,12 +915,7 @@ where
                     .map(|p| RowNote::Failed(p.failure))
             };
             let conflict = state.hotkey_conflicts[i].clone();
-            let health = if matches!(note, Some(RowNote::SupporterOnly)) {
-                // Never registered on the Free plan: there is nothing to test.
-                None
-            } else {
-                Some(controller.hotkey_health(action))
-            };
+            let health = Some(controller.hotkey_health(action));
             let alternatives = if !value.is_empty()
                 && (!conflict.is_empty() || matches!(health, Some(HotkeyHealth::Failed(_))))
             {
@@ -1055,8 +1008,6 @@ where
         paste_rule_error: state.paste_rule_error.clone(),
         no_history_apps: settings.no_history_apps.clone(),
         no_history_error: state.no_history_error.clone(),
-        pro: controller.tier() == snipdeck_core::Tier::Pro,
-        licence_error: state.licence_error,
         master_state: match controller.master_password_state() {
             MasterState::Unavailable => 0,
             MasterState::NotSet => 1,
@@ -1064,7 +1015,6 @@ where
             MasterState::KeyUnavailable => 3,
         },
         master_locked: controller.library_locked(),
-        master_allowed: controller.master_password_allowed(),
         hello_offered: controller.hello_offered(),
         hello_unlock: controller.hello_enabled(),
         has_data_folder,
@@ -1307,30 +1257,10 @@ where
         try_register(
             self.host.as_ref(),
             controller.hotkeys_paused(),
-            controller.tier() == snipdeck_core::Tier::Pro,
             action,
             current,
             next,
         )
-    }
-
-    /// Registers the chords in force again: the plan may have changed, and Paste next is
-    /// registered with Supporter only. Does nothing while "Pause hotkeys" is on (resuming
-    /// registers them).
-    fn apply_hotkeys_for_tier(&self) {
-        let controller = self.controller.borrow();
-        if controller.hotkeys_paused() {
-            return;
-        }
-        let supporter = controller.tier() == snipdeck_core::Tier::Pro;
-        let chords = controller.settings().hotkeys.registrable(supporter);
-        drop(controller);
-        // A refusal here (Paste next taken by another app once Supporter is on) is reported like
-        // one at start-up, never dropped.
-        let problems = self.host.apply_hotkeys(&chords);
-        self.controller
-            .borrow_mut()
-            .report_hotkey_problems(&problems);
     }
 
     // ---- Text size -----------------------------------------------------------------------------
@@ -1446,15 +1376,7 @@ where
         }
     }
 
-    // ---- Licence, backups, data ------------------------------------------------------------
-
-    fn licence_submitted(self: &Rc<Self>, key: &str) {
-        let data_dir = self.data_dir.clone();
-        let result = self.act(|ctl| ctl.apply_licence(key, data_dir.as_deref()));
-        self.state.borrow_mut().licence_error = result.err();
-        self.apply_hotkeys_for_tier();
-        redraw_all();
-    }
+    // ---- Backups, data ----------------------------------------------------------------------
 
     /// The master password form's action. The passwords exist only in these arguments: they go
     /// to the controller and are not stored. A refusal is written to the page so it can say
@@ -1673,11 +1595,11 @@ where
         self.open_folder(&backups);
     }
 
-    /// Opens the email app for Get Supporter.
-    fn get_supporter(self: &Rc<Self>) {
-        if let Err(error) = self.host.open_url(&supporter_mailto()) {
-            crate::trace!("get supporter: {error}");
-            self.toast(ToastKind::Danger, ToastMessage::MailNotOpened);
+    /// Opens the optional Support Snipdeck page in the browser.
+    fn open_support(self: &Rc<Self>) {
+        if let Err(error) = self.host.open_url(crate::help_binding::SUPPORT_URL) {
+            crate::trace!("support page: {error}");
+            self.toast(ToastKind::Danger, ToastMessage::LinkNotOpened);
             redraw_all();
         }
     }
@@ -1764,10 +1686,7 @@ where
             }
         });
         register_redraw(&core.redraw);
-        ui::PlanTexts::get(window)
-            .set_board_limit(to_i32(snipdeck_core::Entitlements::FREE_BOARD_LIMIT));
         let follow = window.invoke_follow_windows_text();
-        window.set_free_board_limit(to_i32(snipdeck_core::Entitlements::FREE_BOARD_LIMIT));
         window.set_languages(model(
             std::iter::once(follow).chain(LANGUAGE_NAMES.iter().map(|n| SharedString::from(*n))),
         ));
@@ -1775,7 +1694,6 @@ where
         ui::SettingsFilter::get(window).on_matches(|text, query| settings_match(&text, &query));
         window.set_import_history_available(core.host.clipboard_history_supported());
         window.set_typing_available(core.host.typing_supported());
-        window.set_free_only(core.host.free_only());
         core.refresh_backups();
         core.sync();
 
@@ -1950,8 +1868,6 @@ where
             .no_history_added(&name));
         wire!(on_no_history_app_removed, |core, i| core
             .no_history_removed(crate::binding::index(i)));
-        wire!(on_licence_submitted, |core, key| core
-            .licence_submitted(&key));
         {
             // Not through `wire!`: it traces every argument, and these are passwords.
             let core = Rc::clone(&core);
@@ -1967,7 +1883,7 @@ where
             i32::try_from(crate::master_password::IDLE_LOCK.as_secs() / 60).unwrap_or(15),
         );
         window.set_master_min_length(to_i32(crate::master_password::MIN_LEN));
-        wire!(on_supporter_requested, |core| core.get_supporter());
+        wire!(on_support_requested, |core| core.open_support());
         wire!(on_backup_now_requested, |core| core.backup_now());
         wire!(on_backup_restore_requested, |core, i| core
             .restore(crate::binding::index(i)));
@@ -2019,7 +1935,6 @@ fn render_import(window: &ui::SettingsPage, i: &ImportLines) {
     window.set_import_lists(i.lists);
     window.set_import_items(i.items);
     window.set_import_duplicates(i.duplicates);
-    window.set_import_blocked(i.blocked);
     window.set_import_warnings(model(
         i.warnings
             .iter()
@@ -2198,25 +2113,11 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     if differs(&|p| p.no_history_error == view.no_history_error) {
         window.set_no_history_error(view.no_history_error.as_str().into());
     }
-    if differs(&|p| p.pro == view.pro) {
-        window.set_pro(view.pro);
-    }
-    if differs(&|p| p.licence_error == view.licence_error) {
-        window.set_licence_error(
-            view.licence_error
-                .map(|problem| wording::licence_problem_text(window, problem))
-                .unwrap_or_default()
-                .into(),
-        );
-    }
     if differs(&|p| p.master_state == view.master_state) {
         window.set_master_state(view.master_state);
     }
     if differs(&|p| p.master_locked == view.master_locked) {
         window.set_master_locked(view.master_locked);
-    }
-    if differs(&|p| p.master_allowed == view.master_allowed) {
-        window.set_master_allowed(view.master_allowed);
     }
     if differs(&|p| p.hello_offered == view.hello_offered) {
         window.set_hello_offered(view.hello_offered);
@@ -2259,39 +2160,16 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
 // ---- Opening the window on demand --------------------------------------------------------------
 
 thread_local! {
-    /// Opens the Settings page at the Licence section; set with [`OPENER`].
-    static LICENCE_OPENER: RefCell<Option<Rc<dyn Fn()>>> = const { RefCell::new(None) };
     /// Opens the Settings page; set by [`SettingsUi::new`]. The Main window's Settings button
     /// reaches the page through [`request_open`] because it is created long before the host
     /// could hand it anything.
     static OPENER: RefCell<Option<Rc<dyn Fn()>>> = const { RefCell::new(None) };
 }
 
-/// Scrolls an open Settings page to the Licence section.
-fn jump_to_licence(window: Option<&ui::SettingsPage>) {
-    if let Some(window) = window {
-        let filter = ui::SettingsFilter::get(window);
-        filter.set_jump_target(LICENCE_SECTION);
-        filter.set_jump_seq(filter.get_jump_seq() + 1);
-    }
-}
-
-/// The Licence section's index in `settings.slint` (the search keys `keys-7`).
-const LICENCE_SECTION: i32 = 7;
-
 /// Opens the Settings page (creating it the first time), if the host made one with
 /// [`SettingsUi::new`]. UI thread only.
 pub fn request_open() {
     let opener = OPENER.with(|o| o.borrow().clone());
-    if let Some(opener) = opener {
-        opener();
-    }
-}
-
-/// Opens the Settings page at the Licence section (Get Supporter), for a button that sits next to a Supporter
-/// refusal. UI thread only.
-pub fn request_open_licence() {
-    let opener = LICENCE_OPENER.with(|o| o.borrow().clone());
     if let Some(opener) = opener {
         opener();
     }
@@ -2381,13 +2259,6 @@ impl SettingsUi {
             })
         };
         let open: Rc<dyn Fn() -> Result<(), slint::PlatformError>> = Rc::new(open);
-        LICENCE_OPENER.with(|o| {
-            let (open, window) = (Rc::clone(&open), Rc::clone(&window));
-            *o.borrow_mut() = Some(Rc::new(move || match open() {
-                Ok(()) => jump_to_licence(window().as_ref()),
-                Err(e) => crate::trace!("cannot open the licence settings: {e}"),
-            }));
-        });
         OPENER.with(|o| {
             let open = Rc::clone(&open);
             *o.borrow_mut() = Some(Rc::new(move || {
@@ -2409,17 +2280,6 @@ impl SettingsUi {
     /// The windowing system failed to create or show it.
     pub fn open(&self) -> Result<(), slint::PlatformError> {
         (self.open)()
-    }
-
-    /// Opens the page and scrolls it to the Licence section (where Get Supporter is).
-    ///
-    /// # Errors
-    ///
-    /// The windowing system failed to create or show it.
-    pub fn open_licence(&self) -> Result<(), slint::PlatformError> {
-        self.open()?;
-        jump_to_licence(self.window().as_ref());
-        Ok(())
     }
 
     /// The page, once it has been created.

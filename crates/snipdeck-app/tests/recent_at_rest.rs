@@ -19,7 +19,7 @@ use snipdeck_app::{
     recent::ClipboardObservation,
     settings::Settings,
 };
-use snipdeck_core::{Entitlements, Tier, Timestamp};
+use snipdeck_core::Timestamp;
 use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
 use snipdeck_store::{ItemRepo, RecentContent, RecentRepo, Store, crypto::KdfParams};
 
@@ -42,7 +42,7 @@ fn marker(label: &str) -> String {
     )
 }
 
-fn start(tier: Tier, provider: &SharedProvider, data: &Path, clock: &FixedClock) -> Ctl {
+fn start(provider: &SharedProvider, data: &Path, clock: &FixedClock) -> Ctl {
     let mut store = Store::open(data).expect("store");
     if snipdeck_store::BoardRepo::boards(&store)
         .expect("boards")
@@ -63,7 +63,6 @@ fn start(tier: Tier, provider: &SharedProvider, data: &Path, clock: &FixedClock)
             recent_history: true,
             ..Settings::default()
         },
-        Entitlements::new(tier),
     )
     .expect("controller");
     ctl.set_drafts(Drafts::in_data_dir(data));
@@ -91,13 +90,13 @@ fn without_a_master_password_a_copy_is_sealed_on_disk_and_reads_back() {
     let provider = SharedProvider::new();
     let clock = FixedClock::new(t0());
     let (m, app) = (marker("free"), marker("app"));
-    let mut ctl = start(Tier::Free, &provider, data.path(), &clock);
+    let mut ctl = start(&provider, data.path(), &clock);
     ctl.on_clipboard_change(&copied(&m));
     assert_eq!(texts(&ctl), std::slice::from_ref(&m));
     drop(ctl);
     assert_no_plaintext(data.path(), &[m.as_bytes(), app.as_bytes()]);
     // A restart opens the key by itself and the entry is still there.
-    let ctl = start(Tier::Free, &provider, data.path(), &clock);
+    let ctl = start(&provider, data.path(), &clock);
     assert_eq!(texts(&ctl), [m]);
 }
 
@@ -107,7 +106,7 @@ fn promote_prune_and_clear_work_on_sealed_entries() {
     let provider = SharedProvider::new();
     let clock = FixedClock::new(t0());
     let m = marker("promote");
-    let mut ctl = start(Tier::Free, &provider, data.path(), &clock);
+    let mut ctl = start(&provider, data.path(), &clock);
     ctl.on_clipboard_change(&copied(&m));
     let id = ctl.recent_entries()[0].id;
     let list = snipdeck_store::ListRepo::lists(
@@ -133,7 +132,7 @@ fn with_a_master_password_the_inbox_is_sealed_locked_and_paused_until_unlock() {
     let clock = FixedClock::new(t0());
     let (before, during) = (marker("before"), marker("during"));
     let pw = support::pw("recent");
-    let mut ctl = start(Tier::Pro, &provider, data.path(), &clock);
+    let mut ctl = start(&provider, data.path(), &clock);
     ctl.on_clipboard_change(&copied(&before));
     ctl.set_master_password(pw, pw).expect("set the password");
     ctl.lock_now();
@@ -156,7 +155,7 @@ fn with_a_master_password_the_inbox_is_sealed_locked_and_paused_until_unlock() {
         ],
     );
     // A restart starts locked: the store itself refuses to read.
-    let mut ctl = start(Tier::Pro, &provider, data.path(), &clock);
+    let mut ctl = start(&provider, data.path(), &clock);
     assert!(ctl.recent_locked());
     assert_eq!(texts(&ctl), Vec::<String>::new());
     assert!(ctl.store().recent().is_err(), "the store is locked too");
@@ -182,7 +181,7 @@ fn plain_rows_from_before_encryption_are_sealed_at_the_first_start_with_a_key() 
         file.windows(m.len()).any(|w| w == m.as_bytes()),
         "the probe must see the plain row"
     );
-    let ctl = start(Tier::Free, &provider, data.path(), &clock);
+    let ctl = start(&provider, data.path(), &clock);
     assert_eq!(texts(&ctl), std::slice::from_ref(&m), "nothing lost");
     drop(ctl);
     assert_no_plaintext(data.path(), &[m.as_bytes()]);
@@ -194,7 +193,7 @@ fn rich_payloads_are_sealed_at_rest() {
     let provider = SharedProvider::new();
     let clock = FixedClock::new(t0());
     let (html, path) = (marker("html"), marker("path"));
-    let mut ctl = start(Tier::Free, &provider, data.path(), &clock);
+    let mut ctl = start(&provider, data.path(), &clock);
     ctl.on_clipboard_change(&ClipboardObservation {
         html: Some(format!("<p>{html}</p>")),
         ..copied(&marker("plain"))

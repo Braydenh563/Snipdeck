@@ -1,6 +1,6 @@
 //! Saving the item, and the library key made on the first sensitive item.
 
-use snipdeck_core::{Feature, Formats, Item, ItemKind, Name, Placement, Tag, Trigger};
+use snipdeck_core::{Formats, Item, ItemKind, Name, Placement, Tag, Trigger};
 use snipdeck_store::{
     ItemRepo, TagRepo, Trashable, TriggerRepo,
     crypto::{CryptoError, KeyProviderError},
@@ -82,7 +82,6 @@ where
         };
         let is_text = item_editor::is_text_kind(kind);
         let sensitive = is_text && input.sensitive;
-        let prompted = self.entitlements.allows(Feature::PromptedFields);
         let mut refused = false;
 
         let title = match item_editor::check_title(&input.title) {
@@ -101,9 +100,7 @@ where
             let checked = item_editor::check_text(&input.content).and_then(|()| match kind {
                 ItemKind::Link => item_editor::check_link(&input.content),
                 ItemKind::Template => {
-                    let introduced = slot.template_introduced(&input.content);
-                    item_editor::check_template(&input.content, prompted, introduced)
-                        .map(|()| input.content.clone())
+                    item_editor::check_template(&input.content).map(|()| input.content.clone())
                 }
                 _ => Ok(input.content.clone()),
             });
@@ -114,12 +111,6 @@ where
                     }
                 }
                 Err(p) => {
-                    if let EditorProblem::NeedsPro(feature) = p {
-                        self.show_toast(Toast {
-                            kind: ToastKind::Danger,
-                            message: ToastMessage::NeedsPro(feature),
-                        });
-                    }
                     slot.problems.content = Some(p);
                     refused = true;
                 }

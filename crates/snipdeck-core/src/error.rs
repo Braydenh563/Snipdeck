@@ -1,4 +1,4 @@
-use crate::{Feature, FormatKind};
+use crate::FormatKind;
 
 /// Everything that can go wrong when building or parsing a core value.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -59,7 +59,4 @@ pub enum Error {
         /// The rejected input.
         value: String,
     },
-    /// The action needs Snipdeck Supporter; the UI answers this with the upsell sheet (SPEC §6).
-    #[error("`{0}` needs Snipdeck Supporter")]
-    ProRequired(Feature),
 }

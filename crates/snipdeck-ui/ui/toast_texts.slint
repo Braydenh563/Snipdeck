@@ -32,12 +32,6 @@ export global ToastTexts {
     pure public function clipboard-busy() -> string {
         return @tr("Couldn't reach the clipboard. Another app may be using it.");
     }
-    pure public function needs-pro() -> string {
-        return @tr("This item uses a Supporter feature.");
-    }
-    pure public function needs-pro-paste-stack() -> string {
-        return @tr("Paste next and the paste stack are Supporter features.");
-    }
     pure public function template-broken() -> string {
         return @tr("This template can't be read. Open it to fix it.");
     }
@@ -230,9 +224,6 @@ export global ToastTexts {
     pure public function trash-emptied() -> string {
         return @tr("The Trash is empty");
     }
-    pure public function board-limit() -> string {
-        return @tr("The Free plan includes 5 boards. Supporter adds unlimited boards.");
-    }
     pure public function library-problem() -> string {
         return @tr("Snipdeck found a problem in your library. Export a copy to be safe.");
     }
@@ -241,9 +232,6 @@ export global ToastTexts {
     }
     pure public function crashed-last-time() -> string {
         return @tr("Snipdeck closed unexpectedly last time. Open the log?");
-    }
-    pure public function licence-accepted() -> string {
-        return @tr("Snipdeck Supporter is on. Thank you.");
     }
     pure public function backup-made() -> string {
         return @tr("Backed up");
@@ -362,8 +350,8 @@ export global ToastTexts {
     pure public function folder-not-opened() -> string {
         return @tr("Couldn't open the folder.");
     }
-    pure public function mail-not-opened() -> string {
-        return @tr("Couldn't open your email app.");
+    pure public function link-not-opened() -> string {
+        return @tr("Couldn't open the link.");
     }
     pure public function autostart-failed() -> string {
         return @tr("Couldn't change the Windows start-up entry.");
@@ -476,25 +464,5 @@ export global ToastTexts {
     }
     pure public function icon-saved(name: string) -> string {
         return @tr("Saved {}.", name);
-    }
-
-    // Why a licence key was refused: the toast, and the line under the key field.
-    pure public function licence-empty() -> string {
-        return @tr("Paste your licence key first.");
-    }
-    pure public function licence-not-a-key() -> string {
-        return @tr("That is not a Snipdeck licence key. A key starts with SNIP1.");
-    }
-    pure public function licence-bad-signature() -> string {
-        return @tr("That licence key is not valid. Check that you copied all of it.");
-    }
-    pure public function licence-newer-format() -> string {
-        return @tr("That key needs a newer Snipdeck. Update and try again.");
-    }
-    pure public function licence-wrong-tier() -> string {
-        return @tr("That key is not for Snipdeck Supporter.");
-    }
-    pure public function licence-not-saved() -> string {
-        return @tr("The key is valid but couldn't be saved, so Supporter will be off next time.");
     }
 }

@@ -25,7 +25,7 @@ use snipdeck_app::{
     main_binding::MainBinding,
     settings::Settings,
 };
-use snipdeck_core::{Entitlements, ItemId, ItemKind, Tier, Timestamp};
+use snipdeck_core::{ItemId, ItemKind, Timestamp};
 use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
 use snipdeck_store::{ItemRepo, Store};
 use snipdeck_ui::{ItemEditor, MainWindow, PanelWindow};
@@ -54,19 +54,15 @@ fn now() -> Timestamp {
 }
 
 fn rig() -> Rig {
-    rig_tier(Tier::Pro)
-}
-
-fn rig_tier(tier: Tier) -> Rig {
     let dir = tempfile::tempdir().expect("dir");
-    let mut r = rig_at(dir.path(), tier, &SharedProvider::new());
+    let mut r = rig_at(dir.path(), &SharedProvider::new());
     r.guard = Some(dir);
     r
 }
 
 /// The Panel and the item editor over a library kept on disk in `data` (seeded the first time).
 /// A second rig on the same folder is a restart.
-fn rig_at(data: &Path, tier: Tier, provider: &SharedProvider) -> Rig {
+fn rig_at(data: &Path, provider: &SharedProvider) -> Rig {
     let mut store = Store::open(data).expect("store");
     if snipdeck_store::BoardRepo::boards(&store)
         .expect("boards")
@@ -93,7 +89,6 @@ fn rig_at(data: &Path, tier: Tier, provider: &SharedProvider) -> Rig {
             recent_history_asked: true,
             ..Settings::default()
         },
-        Entitlements::new(tier),
     )
     .expect("controller");
     ctl.set_drafts(snipdeck_app::drafts::Drafts::in_data_dir(data));
@@ -473,7 +468,7 @@ fn what_is_typed_is_saved_as_a_draft_every_two_seconds_and_restored_after_a_rest
         let data = tempfile::tempdir().expect("dir");
         let provider = SharedProvider::new();
         {
-            let r = rig_at(data.path(), Tier::Pro, &provider);
+            let r = rig_at(data.path(), &provider);
             menu(&r, "New item");
             let ed = r.ed();
             type_text(ed.window(), "Half a thought");
@@ -491,7 +486,7 @@ fn what_is_typed_is_saved_as_a_draft_every_two_seconds_and_restored_after_a_rest
             assert_eq!(r.draft_files(), ["new.json"]);
             // The app dies here, with the editor neither saved nor discarded.
         }
-        let r = rig_at(data.path(), Tier::Pro, &provider);
+        let r = rig_at(data.path(), &provider);
         menu(&r, "New item");
         let ed = r.ed();
         assert_eq!(ed.get_item_title(), "Half a thought");
@@ -741,7 +736,7 @@ fn browse_fills_the_path_from_the_file_dialog() {
     });
 }
 
-// ---- Sensitive, Free tier, large text ----------------------------------------------------------
+// ---- Sensitive, large text ----------------------------------------------------------------
 
 #[test]
 fn a_sensitive_item_made_in_the_window_is_stored_encrypted_and_never_drafted() {
@@ -778,66 +773,6 @@ fn a_sensitive_item_made_in_the_window_is_stored_encrypted_and_never_drafted() {
     });
 }
 
-#[test]
-fn a_free_user_sees_prompted_fields_refused_with_the_pro_toast() {
-    on_ui_thread(|| {
-        let r = rig_tier(Tier::Free);
-        menu(&r, "New item");
-        let ed = r.ed();
-        // Tall enough that the last placeholder chips are in view (the Preview strip took a row above the form).
-        ed.window().set_size(slint::LogicalSize::new(560.0, 1400.0));
-        settle();
-        assert!(!ed.get_prompted_available());
-        click(
-            ed.window(),
-            &find(&ed, "Template", AccessibleRole::RadioButton),
-        );
-        ed.set_content("Dear {field:Name}".into());
-        ed.set_item_title("Ask".into());
-        settle();
-        let before = r.item_count();
-        save(&ed);
-        assert!(r.editor_shown(), "not saved");
-        assert_eq!(r.item_count(), before);
-        let said = find(&ed, "Template text", AccessibleRole::TextInput)
-            .accessible_description()
-            .expect("description");
-        assert!(said.contains("Supporter"), "{said}");
-        assert_eq!(
-            r.panel.get_toast_text(),
-            "This item uses a Supporter feature."
-        );
-        // The placeholder buttons mark the Supporter ones.
-        assert!(
-            !find(&ed, "Insert {field:Name}", AccessibleRole::Button)
-                .accessible_enabled()
-                .unwrap_or(true)
-        );
-        // Each Supporter chip carries a lock badge in place (five: {field}, {choice}, {multiline}, {pickdate} and {optional}).
-        let badges = ElementHandle::find_by_accessible_label(&ed, "Supporter")
-            .filter(|e| e.accessible_role() == Some(AccessibleRole::Text))
-            .count();
-        assert_eq!(badges, 5);
-        // Without it the template saves.
-        ed.set_content("Dear sir, {date}".into());
-        type_text(ed.window(), "");
-        ed.invoke_focus_title();
-        type_text(ed.window(), "!");
-        save(&ed);
-        assert!(!r.editor_shown());
-        let sensitive_help = {
-            menu(&r, "New item");
-            let ed = r.ed();
-            find(&ed, "Sensitive item", AccessibleRole::Switch)
-                .accessible_description()
-                .expect("description")
-                .to_string()
-        };
-        // Encryption is free: the switch asks nothing of Free.
-        assert!(!sensitive_help.contains("Supporter"), "{sensitive_help}");
-    });
-}
-
 /// The demo library on disk in `data` with one text item over the editing cap in the first list.
 fn with_big_item(data: &Path) -> (ItemId, String) {
     use snipdeck_core::{Format, Formats, Item, Placement};
@@ -865,7 +800,7 @@ fn text_over_16_kb_opens_in_a_read_only_viewer_and_saving_keeps_it_whole() {
     on_ui_thread(|| {
         let data = tempfile::tempdir().expect("dir");
         let (id, big) = with_big_item(data.path());
-        let r = rig_at(data.path(), Tier::Pro, &SharedProvider::new());
+        let r = rig_at(data.path(), &SharedProvider::new());
         r.ctl.borrow_mut().open_item_editor(id);
         r.editor.redraw();
         let ed = r.ed();

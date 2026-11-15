@@ -50,7 +50,7 @@ use snipdeck_app::{
     unlock_binding::UnlockUi,
     window_kind,
 };
-use snipdeck_core::{Entitlements, Tier, Timestamp};
+use snipdeck_core::Timestamp;
 use snipdeck_store::Store;
 use snipdeck_ui::PanelWindow;
 
@@ -203,7 +203,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     };
     // Only now: reading the settings may move a damaged file aside, and opening the library may
     // migrate it. A second launch (which stops just above) must not touch the running copy's files.
-    let (store, settings, entitlements, settings_folder, saver_baseline) = open_library(args)?;
+    let (store, settings, settings_folder, saver_baseline) = open_library(args)?;
     let Host {
         services,
         target,
@@ -256,7 +256,6 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         target,
         Box::new(host::SystemClock),
         settings,
-        entitlements,
     )
     .map_err(|e| format!("loading the library: {e}"))?;
     let controller = Rc::new(RefCell::new(controller));
@@ -339,14 +338,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         move || {
             controller.upgrade().map_or_else(
                 || fallback.clone(),
-                |controller| {
-                    let controller = controller.borrow();
-                    // Paste next is registered with Supporter only.
-                    controller
-                        .settings()
-                        .hotkeys
-                        .registrable(controller.tier() == snipdeck_core::Tier::Pro)
-                },
+                |controller| controller.borrow().settings().hotkeys.clone(),
             )
         }
     };
@@ -457,11 +449,8 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     let frames_armed = Rc::new(Cell::new(false));
     watch_window_events(&window, binding.clone(), Rc::clone(&frames_armed));
 
-    // Paste next is registered with Supporter only (it stays in the settings otherwise).
-    let supporter_at_start = controller.borrow().tier() == snipdeck_core::Tier::Pro;
     snipdeck_app::trace!(
-        "hotkeys at start: supporter={supporter_at_start} toggle_panel={:?} picker={:?} \
-         capture={:?} paste_next={:?} (paste next is registered with Supporter only; an empty \
+        "hotkeys at start: toggle_panel={:?} picker={:?} capture={:?} paste_next={:?} (an empty \
          chord is off)",
         startup_chords.toggle_panel,
         startup_chords.picker,
@@ -470,7 +459,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     );
     report_hotkey_problems(&host::register_all(
         &mut **hotkeys.borrow_mut(),
-        &startup_chords.registrable(supporter_at_start),
+        &startup_chords,
     ));
 
     if start_hidden {
@@ -638,9 +627,11 @@ fn effect_handler(
                 eprintln!("snipdeck: cannot open the settings: {e}");
             }
         }
-        Effect::OpenLicence => {
-            if let Err(e) = settings_ui.open_licence() {
-                eprintln!("snipdeck: cannot open the licence settings: {e}");
+        // The optional support page, in the browser: the same opener as Help's links.
+        Effect::OpenSupport => {
+            use snipdeck_app::help_binding::{HelpHost, SUPPORT_URL, SystemHelpHost};
+            if let Err(e) = SystemHelpHost.open_url(SUPPORT_URL) {
+                eprintln!("snipdeck: cannot open the support page: {e}");
             }
         }
         // A locked sensitive item behind a master password: ask for it.
@@ -818,19 +809,13 @@ fn report_hotkey_problems(problems: &[host::HotkeyProblem]) {
     with_binding(|b| b.hotkey_problems(problems));
 }
 
-/// What [`open_library`] returns: the library, the settings, what the user may do, and the data
+/// What [`open_library`] returns: the library, the settings, and the data
 /// folder (`None` only for the demo, which has none), and what the settings saver starts from
 /// (`None` when changes must not be written: the demo, `--dark`, and a settings file that could
 /// not be read or set aside).
-type Library = (
-    Store,
-    Settings,
-    Entitlements,
-    Option<PathBuf>,
-    Option<Settings>,
-);
+type Library = (Store, Settings, Option<PathBuf>, Option<Settings>);
 
-/// The library, the settings and what the user may do.
+/// The library and the settings.
 fn open_library(args: &Args) -> Result<Library, String> {
     let now = Timestamp::now();
     if args.demo {
@@ -842,7 +827,7 @@ fn open_library(args: &Args) -> Result<Library, String> {
         };
         let store = demo::store(now).map_err(|e| format!("demo library: {e}"))?;
         snipdeck_app::trace!("demo library");
-        return Ok((store, settings, Entitlements::new(Tier::Pro), None, None));
+        return Ok((store, settings, None, None));
     }
     let folder = match &args.data_dir {
         Some(dir) => dir.clone(),
@@ -883,13 +868,7 @@ fn open_library(args: &Args) -> Result<Library, String> {
         Ok(made) => snipdeck_app::trace!("real library; starter board made: {made}"),
         Err(e) => eprintln!("snipdeck: could not create the first board: {e}"),
     }
-    // The saved licence key, checked again on every start; none or a bad one is the Free plan.
-    let entitlements = snipdeck_app::licence_store::entitlements(
-        snipdeck_app::platform::is_packaged(),
-        &folder,
-        now,
-    );
-    Ok((store, settings, entitlements, Some(folder), saver_baseline))
+    Ok((store, settings, Some(folder), saver_baseline))
 }
 
 /// Winit with the software renderer; the Panel and the other floating windows are created

@@ -377,7 +377,7 @@ function Invoke-Remedy($Next, [hashtable]$St, [string]$Text) {
 }
 
 function Invoke-Build {
-    # Builds the debug app (never --release: a release build needs the production licence key).
+    # Builds the debug app (never --release).
     # Returns the path of the built exe, or $null after printing a failure report.
     $cargo = Find-Cargo
     if ($env:SNIPDECK_FAKE_CARGO) { $cargo = $env:SNIPDECK_FAKE_CARGO }   # test hook: a script that prints sample output

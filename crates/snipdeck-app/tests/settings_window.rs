@@ -23,13 +23,12 @@ use std::{
 };
 
 use i_slint_backend_testing::{AccessibleRole, ElementHandle};
-use slint::{ComponentHandle, Global, Model, platform::Key};
+use slint::{ComponentHandle, Model, platform::Key};
 use snipdeck_app::{
     controller::{Controller, Effect, MasterState, Services},
     demo,
     frame::{Monitor, Rect},
     host::{FakeHotkeys, FakeTargets, FixedClock, HotkeyProblem},
-    licence_store,
     main_binding::MainUi,
     paths::read_settings,
     settings::{
@@ -40,15 +39,8 @@ use snipdeck_app::{
         self, AutostartError, ExportFolder, SettingsBinding, SettingsHost, SettingsUi, request_open,
     },
     settings_store::{FileSink, SettingsSaver},
-    wording,
 };
-use snipdeck_core::{
-    Entitlements, Feature, Tier, Timestamp,
-    licence::{
-        IS_DEVELOPMENT_KEY,
-        signing::{SigningKey, pro_payload, sign_token},
-    },
-};
+use snipdeck_core::Timestamp;
 use snipdeck_platform::{
     clipboard_history::{ClipboardHistoryEntry, HistoryRead},
     testing::{FakeClipboard, FakeKeyboard, FakeTiming},
@@ -88,6 +80,8 @@ struct FakeHost {
     opened: RefCell<Vec<PathBuf>>,
     /// The links the page asked to open.
     urls: RefCell<Vec<String>>,
+    /// Opening a link fails (no browser).
+    url_fails: Cell<bool>,
     documents: RefCell<Option<PathBuf>>,
     /// What the import dialog answers, once.
     import_pick: RefCell<Option<PathBuf>>,
@@ -99,8 +93,6 @@ struct FakeHost {
     export_pick: RefCell<Option<ExportFolder>>,
     /// The owner window handles the export dialog was asked with.
     export_asked: Cell<u32>,
-    /// Whether this is the free-only Store package (no Supporter offer, no licence entry).
-    free_only: Cell<bool>,
 }
 
 impl SettingsHost for FakeHost {
@@ -132,6 +124,9 @@ impl SettingsHost for FakeHost {
 
     fn open_url(&self, url: &str) -> Result<(), String> {
         self.urls.borrow_mut().push(url.to_owned());
+        if self.url_fails.get() {
+            return Err("no browser".into());
+        }
         Ok(())
     }
 
@@ -161,10 +156,6 @@ impl SettingsHost for FakeHost {
         true
     }
 
-    fn free_only(&self) -> bool {
-        self.free_only.get()
-    }
-
     fn read_clipboard_history(&self) -> HistoryRead {
         self.history
             .borrow()
@@ -182,11 +173,11 @@ struct Rig {
     /// Milliseconds the clocks have been moved on.
     elapsed: Cell<u64>,
     host: Rc<FakeHost>,
-    /// The data folder (settings, licence, backups).
+    /// The data folder (settings, backups).
     dir: tempfile::TempDir,
 }
 
-fn controller_on(store: Store, tier: Tier, clock: &FixedClock) -> Rc<RefCell<Ctl>> {
+fn controller_on(store: Store, clock: &FixedClock) -> Rc<RefCell<Ctl>> {
     Rc::new(RefCell::new(
         Controller::new(
             store,
@@ -198,25 +189,14 @@ fn controller_on(store: Store, tier: Tier, clock: &FixedClock) -> Rc<RefCell<Ctl
             Box::new(FakeTargets::new(Some(demo::target()))),
             Box::new(clock.clone()),
             Settings::new_install(),
-            Entitlements::new(tier),
         )
         .expect("controller"),
     ))
 }
 
-fn rig_on(store: Store, tier: Tier, dir: tempfile::TempDir, with_data_dir: bool) -> Rig {
-    rig_packaged(store, tier, dir, with_data_dir, false)
-}
-
-fn rig_packaged(
-    store: Store,
-    tier: Tier,
-    dir: tempfile::TempDir,
-    with_data_dir: bool,
-    free_only: bool,
-) -> Rig {
+fn rig_on(store: Store, dir: tempfile::TempDir, with_data_dir: bool) -> Rig {
     let clock = FixedClock::new(now());
-    let ctl = controller_on(store, tier, &clock);
+    let ctl = controller_on(store, &clock);
     ctl.borrow_mut().set_settings_saver(SettingsSaver::new(
         Box::new(FileSink::new(dir.path())),
         Settings::new_install(),
@@ -226,7 +206,6 @@ fn rig_packaged(
     snipdeck_app::text_scale::set_system(1.0);
     let host = Rc::new(FakeHost::default());
     *host.documents.borrow_mut() = Some(dir.path().join("Documents"));
-    host.free_only.set(free_only);
     let ui = SettingsPage::new().expect("settings page");
     // Tall, so the whole page is on screen.
     ui.window().set_size(slint::LogicalSize::new(640.0, 6000.0));
@@ -249,7 +228,6 @@ fn rig_packaged(
 fn rig() -> Rig {
     rig_on(
         demo::store(now()).expect("demo"),
-        Tier::Free,
         tempfile::tempdir().expect("dir"),
         true,
     )
@@ -505,7 +483,7 @@ fn the_programs_section_is_where_the_page_says_and_each_row_has_a_paste_key_drop
             "Programs",
             "Typing",
             "Backups and your data",
-            "Licence",
+            "Support",
         ];
         let ys: Vec<f32> = order
             .iter()
@@ -868,9 +846,9 @@ fn a_shortcut_another_program_owns_is_refused_and_the_old_ones_stay_registered()
             "Another program already uses Ctrl+Alt+K."
         );
         assert_eq!(r.ctl.borrow().settings().hotkeys.capture, "Ctrl+Shift+2");
-        // The other three stay; Paste next is a Supporter feature and this rig is on Free.
+        // The other three stay registered.
         let registered = r.host.hotkeys.borrow().registered.len();
-        assert_eq!(registered, 3, "the capture shortcut is still registered");
+        assert_eq!(registered, 4, "the capture shortcut is still registered");
         assert!(
             r.host
                 .hotkeys
@@ -883,7 +861,7 @@ fn a_shortcut_another_program_owns_is_refused_and_the_old_ones_stay_registered()
                 )
         );
 
-        // A free one is registered and stored.
+        // A new one is registered and stored.
         r.ui.invoke_hotkey_recorded(2, "Ctrl+Alt+J".into());
         assert_eq!(r.ctl.borrow().settings().hotkeys.capture, "Ctrl+Alt+J");
         assert!(
@@ -901,8 +879,8 @@ fn a_shortcut_another_program_owns_is_refused_and_the_old_ones_stay_registered()
         r.ui.invoke_hotkey_cleared(2);
         assert_eq!(
             r.host.hotkeys.borrow().registered.len(),
-            2,
-            "Paste next waits for Supporter"
+            3,
+            "the cleared one is no longer registered"
         );
     });
 }
@@ -1059,39 +1037,6 @@ fn choosing_the_tours_one_click_alternative_clears_the_failed_state() {
 }
 
 #[test]
-fn on_the_free_plan_the_paste_next_row_says_it_is_a_supporter_feature() {
-    on_ui_thread(|| {
-        let r = rig();
-        let paste_next = HotkeyAction::ALL
-            .iter()
-            .position(|a| *a == HotkeyAction::PasteNext)
-            .unwrap();
-        assert_eq!(
-            r.ui.get_hotkeys().row_data(paste_next).unwrap().conflict,
-            "Paste next is a Supporter feature, so this shortcut does nothing on the Free plan."
-        );
-        let pro = rig_on(
-            demo::store(now()).expect("demo"),
-            Tier::Pro,
-            tempfile::tempdir().expect("dir"),
-            true,
-        );
-        assert_eq!(
-            pro.ui.get_hotkeys().row_data(paste_next).unwrap().conflict,
-            ""
-        );
-        // The lock badge sits on the Paste next row on Free only.
-        let badges = |ui: &SettingsPage| {
-            ElementHandle::find_by_accessible_label(ui, "Supporter")
-                .filter(|e| e.accessible_role() == Some(AccessibleRole::Text))
-                .count()
-        };
-        assert_eq!(badges(&pro.ui), 0, "Supporter: no badge");
-        assert_eq!(badges(&r.ui), 1, "Free: one badge, on Paste next");
-    });
-}
-
-#[test]
 fn while_the_hotkeys_are_paused_nothing_is_registered_but_the_choice_is_kept() {
     on_ui_thread(|| {
         let r = rig();
@@ -1199,122 +1144,16 @@ fn the_clipboard_clear_time_is_held_between_zero_and_ten_minutes() {
     });
 }
 
-// ---- Licence --------------------------------------------------------------------------------
-
-fn token(seed: &[u8; 32], payload: &str) -> String {
-    sign_token(&SigningKey::from_bytes(seed), payload)
-}
+// ---- The demo ---------------------------------------------------------------------------------
 
 #[test]
-fn a_bad_licence_key_is_rejected_with_a_toast_that_says_what_is_wrong() {
-    on_ui_thread(|| {
-        use snipdeck_app::toast::LicenceProblem::{
-            BadSignature, Empty, NewerFormat, NotAKey, WrongTier,
-        };
-        let order = pro_payload("TEST-1", 1_760_000_000, None).unwrap();
-        let team = r#"{"v":1,"tier":"team","issued":1760000000,"order":"TEST-2"}"#;
-        let mut cases = vec![
-            ("nothing", String::new(), Empty),
-            ("not a key", "please let me in".to_owned(), NotAKey),
-            ("two parts", "SNIP1.abc".to_owned(), NotAKey),
-            (
-                "a newer format",
-                "SNIP2.eyJ2IjoyfQ.AAAA".to_owned(),
-                NewerFormat,
-            ),
-            (
-                "someone else's signature",
-                token(&support::derived_seed(7), &order),
-                BadSignature,
-            ),
-        ];
-        if IS_DEVELOPMENT_KEY {
-            cases.push((
-                "a key for another tier",
-                token(&support::dev_seed(), team),
-                WrongTier,
-            ));
-        }
-        let mut texts = Vec::new();
-        let mut problems = Vec::new();
-        for (name, key, problem) in cases {
-            let r = rig();
-            r.ui.invoke_licence_submitted(key.as_str().into());
-            let expected = wording::licence_problem_text(&r.ui, problem);
-            assert_eq!(r.ui.get_toast_text(), expected, "{name}: the toast");
-            assert_eq!(r.ui.get_toast_kind(), ToastKind::Danger, "{name}");
-            assert_eq!(
-                r.ui.get_licence_error(),
-                expected,
-                "{name}: under the field"
-            );
-            assert!(!r.ui.get_pro(), "{name}");
-            assert_eq!(r.ctl.borrow().tier(), Tier::Free, "{name}");
-            assert!(
-                !r.dir.path().join(licence_store::FILE).exists(),
-                "{name}: a refused key is not saved"
-            );
-            texts.push(expected);
-            problems.push(problem);
-        }
-        let mut unique = texts.clone();
-        unique.sort_unstable();
-        unique.dedup();
-        problems.dedup_by_key(|p| format!("{p:?}"));
-        problems.sort_by_key(|p| format!("{p:?}"));
-        problems.dedup();
-        assert_eq!(
-            unique.len(),
-            problems.len(),
-            "every reason has its own words: {texts:?}"
-        );
-    });
-}
-
-#[test]
-fn a_good_licence_key_turns_pro_on_and_is_remembered() {
-    if !IS_DEVELOPMENT_KEY {
-        return;
-    }
-    on_ui_thread(|| {
-        let r = rig();
-        assert!(!r.ui.get_pro());
-        let key = token(
-            &support::dev_seed(),
-            &pro_payload("TEST-1", 1_760_000_000, None).unwrap(),
-        );
-        // A pasted key often carries spaces and a line break.
-        r.ui.invoke_licence_submitted(format!("  {key}\n").into());
-        assert!(r.ui.get_pro());
-        assert_eq!(r.ui.get_licence_error(), "");
-        assert_eq!(
-            r.ui.get_toast_text(),
-            "Snipdeck Supporter is on. Thank you."
-        );
-        assert_eq!(r.ui.get_toast_kind(), ToastKind::Success);
-        assert_eq!(r.ctl.borrow().tier(), Tier::Pro);
-        assert_eq!(
-            licence_store::read(r.dir.path()).as_deref(),
-            Some(key.as_str())
-        );
-        assert_eq!(
-            licence_store::entitlements(false, r.dir.path(), now()).tier(),
-            Tier::Pro,
-            "the next start is Supporter"
-        );
-    });
-}
-
-#[test]
-fn the_demo_is_pro_and_keeps_nothing_on_disk() {
+fn the_demo_keeps_nothing_on_disk() {
     on_ui_thread(|| {
         let r = rig_on(
             demo::store(now()).unwrap(),
-            Tier::Pro,
             tempfile::tempdir().unwrap(),
             false,
         );
-        assert!(r.ui.get_pro());
         assert!(!r.ui.get_has_data_folder());
         r.ui.invoke_backup_now_requested();
         r.ui.invoke_export_requested();
@@ -1363,7 +1202,6 @@ fn restoring_a_backup_round_trips_the_demo_library() {
         // Back up the demo library.
         let a = rig_on(
             demo::store(now()).unwrap(),
-            Tier::Pro,
             tempfile::tempdir().unwrap(),
             true,
         );
@@ -1388,7 +1226,7 @@ fn restoring_a_backup_round_trips_the_demo_library() {
 
         // Restore it into an empty library, by the Restore button of that backup.
         let dir = a.dir;
-        let b = rig_on(Store::open_in_memory().unwrap(), Tier::Pro, dir, true);
+        let b = rig_on(Store::open_in_memory().unwrap(), dir, true);
         assert_eq!(
             b.ui.get_backups().row_count(),
             1,
@@ -1402,7 +1240,6 @@ fn restoring_a_backup_round_trips_the_demo_library() {
         assert_eq!(usize::try_from(b.ui.get_import_items()), Ok(plain.len()));
         assert!(b.ui.get_import_boards() >= 2);
         assert_eq!(b.ui.get_import_duplicates(), 0);
-        assert!(!b.ui.get_import_blocked());
         assert_eq!(b.ctl.borrow().store().boards().unwrap().len(), 0);
         assert_eq!(b.ui.get_toast_text(), "");
         b.ui.invoke_import_confirmed();
@@ -1441,7 +1278,6 @@ fn back_up_now_replaces_todays_backup_instead_of_refusing() {
     on_ui_thread(|| {
         let r = rig_on(
             demo::store(now()).unwrap(),
-            Tier::Pro,
             tempfile::tempdir().unwrap(),
             true,
         );
@@ -1496,7 +1332,8 @@ fn export_saves_a_new_file_in_documents_each_time_and_opens_the_folder() {
 
 // ---- Erase library --------------------------------------------------------------------------
 
-/// A library on disk with the demo in it, a backup, the settings, a licence and a crash log.
+/// A library on disk with the demo in it, a backup, the settings, the stale licence file an older
+/// version left behind and a crash log.
 fn library_on_disk(with_key: bool) -> Rig {
     let dir = tempfile::tempdir().unwrap();
     let mut store = Store::open(dir.path()).expect("store");
@@ -1507,7 +1344,7 @@ fn library_on_disk(with_key: bool) -> Rig {
             .create_key_ring(&KeyRing::new(&provider), None)
             .expect("key ring");
     }
-    let r = rig_on(store, Tier::Pro, dir, true);
+    let r = rig_on(store, dir, true);
     std::fs::write(r.dir.path().join("licence.key"), "SNIP1.kept.kept").unwrap();
     std::fs::create_dir_all(r.dir.path().join("logs")).unwrap();
     std::fs::write(r.dir.path().join("logs").join("crash-1.txt"), "crash").unwrap();
@@ -1554,7 +1391,7 @@ fn erasing_the_library_needs_exactly_the_word_delete() {
         // A new empty library with the starter board is running.
         assert_eq!(board_names(r.ctl.borrow().store()), ["My snippets"]);
         assert_eq!(r.ctl.borrow().store().all_items().unwrap().len(), 0);
-        // The backups went; the settings, the licence and the logs stayed.
+        // The backups and the stale licence file went; the settings and the logs stayed.
         assert_eq!(r.ui.get_backups().row_count(), 0);
         assert!(!r.dir.path().join("backups").exists());
         assert!(r.settings_file().exists());
@@ -1562,9 +1399,9 @@ fn erasing_the_library_needs_exactly_the_word_delete() {
             !read_settings(r.dir.path()).settings.close_to_tray,
             "settings stay"
         );
-        assert_eq!(
-            licence_store::read(r.dir.path()).as_deref(),
-            Some("SNIP1.kept.kept")
+        assert!(
+            !r.dir.path().join("licence.key").exists(),
+            "an old version's licence file is not the user's to keep"
         );
         assert!(r.dir.path().join("logs").join("crash-1.txt").exists());
         // And a restart finds a library that opens.
@@ -1610,7 +1447,7 @@ fn the_erase_button_stays_off_until_the_word_is_typed() {
     on_ui_thread(|| {
         let r = library_on_disk(false);
         // The page scrolls, and the accessibility queries only see what is inside the window:
-        // make it tall enough for the whole confirmation (the Licence section has the plan table).
+        // make it tall enough for the whole confirmation.
         r.ui.window()
             .set_size(slint::LogicalSize::new(640.0, 6000.0));
         assert!(!r.ui.get_erase_open());
@@ -1674,7 +1511,7 @@ fn the_erase_word_on_the_page_is_the_one_the_host_checks() {
 fn the_main_windows_settings_button_opens_the_page_once_and_shows_it_again() {
     on_ui_thread(|| {
         let clock = FixedClock::new(now());
-        let ctl = controller_on(demo::store(now()).unwrap(), Tier::Pro, &clock);
+        let ctl = controller_on(demo::store(now()).unwrap(), &clock);
         let host: Rc<dyn SettingsHost> = Rc::new(FakeHost::default());
         let settings_ui = SettingsUi::new(&ctl, None, host);
         let main_ui = MainUi::new(&ctl);
@@ -1710,7 +1547,6 @@ fn import_shows_a_preview_first_and_writes_only_when_confirmed() {
     on_ui_thread(|| {
         let r = rig_on(
             Store::open_in_memory().unwrap(),
-            Tier::Pro,
             tempfile::tempdir().unwrap(),
             true,
         );
@@ -1758,7 +1594,6 @@ fn a_file_that_cannot_be_imported_shows_a_problem_and_nothing_to_confirm() {
     on_ui_thread(|| {
         let r = rig_on(
             Store::open_in_memory().unwrap(),
-            Tier::Pro,
             tempfile::tempdir().unwrap(),
             true,
         );
@@ -1794,7 +1629,6 @@ fn every_warning() -> Vec<snipdeck_portable::Warning> {
             title: "Bank PIN".into(),
         },
         W::SensitiveOmittedByExport { count: 4 },
-        W::BoardLimit { limit: 3, total: 5 },
         W::LossyText { name: name() },
         W::TooLarge {
             name: name(),
@@ -1823,7 +1657,6 @@ fn every_warning() -> Vec<snipdeck_portable::Warning> {
             | W::SensitiveNeedKey { .. }
             | W::CannotDecrypt { .. }
             | W::SensitiveOmittedByExport { .. }
-            | W::BoardLimit { .. }
             | W::LossyText { .. }
             | W::TooLarge { .. }
             | W::Empty { .. }
@@ -2041,147 +1874,6 @@ fn every_import_warning_reads_as_a_plain_sentence() {
 }
 
 #[test]
-fn get_supporter_opens_the_email_app_with_the_one_named_address() {
-    on_ui_thread(|| {
-        let r = rig();
-        assert!(!r.ui.get_supporter_open());
-        r.ui.invoke_supporter_requested();
-        assert_eq!(
-            *r.host.urls.borrow(),
-            [format!("mailto:{}", settings_binding::SUPPORTER_EMAIL)]
-        );
-        // Pinned on purpose: the owner's address, the same one as the website's mailto links.
-        assert_eq!(
-            settings_binding::supporter_mailto(),
-            "mailto:brayden.hoyle@outlook.com",
-            "the Supporter address is the owner's"
-        );
-    });
-}
-
-/// The Store package is free-only (Store policy 10.8): Settings offers no Supporter and no
-/// licence entry, and the unpackaged build keeps both.
-#[test]
-fn the_packaged_settings_page_has_no_get_supporter_and_no_licence_entry() {
-    on_ui_thread(|| {
-        let seen = |r: &Rig, label: &str| {
-            ElementHandle::find_by_accessible_label(&r.ui, label).count() > 0
-        };
-        let packaged = rig_packaged(
-            demo::store(now()).expect("demo"),
-            Tier::Pro,
-            tempfile::tempdir().expect("dir"),
-            true,
-            true,
-        );
-        assert!(packaged.ui.get_free_only());
-        for label in [
-            "Get Supporter\u{2026}",
-            "Get Supporter",
-            "Licence key",
-            "Activate",
-            "Free and Supporter compared",
-            "Free is fully usable. Supporter pays for convenience and supports the app.",
-        ] {
-            assert!(!seen(&packaged, label), "{label:?} must not be offered");
-        }
-        // The page itself is still there.
-        assert!(seen(&packaged, "Search settings"));
-
-        let github = rig();
-        assert!(!github.ui.get_free_only());
-        for label in ["Get Supporter\u{2026}", "Licence key", "Activate"] {
-            assert!(seen(&github, label), "{label:?} stays on the GitHub build");
-        }
-    });
-}
-
-#[test]
-fn the_free_is_fully_usable_line_is_readable_by_a_screen_reader() {
-    on_ui_thread(|| {
-        let r = rig();
-        element(
-            &r.ui,
-            "Free is fully usable. Supporter pays for convenience and supports the app.",
-            AccessibleRole::Text,
-        );
-    });
-}
-
-/// The whole path a person takes: the button opens the dialog, Escape closes it with the focus
-/// back on the button (WCAG 2.4.3), and "Email me" hands the mailto link to the host.
-#[test]
-fn the_get_supporter_dialog_opens_closes_with_escape_and_emails() {
-    on_ui_thread(|| {
-        let r = rig();
-        let button = || element(&r.ui, "Get Supporter\u{2026}", AccessibleRole::Button);
-        let settle = slint::platform::update_timers_and_animations;
-        assert!(!r.ui.get_supporter_open());
-        assert_eq!(button().accessible_enabled(), Some(true));
-
-        button().invoke_accessible_default_action();
-        settle();
-        assert!(r.ui.get_supporter_open(), "the button opens the dialog");
-        assert_eq!(button().accessible_enabled(), Some(false), "and goes off");
-
-        // The comparison table inside the dialog is laid out and sits within the card.
-        // The dialog card is the group that also carries the dialog's body text.
-        let card = ElementHandle::find_by_accessible_label(&r.ui, "Get Supporter")
-            .filter(|e| e.accessible_role() == Some(AccessibleRole::Groupbox))
-            .find(|e| {
-                e.accessible_description()
-                    .is_some_and(|d| d.contains("Can't afford it"))
-            })
-            .expect("the dialog card");
-        let (cp, cs) = (card.absolute_position(), card.size());
-        let table = ElementHandle::find_by_accessible_label(&r.ui, "Free and Supporter compared")
-            .filter(|e| e.accessible_role() == Some(AccessibleRole::Groupbox))
-            .find(|e| {
-                let p = e.absolute_position();
-                p.x >= cp.x && p.y >= cp.y && p.y <= cp.y + cs.height
-            })
-            .expect("a plan table inside the dialog card");
-        let (tp, ts) = (table.absolute_position(), table.size());
-        assert!(cs.width > 0.0 && cs.height > 0.0, "the card has a size");
-        assert!(
-            ts.width > 0.0 && ts.height > 0.0,
-            "the table has a size: {ts:?}"
-        );
-        assert!(
-            tp.x >= cp.x && tp.x + ts.width <= cp.x + cs.width,
-            "the table ({tp:?} {ts:?}) is inside the card ({cp:?} {cs:?}) across"
-        );
-        assert!(
-            tp.y >= cp.y && tp.y + ts.height <= cp.y + cs.height,
-            "the table ({tp:?} {ts:?}) is inside the card ({cp:?} {cs:?}) down"
-        );
-
-        press(r.ui.window(), &key(Key::Escape));
-        settle();
-        assert!(!r.ui.get_supporter_open(), "Escape closes it");
-        assert_eq!(button().accessible_enabled(), Some(true));
-        assert!(r.host.urls.borrow().is_empty(), "closing sends nothing");
-
-        // The focus is back on the button: Enter presses it again.
-        press(r.ui.window(), "\n");
-        settle();
-        assert!(
-            r.ui.get_supporter_open(),
-            "after Escape the focus is on the button that opened the dialog"
-        );
-
-        element(&r.ui, "Email me", AccessibleRole::Button).invoke_accessible_default_action();
-        settle();
-        assert!(!r.ui.get_supporter_open(), "Email me closes the dialog");
-        assert_eq!(
-            *r.host.urls.borrow(),
-            [settings_binding::supporter_mailto()],
-            "and opens the mailto link, once"
-        );
-    });
-}
-
-#[test]
 fn the_importers_internal_labels_become_clip_numbers() {
     on_ui_thread(|| {
         let r = rig();
@@ -2200,7 +1892,6 @@ fn a_ditto_preview_lists_its_warnings_in_plain_sentences() {
     on_ui_thread(|| {
         let r = rig_on(
             Store::open_in_memory().unwrap(),
-            Tier::Pro,
             tempfile::tempdir().unwrap(),
             true,
         );
@@ -2236,58 +1927,10 @@ fn a_ditto_preview_lists_its_warnings_in_plain_sentences() {
     });
 }
 
-/// The comparison table is held to `entitlements.rs`: its Supporter-only rows are exactly the
-/// `Feature`s, except floating lists (in the enum, not part of v1, so not on the website either).
 #[test]
-fn the_plan_table_lists_exactly_the_supporter_features() {
+fn the_preview_titles_come_from_the_page() {
     on_ui_thread(|| {
         let r = rig();
-        let rows: Vec<_> = snipdeck_ui::PlanTexts::get(&r.ui)
-            .get_rows()
-            .iter()
-            .collect();
-        let mut listed: Vec<String> = rows
-            .iter()
-            .filter(|row| !row.feature.is_empty())
-            .map(|row| row.feature.to_string())
-            .collect();
-        let mut expected: Vec<String> = Feature::ALL
-            .iter()
-            .filter(|f| **f != Feature::FloatingLists)
-            .map(|f| f.key().to_owned())
-            .collect();
-        listed.sort();
-        expected.sort();
-        assert_eq!(listed, expected);
-        for row in &rows {
-            assert!(row.supporter, "{}: Supporter has everything", row.name);
-            assert_eq!(
-                row.free,
-                row.feature.is_empty() || row.feature == Feature::UnlimitedBoards.key(),
-                "{}: Free lacks exactly the Supporter features (boards are limited, not missing)",
-                row.name
-            );
-            assert!(!row.name.is_empty() && !row.description.is_empty());
-        }
-        let boards = rows
-            .iter()
-            .find(|row| row.feature == Feature::UnlimitedBoards.key())
-            .expect("boards row");
-        assert_eq!(
-            boards.free_note,
-            format!("up to {}", Entitlements::FREE_BOARD_LIMIT)
-        );
-    });
-}
-
-#[test]
-fn the_preview_titles_and_the_free_limit_come_from_the_page() {
-    on_ui_thread(|| {
-        let r = rig();
-        assert_eq!(
-            r.ui.get_free_board_limit(),
-            i32::try_from(snipdeck_core::Entitlements::FREE_BOARD_LIMIT).unwrap()
-        );
         r.ui.set_import_name("2026-10-17".into());
         r.ui.set_import_restore(true);
         assert_eq!(r.ui.get_import_title(), "Restore the backup of 2026-10-17");
@@ -2326,7 +1969,6 @@ fn import_choices_list_nine_sources() {
     on_ui_thread(|| {
         let r = rig_on(
             Store::open_in_memory().unwrap(),
-            Tier::Pro,
             tempfile::tempdir().unwrap(),
             true,
         );
@@ -2363,7 +2005,6 @@ fn each_new_choice_previews_its_own_source_and_a_wrong_file_is_a_problem() {
     on_ui_thread(|| {
         let r = rig_on(
             Store::open_in_memory().unwrap(),
-            Tier::Pro,
             tempfile::tempdir().unwrap(),
             false,
         );
@@ -2449,45 +2090,17 @@ fn the_recent_inbox_is_off_for_a_new_install_can_be_switched_on_and_its_clear_bu
     });
 }
 
-#[test]
-fn the_plan_table_says_each_answer_in_words_not_colour() {
-    on_ui_thread(|| {
-        let r = rig();
-        element(
-            &r.ui,
-            "Free and Supporter compared",
-            AccessibleRole::Groupbox,
-        );
-        // A row says both answers in its description.
-        let row = element(&r.ui, "Paste stack", AccessibleRole::Groupbox);
-        let said = row
-            .accessible_description()
-            .expect("description")
-            .to_string();
-        assert!(said.contains("Free: Not included."), "{said}");
-        assert!(said.contains("Supporter: Included."), "{said}");
-        let boards = element(&r.ui, "Boards", AccessibleRole::Groupbox);
-        let said = boards
-            .accessible_description()
-            .expect("description")
-            .to_string();
-        assert!(said.contains("Free: Included, up to 5."), "{said}");
-        assert!(said.contains("Supporter: Included, unlimited."), "{said}");
-    });
-}
-
 // ---- Master password (SPEC 5.7, V1-PLAN C3) ----------------------------------------------------
 
 fn password() -> &'static str {
     support::pw("main")
 }
 
-/// A page over the demo library with a machine that can protect a key, on `tier`, with a cheap
+/// A page over the demo library with a machine that can protect a key, with a cheap
 /// Argon2id so each set or unlock takes milliseconds.
-fn master_rig(tier: Tier) -> Rig {
+fn master_rig() -> Rig {
     let r = rig_on(
         demo::store(now()).expect("demo"),
-        tier,
         tempfile::tempdir().expect("dir"),
         true,
     );
@@ -2503,14 +2116,10 @@ fn master_rig(tier: Tier) -> Rig {
     r
 }
 
-/// The Privacy section's row (the plan table has a row of the same name).
+/// The Privacy section's row.
 fn master_row(r: &Rig) -> ElementHandle {
     ElementHandle::find_by_accessible_label(&r.ui, "Master password")
-        .filter(|e| e.accessible_role() == Some(AccessibleRole::Groupbox))
-        .find(|e| {
-            e.accessible_description()
-                .is_some_and(|d| !d.starts_with("Lock your encrypted items"))
-        })
+        .find(|e| e.accessible_role() == Some(AccessibleRole::Groupbox))
         .expect("the master password row")
 }
 
@@ -2530,32 +2139,10 @@ fn texts(r: &Rig, text: &str) -> usize {
 }
 
 #[test]
-fn a_free_user_sees_the_master_password_row_with_a_supporter_note_and_no_way_to_set_it() {
-    on_ui_thread(|| {
-        let r = master_rig(Tier::Free);
-        let row = master_row(&r);
-        let note = row.accessible_description().expect("a description");
-        assert!(note.contains("A Supporter feature"), "{note}");
-        assert!(note.contains("15 minutes"), "{note}");
-        assert!(
-            note.contains("when you first use a sensitive item"),
-            "asked at the first use, not at start-up: {note}"
-        );
-        assert!(!note.contains("starts"), "{note}");
-        let set = element(&r.ui, "Set password\u{2026}", AccessibleRole::Button);
-        assert_eq!(set.accessible_enabled(), Some(false));
-        set.invoke_accessible_default_action();
-        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Closed);
-        assert_eq!(r.ctl.borrow().master_password_state(), MasterState::NotSet);
-    });
-}
-
-#[test]
 fn a_machine_without_key_protection_says_so_and_offers_nothing() {
     on_ui_thread(|| {
         let r = rig_on(
             demo::store(now()).expect("demo"),
-            Tier::Pro,
             tempfile::tempdir().expect("dir"),
             true,
         );
@@ -2573,7 +2160,7 @@ fn a_machine_without_key_protection_says_so_and_offers_nothing() {
 #[test]
 fn a_key_record_that_cannot_be_read_offers_no_password_and_says_why() {
     on_ui_thread(|| {
-        let r = master_rig(Tier::Pro);
+        let r = master_rig();
         let provider = SharedProvider::new();
         {
             let mut ctl = r.ctl.borrow_mut();
@@ -2599,9 +2186,9 @@ fn a_key_record_that_cannot_be_read_offers_no_password_and_says_why() {
 }
 
 #[test]
-fn a_supporter_sets_a_master_password_through_the_form() {
+fn a_master_password_is_set_through_the_form() {
     on_ui_thread(|| {
-        let r = master_rig(Tier::Pro);
+        let r = master_rig();
         click(&r, "Set password\u{2026}");
         assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Set);
 
@@ -2648,7 +2235,7 @@ fn a_supporter_sets_a_master_password_through_the_form() {
 #[test]
 fn while_the_password_is_saved_the_form_says_so_and_waits() {
     on_ui_thread(|| {
-        let r = master_rig(Tier::Pro);
+        let r = master_rig();
         let held = support::Deferred::default();
         let _inline_again = held.install();
         click(&r, "Set password\u{2026}");
@@ -2694,7 +2281,7 @@ fn while_the_password_is_saved_the_form_says_so_and_waits() {
 #[test]
 fn locking_while_the_password_is_saved_stops_the_form_waiting_and_changes_nothing() {
     on_ui_thread(|| {
-        let r = master_rig(Tier::Pro);
+        let r = master_rig();
         r.ctl
             .borrow_mut()
             .set_master_password(password(), password())
@@ -2727,7 +2314,7 @@ fn locking_while_the_password_is_saved_stops_the_form_waiting_and_changes_nothin
 #[test]
 fn a_wrong_current_password_found_in_the_background_keeps_the_form_open() {
     on_ui_thread(|| {
-        let r = master_rig(Tier::Pro);
+        let r = master_rig();
         r.ctl
             .borrow_mut()
             .set_master_password(password(), password())
@@ -2751,7 +2338,7 @@ fn a_wrong_current_password_found_in_the_background_keeps_the_form_open() {
 #[test]
 fn passwords_are_hidden_from_the_accessibility_tree() {
     on_ui_thread(|| {
-        let r = master_rig(Tier::Pro);
+        let r = master_rig();
         click(&r, "Set password\u{2026}");
         type_in(&r, "New password", password());
         let field = element(&r.ui, "New password", AccessibleRole::TextInput);
@@ -2767,7 +2354,7 @@ fn passwords_are_hidden_from_the_accessibility_tree() {
 #[test]
 fn changing_and_removing_ask_for_the_current_password_and_say_when_it_is_wrong() {
     on_ui_thread(|| {
-        let r = master_rig(Tier::Pro);
+        let r = master_rig();
         r.ctl
             .borrow_mut()
             .set_master_password(password(), password())
@@ -2816,7 +2403,7 @@ fn changing_and_removing_ask_for_the_current_password_and_say_when_it_is_wrong()
 #[test]
 fn escape_closes_only_the_form_and_the_focus_goes_back_to_its_button() {
     on_ui_thread(|| {
-        let r = master_rig(Tier::Pro);
+        let r = master_rig();
         click(&r, "Set password\u{2026}");
         assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Set);
         // The first field has the focus: typing goes into it.
@@ -2853,7 +2440,7 @@ fn escape_closes_only_the_form_and_the_focus_goes_back_to_its_button() {
 #[test]
 fn a_locked_library_offers_unlock_in_the_row_and_asks_for_the_prompt() {
     on_ui_thread(|| {
-        let r = master_rig(Tier::Pro);
+        let r = master_rig();
         {
             let mut ctl = r.ctl.borrow_mut();
             ctl.set_master_password(password(), password())
@@ -2892,7 +2479,6 @@ fn the_clipboard_history_is_offered_and_imported_through_the_same_preview() {
     on_ui_thread(|| {
         let r = rig_on(
             Store::open_in_memory().unwrap(),
-            Tier::Pro,
             tempfile::tempdir().unwrap(),
             true,
         );
@@ -2927,7 +2513,6 @@ fn a_history_that_is_off_empty_or_refused_says_so_without_an_error_toast() {
     on_ui_thread(|| {
         let r = rig_on(
             Store::open_in_memory().unwrap(),
-            Tier::Pro,
             tempfile::tempdir().unwrap(),
             true,
         );
@@ -2969,7 +2554,6 @@ fn the_import_problems_follow_the_selected_language() {
     on_ui_thread(|| {
         let r = rig_on(
             Store::open_in_memory().unwrap(),
-            Tier::Pro,
             tempfile::tempdir().unwrap(),
             true,
         );
@@ -3036,7 +2620,6 @@ fn the_backups_section_names_the_newest_backup_or_says_there_is_none() {
         );
         let demo = rig_on(
             demo::store(now()).unwrap(),
-            Tier::Pro,
             tempfile::tempdir().unwrap(),
             false,
         );
@@ -3110,80 +2693,39 @@ fn the_text_size_row_changes_the_setting_and_scales_the_page_at_once() {
     });
 }
 
-// ---- Paste next needs Supporter --------------------------------------------------------------
+// ---- Support Snipdeck (optional, unlocks nothing) -----------------------------------------------
 
 #[test]
-fn paste_next_is_registered_with_supporter_only_and_the_chord_stays_in_the_settings() {
+fn the_support_row_opens_exactly_the_coffee_page_and_changes_nothing() {
     on_ui_thread(|| {
-        let paste_next = snipdeck_app::host::id_of(HotkeyAction::PasteNext);
-        let registered = |r: &Rig| {
-            r.host
-                .hotkeys
-                .borrow()
-                .registered
-                .iter()
-                .any(|(id, _)| *id == paste_next)
-        };
-        // Free: recording a chord keeps it, registers the others, and not this one.
-        let free = rig();
-        free.ui.invoke_hotkey_recorded(3, "Ctrl+Alt+M".into());
+        let r = rig();
+        let before = r.ctl.borrow().settings().clone();
+        element(&r.ui, "Support", AccessibleRole::Groupbox);
+        element(&r.ui, "Support Snipdeck", AccessibleRole::Groupbox);
+        assert!(r.host.urls.borrow().is_empty(), "nothing opens by itself");
+        r.ui.invoke_support_requested();
         assert_eq!(
-            free.ctl.borrow().settings().hotkeys.paste_next,
-            "Ctrl+Alt+M"
+            *r.host.urls.borrow(),
+            ["https://buymeacoffee.com/braydenh563".to_owned()],
+            "the one address, once"
         );
-        free.ui.invoke_hotkey_recorded(2, "Ctrl+Alt+K".into());
-        assert!(!registered(&free), "Free does not get Paste next");
         assert_eq!(
-            free.host.hotkeys.borrow().registered.len(),
-            3,
-            "the Panel, the Picker and Capture are registered"
+            snipdeck_app::help_binding::SUPPORT_URL,
+            r.host.urls.borrow()[0]
         );
-        // The row says why the chord does nothing (it used to stay silent).
-        assert_eq!(
-            free.ui.get_hotkeys().row_data(3).unwrap().conflict,
-            "Paste next is a Supporter feature, so this shortcut does nothing on the Free plan."
-        );
-
-        // Supporter: the same chord is registered.
-        let pro = rig_on(
-            demo::store(now()).unwrap(),
-            Tier::Pro,
-            tempfile::tempdir().unwrap(),
-            true,
-        );
-        pro.ui.invoke_hotkey_recorded(3, "Ctrl+Alt+M".into());
-        assert!(registered(&pro));
+        assert_eq!(*r.ctl.borrow().settings(), before, "no setting moved");
+        assert!(r.ui.get_toast_text().is_empty(), "no toast on success");
     });
 }
 
 #[test]
-fn a_licence_key_registers_paste_next_at_once() {
-    if !IS_DEVELOPMENT_KEY {
-        return;
-    }
+fn a_browser_that_will_not_open_says_so_in_a_toast() {
     on_ui_thread(|| {
         let r = rig();
-        let paste_next = snipdeck_app::host::id_of(HotkeyAction::PasteNext);
-        let registered = || {
-            r.host
-                .hotkeys
-                .borrow()
-                .registered
-                .iter()
-                .any(|(id, _)| *id == paste_next)
-        };
-        r.ui.invoke_hotkey_recorded(3, "Ctrl+Alt+M".into());
-        assert!(!registered(), "stored, not registered, on the Free plan");
-        let key = token(
-            &support::dev_seed(),
-            &pro_payload("TEST-1", 1_760_000_000, None).unwrap(),
-        );
-        r.ui.invoke_licence_submitted(key.into());
-        assert!(r.ui.get_pro());
-        assert!(
-            registered(),
-            "Supporter registers the chord kept in the settings"
-        );
+        r.host.url_fails.set(true);
+        r.ui.invoke_support_requested();
+        assert_eq!(r.ui.get_toast_text(), "Couldn't open the link.");
+        assert_eq!(r.ui.get_toast_kind(), ToastKind::Danger);
     });
 }
 
@@ -3368,7 +2910,7 @@ fn where_the_panel_opens_is_off_while_it_is_docked() {
 fn the_hello_row_appears_with_a_password_and_a_ready_hello_and_the_switch_seals() {
     on_ui_thread(|| {
         let hello = std::sync::Arc::new(snipdeck_platform::testing::FakeHello::new());
-        let r = master_rig(Tier::Pro);
+        let r = master_rig();
         {
             let mut ctl = r.ctl.borrow_mut();
             ctl.set_hello(hello.clone());

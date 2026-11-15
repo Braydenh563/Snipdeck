@@ -8,7 +8,7 @@
 //! `‹Name›` stand-in for a field with none), a Link gets its resolved address.
 
 use snipdeck_core::{
-    Feature, Item, ItemId, ItemKind, ItemLabel, Timestamp,
+    Item, ItemId, ItemKind, ItemLabel, Timestamp,
     template::{Locale, Template, TimeZone},
 };
 
@@ -67,12 +67,10 @@ pub struct CardPreview {
 }
 
 /// The card for `input`. `now` is the moment `{date}` and `{time}` show; `tz` and `locale` are
-/// the user's. `prompted_allowed` is false when Save would refuse a prompted placeholder here
-/// (a free user who just added one): the card then says so instead of expanding it.
+/// the user's.
 #[must_use]
 pub fn card_of(
     input: &EditorInput,
-    prompted_allowed: bool,
     now: Timestamp,
     tz: &TimeZone,
     locale: Locale,
@@ -111,9 +109,6 @@ pub fn card_of(
             _ => {}
         },
         ItemKind::Template if !text.trim().is_empty() => match Template::parse(text) {
-            Ok(_) if item_editor::check_template(text, prompted_allowed, true).is_err() => {
-                card.problem = Some(EditorProblem::NeedsPro(Feature::PromptedFields));
-            }
             Ok(template) if !sensitive => {
                 card.expanded = Some(expand(&template, now, tz, locale, words));
             }
@@ -212,7 +207,7 @@ mod tests {
     }
 
     fn card(input: &EditorInput) -> CardPreview {
-        card_of(input, true, now(), &TimeZone::UTC, Locale::default(), WORDS)
+        card_of(input, now(), &TimeZone::UTC, Locale::default(), WORDS)
     }
 
     #[test]
@@ -330,7 +325,6 @@ mod secret_tests {
         };
         card_of(
             &input,
-            true,
             Timestamp::from_second(1_772_600_767).expect("a moment"),
             &TimeZone::UTC,
             Locale::default(),
@@ -383,32 +377,5 @@ mod secret_tests {
             );
             assert_no_secret(&c, "hunter2");
         }
-    }
-
-    #[test]
-    fn a_new_prompted_placeholder_is_refused_for_a_free_user_like_save() {
-        let input = EditorInput {
-            kind: ItemKind::Template,
-            title: "t".to_owned(),
-            content: "Dear {field:Name}".to_owned(),
-            sensitive: false,
-            always_plain: false,
-            list_index: 0,
-            source_path: String::new(),
-            label: None,
-        };
-        let c = card_of(
-            &input,
-            false,
-            Timestamp::from_second(1_772_600_767).expect("a moment"),
-            &TimeZone::UTC,
-            Locale::default(),
-            PreviewWords { new_id: "(new ID)" },
-        );
-        assert_eq!(
-            c.problem,
-            Some(EditorProblem::NeedsPro(Feature::PromptedFields))
-        );
-        assert!(c.expanded.is_none());
     }
 }

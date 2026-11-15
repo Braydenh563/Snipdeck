@@ -317,7 +317,7 @@ fn folder_errors_and_empty_results() {
 }
 
 #[test]
-fn folder_skip_duplicates_and_board_name_and_limit() {
+fn folder_skip_duplicates_and_board_name() {
     let dir = tempfile::tempdir().unwrap();
     write(dir.path(), "a.txt", "same");
     write(dir.path(), "b.txt", "other");
@@ -325,17 +325,11 @@ fn folder_skip_duplicates_and_board_name_and_limit() {
     let opts = ImportOptions {
         merge: MergeStrategy::SkipDuplicates,
         board_name: Some("Chosen".to_owned()),
-        free_board_limit: Some(0),
         ..ImportOptions::default()
     };
     let first = import_folder(&mut s, dir.path(), at(1), &opts).unwrap();
     assert_eq!(first.items_added, 2);
     assert_eq!(s.boards().unwrap()[0].name.as_str(), "Chosen");
-    assert!(
-        first
-            .warnings
-            .contains(&Warning::BoardLimit { limit: 0, total: 1 })
-    );
     let second = import_folder(&mut s, dir.path(), at(2), &opts).unwrap();
     assert_eq!(
         (
@@ -344,12 +338,6 @@ fn folder_skip_duplicates_and_board_name_and_limit() {
             second.boards_added
         ),
         (0, 2, 0)
-    );
-    assert!(
-        !second
-            .warnings
-            .iter()
-            .any(|w| matches!(w, Warning::BoardLimit { .. }))
     );
 }
 

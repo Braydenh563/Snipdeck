@@ -82,7 +82,7 @@ More in [`tools/launcher/README.md`](tools/launcher/README.md).
   multi-select, drag and drop, and keyboard reordering. A command palette (<kbd>Ctrl</kbd>+<kbd>K</kbd>) lists
   every action.
 - **Six kinds of item.** Text, code, link, template, image and file.
-- **Templates.** Insert `{date}`, `{time}` or your own date format. Supporter adds fields and choices that ask you
+- **Templates.** Insert `{date}`, `{time}` or your own date format. Fields and choices ask you
   for a value each time.
 - **Quick capture.** Choose a hotkey for it in Settings (it is off until you do), then press it to save the clipboard text as a new item.
 - **Recent inbox.** Asks first: nothing is kept until you say Yes (one switch in Settings changes it). Keeps what you copy for 7 days (last 200 copies), skips password managers and
@@ -147,7 +147,7 @@ Rendered from the app's own interface, in light or dark to match your GitHub the
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Y</kbd> | Show or hide the Panel |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> | Open the Picker |
 | *none until you set one* | Save the clipboard text as a new item (Settings > Shortcuts) |
-| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>U</kbd> | Paste the next pinned item or list item (Supporter) |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>U</kbd> | Paste the next pinned item or list item |
 
 Change any of them in Settings. If another program owns a hotkey, Snipdeck says so and the rest keep working.
 
@@ -195,13 +195,13 @@ Icons and fonts are packaged with the app. Your library stays on your PC in `%LO
 Details: [`docs/privacy.md`](docs/privacy.md).
 </details>
 
-## Free and Supporter
+## Free, with an optional coffee
 
-Snipdeck is free software under [GPL-3.0-only](LICENSE). Free covers everyday use with up to 5 boards.
-Supporter is pay what you want, from A$5 (suggested A$8), one time, with every 1.x update. It adds more
-boards, templates that ask for values, a master password for your encrypted items and paste next, and it
-supports the project. Encryption on disk is free for everyone. If you cannot afford it, ask for a key. Enter a key under **Licence** in Settings. Nothing nags you.
-See [`docs/licensing.md`](docs/licensing.md).
+Snipdeck is free software under [GPL-3.0-only](LICENSE). Every feature is on for everyone, on every build:
+unlimited boards, templates that ask for values, paste next, paste stack and a master password for your
+encrypted items. There are no tiers and no licence keys. If you like it, **Support Snipdeck** (Settings, Help >
+About, or the command palette) opens [buymeacoffee.com/braydenh563](https://buymeacoffee.com/braydenh563) in
+your browser. That is optional, keeps the app free and unlocks nothing, and Snipdeck handles no payment data.
 
 ## Coming next
 

@@ -396,8 +396,6 @@ fn crashes(host: &dyn DoctorHost) -> Check {
 pub struct ReportInfo {
     /// Snipdeck's version.
     pub version: String,
-    /// The licence tier ("Free", "Supporter").
-    pub tier: String,
     /// The operating system and its build.
     pub os: String,
     /// The display scale ("150%").
@@ -415,8 +413,8 @@ pub fn report(info: &ReportInfo, checks: &[Check]) -> String {
     out.push_str("Snipdeck diagnostic report\n");
     let _ = write!(
         out,
-        "Version: {}\nLicence: {}\nSystem: {}\nDisplay scale: {}\n",
-        info.version, info.tier, info.os, info.dpi
+        "Version: {}\nSystem: {}\nDisplay scale: {}\n",
+        info.version, info.os, info.dpi
     );
     out.push_str("\nSettings\n");
     for (name, value) in &info.flags {
@@ -774,7 +772,6 @@ mod tests {
     fn the_report_lists_versions_flags_and_checks_and_hides_the_data_folder_path() {
         let info = ReportInfo {
             version: "0.1.0".into(),
-            tier: "Free".into(),
             os: "Windows 11 build 26100".into(),
             dpi: "150%".into(),
             flags: vec![("close to tray".into(), "on".into())],

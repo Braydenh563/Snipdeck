@@ -1390,3 +1390,21 @@ fn the_no_results_footer_has_an_enter_keycap() {
         "the keycap outline (border.strong): {strong}px"
     );
 }
+
+/// The first-run question about the Recent list (asked once; nothing is kept before Yes), light
+/// and dark at the usual size, and at the narrowest Panel (260px) with the largest text size.
+#[test]
+fn panel_recent_question_light_dark_and_narrowest_at_225_percent() {
+    for (dark, name) in [
+        (false, "panel-recent-question-light"),
+        (true, "panel-recent-question-dark"),
+    ] {
+        let h = panel(SIZE, dark);
+        h.component.set_recent_question_open(true);
+        assert_golden(name, &render(&h));
+    }
+    let h = panel((260, SIZE.1), false);
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    h.component.set_recent_question_open(true);
+    assert_golden("panel-recent-question-narrow-scale-light", &render(&h));
+}

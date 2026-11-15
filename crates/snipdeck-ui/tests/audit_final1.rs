@@ -112,9 +112,8 @@ fn item(w: u32, h: u32, dark: bool, s: f32, setup: impl Fn(&ItemEditor)) -> Harn
     hn
 }
 
-fn template_free(c: &ItemEditor) {
+fn template(c: &ItemEditor) {
     c.set_kind_index(3);
-    c.set_prompted_available(false);
     c.set_content("Hello {field:Name}, due on {date}.".into());
 }
 
@@ -128,7 +127,7 @@ fn dump_item_editor_scenes() {
         (false, 1.5, 560, 1100),
     ] {
         let hn = item(w, h, dark, s, |c| {
-            template_free(c);
+            template(c);
             c.set_formatted(true);
             c.set_saved_content("Hello".into());
         });

@@ -22,9 +22,9 @@
 //! | `date` var with `format` | `{datetime:FORMAT}` if the format is one Snipdeck can parse |
 //! | `clipboard` var | `{clipboard}` |
 //! | `echo` var | its text, inline |
-//! | `choice` var with `values` | `{choice:name\|a\|b}` (Supporter) |
+//! | `choice` var with `values` | `{choice:name\|a\|b}` |
 //! | `$\|$` | `{cursor}` |
-//! | `form` text `[[field]]` | `{field:field}` / `{field:field\|default}`, or `{choice:...}` for a `choice` / `list` field with `values` (Supporter) |
+//! | `form` text `[[field]]` | `{field:field}` / `{field:field\|default}`, or `{choice:...}` for a `choice` / `list` field with `values` |
 //!
 //! Anything else (`shell`, `script`, `random`, an unknown name, a date format Snipdeck does not
 //! know) is kept in the text as written and the report gets a note. A match whose placeholders

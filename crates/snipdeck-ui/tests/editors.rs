@@ -214,14 +214,6 @@ fn item_editor_each_kind() {
     assert_golden("item-editor-template-light", &render(&h));
     drop(h);
 
-    let h = item_fit(560, false, |c| {
-        c.set_kind_index(3);
-        c.set_prompted_available(false);
-        c.set_content("Due on {date}.".into());
-    });
-    assert_golden("item-editor-template-free-light", &render(&h));
-    drop(h);
-
     let h = item_fit(ITEM.0, false, |c| {
         c.set_kind_index(4);
         c.set_item_title("Screenshot 14:02".into());
@@ -322,24 +314,8 @@ fn item_editor_template_placeholders_at_420px_and_225_percent_text_size() {
     let h = item((420, 2600), false);
     h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
     h.component.set_kind_index(3);
-    h.component.set_prompted_available(false);
     h.component.set_content("Due on {date}.".into());
     assert_golden("item-editor-template-narrow-scale-light", &render(&h));
-}
-
-/// Saving a template with a prompted field on the Free plan: the refusal sits under the text and a button beside it
-/// opens the way to get Supporter.
-#[test]
-fn item_editor_supporter_refusal_offers_get_supporter() {
-    let h = item(ITEM, false);
-    h.component.set_kind_index(3);
-    h.component.set_prompted_available(false);
-    h.component.set_content("Dear {field:Name}".into());
-    h.component.set_content_error(
-        "Fields that ask for a value are a Supporter feature. Remove them to save.".into(),
-    );
-    h.component.set_content_needs_supporter(true);
-    assert_golden("item-editor-needs-supporter-light", &render(&h));
 }
 
 /// The footer buttons (by their accessible label) as (left, top, right, bottom) in window pixels.
@@ -569,7 +545,7 @@ fn settings_page_panel_layout_and_opening_groups() {
 }
 
 #[test]
-fn settings_page_licence_backups_data_and_privacy() {
+fn settings_page_support_backups_data_and_privacy() {
     // Tall enough for every section.
     let h = Harness::new(SettingsPage::new, SETTINGS.0, 2400);
     fixture::settings(&h.component);
@@ -579,20 +555,16 @@ fn settings_page_licence_backups_data_and_privacy() {
     let h = Harness::new(SettingsPage::new, SETTINGS.0, 2400);
     h.component.set_dark(true);
     fixture::settings(&h.component);
-    h.component.set_pro(true);
     h.component.set_erase_open(true);
     h.component.set_toast_text("Backed up".into());
     h.component.set_toast_kind(snipdeck_ui::ToastKind::Success);
-    assert_golden("settings-full-pro-erase-dark", &render(&h));
+    assert_golden("settings-full-erase-dark", &render(&h));
     drop(h);
 
     let h = Harness::new(SettingsPage::new, SETTINGS.0, 2400);
     fixture::settings(&h.component);
     h.component.set_has_data_folder(false);
     h.component.set_backups(ModelRc::new(VecModel::default()));
-    h.component.set_licence_error(
-        "That licence key is not valid. Check that you copied all of it.".into(),
-    );
     assert_golden("settings-demo-light", &render(&h));
 }
 
@@ -644,11 +616,15 @@ fn hotkey_health_in_settings_and_the_welcome_tour() {
 #[test]
 fn settings_search_filters_rows_and_hides_empty_sections() {
     use slint::Global;
-    for (query, name) in [
-        ("tray", "settings-search-tray-light"),
-        ("zzzz", "settings-search-none-light"),
+    for (query, dark, name) in [
+        ("tray", false, "settings-search-tray-light"),
+        ("zzzz", false, "settings-search-none-light"),
+        // The optional Support section (it sits at the very end of the page).
+        ("donate", false, "settings-search-support-light"),
+        ("donate", true, "settings-search-support-dark"),
     ] {
         let h = Harness::new(SettingsPage::new, SETTINGS.0, SETTINGS.1);
+        h.component.set_dark(dark);
         fixture::settings(&h.component);
         snipdeck_ui::SettingsFilter::get(&h.component)
             .on_matches(|text, query| text.to_lowercase().contains(&query.to_lowercase()));
@@ -762,16 +738,6 @@ fn help_tips_light_and_dark() {
     fixture::tips(&h.component);
     h.component.set_tab(3);
     assert_golden("help-tips-dark", &render(&h));
-}
-
-/// The Tips tab on the Free plan: the cards of Supporter features carry the Supporter mark beside the title.
-#[test]
-fn help_tips_free_plan_marks_the_supporter_cards() {
-    let h = Harness::new(HelpWindow::new, HELP.0, HELP.1 * 2);
-    fixture::help(&h.component);
-    fixture::tips_on(&h.component, true);
-    h.component.set_tab(3);
-    assert_golden("help-tips-free-light", &render(&h));
 }
 
 /// The Tips tab at the Help window's smallest size: the cards keep their picture and button and the
