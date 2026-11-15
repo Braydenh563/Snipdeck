@@ -2551,7 +2551,7 @@ msgid "Sensitive items can't be typed in, so they have no trigger."
 msgstr "機密項目は入力による挿入ができないため、トリガーはありません。"
 
 msgid "Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose."
-msgstr ""
+msgstr "バックアップまたはエクスポートに含まれる機密項目は、この PC のこの Windows アカウントでのみ復元できます。別の PC や Windows の再インストール後は、スキップされます。失いたくない機密情報は、ご自身でコピーを保管してください。"
 
 msgid "Set master password"
 msgstr "マスターパスワードを設定"
@@ -2689,7 +2689,7 @@ msgid "Snipdeck couldn't save this item. Nothing was changed."
 msgstr "Snipdeck はこのスニペットを保存できませんでした。何も変更されていません。"
 
 msgid "Snipdeck couldn't start.\n\n{}\n\nNothing was deleted. Close any program that may be using your Snipdeck folder, make sure the folder is not read-only, then start Snipdeck again. If you went back to an older version, install the newer one. Your backups are in the backups folder inside your Snipdeck folder."
-msgstr ""
+msgstr "Snipdeck を起動できませんでした。\n\n{}\n\n何も削除されていません。Snipdeck フォルダーを使用している可能性のあるプログラムを閉じ、フォルダーが読み取り専用でないことを確認してから、Snipdeck をもう一度起動してください。古いバージョンに戻した場合は、新しいバージョンをインストールしてください。バックアップは Snipdeck フォルダー内の backups フォルダーにあります。"
 
 msgid "Snipdeck couldn't write to your library. Check that the disk has room."
 msgstr "Snipdeck はライブラリに書き込めませんでした。ディスクに空き容量があるか確認してください。"

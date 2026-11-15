@@ -2551,7 +2551,7 @@ msgid "Sensitive items can't be typed in, so they have no trigger."
 msgstr "敏感项目无法通过键入插入，因此没有触发词。"
 
 msgid "Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose."
-msgstr ""
+msgstr "备份或导出中的敏感项目只能由此电脑上的这个 Windows 账户恢复。在另一台电脑上，或重新安装 Windows 后，这些项目会被跳过。请自行保留无法丢失的敏感内容的副本。"
 
 msgid "Set master password"
 msgstr "设置主密码"
@@ -2689,7 +2689,7 @@ msgid "Snipdeck couldn't save this item. Nothing was changed."
 msgstr "Snipdeck 无法保存此片段。未做任何更改。"
 
 msgid "Snipdeck couldn't start.\n\n{}\n\nNothing was deleted. Close any program that may be using your Snipdeck folder, make sure the folder is not read-only, then start Snipdeck again. If you went back to an older version, install the newer one. Your backups are in the backups folder inside your Snipdeck folder."
-msgstr ""
+msgstr "Snipdeck 无法启动。\n\n{}\n\n没有删除任何内容。请关闭可能正在使用 Snipdeck 文件夹的程序，确认该文件夹不是只读的，然后重新启动 Snipdeck。如果你回退到了旧版本，请安装较新的版本。你的备份位于 Snipdeck 文件夹内的 backups 文件夹中。"
 
 msgid "Snipdeck couldn't write to your library. Check that the disk has room."
 msgstr "Snipdeck 无法写入你的资料库。请检查磁盘是否有足够空间。"
