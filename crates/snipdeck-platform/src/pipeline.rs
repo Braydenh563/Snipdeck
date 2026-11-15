@@ -128,6 +128,11 @@ pub enum Error {
     /// The use was called off before any key went out (the user typed on or switched window).
     #[error("the use was called off")]
     Superseded,
+    /// Called off like [`Error::Superseded`], but the item stayed on the clipboard: there was no
+    /// snapshot to put back, it was incomplete, or the restore failed. A sensitive item must
+    /// still be cleared later.
+    #[error("the use was called off and the item is still on the clipboard")]
+    SupersededLeft,
 }
 
 /// The platform services a use needs.
@@ -230,10 +235,17 @@ fn paste<C: Clipboard, K: Keyboard, T: Timing>(
     if !proceed() {
         // The user typed on or changed window while we waited: Backspaces now would erase the
         // wrong text. Put the clipboard back and send nothing.
-        if let Some(snapshot) = snapshot {
-            let _ = env.clipboard.restore(snapshot, written);
-        }
-        return Err(Error::Superseded);
+        let put_back = match snapshot {
+            Some(snapshot) if env.clipboard.is_complete(&snapshot) => {
+                env.clipboard.restore(snapshot, written).is_ok()
+            }
+            _ => false,
+        };
+        return Err(if put_back {
+            Error::Superseded
+        } else {
+            Error::SupersededLeft
+        });
     }
     let mut events = crate::keys::backspaces(erase);
     events.extend(paste_sequence(env.keyboard.held_modifiers(), key));
@@ -362,6 +374,35 @@ mod tests {
         assert_eq!(out, Err(Error::Superseded));
         assert!(w.keyboard.sent.is_empty(), "no Backspace, no paste key");
         assert_eq!(w.clipboard.log, ["snapshot", "transient:2", "restore"]);
+    }
+
+    fn called_off(w: &mut World) -> Result<UseOutcome, Error> {
+        let mut env = Env {
+            clipboard: &mut w.clipboard,
+            keyboard: &mut w.keyboard,
+            timing: &mut w.timing,
+        };
+        use_item_erasing(&mut env, &text_and_html(), UseMode::Paste, &PASTE, 0, &|| false)
+    }
+
+    #[test]
+    fn a_use_called_off_with_the_item_left_on_the_clipboard_says_so() {
+        let mut no_snapshot = World::new();
+        no_snapshot.clipboard.fail_snapshot = true;
+        assert_eq!(called_off(&mut no_snapshot), Err(Error::SupersededLeft));
+        let mut incomplete = World::new();
+        incomplete.clipboard.incomplete_snapshot = true;
+        assert_eq!(called_off(&mut incomplete), Err(Error::SupersededLeft));
+        let mut failed = World::new();
+        failed.clipboard.restore_result = Some(Err(Error::Clipboard("busy".into())));
+        assert_eq!(called_off(&mut failed), Err(Error::SupersededLeft));
+        let mut newer = World::new();
+        newer.clipboard.restore_result = Some(Ok(false));
+        assert_eq!(
+            called_off(&mut newer),
+            Err(Error::Superseded),
+            "the user copied something newer: our item is gone"
+        );
     }
 
     #[test]

@@ -325,11 +325,12 @@ impl WinClipboard {
         self.call(|| unsafe { GetClipboardSequenceNumber() }).ok()
     }
 
-    /// Deletes the decrypted files that file pastes left in `%TEMP%\Snipdeck` (best effort: a
-    /// file another app still has open stays until the next start). Called on lock and quit
-    /// after a sensitive file was pasted.
+    /// Deletes the decrypted files that sensitive file pastes left in `%TEMP%\Snipdeck` (best
+    /// effort: a file another app still has open stays until the next start). Folders of
+    /// ordinary file items stay: the clipboard may still point to them. Called when the
+    /// clipboard clear is due, on lock and on quit.
     pub fn forget_pasted_files(&mut self) {
-        remove_paste_files();
+        forget_sensitive_paste_files();
     }
 
     /// Empties the clipboard, whatever formats it holds, if its sequence number is still
@@ -623,7 +624,7 @@ fn prepare(payload: &Payload, formats: &Formats) -> Result<Vec<Entry>, Error> {
                 );
             }
             Data::Files(files) if !files.is_empty() => {
-                let paths = write_paste_files(files)?;
+                let paths = write_paste_files(files, payload.is_private())?;
                 let hdrop = win_formats::drop_files(&paths)
                     .ok_or_else(|| Error::Clipboard("a pasted file path is invalid".into()))?;
                 add(&mut entries, u32::from(CF_HDROP.0), Source::Bytes(hdrop));
@@ -646,7 +647,7 @@ fn prepare(payload: &Payload, formats: &Formats) -> Result<Vec<Entry>, Error> {
 /// their UTF-16 paths. The previous folder is kept, because the clipboard (or a snapshot about to
 /// be restored) may still point into it; every older one is removed first (best effort: a file
 /// still open stays until a later paste or the next start, see [`remove_paste_files`]).
-fn write_paste_files(files: &[FilePayload]) -> Result<Vec<Vec<u16>>, Error> {
+fn write_paste_files(files: &[FilePayload], sensitive: bool) -> Result<Vec<Vec<u16>>, Error> {
     let io = |error: std::io::Error| {
         Error::Clipboard(format!(
             "could not write the pasted files ({})",
@@ -664,6 +665,9 @@ fn write_paste_files(files: &[FilePayload]) -> Result<Vec<Vec<u16>>, Error> {
     let previous = win_formats::newest_paste_dir(&root);
     win_formats::remove_paste_dirs(&root, previous.as_deref());
     let dir = win_formats::claim_paste_dir(&root, win_formats::os_random).map_err(io)?;
+    if sensitive && let Ok(mut list) = SENSITIVE_PASTE_DIRS.lock() {
+        list.push(dir.clone());
+    }
     let mut paths = Vec::with_capacity(files.len());
     // Two files of the same name (from different folders) must both paste.
     let names =
@@ -679,6 +683,19 @@ fn write_paste_files(files: &[FilePayload]) -> Result<Vec<Vec<u16>>, Error> {
         paths.push(path.as_os_str().encode_wide().collect());
     }
     Ok(paths)
+}
+
+/// The paste folders that hold a sensitive item's decrypted files; only these are deleted when
+/// the clipboard clear is due, so a plain file item the clipboard still points to keeps its files.
+static SENSITIVE_PASTE_DIRS: std::sync::Mutex<Vec<std::path::PathBuf>> =
+    std::sync::Mutex::new(Vec::new());
+
+/// Deletes the folders of sensitive pastes (see [`SENSITIVE_PASTE_DIRS`]).
+fn forget_sensitive_paste_files() {
+    let Ok(mut list) = SENSITIVE_PASTE_DIRS.lock() else {
+        return;
+    };
+    win_formats::remove_listed_paste_dirs(&std::env::temp_dir().join("Snipdeck"), &mut list);
 }
 
 /// Removes every pasted-file folder at the next start (not on exit: a persistent `CF_HDROP` may
@@ -1079,7 +1096,7 @@ fn write_job(
     if placed == 0 {
         // Do not leave the clipboard empty: put the user's previous content back if we have it.
         if let Some(snapshot) = fallback {
-            put_back(&snapshot, formats);
+            let _ = put_back(&snapshot, formats);
         }
         drop(open);
         return Err(Error::Clipboard(
@@ -1190,23 +1207,32 @@ fn restore_job(snapshot: &Snapshot, written: Written, formats: Formats) -> Resul
     unsafe { EmptyClipboard() }.map_err(|e| os_error("EmptyClipboard", &e))?;
     // The restore is a write of its own: the old Written no longer matches anything.
     with_owner(|owner| owner.ledger.begin_write());
-    put_back(&snapshot.data, formats);
+    let whole = put_back(&snapshot.data, formats);
     drop(open);
+    if !whole {
+        // Reported, so the paste says the earlier clipboard is not back (and a sensitive item
+        // that stayed is cleared like a copy). Unverified on Windows.
+        return Err(Error::Clipboard(
+            "a format of the earlier clipboard could not be put back".into(),
+        ));
+    }
     Ok(true)
 }
 
 /// Places `snapshot`'s formats now, with the markers (unless it is empty). The clipboard must be
-/// open by this thread and emptied.
-fn put_back(snapshot: &SnapshotData, formats: Formats) {
+/// open by this thread and emptied. `false` if any format failed to write.
+fn put_back(snapshot: &SnapshotData, formats: Formats) -> bool {
     let markers = formats.markers();
+    let mut whole = true;
     for (format, bytes) in &snapshot.formats {
         if !markers.contains(format) {
-            set_now(*format, bytes);
+            whole &= set_now(*format, bytes);
         }
     }
     if !snapshot.formats.is_empty() {
         set_markers(formats);
     }
+    whole
 }
 
 fn set_markers(formats: Formats) {

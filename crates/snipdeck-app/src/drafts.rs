@@ -189,6 +189,10 @@ impl Drafts {
         let mut file = fs::File::create(&side)?;
         file.write_all(&bytes).and_then(|()| file.sync_all())?;
         drop(file);
+        // The draft being replaced may hold text the user has since marked sensitive: zero it
+        // before the rename unlinks it, or its blocks stay readable. (A crash between the two
+        // leaves the finished side file and no draft; that costs one autosave, not the item.)
+        overwrite_with_zeros(&path);
         fs::rename(&side, &path)
     }
 
@@ -201,6 +205,10 @@ impl Drafts {
     /// The file exists and could not be removed.
     pub fn clear(&self, key: DraftKey) -> io::Result<()> {
         let path = self.path(key);
+        // A side file a crash left behind holds a whole draft too.
+        let side = path.with_extension("json.tmp");
+        overwrite_with_zeros(&side);
+        let _ = fs::remove_file(&side);
         overwrite_with_zeros(&path);
         match fs::remove_file(&path) {
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(()),
@@ -250,6 +258,21 @@ mod tests {
             vec!["fresh".into()],
             String::new(),
         )
+    }
+
+    #[test]
+    fn saving_over_a_draft_zeroes_the_one_it_replaces() {
+        let dir = tempfile::tempdir().expect("dir");
+        let drafts = Drafts::in_data_dir(dir.path());
+        let key = DraftKey::New;
+        drafts.save(key, &draft("first secret text")).expect("save");
+        // A second name for the old file stands for what a recovery tool would still see.
+        let alias = dir.path().join("alias");
+        fs::hard_link(drafts.path(key), &alias).expect("link");
+        drafts.save(key, &draft("second")).expect("save again");
+        let seen = fs::read(&alias).expect("alias");
+        assert!(seen.iter().all(|b| *b == 0), "the replaced draft was zeroed");
+        assert_eq!(drafts.load(key).expect("draft").content, "second");
     }
 
     #[test]

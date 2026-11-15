@@ -551,8 +551,14 @@ where
                 e.fresh.is_none_or(|fresh| fresh()) && target.current().map(|t| t.app) == e.app
             })
         };
+        // Where the clipboard stood before the use: a paste puts the user's earlier clipboard
+        // back, which can be the sensitive content a pending clear is waiting for.
+        let sequence_before = env.clipboard.sequence_number();
         match usecase::use_item_guarded(&mut self.store, &mut env, &request, &proceed) {
             Ok(used) => {
+                if used.outcome == UseOutcome::Pasted {
+                    self.follow_restored_clipboard(sequence_before);
+                }
                 if let Some(line) = used.count_failed_line() {
                     crate::trace!("{line}");
                 }
@@ -569,6 +575,12 @@ where
                 UseResult::Done(used.outcome)
             }
             Err(UseError::Platform(snipdeck_platform::pipeline::Error::Superseded)) => {
+                UseResult::Cancelled
+            }
+            // The paste was called off but the item is still on the clipboard: it is cleared
+            // like a copy would be.
+            Err(UseError::Platform(snipdeck_platform::pipeline::Error::SupersededLeft)) => {
+                self.schedule_clipboard_clear(item, UseOutcome::PastedNotRestored);
                 UseResult::Cancelled
             }
             Err(UseError::NeedsAnswers(_)) => {
@@ -607,6 +619,11 @@ where
             self.secret_files_pasted = true;
         }
         let life = Duration::from_secs(u64::from(self.settings.clipboard_clear_secs));
+        // The plaintext copies go on the same timer as the clipboard, with or without a master
+        // password; the clipboard's own clear below may not apply (a paste that restored it).
+        if self.secret_files_pasted && !life.is_zero() {
+            self.secret_files_due = self.clock.now().checked_add(life).ok();
+        }
         if life.is_zero()
             || matches!(outcome, UseOutcome::Pasted)
             || !self.store.item(item).is_ok_and(|i| i.sensitive)
@@ -632,18 +649,44 @@ where
         });
     }
 
+    /// A paste put the earlier clipboard back, which moved the clipboard's sequence number. If
+    /// that clipboard was the one a pending clear is waiting for (its number was `before` the
+    /// paste), the clear now follows the restored content, so a sensitive image or file that a
+    /// later paste restores is still cleared. Content copied since stays untouched.
+    fn follow_restored_clipboard(&mut self, before: Option<u32>) {
+        let now = self.services.clipboard.sequence_number();
+        if let Some(pending) = &mut self.clipboard_clear
+            && before.is_some()
+            && pending.sequence == before
+        {
+            pending.sequence = now;
+        }
+    }
+
     /// How long until the clipboard is to be cleared of a copied sensitive item, if one waits.
     /// The host arms a timer for this and then calls
     /// [`clear_clipboard_if_due`](Self::clear_clipboard_if_due).
     #[must_use]
     pub fn clipboard_clear_wait(&self) -> Option<Duration> {
-        let pending = self.clipboard_clear.as_ref()?;
-        Some(Duration::try_from(pending.due.duration_since(self.clock.now())).unwrap_or_default())
+        let due = [
+            self.clipboard_clear.as_ref().map(|p| p.due),
+            self.secret_files_due,
+        ]
+        .into_iter()
+        .flatten()
+        .min()?;
+        Some(Duration::try_from(due.duration_since(self.clock.now())).unwrap_or_default())
     }
 
     /// Clears the clipboard if the wait is over and it still holds the copied text.
     pub fn clear_clipboard_if_due(&mut self) {
         self.clear_clipboard(false);
+        if self
+            .secret_files_due
+            .is_some_and(|due| self.clock.now() >= due)
+        {
+            self.forget_secret_files();
+        }
     }
 
     /// Clears a pending sensitive copy now, whatever its due time (the app is quitting, and the
@@ -658,6 +701,7 @@ where
     /// pasted (the lock and the quit call it). A file the target still holds open stays until
     /// the next start. Nothing to do when no such item was pasted.
     pub(super) fn forget_secret_files(&mut self) {
+        self.secret_files_due = None;
         if std::mem::take(&mut self.secret_files_pasted) {
             self.services.clipboard.forget_pasted_files();
         }

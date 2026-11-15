@@ -1446,3 +1446,44 @@ fn quitting_deletes_the_files_a_sensitive_files_item_left_in_the_temp_folder() {
     w.ctl.clear_pending_clipboard_now();
     assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 1, "once");
 }
+
+#[test]
+fn a_sensitive_files_paste_deletes_its_temp_files_on_the_clear_timer_without_a_lock() {
+    let mut w = world();
+    let id = w.ids[0];
+    let mut item = w.ctl.store.item(id).expect("item");
+    item.sensitive = true;
+    item.kind = snipdeck_core::ItemKind::File;
+    item.preview.clear();
+    w.ctl.store.update_item(&item, None).expect("update");
+    w.ctl.activate_row(0, UseMode::Paste);
+    // The timer the host arms covers the files even though the clipboard needs no clear.
+    assert_eq!(w.ctl.clipboard_clear_wait(), Some(Duration::from_secs(30)));
+    w.clock.set(at("2026-10-17T10:30:29Z"));
+    w.ctl.clear_clipboard_if_due();
+    assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 0, "not yet");
+    w.clock.set(at("2026-10-17T10:30:30Z"));
+    w.ctl.clear_clipboard_if_due();
+    assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 1);
+    assert_eq!(w.ctl.clipboard_clear_wait(), None, "no timer left");
+}
+
+#[test]
+fn a_paste_that_restores_a_sensitive_clipboard_keeps_its_clear_armed() {
+    let mut w = world();
+    let (secret, plain) = (w.ids[0], w.ids[1]);
+    make_sensitive(&mut w, secret);
+    w.ctl.activate_row(0, UseMode::Copy);
+    let armed = w.ctl.clipboard_clear.as_ref().expect("armed").sequence;
+    assert_eq!(armed, w.ctl.services.clipboard.written_sequence());
+    // A plain item is pasted: the paste writes and then restores the clipboard, which moves the
+    // sequence number; the pending clear follows it.
+    assert_eq!(
+        w.ctl.activate_row(1, UseMode::Paste),
+        UseResult::Done(UseOutcome::Pasted)
+    );
+    let _ = plain;
+    let now = w.ctl.services.clipboard.sequence_number();
+    assert_ne!(now, armed, "the paste moved the number");
+    assert_eq!(w.ctl.clipboard_clear.as_ref().expect("armed").sequence, now);
+}
