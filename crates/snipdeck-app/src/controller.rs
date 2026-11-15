@@ -295,6 +295,9 @@ pub struct Controller<S, C, K, T> {
     /// The colour items of the home list, kept until the library changes (every redraw of the
     /// Colours tab asks for them; a drag redraws on each pointer event).
     colour_saved_cache: std::cell::RefCell<Option<Vec<(ItemId, snipdeck_colour::Rgba8)>>>,
+    /// The colour home list found by [`Controller::home_list_id`] (`Some(None)`: there is none),
+    /// dropped together with `colour_saved_cache`: the colour view asks on every render.
+    colour_home_cache: std::cell::Cell<Option<Option<ListId>>>,
     session: Session,
     saver: Option<SettingsSaver>,
     /// Where the edge dock is (see [`crate::dock`]).
@@ -524,6 +527,7 @@ where
             pasted_image_title: crate::capture::PASTED_IMAGE_TITLE.to_owned(),
             colour_made_list: None,
             colour_saved_cache: std::cell::RefCell::new(None),
+            colour_home_cache: std::cell::Cell::new(None),
             session: Session::default(),
             hotkey_problems: Vec::new(),
             saver: None,

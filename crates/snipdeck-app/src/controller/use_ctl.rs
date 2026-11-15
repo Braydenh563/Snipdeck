@@ -558,6 +558,7 @@ where
                 }
                 self.note_activity();
                 self.queue.used(item);
+                self.index_cache.note_use(item);
                 self.schedule_clipboard_clear(item, used.outcome);
                 self.show_toast(toast::after_use(
                     used.outcome,

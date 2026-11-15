@@ -129,7 +129,7 @@ What is **not** guaranteed:
   folder and are deleted, not zeroed. Snipdeck's queries over sensitive content are small, but
   this is outside the store's control.
 * **Pasted files.** Pasting a Files item (sensitive or not) writes its files, decrypted, to
-  `%TEMP%\Snipdeck\paste-<random>\`, because `CF_HDROP` needs real paths. The folder is kept while
+  `%USERPROFILE%\Snipdeck paste files\paste-<random>\` (not `%TEMP%`: a Store build cannot share files under AppData, see `docs/packaging.md`), because `CF_HDROP` needs real paths. The folder is kept while
   the clipboard may point into it. The next paste and the next start zero each file, then delete
   the folder; a file another program has open stays until a later run. After a **sensitive** Files
   item was pasted, locking the library and quitting also delete these folders (a file the target

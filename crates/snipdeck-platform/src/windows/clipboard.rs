@@ -72,7 +72,8 @@ use std::fs;
 use std::io::Write as _;
 use std::os::windows::ffi::OsStrExt as _;
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use std::sync::atomic::{AtomicU8, AtomicU64, Ordering, compiler_fence};
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering, compiler_fence};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::{Arc, Weak};
 use std::thread::JoinHandle;
@@ -154,6 +155,8 @@ pub struct WinClipboard {
     written_sequence: Option<u32>,
     thread: Option<JoinHandle<()>>,
     exited: Receiver<()>,
+    /// Whether Windows accepted the clipboard-change listener (without it Recent sees nothing).
+    listening: Arc<AtomicBool>,
 }
 
 impl std::fmt::Debug for WinClipboard {
@@ -230,10 +233,12 @@ impl WinClipboard {
         let (exited_tx, exited) = mpsc::channel();
         let rendered = Arc::new(AtomicU64::new(0));
         let thread_rendered = Arc::clone(&rendered);
+        let listening = Arc::new(AtomicBool::new(false));
+        let thread_listening = Arc::clone(&listening);
         let thread = std::thread::Builder::new()
             .name("snipdeck-clipboard".into())
             .spawn(move || {
-                owner_thread(thread_rendered, &job_queue, &ready_tx);
+                owner_thread(thread_rendered, &thread_listening, &job_queue, &ready_tx);
                 let _ = exited_tx.send(());
             })
             .map_err(|_| ServiceError::Unavailable("could not start the clipboard thread"))?;
@@ -247,6 +252,7 @@ impl WinClipboard {
                 written_sequence: None,
                 thread: Some(thread),
                 exited,
+                listening,
             }),
             Ok(Err(error)) => {
                 let _ = thread.join();
@@ -256,6 +262,13 @@ impl WinClipboard {
                 "the clipboard thread did not start",
             )),
         }
+    }
+
+    /// Whether the clipboard-change listener is installed. `false` means the Recent inbox can
+    /// record nothing, and the host should say so once.
+    #[must_use]
+    pub fn is_listening(&self) -> bool {
+        self.listening.load(Ordering::Acquire)
     }
 
     /// The clipboard's text (`CF_UNICODETEXT`), for the `{clipboard}` template variable.
@@ -642,7 +655,30 @@ fn prepare(payload: &Payload, formats: &Formats) -> Result<Vec<Entry>, Error> {
     Ok(entries)
 }
 
-/// Writes `files` into a fresh, randomly named `%TEMP%\Snipdeck\paste-<random>\` and returns
+/// Where pasted files are written: `%USERPROFILE%\Snipdeck paste files` in a packaged (Store)
+/// build, `%TEMP%\Snipdeck` otherwise.
+///
+/// A packaged build writes new files under `AppData` (which holds `%TEMP%`) into a private
+/// per-package copy that other programs cannot see (Microsoft Learn, "Flexible virtualization"),
+/// so a path on the clipboard into it would not exist for Explorer or a mail client. Outside
+/// `AppData` the write is real. An unpackaged build has no such copy and keeps `%TEMP%`, as does
+/// a packaged one with no profile folder. UNVERIFIED on a Store build until it runs there
+/// (docs/packaging.md).
+fn paste_root() -> PathBuf {
+    paste_root_for(
+        super::package::is_packaged(),
+        std::env::var_os("USERPROFILE"),
+    )
+}
+
+fn paste_root_for(packaged: bool, profile: Option<std::ffi::OsString>) -> PathBuf {
+    profile.filter(|p| packaged && !p.is_empty()).map_or_else(
+        || std::env::temp_dir().join("Snipdeck"),
+        |profile| PathBuf::from(profile).join("Snipdeck paste files"),
+    )
+}
+
+/// Writes `files` into a fresh, randomly named `<paste_root>\paste-<random>\` and returns
 /// their UTF-16 paths. The previous folder is kept, because the clipboard (or a snapshot about to
 /// be restored) may still point into it; every older one is removed first (best effort: a file
 /// still open stays until a later paste or the next start, see [`remove_paste_files`]).
@@ -659,7 +695,7 @@ fn write_paste_files(files: &[FilePayload]) -> Result<Vec<Vec<u16>>, Error> {
     {
         return Err(Error::Clipboard("a pasted file name is invalid".into()));
     }
-    let root = std::env::temp_dir().join("Snipdeck");
+    let root = paste_root();
     fs::create_dir_all(&root).map_err(io)?;
     let previous = win_formats::newest_paste_dir(&root);
     win_formats::remove_paste_dirs(&root, previous.as_deref());
@@ -685,6 +721,8 @@ fn write_paste_files(files: &[FilePayload]) -> Result<Vec<Vec<u16>>, Error> {
 /// still point into one), so decrypted bytes do not outlive the next run. Best effort; a file
 /// another app still has open stays.
 fn remove_paste_files() {
+    win_formats::remove_paste_dirs(&paste_root(), None);
+    // Folders an earlier version left in %TEMP%.
     win_formats::remove_paste_dirs(&std::env::temp_dir().join("Snipdeck"), None);
 }
 
@@ -733,6 +771,7 @@ fn with_owner<R>(f: impl FnOnce(&mut Owner) -> R) -> Option<R> {
 
 fn owner_thread(
     rendered: Arc<AtomicU64>,
+    listening: &AtomicBool,
     jobs: &Receiver<Job>,
     ready: &Sender<Result<usize, ServiceError>>,
 ) {
@@ -755,7 +794,8 @@ fn owner_thread(
     // Without the listener a render's possible bump on close goes unrecorded and the restore
     // after it is refused (the safe side), so a failure here is not fatal.
     // SAFETY: `hwnd` is the live window this thread just created.
-    let _ = unsafe { AddClipboardFormatListener(hwnd) };
+    let registered = unsafe { AddClipboardFormatListener(hwnd) }.is_ok();
+    listening.store(registered, Ordering::Release);
     let _ = ready.send(Ok(hwnd.0.expose_provenance()));
 
     let mut msg = MSG::default();
@@ -1515,6 +1555,18 @@ mod tests {
     //! These use the real clipboard, so they are ignored by default and serialised. Run on
     //! Windows with `cargo test -p snipdeck-platform -- --ignored clipboard`.
 
+    #[test]
+    fn paste_files_go_to_the_profile_only_when_packaged() {
+        let profile = || Some(std::ffi::OsString::from(r"C:\Users\a"));
+        assert_eq!(
+            super::paste_root_for(true, profile()),
+            std::path::PathBuf::from(r"C:\Users\a").join("Snipdeck paste files")
+        );
+        let temp = std::env::temp_dir().join("Snipdeck");
+        assert_eq!(super::paste_root_for(false, profile()), temp);
+        assert_eq!(super::paste_root_for(true, None), temp);
+    }
+
     use std::sync::{Mutex, PoisonError};
 
     use super::*;
@@ -1631,7 +1683,7 @@ mod tests {
         for name in ["a.txt", "b.txt", "c.txt"] {
             clipboard.write_persistent(&files(name)).unwrap();
         }
-        let root = std::env::temp_dir().join("Snipdeck");
+        let root = paste_root();
         let ours: Vec<_> = fs::read_dir(&root)
             .unwrap()
             .flatten()

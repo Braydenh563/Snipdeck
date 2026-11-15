@@ -68,7 +68,7 @@ msgid "A palette tab with a colour picker, every colour format, contrast checks 
 msgstr "カラーピッカー、すべての色形式、コントラストチェック、保存した色をまとめたパレットのタブです。オフにするとタブと Ctrl+K のコマンドが非表示になります。"
 
 msgid "A paste leaves out the formatting and sends only the text. Alt+Enter or Alt+click does this for one paste."
-msgstr ""
+msgstr "貼り付け時に書式を除き、テキストだけを送ります。Alt+Enter または Alt+クリックで、1 回の貼り付けだけこの動作になります。"
 
 msgid "A small window you can drag anywhere."
 msgstr "好きな場所にドラッグできる小さなウィンドウです。"
@@ -201,7 +201,7 @@ msgid "Alt+{}"
 msgstr "Alt+{}"
 
 msgid "Always paste as plain text"
-msgstr ""
+msgstr "常にプレーンテキストで貼り付ける"
 
 msgid "Always shown"
 msgstr "常に表示"
@@ -624,7 +624,7 @@ msgid "Couldn't export your library. Check the disk has room, then try again."
 msgstr "ライブラリをエクスポートできませんでした。ディスクの空き容量を確認し、もう一度お試しください。"
 
 msgid "Couldn't export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then try again."
-msgstr ""
+msgstr "ライブラリをエクスポートできませんでした。添付ファイル 1 つ、または添付ファイルの合計が .snipdeck ファイルには大きすぎます(1 ファイル 64 MB、合計 8 GB)。大きいファイルを削除または縮小してから、もう一度お試しください。"
 
 msgid "Couldn't export your library: it is locked. Unlock it, then try again."
 msgstr "ライブラリをエクスポートできませんでした。ロックされています。ロックを解除して、もう一度お試しください。"
@@ -660,7 +660,7 @@ msgid "Couldn't make a backup. Check the disk has room, then use Back up now in 
 msgstr "バックアップを作成できませんでした。ディスクの空き容量を確認し、設定の「今すぐバックアップ」をお使いください。"
 
 msgid "Couldn't make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
-msgstr ""
+msgstr "バックアップを作成できませんでした。添付ファイル 1 つ、または添付ファイルの合計がバックアップには大きすぎます(1 ファイル 64 MB、合計 8 GB)。大きいファイルを削除または縮小してから、設定の「今すぐバックアップ」を使ってください。"
 
 msgid "Couldn't make a backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
 msgstr "バックアップを作成できませんでした。バックアップファイルが使用中か、書き込めません。Snipdeck のフォルダーを使っている他のプログラムを閉じ、設定の「今すぐバックアップ」をお使いください。"
@@ -687,7 +687,7 @@ msgid "Couldn't make today's backup. Check the disk has room, then use Back up n
 msgstr "今日のバックアップを作成できませんでした。ディスクの空き容量を確認し、設定の「今すぐバックアップ」をお使いください。"
 
 msgid "Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
-msgstr ""
+msgstr "今日のバックアップを作成できませんでした。添付ファイル 1 つ、または添付ファイルの合計がバックアップには大きすぎます(1 ファイル 64 MB、合計 8 GB)。大きいファイルを削除または縮小してから、設定の「今すぐバックアップ」を使ってください。"
 
 msgid "Couldn't make today's backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
 msgstr "今日のバックアップを作成できませんでした。バックアップファイルが使用中か、書き込めません。Snipdeck のフォルダーを使っている他のプログラムを閉じ、設定の「今すぐバックアップ」をお使いください。"
@@ -718,6 +718,9 @@ msgstr "画面から色を選べませんでした。"
 
 msgid "Couldn't reach the clipboard. Another app may be using it."
 msgstr "クリップボードにアクセスできませんでした。別のアプリが使用中の可能性があります。"
+
+msgid "Couldn't read your settings file, so Snipdeck is using the defaults. Changes to settings won't be saved until the file is fixed or removed."
+msgstr "設定ファイルを読み取れなかったため、Snipdeck は既定値を使っています。ファイルを修復または削除するまで、設定の変更は保存されません。"
 
 msgid "Couldn't refresh the list on screen. Close and reopen the window to see the change."
 msgstr "画面の一覧を更新できませんでした。変更を確認するには、ウィンドウを閉じてもう一度開いてください。"
@@ -1388,9 +1391,6 @@ msgstr "ウィンドウを閉じても通知領域で実行を続ける"
 msgid "Keep secrets secret"
 msgstr "秘密は秘密のままに"
 
-msgid "Keep the Panel on top (pin)"
-msgstr "パネルを常に手前に表示(ピン留め)"
-
 msgid "Keep the Panel open"
 msgstr "パネルを開いたままにする"
 
@@ -1985,7 +1985,7 @@ msgid "Paste"
 msgstr "貼り付け"
 
 msgid "Paste as plain text"
-msgstr ""
+msgstr "プレーンテキストで貼り付け"
 
 msgid "Paste as…"
 msgstr "形式を指定して貼り付け…"
@@ -2024,7 +2024,7 @@ msgid "Paste the Nth result"
 msgstr "N番目の結果を貼り付け"
 
 msgid "Paste the item as plain text"
-msgstr ""
+msgstr "アイテムをプレーンテキストで貼り付けます"
 
 msgid "Paste the next item"
 msgstr "次のスニペットを貼り付け"
@@ -2039,16 +2039,16 @@ msgid "Pasted"
 msgstr "貼り付けました"
 
 msgid "Pasted image"
-msgstr ""
+msgstr "貼り付けた画像"
 
 msgid "Pasted into {}"
 msgstr "{} に貼り付けました"
 
 msgid "Pasted into {}. Your earlier clipboard could not be put back."
-msgstr ""
+msgstr "{} に貼り付けました。以前のクリップボードの内容は元に戻せませんでした。"
 
 msgid "Pasted. Your earlier clipboard could not be put back."
-msgstr ""
+msgstr "貼り付けました。以前のクリップボードの内容は元に戻せませんでした。"
 
 msgid "Pastes into"
 msgstr "貼り付け先"
@@ -2063,7 +2063,7 @@ msgid "Pastes the next item of the list in order."
 msgstr "リストの次のスニペットを順番に貼り付けます。"
 
 msgid "Pasting"
-msgstr ""
+msgstr "貼り付け中"
 
 msgid "Path to the file"
 msgstr "ファイルのパス"
@@ -2138,7 +2138,7 @@ msgid "Placeholders"
 msgstr "プレースホルダー"
 
 msgid "Placeholders are {}. To write a literal brace, double it: {} or {}"
-msgstr ""
+msgstr "プレースホルダーは {} で書きます。波括弧そのものを書くには二重にします: {} または {}"
 
 msgid "Plain text"
 msgstr "プレーンテキスト"
@@ -2310,9 +2310,6 @@ msgstr "タグの名前を変更または削除します。タグを削除して
 
 msgid "Rename tag {}"
 msgstr "タグ {} の名前を変更"
-
-msgid "Rename the item"
-msgstr "項目の名前を変更"
 
 msgid "Repeat the new password"
 msgstr "新しいパスワードを再入力"
@@ -2663,6 +2660,9 @@ msgstr "Snipdeck はこの PC でキーを保護できないため、マスタ�
 
 msgid "Snipdeck can't read that file. It may be in use or protected."
 msgstr "Snipdeck はそのファイルを読めません。使用中か、保護されている可能性があります。"
+
+msgid "Snipdeck can't watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
+msgstr "Snipdeck はクリップボードを監視できないため、最近の項目は空のままです。Snipdeck を再起動してもう一度お試しください。"
 
 msgid "Snipdeck closed unexpectedly last time. Open the log?"
 msgstr "Snipdeck は前回、予期せず終了しました。ログを開きますか？"
@@ -3424,7 +3424,7 @@ msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (
 msgstr "ライブラリは 1 つのフォルダー %LOCALAPPDATA%\\Snipdeck にあります。snipdeck.db (ボード、リスト、アイテム、タグ、ごみ箱)、blobs (画像、ファイル、長いテキスト)、settings.json、backups (残したい数だけ)、logs が入っています。"
 
 msgid "Your library locked after a while. The form for the sensitive template you were filling in was closed."
-msgstr ""
+msgstr "しばらくしてライブラリがロックされました。入力中だった機密テンプレートのフォームは閉じられました。"
 
 msgid "Your library locked after a while. The sensitive item you were editing was closed without saving."
 msgstr "しばらくするとライブラリがロックされました。編集中の機密スニペットは保存されずに閉じられました。"
@@ -3444,50 +3444,53 @@ msgstr "組織のポリシーにより、Snipdeck は Windows と同時に起動
 msgid "Your sensitive items will be protected by Windows alone."
 msgstr "機密アイテムは Windows だけで保護されます。"
 
+msgid "Your settings file was damaged. Snipdeck kept what it could read and saved the original as settings.json.bad."
+msgstr "設定ファイルが壊れていました。Snipdeck は読み取れた内容を保持し、元のファイルを settings.json.bad として保存しました。"
+
 msgid "Your shortcuts"
 msgstr "ショートカット設定"
 
 msgid "`d` for days"
-msgstr ""
+msgstr "`d` は日"
 
 msgid "`h` for hours"
-msgstr ""
+msgstr "`h` は時間"
 
 msgid "`min` for minutes"
-msgstr ""
+msgstr "`min` は分"
 
 msgid "`mo` for months"
-msgstr ""
+msgstr "`mo` は月"
 
 msgid "`mo` for months or `min` for minutes"
-msgstr ""
+msgstr "`mo` は月、`min` は分"
 
 msgid "`w` for weeks"
-msgstr ""
+msgstr "`w` は週"
 
 msgid "`y` for years"
-msgstr ""
+msgstr "`y` は年"
 
 msgid "a choice needs options, e.g. {}"
-msgstr ""
+msgstr "選択には選択肢が必要です(例: {})"
 
 msgid "a choice option is empty"
-msgstr ""
+msgstr "選択肢が空です"
 
 msgid "a placeholder can have at most {} offsets"
-msgstr ""
+msgstr "プレースホルダーに指定できるオフセットは最大 {} 個です"
 
 msgid "a placeholder is not valid"
-msgstr ""
+msgstr "プレースホルダーが正しくありません"
 
 msgid "a prompt takes a name and one more part: {}"
-msgstr ""
+msgstr "プロンプトには名前ともう 1 つの要素が必要です: {}"
 
 msgid "a template can ask for at most {} different fields, choices, dates or sections"
-msgstr ""
+msgstr "1 つのテンプレートで尋ねられる異なる項目、選択、日付、セクションは最大 {} 個です"
 
 msgid "a {} ends the format; write {} for a literal {}"
-msgstr ""
+msgstr "{} は書式の終わりを表します。{} と書くと文字としての {} になります"
 
 msgid "add"
 msgstr "追加"
@@ -3499,10 +3502,10 @@ msgid "add create snippet note write"
 msgstr "追加 作成 スニペット メモ 書く"
 
 msgid "an offset in {} can be at most {}"
-msgstr ""
+msgstr "{} のオフセットは最大 {} までです"
 
 msgid "an offset is a sign, a number and a unit, like {} or {}"
-msgstr ""
+msgstr "オフセットは符号、数字、単位で書きます(例: {} や {})"
 
 msgid "and {} more"
 msgid_plural "and {} more"
@@ -3587,7 +3590,7 @@ msgid "emoji kaomoji icons smiley emoticon insert"
 msgstr "絵文字 顔文字 アイコン スマイリー 記号 挿入"
 
 msgid "empty placeholder {}"
-msgstr ""
+msgstr "プレースホルダー {} が空です"
 
 msgid "every mark choose all"
 msgstr "すべて 選択 マーク"
@@ -3669,16 +3672,16 @@ msgid "notepad.exe"
 msgstr "notepad.exe"
 
 msgid "one of d, w, mo, y, h, min"
-msgstr ""
+msgstr "d、w、mo、y、h、min のいずれか"
 
 msgid "only one {} is allowed"
-msgstr ""
+msgstr "{} は 1 つだけ使えます"
 
 msgid "open toggle deck hide"
 msgstr "開く 切り替え デッキ 隠す"
 
 msgid "optional sections cannot be nested"
-msgstr ""
+msgstr "省略可能なセクションは入れ子にできません"
 
 msgid "or"
 msgstr "または"
@@ -3741,10 +3744,10 @@ msgid "tag: {}"
 msgstr "タグ: {}"
 
 msgid "the choice option {} is listed twice"
-msgstr ""
+msgstr "選択肢 {} が 2 回書かれています"
 
 msgid "the prompt needs a name, e.g. {}"
-msgstr ""
+msgstr "プロンプトには名前が必要です(例: {})"
 
 msgid "to insert"
 msgstr "で挿入"
@@ -3756,16 +3759,16 @@ msgid "tutorial intro onboarding basics learn"
 msgstr "チュートリアル 入門 基本 学ぶ"
 
 msgid "unknown date format {}; supported: {}"
-msgstr ""
+msgstr "日付の書式 {} は不明です。使えるもの: {}"
 
 msgid "unknown offset unit {}; use {}"
-msgstr ""
+msgstr "オフセットの単位 {} は不明です。{} を使ってください"
 
 msgid "unknown placeholder {}"
-msgstr ""
+msgstr "プレースホルダー {} は不明です"
 
 msgid "unknown placeholder {}, did you mean {}?"
-msgstr ""
+msgstr "プレースホルダー {} は不明です。{} のことですか?"
 
 msgid "version update"
 msgstr "バージョン 更新 アップデート"
@@ -3818,10 +3821,10 @@ msgid "{} can't be used as a shortcut. Choose another in Settings."
 msgstr "{} はショートカットに使用できません。設定で別のものを選んでください。"
 
 msgid "{} closes nothing"
-msgstr ""
+msgstr "{} は何も閉じません"
 
 msgid "{} closes nothing; write {} for a literal {}"
-msgstr ""
+msgstr "{} は何も閉じません。{} と書くと文字としての {} になります"
 
 msgid "{} could not be read and was skipped."
 msgstr "{} は読み込めなかったため、スキップされました。"
@@ -3859,10 +3862,10 @@ msgid "{} is empty and was skipped."
 msgstr "{} は空のため、スキップされました。"
 
 msgid "{} is never closed; add {} after the part"
-msgstr ""
+msgstr "{} が閉じられていません。その部分の後に {} を追加してください"
 
 msgid "{} is never closed; write {} for a literal {}"
-msgstr ""
+msgstr "{} が閉じられていません。{} と書くと文字としての {} になります"
 
 msgid "{} is not valid UTF-8, so characters that could not be read were replaced."
 msgstr "{} は有効な UTF-8 ではないため、読めない文字は置き換えられました。"
@@ -3874,7 +3877,7 @@ msgid "{} is used by another app. Choose another in Settings."
 msgstr "{} は別のアプリが使用中です。設定で別のものを選んでください。"
 
 msgid "{} is used for two different prompts; use the same kind and options each time, or pick another name"
-msgstr ""
+msgstr "{} が 2 つの異なるプロンプトに使われています。毎回同じ種類と選択肢にするか、別の名前を付けてください"
 
 msgid "{} is {}, over the 5 MB limit for text, and was skipped."
 msgstr "{} は {} で、テキストの上限 5 MB を超えるためスキップされました。"
@@ -3906,7 +3909,7 @@ msgid "{} needs a number"
 msgstr "{} には数値が必要です"
 
 msgid "{} needs an argument: {}"
-msgstr ""
+msgstr "{} には引数が必要です: {}"
 
 msgid "{} new board will be made"
 msgid_plural "{} new boards will be made"
@@ -3941,7 +3944,7 @@ msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "機密項目 {} 件がバックアップに含まれていませんでした。"
 
 msgid "{} takes no argument"
-msgstr ""
+msgstr "{} は引数を取りません"
 
 msgid "{} · {}"
 msgstr "{} · {}"

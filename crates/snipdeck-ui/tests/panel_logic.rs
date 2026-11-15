@@ -86,7 +86,6 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_paste_create_requested, || "paste-create".to_string());
     hook!(on_copy_selection_requested, || "copy-selection".to_string());
     hook!(on_undo_requested, || "ctrl-z".to_string());
-    hook!(on_new_item_requested, || "new".to_string());
     hook!(on_row_picked, |i, shift, ctrl| format!(
         "picked:{i}:{shift}:{ctrl}"
     ));
@@ -559,7 +558,7 @@ ui_tests! {
         let (ui, log) = start();
         take(&log);
         chord(ui.window(), &[Key::Control, Key::Shift], "N");
-        assert_eq!(take(&log), ["quick-add-full:"], "the full editor, prefilled with the box");
+        assert_eq!(take(&log), ["add-list"], "Ctrl+Shift+N is New list, as in the Main window");
         chord(ui.window(), &[Key::Control], ",");
         assert_eq!(take(&log), ["settings"]);
         chord(ui.window(), &[Key::Control], "w");
@@ -1258,22 +1257,14 @@ ui_tests! {
         assert_eq!(find(&ui, "Keep panel on top", AccessibleRole::Button).accessible_checked(), Some(false));
     }
 
-    fn ctrl_shift_p_toggles_keep_on_top_like_the_pin_button_and_does_not_pin_the_row() {
+    fn ctrl_shift_p_opens_the_commands_like_in_the_main_window_and_leaves_the_pin_alone() {
         let (ui, log) = start();
         press(ui.window(), &key(Key::DownArrow));
         take(&log);
         assert!(ui.get_on_top(), "the Panel is on top by default");
         chord(ui.window(), &[Key::Control, Key::Shift], "P");
-        assert!(!ui.get_on_top());
-        assert_eq!(take(&log), ["pin:false"], "the pin button's callback, not the row's");
-        assert_eq!(
-            find(&ui, "Keep panel on top", AccessibleRole::Button).accessible_checked(),
-            Some(false),
-            "the button shows the new state"
-        );
-        chord(ui.window(), &[Key::Control, Key::Shift], "P");
+        assert_eq!(take(&log), ["commands"], "the Main window's palette, neither a pin nor a row pin");
         assert!(ui.get_on_top());
-        assert_eq!(take(&log), ["pin:true"]);
         assert_eq!(ui.get_query(), "", "the key does not type");
         // Ctrl+P alone still pins the selected row and leaves the keep-on-top state alone.
         chord(ui.window(), &[Key::Control], "p");

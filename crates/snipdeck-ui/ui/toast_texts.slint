@@ -165,6 +165,15 @@ export global ToastTexts {
     pure public function settings-not-saved() -> string {
         return @tr("Couldn't save your settings. Snipdeck will try again.");
     }
+    pure public function settings-damaged() -> string {
+        return @tr("Your settings file was damaged. Snipdeck kept what it could read and saved the original as settings.json.bad.");
+    }
+    pure public function settings-unreadable() -> string {
+        return @tr("Couldn't read your settings file, so Snipdeck is using the defaults. Changes to settings won't be saved until the file is fixed or removed.");
+    }
+    pure public function clipboard-watch-failed() -> string {
+        return @tr("Snipdeck can't watch the clipboard, so Recent stays empty. Restart Snipdeck to try again.");
+    }
     pure public function items-trashed(count: int) -> string {
         return @tr("Moved {} item to the Trash" | "Moved {} items to the Trash" % count, count);
     }
@@ -416,7 +425,7 @@ export global ToastTexts {
         return theme == 1 ? @tr("Theme: Light") : (theme == 2 ? @tr("Theme: Dark") : @tr("Theme: System"));
     }
 
-    // The Panel's pin was switched (Ctrl+Shift+P, the pin button, the palette).
+    // The Panel's pin was switched (the pin button, the palette).
     pure public function panel-on-top(on: bool) -> string {
         return on ? @tr("Panel stays open") : @tr("Panel closes when you click away");
     }

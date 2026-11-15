@@ -359,10 +359,11 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
     fn finish(mut self, now: Timestamp, doc: &ItemsDoc) -> Result<ExportReport> {
         let json = serde_json::to_vec(doc)
             .map_err(|e| Error::malformed(ITEMS, format!("could not serialise: {e}")))?;
-        if json.len() as u64 > self.options.limits.max_json_bytes {
+        let cap = self.options.limits.export_json_cap();
+        if json.len() as u64 > cap {
             return Err(Error::LimitExceeded {
                 what: "items.json size",
-                limit: self.options.limits.max_json_bytes,
+                limit: cap,
             });
         }
         self.writer.add(ITEMS, &json, true)?;

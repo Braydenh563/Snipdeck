@@ -670,6 +670,17 @@ pub(crate) fn record_use(cx: &mut Ctx<'_>, id: ItemId, at: Timestamp) -> Result<
     Ok(())
 }
 
+/// [`ItemRepo::rich_item_ids`](crate::ItemRepo::rich_item_ids): one query that reads no content.
+pub(crate) fn rich_item_ids(conn: &Connection) -> Result<Vec<ItemId>> {
+    let mut stmt = conn.prepare_cached(&format!(
+        "SELECT DISTINCT f.item_id
+         FROM item_formats f JOIN items i ON i.id = f.item_id {JOIN_LIVE}
+         WHERE {WHERE_LIVE} AND i.encrypted = 0 AND f.kind IN ('html', 'rtf')"
+    ))?;
+    let ids = stmt.query_map([], |r| r.get::<_, Vec<u8>>(0))?;
+    ids.map(|id| id_from(&id?)).collect()
+}
+
 pub(crate) fn search(conn: &Connection, query: &str, limit: usize) -> Result<Vec<ItemId>> {
     let Some(expression) = fts::match_expression(query) else {
         return Ok(Vec::new());

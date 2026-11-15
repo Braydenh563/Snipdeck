@@ -414,6 +414,8 @@ export component SettingsPage inherits Window {
     callback recent-history-toggled(on: bool);
     callback expand-triggers-toggled(on: bool);
     callback suggest-triggers-toggled(on: bool);
+    // "Clear recent history" asked once more (Cancel / Clear history) before it acts.
+    property <bool> clear-recent-ask: false;
     callback recent-history-cleared();
     callback panel-in-taskbar-toggled(on: bool);
     callback panel-hide-on-blur-toggled(on: bool);
@@ -496,6 +498,12 @@ export component SettingsPage inherits Window {
     // The first entry of the language list, which the host cannot translate itself.
     public pure function follow-windows-text() -> string {
         return @tr("Follow Windows");
+    }
+
+    // The host calls this when the page closes or opens, so a half-asked "Clear recent history"
+    // (Cancel / Clear history showing) is never still there on the next look.
+    public function reset-asks() {
+        root.clear-recent-ask = false;
     }
 
     function close-erase() {
@@ -1079,12 +1087,33 @@ export component SettingsPage inherits Window {
                     SettingRow {
                         title: @tr("Clear recent history");
                         description: @tr("Deletes everything in the Recent inbox now.");
-                        Button {
+                        if !root.clear-recent-ask: Button {
                             text: @tr("Clear recent history");
                             variant: ButtonVariant.ghost;
-                            clicked => { root.recent-history-cleared(); }
+                            clicked => { root.clear-recent-ask = true; }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                        if root.clear-recent-ask: HorizontalLayout {
+                            spacing: Space.s2;
+                            Button {
+                                text: @tr("Cancel");
+                                clicked => { root.clear-recent-ask = false; }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                            Button {
+                                text: @tr("Clear history");
+                                variant: ButtonVariant.danger;
+                                clicked => {
+                                    root.clear-recent-ask = false;
+                                    root.recent-history-cleared();
+                                }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
                             }
                         }
                     }

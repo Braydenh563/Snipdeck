@@ -35,7 +35,7 @@ fn stored_record(conn: &Connection) -> Result<KeyRecord> {
 }
 
 /// Encrypts every sensitive item whose content is still plain text (made sensitive before
-/// encryption was set up, on Free), trashed ones included. Returns how many, and the blobs
+/// encryption was set up), trashed ones included. Returns how many, and the blobs
 /// that held their plaintext (to release and scrub after the commit).
 fn encrypt_plain_sensitive(
     conn: &Connection,

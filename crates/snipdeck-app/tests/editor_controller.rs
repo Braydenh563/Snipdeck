@@ -576,7 +576,7 @@ fn a_free_user_marking_an_item_sensitive_gets_it_encrypted_like_everyone() {
     let id = save_sensitive(&mut ctl, "Pin", SECRET);
     assert!(
         ctl.store().key_ring_exists().expect("ring"),
-        "the key is made on first use, on Free too"
+        "the key is made on first use"
     );
     assert!(ctl.store().is_unlocked());
     let item = ctl.store().item(id).expect("item");
@@ -1019,7 +1019,7 @@ fn start_up_encrypts_sensitive_items_an_earlier_version_left_in_plain_text() {
     let data = tempfile::tempdir().expect("dir");
     let provider = SharedProvider::new();
     let id = seed_plain_sensitive(data.path(), "Old secret", SECRET);
-    // Free: encryption is on for every plan, so the first start fixes the old item.
+    // Encryption is always on, so the first start fixes the old item.
     let mut ctl = on_disk(&provider, true, data.path());
     ctl.unlock_library();
     assert!(ctl.store().key_ring_exists().expect("ring"));

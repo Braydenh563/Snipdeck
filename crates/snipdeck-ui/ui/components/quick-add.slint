@@ -22,11 +22,11 @@ export component QuickAdd inherits Rectangle {
     pure callback detect-kind(string) -> int;
     // Enter or [Create]: text, kind (0 Text, 1 Link, 2 Template), sensitive.
     callback create(string, int, bool);
-    // Ctrl+Shift+N inside the box: the full editor, prefilled with the text.
+    // Ctrl+Shift+Enter or the "More options" button: the full editor, prefilled with the text.
     callback full-editor(string);
     // The box folded back to the row (Esc, or after Create): the host puts the keyboard back on its list.
     callback closed();
-    // Shows a "More options" button (the full editor) beside Cancel, for a window where Ctrl+Shift+N is another command.
+    // Shows a "More options" button (the full editor) beside Cancel, (Ctrl+Shift+N is New list in both windows).
     in property <bool> show-more: false;
 
     // The box drops its Slint focus when the window loses the foreground (see `TextField.release-on-blur`).

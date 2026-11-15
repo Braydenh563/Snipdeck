@@ -231,7 +231,7 @@ fn typing_in_the_search_box_filters_by_action_name_or_chord() {
         r.ui.invoke_shortcut_query_changed("ctrl+shift+p".into());
         let found = r.titles();
         assert!(
-            found.contains(&"Keep the Panel on top (pin)".to_owned()),
+            found.contains(&"Commands in the Main window".to_owned()),
             "{found:?}"
         );
         assert!(!found.contains(&"New list".to_owned()), "{found:?}");

@@ -59,6 +59,9 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::Failed => 27,
         ToastMessage::WindowNotShown => 28,
         ToastMessage::SettingsNotSaved => 29,
+        ToastMessage::SettingsDamaged => 108,
+        ToastMessage::SettingsUnreadable => 109,
+        ToastMessage::ClipboardWatchFailed => 110,
         ToastMessage::ItemsTrashed { .. } => 30,
         ToastMessage::ListTrashed { .. } => 31,
         ToastMessage::BoardTrashed { .. } => 32,
@@ -138,7 +141,7 @@ const fn position(message: &ToastMessage) -> usize {
     }
 }
 
-const VARIANTS: usize = 108;
+const VARIANTS: usize = 111;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -317,6 +320,9 @@ fn samples() -> Vec<ToastMessage> {
         M::HelloTurnedOff,
         M::HelloNotTurnedOn,
         M::HelloEnrolFailed,
+        M::SettingsDamaged,
+        M::SettingsUnreadable,
+        M::ClipboardWatchFailed,
     ]
 }
 

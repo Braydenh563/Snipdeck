@@ -23,17 +23,20 @@ use windows::Win32::Graphics::Gdi::{
     GetSysColor, SYS_COLOR_INDEX,
 };
 use windows::Win32::System::Registry::{HKEY_CURRENT_USER, RRF_RT_REG_DWORD, RegGetValueW};
+use windows::Win32::System::RemoteDesktop::{
+    NOTIFY_FOR_THIS_SESSION, WTSRegisterSessionNotification, WTSUnRegisterSessionNotification,
+};
 use windows::Win32::UI::Accessibility::{HCF_HIGHCONTRASTON, HIGHCONTRASTW};
 use windows::Win32::UI::WindowsAndMessaging::{
     SPI_GETCLIENTAREAANIMATION, SPI_GETHIGHCONTRAST, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS,
-    SystemParametersInfoW, WM_SETTINGCHANGE,
+    SystemParametersInfoW, WM_CREATE, WM_DESTROY, WM_SETTINGCHANGE,
 };
 use windows::core::{BOOL, PCWSTR, w};
 
 use super::hidden_window::{HiddenWindow, WindowHandler};
 use crate::error::Error;
 use crate::system_look::{
-    HighContrast, Rgb, SystemLook, SystemLookSource, message_may_change_look,
+    HighContrast, Rgb, SystemLook, SystemLookSource, message_may_change_look, message_means_lock,
     text_scale_from_percent,
 };
 
@@ -200,9 +203,13 @@ impl SystemLookWatcher {
     ///
     /// [`Error::Unavailable`] if the thread cannot start; [`Error::Os`] if the window cannot be
     /// created.
-    pub fn start(on_change: impl Fn() + Send + 'static) -> Result<Self, Error> {
+    pub fn start(
+        on_change: impl Fn() + Send + 'static,
+        on_lock: impl Fn() + Send + 'static,
+    ) -> Result<Self, Error> {
         let window = HiddenWindow::spawn("snipdeck-look", "SnipdeckLookWindow", move || Watcher {
             on_change: Box::new(on_change),
+            on_lock: Box::new(on_lock),
         })?;
         Ok(Self { _window: window })
     }
@@ -210,10 +217,23 @@ impl SystemLookWatcher {
 
 struct Watcher {
     on_change: Box<dyn Fn() + Send>,
+    /// The session locked (Win+L) or the computer is going to sleep.
+    on_lock: Box<dyn Fn() + Send>,
 }
 
 impl WindowHandler for Watcher {
-    fn message(&self, _hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> Option<LRESULT> {
+    fn message(&self, hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> Option<LRESULT> {
+        if msg == WM_CREATE {
+            // SAFETY: `hwnd` is this thread's live window. A failure only means no Win+L lock
+            // (sleep still arrives through `WM_POWERBROADCAST`).
+            let _ = unsafe { WTSRegisterSessionNotification(hwnd, NOTIFY_FOR_THIS_SESSION) };
+        } else if msg == WM_DESTROY {
+            // SAFETY: as above; unregistering a window that never registered is harmless.
+            let _ = unsafe { WTSUnRegisterSessionNotification(hwnd) };
+        }
+        if message_means_lock(msg, wparam.0) {
+            let _ = catch_unwind(AssertUnwindSafe(|| (self.on_lock)()));
+        }
         // For a colour-mode change `wParam` is 0 and `lParam` is the area name. With a nonzero
         // `wParam` (an `SPI_*` code) `lParam` is not necessarily a string: do not read it.
         let area = (msg == WM_SETTINGCHANGE && wparam.0 == 0 && lparam.0 != 0)
@@ -270,7 +290,7 @@ mod tests {
 
     #[test]
     fn the_watcher_starts_and_stops() {
-        let watcher = SystemLookWatcher::start(|| {}).unwrap();
+        let watcher = SystemLookWatcher::start(|| {}, || {}).unwrap();
         drop(watcher);
     }
 }
