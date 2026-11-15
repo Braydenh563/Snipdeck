@@ -469,7 +469,7 @@ mod tests {
     }
 
     #[test]
-    fn the_real_catalogue_is_grouped_by_scope_in_order_and_lists_the_panels_keep_open_key() {
+    fn the_real_catalogue_is_grouped_by_scope_in_order_and_lists_the_panels_commands_chord() {
         let scopes: Vec<Scope> = CATALOGUE.iter().map(|s| s.scope).collect();
         let mut sorted = scopes.clone();
         sorted.sort_by_key(|s| Scope::ALL.iter().position(|a| a == s));
@@ -481,7 +481,7 @@ mod tests {
             CATALOGUE
                 .iter()
                 .any(|s| s.scope == Scope::Panel && s.keys == Keys::Chord("Ctrl+Shift+P")),
-            "Ctrl+Shift+P (keep the Panel open) is listed under the Panel"
+            "Ctrl+Shift+P (Commands, as in the Main window) is listed under the Panel"
         );
     }
 

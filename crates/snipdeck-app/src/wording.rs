@@ -25,6 +25,15 @@ use crate::{
     toast::ToastMessage,
 };
 
+/// The text of the message box shown when the app cannot start, in the language selected now.
+/// `details` is the reason the start-up code gave.
+#[must_use]
+pub fn startup_failure_text(window: &PanelWindow, details: &str) -> String {
+    ToastTexts::get(window)
+        .invoke_startup_failed(details.into())
+        .into()
+}
+
 /// The tray menu's words in the language selected for the UI now (English until a bundled
 /// translation is selected). `window` is any window of the UI: Slint globals are reached
 /// through a component.
@@ -268,6 +277,9 @@ where
         ToastMessage::UseFailed(cause) => t.invoke_use_failed(cause.code()),
         ToastMessage::WindowNotShown => t.invoke_window_not_shown(),
         ToastMessage::SettingsNotSaved => t.invoke_settings_not_saved(),
+        ToastMessage::SettingsDamaged => t.invoke_settings_damaged(),
+        ToastMessage::SettingsUnreadable => t.invoke_settings_unreadable(),
+        ToastMessage::ClipboardWatchFailed => t.invoke_clipboard_watch_failed(),
         ToastMessage::ItemsTrashed { count: n } => t.invoke_items_trashed(count(*n)),
         ToastMessage::ListTrashed { name } => t.invoke_list_trashed(name.into()),
         ToastMessage::BoardTrashed { name } => t.invoke_board_trashed(name.into()),
@@ -341,6 +353,7 @@ where
         ToastMessage::BoardSaved => t.invoke_board_saved(),
         ToastMessage::RecentDeleted => t.invoke_recent_deleted(),
         ToastMessage::RecentCleared => t.invoke_recent_cleared(),
+        ToastMessage::PickerRecentsCleared => t.invoke_picker_recents_cleared(),
         ToastMessage::DockSet(edge) => t.invoke_dock_set(match edge {
             None => 0,
             Some(DockEdge::Left) => 1,

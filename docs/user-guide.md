@@ -160,7 +160,8 @@ marks before you start.
 ## Organise
 
 Use the Main window. The sidebar lists **All items**, **Pinned**, your lists, your tags and the **Trash**. The
-toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable and tile views.
+toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable and tile views. The button at
+the right of the sidebar header (or `Ctrl+B`) folds the sidebar to a narrow rail and opens it again.
 
 - **Boards.** Open the board name at the top of the sidebar or the Panel. The menu lists your boards. In the
   Panel it has **New board**, **Rename board** and **Delete board** for the board you are on, so you can manage
@@ -224,7 +225,7 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
   row of chips above the items filters the view by label: choose a chip to show only those items, choose it
   again or *Clear filter* to show everything.
 - **List icon.** In the list editor, pick an icon under *Icon* (or *No icon*). It shows beside the list's name
-  on its tab and in the sidebar. Use the arrow keys to move through the icons.
+  on its tab and in the sidebar, tinted in the list's colour. Use the arrow keys to move through the icons.
 
 ### Trash and undo
 
@@ -236,7 +237,7 @@ like anything else.
 
 ## Commands and shortcuts
 
-- **Commands.** Press `Ctrl+K` (or `Ctrl+Shift+P`) in the Main window, or choose **Commands…** in
+- **Commands.** Press `Ctrl+K` (or `Ctrl+Shift+P`) in the Main window or the Panel, or choose **Commands…** in
   the Panel menu. Type a few letters, such as "new" or "hotkeys", and press `Enter`. The palette lists the
   actions of the app, so you never need to remember where one lives.
 - **Keyboard shortcuts.** Press `Ctrl+/` to see every shortcut. It is also a tab in the Help window.
@@ -341,7 +342,8 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   [Triggers and typing](#triggers-and-typing-windows).
 - **Privacy.** **Keep a Recent inbox of what you copy** and the programs it never keeps copies from. **Clear the
   clipboard after copying a sensitive item** sets the seconds (30 by default, `0`
-  never clears it). **Master password** sets, changes or removes the password. With a password set,
+  never clears it). **Clear recent emoji and colours…** forgets the recently used emoji and colours you have
+  picked (it asks first). **Master password** sets, changes or removes the password. With a password set,
   **Unlock with Windows Hello** appears under it (see [Windows Hello](#windows-hello-windows)). Below them is a
   short summary of what is stored and where.
 - **Programs.** One row per program, by file name, such as `windowsterminal.exe`, with the key Snipdeck presses to
@@ -390,6 +392,12 @@ If Snipdeck cannot start the typing watcher, a message says "Couldn't start typi
 Nothing expands in password boxes, in programs set to **Never paste**, in programs running as administrator,
 while Snipdeck is in front, or for sensitive items. Sensitive items are never suggested either. Snipdeck keeps only the last 32 characters you typed, in
 memory, and never writes them to disk or the log. The typing watcher runs only while one of the options is on.
+
+> **Limit: password prompts in a terminal.** Typed triggers are skipped in password boxes that Windows can
+> identify (UI Automation password fields). A password typed at a terminal prompt (ssh, sudo) is not such a
+> box, so a trigger that happens to occur in it would expand. Set your terminal programs to **Never paste**
+> in Settings (the paste rules list; nothing expands in them either), or turn **Expand abbreviations as I type**
+> off, if you type passwords there.
 
 ## Master password
 
@@ -498,6 +506,21 @@ Windows, or holds no text, or Windows refuses access, the preview says so and of
 the history on under Windows Settings ▸ System ▸ Clipboard. For what you copy from now on, turn on the
 [Recent inbox](#recent).
 
+## Uninstalling and what is left behind
+
+- **Setup installer.** Uninstall removes the program, its shortcuts, the "Start with Windows" entry and the
+  temporary copies made when you paste a Files item (`%USERPROFILE%\Snipdeck paste files`). It then asks
+  whether to delete your library too. The default answer is **No**, and a silent uninstall (`/VERYSILENT`)
+  never asks and never deletes it. If you keep it, these stay in `%LOCALAPPDATA%\Snipdeck`: your library
+  (`snipdeck.db` and its attachments), the daily backups, the settings file, drafts and the crash and
+  diagnostic logs. To remove them by hand, quit Snipdeck and delete that folder (export your library first
+  if you may want it back).
+- **Portable zip.** There is no uninstaller. Delete the folder you unzipped; your data stays in
+  `%LOCALAPPDATA%\Snipdeck` (or the folder you gave with `--data-dir`) until you delete it too. Turn off
+  **Start with Windows** in Settings first, or the Run entry stays behind.
+- **Microsoft Store build.** Uninstalling the app deletes its data, as the Store does for any packaged app.
+  Export your library first if you want to keep it.
+
 ## Keyboard reference
 
 | Where | Keys | Action |
@@ -513,8 +536,8 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Panel | `Ctrl+Tab`, `Ctrl+Shift+Tab` | Next or previous list |
 | Panel | `Ctrl+F` | Focus the search box |
 | Panel | `Ctrl+D` | Duplicate |
-| Panel | `Ctrl+K` | Commands (opens them in the Main window) |
-| Panel | `Ctrl+N`, `Ctrl+Shift+N` | New item, new list |
+| Panel | `Ctrl+K`, `Ctrl+Shift+P` | Commands (opens them in the Main window) |
+| Panel | `Ctrl+N`, `Ctrl+Shift+N` | New item (the quick-add box; its **More options** opens the full editor), new list |
 | Panel | `Ctrl+,` | Settings |
 | Panel | `Ctrl+/` | Show the keyboard shortcuts |
 | Panel | `Ctrl+W` | Hide the Panel |

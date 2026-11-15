@@ -109,6 +109,12 @@ class Check(Base):
         self.assertEqual(code, 0)
         self.assertIn("untranslated", out)
 
+    def test_strict_fails_on_an_empty_msgstr(self):
+        self.assertEqual(self.p.run("check")[0], 0)
+        code, out = self.p.run("check", "--strict")
+        self.assertEqual(code, 1)
+        self.assertIn("untranslated", out)
+
     def test_a_translation_that_loses_a_placeholder_fails(self):
         self.fill("de", {"Copy {} of {}": ["Kopiere {}"]})
         # that one has a context, so put it in by hand

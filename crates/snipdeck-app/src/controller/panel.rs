@@ -638,13 +638,15 @@ where
     fn set_item_pinned(&mut self, id: ItemId, pin: bool) {
         let now = self.clock.now();
         let mut changes = Vec::new();
-        let done = self.store.atomically(|b| {
-            changes.clear();
-            let before = b.item(id)?;
-            let mut item = before.clone();
-            item.pinned = pin;
-            item.updated_at = now;
-            super::history_ctl::update_recorded(b, &before, &item, &mut changes)
+        let done = self.index_cache.edit_item(&mut self.store, id, |store| {
+            store.atomically(|b| {
+                changes.clear();
+                let before = b.item(id)?;
+                let mut item = before.clone();
+                item.pinned = pin;
+                item.updated_at = now;
+                super::history_ctl::update_recorded(b, &before, &item, &mut changes)
+            })
         });
         match done {
             Ok(()) => {

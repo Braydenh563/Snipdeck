@@ -102,6 +102,25 @@ Packaged-app differences to expect (unverified):
   go into the package's own folder, so **the Store build's data is per package and is removed when the app is
   uninstalled**. It is not shared with the Setup or portable install. Check where Snipdeck keeps `snipdeck.db`
   and update [`user-guide.md`](user-guide.md) ("Open data folder") if the path differs.
+- **Files other programs must see (G35, decision 2026-11-15, UNVERIFIED until a Store build runs it).**
+  Microsoft Learn ("Flexible virtualization", "Understanding how packaged desktop apps run") says new files a
+  packaged desktop app creates under `AppData` go to a private per-user, per-package copy that only the app can
+  see. `%TEMP%` is under `AppData`, so a pasted-files path on the clipboard (`CF_HDROP`) would not exist for
+  Explorer or a mail client. Decision: paste files are written to `%USERPROFILE%\Snipdeck paste files\paste-*`
+  (outside `AppData`, so the write is real), not to `%TEMP%`; the folder is emptied at the next start, and old
+  `%TEMP%\Snipdeck` folders are removed too. The other fixes were rejected: `unvirtualizedResources`
+  (and `desktop6:FileSystemWriteVirtualization` / `virtualization:ExcludedDirectories`) is a restricted
+  capability meant for certain games and needs Microsoft's approval, and it would stop the data being removed
+  on uninstall. Still open: "Open data folder", "Open backups folder" and the crash-log folder start Explorer
+  on a path inside `AppData`; in a Store build Explorer shows the real `AppData`, not the package's private copy
+  (`%LOCALAPPDATA%\Packages\<PackageFamilyName>\LocalCache\Local\...`). A run on a Store build must confirm
+  what the user sees, and the folders may need to open that package path instead.
+- **Third-party notices in the Store package.** The app opens `THIRD_PARTY_NOTICES.md` from beside the exe (or
+  one folder up, for the portable zip). The Setup installer ships it. `release.yml`'s MSIX staging step does not
+  copy it yet: add `Copy-Item THIRD_PARTY_NOTICES.md, LICENSE "$stage\"` after the exe is staged. Blocked for
+  an agent (workflow files are the owner's to edit); until then the Help window's notices row is hidden in the
+  Store build. `python3 scripts/third_party_notices.py` regenerates the file (Slint and every Rust crate);
+  `--check` fails when it is stale.
 - The in-app update check. `docs/adr/0006-distribution.md` says Store builds disable it. The Store
   updates the app itself.
 

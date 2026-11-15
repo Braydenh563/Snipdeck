@@ -191,6 +191,9 @@ var
 begin
   if CurUninstallStep = usPostUninstall then
   begin
+    { Files pasted from Files items are temporary copies (possibly decrypted): always removed. }
+    DelTree(GetEnv('USERPROFILE') + '\Snipdeck paste files', True, True, True);
+    DelTree(GetEnv('TEMP') + '\Snipdeck', True, True, True);
     { The library is never erased silently. }
     if not UninstallSilent then
     begin

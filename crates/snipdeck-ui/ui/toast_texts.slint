@@ -159,11 +159,25 @@ export global ToastTexts {
         }
         return @tr("Couldn't use this item. Try again, or restart Snipdeck if it keeps happening.");
     }
+    // The message box shown when Snipdeck cannot start (no window exists yet); `details` is the
+    // reason, with the data folder in it.
+    pure public function startup-failed(details: string) -> string {
+        return @tr("Snipdeck couldn't start.\n\n{}\n\nNothing was deleted. Close any program that may be using your Snipdeck folder, make sure the folder is not read-only, then start Snipdeck again. If you went back to an older version, install the newer one. Your backups are in the backups folder inside your Snipdeck folder.", details);
+    }
     pure public function window-not-shown() -> string {
         return @tr("Couldn't open that window.");
     }
     pure public function settings-not-saved() -> string {
         return @tr("Couldn't save your settings. Snipdeck will try again.");
+    }
+    pure public function settings-damaged() -> string {
+        return @tr("Your settings file was damaged. Snipdeck kept what it could read and saved the original as settings.json.bad.");
+    }
+    pure public function settings-unreadable() -> string {
+        return @tr("Couldn't read your settings file, so Snipdeck is using the defaults. Changes to settings won't be saved until the file is fixed or removed.");
+    }
+    pure public function clipboard-watch-failed() -> string {
+        return @tr("Snipdeck can't watch the clipboard, so Recent stays empty. Restart Snipdeck to try again.");
     }
     pure public function items-trashed(count: int) -> string {
         return @tr("Moved {} item to the Trash" | "Moved {} items to the Trash" % count, count);
@@ -416,7 +430,7 @@ export global ToastTexts {
         return theme == 1 ? @tr("Theme: Light") : (theme == 2 ? @tr("Theme: Dark") : @tr("Theme: System"));
     }
 
-    // The Panel's pin was switched (Ctrl+Shift+P, the pin button, the palette).
+    // The Panel's pin was switched (the pin button, the palette).
     pure public function panel-on-top(on: bool) -> string {
         return on ? @tr("Panel stays open") : @tr("Panel closes when you click away");
     }
@@ -442,6 +456,9 @@ export global ToastTexts {
     }
     pure public function recent-cleared() -> string {
         return @tr("Recent history cleared");
+    }
+    pure public function picker-recents-cleared() -> string {
+        return @tr("Recently used emoji and colours cleared");
     }
     // The Panel was docked (1 left, 2 right, 3 top, 4 bottom) or floated (0).
     pure public function dock-set(edge: int) -> string {

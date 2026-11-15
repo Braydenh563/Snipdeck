@@ -68,7 +68,7 @@ msgid "A palette tab with a colour picker, every colour format, contrast checks 
 msgstr "Una pestaña de paleta con selector de color, todos los formatos de color, comprobaciones de contraste y colores guardados. Desactívala para ocultar la pestaña y sus comandos de Ctrl+K."
 
 msgid "A paste leaves out the formatting and sends only the text. Alt+Enter or Alt+click does this for one paste."
-msgstr ""
+msgstr "Al pegar se omite el formato y solo se envía el texto. Alt+Intro o Alt+clic lo hace para un solo pegado."
 
 msgid "A small window you can drag anywhere."
 msgstr "Una ventana pequeña que puedes arrastrar a cualquier lugar."
@@ -202,7 +202,7 @@ msgid "Alt+{}"
 msgstr "Alt+{}"
 
 msgid "Always paste as plain text"
-msgstr ""
+msgstr "Pegar siempre como texto sin formato"
 
 msgid "Always shown"
 msgstr "Siempre visible"
@@ -414,6 +414,12 @@ msgstr "¿Vaciar la lista «{}»?"
 msgid "Clear list…"
 msgstr "Vaciar lista…"
 
+msgid "Clear recent emoji and colours"
+msgstr "Borrar emojis y colores recientes"
+
+msgid "Clear recent emoji and colours…"
+msgstr "Borrar emojis y colores recientes…"
+
 msgid "Clear recent history"
 msgstr "Borrar historial reciente"
 
@@ -443,6 +449,9 @@ msgstr "Borra la búsqueda y luego cierra"
 
 msgid "Clear the shortcut for {}"
 msgstr "Borrar el atajo de {}"
+
+msgid "Clear them"
+msgstr "Borrar"
 
 msgid "Click"
 msgstr "Clic"
@@ -625,7 +634,7 @@ msgid "Couldn't export your library. Check the disk has room, then try again."
 msgstr "No se pudo exportar tu biblioteca. Comprueba que el disco tenga espacio e inténtalo de nuevo."
 
 msgid "Couldn't export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then try again."
-msgstr ""
+msgstr "No se pudo exportar tu biblioteca: un adjunto, o todos tus adjuntos juntos, son demasiado grandes para un archivo .snipdeck (64 MB por archivo, 8 GB en total). Quita o reduce los archivos más grandes e inténtalo de nuevo."
 
 msgid "Couldn't export your library: it is locked. Unlock it, then try again."
 msgstr "No se pudo exportar tu biblioteca: está bloqueada. Desbloquéala e inténtalo de nuevo."
@@ -661,7 +670,7 @@ msgid "Couldn't make a backup. Check the disk has room, then use Back up now in 
 msgstr "No se pudo hacer la copia de seguridad. Comprueba que el disco tenga espacio y usa Hacer copia ahora en Configuración."
 
 msgid "Couldn't make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
-msgstr ""
+msgstr "No se pudo hacer la copia de seguridad: un adjunto, o todos tus adjuntos juntos, son demasiado grandes para una copia (64 MB por archivo, 8 GB en total). Quita o reduce los archivos más grandes y usa Copiar ahora en Ajustes."
 
 msgid "Couldn't make a backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
 msgstr "No se pudo hacer la copia de seguridad: el archivo está en uso o no se puede escribir. Cierra otros programas que usen tu carpeta de Snipdeck y usa Hacer copia ahora en Configuración."
@@ -688,7 +697,7 @@ msgid "Couldn't make today's backup. Check the disk has room, then use Back up n
 msgstr "No se pudo hacer la copia de seguridad de hoy. Comprueba que el disco tenga espacio y usa Hacer copia ahora en Configuración."
 
 msgid "Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
-msgstr ""
+msgstr "No se pudo hacer la copia de seguridad de hoy: un adjunto, o todos tus adjuntos juntos, son demasiado grandes para una copia (64 MB por archivo, 8 GB en total). Quita o reduce los archivos más grandes y usa Copiar ahora en Ajustes."
 
 msgid "Couldn't make today's backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
 msgstr "No se pudo hacer la copia de seguridad de hoy: el archivo está en uso o no se puede escribir. Cierra otros programas que usen tu carpeta de Snipdeck y usa Hacer copia ahora en Configuración."
@@ -719,6 +728,9 @@ msgstr "No se pudo tomar un color de la pantalla."
 
 msgid "Couldn't reach the clipboard. Another app may be using it."
 msgstr "No se pudo acceder al portapapeles. Puede que otra aplicación lo esté usando."
+
+msgid "Couldn't read your settings file, so Snipdeck is using the defaults. Changes to settings won't be saved until the file is fixed or removed."
+msgstr "No se pudo leer tu archivo de ajustes, así que Snipdeck usa los valores predeterminados. Los cambios en los ajustes no se guardarán hasta que el archivo se repare o se elimine."
 
 msgid "Couldn't refresh the list on screen. Close and reopen the window to see the change."
 msgstr "No se pudo actualizar la lista en pantalla. Cierra y vuelve a abrir la ventana para ver el cambio."
@@ -905,6 +917,9 @@ msgstr "Descartar"
 
 msgid "Discard your changes?"
 msgstr "¿Descartar los cambios?"
+
+msgid "Dismiss"
+msgstr "Descartar"
 
 msgid "Ditto database"
 msgstr "Base de datos de Ditto"
@@ -1121,6 +1136,9 @@ msgstr "Por ejemplo, Respuestas de correo"
 
 msgid "For example, Work"
 msgstr "Por ejemplo, Trabajo"
+
+msgid "Forgets the emoji, symbols and colours you used lately. Searches are never kept, so there is nothing else to clear."
+msgstr "Olvida los emojis, símbolos y colores que usaste hace poco. Las búsquedas nunca se guardan, así que no hay nada más que borrar."
 
 msgid "Format"
 msgstr "Formato"
@@ -1392,11 +1410,11 @@ msgstr "Seguir ejecutándose en la bandeja al cerrar la ventana"
 msgid "Keep secrets secret"
 msgstr "Mantén en secreto lo confidencial"
 
-msgid "Keep the Panel on top (pin)"
-msgstr "Mantener el panel encima (fijar)"
-
 msgid "Keep the Panel open"
 msgstr "Mantener el panel abierto"
+
+msgid "Keep them"
+msgstr "Conservar"
 
 msgid "Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept."
 msgstr "Guarda el texto que copias durante las últimas {} copias o {} días, lo que ocurra primero, para que puedas encontrarlo de nuevo o guardarlo en una lista. Los fragmentos sensibles, los gestores de contraseñas y las aplicaciones que excluyas nunca se guardan."
@@ -1991,7 +2009,7 @@ msgid "Paste"
 msgstr "Pegar"
 
 msgid "Paste as plain text"
-msgstr ""
+msgstr "Pegar como texto sin formato"
 
 msgid "Paste as…"
 msgstr "Pegar como…"
@@ -2030,7 +2048,7 @@ msgid "Paste the Nth result"
 msgstr "Pega el resultado n"
 
 msgid "Paste the item as plain text"
-msgstr ""
+msgstr "Pegar el elemento como texto sin formato"
 
 msgid "Paste the next item"
 msgstr "Pegar el siguiente fragmento"
@@ -2045,16 +2063,16 @@ msgid "Pasted"
 msgstr "Pegado"
 
 msgid "Pasted image"
-msgstr ""
+msgstr "Imagen pegada"
 
 msgid "Pasted into {}"
 msgstr "Pegado en {}"
 
 msgid "Pasted into {}. Your earlier clipboard could not be put back."
-msgstr ""
+msgstr "Pegado en {}. No se pudo restaurar tu portapapeles anterior."
 
 msgid "Pasted. Your earlier clipboard could not be put back."
-msgstr ""
+msgstr "Pegado. No se pudo restaurar tu portapapeles anterior."
 
 msgid "Pastes into"
 msgstr "Pega en"
@@ -2069,7 +2087,7 @@ msgid "Pastes the next item of the list in order."
 msgstr "Pega el siguiente fragmento de la lista, en orden."
 
 msgid "Pasting"
-msgstr ""
+msgstr "Pegado"
 
 msgid "Path to the file"
 msgstr "Ruta del archivo"
@@ -2144,7 +2162,7 @@ msgid "Placeholders"
 msgstr "Marcadores de posición"
 
 msgid "Placeholders are {}. To write a literal brace, double it: {} or {}"
-msgstr ""
+msgstr "Los marcadores se escriben entre {}. Para escribir una llave literal, duplícala: {} o {}"
 
 msgid "Plain text"
 msgstr "Texto sin formato"
@@ -2248,6 +2266,9 @@ msgstr "Recientes guarda el texto que copias, solo en este equipo, durante las �
 msgid "Recently used"
 msgstr "Usados recientemente"
 
+msgid "Recently used emoji and colours cleared"
+msgstr "Emojis y colores recientes borrados"
+
 msgid "Red"
 msgstr "Rojo"
 
@@ -2316,9 +2337,6 @@ msgstr "Cambia el nombre o elimina etiquetas. Al eliminar una etiqueta, se quita
 
 msgid "Rename tag {}"
 msgstr "Renombrar la etiqueta {}"
-
-msgid "Rename the item"
-msgstr "Renombrar el elemento"
 
 msgid "Repeat the new password"
 msgstr "Repite la nueva contraseña"
@@ -2558,6 +2576,9 @@ msgstr "Fragmento sensible"
 msgid "Sensitive items can't be typed in, so they have no trigger."
 msgstr "Los elementos confidenciales no se pueden escribir, así que no tienen atajo."
 
+msgid "Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose."
+msgstr "Los elementos confidenciales de una copia de seguridad o exportación solo puede restaurarlos esta cuenta de Windows en este PC. En otro PC, o tras reinstalar Windows, se omiten. Guarda tu propia copia de todo lo confidencial que no puedas perder."
+
 msgid "Set master password"
 msgstr "Establecer contraseña maestra"
 
@@ -2672,6 +2693,9 @@ msgstr "Snipdeck no puede proteger una clave en este PC, así que no hay contras
 msgid "Snipdeck can't read that file. It may be in use or protected."
 msgstr "Snipdeck no puede leer ese archivo. Puede que esté en uso o protegido."
 
+msgid "Snipdeck can't watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
+msgstr "Snipdeck no puede vigilar el portapapeles, así que Recientes seguirá vacío. Reinicia Snipdeck para intentarlo de nuevo."
+
 msgid "Snipdeck closed unexpectedly last time. Open the log?"
 msgstr "Snipdeck se cerró inesperadamente la última vez. ¿Abrir el registro?"
 
@@ -2692,6 +2716,9 @@ msgstr "Snipdeck no pudo guardar un borrador de lo que escribiste."
 
 msgid "Snipdeck couldn't save this item. Nothing was changed."
 msgstr "Snipdeck no pudo guardar este elemento. No se cambió nada."
+
+msgid "Snipdeck couldn't start.\n\n{}\n\nNothing was deleted. Close any program that may be using your Snipdeck folder, make sure the folder is not read-only, then start Snipdeck again. If you went back to an older version, install the newer one. Your backups are in the backups folder inside your Snipdeck folder."
+msgstr "Snipdeck no pudo iniciarse.\n\n{}\n\nNo se eliminó nada. Cierra cualquier programa que pueda estar usando tu carpeta de Snipdeck, comprueba que la carpeta no sea de solo lectura y vuelve a iniciar Snipdeck. Si volviste a una versión anterior, instala la más reciente. Tus copias de seguridad están en la carpeta backups dentro de tu carpeta de Snipdeck."
 
 msgid "Snipdeck couldn't write to your library. Check that the disk has room."
 msgstr "Snipdeck no pudo escribir en tu biblioteca. Comprueba que el disco tenga espacio."
@@ -3432,7 +3459,7 @@ msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (
 msgstr "Tu biblioteca vive en una sola carpeta, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (tableros, listas, elementos, etiquetas y la Papelera), blobs (imágenes, archivos y texto largo), settings.json, backups (las que decidas conservar) y logs."
 
 msgid "Your library locked after a while. The form for the sensitive template you were filling in was closed."
-msgstr ""
+msgstr "Tu biblioteca se bloqueó tras un tiempo. Se cerró el formulario de la plantilla confidencial que estabas rellenando."
 
 msgid "Your library locked after a while. The sensitive item you were editing was closed without saving."
 msgstr "Tu biblioteca se bloqueó tras un rato. El fragmento sensible que editabas se cerró sin guardar."
@@ -3452,50 +3479,53 @@ msgstr "La directiva de tu organización impide que Snipdeck se inicie con Windo
 msgid "Your sensitive items will be protected by Windows alone."
 msgstr "Tus elementos sensibles quedarán protegidos solo por Windows."
 
+msgid "Your settings file was damaged. Snipdeck kept what it could read and saved the original as settings.json.bad."
+msgstr "Tu archivo de ajustes estaba dañado. Snipdeck conservó lo que pudo leer y guardó el original como settings.json.bad."
+
 msgid "Your shortcuts"
 msgstr "Tus atajos"
 
 msgid "`d` for days"
-msgstr ""
+msgstr "`d` para días"
 
 msgid "`h` for hours"
-msgstr ""
+msgstr "`h` para horas"
 
 msgid "`min` for minutes"
-msgstr ""
+msgstr "`min` para minutos"
 
 msgid "`mo` for months"
-msgstr ""
+msgstr "`mo` para meses"
 
 msgid "`mo` for months or `min` for minutes"
-msgstr ""
+msgstr "`mo` para meses o `min` para minutos"
 
 msgid "`w` for weeks"
-msgstr ""
+msgstr "`w` para semanas"
 
 msgid "`y` for years"
-msgstr ""
+msgstr "`y` para años"
 
 msgid "a choice needs options, e.g. {}"
-msgstr ""
+msgstr "una elección necesita opciones, p. ej. {}"
 
 msgid "a choice option is empty"
-msgstr ""
+msgstr "una opción de la elección está vacía"
 
 msgid "a placeholder can have at most {} offsets"
-msgstr ""
+msgstr "un marcador puede tener como máximo {} desfases"
 
 msgid "a placeholder is not valid"
-msgstr ""
+msgstr "un marcador no es válido"
 
 msgid "a prompt takes a name and one more part: {}"
-msgstr ""
+msgstr "un aviso lleva un nombre y una parte más: {}"
 
 msgid "a template can ask for at most {} different fields, choices, dates or sections"
-msgstr ""
+msgstr "una plantilla puede pedir como máximo {} campos, elecciones, fechas o secciones distintos"
 
 msgid "a {} ends the format; write {} for a literal {}"
-msgstr ""
+msgstr "un {} termina el formato; escribe {} para un {} literal"
 
 msgid "add"
 msgstr "añadir"
@@ -3507,10 +3537,10 @@ msgid "add create snippet note write"
 msgstr "añadir crear fragmento nota escribir"
 
 msgid "an offset in {} can be at most {}"
-msgstr ""
+msgstr "un desfase en {} puede ser como máximo {}"
 
 msgid "an offset is a sign, a number and a unit, like {} or {}"
-msgstr ""
+msgstr "un desfase es un signo, un número y una unidad, como {} o {}"
 
 msgid "and {} more"
 msgid_plural "and {} more"
@@ -3593,7 +3623,7 @@ msgid "emoji kaomoji icons smiley emoticon insert"
 msgstr "emoji kaomoji iconos smiley emoticono insertar"
 
 msgid "empty placeholder {}"
-msgstr ""
+msgstr "marcador vacío {}"
 
 msgid "every mark choose all"
 msgstr "todos marcar elegir seleccionar"
@@ -3676,16 +3706,16 @@ msgid "notepad.exe"
 msgstr "notepad.exe"
 
 msgid "one of d, w, mo, y, h, min"
-msgstr ""
+msgstr "una de d, w, mo, y, h, min"
 
 msgid "only one {} is allowed"
-msgstr ""
+msgstr "solo se permite un {}"
 
 msgid "open toggle deck hide"
 msgstr "abrir alternar deck ocultar"
 
 msgid "optional sections cannot be nested"
-msgstr ""
+msgstr "las secciones opcionales no se pueden anidar"
 
 msgid "or"
 msgstr "o"
@@ -3748,10 +3778,10 @@ msgid "tag: {}"
 msgstr "etiqueta: {}"
 
 msgid "the choice option {} is listed twice"
-msgstr ""
+msgstr "la opción {} aparece dos veces"
 
 msgid "the prompt needs a name, e.g. {}"
-msgstr ""
+msgstr "el aviso necesita un nombre, p. ej. {}"
 
 msgid "to insert"
 msgstr "para insertar"
@@ -3763,16 +3793,16 @@ msgid "tutorial intro onboarding basics learn"
 msgstr "tutorial introducción inicio básico aprender"
 
 msgid "unknown date format {}; supported: {}"
-msgstr ""
+msgstr "formato de fecha desconocido {}; admitidos: {}"
 
 msgid "unknown offset unit {}; use {}"
-msgstr ""
+msgstr "unidad de desfase desconocida {}; usa {}"
 
 msgid "unknown placeholder {}"
-msgstr ""
+msgstr "marcador desconocido {}"
 
 msgid "unknown placeholder {}, did you mean {}?"
-msgstr ""
+msgstr "marcador desconocido {}, ¿querías decir {}?"
 
 msgid "version update"
 msgstr "versión actualización"
@@ -3830,10 +3860,10 @@ msgid "{} can't be used as a shortcut. Choose another in Settings."
 msgstr "{} no se puede usar como atajo. Elige otro en Configuración."
 
 msgid "{} closes nothing"
-msgstr ""
+msgstr "{} no cierra nada"
 
 msgid "{} closes nothing; write {} for a literal {}"
-msgstr ""
+msgstr "{} no cierra nada; escribe {} para un {} literal"
 
 msgid "{} could not be read and was skipped."
 msgstr "No se pudo leer {} y se omitió."
@@ -3873,10 +3903,10 @@ msgid "{} is empty and was skipped."
 msgstr "{} está vacío y se omitió."
 
 msgid "{} is never closed; add {} after the part"
-msgstr ""
+msgstr "{} nunca se cierra; añade {} después de la parte"
 
 msgid "{} is never closed; write {} for a literal {}"
-msgstr ""
+msgstr "{} nunca se cierra; escribe {} para un {} literal"
 
 msgid "{} is not valid UTF-8, so characters that could not be read were replaced."
 msgstr "{} no es UTF-8 válido, así que los caracteres que no se pudieron leer se sustituyeron."
@@ -3888,7 +3918,7 @@ msgid "{} is used by another app. Choose another in Settings."
 msgstr "{} lo usa otra aplicación. Elige otro en Configuración."
 
 msgid "{} is used for two different prompts; use the same kind and options each time, or pick another name"
-msgstr ""
+msgstr "{} se usa para dos avisos distintos; usa el mismo tipo y las mismas opciones cada vez, o elige otro nombre"
 
 msgid "{} is {}, over the 5 MB limit for text, and was skipped."
 msgstr "{} ocupa {}, más del límite de 5 MB para texto, y se omitió."
@@ -3925,7 +3955,7 @@ msgid "{} needs a number"
 msgstr "{} necesita un número"
 
 msgid "{} needs an argument: {}"
-msgstr ""
+msgstr "{} necesita un argumento: {}"
 
 msgid "{} new board will be made"
 msgid_plural "{} new boards will be made"
@@ -3965,7 +3995,7 @@ msgstr[0] "Falta {} elemento sensible en la copia de seguridad."
 msgstr[1] "Faltan {} elementos sensibles en la copia de seguridad."
 
 msgid "{} takes no argument"
-msgstr ""
+msgstr "{} no admite argumento"
 
 msgid "{} · {}"
 msgstr "{} · {}"

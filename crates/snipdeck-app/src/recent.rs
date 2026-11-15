@@ -479,8 +479,7 @@ pub fn row_view(entry: &RecentEntry, now: Timestamp) -> RecentRowView {
 }
 
 /// Saves `entry` as a new item at the top of `list`. The entry stays in the inbox (a promoted
-/// copy can be deleted separately). There is no Free item cap to check: Free limits boards,
-/// not items.
+/// copy can be deleted separately).
 ///
 /// # Errors
 ///

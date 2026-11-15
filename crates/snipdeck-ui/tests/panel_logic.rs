@@ -83,10 +83,10 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_pinned_used, |i| format!("pinned:{i}"));
     hook!(on_toast_undo, || "undo".to_string());
     hook!(on_toast_edit, || "toast-edit".to_string());
+    hook!(on_toast_dismissed, || "toast-dismissed".to_string());
     hook!(on_paste_create_requested, || "paste-create".to_string());
     hook!(on_copy_selection_requested, || "copy-selection".to_string());
     hook!(on_undo_requested, || "ctrl-z".to_string());
-    hook!(on_new_item_requested, || "new".to_string());
     hook!(on_row_picked, |i, shift, ctrl| format!(
         "picked:{i}:{shift}:{ctrl}"
     ));
@@ -114,6 +114,8 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_app_menu_requested, || "app-menu".to_string());
     hook!(on_app_menu_activated, |i| format!("app:{i}"));
     hook!(on_app_menu_dismissed, || "app-dismissed".to_string());
+    hook!(on_item_menu_dismissed, || "item-dismissed".to_string());
+    hook!(on_list_menu_dismissed, || "list-dismissed".to_string());
     hook!(on_edit_requested, |i| format!("edit:{i}"));
     hook!(on_rename_requested, |i| format!("rename:{i}"));
     hook!(on_duplicate_requested, |i| format!("duplicate:{i}"));
@@ -255,6 +257,11 @@ fn row_button(ui: &PanelWindow, row: usize, label: &str) -> Option<ElementHandle
             let (p, s) = (b.absolute_position(), b.size());
             p.y >= rp.y - 0.5 && p.y + s.height <= rp.y + rs.height + 0.5 && p.x >= rp.x - 0.5
         })
+}
+
+fn ui_min_height() -> f32 {
+    let (ui, _log) = start();
+    ui.get_min_h()
 }
 
 fn click_at(ui: &PanelWindow, at: LogicalPosition) {
@@ -559,7 +566,7 @@ ui_tests! {
         let (ui, log) = start();
         take(&log);
         chord(ui.window(), &[Key::Control, Key::Shift], "N");
-        assert_eq!(take(&log), ["quick-add-full:"], "the full editor, prefilled with the box");
+        assert_eq!(take(&log), ["add-list"], "Ctrl+Shift+N is New list, as in the Main window");
         chord(ui.window(), &[Key::Control], ",");
         assert_eq!(take(&log), ["settings"]);
         chord(ui.window(), &[Key::Control], "w");
@@ -1258,22 +1265,14 @@ ui_tests! {
         assert_eq!(find(&ui, "Keep panel on top", AccessibleRole::Button).accessible_checked(), Some(false));
     }
 
-    fn ctrl_shift_p_toggles_keep_on_top_like_the_pin_button_and_does_not_pin_the_row() {
+    fn ctrl_shift_p_opens_the_commands_like_in_the_main_window_and_leaves_the_pin_alone() {
         let (ui, log) = start();
         press(ui.window(), &key(Key::DownArrow));
         take(&log);
         assert!(ui.get_on_top(), "the Panel is on top by default");
         chord(ui.window(), &[Key::Control, Key::Shift], "P");
-        assert!(!ui.get_on_top());
-        assert_eq!(take(&log), ["pin:false"], "the pin button's callback, not the row's");
-        assert_eq!(
-            find(&ui, "Keep panel on top", AccessibleRole::Button).accessible_checked(),
-            Some(false),
-            "the button shows the new state"
-        );
-        chord(ui.window(), &[Key::Control, Key::Shift], "P");
+        assert_eq!(take(&log), ["commands"], "the Main window's palette, neither a pin nor a row pin");
         assert!(ui.get_on_top());
-        assert_eq!(take(&log), ["pin:true"]);
         assert_eq!(ui.get_query(), "", "the key does not type");
         // Ctrl+P alone still pins the selected row and leaves the keep-on-top state alone.
         chord(ui.window(), &[Key::Control], "p");
@@ -1823,6 +1822,51 @@ ui_tests! {
         }
     }
 
+    fn a_menu_never_covers_the_whole_panel_and_a_click_on_the_strip_left_closes_it() {
+        // The smallest and a tall Panel: the menu stops 48px short of the bottom, so there is always somewhere to click off it.
+        for height in [ui_min_height(), 560.0_f32, 900.0] {
+            let (ui, log) = start();
+            ui.window().set_size(slint::LogicalSize::new(320.0, height));
+            ui.set_app_menu_open(true);
+            settle();
+            let menu = find(&ui, "Panel menu", AccessibleRole::List);
+            let bottom = menu.absolute_position().y + menu.size().height;
+            assert!(bottom <= height - 48.0 + 0.5, "{height}: menu bottom {bottom} leaves under 48px");
+            take(&log);
+            click_at(&ui, LogicalPosition::new(100.0, height - 24.0));
+            assert!(take(&log).contains(&"app-dismissed".to_string()), "{height}: a click below the menu closes it");
+        }
+    }
+
+    fn escape_closes_the_item_and_list_and_app_menus() {
+        for menu in ["app", "item", "list"] {
+            let (ui, log) = start();
+            match menu {
+                "app" => ui.set_app_menu_open(true),
+                "item" => ui.set_item_menu_open(true),
+                _ => ui.set_list_menu_open(true),
+            }
+            settle();
+            take(&log);
+            press(ui.window(), &key(Key::Escape));
+            settle();
+            assert_eq!(
+                take(&log),
+                [format!("{menu}-dismissed")],
+                "{menu}: Escape closes the menu and does not ask to hide the Panel"
+            );
+        }
+    }
+
+    fn the_toast_has_a_close_button_that_asks_the_host_to_drop_it() {
+        let (ui, log) = start();
+        ui.set_toast_text("Copied".into());
+        settle();
+        take(&log);
+        find(&ui, "Dismiss", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["toast-dismissed"]);
+    }
+
     fn from_150_percent_keep_on_top_leaves_the_header_for_the_menu() {
         let (ui, _log) = start();
         assert!(!missing(&ui, "Keep panel on top", AccessibleRole::Button), "100 %: the header button");
@@ -2200,6 +2244,36 @@ ui_tests! {
         assert!(missing(&ui, "Copied", AccessibleRole::Text));
     }
 
+    fn using_the_toast_close_from_the_keyboard_hands_the_focus_back_to_typing() {
+        let (ui, log) = start();
+        ui.set_search_always(true);
+        ui.set_toast_text("Copied".into());
+        ui.set_toast_undo_label("Undo".into());
+        settle();
+        take(&log);
+        // Tab until a toast button holds the focus (it tells the host by `hover-changed`), then on to the
+        // close button, the last of them.
+        let mut reached = false;
+        for _ in 0..40 {
+            press(ui.window(), &key(Key::Tab));
+            settle();
+            if take(&log).iter().any(|l| l == "hover:true") {
+                reached = true;
+                break;
+            }
+        }
+        assert!(reached, "Tab reaches the toast");
+        press(ui.window(), &key(Key::Tab));
+        settle();
+        press(ui.window(), "\n");
+        assert!(take(&log).contains(&"toast-dismissed".to_string()), "the close button was used");
+        // The host drops the toast, and the keys still go somewhere: the search field.
+        ui.set_toast_text("".into());
+        settle();
+        type_text(ui.window(), "z");
+        assert_eq!(ui.get_query(), "z", "the focus did not die with the toast");
+    }
+
     fn toast_edit_button_shows_only_with_edit() {
         let (ui, log) = start();
         ui.set_toast_text("Added to Replies".into());
@@ -2340,6 +2414,26 @@ ui_tests! {
         // The keyboard still types into the search afterwards.
         type_text(ui.window(), "b");
         assert_eq!(ui.get_query(), "b");
+    }
+
+    fn the_search_clear_button_is_centred_smaller_than_the_box_and_inset_like_the_magnifier() {
+        let (ui, _log) = start();
+        ui.set_search_always(true);
+        settle();
+        type_text(ui.window(), "a");
+        settle();
+        let field = find(&ui, "Search snippets", AccessibleRole::TextInput);
+        let clear = find(&ui, "Clear search", AccessibleRole::Button);
+        let (fp, fz) = (field.absolute_position(), field.size());
+        let (cp, cz) = (clear.absolute_position(), clear.size());
+        let (fc, cc) = (fp.y + fz.height / 2.0, cp.y + cz.height / 2.0);
+        assert!((fc - cc).abs() <= 1.0, "the clear button is centred in the box: {cc} vs {fc}");
+        assert!(cz.height <= fz.height - 4.0, "clear of the border: {} in {}", cz.height, fz.height);
+        let inset = (fp.x + fz.width) - (cp.x + cz.width);
+        // The glyph is centred in its button, so the button's inset plus its padding mirrors the
+        // magnifier's 8px inset on the left.
+        let glyph_inset = inset + (cz.width - 16.0 * 0.75) / 2.0;
+        assert!((glyph_inset - 10.0).abs() <= 2.0, "right inset mirrors the magnifier: {glyph_inset}");
     }
 
     fn search_always_keeps_the_tabs_and_pins_and_has_no_close_button_only_a_clear_one() {

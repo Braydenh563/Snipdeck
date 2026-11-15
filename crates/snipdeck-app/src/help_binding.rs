@@ -57,7 +57,7 @@ pub const GUIDE_URL: &str = "https://github.com/Braydenh563/Snipdeck/blob/main/d
 /// The Microsoft Store page; the link stays hidden while this is `None`.
 pub const STORE_URL: Option<&str> = None;
 /// The third-party notices file shipped next to the program, if the package has one.
-pub const NOTICES_FILE: &str = "THIRD-PARTY-NOTICES.txt";
+pub const NOTICES_FILE: &str = "THIRD_PARTY_NOTICES.md";
 
 // ---- What the machine is asked to do -----------------------------------------------------------
 
@@ -96,9 +96,18 @@ pub trait HelpHost {
 pub struct SystemHelpHost;
 
 pub(crate) fn launch(target: &OsStr) -> Result<(), String> {
-    let opener = if cfg!(windows) {
-        "explorer"
-    } else if cfg!(target_os = "macos") {
+    // Windows: `ShellExecuteW`, whose result says whether the page or folder was opened.
+    #[cfg(windows)]
+    {
+        snipdeck_platform::windows::shell_open::open(target)
+    }
+    #[cfg(not(windows))]
+    launch_command(target)
+}
+
+#[cfg(not(windows))]
+fn launch_command(target: &OsStr) -> Result<(), String> {
+    let opener = if cfg!(target_os = "macos") {
         "open"
     } else {
         "xdg-open"
@@ -138,9 +147,18 @@ impl HelpHost for SystemHelpHost {
     }
 
     fn notices_file(&self) -> Option<PathBuf> {
-        let file = std::env::current_exe().ok()?.parent()?.join(NOTICES_FILE);
-        file.is_file().then_some(file)
+        find_notices(std::env::current_exe().ok()?.parent()?)
     }
+}
+
+/// The notices file beside the program (the installer and the Store package), or one folder up
+/// (the portable zip keeps the program in `app\` and the notices at the root).
+pub(crate) fn find_notices(exe_dir: &Path) -> Option<PathBuf> {
+    [Some(exe_dir), exe_dir.parent()]
+        .into_iter()
+        .flatten()
+        .map(|dir| dir.join(NOTICES_FILE))
+        .find(|file| file.is_file())
 }
 
 // ---- The doctor on the real library ------------------------------------------------------------
@@ -611,6 +629,10 @@ where
                 });
             }};
         }
+        wire!(on_toast_dismissed, |core| {
+            core.controller.borrow_mut().toast_dismiss();
+            redraw_all();
+        });
         wire!(on_check_again_requested, |core| {
             core.run_checks();
             redraw_all();
@@ -819,6 +841,24 @@ impl HelpUi {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn the_notices_are_found_beside_the_program_or_one_folder_up() {
+        let root = tempfile::tempdir().expect("dir");
+        let app = root.path().join("app");
+        std::fs::create_dir(&app).expect("app dir");
+        assert_eq!(super::find_notices(&app), None);
+        std::fs::write(root.path().join(super::NOTICES_FILE), "x").expect("write");
+        assert_eq!(
+            super::find_notices(&app),
+            Some(root.path().join(super::NOTICES_FILE))
+        );
+        std::fs::write(app.join(super::NOTICES_FILE), "y").expect("write");
+        assert_eq!(
+            super::find_notices(&app),
+            Some(app.join(super::NOTICES_FILE))
+        );
+    }
+
     use std::fmt::Write as _;
 
     use super::*;

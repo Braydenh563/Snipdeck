@@ -348,7 +348,7 @@ where
         answer: Result<Option<PathBuf>, snipdeck_platform::error::Error>,
     ) -> SaveOutcome {
         let path = match answer {
-            Ok(Some(path)) => with_extension_if_missing(path, save.kind.extension()),
+            Ok(Some(path)) => without_clobbering(path, save.kind.extension()),
             Ok(None) => return SaveOutcome::Cancelled,
             Err(error) => {
                 crate::trace!("the Save dialog failed: {error}");
@@ -448,6 +448,24 @@ fn with_extension_if_missing(path: PathBuf, ext: &str) -> PathBuf {
     name.push(".");
     name.push(ext);
     PathBuf::from(name)
+}
+
+/// The path to save to: `path` with the extension added when it is missing. The dialog asked
+/// about overwriting the name the user typed, not this one, so if adding the extension lands on a
+/// file that exists, a free name ("logo.v2 (2).svg") is used instead: nothing is replaced unasked.
+fn without_clobbering(path: PathBuf, ext: &str) -> PathBuf {
+    let typed = path.clone();
+    let named = with_extension_if_missing(path, ext);
+    if named == typed || !named.exists() {
+        return named;
+    }
+    let stem = named
+        .file_stem()
+        .map_or_else(String::new, |s| s.to_string_lossy().into_owned());
+    (2..u32::MAX)
+        .map(|n| named.with_file_name(format!("{stem} ({n}).{ext}")))
+        .find(|candidate| !candidate.exists())
+        .unwrap_or(named)
 }
 
 /// Writes `bytes` to a temporary file next to `path`, then renames it over `path`: a failure

@@ -9,7 +9,6 @@ import { SearchField } from "components/text_field.slint";
 import { Tab } from "components/tab.slint";
 import { EmptyState, EmptyStateKind } from "components/empty_state.slint";
 import { OverlayScrollbar } from "components/scrollbar.slint";
-import { DeckEdge, DeckEdgePosition } from "components/deck-edge.slint";
 
 // One symbol. `art` is its catalog number for `SymbolsView.art` (-1: no picture, draw `text`). `kind` is 0 emoji,
 // 1 kaomoji, 2 icon. `flat` numbers the cells in reading order: it is the selection index.
@@ -370,18 +369,7 @@ export component SymbolsView inherits Rectangle {
                     }
                 }
             }
-            if root.rows.length > 0 && grid.content-y < -1px: DeckEdge {
-                position: DeckEdgePosition.top;
-                x: Space.s2;
-                y: Space.s1;
-                width: parent.width - 2 * Space.s2;
-            }
-            if root.rows.length > 0 && grid.content-height + grid.content-y > grid.height + 1px: DeckEdge {
-                position: DeckEdgePosition.bottom;
-                x: Space.s2;
-                y: grid.height - self.height;
-                width: parent.width - 2 * Space.s2;
-            }
+            // No deck edges here: the cells are not cards, and an edge drawn over the first row reads as stray lines.
             OverlayScrollbar {
                 content-y: grid.content-y;
                 content-height: grid.content-height;

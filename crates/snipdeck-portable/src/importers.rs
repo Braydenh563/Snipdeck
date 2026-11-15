@@ -1,5 +1,5 @@
 //! Importers for other tools' data. Each turns its source into a [`Plan`](crate::plan::Plan),
-//! then shares the tail of the archive import: duplicate skipping, the board-limit warning and
+//! then shares the tail of the archive import: duplicate skipping and
 //! the atomic write. They return the same [`ImportReport`](crate::ImportReport).
 //!
 //! Sources are untrusted too (a shared folder, a database someone sent): reads are capped per

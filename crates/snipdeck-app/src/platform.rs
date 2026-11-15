@@ -357,6 +357,7 @@ mod imp {
             on_target_changed,
             on_tray,
             on_look_changed,
+            on_session_lock,
             on_clipboard_change,
             on_typed,
         } = callbacks;
@@ -390,6 +391,11 @@ mod imp {
         // runs (closing the Panel then quits, and the theme is read once), so a failure to
         // start one is a warning, not an error.
         let mut warnings = Vec::new();
+        // Recent records nothing without the listener: the host tells the user once.
+        let clipboard_watch_failed = !clipboard.is_listening();
+        if clipboard_watch_failed {
+            warnings.push("clipboard listener not registered; Recent cannot record".to_owned());
+        }
         let tray = match WinTray::start("Snipdeck", on_tray) {
             Ok(tray) => Some(Box::new(tray) as Box<dyn snipdeck_platform::tray::Tray>),
             Err(e) => {
@@ -397,7 +403,7 @@ mod imp {
                 None
             }
         };
-        match SystemLookWatcher::start(on_look_changed) {
+        match SystemLookWatcher::start(on_look_changed, on_session_lock) {
             Ok(watcher) => keep_alive.push(Box::new(watcher)),
             Err(e) => warnings.push(format!("not following the Windows colour mode: {e}")),
         }
@@ -419,6 +425,7 @@ mod imp {
             recent_gate,
             typing: Box::new(WinTyping::new(Arc::from(on_typed))),
             warnings,
+            clipboard_watch_failed,
             keep_alive,
         })))
     }
@@ -462,6 +469,7 @@ mod imp {
             callbacks.on_target_changed,
             callbacks.on_tray,
             callbacks.on_look_changed,
+            callbacks.on_session_lock,
             callbacks.on_clipboard_change,
             callbacks.on_typed,
         );
@@ -483,6 +491,7 @@ mod imp {
             recent_gate: WatchGate::new(),
             typing: Box::new(crate::host::FakeTyping::default()),
             warnings: Vec::new(),
+            clipboard_watch_failed: false,
             keep_alive: Vec::new(),
         })))
     }
@@ -503,6 +512,28 @@ pub fn system_look() -> Arc<dyn SystemLookSource> {
 pub fn attach_parent_console() {
     #[cfg(windows)]
     snipdeck_platform::windows::console::attach_parent_console();
+}
+
+/// Limits where Windows looks for DLLs that are loaded at run time (`LoadLibrary` and later
+/// loads) to the application folder and System32, so a library planted beside the exe is not
+/// loaded then. Call first thing in `main`. Nothing happens off Windows.
+///
+/// This does not cover the DLLs the exe links statically: the loader resolves those before
+/// `main` runs. That part is the `/DEPENDENTLOADFLAG:0x800` link argument that `build.rs` passes
+/// for the MSVC target. Both are unverified on Windows.
+pub fn harden_dll_search() {
+    #[cfg(windows)]
+    let _ = snipdeck_platform::windows::dll_search::restrict_dll_search();
+}
+
+/// Shows a start-up failure in a native message box: the release Windows build has no console
+/// and no window yet, so this is the only way to tell the user. Nothing happens off Windows,
+/// where the failure is on stderr. Unverified on Windows.
+pub fn show_startup_failure(title: &str, text: &str) {
+    #[cfg(windows)]
+    snipdeck_platform::windows::message_box::show_error(title, text);
+    #[cfg(not(windows))]
+    let _ = (title, text);
 }
 
 /// `--quit`: asks the Snipdeck running in this Windows session to quit, as the tray's Quit does,
@@ -594,6 +625,9 @@ pub struct Callbacks {
     /// Windows' light / dark or high-contrast state may have changed (watcher thread); read
     /// [`system_look`] on the UI thread.
     pub on_look_changed: Box<dyn Fn() + Send>,
+    /// Windows locked the session (Win+L) or is going to sleep (watcher thread): a library with a
+    /// master password locks.
+    pub on_session_lock: Box<dyn Fn() + Send>,
     /// The clipboard changed and the Recent inbox is listening (clipboard thread).
     pub on_clipboard_change: Box<dyn Fn(ClipboardChange) + Send>,
     /// A typed trigger completed, and whether the focused element is a password box (typing
@@ -624,6 +658,9 @@ pub struct Host {
     pub typing: Box<dyn crate::host::TypingControl>,
     /// Services that failed to start but are not essential: print them.
     pub warnings: Vec<String>,
+    /// The clipboard listener could not be registered (Windows only): Recent records nothing,
+    /// and a toast says so once.
+    pub clipboard_watch_failed: bool,
     /// Kept alive for the life of the process (the single-instance claim, the colour-mode
     /// watcher).
     pub keep_alive: Vec<Box<dyn std::any::Any>>,
@@ -666,6 +703,7 @@ mod tests {
             on_target_changed: Box::new(|| {}),
             on_tray: Box::new(|_| {}),
             on_look_changed: Box::new(|| {}),
+            on_session_lock: Box::new(|| {}),
             on_clipboard_change: Box::new(|_| {}),
             on_typed: Box::new(|_| {}),
         };

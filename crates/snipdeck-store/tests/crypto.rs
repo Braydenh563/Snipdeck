@@ -258,7 +258,7 @@ fn a_locked_store_refuses_to_read_or_write_encrypted_content() {
 
 #[test]
 fn without_a_key_ring_sensitive_items_are_kept_in_plain_text() {
-    // Free: masking only (SPEC §6).
+    // No key ring yet: masking only (SPEC §6).
     let (dir, mut s, l) = on_disk();
     let it = secret_item(l.id, "Wifi");
     s.insert_item(&it, &text_formats("hunter2"), Placement::Last)
@@ -867,4 +867,39 @@ fn plain_formats_returns_every_unencrypted_live_item_in_one_pass() {
     );
     assert_eq!(got[1], (second.id, text_formats("two")));
     assert_eq!(s.formats(first.id).unwrap(), got[0].1);
+}
+
+#[test]
+fn rich_item_ids_finds_the_html_and_rtf_items_without_reading_content() {
+    let prov = provider();
+    let (_dir, mut s, lst) = on_disk();
+    s.create_key_ring(&ring(&prov), None).unwrap();
+    let plain = Item::new(lst.id, "plain".to_owned(), ItemKind::Text, at(0));
+    s.insert_item(&plain, &text_formats("p"), Placement::Last)
+        .unwrap();
+    let rich = Item::new(lst.id, "rich".to_owned(), ItemKind::Text, at(1));
+    let both = Formats::new(vec![
+        Format::Text(text("t")),
+        Format::Html(text("<b>t</b>")),
+        Format::Rtf(text("{\\rtf1 t}")),
+    ])
+    .unwrap();
+    s.insert_item(&rich, &both, Placement::Last).unwrap();
+    let secret = secret_item(lst.id, "secret");
+    let secret_rich = Formats::new(vec![
+        Format::Text(text("s")),
+        Format::Html(text("<i>s</i>")),
+    ])
+    .unwrap();
+    s.insert_item(&secret, &secret_rich, Placement::Last)
+        .unwrap();
+    let gone = Item::new(lst.id, "gone".to_owned(), ItemKind::Text, at(2));
+    s.insert_item(&gone, &both, Placement::Last).unwrap();
+    s.trash(Trashable::Item(gone.id), at(3)).unwrap();
+
+    assert_eq!(
+        s.rich_item_ids().unwrap(),
+        vec![rich.id],
+        "once each, live, unencrypted only"
+    );
 }

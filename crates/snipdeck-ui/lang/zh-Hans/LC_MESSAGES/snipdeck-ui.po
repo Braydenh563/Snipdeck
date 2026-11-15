@@ -68,7 +68,7 @@ msgid "A palette tab with a colour picker, every colour format, contrast checks 
 msgstr "包含取色器、所有颜色格式、对比度检查和已保存颜色的调色板标签页。关闭后将隐藏该标签页及其 Ctrl+K 命令。"
 
 msgid "A paste leaves out the formatting and sends only the text. Alt+Enter or Alt+click does this for one paste."
-msgstr ""
+msgstr "粘贴时会去掉格式,只发送文本。按 Alt+Enter 或 Alt+点击,可对单次粘贴这样做。"
 
 msgid "A small window you can drag anywhere."
 msgstr "可以拖到任意位置的小窗口。"
@@ -201,7 +201,7 @@ msgid "Alt+{}"
 msgstr "Alt+{}"
 
 msgid "Always paste as plain text"
-msgstr ""
+msgstr "始终以纯文本粘贴"
 
 msgid "Always shown"
 msgstr "始终显示"
@@ -413,6 +413,12 @@ msgstr "清空列表“{}”？"
 msgid "Clear list…"
 msgstr "清空列表…"
 
+msgid "Clear recent emoji and colours"
+msgstr "清除最近使用的表情符号和颜色"
+
+msgid "Clear recent emoji and colours…"
+msgstr "清除最近使用的表情符号和颜色…"
+
 msgid "Clear recent history"
 msgstr "清除最近记录"
 
@@ -442,6 +448,9 @@ msgstr "先清除搜索，然后关闭"
 
 msgid "Clear the shortcut for {}"
 msgstr "清除 {} 的快捷键"
+
+msgid "Clear them"
+msgstr "清除"
 
 msgid "Click"
 msgstr "点击"
@@ -624,7 +633,7 @@ msgid "Couldn't export your library. Check the disk has room, then try again."
 msgstr "无法导出你的资料库。请检查磁盘空间，然后重试。"
 
 msgid "Couldn't export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then try again."
-msgstr ""
+msgstr "无法导出你的库:某个附件或所有附件的总大小超出 .snipdeck 文件的上限(单个文件 64 MB,总计 8 GB)。请删除或压缩最大的文件,然后重试。"
 
 msgid "Couldn't export your library: it is locked. Unlock it, then try again."
 msgstr "无法导出你的资料库：资料库已锁定。请先解锁，然后重试。"
@@ -660,7 +669,7 @@ msgid "Couldn't make a backup. Check the disk has room, then use Back up now in 
 msgstr "无法创建备份。请检查磁盘空间，然后使用“设置”中的“立即备份”。"
 
 msgid "Couldn't make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
-msgstr ""
+msgstr "无法创建备份:某个附件或所有附件的总大小超出备份的上限(单个文件 64 MB,总计 8 GB)。请删除或压缩最大的文件,然后在“设置”中使用“立即备份”。"
 
 msgid "Couldn't make a backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
 msgstr "无法创建备份：备份文件正被占用或无法写入。请关闭其他占用 Snipdeck 文件夹的程序，然后使用“设置”中的“立即备份”。"
@@ -687,7 +696,7 @@ msgid "Couldn't make today's backup. Check the disk has room, then use Back up n
 msgstr "无法创建今天的备份。请检查磁盘空间，然后使用“设置”中的“立即备份”。"
 
 msgid "Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
-msgstr ""
+msgstr "无法创建今天的备份:某个附件或所有附件的总大小超出备份的上限(单个文件 64 MB,总计 8 GB)。请删除或压缩最大的文件,然后在“设置”中使用“立即备份”。"
 
 msgid "Couldn't make today's backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
 msgstr "无法创建今天的备份：备份文件正被占用或无法写入。请关闭其他占用 Snipdeck 文件夹的程序，然后使用“设置”中的“立即备份”。"
@@ -718,6 +727,9 @@ msgstr "无法从屏幕上取色。"
 
 msgid "Couldn't reach the clipboard. Another app may be using it."
 msgstr "无法访问剪贴板。可能有其他应用正在使用它。"
+
+msgid "Couldn't read your settings file, so Snipdeck is using the defaults. Changes to settings won't be saved until the file is fixed or removed."
+msgstr "无法读取你的设置文件,因此 Snipdeck 正在使用默认设置。在文件修复或删除之前,对设置的更改不会被保存。"
 
 msgid "Couldn't refresh the list on screen. Close and reopen the window to see the change."
 msgstr "无法刷新屏幕上的列表。请关闭并重新打开窗口以查看更改。"
@@ -904,6 +916,9 @@ msgstr "放弃"
 
 msgid "Discard your changes?"
 msgstr "要放弃更改吗？"
+
+msgid "Dismiss"
+msgstr "关闭"
 
 msgid "Ditto database"
 msgstr "Ditto 数据库"
@@ -1120,6 +1135,9 @@ msgstr "例如：邮件回复"
 
 msgid "For example, Work"
 msgstr "例如：工作"
+
+msgid "Forgets the emoji, symbols and colours you used lately. Searches are never kept, so there is nothing else to clear."
+msgstr "忘记最近使用的表情符号、符号和颜色。搜索内容从不保存，因此没有其他需要清除的内容。"
 
 msgid "Format"
 msgstr "格式"
@@ -1388,11 +1406,11 @@ msgstr "关闭窗口时继续在通知区域运行"
 msgid "Keep secrets secret"
 msgstr "让机密保持机密"
 
-msgid "Keep the Panel on top (pin)"
-msgstr "保持面板置顶(固定)"
-
 msgid "Keep the Panel open"
 msgstr "保持面板打开"
+
+msgid "Keep them"
+msgstr "保留"
 
 msgid "Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept."
 msgstr "保留你复制的文本，最多保留最近 {} 次复制或 {} 天，以先到者为准，方便你再次找到或保存到列表。敏感片段、密码管理器以及你排除的应用的内容不会被保留。"
@@ -1985,7 +2003,7 @@ msgid "Paste"
 msgstr "粘贴"
 
 msgid "Paste as plain text"
-msgstr ""
+msgstr "以纯文本粘贴"
 
 msgid "Paste as…"
 msgstr "粘贴为…"
@@ -2024,7 +2042,7 @@ msgid "Paste the Nth result"
 msgstr "粘贴第 N 个结果"
 
 msgid "Paste the item as plain text"
-msgstr ""
+msgstr "将该条目以纯文本粘贴"
 
 msgid "Paste the next item"
 msgstr "粘贴下一个片段"
@@ -2039,16 +2057,16 @@ msgid "Pasted"
 msgstr "已粘贴"
 
 msgid "Pasted image"
-msgstr ""
+msgstr "已粘贴的图片"
 
 msgid "Pasted into {}"
 msgstr "已粘贴到 {}"
 
 msgid "Pasted into {}. Your earlier clipboard could not be put back."
-msgstr ""
+msgstr "已粘贴到 {}。无法恢复你之前的剪贴板内容。"
 
 msgid "Pasted. Your earlier clipboard could not be put back."
-msgstr ""
+msgstr "已粘贴。无法恢复你之前的剪贴板内容。"
 
 msgid "Pastes into"
 msgstr "粘贴到"
@@ -2063,7 +2081,7 @@ msgid "Pastes the next item of the list in order."
 msgstr "按顺序粘贴列表中的下一个片段。"
 
 msgid "Pasting"
-msgstr ""
+msgstr "正在粘贴"
 
 msgid "Path to the file"
 msgstr "文件路径"
@@ -2138,7 +2156,7 @@ msgid "Placeholders"
 msgstr "占位符"
 
 msgid "Placeholders are {}. To write a literal brace, double it: {} or {}"
-msgstr ""
+msgstr "占位符写在 {} 中。若要写出字面花括号,请重复一次:{} 或 {}"
 
 msgid "Plain text"
 msgstr "纯文本"
@@ -2242,6 +2260,9 @@ msgstr "“最近”会保留你复制的文本，仅保存在这台电脑上，
 msgid "Recently used"
 msgstr "最近使用"
 
+msgid "Recently used emoji and colours cleared"
+msgstr "已清除最近使用的表情符号和颜色"
+
 msgid "Red"
 msgstr "红色"
 
@@ -2310,9 +2331,6 @@ msgstr "重命名或删除标签。删除标签会将其从片段中移除，片
 
 msgid "Rename tag {}"
 msgstr "重命名标签 {}"
-
-msgid "Rename the item"
-msgstr "重命名项目"
 
 msgid "Repeat the new password"
 msgstr "再次输入新密码"
@@ -2550,6 +2568,9 @@ msgstr "敏感片段"
 msgid "Sensitive items can't be typed in, so they have no trigger."
 msgstr "敏感项目无法通过键入插入，因此没有触发词。"
 
+msgid "Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose."
+msgstr "备份或导出中的敏感项目只能由此电脑上的这个 Windows 账户恢复。在另一台电脑上，或重新安装 Windows 后，这些项目会被跳过。请自行保留无法丢失的敏感内容的副本。"
+
 msgid "Set master password"
 msgstr "设置主密码"
 
@@ -2664,6 +2685,9 @@ msgstr "Snipdeck 无法在此电脑上保护密钥，因此无法使用主密码
 msgid "Snipdeck can't read that file. It may be in use or protected."
 msgstr "Snipdeck 无法读取该文件。它可能正在使用中或受保护。"
 
+msgid "Snipdeck can't watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
+msgstr "Snipdeck 无法监视剪贴板,因此“最近”将保持为空。请重启 Snipdeck 后重试。"
+
 msgid "Snipdeck closed unexpectedly last time. Open the log?"
 msgstr "Snipdeck 上次意外关闭。要打开日志吗？"
 
@@ -2684,6 +2708,9 @@ msgstr "Snipdeck 无法保存你输入内容的草稿。"
 
 msgid "Snipdeck couldn't save this item. Nothing was changed."
 msgstr "Snipdeck 无法保存此片段。未做任何更改。"
+
+msgid "Snipdeck couldn't start.\n\n{}\n\nNothing was deleted. Close any program that may be using your Snipdeck folder, make sure the folder is not read-only, then start Snipdeck again. If you went back to an older version, install the newer one. Your backups are in the backups folder inside your Snipdeck folder."
+msgstr "Snipdeck 无法启动。\n\n{}\n\n没有删除任何内容。请关闭可能正在使用 Snipdeck 文件夹的程序，确认该文件夹不是只读的，然后重新启动 Snipdeck。如果你回退到了旧版本，请安装较新的版本。你的备份位于 Snipdeck 文件夹内的 backups 文件夹中。"
 
 msgid "Snipdeck couldn't write to your library. Check that the disk has room."
 msgstr "Snipdeck 无法写入你的资料库。请检查磁盘是否有足够空间。"
@@ -3424,7 +3451,7 @@ msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (
 msgstr "你的资料库位于一个文件夹 %LOCALAPPDATA%\\Snipdeck 中：snipdeck.db（看板、列表、项目、标签和回收站）、blobs（图片、文件和长文本）、settings.json、backups（保留你选定的份数）和 logs。"
 
 msgid "Your library locked after a while. The form for the sensitive template you were filling in was closed."
-msgstr ""
+msgstr "你的库在一段时间后已锁定。你正在填写的敏感模板表单已关闭。"
 
 msgid "Your library locked after a while. The sensitive item you were editing was closed without saving."
 msgstr "资料库在一段时间后自动锁定。你正在编辑的敏感片段已关闭，未保存。"
@@ -3444,50 +3471,53 @@ msgstr "你所在组织的策略不允许 Snipdeck 随 Windows 启动。"
 msgid "Your sensitive items will be protected by Windows alone."
 msgstr "你的敏感项目将仅由 Windows 保护。"
 
+msgid "Your settings file was damaged. Snipdeck kept what it could read and saved the original as settings.json.bad."
+msgstr "你的设置文件已损坏。Snipdeck 保留了能读取的内容,并将原文件另存为 settings.json.bad。"
+
 msgid "Your shortcuts"
 msgstr "你的快捷键"
 
 msgid "`d` for days"
-msgstr ""
+msgstr "`d` 表示天"
 
 msgid "`h` for hours"
-msgstr ""
+msgstr "`h` 表示小时"
 
 msgid "`min` for minutes"
-msgstr ""
+msgstr "`min` 表示分钟"
 
 msgid "`mo` for months"
-msgstr ""
+msgstr "`mo` 表示月"
 
 msgid "`mo` for months or `min` for minutes"
-msgstr ""
+msgstr "`mo` 表示月,`min` 表示分钟"
 
 msgid "`w` for weeks"
-msgstr ""
+msgstr "`w` 表示周"
 
 msgid "`y` for years"
-msgstr ""
+msgstr "`y` 表示年"
 
 msgid "a choice needs options, e.g. {}"
-msgstr ""
+msgstr "选择项需要选项,例如 {}"
 
 msgid "a choice option is empty"
-msgstr ""
+msgstr "选择项的某个选项为空"
 
 msgid "a placeholder can have at most {} offsets"
-msgstr ""
+msgstr "一个占位符最多可有 {} 个偏移"
 
 msgid "a placeholder is not valid"
-msgstr ""
+msgstr "占位符无效"
 
 msgid "a prompt takes a name and one more part: {}"
-msgstr ""
+msgstr "提示项需要一个名称和另一部分:{}"
 
 msgid "a template can ask for at most {} different fields, choices, dates or sections"
-msgstr ""
+msgstr "一个模板最多可询问 {} 个不同的字段、选择、日期或区段"
 
 msgid "a {} ends the format; write {} for a literal {}"
-msgstr ""
+msgstr "{} 表示格式结束;请写 {} 来表示字面的 {}"
 
 msgid "add"
 msgstr "添加"
@@ -3499,10 +3529,10 @@ msgid "add create snippet note write"
 msgstr "添加 新建 片段 笔记 写入"
 
 msgid "an offset in {} can be at most {}"
-msgstr ""
+msgstr "{} 中的偏移最大为 {}"
 
 msgid "an offset is a sign, a number and a unit, like {} or {}"
-msgstr ""
+msgstr "偏移由符号、数字和单位组成,例如 {} 或 {}"
 
 msgid "and {} more"
 msgid_plural "and {} more"
@@ -3584,7 +3614,7 @@ msgid "emoji kaomoji icons smiley emoticon insert"
 msgstr "表情符号 emoji 颜文字 图标 笑脸 符号 插入"
 
 msgid "empty placeholder {}"
-msgstr ""
+msgstr "空占位符 {}"
 
 msgid "every mark choose all"
 msgstr "全部 标记 选择 全选"
@@ -3666,16 +3696,16 @@ msgid "notepad.exe"
 msgstr "notepad.exe"
 
 msgid "one of d, w, mo, y, h, min"
-msgstr ""
+msgstr "d、w、mo、y、h、min 之一"
 
 msgid "only one {} is allowed"
-msgstr ""
+msgstr "只允许一个 {}"
 
 msgid "open toggle deck hide"
 msgstr "打开 切换 卡组 隐藏"
 
 msgid "optional sections cannot be nested"
-msgstr ""
+msgstr "可选区段不能嵌套"
 
 msgid "or"
 msgstr "或"
@@ -3738,10 +3768,10 @@ msgid "tag: {}"
 msgstr "标签：{}"
 
 msgid "the choice option {} is listed twice"
-msgstr ""
+msgstr "选择项 {} 重复出现"
 
 msgid "the prompt needs a name, e.g. {}"
-msgstr ""
+msgstr "提示项需要名称,例如 {}"
 
 msgid "to insert"
 msgstr "插入"
@@ -3753,16 +3783,16 @@ msgid "tutorial intro onboarding basics learn"
 msgstr "教程 入门 引导 基础 学习"
 
 msgid "unknown date format {}; supported: {}"
-msgstr ""
+msgstr "未知的日期格式 {};支持:{}"
 
 msgid "unknown offset unit {}; use {}"
-msgstr ""
+msgstr "未知的偏移单位 {};请使用 {}"
 
 msgid "unknown placeholder {}"
-msgstr ""
+msgstr "未知的占位符 {}"
 
 msgid "unknown placeholder {}, did you mean {}?"
-msgstr ""
+msgstr "未知的占位符 {},你是指 {} 吗?"
 
 msgid "version update"
 msgstr "版本 更新"
@@ -3815,10 +3845,10 @@ msgid "{} can't be used as a shortcut. Choose another in Settings."
 msgstr "{} 无法用作快捷键。请在设置中选择其他快捷键。"
 
 msgid "{} closes nothing"
-msgstr ""
+msgstr "{} 没有可关闭的内容"
 
 msgid "{} closes nothing; write {} for a literal {}"
-msgstr ""
+msgstr "{} 没有可关闭的内容;请写 {} 来表示字面的 {}"
 
 msgid "{} could not be read and was skipped."
 msgstr "{} 无法读取，已跳过。"
@@ -3856,10 +3886,10 @@ msgid "{} is empty and was skipped."
 msgstr "{} 为空，已跳过。"
 
 msgid "{} is never closed; add {} after the part"
-msgstr ""
+msgstr "{} 从未关闭;请在该部分之后添加 {}"
 
 msgid "{} is never closed; write {} for a literal {}"
-msgstr ""
+msgstr "{} 从未关闭;请写 {} 表示字面的 {}"
 
 msgid "{} is not valid UTF-8, so characters that could not be read were replaced."
 msgstr "{} 不是有效的 UTF-8 编码，无法读取的字符已被替换。"
@@ -3871,7 +3901,7 @@ msgid "{} is used by another app. Choose another in Settings."
 msgstr "{} 正被其他应用占用。请在设置中选择其他快捷键。"
 
 msgid "{} is used for two different prompts; use the same kind and options each time, or pick another name"
-msgstr ""
+msgstr "{} 被用于两个不同的提示项;请每次使用相同的类型和选项,或换一个名称"
 
 msgid "{} is {}, over the 5 MB limit for text, and was skipped."
 msgstr "{} 为 {}，超过文本 5 MB 的上限，已跳过。"
@@ -3903,7 +3933,7 @@ msgid "{} needs a number"
 msgstr "{} 需要一个数字"
 
 msgid "{} needs an argument: {}"
-msgstr ""
+msgstr "{} 需要一个参数:{}"
 
 msgid "{} new board will be made"
 msgid_plural "{} new boards will be made"
@@ -3938,7 +3968,7 @@ msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "备份中不包含 {} 项敏感项目。"
 
 msgid "{} takes no argument"
-msgstr ""
+msgstr "{} 不接受参数"
 
 msgid "{} · {}"
 msgstr "{} · {}"

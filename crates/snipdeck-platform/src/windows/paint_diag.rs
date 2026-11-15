@@ -199,7 +199,9 @@ unsafe extern "system" fn get_message_hook(code: i32, wparam: WPARAM, lparam: LP
             let has = unsafe { GetUpdateRect(msg.hwnd, Some(&raw mut r), false) }.as_bool();
             if has {
                 let hwnd = msg.hwnd.0 as isize;
-                OS_INVALIDATED.with(|s| s.borrow_mut().insert(hwnd));
+                // `try_`: a re-entrant call inside this hook must not panic (a panic cannot
+                // unwind out of an `extern "system"` function and would abort the process).
+                OS_INVALIDATED.with(|s| s.try_borrow_mut().map(|mut s| s.insert(hwnd)).ok());
                 log(&format!(
                     "diag render: WM_PAINT hwnd={hwnd:#x} os_update={}",
                     rect_text(&r)

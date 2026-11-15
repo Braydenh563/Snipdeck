@@ -414,6 +414,12 @@ msgstr "Liste „{}“ leeren?"
 msgid "Clear list…"
 msgstr "Liste leeren…"
 
+msgid "Clear recent emoji and colours"
+msgstr "Zuletzt verwendete Emojis und Farben löschen"
+
+msgid "Clear recent emoji and colours…"
+msgstr "Zuletzt verwendete Emojis und Farben löschen…"
+
 msgid "Clear recent history"
 msgstr "Verlauf der letzten Kopien leeren"
 
@@ -443,6 +449,9 @@ msgstr "Suche leeren, dann schließen"
 
 msgid "Clear the shortcut for {}"
 msgstr "Tastenkürzel für {} entfernen"
+
+msgid "Clear them"
+msgstr "Löschen"
 
 msgid "Click"
 msgstr "Klick"
@@ -720,6 +729,9 @@ msgstr "Vom Bildschirm konnte keine Farbe gewählt werden."
 msgid "Couldn't reach the clipboard. Another app may be using it."
 msgstr "Auf die Zwischenablage kann nicht zugegriffen werden. Eine andere App verwendet sie vielleicht."
 
+msgid "Couldn't read your settings file, so Snipdeck is using the defaults. Changes to settings won't be saved until the file is fixed or removed."
+msgstr "Deine Einstellungsdatei konnte nicht gelesen werden, daher verwendet Snipdeck die Standardwerte. Änderungen an den Einstellungen werden erst gespeichert, wenn die Datei repariert oder entfernt wurde."
+
 msgid "Couldn't refresh the list on screen. Close and reopen the window to see the change."
 msgstr "Die Liste auf dem Bildschirm konnte nicht aktualisiert werden. Schließe das Fenster und öffne es erneut, um die Änderung zu sehen."
 
@@ -905,6 +917,9 @@ msgstr "Verwerfen"
 
 msgid "Discard your changes?"
 msgstr "Änderungen verwerfen?"
+
+msgid "Dismiss"
+msgstr "Schließen"
 
 msgid "Ditto database"
 msgstr "Ditto-Datenbank"
@@ -1121,6 +1136,9 @@ msgstr "Zum Beispiel E-Mail-Antworten"
 
 msgid "For example, Work"
 msgstr "Zum Beispiel Arbeit"
+
+msgid "Forgets the emoji, symbols and colours you used lately. Searches are never kept, so there is nothing else to clear."
+msgstr "Vergisst die Emojis, Symbole und Farben, die du zuletzt benutzt hast. Suchanfragen werden nie gespeichert, es gibt also nichts weiter zu löschen."
 
 msgid "Format"
 msgstr "Format"
@@ -1392,11 +1410,11 @@ msgstr "Beim Schließen des Fensters im Infobereich weiterlaufen"
 msgid "Keep secrets secret"
 msgstr "Geheimes geheim halten"
 
-msgid "Keep the Panel on top (pin)"
-msgstr "Panel im Vordergrund halten (anheften)"
-
 msgid "Keep the Panel open"
 msgstr "Panel geöffnet lassen"
+
+msgid "Keep them"
+msgstr "Behalten"
 
 msgid "Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept."
 msgstr "Behält den kopierten Text für die letzten {} Kopien oder {} Tage, je nachdem, was zuerst eintritt, damit du ihn wiederfindest oder in einer Liste speichern kannst. Vertrauliche Textbausteine, Passwortmanager und die von dir ausgeschlossenen Apps werden nie gespeichert."
@@ -1991,7 +2009,7 @@ msgid "Paste"
 msgstr "Einfügen"
 
 msgid "Paste as plain text"
-msgstr ""
+msgstr "Als reinen Text einfügen"
 
 msgid "Paste as…"
 msgstr "Einfügen als…"
@@ -2045,16 +2063,16 @@ msgid "Pasted"
 msgstr "Eingefügt"
 
 msgid "Pasted image"
-msgstr ""
+msgstr "Eingefügtes Bild"
 
 msgid "Pasted into {}"
 msgstr "In {} eingefügt"
 
 msgid "Pasted into {}. Your earlier clipboard could not be put back."
-msgstr ""
+msgstr "In {} eingefügt. Deine frühere Zwischenablage konnte nicht wiederhergestellt werden."
 
 msgid "Pasted. Your earlier clipboard could not be put back."
-msgstr ""
+msgstr "Eingefügt. Deine frühere Zwischenablage konnte nicht wiederhergestellt werden."
 
 msgid "Pastes into"
 msgstr "Einfügen in"
@@ -2248,6 +2266,9 @@ msgstr "„Zuletzt“ behält den kopierten Text, nur auf diesem Computer, für 
 msgid "Recently used"
 msgstr "Kürzlich verwendet"
 
+msgid "Recently used emoji and colours cleared"
+msgstr "Zuletzt verwendete Emojis und Farben gelöscht"
+
 msgid "Red"
 msgstr "Rot"
 
@@ -2316,9 +2337,6 @@ msgstr "Schlagwörter umbenennen oder löschen. Beim Löschen eines Schlagworts 
 
 msgid "Rename tag {}"
 msgstr "Schlagwort {} umbenennen"
-
-msgid "Rename the item"
-msgstr "Eintrag umbenennen"
 
 msgid "Repeat the new password"
 msgstr "Neues Passwort wiederholen"
@@ -2558,6 +2576,9 @@ msgstr "Vertraulicher Textbaustein"
 msgid "Sensitive items can't be typed in, so they have no trigger."
 msgstr "Vertrauliche Einträge lassen sich nicht eintippen, deshalb haben sie kein Kürzel."
 
+msgid "Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose."
+msgstr "Vertrauliche Elemente in einer Sicherung oder einem Export können nur von diesem Windows-Konto auf diesem PC wiederhergestellt werden. Auf einem anderen PC oder nach einer Neuinstallation von Windows werden sie übersprungen. Bewahren Sie von allem Vertraulichen, das Sie nicht verlieren dürfen, eine eigene Kopie auf."
+
 msgid "Set master password"
 msgstr "Hauptpasswort festlegen"
 
@@ -2672,6 +2693,9 @@ msgstr "Snipdeck kann auf diesem PC keinen Schlüssel schützen, daher ist kein 
 msgid "Snipdeck can't read that file. It may be in use or protected."
 msgstr "Snipdeck kann diese Datei nicht lesen. Sie wird möglicherweise verwendet oder ist geschützt."
 
+msgid "Snipdeck can't watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
+msgstr "Snipdeck kann die Zwischenablage nicht beobachten, daher bleibt „Zuletzt“ leer. Starte Snipdeck neu, um es erneut zu versuchen."
+
 msgid "Snipdeck closed unexpectedly last time. Open the log?"
 msgstr "Snipdeck wurde beim letzten Mal unerwartet beendet. Protokoll öffnen?"
 
@@ -2692,6 +2716,9 @@ msgstr "Snipdeck konnte keinen Entwurf deiner Eingabe speichern."
 
 msgid "Snipdeck couldn't save this item. Nothing was changed."
 msgstr "Snipdeck konnte diesen Textbaustein nicht speichern. Es wurde nichts geändert."
+
+msgid "Snipdeck couldn't start.\n\n{}\n\nNothing was deleted. Close any program that may be using your Snipdeck folder, make sure the folder is not read-only, then start Snipdeck again. If you went back to an older version, install the newer one. Your backups are in the backups folder inside your Snipdeck folder."
+msgstr "Snipdeck konnte nicht gestartet werden.\n\n{}\n\nEs wurde nichts gelöscht. Schließen Sie alle Programme, die Ihren Snipdeck-Ordner verwenden könnten, stellen Sie sicher, dass der Ordner nicht schreibgeschützt ist, und starten Sie Snipdeck dann erneut. Wenn Sie zu einer älteren Version zurückgegangen sind, installieren Sie die neuere. Ihre Sicherungen liegen im Ordner „backups“ in Ihrem Snipdeck-Ordner."
 
 msgid "Snipdeck couldn't write to your library. Check that the disk has room."
 msgstr "Snipdeck konnte nicht in deine Bibliothek schreiben. Prüfe, ob auf dem Datenträger genug Platz ist."
@@ -3451,6 +3478,9 @@ msgstr "Die Richtlinie deiner Organisation verhindert, dass Snipdeck mit Windows
 
 msgid "Your sensitive items will be protected by Windows alone."
 msgstr "Ihre sensiblen Einträge werden allein durch Windows geschützt."
+
+msgid "Your settings file was damaged. Snipdeck kept what it could read and saved the original as settings.json.bad."
+msgstr "Deine Einstellungsdatei war beschädigt. Snipdeck hat übernommen, was lesbar war, und das Original als settings.json.bad gespeichert."
 
 msgid "Your shortcuts"
 msgstr "Deine Tastenkürzel"

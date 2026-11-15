@@ -832,6 +832,28 @@ fn the_library_locks_after_the_idle_time_and_asks_again() {
 }
 
 #[test]
+fn a_clock_moved_back_cannot_delay_the_idle_lock_past_the_idle_time() {
+    let mut r = with_password();
+    r.advance(Duration::from_mins(1));
+    // The system clock is set two hours back (a manual change, a time sync).
+    let back = r
+        .clock_now()
+        .checked_sub(Duration::from_hours(2))
+        .expect("earlier");
+    r.clock.set(back);
+    let wait = r.ctl.idle_lock_wait().expect("waiting");
+    assert!(
+        wait <= IDLE_LOCK,
+        "waits at most the idle time, not {wait:?}"
+    );
+    r.advance(IDLE_LOCK);
+    assert!(
+        r.ctl.lock_if_idle(),
+        "locked one idle time after the change"
+    );
+}
+
+#[test]
 fn using_the_library_restarts_the_idle_count() {
     let mut r = with_password();
     r.advance(just_before_idle(Duration::from_mins(1)));

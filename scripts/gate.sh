@@ -20,7 +20,8 @@ esac; done
 fast_checks() {
   cargo fmt --all --check &&
     cargo clippy --workspace --all-targets --locked -- -D warnings &&
-    RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
+    RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked &&
+    python3 scripts/third_party_notices.py --check
 }
 # --- ALL TESTS (from CI) ---
 all_tests() {
@@ -79,7 +80,7 @@ fi
 [ "$MODE_FULL" = 1 ] && step full-suite bash -c "$(declare -f all_tests); all_tests"
 
 if [ -f scripts/codemap.py ]; then step codemap python3 scripts/codemap.py --check; fi
-if [ -f scripts/i18n.py ]; then step i18n python3 scripts/i18n.py check; fi
+if [ -f scripts/i18n.py ]; then step i18n python3 scripts/i18n.py check --strict; fi
 if [ -f scripts/test_i18n.py ]; then step i18n-tests python3 scripts/test_i18n.py; fi
 if [ -f scripts/symbols.py ]; then step symbols python3 -I scripts/symbols.py --check; fi
 if [ -f scripts/test_symbols.py ]; then step symbols-tests python3 -I scripts/test_symbols.py; fi

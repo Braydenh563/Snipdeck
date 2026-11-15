@@ -46,6 +46,7 @@ use snipdeck_app::{
     settings::{Settings, Theme},
     settings_binding::{PanelTaskbar, SettingsUi, SystemHost},
     settings_store::{FileSink, SettingsSaver},
+    toast::Toast,
     toast_binding::ToastUi,
     unlock_binding::UnlockUi,
     window_kind,
@@ -80,6 +81,8 @@ fn apply_tray_history(tray: &TrayCell, latest: &Rc<Cell<(bool, bool)>>) {
 type TrayCell = Rc<RefCell<Option<Box<dyn snipdeck_platform::tray::Tray>>>>;
 
 fn main() -> ExitCode {
+    // Before anything can load a library: only the app folder and System32 are searched.
+    platform::harden_dll_search();
     // First, so that a panic anywhere after this leaves a report (the data folder is told to the
     // hook once it is known).
     crash::install(Timestamp::now);
@@ -124,9 +127,27 @@ fn main() -> ExitCode {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("snipdeck: {e}");
+            // The release Windows build has no console: say it in a message box, or the app
+            // would start and vanish. (A screenshot run is a developer's command line.)
+            if args.screenshot.is_none() {
+                report_startup_failure(&e);
+            }
             ExitCode::FAILURE
         }
     }
+}
+
+/// Tells the user, in a native message box and in their language, why the app could not start.
+fn report_startup_failure(details: &str) {
+    // The settings did not load, so the language is the system's.
+    let _ = slint::select_bundled_translation("");
+    // The text lives in the UI crate's catalogs; a window is the way to reach them. Without a
+    // backend (the failure was in choosing one) there is no window and the reason stands alone.
+    let text = match PanelWindow::new() {
+        Ok(window) => snipdeck_app::wording::startup_failure_text(&window, details),
+        Err(_) => details.to_owned(),
+    };
+    platform::show_startup_failure("Snipdeck", &text);
 }
 
 /// `--check-db` and `--troubleshoot`: print and exit, without starting the app.
@@ -177,6 +198,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         on_tray: Box::new(|event| on_ui_thread(move |b| b.tray(event))),
         on_clipboard_change: Box::new(|change| on_ui_thread(move |b| b.clipboard_changed(change))),
         on_typed: Box::new(|typed| on_ui_thread(move |b| b.typed_trigger(typed))),
+        on_session_lock: Box::new(|| on_ui_thread(Binding::session_locked)),
         on_look_changed: {
             let look = Arc::clone(&look);
             // Read on the UI thread: the value is fresher than the one the watcher saw.
@@ -203,7 +225,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     };
     // Only now: reading the settings may move a damaged file aside, and opening the library may
     // migrate it. A second launch (which stops just above) must not touch the running copy's files.
-    let (store, settings, settings_folder, saver_baseline) = open_library(args)?;
+    let (store, settings, settings_folder, saver_baseline, settings_toast) = open_library(args)?;
     let Host {
         services,
         target,
@@ -214,6 +236,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         recent_gate,
         typing,
         warnings,
+        clipboard_watch_failed,
         keep_alive: _keep_alive,
     } = host;
     for warning in &warnings {
@@ -265,6 +288,15 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         controller.set_recent_gate(recent_gate);
         controller.set_typing(typing);
         controller.prune_recent();
+        if let Some(toast) = settings_toast {
+            controller.show_toast(toast);
+        }
+        if clipboard_watch_failed {
+            controller.show_toast(Toast {
+                kind: snipdeck_app::toast::ToastKind::Danger,
+                message: snipdeck_app::toast::ToastMessage::ClipboardWatchFailed,
+            });
+        }
         if let Some(saver) = saver {
             controller.set_settings_saver(saver);
         }
@@ -405,6 +437,25 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
             );
         })
     };
+    // A window that cannot be opened says so in a toast (the release build has no console).
+    let window_failed: Rc<dyn Fn(snipdeck_app::toast::ToastMessage)> = {
+        let controller = Rc::downgrade(&controller);
+        Rc::new(move |message| {
+            let controller = controller.clone();
+            // Later: the effect runs inside a controller call, which still holds its borrow.
+            slint::Timer::single_shot(std::time::Duration::ZERO, move || {
+                if let Some(controller) = controller.upgrade()
+                    && let Ok(mut controller) = controller.try_borrow_mut()
+                {
+                    controller.show_toast(snipdeck_app::toast::Toast {
+                        kind: snipdeck_app::toast::ToastKind::Danger,
+                        message,
+                    });
+                }
+                with_binding(Binding::redraw);
+            });
+        })
+    };
     let on_effect: Rc<dyn Fn(&Effect)> = Rc::new(effect_handler(
         Rc::clone(&hotkeys),
         chords_now,
@@ -415,6 +466,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         Rc::clone(&help_ui),
         Rc::clone(&unlock_ui),
         Rc::clone(&attach_now),
+        window_failed,
     ));
     // The Picker, the fill form and the toast window (made when first needed).
     let _popups = {
@@ -497,7 +549,12 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
             &controller,
         )
     });
-    let ran = slint::run_event_loop_until_quit().map_err(|e| format!("event loop: {e}"));
+    // The Panel is up by now: a failure of the loop at quit is logged, not reported as "could
+    // not start" (that message box is for failures before the first window).
+    let ran = slint::run_event_loop_until_quit();
+    if let Err(e) = &ran {
+        eprintln!("snipdeck: event loop: {e}");
+    }
     // An editor left open keeps what was typed since the last draft.
     item_editor.flush_draft();
     // A sensitive copy still waiting for its clear timer would outlive the app.
@@ -506,7 +563,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     if let Err(e) = controller.borrow_mut().flush_settings() {
         eprintln!("snipdeck: could not save the settings: {e}");
     }
-    ran
+    Ok(())
 }
 
 type SharedTray = Rc<RefCell<Option<Box<dyn snipdeck_platform::tray::Tray>>>>;
@@ -581,6 +638,7 @@ fn effect_handler(
     help_ui: Rc<HelpUi>,
     unlock_ui: Rc<UnlockUi>,
     attach_panel: Rc<dyn Fn()>,
+    window_failed: Rc<dyn Fn(snipdeck_app::toast::ToastMessage)>,
 ) -> impl Fn(&Effect) + 'static {
     move |effect| match effect {
         Effect::Quit => {
@@ -611,6 +669,7 @@ fn effect_handler(
         Effect::OpenMainWindow => {
             if let Err(e) = main_ui.open() {
                 eprintln!("snipdeck: cannot open the main window: {e}");
+                window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
             }
         }
         // The Panel's "Commands…" and Ctrl+K: the Main window, with the palette open.
@@ -620,11 +679,15 @@ fn effect_handler(
                     window.invoke_open_palette();
                 }
             }
-            Err(e) => eprintln!("snipdeck: cannot open the command palette: {e}"),
+            Err(e) => {
+                eprintln!("snipdeck: cannot open the command palette: {e}");
+                window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
+            }
         },
         Effect::OpenSettings => {
             if let Err(e) = settings_ui.open() {
                 eprintln!("snipdeck: cannot open the settings: {e}");
+                window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
             }
         }
         // The optional support page, in the browser: the same opener as Help's links.
@@ -632,17 +695,20 @@ fn effect_handler(
             use snipdeck_app::help_binding::{HelpHost, SUPPORT_URL, SystemHelpHost};
             if let Err(e) = SystemHelpHost.open_url(SUPPORT_URL) {
                 eprintln!("snipdeck: cannot open the support page: {e}");
+                window_failed(snipdeck_app::toast::ToastMessage::LinkNotOpened);
             }
         }
         // A locked sensitive item behind a master password: ask for it.
         Effect::OpenUnlock => {
             if let Err(e) = unlock_ui.open() {
                 eprintln!("snipdeck: cannot open the unlock window: {e}");
+                window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
             }
         }
         Effect::OpenListEditor => {
             if let Err(e) = main_ui.bind() {
                 eprintln!("snipdeck: cannot open the list editor: {e}");
+                window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
             }
         }
         Effect::ResizeWindow(edge) => {
@@ -668,6 +734,7 @@ fn effect_handler(
         Effect::OpenHelp(topic) => {
             if let Err(e) = help_ui.open(*topic) {
                 eprintln!("snipdeck: cannot open the help: {e}");
+                window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
             }
         }
         // The binding has already acted: placed the window, or opened the item editor.
@@ -813,7 +880,13 @@ fn report_hotkey_problems(problems: &[host::HotkeyProblem]) {
 /// folder (`None` only for the demo, which has none), and what the settings saver starts from
 /// (`None` when changes must not be written: the demo, `--dark`, and a settings file that could
 /// not be read or set aside).
-type Library = (Store, Settings, Option<PathBuf>, Option<Settings>);
+type Library = (
+    Store,
+    Settings,
+    Option<PathBuf>,
+    Option<Settings>,
+    Option<Toast>,
+);
 
 /// The library and the settings.
 fn open_library(args: &Args) -> Result<Library, String> {
@@ -827,7 +900,7 @@ fn open_library(args: &Args) -> Result<Library, String> {
         };
         let store = demo::store(now).map_err(|e| format!("demo library: {e}"))?;
         snipdeck_app::trace!("demo library");
-        return Ok((store, settings, None, None));
+        return Ok((store, settings, None, None, None));
     }
     let folder = match &args.data_dir {
         Some(dir) => dir.clone(),
@@ -838,6 +911,7 @@ fn open_library(args: &Args) -> Result<Library, String> {
     crash::set_data_dir(&folder);
     let loaded = snipdeck_app::paths::read_settings(&folder);
     let may_save = loaded.may_save();
+    let loaded_outcome = loaded.outcome;
     // A damaged file was moved aside: write the salvaged values back now, or the next launch would
     // find no file and fall back to the defaults (re-enabling pastes into apps the user excluded).
     let mut salvage_written = true;
@@ -868,7 +942,13 @@ fn open_library(args: &Args) -> Result<Library, String> {
         Ok(made) => snipdeck_app::trace!("real library; starter board made: {made}"),
         Err(e) => eprintln!("snipdeck: could not create the first board: {e}"),
     }
-    Ok((store, settings, Some(folder), saver_baseline))
+    Ok((
+        store,
+        settings,
+        Some(folder),
+        saver_baseline,
+        loaded_outcome.toast(),
+    ))
 }
 
 /// Winit with the software renderer; the Panel and the other floating windows are created

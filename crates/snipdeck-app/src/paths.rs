@@ -60,6 +60,25 @@ pub struct Loaded {
     pub outcome: LoadOutcome,
 }
 
+impl LoadOutcome {
+    /// The toast that tells the user their settings did not load as written, if one is due:
+    /// a damaged file that was set aside, or one that could not be read (the defaults are in use
+    /// and nothing will be saved).
+    #[must_use]
+    pub fn toast(self) -> Option<crate::toast::Toast> {
+        use crate::toast::{Toast, ToastKind, ToastMessage};
+        let message = match self {
+            Self::Missing | Self::Read => return None,
+            Self::SetAside => ToastMessage::SettingsDamaged,
+            Self::Untouchable => ToastMessage::SettingsUnreadable,
+        };
+        Some(Toast {
+            kind: ToastKind::Danger,
+            message,
+        })
+    }
+}
+
 impl Loaded {
     /// Whether writing the settings file is safe. `false` when the file on disk holds something
     /// the app could not use and could not keep a copy of: saving would destroy it.
@@ -167,13 +186,6 @@ pub fn saver_baseline(loaded: &Loaded, salvage_written: bool) -> Settings {
     }
 }
 
-/// The settings from `folder`, without the outcome (for tests of code that never writes them back).
-#[cfg(test)]
-#[must_use]
-pub fn load_settings(folder: &Path) -> Settings {
-    read_settings(folder).settings
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -184,6 +196,22 @@ mod tests {
                 .find(|(k, _)| *k == name)
                 .map(|(_, v)| (*v).to_owned())
         }
+    }
+
+    #[test]
+    fn a_damaged_or_unreadable_settings_file_earns_a_toast_and_a_good_one_does_not() {
+        use crate::toast::ToastMessage;
+        let message = |o: LoadOutcome| o.toast().map(|t| t.message);
+        assert_eq!(message(LoadOutcome::Missing), None);
+        assert_eq!(message(LoadOutcome::Read), None);
+        assert_eq!(
+            message(LoadOutcome::SetAside),
+            Some(ToastMessage::SettingsDamaged)
+        );
+        assert_eq!(
+            message(LoadOutcome::Untouchable),
+            Some(ToastMessage::SettingsUnreadable)
+        );
     }
 
     #[test]

@@ -349,6 +349,21 @@ mod tests {
     }
 
     #[test]
+    fn a_whitespace_only_answer_in_the_last_of_sixteen_fields_is_missing() {
+        let src: String = (1..=16).fold(String::new(), |mut acc, i| {
+            use std::fmt::Write;
+            let _ = write!(acc, "{{field:Field{i}}} ");
+            acc
+        });
+        let mut m = form(&src);
+        let values: Vec<String> = (0..16)
+            .map(|i| if i == 15 { "   ".into() } else { "x".into() })
+            .collect();
+        m.set_values(&values);
+        assert_eq!(m.first_missing(), Some((15, Missing::Empty)));
+    }
+
+    #[test]
     fn multiline_answers_keep_their_newlines() {
         let mut m = form("Note:\n{multiline:Body}");
         assert_eq!(m.fields()[0].kind, FieldKind::Multiline);

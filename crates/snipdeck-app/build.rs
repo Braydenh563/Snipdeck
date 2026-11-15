@@ -23,6 +23,13 @@ fn main() {
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows") {
         return;
     }
+    // The DLLs the exe imports are resolved before `main`, so `SetDefaultDllDirectories` there
+    // (audit G20) comes too late for them. `/DEPENDENTLOADFLAG:0x800` (LOAD_LIBRARY_SEARCH_
+    // SYSTEM32) makes the loader take them from System32 only. MSVC linker only; unverified on
+    // Windows until the owner runs the build there.
+    if std::env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc") {
+        println!("cargo:rustc-link-arg-bins=/DEPENDENTLOADFLAG:0x800");
+    }
     let mut resource = winresource::WindowsResource::new();
     // The file and product versions come from `CARGO_PKG_VERSION`; the texts are set here.
     resource

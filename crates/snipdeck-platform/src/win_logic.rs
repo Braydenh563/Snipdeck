@@ -875,7 +875,7 @@ mod tests {
         assert!(!gate.keep_frame(7));
         gate.paint_end(9);
         gate.paint_end(7);
-        assert!(gate.painting.is_empty());
+        assert_eq!(gate.painting, []);
     }
 
     #[test]

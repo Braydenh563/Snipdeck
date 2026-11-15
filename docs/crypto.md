@@ -45,6 +45,14 @@ Default: **64 MiB (65 536 KiB), 3 passes, 1 lane**, 16-byte random salt, 32-byte
   the crate's own tests turn on through a dev-dependency on itself.
 * The 64 MiB is a transient allocation (zeroized on drop) during unlock; it is outside the
   40 MB idle-RAM budget of SPEC §9 only while unlocking.
+* **Typed master password (limit):** the unlock window clears the password field as soon as it is
+  submitted, but that only drops the toolkit's reference: Slint stores the text in an immutable,
+  reference-counted string that it frees without overwriting, and it keeps other copies (the
+  text-input edit buffer, undo history, shaped-text caches). Snipdeck cannot wipe any of them, so
+  the typed password can stay in freed UI memory until the allocator reuses it. (Overwriting the
+  field with filler first was tried and dropped: it allocates a new string and leaves the old
+  one untouched.) Only the Rust-side copies are zeroized. Not fixable without a toolkit change;
+  the exposure is that of any process-memory read by an attacker already running as the user.
 * **Measured** (release build, `cargo test -p snipdeck-store --release --lib -- --ignored
   --nocapture default_params`), 7 runs on a Linux cloud VM: min 238 ms, median 250 ms,
   max 253 ms. Re-measure on the reference Windows machine in milestone 2; adjust
@@ -129,7 +137,7 @@ What is **not** guaranteed:
   folder and are deleted, not zeroed. Snipdeck's queries over sensitive content are small, but
   this is outside the store's control.
 * **Pasted files.** Pasting a Files item (sensitive or not) writes its files, decrypted, to
-  `%TEMP%\Snipdeck\paste-<random>\`, because `CF_HDROP` needs real paths. The folder is kept while
+  `%USERPROFILE%\Snipdeck paste files\paste-<random>\` (not `%TEMP%`: a Store build cannot share files under AppData, see `docs/packaging.md`), because `CF_HDROP` needs real paths. The folder is kept while
   the clipboard may point into it. The next paste and the next start zero each file, then delete
   the folder; a file another program has open stays until a later run. After a **sensitive** Files
   item was pasted, locking the library and quitting also delete these folders (a file the target
@@ -160,6 +168,30 @@ password and drop the copy; the option stays on and the next password unlock sea
   string behind the field is not wiped from memory when the field is emptied.
 * No recovery if the OS binding is lost (new Windows profile, DPAPI master key reset) and no
   recovery key. A "recovery key" export would be a separate feature.
+* **Backups and exports do not carry the key (audit G4, decision).** A `.snipdeck` archive holds
+  sensitive payloads as `SNENC2` envelopes under the data key and no key record, so on another
+  PC or Windows profile every sensitive item is skipped on import ("encrypted with a key this
+  library does not have"). The key cannot be carried with the current design: the only stored
+  record (`SNKEY1`) is wrapped by DPAPI, which opens only for the same Windows account; the
+  password-sealed part exists only when a master password is set and is never separate from the
+  OS wrapper; and writing the data key itself into the archive would put the key next to the
+  ciphertext in a file people e-mail and upload. A portable record (password-sealed key
+  without the OS wrapper, or a recovery key) is a new key format and a new restore path, so it
+  is left as a feature. Decision: warn, do not carry. The Backups and your data page of
+  Settings says before any backup or export that sensitive items restore only for the same
+  Windows account on the same PC, and the import and restore preview names the skipped count
+  after the loss (`ImportTexts`). Chosen because it adds no key material outside the OS
+  binding and cannot make a backup less safe.
 * Encrypts item content only. Titles, tags and search text are not covered; the FTS index
   never receives the content of sensitive items (title-only indexing, architecture.md).
 * Process memory can still hold plaintext while an item is shown.
+
+## DLL search order (audit G20)
+
+A DLL planted beside the exe must not load in place of a system one. Two parts, both **unverified
+on Windows** until the owner runs the Windows build and checks that it starts:
+
+- `build.rs` of `snipdeck-app` passes `/DEPENDENTLOADFLAG:0x800` to the MSVC linker, so the DLLs
+  the exe imports are looked for in System32 only. The loader resolves these before `main`.
+- `harden_dll_search` (`SetDefaultDllDirectories`, first thing in `main`) restricts later
+  `LoadLibrary` calls to the application folder and System32. It cannot cover the static imports.

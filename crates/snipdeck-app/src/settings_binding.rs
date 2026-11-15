@@ -1051,6 +1051,9 @@ struct SettingsCore<C, K, T> {
     redraw: Rc<dyn Fn()>,
     /// A timer is waiting to write changed settings.
     save_timer: Rc<Cell<bool>>,
+    /// Whether Windows holds the start-up entry, read when the page opens and after the toggle
+    /// changes it (the read can be a blocking call), not on each redraw.
+    autostart_registered: Cell<bool>,
 }
 
 /// A bound Settings page. Dropping it does not unbind the window; the window's callbacks keep the
@@ -1075,6 +1078,13 @@ where
     pub fn redraw(&self) {
         self.core.refresh_backups();
         self.core.sync();
+    }
+
+    /// Rereads what Windows holds for "Start with Windows", then redraws: for when the page is
+    /// shown (the entry may have changed outside Snipdeck since the last look).
+    pub fn opened(&self) {
+        self.core.refresh_autostart();
+        self.redraw();
     }
 }
 
@@ -1110,8 +1120,15 @@ where
 
     fn act<R>(self: &Rc<Self>, f: impl FnOnce(&mut Controller<Store, C, K, T>) -> R) -> R {
         let result = f(&mut self.controller.borrow_mut());
+        // One read per user action (not per redraw): the entry may have been removed outside.
+        self.refresh_autostart();
         redraw_all();
         result
+    }
+
+    fn refresh_autostart(&self) {
+        self.autostart_registered
+            .set(self.host.autostart_registered());
     }
 
     fn refresh_backups(&self) {
@@ -1133,11 +1150,14 @@ where
             self.arm_save();
             return;
         }
-        let view = page_view(
+        let mut view = page_view(
             &self.controller.borrow(),
             &self.state.borrow(),
             self.data_dir.is_some(),
         );
+        // The switch shows what Windows will do, not only what was chosen here: an entry removed
+        // outside Snipdeck (Task Manager, a moved install) reads as off.
+        view.autostart = view.autostart && self.autostart_registered.get();
         render(&window, self.shown.borrow().as_ref(), &view);
         if let Some(toast) = &view.toast
             && self.controller.borrow_mut().claim_toast_timer(toast.seq)
@@ -1351,8 +1371,9 @@ where
     /// it is not brought back); if the rewrite fails nothing changes.
     fn panel_start_visible_chosen(self: &Rc<Self>, index: i32) {
         let visible = index == 1;
+        self.refresh_autostart();
         let rewrite =
-            self.controller.borrow().settings().autostart && self.host.autostart_registered();
+            self.controller.borrow().settings().autostart && self.autostart_registered.get();
         if rewrite && let Err(error) = self.host.set_autostart(true, !visible) {
             crate::trace!("autostart rewrite: {error}");
             self.toast(ToastKind::Danger, error.toast());
@@ -1366,6 +1387,7 @@ where
         let hidden = !self.controller.borrow().settings().panel_start_visible;
         match self.host.set_autostart(on, hidden) {
             Ok(()) => {
+                self.refresh_autostart();
                 self.act(|ctl| ctl.update_settings(|s| s.autostart = on));
             }
             Err(error) => {
@@ -1683,6 +1705,7 @@ where
                     }
                 }),
                 save_timer: Rc::default(),
+                autostart_registered: Cell::new(false),
             }
         });
         register_redraw(&core.redraw);
@@ -1694,6 +1717,7 @@ where
         ui::SettingsFilter::get(window).on_matches(|text, query| settings_match(&text, &query));
         window.set_import_history_available(core.host.clipboard_history_supported());
         window.set_typing_available(core.host.typing_supported());
+        core.refresh_autostart();
         core.refresh_backups();
         core.sync();
 
@@ -1829,6 +1853,9 @@ where
         wire!(on_recent_history_cleared, |core| {
             core.act(Controller::recent_clear);
         });
+        wire!(on_picker_recents_cleared, |core| {
+            core.act(Controller::picker_recents_clear);
+        });
         wire!(on_reduce_motion_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.reduce_motion = on)));
         wire!(on_panel_width_chosen, |core, width| core
@@ -1876,6 +1903,8 @@ where
                 core.master_submitted(mode, &current, &new, &again);
             });
         }
+        wire!(on_toast_dismissed, |core| core
+            .act(Controller::toast_dismiss));
         wire!(on_master_unlock_requested, |core| core
             .act(Controller::request_unlock));
         window.on_master_strength(|password| crate::master_password::strength(&password).level());
@@ -1905,6 +1934,7 @@ where
                 // A test that was still waiting for its press ends with the page.
                 core.act(Controller::stop_hotkey_test);
                 if let Some(window) = weak.upgrade() {
+                    window.invoke_reset_asks();
                     let _ = window.hide();
                 }
             });
@@ -2230,6 +2260,7 @@ impl SettingsUi {
                             ctl.stop_hotkey_test();
                         }
                         if let Some(w) = weak.upgrade() {
+                            w.invoke_reset_asks();
                             let _ = w.hide();
                         }
                     });
@@ -2239,13 +2270,14 @@ impl SettingsUi {
                     return Ok(());
                 };
                 crate::native_window::place_over_owner(window.window());
+                window.invoke_reset_asks();
                 window.show()?;
                 crate::ownership::opened(crate::ownership::Win::Settings);
                 fit_when_settled(window);
                 // A PIN added or removed since the last look shows in the Hello row.
                 crate::unlock_binding::refresh_hello(&controller);
                 // The page was hidden, so it skipped the redraws; draw it now that it is up.
-                binding.redraw();
+                binding.opened();
                 crate::native_window::activate_regular(window);
                 Ok(())
             })

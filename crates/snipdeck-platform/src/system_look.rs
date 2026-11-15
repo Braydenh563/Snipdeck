@@ -95,6 +95,23 @@ pub fn text_scale_from_percent(percent: Option<u32>) -> f32 {
 
 // Window messages and `SPI_*` codes that can change the look. Written out so the filter is
 // testable here; the Windows backend asserts they equal the `windows` crate's constants.
+/// `WM_POWERBROADCAST`.
+pub const WM_POWERBROADCAST: u32 = 0x0218;
+/// `PBT_APMSUSPEND`: the computer is about to sleep.
+pub const PBT_APMSUSPEND: usize = 0x0004;
+/// `WM_WTSSESSION_CHANGE`.
+pub const WM_WTSSESSION_CHANGE: u32 = 0x02B1;
+/// `WTS_SESSION_LOCK`: the user pressed Win+L (or the screen saver locked the session).
+pub const WTS_SESSION_LOCK: usize = 0x0007;
+
+/// Whether a window message says the session is locking or the computer is going to sleep, the
+/// two moments a library with a master password should lock.
+#[must_use]
+pub fn message_means_lock(message: u32, wparam: usize) -> bool {
+    (message == WM_POWERBROADCAST && wparam == PBT_APMSUSPEND)
+        || (message == WM_WTSSESSION_CHANGE && wparam == WTS_SESSION_LOCK)
+}
+
 /// `WM_SYSCOLORCHANGE`.
 pub const WM_SYSCOLORCHANGE: u32 = 0x0015;
 /// `WM_SETTINGCHANGE`.
@@ -149,6 +166,17 @@ mod tests {
         assert!(!look.dark);
         assert!(!look.reduce_motion);
         assert_eq!(look.high_contrast, None);
+    }
+
+    #[test]
+    fn a_session_lock_and_a_suspend_mean_lock_and_nothing_else_does() {
+        assert!(message_means_lock(WM_WTSSESSION_CHANGE, WTS_SESSION_LOCK));
+        assert!(message_means_lock(WM_POWERBROADCAST, PBT_APMSUSPEND));
+        // Unlock (8), resume (7 for power), other session events, other messages.
+        assert!(!message_means_lock(WM_WTSSESSION_CHANGE, 8));
+        assert!(!message_means_lock(WM_POWERBROADCAST, 0x0007));
+        assert!(!message_means_lock(WM_POWERBROADCAST, WTS_SESSION_LOCK));
+        assert!(!message_means_lock(WM_THEMECHANGED, PBT_APMSUSPEND));
     }
 
     #[test]

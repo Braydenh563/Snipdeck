@@ -216,20 +216,22 @@ where
                     let old_formats = (text.is_some() && !before.sensitive)
                         .then(|| self.store.formats(id).ok())
                         .flatten();
-                    let done = self.store.atomically(|b| {
-                        for tag in &tags.created {
-                            b.insert_tag(tag)?;
-                        }
-                        let formats = match text.as_deref() {
-                            Some(t) => Some(build_formats(b, sensitive, Some(t), None)?),
-                            None => None,
-                        };
-                        b.update_item(&item, formats.as_ref())?;
-                        if trigger.is_some() || !slot.original_trigger.is_empty() {
-                            let codes = b.set_trigger(id, trigger.as_ref())?;
-                            overlaps = overlap_title(b, &codes)?;
-                        }
-                        Ok(())
+                    let done = self.index_cache.edit_item(&mut self.store, id, |store| {
+                        store.atomically(|b| {
+                            for tag in &tags.created {
+                                b.insert_tag(tag)?;
+                            }
+                            let formats = match text.as_deref() {
+                                Some(t) => Some(build_formats(b, sensitive, Some(t), None)?),
+                                None => None,
+                            };
+                            b.update_item(&item, formats.as_ref())?;
+                            if trigger.is_some() || !slot.original_trigger.is_empty() {
+                                let codes = b.set_trigger(id, trigger.as_ref())?;
+                                overlaps = overlap_title(b, &codes)?;
+                            }
+                            Ok(())
+                        })
                     });
                     if done.is_ok() {
                         recorded = edit_step(

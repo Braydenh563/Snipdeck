@@ -168,6 +168,14 @@ pub enum ToastMessage {
     WindowNotShown,
     /// "Couldn't save your settings. Snipdeck will try again."
     SettingsNotSaved,
+    /// "Your settings file was damaged. Snipdeck kept what it could read; the original is saved
+    /// as settings.json.bad."
+    SettingsDamaged,
+    /// "Couldn't read your settings file, so Snipdeck started with the defaults. Changes to
+    /// settings won't be saved until you fix or remove the file."
+    SettingsUnreadable,
+    /// "Snipdeck can't watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
+    ClipboardWatchFailed,
     /// "Moved 3 items to the Trash" (with Undo).
     ItemsTrashed {
         /// How many.
@@ -320,7 +328,7 @@ pub enum ToastMessage {
     /// "Theme: Dark": the theme was switched from a menu, the palette or Settings.
     ThemeSet(Theme),
     /// "Panel stays open" (`true`: on top) or "Panel closes when you click away": the Panel's pin
-    /// was switched from its button, Ctrl+Shift+P or the palette.
+    /// was switched from its button or the palette.
     PanelOnTop(bool),
     /// "Pinned" (`true`) or "Unpinned": the pin of an item, in the Panel or the Main window.
     Pinned(bool),
@@ -342,6 +350,8 @@ pub enum ToastMessage {
     RecentDeleted,
     /// "Recent history cleared".
     RecentCleared,
+    /// "Recently used emoji and colours cleared".
+    PickerRecentsCleared,
     /// "File moved or deleted": a Recent entry's files are gone from where they were copied.
     FileMoved,
     /// "Some files were left out: together they are over 64 MB": a files entry passes the total cap.

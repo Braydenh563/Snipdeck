@@ -78,12 +78,24 @@ pub(crate) struct Snip {
 #[derive(Default)]
 pub(crate) struct Tpl {
     out: String,
+    /// The same text with nothing escaped: the body when no placeholder was made.
+    raw: String,
     placeholders: usize,
+    /// Whether a literal replaced a variable, so `raw` differs from the source text.
+    substituted: bool,
 }
 
 impl Tpl {
     pub(crate) fn lit(&mut self, text: &str) {
         self.out.push_str(&escape(text));
+        self.raw.push_str(text);
+    }
+
+    /// Adds the literal a variable stands for (an Espanso `echo`, say). With no placeholder
+    /// the body is then the built text, not the source.
+    pub(crate) fn substitute(&mut self, text: &str) {
+        self.lit(text);
+        self.substituted = true;
     }
 
     /// Adds a placeholder, written as Snipdeck spells it (`{date}`).
@@ -92,12 +104,17 @@ impl Tpl {
         self.placeholders += 1;
     }
 
-    /// The finished body. With no placeholder it is `original` as it was (no escaping). If the
+    /// The finished body. With no placeholder it is `original` as it was (no escaping), or the
+    /// built text, unescaped, when a literal was substituted. If the
     /// result does not parse as a template (two `{cursor}`s, say) the snip is kept as
     /// `original` text with a note.
     pub(crate) fn finish(self, original: &str, label: &str, report: &mut ImportReport) -> Body {
         if self.placeholders == 0 {
-            return Body::plain(original);
+            return if self.substituted {
+                Body::plain(self.raw)
+            } else {
+                Body::plain(original)
+            };
         }
         if Template::parse(&self.out).is_ok() {
             Body {
@@ -288,4 +305,29 @@ pub(crate) fn import_snips<L: Library>(
         });
     }
     finish(lib, plan, options, report)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_substituted_literal_with_no_placeholder_is_kept_unescaped() {
+        let mut report = ImportReport::default();
+        let mut tpl = Tpl::default();
+        tpl.lit("A");
+        tpl.substitute(" {x} ");
+        tpl.lit("B");
+        let body = tpl.finish("A{{e}}B", "echo", &mut report);
+        assert_eq!((body.text.as_str(), body.template), ("A {x} B", false));
+    }
+
+    #[test]
+    fn no_substitution_and_no_placeholder_keeps_the_original() {
+        let mut report = ImportReport::default();
+        let mut tpl = Tpl::default();
+        tpl.lit("{{braces}}");
+        let body = tpl.finish("{{braces}}", "plain", &mut report);
+        assert_eq!(body.text, "{{braces}}");
+    }
 }

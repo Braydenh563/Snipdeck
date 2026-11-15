@@ -59,6 +59,9 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::Failed => 27,
         ToastMessage::WindowNotShown => 28,
         ToastMessage::SettingsNotSaved => 29,
+        ToastMessage::SettingsDamaged => 108,
+        ToastMessage::SettingsUnreadable => 109,
+        ToastMessage::ClipboardWatchFailed => 110,
         ToastMessage::ItemsTrashed { .. } => 30,
         ToastMessage::ListTrashed { .. } => 31,
         ToastMessage::BoardTrashed { .. } => 32,
@@ -112,6 +115,7 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::BoardSaved => 80,
         ToastMessage::RecentDeleted => 81,
         ToastMessage::RecentCleared => 82,
+        ToastMessage::PickerRecentsCleared => 111,
         ToastMessage::DockSet(_) => 83,
         ToastMessage::NotRefreshed => 84,
         ToastMessage::IconNotAddable => 85,
@@ -138,7 +142,7 @@ const fn position(message: &ToastMessage) -> usize {
     }
 }
 
-const VARIANTS: usize = 108;
+const VARIANTS: usize = 112;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -283,6 +287,7 @@ fn samples() -> Vec<ToastMessage> {
         M::BoardSaved,
         M::RecentDeleted,
         M::RecentCleared,
+        M::PickerRecentsCleared,
         M::DockSet(None),
         M::DockSet(Some(DockEdge::Left)),
         M::DockSet(Some(DockEdge::Right)),
@@ -317,6 +322,9 @@ fn samples() -> Vec<ToastMessage> {
         M::HelloTurnedOff,
         M::HelloNotTurnedOn,
         M::HelloEnrolFailed,
+        M::SettingsDamaged,
+        M::SettingsUnreadable,
+        M::ClipboardWatchFailed,
     ]
 }
 
@@ -445,6 +453,10 @@ fn what_a_toast_carries_reaches_its_sentence() {
         assert_eq!(said(ToastMessage::BoardSaved), "Board saved");
         assert_eq!(said(ToastMessage::RecentDeleted), "Removed from Recent");
         assert_eq!(said(ToastMessage::RecentCleared), "Recent history cleared");
+        assert_eq!(
+            said(ToastMessage::PickerRecentsCleared),
+            "Recently used emoji and colours cleared"
+        );
         assert_eq!(said(ToastMessage::FileMoved), "File moved or deleted");
         assert_eq!(
             said(ToastMessage::FilesTooLarge),
@@ -572,5 +584,16 @@ fn toast_words_follow_the_selected_translation() {
         assert_eq!(toast_text(&ui, &pasted), "In Outlook eingefügt");
         slint::select_bundled_translation("").expect("back to the source language");
         assert_eq!(toast_text(&ui, &pasted), "Pasted into Outlook");
+    });
+}
+
+#[test]
+fn a_start_up_failure_names_its_reason_and_the_way_back() {
+    on_ui_thread(|| {
+        let ui = ui();
+        let text = snipdeck_app::wording::startup_failure_text(&ui, "C:\\Data: database is locked");
+        assert!(text.contains("C:\\Data: database is locked"), "{text}");
+        assert!(text.contains("backups folder"), "{text}");
+        assert!(!text.contains("{}"), "{text}");
     });
 }

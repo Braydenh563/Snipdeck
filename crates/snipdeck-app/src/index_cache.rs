@@ -21,7 +21,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use crate::search_suggest::Index;
-use snipdeck_core::{Board, Format, Item, ItemId, List, search::SearchIndex};
+use snipdeck_core::{Board, Item, ItemId, List, search::SearchIndex};
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, RecentEntry, RecentRepo, TagRepo};
 
 /// What the Panel and the Picker read from the library on every load, kept together: every
@@ -41,6 +41,19 @@ pub struct Snapshot {
     pub rich: Rc<HashSet<ItemId>>,
 }
 
+/// A change the controller announced, so the next snapshot patches those items alone.
+#[derive(Debug)]
+enum Hint {
+    /// Counted uses: only the usage counter moved, by one per item.
+    Used(Vec<ItemId>),
+    /// One item written through [`IndexCache::edit_item`]; the counters before and after.
+    Edited {
+        id: ItemId,
+        from: (u64, u64),
+        to: (u64, u64),
+    },
+}
+
 #[derive(Debug, Default)]
 struct State {
     /// The `(change_counter, usage_counter)` the snapshot was read at; `None` before the
@@ -51,6 +64,11 @@ struct State {
     suggest: Rc<Index>,
     snapshot: Rc<Snapshot>,
     rebuilds: usize,
+    /// How many times one item was patched into the snapshot instead of a re-read.
+    patches: usize,
+    /// What the controller said it just changed (see [`Hint`]); trusted only when the store's
+    /// counters are exactly the ones that change implies.
+    hint: Option<Hint>,
     /// The decrypted Recent entries and the `recent_revision` they were read at.
     recent: Option<(u64, Rc<Vec<RecentEntry>>)>,
 }
@@ -86,12 +104,25 @@ impl IndexCache {
                 return Ok(Rc::clone(&state.snapshot));
             }
         }
-        let all = store.all_items()?;
-        let mut boards = Vec::new();
-        for b in store.boards()? {
-            let lists = store.lists(b.id)?;
-            boards.push((b, lists));
+        if let Some(patched) = self.patched(store, at) {
+            return Ok(patched);
         }
+        let all = store.all_items()?;
+        // A counted use moves only the usage counter: the boards and lists are what they were.
+        let kept_boards = {
+            let state = self.0.borrow();
+            (state.built_at == Some(counter)).then(|| state.snapshot.boards.clone())
+        };
+        let boards = if let Some(boards) = kept_boards {
+            boards
+        } else {
+            let mut boards = Vec::new();
+            for b in store.boards()? {
+                let lists = store.lists(b.id)?;
+                boards.push((b, lists));
+            }
+            boards
+        };
         let reuse = {
             let state = self.0.borrow();
             (state.built_at == Some(counter)).then(|| Rc::clone(&state.snapshot.index))
@@ -100,17 +131,7 @@ impl IndexCache {
             let state = self.0.borrow();
             match (state.built_at == Some(counter)).then(|| Rc::clone(&state.snapshot.rich)) {
                 Some(rich) => rich,
-                None => Rc::new(
-                    store
-                        .plain_formats()?
-                        .into_iter()
-                        .filter(|(_, f)| {
-                            f.iter()
-                                .any(|f| matches!(f, Format::Html(_) | Format::Rtf(_)))
-                        })
-                        .map(|(id, _)| id)
-                        .collect(),
-                ),
+                None => Rc::new(store.rich_item_ids()?.into_iter().collect()),
             }
         };
         let (index, suggest, built) = if let Some(mut index) = reuse {
@@ -165,6 +186,112 @@ impl IndexCache {
         Ok(Rc::clone(&state.snapshot))
     }
 
+    /// Says that item `id` was just used (counted). If nothing else is written before the next
+    /// [`IndexCache::snapshot`], that snapshot patches this item's two usage fields instead of
+    /// re-reading the library.
+    pub fn note_use(&self, id: ItemId) {
+        let mut state = self.0.borrow_mut();
+        match &mut state.hint {
+            Some(Hint::Used(ids)) => ids.push(id),
+            hint => *hint = Some(Hint::Used(vec![id])),
+        }
+    }
+
+    /// Runs `write`, a write that changes the one item `id` (an edit, a pin, a move), and says
+    /// so: if nothing else is written before the next [`IndexCache::snapshot`], that snapshot
+    /// reads that item alone and patches it into the index instead of re-reading the library.
+    /// The write must not change other items (a new tag is fine).
+    pub fn edit_item<S: ItemRepo, R>(
+        &self,
+        store: &mut S,
+        id: ItemId,
+        write: impl FnOnce(&mut S) -> R,
+    ) -> R {
+        let from = (store.change_counter(), store.usage_counter());
+        let out = write(store);
+        let to = (store.change_counter(), store.usage_counter());
+        self.0.borrow_mut().hint = Some(Hint::Edited { id, from, to });
+        out
+    }
+
+    /// The snapshot with the hinted items patched in, or `None` when there is no hint, the
+    /// store moved in a way the hint does not explain, or an item is not in the snapshot (the
+    /// caller then reads everything).
+    fn patched<S>(&self, store: &S, at: (u64, u64)) -> Option<Rc<Snapshot>>
+    where
+        S: ItemRepo + TagRepo,
+    {
+        let (hint, read_at, built_at, old) = {
+            let mut state = self.0.borrow_mut();
+            (
+                state.hint.take(),
+                state.read_at,
+                state.built_at,
+                Rc::clone(&state.snapshot),
+            )
+        };
+        let (read_changes, read_uses) = read_at?;
+        if built_at != Some(read_changes) {
+            return None;
+        }
+        let (ids, edited) = match hint? {
+            Hint::Used(ids) if at.0 == read_changes && at.1 == read_uses + ids.len() as u64 => {
+                (ids, false)
+            }
+            Hint::Edited { id, from, to } if from == (read_changes, read_uses) && to == at => {
+                (vec![id], true)
+            }
+            _ => return None,
+        };
+        let mut all = old.all.clone();
+        let mut index = Rc::clone(&old.index);
+        let mut tags = Vec::new();
+        if edited {
+            tags = store.tags().ok()?;
+        }
+        for id in ids {
+            let position = all.iter().position(|i| i.id == id)?;
+            let item = store.item(id).ok()?;
+            if edited {
+                Rc::make_mut(&mut index).upsert_with_tags(
+                    &item,
+                    item.tags
+                        .iter()
+                        .filter_map(|t| tags.iter().find(|x| x.id == *t).map(|x| x.name.as_str())),
+                );
+            } else if !index.usage_is_current(std::iter::once(&item)) {
+                Rc::make_mut(&mut index).refresh_usage(std::iter::once(&item));
+            }
+            all[position] = item;
+        }
+        let (suggest, rich) = if edited {
+            let rich: HashSet<ItemId> = store.rich_item_ids().ok()?.into_iter().collect();
+            let suggest = Index::build(
+                &all,
+                tags.iter().map(|t| t.name.as_str()),
+                old.boards
+                    .iter()
+                    .flat_map(|(_, lists)| lists.iter().map(|l| l.name.as_str())),
+            );
+            (Rc::new(suggest), Rc::new(rich))
+        } else {
+            (Rc::clone(&old.suggest), Rc::clone(&old.rich))
+        };
+        let mut state = self.0.borrow_mut();
+        state.suggest = Rc::clone(&suggest);
+        state.snapshot = Rc::new(Snapshot {
+            all,
+            boards: old.boards.clone(),
+            index,
+            suggest,
+            rich,
+        });
+        state.read_at = Some(at);
+        state.built_at = Some(at.0);
+        state.patches += 1;
+        Some(Rc::clone(&state.snapshot))
+    }
+
     /// The Recent entries (newest first, decrypted), read again only when the store has been
     /// written since. A store error reads as no entries and is not kept.
     pub fn recent<S: RecentRepo>(&self, store: &S) -> Rc<Vec<RecentEntry>> {
@@ -194,7 +321,14 @@ impl IndexCache {
         state.read_at = None;
         state.built_at = None;
         state.snapshot = Rc::default();
+        state.hint = None;
         state.recent = None;
+    }
+
+    /// How many times one item was patched into the snapshot (for tests).
+    #[must_use]
+    pub fn patches(&self) -> usize {
+        self.0.borrow().patches
     }
 
     /// How many times the index was built (for tests and the performance notes).
@@ -273,6 +407,53 @@ mod tests {
     }
 
     #[test]
+    fn ten_thousand_items_with_rich_text_snapshot_without_reading_their_content() {
+        let (mut s, l) = seeded();
+        for n in 0..10_000 {
+            let item = Item::new(l, format!("item {n}"), ItemKind::Text, at());
+            let mut formats = vec![Format::Text(Content::Inline(
+                Inline::new(b"body".to_vec()).unwrap(),
+            ))];
+            if n % 100 == 0 {
+                formats.push(Format::Html(Content::Inline(
+                    Inline::new(b"<b>x</b>".to_vec()).unwrap(),
+                )));
+            }
+            s.insert_item(&item, &Formats::new(formats).unwrap(), Placement::Last)
+                .unwrap();
+        }
+        let cache = IndexCache::new();
+        let started = std::time::Instant::now();
+        let snapshot = cache.snapshot(&s).unwrap();
+        let took = started.elapsed();
+        assert_eq!(snapshot.index.len(), 10_000);
+        assert_eq!(
+            snapshot.rich.len(),
+            100,
+            "only the items with an HTML or RTF format"
+        );
+        // Generous: a debug build on a loaded machine. The old path read every format's bytes.
+        assert!(took < std::time::Duration::from_secs(20), "{took:?}");
+
+        // A use and a single-item edit patch that item; neither rebuilds the index or re-reads
+        // the library (counted, not timed).
+        let id = snapshot.all[5_000].id;
+        s.record_use(id, at()).unwrap();
+        cache.note_use(id);
+        let used = cache.snapshot(&s).unwrap();
+        assert_eq!(used.all[5_000].use_count, 1);
+        let mut item = s.item(id).unwrap();
+        item.title = "renamed".to_owned();
+        cache
+            .edit_item(&mut s, id, |s| s.update_item(&item, None))
+            .unwrap();
+        let edited = cache.snapshot(&s).unwrap();
+        assert_eq!(edited.all[5_000].title, "renamed");
+        assert_eq!(edited.index.len(), 10_000);
+        assert_eq!((cache.rebuilds(), cache.patches()), (1, 2));
+    }
+
+    #[test]
     fn a_write_builds_a_new_index() {
         let (mut s, l) = seeded();
         add(&mut s, l, "alpha");
@@ -311,6 +492,37 @@ mod tests {
         assert_eq!(cache.rebuilds(), 1);
         assert!(after_use.index.usage_is_current(&after_use.all));
         assert!(!first.index.usage_is_current(&after_use.all));
+    }
+
+    #[test]
+    fn a_hinted_edit_patches_one_item_and_an_unexplained_write_rebuilds() {
+        let (mut s, l) = seeded();
+        add(&mut s, l, "alpha");
+        add(&mut s, l, "beta");
+        let cache = IndexCache::new();
+        let first = cache.snapshot(&s).unwrap();
+        let id = first.all[1].id;
+        let mut item = s.item(id).unwrap();
+        item.title = "gamma".to_owned();
+        cache
+            .edit_item(&mut s, id, |s| s.update_item(&item, None))
+            .unwrap();
+        let after = cache.snapshot(&s).unwrap();
+        assert_eq!((cache.rebuilds(), cache.patches()), (1, 1));
+        assert_eq!(after.all[1].title, "gamma");
+        assert_eq!(after.index.len(), 2);
+        assert_eq!(
+            first.all[1].title, "beta",
+            "the earlier snapshot is untouched"
+        );
+
+        // A hint plus a write nobody announced is not trusted: everything is read again.
+        s.record_use(id, at()).unwrap();
+        cache.note_use(id);
+        add(&mut s, l, "delta");
+        let full = cache.snapshot(&s).unwrap();
+        assert_eq!(full.index.len(), 3);
+        assert_eq!((cache.rebuilds(), cache.patches()), (2, 1));
     }
 
     /// A store that counts how often the Recent list is read.

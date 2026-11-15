@@ -134,6 +134,7 @@ pub struct Binding {
     own_window_active: Rc<dyn Fn(bool)>,
     tray: Rc<dyn Fn(TrayEvent)>,
     system_look: Rc<dyn Fn(SystemLook)>,
+    session_locked: Rc<dyn Fn()>,
     clipboard_changed: Rc<dyn Fn(snipdeck_platform::clipboard_watch::ClipboardChange)>,
     typed_trigger: Rc<dyn Fn(crate::typing_worker::Out)>,
     frame_changed: Rc<FrameFn>,
@@ -202,6 +203,12 @@ impl Binding {
     /// show or take down, or `Tab` on the hint (see `Typed::password` and `Typed::still_current`).
     pub fn typed_trigger(&self, out: crate::typing_worker::Out) {
         (self.typed_trigger)(out);
+    }
+
+    /// Windows locked the session (Win+L) or is going to sleep: a library with a master password
+    /// locks now.
+    pub fn session_locked(&self) {
+        (self.session_locked)();
     }
 
     /// Windows' light / dark or high-contrast state is `look` (read at start-up, and again on
@@ -735,6 +742,14 @@ where
         });
     }
 
+    /// Windows locked the session or is going to sleep: a library with a master password locks at
+    /// once, instead of waiting for the idle time.
+    fn session_locked(self: &Rc<Self>) {
+        self.controller.borrow_mut().lock_now();
+        self.sync();
+        redraw_all();
+    }
+
     /// Keeps one timer running while a master password is set and the library is open; the
     /// controller's clock decides whether the idle time is up. Using the library moves the
     /// deadline, so the timer may fire early and then waits again for what is left.
@@ -1124,6 +1139,7 @@ where
         wire!(on_delete_requested, |ctl, i| ctl.delete_row(index(i)));
         wire!(on_toast_undo, |ctl| ctl.toast_action());
         wire_effects!(on_toast_edit, |ctl| ctl.toast_edit());
+        wire!(on_toast_dismissed, |ctl| ctl.toast_dismiss());
         {
             let core = Rc::clone(&core);
             window.on_paste_create_requested(move || {
@@ -1144,7 +1160,6 @@ where
         wire_effects!(on_open_requested, |ctl| ctl.open_main_window());
         wire!(on_undo_requested, |ctl| ctl.undo());
         wire!(on_redo_requested, |ctl| ctl.redo());
-        wire_effects!(on_new_item_requested, |_ctl| vec![Effect::NewItem]);
         wire_effects!(on_settings_requested, |_ctl| vec![Effect::OpenSettings]);
         {
             let core = Rc::clone(&core);
@@ -1279,6 +1294,10 @@ where
             system_look: {
                 let core = Rc::clone(&core);
                 Rc::new(move |look| core.act(|ctl| ctl.set_system_look(look)))
+            },
+            session_locked: {
+                let core = Rc::clone(&core);
+                Rc::new(move || core.session_locked())
             },
             clipboard_changed: {
                 let core = Rc::clone(&core);
@@ -1959,17 +1978,38 @@ pub(crate) fn refreshed_model<T: Clone + PartialEq + 'static>(
     current: &ModelRc<T>,
     rows: Vec<T>,
 ) -> Option<ModelRc<T>> {
-    if current.row_count() == rows.len()
-        && let Some(vec) = current.as_any().downcast_ref::<VecModel<T>>()
-    {
-        for (i, row) in rows.into_iter().enumerate() {
-            if vec.row_data(i).as_ref() != Some(&row) {
-                vec.set_row_data(i, row);
-            }
-        }
-        return None;
+    let Some(vec) = current.as_any().downcast_ref::<VecModel<T>>() else {
+        return Some(ModelRc::new(VecModel::from(rows)));
+    };
+    let old = vec.row_count();
+    let new = rows.len();
+    // Rows kept at the head and at the tail are left alone; only the middle is touched.
+    let mut head = 0;
+    while head < old.min(new) && vec.row_data(head).as_ref() == Some(&rows[head]) {
+        head += 1;
     }
-    Some(ModelRc::new(VecModel::from(rows)))
+    let mut tail = 0;
+    while tail < old.min(new) - head
+        && vec.row_data(old - 1 - tail).as_ref() == Some(&rows[new - 1 - tail])
+    {
+        tail += 1;
+    }
+    let (old_mid, new_mid) = (old - head - tail, new - head - tail);
+    let shared = old_mid.min(new_mid);
+    let mut rows = rows.into_iter().skip(head);
+    for i in 0..shared {
+        if let Some(row) = rows.next() {
+            vec.set_row_data(head + i, row);
+        }
+    }
+    // Deleted rows go from the back, added ones go in after the rows just set.
+    for _ in shared..old_mid {
+        vec.remove(head + shared);
+    }
+    for (k, row) in rows.take(new_mid - shared).enumerate() {
+        vec.insert(head + shared + k, row);
+    }
+    None
 }
 
 pub(crate) fn to_i32(n: usize) -> i32 {
@@ -2171,6 +2211,57 @@ impl Payload {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn refreshed_model_adds_and_deletes_rows_in_place() {
+        fn ints(m: &ModelRc<i32>) -> Vec<i32> {
+            (0..m.row_count()).filter_map(|i| m.row_data(i)).collect()
+        }
+        let current = ModelRc::new(VecModel::from(vec![1, 2, 3, 4]));
+        let same = current.clone();
+        for rows in [
+            vec![1, 2, 3, 4],
+            vec![1, 2, 9, 3, 4],
+            vec![0, 1, 2, 9, 3, 4],
+            vec![0, 1, 2, 9, 3, 4, 7],
+            vec![1, 2, 3, 4],
+            vec![2, 3],
+            vec![5, 6, 7, 8],
+            vec![],
+            vec![1],
+        ] {
+            assert!(
+                refreshed_model(&current, rows.clone()).is_none(),
+                "{rows:?}"
+            );
+            assert_eq!(ints(&same), rows);
+        }
+        // A model that is not a VecModel is replaced.
+        let other: ModelRc<i32> = ModelRc::default();
+        assert!(refreshed_model(&other, vec![1]).is_some());
+    }
+
+    /// Audit G26: one add or delete in a 10 000-row list touches one row, not all of them, and
+    /// the list stays the same model (so its scroll position survives).
+    #[test]
+    fn one_add_or_delete_in_ten_thousand_rows_is_cheap_and_in_place() {
+        let rows: Vec<i32> = (0..10_000).collect();
+        let current = ModelRc::new(VecModel::from(rows.clone()));
+        let start = std::time::Instant::now();
+        let mut added = rows.clone();
+        added.insert(5_000, -1);
+        assert!(refreshed_model(&current, added.clone()).is_none());
+        assert_eq!(current.row_count(), 10_001);
+        assert!(refreshed_model(&current, rows.clone()).is_none());
+        assert_eq!(current.row_count(), 10_000);
+        assert_eq!(current.row_data(5_000), Some(5_000));
+        // Generous bound for a loaded CI machine: the work is two linear scans, a few ms.
+        assert!(
+            start.elapsed() < std::time::Duration::from_secs(2),
+            "{:?}",
+            start.elapsed()
+        );
+    }
+
     #[test]
     fn swatch_follows_a_colour_literal_and_never_a_secret() {
         let (c, on) = swatch_fields("#3a7bd5", false);

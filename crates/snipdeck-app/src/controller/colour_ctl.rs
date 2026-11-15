@@ -16,7 +16,7 @@ use snipdeck_platform::{
 };
 use snipdeck_store::Trashable;
 
-use super::{Controller, Effect, Library, UseResult, failed};
+use super::{Controller, Effect, HomeCache, Library, UseResult, failed, success};
 use crate::host::ClipboardText;
 use crate::{
     capture::Destination,
@@ -111,6 +111,7 @@ where
     /// has no `@tr`.
     pub fn set_colours_list_name(&mut self, name: &str) {
         name.clone_into(&mut self.colours_list_name);
+        self.clear_colour_caches();
     }
 
     /// Makes `c` the colour being looked at. Not a use: no recents push.
@@ -188,6 +189,16 @@ where
         recents.remove(c);
         let saved = recents.to_saved();
         self.update_settings(|s| s.colours_recent = saved);
+    }
+
+    /// Forgets every recently used emoji, symbol and colour ("Clear recently used emoji and
+    /// colours" in Settings), and says so. Search text is never stored, so there is none to clear.
+    pub fn picker_recents_clear(&mut self) {
+        self.update_settings(|s| {
+            s.colours_recent.clear();
+            s.symbols_recent.clear();
+        });
+        self.show_toast(success(ToastMessage::PickerRecentsCleared));
     }
 
     /// Pushes `c` to the front of the recents, stamped by the injected clock.
@@ -313,6 +324,21 @@ where
     /// The home list that exists now: the remembered one, else the first list on any board that
     /// carries the home name (an import, or settings lost, leaves such a list behind).
     fn home_list_id(&self) -> Option<ListId> {
+        if let HomeCache::Known(kept) = self.colour_home_cache.get() {
+            return kept;
+        }
+        let found = self.find_home_list_id();
+        self.colour_home_cache.set(HomeCache::Known(found));
+        found
+    }
+
+    /// Forgets what the colour view kept: the saved colours and the home list.
+    pub(super) fn clear_colour_caches(&self) {
+        self.colour_saved_cache.take();
+        self.colour_home_cache.set(HomeCache::Unknown);
+    }
+
+    fn find_home_list_id(&self) -> Option<ListId> {
         let remembered = self
             .settings
             .colour_save_list
@@ -353,7 +379,7 @@ where
         let made = self.make_list_for_save(&name)?;
         let id = made.id.to_string();
         self.update_settings(|s| s.colour_save_list = Some(id));
-        self.colour_saved_cache.take();
+        self.clear_colour_caches();
         Some(made)
     }
 
@@ -508,6 +534,8 @@ where
             let now = self.clock.now();
             if let Err(error) = self.store.record_use(id, now) {
                 crate::trace!("counting a colour paste failed: {error}");
+            } else {
+                self.index_cache.note_use(id);
             }
             self.queue.used(id);
             self.refresh_logged("a paste");
