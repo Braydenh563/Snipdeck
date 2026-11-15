@@ -12,6 +12,11 @@ started: 2026-11-14 13:40
 - [ ] Task 5 (docs done: e1616e4c a3ff026b 92aecf09): CHANGELOG/SPEC/user-guide entries for colour tool, preview toggle, docking, render fix, quick add, reorder, Store build; release-build dispatch [!] 404: release-build.yml is not on main, so it cannot be dispatched until merge (owner); CI windows-check covers the Windows build; gate --full; CI green on PR #5
 - [ ] all-free (store worker, claude/all-free): Supporter removed, Buy Me a Coffee link, docs, Recent goldens, ux-auditor; review (no checkout), merge, gate, push
 - [ ] Full-app audit: Opus pass done (12 fixed, 62c2063a..fc6cface + cleanup); Fable audit running (owner named it 2026-11-15) -> scratchpad/fable-audit.md; Sonnet fixes all findings; blind usability tests (Sonnet); gate, push
+- [ ] Push audit fixes (gate --changed running -> scratchpad/gate.log; tests no-fail-fast ok, 1.99.1 clippy ok, Windows clippy ok; owner workflow edits merged 34673454)
+- [ ] Merge origin/claude/all-free (reviewed MERGE-WITH-FIXES; workflow part done by owner) into the PR branch, resolve .po/CHANGELOG conflicts, gate, push
+- [ ] claude/edge-polish (store worker session_01NKjURwKPmGuEHMfw1o6HF4): Store 10.8.2 notes, stale msgid, collapsed-edge restyle, residual drag flicker, eyedropper leaves docked Panel in collapsed look; review, merge, gate, push
+- [ ] claude/popup-dismiss (bug-sweep worker session_01NKjURt5yHRvroJQUg7zQeb): toast close button, click-outside/Esc everywhere, More menu fills small Panel; review, merge, gate, push
+- [ ] Blind usability tests (Sonnet) on the merged build; fix
 - [ ] Handover morning summary + retro
 
 ## State 2026-11-15 (for the next context)

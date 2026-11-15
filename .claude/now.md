@@ -2,6 +2,7 @@
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 ## Decisions
+- 2026-11-15: Donation link stays in the Store build. Reason: Store Policy 10.8.2 (current) allows voluntary donations via a secure third-party purchase API when nothing is unlocked; Buy Me a Coffee in the browser is that. Owner: keep it if allowed.
 - 2026-11-15: Fable call refused by the plugin guard; audit runs on Opus instead (no workaround). Reason: guards are not bypassed.
 - 2026-11-14: Fable approved by the owner for the full-app audit only; nothing else uses Fable. Its findings are fixed by Sonnet; blind tests run on Sonnet. Reason: owner instruction.
 - 2026-11-14 (owner): **Everything free on both builds; no paid Supporter.** Remove licence keys, tiers, limits (5 boards), Supporter badges and upsells everywhere. Add an optional "Support Snipdeck ☕" link (Help ▸ About and Settings) to https://buymeacoffee.com/braydenh563 that opens the browser, says it is optional and unlocks nothing; no payment data in the app (Store 10.8.2 voluntary donations; 10.8.3 Individual account). Reason: a paid GitHub tier next to an all-free Store build only annoys GitHub users; 1.0.0 is unreleased so no keys exist.
@@ -148,3 +149,10 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 2026-11-14 (owner, verbatim): "Also I give permission for fable to do the full app audit but dont use it for anything else. fix all of its finding after and then make sure everything is finished"
 - 2026-11-14 (owner, verbatim): "Im going to work 😃"
 - 2026-11-15 (owner, verbatim): "Use fable for the full audit / Sorry I think I stopped the agent"
+- 2026-11-15 (owner, verbatim): "just got home from work! what's the update? are we close to done?? also how deep and thorough was the fable audit?"
+- 2026-11-15 (owner, verbatim): "tell me what to do and give me the full replacements to copy replace or delete etc for the workflows. als yeah hide the donation link in the app if youre unsure but if you find it is allowed then Id rather keep it"
+- 2026-11-15 (owner, verbatim): "is it possible to make the collapsed edge look a little nicer and more in the app's style?? idk. also the panel still subtly flickers black when I move it around but it isnt as bad as it used to be" (screenshot: docked collapsed edge = flat saturated blue full-height strip with a white grip, right screen edge, dark theme)
+- 2026-11-15 (owner, verbatim): "can there be a way to close notifications or popups early? like an x close button or smth?"
+- 2026-11-15 (owner, verbatim): "also this popup litterally takes up the whole panel so I have nowhere to click off it or close it" (screenshots: Panel ⋯ More menu covers the whole small Panel, list scrolls with a ▾ chevron, no visible way out)
+- 2026-11-15 (owner, verbatim): "alright I made the workflow changes"
+- 2026-11-15 (owner, verbatim): "when I use the colour picker and select a colour on my screen, the small panel turns aqua for some reason with a kebab button in the centre but when I click anywhere in the panel, it goes back to normal but then closes so I need to reopen it again" + "oooh it's aqua because that is the colour of my list that im on. but it still went that full screen colour with the kebab button tho" (screenshot: the docked Panel shows the collapsed-edge strip look — list accent fill + grip — at full Panel size after the eyedropper pick)
