@@ -64,6 +64,9 @@ pub(super) struct Rebuild {
     pub(super) backup_file: PathBuf,
     pub(super) salvage: PathBuf,
     pub(super) carry: Option<Carry>,
+    /// The library's change counter when the worker's snapshot was taken: if it has moved by the
+    /// time the swap runs, the salvage lacks what was written since.
+    pub(super) counter: u64,
 }
 
 /// What the controller keeps about the running step beyond the job itself.

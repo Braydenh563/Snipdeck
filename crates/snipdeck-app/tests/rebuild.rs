@@ -292,3 +292,27 @@ fn after_a_rebuild_deleting_and_sweeping_keeps_the_damaged_copys_blobs() {
     let bytes = old.read(content).expect("blob reads");
     assert_eq!(bytes.len(), snipdeck_core::INLINE_LIMIT + 1);
 }
+
+#[test]
+fn an_item_written_while_the_salvage_is_copied_is_recovered_too() {
+    use snipdeck_app::controller::{ArchiveEnd, Begun};
+    let dir = tempfile::tempdir().expect("dir");
+    let mut ctl = start(dir.path());
+    assert!(ctl.backup_now(dir.path()));
+    let backup = newest_backup(dir.path());
+
+    let Begun::Job(job) = ctl.begin_rebuild_from_backup(dir.path(), &backup) else {
+        panic!("an on-disk library hands the salvage to a worker");
+    };
+    // The worker has cut its copy; then the user keeps typing before the swap.
+    let done = job.run();
+    add_item(&mut ctl, "Typed during the salvage");
+    assert!(matches!(
+        ctl.finish_archive(done),
+        ArchiveEnd::Rebuilt(true)
+    ));
+    assert!(
+        titles(&ctl).iter().any(|t| t == "Typed during the salvage"),
+        "the swap keeps what was written after the copy was cut"
+    );
+}

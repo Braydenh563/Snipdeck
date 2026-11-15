@@ -419,6 +419,7 @@ where
                 backup_file: backup_file.to_path_buf(),
                 salvage,
                 carry,
+                counter: self.store.change_counter(),
             })),
         )
     }
@@ -431,6 +432,7 @@ where
             backup_file,
             salvage,
             carry,
+            counter,
         } = rebuild;
         let data_dir = data_dir.as_path();
         let backup_file = backup_file.as_path();
@@ -438,6 +440,12 @@ where
             ctl.show_toast(danger(ToastMessage::RestoreFailed(Cause::Other)));
             false
         };
+        // The library stays editable while the worker copies it. Whatever was written after the
+        // worker's snapshot is included by cutting the copy again here, on the UI thread: it is
+        // rare (the user must edit during the few seconds of the copy) and the swap that follows
+        // is on this thread anyway. Blocking edits for the duration was the alternative; it
+        // would have needed a guard on every write path.
+        let salvaged = salvaged && (self.store.change_counter() == counter || self.recut(&salvage));
         let sensitive_before = self.sensitive_count();
         let outcome =
             self.swap_in_rebuilt(data_dir, backup_file, salvaged.then_some(&salvage), carry);
@@ -482,6 +490,18 @@ where
     }
 
     /// How many sensitive items the open library holds (0 when it cannot be read).
+    /// Writes the salvage copy again from the open library. Whether it worked.
+    fn recut(&self, salvage: &Path) -> bool {
+        let job = self.archive_job(
+            ArchiveOp::Salvage,
+            Work::Salvage {
+                path: salvage.to_path_buf(),
+                now: self.clock.now(),
+            },
+        );
+        job.run_on(&self.store).is_ok()
+    }
+
     fn sensitive_count(&self) -> usize {
         self.store
             .all_items()
