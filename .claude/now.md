@@ -2,6 +2,7 @@
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 ## Decisions
+- 2026-11-15: Fable call refused by the plugin guard; audit runs on Opus instead (no workaround). Reason: guards are not bypassed.
 - 2026-11-14: Fable approved by the owner for the full-app audit only; nothing else uses Fable. Its findings are fixed by Sonnet; blind tests run on Sonnet. Reason: owner instruction.
 - 2026-11-14 (owner): **Everything free on both builds; no paid Supporter.** Remove licence keys, tiers, limits (5 boards), Supporter badges and upsells everywhere. Add an optional "Support Snipdeck ☕" link (Help ▸ About and Settings) to https://buymeacoffee.com/braydenh563 that opens the browser, says it is optional and unlocks nothing; no payment data in the app (Store 10.8.2 voluntary donations; 10.8.3 Individual account). Reason: a paid GitHub tier next to an all-free Store build only annoys GitHub users; 1.0.0 is unreleased so no keys exist.
 - 2026-11-14: Reviewer agents on the hub never check out a branch (read with `git diff`/`git show <ref>:<path>`, or a worktree): a reviewer's checkout moved the hub to a detached HEAD mid-gate and voided two gate runs.
