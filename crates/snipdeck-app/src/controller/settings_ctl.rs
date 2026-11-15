@@ -364,7 +364,7 @@ where
 
     /// "Rebuild from backup…", first half: checks what must hold before anything is touched and
     /// starts the salvage copy of what the damaged database can still give up (a temporary
-    /// archive, written off the UI thread). [`Self::finish_rebuild`] then sets the damaged
+    /// archive, written off the UI thread). `finish_rebuild` then sets the damaged
     /// library aside into the folder `snipdeck.damaged-<stamp>/` (database, log and blobs), opens
     /// a fresh one, restores `backup_file` into it and merges the salvage. Nothing is deleted. Any
     /// failure puts the original back and changes nothing.
