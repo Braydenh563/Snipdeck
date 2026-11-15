@@ -233,6 +233,13 @@ where
     }
 }
 
+/// Same-length filler for the password field: setting it first makes the toolkit write over
+/// the typed text where it can. The toolkit's own copies (the edit buffer, undo history, a
+/// shaped-text cache) are not ours to wipe; see `docs/crypto.md`.
+fn overwrite_filler(password: &str) -> slint::SharedString {
+    "\u{2022}".repeat(password.chars().count()).into()
+}
+
 impl<C, K, T> UnlockCore<C, K, T>
 where
     C: Clipboard + ClipboardText + 'static,
@@ -244,6 +251,7 @@ where
             return;
         };
         // Cleared first and whatever the answer: the window never holds a password between tries.
+        window.set_password(overwrite_filler(password));
         window.set_password(slint::SharedString::new());
         // Cleared before the answer is set, so a repeated error is announced again.
         window.set_problem(ui::MasterProblem::None);
@@ -459,5 +467,18 @@ impl UnlockUi {
     /// The window could not be created or shown.
     pub fn open(&self) -> Result<(), slint::PlatformError> {
         (self.open)()
+    }
+}
+
+#[cfg(test)]
+mod filler_tests {
+    use super::overwrite_filler;
+
+    #[test]
+    fn the_filler_has_the_length_of_the_password_and_none_of_its_characters() {
+        let filler = overwrite_filler("pässw0rd");
+        assert_eq!(filler.chars().count(), 8);
+        assert!(filler.chars().all(|c| c == '\u{2022}'));
+        assert!(overwrite_filler("").is_empty());
     }
 }
