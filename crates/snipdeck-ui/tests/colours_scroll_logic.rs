@@ -1,5 +1,7 @@
 //! The Colours tab scrolls its controls into view when the keyboard reaches them (not only the chip grids and the
-//! format list): the sliders, the "Values as" and "Scheme" selects and the buttons. Time is never read.
+//! format list): the sliders, the selects and the buttons. Slint does this itself (`i-slint-core` `window.rs`,
+//! `publish_focus_item` calls `try_scroll_into_visible`, so on every backend), so `colours.slint` has no `reveal`
+//! wiring for those controls; this test guards that they stay reachable. Time is never read.
 
 #![allow(
     clippy::expect_used,

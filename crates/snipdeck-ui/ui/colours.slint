@@ -1152,7 +1152,7 @@ export component ColoursView inherits Rectangle {
                     placeholder: @tr("#3a7bd5, rgb(58, 123, 213), royalblue");
                     error: ColourState.input-error;
                     focus-request: root.input-focus;
-                    changed has-focus => { if (self.has-focus) { root.last-stop = 0; root.reveal(self.absolute-position.y, self.height); } }
+                    changed has-focus => { if (self.has-focus) { root.last-stop = 0; } }
                     edited(t) => { ColourState.input-edited(t); }
                     accepted(t) => { ColourState.input-accepted(t); }
                 }
@@ -1170,7 +1170,6 @@ export component ColoursView inherits Rectangle {
                 alignment: start;
                 width: Space.s8;
                 IconButton {
-                    changed has-focus => { if (self.has-focus) { root.reveal(self.absolute-position.y, self.height); } }
                     icon: Icons.eyedropper;
                     tooltip: @tr("Pick a colour from the screen (Ctrl+I)");
                     own-tooltip: true;
@@ -1287,7 +1286,7 @@ export component ColoursView inherits Rectangle {
                             height: parent.height;
                             source: ColourState.surface;
                             focus-request: root.surface-focus;
-                            changed has-focus => { if (self.has-focus) { root.last-stop = 6; root.reveal(self.absolute-position.y, self.height); } }
+                            changed has-focus => { if (self.has-focus) { root.last-stop = 6; } }
                             marker-x: ColourState.marker-x;
                             marker-y: ColourState.marker-y;
                             wheel: ColourState.picker-style == 1;
@@ -1303,7 +1302,7 @@ export component ColoursView inherits Rectangle {
                     if ColourState.picker-style == 0: TrackSlider {
                         label: @tr("Hue");
                         focus-request: root.slider-focus;
-                        changed has-focus => { if (self.has-focus) { root.last-stop = 7; root.reveal(self.absolute-position.y, self.height); } }
+                        changed has-focus => { if (self.has-focus) { root.last-stop = 7; } }
                         value: ColourState.hue;
                         max-value: 360;
                         value-text: @tr("{} degrees", round(ColourState.hue));
@@ -1314,7 +1313,7 @@ export component ColoursView inherits Rectangle {
                     if ColourState.picker-style == 1: TrackSlider {
                         label: @tr("Brightness");
                         focus-request: root.slider-focus;
-                        changed has-focus => { if (self.has-focus) { root.last-stop = 7; root.reveal(self.absolute-position.y, self.height); } }
+                        changed has-focus => { if (self.has-focus) { root.last-stop = 7; } }
                         value: ColourState.bri;
                         value-text: @tr("{} percent", round(ColourState.bri));
                         track: @linear-gradient(90deg, #000000 0%, #ffffff 100%);
@@ -1324,7 +1323,7 @@ export component ColoursView inherits Rectangle {
                     TrackSlider {
                         label: @tr("Alpha");
                         focus-request: root.alpha-focus;
-                        changed has-focus => { if (self.has-focus) { root.last-stop = 8; root.reveal(self.absolute-position.y, self.height); } }
+                        changed has-focus => { if (self.has-focus) { root.last-stop = 8; } }
                         value: ColourState.alpha;
                         value-text: @tr("{} percent", round(ColourState.alpha));
                         checker: true;
@@ -1336,7 +1335,6 @@ export component ColoursView inherits Rectangle {
                     Rectangle {
                         height: Space.s8 + Space.s1;
                         SelectField {
-                            changed has-focus => { if (self.has-focus) { root.reveal(self.absolute-position.y, self.height); } }
                             x: 0px;
                             width: min(120px * SystemLook.text-scale, parent.width);
                             options: [ColourTexts.model-name(0), ColourTexts.model-name(1), ColourTexts.model-name(2), ColourTexts.model-name(3), ColourTexts.model-name(4)];
@@ -1419,7 +1417,6 @@ export component ColoursView inherits Rectangle {
                     spacing: Space.s1;
                     Button {
                         text: @tr("Save");
-                        changed has-focus => { if (self.has-focus) { root.reveal(self.absolute-position.y, self.height); } }
                         size: ButtonSize.sm;
                         tooltip: @tr("Save to Colours (Ctrl+S)");
                         clicked => { ColourState.save(-1); }
@@ -1429,7 +1426,7 @@ export component ColoursView inherits Rectangle {
                         size: ButtonSize.sm;
                         variant: ButtonVariant.secondary;
                         tooltip: @tr("Save to a list (Ctrl+Shift+S)");
-                        changed has-focus => { if (self.has-focus) { root.last-stop = 11; root.reveal(self.absolute-position.y, self.height); } }
+                        changed has-focus => { if (self.has-focus) { root.last-stop = 11; } }
                         clicked => {
                             root.save-ctx = 0;
                             root.popup-from = 11;
@@ -1438,7 +1435,6 @@ export component ColoursView inherits Rectangle {
                     }
                     Rectangle { horizontal-stretch: 1; }
                     Button {
-                        changed has-focus => { if (self.has-focus) { root.reveal(self.absolute-position.y, self.height); } }
                         text: @tr("View list");
                         size: ButtonSize.sm;
                         variant: ButtonVariant.ghost;
@@ -1512,7 +1508,7 @@ export component ColoursView inherits Rectangle {
                         monospace: true;
                         label: @tr("Other colour");
                         placeholder: @tr("#ffffff");
-                        changed has-focus => { if (self.has-focus) { root.last-stop = 10; root.reveal(self.absolute-position.y, self.height); } }
+                        changed has-focus => { if (self.has-focus) { root.last-stop = 10; } }
                         error: ColourState.other-error;
                         edited(t) => { ColourState.other-edited(t); }
                         accepted(t) => { ColourState.other-accepted(t); }
@@ -1521,7 +1517,6 @@ export component ColoursView inherits Rectangle {
                         alignment: start;
                         width: Space.s8;
                         IconButton {
-                            changed has-focus => { if (self.has-focus) { root.reveal(self.absolute-position.y, self.height); } }
                             icon: Icons.arrows-left-right;
                             tooltip: @tr("Swap the two colours");
                             clicked => { ColourState.swap(); }
@@ -1534,7 +1529,6 @@ export component ColoursView inherits Rectangle {
                 Rectangle {
                     height: Space.s8 + Space.s1;
                     SelectField {
-                        changed has-focus => { if (self.has-focus) { root.reveal(self.absolute-position.y, self.height); } }
                         x: Space.s2;
                         width: parent.width - 2 * Space.s2;
                         options: [ColourTexts.scheme-name(0), ColourTexts.scheme-name(1), ColourTexts.scheme-name(2), ColourTexts.scheme-name(3), ColourTexts.scheme-name(4), ColourTexts.scheme-name(5)];
