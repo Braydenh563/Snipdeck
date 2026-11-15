@@ -230,6 +230,23 @@ fn settings() -> (SettingsPage, Log) {
     (ui, log)
 }
 
+/// Rests the pointer on `e` past the tooltip delay.
+fn hover_rest(ui: &impl ComponentHandle, e: &ElementHandle) {
+    let (at, size) = (e.absolute_position(), e.size());
+    let position = slint::LogicalPosition::new(at.x + size.width / 2.0, at.y + size.height / 2.0);
+    ui.window()
+        .dispatch_event(slint::platform::WindowEvent::PointerMoved { position });
+    i_slint_backend_testing::mock_elapsed_time(std::time::Duration::from_millis(600));
+    settle();
+}
+
+fn tips(ui: &impl ElementRoot) -> usize {
+    ElementQuery::from_root(ui)
+        .match_inherits("Tooltip")
+        .find_all()
+        .len()
+}
+
 fn gallery() -> FormControlsGallery {
     let ui = FormControlsGallery::new().expect("gallery");
     ui.show().expect("show");
@@ -776,6 +793,17 @@ ui_tests! {
         ui.set_title_error("Too long.".into());
         settle();
         assert!(!missing(&ui, "Hide title, colour, tags, trigger and privacy", AccessibleRole::Button));
+    }
+
+    fn escape_in_the_item_editor_closes_a_tooltip_first() {
+        let (ui, log) = item_editor();
+        hover_rest(&ui, &find(&ui, "Save", AccessibleRole::Button));
+        assert_eq!(tips(&ui), 1);
+        press_key(&ui, Key::Escape);
+        assert_eq!(tips(&ui), 0, "Esc closes the tooltip");
+        assert_eq!(take(&log), Vec::<String>::new(), "and does nothing else on that press");
+        press_key(&ui, Key::Escape);
+        assert_eq!(take(&log), ["cancel"]);
     }
 
     fn save_names_its_shortcut_in_a_tooltip() {
@@ -1453,6 +1481,41 @@ ui_tests! {
         press(ui.window(), &key(Key::F1));
         settle();
         assert_eq!(take(&log), ["help"]);
+    }
+
+    fn escape_in_settings_closes_a_tooltip_first_and_an_open_list_holds_tooltips_off() {
+        let (ui, log) = settings();
+        ui.set_no_history_apps(slint::ModelRc::new(slint::VecModel::from(vec![slint::SharedString::from("keepass.exe")])));
+        settle();
+        // A click on empty space gives the page the keyboard (nothing has it when the page opens in a test).
+        let blank = slint::LogicalPosition::new(4.0, 5990.0);
+        for event in [
+            slint::platform::WindowEvent::PointerPressed { position: blank, button: slint::platform::PointerEventButton::Left },
+            slint::platform::WindowEvent::PointerReleased { position: blank, button: slint::platform::PointerEventButton::Left },
+        ] {
+            ui.window().dispatch_event(event);
+        }
+        settle();
+        let remove = find(&ui, "Remove keepass.exe from the list", AccessibleRole::Button);
+        hover_rest(&ui, &remove);
+        assert_eq!(tips(&ui), 1, "the button names itself");
+        press_key(&ui, Key::Escape);
+        assert_eq!(tips(&ui), 0, "Esc closes the tooltip");
+        assert_eq!(take(&log), Vec::<String>::new(), "and does nothing else on that press");
+        press_key(&ui, Key::Escape);
+        assert_eq!(take(&log), ["close"], "the next Esc closes the page");
+
+        // An open drop-down list: no tooltip over it, and Esc closes the list (not the page).
+        let combo = find(&ui, "Language", AccessibleRole::Combobox);
+        combo.invoke_accessible_default_action();
+        settle();
+        let _ = find(&ui, "Deutsch", AccessibleRole::ListItem);
+        ui.window().dispatch_event(slint::platform::WindowEvent::PointerMoved { position: slint::LogicalPosition::new(1.0, 1.0) });
+        hover_rest(&ui, &remove);
+        assert_eq!(tips(&ui), 0, "an open list holds tooltips off");
+        press_key(&ui, Key::Escape);
+        assert!(missing(&ui, "Deutsch", AccessibleRole::ListItem), "Esc closes the list");
+        assert_eq!(take(&log), Vec::<String>::new());
     }
 
     fn programs_left_out_of_recent_can_be_added_and_removed_with_labelled_buttons() {

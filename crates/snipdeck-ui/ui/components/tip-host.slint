@@ -18,6 +18,17 @@ export global TipHost {
     out property <int> owner;
     // The layer has it on screen (after the rest). The layer sets it.
     in-out property <bool> open;
+    // Liveness. Slint has no destruction hook, so a control an `if` removes cannot give its tooltip back. While a
+    // `TipSource`'s tooltip is wanted (`watched`), the layer bumps `ping` ten times a second and the owner sets
+    // `answered`; an owner that does not answer is gone, and the tooltip goes with it. Window-level callers of
+    // `show` (always there) are not watched.
+    in-out property <int> ping;
+    in-out property <bool> answered;
+    in-out property <bool> watched;
+    // An open drop-down list (`SelectField`) holds tooltips off; it answers pings the same way, so a field removed
+    // while open does not hold them off for good.
+    in-out property <bool> held;
+    in-out property <bool> held-answered;
 
     public function show(text: string, left: length, top: length, box-width: length, box-height: length) -> int {
         self.owner += 1;
@@ -27,6 +38,8 @@ export global TipHost {
         self.box-width = box-width;
         self.box-height = box-height;
         self.wanted = true;
+        self.watched = false;
+        self.answered = true;
         return self.owner;
     }
     public function hide(id: int) {
@@ -60,6 +73,7 @@ export component TipSource {
     changed asking => {
         if (root.asking) {
             root.id = TipHost.show(root.text, root.left, root.top, root.box-width, root.box-height);
+            TipHost.watched = true;
         } else {
             TipHost.hide(root.id);
         }
@@ -67,6 +81,14 @@ export component TipSource {
     changed text => {
         if (root.asking && TipHost.owner == root.id && TipHost.wanted) {
             root.id = TipHost.show(root.text, root.left, root.top, root.box-width, root.box-height);
+            TipHost.watched = true;
+        }
+    }
+    // Still here: answer the layer's ping (see `TipHost.ping`).
+    property <int> ping: TipHost.ping;
+    changed ping => {
+        if (root.asking && TipHost.owner == root.id) {
+            TipHost.answered = true;
         }
     }
     public function close() {
@@ -76,19 +98,21 @@ export component TipSource {
 
 // Put this last in every `Window` whose controls have tooltips. It covers the window but takes no input. The tooltip
 // is centred under its control (4px gap), flips above when it would pass the bottom edge, and is shifted to stay 8px
-// inside the window. `suppressed` (a menu, dialog or the palette is open) keeps it off screen.
+// inside the window. `suppressed` (a menu, dialog or the palette is open) or an open drop-down list keeps it off
+// screen. It fades in over 90ms.
 export component TipLayer inherits Rectangle {
     in property <bool> suppressed: false;
     // What is on screen: the tooltip's text, or "" (for tests and for the window to read).
-    out property <string> shown: TipHost.open && !root.suppressed ? TipHost.text : "";
+    out property <string> shown: TipHost.open && !root.off ? TipHost.text : "";
     accessible-role: AccessibleRole.none;
 
-    // DESIGN.md §4: the rest before a tooltip shows (the `Tooltip`'s `show-delay`); for a quarter second after a tooltip closes, the next one shows at once.
+    property <bool> off: root.suppressed || TipHost.held;
+    // DESIGN.md §4: a tooltip shows after a 500ms rest; for a quarter second after one closes, the next shows at once.
     property <bool> warm: false;
     property <bool> wanted: TipHost.wanted;
     property <int> owner: TipHost.owner;
     function ask() {
-        if (!TipHost.wanted) {
+        if (!TipHost.wanted || root.off) {
             return;
         }
         warm-timer.running = false;
@@ -113,8 +137,8 @@ export component TipLayer inherits Rectangle {
         }
     }
     // A menu or dialog opening closes the tooltip; it does not come back when it closes.
-    changed suppressed => {
-        if (root.suppressed) {
+    changed off => {
+        if (root.off) {
             TipHost.dismiss();
         }
     }
@@ -123,7 +147,7 @@ export component TipLayer inherits Rectangle {
         running: false;
         triggered => {
             self.running = false;
-            TipHost.open = TipHost.wanted && !root.suppressed;
+            TipHost.open = TipHost.wanted && !root.off;
         }
     }
     warm-timer := Timer {
@@ -135,9 +159,31 @@ export component TipLayer inherits Rectangle {
         }
     }
 
+    alive := Timer {
+        interval: 100ms;
+        running: (TipHost.wanted && TipHost.watched) || TipHost.held;
+        triggered => {
+            if (TipHost.wanted && TipHost.watched && !TipHost.answered) {
+                TipHost.hide(TipHost.owner);
+            }
+            if (TipHost.held && !TipHost.held-answered) {
+                TipHost.held = false;
+            }
+            TipHost.answered = false;
+            TipHost.held-answered = false;
+            TipHost.ping += 1;
+        }
+    }
+
     if root.shown != "": Tooltip {
         text: TipHost.text;
-        open: true;
+        // Created closed and opened here, so the opacity animates (the 90ms fade-in): reading the opacity first
+        // makes the closed value (0) the animation's start.
+        init => {
+            if (self.opacity >= 0) {
+                self.open = true;
+            }
+        }
         limit-width: root.width - 2 * Space.s2;
         width: self.preferred-width;
         height: self.preferred-height;

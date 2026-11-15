@@ -1110,11 +1110,15 @@ export component MainWindow inherits Window {
 
     root-scope := FocusScope {
         capture-key-pressed(event) => {
+            // An IME composition gets every key, Esc included (it cancels the composition).
+            if (search.composing) {
+                return reject;
+            }
             // Esc first closes a tooltip on screen, and does nothing else on that press.
             if (event.text == Key.Escape && TipHost.dismiss()) {
                 return accept;
             }
-            if (root.overlay-open || search.composing) {
+            if (root.overlay-open) {
                 return reject;
             }
             if (search.has-focus && suggest.handle-key(event)) {
@@ -2084,7 +2088,7 @@ export component MainWindow inherits Window {
                                                 root.act(ItemAction.use-plain, i);
                                             }
                                             edit => { root.act(ItemAction.edit, i); }
-                                            tip(text, cx, bottom, on) => { root.card-tip-set(text, cx, bottom, on); }
+                                            tip(text, left, top, w, h, on) => { root.card-tip-set(text, left, top, w, h, on); }
                                             picked(shift, control) => { root.pick(i, shift, control); }
                                             context-menu-requested(x, y) => {
                                                 if (!row.selected) {
@@ -2244,7 +2248,7 @@ export component MainWindow inherits Window {
                                         edit-action: !root.in-trash;
                                         show-actions: root.rows[root.tile-index(r, c)].selected;
                                         actions-hidden: root.selected-count > 1;
-                                        tip(text, cx, bottom, on) => { root.card-tip-set(text, cx, bottom, on); }
+                                        tip(text, left, top, w, h, on) => { root.card-tip-set(text, left, top, w, h, on); }
                                         edit => { root.act(ItemAction.edit, root.tile-index(r, c)); }
                                         show-focus: root.tile-index(r, c) == root.cur && items-scope.has-focus && root.kbd-focus;
                                         revealed: root.tile-index(r, c) == root.revealed-index;
@@ -2720,10 +2724,10 @@ export component MainWindow inherits Window {
     // ---- A row action's tooltip (Use, Copy, Edit, More, the type tile): the card reports it, centred under the button.
     property <string> card-tip;
     property <int> card-tip-id: -1;
-    function card-tip-set(text: string, cx: length, bottom: length, on: bool) {
+    function card-tip-set(text: string, left: length, top: length, box-width: length, box-height: length, on: bool) {
         if (on) {
             root.card-tip = text;
-            root.card-tip-id = TipHost.show(text, cx, bottom, 0px, 0px);
+            root.card-tip-id = TipHost.show(text, left, top, box-width, box-height);
         } else if (text == root.card-tip) {
             root.card-tip-close();
         }

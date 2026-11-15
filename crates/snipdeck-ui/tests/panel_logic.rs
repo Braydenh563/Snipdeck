@@ -2737,6 +2737,52 @@ ui_tests! {
         assert_eq!(ui.get_tooltip_shown(), "", "nor after it, until the pointer moves on");
     }
 
+    fn a_tooltip_goes_with_its_control_when_the_control_is_removed() {
+        let (ui, _log) = start();
+        let many: Vec<snipdeck_ui::TabItem> = (0..20)
+            .map(|i| snipdeck_ui::TabItem {
+                text: format!("List number {i}").into(),
+                accent: slint::Color::from_rgb_u8(0x0d, 0x94, 0x88),
+                icon: slint::Image::default(),
+            })
+            .collect();
+        ui.set_tabs(ModelRc::new(VecModel::from(many)));
+        settle();
+        move_to(&ui, centre(&find(&ui, "Scroll right", AccessibleRole::Button)));
+        wait(600);
+        assert_eq!(ui.get_tooltip_shown(), "Scroll right");
+        // The strip no longer overflows: the arrow is gone while the pointer rests where it was.
+        ui.set_tabs(ModelRc::new(VecModel::from(fixture::tabs())));
+        settle();
+        assert!(missing(&ui, "Scroll right", AccessibleRole::Button));
+        // Time passes as on a clock, so the layer's 100ms check ticks each step.
+        for _ in 0..4 {
+            wait(100);
+        }
+        assert_eq!(ui.get_tooltip_shown(), "", "the tip does not outlive its arrow");
+        move_to(&ui, centre(&find(&ui, "More", AccessibleRole::Button)));
+        wait(600);
+        assert_eq!(ui.get_tooltip_shown(), "More", "and the next control's tip still shows");
+    }
+
+    fn a_tip_that_would_show_at_once_under_a_menu_does_not_swallow_the_next_esc() {
+        let (ui, log) = start();
+        move_to(&ui, centre(&find(&ui, "More", AccessibleRole::Button)));
+        wait(600);
+        assert_eq!(ui.get_tooltip_shown(), "More");
+        // Off the control, then a menu opens within the quarter second a next tip would show at once.
+        move_to(&ui, away(&ui));
+        settle();
+        ui.set_app_menu_open(true);
+        settle();
+        move_to(&ui, centre(&find(&ui, "Close panel (Esc)", AccessibleRole::Button)));
+        settle();
+        assert_eq!(ui.get_tooltip_shown(), "");
+        take(&log);
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(take(&log), ["app-dismissed"], "the Esc reaches the menu");
+    }
+
     fn every_icon_only_control_in_the_panel_has_a_tooltip() {
         let (ui, _log) = start();
         set_pinned(&ui, fixture::pinned_n(12));

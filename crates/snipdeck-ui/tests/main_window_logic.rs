@@ -2100,6 +2100,32 @@ ui_tests! {
         mock_elapsed_time(std::time::Duration::from_millis(600));
         settle();
         assert_eq!(tips(&ui), 0, "it stays closed while the pointer rests there");
+        // With no tip up, Esc does its usual work again.
+        ui.set_selected_count(2);
+        settle();
+        press_key(&ui, Key::Escape);
+        assert_eq!(take(&log), ["clear"], "Esc with no tip clears the selection");
+    }
+
+    fn a_tooltip_goes_with_its_control_when_the_window_widens_and_removes_it() {
+        let (ui, _log) = start();
+        let tips = |ui: &MainWindow| ElementQuery::from_root(ui).match_inherits("Tooltip").find_all().len();
+        ui.window().set_size(slint::LogicalSize::new(640.0, 520.0));
+        settle();
+        let board = find(&ui, "Board: Work", AccessibleRole::Button);
+        ui.window().dispatch_event(WindowEvent::PointerMoved { position: centre_of(&board) });
+        mock_elapsed_time(std::time::Duration::from_millis(600));
+        settle();
+        assert_eq!(tips(&ui), 1, "the narrow board button's tip is up");
+        // Wider: the icon button gives way to the full switcher while the pointer rests where it was.
+        ui.window().set_size(slint::LogicalSize::new(1040.0, 640.0));
+        settle();
+        // Time passes as on a clock, so the layer's 100ms check ticks each step.
+        for _ in 0..4 {
+            mock_elapsed_time(std::time::Duration::from_millis(100));
+            settle();
+        }
+        assert_eq!(tips(&ui), 0, "the tip does not outlive its button");
     }
 
     fn rail_tooltips_stay_inside_the_window() {
@@ -2572,6 +2598,18 @@ fn scrolled(ui: &MainWindow, top0: f32, row_h: f32) -> f32 {
         .expect("a row in view")
 }
 
+/// The palette open on forty commands at Windows text size `scale` (rows grow with it).
+fn palette_at(scale: f32) -> MainWindow {
+    let (ui, _log) = start();
+    ui.global::<snipdeck_ui::SystemLook<'_>>()
+        .set_text_scale(scale);
+    settle();
+    chord(ui.window(), &[Key::Control], "k");
+    settle();
+    many_palette_rows(&ui);
+    ui
+}
+
 /// A wheel turn (one notch is 60px on the winit backend; a touchpad sends many small ones) over `at`,
 /// then the pointer moves a hair, as a hand on a touchpad does, so the row under it is hovered.
 fn wheel(ui: &MainWindow, at: LogicalPosition, delta_y: f32) {
@@ -2591,10 +2629,8 @@ fn wheel(ui: &MainWindow, at: LogicalPosition, delta_y: f32) {
 
 ui_tests! {
     fn the_palette_list_scrolls_with_the_wheel_and_stays_where_it_was_scrolled() {
-        let (ui, _log) = start();
-        chord(ui.window(), &[Key::Control], "k");
-        settle();
-        many_palette_rows(&ui);
+        for scale in [1.0, 1.5] {
+        let ui = palette_at(scale);
         let first = find(&ui, "Command 0", AccessibleRole::ListItem);
         let top0 = first.absolute_position().y;
         let row_h = first.size().height;
@@ -2618,13 +2654,12 @@ ui_tests! {
             (scrolled(&ui, top0, row_h) - 420.0).abs() < 1.0,
             "a notch back up returns 60px"
         );
+        }
     }
 
     fn many_small_touchpad_deltas_scroll_the_palette_as_far_as_their_sum() {
-        let (ui, _log) = start();
-        chord(ui.window(), &[Key::Control], "k");
-        settle();
-        many_palette_rows(&ui);
+        for scale in [1.0, 1.5] {
+        let ui = palette_at(scale);
         let first = find(&ui, "Command 0", AccessibleRole::ListItem);
         let top0 = first.absolute_position().y;
         let row_h = first.size().height;
@@ -2637,16 +2672,16 @@ ui_tests! {
         }
         let moved = scrolled(&ui, top0, row_h);
         assert!((moved - 480.0).abs() < 1.0, "120 deltas of 4px scroll 480px, got {moved}");
+        }
     }
 
     fn the_keyboard_still_brings_the_highlighted_row_into_view_after_a_wheel_scroll() {
-        let (ui, _log) = start();
-        chord(ui.window(), &[Key::Control], "k");
-        settle();
-        many_palette_rows(&ui);
+        for scale in [1.0, 1.5] {
+        let ui = palette_at(scale);
         let first = find(&ui, "Command 0", AccessibleRole::ListItem);
         let top0 = first.absolute_position().y;
-        let over = LogicalPosition::new(first.absolute_position().x + 40.0, top0 + first.size().height * 2.5);
+        let row_h = first.size().height;
+        let over = LogicalPosition::new(first.absolute_position().x + 40.0, top0 + row_h * 2.5);
         ui.window().dispatch_event(WindowEvent::PointerMoved { position: over });
         settle();
         wheel(&ui, over, -600.0);
@@ -2664,25 +2699,32 @@ ui_tests! {
             settle();
         }
         assert!(at_last(&ui), "the last command is highlighted");
-        // The list's viewport: where row 0 sat before any scroll, 6 x 48px tall (the palette's cap).
-        let bottom = top0 + 288.0;
-        let last = find(&ui, "Command 39", AccessibleRole::ListItem);
-        let last_bottom = last.absolute_position().y + last.size().height;
+        // The last row is in view and the list is at its end (a further turn down moves nothing), so the row
+        // sits at the bottom edge, whatever the viewport's height at this text size.
+        let _ = find(&ui, "Command 39", AccessibleRole::ListItem);
+        let at_end = scrolled(&ui, top0, row_h);
+        assert!(at_end > row_h, "at {scale}x the list scrolled to its end, got {at_end}");
+        wheel(&ui, over, -600.0);
         assert!(
-            last_bottom <= bottom + 1.0 && last_bottom > bottom - last.size().height,
-            "the last row is in view at the bottom: {last_bottom} vs {bottom}"
+            (scrolled(&ui, top0, row_h) - at_end).abs() < 1.0,
+            "at {scale}x the last row was already at the bottom: {at_end}"
         );
-        for _ in 0..39 {
+        ui.window().dispatch_event(WindowEvent::PointerExited);
+        // The wheel's hover moved the highlight; walk up from there to the first command.
+        let at_first = |ui: &MainWindow| {
+            ElementHandle::find_by_accessible_label(ui, "Command 0, 1 of 40").next().is_some()
+        };
+        for _ in 0..40 {
+            if at_first(&ui) {
+                break;
+            }
             press_key(&ui, Key::UpArrow);
         }
-        settle();
+        assert!(at_first(&ui), "the first command is highlighted");
         assert!(
-            ElementHandle::find_by_accessible_label(&ui, "Command 0, 1 of 40").next().is_some(),
-            "the first command is highlighted"
-        );
-        assert!(
-            scrolled(&ui, top0, first.size().height).abs() < 1.0,
+            scrolled(&ui, top0, row_h).abs() < 1.0,
             "walking back up brings the first row back to the top"
         );
+        }
     }
 }

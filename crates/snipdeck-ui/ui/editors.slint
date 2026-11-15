@@ -2121,11 +2121,14 @@ export component TagManager inherits Window {
     changed dark => { Palette.dark = root.dark; }
 
     scope := FocusScope {
-        key-pressed(event) => {
-            // Esc first closes a tooltip on screen, and does nothing else on that press.
+        // Esc first closes a tooltip on screen, and does nothing else on that press, before the rename field sees it.
+        capture-key-pressed(event) => {
             if (event.text == Key.Escape && TipHost.dismiss()) {
                 return accept;
             }
+            return reject;
+        }
+        key-pressed(event) => {
             if (event.text == Key.Escape && root.delete-index < 0) {
                 if (root.editing >= 0) {
                     root.editing = -1;

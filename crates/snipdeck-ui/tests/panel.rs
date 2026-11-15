@@ -917,6 +917,8 @@ fn tooltip_under_the_close_button(dark: bool, ink: [u8; 3]) {
         .window()
         .dispatch_event(WindowEvent::PointerMoved { position: at });
     h.advance(std::time::Duration::from_millis(600));
+    // A frame creates the tooltip and starts its 90ms fade; the one after the fade is checked.
+    let _ = render(&h);
     h.advance(std::time::Duration::from_millis(200));
     let f = render(&h);
     // Below the button (bottom edge 56), a 4px gap, then the tooltip body; its right edge is clamped 8px

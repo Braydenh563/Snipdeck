@@ -101,7 +101,7 @@ export component SymbolsView inherits Rectangle {
     callback cell-used(int);
     callback cell-copied(int);
     callback cell-menu(int, length, length);
-    callback tip(string, length, length, bool);
+    callback tip(string, length, length, length, length, bool);
     callback columns-changed(int);
     callback focus-changed(bool);
     callback composing-changed(bool);
@@ -234,7 +234,7 @@ export component SymbolsView inherits Rectangle {
                     gtouch := TouchArea {
                         mouse-cursor: pointer;
                         clicked => { root.group-picked(i); }
-                        changed has-hover => { root.tip(g.label, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover); }
+                        changed has-hover => { root.tip(g.label, self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover); }
                     }
                 }
             }
@@ -349,7 +349,7 @@ export component SymbolsView inherits Rectangle {
                                 mouse-cursor: pointer;
                                 changed has-hover => {
                                     root.hover-name(self.has-hover ? cell.label : "");
-                                    root.tip(cell.label + (root.use-hint != "" ? " · " + root.use-hint : ""), self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover);
+                                    root.tip(cell.label + (root.use-hint != "" ? " · " + root.use-hint : ""), self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover);
                                 }
                                 pointer-event(event) => {
                                     if (event.button == PointerEventButton.left && event.kind == PointerEventKind.up

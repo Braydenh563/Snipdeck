@@ -1,17 +1,13 @@
 import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
 
-// Names an icon-only action. Render only: the host places it (below the control, 4px gap) and sets
-// `open`. Timing is the host's: show after `show-delay` of hover or keyboard focus, but instantly
-// when the pointer moves from one tooltip-bearing control to another. Fades in 90ms (also under
-// reduced motion, DESIGN.md §8). Never takes pointer or focus.
+// Names a control. Render only: the window's `TipLayer` (tip-host.slint) places it, keeps the timing and sets
+// `open`. Fades in 90ms when `open` turns on (also under reduced motion, DESIGN.md §8). Never takes pointer or focus.
 export component Tooltip inherits Rectangle {
     in property <string> text;
     in property <bool> open: false;
     // The widest the tooltip may be (`limit-width`); longer text wraps to more lines. The host sets it to the room it
     // has (the window's width less its margins), so a long name never runs past an edge.
     in property <length> limit-width: 100000px;
-    // DESIGN.md §4: how long hover must rest before the host sets `open`.
-    out property <duration> show-delay: 500ms;
 
     // Sized by its text: one line when it fits `limit-width`, wrapped otherwise. The host sets its width and
     // height from these (it is placed, not laid out), then positions it.

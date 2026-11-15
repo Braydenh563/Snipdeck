@@ -728,12 +728,12 @@ export component PanelWindow inherits Window {
     property <length> grip: 6px;
     property <length> grip-corner: Space.s2;
 
-    // Tooltips (DESIGN.md §4): the control that owns one reports hover or focus through `tip-set` (an anchor point:
-    // the middle of its bottom edge) or `tip-box`; the window's `TipLayer` shows it after the rest, and at once when
+    // Tooltips (DESIGN.md §4): the control that owns one reports hover or focus, with its box, through `tip-set`; the
+    // window's `TipLayer` shows it after the rest, and at once when
     // the pointer moves from one control to another.
     property <string> tip;
     property <int> tip-id: -1;
-    function tip-box(text: string, left: length, top: length, box-width: length, box-height: length, on: bool) {
+    function tip-set(text: string, left: length, top: length, box-width: length, box-height: length, on: bool) {
         if (on) {
             root.tip = text;
             root.tip-id = TipHost.show(text, left, top, box-width, box-height);
@@ -741,13 +741,10 @@ export component PanelWindow inherits Window {
             TipHost.hide(root.tip-id);
         }
     }
-    function tip-set(text: string, cx: length, bottom: length, on: bool) {
-        root.tip-box(text, cx, bottom, 0px, 0px, on);
-    }
     // A tooltip does not ride along with a dragged Panel, and is not back when the drag ends.
     changed dragging => {
         if (root.dragging) {
-            root.tip-set(root.tip, 0px, 0px, false);
+            root.tip-set(root.tip, 0px, 0px, 0px, 0px, false);
         }
     }
     // The row a drop in the gap before (`before`) or after row group `g` is reported onto: a drop lands after the row it
@@ -774,7 +771,7 @@ export component PanelWindow inherits Window {
     property <string> row-tip-text: "";
     function row-tips-close() {
         if (root.row-tip-text != "") {
-            root.tip-set(root.row-tip-text, 0px, 0px, false);
+            root.tip-set(root.row-tip-text, 0px, 0px, 0px, 0px, false);
             root.row-tip-text = "";
         }
     }
@@ -1660,9 +1657,9 @@ export component PanelWindow inherits Window {
                     tip(on) => {
                         if (on && !root.dragging) {
                             root.grab-tip-up = root.grab-tip;
-                            root.tip-set(root.grab-tip-up, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, true);
+                            root.tip-set(root.grab-tip-up, self.absolute-position.x, self.absolute-position.y, self.width, self.height, true);
                         } else {
-                            root.tip-set(root.grab-tip-up, 0px, 0px, false);
+                            root.tip-set(root.grab-tip-up, 0px, 0px, 0px, 0px, false);
                         }
                     }
                 }
@@ -1714,8 +1711,8 @@ export component PanelWindow inherits Window {
                             tooltip: @tr("Search (Ctrl+F)");
                             y: (parent.height - self.height) / 2;
                             clicked => { root.open-search(); }
-                            changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
-                            changed has-focus => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+                            changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover || self.has-focus); }
+                            changed has-focus => { root.tip-set(self.tooltip, self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover || self.has-focus); }
                         }
                         // New: a menu of ways to add (Save from clipboard, New note, New list). Icon only below 300px.
                         new-button := Rectangle {
@@ -1735,7 +1732,7 @@ export component PanelWindow inherits Window {
                             animate background { duration: Motion.instant; easing: Motion.out; }
                             changed tip-on => {
                                 if (root.new-icon-only) {
-                                    root.tip-set(@tr("New"), self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.tip-on);
+                                    root.tip-set(@tr("New"), self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.tip-on);
                                 }
                             }
 
@@ -1811,8 +1808,8 @@ export component PanelWindow inherits Window {
                                 root.on-top = !root.on-top;
                                 root.pin-toggled(root.on-top);
                             }
-                            changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
-                            changed has-focus => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+                            changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover || self.has-focus); }
+                            changed has-focus => { root.tip-set(self.tooltip, self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover || self.has-focus); }
                         }
                         kebab := IconButton {
                             icon: Icons.dots-three-bold;
@@ -1822,8 +1819,8 @@ export component PanelWindow inherits Window {
                             tooltip: @tr("More");
                             y: (parent.height - self.height) / 2;
                             clicked => { root.app-menu-requested(); }
-                            changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
-                            changed has-focus => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+                            changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover || self.has-focus); }
+                            changed has-focus => { root.tip-set(self.tooltip, self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover || self.has-focus); }
                         }
                         close := IconButton {
                             icon: Icons.x;
@@ -1833,8 +1830,8 @@ export component PanelWindow inherits Window {
                             tooltip: @tr("Close panel (Esc)");
                             y: (parent.height - self.height) / 2;
                             clicked => { root.close-requested(); }
-                            changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
-                            changed has-focus => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+                            changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover || self.has-focus); }
+                            changed has-focus => { root.tip-set(self.tooltip, self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover || self.has-focus); }
                         }
                     }
                 }
@@ -2054,7 +2051,7 @@ export component PanelWindow inherits Window {
                         scroll-right-label: @tr("Scroll right");
                         menu-hint: @tr("Right-click or press Menu for list actions");
                         // The "+" is the last 28px of the bar.
-                        changed add-active => { root.tip-set(self.add-label, self.absolute-position.x + self.width - Space.hit / 2, self.absolute-position.y + self.height, self.add-active); }
+                        changed add-active => { root.tip-set(self.add-label, self.absolute-position.x + self.width - Space.hit, self.absolute-position.y, Space.hit, self.height, self.add-active); }
                         selected(index) => { root.pick-tab(index); }
                         drop-accepted(data) => { root.payload-row(data) >= 0 && !root.searching }
                         tab-dropped(index, data) => { root.row-dropped-on-tab(root.payload-row(data), index); }
@@ -2308,8 +2305,8 @@ export component PanelWindow inherits Window {
                                                     root.selected-index = i;
                                                     root.edit-requested(i);
                                                 }
-                                                tip(text, cx, bottom, on) => {
-                                                    root.tip-set(text, cx, bottom, on);
+                                                tip(text, left, top, w, h, on) => {
+                                                    root.tip-set(text, left, top, w, h, on);
                                                     root.row-tip-text = on ? text : "";
                                                 }
                                                 reveal-requested(on) => { root.reveal-requested(i, on); }
@@ -2526,7 +2523,7 @@ export component PanelWindow inherits Window {
                     if root.colours-open: ColoursView {
                         width: parent.width;
                         height: parent.height;
-                        tip(text, cx, bottom, on) => { root.tip-set(text, cx, bottom, on); }
+                        tip(text, left, top, w, h, on) => { root.tip-set(text, left, top, w, h, on); }
                     }
 
                     // ---- The Symbols tab: emoji, kaomoji and icons; click pastes, Shift+click copies -------------------
@@ -2568,8 +2565,8 @@ export component PanelWindow inherits Window {
                         }
                         composing-changed(on) => { root.symbol-composing = on; }
                         hover-name(name) => { root.symbol-hover-name = name; }
-                        tip(text, cx, bottom, on) => {
-                            root.tip-set(text, cx, bottom, on);
+                        tip(text, left, top, w, h, on) => {
+                            root.tip-set(text, left, top, w, h, on);
                             root.row-tip-text = on ? text : "";
                         }
                     }
@@ -2783,7 +2780,7 @@ export component PanelWindow inherits Window {
                             status-touch := TouchArea {
                                 mouse-cursor: MouseCursor.default;
                                 changed has-hover => {
-                                    root.tip-box(status.how, self.absolute-position.x + Space.s6, self.absolute-position.y, 0px, self.height, self.has-hover && !(root.no-results));
+                                    root.tip-set(status.how, self.absolute-position.x + Space.s6, self.absolute-position.y, 0px, self.height, self.has-hover && !(root.no-results));
                                 }
                             }
                             HorizontalLayout {
@@ -2877,7 +2874,7 @@ export component PanelWindow inherits Window {
                             animate background { duration: Motion.instant; easing: Motion.out; }
                             changed tip-on => {
                                 if (root.narrow) {
-                                    root.tip-box(@tr("Open Snipdeck"), self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.tip-on);
+                                    root.tip-set(@tr("Open Snipdeck"), self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.tip-on);
                                 }
                             }
                             open-row := HorizontalLayout {

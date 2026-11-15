@@ -257,7 +257,7 @@ export component ItemCard inherits Rectangle {
     // Row: the Edit action.
     callback edit();
     // Row: a tooltip should open (or close) for `text`, centred on x (window coordinates) above y.
-    callback tip(string, length, length, bool);
+    callback tip(string, length, length, length, length, bool);
     // A second press within the double-click interval (the first one already fired `use`).
     callback double-clicked();
     // Position inside the card, for the app to anchor the menu.
@@ -436,8 +436,9 @@ export component ItemCard inherits Rectangle {
         && touch.mouse-y >= root.tile-y && touch.mouse-y < root.tile-y + root.q-tile-size;
     property <string> tip-text: touch.has-hover && !root.pick-mode ? (root.over-tile ? root.kind-name : root.row-tip) : "";
     changed tip-text => {
-        root.tip(root.tip-text, root.absolute-position.x + (root.over-tile ? root.tile-x + root.q-tile-size / 2 : root.width / 2),
-            root.absolute-position.y + (root.over-tile ? root.tile-y + root.q-tile-size : root.height), root.tip-text != "");
+        root.tip(root.tip-text, root.absolute-position.x + (root.over-tile ? root.tile-x : 0px),
+            root.absolute-position.y + (root.over-tile ? root.tile-y : 0px), root.over-tile ? root.q-tile-size : root.width,
+            root.over-tile ? root.q-tile-size : root.height, root.tip-text != "");
     }
 
     // A resting compact row is a ruled line; it becomes a rounded card while hovered, selected, focused or lifted.
@@ -887,7 +888,7 @@ export component ItemCard inherits Rectangle {
         x: root.act-right - self.width;
         y: root.act-y;
         clicked => { root.context-menu-requested(self.x, self.y + self.height); }
-        tip(on) => { root.tip(self.label, root.absolute-position.x + self.x + self.width / 2, root.absolute-position.y + self.y + self.height, on); }
+        tip(on) => { root.tip(self.label, root.absolute-position.x + self.x, root.absolute-position.y + self.y, self.width, self.height, on); }
     }
     act-edit := RowAction {
         shown: root.qr-actions-shown && root.edit-action;
@@ -897,7 +898,7 @@ export component ItemCard inherits Rectangle {
         x: root.act-right - (root.more-action ? root.q-box : 0px) - self.width;
         y: root.act-y;
         clicked => { root.edit(); }
-        tip(on) => { root.tip(self.label, root.absolute-position.x + self.x + self.width / 2, root.absolute-position.y + self.y + self.height, on); }
+        tip(on) => { root.tip(self.label, root.absolute-position.x + self.x, root.absolute-position.y + self.y, self.width, self.height, on); }
     }
     act-copy := RowAction {
         shown: root.qr-actions-shown && root.copy-action;
@@ -907,7 +908,7 @@ export component ItemCard inherits Rectangle {
         x: root.act-right - (root.more-action ? root.q-box : 0px) - (root.edit-action ? root.q-box : 0px) - self.width;
         y: root.act-y;
         clicked => { root.copy(); }
-        tip(on) => { root.tip(self.label, root.absolute-position.x + self.x + self.width / 2, root.absolute-position.y + self.y + self.height, on); }
+        tip(on) => { root.tip(self.label, root.absolute-position.x + self.x, root.absolute-position.y + self.y, self.width, self.height, on); }
     }
     // Use comes first (leftmost): it does what Enter does, and the click is its own (the row's click selects in the Main window).
     act-use := RowAction {
@@ -921,7 +922,7 @@ export component ItemCard inherits Rectangle {
             root.pull();
             root.use();
         }
-        tip(on) => { root.tip(self.label, root.absolute-position.x + self.x + self.width / 2, root.absolute-position.y + self.y + self.height, on); }
+        tip(on) => { root.tip(self.label, root.absolute-position.x + self.x, root.absolute-position.y + self.y, self.width, self.height, on); }
     }
     // The eye (a sensitive item): always at the right end of the preview line, press and hold to reveal.
     if root.sensitive: Rectangle {

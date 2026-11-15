@@ -49,6 +49,8 @@ fn hover_tip(h: &Harness<MainWindow>, label: &str) -> ((f32, f32, f32, f32), Fra
             position: LogicalPosition::new(at.x + size.width / 2.0, at.y + size.height / 2.0),
         });
     h.advance(Duration::from_millis(600));
+    // A frame creates the tooltip and starts its 90ms fade; the next one, after the fade, is checked.
+    let _ = h.render_settled();
     h.advance(Duration::from_millis(200));
     let frame = h.render_settled();
     let tips = ElementQuery::from_root(&h.component)
@@ -107,4 +109,33 @@ fn a_tooltip_near_the_right_edge_stays_inside_the_window() {
     assert!(b.0 >= 8.0, "starts at x {}", b.0);
     assert!(b.0 + b.2 <= size.0 as f32 - 8.0, "ends at x {}", b.0 + b.2);
     assert_whole(&f, b, "right edge");
+}
+
+#[test]
+fn a_tooltip_fades_in_over_90ms() {
+    let h = window((1040, 640), false);
+    let control = button(&h, "Compact view");
+    let (at, size) = (control.absolute_position(), control.size());
+    h.component
+        .window()
+        .dispatch_event(WindowEvent::PointerMoved {
+            position: LogicalPosition::new(at.x + size.width / 2.0, at.y + size.height / 2.0),
+        });
+    // The rest ends: the tooltip is created, closed, and starts to fade in.
+    h.advance(Duration::from_millis(500));
+    let first = h.render_settled();
+    let tips = ElementQuery::from_root(&h.component)
+        .match_inherits("Tooltip")
+        .find_all();
+    let tip = tips.last().expect("a tooltip is on screen");
+    let (pos, dims) = (tip.absolute_position(), tip.size());
+    let (col, row) = (pos.x as u32 + 2, (pos.y + dims.height / 2.0) as u32);
+    assert_ne!(
+        first.pixel(col, row),
+        INK_LIGHT,
+        "not yet opaque when it appears"
+    );
+    h.advance(Duration::from_millis(200));
+    let later = h.render_settled();
+    assert_eq!(later.pixel(col, row), INK_LIGHT, "opaque after the fade");
 }
