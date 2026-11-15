@@ -237,3 +237,8 @@ clipboard format round-trips), Slint UI tests (testing backend), screenshot regr
 ## 15. Out of scope for v1
 Cloud sync service, rich-text editing, image annotation (arrows/text), scripting/macros,
 Linux/macOS builds, mobile.
+
+Post-1.0, decided:
+- Global eyedropper hotkey chord: needs Windows-only verification, not possible before release.
+- Per-swatch Ctrl+S: per-swatch save is reachable from the swatch menu.
+- OLE `IDropTarget` drops from other apps: a v1.1 deferral (`docs/reviews/v101-spec.md:68`).
