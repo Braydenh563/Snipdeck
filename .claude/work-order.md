@@ -17,7 +17,7 @@ started: 2026-11-14 13:40
 - [ ] claude/edge-polish (store worker session_01NKjURwKPmGuEHMfw1o6HF4): Store 10.8.2 notes, stale msgid, collapsed-edge restyle, residual drag flicker, eyedropper leaves docked Panel in collapsed look; review, merge, gate, push
 - [ ] claude/popup-dismiss (bug-sweep worker session_01NKjURt5yHRvroJQUg7zQeb): toast close button, click-outside/Esc everywhere, More menu fills small Panel; review, merge, gate, push
 - [ ] claude/ui-polish-2 (bug-sweep worker, after popup-dismiss): clear emoji/colour recents, tooltip z/clipping, tinted list icons, collapse button into sidebar header, search x alignment, scroll glitches; review, merge, gate, push
-- [ ] Fable audit round 2 (scratchpad/fable-audit-2.md, G1-G27 + pass 2 running): fixers fix/fable2-data and fix/fable2-ui running; fix every finding (Sonnet agents, grouped by section), review, gate, push
+- [ ] Fable audit round 2 (scratchpad/fable-audit-2.md, 49 findings G1-G49, audit complete; G44-G49 go to the next free fixer): fixers fix/fable2-data and fix/fable2-ui running; fix every finding (Sonnet agents, grouped by section), review, gate, push
 - [ ] README, docs and screenshots refreshed for the final UI (after ui-polish-2): regenerate screenshots, check README feature list and user guide
 - [ ] Open items from scratchpad/open-items.md: dead code (A26), CJK test silent skip -> explicit skip message, scroll-into-view for all colour-tool controls, HANDOVER rewrite (with docs refresh); eyedropper global hotkey, per-swatch Ctrl+S, OLE IDropTarget drops -> decide (build or record as post-1.0 in SPEC with reason)
 - [ ] Blind usability tests (Sonnet) on the merged build; fix
