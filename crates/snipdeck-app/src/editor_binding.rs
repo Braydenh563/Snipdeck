@@ -487,6 +487,7 @@ fn read_input(w: &ui::ItemEditor) -> EditorInput {
         title: w.get_item_title().to_string(),
         content: w.get_content().to_string(),
         sensitive: w.get_sensitive(),
+        always_plain: w.get_always_plain(),
         list_index: index(w.get_list_index()),
         source_path: w.get_source_path().to_string(),
         label: crate::binding::label_of(w.get_label_index()),
@@ -568,6 +569,7 @@ fn fill(w: &ui::ItemEditor, view: &ItemEditorView) {
     w.set_item_title(fields.title.as_str().into());
     w.set_content(fields.content.as_str().into());
     w.set_sensitive(fields.sensitive);
+    w.set_always_plain(fields.always_plain);
     w.set_trigger(view.trigger.as_str().into());
     w.set_source_path(fields.source_path.as_str().into());
     w.set_list_names(model(

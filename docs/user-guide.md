@@ -56,6 +56,10 @@ shortcut keep the formatting (HTML and RTF) beside the text. Such an item pastes
 plain text into Notepad, and its row shows a **Formatted** mark. In the editor, changing the text removes the
 formatting when you save, and the editor says so first; **Remove formatting** drops it and keeps the text.
 
+**Paste as plain text.** `Alt+Enter` or `Alt`+click pastes one item without its formatting. To do this every time for an
+item, turn on **Always paste as plain text** under **Pasting** in the editor (it also applies to items imported with
+that setting). A copy (`Shift+Enter`, or no target window) keeps the formatting either way.
+
 ### Templates
 
 A template is an item whose text has placeholders. Snipdeck fills them in when you use the item. In the
@@ -116,6 +120,7 @@ sensitive. A sensitive item:
 |---|---|
 | Click an item in the Panel | Pastes it into the target |
 | `Shift`+click, or `Shift+Enter` | Copies only, and does not paste |
+| `Alt`+click, or `Alt+Enter` | Pastes as plain text: the formatting is left out for this one paste (Panel and Picker) |
 | `Enter` on the selected row | Same as a click |
 | Press `Alt+1` to `Alt+9` | Uses the row with that number (digits without `Alt` are search text) |
 | Click a pinned chip | Uses that item |
@@ -135,7 +140,7 @@ and the start of the content. It opens one line below your caret, so it covers n
 nor the next one. **Settings, Panel, Picker position** moves it above, to the right or to the left of the caret;
 it switches to the opposite side when there is no room. Where an app shows no caret it opens at the mouse.
 
-- `Up`, `Down`, `PageUp`, `PageDown` move. `Enter` pastes. `Shift+Enter` copies.
+- `Up`, `Down`, `PageUp`, `PageDown` move. `Enter` pastes. `Shift+Enter` copies. `Alt+Enter` pastes as plain text.
 - `Tab` and `Shift+Tab` change where it searches: **All**, **This board** or **Pinned**.
 - `Alt+1` to `Alt+9` use that row, whatever the box holds. Digits without `Alt` are typed into the search.
 - `Ctrl+E` edits the selected item. `Esc` closes the Picker.
@@ -524,6 +529,7 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Anywhere | `Ctrl+Shift+U` | Paste next, or the next item of a paste stack (Supporter; not registered on the Free plan) |
 | Panel | `Up`, `Down`, `PageUp`, `PageDown` | Move the selection |
 | Panel | `Enter`, `Shift+Enter` | Use, or copy only |
+| Panel | `Alt+Enter` | Paste as plain text |
 | Panel | `Alt+1` to `Alt+9` | Use that row (digits without `Alt` are search text) |
 | Panel | `Ctrl+Tab`, `Ctrl+Shift+Tab` | Next or previous list |
 | Panel | `Ctrl+F` | Focus the search box |
@@ -545,6 +551,7 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Panel | `Menu`, `Shift+F10` | Open the item menu |
 | Panel | `Esc` | Clear the search; with nothing to clear, hide the Panel |
 | Picker | `Tab`, `Shift+Tab` | Change scope |
+| Picker | `Alt+Enter` | Paste as plain text |
 | Picker | `Alt+1` to `Alt+9` | Use that row |
 | Picker | `Ctrl+E`, `Esc` | Edit, close |
 | Main window | `Ctrl+K`, `Ctrl+Shift+P` | Commands |

@@ -179,6 +179,7 @@ where
             ItemTarget::New => {
                 let mut item = Item::new(list_id, title, kind, now);
                 item.sensitive = sensitive;
+                item.always_plain = input.always_plain;
                 item.label = input.label;
                 item.tags = tags.ticked;
                 item.preview = preview_of(is_text, text.as_deref(), sensitive);
@@ -210,6 +211,7 @@ where
                     item.list_id = list_id;
                     item.tags = tags.ticked;
                     item.sensitive = sensitive;
+                    item.always_plain = input.always_plain;
                     item.label = input.label;
                     item.updated_at = now;
                     // The preview follows the text on screen when the text itself is unchanged.

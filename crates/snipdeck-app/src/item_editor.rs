@@ -10,7 +10,7 @@ use std::{fs, io::Read, path::Path};
 
 use snipdeck_core::{
     Content, Feature, FileEntry, Inline, ItemKind, ItemLabel,
-    template::{Template, TemplateError},
+    template::{Template, TemplateError, TemplateErrorKind},
 };
 use snipdeck_platform::system_look::HighContrast;
 
@@ -25,10 +25,11 @@ pub const EDIT_LIMIT_BYTES: usize = 16 * 1024;
 pub const TITLE_MAX_CHARS: usize = 200;
 
 /// The largest file an Image or File item takes. It is the largest entry a `.snipdeck` archive
-/// reads back, so an item that is saved can always be exported and restored.
+/// reads back less the envelope a sensitive item's payload gains, so an item that is saved can
+/// always be exported and restored, sensitive or not.
 #[must_use]
 pub fn max_attachment_bytes() -> u64 {
-    snipdeck_portable::Limits::default().max_entry_bytes
+    snipdeck_portable::Limits::default().max_attachment_bytes()
 }
 
 /// The largest picture the editor decodes to show a preview, in pixels.
@@ -82,12 +83,24 @@ pub struct EditorInput {
     pub content: String,
     /// The Sensitive switch.
     pub sensitive: bool,
+    /// The "Always paste as plain text" switch (SPEC 5.1a).
+    pub always_plain: bool,
     /// The list chosen: an index into [`ItemEditorView::list_names`].
     pub list_index: usize,
     /// The path field of a new Image or File item.
     pub source_path: String,
     /// The colour label chosen, if any.
     pub label: Option<ItemLabel>,
+}
+
+/// What is wrong with a template, as data: the words come from the UI's `TemplateTexts`, so they
+/// follow the selected language.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TemplateProblem {
+    /// The template is sensitive, so the parser's explanation (which quotes the text) is not given.
+    Sensitive,
+    /// The parser's finding.
+    Parse(TemplateErrorKind),
 }
 
 /// Why the editor refuses something. The words are `wording::editor_problem_text`.
@@ -115,8 +128,8 @@ pub enum EditorProblem {
     LinkNeedsScheme,
     /// A link with a space or a line break in it.
     LinkHasSpace,
-    /// The template does not parse; carries the parser's own explanation.
-    Template(String),
+    /// The template does not parse; carries what is wrong, worded by `wording` in the UI language.
+    Template(TemplateProblem),
     /// The text uses something Supporter (a prompted placeholder).
     NeedsPro(Feature),
     /// No file chosen.
@@ -360,7 +373,7 @@ pub fn check_template(
     introduced: bool,
 ) -> Result<(), EditorProblem> {
     let template = Template::parse(text)
-        .map_err(|e: TemplateError| EditorProblem::Template(e.kind.to_string()))?;
+        .map_err(|e: TemplateError| EditorProblem::Template(TemplateProblem::Parse(e.kind)))?;
     if introduced && !prompted_allowed && template.requires(Feature::PromptedFields) {
         return Err(EditorProblem::NeedsPro(Feature::PromptedFields));
     }
@@ -422,7 +435,7 @@ pub fn read_source(kind: ItemKind, path: &str) -> Result<Source, EditorProblem> 
     let limit = max_attachment_bytes();
     if meta.len() > limit {
         return Err(EditorProblem::SourceTooLarge {
-            max_mb: limit / (1024 * 1024),
+            max_mb: limit.div_ceil(1024 * 1024),
         });
     }
     let name = canonical

@@ -14,7 +14,7 @@ use snipdeck_core::{
 
 use crate::{
     fill::{FieldKind, FillModel},
-    item_editor::{self, EditorInput, EditorProblem},
+    item_editor::{self, EditorInput, EditorProblem, TemplateProblem},
 };
 
 /// Words the preview puts into sample output; the caller passes them translated.
@@ -65,9 +65,6 @@ pub struct CardPreview {
     /// Why the expansion or the link cannot be shown (the same refusal Save would give).
     pub problem: Option<EditorProblem>,
 }
-
-/// What the note says of a sensitive template that does not parse: nothing it could quote.
-const SENSITIVE_WHY: &str = "a placeholder is not valid";
 
 /// The card for `input`. `now` is the moment `{date}` and `{time}` show; `tz` and `locale` are
 /// the user's. `prompted_allowed` is false when Save would refuse a prompted placeholder here
@@ -124,9 +121,9 @@ pub fn card_of(
             // The parser's explanation quotes the text (`unknown placeholder {hunter2}`): a sensitive
             // item's note says nothing of it.
             Err(_) if sensitive => {
-                card.problem = Some(EditorProblem::Template(SENSITIVE_WHY.to_owned()));
+                card.problem = Some(EditorProblem::Template(TemplateProblem::Sensitive));
             }
-            Err(e) => card.problem = Some(EditorProblem::Template(e.kind.to_string())),
+            Err(e) => card.problem = Some(EditorProblem::Template(TemplateProblem::Parse(e.kind))),
         },
         _ => {}
     }
@@ -207,6 +204,7 @@ mod tests {
             title: title.to_owned(),
             content: content.to_owned(),
             sensitive: false,
+            always_plain: false,
             list_index: 0,
             source_path: String::new(),
             label: None,
@@ -325,6 +323,7 @@ mod secret_tests {
             title: title.to_owned(),
             content: content.to_owned(),
             sensitive: true,
+            always_plain: false,
             list_index: 0,
             source_path: String::new(),
             label: None,
@@ -393,6 +392,7 @@ mod secret_tests {
             title: "t".to_owned(),
             content: "Dear {field:Name}".to_owned(),
             sensitive: false,
+            always_plain: false,
             list_index: 0,
             source_path: String::new(),
             label: None,

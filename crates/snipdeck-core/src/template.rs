@@ -427,6 +427,49 @@ pub struct TemplateError {
     pub kind: TemplateErrorKind,
 }
 
+/// Every placeholder as it is written, for the "unknown placeholder" message.
+pub const PLACEHOLDER_LIST: &str = "{uuid}, {date}, {time}, {datetime:FORMAT}, {clipboard}, \
+     {cursor}, {field:Name}, {field:Name|default}, {choice:Name|a|b}, \
+     {multiline:Name|default}, {pickdate:Name|FORMAT} and {optional:Name}...{/optional}";
+
+/// What to write instead of an offset unit Snipdeck does not know.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnitHint {
+    /// `m`: months or minutes?
+    MonthOrMinute,
+    /// `day`, `days`.
+    Days,
+    /// `week`, `weeks`, `wk`.
+    Weeks,
+    /// `month`, `months`.
+    Months,
+    /// `year`, `years`, `yr`, `yrs`.
+    Years,
+    /// `hour`, `hours`, `hr`, `hrs`.
+    Hours,
+    /// `minute`, `minutes`, `mins`.
+    Minutes,
+    /// Anything else: the list of units.
+    AnyUnit,
+}
+
+impl UnitHint {
+    /// The hint in English, with the units in backticks.
+    #[must_use]
+    pub const fn text(self) -> &'static str {
+        match self {
+            Self::MonthOrMinute => "`mo` for months or `min` for minutes",
+            Self::Days => "`d` for days",
+            Self::Weeks => "`w` for weeks",
+            Self::Months => "`mo` for months",
+            Self::Years => "`y` for years",
+            Self::Hours => "`h` for hours",
+            Self::Minutes => "`min` for minutes",
+            Self::AnyUnit => "one of d, w, mo, y, h, min",
+        }
+    }
+}
+
 /// What is wrong with a template.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TemplateErrorKind {
@@ -493,7 +536,7 @@ pub enum TemplateErrorKind {
         /// The unit as written.
         found: String,
         /// What to write instead.
-        hint: &'static str,
+        hint: UnitHint,
     },
     /// An offset over its unit's bound.
     OffsetOutOfRange {
@@ -514,7 +557,9 @@ pub enum TemplateErrorKind {
     },
 }
 
-fn usage(keyword: &str) -> &'static str {
+/// How a placeholder is written (`{date}`, `{field:Name}`), or "" for an unknown keyword.
+#[must_use]
+pub fn usage(keyword: &str) -> &'static str {
     match keyword {
         "uuid" => "{uuid}",
         "date" => "{date}",
@@ -560,12 +605,9 @@ impl fmt::Display for TemplateErrorKind {
                 if let Some(keyword) = suggestion {
                     write!(f, ", did you mean `{}`?", usage(keyword))?;
                 }
-                f.write_str(
-                    ". Placeholders are {uuid}, {date}, {time}, {datetime:FORMAT}, {clipboard}, \
-                     {cursor}, {field:Name}, {field:Name|default}, {choice:Name|a|b}, \
-                     {multiline:Name|default}, {pickdate:Name|FORMAT} and \
-                     {optional:Name}...{/optional}. \
-                     To write a literal brace, double it: {{ or }}",
+                write!(
+                    f,
+                    ". Placeholders are {PLACEHOLDER_LIST}. To write a literal brace, double it: {{{{ or }}}}"
                 )
             }
             Self::UnexpectedArgument { placeholder } => {
@@ -591,7 +633,7 @@ impl fmt::Display for TemplateErrorKind {
                 f.write_str("an offset is a sign, a number and a unit, like `+3d` or `-90min`")
             }
             Self::UnknownOffsetUnit { found, hint } => {
-                write!(f, "unknown offset unit `{found}`; use {hint}")
+                write!(f, "unknown offset unit `{found}`; use {}", hint.text())
             }
             Self::OffsetOutOfRange { unit, max } => {
                 write!(f, "an offset in `{unit}` can be at most {max}")
@@ -1338,16 +1380,16 @@ fn parse_offsets(text: &str, at: usize) -> Result<Vec<Offset>, TemplateError> {
 }
 
 /// What to write instead of the unit `found`.
-fn unit_hint(found: &str) -> &'static str {
+fn unit_hint(found: &str) -> UnitHint {
     match found.to_ascii_lowercase().as_str() {
-        "m" => "`mo` for months or `min` for minutes",
-        "day" | "days" => "`d` for days",
-        "week" | "weeks" | "wk" => "`w` for weeks",
-        "month" | "months" => "`mo` for months",
-        "year" | "years" | "yr" | "yrs" => "`y` for years",
-        "hour" | "hours" | "hr" | "hrs" => "`h` for hours",
-        "minute" | "minutes" | "mins" => "`min` for minutes",
-        _ => "one of d, w, mo, y, h, min",
+        "m" => UnitHint::MonthOrMinute,
+        "day" | "days" => UnitHint::Days,
+        "week" | "weeks" | "wk" => UnitHint::Weeks,
+        "month" | "months" => UnitHint::Months,
+        "year" | "years" | "yr" | "yrs" => UnitHint::Years,
+        "hour" | "hours" | "hr" | "hrs" => UnitHint::Hours,
+        "minute" | "minutes" | "mins" => UnitHint::Minutes,
+        _ => UnitHint::AnyUnit,
     }
 }
 

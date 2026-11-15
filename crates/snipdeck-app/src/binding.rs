@@ -842,6 +842,10 @@ where
             let used = ctl.activate_row(index(i), UseMode::Copy);
             ctl.after_use(&used)
         });
+        wire_effects!(on_row_plain, |ctl, i| {
+            let used = ctl.activate_row(index(i), UseMode::PastePlain);
+            ctl.after_use(&used)
+        });
         wire_effects!(on_quick_use, |ctl, n| {
             let used = ctl.quick_use(u8::try_from(n).unwrap_or(0));
             ctl.after_use(&used)

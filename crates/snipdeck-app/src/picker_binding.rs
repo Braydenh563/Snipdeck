@@ -216,6 +216,8 @@ where
             .use_row(index(i), UseMode::Paste));
         wire!(on_row_copied, |core, i| core
             .use_row(index(i), UseMode::Copy));
+        wire!(on_row_plain, |core, i| core
+            .use_row(index(i), UseMode::PastePlain));
         wire!(on_quick_use, |core, n| core.use_number(n));
         wire!(on_selection_moved, |core, delta| core.act(
             |ctl| ctl.picker_move(isize::try_from(delta).unwrap_or(0))
