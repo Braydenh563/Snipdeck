@@ -247,6 +247,7 @@ fn start() -> (MainWindow, Log) {
 macro_rules! ui_tests {
     ($(fn $name:ident() $body:block)*) => {
         $(
+            #[test]
             fn $name() {
                 on_ui_thread(|| $body);
             }
