@@ -29,7 +29,17 @@ pub struct Limits {
     pub max_items: usize,
 }
 
+/// What encrypting a payload adds to it (`SNENC2` 6 + nonce 24 + tag 16 = 46 bytes), rounded up.
+pub const ENVELOPE_OVERHEAD_BYTES: u64 = 64;
+
 impl Limits {
+    /// The largest attachment (one file, or one picture) that always fits in an entry, sensitive
+    /// or not: [`Limits::max_entry_bytes`] less [`ENVELOPE_OVERHEAD_BYTES`].
+    #[must_use]
+    pub const fn max_attachment_bytes(&self) -> u64 {
+        self.max_entry_bytes.saturating_sub(ENVELOPE_OVERHEAD_BYTES)
+    }
+
     /// Entries at or below this size are exempt from the ratio check: they cannot do harm, and
     /// a 5 MB text of repeated lines legitimately compresses by more than 500.
     pub(crate) const RATIO_FLOOR: u64 = TEXT_LIMIT;

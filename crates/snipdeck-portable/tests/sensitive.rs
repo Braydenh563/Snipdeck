@@ -665,3 +665,105 @@ fn an_encrypted_payload_on_an_item_marked_not_sensitive_is_refused() {
         assert_same(&snapshot(&fresh), &before);
     }
 }
+
+// ---- audit M4: the cap of an attachment leaves room for the envelope ----
+
+fn vault_with_file(len: usize) -> Store {
+    let mut s = store();
+    let b = board(&mut s, "B");
+    let l = list(&mut s, b.id, "L");
+    let mut secret = Item::new(l.id, "Passport scan".to_owned(), ItemKind::File, at(1));
+    secret.sensitive = true;
+    let file = FileEntry::new("p.bin", s.put(noise(len, 5)).unwrap()).unwrap();
+    s.insert_item(
+        &secret,
+        &Formats::new(vec![Format::Files(vec![file])]).unwrap(),
+        Placement::Last,
+    )
+    .unwrap();
+    s
+}
+
+fn small_entries() -> Limits {
+    Limits {
+        max_entry_bytes: 100_000,
+        ..Limits::default()
+    }
+}
+
+#[test]
+fn a_sensitive_file_of_the_largest_attachment_size_exports_encrypted() {
+    let key = DataKey::generate().unwrap();
+    let limits = small_entries();
+    let s = vault_with_file(usize::try_from(limits.max_attachment_bytes()).unwrap());
+    let mut out = Cursor::new(Vec::new());
+    snipdeck_portable::export_to_writer(
+        &s,
+        at(100),
+        &ExportOptions {
+            sensitive: SensitivePolicy::Encrypt(&key),
+            limits,
+        },
+        &mut out,
+    )
+    .expect("the envelope fits in the entry");
+}
+
+#[test]
+fn an_item_over_the_entry_limit_is_named_instead_of_failing_without_a_word() {
+    let key = DataKey::generate().unwrap();
+    let limits = small_entries();
+    let s = vault_with_file(usize::try_from(limits.max_entry_bytes).unwrap() + 1);
+    let mut out = Cursor::new(Vec::new());
+    let err = snipdeck_portable::export_to_writer(
+        &s,
+        at(100),
+        &ExportOptions {
+            sensitive: SensitivePolicy::Encrypt(&key),
+            limits,
+        },
+        &mut out,
+    )
+    .expect_err("too big");
+    assert!(
+        matches!(&err, Error::ItemTooLarge { title, .. } if title == "Passport scan"),
+        "{err:?}"
+    );
+}
+
+#[test]
+fn the_item_that_takes_the_total_over_the_limit_is_named() {
+    let limits = Limits {
+        max_entry_bytes: 100_000,
+        max_total_bytes: 150_000,
+        ..Limits::default()
+    };
+    let mut s = store();
+    let b = board(&mut s, "B");
+    let l = list(&mut s, b.id, "L");
+    for (n, title) in ["First file", "Second file"].into_iter().enumerate() {
+        let item = Item::new(l.id, title.to_owned(), ItemKind::File, at(1));
+        let file = FileEntry::new("f.bin", s.put(noise(80_000, n as u64 + 1)).unwrap()).unwrap();
+        s.insert_item(
+            &item,
+            &Formats::new(vec![Format::Files(vec![file])]).unwrap(),
+            Placement::Last,
+        )
+        .unwrap();
+    }
+    let mut out = Cursor::new(Vec::new());
+    let err = snipdeck_portable::export_to_writer(
+        &s,
+        at(100),
+        &ExportOptions {
+            limits,
+            ..ExportOptions::default()
+        },
+        &mut out,
+    )
+    .expect_err("the second file passes the total");
+    assert!(
+        matches!(&err, Error::ItemTooLarge { what: "total uncompressed size", .. }),
+        "{err:?}"
+    );
+}

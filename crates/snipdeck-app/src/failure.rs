@@ -20,6 +20,8 @@ pub enum Cause {
     NotArchive,
     /// The file was written by a newer Snipdeck.
     TooNew,
+    /// An item, or the attachments together, are too big for a backup or an export.
+    TooBig,
     /// Nothing more specific is known.
     Other,
 }
@@ -35,6 +37,7 @@ impl Cause {
             Self::Locked => 3,
             Self::NotArchive => 4,
             Self::TooNew => 5,
+            Self::TooBig => 6,
         }
     }
 
@@ -62,6 +65,7 @@ impl Cause {
             Portable::Io(e) | Portable::File { source: e, .. } => Self::of_io(e),
             Portable::Sqlite(e) => Self::of_trouble(Trouble::of_sqlite(e)),
             Portable::FormatTooNew { .. } => Self::TooNew,
+            Portable::ItemTooLarge { .. } => Self::TooBig,
             Portable::NotAnArchive(_)
             | Portable::UnsafeEntry { .. }
             | Portable::LimitExceeded { .. }
@@ -132,6 +136,17 @@ mod tests {
     }
 
     #[test]
+    fn an_item_too_big_for_the_archive_is_told_apart() {
+        let error = Portable::ItemTooLarge {
+            title: "Scan".into(),
+            what: "uncompressed entry size",
+            limit: 1,
+        };
+        assert_eq!(Cause::of_portable(&error), Cause::TooBig);
+        assert!(error.to_string().contains("Scan"), "the log names the item");
+    }
+
+    #[test]
     fn every_cause_has_its_own_code() {
         let codes = [
             Cause::Other,
@@ -140,8 +155,9 @@ mod tests {
             Cause::Locked,
             Cause::NotArchive,
             Cause::TooNew,
+            Cause::TooBig,
         ]
         .map(Cause::code);
-        assert_eq!(codes, [0, 1, 2, 3, 4, 5]);
+        assert_eq!(codes, [0, 1, 2, 3, 4, 5, 6]);
     }
 }

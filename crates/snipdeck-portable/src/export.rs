@@ -187,7 +187,21 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
                     let formats = self.lib.formats(item.id)?;
                     let mut format_dtos = Vec::with_capacity(formats.iter().count());
                     for format in &formats {
-                        format_dtos.push(self.format_dto(item.id, format, key)?);
+                        format_dtos.push(self.format_dto(item.id, format, key).map_err(
+                            |e| match e {
+                                Error::LimitExceeded {
+                                    what:
+                                        what @ ("uncompressed entry size"
+                                        | "total uncompressed size"),
+                                    limit,
+                                } => Error::ItemTooLarge {
+                                    title: item.title.clone(),
+                                    what,
+                                    limit,
+                                },
+                                other => other,
+                            },
+                        )?);
                     }
                     used_tags.extend(item.tags.iter().copied());
                     items.push(ItemDto {

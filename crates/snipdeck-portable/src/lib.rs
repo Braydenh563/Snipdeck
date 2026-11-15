@@ -56,6 +56,6 @@ pub use importers::{
     HistoryEntry, MEMORY_BUDGET, import_beeftext, import_copyq_json, import_ditto, import_entries,
     import_espanso, import_folder, import_phraseexpress_csv, import_textexpander_csv,
 };
-pub use limits::{Limits, TEXT_LIMIT};
+pub use limits::{ENVELOPE_OVERHEAD_BYTES, Limits, TEXT_LIMIT};
 pub use plan::Library;
 pub use report::{ImportReport, MAX_WARNINGS, Note, Warning};
