@@ -52,6 +52,15 @@ impl Limits {
         self.max_entry_bytes.saturating_sub(ENVELOPE_OVERHEAD_BYTES)
     }
 
+    /// What the cap for the entry called `name` is called in a [`crate::Error::LimitExceeded`].
+    pub(crate) fn entry_cap_what(&self, name: &str) -> &'static str {
+        if name == crate::archive::ITEMS {
+            "items.json size"
+        } else {
+            "uncompressed entry size"
+        }
+    }
+
     /// The size cap for the entry called `name`: `items.json` has its own cap
     /// ([`Limits::max_json_bytes`]); every other entry is held to [`Limits::max_entry_bytes`].
     pub(crate) fn entry_cap(&self, name: &str) -> u64 {
