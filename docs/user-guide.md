@@ -350,7 +350,7 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   `Snipdeck-library-20261018.snipdeck`. **Erase library** deletes every board, list, item and backup after
   you type `DELETE`. Your settings stay. Tick **Also forget the encryption key** only if you do not
   need encrypted items in old exports.
-- **Support.** **Support Snipdeck ☕** opens a donation page in your browser. It is optional, keeps the app free
+- **Support.** **Support Snipdeck** opens a donation page in your browser. It is optional
   and unlocks nothing; Snipdeck handles no payment data. The same link is in Help ▸ About and the command
   palette. See [Free, with an optional coffee](#free-with-an-optional-coffee).
 
@@ -451,8 +451,8 @@ Snipdeck is free software, and every feature is on for everyone, on every build:
 ask for a value or a choice, a master password, paste stack and Paste next. There are no tiers, no licence keys
 and no limits, and nothing nags you.
 
-If you like it, **Support Snipdeck ☕** (Settings ▸ Support, Help ▸ About, or the command palette) opens
-buymeacoffee.com/braydenh563 in your browser. That is optional, it keeps the app going and it unlocks nothing.
+If you like it, **Support Snipdeck** (Settings ▸ Support, Help ▸ About, or the command palette) opens
+buymeacoffee.com/braydenh563 in your browser. That is optional and unlocks nothing.
 Snipdeck sends nothing and handles no payment data; the page does.
 
 ## Import and export

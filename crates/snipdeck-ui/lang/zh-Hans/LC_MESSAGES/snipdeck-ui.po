@@ -1909,8 +1909,8 @@ msgstr "打开"
 msgid "Opens in your browser."
 msgstr "在浏览器中打开。"
 
-msgid "Optional. Snipdeck is free and stays free. This link opens a donation page in your browser, keeps the app going and unlocks nothing."
-msgstr "自愿。Snipdeck 免费，并将一直免费。此链接会在浏览器中打开捐赠页面，帮助这个应用继续维护，不会解锁任何功能。"
+msgid "Optional. Snipdeck is free and stays free. This opens a donation page in your browser and unlocks nothing."
+msgstr "自愿。Snipdeck 免费，并将一直免费。这会在浏览器中打开捐赠页面，不会解锁任何功能。"
 
 msgid "Optional: the first line of the text is used"
 msgstr "可选：使用文本的第一行"
@@ -2763,8 +2763,8 @@ msgstr "输入时推荐片段"
 msgid "Support"
 msgstr "支持"
 
-msgid "Support Snipdeck ☕"
-msgstr "支持 Snipdeck ☕"
+msgid "Support Snipdeck"
+msgstr "支持 Snipdeck"
 
 msgid "Surprise"
 msgstr "惊讶"

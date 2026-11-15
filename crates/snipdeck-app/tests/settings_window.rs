@@ -2701,7 +2701,7 @@ fn the_support_row_opens_exactly_the_coffee_page_and_changes_nothing() {
         let r = rig();
         let before = r.ctl.borrow().settings().clone();
         element(&r.ui, "Support", AccessibleRole::Groupbox);
-        element(&r.ui, "Support Snipdeck \u{2615}", AccessibleRole::Groupbox);
+        element(&r.ui, "Support Snipdeck", AccessibleRole::Groupbox);
         assert!(r.host.urls.borrow().is_empty(), "nothing opens by itself");
         r.ui.invoke_support_requested();
         assert_eq!(

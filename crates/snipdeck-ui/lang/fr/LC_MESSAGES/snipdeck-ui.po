@@ -1915,8 +1915,8 @@ msgstr "Ouvre"
 msgid "Opens in your browser."
 msgstr "S'ouvre dans votre navigateur."
 
-msgid "Optional. Snipdeck is free and stays free. This link opens a donation page in your browser, keeps the app going and unlocks nothing."
-msgstr "Facultatif. Snipdeck est gratuit et le restera. Ce lien ouvre une page de dons dans votre navigateur, aide à faire vivre l'application et ne débloque rien."
+msgid "Optional. Snipdeck is free and stays free. This opens a donation page in your browser and unlocks nothing."
+msgstr "Facultatif. Snipdeck est gratuit et le restera. Ceci ouvre une page de dons dans votre navigateur et ne débloque rien."
 
 msgid "Optional: the first line of the text is used"
 msgstr "Facultatif : la première ligne du texte est utilisée"
@@ -2771,8 +2771,8 @@ msgstr "Suggérer des extraits à la frappe"
 msgid "Support"
 msgstr "Soutenir"
 
-msgid "Support Snipdeck ☕"
-msgstr "Soutenir Snipdeck ☕"
+msgid "Support Snipdeck"
+msgstr "Soutenir Snipdeck"
 
 msgid "Surprise"
 msgstr "Surprise"

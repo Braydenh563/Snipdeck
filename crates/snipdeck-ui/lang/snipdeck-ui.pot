@@ -2547,7 +2547,7 @@ msgid "Opens in your browser."
 msgstr ""
 
 #: ui/help.slint:476 ui/settings.slint:1689
-msgid "Optional. Snipdeck is free and stays free. This link opens a donation page in your browser, keeps the app going and unlocks nothing."
+msgid "Optional. Snipdeck is free and stays free. This opens a donation page in your browser and unlocks nothing."
 msgstr ""
 
 #: ui/editors.slint:1329
@@ -3687,7 +3687,7 @@ msgid "Support"
 msgstr ""
 
 #: ui/command_texts.slint:33 ui/help.slint:475 ui/settings.slint:489 ui/settings.slint:1688
-msgid "Support Snipdeck ☕"
+msgid "Support Snipdeck"
 msgstr ""
 
 #: ui/symbols.slint:61

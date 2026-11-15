@@ -616,11 +616,15 @@ fn hotkey_health_in_settings_and_the_welcome_tour() {
 #[test]
 fn settings_search_filters_rows_and_hides_empty_sections() {
     use slint::Global;
-    for (query, name) in [
-        ("tray", "settings-search-tray-light"),
-        ("zzzz", "settings-search-none-light"),
+    for (query, dark, name) in [
+        ("tray", false, "settings-search-tray-light"),
+        ("zzzz", false, "settings-search-none-light"),
+        // The optional Support section (it sits at the very end of the page).
+        ("donate", false, "settings-search-support-light"),
+        ("donate", true, "settings-search-support-dark"),
     ] {
         let h = Harness::new(SettingsPage::new, SETTINGS.0, SETTINGS.1);
+        h.component.set_dark(dark);
         fixture::settings(&h.component);
         snipdeck_ui::SettingsFilter::get(&h.component)
             .on_matches(|text, query| text.to_lowercase().contains(&query.to_lowercase()));

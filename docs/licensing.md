@@ -6,7 +6,7 @@ build. There is no paid tier, no Supporter, no licence key and no entitlement ch
 
 ## The optional support link
 
-**Support Snipdeck ☕** is in Help ▸ About, Settings ▸ Support and the command palette. It opens
+**Support Snipdeck** is in Help ▸ About, Settings ▸ Support and the command palette. It opens
 `https://buymeacoffee.com/braydenh563` in the default browser (the same open-URL path as Help's other links). The
 text says it is optional, keeps the app free and unlocks nothing. The app handles no payment data and sends nothing;
 the constant is `help_binding::SUPPORT_URL`.

@@ -2,7 +2,7 @@
 
 The Supporter tier is gone from every build: no licence key, no `licence`/`licence_store`/entitlement code, no tier
 gating or board limit, no Get Supporter dialog or badges, no licence issuer tool or key guard. An optional
-"Support Snipdeck ☕" link (Settings ▸ Support, Help ▸ About, command palette) opens
+"Support Snipdeck" link (Settings ▸ Support, Help ▸ About, command palette) opens
 `https://buymeacoffee.com/braydenh563` (`help_binding::SUPPORT_URL`) and unlocks nothing. Old settings and a stale
 `licence.key` still load. Older entries below that mention Supporter, licence keys or `SNIPDECK_LICENCE_PUBLIC_KEY`
 are history. The owner must also edit the release workflows (see the branch report); `docs/licensing.md` has the

@@ -156,7 +156,7 @@ Owner decision 2026-11-15: everything is free on every build. There is no paid t
 entitlement check and no limit (boards, prompted placeholders, master password, paste stack, Paste next and
 floating lists are always on). The code is GPL-3.0.
 
-**Support Snipdeck ☕** is an optional link, in Help ▸ About, Settings ▸ Support and the command palette. It opens
+**Support Snipdeck** is an optional link, in Help ▸ About, Settings ▸ Support and the command palette. It opens
 `https://buymeacoffee.com/braydenh563` in the default browser through the same open-URL path as Help's other links,
 and its text says it is optional, keeps the app free and unlocks nothing. The app handles no payment data, sends
 nothing, and never nags (no banners, countdowns or prompts). Settings and libraries written by builds that had a

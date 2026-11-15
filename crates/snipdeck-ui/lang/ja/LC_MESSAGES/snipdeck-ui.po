@@ -1909,8 +1909,8 @@ msgstr "開く先"
 msgid "Opens in your browser."
 msgstr "ブラウザーで開きます。"
 
-msgid "Optional. Snipdeck is free and stays free. This link opens a donation page in your browser, keeps the app going and unlocks nothing."
-msgstr "任意です。Snipdeck は無料で、これからも無料です。このリンクはブラウザーで寄付ページを開き、アプリの継続を支えますが、何も解放されません。"
+msgid "Optional. Snipdeck is free and stays free. This opens a donation page in your browser and unlocks nothing."
+msgstr "任意です。Snipdeck は無料で、これからも無料です。ブラウザーで寄付ページを開きます。何も解放されません。"
 
 msgid "Optional: the first line of the text is used"
 msgstr "任意: テキストの1行目が使われます"
@@ -2763,8 +2763,8 @@ msgstr "入力中にスニペットを提案する"
 msgid "Support"
 msgstr "応援"
 
-msgid "Support Snipdeck ☕"
-msgstr "Snipdeck を応援する ☕"
+msgid "Support Snipdeck"
+msgstr "Snipdeck を応援する"
 
 msgid "Surprise"
 msgstr "驚き"
