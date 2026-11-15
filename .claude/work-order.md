@@ -23,8 +23,14 @@ started: 2026-11-14 13:40
 - [ ] Blind usability tests (Sonnet) on the merged build; fix
 - [ ] gate --full, CI green on PR #5, handover morning summary + retro
 
-## State 2026-11-15 (for the next context)
-- Pushed: 73df0541 (Windows CI green). Local, unpushed: audit fixes 62c2063a..fc6cface.
-- Opus audit (scratchpad/audit.md, 12) fixed; a Sonnet agent is finishing its lint cleanup, then fixing the Fable audit (scratchpad/fable-audit.md, F1-F13: 1 high, 2 med, 10 low).
-- Then: full gate (--no-fail-fast tests + clippy 1.99.1 + Windows-target clippy -p snipdeck-platform), push, merge claude/all-free when the store worker (session_01NKjURwKPmGuEHMfw1o6HF4) reports, blind usability tests (Sonnet), handover + retro.
+## State 2026-11-15 late (for the next context)
+- Pushed: audit fixes up to 2a46... (origin has up to 2a469639? check `git log origin/claude/compassionate-pascal-pod8ux -1`). Local unpushed: all-free merge 3c2d9c44 + G1 e4c60f5f + pro() test fix da0a5971 + chores.
+- gate3 (`scripts/gate.sh --changed` on merged branch) running in background -> scratchpad/gate3.log; if `failed: none`, push (retry x4).
+- Fable round 2 complete: scratchpad/fable-audit-2.md, 49 findings G1-G49 (G1 fixed). Fixers (Sonnet, worktrees under .claude/worktrees/agent-*, base 450448ec):
+  - fix/fable2-data: G2-G4, G6-G11, G14, G19, G20, G25, G28-G33
+  - fix/fable2-ui: G5, G12, G13, G15-G18, G21, G24, G26, G27, G34-G43 (incl. all 234 untranslated strings)
+  - fix/fable2-tail: G44-G49
+  Each reports branch head; then reviewer (no checkout), merge into PR branch, gate, push.
+- Cloud workers: edge-polish (session_01NKjURwKPmGuEHMfw1o6HF4), popup-dismiss then ui-polish-2 (session_01NKjURt5yHRvroJQUg7zQeb); not pushed yet at 08:20.
+- Then: open items (scratchpad/open-items.md), README/docs/screenshots refresh, blind tests, gate --full, CI, handover morning summary, retro.
 - Disk: clean stale test binaries in /tmp/target-panel/debug/deps if under 2 GB free.
