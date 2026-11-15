@@ -1,6 +1,6 @@
 mode: continue
 status: active
-max-continues: 80   # raised 2026-11-15: owner "keep working autonomously"; waits on gate/workers use continues
+max-continues: 80
 max-idle-minutes: 60
 finish-up-line: 97%   # owner: "until 97% weekly usage"
 started: 2026-11-14 13:40
