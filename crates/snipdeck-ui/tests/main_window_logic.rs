@@ -2512,3 +2512,143 @@ ui_tests! {
         assert_eq!(take(&log), ["unlock"]);
     }
 }
+
+// ---- Palette scrolling -------------------------------------------------------------------------------
+
+/// Forty commands: more than the palette shows, so its list scrolls.
+fn many_palette_rows(ui: &MainWindow) {
+    let labels: Vec<String> = (0..40).map(|i| format!("Command {i}")).collect();
+    let rows: Vec<(i32, &str, &[&str])> = labels
+        .iter()
+        .enumerate()
+        .map(|(i, l)| (i32::try_from(i).unwrap_or(0), l.as_str(), &[][..]))
+        .collect();
+    palette_rows(ui, &rows);
+}
+
+/// How far the palette list is scrolled, in px: read from the first row still in view (a row
+/// scrolled out of the viewport is not found), given where row 0 sat unscrolled and the row height.
+fn scrolled(ui: &MainWindow, top0: f32, row_h: f32) -> f32 {
+    (0..40u8)
+        .find_map(|i| {
+            all(ui, &format!("Command {i}"), AccessibleRole::ListItem)
+                .first()
+                .map(|e| top0 + row_h * f32::from(i) - e.absolute_position().y)
+        })
+        .expect("a row in view")
+}
+
+/// A wheel turn (one notch is 60px on the winit backend; a touchpad sends many small ones) over `at`,
+/// then the pointer moves a hair, as a hand on a touchpad does, so the row under it is hovered.
+fn wheel(ui: &MainWindow, at: LogicalPosition, delta_y: f32) {
+    ui.window().dispatch_event(WindowEvent::PointerScrolled {
+        position: at,
+        delta_x: 0.0,
+        delta_y,
+    });
+    mock_elapsed_time(std::time::Duration::from_millis(400));
+    settle();
+    ui.window().dispatch_event(WindowEvent::PointerMoved {
+        position: LogicalPosition::new(at.x, at.y + 0.5),
+    });
+    mock_elapsed_time(std::time::Duration::from_millis(50));
+    settle();
+}
+
+ui_tests! {
+    fn the_palette_list_scrolls_with_the_wheel_and_stays_where_it_was_scrolled() {
+        let (ui, _log) = start();
+        chord(ui.window(), &[Key::Control], "k");
+        settle();
+        many_palette_rows(&ui);
+        let first = find(&ui, "Command 0", AccessibleRole::ListItem);
+        let top0 = first.absolute_position().y;
+        let row_h = first.size().height;
+        let over = LogicalPosition::new(first.absolute_position().x + 40.0, top0 + row_h * 2.5);
+        ui.window().dispatch_event(WindowEvent::PointerMoved { position: over });
+        settle();
+
+        // Far enough that the row under the pointer is past the first screenful: the old list re-pinned the
+        // highlight (that row) to its bottom edge, so every notch from there on jumped back.
+        for notch in 1..=8u16 {
+            wheel(&ui, over, -60.0);
+            let now = scrolled(&ui, top0, row_h);
+            assert!(
+                (now - 60.0 * f32::from(notch)).abs() < 1.0,
+                "after {notch} notches the list is {} px down, got {now}",
+                60 * notch
+            );
+        }
+        wheel(&ui, over, 60.0);
+        assert!(
+            (scrolled(&ui, top0, row_h) - 420.0).abs() < 1.0,
+            "a notch back up returns 60px"
+        );
+    }
+
+    fn many_small_touchpad_deltas_scroll_the_palette_as_far_as_their_sum() {
+        let (ui, _log) = start();
+        chord(ui.window(), &[Key::Control], "k");
+        settle();
+        many_palette_rows(&ui);
+        let first = find(&ui, "Command 0", AccessibleRole::ListItem);
+        let top0 = first.absolute_position().y;
+        let row_h = first.size().height;
+        let over = LogicalPosition::new(first.absolute_position().x + 40.0, top0 + row_h * 2.5);
+        ui.window().dispatch_event(WindowEvent::PointerMoved { position: over });
+        settle();
+        // A precision touchpad: WM_MOUSEWHEEL with deltas of a few units of 120, so a few px each.
+        for _ in 0..120 {
+            wheel(&ui, over, -4.0);
+        }
+        let moved = scrolled(&ui, top0, row_h);
+        assert!((moved - 480.0).abs() < 1.0, "120 deltas of 4px scroll 480px, got {moved}");
+    }
+
+    fn the_keyboard_still_brings_the_highlighted_row_into_view_after_a_wheel_scroll() {
+        let (ui, _log) = start();
+        chord(ui.window(), &[Key::Control], "k");
+        settle();
+        many_palette_rows(&ui);
+        let first = find(&ui, "Command 0", AccessibleRole::ListItem);
+        let top0 = first.absolute_position().y;
+        let over = LogicalPosition::new(first.absolute_position().x + 40.0, top0 + first.size().height * 2.5);
+        ui.window().dispatch_event(WindowEvent::PointerMoved { position: over });
+        settle();
+        wheel(&ui, over, -600.0);
+        // Move the pointer off the list so it does not hover a row, then walk to the last command.
+        ui.window().dispatch_event(WindowEvent::PointerExited);
+        // The list wraps, so walk down until the footer says the last command is highlighted.
+        let at_last = |ui: &MainWindow| {
+            ElementHandle::find_by_accessible_label(ui, "Command 39, 40 of 40").next().is_some()
+        };
+        for _ in 0..40 {
+            if at_last(&ui) {
+                break;
+            }
+            press_key(&ui, Key::DownArrow);
+            settle();
+        }
+        assert!(at_last(&ui), "the last command is highlighted");
+        // The list's viewport: where row 0 sat before any scroll, 6 x 48px tall (the palette's cap).
+        let bottom = top0 + 288.0;
+        let last = find(&ui, "Command 39", AccessibleRole::ListItem);
+        let last_bottom = last.absolute_position().y + last.size().height;
+        assert!(
+            last_bottom <= bottom + 1.0 && last_bottom > bottom - last.size().height,
+            "the last row is in view at the bottom: {last_bottom} vs {bottom}"
+        );
+        for _ in 0..39 {
+            press_key(&ui, Key::UpArrow);
+        }
+        settle();
+        assert!(
+            ElementHandle::find_by_accessible_label(&ui, "Command 0, 1 of 40").next().is_some(),
+            "the first command is highlighted"
+        );
+        assert!(
+            scrolled(&ui, top0, first.size().height).abs() < 1.0,
+            "walking back up brings the first row back to the top"
+        );
+    }
+}

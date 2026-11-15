@@ -8,6 +8,7 @@
 //
 // Keyboard: Tab / Shift+Tab move between settings (the page scrolls to the focused one); each group of choices is
 // one tab stop with arrow keys. A shortcut recorder starts on Enter or Space and ends on Esc. Esc closes the page.
+import { TipLayer } from "components/tip-host.slint";
 import { Theme, Type, Space, Radius, Motion, Fonts, Palette, SystemLook } from "theme.slint";
 import { Icons } from "icons.slint";
 import { Button, ButtonSize, ButtonVariant } from "components/button.slint";
@@ -1723,4 +1724,7 @@ export component SettingsPage inherits Window {
         x: (root.width - self.width) / 2;
         y: root.height - self.height - Space.s4;
     }
+
+    // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
+    TipLayer {}
 }

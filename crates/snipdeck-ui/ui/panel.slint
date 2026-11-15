@@ -28,6 +28,7 @@
 //
 // Tooltips: every icon-only control reports hover and keyboard focus here; the Panel shows one
 // `Tooltip` after 500ms, and swaps it instantly while the pointer moves between controls.
+import { TipLayer } from "components/tip-host.slint";
 import { ListView } from "std-widgets.slint";
 import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette } from "theme.slint";
 import { Icons } from "icons.slint";
@@ -3377,4 +3378,7 @@ export component PanelWindow inherits Window {
         hovered(on) => { root.handle-hovered(on); }
         clicked => { root.handle-clicked(); }
     }
+
+    // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
+    TipLayer {}
 }

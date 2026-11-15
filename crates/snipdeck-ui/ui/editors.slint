@@ -12,6 +12,7 @@
 //     Dialog gives it, see README).
 //
 // Colour names and kind order are the host's mapping to its enums; they are listed next to each property.
+import { TipLayer } from "components/tip-host.slint";
 import { ListView } from "std-widgets.slint";
 import { Theme, Type, Space, Radius, Motion, Fonts, Palette, ListHue, SystemLook } from "theme.slint";
 import { Icons } from "icons.slint";
@@ -1544,6 +1545,9 @@ export component ItemEditor inherits Window {
             }
         }
     }
+
+    // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
+    TipLayer {}
 }
 
 // ---- List and board editors ----------------------------------------------------------------------
@@ -1999,6 +2003,9 @@ export component ListEditor inherits Window {
         delete-confirmed => { root.delete-confirmed(); }
         edited => { root.edited(); }
     }
+
+    // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
+    TipLayer {}
 }
 
 // Boards carry a name only in the data model today (snipdeck-core `Board`); colour and sort are shown because the
@@ -2054,6 +2061,9 @@ export component BoardEditor inherits Window {
         delete-confirmed => { root.delete-confirmed(); }
         edited => { root.edited(); }
     }
+
+    // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
+    TipLayer {}
 }
 
 // ---- Tag management ------------------------------------------------------------------------------
@@ -2270,4 +2280,7 @@ export component TagManager inherits Window {
             }
         }
     }
+
+    // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
+    TipLayer {}
 }

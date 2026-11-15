@@ -17,6 +17,7 @@
 //             Alt+Up / Alt+Down move the row within its list (`item-reorder-requested`)
 //   anywhere  Ctrl+F or / search, Ctrl+N new item, Ctrl+K (or Ctrl+Shift+P) the command palette, Ctrl+, Settings,
 //             Ctrl+/ the keyboard shortcuts, F1 the user guide
+import { TipLayer } from "components/tip-host.slint";
 import { ListView } from "std-widgets.slint";
 import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette, ListHue } from "theme.slint";
 import { Icons } from "icons.slint";
@@ -2744,17 +2745,6 @@ export component MainWindow inherits Window {
             root.tip-open = root.tip != "";
         }
     }
-    if root.tip != "": Tooltip {
-        text: root.tip;
-        open: root.tip-open;
-        limit-width: root.width - 2 * Space.s2;
-        width: self.preferred-width;
-        height: self.preferred-height;
-        // The window's edges win over the placement (max last).
-        x: max(Space.s2, root.toolbar-tip ? min(root.tip-x, root.width - self.width - Space.s2)
-            : min(root.tip-x - self.width / 2, root.width - self.width - Space.s2));
-        y: min(root.toolbar-tip ? root.bar-h - Space.s1 : root.card-tip-bottom + Space.s1, root.height - self.height - Space.s2);
-    }
 
     // ---- Overlays: a scrim that dismisses on click, then the menu --------------------------------
     if root.board-menu-open: TouchArea {
@@ -3030,4 +3020,20 @@ export component MainWindow inherits Window {
             clicked => { root.confirmed(); }
         }
     }
+
+    // A toolbar or row action's tooltip: after the overlays, so a menu or dialog never paints over it.
+    if root.tip != "": Tooltip {
+        text: root.tip;
+        open: root.tip-open;
+        limit-width: root.width - 2 * Space.s2;
+        width: self.preferred-width;
+        height: self.preferred-height;
+        // The window's edges win over the placement (max last).
+        x: max(Space.s2, root.toolbar-tip ? min(root.tip-x, root.width - self.width - Space.s2)
+            : min(root.tip-x - self.width / 2, root.width - self.width - Space.s2));
+        y: min(root.toolbar-tip ? root.bar-h - Space.s1 : root.card-tip-bottom + Space.s1, root.height - self.height - Space.s2);
+    }
+
+    // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
+    TipLayer {}
 }

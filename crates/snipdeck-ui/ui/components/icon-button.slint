@@ -1,7 +1,7 @@
 import { Theme, Radius, Space, Motion, SystemLook } from "../theme.slint";
 import { Icon } from "icon.slint";
 import { StateColor } from "state-color.slint";
-import { Tooltip } from "feedback.slint";
+import { TipHost } from "tip-host.slint";
 
 export enum IconButtonVariant { ghost, subtle }
 export enum IconButtonSize { sm, md }
@@ -42,6 +42,15 @@ export component IconButton inherits Rectangle {
     property <length> side: root.side-override > 0px ? root.side-override : (root.size == IconButtonSize.sm ? Space.hit-min : Space.hit) * root.k;
     property <bool> tip-wanted: root.own-tooltip && (root.has-hover || root.has-focus);
     property <bool> tip-open: false;
+    property <int> tip-id;
+    // The window's tooltip layer draws it (`TipLayer`, last in the window), so it is never under a later sibling or clipped.
+    changed tip-open => {
+        if (root.tip-open) {
+            root.tip-id = TipHost.show(root.tooltip, root.absolute-position.x, root.absolute-position.y, root.width, root.height);
+        } else {
+            TipHost.hide(root.tip-id);
+        }
+    }
     changed tip-wanted => {
         if (!root.tip-wanted) {
             root.tip-open = false;
@@ -101,7 +110,10 @@ export component IconButton inherits Rectangle {
 
     touch := TouchArea {
         enabled: root.enabled;
-        clicked => { root.clicked(); }
+        clicked => {
+            root.tip-open = false;
+            root.clicked();
+        }
     }
 
     scope := FocusScope {
@@ -109,20 +121,11 @@ export component IconButton inherits Rectangle {
         focus-on-click: false;
         key-pressed(event) => {
             if (event.text == " " || event.text == "\n") {
+                root.tip-open = false;
                 root.clicked();
                 return accept;
             }
             return reject;
         }
-    }
-
-    if root.tip-open: Tooltip {
-        text: root.tooltip;
-        open: true;
-        // Right-aligned to the button (it grows leftwards), but never past the window's left edge.
-        x: max(Space.s2 - root.absolute-position.x, min(0px, root.side - self.width));
-        y: root.height + Space.s1;
-        width: self.preferred-width;
-        height: self.preferred-height;
     }
 }
