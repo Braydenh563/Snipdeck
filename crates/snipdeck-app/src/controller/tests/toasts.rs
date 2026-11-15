@@ -569,7 +569,10 @@ fn clearing_picker_recents_empties_emoji_and_colours_and_says_so() {
             hex: "#3a7bd5".into(),
             used_at: 1,
         }];
-        s.symbols_recent = vec![snipdeck_symbols::RecentEntry { id: "emoji:grinning".into(), used_at: 1 }];
+        s.symbols_recent = vec![snipdeck_symbols::RecentEntry {
+            id: "emoji:grinning".into(),
+            used_at: 1,
+        }];
     });
     w.ctl.picker_recents_clear();
     assert!(w.ctl.settings().colours_recent.is_empty());

@@ -247,7 +247,16 @@ fn start() -> (MainWindow, Log) {
 macro_rules! ui_tests {
     ($(fn $name:ident() $body:block)*) => {
         $(
-            fn the_sidebar_toggle_lives_in_the_sidebar_header() {
+            fn $name() {
+                on_ui_thread(|| $body);
+            }
+        )*
+    };
+}
+
+ui_tests! {
+
+                fn the_sidebar_toggle_lives_in_the_sidebar_header() {
         let (ui, _log) = start();
         let sidebar_w = f64::from(ui.get_sidebar_width());
         let toggle = find(&ui, "Collapse sidebar (Ctrl+B)", AccessibleRole::Button);
@@ -277,16 +286,6 @@ macro_rules! ui_tests {
             "within the rail"
         );
     }
-
-    #[test]
-            fn $name() {
-                on_ui_thread(|| $body);
-            }
-        )*
-    };
-}
-
-ui_tests! {
 
     fn the_tile_button_is_off_and_unchecked_while_groups_draw_the_rows() {
         let (ui, _log) = start();
