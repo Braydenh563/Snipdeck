@@ -32,6 +32,8 @@ pub struct FakeClipboard {
     pub fail_snapshot: bool,
     /// Make writes fail.
     pub fail_write: bool,
+    /// The snapshot left a format out (`is_complete` is false).
+    pub incomplete_snapshot: bool,
     /// What `restore` returns.
     pub restore_result: Option<Result<bool, Error>>,
     /// The clipboard sequence number: it increases with every write and every clear.
@@ -115,6 +117,9 @@ impl Clipboard for FakeClipboard {
     fn render_requested(&mut self, (): &()) -> bool {
         self.polls += 1;
         self.asks_after_polls.is_some_and(|n| self.polls > n)
+    }
+    fn is_complete(&self, (): &()) -> bool {
+        !self.incomplete_snapshot
     }
     fn restore(&mut self, (): (), (): ()) -> Result<bool, Error> {
         self.log.push("restore".into());

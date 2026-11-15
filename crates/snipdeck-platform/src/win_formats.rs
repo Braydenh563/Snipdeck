@@ -19,6 +19,56 @@ pub fn is_memory_format(format: u32) -> bool {
         && !PRIVATE_AND_GDI_RANGE.contains(&format)
 }
 
+/// Whether a snapshot cannot keep `format` even though the clipboard offers it: a metafile
+/// (`CF_METAFILEPICT`, `CF_ENHMETAFILE`) is a GDI handle, not memory. The other handle formats
+/// are rebuilt by Windows from the memory ones (`CF_BITMAP` and `CF_PALETTE` from `CF_DIB`), so
+/// they are not a loss.
+pub const fn is_unkeepable_format(format: u32) -> bool {
+    matches!(format, 3 | 14)
+}
+
+/// Keeps count of what a clipboard snapshot has taken, and whether it left something out: the
+/// restore after a paste then has to say so, instead of replacing the user's clipboard with a
+/// quiet subset of it.
+#[derive(Debug, Clone, Copy)]
+pub struct SnapshotBudget {
+    limit: usize,
+    taken: usize,
+    incomplete: bool,
+}
+
+impl SnapshotBudget {
+    /// A budget of at most `limit` bytes in all.
+    pub const fn new(limit: usize) -> Self {
+        Self {
+            limit,
+            taken: 0,
+            incomplete: false,
+        }
+    }
+
+    /// The bytes one more format may take.
+    pub const fn room(&self) -> usize {
+        self.limit - self.taken
+    }
+
+    /// Counts a format of `len` bytes that was kept.
+    pub const fn took(&mut self, len: usize) {
+        self.taken += len;
+    }
+
+    /// Notes a format the clipboard offers that the snapshot left out (too big, unreadable, or one
+    /// it cannot hold).
+    pub const fn missed(&mut self) {
+        self.incomplete = true;
+    }
+
+    /// Whether anything was left out.
+    pub const fn incomplete(&self) -> bool {
+        self.incomplete
+    }
+}
+
 /// The value of the `CanIncludeInClipboardHistory` and `CanUploadToCloudClipboard` markers that
 /// keeps content out of history and cloud sync: a little-endian `DWORD` 0. The same bytes serve
 /// for `ExcludeClipboardContentFromMonitorProcessing`, where only presence matters.
@@ -257,9 +307,46 @@ pub fn newest_paste_dir(root: &std::path::Path) -> Option<std::path::PathBuf> {
     best.map(|(_, path)| path)
 }
 
+/// Overwrites every regular file under `dir` with zeros (best effort), so a pasted file that came
+/// from a sensitive item does not stay readable in freed disk space after it is deleted. Links are
+/// never followed, so a link planted in the folder cannot make us overwrite something else. This
+/// narrows the window, it is not a secure erase: a journalling or SSD-remapping file system may keep
+/// old blocks (see docs/crypto.md).
+pub fn scrub_dir(dir: &std::path::Path) {
+    use std::io::Write as _;
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let Ok(kind) = entry.file_type() else {
+            continue;
+        };
+        if kind.is_dir() {
+            scrub_dir(&entry.path());
+        } else if kind.is_file() {
+            let Ok(len) = entry.metadata().map(|meta| meta.len()) else {
+                continue;
+            };
+            let Ok(mut file) = std::fs::OpenOptions::new().write(true).open(entry.path()) else {
+                continue;
+            };
+            let zeros = [0_u8; 64 * 1024];
+            let mut left = len;
+            while left > 0 {
+                let step = usize::try_from(left).map_or(zeros.len(), |n| n.min(zeros.len()));
+                if file.write_all(&zeros[..step]).is_err() {
+                    break;
+                }
+                left -= step as u64;
+            }
+            let _ = file.sync_all();
+        }
+    }
+}
+
 /// Removes every paste folder of ours under `root` except `keep` (best effort: a file still open
-/// stays until a later call). Returns how many folders were removed. Other names are never
-/// touched.
+/// stays until a later call). The files are zeroed first ([`scrub_dir`]). Returns how many folders
+/// were removed. Other names are never touched.
 pub fn remove_paste_dirs(root: &std::path::Path, keep: Option<&std::path::Path>) -> usize {
     let Ok(entries) = std::fs::read_dir(root) else {
         return 0;
@@ -270,8 +357,11 @@ pub fn remove_paste_dirs(root: &std::path::Path, keep: Option<&std::path::Path>)
         let ours = entry.file_name().to_str().is_some_and(is_paste_dir_name);
         // `file_type` does not follow links: a link planted under our name is not entered.
         let is_dir = entry.file_type().is_ok_and(|kind| kind.is_dir());
-        if ours && is_dir && Some(path.as_path()) != keep && std::fs::remove_dir_all(&path).is_ok()
-        {
+        if !(ours && is_dir && Some(path.as_path()) != keep) {
+            continue;
+        }
+        scrub_dir(&path);
+        if std::fs::remove_dir_all(&path).is_ok() {
             removed += 1;
         }
     }
@@ -801,6 +891,59 @@ mod tests {
         );
         assert!(!keep.exists() && other.is_dir());
         assert_eq!(remove_paste_dirs(&root.path().join("missing"), None), 0);
+    }
+
+    #[test]
+    fn cleanup_zeroes_a_pasted_file_before_it_is_deleted() {
+        let root = tempfile::tempdir().unwrap();
+        let dir = claim_paste_dir(root.path(), || Ok([1; 16])).unwrap();
+        let file = dir.join("secret.txt");
+        std::fs::write(&file, b"top secret bytes").unwrap();
+        // A second name for the same data stands for a reader that still has it, and survives the
+        // deletion of the folder: what it sees afterwards is what a recovery tool would see.
+        let alias = root.path().join("alias");
+        std::fs::hard_link(&file, &alias).unwrap();
+
+        assert_eq!(remove_paste_dirs(root.path(), None), 1);
+        assert!(!dir.exists());
+        assert_eq!(std::fs::read(&alias).unwrap(), vec![0_u8; 16]);
+    }
+
+    /// The walk the Windows snapshot makes over `(format, size)` pairs, with its rules.
+    fn walk(limit: usize, offered: &[(u32, usize)]) -> (Vec<u32>, bool) {
+        let mut budget = SnapshotBudget::new(limit);
+        let mut kept = Vec::new();
+        for &(format, size) in offered {
+            if is_unkeepable_format(format) {
+                budget.missed();
+            } else if !is_memory_format(format) || size == 0 {
+                // Rebuilt by Windows, or nothing in it.
+            } else if size <= budget.room() {
+                budget.took(size);
+                kept.push(format);
+            } else {
+                budget.missed();
+            }
+        }
+        (kept, budget.incomplete())
+    }
+
+    #[test]
+    fn a_snapshot_that_leaves_a_format_out_says_so() {
+        const MIB: usize = 1024 * 1024;
+        // A big screenshot: the PNG fits, then the 59 MB DIB does not.
+        let (kept, incomplete) = walk(64 * MIB, &[(0xC0F0, 10 * MIB), (8, 59 * MIB), (17, MIB)]);
+        assert_eq!(kept, [0xC0F0, 17]);
+        assert!(incomplete, "the DIB is gone, so Paint would paste nothing");
+        // A format that is a GDI handle and cannot be held.
+        assert!(walk(64 * MIB, &[(13, 20), (14, 500)]).1, "an enhanced metafile");
+        // Everything fits; Windows rebuilds CF_BITMAP and CF_PALETTE; an empty format is no loss.
+        let (kept, incomplete) = walk(64 * MIB, &[(13, 20), (8, 100), (2, 4), (9, 4), (1, 0)]);
+        assert_eq!(kept, [13, 8]);
+        assert!(!incomplete);
+        // Exactly the limit still fits.
+        assert!(!walk(100, &[(13, 100)]).1);
+        assert!(walk(100, &[(13, 101)]).1);
     }
 
     #[test]
