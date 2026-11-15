@@ -76,6 +76,9 @@ pub struct Snap {
     pub item: Item,
     /// The text content to write back; `None` leaves the content alone.
     pub text: Option<String>,
+    /// The item's formats as they were before a text edit dropped some (HTML, RTF), to write
+    /// back instead of `text` when their blobs are still there; `None` writes `text` alone.
+    pub formats: Option<snipdeck_core::Formats>,
     /// The trigger to write back (`Some(None)` clears it); `None` leaves it alone.
     pub trigger: Option<Option<Trigger>>,
 }

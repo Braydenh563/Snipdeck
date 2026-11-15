@@ -1,6 +1,6 @@
 //! Saving the item, and the library key made on the first sensitive item.
 
-use snipdeck_core::{Feature, Item, ItemKind, Name, Placement, Tag, Trigger};
+use snipdeck_core::{Feature, Formats, Item, ItemKind, Name, Placement, Tag, Trigger};
 use snipdeck_store::{
     ItemRepo, TagRepo, Trashable, TriggerRepo,
     crypto::{CryptoError, KeyProviderError},
@@ -221,6 +221,10 @@ where
                     } else {
                         String::new()
                     };
+                    // What a text edit is about to drop (HTML, RTF), kept for Undo.
+                    let old_formats = (text.is_some() && !before.sensitive)
+                        .then(|| self.store.formats(id).ok())
+                        .flatten();
                     let done = self.store.atomically(|b| {
                         for tag in &tags.created {
                             b.insert_tag(tag)?;
@@ -240,7 +244,7 @@ where
                         recorded = edit_step(
                             &before,
                             &item,
-                            slot.original_text.as_deref(),
+                            (slot.original_text.as_deref(), old_formats),
                             text.as_deref(),
                             (Trigger::new(&slot.original_trigger).ok() != trigger).then(|| {
                                 (Trigger::new(&slot.original_trigger).ok(), trigger.clone())
@@ -337,7 +341,7 @@ where
 fn edit_step(
     before: &Item,
     after: &Item,
-    old_text: Option<&str>,
+    (old_text, old_formats): (Option<&str>, Option<Formats>),
     new_text: Option<&str>,
     triggers: Option<(Option<Trigger>, Option<Trigger>)>,
 ) -> Option<(Action, Vec<Change>)> {
@@ -370,11 +374,14 @@ fn edit_step(
         vec![Change::Update {
             before: Box::new(Snap {
                 item: before.clone(),
+                // The formats the text edit drops come back with the text.
+                formats: old.is_some().then_some(old_formats).flatten(),
                 text: old,
                 trigger: old_trigger,
             }),
             after: Box::new(Snap {
                 item: after.clone(),
+                formats: None,
                 text: new,
                 trigger: new_trigger,
             }),
@@ -416,7 +423,7 @@ mod tests {
         let before = item();
         let mut after = before.clone();
         after.label = Some(ItemLabel::Blue);
-        let (action, changes) = edit_step(&before, &after, Some("hi"), None, None).unwrap();
+        let (action, changes) = edit_step(&before, &after, (Some("hi"), None), None, None).unwrap();
         assert_eq!(action, Action::Colour);
         assert_eq!(changes.len(), 1);
     }
@@ -425,7 +432,8 @@ mod tests {
     fn a_text_change_keeps_both_texts_and_a_sensitive_one_is_not_recorded() {
         let before = item();
         let after = before.clone();
-        let (action, changes) = edit_step(&before, &after, Some("old"), Some("new"), None).unwrap();
+        let (action, changes) =
+            edit_step(&before, &after, (Some("old"), None), Some("new"), None).unwrap();
         assert_eq!(action, Action::Edit);
         let Change::Update {
             before: b,
@@ -440,7 +448,7 @@ mod tests {
         );
         let mut secret = before.clone();
         secret.sensitive = true;
-        assert!(edit_step(&before, &secret, Some("old"), Some("new"), None).is_none());
-        assert!(edit_step(&before, &after, None, Some("new"), None).is_none());
+        assert!(edit_step(&before, &secret, (Some("old"), None), Some("new"), None).is_none());
+        assert!(edit_step(&before, &after, (None, None), Some("new"), None).is_none());
     }
 }

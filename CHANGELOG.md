@@ -146,6 +146,17 @@ first start.
 - Tab and Shift+Tab reach every field in the item editor, Settings and the fill form, including text fields inside scrolling areas, dropdowns and template choices, and the focus ring is no longer cut off.
 
 ### Fixed
+- Pasting a Word or Excel selection no longer says the clipboard could not be put back when only a picture
+  copy of it (a metafile) was skipped; and when a paste really cannot restore it, a plain toast says so.
+  Unverified on Windows.
+- Typing in the fill form of a sensitive item now counts as activity, so the master-password idle lock does
+  not fire mid-form.
+- A screenshot saved from the clipboard is titled in the language shown, not always in English.
+- Pasting files into the Panel or Main window reads them in the background, like dropping them, so a big
+  file no longer freezes the window.
+- Items left in Recent past their days are removed at the next maintenance tick, not only at the next copy.
+- Undo of an edit to a formatted item (HTML, RTF) brings the formatting back with the text.
+- The "too big" message for one big file names the same size in the editor wherever it was refused.
 - Quitting Snipdeck clears a sensitive copy that was still waiting for its timer, if the clipboard still holds it.
 - The idle lock closes the fill form of a sensitive template, and says so.
 - A paste whose previous clipboard could not be kept whole (a very large image, or a metafile) is reported as not restored, instead of quietly putting back only part of it. Unverified on Windows.
