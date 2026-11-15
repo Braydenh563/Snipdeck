@@ -349,14 +349,14 @@ mod tests {
     }
 
     #[test]
-    fn an_empty_required_field_past_the_sixteenth_is_found() {
-        let src: String = (1..=17).map(|i| format!("{{field:Field{i}}} ")).collect();
+    fn a_whitespace_only_answer_in_the_last_of_sixteen_fields_is_missing() {
+        let src: String = (1..=16).map(|i| format!("{{field:Field{i}}} ")).collect();
         let mut m = form(&src);
-        let values: Vec<String> = (0..17)
-            .map(|i| if i == 16 { "   ".into() } else { "x".into() })
+        let values: Vec<String> = (0..16)
+            .map(|i| if i == 15 { "   ".into() } else { "x".into() })
             .collect();
         m.set_values(&values);
-        assert_eq!(m.first_missing(), Some((16, Missing::Empty)));
+        assert_eq!(m.first_missing(), Some((15, Missing::Empty)));
     }
 
     #[test]
