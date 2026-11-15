@@ -1905,6 +1905,7 @@ where
                 // A test that was still waiting for its press ends with the page.
                 core.act(Controller::stop_hotkey_test);
                 if let Some(window) = weak.upgrade() {
+                    window.invoke_reset_asks();
                     let _ = window.hide();
                 }
             });
@@ -2230,6 +2231,7 @@ impl SettingsUi {
                             ctl.stop_hotkey_test();
                         }
                         if let Some(w) = weak.upgrade() {
+                            w.invoke_reset_asks();
                             let _ = w.hide();
                         }
                     });
@@ -2239,6 +2241,7 @@ impl SettingsUi {
                     return Ok(());
                 };
                 crate::native_window::place_over_owner(window.window());
+                window.invoke_reset_asks();
                 window.show()?;
                 crate::ownership::opened(crate::ownership::Win::Settings);
                 fit_when_settled(window);

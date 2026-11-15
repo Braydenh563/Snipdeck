@@ -500,6 +500,12 @@ export component SettingsPage inherits Window {
         return @tr("Follow Windows");
     }
 
+    // The host calls this when the page closes or opens, so a half-asked "Clear recent history"
+    // (Cancel / Clear history showing) is never still there on the next look.
+    public function reset-asks() {
+        root.clear-recent-ask = false;
+    }
+
     function close-erase() {
         root.erase-open = false;
         root.erase-text = "";
