@@ -34,7 +34,11 @@ pub const fn is_unkeepable_format(format: u32) -> bool {
 pub struct SnapshotBudget {
     limit: usize,
     taken: usize,
-    incomplete: bool,
+    /// A format the snapshot has to do without: too big to keep.
+    lost: bool,
+    /// A format that is only a loss when nothing else was kept: a metafile (Office puts one next
+    /// to the text, RTF and HTML it keeps) or a format the owner would not give.
+    lost_softly: bool,
 }
 
 impl SnapshotBudget {
@@ -43,7 +47,8 @@ impl SnapshotBudget {
         Self {
             limit,
             taken: 0,
-            incomplete: false,
+            lost: false,
+            lost_softly: false,
         }
     }
 
@@ -57,15 +62,21 @@ impl SnapshotBudget {
         self.taken += len;
     }
 
-    /// Notes a format the clipboard offers that the snapshot left out (too big, unreadable, or one
-    /// it cannot hold).
+    /// Notes a format the clipboard offers that the snapshot left out because it was too big.
     pub const fn missed(&mut self) {
-        self.incomplete = true;
+        self.lost = true;
     }
 
-    /// Whether anything was left out.
+    /// Notes a format that the snapshot cannot hold (a metafile) or could not read. It makes the
+    /// snapshot incomplete only when no other format was kept: Word, Excel and Outlook put a
+    /// metafile beside the text, RTF and HTML, and a paste must still restore those.
+    pub const fn missed_softly(&mut self) {
+        self.lost_softly = true;
+    }
+
+    /// Whether the snapshot left out something that matters.
     pub const fn incomplete(&self) -> bool {
-        self.incomplete
+        self.lost || (self.lost_softly && self.taken == 0)
     }
 }
 
@@ -915,7 +926,7 @@ mod tests {
         let mut kept = Vec::new();
         for &(format, size) in offered {
             if is_unkeepable_format(format) {
-                budget.missed();
+                budget.missed_softly();
             } else if !is_memory_format(format) || size == 0 {
                 // Rebuilt by Windows, or nothing in it.
             } else if size <= budget.room() {
@@ -935,11 +946,34 @@ mod tests {
         let (kept, incomplete) = walk(64 * MIB, &[(0xC0F0, 10 * MIB), (8, 59 * MIB), (17, MIB)]);
         assert_eq!(kept, [0xC0F0, 17]);
         assert!(incomplete, "the DIB is gone, so Paint would paste nothing");
-        // A format that is a GDI handle and cannot be held.
+        // A metafile on its own is a loss: nothing else of the clipboard was kept.
         assert!(
-            walk(64 * MIB, &[(13, 20), (14, 500)]).1,
-            "an enhanced metafile"
+            walk(64 * MIB, &[(14, 500), (3, 500)]).1,
+            "an enhanced metafile and nothing else"
         );
+        assert!(
+            walk(64 * MIB, &[(13, 0), (14, 500)]).1,
+            "an empty text is no text"
+        );
+        // Word, Excel and Outlook: the metafile comes with text, RTF and HTML that are kept.
+        let (kept, incomplete) = walk(
+            64 * MIB,
+            &[
+                (1, 40),
+                (13, 80),
+                (0xC0A1, 900),
+                (0xC0A2, 1200),
+                (14, 5000),
+                (3, 90),
+            ],
+        );
+        assert_eq!(kept, [1, 13, 0xC0A1, 0xC0A2]);
+        assert!(
+            !incomplete,
+            "the metafile is not a reason to skip the restore"
+        );
+        // A format too big to keep is a loss whatever else was kept.
+        assert!(walk(100, &[(13, 20), (0xC0A1, 900), (14, 5)]).1);
         // Everything fits; Windows rebuilds CF_BITMAP and CF_PALETTE; an empty format is no loss.
         let (kept, incomplete) = walk(64 * MIB, &[(13, 20), (8, 100), (2, 4), (9, 4), (1, 0)]);
         assert_eq!(kept, [13, 8]);

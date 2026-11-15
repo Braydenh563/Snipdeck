@@ -1122,7 +1122,7 @@ fn snapshot_job() -> Result<Snapshot, Error> {
             break;
         }
         if win_formats::is_unkeepable_format(format) {
-            budget.missed();
+            budget.missed_softly();
             continue;
         }
         if !win_formats::is_memory_format(format) {
@@ -1132,7 +1132,7 @@ fn snapshot_job() -> Result<Snapshot, Error> {
         // the window procedure runs inside this call; no state is borrowed here).
         // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
         let Ok(handle) = (unsafe { GetClipboardData(format) }) else {
-            budget.missed();
+            budget.missed_softly();
             continue;
         };
         // SAFETY: as above; only the size of the live global block is read.

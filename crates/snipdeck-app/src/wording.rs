@@ -223,6 +223,7 @@ where
     let count = |n: usize| i32::try_from(n).unwrap_or(i32::MAX);
     let text = match message {
         ToastMessage::Pasted { app } => t.invoke_pasted(app.into()),
+        ToastMessage::PastedNotRestored { app } => t.invoke_pasted_not_restored(app.into()),
         ToastMessage::Copied => t.invoke_copied(),
         ToastMessage::CopiedElevated { app } => t.invoke_copied_elevated(app.into()),
         ToastMessage::CopiedNothingFocused { app } => t.invoke_copied_nothing_focused(app.into()),

@@ -11,6 +11,9 @@ export global ToastTexts {
     pure public function pasted(app: string) -> string {
         return app == "" ? @tr("Pasted") : @tr("Pasted into {}", app);
     }
+    pure public function pasted-not-restored(app: string) -> string {
+        return app == "" ? @tr("Pasted. Your earlier clipboard could not be put back.") : @tr("Pasted into {}. Your earlier clipboard could not be put back.", app);
+    }
     pure public function copied() -> string {
         return @tr("Copied");
     }
