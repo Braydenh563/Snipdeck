@@ -2068,6 +2068,9 @@ msgstr "貼り付け"
 msgid "Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere."
 msgstr "ライセンスキーを貼り付けるとサポーターが有効になります。キーはこのPCで確認され、何も送信されません。"
 
+msgid "Paste as plain text"
+msgstr ""
+
 msgid "Paste as…"
 msgstr "形式を指定して貼り付け…"
 

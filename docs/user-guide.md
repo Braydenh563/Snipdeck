@@ -120,7 +120,7 @@ sensitive. A sensitive item:
 |---|---|
 | Click an item in the Panel | Pastes it into the target |
 | `Shift`+click, or `Shift+Enter` | Copies only, and does not paste |
-| `Alt`+click, or `Alt+Enter` | Pastes as plain text: the formatting is left out for this one paste (Panel and Picker) |
+| `Alt`+click, or `Alt+Enter` | Pastes as plain text: the formatting is left out for this one paste (Panel, Picker, Main window, and the Panel's Recent rows) |
 | `Enter` on the selected row | Same as a click |
 | Press `Alt+1` to `Alt+9` | Uses the row with that number (digits without `Alt` are search text) |
 | Click a pinned chip | Uses that item |
@@ -529,7 +529,7 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Anywhere | `Ctrl+Shift+U` | Paste next, or the next item of a paste stack (Supporter; not registered on the Free plan) |
 | Panel | `Up`, `Down`, `PageUp`, `PageDown` | Move the selection |
 | Panel | `Enter`, `Shift+Enter` | Use, or copy only |
-| Panel | `Alt+Enter` | Paste as plain text |
+| Panel | `Alt+Enter` | Paste as plain text (an item, or a Recent row) |
 | Panel | `Alt+1` to `Alt+9` | Use that row (digits without `Alt` are search text) |
 | Panel | `Ctrl+Tab`, `Ctrl+Shift+Tab` | Next or previous list |
 | Panel | `Ctrl+F` | Focus the search box |
@@ -554,6 +554,7 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Picker | `Alt+Enter` | Paste as plain text |
 | Picker | `Alt+1` to `Alt+9` | Use that row |
 | Picker | `Ctrl+E`, `Esc` | Edit, close |
+| Main window | `Alt+Enter` | Paste the selected item as plain text |
 | Main window | `Ctrl+K`, `Ctrl+Shift+P` | Commands |
 | Main window | `Ctrl+/` | Show the keyboard shortcuts |
 | Main window | `Ctrl+N`, `Ctrl+Shift+N` | New item (the quick-add box in an open list), new list |

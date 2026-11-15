@@ -3238,6 +3238,9 @@ ui_tests! {
         ui.on_recent_deleted(move |i| removed.borrow_mut().push(format!("rdel:{i}")));
         let used = log.clone();
         ui.on_recent_used(move |i| used.borrow_mut().push(format!("ruse:{i}")));
+        let plain = log.clone();
+        ui.on_recent_plain(move |i| plain.borrow_mut().push(format!("rplain:{i}")));
+        ui.set_target_name("Outlook".into());
         ui.set_recent_available(true);
         ui.set_recent_rows(ModelRc::new(VecModel::from(vec![
             RecentRow { id: 1, preview: "one".into(), app: "".into(), age_minutes: 1, kind: snipdeck_ui::ItemKind::Text, image: slint::Image::default() },
@@ -3254,6 +3257,7 @@ ui_tests! {
         assert_eq!(ui.get_recent_selected(), 1, "clamped at the last entry");
         press(ui.window(), &key(Key::Return));
         chord(ui.window(), &[Key::Shift], &key(Key::Return));
+        chord(ui.window(), &[Key::Alt], &key(Key::Return));
         press(ui.window(), &key(Key::Delete));
         press(ui.window(), &key(Key::F2));
         press(ui.window(), "1");
@@ -3265,6 +3269,7 @@ ui_tests! {
         let seen = take(&log);
         assert!(seen.contains(&"ruse:2".to_string()), "Enter pastes: {seen:?}");
         assert!(seen.contains(&"rcopy:2".to_string()), "Shift+Enter copies: {seen:?}");
+        assert!(seen.contains(&"rplain:2".to_string()), "Alt+Enter pastes as plain text: {seen:?}");
         assert!(seen.contains(&"rdel:2".to_string()), "{seen:?}");
         for line in &seen {
             assert!(

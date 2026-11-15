@@ -434,6 +434,8 @@ ui_tests! {
         take(&log);
         press_key(&ui, Key::Return);
         shift(&ui, Key::Return);
+        chord(ui.window(), &[Key::Alt], &key(Key::Return));
+        settle();
         press_key(&ui, Key::F2);
         chord(ui.window(), &[Key::Control], "e");
         chord(ui.window(), &[Key::Control], "p");
@@ -444,6 +446,7 @@ ui_tests! {
             [
                 "action:Use:1",
                 "action:Copy:1",
+                "action:UsePlain:1",
                 "action:Edit:1",
                 "action:Edit:1",
                 "action:Pin:1",

@@ -1672,6 +1672,7 @@ fn select_mode(mode: ui::SelectMode) -> SelectMode {
 fn action_of(action: ui::ItemAction) -> MainAction {
     match action {
         ui::ItemAction::Use => MainAction::Use,
+        ui::ItemAction::UsePlain => MainAction::UsePlain,
         ui::ItemAction::Copy => MainAction::Copy,
         ui::ItemAction::Edit => MainAction::Edit,
         ui::ItemAction::Pin => MainAction::Pin,
@@ -1701,6 +1702,35 @@ loggable_debug!(
     ui::ItemAction,
     ui::HelpPage
 );
+
+/// Reads the files of `run` (dropped, or pasted from Explorer) off the UI thread; the window
+/// stays alive, and each result is applied when the controller is free.
+fn read_run<S, C, K, T>(
+    controller: &std::rc::Weak<RefCell<Controller<S, C, K, T>>>,
+    run: crate::controller::DropRun,
+) where
+    S: Library + 'static,
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    let controller = controller.clone();
+    crate::drop_read::drive(
+        run,
+        Rc::new(move |run, done| {
+            let Some(c) = controller.upgrade() else {
+                return Ok(None);
+            };
+            let Ok(mut c) = c.try_borrow_mut() else {
+                return Err(Box::new((run, done)));
+            };
+            let next = c.drop_read_done(run, done);
+            drop(c);
+            crate::binding::redraw_all();
+            Ok(next)
+        }),
+    );
+}
 
 #[cfg(test)]
 mod tests {
@@ -1843,33 +1873,4 @@ mod tests {
             crate::binding::MASKED_PREVIEW
         );
     }
-}
-
-/// Reads the files of `run` (dropped, or pasted from Explorer) off the UI thread; the window
-/// stays alive, and each result is applied when the controller is free.
-fn read_run<S, C, K, T>(
-    controller: &std::rc::Weak<RefCell<Controller<S, C, K, T>>>,
-    run: crate::controller::DropRun,
-) where
-    S: Library + 'static,
-    C: Clipboard + ClipboardText + 'static,
-    K: Keyboard + 'static,
-    T: Timing + 'static,
-{
-    let controller = controller.clone();
-    crate::drop_read::drive(
-        run,
-        Rc::new(move |run, done| {
-            let Some(c) = controller.upgrade() else {
-                return Ok(None);
-            };
-            let Ok(mut c) = c.try_borrow_mut() else {
-                return Err(Box::new((run, done)));
-            };
-            let next = c.drop_read_done(run, done);
-            drop(c);
-            crate::binding::redraw_all();
-            Ok(next)
-        }),
-    );
 }

@@ -44,6 +44,10 @@ where
                 let id = items.first().copied()?;
                 return Some(self.use_item(id, snipdeck_core::UseMode::Paste));
             }
+            MainAction::UsePlain => {
+                let id = items.first().copied()?;
+                return Some(self.use_item(id, snipdeck_core::UseMode::PastePlain));
+            }
             // Every selected row, joined as `copy_items` does for Ctrl+C and the Panel's bulk bar.
             MainAction::Copy => return self.copy_items(&items),
             MainAction::Edit => {

@@ -2074,6 +2074,9 @@ msgstr "Pegar"
 msgid "Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere."
 msgstr "Pega una clave de licencia para activar Colaborador. La clave se comprueba en este PC y no se envía a ningún sitio."
 
+msgid "Paste as plain text"
+msgstr ""
+
 msgid "Paste as…"
 msgstr "Pegar como…"
 

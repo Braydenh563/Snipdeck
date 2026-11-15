@@ -420,6 +420,8 @@ export component PanelWindow inherits Window {
     callback recent-used(int);
     // Shift+click, Shift+Enter or the menu's Copy: copy only.
     callback recent-copied(int);
+    // Alt+Enter or Alt+click on a Recent row: paste it as plain text.
+    callback recent-plain(int);
     callback recent-deleted(int);
     callback recent-saved(int, int);
     callback recent-unlock-requested();
@@ -1437,6 +1439,12 @@ export component PanelWindow inherits Window {
                 if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift && !event.modifiers.meta && event.text == Key.Return
                     && root.search-focused && !root.list-hidden && !root.recent-open && !root.symbols-open && root.sel >= 0 && !search.composing) {
                     root.use-selected-plain();
+                    return accept;
+                }
+                // Alt+Enter pastes the selected Recent row as plain text.
+                if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift && !event.modifiers.meta && event.text == Key.Return
+                    && root.search-focused && root.recent-open && root.pastes && root.rsel >= 0 && !search.composing) {
+                    root.recent-plain(root.recent-rows[root.rsel].id);
                     return accept;
                 }
                 if (event.modifiers.alt || event.modifiers.meta || search.composing || (root.symbols-open && root.symbol-composing)) {
@@ -2499,6 +2507,11 @@ export component PanelWindow inherits Window {
                                         root.recent-selected = i;
                                         root.recent-copied(entry.id);
                                     }
+                                    plain-click: root.pastes;
+                                    use-plain => {
+                                        root.recent-selected = i;
+                                        root.recent-plain(entry.id);
+                                    }
                                     double-clicked => {
                                         root.recent-save-at(i, self.absolute-position.x + Space.s6, self.absolute-position.y + self.height);
                                     }
@@ -3120,7 +3133,12 @@ export component PanelWindow inherits Window {
             x: max(Space.s2, min(root.recent-menu-x, root.width - self.width - Space.s2));
             y: max(Space.s2, min(root.recent-menu-y, root.height - self.height - Space.s2));
             menu-max-h: root.height - 2 * Space.s2;
-            entries: [
+            entries: root.pastes ? [
+                { text: @tr("Save to…"), icon: Icons.folder },
+                { text: @tr("Copy"), icon: Icons.copy },
+                { text: @tr("Paste as plain text"), icon: Icons.clipboard },
+                { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
+            ] : [
                 { text: @tr("Save to…"), icon: Icons.folder },
                 { text: @tr("Copy"), icon: Icons.copy },
                 { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
@@ -3133,6 +3151,8 @@ export component PanelWindow inherits Window {
                     root.recent-save-open = true;
                 } else if (i == 1) {
                     root.recent-copied(root.recent-menu-id);
+                } else if (i == 2 && root.pastes) {
+                    root.recent-plain(root.recent-menu-id);
                 } else {
                     root.recent-deleted(root.recent-menu-id);
                 }

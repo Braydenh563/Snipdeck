@@ -486,6 +486,29 @@ fn using_a_rich_entry_writes_text_html_rtf() {
 }
 
 #[test]
+fn pasting_a_rich_entry_as_plain_text_writes_the_text_alone() {
+    use snipdeck_platform::payload::Data;
+    let mut w = recent_world_at_outlook();
+    w.ctl.on_clipboard_change(&ClipboardObservation {
+        html: Some("<b>bold</b>".to_owned()),
+        rtf: Some(b"{\\rtf1 bold}".to_vec()),
+        ..copied("bold")
+    });
+    let id = w.ctl.recent_entries()[0].id;
+    w.ctl.recent_use(id, UseMode::PastePlain);
+    let services = w.ctl.services();
+    assert_eq!(services.keyboard.sent.len(), 1, "Ctrl+V went out");
+    assert!(
+        services
+            .clipboard
+            .written
+            .iter()
+            .all(|p| p.data() == [Data::Text("bold".to_owned())]),
+        "no HTML or RTF was pasted"
+    );
+}
+
+#[test]
 fn promoting_an_image_makes_an_image_item() {
     use snipdeck_platform::payload::Data;
     let mut w = recent_world();

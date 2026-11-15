@@ -902,6 +902,10 @@ where
             let used = ctl.recent_use(i64::from(id), UseMode::Paste);
             ctl.after_use(&used)
         });
+        wire_effects!(on_recent_plain, |ctl, id| {
+            let used = ctl.recent_use(i64::from(id), UseMode::PastePlain);
+            ctl.after_use(&used)
+        });
         wire_effects!(on_recent_copied, |ctl, id| {
             let used = ctl.recent_use(i64::from(id), UseMode::Copy);
             ctl.after_use(&used)

@@ -46,6 +46,8 @@ pub enum TagRenameError {
 pub enum MainAction {
     /// Paste (or copy) the item.
     Use,
+    /// Paste the item as plain text (`Alt+Enter`, `Alt`+click).
+    UsePlain,
     /// Copy the item.
     Copy,
     /// Edit the item in the item editor.

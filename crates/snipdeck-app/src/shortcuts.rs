@@ -107,7 +107,7 @@ use Scope::{Anywhere, Editors, Main, Panel, Picker, Unlock};
 
 /// Every shortcut, in the order of `ShortcutTexts.titles` (a test in `tests/help_window.rs` checks the
 /// length) and grouped by scope in the order of [`Scope::ALL`].
-pub const CATALOGUE: [Shortcut; 83] = [
+pub const CATALOGUE: [Shortcut; 84] = [
     // Anywhere in Windows.
     global(HotkeyAction::TogglePanel),
     global(HotkeyAction::Picker),
@@ -127,6 +127,7 @@ pub const CATALOGUE: [Shortcut; 83] = [
     row(Main, "F1"),
     row(Main, "Enter"),
     row(Main, "Shift+Enter"),
+    row(Main, "Alt+Enter"),
     row(Main, "Ctrl+E"),
     row(Main, "F2"),
     row(Main, "Ctrl+D"),
