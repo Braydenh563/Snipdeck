@@ -744,7 +744,7 @@ fn setting_again_while_one_is_set_is_refused() {
 
 #[test]
 fn the_idle_lock_closes_the_fill_form_of_a_sensitive_template() {
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     r.ctl.open_new_item(Origin::Main);
     let v = r.ctl.item_editor_view().expect("editor");
     r.ctl.item_editor_save(&EditorInput {
@@ -776,7 +776,7 @@ fn the_idle_lock_closes_the_fill_form_of_a_sensitive_template() {
 
 #[test]
 fn typing_in_the_fill_form_of_a_sensitive_template_counts_as_activity() {
-    let mut r = with_password(Tier::Pro);
+    let mut r = with_password();
     r.ctl.open_new_item(Origin::Main);
     let v = r.ctl.item_editor_view().expect("editor");
     r.ctl.item_editor_save(&EditorInput {
