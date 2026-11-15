@@ -107,7 +107,7 @@ use Scope::{Anywhere, Editors, Main, Panel, Picker, Unlock};
 
 /// Every shortcut, in the order of `ShortcutTexts.titles` (a test in `tests/help_window.rs` checks the
 /// length) and grouped by scope in the order of [`Scope::ALL`].
-pub const CATALOGUE: [Shortcut; 81] = [
+pub const CATALOGUE: [Shortcut; 84] = [
     // Anywhere in Windows.
     global(HotkeyAction::TogglePanel),
     global(HotkeyAction::Picker),
@@ -127,6 +127,7 @@ pub const CATALOGUE: [Shortcut; 81] = [
     row(Main, "F1"),
     row(Main, "Enter"),
     row(Main, "Shift+Enter"),
+    row(Main, "Alt+Enter"),
     row(Main, "Ctrl+E"),
     row(Main, "F2"),
     row(Main, "Ctrl+D"),
@@ -161,6 +162,7 @@ pub const CATALOGUE: [Shortcut; 81] = [
     custom(Panel, &["PgUp", ALT, "PgDn"], "PageUp or PageDown"),
     row(Panel, "Enter"),
     row(Panel, "Shift+Enter"),
+    row(Panel, "Alt+Enter"),
     custom(
         Panel,
         &["Alt", "Up", ALT, "Alt", "Down"],
@@ -212,6 +214,7 @@ pub const CATALOGUE: [Shortcut; 81] = [
     custom(Picker, &["Up", ALT, "Down"], "Up or Down"),
     row(Picker, "Enter"),
     row(Picker, "Shift+Enter"),
+    row(Picker, "Alt+Enter"),
     custom(Picker, &["Alt", "1-9"], "Alt+1 to 9"),
     custom(Picker, &["Tab", ALT, "Shift", "Tab"], "Tab or Shift+Tab"),
     row(Picker, "Ctrl+E"),
@@ -526,6 +529,7 @@ mod tests {
         ("PageDown", Listed::Spoken("PageUp or PageDown")),
         ("Enter", Listed::Chord("Enter")),
         ("Shift+Enter", Listed::Chord("Shift+Enter")),
+        ("Alt+Enter", Listed::Chord("Alt+Enter")),
         ("Alt+1-9", Listed::Spoken("Alt+1 to 9")),
         ("Alt+Up", Listed::Spoken("Alt+Up or Alt+Down")),
         ("Alt+Down", Listed::Spoken("Alt+Up or Alt+Down")),

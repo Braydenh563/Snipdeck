@@ -125,6 +125,8 @@ export component PickerWindow inherits Window {
     callback row-activated(int);
     // Shift+Enter or Shift+click: copy only.
     callback row-copied(int);
+    // Alt+Enter or Alt+click: paste as plain text.
+    callback row-plain(int);
     // Alt+1-9 pressed (the app resolves it against the rows it sent).
     callback quick-use(int);
     callback selection-moved(int);
@@ -303,6 +305,14 @@ export component PickerWindow inherits Window {
         }
     }
 
+    function use-selected-plain() {
+        if (root.sel < 0) {
+            return;
+        }
+        root.mark-used(root.sel);
+        root.row-plain(root.sel);
+    }
+
     function open-colour-menu(row: int) {
         if (row < 0 || row >= root.rows.length || !root.rows[row].has-swatch) {
             return;
@@ -389,6 +399,10 @@ export component PickerWindow inherits Window {
             }
             // Alt+digit is quick-use whatever the query holds; a bare digit is always search text.
             if (event.modifiers.alt) {
+                if (event.text == Key.Return && !event.modifiers.shift && !event.modifiers.control && !root.sel-colour) {
+                    root.use-selected-plain();
+                    return accept;
+                }
                 if (!event.modifiers.shift && root.digit(event.text) > 0) {
                     root.quick(root.digit(event.text));
                     return accept;
@@ -543,6 +557,11 @@ export component PickerWindow inherits Window {
                         copy => {
                             root.selected-index = i;
                             root.row-copied(i);
+                        }
+                        plain-click: true;
+                        use-plain => {
+                            root.selected-index = i;
+                            root.row-plain(i);
                         }
                         edit => {
                             root.selected-index = i;

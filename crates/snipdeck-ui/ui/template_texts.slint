@@ -1,0 +1,110 @@
+// What is wrong with a template, as the editor's save error and the preview card say it. Rust finds the
+// fault (`snipdeck_core::template::TemplateErrorKind`) and calls these functions
+// (`snipdeck_app::wording::template_problem_text`); each result completes "This template can't be read: ...".
+// The placeholder syntax (`{field:Name}`, `%%`) is code, not words, so Rust passes it in as an argument and it is
+// never translated. A result has no final full stop: the sentence around it adds one.
+export global TemplateTexts {
+    pure public function sensitive() -> string {
+        return @tr("a placeholder is not valid");
+    }
+    pure public function unmatched-close(close: string, doubled: string) -> string {
+        return @tr("{} closes nothing; write {} for a literal {}", close, doubled, close);
+    }
+    pure public function unterminated(open: string, doubled: string) -> string {
+        return @tr("{} is never closed; write {} for a literal {}", open, doubled, open);
+    }
+    pure public function empty-placeholder(empty: string) -> string {
+        return @tr("empty placeholder {}", empty);
+    }
+    pure public function empty-name(example: string) -> string {
+        return @tr("the prompt needs a name, e.g. {}", example);
+    }
+    pure public function unclosed-section(open: string, close: string) -> string {
+        return @tr("{} is never closed; add {} after the part", open, close);
+    }
+    pure public function nested-section() -> string {
+        return @tr("optional sections cannot be nested");
+    }
+    pure public function unmatched-section-end(close: string) -> string {
+        return @tr("{} closes nothing", close);
+    }
+    pure public function no-options(example: string) -> string {
+        return @tr("a choice needs options, e.g. {}", example);
+    }
+    pure public function empty-option() -> string {
+        return @tr("a choice option is empty");
+    }
+    pure public function duplicate-option(option: string) -> string {
+        return @tr("the choice option {} is listed twice", option);
+    }
+    pure public function too-many-parts(example: string) -> string {
+        return @tr("a prompt takes a name and one more part: {}", example);
+    }
+    pure public function duplicate-cursor(cursor: string) -> string {
+        return @tr("only one {} is allowed", cursor);
+    }
+    pure public function trailing-percent(percent: string, doubled: string) -> string {
+        return @tr("a {} ends the format; write {} for a literal {}", percent, doubled, percent);
+    }
+    pure public function braces-help(list: string, open: string, close: string) -> string {
+        return @tr("Placeholders are {}. To write a literal brace, double it: {} or {}", list, open, close);
+    }
+    pure public function unknown(found: string, help: string) -> string {
+        return @tr("unknown placeholder {}", found) + ". " + help;
+    }
+    pure public function unknown-suggest(found: string, suggestion: string, help: string) -> string {
+        return @tr("unknown placeholder {}, did you mean {}?", found, suggestion) + " " + help;
+    }
+    pure public function unexpected-argument(placeholder: string) -> string {
+        return @tr("{} takes no argument", placeholder);
+    }
+    pure public function missing-argument(placeholder: string, usage: string) -> string {
+        return @tr("{} needs an argument: {}", placeholder, usage);
+    }
+    pure public function conflicting-prompt(name: string) -> string {
+        return @tr("{} is used for two different prompts; use the same kind and options each time, or pick another name", name);
+    }
+    pure public function too-many-prompts(max: int) -> string {
+        return @tr("a template can ask for at most {} different fields, choices, dates or sections", max);
+    }
+    pure public function bad-offset(plus: string, minus: string) -> string {
+        return @tr("an offset is a sign, a number and a unit, like {} or {}", plus, minus);
+    }
+    // `hint`: 0 months or minutes, 1 days, 2 weeks, 3 months, 4 years, 5 hours, 6 minutes, 7 any unit.
+    pure public function unknown-offset-unit(found: string, hint: int) -> string {
+        return @tr("unknown offset unit {}; use {}", found, unit-hint(hint));
+    }
+    pure function unit-hint(hint: int) -> string {
+        if (hint == 0) {
+            return @tr("`mo` for months or `min` for minutes");
+        }
+        if (hint == 1) {
+            return @tr("`d` for days");
+        }
+        if (hint == 2) {
+            return @tr("`w` for weeks");
+        }
+        if (hint == 3) {
+            return @tr("`mo` for months");
+        }
+        if (hint == 4) {
+            return @tr("`y` for years");
+        }
+        if (hint == 5) {
+            return @tr("`h` for hours");
+        }
+        if (hint == 6) {
+            return @tr("`min` for minutes");
+        }
+        return @tr("one of d, w, mo, y, h, min");
+    }
+    pure public function offset-out-of-range(unit: string, max: string) -> string {
+        return @tr("an offset in {} can be at most {}", unit, max);
+    }
+    pure public function too-many-offsets(max: int) -> string {
+        return @tr("a placeholder can have at most {} offsets", max);
+    }
+    pure public function unknown-format-specifier(specifier: string, supported: string) -> string {
+        return @tr("unknown date format {}; supported: {}", specifier, supported);
+    }
+}

@@ -224,6 +224,72 @@ fn a_copied_sensitive_item_leaves_the_clipboard_after_thirty_seconds() {
 }
 
 #[test]
+fn quitting_clears_a_pending_sensitive_copy_at_once() {
+    let mut w = world();
+    let id = w.ids[0];
+    make_sensitive(&mut w, id);
+    w.ctl.activate_row(0, UseMode::Copy);
+    w.clock.set(at("2026-10-17T10:30:01Z"));
+    w.ctl.clear_pending_clipboard_now();
+    assert_eq!(
+        w.ctl.services.clipboard.read_text(),
+        None,
+        "cleared before its time"
+    );
+    assert_eq!(w.ctl.clipboard_clear_wait(), None);
+}
+
+#[test]
+fn quitting_leaves_a_clipboard_the_user_copied_over_alone() {
+    let mut w = world();
+    let id = w.ids[0];
+    make_sensitive(&mut w, id);
+    w.ctl.activate_row(0, UseMode::Copy);
+    w.ctl.services.clipboard.written.clear();
+    w.ctl.services.clipboard.written.push(
+        snipdeck_platform::payload::Payload::new(vec![snipdeck_platform::payload::Data::Png(
+            vec![1, 2, 3],
+        )])
+        .expect("payload"),
+    );
+    w.ctl.services.clipboard.sequence += 1; // someone else wrote it
+    w.ctl.clear_pending_clipboard_now();
+    assert_eq!(w.ctl.services.clipboard.written.len(), 1, "left alone");
+}
+
+#[test]
+fn a_sensitive_copy_is_still_cleared_after_another_item_was_pasted_over_it() {
+    let mut w = world();
+    let (secret, other) = (w.ids[0], w.ids[1]);
+    make_sensitive(&mut w, secret);
+    w.ctl.activate_row(0, UseMode::Copy);
+    assert!(w.ctl.clipboard_clear_wait().is_some(), "armed by the copy");
+    // Within the timer window another item is pasted: the pipeline snapshots the clipboard (the
+    // secret), pastes, and puts the secret back under a new sequence number.
+    w.clock.set(at("2026-10-17T10:30:10Z"));
+    assert_eq!(
+        w.ctl.use_item(other, UseMode::Paste),
+        UseResult::Done(UseOutcome::Pasted)
+    );
+    // The restore is Windows-only; model its effect: the secret is back under a new sequence.
+    let held = w.ctl.services.clipboard.written[0].clone();
+    w.ctl.services.clipboard.written.clear();
+    w.ctl.services.clipboard.written.push(held);
+    w.ctl.services.clipboard.sequence += 1;
+    assert!(
+        w.ctl.services.clipboard.read_text().is_some(),
+        "the secret was put back"
+    );
+    w.clock.set(at("2026-10-17T10:30:31Z"));
+    w.ctl.clear_clipboard_if_due();
+    assert_eq!(
+        w.ctl.services.clipboard.read_text(),
+        None,
+        "the restored secret does not outlive the timer"
+    );
+}
+
+#[test]
 fn the_clipboard_clear_time_is_the_setting_and_zero_turns_it_off() {
     let mut w = world();
     let id = w.ids[0];
@@ -1358,4 +1424,25 @@ fn a_hint_from_another_worker_generation_is_stale() {
         w.ctl.hint_is_stale(4 << 32 | 1),
         "a newer one is not the running one either"
     );
+}
+
+#[test]
+fn quitting_deletes_the_files_a_sensitive_files_item_left_in_the_temp_folder() {
+    let mut w = world();
+    let id = w.ids[0];
+    // An ordinary item pasted leaves nothing to forget.
+    w.ctl.activate_row(0, UseMode::Paste);
+    w.ctl.clear_pending_clipboard_now();
+    assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 0);
+    // A sensitive Files item pasted does; the quit asks for them to go, once.
+    let mut item = w.ctl.store.item(id).expect("item");
+    item.sensitive = true;
+    item.kind = snipdeck_core::ItemKind::File;
+    item.preview.clear();
+    w.ctl.store.update_item(&item, None).expect("update");
+    w.ctl.activate_row(0, UseMode::Paste);
+    w.ctl.clear_pending_clipboard_now();
+    assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 1);
+    w.ctl.clear_pending_clipboard_now();
+    assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 1, "once");
 }

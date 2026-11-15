@@ -142,7 +142,8 @@ where
     let outcome = pipeline::use_item_erasing(
         env,
         &payload,
-        request.mode,
+        // An item set to "always paste as plain text" pastes plain whatever the caller asked.
+        item.effective_mode(request.mode),
         &request.route,
         request.erase,
         proceed,
@@ -421,6 +422,46 @@ mod tests {
         let item = w.store.item(id).expect("item");
         assert_eq!(item.use_count, 1);
         assert_eq!(item.last_used_at, Some(request.now));
+    }
+
+    /// Gives item `id` an HTML flavour next to its text; optionally marks it always-plain.
+    fn add_html(w: &mut World, id: ItemId, always_plain: bool) {
+        let existing = w.store.formats(id).expect("formats");
+        let mut formats: Vec<Format> = existing.into_iter().cloned().collect();
+        formats.push(Format::Html(snipdeck_core::Content::Inline(
+            snipdeck_core::Inline::new(b"<b>hello</b>".to_vec()).expect("inline"),
+        )));
+        let mut item = w.store.item(id).expect("item");
+        item.always_plain = always_plain;
+        w.store
+            .update_item(&item, Some(&Formats::new(formats).expect("formats")))
+            .expect("set");
+    }
+
+    #[test]
+    fn an_always_plain_item_pastes_text_only_but_a_copy_keeps_its_formats() {
+        let mut w = World::new();
+        let id = w.add(ItemKind::Text, false, "hello");
+        add_html(&mut w, id, true);
+        w.run(&World::request(id, UseMode::Paste, PASTE))
+            .expect("used");
+        assert_eq!(texts_written(&w), [[Data::Text("hello".into())]]);
+        let copy = World::request(id, UseMode::Copy, Route::Copy(CopyReason::NoTarget));
+        w.run(&copy).expect("used");
+        assert_eq!(w.clipboard.written[1].data().len(), 2, "a copy stays rich");
+    }
+
+    #[test]
+    fn an_explicit_plain_paste_drops_the_formats_of_an_ordinary_item() {
+        let mut w = World::new();
+        let id = w.add(ItemKind::Text, false, "hello");
+        add_html(&mut w, id, false);
+        w.run(&World::request(id, UseMode::Paste, PASTE))
+            .expect("used");
+        assert_eq!(w.clipboard.written[0].data().len(), 2);
+        w.run(&World::request(id, UseMode::PastePlain, PASTE))
+            .expect("used");
+        assert_eq!(w.clipboard.written[1].data(), [Data::Text("hello".into())]);
     }
 
     #[test]

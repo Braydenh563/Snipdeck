@@ -1031,6 +1031,7 @@ fn unknown_units_get_a_hint() {
         panic!("expected an unknown unit");
     };
     assert_eq!(found, "m");
+    let hint = hint.text();
     assert!(hint.contains("mo") && hint.contains("min"), "{hint}");
     for (src, found, hint) in [
         ("{date+3days}", "days", "d"),
@@ -1044,6 +1045,7 @@ fn unknown_units_get_a_hint() {
             panic!("{src}");
         };
         assert_eq!(f, found);
+        let h = h.text();
         assert!(h.contains(hint), "{src}: {h}");
     }
     // The span covers the term, sign to unit.

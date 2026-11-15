@@ -117,7 +117,8 @@ const SNAPSHOT_OPEN_BUDGET: Duration = Duration::from_millis(100);
 /// Longer: right after a render the Target may still hold the clipboard to read other formats.
 const RESTORE_OPEN_BUDGET: Duration = Duration::from_millis(250);
 const OPEN_RETRY_STEP: Duration = Duration::from_millis(5);
-/// The most a snapshot keeps; formats that would exceed it are left out of the restore.
+/// The most a snapshot keeps; formats that would exceed it are left out (the snapshot then
+/// reports itself incomplete and the paste is reported as not restored).
 pub const SNAPSHOT_LIMIT: usize = 64 * 1024 * 1024;
 /// The most text [`WinClipboard::read_text`] reads (bytes of UTF-16).
 const READ_TEXT_LIMIT: usize = 32 * 1024 * 1024;
@@ -175,9 +176,16 @@ struct SnapshotData {
     formats: Vec<(u32, Vec<u8>)>,
     /// `GetClipboardSequenceNumber` when the snapshot was taken.
     sequence: u32,
+    /// A format the clipboard offered is not in `formats` (too big, unreadable, or a metafile).
+    incomplete: bool,
 }
 
 impl Snapshot {
+    /// Whether a format the clipboard offered had to be left out.
+    pub fn is_incomplete(&self) -> bool {
+        self.data.incomplete
+    }
+
     /// How many formats were captured.
     pub fn format_count(&self) -> usize {
         self.data.formats.len()
@@ -317,6 +325,13 @@ impl WinClipboard {
         self.call(|| unsafe { GetClipboardSequenceNumber() }).ok()
     }
 
+    /// Deletes the decrypted files that file pastes left in `%TEMP%\Snipdeck` (best effort: a
+    /// file another app still has open stays until the next start). Called on lock and quit
+    /// after a sensitive file was pasted.
+    pub fn forget_pasted_files(&mut self) {
+        remove_paste_files();
+    }
+
     /// Empties the clipboard, whatever formats it holds, if its sequence number is still
     /// `sequence`. Whether it did.
     pub fn clear_if_sequence(&mut self, sequence: u32) -> bool {
@@ -454,6 +469,10 @@ impl Clipboard for WinClipboard {
     /// see the limitation in the module documentation.
     fn render_requested(&mut self, written: &Written) -> bool {
         self.rendered.load(Ordering::Acquire) == written.generation
+    }
+
+    fn is_complete(&self, snapshot: &Snapshot) -> bool {
+        !snapshot.is_incomplete()
     }
 
     fn restore(&mut self, snapshot: Snapshot, written: Written) -> Result<bool, Error> {
@@ -1101,13 +1120,17 @@ fn snapshot_job() -> Result<Snapshot, Error> {
     }
     let open = OpenGuard::open(hwnd, SNAPSHOT_OPEN_BUDGET).ok_or_else(busy)?;
     let mut formats = Vec::new();
-    let mut total = 0usize;
+    let mut budget = win_formats::SnapshotBudget::new(SNAPSHOT_LIMIT);
     let mut format = 0;
     loop {
         // SAFETY: the clipboard is open by this thread.
         format = unsafe { EnumClipboardFormats(format) };
         if format == 0 {
             break;
+        }
+        if win_formats::is_unkeepable_format(format) {
+            budget.missed_softly();
+            continue;
         }
         if !win_formats::is_memory_format(format) {
             continue;
@@ -1116,11 +1139,18 @@ fn snapshot_job() -> Result<Snapshot, Error> {
         // the window procedure runs inside this call; no state is borrowed here).
         // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
         let Ok(handle) = (unsafe { GetClipboardData(format) }) else {
+            budget.missed_softly();
             continue;
         };
-        if let Some(bytes) = read_global(HGLOBAL(handle.0), SNAPSHOT_LIMIT - total) {
-            total += bytes.len();
+        // SAFETY: as above; only the size of the live global block is read.
+        if unsafe { GlobalSize(HGLOBAL(handle.0)) } == 0 {
+            continue;
+        }
+        if let Some(bytes) = read_global(HGLOBAL(handle.0), budget.room()) {
+            budget.took(bytes.len());
             formats.push((format, bytes));
+        } else {
+            budget.missed();
         }
     }
     // After the renders above, which bump it; nobody else can change it while we hold it open.
@@ -1128,7 +1158,11 @@ fn snapshot_job() -> Result<Snapshot, Error> {
     let sequence = unsafe { GetClipboardSequenceNumber() };
     drop(open);
     Ok(Snapshot {
-        data: Arc::new(SnapshotData { formats, sequence }),
+        data: Arc::new(SnapshotData {
+            formats,
+            sequence,
+            incomplete: budget.incomplete(),
+        }),
     })
 }
 

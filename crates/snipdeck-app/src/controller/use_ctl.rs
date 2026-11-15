@@ -189,7 +189,23 @@ where
     pub fn fill_changed(&mut self, index: usize, value: &str) {
         if let Some(fill) = &mut self.fill {
             fill.set_value(index, value);
+            // Typing the answers is use: the idle lock must not close the form under the user.
+            self.note_activity();
         }
+    }
+
+    /// Closes the fill form if it belongs to a sensitive template, as the lock does: the form
+    /// holds the decrypted template. Returns whether one was open.
+    pub(super) fn close_sensitive_fill(&mut self) -> bool {
+        let sensitive = self
+            .fill
+            .as_ref()
+            .is_some_and(|f| self.store.item(f.item()).map_or(true, |i| i.sensitive));
+        if sensitive {
+            self.fill = None;
+            self.fill_erase = None;
+        }
+        sensitive
     }
 
     /// Closes the fill form without using the template (Esc, the close button) and hands the
@@ -583,6 +599,13 @@ where
     /// clipboard leaves nothing to clear; one whose snapshot or restore failed
     /// ([`UseOutcome::PastedNotRestored`]) leaves the item there, so it is cleared like a copy.
     pub(super) fn schedule_clipboard_clear(&mut self, item: ItemId, outcome: UseOutcome) {
+        if self
+            .store
+            .item(item)
+            .is_ok_and(|i| i.sensitive && i.kind == snipdeck_core::ItemKind::File)
+        {
+            self.secret_files_pasted = true;
+        }
         let life = Duration::from_secs(u64::from(self.settings.clipboard_clear_secs));
         if life.is_zero()
             || matches!(outcome, UseOutcome::Pasted)
@@ -620,10 +643,31 @@ where
 
     /// Clears the clipboard if the wait is over and it still holds the copied text.
     pub fn clear_clipboard_if_due(&mut self) {
+        self.clear_clipboard(false);
+    }
+
+    /// Clears a pending sensitive copy now, whatever its due time (the app is quitting, and the
+    /// timer that would have done it dies with the event loop). A clipboard that someone else
+    /// has written to since is left alone, as for the timed clear.
+    pub fn clear_pending_clipboard_now(&mut self) {
+        self.clear_clipboard(true);
+        self.forget_secret_files();
+    }
+
+    /// Deletes the decrypted files a sensitive Files item left in the temp folder when it was
+    /// pasted (the lock and the quit call it). A file the target still holds open stays until
+    /// the next start. Nothing to do when no such item was pasted.
+    pub(super) fn forget_secret_files(&mut self) {
+        if std::mem::take(&mut self.secret_files_pasted) {
+            self.services.clipboard.forget_pasted_files();
+        }
+    }
+
+    fn clear_clipboard(&mut self, force: bool) {
         let Some(pending) = &self.clipboard_clear else {
             return;
         };
-        if self.clock.now() < pending.due {
+        if !force && self.clock.now() < pending.due {
             return;
         }
         let Some(mut pending) = self.clipboard_clear.take() else {
@@ -646,6 +690,7 @@ where
         // Still ours but not cleared: the clipboard was busy. Try again shortly (A6).
         if ours
             && !cleared
+            && !force
             && pending.attempts + 1 < CLIPBOARD_CLEAR_ATTEMPTS
             && let Ok(due) = self.clock.now().checked_add(CLIPBOARD_CLEAR_RETRY)
         {

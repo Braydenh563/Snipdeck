@@ -39,7 +39,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 | **Tag** | Free-form label across Boards; filterable. |
 | **Pinned** | Item shown in the panel's favourites strip, above list order. |
 | **Sensitive** | Item that is masked and excluded from history; its clipboard copy is cleared after N s (default 30, Settings > Privacy); encrypted at rest (all tiers). |
-| **Recent inbox** | Clipboard history (opt-in: asked on first run; nothing is kept until Yes; Settings and the welcome tour change it). Last 200 entries or 7 days (configurable). Promote → List. |
+| **Recent inbox** | Clipboard history (opt-in: asked on first run; nothing is kept until Yes; Settings and the welcome tour change it). Last 200 entries or 7 days (fixed in v1.0). Promote → List. |
 | **Panel** | Small dockable, always-on-top, non-activating window showing a Board (lists as tabs). |
 | **Floating list** | A List detached from the Panel into its own mini-panel. |
 | **Picker** | Hotkey-summoned, keyboard-first popup at the cursor: type to filter, Enter to paste. |
@@ -59,7 +59,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - **Favourites strip** of pinned items at top.
 - **Click behaviour (smart)**: click → paste into Target if a text-input Target is known, else copy + toast.
   `Shift+click` → copy only. There is no Paste button: the row is the paste target and the footer says where it goes. Hover or selection reveals **Copy** / **Edit** / **More** on the preview line (Copy is hidden when there is no target).
-- Keys when panel focused: `1`–`9` use Nth item, arrows navigate, `Enter` use, `F2` rename, `Del` delete.
+- Keys when panel focused: `Alt+1`–`Alt+9` use Nth item (bare digits are search text), arrows navigate, `Enter` use, `F2` rename, `Del` delete.
 - Add: **+ From clipboard**, `Ctrl+V` / drag-drop onto panel, **quick new note** (inline), global
   **save-selection** hotkey (copies selection under the hood, restores clipboard).
 - Reorder by drag (also `Alt+↑/↓`); per-list sort: Manual (default) / Most used / Recently used.
@@ -78,14 +78,14 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 ### 5.1a Use semantics (paste & clipboard)
 - **Paste** = write item to clipboard → paste key into Target → **restore the previous clipboard**. A fixed 300 ms wait is only the fallback: the primary signal is **delayed rendering** (the item's formats are rendered on demand and the previous clipboard is restored once the target has asked for them, with a 2 s cap), because slow targets such as Remote Desktop may otherwise receive the old content (M0 S1). **(unverified)**
 - **Copy** (`Shift+click`, `Shift+Enter`, or no Target) = item stays on the clipboard.
-- **Paste as plain text:** `Alt+click` / `Alt+Enter`; per-item "always paste as plain text" option.
+- **Paste as plain text:** `Alt+click` / `Alt+Enter` (Panel items and Recent rows, Picker, Main window; also "Paste as plain text" in the Recent row menu); per-item "always paste as plain text" option.
 - **Paste stack:** multi-select items → "Start stack". The panel shows the queue; the global **Paste next** hotkey (default `Ctrl+Shift+U`) pastes the head and advances. `Ctrl+V` is never hooked. `Esc` in the panel or finishing the queue ends the stack.
 - Elevated targets (UIPI) and failures fall back to Copy with an explaining toast ("Couldn't paste into Task Manager (runs as admin). Copied instead.").
 
 ### 5.2 Picker
 - Global hotkey (default `Ctrl+Shift+Space`), appears at text caret (fallback mouse) in <80 ms.
 - **Placement:** the Picker setting chooses the side of the caret: Below (default), Above, Right or Left. Below and Above leave a one-line gap, so the caret's line and the neighbouring line stay visible; Right and Left sit beside the caret, top-aligned, and may cover the rest of that line. A side without room flips to the opposite one, and the window is clamped to the monitor's work area. A mouse anchor behaves like Below.
-- Fuzzy search across all boards (title, content, tags); `Tab` scopes to board/list; `1`–`9` quick use.
+- Fuzzy search across all boards (title, content, tags); `Tab` scopes to board/list; `Alt+1`–`Alt+9` quick use (digits without `Alt` are search text).
 - `Enter` paste, `Shift+Enter` copy, `Ctrl+E` edit, `Esc` dismiss and restore focus.
 
 ### 5.3 Main window (3-pane)
@@ -115,7 +115,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - Listens to clipboard changes; dedupes; skips sources that set
   `ExcludeClipboardContentFromMonitorProcessing` / `CanIncludeInClipboardHistory=0` (password managers),
   excluded apps, and Sensitive items.
-- Retention: 200 entries / 7 days (configurable); image entries size-capped.
+- Retention: 200 entries / 7 days (fixed in v1.0, not a setting); image entries size-capped.
 - Encrypted at rest with the Sensitive-item key (OS-wrapped, optional master password); locked = hidden and paused. Search filters after decrypt, in memory.
 - One click **promote** to a List.
 
@@ -146,9 +146,9 @@ Seeds a **Getting started** list whose cards teach by doing ("Click me to paste"
 
 ### 5.9 Data portability
 - Export/import `.snipdeck` (zip: `manifest.json`, `items.json`, `assets/`), schema documented in `docs/format.md`.
-- Importers: Ditto, CopyQ, Windows clipboard history (current session), folder of `.txt`/`.md`.
+- Importers: Ditto, CopyQ, folder of `.txt`/`.md`. The Windows clipboard history importer is **v1.x** (not implemented).
 - Importer notes are typed (`Note` in `snipdeck-portable`) and worded in the UI through `@tr`, so every note, including its "entry N" / "Ditto clip N" / "file, match N" label, appears in the user's language with its values intact.
-- Data folder relocatable (e.g. into OneDrive/Dropbox for DIY sync); DB is single-writer — warn on concurrent use.
+- Relocatable data folder (e.g. into OneDrive/Dropbox for DIY sync) with a concurrent-use warning is **v1.x** (not implemented): in v1.0 the data folder is always `%LOCALAPPDATA%\Snipdeck`; the DB is single-writer.
 
 ## 6. Free, with an optional Buy Me a Coffee link
 

@@ -743,6 +743,75 @@ fn setting_again_while_one_is_set_is_refused() {
 // ---- The idle lock, on an injected clock -------------------------------------------------------
 
 #[test]
+fn the_idle_lock_closes_the_fill_form_of_a_sensitive_template() {
+    let mut r = with_password();
+    r.ctl.open_new_item(Origin::Main);
+    let v = r.ctl.item_editor_view().expect("editor");
+    r.ctl.item_editor_save(&EditorInput {
+        kind: snipdeck_core::ItemKind::Template,
+        sensitive: true,
+        title: "Letter".into(),
+        content: "Dear {field:Name}, the code is 4711".into(),
+        ..v.fields
+    });
+    assert!(!r.ctl.item_editor_open(), "saved");
+    let id = r
+        .ctl
+        .store()
+        .all_items()
+        .expect("items")
+        .into_iter()
+        .find(|i| i.title == "Letter")
+        .expect("the template")
+        .id;
+    r.ctl.use_item(id, UseMode::Copy);
+    assert!(r.ctl.fill().is_some(), "the form asks for the name");
+    r.advance(IDLE_LOCK);
+    assert!(r.ctl.lock_if_idle(), "due");
+    assert!(
+        r.ctl.fill().is_none(),
+        "the decrypted template is gone from the open form"
+    );
+}
+
+#[test]
+fn typing_in_the_fill_form_of_a_sensitive_template_counts_as_activity() {
+    let mut r = with_password();
+    r.ctl.open_new_item(Origin::Main);
+    let v = r.ctl.item_editor_view().expect("editor");
+    r.ctl.item_editor_save(&EditorInput {
+        kind: snipdeck_core::ItemKind::Template,
+        sensitive: true,
+        title: "Letter".into(),
+        content: "Dear {field:Name}, the code is 4711".into(),
+        ..v.fields
+    });
+    let id = r
+        .ctl
+        .store()
+        .all_items()
+        .expect("items")
+        .into_iter()
+        .find(|i| i.title == "Letter")
+        .expect("the template")
+        .id;
+    // The form opens 15 seconds before the idle time is up, and its answers take a while.
+    r.advance(just_before_idle(Duration::from_secs(15)));
+    r.ctl.use_item(id, UseMode::Copy);
+    assert!(r.ctl.fill().is_some(), "the form asks for the name");
+    r.advance(Duration::from_secs(14));
+    r.ctl.fill_changed(0, "Ada");
+    r.advance(Duration::from_secs(30));
+    assert!(
+        !r.ctl.lock_if_idle(),
+        "the user typed 30 seconds ago, so the library is not idle"
+    );
+    assert!(r.ctl.fill().is_some(), "the answers are still there");
+    r.advance(IDLE_LOCK);
+    assert!(r.ctl.lock_if_idle(), "idle again after the full time");
+}
+
+#[test]
 fn the_library_locks_after_the_idle_time_and_asks_again() {
     let mut r = with_password();
     assert_eq!(r.ctl.idle_lock_wait(), Some(IDLE_LOCK));

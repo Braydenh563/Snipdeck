@@ -10,7 +10,7 @@
 // Keyboard (all handled in `capture-key-pressed` on the window's FocusScope, so they work whichever
 // control has focus):
 //   type            filters; a printable key typed while another control has focus moves into the search
-//   Up / Down       move the selection (PageUp / PageDown a page; Cards: one row of tiles); Enter uses it, Shift+Enter copies
+//   Up / Down       move the selection (PageUp / PageDown a page; Cards: one row of tiles); Enter uses it, Shift+Enter copies, Alt+Enter pastes it as plain text
 //   Left / Right    Cards only, with an empty search: one tile back or on
 //   Alt+1-9         use the Nth row, whatever the search holds (bare digits are always search text)
 //   Space (held)    reveals the selected sensitive row while it is held (the eye on the row does the same by hand)
@@ -405,6 +405,8 @@ export component PanelWindow inherits Window {
     callback row-activated(int);
     // Shift+Enter or Shift+click: copy only.
     callback row-copied(int);
+    // Alt+Enter or Alt+click: paste as plain text.
+    callback row-plain(int);
     // Alt+1-9 pressed (the app resolves it with `PanelModel::quick_use`).
     callback quick-use(int);
     callback selection-moved(int);
@@ -418,6 +420,8 @@ export component PanelWindow inherits Window {
     callback recent-used(int);
     // Shift+click, Shift+Enter or the menu's Copy: copy only.
     callback recent-copied(int);
+    // Alt+Enter or Alt+click on a Recent row: paste it as plain text.
+    callback recent-plain(int);
     callback recent-deleted(int);
     callback recent-saved(int, int);
     callback recent-unlock-requested();
@@ -977,6 +981,14 @@ export component PanelWindow inherits Window {
         }
     }
 
+    function use-selected-plain() {
+        if (root.sel < 0 || root.delete-mode) {
+            return;
+        }
+        root.mark-used(root.sel);
+        root.row-plain(root.sel);
+    }
+
     // Where the live row for Alt+N sits among the rows shown (the host fills it; without it, row N - 1).
     in property <[int]> quick-rows;
     function quick(n: int) {
@@ -1421,6 +1433,18 @@ export component PanelWindow inherits Window {
                 // Alt+1-9 uses the Nth row whatever the query holds; a bare digit is always search text.
                 if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift && !event.modifiers.meta && !root.list-hidden && root.digit(event.text) > 0) {
                     root.quick(root.digit(event.text));
+                    return accept;
+                }
+                // Alt+Enter pastes the selected row as plain text (SPEC 5.1a).
+                if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift && !event.modifiers.meta && event.text == Key.Return
+                    && root.search-focused && !root.list-hidden && !root.recent-open && !root.symbols-open && root.sel >= 0 && !search.composing) {
+                    root.use-selected-plain();
+                    return accept;
+                }
+                // Alt+Enter pastes the selected Recent row as plain text.
+                if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift && !event.modifiers.meta && event.text == Key.Return
+                    && root.search-focused && root.recent-open && root.pastes && root.rsel >= 0 && !search.composing) {
+                    root.recent-plain(root.recent-rows[root.rsel].id);
                     return accept;
                 }
                 if (event.modifiers.alt || event.modifiers.meta || search.composing || (root.symbols-open && root.symbol-composing)) {
@@ -2290,6 +2314,13 @@ export component PanelWindow inherits Window {
                                                     root.selected-index = i;
                                                     root.row-copied(i);
                                                 }
+                                                plain-click: true;
+                                                use-plain => {
+                                                    if (!root.delete-mode && !root.select-mode) {
+                                                        root.selected-index = i;
+                                                        root.row-plain(i);
+                                                    }
+                                                }
                                                 context-menu-requested(x, y) => {
                                                     root.item-menu-x = self.absolute-position.x + x;
                                                     root.item-menu-y = self.absolute-position.y + y;
@@ -2475,6 +2506,11 @@ export component PanelWindow inherits Window {
                                     copy => {
                                         root.recent-selected = i;
                                         root.recent-copied(entry.id);
+                                    }
+                                    plain-click: root.pastes;
+                                    use-plain => {
+                                        root.recent-selected = i;
+                                        root.recent-plain(entry.id);
                                     }
                                     double-clicked => {
                                         root.recent-save-at(i, self.absolute-position.x + Space.s6, self.absolute-position.y + self.height);
@@ -3097,7 +3133,12 @@ export component PanelWindow inherits Window {
             x: max(Space.s2, min(root.recent-menu-x, root.width - self.width - Space.s2));
             y: max(Space.s2, min(root.recent-menu-y, root.height - self.height - Space.s2));
             menu-max-h: root.height - 2 * Space.s2;
-            entries: [
+            entries: root.pastes ? [
+                { text: @tr("Save to…"), icon: Icons.folder },
+                { text: @tr("Copy"), icon: Icons.copy },
+                { text: @tr("Paste as plain text"), icon: Icons.clipboard },
+                { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
+            ] : [
                 { text: @tr("Save to…"), icon: Icons.folder },
                 { text: @tr("Copy"), icon: Icons.copy },
                 { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
@@ -3110,6 +3151,8 @@ export component PanelWindow inherits Window {
                     root.recent-save-open = true;
                 } else if (i == 1) {
                     root.recent-copied(root.recent-menu-id);
+                } else if (i == 2 && root.pastes) {
+                    root.recent-plain(root.recent-menu-id);
                 } else {
                     root.recent-deleted(root.recent-menu-id);
                 }

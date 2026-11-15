@@ -57,6 +57,10 @@ pub trait Clipboard {
     fn write_confirmed(&mut self, written: &Self::Written) -> bool;
     /// Whether the Target has asked for the data written as `written`.
     fn render_requested(&mut self, written: &Self::Written) -> bool;
+    /// Whether `snapshot` holds everything that was on the clipboard. A snapshot that had to
+    /// leave a format out (one too big to keep, or a metafile) is not put back: that would
+    /// replace the user's clipboard with part of itself, unannounced.
+    fn is_complete(&self, snapshot: &Self::Snapshot) -> bool;
     /// Puts `snapshot` back unless the clipboard changed since `written`; `false` if it changed.
     ///
     /// # Errors
@@ -257,6 +261,11 @@ fn paste<C: Clipboard, K: Keyboard, T: Timing>(
     let Some(snapshot) = snapshot else {
         return Ok(UseOutcome::PastedNotRestored);
     };
+    if !env.clipboard.is_complete(&snapshot) {
+        // The item stays on the clipboard, and the outcome says the previous clipboard is gone,
+        // instead of reporting a restore that put back only some of it.
+        return Ok(UseOutcome::PastedNotRestored);
+    }
     // `Ok(false)`: the user copied something newer, so our item is already gone. A restore that
     // errs leaves our item on the clipboard: that is not worth failing the paste for, but it is
     // reported.
@@ -442,6 +451,20 @@ mod tests {
             Ok(UseOutcome::PastedNotRestored)
         );
         assert!(!w.clipboard.log.contains(&"restore".to_string()));
+    }
+
+    #[test]
+    fn a_snapshot_that_left_a_format_out_is_not_put_back_and_says_so() {
+        let mut w = World::new();
+        w.clipboard.incomplete_snapshot = true;
+        assert_eq!(
+            w.run(UseMode::Paste, &PASTE),
+            Ok(UseOutcome::PastedNotRestored)
+        );
+        assert!(
+            !w.clipboard.log.contains(&"restore".to_string()),
+            "a partial clipboard is never put back as if it were the whole"
+        );
     }
 
     #[test]

@@ -13,8 +13,7 @@
 # The other route still works: set the version yourself, then git tag v1.1.0 && git push origin v1.1.0
 # (the tag must match [workspace.package] version, so a v1.1.0 never calls itself 1.0.0).
 #
-# Needs the SNIPDECK_LICENCE_PUBLIC_KEY repository secret (docs/licensing.md): a release never embeds the
-# development key.
+# Needs no repository secrets: Snipdeck is free and embeds no licence key.
 #
 # Assets per release: the portable zip, the per-user Setup .exe (Inno Setup), their SHA-256 files and
 # build attestations. The Microsoft Store MSIX is built only when the repository variables MSIX_IDENTITY_NAME,
@@ -208,12 +207,9 @@ jobs:
           ref: ${{ needs.resolve-version.outputs.tag }}
           persist-credentials: false
       - run: rustup toolchain install stable --profile minimal
-      - name: Build (release profile, production licence key)
+      - name: Build (release profile)
         shell: pwsh
-        env:
-          SNIPDECK_LICENCE_PUBLIC_KEY: ${{ secrets.SNIPDECK_LICENCE_PUBLIC_KEY }}
         run: |
-          if (-not $env:SNIPDECK_LICENCE_PUBLIC_KEY) { throw "SNIPDECK_LICENCE_PUBLIC_KEY secret is not set: a release cannot embed the development key (docs/licensing.md)" }
           cargo build --release -p snipdeck-app --locked
           if ($LASTEXITCODE -ne 0) { throw "cargo build exited $LASTEXITCODE" }
       # Nothing ships that was never started: the built exe runs its headless library

@@ -29,7 +29,7 @@
 //! # Rich entries (schema version 7)
 //!
 //! A row has a `kind`: `text` (the default, and every row written before version 7), `image` or
-//! `files`. `text` of a non-text row is a short label ("Image 1280 x 720", "3 files: a.pdf, ...")
+//! `files`. `text` of a non-text row is a short label with no words of any language ("1280 x 720", "a.pdf, b.txt, ...")
 //! so the non-empty check and the in-memory search keep working. `rich` is a sealed envelope of
 //! the extras: for text the HTML and RTF flavours, for an image its size and thumbnail, for
 //! files the paths. An image's bytes are sealed with the data key **before** they reach the blob

@@ -373,7 +373,11 @@ where
                 kind: ToastKind::Success,
                 message: ToastMessage::BackupMade,
             },
-            Err(e) => danger(ToastMessage::BackupFailed(Cause::of_portable(&e))),
+            Err(e) => {
+                // The toast gives the cause; the log names an item that is too big.
+                crate::trace!("backup failed: {e}");
+                danger(ToastMessage::BackupFailed(Cause::of_portable(&e)))
+            }
         });
         worked
     }

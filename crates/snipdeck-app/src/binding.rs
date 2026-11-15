@@ -413,6 +413,21 @@ where
         result
     }
 
+    /// Reads the files of `run` (dropped, or pasted from Explorer) off the UI thread; the Panel
+    /// stays alive, and each result is applied here when the controller is free.
+    fn read_run(self: &Rc<Self>, run: crate::controller::DropRun) {
+        let core = Rc::clone(self);
+        crate::drop_read::drive(
+            run,
+            Rc::new(move |run, done| {
+                if core.controller.try_borrow_mut().is_err() {
+                    return Err(Box::new((run, done)));
+                }
+                Ok(core.act(|ctl| ctl.drop_read_done(run, done)))
+            }),
+        );
+    }
+
     /// Row `index` of the open item or symbol menu was chosen. "Save as" of a symbol runs its
     /// dialog here, between two short borrows of the controller (the dialog has its own message
     /// loop, during which timers and hotkeys reach the controller).
@@ -842,6 +857,10 @@ where
             let used = ctl.activate_row(index(i), UseMode::Copy);
             ctl.after_use(&used)
         });
+        wire_effects!(on_row_plain, |ctl, i| {
+            let used = ctl.activate_row(index(i), UseMode::PastePlain);
+            ctl.after_use(&used)
+        });
         wire_effects!(on_quick_use, |ctl, n| {
             let used = ctl.quick_use(u8::try_from(n).unwrap_or(0));
             ctl.after_use(&used)
@@ -881,6 +900,10 @@ where
             .set_recent_history(yes));
         wire_effects!(on_recent_used, |ctl, id| {
             let used = ctl.recent_use(i64::from(id), UseMode::Paste);
+            ctl.after_use(&used)
+        });
+        wire_effects!(on_recent_plain, |ctl, id| {
+            let used = ctl.recent_use(i64::from(id), UseMode::PastePlain);
             ctl.after_use(&used)
         });
         wire_effects!(on_recent_copied, |ctl, id| {
@@ -1101,8 +1124,17 @@ where
         wire!(on_delete_requested, |ctl, i| ctl.delete_row(index(i)));
         wire!(on_toast_undo, |ctl| ctl.toast_action());
         wire_effects!(on_toast_edit, |ctl| ctl.toast_edit());
-        wire!(on_paste_create_requested, |ctl| ctl
-            .paste_create(crate::item_editor::Origin::Panel));
+        {
+            let core = Rc::clone(&core);
+            window.on_paste_create_requested(move || {
+                crate::trace!("callback on_paste_create_requested");
+                crate::native_window::note_opener(crate::native_window::Surface::Panel);
+                let started = core.act(|ctl| ctl.paste_begin(crate::item_editor::Origin::Panel));
+                if let Some(run) = started {
+                    core.read_run(run);
+                }
+            });
+        }
         wire_effects!(on_copy_selection_requested, |ctl| {
             match ctl.panel_copy_selection() {
                 Some(used) => ctl.after_use(&used),
@@ -1332,17 +1364,7 @@ where
                             ctl.drop_begin(paths, crate::item_editor::Origin::Panel, None)
                         });
                         if let Some(run) = started {
-                            // The files are read off the UI thread; the Panel stays alive.
-                            let core = Rc::clone(&core);
-                            crate::drop_read::drive(
-                                run,
-                                Rc::new(move |run, done| {
-                                    if core.controller.try_borrow_mut().is_err() {
-                                        return Err(Box::new((run, done)));
-                                    }
-                                    Ok(core.act(|ctl| ctl.drop_read_done(run, done)))
-                                }),
-                            );
+                            core.read_run(run);
                         }
                         true
                     });
