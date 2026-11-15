@@ -382,7 +382,10 @@ pub fn remove_paste_dirs(root: &std::path::Path, keep: Option<&std::path::Path>)
 /// Removes the paste folders in `dirs` and no others (the ones that held a sensitive item's
 /// files), zeroing their files first. A path that is not a paste folder of ours directly under
 /// `root`, or is a link, is skipped. `dirs` is emptied. Returns how many were removed.
-pub fn remove_listed_paste_dirs(root: &std::path::Path, dirs: &mut Vec<std::path::PathBuf>) -> usize {
+pub fn remove_listed_paste_dirs(
+    root: &std::path::Path,
+    dirs: &mut Vec<std::path::PathBuf>,
+) -> usize {
     let mut removed = 0;
     for dir in dirs.drain(..) {
         let ours = dir.parent() == Some(root)

@@ -271,7 +271,10 @@ mod tests {
         fs::hard_link(drafts.path(key), &alias).expect("link");
         drafts.save(key, &draft("second")).expect("save again");
         let seen = fs::read(&alias).expect("alias");
-        assert!(seen.iter().all(|b| *b == 0), "the replaced draft was zeroed");
+        assert!(
+            seen.iter().all(|b| *b == 0),
+            "the replaced draft was zeroed"
+        );
         assert_eq!(drafts.load(key).expect("draft").content, "second");
     }
 

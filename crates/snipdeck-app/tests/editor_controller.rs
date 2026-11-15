@@ -1679,7 +1679,7 @@ fn a_sensitive_item_keeps_no_trigger() {
 
 #[test]
 fn the_always_paste_as_plain_text_switch_is_saved_and_reopens_as_it_was() {
-    let mut r = pro();
+    let mut r = rig();
     let ctl = &mut r.ctl;
     ctl.open_new_item(Origin::Main);
     let v = view(ctl);

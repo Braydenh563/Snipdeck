@@ -1133,11 +1133,14 @@ where
             self.arm_save();
             return;
         }
-        let view = page_view(
+        let mut view = page_view(
             &self.controller.borrow(),
             &self.state.borrow(),
             self.data_dir.is_some(),
         );
+        // The switch shows what Windows will do, not only what was chosen here: an entry removed
+        // outside Snipdeck (Task Manager, a moved install) reads as off.
+        view.autostart = view.autostart && self.host.autostart_registered();
         render(&window, self.shown.borrow().as_ref(), &view);
         if let Some(toast) = &view.toast
             && self.controller.borrow_mut().claim_toast_timer(toast.seq)

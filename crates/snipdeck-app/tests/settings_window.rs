@@ -1069,6 +1069,26 @@ fn start_with_windows_that_cannot_be_changed_says_so_and_keeps_the_old_value() {
 }
 
 #[test]
+fn start_with_windows_shows_the_real_state_when_the_entry_was_removed_outside() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_autostart_toggled(true);
+        assert!(r.ui.get_autostart());
+        // The user switches Snipdeck off in Task Manager's Startup tab (or the entry is gone).
+        r.host.autostart.set(Some(false));
+        r.ui.invoke_panel_in_taskbar_toggled(true);
+        assert!(
+            !r.ui.get_autostart(),
+            "the page reads the entry, not the stored setting"
+        );
+        assert!(
+            r.ctl.borrow().settings().autostart,
+            "the stored choice stays until the user changes it"
+        );
+    });
+}
+
+#[test]
 fn the_window_behaviour_toggles_start_at_their_defaults_and_reach_the_host() {
     on_ui_thread(|| {
         let r = rig();

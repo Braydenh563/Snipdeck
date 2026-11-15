@@ -382,7 +382,14 @@ mod tests {
             keyboard: &mut w.keyboard,
             timing: &mut w.timing,
         };
-        use_item_erasing(&mut env, &text_and_html(), UseMode::Paste, &PASTE, 0, &|| false)
+        use_item_erasing(
+            &mut env,
+            &text_and_html(),
+            UseMode::Paste,
+            &PASTE,
+            0,
+            &|| false,
+        )
     }
 
     #[test]

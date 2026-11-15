@@ -1461,7 +1461,10 @@ fn a_sensitive_files_paste_deletes_its_temp_files_on_the_clear_timer_without_a_l
     assert_eq!(w.ctl.clipboard_clear_wait(), Some(Duration::from_secs(30)));
     w.clock.set(at("2026-10-17T10:30:29Z"));
     w.ctl.clear_clipboard_if_due();
-    assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 0, "not yet");
+    assert_eq!(
+        w.ctl.services.clipboard.pasted_files_forgotten, 0,
+        "not yet"
+    );
     w.clock.set(at("2026-10-17T10:30:30Z"));
     w.ctl.clear_clipboard_if_due();
     assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 1);

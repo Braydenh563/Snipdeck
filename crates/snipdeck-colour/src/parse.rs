@@ -140,9 +140,7 @@ fn function(name: &str, args: &str) -> Result<Rgba8, ParseError> {
         "cmyk" if count_ok(4) => {
             // Bare numbers are one set: fractions 0..1, unless one is above 1, which can only be
             // a percentage (design tools write `cmyk(50, 20, 0, 10)`). `%` is always percent.
-            let bare_percent = toks[..4]
-                .iter()
-                .any(|&(v, u)| u == Unit::None && v > 1.0);
+            let bare_percent = toks[..4].iter().any(|&(v, u)| u == Unit::None && v > 1.0);
             let part = |t: (f64, Unit)| match t {
                 (v, Unit::None) if bare_percent => percent_like((v, Unit::None)),
                 t => fraction(t),
