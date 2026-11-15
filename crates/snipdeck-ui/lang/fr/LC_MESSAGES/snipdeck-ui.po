@@ -2693,6 +2693,9 @@ msgstr "Snipdeck n'a pas pu enregistrer un brouillon de ce que vous avez tapé."
 msgid "Snipdeck couldn't save this item. Nothing was changed."
 msgstr "Snipdeck n'a pas pu enregistrer cet extrait. Rien n'a été modifié."
 
+msgid "Snipdeck couldn't start.\n\n{}\n\nNothing was deleted. Close any program that may be using your Snipdeck folder, make sure the folder is not read-only, then start Snipdeck again. If you went back to an older version, install the newer one. Your backups are in the backups folder inside your Snipdeck folder."
+msgstr ""
+
 msgid "Snipdeck couldn't write to your library. Check that the disk has room."
 msgstr "Snipdeck n'a pas pu écrire dans votre bibliothèque. Vérifiez que le disque a de la place."
 

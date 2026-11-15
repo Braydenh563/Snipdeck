@@ -80,6 +80,8 @@ fn apply_tray_history(tray: &TrayCell, latest: &Rc<Cell<(bool, bool)>>) {
 type TrayCell = Rc<RefCell<Option<Box<dyn snipdeck_platform::tray::Tray>>>>;
 
 fn main() -> ExitCode {
+    // Before anything can load a library: only the app folder and System32 are searched.
+    platform::harden_dll_search();
     // First, so that a panic anywhere after this leaves a report (the data folder is told to the
     // hook once it is known).
     crash::install(Timestamp::now);
@@ -124,9 +126,27 @@ fn main() -> ExitCode {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("snipdeck: {e}");
+            // The release Windows build has no console: say it in a message box, or the app
+            // would start and vanish. (A screenshot run is a developer's command line.)
+            if args.screenshot.is_none() {
+                report_startup_failure(&e);
+            }
             ExitCode::FAILURE
         }
     }
+}
+
+/// Tells the user, in a native message box and in their language, why the app could not start.
+fn report_startup_failure(details: &str) {
+    // The settings did not load, so the language is the system's.
+    let _ = slint::select_bundled_translation("");
+    // The text lives in the UI crate's catalogs; a window is the way to reach them. Without a
+    // backend (the failure was in choosing one) there is no window and the reason stands alone.
+    let text = match PanelWindow::new() {
+        Ok(window) => snipdeck_app::wording::startup_failure_text(&window, details),
+        Err(_) => details.to_owned(),
+    };
+    platform::show_startup_failure("Snipdeck", &text);
 }
 
 /// `--check-db` and `--troubleshoot`: print and exit, without starting the app.
@@ -405,6 +425,25 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
             );
         })
     };
+    // A window that cannot be opened says so in a toast (the release build has no console).
+    let window_failed: Rc<dyn Fn()> = {
+        let controller = Rc::downgrade(&controller);
+        Rc::new(move || {
+            let controller = controller.clone();
+            // Later: the effect runs inside a controller call, which still holds its borrow.
+            slint::Timer::single_shot(std::time::Duration::ZERO, move || {
+                if let Some(controller) = controller.upgrade()
+                    && let Ok(mut controller) = controller.try_borrow_mut()
+                {
+                    controller.show_toast(snipdeck_app::toast::Toast {
+                        kind: snipdeck_app::toast::ToastKind::Danger,
+                        message: snipdeck_app::toast::ToastMessage::WindowNotShown,
+                    });
+                }
+                with_binding(Binding::redraw);
+            });
+        })
+    };
     let on_effect: Rc<dyn Fn(&Effect)> = Rc::new(effect_handler(
         Rc::clone(&hotkeys),
         chords_now,
@@ -415,6 +454,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         Rc::clone(&help_ui),
         Rc::clone(&unlock_ui),
         Rc::clone(&attach_now),
+        window_failed,
     ));
     // The Picker, the fill form and the toast window (made when first needed).
     let _popups = {
@@ -581,6 +621,7 @@ fn effect_handler(
     help_ui: Rc<HelpUi>,
     unlock_ui: Rc<UnlockUi>,
     attach_panel: Rc<dyn Fn()>,
+    window_failed: Rc<dyn Fn()>,
 ) -> impl Fn(&Effect) + 'static {
     move |effect| match effect {
         Effect::Quit => {
@@ -611,6 +652,7 @@ fn effect_handler(
         Effect::OpenMainWindow => {
             if let Err(e) = main_ui.open() {
                 eprintln!("snipdeck: cannot open the main window: {e}");
+                window_failed();
             }
         }
         // The Panel's "Commands…" and Ctrl+K: the Main window, with the palette open.
@@ -620,11 +662,15 @@ fn effect_handler(
                     window.invoke_open_palette();
                 }
             }
-            Err(e) => eprintln!("snipdeck: cannot open the command palette: {e}"),
+            Err(e) => {
+                eprintln!("snipdeck: cannot open the command palette: {e}");
+                window_failed();
+            }
         },
         Effect::OpenSettings => {
             if let Err(e) = settings_ui.open() {
                 eprintln!("snipdeck: cannot open the settings: {e}");
+                window_failed();
             }
         }
         // The optional support page, in the browser: the same opener as Help's links.
@@ -632,17 +678,20 @@ fn effect_handler(
             use snipdeck_app::help_binding::{HelpHost, SUPPORT_URL, SystemHelpHost};
             if let Err(e) = SystemHelpHost.open_url(SUPPORT_URL) {
                 eprintln!("snipdeck: cannot open the support page: {e}");
+                window_failed();
             }
         }
         // A locked sensitive item behind a master password: ask for it.
         Effect::OpenUnlock => {
             if let Err(e) = unlock_ui.open() {
                 eprintln!("snipdeck: cannot open the unlock window: {e}");
+                window_failed();
             }
         }
         Effect::OpenListEditor => {
             if let Err(e) = main_ui.bind() {
                 eprintln!("snipdeck: cannot open the list editor: {e}");
+                window_failed();
             }
         }
         Effect::ResizeWindow(edge) => {
@@ -668,6 +717,7 @@ fn effect_handler(
         Effect::OpenHelp(topic) => {
             if let Err(e) = help_ui.open(*topic) {
                 eprintln!("snipdeck: cannot open the help: {e}");
+                window_failed();
             }
         }
         // The binding has already acted: placed the window, or opened the item editor.

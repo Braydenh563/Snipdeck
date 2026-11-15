@@ -574,3 +574,14 @@ fn toast_words_follow_the_selected_translation() {
         assert_eq!(toast_text(&ui, &pasted), "Pasted into Outlook");
     });
 }
+
+#[test]
+fn a_start_up_failure_names_its_reason_and_the_way_back() {
+    on_ui_thread(|| {
+        let ui = ui();
+        let text = snipdeck_app::wording::startup_failure_text(&ui, "C:\\Data: database is locked");
+        assert!(text.contains("C:\\Data: database is locked"), "{text}");
+        assert!(text.contains("backups folder"), "{text}");
+        assert!(!text.contains("{}"), "{text}");
+    });
+}

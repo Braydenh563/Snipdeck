@@ -2693,6 +2693,9 @@ msgstr "Snipdeck no pudo guardar un borrador de lo que escribiste."
 msgid "Snipdeck couldn't save this item. Nothing was changed."
 msgstr "Snipdeck no pudo guardar este elemento. No se cambió nada."
 
+msgid "Snipdeck couldn't start.\n\n{}\n\nNothing was deleted. Close any program that may be using your Snipdeck folder, make sure the folder is not read-only, then start Snipdeck again. If you went back to an older version, install the newer one. Your backups are in the backups folder inside your Snipdeck folder."
+msgstr ""
+
 msgid "Snipdeck couldn't write to your library. Check that the disk has room."
 msgstr "Snipdeck no pudo escribir en tu biblioteca. Comprueba que el disco tenga espacio."
 

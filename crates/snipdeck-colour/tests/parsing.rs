@@ -392,3 +392,17 @@ fn alpha_round_trips_in_hex_and_nearly_in_rgb() {
         assert!(back.a.abs_diff(a) <= 1, "{a}");
     }
 }
+
+/// A CMYK with unitless numbers is read as one set: all fractions 0..1 when none is above 1,
+/// else all percentages (a value pasted from a design tool without the `%` signs).
+#[test]
+fn unitless_cmyk_is_percent_when_any_value_exceeds_one() {
+    assert_eq!(parse("cmyk(0 100 100 0)"), Ok(hex("#ff0000")));
+    assert_eq!(parse("cmyk(0, 100, 100, 0)"), Ok(hex("#ff0000")));
+    assert_eq!(parse("cmyk(50, 20, 0, 10)"), parse("cmyk(50%, 20%, 0%, 10%)"));
+    // Every value at most 1 stays a fraction.
+    assert_eq!(parse("cmyk(0 1 1 0)"), Ok(hex("#ff0000")));
+    assert_eq!(parse("cmyk(0.5 0.2 0 0.1)"), parse("cmyk(50%, 20%, 0%, 10%)"));
+    // A percent sign always means percent, even beside a unitless value.
+    assert_eq!(parse("cmyk(50%, 20, 0, 10)"), parse("cmyk(50%, 20%, 0%, 10%)"));
+}

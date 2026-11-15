@@ -2693,6 +2693,9 @@ msgstr "O Snipdeck não conseguiu salvar um rascunho do que você digitou."
 msgid "Snipdeck couldn't save this item. Nothing was changed."
 msgstr "O Snipdeck não conseguiu salvar este item. Nada foi alterado."
 
+msgid "Snipdeck couldn't start.\n\n{}\n\nNothing was deleted. Close any program that may be using your Snipdeck folder, make sure the folder is not read-only, then start Snipdeck again. If you went back to an older version, install the newer one. Your backups are in the backups folder inside your Snipdeck folder."
+msgstr ""
+
 msgid "Snipdeck couldn't write to your library. Check that the disk has room."
 msgstr "O Snipdeck não conseguiu gravar na sua biblioteca. Verifique se o disco tem espaço."
 

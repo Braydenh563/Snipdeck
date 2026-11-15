@@ -159,6 +159,11 @@ export global ToastTexts {
         }
         return @tr("Couldn't use this item. Try again, or restart Snipdeck if it keeps happening.");
     }
+    // The message box shown when Snipdeck cannot start (no window exists yet); `details` is the
+    // reason, with the data folder in it.
+    pure public function startup-failed(details: string) -> string {
+        return @tr("Snipdeck couldn't start.\n\n{}\n\nNothing was deleted. Close any program that may be using your Snipdeck folder, make sure the folder is not read-only, then start Snipdeck again. If you went back to an older version, install the newer one. Your backups are in the backups folder inside your Snipdeck folder.", details);
+    }
     pure public function window-not-shown() -> string {
         return @tr("Couldn't open that window.");
     }
