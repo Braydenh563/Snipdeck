@@ -3598,3 +3598,33 @@ fn a_formatted_row_says_so_to_a_screen_reader_and_a_plain_one_does_not() {
         );
     });
 }
+
+/// At the narrowest Panel and the largest text size, the first-run Recent question still shows its
+/// title card and both answers inside the window: the body scrolls instead of pushing them out.
+#[test]
+fn the_recent_question_keeps_its_answers_in_view_when_narrow_and_scaled() {
+    on_ui_thread(|| {
+        let (ui, _log) = start();
+        ui.window().set_size(slint::LogicalSize::new(260.0, 560.0));
+        ui.global::<snipdeck_ui::SystemLook<'_>>()
+            .set_text_scale(2.25);
+        ui.set_recent_question_open(true);
+        settle();
+        let card = find(
+            &ui,
+            "Keep a Recent list of what you copy?",
+            AccessibleRole::Groupbox,
+        );
+        let inside = |e: &ElementHandle, what: &str| {
+            let (p, s) = (e.absolute_position(), e.size());
+            assert!(
+                p.x >= 0.0 && p.y >= 0.0 && p.x + s.width <= 260.0 && p.y + s.height <= 560.0,
+                "{what} at {p:?} {s:?} leaves the 260x560 window"
+            );
+        };
+        inside(&card, "the card");
+        for answer in ["No", "Yes"] {
+            inside(&find(&ui, answer, AccessibleRole::Button), answer);
+        }
+    });
+}

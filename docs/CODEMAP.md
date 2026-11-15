@@ -8740,7 +8740,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/main_window_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/no_paid_tier_strings.rs` | 2 |
 | `crates/snipdeck-ui/tests/panel.rs` | 56 |
-| `crates/snipdeck-ui/tests/panel_logic.rs` | 2 |
+| `crates/snipdeck-ui/tests/panel_logic.rs` | 3 |
 | `crates/snipdeck-ui/tests/picker.rs` | 16 |
 | `crates/snipdeck-ui/tests/picker_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/placeholder_align_logic.rs` | 1 |

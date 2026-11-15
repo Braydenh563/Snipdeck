@@ -1,6 +1,7 @@
 import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
+import { OverlayScrollbar } from "scrollbar.slint";
 
 export enum DialogVariant { default, destructive }
 
@@ -16,6 +17,10 @@ export enum DialogVariant { default, destructive }
 // destructive action is never the Enter default, so Enter on the dialog itself does nothing and focus starts on
 // the dialog, then Tab reaches the buttons in order). Esc and Enter react to key PRESS only.
 //
+// The card never grows past its parent (less a margin): when the window is too short for the whole body (a narrow
+// Panel at a large text size), the body scrolls (wheel, the overlay bar, or Up/Down/Page Up/Page Down on the card)
+// and the title and the actions stay in view.
+//
 // Slint 1.18 has no `dialog` accessibility role; the card is exposed as a labelled group (gap, see README).
 export component Dialog inherits Rectangle {
     in property <bool> open: false;
@@ -30,6 +35,10 @@ export component Dialog inherits Rectangle {
     callback closed();
 
     // 40% scrim (DESIGN.md §6): dark in both themes; system window colour in high contrast.
+    // The body's scroll position (0 or negative) and how far it can scroll, for the keyboard.
+    property <length> body-y: 0px;
+    property <length> body-max: 0px;
+
     property <color> scrim: ((Theme.dark || Theme.hc-border != transparent) ? Theme.bg-app : Theme.text-primary).with-alpha(0.4);
 
     // Closed: not drawn, not hit-testable, not in the accessibility tree, and it holds no keyboard focus.
@@ -52,6 +61,13 @@ export component Dialog inherits Rectangle {
                 root.dismissed();
                 return accept;
             }
+            if (root.body-max > 0px && (event.text == Key.UpArrow || event.text == Key.DownArrow || event.text == Key.PageUp || event.text == Key.PageDown)) {
+                // A line for the arrows, the whole overflow for the page keys.
+                root.body-y = max(-root.body-max, min(0px, root.body-y
+                    + ((event.text == Key.UpArrow || event.text == Key.PageUp) ? 1 : -1)
+                    * ((event.text == Key.UpArrow || event.text == Key.DownArrow) ? Type.line-base : root.body-max)));
+                return accept;
+            }
             if (event.text == "\n" && root.variant == DialogVariant.default) {
                 root.accepted();
                 return accept;
@@ -71,7 +87,7 @@ export component Dialog inherits Rectangle {
 
             card := Rectangle {
                 width: min(Space.s12 * 8, parent.width - 2 * Space.s4);
-                height: content.preferred-height;
+                height: min(content.preferred-height, parent.height - 2 * Space.s4);
                 x: (parent.width - self.width) / 2;
                 y: (parent.height - self.height) / 2;
                 background: Theme.bg-overlay;
@@ -104,13 +120,33 @@ export component Dialog inherits Rectangle {
                             accessible-role: none;
                         }
                     }
-                    if root.body != "": Text {
-                        text: root.body;
-                        color: Theme.text-secondary;
-                        font-family: Fonts.sans;
-                        font-size: Type.base;
-                        wrap: word-wrap;
-                        accessible-role: none;
+                    if root.body != "": Rectangle {
+                        // As tall as the text when it fits; squeezed (and scrolling) when the card is capped.
+                        preferred-height: body-text.preferred-height;
+                        min-height: min(body-text.preferred-height, 2 * Type.line-base);
+                        vertical-stretch: 1;
+                        changed height => { root.body-max = max(0px, body-text.preferred-height - self.height); root.body-y = max(-root.body-max, root.body-y); }
+                        init => { root.body-max = max(0px, body-text.preferred-height - self.height); }
+                        body := Flickable {
+                            content-width: self.width;
+                            content-height: body-text.preferred-height;
+                            content-y <=> root.body-y;
+                            body-text := Text {
+                                width: body.width;
+                                text: root.body;
+                                color: Theme.text-secondary;
+                                font-family: Fonts.sans;
+                                font-size: Type.base;
+                                wrap: word-wrap;
+                                accessible-role: none;
+                            }
+                        }
+                        OverlayScrollbar {
+                            content-y: body.content-y;
+                            content-height: body.content-height;
+                            visible-height: body.height;
+                            scroll-to(y) => { root.body-y = y; }
+                        }
                     }
                     HorizontalLayout {
                         spacing: Space.s2;
