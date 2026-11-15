@@ -1,6 +1,6 @@
 mode: continue
 status: active
-max-continues: 40
+max-continues: 80   # raised 2026-11-15: owner "keep working autonomously"; waits on gate/workers use continues
 max-idle-minutes: 60
 finish-up-line: 97%   # owner: "until 97% weekly usage"
 started: 2026-11-14 13:40
@@ -17,6 +17,8 @@ started: 2026-11-14 13:40
 - [ ] claude/edge-polish (store worker session_01NKjURwKPmGuEHMfw1o6HF4): Store 10.8.2 notes, stale msgid, collapsed-edge restyle, residual drag flicker, eyedropper leaves docked Panel in collapsed look; review, merge, gate, push
 - [ ] claude/popup-dismiss (bug-sweep worker session_01NKjURt5yHRvroJQUg7zQeb): toast close button, click-outside/Esc everywhere, More menu fills small Panel; review, merge, gate, push
 - [ ] claude/ui-polish-2 (bug-sweep worker, after popup-dismiss): clear emoji/colour recents, tooltip z/clipping, tinted list icons, collapse button into sidebar header, search x alignment, scroll glitches; review, merge, gate, push
+- [ ] Fable audit round 2 (scratchpad/fable-audit-2.md): fix every finding (Sonnet agents, grouped by section), review, gate, push
+- [ ] README, docs and screenshots refreshed for the final UI (after ui-polish-2): regenerate screenshots, check README feature list and user guide
 - [ ] Blind usability tests (Sonnet) on the merged build; fix
 - [ ] gate --full, CI green on PR #5, handover morning summary + retro
 
