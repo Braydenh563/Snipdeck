@@ -2,6 +2,7 @@
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 ## Decisions
+- 2026-11-15: Recent consent question keeps focus on the card (Enter not wired, Esc = No) so a stray key cannot consent; overrides the earlier "Yes has focus" ask. Reason: consent safety, ux-auditor agreed.
 - 2026-11-15: Donation link stays in the Store build. Reason: Store Policy 10.8.2 (current) allows voluntary donations via a secure third-party purchase API when nothing is unlocked; Buy Me a Coffee in the browser is that. Owner: keep it if allowed.
 - 2026-11-15: Fable call refused by the plugin guard; audit runs on Opus instead (no workaround). Reason: guards are not bypassed.
 - 2026-11-14: Fable approved by the owner for the full-app audit only; nothing else uses Fable. Its findings are fixed by Sonnet; blind tests run on Sonnet. Reason: owner instruction.
