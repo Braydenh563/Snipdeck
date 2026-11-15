@@ -247,6 +247,7 @@ fn start() -> (MainWindow, Log) {
 macro_rules! ui_tests {
     ($(fn $name:ident() $body:block)*) => {
         $(
+            #[test]
             fn $name() {
                 on_ui_thread(|| $body);
             }
@@ -255,8 +256,7 @@ macro_rules! ui_tests {
 }
 
 ui_tests! {
-
-                fn the_sidebar_toggle_lives_in_the_sidebar_header() {
+    fn the_sidebar_toggle_lives_in_the_sidebar_header() {
         let (ui, _log) = start();
         let sidebar_w = f64::from(ui.get_sidebar_width());
         let toggle = find(&ui, "Collapse sidebar (Ctrl+B)", AccessibleRole::Button);

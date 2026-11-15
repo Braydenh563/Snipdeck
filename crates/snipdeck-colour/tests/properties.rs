@@ -52,9 +52,12 @@ proptest! {
     #[test]
     fn every_format_text_parses_back_close(c in opaque()) {
         // Lossy integers still land within a few steps (HSL/HSB/CMYK are integer percentages).
-        for f in [Format::Hsl, Format::Hsb, Format::Cmyk] {
+        // HSL's worst case is wider: rounding L (+-0.5%), S (+-0.5% of the chroma) and the hue
+        // (+-0.5 degree, up to C/120 of a channel) add up to 5 steps; rgb(252, 28, 26) comes back
+        // as rgb(252, 33, 29), checked by hand and kept as a proptest regression seed.
+        for (f, within) in [(Format::Hsl, 5), (Format::Hsb, 4), (Format::Cmyk, 4)] {
             let back = parse(&format(c, f)).unwrap();
-            prop_assert!(back.r.abs_diff(c.r) <= 4 && back.g.abs_diff(c.g) <= 4 && back.b.abs_diff(c.b) <= 4, "{:?}", f);
+            prop_assert!(back.r.abs_diff(c.r) <= within && back.g.abs_diff(c.g) <= within && back.b.abs_diff(c.b) <= within, "{:?}", f);
         }
     }
 
