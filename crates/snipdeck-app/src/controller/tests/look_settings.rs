@@ -131,7 +131,10 @@ fn a_setting_is_written_after_the_quiet_time_by_the_injected_clock() {
 
     w.clock.set(at("2026-10-17T10:30:00.5Z"));
     w.ctl.save_settings_if_due();
-    assert_eq!(crate::paths::load_settings(temp.path()).theme, Theme::Dark);
+    assert_eq!(
+        crate::paths::read_settings(temp.path()).settings.theme,
+        Theme::Dark
+    );
     assert_eq!(w.ctl.settings_wait(), None);
 }
 
@@ -153,7 +156,7 @@ fn choosing_a_theme_applies_it_toasts_it_and_writes_it_after_the_quiet_time() {
     w.clock.set(at("2026-10-17T10:30:00.5Z"));
     w.ctl.save_settings_if_due();
     assert_eq!(
-        crate::paths::load_settings(temp.path()).theme,
+        crate::paths::read_settings(temp.path()).settings.theme,
         Theme::Dark,
         "the same setting as Settings > Appearance, saved"
     );
@@ -180,7 +183,9 @@ fn row_density_is_a_setting_the_main_lists_follow_and_the_panel_ignores() {
     w.clock.set(at("2026-10-17T10:30:00.5Z"));
     w.ctl.save_settings_if_due();
     assert_eq!(
-        crate::paths::load_settings(temp.path()).row_density,
+        crate::paths::read_settings(temp.path())
+            .settings
+            .row_density,
         RowDensity::Compact,
         "saved after the quiet time"
     );
@@ -227,7 +232,12 @@ fn several_quick_changes_make_one_write_and_flush_writes_at_once() {
     assert_eq!(w.ctl.settings_wait(), Some(Duration::from_millis(500)));
 
     w.ctl.flush_settings().expect("flush");
-    assert_eq!(crate::paths::load_settings(temp.path()).panel_width, 480);
+    assert_eq!(
+        crate::paths::read_settings(temp.path())
+            .settings
+            .panel_width,
+        480
+    );
     assert_eq!(w.ctl.settings_wait(), None);
 }
 

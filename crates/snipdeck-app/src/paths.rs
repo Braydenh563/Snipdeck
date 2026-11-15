@@ -186,13 +186,6 @@ pub fn saver_baseline(loaded: &Loaded, salvage_written: bool) -> Settings {
     }
 }
 
-/// The settings from `folder`, without the outcome (for tests of code that never writes them back).
-#[cfg(test)]
-#[must_use]
-pub fn load_settings(folder: &Path) -> Settings {
-    read_settings(folder).settings
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

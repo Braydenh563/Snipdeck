@@ -414,7 +414,7 @@ fn a_remembered_frame_is_written_after_the_quiet_time() {
     w.ctl.frame_changed(&display(), frame);
     w.clock.set(at("2026-10-17T10:30:01Z"));
     w.ctl.save_settings_if_due();
-    let loaded = crate::paths::load_settings(temp.path());
+    let loaded = crate::paths::read_settings(temp.path()).settings;
     assert_eq!(loaded.panel_geometry.len(), 1);
     assert_eq!(Rect::of(&loaded.panel_geometry[0]), frame);
 }
