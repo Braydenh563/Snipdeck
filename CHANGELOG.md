@@ -45,7 +45,7 @@ first start.
   last 200 copies or 7 days, skipping password managers and your exclude list, with **Save to…**, **Pause
   history** and **Clear recent history**. Entries are encrypted on disk.
 - **Sensitive items**: hidden in lists until you hold `Space`, kept out of Windows clipboard history, encrypted
-  on disk on every plan, and cleared from the clipboard after 30 seconds.
+  on disk, and cleared from the clipboard after 30 seconds.
 - **Free, with an optional Buy Me a Coffee link**: every feature is on, on every build, with no licence key, no
   tiers and no board limit. **Support Snipdeck** in Settings, Help > About and the command palette opens the donation
   page in your browser; it is optional, keeps the app free and unlocks nothing, and the app handles no payment
@@ -56,6 +56,10 @@ first start.
 - A command palette (`Ctrl+K`), a shortcuts sheet (`Ctrl+/`), a welcome tour, a Getting started list, Help
   (`F1`) with a Troubleshoot checklist and About, and **Take screenshot** in the Panel, tray and palette.
 - A tray icon with a translated menu. Left click toggles the Panel and double-click opens the Main window.
+- **Sidebar collapse**: a button in the sidebar header (and `Ctrl+B`) folds the Main window's sidebar to a
+  rail. **List icons** are tinted in the list's colour. The command palette also opens with `Ctrl+Shift+P`.
+  **Quick add**: `Ctrl+N` opens a one-box add in the Panel or an open list; its **More options** opens the editor.
+- **Settings > Privacy > Clear recent emoji and colours** forgets the recently used emoji, symbols and colours.
 - Overlay scrollbars on every scrolling surface.
 - Spanish, German, French, Brazilian Portuguese, Japanese and Simplified Chinese.
 - Screen-reader names on every icon button, status messages that are announced, a focus ring, and text that
