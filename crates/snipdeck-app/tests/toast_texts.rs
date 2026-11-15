@@ -28,7 +28,7 @@ use support::on_ui_thread;
 const fn position(message: &ToastMessage) -> usize {
     match message {
         ToastMessage::Pasted { .. } => 0,
-        ToastMessage::PastedNotRestored { .. } => 111,
+        ToastMessage::PastedNotRestored { .. } => 107,
         ToastMessage::Copied => 1,
         ToastMessage::CopiedElevated { .. } => 2,
         ToastMessage::CopiedNothingFocused { .. } => 3,
@@ -138,7 +138,7 @@ const fn position(message: &ToastMessage) -> usize {
     }
 }
 
-const VARIANTS: usize = 107;
+const VARIANTS: usize = 108;
 
 fn s(text: &str) -> String {
     text.to_owned()
