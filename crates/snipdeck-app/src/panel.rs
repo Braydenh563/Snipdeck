@@ -852,7 +852,8 @@ mod tests {
         for n in 0..11 {
             add_to(&mut f, Which::Replies, &format!("Item {n}"), "text");
         }
-        let model = PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
+        let model =
+            PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
         assert_eq!(model.board(), Some(f.board));
         let tabs = model.tabs();
         assert_eq!(tabs.len(), 2);
@@ -881,7 +882,8 @@ mod tests {
         .expect("model");
         assert_eq!(model.board(), Some(f.board));
         assert_eq!(model.list().map(|l| l.id), Some(f.replies));
-        let other = PanelModel::load_cached(&f.store, None, Some(f.links), &IndexCache::new()).expect("model");
+        let other = PanelModel::load_cached(&f.store, None, Some(f.links), &IndexCache::new())
+            .expect("model");
         assert_eq!(other.list().map(|l| l.id), Some(f.links));
     }
 
@@ -919,7 +921,8 @@ mod tests {
         let mut f = fixture();
         add_to(&mut f, Which::Replies, "Thanks", "Thanks for your email");
         let link = add_to(&mut f, Which::Links, "Docs", "https://example.com/thanks");
-        let mut model = PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
+        let mut model =
+            PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
         model.set_query("docs");
         let rows = model.rows();
         assert_eq!(rows.len(), 1);
@@ -969,7 +972,8 @@ mod tests {
             }
             f.store.update_item(&item, None).expect("update");
         }
-        let mut model = PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
+        let mut model =
+            PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
         model.set_query("invoice");
         let rows = model.rows();
         let row = |id| rows.iter().find(|r| r.id == id).expect("row");
@@ -1000,7 +1004,8 @@ mod tests {
         let mut f = fixture();
         let a = add_to(&mut f, Which::Replies, "A", "a");
         let b = add_to(&mut f, Which::Replies, "B", "b");
-        let mut model = PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
+        let mut model =
+            PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
         assert_eq!(model.selected(), Some(a));
         model.move_selection(5);
         assert_eq!(model.selected(), Some(b));
@@ -1035,7 +1040,8 @@ mod tests {
     #[test]
     fn an_empty_panel_has_no_selection() {
         let store = Store::open_in_memory().expect("store");
-        let mut model = PanelModel::load_cached(&store, None, None, &IndexCache::new()).expect("model");
+        let mut model =
+            PanelModel::load_cached(&store, None, None, &IndexCache::new()).expect("model");
         assert!(model.rows().is_empty() && model.tabs().is_empty());
         model.move_selection(1);
         assert_eq!(model.selected(), None);
@@ -1048,7 +1054,8 @@ mod tests {
         let mut item = f.store.item(id).expect("item");
         item.pinned = true;
         f.store.update_item(&item, None).expect("update");
-        let model = PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
+        let model =
+            PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
         assert_eq!(model.pinned().len(), 1);
         assert!(model.pinned()[0].pinned);
     }
@@ -1056,7 +1063,8 @@ mod tests {
     #[test]
     fn the_footer_and_use_label_follow_the_target() {
         let f = fixture();
-        let mut model = PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
+        let mut model =
+            PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
         assert_eq!(model.footer(), Footer::Copies);
         assert_eq!(model.use_label(), UseLabel::Copy);
         model.set_target(Some(target("OUTLOOK.EXE", Focus::Caret)));
@@ -1081,7 +1089,8 @@ mod tests {
     fn a_programs_own_paste_key_decides_the_route() {
         use snipdeck_platform::keys::PasteKey;
         let f = fixture();
-        let mut model = PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
+        let mut model =
+            PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
         model.set_target(Some(target("wt.exe", Focus::Caret)));
         let key = |model: &PanelModel| match model.route() {
             Route::Paste { key } => Some(key),
@@ -1103,7 +1112,8 @@ mod tests {
         let mut f = fixture();
         add_to(&mut f, Which::Replies, "Thanks", "thanks");
         let docs = add_to(&mut f, Which::Links, "Docs", "https://example.com");
-        let mut model = PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
+        let mut model =
+            PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
         model.set_target(Some(target("OUTLOOK.EXE", Focus::Caret)));
         model.set_query("thanks");
         model.select_list(&f.store, f.links).expect("select");
@@ -1126,7 +1136,8 @@ mod tests {
             .expect("board");
         let list = List::new(other.id, Name::new("Chores").expect("n"), at());
         f.store.insert_list(&list, Placement::Last).expect("list");
-        let mut model = PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
+        let mut model =
+            PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
         model.select_board(&f.store, other.id).expect("select");
         assert_eq!(model.board(), Some(other.id));
         assert_eq!(model.list().map(|l| l.id), Some(list.id));
@@ -1138,7 +1149,8 @@ mod tests {
         let mut f = fixture();
         let a = add_to(&mut f, Which::Replies, "A", "alpha");
         let b = add_to(&mut f, Which::Replies, "B", "beta");
-        let mut model = PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
+        let mut model =
+            PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
         model.set_policy(Policy {
             no_paste_apps: vec!["x.exe".into()],
         });
@@ -1182,7 +1194,8 @@ mod tests {
     fn ctrl_click_toggles_and_shift_click_extends_from_the_anchor() {
         let mut f = fixture();
         let ids = five(&mut f);
-        let mut model = PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
+        let mut model =
+            PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
         assert_eq!(model.marked_count(), 0);
         model.mark(1, SelectMode::Toggle);
         model.mark(3, SelectMode::Toggle);
@@ -1206,7 +1219,8 @@ mod tests {
     fn shift_arrows_extend_from_the_cursor_row_and_stop_at_the_ends() {
         let mut f = fixture();
         let ids = five(&mut f);
-        let mut model = PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
+        let mut model =
+            PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
         model.extend_marks(1);
         model.extend_marks(1);
         assert_eq!(model.marked_ids(), ids[0..=2].to_vec());
@@ -1227,7 +1241,8 @@ mod tests {
     fn select_all_and_clear_and_a_search_end_the_selection() {
         let mut f = fixture();
         five(&mut f);
-        let mut model = PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
+        let mut model =
+            PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
         model.mark_all();
         assert_eq!(model.marked_count(), 5);
         model.clear_marks();
@@ -1241,7 +1256,8 @@ mod tests {
     fn an_action_on_a_marked_row_applies_to_all_marked_rows() {
         let mut f = fixture();
         let ids = five(&mut f);
-        let mut model = PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
+        let mut model =
+            PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
         model.mark(1, SelectMode::Toggle);
         model.mark(2, SelectMode::Toggle);
         assert_eq!(model.targets(2), vec![ids[1], ids[2]]);
@@ -1252,7 +1268,8 @@ mod tests {
     fn a_refresh_keeps_the_marks_of_items_still_shown() {
         let mut f = fixture();
         let ids = five(&mut f);
-        let mut model = PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
+        let mut model =
+            PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
         model.mark(0, SelectMode::Toggle);
         model.mark(1, SelectMode::Toggle);
         f.store

@@ -225,7 +225,9 @@ mod tests {
     #[test]
     fn the_demo_library_has_two_boards_three_tabs_and_pinned_items() {
         let store = store(now()).expect("demo store");
-        let model = PanelModel::load_cached(&store, None, None, &crate::index_cache::IndexCache::new()).expect("model");
+        let model =
+            PanelModel::load_cached(&store, None, None, &crate::index_cache::IndexCache::new())
+                .expect("model");
         assert_eq!(model.boards().len(), 2);
         let tabs = model.tabs();
         assert_eq!(tabs.len(), 3);

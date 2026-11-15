@@ -8,6 +8,7 @@
     clippy::expect_used,
     clippy::unwrap_used,
     clippy::panic,
+    clippy::print_stderr,
     reason = "test code: a failure is a failed test"
 )]
 

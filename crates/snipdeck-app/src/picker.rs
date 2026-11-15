@@ -289,7 +289,8 @@ mod tests {
     fn model() -> (Store, PickerModel) {
         let store = demo::store(now()).expect("demo store");
         let work = store.boards().expect("boards")[0].id;
-        let model = PickerModel::load_cached(&store, Some(work), &IndexCache::new()).expect("model");
+        let model =
+            PickerModel::load_cached(&store, Some(work), &IndexCache::new()).expect("model");
         (store, model)
     }
 
@@ -440,7 +441,8 @@ mod tests {
                 .insert_item(&item, &formats, Placement::Last)
                 .expect("item");
         }
-        let mut m = PickerModel::load_cached(&store, Some(board.id), &IndexCache::new()).expect("model");
+        let mut m =
+            PickerModel::load_cached(&store, Some(board.id), &IndexCache::new()).expect("model");
         assert_eq!(m.rows().len(), RESULT_LIMIT);
         m.set_query("snippet");
         assert_eq!(m.rows().len(), RESULT_LIMIT);
