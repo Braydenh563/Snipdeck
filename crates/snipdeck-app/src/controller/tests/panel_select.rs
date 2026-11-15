@@ -515,7 +515,11 @@ fn undoing_a_text_edit_brings_the_formatting_back() {
     let mut input = w.ctl.item_editor_view().expect("editor").fields;
     input.content = "other words".to_owned();
     w.ctl.item_editor_save(&input);
-    assert_eq!(stored_kinds(&w, id), [K::Text], "an edit drops the formatting");
+    assert_eq!(
+        stored_kinds(&w, id),
+        [K::Text],
+        "an edit drops the formatting"
+    );
     w.ctl.undo();
     assert_eq!(stored_kinds(&w, id), [K::Text, K::Html, K::Rtf]);
     assert_eq!(w.ctl.store.formats(id).expect("formats"), was);
