@@ -891,6 +891,9 @@ msgstr "Descartar"
 msgid "Discard your changes?"
 msgstr "¿Descartar los cambios?"
 
+msgid "Dismiss"
+msgstr "Descartar"
+
 msgid "Ditto database"
 msgstr "Base de datos de Ditto"
 

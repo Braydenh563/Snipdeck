@@ -890,6 +890,9 @@ msgstr "放弃"
 msgid "Discard your changes?"
 msgstr "要放弃更改吗？"
 
+msgid "Dismiss"
+msgstr "关闭"
+
 msgid "Ditto database"
 msgstr "Ditto 数据库"
 

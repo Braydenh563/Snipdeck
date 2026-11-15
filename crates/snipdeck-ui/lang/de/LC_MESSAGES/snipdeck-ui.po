@@ -891,6 +891,9 @@ msgstr "Verwerfen"
 msgid "Discard your changes?"
 msgstr "Änderungen verwerfen?"
 
+msgid "Dismiss"
+msgstr "Schließen"
+
 msgid "Ditto database"
 msgstr "Ditto-Datenbank"
 
