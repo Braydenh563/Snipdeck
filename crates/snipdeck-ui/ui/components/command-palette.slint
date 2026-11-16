@@ -149,6 +149,15 @@ export component CommandPalette inherits Rectangle {
         }
     }
 
+    // Page Up and Page Down: one visible window of rows (the list is at most six card-heights tall), stopping at the ends.
+    function page(direction: int) {
+        root.by-pointer = false;
+        if (root.rows.length > 0) {
+            let step = max(1, floor(Space.s12 * 6 * SystemLook.text-scale / root.row-h) - 1);
+            root.current = min(max(root.cur + direction * step, 0), root.rows.length - 1);
+        }
+    }
+
     background: root.scrim;
     accessible-role: groupbox;
     accessible-label: root.title;
@@ -183,6 +192,17 @@ export component CommandPalette inherits Rectangle {
                 }
                 if (event.text == Key.UpArrow) {
                     root.move(-1);
+                    return accept;
+                }
+                // Home and End keep the caret of the search field when it has text to move through; with an empty
+                // query they jump to the first and last command, and the Page keys always move a window of rows.
+                if (event.text == Key.PageDown || event.text == Key.PageUp) {
+                    root.page(event.text == Key.PageDown ? 1 : -1);
+                    return accept;
+                }
+                if ((event.text == Key.Home || event.text == Key.End) && root.query == "") {
+                    root.by-pointer = false;
+                    root.current = event.text == Key.Home ? 0 : max(root.rows.length - 1, 0);
                     return accept;
                 }
                 if (event.text == Key.Return && root.cur >= 0 && !field.composing) {

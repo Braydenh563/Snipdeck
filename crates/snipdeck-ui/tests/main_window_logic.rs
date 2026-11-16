@@ -2530,6 +2530,33 @@ ui_tests! {
         assert_eq!(take(&log), ["command:0"], "an ordinary row still runs");
     }
 
+    fn home_end_and_the_page_keys_move_the_palette_highlight() {
+        let (ui, log) = start();
+        chord(ui.window(), &[Key::Control], "k");
+        let labels: Vec<String> = (0..30).map(|i| format!("Command number {i}")).collect();
+        let many: Vec<(i32, &str, &[&str])> = labels
+            .iter()
+            .enumerate()
+            .map(|(i, l)| (i32::try_from(i).unwrap(), l.as_str(), &[][..]))
+            .collect();
+        palette_rows(&ui, &many);
+        take(&log);
+        press_key(&ui, Key::End);
+        assert_eq!(live_status(&ui), "Command number 29, 30 of 30");
+        press_key(&ui, Key::Home);
+        assert_eq!(live_status(&ui), "Command number 0, 1 of 30");
+        press_key(&ui, Key::PageDown);
+        let after_page = live_status(&ui);
+        assert!(
+            !after_page.ends_with("1 of 30") && !after_page.ends_with("2 of 30"),
+            "Page Down jumps a window of rows, not one: {after_page}"
+        );
+        press_key(&ui, Key::PageUp);
+        assert_eq!(live_status(&ui), "Command number 0, 1 of 30", "Page Up stops at the top");
+        press_key(&ui, Key::Return);
+        assert_eq!(take(&log), ["command:0"]);
+    }
+
     fn typing_reports_the_query_and_the_hosts_rows_replace_the_list() {
         let (ui, log) = start();
         chord(ui.window(), &[Key::Control], "k");
