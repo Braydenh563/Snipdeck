@@ -81,3 +81,13 @@ steps above on Windows and writes the numbers here.
 `measure_pin_use_and_rows_at_ten_thousand_items` in `crates/snipdeck-app/tests/budget.rs`
 (same command as above) prints the cold snapshot, a pin patch, a use patch and a row build.
 Windows figures: **UNVERIFIED** (the owner runs the probe and the size and RAM steps on Windows).
+
+## PERF-17: the tooltip liveness timer (deferred, with numbers)
+
+`tip-host.slint` wakes a 100 ms timer only while a tooltip is wanted and watched (the pointer
+rests on a control with a tooltip), 10 wake-ups a second, and not at all otherwise. Slint has no
+destruction hook, so a control an `if` removes cannot give its tooltip back; the ping/answer
+round is the only way to notice it, and an event-driven version would leave that tooltip stuck.
+Measured (`a_resting_tooltip_keeps_its_liveness_timer_cheap`, optimised build, item editor,
+Linux VM, mock clock): **0.0025 ms per wake-up**, so about 0.025 ms of work a second (0.0025% of
+one core). Not changed. Windows wake-up cost and the Panel's larger widget count: UNVERIFIED.
