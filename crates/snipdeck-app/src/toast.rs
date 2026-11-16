@@ -54,9 +54,9 @@ pub enum ToastMessage {
     },
     /// "Copied. The window you were using went away."
     CopiedTargetGone,
-    /// "Couldn't reach the clipboard. Another app may be using it."
+    /// "Couldn’t reach the clipboard. Another app may be using it."
     ClipboardBusy,
-    /// "This template can't be read. Open it to fix it."
+    /// "This template can’t be read. Open it to fix it."
     TemplateBroken,
     /// "Unlock your library to use this item."
     Locked,
@@ -72,11 +72,11 @@ pub enum ToastMessage {
     MasterPasswordChangedNotOpen,
     /// "Master password removed. Snipdeck couldn't open the library just now; ..."
     MasterPasswordRemovedNotOpen,
-    /// "Windows Hello didn't work, so it was turned off. You can turn it on again in Settings."
+    /// "Windows Hello didn’t work, so it was turned off. You can turn it on again in Settings."
     HelloTurnedOff,
     /// "Windows Hello was not turned on." (the user cancelled the prompt that turns it on)
     HelloNotTurnedOn,
-    /// "Windows Hello didn't work, so it was not turned on." (the prompt that turns it on failed)
+    /// "Windows Hello didn’t work, so it was not turned on." (the prompt that turns it on failed)
     HelloEnrolFailed,
     /// "Unlock your library first, so a copy includes your sensitive items."
     UnlockFirst,
@@ -125,7 +125,7 @@ pub enum ToastMessage {
     TooLargeToSave,
     /// "There is no list to save into. Add a list first."
     NoListToSave,
-    /// "Nothing to paste next. Pin a snippet, or add one to this list."
+    /// "Nothing to paste next. Pin an item, or add one to this list."
     NothingToPasteNext,
     /// "The taskbar is on that edge. Pick another edge, or move the taskbar."
     TaskbarEdge,
@@ -158,15 +158,15 @@ pub enum ToastMessage {
         /// The Panel hotkey, or `None` when it is switched off.
         chord: Option<String>,
     },
-    /// "Couldn't use this item. Try again, or restart Snipdeck if it keeps happening." (the
+    /// "Couldn’t use this item. Try again, or restart Snipdeck if it keeps happening." (the
     /// cause is not known)
     Failed,
     /// A use that failed for a cause the error names: "Couldn't use this item: the disk is full.
     /// Free up some space, then try again."
     UseFailed(Cause),
-    /// "Couldn't open that window." (the Picker or the fill form could not be shown)
+    /// "Couldn’t open that window." (the Picker or the fill form could not be shown)
     WindowNotShown,
-    /// "Couldn't save your settings. Snipdeck will try again."
+    /// "Couldn’t save your settings. Snipdeck will try again."
     SettingsNotSaved,
     /// "Your settings file was damaged. Snipdeck kept what it could read; the original is saved
     /// as settings.json.bad."
@@ -174,7 +174,7 @@ pub enum ToastMessage {
     /// "Couldn't read your settings file, so Snipdeck started with the defaults. Changes to
     /// settings won't be saved until you fix or remove the file."
     SettingsUnreadable,
-    /// "Snipdeck can't watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
+    /// "Snipdeck can’t watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
     ClipboardWatchFailed,
     /// "Moved 3 items to the Trash" (with Undo).
     ItemsTrashed {
@@ -265,7 +265,7 @@ pub enum ToastMessage {
     RebuildNeedsRestart,
     /// "Your library was rebuilt, but the cleanup failed. Snipdeck will finish it the next time it starts."
     RebuildUnfinished,
-    /// "Images can't be pasted here. Save the picture as a PNG and add it as an Image item." (Ctrl+V
+    /// "Images can’t be pasted here. Save the picture as a PNG and add it as an Image item." (Ctrl+V
     /// in the item editor with a picture on the clipboard)
     ImageNotPasteable,
     /// "Imported 5 items".
@@ -284,27 +284,27 @@ pub enum ToastMessage {
     ExportFailed(Cause),
     /// "Your library was erased."
     LibraryErased,
-    /// "Couldn't erase everything. Quit Snipdeck and try again."
+    /// "Couldn’t erase everything. Quit Snipdeck and try again."
     EraseFailed,
-    /// "Couldn't open the folder."
+    /// "Couldn’t open the folder."
     FolderNotOpened,
-    /// "Couldn't open the link." (a web page that did not open)
+    /// "Couldn’t open the link." (a web page that did not open)
     LinkNotOpened,
-    /// "Couldn't change the Windows start-up entry."
+    /// "Couldn’t change the Windows start-up entry."
     AutostartFailed,
     /// "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
     /// (the Store build; only the user can switch the startup task back on)
     AutostartSwitchedOff,
-    /// "Your organisation's policy keeps Snipdeck from starting with Windows."
+    /// "Your organisation’s policy keeps Snipdeck from starting with Windows."
     AutostartPolicy,
-    /// "Couldn't open the log folder."
+    /// "Couldn’t open the log folder."
     CannotOpenLog,
     /// "Saved. This trigger overlaps the trigger of “{other}”, so one of them may never fire."
     TriggerOverlaps {
         /// The title of the other item whose trigger overlaps.
         other: String,
     },
-    /// "Couldn't start typing triggers. Nothing will be expanded or suggested."
+    /// "Couldn’t start typing triggers. Nothing will be expanded or suggested."
     TypingUnavailable,
     /// "Couldn't unlock the encryption key. Nothing was saved."
     KeyUnavailable,
@@ -312,18 +312,18 @@ pub enum ToastMessage {
     ItemGone,
     /// "That list was deleted. Choose another list."
     ListGone,
-    /// "Couldn't write to your library. Check that the disk has room."
+    /// "Couldn’t write to your library. Check that the disk has room."
     StorageFailed,
-    /// "Couldn't save this item. Nothing was changed."
+    /// "Couldn’t save this item. Nothing was changed."
     NotSaved,
-    /// "Couldn't open this item."
+    /// "Couldn’t open this item."
     NotOpened,
-    /// "Couldn't save a draft of what you typed."
+    /// "Couldn’t save a draft of what you typed."
     DraftNotSaved,
     /// A move, reorder or other change to the library that the store refused, for a cause the
     /// error names: "Couldn't make that change: the disk is full. ..."
     ChangeFailed(Cause),
-    /// "Couldn't start the screenshot tool." (Take screenshot)
+    /// "Couldn’t start the screenshot tool." (Take screenshot)
     ScreenshotFailed,
     /// "Theme: Dark": the theme was switched from a menu, the palette or Settings.
     ThemeSet(Theme),
@@ -361,14 +361,14 @@ pub enum ToastMessage {
     /// "Couldn't refresh the view": the change worked, but the list on screen could not be read
     /// again and may be out of date.
     NotRefreshed,
-    /// "Icons can't be added to a list yet." (Symbols: Add to list on an icon)
+    /// "Icons can’t be added to a list yet." (Symbols: Add to list on an icon)
     IconNotAddable,
     /// "Saved {name}." (Symbols: Save as... wrote the file)
     IconSaved {
         /// The file name written, without its folder.
         name: String,
     },
-    /// "Couldn't pick a colour from the screen." (the eyedropper failed)
+    /// "Couldn’t pick a colour from the screen." (the eyedropper failed)
     EyedropFailed,
     /// "HDR is on for this screen: {hex} is approximate." (a colour picked on an HDR monitor)
     EyedropHdr {

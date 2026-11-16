@@ -504,7 +504,7 @@ pub fn paste_stack_idle_text(window: &PanelWindow) -> String {
     MenuTexts::get(window).invoke_app_paste_stack_idle().into()
 }
 
-/// The words of a row of the Panel's kebab menu. The dock row reads "Undock the panel" while the
+/// The words of a row of the Panel's kebab menu. The dock row reads "Undock the Panel" while the
 /// Panel is `docked`, else it names the edge it would dock to (`dock_target`).
 #[must_use]
 pub fn app_menu_text(
@@ -803,7 +803,7 @@ where
 }
 
 /// What is wrong with a template, in the language selected for the UI (the sentences are in the
-/// `TemplateTexts` global). The result has no final full stop: "This template can't be read: {}."
+/// `TemplateTexts` global). The result has no final full stop: "This template can’t be read: {}."
 /// adds it. The syntax of a placeholder is passed in as it is written, never translated.
 #[must_use]
 pub fn template_problem_text<C>(window: &C, problem: &TemplateProblem) -> String

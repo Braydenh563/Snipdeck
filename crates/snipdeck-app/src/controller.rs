@@ -1124,7 +1124,7 @@ where
 
     /// The foreground window changed: the Target follows it (see
     /// [`on_target_changed`](Self::on_target_changed)), and an unpinned Panel hides when
-    /// "Hide the panel when it loses focus" is on. Only the Panel does this: the Main window,
+    /// "Hide the Panel when it loses focus" is on. Only the Panel does this: the Main window,
     /// Settings and the editors are ordinary windows that stay until closed.
     pub fn on_foreground_changed(&mut self) -> Vec<Effect> {
         // The eyedropper's overlay, then whatever was under the pick point, takes the foreground

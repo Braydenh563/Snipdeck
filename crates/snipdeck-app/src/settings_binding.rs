@@ -537,7 +537,7 @@ pub(crate) fn arm_settings_save<C, K, T>(
 /// English by design. The words a person sees come from [`action_text`].
 pub(crate) const fn action_name(action: HotkeyAction) -> &'static str {
     match action {
-        HotkeyAction::TogglePanel => "Show or hide the panel",
+        HotkeyAction::TogglePanel => "Show or hide the Panel",
         HotkeyAction::Picker => "Open the picker",
         HotkeyAction::Capture => "Save the clipboard as an item",
         HotkeyAction::PasteNext => "Paste the next item",
@@ -2370,7 +2370,7 @@ mod tests {
         );
         assert_eq!(
             program_refusal_text(&page, &ProgramRefusal::HasPath),
-            "Use just the program's file name, like notepad.exe."
+            "Use just the program’s file name, like notepad.exe."
         );
     }
 
