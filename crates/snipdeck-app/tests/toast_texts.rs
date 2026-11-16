@@ -141,10 +141,12 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::AutostartPolicy => 103,
         ToastMessage::ArchiveBusy => 112,
         ToastMessage::StoreDataReminder => 113,
+        ToastMessage::HotkeyOwnAction { .. } => 114,
+        ToastMessage::HotkeyRefused { .. } => 115,
     }
 }
 
-const VARIANTS: usize = 114;
+const VARIANTS: usize = 116;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -329,6 +331,13 @@ fn samples() -> Vec<ToastMessage> {
         M::SettingsDamaged,
         M::SettingsUnreadable,
         M::ClipboardWatchFailed,
+        M::HotkeyOwnAction {
+            chord: s("Ctrl+Alt+Space"),
+        },
+        M::HotkeyRefused {
+            chord: s("Ctrl+Alt+Space"),
+            code: 5,
+        },
     ]
 }
 

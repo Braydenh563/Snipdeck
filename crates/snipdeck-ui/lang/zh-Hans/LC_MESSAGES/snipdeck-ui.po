@@ -230,6 +230,9 @@ msgstr "动物"
 msgid "Animals & Nature"
 msgstr "动物与自然"
 
+msgid "Another Snipdeck shortcut already uses {}."
+msgstr "另一个 Snipdeck 快捷键已在使用 {}。"
+
 msgid "Another backup or export is still running. Try again when it has finished."
 msgstr "另一个备份或导出仍在进行。请在完成后再试。"
 
@@ -3450,6 +3453,15 @@ msgstr "Windows 跟随你的 Windows 文字大小（设置 > 辅助功能 > 文�
 msgid "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
 msgstr "Windows 已在“设置”>“应用”>“启动”中关闭了 Snipdeck。请在那里重新打开。"
 
+msgid "Windows keeps {} for itself. Choose another."
+msgstr "Windows 为自身保留了 {}。请另选一个。"
+
+msgid "Windows refused {} (Windows error {})."
+msgstr "Windows 拒绝了 {}（Windows 错误 {}）。"
+
+msgid "Windows refused {} (Windows error {}). Choose another in Settings."
+msgstr "Windows 拒绝了 {}（Windows 错误 {}）。请在设置中另选一个。"
+
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "开启剪贴板历史后，“最近”会保存你在其他程序中复制的内容。"
 
@@ -3888,11 +3900,17 @@ msgstr "找到 {} 个"
 msgid "{} h ago"
 msgstr "{} 小时前"
 
+msgid "{} is a copy or paste shortcut that every program uses. Choose another."
+msgstr "{} 是所有程序都在使用的复制或粘贴快捷键。请另选一个。"
+
 msgid "{} is a link to somewhere else and was not followed."
 msgstr "{} 是指向其他位置的链接，未被跟随。"
 
 msgid "{} is already in the list."
 msgstr "{} 已在列表中。"
+
+msgid "{} is already used by another Snipdeck shortcut. Choose another in Settings."
+msgstr "{} 已被另一个 Snipdeck 快捷键使用。请在设置中另选一个。"
 
 msgid "{} is already used for “{}”."
 msgstr "{} 已用于“{}”。"
@@ -3959,6 +3977,12 @@ msgstr "有 {} 项检查需要留意。"
 
 msgid "{} of {} · next: {}"
 msgstr "{} / {} · 下一项：{}"
+
+msgid "{} on its own is used by every program. Add Ctrl, Alt or Win."
+msgstr "单独的 {} 会被所有程序使用。请加上 Ctrl、Alt 或 Win。"
+
+msgid "{} opens menus and moves windows in other programs. Choose another."
+msgstr "{} 会在其他程序中打开菜单或移动窗口。请另选一个。"
 
 msgid "{} percent"
 msgstr "{}%"

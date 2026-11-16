@@ -568,6 +568,15 @@ pub trait HotkeyBackend {
     ///
     /// [`HotkeyFailure::Unavailable`] if the service is not running or Windows refuses.
     fn unregister(&mut self, id: u32) -> Result<(), HotkeyFailure>;
+
+    /// Whether `chord` could be registered now, without leaving anything registered: another
+    /// program that holds it is [`HotkeyFailure::InUse`], another Snipdeck action
+    /// [`HotkeyFailure::OwnAction`].
+    ///
+    /// # Errors
+    ///
+    /// Why it could not be registered.
+    fn probe(&mut self, chord: Chord) -> Result<(), HotkeyFailure>;
 }
 
 /// The id a hotkey action is registered under.
@@ -609,7 +618,7 @@ pub fn register_all(
         let Some(chord) = hotkeys.chord(action) else {
             continue;
         };
-        let shown = chord.to_string();
+        let shown = chord.label();
         if let Err(failure) = backend.register(id_of(action), chord) {
             problems.push(HotkeyProblem {
                 action,
@@ -635,7 +644,7 @@ pub fn retry_failed(
         let Some(chord) = hotkeys.chord(problem.action) else {
             continue;
         };
-        let shown = chord.to_string();
+        let shown = chord.label();
         if let Err(failure) = backend.register(id_of(problem.action), chord) {
             remaining.push(HotkeyProblem {
                 action: problem.action,
@@ -754,6 +763,16 @@ impl HotkeyBackend for FakeHotkeys {
         self.registered.retain(|(existing, _)| *existing != id);
         Ok(())
     }
+
+    fn probe(&mut self, chord: Chord) -> Result<(), HotkeyFailure> {
+        if self.taken.contains(&chord.to_string()) {
+            return Err(HotkeyFailure::InUse);
+        }
+        if self.registered.iter().any(|(_, c)| *c == chord) {
+            return Err(HotkeyFailure::OwnAction);
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -798,6 +817,26 @@ mod tests {
         gate.now();
         assert!(gate.due(Duration::from_secs(66)), "after a wake or unlock");
         assert!(!gate.due(Duration::from_secs(67)));
+    }
+
+    #[test]
+    fn probing_leaves_nothing_registered_and_names_who_holds_the_chord() {
+        let hotkeys = all_on();
+        let mut backend = FakeHotkeys {
+            taken: vec!["Ctrl+Shift+G".into()],
+            ..FakeHotkeys::default()
+        };
+        assert!(register_all(&mut backend, &hotkeys).is_empty());
+        let before = backend.registered.clone();
+        let chord = |t: &str| t.parse::<Chord>().unwrap();
+        assert_eq!(backend.probe(chord("Ctrl+Shift+H")), Ok(()));
+        assert_eq!(
+            backend.probe(chord("Ctrl+Shift+G")),
+            Err(HotkeyFailure::InUse)
+        );
+        let own = hotkeys.chord(HotkeyAction::TogglePanel).unwrap();
+        assert_eq!(backend.probe(own), Err(HotkeyFailure::OwnAction));
+        assert_eq!(backend.registered, before);
     }
 
     #[test]

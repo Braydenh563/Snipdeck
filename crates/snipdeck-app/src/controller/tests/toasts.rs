@@ -323,6 +323,20 @@ fn a_hotkey_problem_is_worded_by_why_it_failed() {
         }
     );
     assert_eq!(
+        message(HotkeyFailure::OwnAction),
+        ToastMessage::HotkeyOwnAction {
+            chord: chord.clone()
+        }
+    );
+    // The Windows error code reaches the words.
+    assert_eq!(
+        message(HotkeyFailure::Refused(5)),
+        ToastMessage::HotkeyRefused {
+            chord: chord.clone(),
+            code: 5
+        }
+    );
+    assert_eq!(
         message(HotkeyFailure::Unavailable),
         ToastMessage::HotkeyUnavailable { chord }
     );

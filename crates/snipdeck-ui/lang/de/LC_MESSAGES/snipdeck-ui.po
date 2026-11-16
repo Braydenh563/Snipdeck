@@ -231,6 +231,9 @@ msgstr "Tiere"
 msgid "Animals & Nature"
 msgstr "Tiere & Natur"
 
+msgid "Another Snipdeck shortcut already uses {}."
+msgstr "Ein anderes Snipdeck-Kürzel verwendet {} bereits."
+
 msgid "Another backup or export is still running. Try again when it has finished."
 msgstr "Eine andere Sicherung oder ein anderer Export läuft noch. Versuche es erneut, wenn er beendet ist."
 
@@ -3458,6 +3461,15 @@ msgstr "Windows folgt deiner Windows-Textgröße (Einstellungen > Erleichterte B
 msgid "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
 msgstr "Windows hat Snipdeck unter Einstellungen > Apps > Autostart ausgeschaltet. Schalte es dort wieder ein."
 
+msgid "Windows keeps {} for itself. Choose another."
+msgstr "Windows behält {} für sich. Wähle ein anderes."
+
+msgid "Windows refused {} (Windows error {})."
+msgstr "Windows hat {} abgelehnt (Windows-Fehler {})."
+
+msgid "Windows refused {} (Windows error {}). Choose another in Settings."
+msgstr "Windows hat {} abgelehnt (Windows-Fehler {}). Wähle in den Einstellungen ein anderes."
+
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "Mit eingeschaltetem Verlauf der Zwischenablage behält „Zuletzt verwendet“ alles, was du in anderen Programmen kopierst."
 
@@ -3905,11 +3917,17 @@ msgstr "{} gefunden"
 msgid "{} h ago"
 msgstr "vor {} Std."
 
+msgid "{} is a copy or paste shortcut that every program uses. Choose another."
+msgstr "{} ist ein Kopier- oder Einfügekürzel, das jedes Programm nutzt. Wähle ein anderes."
+
 msgid "{} is a link to somewhere else and was not followed."
 msgstr "{} ist ein Link zu einer anderen Stelle und wurde nicht verfolgt."
 
 msgid "{} is already in the list."
 msgstr "{} ist bereits in der Liste."
+
+msgid "{} is already used by another Snipdeck shortcut. Choose another in Settings."
+msgstr "{} wird schon von einem anderen Snipdeck-Kürzel verwendet. Wähle in den Einstellungen ein anderes."
 
 msgid "{} is already used for “{}”."
 msgstr "{} wird bereits für „{}“ verwendet."
@@ -3982,6 +4000,12 @@ msgstr "{} der Prüfungen brauchen einen Blick."
 
 msgid "{} of {} · next: {}"
 msgstr "{} von {} · als Nächstes: {}"
+
+msgid "{} on its own is used by every program. Add Ctrl, Alt or Win."
+msgstr "{} allein wird von jedem Programm verwendet. Füge Strg, Alt oder Win hinzu."
+
+msgid "{} opens menus and moves windows in other programs. Choose another."
+msgstr "{} öffnet in anderen Programmen Menüs und verschiebt Fenster. Wähle ein anderes."
 
 msgid "{} percent"
 msgstr "{} Prozent"

@@ -21,7 +21,7 @@ use crate::{
     binding::{Loggable, Shown, model, redraw_all, register_redraw, to_i32},
     controller::Controller,
     host::ClipboardText,
-    hotkey_health::{self, HotkeyHealth},
+    hotkey_health::HotkeyHealth,
     main_binding::{create_window, set_look},
     native_window::fit_when_settled,
     settings::{HotkeyAction, Hotkeys},
@@ -146,7 +146,7 @@ where
                     let alternatives = if !value.is_empty()
                         && (!conflict.is_empty() || matches!(health, HotkeyHealth::Failed(_)))
                     {
-                        hotkey_health::alternatives(&settings.hotkeys)
+                        self.host.free_alternatives(&settings.hotkeys)
                     } else {
                         Vec::new()
                     };

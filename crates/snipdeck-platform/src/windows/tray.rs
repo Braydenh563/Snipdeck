@@ -101,6 +101,7 @@ impl Command {
             | Self::Hide(r)
             | Self::Tooltip(_, r)
             | Self::Paused(_, r)
+            | Self::DoubleClickOpens(_, r)
             | Self::History(_, _, r)
             | Self::Labels(_, r) => r,
         }

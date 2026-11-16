@@ -141,6 +141,18 @@ pub enum ToastMessage {
         /// The chord as typed in Settings.
         chord: String,
     },
+    /// "{chord} is already used by another Snipdeck shortcut. Choose another in Settings."
+    HotkeyOwnAction {
+        /// The chord two Snipdeck shortcuts were given.
+        chord: String,
+    },
+    /// "Windows refused {chord} (Windows error {code}). Choose another in Settings."
+    HotkeyRefused {
+        /// The chord Windows refused.
+        chord: String,
+        /// The Windows error code.
+        code: u32,
+    },
     /// "Shortcuts are unavailable, so {chord} is not active. Restart Snipdeck to try again."
     HotkeyUnavailable {
         /// The chord that could not be registered.

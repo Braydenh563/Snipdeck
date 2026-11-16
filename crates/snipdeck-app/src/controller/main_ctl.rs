@@ -330,7 +330,7 @@ where
                 .settings
                 .hotkeys
                 .chord(HotkeyAction::TogglePanel)
-                .map(|chord| chord.to_string())
+                .map(|chord| chord.label())
                 .unwrap_or_default(),
             panel_visible: self.visible && !self.dock_collapsed(),
         }

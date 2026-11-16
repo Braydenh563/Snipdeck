@@ -161,6 +161,16 @@ mod imp {
 
     struct Hotkeys(HotkeyService);
 
+    fn failure_of(e: HotkeyError) -> HotkeyFailure {
+        match e {
+            HotkeyError::InUse => HotkeyFailure::InUse,
+            HotkeyError::Invalid => HotkeyFailure::Invalid,
+            HotkeyError::OwnAction(_) => HotkeyFailure::OwnAction,
+            HotkeyError::Os(code) => HotkeyFailure::Refused(code),
+            HotkeyError::Stopped => HotkeyFailure::Unavailable,
+        }
+    }
+
     impl HotkeyBackend for Hotkeys {
         fn register(&mut self, id: u32, chord: Chord) -> Result<(), HotkeyFailure> {
             let result = self.0.register(id, chord);
@@ -170,13 +180,13 @@ mod imp {
                 "hotkey register id={id} ({:?}) chord={chord}: {result:?}",
                 crate::host::action_of(id)
             );
-            result.map_err(|e| match e {
-                HotkeyError::InUse => HotkeyFailure::InUse,
-                HotkeyError::Invalid => HotkeyFailure::Invalid,
-                HotkeyError::OwnAction(_) => HotkeyFailure::OwnAction,
-                HotkeyError::Os(code) => HotkeyFailure::Refused(code),
-                HotkeyError::Stopped => HotkeyFailure::Unavailable,
-            })
+            result.map_err(failure_of)
+        }
+
+        fn probe(&mut self, chord: Chord) -> Result<(), HotkeyFailure> {
+            let result = self.0.probe(chord);
+            crate::trace!("hotkey probe chord={chord}: {result:?}");
+            result.map_err(failure_of)
         }
 
         fn unregister(&mut self, id: u32) -> Result<(), HotkeyFailure> {
@@ -368,6 +378,8 @@ mod imp {
             on_clipboard_change,
             on_typed,
         } = callbacks;
+        // Shortcut labels follow the keyboard layout (unverified on Windows).
+        snipdeck_platform::windows::hotkey::show_layout_labels();
         // Before any window exists: the tray's window, menu and icon are made ahead of the UI
         // toolkit, which would otherwise be too late to make the process DPI aware.
         let _ = snipdeck_platform::windows::dpi::enable_per_monitor_awareness();

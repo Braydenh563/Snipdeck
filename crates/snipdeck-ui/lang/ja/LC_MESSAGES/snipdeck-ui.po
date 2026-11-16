@@ -230,6 +230,9 @@ msgstr "動物"
 msgid "Animals & Nature"
 msgstr "動物と自然"
 
+msgid "Another Snipdeck shortcut already uses {}."
+msgstr "{} はすでに別の Snipdeck のショートカットで使われています。"
+
 msgid "Another backup or export is still running. Try again when it has finished."
 msgstr "別のバックアップまたはエクスポートがまだ実行中です。完了してからもう一度お試しください。"
 
@@ -3450,6 +3453,15 @@ msgstr "Windows の文字サイズ（設定 > アクセシビリティ > 文字�
 msgid "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
 msgstr "Windows の [設定] > [アプリ] > [スタートアップ] で Snipdeck がオフになっています。そこでオンにしてください。"
 
+msgid "Windows keeps {} for itself. Choose another."
+msgstr "{} は Windows が予約しています。別のものを選んでください。"
+
+msgid "Windows refused {} (Windows error {})."
+msgstr "Windows が {} を受け付けませんでした (Windows エラー {})。"
+
+msgid "Windows refused {} (Windows error {}). Choose another in Settings."
+msgstr "Windows が {} を受け付けませんでした (Windows エラー {})。設定で別のものを選んでください。"
+
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "クリップボード履歴をオンにすると、「最近」に他のプログラムでコピーした内容が残ります。"
 
@@ -3888,11 +3900,17 @@ msgstr "{} 件見つかりました"
 msgid "{} h ago"
 msgstr "{}時間前"
 
+msgid "{} is a copy or paste shortcut that every program uses. Choose another."
+msgstr "{} はすべてのプログラムが使うコピーまたは貼り付けのショートカットです。別のものを選んでください。"
+
 msgid "{} is a link to somewhere else and was not followed."
 msgstr "{} は別の場所へのリンクのため、たどりませんでした。"
 
 msgid "{} is already in the list."
 msgstr "{} は既にリストにあります。"
+
+msgid "{} is already used by another Snipdeck shortcut. Choose another in Settings."
+msgstr "{} はすでに別の Snipdeck のショートカットで使われています。設定で別のものを選んでください。"
 
 msgid "{} is already used for “{}”."
 msgstr "{} は既に「{}」に使われています。"
@@ -3959,6 +3977,12 @@ msgstr "{} 件の項目に確認が必要です。"
 
 msgid "{} of {} · next: {}"
 msgstr "{} / {} · 次: {}"
+
+msgid "{} on its own is used by every program. Add Ctrl, Alt or Win."
+msgstr "{} だけではすべてのプログラムが使っています。Ctrl、Alt、Win のいずれかを加えてください。"
+
+msgid "{} opens menus and moves windows in other programs. Choose another."
+msgstr "{} は他のプログラムでメニューを開いたりウィンドウを動かしたりします。別のものを選んでください。"
 
 msgid "{} percent"
 msgstr "{} パーセント"

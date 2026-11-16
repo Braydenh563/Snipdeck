@@ -18,7 +18,7 @@ use std::{
 
 use slint::{ComponentHandle, Global, SharedString};
 use snipdeck_platform::{
-    chord::Chord,
+    chord::{Chord, ChordError, Reserved},
     clipboard_history::{self, ClipboardHistoryEntry, HistoryRead},
     command_line::AutostartStatus,
     pipeline::{Clipboard, Keyboard, Timing},
@@ -87,6 +87,13 @@ pub trait SettingsHost {
     /// Makes `hotkeys` the registered global shortcuts: the empty ones are removed, the others
     /// registered. Returns the ones that could not be.
     fn apply_hotkeys(&self, hotkeys: &Hotkeys) -> Vec<HotkeyProblem>;
+
+    /// The one-click alternatives for a failing shortcut: pool chords nothing holds, Snipdeck's
+    /// own and other programs' alike. The real machine asks Windows; the default accepts every
+    /// chord Snipdeck itself does not hold.
+    fn free_alternatives(&self, hotkeys: &Hotkeys) -> Vec<String> {
+        hotkey_health::alternatives(hotkeys, &mut |_| true)
+    }
 
     /// Adds or removes the "Start with Windows" entry, then calls `done` with the outcome (or
     /// why it could not be changed) **on the UI thread**. It may call it at once, or later: the
@@ -206,6 +213,9 @@ pub struct SystemHost {
     hotkeys: Rc<RefCell<Box<dyn HotkeyBackend>>>,
     panel_taskbar: PanelTaskbar,
     tray: Option<SharedTray>,
+    /// The alternatives found for one set of held chords: probing asks Windows, and the page is
+    /// drawn often. Forgotten when the hotkeys are applied.
+    alternatives: RefCell<Option<(Hotkeys, Vec<String>)>>,
 }
 
 /// The tray the host shares (none off Windows or when it failed to start).
@@ -226,6 +236,7 @@ impl SystemHost {
             hotkeys,
             panel_taskbar,
             tray: None,
+            alternatives: RefCell::new(None),
         }
     }
 
@@ -239,7 +250,22 @@ impl SystemHost {
 
 impl SettingsHost for SystemHost {
     fn apply_hotkeys(&self, hotkeys: &Hotkeys) -> Vec<HotkeyProblem> {
+        *self.alternatives.borrow_mut() = None;
         apply_hotkeys(&mut **self.hotkeys.borrow_mut(), hotkeys)
+    }
+
+    fn free_alternatives(&self, hotkeys: &Hotkeys) -> Vec<String> {
+        if let Some((for_hotkeys, found)) = &*self.alternatives.borrow()
+            && for_hotkeys == hotkeys
+        {
+            return found.clone();
+        }
+        let found = hotkey_health::alternatives(hotkeys, &mut |text| {
+            text.parse::<Chord>()
+                .is_ok_and(|chord| self.hotkeys.borrow_mut().probe(chord).is_ok())
+        });
+        *self.alternatives.borrow_mut() = Some((hotkeys.clone(), found.clone()));
+        found
     }
 
     fn set_autostart(&self, on: bool, hidden: bool, done: AutostartDone) {
@@ -450,6 +476,8 @@ pub enum HotkeyRefusal {
     UsedBy(HotkeyAction),
     /// Windows or another program refused it.
     Refused(HotkeyFailure),
+    /// A chord every program or Windows itself relies on (copy, paste, `Alt+Tab`).
+    Reserved(Reserved),
 }
 
 /// `current` with `action` set to `combo` ("Ctrl+Alt+V").
@@ -463,7 +491,10 @@ pub fn with_hotkey(
     action: HotkeyAction,
     combo: &str,
 ) -> Result<Hotkeys, HotkeyRefusal> {
-    let chord: Chord = combo.parse().map_err(|_| HotkeyRefusal::NotAShortcut)?;
+    let chord: Chord = combo.parse().map_err(|e| match e {
+        ChordError::Reserved(why) => HotkeyRefusal::Reserved(why),
+        _ => HotkeyRefusal::NotAShortcut,
+    })?;
     if let Some(other) = HotkeyAction::ALL
         .into_iter()
         .find(|a| *a != action && current.chord(*a) == Some(chord))
@@ -551,6 +582,11 @@ pub fn key_chips(value: &str) -> Vec<String> {
     if value.is_empty() {
         return Vec::new();
     }
+    // As the user's keyboard prints it (a German layout shows `Ü` for the `;` key).
+    let label = value
+        .parse::<Chord>()
+        .map_or_else(|_| value.to_owned(), |chord| chord.label());
+    let value = label.as_str();
     let (rest, plus) = value
         .strip_suffix("++")
         .map_or((value, false), |rest| (rest, true));
@@ -652,15 +688,23 @@ where
         HotkeyRefusal::UsedBy(other) => {
             t.invoke_hotkey_used_by(combo.into(), action_text(window, other).into())
         }
-        // OwnAction reads as "in use" and Refused(code) as "unavailable" until their own wording
-        // exists (a follow-up with strings in the .pot and the six .po files).
-        HotkeyRefusal::Refused(HotkeyFailure::InUse | HotkeyFailure::OwnAction) => {
-            t.invoke_hotkey_in_use(combo.into())
+        HotkeyRefusal::Refused(HotkeyFailure::InUse) => t.invoke_hotkey_in_use(combo.into()),
+        HotkeyRefusal::Refused(HotkeyFailure::OwnAction) => {
+            t.invoke_hotkey_own_action(combo.into())
         }
         HotkeyRefusal::Refused(HotkeyFailure::Invalid) => t.invoke_hotkey_invalid(combo.into()),
-        HotkeyRefusal::Refused(HotkeyFailure::Unavailable | HotkeyFailure::Refused(_)) => {
-            t.invoke_hotkey_unavailable()
+        HotkeyRefusal::Refused(HotkeyFailure::Refused(code)) => {
+            t.invoke_hotkey_refused(combo.into(), i32::try_from(code).unwrap_or(i32::MAX))
         }
+        HotkeyRefusal::Refused(HotkeyFailure::Unavailable) => t.invoke_hotkey_unavailable(),
+        HotkeyRefusal::Reserved(Reserved::Clipboard) => {
+            t.invoke_hotkey_reserved_clipboard(combo.into())
+        }
+        HotkeyRefusal::Reserved(Reserved::BareFunctionKey) => {
+            t.invoke_hotkey_reserved_bare_function_key(combo.into())
+        }
+        HotkeyRefusal::Reserved(Reserved::Menu) => t.invoke_hotkey_reserved_menu(combo.into()),
+        HotkeyRefusal::Reserved(Reserved::System) => t.invoke_hotkey_reserved_system(combo.into()),
     }
     .into()
 }
@@ -981,6 +1025,7 @@ pub(crate) fn health_state(health: Option<HotkeyHealth>, testing: bool) -> i32 {
 fn hotkey_rows<C, K, T>(
     controller: &Controller<Store, C, K, T>,
     state: &PageState,
+    host: &dyn SettingsHost,
 ) -> Vec<HotkeyRow>
 where
     C: Clipboard + ClipboardText,
@@ -1010,7 +1055,7 @@ where
             let alternatives = if !value.is_empty()
                 && (!conflict.is_empty() || matches!(health, Some(HotkeyHealth::Failed(_))))
             {
-                hotkey_health::alternatives(&settings.hotkeys)
+                host.free_alternatives(&settings.hotkeys)
             } else {
                 Vec::new()
             };
@@ -1030,6 +1075,7 @@ fn page_view<C, K, T>(
     controller: &Controller<Store, C, K, T>,
     state: &PageState,
     has_data_folder: bool,
+    host: &dyn SettingsHost,
 ) -> PageView
 where
     C: Clipboard + ClipboardText,
@@ -1037,7 +1083,7 @@ where
     T: Timing,
 {
     let settings: &Settings = controller.settings();
-    let hotkeys = hotkey_rows(controller, state);
+    let hotkeys = hotkey_rows(controller, state, host);
     PageView {
         look: controller.settings_look(),
         accent: controller.accent(),
@@ -1257,6 +1303,7 @@ where
             &self.controller.borrow(),
             &self.state.borrow(),
             self.data_dir.is_some(),
+            self.host.as_ref(),
         );
         // The switch shows what Windows will do, not only what was chosen here: an entry removed
         // outside Snipdeck reads as off, and one Windows switched off (Task Manager, Settings >
@@ -2674,6 +2721,37 @@ mod tests {
         let ids: Vec<u32> = backend.registered.iter().map(|(id, _)| *id).collect();
         assert!(!ids.contains(&host::id_of(HotkeyAction::Capture)));
         assert_eq!(ids.len(), 3);
+    }
+
+    #[test]
+    fn a_reserved_chord_is_refused_with_its_reason_not_as_nonsense() {
+        let now = Hotkeys::new_install();
+        let refused = |combo| with_hotkey(&now, HotkeyAction::Capture, combo).unwrap_err();
+        assert_eq!(
+            refused("Ctrl+V"),
+            HotkeyRefusal::Reserved(Reserved::Clipboard)
+        );
+        assert_eq!(
+            refused("F5"),
+            HotkeyRefusal::Reserved(Reserved::BareFunctionKey)
+        );
+        assert_eq!(refused("Alt+F"), HotkeyRefusal::Reserved(Reserved::Menu));
+        assert_eq!(refused("Win+L"), HotkeyRefusal::Reserved(Reserved::System));
+        assert_eq!(refused("banana"), HotkeyRefusal::NotAShortcut);
+    }
+
+    #[test]
+    fn a_failed_hotkey_with_a_windows_code_or_an_own_conflict_is_kept_for_its_row() {
+        let mut backend = FakeHotkeys::default();
+        let clash = Hotkeys {
+            toggle_panel: "Ctrl+Shift+Y".into(),
+            picker: "Ctrl+Shift+Y".into(),
+            capture: String::new(),
+            paste_next: String::new(),
+        };
+        let problems = apply_hotkeys(&mut backend, &clash);
+        assert_eq!(problems.len(), 1);
+        assert_eq!(problems[0].failure, HotkeyFailure::OwnAction);
     }
 
     #[test]

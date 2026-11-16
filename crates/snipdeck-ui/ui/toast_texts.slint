@@ -134,6 +134,12 @@ export global ToastTexts {
     pure public function hotkey-unavailable(chord: string) -> string {
         return @tr("Shortcuts are unavailable, so {} is not active. Restart Snipdeck to try again.", chord);
     }
+    pure public function hotkey-own-action(chord: string) -> string {
+        return @tr("{} is already used by another Snipdeck shortcut. Choose another in Settings.", chord);
+    }
+    pure public function hotkey-refused(chord: string, code: int) -> string {
+        return @tr("Windows refused {} (Windows error {}). Choose another in Settings.", chord, code);
+    }
     // `chords`: two or more shortcuts joined with ", ".
     pure public function hotkeys-failed(chords: string) -> string {
         return @tr("These shortcuts are not working: {}. Settings > Shortcuts says why.", chords);

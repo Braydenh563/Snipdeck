@@ -39,9 +39,10 @@ pub const ALTERNATIVE_POOL: [&str; 6] = [
 pub const MAX_ALTERNATIVES: usize = 3;
 
 /// Chords to offer instead of the one that failed: from [`ALTERNATIVE_POOL`], leaving out every
-/// chord an action holds now (the failed one included).
+/// chord an action holds now (the failed one included) and every one `is_free` says another
+/// program holds (the host asks Windows by registering and releasing it, PLATFORM-8).
 #[must_use]
-pub fn alternatives(hotkeys: &Hotkeys) -> Vec<String> {
+pub fn alternatives(hotkeys: &Hotkeys, is_free: &mut dyn FnMut(&str) -> bool) -> Vec<String> {
     let taken: Vec<String> = HotkeyAction::ALL
         .into_iter()
         .map(|a| chord_text(hotkeys, a).to_ascii_lowercase())
@@ -50,6 +51,7 @@ pub fn alternatives(hotkeys: &Hotkeys) -> Vec<String> {
     ALTERNATIVE_POOL
         .into_iter()
         .filter(|c| !taken.contains(&c.to_ascii_lowercase()))
+        .filter(|c| is_free(c))
         .take(MAX_ALTERNATIVES)
         .map(str::to_owned)
         .collect()
@@ -73,7 +75,7 @@ mod tests {
     #[test]
     fn alternatives_skip_every_chord_in_use_and_stop_at_three() {
         let hotkeys = Hotkeys::new_install();
-        let offered = alternatives(&hotkeys);
+        let offered = alternatives(&hotkeys, &mut |_| true);
         assert_eq!(offered.len(), MAX_ALTERNATIVES);
         for chord in &offered {
             assert!(!chord.contains("Alt"), "{chord}");
@@ -92,7 +94,17 @@ mod tests {
     fn a_cleared_shortcut_holds_nothing_back() {
         let mut hotkeys = Hotkeys::new_install();
         hotkeys.toggle_panel = String::new();
-        let offered = alternatives(&hotkeys);
+        let offered = alternatives(&hotkeys, &mut |_| true);
         assert_eq!(offered[0], "Ctrl+Shift+Y");
+    }
+
+    #[test]
+    fn a_chord_another_program_holds_is_never_offered() {
+        // Y, Space and U are Snipdeck's own; G is held by another program.
+        let hotkeys = Hotkeys::new_install();
+        let offered = alternatives(&hotkeys, &mut |c| c != "Ctrl+Shift+G");
+        assert_eq!(offered, ["Ctrl+Shift+H", "Ctrl+Shift+F9"]);
+        // Nothing free: nothing offered, and no panic.
+        assert!(alternatives(&hotkeys, &mut |_| false).is_empty());
     }
 }

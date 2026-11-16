@@ -277,6 +277,10 @@ where
         ToastMessage::PasteNextFinished => t.invoke_paste_next_finished(),
         ToastMessage::HotkeyInUse { chord } => t.invoke_hotkey_in_use(chord.into()),
         ToastMessage::HotkeyInvalid { chord } => t.invoke_hotkey_invalid(chord.into()),
+        ToastMessage::HotkeyOwnAction { chord } => t.invoke_hotkey_own_action(chord.into()),
+        ToastMessage::HotkeyRefused { chord, code } => {
+            t.invoke_hotkey_refused(chord.into(), i32::try_from(*code).unwrap_or(i32::MAX))
+        }
         ToastMessage::HotkeyUnavailable { chord } => t.invoke_hotkey_unavailable(chord.into()),
         ToastMessage::HotkeysFailed { chords } => t.invoke_hotkeys_failed(chords.into()),
         ToastMessage::PanelHidden { chord } => {
