@@ -2095,7 +2095,7 @@ export component MainWindow inherits Window {
                                                 root.act(ItemAction.use-plain, i);
                                             }
                                             edit => { root.act(ItemAction.edit, i); }
-                                            tip(text, left, top, w, h, on) => { root.card-tip-set(text, left, top, w, h, on); }
+                                            tip(text, left, top, w, h, on) => { root.card-tip-set(i, text, left, top, w, h, on); }
                                             picked(shift, control) => { root.pick(i, shift, control); }
                                             context-menu-requested(x, y) => {
                                                 if (!row.selected) {
@@ -2255,7 +2255,7 @@ export component MainWindow inherits Window {
                                         edit-action: !root.in-trash;
                                         show-actions: root.rows[root.tile-index(r, c)].selected;
                                         actions-hidden: root.selected-count > 1;
-                                        tip(text, left, top, w, h, on) => { root.card-tip-set(text, left, top, w, h, on); }
+                                        tip(text, left, top, w, h, on) => { root.card-tip-set(root.tile-index(r, c), text, left, top, w, h, on); }
                                         edit => { root.act(ItemAction.edit, root.tile-index(r, c)); }
                                         show-focus: root.tile-index(r, c) == root.cur && items-scope.has-focus && root.kbd-focus;
                                         revealed: root.tile-index(r, c) == root.revealed-index;
@@ -2731,13 +2731,18 @@ export component MainWindow inherits Window {
     }
 
     // ---- A row action's tooltip (Use, Copy, Edit, More, the type tile): the card reports it, centred under the button.
+    // Keyed on the card and the words, so a leave from one card's Copy that arrives after the enter on another's does
+    // not close the new one. The card answers the layer's ping, so a card removed in place loses its tip.
     property <string> card-tip;
+    property <int> card-tip-card: -1;
     property <int> card-tip-id: -1;
-    function card-tip-set(text: string, left: length, top: length, box-width: length, box-height: length, on: bool) {
+    function card-tip-set(card: int, text: string, left: length, top: length, box-width: length, box-height: length, on: bool) {
         if (on) {
             root.card-tip = text;
+            root.card-tip-card = card;
             root.card-tip-id = TipHost.show(text, left, top, box-width, box-height);
-        } else if (text == root.card-tip) {
+            TipHost.watched = true;
+        } else if (card == root.card-tip-card && text == root.card-tip) {
             root.card-tip-close();
         }
     }

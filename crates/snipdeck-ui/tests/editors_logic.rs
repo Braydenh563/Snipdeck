@@ -1518,6 +1518,30 @@ ui_tests! {
         assert_eq!(take(&log), Vec::<String>::new());
     }
 
+    fn a_tooltip_held_off_by_an_open_list_shows_once_the_list_closes() {
+        let (ui, log) = settings();
+        ui.set_no_history_apps(slint::ModelRc::new(slint::VecModel::from(vec![slint::SharedString::from("keepass.exe")])));
+        settle();
+        let combo = find(&ui, "Language", AccessibleRole::Combobox);
+        combo.invoke_accessible_default_action();
+        settle();
+        let remove = find(&ui, "Remove keepass.exe from the list", AccessibleRole::Button);
+        hover_rest(&ui, &remove);
+        assert_eq!(tips(&ui), 0, "held off while the list is open");
+        // The list closes with a choice; the pointer has not moved.
+        find(&ui, "Deutsch", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["lang:2"]);
+        assert!(missing(&ui, "Deutsch", AccessibleRole::ListItem));
+        let moved = find(&ui, "Remove keepass.exe from the list", AccessibleRole::Button).absolute_position();
+        assert_eq!(moved, remove.absolute_position(), "the button is still under the pointer");
+        for _ in 0..10 {
+            i_slint_backend_testing::mock_elapsed_time(std::time::Duration::from_millis(100));
+            settle();
+        }
+        assert_eq!(tips(&ui), 1, "the resting pointer's tip shows once the hold lapses");
+    }
+
     fn programs_left_out_of_recent_can_be_added_and_removed_with_labelled_buttons() {
         let (ui, log) = settings();
         ui.set_no_history_apps(slint::ModelRc::new(slint::VecModel::from(vec![

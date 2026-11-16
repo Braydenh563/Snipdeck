@@ -22,7 +22,7 @@ use snipdeck_ui::{Fonts, MainSection, MainView, MainWindow, PaletteRow, selectio
 
 #[path = "support/mod.rs"]
 mod support;
-use support::{chord, key, on_ui_thread, press, type_text};
+use support::{chord, compose, key, on_ui_thread, press, type_text};
 
 #[path = "support/main_fixture.rs"]
 mod fixture;
@@ -2170,6 +2170,29 @@ ui_tests! {
         assert_eq!(take(&log), ["clear"], "Esc with no tip clears the selection");
     }
 
+    fn escape_during_a_search_composition_goes_to_the_composition_not_the_tooltip() {
+        let (ui, log) = start();
+        let tips = |ui: &MainWindow| ElementQuery::from_root(ui).match_inherits("Tooltip").find_all().len();
+        find(&ui, "Search snippets", AccessibleRole::TextInput).mock_single_click(slint::platform::PointerEventButton::Left);
+        settle();
+        let button = find(&ui, "Compact view", AccessibleRole::Button);
+        ui.window().dispatch_event(WindowEvent::PointerMoved { position: centre_of(&button) });
+        mock_elapsed_time(std::time::Duration::from_millis(600));
+        settle();
+        assert_eq!(tips(&ui), 1, "the view button's tip is up");
+        compose(ui.window(), "nihon");
+        settle();
+        take(&log);
+        press_key(&ui, Key::Escape);
+        assert_eq!(tips(&ui), 1, "Esc belongs to the input method while composing: the tip stays");
+        assert_eq!(take(&log), Vec::<String>::new());
+    }
+
+    fn a_card_tip_is_not_closed_by_the_card_the_pointer_left() {
+        assert_eq!(copy_to_copy(1, 2), 1, "moving up: the new card's Copy keeps its tip");
+        assert_eq!(copy_to_copy(2, 1), 1, "moving down: the new card's Copy keeps its tip");
+    }
+
     fn a_tooltip_goes_with_its_control_when_the_window_widens_and_removes_it() {
         let (ui, _log) = start();
         let tips = |ui: &MainWindow| ElementQuery::from_root(ui).match_inherits("Tooltip").find_all().len();
@@ -2668,6 +2691,41 @@ fn scrolled(ui: &MainWindow, top0: f32, row_h: f32) -> f32 {
                 .map(|e| top0 + row_h * f32::from(i) - e.absolute_position().y)
         })
         .expect("a row in view")
+}
+
+/// Card `selected` shows its actions without hover; the pointer rests on card `hovered`'s Copy, then moves
+/// straight onto the selected card's Copy, so one move leaves one Copy and enters the other.
+fn copy_to_copy(selected: usize, hovered: usize) -> usize {
+    let (ui, _log) = start();
+    let tips = |ui: &MainWindow| {
+        ElementQuery::from_root(ui)
+            .match_inherits("Tooltip")
+            .find_all()
+            .len()
+    };
+    select_row(&ui, selected);
+    settle();
+    let titles = ["Thanks, received", "Invoice reminder", "Retry helper"];
+    let row = row_titled(&ui, titles[hovered]);
+    ui.window().dispatch_event(WindowEvent::PointerMoved {
+        position: centre_of(&row),
+    });
+    settle();
+    let from = button_in(&ui, &row, "Copy").expect("the hovered card's Copy");
+    ui.window().dispatch_event(WindowEvent::PointerMoved {
+        position: centre_of(&from),
+    });
+    mock_elapsed_time(std::time::Duration::from_millis(600));
+    settle();
+    assert_eq!(tips(&ui), 1, "Copy names itself");
+    let to = button_in(&ui, &row_titled(&ui, titles[selected]), "Copy")
+        .expect("the selected card's Copy");
+    ui.window().dispatch_event(WindowEvent::PointerMoved {
+        position: centre_of(&to),
+    });
+    mock_elapsed_time(std::time::Duration::from_millis(100));
+    settle();
+    tips(&ui)
 }
 
 /// The palette open on forty commands at Windows text size `scale` (rows grow with it).

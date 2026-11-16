@@ -2302,6 +2302,10 @@ export component PanelWindow inherits Window {
                                                 tip(text, left, top, w, h, on) => {
                                                     root.tip-set(text, left, top, w, h, on);
                                                     root.row-tip-text = on ? text : "";
+                                                    // The card answers the layer's ping; a row removed in place loses its tip.
+                                                    if (on) {
+                                                        TipHost.watched = true;
+                                                    }
                                                 }
                                                 reveal-requested(on) => { root.reveal-requested(i, on); }
                                             }

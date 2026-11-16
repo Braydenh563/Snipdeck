@@ -136,10 +136,20 @@ export component TipLayer inherits Rectangle {
             }
         }
     }
-    // A menu or dialog opening closes the tooltip; it does not come back when it closes.
+    // A menu or dialog opening closes the tooltip; it does not come back when it closes. An open drop-down list only
+    // holds it off: the control under a resting pointer still wants it, and gets it once the hold lapses.
     changed off => {
-        if (root.off) {
+        if (root.suppressed) {
             TipHost.dismiss();
+        } else if (root.off) {
+            delay.running = false;
+            TipHost.open = false;
+        }
+    }
+    property <bool> held: TipHost.held;
+    changed held => {
+        if (!root.held) {
+            root.ask();
         }
     }
     delay := Timer {

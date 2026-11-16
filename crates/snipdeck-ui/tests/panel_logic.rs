@@ -2637,6 +2637,23 @@ ui_tests! {
         assert_eq!(take(&log), ["reveal:4:true"]);
     }
 
+    fn a_row_tooltip_goes_when_the_host_removes_that_row_from_the_model() {
+        let (ui, _log) = start();
+        let model = Rc::new(VecModel::from(fixture::sample_rows()));
+        ui.set_rows(ModelRc::from(model.clone()));
+        settle();
+        move_to(&ui, centre(&rows(&ui)[2]));
+        wait(900);
+        assert!(!ui.get_tooltip_shown().is_empty(), "the row's tooltip is up after a rest");
+        // Removed in place (the model is not replaced, so `rows` does not change) under the resting pointer.
+        model.remove(2);
+        settle();
+        for _ in 0..4 {
+            wait(100);
+        }
+        assert_eq!(ui.get_tooltip_shown(), "", "the tip does not outlive its row");
+    }
+
     fn a_tooltip_from_a_row_closes_when_the_rows_change_or_scroll() {
         let (ui, _log) = start();
         let row = rows(&ui)[2].clone();
