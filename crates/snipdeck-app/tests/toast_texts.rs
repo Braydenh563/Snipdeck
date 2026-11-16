@@ -553,7 +553,7 @@ fn a_failure_toast_names_its_cause_and_ends_with_what_to_do() {
             let mut texts = Vec::new();
             for cause in causes {
                 let text = said(make(cause));
-                assert!(text.starts_with("Couldn't "), "{text}");
+                assert!(text.starts_with("Couldn’t "), "{text}");
                 assert!(
                     text.ends_with('.') && !text.ends_with(".."),
                     "ends with the action: {text}"

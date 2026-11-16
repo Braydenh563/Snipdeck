@@ -265,6 +265,15 @@ impl Rig {
 #[allow(clippy::too_many_lines, reason = "one table of every toggle")]
 fn each_toggle_writes_settings_json_after_the_quiet_time() {
     on_ui_thread(|| {
+        // Choosing a language applies it at once, and the translation is process-wide: put English
+        // back when this test ends so the tests that follow read the English sentences.
+        struct EnglishAgain;
+        impl Drop for EnglishAgain {
+            fn drop(&mut self) {
+                let _ = slint::select_bundled_translation("");
+            }
+        }
+        let _english = EnglishAgain;
         type Case = (&'static str, fn(&Rig), fn(&Settings) -> bool);
         let cases: [Case; 20] = [
             (
