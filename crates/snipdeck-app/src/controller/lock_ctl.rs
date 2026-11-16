@@ -15,6 +15,7 @@
 
 use std::{sync::Arc, time::Duration};
 
+use crate::master_job::Opened;
 use snipdeck_core::Timestamp;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::crypto::{CryptoError, KdfParams, KeyProvider, KeyRecord, KeyRing};
@@ -427,13 +428,13 @@ where
         }
         self.lock.busy = None;
         let op = done.op;
-        let (key, record) = done.outcome.map_err(|e| match op {
+        let opened = done.outcome.map_err(|e| match op {
             // A first password has no "current" to get wrong.
             MasterOp::Set { .. } => MasterProblem::Failed,
             _ => problem_of_crypto(&e),
         })?;
-        match (op, record) {
-            (MasterOp::Unlock, _) => {
+        match (op, opened) {
+            (MasterOp::Unlock, Opened::Key(key)) => {
                 self.store
                     .open_with_key(key)
                     .map_err(|_| MasterProblem::Failed)?;
@@ -441,71 +442,58 @@ where
                 self.complete_unlock();
                 Ok(())
             }
-            (MasterOp::Set { exists }, Some(record)) => {
-                if exists {
-                    self.store
-                        .replace_key_record(&record)
-                        .map_err(|_| MasterProblem::Failed)?;
-                    // The password is set for good from here, whether or not the library
-                    // opens now: a retry must ask for it, not offer to set it again.
-                    self.lock.set = true;
-                    self.forget_hello();
-                    self.store
-                        .open_with_key(key)
-                        .map_err(|_| MasterProblem::Failed)?;
-                } else {
-                    self.store
-                        .install_key_ring(key, &record)
-                        .map_err(|_| MasterProblem::Failed)?;
-                    self.lock.set = true;
-                    self.forget_hello();
-                }
+            (MasterOp::Set { exists: false }, Opened::Created(key, record)) => {
+                self.store
+                    .install_key_ring(key, &record)
+                    .map_err(|_| MasterProblem::Failed)?;
+                self.lock.set = true;
+                self.forget_hello();
                 self.note_activity();
                 self.show_toast(neutral(ToastMessage::MasterPasswordSet));
                 self.refresh_or_notice("setting a master password");
                 Ok(())
             }
-            (MasterOp::Change, Some(record)) => {
+            (MasterOp::Set { exists: true }, Opened::Rotated(rotation)) => {
+                // The data key is replaced and everything re-sealed in one transaction; the
+                // key record that opened without a password is gone with the old key.
                 self.store
-                    .replace_key_record(&record)
+                    .rotate_key_ring(rotation)
                     .map_err(|_| MasterProblem::Failed)?;
-                // The password is changed for good from here. The user just proved the old one,
-                // so the library opens if it was locked; if that fails the change still stands
-                // and the toast says the library is locked.
-                // The record changed, so a sealed copy no longer fits it: the password just
-                // proved counts as a fresh unlock, and the host seals a new copy (one prompt).
-                self.note_password_unlock();
-                let reopened = self.open_after_change(key);
+                self.lock.set = true;
+                self.lock.prompt = false;
+                self.forget_hello();
                 self.note_activity();
-                self.show_toast(neutral(if reopened {
-                    ToastMessage::MasterPasswordChanged
-                } else {
-                    ToastMessage::MasterPasswordChangedNotOpen
-                }));
+                self.show_toast(neutral(ToastMessage::MasterPasswordSet));
+                self.refresh_or_notice("setting a master password");
                 Ok(())
             }
-            (MasterOp::Remove, Some(record)) => {
+            (MasterOp::Change, Opened::Rotated(rotation)) => {
                 self.store
-                    .replace_key_record(&record)
+                    .rotate_key_ring(rotation)
                     .map_err(|_| MasterProblem::Failed)?;
-                // The record is OS-only from here, so there is no password to ask for, whether
-                // or not the key opens now.
+                // The key changed, so a Hello copy no longer fits: the password just proved
+                // counts as a fresh unlock, and the host seals a new copy (one prompt).
+                self.lock.prompt = false;
+                self.note_password_unlock();
+                self.note_activity();
+                self.show_toast(neutral(ToastMessage::MasterPasswordChanged));
+                self.refresh_or_notice("changing the master password");
+                Ok(())
+            }
+            (MasterOp::Remove, Opened::Rotated(rotation)) => {
+                self.store
+                    .rotate_key_ring(rotation)
+                    .map_err(|_| MasterProblem::Failed)?;
+                // The record is OS-only from here, so there is no password to ask for.
                 self.lock.set = false;
                 self.lock.prompt = false;
                 self.forget_hello();
-                let reopened = self.open_after_change(key);
                 self.note_activity();
-                self.show_toast(neutral(if reopened {
-                    ToastMessage::MasterPasswordRemoved
-                } else {
-                    ToastMessage::MasterPasswordRemovedNotOpen
-                }));
+                self.show_toast(neutral(ToastMessage::MasterPasswordRemoved));
                 self.refresh_or_notice("removing the master password");
                 Ok(())
             }
-            (MasterOp::Set { .. } | MasterOp::Change | MasterOp::Remove, None) => {
-                Err(MasterProblem::Failed)
-            }
+            _ => Err(MasterProblem::Failed),
         }
     }
 
@@ -550,16 +538,6 @@ where
             return Err(MasterProblem::CurrentEmpty);
         }
         Ok(provider)
-    }
-
-    /// After a change that proved the password, opens the key if it is still locked. `false` when
-    /// the store would not.
-    fn open_after_change(&mut self, key: snipdeck_store::crypto::DataKey) -> bool {
-        if self.store.open_with_key(key).is_err() {
-            return false;
-        }
-        self.lock.prompt = false;
-        true
     }
 
     // ---- The idle lock -------------------------------------------------------------------------

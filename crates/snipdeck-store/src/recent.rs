@@ -564,6 +564,112 @@ fn rows(conn: &Connection, key: Option<&DataKey>) -> Result<Vec<RecentEntry>> {
     Ok(entries)
 }
 
+/// Re-seals every sealed row from `old` to `new`, with a new duplicate hash derived from the
+/// old one (the identity of an image or file row is not kept). A row that cannot be opened
+/// with `old` is deleted rather than left sealed under a key that is going away. Returns the
+/// blobs that held old pictures.
+pub(crate) fn reseal(
+    conn: &Connection,
+    blobs: &mut crate::blobs::Blobs,
+    old: &DataKey,
+    new: &DataKey,
+) -> Result<Vec<BlobRef>> {
+    type Row = (
+        i64,
+        Vec<u8>,
+        Vec<u8>,
+        Option<Vec<u8>>,
+        Option<Vec<u8>>,
+        Option<String>,
+        i64,
+    );
+    let rows: Vec<Row> = conn
+        .prepare(
+            "SELECT id, hash, text, source_app, rich, blob, blob_len FROM recent_entries
+             WHERE encrypted = 1",
+        )?
+        .query_map([], |r| {
+            Ok((
+                r.get(0)?,
+                r.get(1)?,
+                r.get(2)?,
+                r.get(3)?,
+                r.get(4)?,
+                r.get(5)?,
+                r.get(6)?,
+            ))
+        })?
+        .collect::<rusqlite::Result<_>>()?;
+    let mut stale = Vec::new();
+    for (id, old_hash, text, app, rich, blob, blob_len) in rows {
+        let sealed = (|| {
+            let new_hash: [u8; 32] =
+                *blake3::keyed_hash(&new.derive(HASH_CONTEXT), &old_hash).as_bytes();
+            let text = seal_bytes(
+                new,
+                &new_hash,
+                Slot::Detached,
+                &open_bytes(old, &old_hash, Slot::Detached, &text)?,
+            )?;
+            let app = app
+                .map(|a| {
+                    seal_bytes(
+                        new,
+                        &new_hash,
+                        APP_SLOT,
+                        &open_bytes(old, &old_hash, APP_SLOT, &a)?,
+                    )
+                })
+                .transpose()?;
+            let mut extras = rich
+                .map(|r| Rich::decode(&open_bytes(old, &old_hash, RICH_SLOT, &r)?))
+                .transpose()?;
+            if let Some(inline) = extras.as_mut().and_then(|e| e.inline_image.as_mut()) {
+                let plain = open_bytes(old, &old_hash, IMAGE_SLOT, inline)?;
+                *inline = seal_bytes(new, &new_hash, IMAGE_SLOT, &plain)?;
+            }
+            let mut new_blob = None;
+            if let Some(blob) = &blob {
+                let blob = blob.parse::<BlobRef>().map_err(|_| {
+                    Error::Corrupt("a recent entry's blob is not a hash".to_owned())
+                })?;
+                let len = u64::try_from(blob_len).unwrap_or(0);
+                let stored = blobs.read(&Content::Blob { blob, len })?.into_owned();
+                let plain = open_bytes(old, &old_hash, IMAGE_SLOT, &stored)?;
+                new_blob = Some(blobs.store(seal_bytes(new, &new_hash, IMAGE_SLOT, &plain)?)?);
+                stale.push(blob);
+            }
+            let (blob_text, blob_len) = match new_blob {
+                Some(Content::Blob { blob, len }) => (
+                    Some(blob.to_string()),
+                    i64::try_from(len).unwrap_or(i64::MAX),
+                ),
+                _ => (None, 0),
+            };
+            let rich = extras.map(|e| seal_bytes(new, &new_hash, RICH_SLOT, &e.encode()));
+            conn.execute(
+                "UPDATE recent_entries SET hash = ?1, text = ?2, source_app = ?3, rich = ?4,
+                 blob = ?5, blob_len = ?6 WHERE id = ?7",
+                params![
+                    &new_hash[..],
+                    text,
+                    app,
+                    rich.transpose()?,
+                    blob_text,
+                    blob_len,
+                    id
+                ],
+            )?;
+            Ok::<_, Error>(())
+        })();
+        if sealed.is_err() {
+            conn.execute("DELETE FROM recent_entries WHERE id = ?1", params![id])?;
+            stale.extend(blob.and_then(|b| b.parse::<BlobRef>().ok()));
+        }
+    }
+    Ok(stale)
+}
+
 /// Whether any row is still plain text.
 pub(crate) fn has_plain(conn: &Connection) -> Result<bool> {
     Ok(conn.query_row(

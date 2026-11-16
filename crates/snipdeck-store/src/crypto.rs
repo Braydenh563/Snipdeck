@@ -36,7 +36,7 @@ pub use envelope::{
 pub use error::{CryptoError, KeyProviderError};
 pub use hello::{HELLO_CHALLENGE, HELLO_MAX_AGE, HelloSealError, SealedKey};
 pub use key::DataKey;
-pub use keyring::{KdfParams, KeyRecord, KeyRing};
+pub use keyring::{KdfParams, KeyRecord, KeyRing, Rotation};
 #[cfg(any(test, feature = "testing"))]
 pub use provider::MemoryKeyProvider;
 

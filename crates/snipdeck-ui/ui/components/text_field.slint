@@ -218,14 +218,15 @@ export component TextField inherits VerticalLayout {
                     ContextMenuArea {
                         enabled: root.enabled;
                         Menu {
-                            if !root.read-only: MenuItem {
+                            // A password is never copied or cut: not from this menu, and not by the keys below.
+                            if !root.read-only && root.input-type != InputType.password: MenuItem {
                                 title: @tr("Cut");
                                 enabled: input.anchor-position-byte-offset != input.cursor-position-byte-offset;
                                 activated => {
                                     input.cut();
                                 }
                             }
-                            MenuItem {
+                            if root.input-type != InputType.password: MenuItem {
                                 title: @tr("Copy");
                                 enabled: input.anchor-position-byte-offset != input.cursor-position-byte-offset;
                                 activated => { input.copy(); }
@@ -289,6 +290,16 @@ export component TextField inherits VerticalLayout {
                                 edited => { root.edited(self.text); }
                                 accepted => { root.accepted(self.text); }
                                 key-pressed(event) => {
+                                    // Copy and cut are swallowed in a password field, whichever way they are typed
+                                    // (Ctrl+C, Ctrl+X, Ctrl+Insert, Shift+Delete; Cmd on a Mac). The control characters
+                                    // are what some platforms report for Ctrl+C and Ctrl+X.
+                                    if (root.input-type == InputType.password
+                                        && ((event.modifiers.control || event.modifiers.meta)
+                                            && (event.text == "c" || event.text == "C" || event.text == "x" || event.text == "X"
+                                                || event.text == "\u{3}" || event.text == "\u{18}" || event.text == Key.Insert)
+                                            || (event.modifiers.shift && event.text == Key.Delete))) {
+                                        return accept;
+                                    }
                                     // Key press only: the matching release of an IME-consumed key still arrives (S2 F4).
                                     if (event.text == Key.Escape && root.clear-visible && self.preedit-text == "") {
                                         root.clear();

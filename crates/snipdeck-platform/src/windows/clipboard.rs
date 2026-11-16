@@ -702,7 +702,7 @@ fn write_paste_files(files: &[FilePayload], sensitive: bool) -> Result<Vec<Vec<u
     win_formats::remove_paste_dirs(&root, previous.as_deref());
     let dir = win_formats::claim_paste_dir(&root, win_formats::os_random).map_err(io)?;
     if sensitive && let Ok(mut list) = SENSITIVE_PASTE_DIRS.lock() {
-        list.push(dir.clone());
+        list.push((root.clone(), dir.clone()));
     }
     let mut paths = Vec::with_capacity(files.len());
     // Two files of the same name (from different folders) must both paste.
@@ -723,7 +723,7 @@ fn write_paste_files(files: &[FilePayload], sensitive: bool) -> Result<Vec<Vec<u
 
 /// The paste folders that hold a sensitive item's decrypted files; only these are deleted when
 /// the clipboard clear is due, so a plain file item the clipboard still points to keeps its files.
-static SENSITIVE_PASTE_DIRS: std::sync::Mutex<Vec<std::path::PathBuf>> =
+static SENSITIVE_PASTE_DIRS: std::sync::Mutex<Vec<win_formats::ListedPasteDir>> =
     std::sync::Mutex::new(Vec::new());
 
 /// Deletes the folders of sensitive pastes (see [`SENSITIVE_PASTE_DIRS`]).
@@ -731,7 +731,7 @@ fn forget_sensitive_paste_files() {
     let Ok(mut list) = SENSITIVE_PASTE_DIRS.lock() else {
         return;
     };
-    win_formats::remove_listed_paste_dirs(&std::env::temp_dir().join("Snipdeck"), &mut list);
+    win_formats::remove_listed_paste_dirs(&mut list);
 }
 
 /// Removes every pasted-file folder at the next start (not on exit: a persistent `CF_HDROP` may

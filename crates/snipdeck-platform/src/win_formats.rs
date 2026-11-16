@@ -379,16 +379,31 @@ pub fn remove_paste_dirs(root: &std::path::Path, keep: Option<&std::path::Path>)
     removed
 }
 
+/// A sensitive paste folder and the root it was made under (`paste_root` in the Windows
+/// clipboard: `%TEMP%\Snipdeck`, or `<profile>\Snipdeck paste files` in a packaged build).
+/// Keeping the root with the folder means the cleanup cannot look in the wrong place when the
+/// root depends on how the app runs.
+pub type ListedPasteDir = (std::path::PathBuf, std::path::PathBuf);
+
 /// Removes the paste folders in `dirs` and no others (the ones that held a sensitive item's
 /// files), zeroing their files first. A path that is not a paste folder of ours directly under
-/// `root`, or is a link, is skipped. `dirs` is emptied. Returns how many were removed.
-pub fn remove_listed_paste_dirs(
-    root: &std::path::Path,
-    dirs: &mut Vec<std::path::PathBuf>,
+/// its root, or is a link, is skipped and forgotten. A folder that could not be removed (a file
+/// is open) stays on the list for the next attempt. Returns how many were removed.
+pub fn remove_listed_paste_dirs(dirs: &mut Vec<ListedPasteDir>) -> usize {
+    remove_listed_paste_dirs_with(dirs, |dir| {
+        scrub_dir(dir);
+        std::fs::remove_dir_all(dir).is_ok()
+    })
+}
+
+fn remove_listed_paste_dirs_with(
+    dirs: &mut Vec<ListedPasteDir>,
+    mut remove: impl FnMut(&std::path::Path) -> bool,
 ) -> usize {
     let mut removed = 0;
-    for dir in dirs.drain(..) {
-        let ours = dir.parent() == Some(root)
+    let mut kept = Vec::new();
+    for (root, dir) in dirs.drain(..) {
+        let ours = dir.parent() == Some(root.as_path())
             && dir
                 .file_name()
                 .and_then(|name| name.to_str())
@@ -397,11 +412,13 @@ pub fn remove_listed_paste_dirs(
         if !(ours && is_dir) {
             continue;
         }
-        scrub_dir(&dir);
-        if std::fs::remove_dir_all(&dir).is_ok() {
+        if remove(&dir) {
             removed += 1;
+        } else {
+            kept.push((root, dir));
         }
     }
+    *dirs = kept;
     removed
 }
 
@@ -939,11 +956,36 @@ mod tests {
         let plain = claim_paste_dir(root.path(), || Ok([2; 16])).unwrap();
         let other = root.path().join("keep-me");
         std::fs::create_dir(&other).unwrap();
-        let mut list = vec![secret.clone(), other.clone(), root.path().join("missing")];
-        assert_eq!(remove_listed_paste_dirs(root.path(), &mut list), 1);
-        assert_eq!(list, Vec::<std::path::PathBuf>::new());
+        let r = root.path().to_path_buf();
+        let mut list = vec![
+            (r.clone(), secret.clone()),
+            (r.clone(), other.clone()),
+            (r.clone(), r.join("missing")),
+        ];
+        assert_eq!(remove_listed_paste_dirs(&mut list), 1);
+        assert!(list.is_empty());
         assert!(!secret.exists());
         assert!(plain.is_dir() && other.is_dir(), "not on the list");
+    }
+
+    /// PRIVACY-6: the root comes with the folder, so a packaged build (a root other than
+    /// `%TEMP%\Snipdeck`) is cleaned too, and a folder that could not go is not forgotten.
+    #[test]
+    fn listed_cleanup_uses_the_folders_own_root_and_keeps_what_it_could_not_remove() {
+        let profile = tempfile::tempdir().unwrap();
+        let root = profile.path().join("Snipdeck paste files");
+        std::fs::create_dir(&root).unwrap();
+        let secret = claim_paste_dir(&root, || Ok([3; 16])).unwrap();
+        std::fs::write(secret.join("secret.txt"), b"x").unwrap();
+        let mut list = vec![(root.clone(), secret.clone())];
+        assert_eq!(
+            remove_listed_paste_dirs_with(&mut list, |_| false),
+            0,
+            "a folder that is in use"
+        );
+        assert_eq!(list.len(), 1, "stays listed for the next attempt");
+        assert_eq!(remove_listed_paste_dirs(&mut list), 1);
+        assert!(!secret.exists() && list.is_empty());
     }
 
     #[test]
