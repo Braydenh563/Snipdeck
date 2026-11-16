@@ -68,4 +68,4 @@ pub use importers::{
 };
 pub use limits::{ENVELOPE_OVERHEAD_BYTES, Limits, TEXT_LIMIT};
 pub use plan::Library;
-pub use report::{ImportReport, MAX_WARNINGS, Note, Warning};
+pub use report::{ImportReport, MAX_TRIGGERS_LISTED, MAX_WARNINGS, Note, Warning};

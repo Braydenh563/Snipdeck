@@ -82,9 +82,11 @@ fn an_open_library_hands_the_backup_to_a_worker_and_a_second_request_waits() {
     ));
     assert!(!ctl.archive_busy());
     assert_eq!(
-        snipdeck_portable::backup::list_backups(dir.path())
-            .expect("list")
-            .len(),
+        snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(
+            dir.path()
+        ))
+        .expect("list")
+        .len(),
         1
     );
 }
@@ -281,9 +283,11 @@ fn the_daily_backup_through_spawn_backup_updates_the_scheduler() {
     assert!(!ctl.borrow().archive_busy());
     assert!(dir.path().join("maintenance.json").exists());
     assert_eq!(
-        snipdeck_portable::backup::list_backups(dir.path())
-            .expect("list")
-            .len(),
+        snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(
+            dir.path()
+        ))
+        .expect("list")
+        .len(),
         1
     );
 }
@@ -331,9 +335,11 @@ fn the_daily_backup_goes_to_a_worker_and_the_scheduler_waits_for_it() {
     assert_eq!(outcomes.len(), 1, "one BackupCreated");
     assert!(dir.path().join("maintenance.json").exists());
     assert_eq!(
-        snipdeck_portable::backup::list_backups(dir.path())
-            .expect("list")
-            .len(),
+        snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(
+            dir.path()
+        ))
+        .expect("list")
+        .len(),
         1
     );
 }
