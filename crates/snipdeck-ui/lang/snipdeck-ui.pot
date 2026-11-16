@@ -376,7 +376,7 @@ msgstr ""
 msgid "Backed up"
 msgstr ""
 
-#: ui/settings.slint:1428
+#: ui/settings.slint:513 ui/settings.slint:1428
 msgid "Backup folder"
 msgstr ""
 

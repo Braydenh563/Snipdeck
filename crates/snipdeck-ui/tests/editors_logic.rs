@@ -1409,7 +1409,7 @@ ui_tests! {
         settle();
         let _ = find(
             &ui,
-            "Snipdeck saves a copy of your library once a day and keeps the newest 12. Restoring adds back what is missing and never removes anything.",
+            "Snipdeck saves a copy of your library once a day and keeps the newest 12, plus the last copy of each of the past four weeks and six months. A backup holds every board, list, item and tag; the Trash is not in it. Restoring adds back what is missing and never removes anything.",
             AccessibleRole::Text,
         );
     }
