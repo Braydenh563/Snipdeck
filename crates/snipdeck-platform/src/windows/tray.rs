@@ -7,13 +7,18 @@
 //!
 //! - **Add / remove / retitle** the icon, from commands posted by [`Tray`] calls (a channel plus a
 //!   window message to wake the thread; the caller waits for the answer, like the hotkey service).
-//! - **`TaskbarCreated`**: Explorer restarted and dropped every icon; the icon is added again if
-//!   it is wanted. A failed [`Tray::show`] (no taskbar yet, at logon) keeps the icon wanted, so
-//!   this also covers a start-up before Explorer. Only one attempt is made per announcement.
-//! - **Left click** (`NIN_SELECT` / `NIN_KEYSELECT`) gives [`TrayEvent::TogglePanel`]; a **double
-//!   click** (`WM_LBUTTONDBLCLK`) gives [`TrayEvent::OpenSnipdeck`].
+//! - **`TaskbarCreated`** and **start-up**: while the icon is wanted and not added, `NIM_ADD` is
+//!   retried with a back-off ([`AddRetry`], one state machine for the first add and for Explorer
+//!   restarts), so an Explorer that is still starting at sign-in cannot leave a `--hidden` app
+//!   with no icon. The icon is also reloaded at the new scale then, and on `WM_DPICHANGED`
+//!   (`NIM_MODIFY`).
+//! - **Left click** (`NIN_SELECT`) gives [`TrayEvent::TogglePanel`]; **Enter** on the focused icon
+//!   (`NIN_KEYSELECT`, debounced: it can arrive twice) acts at once; a **double click**
+//!   (`WM_LBUTTONDBLCLK`) gives [`TrayEvent::OpenSnipdeck`].
 //!   A left click is held for the system double-click time ([`ClickDeferral`]) so a double click
-//!   does not also toggle the Panel; the message order is unverified on Windows.
+//!   does not also toggle the Panel, unless the double-click action is switched off
+//!   ([`Tray::set_double_click_opens`]), when a click acts at once; the message order is
+//!   unverified on Windows.
 //! - **Right click** (`WM_CONTEXTMENU`) shows a popup menu with `TrackPopupMenu` at the click
 //!   position; the chosen entry becomes a [`TrayEvent`]. The window is made foreground first and
 //!   `WM_NULL` is posted afterwards, as the menu documentation requires, otherwise the menu does
@@ -48,7 +53,8 @@ use windows::Win32::UI::WindowsAndMessaging::{
     GetForegroundWindow, HICON, HMENU, IDI_APPLICATION, IMAGE_ICON, IsWindow, KillTimer, LR_SHARED,
     LoadImageW, MF_CHECKED, MF_SEPARATOR, MF_STRING, MSGFLT_ALLOW, PostMessageW,
     RegisterWindowMessageW, SetForegroundWindow, SetTimer, TPM_BOTTOMALIGN, TPM_RETURNCMD,
-    TPM_RIGHTBUTTON, TrackPopupMenu, WM_APP, WM_CLOSE, WM_CREATE, WM_DESTROY, WM_NULL, WM_TIMER,
+    TPM_RIGHTBUTTON, TrackPopupMenu, WM_APP, WM_CLOSE, WM_CREATE, WM_DESTROY, WM_DPICHANGED,
+    WM_NULL, WM_TIMER,
 };
 use windows::core::{HSTRING, PCWSTR, w};
 
@@ -59,6 +65,7 @@ use crate::tray::{
     ClickDeferral, Gesture, MenuLine, Reaction, Tray, TrayEntry, TrayEvent, TrayLabels, TrayModel,
     classify, decode_anchor, decode_callback,
 };
+use crate::tray_timing::{AddRetry, KeySelectDebounce};
 
 /// Wakes the window to drain the command channel.
 const WM_COMMANDS: u32 = WM_APP + 1;
@@ -68,6 +75,8 @@ const WM_TRAY: u32 = WM_APP + 2;
 const ICON_ID: u32 = 1;
 /// The timer that releases a held left click.
 const CLICK_TIMER: usize = 1;
+/// The timer that retries `NIM_ADD` (see [`AddRetry`]).
+const RETRY_TIMER: usize = 2;
 /// How long a caller waits for the tray thread before reporting it unresponsive.
 const REPLY_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -80,6 +89,7 @@ enum Command {
     Paused(bool, Reply),
     History(bool, bool, Reply),
     Labels(TrayLabels, Reply),
+    DoubleClickOpens(bool, Reply),
 }
 
 /// The Windows tray icon. Dropping it removes the icon and stops its thread.
@@ -154,6 +164,10 @@ impl Tray for WinTray {
     fn set_labels(&mut self, labels: TrayLabels) -> Result<(), Error> {
         self.call(|reply| Command::Labels(labels, reply))
     }
+
+    fn set_double_click_opens(&mut self, opens: bool) -> Result<(), Error> {
+        self.call(|reply| Command::DoubleClickOpens(opens, reply))
+    }
 }
 
 /// Lives on the tray thread; see the module documentation.
@@ -162,11 +176,16 @@ struct TrayHandler {
     commands: Receiver<Command>,
     on_event: Box<dyn Fn(TrayEvent) + Send>,
     taskbar_created: u32,
-    icon: HICON,
+    /// Reloaded when the scale changes (see [`Self::reload_icon`]).
+    icon: Cell<HICON>,
     /// Whether the shell currently has our icon.
     added: Cell<bool>,
     /// A left click held back until the double-click time passes (see [`ClickDeferral`]).
     click: Cell<ClickDeferral>,
+    /// When to try `NIM_ADD` again while the icon is wanted and not there.
+    retry: Cell<AddRetry>,
+    /// Drops the repeat of one Enter press.
+    key_select: Cell<KeySelectDebounce>,
     started: Instant,
 }
 
@@ -184,9 +203,11 @@ impl TrayHandler {
             commands,
             on_event,
             taskbar_created,
-            icon: load_icon(),
+            icon: Cell::new(load_icon(dpi::small_icon_size())),
             added: Cell::new(false),
             click: Cell::new(ClickDeferral::default()),
+            retry: Cell::new(AddRetry::default()),
+            key_select: Cell::new(KeySelectDebounce::default()),
             started: Instant::now(),
         }
     }
@@ -224,7 +245,7 @@ impl TrayHandler {
             uID: ICON_ID,
             uFlags: flags,
             uCallbackMessage: WM_TRAY,
-            hIcon: self.icon,
+            hIcon: self.icon.get(),
             ..Default::default()
         };
         // `tooltip_utf16` leaves room for the terminating NUL the zeroed array already has.
@@ -272,6 +293,76 @@ impl TrayHandler {
         Ok(())
     }
 
+    /// One attempt to add the icon, feeding the retry schedule: success ends it, a failure
+    /// arms the timer for the next try. The one path for the first add, `Tray::show` and
+    /// `TaskbarCreated`.
+    fn try_add(&self, hwnd: HWND) -> Result<(), Error> {
+        let result = self.add_icon(hwnd);
+        let mut retry = self.retry.get();
+        match &result {
+            Ok(()) => retry.reset(),
+            Err(_) => retry.failed(self.now_ms()),
+        }
+        self.retry.set(retry);
+        self.arm_retry(hwnd);
+        result
+    }
+
+    /// Starts a new series of attempts now (the icon was asked for, or the shell restarted).
+    fn add_with_retries(&self, hwnd: HWND) -> Result<(), Error> {
+        let mut retry = self.retry.get();
+        retry.restart(self.now_ms());
+        self.retry.set(retry);
+        self.try_add(hwnd)
+    }
+
+    fn stop_retries(&self, hwnd: HWND) {
+        let mut retry = self.retry.get();
+        retry.reset();
+        self.retry.set(retry);
+        self.arm_retry(hwnd);
+    }
+
+    /// Sets (or clears) the retry timer to the schedule's next due time.
+    fn arm_retry(&self, hwnd: HWND) {
+        match self.retry.get().wait_ms(self.now_ms()) {
+            Some(wait) => {
+                let wait = u32::try_from(wait.max(1)).unwrap_or(u32::MAX);
+                // SAFETY: `hwnd` is our own window, on this thread; the timer id is ours.
+                let _ = unsafe { SetTimer(Some(hwnd), RETRY_TIMER, wait, None) };
+            }
+            None => {
+                // SAFETY: our own window and timer id; a missing timer is only an error code.
+                let _ = unsafe { KillTimer(Some(hwnd), RETRY_TIMER) };
+            }
+        }
+    }
+
+    fn on_retry_timer(&self, hwnd: HWND) {
+        // SAFETY: our own window and timer id.
+        let _ = unsafe { KillTimer(Some(hwnd), RETRY_TIMER) };
+        if !self.model.borrow().is_wanted() || self.added.get() {
+            self.stop_retries(hwnd);
+        } else if self.retry.get().is_due(self.now_ms()) {
+            let _ = self.try_add(hwnd);
+        } else {
+            self.arm_retry(hwnd);
+        }
+    }
+
+    /// Loads the icon again for `dpi` and hands it to the shell, so it stays sharp after the
+    /// display scale changed (the icon was loaded once at the start-up scale).
+    fn reload_icon(&self, hwnd: HWND, dpi: u32) {
+        self.icon.set(load_icon(dpi::small_icon_size_at(dpi)));
+        if self.added.get() {
+            let _ = Self::notify(
+                "Shell_NotifyIconW(NIM_MODIFY)",
+                NIM_MODIFY,
+                &self.data(hwnd, NIF_ICON),
+            );
+        }
+    }
+
     fn remove_icon(&self, hwnd: HWND) -> Result<(), Error> {
         if !self.added.get() {
             return Ok(());
@@ -304,12 +395,13 @@ impl TrayHandler {
                 let result = if self.added.get() {
                     Ok(())
                 } else {
-                    self.add_icon(hwnd)
+                    self.add_with_retries(hwnd)
                 };
                 let _ = reply.send(result);
             }
             Command::Hide(reply) => {
                 self.model.borrow_mut().hide();
+                self.stop_retries(hwnd);
                 let _ = reply.send(self.remove_icon(hwnd));
             }
             Command::Tooltip(text, reply) => {
@@ -329,6 +421,10 @@ impl TrayHandler {
                 // The menu is built from the model on every right click: nothing to redraw.
                 self.model.borrow_mut().set_labels(labels);
                 let _ = reply.send(self.refresh_tip(hwnd));
+            }
+            Command::DoubleClickOpens(opens, reply) => {
+                self.model.borrow_mut().set_double_click_opens(opens);
+                let _ = reply.send(Ok(()));
             }
         }
     }
@@ -374,7 +470,7 @@ impl TrayHandler {
         };
         match gesture {
             // A left click waits out the double-click time: a second click makes it a double.
-            Gesture::Select => {
+            Gesture::Select if self.model.borrow().defers_select() => {
                 let mut click = self.click.get();
                 let held = click.select(self.now_ms());
                 self.click.set(click);
@@ -385,8 +481,17 @@ impl TrayHandler {
                 }
                 return;
             }
+            // Enter: acts at once (a double click is a mouse gesture), once per press.
+            Gesture::KeySelect => {
+                let mut debounce = self.key_select.get();
+                let act = debounce.accept(self.now_ms());
+                self.key_select.set(debounce);
+                if !act {
+                    return;
+                }
+            }
             Gesture::DoubleSelect => self.drop_held_click(hwnd),
-            Gesture::ContextMenu => {}
+            Gesture::Select | Gesture::ContextMenu => {}
         }
         // Decide first and drop the borrow: the menu below runs a modal message loop.
         let reaction = self.model.borrow_mut().gesture(gesture);
@@ -417,6 +522,17 @@ impl WindowHandler for TrayHandler {
             self.on_click_timer(hwnd);
             return Some(LRESULT(0));
         }
+        if msg == WM_TIMER && wparam.0 == RETRY_TIMER {
+            self.on_retry_timer(hwnd);
+            return Some(LRESULT(0));
+        }
+        if msg == WM_DPICHANGED {
+            // The new DPI is in the low word of `wParam`. Not consumed: the default handling
+            // (a no-op for a window that is never shown) still runs.
+            let dpi = u32::try_from(wparam.0 & 0xFFFF).unwrap_or(96);
+            self.reload_icon(hwnd, dpi);
+            return None;
+        }
         if msg == WM_TRAY {
             self.on_callback(hwnd, wparam, lparam);
             return Some(LRESULT(0));
@@ -424,10 +540,12 @@ impl WindowHandler for TrayHandler {
         if msg == self.taskbar_created && msg != 0 {
             // Every icon was dropped with the old taskbar.
             self.set_added(false);
+            // The new taskbar may be at another scale.
+            self.icon
+                .set(load_icon(dpi::small_icon_size_at(dpi::window_dpi(hwnd))));
             if self.model.borrow().on_taskbar_created() {
-                // One attempt; the shell may not accept icons for a moment yet, and the next
-                // `TaskbarCreated` or `show` tries again.
-                let _ = self.add_icon(hwnd);
+                // The shell may not accept icons for a moment yet: keep trying with a back-off.
+                let _ = self.add_with_retries(hwnd);
             }
             return Some(LRESULT(0));
         }
@@ -448,10 +566,9 @@ impl WindowHandler for TrayHandler {
 }
 
 /// The small icon: the executable's resource 1, else the generic application icon.
-fn load_icon() -> HICON {
-    // The size at the system DPI, whatever the thread's awareness is (a stretched 16-px icon is
-    // blurry at 150 % / 200 %).
-    let (cx, cy) = dpi::small_icon_size();
+fn load_icon((cx, cy): (i32, i32)) -> HICON {
+    // `(cx, cy)` is the size at the DPI the caller chose, whatever the thread's awareness is (a
+    // stretched 16-px icon is blurry at 150 % / 200 %).
     // SAFETY: a null module name asks for this process's own module handle.
     let own = unsafe { GetModuleHandleW(None) }.ok().map(Into::into);
     let load = |module, name| -> Option<HICON> {
