@@ -235,7 +235,7 @@ mod tests {
     fn every_kind_of_match_is_marked() {
         assert_eq!(
             title_mark("Invoice template", "template invoice"),
-            Some((String::new(), "Invoice".into())),
+            Some(("Invoice ".into(), "template".into())),
             "each word is found; the longest run is marked"
         );
         assert_eq!(

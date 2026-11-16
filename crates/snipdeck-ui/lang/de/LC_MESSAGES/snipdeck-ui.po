@@ -4071,3 +4071,6 @@ msgstr "{}: {} wurde nicht als Auslöser übernommen, weil ein Auslöser keine L
 
 msgid "{}: {} was not kept as a trigger, because it fires after a separator and a Snipdeck trigger does not wait for one."
 msgstr "{}: {} wurde nicht als Auslöser übernommen, weil er nach einem Trennzeichen ausgelöst wird und ein Snipdeck-Auslöser nicht darauf wartet."
+
+msgid "Words match anywhere in a title or body. \"Quotes\" match a phrase, -word excludes, and tag:, list:, kind: or is:pinned filter."
+msgstr "Wörter passen überall in Titel oder Text. \"Anführungszeichen\" suchen eine Wortfolge, -Wort schließt aus, und tag:, list:, kind: oder is:pinned filtern."
