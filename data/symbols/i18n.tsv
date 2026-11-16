@@ -1,0 +1,31 @@
+# Translations of the English kaomoji group names, kaomoji names and tags, icon category names and the most used icon keywords (TOOLS-47).
+# Columns (tab-separated): English term, then de, es, fr, ja, pt, zh. Every cell filled. Terms must occur in the data (the generator refuses unknown ones).
+# Searching in a language also finds the translation; the translated name shows in the grid, the footer and the screen-reader label.
+joy	Freude	alegría	joie	喜び	alegria	喜悦
+love	Liebe	amor	amour	愛	amor	爱
+sad	traurig	triste	triste	悲しい	triste	悲伤
+angry	wütend	enfado	colère	怒り	raiva	生气
+surprise	Überraschung	sorpresa	surprise	驚き	surpresa	惊讶
+shrug	Achselzucken	encogerse de hombros	haussement d'épaules	肩をすくめる	dar de ombros	耸肩
+greet	Gruß	saludo	salutation	あいさつ	saudação	问候
+sorry	Entschuldigung	perdón	désolé	ごめんね	desculpa	抱歉
+animals	Tiere	animales	animaux	動物	animais	动物
+actions	Aktionen	acciones	actions	アクション	ações	动作
+math & finance	Mathe und Finanzen	matemáticas y finanzas	maths et finance	数学と金融	matemática e finanças	数学与金融
+communication	Kommunikation	comunicación	communication	コミュニケーション	comunicação	通讯
+maps & travel	Karten und Reisen	mapas y viajes	cartes et voyages	地図と旅行	mapas e viagens	地图与旅行
+media	Medien	multimedia	médias	メディア	mídia	媒体
+system & devices	System und Geräte	sistema y dispositivos	système et appareils	システムとデバイス	sistema e dispositivos	系统与设备
+games	Spiele	juegos	jeux	ゲーム	jogos	游戏
+design	Design	diseño	design	デザイン	design	设计
+brands	Marken	marcas	marques	ブランド	marcas	品牌
+health & wellness	Gesundheit	salud y bienestar	santé et bien-être	健康	saúde e bem-estar	健康
+office & editing	Büro und Bearbeitung	oficina y edición	bureau et édition	オフィスと編集	escritório e edição	办公与编辑
+objects	Objekte	objetos	objets	オブジェクト	objetos	物体
+arrows	Pfeile	flechas	flèches	矢印	setas	箭头
+technology & development	Technik und Entwicklung	tecnología y desarrollo	technologie et développement	テクノロジーと開発	tecnologia e desenvolvimento	技术与开发
+commerce	Handel	comercio	commerce	商取引	comércio	商务
+people	Menschen	personas	personnes	人	pessoas	人物
+nature	Natur	naturaleza	nature	自然	natureza	自然
+weather & nature	Wetter und Natur	clima y naturaleza	météo et nature	天気と自然	clima e natureza	天气与自然
+editor	Editor	editor	éditeur	エディター	editor	编辑器

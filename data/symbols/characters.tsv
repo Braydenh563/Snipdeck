@@ -1,0 +1,193 @@
+# Snipdeck curated characters: the ones people look for first, in browse order, with extra search words.
+# Columns (tab-separated): code point (U+XXXX), comma-separated English aliases.
+# Every other symbol of the selected Unicode ranges follows by code point (scripts/symbols.py CHAR_RANGES).
+# A character that is also an emoji (©, ™, ♥) stays: here it pastes as plain text.
+U+00B0	degree,degrees,temperature,angle
+U+00A0	nbsp,non breaking space,no break space,space
+U+2022	bullet,dot,list,point
+U+2013	en dash,dash,range
+U+2014	em dash,dash,break
+U+2026	ellipsis,three dots,dots
+U+00A9	copyright,c in circle
+U+00AE	registered,trademark,r in circle
+U+2122	trademark,tm
+U+00A7	section sign,paragraph,law
+U+00B6	pilcrow,paragraph,paragraph mark
+U+2020	dagger,footnote,obelisk
+U+2021	double dagger,footnote
+U+00B7	middle dot,interpunct,dot
+U+00AB	left guillemet,quote,angle quote
+U+00BB	right guillemet,quote,angle quote
+U+201C	left double quote,smart quote,curly quote
+U+201D	right double quote,smart quote,curly quote
+U+2018	left single quote,smart quote,curly quote
+U+2019	right single quote,apostrophe,curly quote
+U+201E	low double quote,german quote
+U+00BF	inverted question mark,spanish question
+U+00A1	inverted exclamation mark,spanish exclamation
+U+2192	right arrow,arrow right,next,to
+U+2190	left arrow,arrow left,back,previous
+U+2191	up arrow,arrow up
+U+2193	down arrow,arrow down
+U+2194	left right arrow,both ways,two way
+U+2195	up down arrow
+U+21D2	right double arrow,implies,then
+U+21D0	left double arrow
+U+21D4	left right double arrow,if and only if,iff,equivalent
+U+21A9	return arrow,hook arrow,undo
+U+21B5	enter,return,carriage return
+U+2196	north west arrow,up left
+U+2197	north east arrow,up right
+U+2198	south east arrow,down right
+U+2199	south west arrow,down left
+U+27A1	black right arrow,heavy arrow
+U+279C	heavy round tipped arrow,arrow
+U+2713	check mark,tick,done,yes
+U+2714	heavy check mark,tick,done,yes
+U+2717	ballot x,cross,no
+U+2718	heavy ballot x,cross,no
+U+2715	multiplication x,close,cross
+U+2605	black star,star,filled star,favourite
+U+2606	white star,star,outline star
+U+2665	black heart suit,heart,love
+U+2661	white heart suit,heart,love
+U+2660	spade suit,spade,cards
+U+2663	club suit,club,cards
+U+2666	diamond suit,diamond,cards
+U+266A	eighth note,music note,note
+U+266B	beamed eighth notes,music,notes
+U+266D	flat sign,music flat
+U+266F	sharp sign,music sharp
+U+221E	infinity,endless,forever
+U+2260	not equal,unequal,different
+U+2248	approximately equal,almost equal,about
+U+2264	less than or equal,at most
+U+2265	greater than or equal,at least
+U+00B1	plus minus,plus or minus,tolerance
+U+00D7	multiplication sign,times,multiply,cross
+U+00F7	division sign,divide,obelus
+U+2212	minus sign,minus,subtract
+U+221A	square root,radical,root
+U+2211	summation,sum,sigma
+U+220F	product,pi product
+U+222B	integral,calculus
+U+2202	partial differential,derivative
+U+2206	increment,delta,change
+U+2207	nabla,del,gradient
+U+2208	element of,in,member
+U+2209	not an element of,not in
+U+2229	intersection,and,cap
+U+222A	union,or,cup
+U+2282	subset of,subset
+U+2283	superset of,superset
+U+2200	for all,universal,forall
+U+2203	there exists,exists,existential
+U+2227	logical and,and,wedge
+U+2228	logical or,or,vee
+U+00AC	not sign,negation,not
+U+2234	therefore,so,thus
+U+2235	because,since
+U+221D	proportional to,proportion
+U+2218	ring operator,compose,composition
+U+00B2	superscript two,squared,power 2,square
+U+00B3	superscript three,cubed,power 3,cube
+U+00B9	superscript one,power 1
+U+2070	superscript zero,power 0
+U+2074	superscript four
+U+2075	superscript five
+U+2076	superscript six
+U+2077	superscript seven
+U+2078	superscript eight
+U+2079	superscript nine
+U+207F	superscript n,power n
+U+2080	subscript zero
+U+2081	subscript one
+U+2082	subscript two,h2o,water
+U+2083	subscript three
+U+2084	subscript four
+U+2085	subscript five
+U+2086	subscript six
+U+2087	subscript seven
+U+2088	subscript eight
+U+2089	subscript nine
+U+00BC	one quarter,quarter,fraction
+U+00BD	one half,half,fraction
+U+00BE	three quarters,fraction
+U+2153	one third,third,fraction
+U+2154	two thirds,fraction
+U+20AC	euro,eur,currency,money
+U+00A3	pound,gbp,sterling,currency,money
+U+00A5	yen,jpy,yuan,currency,money
+U+00A2	cent,currency,money
+U+20B9	rupee,inr,currency,money
+U+20A9	won,krw,currency,money
+U+20BD	ruble,rub,currency,money
+U+20BF	bitcoin,btc,currency,crypto
+U+20A3	french franc,currency
+U+20BA	lira,try,currency,money
+U+20AB	dong,vnd,currency,money
+U+00A4	currency sign,generic currency
+U+0024	dollar,usd,currency,money
+U+03B1	alpha,greek,angle
+U+03B2	beta,greek
+U+03B3	gamma,greek
+U+03B4	delta,greek,change
+U+03B5	epsilon,greek
+U+03B8	theta,greek,angle
+U+03BB	lambda,greek,wavelength
+U+03BC	mu,micro,greek
+U+03C0	pi,greek,circle,3.14
+U+03C3	sigma,greek,standard deviation
+U+03C6	phi,greek,golden ratio
+U+03C9	omega,greek,ohm
+U+0394	capital delta,greek,triangle
+U+03A3	capital sigma,greek,sum
+U+03A9	capital omega,greek,ohm
+U+2126	ohm,resistance,omega
+U+212B	angstrom,length
+U+2103	degrees celsius,celsius,temperature
+U+2109	degrees fahrenheit,fahrenheit,temperature
+U+2116	numero,number sign,no
+U+2030	per mille,permille,thousandth
+U+2031	per ten thousand,basis point
+U+2032	prime,minutes,feet
+U+2033	double prime,seconds,inches
+U+2502	box drawings light vertical,line,vertical,border
+U+2500	box drawings light horizontal,line,horizontal,border
+U+250C	box drawings light down and right,corner,border
+U+2510	box drawings light down and left,corner,border
+U+2514	box drawings light up and right,corner,border
+U+2518	box drawings light up and left,corner,border
+U+251C	box drawings light vertical and right,tee,border
+U+2524	box drawings light vertical and left,tee,border
+U+252C	box drawings light down and horizontal,tee,border
+U+2534	box drawings light up and horizontal,tee,border
+U+253C	box drawings light vertical and horizontal,cross,border
+U+2588	full block,solid,block
+U+2591	light shade,shade
+U+2592	medium shade,shade
+U+2593	dark shade,shade
+U+25A0	black square,square,filled square
+U+25A1	white square,square,outline
+U+25CF	black circle,dot,disc,filled circle
+U+25CB	white circle,circle,outline
+U+25B2	black up pointing triangle,triangle,up
+U+25BC	black down pointing triangle,triangle,down
+U+25B6	black right pointing triangle,play,triangle
+U+25C0	black left pointing triangle,triangle,back
+U+25C6	black diamond,diamond,rhombus
+U+25C7	white diamond,diamond,rhombus
+U+2318	place of interest sign,command,cmd,mac key
+U+2325	option key,alt,mac key
+U+21E7	upwards white arrow,shift,mac key
+U+2303	up arrowhead,control,ctrl,mac key
+U+232B	erase to the left,backspace,delete key
+U+2326	erase to the right,delete,delete key
+U+238B	broken circle with northwest arrow,escape,esc
+U+21E5	rightwards arrow to bar,tab,tab key
+U+2042	asterism,asterisks
+U+203B	reference mark,note,komejirushi
+U+203D	interrobang,question exclamation
+U+2047	double question mark
+U+2049	exclamation question mark
+U+22C5	dot operator,multiply dot

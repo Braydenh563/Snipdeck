@@ -13,7 +13,9 @@ pub struct DataError {
 pub(crate) static EMOJI: &[u8] = include_bytes!("../data/emoji.tsv.z");
 pub(crate) static KAOMOJI: &[u8] = include_bytes!("../data/kaomoji.tsv.z");
 pub(crate) static ICONS: &[u8] = include_bytes!("../data/icons.bin.z");
-pub(crate) static ART: &[u8] = include_bytes!("../data/emoji48.bin");
+pub(crate) static CHARACTERS: &[u8] = include_bytes!("../data/characters.tsv.z");
+pub(crate) static TONES: &[u8] = include_bytes!("../data/tones.tsv.z");
+pub(crate) static ART: &[u8] = include_bytes!("../data/emoji72.bin");
 
 pub(crate) static NAMES: [(&str, &[u8]); 6] = [
     ("de", include_bytes!("../data/names-de.tsv.z")),

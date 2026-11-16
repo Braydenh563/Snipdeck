@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::art::ArtPack;
 use crate::data::{self, DataError};
-use crate::fold::{fold, words};
+use crate::fold::{fold, fold_german, words};
 
 /// English names of the emoji groups, in the order of `Symbol::group` for emoji.
 pub const EMOJI_GROUPS: [&str; 9] = [
@@ -27,7 +27,22 @@ pub const KAOMOJI_GROUPS: [&str; 10] = [
     "joy", "love", "sad", "angry", "surprise", "shrug", "greet", "sorry", "animals", "actions",
 ];
 
-/// The three kinds of symbol. The order is the order of the catalog and of the tabs.
+/// English names of the character groups (`Symbol::group` for characters); the same list the data
+/// generator writes to the manifest.
+pub const CHARACTER_GROUPS: [&str; 10] = [
+    "Punctuation",
+    "Arrows",
+    "Maths",
+    "Currency",
+    "Letters and numbers",
+    "Super and subscripts",
+    "Technical",
+    "Box drawing",
+    "Shapes",
+    "Symbols",
+];
+
+/// The four kinds of symbol. The order is the order of the catalog and of the tabs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Kind {
     /// A Unicode emoji sequence.
@@ -36,6 +51,8 @@ pub enum Kind {
     Kaomoji,
     /// A Phosphor icon (not text: it is copied as SVG or PNG).
     Icon,
+    /// A Unicode symbol character (arrow, maths, currency, punctuation, box drawing), pasted as text.
+    Character,
 }
 
 /// A stable, persisted identity: the emoji's lowercase hex sequence, the kaomoji id, the icon name.
@@ -47,6 +64,8 @@ pub enum SymbolId {
     Kaomoji(String),
     /// For example `arrow-clockwise`.
     Icon(String),
+    /// The lowercase hex code point, for example `2192`.
+    Char(String),
 }
 
 impl SymbolId {
@@ -57,6 +76,7 @@ impl SymbolId {
             Self::Emoji(_) => Kind::Emoji,
             Self::Kaomoji(_) => Kind::Kaomoji,
             Self::Icon(_) => Kind::Icon,
+            Self::Char(_) => Kind::Character,
         }
     }
 
@@ -67,6 +87,7 @@ impl SymbolId {
             Self::Emoji(s) => format!("emoji:{s}"),
             Self::Kaomoji(s) => format!("kaomoji:{s}"),
             Self::Icon(s) => format!("icon:{s}"),
+            Self::Char(s) => format!("char:{s}"),
         }
     }
 
@@ -81,6 +102,7 @@ impl SymbolId {
             "emoji" => Some(Self::Emoji(rest.to_owned())),
             "kaomoji" => Some(Self::Kaomoji(rest.to_owned())),
             "icon" => Some(Self::Icon(rest.to_owned())),
+            "char" => Some(Self::Char(rest.to_owned())),
             _ => None,
         }
     }
@@ -171,6 +193,9 @@ impl Symbol {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct View {
     pub(crate) name: String,
+    /// The name and keywords without spaces: "thumbsup" finds "thumbs up".
+    pub(crate) name_compact: String,
+    pub(crate) keywords_compact: Vec<String>,
     pub(crate) keywords: Vec<String>,
     pub(crate) name_words: Vec<String>,
     pub(crate) words: Vec<String>,
@@ -178,14 +203,25 @@ pub(crate) struct View {
 
 impl View {
     pub(crate) fn new(name: &str, keywords: &[String]) -> Self {
-        let name = fold(name);
-        let keywords: Vec<String> = keywords.iter().map(|k| fold(k)).collect();
-        let name_words: Vec<String> = words(&name).map(str::to_owned).collect();
+        let folded = fold(name);
+        let mut kws: Vec<String> = keywords.iter().map(|k| fold(k)).collect();
+        // The German spelling of an umlaut (laecheln for lächeln) is an alternate of the name and
+        // of every keyword that has one.
+        for raw in std::iter::once(name).chain(keywords.iter().map(String::as_str)) {
+            let alt = fold_german(raw);
+            if !kws.contains(&alt) && alt != folded {
+                kws.push(alt);
+            }
+        }
+        let name_words: Vec<String> = words(&folded).map(str::to_owned).collect();
         let mut all = name_words.clone();
-        all.extend(keywords.iter().flat_map(|k| words(k).map(str::to_owned)));
+        all.extend(kws.iter().flat_map(|k| words(k).map(str::to_owned)));
+        let compact = |s: &str| s.chars().filter(|c| !c.is_whitespace()).collect::<String>();
         Self {
-            name,
-            keywords,
+            name_compact: compact(&folded),
+            keywords_compact: kws.iter().map(|k| compact(k)).collect(),
+            name: folded,
+            keywords: kws,
             name_words,
             words: all,
         }
@@ -198,9 +234,11 @@ pub(crate) struct LangEntry {
     pub(crate) view: View,
 }
 
-/// The names of every emoji in one language, indexed like the catalog's emoji.
+/// The names of every symbol that has a translation in one language, indexed like the catalog.
 pub(crate) struct LangNames {
     pub(crate) entries: Vec<Option<LangEntry>>,
+    /// English term (kaomoji group, tag or name; icon category, tag or name) to its translation.
+    pub(crate) terms: HashMap<String, String>,
 }
 
 /// Every symbol, in browse order: emoji, then kaomoji, then icons.
@@ -210,7 +248,10 @@ pub struct Catalog {
     by_id: HashMap<SymbolId, usize>,
     emoji_count: usize,
     kaomoji_count: usize,
+    icon_count: usize,
     icon_categories: Vec<String>,
+    /// Emoji catalog index to its five uniform skin-tone variants (light to dark).
+    tones: HashMap<usize, [String; 5]>,
     names: [OnceLock<LangNames>; 6],
     art: ArtPack,
 }
@@ -258,7 +299,9 @@ impl Catalog {
             by_id: HashMap::new(),
             emoji_count: 0,
             kaomoji_count: 0,
+            icon_count: 0,
             icon_categories: Vec::new(),
+            tones: HashMap::new(),
             names: Default::default(),
             art: ArtPack::none(),
         }
@@ -340,6 +383,29 @@ impl Catalog {
                 icon_markup: Some(markup.to_owned()),
             });
         }
+        let icon_count = symbols.len() - emoji_count - kaomoji_count;
+        for line in data::rows("characters.tsv.z", data::CHARACTERS)? {
+            let c: Vec<&str> = line.split('\t').collect();
+            let [hex, group, name, kws] = c[..] else {
+                return Err(bad("characters.tsv.z", "row without 4 columns"));
+            };
+            let ch = u32::from_str_radix(hex, 16)
+                .ok()
+                .and_then(char::from_u32)
+                .ok_or(bad("characters.tsv.z", "bad code point"))?;
+            symbols.push(Symbol {
+                id: SymbolId::Char(hex.to_owned()),
+                kind: Kind::Character,
+                text: Some(ch.to_string()),
+                name: name.to_owned(),
+                group: group
+                    .parse()
+                    .map_err(|_| bad("characters.tsv.z", "bad group"))?,
+                keywords: split_list(kws),
+                wide: false,
+                icon_markup: None,
+            });
+        }
         let views = symbols
             .iter()
             .map(|s| View::new(&s.name, &s.keywords))
@@ -349,16 +415,32 @@ impl Catalog {
             .enumerate()
             .map(|(i, s)| (s.id.clone(), i))
             .collect();
-        Ok(Self {
+        let mut catalog = Self {
             symbols,
             views,
             by_id,
             emoji_count,
             kaomoji_count,
+            icon_count,
             icon_categories,
+            tones: HashMap::new(),
             names: Default::default(),
             art: ArtPack::parse(data::ART)?,
-        })
+        };
+        for line in data::rows("tones.tsv.z", data::TONES)? {
+            let (base, variants) = line
+                .split_once('\t')
+                .ok_or(bad("tones.tsv.z", "row without 2 columns"))?;
+            let texts: Vec<String> = variants.split('|').filter_map(data::seq_to_string).collect();
+            let texts: [String; 5] = texts
+                .try_into()
+                .map_err(|_| bad("tones.tsv.z", "a row needs five variants"))?;
+            let i = catalog
+                .index_of(&SymbolId::Emoji(base.to_owned()))
+                .ok_or(bad("tones.tsv.z", "unknown base emoji"))?;
+            catalog.tones.insert(i, texts);
+        }
+        Ok(catalog)
     }
 
     /// Number of symbols of all kinds.
@@ -403,7 +485,13 @@ impl Catalog {
         match kind {
             Kind::Emoji => 0..self.emoji_count,
             Kind::Kaomoji => self.emoji_count..self.emoji_count + self.kaomoji_count,
-            Kind::Icon => self.emoji_count + self.kaomoji_count..self.symbols.len(),
+            Kind::Icon => {
+                self.emoji_count + self.kaomoji_count
+                    ..self.emoji_count + self.kaomoji_count + self.icon_count
+            }
+            Kind::Character => {
+                self.emoji_count + self.kaomoji_count + self.icon_count..self.symbols.len()
+            }
         }
     }
 
@@ -429,13 +517,26 @@ impl Catalog {
 
     fn load_names(&self, slot: usize) -> LangNames {
         let mut entries: Vec<Option<LangEntry>> = Vec::new();
-        entries.resize_with(self.emoji_count, || None);
+        entries.resize_with(self.symbols.len(), || None);
+        let mut terms: HashMap<String, String> = HashMap::new();
+        let mut readings: HashMap<String, String> = HashMap::new();
         let (file, blob) = data::NAMES[slot];
         // A damaged file leaves the language empty: names fall back to English.
         for line in data::rows(file, blob).unwrap_or_default() {
             let c: Vec<&str> = line.split('\t').collect();
-            let [seq, name, kws] = c[..] else { continue };
-            let Some(i) = self.index_of(&SymbolId::Emoji(seq.to_owned())) else {
+            let [key, name, kws] = c[..] else { continue };
+            if let Some(term) = key.strip_prefix("t:") {
+                terms.insert(term.to_owned(), name.to_owned());
+                if !kws.is_empty() {
+                    readings.insert(term.to_owned(), kws.to_owned());
+                }
+                continue;
+            }
+            let id = key.strip_prefix("c:").map_or_else(
+                || SymbolId::Emoji(key.to_owned()),
+                |h| SymbolId::Char(h.to_owned()),
+            );
+            let Some(i) = self.index_of(&id) else {
                 continue;
             };
             if let Some(slot) = entries.get_mut(i) {
@@ -446,7 +547,64 @@ impl Catalog {
                 });
             }
         }
-        LangNames { entries }
+        // Kaomoji and icons: the name and tags are English terms; translate those that have a
+        // translation and keep the reading (kana, pinyin) of each as one more keyword.
+        for kind in [Kind::Kaomoji, Kind::Icon] {
+            for i in self.range(kind) {
+                let sym = &self.symbols[i];
+                let mut kws: Vec<String> = Vec::new();
+                for term in sym.keywords.iter().chain(std::iter::once(&sym.name)) {
+                    if let Some(t) = terms.get(term) {
+                        kws.push(t.clone());
+                        kws.extend(readings.get(term).cloned());
+                    }
+                }
+                if let Some(t) = terms.get(&sym.name) {
+                    entries[i] = Some(LangEntry {
+                        name: t.clone(),
+                        view: View::new(t, &kws),
+                    });
+                } else if !kws.is_empty() {
+                    entries[i] = Some(LangEntry {
+                        name: sym.name.clone(),
+                        view: View::new(&sym.name, &kws),
+                    });
+                }
+            }
+        }
+        LangNames { entries, terms }
+    }
+
+    /// True when the emoji at `index` has bundled Fluent or flag art; `false` for the ones the
+    /// system emoji font draws ("system style") and for every other kind.
+    #[must_use]
+    pub fn has_art(&self, index: usize) -> bool {
+        index < self.emoji_count && self.art.png(index).is_some()
+    }
+
+    /// The five uniform skin-tone variants (light to dark) of the emoji at `index`, as text.
+    #[must_use]
+    pub fn tone_variants(&self, index: usize) -> Option<&[String; 5]> {
+        self.tones.get(&index)
+    }
+
+    /// The label of a group in `lang`: the emoji group, kaomoji group, icon category or character
+    /// group named by `group`. English when the language has no translation.
+    #[must_use]
+    pub fn group_name(&self, kind: Kind, group: u8, lang: Lang) -> String {
+        let english = match kind {
+            Kind::Emoji => EMOJI_GROUPS.get(usize::from(group)).copied(),
+            Kind::Kaomoji => KAOMOJI_GROUPS.get(usize::from(group)).copied(),
+            Kind::Icon => self
+                .icon_categories
+                .get(usize::from(group))
+                .map(String::as_str),
+            Kind::Character => CHARACTER_GROUPS.get(usize::from(group)).copied(),
+        }
+        .unwrap_or("");
+        self.lang_names(lang)
+            .and_then(|n| n.terms.get(english))
+            .map_or_else(|| english.to_owned(), Clone::clone)
     }
 
     /// The display name of a symbol in `lang` (English when the language has none).
