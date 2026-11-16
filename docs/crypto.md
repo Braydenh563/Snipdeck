@@ -26,9 +26,12 @@ DEK --[optional master password: Argon2id + XChaCha20-Poly1305]--> --KeyProvider
   parameters, salt and mode byte are inside the OS-authenticated blob and are also AAD of the
   password seal. The AEAD tag doubles as the password verifier, so a wrong password is a clean
   `WrongPassword` and no separate hash exists to attack.
-* Changing or removing the password re-seals the same DEK under a fresh salt and nonce
-  (`KeyRing::change_password`); no item is re-encrypted. This is not key rotation: an old
-  record plus the old password still opens the old record.
+* Setting, changing or removing the password **rotates the DEK**: a new DEK and record are made
+  (`KeyRing::rotate`), every sensitive item and every Recent row is re-sealed under it, and the
+  new record replaces the old one in one transaction (`Store::rotate_key_ring`). No earlier
+  record is kept (the `previous` column is always empty; migration 10 clears older ones), so the
+  old password opens nothing in the live library. A *backup file* made before the change still
+  opens with the old password and the old OS key; that is the nature of a copy.
 
 ## Argon2id parameters
 
@@ -80,8 +83,8 @@ The store does the encryption; the app never handles envelopes.
 * **Key record.** `Store::create_key_ring(&KeyRing, password)` makes the DEK, stores the
   `SNKEY1` record in the single-row `key_ring` table (schema v2), unlocks, and encrypts every
   sensitive item still in plain text (made sensitive on Free). `unlock_key_ring`,
-  `change_master_password` (re-wraps; the old record is overwritten, but a backup still opens
-  with the old password) and `lock_key_ring` (drops the DEK and every decrypted payload held in
+  `change_master_password` (rotates the DEK and re-seals every item and Recent row; the old
+  record is replaced and not kept, but a backup still opens with the old password) and `lock_key_ring` (drops the DEK and every decrypted payload held in
   memory) complete it. The DEK is held in the `Store` only while unlocked. `KeyRing` brings the
   `KeyProvider`, so DPAPI plugs in at milestone 2 without store changes.
 * **Which items.** Without a key ring, sensitive items are kept in plain text (Free: masking
@@ -137,7 +140,7 @@ What is **not** guaranteed:
   folder and are deleted, not zeroed. Snipdeck's queries over sensitive content are small, but
   this is outside the store's control.
 * **Pasted files.** Pasting a Files item (sensitive or not) writes its files, decrypted, to
-  `%USERPROFILE%\Snipdeck paste files\paste-<random>\` (not `%TEMP%`: a Store build cannot share files under AppData, see `docs/packaging.md`), because `CF_HDROP` needs real paths. The folder is kept while
+  `%TEMP%\Snipdeck\paste-<random>\` in an unpackaged build, or `%USERPROFILE%\Snipdeck paste files\paste-<random>\` in a packaged (Store) build, which cannot share files under AppData (see `docs/packaging.md`), because `CF_HDROP` needs real paths. The folder is kept while
   the clipboard may point into it. The next paste and the next start zero each file, then delete
   the folder; a file another program has open stays until a later run. After a **sensitive** Files
   item was pasted, locking the library and quitting also delete these folders (a file the target
