@@ -205,7 +205,7 @@ mod tests {
     fn row(n: usize) -> Row {
         Row {
             id: ItemId::generate(),
-            number: n,
+            number: 1,
             kind: ItemKind::Text,
             sensitive: false,
             title: format!("Title {n}").into(),
