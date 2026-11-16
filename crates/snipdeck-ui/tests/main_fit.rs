@@ -40,7 +40,10 @@ struct Case {
 fn build(size: (u32, u32), scale: f32, scene: &str) -> Case {
     // The minimum size is a property of the window; read it at the real scale before sizing the harness.
     let probe = Harness::new(MainWindow::new, size.0, size.1);
-    probe.component.global::<SystemLook<'_>>().set_text_scale(scale);
+    probe
+        .component
+        .global::<SystemLook<'_>>()
+        .set_text_scale(scale);
     let _ = probe.render_settled();
     let (mw, mh) = (probe.component.get_min_w(), probe.component.get_min_h());
     drop(probe);
@@ -100,7 +103,9 @@ fn boxes(h: &Harness<MainWindow>) -> Vec<(String, f32, f32, f32, f32)> {
         .map(|e| {
             let (p, s) = (e.absolute_position(), e.size());
             (
-                e.accessible_label().map(|l| l.to_string()).unwrap_or_default(),
+                e.accessible_label()
+                    .map(|l| l.to_string())
+                    .unwrap_or_default(),
                 p.x,
                 p.y,
                 s.width,
@@ -115,7 +120,10 @@ fn boxes(h: &Harness<MainWindow>) -> Vec<(String, f32, f32, f32, f32)> {
 }
 
 fn inside(a: &(String, f32, f32, f32, f32), b: &(String, f32, f32, f32, f32)) -> bool {
-    a.1 >= b.1 - 0.5 && a.2 >= b.2 - 0.5 && a.1 + a.3 <= b.1 + b.3 + 0.5 && a.2 + a.4 <= b.2 + b.4 + 0.5
+    a.1 >= b.1 - 0.5
+        && a.2 >= b.2 - 0.5
+        && a.1 + a.3 <= b.1 + b.3 + 0.5
+        && a.2 + a.4 <= b.2 + b.4 + 0.5
 }
 
 fn fit_problems(c: &Case, case: &str) -> Vec<String> {
@@ -136,7 +144,10 @@ fn fit_problems(c: &Case, case: &str) -> Vec<String> {
         }
     }
     // The toolbar row: neighbours keep a gap of 4 px (the three view toggles are one segmented control).
-    let mut bar: Vec<_> = bs.iter().filter(|b| b.2 + b.4 / 2.0 < 40.0 && b.1 > 40.0).collect();
+    let mut bar: Vec<_> = bs
+        .iter()
+        .filter(|b| b.2 + b.4 / 2.0 < 40.0 && b.1 > 40.0)
+        .collect();
     bar.sort_by(|a, b| a.1.total_cmp(&b.1));
     for pair in bar.windows(2) {
         if pair[0].0.ends_with(" view") && pair[1].0.ends_with(" view") {
@@ -144,7 +155,10 @@ fn fit_problems(c: &Case, case: &str) -> Vec<String> {
         }
         let gap = pair[1].1 - (pair[0].1 + pair[0].3);
         if gap < 3.5 && !inside(pair[0], pair[1]) && !inside(pair[1], pair[0]) {
-            out.push(format!("{case}: {:?} and {:?} are {gap:.1} px apart", pair[0].0, pair[1].0));
+            out.push(format!(
+                "{case}: {:?} and {:?} are {gap:.1} px apart",
+                pair[0].0, pair[1].0
+            ));
         }
     }
     for (i, a) in bs.iter().enumerate() {
@@ -169,20 +183,30 @@ fn search_problems(c: &Case, case: &str, scale: f32, scene: &str) -> Vec<String>
         match bs.iter().find(|b| b.0 == "Move") {
             Some(m) if m.3 >= 48.0 * scale - 0.5 => {}
             Some(m) => {
-                return vec![format!("{case}: the bulk bar's Move button is {:.0} px wide", m.3)];
+                return vec![format!(
+                    "{case}: the bulk bar's Move button is {:.0} px wide",
+                    m.3
+                )];
             }
             None => return vec![format!("{case}: no Move button in the bulk bar")],
         }
     }
     match bs.iter().find(|b| b.0 == "Search snippets") {
         Some(s) if s.3 >= 150.0 * scale - 0.5 => Vec::new(),
-        Some(s) => vec![format!("{case}: the search field is {:.0} px wide, under {}", s.3, 150.0 * scale)],
+        Some(s) => vec![format!(
+            "{case}: the search field is {:.0} px wide, under {}",
+            s.3,
+            150.0 * scale
+        )],
         None => vec![format!("{case}: no search field")],
     }
 }
 
 fn focus_box(window: &slint::Window) -> Option<(String, f32, f32, f32, f32)> {
-    let item: ItemRc = WindowInner::from_pub(window).focus_item.borrow().upgrade()?;
+    let item: ItemRc = WindowInner::from_pub(window)
+        .focus_item
+        .borrow()
+        .upgrade()?;
     let g = item.geometry();
     let p = item.map_to_window(LogicalPoint::new(g.origin.x, g.origin.y));
     let mut label = String::new();
@@ -190,7 +214,9 @@ fn focus_box(window: &slint::Window) -> Option<(String, f32, f32, f32, f32)> {
     while let Some(i) = cur {
         if i.is_accessible() {
             label = i
-                .accessible_string_property(i_slint_core::accessibility::AccessibleStringProperty::Label)
+                .accessible_string_property(
+                    i_slint_core::accessibility::AccessibleStringProperty::Label,
+                )
                 .unwrap_or_default()
                 .to_string();
             break;
@@ -221,7 +247,9 @@ fn tab_problems(c: &Case, case: &str, sidebar_right: f32) -> Vec<String> {
     }
     let mut out = Vec::new();
     if !search {
-        out.push(format!("{case}: Tab never reaches the search field: {seen:?}"));
+        out.push(format!(
+            "{case}: Tab never reaches the search field: {seen:?}"
+        ));
     }
     if !list {
         out.push(format!("{case}: Tab never reaches the item list: {seen:?}"));
@@ -243,7 +271,12 @@ fn main_fits_at_every_size_and_text_scale() {
                 }
             }
         }
-        assert!(problems.is_empty(), "{} problems:\n{}", problems.len(), problems.join("\n"));
+        assert!(
+            problems.is_empty(),
+            "{} problems:\n{}",
+            problems.len(),
+            problems.join("\n")
+        );
     }
 }
 
@@ -261,6 +294,11 @@ fn main_tab_walk_reaches_search_and_list_at_every_size_and_text_scale() {
                 }
             }
         }
-        assert!(problems.is_empty(), "{} problems:\n{}", problems.len(), problems.join("\n"));
+        assert!(
+            problems.is_empty(),
+            "{} problems:\n{}",
+            problems.len(),
+            problems.join("\n")
+        );
     }
 }

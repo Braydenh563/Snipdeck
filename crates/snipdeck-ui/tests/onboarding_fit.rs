@@ -39,7 +39,9 @@ fn boxes(h: &Harness<OnboardingWindow>) -> Vec<(String, f32, f32, f32, f32)> {
         .map(|e| {
             let (p, s) = (e.absolute_position(), e.size());
             (
-                e.accessible_label().map(|l| l.to_string()).unwrap_or_default(),
+                e.accessible_label()
+                    .map(|l| l.to_string())
+                    .unwrap_or_default(),
                 p.x,
                 p.y,
                 s.width,
@@ -54,8 +56,24 @@ fn outside(h: &Harness<OnboardingWindow>, size: (u32, u32), only: &[&str]) -> Ve
     boxes(h)
         .into_iter()
         .filter(|b| only.is_empty() || only.contains(&b.0.as_str()))
-        .filter(|b| b.1 < -0.5 || b.2 < -0.5 || b.1 + b.3 > size.0 as f32 + 0.5 || b.2 + b.4 > size.1 as f32 + 0.5)
-        .map(|b| format!("{:?} x {:.0}..{:.0} y {:.0}..{:.0} of {}x{}", b.0, b.1, b.1 + b.3, b.2, b.2 + b.4, size.0, size.1))
+        .filter(|b| {
+            b.1 < -0.5
+                || b.2 < -0.5
+                || b.1 + b.3 > size.0 as f32 + 0.5
+                || b.2 + b.4 > size.1 as f32 + 0.5
+        })
+        .map(|b| {
+            format!(
+                "{:?} x {:.0}..{:.0} y {:.0}..{:.0} of {}x{}",
+                b.0,
+                b.1,
+                b.1 + b.3,
+                b.2,
+                b.2 + b.4,
+                size.0,
+                size.1
+            )
+        })
         .collect()
 }
 
@@ -77,7 +95,12 @@ fn the_welcome_window_fits_its_content_at_every_text_scale() {
             }
         }
     }
-    assert!(problems.is_empty(), "{} problems:\n{}", problems.len(), problems.join("\n"));
+    assert!(
+        problems.is_empty(),
+        "{} problems:\n{}",
+        problems.len(),
+        problems.join("\n")
+    );
 }
 
 #[test]
@@ -93,5 +116,10 @@ fn the_welcome_buttons_stay_in_a_small_window_at_every_text_scale() {
             }
         }
     }
-    assert!(problems.is_empty(), "{} problems:\n{}", problems.len(), problems.join("\n"));
+    assert!(
+        problems.is_empty(),
+        "{} problems:\n{}",
+        problems.len(),
+        problems.join("\n")
+    );
 }

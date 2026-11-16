@@ -1844,7 +1844,10 @@ fn moving_a_list_or_a_board_says_where_it_went_and_the_board_menu_stays_open() {
     );
     let down = menu_index(&mut ctl, &BoardMenuEntry::MoveDown { enabled: true });
     ctl.main_board_menu_activate(down);
-    assert!(ctl.main_screen().board_menu.is_some(), "the menu stays open");
+    assert!(
+        ctl.main_screen().board_menu.is_some(),
+        "the menu stays open"
+    );
 }
 
 #[test]
