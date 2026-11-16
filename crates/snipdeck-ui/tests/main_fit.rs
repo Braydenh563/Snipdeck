@@ -126,6 +126,54 @@ fn inside(a: &(String, f32, f32, f32, f32), b: &(String, f32, f32, f32, f32)) ->
         && a.2 + a.4 <= b.2 + b.4 + 0.5
 }
 
+/// Wheels the sidebar until the rail button `name` lies fully above the footer, then wheels back. `Err` when
+/// it never comes into view (a button that can neither be seen nor reached).
+fn scrolling_reveals(c: &Case, name: &str) -> Result<(), String> {
+    use slint::{LogicalPosition, platform::WindowEvent};
+    let find = |c: &Case| {
+        let bs = boxes(&c.h);
+        let b = bs.iter().find(|b| b.0 == name).cloned();
+        let footer = bs
+            .iter()
+            .filter(|b| matches!(b.0.as_str(), "Settings" | "Help"))
+            .map(|b| b.2)
+            .fold(f32::MAX, f32::min);
+        b.map(|b| (b, footer))
+    };
+    let (_, footer) = find(c).ok_or_else(|| format!("{name:?} is missing"))?;
+    let at = LogicalPosition::new(20.0, (footer / 2.0).max(80.0));
+    let wheel = |dy: f32| {
+        c.h.component
+            .window()
+            .dispatch_event(WindowEvent::PointerScrolled {
+                position: at,
+                delta_x: 0.0,
+                delta_y: dy,
+            });
+        c.h.settle();
+    };
+    let mut seen = false;
+    for _ in 0..80 {
+        wheel(-60.0);
+        if let Some((b, footer)) = find(c) {
+            if b.2 + b.4 <= footer + 0.5 && b.2 >= 0.0 {
+                seen = true;
+                break;
+            }
+        }
+    }
+    for _ in 0..80 {
+        wheel(60.0);
+    }
+    if seen {
+        Ok(())
+    } else {
+        Err(format!(
+            "{name:?} lies behind the footer and wheeling the sidebar never brings it into view"
+        ))
+    }
+}
+
 fn fit_problems(c: &Case, case: &str) -> Vec<String> {
     let bs = boxes(&c.h);
     let mut out = Vec::new();
@@ -165,15 +213,18 @@ fn fit_problems(c: &Case, case: &str) -> Vec<String> {
         for b in &bs[i + 1..] {
             let ox = (a.1 + a.3).min(b.1 + b.3) - a.1.max(b.1);
             let oy = (a.2 + a.4).min(b.2 + b.4) - a.2.max(b.2);
-            // A rail header button scrolled below the sidebar's viewport sits behind the footer, clipped away
-            // and out of sight, so it is not an overlap; only the footer's own buttons take that exemption.
-            let scrolled_under_footer =
-                |x: &(String, f32, f32, f32, f32), f: &(String, f32, f32, f32, f32)| {
-                    matches!(x.0.as_str(), "Add list" | "Manage tags")
-                        && matches!(f.0.as_str(), "Settings" | "Help")
-                        && x.2 + x.4 > f.2
-                };
-            if scrolled_under_footer(a, b) || scrolled_under_footer(b, a) {
+            // A rail header button below the sidebar's viewport sits behind the footer, clipped away. That is
+            // only allowed when wheeling the sidebar really brings it into view (proved by `scrolling_reveals`).
+            let behind_footer = |x: &(String, f32, f32, f32, f32), f: &(String, f32, f32, f32, f32)| {
+                matches!(x.0.as_str(), "Add list" | "Manage tags")
+                    && matches!(f.0.as_str(), "Settings" | "Help")
+                    && x.2 + x.4 > f.2
+            };
+            if behind_footer(a, b) || behind_footer(b, a) {
+                let hidden = if behind_footer(a, b) { a } else { b };
+                if let Err(why) = scrolling_reveals(c, &hidden.0) {
+                    out.push(format!("{case}: {why}"));
+                }
                 continue;
             }
             if ox > 1.0 && oy > 1.0 && !inside(a, b) && !inside(b, a) {

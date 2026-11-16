@@ -2893,3 +2893,182 @@ ui_tests! {
         }
     }
 }
+
+// ---- The Main-window audit, part 2 (MAIN-3, 4, 6, 7, 8, 9, 16, 17, 18, 20, 28) ------------------------------
+
+ui_tests! {
+    fn down_in_the_search_moves_to_the_first_row_and_enter_uses_it() {
+        let (ui, log) = start();
+        ui.invoke_focus_search();
+        type_text(ui.window(), "re");
+        settle();
+        take(&log);
+        press_key(&ui, Key::DownArrow);
+        assert!(ui.get_items_focused(), "Down leaves the search for the list");
+        assert_eq!(ui.get_cursor(), 0, "on the first row");
+        ui.invoke_focus_search();
+        settle();
+        take(&log);
+        press_key(&ui, Key::Return);
+        let lines = take(&log);
+        assert!(
+            lines.len() == 1 && lines[0].starts_with("action:") && lines[0].ends_with(":0"),
+            "Enter in the search uses the first match: {lines:?}"
+        );
+    }
+
+    fn escape_clears_the_selection_then_the_search_and_a_letter_starts_a_search() {
+        let (ui, log) = start();
+        select_row(&ui, 0);
+        take(&log);
+        press_key(&ui, Key::Escape);
+        assert_eq!(take(&log), ["clear"], "the first Esc drops the selection");
+        ui.set_selected_count(0);
+        ui.set_query("re".into());
+        settle();
+        press_key(&ui, Key::Escape);
+        assert_eq!(ui.get_query(), "", "the next Esc clears the query");
+        assert_eq!(take(&log), ["query:"]);
+
+        ui.invoke_focus_items();
+        settle();
+        take(&log);
+        type_text(ui.window(), "r");
+        settle();
+        assert_eq!(ui.get_query(), "r", "a letter in the list starts a search");
+        assert!(ui.get_search_focused(), "and the keyboard moves to the search box");
+        assert_eq!(take(&log), ["query:r"]);
+    }
+
+    fn the_menu_key_opens_the_menu_at_the_cursor_row() {
+        let (ui, _log) = start();
+        press_key(&ui, Key::DownArrow);
+        press_key(&ui, Key::Menu);
+        let menu = find(&ui, "Item actions", AccessibleRole::List);
+        let row = row_titled(&ui, "Invoice reminder");
+        let (my, ry) = (menu.absolute_position().y, row.absolute_position().y);
+        assert!(
+            my >= ry - 1.0 && my <= ry + row.size().height + 40.0,
+            "the menu top {my} sits at the cursor row {ry}, not at a fixed corner"
+        );
+    }
+
+    fn a_bulk_delete_in_the_trash_and_a_board_delete_count_their_items() {
+        let (ui, _log) = start();
+        ui.set_section(MainSection::Trash);
+        ui.set_selected_count(3);
+        settle();
+        press_key(&ui, Key::Delete);
+        let dialog = find(&ui, "Delete for good?", AccessibleRole::Groupbox);
+        assert_eq!(
+            dialog.accessible_description().as_deref(),
+            Some("The selected items are deleted for good. This can't be undone.")
+        );
+        press_key(&ui, Key::Escape);
+
+        ui.set_board_name("Work".into());
+        for (n, words) in [(1, "and 1 item move"), (3, "and 3 items move")] {
+            ui.set_board_delete_count(n);
+            ui.set_board_delete_open(true);
+            settle();
+            let d = find(&ui, "Delete board “Work”?", AccessibleRole::Groupbox);
+            let text = d.accessible_description().unwrap().to_string();
+            assert!(text.contains(words), "{text:?} says {words:?}");
+            ui.set_board_delete_open(false);
+            settle();
+        }
+    }
+
+    fn the_new_item_button_creates_and_rests_in_the_trash() {
+        let (ui, log) = start();
+        take(&log);
+        let button = find(&ui, "New item", AccessibleRole::Button);
+        assert_eq!(button.accessible_enabled(), Some(true));
+        button.invoke_accessible_default_action();
+        settle();
+        assert!(!take(&log).is_empty(), "the button creates an item");
+        ui.set_section(MainSection::Trash);
+        settle();
+        assert_eq!(
+            find(&ui, "New item", AccessibleRole::Button).accessible_enabled(),
+            Some(false),
+            "nothing can be created inside the Trash"
+        );
+    }
+
+    fn the_rail_keeps_add_list_and_manage_tags_as_buttons() {
+        let (ui, log) = start();
+        ui.set_sidebar_collapsed(true);
+        settle();
+        assert!(ui.get_rail());
+        take(&log);
+        find(&ui, "Add list", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["add-list"]);
+        find(&ui, "Manage tags", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["manage-tags"]);
+    }
+
+    fn the_help_menu_lists_the_pages_then_the_panel_in_a_fixed_order() {
+        let (ui, _log) = start();
+        find(&ui, "Help", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        let order = ["User guide", "Keyboard shortcuts", "Troubleshoot…", "About Snipdeck", "Show Panel"];
+        let ys: Vec<f32> = order
+            .iter()
+            .map(|l| find_top(&ui, l, AccessibleRole::ListItem).absolute_position().y)
+            .collect();
+        assert!(ys.windows(2).all(|w| w[0] < w[1]), "Help menu order {order:?}: {ys:?}");
+    }
+
+    fn the_view_menu_announces_the_density_in_force_as_checked() {
+        let (ui, _log) = start();
+        let checked = |ui: &MainWindow, label: &str| {
+            find_top(ui, label, AccessibleRole::ListItem).accessible_checked()
+        };
+        find(&ui, "View", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert_eq!(checked(&ui, "Main list density: Comfortable"), Some(true));
+        assert_eq!(checked(&ui, "Main list density: Compact"), Some(false));
+        press_key(&ui, Key::Escape);
+        ui.set_view(MainView::Compact);
+        settle();
+        find(&ui, "View", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert_eq!(checked(&ui, "Main list density: Compact"), Some(true));
+        assert_eq!(checked(&ui, "Main list density: Comfortable"), Some(false));
+    }
+
+    fn the_window_title_names_the_section_and_the_board() {
+        let (ui, _log) = start();
+        ui.set_board_name("".into());
+        settle();
+        let bare = ui.get_window_title().to_string();
+        assert!(bare.ends_with("Snipdeck") && !bare.contains("Work"), "{bare:?}");
+        ui.set_board_name("Work".into());
+        settle();
+        let titled = ui.get_window_title().to_string();
+        assert!(titled.contains("Work") && titled.ends_with("- Snipdeck"), "{titled:?}");
+        assert_ne!(bare, titled);
+    }
+
+    fn an_empty_search_or_label_filter_offers_to_clear_itself() {
+        let (ui, log) = start();
+        fixture::set_rows(&ui, Vec::new());
+        ui.set_query("zz".into());
+        settle();
+        take(&log);
+        let clear = all(&ui, "Clear search", AccessibleRole::Button);
+        assert!(clear.len() >= 2, "the field's clear button and the empty state's action");
+        clear.last().unwrap().invoke_accessible_default_action();
+        assert_eq!(take(&log), ["query:"]);
+
+        ui.set_query("".into());
+        ui.set_label_filter(0);
+        settle();
+        let cleared = Rc::new(RefCell::new(Vec::new()));
+        let sink = cleared.clone();
+        ui.on_label_filter_requested(move |i| sink.borrow_mut().push(i));
+        find(&ui, "Clear filter", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(*cleared.borrow(), [-1], "Clear filter drops the label filter");
+    }
+}

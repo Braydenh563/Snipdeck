@@ -3108,3 +3108,19 @@ fn the_start_up_entry_is_read_once_when_the_page_opens_not_on_each_redraw() {
         assert!(r.ui.get_autostart(), "the toggle's result is shown");
     });
 }
+
+/// MAIN-38: Esc closes the erase question first; it does not close the window or erase anything.
+#[test]
+fn escape_closes_the_erase_question_before_anything_else() {
+    on_ui_thread(|| {
+        let r = library_on_disk(false);
+        r.ui.window()
+            .set_size(slint::LogicalSize::new(640.0, 6000.0));
+        element(&r.ui, "Erase library\u{2026}", AccessibleRole::Button)
+            .invoke_accessible_default_action();
+        assert!(r.ui.get_erase_open());
+        press(r.ui.window(), &key(slint::platform::Key::Escape));
+        assert!(!r.ui.get_erase_open(), "Esc closes the question");
+        assert_eq!(board_names(r.ctl.borrow().store()).len(), 2, "and erases nothing");
+    });
+}

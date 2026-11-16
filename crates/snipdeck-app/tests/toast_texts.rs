@@ -402,6 +402,27 @@ fn what_a_toast_carries_reaches_its_sentence() {
             said(ToastMessage::ItemsTrashed { count: 3 }),
             "Moved 3 items to the Trash"
         );
+        // MAIN-24, 25: a partial export says how many were written; a bulk tag change counts the items.
+        assert_eq!(
+            said(ToastMessage::ExportedSome {
+                file: s("list.txt"),
+                written: 12,
+                total: 15
+            }),
+            "Saved list.txt: 12 of 15 items. Sensitive items and items with no text are left out."
+        );
+        for (count, added, text) in [
+            (1, true, "Tag added to 1 item"),
+            (3, true, "Tag added to 3 items"),
+            (1, false, "Tag removed from 1 item"),
+            (4, false, "Tag removed from 4 items"),
+        ] {
+            assert_eq!(said(ToastMessage::ItemsTagged { count, added }), text);
+        }
+        assert_eq!(
+            said(ToastMessage::TagDeleted { name: s("Work") }),
+            "Deleted the tag “Work”"
+        );
         let rebuilt = |recovered, unreadable, missing_sensitive| ToastMessage::DatabaseRebuilt {
             restored: 5,
             recovered,
