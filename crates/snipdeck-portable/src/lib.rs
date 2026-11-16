@@ -37,6 +37,7 @@
 
 mod archive;
 pub mod backup;
+mod decoded;
 mod dto;
 mod error;
 mod export;
@@ -46,14 +47,18 @@ mod limits;
 mod plan;
 mod report;
 
+pub use decoded::{Decoded, Known};
 pub use error::{Error, Result};
 pub use export::{ExportOptions, ExportReport, SensitivePolicy, export_to_path, export_to_writer};
 pub use import::{
-    BoardLayout, ImportOptions, KeySource, MergeStrategy, import_archive, import_archive_path,
+    BoardLayout, ImportOptions, KeySource, MergeStrategy, decode_archive, decode_archive_path,
+    import_archive, import_archive_path,
 };
 pub use importers::{
-    HistoryEntry, MEMORY_BUDGET, import_beeftext, import_copyq_json, import_ditto, import_entries,
-    import_espanso, import_folder, import_phraseexpress_csv, import_textexpander_csv,
+    HistoryEntry, MEMORY_BUDGET, decode_beeftext, decode_copyq_json, decode_ditto, decode_entries,
+    decode_espanso, decode_folder, decode_phraseexpress_csv, decode_textexpander_csv,
+    import_beeftext, import_copyq_json, import_ditto, import_entries, import_espanso,
+    import_folder, import_phraseexpress_csv, import_textexpander_csv,
 };
 pub use limits::{ENVELOPE_OVERHEAD_BYTES, Limits, TEXT_LIMIT};
 pub use plan::Library;
