@@ -34,6 +34,8 @@ The Panel and the Picker search the whole library through one `SearchIndex`
   one needless rebuild and is never stale.
 * **Main:** the Main window reads boards, lists and items through the same cache, not its own
   copy. A hidden (shown once, then hidden) Panel or Main is not drawn; showing draws once.
+* **Lazy index:** reading the library builds no search index. `Snapshot::index()` / `suggest()` build it on first use, and the Panel builds it 60 ms after a frame that finds it unbuilt (`arm_warm`), so the first keystroke finds it ready. A patch made before the index exists builds nothing.
+* **Recent:** a thumbnail image is built once per entry id (`recent_thumb`).
 * **Rows:** `PanelModel::rows()` is cached until the query, the marks or the ghosts change.
 * **Owner:** the `Controller` owns the cache and gives a handle to each model it loads.
 * **Per board:** there is no separate index per board. The shared index covers the library
