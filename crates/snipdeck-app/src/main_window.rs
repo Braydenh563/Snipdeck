@@ -850,7 +850,7 @@ impl MainModel {
         let mut open: Option<GroupId> = None;
         for (at, item) in items {
             let run = self.group_of(item.id);
-            if let Some(run) = run.filter(|r| open != Some(r.group.id))
+            if let Some(_) = run.filter(|r| open != Some(r.group.id))
                 && let Section::List(list) = self.section
                 && let Some(run_at) = self.group_index.get(&item.id).map(|g| g.1)
             {
