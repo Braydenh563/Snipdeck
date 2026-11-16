@@ -1,3 +1,4 @@
+import { ListNav } from "list-nav.slint";
 import { Theme, Type, Radius, Space, Motion, Fonts, SystemLook } from "../theme.slint";
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
@@ -54,6 +55,71 @@ export component Chooser inherits Rectangle {
         }
     }
 
+    // Type-ahead and pages, as in Menu (see `ListNav`).
+    property <string> typed: "";
+    type-timer := Timer {
+        interval: ListNav.pause;
+        running: false;
+        triggered => {
+            self.running = false;
+            root.typed = "";
+        }
+    }
+    pure function first-hit(from: int, p: string) -> int {
+        if (root.entries.length == 0) { return -1; }
+        if (ListNav.starts(root.entries[mod(from + 0, root.entries.length)].label, p)) { return mod(from + 0, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 1, root.entries.length)].label, p)) { return mod(from + 1, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 2, root.entries.length)].label, p)) { return mod(from + 2, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 3, root.entries.length)].label, p)) { return mod(from + 3, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 4, root.entries.length)].label, p)) { return mod(from + 4, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 5, root.entries.length)].label, p)) { return mod(from + 5, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 6, root.entries.length)].label, p)) { return mod(from + 6, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 7, root.entries.length)].label, p)) { return mod(from + 7, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 8, root.entries.length)].label, p)) { return mod(from + 8, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 9, root.entries.length)].label, p)) { return mod(from + 9, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 10, root.entries.length)].label, p)) { return mod(from + 10, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 11, root.entries.length)].label, p)) { return mod(from + 11, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 12, root.entries.length)].label, p)) { return mod(from + 12, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 13, root.entries.length)].label, p)) { return mod(from + 13, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 14, root.entries.length)].label, p)) { return mod(from + 14, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 15, root.entries.length)].label, p)) { return mod(from + 15, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 16, root.entries.length)].label, p)) { return mod(from + 16, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 17, root.entries.length)].label, p)) { return mod(from + 17, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 18, root.entries.length)].label, p)) { return mod(from + 18, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 19, root.entries.length)].label, p)) { return mod(from + 19, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 20, root.entries.length)].label, p)) { return mod(from + 20, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 21, root.entries.length)].label, p)) { return mod(from + 21, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 22, root.entries.length)].label, p)) { return mod(from + 22, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 23, root.entries.length)].label, p)) { return mod(from + 23, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 24, root.entries.length)].label, p)) { return mod(from + 24, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 25, root.entries.length)].label, p)) { return mod(from + 25, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 26, root.entries.length)].label, p)) { return mod(from + 26, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 27, root.entries.length)].label, p)) { return mod(from + 27, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 28, root.entries.length)].label, p)) { return mod(from + 28, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 29, root.entries.length)].label, p)) { return mod(from + 29, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 30, root.entries.length)].label, p)) { return mod(from + 30, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 31, root.entries.length)].label, p)) { return mod(from + 31, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 32, root.entries.length)].label, p)) { return mod(from + 32, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 33, root.entries.length)].label, p)) { return mod(from + 33, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 34, root.entries.length)].label, p)) { return mod(from + 34, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 35, root.entries.length)].label, p)) { return mod(from + 35, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 36, root.entries.length)].label, p)) { return mod(from + 36, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 37, root.entries.length)].label, p)) { return mod(from + 37, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 38, root.entries.length)].label, p)) { return mod(from + 38, root.entries.length); }
+        if (ListNav.starts(root.entries[mod(from + 39, root.entries.length)].label, p)) { return mod(from + 39, root.entries.length); }
+        return -1;
+    }
+    function type-ahead(ch: string) {
+        root.typed = root.typed + ch;
+        let hit = root.first-hit(root.typed.character-count == 1 ? root.current + 1 : max(root.current, 0), root.typed);
+        if (hit >= 0) {
+            root.current = hit;
+            root.reveal(hit);
+        }
+        type-timer.running = false;
+        type-timer.running = true;
+    }
+
     min-width: 200px;
     height: 2 * Space.s1 + (root.entries.length == 0 ? root.row-h : min(root.entries.length, root.max-rows) * root.row-h);
     background: Theme.bg-overlay;
@@ -83,6 +149,14 @@ export component Chooser inherits Rectangle {
                 root.move(root.entries.length);
                 return accept;
             }
+            if (event.text == Key.PageDown) {
+                root.move(ListNav.page(root.max-rows));
+                return accept;
+            }
+            if (event.text == Key.PageUp) {
+                root.move(-ListNav.page(root.max-rows));
+                return accept;
+            }
             if ((event.text == Key.Return || event.text == " ") && root.current >= 0 && root.current < root.entries.length) {
                 root.shift = event.modifiers.shift;
                 root.chosen(root.current);
@@ -91,6 +165,10 @@ export component Chooser inherits Rectangle {
             }
             if (event.text == Key.Escape) {
                 root.dismissed();
+                return accept;
+            }
+            if (ListNav.typed-char(event.text) && !event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
+                root.type-ahead(event.text);
                 return accept;
             }
             return reject;

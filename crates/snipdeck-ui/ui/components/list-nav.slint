@@ -1,0 +1,20 @@
+// The list keys every floating list shares (UX-6): PageUp / PageDown move by a page, and typing a few letters jumps to
+// the row that starts with them. The lists (Menu, Chooser, the command palette) call these; each keeps its own
+// rows, so the scan over them lives next to them.
+export global ListNav {
+    // How many rows a PageUp or PageDown moves: the rows in view less one (so one row of context stays), at least one.
+    pure public function page(visible: int) -> int {
+        return max(1, visible - 1);
+    }
+    // Whether `label` starts with what was typed (case does not matter).
+    pure public function starts(label: string, typed: string) -> bool {
+        return typed != "" && label.to-lowercase().starts-with(typed.to-lowercase());
+    }
+    // A key that types a letter, digit or sign: one character, not the Space that picks. Keys with no printable name
+    // (arrows, F-keys) arrive as private-use characters that no label starts with, so they find nothing.
+    pure public function typed-char(text: string) -> bool {
+        return text.character-count == 1 && text != " ";
+    }
+    // How long a pause ends the word being typed.
+    out property <duration> pause: 900ms;
+}

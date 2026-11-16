@@ -1,3 +1,4 @@
+import { ListNav } from "list-nav.slint";
 import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
 import { Icon } from "icon.slint";
 import { Icons } from "../icons.slint";
@@ -183,6 +184,86 @@ export component Menu inherits Rectangle {
         }
     }
 
+
+    // ---- Type-ahead: the letters typed in a row start the label of the row they land on -----------------------
+    property <string> typed: "";
+    type-timer := Timer {
+        interval: ListNav.pause;
+        running: false;
+        triggered => {
+            self.running = false;
+            root.typed = "";
+        }
+    }
+    pure function name-hit(i: int, p: string) -> bool {
+        return root.selectable(i) && ListNav.starts(root.entries[i].text, p);
+    }
+    // The first row from `from` on (wrapping round once) whose label starts with `p`, or -1. Unrolled to 40 rows:
+    // a function cannot loop in Slint; longer menus are still reached by the other keys.
+    pure function first-hit(from: int, p: string) -> int {
+        if (root.entries.length == 0) { return -1; }
+        if (root.name-hit(mod(from + 0, root.entries.length), p)) { return mod(from + 0, root.entries.length); }
+        if (root.name-hit(mod(from + 1, root.entries.length), p)) { return mod(from + 1, root.entries.length); }
+        if (root.name-hit(mod(from + 2, root.entries.length), p)) { return mod(from + 2, root.entries.length); }
+        if (root.name-hit(mod(from + 3, root.entries.length), p)) { return mod(from + 3, root.entries.length); }
+        if (root.name-hit(mod(from + 4, root.entries.length), p)) { return mod(from + 4, root.entries.length); }
+        if (root.name-hit(mod(from + 5, root.entries.length), p)) { return mod(from + 5, root.entries.length); }
+        if (root.name-hit(mod(from + 6, root.entries.length), p)) { return mod(from + 6, root.entries.length); }
+        if (root.name-hit(mod(from + 7, root.entries.length), p)) { return mod(from + 7, root.entries.length); }
+        if (root.name-hit(mod(from + 8, root.entries.length), p)) { return mod(from + 8, root.entries.length); }
+        if (root.name-hit(mod(from + 9, root.entries.length), p)) { return mod(from + 9, root.entries.length); }
+        if (root.name-hit(mod(from + 10, root.entries.length), p)) { return mod(from + 10, root.entries.length); }
+        if (root.name-hit(mod(from + 11, root.entries.length), p)) { return mod(from + 11, root.entries.length); }
+        if (root.name-hit(mod(from + 12, root.entries.length), p)) { return mod(from + 12, root.entries.length); }
+        if (root.name-hit(mod(from + 13, root.entries.length), p)) { return mod(from + 13, root.entries.length); }
+        if (root.name-hit(mod(from + 14, root.entries.length), p)) { return mod(from + 14, root.entries.length); }
+        if (root.name-hit(mod(from + 15, root.entries.length), p)) { return mod(from + 15, root.entries.length); }
+        if (root.name-hit(mod(from + 16, root.entries.length), p)) { return mod(from + 16, root.entries.length); }
+        if (root.name-hit(mod(from + 17, root.entries.length), p)) { return mod(from + 17, root.entries.length); }
+        if (root.name-hit(mod(from + 18, root.entries.length), p)) { return mod(from + 18, root.entries.length); }
+        if (root.name-hit(mod(from + 19, root.entries.length), p)) { return mod(from + 19, root.entries.length); }
+        if (root.name-hit(mod(from + 20, root.entries.length), p)) { return mod(from + 20, root.entries.length); }
+        if (root.name-hit(mod(from + 21, root.entries.length), p)) { return mod(from + 21, root.entries.length); }
+        if (root.name-hit(mod(from + 22, root.entries.length), p)) { return mod(from + 22, root.entries.length); }
+        if (root.name-hit(mod(from + 23, root.entries.length), p)) { return mod(from + 23, root.entries.length); }
+        if (root.name-hit(mod(from + 24, root.entries.length), p)) { return mod(from + 24, root.entries.length); }
+        if (root.name-hit(mod(from + 25, root.entries.length), p)) { return mod(from + 25, root.entries.length); }
+        if (root.name-hit(mod(from + 26, root.entries.length), p)) { return mod(from + 26, root.entries.length); }
+        if (root.name-hit(mod(from + 27, root.entries.length), p)) { return mod(from + 27, root.entries.length); }
+        if (root.name-hit(mod(from + 28, root.entries.length), p)) { return mod(from + 28, root.entries.length); }
+        if (root.name-hit(mod(from + 29, root.entries.length), p)) { return mod(from + 29, root.entries.length); }
+        if (root.name-hit(mod(from + 30, root.entries.length), p)) { return mod(from + 30, root.entries.length); }
+        if (root.name-hit(mod(from + 31, root.entries.length), p)) { return mod(from + 31, root.entries.length); }
+        if (root.name-hit(mod(from + 32, root.entries.length), p)) { return mod(from + 32, root.entries.length); }
+        if (root.name-hit(mod(from + 33, root.entries.length), p)) { return mod(from + 33, root.entries.length); }
+        if (root.name-hit(mod(from + 34, root.entries.length), p)) { return mod(from + 34, root.entries.length); }
+        if (root.name-hit(mod(from + 35, root.entries.length), p)) { return mod(from + 35, root.entries.length); }
+        if (root.name-hit(mod(from + 36, root.entries.length), p)) { return mod(from + 36, root.entries.length); }
+        if (root.name-hit(mod(from + 37, root.entries.length), p)) { return mod(from + 37, root.entries.length); }
+        if (root.name-hit(mod(from + 38, root.entries.length), p)) { return mod(from + 38, root.entries.length); }
+        if (root.name-hit(mod(from + 39, root.entries.length), p)) { return mod(from + 39, root.entries.length); }
+        return -1;
+    }
+    function type-ahead(ch: string) {
+        root.typed = root.typed + ch;
+        // A first letter looks past the row it is on (so repeating the letter walks the rows); more letters refine.
+        let hit = root.first-hit(root.typed.character-count == 1 ? root.current + 1 : max(root.current, 0), root.typed);
+        if (hit >= 0) {
+            root.by-key = true;
+            root.current = hit;
+        }
+        type-timer.running = false;
+        type-timer.running = true;
+    }
+    // PageUp / PageDown: a page of rows, stopping at the ends, landing on a row that can be chosen.
+    function page(dir: int) {
+        root.by-key = true;
+        let want = min(max(root.current + dir * ListNav.page(floor(flick.height / root.row-h)), 0), root.entries.length - 1);
+        let ahead = root.selectable(want) ? want : root.find(want, dir);
+        let back = root.selectable(want) ? want : root.find(want, -dir);
+        root.current = ahead >= 0 ? ahead : (back >= 0 ? back : root.current);
+    }
+
     function activate(i: int) {
         if (root.selectable(i)) {
             root.activated(i);
@@ -232,6 +313,14 @@ export component Menu inherits Rectangle {
                 root.current = root.find(root.entries.length, -1);
                 return accept;
             }
+            if (event.text == Key.PageDown) {
+                root.page(1);
+                return accept;
+            }
+            if (event.text == Key.PageUp) {
+                root.page(-1);
+                return accept;
+            }
             if (event.text == Key.Return || event.text == " ") {
                 root.shift = event.modifiers.shift;
                 root.activate(root.current);
@@ -240,6 +329,10 @@ export component Menu inherits Rectangle {
             }
             if (event.text == Key.Escape) {
                 root.dismissed();
+                return accept;
+            }
+            if (ListNav.typed-char(event.text) && !event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
+                root.type-ahead(event.text);
                 return accept;
             }
             return reject;
