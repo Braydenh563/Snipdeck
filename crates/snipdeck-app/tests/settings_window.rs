@@ -1652,6 +1652,7 @@ fn every_warning() -> Vec<snipdeck_portable::Warning> {
             title: "Bank PIN".into(),
         },
         W::SensitiveOmittedByExport { count: 4 },
+        W::SkippedByExport { count: 2 },
         W::LossyText { name: name() },
         W::TooLarge {
             name: name(),
@@ -1680,6 +1681,7 @@ fn every_warning() -> Vec<snipdeck_portable::Warning> {
             | W::SensitiveNeedKey { .. }
             | W::CannotDecrypt { .. }
             | W::SensitiveOmittedByExport { .. }
+            | W::SkippedByExport { .. }
             | W::LossyText { .. }
             | W::TooLarge { .. }
             | W::Empty { .. }
@@ -1734,6 +1736,10 @@ fn every_note() -> Vec<snipdeck_portable::Note> {
             name: s("f"),
         },
         N::ColumnsCut { file: s("a.csv") },
+        N::TriggerTooShort {
+            title: s("Sig"),
+            trigger: s("s"),
+        },
         N::TriggerTaken {
             title: s("Sig"),
             trigger: s(";sig"),
@@ -1766,6 +1772,7 @@ fn every_note() -> Vec<snipdeck_portable::Note> {
             | N::DateFormat { .. }
             | N::FormField { .. }
             | N::ColumnsCut { .. }
+            | N::TriggerTooShort { .. }
             | N::TriggerTaken { .. }
             | N::TriggerOverlap { .. }
             | N::TitleCut { .. } => {}
@@ -1795,7 +1802,9 @@ fn note_args(n: &snipdeck_portable::Note) -> Vec<String> {
         N::DateFormat { what, format } => v(&[what, format]),
         N::FormField { what, name } => v(&[what, name]),
         N::ColumnsCut { file } => v(&[file]),
-        N::TriggerTaken { title, trigger } => v(&[title, trigger]),
+        N::TriggerTooShort { title, trigger } | N::TriggerTaken { title, trigger } => {
+            v(&[title, trigger])
+        }
         N::TriggerOverlap {
             title,
             trigger,

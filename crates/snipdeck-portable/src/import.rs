@@ -34,7 +34,7 @@ use crate::dto::{
     MINOR, Manifest, TagDto, parse_items_doc,
 };
 use crate::error::{Error, Result};
-use crate::importers::{MEMORY_BUDGET, truncate_chars};
+use crate::importers::truncate_chars;
 use crate::limits::{Limits, TEXT_LIMIT};
 use crate::plan::{
     AssetRef, ContentHasher, Library, Plan, PlanBoard, PlanFile, PlanFormat, PlanItem, PlanList,
@@ -299,6 +299,7 @@ pub fn decode_archive<'a, R: Read + Seek + Send + 'a>(
         &mut plan,
         key,
         options.limits.max_total_bytes,
+        options.limits.max_sensitive_bytes,
         &mut report,
     )?;
 
@@ -912,6 +913,8 @@ struct Verified {
     plain: HashSet<(BlobRef, bool)>,
     /// Bytes of decrypted payload the plan may still hold in memory.
     decrypt_budget: u64,
+    /// The budget at the start, for the error.
+    decrypt_limit: u64,
     /// Bytes of encrypted asset the checks may still read. Every reference reads and decrypts
     /// its asset again (the envelope is bound to the item), so many items pointing at one big
     /// asset would otherwise cost one read each without limit.
@@ -940,11 +943,13 @@ fn verify<R: Read + Seek>(
     plan: &mut Plan,
     key: Option<&DataKey>,
     read_limit: u64,
+    decrypt_limit: u64,
     report: &mut ImportReport,
 ) -> Result<()> {
     let mut verified = Verified {
         plain: HashSet::new(),
-        decrypt_budget: MEMORY_BUDGET,
+        decrypt_budget: decrypt_limit,
+        decrypt_limit,
         read_budget: read_limit,
         read_budget_limit: read_limit,
     };
@@ -1108,7 +1113,7 @@ fn check_source<R: Read + Seek>(
                     .checked_sub(len)
                     .ok_or(Error::LimitExceeded {
                         what: "decrypted size",
-                        limit: MEMORY_BUDGET,
+                        limit: verified.decrypt_limit,
                     })?;
             Ok(Checked::Ok {
                 hash: *blake3::hash(&plain).as_bytes(),

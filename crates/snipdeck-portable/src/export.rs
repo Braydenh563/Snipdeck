@@ -95,6 +95,7 @@ pub fn export_to_writer<L: Library, W: Write + Seek>(
         options,
         writer: ArchiveWriter::new(out, options.limits),
         written: HashSet::new(),
+        sensitive_bytes: 0,
         report: ExportReport::default(),
     };
     let doc = exporter.build_doc()?;
@@ -171,6 +172,8 @@ struct Exporter<'a, L, W: Write + Seek> {
     options: &'a ExportOptions<'a>,
     writer: ArchiveWriter<W>,
     written: HashSet<BlobRef>,
+    /// Bytes of sensitive content written so far (against `Limits::max_sensitive_bytes`).
+    sensitive_bytes: u64,
     report: ExportReport,
 }
 
@@ -320,6 +323,20 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
                 .format_dto(item, format, key, &mut staged)
                 .map_err(|e| name_the_item(e, title))?;
             dtos.push(dto);
+        }
+        // The reader decrypts at most `max_sensitive_bytes` of one archive: an item past it would
+        // make the whole backup unreadable, so it is left out and named instead.
+        if key.is_some() {
+            let size: u64 = staged.iter().map(|p| p.bytes.len() as u64).sum();
+            let limit = self.options.limits.max_sensitive_bytes;
+            if self.sensitive_bytes.saturating_add(size) > limit {
+                return Err(Error::ItemTooLarge {
+                    title: title.to_owned(),
+                    what: "decrypted size of sensitive content",
+                    limit,
+                });
+            }
+            self.sensitive_bytes += size;
         }
         for payload in staged {
             if self.written.insert(payload.hash) {

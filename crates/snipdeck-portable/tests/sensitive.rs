@@ -774,3 +774,53 @@ fn a_total_over_the_limit_is_reported_as_the_total_and_names_no_item() {
         "{err:?}"
     );
 }
+
+/// DATA-12: the writer holds itself to the reader's budget for decrypted sensitive content, so a
+/// backup it writes never fails to restore; what does not fit is named.
+#[test]
+fn sensitive_content_past_the_readers_budget_is_left_out_and_named() {
+    let key = DataKey::generate().unwrap();
+    let mut s = store();
+    let b = board(&mut s, "B");
+    let l = list(&mut s, b.id, "L");
+    for (n, title) in ["First scan", "Second scan"].into_iter().enumerate() {
+        let mut secret = Item::new(l.id, title.to_owned(), ItemKind::File, at(1));
+        secret.sensitive = true;
+        let file = FileEntry::new("p.bin", s.put(noise(60_000, n as u64)).unwrap()).unwrap();
+        s.insert_item(
+            &secret,
+            &Formats::new(vec![Format::Files(vec![file])]).unwrap(),
+            Placement::Last,
+        )
+        .unwrap();
+    }
+    let limits = Limits {
+        max_sensitive_bytes: 100_000,
+        ..Limits::default()
+    };
+    let mut out = Cursor::new(Vec::new());
+    let report = snipdeck_portable::export_to_writer(
+        &s,
+        at(100),
+        &ExportOptions {
+            sensitive: SensitivePolicy::Encrypt(&key),
+            limits,
+        },
+        &mut out,
+    )
+    .unwrap();
+    assert_eq!(report.sensitive_encrypted, 1);
+    assert_eq!(report.skipped.len(), 1, "{:?}", report.skipped);
+    assert_eq!(report.skipped[0].title, "Second scan");
+
+    // The same limits read it back.
+    let mut fresh = store();
+    let opts = ImportOptions {
+        key: KeySource::Given(&key),
+        limits,
+        ..ImportOptions::default()
+    };
+    let back = import_archive(&mut fresh, Cursor::new(out.into_inner()), "x", at(10_000), &opts)
+        .unwrap();
+    assert_eq!(back.items_added, 1, "{:?}", back.warnings);
+}
