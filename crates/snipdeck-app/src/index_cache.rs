@@ -201,7 +201,11 @@ impl IndexCache {
             (state.built_at == Some(counter)).then(|| Rc::clone(&state.snapshot))
         };
         let (boards, tags, rich) = if let Some(old) = &kept {
-            (old.boards.clone(), Rc::clone(&old.tags), Rc::clone(&old.rich))
+            (
+                old.boards.clone(),
+                Rc::clone(&old.tags),
+                Rc::clone(&old.rich),
+            )
         } else {
             let mut boards = Vec::new();
             for b in store.boards()? {
@@ -858,7 +862,11 @@ mod tests {
         let cache = IndexCache::new();
         let first = cache.snapshot(&s).unwrap();
         assert_eq!(first.all.len(), 50, "the items are there at once");
-        assert_eq!(cache.index_builds(), 0, "reading the library builds no index");
+        assert_eq!(
+            cache.index_builds(),
+            0,
+            "reading the library builds no index"
+        );
         let id = first.all[3].id;
         let mut item = s.item(id).unwrap();
         item.pinned = true;
@@ -867,7 +875,11 @@ mod tests {
             .unwrap();
         let pinned = cache.snapshot(&s).unwrap();
         assert_eq!((cache.rebuilds(), cache.patches()), (1, 1));
-        assert_eq!(cache.index_builds(), 0, "a patch before the first search builds none");
+        assert_eq!(
+            cache.index_builds(),
+            0,
+            "a patch before the first search builds none"
+        );
         assert_eq!(pinned.index().len(), 50);
         let _ = pinned.suggest();
         assert_eq!(cache.index_builds(), 1, "the first search builds it once");

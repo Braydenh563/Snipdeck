@@ -1138,7 +1138,10 @@ mod tests {
         }
         model.move_selection(-3);
         assert_eq!(model.rows_built(), built, "a cursor move builds no rows");
-        assert!(Rc::ptr_eq(&first, &model.rows()), "and the rows are the same ones");
+        assert!(
+            Rc::ptr_eq(&first, &model.rows()),
+            "and the rows are the same ones"
+        );
         assert_eq!(model.selected(), Some(model.rows()[7].id));
     }
 
