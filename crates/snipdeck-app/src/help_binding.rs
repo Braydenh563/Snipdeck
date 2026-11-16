@@ -385,6 +385,7 @@ where
         }
         let (look, accent, toast): (_, _, Option<ToastView>) = {
             let controller = self.controller.borrow();
+            window.set_archive_busy(controller.archive_busy());
             self.sync_shortcuts(&window, &controller.settings().hotkeys);
             (
                 controller.settings_look(),
@@ -545,6 +546,7 @@ where
             .controller
             .borrow_mut()
             .begin_rebuild_from_backup(&dir, &file.path);
+        redraw_all();
         let this = Rc::clone(self);
         spawn_archive(&self.controller, begun, move |_| {
             this.run_checks();

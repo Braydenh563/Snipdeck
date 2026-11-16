@@ -25,7 +25,7 @@ use super::{
     settings_ctl::{Carry, danger, export_path},
 };
 use crate::{
-    archive_job::{self, ArchiveDone, ArchiveJob, ArchiveOp, Made, Work},
+    archive_job::{self, ArchiveDone, ArchiveJob, ArchiveOp, Made, Source, Work},
     failure::Cause,
     host::ClipboardText,
     maintenance::{JobError, deferred_while_locked},
@@ -83,6 +83,12 @@ pub(super) struct ArchiveState {
     running: Option<(ArchiveOp, Context)>,
 }
 
+impl ArchiveState {
+    pub(super) const fn is_running(&self) -> bool {
+        self.running.is_some()
+    }
+}
+
 impl<C, K, T> Controller<Store, C, K, T>
 where
     C: Clipboard + ClipboardText,
@@ -96,22 +102,53 @@ where
         self.archive.running.is_some()
     }
 
+    /// Whether a new archive step must not start now: one is running (the toast says so) or the
+    /// library is locked (`copy_blocked_by_lock` raises its own toast).
+    pub(super) fn refuse_archive(&mut self) -> bool {
+        if self.archive_busy() {
+            self.show_toast(Toast {
+                kind: ToastKind::Neutral,
+                message: ToastMessage::ArchiveBusy,
+            });
+            return true;
+        }
+        self.copy_blocked_by_lock()
+    }
+
+    /// The app is quitting with an export or a rebuild's salvage still being written: removes the
+    /// half-written `<name>.part` it would leave in the user's folder (best effort; a file the
+    /// worker still holds open stays until it is closed). Only the file of the step this
+    /// controller started is touched, never another `.part`.
+    pub fn abandon_unfinished_archive(&mut self) {
+        let path = match &self.archive.running {
+            Some((_, Context::Export(path))) => path.clone(),
+            Some((_, Context::Rebuild(rebuild))) => rebuild.salvage.clone(),
+            _ => return,
+        };
+        let mut part = path.into_os_string();
+        part.push(".part");
+        let _ = std::fs::remove_file(PathBuf::from(part));
+    }
+
     pub(super) fn archive_job(&self, op: ArchiveOp, work: Work) -> ArchiveJob {
         ArchiveJob {
             op,
             work,
             // A library that lives in memory has no database file for a worker to open.
-            folder: self
-                .store
-                .folder_lock()
-                .map(|lock| lock.folder().to_path_buf()),
-            key: self.store.duplicate_data_key(),
+            source: Source::open(
+                self.store
+                    .folder_lock()
+                    .map(snipdeck_store::FolderLock::folder),
+                self.store.duplicate_data_key(),
+            ),
         }
     }
 
     /// Marks `job` as the running step; run in place when it has no folder to open.
     pub(super) fn begin_running(&mut self, job: ArchiveJob, context: Context) -> Begun {
-        if job.folder.is_some() {
+        if !matches!(job.source, Source::InPlace) {
+            // The worker's snapshot must still find the files that edits meanwhile orphan.
+            self.store.hold_blob_release(true);
             self.archive.running = Some((job.op, context));
             return Begun::Job(job);
         }
@@ -127,7 +164,7 @@ where
     /// daily run writes only when there is none, and the user asked for a fresh copy).
     pub fn begin_backup_now(&mut self, data_dir: &Path) -> Begun {
         // A copy of a locked library would lack its sensitive items and replace today's whole one.
-        if self.archive_busy() || self.copy_blocked_by_lock() {
+        if self.refuse_archive() {
             return Begun::Refused;
         }
         let job = self.archive_job(
@@ -149,7 +186,7 @@ where
     /// The library is locked or an archive is running: the next tick tries again.
     pub fn begin_daily_backup(&mut self, data_dir: &Path, now: &Zoned) -> Result<Begun, JobError> {
         if self.archive_busy() {
-            return Err(JobError::deferred());
+            return Err(JobError::busy());
         }
         // A library with a key ring that is locked (idle timeout) would export without its
         // sensitive items; such a backup would also count as today's and push the last complete
@@ -182,7 +219,7 @@ where
     /// overwrite an earlier export. Sensitive items go in encrypted, or are left out when the
     /// library has no key.
     pub fn begin_export(&mut self, folder: &Path) -> Begun {
-        if self.archive_busy() || self.copy_blocked_by_lock() {
+        if self.refuse_archive() {
             return Begun::Refused;
         }
         let now = self.clock.now();
@@ -207,6 +244,8 @@ where
             self.archive.running = Some((op, context));
             return ArchiveEnd::Ignored;
         }
+        // The snapshot is closed: files orphaned meanwhile can go now.
+        self.store.hold_blob_release(false);
         match (op, done.made, context) {
             (ArchiveOp::DailyBackup, made, _) => ArchiveEnd::Daily(made.map(|made| match made {
                 Made::Backup(outcome) => outcome,
@@ -284,6 +323,9 @@ pub fn spawn<C, K, T>(
             };
             let end = controller.borrow_mut().finish_archive(done);
             after(end);
+            crate::binding::redraw_all();
         }),
     );
+    // Every window shows the busy state from the start.
+    crate::binding::redraw_all();
 }

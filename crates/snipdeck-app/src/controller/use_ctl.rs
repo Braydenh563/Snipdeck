@@ -709,7 +709,9 @@ where
     pub fn clear_pending_clipboard_now(&mut self) {
         self.clear_clipboard(true);
         self.secret_files_due = None;
-        if std::mem::take(&mut self.secret_files_pasted) {
+        // One started by the lock may still be running (`secret_files_deleting`): wait for it too.
+        let pasted = std::mem::take(&mut self.secret_files_pasted);
+        if std::mem::take(&mut self.secret_files_deleting) || pasted {
             // The process ends right after: a background deletion would be cut short.
             self.services.clipboard.forget_pasted_files_waiting();
         }
@@ -722,6 +724,7 @@ where
     pub(super) fn forget_secret_files(&mut self) {
         self.secret_files_due = None;
         if std::mem::take(&mut self.secret_files_pasted) {
+            self.secret_files_deleting = true;
             self.services.clipboard.forget_pasted_files();
         }
     }

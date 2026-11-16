@@ -1720,6 +1720,7 @@ where
                 shown: RefCell::new(None),
                 redraw: Rc::new(move || {
                     if let Some(core) = weak.upgrade() {
+                        core.show_busy();
                         core.sync();
                     }
                 }),

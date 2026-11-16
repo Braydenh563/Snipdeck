@@ -561,6 +561,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     item_editor.flush_draft();
     // A sensitive copy still waiting for its clear timer would outlive the app.
     controller.borrow_mut().clear_pending_clipboard_now();
+    controller.borrow_mut().abandon_unfinished_archive();
     // Settings changed in the last moments are still waiting for their quiet time.
     if let Err(e) = controller.borrow_mut().flush_settings() {
         eprintln!("snipdeck: could not save the settings: {e}");

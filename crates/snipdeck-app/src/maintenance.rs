@@ -208,6 +208,17 @@ impl JobError {
     }
 }
 
+impl JobError {
+    /// The backup waits for the archive that is still running.
+    #[must_use]
+    pub fn busy() -> Self {
+        Self {
+            cause: Cause::Busy,
+            detail: BUSY_MESSAGE.to_owned(),
+        }
+    }
+}
+
 impl std::fmt::Display for JobError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.detail)
@@ -265,7 +276,7 @@ impl MaintenanceOutcome {
                 message: ToastMessage::CrashedLastTime,
             }),
             Self::BackupFailed(JobError {
-                cause: Cause::Locked,
+                cause: Cause::Locked | Cause::Busy,
                 ..
             }) => None,
             Self::BackupFailed(JobError { cause, .. }) => Some(Toast {
@@ -475,6 +486,8 @@ fn trash_cutoff(now: Timestamp) -> Timestamp {
 
 /// The message of a deferred backup.
 const LOCKED_MESSAGE: &str = "library locked, backup deferred";
+/// The message of a backup deferred behind another archive.
+const BUSY_MESSAGE: &str = "another backup or export is running, backup deferred";
 
 /// `Err` when the library has a key ring that is locked: a backup now would leave out its
 /// sensitive items.
@@ -518,7 +531,7 @@ where
                 Ok(BackupResult::Started)
             }
             Begun::Finished(ArchiveEnd::Daily(done)) => done.map(BackupResult::from),
-            Begun::Refused | Begun::Finished(_) => Err(JobError::deferred()),
+            Begun::Refused | Begun::Finished(_) => Err(JobError::busy()),
         }
     }
 
@@ -602,17 +615,21 @@ pub fn spawn_backup<C, K, T>(
             let Some(controller) = controller.upgrade() else {
                 return;
             };
-            let mut controller = controller.borrow_mut();
-            if let ArchiveEnd::Daily(result) = controller.finish_archive(done) {
-                let outcomes = maintenance
-                    .borrow_mut()
-                    .backup_finished(result.map(BackupResult::from));
-                for outcome in outcomes {
-                    controller.report_maintenance(outcome);
+            {
+                let mut controller = controller.borrow_mut();
+                if let ArchiveEnd::Daily(result) = controller.finish_archive(done) {
+                    let outcomes = maintenance
+                        .borrow_mut()
+                        .backup_finished(result.map(BackupResult::from));
+                    for outcome in outcomes {
+                        controller.report_maintenance(outcome);
+                    }
                 }
             }
+            crate::binding::redraw_all();
         }),
     );
+    crate::binding::redraw_all();
 }
 
 #[cfg(test)]

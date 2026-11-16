@@ -205,6 +205,8 @@ pub struct Controller<S, C, K, T> {
     /// A sensitive Files item was pasted: its decrypted files wait in the temp folder until the
     /// lock or the quit deletes them.
     secret_files_pasted: bool,
+    /// A background deletion of those files was started (the lock): the quit waits for it.
+    secret_files_deleting: bool,
     /// When the decrypted files of that paste are deleted (the clipboard clear's timer); none
     /// when clearing is off, then the lock or the quit does it.
     secret_files_due: Option<Timestamp>,
@@ -496,6 +498,7 @@ where
             tz: TimeZone::system(),
             clipboard_clear: None,
             secret_files_pasted: false,
+            secret_files_deleting: false,
             secret_files_due: None,
             model,
             index_cache,

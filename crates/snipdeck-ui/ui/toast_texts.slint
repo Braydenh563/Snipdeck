@@ -247,6 +247,9 @@ export global ToastTexts {
     pure public function crashed-last-time() -> string {
         return @tr("Snipdeck closed unexpectedly last time. Open the log?");
     }
+    pure public function archive-busy() -> string {
+        return @tr("Another backup or export is still running. Try again when it has finished.");
+    }
     pure public function backup-made() -> string {
         return @tr("Backed up");
     }

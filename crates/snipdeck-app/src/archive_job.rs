@@ -68,14 +68,42 @@ pub enum Made {
     File,
 }
 
+/// Where a job reads the library from.
+#[derive(Debug)]
+pub(crate) enum Source {
+    /// A read-only view whose snapshot began when the step did (on the UI thread, so what is
+    /// written is the library as it was then, whatever is edited while the worker runs).
+    Reader(Box<Store>),
+    /// The view could not be made: the job fails with this.
+    Failed(JobError),
+    /// A library with no folder: the controller writes from its own store, in place.
+    InPlace,
+}
+
+impl Source {
+    /// A snapshot reader on the data folder `folder` (`None`: no folder).
+    pub(crate) fn open(folder: Option<&Path>, key: Option<DataKey>) -> Self {
+        let Some(folder) = folder else {
+            return Self::InPlace;
+        };
+        match Store::open_reader(folder, key)
+            .and_then(|reader| reader.begin_snapshot().map(|()| reader))
+        {
+            Ok(reader) => Self::Reader(Box::new(reader)),
+            Err(e) => Self::Failed(JobError {
+                cause: Cause::of_store(&e),
+                detail: e.to_string(),
+            }),
+        }
+    }
+}
+
 /// The slow half of one archive step. `Send`.
 #[derive(Debug)]
 pub struct ArchiveJob {
     pub(crate) op: ArchiveOp,
     pub(crate) work: Work,
-    /// The data folder the reader opens; `None` for a library with no folder.
-    pub(crate) folder: Option<PathBuf>,
-    pub(crate) key: Option<DataKey>,
+    pub(crate) source: Source,
 }
 
 /// What a job came to. `Send`.
@@ -111,20 +139,14 @@ fn failure(e: &snipdeck_portable::Error) -> JobError {
 
 impl ArchiveJob {
     /// Does the work on its own read-only view of the library: one snapshot, so what is written
-    /// is the library as it was when the job started.
+    /// is the library as it was when the step began.
     #[must_use]
-    pub fn run(mut self) -> ArchiveDone {
+    pub fn run(self) -> ArchiveDone {
         let op = self.op;
-        let key = self.key.take();
-        let made = match &self.folder {
-            Some(folder) => Store::open_reader(folder, key)
-                .and_then(|reader| reader.begin_snapshot().map(|()| reader))
-                .map_err(|e| JobError {
-                    cause: Cause::of_store(&e),
-                    detail: e.to_string(),
-                })
-                .and_then(|reader| self.run_on(&reader)),
-            None => Err(JobError::other("no data folder to read")),
+        let made = match &self.source {
+            Source::Reader(reader) => self.run_on(reader.as_ref()),
+            Source::Failed(e) => Err(e.clone()),
+            Source::InPlace => Err(JobError::other("no data folder to read")),
         };
         ArchiveDone { op, made }
     }
@@ -252,6 +274,40 @@ impl Offload for Threads {
 
 /// Runs `job`; a panic becomes a failed outcome, so the controller is never left busy for ever.
 fn guarded(job: ArchiveJob) -> ArchiveDone {
-    let op = job.op;
-    catch_unwind(AssertUnwindSafe(|| job.run())).unwrap_or_else(|_| ArchiveDone::failed(op))
+    guard(job.op, || job.run())
+}
+
+/// Runs `work`; a panic is logged with its message and becomes a failed outcome of `op`.
+pub(crate) fn guard(op: ArchiveOp, work: impl FnOnce() -> ArchiveDone) -> ArchiveDone {
+    catch_unwind(AssertUnwindSafe(work)).unwrap_or_else(|payload| {
+        let what = payload
+            .downcast_ref::<&str>()
+            .map(|s| (*s).to_owned())
+            .or_else(|| payload.downcast_ref::<String>().cloned())
+            .unwrap_or_else(|| "(no message)".to_owned());
+        crate::trace!("archive worker panicked ({op:?}): {what}");
+        ArchiveDone::failed(op)
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_panicking_worker_becomes_a_failed_outcome_of_its_step() {
+        for done in [
+            guard(ArchiveOp::Export, || panic!("boom")),
+            guard(ArchiveOp::Export, || panic!("{}", String::from("boom"))),
+            guard(ArchiveOp::Export, || std::panic::panic_any(7_u8)),
+        ] {
+            assert_eq!(done.op(), ArchiveOp::Export);
+            assert!(done.made.is_err());
+        }
+        let fine = guard(ArchiveOp::BackupNow, || ArchiveDone {
+            op: ArchiveOp::BackupNow,
+            made: Ok(Made::File),
+        });
+        assert!(fine.made.is_ok(), "no panic, no change");
+    }
 }

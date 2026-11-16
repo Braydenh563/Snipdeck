@@ -43,8 +43,18 @@ pub struct Store {
     /// Rows changed by "quiet" writes (a use counted, the Recent inbox), which are not part
     /// of [`ItemRepo::change_counter`](crate::ItemRepo::change_counter).
     pub(crate) quiet: Quiet,
+    /// While held, blob files an edit orphans are not deleted but queued here (with whether to
+    /// scrub them), so a reader's snapshot taken before the edit can still open them.
+    pub(crate) hold: BlobHold,
     // Last, so the database is closed before the lock is released.
     lock: Option<FolderLock>,
+}
+
+/// Blob releases deferred while a worker reads a snapshot ([`Store::hold_blob_release`]).
+#[derive(Debug, Default)]
+pub(crate) struct BlobHold {
+    on: bool,
+    queued: Vec<(BlobRef, bool)>,
 }
 
 /// The held single-writer lock of a data folder (`snipdeck.lock`).
@@ -199,6 +209,7 @@ impl Store {
             blobs: Blobs::on_disk(folder.join(BLOB_DIR)),
             key: None,
             quiet: Quiet::default(),
+            hold: BlobHold::default(),
             lock: None,
         })
     }
@@ -224,6 +235,7 @@ impl Store {
             blobs: Blobs::on_disk(folder.join(BLOB_DIR)),
             key,
             quiet: Quiet::default(),
+            hold: BlobHold::default(),
             lock: None,
         })
     }
@@ -276,6 +288,7 @@ impl Store {
             blobs: Blobs::in_memory(),
             key: None,
             quiet: Quiet::default(),
+            hold: BlobHold::default(),
             lock: None,
         })
     }
@@ -295,6 +308,11 @@ impl Store {
     /// blob that [`BlobStore::put`](crate::BlobStore::put) has written but the caller has not
     /// yet attached to an item (`put` refreshes the age of a blob it finds already stored).
     pub fn gc_blobs(&mut self, grace: Duration) -> Result<GcReport> {
+        if self.hold.on {
+            // A worker's snapshot may still name files the sweep would remove: the next sweep
+            // (or the end of the hold) collects them.
+            return Ok(GcReport::default());
+        }
         let referenced: HashSet<BlobRef> = blob_refs(
             &self.conn,
             "SELECT blob_hash FROM item_formats WHERE blob_hash IS NOT NULL
@@ -339,6 +357,22 @@ impl Store {
         Ok(report)
     }
 
+    /// Starts or ends a hold on deleting blob files. While held, files that edits orphan stay on
+    /// disk, so an archive worker reading a snapshot taken earlier never meets a missing file;
+    /// ending the hold releases what was queued. Returns how many files could not be deleted
+    /// then (left for [`Store::gc_blobs`]).
+    pub fn hold_blob_release(&mut self, hold: bool) -> usize {
+        self.hold.on = hold;
+        if hold {
+            return 0;
+        }
+        let queued = std::mem::take(&mut self.hold.queued);
+        let (scrubbed, plain): (Vec<_>, Vec<_>) = queued.into_iter().partition(|(_, s)| *s);
+        let scrubbed: Vec<BlobRef> = scrubbed.into_iter().map(|(b, _)| b).collect();
+        let plain: Vec<BlobRef> = plain.into_iter().map(|(b, _)| b).collect();
+        self.release_blobs(&scrubbed, true) + self.release_blobs(&plain, false)
+    }
+
     /// After a commit: deletes the blob files in `candidates` that no row references and that
     /// no `put` is still waiting to attach (review M3). With `scrub` (the blobs held plaintext
     /// of an item that is now sensitive) files are zeroed before they are deleted.
@@ -346,6 +380,12 @@ impl Store {
     /// Best effort (review M4): the change is committed, so a blob that cannot be checked or
     /// deleted now is left to [`Store::gc_blobs`], and the number left is returned for tests.
     pub(crate) fn release_blobs(&mut self, candidates: &[BlobRef], scrub: bool) -> usize {
+        if self.hold.on {
+            self.hold
+                .queued
+                .extend(candidates.iter().map(|b| (*b, scrub)));
+            return 0;
+        }
         let mut left = 0;
         for blob in candidates {
             if self.blobs.is_pending(blob) {
@@ -726,6 +766,22 @@ mod tests {
         FAIL_REMOVES.with(|f| f.set(false));
         assert_eq!(left, 1);
         assert_eq!(store.gc_blobs(Duration::ZERO).unwrap().blobs, 1);
+    }
+
+    #[test]
+    fn a_hold_keeps_orphaned_blobs_until_it_ends() {
+        let mut store = Store::open_in_memory().unwrap();
+        let content = store.put(vec![4; INLINE_LIMIT + 1]).unwrap();
+        let snipdeck_core::Content::Blob { blob, .. } = content else {
+            panic!()
+        };
+        store.blobs.attached([blob]);
+        store.hold_blob_release(true);
+        assert_eq!(store.release_blobs(&[blob], false), 0);
+        assert_eq!(store.gc_blobs(Duration::ZERO).unwrap().blobs, 0, "held");
+        assert!(store.blobs.list().unwrap().0.iter().any(|b| b.blob == blob));
+        assert_eq!(store.hold_blob_release(false), 0);
+        assert!(store.blobs.list().unwrap().0.is_empty(), "released");
     }
 
     #[test]

@@ -339,7 +339,7 @@ where
     /// comes back, nothing is removed.
     pub fn restore_backup(&mut self, backup_file: &Path) -> bool {
         // Without the key the backup's sensitive items cannot be read, and they would be dropped.
-        if self.copy_blocked_by_lock() {
+        if self.refuse_while_archiving() || self.copy_blocked_by_lock() {
             return false;
         }
         let source = ImportSource::Snipdeck(backup_file.to_path_buf());
@@ -372,7 +372,7 @@ where
     /// An encrypted library keeps its key: the fresh database gets the same key record and is
     /// opened with the key already in memory, so sensitive items survive the rebuild.
     pub fn begin_rebuild_from_backup(&mut self, data_dir: &Path, backup_file: &Path) -> Begun {
-        if self.archive_busy() || self.copy_blocked_by_lock() {
+        if self.refuse_archive() {
             return Begun::Refused;
         }
         let failed = |ctl: &mut Self| {
@@ -445,6 +445,18 @@ where
         // rare (the user must edit during the few seconds of the copy) and the swap that follows
         // is on this thread anyway. Blocking edits for the duration was the alternative; it
         // would have needed a guard on every write path.
+        // A password step is refused while a rebuild runs; if the key record moved anyway
+        // (another process, a bug), applying the old one would undo it: stop, change nothing.
+        let record_now = self.store.key_record().ok();
+        let unchanged = match (&carry, &record_now) {
+            (None, Some(None)) => true,
+            (Some(carry), Some(Some(now))) => carry.record == *now,
+            _ => false,
+        };
+        if !unchanged {
+            let _ = fs::remove_file(&salvage);
+            return failed(self);
+        }
         let salvaged = salvaged && (self.store.change_counter() == counter || self.recut(&salvage));
         let sensitive_before = self.sensitive_count();
         let outcome =
@@ -708,6 +720,9 @@ where
     /// Imports `source` for real, as previewed, and says how many items came in. Returns
     /// whether it worked.
     pub fn apply_import(&mut self, source: &ImportSource) -> bool {
+        if self.refuse_while_archiving() {
+            return false;
+        }
         // A `.snipdeck` file's sensitive items open with the library's key; locked, they would be
         // dropped.
         if matches!(source, ImportSource::Snipdeck(_)) && self.copy_blocked_by_lock() {

@@ -1338,6 +1338,45 @@ fn rebuilding_an_encrypted_library_keeps_its_sensitive_items_readable() {
 }
 
 // ---- Windows Hello unlock (v1.1 slice 8), against the fake Hello ---------------------------------
+#[test]
+fn a_password_step_is_refused_while_a_rebuild_is_salvaging() {
+    use snipdeck_app::controller::{ArchiveEnd, Begun};
+    let mut r = with_password();
+    let dir = r.data.path().to_path_buf();
+    assert!(r.ctl.backup_now(&dir));
+    let backup = snipdeck_portable::backup::list_backups(&dir)
+        .expect("list")
+        .into_iter()
+        .next()
+        .expect("a backup")
+        .path;
+    let Begun::Job(job) = r.ctl.begin_rebuild_from_backup(&dir, &backup) else {
+        panic!("the salvage goes to a worker");
+    };
+    let second = support::pw("second");
+    // The key record the rebuild captured must not change under it.
+    assert_eq!(
+        r.ctl.change_master_password(password(), second, second),
+        Err(MasterProblem::Failed)
+    );
+    assert_eq!(r.toast(), Some(ToastMessage::ArchiveBusy));
+    assert_eq!(
+        r.ctl.remove_master_password(password()),
+        Err(MasterProblem::Failed)
+    );
+    assert!(matches!(
+        r.ctl.finish_archive(job.run()),
+        ArchiveEnd::Rebuilt(true)
+    ));
+    // Afterwards the password is the one it was, and it can be changed.
+    r.ctl.lock_now();
+    r.ctl
+        .unlock_with_password(password())
+        .expect("still the old one");
+    r.ctl
+        .change_master_password(password(), second, second)
+        .expect("changed once the rebuild is over");
+}
 
 mod hello {
     use std::sync::Arc;

@@ -330,7 +330,7 @@ where
         new: &str,
         again: &str,
     ) -> Result<MasterJob, MasterProblem> {
-        self.check_idle()?;
+        self.check_idle_for_change()?;
         let provider = self.provider()?;
         if self.lock.set || self.lock.unreadable {
             return Err(MasterProblem::Failed);
@@ -372,7 +372,7 @@ where
         new: &str,
         again: &str,
     ) -> Result<MasterJob, MasterProblem> {
-        self.check_idle()?;
+        self.check_idle_for_change()?;
         let provider = self.check_can_change(current)?;
         master_password::check_new(new, again).map_err(MasterProblem::from)?;
         let record = self.stored_record()?;
@@ -398,7 +398,7 @@ where
         &mut self,
         current: &str,
     ) -> Result<MasterJob, MasterProblem> {
-        self.check_idle()?;
+        self.check_idle_for_change()?;
         let provider = self.check_can_change(current)?;
         let record = self.stored_record()?;
         let job = MasterJob::rekey(
@@ -520,6 +520,29 @@ where
 
     fn check_idle(&self) -> Result<(), MasterProblem> {
         if self.lock.busy.is_some() {
+            return Err(MasterProblem::Failed);
+        }
+        Ok(())
+    }
+
+    /// Whether a step that rewrites what an archive in progress is reading (a restore, an import,
+    /// a master password step) must wait. Raises the busy toast when so.
+    pub(super) fn refuse_while_archiving(&mut self) -> bool {
+        if self.archive.is_running() {
+            self.show_toast(Toast {
+                kind: ToastKind::Neutral,
+                message: ToastMessage::ArchiveBusy,
+            });
+            return true;
+        }
+        false
+    }
+
+    /// Like [`Self::check_idle`], and no archive is being written: a rebuild captures the key
+    /// record before its worker starts, so changing the password meanwhile would be undone.
+    fn check_idle_for_change(&mut self) -> Result<(), MasterProblem> {
+        self.check_idle()?;
+        if self.refuse_while_archiving() {
             return Err(MasterProblem::Failed);
         }
         Ok(())
