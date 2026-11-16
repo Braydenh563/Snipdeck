@@ -34,6 +34,12 @@ msgstr "150%"
 msgid "175 %"
 msgstr "175%"
 
+msgid "200 %"
+msgstr "200 %"
+
+msgid "225 %"
+msgstr "225 %"
+
 msgid "A PNG picture. Snipdeck keeps its own copy."
 msgstr "PNG 图片。Snipdeck 会保存自己的副本。"
 
@@ -55,8 +61,8 @@ msgstr "已开启主密码，敏感片段已锁定。"
 msgid "A master password is on. Snipdeck asks for it when you first use a sensitive item and again after {} minutes without use."
 msgstr "已开启主密码。首次使用敏感片段时，Snipdeck 会要求输入，此后若 {} 分钟未使用，再次使用时也会要求输入。"
 
-msgid "A master password locks the whole deck."
-msgstr "主密码可以锁定整个卡组。"
+msgid "A master password locks your sensitive items."
+msgstr "主密码可锁定你的敏感项目。"
 
 msgid "A new random ID each time"
 msgstr "每次生成新的随机ID"
@@ -127,11 +133,11 @@ msgstr "活动"
 msgid "Add"
 msgstr "添加"
 
-msgid "Add a snippet, or move items here from another list."
-msgstr "添加片段，或从其他列表移动到这里。"
+msgid "Add an item, or move items here from another list."
+msgstr "添加一个项目，或把其他列表中的项目移到这里。"
 
-msgid "Add a snippet… (Enter to save)"
-msgstr "添加片段…(按 Enter 保存)"
+msgid "Add an item… (Enter to save)"
+msgstr "添加项目…（按 Enter 保存）"
 
 msgid "Add list"
 msgstr "添加列表"
@@ -181,9 +187,6 @@ msgstr "所有片段"
 msgid "All {n} item moves to the Trash. You can restore it for {} days."
 msgid_plural "All {n} items move to the Trash. You can restore them for {} days."
 msgstr[0] "{n} 个项目将移入回收站。{} 天内可以恢复。"
-
-msgid "All {} recent copies are removed. This can't be undone."
-msgstr "将删除全部 {} 条最近复制的内容。此操作无法撤销。"
 
 msgid "Alpha"
 msgstr "透明度"
@@ -326,11 +329,11 @@ msgstr "亮度"
 msgid "Bring in items from a Snipdeck file or another clipboard manager. You see what will be added before anything is written."
 msgstr "从 Snipdeck 文件或其他剪贴板管理器导入片段。写入前可先查看将要添加的内容。"
 
-msgid "Bring up the panel, open the picker, save the clipboard or paste the next item from any app."
-msgstr "在任何应用中，都可以呼出面板、打开选择器、保存剪贴板内容或粘贴下一项。"
+msgid "Bring up the Panel, open the Picker, save the clipboard or paste the next item from any app."
+msgstr "在任何应用中呼出面板、打开选择器、保存剪贴板或粘贴下一项。"
 
-msgid "Brings the panel up beside the app you are working in."
-msgstr "在你正在使用的应用旁边显示面板。"
+msgid "Brings the Panel up beside the app you are working in."
+msgstr "把面板显示在你正在使用的应用旁边。"
 
 msgid "Browse for a file"
 msgstr "浏览文件"
@@ -398,6 +401,9 @@ msgstr "选择要导入的内容"
 msgid "Clear"
 msgstr "清除"
 
+msgid "Clear emoji and colours"
+msgstr "清除表情符号和颜色"
+
 msgid "Clear filter"
 msgstr "清除筛选"
 
@@ -415,9 +421,6 @@ msgstr "清空列表…"
 
 msgid "Clear recent emoji and colours"
 msgstr "清除最近使用的表情符号和颜色"
-
-msgid "Clear recent emoji and colours…"
-msgstr "清除最近使用的表情符号和颜色…"
 
 msgid "Clear recent history"
 msgstr "清除最近记录"
@@ -448,9 +451,6 @@ msgstr "先清除搜索，然后关闭"
 
 msgid "Clear the shortcut for {}"
 msgstr "清除 {} 的快捷键"
-
-msgid "Clear them"
-msgstr "清除"
 
 msgid "Click"
 msgstr "点击"
@@ -902,6 +902,9 @@ msgstr "已删除的片段会在这里保留 {} 天，之后才会被移除。"
 msgid "Deleted list “{}”"
 msgstr "已删除列表“{}”"
 
+msgid "Deleted the tag “{}”"
+msgstr "已删除标签“{}”"
+
 msgid "Deleted “{}”"
 msgstr "已删除：“{}”"
 
@@ -941,8 +944,8 @@ msgstr "停靠到右边缘"
 msgid "Dock to the top edge"
 msgstr "停靠到上边缘"
 
-msgid "Docked panel uses the full edge"
-msgstr "已停靠面板占满整条边"
+msgid "Docked Panel uses the full edge"
+msgstr "停靠的面板占满整条边"
 
 msgid "Docked to the right"
 msgstr "停靠在右侧"
@@ -1124,9 +1127,6 @@ msgstr "包含 .txt 和 .md 文件的文件夹"
 msgid "Follow Windows"
 msgstr "跟随 Windows"
 
-msgid "Follow Windows switches with your system setting."
-msgstr "跟随系统设置中的 Windows 主题。"
-
 msgid "Food & Drink"
 msgstr "食物与饮料"
 
@@ -1247,7 +1247,7 @@ msgstr "隐藏面板 ({})"
 msgid "Hide the Panel"
 msgstr "隐藏面板"
 
-msgid "Hide the panel when it loses focus"
+msgid "Hide the Panel when it loses focus"
 msgstr "失去焦点时隐藏面板"
 
 msgid "Hide title, colour, tags, trigger and privacy"
@@ -1271,11 +1271,11 @@ msgstr "悬停和点击"
 msgid "Hover delay"
 msgstr "悬停延迟"
 
-msgid "How long the pointer rests on the tab before the panel opens, from 0 to {} milliseconds."
-msgstr "指针在标签上停留多久后打开面板，0 到 {} 毫秒。"
+msgid "How long the pointer rests on the tab before the Panel opens, from 0 to {} milliseconds."
+msgstr "指针在标签上停留多久后面板打开，范围 0 到 {} 毫秒。"
 
-msgid "How long the pointer stays off the open panel before it tucks away, from 0 to {} milliseconds."
-msgstr "指针离开已打开的面板多久后收起，0 到 {} 毫秒。"
+msgid "How long the pointer stays off the open Panel before it tucks away, from 0 to {} milliseconds."
+msgstr "指针离开已打开的面板多久后面板收起，范围 0 到 {} 毫秒。"
 
 msgid "How tall the item rows are in the Main window lists. Compact shows one line per item."
 msgstr "主窗口列表中片段行的高度。紧凑模式每个片段显示一行。"
@@ -1283,8 +1283,8 @@ msgstr "主窗口列表中片段行的高度。紧凑模式每个片段显示一
 msgid "How the Panel lists your items: one per row, two per row as cards, or tight rows. A search shows rows in every layout."
 msgstr "面板列出项目的方式：每行一个、每行两个卡片，或紧凑的行。搜索时在任何布局下都显示为行。"
 
-msgid "How wide the panel opens, from {} to {} pixels."
-msgstr "面板展开的宽度，范围为 {} 至 {} 像素。"
+msgid "How wide the Panel opens, from {} to {} pixels."
+msgstr "面板打开的宽度，范围 {} 到 {} 像素。"
 
 msgid "Hue"
 msgstr "色相"
@@ -1344,6 +1344,10 @@ msgstr "插入建议的项目（仅限 Windows）"
 msgid "Insert {}"
 msgstr "插入 {}"
 
+msgid "It holds {n} item"
+msgid_plural "It holds {n} items"
+msgstr[0] "它有 {n} 个项目"
+
 msgid "It is removed from {n} item. The item stays."
 msgid_plural "It is removed from {n} items. The items stay."
 msgstr[0] "将从 {n} 个片段中移除。片段本身保留。"
@@ -1357,8 +1361,15 @@ msgstr "已固定"
 msgid "Item unpinned"
 msgstr "已取消固定"
 
+msgid "Items"
+msgstr "项目"
+
 msgid "Items are removed after {} days."
 msgstr "片段将在 {} 天后移除。"
+
+msgid "Its lists and {n} item move to the Trash. You can restore them for {} days."
+msgid_plural "Its lists and {n} items move to the Trash. You can restore them for {} days."
+msgstr[0] "它的列表和 {n} 个项目将移到回收站。你可以在 {} 天内恢复。"
 
 msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
 msgid_plural "Its lists and {n} items will move to Trash. You can restore them for 30 days."
@@ -1411,9 +1422,6 @@ msgstr "让机密保持机密"
 
 msgid "Keep the Panel open"
 msgstr "保持面板打开"
-
-msgid "Keep them"
-msgstr "保留"
 
 msgid "Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept."
 msgstr "保留你复制的文本，最多保留最近 {} 次复制或 {} 天，以先到者为准，方便你再次找到或保存到列表。敏感片段、密码管理器以及你排除的应用的内容不会被保留。"
@@ -1490,8 +1498,8 @@ msgstr "列表用来存放你的片段。"
 msgid "Loading"
 msgstr "正在加载"
 
-msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
-msgstr "日志只在 Snipdeck 崩溃时写入，不含片段内容，也不会发送到任何地方。"
+msgid "Logs are written when Snipdeck crashes, or when you turn on diagnostics yourself. They hold no item content and are never sent anywhere."
+msgstr "日志在 Snipdeck 崩溃时，或你自己开启诊断时写入。日志不含项目内容，也不会发送到任何地方。"
 
 msgid "Love"
 msgstr "爱"
@@ -1520,11 +1528,11 @@ msgstr "设为默认格式"
 msgid "Make it fit your screen"
 msgstr "适配你的屏幕"
 
-msgid "Make the panel narrower"
-msgstr "缩窄面板"
+msgid "Make the Panel narrower"
+msgstr "把面板变窄"
 
-msgid "Make the panel wider"
-msgstr "加宽面板"
+msgid "Make the Panel wider"
+msgstr "把面板变宽"
 
 msgid "Manage tags"
 msgstr "管理标签"
@@ -1723,8 +1731,14 @@ msgstr "没有与“{}”匹配的命令"
 msgid "No icon"
 msgstr "无图标"
 
+msgid "No item in this view carries the chosen colour label."
+msgstr "此视图中没有项目带有所选的颜色标签。"
+
 msgid "No items with this tag"
 msgstr "没有带此标签的片段"
+
+msgid "No items yet"
+msgstr "还没有项目"
 
 msgid "No label"
 msgstr "无标签"
@@ -1792,6 +1806,9 @@ msgstr "无法使用"
 msgid "Nothing copied yet"
 msgstr "尚未复制任何内容"
 
+msgid "Nothing has this label"
+msgstr "没有项目带此标签"
+
 msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
 msgstr "除非你选择“是”，否则不会保存任何内容，你也可以随时在设置中更改。“最近”只在此电脑上保存你复制的文本，保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感项目绝不会保存。"
 
@@ -1849,11 +1866,11 @@ msgstr "物体"
 msgid "Off"
 msgstr "关闭"
 
-msgid "Off keeps a panel docked to the left or right at the height you dropped it. On stretches it over the whole edge."
-msgstr "关闭：停靠在左侧或右侧的面板保持你放下时的高度。开启：面板占满整条边。"
+msgid "Off keeps a Panel docked to the left or right at the height you dropped it. On stretches it over the whole edge."
+msgstr "关闭时，停靠在左侧或右侧的面板保持你放下时的高度。开启时它会占满整条边。"
 
-msgid "Off: a docked panel does not tuck and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the panel shortcut opens it too."
-msgstr "关闭：停靠的面板不会收起，而是像浮动面板一样隐藏。否则它会收成边缘上的一条细标签，面板快捷键也能打开它。"
+msgid "Off: a docked Panel does not tuck and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the Panel shortcut opens it too."
+msgstr "关闭：停靠的面板不会收起，而是像浮动面板那样隐藏。否则它会收成边上的细标签，面板快捷键也能打开它。"
 
 msgid "On black"
 msgstr "在黑色上"
@@ -1873,9 +1890,6 @@ msgstr "只有文本、代码、链接和模板类型的片段可以设为敏感
 msgid "Only with Start with Windows: wait in the tray, or open the Panel as well."
 msgstr "仅在“随 Windows 启动”时：在托盘中等待，或同时打开面板。"
 
-msgid "Open"
-msgstr "打开"
-
 msgid "Open Panel"
 msgstr "打开面板"
 
@@ -1888,8 +1902,11 @@ msgstr "打开设置"
 msgid "Open Snipdeck"
 msgstr "打开 Snipdeck"
 
-msgid "Open a docked panel by"
-msgstr "展开已停靠面板的方式"
+msgid "Open Store page"
+msgstr "打开 Store 页面"
+
+msgid "Open a docked Panel by"
+msgstr "打开停靠的面板的方式"
 
 msgid "Open backups folder"
 msgstr "打开备份文件夹"
@@ -1897,11 +1914,26 @@ msgstr "打开备份文件夹"
 msgid "Open data folder"
 msgstr "打开数据文件夹"
 
+msgid "Open donation page"
+msgstr "打开捐赠页面"
+
+msgid "Open guide"
+msgstr "打开指南"
+
 msgid "Open in Colours"
 msgstr "在“颜色”中打开"
 
 msgid "Open logs folder"
 msgstr "打开日志文件夹"
+
+msgid "Open notices"
+msgstr "打开声明"
+
+msgid "Open releases page"
+msgstr "打开发布页面"
+
+msgid "Open source code"
+msgstr "打开源代码"
 
 msgid "Open the Colours list"
 msgstr "打开“颜色”列表"
@@ -1912,6 +1944,9 @@ msgstr "打开 Microsoft Store 页面"
 msgid "Open the Panel from anywhere"
 msgstr "随处打开面板"
 
+msgid "Open the Picker"
+msgstr "打开选择器"
+
 msgid "Open the Picker at your cursor"
 msgstr "在光标处打开选择器"
 
@@ -1920,9 +1955,6 @@ msgstr "在浏览器中打开“支持 Snipdeck”页面"
 
 msgid "Open the item's menu"
 msgstr "打开项目菜单"
-
-msgid "Open the picker"
-msgstr "打开选择器"
 
 msgid "Open the releases page"
 msgstr "打开发布页面"
@@ -2095,8 +2127,8 @@ msgstr "文件路径"
 msgid "Pause history"
 msgstr "暂停历史"
 
-msgid "Pause hotkeys"
-msgstr "暂停热键"
+msgid "Pause shortcuts"
+msgstr "暂停快捷键"
 
 msgid "Paused"
 msgstr "已暂停"
@@ -2113,8 +2145,8 @@ msgstr "从屏幕上取色"
 msgid "Pick a colour from the screen (Ctrl+I)"
 msgstr "从屏幕上取色（Ctrl+I）"
 
-msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
-msgstr "选择面板的位置。你可以随时在设置中更改，还可设置其他边缘、切换应用时隐藏以及任务栏按钮。"
+msgid "Pick how the Panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
+msgstr "选择面板的位置。你可以随时在设置中更改，也可设置其他边、切换应用时隐藏和任务栏按钮。"
 
 msgid "Pick one and it pastes where you were typing."
 msgstr "选择一项，它就会粘贴到你正在输入的位置。"
@@ -2146,8 +2178,8 @@ msgstr "置顶或取消置顶该片段"
 msgid "Pin selected item"
 msgstr "置顶所选片段"
 
-msgid "Pin the snippets you use most to keep them one click away."
-msgstr "将常用的片段置顶，即可一键直达。"
+msgid "Pin the items you use most to keep them one click away."
+msgstr "固定你最常用的项目，让它们一键可达。"
 
 msgid "Pin the snippets you use most; they stay at the top of the Panel."
 msgstr "置顶最常用的片段，它们会固定在面板顶部。"
@@ -2209,8 +2241,8 @@ msgstr "程序"
 msgid "Pull away from the edge to float."
 msgstr "拖离边缘可变为浮动。"
 
-msgid "Puts the panel at one edge of the screen, on the monitor it is on. Dragging it to an edge and holding it there does the same. Floating lets it sit anywhere."
-msgstr "把面板放到它所在显示器的屏幕一侧边缘。把它拖到边缘并停住也一样。浮动则可放在任意位置。"
+msgid "Puts the Panel at one edge of the screen, on the monitor it is on. Dragging it to an edge and holding it there does the same. Floating lets it sit anywhere."
+msgstr "把面板放在屏幕的一条边上，位于它所在的显示器。把它拖到边上并停住也一样。浮动则可放在任何位置。"
 
 msgid "Quick capture"
 msgstr "快速捕获"
@@ -2448,6 +2480,9 @@ msgstr "已保存 {}"
 msgid "Saved {}."
 msgstr "已保存 {}。"
 
+msgid "Saved {}: {} of {} items. Sensitive items and items with no text are left out."
+msgstr "已保存 {}：{} / {} 个项目。敏感项目和没有文本的项目不包含在内。"
+
 msgid "Saved. This trigger overlaps another trigger, so one of them may never fire."
 msgstr "已保存。此触发词与另一个触发词重叠，其中一个可能永远不会触发。"
 
@@ -2457,8 +2492,8 @@ msgstr "已保存。此触发词与“{}”的触发词重叠，其中一个可�
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "将所有看板、列表和片段保存为一个 .snipdeck 文件，存放在你选择的文件夹中。"
 
-msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows."
-msgstr "将你按下时剪贴板中的文本，作为新片段保存到面板当前显示的列表中。"
+msgid "Saves the text that is on the clipboard when you press it as a new item in the list the Panel shows."
+msgstr "把你按下时剪贴板里的文本，保存为面板所显示列表中的新项目。"
 
 msgid "Saving changed text removes the formatting."
 msgstr "保存修改后的文本会清除格式。"
@@ -2501,6 +2536,9 @@ msgstr "搜索框"
 
 msgid "Search in"
 msgstr "搜索范围"
+
+msgid "Search items"
+msgstr "搜索项目"
 
 msgid "Search results"
 msgstr "搜索结果"
@@ -2598,6 +2636,9 @@ msgstr "Shift F10"
 msgid "Shift+Insert"
 msgstr "Shift+Insert"
 
+msgid "Short tips"
+msgstr "简短提示"
+
 msgid "Shortcuts"
 msgstr "快捷键"
 
@@ -2635,9 +2676,6 @@ msgid "Show or hide sidebar"
 msgstr "显示或隐藏侧边栏"
 
 msgid "Show or hide the Panel"
-msgstr "显示或隐藏面板"
-
-msgid "Show or hide the panel"
 msgstr "显示或隐藏面板"
 
 msgid "Show or hide the sidebar"
@@ -2862,8 +2900,16 @@ msgstr "选项卡把看板的每个列表放在标题下的一行。“菜单”
 msgid "Tag"
 msgstr "标签"
 
-msgid "Tag a snippet to see it here."
-msgstr "为片段添加标签后，即可在这里看到。"
+msgid "Tag added to {} item"
+msgid_plural "Tag added to {} items"
+msgstr[0] "已为 {} 个项目添加标签"
+
+msgid "Tag an item to see it here."
+msgstr "给项目加上标签，就能在这里看到它。"
+
+msgid "Tag removed from {} item"
+msgid_plural "Tag removed from {} items"
+msgstr[0] "已从 {} 个项目移除标签"
 
 msgid "Tags"
 msgstr "标签"
@@ -2874,8 +2920,8 @@ msgstr "标签…"
 msgid "Take screenshot"
 msgstr "截图"
 
-msgid "Take screenshot hides the panel until the picture is taken. Turn this on to leave it on screen."
-msgstr "“截图”会先隐藏面板，直到截好图。打开此项可让面板保持显示。"
+msgid "Take screenshot hides the Panel until the picture is taken. Turn this on to leave it on screen."
+msgstr "“截图”会先隐藏面板，直到截好图。开启此项可让它留在屏幕上。"
 
 msgid "Takes effect the next time Snipdeck starts."
 msgstr "下次启动 Snipdeck 时生效。"
@@ -2891,9 +2937,6 @@ msgstr "模板文本"
 
 msgid "Templates ask for names, dates and options before they paste."
 msgstr "模板会在粘贴前询问姓名、日期和选项。"
-
-msgid "Ten short tips"
-msgstr "十条简短提示"
 
 msgid "Test"
 msgstr "测试"
@@ -2973,6 +3016,12 @@ msgstr "该文本太大，无法保存。"
 msgid "That was the last one. Paste next starts again from the first."
 msgstr "这是最后一项。再次粘贴将从第一项重新开始。"
 
+msgid "The Panel"
+msgstr "面板"
+
+msgid "The Picker"
+msgstr "选择器"
+
 msgid "The Trash is empty"
 msgstr "回收站为空"
 
@@ -2997,29 +3046,28 @@ msgstr "无法解锁或更改资料库。未做任何更改。"
 msgid "The licences of the libraries Snipdeck is built from."
 msgstr "构成 Snipdeck 的库的许可证。"
 
+msgid "The list and its {n} item move to the Trash. You can restore them for {} days."
+msgid_plural "The list and its {n} items move to the Trash. You can restore them for {} days."
+msgstr[0] "该列表和它的 {n} 个项目将移到回收站。你可以在 {} 天内恢复。"
+
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "该列表及其中的 {} 个片段将移至回收站。你可以在 {} 天内恢复它们。"
 
 msgid "The list holds at most {} programs."
 msgstr "列表最多可包含 {} 个程序。"
 
-msgid "The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
-msgstr "最新备份来自 {}，包含 {} 个看板上的 {} 项内容。当前数据库会被另行保存，不会被删除。此备份之后添加的内容，能读取的会被恢复。"
+msgid "The newest backup is from {}."
+msgstr "最新的备份来自 {}。"
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "超过此数量后，最旧的备份会被删除。"
 
-msgid "The panel"
-msgstr "面板"
-
-msgid "The picker"
-msgstr "选择器"
-
 msgid "The report holds versions and settings switches, never your items."
 msgstr "报告只包含版本和设置开关,绝不包含你的条目。"
 
-msgid "The selected items are deleted for good. This can't be undone."
-msgstr "所选片段将被永久删除，此操作无法撤销。"
+msgid "The selected item is deleted for good. This can't be undone."
+msgid_plural "The selected items are deleted for good. This can't be undone."
+msgstr[0] "所选项目将被永久删除。此操作无法撤销。"
 
 msgid "The sensitive item \"{}\" cannot be unlocked with this computer's key and was skipped."
 msgstr "无法使用本电脑的密钥打开敏感片段“{}”，已跳过。"
@@ -3038,6 +3086,10 @@ msgstr "当前时间"
 
 msgid "The two passwords are not the same."
 msgstr "两次输入的密码不一致。"
+
+msgid "The {n} recent copy is removed. This can't be undone."
+msgid_plural "All {n} recent copies are removed. This can't be undone."
+msgstr[0] "将移除 {n} 条最近的复制。此操作无法撤销。"
 
 msgid "Theme"
 msgstr "主题"
@@ -3110,6 +3162,9 @@ msgstr "此文本为 {}。超过 16 KB 的内容将在此以只读方式打开�
 
 msgid "Tile view"
 msgstr "平铺视图"
+
+msgid "Tile view is not available while the list has groups"
+msgstr "列表有分组时，平铺视图不可用"
 
 msgid "Tints & shades"
 msgstr "明暗层次"
@@ -3366,8 +3421,8 @@ msgstr "色轮"
 msgid "When Windows starts"
 msgstr "Windows 启动时"
 
-msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel that tucks goes to its tab instead."
-msgstr "图钉关闭时，切换到其他应用后面板会立即隐藏。已固定的面板不会隐藏，会收起的停靠面板则收成标签。"
+msgid "When the pin is off, the Panel hides as soon as you switch to another app. A pinned Panel stays, and a docked Panel that tucks goes to its tab instead."
+msgstr "关闭固定时，一切换到其他应用面板就会隐藏。固定的面板会留下，会收起的停靠面板则回到它的标签。"
 
 msgid "When you type an item's trigger in another program, Snipdeck replaces it with the item's text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items."
 msgstr "在其他程序中输入项目的触发词时，Snipdeck 会将其替换为该项目的文本。为此 Snipdeck 会监视你按下的按键，只在内存中保留最后几个字符，绝不写入磁盘。\n在密码框、设为“从不粘贴”的程序、以管理员身份运行的程序、Snipdeck 位于前台时以及敏感项目中不会展开。"
@@ -3375,7 +3430,7 @@ msgstr "在其他程序中输入项目的触发词时，Snipdeck 会将其替换
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "通过快捷键或托盘显示面板时，面板出现的位置。应用没有文本光标时，“文本光标处”会改用鼠标位置。"
 
-msgid "Where the panel sits"
+msgid "Where the Panel sits"
 msgstr "面板的位置"
 
 msgid "Where the text cursor lands after pasting"
@@ -3432,6 +3487,9 @@ msgstr "Windows 不允许 Snipdeck 读取这台电脑上的剪贴板历史记录
 msgid "Windows doesn't allow {} as a shortcut."
 msgstr "Windows 不允许将 {} 用作快捷键。"
 
+msgid "Windows follows your Windows light or dark setting."
+msgstr "Windows 跟随你的 Windows 浅色或深色设置。"
+
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows 跟随你的 Windows 文字大小（设置 > 辅助功能 > 文字大小）。选择一个大小即可改用该大小。"
 
@@ -3449,6 +3507,9 @@ msgstr "是"
 
 msgid "Your Windows Hello PIN, face or fingerprint changed. Unlock with your password once to set Windows Hello up again."
 msgstr "你的 Windows Hello PIN、面部或指纹已更改。请先用密码解锁一次，以重新设置 Windows Hello。"
+
+msgid "Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
+msgstr "你当前的数据库会被放在一旁，不会删除。此备份之后添加的项目会在可读取的范围内恢复。"
 
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, backups (as many as you choose to keep) and logs."
 msgstr "你的资料库位于一个文件夹 %LOCALAPPDATA%\\Snipdeck 中：snipdeck.db（看板、列表、项目、标签和回收站）、blobs（图片、文件和长文本）、settings.json、backups（保留你选定的份数）和 logs。"
@@ -3665,6 +3726,10 @@ msgstr "快捷键 键位 速查表 按键绑定 组合键"
 msgid "https://example.com"
 msgstr "https://example.com"
 
+msgid "in {n} list"
+msgid_plural "in {n} lists"
+msgstr[0] "在 {n} 个列表中"
+
 msgid "label: {}"
 msgstr "标签：{}"
 
@@ -3697,6 +3762,10 @@ msgstr "无相近名称"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"
+
+msgid "on {n} board."
+msgid_plural "on {n} boards."
+msgstr[0] "在 {n} 个看板上。"
 
 msgid "one of d, w, mo, y, h, min"
 msgstr "d、w、mo、y、h、min 之一"
@@ -3816,6 +3885,10 @@ msgid "{n} item"
 msgid_plural "{n} items"
 msgstr[0] "{n} 个片段"
 
+msgid "{n} item will be added"
+msgid_plural "{n} items will be added"
+msgstr[0] "将添加 {n} 个项目"
+
 msgid "{n} item will move to Trash with it. You can restore them for 30 days."
 msgid_plural "{n} items will move to Trash with it. You can restore them for 30 days."
 msgstr[0] "{n} 个片段将一同移至回收站。你可以在 30 天内恢复它们。"
@@ -3829,6 +3902,12 @@ msgstr "{}"
 
 msgid "{} (Enter)"
 msgstr "{}（Enter）"
+
+msgid "{} - Snipdeck"
+msgstr "{} - Snipdeck"
+
+msgid "{} - {} - Snipdeck"
+msgstr "{} - {} - Snipdeck"
 
 msgid "{} KB"
 msgstr "{} KB"
@@ -3916,10 +3995,6 @@ msgstr[0] "{} 项"
 msgid "{} item had a title or source app longer than {} or {} characters, and it was cut."
 msgid_plural "{} items had a title or source app longer than {} or {} characters, and it was cut."
 msgstr[0] "有 {} 个项目的标题或来源应用超过 {} 或 {} 个字符，已截断。"
-
-msgid "{} item in {} list will be added"
-msgid_plural "{} items in {} lists will be added"
-msgstr[0] "将添加 {} 个片段，共 {} 个列表"
 
 msgid "{} item that is not text (a picture or file) was skipped."
 msgid_plural "{} items that are not text (pictures or files) were skipped."

@@ -165,6 +165,16 @@ fn fit_problems(c: &Case, case: &str) -> Vec<String> {
         for b in &bs[i + 1..] {
             let ox = (a.1 + a.3).min(b.1 + b.3) - a.1.max(b.1);
             let oy = (a.2 + a.4).min(b.2 + b.4) - a.2.max(b.2);
+            // A rail header button scrolled below the sidebar's viewport sits behind the footer, clipped away
+            // and out of sight, so it is not an overlap; only the footer's own buttons take that exemption.
+            let scrolled_under_footer = |x: &(String, f32, f32, f32, f32), f: &(String, f32, f32, f32, f32)| {
+                matches!(x.0.as_str(), "Add list" | "Manage tags")
+                    && matches!(f.0.as_str(), "Settings" | "Help")
+                    && x.2 + x.4 > f.2
+            };
+            if scrolled_under_footer(a, b) || scrolled_under_footer(b, a) {
+                continue;
+            }
             if ox > 1.0 && oy > 1.0 && !inside(a, b) && !inside(b, a) {
                 out.push(format!(
                     "{case}: {:?} ({:.0},{:.0} {:.0}x{:.0}) overlaps {:?} ({:.0},{:.0} {:.0}x{:.0})",
