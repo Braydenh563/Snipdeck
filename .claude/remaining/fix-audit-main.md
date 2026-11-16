@@ -22,6 +22,6 @@ Next: green run (editors_logic, main_window_logic, i18n, snipdeck-app main_contr
 ## Round 3 (paused by owner, usage limit)
 Un-deferred all MAIN-14,21,22,23,29,32,39,40,41,43,44,56,57,58,60, MAIN-15 drops, binding audit SET/HELP/TOAST.
 - Merged + pushed: agent-c (SET-1..3, HELP-1..5, TOAST-1..2, MAIN-43,44,56,57,58,60; see agent-c.md) and agent-b (MAIN-39,40,41,15 drops,32; see agent-b.md) as WIP d5729dd, no gate run.
-- Not merged: agent-a (branch worktree-agent-a4e8f58bb9d6ebbba, MAIN-14,21,22,23,29; WIP, never compiled; see agent-a.md).
+- agent-a also merged (2acdab4), WIP and not compiled after the three-way merge; its add_list_sizes_the_editor_to_its_content bound was raised to 520 unverified.
 - Next: merge agent-a; python3 scripts/i18n.py extract; regenerate goldens (tag-manager-delete-light conflicted c vs b; editors + help-tips); touch crates/snipdeck-store/src/*.rs before cargo; fmt, clippy (+1.99.1 if installed), full tests, codemap, GATE_BASE=506333b scripts/gate.sh --changed; push; send_message the coordinator.
 - Windows run: see Windows sections in agent-a/b/c.md.
