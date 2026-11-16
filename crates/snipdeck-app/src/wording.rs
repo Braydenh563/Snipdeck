@@ -353,6 +353,13 @@ where
         ToastMessage::BoardSaved => t.invoke_board_saved(),
         ToastMessage::RecentDeleted => t.invoke_recent_deleted(),
         ToastMessage::RecentCleared => t.invoke_recent_cleared(),
+        ToastMessage::ExportedSome {
+            file,
+            written,
+            total,
+        } => t.invoke_exported_some(file.into(), count(*written), count(*total)),
+        ToastMessage::ItemsTagged { count: n, added } => t.invoke_items_tagged(count(*n), *added),
+        ToastMessage::TagDeleted { name } => t.invoke_tag_deleted(name.into()),
         ToastMessage::PickerRecentsCleared => t.invoke_picker_recents_cleared(),
         ToastMessage::DockSet(edge) => t.invoke_dock_set(match edge {
             None => 0,

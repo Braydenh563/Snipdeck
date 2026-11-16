@@ -689,7 +689,7 @@ mod tests {
     fn unset_shortcuts_warn_and_open_settings() {
         let some = only(
             &Fake {
-                unset: vec!["Open the picker".into()],
+                unset: vec!["Open the Picker".into()],
                 ..Fake::default()
             },
             "Shortcuts",
@@ -698,7 +698,7 @@ mod tests {
             (some.status, some.fix),
             (Status::Warn, Some(Fix::OpenSettings))
         );
-        assert!(some.detail.contains("Open the picker"));
+        assert!(some.detail.contains("Open the Picker"));
         let all = only(
             &Fake {
                 unset: vec!["a".into(), "b".into(), "c".into(), "d".into()],

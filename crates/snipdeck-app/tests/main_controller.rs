@@ -2359,3 +2359,51 @@ fn the_panel_list_menu_sorts_and_a_panel_drag_in_a_sorted_list_offers_manual() {
     assert!(ctl.view().rows_reorderable);
     assert_eq!(ctl.store().list(list).unwrap().sort, ListSort::Manual);
 }
+
+/// MAIN-25: a text export that leaves items out says how many were written.
+#[test]
+fn an_export_that_leaves_sensitive_items_out_says_how_many_were_written() {
+    let mut ctl = seeded();
+    let screen = ctl.main_screen();
+    let with_secret = (0..screen.lists.len())
+        .find(|&i| {
+            ctl.store()
+                .items(screen.lists[i].id)
+                .unwrap()
+                .iter()
+                .any(|item| item.sensitive)
+        })
+        .expect("the demo library has a list with a sensitive item");
+    let dir = tempfile::tempdir().expect("dir");
+    ctl.main_export_list(with_secret, dir.path())
+        .expect("a file");
+    match message(&ctl.main_screen()) {
+        ToastMessage::ExportedSome { written, total, .. } => assert!(written < total),
+        other => panic!("expected a partial export toast, got {other:?}"),
+    }
+}
+
+/// MAIN-24: ticking a tag on several selected rows says how many changed; a tag delete says which.
+#[test]
+fn a_tag_on_several_rows_and_a_tag_delete_are_announced() {
+    let mut ctl = rig_with_tags();
+    ctl.main_select(0, SelectMode::Replace);
+    ctl.main_select(2, SelectMode::Extend);
+    ctl.main_action(MainAction::Tag, 0);
+    ctl.main_toggle_tag(0, true);
+    match toast_message(&mut ctl) {
+        Some(ToastMessage::ItemsTagged { count, added: true }) => assert_eq!(count, 3),
+        other => panic!("expected an ItemsTagged toast, got {other:?}"),
+    }
+    ctl.main_toggle_tag(0, false);
+    assert!(matches!(
+        toast_message(&mut ctl),
+        Some(ToastMessage::ItemsTagged { added: false, .. })
+    ));
+    let name = tag_names(&mut ctl)[0].clone();
+    ctl.main_delete_tag(0);
+    match toast_message(&mut ctl) {
+        Some(ToastMessage::TagDeleted { name: said }) => assert_eq!(said, name),
+        other => panic!("expected a TagDeleted toast, got {other:?}"),
+    }
+}

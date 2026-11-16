@@ -462,15 +462,15 @@ export component SettingsPage inherits Window {
     callback help-requested();
 
     property <[string]> hotkey-names: [
-        @tr("Show or hide the panel"),
-        @tr("Open the picker"),
+        @tr("Show or hide the Panel"),
+        @tr("Open the Picker"),
         @tr("Save the clipboard as an item"),
         @tr("Paste the next item"),
     ];
     property <[string]> hotkey-help: [
-        @tr("Brings the panel up beside the app you are working in."),
+        @tr("Brings the Panel up beside the app you are working in."),
         @tr("Search every board and paste without opening the window."),
-        @tr("Saves the text that is on the clipboard when you press it as a new item in the list the panel shows."),
+        @tr("Saves the text that is on the clipboard when you press it as a new item in the list the Panel shows."),
         @tr("Pastes the next item of the list in order."),
     ];
 
@@ -478,11 +478,11 @@ export component SettingsPage inherits Window {
     // Titles of section 0 (Shortcuts), for the search. A test checks that every row title is in here.
     property <string> keys-0: @tr("Shortcuts") + " " + root.hotkey-names-text;
     // Titles of section 1 (Appearance), for the search. A test checks that every row title is in here.
-    property <string> keys-1: @tr("Appearance") + " " + @tr("Theme") + " " + @tr("Main list density") + " " + @tr("Accent colour") + " " + @tr("Text size") + " " + @tr("Language") + " " + @tr("Reduce motion") + " " + @tr("Panel width");
+    property <string> keys-1: @tr("Appearance") + " " + @tr("Theme") + " " + @tr("Main list density") + " " + @tr("Accent colour") + " " + @tr("Text size") + " " + @tr("Language") + " " + @tr("Reduce motion");
     // Titles of section 2 (Panel layout), for the search. A test checks that every row title is in here.
-    property <string> keys-2: @tr("Panel layout") + " " + @tr("Layout") + " " + @tr("Search field") + " " + @tr("Lists") + " " + @tr("Quick-use numbers") + " " + @tr("Show Symbols tab") + " " + @tr("Show Colours tab") + " " + @tr("Copy a colour picked from the screen");
+    property <string> keys-2: @tr("Panel layout") + " " + @tr("Panel width") + " " + @tr("Layout") + " " + @tr("Search field") + " " + @tr("Lists") + " " + @tr("Quick-use numbers") + " " + @tr("Show Symbols tab") + " " + @tr("Show Colours tab") + " " + @tr("Copy a colour picked from the screen");
     // Titles of section 3 (Opening the Panel), for the search. A test checks that every row title is in here.
-    property <string> keys-3: @tr("Opening the Panel") + " " + @tr("Tray icon click opens") + " " + @tr("Panel opens") + " " + @tr("After a paste or copy") + " " + @tr("Hide the panel when it loses focus") + " " + @tr("Show the Panel in the taskbar and Alt+Tab") + " " + @tr("Keep Panel visible during screenshots") + " " + @tr("Dock to") + " " + @tr("Docked panel uses the full edge") + " " + @tr("Open a docked panel by") + " " + @tr("Hover delay") + " " + @tr("Leave delay") + " " + @tr("Picker position") + " " + @tr("Start with Windows") + " " + @tr("When Windows starts") + " " + @tr("Keep running in the tray when the window closes");
+    property <string> keys-3: @tr("Opening the Panel") + " " + @tr("Tray icon click opens") + " " + @tr("Panel opens") + " " + @tr("After a paste or copy") + " " + @tr("Hide the Panel when it loses focus") + " " + @tr("Show the Panel in the taskbar and Alt+Tab") + " " + @tr("Keep Panel visible during screenshots") + " " + @tr("Dock to") + " " + @tr("Docked Panel uses the full edge") + " " + @tr("Open a docked Panel by") + " " + @tr("Hover delay") + " " + @tr("Leave delay") + " " + @tr("Picker position") + " " + @tr("Start with Windows") + " " + @tr("When Windows starts") + " " + @tr("Keep running in the tray when the window closes");
     // Titles of section 4 (Privacy), for the search. A test checks that every row title is in here.
     property <string> keys-4: @tr("Privacy") + " " + @tr("fingerprint face PIN biometric lock") + " " + @tr("Keep a Recent inbox of what you copy") + " " + @tr("Clear recent history") + " " + @tr("Clear recent emoji and colours") + " " + @tr("Clear the clipboard after copying a sensitive item") + " " + @tr("Master password") + " " + @tr("Unlock with Windows Hello");
     // Titles of section 5 (Programs), for the search. A test checks that every row title is in here.
@@ -552,6 +552,14 @@ export component SettingsPage inherits Window {
                     root.import-cancelled();
                 } else if (root.import-choosing) {
                     root.import-choosing = false;
+                } else if (root.erase-open) {
+                    // Esc closes the innermost open form first, and keeps nothing typed in it (MAIN-38).
+                    root.close-erase();
+                } else if (root.master-mode != MasterMode.closed && !root.master-busy) {
+                    root.close-master();
+                } else if (root.clear-recent-ask || root.picker-recents-asking) {
+                    root.clear-recent-ask = false;
+                    root.picker-recents-asking = false;
                 } else {
                     root.close-requested();
                 }
@@ -662,7 +670,7 @@ export component SettingsPage inherits Window {
                     located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     SettingRow {
                         title: @tr("Theme");
-                        description: @tr("Follow Windows switches with your system setting.");
+                        description: @tr("Windows follows your Windows light or dark setting.");
                         Segmented {
                             width: 260px * SystemLook.text-scale;
                             label: @tr("Theme");
@@ -708,7 +716,7 @@ export component SettingsPage inherits Window {
                         SelectField {
                             width: 200px * SystemLook.text-scale;
                             label: @tr("Text size");
-                            options: [@tr("Windows"), @tr("100 %"), @tr("125 %"), @tr("150 %"), @tr("175 %")];
+                            options: [@tr("Windows"), @tr("100 %"), @tr("125 %"), @tr("150 %"), @tr("175 %"), @tr("200 %"), @tr("225 %")];
                             current: root.text-size-index;
                             chosen(i) => { root.text-size-chosen(i); }
                             changed has-focus => {
@@ -742,13 +750,21 @@ export component SettingsPage inherits Window {
                             }
                         }
                     }
+                }
+
+                FormSection {
+                    title: @tr("Panel layout");
+                    index: 2;
+                    gap: Space.s6;
+                    search-text: root.keys-2;
+                    located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     SettingRow {
                         title: @tr("Panel width");
-                        description: @tr("How wide the panel opens, from {} to {} pixels.", root.panel-width-min, root.panel-width-max);
+                        description: @tr("How wide the Panel opens, from {} to {} pixels.", root.panel-width-min, root.panel-width-max);
                         NumberStepper {
                             label: @tr("Panel width");
-                            decrease-label: @tr("Make the panel narrower");
-                            increase-label: @tr("Make the panel wider");
+                            decrease-label: @tr("Make the Panel narrower");
+                            increase-label: @tr("Make the Panel wider");
                             unit: @tr("px");
                             min: root.panel-width-min;
                             max: root.panel-width-max;
@@ -760,14 +776,6 @@ export component SettingsPage inherits Window {
                             }
                         }
                     }
-                }
-
-                FormSection {
-                    title: @tr("Panel layout");
-                    index: 2;
-                    gap: Space.s6;
-                    search-text: root.keys-2;
-                    located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     SettingRow {
                         title: @tr("Layout");
                         description: @tr("How the Panel lists your items: one per row, two per row as cards, or tight rows. A search shows rows in every layout.");
@@ -912,10 +920,10 @@ export component SettingsPage inherits Window {
                         }
                     }
                     SettingRow {
-                        title: @tr("Hide the panel when it loses focus");
-                        description: @tr("When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel that tucks goes to its tab instead.");
+                        title: @tr("Hide the Panel when it loses focus");
+                        description: @tr("When the pin is off, the Panel hides as soon as you switch to another app. A pinned Panel stays, and a docked Panel that tucks goes to its tab instead.");
                         Toggle {
-                            a11y-label: @tr("Hide the panel when it loses focus");
+                            a11y-label: @tr("Hide the Panel when it loses focus");
                             checked <=> root.panel-hide-on-blur;
                             toggled(on) => { root.panel-hide-on-blur-toggled(on); }
                             changed has-focus => {
@@ -937,7 +945,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Keep Panel visible during screenshots");
-                        description: @tr("Take screenshot hides the panel until the picture is taken. Turn this on to leave it on screen.");
+                        description: @tr("Take screenshot hides the Panel until the picture is taken. Turn this on to leave it on screen.");
                         Toggle {
                             a11y-label: @tr("Keep Panel visible during screenshots");
                             checked <=> root.screenshot-keep-panel;
@@ -949,7 +957,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Dock to");
-                        description: @tr("Puts the panel at one edge of the screen, on the monitor it is on. Dragging it to an edge and holding it there does the same. Floating lets it sit anywhere.");
+                        description: @tr("Puts the Panel at one edge of the screen, on the monitor it is on. Dragging it to an edge and holding it there does the same. Floating lets it sit anywhere.");
                         SelectField {
                             width: 200px * SystemLook.text-scale;
                             label: @tr("Dock to");
@@ -962,10 +970,10 @@ export component SettingsPage inherits Window {
                         }
                     }
                     SettingRow {
-                        title: @tr("Docked panel uses the full edge");
-                        description: @tr("Off keeps a panel docked to the left or right at the height you dropped it. On stretches it over the whole edge.");
+                        title: @tr("Docked Panel uses the full edge");
+                        description: @tr("Off keeps a Panel docked to the left or right at the height you dropped it. On stretches it over the whole edge.");
                         Toggle {
-                            a11y-label: @tr("Docked panel uses the full edge");
+                            a11y-label: @tr("Docked Panel uses the full edge");
                             checked <=> root.dock-full-edge;
                             toggled(on) => { root.dock-full-edge-toggled(on); }
                             changed has-focus => {
@@ -974,11 +982,11 @@ export component SettingsPage inherits Window {
                         }
                     }
                     SettingRow {
-                        title: @tr("Open a docked panel by");
-                        description: @tr("Off: a docked panel does not tuck and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the panel shortcut opens it too.");
+                        title: @tr("Open a docked Panel by");
+                        description: @tr("Off: a docked Panel does not tuck and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the Panel shortcut opens it too.");
                         Segmented {
                             width: 360px * SystemLook.text-scale;
-                            label: @tr("Open a docked panel by");
+                            label: @tr("Open a docked Panel by");
                             options: [@tr("Off"), @tr("Hover"), @tr("Click"), @tr("Hover and click")];
                             current: root.dock-trigger-index;
                             chosen(i) => { root.dock-trigger-chosen(i); }
@@ -989,7 +997,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Hover delay");
-                        description: @tr("How long the pointer rests on the tab before the panel opens, from 0 to {} milliseconds.", root.dock-hover-delay-max);
+                        description: @tr("How long the pointer rests on the tab before the Panel opens, from 0 to {} milliseconds.", root.dock-hover-delay-max);
                         NumberStepper {
                             label: @tr("Hover delay");
                             decrease-label: @tr("Shorten the hover delay");
@@ -1007,7 +1015,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Leave delay");
-                        description: @tr("How long the pointer stays off the open panel before it tucks away, from 0 to {} milliseconds.", root.dock-leave-delay-max);
+                        description: @tr("How long the pointer stays off the open Panel before it tucks away, from 0 to {} milliseconds.", root.dock-leave-delay-max);
                         NumberStepper {
                             label: @tr("Leave delay");
                             decrease-label: @tr("Shorten the leave delay");
@@ -1136,7 +1144,7 @@ export component SettingsPage inherits Window {
                             spacing: Space.s2;
                             alignment: end;
                             if !root.picker-recents-asking: Button {
-                                text: @tr("Clear recent emoji and colours…");
+                                text: @tr("Clear recent emoji and colours");
                                 variant: ButtonVariant.ghost;
                                 clicked => { root.picker-recents-asking = true; }
                                 changed has-focus => {
@@ -1144,11 +1152,11 @@ export component SettingsPage inherits Window {
                                 }
                             }
                             if root.picker-recents-asking: Button {
-                                text: @tr("Keep them");
+                                text: @tr("Cancel");
                                 clicked => { root.picker-recents-asking = false; }
                             }
                             if root.picker-recents-asking: Button {
-                                text: @tr("Clear them");
+                                text: @tr("Clear emoji and colours");
                                 variant: ButtonVariant.danger;
                                 clicked => {
                                     root.picker-recents-asking = false;
@@ -1275,7 +1283,7 @@ export component SettingsPage inherits Window {
                     for line in [
                         @tr("Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."),
                         @tr("Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, backups (as many as you choose to keep) and logs."),
-                        @tr("Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."),
+                        @tr("Logs are written when Snipdeck crashes, or when you turn on diagnostics yourself. They hold no item content and are never sent anywhere."),
                         @tr("Snipdeck never connects to the internet: every icon and font it shows is packaged with it."),
                         @tr("Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."),
                         @tr("To remove everything, use Erase library under Backups and your data, then delete the folder."),
@@ -1591,7 +1599,7 @@ export component SettingsPage inherits Window {
                             accessible-label: root.import-problem;
                         }
                         if root.import-problem == "" && root.import-items > 0: Text {
-                            text: @tr("{} item in {} list will be added" | "{} items in {} lists will be added" % root.import-items, root.import-items, root.import-lists);
+                            text: @tr("{n} item will be added" | "{n} items will be added" % root.import-items) + " " + @tr("in {n} list" | "in {n} lists" % root.import-lists);
                             color: Theme.text-primary;
                             font-family: Fonts.sans;
                             font-size: Type.base;
@@ -1766,7 +1774,7 @@ export component SettingsPage inherits Window {
                         search-also: @tr("donate donation coffee tip");
                         description: @tr("Optional. Snipdeck is free and stays free. This opens a donation page in your browser and unlocks nothing.");
                         Button {
-                            text: @tr("Open");
+                            text: @tr("Open donation page");
                             a11y-label: @tr("Open the Support Snipdeck page in your browser");
                             clicked => { root.support-requested(); }
                             changed has-focus => {

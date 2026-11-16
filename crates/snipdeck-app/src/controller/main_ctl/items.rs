@@ -332,10 +332,17 @@ where
             }
             Ok(())
         });
+        // A change to several items says how many it reached (MAIN-24); one item shows its tick.
+        let confirmation = (changes.len() > 1).then(|| {
+            neutral_toast(ToastMessage::ItemsTagged {
+                count: changes.len(),
+                added: on,
+            })
+        });
         if done.is_ok() {
             self.record_step(Action::Tag, changes);
         }
-        self.finish(&done, None);
+        self.finish(&done, confirmation);
     }
 
     /// The Main window's close button. Returns whether Snipdeck should quit with it: when
@@ -378,11 +385,19 @@ where
     /// Deletes tag `index` after the window's confirmation (its items stay).
     pub fn main_delete_tag(&mut self, index: usize) {
         self.main_fresh();
-        let Some(tag) = self.main.tags().get(index).map(|t| t.id) else {
+        let Some((tag, name)) = self
+            .main
+            .tags()
+            .get(index)
+            .map(|t| (t.id, t.name.as_str().to_owned()))
+        else {
             return;
         };
         let done = self.store.delete_tag(tag);
-        self.finish(&done, None);
+        self.finish(
+            &done,
+            Some(neutral_toast(ToastMessage::TagDeleted { name })),
+        );
     }
 
     // ---- The Trash and Undo --------------------------------------------------------------------

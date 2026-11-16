@@ -139,10 +139,13 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::TypingUnavailable => 101,
         ToastMessage::AutostartSwitchedOff => 102,
         ToastMessage::AutostartPolicy => 103,
+        ToastMessage::ExportedSome { .. } => 112,
+        ToastMessage::ItemsTagged { .. } => 113,
+        ToastMessage::TagDeleted { .. } => 114,
     }
 }
 
-const VARIANTS: usize = 112;
+const VARIANTS: usize = 115;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -228,6 +231,20 @@ fn samples() -> Vec<ToastMessage> {
         M::Exported {
             file: s("snipdeck.zip"),
         },
+        M::ExportedSome {
+            file: s("list.txt"),
+            written: 12,
+            total: 15,
+        },
+        M::ItemsTagged {
+            count: 3,
+            added: true,
+        },
+        M::ItemsTagged {
+            count: 1,
+            added: false,
+        },
+        M::TagDeleted { name: s("Work") },
         M::ExportFailed(Cause::Locked),
         M::LibraryErased,
         M::EraseFailed,
@@ -384,6 +401,27 @@ fn what_a_toast_carries_reaches_its_sentence() {
         assert_eq!(
             said(ToastMessage::ItemsTrashed { count: 3 }),
             "Moved 3 items to the Trash"
+        );
+        // MAIN-24, 25: a partial export says how many were written; a bulk tag change counts the items.
+        assert_eq!(
+            said(ToastMessage::ExportedSome {
+                file: s("list.txt"),
+                written: 12,
+                total: 15
+            }),
+            "Saved list.txt: 12 of 15 items. Sensitive items and items with no text are left out."
+        );
+        for (count, added, text) in [
+            (1, true, "Tag added to 1 item"),
+            (3, true, "Tag added to 3 items"),
+            (1, false, "Tag removed from 1 item"),
+            (4, false, "Tag removed from 4 items"),
+        ] {
+            assert_eq!(said(ToastMessage::ItemsTagged { count, added }), text);
+        }
+        assert_eq!(
+            said(ToastMessage::TagDeleted { name: s("Work") }),
+            "Deleted the tag “Work”"
         );
         let rebuilt = |recovered, unreadable, missing_sensitive| ToastMessage::DatabaseRebuilt {
             restored: 5,

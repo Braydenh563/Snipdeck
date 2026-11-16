@@ -1247,7 +1247,7 @@ const MENU_ROWS: [&str; 17] = [
     "Open Snipdeck",
     "New item",
     "Take screenshot",
-    "Pause hotkeys",
+    "Pause shortcuts",
     "Select or delete\u{2026}",
     "Reset size and position",
     "Troubleshoot\u{2026}",
@@ -1509,7 +1509,7 @@ fn pause_hotkeys_is_checked_while_paused() {
         let pause_row = snipdeck_app::controller::APP_MENU
             .iter()
             .position(|e| *e == snipdeck_app::controller::AppMenuEntry::PauseHotkeys)
-            .expect("Pause hotkeys is in the menu");
+            .expect("Pause shortcuts is in the menu");
         let checked = |r: &Rig| {
             r.ui.get_app_menu_entries()
                 .row_data(pause_row)
@@ -1517,13 +1517,13 @@ fn pause_hotkeys_is_checked_while_paused() {
                 .checked
         };
         assert!(!checked(&r), "off: no check mark");
-        click(r.window(), &menu_row(&r, "Pause hotkeys"));
+        click(r.window(), &menu_row(&r, "Pause shortcuts"));
         assert_eq!(*r.effects.borrow(), [Effect::SetHotkeysPaused(true)]);
         assert!(r.ctl.borrow().hotkeys_paused());
 
         click(r.window(), &r.button("More"));
         assert!(checked(&r), "paused: checked");
-        click(r.window(), &menu_row(&r, "Pause hotkeys"));
+        click(r.window(), &menu_row(&r, "Pause shortcuts"));
         assert_eq!(r.effects.borrow()[1], Effect::SetHotkeysPaused(false));
         click(r.window(), &r.button("More"));
         assert!(!checked(&r), "resumed: unchecked again");

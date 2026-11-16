@@ -273,7 +273,7 @@ pub(crate) fn report_flags(settings: &crate::settings::Settings) -> Vec<(String,
         ),
         ("Panel in the taskbar".into(), on(settings.panel_in_taskbar)),
         (
-            "Hide the panel on blur".into(),
+            "Hide the Panel on blur".into(),
             on(settings.panel_hide_on_blur),
         ),
         ("Panel width".into(), settings.panel_width.to_string()),

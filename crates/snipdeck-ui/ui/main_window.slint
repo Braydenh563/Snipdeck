@@ -270,7 +270,9 @@ component SidebarHeading inherits Rectangle {
 }
 
 export component MainWindow inherits Window {
-    title: @tr("Snipdeck");
+    // The place in the title, so the taskbar, Alt+Tab and a screen reader say where the window is (MAIN-20).
+    title: root.window-title;
+    out property <string> window-title: root.board-name == "" ? @tr("{} - Snipdeck", root.section-name()) : @tr("{} - {} - Snipdeck", root.section-name(), root.board-name);
     background: Theme.bg-app;
     // The minimum scales with the text size: the toolbar and the sidebar are drawn in text-scaled units (MAIN-48).
     min-width: 480px * max(1, SystemLook.text-scale);
@@ -607,6 +609,8 @@ export component MainWindow inherits Window {
     property <int> nav-total: 4 + root.n-lists + root.n-tags;
     property <int> cur: root.rows.length == 0 ? -1 : min(max(root.cursor, 0), root.rows.length - 1);
     property <bool> tile: root.view == MainView.tile && !root.has-groups;
+    // The density that is really drawn: groups draw rows, so a stored Tile view shows as Compact (MAIN-10).
+    property <MainView> drawn-view: root.view == MainView.tile && root.has-groups ? MainView.compact : root.view;
     property <bool> in-trash: root.section == MainSection.trash;
     property <bool> searching: root.query != "";
     property <bool> multi: root.selected-count > 1;
@@ -817,11 +821,11 @@ export component MainWindow inherits Window {
         : root.confirm-kind == 5 ? @tr("Clear recent history?")
         : @tr("Delete for good?");
     property <string> confirm-body: root.confirm-kind == 1
-        ? @tr("The list and its {} items move to the Trash. You can restore them for {} days.", root.lists[root.confirm-target].count, root.trash-days)
+        ? @tr("The list and its {n} item move to the Trash. You can restore them for {} days." | "The list and its {n} items move to the Trash. You can restore them for {} days." % root.lists[root.confirm-target].count, root.trash-days)
         : root.confirm-kind == 2 ? @tr("The tag is removed from its items. The items themselves stay.")
         : root.confirm-kind == 3 ? @tr("Everything in the Trash is deleted for good. This can't be undone.")
-        : root.confirm-kind == 5 ? @tr("All {} recent copies are removed. This can't be undone.", root.count-recent)
-        : @tr("The selected items are deleted for good. This can't be undone.");
+        : root.confirm-kind == 5 ? @tr("The {n} recent copy is removed. This can't be undone." | "All {n} recent copies are removed. This can't be undone." % root.count-recent)
+        : @tr("The selected item is deleted for good. This can't be undone." | "The selected items are deleted for good. This can't be undone." % (root.multi ? root.selected-count : 1));
     property <string> confirm-ok: root.confirm-kind == 1 ? @tr("Delete list")
         : root.confirm-kind == 2 ? @tr("Delete tag")
         : root.confirm-kind == 3 ? @tr("Empty Trash")
@@ -891,6 +895,21 @@ export component MainWindow inherits Window {
         root.chooser-x = max(0px, min(root.item-menu-x, root.width - 240px * root.text-scale));
         root.chooser-y = max(0px, min(root.item-menu-y, root.height - 300px * root.text-scale));
         root.chooser-open = true;
+    }
+
+    // Where a menu opened from the keyboard (Menu key, Shift+F10) goes: at the cursor row, not under the toolbar
+    // (MAIN-6). The row's top is estimated from the average row height, then kept inside the list.
+    function cursor-menu-y() -> length {
+        let row-h = root.tile ? max(Space.hit, grid.content-height / max(1, root.grid-row-count)) : root.avg-row-h;
+        let top = root.tile ? grid.absolute-position.y : list.absolute-position.y;
+        let h = root.tile ? grid.height : list.height;
+        let content-y = root.tile ? grid.content-y : list.content-y;
+        let line = root.tile ? floor(root.cur / root.cols) : root.cur;
+        return min(max(top + content-y + line * row-h, top), top + max(0px, h - row-h)) + row-h / 2;
+    }
+    function cursor-menu-x() -> length {
+        return root.tile ? grid.absolute-position.x + mod(root.cur, root.cols) * (grid.width / root.cols) + root.pad
+            : root.sidebar-w + root.pad * 2;
     }
 
     function open-item-menu(index: int, x: length, y: length) {
@@ -1150,6 +1169,19 @@ export component MainWindow inherits Window {
             if (search.has-focus && suggest.handle-key(event)) {
                 return accept;
             }
+            // From the search field: Down moves into the results, Enter uses the first hit (MAIN-3).
+            if (search.has-focus && !root.recent-shown && root.rows.length > 0 && !event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
+                if (event.text == Key.DownArrow) {
+                    root.cursor = 0;
+                    root.focus-items();
+                    return accept;
+                }
+                if (event.text == Key.Return && root.searching && !root.in-trash) {
+                    root.cursor = 0;
+                    root.act(event.modifiers.shift ? ItemAction.copy : ItemAction.use, 0);
+                    return accept;
+                }
+            }
             if (event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
                 if ((event.text == "b" || event.text == "B") && !event.modifiers.shift) {
                     root.toggle-sidebar();
@@ -1382,12 +1414,18 @@ export component MainWindow inherits Window {
                                         action-label: @tr("Add list");
                                         action => { root.add-list-requested(); }
                                     }
+                                    // The rail keeps the two header controls as icon buttons (MAIN-16).
                                     if root.narrow: Rectangle {
-                                        height: Space.s2;
-                                        Rectangle {
+                                        height: root.ctl-h + Space.s1;
+                                        IconButton {
+                                            x: (parent.width - self.width) / 2;
                                             y: (parent.height - self.height) / 2;
-                                            height: 1px;
-                                            background: Theme.border-subtle;
+                                            scaled: true;
+                                            side-override: root.ctl-h;
+                                            icon: Icons.plus;
+                                            tooltip: @tr("Add list");
+                                            own-tooltip: true;
+                                            clicked => { root.add-list-requested(); }
                                         }
                                     }
                                     for entry[i] in root.lists: Rectangle {
@@ -1446,11 +1484,16 @@ export component MainWindow inherits Window {
                                         action => { root.manage-tags-requested(); }
                                     }
                                     if root.narrow && root.n-tags > 0: Rectangle {
-                                        height: Space.s2;
-                                        Rectangle {
+                                        height: root.ctl-h + Space.s1;
+                                        IconButton {
+                                            x: (parent.width - self.width) / 2;
                                             y: (parent.height - self.height) / 2;
-                                            height: 1px;
-                                            background: Theme.border-subtle;
+                                            scaled: true;
+                                            side-override: root.ctl-h;
+                                            icon: Icons.gear;
+                                            tooltip: @tr("Manage tags");
+                                            own-tooltip: true;
+                                            clicked => { root.manage-tags-requested(); }
                                         }
                                     }
                                     for entry[i] in root.tags: SidebarItem {
@@ -1559,8 +1602,8 @@ export component MainWindow inherits Window {
                                 alignment: center;
                                 search := SearchField {
                                     expanded: suggest.open;
-                                    placeholder: @tr("Search snippets");
-                                    label: @tr("Search snippets");
+                                    placeholder: @tr("Search items");
+                                    label: @tr("Search items");
                                     clear-label: @tr("Clear search");
                                     edited(text) => {
                                         root.cursor = 0;
@@ -1690,9 +1733,9 @@ export component MainWindow inherits Window {
                                     icon: Icons.rows;
                                     tooltip: @tr("Comfortable view");
                                     own-tooltip: true;
-                                    active: root.view == MainView.comfortable;
+                                    active: root.drawn-view == MainView.comfortable;
                                     accessible-checkable: true;
-                                    accessible-checked: root.view == MainView.comfortable;
+                                    accessible-checked: root.drawn-view == MainView.comfortable;
                                     clicked => {
                                         root.view = MainView.comfortable;
                                         root.view-changed(MainView.comfortable);
@@ -1704,9 +1747,9 @@ export component MainWindow inherits Window {
                                     icon: Icons.list-bullets;
                                     tooltip: @tr("Compact view");
                                     own-tooltip: true;
-                                    active: root.view == MainView.compact;
+                                    active: root.drawn-view == MainView.compact;
                                     accessible-checkable: true;
-                                    accessible-checked: root.view == MainView.compact;
+                                    accessible-checked: root.drawn-view == MainView.compact;
                                     clicked => {
                                         root.view = MainView.compact;
                                         root.view-changed(MainView.compact);
@@ -1716,7 +1759,7 @@ export component MainWindow inherits Window {
                                     scaled: true;
                                     side-override: root.ctl-h - 2 * Space.s0-5;
                                     icon: Icons.squares-four;
-                                    tooltip: @tr("Tile view");
+                                    tooltip: root.has-groups ? @tr("Tile view is not available while the list has groups") : @tr("Tile view");
                                     own-tooltip: true;
                                     // Groups draw rows, never tiles: the button rests while they show.
                                     enabled: !root.has-groups;
@@ -1742,7 +1785,9 @@ export component MainWindow inherits Window {
                                 text: root.toolbar-tight ? "" : @tr("New item");
                                 a11y-label: @tr("New item");
                                 tooltip: @tr("New item");
-                                clicked => { root.new-item-requested(); }
+                                // One command with Ctrl+N (the quick-add row in an open list); nothing to add into in the Trash.
+                                enabled: !root.in-trash;
+                                clicked => { root.new-item(); }
                             }
                         }
                     }
@@ -1867,7 +1912,13 @@ export component MainWindow inherits Window {
                             let ctrl = event.modifiers.control || event.modifiers.meta;
                             if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift
                                 && !root.in-trash && (event.text == Key.UpArrow || event.text == Key.DownArrow)) {
-                                root.item-reorder-requested(event.text == Key.UpArrow ? -1 : 1);
+                                // In tiles Up/Down move one row of tiles, Left/Right one place (MAIN-13).
+                                root.item-reorder-requested((event.text == Key.UpArrow ? -1 : 1) * (root.tile ? root.cols : 1));
+                                return accept;
+                            }
+                            if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift
+                                && !root.in-trash && root.tile && (event.text == Key.LeftArrow || event.text == Key.RightArrow)) {
+                                root.item-reorder-requested(event.text == Key.LeftArrow ? -1 : 1);
                                 return accept;
                             }
                             if (root.recent-shown && !event.modifiers.alt && !ctrl) {
@@ -1905,6 +1956,31 @@ export component MainWindow inherits Window {
                             // Alt+Enter pastes the selected item as plain text (SPEC 5.1a).
                             if (event.modifiers.alt && !ctrl && !shift && event.text == Key.Return && root.rows.length > 0 && !root.in-trash && !root.use-copies) {
                                 root.act(ItemAction.use-plain, root.cur);
+                                return accept;
+                            }
+                            // Esc clears a selection first, then the search (MAIN-4).
+                            if (event.text == Key.Escape && !event.modifiers.alt) {
+                                if (root.selected-count > 0) {
+                                    root.clear-selection-requested();
+                                    return accept;
+                                }
+                                if (root.searching) {
+                                    root.cursor = 0;
+                                    root.query = "";
+                                    root.query-changed("");
+                                    return accept;
+                                }
+                            }
+                            // Type-to-search: a letter or digit typed in the list starts a search with it (MAIN-4,
+                            // the "Start typing" tip). Special keys are private-use characters: no case, not a digit.
+                            if (!ctrl && !event.modifiers.alt && !root.in-trash && event.text.character-count == 1
+                                && (event.text.to-lowercase() != event.text.to-uppercase() || (event.text.is-float() && event.text != "." && event.text != "-"))) {
+                                root.cursor = 0;
+                                root.query = event.text;
+                                root.query-changed(event.text);
+                                root.suggest-requested(event.text, event.text.character-count);
+                                search.focus();
+                                search.set-cursor(event.text.character-count);
                                 return accept;
                             }
                             if (event.modifiers.alt || root.rows.length == 0) {
@@ -2006,7 +2082,7 @@ export component MainWindow inherits Window {
                                 return reject;
                             }
                             if (event.text == Key.Menu || (shift && event.text == Key.F10)) {
-                                root.open-item-menu(root.cur, root.sidebar-w + root.pad * 2, root.bar-h * 2 + Space.s8);
+                                root.open-item-menu(root.cur, root.cursor-menu-x(), root.cursor-menu-y());
                                 return accept;
                             }
                             // Keyboard reveal: hold Space (a sensitive item only).
@@ -2040,7 +2116,7 @@ export component MainWindow inherits Window {
                             height: parent.height;
                             vertical-scrollbar-policy: ScrollBarPolicy.always-off;
                             horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
-                            accessible-label: @tr("Snippets");
+                            accessible-label: @tr("Items");
                             visible: root.rows.length > 0;
                             scrolled => { root.follow-cursor = false; }
 
@@ -2207,7 +2283,7 @@ export component MainWindow inherits Window {
                             height: parent.height;
                             vertical-scrollbar-policy: ScrollBarPolicy.always-off;
                             horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
-                            accessible-label: @tr("Snippets");
+                            accessible-label: @tr("Items");
                             visible: root.rows.length > 0;
                             scrolled => { root.follow-cursor = false; }
 
@@ -2492,34 +2568,44 @@ export component MainWindow inherits Window {
                             : root.section == MainSection.recent || root.in-trash || root.section == MainSection.tag ? EmptyStateKind.inbox
                             : EmptyStateKind.list;
                         heading: root.searching ? @tr("No matches")
-                            : root.section == MainSection.all ? @tr("No snippets yet")
+                            : root.label-filter >= 0 ? @tr("Nothing has this label")
+                            : root.section == MainSection.all ? @tr("No items yet")
                             : root.section == MainSection.pinned ? @tr("Nothing pinned")
                             : root.section == MainSection.recent ? (root.recent-locked ? @tr("Recent copies are locked") : root.recent-on ? @tr("Nothing copied yet") : @tr("No recent items"))
                             : root.in-trash ? @tr("The Trash is empty")
                             : root.section == MainSection.list ? @tr("This list is empty")
                             : @tr("No items with this tag");
                         body: root.searching ? @tr("Nothing matches “{}”.", root.query)
+                            : root.label-filter >= 0 ? @tr("No item in this view carries the chosen colour label.")
                             : root.section == MainSection.all ? @tr("Save what you paste often.")
-                            : root.section == MainSection.pinned ? @tr("Pin the snippets you use most to keep them one click away.")
+                            : root.section == MainSection.pinned ? @tr("Pin the items you use most to keep them one click away.")
                             : root.section == MainSection.recent ? (root.recent-locked ? @tr("Unlock your library to see recent copies. Nothing is collected while it is locked.") : root.recent-on ? @tr("Text you copy appears here, newest first, until you clear it or it is older than {} days.", root.recent-days) : @tr("Turn on clipboard history in Settings to collect what you copy."))
                             : root.in-trash ? @tr("Deleted items stay here for {} days before they are removed.", root.trash-days)
-                            : root.section == MainSection.list ? @tr("Add a snippet, or move items here from another list.")
-                            : @tr("Tag a snippet to see it here.");
-                        action-keys: !root.searching && root.section == MainSection.list ? ["Ctrl", "N"] : [];
+                            : root.section == MainSection.list ? @tr("Add an item, or move items here from another list.")
+                            : @tr("Tag an item to see it here.");
+                        action-keys: !root.searching && root.label-filter < 0 && root.section == MainSection.list ? ["Ctrl", "N"] : [];
                         action-keys-label: @tr("Control N");
-                        secondary-keys: !root.searching && root.section == MainSection.all ? ["Ctrl", "N"] : [];
+                        secondary-keys: !root.searching && root.label-filter < 0 && root.section == MainSection.all ? ["Ctrl", "N"] : [];
                         secondary-keys-label: @tr("Control N");
-                        action-text: root.searching ? ""
+                        action-text: root.searching ? @tr("Clear search")
+                            : root.label-filter >= 0 ? @tr("Clear filter")
                             : root.section == MainSection.all ? @tr("Save from clipboard")
                             : root.section == MainSection.list ? @tr("New item")
                             : root.section == MainSection.recent && root.recent-locked ? @tr("Unlock")
                             : root.section == MainSection.recent && !root.recent-on ? @tr("Open Settings") : "";
-                        secondary-text: !root.searching && root.section == MainSection.all ? @tr("New item") : "";
-                        tertiary-text: !root.searching && root.section == MainSection.all ? @tr("Import…") : "";
+                        secondary-text: !root.searching && root.label-filter < 0 && root.section == MainSection.all ? @tr("New item") : "";
+                        tertiary-text: !root.searching && root.label-filter < 0 && root.section == MainSection.all ? @tr("Import…") : "";
                         secondary => { root.new-item-requested(); }
                         tertiary => { root.import-requested(); }
                         action => {
-                            if (root.section == MainSection.all && !root.searching) {
+                            if (root.searching) {
+                                root.cursor = 0;
+                                root.query = "";
+                                root.query-changed("");
+                                root.focus-search();
+                            } else if (root.label-filter >= 0) {
+                                root.label-filter-requested(-1);
+                            } else if (root.section == MainSection.all) {
                                 root.add-from-clipboard();
                             } else if (root.section == MainSection.recent && root.recent-locked) {
                                 root.recent-unlock-requested();
@@ -2926,11 +3012,12 @@ export component MainWindow inherits Window {
         x: Space.s2;
         y: max(0px, root.height - root.bar-h - self.height);
         entries: [
-            { text: @tr("Troubleshoot…") },
             { text: @tr("User guide"), shortcut: "F1" },
-            { text: @tr("About Snipdeck") },
-            { text: @tr("Show Panel"), shortcut: root.panel-hotkey },
             { text: @tr("Keyboard shortcuts"), shortcut: "Ctrl+/" },
+            { text: @tr("Troubleshoot…") },
+            { text: @tr("About Snipdeck") },
+            { separator: true },
+            { text: root.panel-visible ? @tr("Hide Panel") : @tr("Show Panel"), shortcut: root.panel-hotkey },
         ];
         label: @tr("Help");
         icons: false;
@@ -2940,17 +3027,17 @@ export component MainWindow inherits Window {
         }
         activated(i) => {
             root.close-menus();
-            // The row order is the `entries` list above.
+            // The row order is the `entries` list above (the separator is row 4).
             if (i == 0) {
-                root.help-requested(HelpPage.troubleshoot);
-            } else if (i == 1) {
                 root.help-requested(HelpPage.guide);
-            } else if (i == 2) {
-                root.help-requested(HelpPage.about);
-            } else if (i == 3) {
-                root.panel-requested();
-            } else {
+            } else if (i == 1) {
                 root.help-requested(HelpPage.shortcuts);
+            } else if (i == 2) {
+                root.help-requested(HelpPage.troubleshoot);
+            } else if (i == 3) {
+                root.help-requested(HelpPage.about);
+            } else {
+                root.panel-requested();
             }
         }
         dismissed => { root.close-menus(); }
@@ -2960,14 +3047,14 @@ export component MainWindow inherits Window {
         x: max(0px, min(view-button.absolute-position.x, root.width - self.width - Space.s2));
         y: root.bar-h - Space.s1;
         entries: [
-            { text: @tr("Theme: System"), icon: root.theme-index == 0 ? Icons.check : root.no-icon },
-            { text: @tr("Theme: Light"), icon: root.theme-index == 1 ? Icons.check : root.no-icon },
-            { text: @tr("Theme: Dark"), icon: root.theme-index == 2 ? Icons.check : root.no-icon },
+            { text: @tr("Theme: System"), checked: root.theme-index == 0 },
+            { text: @tr("Theme: Light"), checked: root.theme-index == 1 },
+            { text: @tr("Theme: Dark"), checked: root.theme-index == 2 },
             { separator: true },
-            { text: @tr("Main list density: Comfortable"), icon: root.view == MainView.comfortable ? Icons.check : root.no-icon },
-            { text: @tr("Main list density: Compact"), icon: root.view == MainView.compact ? Icons.check : root.no-icon },
+            { text: @tr("Main list density: Comfortable"), checked: root.drawn-view == MainView.comfortable },
+            { text: @tr("Main list density: Compact"), checked: root.drawn-view == MainView.compact },
             // The same three choices as the toggles beside it, which the toolbar drops when it is narrow.
-            { text: @tr("Tile view"), icon: root.view == MainView.tile && !root.has-groups ? Icons.check : root.no-icon, disabled: root.has-groups },
+            { text: @tr("Tile view"), checked: root.tile, disabled: root.has-groups },
         ];
         label: @tr("View");
         init => {
@@ -2998,9 +3085,9 @@ export component MainWindow inherits Window {
         x: max(0px, min(root.sort-menu-x, root.width - self.width - Space.s2));
         y: root.sort-menu-y;
         entries: [
-            { text: @tr("Manual"), icon: root.list-sort == 0 ? Icons.check : root.no-icon },
-            { text: @tr("Most used"), icon: root.list-sort == 1 ? Icons.check : root.no-icon },
-            { text: @tr("Recently used"), icon: root.list-sort == 2 ? Icons.check : root.no-icon },
+            { text: @tr("Manual"), checked: root.list-sort == 0 },
+            { text: @tr("Most used"), checked: root.list-sort == 1 },
+            { text: @tr("Recently used"), checked: root.list-sort == 2 },
         ];
         label: @tr("Sort by");
         init => {
@@ -3067,7 +3154,7 @@ export component MainWindow inherits Window {
     // The board delete confirmation, the only thing "Delete board…" shows.
     Dialog {
         title: @tr("Delete board “{}”?", root.board-name);
-        body: @tr("Its lists and {} items move to the Trash. You can restore them for {} days.", root.board-delete-count, root.trash-days);
+        body: @tr("Its lists and {n} item move to the Trash. You can restore them for {} days." | "Its lists and {n} items move to the Trash. You can restore them for {} days." % root.board-delete-count, root.trash-days);
         variant: DialogVariant.destructive;
         open: root.board-delete-open;
         dismissed => { root.board-delete-dismissed(); }

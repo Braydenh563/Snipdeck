@@ -812,7 +812,7 @@ fn a_shortcut_that_clashes_is_refused_and_says_which_action_has_it() {
             rows.row_data(2)
                 .unwrap()
                 .conflict
-                .contains("Open the picker"),
+                .contains("Open the Picker"),
             "{:?}",
             rows.row_data(2).unwrap().conflict
         );
@@ -2145,7 +2145,7 @@ fn clearing_recent_emoji_and_colours_asks_first_then_clears_and_says_so() {
         });
         element(
             &r.ui,
-            "Clear recent emoji and colours…",
+            "Clear recent emoji and colours",
             AccessibleRole::Button,
         )
         .invoke_accessible_default_action();
@@ -2154,15 +2154,16 @@ fn clearing_recent_emoji_and_colours_asks_first_then_clears_and_says_so() {
             1,
             "asked first"
         );
-        element(&r.ui, "Keep them", AccessibleRole::Button).invoke_accessible_default_action();
+        element(&r.ui, "Cancel", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(r.ctl.borrow().settings().colours_recent.len(), 1, "kept");
         element(
             &r.ui,
-            "Clear recent emoji and colours…",
+            "Clear recent emoji and colours",
             AccessibleRole::Button,
         )
         .invoke_accessible_default_action();
-        element(&r.ui, "Clear them", AccessibleRole::Button).invoke_accessible_default_action();
+        element(&r.ui, "Clear emoji and colours", AccessibleRole::Button)
+            .invoke_accessible_default_action();
         assert!(r.ctl.borrow().settings().colours_recent.is_empty());
         assert_eq!(
             r.ui.get_toast_text(),
@@ -2774,6 +2775,22 @@ fn the_text_size_row_changes_the_setting_and_scales_the_page_at_once() {
     });
 }
 
+/// MAIN-35: Windows goes to 225 %, so the fixed sizes do too.
+#[test]
+fn the_text_size_row_offers_200_and_225_percent() {
+    on_ui_thread(|| {
+        let r = rig();
+        let look = r.ui.global::<snipdeck_ui::SystemLook<'_>>();
+        r.ui.invoke_text_size_chosen(5);
+        assert_eq!(r.ctl.borrow().settings().text_size, TextSize::P200);
+        assert!((look.get_text_scale() - 2.0).abs() < 1e-6);
+        r.ui.invoke_text_size_chosen(6);
+        assert_eq!(r.ctl.borrow().settings().text_size, TextSize::P225);
+        assert!((look.get_text_scale() - 2.25).abs() < 1e-6);
+        r.ui.invoke_text_size_chosen(0);
+    });
+}
+
 // ---- Support Snipdeck (optional, unlocks nothing) -----------------------------------------------
 
 #[test]
@@ -3089,5 +3106,25 @@ fn the_start_up_entry_is_read_once_when_the_page_opens_not_on_each_redraw() {
         r.binding.redraw();
         assert_eq!(r.host.autostart_reads.get(), after_toggle);
         assert!(r.ui.get_autostart(), "the toggle's result is shown");
+    });
+}
+
+/// MAIN-38: Esc closes the erase question first; it does not close the window or erase anything.
+#[test]
+fn escape_closes_the_erase_question_before_anything_else() {
+    on_ui_thread(|| {
+        let r = library_on_disk(false);
+        r.ui.window()
+            .set_size(slint::LogicalSize::new(640.0, 6000.0));
+        element(&r.ui, "Erase library\u{2026}", AccessibleRole::Button)
+            .invoke_accessible_default_action();
+        assert!(r.ui.get_erase_open());
+        press(r.ui.window(), &key(slint::platform::Key::Escape));
+        assert!(!r.ui.get_erase_open(), "Esc closes the question");
+        assert_eq!(
+            board_names(r.ctl.borrow().store()).len(),
+            2,
+            "and erases nothing"
+        );
     });
 }

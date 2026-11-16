@@ -452,6 +452,12 @@ pub enum TextSize {
     /// 175 %.
     #[serde(rename = "175")]
     P175,
+    /// 200 %.
+    #[serde(rename = "200")]
+    P200,
+    /// 225 % (the largest Windows text size).
+    #[serde(rename = "225")]
+    P225,
 }
 
 /// The smallest and largest text scale the UI is laid out for (Windows allows 100 % to 225 %).
@@ -459,7 +465,15 @@ pub const TEXT_SCALE: std::ops::RangeInclusive<f32> = 1.0..=2.25;
 
 impl TextSize {
     /// Every choice, in the order Settings lists them.
-    pub const ALL: [Self; 5] = [Self::System, Self::P100, Self::P125, Self::P150, Self::P175];
+    pub const ALL: [Self; 7] = [
+        Self::System,
+        Self::P100,
+        Self::P125,
+        Self::P150,
+        Self::P175,
+        Self::P200,
+        Self::P225,
+    ];
 
     /// The fixed percentage, or `None` for "follow Windows".
     #[must_use]
@@ -470,6 +484,8 @@ impl TextSize {
             Self::P125 => Some(125),
             Self::P150 => Some(150),
             Self::P175 => Some(175),
+            Self::P200 => Some(200),
+            Self::P225 => Some(225),
         }
     }
 
@@ -479,7 +495,7 @@ impl TextSize {
     pub fn scale(self, system: f32) -> f32 {
         #[allow(
             clippy::cast_precision_loss,
-            reason = "a percentage up to 175 is exact in an f32"
+            reason = "a percentage up to 225 is exact in an f32"
         )]
         let wanted = self.percent().map_or(system, |p| p as f32 / 100.0);
         if wanted.is_nan() {
@@ -2193,6 +2209,8 @@ mod tests {
         assert!(near(TextSize::P125.scale(1.0), 1.25));
         assert!(near(TextSize::P150.scale(1.0), 1.5));
         assert!(near(TextSize::P175.scale(1.0), 1.75));
+        assert!(near(TextSize::P200.scale(1.0), 2.0));
+        assert!(near(TextSize::P225.scale(1.0), 2.25));
         assert!(near(TextSize::System.scale(1.0), 1.0));
         assert!(near(TextSize::System.scale(1.5), 1.5));
         // Windows' value is held to 1.0 ..= 2.25, whatever it says.
