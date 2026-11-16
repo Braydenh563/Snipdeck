@@ -127,9 +127,7 @@ impl LazyRows {
         let (head, tail, old_len, reset) = {
             let old = self.state.borrow();
             let (o, n) = (old.rows.len(), new.rows.len());
-            if old.dark != new.dark {
-                (0, 0, o, true)
-            } else {
+            if old.dark == new.dark {
                 let mut head = 0;
                 while head < o.min(n) && old.same_row(head, &new, head) {
                     head += 1;
@@ -140,6 +138,8 @@ impl LazyRows {
                 }
                 let (om, nm) = (o - head - tail, n - head - tail);
                 (head, tail, o, om.abs_diff(nm) > BULK_ROWS)
+            } else {
+                (0, 0, o, true)
             }
         };
         let new_len = new.rows.len();
@@ -208,7 +208,7 @@ mod tests {
             number: 1,
             kind: ItemKind::Text,
             sensitive: false,
-            title: format!("Title {n}").into(),
+            title: format!("Title {n}"),
             preview: "p".into(),
             list: None,
             title_mark: None,
