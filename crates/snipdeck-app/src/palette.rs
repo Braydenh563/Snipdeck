@@ -260,7 +260,14 @@ mod tests {
     #[test]
     fn counts_read_at_four_and_a_half_to_one_on_every_surface() {
         for theme in ["light", "dark"] {
-            for bg in ["bg.app", "bg.surface", "bg.sunken", "bg.hover", "bg.selected", "bg.overlay"] {
+            for bg in [
+                "bg.app",
+                "bg.surface",
+                "bg.sunken",
+                "bg.hover",
+                "bg.selected",
+                "bg.overlay",
+            ] {
                 let ratio = contrast(theme, "text.secondary", bg);
                 assert!(ratio >= 4.5, "{theme} count on {bg}: {ratio:.2}");
             }

@@ -33,7 +33,10 @@ fn every_locale_uses_the_item_noun() {
         ("zh-Hans", &["片段"]),
     ];
     for (locale, words) in old {
-        let path = format!("{}/lang/{locale}/LC_MESSAGES/snipdeck-ui.po", env!("CARGO_MANIFEST_DIR"));
+        let path = format!(
+            "{}/lang/{locale}/LC_MESSAGES/snipdeck-ui.po",
+            env!("CARGO_MANIFEST_DIR")
+        );
         let po = std::fs::read_to_string(&path).expect("catalogue");
         let mut in_msgstr = false;
         for (n, line) in po.lines().enumerate() {
@@ -44,7 +47,11 @@ fn every_locale_uses_the_item_noun() {
             }
             if in_msgstr {
                 for w in words {
-                    assert!(!line.contains(w), "{locale}:{}: still says {w}: {line}", n + 1);
+                    assert!(
+                        !line.contains(w),
+                        "{locale}:{}: still says {w}: {line}",
+                        n + 1
+                    );
                 }
             }
         }

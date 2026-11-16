@@ -736,7 +736,10 @@ fn a_parked_list_editor_closes_and_comes_back_with_its_typed_fields() {
     ctl.main_edit_list(index);
     let editor = ctl.main_screen().editor.expect("editor");
     assert_eq!(editor.name, "Places (typed)");
-    assert!(editor.restored, "MAIN-42: the editor says the fields came back");
+    assert!(
+        editor.restored,
+        "MAIN-42: the editor says the fields came back"
+    );
     assert_eq!((editor.accent, editor.sort), (None, ListSort::RecentlyUsed));
     // Cancelling forgets them: the next open shows the saved list, with no notice.
     ctl.main_editor_close();
