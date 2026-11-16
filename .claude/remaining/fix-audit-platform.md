@@ -270,3 +270,15 @@ Windows run list:
 - Old Setup tolerance: no `DataDir` single value is read any more (unreleased format).
 - Run the app elevated (Run as administrator) and start a normal-integrity Setup: it sees the running app (asks to close it); check the marker with `Get-Process`/Process Explorer handle ACL, and that the trace log has no "installer marker mutex" line.
 - Manifest: `mt.exe -inputresource:snipdeck.exe;#1` has no activeCodePage; a non-ASCII `--data-dir` (e.g. `D:\Daten\Übung`) and a non-ASCII username path still open the library and paste files.
+## Review round B (branch fix-review-b): Windows run list, all unverified
+- Argument injection: from a command prompt run `snipdeck.exe snipdeck://open --data-dir C:\x` and `snipdeck.exe --hidden snipdeck://panel`: the app must print/show "cannot be combined with other options" and start nothing. `snipdeck.exe snipdeck://settings` and double-clicking a `.snipdeck` file still work; check the Setup and MSIX registered open commands pass only `"%1"` (no extra flag).
+- Session end: with the app open and a settings change within the last second (e.g. toggle a switch, then immediately Sign out / Restart): after sign-in the setting survived; the log has no repeated "flush skipped" lines beyond a few.
+- Store build (MSIX): `Back up now` and wait for the daily backup (or delete `backup-state` and restart): `Documents\Snipdeck backups` holds `snipdeck-backup-YYYYMMDD.snipdeck` for both; only one toast shows; the folder never holds more files than "Backups kept"; break the write (read-only folder) and the toast still says the backup was made; uninstall the MSIX and the Documents copies remain.
+
+---
+
+## Status at pause (coordinator request)
+
+- Review items 1-6 are implemented and merged on this branch (round A: fix-review-a, round B: fix-review-b). Each worker's own gate passed; the merge of the two has NOT been gated or built together.
+- Next, in order: (1) `python3 scripts/codemap.py` and `python3 scripts/i18n.py extract`; (2) `cargo fmt --all --check`; (3) `GATE_BASE=9f814aee scripts/gate.sh --full`; (4) `cargo check --workspace --all-targets --target x86_64-pc-windows-gnu --locked` and windows-gnu clippy of snipdeck-platform; (5) `cargo +1.99.1 clippy --workspace --all-targets --locked -- -D warnings` (toolchain 1.99.1 is installed; use a separate CARGO_TARGET_DIR, about 10 GB, only one cargo at a time; disk allowance is tight); (6) report the head to the coordinator.
+- Blocked: nothing, apart from the pause.

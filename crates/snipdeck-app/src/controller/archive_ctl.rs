@@ -204,6 +204,7 @@ where
                 now: self.clock.now().to_zoned(TimeZone::system()),
                 keep: self.backup_keep(),
                 replace: true,
+                copy_to: self.backup_copy_to.clone(),
             },
         );
         self.begin_running(job, Context::None)
@@ -236,9 +237,16 @@ where
                 now: now.clone(),
                 keep: self.backup_keep(),
                 replace: false,
+                copy_to: self.backup_copy_to.clone(),
             },
         );
         Ok(self.begin_running(job, Context::None))
+    }
+
+    /// Also copies every backup written into `folder` (the Store build's Documents folder),
+    /// pruned to the same count; `None` makes no copy.
+    pub fn set_backup_copy_folder(&mut self, folder: Option<PathBuf>) {
+        self.backup_copy_to = folder;
     }
 
     fn backup_keep(&self) -> usize {

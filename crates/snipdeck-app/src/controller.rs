@@ -358,6 +358,8 @@ pub struct Controller<S, C, K, T> {
     lock: lock_ctl::LockState,
     /// The archive step a worker is writing, if any.
     archive: archive_ctl::ArchiveState,
+    /// Where each backup written is also copied (the Store build), if anywhere.
+    backup_copy_to: Option<std::path::PathBuf>,
     /// Switches the clipboard listener of the Recent inbox (see `recent_ctl.rs`).
     recent_gate: Option<snipdeck_platform::clipboard_watch::WatchGate>,
     /// The typed-trigger service (keyboard hook), once the host hands it over.
@@ -573,6 +575,7 @@ where
             pending: Vec::new(),
             lock: lock_ctl::LockState::new(idle_start),
             archive: archive_ctl::ArchiveState::default(),
+            backup_copy_to: None,
             recent_gate: None,
             typing: None,
             typing_sent: Vec::new(),
