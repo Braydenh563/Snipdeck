@@ -2234,8 +2234,8 @@ ui_tests! {
         // Wider: the icon button gives way to the full switcher while the pointer rests where it was.
         ui.window().set_size(slint::LogicalSize::new(1040.0, 640.0));
         settle();
-        // Time passes as on a clock, so the layer's 100ms check ticks each step.
-        for _ in 0..4 {
+        // Time passes as on a clock: the layer checks every 500ms (twice, to see no answer), then the tip lingers 200ms.
+        for _ in 0..14 {
             mock_elapsed_time(std::time::Duration::from_millis(100));
             settle();
         }
