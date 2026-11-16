@@ -631,6 +631,7 @@ impl PanelModel {
         let mut merged: Vec<Row> = Vec::with_capacity(rows.len() + pending.len());
         // Several ghosts after the same row stack newest first (each one went in right below
         // the row, ahead of the earlier ones); a ghost after a ghost follows it at once.
+        #[allow(clippy::items_after_statements, reason = "local to the merge it serves")]
         fn emit(
             key: Option<ItemId>,
             after: &mut HashMap<Option<ItemId>, Vec<&Ghost>>,
@@ -1137,10 +1138,10 @@ mod tests {
             row,
             step: None,
         };
-        let (a, b, c) = (row(&model, 0), row(&model, 1), row(&model, 2));
+        let (first, second, third) = (row(&model, 0), row(&model, 1), row(&model, 2));
         // g1 and g2 both after live row 3 (g2 newest); g3 after g1; g4's neighbour is gone.
         let stray = |id: ItemId| {
-            let mut r = a.clone();
+            let mut r = first.clone();
             r.id = id;
             r
         };
@@ -1155,17 +1156,17 @@ mod tests {
             ghost(Some(ids[3]), g2.clone()),
             ghost(Some(g1.id), g3.clone()),
             ghost(Some(ItemId::generate()), g4.clone()),
-            ghost(None, c.clone()),
-            ghost(Some(a.id), b.clone()),
+            ghost(None, third.clone()),
+            ghost(Some(first.id), second.clone()),
         ];
         model.rows_cache.take();
         let order: Vec<ItemId> = model.rows().iter().map(|r| r.id).collect();
-        // `c` and `b` are live rows already, so their ghosts are not shown twice.
+        // `third` and `second` are live rows already, so their ghosts are not shown twice.
         assert_eq!(
             order,
             [ids[0], ids[1], ids[2], ids[3], g2.id, g1.id, g3.id, g4.id]
         );
-        assert!(model.rows().iter().filter(|r| r.deleted_pending).count() == 4);
+        assert_eq!(model.rows().iter().filter(|r| r.deleted_pending).count(), 4);
     }
 
     #[test]
