@@ -662,6 +662,9 @@ pub fn symbol_menu_entry(
         SymbolMenuEntry::CopyPng => (t.invoke_symbol_copy_png(), "", false),
         SymbolMenuEntry::SaveAsSvg => (t.invoke_symbol_save_svg(), "", false),
         SymbolMenuEntry::SaveAsPng => (t.invoke_symbol_save_png(), "", false),
+        SymbolMenuEntry::PngSize(px) => (t.invoke_symbol_png_size(i32::try_from(*px).unwrap_or(0)), "", false),
+        SymbolMenuEntry::PngInk { dark } => (t.invoke_symbol_png_ink(*dark), "", false),
+        SymbolMenuEntry::Tone(n) => (t.invoke_symbol_tone(i32::from(*n)), "", false),
         SymbolMenuEntry::Separator => {
             return snipdeck_ui::MenuEntry {
                 separator: true,

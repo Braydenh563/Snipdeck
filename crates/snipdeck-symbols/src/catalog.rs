@@ -513,7 +513,19 @@ impl Catalog {
         &self.art
     }
 
-    /// The translated names of every emoji in `lang`, loaded on first use.
+    /// Builds the folded names and keywords of `lang` now (the Symbols tab does this when it opens,
+    /// so the first key typed does not pay for it). English has no file: nothing to build.
+    pub fn prepare(&self, lang: Lang) {
+        let _ = self.lang_names(lang);
+    }
+
+    /// True once the names of `lang` are built (English is always ready).
+    #[must_use]
+    pub fn is_prepared(&self, lang: Lang) -> bool {
+        lang.slot().is_none_or(|slot| self.names[slot].get().is_some())
+    }
+
+    /// The translated names of every symbol that has one in `lang`, loaded on first use.
     pub(crate) fn lang_names(&self, lang: Lang) -> Option<&LangNames> {
         let slot = lang.slot()?;
         Some(self.names[slot].get_or_init(|| self.load_names(slot)))

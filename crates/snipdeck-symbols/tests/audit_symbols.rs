@@ -170,3 +170,14 @@ fn tools_53_twenty_fixed_queries_find_their_emoji() {
         top(q, Lang::En, Some(Kind::Emoji), want, 8);
     }
 }
+
+/// TOOLS-61: `prepare` builds a language's folded names before the first query.
+#[test]
+fn tools_61_prepare_builds_the_language_before_the_first_search() {
+    let c = Catalog::build().unwrap();
+    assert!(c.is_prepared(Lang::En));
+    assert!(!c.is_prepared(Lang::Ja));
+    c.prepare(Lang::Ja);
+    assert!(c.is_prepared(Lang::Ja));
+    assert!(!c.is_prepared(Lang::De), "only the asked language");
+}

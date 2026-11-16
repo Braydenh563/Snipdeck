@@ -49,6 +49,8 @@ struct Inner {
 impl Glue {
     /// The tab was opened: a clean query, the first cell selected.
     pub fn opened(&self, w: &ui::PanelWindow, recents: &[SymbolId], lang: Lang) {
+        // The folded names of the UI language are built now, not on the first key (TOOLS-61).
+        Catalog::get().prepare(lang);
         {
             let mut s = self.inner.borrow_mut();
             s.query.clear();
