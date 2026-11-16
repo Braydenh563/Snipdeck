@@ -2234,9 +2234,12 @@ thread_local! {
     static OPENER: RefCell<Option<Rc<dyn Fn()>>> = const { RefCell::new(None) };
 }
 
+/// Opens the Settings page on the Import preview of a file.
+type ImportOpener = Rc<dyn Fn(PathBuf)>;
+
 thread_local! {
-    /// Opens the Settings page on the Import preview of a file; set by [`SettingsUi::new`].
-    static IMPORT_OPENER: RefCell<Option<Rc<dyn Fn(PathBuf)>>> = const { RefCell::new(None) };
+    /// Set by [`SettingsUi::new`].
+    static IMPORT_OPENER: RefCell<Option<ImportOpener>> = const { RefCell::new(None) };
 }
 
 /// Opens the Settings page with the Import preview of the `.snipdeck` file `path` (a file

@@ -1004,7 +1004,7 @@ mod second_launch_tests {
 
     #[test]
     fn the_lock_wait_outlasts_one_other_hand_over() {
-        assert!(LOCK_TIMEOUT_MS > ACK_TIMEOUT_MS);
+        const { assert!(LOCK_TIMEOUT_MS > ACK_TIMEOUT_MS) };
     }
 
     #[test]

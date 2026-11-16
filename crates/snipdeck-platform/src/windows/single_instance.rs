@@ -116,13 +116,13 @@ fn app_id_error(error: AppIdError) -> Error {
 pub fn user_sid() -> Result<String, Error> {
     let mut token = HANDLE::default();
     // SAFETY: the pseudo handle of this process, a valid out pointer; the token is closed by `Handle`.
-    unsafe { OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token) }
+    unsafe { OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &raw mut token) }
         .map_err(|e| Error::from_windows("OpenProcessToken", &e))?;
     let token = Handle(token);
     let mut needed = 0_u32;
     // SAFETY: the size query: no buffer, a valid out pointer. It fails with "insufficient buffer",
     // which is the expected answer here.
-    let _ = unsafe { GetTokenInformation(token.raw(), TokenUser, None, 0, &mut needed) };
+    let _ = unsafe { GetTokenInformation(token.raw(), TokenUser, None, 0, &raw mut needed) };
     // `u64` units: `TOKEN_USER` wants 8-byte alignment.
     let mut buffer = vec![0_u64; (needed as usize).div_ceil(8).max(1)];
     // SAFETY: `buffer` has at least `needed` bytes; `token` has `TOKEN_QUERY`.
@@ -132,7 +132,7 @@ pub fn user_sid() -> Result<String, Error> {
             TokenUser,
             Some(buffer.as_mut_ptr().cast::<c_void>()),
             needed,
-            &mut needed,
+            &raw mut needed,
         )
     }
     .map_err(|e| Error::from_windows("GetTokenInformation", &e))?;
@@ -140,7 +140,7 @@ pub fn user_sid() -> Result<String, Error> {
     let sid = unsafe { (*buffer.as_ptr().cast::<TOKEN_USER>()).User.Sid };
     let mut text = PWSTR::null();
     // SAFETY: `sid` points into `buffer`, which is alive; `text` receives a `LocalAlloc`ed string.
-    unsafe { ConvertSidToStringSidW(sid, &mut text) }
+    unsafe { ConvertSidToStringSidW(sid, &raw mut text) }
         .map_err(|e| Error::from_windows("ConvertSidToStringSidW", &e))?;
     // SAFETY: a NUL-terminated wide string just returned by the call above.
     let result = unsafe { text.to_string() };
@@ -165,7 +165,7 @@ impl OwnerOnly {
             ConvertStringSecurityDescriptorToSecurityDescriptorW(
                 PCWSTR(sddl.as_ptr()),
                 SDDL_REVISION_1,
-                &mut descriptor,
+                &raw mut descriptor,
                 None,
             )
         }
@@ -624,6 +624,10 @@ fn listen(
         let signaled = unsafe { WaitForMultipleObjects(&handles, false, INFINITE) };
         if signaled == WAIT_OBJECT_0 {
             // A launch with nothing in the box (it could not write one) is a plain launch.
+            #[allow(
+                clippy::redundant_closure_for_method_calls,
+                reason = "the method path does not fit the mailbox's elided lifetime"
+            )]
             let request = section
                 .with_mailbox(|mailbox| mailbox.take())
                 .flatten()
