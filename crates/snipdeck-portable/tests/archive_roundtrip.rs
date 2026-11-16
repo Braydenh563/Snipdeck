@@ -16,7 +16,8 @@ use std::io::Cursor;
 
 use common::*;
 use snipdeck_portable::{BoardLayout, ExportOptions, ImportOptions, MergeStrategy, import_archive};
-use snipdeck_store::{BoardRepo, ItemRepo, ListRepo};
+use snipdeck_core::{CaseMode, Trigger, TriggerEnd, TriggerOptions};
+use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TriggerRepo};
 
 fn keep_boards() -> ImportOptions<'static> {
     ImportOptions {
@@ -49,6 +50,40 @@ fn round_trip_into_a_fresh_store_is_equal() {
     assert!(!report.has_warnings(), "{:?}", report.warnings);
     assert_healthy(&fresh);
     assert_trash_empty(&fresh);
+}
+
+#[test]
+fn a_triggers_end_and_case_mode_round_trip() {
+    let mut original = sample_store();
+    let work = original.boards().unwrap().remove(0);
+    let replies = original.lists(work.id).unwrap().remove(0);
+    let items = original.items(replies.id).unwrap();
+    let options = |end, case| TriggerOptions { end, case };
+    let kept = [
+        ("sig", options(TriggerEnd::Delimiter, CaseMode::Adapt)),
+        (";plain", TriggerOptions::default()),
+        (";ci", options(TriggerEnd::Immediate, CaseMode::Ignore)),
+    ];
+    for (item, (text, o)) in items.iter().zip(kept) {
+        let t = Trigger::new(text).unwrap().with_options(o);
+        original.set_trigger(item.id, Some(&t)).unwrap();
+    }
+    let bytes = export_bytes(&original, &ExportOptions::default());
+    let mut fresh = store();
+    let report = import(&mut fresh, &bytes, &keep_boards());
+    assert!(!report.has_warnings(), "{:?}", report.warnings);
+    let read = |s: &snipdeck_store::Store| {
+        let mut all: Vec<(String, TriggerOptions)> = s
+            .triggers()
+            .unwrap()
+            .into_iter()
+            .map(|(t, _)| (t.as_str().to_owned(), t.options()))
+            .collect();
+        all.sort_by(|a, b| a.0.cmp(&b.0));
+        all
+    };
+    assert_eq!(read(&fresh), read(&original));
+    assert_eq!(read(&fresh).len(), 3);
 }
 
 #[test]

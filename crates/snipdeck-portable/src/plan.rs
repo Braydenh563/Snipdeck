@@ -420,7 +420,7 @@ fn write(
                 // A code already in use keeps its owner (the library's, or the first in this
                 // import); the newcomer comes in without one, and the report says so.
                 if let Some(trigger) = plan_item.trigger.as_ref().filter(|_| !item.sensitive) {
-                    if lib.trigger_holder(trigger)?.is_some() {
+                    if lib.triggers()?.iter().any(|(t, _)| t.same_code(trigger)) {
                         report.warn(Warning::Note(Note::TriggerTaken {
                             title: item.title.clone(),
                             trigger: trigger.to_string(),

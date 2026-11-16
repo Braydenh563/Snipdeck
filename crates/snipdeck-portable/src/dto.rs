@@ -197,6 +197,12 @@ pub(crate) struct ItemDto {
     /// The typed trigger; added in 1.2. Never present for a sensitive item.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trigger: Option<String>,
+    /// When the trigger fires, `immediate` or `delimiter`; absent means `immediate`. Added in 1.2.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger_fires: Option<String>,
+    /// How the trigger reads case, `exact`, `ignore` or `adapt`; absent means `exact`. Added in 1.2.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger_case: Option<String>,
     #[serde(default)]
     pub use_count: u32,
     #[serde(default)]

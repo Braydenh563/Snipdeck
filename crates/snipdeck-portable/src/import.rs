@@ -339,6 +339,23 @@ fn parse_name(text: &str, what: &str) -> Result<Name> {
     Name::new(text).map_err(|e| Error::malformed(ITEMS, format!("{what} name: {e}")))
 }
 
+/// The options an item's trigger was written with. A key this build does not know reads as the
+/// default, so an archive from a newer one still imports.
+fn trigger_options(dto: &ItemDto) -> snipdeck_core::TriggerOptions {
+    snipdeck_core::TriggerOptions {
+        end: dto
+            .trigger_fires
+            .as_deref()
+            .and_then(snipdeck_core::TriggerEnd::from_key)
+            .unwrap_or_default(),
+        case: dto
+            .trigger_case
+            .as_deref()
+            .and_then(snipdeck_core::CaseMode::from_key)
+            .unwrap_or_default(),
+    }
+}
+
 fn parse_key<T: FromStr<Err = snipdeck_core::Error>>(text: &str, what: &str) -> Result<T> {
     text.parse().map_err(|_| {
         Error::malformed(
@@ -626,9 +643,14 @@ impl<R: Read + Seek> Builder<'_, R> {
                 .trigger
                 .as_deref()
                 .map(|t| {
-                    Trigger::new(t).map_err(|e| {
-                        Error::malformed(ITEMS, format!("item {id} has an invalid trigger: {e}"))
-                    })
+                    Trigger::new(t)
+                        .map(|t| t.with_options(trigger_options(&dto)))
+                        .map_err(|e| {
+                            Error::malformed(
+                                ITEMS,
+                                format!("item {id} has an invalid trigger: {e}"),
+                            )
+                        })
                 })
                 .transpose()?,
             group: dto

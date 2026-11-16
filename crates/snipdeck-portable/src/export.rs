@@ -211,6 +211,17 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
                         always_plain: item.always_plain,
                         label: item.label.map(|l| l.key().to_owned()),
                         trigger: triggers.get(&item.id).map(ToString::to_string),
+                        // Only what differs from the default is written.
+                        trigger_fires: triggers
+                            .get(&item.id)
+                            .map(|t| t.options().end)
+                            .filter(|e| *e != snipdeck_core::TriggerEnd::default())
+                            .map(|e| e.key().to_owned()),
+                        trigger_case: triggers
+                            .get(&item.id)
+                            .map(|t| t.options().case)
+                            .filter(|c| *c != snipdeck_core::CaseMode::default())
+                            .map(|c| c.key().to_owned()),
                         group: group_of.get(&item.id).map(|g| {
                             written_groups.insert(*g);
                             g.to_string()
