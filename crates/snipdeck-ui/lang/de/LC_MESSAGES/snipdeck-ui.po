@@ -1413,8 +1413,8 @@ msgstr "Kopien weniger Tage behalten"
 msgid "Keep copies for more days"
 msgstr "Kopien mehr Tage behalten"
 
-msgid "Keep copies from unidentified programs"
-msgstr ""
+msgid "Keep copies from unknown sources"
+msgstr "Kopien aus unbekannten Quellen behalten"
 
 msgid "Keep editing"
 msgstr "Weiter bearbeiten"
@@ -2321,7 +2321,7 @@ msgid "Recent keeps the text you copy, on this computer only, for the last {} co
 msgstr "„Zuletzt“ behält den kopierten Text, nur auf diesem Computer, für die letzten {} Kopien oder {} Tage, je nachdem, was zuerst eintritt. Passwörter aus Passwortmanagern und vertrauliche Textbausteine werden nie gespeichert. Du kannst das jederzeit in den Einstellungen ändern."
 
 msgid "Recent skips a copy when Snipdeck cannot tell which program it came from, because it could be a password manager. Turn this on to keep those copies too."
-msgstr ""
+msgstr "„Zuletzt“ überspringt eine Kopie, wenn Snipdeck nicht erkennen kann, aus welchem Programm sie stammt, weil es ein Passwortmanager sein könnte. Schalte das ein, um auch diese Kopien zu behalten."
 
 msgid "Recent: days kept"
 msgstr "Zuletzt: Tage behalten"

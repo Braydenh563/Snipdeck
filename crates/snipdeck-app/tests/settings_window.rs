@@ -3046,7 +3046,7 @@ fn the_recent_unknown_source_toggle_is_off_by_default_and_changes_the_setting() 
         assert!(!r.ctl.borrow().settings().recent_keep_unknown_source);
         element(
             &r.ui,
-            "Keep copies from unidentified programs",
+            "Keep copies from unknown sources",
             AccessibleRole::Switch,
         );
         r.ui.invoke_recent_keep_unknown_source_toggled(true);

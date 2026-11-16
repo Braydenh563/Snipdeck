@@ -1879,7 +1879,7 @@ msgid "Keep copies for more days"
 msgstr ""
 
 #: ui/settings.slint:497 ui/settings.slint:1184 ui/settings.slint:1187
-msgid "Keep copies from unidentified programs"
+msgid "Keep copies from unknown sources"
 msgstr ""
 
 #: ui/editors.slint:1546 ui/editors.slint:1929
