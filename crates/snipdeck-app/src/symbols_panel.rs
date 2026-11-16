@@ -37,7 +37,7 @@ pub enum Title {
     Recent,
     /// A kind's own section ("Emoji", "Kaomoji", "Icons").
     Kind(Kind),
-    /// An emoji group, by its place in [`EMOJI_GROUPS`].
+    /// An emoji group, by its place in `EMOJI_GROUPS`.
     EmojiGroup(usize),
     /// A kaomoji group, by its place in `KAOMOJI_GROUPS`.
     KaomojiGroup(usize),

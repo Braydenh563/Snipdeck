@@ -73,6 +73,10 @@ struct Drawn {
 }
 
 #[derive(Default)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "independent view flags of one window, each read on its own"
+)]
 struct Inner {
     /// The HSL or CMYK values as last typed or stepped, next to the colour they made.
     typed: Option<(InputModel, Rgba8, panel::Memo)>,
@@ -152,8 +156,8 @@ fn contrast_row(
     let ratio = contrast_over(fg, bg, backdrop);
     let m = marks(ratio);
     let text = ratio_text(ratio);
-    let flat_bg = composite(bg, Rgba8 { a: 255, ..backdrop });
-    let flat_fg = composite(fg, flat_bg);
+    let solid_bg = composite(bg, Rgba8 { a: 255, ..backdrop });
+    let solid_ink = composite(fg, solid_bg);
     let over = if fg.a < 255 || bg.a < 255 {
         if backdrop.r == 0 {
             t.invoke_over_black()
@@ -166,12 +170,12 @@ fn contrast_row(
     let fix_text = if m.aa {
         SharedString::new()
     } else {
-        nearest_passing(flat_fg, flat_bg, 4.5)
+        nearest_passing(solid_ink, solid_bg, 4.5)
             .map(|c| t.invoke_fix_text(c.to_hex().into()))
             .unwrap_or_default()
     };
     ui::ColourContrastRow {
-        apca: t.invoke_apca_text(format!("{:.0}", apca(flat_fg, flat_bg).abs()).into()),
+        apca: t.invoke_apca_text(format!("{:.0}", apca(solid_ink, solid_bg).abs()).into()),
         over,
         fix_text,
         speak: t.invoke_contrast_speak(
@@ -386,7 +390,7 @@ fn chips(
             .map(|f| ui::ColourFormatRow {
                 label: f.label().into(),
                 value: if *f == Format::Name {
-                    name_row_text(t, c).into()
+                    name_row_text(t, c)
                 } else {
                     snipdeck_colour::format(c, *f).into()
                 },
@@ -895,8 +899,8 @@ where
                 } else {
                     Rgba8::rgb(255, 255, 255)
                 };
-                let flat_bg = composite(bg, backdrop);
-                if let Some(fixed) = nearest_passing(composite(fg, flat_bg), flat_bg, 4.5) {
+                let solid_bg = composite(bg, backdrop);
+                if let Some(fixed) = nearest_passing(composite(fg, solid_bg), solid_bg, 4.5) {
                     core.act(|ctl| ctl.set_colour(Rgba8 { a: 255, ..fixed }));
                 }
             });
