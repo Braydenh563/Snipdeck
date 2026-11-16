@@ -996,8 +996,12 @@ ui_tests! {
             .accessible_description().unwrap().starts_with("1 item will move"));
         ui.set_item_count(24);
 
-        // Enter does nothing in a destructive dialog; Esc closes it and the editor stays.
+        // MAIN-44: focus starts on Cancel, so Enter answers no and the editor stays; Esc does the same.
         press_key(&ui, Key::Return);
+        assert!(!ui.get_delete_open());
+        assert_eq!(take(&log), Vec::<String>::new());
+        find(&ui, "Delete list", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
         assert!(ui.get_delete_open());
         press_key(&ui, Key::Escape);
         assert!(!ui.get_delete_open());

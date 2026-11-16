@@ -316,7 +316,12 @@ fn an_error_toast_holds_longer_than_a_neutral_one() {
         message: ToastMessage::NotSaved,
     });
     let seq = w.ctl.view().toast.expect("toast").seq;
-    assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_ERROR_HOLD));
+    // The hold is the guard (nothing plain replaces the error in it) and the rest, 10 s together.
+    assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_ERROR_GUARD));
+    assert_eq!(
+        w.ctl.toast_tick(seq),
+        Some(TOAST_ERROR_HOLD - TOAST_ERROR_GUARD)
+    );
     assert!(TOAST_ERROR_HOLD >= TOAST_HOLD * 4);
     // Under the pointer it stays, and after the pointer leaves it gets a fresh error hold.
     w.ctl.toast_hover(true);
@@ -386,20 +391,32 @@ fn success(message: ToastMessage) -> Toast {
 #[test]
 fn the_latest_toast_wins_across_actions() {
     let mut w = world();
-    // A paste failed, the retry worked: the user sees "Pasted", not the old error.
+    // A paste failed, the retry worked: the user sees "Pasted" once the error has had its guard
+    // time (MAIN-43), not the old error for good.
     w.ctl.show_toast(failed());
     w.ctl.show_toast(success(ToastMessage::Pasted {
         app: "Outlook".into(),
     }));
     assert_eq!(
         shown(&w),
+        Some(ToastMessage::Failed),
+        "the error is guarded"
+    );
+    let seq = w.ctl.view().toast.expect("toast").seq;
+    w.ctl.toast_tick(seq);
+    w.ctl.toast_tick(seq);
+    assert_eq!(
+        shown(&w),
         Some(ToastMessage::Pasted {
             app: "Outlook".into()
         })
     );
-    // Settings and reorder confirmations replace an error too.
+    // Settings and reorder confirmations take over from an error the same way.
     w.ctl.show_toast(failed());
     w.ctl.show_toast(neutral(ToastMessage::PanelOnTop(true)));
+    let seq = w.ctl.view().toast.expect("toast").seq;
+    w.ctl.toast_tick(seq);
+    w.ctl.toast_tick(seq);
     assert_eq!(shown(&w), Some(ToastMessage::PanelOnTop(true)));
     // An error replaces a success.
     w.ctl.show_toast(failed());
@@ -413,6 +430,9 @@ fn a_retry_that_works_replaces_the_error_of_the_failed_try() {
     let before = w.ctl.view().toast.expect("toast").seq;
     let result = w.ctl.activate_row(0, UseMode::Paste);
     assert_eq!(result, UseResult::Done(UseOutcome::Pasted));
+    // The error keeps the screen for its guard time, then the retry's toast takes over.
+    w.ctl.toast_tick(before);
+    w.ctl.toast_tick(before);
     let now = w.ctl.view().toast.expect("toast");
     assert_ne!(now.seq, before, "a new toast");
     assert!(matches!(now.message, ToastMessage::Pasted { .. }));

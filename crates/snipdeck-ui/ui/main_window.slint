@@ -3084,6 +3084,9 @@ export component MainWindow inherits Window {
             self.focus-menu();
         }
         activated(i) => {
+            // Recent messages opens a dialog that takes the focus; closing the menu must not queue a focus
+            // return to the Help button that would run after it. The dialog's `closed` returns it instead.
+            if (i == 4) { root.menu-origin = 0; }
             root.close-menus();
             // The row order is the `entries` list above (the separator is row 5).
             if (i == 0) {
@@ -3096,6 +3099,7 @@ export component MainWindow inherits Window {
                 root.help-requested(HelpPage.about);
             } else if (i == 4) {
                 root.recent-messages-requested();
+                root.menu-origin = 1;
                 root.recent-messages-open = true;
             } else {
                 root.panel-requested();
