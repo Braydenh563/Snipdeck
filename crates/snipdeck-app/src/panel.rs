@@ -915,15 +915,65 @@ impl PanelModel {
     }
 }
 
-/// `OUTLOOK.EXE` becomes `Outlook`; `notepad++.exe` becomes `Notepad++`.
+/// The names people know for programs whose file name does not say it. Keys are lower case, no
+/// extension.
+const KNOWN_APPS: &[(&str, &str)] = &[
+    ("winword", "Word"),
+    ("excel", "Excel"),
+    ("powerpnt", "PowerPoint"),
+    ("onenote", "OneNote"),
+    ("msedge", "Microsoft Edge"),
+    ("chrome", "Google Chrome"),
+    ("code", "Visual Studio Code"),
+    ("devenv", "Visual Studio"),
+    ("explorer", "File Explorer"),
+    ("ms-teams", "Microsoft Teams"),
+    ("teams", "Microsoft Teams"),
+    ("wt", "Windows Terminal"),
+    ("cmd", "Command Prompt"),
+    ("powershell", "PowerShell"),
+    ("pwsh", "PowerShell"),
+    ("mspaint", "Paint"),
+    ("wordpad", "WordPad"),
+    ("idea64", "IntelliJ IDEA"),
+    // Every Store app runs inside this one host, so its name says nothing about the app.
+    ("applicationframehost", "Windows app"),
+];
+
+/// `OUTLOOK.EXE` becomes `Outlook`, `WINWORD.EXE` `Word`, `WindowsTerminal.exe` `Windows
+/// Terminal`; `notepad++.exe` becomes `Notepad++`. The program's own display name (the version
+/// resource's `FileDescription`) would be better still but needs Windows to read, so it is
+/// post-1.0 (`docs/SPEC.md`).
 #[must_use]
 pub fn friendly_app_name(exe: &str) -> String {
-    let stem = exe
-        .rsplit(['\\', '/'])
-        .next()
-        .unwrap_or(exe)
-        .trim_end_matches(".exe")
-        .trim_end_matches(".EXE");
+    let file = exe.rsplit(['\\', '/']).next().unwrap_or(exe);
+    let stem = match file.len().checked_sub(4) {
+        Some(at) if file.is_char_boundary(at) && file[at..].eq_ignore_ascii_case(".exe") => {
+            &file[..at]
+        }
+        _ => file,
+    };
+    let lower = stem.to_lowercase();
+    if let Some((_, known)) = KNOWN_APPS.iter().find(|(key, _)| *key == lower) {
+        return (*known).to_owned();
+    }
+    let mixed = stem.chars().any(char::is_lowercase) && stem.chars().any(char::is_uppercase);
+    if mixed {
+        // `WindowsTerminal` is already cased by its maker: only split the words.
+        let mut out = String::new();
+        let mut previous_lower = false;
+        for c in stem.chars() {
+            if previous_lower && c.is_uppercase() {
+                out.push(' ');
+            }
+            previous_lower = c.is_lowercase();
+            out.push(c);
+        }
+        let mut chars = out.chars();
+        return chars.next().map_or_else(String::new, |first| {
+            first.to_uppercase().chain(chars).collect()
+        });
+    }
     let mut chars = stem.chars();
     chars.next().map_or_else(String::new, |first| {
         first
@@ -1336,6 +1386,25 @@ mod tests {
         assert_eq!(friendly_app_name("notepad++.exe"), "Notepad++");
         assert_eq!(friendly_app_name("C:\\Windows\\notepad.exe"), "Notepad");
         assert_eq!(friendly_app_name(""), "");
+    }
+
+    #[test]
+    fn friendly_names_are_the_ones_people_know() {
+        // PANEL-15: the file stem alone gave "Winword", "Msedge", "Windowsterminal".
+        for (exe, name) in [
+            ("WINWORD.EXE", "Word"),
+            ("POWERPNT.EXE", "PowerPoint"),
+            ("msedge.exe", "Microsoft Edge"),
+            ("WindowsTerminal.exe", "Windows Terminal"),
+            ("ApplicationFrameHost.exe", "Windows app"),
+            ("ms-teams.exe", "Microsoft Teams"),
+            ("explorer.Exe", "File Explorer"),
+            ("Slack.exe", "Slack"),
+            ("MyCoolApp.exe", "My Cool App"),
+            ("C:\\Program Files\\Mozilla\\firefox.exe", "Firefox"),
+        ] {
+            assert_eq!(friendly_app_name(exe), name, "{exe}");
+        }
     }
 
     fn five(f: &mut Fixture) -> Vec<ItemId> {

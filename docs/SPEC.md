@@ -244,3 +244,4 @@ Post-1.0, decided:
 - Partly sent keys (PANEL-27): a "partly sent" paste outcome needs a new `PasteFailure` variant in core and toast copy in every surface; the path (Windows accepting only part of a `SendInput` batch) cannot be reproduced or verified off Windows. Today the item stays on the clipboard and the toast says it was copied.
 - Erase checks the window handle (PANEL-21): needs the Target's window handle and focused control remembered at trigger time, Windows-only and unverifiable here. Today the erase checks the app name.
 - F2 rename on Panel Recent (PANEL-10): Recent rows are clipboard history with no name to edit, so the key does not apply.
+- Friendly app names from the version resource (PANEL-15): the name comes from a table of well-known programs plus a CamelCase split. Reading each program's `FileDescription` or its Start-menu name needs Windows and is unverifiable here; a Store app still reads "Windows app".
