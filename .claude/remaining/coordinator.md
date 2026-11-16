@@ -11,8 +11,9 @@ PR #5, branch claude/compassionate-pascal-pod8ux. CI green on df614a06; pushed h
 ## Audit progress (10 areas, map in extras.md)
 - [x] extras: 15 findings EXTRAS-1..15 (language setting not applied, CI skips python checks, Plex OFL notice + MSIX licences, English-only Rust strings, terminology drift, no log file, empty crash reports, --check-db writes, half-built bits, CLI). Not reached: failure.rs ownership.rs host.rs tips.rs tour.rs demo.rs screenshot.rs main.rs 260-870.
 - [x] library: 56 findings LIBRARY-1..56 (4 high: 1,2,26,35). UI walk not reached.
-- [ ] panel: running (Fable), on merged head.
-- [ ] main, privacy, data, tools, platform, ux, perf.
+- [x] panel: 45 findings PANEL-1..45 (1 high: 13 paste sleeps on UI thread). ALL code-only (disk ran out); runs owed for PANEL-1,7,9,12,24,45 + 10k perf; reproduce in fix phase.
+- [ ] main, privacy: running (Fable).
+- [ ] data, tools, platform, ux, perf.
 
 ## In flight
 - Sonnet local agent: branch fix/sidebar-expand (sidebar toggle hidden below 720px auto-rail -> overlay drawer; help "?" vs "N items" footer gap). Verify, gate, merge.
