@@ -48,6 +48,9 @@ struct ToastCore<S, C, K, T> {
     shown: RefCell<Option<Shown>>,
     size: Cell<(f32, f32)>,
     redraw: Rc<dyn Fn()>,
+    /// Redraws the window when only the toast changed (registered with
+    /// [`register_toast_redraw`](crate::binding::register_toast_redraw)).
+    toast_redraw: Rc<dyn Fn()>,
 }
 
 impl<S, C, K, T> ToastCore<S, C, K, T>
@@ -57,6 +60,15 @@ where
     K: Keyboard + 'static,
     T: Timing + 'static,
 {
+    /// A toast tick: draws only if the toast differs from the one the window shows.
+    fn toast_changed(self: &Rc<Self>) {
+        let now = self.controller.borrow().toast_view();
+        let same = self.shown.borrow().as_ref().map(|s| &s.toast) == now.as_ref();
+        if !same {
+            self.sync();
+        }
+    }
+
     fn sync(self: &Rc<Self>) {
         let (view, panel_visible) = {
             let ctl = self.controller.borrow();
@@ -166,6 +178,7 @@ impl ToastUi {
         let shell = Shell::new(Rc::clone(&host), false);
         let core = Rc::new_cyclic(|weak: &Weak<ToastCore<S, C, K, T>>| {
             let weak = weak.clone();
+            let toast_weak = weak.clone();
             ToastCore {
                 controller: Rc::clone(controller),
                 host,
@@ -173,6 +186,12 @@ impl ToastUi {
                 shell: Rc::clone(&shell),
                 shown: RefCell::new(None),
                 size: Cell::new((0.0, 0.0)),
+                toast_redraw: Rc::new(move || {
+                    if let Some(core) = toast_weak.upgrade() {
+                        core.toast_changed();
+                    }
+                }),
+
                 redraw: Rc::new(move || {
                     if let Some(core) = weak.upgrade() {
                         core.sync();
@@ -181,6 +200,7 @@ impl ToastUi {
             }
         });
         register_redraw(&core.redraw);
+        crate::binding::register_toast_redraw(&core.toast_redraw);
         Self {
             _core: core,
             window: Box::new({

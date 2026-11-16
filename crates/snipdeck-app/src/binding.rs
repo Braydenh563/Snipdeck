@@ -38,6 +38,7 @@ use crate::{
 };
 
 mod colours;
+mod lazy_rows;
 
 type ProblemsFn = dyn Fn(&[HotkeyProblem]);
 type FrameFn = dyn Fn(&Monitor, Rect);
@@ -48,6 +49,31 @@ thread_local! {
     /// and the Main window read the same library and share one toast. Weak: a window that is
     /// gone drops out.
     static REDRAW: RefCell<Vec<Weak<dyn Fn()>>> = const { RefCell::new(Vec::new()) };
+}
+
+thread_local! {
+    /// The redraws of the windows that draw the toast, for the toast timer: a tick changes only
+    /// the toast, so a window whose toast is unchanged is not drawn.
+    static TOAST_REDRAW: RefCell<Vec<Weak<dyn Fn()>>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Adds a window's toast-only redraw to the set [`redraw_toast`] runs.
+pub(crate) fn register_toast_redraw(redraw: &Rc<dyn Fn()>) {
+    TOAST_REDRAW.with(|all| {
+        let mut all = all.borrow_mut();
+        all.retain(|w| w.strong_count() > 0);
+        all.push(Rc::downgrade(redraw));
+    });
+}
+
+/// Runs each toast-drawing window's check after a toast tick; a window redraws only when its
+/// toast differs from the one it shows. Call without a controller borrow held.
+pub(crate) fn redraw_toast() {
+    let all: Vec<Rc<dyn Fn()>> =
+        TOAST_REDRAW.with(|all| all.borrow().iter().filter_map(Weak::upgrade).collect());
+    for redraw in all {
+        redraw();
+    }
 }
 
 /// Adds a window's redraw to the set [`redraw_all`] runs.
@@ -74,7 +100,8 @@ pub fn redraw_from_any_thread() {
     let _ = slint::invoke_from_event_loop(redraw_all);
 }
 
-/// Runs the timer chain of toast `seq`: each tick advances the toast and redraws the windows.
+/// Runs the timer chain of toast `seq`: each tick advances the toast and redraws the windows
+/// that show it.
 pub(crate) fn arm_toast<S, C, K, T>(
     controller: Weak<RefCell<Controller<S, C, K, T>>>,
     seq: u64,
@@ -90,7 +117,7 @@ pub(crate) fn arm_toast<S, C, K, T>(
             return;
         };
         let next = strong.borrow_mut().toast_tick(seq);
-        redraw_all();
+        redraw_toast();
         if let Some(next) = next {
             arm_toast(controller, seq, next);
         }
@@ -282,6 +309,9 @@ struct Core<S, C, K, T> {
     shown: RefCell<Option<View>>,
     /// Redraws this window (registered with [`register_redraw`]).
     redraw: Rc<dyn Fn()>,
+    /// Redraws the window when only the toast changed (registered with
+    /// [`register_toast_redraw`](crate::binding::register_toast_redraw)).
+    toast_redraw: Rc<dyn Fn()>,
     /// A timer is waiting to write changed settings.
     settings_timer: Cell<bool>,
     /// A timer is waiting to clear a copied sensitive item off the clipboard.
@@ -317,6 +347,7 @@ where
     ) -> Rc<Self> {
         let core = Rc::new_cyclic(|weak: &Weak<Self>| {
             let weak = weak.clone();
+            let toast_weak = weak.clone();
             Self {
                 controller: Rc::clone(controller),
                 window: window.as_weak(),
@@ -325,6 +356,11 @@ where
                 host,
                 on_effect,
                 shown: RefCell::new(None),
+                toast_redraw: Rc::new(move || {
+                    if let Some(core) = toast_weak.upgrade() {
+                        core.toast_changed();
+                    }
+                }),
                 redraw: Rc::new(move || {
                     if let Some(core) = weak.upgrade() {
                         core.sync();
@@ -342,6 +378,7 @@ where
             }
         });
         register_redraw(&core.redraw);
+        register_toast_redraw(&core.toast_redraw);
         core
     }
 
@@ -575,6 +612,19 @@ where
         });
     }
 
+    /// A toast tick: draws only if the toast differs from the one the window shows.
+    fn toast_changed(self: &Rc<Self>) {
+        let now = self.controller.borrow().toast_view();
+        let same = self
+            .shown
+            .borrow()
+            .as_ref()
+            .is_some_and(|view| view.toast == now);
+        if !same {
+            self.sync();
+        }
+    }
+
     /// Copies the controller's view into the window and keeps the toast timer running.
     fn sync(self: &Rc<Self>) {
         let Some(window) = self.window.upgrade() else {
@@ -589,7 +639,8 @@ where
         let view = self.controller.borrow().view();
         // A hidden Panel is not drawn: showing it draws (see `Effect::ShowPanel`).
         let visible = window.window().is_visible() || !self.been_shown.get();
-        if visible {
+        // A view equal to the one shown draws nothing (one comparison instead of one per field).
+        if visible && self.shown.borrow().as_ref() != Some(&view) {
             render(&window, self.shown.borrow().as_ref(), &view);
         }
         // A new group's name follows the language the window is in now.
@@ -1721,43 +1772,17 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             && p.stack.as_ref().map(|s| &s.items) == view.stack.as_ref().map(|s| &s.items)
     }) {
         let marked = view.stack.as_ref().map_or(&[][..], |s| s.items.as_slice());
-        // One pass with running counters (the row builds were quadratic in the rows shown).
-        let mut stack_at: HashMap<ItemId, i32> = HashMap::with_capacity(marked.len());
-        for (at, id) in marked.iter().enumerate() {
-            stack_at.entry(*id).or_insert_with(|| to_i32(at + 1));
-        }
-        // Collapsed "Deleted · Undo" rows and group headers do not take a number.
-        let mut ghosts_before = 0_usize;
-        // The grouped rows just above, and the header of the row above that run.
-        let mut run = 0_usize;
-        let mut header_above: Option<&crate::panel::GroupHeader> = None;
-        let mut rows = Vec::with_capacity(view.rows.len());
-        for (i, r) in view.rows.iter().enumerate() {
-            let mut row = panel_row(r, view.dark);
-            row.ghosts_before = to_i32(ghosts_before);
-            // A group's items count off under their header: "2 of 5".
-            if r.grouped {
-                row.set_position = to_i32(run + 1);
-                row.set_size = header_above.map_or(0, |h| to_i32(h.count));
-            }
-            row.stack_position = stack_at.get(&r.id).copied().unwrap_or(0);
-            // The one sensitive row held revealed: the controller put its text in the preview.
-            if view.revealed == Some(i) {
-                row.preview = r.preview.as_str().into();
-            }
-            rows.push(row);
-            if r.deleted_pending || r.header.is_some() {
-                ghosts_before += 1;
-            }
-            if r.grouped {
-                run += 1;
-            } else {
-                run = 0;
-                header_above = r.header.as_ref();
-            }
-        }
-        if let Some(fresh) = refreshed_model(&window.get_rows(), rows) {
-            window.set_rows(fresh);
+        let extra = lazy_rows::extras(&view.rows, marked);
+        let current = window.get_rows();
+        if let Some(lazy) = current.as_any().downcast_ref::<lazy_rows::LazyRows>() {
+            lazy.update(Rc::clone(&view.rows), extra, view.dark, view.revealed);
+        } else {
+            window.set_rows(ModelRc::new(lazy_rows::LazyRows::new(
+                Rc::clone(&view.rows),
+                extra,
+                view.dark,
+                view.revealed,
+            )));
         }
         // Where the live row for Alt+1 to Alt+9 sits among the rows shown (ghosts are stepped over).
         let quick: Vec<i32> = view
@@ -2287,6 +2312,24 @@ impl Payload {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_toast_tick_runs_only_the_toast_redraws() {
+        use std::{cell::Cell, rc::Rc};
+        let toast_runs = Rc::new(Cell::new(0_u32));
+        let full_runs = Rc::new(Cell::new(0_u32));
+        let t = Rc::clone(&toast_runs);
+        let toast: Rc<dyn Fn()> = Rc::new(move || t.set(t.get() + 1));
+        let f = Rc::clone(&full_runs);
+        let full: Rc<dyn Fn()> = Rc::new(move || f.set(f.get() + 1));
+        super::register_toast_redraw(&toast);
+        super::register_redraw(&full);
+        super::redraw_toast();
+        assert_eq!((toast_runs.get(), full_runs.get()), (1, 0));
+        drop(toast);
+        super::redraw_toast();
+        assert_eq!(toast_runs.get(), 1, "a dropped window is not redrawn");
+    }
+
     #[test]
     fn a_recent_thumbnail_is_built_once_per_entry() {
         let thumb = snipdeck_store::RecentThumb {

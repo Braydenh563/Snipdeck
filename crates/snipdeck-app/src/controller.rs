@@ -744,7 +744,7 @@ where
     }
 
     /// The toast on screen, if any.
-    fn toast_view(&self) -> Option<ToastView> {
+    pub(crate) fn toast_view(&self) -> Option<ToastView> {
         self.toast.as_ref().map(|t| ToastView {
             seq: t.seq,
             kind: t.toast.kind,

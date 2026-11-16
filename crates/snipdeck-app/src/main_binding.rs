@@ -133,6 +133,9 @@ struct MainCore<S, C, K, T> {
     been_shown: std::cell::Cell<bool>,
     /// Redraws this window (registered with `binding::register_redraw`).
     redraw: Rc<dyn Fn()>,
+    /// Redraws the window when only the toast changed (registered with
+    /// [`register_toast_redraw`](crate::binding::register_toast_redraw)).
+    toast_redraw: Rc<dyn Fn()>,
 }
 
 /// A bound Main window. Dropping it does not unbind the window; the window's callbacks keep
@@ -245,6 +248,19 @@ where
         }
         let cursor = self.shown.borrow().as_ref().map_or(0, |s| s.cursor);
         self.act(|ctl| ctl.run_command(command, cursor));
+    }
+
+    /// A toast tick: draws only if the toast differs from the one the window shows.
+    fn toast_changed(self: &Rc<Self>) {
+        let now = self.controller.borrow().toast_view();
+        let same = self
+            .shown
+            .borrow()
+            .as_ref()
+            .is_some_and(|screen| screen.toast == now);
+        if !same {
+            self.sync();
+        }
     }
 
     /// Copies the controller's screen into the window and the editors, and keeps the toast
@@ -580,6 +596,7 @@ where
     pub fn bind_main(this: &Rc<RefCell<Self>>, window: &ui::MainWindow) -> MainBinding<S, C, K, T> {
         let core = Rc::new_cyclic(|weak: &Weak<MainCore<S, C, K, T>>| {
             let weak = weak.clone();
+            let toast_weak = weak.clone();
             MainCore {
                 controller: Rc::clone(this),
                 window: window.as_weak(),
@@ -587,6 +604,11 @@ where
                 editors: RefCell::new(Editors::default()),
                 tag_manager: RefCell::new(None),
                 been_shown: std::cell::Cell::new(false),
+                toast_redraw: Rc::new(move || {
+                    if let Some(core) = toast_weak.upgrade() {
+                        core.toast_changed();
+                    }
+                }),
                 redraw: Rc::new(move || {
                     if let Some(core) = weak.upgrade() {
                         core.sync();
@@ -595,6 +617,7 @@ where
             }
         });
         register_redraw(&core.redraw);
+        crate::binding::register_toast_redraw(&core.toast_redraw);
         // The OS draws the title bar and its caption buttons until the client-area chrome of
         // ADR-0008 exists, so the toolbar reserves nothing for them.
         window.global::<ui::SystemLook<'_>>().set_caption_inset(0.0);
