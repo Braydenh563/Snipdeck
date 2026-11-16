@@ -1349,7 +1349,7 @@ fn a_password_step_is_refused_while_a_rebuild_is_salvaging() {
     let dir = r.data.path().to_path_buf();
     assert!(r.ctl.backup_now(&dir));
     let backup =
-        snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(dir))
+        snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(&dir))
             .expect("list")
             .into_iter()
             .next()
