@@ -76,7 +76,7 @@ fn date_and_time_follow_the_locale() {
 #[test]
 fn locale_tags_are_matched_loosely() {
     assert_eq!(Locale::for_tag("DE_de"), Locale::for_tag("de"));
-    assert_eq!(Locale::for_tag("en-GB").date, DateStyle::DayMonthYear);
+    assert_eq!(Locale::for_tag("en-GB").date, DateStyle::DAY_MONTH_YEAR);
     assert_eq!(Locale::for_tag("en-GB").clock, ClockStyle::H24);
     assert_eq!(Locale::for_tag(""), Locale::default());
 }
@@ -242,7 +242,8 @@ fn prompts_are_deduplicated_in_first_use_order() {
             Prompt {
                 name: "Tone".into(),
                 kind: PromptKind::Choice {
-                    options: vec!["a".into(), "b".into()]
+                    options: vec!["a".into(), "b".into()],
+                    default: 0
                 }
             },
             Prompt {
@@ -285,7 +286,8 @@ fn names_and_options_are_trimmed() {
     assert_eq!(
         p[1].kind,
         PromptKind::Choice {
-            options: vec!["a".into(), "b".into()]
+            options: vec!["a".into(), "b".into()],
+            default: 0
         }
     );
 }
@@ -303,7 +305,7 @@ fn reusing_a_name_for_a_different_prompt_is_an_error() {
 }
 
 #[test]
-fn more_than_sixteen_distinct_prompts_is_an_error_but_a_reused_name_is_not() {
+fn more_than_the_limit_of_distinct_prompts_is_an_error_but_a_reused_name_is_not() {
     let many = |n: usize| {
         (0..n).fold(String::new(), |mut out, i| {
             out.push_str("{field:F");
@@ -312,12 +314,12 @@ fn more_than_sixteen_distinct_prompts_is_an_error_but_a_reused_name_is_not() {
             out
         })
     };
-    assert!(Template::parse(&many(16)).is_ok());
+    assert!(Template::parse(&many(MAX_PROMPTS)).is_ok());
     assert_eq!(
-        parse_err(&many(17)).kind,
-        TemplateErrorKind::TooManyPrompts { max: 16 }
+        parse_err(&many(MAX_PROMPTS + 1)).kind,
+        TemplateErrorKind::TooManyPrompts { max: MAX_PROMPTS }
     );
-    assert!(Template::parse(&format!("{} {{field:F0}}", many(16))).is_ok());
+    assert!(Template::parse(&format!("{} {{field:F0}}", many(MAX_PROMPTS))).is_ok());
 }
 
 // ---- prompts ---------------------------------------------------------------------------
@@ -392,21 +394,9 @@ fn near_misses_get_a_suggestion() {
 #[test]
 fn argument_rules_are_enforced() {
     assert_eq!(
-        parse_err("{time:%Y}").kind,
-        TemplateErrorKind::UnexpectedArgument {
-            placeholder: "time"
-        }
-    );
-    assert_eq!(
         parse_err("{cursor:1}").kind,
         TemplateErrorKind::UnexpectedArgument {
             placeholder: "cursor"
-        }
-    );
-    assert_eq!(
-        parse_err("{datetime}").kind,
-        TemplateErrorKind::MissingArgument {
-            placeholder: "datetime"
         }
     );
     assert_eq!(
@@ -424,8 +414,9 @@ fn argument_rules_are_enforced() {
     assert_eq!(parse_err("{field: |x}").kind, TemplateErrorKind::EmptyName);
     assert_eq!(parse_err("{choice:T}").kind, TemplateErrorKind::NoOptions);
     assert_eq!(
-        parse_err("{choice:T|a||b}").kind,
-        TemplateErrorKind::EmptyOption
+        parse_err("{choice:T|a||}").kind,
+        TemplateErrorKind::EmptyOption,
+        "one empty option is the 'none' choice, two are a mistake"
     );
     assert_eq!(
         parse_err("{choice:T|}").kind,
@@ -667,12 +658,7 @@ fn placeholder_keys_are_trimmed_like_names_and_options() {
         }
     );
     assert_eq!(parse_err("{ }").kind, TemplateErrorKind::EmptyPlaceholder);
-    assert_eq!(
-        parse_err("{ time:%Y}").kind,
-        TemplateErrorKind::UnexpectedArgument {
-            placeholder: "time"
-        }
-    );
+    assert_eq!(render("{ time:%Y}"), "2026");
 }
 
 #[test]
@@ -969,21 +955,9 @@ fn date_takes_a_format_like_datetime() {
     assert_eq!(render("{date:%d.%m.%Y}"), "17.10.2026");
     assert_eq!(render("{date:%A}"), render("{datetime:%A}"));
     assert_eq!(
-        parse_err("{time:%H}").kind,
-        TemplateErrorKind::UnexpectedArgument {
-            placeholder: "time"
-        }
-    );
-    assert_eq!(
         parse_err("{date:}").kind,
         TemplateErrorKind::MissingArgument {
             placeholder: "date"
-        }
-    );
-    assert_eq!(
-        parse_err("{datetime+1d}").kind,
-        TemplateErrorKind::MissingArgument {
-            placeholder: "datetime"
         }
     );
 }
@@ -1015,10 +989,11 @@ fn offsets_past_the_bound_are_errors_with_a_span() {
     }
     // The bound itself is fine.
     assert!(Template::parse("{date+100y}").is_ok());
-    assert!(Template::parse("{date+1d+1d+1d+1d+1d+1d+1d+1d}").is_ok());
+    let chain = |n: usize| format!("{{date{}}}", "+1d".repeat(n));
+    assert!(Template::parse(&chain(MAX_OFFSETS)).is_ok());
     assert_eq!(
-        parse_err("{date+1d+1d+1d+1d+1d+1d+1d+1d+1d}").kind,
-        TemplateErrorKind::TooManyOffsets { max: 8 }
+        parse_err(&chain(MAX_OFFSETS + 1)).kind,
+        TemplateErrorKind::TooManyOffsets { max: MAX_OFFSETS }
     );
     // The largest legal offsets render without failing.
     assert_eq!(render("{date+100y+100y+100y}"), "2326-10-17");
@@ -1137,15 +1112,15 @@ fn a_typed_pickdate_is_formatted() {
         "2026-10-17"
     );
     // Not a real day renders nothing rather than a wrong date.
-    for bad in ["2027-02-30", "2027-2-3", "tomorrow", "2027/02/03"] {
+    for bad in ["2027-02-30", "tomorrow", "2027-13-01", "27", "1/2"] {
         assert_eq!(
             render_answered("[{pickdate:When}]", &[("When", bad)]).text,
             "[]",
             "{bad}"
         );
-        assert!(parse_pick_date(bad).is_none(), "{bad}");
+        assert!(parse_pick_date(bad, DateStyle::ISO).is_none(), "{bad}");
     }
-    assert!(parse_pick_date("2028-02-29").is_some());
+    assert!(parse_pick_date("2028-02-29", DateStyle::ISO).is_some());
     assert_eq!(
         today_text(&RenderContext::new(now(), &NO_ANSWERS)),
         "2026-10-17"
@@ -1202,13 +1177,13 @@ fn the_format_keeps_its_spaces() {
 
 #[test]
 fn a_date_that_cannot_be_shown_is_not_accepted() {
-    assert!(parse_pick_date("9999-12-31").is_none());
+    assert!(parse_pick_date("9999-12-31", DateStyle::ISO).is_none());
     assert_eq!(
         render_answered("[{pickdate:A}]", &[("A", "9999-12-31")]).text,
         "[]"
     );
     for d in ["9999-12-30", "0001-01-01", "2027-03-14"] {
-        assert!(parse_pick_date(d).is_some(), "{d}");
+        assert!(parse_pick_date(d, DateStyle::ISO).is_some(), "{d}");
         assert!(
             !render_answered("{pickdate:A|%F}", &[("A", d)])
                 .text
