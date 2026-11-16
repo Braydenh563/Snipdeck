@@ -285,6 +285,9 @@ msgstr "Sauvegarder maintenant"
 msgid "Backed up"
 msgstr "Sauvegardé"
 
+msgid "Backup folder"
+msgstr "Dossier des sauvegardes"
+
 msgid "Backup of {}, {}"
 msgstr "Sauvegarde du {}, {}"
 
@@ -389,6 +392,9 @@ msgstr "Choisissez un fichier, ou annulez."
 
 msgid "Choose comfortable rows, compact rows or tiles."
 msgstr "Choisissez des lignes confortables, compactes ou des tuiles."
+
+msgid "Choose folder…"
+msgstr "Choisir un dossier…"
 
 msgid "Choose one to add it where the cursor is. It is filled in when you use the item."
 msgstr "Choisissez-en un pour l'ajouter à l'emplacement du curseur. Il est rempli quand vous utilisez l'extrait."
@@ -636,6 +642,9 @@ msgstr "Impossible de tout effacer. Quittez Snipdeck et réessayez."
 msgid "Couldn't export your library. Check the disk has room, then try again."
 msgstr "Impossible d'exporter votre bibliothèque. Vérifiez que le disque a de la place, puis réessayez."
 
+msgid "Couldn't export your library: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again."
+msgstr "Impossible d’exporter votre bibliothèque : Snipdeck n’a pas le droit d’écrire à cet endroit. Vérifiez que le dossier n’est pas en lecture seule et que votre compte peut le modifier, puis réessayez."
+
 msgid "Couldn't export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then try again."
 msgstr "Impossible d'exporter votre bibliothèque : une pièce jointe, ou vos pièces jointes ensemble, sont trop volumineuses pour un fichier .snipdeck (64 Mo par fichier, 8 Go au total). Supprimez ou réduisez les plus gros fichiers, puis réessayez."
 
@@ -653,6 +662,9 @@ msgstr "Impossible d'importer cela."
 
 msgid "Couldn't import that. Choose the file again, or try another one."
 msgstr "Impossible d'importer ce fichier. Choisissez-le à nouveau, ou essayez-en un autre."
+
+msgid "Couldn't import that: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again."
+msgstr "Impossible d’importer cela : Snipdeck n’a pas le droit d’écrire à cet endroit. Vérifiez que le dossier n’est pas en lecture seule et que votre compte peut le modifier, puis réessayez."
 
 msgid "Couldn't import that: it isn't a file Snipdeck can read, or it is damaged. Choose a .snipdeck export."
 msgstr "Impossible d'importer ce fichier : Snipdeck ne peut pas le lire, ou il est endommagé. Choisissez un export .snipdeck."
@@ -672,6 +684,9 @@ msgstr "Impossible d'importer ce fichier : votre bibliothèque est verrouillée.
 msgid "Couldn't make a backup. Check the disk has room, then use Back up now in Settings."
 msgstr "Impossible de créer une sauvegarde. Vérifiez que le disque a de la place, puis utilisez Sauvegarder maintenant dans les paramètres."
 
+msgid "Couldn't make a backup: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then use Back up now in Settings."
+msgstr "Impossible de faire une sauvegarde : Snipdeck n’a pas le droit d’écrire à cet endroit. Vérifiez que le dossier n’est pas en lecture seule et que votre compte peut le modifier, puis utilisez Sauvegarder maintenant dans les Réglages."
+
 msgid "Couldn't make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
 msgstr "Impossible de faire une sauvegarde : une pièce jointe, ou vos pièces jointes ensemble, sont trop volumineuses pour une sauvegarde (64 Mo par fichier, 8 Go au total). Supprimez ou réduisez les plus gros fichiers, puis utilisez Sauvegarder maintenant dans les Paramètres."
 
@@ -687,6 +702,9 @@ msgstr "Impossible de créer une sauvegarde : votre bibliothèque est verrouill�
 msgid "Couldn't make that change. Try again, or restart Snipdeck if it keeps happening."
 msgstr "Impossible d'effectuer cette modification. Réessayez, ou redémarrez Snipdeck si cela persiste."
 
+msgid "Couldn't make that change: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again."
+msgstr "Impossible d’effectuer cette modification : Snipdeck n’a pas le droit d’écrire à cet endroit. Vérifiez que le dossier n’est pas en lecture seule et que votre compte peut le modifier, puis réessayez."
+
 msgid "Couldn't make that change: the disk is full. Free up some space, then try again."
 msgstr "Impossible d'effectuer cette modification : le disque est plein. Libérez de l'espace, puis réessayez."
 
@@ -698,6 +716,9 @@ msgstr "Impossible d'effectuer cette modification : votre bibliothèque est verr
 
 msgid "Couldn't make today's backup. Check the disk has room, then use Back up now in Settings."
 msgstr "Impossible de créer la sauvegarde du jour. Vérifiez que le disque a de la place, puis utilisez Sauvegarder maintenant dans les paramètres."
+
+msgid "Couldn't make today's backup: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then use Back up now in Settings."
+msgstr "Impossible de faire la sauvegarde du jour : Snipdeck n’a pas le droit d’écrire à cet endroit. Vérifiez que le dossier n’est pas en lecture seule et que votre compte peut le modifier, puis utilisez Sauvegarder maintenant dans les Réglages."
 
 msgid "Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
 msgstr "Impossible de faire la sauvegarde du jour : une pièce jointe, ou vos pièces jointes ensemble, sont trop volumineuses pour une sauvegarde (64 Mo par fichier, 8 Go au total). Supprimez ou réduisez les plus gros fichiers, puis utilisez Sauvegarder maintenant dans les Paramètres."
@@ -747,6 +768,9 @@ msgstr "Impossible de rouvrir votre bibliothèque. Redémarrez Snipdeck. Vos fic
 msgid "Couldn't restore that backup. Choose another backup, or try again."
 msgstr "Impossible de restaurer cette sauvegarde. Choisissez-en une autre, ou réessayez."
 
+msgid "Couldn't restore that backup: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again."
+msgstr "Impossible de restaurer cette sauvegarde : Snipdeck n’a pas le droit d’écrire à cet endroit. Vérifiez que le dossier n’est pas en lecture seule et que votre compte peut le modifier, puis réessayez."
+
 msgid "Couldn't restore that backup: a file is in use by another program. Close it, then try again."
 msgstr "Impossible de restaurer cette sauvegarde : un fichier est utilisé par un autre programme. Fermez-le, puis réessayez."
 
@@ -779,6 +803,9 @@ msgstr "Impossible de démarrer les raccourcis à la frappe. Rien ne sera dével
 
 msgid "Couldn't use this item. Try again, or restart Snipdeck if it keeps happening."
 msgstr "Impossible d'utiliser cet extrait. Réessayez, ou redémarrez Snipdeck si cela persiste."
+
+msgid "Couldn't use this item: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again."
+msgstr "Impossible d’utiliser cet élément : Snipdeck n’a pas le droit d’écrire à cet endroit. Vérifiez que le dossier n’est pas en lecture seule et que votre compte peut le modifier, puis réessayez."
 
 msgid "Couldn't use this item: the disk is full. Free up some space, then try again."
 msgstr "Impossible d'utiliser cet extrait : le disque est plein. Libérez de l'espace, puis réessayez."
@@ -815,6 +842,9 @@ msgstr "Mot de passe actuel"
 
 msgid "Cut"
 msgstr "Couper"
+
+msgid "Daily copies kept; older ones are deleted when you lower this."
+msgstr "Copies quotidiennes conservées ; les plus anciennes sont supprimées si vous réduisez ce nombre."
 
 msgid "Dark"
 msgstr "Sombre"
@@ -1346,6 +1376,9 @@ msgstr "Insérer l'élément suggéré (Windows uniquement)"
 msgid "Insert {}"
 msgstr "Insérer {}"
 
+msgid "Install these triggers"
+msgstr "Installer ces déclencheurs"
+
 msgid "It is removed from {n} item. The item stays."
 msgid_plural "It is removed from {n} items. The items stay."
 msgstr[0] "Il est retiré de {n} extrait. L'extrait reste."
@@ -1436,6 +1469,11 @@ msgstr "Langue"
 
 msgid "Last backup: {}"
 msgstr "Dernière sauvegarde : {}"
+
+msgid "Last backup: {}, {}, {} item"
+msgid_plural "Last backup: {}, {}, {} items"
+msgstr[0] "Dernière sauvegarde : {}, {}, {} élément"
+msgstr[1] "Dernière sauvegarde : {}, {}, {} éléments"
 
 msgid "Layout"
 msgstr "Disposition"
@@ -2753,8 +2791,8 @@ msgstr "Snipdeck ne cherche jamais de lui-même. Cela ouvre la page des versions
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "Snipdeck ne se connecte jamais à internet : chaque icône et chaque police affichée est fournie avec lui."
 
-msgid "Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything."
-msgstr "Snipdeck enregistre une copie de votre bibliothèque une fois par jour et garde les {} plus récentes. La restauration remet ce qui manque et ne supprime jamais rien."
+msgid "Snipdeck saves a copy of your library once a day and keeps the newest {}, plus the last copy of each of the past four weeks and six months. A backup holds every board, list, item and tag; the Trash is not in it. Restoring adds back what is missing and never removes anything."
+msgstr "Snipdeck enregistre une copie de votre bibliothèque une fois par jour et conserve les {} plus récentes, ainsi que la dernière copie de chacune des quatre dernières semaines et des six derniers mois. Une sauvegarde contient tous les tableaux, listes, éléments et étiquettes ; la corbeille n’en fait pas partie. La restauration ajoute ce qui manque et ne supprime jamais rien."
 
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck reste dans la zone de notification pour que les raccourcis fonctionnent après la connexion."
@@ -3014,9 +3052,6 @@ msgstr "La liste contient au maximum {} programmes."
 msgid "The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
 msgstr "La sauvegarde la plus récente date du {} et contient {} extraits sur {} tableaux. Votre base de données actuelle est mise de côté, pas supprimée. Les extraits ajoutés après cette sauvegarde sont récupérés là où ils peuvent être lus."
 
-msgid "The oldest ones are deleted once there are more than this."
-msgstr "Les plus anciennes sont supprimées au-delà de ce nombre."
-
 msgid "The panel"
 msgstr "Le panneau"
 
@@ -3086,8 +3121,19 @@ msgstr "Cette démo n’enregistre rien sur le disque, il n’y a donc pas de sa
 msgid "This field is required"
 msgstr "Ce champ est obligatoire"
 
+msgid "This file has {} trigger, which types text into other programs: {}"
+msgid_plural "This file has {} triggers, which type text into other programs: {}"
+msgstr[0] "Ce fichier contient {} déclencheur, qui saisit du texte dans d’autres programmes : {}"
+msgstr[1] "Ce fichier contient {} déclencheurs, qui saisissent du texte dans d’autres programmes : {}"
+
 msgid "This file was made by a newer Snipdeck (format {}), so anything this version does not know was left out."
 msgstr "Ce fichier a été créé par une version plus récente de Snipdeck (format {}) : tout ce que cette version ne connaît pas a été laissé de côté."
+
+msgid "This folder is on a network share. A backup can fail while the share is offline, and a half-written copy there is hard to spot. Keep a second copy somewhere local."
+msgstr "Ce dossier se trouve sur un partage réseau. Une sauvegarde peut échouer si le partage est hors ligne, et une copie à moitié écrite y est difficile à repérer. Gardez une seconde copie en local."
+
+msgid "This folder is synced by {}. Every backup is uploaded, and the service can bring an old copy back over a new one. Sensitive items stay encrypted, but a synced copy is still a copy."
+msgstr "Ce dossier est synchronisé par {}. Chaque sauvegarde est envoyée, et le service peut ramener une ancienne copie par-dessus une récente. Les éléments sensibles restent chiffrés, mais une copie synchronisée reste une copie."
 
 msgid "This is your only board. Add another before deleting it."
 msgstr "C'est votre seul tableau. Ajoutez-en un autre avant de le supprimer."
@@ -3310,6 +3356,9 @@ msgstr "Utiliser l'extrait sélectionné"
 
 msgid "Use the Nth item"
 msgstr "Utiliser le n-ième extrait"
+
+msgid "Use the default"
+msgstr "Utiliser celui par défaut"
 
 msgid "Use the item"
 msgstr "Utiliser l'extrait"
@@ -3946,6 +3995,11 @@ msgid_plural "{} items that are not text (pictures or files) were skipped."
 msgstr[0] "{} extrait qui n'est pas du texte (une image ou un fichier) a été ignoré."
 msgstr[1] "{} extraits qui ne sont pas du texte (images ou fichiers) ont été ignorés."
 
+msgid "{} item with an attachment that could not be read was left out when this file was made."
+msgid_plural "{} items with an attachment that could not be read were left out when this file was made."
+msgstr[0] "{} élément avec une pièce jointe illisible a été laissé de côté à la création de ce fichier."
+msgstr[1] "{} éléments avec une pièce jointe illisible ont été laissés de côté à la création de ce fichier."
+
 msgid "{} match in all boards"
 msgid_plural "{} matches in all boards"
 msgstr[0] "{} résultat dans tous les tableaux"
@@ -3970,6 +4024,11 @@ msgstr "{} des vérifications demandent votre attention."
 
 msgid "{} of {} · next: {}"
 msgstr "{} sur {} · suivant : {}"
+
+msgid "{} older backup was deleted."
+msgid_plural "{} older backups were deleted."
+msgstr[0] "{} ancienne sauvegarde a été supprimée."
+msgstr[1] "{} anciennes sauvegardes ont été supprimées."
 
 msgid "{} percent"
 msgstr "{} pour cent"
@@ -3999,6 +4058,11 @@ msgstr[1] "{} extraits sensibles ne figuraient pas dans la sauvegarde."
 
 msgid "{} takes no argument"
 msgstr "{} n'accepte pas d'argument"
+
+msgid "{} trigger will be restored: {}"
+msgid_plural "{} triggers will be restored: {}"
+msgstr[0] "{} déclencheur sera restauré : {}"
+msgstr[1] "{} déclencheurs seront restaurés : {}"
 
 msgid "{} · {}"
 msgstr "{} · {}"
@@ -4050,6 +4114,9 @@ msgstr "{} : le déclencheur {} et {} commencent de la même façon, donc le plu
 
 msgid "{}: the trigger {} is already used by another snippet, so it was imported without it."
 msgstr "{} : le déclencheur {} est déjà utilisé par un autre extrait ; il a été importé sans lui."
+
+msgid "{}: the trigger {} is too short (a trigger needs at least two characters), so it was imported without it."
+msgstr "{} : le déclencheur {} est trop court (un déclencheur demande au moins deux caractères), il a donc été importé sans lui."
 
 msgid "{}: this entry is not a match and was skipped."
 msgstr "{} : cette entrée n’est pas une correspondance (match) et a été ignorée."

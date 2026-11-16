@@ -284,6 +284,9 @@ msgstr "今すぐバックアップ"
 msgid "Backed up"
 msgstr "バックアップ済み"
 
+msgid "Backup folder"
+msgstr "バックアップフォルダー"
+
 msgid "Backup of {}, {}"
 msgstr "{} のバックアップ（{}）"
 
@@ -388,6 +391,9 @@ msgstr "ファイルを選ぶか、キャンセルしてください。"
 
 msgid "Choose comfortable rows, compact rows or tiles."
 msgstr "ゆったり行、コンパクト行、タイルから選べます。"
+
+msgid "Choose folder…"
+msgstr "フォルダーを選択…"
 
 msgid "Choose one to add it where the cursor is. It is filled in when you use the item."
 msgstr "カーソルの位置に追加するものを選びます。スニペットを使うときに入力されます。"
@@ -635,6 +641,9 @@ msgstr "すべて削除できませんでした。Snipdeck を終了してから
 msgid "Couldn't export your library. Check the disk has room, then try again."
 msgstr "ライブラリをエクスポートできませんでした。ディスクの空き容量を確認し、もう一度お試しください。"
 
+msgid "Couldn't export your library: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again."
+msgstr "ライブラリを書き出せませんでした：Snipdeck はそこに書き込む権限がありません。フォルダーが読み取り専用でないこと、アカウントが変更できることを確認して、もう一度お試しください。"
+
 msgid "Couldn't export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then try again."
 msgstr "ライブラリをエクスポートできませんでした。添付ファイル 1 つ、または添付ファイルの合計が .snipdeck ファイルには大きすぎます(1 ファイル 64 MB、合計 8 GB)。大きいファイルを削除または縮小してから、もう一度お試しください。"
 
@@ -652,6 +661,9 @@ msgstr "取り込めませんでした。"
 
 msgid "Couldn't import that. Choose the file again, or try another one."
 msgstr "取り込めませんでした。ファイルを選び直すか、別のファイルをお試しください。"
+
+msgid "Couldn't import that: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again."
+msgstr "読み込めませんでした：Snipdeck はそこに書き込む権限がありません。フォルダーが読み取り専用でないこと、アカウントが変更できることを確認して、もう一度お試しください。"
 
 msgid "Couldn't import that: it isn't a file Snipdeck can read, or it is damaged. Choose a .snipdeck export."
 msgstr "取り込めませんでした。Snipdeck で読み取れないファイルか、破損しています。.snipdeck のエクスポートファイルを選んでください。"
@@ -671,6 +683,9 @@ msgstr "取り込めませんでした。ライブラリがロックされてい
 msgid "Couldn't make a backup. Check the disk has room, then use Back up now in Settings."
 msgstr "バックアップを作成できませんでした。ディスクの空き容量を確認し、設定の「今すぐバックアップ」をお使いください。"
 
+msgid "Couldn't make a backup: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then use Back up now in Settings."
+msgstr "バックアップを作成できませんでした：Snipdeck はそこに書き込む権限がありません。フォルダーが読み取り専用でないこと、アカウントが変更できることを確認して、設定の「今すぐバックアップ」を使ってください。"
+
 msgid "Couldn't make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
 msgstr "バックアップを作成できませんでした。添付ファイル 1 つ、または添付ファイルの合計がバックアップには大きすぎます(1 ファイル 64 MB、合計 8 GB)。大きいファイルを削除または縮小してから、設定の「今すぐバックアップ」を使ってください。"
 
@@ -686,6 +701,9 @@ msgstr "バックアップを作成できませんでした。ライブラリが
 msgid "Couldn't make that change. Try again, or restart Snipdeck if it keeps happening."
 msgstr "変更できませんでした。もう一度お試しください。繰り返す場合は Snipdeck を再起動してください。"
 
+msgid "Couldn't make that change: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again."
+msgstr "変更できませんでした：Snipdeck はそこに書き込む権限がありません。フォルダーが読み取り専用でないこと、アカウントが変更できることを確認して、もう一度お試しください。"
+
 msgid "Couldn't make that change: the disk is full. Free up some space, then try again."
 msgstr "変更できませんでした。ディスクがいっぱいです。空き容量を確保して、もう一度お試しください。"
 
@@ -697,6 +715,9 @@ msgstr "変更できませんでした。ライブラリがロックされてい
 
 msgid "Couldn't make today's backup. Check the disk has room, then use Back up now in Settings."
 msgstr "今日のバックアップを作成できませんでした。ディスクの空き容量を確認し、設定の「今すぐバックアップ」をお使いください。"
+
+msgid "Couldn't make today's backup: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then use Back up now in Settings."
+msgstr "今日のバックアップを作成できませんでした：Snipdeck はそこに書き込む権限がありません。フォルダーが読み取り専用でないこと、アカウントが変更できることを確認して、設定の「今すぐバックアップ」を使ってください。"
 
 msgid "Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
 msgstr "今日のバックアップを作成できませんでした。添付ファイル 1 つ、または添付ファイルの合計がバックアップには大きすぎます(1 ファイル 64 MB、合計 8 GB)。大きいファイルを削除または縮小してから、設定の「今すぐバックアップ」を使ってください。"
@@ -746,6 +767,9 @@ msgstr "ライブラリを再び開けませんでした。Snipdeck を再起動
 msgid "Couldn't restore that backup. Choose another backup, or try again."
 msgstr "バックアップを復元できませんでした。別のバックアップを選ぶか、もう一度お試しください。"
 
+msgid "Couldn't restore that backup: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again."
+msgstr "そのバックアップを復元できませんでした：Snipdeck はそこに書き込む権限がありません。フォルダーが読み取り専用でないこと、アカウントが変更できることを確認して、もう一度お試しください。"
+
 msgid "Couldn't restore that backup: a file is in use by another program. Close it, then try again."
 msgstr "バックアップを復元できませんでした。ファイルが他のプログラムで使用中です。閉じてから、もう一度お試しください。"
 
@@ -778,6 +802,9 @@ msgstr "入力トリガーを開始できませんでした。展開も提案も
 
 msgid "Couldn't use this item. Try again, or restart Snipdeck if it keeps happening."
 msgstr "このスニペットを使用できませんでした。もう一度お試しください。繰り返す場合は Snipdeck を再起動してください。"
+
+msgid "Couldn't use this item: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again."
+msgstr "このアイテムを使用できませんでした：Snipdeck はそこに書き込む権限がありません。フォルダーが読み取り専用でないこと、アカウントが変更できることを確認して、もう一度お試しください。"
 
 msgid "Couldn't use this item: the disk is full. Free up some space, then try again."
 msgstr "このスニペットを使用できませんでした。ディスクがいっぱいです。空き容量を確保して、もう一度お試しください。"
@@ -814,6 +841,9 @@ msgstr "現在のパスワード"
 
 msgid "Cut"
 msgstr "切り取り"
+
+msgid "Daily copies kept; older ones are deleted when you lower this."
+msgstr "保持する毎日のコピー数です。減らすと古いコピーは削除されます。"
 
 msgid "Dark"
 msgstr "ダーク"
@@ -1344,6 +1374,9 @@ msgstr "提案された項目を挿入（Windows のみ）"
 msgid "Insert {}"
 msgstr "{} を挿入"
 
+msgid "Install these triggers"
+msgstr "これらのトリガーをインストール"
+
 msgid "It is removed from {n} item. The item stays."
 msgid_plural "It is removed from {n} items. The items stay."
 msgstr[0] "{n} 件のスニペットから削除されます。スニペット自体は残ります。"
@@ -1432,6 +1465,10 @@ msgstr "言語"
 
 msgid "Last backup: {}"
 msgstr "前回のバックアップ: {}"
+
+msgid "Last backup: {}, {}, {} item"
+msgid_plural "Last backup: {}, {}, {} items"
+msgstr[0] "前回のバックアップ：{}、{}、{} 件"
 
 msgid "Layout"
 msgstr "レイアウト"
@@ -2745,8 +2782,8 @@ msgstr "Snipdeck が自動で確認することはありません。ブラウザ
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "Snipdeck はインターネットに接続しません。表示するアイコンとフォントはすべて同梱されています。"
 
-msgid "Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything."
-msgstr "Snipdeckはライブラリのコピーを1日1回保存し、新しい{}つを残します。復元では足りないものだけが戻り、何も削除されません。"
+msgid "Snipdeck saves a copy of your library once a day and keeps the newest {}, plus the last copy of each of the past four weeks and six months. A backup holds every board, list, item and tag; the Trash is not in it. Restoring adds back what is missing and never removes anything."
+msgstr "Snipdeck は 1 日に 1 回ライブラリのコピーを保存し、最新の {} 件に加えて、過去 4 週間と過去 6 か月それぞれの最後のコピーを保持します。バックアップにはすべてのボード、リスト、アイテム、タグが含まれますが、ゴミ箱は含まれません。復元は足りないものを追加するだけで、何も削除しません。"
 
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck はサインイン後にショートカットが使えるよう、通知領域で待機します。"
@@ -3006,9 +3043,6 @@ msgstr "リストには最大 {} 個のプログラムを登録できます。"
 msgid "The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
 msgstr "最新のバックアップは {} のもので、{} 個のボードに {} 件のアイテムがあります。現在のデータベースは削除されず、別に保管されます。このバックアップ以降に追加したアイテムは、読み取れるものを回復します。"
 
-msgid "The oldest ones are deleted once there are more than this."
-msgstr "この数を超えると、古いものから削除されます。"
-
 msgid "The panel"
 msgstr "パネル"
 
@@ -3078,8 +3112,18 @@ msgstr "このデモはディスクに何も保存しないため、バックア
 msgid "This field is required"
 msgstr "この入力欄は必須です"
 
+msgid "This file has {} trigger, which types text into other programs: {}"
+msgid_plural "This file has {} triggers, which type text into other programs: {}"
+msgstr[0] "このファイルには、他のプログラムにテキストを入力するトリガーが {} 件あります：{}"
+
 msgid "This file was made by a newer Snipdeck (format {}), so anything this version does not know was left out."
 msgstr "このファイルは新しいバージョンの Snipdeck（形式 {}）で作成されたため、このバージョンが対応していない内容は除外されました。"
+
+msgid "This folder is on a network share. A backup can fail while the share is offline, and a half-written copy there is hard to spot. Keep a second copy somewhere local."
+msgstr "このフォルダーはネットワーク共有にあります。共有がオフラインの間はバックアップに失敗することがあり、書きかけのコピーは見つけにくくなります。2 つ目のコピーをローカルに保管してください。"
+
+msgid "This folder is synced by {}. Every backup is uploaded, and the service can bring an old copy back over a new one. Sensitive items stay encrypted, but a synced copy is still a copy."
+msgstr "このフォルダーは {} によって同期されています。バックアップはすべてアップロードされ、サービスが古いコピーを新しいコピーの上に戻すことがあります。機密アイテムは暗号化されたままですが、同期されたコピーもコピーです。"
 
 msgid "This is your only board. Add another before deleting it."
 msgstr "ボードはこれだけです。削除する前に別のボードを追加してください。"
@@ -3302,6 +3346,9 @@ msgstr "選択したスニペットを使用"
 
 msgid "Use the Nth item"
 msgstr "N番目のスニペットを使用"
+
+msgid "Use the default"
+msgstr "既定を使う"
 
 msgid "Use the item"
 msgstr "スニペットを使用"
@@ -3925,6 +3972,10 @@ msgid "{} item that is not text (a picture or file) was skipped."
 msgid_plural "{} items that are not text (pictures or files) were skipped."
 msgstr[0] "テキスト以外（画像やファイル）の {} 件のスニペットはスキップされました。"
 
+msgid "{} item with an attachment that could not be read was left out when this file was made."
+msgid_plural "{} items with an attachment that could not be read were left out when this file was made."
+msgstr[0] "読み取れない添付ファイルがあるため、このファイルの作成時に {} 件のアイテムが除外されました。"
+
 msgid "{} match in all boards"
 msgid_plural "{} matches in all boards"
 msgstr[0] "すべてのボードに {} 件一致"
@@ -3947,6 +3998,10 @@ msgstr "{} 件の項目に確認が必要です。"
 
 msgid "{} of {} · next: {}"
 msgstr "{} / {} · 次: {}"
+
+msgid "{} older backup was deleted."
+msgid_plural "{} older backups were deleted."
+msgstr[0] "古いバックアップを {} 件削除しました。"
 
 msgid "{} percent"
 msgstr "{} パーセント"
@@ -3972,6 +4027,10 @@ msgstr[0] "機密項目 {} 件がバックアップに含まれていません�
 
 msgid "{} takes no argument"
 msgstr "{} は引数を取りません"
+
+msgid "{} trigger will be restored: {}"
+msgid_plural "{} triggers will be restored: {}"
+msgstr[0] "{} 件のトリガーが復元されます：{}"
 
 msgid "{} · {}"
 msgstr "{} · {}"
@@ -4023,6 +4082,9 @@ msgstr "{}：トリガー {} と {} は先頭が同じなので、短い方が�
 
 msgid "{}: the trigger {} is already used by another snippet, so it was imported without it."
 msgstr "{}：トリガー {} は別のスニペットで使われているため、トリガーなしで取り込みました。"
+
+msgid "{}: the trigger {} is too short (a trigger needs at least two characters), so it was imported without it."
+msgstr "{}：トリガー {} が短すぎる（トリガーは 2 文字以上必要）ため、トリガーなしで読み込みました。"
 
 msgid "{}: this entry is not a match and was skipped."
 msgstr "{}：このエントリはマッチではないため、スキップしました。"
