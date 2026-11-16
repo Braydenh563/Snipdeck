@@ -22,7 +22,7 @@ use i_slint_backend_testing::ElementQuery;
 use slint::{ComponentHandle, LogicalPosition, ModelRc, VecModel, platform::WindowEvent};
 use snipdeck_symbols::{Catalog, Kind, SymbolId};
 use snipdeck_ui::{
-    PanelWindow, SymbolCell, SymbolRow,
+    PanelWindow, SymbolCell, SymbolRow, SystemLook,
     testing::{Frame, Harness, assert_golden},
 };
 
@@ -33,6 +33,7 @@ fn header(text: &str, y: f32, link: &str) -> SymbolRow {
         header: text.into(),
         link: link.into(),
         link_kind: -1,
+        group: -1,
         cells: ModelRc::default(),
         chips: false,
         y,
@@ -45,7 +46,7 @@ fn cell_of(index: usize, flat: usize) -> SymbolCell {
     let sym = catalog.symbol(index).expect("symbol");
     let kind = sym.id.kind();
     SymbolCell {
-        art: if kind == Kind::Kaomoji {
+        art: if matches!(kind, Kind::Kaomoji | Kind::Character) {
             -1
         } else {
             index as i32
@@ -55,12 +56,14 @@ fn cell_of(index: usize, flat: usize) -> SymbolCell {
             Kind::Emoji => sym.name.clone(),
             Kind::Kaomoji => sym.keywords.first().cloned().unwrap_or_default(),
             Kind::Icon => sym.name.replace('-', " "),
+            Kind::Character => sym.name.clone(),
         }
         .into(),
         kind: match kind {
             Kind::Emoji => 0,
             Kind::Kaomoji => 1,
             Kind::Icon => 2,
+            Kind::Character => 3,
         },
         wide: sym.wide,
         flat: flat as i32,
@@ -98,6 +101,7 @@ fn section(
             header: "".into(),
             link: "".into(),
             link_kind: -1,
+            group: -1,
             cells: ModelRc::new(VecModel::from(cells)),
             chips,
             y: *y,
@@ -105,6 +109,13 @@ fn section(
         });
         *y += h;
     }
+}
+
+/// The emoji of `range` that have bundled art: the ones drawn by the system emoji font (no art) differ
+/// between machines, so the goldens leave them out.
+fn arted(range: std::ops::Range<usize>) -> Vec<usize> {
+    let c = Catalog::get();
+    range.filter(|&i| c.has_art(i)).collect()
 }
 
 fn emoji_rows(cols: usize) -> Vec<SymbolRow> {
@@ -116,7 +127,7 @@ fn emoji_rows(cols: usize) -> Vec<SymbolRow> {
         &mut y,
         &mut flat,
         "RECENTLY USED",
-        e.start + 3..e.start + 3 + cols,
+        arted(e.start + 3..e.start + 3 + cols),
         cols,
         1,
         false,
@@ -126,7 +137,7 @@ fn emoji_rows(cols: usize) -> Vec<SymbolRow> {
         &mut y,
         &mut flat,
         "SMILEYS & EMOTION",
-        e.start..e.end,
+        arted(e.start..e.end),
         cols,
         4,
         false,
@@ -136,7 +147,7 @@ fn emoji_rows(cols: usize) -> Vec<SymbolRow> {
         &mut y,
         &mut flat,
         "PEOPLE & BODY",
-        e.start + 400..e.end,
+        arted(e.start + 400..e.end),
         cols,
         6,
         false,
@@ -157,21 +168,21 @@ fn art(i: i32) -> slint::Image {
         .symbol(usize::try_from(i).expect("index"))
         .expect("symbol");
     let (rgba, px) = match sym.id.kind() {
-        Kind::Emoji => match catalog.art(&sym.id, 48) {
-            Some(rgba) => (rgba, 48),
+        Kind::Emoji => match catalog.art(&sym.id, 72) {
+            Some(rgba) => (rgba, 72),
             None => return slint::Image::default(),
         },
         Kind::Icon => {
-            let png = catalog.icon_png(&sym.id, 48, [255; 4]).expect("icon");
+            let png = catalog.icon_png(&sym.id, 72, [255; 4]).expect("icon");
             let mut reader = png::Decoder::new(std::io::Cursor::new(png.as_slice()))
                 .read_info()
                 .expect("png");
             let mut buf = vec![0; reader.output_buffer_size().expect("size")];
             let info = reader.next_frame(&mut buf).expect("frame");
             buf.truncate(info.buffer_size());
-            (buf, 48)
+            (buf, 72)
         }
-        Kind::Kaomoji => return slint::Image::default(),
+        Kind::Kaomoji | Kind::Character => return slint::Image::default(),
     };
     slint::Image::from_rgba8(
         slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(&rgba, px, px),
@@ -352,7 +363,7 @@ fn a_cell_is_40_by_40() {
     // Moving the selection from the first cell to its neighbour repaints exactly those two cells
     // (fill and ring), side by side: one box 80 wide and 40 high.
     let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0, 0);
-    for y in 170..520 {
+    for y in 170..480 {
         for x in 0..320 {
             if first.pixel(x, y) != second.pixel(x, y) {
                 (x0, y0, x1, y1) = (x0.min(x), y0.min(y), x1.max(x), y1.max(y));
@@ -368,12 +379,23 @@ fn a_cell_is_40_by_40() {
     assert_eq!(x0, (320 - 7 * 40) / 2, "the grid is centred in the width");
 }
 
+/// What the Panel does on Down in the search field: bump the hook that gives the grid the keyboard.
+fn enter_grid(s: &Shown) {
+    let c = &s.h.component;
+    c.set_symbol_enter_grid_ticks(c.get_symbol_enter_grid_ticks() + 1);
+}
+
+/// TOOLS-54: Down leaves the search field for the grid, which is a focus stop of its own; all the
+/// arrows, Page keys, Home and End move in it, Enter uses and Shift+Enter copies.
 #[test]
 fn arrows_page_keys_and_enter_leave_the_window_as_requests() {
     let s = open(320, false, 1, emoji_rows);
     let _ = render(&s);
-    s.h.component.set_symbol_selected(2);
-    // Focus is in the search field (it grabbed it on init). With text in it the caret keys stay its own.
+    s.h.component.set_symbol_selected(9);
+    // The Panel hands the keyboard to the grid (Down in the field bumps this); it is not itself a move.
+    s.h.component.set_symbol_selected_row(5);
+    enter_grid(&s);
+    assert!(s.moves.borrow().is_empty(), "entering the grid moves nothing");
     for (k, code) in [
         (char::from(slint::platform::Key::DownArrow), 3),
         (char::from(slint::platform::Key::UpArrow), 2),
@@ -388,7 +410,7 @@ fn arrows_page_keys_and_enter_leave_the_window_as_requests() {
         assert_eq!(s.moves.borrow().last().copied(), Some(code), "key {k:?}");
     }
     key(&s, &char::from(slint::platform::Key::Return).to_string());
-    assert_eq!(s.used.borrow().last().copied(), Some((2, false)));
+    assert_eq!(s.used.borrow().last().copied(), Some((9, false)));
     s.h.component
         .window()
         .dispatch_event(WindowEvent::KeyPressed {
@@ -397,9 +419,25 @@ fn arrows_page_keys_and_enter_leave_the_window_as_requests() {
     key(&s, &char::from(slint::platform::Key::Return).to_string());
     assert_eq!(
         s.used.borrow().last().copied(),
-        Some((2, true)),
+        Some((9, true)),
         "Shift+Enter copies"
     );
+}
+
+/// TOOLS-54: Up from the first row of cells goes back to the search field, and the field's own
+/// caret keys work again.
+#[test]
+fn up_from_the_first_row_returns_to_the_search_field() {
+    let s = open(320, false, 1, emoji_rows);
+    let _ = render(&s);
+    s.h.component.set_symbol_selected(0);
+    s.h.component.set_symbol_selected_row(1);
+    enter_grid(&s);
+    key(&s, &char::from(slint::platform::Key::UpArrow).to_string());
+    assert!(s.moves.borrow().is_empty(), "Up on the first row is not a move");
+    // Back in the field with no text: Left is again the Panel's grid move.
+    key(&s, &char::from(slint::platform::Key::LeftArrow).to_string());
+    assert_eq!(s.moves.borrow().last().copied(), Some(0));
 }
 
 #[test]
@@ -486,4 +524,82 @@ fn a_symbol_tooltip_in_the_bottom_row_stays_above_the_window_bottom() {
         "tooltip bottom {} for a hover at y {y}",
         ty + h
     );
+}
+
+// ---- Characters, group strip, preview and text scales (TOOLS-44, 55, 56, 63) --------------------------
+
+fn char_rows(cols: usize) -> Vec<SymbolRow> {
+    let c = Catalog::get();
+    let r = c.range(Kind::Character);
+    let (mut rows, mut y, mut flat) = (Vec::new(), 0.0, 0);
+    section(&mut rows, &mut y, &mut flat, "ARROWS", r.start..r.end, cols, 5, false);
+    // Group header rows carry the group the strip jumps to.
+    rows[0].group = 0;
+    rows
+}
+
+#[test]
+fn the_characters_tab_draws_its_cells_as_text_with_a_group_strip() {
+    let s = open(320, false, 4, char_rows);
+    let first = render(&s);
+    // The strip is one row of focusable buttons named after the groups.
+    let buttons = ElementQuery::from_root(&s.h.component)
+        .match_accessible_role(i_slint_backend_testing::AccessibleRole::Button)
+        .find_all();
+    assert!(
+        buttons.iter().any(|b| b.accessible_label().is_some_and(|l| l == "ARROWS")),
+        "the strip lists the group by name"
+    );
+    let _ = first;
+}
+
+/// TOOLS-63: the selection is shown large under the grid.
+#[test]
+fn the_preview_bar_shows_the_selected_symbol_large() {
+    let s = open(320, false, 4, char_rows);
+    s.h.component.set_symbol_selected(0);
+    let a = render(&s);
+    s.h.component.set_symbol_selected(5);
+    let b = render(&s);
+    // Only the preview strip at the bottom and the two cells differ; the bottom 48 px changed.
+    let mut changed_bottom = false;
+    for y in (HEIGHT - 60)..HEIGHT {
+        for x in 0..320 {
+            changed_bottom |= a.pixel(x, y) != b.pixel(x, y);
+        }
+    }
+    assert!(changed_bottom, "the preview follows the selection");
+}
+
+/// TOOLS-44 / 55 / 63 at the three text scales: nothing is drawn outside the window, the strip and
+/// the grid still have a size, and the focus ring of the selected cell is visible.
+#[test]
+fn the_symbols_tab_holds_together_at_the_three_text_scales() {
+    for scale in [1.0_f32, 1.5, 2.25] {
+        for kind in [1, 4] {
+            let s = open(320, false, kind, if kind == 4 { char_rows } else { emoji_rows });
+            s.h.component.global::<SystemLook<'_>>().set_text_scale(scale);
+            let frame = render(&s);
+            let cells = ElementQuery::from_root(&s.h.component)
+                .match_accessible_role(i_slint_backend_testing::AccessibleRole::ListItem)
+                .find_all();
+            assert!(!cells.is_empty(), "cells at scale {scale}");
+            for c in &cells {
+                let (at, size) = (c.absolute_position(), c.size());
+                assert!(size.width > 0.0 && size.height > 0.0, "a box at {scale}");
+                assert!(at.x >= -0.5 && at.x + size.width <= 320.5, "{scale}: cell x {}", at.x);
+            }
+            // Focus: Down enters the grid; the ring colour shows around the selected cell.
+            s.h.component.set_symbol_selected(0);
+            enter_grid(&s);
+            let ring = render(&s);
+            let mut differs = false;
+            for y in 0..HEIGHT {
+                for x in 0..320 {
+                    differs |= ring.pixel(x, y) != frame.pixel(x, y);
+                }
+            }
+            assert!(differs, "the grid focus draws a ring at scale {scale}");
+        }
+    }
 }

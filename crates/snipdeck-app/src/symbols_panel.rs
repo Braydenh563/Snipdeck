@@ -2,7 +2,7 @@
 //! a number of columns, with the keyboard table and the group jump points. Slint-free (the
 //! binding turns [`Grid`] into the window's rows), so it is tested without a window.
 
-use snipdeck_symbols::{Catalog, EMOJI_GROUPS, Kind, Lang, SymbolId, search};
+use snipdeck_symbols::{Catalog, Kind, Lang, SymbolId, search};
 use snipdeck_ui::symbol_nav::NavRow;
 
 /// Height of a section header row.
@@ -16,13 +16,14 @@ const ALL_ROWS: usize = 2;
 /// Kaomoji chips per row.
 const CHIP_COLUMNS: usize = 2;
 
-/// The tab a kind number names: 0 All, 1 Emoji, 2 Kaomoji, 3 Icons.
+/// The tab a kind number names: 0 All, 1 Emoji, 2 Kaomoji, 3 Icons, 4 Characters.
 #[must_use]
 pub const fn kind_of(tab: i32) -> Option<Kind> {
     match tab {
         1 => Some(Kind::Emoji),
         2 => Some(Kind::Kaomoji),
         3 => Some(Kind::Icon),
+        4 => Some(Kind::Character),
         _ => None,
     }
 }
@@ -40,8 +41,10 @@ pub enum Title {
     EmojiGroup(usize),
     /// A kaomoji group, by its place in `KAOMOJI_GROUPS`.
     KaomojiGroup(usize),
-    /// An icon category (English, from the catalog).
-    IconCategory(String),
+    /// An icon category, by its place in the catalog's categories.
+    IconCategory(usize),
+    /// A character group, by its place in `CHARACTER_GROUPS`.
+    CharacterGroup(usize),
 }
 
 /// One cell: a catalog index and where it sits in the reading order.
@@ -81,7 +84,7 @@ pub struct Grid {
     pub items: Vec<usize>,
     /// The keyboard table for [`snipdeck_ui::symbol_nav::navigate`].
     pub nav: Vec<NavRow>,
-    /// For each emoji group: the header row and the first cell, when the group is on show.
+    /// For each group of the kind on show: the header row and the first cell, when it is on show.
     pub groups: Vec<Option<(usize, usize)>>,
 }
 
@@ -210,7 +213,29 @@ impl Builder {
     }
 }
 
-/// The grid for `tab` (0 All, 1 Emoji, 2 Kaomoji, 3 Icons) and `query`, in `columns` columns.
+/// How many groups `kind` has: the jump points of the group strip.
+#[must_use]
+pub fn group_count(catalog: &Catalog, kind: Kind) -> usize {
+    match kind {
+        Kind::Emoji => snipdeck_symbols::EMOJI_GROUPS.len(),
+        Kind::Kaomoji => snipdeck_symbols::KAOMOJI_GROUPS.len(),
+        Kind::Icon => catalog.icon_categories().len(),
+        Kind::Character => snipdeck_symbols::CHARACTER_GROUPS.len(),
+    }
+}
+
+/// The kinds of the "All" view, the most used first (by the recents), ties in catalog order. A
+/// single kind lists only itself.
+fn kinds_by_use(recents: &[SymbolId], only: Option<Kind>) -> Vec<Kind> {
+    if let Some(k) = only {
+        return vec![k];
+    }
+    let mut kinds = vec![Kind::Emoji, Kind::Kaomoji, Kind::Icon, Kind::Character];
+    kinds.sort_by_key(|k| std::cmp::Reverse(recents.iter().filter(|id| id.kind() == *k).count()));
+    kinds
+}
+
+/// The grid for `tab` (0 All, 1 Emoji, 2 Kaomoji, 3 Icons, 4 Characters) and `query`, in `columns` columns.
 /// `recents` are the symbols used last, newest first. Without a query the grid opens with the
 /// recents of the kind; with one it is the ranked results.
 #[must_use]
@@ -225,7 +250,7 @@ pub fn build(
     let kind = kind_of(tab);
     let mut b = Builder {
         grid: Grid {
-            groups: vec![None; EMOJI_GROUPS.len()],
+            groups: vec![None; kind.map_or(0, |k| group_count(catalog, k))],
             ..Grid::default()
         },
         y: 0.0,
@@ -240,7 +265,7 @@ pub fn build(
                 .filter(|&i| catalog.range(k).contains(&i))
                 .collect()
         };
-        for k in [Kind::Emoji, Kind::Kaomoji, Kind::Icon] {
+        for k in kinds_by_use(recents, kind) {
             let found = of(k);
             if found.is_empty() {
                 continue;
@@ -277,7 +302,7 @@ fn browse(
     }
     match kind {
         None => {
-            for k in [Kind::Emoji, Kind::Kaomoji, Kind::Icon] {
+            for k in kinds_by_use(recents, None) {
                 b.header(Title::Kind(k), Some(k));
                 let all: Vec<usize> = catalog.range(k).collect();
                 b.section(catalog, k, &all, columns, ALL_ROWS);
@@ -295,17 +320,11 @@ fn browse(
                 let title = match k {
                     Kind::Emoji => Title::EmojiGroup(usize::from(g)),
                     Kind::Kaomoji => Title::KaomojiGroup(usize::from(g)),
-                    Kind::Icon => Title::IconCategory(
-                        catalog
-                            .icon_categories()
-                            .get(usize::from(g))
-                            .cloned()
-                            .unwrap_or_default(),
-                    ),
+                    Kind::Icon => Title::IconCategory(usize::from(g)),
+                    Kind::Character => Title::CharacterGroup(usize::from(g)),
                 };
                 let row = b.header(title, None);
-                if k == Kind::Emoji
-                    && let Some(slot) = b.grid.groups.get_mut(usize::from(g))
+                if let Some(slot) = b.grid.groups.get_mut(usize::from(g))
                 {
                     *slot = Some((row, b.grid.items.len()));
                 }
@@ -327,6 +346,7 @@ fn browse(
 
 #[cfg(test)]
 mod tests {
+    use snipdeck_symbols::EMOJI_GROUPS;
     use snipdeck_ui::symbol_nav::{Move, navigate};
 
     use super::*;
@@ -403,6 +423,7 @@ mod tests {
                 (Some(Title::Kind(Kind::Emoji)), Some(Kind::Emoji)),
                 (Some(Title::Kind(Kind::Kaomoji)), Some(Kind::Kaomoji)),
                 (Some(Title::Kind(Kind::Icon)), Some(Kind::Icon)),
+                (Some(Title::Kind(Kind::Character)), Some(Kind::Character)),
             ]
         );
         let emoji_rows = g.rows[1..].iter().take_while(|r| r.title.is_none()).count();
@@ -452,5 +473,53 @@ mod tests {
         let g = grid(3, "", &[], 7);
         assert!(matches!(g.rows[0].title, Some(Title::IconCategory(_))));
         assert_eq!(g.items.len(), Catalog::get().range(Kind::Icon).len());
+    }
+
+    #[test]
+    fn characters_are_the_fifth_tab_with_group_sections_and_jump_points() {
+        let g = grid(4, "", &[], 7);
+        let c = Catalog::get();
+        assert_eq!(g.items.len(), c.range(Kind::Character).len());
+        assert!(matches!(g.rows[0].title, Some(Title::CharacterGroup(_))));
+        assert_eq!(
+            g.groups.len(),
+            group_count(c, Kind::Character),
+            "a jump point per character group"
+        );
+        assert!(g.groups.iter().flatten().count() > 5);
+    }
+
+    #[test]
+    fn every_kind_has_group_jump_points() {
+        let c = Catalog::get();
+        for (tab, k) in [(1, Kind::Emoji), (2, Kind::Kaomoji), (3, Kind::Icon)] {
+            let g = grid(tab, "", &[], 7);
+            assert_eq!(g.groups.len(), group_count(c, k));
+            assert!(g.groups.iter().flatten().count() >= 2, "{k:?}");
+        }
+    }
+
+    #[test]
+    fn all_lists_the_most_used_kind_first() {
+        let c = Catalog::get();
+        let icon = c.symbols()[c.range(Kind::Icon).start].id.clone();
+        let g = grid(0, "", &[icon.clone(), icon], 7);
+        let first_kind = g.rows.iter().find_map(|r| match r.title {
+            Some(Title::Kind(k)) => Some(k),
+            _ => None,
+        });
+        assert_eq!(first_kind, Some(Kind::Icon));
+        let none = grid(0, "", &[], 7);
+        assert!(matches!(
+            none.rows.iter().find_map(|r| r.title.clone()),
+            Some(Title::Kind(Kind::Emoji))
+        ));
+    }
+
+    #[test]
+    fn a_lone_kind_search_shows_every_row_without_a_limit() {
+        let g = grid(4, "arrow", &[], 7);
+        assert!(g.rows[0].title.is_none());
+        assert!(g.items.len() > 2 * 7, "not cut to the All view's two rows");
     }
 }
