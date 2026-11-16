@@ -263,6 +263,7 @@ fn write_checked<L: Library>(
     })?;
     let options = ExportOptions {
         sensitive: key.map_or(SensitivePolicy::Skip, SensitivePolicy::Encrypt),
+        every_tag: true,
         ..ExportOptions::default()
     };
     let report = export_to_path(lib, now.timestamp(), &options, path)?;

@@ -258,9 +258,7 @@ impl<'a> Decoded<'a> {
                     report.lists_added += board
                         .lists
                         .iter()
-                        .filter(|l| {
-                            have.is_none_or(|h| !h.contains(&name_key(l.name.as_str())))
-                        })
+                        .filter(|l| have.is_none_or(|h| !h.contains(&name_key(l.name.as_str()))))
                         .count();
                 }
                 _ if board_items > 0 || self.merge != MergeStrategy::SkipDuplicates => {
@@ -280,7 +278,9 @@ impl<'a> Decoded<'a> {
             .map(|t| name_key(t.name.as_str()))
             .collect();
         for (index, name) in self.plan.tags.iter().enumerate() {
-            if used.contains(&index) && have.insert(name_key(name.as_str())) {
+            if (self.merge == MergeStrategy::Restore || used.contains(&index))
+                && have.insert(name_key(name.as_str()))
+            {
                 report.tags_added += 1;
             }
         }

@@ -767,6 +767,13 @@ struct PageView {
     has_data_folder: bool,
     backups: Vec<BackupLine>,
     last_backup: String,
+    last_backup_size: String,
+    last_backup_items: i32,
+    backup_folder: String,
+    backup_folder_default: bool,
+    backup_folder_network: bool,
+    backup_folder_sync: String,
+    backups_removed: i32,
     import: ImportLines,
     toast: Option<ToastView>,
 }
@@ -778,6 +785,10 @@ struct PageState {
     paste_rule_error: String,
     no_history_error: String,
     backups: Vec<BackupFile>,
+    /// The newest readable backup's item count (read from its manifest), when there is one.
+    last_backup_items: Option<usize>,
+    /// How many older backups the last change of "keep" deleted.
+    backups_removed: usize,
     import: Option<PendingImport>,
 }
 
@@ -953,6 +964,7 @@ fn page_view<C, K, T>(
     controller: &Controller<Store, C, K, T>,
     state: &PageState,
     has_data_folder: bool,
+    backup_folder: &Path,
 ) -> PageView
 where
     C: Clipboard + ClipboardText,
@@ -961,6 +973,7 @@ where
 {
     let settings: &Settings = controller.settings();
     let hotkeys = hotkey_rows(controller, state);
+    let risks = snipdeck_portable::folder_risks(backup_folder);
     PageView {
         look: controller.settings_look(),
         accent: controller.accent(),
@@ -1045,6 +1058,23 @@ where
             .first()
             .map(|b| b.date.to_string())
             .unwrap_or_default(),
+        last_backup_size: state
+            .backups
+            .first()
+            .map(|b| human_size(b.bytes))
+            .unwrap_or_default(),
+        last_backup_items: state.last_backup_items.map_or(-1, to_i32),
+        backup_folder: backup_folder.display().to_string(),
+        backup_folder_default: controller.settings().backup_folder.is_empty(),
+        backup_folder_network: risks.contains(&snipdeck_portable::FolderRisk::Network),
+        backup_folder_sync: risks
+            .iter()
+            .find_map(|r| match r {
+                snipdeck_portable::FolderRisk::Synced(name) => Some((*name).to_owned()),
+                snipdeck_portable::FolderRisk::Network => None,
+            })
+            .unwrap_or_default(),
+        backups_removed: to_i32(state.backups_removed),
         import: ImportLines::of(state.import.as_ref()),
         toast: controller.settings_toast(),
     }
@@ -1145,15 +1175,31 @@ where
             .set(self.host.autostart_registered());
     }
 
-    fn refresh_backups(&self) {
-        let folder = self
-            .data_dir
+    /// Where backups go: the chosen folder, or the default one inside the data folder (empty in
+    /// the demo, which has no data folder).
+    fn backup_folder(&self) -> PathBuf {
+        self.data_dir
             .as_deref()
-            .map(|dir| self.controller.borrow().settings().backup_folder(dir));
-        let found = folder
-            .and_then(|folder| backup::list_backups(&folder).ok())
-            .unwrap_or_default();
-        self.state.borrow_mut().backups = found;
+            .map(|dir| self.controller.borrow().settings().backup_folder(dir))
+            .unwrap_or_default()
+    }
+
+    fn refresh_backups(&self) {
+        let folder = self.backup_folder();
+        let found = if self.data_dir.is_some() {
+            backup::list_backups(&folder).unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+        // The newest file that opens: its item count is the "last backup" line's, and a cut-off
+        // newest file never stands for a good one.
+        let items = (!found.is_empty())
+            .then(|| backup::newest_readable(&folder).ok().flatten())
+            .flatten()
+            .map(|(_, summary)| summary.items);
+        let mut state = self.state.borrow_mut();
+        state.backups = found;
+        state.last_backup_items = items;
     }
 
     /// Copies the controller's state into the window and keeps the toast and save timers running.
@@ -1170,6 +1216,7 @@ where
             &self.controller.borrow(),
             &self.state.borrow(),
             self.data_dir.is_some(),
+            &self.backup_folder(),
         );
         // The switch shows what Windows will do, not only what was chosen here: an entry removed
         // outside Snipdeck (Task Manager, a moved install) reads as off.
@@ -1634,6 +1681,40 @@ where
         redraw_all();
     }
 
+    /// "Backups to keep" changed: applied at once to the backups folder, and the count of copies
+    /// it deleted is shown (DATA-17).
+    fn backups_keep_chosen(self: &Rc<Self>, n: i32) {
+        let removed = match self.data_dir.as_deref() {
+            Some(dir) => self.act(|ctl| {
+                ctl.set_backups_keep(u32::try_from(n).unwrap_or(0), dir)
+                    .removed
+                    .len()
+            }),
+            None => 0,
+        };
+        self.state.borrow_mut().backups_removed = removed;
+        self.refresh_backups();
+        redraw_all();
+    }
+
+    /// "Choose folder...": asks for a folder and keeps backups there from now on.
+    fn backup_folder_choose(self: &Rc<Self>) {
+        let owner = self
+            .window
+            .upgrade()
+            .and_then(|w| crate::native_window::handle_of(w.window()));
+        if let ExportFolder::Chosen(folder) = self.host.pick_export_folder(owner) {
+            self.backup_folder_chosen(&folder.to_string_lossy());
+        }
+    }
+
+    fn backup_folder_chosen(self: &Rc<Self>, folder: &str) {
+        self.act(|ctl| ctl.set_backup_folder(folder));
+        self.state.borrow_mut().backups_removed = 0;
+        self.refresh_backups();
+        redraw_all();
+    }
+
     fn import_triggers_toggled(self: &Rc<Self>, on: bool) {
         self.act(|ctl| ctl.set_install_triggers(on));
     }
@@ -1927,9 +2008,11 @@ where
                 |s| s.dock.leave_delay_ms = u32::try_from(ms).unwrap_or(0)
             )));
         wire!(on_backups_keep_chosen, |core, n| core
-            .act(|ctl| ctl.update_settings(
-                |s| s.backups_keep = u32::try_from(n).unwrap_or(0)
-            )));
+            .backups_keep_chosen(n));
+        wire!(on_backup_folder_choose_requested, |core| core
+            .backup_folder_choose());
+        wire!(on_backup_folder_reset_requested, |core| core
+            .backup_folder_chosen(""));
         wire!(on_clipboard_clear_secs_chosen, |core, n| core.act(|ctl| {
             ctl.update_settings(|s| s.clipboard_clear_secs = u32::try_from(n).unwrap_or(0));
         }));
@@ -2187,6 +2270,27 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.last_backup == view.last_backup) {
         window.set_last_backup(view.last_backup.as_str().into());
+    }
+    if differs(&|p| p.last_backup_size == view.last_backup_size) {
+        window.set_last_backup_size(view.last_backup_size.as_str().into());
+    }
+    if differs(&|p| p.last_backup_items == view.last_backup_items) {
+        window.set_last_backup_items(view.last_backup_items);
+    }
+    if differs(&|p| p.backup_folder == view.backup_folder) {
+        window.set_backup_folder(view.backup_folder.as_str().into());
+    }
+    if differs(&|p| p.backup_folder_default == view.backup_folder_default) {
+        window.set_backup_folder_default(view.backup_folder_default);
+    }
+    if differs(&|p| p.backup_folder_network == view.backup_folder_network) {
+        window.set_backup_folder_network(view.backup_folder_network);
+    }
+    if differs(&|p| p.backup_folder_sync == view.backup_folder_sync) {
+        window.set_backup_folder_sync(view.backup_folder_sync.as_str().into());
+    }
+    if differs(&|p| p.backups_removed == view.backups_removed) {
+        window.set_backups_removed(view.backups_removed);
     }
     if differs(&|p| p.no_history_apps == view.no_history_apps) {
         window.set_no_history_apps(model(

@@ -38,6 +38,9 @@ pub struct ExportOptions<'k> {
     pub sensitive: SensitivePolicy<'k>,
     /// The limits the archive must stay within, so that it can be imported again.
     pub limits: Limits,
+    /// Write every tag, not only the ones an exported item uses: what a backup of the whole
+    /// library does, so a restore brings the tag list back as it was.
+    pub every_tag: bool,
 }
 
 /// What an export wrote.
@@ -291,7 +294,10 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
             self.report.boards += 1;
         }
 
-        // Tags in name order, only those some written item uses.
+        if self.options.every_tag {
+            used_tags.extend(tag_names.keys().copied());
+        }
+        // Tags in name order: those some written item uses (every tag for a backup).
         let mut tags: Vec<TagDto> = used_tags
             .iter()
             .filter_map(|id| {

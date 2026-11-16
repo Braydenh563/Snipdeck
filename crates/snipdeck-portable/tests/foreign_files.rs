@@ -36,7 +36,10 @@ fn archive(trigger: &str) -> Vec<u8> {
     })
 }
 
-fn import(bytes: &[u8], options: &ImportOptions<'_>) -> (snipdeck_store::Store, snipdeck_portable::ImportReport) {
+fn import(
+    bytes: &[u8],
+    options: &ImportOptions<'_>,
+) -> (snipdeck_store::Store, snipdeck_portable::ImportReport) {
     let mut s = store();
     let report = import_archive(&mut s, Cursor::new(bytes.to_vec()), "f", at(10), options).unwrap();
     (s, report)
@@ -70,7 +73,11 @@ fn a_restore_keeps_use_counts_but_not_the_future() {
 fn a_one_character_trigger_is_dropped_with_a_note() {
     let (s, report) = import(&archive("a"), &ImportOptions::default());
     assert!(s.triggers().unwrap().is_empty());
-    assert!(warnings(&report).iter().any(|w| w.contains("too short")), "{:?}", warnings(&report));
+    assert!(
+        warnings(&report).iter().any(|w| w.contains("too short")),
+        "{:?}",
+        warnings(&report)
+    );
 }
 
 #[test]

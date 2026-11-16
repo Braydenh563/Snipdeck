@@ -42,6 +42,7 @@ mod decoded;
 mod dto;
 mod error;
 mod export;
+mod folder;
 mod import;
 mod importers;
 mod limits;
@@ -54,9 +55,10 @@ pub use error::{Error, Result};
 pub use export::{
     ExportOptions, ExportReport, SensitivePolicy, SkippedItem, export_to_path, export_to_writer,
 };
+pub use folder::{FolderRisk, folder_risks};
 pub use import::{
-    BoardLayout, ImportOptions, KeySource, MergeStrategy, Triggers, decode_archive, decode_archive_path,
-    import_archive, import_archive_path,
+    BoardLayout, ImportOptions, KeySource, MergeStrategy, Triggers, decode_archive,
+    decode_archive_path, import_archive, import_archive_path,
 };
 pub use importers::{
     HistoryEntry, MEMORY_BUDGET, decode_beeftext, decode_copyq_json, decode_ditto, decode_entries,

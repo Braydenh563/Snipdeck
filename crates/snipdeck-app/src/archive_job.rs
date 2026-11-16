@@ -204,6 +204,8 @@ impl ArchiveJob {
             sensitive: lib
                 .data_key()
                 .map_or(SensitivePolicy::Skip, SensitivePolicy::Encrypt),
+            // The whole library: its unused tags come back with a restore too.
+            every_tag: true,
             ..ExportOptions::default()
         };
         match &self.work {

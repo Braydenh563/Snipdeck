@@ -317,6 +317,19 @@ export component SettingsPage inherits Window {
     in property <int> backups-keep: 7;
     in property <int> backups-keep-min: 1;
     in property <int> backups-keep-max: 60;
+    // Where backups go: the folder in words, whether it is the default one, and what is risky about it
+    // (a network share, a sync service's folder).
+    in property <string> backup-folder;
+    in property <bool> backup-folder-default: true;
+    in property <bool> backup-folder-network: false;
+    in property <string> backup-folder-sync;
+    // The newest readable backup's size in words and how many items it holds (-1: not known).
+    in property <string> last-backup-size;
+    in property <int> last-backup-items: -1;
+    // How many older backups the last change of "Backups to keep" deleted (0: none, nothing shown).
+    in property <int> backups-removed: 0;
+    callback backup-folder-choose-requested();
+    callback backup-folder-reset-requested();
     // Seconds before a copied sensitive item is cleared from the clipboard; 0 = never.
     in property <int> clipboard-clear-secs: 30;
     in property <int> clipboard-clear-secs-max: 600;
@@ -1371,7 +1384,7 @@ export component SettingsPage inherits Window {
                     search-text: root.keys-7;
                     located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     Text {
-                        text: @tr("Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything.", root.backups-keep);
+                        text: @tr("Snipdeck saves a copy of your library once a day and keeps the newest {}, plus the last copy of each of the past four weeks and six months. A backup holds every board, list, item and tag; the Trash is not in it. Restoring adds back what is missing and never removes anything.", root.backups-keep);
                         color: Theme.text-secondary;
                         font-family: Fonts.sans;
                         font-size: Type.sm;
@@ -1388,7 +1401,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Backups to keep");
-                        description: @tr("The oldest ones are deleted once there are more than this.");
+                        description: @tr("Daily copies kept; older ones are deleted when you lower this.");
                         NumberStepper {
                             label: @tr("Backups to keep");
                             decrease-label: @tr("Keep fewer backups");
@@ -1411,8 +1424,56 @@ export component SettingsPage inherits Window {
                         wrap: word-wrap;
                         accessible-role: none;
                     }
+                    SettingRow {
+                        title: @tr("Backup folder");
+                        description: root.backup-folder;
+                        Button {
+                            text: @tr("Choose folder…");
+                            icon: Icons.folder;
+                            enabled: root.has-data-folder && !root.backup-busy;
+                            clicked => { root.backup-folder-choose-requested(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                        if !root.backup-folder-default: Button {
+                            text: @tr("Use the default");
+                            enabled: root.has-data-folder && !root.backup-busy;
+                            clicked => { root.backup-folder-reset-requested(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    if root.backup-folder-network: Text {
+                        text: @tr("This folder is on a network share. A backup can fail while the share is offline, and a half-written copy there is hard to spot. Keep a second copy somewhere local.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                        accessible-role: AccessibleRole.text;
+                    }
+                    if root.backup-folder-sync != "": Text {
+                        text: @tr("This folder is synced by {}. Every backup is uploaded, and the service can bring an old copy back over a new one. Sensitive items stay encrypted, but a synced copy is still a copy.", root.backup-folder-sync);
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                        accessible-role: AccessibleRole.text;
+                    }
+                    if root.backups-removed > 0: Text {
+                        text: @tr("{} older backup was deleted." | "{} older backups were deleted." % root.backups-removed, root.backups-removed);
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                        accessible-role: AccessibleRole.text;
+                    }
                     if root.has-data-folder: Text {
-                        text: root.last-backup != "" ? @tr("Last backup: {}", root.last-backup) : @tr("No backup yet");
+                        text: root.last-backup == "" ? @tr("No backup yet")
+                            : root.last-backup-items < 0 ? @tr("Last backup: {}", root.last-backup)
+                            : @tr("Last backup: {}, {}, {} item" | "Last backup: {}, {}, {} items" % root.last-backup-items, root.last-backup, root.last-backup-size, root.last-backup-items);
+                        wrap: word-wrap;
                         color: Theme.text-secondary;
                         font-family: Fonts.sans;
                         font-size: Type.base;

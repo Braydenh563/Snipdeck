@@ -336,6 +336,7 @@ fn write(
     report: &mut ImportReport,
 ) -> Result<()> {
     // Only tags that a kept item uses are created; existing tags are reused by name.
+    let every = plan.reuse_existing;
     let used: HashSet<usize> = plan
         .boards
         .iter()
@@ -353,7 +354,7 @@ fn write(
         .tags
         .iter()
         .enumerate()
-        .filter(|(i, _)| used.contains(i))
+        .filter(|(i, _)| every || used.contains(i))
     {
         let key = name_key(name.as_str());
         let id = if let Some(id) = by_key.get(&key) {
@@ -484,10 +485,15 @@ fn build_item(
     // never an excerpt of its alt text, as the app itself makes it.
     let is_image = plan.kind == ItemKind::Image;
     let has_text = is_image
-        || plan
-            .formats
-            .iter()
-            .any(|f| matches!(f, PlanFormat::Single { kind: FormatKind::Text, .. }));
+        || plan.formats.iter().any(|f| {
+            matches!(
+                f,
+                PlanFormat::Single {
+                    kind: FormatKind::Text,
+                    ..
+                }
+            )
+        });
     if let (Some(preview), false) = (&plan.preview, has_text) {
         item.preview = Item::preview_of(preview, plan.sensitive);
     }
@@ -825,7 +831,11 @@ mod tests {
         let known = existing_hashes(&s).unwrap();
         for body in ["small", big.as_str()] {
             let plan = PlanItem::text("other title".to_owned(), body.to_owned(), at(1));
-            assert!(known.values().any(|h| *h == plan.content_hash), "{} bytes", body.len());
+            assert!(
+                known.values().any(|h| *h == plan.content_hash),
+                "{} bytes",
+                body.len()
+            );
         }
     }
 

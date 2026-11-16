@@ -729,7 +729,11 @@ fn an_item_over_the_entry_limit_is_named_instead_of_failing_without_a_word() {
     assert_eq!(report.items, 0);
     assert_eq!(report.skipped.len(), 1, "{:?}", report.skipped);
     assert_eq!(report.skipped[0].title, "Passport scan");
-    assert!(report.skipped[0].reason.contains("limit"), "{:?}", report.skipped[0]);
+    assert!(
+        report.skipped[0].reason.contains("limit"),
+        "{:?}",
+        report.skipped[0]
+    );
 }
 
 #[test]
@@ -820,7 +824,13 @@ fn sensitive_content_past_the_readers_budget_is_left_out_and_named() {
         limits,
         ..ImportOptions::default()
     };
-    let back = import_archive(&mut fresh, Cursor::new(out.into_inner()), "x", at(10_000), &opts)
-        .unwrap();
+    let back = import_archive(
+        &mut fresh,
+        Cursor::new(out.into_inner()),
+        "x",
+        at(10_000),
+        &opts,
+    )
+    .unwrap();
     assert_eq!(back.items_added, 1, "{:?}", back.warnings);
 }

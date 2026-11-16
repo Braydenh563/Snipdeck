@@ -543,9 +543,10 @@ where
         let Some(dir) = self.data_dir.clone() else {
             return;
         };
-        let Some(file) = backup::list_backups(&self.controller.borrow().settings().backup_folder(&dir))
-            .ok()
-            .and_then(|found| found.into_iter().next())
+        let Some(file) =
+            backup::list_backups(&self.controller.borrow().settings().backup_folder(&dir))
+                .ok()
+                .and_then(|found| found.into_iter().next())
         else {
             return;
         };

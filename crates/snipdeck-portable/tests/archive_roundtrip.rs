@@ -344,7 +344,8 @@ fn export_to_path_is_atomic_and_replaces_the_file() {
     let s = sample_store();
     snipdeck_portable::export_to_path(&s, at(5), &ExportOptions::default(), &path).unwrap();
     let mut fresh = store();
-    snipdeck_portable::import_archive_path(&mut fresh, &path, at(10_000), &restore_boards()).unwrap();
+    snipdeck_portable::import_archive_path(&mut fresh, &path, at(10_000), &restore_boards())
+        .unwrap();
     assert_same(&snapshot(&fresh), &snapshot(&s));
     let leftovers: Vec<_> = std::fs::read_dir(dir.path())
         .unwrap()

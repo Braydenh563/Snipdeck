@@ -13,9 +13,9 @@ use std::{
 use jiff::tz::TimeZone;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_portable::{
-    BoardLayout, Decoded, HistoryEntry, ImportOptions, decode_archive_path, decode_beeftext,
-    decode_copyq_json, decode_ditto, decode_entries, decode_espanso, decode_folder,
-    decode_phraseexpress_csv, decode_textexpander_csv,
+    BoardLayout, Decoded, HistoryEntry, ImportOptions, backup, decode_archive_path,
+    decode_beeftext, decode_copyq_json, decode_ditto, decode_entries, decode_espanso,
+    decode_folder, decode_phraseexpress_csv, decode_textexpander_csv,
 };
 use snipdeck_store::{
     ItemRepo, Store,
@@ -299,7 +299,12 @@ mod erase_tests {
         ] {
             fs::write(d.join(ours), b"x").unwrap();
         }
-        for ours in ["blobs", "backups", "drafts", "snipdeck.damaged-20261107-1030"] {
+        for ours in [
+            "blobs",
+            "backups",
+            "drafts",
+            "snipdeck.damaged-20261107-1030",
+        ] {
             fs::create_dir_all(d.join(ours)).unwrap();
             fs::write(d.join(ours).join("inner"), b"x").unwrap();
         }
@@ -370,6 +375,24 @@ where
     #[must_use]
     pub fn today(&self) -> jiff::civil::Date {
         self.clock.now().to_zoned(TimeZone::system()).date()
+    }
+
+    /// Keeps backups in `folder` (blank: the default folder inside the data folder).
+    pub fn set_backup_folder(&mut self, folder: &str) {
+        let folder = folder.trim().to_owned();
+        self.update_settings(|s| s.backup_folder = folder);
+    }
+
+    /// Sets "Backups to keep" and applies it now: copies outside the new rule are deleted in the
+    /// backups folder at once, not at the next backup (DATA-17). Returns what was deleted.
+    pub fn set_backups_keep(
+        &mut self,
+        keep: u32,
+        data_dir: &std::path::Path,
+    ) -> snipdeck_portable::backup::Retained {
+        self.update_settings(|s| s.backups_keep = keep);
+        let keep = usize::try_from(self.settings.backups_keep).unwrap_or(backup::DEFAULT_KEEP);
+        backup::apply_retention(&self.settings.backup_folder(data_dir), keep, self.today())
     }
 
     /// Whether a tray icon is in the notification area now, for the Help window's checks.
