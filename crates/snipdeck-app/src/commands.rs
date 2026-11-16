@@ -226,7 +226,7 @@ impl Command {
             Self::DuplicateItem => "Ctrl+D",
             Self::EditItem => "Ctrl+E",
             Self::PinItem | Self::UnpinItem => "Ctrl+P",
-            Self::TrashItem | Self::DeleteGroup => "Del",
+            Self::TrashItem | Self::DeleteGroup | Self::DeleteForever => "Del",
             Self::SelectAll => "Ctrl+A",
             Self::ToggleSidebar => "Ctrl+B",
             Self::GroupItems => "Ctrl+G",
@@ -236,7 +236,6 @@ impl Command {
             Self::Undo => "Ctrl+Z",
             Self::Redo => "Ctrl+Y",
             Self::UsePlain => "Alt+Enter",
-            Self::DeleteForever => "Del",
             Self::ShowPanel => return chord_text(hotkeys, HotkeyAction::TogglePanel),
             Self::OpenPicker => return chord_text(hotkeys, HotkeyAction::Picker),
             Self::QuickCapture => return chord_text(hotkeys, HotkeyAction::Capture),
@@ -430,6 +429,7 @@ pub fn available(command: Command, ctx: &Context<'_>) -> bool {
         | Command::CopyItem
         | Command::DuplicateItem
         | Command::EditItem
+        | Command::UsePlain
         | Command::TrashItem => ctx.has_item && !ctx.in_trash,
         Command::PinItem => ctx.has_item && !ctx.in_trash && !ctx.item_pinned,
         Command::UnpinItem => ctx.has_item && !ctx.in_trash && ctx.item_pinned,
@@ -440,7 +440,6 @@ pub fn available(command: Command, ctx: &Context<'_>) -> bool {
         Command::Undo => ctx.can_undo,
         Command::Redo => ctx.can_redo,
         Command::Lock => ctx.lock_set,
-        Command::UsePlain => ctx.has_item && !ctx.in_trash,
         Command::RestoreItem | Command::DeleteForever => ctx.has_item && ctx.in_trash,
         Command::Symbols => ctx.symbols,
         Command::Colours => ctx.colours,

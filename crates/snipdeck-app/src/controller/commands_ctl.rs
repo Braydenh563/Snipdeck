@@ -14,6 +14,22 @@ use crate::{
     settings::{RowDensity, Theme},
 };
 
+/// The item action a command stands for (the commands that act on the row under the cursor).
+const fn item_action(command: Command) -> Option<MainAction> {
+    Some(match command {
+        Command::UseItem => MainAction::Use,
+        Command::UsePlain => MainAction::UsePlain,
+        Command::CopyItem => MainAction::Copy,
+        Command::DuplicateItem => MainAction::Duplicate,
+        Command::EditItem => MainAction::Edit,
+        Command::PinItem | Command::UnpinItem => MainAction::Pin,
+        Command::TrashItem => MainAction::Delete,
+        Command::RestoreItem => MainAction::Restore,
+        Command::DeleteForever => MainAction::DeleteForever,
+        _ => return None,
+    })
+}
+
 impl<S, C, K, T> Controller<S, C, K, T>
 where
     S: Library,
@@ -35,6 +51,10 @@ where
     /// (the selection, when several rows are selected, as the menus do). Commands that only
     /// move focus inside the Main window (Search) are the window's and do nothing here.
     pub fn run_command(&mut self, command: Command, cursor: usize) {
+        if let Some(action) = item_action(command) {
+            self.main_action(action, cursor);
+            return;
+        }
         match command {
             Command::NewItem => self.open_new_item(Origin::Main),
             Command::NewList => self.main_new_list(),
@@ -45,22 +65,26 @@ where
             // Not the controller's: `MainBinding::run_command` handles both before it gets here
             // (Search moves the window's focus, Tour opens the tour window). The arm stays only so
             // the match is exhaustive.
-            Command::Search | Command::Tour => {}
+            // The item commands never get here (`item_action` took them).
+            Command::Search
+            | Command::Tour
+            | Command::UseItem
+            | Command::CopyItem
+            | Command::DuplicateItem
+            | Command::EditItem
+            | Command::PinItem
+            | Command::UnpinItem
+            | Command::TrashItem
+            | Command::UsePlain
+            | Command::RestoreItem
+            | Command::DeleteForever => {}
             Command::ShowPanel | Command::HidePanel => self.main_toggle_panel(),
             Command::Undo => self.undo(),
             Command::Redo => self.redo(),
             Command::NewBoard => self.main_new_board(),
             Command::Lock => self.lock_now(),
             Command::Quit => self.pending.push(Effect::Quit),
-            Command::UsePlain => {
-                self.main_action(MainAction::UsePlain, cursor);
-            }
-            Command::RestoreItem => {
-                self.main_action(MainAction::Restore, cursor);
-            }
-            Command::DeleteForever => {
-                self.main_action(MainAction::DeleteForever, cursor);
-            }
+
             Command::Symbols => {
                 if self.settings.show_symbols_tab {
                     let mut effects = self.show();
@@ -113,24 +137,6 @@ where
             Command::ThemeSystem => self.choose_theme(Theme::System),
             Command::ThemeLight => self.choose_theme(Theme::Light),
             Command::ThemeDark => self.choose_theme(Theme::Dark),
-            Command::UseItem => {
-                self.main_action(MainAction::Use, cursor);
-            }
-            Command::CopyItem => {
-                self.main_action(MainAction::Copy, cursor);
-            }
-            Command::DuplicateItem => {
-                self.main_action(MainAction::Duplicate, cursor);
-            }
-            Command::EditItem => {
-                self.main_action(MainAction::Edit, cursor);
-            }
-            Command::PinItem | Command::UnpinItem => {
-                self.main_action(MainAction::Pin, cursor);
-            }
-            Command::TrashItem => {
-                self.main_action(MainAction::Delete, cursor);
-            }
             Command::GoAll => self.main_open(Section::All),
             Command::GoPinned => self.main_open(Section::Pinned),
             Command::GoRecent => self.main_open(Section::Recent),
