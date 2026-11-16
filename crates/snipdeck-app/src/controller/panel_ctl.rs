@@ -146,6 +146,12 @@ where
         board.clone_into(&mut self.new_board_base);
     }
 
+    /// Sets how a duplicate is titled: `format` holds `{title}` where the original's title goes
+    /// ("{title} copy"), translated by the window layer.
+    pub fn set_copy_title(&mut self, format: &str) {
+        format.clone_into(&mut self.copy_title);
+    }
+
     /// A regular Snipdeck window (Main, Settings, an editor, Help) gained or lost the focus
     /// (`active`: one of them has it now). While one has it a pinned Panel is not topmost, so
     /// that window can cover it; once the focus is in another app the Panel is topmost again.

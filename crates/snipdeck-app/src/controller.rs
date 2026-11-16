@@ -16,6 +16,7 @@ use snipdeck_platform::{
     system_look::SystemLook,
     tray::TrayEvent,
 };
+use snipdeck_store::Trashable;
 
 mod colour_ctl;
 mod colour_main;
@@ -172,6 +173,17 @@ struct Undo {
     /// The list that save made (the first colour saved makes "Colours"): Undo trashes it too, so
     /// no empty list is left behind.
     list: Option<ListId>,
+    /// The toast reports an Undo of an add (the items are in the Trash now): its button is
+    /// "Delete forever", which removes them for good (a secret pasted by mistake must not stay
+    /// on disk for 30 days).
+    purge: Vec<Trashable>,
+}
+
+impl Undo {
+    /// An Undo that takes something back (as opposed to the "Delete forever" offer).
+    fn takes_back(&self) -> bool {
+        self.purge.is_empty()
+    }
 }
 
 struct ActiveToast {
@@ -295,6 +307,9 @@ pub struct Controller<S, C, K, T> {
     /// (the Main window's binding sets them; see [`Controller::set_new_name_bases`]).
     new_list_base: String,
     new_board_base: String,
+    /// What a duplicate is titled, `{title}` standing for the original's (translated by the
+    /// window layer, see [`Controller::set_copy_title`]).
+    copy_title: String,
     /// The Colours tab: the colour looked at, the second contrast colour, and the home list's
     /// name in the language shown.
     colour: snipdeck_colour::Rgba8,
@@ -538,6 +553,7 @@ where
             os_look: SystemLook::default(),
             new_list_base: crate::starter::NEW_LIST.to_owned(),
             new_board_base: crate::starter::NEW_BOARD.to_owned(),
+            copy_title: crate::starter::COPY_TITLE.to_owned(),
             colour,
             colour_other,
             colours_list_name: String::from("Colours"),
@@ -741,11 +757,18 @@ where
             kind: t.toast.kind,
             message: t.toast.message.clone(),
             phase: t.phase,
-            undo: self.undo.as_ref().is_some_and(|u| u.seq == t.seq),
+            undo: self
+                .undo
+                .as_ref()
+                .is_some_and(|u| u.seq == t.seq && u.takes_back()),
             edit: self
                 .undo
                 .as_ref()
                 .is_some_and(|u| u.seq == t.seq && u.adds.is_some()),
+            purge: self
+                .undo
+                .as_ref()
+                .is_some_and(|u| u.seq == t.seq && !u.takes_back()),
             open_log: t.toast.message == ToastMessage::CrashedLastTime,
         })
     }

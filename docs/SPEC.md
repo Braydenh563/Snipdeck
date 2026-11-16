@@ -132,6 +132,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 ### 5.7a Deletion & recovery
 - Items delete instantly with a 5 s **Undo** toast; lists and boards ask for confirmation (showing the item count).
 - **Trash** keeps everything 30 days; restore from the main window.
+- **Undo and Redo** (Ctrl+Z, Ctrl+Y) reach the last 100 steps made since Snipdeck started. The history lives in memory only: it is forgotten when the app closes and when the library is erased, and kept across a lock. It is not saved between runs (post-1.0, with its reasons): a saved step would have to hold the old text of every sensitive item, and a Trash purge or a restored backup could leave steps that point at things that no longer exist. Every item, list, board, tag, group and order change is a step, as is a restore from the Trash. An edit of a sensitive item's text is a marker only (its text is not kept, so Undo stops there with a message, and steps older than it stay in the list). Deleting for good (one item, Empty Trash, or the 30-day purge) removes only the steps that need what was deleted. A toast's Undo button is withdrawn when a later step touched the same item. Undo of an Add offers "Delete forever" instead of an Undo-the-Undo. Help > Shortcuts says the same in one note.
 - **Daily local auto-backup** (zipped `.snipdeck` in the data folder, keep 7); restore from Settings.
 - **Crash log** stored locally; "Report a problem" lets the user review the log, then opens a prefilled GitHub issue or email. Nothing is sent automatically.
 

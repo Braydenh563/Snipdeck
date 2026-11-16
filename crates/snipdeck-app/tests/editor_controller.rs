@@ -758,13 +758,107 @@ fn editing_text_drops_formatting_after_the_notice() {
 }
 
 #[test]
-fn remove_formatting_keeps_text() {
+fn remove_formatting_waits_for_save_and_is_one_undo_step() {
     let (mut ctl, id) = rich_item_open();
     ctl.item_editor_remove_formatting();
     assert!(ctl.item_editor_open(), "the editor stays open");
     assert!(!view(&ctl).formatted, "the notice and the action go");
+    assert_eq!(
+        kinds_of(&ctl, id),
+        [FormatKind::Text, FormatKind::Html, FormatKind::Rtf],
+        "nothing is stored until Save"
+    );
+    let v = view(&ctl);
+    ctl.item_editor_save(&v.fields);
+    assert!(!ctl.item_editor_open());
     assert_eq!(kinds_of(&ctl, id), [FormatKind::Text]);
     assert_eq!(text_of(&ctl, id), "bold");
+    ctl.undo();
+    assert_eq!(
+        kinds_of(&ctl, id),
+        [FormatKind::Text, FormatKind::Html, FormatKind::Rtf],
+        "one Undo brings the formatting back"
+    );
+    ctl.redo();
+    assert_eq!(
+        kinds_of(&ctl, id),
+        [FormatKind::Text],
+        "and Redo drops it again"
+    );
+}
+
+#[test]
+fn cancelling_after_remove_formatting_keeps_the_formatting() {
+    let (mut ctl, id) = rich_item_open();
+    ctl.item_editor_remove_formatting();
+    ctl.item_editor_cancel();
+    assert_eq!(
+        kinds_of(&ctl, id),
+        [FormatKind::Text, FormatKind::Html, FormatKind::Rtf]
+    );
+    ctl.open_item_editor(id);
+    assert!(view(&ctl).formatted, "the notice is back on the next open");
+}
+
+#[test]
+fn a_sensitive_text_edit_is_a_step_that_undo_explains_instead_of_undoing_something_older() {
+    let data = tempfile::tempdir().expect("dir");
+    let provider = SharedProvider::new();
+    let mut ctl = on_disk(&provider, true, data.path());
+    let id = save_sensitive(&mut ctl, "Vault code", SECRET);
+    // An older step the barrier must not hide or undo.
+    ctl.open_item_editor(id);
+    let v = view(&ctl);
+    ctl.item_editor_save(&typed(&v, "Vault code", "another-secret-99"));
+    assert_eq!(text_of(&ctl, id), "another-secret-99");
+    ctl.undo();
+    assert_eq!(toast(&ctl), ToastMessage::UndoStopped);
+    assert_eq!(
+        text_of(&ctl, id),
+        "another-secret-99",
+        "the text stays: it was not kept"
+    );
+    assert!(
+        ctl.store().item(id).is_ok(),
+        "and nothing older was undone: the item is still there"
+    );
+    assert_no_plaintext(data.path(), &[b"another-secret-99"]);
+}
+
+#[test]
+fn an_edit_applies_only_the_fields_the_person_changed() {
+    let dir = tempfile::tempdir().expect("dir");
+    let provider = SharedProvider::new();
+    let mut store = demo::store(now()).expect("demo");
+    let tag = snipdeck_core::Tag::new(snipdeck_core::Name::new("late").expect("name"));
+    store.insert_tag(&tag).expect("tag");
+    let (mut ctl, _) = controller(store, dir.path(), &provider, true);
+    let id = id_of(&ctl, "Office");
+    ctl.open_item_editor(id);
+    let v = view(&ctl);
+    // Meanwhile the item gets a tag in the Main window.
+    let screen = ctl.main_screen();
+    let at = screen
+        .rows
+        .iter()
+        .position(|r| r.title == "Office")
+        .expect("row");
+    ctl.main_action(MainAction::Tag, at);
+    let index = ctl
+        .main_screen()
+        .tags
+        .iter()
+        .position(|t| t.id == tag.id)
+        .expect("tag row");
+    ctl.main_toggle_tag(index, true);
+    assert!(ctl.store().item(id).expect("item").tags.contains(&tag.id));
+    ctl.item_editor_save(&typed(&v, "Office 2", &v.fields.content));
+    let item = ctl.store().item(id).expect("item");
+    assert_eq!(item.title, "Office 2");
+    assert!(
+        item.tags.contains(&tag.id),
+        "the tag added meanwhile is not taken off"
+    );
 }
 
 #[test]

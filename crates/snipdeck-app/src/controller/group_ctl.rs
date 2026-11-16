@@ -6,8 +6,9 @@ use snipdeck_core::{Group, ItemId, ListId, Name, Placement};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::{GroupDelete, GroupRepo, GroupRun};
 
-use super::{Controller, Library, failed};
+use super::{Controller, Library, failed, neutral};
 use crate::main_window::Key as MainKey;
+use crate::toast::ToastMessage;
 use crate::{
     history::{Action, Change},
     host::ClipboardText,
@@ -59,6 +60,7 @@ where
 
     fn group_marked_on(&mut self, s: Surface, cursor: usize) {
         let Some(list) = self.group_list(s) else {
+            self.show_toast(neutral(ToastMessage::GroupNeedsList));
             return;
         };
         if !self.group_reorderable(s) {
@@ -67,9 +69,12 @@ where
         }
         // Under a colour filter the rows show no headers: a group made now would be invisible.
         if s == Surface::Main && !self.main.shows_groups() {
+            self.show_toast(neutral(ToastMessage::GroupColourFilter));
             return;
         }
-        let Ok(name) = Name::new(&self.group_name) else {
+        // A window text that is no valid name (empty, too long) must not stop the group: it takes
+        // the plain word, and its header starts renaming anyway.
+        let Ok(name) = Name::new(&self.group_name).or_else(|_| Name::new("Group")) else {
             return;
         };
         let members = self.group_targets(s, cursor);
@@ -77,6 +82,8 @@ where
             // On a header with nothing marked there is nothing to gather: rename its group.
             if let Some(run) = self.group_row(s, cursor) {
                 self.start_group_rename(s, run.group.id);
+            } else {
+                self.show_toast(neutral(ToastMessage::GroupNothing));
             }
             return;
         }
@@ -349,6 +356,9 @@ where
                 {
                     let id = list.id;
                     self.offer_manual_order(id);
+                } else {
+                    // A search or a view that mixes lists has no order of its own to group in.
+                    self.show_toast(neutral(ToastMessage::GroupNeedsList));
                 }
             }
         }
@@ -436,7 +446,8 @@ where
     }
 
     /// A click on a header's chevron, or Left / Right on it: collapses or expands the group.
-    /// `collapsed` of `None` toggles. Not a history step: it is a view setting.
+    /// `collapsed` of `None` toggles. A history step, like the rename: the fold is saved with the
+    /// group, so Undo brings the old state back.
     pub fn group_collapse(&mut self, index: usize, collapsed: Option<bool>) {
         self.group_collapse_on(Surface::Panel, index, collapsed);
     }
@@ -455,12 +466,20 @@ where
         if want == run.group.collapsed {
             return;
         }
-        let mut group = run.group;
+        let before = run.group;
+        let mut group = before.clone();
         group.collapsed = want;
         if self.store.update_group(&group).is_err() {
             self.show_toast(failed());
             return;
         }
+        self.record_step(
+            Action::Group,
+            vec![Change::Rename {
+                before,
+                after: group.clone(),
+            }],
+        );
         if !self.group_refresh(s) {
             return;
         }

@@ -1,8 +1,12 @@
 //! Saving the item, and the library key made on the first sensitive item.
 
-use snipdeck_core::{Formats, Item, ItemKind, Name, Placement, Tag, Trigger};
+use std::collections::BTreeSet;
+
+use snipdeck_core::{
+    Format, Formats, Item, ItemKind, ItemLabel, ListId, Name, Placement, Tag, TagId, Trigger,
+};
 use snipdeck_store::{
-    ItemRepo, TagRepo, Trashable, TriggerRepo,
+    GroupRepo, ItemRepo, TagRepo, Trashable, TriggerRepo,
     crypto::{CryptoError, KeyProviderError},
     name_key,
 };
@@ -179,7 +183,23 @@ where
                         b.insert_tag(tag)?;
                     }
                     let formats = build_formats(b, sensitive, text.as_deref(), source.as_ref())?;
-                    b.insert_item(&item, &formats, Placement::First)?;
+                    // After the row the cursor was on (inside its group); else the top.
+                    let anchor = slot
+                        .insert_after
+                        .and_then(|a| b.item(a).ok())
+                        .filter(|a| a.list_id == list_id);
+                    let at = anchor
+                        .as_ref()
+                        .map_or(Placement::First, |a| Placement::After(a.id));
+                    b.insert_item(&item, &formats, at)?;
+                    if let Some(anchor) = &anchor
+                        && let Some(run) = b
+                            .groups_of(list_id)?
+                            .into_iter()
+                            .find(|r| r.items.contains(&anchor.id))
+                    {
+                        b.set_item_group(item.id, Some(run.group.id))?;
+                    }
                     if trigger.is_some() {
                         let codes = b.set_trigger(item.id, trigger.as_ref())?;
                         overlaps = overlap_title(b, &codes)?;
@@ -197,13 +217,21 @@ where
             ItemTarget::Item(id) => match self.store.item(id) {
                 Ok(mut item) => {
                     let before = item.clone();
-                    item.title = title;
-                    item.kind = kind;
-                    item.list_id = list_id;
-                    item.tags = tags.ticked;
-                    item.sensitive = sensitive;
-                    item.always_plain = input.always_plain;
-                    item.label = input.label;
+                    // Only what the person changed since the editor opened goes onto the item as
+                    // it is now: a colour, tag or move done elsewhere meanwhile stays.
+                    let edit = Fields {
+                        title,
+                        kind,
+                        list_id,
+                        tags: tags.ticked,
+                        sensitive,
+                        always_plain: input.always_plain,
+                        label: input.label,
+                    };
+                    let opened = Fields::of(slot.opened.as_ref().unwrap_or(&item));
+                    edit.merge_onto(&opened, &mut item);
+                    // What is stored decides how the text is written.
+                    let sensitive = item.sensitive;
                     item.updated_at = now;
                     // The preview follows the text on screen when the text itself is unchanged.
                     let shown = text.as_deref().unwrap_or(&input.content);
@@ -212,10 +240,20 @@ where
                     } else {
                         String::new()
                     };
-                    // What a text edit is about to drop (HTML, RTF), kept for Undo.
-                    let old_formats = (text.is_some() && !before.sensitive)
+                    // "Remove formatting" was pressed (and the text is not being rewritten, which
+                    // drops them anyway).
+                    let drop_rich = slot.drop_formats && slot.formatted && !before.sensitive;
+                    // What the edit is about to drop (HTML, RTF), kept for Undo.
+                    let old_formats = ((text.is_some() || drop_rich) && !before.sensitive)
                         .then(|| self.store.formats(id).ok())
                         .flatten();
+                    let kept = match old_formats.as_ref().filter(|_| drop_rich && text.is_none()) {
+                        Some(f) => match without_rich(f) {
+                            Ok(k) => Some(k),
+                            Err(e) => return self.save_failed(slot, SaveFailure::of(&e)),
+                        },
+                        None => None,
+                    };
                     let done = self.index_cache.edit_item(&mut self.store, id, |store| {
                         store.atomically(|b| {
                             for tag in &tags.created {
@@ -223,7 +261,7 @@ where
                             }
                             let formats = match text.as_deref() {
                                 Some(t) => Some(build_formats(b, sensitive, Some(t), None)?),
-                                None => None,
+                                None => kept.clone(),
                             };
                             b.update_item(&item, formats.as_ref())?;
                             if trigger.is_some() || !slot.original_trigger.is_empty() {
@@ -234,15 +272,16 @@ where
                         })
                     });
                     if done.is_ok() {
-                        recorded = edit_step(
+                        recorded = Some(edit_step(
                             &before,
                             &item,
                             (slot.original_text.as_deref(), old_formats),
                             text.as_deref(),
+                            kept.as_ref(),
                             (Trigger::new(&slot.original_trigger).ok() != trigger).then(|| {
                                 (Trigger::new(&slot.original_trigger).ok(), trigger.clone())
                             }),
-                        );
+                        ));
                     }
                     done
                 }
@@ -328,16 +367,18 @@ where
 }
 
 /// The history step for an edit that changed `before` into `after`, with the text it replaced
-/// (`old_text`) and the text it wrote (`new_text`, `None` when the content stayed). `None` when
-/// nothing changed, or when undoing it would need a sensitive item's text kept in memory or text
-/// the editor never read.
+/// (`old_text`) and the text it wrote (`new_text`, `None` when the content stayed). `kept` is the
+/// formats left when only "Remove formatting" was pressed. A text edit that undoing could not
+/// reverse (a sensitive item's text is not kept in memory, or the editor never read the old
+/// text) is a [`Change::Barrier`] step, so Undo says why it stops.
 fn edit_step(
     before: &Item,
     after: &Item,
     (old_text, old_formats): (Option<&str>, Option<Formats>),
     new_text: Option<&str>,
+    kept: Option<&Formats>,
     triggers: Option<(Option<Trigger>, Option<Trigger>)>,
-) -> Option<(Action, Vec<Change>)> {
+) -> (Action, Vec<Change>) {
     let (old_trigger, new_trigger) = match triggers {
         Some((old, new)) => (Some(old), Some(new)),
         None => (None, None),
@@ -346,9 +387,14 @@ fn edit_step(
         None => (None, None),
         Some(new) => {
             if before.sensitive || after.sensitive {
-                return None;
+                // The text is not kept (it would be plaintext in memory): the step only marks
+                // the edit, so Undo says why it stops instead of undoing something older.
+                return (Action::Edit, vec![Change::Barrier(after.id)]);
             }
-            (Some(old_text?.to_owned()), Some(new.to_owned()))
+            let Some(old) = old_text else {
+                return (Action::Edit, vec![Change::Barrier(after.id)]);
+            };
+            (Some(old.to_owned()), Some(new.to_owned()))
         }
     };
     // The same fields apart from the colour label and the edit time: a colour change.
@@ -362,24 +408,91 @@ fn edit_step(
     } else {
         Action::Edit
     };
-    Some((
+    (
         action,
         vec![Change::Update {
             before: Box::new(Snap {
                 item: before.clone(),
-                // The formats the text edit drops come back with the text.
-                formats: old.is_some().then_some(old_formats).flatten(),
+                // The formats the edit drops come back with it.
+                formats: (old.is_some() || kept.is_some())
+                    .then_some(old_formats)
+                    .flatten(),
                 text: old,
                 trigger: old_trigger,
             }),
             after: Box::new(Snap {
                 item: after.clone(),
-                formats: None,
+                formats: kept.cloned(),
                 text: new,
                 trigger: new_trigger,
             }),
         }],
-    ))
+    )
+}
+
+/// `formats` without the HTML and RTF.
+fn without_rich(formats: &Formats) -> snipdeck_store::Result<Formats> {
+    let kept: Vec<Format> = formats
+        .iter()
+        .filter(|f| !matches!(f, Format::Html(_) | Format::Rtf(_)))
+        .cloned()
+        .collect();
+    Ok(Formats::new(kept)?)
+}
+
+/// The fields of an item the editor owns.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Fields {
+    title: String,
+    kind: ItemKind,
+    list_id: ListId,
+    tags: BTreeSet<TagId>,
+    sensitive: bool,
+    always_plain: bool,
+    label: Option<ItemLabel>,
+}
+
+impl Fields {
+    fn of(item: &Item) -> Self {
+        Self {
+            title: item.title.clone(),
+            kind: item.kind,
+            list_id: item.list_id,
+            tags: item.tags.clone(),
+            sensitive: item.sensitive,
+            always_plain: item.always_plain,
+            label: item.label,
+        }
+    }
+
+    /// Writes onto `item` each field of `self` that differs from `opened` (the fields when the
+    /// editor opened); tags by what was ticked or unticked, so tags added elsewhere stay.
+    fn merge_onto(&self, opened: &Self, item: &mut Item) {
+        if self.title != opened.title {
+            item.title.clone_from(&self.title);
+        }
+        if self.kind != opened.kind {
+            item.kind = self.kind;
+        }
+        if self.list_id != opened.list_id {
+            item.list_id = self.list_id;
+        }
+        if self.sensitive != opened.sensitive {
+            item.sensitive = self.sensitive;
+        }
+        if self.always_plain != opened.always_plain {
+            item.always_plain = self.always_plain;
+        }
+        if self.label != opened.label {
+            item.label = self.label;
+        }
+        for tag in self.tags.difference(&opened.tags) {
+            item.tags.insert(*tag);
+        }
+        for tag in opened.tags.difference(&self.tags) {
+            item.tags.remove(tag);
+        }
+    }
 }
 
 /// The title of the item that owns the first of these overlapping codes, for the "Saved, but" toast.
@@ -416,17 +529,23 @@ mod tests {
         let before = item();
         let mut after = before.clone();
         after.label = Some(ItemLabel::Blue);
-        let (action, changes) = edit_step(&before, &after, (Some("hi"), None), None, None).unwrap();
+        let (action, changes) = edit_step(&before, &after, (Some("hi"), None), None, None, None);
         assert_eq!(action, Action::Colour);
         assert_eq!(changes.len(), 1);
     }
 
     #[test]
-    fn a_text_change_keeps_both_texts_and_a_sensitive_one_is_not_recorded() {
+    fn a_text_change_keeps_both_texts() {
         let before = item();
         let after = before.clone();
-        let (action, changes) =
-            edit_step(&before, &after, (Some("old"), None), Some("new"), None).unwrap();
+        let (action, changes) = edit_step(
+            &before,
+            &after,
+            (Some("old"), None),
+            Some("new"),
+            None,
+            None,
+        );
         assert_eq!(action, Action::Edit);
         let Change::Update {
             before: b,
@@ -439,9 +558,75 @@ mod tests {
             (b.text.as_deref(), a.text.as_deref()),
             (Some("old"), Some("new"))
         );
+    }
+
+    #[test]
+    fn a_sensitive_or_unknown_text_edit_is_a_barrier_not_nothing() {
+        let before = item();
         let mut secret = before.clone();
         secret.sensitive = true;
-        assert!(edit_step(&before, &secret, (Some("old"), None), Some("new"), None).is_none());
-        assert!(edit_step(&before, &after, (None, None), Some("new"), None).is_none());
+        for (b, a, old) in [
+            (&before, &secret, Some("old")),
+            (&secret, &before, Some("old")),
+            (&before, &before, None),
+        ] {
+            let (action, changes) = edit_step(b, a, (old, None), Some("new"), None, None);
+            assert_eq!(action, Action::Edit);
+            assert_eq!(changes, vec![Change::Barrier(a.id)]);
+        }
+    }
+
+    #[test]
+    fn only_the_fields_changed_since_opening_are_applied() {
+        let opened = Fields::of(&item());
+        let mut now = item();
+        now.label = Some(ItemLabel::Red);
+        now.tags.insert(TagId::generate());
+        let elsewhere_tag = *now.tags.iter().next().unwrap();
+        let mut edit = opened.clone();
+        edit.title = "Renamed".into();
+        let added = TagId::generate();
+        edit.tags.insert(added);
+        edit.merge_onto(&opened, &mut now);
+        assert_eq!(now.title, "Renamed");
+        assert_eq!(
+            now.label,
+            Some(ItemLabel::Red),
+            "colour set meanwhile stays"
+        );
+        assert!(
+            now.tags.contains(&elsewhere_tag),
+            "tag added meanwhile stays"
+        );
+        assert!(now.tags.contains(&added));
+    }
+
+    #[test]
+    fn an_unticked_tag_is_removed_and_nothing_else_is_touched() {
+        let mut base = item();
+        let t = TagId::generate();
+        base.tags.insert(t);
+        let opened = Fields::of(&base);
+        let mut edit = opened.clone();
+        edit.tags.remove(&t);
+        let mut now = base.clone();
+        now.sensitive = true;
+        edit.merge_onto(&opened, &mut now);
+        assert!(now.tags.is_empty());
+        assert!(now.sensitive, "an untouched field keeps its current value");
+    }
+
+    #[test]
+    fn formats_without_rich_drop_html_and_rtf() {
+        let inline = |b: &[u8]| {
+            snipdeck_core::Content::Inline(snipdeck_core::Inline::new(b.to_vec()).unwrap())
+        };
+        let f = Formats::new(vec![
+            Format::Text(inline(b"a")),
+            Format::Html(inline(b"<b>a</b>")),
+        ])
+        .unwrap();
+        let k = without_rich(&f).unwrap();
+        assert!(k.iter().all(|x| matches!(x, Format::Text(_))));
     }
 }

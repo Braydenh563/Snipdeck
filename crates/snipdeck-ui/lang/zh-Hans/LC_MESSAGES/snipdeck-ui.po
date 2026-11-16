@@ -440,6 +440,9 @@ msgstr "稍后清除剪贴板"
 msgid "Clear the clipboard sooner"
 msgstr "尽快清除剪贴板"
 
+msgid "Clear the colour filter to group items"
+msgstr "清除颜色筛选后才能为项目分组"
+
 msgid "Clear the search"
 msgstr "清除搜索"
 
@@ -851,6 +854,9 @@ msgstr "要永久删除吗？"
 msgid "Delete for good…"
 msgstr "永久删除…"
 
+msgid "Delete forever"
+msgstr "永久删除"
+
 msgid "Delete group"
 msgstr "删除分组"
 
@@ -901,6 +907,9 @@ msgstr "已删除的片段会在这里保留 {} 天，之后才会被移除。"
 
 msgid "Deleted list “{}”"
 msgstr "已删除列表“{}”"
+
+msgid "Deleted tag \"{}\""
+msgstr "已删除标签“{}”"
 
 msgid "Deleted “{}”"
 msgstr "已删除：“{}”"
@@ -1789,6 +1798,9 @@ msgstr "无法使用"
 msgid "Nothing copied yet"
 msgstr "尚未复制任何内容"
 
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "除非你选择“是”，否则不会保存任何内容，你也可以随时在设置中更改。“最近”只在此电脑上保存你复制的文本，保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感项目绝不会保存。"
+
 msgid "Nothing matches “{}”"
 msgstr "没有与“{}”匹配的内容"
 
@@ -1884,6 +1896,9 @@ msgstr "打开 Snipdeck"
 
 msgid "Open a docked panel by"
 msgstr "展开已停靠面板的方式"
+
+msgid "Open a list to group its items"
+msgstr "打开一个列表后才能为其中的项目分组"
 
 msgid "Open backups folder"
 msgstr "打开备份文件夹"
@@ -2251,9 +2266,6 @@ msgstr "最近条目操作"
 msgid "Recent history cleared"
 msgstr "已清除最近记录"
 
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "除非你选择“是”，否则不会保存任何内容，你也可以随时在设置中更改。“最近”只在此电脑上保存你复制的文本，保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感项目绝不会保存。"
-
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "“最近”会保留你复制的文本，仅保存在这台电脑上，最多保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感片段不会被保留。你可以随时在设置中更改。"
 
@@ -2558,6 +2570,9 @@ msgstr "选择多个项目"
 
 msgid "Select snippets"
 msgstr "选择片段"
+
+msgid "Select the items to group first"
+msgstr "请先选择要分组的项目"
 
 msgid "Sensitive"
 msgstr "敏感"
@@ -2922,6 +2937,9 @@ msgstr "该应用"
 msgid "That combination can't be used as a shortcut."
 msgstr "该组合键不能用作快捷键。"
 
+msgid "That edit of a sensitive item cannot be undone: its text is not kept."
+msgstr "无法撤销对敏感项目的这次编辑：其文本未被保留。"
+
 msgid "That file is empty."
 msgstr "该文件为空。"
 
@@ -2963,6 +2981,9 @@ msgstr "密码不正确。请重试。"
 
 msgid "That path is a folder, not a file."
 msgstr "该路径是文件夹，而不是文件。"
+
+msgid "That step cannot be undone any more: what it changed was deleted for good."
+msgstr "这一步已无法撤销：它所更改的内容已被永久删除。"
 
 msgid "That text is too large to save."
 msgstr "该文本太大，无法保存。"
@@ -3212,6 +3233,9 @@ msgstr "已撤销：{}"
 
 msgid "Undo"
 msgstr "撤销"
+
+msgid "Undo and Redo reach the last 100 changes since Snipdeck started. They are forgotten when it closes or the library is erased. Text edits of sensitive items cannot be undone, and an item deleted for good is gone for good."
+msgstr "撤销和重做可回溯 Snipdeck 启动以来的最近 100 项更改。关闭应用或清除资料库后历史记录会丢失。无法撤销对敏感项目文本的编辑，永久删除的项目也无法找回。"
 
 msgid "Undo delete of “{}”"
 msgstr "撤销删除“{}”"
@@ -3547,6 +3571,9 @@ msgstr "外观 颜色 深色 浅色 跟随 windows"
 msgid "appearance colour night"
 msgstr "外观 颜色 夜间"
 
+msgid "board change"
+msgstr "看板更改"
+
 msgid "change modify rename"
 msgstr "更改 修改 重命名"
 
@@ -3665,6 +3692,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "标签：{}"
 
+msgid "list change"
+msgstr "列表更改"
+
 msgid "lowercase"
 msgstr "小写"
 
@@ -3748,6 +3778,9 @@ msgstr "重新排序 提前 上移 区段"
 
 msgid "reorder later lower section"
 msgstr "重新排序 延后 下移 区段"
+
+msgid "restore"
+msgstr "恢复"
 
 msgid "s"
 msgstr "秒"
@@ -3849,6 +3882,9 @@ msgstr "{} 没有可关闭的内容"
 
 msgid "{} closes nothing; write {} for a literal {}"
 msgstr "{} 没有可关闭的内容;请写 {} 来表示字面的 {}"
+
+msgid "{} copy"
+msgstr "{} 副本"
 
 msgid "{} could not be read and was skipped."
 msgstr "{} 无法读取，已跳过。"

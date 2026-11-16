@@ -1041,6 +1041,15 @@ impl MainModel {
     }
 }
 
+/// Where `order[index]` sits now, as a placement: after the one before it, or first.
+#[must_use]
+pub fn place_of<I: Copy>(order: &[I], index: usize) -> Placement<I> {
+    index
+        .checked_sub(1)
+        .and_then(|before| order.get(before))
+        .map_or(Placement::First, |id| Placement::After(*id))
+}
+
 /// Where moving the entry at `from` by `delta` places it among `order`, and its new position.
 /// `None` when it would leave the ends (or `from` is not in `order`).
 #[must_use]

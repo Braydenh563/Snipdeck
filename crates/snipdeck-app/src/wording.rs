@@ -285,6 +285,12 @@ where
         ToastMessage::BoardTrashed { name } => t.invoke_board_trashed(name.into()),
         ToastMessage::Restored { count: n } => t.invoke_restored(count(*n)),
         ToastMessage::Undone { action } => t.invoke_undone(action_word(&t, *action)),
+        ToastMessage::GroupNeedsList => t.invoke_group_needs_list(),
+        ToastMessage::GroupColourFilter => t.invoke_group_colour_filter(),
+        ToastMessage::GroupNothing => t.invoke_group_nothing(),
+        ToastMessage::TagDeleted { name } => t.invoke_tag_deleted(name.into()),
+        ToastMessage::UndoStopped => t.invoke_undo_stopped(),
+        ToastMessage::HistoryStepLost => t.invoke_history_step_lost(),
         ToastMessage::Redone { action } => t.invoke_redone(action_word(&t, *action)),
         ToastMessage::ItemsMoved { count: n, list } => t.invoke_items_moved(count(*n), list.into()),
         ToastMessage::ItemPlaced { position, total } => {
@@ -423,6 +429,15 @@ where
     for<'a> ToastTexts<'a>: Global<'a, C>,
 {
     ToastTexts::get(window).invoke_edit_button().into()
+}
+
+/// The label of the "Delete forever" button a toast carries after an Undo of an add.
+#[must_use]
+pub fn toast_purge_label<C>(window: &C) -> String
+where
+    for<'a> ToastTexts<'a>: Global<'a, C>,
+{
+    ToastTexts::get(window).invoke_purge_button().into()
 }
 
 /// The label of the crash toast's button.

@@ -187,8 +187,14 @@ fn the_tab_lists_every_shortcut_in_six_groups_with_the_note_under_the_global_one
         assert_eq!(total, CATALOGUE.len());
         let first = r.ui.get_shortcut_groups().row_data(0).expect("group");
         assert_eq!(first.note, "Change these in Settings.");
-        let second = r.ui.get_shortcut_groups().row_data(1).expect("group");
-        assert_eq!(second.note, "");
+        // Main window and Panel say how far Undo reaches (LIBRARY-41); the rest have no note.
+        let history = |i| r.ui.get_shortcut_groups().row_data(i).expect("group").note;
+        for i in [1, 2] {
+            assert!(history(i).starts_with("Undo and Redo reach the last 100 changes"));
+        }
+        for i in [3, 4, 5] {
+            assert_eq!(history(i), "");
+        }
     });
 }
 

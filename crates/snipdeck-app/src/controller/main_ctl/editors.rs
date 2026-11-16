@@ -4,6 +4,8 @@ use snipdeck_core::{BoardId, ListAccent, ListIcon, ListId, ListSort, Name, Place
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::Trashable;
 
+use crate::history::{Action, Change, Record};
+
 use super::super::{Controller, Library, ToastMessage, failed, success};
 use super::{EditorSlot, EditorTarget, Opened, neutral_toast};
 use crate::{
@@ -249,28 +251,58 @@ where
                 list.icon = icon;
                 list.sort = sort;
                 self.store.insert_list(&list, Placement::Last)?;
+                self.record_step(
+                    Action::List,
+                    vec![Change::Restore(vec![Trashable::List(list.id)])],
+                );
                 Ok(Some(Opened::List(list.id)))
             }
             EditorTarget::List(id) => {
-                let mut list = self.store.list(id)?;
+                let before = self.store.list(id)?;
+                let mut list = before.clone();
                 list.name = name;
                 list.accent = accent;
                 list.icon = icon;
                 list.sort = sort;
+                let changed = list != before;
                 list.updated_at = now;
                 self.store.update_list(&list)?;
+                if changed {
+                    self.record_step(
+                        Action::List,
+                        vec![Change::Rewrite {
+                            before: Record::List(before),
+                            after: Record::List(list),
+                        }],
+                    );
+                }
                 Ok(None)
             }
             EditorTarget::NewBoard => {
                 let board = snipdeck_core::Board::new(name, now);
                 self.store.insert_board(&board, Placement::Last)?;
+                self.record_step(
+                    Action::Board,
+                    vec![Change::Restore(vec![Trashable::Board(board.id)])],
+                );
                 Ok(Some(Opened::Board(board.id)))
             }
             EditorTarget::Board(id) => {
-                let mut board = self.store.board(id)?;
+                let before = self.store.board(id)?;
+                let mut board = before.clone();
                 board.name = name;
+                let changed = board != before;
                 board.updated_at = now;
                 self.store.update_board(&board)?;
+                if changed {
+                    self.record_step(
+                        Action::Board,
+                        vec![Change::Rewrite {
+                            before: Record::Board(before),
+                            after: Record::Board(board),
+                        }],
+                    );
+                }
                 Ok(None)
             }
         }
@@ -299,8 +331,8 @@ where
         match self.store.trash(Trashable::Board(id), now) {
             Ok(()) => {
                 let step = self.record_step(
-                    crate::history::Action::Delete,
-                    vec![crate::history::Change::Trash(vec![Trashable::Board(id)])],
+                    Action::Delete,
+                    vec![Change::Trash(vec![Trashable::Board(id)])],
                 );
                 self.show_undo_toast(neutral_toast(ToastMessage::BoardTrashed { name }), step);
                 self.library_changed();

@@ -93,6 +93,10 @@ pub struct StackView {
 
 /// The toast on screen.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "one flag per button the toast can show"
+)]
 pub struct ToastView {
     /// Changes with every new toast, so the host can tell a new one from a redraw.
     pub seq: u64,
@@ -104,6 +108,9 @@ pub struct ToastView {
     pub phase: ToastPhase,
     /// It carries an Undo button ([`Controller::main_undo`](crate::controller::Controller::main_undo)).
     pub undo: bool,
+    /// It carries a "Delete forever" button ([`Controller::toast_action`](crate::controller::Controller::toast_action)),
+    /// after an Undo of an add.
+    pub purge: bool,
     /// It carries an Edit button ([`Controller::toast_edit`](crate::controller::Controller::toast_edit)).
     pub edit: bool,
     /// It carries an "Open log" button ([`Controller::toast_action`](crate::controller::Controller::toast_action)).
