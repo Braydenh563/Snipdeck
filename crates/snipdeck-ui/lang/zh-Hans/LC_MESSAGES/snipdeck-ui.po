@@ -181,6 +181,9 @@ msgstr "输入触发词的前两个字符后，文本光标处会出现一个小
 msgid "All"
 msgstr "全部"
 
+msgid "All global shortcuts are set."
+msgstr "所有全局快捷键均已设置。"
+
 msgid "All items"
 msgstr "所有项目"
 
@@ -287,6 +290,9 @@ msgstr "已备份"
 msgid "Backup of {}, {}"
 msgstr "{} 的备份（{}）"
 
+msgid "Backups"
+msgstr "备份"
+
 msgid "Backups and your data"
 msgstr "备份与你的数据"
 
@@ -382,6 +388,9 @@ msgstr "重新检查"
 
 msgid "Check for updates"
 msgstr "检查更新"
+
+msgid "Checking..."
+msgstr "正在检查..."
 
 msgid "Checks"
 msgstr "检查项"
@@ -791,6 +800,9 @@ msgstr "无法使用此项目：你的资料库已锁定。请先解锁，然后
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "无法写入你的资料库。请检查磁盘是否有足够空间。"
 
+msgid "Crash reports"
+msgstr "崩溃报告"
+
 msgid "Create"
 msgstr "创建"
 
@@ -817,6 +829,12 @@ msgstr "剪切"
 
 msgid "Dark"
 msgstr "深色"
+
+msgid "Data folder"
+msgstr "数据文件夹"
+
+msgid "Database"
+msgstr "数据库"
 
 msgid "Database rebuilt: {} items restored, {} recovered."
 msgstr "数据库已重建：已还原 {} 项，已恢复 {} 项。"
@@ -1024,6 +1042,9 @@ msgstr "清空回收站…"
 
 msgid "Empty the Trash?"
 msgstr "要清空回收站吗？"
+
+msgid "Encryption key"
+msgstr "加密密钥"
 
 msgid "End stack"
 msgstr "结束堆栈"
@@ -1360,6 +1381,9 @@ msgstr[0] "将从 {n} 个项目中移除。项目本身保留。"
 
 msgid "Item actions"
 msgstr "项目操作"
+
+msgid "Item list"
+msgstr "项目列表"
 
 msgid "Item pinned"
 msgstr "已固定"
@@ -1713,6 +1737,9 @@ msgstr "新建标签"
 msgid "New tag, then Enter"
 msgstr "新建标签，然后按 Enter"
 
+msgid "Newest backup {}, {} kept."
+msgstr "最新备份：{}，保留 {} 份。"
+
 msgid "Next"
 msgstr "下一步"
 
@@ -1725,6 +1752,9 @@ msgstr "下一个范围"
 msgid "No"
 msgstr "否"
 
+msgid "No backup has been made yet."
+msgstr "尚未创建任何备份。"
+
 msgid "No backup yet"
 msgstr "尚无备份"
 
@@ -1734,11 +1764,23 @@ msgstr "无颜色"
 msgid "No commands match “{}”"
 msgstr "没有与“{}”匹配的命令"
 
+msgid "No crash report."
+msgstr "没有崩溃报告。"
+
+msgid "No global shortcut is set."
+msgstr "未设置任何全局快捷键。"
+
 msgid "No icon"
 msgstr "无图标"
 
+msgid "No icon in the notification area; closing the panel quits Snipdeck."
+msgstr "通知区域中没有图标；关闭面板会退出 Snipdeck。"
+
 msgid "No item in this view carries the chosen colour label."
 msgstr "此视图中没有项目带有所选的颜色标签。"
+
+msgid "No item is marked sensitive."
+msgstr "没有项目被标记为敏感。"
 
 msgid "No item uses this tag."
 msgstr "没有项目使用此标签。"
@@ -1763,6 +1805,9 @@ msgstr "所有看板中均无匹配项"
 
 msgid "No matches in {}"
 msgstr "在 {} 中没有匹配项"
+
+msgid "No messages yet."
+msgstr "还没有消息。"
 
 msgid "No programs yet."
 msgstr "还没有程序。"
@@ -1806,8 +1851,14 @@ msgstr "无目标：点击为复制"
 msgid "Not a colour. Try {}"
 msgstr "不是颜色。试试 {}"
 
+msgid "Not checked from the command line."
+msgstr "命令行下不检查。"
+
 msgid "Not set"
 msgstr "未设置"
+
+msgid "Not set: {}."
+msgstr "未设置：{}。"
 
 msgid "Not working"
 msgstr "无法使用"
@@ -1931,6 +1982,9 @@ msgstr "打开指南"
 
 msgid "Open in Colours"
 msgstr "在“颜色”中打开"
+
+msgid "Open log"
+msgstr "打开日志"
 
 msgid "Open logs folder"
 msgstr "打开日志文件夹"
@@ -2300,6 +2354,9 @@ msgstr "已清除最近记录"
 
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "“最近”会保留你复制的文本，仅保存在这台电脑上，最多保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感项目不会被保留。你可以随时在设置中更改。"
+
+msgid "Recent messages"
+msgstr "最近的消息"
 
 msgid "Recently used"
 msgstr "最近使用"
@@ -2738,6 +2795,9 @@ msgstr "Snipdeck 无法读取该文件。它可能正在使用中或受保护。
 msgid "Snipdeck can't watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
 msgstr "Snipdeck 无法监视剪贴板,因此“最近”将保持为空。请重启 Snipdeck 后重试。"
 
+msgid "Snipdeck cannot write to its data folder: {}"
+msgstr "Snipdeck 无法写入其数据文件夹：{}"
+
 msgid "Snipdeck closed unexpectedly last time. Open the log?"
 msgstr "Snipdeck 上次意外关闭。要打开日志吗？"
 
@@ -2884,6 +2944,9 @@ msgstr "惊讶"
 
 msgid "Swap the two colours"
 msgstr "交换两种颜色"
+
+msgid "Switch"
+msgstr "切换"
 
 msgid "Switch this list to Manual order?"
 msgstr "要将此列表切换为手动排序吗?"
@@ -3037,14 +3100,35 @@ msgstr "回收站为空"
 msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
 msgstr "剪贴板历史记录中还没有文本。请先复制一些文本，然后重试。"
 
+msgid "The backups cannot be read: {}"
+msgstr "无法读取备份：{}"
+
 msgid "The file dialog couldn't open. Type the path instead."
 msgstr "无法打开文件对话框。请改为输入路径。"
+
+msgid "The icon is in the notification area."
+msgstr "图标位于通知区域。"
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "导入已提前停止，因为源内容比 Snipdeck 一次能读取的量大。"
 
+msgid "The integrity check could not run: {}"
+msgstr "无法运行完整性检查：{}"
+
+msgid "The integrity check found no problems."
+msgstr "完整性检查未发现问题。"
+
+msgid "The integrity check found {} problem(s); the first: {}"
+msgstr "完整性检查发现 {} 个问题；第一个：{}"
+
+msgid "The items cannot be read: {}"
+msgstr "无法读取项目：{}"
+
 msgid "The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program's file name, for example notepad.exe."
 msgstr "Snipdeck 向每个程序粘贴时按下的键。大多数程序使用 Ctrl+V；有些终端需要其他键。选择“从不粘贴”则改为复制。请使用程序的文件名，例如 notepad.exe。"
+
+msgid "The key cannot be checked: {}"
+msgstr "无法检查密钥：{}"
 
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
 msgstr "该密钥用于打开你之前保存的导出文件中的加密项目。如果忘记它，这些项目将永远无法再打开。"
@@ -3065,8 +3149,14 @@ msgstr "该列表及其中的 {} 个项目将移至回收站。你可以在 {} �
 msgid "The list holds at most {} programs."
 msgstr "列表最多可包含 {} 个程序。"
 
+msgid "The newest backup is from {}, {} days ago ({} kept)."
+msgstr "最新备份为 {}，{} 天前（保留 {} 份）。"
+
 msgid "The newest backup is from {}."
 msgstr "最新的备份来自 {}。"
+
+msgid "The newest crash report is {}."
+msgstr "最新的崩溃报告是 {}。"
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "超过此数量后，最旧的备份会被删除。"
@@ -3213,6 +3303,9 @@ msgstr "回收站"
 
 msgid "Travel & Places"
 msgstr "旅行与地点"
+
+msgid "Tray icon"
+msgstr "托盘图标"
 
 msgid "Tray icon click opens"
 msgstr "点击托盘图标时打开"
@@ -3507,6 +3600,12 @@ msgstr "Windows 已在“设置”>“应用”>“启动”中关闭了 Snipdec
 
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "开启剪贴板历史后，“最近”会保存你在其他程序中复制的内容。"
+
+msgid "Writable, but only {} MB are free on its drive."
+msgstr "可写入，但所在驱动器仅剩 {} MB 可用空间。"
+
+msgid "Writable, with room to spare."
+msgstr "可写入，空间充足。"
 
 msgid "YYYY-MM-DD, empty for today"
 msgstr "YYYY-MM-DD，留空表示今天"
@@ -4053,6 +4152,12 @@ msgstr[0] "创建此文件时，已省略 {} 个敏感项目。"
 msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "备份中不包含 {} 项敏感项目。"
+
+msgid "{} sensitive item(s) are stored as plain text (no encryption key yet): masked and readable, but not encrypted."
+msgstr "{} 个敏感项目以纯文本存储（尚无加密密钥）：已遮盖且可读取，但未加密。"
+
+msgid "{} sensitive item(s), the key is present."
+msgstr "{} 个敏感项目，密钥存在。"
 
 msgid "{} takes no argument"
 msgstr "{} 不接受参数"

@@ -703,3 +703,135 @@ fn pausing_the_hotkeys_ends_a_running_test_so_a_press_after_resume_is_not_swallo
         );
     }
 }
+
+fn danger(message: ToastMessage) -> Toast {
+    Toast {
+        kind: ToastKind::Danger,
+        message,
+    }
+}
+
+fn plain(message: ToastMessage) -> Toast {
+    Toast {
+        kind: ToastKind::Neutral,
+        message,
+    }
+}
+
+/// MAIN-43: a long message is held for the time it takes to read; a short one keeps its hold.
+#[test]
+fn a_long_message_is_held_by_its_length() {
+    use crate::controller::{TOAST_READ_BASE, TOAST_READ_MAX, TOAST_READ_PER_CHAR};
+    let mut w = world();
+    w.ctl.show_toast(plain(ToastMessage::Copied));
+    let seq = w.ctl.view().toast.expect("toast").seq;
+    assert!(w.ctl.claim_toast_timer(seq, 6));
+    assert_eq!(
+        w.ctl.toast_tick(seq),
+        Some(TOAST_HOLD),
+        "six characters need less than the base hold"
+    );
+    w.ctl.show_toast(plain(ToastMessage::Copied));
+    let seq = w.ctl.view().toast.expect("toast").seq;
+    assert!(w.ctl.claim_toast_timer(seq, 100));
+    assert_eq!(
+        w.ctl.toast_tick(seq),
+        Some(TOAST_READ_BASE + TOAST_READ_PER_CHAR * 100)
+    );
+    w.ctl.show_toast(plain(ToastMessage::Copied));
+    let seq = w.ctl.view().toast.expect("toast").seq;
+    assert!(w.ctl.claim_toast_timer(seq, 100_000));
+    assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_READ_MAX), "capped");
+}
+
+/// MAIN-43: an error is not replaced at once by a plain message; the message shows once the
+/// error has had its guard time, and the error stays readable in the history.
+#[test]
+fn a_plain_message_waits_behind_a_fresh_error() {
+    use crate::controller::TOAST_ERROR_GUARD;
+    let mut w = world();
+    w.ctl.show_toast(danger(ToastMessage::ClipboardBusy));
+    let error = w.ctl.view().toast.expect("error").seq;
+    assert!(w.ctl.claim_toast_timer(error, 10));
+    w.ctl.show_toast(plain(ToastMessage::Copied));
+    assert_eq!(
+        w.ctl.view().toast.expect("still the error").message,
+        ToastMessage::ClipboardBusy
+    );
+    // The fade-in, then the guard.
+    assert_eq!(w.ctl.toast_tick(error), Some(TOAST_ERROR_GUARD));
+    assert_eq!(
+        w.ctl.toast_tick(error),
+        None,
+        "the guard is over: the message takes over"
+    );
+    assert_eq!(
+        w.ctl.view().toast.expect("the message").message,
+        ToastMessage::Copied
+    );
+    assert_eq!(
+        w.ctl.recent_toasts(),
+        [ToastMessage::Copied, ToastMessage::ClipboardBusy],
+        "newest first, the error still there"
+    );
+}
+
+#[test]
+fn a_newer_error_wins_and_a_message_after_the_guard_wins_again() {
+    let mut w = world();
+    w.ctl.show_toast(danger(ToastMessage::ClipboardBusy));
+    w.ctl.show_toast(danger(ToastMessage::TemplateBroken));
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::TemplateBroken,
+        "a newer error wins"
+    );
+    let seq = w.ctl.view().toast.expect("toast").seq;
+    w.ctl.toast_tick(seq);
+    // The guard ends with nothing waiting: the rest of the hold follows.
+    assert!(w.ctl.toast_tick(seq).is_some());
+    w.ctl.show_toast(plain(ToastMessage::Copied));
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::Copied,
+        "past the guard the latest toast wins again"
+    );
+}
+
+#[test]
+fn dismissing_a_guarded_error_shows_the_message_that_waited() {
+    let mut w = world();
+    w.ctl.show_toast(danger(ToastMessage::ClipboardBusy));
+    w.ctl.show_toast(plain(ToastMessage::Copied));
+    w.ctl.toast_dismiss();
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::Copied
+    );
+}
+
+#[test]
+fn a_toast_with_undo_is_not_held_back_by_an_error() {
+    let mut w = world();
+    w.ctl.show_toast(danger(ToastMessage::ClipboardBusy));
+    w.ctl.delete_row(1);
+    let toast = w.ctl.view().toast.expect("toast");
+    assert!(toast.undo, "the delete's Undo shows at once");
+}
+
+/// MAIN-43: the history keeps the last ten, newest first, without a repeat of the same words in a row.
+#[test]
+fn the_history_keeps_the_last_ten_messages() {
+    let app = |n: u32| ToastMessage::Pasted {
+        app: format!("App {n}"),
+    };
+    let mut w = world();
+    for i in 0..12 {
+        w.ctl.show_toast(plain(app(i)));
+    }
+    w.ctl.show_toast(plain(app(11)));
+    let recent = w.ctl.recent_toasts();
+    assert_eq!(recent.len(), 10);
+    assert_eq!(recent[0], app(11));
+    assert_eq!(recent[9], app(2));
+}

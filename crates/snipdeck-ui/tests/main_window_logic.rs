@@ -540,8 +540,12 @@ ui_tests! {
             dialog.accessible_description().as_deref(),
             Some("The selected item is deleted for good. This can't be undone.")
         );
+        // MAIN-44: the focus starts on Cancel, so Enter is the safe answer, never the destructive one.
         press_key(&ui, Key::Return);
-        assert!(ui.get_confirm_open(), "Enter is not the destructive default");
+        assert!(!ui.get_confirm_open(), "Enter on the focused Cancel closes the dialog");
+        assert_eq!(take(&log), Vec::<String>::new(), "and deletes nothing");
+        press_key(&ui, Key::Delete);
+        assert!(ui.get_confirm_open());
         press_key(&ui, Key::Escape);
         assert!(!ui.get_confirm_open());
         assert_eq!(take(&log), Vec::<String>::new());
@@ -1960,6 +1964,64 @@ ui_tests! {
         assert_eq!(take(&log), ["help:Guide"]);
     }
 
+    // MAIN-56 (WCAG 2.4.3): Esc in a menu gives the focus back to the button that opened it. Enter on the focused
+    // button opens the menu again; on the list (where the focus used to go) Enter would use the item instead.
+    fn esc_in_the_view_and_help_menus_returns_the_focus_to_their_button() {
+        let (ui, log) = start();
+        for label in ["View", "Help"] {
+            find(&ui, label, AccessibleRole::Button).invoke_accessible_default_action();
+            settle();
+            assert!(ui.get_menu_open(), "the {label} menu is open");
+            press_key(&ui, Key::Escape);
+            assert!(!ui.get_menu_open(), "Esc closes the {label} menu");
+            assert!(!ui.get_items_focused(), "the list does not take the focus after {label}");
+            take(&log);
+            press_key(&ui, Key::Return);
+            assert!(ui.get_menu_open(), "Enter on the focused {label} button opens its menu again");
+            assert!(take(&log).is_empty(), "and uses nothing");
+            press_key(&ui, Key::Escape);
+        }
+    }
+
+    // MAIN-43: Help > Recent messages asks the host for the text, then shows it in a dialog that Esc closes.
+    fn help_recent_messages_asks_for_the_text_and_shows_it() {
+        let (ui, _log) = start();
+        let asked = Rc::new(std::cell::Cell::new(0));
+        let seen = Rc::clone(&asked);
+        let weak = ui.as_weak();
+        ui.on_recent_messages_requested(move || {
+            seen.set(seen.get() + 1);
+            if let Some(ui) = weak.upgrade() {
+                ui.set_recent_messages_text("Copied\n\nPasted into Notepad".into());
+            }
+        });
+        find(&ui, "Help", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        find(&ui, "Recent messages", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        assert_eq!(asked.get(), 1);
+        let dialog = find(&ui, "Recent messages", AccessibleRole::Groupbox);
+        assert_eq!(
+            dialog.accessible_description().as_deref(),
+            Some("Copied\n\nPasted into Notepad")
+        );
+        press_key(&ui, Key::Escape);
+        assert!(missing(&ui, "Recent messages", AccessibleRole::Groupbox), "Esc closes the dialog");
+    }
+
+    // MAIN-57: the scope that holds the focus carries the role and the name, the cursor row is its value.
+    fn the_item_list_scope_is_named_and_reports_the_cursor_row() {
+        let (ui, _log) = start();
+        ui.invoke_focus_items();
+        settle();
+        let list = find(&ui, "Item list", AccessibleRole::List);
+        let first = list.accessible_value();
+        press_key(&ui, Key::DownArrow);
+        let moved = find(&ui, "Item list", AccessibleRole::List).accessible_value();
+        assert_ne!(first, moved, "the value follows the cursor");
+        assert!(moved.is_some_and(|v| !v.is_empty()));
+    }
+
     fn the_view_button_opens_a_theme_menu_whose_rows_report_their_index_and_esc_closes_it() {
         let (ui, log) = start();
         for (label, index) in [("Theme: System", 0), ("Theme: Light", 1), ("Theme: Dark", 2)] {
@@ -2164,14 +2226,14 @@ ui_tests! {
         let (ui, log) = start();
         let splitter = find(&ui, "Sidebar width", AccessibleRole::Slider);
         assert_eq!(splitter.accessible_value().as_deref(), Some("232"));
-        assert!((splitter.size().width - 8.0).abs() < 0.5, "8 px hit area: {:?}", splitter.size());
+        assert!((splitter.size().width - 24.0).abs() < 0.5, "24 px hit area (WCAG 2.5.8): {:?}", splitter.size());
         press_at_centre(&ui, centre_of(&splitter));
         take(&log);
         press_key(&ui, Key::RightArrow);
         assert_eq!(take(&log), ["sidebar-width:240"]);
         assert_eq!(ui.get_sidebar_width(), 240);
         let moved = find(&ui, "Sidebar width", AccessibleRole::Slider);
-        assert!((moved.absolute_position().x - (240.0 - 4.0)).abs() < 0.5, "{:?}", moved.absolute_position());
+        assert!((moved.absolute_position().x - (240.0 - 12.0)).abs() < 0.5, "{:?}", moved.absolute_position());
         press_key(&ui, Key::LeftArrow);
         press_key(&ui, Key::LeftArrow);
         assert_eq!(take(&log), ["sidebar-width:232", "sidebar-width:224"]);
@@ -2183,6 +2245,30 @@ ui_tests! {
             press_key(&ui, Key::RightArrow);
         }
         assert_eq!(ui.get_sidebar_width(), 320, "stops at 320");
+    }
+
+    // MAIN-58: Tab reaches the splitter where it is on screen, right after the sidebar and before the toolbar.
+    fn the_splitter_is_a_tab_stop_between_the_sidebar_and_the_content() {
+        let (ui, _log) = start();
+        let splitter = find(&ui, "Sidebar width", AccessibleRole::Slider);
+        press_at_centre(&ui, centre_of(&splitter));
+        assert!(ui.get_splitter_focused(), "a press on the strip focuses it");
+        let mut back = 0;
+        while !ui.get_sidebar_focused() && back < 6 {
+            press_key(&ui, Key::Backtab);
+            back += 1;
+        }
+        assert!(ui.get_sidebar_focused(), "the sidebar is just before the splitter");
+        assert!(!ui.get_splitter_focused());
+        let mut forward = 0;
+        while !ui.get_splitter_focused() && forward < 6 {
+            press_key(&ui, Key::Tab);
+            forward += 1;
+        }
+        assert!(ui.get_splitter_focused(), "and the splitter comes right after the sidebar");
+        assert_eq!(forward, back, "the same stops both ways");
+        press_key(&ui, Key::Tab);
+        assert!(!ui.get_splitter_focused(), "the next stop is in the content");
     }
 
     // MAIN-15: Home and End jump to the narrowest and the widest, a double click resets the default.
@@ -2204,9 +2290,9 @@ ui_tests! {
     fn ctrl_b_with_the_splitter_focused_moves_focus_to_the_list() {
         let (ui, log) = start();
         let splitter = find(&ui, "Sidebar width", AccessibleRole::Slider);
-        // The strip straddles the sidebar's edge: 4 px each side of x = 232.
+        // The strip straddles the sidebar's edge: 12 px each side of x = 232.
         let p = splitter.absolute_position();
-        assert!((p.x - 228.0).abs() < 0.5 && (splitter.size().width - 8.0).abs() < 0.5, "{p:?}");
+        assert!((p.x - 220.0).abs() < 0.5 && (splitter.size().width - 24.0).abs() < 0.5, "{p:?}");
         press_at_centre(&ui, centre_of(&splitter));
         assert!(!ui.get_items_focused());
         take(&log);

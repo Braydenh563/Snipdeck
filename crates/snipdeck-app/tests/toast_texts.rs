@@ -635,3 +635,43 @@ fn a_start_up_failure_names_its_reason_and_the_way_back() {
         assert!(!text.contains("{}"), "{text}");
     });
 }
+
+/// TOAST-1 and TOAST-2: the button of every kind of toast is worded in the language shown.
+#[test]
+fn the_toast_button_follows_the_selected_translation() {
+    use snipdeck_app::controller::{ToastPhase, ToastView};
+    use snipdeck_app::toast::ToastKind;
+    on_ui_thread(|| {
+        let ui = ui();
+        let view = |message: ToastMessage, undo: bool, open_log: bool| ToastView {
+            seq: 1,
+            kind: ToastKind::Neutral,
+            message,
+            phase: ToastPhase::Hold,
+            undo,
+            edit: false,
+            open_log,
+        };
+        let undo = view(ToastMessage::Copied, true, false);
+        let log = view(ToastMessage::CrashedLastTime, false, true);
+        let switch = view(
+            ToastMessage::SwitchToManual {
+                list: snipdeck_core::ListId::generate(),
+            },
+            false,
+            false,
+        );
+        let none = view(ToastMessage::Copied, false, false);
+        let words = |ui: &PanelWindow| {
+            [&undo, &log, &switch, &none].map(|v| snipdeck_app::wording::toast_button_text(ui, v))
+        };
+        assert_eq!(words(&ui), ["Undo", "Open log", "Switch", ""]);
+        slint::select_bundled_translation("de").expect("de is bundled");
+        let german = words(&ui);
+        slint::select_bundled_translation("").expect("back to the source language");
+        assert_ne!(german[0], "Undo");
+        assert_ne!(german[1], "Open log");
+        assert_ne!(german[2], "Switch");
+        assert_eq!(german[3], "");
+    });
+}

@@ -126,3 +126,25 @@ fn a_foreign_sqlite_file_is_not_adopted() {
     let err = Store::open(dir.path()).err().unwrap();
     assert!(matches!(err, Error::ForeignDatabase { .. }), "{err:?}");
 }
+
+#[test]
+fn a_read_only_handle_checks_and_counts_beside_the_owner() {
+    use snipdeck_core::{Item, ItemKind, Placement};
+    use snipdeck_store::ItemRepo;
+    let dir = tempfile::tempdir().unwrap();
+    let mut owner = Store::open(dir.path()).unwrap();
+    let b = board(&mut owner, "B");
+    let l = list(&mut owner, b.id, "L");
+    let mut it = Item::new(l.id, "pin".to_owned(), ItemKind::Text, at(0));
+    it.sensitive = true;
+    owner
+        .insert_item(&it, &text_formats("1234"), Placement::Last)
+        .unwrap();
+    item(&mut owner, l.id, "plain", "x");
+    // The owner still holds the folder lock; the reader takes none.
+    let reader = Store::open_read_only(dir.path()).unwrap();
+    assert_eq!(reader.count_sensitive().unwrap(), 1);
+    assert_eq!(owner.count_sensitive().unwrap(), 1);
+    assert!(reader.key_ring_exists().is_ok());
+    assert!(reader.check_integrity().is_ok());
+}

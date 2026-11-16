@@ -94,6 +94,18 @@ pub const TOAST_ERROR_HOLD: Duration = Duration::from_secs(10);
 /// An undoable toast (a delete) settles for this long, so that it is on screen for 5 s with its
 /// fade-in (SPEC §5.7a).
 pub const TOAST_UNDO_HOLD: Duration = Duration::from_millis(4880);
+/// A toast whose text is long stays at least this long plus [`TOAST_READ_PER_CHAR`] for each character of it
+/// (WCAG 2.2.1: about 17 characters a second, and a second to take it in), at most [`TOAST_READ_MAX`].
+pub const TOAST_READ_BASE: Duration = Duration::from_millis(1000);
+/// The reading time of one character of a toast, see [`TOAST_READ_BASE`].
+pub const TOAST_READ_PER_CHAR: Duration = Duration::from_millis(60);
+/// The longest a toast is held for the length of its text.
+pub const TOAST_READ_MAX: Duration = Duration::from_secs(20);
+/// An error toast is not replaced by a plain message for this long (the message waits its turn; the error is
+/// kept in the history for good).
+pub const TOAST_ERROR_GUARD: Duration = Duration::from_secs(4);
+/// How many toasts the message history keeps.
+pub const TOAST_HISTORY: usize = 10;
 /// A hovered toast looks again after this long to see whether the pointer has left.
 pub const TOAST_HOVER_RECHECK: Duration = Duration::from_millis(500);
 /// A toast is held for at most this many rechecks (a minute), so a missed pointer-leave (its
@@ -182,6 +194,10 @@ struct ActiveToast {
     hovered: bool,
     /// How many times the hold has been extended for `hovered`, at most [`TOAST_HOVER_RECHECKS`].
     extended: u32,
+    /// The length of the words on screen, in characters; sets how long the toast is held.
+    chars: usize,
+    /// An error toast in its first seconds: a plain message that arrives waits (`pending_toast`).
+    guard: bool,
 }
 
 /// The Panel's brain. See the module documentation.
@@ -222,6 +238,10 @@ pub struct Controller<S, C, K, T> {
     blur_hide: bool,
     toast: Option<ActiveToast>,
     toast_seq: u64,
+    /// A plain toast that arrived while a guarded error was on screen: it shows when the guard ends.
+    pending_toast: Option<Toast>,
+    /// The last toasts shown, oldest first (the Help menu's "Recent messages").
+    toast_history: std::collections::VecDeque<Toast>,
     /// The Picker, while it is open.
     picker: Option<PickerModel>,
     /// The template fill form, while it is open.
@@ -502,6 +522,8 @@ where
             blur_hide: false,
             toast: None,
             toast_seq: 0,
+            pending_toast: None,
+            toast_history: std::collections::VecDeque::new(),
             picker: None,
             fill: None,
             fill_erase: None,

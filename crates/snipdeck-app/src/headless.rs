@@ -15,7 +15,6 @@ use crate::{
     doctor::{self, DoctorHost, ReportInfo, Status},
     paths,
     settings::{HotkeyAction, Settings},
-    settings_binding::action_name,
 };
 
 /// What a command-line check found: the text to print and the process exit code.
@@ -70,9 +69,6 @@ pub fn check_db(folder: &Path) -> Outcome {
     }
 }
 
-/// What `--troubleshoot` cannot know from a stopped app.
-const NOT_CHECKED: &str = "Not checked from the command line.";
-
 /// The facts of [`DoctorHost`] for a library that is open but not running.
 struct FolderDoctor<'a> {
     store: &'a Store,
@@ -117,7 +113,7 @@ impl DoctorHost for FolderDoctor<'_> {
         self.store.key_ring_exists().map_err(|e| e.to_string())
     }
 
-    fn shortcuts_unset(&self) -> Vec<String> {
+    fn shortcuts_unset(&self) -> Vec<HotkeyAction> {
         let hotkeys = &self.settings.hotkeys;
         HotkeyAction::ALL
             .into_iter()
@@ -130,7 +126,6 @@ impl DoctorHost for FolderDoctor<'_> {
                 };
                 chord.is_empty()
             })
-            .map(|action| action_name(action).to_owned())
             .collect()
     }
 
@@ -166,7 +161,7 @@ pub fn troubleshoot(folder: &Path, today: Date, os: &str) -> Outcome {
     // The tray belongs to a running app: say so, rather than warning about an icon that cannot be.
     for c in checks.iter_mut().filter(|c| c.label == doctor::LABELS[5]) {
         c.status = Status::Ok;
-        NOT_CHECKED.clone_into(&mut c.detail);
+        c.detail = doctor::Detail::NotChecked;
     }
     let info = ReportInfo {
         version: env!("CARGO_PKG_VERSION").to_owned(),

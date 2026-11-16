@@ -181,6 +181,9 @@ msgstr "トリガーの最初の 2 文字を入力すると、テキストカー
 msgid "All"
 msgstr "すべて"
 
+msgid "All global shortcuts are set."
+msgstr "すべてのグローバルショートカットが設定されています。"
+
 msgid "All items"
 msgstr "すべての項目"
 
@@ -287,6 +290,9 @@ msgstr "バックアップ済み"
 msgid "Backup of {}, {}"
 msgstr "{} のバックアップ（{}）"
 
+msgid "Backups"
+msgstr "バックアップ"
+
 msgid "Backups and your data"
 msgstr "バックアップとデータ"
 
@@ -382,6 +388,9 @@ msgstr "もう一度確認"
 
 msgid "Check for updates"
 msgstr "更新を確認"
+
+msgid "Checking..."
+msgstr "確認中..."
 
 msgid "Checks"
 msgstr "確認項目"
@@ -791,6 +800,9 @@ msgstr "この項目を使用できませんでした。ライブラリがロッ
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "ライブラリに書き込めませんでした。ディスクに空きがあるか確認してください。"
 
+msgid "Crash reports"
+msgstr "クラッシュレポート"
+
 msgid "Create"
 msgstr "作成"
 
@@ -817,6 +829,12 @@ msgstr "切り取り"
 
 msgid "Dark"
 msgstr "ダーク"
+
+msgid "Data folder"
+msgstr "データフォルダー"
+
+msgid "Database"
+msgstr "データベース"
 
 msgid "Database rebuilt: {} items restored, {} recovered."
 msgstr "データベースを再構築しました。{} 件を復元、{} 件を回復しました。"
@@ -1024,6 +1042,9 @@ msgstr "ゴミ箱を空にする…"
 
 msgid "Empty the Trash?"
 msgstr "ゴミ箱を空にしますか？"
+
+msgid "Encryption key"
+msgstr "暗号化キー"
 
 msgid "End stack"
 msgstr "スタックを終了"
@@ -1360,6 +1381,9 @@ msgstr[0] "{n} 件の項目から削除されます。項目自体は残りま�
 
 msgid "Item actions"
 msgstr "項目の操作"
+
+msgid "Item list"
+msgstr "アイテムの一覧"
 
 msgid "Item pinned"
 msgstr "ピン留めしました"
@@ -1713,6 +1737,9 @@ msgstr "新しいタグ"
 msgid "New tag, then Enter"
 msgstr "新しいタグ、次に Enter"
 
+msgid "Newest backup {}, {} kept."
+msgstr "最新のバックアップ: {}、{} 件を保持。"
+
 msgid "Next"
 msgstr "次へ"
 
@@ -1725,6 +1752,9 @@ msgstr "次の範囲"
 msgid "No"
 msgstr "いいえ"
 
+msgid "No backup has been made yet."
+msgstr "まだバックアップが作成されていません。"
+
 msgid "No backup yet"
 msgstr "まだバックアップがありません"
 
@@ -1734,11 +1764,23 @@ msgstr "色なし"
 msgid "No commands match “{}”"
 msgstr "「{}」に一致するコマンドはありません"
 
+msgid "No crash report."
+msgstr "クラッシュレポートはありません。"
+
+msgid "No global shortcut is set."
+msgstr "グローバルショートカットが設定されていません。"
+
 msgid "No icon"
 msgstr "アイコンなし"
 
+msgid "No icon in the notification area; closing the panel quits Snipdeck."
+msgstr "通知領域にアイコンがありません。パネルを閉じると Snipdeck が終了します。"
+
 msgid "No item in this view carries the chosen colour label."
 msgstr "このビューに、選択した色ラベルの項目はありません。"
+
+msgid "No item is marked sensitive."
+msgstr "機密として設定されたアイテムはありません。"
 
 msgid "No item uses this tag."
 msgstr "このタグを使っている項目はありません。"
@@ -1763,6 +1805,9 @@ msgstr "すべてのボードに一致する項目はありません"
 
 msgid "No matches in {}"
 msgstr "{} に一致するものはありません"
+
+msgid "No messages yet."
+msgstr "メッセージはまだありません。"
 
 msgid "No programs yet."
 msgstr "まだプログラムがありません。"
@@ -1806,8 +1851,14 @@ msgstr "貼り付け先なし: クリックでコピー"
 msgid "Not a colour. Try {}"
 msgstr "色ではありません。{} を試してください"
 
+msgid "Not checked from the command line."
+msgstr "コマンドラインからは確認しません。"
+
 msgid "Not set"
 msgstr "未設定"
+
+msgid "Not set: {}."
+msgstr "未設定: {}。"
 
 msgid "Not working"
 msgstr "動作しません"
@@ -1931,6 +1982,9 @@ msgstr "ガイドを開く"
 
 msgid "Open in Colours"
 msgstr "カラーで開く"
+
+msgid "Open log"
+msgstr "ログを開く"
 
 msgid "Open logs folder"
 msgstr "ログフォルダーを開く"
@@ -2300,6 +2354,9 @@ msgstr "最近の履歴を消去しました"
 
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "「最近」は、コピーしたテキストをこのコンピューターにのみ、直近 {} 回のコピーまたは {} 日間のどちらか早い方まで保持します。パスワードマネージャーのパスワードと機密項目は保持されません。設定でいつでも変更できます。"
+
+msgid "Recent messages"
+msgstr "最近のメッセージ"
 
 msgid "Recently used"
 msgstr "最近使ったもの"
@@ -2738,6 +2795,9 @@ msgstr "Snipdeck はそのファイルを読めません。使用中か、保護
 msgid "Snipdeck can't watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
 msgstr "Snipdeck はクリップボードを監視できないため、最近の項目は空のままです。Snipdeck を再起動してもう一度お試しください。"
 
+msgid "Snipdeck cannot write to its data folder: {}"
+msgstr "Snipdeck がデータフォルダーに書き込めません: {}"
+
 msgid "Snipdeck closed unexpectedly last time. Open the log?"
 msgstr "Snipdeck は前回、予期せず終了しました。ログを開きますか？"
 
@@ -2884,6 +2944,9 @@ msgstr "驚き"
 
 msgid "Swap the two colours"
 msgstr "2 つの色を入れ替える"
+
+msgid "Switch"
+msgstr "切り替える"
 
 msgid "Switch this list to Manual order?"
 msgstr "このリストを手動の並び順に切り替えますか?"
@@ -3037,14 +3100,35 @@ msgstr "ゴミ箱は空です"
 msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
 msgstr "クリップボードの履歴にはまだテキストがありません。テキストをコピーしてから、もう一度お試しください。"
 
+msgid "The backups cannot be read: {}"
+msgstr "バックアップを読み取れません: {}"
+
 msgid "The file dialog couldn't open. Type the path instead."
 msgstr "ファイルダイアログを開けませんでした。代わりにパスを入力してください。"
+
+msgid "The icon is in the notification area."
+msgstr "アイコンは通知領域にあります。"
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "取り込み元が Snipdeck が一度に読み込める量より大きいため、取り込みを途中で停止しました。"
 
+msgid "The integrity check could not run: {}"
+msgstr "整合性チェックを実行できませんでした: {}"
+
+msgid "The integrity check found no problems."
+msgstr "整合性チェックで問題は見つかりませんでした。"
+
+msgid "The integrity check found {} problem(s); the first: {}"
+msgstr "整合性チェックで {} 件の問題が見つかりました。最初の問題: {}"
+
+msgid "The items cannot be read: {}"
+msgstr "アイテムを読み取れません: {}"
+
 msgid "The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program's file name, for example notepad.exe."
 msgstr "Snipdeck が各プログラムへの貼り付けに押すキーです。ほとんどのプログラムは Ctrl+V を使いますが、別のキーが必要なターミナルもあります。「貼り付けない」を選ぶと、代わりにコピーします。プログラムのファイル名を使ってください（例: notepad.exe）。"
+
+msgid "The key cannot be checked: {}"
+msgstr "キーを確認できません: {}"
 
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
 msgstr "このキーは、以前に保存したエクスポート内の暗号化された項目を開くためのものです。削除すると、それらの項目は二度と開けません。"
@@ -3065,8 +3149,14 @@ msgstr "リストとその{}件の項目はゴミ箱に移動します。{}日�
 msgid "The list holds at most {} programs."
 msgstr "リストには最大 {} 個のプログラムを登録できます。"
 
+msgid "The newest backup is from {}, {} days ago ({} kept)."
+msgstr "最新のバックアップは {} のもので、{} 日前です（{} 件を保持）。"
+
 msgid "The newest backup is from {}."
 msgstr "最新のバックアップは {} のものです。"
+
+msgid "The newest crash report is {}."
+msgstr "最新のクラッシュレポートは {} です。"
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "この数を超えると、古いものから削除されます。"
@@ -3213,6 +3303,9 @@ msgstr "ゴミ箱"
 
 msgid "Travel & Places"
 msgstr "旅行と場所"
+
+msgid "Tray icon"
+msgstr "トレイアイコン"
 
 msgid "Tray icon click opens"
 msgstr "トレイアイコンのクリックで開く"
@@ -3507,6 +3600,12 @@ msgstr "Windows の [設定] > [アプリ] > [スタートアップ] で Snipdec
 
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "クリップボード履歴をオンにすると、「最近」に他のプログラムでコピーした内容が残ります。"
+
+msgid "Writable, but only {} MB are free on its drive."
+msgstr "書き込めますが、ドライブの空き容量は {} MB しかありません。"
+
+msgid "Writable, with room to spare."
+msgstr "書き込み可能で、空き容量も十分です。"
 
 msgid "YYYY-MM-DD, empty for today"
 msgstr "YYYY-MM-DD、空欄なら今日"
@@ -4053,6 +4152,12 @@ msgstr[0] "このファイルの作成時に、機密項目 {} 件は除外さ�
 msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "機密項目 {} 件がバックアップに含まれていませんでした。"
+
+msgid "{} sensitive item(s) are stored as plain text (no encryption key yet): masked and readable, but not encrypted."
+msgstr "{} 件の機密アイテムがプレーンテキストで保存されています（暗号化キーがまだありません）。マスクされ読み取り可能ですが、暗号化されていません。"
+
+msgid "{} sensitive item(s), the key is present."
+msgstr "機密アイテム {} 件、キーがあります。"
 
 msgid "{} takes no argument"
 msgstr "{} は引数を取りません"

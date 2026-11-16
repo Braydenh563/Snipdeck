@@ -224,6 +224,47 @@ fn main_window_bulk_bar_with_a_selection() {
     assert_golden("main-bulk-light", &render(&h));
 }
 
+/// MAIN-60: in high contrast the row actions of the selected row are drawn in the text colour for the
+/// highlight (black on the cyan), not in the window text colour (white on it is 1.46:1); and a row nobody
+/// points at or has selected has no action buttons in the accessibility tree at all.
+#[test]
+fn hc_the_selected_rows_action_icons_are_visible_on_the_highlight() {
+    use i_slint_backend_testing::{AccessibleRole, ElementHandle};
+    const HC_HIGHLIGHT: [u8; 3] = [0x1A, 0xEB, 0xFF];
+    let h = window(SIZE, true);
+    h.component
+        .global::<SystemLook<'_>>()
+        .set_high_contrast(true);
+    let button = |label: &str| {
+        ElementHandle::find_by_accessible_label(&h.component, label)
+            .find(|e| e.accessible_role() == Some(AccessibleRole::Button))
+    };
+    let _ = render(&h);
+    assert!(
+        button("Copy").is_none() && button("Edit").is_none(),
+        "hover-only actions are not in the tree while hidden"
+    );
+    let rows = fixture::set_rows(&h.component, fixture::sample_rows());
+    let mut row = slint::Model::row_data(&*rows, 1).expect("row");
+    row.selected = true;
+    slint::Model::set_row_data(&*rows, 1, row);
+    h.component.set_selected_count(1);
+    let frame = render(&h);
+    for label in ["Copy", "Edit"] {
+        let e = button(label).unwrap_or_else(|| panic!("the selected row offers {label}"));
+        let (p, s) = (e.absolute_position(), e.size());
+        let (x0, y0) = (p.x.round() as u32, p.y.round() as u32);
+        let (x1, y1) = (x0 + s.width.round() as u32, y0 + s.height.round() as u32);
+        let drawn = (y0..y1).any(|y| {
+            (x0..x1).any(|x| {
+                let px = frame.pixel(x, y);
+                (0..3).any(|c| px[c].abs_diff(HC_HIGHLIGHT[c]) >= 48)
+            })
+        });
+        assert!(drawn, "the {label} icon is invisible on the highlight");
+    }
+}
+
 // ---- Measurements ----------------------------------------------------------------------------
 
 #[test]

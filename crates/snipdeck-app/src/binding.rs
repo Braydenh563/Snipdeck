@@ -594,7 +594,10 @@ where
         self.arm_screen_clip();
         self.sync_colours(&window);
         if let Some(toast) = &view.toast
-            && self.controller.borrow_mut().claim_toast_timer(toast.seq)
+            && self.controller.borrow_mut().claim_toast_timer(
+                toast.seq,
+                wording::toast_text(&window, &toast.message).chars().count(),
+            )
         {
             arm_toast(
                 Rc::downgrade(&self.controller),
@@ -1908,7 +1911,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     if differs(&|p| p.toast == view.toast) {
         if let Some(toast) = &view.toast {
             {
-                window.set_toast_undo_label(wording::toast_button_text(toast).into());
+                window.set_toast_undo_label(wording::toast_button_text(window, toast).into());
                 window.set_toast_edit_label(if toast.edit {
                     wording::toast_edit_label(window).into()
                 } else {

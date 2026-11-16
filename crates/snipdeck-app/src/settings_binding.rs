@@ -546,7 +546,7 @@ pub(crate) const fn action_name(action: HotkeyAction) -> &'static str {
 
 /// The name of an action in the language selected for the UI, for the message when two share a
 /// shortcut. `window` is any window of the UI.
-fn action_text<C>(window: &C, action: HotkeyAction) -> String
+pub(crate) fn action_text<C>(window: &C, action: HotkeyAction) -> String
 where
     for<'a> ui::FormTexts<'a>: slint::Global<'a, C>,
 {
@@ -1084,6 +1084,7 @@ where
     /// shown (the entry may have changed outside Snipdeck since the last look).
     pub fn opened(&self) {
         self.core.refresh_autostart();
+        self.core.clear_stale_messages();
         self.redraw();
     }
 }
@@ -1120,10 +1121,20 @@ where
 
     fn act<R>(self: &Rc<Self>, f: impl FnOnce(&mut Controller<Store, C, K, T>) -> R) -> R {
         let result = f(&mut self.controller.borrow_mut());
-        // One read per user action (not per redraw): the entry may have been removed outside.
-        self.refresh_autostart();
+        // "Start with Windows" is read where it can change (open, toggle, start mode), not per
+        // action: the read can be a blocking call.
         redraw_all();
         result
+    }
+
+    /// A refusal or conflict line from the last visit is not shown again, and an import preview
+    /// left open is dropped (SET-2, SET-3).
+    fn clear_stale_messages(&self) {
+        let mut state = self.state.borrow_mut();
+        state.import = None;
+        state.paste_rule_error = String::new();
+        state.no_history_error = String::new();
+        state.hotkey_conflicts = Default::default();
     }
 
     fn refresh_autostart(&self) {
@@ -1160,7 +1171,10 @@ where
         view.autostart = view.autostart && self.autostart_registered.get();
         render(&window, self.shown.borrow().as_ref(), &view);
         if let Some(toast) = &view.toast
-            && self.controller.borrow_mut().claim_toast_timer(toast.seq)
+            && self.controller.borrow_mut().claim_toast_timer(
+                toast.seq,
+                wording::toast_text(&window, &toast.message).chars().count(),
+            )
         {
             arm_toast(
                 Rc::downgrade(&self.controller),
@@ -1942,8 +1956,12 @@ where
         {
             // The title bar's X (and Alt+F4) reaches the window, not the page's own callback.
             let core = Rc::clone(&core);
+            let weak = window.as_weak();
             window.window().on_close_requested(move || {
                 core.act(Controller::stop_hotkey_test);
+                if let Some(window) = weak.upgrade() {
+                    window.invoke_reset_asks();
+                }
                 slint::CloseRequestResponse::HideWindow
             });
         }

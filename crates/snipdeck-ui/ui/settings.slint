@@ -505,9 +505,19 @@ export component SettingsPage inherits Window {
     }
 
     // The host calls this when the page closes or opens, so a half-asked "Clear recent history"
-    // (Cancel / Clear history showing) is never still there on the next look.
+    // (Cancel / Clear history showing), the password form, the Erase form and the import choice
+    // are never still there on the next look. A password step that is still running keeps its form.
     public function reset-asks() {
         root.clear-recent-ask = false;
+        root.picker-recents-asking = false;
+        root.import-choosing = false;
+        root.erase-open = false;
+        root.erase-text = "";
+        root.forget-key = false;
+        if (!root.master-busy) {
+            root.master-mode = MasterMode.closed;
+            root.master-problem = MasterProblem.none;
+        }
     }
 
     function close-erase() {

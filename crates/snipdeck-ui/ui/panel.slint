@@ -3155,13 +3155,14 @@ export component PanelWindow inherits Window {
 
         // ---- The list delete confirmation: over everything but the tooltip and the grips. The only thing "Delete
         // list…" shows; the list and its items move to the Trash with an Undo toast.
-        Dialog {
+        cancel-dlg-1 := Dialog {
             open: root.list-delete-open;
             variant: DialogVariant.destructive;
             title: @tr("Delete list “{}”?", root.list-delete-name);
             body: @tr("The list and its {} items move to the Trash. You can restore them for {} days.", root.list-delete-count, root.trash-days);
             dismissed => { root.list-delete-dismissed(); }
             Button {
+                focus-request: cancel-dlg-1.cancel-focus;
                 text: @tr("Cancel");
                 clicked => { root.list-delete-dismissed(); }
             }
@@ -3173,13 +3174,14 @@ export component PanelWindow inherits Window {
         }
 
         // "Clear list…" (the kebab): asks once, with the count; the Undo toast brings every item back in one step.
-        Dialog {
+        cancel-dlg-2 := Dialog {
             open: root.clear-list-open;
             variant: DialogVariant.destructive;
             title: @tr("Clear list “{}”?", root.clear-list-name);
             body: @tr("All {n} item moves to the Trash. You can restore it for {} days." | "All {n} items move to the Trash. You can restore them for {} days." % root.clear-list-count, root.trash-days);
             dismissed => { root.clear-list-dismissed(); }
             Button {
+                focus-request: cancel-dlg-2.cancel-focus;
                 text: @tr("Cancel");
                 clicked => { root.clear-list-dismissed(); }
             }
@@ -3191,13 +3193,14 @@ export component PanelWindow inherits Window {
         }
 
         // The board delete confirmation: the board, its lists and their items move to the Trash with an Undo toast.
-        Dialog {
+        cancel-dlg-3 := Dialog {
             open: root.board-delete-open;
             variant: DialogVariant.destructive;
             title: @tr("Delete board “{}”?", root.board-delete-name);
             body: @tr("Its lists and {} items move to the Trash. You can restore them for {} days.", root.board-delete-count, root.trash-days);
             dismissed => { root.board-delete-dismissed(); }
             Button {
+                focus-request: cancel-dlg-3.cancel-focus;
                 text: @tr("Cancel");
                 clicked => { root.board-delete-dismissed(); }
             }

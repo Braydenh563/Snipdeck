@@ -357,3 +357,175 @@ fn the_about_page_support_row_opens_exactly_the_coffee_page_and_nothing_else() {
         );
     });
 }
+
+// ---- The checks run off the UI thread (HELP-1) ---------------------------------------------------
+
+type HeldRun = (
+    snipdeck_app::help_binding::CheckWork,
+    snipdeck_app::help_binding::CheckFinish,
+);
+
+/// Holds the checks instead of running them, so a test can look at the window while they wait.
+#[derive(Clone, Default)]
+struct HeldChecks {
+    held: Rc<RefCell<Vec<HeldRun>>>,
+}
+
+impl snipdeck_app::help_binding::CheckOffload for HeldChecks {
+    fn run(
+        &self,
+        work: snipdeck_app::help_binding::CheckWork,
+        finish: snipdeck_app::help_binding::CheckFinish,
+    ) {
+        self.held.borrow_mut().push((work, finish));
+    }
+}
+
+impl HeldChecks {
+    /// Runs the oldest waiting checks and hands the findings to the window, as the worker would.
+    fn release(&self) {
+        let (work, finish) = self.held.borrow_mut().remove(0);
+        finish(work());
+    }
+}
+
+/// Puts the inline checks back when dropped.
+struct InlineChecks;
+
+impl Drop for InlineChecks {
+    fn drop(&mut self) {
+        snipdeck_app::help_binding::set_check_offload(Rc::new(
+            snipdeck_app::help_binding::CheckInline,
+        ));
+    }
+}
+
+fn rig_with_folder(dir: &Path) -> Rig {
+    let ctl: Rc<RefCell<Ctl>> = Rc::new(RefCell::new(
+        Controller::new(
+            demo::store(now()).expect("demo store"),
+            Services {
+                clipboard: FakeClipboard::default(),
+                keyboard: FakeKeyboard::default(),
+                timing: FakeTiming::default(),
+            },
+            Box::new(FakeTargets::new(Some(demo::target()))),
+            Box::new(FixedClock::new(now())),
+            Settings::default(),
+        )
+        .expect("controller"),
+    ));
+    let ui = HelpWindow::new().expect("help window");
+    let binding = HelpBinding::new(&ctl, &ui, Some(dir.to_path_buf()), Rc::new(NoHost));
+    ui.show().expect("show");
+    Rig { ctl, ui, binding }
+}
+
+#[test]
+fn the_checks_wait_on_a_worker_and_the_window_says_so() {
+    on_ui_thread(|| {
+        let dir = tempfile::tempdir().expect("dir");
+        // The library file the worker's read-only handle opens.
+        drop(Store::open(dir.path()).expect("store"));
+        let held = HeldChecks::default();
+        snipdeck_app::help_binding::set_check_offload(Rc::new(held.clone()));
+        let _back = InlineChecks;
+        let r = rig_with_folder(dir.path());
+        r.binding.refresh();
+        assert!(r.ui.get_checking(), "the window says it is checking");
+        assert_eq!(r.ui.get_checks().row_count(), 0);
+        assert_eq!(held.held.borrow().len(), 1);
+        // A second run (Check again) supersedes the first: its late findings are dropped.
+        r.ui.invoke_check_again_requested();
+        assert_eq!(held.held.borrow().len(), 2);
+        held.release();
+        assert!(r.ui.get_checking(), "the superseded run changes nothing");
+        assert_eq!(r.ui.get_checks().row_count(), 0);
+        held.release();
+        assert!(!r.ui.get_checking());
+        assert_eq!(r.ui.get_checks().row_count(), 7);
+        let first = r.ui.get_checks().row_data(0).expect("row");
+        assert_eq!(first.label, "Data folder");
+        assert_eq!(first.detail, "Writable, with room to spare.");
+        let database = r.ui.get_checks().row_data(1).expect("row");
+        assert_eq!(database.detail, "The integrity check found no problems.");
+    });
+}
+
+#[test]
+fn the_check_rows_follow_the_selected_translation() {
+    on_ui_thread(|| {
+        let dir = tempfile::tempdir().expect("dir");
+        drop(Store::open(dir.path()).expect("store"));
+        let r = rig_with_folder(dir.path());
+        r.binding.refresh();
+        assert_eq!(r.ui.get_checks().row_count(), 7);
+        slint::select_bundled_translation("de").expect("de is bundled");
+        r.binding.refresh();
+        let tray = r.ui.get_checks().row_data(5).expect("row");
+        let data = r.ui.get_checks().row_data(0).expect("row");
+        slint::select_bundled_translation("").expect("back to the source language");
+        assert_ne!(data.label, "Data folder", "the label is German");
+        assert_ne!(data.detail, "Writable, with room to spare.");
+        assert_ne!(tray.label, "Tray icon");
+    });
+}
+
+#[test]
+fn a_user_guide_that_will_not_open_says_so() {
+    struct NoBrowser;
+    impl HelpHost for NoBrowser {
+        fn open_folder(&self, _: &Path) -> Result<(), String> {
+            Ok(())
+        }
+        fn open_url(&self, _: &str) -> Result<(), String> {
+            Err("no browser".into())
+        }
+        fn open_file(&self, _: &Path) -> Result<(), String> {
+            Ok(())
+        }
+        fn os_summary(&self) -> String {
+            "test".into()
+        }
+        fn notices_file(&self) -> Option<PathBuf> {
+            None
+        }
+    }
+    on_ui_thread(|| {
+        let r = rig(Settings::default());
+        let help = snipdeck_app::help_binding::HelpUi::new(&r.ctl, None, Rc::new(NoBrowser));
+        help.open(HelpTopic::Guide).expect("no window needed");
+        let toast = r.ctl.borrow().view().toast.expect("a toast");
+        assert_eq!(
+            toast.message,
+            snipdeck_app::toast::ToastMessage::LinkNotOpened
+        );
+    });
+}
+
+#[test]
+fn rebuilding_restores_the_backup_the_question_named_or_says_it_is_gone() {
+    on_ui_thread(|| {
+        let dir = tempfile::tempdir().expect("dir");
+        drop(Store::open(dir.path()).expect("store"));
+        let r = rig_with_folder(dir.path());
+        assert!(r.ctl.borrow_mut().backup_now(dir.path()));
+        r.ctl.borrow_mut().toast_dismiss();
+        r.ui.invoke_fix_requested(4);
+        assert!(
+            r.ui.get_rebuild_open(),
+            "the question names the newest backup"
+        );
+        // The backup goes away before the answer: nothing is restored, and the user is told.
+        for file in snipdeck_portable::backup::list_backups(dir.path()).expect("list") {
+            std::fs::remove_file(file.path).expect("remove");
+        }
+        r.ui.invoke_rebuild_confirmed();
+        assert!(!r.ui.get_rebuild_open());
+        let toast = r.ctl.borrow().view().toast.expect("a toast");
+        assert!(matches!(
+            toast.message,
+            snipdeck_app::toast::ToastMessage::RestoreFailed(_)
+        ));
+    });
+}

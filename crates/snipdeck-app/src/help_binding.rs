@@ -8,7 +8,7 @@
 //! in the browser.
 
 use std::{
-    cell::RefCell,
+    cell::{Cell, RefCell},
     ffi::OsStr,
     fs,
     path::{Path, PathBuf},
@@ -19,7 +19,7 @@ use jiff::civil::Date;
 use slint::{ComponentHandle, Global, Model, SharedString};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_portable::backup;
-use snipdeck_store::{ItemRepo, Store};
+use snipdeck_store::Store;
 use snipdeck_ui as ui;
 
 use crate::{
@@ -31,7 +31,6 @@ use crate::{
     main_binding::{create_window, set_look},
     native_window::fit_when_settled,
     settings::{HotkeyAction, Hotkeys},
-    settings_binding::action_name,
     shortcuts::{self, Scope},
     tips,
     toast::{ToastKind, ToastMessage},
@@ -163,30 +162,53 @@ pub(crate) fn find_notices(exe_dir: &Path) -> Option<PathBuf> {
 
 // ---- The doctor on the real library ------------------------------------------------------------
 
-/// The facts of [`DoctorHost`], read from the controller's library and the data folder.
-pub struct ControllerDoctor<'a, C, K, T> {
-    controller: &'a Controller<Store, C, K, T>,
-    data_dir: &'a Path,
+/// The facts of [`DoctorHost`] for one run of the checks: what only the UI thread knows (the date,
+/// the shortcuts, the tray icon) is copied in, and what touches the disk is read here, on the
+/// worker thread, through a second read-only handle on the library.
+struct WorkerDoctor {
+    data_dir: PathBuf,
+    store: Result<Store, String>,
+    today: Date,
+    shortcuts_unset: Vec<HotkeyAction>,
+    tray_present: bool,
 }
 
-impl<'a, C, K, T> ControllerDoctor<'a, C, K, T> {
-    /// The facts of `controller`, whose data folder is `data_dir`.
-    pub fn new(controller: &'a Controller<Store, C, K, T>, data_dir: &'a Path) -> Self {
+impl WorkerDoctor {
+    fn new(data_dir: PathBuf, today: Date, hotkeys: &Hotkeys, tray_present: bool) -> Self {
+        let store = Store::open_read_only(&data_dir).map_err(|e| e.to_string());
         Self {
-            controller,
             data_dir,
+            store,
+            today,
+            shortcuts_unset: unset_actions(hotkeys),
+            tray_present,
         }
+    }
+
+    fn store(&self) -> Result<&Store, String> {
+        self.store.as_ref().map_err(Clone::clone)
     }
 }
 
-impl<C, K, T> DoctorHost for ControllerDoctor<'_, C, K, T>
-where
-    C: Clipboard + ClipboardText,
-    K: Keyboard,
-    T: Timing,
-{
+/// The global shortcuts the user left empty.
+pub(crate) fn unset_actions(hotkeys: &Hotkeys) -> Vec<HotkeyAction> {
+    HotkeyAction::ALL
+        .into_iter()
+        .filter(|action| {
+            let chord = match action {
+                HotkeyAction::TogglePanel => &hotkeys.toggle_panel,
+                HotkeyAction::Picker => &hotkeys.picker,
+                HotkeyAction::Capture => &hotkeys.capture,
+                HotkeyAction::PasteNext => &hotkeys.paste_next,
+            };
+            chord.is_empty()
+        })
+        .collect()
+}
+
+impl DoctorHost for WorkerDoctor {
     fn today(&self) -> Date {
-        self.controller.today()
+        self.today
     }
 
     fn data_dir_writable(&self) -> Result<(), String> {
@@ -201,50 +223,27 @@ where
     }
 
     fn integrity(&self) -> Result<Vec<String>, String> {
-        self.controller
-            .store()
-            .check_integrity()
-            .map_err(|e| e.to_string())
+        self.store()?.check_integrity().map_err(|e| e.to_string())
     }
 
     fn backup_dates(&self) -> Result<Vec<Date>, String> {
-        backup::list_backups(self.data_dir)
+        backup::list_backups(&self.data_dir)
             .map(|files| files.into_iter().map(|f| f.date).collect())
             .map_err(|e| e.to_string())
     }
 
     fn sensitive_items(&self) -> Result<usize, String> {
-        self.controller
-            .store()
-            .all_items()
-            .map(|items| items.iter().filter(|i| i.sensitive).count())
-            .map_err(|e| e.to_string())
+        self.store()?.count_sensitive().map_err(|e| e.to_string())
     }
 
     fn key_ring_exists(&self) -> Result<bool, String> {
-        self.controller
-            .store()
-            .key_ring_exists()
-            .map_err(|e| e.to_string())
+        self.store()?.key_ring_exists().map_err(|e| e.to_string())
     }
 
     /// A shortcut the user left empty. Whether the others registered is told by a toast when
     /// the app starts; the Help window cannot ask the keyboard service again.
-    fn shortcuts_unset(&self) -> Vec<String> {
-        let hotkeys = &self.controller.settings().hotkeys;
-        HotkeyAction::ALL
-            .into_iter()
-            .filter(|action| {
-                let chord = match action {
-                    HotkeyAction::TogglePanel => &hotkeys.toggle_panel,
-                    HotkeyAction::Picker => &hotkeys.picker,
-                    HotkeyAction::Capture => &hotkeys.capture,
-                    HotkeyAction::PasteNext => &hotkeys.paste_next,
-                };
-                chord.is_empty()
-            })
-            .map(|action| action_name(action).to_owned())
-            .collect()
+    fn shortcuts_unset(&self) -> Vec<HotkeyAction> {
+        self.shortcuts_unset.clone()
     }
 
     fn shortcuts_total(&self) -> usize {
@@ -252,15 +251,105 @@ where
     }
 
     fn tray_present(&self) -> bool {
-        self.controller.tray_icon_present()
+        self.tray_present
     }
 
     fn newest_crash(&self) -> Option<String> {
-        crash::newest(self.data_dir)
+        crash::newest(&self.data_dir)
+    }
+}
+
+// ---- Where the checks run ----------------------------------------------------------------------
+
+/// The slow half of a run of the checks: reads the disk and the database.
+pub type CheckWork = Box<dyn FnOnce() -> Vec<Check> + Send>;
+/// What to do with the findings, on the UI thread.
+pub type CheckFinish = Box<dyn FnOnce(Vec<Check>)>;
+
+/// Where the Help window's checks run.
+pub trait CheckOffload {
+    /// Runs `work`, then calls `finish` with its findings on the UI thread.
+    fn run(&self, work: CheckWork, finish: CheckFinish);
+}
+
+thread_local! {
+    static CHECK_OFFLOAD: RefCell<Rc<dyn CheckOffload>> = RefCell::new(Rc::new(CheckInline));
+    static CHECK_WAITING: RefCell<std::collections::HashMap<u64, CheckFinish>> =
+        RefCell::new(std::collections::HashMap::new());
+    static CHECK_TICKET: Cell<u64> = const { Cell::new(0) };
+}
+
+/// Uses `offload` for the checks of the Help windows of this thread. The app calls this once with
+/// [`CheckThreads`]; a test may hold the work to look at the "Checking..." state.
+pub fn set_check_offload(offload: Rc<dyn CheckOffload>) {
+    CHECK_OFFLOAD.with(|o| *o.borrow_mut() = offload);
+}
+
+/// Runs the checks on the calling thread, so they are done when `run` returns.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct CheckInline;
+
+impl CheckOffload for CheckInline {
+    fn run(&self, work: CheckWork, finish: CheckFinish) {
+        finish(work());
+    }
+}
+
+/// Runs the checks on a worker thread and hands the findings to the Slint event loop, which calls
+/// `finish`. Must be used from the UI thread.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct CheckThreads;
+
+impl CheckOffload for CheckThreads {
+    fn run(&self, work: CheckWork, finish: CheckFinish) {
+        let ticket = CHECK_TICKET.with(|t| {
+            t.set(t.get() + 1);
+            t.get()
+        });
+        CHECK_WAITING.with(|w| w.borrow_mut().insert(ticket, finish));
+        let spawned = std::thread::Builder::new()
+            .name("snipdeck-doctor".to_owned())
+            .spawn(move || {
+                // A panic in a check must not leave the window saying "Checking..." for ever.
+                let found = std::panic::catch_unwind(std::panic::AssertUnwindSafe(work))
+                    .unwrap_or_default();
+                // The event loop being gone means the app is closing.
+                let _ = slint::invoke_from_event_loop(move || deliver_checks(ticket, found));
+            });
+        if spawned.is_err() {
+            deliver_checks(ticket, Vec::new());
+        }
+    }
+}
+
+fn deliver_checks(ticket: u64, found: Vec<Check>) {
+    if let Some(finish) = CHECK_WAITING.with(|w| w.borrow_mut().remove(&ticket)) {
+        finish(found);
     }
 }
 
 // ---- Logic -------------------------------------------------------------------------------------
+
+/// The name of a check in the language shown.
+fn check_label(window: &ui::HelpWindow, check: &Check) -> String {
+    let index = doctor::LABELS
+        .iter()
+        .position(|label| *label == check.label)
+        .unwrap_or(0);
+    ui::DoctorTexts::get(window)
+        .invoke_label(i32::try_from(index).unwrap_or(0))
+        .into()
+}
+
+/// What a check found, worded in the language shown.
+fn check_detail(window: &ui::HelpWindow, check: &Check) -> String {
+    let [a, b, c] = check
+        .detail
+        .args(|action| crate::settings_binding::action_text(window, action));
+    ui::DoctorTexts::get(window)
+        .invoke_detail(check.detail.code(), a.into(), b.into(), c.into())
+        .into()
+}
 
 /// The setting switches the report lists: booleans and numbers only, never text the user typed.
 pub(crate) fn report_flags(settings: &crate::settings::Settings) -> Vec<(String, String)> {
@@ -299,6 +388,13 @@ struct HelpCore<C, K, T> {
     data_dir: Option<PathBuf>,
     host: Rc<dyn HelpHost>,
     checks: RefCell<Vec<Check>>,
+    /// A run of the checks is on its way; its findings replace `checks` when they arrive.
+    checking: Cell<bool>,
+    /// The backup the open "Rebuild" confirmation names: that one is restored, not whichever
+    /// is newest by then.
+    rebuild_target: RefCell<Option<PathBuf>>,
+    /// The number of the latest run: findings of an older one are dropped.
+    run_id: Cell<u64>,
     /// What the Shortcuts tab's search box holds.
     shortcut_query: RefCell<String>,
     /// The Shortcuts tab as last drawn, so a redraw that changes nothing leaves the list (and its
@@ -317,17 +413,40 @@ where
     K: Keyboard + 'static,
     T: Timing + 'static,
 {
-    /// Runs every check again.
-    fn run_checks(&self) {
-        let Some(dir) = self.data_dir.as_deref() else {
+    /// Runs every check again, off the UI thread: the window says "Checking..." until the
+    /// findings arrive. A run that is still out is superseded.
+    fn run_checks(self: &Rc<Self>) {
+        let run_id = self.run_id.get() + 1;
+        self.run_id.set(run_id);
+        let Some(dir) = self.data_dir.clone() else {
             self.checks.borrow_mut().clear();
+            self.checking.set(false);
             return;
         };
-        let found = {
+        let (today, hotkeys, tray) = {
             let controller = self.controller.borrow();
-            doctor::run(&ControllerDoctor::new(&controller, dir))
+            (
+                controller.today(),
+                controller.settings().hotkeys.clone(),
+                controller.tray_icon_present(),
+            )
         };
-        *self.checks.borrow_mut() = found;
+        self.checks.borrow_mut().clear();
+        self.checking.set(true);
+        let weak = Rc::downgrade(self);
+        let offload = CHECK_OFFLOAD.with(|o| Rc::clone(&o.borrow()));
+        offload.run(
+            Box::new(move || doctor::run(&WorkerDoctor::new(dir, today, &hotkeys, tray))),
+            Box::new(move |found| {
+                if let Some(core) = weak.upgrade()
+                    && core.run_id.get() == run_id
+                {
+                    *core.checks.borrow_mut() = found;
+                    core.checking.set(false);
+                    redraw_all();
+                }
+            }),
+        );
     }
 
     /// Draws the Shortcuts tab: the groups of lines that answer the search box, the four global
@@ -412,9 +531,10 @@ where
                 i32::try_from(checks.iter().filter(|c| c.status != Status::Ok).count())
                     .unwrap_or(i32::MAX),
             );
+            window.set_checking(self.checking.get());
             window.set_checks(model(checks.iter().map(|c| ui::HelpCheck {
-                label: c.label.into(),
-                detail: c.detail.as_str().into(),
+                label: check_label(&window, c).into(),
+                detail: check_detail(&window, c).into(),
                 status: match c.status {
                     Status::Ok => 0,
                     Status::Warn => 1,
@@ -435,7 +555,10 @@ where
                 ToastPhase::Exit => ui::ToastPhase::Exit,
             });
             window.set_toast_text(wording::toast_text(&window, &toast.message).into());
-            if self.controller.borrow_mut().claim_toast_timer(toast.seq) {
+            if self.controller.borrow_mut().claim_toast_timer(
+                toast.seq,
+                wording::toast_text(&window, &toast.message).chars().count(),
+            ) {
                 arm_toast(
                     Rc::downgrade(&self.controller),
                     toast.seq,
@@ -518,6 +641,7 @@ where
             self.danger_toast(ToastMessage::RestoreFailed(crate::failure::Cause::Other));
             return;
         };
+        *self.rebuild_target.borrow_mut() = newest.map(|file| file.path);
         window.set_rebuild_date(date.into());
         window.set_rebuild_items(i32::try_from(preview.items).unwrap_or(i32::MAX));
         window.set_rebuild_boards(i32::try_from(preview.boards).unwrap_or(i32::MAX));
@@ -531,15 +655,19 @@ where
         let Some(dir) = self.data_dir.clone() else {
             return;
         };
-        let Some(file) = backup::list_backups(&dir)
-            .ok()
-            .and_then(|found| found.into_iter().next())
+        // The backup the confirmation named; if it is gone by now, say so.
+        let Some(file) = self
+            .rebuild_target
+            .borrow_mut()
+            .take()
+            .filter(|path| path.is_file())
         else {
+            self.danger_toast(ToastMessage::RestoreFailed(crate::failure::Cause::Other));
             return;
         };
         self.controller
             .borrow_mut()
-            .rebuild_from_backup(&dir, &file.path);
+            .rebuild_from_backup(&dir, &file);
         self.run_checks();
         redraw_all();
     }
@@ -608,6 +736,9 @@ where
                 data_dir,
                 host,
                 checks: RefCell::new(Vec::new()),
+                checking: Cell::new(false),
+                rebuild_target: RefCell::new(None),
+                run_id: Cell::new(0),
                 shortcut_query: RefCell::default(),
                 shortcuts_shown: RefCell::default(),
                 tips_shown: RefCell::default(),
@@ -757,7 +888,6 @@ pub const fn tab_of(topic: HelpTopic) -> i32 {
 /// every time (one window: asking again raises it). Not generic: the host keeps one of these.
 pub struct HelpUi {
     open: Box<dyn Fn(HelpTopic) -> Result<(), slint::PlatformError>>,
-    host: Rc<dyn HelpHost>,
 }
 
 impl std::fmt::Debug for HelpUi {
@@ -785,6 +915,19 @@ impl HelpUi {
             let controller = Rc::clone(controller);
             let host = Rc::clone(&host);
             move |topic: HelpTopic| -> Result<(), slint::PlatformError> {
+                if topic == HelpTopic::Guide {
+                    // The guide is a page in the browser: a browser that will not start says so,
+                    // as it does from inside the window.
+                    if let Err(error) = host.open_url(GUIDE_URL) {
+                        crate::trace!("help: cannot open the user guide: {error}");
+                        controller.borrow_mut().show_toast(crate::toast::Toast {
+                            kind: ToastKind::Danger,
+                            message: ToastMessage::LinkNotOpened,
+                        });
+                        redraw_all();
+                    }
+                    return Ok(());
+                }
                 let mut slot = slot.borrow_mut();
                 if slot.is_none() {
                     let window = create_window(ui::HelpWindow::new)?;
@@ -806,6 +949,8 @@ impl HelpUi {
                     return Ok(());
                 };
                 window.set_tab(tab_of(topic));
+                // A confirmation left open when the window was closed is not still there.
+                window.set_rebuild_open(false);
                 crate::native_window::place_over_owner(window.window());
                 window.show()?;
                 crate::ownership::opened(crate::ownership::Win::Help);
@@ -818,7 +963,6 @@ impl HelpUi {
         };
         Self {
             open: Box::new(open),
-            host,
         }
     }
 
@@ -829,12 +973,6 @@ impl HelpUi {
     ///
     /// The windowing system failed to create or show the window.
     pub fn open(&self, topic: HelpTopic) -> Result<(), slint::PlatformError> {
-        if topic == HelpTopic::Guide {
-            if let Err(error) = self.host.open_url(GUIDE_URL) {
-                crate::trace!("help: cannot open the user guide: {error}");
-            }
-            return Ok(());
-        }
         (self.open)(topic)
     }
 }

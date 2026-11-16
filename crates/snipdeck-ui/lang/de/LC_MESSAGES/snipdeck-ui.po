@@ -181,6 +181,9 @@ msgstr "Sobald du die ersten zwei Zeichen eines Kürzels tippst, bietet ein klei
 msgid "All"
 msgstr "Alle"
 
+msgid "All global shortcuts are set."
+msgstr "Alle globalen Tastenkombinationen sind festgelegt."
+
 msgid "All items"
 msgstr "Alle Einträge"
 
@@ -288,6 +291,9 @@ msgstr "Gesichert"
 msgid "Backup of {}, {}"
 msgstr "Sicherung vom {}, {}"
 
+msgid "Backups"
+msgstr "Sicherungen"
+
 msgid "Backups and your data"
 msgstr "Sicherungen und deine Daten"
 
@@ -383,6 +389,9 @@ msgstr "Erneut prüfen"
 
 msgid "Check for updates"
 msgstr "Nach Updates suchen"
+
+msgid "Checking..."
+msgstr "Prüfung läuft..."
 
 msgid "Checks"
 msgstr "Prüfungen"
@@ -792,6 +801,9 @@ msgstr "Dieser Eintrag konnte nicht verwendet werden: Deine Bibliothek ist gespe
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "In deine Bibliothek konnte nicht geschrieben werden. Prüfe, ob auf dem Datenträger Platz ist."
 
+msgid "Crash reports"
+msgstr "Absturzberichte"
+
 msgid "Create"
 msgstr "Erstellen"
 
@@ -818,6 +830,12 @@ msgstr "Ausschneiden"
 
 msgid "Dark"
 msgstr "Dunkel"
+
+msgid "Data folder"
+msgstr "Datenordner"
+
+msgid "Database"
+msgstr "Datenbank"
 
 msgid "Database rebuilt: {} items restored, {} recovered."
 msgstr "Datenbank neu aufgebaut: {} Einträge wiederhergestellt, {} geborgen."
@@ -1025,6 +1043,9 @@ msgstr "Papierkorb leeren…"
 
 msgid "Empty the Trash?"
 msgstr "Papierkorb leeren?"
+
+msgid "Encryption key"
+msgstr "Verschlüsselungsschlüssel"
 
 msgid "End stack"
 msgstr "Stapel beenden"
@@ -1364,6 +1385,9 @@ msgstr[1] "Es wird aus {n} Einträgen entfernt. Die Einträge bleiben erhalten."
 
 msgid "Item actions"
 msgstr "Aktionen für Einträge"
+
+msgid "Item list"
+msgstr "Eintragsliste"
 
 msgid "Item pinned"
 msgstr "Eintrag angeheftet"
@@ -1721,6 +1745,9 @@ msgstr "Neues Schlagwort"
 msgid "New tag, then Enter"
 msgstr "Neues Schlagwort, dann Enter"
 
+msgid "Newest backup {}, {} kept."
+msgstr "Neueste Sicherung: {}, {} aufbewahrt."
+
 msgid "Next"
 msgstr "Weiter"
 
@@ -1733,6 +1760,9 @@ msgstr "Nächster Bereich"
 msgid "No"
 msgstr "Nein"
 
+msgid "No backup has been made yet."
+msgstr "Es wurde noch keine Sicherung erstellt."
+
 msgid "No backup yet"
 msgstr "Noch keine Sicherung"
 
@@ -1742,11 +1772,23 @@ msgstr "Keine Farbe"
 msgid "No commands match “{}”"
 msgstr "Keine Befehle passen zu „{}“"
 
+msgid "No crash report."
+msgstr "Kein Absturzbericht."
+
+msgid "No global shortcut is set."
+msgstr "Es ist keine globale Tastenkombination festgelegt."
+
 msgid "No icon"
 msgstr "Kein Symbol"
 
+msgid "No icon in the notification area; closing the panel quits Snipdeck."
+msgstr "Kein Symbol im Infobereich; beim Schließen des Panels wird Snipdeck beendet."
+
 msgid "No item in this view carries the chosen colour label."
 msgstr "Kein Eintrag in dieser Ansicht trägt die gewählte Farbmarkierung."
+
+msgid "No item is marked sensitive."
+msgstr "Kein Eintrag ist als sensibel markiert."
 
 msgid "No item uses this tag."
 msgstr "Kein Eintrag verwendet dieses Schlagwort."
@@ -1771,6 +1813,9 @@ msgstr "Keine Treffer in allen Boards"
 
 msgid "No matches in {}"
 msgstr "Keine Treffer in {}"
+
+msgid "No messages yet."
+msgstr "Noch keine Meldungen."
 
 msgid "No programs yet."
 msgstr "Noch keine Programme."
@@ -1814,8 +1859,14 @@ msgstr "Kein Ziel: Klick kopiert"
 msgid "Not a colour. Try {}"
 msgstr "Keine Farbe. Probiere {}"
 
+msgid "Not checked from the command line."
+msgstr "Wird über die Befehlszeile nicht geprüft."
+
 msgid "Not set"
 msgstr "Nicht festgelegt"
+
+msgid "Not set: {}."
+msgstr "Nicht festgelegt: {}."
 
 msgid "Not working"
 msgstr "Funktioniert nicht"
@@ -1939,6 +1990,9 @@ msgstr "Anleitung öffnen"
 
 msgid "Open in Colours"
 msgstr "In Farben öffnen"
+
+msgid "Open log"
+msgstr "Protokoll öffnen"
 
 msgid "Open logs folder"
 msgstr "Protokollordner öffnen"
@@ -2308,6 +2362,9 @@ msgstr "Verlauf „Zuletzt“ gelöscht"
 
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "„Zuletzt“ behält den kopierten Text, nur auf diesem Computer, für die letzten {} Kopien oder {} Tage, je nachdem, was zuerst eintritt. Passwörter aus Passwortmanagern und vertrauliche Einträge werden nie gespeichert. Du kannst das jederzeit in den Einstellungen ändern."
+
+msgid "Recent messages"
+msgstr "Letzte Meldungen"
 
 msgid "Recently used"
 msgstr "Kürzlich verwendet"
@@ -2748,6 +2805,9 @@ msgstr "Snipdeck kann diese Datei nicht lesen. Sie wird möglicherweise verwende
 msgid "Snipdeck can't watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
 msgstr "Snipdeck kann die Zwischenablage nicht beobachten, daher bleibt „Zuletzt“ leer. Starte Snipdeck neu, um es erneut zu versuchen."
 
+msgid "Snipdeck cannot write to its data folder: {}"
+msgstr "Snipdeck kann nicht in seinen Datenordner schreiben: {}"
+
 msgid "Snipdeck closed unexpectedly last time. Open the log?"
 msgstr "Snipdeck wurde beim letzten Mal unerwartet beendet. Protokoll öffnen?"
 
@@ -2894,6 +2954,9 @@ msgstr "Überraschung"
 
 msgid "Swap the two colours"
 msgstr "Die beiden Farben tauschen"
+
+msgid "Switch"
+msgstr "Wechseln"
 
 msgid "Switch this list to Manual order?"
 msgstr "Diese Liste auf manuelle Reihenfolge umstellen?"
@@ -3049,14 +3112,35 @@ msgstr "Der Papierkorb ist leer"
 msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
 msgstr "Der Zwischenablageverlauf enthält noch keinen Text. Kopiere etwas Text und versuche es dann erneut."
 
+msgid "The backups cannot be read: {}"
+msgstr "Die Sicherungen können nicht gelesen werden: {}"
+
 msgid "The file dialog couldn't open. Type the path instead."
 msgstr "Der Dateidialog konnte nicht geöffnet werden. Gib stattdessen den Pfad ein."
+
+msgid "The icon is in the notification area."
+msgstr "Das Symbol befindet sich im Infobereich."
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "Der Import wurde früh abgebrochen, weil die Quelle größer ist, als Snipdeck auf einmal einlesen kann."
 
+msgid "The integrity check could not run: {}"
+msgstr "Die Integritätsprüfung konnte nicht ausgeführt werden: {}"
+
+msgid "The integrity check found no problems."
+msgstr "Die Integritätsprüfung hat keine Probleme gefunden."
+
+msgid "The integrity check found {} problem(s); the first: {}"
+msgstr "Die Integritätsprüfung hat {} Problem(e) gefunden; das erste: {}"
+
+msgid "The items cannot be read: {}"
+msgstr "Die Einträge können nicht gelesen werden: {}"
+
 msgid "The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program's file name, for example notepad.exe."
 msgstr "Die Taste, die Snipdeck drückt, um in jedes Programm einzufügen. Die meisten Programme nutzen Ctrl+V; manche Terminals brauchen eine andere Taste. Wähle Nie einfügen, um stattdessen zu kopieren. Verwende den Dateinamen des Programms, zum Beispiel notepad.exe."
+
+msgid "The key cannot be checked: {}"
+msgstr "Der Schlüssel kann nicht geprüft werden: {}"
 
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
 msgstr "Der Schlüssel öffnet die verschlüsselten Einträge in früher gespeicherten Exporten. Wenn du ihn vergisst, lassen sich diese Einträge nie wieder öffnen."
@@ -3078,8 +3162,14 @@ msgstr "Die Liste und ihre {} Einträge werden in den Papierkorb verschoben. Du 
 msgid "The list holds at most {} programs."
 msgstr "Die Liste enthält höchstens {} Programme."
 
+msgid "The newest backup is from {}, {} days ago ({} kept)."
+msgstr "Die neueste Sicherung stammt vom {}, vor {} Tagen ({} aufbewahrt)."
+
 msgid "The newest backup is from {}."
 msgstr "Das neueste Backup stammt vom {}."
+
+msgid "The newest crash report is {}."
+msgstr "Der neueste Absturzbericht ist {}."
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "Die ältesten werden gelöscht, sobald es mehr als diese Anzahl gibt."
@@ -3228,6 +3318,9 @@ msgstr "Papierkorb"
 
 msgid "Travel & Places"
 msgstr "Reisen & Orte"
+
+msgid "Tray icon"
+msgstr "Taskleistensymbol"
 
 msgid "Tray icon click opens"
 msgstr "Klick auf das Tray-Symbol öffnet"
@@ -3522,6 +3615,12 @@ msgstr "Windows hat Snipdeck unter Einstellungen > Apps > Autostart ausgeschalte
 
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "Mit eingeschaltetem Verlauf der Zwischenablage behält „Zuletzt verwendet“ alles, was du in anderen Programmen kopierst."
+
+msgid "Writable, but only {} MB are free on its drive."
+msgstr "Beschreibbar, aber auf dem Laufwerk sind nur {} MB frei."
+
+msgid "Writable, with room to spare."
+msgstr "Beschreibbar, mit reichlich Platz."
 
 msgid "YYYY-MM-DD, empty for today"
 msgstr "YYYY-MM-DD, leer für heute"
@@ -4089,6 +4188,12 @@ msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "{} vertraulicher Eintrag war nicht in der Sicherung."
 msgstr[1] "{} vertrauliche Einträge waren nicht in der Sicherung."
+
+msgid "{} sensitive item(s) are stored as plain text (no encryption key yet): masked and readable, but not encrypted."
+msgstr "{} sensible(r) Eintrag/Einträge sind als Klartext gespeichert (noch kein Verschlüsselungsschlüssel): maskiert und lesbar, aber nicht verschlüsselt."
+
+msgid "{} sensitive item(s), the key is present."
+msgstr "{} sensible(r) Eintrag/Einträge, der Schlüssel ist vorhanden."
 
 msgid "{} takes no argument"
 msgstr "{} nimmt kein Argument"

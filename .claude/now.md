@@ -2,6 +2,7 @@
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 ## Decisions
+- 2026-11-16: A destructive dialog (delete, discard, delete for good) focuses its Cancel button when it opens, so Enter or Space cancels and the destructive button is one Tab away; supersedes the 2026-11-15 "card keeps focus" rule for dialogs only (MAIN-44, WCAG 2.4.3 and the dialog guidance that the least destructive action takes the first focus). Reason: a focus on the bare card gave a keyboard user no visible stop and no accessible name. The Recent consent question is not a Dialog and keeps its rule.
 - 2026-11-15: Recent consent question keeps focus on the card (Enter not wired, Esc = No) so a stray key cannot consent; overrides the earlier "Yes has focus" ask. Reason: consent safety, ux-auditor agreed.
 - 2026-11-15: Donation link stays in the Store build. Reason: Store Policy 10.8.2 (current) allows voluntary donations via a secure third-party purchase API when nothing is unlocked; Buy Me a Coffee in the browser is that. Owner: keep it if allowed.
 - 2026-11-15: Fable call refused by the plugin guard; audit runs on Opus instead (no workaround). Reason: guards are not bypassed.

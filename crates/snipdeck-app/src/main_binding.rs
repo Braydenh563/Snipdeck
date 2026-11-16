@@ -202,6 +202,21 @@ where
     }
 
     /// Fills the command palette with the commands that match `query`.
+    /// Help > Recent messages: the last toasts, one a line, newest first, in the language shown.
+    fn fill_recent_messages(&self) {
+        let Some(window) = self.window.upgrade() else {
+            return;
+        };
+        let lines: Vec<String> = self
+            .controller
+            .borrow()
+            .recent_toasts()
+            .iter()
+            .map(|message| wording::toast_text(&window, message))
+            .collect();
+        window.set_recent_messages_text(lines.join("\n\n").into());
+    }
+
     fn fill_palette(&self, query: &str) {
         let Some(window) = self.window.upgrade() else {
             return;
@@ -254,7 +269,10 @@ where
         let screen = self.controller.borrow_mut().main_screen();
         render(&window, self.shown.borrow().as_ref(), &screen);
         if let Some(toast) = &screen.toast
-            && self.controller.borrow_mut().claim_toast_timer(toast.seq)
+            && self.controller.borrow_mut().claim_toast_timer(
+                toast.seq,
+                wording::toast_text(&window, &toast.message).chars().count(),
+            )
         {
             arm_toast(
                 Rc::downgrade(&self.controller),
@@ -727,6 +745,10 @@ where
                 ui::HelpPage::Shortcuts => HelpTopic::Shortcuts,
             }
         ));
+        {
+            let core = Rc::clone(&core);
+            window.on_recent_messages_requested(move || core.fill_recent_messages());
+        }
         {
             let core = Rc::clone(&core);
             window.on_palette_opened(move || core.fill_palette(""));
@@ -1350,7 +1372,7 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
                 ToastPhase::Hold => ui::ToastPhase::Hold,
                 ToastPhase::Exit => ui::ToastPhase::Exit,
             });
-            window.set_toast_undo_label(wording::toast_button_text(toast).into());
+            window.set_toast_undo_label(wording::toast_button_text(window, toast).into());
             window.set_toast_edit_label(if toast.edit {
                 wording::toast_edit_label(window).into()
             } else {

@@ -3128,3 +3128,39 @@ fn escape_closes_the_erase_question_before_anything_else() {
         );
     });
 }
+
+/// SET-1: a step of a stepper does not ask Windows about the start-up entry again.
+#[test]
+fn a_page_action_does_not_reread_the_start_up_entry() {
+    on_ui_thread(|| {
+        let r = rig();
+        let before = r.host.autostart_reads.get();
+        for keep in [5, 6, 7] {
+            r.ui.invoke_backups_keep_chosen(keep);
+        }
+        r.ui.invoke_panel_width_chosen(420);
+        assert_eq!(r.host.autostart_reads.get(), before, "no read per action");
+    });
+}
+
+/// SET-2 and SET-3: what was half done or refused is not still there when the page comes back.
+#[test]
+fn closing_the_page_drops_open_forms_and_old_refusals() {
+    on_ui_thread(|| {
+        let r = rig();
+        // A password form with a problem, the erase form with a typed word, a refused program.
+        r.ui.invoke_paste_rule_added("KeePass.EXE".into());
+        r.ui.invoke_paste_rule_added("keepass.exe".into());
+        assert_ne!(r.ui.get_paste_rule_error(), "");
+        r.ui.set_erase_open(true);
+        r.ui.set_erase_text("erase".into());
+        r.ui.set_master_mode(snipdeck_ui::MasterMode::Set);
+        r.ui.invoke_close_requested();
+        assert!(!r.ui.get_erase_open());
+        assert_eq!(r.ui.get_erase_text(), "");
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Closed);
+        r.binding.opened();
+        assert_eq!(r.ui.get_paste_rule_error(), "", "the refusal is gone");
+        assert!(!r.ui.get_import_open());
+    });
+}

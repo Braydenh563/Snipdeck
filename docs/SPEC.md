@@ -130,7 +130,8 @@ that lives at the edge of the screen like a sticky note: one click and it's past
   - Forgetting it loses the sensitive items for good: while a password is set the data key exists only sealed under it inside the OS-wrapped record, there is no recovery key, and the form says so before the password is set. Other items are not affected.
 
 ### 5.7a Deletion & recovery
-- Items delete instantly with a 5 s **Undo** toast; lists and boards ask for confirmation (showing the item count).
+- Items delete instantly with a 5 s **Undo** toast; lists and boards ask for confirmation (showing the item count). A destructive confirmation starts with focus on **Cancel**: Enter or Space answers no, the destructive button is the next Tab stop, Esc cancels.
+- Toasts are held by the length of their text (at least 1 s plus 60 ms a character, at most 20 s, never less than the base hold: 2.5 s plain, 4.9 s with Undo, 10 s for an error) and wait while the pointer is on them or one of their buttons has keyboard focus. A plain message does not replace an error in its first 4 s (it shows after them); an Undo toast always shows at once. **Help > Recent messages** lists the last ten toasts, newest first, in a dialog, so a message that went before it was read can be read again; the toast window itself never takes focus, so the paste flow is unchanged.
 - **Trash** keeps everything 30 days; restore from the main window.
 - **Daily local auto-backup** (zipped `.snipdeck` in the data folder, keep 7); restore from Settings.
 - **Crash log** stored locally; "Report a problem" lets the user review the log, then opens a prefilled GitHub issue or email. Nothing is sent automatically.
@@ -245,9 +246,6 @@ Post-1.0, decided:
 - Translated tip pictures (MAIN-32): the five crops are English renders; per-language renders are v1.1 art work.
 - Tag manager "New tag" and merge (MAIN-39): tags are created where they are used (the item editor's tag field); merge is a rename onto an existing name, which the manager refuses today with a clear message. The unused-tag wording is fixed.
 - One named colour palette across labels, lists and accent (MAIN-41): the three sets differ on purpose (labels have no Rose so a label never reads as a list colour; Settings adds the Windows accent); a rename-only change is deferred.
-- Toast hold by text length and a toast history (MAIN-43): error toasts hold 10 s and hover extends them; keyboard focus on a toast and a message history need the toast window to take focus, which breaks the no-activate paste flow.
-- Focus Cancel first in a destructive dialog (MAIN-44): the card keeps focus on purpose, so a stray Enter or Space can never confirm; the same rule as the Recent consent question (`.claude/now.md`).
-- Menu focus return to the View and Help buttons (MAIN-56), accessible names for the list and dialog scope (MAIN-57), the 24px splitter target and positional Tab order (MAIN-58), hover-only row icons in high contrast (MAIN-60): need Narrator and a Windows high-contrast run to verify; they stay open until the owner runs `tools/windows-test/`. Splitter keyboard (arrows, Home, End) and double-click reset are done, so the 8px strip has a keyboard equivalent (WCAG 2.5.8 allows it).
 - Global eyedropper hotkey chord: needs Windows-only verification, not possible before release.
 - Per-swatch Ctrl+S: per-swatch save is reachable from the swatch menu.
 - OLE `IDropTarget` drops from other apps: a v1.1 deferral (`docs/reviews/v101-spec.md:68`).

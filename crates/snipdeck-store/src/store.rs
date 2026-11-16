@@ -203,6 +203,30 @@ impl Store {
         })
     }
 
+    /// A second, read-only handle on the data folder, for a worker thread that only reads (the
+    /// Help window's checks). It takes no folder lock, migrates nothing and holds no key, so it
+    /// can run beside the store that owns the folder; it is not for writing.
+    pub fn open_read_only(folder: impl AsRef<Path>) -> Result<Self> {
+        let folder = folder.as_ref();
+        let conn = Connection::open_with_flags(
+            folder.join(DB_FILE),
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+        )?;
+        conn.busy_timeout(Duration::from_secs(5))?;
+        Ok(Self {
+            conn,
+            blobs: Blobs::on_disk(folder.join(BLOB_DIR)),
+            key: None,
+            quiet: Quiet::default(),
+            lock: None,
+        })
+    }
+
+    /// How many live items are marked sensitive (one count query, nothing is decrypted).
+    pub fn count_sensitive(&self) -> Result<usize> {
+        crate::items::count_sensitive(&self.conn)
+    }
+
     /// Closes the store: folds the write-ahead log into the database
     /// (`wal_checkpoint(TRUNCATE)`, checked) and closes the connection, keeping the folder
     /// lock held in the returned [`Closed`].

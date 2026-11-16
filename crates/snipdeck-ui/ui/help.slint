@@ -26,7 +26,7 @@ export struct TipCard {
     picture: image,
 }
 
-// One line of the Troubleshoot list, already in words (the doctor's English; see snipdeck-app `doctor`).
+// One line of the Troubleshoot list, already in words (the host words it with `DoctorTexts`).
 export struct HelpCheck {
     label: string,
     detail: string,
@@ -100,6 +100,8 @@ export component HelpWindow inherits Window {
 
     // How many checks are not fine, for the summary line.
     in property <int> problems: 0;
+    // The checks are being run on a worker; the list fills when they are done.
+    in property <bool> checking: false;
 
     pure function status-word(status: int) -> string {
         return status == 0 ? @tr("OK") : (status == 1 ? @tr("Warning") : @tr("Problem"));
@@ -153,9 +155,11 @@ export component HelpWindow inherits Window {
                     alignment: start;
 
                     Text {
-                        text: root.problems == 0
-                            ? @tr("Everything checks out.")
-                            : @tr("{} of the checks need a look.", root.problems);
+                        text: root.checking
+                            ? @tr("Checking...")
+                            : (root.problems == 0
+                                ? @tr("Everything checks out.")
+                                : @tr("{} of the checks need a look.", root.problems));
                         color: Theme.text-primary;
                         font-family: Fonts.sans;
                         font-size: Type.md;
@@ -225,6 +229,7 @@ export component HelpWindow inherits Window {
                             alignment: start;
                             Button {
                                 text: @tr("Check again");
+                                enabled: !root.checking;
                                 variant: ButtonVariant.primary;
                                 clicked => { root.check-again-requested(); }
                             }

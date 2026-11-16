@@ -212,7 +212,7 @@ Every icon-only control has a tooltip and an accessible label with the same word
 | IconPicker | Pick a list icon | "No icon" + 24 icons, one tab stop, arrow keys | default, hover, selected (ring), focus |
 | LabelChip | Filter the Main window by colour label | colour dot + name + count | default, hover, selected (ring + check), focus |
 | Tooltip | Name icon-only actions | — | delay 500ms, instant when moving between items (for 250ms after one closes); centred under its control, flipped above at the bottom edge, wraps to the window width and is clamped 8px inside the window; drawn by the window's last child (`TipLayer`), so nothing paints over it and no container clips it; fades in over 90ms; a menu, dialog, open drop-down list or the palette hides it; it goes when its control is used or removed; Esc closes it (and does nothing else on that press) |
-| Toast | Transient result ("Copied", "Pasted into Notepad"); the one **ink toast** (40 tall, `ink` fill, `text.on-ink`, radius 8) used by every surface, including the toast window | neutral · success (check) · danger (warning, with Undo) | enter, hold 2.5s, exit |
+| Toast | Transient result ("Copied", "Pasted into Notepad"); the one **ink toast** (40 tall, `ink` fill, `text.on-ink`, radius 8) used by every surface, including the toast window | neutral · success (check) · danger (warning, with Undo) | enter, hold 2.5s (longer for a long text, a delete's Undo and an error), exit; the last ten are in Help > Recent messages |
 | Skeleton | Loading placeholder matching the final shape | row · tile | — |
 | Menu / MenuItem | Context and overflow actions; also the Settings select popups | with icon, shortcut keycap, accent check (chosen row), destructive; rows 32px (radius 6), 28px when the menu would not fit its window at 32, then a scroll cue (hairline and caret) at the bottom edge | default, highlight (`bg.overlay-hover`; 2px `focus.ring` on a key highlight only, never on hover), disabled (`text.tertiary` glyph and label, no opacity) |
 
@@ -234,7 +234,7 @@ Every icon-only control has a tooltip and an accessible label with the same word
 | TemplateField | label, TextField / choice | Fill in a prompted placeholder | text · choice · date |
 | HotkeyRecorder | Keycap combo, clear | Rebind shortcuts, detect conflicts | idle, recording, conflict |
 | EmptyState | heading, one sentence, primary action | Teach how to fill an empty surface | list, board, search, inbox |
-| Dialog | title, body, actions | Confirm, import | default · destructive |
+| Dialog | title, body, actions | Confirm, import | default · destructive (focus starts on Cancel; the focus scope carries the title and body for a screen reader) |
 | EditorToolbar | IconButtons, Menu | Text transforms / image tools | text · image |
 | **Symbols cell** | glyph (emoji or icon art, 24px) or kaomoji chip text (13px) | One emoji, icon or kaomoji in the Panel's Symbols grid | emoji / icon: 40×40 hit box · kaomoji chip: 2 per row, 36px high, a wide kaomoji takes the full row; radius 6; rest (transparent) · hover (`bg-hover`) · selected (`bg-selected`) · keyboard focus (2px `focus-ring`, drawn while the search field has focus) |
 

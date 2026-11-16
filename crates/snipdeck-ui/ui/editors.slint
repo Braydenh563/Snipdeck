@@ -1529,7 +1529,7 @@ export component ItemEditor inherits Window {
         }
     }
 
-    Dialog {
+    cancel-dlg-1 := Dialog {
         open: root.discard-open;
         variant: DialogVariant.destructive;
         title: @tr("Discard your changes?");
@@ -1537,6 +1537,7 @@ export component ItemEditor inherits Window {
         dismissed => { root.discard-open = false; }
         closed => { scope.focus(); }
         Button {
+            focus-request: cancel-dlg-1.cancel-focus;
             text: @tr("Keep editing");
             clicked => { root.discard-open = false; }
         }
@@ -1918,7 +1919,7 @@ component EntityEditorBody inherits Rectangle {
         }
     }
 
-    Dialog {
+    cancel-dlg-2 := Dialog {
         open: root.discard-open;
         variant: DialogVariant.destructive;
         title: @tr("Discard your changes?");
@@ -1926,6 +1927,7 @@ component EntityEditorBody inherits Rectangle {
         dismissed => { root.discard-open = false; }
         closed => { scope.focus(); }
         Button {
+            focus-request: cancel-dlg-2.cancel-focus;
             text: @tr("Keep editing");
             clicked => { root.discard-open = false; }
         }
@@ -1939,7 +1941,7 @@ component EntityEditorBody inherits Rectangle {
         }
     }
 
-    Dialog {
+    cancel-dlg-3 := Dialog {
         open: root.delete-open;
         variant: DialogVariant.destructive;
         title: root.delete-title;
@@ -1947,6 +1949,7 @@ component EntityEditorBody inherits Rectangle {
         dismissed => { root.delete-open = false; }
         closed => { scope.focus(); }
         Button {
+            focus-request: cancel-dlg-3.cancel-focus;
             text: @tr("Cancel");
             clicked => { root.delete-open = false; }
         }
@@ -2282,7 +2285,7 @@ export component TagManager inherits Window {
         }
     }
 
-    Dialog {
+    cancel-dlg-4 := Dialog {
         open: root.delete-index >= 0;
         variant: DialogVariant.destructive;
         title: @tr("Delete this tag?");
@@ -2292,6 +2295,7 @@ export component TagManager inherits Window {
         dismissed => { root.delete-index = -1; }
         closed => { scope.focus(); }
         Button {
+            focus-request: cancel-dlg-4.cancel-focus;
             text: @tr("Cancel");
             clicked => { root.delete-index = -1; }
         }

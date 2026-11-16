@@ -5,13 +5,20 @@ use std::time::Duration;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 
 use super::{
-    ActiveToast, Controller, Effect, Library, TOAST_ERROR_HOLD, TOAST_EXIT, TOAST_HOLD,
-    TOAST_HOVER_RECHECK, TOAST_HOVER_RECHECKS, TOAST_UNDO_HOLD, ToastPhase, Undo, neutral,
+    ActiveToast, Controller, Effect, Library, TOAST_ERROR_GUARD, TOAST_ERROR_HOLD, TOAST_EXIT,
+    TOAST_HISTORY, TOAST_HOLD, TOAST_HOVER_RECHECK, TOAST_HOVER_RECHECKS, TOAST_READ_BASE,
+    TOAST_READ_MAX, TOAST_READ_PER_CHAR, TOAST_UNDO_HOLD, ToastPhase, Undo, neutral,
 };
 use crate::{
     host::ClipboardText,
     toast::{Toast, ToastKind, ToastMessage},
 };
+
+/// How long a toast is held: `base`, or longer when its `chars` characters need more time to read.
+fn hold_for(base: Duration, chars: usize) -> Duration {
+    let chars = u32::try_from(chars).unwrap_or(u32::MAX);
+    base.max((TOAST_READ_BASE + TOAST_READ_PER_CHAR.saturating_mul(chars)).min(TOAST_READ_MAX))
+}
 
 impl<S, C, K, T> Controller<S, C, K, T>
 where
@@ -35,24 +42,58 @@ where
 
     /// Shows `toast`, replacing the one on screen: the latest toast wins, whatever action it
     /// belongs to (a retry that works must not hide behind the error of the try before it).
+    /// The one exception: a plain message does not replace an error in its first
+    /// [`TOAST_ERROR_GUARD`] seconds, it waits and shows after them (the error stays in
+    /// [`recent_toasts`](Self::recent_toasts)); a toast with an Undo button always shows at once.
     /// Within one operation the success comes first and a notice about it
     /// (`refresh_or_notice`) last. The host then calls
     /// [`toast_tick`](Self::toast_tick) after [`TOAST_ENTER`](crate::controller::TOAST_ENTER)
     /// and follows the delays it returns.
     pub fn show_toast(&mut self, toast: Toast) {
+        if toast.kind != ToastKind::Danger && self.toast.as_ref().is_some_and(|t| t.guard) {
+            self.pending_toast = Some(toast);
+            return;
+        }
+        self.show_toast_now(toast);
+    }
+
+    /// [`show_toast`](Self::show_toast) without waiting behind an error.
+    fn show_toast_now(&mut self, toast: Toast) {
         // A locked sensitive item behind a master password asks for it, as well as saying so.
         if toast.message == ToastMessage::Locked {
             self.request_unlock();
         }
         self.toast_seq += 1;
         self.undo = None;
+        self.pending_toast = None;
+        if !matches!(toast.message, ToastMessage::ItemPlaced { .. })
+            && self.toast_history.back() != Some(&toast)
+        {
+            if self.toast_history.len() == TOAST_HISTORY {
+                self.toast_history.pop_front();
+            }
+            self.toast_history.push_back(toast.clone());
+        }
         self.toast = Some(ActiveToast {
+            guard: toast.kind == ToastKind::Danger,
             toast,
             phase: ToastPhase::Enter,
             seq: self.toast_seq,
             hovered: false,
             extended: 0,
+            chars: 0,
         });
+    }
+
+    /// The last messages shown as toasts, newest first (at most [`TOAST_HISTORY`]), for the
+    /// Help menu's "Recent messages": a toast that went before it could be read is still there.
+    #[must_use]
+    pub fn recent_toasts(&self) -> Vec<ToastMessage> {
+        self.toast_history
+            .iter()
+            .rev()
+            .map(|t| t.message.clone())
+            .collect()
     }
 
     /// Says where a keyboard or menu move put an item. A live Undo toast is not replaced (it
@@ -75,7 +116,7 @@ where
     /// ([`main_undo`](Self::main_undo)); no step, no button. The toast stays for 5 s; a newer
     /// toast takes the button away (Ctrl+Z still takes the step back).
     pub fn show_undo_toast(&mut self, toast: Toast, step: Option<u64>) {
-        self.show_toast(toast);
+        self.show_toast_now(toast);
         self.undo = step.map(|step| Undo {
             seq: self.toast_seq,
             step: Some(step),
@@ -98,7 +139,7 @@ where
         id: snipdeck_core::ItemId,
         list: Option<snipdeck_core::ListId>,
     ) {
-        self.show_toast(toast);
+        self.show_toast_now(toast);
         self.undo = Some(Undo {
             seq: self.toast_seq,
             step: None,
@@ -111,6 +152,9 @@ where
     pub fn toast_dismiss(&mut self) {
         self.toast = None;
         self.undo = None;
+        if let Some(next) = self.pending_toast.take() {
+            self.show_toast_now(next);
+        }
     }
 
     /// The toast's Edit button: opens the editor on the item the toast is about and closes the toast.
@@ -156,11 +200,15 @@ where
 
     /// Whether the caller should start the timer chain for toast `seq`: true once per toast,
     /// for whichever window sees it first (the Panel and the Main window share one toast).
-    pub fn claim_toast_timer(&mut self, seq: u64) -> bool {
+    /// `chars` is the length of the words the window shows: a long message is held longer.
+    pub fn claim_toast_timer(&mut self, seq: u64, chars: usize) -> bool {
         if self.timer_seq == seq {
             return false;
         }
         self.timer_seq = seq;
+        if let Some(active) = self.toast.as_mut().filter(|t| t.seq == seq) {
+            active.chars = chars;
+        }
         true
     }
 
@@ -202,15 +250,28 @@ where
         match active.phase {
             ToastPhase::Enter => {
                 active.phase = ToastPhase::Hold;
+                let chars = active.chars;
                 if self.undo.as_ref().is_some_and(|u| u.seq == seq)
                     || matches!(active.toast.message, ToastMessage::SwitchToManual { .. })
                 {
-                    Some(TOAST_UNDO_HOLD)
+                    Some(hold_for(TOAST_UNDO_HOLD, chars))
                 } else if active.toast.kind == ToastKind::Danger {
-                    Some(TOAST_ERROR_HOLD)
+                    // The first stretch is the guard; the rest of the hold follows it.
+                    Some(TOAST_ERROR_GUARD.min(hold_for(TOAST_ERROR_HOLD, chars)))
                 } else {
-                    Some(TOAST_HOLD)
+                    Some(hold_for(TOAST_HOLD, chars))
                 }
+            }
+            ToastPhase::Hold if active.guard && !active.hovered => {
+                active.guard = false;
+                let rest =
+                    hold_for(TOAST_ERROR_HOLD, active.chars).saturating_sub(TOAST_ERROR_GUARD);
+                if let Some(next) = self.pending_toast.take() {
+                    // The error has had its time: the message that waited takes over.
+                    self.show_toast_now(next);
+                    return None;
+                }
+                Some(rest)
             }
             ToastPhase::Hold if active.hovered && active.extended < TOAST_HOVER_RECHECKS => {
                 active.extended += 1;
@@ -221,11 +282,14 @@ where
             {
                 // The pointer left while the hold was extended: a fresh hold, once.
                 active.extended = u32::MAX;
-                Some(if active.toast.kind == ToastKind::Danger {
-                    TOAST_ERROR_HOLD
-                } else {
-                    TOAST_HOLD
-                })
+                Some(hold_for(
+                    if active.toast.kind == ToastKind::Danger {
+                        TOAST_ERROR_HOLD
+                    } else {
+                        TOAST_HOLD
+                    },
+                    active.chars,
+                ))
             }
             ToastPhase::Hold => {
                 active.phase = ToastPhase::Exit;

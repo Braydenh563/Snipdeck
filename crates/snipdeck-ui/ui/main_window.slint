@@ -119,7 +119,12 @@ component ToolbarButton inherits Rectangle {
     in property <length> h: 32px;
     out property <bool> has-hover: touch.has-hover;
     out property <bool> has-focus: scope.has-focus;
+    // Each time this goes up the button takes the keyboard focus (a menu it opened gives it back on close).
+    in property <int> focus-request: 0;
     callback clicked();
+    changed focus-request => {
+        if (root.focus-request > 0) { scope.focus(); }
+    }
 
     height: root.h;
     width: root.compact ? root.h : max(root.h, row.preferred-width);
@@ -455,6 +460,11 @@ export component MainWindow inherits Window {
     callback sidebar-collapsed-changed(bool);
     // F1 asks for the guide, Ctrl+/ for the shortcuts, the Help menu for any of them.
     callback help-requested(HelpPage);
+    // Help > Recent messages (MAIN-43): the host fills `recent-messages-text` (one message a line, newest first) before
+    // the dialog opens, so a toast that went by before it could be read can be read again.
+    callback recent-messages-requested();
+    in-out property <string> recent-messages-text;
+    property <bool> recent-messages-open: false;
     // ---- Command palette: the host fills `palette-rows` (filtered for the query it is told about).
     in property <[PaletteRow]> palette-rows;
     in-out property <bool> palette-open: false;
@@ -598,9 +608,11 @@ export component MainWindow inherits Window {
     // Below 720px the sidebar is a rail whatever was chosen; the chosen width and the collapsed flag apply above it.
     property <bool> auto-rail: false;
     property <length> sidebar-w: root.narrow ? Space.s12 * root.text-scale : root.sidebar-width * 1px + (root.text-scale - 1) * 96px;
-    property <length> splitter-w: 8px;
+    // The splitter's target: 24px wide (WCAG 2.5.8), the line in it stays 2px.
+    property <length> splitter-w: 24px;
     property <length> splitter-grab: 0px;
-    property <bool> splitter-focused: false;
+    out property <bool> splitter-focused: false;
+    property <int> splitter-focus-request: 0;
     property <length> pad: Space.s4;
     // The keyboard focus ring is drawn this far outside a card; the lists are inset by it so a scroll viewport never clips it.
     property <length> ring: Space.s1;
@@ -662,7 +674,7 @@ export component MainWindow inherits Window {
     property <int> confirm-kind: 0;
     property <int> confirm-target: 0;
     property <bool> confirm-shown: false;
-    property <bool> overlay-open: root.recent-menu-open || root.recent-save-open || root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.sort-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown || root.board-delete-open || root.palette-open;
+    property <bool> overlay-open: root.recent-menu-open || root.recent-save-open || root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.sort-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown || root.board-delete-open || root.recent-messages-open || root.palette-open;
 
     init => {
         Palette.dark = root.dark;
@@ -760,8 +772,22 @@ export component MainWindow inherits Window {
 
     // Where the keys go back to when a menu, chooser or confirmation closes: the sidebar when it was opened there.
     property <bool> nav-origin: false;
+    // The toolbar or footer button that opened the menu that is closing (0 none, 1 Help, 2 View, 3 Sort): the focus
+    // goes back to it, not to the list (MAIN-56, WCAG 2.4.3). The counters ask the button to take the focus.
+    property <int> menu-origin: 0;
+    property <int> help-focus: 0;
+    property <int> view-focus: 0;
+    property <int> sort-focus: 0;
     function restore-focus() {
-        if (root.nav-origin) {
+        let origin = root.menu-origin;
+        root.menu-origin = 0;
+        if (origin == 1) {
+            root.help-focus += 1;
+        } else if (origin == 2) {
+            root.view-focus += 1;
+        } else if (origin == 3) {
+            root.sort-focus += 1;
+        } else if (root.nav-origin) {
             nav-scope.focus();
         } else {
             items-scope.focus();
@@ -925,12 +951,14 @@ export component MainWindow inherits Window {
     function open-help-menu() {
         root.close-menus();
         root.nav-origin = true;
+        root.menu-origin = 1;
         root.help-menu-open = true;
     }
 
     function open-view-menu() {
         root.close-menus();
         root.nav-origin = false;
+        root.menu-origin = 2;
         root.view-menu-open = true;
     }
 
@@ -939,6 +967,7 @@ export component MainWindow inherits Window {
     function open-sort-menu(x: length, y: length) {
         root.close-menus();
         root.nav-origin = false;
+        root.menu-origin = 3;
         root.sort-menu-x = x;
         root.sort-menu-y = y;
         root.sort-menu-open = true;
@@ -1156,6 +1185,9 @@ export component MainWindow inherits Window {
     }
 
     root-scope := FocusScope {
+        // Not a Tab stop of its own (MAIN-57): it only catches the window's keys; it has no name to read and nothing
+        // drawn as focused. A click or a call to `focus()` can still give it the focus.
+        focus-on-tab-navigation: false;
         capture-key-pressed(event) => {
             // An IME composition gets every key, Esc included (it cancels the composition).
             if (search.composing) {
@@ -1538,6 +1570,7 @@ export component MainWindow inherits Window {
                                 variant: ButtonVariant.ghost;
                                 icon: Icons.question;
                                 text: @tr("Help");
+                                focus-request: root.help-focus;
                                 y: (parent.height - self.height) / 2;
                                 clicked => { root.open-help-menu(); }
                             }
@@ -1554,6 +1587,7 @@ export component MainWindow inherits Window {
                                 icon: Icons.question;
                                 tooltip: @tr("Help");
                                 own-tooltip: true;
+                                focus-request: root.help-focus;
                                 y: (parent.height - self.height) / 2;
                                 clicked => { root.open-help-menu(); }
                             }
@@ -1566,6 +1600,50 @@ export component MainWindow inherits Window {
                     x: parent.width - 1px;
                     width: 1px;
                     background: Theme.border-subtle;
+                }
+
+                // The splitter's keyboard stop. It sits at the end of the sidebar so Tab reaches it where it is on screen, between
+                // the sidebar and the content (MAIN-58); the strip over the layout below is its 24px target.
+                if !root.narrow: Rectangle {
+                    x: parent.width - root.splitter-w / 2;
+                    width: root.splitter-w;
+                    height: parent.height;
+                    // A press on the strip asks for the focus (the strip is drawn over the layout, above this scope).
+                    property <int> request: root.splitter-focus-request;
+                    changed request => { splitter-scope.focus(); }
+                    splitter-scope := FocusScope {
+                    width: parent.width;
+                    height: parent.height;
+                    accessible-role: AccessibleRole.slider;
+                    accessible-label: @tr("Sidebar width");
+                    accessible-value: root.sidebar-width;
+                    accessible-value-minimum: 200;
+                    accessible-value-maximum: 320;
+                    accessible-value-step: 8;
+                    accessible-action-increment => { root.set-sidebar-width(root.sidebar-width + 8, true); }
+                    accessible-action-decrement => { root.set-sidebar-width(root.sidebar-width - 8, true); }
+                    changed has-focus => { root.splitter-focused = self.has-focus; }
+                    key-pressed(event) => {
+                        if (event.text == Key.LeftArrow) {
+                            root.set-sidebar-width(root.sidebar-width - 8, true);
+                            return accept;
+                        }
+                        if (event.text == Key.RightArrow) {
+                            root.set-sidebar-width(root.sidebar-width + 8, true);
+                            return accept;
+                        }
+                        // Home and End jump to the narrowest and the widest (MAIN-15, like any slider).
+                        if (event.text == Key.Home) {
+                            root.set-sidebar-width(200, true);
+                            return accept;
+                        }
+                        if (event.text == Key.End) {
+                            root.set-sidebar-width(320, true);
+                            return accept;
+                        }
+                        return reject;
+                    }
+                    }
                 }
 
             }
@@ -1704,6 +1782,7 @@ export component MainWindow inherits Window {
                                     caret: true;
                                     tooltip: @tr("View");
                                     active: root.view-menu-open;
+                                    focus-request: root.view-focus;
                                     clicked => { root.open-view-menu(); }
                                 }
                                 Rectangle {
@@ -1822,6 +1901,7 @@ export component MainWindow inherits Window {
                             tooltip: @tr("Sort by: {}", root.sort-name(root.list-sort));
                             caret: true;
                             active: root.sort-menu-open;
+                            focus-request: root.sort-focus;
                             y: (parent.height - self.height) / 2;
                             clicked => { root.open-sort-menu(self.absolute-position.x, self.absolute-position.y + self.height); }
                         }
@@ -1897,6 +1977,12 @@ export component MainWindow inherits Window {
                     items-scope := FocusScope {
                         width: parent.width;
                         height: parent.height;
+                        // The scope that holds the keyboard focus is what a screen reader meets first, so it is the
+                        // list: named, with the row the cursor is on as its value (MAIN-57). The rows are exposed
+                        // by the list views beside it.
+                        accessible-role: AccessibleRole.list;
+                        accessible-label: @tr("Item list");
+                        accessible-value: root.cur >= 0 && root.cur < root.rows.length ? root.rows[root.cur].title : "";
 
                         changed has-focus => {
                             if (self.has-focus) {
@@ -2781,21 +2867,20 @@ export component MainWindow inherits Window {
             }
         }
 
-        // The splitter: an 8px strip straddling the sidebar's edge (4px each side), above the layout so it never sits under a sidebar control. Drag it, or focus it and press Left / Right
+        // The splitter: a 24px strip straddling the sidebar's edge (12px each side), above the layout so it never sits under a sidebar control. Drag it, or focus it and press Left / Right
         // (8px a step). It is not there on the rail.
         if !root.narrow: splitter := Rectangle {
             x: root.sidebar-w - root.splitter-w / 2;
             width: root.splitter-w;
             height: parent.height;
             background: transparent;
-            forward-focus: splitter-scope;
 
             // The line that shows it can be grabbed (hover or drag) and, in the focus colour, that it has focus.
             Rectangle {
                 x: (parent.width - self.width) / 2;
-                width: splitter-scope.has-focus ? 3px : 2px;
-                background: splitter-scope.has-focus ? Theme.focus-ring : splitter-touch.pressed ? Theme.accent-text : Theme.border-strong;
-                opacity: (splitter-scope.has-focus || splitter-touch.has-hover || splitter-touch.pressed) ? 1 : 0;
+                width: root.splitter-focused ? 3px : 2px;
+                background: root.splitter-focused ? Theme.focus-ring : splitter-touch.pressed ? Theme.accent-text : Theme.border-strong;
+                opacity: (root.splitter-focused || splitter-touch.has-hover || splitter-touch.pressed) ? 1 : 0;
                 animate opacity { duration: Motion.instant; easing: Motion.out; }
             }
             splitter-touch := TouchArea {
@@ -2807,6 +2892,7 @@ export component MainWindow inherits Window {
                     if (event.kind == PointerEventKind.down) {
                         // How far the pointer is from the sidebar's edge, so the edge does not jump to it.
                         root.splitter-grab = root.sidebar-w - (self.absolute-position.x + self.mouse-x);
+                        root.splitter-focus-request += 1;
                     } else if (event.kind == PointerEventKind.up) {
                         root.sidebar-width-changed(root.sidebar-width);
                     }
@@ -2818,37 +2904,6 @@ export component MainWindow inherits Window {
                         let edge = self.absolute-position.x + self.mouse-x + root.splitter-grab;
                         root.set-sidebar-width(((edge - (root.text-scale - 1) * 96px) / 1px).round(), false);
                     }
-                }
-            }
-            splitter-scope := FocusScope {
-                accessible-role: AccessibleRole.slider;
-                accessible-label: @tr("Sidebar width");
-                accessible-value: root.sidebar-width;
-                accessible-value-minimum: 200;
-                accessible-value-maximum: 320;
-                accessible-value-step: 8;
-                accessible-action-increment => { root.set-sidebar-width(root.sidebar-width + 8, true); }
-                accessible-action-decrement => { root.set-sidebar-width(root.sidebar-width - 8, true); }
-                changed has-focus => { root.splitter-focused = self.has-focus; }
-                key-pressed(event) => {
-                    if (event.text == Key.LeftArrow) {
-                        root.set-sidebar-width(root.sidebar-width - 8, true);
-                        return accept;
-                    }
-                    if (event.text == Key.RightArrow) {
-                        root.set-sidebar-width(root.sidebar-width + 8, true);
-                        return accept;
-                    }
-                    // Home and End jump to the narrowest and the widest (MAIN-15, like any slider).
-                    if (event.text == Key.Home) {
-                        root.set-sidebar-width(200, true);
-                        return accept;
-                    }
-                    if (event.text == Key.End) {
-                        root.set-sidebar-width(320, true);
-                        return accept;
-                    }
-                    return reject;
                 }
             }
         }
@@ -3018,6 +3073,7 @@ export component MainWindow inherits Window {
             { text: @tr("Keyboard shortcuts"), shortcut: "Ctrl+/" },
             { text: @tr("Troubleshoot…") },
             { text: @tr("About Snipdeck") },
+            { text: @tr("Recent messages") },
             { separator: true },
             { text: root.panel-visible ? @tr("Hide Panel") : @tr("Show Panel"), shortcut: root.panel-hotkey },
         ];
@@ -3029,7 +3085,7 @@ export component MainWindow inherits Window {
         }
         activated(i) => {
             root.close-menus();
-            // The row order is the `entries` list above (the separator is row 4).
+            // The row order is the `entries` list above (the separator is row 5).
             if (i == 0) {
                 root.help-requested(HelpPage.guide);
             } else if (i == 1) {
@@ -3038,6 +3094,9 @@ export component MainWindow inherits Window {
                 root.help-requested(HelpPage.troubleshoot);
             } else if (i == 3) {
                 root.help-requested(HelpPage.about);
+            } else if (i == 4) {
+                root.recent-messages-requested();
+                root.recent-messages-open = true;
             } else {
                 root.panel-requested();
             }
@@ -3154,7 +3213,7 @@ export component MainWindow inherits Window {
     }
 
     // The board delete confirmation, the only thing "Delete board…" shows.
-    Dialog {
+    cancel-dlg-1 := Dialog {
         title: @tr("Delete board “{}”?", root.board-name);
         body: @tr("Its lists and {n} item move to the Trash. You can restore them for {} days." | "Its lists and {n} items move to the Trash. You can restore them for {} days." % root.board-delete-count, root.trash-days);
         variant: DialogVariant.destructive;
@@ -3162,6 +3221,7 @@ export component MainWindow inherits Window {
         dismissed => { root.board-delete-dismissed(); }
         closed => { root.restore-focus(); }
         Button {
+            focus-request: cancel-dlg-1.cancel-focus;
             text: @tr("Cancel");
             clicked => { root.board-delete-dismissed(); }
         }
@@ -3169,6 +3229,21 @@ export component MainWindow inherits Window {
             variant: ButtonVariant.danger;
             text: @tr("Delete board");
             clicked => { root.board-delete-confirmed(); }
+        }
+    }
+
+    // Help > Recent messages: the last toasts, newest first (MAIN-43).
+    recent-messages := Dialog {
+        title: @tr("Recent messages");
+        body: root.recent-messages-text == "" ? @tr("No messages yet.") : root.recent-messages-text;
+        open: root.recent-messages-open;
+        dismissed => { root.recent-messages-open = false; }
+        accepted => { root.recent-messages-open = false; }
+        closed => { root.restore-focus(); }
+        Button {
+            variant: ButtonVariant.primary;
+            text: @tr("Close");
+            clicked => { root.recent-messages-open = false; }
         }
     }
 
@@ -3184,6 +3259,7 @@ export component MainWindow inherits Window {
             root.restore-focus();
         }
         Button {
+            focus-request: confirm.cancel-focus;
             text: @tr("Cancel");
             clicked => { root.confirm-shown = false; }
         }
