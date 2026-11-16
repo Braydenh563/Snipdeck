@@ -619,7 +619,7 @@ mod tests {
         let first = cache.snapshot(&s).unwrap();
         // The suggestions are built on first use: use them once so the pin has some to keep.
         let kept_suggest = first.suggest();
-        assert!(first.pinned.is_empty());
+        assert_eq!(first.pinned.len(), 0, "nothing is pinned yet");
         let id = first.all[7_000].id;
 
         let mut item = s.item(id).unwrap();
