@@ -492,6 +492,9 @@ msgstr "Panel schließen (Esc)"
 msgid "Close search"
 msgstr "Suche schließen"
 
+msgid "Close sidebar (Ctrl+B)"
+msgstr "Seitenleiste schließen (Strg+B)"
+
 msgid "Close the tag list"
 msgstr "Schlagwortliste schließen"
 

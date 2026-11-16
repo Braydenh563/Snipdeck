@@ -492,6 +492,9 @@ msgstr "Fermer le panneau (Esc)"
 msgid "Close search"
 msgstr "Fermer la recherche"
 
+msgid "Close sidebar (Ctrl+B)"
+msgstr "Fermer la barre latérale (Ctrl+B)"
+
 msgid "Close the tag list"
 msgstr "Fermer la liste des étiquettes"
 

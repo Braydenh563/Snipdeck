@@ -491,6 +491,9 @@ msgstr "关闭面板 (Esc)"
 msgid "Close search"
 msgstr "关闭搜索"
 
+msgid "Close sidebar (Ctrl+B)"
+msgstr "关闭侧边栏 (Ctrl+B)"
+
 msgid "Close the tag list"
 msgstr "关闭标签列表"
 

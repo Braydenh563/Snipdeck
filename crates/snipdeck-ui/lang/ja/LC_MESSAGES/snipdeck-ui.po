@@ -491,6 +491,9 @@ msgstr "パネルを閉じる (Esc)"
 msgid "Close search"
 msgstr "検索を閉じる"
 
+msgid "Close sidebar (Ctrl+B)"
+msgstr "サイドバーを閉じる (Ctrl+B)"
+
 msgid "Close the tag list"
 msgstr "タグ一覧を閉じる"
 

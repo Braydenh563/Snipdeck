@@ -492,6 +492,9 @@ msgstr "Fechar painel (Esc)"
 msgid "Close search"
 msgstr "Fechar a pesquisa"
 
+msgid "Close sidebar (Ctrl+B)"
+msgstr "Fechar a barra lateral (Ctrl+B)"
+
 msgid "Close the tag list"
 msgstr "Fechar a lista de etiquetas"
 
