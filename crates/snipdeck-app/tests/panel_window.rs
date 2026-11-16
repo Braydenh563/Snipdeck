@@ -192,7 +192,7 @@ fn pointer_clicks_on_every_header_control_reach_the_controller() {
         r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
         slint::platform::update_timers_and_animations();
 
-        click(r.window(), &r.button("Keep panel on top"));
+        click(r.window(), &r.button("Keep Panel open"));
         assert!(
             !r.ctl.borrow().view().on_top,
             "the pin click reached the controller"
@@ -731,7 +731,7 @@ fn the_close_button_hides_and_the_pin_button_reaches_the_controller() {
     on_ui_thread(|| {
         let r = rig();
         assert!(r.ctl.borrow().view().on_top);
-        r.button("Keep panel on top")
+        r.button("Keep Panel open")
             .invoke_accessible_default_action();
         assert!(!r.ctl.borrow().view().on_top);
         assert!(!r.ui.get_on_top());
@@ -1244,11 +1244,11 @@ const MENU_ROWS: [&str; 17] = [
     "Keyboard shortcuts",
     "Commands\u{2026}",
     "Settings\u{2026}",
-    "Open Snipdeck",
+    "Open Main window",
     "New item",
     "Take screenshot",
     "Pause hotkeys",
-    "Select or delete\u{2026}",
+    "Select items",
     "Reset size and position",
     "Troubleshoot\u{2026}",
     "User guide",
@@ -1396,11 +1396,11 @@ fn the_menu_is_still_open_after_the_pointer_moves_into_it_and_away_from_the_butt
         );
 
         // Down into the menu, row by row, then off to the pin button, then over the list.
-        for label in ["Open Snipdeck", "Settings\u{2026}", "Quit"] {
+        for label in ["Open Main window", "Settings\u{2026}", "Quit"] {
             move_to(r.window(), centre(&menu_row(&r, label)));
             assert!(r.ui.get_app_menu_open(), "still open over {label}");
         }
-        move_to(r.window(), centre(&r.button("Keep panel on top")));
+        move_to(r.window(), centre(&r.button("Keep Panel open")));
         assert!(r.ui.get_app_menu_open(), "still open away from the button");
         assert_eq!(r.ui.get_tooltip_shown(), "", "no tooltip over an open menu");
         move_to(r.window(), slint::LogicalPosition::new(20.0, 300.0));
@@ -1478,7 +1478,7 @@ fn open_snipdeck_help_and_new_snippet_reach_the_host() {
     on_ui_thread(|| {
         let r = rig();
         for label in [
-            "Open Snipdeck",
+            "Open Main window",
             "New item",
             "Troubleshoot\u{2026}",
             "User guide",

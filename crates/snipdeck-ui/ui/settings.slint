@@ -466,8 +466,8 @@ export component SettingsPage inherits Window {
     property <[string]> hotkey-names: [
         @tr("Show or hide the panel"),
         @tr("Open the picker"),
-        @tr("Save the clipboard as an item"),
-        @tr("Paste the next item"),
+        @tr("Quick capture"),
+        @tr("Paste next"),
     ];
     property <[string]> hotkey-help: [
         @tr("Brings the panel up beside the app you are working in."),
@@ -549,6 +549,14 @@ export component SettingsPage inherits Window {
                 root.help-requested();
                 return accept;
             }
+            if ((event.text == "f" || event.text == "F" || event.text == "\u{6}") && event.modifiers.control && !event.modifiers.alt && !root.import-open) {
+                settings-search.focus();
+                return accept;
+            }
+            if ((event.text == "w" || event.text == "W" || event.text == "\u{17}") && event.modifiers.control && !event.modifiers.alt && !root.import-open && !root.import-choosing) {
+                root.close-requested();
+                return accept;
+            }
             if (event.text == Key.Escape) {
                 if (root.import-open) {
                     root.import-cancelled();
@@ -591,7 +599,7 @@ export component SettingsPage inherits Window {
                         font-size: Type.sm;
                         accessible-role: none;
                     }
-                    SearchField {
+                    settings-search := SearchField {
                         text <=> SettingsFilter.query;
                         label: @tr("Search settings");
                         placeholder: @tr("Search settings");

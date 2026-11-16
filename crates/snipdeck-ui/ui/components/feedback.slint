@@ -135,7 +135,8 @@ export component Toast inherits Rectangle {
     accessible-label: root.text;
     // The icon's meaning, for a screen reader: a warning or a success is said after the message.
     accessible-description: root.kind == ToastKind.danger ? @tr("Warning") : root.kind == ToastKind.success ? @tr("Done") : "";
-    accessible-live-region: polite;
+    // A failure is announced at once (WCAG 4.1.3); everything else waits for the reader to finish.
+    accessible-live-region: root.kind == ToastKind.danger ? assertive : polite;
 
     animate opacity { duration: root.phase == ToastPhase.exit ? Motion.fade : Motion.quick; easing: Motion.out; }
 

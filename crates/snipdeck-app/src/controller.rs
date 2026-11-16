@@ -1102,6 +1102,8 @@ where
             }
             TrayEvent::OpenSnipdeck => vec![Effect::OpenMainWindow],
             TrayEvent::Tips => vec![Effect::OpenHelp(HelpTopic::Tips)],
+            TrayEvent::Settings => vec![Effect::OpenSettings],
+            TrayEvent::Help => vec![Effect::OpenHelp(HelpTopic::Troubleshoot)],
             TrayEvent::HotkeysPaused(paused) => {
                 self.set_hotkeys_paused(paused);
                 vec![Effect::SetHotkeysPaused(paused)]

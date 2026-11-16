@@ -275,8 +275,8 @@ msgstr "文本光标处"
 msgid "Back"
 msgstr "上一步"
 
-msgid "Back to editing (Ctrl+P)"
-msgstr "返回编辑 (Ctrl+P)"
+msgid "Back to editing (Alt+P)"
+msgstr "返回编辑 (Alt+P)"
 
 msgid "Back up now"
 msgstr "立即备份"
@@ -830,9 +830,6 @@ msgstr "以你选择的格式显示日期和时间"
 msgid "Dates are today's; a field you fill in when you use the item shows its name or default."
 msgstr "日期为今天的日期；使用时才填写的字段会显示其名称或默认值。"
 
-msgid "Delete"
-msgstr "删除"
-
 msgid "Delete a group and its items"
 msgstr "删除分组及其中的项目"
 
@@ -865,9 +862,6 @@ msgstr "要删除列表“{}”吗？"
 
 msgid "Delete list…"
 msgstr "删除列表…"
-
-msgid "Delete snippets"
-msgstr "删除片段"
 
 msgid "Delete tag"
 msgstr "删除标签"
@@ -904,9 +898,6 @@ msgstr "已删除的片段会在这里保留 {} 天，之后才会被移除。"
 
 msgid "Deleted list “{}”"
 msgstr "已删除列表“{}”"
-
-msgid "Deleted “{}”"
-msgstr "已删除：“{}”"
 
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
 msgstr "删除这台电脑上的所有看板、列表、片段和备份。此操作无法撤销。"
@@ -1379,6 +1370,9 @@ msgstr "刚刚"
 msgid "Kaomoji"
 msgstr "颜文字"
 
+msgid "Keep Panel open"
+msgstr "保持面板打开"
+
 msgid "Keep Panel visible during screenshots"
 msgstr "截图时保持面板可见"
 
@@ -1399,9 +1393,6 @@ msgstr "减少保留的备份"
 
 msgid "Keep more backups"
 msgstr "增加保留的备份"
-
-msgid "Keep panel on top"
-msgstr "面板保持在最前"
 
 msgid "Keep running in the tray when the window closes"
 msgstr "关闭窗口时继续在通知区域运行"
@@ -1577,9 +1568,6 @@ msgstr "更多置顶片段"
 msgid "Most used"
 msgstr "最常用"
 
-msgid "Move"
-msgstr "移动"
-
 msgid "Move a page at a time"
 msgstr "按页移动"
 
@@ -1625,9 +1613,6 @@ msgstr "移动到列表"
 msgid "Move to list…"
 msgstr "移动到列表…"
 
-msgid "Move to…"
-msgstr "移动到…"
-
 msgid "Move up"
 msgstr "上移"
 
@@ -1641,6 +1626,9 @@ msgstr[0] "已将 {} 个片段移到回收站"
 msgid "Moved {} item to {}"
 msgid_plural "Moved {} items to {}"
 msgstr[0] "已将 {} 个片段移到 {}"
+
+msgid "Moved “{}” to the Trash"
+msgstr "已将“{}”移到回收站"
 
 msgid "Name"
 msgstr "名称"
@@ -1876,6 +1864,9 @@ msgstr "仅在“随 Windows 启动”时：在托盘中等待，或同时打开
 msgid "Open"
 msgstr "打开"
 
+msgid "Open Main window"
+msgstr "打开主窗口"
+
 msgid "Open Panel"
 msgstr "打开面板"
 
@@ -1884,9 +1875,6 @@ msgstr "打开选择器"
 
 msgid "Open Settings"
 msgstr "打开设置"
-
-msgid "Open Snipdeck"
-msgstr "打开 Snipdeck"
 
 msgid "Open a docked panel by"
 msgstr "展开已停靠面板的方式"
@@ -2017,6 +2005,9 @@ msgstr "粘贴为…"
 msgid "Paste key for {}"
 msgstr "{} 的粘贴键"
 
+msgid "Paste next"
+msgstr "粘贴下一个"
+
 msgid "Paste next item"
 msgstr "粘贴下一个项目"
 
@@ -2049,12 +2040,6 @@ msgstr "粘贴第 N 个结果"
 
 msgid "Paste the item as plain text"
 msgstr "将该条目以纯文本粘贴"
-
-msgid "Paste the next item"
-msgstr "粘贴下一个片段"
-
-msgid "Paste the next item of a stack"
-msgstr "粘贴堆栈中的下一项"
 
 msgid "Paste the result"
 msgstr "粘贴结果"
@@ -2182,8 +2167,8 @@ msgstr "在任何应用中按面板快捷键，即可调出你的片段。"
 msgid "Preview"
 msgstr "预览"
 
-msgid "Preview how this item will look (Ctrl+P)"
-msgstr "预览此项目的外观 (Ctrl+P)"
+msgid "Preview how this item will look (Alt+P)"
+msgstr "预览此项目的外观 (Alt+P)"
 
 msgid "Previous list"
 msgstr "上一个列表"
@@ -2218,9 +2203,6 @@ msgstr "快速捕获"
 msgid "Quick capture saves what you copied as a new snippet."
 msgstr "快速捕获会把你复制的内容保存为新片段。"
 
-msgid "Quick capture the clipboard"
-msgstr "快速捕获剪贴板"
-
 msgid "Quick-use numbers"
 msgstr "快速使用编号"
 
@@ -2244,9 +2226,6 @@ msgstr "从最新备份重建？"
 
 msgid "Recent"
 msgstr "最近"
-
-msgid "Recent copies"
-msgstr "最近复制"
 
 msgid "Recent copies are locked"
 msgstr "最近复制的内容已锁定"
@@ -2412,9 +2391,6 @@ msgstr "另存为 SVG…"
 msgid "Save from clipboard"
 msgstr "从剪贴板保存"
 
-msgid "Save the clipboard as an item"
-msgstr "将剪贴板保存为片段"
-
 msgid "Save to"
 msgstr "保存到"
 
@@ -2544,23 +2520,17 @@ msgstr "全选"
 msgid "Select all items"
 msgstr "选择所有项目"
 
-msgid "Select and delete"
-msgstr "选择和删除"
-
 msgid "Select every item"
 msgstr "选择所有片段"
 
-msgid "Select or delete…"
-msgstr "选择或删除…"
+msgid "Select items"
+msgstr "选择项目"
 
 msgid "Select or unselect the row"
 msgstr "选中或取消选中该行"
 
 msgid "Select several items"
 msgstr "选择多个项目"
-
-msgid "Select snippets"
-msgstr "选择片段"
 
 msgid "Sensitive"
 msgstr "敏感"
@@ -2777,9 +2747,6 @@ msgstr "排序方式:{}"
 
 msgid "Sort items by"
 msgstr "排序方式"
-
-msgid "Sort: {}"
-msgstr "排序:{}"
 
 msgid "Source code"
 msgstr "源代码"
@@ -3134,9 +3101,6 @@ msgstr "要删除全部内容，请使用“备份与你的数据”下的“删
 
 msgid "Today's date"
 msgstr "今天的日期"
-
-msgid "Toggle keep Panel open"
-msgstr "切换保持面板打开"
 
 msgid "Tools"
 msgstr "工具"

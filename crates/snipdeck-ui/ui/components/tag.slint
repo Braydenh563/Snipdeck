@@ -104,7 +104,8 @@ export component Tag inherits Rectangle {
 
     touch := TouchArea {
         enabled: root.enabled;
-        width: root.removable ? parent.width - Space.hit-min : parent.width;
+        // The same scaled width as the remove cell above, or the two overlap at large text sizes.
+        width: root.removable ? parent.width - Space.hit-min * SystemLook.text-scale : parent.width;
         clicked => { root.clicked(); }
     }
 

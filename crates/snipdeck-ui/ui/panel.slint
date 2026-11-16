@@ -166,7 +166,7 @@ component GrabStrip inherits Rectangle {
         y: (parent.height - self.height) / 2 + 2px;
         width: root.active || touch.has-hover ? 48px : 36px;
         height: 4px;
-        border-radius: 2px;
+        border-radius: Radius.xs;
         background: root.active || touch.pressed ? Theme.accent : touch.has-hover ? Theme.text-primary : Theme.text-tertiary;
         animate width { duration: Motion.quick; }
     }
@@ -1793,10 +1793,9 @@ export component PanelWindow inherits Window {
                             size: IconButtonSize.sm;
                             side-override: Space.s8 * root.chrome-k;
                             glyph-scale: root.glyph-k;
-                            tooltip: @tr("Keep panel on top");
+                            tooltip: @tr("Keep Panel open");
                             active: root.on-top;
-                            accessible-checkable: true;
-                            accessible-checked: root.on-top;
+                            toggle: true;
                             y: (parent.height - self.height) / 2;
                             clicked => {
                                 root.on-top = !root.on-top;
@@ -1811,6 +1810,8 @@ export component PanelWindow inherits Window {
                             side-override: Space.s8 * root.chrome-k;
                             glyph-scale: root.glyph-k;
                             tooltip: @tr("More");
+                            has-menu: true;
+                            menu-open: root.app-menu-open;
                             y: (parent.height - self.height) / 2;
                             clicked => { root.app-menu-requested(); }
                             changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover || self.has-focus); }
@@ -1836,7 +1837,7 @@ export component PanelWindow inherits Window {
                 if root.strip-shown: Rectangle {
                     height: root.strip-h;
                     accessible-role: AccessibleRole.groupbox;
-                    accessible-label: @tr("Select and delete");
+                    accessible-label: @tr("Select items");
                     HorizontalLayout {
                         padding-left: Space.s2;
                         padding-right: Space.s2;
@@ -1848,14 +1849,14 @@ export component PanelWindow inherits Window {
                             size: ButtonSize.sm;
                             variant: root.select-mode ? ButtonVariant.primary : ButtonVariant.secondary;
                             text: @tr("Select");
-                            a11y-label: @tr("Select snippets");
+                            a11y-label: @tr("Select items");
                             clicked => { root.select-mode-changed(true); }
                         }
                         Button {
                             size: ButtonSize.sm;
                             variant: root.delete-mode ? ButtonVariant.primary : ButtonVariant.secondary;
-                            text: @tr("Delete");
-                            a11y-label: @tr("Delete snippets");
+                            text: @tr("Move to Trash");
+                            a11y-label: @tr("Move to Trash");
                             clicked => { root.delete-mode-changed(true); }
                         }
                         if root.delete-mode: Button {
@@ -2333,14 +2334,14 @@ export component PanelWindow inherits Window {
                                                 border-radius: Radius.lg;
                                                 background: Theme.bg-sunken;
                                                 accessible-role: AccessibleRole.groupbox;
-                                                accessible-label: @tr("Deleted “{}”", item.title);
+                                                accessible-label: @tr("Moved “{}” to the Trash", item.title);
                                                 HorizontalLayout {
                                                     padding-left: Space.s3;
                                                     padding-right: Space.s2;
                                                     spacing: Space.s2;
                                                     Text {
                                                         horizontal-stretch: 1;
-                                                        text: @tr("Deleted “{}”", item.title);
+                                                        text: @tr("Moved “{}” to the Trash", item.title);
                                                         font-family: Fonts.sans;
                                                         font-size: Type.sm;
                                                         color: Theme.text-secondary;
@@ -2453,7 +2454,7 @@ export component PanelWindow inherits Window {
                             height: parent.height;
                             vertical-scrollbar-policy: ScrollBarPolicy.always-off;
                             horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
-                            accessible-label: @tr("Recent copies");
+                            accessible-label: @tr("Recent");
                             visible: root.recent-rows.length > 0;
 
                             for entry[i] in root.recent-rows: Rectangle {
@@ -2656,7 +2657,7 @@ export component PanelWindow inherits Window {
                         }
                         IconButton {
                             icon: Icons.folder;
-                            tooltip: @tr("Move to…");
+                            tooltip: @tr("Move to list…");
                             own-tooltip: true;
                             y: (parent.height - self.height) / 2;
                             clicked => { root.bulk-move-requested(); }
@@ -2677,7 +2678,7 @@ export component PanelWindow inherits Window {
                         }
                         IconButton {
                             icon: Icons.trash;
-                            tooltip: @tr("Delete");
+                            tooltip: @tr("Move to Trash");
                             own-tooltip: true;
                             y: (parent.height - self.height) / 2;
                             clicked => { root.bulk-delete-requested(); }
@@ -2870,12 +2871,12 @@ export component PanelWindow inherits Window {
                             background: open-touch.pressed ? Theme.bg-sunken : open-touch.has-hover ? Theme.bg-hover : transparent;
                             forward-focus: open-scope;
                             accessible-role: button;
-                            accessible-label: @tr("Open Snipdeck");
+                            accessible-label: @tr("Open Main window");
                             accessible-action-default => { root.open-requested(); }
                             animate background { duration: Motion.instant; easing: Motion.out; }
                             changed tip-on => {
                                 if (root.narrow) {
-                                    root.tip-set(@tr("Open Snipdeck"), self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.tip-on);
+                                    root.tip-set(@tr("Open Main window"), self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.tip-on);
                                 }
                             }
                             open-row := HorizontalLayout {
@@ -2890,7 +2891,7 @@ export component PanelWindow inherits Window {
                                     y: (parent.height - self.height) / 2;
                                 }
                                 if !root.narrow: Text {
-                                    text: @tr("Open Snipdeck");
+                                    text: @tr("Open Main window");
                                     font-family: Fonts.sans;
                                     font-size: Type.sm;
                                     color: Theme.text-primary;

@@ -1180,8 +1180,8 @@ ui_tests! {
         let names = [
             "Show or hide the panel",
             "Open the picker",
-            "Save the clipboard as an item",
-            "Paste the next item",
+            "Quick capture",
+            "Paste next",
         ];
         for name in names {
             let _ = find(&ui, name, AccessibleRole::Button);
@@ -1214,7 +1214,7 @@ ui_tests! {
         // Set shortcuts (three of four in the fixture) show "Test"; the empty one shows no health line.
         find(&ui, "Test Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["hk-test:1"]);
-        assert!(missing(&ui, "Test Paste the next item", AccessibleRole::Button));
+        assert!(missing(&ui, "Test Paste next", AccessibleRole::Button));
 
         // Waiting for the press: the button becomes Cancel and the line says so.
         let mut hotkeys = fixture::hotkeys();
@@ -1227,8 +1227,8 @@ ui_tests! {
         settle();
         find(&ui, "Cancel the test of Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["hk-test:1"]);
-        assert!(missing(&ui, "Test Save the clipboard as an item", AccessibleRole::Button));
-        find(&ui, "Use Ctrl+Shift+H for Save the clipboard as an item", AccessibleRole::Button).invoke_accessible_default_action();
+        assert!(missing(&ui, "Test Quick capture", AccessibleRole::Button));
+        find(&ui, "Use Ctrl+Shift+H for Quick capture", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["hk:2:Ctrl+Shift+H"]);
     }
 

@@ -17,7 +17,7 @@ This guide says what the app is built to do.
 - The **Panel** is the small window on your board. It can dock to a screen edge (see [Settings](#settings)).
   The **Picker** searches every board at your caret. The **Main window** is where you organise everything.
 - The **tray icon** keeps Snipdeck running. A left click shows or hides the Panel. A double-click opens the
-  Main window. The right-click menu has Open Panel, Open Snipdeck, Pause hotkeys and Quit.
+  Main window. The right-click menu has Open Panel, Open Main window, Pause hotkeys and Quit.
 - The **target** is the app you were typing in. When you click an item, Snipdeck pastes into the target. A
   click on an item never takes the focus away from it. When you open the Panel with its hotkey, the tray icon or
   by starting Snipdeck again, it takes the keyboard so you can type to search, and gives it back to the target
@@ -26,7 +26,7 @@ This guide says what the app is built to do.
 ## Add a snippet
 
 Press `Ctrl+N` in the Panel, or in the Main window with no list open, or use the **New item** button. With a list open in the Main window, `Ctrl+N` jumps to the quick-add box above its items: type or paste, then press `Enter` to save it at the end of that list (`More options` opens the full editor). You can also choose **New
-snippet** in the Panel menu (the three dots). Pick a **Kind**, fill in the fields and press `Ctrl+Enter` or **Save**. The item
+snippet** in the Panel menu (the three dots). Pick a **Kind**, fill in the fields and press `Ctrl+Enter`, `Ctrl+S` or **Save**. The item
 goes into the list you were looking at.
 
 | Kind | What to enter |
@@ -40,7 +40,7 @@ goes into the list you were looking at.
 
 The editor shows a banner if it restored changes you had not saved. Text over 16 KB opens read-only.
 
-**Preview.** Press **Preview** (or `Ctrl+P`) to see the item as the Panel and the Main list will draw it, with the colour, the
+**Preview.** Press **Preview** (or `Alt+P`) to see the item as the Panel and the Main list will draw it, with the colour, the
 kind and your layout. A template also shows its result with sample values (dates are today's; a field you fill in when you use
 the item shows its name or default), and a link shows the address it opens. A sensitive item shows neither its text nor its
 address. Nothing is saved and nothing you typed is lost; press **Preview** again to go back to editing. If Save is refused, you
@@ -583,8 +583,9 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Any program (Typing on) | the item's trigger | Replace the trigger with the item |
 | Any program (Suggest on) | `Tab` while the hint shows | Insert the suggested item |
 | Unlock window | **Unlock with Windows Hello** | Unlock with face, fingerprint or PIN |
-| Item editor | `Ctrl+Enter` | Save |
-| Item editor | `Ctrl+P` | Preview on or off |
+| Item editor | `Ctrl+Enter`, `Ctrl+S` | Save |
+| Item editor | `Alt+P` | Preview on or off |
+| Item editor | `Esc`, `Ctrl+W` | Close |
 | Fill form | `Ctrl+Enter`, `Esc` | Insert, cancel |
 
 ## Colours

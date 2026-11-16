@@ -276,7 +276,7 @@ msgstr "Am Textcursor"
 msgid "Back"
 msgstr "Zurück"
 
-msgid "Back to editing (Ctrl+P)"
+msgid "Back to editing (Alt+P)"
 msgstr "Zurück zum Bearbeiten (Strg+P)"
 
 msgid "Back up now"
@@ -831,9 +831,6 @@ msgstr "Datum und Uhrzeit in einem Format deiner Wahl"
 msgid "Dates are today's; a field you fill in when you use the item shows its name or default."
 msgstr "Datumsangaben sind von heute; ein Feld, das du beim Verwenden ausfüllst, zeigt seinen Namen oder Standardwert."
 
-msgid "Delete"
-msgstr "Löschen"
-
 msgid "Delete a group and its items"
 msgstr "Gruppe mit ihren Textbausteinen löschen"
 
@@ -866,9 +863,6 @@ msgstr "Liste „{}“ löschen?"
 
 msgid "Delete list…"
 msgstr "Liste löschen…"
-
-msgid "Delete snippets"
-msgstr "Snippets löschen"
 
 msgid "Delete tag"
 msgstr "Schlagwort löschen"
@@ -905,9 +899,6 @@ msgstr "Gelöschte Textbausteine bleiben {} Tage hier, bevor sie entfernt werden
 
 msgid "Deleted list “{}”"
 msgstr "Liste „{}“ gelöscht"
-
-msgid "Deleted “{}”"
-msgstr "Gelöscht: „{}“"
 
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
 msgstr "Löscht alle Boards, Listen, Textbausteine und Sicherungen auf diesem PC. Das lässt sich nicht rückgängig machen."
@@ -1383,6 +1374,9 @@ msgstr "Gerade eben"
 msgid "Kaomoji"
 msgstr "Kaomoji"
 
+msgid "Keep Panel open"
+msgstr "Panel offen halten"
+
 msgid "Keep Panel visible during screenshots"
 msgstr "Panel bei Screenshots sichtbar lassen"
 
@@ -1403,9 +1397,6 @@ msgstr "Weniger Sicherungen behalten"
 
 msgid "Keep more backups"
 msgstr "Mehr Sicherungen behalten"
-
-msgid "Keep panel on top"
-msgstr "Panel immer im Vordergrund halten"
 
 msgid "Keep running in the tray when the window closes"
 msgstr "Beim Schließen des Fensters im Infobereich weiterlaufen"
@@ -1581,9 +1572,6 @@ msgstr "Weitere angeheftete Textbausteine"
 msgid "Most used"
 msgstr "Am häufigsten verwendet"
 
-msgid "Move"
-msgstr "Verschieben"
-
 msgid "Move a page at a time"
 msgstr "Seitenweise bewegen"
 
@@ -1629,9 +1617,6 @@ msgstr "In Liste verschieben"
 msgid "Move to list…"
 msgstr "In Liste verschieben…"
 
-msgid "Move to…"
-msgstr "Verschieben nach…"
-
 msgid "Move up"
 msgstr "Nach oben"
 
@@ -1647,6 +1632,9 @@ msgid "Moved {} item to {}"
 msgid_plural "Moved {} items to {}"
 msgstr[0] "{} Textbaustein nach {} verschoben"
 msgstr[1] "{} Textbausteine nach {} verschoben"
+
+msgid "Moved “{}” to the Trash"
+msgstr "Verschoben in den Papierkorb: „{}“"
 
 msgid "Name"
 msgstr "Name"
@@ -1882,6 +1870,9 @@ msgstr "Nur mit „Mit Windows starten“: im Tray warten oder zusätzlich das P
 msgid "Open"
 msgstr "Öffnen"
 
+msgid "Open Main window"
+msgstr "Hauptfenster öffnen"
+
 msgid "Open Panel"
 msgstr "Panel öffnen"
 
@@ -1890,9 +1881,6 @@ msgstr "Auswahl öffnen"
 
 msgid "Open Settings"
 msgstr "Einstellungen öffnen"
-
-msgid "Open Snipdeck"
-msgstr "Snipdeck öffnen"
 
 msgid "Open a docked panel by"
 msgstr "Angedocktes Panel öffnen durch"
@@ -2023,6 +2011,9 @@ msgstr "Einfügen als…"
 msgid "Paste key for {}"
 msgstr "Einfügetaste für {}"
 
+msgid "Paste next"
+msgstr "Nächsten einfügen"
+
 msgid "Paste next item"
 msgstr "Nächsten Eintrag einfügen"
 
@@ -2055,12 +2046,6 @@ msgstr "Das n-te Ergebnis einfügen"
 
 msgid "Paste the item as plain text"
 msgstr "Eintrag als reinen Text einfügen"
-
-msgid "Paste the next item"
-msgstr "Nächsten Textbaustein einfügen"
-
-msgid "Paste the next item of a stack"
-msgstr "Den nächsten Textbaustein eines Stapels einfügen"
 
 msgid "Paste the result"
 msgstr "Ergebnis einfügen"
@@ -2188,7 +2173,7 @@ msgstr "Drücke dein Panel-Tastenkürzel in einer beliebigen App, um deine Textb
 msgid "Preview"
 msgstr "Vorschau"
 
-msgid "Preview how this item will look (Ctrl+P)"
+msgid "Preview how this item will look (Alt+P)"
 msgstr "Vorschau, wie dieser Textbaustein aussehen wird (Strg+P)"
 
 msgid "Previous list"
@@ -2224,9 +2209,6 @@ msgstr "Schnellerfassung"
 msgid "Quick capture saves what you copied as a new snippet."
 msgstr "Die Schnellerfassung speichert Kopiertes als neuen Textbaustein."
 
-msgid "Quick capture the clipboard"
-msgstr "Zwischenablage schnell erfassen"
-
 msgid "Quick-use numbers"
 msgstr "Schnellwahl-Nummern"
 
@@ -2250,9 +2232,6 @@ msgstr "Aus der neuesten Sicherung neu aufbauen?"
 
 msgid "Recent"
 msgstr "Zuletzt verwendet"
-
-msgid "Recent copies"
-msgstr "Zuletzt kopiert"
 
 msgid "Recent copies are locked"
 msgstr "Zuletzt kopierte Einträge sind gesperrt"
@@ -2420,9 +2399,6 @@ msgstr "Als SVG speichern …"
 msgid "Save from clipboard"
 msgstr "Aus der Zwischenablage speichern"
 
-msgid "Save the clipboard as an item"
-msgstr "Zwischenablage als Textbaustein speichern"
-
 msgid "Save to"
 msgstr "Speichern in"
 
@@ -2552,23 +2528,17 @@ msgstr "Alles auswählen"
 msgid "Select all items"
 msgstr "Alle Einträge auswählen"
 
-msgid "Select and delete"
-msgstr "Auswählen und löschen"
-
 msgid "Select every item"
 msgstr "Alle Textbausteine auswählen"
 
-msgid "Select or delete…"
-msgstr "Auswählen oder löschen…"
+msgid "Select items"
+msgstr "Elemente auswählen"
 
 msgid "Select or unselect the row"
 msgstr "Zeile auswählen oder abwählen"
 
 msgid "Select several items"
 msgstr "Mehrere Einträge auswählen"
-
-msgid "Select snippets"
-msgstr "Snippets auswählen"
 
 msgid "Sensitive"
 msgstr "Vertraulich"
@@ -2785,9 +2755,6 @@ msgstr "Sortieren nach: {}"
 
 msgid "Sort items by"
 msgstr "Textbausteine sortieren nach"
-
-msgid "Sort: {}"
-msgstr "Sortierung: {}"
 
 msgid "Source code"
 msgstr "Quellcode"
@@ -3142,9 +3109,6 @@ msgstr "Zum Entfernen von allem nutze Bibliothek löschen unter Sicherungen und 
 
 msgid "Today's date"
 msgstr "Heutiges Datum"
-
-msgid "Toggle keep Panel open"
-msgstr "Panel offen halten umschalten"
 
 msgid "Tools"
 msgstr "Werkzeuge"

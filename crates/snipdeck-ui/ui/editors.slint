@@ -1002,12 +1002,17 @@ export component ItemEditor inherits Window {
             if (event.text == Key.Escape && TipHost.dismiss()) {
                 return accept;
             }
-            if (event.text == "\n" && event.modifiers.control && !root.discard-open) {
+            if ((event.text == "\n" || event.text == "s" || event.text == "S" || event.text == "\u{13}") && event.modifiers.control && !event.modifiers.alt && !root.discard-open) {
                 root.try-save();
                 return accept;
             }
-            if ((event.text == "p" || event.text == "P" || event.text == "\u{10}") && event.modifiers.control && !event.modifiers.alt && !event.modifiers.shift && !root.discard-open) {
+            // Preview is Alt+P: Ctrl+P pins an item in the Main window and the Panel (one chord, one meaning).
+            if ((event.text == "p" || event.text == "P") && event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift && !root.discard-open) {
                 root.toggle-preview();
+                return accept;
+            }
+            if ((event.text == "w" || event.text == "W" || event.text == "\u{17}") && event.modifiers.control && !event.modifiers.alt && !root.discard-open) {
+                root.request-cancel();
                 return accept;
             }
             if ((event.text == "v" || event.text == "V" || event.text == "\u{16}") && event.modifiers.control && !event.modifiers.alt && root.paste-requested()) {
@@ -1047,7 +1052,7 @@ export component ItemEditor inherits Window {
                         checkable: true;
                         checked: root.preview-on;
                         size: ButtonSize.sm;
-                        tooltip: root.preview-on ? @tr("Back to editing (Ctrl+P)") : @tr("Preview how this item will look (Ctrl+P)");
+                        tooltip: root.preview-on ? @tr("Back to editing (Alt+P)") : @tr("Preview how this item will look (Alt+P)");
                         a11y-label: @tr("Preview");
                         clicked => { root.toggle-preview(); }
                     }
@@ -1801,8 +1806,12 @@ component EntityEditorBody inherits Rectangle {
             if (event.text == Key.Escape && TipHost.dismiss()) {
                 return accept;
             }
-            if (event.text == "\n" && event.modifiers.control && !root.discard-open && !root.delete-open) {
+            if ((event.text == "\n" || event.text == "s" || event.text == "S" || event.text == "\u{13}") && event.modifiers.control && !event.modifiers.alt && !root.discard-open && !root.delete-open) {
                 root.try-save();
+                return accept;
+            }
+            if ((event.text == "w" || event.text == "W" || event.text == "\u{17}") && event.modifiers.control && !event.modifiers.alt && !root.discard-open && !root.delete-open) {
+                root.request-cancel();
                 return accept;
             }
             return reject;
@@ -2101,6 +2110,8 @@ export component TagManager inherits Window {
 
     callback rename-requested(index: int, name: string);
     callback delete-confirmed(index: int);
+    // F1: the user guide.
+    callback help-requested();
     callback close-requested();
 
     public function finish-rename() { root.editing = -1; }
@@ -2129,6 +2140,14 @@ export component TagManager inherits Window {
             return reject;
         }
         key-pressed(event) => {
+            if (event.text == Key.F1) {
+                root.help-requested();
+                return accept;
+            }
+            if ((event.text == "w" || event.text == "W" || event.text == "\u{17}") && event.modifiers.control && !event.modifiers.alt && root.delete-index < 0 && root.editing < 0) {
+                root.close-requested();
+                return accept;
+            }
             if (event.text == Key.Escape && root.delete-index < 0) {
                 if (root.editing >= 0) {
                     root.editing = -1;

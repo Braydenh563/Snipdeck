@@ -1045,7 +1045,7 @@ fn select_or_delete_row() -> usize {
     APP_MENU
         .iter()
         .position(|e| *e == AppMenuEntry::SelectOrDelete)
-        .expect("a Select or delete row in the Panel menu")
+        .expect("a Select items row in the Panel menu")
 }
 
 #[test]

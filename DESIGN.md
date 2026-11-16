@@ -323,7 +323,47 @@ Chosen by the majority of the existing uses (Main window, command palette, user 
 | `Ctrl+Shift+N` | New list. The full editor is the quick-add box's **More options** button or `Ctrl+Shift+Enter` |
 | `Ctrl+E`, `F2` | Edit the selected item (`F2` on a group header renames the group) |
 
+| `Ctrl+P` | Pin or unpin the selected item (Main window and Panel). Nothing else uses it |
+| `Alt+P` | Preview on or off in the item editor |
+| `Ctrl+Enter`, `Ctrl+S` | Save, in every editor that has a Save button |
+| `Ctrl+W` | Close the window you are in (Main, Panel, Settings, Help, editors, Tag manager). `Esc` also closes the transient ones; it never closes Main |
+| `Ctrl+F` | Focus the search box of the window; in Help it opens the Shortcuts tab and its search |
+| `F1` | The user guide, from every window that has a keyboard focus to give |
+
+Decided 2026-11-16 (UX audit UX-1..4). `Ctrl+P` kept for pin because two windows and the user guide already use it; the editor's Preview moved to `Alt+P`. A test (`help_window.rs`, "a_ctrl_or_alt_chord_has_the_same_title…") fails when the shortcuts list gives one `Ctrl` or `Alt` chord two meanings. `F1` is not wired in the Onboarding and unlock windows: they hold a single question, and Help is one click away in the tray.
+
 The Panel's keep-on-top pin has no chord: use the header button or the palette.
+
+### Names (one name per concept)
+
+Decided 2026-11-16 (UX-7..18). Every surface (menus, bars, toasts, tips, tour, Help, user guide, catalogue, all six `.po` files) uses these words, and no surface invents its own verb:
+
+| Concept | Name | Not |
+|---|---|---|
+| Soft delete of an item | **Move to Trash** (toast "Moved to the Trash"; "Moved N items to the Trash") | Delete (for items), "Deleted" |
+| Move an item to another list | **Move to list…** | Move to…, Move |
+| Edit tags of an item | **Tags…** | Tag |
+| Bulk mode | **Select items** | Select or delete…, Select snippets |
+| Sort | **Sort by** | Sort: {}, Sort by: {} |
+| The big window | **Main window** (the title bar says "Snipdeck") | Main, Open Snipdeck, "the window" |
+| Keep the Panel open while you work elsewhere | **Keep Panel open** (on = stays; one polarity everywhere) | Keep panel on top, Panel stays open, Hide when it loses focus |
+| Save the clipboard as an item | **Quick capture** | Save the clipboard as an item |
+| Paste the next item of a stack | **Paste next** | Paste stack, Paste the next item |
+| Typed expansion | **Trigger** (Settings search also finds "abbreviation", "short code", "expand") | code, short code |
+| Recent copies | **Recent** | Recent copies, Recent inbox, clipboard history, recent history |
+| The user's content | **library**; the place on disk is the **data folder** | database, deck |
+
+Ellipsis rule: an entry that needs a further answer from the user before it acts ends in "…" ("Settings…", "Move to list…", "Troubleshoot…"). An entry that only opens a window or does the act at once does not ("User guide", "About Snipdeck", "Edit").
+Toast rule: a one-clause toast has no full stop ("Saved", "Library unlocked"); a two-clause one ends each in a full stop.
+
+### Confirm and undo (one rule)
+
+Decided 2026-11-16 (UX-20):
+
+- **Reversible** (the act goes to the Trash, or the old value can be restored): act at once and show **Undo** (`Ctrl+Z`) in a toast. No dialog. This covers items, groups and their items, bulk delete, lists and boards (they go to the Trash with their items).
+- **Irreversible** (the data is gone and no Trash entry holds it): ask first in a dialog that names the thing and the count, with Cancel as the default. This covers Empty Trash, deleting a tag (no Trash entry) and erasing all data.
+- A list, board or group is not asked about because it is empty or large; the size only goes into the toast ("Moved “x” and 200 items to the Trash").
+- One function per kind enforces it (`confirm::Rule` in the app crate); a destructive act that does neither is a bug.
 
 ## 6. Depth
 

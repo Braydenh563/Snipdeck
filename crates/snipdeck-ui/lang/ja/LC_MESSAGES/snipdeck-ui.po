@@ -275,8 +275,8 @@ msgstr "テキストカーソルの位置"
 msgid "Back"
 msgstr "戻る"
 
-msgid "Back to editing (Ctrl+P)"
-msgstr "編集に戻る (Ctrl+P)"
+msgid "Back to editing (Alt+P)"
+msgstr "編集に戻る (Alt+P)"
 
 msgid "Back up now"
 msgstr "今すぐバックアップ"
@@ -830,9 +830,6 @@ msgstr "任意の形式の日付と時刻"
 msgid "Dates are today's; a field you fill in when you use the item shows its name or default."
 msgstr "日付は今日のものです。使用時に入力するフィールドには、名前または既定値が表示されます。"
 
-msgid "Delete"
-msgstr "削除"
-
 msgid "Delete a group and its items"
 msgstr "グループとその項目を削除"
 
@@ -865,9 +862,6 @@ msgstr "リスト「{}」を削除しますか？"
 
 msgid "Delete list…"
 msgstr "リストを削除…"
-
-msgid "Delete snippets"
-msgstr "スニペットを削除"
 
 msgid "Delete tag"
 msgstr "タグを削除"
@@ -904,9 +898,6 @@ msgstr "削除されたスニペットは、完全に削除されるまで{}日�
 
 msgid "Deleted list “{}”"
 msgstr "リスト「{}」を削除しました"
-
-msgid "Deleted “{}”"
-msgstr "削除しました:「{}」"
 
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
 msgstr "このPCにあるすべてのボード、リスト、スニペット、バックアップを削除します。元に戻すことはできません。"
@@ -1379,6 +1370,9 @@ msgstr "たった今"
 msgid "Kaomoji"
 msgstr "顔文字"
 
+msgid "Keep Panel open"
+msgstr "パネルを開いたままにする"
+
 msgid "Keep Panel visible during screenshots"
 msgstr "スクリーンショット中もパネルを表示したままにする"
 
@@ -1399,9 +1393,6 @@ msgstr "バックアップを減らす"
 
 msgid "Keep more backups"
 msgstr "バックアップを増やす"
-
-msgid "Keep panel on top"
-msgstr "パネルを手前に表示"
 
 msgid "Keep running in the tray when the window closes"
 msgstr "ウィンドウを閉じても通知領域で実行を続ける"
@@ -1577,9 +1568,6 @@ msgstr "その他のピン留めスニペット"
 msgid "Most used"
 msgstr "よく使う順"
 
-msgid "Move"
-msgstr "移動"
-
 msgid "Move a page at a time"
 msgstr "1ページずつ移動"
 
@@ -1625,9 +1613,6 @@ msgstr "リストに移動"
 msgid "Move to list…"
 msgstr "リストに移動…"
 
-msgid "Move to…"
-msgstr "移動先…"
-
 msgid "Move up"
 msgstr "上へ移動"
 
@@ -1641,6 +1626,9 @@ msgstr[0] "{} 件のスニペットをゴミ箱へ移動しました"
 msgid "Moved {} item to {}"
 msgid_plural "Moved {} items to {}"
 msgstr[0] "{} 件のスニペットを {} に移動しました"
+
+msgid "Moved “{}” to the Trash"
+msgstr "「{}」をごみ箱に移動しました"
 
 msgid "Name"
 msgstr "名前"
@@ -1876,6 +1864,9 @@ msgstr "「Windows の起動時に開始」の場合のみ: トレイで待機�
 msgid "Open"
 msgstr "開く"
 
+msgid "Open Main window"
+msgstr "メインウィンドウを開く"
+
 msgid "Open Panel"
 msgstr "パネルを開く"
 
@@ -1884,9 +1875,6 @@ msgstr "ピッカーを開く"
 
 msgid "Open Settings"
 msgstr "設定を開く"
-
-msgid "Open Snipdeck"
-msgstr "Snipdeck を開く"
 
 msgid "Open a docked panel by"
 msgstr "固定したパネルを開く操作"
@@ -2017,6 +2005,9 @@ msgstr "形式を指定して貼り付け…"
 msgid "Paste key for {}"
 msgstr "{} の貼り付けキー"
 
+msgid "Paste next"
+msgstr "次を貼り付け"
+
 msgid "Paste next item"
 msgstr "次の項目を貼り付け"
 
@@ -2049,12 +2040,6 @@ msgstr "N番目の結果を貼り付け"
 
 msgid "Paste the item as plain text"
 msgstr "アイテムをプレーンテキストで貼り付けます"
-
-msgid "Paste the next item"
-msgstr "次のスニペットを貼り付け"
-
-msgid "Paste the next item of a stack"
-msgstr "スタックの次のスニペットを貼り付け"
 
 msgid "Paste the result"
 msgstr "結果を貼り付け"
@@ -2182,8 +2167,8 @@ msgstr "どのアプリでもパネルのショートカットを押すと、ス
 msgid "Preview"
 msgstr "プレビュー"
 
-msgid "Preview how this item will look (Ctrl+P)"
-msgstr "このスニペットの表示をプレビュー (Ctrl+P)"
+msgid "Preview how this item will look (Alt+P)"
+msgstr "このスニペットの表示をプレビュー (Alt+P)"
 
 msgid "Previous list"
 msgstr "前のリスト"
@@ -2218,9 +2203,6 @@ msgstr "クイックキャプチャ"
 msgid "Quick capture saves what you copied as a new snippet."
 msgstr "クイックキャプチャは、コピーした内容を新しいスニペットとして保存します。"
 
-msgid "Quick capture the clipboard"
-msgstr "クリップボードをクイックキャプチャ"
-
 msgid "Quick-use numbers"
 msgstr "クイック入力番号"
 
@@ -2244,9 +2226,6 @@ msgstr "最新のバックアップから再構築しますか？"
 
 msgid "Recent"
 msgstr "最近"
-
-msgid "Recent copies"
-msgstr "最近のコピー"
 
 msgid "Recent copies are locked"
 msgstr "最近のコピーはロックされています"
@@ -2412,9 +2391,6 @@ msgstr "SVG として保存…"
 msgid "Save from clipboard"
 msgstr "クリップボードから保存"
 
-msgid "Save the clipboard as an item"
-msgstr "クリップボードをスニペットとして保存"
-
 msgid "Save to"
 msgstr "保存先"
 
@@ -2544,23 +2520,17 @@ msgstr "すべて選択"
 msgid "Select all items"
 msgstr "すべての項目を選択"
 
-msgid "Select and delete"
-msgstr "選択と削除"
-
 msgid "Select every item"
 msgstr "すべてのスニペットを選択"
 
-msgid "Select or delete…"
-msgstr "選択または削除…"
+msgid "Select items"
+msgstr "項目を選択"
 
 msgid "Select or unselect the row"
 msgstr "行の選択を切り替える"
 
 msgid "Select several items"
 msgstr "複数の項目を選択"
-
-msgid "Select snippets"
-msgstr "スニペットを選択"
 
 msgid "Sensitive"
 msgstr "機密"
@@ -2777,9 +2747,6 @@ msgstr "並べ替え: {}"
 
 msgid "Sort items by"
 msgstr "並べ替え"
-
-msgid "Sort: {}"
-msgstr "並べ替え: {}"
 
 msgid "Source code"
 msgstr "ソースコード"
@@ -3134,9 +3101,6 @@ msgstr "すべて削除するには、「バックアップとデータ」の「
 
 msgid "Today's date"
 msgstr "今日の日付"
-
-msgid "Toggle keep Panel open"
-msgstr "パネルを開いたままにする（切り替え）"
 
 msgid "Tools"
 msgstr "ツール"

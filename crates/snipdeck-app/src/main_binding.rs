@@ -319,6 +319,8 @@ where
                 }
             }
         });
+        let help = Rc::clone(self);
+        w.on_help_requested(move || help.act(|ctl| ctl.main_open_help(HelpTopic::Guide)));
         let core = Rc::clone(self);
         w.on_delete_confirmed(move |i| {
             crate::trace!("callback tags delete_confirmed ({i})");

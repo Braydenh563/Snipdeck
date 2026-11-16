@@ -220,9 +220,13 @@ pub const CATALOGUE: [Shortcut; 84] = [
     row(Picker, "Ctrl+E"),
     row(Picker, "Esc"),
     // Editors.
-    row(Editors, "Ctrl+Enter"),
-    row(Editors, "Ctrl+P"),
-    row(Editors, "Esc"),
+    custom(
+        Editors,
+        &["Ctrl", "Enter", ALT, "Ctrl", "S"],
+        "Ctrl+Enter or Ctrl+S",
+    ),
+    row(Editors, "Alt+P"),
+    custom(Editors, &["Esc", ALT, "Ctrl", "W"], "Esc or Ctrl+W"),
     // The unlock window.
     plain(Unlock, "Hello", "Unlock with Windows Hello"),
 ];

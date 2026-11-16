@@ -128,6 +128,9 @@ component ToolbarButton inherits Rectangle {
     forward-focus: scope;
     accessible-role: button;
     accessible-label: root.tooltip;
+    // A button with a caret opens a menu, and `active` is then "the menu is open".
+    accessible-expandable: root.caret;
+    accessible-expanded: root.caret && root.active;
     accessible-action-default => { root.clicked(); }
     animate background { duration: Motion.instant; easing: Motion.out; }
 
@@ -1746,7 +1749,7 @@ export component MainWindow inherits Window {
                             horizontal-stretch: 0;
                             h: root.ctl-h;
                             icon: Icons.rows;
-                            label: @tr("Sort: {}", root.sort-name(root.list-sort));
+                            label: @tr("Sort by: {}", root.sort-name(root.list-sort));
                             tooltip: @tr("Sort by: {}", root.sort-name(root.list-sort));
                             caret: true;
                             active: root.sort-menu-open;
@@ -2390,7 +2393,7 @@ export component MainWindow inherits Window {
                             rlist := ListView {
                                 width: parent.width;
                                 height: parent.height;
-                                accessible-label: @tr("Recent copies");
+                                accessible-label: @tr("Recent");
                                 scrolled => { root.rfollow-cursor = false; }
                                 for entry[i] in root.recent-rows: Rectangle {
                                     property <bool> is-active: i == root.rcur;
@@ -2567,7 +2570,7 @@ export component MainWindow inherits Window {
                         if !root.in-trash: Button {
                             horizontal-stretch: 0;
                             icon: Icons.folder;
-                            text: @tr("Move");
+                            text: @tr("Move to list…");
                             y: (parent.height - self.height) / 2;
                             clicked => { root.act(ItemAction.move, root.cur); }
                         }

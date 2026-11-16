@@ -605,7 +605,7 @@ export component ItemCard inherits Rectangle {
             y: Space.s1;
             width: 2px;
             height: parent.height - 2 * Space.s1;
-            border-radius: 1px;
+            border-radius: Radius.xs;
             background: Theme.accent;
         }
 
@@ -756,7 +756,7 @@ export component ItemCard inherits Rectangle {
             y: root.q-title-y;
             width: max(0px, min(m-mark.preferred-width, root.title-w - m-mark-before.preferred-width));
             height: root.title-h;
-            border-radius: 3px;
+            border-radius: Radius.xs;
             background: Theme.search-mark;
         }
 
@@ -785,7 +785,7 @@ export component ItemCard inherits Rectangle {
             y: root.preview-text-y;
             width: m-prev-match.preferred-width;
             height: Type.line-sm;
-            border-radius: 3px;
+            border-radius: Radius.xs;
             background: Theme.search-mark;
         }
 

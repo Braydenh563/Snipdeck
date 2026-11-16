@@ -126,8 +126,13 @@ export component HelpWindow inherits Window {
 
     scope := FocusScope {
         key-pressed(event) => {
-            if (event.text == Key.Escape) {
+            if (event.text == Key.Escape || ((event.text == "w" || event.text == "W" || event.text == "\u{17}") && event.modifiers.control && !event.modifiers.alt)) {
                 root.close-requested();
+                return accept;
+            }
+            // Ctrl+F: the Shortcuts tab, whose search box takes the focus when it appears.
+            if ((event.text == "f" || event.text == "F" || event.text == "\u{6}") && event.modifiers.control && !event.modifiers.alt) {
+                root.tab = 2;
                 return accept;
             }
             return reject;
@@ -516,6 +521,8 @@ export component HelpWindow inherits Window {
         title: @tr("Rebuild from the newest backup?");
         body: @tr("The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read.", root.rebuild-date, root.rebuild-items, root.rebuild-boards);
         dismissed => { root.rebuild-dismissed(); }
+        // The dialog took the focus when it opened: give it back so Esc and F1 keep working after Cancel.
+        closed => { scope.focus(); }
         Button {
             text: @tr("Cancel");
             clicked => { root.rebuild-dismissed(); }

@@ -30,6 +30,10 @@ pub enum TrayEntry {
     OpenSnipdeck,
     /// Open Help on its Tips tab.
     Tips,
+    /// Open Settings (the way to the hotkey settings when a hotkey does not work).
+    Settings,
+    /// Open Help on its Troubleshoot tab.
+    Help,
     /// Start a screenshot: the snipping overlay opens and the Panel steps aside.
     TakeScreenshot,
     /// Switch the global hotkeys off or on (a check mark shows when they are off).
@@ -43,10 +47,12 @@ pub enum TrayEntry {
 
 impl TrayEntry {
     /// Every entry, in menu order.
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 10] = [
         Self::OpenPanel,
         Self::OpenPicker,
         Self::OpenSnipdeck,
+        Self::Settings,
+        Self::Help,
         Self::Tips,
         Self::TakeScreenshot,
         Self::PauseHotkeys,
@@ -60,8 +66,10 @@ impl TrayEntry {
         match self {
             Self::OpenPanel => "Open Panel",
             Self::OpenPicker => "Open Picker",
-            Self::OpenSnipdeck => "Open Snipdeck",
+            Self::OpenSnipdeck => "Open Main window",
             Self::Tips => "Tips",
+            Self::Settings => "Settings…",
+            Self::Help => "Troubleshoot…",
             Self::TakeScreenshot => "Take screenshot",
             Self::PauseHotkeys => "Pause hotkeys",
             Self::PauseHistory => "Pause history",
@@ -81,6 +89,8 @@ impl TrayEntry {
             Self::TakeScreenshot => 6,
             Self::OpenPicker => 7,
             Self::Tips => 8,
+            Self::Settings => 9,
+            Self::Help => 10,
         }
     }
 
@@ -104,6 +114,10 @@ pub struct TrayLabels {
     pub open_snipdeck: String,
     /// [`TrayEntry::Tips`].
     pub tips: String,
+    /// [`TrayEntry::Settings`].
+    pub settings: String,
+    /// [`TrayEntry::Help`].
+    pub help: String,
     /// [`TrayEntry::TakeScreenshot`].
     pub take_screenshot: String,
     /// [`TrayEntry::PauseHotkeys`].
@@ -124,6 +138,8 @@ impl Default for TrayLabels {
             open_picker: english(TrayEntry::OpenPicker),
             open_snipdeck: english(TrayEntry::OpenSnipdeck),
             tips: english(TrayEntry::Tips),
+            settings: english(TrayEntry::Settings),
+            help: english(TrayEntry::Help),
             take_screenshot: english(TrayEntry::TakeScreenshot),
             pause_hotkeys: english(TrayEntry::PauseHotkeys),
             pause_history: english(TrayEntry::PauseHistory),
@@ -142,6 +158,8 @@ impl TrayLabels {
             TrayEntry::OpenPicker => &self.open_picker,
             TrayEntry::OpenSnipdeck => &self.open_snipdeck,
             TrayEntry::Tips => &self.tips,
+            TrayEntry::Settings => &self.settings,
+            TrayEntry::Help => &self.help,
             TrayEntry::TakeScreenshot => &self.take_screenshot,
             TrayEntry::PauseHotkeys => &self.pause_hotkeys,
             TrayEntry::PauseHistory => &self.pause_history,
@@ -159,10 +177,14 @@ pub enum TrayEvent {
     OpenPanel,
     /// "Open Picker".
     OpenPicker,
-    /// "Open Snipdeck", or a double click on the icon.
+    /// "Open Main window", or a double click on the icon.
     OpenSnipdeck,
     /// "Tips": Help on its Tips tab.
     Tips,
+    /// "Settings…".
+    Settings,
+    /// "Help…": Help on its Troubleshoot tab.
+    Help,
     /// "Take screenshot".
     TakeScreenshot,
     /// "Pause hotkeys" was toggled; `true` = the hotkeys should now be off.
@@ -522,6 +544,8 @@ impl TrayModel {
             TrayEntry::OpenPicker => TrayEvent::OpenPicker,
             TrayEntry::OpenSnipdeck => TrayEvent::OpenSnipdeck,
             TrayEntry::Tips => TrayEvent::Tips,
+            TrayEntry::Settings => TrayEvent::Settings,
+            TrayEntry::Help => TrayEvent::Help,
             TrayEntry::TakeScreenshot => TrayEvent::TakeScreenshot,
             TrayEntry::PauseHotkeys => {
                 self.hotkeys_paused = !self.hotkeys_paused;
@@ -648,7 +672,9 @@ mod tests {
             [
                 "Open Panel",
                 "Open Picker",
-                "Open Snipdeck",
+                "Open Main window",
+                "Settings…",
+                "Troubleshoot…",
                 "Tips",
                 "Take screenshot",
                 "Pause hotkeys",
@@ -759,6 +785,8 @@ mod tests {
             open_picker: "Picker öffnen".into(),
             open_snipdeck: "Snipdeck öffnen".into(),
             tips: "Tipps".into(),
+            settings: "Einstellungen…".into(),
+            help: "Hilfe…".into(),
             take_screenshot: "Bildschirmfoto aufnehmen".into(),
             pause_hotkeys: "Tastenkürzel pausieren".into(),
             pause_history: "Verlauf pausieren".into(),
@@ -781,6 +809,8 @@ mod tests {
                 "Panel öffnen",
                 "Picker öffnen",
                 "Snipdeck öffnen",
+                "Einstellungen…",
+                "Hilfe…",
                 "Tipps",
                 "Bildschirmfoto aufnehmen",
                 "Tastenkürzel pausieren",

@@ -276,8 +276,8 @@ msgstr "Au curseur de texte"
 msgid "Back"
 msgstr "Retour"
 
-msgid "Back to editing (Ctrl+P)"
-msgstr "Retour à la modification (Ctrl+P)"
+msgid "Back to editing (Alt+P)"
+msgstr "Retour à la modification (Alt+P)"
 
 msgid "Back up now"
 msgstr "Sauvegarder maintenant"
@@ -831,9 +831,6 @@ msgstr "Date et heure dans le format de votre choix"
 msgid "Dates are today's; a field you fill in when you use the item shows its name or default."
 msgstr "Les dates sont celles d'aujourd'hui ; un champ à remplir à l'utilisation affiche son nom ou sa valeur par défaut."
 
-msgid "Delete"
-msgstr "Supprimer"
-
 msgid "Delete a group and its items"
 msgstr "Supprimer un groupe et ses éléments"
 
@@ -866,9 +863,6 @@ msgstr "Supprimer la liste « {} » ?"
 
 msgid "Delete list…"
 msgstr "Supprimer la liste…"
-
-msgid "Delete snippets"
-msgstr "Supprimer des extraits"
 
 msgid "Delete tag"
 msgstr "Supprimer l'étiquette"
@@ -905,9 +899,6 @@ msgstr "Les extraits supprimés restent ici {} jours avant d'être retirés."
 
 msgid "Deleted list “{}”"
 msgstr "Liste « {} » supprimée"
-
-msgid "Deleted “{}”"
-msgstr "Supprimé : « {} »"
 
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
 msgstr "Supprime tous les tableaux, listes, extraits et sauvegardes de ce PC. Cette action est irréversible."
@@ -1383,6 +1374,9 @@ msgstr "À l'instant"
 msgid "Kaomoji"
 msgstr "Kaomoji"
 
+msgid "Keep Panel open"
+msgstr "Garder le panneau ouvert"
+
 msgid "Keep Panel visible during screenshots"
 msgstr "Garder le panneau visible pendant les captures"
 
@@ -1403,9 +1397,6 @@ msgstr "Conserver moins de sauvegardes"
 
 msgid "Keep more backups"
 msgstr "Conserver plus de sauvegardes"
-
-msgid "Keep panel on top"
-msgstr "Garder le panneau au premier plan"
 
 msgid "Keep running in the tray when the window closes"
 msgstr "Continuer à s'exécuter dans la zone de notification à la fermeture de la fenêtre"
@@ -1581,9 +1572,6 @@ msgstr "Plus d'extraits épinglés"
 msgid "Most used"
 msgstr "Les plus utilisés"
 
-msgid "Move"
-msgstr "Déplacer"
-
 msgid "Move a page at a time"
 msgstr "Se déplacer d'une page à la fois"
 
@@ -1629,9 +1617,6 @@ msgstr "Déplacer vers la liste"
 msgid "Move to list…"
 msgstr "Déplacer vers la liste…"
 
-msgid "Move to…"
-msgstr "Déplacer vers…"
-
 msgid "Move up"
 msgstr "Monter"
 
@@ -1647,6 +1632,9 @@ msgid "Moved {} item to {}"
 msgid_plural "Moved {} items to {}"
 msgstr[0] "{} extrait déplacé vers {}"
 msgstr[1] "{} extraits déplacés vers {}"
+
+msgid "Moved “{}” to the Trash"
+msgstr "« {} » déplacé dans la corbeille"
 
 msgid "Name"
 msgstr "Nom"
@@ -1882,6 +1870,9 @@ msgstr "Uniquement avec Démarrer avec Windows : attendre dans la zone de notifi
 msgid "Open"
 msgstr "Ouvrir"
 
+msgid "Open Main window"
+msgstr "Ouvrir la fenêtre principale"
+
 msgid "Open Panel"
 msgstr "Ouvrir le panneau"
 
@@ -1890,9 +1881,6 @@ msgstr "Ouvrir le sélecteur"
 
 msgid "Open Settings"
 msgstr "Ouvrir les paramètres"
-
-msgid "Open Snipdeck"
-msgstr "Ouvrir Snipdeck"
 
 msgid "Open a docked panel by"
 msgstr "Ouvrir un panneau ancré par"
@@ -2023,6 +2011,9 @@ msgstr "Coller en tant que…"
 msgid "Paste key for {}"
 msgstr "Touche de collage pour {}"
 
+msgid "Paste next"
+msgstr "Coller le suivant"
+
 msgid "Paste next item"
 msgstr "Coller l’élément suivant"
 
@@ -2055,12 +2046,6 @@ msgstr "Coller le n-ième résultat"
 
 msgid "Paste the item as plain text"
 msgstr "Coller l'élément en texte brut"
-
-msgid "Paste the next item"
-msgstr "Coller l'extrait suivant"
-
-msgid "Paste the next item of a stack"
-msgstr "Coller l'extrait suivant d'une pile"
 
 msgid "Paste the result"
 msgstr "Coller le résultat"
@@ -2188,8 +2173,8 @@ msgstr "Appuyez sur votre raccourci du panneau dans n'importe quelle appli pour 
 msgid "Preview"
 msgstr "Aperçu"
 
-msgid "Preview how this item will look (Ctrl+P)"
-msgstr "Aperçu de cet élément (Ctrl+P)"
+msgid "Preview how this item will look (Alt+P)"
+msgstr "Aperçu de cet élément (Alt+P)"
 
 msgid "Previous list"
 msgstr "Liste précédente"
@@ -2224,9 +2209,6 @@ msgstr "Capture rapide"
 msgid "Quick capture saves what you copied as a new snippet."
 msgstr "La capture rapide enregistre ce que vous avez copié comme nouvel extrait."
 
-msgid "Quick capture the clipboard"
-msgstr "Capturer rapidement le presse-papiers"
-
 msgid "Quick-use numbers"
 msgstr "Numéros d'accès rapide"
 
@@ -2250,9 +2232,6 @@ msgstr "Reconstruire à partir de la sauvegarde la plus récente ?"
 
 msgid "Recent"
 msgstr "Récents"
-
-msgid "Recent copies"
-msgstr "Copies récentes"
 
 msgid "Recent copies are locked"
 msgstr "Les copies récentes sont verrouillées"
@@ -2420,9 +2399,6 @@ msgstr "Enregistrer en SVG…"
 msgid "Save from clipboard"
 msgstr "Enregistrer depuis le presse-papiers"
 
-msgid "Save the clipboard as an item"
-msgstr "Enregistrer le presse-papiers comme extrait"
-
 msgid "Save to"
 msgstr "Enregistrer dans"
 
@@ -2552,23 +2528,17 @@ msgstr "Tout sélectionner"
 msgid "Select all items"
 msgstr "Sélectionner tous les éléments"
 
-msgid "Select and delete"
-msgstr "Sélectionner et supprimer"
-
 msgid "Select every item"
 msgstr "Sélectionner tous les extraits"
 
-msgid "Select or delete…"
-msgstr "Sélectionner ou supprimer…"
+msgid "Select items"
+msgstr "Sélectionner des éléments"
 
 msgid "Select or unselect the row"
 msgstr "Sélectionner ou désélectionner la ligne"
 
 msgid "Select several items"
 msgstr "Sélectionner plusieurs éléments"
-
-msgid "Select snippets"
-msgstr "Sélectionner des extraits"
 
 msgid "Sensitive"
 msgstr "Confidentiel"
@@ -2785,9 +2755,6 @@ msgstr "Trier par : {}"
 
 msgid "Sort items by"
 msgstr "Trier les extraits par"
-
-msgid "Sort: {}"
-msgstr "Tri : {}"
 
 msgid "Source code"
 msgstr "Code source"
@@ -3142,9 +3109,6 @@ msgstr "Pour tout supprimer, utilisez Effacer la bibliothèque sous Sauvegardes 
 
 msgid "Today's date"
 msgstr "Date du jour"
-
-msgid "Toggle keep Panel open"
-msgstr "Basculer Garder le Panneau ouvert"
 
 msgid "Tools"
 msgstr "Outils"

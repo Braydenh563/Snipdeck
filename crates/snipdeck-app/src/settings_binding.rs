@@ -539,8 +539,8 @@ pub(crate) const fn action_name(action: HotkeyAction) -> &'static str {
     match action {
         HotkeyAction::TogglePanel => "Show or hide the panel",
         HotkeyAction::Picker => "Open the picker",
-        HotkeyAction::Capture => "Save the clipboard as an item",
-        HotkeyAction::PasteNext => "Paste the next item",
+        HotkeyAction::Capture => "Quick capture",
+        HotkeyAction::PasteNext => "Paste next",
     }
 }
 
