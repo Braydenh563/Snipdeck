@@ -97,6 +97,9 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 2026-11-12: Colour tool UI and the editor preview toggle are built by cloud worker sessions (branches claude/colour-tool, claude/editor-preview), merged into PR #5 by the coordinator. Reason: this machine fits one snipdeck_ui compile at a time, so local parallel builds OOM; the local colour workflow wf_8676d216-bbf is superseded and not resumed.
 
 ## Inbox
+- 2026-11-16 owner: "please run one fable agent at a time"
+- 2026-11-16 owner: "no visible way to uncollapse or expand the sidebar?? also that tooltip button in the 3rd last pushed commit image is overflowing"
+- 2026-11-16 owner: "are you running targeted gates on only the things you changed or fulln gates each time?? because I feel like a gate on a checklist shouldt take that long"
 - (owner, 2026-11-16) "I want to run one more absolutedeep audit of every feature and function. [Tessellate deep-audit checklist pasted]" + "use fable" + "for all of them" -> deep audit, Fable for every audit agent (owner named it), checklist at .claude/skills/deep-audit/checklist.md
 - (owner, 2026-11-15 late) "On some of the older photos, they showed the smaller search button and small panel toggle show/hide button clashing with no gap but idk if you fixed it" -> fixed by fix/narrow-toolbar ed340920 (test: 4px min gap at 480/640/760 and 640@1.5); push pending gate.
 - 2026-11-15 owner (verbatim): "I might ask for one or two more fable audits just to make sure in the morning. to make sire there are no other issues" -> placed: not started (Fable is opt-in per task); morning summary notes the branch head to audit and that round-2 findings are all closed or recorded.
