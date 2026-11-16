@@ -1017,6 +1017,8 @@ mod tests {
                 last_gc: Some(t0()),
                 last_integrity: Some(t0()),
                 crash_acknowledged: None,
+                last_seen: Some(t0()),
+                purge_not_before: None,
             }
         );
         assert!(
