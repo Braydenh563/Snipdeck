@@ -121,6 +121,52 @@ fn matches_prefix(folded: &str, prefix: &str) -> bool {
         .any(|word| word.starts_with(prefix))
 }
 
+/// Whether text just before a word is a `tag:` or `list:` filter (any case, maybe negated), and
+/// if so which kind it names and how its value is quoted so far.
+fn filter_before(before: &str) -> Option<(Kind, Quote)> {
+    let (before, quote) = match before.strip_suffix('"') {
+        Some(rest) => (rest, Quote::Open),
+        None => (before, Quote::None),
+    };
+    let lower = before.to_lowercase();
+    let kind = if lower.ends_with("tag:") {
+        Kind::Tag
+    } else if lower.ends_with("list:") {
+        Kind::List
+    } else {
+        return None;
+    };
+    let field = lower.len() - if kind == Kind::Tag { 4 } else { 5 };
+    let starts_token = lower[..field]
+        .chars()
+        .next_back()
+        .is_none_or(|c| c.is_whitespace() || c == '-');
+    starts_token.then_some((kind, quote))
+}
+
+/// How a filter's value is quoted before the word being completed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Quote {
+    /// `tag:wor`
+    None,
+    /// `tag:"wor`
+    Open,
+}
+
+/// A name as the value of a `tag:`/`list:` filter: a name with a space or other separator is
+/// quoted (`tag:"Email replies"`), since the query grammar ends an unquoted value at the first
+/// space; a quote already opened before the word is closed unless `after` already closes it.
+fn filter_value(name: &str, quote: Quote, after: &str) -> String {
+    match quote {
+        Quote::Open if after.starts_with('"') => name.to_owned(),
+        Quote::Open => format!("{name}\""),
+        Quote::None if name.chars().any(|c| c.is_whitespace() || c == '"') => {
+            format!("\"{name}\"")
+        }
+        Quote::None => name.to_owned(),
+    }
+}
+
 /// The suggestions for the word at `caret` in `query`: names that start with the part of the
 /// word before the caret (ignoring case; for a name of several words, any of its words), tags first, then lists, then title words, at most
 /// [`MAX`]. None for an empty word, and none that would only repeat the word as typed.
@@ -132,11 +178,16 @@ pub fn suggest(query: &str, caret: usize, index: &Index) -> Vec<Suggestion> {
         return Vec::new();
     }
     let whole = fold(&query[start..end]);
-    let groups = [
+    let filter = filter_before(&query[..start]);
+    let all = [
         (Kind::Tag, &index.tags),
         (Kind::List, &index.lists),
         (Kind::Word, &index.words),
     ];
+    // After `tag:` only tags are offered, after `list:` only lists.
+    let groups = all
+        .into_iter()
+        .filter(|(kind, _)| filter.is_none_or(|(wanted, _)| *kind == wanted));
     let mut found: Vec<Suggestion> = Vec::new();
     for (kind, names) in groups {
         for name in names {
@@ -144,7 +195,10 @@ pub fn suggest(query: &str, caret: usize, index: &Index) -> Vec<Suggestion> {
             let taken = found.iter().any(|s| fold(&s.text) == folded);
             if matches_prefix(&folded, &prefix) && folded != whole && !taken {
                 found.push(Suggestion {
-                    text: name.clone(),
+                    text: filter.map_or_else(
+                        || name.clone(),
+                        |(_, quote)| filter_value(name, quote, &query[end..]),
+                    ),
                     kind,
                     replaces: (start, end),
                 });
@@ -465,6 +519,43 @@ mod tests {
         assert_eq!(found.len(), 0);
         let found = suggest("naïxx", 4, &index);
         assert_eq!(apply("naïxx", &found[0]), ("naïve".to_owned(), 6));
+    }
+
+    #[test]
+    fn a_filter_value_offers_only_its_kind_and_quotes_names_of_several_words() {
+        let index = Index::build(&[], ["Email replies", "work"], ["Work notes", "Wordy"]);
+        let found = suggest("tag:rep", 7, &index);
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].kind, Kind::Tag);
+        assert_eq!(
+            apply("tag:rep", &found[0]),
+            ("tag:\"Email replies\"".to_owned(), 19)
+        );
+        let found = suggest("x -LIST:wor", 11, &index);
+        assert_eq!(
+            found.iter().map(|s| s.text.as_str()).collect::<Vec<_>>(),
+            ["Wordy", "\"Work notes\""],
+            "only lists, in name order; one-word names unquoted"
+        );
+        // A quote the user opened is closed, and not doubled when already closed.
+        let found = suggest("list:\"wor", 9, &index);
+        assert_eq!(apply("list:\"wor", &found[0]).0, "list:\"Work notes\"");
+        let found = suggest("list:\"wor\" x", 9, &index);
+        assert_eq!(
+            apply("list:\"wor\" x", &found[0]).0,
+            "list:\"Work notes\" x"
+        );
+        // `mytag:` is not a filter: every kind is offered, unquoted.
+        let found = suggest("mytag:rep", 9, &index);
+        assert_eq!(found[0].text, "Email replies");
+        // The quoted value parses back to the whole name.
+        let (applied, _) = apply("tag:rep", &suggest("tag:rep", 7, &index)[0]);
+        let query = snipdeck_core::search::Query::parse(&applied);
+        assert!(query.terms.is_empty(), "{query:?}");
+        assert_eq!(
+            query.filters[0].filter,
+            snipdeck_core::search::Filter::Tag("email replies".into())
+        );
     }
 
     #[test]

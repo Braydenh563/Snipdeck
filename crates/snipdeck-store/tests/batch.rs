@@ -149,7 +149,7 @@ fn a_committed_transaction_makes_everything_visible_at_once() {
     assert_eq!(s.lists(board.id).unwrap()[0].id, list.id);
     assert_eq!(s.item(item.id).unwrap().tags.len(), 1);
     assert_eq!(s.formats(item.id).unwrap().iter().count(), 1);
-    assert_eq!(s.search("big", 5).unwrap(), [item.id]);
+    assert_eq!(found(&s, "big"), [item.id]);
     healthy(&s);
 }
 

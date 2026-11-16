@@ -2,16 +2,20 @@
 //! decision 3): the Panel, the Picker, the Main window and the command palette all call this, so
 //! there is one matcher and one test set. Pure text; the hosts copy the pieces into their rows.
 
+use std::cmp::Reverse;
+
+use snipdeck_core::search::{Query, find, locate};
+
 /// How many characters of the preview may precede a mark; more are cut and replaced by an ellipsis so the match stays in view.
 const PREVIEW_LEAD: usize = 12;
 
 /// The marks of one search result.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Marks {
-    /// The first match in the title: the text before it and the match.
+    /// The longest match in the title: the text before it and the match.
     pub title: Option<(String, String)>,
-    /// The first match in the first line of the preview: the text before it (cut), the match and
-    /// the rest of the line. Never set for a sensitive item.
+    /// The first line of the preview with a match: the text before it (cut), the match and the
+    /// rest of the line. Never set for a sensitive item.
     pub preview: Option<(String, String, String)>,
     /// The tag that matched, when neither the title nor the preview shows the match ("tag: x").
     /// Never set for a sensitive item.
@@ -60,8 +64,11 @@ impl Marks {
     }
 }
 
-/// The marks of a result for `query`. A sensitive item gets a title mark only: its preview and
-/// tags are never shown, so they carry nothing.
+/// The marks of a result for `query`, from the same matcher that ranked it
+/// ([`snipdeck_core::search::locate`]): folded, word by word, fuzzy in the title. A sensitive
+/// item gets a title mark only: its preview and tags are never shown, so they carry nothing.
+/// `hit_tag` is the tag the search matched; it is shown when some word of the query is in
+/// neither the title nor the preview.
 #[must_use]
 pub fn marks(
     title: &str,
@@ -70,56 +77,57 @@ pub fn marks(
     hit_tag: Option<&str>,
     query: &str,
 ) -> Marks {
-    let title = title_mark(title, query);
-    let preview = if sensitive {
+    let query = Query::parse(query);
+    let title_mark = mark_in(title, &query, true);
+    let preview_mark = if sensitive {
         None
     } else {
-        preview_mark(preview, query)
+        preview_mark_of(preview, &query)
     };
-    let tag = hit_tag
-        .filter(|_| !sensitive && title.is_none() && preview.is_none())
-        .map(str::to_owned);
+    let unshown = query.wanted().any(|term| {
+        find(title, term, true).is_empty()
+            && (sensitive
+                || preview
+                    .lines()
+                    .all(|line| find(line, term, false).is_empty()))
+    });
+    let tag = hit_tag.filter(|_| !sensitive && unshown).map(str::to_owned);
     Marks {
-        title,
-        preview,
+        title: title_mark,
+        preview: preview_mark,
         tag,
     }
 }
 
-/// The first case-insensitive match of `query` in `title`: the text before it and the match, as typed in the title.
+/// The longest run `query` matches in `text` (the earliest of equal ones): the text before it
+/// and the run, as written in `text`.
+fn mark_in(text: &str, query: &Query, fuzzy: bool) -> Option<(String, String)> {
+    let best = locate(text, query, fuzzy)
+        .into_iter()
+        .min_by_key(|r| (Reverse(r.len()), r.start))?;
+    let before = text.chars().take(best.start).collect();
+    let found = text.chars().skip(best.start).take(best.len()).collect();
+    Some((before, found))
+}
+
+/// The mark in `title` for `query`, as [`marks`] makes it: the text before it and the match.
 /// `None` for an empty query or when only other fields (preview, tags) matched.
 #[must_use]
 pub fn title_mark(title: &str, query: &str) -> Option<(String, String)> {
-    let fold = |c: char| {
-        let mut lower = c.to_lowercase();
-        match (lower.next(), lower.next()) {
-            (Some(one), None) => one,
-            _ => c,
-        }
-    };
-    let wanted: Vec<char> = query.trim().chars().map(fold).collect();
-    if wanted.is_empty() {
-        return None;
-    }
-    let chars: Vec<char> = title.chars().collect();
-    let at = (0..=chars.len().checked_sub(wanted.len())?).find(|&i| {
-        chars[i..i + wanted.len()]
-            .iter()
-            .zip(&wanted)
-            .all(|(c, w)| fold(*c) == *w)
-    })?;
-    Some((
-        chars[..at].iter().collect(),
-        chars[at..at + wanted.len()].iter().collect(),
-    ))
+    mark_in(title, &Query::parse(query), true)
 }
 
-/// The first case-insensitive match of `query` in the first line of `preview`: the text before
-/// it (cut to its last `PREVIEW_LEAD` characters after an ellipsis), the match and the rest of the line.
+/// The mark in the first line of `preview` that `query` matches: the text before it (cut to
+/// its last `PREVIEW_LEAD` characters after an ellipsis), the match and the rest of the line.
 #[must_use]
 pub fn preview_mark(preview: &str, query: &str) -> Option<(String, String, String)> {
-    let line = preview.lines().next()?;
-    let (before, found) = title_mark(line, query)?;
+    preview_mark_of(preview, &Query::parse(query))
+}
+
+fn preview_mark_of(preview: &str, query: &Query) -> Option<(String, String, String)> {
+    let (line, (before, found)) = preview
+        .lines()
+        .find_map(|line| Some((line, mark_in(line, query, false)?)))?;
     let after: String = line
         .chars()
         .skip(before.chars().count() + found.chars().count())
@@ -138,10 +146,13 @@ pub fn preview_mark(preview: &str, query: &str) -> Option<(String, String, Strin
 /// split into words, each of which must match somewhere): the text before it and the match.
 #[must_use]
 pub fn word_mark(label: &str, query: &str) -> Option<(String, String)> {
-    query
-        .split_whitespace()
-        .filter_map(|word| title_mark(label, word))
-        .min_by_key(|(before, _)| before.chars().count())
+    let first = locate(label, &Query::parse(query), false)
+        .into_iter()
+        .next()?;
+    Some((
+        label.chars().take(first.start).collect(),
+        label.chars().skip(first.start).take(first.len()).collect(),
+    ))
 }
 
 #[cfg(test)]
@@ -161,10 +172,10 @@ mod tests {
     }
 
     #[test]
-    fn preview_mark_first_line_only() {
+    fn preview_mark_shows_the_first_line_that_matches() {
         assert_eq!(
             preview_mark("first line\nsecond has Needle", "needle"),
-            None
+            Some(("second has ".into(), "Needle".into(), String::new()))
         );
         assert_eq!(
             preview_mark("a long run of words before the Needle here", "needle"),
@@ -216,6 +227,41 @@ mod tests {
         let tagged = marks("Invoice", "pay", false, Some("billing"), "billing").fields();
         assert_eq!(tagged.tag_hit, "billing");
         assert_eq!(Marks::default().fields(), MarkFields::default());
+    }
+
+    /// LIBRARY-6: a multi-word, accent-folded, full-width or fuzzy hit is marked where the
+    /// matcher found it.
+    #[test]
+    fn every_kind_of_match_is_marked() {
+        assert_eq!(
+            title_mark("Invoice template", "template invoice"),
+            Some(("Invoice ".into(), "template".into())),
+            "each word is found; the longest run is marked"
+        );
+        assert_eq!(
+            title_mark("Café résumé", "RESUME"),
+            Some(("Café ".into(), "résumé".into()))
+        );
+        assert_eq!(
+            title_mark("Café", "ｃａｆｅ"),
+            Some((String::new(), "Café".into()))
+        );
+        assert_eq!(
+            title_mark("Email signature", "emsig"),
+            Some(("Email ".into(), "sig".into())),
+            "a subsequence marks its longest run"
+        );
+        assert_eq!(
+            title_mark("Invoice", "-invoice"),
+            None,
+            "a negated word marks nothing"
+        );
+        let m = marks("Invoice", "pay soon", false, Some("work"), "invoice work");
+        assert_eq!(
+            m.tag.as_deref(),
+            Some("work"),
+            "the title shows one word, the tag explains the other"
+        );
     }
 
     #[test]

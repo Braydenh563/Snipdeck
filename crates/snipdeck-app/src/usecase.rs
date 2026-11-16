@@ -526,8 +526,11 @@ mod tests {
         fn record_use(&mut self, _id: ItemId, _at: Timestamp) -> snipdeck_store::Result<()> {
             Err(snipdeck_store::Error::Corrupt("disk full".to_owned()))
         }
-        fn search(&self, query: &str, limit: usize) -> snipdeck_store::Result<Vec<ItemId>> {
-            self.0.search(query, limit)
+        fn search(
+            &self,
+            query: &snipdeck_core::search::Query,
+        ) -> snipdeck_store::Result<snipdeck_core::search::BodyMatches> {
+            self.0.search(query)
         }
     }
 

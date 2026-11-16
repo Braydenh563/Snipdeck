@@ -1508,3 +1508,101 @@ fn panel_recent_question_light_dark_and_narrowest_at_225_percent() {
     h.component.set_recent_question_open(true);
     assert_golden("panel-recent-question-narrow-scale-light", &render(&h));
 }
+
+/// WCAG relative luminance of an sRGB colour.
+fn luminance([r, g, b]: [u8; 3]) -> f64 {
+    let lin = |c: u8| {
+        let c = f64::from(c) / 255.0;
+        if c <= 0.039_28 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+}
+
+fn contrast(a: [u8; 3], b: [u8; 3]) -> f64 {
+    let (a, b) = (luminance(a), luminance(b));
+    (a.max(b) + 0.05) / (a.min(b) + 0.05)
+}
+
+/// The title mark of the first row, measured in every theme at 100%, 150% and 225% text: it is a
+/// box as tall as the title line, inside its row, and the title's ink on it stays legible.
+#[test]
+fn the_title_mark_fits_and_reads_at_every_text_scale_and_theme() {
+    for theme in ["light", "dark", "high contrast"] {
+        for scale in [1.0_f32, 1.5, 2.25] {
+            let h = panel((480, 900), theme == "dark");
+            let look = h.component.global::<SystemLook<'_>>();
+            look.set_text_scale(scale);
+            if theme == "high contrast" {
+                look.set_hc_window(slint::Color::from_rgb_u8(0, 0, 0));
+                look.set_hc_window_text(slint::Color::from_rgb_u8(0xFF, 0xFF, 0xFF));
+                look.set_hc_highlight(slint::Color::from_rgb_u8(0x1A, 0xEB, 0xFF));
+                look.set_hc_highlight_text(slint::Color::from_rgb_u8(0, 0, 0));
+                look.set_high_contrast(true);
+            }
+            let mut quiet = search_rows();
+            for row in &mut quiet {
+                row.mark_before = "".into();
+                row.mark_text = "".into();
+                row.preview_before = "".into();
+                row.preview_match = "".into();
+            }
+            h.component.set_query("re".into());
+            h.component.set_selected_index(2);
+            fixture::set_rows(&h.component, quiet);
+            let plain = render(&h);
+            fixture::set_rows(&h.component, search_rows());
+            let marked = render(&h);
+            let differs = |x: u32, y: u32| plain.pixel(x, y) != marked.pixel(x, y);
+            // The first band of changed lines from the top is the title mark of row 0.
+            let first = (0..marked.height)
+                .find(|&y| (0..marked.width).any(|x| differs(x, y)))
+                .unwrap_or_else(|| panic!("{theme} {scale}: no mark drawn"));
+            let last = (first..marked.height)
+                .take_while(|&y| (0..marked.width).any(|x| differs(x, y)))
+                .last()
+                .unwrap();
+            let xs: Vec<u32> = (0..marked.width)
+                .filter(|&x| (first..=last).any(|y| differs(x, y)))
+                .collect();
+            let (left, right) = (xs[0], *xs.last().unwrap());
+            let (w, hgt) = (right - left + 1, last - first + 1);
+            // The fill is the colour most pixels of the box share.
+            let mut counts = std::collections::HashMap::new();
+            for y in first..=last {
+                for x in left..=right {
+                    *counts.entry(marked.pixel(x, y)).or_insert(0_u32) += 1;
+                }
+            }
+            let fill = *counts.iter().max_by_key(|(_, n)| **n).unwrap().0;
+            let ink = (first..=last)
+                .flat_map(|y| (left..=right).map(move |x| (x, y)))
+                .map(|(x, y)| contrast(fill, marked.pixel(x, y)))
+                .fold(1.0_f64, f64::max);
+            eprintln!(
+                "mark {theme:>13} @{scale:.2}: box {w}x{hgt} at ({left},{first}), fill {fill:02X?}, best ink contrast {ink:.2}"
+            );
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "small positive lengths"
+            )]
+            let (line, widest) = ((14.0 * scale) as u32, (60.0 * scale) as u32);
+            assert!(
+                hgt >= line,
+                "{theme} {scale}: the box is a title line tall ({hgt} >= {line})"
+            );
+            assert!(
+                w >= 8 && w < widest,
+                "{theme} {scale}: the box covers the two letters only: {w}px"
+            );
+            assert!(
+                ink >= 4.5,
+                "{theme} {scale}: the title's ink on the mark reads at 4.5:1 or better: {ink:.2}"
+            );
+        }
+    }
+}

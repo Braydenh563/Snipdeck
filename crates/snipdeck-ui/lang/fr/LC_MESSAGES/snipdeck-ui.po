@@ -4107,3 +4107,6 @@ msgstr "{} : {} n’a pas été conservé comme déclencheur, car un déclencheu
 
 msgid "{}: {} was not kept as a trigger, because it fires after a separator and a Snipdeck trigger does not wait for one."
 msgstr "{} : {} n’a pas été conservé comme déclencheur, car il se déclenche après un séparateur et un déclencheur Snipdeck n’en attend pas."
+
+msgid "Words match anywhere in a title or body. \"Quotes\" match a phrase, -word excludes, and tag:, list:, kind: or is:pinned filter."
+msgstr "Les mots correspondent n’importe où dans le titre ou le corps. Les \"guillemets\" cherchent une expression, -mot exclut, et tag:, list:, kind: ou is:pinned filtrent."

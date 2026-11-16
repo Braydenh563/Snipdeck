@@ -4080,3 +4080,6 @@ msgstr "{}：{} 未保留为触发词，因为触发词不能含空格，且最�
 
 msgid "{}: {} was not kept as a trigger, because it fires after a separator and a Snipdeck trigger does not wait for one."
 msgstr "{}：{} 未保留为触发词，因为它在分隔符之后触发，而 Snipdeck 的触发词不会等待分隔符。"
+
+msgid "Words match anywhere in a title or body. \"Quotes\" match a phrase, -word excludes, and tag:, list:, kind: or is:pinned filter."
+msgstr "词语可匹配标题或正文中的任意位置。\"引号\" 匹配短语，-词 排除，tag:、list:、kind: 或 is:pinned 用于筛选。"

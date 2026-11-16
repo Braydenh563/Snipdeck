@@ -177,7 +177,9 @@ where
 
     /// The search text changed.
     pub fn set_query(&mut self, query: &str) {
-        self.model.set_query(query);
+        if self.model.set_query(&self.store, query).is_err() {
+            self.show_toast(failed());
+        }
     }
 
     /// The keyboard selection moved by `delta` rows.

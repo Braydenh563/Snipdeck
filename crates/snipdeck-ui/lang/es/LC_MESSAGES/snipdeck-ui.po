@@ -4107,3 +4107,6 @@ msgstr "{}: {} no se conservó como activador porque un activador no lleva espac
 
 msgid "{}: {} was not kept as a trigger, because it fires after a separator and a Snipdeck trigger does not wait for one."
 msgstr "{}: {} no se conservó como activador porque se activa tras un separador y un activador de Snipdeck no espera uno."
+
+msgid "Words match anywhere in a title or body. \"Quotes\" match a phrase, -word excludes, and tag:, list:, kind: or is:pinned filter."
+msgstr "Las palabras coinciden en cualquier parte del título o del cuerpo. Las \"comillas\" buscan una frase, -palabra excluye, y tag:, list:, kind: o is:pinned filtran."

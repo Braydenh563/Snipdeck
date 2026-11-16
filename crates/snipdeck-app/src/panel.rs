@@ -10,6 +10,7 @@ use crate::{
     main_window::SelectMode,
     search_mark,
 };
+use snipdeck_core::search::{BodyMatches, Query};
 use snipdeck_core::{
     Board, BoardId, GroupId, Item, ItemId, ItemKind, ItemLabel, List, ListAccent, ListIcon, ListId,
     ListSort, search::SearchIndex,
@@ -18,7 +19,7 @@ use snipdeck_platform::{
     keys::{PasteRule, builtin_paste_rules},
     route::{Policy, Route, Target, decide_with},
 };
-use snipdeck_store::{BoardRepo, GroupRepo, GroupRun, ItemRepo, ListRepo, TagRepo};
+use snipdeck_store::{BoardRepo, GroupRepo, GroupRun, ItemRepo, ListRepo, TagRepo, TriggerRepo};
 
 /// How many search results the Panel shows.
 const SEARCH_LIMIT: usize = 50;
@@ -156,6 +157,9 @@ pub struct PanelModel {
     index: Rc<SearchIndex>,
     cache: IndexCache,
     query: String,
+    /// The items whose full content holds each word of the query (the store's full-text
+    /// index), read when the query is set and when the library is read again.
+    body: BodyMatches,
     selected: usize,
     /// The multi-selection, as Main's `pick-mode` keeps one: the items marked with Ctrl+click,
     /// Shift+click, Ctrl+A or Shift+Up/Down. Separate from the keyboard cursor `selected`.
@@ -202,7 +206,7 @@ impl PanelModel {
         cache: &IndexCache,
     ) -> snipdeck_store::Result<Self>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TriggerRepo + GroupRepo,
     {
         let snapshot = cache.snapshot(store)?;
         let boards: Vec<Board> = snapshot.boards.iter().map(|(b, _)| b.clone()).collect();
@@ -251,6 +255,7 @@ impl PanelModel {
             index,
             cache: cache.clone(),
             query: String::new(),
+            body: BodyMatches::default(),
             selected: 0,
             ghosts: Vec::new(),
             marked: HashSet::new(),
@@ -269,7 +274,7 @@ impl PanelModel {
     /// Any store error; the model is left as it was.
     pub fn refresh<S>(&mut self, store: &S) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TriggerRepo + GroupRepo,
     {
         self.reload(store, self.board, self.list, true)
     }
@@ -282,7 +287,7 @@ impl PanelModel {
     /// Any store error; the model is left as it was.
     pub fn select_list<S>(&mut self, store: &S, list: ListId) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TriggerRepo + GroupRepo,
     {
         self.reload(store, self.board, Some(list), false)
     }
@@ -294,7 +299,7 @@ impl PanelModel {
     /// Any store error; the model is left as it was.
     pub fn select_board<S>(&mut self, store: &S, board: BoardId) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TriggerRepo + GroupRepo,
     {
         self.reload(store, Some(board), None, false)
     }
@@ -307,13 +312,16 @@ impl PanelModel {
         keep_search: bool,
     ) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TriggerRepo + GroupRepo,
     {
         let mut next = Self::load_cached(store, board, list, &self.cache)?;
         next.target = self.target.take();
         next.policy = std::mem::take(&mut self.policy);
         if keep_search {
             next.query = std::mem::take(&mut self.query);
+            if next.searching() {
+                next.body = store.search(&Query::parse(&next.query))?;
+            }
             next.selected = self.selected;
             // A refresh (an item added, moved, trashed) keeps the marks of items still shown here.
             let here: HashSet<ItemId> = next.items.iter().map(|i| i.id).collect();
@@ -398,11 +406,21 @@ impl PanelModel {
         Rc::clone(&self.all.suggest)
     }
 
-    /// Sets the search text; the selection returns to the first row.
-    pub fn set_query(&mut self, query: &str) {
+    /// Sets the search text and looks its words up in the full content (the store's full-text
+    /// index); the selection returns to the first row.
+    ///
+    /// # Errors
+    ///
+    /// Any store error from the lookup; the text is kept and only the in-memory fields match.
+    pub fn set_query<S: ItemRepo>(&mut self, store: &S, query: &str) -> snipdeck_store::Result<()> {
         query.clone_into(&mut self.query);
         self.selected = 0;
         self.clear_marks();
+        self.body = BodyMatches::default();
+        if self.searching() {
+            self.body = store.search(&Query::parse(&self.query))?;
+        }
+        Ok(())
     }
 
     /// The pinned items of the shown board's lists, as rows.
@@ -425,7 +443,9 @@ impl PanelModel {
             self.place_ghosts(&mut rows);
             return rows;
         }
-        let found = self.index.query(&self.query, SEARCH_LIMIT);
+        let found = self
+            .index
+            .query(&Query::parse(&self.query), &self.body, SEARCH_LIMIT);
         let hits: Vec<(&Item, Option<&str>)> = found
             .iter()
             .filter_map(|hit| {
@@ -1065,7 +1085,7 @@ mod tests {
             "nothing is built before the first load"
         );
         let mut model = PanelModel::load_cached(&f.store, None, None, &cache).expect("model");
-        model.set_query("thank");
+        model.set_query(&f.store, "thank").unwrap();
         let rows = model.rows();
         assert_eq!(rows.first().map(|r| r.id), Some(id));
     }
@@ -1077,7 +1097,7 @@ mod tests {
         let link = add_to(&mut f, Which::Links, "Docs", "https://example.com/thanks");
         let mut model =
             PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
-        model.set_query("docs");
+        model.set_query(&f.store, "docs").unwrap();
         let rows = model.rows();
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].id, link);
@@ -1094,7 +1114,7 @@ mod tests {
             rows[0].list.as_ref().is_some_and(|l| !l.board.is_empty()),
             "a result says which board it lives on"
         );
-        model.set_query("   ");
+        model.set_query(&f.store, "   ").unwrap();
         assert!(!model.searching());
         assert!(
             model
@@ -1128,7 +1148,7 @@ mod tests {
         }
         let mut model =
             PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
-        model.set_query("invoice");
+        model.set_query(&f.store, "invoice").unwrap();
         let rows = model.rows();
         let row = |id| rows.iter().find(|r| r.id == id).expect("row");
         assert_eq!(
@@ -1144,7 +1164,7 @@ mod tests {
             "a sensitive row shows no mark"
         );
         assert_eq!(row(secret).tag_hit, None, "nor the tag that matched");
-        model.set_query("");
+        model.set_query(&f.store, "").unwrap();
         assert!(
             model
                 .rows()
@@ -1166,7 +1186,7 @@ mod tests {
         model.move_selection(-9);
         assert_eq!(model.selected(), Some(a));
         model.move_selection(1);
-        model.set_query("a");
+        model.set_query(&f.store, "a").unwrap();
         assert_eq!(model.selected(), Some(a));
         assert_eq!(model.quick_use(1), Some(a));
         assert_eq!(model.quick_use(0), None);
@@ -1269,7 +1289,7 @@ mod tests {
         let mut model =
             PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
         model.set_target(Some(target("OUTLOOK.EXE", Focus::Caret)));
-        model.set_query("thanks");
+        model.set_query(&f.store, "thanks").unwrap();
         model.select_list(&f.store, f.links).expect("select");
         assert_eq!(model.list().map(|l| l.id), Some(f.links));
         assert!(!model.searching());
@@ -1324,7 +1344,7 @@ mod tests {
             Some(1),
             "the selection stays put"
         );
-        model.set_query("alp");
+        model.set_query(&f.store, "alp").unwrap();
         model.refresh(&f.store).expect("refresh");
         assert!(model.searching(), "the search survives a refresh");
         assert_eq!(model.selected_position(), Some(0));
@@ -1402,7 +1422,7 @@ mod tests {
         model.clear_marks();
         assert_eq!(model.marked_count(), 0);
         model.mark_all();
-        model.set_query("Item 2");
+        model.set_query(&f.store, "Item 2").unwrap();
         assert_eq!(model.marked_count(), 0, "typing a query clears the marks");
     }
 
