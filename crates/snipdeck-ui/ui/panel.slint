@@ -326,6 +326,10 @@ export component PanelWindow inherits Window {
     in property <ToastPhase> toast-phase: ToastPhase.hold;
     in property <string> toast-undo-label;
     in property <string> toast-edit-label;
+    // F6 counts here: each press moves the keyboard to the toast's action (see Toast.focus-request).
+    property <int> toast-focus-ticks: 0;
+    property <bool> toast-keys: false;
+    changed toast-text => { if (root.toast-text == "") { root.toast-keys = false; } }
 
     // The edge dock (SPEC 5.1): while `dock-collapsed` the whole window is a `DockHandle`, whose grip is the colour
     // of the list on show (`dock-list-color`, when it has an accent) and runs along the edge it is on.
@@ -1376,6 +1380,16 @@ export component PanelWindow inherits Window {
                 }
                 if (event.text == Key.F1) {
                     root.help-requested();
+                    return accept;
+                }
+                // F6 and Esc: the toast's actions are reachable from the keyboard, and Esc on one drops the toast.
+                if (event.text == Key.F6 && root.toast-text != "") {
+                    root.toast-focus-ticks += 1;
+                    return accept;
+                }
+                if (event.text == Key.Escape && root.toast-text != "" && root.toast-keys) {
+                    root.focus-typing();
+                    root.toast-dismissed();
                     return accept;
                 }
                 if (root.symbols-open && event.text == Key.Escape) {
@@ -2572,6 +2586,8 @@ export component PanelWindow inherits Window {
                     }
 
                     if root.toast-text != "": Toast {
+                        focus-request: root.toast-focus-ticks;
+                        keyboard-changed(here) => { root.toast-keys = here; }
                         text: root.toast-text;
                         kind: root.toast-kind;
                         phase: root.toast-phase;

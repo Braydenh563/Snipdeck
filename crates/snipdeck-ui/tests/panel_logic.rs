@@ -1867,6 +1867,20 @@ ui_tests! {
         }
     }
 
+    // UX-22: F6 moves the keyboard to the toast's first action, Enter uses it.
+    fn f6_moves_the_keyboard_to_the_toast_action() {
+        let (ui, log) = start();
+        ui.set_toast_text("Deleted".into());
+        ui.set_toast_undo_label("Undo".into());
+        settle();
+        take(&log);
+        press(ui.window(), &key(Key::F6));
+        settle();
+        press(ui.window(), &key(Key::Return));
+        settle();
+        assert!(take(&log).contains(&"undo".to_string()), "Enter after F6 used the toast's Undo");
+    }
+
     fn the_toast_has_a_close_button_that_asks_the_host_to_drop_it() {
         let (ui, log) = start();
         ui.set_toast_text("Copied".into());

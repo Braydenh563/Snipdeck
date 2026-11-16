@@ -335,6 +335,10 @@ export component MainWindow inherits Window {
     in property <ToastPhase> toast-phase: ToastPhase.hold;
     in property <string> toast-undo-label;
     in property <string> toast-edit-label;
+    // F6 counts here: each press moves the keyboard to the toast's action (see Toast.focus-request).
+    property <int> toast-focus-ticks: 0;
+    property <bool> toast-keys: false;
+    changed toast-text => { if (root.toast-text == "") { root.toast-keys = false; } }
 
     // ---- State both ways ----------------------------------------------------------------------
     in-out property <MainSection> section: MainSection.all;
@@ -1173,6 +1177,16 @@ export component MainWindow inherits Window {
             }
             if (event.text == Key.F1) {
                 root.help-requested(HelpPage.guide);
+                return accept;
+            }
+            // F6 and Esc: the toast's actions are reachable from the keyboard, and Esc on one drops the toast.
+            if (event.text == Key.F6 && root.toast-text != "") {
+                root.toast-focus-ticks += 1;
+                return accept;
+            }
+            if (event.text == Key.Escape && root.toast-text != "" && root.toast-keys) {
+                root.focus-items();
+                root.toast-dismissed();
                 return accept;
             }
             if (event.text == "/" && !search.has-focus && !root.quick-typing && !event.modifiers.control && !event.modifiers.alt) {
@@ -2497,6 +2511,8 @@ export component MainWindow inherits Window {
                     }
 
                     if root.toast-text != "": Toast {
+                        focus-request: root.toast-focus-ticks;
+                        keyboard-changed(here) => { root.toast-keys = here; }
                         text: root.toast-text;
                         kind: root.toast-kind;
                         phase: root.toast-phase;

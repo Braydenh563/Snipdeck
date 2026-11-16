@@ -2342,6 +2342,32 @@ ui_tests! {
         assert_eq!(take(&log), ["copy-selection:0"]);
     }
 
+    // UX-22: F6 moves the keyboard to the toast's first action, Enter uses it (the Edit button was mouse-only).
+    fn f6_moves_the_keyboard_to_the_toast_action() {
+        let (ui, log) = start();
+        press_key(&ui, Key::F6);
+        assert_eq!(take(&log), Vec::<String>::new(), "no toast, nothing to focus");
+        ui.set_toast_text("Added to Replies".into());
+        ui.set_toast_edit_label("Edit".into());
+        settle();
+        take(&log);
+        press_key(&ui, Key::F6);
+        press_key(&ui, Key::Return);
+        assert!(take(&log).contains(&"toast-edit".to_string()), "Enter after F6 used the toast's Edit");
+    }
+
+    // UX-22: Esc on a focused toast action dismisses the toast instead of closing the window.
+    fn escape_on_a_focused_toast_action_dismisses_the_toast() {
+        let (ui, log) = start();
+        ui.set_toast_text("Added to Replies".into());
+        ui.set_toast_edit_label("Edit".into());
+        settle();
+        take(&log);
+        press_key(&ui, Key::F6);
+        press_key(&ui, Key::Escape);
+        assert!(take(&log).contains(&"toast-dismissed".to_string()));
+    }
+
     fn the_toast_has_a_close_button() {
         let (ui, log) = start();
         ui.set_toast_text("Copied".into());
