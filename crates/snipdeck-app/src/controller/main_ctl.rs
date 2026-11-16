@@ -275,13 +275,7 @@ where
             rows.iter()
                 .position(|r| r.header.as_ref().is_some_and(|h| h.group == g))
         });
-        for row in &mut rows {
-            if let (Key::Item(id), Some(stamp)) = (row.key, row.image_stamp)
-                && let Some(Some(thumb)) = self.thumbs.get(id, stamp)
-            {
-                row.thumb = Some(thumb.clone());
-            }
-        }
+        self.fill_thumbs(&mut rows);
         let detail = if self.settings.main_detail_open {
             self.detail_view()
         } else {

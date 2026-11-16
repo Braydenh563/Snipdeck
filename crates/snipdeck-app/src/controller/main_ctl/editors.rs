@@ -240,8 +240,7 @@ where
             }
         };
         let board = slot.view.boards.get(slot.view.board_index).map(|b| b.0);
-        let now = self.clock.now();
-        match self.write_editor(target, name, accent, icon, sort, board, now) {
+        match self.write_editor(target, name, accent, icon, sort, board) {
             Ok(opened) => {
                 self.editor = None;
                 // Read again below (`library_changed`, after the toast); the window needs
@@ -276,8 +275,8 @@ where
         icon: Option<ListIcon>,
         sort: ListSort,
         board: Option<BoardId>,
-        now: snipdeck_core::Timestamp,
     ) -> snipdeck_store::Result<Option<Opened>> {
+        let now = self.clock.now();
         match target {
             EditorTarget::NewList(opened_on) => {
                 let mut list = snipdeck_core::List::new(board.unwrap_or(opened_on), name, now);

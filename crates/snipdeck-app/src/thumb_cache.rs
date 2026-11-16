@@ -185,9 +185,6 @@ mod tests {
         assert_ne!(a, pic(1));
     }
 
-    #[test]
-    fn the_row_cache_stays_within_its_memory_bound() {
-        // The bound the module promises: ROW_CAPACITY pictures of at most THUMB_MAX_BYTES.
-        assert!(ROW_CAPACITY * snipdeck_store::THUMB_MAX_BYTES <= 8 * 1024 * 1024);
-    }
+    // The bound the module promises: ROW_CAPACITY pictures of at most THUMB_MAX_BYTES.
+    const _: () = assert!(ROW_CAPACITY * snipdeck_store::THUMB_MAX_BYTES <= 8 * 1024 * 1024);
 }

@@ -72,6 +72,17 @@ where
         found
     }
 
+    /// Puts the kept thumbnails into the image rows of `rows`.
+    pub(super) fn fill_thumbs(&self, rows: &mut [crate::main_window::Row]) {
+        for row in rows {
+            if let (Key::Item(id), Some(stamp)) = (row.key, row.image_stamp)
+                && let Some(Some(thumb)) = self.thumbs.get(id, stamp)
+            {
+                row.thumb = Some(thumb.clone());
+            }
+        }
+    }
+
     /// How many row thumbnails are kept.
     #[must_use]
     pub fn main_thumbnails_kept(&self) -> usize {
@@ -151,7 +162,7 @@ where
         let mut text_cut = false;
         let mut thumb = None;
         if item.sensitive && !revealed {
-            text = MASKED_PREVIEW.to_owned();
+            MASKED_PREVIEW.clone_into(&mut text);
         } else if let Some(formats) = &formats {
             if item.kind == ItemKind::Image {
                 thumb = usecase::item_png(&self.store, item.id)
@@ -163,7 +174,7 @@ where
             } else if let Some(Format::Files(files)) = formats.get(FormatKind::Files) {
                 text = files
                     .iter()
-                    .map(|f| f.name())
+                    .map(snipdeck_core::FileEntry::name)
                     .collect::<Vec<_>>()
                     .join("\n");
             } else if let Ok(Some(full)) = usecase::item_text(&self.store, item.id) {
