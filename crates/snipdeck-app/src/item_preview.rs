@@ -295,7 +295,7 @@ mod tests {
 
     #[test]
     fn a_bad_link_gives_the_refusal_save_would_give() {
-        let c = card(&input(ItemKind::Link, "", "example.com"));
+        let c = card(&input(ItemKind::Link, "", "example"));
         assert_eq!(c.problem, Some(EditorProblem::LinkNeedsScheme));
         let c = card(&input(ItemKind::Link, "", "https://a b"));
         assert_eq!(c.problem, Some(EditorProblem::LinkHasSpace));

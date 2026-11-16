@@ -1349,7 +1349,7 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
                 ToastPhase::Hold => ui::ToastPhase::Hold,
                 ToastPhase::Exit => ui::ToastPhase::Exit,
             });
-            window.set_toast_undo_label(wording::toast_button_text(toast).into());
+            window.set_toast_undo_label(wording::toast_button_text(window, toast).into());
             window.set_toast_edit_label(if toast.edit {
                 wording::toast_edit_label(window).into()
             } else {
@@ -1676,6 +1676,7 @@ fn action_of(action: ui::ItemAction) -> MainAction {
         ui::ItemAction::Use => MainAction::Use,
         ui::ItemAction::UsePlain => MainAction::UsePlain,
         ui::ItemAction::Copy => MainAction::Copy,
+        ui::ItemAction::OpenLink => MainAction::OpenLink,
         ui::ItemAction::Edit => MainAction::Edit,
         ui::ItemAction::Pin => MainAction::Pin,
         ui::ItemAction::Duplicate => MainAction::Duplicate,

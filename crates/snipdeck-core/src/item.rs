@@ -92,6 +92,10 @@ pub struct Item {
 }
 
 impl Item {
+    /// The longest title, in characters. The one limit: the item editor refuses a longer one and
+    /// shows a counter, importers cut to it, and search matches the whole title.
+    pub const TITLE_MAX_CHARS: usize = 200;
+
     /// The most characters [`Item::preview_of`] keeps. At least the 64 that in-memory
     /// search matches against (SPEC §5.1), plus enough for three comfortable-view lines.
     pub const PREVIEW_CHARS: usize = 200;

@@ -48,7 +48,13 @@ pub(super) struct EditorEnv {
     /// The file dialog. Shared so the window can ask it without holding the controller: the
     /// dialog runs its own message loop, and the controller must be free meanwhile.
     picker: Option<Rc<dyn FilePicker>>,
+    /// Opens a Link item's address (the system's handler; a recorder in tests).
+    pub(super) link_opener: Option<LinkOpener>,
 }
+
+/// Opens an address for "Open in browser": it is only called with addresses that passed
+/// [`link_open::allowed_target`](crate::link_open::allowed_target).
+pub type LinkOpener = Rc<dyn Fn(&str) -> Result<(), String>>;
 
 /// What the editor edits.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -189,6 +195,11 @@ where
     /// Lets the item editor open a file dialog with `picker`.
     pub fn set_file_picker(&mut self, picker: Box<dyn FilePicker>) {
         self.editor_env.picker = Some(Rc::from(picker));
+    }
+
+    /// Lets a Link item's "Open in browser" open addresses with `opener`.
+    pub fn set_link_opener(&mut self, opener: LinkOpener) {
+        self.editor_env.link_opener = Some(opener);
     }
 
     /// The file dialog, if the machine has one. Ask it with the controller released, then hand

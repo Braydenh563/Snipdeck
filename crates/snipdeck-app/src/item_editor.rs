@@ -21,8 +21,9 @@ use crate::main_window::NameError;
 /// [`snipdeck_core::INLINE_LIMIT`]); this is the editor's cap.
 pub const EDIT_LIMIT_BYTES: usize = 16 * 1024;
 
-/// The longest title, in characters.
-pub const TITLE_MAX_CHARS: usize = 200;
+/// The longest title, in characters: [`snipdeck_core::Item::TITLE_MAX_CHARS`], the one limit for
+/// the editor (which shows a counter), the importers and the search index.
+pub const TITLE_MAX_CHARS: usize = snipdeck_core::Item::TITLE_MAX_CHARS;
 
 /// The largest file an Image or File item takes. It is the largest entry a `.snipdeck` archive
 /// reads back less the envelope a sensitive item's payload gains, so an item that is saved can
@@ -323,7 +324,8 @@ pub fn check_title(title: &str) -> Result<String, EditorProblem> {
     Ok(title.to_owned())
 }
 
-/// `text` as a link: trimmed, with a scheme and no blanks.
+/// `text` as a link: trimmed, with no blanks. A scheme is kept as typed; an address with none that
+/// reads as a web host (`www.example.com`, `example.com/path`, `localhost:3000`) gets `https://`.
 ///
 /// # Errors
 ///
@@ -333,8 +335,20 @@ pub fn check_link(text: &str) -> Result<String, EditorProblem> {
     if text.chars().any(char::is_whitespace) {
         return Err(EditorProblem::LinkHasSpace);
     }
+    if has_scheme(text) {
+        return Ok(text.to_owned());
+    }
+    if looks_like_web_host(text) {
+        return Ok(format!("https://{text}"));
+    }
+    Err(EditorProblem::LinkNeedsScheme)
+}
+
+/// Whether `text` starts with a scheme and what follows it: `mailto:` and `tel:` take anything,
+/// every other scheme needs `//` and something after it.
+fn has_scheme(text: &str) -> bool {
     let Some((scheme, rest)) = text.split_once(':') else {
-        return Err(EditorProblem::LinkNeedsScheme);
+        return false;
     };
     let scheme_ok = scheme
         .chars()
@@ -343,17 +357,42 @@ pub fn check_link(text: &str) -> Result<String, EditorProblem> {
         && scheme
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'));
-    // `mailto:` and `tel:` carry no `//`; every other scheme needs something after it.
     let rest_ok = if matches!(scheme.to_ascii_lowercase().as_str(), "mailto" | "tel") {
         !rest.is_empty()
     } else {
         rest.strip_prefix("//").is_some_and(|r| !r.is_empty())
     };
-    if scheme_ok && rest_ok {
-        Ok(text.to_owned())
-    } else {
-        Err(EditorProblem::LinkNeedsScheme)
+    scheme_ok && rest_ok
+}
+
+/// Whether `text` (no scheme) reads as `host[:port][/path]`: a dotted host name whose last label is
+/// letters (or an IPv4 address), or `localhost`.
+fn looks_like_web_host(text: &str) -> bool {
+    let authority = text.split(['/', '?', '#']).next().unwrap_or("");
+    let host = match authority.rsplit_once(':') {
+        Some((h, port)) if !port.is_empty() && port.chars().all(|c| c.is_ascii_digit()) => h,
+        Some(_) => return false,
+        None => authority,
+    };
+    if host.eq_ignore_ascii_case("localhost") {
+        return true;
     }
+    let labels: Vec<&str> = host.split('.').collect();
+    if labels.len() < 2 {
+        return false;
+    }
+    let label_ok = |l: &&str| {
+        !l.is_empty()
+            && !l.starts_with('-')
+            && !l.ends_with('-')
+            && l.chars().all(|c| c.is_alphanumeric() || c == '-')
+    };
+    if !labels.iter().all(label_ok) {
+        return false;
+    }
+    let tld = labels[labels.len() - 1];
+    let ipv4 = labels.len() == 4 && labels.iter().all(|l| l.parse::<u8>().is_ok());
+    ipv4 || (tld.chars().count() >= 2 && tld.chars().all(char::is_alphabetic))
 }
 
 /// Checks template `text`: it must parse.
@@ -630,8 +669,12 @@ mod tests {
         }
         assert_eq!(check_link(" https://a.b ").as_deref(), Ok("https://a.b"));
         for bad in [
-            "example.com",
-            "example.org/file/x",
+            "example",
+            "user@example.com",
+            "example.c0m",
+            "a..b",
+            "-a.com",
+            "example.com:port",
             "https://",
             "://x",
             "1http://x",
@@ -647,6 +690,26 @@ mod tests {
         }
         assert_eq!(check_link("https://a b"), Err(EditorProblem::LinkHasSpace));
         assert_eq!(check_link("https://a\nb"), Err(EditorProblem::LinkHasSpace));
+    }
+
+    #[test]
+    fn a_web_address_without_a_scheme_gets_https() {
+        for (typed, saved) in [
+            ("www.example.com", "https://www.example.com"),
+            ("example.com/path", "https://example.com/path"),
+            (" example.org?q=1 ", "https://example.org?q=1"),
+            ("example.com:8080/x", "https://example.com:8080/x"),
+            ("localhost:3000", "https://localhost:3000"),
+            ("192.168.0.1/admin", "https://192.168.0.1/admin"),
+            ("bücher.example/a", "https://bücher.example/a"),
+        ] {
+            assert_eq!(check_link(typed).as_deref(), Ok(saved), "{typed:?}");
+        }
+        // A scheme that is there is never replaced.
+        assert_eq!(
+            check_link("http://example.com").as_deref(),
+            Ok("http://example.com")
+        );
     }
 
     #[test]

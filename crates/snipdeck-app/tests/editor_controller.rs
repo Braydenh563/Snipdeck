@@ -532,7 +532,7 @@ fn fields_that_fail_the_checks_stay_open_with_the_reason() {
         Some(EditorProblem::ContentEmpty)
     );
     assert_eq!(
-        save(&mut r, ItemKind::Link, "", "example.com").content_problem,
+        save(&mut r, ItemKind::Link, "", "example").content_problem,
         Some(EditorProblem::LinkNeedsScheme)
     );
     assert_eq!(
@@ -1698,4 +1698,78 @@ fn the_always_paste_as_plain_text_switch_is_saved_and_reopens_as_it_was() {
         ..v.fields
     });
     assert!(!ctl.store().item(id).expect("item").always_plain);
+}
+
+// ---- Links (LIBRARY-31, LIBRARY-56) ---------------------------------------------------------
+
+#[test]
+fn a_link_without_a_scheme_is_saved_with_https() {
+    let mut r = rig();
+    for (typed_text, saved) in [
+        ("www.example.com", "https://www.example.com"),
+        ("example.com/path", "https://example.com/path"),
+        ("mailto:me@example.com", "mailto:me@example.com"),
+    ] {
+        let id = save_new(&mut r.ctl, ItemKind::Link, typed_text, typed_text);
+        assert_eq!(text_of(&r.ctl, id), saved, "{typed_text}");
+    }
+}
+
+#[test]
+fn open_in_browser_opens_only_web_mail_and_phone_links() {
+    let mut r = rig();
+    let opened: Rc<RefCell<Vec<String>>> = Rc::default();
+    let log = Rc::clone(&opened);
+    r.ctl.set_link_opener(Rc::new(move |target: &str| {
+        log.borrow_mut().push(target.to_owned());
+        Ok(())
+    }));
+    let cases = [
+        ("web", "https://example.com/a", true),
+        ("mail", "mailto:me@example.com", true),
+        ("file", "file:///C:/Windows/System32/calc.exe", false),
+        ("script", "javascript://x%0Aalert(1)", false),
+        ("ftp", "ftp://host/file", false),
+    ];
+    for (title, text, _) in cases {
+        save_new(&mut r.ctl, ItemKind::Link, title, text);
+    }
+    r.ctl.main_open(snipdeck_app::main_window::Section::All);
+    for (title, text, allowed) in cases {
+        let screen = r.ctl.main_screen();
+        let row = screen
+            .rows
+            .iter()
+            .position(|row| row.title == title)
+            .expect("row");
+        opened.borrow_mut().clear();
+        r.ctl.main_action(MainAction::OpenLink, row);
+        if allowed {
+            assert_eq!(*opened.borrow(), [text.to_owned()], "{title} opens");
+        } else {
+            assert!(opened.borrow().is_empty(), "{title} is not opened");
+            assert_eq!(toast(&r.ctl), ToastMessage::LinkNotOpened, "{title}");
+        }
+    }
+}
+
+#[test]
+fn open_in_browser_does_nothing_for_other_kinds() {
+    let mut r = rig();
+    let opened: Rc<RefCell<Vec<String>>> = Rc::default();
+    let log = Rc::clone(&opened);
+    r.ctl.set_link_opener(Rc::new(move |target: &str| {
+        log.borrow_mut().push(target.to_owned());
+        Ok(())
+    }));
+    save_new(&mut r.ctl, ItemKind::Text, "plain", "https://example.com");
+    r.ctl.main_open(snipdeck_app::main_window::Section::All);
+    let screen = r.ctl.main_screen();
+    let row = screen
+        .rows
+        .iter()
+        .position(|row| row.title == "plain")
+        .expect("row");
+    r.ctl.main_action(MainAction::OpenLink, row);
+    assert!(opened.borrow().is_empty());
 }

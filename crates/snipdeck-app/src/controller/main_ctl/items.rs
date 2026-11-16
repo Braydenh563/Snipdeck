@@ -55,6 +55,11 @@ where
                     self.open_item_editor(*id);
                 }
             }
+            MainAction::OpenLink => {
+                if let Some(id) = items.first() {
+                    self.open_link(*id);
+                }
+            }
             MainAction::Pin => self.pin(&items),
             MainAction::Duplicate => self.duplicate(&items),
             MainAction::Move | MainAction::Tag | MainAction::PasteAs => {
@@ -97,6 +102,28 @@ where
             return None;
         }
         self.copy_items(&ids)
+    }
+
+    /// Opens Link item `id` in the system's handler. Only `link_open::ALLOWED_SCHEMES` are opened,
+    /// whatever the item holds; anything else (or an address the system cannot open) is a toast.
+    fn open_link(&mut self, id: ItemId) {
+        let is_link = self.main.item(id).is_some_and(|i| i.kind == snipdeck_core::ItemKind::Link);
+        if !is_link {
+            return;
+        }
+        let text = crate::usecase::item_text(&self.store, id).ok().flatten();
+        let opened = match (&text, self.editor_env.link_opener.clone()) {
+            (Some(text), Some(opener)) => {
+                crate::link_open::open_with(text, |target| opener(target)).is_ok()
+            }
+            _ => false,
+        };
+        if !opened {
+            self.show_toast(Toast {
+                kind: ToastKind::Danger,
+                message: ToastMessage::LinkNotOpened,
+            });
+        }
     }
 
     pub(super) fn pin(&mut self, items: &[ItemId]) {

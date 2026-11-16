@@ -36,6 +36,7 @@ pub mod index_cache;
 pub mod item_editor;
 pub mod item_preview;
 pub mod key_provider;
+pub mod link_open;
 pub mod list_text;
 pub mod main_binding;
 pub mod main_window;

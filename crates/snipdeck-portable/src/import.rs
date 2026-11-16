@@ -295,7 +295,7 @@ struct Built {
 }
 
 /// The longest item title an archive may bring, in characters; longer ones are cut.
-const TITLE_CHARS: usize = 1000;
+const TITLE_CHARS: usize = snipdeck_core::Item::TITLE_MAX_CHARS;
 /// The longest `source_app` an archive may bring, in characters; longer ones are cut.
 const SOURCE_APP_CHARS: usize = 256;
 

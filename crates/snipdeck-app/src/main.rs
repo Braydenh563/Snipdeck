@@ -322,6 +322,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
             controller.set_file_picker(picker);
         }
         controller.set_log_opener(Box::new(crash::open_log_folder));
+        controller.set_link_opener(Rc::new(snipdeck_app::link_open::system_opener));
         controller.unlock_library();
     }
     // Whether Hello is ready is asked on its worker (it can block), so start-up does not wait.

@@ -62,6 +62,8 @@ pub enum MainAction {
     Tag,
     /// Open the *Paste as…* chooser for the item.
     PasteAs,
+    /// Open a Link item's address in the browser (only http, https, mailto and tel; `link_open`).
+    OpenLink,
     /// Move the targets to the Trash, with an Undo toast.
     Delete,
     /// Bring the targets back from the Trash.

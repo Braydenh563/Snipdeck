@@ -36,8 +36,9 @@ use crate::{Item, ItemId};
 /// How many characters of an item's preview are matched (SPEC §5.1).
 pub const CONTENT_CHARS: usize = 64;
 
-/// Titles and tag names are matched up to this many characters; the rest is ignored so a
-/// pathological title cannot slow every query down.
+/// Tag names are matched up to this many characters (titles are capped at [`Item::TITLE_MAX_CHARS`]
+/// by the editor and the importers, and are matched whole); the rest is ignored so a
+/// pathological name cannot slow every query down.
 const FIELD_CHARS: usize = 256;
 
 /// Below this many items a query is scored on the calling thread; spawning threads costs
@@ -141,7 +142,7 @@ impl SearchIndex {
     pub fn upsert_with_tags<'a>(&mut self, item: &Item, tags: impl IntoIterator<Item = &'a str>) {
         let entry = Entry {
             id: item.id,
-            title: truncated(&item.title, FIELD_CHARS),
+            title: truncated(&item.title, Item::TITLE_MAX_CHARS),
             tags: tags
                 .into_iter()
                 .map(|tag| truncated(tag, FIELD_CHARS))

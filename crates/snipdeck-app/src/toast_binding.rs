@@ -225,7 +225,7 @@ fn render(window: &ui::ToastWindow, previous: Option<&Shown>, view: &View, toast
     }
     if differs(&|p| p.toast == *toast) {
         window.set_undo_label(if toast.undo {
-            wording::UNDO_LABEL.into()
+            wording::toast_undo_label(window).into()
         } else {
             SharedString::new()
         });
