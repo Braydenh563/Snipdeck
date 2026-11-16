@@ -14,6 +14,9 @@
 - PERF-12: Recent thumbnails built once per entry id (test: a_recent_thumbnail_is_built_once_per_entry). The Recent model is still reset on a Recent change (images are cached, so no image is rebuilt).
 - PERF-9: a cursor move builds no rows and hands out the same Rc rows; render compares rows by pointer first (test: moving_the_selection_builds_no_rows_and_hands_out_the_same_rows). Pixel damage UNVERIFIED (needs the real renderer).
 
+- PERF-8: binding/lazy_rows.rs LazyRows model (rows built in row_data; integer counters precomputed; update compares controller rows and notifies changed/added/removed; same model kept). Tests: only the rows asked for are built; an update builds nothing. Notification calls UNTESTED (slint's peer API is private); real ListView scroll/focus UNVERIFIED. Panel only; Main still uses refreshed_model.
+- PERF-4/11/19: Panel sync skips render when View == shown (View derives PartialEq). Toast tick runs redraw_toast (Panel, Main, Settings, ToastWindow redraw only if their toast differs), not redraw_all. Test: a_toast_tick_runs_only_the_toast_redraws.
+
 ## Not done
-- PERF-8 lazy row model (L): design for a fresh session: a `LazyRows` Model over `Rc<Vec<Row>>` that builds each `ui::Row` in `row_data`, with the O(n) integer counters (ghosts_before, set_position/size, stack_position) precomputed; notify changed rows by comparing controller rows, not ui rows; keep one model so scroll and focus survive.
 - PERF-17: see docs/PERF.md (deferral justified with numbers).
+- Main window rows still VecModel (overlap with main branch).
