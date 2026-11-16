@@ -716,7 +716,7 @@ export component SettingsPage inherits Window {
                         SelectField {
                             width: 200px * SystemLook.text-scale;
                             label: @tr("Text size");
-                            options: [@tr("Windows"), @tr("100%"), @tr("125%"), @tr("150%"), @tr("175%"), @tr("200%"), @tr("225%")];
+                            options: [@tr("Windows"), @tr("100 %"), @tr("125 %"), @tr("150 %"), @tr("175 %"), @tr("200 %"), @tr("225 %")];
                             current: root.text-size-index;
                             chosen(i) => { root.text-size-chosen(i); }
                             changed has-focus => {

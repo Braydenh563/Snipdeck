@@ -292,7 +292,10 @@ ui_tests! {
         let (ui, _log) = start();
         ui.set_view(snipdeck_ui::MainView::Tile);
         settle();
-        let tile = || find(&ui, "Tile view", AccessibleRole::Button);
+        let tile = || {
+            let label = if ui.get_has_groups() { "Tile view is not available while the list has groups" } else { "Tile view" };
+            find(&ui, label, AccessibleRole::Button)
+        };
         assert_eq!(tile().accessible_enabled(), Some(true));
         assert_eq!(tile().accessible_checked(), Some(true));
         ui.set_has_groups(true);
@@ -535,7 +538,7 @@ ui_tests! {
         let dialog = find(&ui, "Delete for good?", AccessibleRole::Groupbox);
         assert_eq!(
             dialog.accessible_description().as_deref(),
-            Some("The selected items are deleted for good. This can't be undone.")
+            Some("The selected item is deleted for good. This can't be undone.")
         );
         press_key(&ui, Key::Return);
         assert!(ui.get_confirm_open(), "Enter is not the destructive default");
@@ -1160,7 +1163,9 @@ ui_tests! {
             take(&log);
             chord(ui.window(), &[Key::Alt], &key(Key::DownArrow));
             chord(ui.window(), &[Key::Alt], &key(Key::UpArrow));
-            assert_eq!(take(&log), ["reorder:1", "reorder:-1"], "{view:?}");
+            // In the tile grid Alt+Down moves a whole row of tiles (MAIN-13).
+            let step = if view == MainView::Tile { 3 } else { 1 };
+            assert_eq!(take(&log), [format!("reorder:{step}"), format!("reorder:-{step}")], "{view:?}");
             press_key(&ui, Key::DownArrow);
             assert!(take(&log).iter().all(|l| !l.starts_with("reorder")), "{view:?}: a plain arrow only moves");
         }

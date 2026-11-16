@@ -440,6 +440,7 @@ export component HelpWindow inherits Window {
                             title: @tr("User guide");
                             description: @tr("Opens in your browser.");
                             Button {
+                                min-width: 160px * SystemLook.text-scale;
                                 text: @tr("Open guide");
                                 a11y-label: @tr("Open the user guide");
                                 clicked => { root.guide-requested(); }
@@ -449,6 +450,7 @@ export component HelpWindow inherits Window {
                             title: @tr("Welcome tour");
                             description: @tr("Walk through the basics again.");
                             Button {
+                                min-width: 160px * SystemLook.text-scale;
                                 text: @tr("Show");
                                 a11y-label: @tr("Show the welcome tour again");
                                 clicked => { root.tour-requested(); }
@@ -458,6 +460,7 @@ export component HelpWindow inherits Window {
                             title: @tr("Source code");
                             description: root.source-url;
                             Button {
+                                min-width: 160px * SystemLook.text-scale;
                                 text: @tr("Open source code");
                                 a11y-label: @tr("Open the source code");
                                 clicked => { root.source-requested(); }
@@ -467,6 +470,7 @@ export component HelpWindow inherits Window {
                             title: @tr("Check for updates");
                             description: @tr("Snipdeck never checks by itself. This opens the releases page in your browser.");
                             Button {
+                                min-width: 160px * SystemLook.text-scale;
                                 text: @tr("Open releases page");
                                 a11y-label: @tr("Open the releases page");
                                 clicked => { root.releases-requested(); }
@@ -476,6 +480,7 @@ export component HelpWindow inherits Window {
                             title: @tr("Support Snipdeck");
                             description: @tr("Optional. Snipdeck is free and stays free. This opens a donation page in your browser and unlocks nothing.");
                             Button {
+                                min-width: 160px * SystemLook.text-scale;
                                 text: @tr("Open donation page");
                                 a11y-label: @tr("Open the Support Snipdeck page in your browser");
                                 clicked => { root.support-requested(); }
@@ -484,6 +489,7 @@ export component HelpWindow inherits Window {
                         if root.show-store-link: SettingRow {
                             title: @tr("Microsoft Store");
                             Button {
+                                min-width: 160px * SystemLook.text-scale;
                                 text: @tr("Open Store page");
                                 a11y-label: @tr("Open the Microsoft Store page");
                                 clicked => { root.store-requested(); }
@@ -497,6 +503,7 @@ export component HelpWindow inherits Window {
                             title: @tr("Third-party notices");
                             description: @tr("The licences of the libraries Snipdeck is built from.");
                             Button {
+                                min-width: 160px * SystemLook.text-scale;
                                 text: @tr("Open notices");
                                 a11y-label: @tr("Open the third-party notices");
                                 clicked => { root.notices-requested(); }
