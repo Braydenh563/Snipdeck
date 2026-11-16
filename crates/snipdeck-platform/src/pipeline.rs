@@ -552,7 +552,7 @@ mod tests {
         assert_eq!(tail.poll(&mut w.clipboard, &mut w.timing), None);
         // Asked at this look: the settle time starts now.
         assert_eq!(tail.poll(&mut w.clipboard, &mut w.timing), None);
-        w.timing.now += SETTLE - Duration::from_millis(1);
+        w.timing.now += Duration::from_millis(49);
         assert_eq!(
             tail.poll(&mut w.clipboard, &mut w.timing),
             None,
