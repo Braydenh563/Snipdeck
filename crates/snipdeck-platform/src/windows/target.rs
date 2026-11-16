@@ -369,23 +369,26 @@ impl TargetTracker {
         }
     }
 
-    /// Makes the Target the foreground window again so injected keys reach it. Returns `false`
-    /// when there is no Target or Windows refused.
-    ///
-    /// Windows restores the Target's focused control asynchronously: wait about 50 ms before
-    /// injecting (the spike used 50 ms).
-    pub fn refocus_target(&self) -> bool {
+    /// Makes the Target the foreground window again so injected keys reach it. Says whether
+    /// that was needed: a Target already in front needs no wait before injecting, one that was
+    /// brought forward restores its focused control asynchronously (the spike used 50 ms).
+    /// Unverified on Windows until the owner runs it.
+    pub fn refocus_target(&self) -> Refocus {
         let target = self.inner.target_hwnd();
         // SAFETY: `IsWindow` accepts any handle value.
         if target.is_invalid() || !unsafe { IsWindow(Some(target)) }.as_bool() {
-            return false;
+            return Refocus::None;
         }
         // SAFETY: no arguments, no preconditions.
         if unsafe { GetForegroundWindow() } == target {
-            return true;
+            return Refocus::InFront;
         }
         // SAFETY: `target` is a window handle; a stale one makes the call fail.
-        unsafe { SetForegroundWindow(target) }.as_bool()
+        if unsafe { SetForegroundWindow(target) }.as_bool() {
+            Refocus::Switched
+        } else {
+            Refocus::None
+        }
     }
 
     /// The text caret of the Target, in screen pixels, if it has a system caret. Call it while

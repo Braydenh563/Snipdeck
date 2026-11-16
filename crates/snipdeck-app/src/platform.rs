@@ -73,7 +73,7 @@ mod imp {
             self.0.current()
         }
 
-        fn refocus(&self) -> bool {
+        fn refocus(&self) -> snipdeck_platform::route::Refocus {
             self.0.refocus_target()
         }
 

@@ -36,6 +36,14 @@ pub(super) struct Erasing<'a> {
     pub(super) fresh: Option<&'a dyn Fn() -> bool>,
 }
 
+/// A paste whose key is out and that waits for its target (see [`Controller::paste_tick`]).
+pub(super) struct PendingPaste<C: Clipboard> {
+    pending: usecase::Pending<C>,
+    route: Route,
+    pasted_into: Option<String>,
+    sequence_before: Option<u32>,
+}
+
 impl<S, C, K, T> Controller<S, C, K, T>
 where
     S: Library,
@@ -489,6 +497,83 @@ where
         }
     }
 
+    /// Brings the Target forward for a paste and, only when that switched windows, waits for its
+    /// focused control to come back ([`REFOCUS_WAIT`]); a Target already in front needs no wait.
+    pub(super) fn refocus_for_paste(&mut self, mode: UseMode, route: &Route) {
+        if mode != UseMode::Copy
+            && matches!(route, Route::Paste { .. })
+            && self.target.refocus().must_wait()
+        {
+            self.services.timing.sleep(REFOCUS_WAIT);
+        }
+    }
+
+    /// Whether a paste is still waiting for its target (the host runs
+    /// [`paste_tick`](Self::paste_tick) every [`PASTE_TICK`](super::PASTE_TICK) while so).
+    #[must_use]
+    pub fn paste_pending(&self) -> bool {
+        self.paste.is_some()
+    }
+
+    /// One look at the waiting paste, without sleeping: when it is over, the toast, the
+    /// clipboard bookkeeping and the refresh happen now.
+    pub fn paste_tick(&mut self) {
+        let Some(mut waiting) = self.paste.take() else {
+            return;
+        };
+        let polled = waiting.pending.poll(
+            &mut self.store,
+            &mut self.services.clipboard,
+            &mut self.services.keyboard,
+            &mut self.services.timing,
+        );
+        match polled {
+            Some(used) => self.finish_use(
+                waiting.pending.item(),
+                &waiting.route,
+                waiting.pasted_into.as_deref(),
+                waiting.sequence_before,
+                &used,
+            ),
+            None => self.paste = Some(waiting),
+        }
+    }
+
+    /// Runs a waiting paste to its end now (a new use must not start over it: two pastes would
+    /// share one clipboard).
+    pub(super) fn drain_paste(&mut self) {
+        while self.paste.is_some() {
+            self.paste_tick();
+            if self.paste.is_some() {
+                self.services.timing.sleep(super::PASTE_TICK);
+            }
+        }
+    }
+
+    /// The use is over: counts it, schedules the clipboard clear, toasts and refreshes.
+    fn finish_use(
+        &mut self,
+        item: ItemId,
+        route: &Route,
+        pasted_into: Option<&str>,
+        sequence_before: Option<u32>,
+        used: &usecase::Used,
+    ) {
+        if used.outcome == UseOutcome::Pasted {
+            self.follow_restored_clipboard(sequence_before);
+        }
+        if let Some(line) = used.count_failed_line() {
+            crate::trace!("{line}");
+        }
+        self.note_activity();
+        self.queue.used(item);
+        self.index_cache.note_use(item);
+        self.schedule_clipboard_clear(item, used.outcome);
+        self.show_toast(toast::after_use(used.outcome, route, pasted_into));
+        // The paste worked: a refresh that fails must not turn that into "failed".
+        self.refresh_logged("a paste");
+    }
+
     pub(super) fn run_use(
         &mut self,
         item: ItemId,
@@ -510,12 +595,11 @@ where
         transform: Option<Transform>,
         erase: Option<Erasing<'_>>,
     ) -> UseResult {
+        self.drain_paste();
         let chars = erase.as_ref().map_or(0, |e| e.chars);
         let route = self.model.route();
         let pasted_into = self.model.target().map(|t| t.app.clone());
-        if mode != UseMode::Copy && matches!(route, Route::Paste { .. }) && self.target.refocus() {
-            self.services.timing.sleep(REFOCUS_WAIT);
-        }
+        self.refocus_for_paste(mode, &route);
         let request = UseRequest {
             item,
             mode,
@@ -554,26 +638,21 @@ where
         // Where the clipboard stood before the use: a paste puts the user's earlier clipboard
         // back, which can be the sensitive content a pending clear is waiting for.
         let sequence_before = env.clipboard.sequence_number();
-        match usecase::use_item_guarded(&mut self.store, &mut env, &request, &proceed) {
-            Ok(used) => {
-                if used.outcome == UseOutcome::Pasted {
-                    self.follow_restored_clipboard(sequence_before);
-                }
-                if let Some(line) = used.count_failed_line() {
-                    crate::trace!("{line}");
-                }
-                self.note_activity();
-                self.queue.used(item);
-                self.index_cache.note_use(item);
-                self.schedule_clipboard_clear(item, used.outcome);
-                self.show_toast(toast::after_use(
-                    used.outcome,
-                    &route,
-                    pasted_into.as_deref(),
-                ));
-                // The paste worked: a refresh that fails must not turn that into "failed".
-                self.refresh_logged("a paste");
+        match usecase::begin_use(&mut self.store, &mut env, &request, &proceed) {
+            Ok(usecase::Started::Done(used)) => {
+                self.finish_use(item, &route, pasted_into.as_deref(), sequence_before, &used);
                 UseResult::Done(used.outcome)
+            }
+            // The key is out: the rest is polled by `paste_tick`. The caller sees the paste as
+            // done (it was sent); the toast waits for the real end.
+            Ok(usecase::Started::Waiting(pending)) => {
+                self.paste = Some(PendingPaste {
+                    pending,
+                    route,
+                    pasted_into,
+                    sequence_before,
+                });
+                UseResult::Done(UseOutcome::Pasted)
             }
             Err(UseError::Platform(snipdeck_platform::pipeline::Error::Superseded)) => {
                 // The clipboard is back as it was, but a sensitive Files item already wrote its

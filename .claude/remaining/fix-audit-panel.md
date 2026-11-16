@@ -1,20 +1,11 @@
-# fix-audit-panel (branch claude/fix-audit-panel, from claude/compassionate-pascal-pod8ux)
+# fix-audit-panel remaining
 
-Env: `. /tmp/env.sh` (CARGO_TARGET_DIR=/tmp/target-panel, low debug). Order from owner: fix every PANEL-n that reproduces; test first, fixed clock.
+## Done (pushed 93c81c3)
+PANEL-1,5(fuzzy/fold),6,7,8,9,11,14,30(name only; 6px is DESIGN §5),32,33,34,35,37,38,39,42; translations; goldens.
 
-## Done (uncommitted until first commit line below says otherwise)
-- PANEL-1 destructive never wins a tie (commands.rs)
-- PANEL-6 palette JSON parsed once; mark carried from entries
-- PANEL-7 field-owns-edit-keys guard in panel.slint
-- PANEL-8 Ctrl+F on Symbols/Colours focuses their field; Ctrl+N no-op there
-- PANEL-9 ListsMenu has Symbols + Colours rows, header names the open view
-- PANEL-11 leave-list-view shared by both tabs
-- PANEL-30 name only ("Open Snipdeck Panel"); 6px thickness is the DESIGN §5 exception (record in report)
-- PANEL-37 pin/close names (IconButton a11y-name/description)
-- PANEL-42 Picker title
-
-## Next (in order)
-PANEL-2/3/4/5/10 palette+nav, 12, 13/14/27 platform, 15, 16-22, 23-26/40/41, 28, 29, 31-36, 38, 39, 43-45 (+SPEC notes)
+## Next (order)
+13 paste off UI thread+restore; 2,3,4 palette commands/state names/disabled reasons; 5 Page/Home/End;
+10,12,15-29,31,36,40,41,43,44,45; 10k probe; SPEC post-1.0 notes.
 
 ## Blocked
 none

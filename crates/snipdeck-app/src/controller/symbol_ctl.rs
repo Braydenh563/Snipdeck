@@ -127,9 +127,7 @@ where
         };
         let route = self.model.route();
         let pasted_into = self.model.target().map(|t| t.app.clone());
-        if mode != UseMode::Copy && matches!(route, Route::Paste { .. }) && self.target.refocus() {
-            self.services.timing.sleep(REFOCUS_WAIT);
-        }
+        self.refocus_for_paste(mode, &route);
         let mut env = Env {
             clipboard: &mut self.services.clipboard,
             keyboard: &mut self.services.keyboard,

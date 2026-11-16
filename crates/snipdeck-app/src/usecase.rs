@@ -136,10 +136,89 @@ where
     K: Keyboard,
     T: Timing,
 {
+    match begin_use(store, env, request, proceed)? {
+        Started::Done(used) => Ok(used),
+        Started::Waiting(mut pending) => loop {
+            if let Some(used) = pending.poll(store, env.clipboard, env.keyboard, env.timing) {
+                return Ok(used);
+            }
+            env.timing.sleep(pipeline::POLL_INTERVAL);
+        },
+    }
+}
+
+/// A use begun by [`begin_use`] that has not finished: the paste key is out and the clipboard
+/// still holds the item until [`Pending::poll`] says the paste is over.
+pub struct Pending<C: Clipboard> {
+    waiting: pipeline::Waiting<C>,
+    item: ItemId,
+    now: Timestamp,
+    cursor_from_end: Option<usize>,
+}
+
+impl<C: Clipboard> Pending<C> {
+    /// The item being used.
+    #[must_use]
+    pub fn item(&self) -> ItemId {
+        self.item
+    }
+
+    /// One look, without waiting (see [`pipeline::Waiting::poll`]): `Some` when the paste is
+    /// over, with the caret moved and the use counted.
+    pub fn poll<S, K, T>(
+        &mut self,
+        store: &mut S,
+        clipboard: &mut C,
+        keyboard: &mut K,
+        timing: &mut T,
+    ) -> Option<Used>
+    where
+        S: ItemRepo,
+        K: Keyboard,
+        T: Timing,
+    {
+        let outcome = self.waiting.poll(clipboard, timing)?;
+        Some(finish(
+            store,
+            keyboard,
+            self.item,
+            self.now,
+            outcome,
+            self.cursor_from_end,
+        ))
+    }
+}
+
+/// How [`begin_use`] stands.
+pub enum Started<C: Clipboard> {
+    /// Over already: a copy, or a paste that could not send its key.
+    Done(Used),
+    /// The paste key is out; poll the rest.
+    Waiting(Pending<C>),
+}
+
+/// [`use_item_guarded`] up to the paste key: the paste then finishes by polling
+/// ([`Pending::poll`]) instead of blocking the caller's thread.
+///
+/// # Errors
+///
+/// See [`UseError`].
+pub fn begin_use<S, C, K, T>(
+    store: &mut S,
+    env: &mut Env<'_, C, K, T>,
+    request: &UseRequest,
+    proceed: &dyn Fn() -> bool,
+) -> Result<Started<C>, UseError>
+where
+    S: ItemRepo + BlobStore,
+    C: Clipboard,
+    K: Keyboard,
+    T: Timing,
+{
     let item = store.item(request.item)?;
     let formats = store.formats(request.item)?;
     let (payload, cursor_from_end) = build_payload(store, &item, &formats, request)?;
-    let outcome = pipeline::use_item_erasing(
+    let began = pipeline::begin_item_erasing(
         env,
         &payload,
         // An item set to "always paste as plain text" pastes plain whatever the caller asked.
@@ -148,6 +227,34 @@ where
         request.erase,
         proceed,
     )?;
+    Ok(match began {
+        pipeline::Began::Done(outcome) => Started::Done(finish(
+            store,
+            env.keyboard,
+            item.id,
+            request.now,
+            outcome,
+            cursor_from_end,
+        )),
+        pipeline::Began::Waiting(waiting) => Started::Waiting(Pending {
+            waiting,
+            item: item.id,
+            now: request.now,
+            cursor_from_end,
+        }),
+    })
+}
+
+/// The paste or copy is over: moves the caret back for a template's `{cursor}` and counts the
+/// use (best-effort, never an error).
+fn finish<S: ItemRepo, K: Keyboard>(
+    store: &mut S,
+    keyboard: &mut K,
+    item: ItemId,
+    now: Timestamp,
+    outcome: UseOutcome,
+    cursor_from_end: Option<usize>,
+) -> Used {
     if matches!(outcome, UseOutcome::Pasted | UseOutcome::PastedNotRestored)
         && let Some(n) = cursor_from_end.filter(|n| *n > 0)
     {
@@ -160,18 +267,15 @@ where
         let presses: Vec<KeyEvent> = (0..n.min(MAX_CURSOR_PRESSES))
             .flat_map(|_| [left(true), left(false)])
             .collect();
-        let _ = env.keyboard.send(&presses);
+        let _ = keyboard.send(&presses);
     }
     // The paste or copy has happened: counting it is best-effort and never an error.
-    let count_failed = store
-        .record_use(item.id, request.now)
-        .err()
-        .map(|e| e.to_string());
-    Ok(Used {
+    let count_failed = store.record_use(item, now).err().map(|e| e.to_string());
+    Used {
         outcome,
         cursor_from_end,
         count_failed,
-    })
+    }
 }
 
 /// The source text of template `item`, with the item's title for the form's header (the first

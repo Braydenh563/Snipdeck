@@ -81,6 +81,8 @@ use crate::{
 /// How long the Target gets to take the focus back before keys are injected (the M2 spike's
 /// 50 ms; Windows restores the focused control asynchronously).
 pub const REFOCUS_WAIT: Duration = Duration::from_millis(50);
+/// How often [`Controller::paste_tick`] looks at a paste that is waiting for its target.
+pub const PASTE_TICK: Duration = snipdeck_platform::pipeline::POLL_INTERVAL;
 /// A foreground change this soon after the Panel was shown does not hide it: showing the Panel
 /// (a hotkey, the tray) can itself move the foreground around while Windows settles.
 pub const BLUR_GRACE: Duration = Duration::from_millis(400);
@@ -189,7 +191,7 @@ struct ActiveToast {
     clippy::struct_excessive_bools,
     reason = "independent UI states, not a hidden state machine"
 )]
-pub struct Controller<S, C, K, T> {
+pub struct Controller<S, C: Clipboard, K, T> {
     store: S,
     services: Services<C, K, T>,
     target: Box<dyn TargetSource>,
@@ -200,6 +202,10 @@ pub struct Controller<S, C, K, T> {
     /// (if the clipboard still holds exactly that text). Only a keyed hash of the text is kept,
     /// so the secret does not sit in memory for the wait.
     clipboard_clear: Option<PendingClear>,
+    /// A paste whose key is out and whose tail (the target asking for the clipboard, the settle
+    /// time, the restore) is polled by [`Controller::paste_tick`], never slept through on the UI
+    /// thread (PANEL-13).
+    paste: Option<use_ctl::PendingPaste<C>>,
     /// A sensitive Files item was pasted: its decrypted files wait in the temp folder until the
     /// lock or the quit deletes them.
     secret_files_pasted: bool,
@@ -439,7 +445,7 @@ struct Session {
     tour: Option<crate::tour::TourStep>,
 }
 
-impl<S, C, K, T> std::fmt::Debug for Controller<S, C, K, T> {
+impl<S, C: Clipboard, K, T> std::fmt::Debug for Controller<S, C, K, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Controller")
             .field("visible", &self.visible)
@@ -490,6 +496,7 @@ where
             clock,
             tz: TimeZone::system(),
             clipboard_clear: None,
+            paste: None,
             secret_files_pasted: false,
             secret_files_due: None,
             model,
