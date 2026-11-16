@@ -806,21 +806,15 @@ ui_tests! {
         assert_eq!(take(&log), ["cancel"]);
     }
 
-    // PERF-17 measurement: what the liveness timer costs while a tooltip rests. The timer wakes ten times a
-    // second (100ms); each wake-up bumps `TipHost.ping`, which every `TipSource` alive answers. The wall time
-    // per wake-up is printed (run with `--nocapture`); the test asserts only that the tooltip stays up.
-    fn a_resting_tooltip_keeps_its_liveness_timer_cheap() {
+    // PERF-17: the liveness timer wakes ten times a second while a tooltip rests, and the owner answers each
+    // ping, so the tooltip stays. (Cost per wake-up, measured once with a wall clock: docs/PERF.md.)
+    fn a_resting_tooltip_stays_up_across_many_liveness_wake_ups() {
         let (ui, _log) = item_editor();
         hover_rest(&ui, &find(&ui, "Save", AccessibleRole::Button));
         assert_eq!(tips(&ui), 1);
-        let sources = ElementQuery::from_root(&ui).match_inherits("Tooltip").find_all().len();
-        let ticks = 100;
-        let started = std::time::Instant::now();
-        for _ in 0..ticks {
+        for _ in 0..100 {
             i_slint_backend_testing::mock_elapsed_time(std::time::Duration::from_millis(100));
         }
-        let per_tick = started.elapsed().as_secs_f64() * 1000.0 / f64::from(ticks);
-        println!("liveness timer: {per_tick:.4} ms per 100 ms wake-up ({sources} tooltip open)");
         assert_eq!(tips(&ui), 1, "the owner answers, so the tooltip stays");
     }
 

@@ -88,6 +88,6 @@ Windows figures: **UNVERIFIED** (the owner runs the probe and the size and RAM s
 rests on a control with a tooltip), 10 wake-ups a second, and not at all otherwise. Slint has no
 destruction hook, so a control an `if` removes cannot give its tooltip back; the ping/answer
 round is the only way to notice it, and an event-driven version would leave that tooltip stuck.
-Measured (`a_resting_tooltip_keeps_its_liveness_timer_cheap`, optimised build, item editor,
+Measured (a one-off wall-clock run of `a_resting_tooltip_stays_up_across_many_liveness_wake_ups`, optimised build, item editor,
 Linux VM, mock clock): **0.0025 ms per wake-up**, so about 0.025 ms of work a second (0.0025% of
 one core). Not changed. Windows wake-up cost and the Panel's larger widget count: UNVERIFIED.
