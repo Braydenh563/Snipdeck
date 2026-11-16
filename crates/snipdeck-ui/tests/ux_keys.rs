@@ -31,6 +31,10 @@ fn flag() -> (Rc<Cell<u32>>, Rc<Cell<u32>>) {
 }
 
 #[test]
+#[allow(
+    clippy::many_single_char_names,
+    reason = "paired flag and hook handles"
+)]
 fn ctrl_w_closes_help_settings_and_the_tag_manager() {
     on_ui_thread(|| {
         let h = H::of(HelpWindow::new().unwrap());

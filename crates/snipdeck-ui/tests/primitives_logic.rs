@@ -72,7 +72,12 @@ fn by_label(ui: &impl ComponentHandle, label: &str, role: AccessibleRole) -> Ele
 /// The toast container itself (the only element with that label that is a live region).
 fn toast(ui: &impl ComponentHandle, label: &str) -> ElementHandle {
     ElementHandle::find_by_accessible_label(ui, label)
-        .find(|e| matches!(e.accessible_live_region(), Some(AccessibleLiveness::Polite | AccessibleLiveness::Assertive)))
+        .find(|e| {
+            matches!(
+                e.accessible_live_region(),
+                Some(AccessibleLiveness::Polite | AccessibleLiveness::Assertive)
+            )
+        })
         .unwrap_or_else(|| panic!("no toast labelled {label:?}"))
 }
 

@@ -16,17 +16,22 @@ fn slint_files(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
     }
 }
 
-/// Every `property: <number>px;` line for `property` in the UI sources, as (file:line, number).
+/// Every `property: <number>px;` line for `property` in the UI sources, as `(file:line, number)`.
 fn literals(property: &str) -> Vec<(String, f32)> {
     let mut files = Vec::new();
-    slint_files(&Path::new(env!("CARGO_MANIFEST_DIR")).join("ui"), &mut files);
+    slint_files(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("ui"),
+        &mut files,
+    );
     let prefix = format!("{property}:");
     let mut found = Vec::new();
     for file in files {
         let text = fs::read_to_string(&file).expect("read");
         for (i, line) in text.lines().enumerate() {
             let code = line.split("//").next().unwrap_or("").trim();
-            let Some(rest) = code.strip_prefix(&prefix) else { continue };
+            let Some(rest) = code.strip_prefix(&prefix) else {
+                continue;
+            };
             let value = rest.trim().trim_end_matches(';').trim();
             let digits = value.trim_end_matches("px");
             if let Ok(n) = digits.parse::<f32>()
@@ -45,7 +50,10 @@ fn radii_come_from_the_tokens_except_on_hairline_bars() {
         .into_iter()
         .filter(|(_, n)| *n > 2.0)
         .collect();
-    assert!(bad.is_empty(), "literal radii over 2px (use Radius.*): {bad:?}");
+    assert!(
+        bad.is_empty(),
+        "literal radii over 2px (use Radius.*): {bad:?}"
+    );
 }
 
 #[test]
