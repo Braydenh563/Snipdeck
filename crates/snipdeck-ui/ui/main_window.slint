@@ -2344,6 +2344,94 @@ export component MainWindow inherits Window {
                         }
                     }
 
+                    // ---- The Recent inbox: a read-only list of what was copied, with Copy, Save to… and Remove ----
+                    if root.recent-shown: VerticalLayout {
+                        x: root.pad;
+                        width: parent.width - 2 * root.pad;
+                        height: parent.height;
+                        spacing: Space.s2;
+                        HorizontalLayout {
+                            alignment: end;
+                            Button {
+                                variant: ButtonVariant.ghost;
+                                icon: Icons.trash;
+                                text: @tr("Clear recent history");
+                                clicked => { root.ask(5, 0); }
+                            }
+                        }
+                        Rectangle {
+                            vertical-stretch: 1;
+                            rlist := ListView {
+                                width: parent.width;
+                                height: parent.height;
+                                accessible-label: @tr("Recent copies");
+                                scrolled => { root.rfollow-cursor = false; }
+                                for entry[i] in root.recent-rows: Rectangle {
+                                    property <bool> is-active: i == root.rcur;
+                                    function reveal() {
+                                        if (root.rcur == 0) {
+                                            rlist.content-y = 0px;
+                                        } else if (self.y + rlist.content-y < 0px) {
+                                            rlist.content-y = -self.y;
+                                        } else if (self.y + self.height + rlist.content-y > rlist.height) {
+                                            rlist.content-y = rlist.height - self.y - self.height;
+                                        }
+                                    }
+                                    height: rcard.preferred-height + root.row-gap + (i == root.recent-rows.length - 1 ? 2 * root.ring : 0px);
+                                    init => {
+                                        if (self.is-active && root.rfollow-cursor) { self.reveal(); }
+                                    }
+                                    changed is-active => {
+                                        if (self.is-active) { self.reveal(); }
+                                    }
+                                    changed y => {
+                                        if (self.is-active && root.rfollow-cursor) { self.reveal(); }
+                                    }
+                                    rcard := ItemCard {
+                                        x: root.ring;
+                                        y: root.ring;
+                                        width: parent.width - 2 * root.ring;
+                                        height: self.preferred-height;
+                                        keyboard-focusable: false;
+                                        selected: i == root.rcur;
+                                        show-focus: i == root.rcur && items-scope.has-focus;
+                                        variant: root.view == MainView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
+                                        kind: entry.kind;
+                                        image: entry.image;
+                                        title: entry.preview;
+                                        preview: entry.app == "" ? RecentText.ago(entry.age-minutes) : entry.app + " · " + RecentText.ago(entry.age-minutes);
+                                        use => {
+                                            root.recent-cursor = i;
+                                            root.recent-copied(entry.id);
+                                        }
+                                        copy => {
+                                            root.recent-cursor = i;
+                                            root.recent-copied(entry.id);
+                                        }
+                                        double-clicked => {
+                                            root.recent-cursor = i;
+                                            root.open-recent-save(i, self.absolute-position.x + Space.s6, self.absolute-position.y + self.height);
+                                        }
+                                        context-menu-requested(x, y) => {
+                                            root.recent-cursor = i;
+                                            root.open-recent-menu(i, self.absolute-position.x + x, self.absolute-position.y + y);
+                                        }
+                                    }
+                                }
+                            }
+
+                            rlist-bar := OverlayScrollbar {
+                                content-y: rlist.content-y;
+                                content-height: rlist.content-height;
+                                visible-height: rlist.height;
+                                scroll-to(y) => {
+                                    root.rfollow-cursor = false;
+                                    rlist.content-y = y;
+                                }
+                            }
+                        }
+                    }
+
                     if root.rows.length == 0 && !root.recent-shown: EmptyState {
                         quiet: true;
                         x: root.pad;

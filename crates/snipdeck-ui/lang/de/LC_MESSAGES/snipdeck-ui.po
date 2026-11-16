@@ -175,6 +175,9 @@ msgstr "Sobald du die ersten zwei Zeichen eines Kürzels tippst, bietet ein klei
 msgid "All"
 msgstr "Alle"
 
+msgid "All global shortcuts are set."
+msgstr "Alle globalen Tastenkürzel sind festgelegt."
+
 msgid "All items"
 msgstr "Alle Textbausteine"
 
@@ -243,6 +246,9 @@ msgstr "Darstellung"
 msgid "Appears when you type"
 msgstr "Erscheint beim Tippen"
 
+msgid "Applies at once. Follow Windows takes effect the next time Snipdeck starts."
+msgstr "Gilt sofort. „Windows folgen“ gilt ab dem nächsten Start von Snipdeck."
+
 msgid "Apply the new name"
 msgstr "Neuen Namen übernehmen"
 
@@ -284,6 +290,9 @@ msgstr "Gesichert"
 
 msgid "Backup of {}, {}"
 msgstr "Sicherung vom {}, {}"
+
+msgid "Backups"
+msgstr "Sicherungen"
 
 msgid "Backups and your data"
 msgstr "Sicherungen und deine Daten"
@@ -789,6 +798,9 @@ msgstr "Dieser Textbaustein konnte nicht verwendet werden: Deine Bibliothek ist 
 msgid "Couldn’t write to your library. Check that the disk has room."
 msgstr "In deine Bibliothek konnte nicht geschrieben werden. Prüfe, ob auf dem Datenträger Platz ist."
 
+msgid "Crash reports"
+msgstr "Absturzberichte"
+
 msgid "Create"
 msgstr "Erstellen"
 
@@ -815,6 +827,12 @@ msgstr "Ausschneiden"
 
 msgid "Dark"
 msgstr "Dunkel"
+
+msgid "Data folder"
+msgstr "Datenordner"
+
+msgid "Database"
+msgstr "Datenbank"
 
 msgid "Database rebuilt: {} items restored, {} recovered."
 msgstr "Datenbank neu aufgebaut: {} Textbausteine wiederhergestellt, {} geborgen."
@@ -1019,6 +1037,9 @@ msgstr "Papierkorb leeren…"
 
 msgid "Empty the Trash?"
 msgstr "Papierkorb leeren?"
+
+msgid "Encryption key"
+msgstr "Verschlüsselungsschlüssel"
 
 msgid "End stack"
 msgstr "Stapel beenden"
@@ -1699,6 +1720,9 @@ msgstr "Neues Schlagwort"
 msgid "New tag, then Enter"
 msgstr "Neues Schlagwort, dann Enter"
 
+msgid "Newest backup {}, {} kept."
+msgstr "Neueste Sicherung {}, {} aufbewahrt."
+
 msgid "Next"
 msgstr "Weiter"
 
@@ -1711,6 +1735,9 @@ msgstr "Nächster Bereich"
 msgid "No"
 msgstr "Nein"
 
+msgid "No backup has been made yet."
+msgstr "Es wurde noch keine Sicherung erstellt."
+
 msgid "No backup yet"
 msgstr "Noch keine Sicherung"
 
@@ -1720,8 +1747,20 @@ msgstr "Keine Farbe"
 msgid "No commands match “{}”"
 msgstr "Keine Befehle passen zu „{}“"
 
+msgid "No crash report."
+msgstr "Kein Absturzbericht."
+
+msgid "No global shortcut is set."
+msgstr "Kein globales Tastenkürzel ist festgelegt."
+
 msgid "No icon"
 msgstr "Kein Symbol"
+
+msgid "No icon in the notification area; closing the Panel quits Snipdeck."
+msgstr "Kein Symbol im Infobereich; Schließen des Panels beendet Snipdeck."
+
+msgid "No item is marked sensitive."
+msgstr "Kein Textbaustein ist als vertraulich markiert."
 
 msgid "No items with this tag"
 msgstr "Keine Textbausteine mit diesem Schlagwort"
@@ -1785,6 +1824,9 @@ msgstr "Keine Farbe. Probiere {}"
 
 msgid "Not set"
 msgstr "Nicht festgelegt"
+
+msgid "Not set: {}."
+msgstr "Nicht festgelegt: {}."
 
 msgid "Not working"
 msgstr "Funktioniert nicht"
@@ -2669,6 +2711,9 @@ msgstr "Snipdeck"
 msgid "Snipdeck (hotkeys paused)"
 msgstr "Snipdeck (Tastenkürzel pausiert)"
 
+msgid "Snipdeck cannot write to its data folder: {}"
+msgstr "Snipdeck kann nicht in den Datenordner schreiben: {}"
+
 msgid "Snipdeck can’t keep a file with that name. Rename the file and try again."
 msgstr "Snipdeck kann eine Datei mit diesem Namen nicht behalten. Benenne die Datei um und versuche es erneut."
 
@@ -2864,9 +2909,6 @@ msgstr "Bildschirmfoto aufnehmen"
 msgid "Take screenshot hides the Panel until the picture is taken. Turn this on to leave it on screen."
 msgstr "„Bildschirmfoto aufnehmen“ blendet das Panel aus, bis das Bild aufgenommen ist. Einschalten, damit es sichtbar bleibt."
 
-msgid "Takes effect the next time Snipdeck starts."
-msgstr "Wird beim nächsten Start von Snipdeck wirksam."
-
 msgid "Teal"
 msgstr "Blaugrün"
 
@@ -2969,14 +3011,35 @@ msgstr "Der Papierkorb ist leer"
 msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
 msgstr "Der Zwischenablageverlauf enthält noch keinen Text. Kopiere etwas Text und versuche es dann erneut."
 
+msgid "The backups cannot be read: {}"
+msgstr "Die Sicherungen können nicht gelesen werden: {}"
+
 msgid "The file dialog couldn’t open. Type the path instead."
 msgstr "Der Dateidialog konnte nicht geöffnet werden. Gib stattdessen den Pfad ein."
+
+msgid "The icon is in the notification area."
+msgstr "Das Symbol befindet sich im Infobereich."
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "Der Import wurde früh abgebrochen, weil die Quelle größer ist, als Snipdeck auf einmal einlesen kann."
 
+msgid "The integrity check could not run: {}"
+msgstr "Die Integritätsprüfung konnte nicht ausgeführt werden: {}"
+
+msgid "The integrity check found no problems."
+msgstr "Die Integritätsprüfung hat keine Probleme gefunden."
+
+msgid "The integrity check found {} problem(s); the first: {}"
+msgstr "Die Integritätsprüfung hat {} Problem(e) gefunden; das erste: {}"
+
+msgid "The items cannot be read: {}"
+msgstr "Die Textbausteine können nicht gelesen werden: {}"
+
 msgid "The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program’s file name, for example notepad.exe."
 msgstr "Die Taste, die Snipdeck drückt, um in jedes Programm einzufügen. Die meisten Programme nutzen Ctrl+V; manche Terminals brauchen eine andere Taste. Wähle Nie einfügen, um stattdessen zu kopieren. Verwende den Dateinamen des Programms, zum Beispiel notepad.exe."
+
+msgid "The key cannot be checked: {}"
+msgstr "Der Schlüssel kann nicht geprüft werden: {}"
 
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
 msgstr "Der Schlüssel öffnet die verschlüsselten Textbausteine in früher gespeicherten Exporten. Wenn du ihn vergisst, lassen sich diese Textbausteine nie wieder öffnen."
@@ -2995,6 +3058,12 @@ msgstr "Die Liste enthält höchstens {} Programme."
 
 msgid "The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
 msgstr "Die neueste Sicherung stammt vom {} und enthält {} Textbausteine auf {} Boards. Deine aktuelle Datenbank wird beiseitegelegt, nicht gelöscht. Nach dieser Sicherung hinzugefügte Textbausteine werden, soweit lesbar, geborgen."
+
+msgid "The newest backup is from {}, {} days ago ({} kept)."
+msgstr "Die neueste Sicherung stammt vom {}, vor {} Tagen ({} aufbewahrt)."
+
+msgid "The newest crash report is {}."
+msgstr "Der neueste Absturzbericht ist {}."
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "Die ältesten werden gelöscht, sobald es mehr als diese Anzahl gibt."
@@ -3136,6 +3205,9 @@ msgstr "Papierkorb"
 
 msgid "Travel & Places"
 msgstr "Reisen & Orte"
+
+msgid "Tray icon"
+msgstr "Infobereich-Symbol"
 
 msgid "Tray icon click opens"
 msgstr "Klick auf das Tray-Symbol öffnet"
@@ -3427,6 +3499,12 @@ msgstr "Windows hat Snipdeck unter Einstellungen > Apps > Autostart ausgeschalte
 
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "Mit eingeschaltetem Verlauf der Zwischenablage behält „Zuletzt verwendet“ alles, was du in anderen Programmen kopierst."
+
+msgid "Writable, but only {} MB are free on its drive."
+msgstr "Beschreibbar, aber nur {} MB auf dem Laufwerk frei."
+
+msgid "Writable, with room to spare."
+msgstr "Beschreibbar, mit viel Platz."
 
 msgid "YYYY-MM-DD, empty for today"
 msgstr "YYYY-MM-DD, leer für heute"
@@ -3972,6 +4050,12 @@ msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "{} vertraulicher Textbaustein war nicht in der Sicherung."
 msgstr[1] "{} vertrauliche Textbausteine waren nicht in der Sicherung."
+
+msgid "{} sensitive item(s) are stored as plain text (no encryption key yet): masked and readable, but not encrypted."
+msgstr "{} vertrauliche Textbausteine liegen als Klartext vor (noch kein Verschlüsselungsschlüssel): maskiert und lesbar, aber nicht verschlüsselt."
+
+msgid "{} sensitive item(s), the key is present."
+msgstr "{} vertrauliche Textbausteine, der Schlüssel ist vorhanden."
 
 msgid "{} takes no argument"
 msgstr "{} nimmt kein Argument"

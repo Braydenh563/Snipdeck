@@ -175,6 +175,9 @@ msgstr "Ao digitar os dois primeiros caracteres de um gatilho, uma pequena dica 
 msgid "All"
 msgstr "Todos"
 
+msgid "All global shortcuts are set."
+msgstr "Todos os atalhos globais estão definidos."
+
 msgid "All items"
 msgstr "Todos os trechos"
 
@@ -243,6 +246,9 @@ msgstr "Aparência"
 msgid "Appears when you type"
 msgstr "Aparece quando você digita"
 
+msgid "Applies at once. Follow Windows takes effect the next time Snipdeck starts."
+msgstr "Vale na hora. “Seguir o Windows” vale na próxima vez que o Snipdeck iniciar."
+
 msgid "Apply the new name"
 msgstr "Aplicar o novo nome"
 
@@ -284,6 +290,9 @@ msgstr "Backup feito"
 
 msgid "Backup of {}, {}"
 msgstr "Backup de {}, {}"
+
+msgid "Backups"
+msgstr "Cópias de segurança"
 
 msgid "Backups and your data"
 msgstr "Backups e seus dados"
@@ -789,6 +798,9 @@ msgstr "Não foi possível usar este trecho: sua biblioteca está bloqueada. Des
 msgid "Couldn’t write to your library. Check that the disk has room."
 msgstr "Não foi possível gravar na sua biblioteca. Verifique se o disco tem espaço."
 
+msgid "Crash reports"
+msgstr "Relatórios de falha"
+
 msgid "Create"
 msgstr "Criar"
 
@@ -815,6 +827,12 @@ msgstr "Recortar"
 
 msgid "Dark"
 msgstr "Escuro"
+
+msgid "Data folder"
+msgstr "Pasta de dados"
+
+msgid "Database"
+msgstr "Banco de dados"
 
 msgid "Database rebuilt: {} items restored, {} recovered."
 msgstr "Banco de dados reconstruído: {} trechos restaurados, {} recuperados."
@@ -1019,6 +1037,9 @@ msgstr "Esvaziar lixeira…"
 
 msgid "Empty the Trash?"
 msgstr "Esvaziar a lixeira?"
+
+msgid "Encryption key"
+msgstr "Chave de criptografia"
 
 msgid "End stack"
 msgstr "Encerrar pilha"
@@ -1699,6 +1720,9 @@ msgstr "Nova etiqueta"
 msgid "New tag, then Enter"
 msgstr "Nova etiqueta e depois Enter"
 
+msgid "Newest backup {}, {} kept."
+msgstr "Backup mais recente {}, {} guardados."
+
 msgid "Next"
 msgstr "Avançar"
 
@@ -1711,6 +1735,9 @@ msgstr "Próximo escopo"
 msgid "No"
 msgstr "Não"
 
+msgid "No backup has been made yet."
+msgstr "Nenhum backup foi feito ainda."
+
 msgid "No backup yet"
 msgstr "Nenhum backup ainda"
 
@@ -1720,8 +1747,20 @@ msgstr "Sem cor"
 msgid "No commands match “{}”"
 msgstr "Nenhum comando corresponde a “{}”"
 
+msgid "No crash report."
+msgstr "Nenhum relatório de falha."
+
+msgid "No global shortcut is set."
+msgstr "Nenhum atalho global está definido."
+
 msgid "No icon"
 msgstr "Sem ícone"
+
+msgid "No icon in the notification area; closing the Panel quits Snipdeck."
+msgstr "Sem ícone na área de notificação; fechar o Painel encerra o Snipdeck."
+
+msgid "No item is marked sensitive."
+msgstr "Nenhum trecho está marcado como sensível."
 
 msgid "No items with this tag"
 msgstr "Nenhum trecho com esta etiqueta"
@@ -1785,6 +1824,9 @@ msgstr "Não é uma cor. Tente {}"
 
 msgid "Not set"
 msgstr "Não definido"
+
+msgid "Not set: {}."
+msgstr "Não definido: {}."
 
 msgid "Not working"
 msgstr "Não funciona"
@@ -2669,6 +2711,9 @@ msgstr "Snipdeck"
 msgid "Snipdeck (hotkeys paused)"
 msgstr "Snipdeck (atalhos pausados)"
 
+msgid "Snipdeck cannot write to its data folder: {}"
+msgstr "O Snipdeck não consegue gravar na pasta de dados: {}"
+
 msgid "Snipdeck can’t keep a file with that name. Rename the file and try again."
 msgstr "O Snipdeck não pode manter um arquivo com esse nome. Renomeie o arquivo e tente novamente."
 
@@ -2864,9 +2909,6 @@ msgstr "Capturar tela"
 msgid "Take screenshot hides the Panel until the picture is taken. Turn this on to leave it on screen."
 msgstr "“Capturar tela” oculta o painel até a imagem ser capturada. Ative para deixá-lo na tela."
 
-msgid "Takes effect the next time Snipdeck starts."
-msgstr "Entra em vigor na próxima vez que o Snipdeck for iniciado."
-
 msgid "Teal"
 msgstr "Verde-azulado"
 
@@ -2969,14 +3011,35 @@ msgstr "A lixeira está vazia"
 msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
 msgstr "O Histórico da Área de Transferência ainda não tem texto. Copie algum texto e tente novamente."
 
+msgid "The backups cannot be read: {}"
+msgstr "Não foi possível ler os backups: {}"
+
 msgid "The file dialog couldn’t open. Type the path instead."
 msgstr "A caixa de diálogo de arquivos não pôde ser aberta. Digite o caminho."
+
+msgid "The icon is in the notification area."
+msgstr "O ícone está na área de notificação."
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "A importação parou cedo porque a origem é maior do que o Snipdeck lê de uma vez."
 
+msgid "The integrity check could not run: {}"
+msgstr "A verificação de integridade não pôde ser executada: {}"
+
+msgid "The integrity check found no problems."
+msgstr "A verificação de integridade não encontrou problemas."
+
+msgid "The integrity check found {} problem(s); the first: {}"
+msgstr "A verificação de integridade encontrou {} problema(s); o primeiro: {}"
+
+msgid "The items cannot be read: {}"
+msgstr "Não foi possível ler os trechos: {}"
+
 msgid "The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program’s file name, for example notepad.exe."
 msgstr "A tecla que o Snipdeck pressiona para colar em cada programa. A maioria usa Ctrl+V; alguns terminais precisam de outra. Escolha Nunca colar para copiar em vez disso. Use o nome de arquivo do programa, por exemplo notepad.exe."
+
+msgid "The key cannot be checked: {}"
+msgstr "Não foi possível verificar a chave: {}"
 
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
 msgstr "A chave abre os trechos criptografados em exportações que você salvou antes. Se você a esquecer, esses trechos nunca mais poderão ser abertos."
@@ -2995,6 +3058,12 @@ msgstr "A lista comporta no máximo {} programas."
 
 msgid "The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
 msgstr "O backup mais recente é de {} e tem {} trechos em {} quadros. Seu banco de dados atual é guardado de lado, não excluído. Os trechos adicionados depois deste backup são recuperados onde puderem ser lidos."
+
+msgid "The newest backup is from {}, {} days ago ({} kept)."
+msgstr "O backup mais recente é de {}, há {} dias ({} guardados)."
+
+msgid "The newest crash report is {}."
+msgstr "O relatório de falha mais recente é {}."
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "As mais antigas são excluídas quando houver mais do que este número."
@@ -3136,6 +3205,9 @@ msgstr "Lixeira"
 
 msgid "Travel & Places"
 msgstr "Viagens e lugares"
+
+msgid "Tray icon"
+msgstr "Ícone da bandeja"
 
 msgid "Tray icon click opens"
 msgstr "O clique no ícone da bandeja abre"
@@ -3427,6 +3499,12 @@ msgstr "O Windows desativou o Snipdeck em Configurações > Aplicativos > Inicia
 
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "Com o histórico da área de transferência ativado, Recentes guarda o que você copia em outros programas."
+
+msgid "Writable, but only {} MB are free on its drive."
+msgstr "Gravável, mas só há {} MB livres na unidade."
+
+msgid "Writable, with room to spare."
+msgstr "Gravável, com bastante espaço."
 
 msgid "YYYY-MM-DD, empty for today"
 msgstr "YYYY-MM-DD, vazio para hoje"
@@ -3972,6 +4050,12 @@ msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "{} trecho sensível não estava no backup."
 msgstr[1] "{} trechos sensíveis não estavam no backup."
+
+msgid "{} sensitive item(s) are stored as plain text (no encryption key yet): masked and readable, but not encrypted."
+msgstr "{} trecho(s) sensível(is) estão guardados como texto simples (ainda sem chave de criptografia): mascarados e legíveis, mas não criptografados."
+
+msgid "{} sensitive item(s), the key is present."
+msgstr "{} trecho(s) sensível(is), a chave está presente."
 
 msgid "{} takes no argument"
 msgstr "{} não aceita argumento"

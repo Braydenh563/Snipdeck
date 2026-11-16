@@ -2184,7 +2184,7 @@ ui_tests! {
         fixture::set_rows(&ui, Vec::new());
         ui.set_query("zzz".into());
         settle();
-        assert!(!missing(&ui, "Nothing matches \u{201c}zzz\u{201d}", AccessibleRole::Text));
+        assert!(!missing(&ui, "Nothing matches \u{201c}zzz\u{201d}.", AccessibleRole::Text));
         assert!(!missing(&ui, "Searched every board and list.", AccessibleRole::Text));
         assert!(missing(&ui, "Save from clipboard", AccessibleRole::Button));
         // The one action makes the query a note in the shown list; the quiet one leaves the search.
@@ -2199,7 +2199,7 @@ ui_tests! {
         ui.set_query("zzz".into());
         settle();
         assert_eq!(
-            find(&ui, "Nothing matches \u{201c}zzz\u{201d}", AccessibleRole::Text).accessible_live_region(),
+            find(&ui, "Nothing matches \u{201c}zzz\u{201d}.", AccessibleRole::Text).accessible_live_region(),
             Some(AccessibleLiveness::Polite)
         );
     }

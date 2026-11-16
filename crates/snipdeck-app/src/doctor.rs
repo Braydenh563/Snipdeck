@@ -254,7 +254,7 @@ impl Finding {
             Self::ShortcutsUnset => format!("Not set: {}.", a(0)),
             Self::TrayOk => "The icon is in the notification area.".to_owned(),
             Self::NoTray => {
-                "No icon in the notification area; closing the panel quits Snipdeck.".to_owned()
+                "No icon in the notification area; closing the Panel quits Snipdeck.".to_owned()
             }
             Self::NoCrash => "No crash report.".to_owned(),
             Self::Crash => format!("The newest crash report is {}.", a(0)),

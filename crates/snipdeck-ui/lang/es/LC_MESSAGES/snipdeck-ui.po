@@ -175,6 +175,9 @@ msgstr "Al escribir los dos primeros caracteres de un activador, una pequeña su
 msgid "All"
 msgstr "Todos"
 
+msgid "All global shortcuts are set."
+msgstr "Todos los atajos globales están definidos."
+
 msgid "All items"
 msgstr "Todos los fragmentos"
 
@@ -243,6 +246,9 @@ msgstr "Apariencia"
 msgid "Appears when you type"
 msgstr "Aparece al escribir"
 
+msgid "Applies at once. Follow Windows takes effect the next time Snipdeck starts."
+msgstr "Se aplica al instante. «Seguir Windows» se aplica la próxima vez que se inicie Snipdeck."
+
 msgid "Apply the new name"
 msgstr "Aplicar el nuevo nombre"
 
@@ -284,6 +290,9 @@ msgstr "Copia de seguridad realizada"
 
 msgid "Backup of {}, {}"
 msgstr "Copia del {}, {}"
+
+msgid "Backups"
+msgstr "Copias de seguridad"
 
 msgid "Backups and your data"
 msgstr "Copias de seguridad y tus datos"
@@ -789,6 +798,9 @@ msgstr "No se pudo usar este fragmento: tu biblioteca está bloqueada. Desbloqu�
 msgid "Couldn’t write to your library. Check that the disk has room."
 msgstr "No se pudo escribir en tu biblioteca. Comprueba que el disco tenga espacio."
 
+msgid "Crash reports"
+msgstr "Informes de fallos"
+
 msgid "Create"
 msgstr "Crear"
 
@@ -815,6 +827,12 @@ msgstr "Cortar"
 
 msgid "Dark"
 msgstr "Oscuro"
+
+msgid "Data folder"
+msgstr "Carpeta de datos"
+
+msgid "Database"
+msgstr "Base de datos"
 
 msgid "Database rebuilt: {} items restored, {} recovered."
 msgstr "Base de datos reconstruida: {} fragmentos restaurados, {} recuperados."
@@ -1019,6 +1037,9 @@ msgstr "Vaciar papelera…"
 
 msgid "Empty the Trash?"
 msgstr "¿Vaciar la papelera?"
+
+msgid "Encryption key"
+msgstr "Clave de cifrado"
 
 msgid "End stack"
 msgstr "Terminar pila"
@@ -1699,6 +1720,9 @@ msgstr "Nueva etiqueta"
 msgid "New tag, then Enter"
 msgstr "Nueva etiqueta y luego Enter"
 
+msgid "Newest backup {}, {} kept."
+msgstr "Última copia de seguridad: {}, {} guardadas."
+
 msgid "Next"
 msgstr "Siguiente"
 
@@ -1711,6 +1735,9 @@ msgstr "Siguiente ámbito"
 msgid "No"
 msgstr "No"
 
+msgid "No backup has been made yet."
+msgstr "Aún no se ha hecho ninguna copia de seguridad."
+
 msgid "No backup yet"
 msgstr "Aún no hay copias"
 
@@ -1720,8 +1747,20 @@ msgstr "Sin color"
 msgid "No commands match “{}”"
 msgstr "Ningún comando coincide con «{}»"
 
+msgid "No crash report."
+msgstr "Sin informes de fallos."
+
+msgid "No global shortcut is set."
+msgstr "No hay ningún atajo global definido."
+
 msgid "No icon"
 msgstr "Sin icono"
+
+msgid "No icon in the notification area; closing the Panel quits Snipdeck."
+msgstr "No hay icono en el área de notificación; al cerrar el Panel se cierra Snipdeck."
+
+msgid "No item is marked sensitive."
+msgstr "Ningún fragmento está marcado como sensible."
 
 msgid "No items with this tag"
 msgstr "No hay fragmentos con esta etiqueta"
@@ -1785,6 +1824,9 @@ msgstr "No es un color. Prueba {}"
 
 msgid "Not set"
 msgstr "Sin definir"
+
+msgid "Not set: {}."
+msgstr "Sin definir: {}."
 
 msgid "Not working"
 msgstr "No funciona"
@@ -2669,6 +2711,9 @@ msgstr "Snipdeck"
 msgid "Snipdeck (hotkeys paused)"
 msgstr "Snipdeck (atajos en pausa)"
 
+msgid "Snipdeck cannot write to its data folder: {}"
+msgstr "Snipdeck no puede escribir en su carpeta de datos: {}"
+
 msgid "Snipdeck can’t keep a file with that name. Rename the file and try again."
 msgstr "Snipdeck no puede conservar un archivo con ese nombre. Cambia el nombre del archivo y vuelve a intentarlo."
 
@@ -2864,9 +2909,6 @@ msgstr "Hacer captura de pantalla"
 msgid "Take screenshot hides the Panel until the picture is taken. Turn this on to leave it on screen."
 msgstr "«Hacer captura de pantalla» oculta el panel hasta que se hace la imagen. Actívalo para dejarlo a la vista."
 
-msgid "Takes effect the next time Snipdeck starts."
-msgstr "Se aplica la próxima vez que se inicie Snipdeck."
-
 msgid "Teal"
 msgstr "Verde azulado"
 
@@ -2969,14 +3011,35 @@ msgstr "La papelera está vacía"
 msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
 msgstr "El Historial del Portapapeles aún no tiene texto. Copia algo de texto y vuelve a intentarlo."
 
+msgid "The backups cannot be read: {}"
+msgstr "No se pueden leer las copias de seguridad: {}"
+
 msgid "The file dialog couldn’t open. Type the path instead."
 msgstr "No se pudo abrir el diálogo de archivos. Escribe la ruta en su lugar."
+
+msgid "The icon is in the notification area."
+msgstr "El icono está en el área de notificación."
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "La importación se detuvo pronto porque el origen es más grande de lo que Snipdeck lee de una vez."
 
+msgid "The integrity check could not run: {}"
+msgstr "No se pudo ejecutar la comprobación de integridad: {}"
+
+msgid "The integrity check found no problems."
+msgstr "La comprobación de integridad no encontró problemas."
+
+msgid "The integrity check found {} problem(s); the first: {}"
+msgstr "La comprobación de integridad encontró {} problema(s); el primero: {}"
+
+msgid "The items cannot be read: {}"
+msgstr "No se pueden leer los fragmentos: {}"
+
 msgid "The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program’s file name, for example notepad.exe."
 msgstr "La tecla que Snipdeck pulsa para pegar en cada programa. La mayoría usa Ctrl+V; algunas terminales necesitan otra. Elige No pegar nunca para copiar en su lugar. Usa el nombre de archivo del programa, por ejemplo notepad.exe."
+
+msgid "The key cannot be checked: {}"
+msgstr "No se puede comprobar la clave: {}"
 
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
 msgstr "La clave abre los fragmentos cifrados de las exportaciones que guardaste antes. Si la olvidas, esos fragmentos no se podrán abrir nunca más."
@@ -2995,6 +3058,12 @@ msgstr "La lista admite como máximo {} programas."
 
 msgid "The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
 msgstr "La copia más reciente es del {} y contiene {} fragmentos en {} tableros. Tu base de datos actual se aparta, no se elimina. Los fragmentos añadidos después de esta copia se recuperan donde se puedan leer."
+
+msgid "The newest backup is from {}, {} days ago ({} kept)."
+msgstr "La última copia de seguridad es del {}, hace {} días ({} guardadas)."
+
+msgid "The newest crash report is {}."
+msgstr "El informe de fallos más reciente es {}."
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "Las más antiguas se eliminan cuando hay más que este número."
@@ -3136,6 +3205,9 @@ msgstr "Papelera"
 
 msgid "Travel & Places"
 msgstr "Viajes y lugares"
+
+msgid "Tray icon"
+msgstr "Icono de la bandeja"
 
 msgid "Tray icon click opens"
 msgstr "Al hacer clic en el icono de la bandeja se abre"
@@ -3427,6 +3499,12 @@ msgstr "Windows tiene Snipdeck desactivado en Configuración > Aplicaciones > In
 
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "Con el historial del portapapeles activado, Recientes guarda lo que copias en otros programas."
+
+msgid "Writable, but only {} MB are free on its drive."
+msgstr "Se puede escribir, pero solo quedan {} MB libres en la unidad."
+
+msgid "Writable, with room to spare."
+msgstr "Se puede escribir, con espacio de sobra."
 
 msgid "YYYY-MM-DD, empty for today"
 msgstr "YYYY-MM-DD, vacío para hoy"
@@ -3972,6 +4050,12 @@ msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "Falta {} fragmento sensible en la copia de seguridad."
 msgstr[1] "Faltan {} fragmentos sensibles en la copia de seguridad."
+
+msgid "{} sensitive item(s) are stored as plain text (no encryption key yet): masked and readable, but not encrypted."
+msgstr "{} fragmento(s) sensible(s) se guardan como texto sin cifrar (aún no hay clave de cifrado): enmascarados y legibles, pero no cifrados."
+
+msgid "{} sensitive item(s), the key is present."
+msgstr "{} fragmento(s) sensible(s), la clave está presente."
 
 msgid "{} takes no argument"
 msgstr "{} no admite argumento"

@@ -175,6 +175,9 @@ msgstr "トリガーの最初の 2 文字を入力すると、テキストカー
 msgid "All"
 msgstr "すべて"
 
+msgid "All global shortcuts are set."
+msgstr "すべてのグローバルショートカットが設定されています。"
+
 msgid "All items"
 msgstr "すべてのスニペット"
 
@@ -242,6 +245,9 @@ msgstr "外観"
 msgid "Appears when you type"
 msgstr "入力すると表示"
 
+msgid "Applies at once. Follow Windows takes effect the next time Snipdeck starts."
+msgstr "すぐに反映されます。「Windows に従う」は次回 Snipdeck を起動したときに反映されます。"
+
 msgid "Apply the new name"
 msgstr "新しい名前を適用"
 
@@ -283,6 +289,9 @@ msgstr "バックアップ済み"
 
 msgid "Backup of {}, {}"
 msgstr "{} のバックアップ（{}）"
+
+msgid "Backups"
+msgstr "バックアップ"
 
 msgid "Backups and your data"
 msgstr "バックアップとデータ"
@@ -788,6 +797,9 @@ msgstr "このスニペットを使用できませんでした。ライブラリ
 msgid "Couldn’t write to your library. Check that the disk has room."
 msgstr "ライブラリに書き込めませんでした。ディスクに空きがあるか確認してください。"
 
+msgid "Crash reports"
+msgstr "クラッシュレポート"
+
 msgid "Create"
 msgstr "作成"
 
@@ -814,6 +826,12 @@ msgstr "切り取り"
 
 msgid "Dark"
 msgstr "ダーク"
+
+msgid "Data folder"
+msgstr "データフォルダー"
+
+msgid "Database"
+msgstr "データベース"
 
 msgid "Database rebuilt: {} items restored, {} recovered."
 msgstr "データベースを再構築しました。スニペット {} 件を復元、{} 件を回復しました。"
@@ -1018,6 +1036,9 @@ msgstr "ごみ箱を空にする…"
 
 msgid "Empty the Trash?"
 msgstr "ごみ箱を空にしますか？"
+
+msgid "Encryption key"
+msgstr "暗号化キー"
 
 msgid "End stack"
 msgstr "スタックを終了"
@@ -1693,6 +1714,9 @@ msgstr "新しいタグ"
 msgid "New tag, then Enter"
 msgstr "新しいタグ、次に Enter"
 
+msgid "Newest backup {}, {} kept."
+msgstr "最新のバックアップ {}、{} 件を保管。"
+
 msgid "Next"
 msgstr "次へ"
 
@@ -1705,6 +1729,9 @@ msgstr "次の範囲"
 msgid "No"
 msgstr "いいえ"
 
+msgid "No backup has been made yet."
+msgstr "まだバックアップが作成されていません。"
+
 msgid "No backup yet"
 msgstr "まだバックアップがありません"
 
@@ -1714,8 +1741,20 @@ msgstr "色なし"
 msgid "No commands match “{}”"
 msgstr "「{}」に一致するコマンドはありません"
 
+msgid "No crash report."
+msgstr "クラッシュレポートはありません。"
+
+msgid "No global shortcut is set."
+msgstr "グローバルショートカットが設定されていません。"
+
 msgid "No icon"
 msgstr "アイコンなし"
+
+msgid "No icon in the notification area; closing the Panel quits Snipdeck."
+msgstr "通知領域にアイコンがありません。Panel を閉じると Snipdeck が終了します。"
+
+msgid "No item is marked sensitive."
+msgstr "機密に設定されたスニペットはありません。"
 
 msgid "No items with this tag"
 msgstr "このタグのスニペットはありません"
@@ -1779,6 +1818,9 @@ msgstr "色ではありません。{} を試してください"
 
 msgid "Not set"
 msgstr "未設定"
+
+msgid "Not set: {}."
+msgstr "未設定：{}。"
 
 msgid "Not working"
 msgstr "動作しません"
@@ -2661,6 +2703,9 @@ msgstr "Snipdeck"
 msgid "Snipdeck (hotkeys paused)"
 msgstr "Snipdeck（ホットキーは一時停止中）"
 
+msgid "Snipdeck cannot write to its data folder: {}"
+msgstr "Snipdeck はデータフォルダーに書き込めません：{}"
+
 msgid "Snipdeck can’t keep a file with that name. Rename the file and try again."
 msgstr "Snipdeck はその名前のファイルを保持できません。ファイル名を変更して、もう一度お試しください。"
 
@@ -2856,9 +2901,6 @@ msgstr "スクリーンショットを撮る"
 msgid "Take screenshot hides the Panel until the picture is taken. Turn this on to leave it on screen."
 msgstr "「スクリーンショットを撮る」は、画像を撮るまでパネルを隠します。オンにすると表示したままになります。"
 
-msgid "Takes effect the next time Snipdeck starts."
-msgstr "次回 Snipdeck の起動時に有効になります。"
-
 msgid "Teal"
 msgstr "ティール"
 
@@ -2961,14 +3003,35 @@ msgstr "ごみ箱は空です"
 msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
 msgstr "クリップボードの履歴にはまだテキストがありません。テキストをコピーしてから、もう一度お試しください。"
 
+msgid "The backups cannot be read: {}"
+msgstr "バックアップを読み取れません：{}"
+
 msgid "The file dialog couldn’t open. Type the path instead."
 msgstr "ファイルダイアログを開けませんでした。代わりにパスを入力してください。"
+
+msgid "The icon is in the notification area."
+msgstr "アイコンは通知領域にあります。"
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "取り込み元が Snipdeck が一度に読み込める量より大きいため、取り込みを途中で停止しました。"
 
+msgid "The integrity check could not run: {}"
+msgstr "整合性チェックを実行できませんでした：{}"
+
+msgid "The integrity check found no problems."
+msgstr "整合性チェックで問題は見つかりませんでした。"
+
+msgid "The integrity check found {} problem(s); the first: {}"
+msgstr "整合性チェックで {} 件の問題が見つかりました。最初の問題：{}"
+
+msgid "The items cannot be read: {}"
+msgstr "スニペットを読み取れません：{}"
+
 msgid "The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program’s file name, for example notepad.exe."
 msgstr "Snipdeck が各プログラムへの貼り付けに押すキーです。ほとんどのプログラムは Ctrl+V を使いますが、別のキーが必要なターミナルもあります。「貼り付けない」を選ぶと、代わりにコピーします。プログラムのファイル名を使ってください（例：notepad.exe）。"
+
+msgid "The key cannot be checked: {}"
+msgstr "キーを確認できません：{}"
 
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
 msgstr "このキーは、以前に保存したエクスポート内の暗号化されたスニペットを開くためのものです。削除すると、それらのスニペットは二度と開けません。"
@@ -2987,6 +3050,12 @@ msgstr "リストには最大 {} 個のプログラムを登録できます。"
 
 msgid "The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
 msgstr "最新のバックアップは {} のもので、{} 個のボードに {} 件のスニペットがあります。現在のデータベースは削除されず、別に保管されます。このバックアップ以降に追加したスニペットは、読み取れるものを回復します。"
+
+msgid "The newest backup is from {}, {} days ago ({} kept)."
+msgstr "最新のバックアップは {}（{} 日前）です（{} 件を保管）。"
+
+msgid "The newest crash report is {}."
+msgstr "最新のクラッシュレポートは {} です。"
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "この数を超えると、古いものから削除されます。"
@@ -3128,6 +3197,9 @@ msgstr "ごみ箱"
 
 msgid "Travel & Places"
 msgstr "旅行と場所"
+
+msgid "Tray icon"
+msgstr "トレイアイコン"
 
 msgid "Tray icon click opens"
 msgstr "トレイアイコンのクリックで開く"
@@ -3419,6 +3491,12 @@ msgstr "Windows の [設定] > [アプリ] > [スタートアップ] で Snipdec
 
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "クリップボード履歴をオンにすると、「最近」に他のプログラムでコピーした内容が残ります。"
+
+msgid "Writable, but only {} MB are free on its drive."
+msgstr "書き込めますが、ドライブの空き容量は {} MB しかありません。"
+
+msgid "Writable, with room to spare."
+msgstr "書き込めます。空き容量も十分です。"
 
 msgid "YYYY-MM-DD, empty for today"
 msgstr "YYYY-MM-DD、空欄なら今日"
@@ -3945,6 +4023,12 @@ msgstr[0] "このファイルの作成時に、機密スニペット {} 件は�
 msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "機密スニペット {} 件がバックアップに含まれていませんでした。"
+
+msgid "{} sensitive item(s) are stored as plain text (no encryption key yet): masked and readable, but not encrypted."
+msgstr "機密スニペット {} 件が平文で保存されています（暗号化キーがまだありません）：マスクされ読み取れますが、暗号化はされていません。"
+
+msgid "{} sensitive item(s), the key is present."
+msgstr "機密スニペット {} 件、キーがあります。"
 
 msgid "{} takes no argument"
 msgstr "{} は引数を取りません"
