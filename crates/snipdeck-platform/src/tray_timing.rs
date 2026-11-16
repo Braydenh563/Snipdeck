@@ -12,7 +12,7 @@
 /// The waits between attempts, in milliseconds; the last one repeats until [`MAX_ATTEMPTS`].
 const BACKOFF_MS: [u64; 6] = [250, 500, 1_000, 2_000, 4_000, 5_000];
 
-/// Attempts (the first included) before the retries stop. With [`BACKOFF_MS`] that covers about
+/// Attempts (the first included) before the retries stop. With `BACKOFF_MS` that covers about
 /// two and a half minutes, longer than a cold sign-in; after that only the next `TaskbarCreated`
 /// or [`crate::tray::Tray::show`] tries again.
 pub const MAX_ATTEMPTS: u32 = 30;
