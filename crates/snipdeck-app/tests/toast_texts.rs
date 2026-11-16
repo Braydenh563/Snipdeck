@@ -140,7 +140,7 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::TypingUnavailable => 101,
         ToastMessage::AutostartSwitchedOff => 102,
         ToastMessage::AutostartPolicy => 103,
-        ToastMessage::ArchiveBusy => 112,
+        ToastMessage::ArchiveBusy => 113,
     }
 }
 
