@@ -8,3 +8,10 @@ Agent runs reported clippy clean on items merge; tests passed per agent.
 - Not built (SPEC post-1.0 with reason): rope viewer, image editor, extra image formats, Replace on Image/File.
 - Windows-unverified: GetLocaleInfoEx, {selection} copy, {key:}, clipboard history, CRLF, open link.
 - send final per-finding report to session_01NKjURuyvhApCqnss7v9Php.
+
+## Update: views merged (WIP, a9bcb9f), pushed. Gate NOT run.
+Open on resume (from .claude/remaining/views.md):
+1. Focus-order test tab_reaches_filter_sort_every_chip_and_clear_... fails at 640 wide/2.25 (Tab never reaches Filter/Sort/chips): real bug or test artefact?
+2. clippy workspace, full snipdeck-ui tests --no-fail-fast, review changed goldens, cargo fmt (not run after last Slint edits).
+3. 5 editor_window tests in snipdeck-app fail on base too (not ours); top toolbar overflows 480px at scale 2.25 (not ours).
+4. Then gate --changed/--full, final report to coordinator session.
