@@ -56,7 +56,22 @@ use snipdeck_core::Timestamp;
 use snipdeck_store::Store;
 use snipdeck_ui::PanelWindow;
 
+/// What retrying failed global hotkeys needs (PLATFORM-3, -4). Held on the UI thread.
+struct HotkeyRetry {
+    backend: Rc<RefCell<Box<dyn host::HotkeyBackend>>>,
+    chords_now: Rc<dyn Fn() -> snipdeck_app::settings::Hotkeys>,
+    /// The hotkeys that failed and have not yet registered.
+    problems: Vec<host::HotkeyProblem>,
+    gate: host::RetryGate,
+    started: std::time::Instant,
+}
+
+/// How often failed hotkeys are tried again when nothing else prompts it.
+const HOTKEY_RETRY_EVERY: std::time::Duration = std::time::Duration::from_mins(1);
+
 thread_local! {
+    /// The failed hotkeys and what retries them.
+    static HOTKEY_RETRY: RefCell<Option<HotkeyRetry>> = const { RefCell::new(None) };
     /// The binding, for events that arrive from other threads and are handed to this one.
     static BINDING: RefCell<Option<Binding>> = const { RefCell::new(None) };
 }
@@ -200,6 +215,8 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         on_clipboard_change: Box::new(|change| on_ui_thread(move |b| b.clipboard_changed(change))),
         on_typed: Box::new(|typed| on_ui_thread(move |b| b.typed_trigger(typed))),
         on_session_lock: Box::new(|| on_ui_thread(Binding::session_locked)),
+        // A wake, unlock or remote connect: failed hotkeys are tried again at once (PLATFORM-4).
+        on_session_resume: Box::new(|| on_ui_thread(|_| retry_hotkeys(true))),
         on_look_changed: {
             let look = Arc::clone(&look);
             // Read on the UI thread: the value is fresher than the one the watcher saw.
@@ -376,6 +393,23 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
             )
         }
     };
+    let chords_now: Rc<dyn Fn() -> snipdeck_app::settings::Hotkeys> = Rc::new(chords_now);
+    HOTKEY_RETRY.with(|slot| {
+        *slot.borrow_mut() = Some(HotkeyRetry {
+            backend: Rc::clone(&hotkeys),
+            chords_now: Rc::clone(&chords_now),
+            problems: Vec::new(),
+            gate: host::RetryGate::new(HOTKEY_RETRY_EVERY),
+            started: std::time::Instant::now(),
+        });
+    });
+    // The slow retry: the gate lets one through every `HOTKEY_RETRY_EVERY`.
+    let hotkey_retry_timer = slint::Timer::default();
+    hotkey_retry_timer.start(
+        slint::TimerMode::Repeated,
+        std::time::Duration::from_secs(15),
+        || retry_hotkeys(false),
+    );
     let main_ui = Rc::new(MainUi::new(&controller));
     let panel_taskbar: PanelTaskbar = {
         let window = window.as_weak();
@@ -460,7 +494,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     };
     let on_effect: Rc<dyn Fn(&Effect)> = Rc::new(effect_handler(
         Rc::clone(&hotkeys),
-        chords_now,
+        move || chords_now(),
         window.as_weak(),
         Rc::clone(&main_ui),
         Rc::clone(&tray),
@@ -653,6 +687,10 @@ fn effect_handler(
             let _ = slint::quit_event_loop();
         }
         Effect::SetHotkeysPaused(paused) => {
+            if *paused {
+                // Nothing is registered while paused: nothing to retry.
+                report_hotkey_problems(&[]);
+            }
             // The chords are read before the backend is borrowed: both are on this thread.
             let chords = chords_now();
             let report = host::set_paused(&mut **hotkeys.borrow_mut(), *paused, &chords);
@@ -692,6 +730,7 @@ fn effect_handler(
             }
         },
         Effect::OpenSettings => {
+            retry_hotkeys(true);
             if let Err(e) = settings_ui.open() {
                 eprintln!("snipdeck: cannot open the settings: {e}");
                 window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
@@ -872,8 +911,39 @@ fn watch_window_events(window: &PanelWindow, binding: Binding, armed: Rc<Cell<bo
         });
 }
 
+/// Tries the failed hotkeys again if a retry is due; `prompted` (a wake, unlock, remote connect,
+/// or Settings opening) makes it due at once. A hotkey that registers clears its warning.
+fn retry_hotkeys(prompted: bool) {
+    let remaining = HOTKEY_RETRY.with(|slot| {
+        let mut slot = slot.borrow_mut();
+        let retry = slot.as_mut()?;
+        if retry.problems.is_empty() {
+            return None;
+        }
+        if prompted {
+            retry.gate.now();
+        }
+        if !retry.gate.due(retry.started.elapsed()) {
+            return None;
+        }
+        let chords = (retry.chords_now)();
+        let remaining =
+            host::retry_failed(&mut **retry.backend.borrow_mut(), &chords, &retry.problems);
+        (remaining != retry.problems).then_some(remaining)
+    });
+    if let Some(remaining) = remaining {
+        snipdeck_app::trace!("hotkey retry: {} still failing", remaining.len());
+        report_hotkey_problems(&remaining);
+    }
+}
+
 /// Prints the hotkeys that could not be registered and tells the user in the Panel.
 fn report_hotkey_problems(problems: &[host::HotkeyProblem]) {
+    HOTKEY_RETRY.with(|slot| {
+        if let Some(retry) = slot.borrow_mut().as_mut() {
+            retry.problems = problems.to_vec();
+        }
+    });
     for problem in problems {
         eprintln!(
             "snipdeck: cannot register {} for {:?}: {}",

@@ -37,7 +37,7 @@ use super::hidden_window::{HiddenWindow, WindowHandler};
 use crate::error::Error;
 use crate::system_look::{
     HighContrast, Rgb, SystemLook, SystemLookSource, message_may_change_look, message_means_lock,
-    text_scale_from_percent,
+    message_means_resume, text_scale_from_percent,
 };
 
 /// Reads the live system look. Stateless, so it is `Send + Sync` and cheap to copy.
@@ -197,7 +197,9 @@ impl std::fmt::Debug for SystemLookWatcher {
 
 impl SystemLookWatcher {
     /// Starts watching. `on_change` runs on the watcher's thread, possibly several times for
-    /// one change; it should hand over to the UI thread and read the look there.
+    /// one change; it should hand over to the UI thread and read the look there. `on_lock` runs
+    /// when the session locks or the computer goes to sleep, `on_resume` when it wakes, the
+    /// session unlocks or a console or remote connection returns.
     ///
     /// # Errors
     ///
@@ -206,19 +208,28 @@ impl SystemLookWatcher {
     pub fn start(
         on_change: impl Fn() + Send + 'static,
         on_lock: impl Fn() + Send + 'static,
+        on_resume: impl Fn() + Send + 'static,
     ) -> Result<Self, Error> {
         let window = HiddenWindow::spawn("snipdeck-look", "SnipdeckLookWindow", move || Watcher {
             on_change: Box::new(on_change),
             on_lock: Box::new(on_lock),
+            on_resume: Box::new(on_resume),
         })?;
         Ok(Self { _window: window })
     }
 }
 
+#[allow(
+    clippy::struct_field_names,
+    reason = "the fields are the three callbacks"
+)]
 struct Watcher {
     on_change: Box<dyn Fn() + Send>,
     /// The session locked (Win+L) or the computer is going to sleep.
     on_lock: Box<dyn Fn() + Send>,
+    /// The computer woke up, the session was unlocked, or a console or remote connection came
+    /// back (unverified on Windows): the app checks its global hotkeys.
+    on_resume: Box<dyn Fn() + Send>,
 }
 
 impl WindowHandler for Watcher {
@@ -233,6 +244,9 @@ impl WindowHandler for Watcher {
         }
         if message_means_lock(msg, wparam.0) {
             let _ = catch_unwind(AssertUnwindSafe(|| (self.on_lock)()));
+        }
+        if message_means_resume(msg, wparam.0) {
+            let _ = catch_unwind(AssertUnwindSafe(|| (self.on_resume)()));
         }
         // For a colour-mode change `wParam` is 0 and `lParam` is the area name. With a nonzero
         // `wParam` (an `SPI_*` code) `lParam` is not necessarily a string: do not read it.
@@ -290,7 +304,7 @@ mod tests {
 
     #[test]
     fn the_watcher_starts_and_stops() {
-        let watcher = SystemLookWatcher::start(|| {}, || {}).unwrap();
+        let watcher = SystemLookWatcher::start(|| {}, || {}, || {}).unwrap();
         drop(watcher);
     }
 }

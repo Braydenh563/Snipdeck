@@ -25,6 +25,7 @@ pub mod error;
 pub mod eyedrop;
 pub mod file_dialog;
 pub mod hello;
+pub mod hotkey_table;
 pub mod instance_names;
 pub mod keys;
 pub mod payload;

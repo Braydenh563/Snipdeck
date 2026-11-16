@@ -117,7 +117,15 @@ impl Drop for HiddenWindow {
             }
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
-        if posted || thread.is_finished() {
+        // Bounded wait (300 polls of 10 ms): a handler stuck in a modal loop must not hang the UI
+        // thread at exit; a thread that does not end is detached.
+        if (posted || thread.is_finished())
+            && crate::hotkey_table::wait_until(
+                || thread.is_finished(),
+                || std::thread::sleep(std::time::Duration::from_millis(10)),
+                300,
+            )
+        {
             let _ = thread.join();
         }
         // Otherwise the window could not be told to stop; detach rather than hang the app.
