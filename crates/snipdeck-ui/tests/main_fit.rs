@@ -155,11 +155,12 @@ fn scrolling_reveals(c: &Case, name: &str) -> Result<(), String> {
     let mut seen = false;
     for _ in 0..80 {
         wheel(-60.0);
-        if let Some((b, footer)) = find(c) {
-            if b.2 + b.4 <= footer + 0.5 && b.2 >= 0.0 {
-                seen = true;
-                break;
-            }
+        if let Some((b, footer)) = find(c)
+            && b.2 + b.4 <= footer + 0.5
+            && b.2 >= 0.0
+        {
+            seen = true;
+            break;
         }
     }
     for _ in 0..80 {
