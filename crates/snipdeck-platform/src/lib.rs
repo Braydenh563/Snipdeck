@@ -16,6 +16,7 @@
 //! The Windows implementation of those traits lives in a `windows` module (`cfg(windows)`), the
 //! only place `unsafe` is allowed (ADR-0003, `docs/architecture.md`).
 
+pub mod associations;
 pub mod cf_html;
 pub mod chord;
 pub mod clipboard_history;
@@ -24,6 +25,7 @@ pub mod command_line;
 pub mod error;
 pub mod eyedrop;
 pub mod file_dialog;
+pub mod handover;
 pub mod hello;
 pub mod instance_names;
 pub mod keys;

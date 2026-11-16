@@ -2735,6 +2735,9 @@ msgstr "Poignée de Snipdeck, appuyez sur le raccourci du panneau pour ouvrir"
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "Snipdeck n’a ni compte, ni serveur, ni télémétrie, et n’ouvre aucun port réseau. Rien de ce que vous enregistrez ne quitte ce PC."
 
+msgid "Snipdeck is already running, but it did not answer.\n\nIf it is stuck, end Snipdeck in Task Manager and start it again. If it runs as administrator, close it from its tray icon and start it again."
+msgstr "Snipdeck est déjà en cours d'exécution, mais il n'a pas répondu.\n\nS'il est bloqué, terminez Snipdeck dans le Gestionnaire des tâches puis relancez-le. S'il s'exécute en tant qu'administrateur, fermez-le depuis son icône de la zone de notification puis relancez-le."
+
 msgid "Snipdeck is still running. Click the tray icon to bring the panel back."
 msgstr "Snipdeck est toujours en cours d'exécution. Cliquez sur l'icône de la zone de notification pour faire revenir le panneau."
 

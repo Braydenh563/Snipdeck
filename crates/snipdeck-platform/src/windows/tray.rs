@@ -59,6 +59,7 @@ use crate::tray::{
     ClickDeferral, Gesture, MenuLine, Reaction, Tray, TrayEntry, TrayEvent, TrayLabels, TrayModel,
     classify, decode_anchor, decode_callback,
 };
+use crate::win_logic::{SessionEnd, session_end};
 
 /// Wakes the window to drain the command channel.
 const WM_COMMANDS: u32 = WM_APP + 1;
@@ -439,6 +440,20 @@ impl WindowHandler for TrayHandler {
             // Manager). The window itself stays (see `hidden_window.rs`); the app is asked to quit.
             self.emit(TrayEvent::Quit);
             return Some(LRESULT(0));
+        }
+        match session_end(msg, wparam.0) {
+            Some(SessionEnd::Agree) => {
+                // Never stand in the way of a shutdown: the flush waits for the real end.
+                return Some(LRESULT(1));
+            }
+            Some(SessionEnd::FlushNow) => {
+                // Returns when the app has saved (or gave up waiting): Windows may end the process
+                // right after. Unverified on Windows.
+                self.emit(TrayEvent::SessionEnding);
+                return Some(LRESULT(0));
+            }
+            Some(SessionEnd::Cancelled) => return Some(LRESULT(0)),
+            None => {}
         }
         if msg == WM_DESTROY {
             let _ = self.remove_icon(hwnd);
