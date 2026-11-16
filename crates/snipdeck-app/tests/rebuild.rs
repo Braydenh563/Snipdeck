@@ -109,7 +109,7 @@ fn assert_no_marker(dir: &Path) {
 }
 
 fn newest_backup(dir: &Path) -> std::path::PathBuf {
-    snipdeck_portable::backup::list_backups(dir)
+    snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(dir))
         .expect("list")
         .first()
         .expect("a backup")

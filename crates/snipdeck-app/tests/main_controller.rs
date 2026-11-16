@@ -1885,7 +1885,10 @@ fn the_real_jobs_back_up_purge_and_check_the_library_on_the_injected_clock() {
     let mut m = Maintenance::new(dir.path(), Box::new(clock.clone()));
     assert_eq!(maintenance::run(&mut m, &mut ctl).outcomes, 4);
     assert_eq!(ctl.main_screen().counts.trash, 0);
-    let backups = snipdeck_portable::backup::list_backups(dir.path()).unwrap();
+    let backups = snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(
+        dir.path(),
+    ))
+    .unwrap();
     assert_eq!(backups.len(), 1);
     assert!(dir.path().join("maintenance.json").exists());
 

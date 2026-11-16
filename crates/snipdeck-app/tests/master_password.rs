@@ -1131,7 +1131,7 @@ fn a_key_record_that_cannot_be_read_is_not_offered_a_password() {
 // ---- Copies of the library while it is locked --------------------------------------------------
 
 fn backup_files(data: &Path) -> Vec<(std::path::PathBuf, Vec<u8>)> {
-    snipdeck_portable::backup::list_backups(data)
+    snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(data))
         .expect("list")
         .into_iter()
         .map(|b| {
@@ -1261,12 +1261,14 @@ fn while_locked_recent_is_hidden_and_collects_nothing_until_unlocked() {
 fn rebuilding_from_a_backup_refuses_while_the_library_is_locked() {
     let mut r = with_password();
     assert!(r.ctl.backup_now(r.data.path()));
-    let backup = snipdeck_portable::backup::list_backups(r.data.path())
-        .expect("list")
-        .first()
-        .expect("a backup")
-        .path
-        .clone();
+    let backup = snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(
+        r.data.path(),
+    ))
+    .expect("list")
+    .first()
+    .expect("a backup")
+    .path
+    .clone();
     r.ctl.lock_now();
     assert!(!r.ctl.rebuild_from_backup(r.data.path(), &backup));
     assert!(r.ctl.library_locked());
@@ -1288,12 +1290,14 @@ fn rebuilding_from_a_backup_refuses_while_the_library_is_locked() {
 fn rebuilding_an_encrypted_library_keeps_its_sensitive_items_readable() {
     let mut r = rig();
     assert!(r.ctl.backup_now(r.data.path()));
-    let backup = snipdeck_portable::backup::list_backups(r.data.path())
-        .expect("list")
-        .first()
-        .expect("a backup")
-        .path
-        .clone();
+    let backup = snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(
+        r.data.path(),
+    ))
+    .expect("list")
+    .first()
+    .expect("a backup")
+    .path
+    .clone();
 
     assert!(r.ctl.rebuild_from_backup(r.data.path(), &backup));
 
@@ -1344,12 +1348,13 @@ fn a_password_step_is_refused_while_a_rebuild_is_salvaging() {
     let mut r = with_password();
     let dir = r.data.path().to_path_buf();
     assert!(r.ctl.backup_now(&dir));
-    let backup = snipdeck_portable::backup::list_backups(&dir)
-        .expect("list")
-        .into_iter()
-        .next()
-        .expect("a backup")
-        .path;
+    let backup =
+        snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(dir))
+            .expect("list")
+            .into_iter()
+            .next()
+            .expect("a backup")
+            .path;
     let Begun::Job(job) = r.ctl.begin_rebuild_from_backup(&dir, &backup) else {
         panic!("the salvage goes to a worker");
     };
