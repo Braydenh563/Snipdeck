@@ -513,6 +513,10 @@ where
         ctl.set_eyedrop_texts(snipdeck_platform::eyedrop::EyedropTexts {
             hint: texts.invoke_eyedrop_hint().to_string(),
             hdr_note: texts.invoke_eyedrop_hdr_note().to_string(),
+            title: texts.invoke_eyedrop_title().to_string(),
+            pick_label: texts.invoke_eyedrop_pick().to_string(),
+            unavailable: texts.invoke_eyedrop_unavailable().to_string(),
+            ..snipdeck_platform::eyedrop::EyedropTexts::default()
         });
         ctl.set_colours_list_name(&texts.invoke_colours_list());
         ctl.set_new_list_base(&texts.invoke_new_list_name());

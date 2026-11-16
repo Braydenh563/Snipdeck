@@ -276,7 +276,14 @@ fn open_in_colours_makes_it_current_and_shows_the_tab() {
     w.ctl.set_colour(Rgba8::rgb(1, 2, 3));
     let id = w.ctl.saved_colours()[0].0;
     let effects = w.ctl.open_item_in_colours(id);
-    assert_eq!(effects, [Effect::ShowPanel, Effect::ShowColours]);
+    assert_eq!(
+        effects,
+        [
+            Effect::ShowPanel,
+            Effect::ShowColours,
+            Effect::RestoreMainAfterEyedropper
+        ]
+    );
     assert_eq!(w.ctl.colour_view().current, BLUE);
     assert_eq!(w.ctl.open_item_in_colours(w.ids[0]).len(), 0);
 }
@@ -330,8 +337,15 @@ fn copy_list_as_css_variables_names_each_colour_and_dedupes() {
 #[test]
 fn a_colour_picked_from_the_screen_is_current_remembered_and_copied_when_asked() {
     let mut w = world();
-    let effects = w.ctl.colour_picked(BLUE, false);
-    assert_eq!(effects, [Effect::ShowPanel, Effect::ShowColours]);
+    let effects = w.ctl.colour_picked(BLUE, false, &[]);
+    assert_eq!(
+        effects,
+        [
+            Effect::ShowPanel,
+            Effect::ShowColours,
+            Effect::RestoreMainAfterEyedropper
+        ]
+    );
     assert_eq!(w.ctl.colour_view().current, BLUE);
     assert_eq!(w.ctl.colour_view().recents, [BLUE]);
     assert_eq!(written(&w, 0), "#3a7bd5", "copied in the default format");
@@ -344,7 +358,7 @@ fn a_colour_picked_from_the_screen_is_current_remembered_and_copied_when_asked()
             ..Settings::default()
         },
     );
-    w.ctl.colour_picked(BLUE, false);
+    w.ctl.colour_picked(BLUE, false, &[]);
     assert_eq!(w.ctl.services().clipboard.written.len(), 0);
     assert_eq!(w.ctl.colour_view().recents, [BLUE], "still remembered");
 }
@@ -357,7 +371,9 @@ mod eyedropper {
         atomic::{AtomicUsize, Ordering},
     };
 
-    use snipdeck_platform::eyedrop::{EyedropOutcome, FakeEyedropper};
+    use snipdeck_platform::eyedrop::{
+        EndReason, EyedropNote, EyedropOutcome, FailReason, FakeEyedropper, KeyName,
+    };
 
     use super::*;
 
@@ -380,13 +396,24 @@ mod eyedropper {
         let fake = FakeEyedropper::answering(EyedropOutcome::Picked {
             rgb: [58, 123, 213],
             hdr: false,
+            also: vec![],
         });
         let (mut w, wakes) = with(&fake);
-        assert_eq!(w.ctl.start_eyedropper(), vec![Effect::HidePanel]);
+        assert_eq!(
+            w.ctl.start_eyedropper(),
+            vec![Effect::HidePanel, Effect::HideMainForEyedropper]
+        );
         assert_eq!(fake.starts().len(), 1);
         assert_eq!(wakes.load(Ordering::SeqCst), 1);
         let effects = w.ctl.poll_eyedropper();
-        assert_eq!(effects, vec![Effect::ShowPanel, Effect::ShowColours]);
+        assert_eq!(
+            effects,
+            vec![
+                Effect::ShowPanel,
+                Effect::ShowColours,
+                Effect::RestoreMainAfterEyedropper
+            ]
+        );
         assert_eq!(w.ctl.colour_view().current, BLUE);
         assert_eq!(w.ctl.colour_view().recents.first(), Some(&BLUE));
         assert!(w.ctl.poll_eyedropper().is_empty(), "taken once");
@@ -397,6 +424,7 @@ mod eyedropper {
         let fake = FakeEyedropper::answering(EyedropOutcome::Picked {
             rgb: [58, 123, 213],
             hdr: false,
+            also: vec![],
         });
         let (mut w, _) = with(&fake);
         w.ctl.start_eyedropper();
@@ -412,19 +440,28 @@ mod eyedropper {
         w.ctl.start_eyedropper();
         assert_eq!(
             w.ctl.poll_eyedropper(),
-            vec![Effect::ShowPanel, Effect::ShowColours]
+            vec![
+                Effect::ShowPanel,
+                Effect::ShowColours,
+                Effect::RestoreMainAfterEyedropper
+            ]
         );
         assert_eq!(w.ctl.colour_view().current, before);
     }
 
     #[test]
     fn a_failure_says_so_and_brings_the_panel_back() {
-        let fake = FakeEyedropper::answering(EyedropOutcome::Failed("BitBlt 5".into()));
+        let fake =
+            FakeEyedropper::answering(EyedropOutcome::Failed(FailReason::Other("BitBlt 5".into())));
         let (mut w, _) = with(&fake);
         w.ctl.start_eyedropper();
         assert_eq!(
             w.ctl.poll_eyedropper(),
-            vec![Effect::ShowPanel, Effect::ShowColours]
+            vec![
+                Effect::ShowPanel,
+                Effect::ShowColours,
+                Effect::RestoreMainAfterEyedropper
+            ]
         );
         assert!(matches!(
             w.ctl.view().toast.map(|t| t.message),
@@ -433,10 +470,111 @@ mod eyedropper {
     }
 
     #[test]
+    fn collected_colours_join_the_recents_oldest_first_and_the_last_is_current() {
+        let red = Rgba8::rgb(255, 0, 0);
+        let fake = FakeEyedropper::answering(EyedropOutcome::Picked {
+            rgb: [58, 123, 213],
+            hdr: false,
+            also: vec![[255, 0, 0]],
+        });
+        let (mut w, _) = with(&fake);
+        w.ctl.start_eyedropper();
+        w.ctl.poll_eyedropper();
+        assert_eq!(w.ctl.colour_view().current, BLUE);
+        assert_eq!(w.ctl.colour_view().recents, [BLUE, red]);
+    }
+
+    #[test]
+    fn a_pick_for_the_other_colour_sets_only_that_and_copies_nothing() {
+        let fake = FakeEyedropper::answering(EyedropOutcome::Picked {
+            rgb: [255, 0, 0],
+            hdr: false,
+            also: vec![],
+        });
+        let (mut w, _) = with(&fake);
+        let before = w.ctl.colour_view().current;
+        w.ctl.start_eyedropper_for_other();
+        w.ctl.poll_eyedropper();
+        let view = w.ctl.colour_view();
+        assert_eq!(view.other, Rgba8::rgb(255, 0, 0));
+        assert_eq!(view.current, before);
+        assert!(view.recents.is_empty());
+        assert_eq!(w.ctl.services().clipboard.written.len(), 0);
+        // The next pick is an ordinary one again.
+        w.ctl.start_eyedropper();
+        w.ctl.poll_eyedropper();
+        assert_eq!(w.ctl.colour_view().current, Rgba8::rgb(255, 0, 0));
+    }
+
+    #[test]
+    fn an_hdr_pick_that_was_copied_is_one_toast_saying_both() {
+        let fake = FakeEyedropper::answering(EyedropOutcome::Picked {
+            rgb: [58, 123, 213],
+            hdr: true,
+            also: vec![],
+        });
+        let (mut w, _) = with(&fake);
+        w.ctl.start_eyedropper();
+        w.ctl.poll_eyedropper();
+        assert_eq!(
+            w.ctl.view().toast.map(|t| t.message),
+            Some(ToastMessage::EyedropHdrCopied {
+                hex: "#3a7bd5".into()
+            })
+        );
+    }
+
+    #[test]
+    fn a_run_the_system_ended_says_why_and_a_refused_capture_says_so() {
+        for (outcome, want) in [
+            (
+                EyedropOutcome::Ended(EndReason::TimedOut),
+                ToastMessage::EyedropEnded { timed_out: true },
+            ),
+            (
+                EyedropOutcome::Ended(EndReason::DisplayChanged),
+                ToastMessage::EyedropEnded { timed_out: false },
+            ),
+            (
+                EyedropOutcome::Failed(FailReason::CaptureRefused),
+                ToastMessage::EyedropRefused,
+            ),
+        ] {
+            let fake = FakeEyedropper::answering(outcome);
+            let (mut w, _) = with(&fake);
+            w.ctl.start_eyedropper();
+            let effects = w.ctl.poll_eyedropper();
+            assert!(effects.contains(&Effect::ShowPanel));
+            assert_eq!(w.ctl.view().toast.map(|t| t.message), Some(want));
+        }
+    }
+
+    #[test]
+    fn hotkeys_another_app_owns_are_named_in_a_toast() {
+        let fake = FakeEyedropper::answering(EyedropOutcome::Cancelled);
+        fake.set_notes(vec![EyedropNote::KeysNotRegistered(vec![
+            KeyName::Plus,
+            KeyName::Escape,
+        ])]);
+        let (mut w, _) = with(&fake);
+        w.ctl.start_eyedropper();
+        w.ctl.poll_eyedropper();
+        assert_eq!(
+            w.ctl.view().toast.map(|t| t.message),
+            Some(ToastMessage::EyedropKeysBusy {
+                keys: "+, Esc".into()
+            })
+        );
+    }
+
+    #[test]
     fn a_second_start_while_one_runs_does_nothing() {
         let fake = FakeEyedropper::default();
         let (mut w, _) = with(&fake);
-        assert_eq!(w.ctl.start_eyedropper(), vec![Effect::HidePanel]);
+        assert_eq!(
+            w.ctl.start_eyedropper(),
+            vec![Effect::HidePanel, Effect::HideMainForEyedropper]
+        );
         assert_eq!(w.ctl.eyedropper_state(), (true, true));
         assert_eq!(w.ctl.start_eyedropper().len(), 0);
         assert_eq!(fake.starts().len(), 1);
@@ -487,7 +625,8 @@ mod commands {
             .set_eyedropper(Some(Box::new(fake.clone())), std::sync::Arc::new(|| {}));
         w.ctl.run_command(Command::PickColour, 0);
         let effects = w.ctl.take_pending();
-        assert_eq!(effects.last(), Some(&Effect::HidePanel));
+        assert!(effects.contains(&Effect::HidePanel));
+        assert_eq!(effects.last(), Some(&Effect::HideMainForEyedropper));
         assert_eq!(fake.starts().len(), 1);
     }
 
@@ -574,7 +713,14 @@ mod item_menu {
             .position(|e| *e == ItemMenuEntry::OpenInColours)
             .expect("entry");
         let effects = w.ctl.choose_item_menu(open);
-        assert_eq!(effects, vec![Effect::ShowPanel, Effect::ShowColours]);
+        assert_eq!(
+            effects,
+            vec![
+                Effect::ShowPanel,
+                Effect::ShowColours,
+                Effect::RestoreMainAfterEyedropper
+            ]
+        );
         assert_eq!(w.ctl.colour_view().current, BLUE);
     }
 

@@ -2482,6 +2482,7 @@ mod eyedropper {
     const PICK: EyedropOutcome = EyedropOutcome::Picked {
         rgb: [4, 132, 132],
         hdr: false,
+        also: Vec::new(),
     };
 
     #[test]

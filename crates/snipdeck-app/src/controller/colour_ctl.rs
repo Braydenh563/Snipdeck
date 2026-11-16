@@ -266,22 +266,36 @@ where
         self.update_settings(|s| s.colours_recent = saved);
     }
 
-    /// A colour came back from the screen eyedropper: it becomes current and recent, is copied in
-    /// the default format when the setting says so (never pasted: after an overlay the Target is
-    /// not trustworthy), and the Panel shows the tab.
-    pub(crate) fn colour_picked(&mut self, c: Rgba8, hdr: bool) -> Vec<Effect> {
+    /// A colour came back from the screen eyedropper. For the contrast check's other colour
+    /// (`eyedrop_for_other`) it only sets that colour: no recent, no copy. Otherwise it becomes
+    /// current and recent (so do the `also` colours collected on the way, oldest first), is copied
+    /// in the default format when the setting says so (never pasted: after an overlay the Target is
+    /// not trustworthy), and the Panel shows the tab. A copy and the HDR note are one toast.
+    pub(crate) fn colour_picked(&mut self, c: Rgba8, hdr: bool, also: &[Rgba8]) -> Vec<Effect> {
+        if std::mem::take(&mut self.eyedrop_for_other) {
+            self.set_contrast_with(c);
+            return self.back_from_eyedropper();
+        }
+        for earlier in also {
+            self.remember_colour(*earlier);
+        }
         self.set_colour(c);
         self.remember_colour(c);
+        let mut copied = false;
         if self.settings.colour_copy_on_pick {
-            self.use_text(
-                snipdeck_colour::format(c, self.settings.colour_format),
-                UseMode::Copy,
-            );
+            let f = self.settings.colour_format;
+            let text = snipdeck_colour::copy_text(c, f).unwrap_or_else(|| c.to_hex());
+            copied = matches!(self.use_text(text, UseMode::Copy), UseResult::Done(_));
         }
         if hdr {
+            let hex = c.to_hex();
             self.show_toast(Toast {
                 kind: ToastKind::Neutral,
-                message: ToastMessage::EyedropHdr { hex: c.to_hex() },
+                message: if copied {
+                    ToastMessage::EyedropHdrCopied { hex }
+                } else {
+                    ToastMessage::EyedropHdr { hex }
+                },
             });
         }
         self.back_from_eyedropper()

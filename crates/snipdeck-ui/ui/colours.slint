@@ -110,6 +110,9 @@ export global ColourTexts {
     pure public function apca-text(lc: string) -> string { return @tr("APCA Lc {}", lc); }
     pure public function fix-text(hex: string) -> string { return @tr("Use {} to pass AA", hex); }
     pure public function eyedrop-hint() -> string { return @tr("Click or Enter picks · Esc cancels · arrows move"); }
+    pure public function eyedrop-title() -> string { return @tr("Eyedropper, {}", "{}"); }
+    pure public function eyedrop-pick() -> string { return @tr("Pick"); }
+    pure public function eyedrop-unavailable() -> string { return @tr("This screen could not be captured"); }
     pure public function eyedrop-hdr-note() -> string { return @tr("HDR is on for this screen: values are approximate"); }
 }
 

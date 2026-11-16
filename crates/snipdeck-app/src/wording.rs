@@ -368,6 +368,10 @@ where
         ToastMessage::IconSaved { name } => t.invoke_icon_saved(name.into()),
         ToastMessage::EyedropFailed => t.invoke_eyedrop_failed(),
         ToastMessage::EyedropHdr { hex } => t.invoke_eyedrop_hdr(hex.into()),
+        ToastMessage::EyedropHdrCopied { hex } => t.invoke_eyedrop_hdr_copied(hex.into()),
+        ToastMessage::EyedropRefused => t.invoke_eyedrop_refused(),
+        ToastMessage::EyedropEnded { timed_out } => t.invoke_eyedrop_ended(*timed_out),
+        ToastMessage::EyedropKeysBusy { keys } => t.invoke_eyedrop_keys_busy(keys.into()),
     };
     text.into()
 }

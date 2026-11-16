@@ -141,10 +141,14 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::AutostartPolicy => 103,
         ToastMessage::AlreadySaved { .. } => 112,
         ToastMessage::NoColourOnClipboard => 113,
+        ToastMessage::EyedropHdrCopied { .. } => 114,
+        ToastMessage::EyedropRefused => 115,
+        ToastMessage::EyedropEnded { .. } => 116,
+        ToastMessage::EyedropKeysBusy { .. } => 117,
     }
 }
 
-const VARIANTS: usize = 114;
+const VARIANTS: usize = 118;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -329,6 +333,11 @@ fn samples() -> Vec<ToastMessage> {
         M::ClipboardWatchFailed,
         M::AlreadySaved { list: s("Colours") },
         M::NoColourOnClipboard,
+        M::EyedropHdrCopied { hex: s("#3a7bd5") },
+        M::EyedropRefused,
+        M::EyedropEnded { timed_out: true },
+        M::EyedropEnded { timed_out: false },
+        M::EyedropKeysBusy { keys: s("+, -") },
     ]
 }
 

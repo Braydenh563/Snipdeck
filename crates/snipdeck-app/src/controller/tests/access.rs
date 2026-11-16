@@ -357,6 +357,7 @@ mod after_the_eyedropper {
         let fake = FakeEyedropper::answering(EyedropOutcome::Picked {
             rgb: [58, 123, 213],
             hdr: false,
+            also: vec![],
         });
         w.ctl
             .set_eyedropper(Some(Box::new(fake)), std::sync::Arc::new(|| {}));
