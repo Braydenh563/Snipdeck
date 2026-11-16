@@ -787,6 +787,8 @@ export component PanelWindow inherits Window {
     property <string> symbol-hover-name: "";
     property <string> symbol-typed: "";
     property <int> symbol-typed-ticks: 0;
+    // Bump to hand the keyboard to the Symbols grid (Down in the search field; see SymbolsView.enter-grid-ticks).
+    in-out property <int> symbol-enter-grid-ticks: 0;
     changed scroll-y => { root.row-tips-close(); }
 
     property <bool> narrow: false;
@@ -1030,7 +1032,7 @@ export component PanelWindow inherits Window {
     }
 
     function step-symbol-kind(dir: int) {
-        root.symbol-kind = mod(root.symbol-kind + dir + 4, 4);
+        root.symbol-kind = mod(root.symbol-kind + dir + 5, 5);
         root.symbol-kind-changed(root.symbol-kind);
     }
 
@@ -1326,6 +1328,11 @@ export component PanelWindow inherits Window {
                         ColourState.copy-current();
                         return accept;
                     }
+                    // Ctrl+V on the Colours tab (outside a field) takes the first colour literal in the clipboard text.
+                    if (root.colours-open && (event.text == "v" || event.text == "V") && !event.modifiers.shift && !ColourState.text-focused) {
+                        ColourState.paste-colour();
+                        return accept;
+                    }
                     if ((event.text == "a" || event.text == "A") && !root.searching && !root.list-hidden) {
                         root.select-all-requested();
                         return accept;
@@ -1442,7 +1449,10 @@ export component PanelWindow inherits Window {
                 }
                 if (root.symbols-open && !switcher.has-focus && (root.symbol-search-focused || rest.has-focus)) {
                     // The grid has one selection; the search field keeps the focus and the arrows drive the grid.
-                    if (event.text == Key.DownArrow) { root.symbol-move(3); return accept; }
+                    if (event.text == Key.DownArrow) {
+                        if (root.symbol-search-focused) { root.symbol-enter-grid-ticks += 1; } else { root.symbol-move(3); }
+                        return accept;
+                    }
                     if (event.text == Key.UpArrow) { root.symbol-move(2); return accept; }
                     if (event.text == Key.PageDown) { root.symbol-move(7); return accept; }
                     if (event.text == Key.PageUp) { root.symbol-move(6); return accept; }
@@ -2549,6 +2559,7 @@ export component PanelWindow inherits Window {
                         use-hint: root.pastes ? @tr("Click pastes into {} · Shift+click copies", root.target-name) : @tr("Click copies");
                         typed: root.symbol-typed;
                         typed-ticks: root.symbol-typed-ticks;
+                        enter-grid-ticks: root.symbol-enter-grid-ticks;
                         art(i) => { root.symbol-art(i) }
                         query-edited(text) => { root.symbol-query-changed(text); }
                         kind-picked(k) => {
@@ -2572,6 +2583,7 @@ export component PanelWindow inherits Window {
                         }
                         composing-changed(on) => { root.symbol-composing = on; }
                         hover-name(name) => { root.symbol-hover-name = name; }
+                        grid-move(code) => { root.symbol-move(code); }
                         tip(text, left, top, w, h, on) => {
                             root.tip-set(text, left, top, w, h, on);
                             root.row-tip-text = on ? text : "";

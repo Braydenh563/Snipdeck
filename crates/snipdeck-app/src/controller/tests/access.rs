@@ -357,6 +357,7 @@ mod after_the_eyedropper {
         let fake = FakeEyedropper::answering(EyedropOutcome::Picked {
             rgb: [58, 123, 213],
             hdr: false,
+            also: vec![],
         });
         w.ctl
             .set_eyedropper(Some(Box::new(fake)), std::sync::Arc::new(|| {}));
@@ -397,7 +398,14 @@ mod after_the_eyedropper {
         // The pick command from the Main window: the Panel is hidden.
         w.ctl.start_eyedropper();
         let effects = w.ctl.poll_eyedropper();
-        assert_eq!(effects, vec![Effect::ShowPanel, Effect::ShowColours]);
+        assert_eq!(
+            effects,
+            vec![
+                Effect::ShowPanel,
+                Effect::ShowColours,
+                Effect::RestoreMainAfterEyedropper
+            ]
+        );
         assert_eq!(
             w.ctl.restore_frame(&display()),
             [Effect::PlaceWindow(FLOATING)],

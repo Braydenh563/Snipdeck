@@ -213,11 +213,16 @@ mod tests {
         }
     }
 
-    /// A flow started at second 0 with the Panel up and the clipboard at sequence 7.
-    fn started(keep_panel: bool) -> (ScreenClipFlow, Vec<Step>) {
+    /// A flow started at second 0 with the Panel up and the clipboard as `before`.
+    fn started_with(before: ClipboardProbe, keep_panel: bool) -> (ScreenClipFlow, Vec<Step>) {
         let mut flow = ScreenClipFlow::new();
-        let steps = flow.start(at(0), keep_panel, true, clipboard(7, false));
+        let steps = flow.start(at(0), keep_panel, true, before);
         (flow, steps)
+    }
+
+    /// The same with the clipboard at sequence 7, no picture.
+    fn started(keep_panel: bool) -> (ScreenClipFlow, Vec<Step>) {
+        started_with(clipboard(7, false), keep_panel)
     }
 
     #[test]
@@ -307,6 +312,20 @@ mod tests {
         assert_eq!(flow.start(at(2), false, false, clipboard(7, false)), []);
         // The wait still runs from the first ask.
         assert_eq!(flow.tick(at(60), clipboard(7, false)), [Step::ShowPanel]);
+    }
+
+    #[test]
+    fn a_change_count_that_wrapped_round_still_counts_as_new() {
+        let (mut flow, _) = started_with(clipboard(u32::MAX, true), false);
+        assert_eq!(flow.tick(at(2), clipboard(0, true)), [Step::ShowPanel]);
+    }
+
+    #[test]
+    fn a_picture_already_there_is_not_the_screenshot_until_it_is_replaced() {
+        let (mut flow, _) = started_with(clipboard(7, true), false);
+        assert_eq!(flow.tick(at(1), clipboard(7, true)), []);
+        assert!(flow.waiting());
+        assert_eq!(flow.tick(at(2), clipboard(8, true)), [Step::ShowPanel]);
     }
 
     #[test]

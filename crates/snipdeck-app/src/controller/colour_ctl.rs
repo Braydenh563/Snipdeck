@@ -56,6 +56,8 @@ pub struct SaveList {
 pub struct ColourView {
     /// The colour being looked at.
     pub current: Rgba8,
+    /// The colour it was before the last change (a click on it restores it).
+    pub previous: Option<Rgba8>,
     /// The second colour of the contrast section.
     pub other: Rgba8,
     /// The default format (never `Name`).
@@ -64,7 +66,7 @@ pub struct ColourView {
     pub scheme: Scheme,
     /// Recently used, newest first (at most 24).
     pub recents: Vec<Rgba8>,
-    /// The first colours of the home list, in list order.
+    /// The newest colours of the home list, newest first.
     pub saved: Vec<Rgba8>,
     /// The picker is open.
     pub picker_open: bool,
@@ -95,6 +97,7 @@ where
     pub fn colour_view(&self) -> ColourView {
         ColourView {
             current: self.colour,
+            previous: self.colour_previous,
             other: self.colour_other,
             format: self.settings.colour_format,
             scheme: self.settings.colour_scheme,
@@ -116,6 +119,10 @@ where
 
     /// Makes `c` the colour being looked at. Not a use: no recents push.
     pub fn set_colour(&mut self, c: Rgba8) {
+        if c != self.colour {
+            self.colour_previous = Some(self.colour);
+        }
+        self.colour_gesture_from = None;
         self.colour = c;
         self.update_settings(|s| s.colour_current = c.to_hex());
     }
@@ -124,13 +131,46 @@ where
     /// only, with no settings update per pointer event. [`settle_colour`](Self::settle_colour)
     /// remembers it when the pointer is released.
     pub fn set_colour_live(&mut self, c: Rgba8) {
+        self.colour_gesture_from.get_or_insert(self.colour);
         self.colour = c;
     }
 
     /// The pointer was released: the colour being looked at is remembered.
     pub fn settle_colour(&mut self) {
         let c = self.colour;
+        if let Some(from) = self.colour_gesture_from.take()
+            && from != c
+        {
+            self.colour_previous = Some(from);
+        }
         self.update_settings(|s| s.colour_current = c.to_hex());
+    }
+
+    /// A click on the previous colour: it becomes current, and the colour it replaces becomes the
+    /// previous one (so a second click goes back).
+    pub fn restore_previous_colour(&mut self) {
+        if let Some(previous) = self.colour_previous {
+            self.set_colour(previous);
+        }
+    }
+
+    /// Ctrl+V on the tab: the first colour literal in the clipboard text becomes current
+    /// (`background: #ff0000;` and `"rgb(1, 2, 3)"` work). False when the clipboard has none.
+    pub fn paste_colour(&mut self) -> bool {
+        let found = self
+            .services
+            .clipboard
+            .read_text()
+            .and_then(|text| snipdeck_colour::extract(&text));
+        let Some((c, _)) = found else {
+            self.show_toast(Toast {
+                kind: ToastKind::Neutral,
+                message: ToastMessage::NoColourOnClipboard,
+            });
+            return false;
+        };
+        self.set_colour(c);
+        true
     }
 
     /// Sets the second colour of the contrast section.
@@ -176,11 +216,47 @@ where
     /// Pastes or copies `c` written as `f` (a format row, a swatch's copy, Paste as), raises the
     /// usual toast and remembers the colour.
     pub fn use_colour(&mut self, c: Rgba8, f: Format, mode: UseMode) -> UseResult {
-        let result = self.use_text(snipdeck_colour::format(c, f), mode);
+        // The Name row copies the keyword only when it is exactly `c`; the nearest one is another
+        // colour (`use_nearest_name` is the explicit way to switch to it).
+        let Some(text) = snipdeck_colour::copy_text(c, f) else {
+            let near = snipdeck_colour::nearest_name(c);
+            self.show_toast(Toast {
+                kind: ToastKind::Neutral,
+                message: ToastMessage::NameNotExact {
+                    name: near.name.to_owned(),
+                    hex: near.rgb.to_hex(),
+                },
+            });
+            return UseResult::Failed;
+        };
+        let result = self.use_text(text, mode);
         if matches!(result, UseResult::Done(_)) {
             self.remember_colour(c);
         }
         result
+    }
+
+    /// "More formats…": the current colour as one of the code formats, copied (never pasted).
+    pub fn copy_extra_format(&mut self, i: usize) -> UseResult {
+        let Some(f) = snipdeck_colour::ExtraFormat::ALL.get(i) else {
+            return UseResult::Failed;
+        };
+        let c = self.colour;
+        let result = self.use_text(snipdeck_colour::extra_text(c, *f), UseMode::Copy);
+        if matches!(result, UseResult::Done(_)) {
+            self.remember_colour(c);
+        }
+        result
+    }
+
+    /// "Use royalblue (#4169e1)": the nearest keyword's colour replaces the current one. An explicit
+    /// change of colour, never part of a copy.
+    pub fn use_nearest_name(&mut self) {
+        let named = snipdeck_colour::nearest_name(self.colour);
+        self.set_colour(Rgba8 {
+            a: self.colour.a,
+            ..named.rgb
+        });
     }
 
     /// Takes `c` out of the recents.
@@ -210,22 +286,36 @@ where
         self.update_settings(|s| s.colours_recent = saved);
     }
 
-    /// A colour came back from the screen eyedropper: it becomes current and recent, is copied in
-    /// the default format when the setting says so (never pasted: after an overlay the Target is
-    /// not trustworthy), and the Panel shows the tab.
-    pub(crate) fn colour_picked(&mut self, c: Rgba8, hdr: bool) -> Vec<Effect> {
+    /// A colour came back from the screen eyedropper. For the contrast check's other colour
+    /// (`eyedrop_for_other`) it only sets that colour: no recent, no copy. Otherwise it becomes
+    /// current and recent (so do the `also` colours collected on the way, oldest first), is copied
+    /// in the default format when the setting says so (never pasted: after an overlay the Target is
+    /// not trustworthy), and the Panel shows the tab. A copy and the HDR note are one toast.
+    pub(crate) fn colour_picked(&mut self, c: Rgba8, hdr: bool, also: &[Rgba8]) -> Vec<Effect> {
+        if std::mem::take(&mut self.eyedrop_for_other) {
+            self.set_contrast_with(c);
+            return self.back_from_eyedropper();
+        }
+        for earlier in also {
+            self.remember_colour(*earlier);
+        }
         self.set_colour(c);
         self.remember_colour(c);
+        let mut copied = false;
         if self.settings.colour_copy_on_pick {
-            self.use_text(
-                snipdeck_colour::format(c, self.settings.colour_format),
-                UseMode::Copy,
-            );
+            let f = self.settings.colour_format;
+            let text = snipdeck_colour::copy_text(c, f).unwrap_or_else(|| c.to_hex());
+            copied = matches!(self.use_text(text, UseMode::Copy), UseResult::Done(_));
         }
         if hdr {
+            let hex = c.to_hex();
             self.show_toast(Toast {
                 kind: ToastKind::Neutral,
-                message: ToastMessage::EyedropHdr { hex: c.to_hex() },
+                message: if copied {
+                    ToastMessage::EyedropHdrCopied { hex }
+                } else {
+                    ToastMessage::EyedropHdr { hex }
+                },
             });
         }
         self.back_from_eyedropper()
@@ -262,6 +352,18 @@ where
                 d
             }
         };
+        if let Some(existing) = self.saved_colour_in(destination.id, c) {
+            self.show_toast(Toast {
+                kind: ToastKind::Neutral,
+                message: ToastMessage::AlreadySaved {
+                    list: destination.name,
+                },
+            });
+            if self.library_changed() {
+                self.model.select_item(existing);
+            }
+            return false;
+        }
         let made_list = self.colour_made_list.take();
         let text = saved_text(c, self.settings.colour_format);
         let mut item = Item::new(
@@ -479,7 +581,7 @@ where
         base.clone_into(&mut self.new_list_base);
     }
 
-    /// The colour items of the home list, in list order, at most 24.
+    /// The colour items of the home list, newest first (a save appends), at most 24.
     #[must_use]
     pub fn saved_colours(&self) -> Vec<(ItemId, Rgba8)> {
         if let Some(kept) = self.colour_saved_cache.borrow().as_ref() {
@@ -488,6 +590,49 @@ where
         let found = self.read_saved_colours();
         *self.colour_saved_cache.borrow_mut() = Some(found.clone());
         found
+    }
+
+    /// The item of `list` that already holds exactly `c` (same RGBA).
+    fn saved_colour_in(&self, list: ListId, c: Rgba8) -> Option<ItemId> {
+        self.store
+            .items(list)
+            .ok()?
+            .iter()
+            .find(|i| colour_of(i) == Some(c))
+            .map(|i| i.id)
+    }
+
+    /// Takes saved colour `id` to the Trash, with the usual Undo toast.
+    pub fn delete_saved_colour(&mut self, id: ItemId) {
+        self.trash_items(&[id]);
+    }
+
+    /// "Edit or rename…": the item editor opens on saved colour `id`.
+    pub fn edit_saved_colour(&mut self, id: ItemId) -> Vec<Effect> {
+        vec![Effect::EditItem(id)]
+    }
+
+    /// Renames saved colour `id`. An empty name restores the default title.
+    pub fn rename_saved_colour(&mut self, id: ItemId, title: &str) {
+        let Ok(mut item) = self.store.item(id) else {
+            self.show_toast(failed());
+            return;
+        };
+        let Some(c) = colour_of(&item) else {
+            return;
+        };
+        let title = title.trim();
+        item.title = if title.is_empty() {
+            title_for(c)
+        } else {
+            title.to_owned()
+        };
+        item.updated_at = self.clock.now();
+        if self.store.update_item(&item, None).is_ok() {
+            self.library_changed();
+        } else {
+            self.show_toast(failed());
+        }
     }
 
     fn read_saved_colours(&self) -> Vec<(ItemId, Rgba8)> {
@@ -499,6 +644,7 @@ where
             .map(|items| {
                 items
                     .iter()
+                    .rev()
                     .filter_map(|i| colour_of(i).map(|c| (i.id, c)))
                     .take(SAVED_STRIP)
                     .collect()

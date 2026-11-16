@@ -745,6 +745,8 @@ fn effect_handler(
             }
         }
         // The binding has already acted: placed the window, or opened the item editor.
+        Effect::HideMainForEyedropper => hide_main_for_eyedropper(&main_ui),
+        Effect::RestoreMainAfterEyedropper => restore_main_after_eyedropper(&main_ui),
         Effect::HidePanel
         | Effect::ShowSymbols
         | Effect::ShowColours
@@ -754,6 +756,31 @@ fn effect_handler(
         | Effect::NewItem
         | Effect::EditItem(_) => {}
     }
+}
+
+/// The eyedropper's overlay must not catch the Main window: hide it and remember it was there.
+fn hide_main_for_eyedropper(main_ui: &MainUi) {
+    use slint::ComponentHandle;
+    if let Some(w) = main_ui.window()
+        && w.window().is_visible()
+    {
+        MAIN_HIDDEN_FOR_EYEDROPPER.with(|c| c.set(true));
+        let _ = w.hide();
+    }
+}
+
+/// Brings the Main window back when the eyedropper run ends, if the run hid it.
+fn restore_main_after_eyedropper(main_ui: &MainUi) {
+    if MAIN_HIDDEN_FOR_EYEDROPPER.with(|c| c.replace(false))
+        && let Err(e) = main_ui.open()
+    {
+        eprintln!("snipdeck: cannot bring the main window back: {e}");
+    }
+}
+
+thread_local! {
+    /// Whether the Main window was on screen when the eyedropper started.
+    static MAIN_HIDDEN_FOR_EYEDROPPER: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 fn resize_direction(edge: snipdeck_app::frame::Edge) -> winit::window::ResizeDirection {

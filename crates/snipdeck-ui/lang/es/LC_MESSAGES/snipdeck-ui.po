@@ -94,17 +94,20 @@ msgstr "Un título no puede contener saltos de línea ni caracteres de control."
 msgid "A trigger is 1 to 32 characters with no spaces."
 msgstr "Un atajo tiene de 1 a 32 caracteres sin espacios."
 
-msgid "AA"
-msgstr "AA"
+msgid "AA 4.5"
+msgstr "AA 4,5"
 
-msgid "AA large"
-msgstr "AA grande"
+msgid "AA large 3"
+msgstr "AA grande 3"
 
-msgid "AAA"
-msgstr "AAA"
+msgid "AAA 7"
+msgstr "AAA 7"
 
-msgid "AAA large"
-msgstr "AAA grande"
+msgid "AAA large 4.5"
+msgstr "AAA grande 4,5"
+
+msgid "APCA Lc {}"
+msgstr "APCA Lc {}"
 
 msgid "About"
 msgstr "Acerca de"
@@ -189,6 +192,9 @@ msgstr "Se eliminan las {} copias recientes. Esto no se puede deshacer."
 msgid "Alpha"
 msgstr "Alfa"
 
+msgid "Already saved in {}"
+msgstr "Ya guardado en {}"
+
 msgid "Also forget the encryption key"
 msgstr "Olvidar también la clave de cifrado"
 
@@ -219,14 +225,11 @@ msgstr "Hay un elemento abierto en el editor, así que el texto pegado no se añ
 msgid "Analogous"
 msgstr "Análogos"
 
-msgid "Angry"
-msgstr "Enfadado"
-
-msgid "Animals"
-msgstr "Animales"
-
 msgid "Animals & Nature"
 msgstr "Animales y naturaleza"
+
+msgid "Another app has {}: use the mouse for those."
+msgstr "Otra app usa {}: usa el ratón para esas."
 
 msgid "Another backup or export is still running. Try again when it has finished."
 msgstr "Otra copia de seguridad o exportación sigue en curso. Inténtalo de nuevo cuando termine."
@@ -281,6 +284,12 @@ msgstr "Volver a editar (Ctrl+P)"
 
 msgid "Back up now"
 msgstr "Hacer copia ahora"
+
+msgid "Backdrop: black"
+msgstr "Fondo: negro"
+
+msgid "Backdrop: white"
+msgstr "Fondo: blanco"
 
 msgid "Backed up"
 msgstr "Copia de seguridad realizada"
@@ -378,6 +387,12 @@ msgstr "Los cambios se aplican de inmediato."
 msgid "Change…"
 msgstr "Cambiar…"
 
+msgid "Character"
+msgstr "Carácter"
+
+msgid "Characters"
+msgstr "Caracteres"
+
 msgid "Check again"
 msgstr "Comprobar de nuevo"
 
@@ -464,6 +479,9 @@ msgstr "Clic"
 
 msgid "Click copies"
 msgstr "Clic copia"
+
+msgid "Click makes a swatch current · Shift+click copies it"
+msgstr "Un clic activa la muestra · Mayús+clic la copia"
 
 msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
 msgstr "Clic o Enter pega. Shift+clic o Shift+Enter copia."
@@ -566,6 +584,9 @@ msgstr "Ctrl O"
 
 msgid "Copied"
 msgstr "Copiado"
+
+msgid "Copied {}. HDR is on for this screen, so it is approximate."
+msgstr "Copiado {}. HDR está activo en esta pantalla, así que es aproximado."
 
 msgid "Copied. Nothing in {} can take text right now."
 msgstr "Copiado. Nada en {} puede recibir texto ahora mismo."
@@ -1005,6 +1026,9 @@ msgstr "Editar lista"
 msgid "Edit list…"
 msgstr "Editar lista…"
 
+msgid "Edit or rename…"
+msgstr "Editar o renombrar…"
+
 msgid "Edit selected item"
 msgstr "Editar el elemento seleccionado"
 
@@ -1097,6 +1121,9 @@ msgstr "Exportar como texto"
 
 msgid "Export library"
 msgstr "Exportar la biblioteca"
+
+msgid "Eyedropper, {}"
+msgstr "Cuentagotas, {}"
 
 msgid "Fields"
 msgstr "Campos"
@@ -1202,9 +1229,6 @@ msgstr "Captura texto sobre la marcha"
 
 msgid "Green"
 msgstr "Verde"
-
-msgid "Greet"
-msgstr "Saludo"
 
 msgid "Group"
 msgstr "Grupo"
@@ -1389,9 +1413,6 @@ msgstr[1] "Sus listas y {n} elementos se moverán a la papelera. Puedes restaura
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
 msgstr "Sus listas y {} elementos pasan a la papelera. Puedes restaurarlos durante {} días."
 
-msgid "Joy"
-msgstr "Alegría"
-
 msgid "Jump to a section"
 msgstr "Ir a una sección"
 
@@ -1542,9 +1563,6 @@ msgstr "Bloquear antes"
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "Los registros solo se escriben cuando Snipdeck se cierra por un error, no contienen el contenido de los fragmentos y no se envían a ningún sitio."
 
-msgid "Love"
-msgstr "Amor"
-
 msgid "Main list"
 msgstr "Lista principal"
 
@@ -1619,6 +1637,12 @@ msgstr "Minutos sin uso antes de que una contraseña maestra vuelva a bloquear t
 
 msgid "More"
 msgstr "Más"
+
+msgid "More formats"
+msgstr "Más formatos"
+
+msgid "More formats…"
+msgstr "Más formatos…"
 
 msgid "More options"
 msgstr "Más opciones"
@@ -1777,8 +1801,14 @@ msgstr "Aún no hay copias"
 msgid "No colour"
 msgstr "Sin color"
 
+msgid "No colour in the clipboard"
+msgstr "No hay ningún color en el portapapeles"
+
 msgid "No commands match “{}”"
 msgstr "Ningún comando coincide con «{}»"
+
+msgid "No hue to rotate. Greys, white and black have none."
+msgstr "Sin tono que rotar. Los grises, el blanco y el negro no tienen."
 
 msgid "No icon"
 msgstr "Sin icono"
@@ -1924,9 +1954,6 @@ msgstr "Sobre negro"
 msgid "On this colour"
 msgstr "Sobre este color"
 
-msgid "On this colour (on white)"
-msgstr "Sobre este color (sobre blanco)"
-
 msgid "On white"
 msgstr "Sobre blanco"
 
@@ -2026,6 +2053,15 @@ msgstr "Otro color"
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
 msgstr "Fuera de esa carpeta Snipdeck solo escribe la entrada de inicio de Windows (si la activas) y el portapapeles cuando usas un fragmento."
 
+msgid "PNG ink: dark (click for theme colour)"
+msgstr "Tinta del PNG: oscura (clic para el color del tema)"
+
+msgid "PNG ink: theme colour (click for dark)"
+msgstr "Tinta del PNG: color del tema (clic para oscura)"
+
+msgid "PNG size: {} px (click for the next)"
+msgstr "Tamaño del PNG: {} px (clic para el siguiente)"
+
 msgid "PNG, {}"
 msgstr "PNG, {}"
 
@@ -2077,6 +2113,9 @@ msgstr "Pegar como texto sin formato"
 msgid "Paste as…"
 msgstr "Pegar como…"
 
+msgid "Paste into {}"
+msgstr "Pegar en {}"
+
 msgid "Paste key for {}"
 msgstr "Tecla de pegado para {}"
 
@@ -2085,9 +2124,6 @@ msgstr "Pegar el siguiente elemento"
 
 msgid "Paste next pastes the next item each time you press it."
 msgstr "Pegar siguiente pega el siguiente elemento cada vez que lo pulsas."
-
-msgid "Paste or copy"
-msgstr "Pegar o copiar"
 
 msgid "Paste several in order"
 msgstr "Pega varios en orden"
@@ -2121,6 +2157,24 @@ msgstr "Pega el siguiente elemento de una pila"
 
 msgid "Paste the result"
 msgstr "Pega el resultado"
+
+msgid "Paste, dark skin tone"
+msgstr "Pegar, tono de piel oscuro"
+
+msgid "Paste, default tone"
+msgstr "Pegar, tono predeterminado"
+
+msgid "Paste, light skin tone"
+msgstr "Pegar, tono de piel claro"
+
+msgid "Paste, medium skin tone"
+msgstr "Pegar, tono de piel medio"
+
+msgid "Paste, medium-dark skin tone"
+msgstr "Pegar, tono de piel medio oscuro"
+
+msgid "Paste, medium-light skin tone"
+msgstr "Pegar, tono de piel medio claro"
 
 msgid "Pasted"
 msgstr "Pegado"
@@ -2170,6 +2224,9 @@ msgstr "Personas y cuerpo"
 msgid "PhraseExpress export (CSV)"
 msgstr "Exportación de PhraseExpress (CSV)"
 
+msgid "Pick"
+msgstr "Elegir"
+
 msgid "Pick a colour from the screen"
 msgstr "Elegir un color de la pantalla"
 
@@ -2181,6 +2238,9 @@ msgstr "Elige cómo se coloca el panel. Puedes cambiarlo cuando quieras en Confi
 
 msgid "Pick one and it pastes where you were typing."
 msgstr "Elige uno y se pega donde estabas escribiendo."
+
+msgid "Pick the other colour from the screen"
+msgstr "Elegir el otro color de la pantalla"
 
 msgid "Picker"
 msgstr "Selector"
@@ -2247,6 +2307,9 @@ msgstr "Vista previa"
 
 msgid "Preview how this item will look (Ctrl+P)"
 msgstr "Ver cómo quedará este elemento (Ctrl+P)"
+
+msgid "Previous colour {}. Click to go back."
+msgstr "Color anterior {}. Haz clic para volver."
 
 msgid "Previous list"
 msgstr "Lista anterior"
@@ -2465,9 +2528,6 @@ msgstr "Clic derecho o tecla Menú para ver las acciones de la lista"
 msgid "Rose"
 msgstr "Rosa"
 
-msgid "Sad"
-msgstr "Triste"
-
 msgid "Saturation and brightness"
 msgstr "Saturación y brillo"
 
@@ -2573,8 +2633,8 @@ msgstr "Buscar (Ctrl+F)"
 msgid "Search all snippets"
 msgstr "Buscar en todos los fragmentos"
 
-msgid "Search emoji, kaomoji, icons"
-msgstr "Buscar emoji, kaomoji, iconos"
+msgid "Search emoji, kaomoji, icons, characters"
+msgstr "Buscar emoji, kaomoji, iconos, caracteres"
 
 msgid "Search every board and paste without opening the window."
 msgstr "Busca en todos los tableros y pega sin abrir la ventana."
@@ -2644,6 +2704,9 @@ msgstr "Seleccionar varios elementos"
 
 msgid "Select snippets"
 msgstr "Seleccionar fragmentos"
+
+msgid "Selected symbol"
+msgstr "Símbolo seleccionado"
 
 msgid "Sensitive"
 msgstr "Confidencial"
@@ -2740,9 +2803,6 @@ msgstr "Mostrar de nuevo el recorrido de bienvenida"
 
 msgid "Show title, colour, tags, trigger and privacy"
 msgstr "Mostrar título, color, etiquetas, atajo y privacidad"
-
-msgid "Shrug"
-msgstr "Encogerse de hombros"
 
 msgid "Sidebar width"
 msgstr "Ancho de la barra lateral"
@@ -2843,9 +2903,6 @@ msgstr "Fragmentos"
 msgid "Some files were left out: together they are over 64 MB."
 msgstr "Se omitieron algunos archivos: juntos superan los 64 MB."
 
-msgid "Sorry"
-msgstr "Perdón"
-
 msgid "Sort by"
 msgstr "Ordenar por"
 
@@ -2917,9 +2974,6 @@ msgstr "Apoyar"
 
 msgid "Support Snipdeck"
 msgstr "Apoyar a Snipdeck"
-
-msgid "Surprise"
-msgstr "Sorpresa"
 
 msgid "Swap the two colours"
 msgstr "Intercambiar los dos colores"
@@ -3065,6 +3119,9 @@ msgstr "La papelera está vacía"
 msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
 msgstr "El Historial del Portapapeles aún no tiene texto. Copia algo de texto y vuelve a intentarlo."
 
+msgid "The colour pick timed out."
+msgstr "Se agotó el tiempo de la selección de color."
+
 msgid "The file dialog couldn't open. Type the path instead."
 msgstr "No se pudo abrir el diálogo de archivos. Escribe la ruta en su lugar."
 
@@ -3103,6 +3160,9 @@ msgstr "El selector"
 
 msgid "The report holds versions and settings switches, never your items."
 msgstr "El informe contiene versiones e interruptores de ajustes, nunca tus elementos."
+
+msgid "The screen changed, so the colour pick ended."
+msgstr "La pantalla cambió, así que terminó la selección de color."
 
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "Los fragmentos seleccionados se eliminarán definitivamente. No se puede deshacer."
@@ -3181,6 +3241,9 @@ msgstr "Esta lista está vacía"
 
 msgid "This looks like a password or key, so it was not saved. Check it, then save."
 msgstr "Parece una contraseña o una clave, así que no se guardó. Revísala y luego guarda."
+
+msgid "This screen could not be captured"
+msgstr "No se pudo capturar esta pantalla"
 
 msgid "This template can't be read. Open it to fix it."
 msgstr "No se puede leer esta plantilla. Ábrela para corregirla."
@@ -3299,8 +3362,8 @@ msgstr "Escritura"
 msgid "Typing triggers work on Windows only."
 msgstr "Los atajos al escribir solo funcionan en Windows."
 
-msgid "UI"
-msgstr "UI"
+msgid "UI 3"
+msgstr "UI 3"
 
 msgid "UPPERCASE"
 msgstr "MAYÚSCULAS"
@@ -3383,6 +3446,9 @@ msgstr "Sin guardar: así se verá el elemento una vez guardado."
 msgid "Use"
 msgstr "Usar"
 
+msgid "Use as other colour"
+msgstr "Usar como otro color"
+
 msgid "Use at least {} characters."
 msgstr "Usa al menos {} caracteres."
 
@@ -3407,8 +3473,14 @@ msgstr "Usa tu rostro, huella digital o PIN en lugar de escribir la contraseña 
 msgid "Use {}"
 msgstr "Usar {}"
 
+msgid "Use {} ({})"
+msgstr "Usar {} ({})"
+
 msgid "Use {} for {}"
 msgstr "Usar {} para {}"
+
+msgid "Use {} to pass AA"
+msgstr "Usar {} para cumplir AA"
 
 msgid "User guide"
 msgstr "Guía del usuario"
@@ -3445,6 +3517,9 @@ msgstr "Lo que puede hacer Snipdeck, con una imagen y un botón para probar cada
 
 msgid "What a click on the Snipdeck icon in the tray opens. The tray menu still has both."
 msgstr "Qué se abre al hacer clic en el icono de Snipdeck de la bandeja. El menú de la bandeja sigue ofreciendo ambos."
+
+msgid "What a translucent colour is judged over"
+msgstr "Sobre qué se juzga un color translúcido"
 
 msgid "What is on the clipboard"
 msgstr "Lo que hay en el portapapeles"
@@ -3532,6 +3607,9 @@ msgstr "Windows sigue el tamaño de texto de Windows (Configuración > Accesibil
 
 msgid "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
 msgstr "Windows tiene Snipdeck desactivado en Configuración > Aplicaciones > Inicio. Actívalo allí."
+
+msgid "Windows won't let Snipdeck read this screen."
+msgstr "Windows no permite que Snipdeck lea esta pantalla."
 
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "Con el historial del portapapeles activado, Recientes guarda lo que copias en otros programas."
@@ -3818,6 +3896,12 @@ msgstr "las secciones opcionales no se pueden anidar"
 
 msgid "or"
 msgstr "o"
+
+msgid "over black"
+msgstr "sobre negro"
+
+msgid "over white"
+msgstr "sobre blanco"
 
 msgid "pass"
 msgstr "cumple"
@@ -4170,3 +4254,6 @@ msgstr "{}: {} no se conservó como activador porque un activador no lleva espac
 
 msgid "{}: {} was not kept as a trigger, because it fires after a separator and a Snipdeck trigger does not wait for one."
 msgstr "{}: {} no se conservó como activador porque se activa tras un separador y un activador de Snipdeck no espera uno."
+
+msgid "≈ {}, not an exact colour name. Nothing copied. Click the Name row to switch to {}."
+msgstr "≈ {}, no es un nombre de color exacto. No se copió nada. Haz clic en la fila Nombre para cambiar a {}."

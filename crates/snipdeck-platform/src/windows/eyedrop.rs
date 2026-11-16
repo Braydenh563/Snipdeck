@@ -1,74 +1,83 @@
 //! The screen eyedropper: a freeze-frame of every monitor under one overlay window each, a loupe
-//! that follows the mouse, and the pick.
+//! that follows the mouse (or a finger), and the pick.
 //!
 //! [`WinEyedropper`] implements [`Eyedropper`]. One run is one thread:
 //!
 //! 1. the thread becomes per-monitor-v2 aware, so every coordinate below is in physical pixels;
-//! 2. it waits `settle` (the Panel hiding) and `DwmFlush`es;
+//! 2. it waits for the Snipdeck window to be hidden (every top-level window of the process
+//!    hidden, minimised or `DWMWA_CLOAKED`), at most `settle`, and `DwmFlush`es;
 //! 3. it lists the monitors (rectangle, device name, scale) and, with the display configuration
-//!    API, which of them are in HDR mode;
+//!    API, which of them are not plain SDR (`DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO_2`, or the
+//!    older query where that one does not exist);
 //! 4. it copies each monitor with `BitBlt(.. SRCCOPY | CAPTUREBLT)` into a 32-bit top-down DIB
-//!    section (per monitor, so no buffer spans a gap or a negative origin), keeps the DIB to
-//!    paint the overlay from, and reads its bytes in place for a portable [`Shot`];
+//!    section (per monitor, so no buffer spans a gap or a negative origin) and keeps the DIB both
+//!    to paint the overlay from and, through [`Pixels`], as the memory the portable [`Shot`]
+//!    samples: one copy of each monitor. A monitor that cannot be copied is skipped (grey, with a
+//!    note); only all of them failing is a failure;
 //! 5. it opens one `WS_POPUP` overlay per monitor, on that monitor, and takes the foreground;
-//!    if it did not get it 100 ms later it registers Esc / Enter / Space / arrows as hotkeys for
-//!    the rest of the run;
+//!    if it did not get it 100 ms later it registers every key of the focused path as a hotkey
+//!    for the rest of the run and records the keys another app refused ([`EyedropNote`]);
 //! 6. messages become [`Input`] for the portable [`Session`], whose [`Step`] says what to draw,
-//!    where to move the cursor and when the run is over;
+//!    where to move the cursor and when the run is over. Touch-made mouse messages become the
+//!    touch inputs;
 //! 7. everything is released (hotkeys, timers, windows, class, bitmaps, DCs) and `done` is called.
 //!
-//! The decisions (sampling, loupe place, nudging, zoom) are in [`crate::eyedrop`], tested on
-//! Linux. What is here is the Win32 glue. Every GDI object is owned by a guard that frees it on
-//! every path; the run's state lives in a thread-local because the window procedure has no other
-//! way to reach it, and it is never borrowed across a call that can dispatch messages.
+//! The decisions (sampling, averaging, loupe place, nudging, zoom, collecting, touch, the hint's
+//! fade and side, the keys, the end reasons) are in [`crate::eyedrop`], tested on Linux. What is
+//! here is the Win32 glue. Every GDI object is owned by a guard that frees it on every path; the
+//! run's state lives in a thread-local because the window procedure has no other way to reach it,
+//! and it is never borrowed across a call that can dispatch messages.
 //!
 //! Values are what GDI composed (what apps drew), before Night light and colour filters. Windows
 //! with `WDA_MONITOR` affinity and protected video capture black; `WDA_EXCLUDEFROMCAPTURE`
 //! windows are absent.
 //!
-//! **Unverified on Windows** (`tools/windows-test/tests/colour.json`).
+//! **Unverified on Windows** (`tools/windows-test/tests/colour.json`): this file is only checked
+//! by cross-compiling.
 
 use std::cell::RefCell;
 use std::ffi::c_void;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::rc::Rc;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use windows::Win32::Devices::Display::{
     DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO, DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME,
-    DISPLAYCONFIG_DEVICE_INFO_HEADER, DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO,
-    DISPLAYCONFIG_MODE_INFO, DISPLAYCONFIG_PATH_INFO, DISPLAYCONFIG_SOURCE_DEVICE_NAME,
-    DisplayConfigGetDeviceInfo, GetDisplayConfigBufferSizes, QDC_ONLY_ACTIVE_PATHS,
-    QueryDisplayConfig,
+    DISPLAYCONFIG_DEVICE_INFO_HEADER, DISPLAYCONFIG_DEVICE_INFO_TYPE,
+    DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO, DISPLAYCONFIG_MODE_INFO, DISPLAYCONFIG_PATH_INFO,
+    DISPLAYCONFIG_SOURCE_DEVICE_NAME, DisplayConfigGetDeviceInfo, GetDisplayConfigBufferSizes,
+    QDC_ONLY_ACTIVE_PATHS, QueryDisplayConfig,
 };
 use windows::Win32::Foundation::{
     COLORREF, ERROR_CLASS_ALREADY_EXISTS, ERROR_INSUFFICIENT_BUFFER, ERROR_SUCCESS, GetLastError,
     HWND, LPARAM, LRESULT, RECT, WPARAM,
 };
-use windows::Win32::Graphics::Dwm::DwmFlush;
+use windows::Win32::Graphics::Dwm::{DWMWA_CLOAKED, DwmFlush, DwmGetWindowAttribute};
 use windows::Win32::Graphics::Gdi::{
-    BI_RGB, BITMAPINFO, BITMAPINFOHEADER, BeginPaint, BitBlt, CAPTUREBLT, CLIP_DEFAULT_PRECIS,
-    COLORONCOLOR, CreateCompatibleBitmap, CreateCompatibleDC, CreateDIBSection, CreateFontW,
-    CreateSolidBrush, DEFAULT_CHARSET, DEFAULT_PITCH, DIB_RGB_COLORS, DT_CALCRECT, DT_CENTER,
-    DT_LEFT, DT_NOPREFIX, DT_SINGLELINE, DT_VCENTER, DT_WORDBREAK, DeleteDC, DeleteObject,
-    DrawTextW, EndPaint, EnumDisplayMonitors, FF_DONTCARE, FillRect, GdiFlush, GetDC,
-    GetMonitorInfoW, HBRUSH, HDC, HFONT, HGDIOBJ, HMONITOR, InvalidateRect, MONITORINFO,
-    MONITORINFOEXW, OUT_DEFAULT_PRECIS, PAINTSTRUCT, ReleaseDC, SRCCOPY, SelectObject, SetBkMode,
-    SetStretchBltMode, SetTextColor, StretchBlt, TRANSPARENT,
+    AC_SRC_OVER, AlphaBlend, BI_RGB, BITMAPINFO, BITMAPINFOHEADER, BLENDFUNCTION, BeginPaint,
+    BitBlt, CAPTUREBLT, CLIP_DEFAULT_PRECIS, COLORONCOLOR, CreateCompatibleBitmap,
+    CreateCompatibleDC, CreateDIBSection, CreateFontW, CreateSolidBrush, DEFAULT_CHARSET,
+    DEFAULT_PITCH, DIB_RGB_COLORS, DT_CALCRECT, DT_CENTER, DT_END_ELLIPSIS, DT_LEFT, DT_NOPREFIX,
+    DT_SINGLELINE, DT_VCENTER, DT_WORDBREAK, DeleteDC, DeleteObject, DrawTextW, EndPaint,
+    EnumDisplayMonitors, FF_DONTCARE, FillRect, GdiFlush, GetDC, GetMonitorInfoW, HBRUSH, HDC,
+    HFONT, HGDIOBJ, HMONITOR, InvalidateRect, MONITORINFO, MONITORINFOEXW, OUT_DEFAULT_PRECIS,
+    PAINTSTRUCT, ReleaseDC, SRCCOPY, SelectObject, SetBkMode, SetStretchBltMode, SetTextColor,
+    StretchBlt, TRANSPARENT,
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows::Win32::System::Threading::GetCurrentProcessId;
 use windows::Win32::UI::Accessibility::NotifyWinEvent;
 use windows::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    GetKeyState, HOT_KEY_MODIFIERS, MOD_SHIFT, RegisterHotKey, ReleaseCapture, SetCapture,
-    SetFocus, UnregisterHotKey, VK_DOWN, VK_ESCAPE, VK_LEFT, VK_RETURN, VK_RIGHT, VK_SHIFT,
-    VK_SPACE, VK_UP,
+    GetKeyState, HOT_KEY_MODIFIERS, MOD_CONTROL, MOD_SHIFT, RegisterHotKey, ReleaseCapture,
+    SetCapture, SetFocus, UnregisterHotKey, VK_CONTROL, VK_SHIFT,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     CHILDID_SELF, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW,
-    EVENT_OBJECT_NAMECHANGE, GetForegroundWindow, GetMessageW, IDC_CROSS, IsWindow, KillTimer,
+    EVENT_OBJECT_NAMECHANGE, EnumWindows, GetForegroundWindow, GetMessageExtraInfo, GetMessageW,
+    GetWindowThreadProcessId, IDC_CROSS, IsIconic, IsWindow, IsWindowVisible, KillTimer,
     LoadCursorW, MSG, OBJID_WINDOW, PostQuitMessage, RegisterClassExW, SW_SHOW, SetCursorPos,
     SetForegroundWindow, SetTimer, SetWindowTextW, ShowWindow, TranslateMessage, UnregisterClassW,
     WM_ACTIVATEAPP, WM_CAPTURECHANGED, WM_CLOSE, WM_DISPLAYCHANGE, WM_ERASEBKGND, WM_HOTKEY,
@@ -81,8 +90,12 @@ use super::dpi;
 use super::screen;
 use crate::error::Error;
 use crate::eyedrop::{
-    CELLS, EyedropDone, EyedropOutcome, EyedropTexts, Eyedropper, Input, Nav, Pixels, Session,
-    Shot, Step, hex_text, loupe_cells, loupe_rect, scaled, shot_at, signed, window_title,
+    CELLS, COLOR_MODE_SDR, EyedropDone, EyedropNote, EyedropOutcome, EyedropTexts, Eyedropper,
+    FALLBACK_KEYS, FailReason, HintSide, Input, PAD, Pixels, READOUT, Session, Shot, Step,
+    WindowState, clamp_text_scale, cloak_settled, colour_is_approximate, fallback_input,
+    font_height_px, guarded, hint_animating, hint_content, hint_rect, hint_side,
+    is_touch_extra_info, keep_captured, key_for_vk, key_input, keys_of_ids, loupe_cells,
+    monitor_at, pick_frame, readout_lines, scaled, signed, wait_until, window_title,
 };
 use crate::route::ScreenRect;
 
@@ -93,39 +106,21 @@ const CLASS_NAME: &str = "SnipdeckEyedropOverlay";
 const TIMER_FOCUS: usize = 1;
 /// The timer that ends a run nobody finished.
 const TIMER_TIMEOUT: usize = 2;
+/// The timer that repaints the hint bar while it fades.
+const TIMER_HINT: usize = 3;
 /// Wait for the foreground before falling back to hotkeys.
 const FOCUS_CHECK_MS: u32 = 100;
 /// How long the overlay may stay open.
 const TIMEOUT_MS: u32 = 120_000;
+/// The hint fade's repaint interval (about 30 frames a second).
+const HINT_TICK_MS: u32 = 33;
+/// How often the wait for the Snipdeck window to disappear looks again.
+const CLOAK_POLL: Duration = Duration::from_millis(10);
 
-/// The keys registered as hotkeys when the overlay could not take the foreground: id, virtual
-/// key and whether Shift is part of the chord. Ids are per window, so they cannot clash with the
-/// app's own. See [`hotkey_input`] for what each stands for.
-const HOTKEYS: [(i32, u16, bool); 11] = [
-    (1, VK_ESCAPE.0, false),
-    (2, VK_RETURN.0, false),
-    (3, VK_SPACE.0, false),
-    (4, VK_LEFT.0, false),
-    (5, VK_RIGHT.0, false),
-    (6, VK_UP.0, false),
-    (7, VK_DOWN.0, false),
-    (8, VK_LEFT.0, true),
-    (9, VK_RIGHT.0, true),
-    (10, VK_UP.0, true),
-    (11, VK_DOWN.0, true),
-];
-
-/// The input a hotkey id of [`HOTKEYS`] stands for.
-fn hotkey_input(id: i32) -> Option<Input> {
-    const NAVS: [Nav; 4] = [Nav::Left, Nav::Right, Nav::Up, Nav::Down];
-    match id {
-        1 => Some(Input::Cancel),
-        2 | 3 => Some(Input::Pick),
-        4..=11 => Some(Input::Key {
-            nav: *NAVS.get(usize::try_from(id - 4).ok()? % 4)?,
-            shift: id >= 8,
-        }),
-        _ => None,
+impl From<Error> for FailReason {
+    /// An error of a call, for the log: the call and its code, never screen content.
+    fn from(error: Error) -> Self {
+        Self::Other(error.to_string())
     }
 }
 
@@ -133,6 +128,7 @@ fn hotkey_input(id: i32) -> Option<Input> {
 #[derive(Debug, Default)]
 pub struct WinEyedropper {
     running: Arc<AtomicBool>,
+    notes: Arc<Mutex<Vec<EyedropNote>>>,
 }
 
 impl WinEyedropper {
@@ -153,14 +149,16 @@ impl Eyedropper for WinEyedropper {
         if self.running.swap(true, Ordering::SeqCst) {
             return Err(Error::Unavailable("an eyedropper run is already going"));
         }
+        if let Ok(mut notes) = self.notes.lock() {
+            notes.clear();
+        }
         let running = Arc::clone(&self.running);
+        let notes = Arc::clone(&self.notes);
         let spawned = std::thread::Builder::new()
             .name("eyedropper".into())
             .spawn(move || {
-                let outcome = catch_unwind(AssertUnwindSafe(|| run(&texts, settle)))
-                    .unwrap_or_else(|_| {
-                        EyedropOutcome::Failed("the eyedropper stopped unexpectedly".to_owned())
-                    });
+                let outcome = catch_unwind(AssertUnwindSafe(|| run(&texts, settle, &notes)))
+                    .unwrap_or_else(|_| EyedropOutcome::Failed(FailReason::Other("panic".into())));
                 // Cleared before `done`, so `done` may start the next run.
                 running.store(false, Ordering::SeqCst);
                 done(outcome);
@@ -175,13 +173,21 @@ impl Eyedropper for WinEyedropper {
     fn running(&self) -> bool {
         self.running.load(Ordering::SeqCst)
     }
+
+    fn notes(&self) -> Vec<EyedropNote> {
+        self.notes.lock().map(|n| n.clone()).unwrap_or_default()
+    }
 }
 
 /// The whole run on its thread.
-fn run(texts: &EyedropTexts, settle: Duration) -> EyedropOutcome {
-    match try_run(texts, settle) {
+fn run(
+    texts: &EyedropTexts,
+    settle: Duration,
+    notes: &Arc<Mutex<Vec<EyedropNote>>>,
+) -> EyedropOutcome {
+    match try_run(texts, settle, notes) {
         Ok(outcome) => outcome,
-        Err(error) => EyedropOutcome::Failed(error.to_string()),
+        Err(reason) => EyedropOutcome::Failed(reason),
     }
 }
 
@@ -267,8 +273,7 @@ fn solid_brush(r: u8, g: u8, b: u8) -> (HBRUSH, GdiObject) {
 /// buffer and the 11 x 11 source of the magnified cells.
 struct Surface {
     // Field order is drop order: the bitmap goes after `Drop::drop` selected it out, then the DC.
-    // Shared with the pixels a [`Shot`] reads from the DIB (see `DibPixels`).
-    bitmap: Rc<GdiObject>,
+    _bitmap: GdiObject,
     dc: MemDc,
     previous: HGDIOBJ,
     /// The pixels of a DIB section (`None` for a compatible bitmap).
@@ -304,7 +309,7 @@ impl Surface {
             )
         }
         .map_err(|e| Error::from_windows("CreateDIBSection", &e))?;
-        let bitmap = Rc::new(GdiObject(HGDIOBJ(bitmap.0)));
+        let bitmap = GdiObject(HGDIOBJ(bitmap.0));
         if bits.is_null() {
             return Err(Error::Unavailable("the bitmap has no pixels"));
         }
@@ -315,18 +320,14 @@ impl Surface {
     fn compatible(reference: HDC, w: i32, h: i32) -> Result<Self, Error> {
         // SAFETY: `reference` is a live DC; the result is owned by the guard.
         let bitmap = unsafe { CreateCompatibleBitmap(reference, w, h) };
-        let bitmap = Rc::new(GdiObject(HGDIOBJ(bitmap.0)));
+        let bitmap = GdiObject(HGDIOBJ(bitmap.0));
         if bitmap.is_invalid() {
             return Err(Error::Unavailable("could not create a bitmap"));
         }
         Self::select(reference, bitmap, None)
     }
 
-    fn select(
-        reference: HDC,
-        bitmap: Rc<GdiObject>,
-        bits: Option<*mut u32>,
-    ) -> Result<Self, Error> {
+    fn select(reference: HDC, bitmap: GdiObject, bits: Option<*mut u32>) -> Result<Self, Error> {
         let dc = MemDc::new(reference)?;
         // SAFETY: both handles are live; the bitmap is not selected into another DC.
         let previous = unsafe { SelectObject(dc.0, bitmap.0) };
@@ -334,7 +335,7 @@ impl Surface {
             return Err(Error::Unavailable("could not select a bitmap"));
         }
         Ok(Self {
-            bitmap,
+            _bitmap: bitmap,
             dc,
             previous,
             bits,
@@ -406,13 +407,16 @@ unsafe extern "system" fn collect_monitor(
     _rect: *mut RECT,
     data: LPARAM,
 ) -> BOOL {
-    // SAFETY: `data` is the `&mut Vec<MonitorFacts>` that `monitors` passed to
-    // `EnumDisplayMonitors`, which calls this on the same thread while that borrow is alive.
-    let list = unsafe { &mut *(data.0 as *mut Vec<MonitorFacts>) };
-    if let Some(facts) = facts_of(monitor) {
-        list.push(facts);
-    }
-    BOOL::from(true)
+    // A panic must not unwind into Windows: a monitor that panics is skipped, the walk goes on.
+    guarded(BOOL::from(true), || {
+        // SAFETY: `data` is the `&mut Vec<MonitorFacts>` that `monitors` passed to
+        // `EnumDisplayMonitors`, which calls this on the same thread while that borrow is alive.
+        let list = unsafe { &mut *(data.0 as *mut Vec<MonitorFacts>) };
+        if let Some(facts) = facts_of(monitor) {
+            list.push(facts);
+        }
+        BOOL::from(true)
+    })
 }
 
 fn monitors() -> Vec<MonitorFacts> {
@@ -471,19 +475,78 @@ fn active_paths() -> Option<Vec<DISPLAYCONFIG_PATH_INFO>> {
     None
 }
 
-/// The GDI device names (`\\.\DISPLAY1`) of the monitors in HDR (advanced colour) mode. Empty
-/// when the display configuration cannot be read: the pick is then not marked approximate.
+/// `DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO_2` (Windows 11 24H2): the type the
+/// `windows` crate does not have yet.
+const GET_ADVANCED_COLOR_INFO_2: DISPLAYCONFIG_DEVICE_INFO_TYPE =
+    DISPLAYCONFIG_DEVICE_INFO_TYPE(15);
+
+/// `DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO_2`, declared here for the same reason. Layout: the
+/// header, a word of flags, `colorEncoding`, `bitsPerColorChannel` and `activeColorMode`
+/// (0 SDR, 1 wide colour gamut, 2 HDR).
+#[repr(C)]
+struct AdvancedColorInfo2 {
+    header: DISPLAYCONFIG_DEVICE_INFO_HEADER,
+    value: u32,
+    colour_encoding: u32,
+    bits_per_colour_channel: u32,
+    active_colour_mode: u32,
+}
+
+/// Does `GET_ADVANCED_COLOR_INFO_2` exist on this Windows, and what does it say about the path's
+/// target? `None` when the query is refused (older Windows).
+fn active_colour_mode(path: &DISPLAYCONFIG_PATH_INFO) -> Option<u32> {
+    let mut info = AdvancedColorInfo2 {
+        header: DISPLAYCONFIG_DEVICE_INFO_HEADER {
+            r#type: GET_ADVANCED_COLOR_INFO_2,
+            size: u32::try_from(size_of::<AdvancedColorInfo2>()).ok()?,
+            adapterId: path.targetInfo.adapterId,
+            id: path.targetInfo.id,
+        },
+        value: 0,
+        colour_encoding: 0,
+        bits_per_colour_channel: 0,
+        active_colour_mode: COLOR_MODE_SDR,
+    };
+    // SAFETY: `info` is `repr(C)` with the request's header (type and size) first, as the call
+    // requires, and outlives the call; a Windows that does not know the type returns an error
+    // and writes nothing.
+    let status = unsafe { DisplayConfigGetDeviceInfo(&raw mut info.header) };
+    (status == 0).then_some(info.active_colour_mode)
+}
+
+/// The older advanced-colour bits of the path's target, `None` when refused.
+fn legacy_colour_bits(path: &DISPLAYCONFIG_PATH_INFO) -> Option<u32> {
+    let mut colour = DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO {
+        header: DISPLAYCONFIG_DEVICE_INFO_HEADER {
+            r#type: DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO,
+            size: u32::try_from(size_of::<DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO>()).ok()?,
+            adapterId: path.targetInfo.adapterId,
+            id: path.targetInfo.id,
+        },
+        ..Default::default()
+    };
+    // SAFETY: `colour` is a DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO whose header carries its type
+    // and size, as the call requires; it outlives the call.
+    if unsafe { DisplayConfigGetDeviceInfo(&raw mut colour.header) } != 0 {
+        return None;
+    }
+    // SAFETY: the union is plain bits; `value` is its whole-word view.
+    Some(unsafe { colour.Anonymous.value })
+}
+
+/// The GDI device names (`\\.\DISPLAY1`) of the monitors whose pixels are approximate: HDR, or
+/// wide colour gamut with automatic colour management (see [`colour_is_approximate`]). Empty when
+/// the display configuration cannot be read: the pick is then not marked approximate.
 fn hdr_devices() -> Vec<String> {
     let Some(paths) = active_paths() else {
         return Vec::new();
     };
-    let header_size = |n: usize| u32::try_from(n).unwrap_or(0);
     let mut devices = Vec::new();
     for path in &paths {
         let mut name = DISPLAYCONFIG_SOURCE_DEVICE_NAME {
             header: DISPLAYCONFIG_DEVICE_INFO_HEADER {
                 r#type: DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME,
-                size: header_size(size_of::<DISPLAYCONFIG_SOURCE_DEVICE_NAME>()),
+                size: u32::try_from(size_of::<DISPLAYCONFIG_SOURCE_DEVICE_NAME>()).unwrap_or(0),
                 adapterId: path.sourceInfo.adapterId,
                 id: path.sourceInfo.id,
             },
@@ -494,22 +557,14 @@ fn hdr_devices() -> Vec<String> {
         if unsafe { DisplayConfigGetDeviceInfo(&raw mut name.header) } != 0 {
             continue;
         }
-        let mut colour = DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO {
-            header: DISPLAYCONFIG_DEVICE_INFO_HEADER {
-                r#type: DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO,
-                size: header_size(size_of::<DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO>()),
-                adapterId: path.targetInfo.adapterId,
-                id: path.targetInfo.id,
-            },
-            ..Default::default()
+        let mode = active_colour_mode(path);
+        // The old query is only needed when the new one does not exist.
+        let legacy = if mode.is_none() {
+            legacy_colour_bits(path)
+        } else {
+            None
         };
-        // SAFETY: as above, for the advanced-colour request of the path's target.
-        if unsafe { DisplayConfigGetDeviceInfo(&raw mut colour.header) } != 0 {
-            continue;
-        }
-        // SAFETY: the union is plain bits; `value` is its whole-word view.
-        let value = unsafe { colour.Anonymous.value };
-        if is_hdr(value) {
+        if colour_is_approximate(mode, legacy) {
             let len = name
                 .viewGdiDeviceName
                 .iter()
@@ -521,34 +576,34 @@ fn hdr_devices() -> Vec<String> {
     devices
 }
 
-/// Is a monitor with these `DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO` bits in HDR mode? Bit 0 is
-/// `advancedColorSupported`, bit 1 `advancedColorEnabled`, bit 2 `wideColorEnforced`: advanced
-/// colour that is on only because wide colour is enforced (SDR, wide gamut) is not HDR.
-fn is_hdr(value: u32) -> bool {
-    const ENABLED: u32 = 0b10;
-    const WIDE_COLOR_ENFORCED: u32 = 0b100;
-    value & ENABLED != 0 && value & WIDE_COLOR_ENFORCED == 0
-}
-
-/// The pixels of a DIB section, read in place.
+/// The pixels of a DIB section, read where GDI wrote them: no second copy of the monitor. The
+/// surface stays alive as long as any clone of the [`Pixels`] made from this.
 struct DibPixels {
-    bits: *const u8,
+    surface: Rc<Surface>,
     len: usize,
-    /// Keeps the bitmap, and so `bits`, alive.
-    _bitmap: Rc<GdiObject>,
 }
 
 impl AsRef<[u8]> for DibPixels {
     fn as_ref(&self) -> &[u8] {
-        // SAFETY: `bits` is the pixel memory of a 32-bit DIB section of exactly `len` bytes,
-        // which `_bitmap` keeps allocated. After the capture's `BitBlt` only reads draw from the
-        // frozen surface, so nothing writes to it while this slice is borrowed.
-        unsafe { std::slice::from_raw_parts(self.bits, self.len) }
+        match self.surface.bits {
+            // SAFETY: `bits` is the pixel memory of the 32-bit DIB section owned by `surface`,
+            // which `self` keeps alive; `len` is its exact size, and nothing writes to it after
+            // the capture (`GdiFlush`ed).
+            Some(bits) => unsafe {
+                std::slice::from_raw_parts(bits.cast::<u8>().cast_const(), self.len)
+            },
+            None => &[],
+        }
     }
 }
 
-/// Copies one monitor. Returns the portable shot and the surface the overlay paints from.
-fn capture(screen: &ScreenDc, monitor: &MonitorFacts, hdr: bool) -> Result<(Shot, Surface), Error> {
+/// Copies one monitor. Returns the portable shot (which reads the surface's memory) and the
+/// surface the overlay paints from.
+fn capture(
+    screen: &ScreenDc,
+    monitor: &MonitorFacts,
+    hdr: bool,
+) -> Result<(Shot, Rc<Surface>), Error> {
     let too_big = || Error::Unavailable("a monitor is too large to capture");
     let w = i32::try_from(monitor.bounds.w).map_err(|_| too_big())?;
     let h = i32::try_from(monitor.bounds.h).map_err(|_| too_big())?;
@@ -569,30 +624,23 @@ fn capture(screen: &ScreenDc, monitor: &MonitorFacts, hdr: bool) -> Result<(Shot
         )
     }
     .map_err(|e| Error::from_windows("BitBlt", &e))?;
-    // The DIB is read directly below: finish any batched drawing first.
+    // The DIB is read directly: finish any batched drawing first.
     // SAFETY: no preconditions.
     let _ = unsafe { GdiFlush() };
-    let bits = surface
-        .bits
-        .ok_or(Error::Unavailable("the bitmap has no pixels"))?;
     let len = usize::try_from(w)
         .ok()
         .zip(usize::try_from(h).ok())
         .and_then(|(w, h)| w.checked_mul(h)?.checked_mul(4))
         .ok_or_else(too_big)?;
-    // The shot reads the DIB section in place; it shares the bitmap, so the pixels live as long
-    // as the shot does even if the surface goes first.
-    let bgra = Pixels::new(DibPixels {
-        bits: bits.cast::<u8>().cast_const(),
+    if surface.bits.is_none() {
+        return Err(Error::Unavailable("the bitmap has no pixels"));
+    }
+    let surface = Rc::new(surface);
+    let pixels = Pixels::new(DibPixels {
+        surface: Rc::clone(&surface),
         len,
-        _bitmap: Rc::clone(&surface.bitmap),
     });
-    let shot = Shot {
-        bounds: monitor.bounds,
-        scale: monitor.scale,
-        hdr,
-        bgra,
-    };
+    let shot = Shot::new(monitor.bounds, monitor.scale, hdr, pixels);
     Ok((shot, surface))
 }
 
@@ -674,13 +722,16 @@ impl Drop for ClassRegistration {
     }
 }
 
+/// What each overlay paints from (`None`: its monitor could not be captured).
+type Frozen = Vec<Option<Rc<Surface>>>;
+
 /// Everything one run holds. Field order is drop order: hotkeys and timers go before the
 /// windows they belong to, the windows before the bitmaps they paint and the class last.
 struct Run {
     hotkeys: Hotkeys,
     timers: Timers,
     windows: Vec<Overlay>,
-    frozen: Vec<Surface>,
+    frozen: Frozen,
     class: Option<ClassRegistration>,
     shots: Vec<Shot>,
     session: Session,
@@ -693,6 +744,15 @@ struct Run {
     title: Option<[u8; 3]>,
     /// A title has been set at all (the first one has no colour to compare with).
     title_set: bool,
+    /// When the overlays were shown: the hint fades from then.
+    started: Instant,
+    /// The biggest the hint bar gets on each monitor (physical pixels), measured once; the side
+    /// it sits at is decided by this, so it does not jump when the text shrinks.
+    hint_bound: Vec<(u32, u32)>,
+    /// The edge each monitor's hint bar sits at now.
+    hint_sides: Vec<HintSide>,
+    /// Where the keys another app refused are reported ([`Eyedropper::notes`]).
+    notes: Arc<Mutex<Vec<EyedropNote>>>,
     outcome: Option<EyedropOutcome>,
 }
 
@@ -712,19 +772,83 @@ impl Drop for RunSlot {
     }
 }
 
-fn try_run(texts: &EyedropTexts, settle: Duration) -> Result<EyedropOutcome, Error> {
+unsafe extern "system" fn collect_window(hwnd: HWND, data: LPARAM) -> BOOL {
+    // As in `collect_monitor`: a panic must not unwind into Windows.
+    guarded(BOOL::from(true), || {
+        let mut process = 0_u32;
+        // SAFETY: a window handle from the enumeration; `process` is a valid out-pointer.
+        unsafe { GetWindowThreadProcessId(hwnd, Some(&raw mut process)) };
+        // SAFETY: no preconditions.
+        if process != unsafe { GetCurrentProcessId() } {
+            return BOOL::from(true);
+        }
+        let mut cloak = 0_u32;
+        // SAFETY: `cloak` is a valid out-buffer of the 4 bytes `DWMWA_CLOAKED` writes.
+        let queried = unsafe {
+            DwmGetWindowAttribute(
+                hwnd,
+                DWMWA_CLOAKED,
+                (&raw mut cloak).cast::<c_void>(),
+                u32::try_from(size_of::<u32>()).unwrap_or(4),
+            )
+        };
+        // SAFETY: both only read the window's state.
+        let (visible, minimized) =
+            unsafe { (IsWindowVisible(hwnd).as_bool(), IsIconic(hwnd).as_bool()) };
+        let state = WindowState {
+            visible,
+            cloaked: queried.is_ok() && cloak != 0,
+            minimized,
+        };
+        // SAFETY: `data` is the `&mut Vec<WindowState>` that `process_windows` passed to
+        // `EnumWindows`, which calls this on the same thread while that borrow is alive.
+        let list = unsafe { &mut *(data.0 as *mut Vec<WindowState>) };
+        list.push(state);
+        BOOL::from(true)
+    })
+}
+
+/// The state of every top-level window of this process.
+fn process_windows() -> Vec<WindowState> {
+    let mut list: Vec<WindowState> = Vec::new();
+    // SAFETY: the callback only runs during this call, on this thread, and only touches the
+    // vector whose address is passed as `data`.
+    let _ = unsafe { EnumWindows(Some(collect_window), LPARAM((&raw mut list) as isize)) };
+    list
+}
+
+/// Waits until Snipdeck's own windows are gone from the screen (hidden, minimised or cloaked,
+/// which is what the Panel's hide does), at most `settle`: the cap is the answer for a window
+/// that stays (a docked tab), and for a host that passes a short settle.
+fn wait_for_own_windows(settle: Duration) {
+    if settle.is_zero() {
+        return;
+    }
+    let begin = Instant::now();
+    let _ = wait_until(
+        settle,
+        CLOAK_POLL,
+        || begin.elapsed(),
+        std::thread::sleep,
+        || cloak_settled(&process_windows()),
+    );
+}
+
+fn try_run(
+    texts: &EyedropTexts,
+    settle: Duration,
+    notes: &Arc<Mutex<Vec<EyedropNote>>>,
+) -> Result<EyedropOutcome, FailReason> {
     // Every coordinate from here on is physical, even on a mixed-DPI desktop.
     let _ = dpi::aware_thread();
-    if !settle.is_zero() {
-        std::thread::sleep(settle);
-    }
+    wait_for_own_windows(settle);
     // The hidden Panel must be gone from the next capture.
     // SAFETY: no preconditions.
     let _ = unsafe { DwmFlush() };
 
     let facts = monitors();
     if facts.is_empty() {
-        return Err(Error::Unavailable("no monitor to capture"));
+        return Err(FailReason::NoMonitor);
     }
     let (shots, frozen) = capture_all(&facts)?;
     let start = screen::cursor_position().unwrap_or((
@@ -738,6 +862,12 @@ fn try_run(texts: &EyedropTexts, settle: Duration) -> Result<EyedropOutcome, Err
             .saturating_add(signed(facts[0].bounds.h / 2)),
     ));
     let under_cursor = shots_index(&shots, start).unwrap_or(0);
+    let hint_bound = hint_bounds(texts, &shots)?;
+    let hint_sides = shots
+        .iter()
+        .zip(&hint_bound)
+        .map(|(shot, bound)| hint_side(start, shot.bounds, shot.scale, *bound))
+        .collect();
     let mut state = Run {
         hotkeys: Hotkeys {
             hwnd: HWND::default(),
@@ -750,13 +880,17 @@ fn try_run(texts: &EyedropTexts, settle: Duration) -> Result<EyedropOutcome, Err
         windows: Vec::new(),
         frozen,
         class: None,
-        session: Session::new(&shots, start),
+        session: Session::new(&shots, start).with_text_scale(texts.text_scale),
         shots,
         texts: texts.clone(),
         armed: false,
         title: None,
         title_set: false,
         press: Press::default(),
+        started: Instant::now(),
+        hint_bound,
+        hint_sides,
+        notes: Arc::clone(notes),
         outcome: None,
     };
     let handles = open_overlays(&mut state, &facts)?;
@@ -805,25 +939,53 @@ fn try_run(texts: &EyedropTexts, settle: Duration) -> Result<EyedropOutcome, Err
     });
     // The shots, bitmaps, windows, hotkeys, timers and class go here, with the guard.
     drop(slot_guard);
-    outcome.ok_or(Error::Unavailable(if loop_failed {
-        "the eyedropper's message loop failed"
-    } else {
-        "the eyedropper ended without a result"
-    }))
+    outcome.ok_or_else(|| {
+        FailReason::Other(
+            if loop_failed {
+                "message loop failed"
+            } else {
+                "no result"
+            }
+            .to_owned(),
+        )
+    })
 }
 
-/// Copies every monitor: the portable shots and the surfaces the overlays paint from.
-fn capture_all(facts: &[MonitorFacts]) -> Result<(Vec<Shot>, Vec<Surface>), Error> {
+/// Copies every monitor: the portable shots and the surfaces the overlays paint from. A monitor
+/// that refuses is skipped (an uncaptured shot, no surface); only all refusing is an error.
+fn capture_all(facts: &[MonitorFacts]) -> Result<(Vec<Shot>, Frozen), FailReason> {
     let hdr = hdr_devices();
+    let screen = ScreenDc::get()?;
+    let results = facts
+        .iter()
+        .map(|monitor| capture(&screen, monitor, hdr.contains(&monitor.device)))
+        .collect();
+    let kept = keep_captured(results)?;
     let mut shots = Vec::with_capacity(facts.len());
     let mut frozen = Vec::with_capacity(facts.len());
-    let screen = ScreenDc::get()?;
-    for monitor in facts {
-        let (shot, surface) = capture(&screen, monitor, hdr.contains(&monitor.device))?;
-        shots.push(shot);
-        frozen.push(surface);
+    for (monitor, captured) in facts.iter().zip(kept) {
+        if let Some((shot, surface)) = captured {
+            shots.push(shot);
+            frozen.push(Some(surface));
+        } else {
+            shots.push(Shot::uncaptured(monitor.bounds, monitor.scale));
+            frozen.push(None);
+        }
     }
     Ok((shots, frozen))
+}
+
+/// The biggest hint bar (text, the HDR note and the padding) on each monitor.
+fn hint_bounds(texts: &EyedropTexts, shots: &[Shot]) -> Result<Vec<(u32, u32)>, Error> {
+    let screen = ScreenDc::get()?;
+    Ok(shots
+        .iter()
+        .map(|shot| {
+            hint_content(texts, shot.hdr, Duration::ZERO).map_or((0, 0), |(text, _)| {
+                hint_bar_size(screen.0, &text, shot, texts.text_scale)
+            })
+        })
+        .collect())
 }
 
 /// Registers the class, creates one overlay per monitor and sets the timers. Everything made is
@@ -832,7 +994,7 @@ fn open_overlays(state: &mut Run, facts: &[MonitorFacts]) -> Result<Vec<HWND>, E
     register_class()?;
     state.class = Some(ClassRegistration);
     for monitor in facts {
-        let hwnd = create_overlay(monitor)?;
+        let hwnd = create_overlay(monitor, &state.texts)?;
         state.windows.push(Overlay { hwnd });
     }
     let first = state.windows[0].hwnd;
@@ -840,12 +1002,14 @@ fn open_overlays(state: &mut Run, facts: &[MonitorFacts]) -> Result<Vec<HWND>, E
     state.timers.hwnd = first;
     state.timers.set(TIMER_FOCUS, FOCUS_CHECK_MS);
     state.timers.set(TIMER_TIMEOUT, TIMEOUT_MS);
+    state.timers.set(TIMER_HINT, HINT_TICK_MS);
+    state.started = Instant::now();
     Ok(state.windows.iter().map(|o| o.hwnd).collect())
 }
 
-/// The index of the shot that has `at`.
+/// The index of the monitor that has `at` (captured or not: the overlay is there either way).
 fn shots_index(shots: &[Shot], at: (i32, i32)) -> Option<usize> {
-    shots.iter().position(|s| s.covers(at.0, at.1))
+    shots.iter().position(|s| s.contains(at.0, at.1))
 }
 
 // --- windows ----------------------------------------------------------------------------------
@@ -883,12 +1047,12 @@ fn register_class() -> Result<(), Error> {
 }
 
 /// A pop-up covering `monitor`, created on it so it gets that monitor's DPI.
-fn create_overlay(monitor: &MonitorFacts) -> Result<HWND, Error> {
+fn create_overlay(monitor: &MonitorFacts, texts: &EyedropTexts) -> Result<HWND, Error> {
     let class = HSTRING::from(CLASS_NAME);
     // SAFETY: a null module name asks for this process's own module handle.
     let hinstance = unsafe { GetModuleHandleW(None) }
         .map_err(|e| Error::from_windows("GetModuleHandleW", &e))?;
-    let title = HSTRING::from(window_title(None));
+    let title = HSTRING::from(window_title(texts, None));
     // SAFETY: the class is registered by `register_class`; the strings outlive the call; no
     // parent, menu or creation parameter. The window belongs to this thread.
     unsafe {
@@ -926,14 +1090,16 @@ struct Effects {
 
 /// The magnifier's box now, if the cursor is on a monitor.
 fn current_loupe(run: &Run) -> Option<ScreenRect> {
-    let (x, y) = run.session.cursor();
-    let shot = shot_at(&run.shots, x, y)?;
-    Some(loupe_rect(
-        (x, y),
-        shot.bounds,
-        shot.scale,
-        run.session.zoom(),
-    ))
+    run.session.loupe(&run.shots)
+}
+
+/// Every overlay with the monitor it covers.
+fn windows_of(run: &Run) -> Vec<(HWND, ScreenRect)> {
+    run.windows
+        .iter()
+        .zip(&run.shots)
+        .map(|(overlay, shot)| (overlay.hwnd, shot.bounds))
+        .collect()
 }
 
 /// A mouse button that picks (left) or cancels (right).
@@ -943,32 +1109,46 @@ enum Button {
     Right,
 }
 
-/// Which button is held on the overlay. A pick or cancel happens when that button is let go, so
-/// the button-up is swallowed by the overlay and never reaches (or opens a context menu in) the
-/// window underneath, which a decision on the button-down would let through.
+/// Which button is held on the overlay, and whether a finger made it. A pick or cancel happens
+/// when that button is let go, so the button-up is swallowed by the overlay and never reaches (or
+/// opens a context menu in) the window underneath, which a decision on the button-down would let
+/// through.
 #[derive(Debug, Default)]
 struct Press {
     held: Option<Button>,
+    touch: bool,
 }
 
 impl Press {
-    /// A button went down. True when it starts a press (the overlay then captures the mouse);
-    /// a second button pressed while one is held is ignored.
-    fn down(&mut self, button: Button) -> bool {
+    /// A button went down (`touch`: a finger made the message). True when it starts a press (the
+    /// overlay then captures the mouse); a second button pressed while one is held is ignored.
+    fn down(&mut self, button: Button, touch: bool) -> bool {
         if self.held.is_some() {
             return false;
         }
         self.held = Some(button);
+        self.touch = touch;
         true
     }
 
-    /// A button went up: the decision when it is the one held, `None` for any other.
-    fn up(&mut self, button: Button) -> Option<Input> {
+    /// A finger is down on the overlay.
+    fn touching(&self) -> bool {
+        self.held.is_some() && self.touch
+    }
+
+    /// A button went up: the decision when it is the one held, `None` for any other. `shift` is
+    /// whether Shift is held (a left click then collects instead of picking); `at` is where the
+    /// finger lifted.
+    fn up(&mut self, button: Button, shift: bool, at: Option<(i32, i32)>) -> Option<Input> {
         if self.held != Some(button) {
             return None;
         }
         self.held = None;
+        if std::mem::take(&mut self.touch) {
+            return at.map(|(x, y)| Input::TouchUp(x, y));
+        }
         Some(match button {
+            Button::Left if shift => Input::Collect,
             Button::Left => Input::Pick,
             Button::Right => Input::Cancel,
         })
@@ -977,6 +1157,7 @@ impl Press {
     /// The mouse capture was lost (another window took it): the press is over, with no decision.
     fn lost(&mut self) {
         self.held = None;
+        self.touch = false;
     }
 }
 
@@ -1004,36 +1185,69 @@ fn feed(input: Option<Input>) -> Effects {
         }
         let old = current_loupe(run);
         let step = input.map_or(Step::Nothing, |input| run.session.on(&run.shots, input));
+        let moved = matches!(step, Step::Redraw | Step::MoveCursor(..));
         match step {
             Step::MoveCursor(x, y) => effects.cursor = Some((x, y)),
-            Step::Picked(rgb) => {
-                let (x, y) = run.session.cursor();
-                let hdr = shot_at(&run.shots, x, y).is_some_and(|s| s.hdr);
-                run.outcome = Some(EyedropOutcome::Picked { rgb, hdr });
-                effects.quit = true;
-            }
-            Step::Cancelled => {
-                run.outcome = Some(EyedropOutcome::Cancelled);
+            Step::Finished(outcome) => {
+                run.outcome = Some(outcome);
                 effects.quit = true;
             }
             Step::Redraw | Step::Nothing => {}
         }
-        if matches!(step, Step::Redraw | Step::MoveCursor(..)) {
+        if moved {
             effects.invalidate.extend(old);
             effects.invalidate.extend(current_loupe(run));
+        }
+        // The hint bar steps aside when the cursor comes near it.
+        let cursor = run.session.cursor();
+        for ((shot, bound), side) in run
+            .shots
+            .iter()
+            .zip(&run.hint_bound)
+            .zip(run.hint_sides.iter_mut())
+        {
+            let now = hint_side(cursor, shot.bounds, shot.scale, *bound);
+            if now != *side {
+                effects
+                    .invalidate
+                    .push(hint_rect(shot.bounds, shot.scale, *bound, *side));
+                effects
+                    .invalidate
+                    .push(hint_rect(shot.bounds, shot.scale, *bound, now));
+                *side = now;
+            }
         }
         let colour = run.session.colour(&run.shots);
         if !run.title_set || run.title != colour {
             run.title_set = true;
             run.title = colour;
-            effects.title = Some(window_title(colour));
+            effects.title = Some(window_title(&run.texts, colour));
         }
-        effects.windows = run
-            .windows
-            .iter()
-            .zip(&run.shots)
-            .map(|(overlay, shot)| (overlay.hwnd, shot.bounds))
-            .collect();
+        effects.windows = windows_of(run);
+    });
+    effects
+}
+
+/// The hint's timer: repaint where the bars are, until the fade is over.
+fn hint_tick() -> Effects {
+    let mut effects = Effects::default();
+    RUN.with(|slot| {
+        let Ok(mut slot) = slot.try_borrow_mut() else {
+            return;
+        };
+        let Some(run) = slot.as_mut() else {
+            return;
+        };
+        // The last tick still repaints, so the bar disappears.
+        if !hint_animating(run.started.elapsed()) {
+            run.timers.kill(TIMER_HINT);
+        }
+        for ((shot, bound), side) in run.shots.iter().zip(&run.hint_bound).zip(&run.hint_sides) {
+            effects
+                .invalidate
+                .push(hint_rect(shot.bounds, shot.scale, *bound, *side));
+        }
+        effects.windows = windows_of(run);
     });
     effects
 }
@@ -1093,9 +1307,17 @@ fn apply(effects: &Effects) {
     }
 }
 
-fn shift_down() -> bool {
+fn key_is_down(vk: u16) -> bool {
     // SAFETY: no preconditions; the high bit is "down".
-    unsafe { GetKeyState(i32::from(VK_SHIFT.0)) }.cast_unsigned() & 0x8000 != 0
+    unsafe { GetKeyState(i32::from(vk)) }.cast_unsigned() & 0x8000 != 0
+}
+
+fn shift_down() -> bool {
+    key_is_down(VK_SHIFT.0)
+}
+
+fn ctrl_down() -> bool {
+    key_is_down(VK_CONTROL.0)
 }
 
 fn mouse_input() -> Option<Input> {
@@ -1103,33 +1325,26 @@ fn mouse_input() -> Option<Input> {
     screen::cursor_position().map(|(x, y)| Input::Moved(x, y))
 }
 
-/// The input for a key, if it is one of ours.
-fn key_input(vk: u16) -> Option<Input> {
-    let nav = |nav| Input::Key {
-        nav,
-        shift: shift_down(),
-    };
-    match vk {
-        v if v == VK_LEFT.0 => Some(nav(Nav::Left)),
-        v if v == VK_RIGHT.0 => Some(nav(Nav::Right)),
-        v if v == VK_UP.0 => Some(nav(Nav::Up)),
-        v if v == VK_DOWN.0 => Some(nav(Nav::Down)),
-        v if v == VK_RETURN.0 || v == VK_SPACE.0 => Some(Input::Pick),
-        v if v == VK_ESCAPE.0 => Some(Input::Cancel),
-        _ => None,
+/// The input for a key of the focused path, if it is one of ours.
+fn keyboard_input(vk: u16) -> Option<Input> {
+    Some(key_input(key_for_vk(vk)?, shift_down(), ctrl_down()))
+}
+
+/// The timers: the focus check (register the hotkeys if the foreground is not ours), the hint's
+/// repaint and the timeout.
+fn on_timer(id: usize) {
+    match id {
+        TIMER_TIMEOUT => apply(&feed(Some(Input::TimedOut))),
+        TIMER_HINT => apply(&hint_tick()),
+        TIMER_FOCUS => check_focus(),
+        _ => {}
     }
 }
 
-/// The timers: the focus check (register the hotkeys if the foreground is not ours) and the
-/// timeout.
-fn on_timer(id: usize) {
-    if id == TIMER_TIMEOUT {
-        apply(&feed(Some(Input::TimedOut)));
-        return;
-    }
-    if id != TIMER_FOCUS {
-        return;
-    }
+/// 100 ms after the overlay opened: if the foreground is not ours, the foreground lock kept us
+/// out, so take the keys the other way (every key of the focused path), for this run only, and
+/// record the ones another app refused.
+fn check_focus() {
     RUN.with(|slot| {
         let Ok(mut slot) = slot.try_borrow_mut() else {
             return;
@@ -1144,20 +1359,32 @@ fn on_timer(id: usize) {
         if run.windows.iter().any(|o| o.hwnd == foreground) {
             return;
         }
-        // The foreground lock kept us out: take the keys the other way, for this run only.
-        for (id, vk, shift) in HOTKEYS {
-            let modifiers = if shift {
-                MOD_SHIFT
-            } else {
-                HOT_KEY_MODIFIERS(0)
-            };
+        let mut refused = Vec::new();
+        for key in FALLBACK_KEYS {
+            let mut modifiers = HOT_KEY_MODIFIERS(0);
+            if key.shift {
+                modifiers |= MOD_SHIFT;
+            }
+            if key.ctrl {
+                modifiers |= MOD_CONTROL;
+            }
             // SAFETY: registers for a window of this thread; a refusal (key taken by another
             // app) just leaves that key to the window.
-            if unsafe { RegisterHotKey(Some(run.hotkeys.hwnd), id, modifiers, u32::from(vk)) }
-                .is_ok()
-            {
-                run.hotkeys.ids.push(id);
+            if unsafe {
+                RegisterHotKey(Some(run.hotkeys.hwnd), key.id, modifiers, u32::from(key.vk))
             }
+            .is_ok()
+            {
+                run.hotkeys.ids.push(key.id);
+            } else {
+                refused.push(key.id);
+            }
+        }
+        let keys = keys_of_ids(&refused);
+        if !keys.is_empty()
+            && let Ok(mut notes) = run.notes.lock()
+        {
+            notes.push(EyedropNote::KeysNotRegistered(keys));
         }
     });
 }
@@ -1182,7 +1409,7 @@ unsafe extern "system" fn overlay_proc(
                     && let Some(run) = slot.as_mut()
                 {
                     run.outcome
-                        .get_or_insert(EyedropOutcome::Failed("the eyedropper failed".to_owned()));
+                        .get_or_insert(EyedropOutcome::Failed(FailReason::Other("panic".into())));
                 }
             });
             // SAFETY: ends this thread's message loop.
@@ -1193,6 +1420,10 @@ unsafe extern "system" fn overlay_proc(
 }
 
 fn handle(hwnd: HWND, msg: u32, wparam: WPARAM) -> Option<LRESULT> {
+    // Read first: any later message call replaces it. A finger's mouse messages carry a
+    // signature in the extra info (a pen is precise and acts as a mouse).
+    // SAFETY: no preconditions.
+    let touch = is_touch_extra_info(unsafe { GetMessageExtraInfo() }.0.cast_unsigned());
     let input = |input: Option<Input>| {
         apply(&feed(input));
         Some(LRESULT(0))
@@ -1203,6 +1434,13 @@ fn handle(hwnd: HWND, msg: u32, wparam: WPARAM) -> Option<LRESULT> {
             paint(hwnd);
             Some(LRESULT(0))
         }
+        WM_MOUSEMOVE if touch => {
+            // A finger's moves are only meant while it is down (one comes just before the down).
+            match (with_press(|p| p.touching()), screen::cursor_position()) {
+                (Some(true), Some((x, y))) => input(Some(Input::TouchMove(x, y))),
+                _ => Some(LRESULT(0)),
+            }
+        }
         WM_MOUSEMOVE => input(mouse_input()),
         WM_LBUTTONDOWN | WM_RBUTTONDOWN => {
             let button = if msg == WM_LBUTTONDOWN {
@@ -1210,11 +1448,20 @@ fn handle(hwnd: HWND, msg: u32, wparam: WPARAM) -> Option<LRESULT> {
             } else {
                 Button::Right
             };
-            if with_press(|p| p.down(button)).unwrap_or(false) {
+            if touch && button == Button::Right {
+                // A long press makes a right click: it must not cancel the run.
+                return Some(LRESULT(0));
+            }
+            let started = with_press(|p| p.down(button, touch)).unwrap_or(false);
+            if started {
                 // SAFETY: a live window of this thread; the mouse is ours until the button-up.
                 let _ = unsafe { SetCapture(hwnd) };
             }
-            input(mouse_input())
+            match (touch, started, screen::cursor_position()) {
+                (true, true, Some((x, y))) => input(Some(Input::TouchDown(x, y))),
+                (true, ..) => Some(LRESULT(0)),
+                _ => input(mouse_input()),
+            }
         }
         WM_LBUTTONUP | WM_RBUTTONUP => {
             let button = if msg == WM_LBUTTONUP {
@@ -1222,12 +1469,15 @@ fn handle(hwnd: HWND, msg: u32, wparam: WPARAM) -> Option<LRESULT> {
             } else {
                 Button::Right
             };
+            let at = screen::cursor_position();
             // Always swallowed (no default handling, so no context menu from the right button).
-            match with_press(|p| p.up(button)).flatten() {
+            match with_press(|p| p.up(button, shift_down(), at)).flatten() {
                 Some(decision) => {
                     // SAFETY: no preconditions; the capture this window set on the button-down.
                     let _ = unsafe { ReleaseCapture() };
-                    apply(&feed(mouse_input()));
+                    if !matches!(decision, Input::TouchUp(..)) {
+                        apply(&feed(mouse_input()));
+                    }
                     input(Some(decision))
                 }
                 None => Some(LRESULT(0)),
@@ -1244,10 +1494,12 @@ fn handle(hwnd: HWND, msg: u32, wparam: WPARAM) -> Option<LRESULT> {
             let delta = i32::from(word.cast_signed());
             input(Some(Input::Wheel(delta)))
         }
-        WM_KEYDOWN => key_input(u16::try_from(wparam.0).unwrap_or(0)).and_then(|i| input(Some(i))),
+        WM_KEYDOWN => {
+            keyboard_input(u16::try_from(wparam.0).unwrap_or(0)).and_then(|i| input(Some(i)))
+        }
         WM_HOTKEY => {
             let id = i32::try_from(wparam.0).unwrap_or(0);
-            hotkey_input(id).and_then(|i| input(Some(i)))
+            fallback_input(id).and_then(|i| input(Some(i)))
         }
         WM_ACTIVATEAPP if wparam.0 == 0 => {
             let armed = RUN.with(|slot| {
@@ -1295,31 +1547,36 @@ fn paint_run(run: &Run, hwnd: HWND, hdc: HDC, clip: &RECT) {
     let Some(index) = run.windows.iter().position(|o| o.hwnd == hwnd) else {
         return;
     };
-    let (Some(shot), Some(frozen)) = (run.shots.get(index), run.frozen.get(index)) else {
+    let Some(shot) = run.shots.get(index) else {
         return;
     };
-    let (width, height) = (clip.right - clip.left, clip.bottom - clip.top);
-    // SAFETY: the paint DC and the frozen shot's memory DC are live; the rectangle is the
-    // update region, inside the window and so inside the bitmap.
-    let _ = unsafe {
-        BitBlt(
-            hdc,
-            clip.left,
-            clip.top,
-            width,
-            height,
-            Some(frozen.dc.0),
-            clip.left,
-            clip.top,
-            SRCCOPY,
-        )
-    };
-    draw_hint(run, shot, hdc, clip);
+    match run.frozen.get(index).and_then(Option::as_ref) {
+        Some(frozen) => {
+            let (width, height) = (clip.right - clip.left, clip.bottom - clip.top);
+            // SAFETY: the paint DC and the frozen shot's memory DC are live; the rectangle is the
+            // update region, inside the window and so inside the bitmap.
+            let _ = unsafe {
+                BitBlt(
+                    hdc,
+                    clip.left,
+                    clip.top,
+                    width,
+                    height,
+                    Some(frozen.dc.0),
+                    clip.left,
+                    clip.top,
+                    SRCCOPY,
+                )
+            };
+        }
+        None => draw_unavailable(run, shot, hdc, clip),
+    }
+    draw_hint(run, index, shot, hdc, clip);
     let Some(loupe) = current_loupe(run) else {
         return;
     };
     let (cx, cy) = run.session.cursor();
-    if shot_at(&run.shots, cx, cy).map(|s| s.bounds) != Some(shot.bounds) {
+    if monitor_at(&run.shots, cx, cy).map(|s| s.bounds) != Some(shot.bounds) {
         return; // the loupe belongs to another monitor's overlay
     }
     let Some(area) = client_rect(loupe, shot.bounds) else {
@@ -1335,10 +1592,9 @@ fn paint_run(run: &Run, hwnd: HWND, hdc: HDC, clip: &RECT) {
     let _ = draw_loupe(run, shot, hdc, &loupe, area.left, area.top);
 }
 
-/// A UI font of `points` at `scale`, freed on drop.
-fn font(points: u32, scale: f32) -> (HFONT, GdiObject) {
-    // 1 pt = 4/3 px at 96 DPI.
-    let height = -signed(scaled(points * 4 / 3, scale));
+/// A UI font of `points` at the monitor `scale` and the system `text_scale`, freed on drop.
+fn font(points: u32, scale: f32, text_scale: f32) -> (HFONT, GdiObject) {
+    let height = font_height_px(points, scale, text_scale);
     // SAFETY: plain call; a null font (failure) selects nothing and `GdiObject` does not delete
     // it.
     let font = unsafe {
@@ -1399,21 +1655,13 @@ fn draw_text(
     unsafe { DrawTextW(dc, &mut utf16, &raw mut *rect, format) };
 }
 
-/// The hint (and the HDR note) in a bar at the top middle of the monitor.
-fn draw_hint(run: &Run, shot: &Shot, hdc: HDC, clip: &RECT) {
-    let mut text = run.texts.hint.clone();
-    if shot.hdr && !run.texts.hdr_note.is_empty() {
-        text.push('\n');
-        text.push_str(&run.texts.hdr_note);
-    }
-    if text.is_empty() {
-        return;
-    }
-    let scale = shot.scale;
-    let px = |n: u32| signed(scaled(n, scale));
-    let (font, _font_guard) = font(12, scale);
+/// The size of the hint bar for `text` on `shot`'s monitor: the text wrapped to the monitor's width
+/// with padding around it.
+fn hint_bar_size(dc: HDC, text: &str, shot: &Shot, text_scale: f32) -> (u32, u32) {
+    let px = |n: u32| signed(scaled(n, shot.scale));
+    let (font, _font_guard) = font(12, shot.scale, text_scale);
     // SAFETY: a live DC and font; the previous font is selected back below.
-    let previous = unsafe { SelectObject(hdc, HGDIOBJ(font.0)) };
+    let previous = unsafe { SelectObject(dc, HGDIOBJ(font.0)) };
     let mut measure = RECT {
         left: 0,
         top: 0,
@@ -1421,43 +1669,200 @@ fn draw_hint(run: &Run, shot: &Shot, hdc: HDC, clip: &RECT) {
         bottom: 0,
     };
     draw_text(
-        hdc,
-        &text,
+        dc,
+        text,
         &mut measure,
         DT_CALCRECT | DT_CENTER | DT_NOPREFIX | DT_WORDBREAK,
     );
+    // SAFETY: selects the DC's own font back so the guard may delete ours.
+    unsafe { SelectObject(dc, previous) };
     let pad = px(10);
-    let (text_w, text_h) = (measure.right - measure.left, measure.bottom - measure.top);
-    let (bar_w, bar_h) = (text_w + 2 * pad, text_h + 2 * pad);
-    let bar_x = (signed(shot.bounds.w) - bar_w) / 2;
-    let bar_y = px(16);
-    if bar_x < clip.right
-        && bar_x + bar_w > clip.left
-        && bar_y < clip.bottom
-        && bar_y + bar_h > clip.top
+    let size = |extent: i32| u32::try_from(extent + 2 * pad).unwrap_or(0);
+    (
+        size(measure.right - measure.left),
+        size(measure.bottom - measure.top),
+    )
+}
+
+/// A monitor that could not be captured: grey, with the host's note in the middle.
+fn draw_unavailable(run: &Run, shot: &Shot, hdc: HDC, clip: &RECT) {
+    let (grey, _grey_guard) = solid_brush(0x30, 0x30, 0x30);
+    // SAFETY: a live DC and brush and a valid rectangle.
+    unsafe { FillRect(hdc, clip, grey) };
+    if run.texts.unavailable.is_empty() {
+        return;
+    }
+    let (font, _font_guard) = font(12, shot.scale, run.texts.text_scale);
+    // SAFETY: a live DC and font; the previous font is selected back below.
+    let previous = unsafe { SelectObject(hdc, HGDIOBJ(font.0)) };
+    // SAFETY: a live DC.
+    unsafe {
+        SetBkMode(hdc, TRANSPARENT);
+        SetTextColor(hdc, colorref(0xdd, 0xdd, 0xdd));
+    }
+    let mut area = RECT {
+        left: 0,
+        top: 0,
+        right: signed(shot.bounds.w),
+        bottom: signed(shot.bounds.h),
+    };
+    draw_text(
+        hdc,
+        &run.texts.unavailable,
+        &mut area,
+        DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX,
+    );
+    // SAFETY: selects the DC's own font back so the guard may delete ours.
+    unsafe { SelectObject(hdc, previous) };
+}
+
+/// The hint (and the HDR note) in a bar at the top middle of the monitor, at the bottom while the
+/// cursor is near the top; fading out two seconds after the run began.
+fn draw_hint(run: &Run, index: usize, shot: &Shot, hdc: HDC, clip: &RECT) {
+    let Some((text, alpha)) = hint_content(&run.texts, shot.hdr, run.started.elapsed()) else {
+        return;
+    };
+    let side = run.hint_sides.get(index).copied().unwrap_or(HintSide::Top);
+    let (bar_w, bar_h) = hint_bar_size(hdc, &text, shot, run.texts.text_scale);
+    if bar_w == 0 || bar_h == 0 {
+        return;
+    }
+    let place = hint_rect(shot.bounds, shot.scale, (bar_w, bar_h), side);
+    let (bar_x, bar_y) = (place.x - shot.bounds.x, place.y - shot.bounds.y);
+    let (w, h) = (signed(bar_w), signed(bar_h));
+    if bar_x >= clip.right
+        || bar_x + w <= clip.left
+        || bar_y >= clip.bottom
+        || bar_y + h <= clip.top
     {
-        let (background, _background_guard) = solid_brush(0x1e, 0x1e, 0x1e);
-        fill(hdc, bar_x, bar_y, bar_w, bar_h, background);
-        let mut rect = RECT {
-            left: bar_x + pad,
-            top: bar_y + pad,
-            right: bar_x + pad + text_w,
-            bottom: bar_y + pad + text_h,
+        return;
+    }
+    let Ok(buffer) = Surface::compatible(hdc, w, h) else {
+        return;
+    };
+    let dc = buffer.dc.0;
+    let (background, _background_guard) = solid_brush(0x1e, 0x1e, 0x1e);
+    fill(dc, 0, 0, w, h, background);
+    let pad = signed(scaled(10, shot.scale));
+    let (font, _font_guard) = font(12, shot.scale, run.texts.text_scale);
+    // SAFETY: a live DC and font; the previous font is selected back below.
+    let previous = unsafe { SelectObject(dc, HGDIOBJ(font.0)) };
+    // SAFETY: a live DC.
+    unsafe {
+        SetBkMode(dc, TRANSPARENT);
+        SetTextColor(dc, colorref(255, 255, 255));
+    }
+    let mut rect = RECT {
+        left: pad,
+        top: pad,
+        right: w - pad,
+        bottom: h - pad,
+    };
+    draw_text(dc, &text, &mut rect, DT_CENTER | DT_NOPREFIX | DT_WORDBREAK);
+    // SAFETY: selects the DC's own font back so the guard may delete ours.
+    unsafe { SelectObject(dc, previous) };
+    let blend = BLENDFUNCTION {
+        BlendOp: u8::try_from(AC_SRC_OVER).unwrap_or(0),
+        BlendFlags: 0,
+        SourceConstantAlpha: alpha,
+        AlphaFormat: 0,
+    };
+    // SAFETY: the target DC is the paint DC and the source the buffer's, both live; the blend is
+    // clipped to the update region by the paint DC. A failure leaves the bar undrawn.
+    let _ = unsafe { AlphaBlend(hdc, bar_x, bar_y, w, h, dc, 0, 0, w, h, blend) };
+}
+
+/// The readout bar of the loupe, into its off-screen DC `dc` of `box_size`: a swatch, the colour
+/// in the host's format, a second line with the hex, the aperture and how many colours were kept;
+/// on touch, the Pick button.
+fn draw_readout(run: &Run, shot: &Shot, dc: HDC, loupe: &ScreenRect, box_size: (i32, i32)) {
+    let (box_w, box_h) = box_size;
+    let scale = shot.scale;
+    let text_scale = clamp_text_scale(run.texts.text_scale);
+    let px = |n: u32| signed(scaled(n, scale));
+    let text_px = |n: u32| signed(scaled(n, scale * text_scale));
+    let bar_h = text_px(READOUT);
+    let bar_y = box_h - bar_h;
+    let swatch = text_px(16);
+    let swatch_x = px(8);
+    let swatch_y = bar_y + (bar_h - swatch) / 2;
+    let colour = run.session.colour(&run.shots);
+    let [r, g, b] = colour.unwrap_or([0x40, 0x40, 0x40]);
+    let (fill_colour, _g5) = solid_brush(r, g, b);
+    let (edge, _g6) = solid_brush(0xcc, 0xcc, 0xcc);
+    fill(dc, swatch_x, swatch_y, swatch, swatch, fill_colour);
+    frame(dc, swatch_x, swatch_y, swatch, swatch, 1, edge);
+    let (font, _font_guard) = font(12, scale, text_scale);
+    // SAFETY: a live DC and font; the previous font is selected back below.
+    let previous = unsafe { SelectObject(dc, HGDIOBJ(font.0)) };
+    // SAFETY: a live DC.
+    unsafe { SetBkMode(dc, TRANSPARENT) };
+    let button = run.session.pick_button(&run.shots);
+    let text_right = button.map_or(box_w - px(8), |b| b.x - loupe.x - px(8));
+    let text_left = swatch_x + swatch + px(8);
+    let half = bar_h / 2;
+    let (first_line, second_line) = readout_lines(
+        &run.texts,
+        colour,
+        run.session.aperture(),
+        run.session.collected().len(),
+    );
+    let row = DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_END_ELLIPSIS;
+    let mut first_rect = RECT {
+        left: text_left,
+        top: bar_y,
+        right: text_right,
+        bottom: bar_y + half,
+    };
+    let mut second_rect = RECT {
+        left: text_left,
+        top: bar_y + half,
+        right: text_right,
+        bottom: box_h,
+    };
+    // SAFETY: a live DC.
+    unsafe { SetTextColor(dc, colorref(255, 255, 255)) };
+    draw_text(dc, &first_line, &mut first_rect, row);
+    // SAFETY: a live DC.
+    unsafe { SetTextColor(dc, colorref(0xb0, 0xb0, 0xb0)) };
+    draw_text(dc, &second_line, &mut second_rect, row);
+    if let Some(button) = button {
+        let mut area = RECT {
+            left: button.x - loupe.x,
+            top: button.y - loupe.y,
+            right: button.x - loupe.x + signed(button.w),
+            bottom: button.y - loupe.y + signed(button.h),
         };
+        let (accent, _g8) = solid_brush(0x2f, 0x6f, 0xdb);
+        let (rim, _g9) = solid_brush(255, 255, 255);
+        fill(
+            dc,
+            area.left,
+            area.top,
+            signed(button.w),
+            signed(button.h),
+            accent,
+        );
+        frame(
+            dc,
+            area.left,
+            area.top,
+            signed(button.w),
+            signed(button.h),
+            1,
+            rim,
+        );
         // SAFETY: a live DC.
-        unsafe {
-            SetBkMode(hdc, TRANSPARENT);
-            SetTextColor(hdc, colorref(255, 255, 255));
-        }
+        unsafe { SetTextColor(dc, colorref(255, 255, 255)) };
         draw_text(
-            hdc,
-            &text,
-            &mut rect,
-            DT_CENTER | DT_NOPREFIX | DT_WORDBREAK,
+            dc,
+            &run.texts.pick_label,
+            &mut area,
+            DT_CENTER | DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX,
         );
     }
     // SAFETY: selects the DC's own font back so the guard may delete ours.
-    unsafe { SelectObject(hdc, previous) };
+    unsafe { SelectObject(dc, previous) };
 }
 
 /// Draws the magnifier into an off-screen bitmap and blits it once to `(dest_x, dest_y)`.
@@ -1499,7 +1904,7 @@ fn draw_loupe(
     let cell = signed(scaled(zoom, scale));
     let side = cell * side_cells;
     let grid_x = (box_w - side) / 2;
-    let grid_y = px(4);
+    let grid_y = px(PAD);
     // SAFETY: both DCs are live; `COLORONCOLOR` keeps the magnified pixels hard-edged.
     unsafe {
         SetStretchBltMode(dc, COLORONCOLOR);
@@ -1517,64 +1922,27 @@ fn draw_loupe(
             SRCCOPY,
         );
     }
-    if zoom >= 8 {
-        let (line, _g2) = solid_brush(0x40, 0x40, 0x40);
-        for i in 0..=side_cells {
-            fill(dc, grid_x + i * cell, grid_y, 1, side, line);
-            fill(dc, grid_x, grid_y + i * cell, side, 1, line);
-        }
+    // Every cell is at least 8 physical pixels, so the grid lines always have room.
+    let (line, _g2) = solid_brush(0x40, 0x40, 0x40);
+    for i in 0..=side_cells {
+        fill(dc, grid_x + i * cell, grid_y, 1, side, line);
+        fill(dc, grid_x, grid_y + i * cell, side, 1, line);
     }
-    // The centre cell: 2 px white inside 1 px black, visible on any colour.
-    let middle = side_cells / 2;
-    let (mx, my) = (grid_x + middle * cell, grid_y + middle * cell);
-    let (black, _g3) = solid_brush(0, 0, 0);
-    let (white, _g4) = solid_brush(255, 255, 255);
-    frame(dc, mx, my, cell, cell, 1, black);
-    frame(
-        dc,
-        mx + 1,
-        my + 1,
-        (cell - 2).max(0),
-        (cell - 2).max(0),
-        2,
-        white,
-    );
+    // The picked block (one cell, or the 3 x 3 / 5 x 5 that is averaged): framed OUTSIDE, in the
+    // padding and the neighbouring cells, so the pixel being picked stays visible.
+    let block = signed(run.session.aperture().side());
+    let first = side_cells / 2 - block / 2;
+    let (block_x, block_y) = (grid_x + first * cell, grid_y + first * cell);
+    for ring in pick_frame(block_x, block_y, block * cell) {
+        let (shade, _ring_guard) = if ring.white {
+            solid_brush(255, 255, 255)
+        } else {
+            solid_brush(0, 0, 0)
+        };
+        frame(dc, ring.x, ring.y, ring.w, ring.h, ring.thick, shade);
+    }
 
-    // The readout: a swatch and the hex text.
-    let bar_h = px(40);
-    let bar_y = box_h - bar_h;
-    let swatch = px(16);
-    let swatch_x = px(8);
-    let swatch_y = bar_y + (bar_h - swatch) / 2;
-    let centre = cells.get(cells.len() / 2).copied().flatten();
-    let [r, g, b] = centre.unwrap_or([0x40, 0x40, 0x40]);
-    let (colour, _g5) = solid_brush(r, g, b);
-    let (edge, _g6) = solid_brush(0xcc, 0xcc, 0xcc);
-    fill(dc, swatch_x, swatch_y, swatch, swatch, colour);
-    frame(dc, swatch_x, swatch_y, swatch, swatch, 1, edge);
-    let (font, _font_guard) = font(12, scale);
-    // SAFETY: a live DC and font; the previous font is selected back below.
-    let previous = unsafe { SelectObject(dc, HGDIOBJ(font.0)) };
-    // SAFETY: a live DC.
-    unsafe {
-        SetBkMode(dc, TRANSPARENT);
-        SetTextColor(dc, colorref(255, 255, 255));
-    }
-    let mut text_rect = RECT {
-        left: swatch_x + swatch + px(8),
-        top: bar_y,
-        right: box_w - px(8),
-        bottom: box_h,
-    };
-    let readout = centre.map_or_else(|| "-".to_owned(), hex_text);
-    draw_text(
-        dc,
-        &readout,
-        &mut text_rect,
-        DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX,
-    );
-    // SAFETY: selects the DC's own font back so the guard may delete ours.
-    unsafe { SelectObject(dc, previous) };
+    draw_readout(run, shot, dc, loupe, (box_w, box_h));
 
     let (border, _g7) = solid_brush(0x5a, 0x5a, 0x5a);
     frame(dc, 0, 0, box_w, box_h, 1, border);
@@ -1625,37 +1993,50 @@ mod tests {
     #[test]
     fn a_button_down_alone_decides_nothing_and_the_matching_up_does() {
         let mut press = Press::default();
-        assert!(press.down(Button::Left));
+        assert!(press.down(Button::Left, false));
         // Nothing is decided by the down; a wrong button's up is not the decision either.
-        assert_eq!(press.up(Button::Right), None);
-        assert_eq!(press.up(Button::Left), Some(Input::Pick));
+        assert_eq!(press.up(Button::Right, false, None), None);
+        assert_eq!(press.up(Button::Left, false, None), Some(Input::Pick));
         // The press is over: a stray second up decides nothing.
-        assert_eq!(press.up(Button::Left), None);
+        assert_eq!(press.up(Button::Left, false, None), None);
 
-        assert!(press.down(Button::Right));
-        assert_eq!(press.up(Button::Right), Some(Input::Cancel));
+        assert!(press.down(Button::Right, false));
+        assert_eq!(press.up(Button::Right, false, None), Some(Input::Cancel));
+    }
+
+    #[test]
+    fn shift_makes_a_left_click_collect_and_a_finger_lifting_decides_where() {
+        let mut press = Press::default();
+        assert!(press.down(Button::Left, false));
+        assert_eq!(press.up(Button::Left, true, None), Some(Input::Collect));
+        // Shift does not change the right button.
+        assert!(press.down(Button::Right, false));
+        assert_eq!(press.up(Button::Right, true, None), Some(Input::Cancel));
+        // A finger: the lift is a touch input at the place it lifted, shift or not.
+        assert!(press.down(Button::Left, true));
+        assert!(press.touching());
+        assert_eq!(
+            press.up(Button::Left, true, Some((4, 5))),
+            Some(Input::TouchUp(4, 5))
+        );
+        assert!(!press.touching());
+        // And the next mouse press is a mouse press again.
+        assert!(press.down(Button::Left, false));
+        assert!(!press.touching());
+        assert_eq!(press.up(Button::Left, false, None), Some(Input::Pick));
     }
 
     #[test]
     fn a_second_button_while_one_is_held_is_ignored_and_lost_capture_ends_the_press() {
         let mut press = Press::default();
-        assert!(press.down(Button::Left));
-        assert!(!press.down(Button::Right));
-        assert_eq!(press.up(Button::Right), None);
+        assert!(press.down(Button::Left, false));
+        assert!(!press.down(Button::Right, false));
+        assert_eq!(press.up(Button::Right, false, None), None);
         press.lost();
-        assert_eq!(press.up(Button::Left), None);
+        assert_eq!(press.up(Button::Left, false, None), None);
         // A new press works after the capture was lost.
-        assert!(press.down(Button::Right));
-        assert_eq!(press.up(Button::Right), Some(Input::Cancel));
-    }
-
-    #[test]
-    fn advanced_colour_is_hdr_only_when_enabled_and_not_just_wide_colour_enforced() {
-        assert!(!is_hdr(0b000));
-        assert!(!is_hdr(0b001)); // supported, off
-        assert!(is_hdr(0b011)); // supported and enabled
-        assert!(!is_hdr(0b111)); // enabled only because wide colour is enforced: SDR
-        assert!(!is_hdr(0b100));
+        assert!(press.down(Button::Right, false));
+        assert_eq!(press.up(Button::Right, false, None), Some(Input::Cancel));
     }
 
     #[test]

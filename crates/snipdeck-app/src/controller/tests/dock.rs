@@ -2482,6 +2482,7 @@ mod eyedropper {
     const PICK: EyedropOutcome = EyedropOutcome::Picked {
         rgb: [4, 132, 132],
         hdr: false,
+        also: Vec::new(),
     };
 
     #[test]
@@ -2491,7 +2492,10 @@ mod eyedropper {
         w.ctl.set_on_top(false);
         w.ctl.set_panel_focused(true);
         let fake = give(&mut w);
-        assert_eq!(w.ctl.start_eyedropper(), vec![Effect::HidePanel]);
+        assert_eq!(
+            w.ctl.start_eyedropper(),
+            vec![Effect::HidePanel, Effect::HideMainForEyedropper]
+        );
         w.ctl.set_panel_focused(false);
         // Picking far from the Panel, long past the leave delay; the overlay takes the foreground.
         w.targets.set_cursor(Some((100, 100)));
@@ -2508,7 +2512,11 @@ mod eyedropper {
         assert!(fake.complete(PICK));
         assert_eq!(
             w.ctl.poll_eyedropper(),
-            vec![Effect::ShowPanel, Effect::ShowColours]
+            vec![
+                Effect::ShowPanel,
+                Effect::ShowColours,
+                Effect::RestoreMainAfterEyedropper
+            ]
         );
         assert!(w.ctl.visible());
         assert!(!w.ctl.view().dock_collapsed);
@@ -2529,7 +2537,11 @@ mod eyedropper {
         assert!(fake.complete(EyedropOutcome::Cancelled));
         assert_eq!(
             w.ctl.poll_eyedropper(),
-            vec![Effect::ShowPanel, Effect::ShowColours]
+            vec![
+                Effect::ShowPanel,
+                Effect::ShowColours,
+                Effect::RestoreMainAfterEyedropper
+            ]
         );
         assert!(!w.ctl.view().dock_collapsed);
     }
@@ -2567,7 +2579,11 @@ mod eyedropper {
         assert!(fake.complete(PICK));
         assert_eq!(
             w.ctl.poll_eyedropper(),
-            vec![Effect::ShowPanel, Effect::ShowColours]
+            vec![
+                Effect::ShowPanel,
+                Effect::ShowColours,
+                Effect::RestoreMainAfterEyedropper
+            ]
         );
         assert!(w.ctl.visible());
         // Afterwards a real blur hides it as before.

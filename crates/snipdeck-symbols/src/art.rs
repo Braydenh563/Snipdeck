@@ -1,6 +1,6 @@
 //! Emoji art: the embedded pack of small palette PNGs, decoded and resampled to device pixels.
 //!
-//! Layout of `emoji48.bin` (little-endian): `b"SDE1"`, `u16` px, `u32` count, `count` x (`u32`
+//! Layout of `emoji72.bin` (little-endian): `b"SDE1"`, `u16` px, `u32` count, `count` x (`u32`
 //! offset, `u32` length), then the PNGs. Entry `i` is the art of the catalog's emoji `i`.
 
 use std::collections::HashMap;
@@ -39,7 +39,7 @@ impl ArtPack {
     /// When the magic, header or index is wrong.
     pub fn parse(blob: &'static [u8]) -> Result<Self, DataError> {
         let err = |what| DataError {
-            file: "emoji48.bin",
+            file: "emoji72.bin",
             what,
         };
         if blob.get(..4) != Some(b"SDE1") {
@@ -58,7 +58,7 @@ impl ArtPack {
         Ok(Self { blob, px, count })
     }
 
-    /// Side of the stored art in pixels (48).
+    /// Side of the stored art in pixels (72).
     #[must_use]
     pub fn px(&self) -> u32 {
         self.px
@@ -84,6 +84,8 @@ impl ArtPack {
         }
         let off = le32(self.blob, 10 + 8 * i)?;
         let len = le32(self.blob, 14 + 8 * i)?;
+        // A length of 0 is an emoji without art: the system emoji font draws it.
+        (len > 0).then_some(())?;
         self.blob.get(off..off.checked_add(len)?)
     }
 

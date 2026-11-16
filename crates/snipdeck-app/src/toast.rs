@@ -93,6 +93,21 @@ pub enum ToastMessage {
         /// The list's name.
         list: String,
     },
+    /// "No colour in the clipboard" (Ctrl+V on the Colours tab found none).
+    NoColourOnClipboard,
+    /// "Already saved in {list}" (a colour saved twice selects the first).
+    AlreadySaved {
+        /// The list's name.
+        list: String,
+    },
+    /// "≈ royalblue, not exactly a colour name. Nothing copied" (a copy as Name of a colour that no
+    /// CSS keyword is exactly).
+    NameNotExact {
+        /// The nearest keyword.
+        name: String,
+        /// That keyword's colour, as hex.
+        hex: String,
+    },
     /// "Added to {list}" / "Added {count} items to {list}" (Ctrl+V on a list), with Undo and Edit.
     AddedTo {
         /// The list's name.
@@ -379,6 +394,24 @@ pub enum ToastMessage {
     EyedropHdr {
         /// The picked colour, `#rrggbb`.
         hex: String,
+    },
+    /// "Copied {hex}. HDR is on for this screen, so it is approximate." (one toast for the copy
+    /// and the HDR note)
+    EyedropHdrCopied {
+        /// The picked colour, `#rrggbb`.
+        hex: String,
+    },
+    /// "Windows won't let Snipdeck read this screen." (the capture was refused)
+    EyedropRefused,
+    /// "The screen changed, so the pick ended." / "The pick timed out." (not the user's doing)
+    EyedropEnded {
+        /// Whether it was the time limit (else the display changed).
+        timed_out: bool,
+    },
+    /// "Another app keeps {keys}: use the mouse for those." (fallback hotkeys refused)
+    EyedropKeysBusy {
+        /// The keys, as written for the user.
+        keys: String,
     },
 }
 

@@ -12,6 +12,7 @@ First release. Windows 10 (1903 or newer) and 11, 64-bit. Not code-signed, so Wi
 first start.
 
 ### Added
+- HSL and HSB copies keep one decimal (`hsl(214.8, 64.9%, 53.1%)`) so a copied colour pastes back unchanged. Copying the Name of a colour no CSS keyword equals now says why it copied nothing.
 - **The Panel**: a strip at the screen edge that never takes the focus from the app you are typing in. List
   tabs, a pinned strip, search, a row menu (Use, Copy, Edit, Pin, Move, Colour, Sensitive, Delete), and a menu
   of its own (Open Snipdeck, New snippet, Settings, Pause hotkeys, Quit).

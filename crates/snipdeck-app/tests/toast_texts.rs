@@ -46,7 +46,7 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::UnlockFirst => 15,
         ToastMessage::LockedEditorClosed => 16,
         ToastMessage::LockedFillClosed => 106,
-        ToastMessage::LockedEditorKept => 112,
+        ToastMessage::LockedEditorKept => 119,
         ToastMessage::Saved { .. } => 17,
         ToastMessage::NothingToSave => 18,
         ToastMessage::TooLargeToSave => 19,
@@ -140,11 +140,18 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::TypingUnavailable => 101,
         ToastMessage::AutostartSwitchedOff => 102,
         ToastMessage::AutostartPolicy => 103,
-        ToastMessage::ArchiveBusy => 113,
+        ToastMessage::AlreadySaved { .. } => 112,
+        ToastMessage::NoColourOnClipboard => 113,
+        ToastMessage::EyedropHdrCopied { .. } => 114,
+        ToastMessage::EyedropRefused => 115,
+        ToastMessage::EyedropEnded { .. } => 116,
+        ToastMessage::EyedropKeysBusy { .. } => 117,
+        ToastMessage::NameNotExact { .. } => 118,
+        ToastMessage::ArchiveBusy => 120,
     }
 }
 
-const VARIANTS: usize = 114;
+const VARIANTS: usize = 121;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -329,6 +336,17 @@ fn samples() -> Vec<ToastMessage> {
         M::SettingsDamaged,
         M::SettingsUnreadable,
         M::ClipboardWatchFailed,
+        M::AlreadySaved { list: s("Colours") },
+        M::NoColourOnClipboard,
+        M::EyedropHdrCopied { hex: s("#3a7bd5") },
+        M::EyedropRefused,
+        M::EyedropEnded { timed_out: true },
+        M::EyedropEnded { timed_out: false },
+        M::EyedropKeysBusy { keys: s("+, -") },
+        M::NameNotExact {
+            name: s("royalblue"),
+            hex: s("#4169e1"),
+        },
     ]
 }
 

@@ -29,6 +29,11 @@ pub enum Effect {
     ShowColours,
     /// The Colours tab steps aside so the list under it shows.
     HideColours,
+    /// The eyedropper starts: the Main window, when it is on screen, steps aside too (it would
+    /// be in the screenshot) and is remembered.
+    HideMainForEyedropper,
+    /// The eyedropper ended: the Main window comes back if it was hidden for the pick.
+    RestoreMainAfterEyedropper,
     /// Hide the Panel.
     HidePanel,
     /// Move the Panel's window so that its top-left is here (physical pixels); its size

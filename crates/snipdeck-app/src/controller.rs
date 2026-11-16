@@ -305,6 +305,10 @@ pub struct Controller<S, C, K, T> {
     /// name in the language shown.
     colour: snipdeck_colour::Rgba8,
     colour_other: snipdeck_colour::Rgba8,
+    /// The colour before the last change, for the click that restores it.
+    colour_previous: Option<snipdeck_colour::Rgba8>,
+    /// The colour a drag began with, until it settles.
+    colour_gesture_from: Option<snipdeck_colour::Rgba8>,
     colours_list_name: String,
     /// The title of an item made from a picture with no file name, in the language shown.
     pasted_image_title: String,
@@ -385,6 +389,8 @@ pub struct Controller<S, C, K, T> {
     /// the dock (the pointer is away, picking) nor a blur (the overlay takes the foreground)
     /// changes what the Panel is meanwhile.
     eyedropping: bool,
+    /// The run in progress picks the contrast section's other colour, not the current one.
+    eyedrop_for_other: bool,
 }
 
 /// Opens the folder of the crash reports in the file manager.
@@ -549,6 +555,8 @@ where
             new_board_base: crate::starter::NEW_BOARD.to_owned(),
             colour,
             colour_other,
+            colour_previous: None,
+            colour_gesture_from: None,
             colours_list_name: String::from("Colours"),
             pasted_image_title: crate::capture::PASTED_IMAGE_TITLE.to_owned(),
             colour_made_list: None,
@@ -587,6 +595,7 @@ where
             eyedrop_mailbox: std::sync::Arc::default(),
             eyedrop_wake: None,
             eyedropping: false,
+            eyedrop_for_other: false,
         })
     }
 

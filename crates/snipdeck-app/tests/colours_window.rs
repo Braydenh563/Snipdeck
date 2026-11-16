@@ -231,7 +231,7 @@ fn brightness_to_zero_and_back_keeps_the_colour_and_the_values_row_says_so() {
     r.state().invoke_input_edited("#3a7bd5".into());
     r.state().invoke_model_picked(3); // HSB
     let start = channel_texts(&r);
-    assert_eq!(start.len(), 3, "H, S and B: {start:?}");
+    assert_eq!(start.len(), 4, "H, S, B and A: {start:?}");
     let bri = r.state().get_bri();
     r.state().invoke_bri_moved(0.0);
     assert_eq!(
@@ -312,12 +312,12 @@ fn a_translucent_second_colour_is_judged_over_white_and_the_row_says_so() {
             white,
             "{typed}: over white, not over black"
         );
-        assert!(row.name.contains("on white"), "{typed}: {:?}", row.name);
+        assert_eq!(row.over.as_str(), "over white", "{typed}");
     }
     r.state().invoke_other_accepted("#000000".into());
     r.settle();
     assert!(
-        !r.state().get_other_row().name.contains("on white"),
+        r.state().get_other_row().over.is_empty(),
         "an opaque colour is not flattened"
     );
 }
@@ -368,7 +368,7 @@ fn committing_an_hsl_channel_updates_the_other_rows() {
     let r = rig(false, (320, 640));
     r.state().invoke_input_edited("#3a7bd5".into());
     r.state().invoke_model_picked(2); // HSL
-    assert_eq!(channel_texts(&r).len(), 3);
+    assert_eq!(channel_texts(&r).len(), 4, "H, S, L and A");
     let before = r.ctl.borrow().colour_view().current;
     r.state().invoke_channel_committed(2, "20".into());
     let after = r.ctl.borrow().colour_view().current;
@@ -423,7 +423,7 @@ fn committing_and_stepping_a_cmyk_channel_updates_the_other_rows() {
     let r = rig(false, (320, 640));
     r.state().invoke_input_edited("rgb(13, 20, 25)".into());
     r.state().invoke_model_picked(4); // CMYK
-    assert_eq!(channel_texts(&r).len(), 4);
+    assert_eq!(channel_texts(&r).len(), 5, "C, M, Y, K and A");
     let c = number_at(&r, 0);
     r.state().invoke_channel_stepped(0, 1);
     assert!(
@@ -1320,7 +1320,15 @@ fn hovering_a_format_row_shows_its_text_in_the_footer() {
     r.state().invoke_input_edited("#3a7bd5".into());
     r.settle();
     let hint = r.state().get_use_hint().to_string();
-    assert_eq!(r.footer(), hint, "nothing hovered: where a click goes");
+    assert!(
+        !hint.is_empty(),
+        "the Formats title carries where a click goes"
+    );
+    assert_eq!(
+        r.footer(),
+        "Click makes a swatch current · Shift+click copies it",
+        "nothing hovered: what a click on a swatch does"
+    );
     let hint_for_rows = hint.clone();
     let row = r
         .rows(AccessibleRole::ListItem)
@@ -1339,7 +1347,7 @@ fn hovering_a_format_row_shows_its_text_in_the_footer() {
     r.pointer_to(2.0, 2.0);
     assert_eq!(
         r.footer(),
-        hint,
+        "Click makes a swatch current · Shift+click copies it",
         "and the hint is back when the pointer leaves"
     );
 }
@@ -1499,5 +1507,74 @@ fn the_colours_tab_light_and_dark_at_default_and_150_percent_text() {
             ),
             &r.frame(),
         );
+    }
+}
+
+#[test]
+fn more_formats_lists_every_code_format_and_the_note_names_a_colour_without_hue() {
+    let r = rig(false, (320, 900));
+    r.state().invoke_input_edited("#808080".into());
+    r.settle();
+    assert_eq!(
+        r.state().get_extras().row_count(),
+        snipdeck_colour::ExtraFormat::ALL.len()
+    );
+    assert_eq!(
+        r.state().get_extras().row_data(0).unwrap().text.as_str(),
+        snipdeck_colour::extra_text(
+            Rgba8::from_hex("#808080").unwrap(),
+            snipdeck_colour::ExtraFormat::ALL[0]
+        )
+    );
+    assert!(r.state().get_scheme_no_hue(), "a grey has no hue to rotate");
+    r.state().invoke_input_edited("#3a7bd5".into());
+    r.settle();
+    assert!(!r.state().get_scheme_no_hue());
+}
+
+#[test]
+fn the_more_formats_button_fits_and_opens_its_menu_at_every_text_size() {
+    for (width, scale) in [(260_u32, 1.0_f32), (260, 1.5), (320, 2.25), (480, 1.0)] {
+        let r = rig(false, (width, 1400));
+        r.set_text_scale(scale);
+        let at = format!("{width}px, text x{scale}");
+        let button = r.by_label(AccessibleRole::Button, "More formats…");
+        let (p, s) = (button.absolute_position(), button.size());
+        assert!(s.height >= 24.0 && s.width >= 24.0, "{at}: {s:?}");
+        assert!(
+            p.x >= 0.0 && p.x + s.width <= width as f32,
+            "{at}: x {} w {}",
+            p.x,
+            s.width
+        );
+        button.invoke_accessible_default_action();
+        r.settle();
+        assert_eq!(r.state().get_popup(), 5, "{at}: the menu is open");
+        r.press(&key(Key::Escape));
+        assert_eq!(r.state().get_popup(), 0, "{at}: Esc closes only the menu");
+        assert!(r.h.component.get_colours_open(), "{at}");
+    }
+}
+
+#[test]
+fn choosing_a_more_format_copies_it_and_closes_the_menu() {
+    let r = rig(false, (320, 1400));
+    r.state().invoke_input_edited("#3a7bd5".into());
+    r.settle();
+    r.by_label(AccessibleRole::Button, "More formats…")
+        .invoke_accessible_default_action();
+    r.settle();
+    assert_eq!(r.state().get_popup(), 5);
+    r.state().invoke_extra_copied(0);
+    r.settle();
+    let want = snipdeck_colour::extra_text(
+        Rgba8::from_hex("#3a7bd5").unwrap(),
+        snipdeck_colour::ExtraFormat::ALL[0],
+    );
+    let ctl = r.ctl.borrow();
+    let last = ctl.services().clipboard.written.last().expect("a copy");
+    match &last.data()[0] {
+        snipdeck_platform::payload::Data::Text(t) => assert_eq!(t, &want),
+        other => panic!("not text: {other:?}"),
     }
 }

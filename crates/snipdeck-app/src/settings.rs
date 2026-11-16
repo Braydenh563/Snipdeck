@@ -9,6 +9,10 @@ use snipdeck_platform::keys::{BUILTIN_PASTE_KEYS, PasteKey};
 
 /// The settings file format version.
 pub const VERSION: u32 = 1;
+/// The sides, in pixels, an icon can be copied or saved as a PNG at.
+pub const ICON_PNG_SIZES: [u32; 6] = [24, 32, 48, 64, 128, 256];
+/// The ink of an icon picture that is not the theme's: dark, so it reads on a white document.
+pub const ICON_DARK_INK: [u8; 4] = [0x17, 0x16, 0x13, 0xFF];
 /// Narrowest and widest Panel, in logical pixels (DESIGN.md §5).
 pub const PANEL_WIDTH: std::ops::RangeInclusive<u32> = 260..=480;
 /// The Panel's default width.
@@ -875,6 +879,12 @@ pub struct Settings {
     pub panel_start_visible: bool,
     /// The symbols the user used last, newest first, at most 24 (the Symbols tab's Recent strip).
     pub symbols_recent: Vec<snipdeck_symbols::RecentEntry>,
+    /// The skin tone emoji with tones are pasted in: 0 the default yellow, 1 to 5 light to dark.
+    pub symbol_tone: u8,
+    /// The side, in pixels, of an icon copied or saved as a PNG (one of [`ICON_PNG_SIZES`]).
+    pub symbol_icon_px: u32,
+    /// An icon picture is drawn in dark ink (safe on a white document) instead of the theme's text colour.
+    pub symbol_icon_dark_ink: bool,
     /// The Panel shows its Colours tab (picker, formats, schemes, contrast). On by default.
     pub show_colours_tab: bool,
     /// The colours used last, newest first, at most 24 (the Colours tab's "Recently used" strip).
@@ -954,6 +964,9 @@ impl Default for Settings {
             panel_hide_after_use: false,
             panel_start_visible: false,
             symbols_recent: Vec::new(),
+            symbol_tone: 0,
+            symbol_icon_px: 64,
+            symbol_icon_dark_ink: true,
             show_colours_tab: true,
             colours_recent: Vec::new(),
             colour_format: snipdeck_colour::Format::Hex,
@@ -1106,6 +1119,13 @@ impl Settings {
         field!(tray_click);
         field!(panel_open_at);
         field!(symbols_recent);
+        field!(symbol_tone);
+        field!(symbol_icon_px);
+        field!(symbol_icon_dark_ink);
+        settings.symbol_tone = settings.symbol_tone.min(5);
+        if !ICON_PNG_SIZES.contains(&settings.symbol_icon_px) {
+            settings.symbol_icon_px = 64;
+        }
         settings.colour_fields(map);
         field!(panel_hide_after_use);
         field!(panel_start_visible);
