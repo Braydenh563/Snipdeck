@@ -92,6 +92,14 @@ where
         }
     }
 
+    /// The contrast section's pick button: like [`start_eyedropper`](Self::start_eyedropper), but
+    /// the colour that comes back is the other colour of the contrast check.
+    pub fn start_eyedropper_for_other(&mut self) -> Vec<Effect> {
+        let effects = self.start_eyedropper();
+        self.eyedrop_for_other = self.eyedropping;
+        effects
+    }
+
     /// Takes up the outcome of a finished run, if there is one: a colour becomes current (see
     /// `colour_picked`), a cancel brings the Panel back, a failure says so.
     pub fn poll_eyedropper(&mut self) -> Vec<Effect> {

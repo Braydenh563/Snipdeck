@@ -18,13 +18,14 @@ pub fn saved_text(c: Rgba8, f: Format) -> String {
     }
 }
 
-/// The default item title: the CSS keyword when `c` is opaque and exactly a keyword, else empty.
+/// The default item title: the CSS keyword when `c` is opaque and exactly a keyword, else the hex
+/// and the nearest keyword (`#3a7bd5 ≈ steelblue`), so search finds a saved colour by either.
 pub fn title_for(c: Rgba8) -> String {
     let n = nearest_name(c);
     if n.exact && c.a == 255 {
         n.name.to_owned()
     } else {
-        String::new()
+        format!("{} ≈ {}", c.to_hex(), n.name)
     }
 }
 

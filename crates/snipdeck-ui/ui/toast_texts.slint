@@ -74,6 +74,12 @@ export global ToastTexts {
     pure public function unlock-first() -> string {
         return @tr("Unlock your library first, so your sensitive items are included. Nothing was done.");
     }
+    pure public function no-colour-on-clipboard() -> string {
+        return @tr("No colour in the clipboard");
+    }
+    pure public function already-saved(list: string) -> string {
+        return @tr("Already saved in {}", list);
+    }
     pure public function saved(list: string) -> string {
         return @tr("Saved to {}", list);
     }

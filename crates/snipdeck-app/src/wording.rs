@@ -251,6 +251,8 @@ where
         ToastMessage::LockedFillClosed => t.invoke_locked_fill_closed(),
         ToastMessage::UnlockFirst => t.invoke_unlock_first(),
         ToastMessage::Saved { list } => t.invoke_saved(list.into()),
+        ToastMessage::NoColourOnClipboard => t.invoke_no_colour_on_clipboard(),
+        ToastMessage::AlreadySaved { list } => t.invoke_already_saved(list.into()),
         ToastMessage::AddedTo { list, .. } => t.invoke_added_to(list.into()),
         ToastMessage::AddedSomeFiles { list } => t.invoke_added_some_files(list.into()),
         ToastMessage::FilesNotAdded => t.invoke_files_not_added(),

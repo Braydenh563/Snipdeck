@@ -127,9 +127,9 @@ mod main_window {
         assert_eq!(toast.message, ToastMessage::Copied);
         assert_eq!(uses(&w, id), 1, "it counts as a use of the item");
         assert_eq!(w.ctl.colour_view().recents, [BLUE]);
-        // The last format is the keyword.
-        w.ctl.main_colour_copy(row, 6);
-        assert_eq!(written(&w, 1), "royalblue");
+        // The last format is the keyword: this blue is not one, so nothing is copied.
+        assert_eq!(w.ctl.main_colour_copy(row, 6), Some(UseResult::Failed));
+        assert_eq!(w.ctl.services().clipboard.written.len(), 1);
     }
 
     #[test]
@@ -147,7 +147,10 @@ mod main_window {
         let (mut w, id, row) = on_colour_row();
         let choices = w.ctl.main_colour_choices(row);
         assert_eq!(choices.len(), 7);
-        assert_eq!(choices[2], (Fmt::Hsl, "hsl(215, 65%, 53%)".to_owned()));
+        assert_eq!(
+            choices[2],
+            (Fmt::Hsl, "hsl(214.8, 64.9%, 53.1%)".to_owned())
+        );
         let other = w.ids[0];
         let other_row = open_row(&mut w, other);
         assert_eq!(w.ctl.main_colour_choices(other_row).len(), 0);
@@ -157,7 +160,7 @@ mod main_window {
             .main_action(crate::controller::MainAction::PasteAs, row);
         let result = w.ctl.main_colour_paste_as(2, false);
         assert_eq!(result, Some(UseResult::Done(UseOutcome::Pasted)));
-        assert_eq!(written(&w, 0), "hsl(215, 65%, 53%)");
+        assert_eq!(written(&w, 0), "hsl(214.8, 64.9%, 53.1%)");
         assert_eq!(w.ctl.services().keyboard.sent.len(), 1);
         // Shift+Enter copies: no new keys.
         w.ctl
@@ -239,7 +242,7 @@ mod picker {
         assert!(w.ctl.picker().is_none(), "the Picker closed");
         let result = w.ctl.use_colour_item_as(item, 3, UseMode::Paste);
         assert_eq!(result, UseResult::Done(UseOutcome::Pasted));
-        assert_eq!(written(&w, 0), "hsb(215, 73%, 84%)");
+        assert_eq!(written(&w, 0), "hsb(214.8, 72.8%, 83.5%)");
         assert_eq!(w.ctl.services().keyboard.sent.len(), 1);
         assert_eq!(uses(&w, id), 1);
         let result = w.ctl.use_colour_item_as(item, 0, UseMode::Copy);

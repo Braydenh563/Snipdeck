@@ -179,7 +179,10 @@ fn ctrl_s_makes_the_colours_list_once_at_the_end_and_titles_an_exact_name() {
     assert_eq!(lists.len(), before + 1);
     assert_eq!(lists.last().unwrap().id, list, "at the end of the board");
     assert_eq!(lists.last().unwrap().name.as_str(), "Colours");
-    assert_eq!(items_of(&w, list), [(String::new(), "#3a7bd5".to_owned())]);
+    assert_eq!(
+        items_of(&w, list),
+        [("#3a7bd5 ≈ royalblue".to_owned(), "#3a7bd5".to_owned())]
+    );
 
     assert!(
         w.ctl
@@ -194,20 +197,23 @@ fn ctrl_s_makes_the_colours_list_once_at_the_end_and_titles_an_exact_name() {
 }
 
 #[test]
-fn a_default_format_that_would_round_the_colour_saves_the_hex_instead() {
+fn a_default_format_is_saved_with_the_digits_that_read_back_exactly() {
     let mut w = world();
     w.ctl.set_colour_format(Fmt::Hsl);
     assert!(w.ctl.save_colour(BLUE, SaveTarget::Home));
     let list = colours_list(&w).unwrap();
     assert_eq!(
         items_of(&w, list)[0].1,
-        "#3a7bd5",
-        "hsl(215, 65%, 53%) is not #3a7bd5"
+        "hsl(214.8, 64.9%, 53.1%)",
+        "the shortest digits that still read back as #3a7bd5"
     );
     // An exact format is kept as chosen.
     w.ctl.set_colour_format(Fmt::Rgb);
-    assert!(w.ctl.save_colour(BLUE, SaveTarget::Home));
-    assert_eq!(items_of(&w, list)[1].1, "rgb(58, 123, 213)");
+    assert!(
+        w.ctl
+            .save_colour(Rgba8::rgb(0x41, 0x69, 0xe1), SaveTarget::Home)
+    );
+    assert_eq!(items_of(&w, list)[1].1, "rgb(65, 105, 225)");
 }
 
 #[test]
@@ -241,12 +247,13 @@ fn saved_colours_are_the_colour_items_of_the_home_list() {
     let saved = w.ctl.saved_colours();
     assert_eq!(
         saved.iter().map(|(_, c)| *c).collect::<Vec<_>>(),
-        [BLUE, red]
+        [red, BLUE],
+        "newest first"
     );
-    assert_eq!(w.ctl.colour_of_item(saved[0].0), Some(BLUE));
+    assert_eq!(w.ctl.colour_of_item(saved[1].0), Some(BLUE));
     // A plain snippet is not a colour.
     assert_eq!(w.ctl.colour_of_item(w.ids[0]), None);
-    assert_eq!(w.ctl.colour_view().saved, [BLUE, red]);
+    assert_eq!(w.ctl.colour_view().saved, [red, BLUE]);
 }
 
 #[test]
@@ -307,14 +314,12 @@ fn copy_list_as_css_variables_names_each_colour_and_dedupes() {
     let mut w = world();
     w.ctl
         .save_colour(Rgba8::rgb(0x41, 0x69, 0xe1), SaveTarget::Home);
-    w.ctl
-        .save_colour(Rgba8::rgb(0x41, 0x69, 0xe1), SaveTarget::Home);
     w.ctl.save_colour(BLUE, SaveTarget::Home);
     let list = colours_list(&w).unwrap();
     assert!(w.ctl.copy_list_as_css(list));
     assert_eq!(
         written(&w, 0),
-        ":root {\n  --royalblue: #4169e1;\n  --royalblue-2: #4169e1;\n  --3a7bd5: #3a7bd5;\n}"
+        ":root {\n  --royalblue: #4169e1;\n  --3a7bd5-royalblue: #3a7bd5;\n}"
     );
     // A list with no colour in it copies nothing.
     let n = w.ctl.services().clipboard.written.len();
@@ -758,4 +763,128 @@ fn the_saved_strip_is_read_once_until_the_library_changes() {
     assert_eq!(w.ctl.saved_colours().len(), 2);
     w.ctl.main_undo();
     assert_eq!(w.ctl.saved_colours().len(), 1);
+}
+
+#[test]
+fn the_25th_saved_colour_is_the_first_in_the_strip() {
+    let mut w = world();
+    for i in 0..25u8 {
+        assert!(w.ctl.save_colour(Rgba8::rgb(i, 9, 9), SaveTarget::Home));
+    }
+    let strip = w.ctl.colour_view().saved;
+    assert_eq!(strip.len(), 24);
+    assert_eq!(strip[0], Rgba8::rgb(24, 9, 9), "the last save shows");
+    assert_eq!(strip[23], Rgba8::rgb(1, 9, 9));
+}
+
+#[test]
+fn saving_a_colour_twice_selects_the_first_and_says_so() {
+    let mut w = world();
+    assert!(w.ctl.save_colour(BLUE, SaveTarget::Home));
+    w.ctl.save_colour(Rgba8::rgb(1, 2, 3), SaveTarget::Home);
+    assert!(!w.ctl.save_colour(BLUE, SaveTarget::Home));
+    assert_eq!(w.ctl.saved_colours().len(), 2, "no second item");
+    assert_eq!(
+        w.ctl.view().toast.map(|t| t.message),
+        Some(ToastMessage::AlreadySaved {
+            list: "Colours".into()
+        })
+    );
+    // Another alpha is another colour.
+    assert!(
+        w.ctl
+            .save_colour(Rgba8 { a: 128, ..BLUE }, SaveTarget::Home)
+    );
+}
+
+#[test]
+fn a_saved_colour_is_titled_by_its_hex_and_nearest_name() {
+    let mut w = world();
+    w.ctl.save_colour(BLUE, SaveTarget::Home);
+    let list = colours_list(&w).unwrap();
+    let title = &items_of(&w, list)[0].0;
+    assert!(title.starts_with("#3a7bd5 ≈ "), "{title}");
+}
+
+#[test]
+fn a_saved_colour_is_renamed_and_deleted_with_undo_from_the_tab() {
+    let mut w = world();
+    let red = Rgba8::rgb(255, 0, 0);
+    w.ctl.save_colour(BLUE, SaveTarget::Home);
+    w.ctl.save_colour(red, SaveTarget::Home);
+    let list = colours_list(&w).unwrap();
+    let blue_id = w.ctl.saved_colours()[1].0;
+    w.ctl.rename_saved_colour(blue_id, "Brand blue");
+    assert_eq!(items_of(&w, list)[0].0, "Brand blue");
+    w.ctl.delete_saved_colour(blue_id);
+    assert_eq!(w.ctl.colour_view().saved, [red]);
+    assert!(w.ctl.view().toast.is_some_and(|t| t.undo));
+    w.ctl.undo();
+    assert_eq!(w.ctl.colour_view().saved, [red, BLUE]);
+}
+
+#[test]
+fn the_name_row_copies_nothing_for_a_near_keyword_and_offers_the_exact_switch() {
+    let mut w = world();
+    let near = Rgba8::rgb(0x41, 0x69, 0xe0);
+    assert_eq!(
+        w.ctl.use_colour(near, Fmt::Name, UseMode::Copy),
+        UseResult::Failed
+    );
+    assert_eq!(
+        w.ctl.services().clipboard.written.len(),
+        0,
+        "nothing copied"
+    );
+    w.ctl.set_colour(near);
+    w.ctl.use_nearest_name();
+    assert_eq!(w.ctl.colour_view().current, Rgba8::rgb(0x41, 0x69, 0xe1));
+    // Alpha is kept: the switch changes the colour, not its opacity.
+    w.ctl.set_colour(Rgba8 { a: 128, ..near });
+    w.ctl.use_nearest_name();
+    assert_eq!(
+        w.ctl.colour_view().current,
+        Rgba8 {
+            a: 128,
+            ..Rgba8::rgb(0x41, 0x69, 0xe1)
+        }
+    );
+}
+
+#[test]
+fn the_previous_colour_is_kept_and_restores_on_request() {
+    let mut w = world();
+    let start = w.ctl.colour_view().current;
+    assert_eq!(w.ctl.colour_view().previous, None);
+    w.ctl.set_colour(BLUE);
+    assert_eq!(w.ctl.colour_view().previous, Some(start));
+    // A drag counts as one change: the colour the gesture began with is kept.
+    w.ctl.set_colour_live(Rgba8::rgb(1, 1, 1));
+    w.ctl.set_colour_live(Rgba8::rgb(2, 2, 2));
+    w.ctl.settle_colour();
+    assert_eq!(w.ctl.colour_view().previous, Some(BLUE));
+    w.ctl.restore_previous_colour();
+    assert_eq!(w.ctl.colour_view().current, BLUE);
+    assert_eq!(
+        w.ctl.colour_view().previous,
+        Some(Rgba8::rgb(2, 2, 2)),
+        "restoring twice goes back"
+    );
+}
+
+#[test]
+fn ctrl_v_takes_the_first_colour_literal_of_the_clipboard_text() {
+    let mut w = build(Opts {
+        clipboard: Some("  background: #3a7bd5;\n"),
+        ..Opts::default()
+    });
+    assert!(w.ctl.paste_colour());
+    assert_eq!(w.ctl.colour_view().current, BLUE);
+    let mut none = build(Opts {
+        clipboard: Some("just words"),
+        ..Opts::default()
+    });
+    let before = none.ctl.colour_view().current;
+    assert!(!none.ctl.paste_colour());
+    assert_eq!(none.ctl.colour_view().current, before);
 }

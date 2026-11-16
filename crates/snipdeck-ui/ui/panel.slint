@@ -1318,6 +1318,11 @@ export component PanelWindow inherits Window {
                         ColourState.copy-current();
                         return accept;
                     }
+                    // Ctrl+V on the Colours tab (outside a field) takes the first colour literal in the clipboard text.
+                    if (root.colours-open && (event.text == "v" || event.text == "V") && !event.modifiers.shift && !ColourState.text-focused) {
+                        ColourState.paste-colour();
+                        return accept;
+                    }
                     if ((event.text == "a" || event.text == "A") && !root.searching && !root.list-hidden) {
                         root.select-all-requested();
                         return accept;

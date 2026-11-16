@@ -75,8 +75,10 @@ fn saved_text_is_always_exact() {
 fn titles() {
     assert_eq!(title_for(hex("#ff0000")), "red");
     assert_eq!(title_for(hex("#4169e1")), "royalblue");
-    assert_eq!(title_for(hex("#3a7bd5")), "");
-    assert_eq!(title_for(hex("#ff000080")), "");
+    // Not a keyword: the hex and the nearest name, so search finds it by either.
+    let near = snipdeck_colour::nearest_name(hex("#3a7bd5")).name;
+    assert_eq!(title_for(hex("#3a7bd5")), format!("#3a7bd5 ≈ {near}"));
+    assert_eq!(title_for(hex("#ff000080")), "#ff000080 ≈ red");
     assert_eq!(title_for(hex("#808080")), "gray");
 }
 

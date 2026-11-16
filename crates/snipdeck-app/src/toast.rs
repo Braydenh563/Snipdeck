@@ -90,6 +90,13 @@ pub enum ToastMessage {
         /// The list's name.
         list: String,
     },
+    /// "No colour in the clipboard" (Ctrl+V on the Colours tab found none).
+    NoColourOnClipboard,
+    /// "Already saved in {list}" (a colour saved twice selects the first).
+    AlreadySaved {
+        /// The list's name.
+        list: String,
+    },
     /// "Added to {list}" / "Added {count} items to {list}" (Ctrl+V on a list), with Undo and Edit.
     AddedTo {
         /// The list's name.

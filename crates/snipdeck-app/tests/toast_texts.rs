@@ -139,10 +139,12 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::TypingUnavailable => 101,
         ToastMessage::AutostartSwitchedOff => 102,
         ToastMessage::AutostartPolicy => 103,
+        ToastMessage::AlreadySaved { .. } => 112,
+        ToastMessage::NoColourOnClipboard => 113,
     }
 }
 
-const VARIANTS: usize = 112;
+const VARIANTS: usize = 114;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -325,6 +327,8 @@ fn samples() -> Vec<ToastMessage> {
         M::SettingsDamaged,
         M::SettingsUnreadable,
         M::ClipboardWatchFailed,
+        M::AlreadySaved { list: s("Colours") },
+        M::NoColourOnClipboard,
     ]
 }
 
