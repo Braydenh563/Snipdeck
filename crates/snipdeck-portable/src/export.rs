@@ -197,6 +197,73 @@ fn name_the_item(error: Error, title: &str) -> Error {
 }
 
 impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
+    /// One item as it is written, or `None` when it is left out (sensitive and not kept, or
+    /// unreadable and named in the report).
+    fn item_dto(
+        &mut self,
+        item: &snipdeck_core::Item,
+        list_name: &str,
+        triggers: &HashMap<ItemId, snipdeck_core::Trigger>,
+        group_of: &HashMap<ItemId, snipdeck_core::GroupId>,
+        written_groups: &mut HashSet<snipdeck_core::GroupId>,
+        used_tags: &mut BTreeSet<TagId>,
+    ) -> Result<Option<ItemDto>> {
+        if self.report.items >= self.options.limits.max_items {
+            return Err(Error::LimitExceeded {
+                what: "item count",
+                limit: self.options.limits.max_items as u64,
+            });
+        }
+        let key = match (item.sensitive, self.options.sensitive) {
+            (false, _) => None,
+            (true, SensitivePolicy::Skip) => {
+                self.report.sensitive_omitted += 1;
+                return Ok(None);
+            }
+            (true, SensitivePolicy::Encrypt(key)) => Some(key),
+        };
+        let format_dtos = match self.item_formats(item.id, &item.title, key) {
+            Ok(dtos) => dtos,
+            Err(error) if left_out(&error) => {
+                self.report.skipped.push(SkippedItem {
+                    title: item.title.clone(),
+                    list: list_name.to_owned(),
+                    reason: error.to_string(),
+                });
+                return Ok(None);
+            }
+            Err(error) => return Err(error),
+        };
+        if key.is_some() {
+            self.report.sensitive_encrypted += 1;
+        }
+        used_tags.extend(item.tags.iter().copied());
+        let dto = ItemDto {
+            id: item.id.to_string(),
+            title: item.title.clone(),
+            kind: item.kind.key().to_owned(),
+            pinned: item.pinned,
+            sensitive: item.sensitive,
+            always_plain: item.always_plain,
+            label: item.label.map(|l| l.key().to_owned()),
+            trigger: triggers.get(&item.id).map(ToString::to_string),
+            group: group_of.get(&item.id).map(|g| {
+                written_groups.insert(*g);
+                g.to_string()
+            }),
+            use_count: item.use_count,
+            last_used_at: item.last_used_at.map(|t| t.to_string()),
+            source_app: item.source_app.clone(),
+            created_at: item.created_at.to_string(),
+            updated_at: item.updated_at.to_string(),
+            tags: item.tags.iter().map(ToString::to_string).collect(),
+            preview: (!item.sensitive).then(|| item.preview.clone()),
+            formats: format_dtos,
+        };
+        self.report.items += 1;
+        Ok(Some(dto))
+    }
+
     fn build_doc(&mut self) -> Result<ItemsDoc> {
         let tag_names: HashMap<TagId, String> = self
             .lib
@@ -216,59 +283,16 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
                 let group_of = group_map(&runs);
                 let mut written_groups = std::collections::HashSet::new();
                 for item in self.lib.items(list.id)? {
-                    if self.report.items >= self.options.limits.max_items {
-                        return Err(Error::LimitExceeded {
-                            what: "item count",
-                            limit: self.options.limits.max_items as u64,
-                        });
+                    if let Some(dto) = self.item_dto(
+                        &item,
+                        list.name.as_str(),
+                        &triggers,
+                        &group_of,
+                        &mut written_groups,
+                        &mut used_tags,
+                    )? {
+                        items.push(dto);
                     }
-                    let key = match (item.sensitive, self.options.sensitive) {
-                        (false, _) => None,
-                        (true, SensitivePolicy::Skip) => {
-                            self.report.sensitive_omitted += 1;
-                            continue;
-                        }
-                        (true, SensitivePolicy::Encrypt(key)) => Some(key),
-                    };
-                    let format_dtos = match self.item_formats(item.id, &item.title, key) {
-                        Ok(dtos) => dtos,
-                        Err(error) if left_out(&error) => {
-                            self.report.skipped.push(SkippedItem {
-                                title: item.title.clone(),
-                                list: list.name.to_string(),
-                                reason: error.to_string(),
-                            });
-                            continue;
-                        }
-                        Err(error) => return Err(error),
-                    };
-                    if key.is_some() {
-                        self.report.sensitive_encrypted += 1;
-                    }
-                    used_tags.extend(item.tags.iter().copied());
-                    items.push(ItemDto {
-                        id: item.id.to_string(),
-                        title: item.title.clone(),
-                        kind: item.kind.key().to_owned(),
-                        pinned: item.pinned,
-                        sensitive: item.sensitive,
-                        always_plain: item.always_plain,
-                        label: item.label.map(|l| l.key().to_owned()),
-                        trigger: triggers.get(&item.id).map(ToString::to_string),
-                        group: group_of.get(&item.id).map(|g| {
-                            written_groups.insert(*g);
-                            g.to_string()
-                        }),
-                        use_count: item.use_count,
-                        last_used_at: item.last_used_at.map(|t| t.to_string()),
-                        source_app: item.source_app.clone(),
-                        created_at: item.created_at.to_string(),
-                        updated_at: item.updated_at.to_string(),
-                        tags: item.tags.iter().map(ToString::to_string).collect(),
-                        preview: (!item.sensitive).then(|| item.preview.clone()),
-                        formats: format_dtos,
-                    });
-                    self.report.items += 1;
                 }
                 lists.push(ListDto {
                     id: list.id.to_string(),

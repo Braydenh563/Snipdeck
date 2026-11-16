@@ -703,6 +703,7 @@ fn a_sensitive_file_of_the_largest_attachment_size_exports_encrypted() {
         &ExportOptions {
             sensitive: SensitivePolicy::Encrypt(&key),
             limits,
+            every_tag: false,
         },
         &mut out,
     )
@@ -722,6 +723,7 @@ fn an_item_over_the_entry_limit_is_named_instead_of_failing_without_a_word() {
         &ExportOptions {
             sensitive: SensitivePolicy::Encrypt(&key),
             limits,
+            every_tag: false,
         },
         &mut out,
     )
@@ -809,6 +811,7 @@ fn sensitive_content_past_the_readers_budget_is_left_out_and_named() {
         &ExportOptions {
             sensitive: SensitivePolicy::Encrypt(&key),
             limits,
+            every_tag: false,
         },
         &mut out,
     )

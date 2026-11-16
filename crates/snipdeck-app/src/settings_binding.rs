@@ -960,6 +960,10 @@ where
         .collect()
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "one struct literal, a line per setting; splitting it would only scatter them"
+)]
 fn page_view<C, K, T>(
     controller: &Controller<Store, C, K, T>,
     state: &PageState,

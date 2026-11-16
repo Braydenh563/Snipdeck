@@ -329,12 +329,13 @@ pub(crate) fn apply<L: Library>(
     Ok(report)
 }
 
-fn write(
+/// Creates the tags the plan needs (existing ones are reused by name); the plan's tag index
+/// to the library's id.
+fn write_tags(
     lib: &mut Batch<'_>,
-    plan: &mut Plan,
-    fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
+    plan: &Plan,
     report: &mut ImportReport,
-) -> Result<()> {
+) -> Result<HashMap<usize, TagId>> {
     // Only tags that a kept item uses are created; existing tags are reused by name.
     let every = plan.reuse_existing;
     let used: HashSet<usize> = plan
@@ -368,6 +369,16 @@ fn write(
         };
         tag_ids.insert(index, id);
     }
+    Ok(tag_ids)
+}
+
+fn write(
+    lib: &mut Batch<'_>,
+    plan: &mut Plan,
+    fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
+    report: &mut ImportReport,
+) -> Result<()> {
+    let tag_ids = write_tags(lib, plan, report)?;
 
     for plan_board in &mut plan.boards {
         let existing_board = if plan.reuse_existing {
@@ -378,16 +389,15 @@ fn write(
         } else {
             None
         };
-        let board = match existing_board {
-            Some(board) => board,
-            None => {
-                let mut board = Board::new(plan_board.name.clone(), plan_board.created_at);
-                board.updated_at = plan_board.updated_at;
-                lib.insert_board(&board, Placement::Last)?;
-                report.boards_added += 1;
-                report.boards.push(board.id);
-                board
-            }
+        let board = if let Some(board) = existing_board {
+            board
+        } else {
+            let mut board = Board::new(plan_board.name.clone(), plan_board.created_at);
+            board.updated_at = plan_board.updated_at;
+            lib.insert_board(&board, Placement::Last)?;
+            report.boards_added += 1;
+            report.boards.push(board.id);
+            board
         };
 
         for plan_list in &mut plan_board.lists {
@@ -399,20 +409,18 @@ fn write(
             } else {
                 None
             };
-            let list = match existing_list {
-                Some(list) => list,
-                None => {
-                    let mut list =
-                        List::new(board.id, plan_list.name.clone(), plan_list.created_at);
-                    list.updated_at = plan_list.updated_at;
-                    list.accent = plan_list.accent;
-                    list.icon = plan_list.icon;
-                    list.view = plan_list.view;
-                    list.sort = plan_list.sort;
-                    lib.insert_list(&list, Placement::Last)?;
-                    report.lists_added += 1;
-                    list
-                }
+            let list = if let Some(list) = existing_list {
+                list
+            } else {
+                let mut list = List::new(board.id, plan_list.name.clone(), plan_list.created_at);
+                list.updated_at = plan_list.updated_at;
+                list.accent = plan_list.accent;
+                list.icon = plan_list.icon;
+                list.view = plan_list.view;
+                list.sort = plan_list.sort;
+                lib.insert_list(&list, Placement::Last)?;
+                report.lists_added += 1;
+                list
             };
 
             let mut members: Vec<Vec<ItemId>> = vec![Vec::new(); plan_list.groups.len()];

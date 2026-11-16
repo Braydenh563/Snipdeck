@@ -95,7 +95,7 @@ pub fn check_archive_path(path: &Path, depth: Depth) -> Result<ArchiveSummary> {
         lists,
         items,
         tags: doc.tags.len(),
-        assets: manifest.counts.assets as usize,
+        assets: usize::try_from(manifest.counts.assets).unwrap_or(usize::MAX),
         created_at: manifest.created_at,
         skipped: manifest.skipped_unreadable,
         sensitive_omitted: manifest.sensitive_omitted,

@@ -256,7 +256,10 @@ fn is_library_file(name: &str) -> bool {
     ];
     EXACT.contains(&name)
         || name.starts_with("maintenance.json.")
-        || (name.starts_with("snipdeck.db.pre-v") && name.ends_with(".bak"))
+        || (name.starts_with("snipdeck.db.pre-v")
+            && std::path::Path::new(name)
+                .extension()
+                .is_some_and(|e| e.eq_ignore_ascii_case("bak")))
         || name.starts_with("snipdeck.damaged-")
 }
 
@@ -280,63 +283,6 @@ fn wipe_library(folder: &Path) -> io::Result<()> {
         }
     }
     first_error.map_or(Ok(()), Err)
-}
-
-#[cfg(test)]
-mod erase_tests {
-    use super::*;
-
-    #[test]
-    fn erase_deletes_the_library_and_leaves_what_is_not_ours() {
-        let dir = tempfile::tempdir().unwrap();
-        let d = dir.path();
-        for ours in [
-            "snipdeck.db",
-            "snipdeck.db-wal",
-            "snipdeck.db.pre-v8.bak",
-            "maintenance.json",
-            "maintenance.json.123-1.tmp",
-        ] {
-            fs::write(d.join(ours), b"x").unwrap();
-        }
-        for ours in [
-            "blobs",
-            "backups",
-            "drafts",
-            "snipdeck.damaged-20261107-1030",
-        ] {
-            fs::create_dir_all(d.join(ours)).unwrap();
-            fs::write(d.join(ours).join("inner"), b"x").unwrap();
-        }
-        // Not ours: a user's file and folder, the settings, the logs, the lock.
-        fs::write(d.join("report.docx"), b"mine").unwrap();
-        fs::create_dir_all(d.join("Photos")).unwrap();
-        fs::write(d.join("Photos").join("a.jpg"), b"mine").unwrap();
-        fs::write(d.join("snipdeck.db-notes.txt"), b"mine").unwrap();
-        fs::write(d.join("settings.json"), b"{}").unwrap();
-        fs::create_dir_all(d.join("logs")).unwrap();
-        fs::write(d.join("snipdeck.lock"), b"").unwrap();
-
-        wipe_library(d).unwrap();
-
-        let mut left: Vec<String> = fs::read_dir(d)
-            .unwrap()
-            .map(|e| e.unwrap().file_name().into_string().unwrap())
-            .collect();
-        left.sort();
-        assert_eq!(
-            left,
-            [
-                "Photos",
-                "logs",
-                "report.docx",
-                "settings.json",
-                "snipdeck.db-notes.txt",
-                "snipdeck.lock"
-            ]
-        );
-        assert!(d.join("Photos").join("a.jpg").exists());
-    }
 }
 
 /// A name for an export made on `date` that no file in `folder` has yet:
@@ -1007,4 +953,61 @@ enum Swap {
     Stuck,
     /// The rebuilt library is open and holds the backup, but the marker could not be removed.
     Unfinished,
+}
+
+#[cfg(test)]
+mod erase_tests {
+    use super::*;
+
+    #[test]
+    fn erase_deletes_the_library_and_leaves_what_is_not_ours() {
+        let dir = tempfile::tempdir().unwrap();
+        let d = dir.path();
+        for ours in [
+            "snipdeck.db",
+            "snipdeck.db-wal",
+            "snipdeck.db.pre-v8.bak",
+            "maintenance.json",
+            "maintenance.json.123-1.tmp",
+        ] {
+            fs::write(d.join(ours), b"x").unwrap();
+        }
+        for ours in [
+            "blobs",
+            "backups",
+            "drafts",
+            "snipdeck.damaged-20261107-1030",
+        ] {
+            fs::create_dir_all(d.join(ours)).unwrap();
+            fs::write(d.join(ours).join("inner"), b"x").unwrap();
+        }
+        // Not ours: a user's file and folder, the settings, the logs, the lock.
+        fs::write(d.join("report.docx"), b"mine").unwrap();
+        fs::create_dir_all(d.join("Photos")).unwrap();
+        fs::write(d.join("Photos").join("a.jpg"), b"mine").unwrap();
+        fs::write(d.join("snipdeck.db-notes.txt"), b"mine").unwrap();
+        fs::write(d.join("settings.json"), b"{}").unwrap();
+        fs::create_dir_all(d.join("logs")).unwrap();
+        fs::write(d.join("snipdeck.lock"), b"").unwrap();
+
+        wipe_library(d).unwrap();
+
+        let mut left: Vec<String> = fs::read_dir(d)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().into_string().unwrap())
+            .collect();
+        left.sort();
+        assert_eq!(
+            left,
+            [
+                "Photos",
+                "logs",
+                "report.docx",
+                "settings.json",
+                "snipdeck.db-notes.txt",
+                "snipdeck.lock"
+            ]
+        );
+        assert!(d.join("Photos").join("a.jpg").exists());
+    }
 }

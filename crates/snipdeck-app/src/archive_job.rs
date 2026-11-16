@@ -76,6 +76,10 @@ pub enum ArchiveOp {
 }
 
 /// What a finished job made.
+#[allow(
+    clippy::large_enum_variant,
+    reason = "one value per finished job; boxing would only add a hop"
+)]
 #[derive(Debug)]
 pub enum Made {
     /// A backup: what [`backup::run_if_due`] did.

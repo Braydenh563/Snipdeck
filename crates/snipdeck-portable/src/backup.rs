@@ -64,6 +64,10 @@ pub struct Shrunk {
 
 /// What [`run_if_due`] and [`run_manual`] did.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(
+    clippy::large_enum_variant,
+    reason = "one value per backup run; boxing would only add a hop"
+)]
 pub enum BackupOutcome {
     /// Today's backup already exists and can be read; nothing was written or deleted.
     NotDue {
@@ -449,7 +453,10 @@ fn is_tier_pick(
                 jiff::Span::new().days(i64::from(this_week.weekday().to_monday_zero_offset())),
             )
             .ok()
-            .and_then(|m| m.checked_sub(jiff::Span::new().weeks(back as i64)).ok())
+            .and_then(|m| {
+                m.checked_sub(jiff::Span::new().weeks(i64::try_from(back).unwrap_or(i64::MAX)))
+                    .ok()
+            })
         else {
             continue;
         };
@@ -461,7 +468,7 @@ fn is_tier_pick(
     for back in 1..=MONTHS_KEPT {
         let Some(first) = today
             .first_of_month()
-            .checked_sub(jiff::Span::new().months(back as i64))
+            .checked_sub(jiff::Span::new().months(i64::try_from(back).unwrap_or(i64::MAX)))
             .ok()
         else {
             continue;
