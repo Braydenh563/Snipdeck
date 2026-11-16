@@ -173,7 +173,9 @@ mod imp {
             result.map_err(|e| match e {
                 HotkeyError::InUse => HotkeyFailure::InUse,
                 HotkeyError::Invalid => HotkeyFailure::Invalid,
-                HotkeyError::Os(_) | HotkeyError::Stopped => HotkeyFailure::Unavailable,
+                HotkeyError::OwnAction(_) => HotkeyFailure::OwnAction,
+                HotkeyError::Os(code) => HotkeyFailure::Refused(code),
+                HotkeyError::Stopped => HotkeyFailure::Unavailable,
             })
         }
 
@@ -362,6 +364,7 @@ mod imp {
             on_tray,
             on_look_changed,
             on_session_lock,
+            on_session_resume,
             on_clipboard_change,
             on_typed,
         } = callbacks;
@@ -412,7 +415,7 @@ mod imp {
                 None
             }
         };
-        match SystemLookWatcher::start(on_look_changed, on_session_lock) {
+        match SystemLookWatcher::start(on_look_changed, on_session_lock, on_session_resume) {
             Ok(watcher) => keep_alive.push(Box::new(watcher)),
             Err(e) => warnings.push(format!("not following the Windows colour mode: {e}")),
         }
@@ -482,6 +485,7 @@ mod imp {
             callbacks.on_tray,
             callbacks.on_look_changed,
             callbacks.on_session_lock,
+            callbacks.on_session_resume,
             callbacks.on_clipboard_change,
             callbacks.on_typed,
         );
@@ -717,6 +721,9 @@ pub struct Callbacks {
     /// Windows locked the session (Win+L) or is going to sleep (watcher thread): a library with a
     /// master password locks.
     pub on_session_lock: Box<dyn Fn() + Send>,
+    /// The computer woke up, the session was unlocked or a console / remote connection came back
+    /// (watcher thread): failed global hotkeys are tried again.
+    pub on_session_resume: Box<dyn Fn() + Send>,
     /// The clipboard changed and the Recent inbox is listening (clipboard thread).
     pub on_clipboard_change: Box<dyn Fn(ClipboardChange) + Send>,
     /// A typed trigger completed, and whether the focused element is a password box (typing
@@ -815,6 +822,7 @@ mod tests {
             on_tray: Box::new(|_| {}),
             on_look_changed: Box::new(|| {}),
             on_session_lock: Box::new(|| {}),
+            on_session_resume: Box::new(|| {}),
             on_clipboard_change: Box::new(|_| {}),
             on_typed: Box::new(|_| {}),
         };

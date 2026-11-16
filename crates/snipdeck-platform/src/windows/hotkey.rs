@@ -16,12 +16,18 @@
 //! Every registration uses `MOD_NOREPEAT` (see [`Chord::to_win32`]). Registering an id that is
 //! already registered *replaces* it atomically from the caller's point of view: if the new chord
 //! cannot be registered, the old one is put back and the error returned (a failed rebind in the
-//! settings dialog leaves the working hotkey in place).
+//! settings dialog leaves the working hotkey in place). The rules (own-action conflicts, the
+//! rollback, probing) are the portable [`HotkeyTable`], tested with a fake OS; this file only
+//! owns the thread and the two Win32 calls.
+//!
+//! **A call that times out does not run later.** Each command carries a [`Ticket`]; a caller that
+//! gave up cancels it and the thread skips the command, so the app's view ("stopped") and the
+//! thread's table cannot differ. Dropping the service waits a bounded time for the thread.
 //!
 //! **Unverified on Windows.** Covered by the M2 wizard step in `tools/windows-test/`.
 
-use std::collections::HashMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::JoinHandle;
 use std::time::Duration;
@@ -31,7 +37,8 @@ use windows::Win32::Foundation::{
 };
 use windows::Win32::System::Threading::GetCurrentThreadId;
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    HOT_KEY_MODIFIERS, RegisterHotKey, UnregisterHotKey,
+    GetKeyboardLayout, HOT_KEY_MODIFIERS, MAPVK_VK_TO_CHAR, MapVirtualKeyExW, RegisterHotKey,
+    UnregisterHotKey,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     GetMessageW, MSG, PM_NOREMOVE, PeekMessageW, PostThreadMessageW, WM_APP, WM_HOTKEY, WM_QUIT,
@@ -40,58 +47,48 @@ use windows::Win32::UI::WindowsAndMessaging::{
 
 use crate::chord::Chord;
 use crate::error::{Error, win32_code};
+pub use crate::hotkey_table::{HotkeyError, MAX_ID};
+use crate::hotkey_table::{HotkeyTable, RawHotkeys, Ticket, await_reply, wait_until};
 
 /// Wakes the loop to drain the command channel.
 const WM_COMMANDS: u32 = WM_APP + 1;
 
-/// Hotkey ids not tied to a window must be in `0x0000..=0xBFFF` (`RegisterHotKey` docs).
-pub const MAX_ID: u32 = 0xBFFF;
-
 /// How long a caller waits for the hotkey thread to answer before reporting it unresponsive.
 const REPLY_TIMEOUT: Duration = Duration::from_secs(5);
 
-/// Why a hotkey could not be registered or removed.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
-pub enum HotkeyError {
-    /// Another application (or Windows itself) already owns the chord
-    /// (`ERROR_HOTKEY_ALREADY_REGISTERED`). Show it as a conflict.
-    #[error("another application already uses this shortcut")]
-    InUse,
-    /// The chord or id is not registrable (failed [`Chord::validate`], id above [`MAX_ID`], or
-    /// refused by Windows as invalid).
-    #[error("this shortcut cannot be used")]
-    Invalid,
-    /// Windows refused for another reason; the Win32 error code.
-    #[error("Windows refused the shortcut (OS error {0:#010x})")]
-    Os(u32),
-    /// The hotkey thread has stopped or did not answer in time.
-    #[error("the hotkey service is not running")]
-    Stopped,
-}
+/// How much longer a caller waits for a command the thread had already started when the timeout
+/// ran out (its answer is on the way, and the caller must not report a command that ran as
+/// failed).
+const STARTED_GRACE: Duration = Duration::from_secs(2);
 
-impl HotkeyError {
-    fn from_windows(error: &windows::core::Error) -> Self {
-        let code = win32_code(error.code().0);
-        if code == ERROR_HOTKEY_ALREADY_REGISTERED.0 {
-            Self::InUse
-        } else if code == ERROR_INVALID_PARAMETER.0 {
-            Self::Invalid
-        } else {
-            Self::Os(code)
-        }
+/// How long dropping the service waits for the thread to end: 300 polls, 10 ms apart.
+const JOIN_POLLS: u32 = 300;
+
+/// The Win32 error behind a failed call, as the service reports it. Windows' own words for a
+/// code are not used: the code goes into the warning so it can be looked up.
+fn from_windows(error: &windows::core::Error) -> HotkeyError {
+    let code = win32_code(error.code().0);
+    if code == ERROR_HOTKEY_ALREADY_REGISTERED.0 {
+        HotkeyError::InUse
+    } else if code == ERROR_INVALID_PARAMETER.0 {
+        HotkeyError::Invalid
+    } else {
+        HotkeyError::Os(code)
     }
 }
 
-enum Command {
-    Register {
-        id: u32,
-        chord: Chord,
-        reply: Sender<Result<(), HotkeyError>>,
-    },
-    Unregister {
-        id: u32,
-        reply: Sender<Result<(), HotkeyError>>,
-    },
+/// What a caller asks of the thread.
+enum Request {
+    Register { id: u32, chord: Chord },
+    Unregister { id: u32 },
+    Probe { chord: Chord },
+}
+
+/// A request, its claim ticket and where the answer goes.
+struct Command {
+    request: Request,
+    ticket: Arc<Ticket>,
+    reply: Sender<Result<(), HotkeyError>>,
 }
 
 /// Owns the hotkey thread. Dropping it unregisters every hotkey, stops the thread and joins it.
@@ -142,7 +139,7 @@ impl HotkeyService {
     /// Windows refusal; [`HotkeyError::Stopped`] if the thread is gone. On error the previous
     /// registration of `id`, if any, is still in place.
     pub fn register(&self, id: u32, chord: Chord) -> Result<(), HotkeyError> {
-        self.call(|reply| Command::Register { id, chord, reply })
+        self.call(Request::Register { id, chord })
     }
 
     /// Removes the hotkey `id`. Removing an id that is not registered succeeds.
@@ -151,24 +148,44 @@ impl HotkeyService {
     ///
     /// [`HotkeyError::Os`] if Windows refuses; [`HotkeyError::Stopped`] if the thread is gone.
     pub fn unregister(&self, id: u32) -> Result<(), HotkeyError> {
-        self.call(|reply| Command::Unregister { id, reply })
+        self.call(Request::Unregister { id })
     }
 
-    fn call(
-        &self,
-        make: impl FnOnce(Sender<Result<(), HotkeyError>>) -> Command,
-    ) -> Result<(), HotkeyError> {
+    /// Whether `chord` could be registered right now: registers it for a moment on the hotkey
+    /// thread and takes it away again, leaving every real hotkey as it is. Used to offer only
+    /// shortcuts that are free.
+    ///
+    /// # Errors
+    ///
+    /// As [`register`](Self::register): [`HotkeyError::InUse`] when another program holds the
+    /// chord, [`HotkeyError::OwnAction`] when another Snipdeck action does.
+    pub fn probe(&self, chord: Chord) -> Result<(), HotkeyError> {
+        self.call(Request::Probe { chord })
+    }
+
+    fn call(&self, request: Request) -> Result<(), HotkeyError> {
         let (reply_tx, reply_rx): (_, Receiver<Result<(), HotkeyError>>) = mpsc::channel();
-        self.commands
-            .send(make(reply_tx))
-            .map_err(|_| HotkeyError::Stopped)?;
+        let ticket = Arc::new(Ticket::default());
+        let command = Command {
+            request,
+            ticket: Arc::clone(&ticket),
+            reply: reply_tx,
+        };
+        if self.commands.send(command).is_err() {
+            return Err(HotkeyError::Stopped);
+        }
         // SAFETY: plain thread-message post to the hotkey thread, whose queue was created before
         // `start` returned; the message carries no pointers.
-        unsafe { PostThreadMessageW(self.thread_id, WM_COMMANDS, WPARAM(0), LPARAM(0)) }
-            .map_err(|_| HotkeyError::Stopped)?;
-        reply_rx
-            .recv_timeout(REPLY_TIMEOUT)
-            .map_err(|_| HotkeyError::Stopped)?
+        let posted =
+            unsafe { PostThreadMessageW(self.thread_id, WM_COMMANDS, WPARAM(0), LPARAM(0)) };
+        if posted.is_err() {
+            // The command is queued but nobody will wake the thread for it: it must not run
+            // later, when some other command does.
+            let _ = ticket.cancel();
+            return Err(HotkeyError::Stopped);
+        }
+        await_reply(&reply_rx, &ticket, REPLY_TIMEOUT, STARTED_GRACE)
+            .unwrap_or(Err(HotkeyError::Stopped))
     }
 }
 
@@ -190,10 +207,19 @@ impl Drop for HotkeyService {
             }
             std::thread::sleep(Duration::from_millis(10));
         }
-        if posted || thread.is_finished() {
+        // Wait a bounded time (a callback stuck in the app must not hang the UI thread at exit);
+        // a thread that does not end is detached.
+        if (posted || thread.is_finished())
+            && wait_until(
+                || thread.is_finished(),
+                || std::thread::sleep(Duration::from_millis(10)),
+                JOIN_POLLS,
+            )
+        {
             let _ = thread.join();
         }
-        // Otherwise the thread could not be told to quit; detach rather than hang the app.
+        // Otherwise the thread could not be told to quit, or did not end in time; detach rather
+        // than hang the app.
     }
 }
 
@@ -211,7 +237,7 @@ fn run(commands: &Receiver<Command>, ready: &Sender<u32>, on_hotkey: &dyn Fn(u32
         return;
     }
 
-    let mut registered: HashMap<u32, Chord> = HashMap::new();
+    let mut table = HotkeyTable::new(Win32Hotkeys);
     loop {
         // SAFETY: `msg` is a valid out-pointer; no window filter, so thread messages (including
         // `WM_HOTKEY` for hotkeys registered without a window) are returned.
@@ -228,99 +254,77 @@ fn run(commands: &Receiver<Command>, ready: &Sender<u32>, on_hotkey: &dyn Fn(u32
             }
             WM_COMMANDS => {
                 while let Ok(command) = commands.try_recv() {
-                    serve(&mut registered, command);
+                    serve(&mut table, &command);
                 }
             }
             _ => {}
         }
     }
-    for id in registered.into_keys() {
-        // SAFETY: unregisters a hotkey this thread registered with a null window, from the same
-        // thread. A failure at shutdown (the thread ends right after) is not actionable.
-        let _ = unsafe { UnregisterHotKey(None, hotkey_id(id)) };
-    }
+    // A failure at shutdown (the thread ends right after) is not actionable.
+    table.clear();
 }
 
-fn serve(registered: &mut HashMap<u32, Chord>, command: Command) {
-    // A dropped reply receiver (the caller timed out) is not an error here.
-    match command {
-        Command::Register { id, chord, reply } => {
-            let _ = reply.send(do_register(registered, id, chord));
-        }
-        Command::Unregister { id, reply } => {
-            let _ = reply.send(do_unregister(registered, id));
-        }
+fn serve(table: &mut HotkeyTable<Win32Hotkeys>, command: &Command) {
+    // A caller that gave up has cancelled the ticket: the command must not run now.
+    if !command.ticket.start() {
+        return;
     }
+    let result = match command.request {
+        Request::Register { id, chord } => table.register(id, chord),
+        Request::Unregister { id } => table.unregister(id),
+        Request::Probe { chord } => table.probe(chord),
+    };
+    // A dropped reply receiver is not an error here.
+    let _ = command.reply.send(result);
 }
 
-/// `id` as the `i32` the API takes; callers have checked `id <= MAX_ID`.
+/// `id` as the `i32` the API takes; callers have checked `id <= MAX_ID` (the table's own probe
+/// id is just above it, still in range).
 fn hotkey_id(id: u32) -> i32 {
     i32::try_from(id).unwrap_or(i32::MAX)
 }
 
-fn register_raw(id: u32, chord: Chord) -> Result<(), HotkeyError> {
-    let (modifiers, vk) = chord.to_win32();
-    if vk == 0 {
-        return Err(HotkeyError::Invalid);
-    }
-    // SAFETY: registers a hotkey for the calling (hotkey) thread with no window; all arguments are
-    // plain values. `modifiers` includes `MOD_NOREPEAT`.
-    unsafe { RegisterHotKey(None, hotkey_id(id), HOT_KEY_MODIFIERS(modifiers), vk) }
-        .map_err(|e| HotkeyError::from_windows(&e))
-}
+/// The two Win32 calls, for the table.
+struct Win32Hotkeys;
 
-fn unregister_raw(id: u32) -> Result<(), HotkeyError> {
-    // SAFETY: unregisters a hotkey registered by this thread with no window; plain values.
-    unsafe { UnregisterHotKey(None, hotkey_id(id)) }.map_err(|e| HotkeyError::from_windows(&e))
-}
+impl RawHotkeys for Win32Hotkeys {
+    fn register(&mut self, id: u32, chord: Chord) -> Result<(), HotkeyError> {
+        let (modifiers, vk) = chord.to_win32();
+        if vk == 0 {
+            return Err(HotkeyError::Invalid);
+        }
+        // SAFETY: registers a hotkey for the calling (hotkey) thread with no window; all
+        // arguments are plain values. `modifiers` includes `MOD_NOREPEAT`.
+        unsafe { RegisterHotKey(None, hotkey_id(id), HOT_KEY_MODIFIERS(modifiers), vk) }
+            .map_err(|e| from_windows(&e))
+    }
 
-fn do_register(
-    registered: &mut HashMap<u32, Chord>,
-    id: u32,
-    chord: Chord,
-) -> Result<(), HotkeyError> {
-    if id > MAX_ID || chord.validate().is_err() {
-        return Err(HotkeyError::Invalid);
-    }
-    // Settings changes re-apply every chord: one already in place stays untouched instead of
-    // being freed and registered again (a failure in between lost the hotkey).
-    if registered.get(&id) == Some(&chord) {
-        return Ok(());
-    }
-    let previous = registered.remove(&id);
-    if previous.is_some() {
-        // Free the id (and the old chord) first: the same chord again must succeed.
-        // Unverified on Windows (Fable v1 sweep A17): if freeing fails the hotkey is still
-        // registered, so it stays in the table.
-        if let Err(e) = unregister_raw(id) {
-            if let Some(old) = previous {
-                registered.insert(id, old);
-            }
-            return Err(e);
-        }
-    }
-    match register_raw(id, chord) {
-        Ok(()) => {
-            registered.insert(id, chord);
-            Ok(())
-        }
-        Err(error) => {
-            if let Some(old) = previous {
-                // Put the working hotkey back; if even that fails it is simply no longer registered.
-                if register_raw(id, old).is_ok() {
-                    registered.insert(id, old);
-                }
-            }
-            Err(error)
-        }
+    fn unregister(&mut self, id: u32) -> Result<(), HotkeyError> {
+        // SAFETY: unregisters a hotkey registered by this thread with no window; plain values.
+        unsafe { UnregisterHotKey(None, hotkey_id(id)) }.map_err(|e| from_windows(&e))
     }
 }
 
-fn do_unregister(registered: &mut HashMap<u32, Chord>, id: u32) -> Result<(), HotkeyError> {
-    if registered.remove(&id).is_none() {
-        return Ok(());
-    }
-    unregister_raw(id)
+/// The character the current keyboard layout prints on the key behind `vk`
+/// (`MapVirtualKeyExW(MAPVK_VK_TO_CHAR)` for the calling thread's layout), for labelling
+/// punctuation keys as the user's keyboard shows them (PLATFORM-9). Call it on the UI thread, at
+/// display time: the layout can change while the app runs. A dead key (an accent that waits for
+/// the next letter) comes back with the top bit set; the bit is dropped, the character kept.
+/// **Unverified on Windows.**
+#[must_use]
+pub fn layout_char(vk: u32) -> Option<char> {
+    // SAFETY: `GetKeyboardLayout(0)` is the calling thread's layout and has no preconditions;
+    // `MapVirtualKeyExW` takes plain values and that layout handle.
+    let mapped = unsafe {
+        let layout = GetKeyboardLayout(0);
+        MapVirtualKeyExW(vk, MAPVK_VK_TO_CHAR, Some(layout))
+    };
+    char::from_u32(mapped & 0x7FFF_FFFF).filter(|c| *c != '\0')
+}
+
+/// Makes [`Chord::label`] show punctuation keys as the current layout prints them.
+pub fn show_layout_labels() {
+    crate::chord::set_layout_lookup(Some(layout_char));
 }
 
 #[cfg(test)]
@@ -336,6 +340,15 @@ mod tests {
 
     fn service() -> HotkeyService {
         HotkeyService::start(|_| {}).unwrap()
+    }
+
+    #[test]
+    fn the_layout_gives_a_printable_character_for_a_letter_key() {
+        // Whatever the layout, VK_A is the letter key `a` (upper or lower case varies by
+        // Windows version); this only proves the call works and the dead-key bit is dropped.
+        let c = layout_char(0x41).unwrap();
+        assert!(c.eq_ignore_ascii_case(&'a') || c.is_alphabetic(), "{c:?}");
+        assert_eq!(layout_char(0xFF), None);
     }
 
     #[test]
@@ -368,6 +381,25 @@ mod tests {
         assert_eq!(
             b.register(3, chord("Ctrl+Alt+Shift+F21")),
             Err(HotkeyError::InUse)
+        );
+    }
+
+    #[test]
+    fn a_probe_sees_a_taken_chord_and_leaves_nothing_behind() {
+        let a = service();
+        let b = service();
+        assert_eq!(a.register(1, chord("Ctrl+Alt+Shift+F17")), Ok(()));
+        assert_eq!(
+            b.probe(chord("Ctrl+Alt+Shift+F17")),
+            Err(HotkeyError::InUse)
+        );
+        assert_eq!(b.probe(chord("Ctrl+Alt+Shift+F16")), Ok(()));
+        // Probed twice: the first probe did not keep the chord.
+        assert_eq!(b.probe(chord("Ctrl+Alt+Shift+F16")), Ok(()));
+        assert_eq!(b.register(1, chord("Ctrl+Alt+Shift+F16")), Ok(()));
+        assert_eq!(
+            b.register(2, chord("Ctrl+Alt+Shift+F16")),
+            Err(HotkeyError::OwnAction(1))
         );
     }
 

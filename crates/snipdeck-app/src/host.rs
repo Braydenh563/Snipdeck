@@ -539,9 +539,15 @@ pub enum HotkeyFailure {
     /// Another application already owns the chord.
     #[error("another application already uses this shortcut")]
     InUse,
+    /// Another Snipdeck shortcut already holds the chord (two actions given the same one).
+    #[error("another Snipdeck shortcut already uses this chord")]
+    OwnAction,
     /// The chord cannot be registered.
     #[error("this shortcut cannot be used")]
     Invalid,
+    /// Windows refused for another reason; its error code.
+    #[error("Windows refused this shortcut (Windows error {0})")]
+    Refused(u32),
     /// The hotkey service is not running or Windows refused.
     #[error("the hotkey service is unavailable")]
     Unavailable,
@@ -615,6 +621,69 @@ pub fn register_all(
     problems
 }
 
+/// Registers again the hotkeys in `failed` (PLATFORM-3): the program that held a chord may have
+/// ended, or the hotkey service restarted. Uses the chords in `hotkeys` now (one the user has
+/// since turned off or changed is not the failed one). Returns the problems that remain, so a
+/// success clears its warning.
+pub fn retry_failed(
+    backend: &mut (impl HotkeyBackend + ?Sized),
+    hotkeys: &crate::settings::Hotkeys,
+    failed: &[HotkeyProblem],
+) -> Vec<HotkeyProblem> {
+    let mut remaining = Vec::new();
+    for problem in failed {
+        let Some(chord) = hotkeys.chord(problem.action) else {
+            continue;
+        };
+        let shown = chord.to_string();
+        if let Err(failure) = backend.register(id_of(problem.action), chord) {
+            remaining.push(HotkeyProblem {
+                action: problem.action,
+                chord: shown,
+                failure,
+            });
+        }
+    }
+    remaining
+}
+
+/// Decides when failed hotkeys are tried again (PLATFORM-3, -4), with the time given by the
+/// caller so a test needs no clock: on a slow interval, and at once after a wake, unlock,
+/// remote connect or opening Settings ([`Self::now`]).
+#[derive(Debug, Clone, Copy)]
+pub struct RetryGate {
+    interval: std::time::Duration,
+    last: Option<std::time::Duration>,
+}
+
+impl RetryGate {
+    /// A gate that allows a retry every `interval` (and one at once the first time).
+    #[must_use]
+    pub const fn new(interval: std::time::Duration) -> Self {
+        Self {
+            interval,
+            last: None,
+        }
+    }
+
+    /// Whether a retry is due at `now` (time since any fixed start); if so, it counts as made.
+    pub fn due(&mut self, now: std::time::Duration) -> bool {
+        let due = self
+            .last
+            .is_none_or(|last| now.saturating_sub(last) >= self.interval);
+        if due {
+            self.last = Some(now);
+        }
+        due
+    }
+
+    /// The user is back (wake, unlock, remote connect) or opened Settings: the next
+    /// [`due`](Self::due) is true whatever the time.
+    pub fn now(&mut self) {
+        self.last = None;
+    }
+}
+
 /// Switches every global hotkey off ("Pause hotkeys"); returns how many could not be removed.
 /// The settings are untouched: [`register_all`] switches them back on.
 pub fn unregister_all(backend: &mut (impl HotkeyBackend + ?Sized)) -> usize {
@@ -668,6 +737,14 @@ impl HotkeyBackend for FakeHotkeys {
         if self.taken.contains(&chord.to_string()) {
             return Err(HotkeyFailure::InUse);
         }
+        // Like the real table: a chord another Snipdeck id already holds is refused.
+        if self
+            .registered
+            .iter()
+            .any(|(other, c)| *other != id && *c == chord)
+        {
+            return Err(HotkeyFailure::OwnAction);
+        }
         self.registered.retain(|(existing, _)| *existing != id);
         self.registered.push((id, chord));
         Ok(())
@@ -683,6 +760,45 @@ impl HotkeyBackend for FakeHotkeys {
 mod tests {
     use super::*;
     use crate::settings::Hotkeys;
+
+    #[test]
+    fn failed_hotkeys_are_retried_and_the_warning_clears_on_success() {
+        let hotkeys = all_on();
+        let mut backend = FakeHotkeys {
+            taken: vec![hotkeys.toggle_panel.clone()],
+            ..FakeHotkeys::default()
+        };
+        let problems = register_all(&mut backend, &hotkeys);
+        assert_eq!(problems.len(), 1);
+        // Still taken: still reported, with the same reason.
+        assert_eq!(retry_failed(&mut backend, &hotkeys, &problems), problems);
+        // The other program ended: the retry registers it and nothing remains.
+        backend.taken.clear();
+        assert!(retry_failed(&mut backend, &hotkeys, &problems).is_empty());
+        assert!(
+            backend
+                .registered
+                .iter()
+                .any(|(id, _)| *id == id_of(HotkeyAction::TogglePanel))
+        );
+        // A hotkey the user has since turned off is not retried.
+        let mut off = hotkeys.clone();
+        off.toggle_panel = String::new();
+        assert!(retry_failed(&mut backend, &off, &problems).is_empty());
+    }
+
+    #[test]
+    fn the_retry_gate_waits_its_interval_and_opens_at_once_when_the_user_is_back() {
+        use std::time::Duration;
+        let mut gate = RetryGate::new(Duration::from_mins(1));
+        assert!(gate.due(Duration::from_secs(5)), "the first time");
+        assert!(!gate.due(Duration::from_secs(30)));
+        assert!(!gate.due(Duration::from_secs(64)));
+        assert!(gate.due(Duration::from_secs(65)));
+        gate.now();
+        assert!(gate.due(Duration::from_secs(66)), "after a wake or unlock");
+        assert!(!gate.due(Duration::from_secs(67)));
+    }
 
     #[test]
     fn ids_round_trip_and_are_distinct() {

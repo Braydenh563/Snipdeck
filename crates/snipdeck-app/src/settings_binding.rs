@@ -186,12 +186,12 @@ pub fn apply_hotkeys(
     backend: &mut (impl HotkeyBackend + ?Sized),
     hotkeys: &Hotkeys,
 ) -> Vec<HotkeyProblem> {
+    // Every id is freed first (PLATFORM-6): the service refuses a chord another id still holds,
+    // so swapping two shortcuts registers one after the other only once both are free. Removing
+    // one that is not there succeeds; a service that is down is reported by the registrations
+    // that follow.
     for action in HotkeyAction::ALL {
-        if hotkeys.chord(action).is_none() {
-            // Removing one that is not there succeeds; a service that is down is reported by
-            // the registrations that follow.
-            let _ = backend.unregister(host::id_of(action));
-        }
+        let _ = backend.unregister(host::id_of(action));
     }
     host::register_all(backend, hotkeys)
 }
@@ -652,9 +652,15 @@ where
         HotkeyRefusal::UsedBy(other) => {
             t.invoke_hotkey_used_by(combo.into(), action_text(window, other).into())
         }
-        HotkeyRefusal::Refused(HotkeyFailure::InUse) => t.invoke_hotkey_in_use(combo.into()),
+        // OwnAction reads as "in use" and Refused(code) as "unavailable" until their own wording
+        // exists (a follow-up with strings in the .pot and the six .po files).
+        HotkeyRefusal::Refused(HotkeyFailure::InUse | HotkeyFailure::OwnAction) => {
+            t.invoke_hotkey_in_use(combo.into())
+        }
         HotkeyRefusal::Refused(HotkeyFailure::Invalid) => t.invoke_hotkey_invalid(combo.into()),
-        HotkeyRefusal::Refused(HotkeyFailure::Unavailable) => t.invoke_hotkey_unavailable(),
+        HotkeyRefusal::Refused(HotkeyFailure::Unavailable | HotkeyFailure::Refused(_)) => {
+            t.invoke_hotkey_unavailable()
+        }
     }
     .into()
 }
@@ -2668,6 +2674,36 @@ mod tests {
         let ids: Vec<u32> = backend.registered.iter().map(|(id, _)| *id).collect();
         assert!(!ids.contains(&host::id_of(HotkeyAction::Capture)));
         assert_eq!(ids.len(), 3);
+    }
+
+    #[test]
+    fn two_shortcuts_can_swap_chords_in_one_apply() {
+        let mut backend = FakeHotkeys::default();
+        let before = Hotkeys {
+            toggle_panel: "Ctrl+Shift+Y".into(),
+            picker: "Ctrl+Shift+U".into(),
+            capture: String::new(),
+            paste_next: String::new(),
+        };
+        assert_eq!(apply_hotkeys(&mut backend, &before), Vec::new());
+        let swapped = Hotkeys {
+            toggle_panel: "Ctrl+Shift+U".into(),
+            picker: "Ctrl+Shift+Y".into(),
+            ..before.clone()
+        };
+        assert_eq!(apply_hotkeys(&mut backend, &swapped), Vec::new());
+        let of = |action| {
+            backend
+                .registered
+                .iter()
+                .find(|(id, _)| *id == host::id_of(action))
+                .map(|(_, c)| c.to_string())
+        };
+        assert_eq!(
+            of(HotkeyAction::TogglePanel).as_deref(),
+            Some("Ctrl+Shift+U")
+        );
+        assert_eq!(of(HotkeyAction::Picker).as_deref(), Some("Ctrl+Shift+Y"));
     }
 
     #[test]

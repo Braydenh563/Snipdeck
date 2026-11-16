@@ -81,7 +81,34 @@ const RETRY_TIMER: usize = 2;
 /// How long a caller waits for the tray thread before reporting it unresponsive.
 const REPLY_TIMEOUT: Duration = Duration::from_secs(5);
 
-type Reply = Sender<Result<(), Error>>;
+/// Where a command's answer goes, and the ticket a caller that gives up cancels (PLATFORM-10):
+/// a command whose caller was told "did not answer" is skipped, not run later.
+struct Reply {
+    tx: Sender<Result<(), Error>>,
+    ticket: std::sync::Arc<crate::hotkey_table::Ticket>,
+}
+
+impl Reply {
+    fn send(&self, result: Result<(), Error>) -> Result<(), mpsc::SendError<Result<(), Error>>> {
+        self.tx.send(result)
+    }
+}
+
+impl Command {
+    fn reply(&self) -> &Reply {
+        match self {
+            Self::Show(r)
+            | Self::Hide(r)
+            | Self::Tooltip(_, r)
+            | Self::Paused(_, r)
+            | Self::History(_, _, r)
+            | Self::Labels(_, r) => r,
+        }
+    }
+}
+
+/// How much longer a caller waits for a command the tray thread had already started.
+const STARTED_GRACE: Duration = Duration::from_secs(2);
 
 enum Command {
     Show(Reply),
@@ -128,16 +155,21 @@ impl WinTray {
     }
 
     fn call(&self, make: impl FnOnce(Reply) -> Command) -> Result<(), Error> {
-        let (reply_tx, reply_rx) = mpsc::channel();
+        let (tx, reply_rx) = mpsc::channel();
+        let ticket = std::sync::Arc::new(crate::hotkey_table::Ticket::default());
+        let reply = Reply {
+            tx,
+            ticket: std::sync::Arc::clone(&ticket),
+        };
         self.commands
-            .send(make(reply_tx))
+            .send(make(reply))
             .map_err(|_| Error::Unavailable("the tray service is not running"))?;
         if !self.window.post(WM_COMMANDS) {
+            let _ = ticket.cancel();
             return Err(Error::Unavailable("the tray service is not running"));
         }
-        reply_rx
-            .recv_timeout(REPLY_TIMEOUT)
-            .map_err(|_| Error::Unavailable("the tray service did not answer"))?
+        crate::hotkey_table::await_reply(&reply_rx, &ticket, REPLY_TIMEOUT, STARTED_GRACE)
+            .unwrap_or(Err(Error::Unavailable("the tray service did not answer")))
     }
 }
 
@@ -515,7 +547,10 @@ impl WindowHandler for TrayHandler {
     fn message(&self, hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> Option<LRESULT> {
         if msg == WM_COMMANDS {
             while let Ok(command) = self.commands.try_recv() {
-                self.serve(hwnd, command);
+                // A caller that gave up has cancelled the ticket: the command must not run now.
+                if command.reply().ticket.start() {
+                    self.serve(hwnd, command);
+                }
             }
             return Some(LRESULT(0));
         }
