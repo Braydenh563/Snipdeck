@@ -568,6 +568,7 @@ pub fn register_all(
         };
         let shown = chord.to_string();
         if let Err(failure) = backend.register(id_of(action), chord) {
+            crate::warn!("hotkey {action:?} ({shown}) could not be registered: {failure}");
             problems.push(HotkeyProblem {
                 action,
                 chord: shown,

@@ -21,6 +21,9 @@ run msix-tests python3 -I scripts/test_msix_manifest.py
 run bump-tests python3 -I scripts/test_bump_version.py
 run notices python3 scripts/third_party_notices.py --check
 run halfbuilt python3 scripts/halfbuilt.py --check
+# The Help tips pictures are crops of the goldens; Pillow is required (CI: pip install pillow).
+run palette python3 -I design/tools/palette.py --check
+run tips-images python3 scripts/tips_images.py --check
 
 for t in scripts/test_*.py; do
   grep -q "$t" scripts/checks.sh || { echo "not wired into scripts/checks.sh: $t"; failed+=("unwired $t"); }

@@ -46,7 +46,7 @@ mod limits;
 mod plan;
 mod report;
 
-pub use error::{Error, Result};
+pub use error::{Error, Result, TOTAL_SIZE};
 pub use export::{ExportOptions, ExportReport, SensitivePolicy, export_to_path, export_to_writer};
 pub use import::{
     BoardLayout, ImportOptions, KeySource, MergeStrategy, import_archive, import_archive_path,

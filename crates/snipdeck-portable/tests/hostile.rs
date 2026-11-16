@@ -351,7 +351,7 @@ fn the_total_uncompressed_size_is_capped() {
         matches!(
             e,
             Error::LimitExceeded {
-                what: "total uncompressed size",
+                what: snipdeck_portable::TOTAL_SIZE,
                 ..
             }
         ),

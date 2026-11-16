@@ -28,3 +28,12 @@ EXTRAS-4 (Rust-side English into *Texts globals), 12 (portable marker, trash ret
 - EXTRAS-4 (part): doctor labels and details are translated (`DoctorTexts`, `doctor::Finding`). Still open: `starter.rs`, `wording.rs`, `commands.rs`, start-up failure reason
 - EXTRAS-12 (part): live language change (`language::apply`), `portable` marker file beside the exe (`paths::portable_dir`). Still open: Trash retention setting
 - Open: EXTRAS-7 SEH filter (unverified), EXTRAS-15 fit-per-locale test, not-reached file audit
+
+## Deferred until the EXTRAS-4 agent has finished (shares the lang files)
+- Stale tip count in strings: onboarding.slint:422 "Ten short tips" (11 cards now): drop the number from the English, .pot and 6 .po; starter card "More tips" says "ten short cards" (agent is rewriting starter.rs: check)
+- CHANGELOG.md:98 says ten Tips cards (history entry, leave)
+- tips pictures: `scripts/tips_images.py --check` is now in checks.sh; regenerate pictures (python3 scripts/tips_images.py) AFTER the last golden change, before the final gate
+- OWNER (CI): the scripts job needs `pip install pillow` for the tips-images check
+- palette.py --check now runs in checks.sh (was in no gate or CI job)
+- make_logo.py: no --check; needs cairosvg + fontTools (not installed here), so the generated assets/logo files are not verified against it. Owner: add a --check and `pip install cairosvg fonttools` in CI, or accept
+- readme_shots.py: now exits 1 when renders are missing
