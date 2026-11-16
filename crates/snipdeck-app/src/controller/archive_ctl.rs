@@ -316,7 +316,7 @@ where
                 }
                 ArchiveEnd::Rebuilt(self.finish_rebuild(*rebuild, made.is_ok()))
             }
-            (ArchiveOp::Decode, made, Context::Import(run)) => self.finish_import(*run, made),
+            (ArchiveOp::Decode, made, Context::Import(run)) => self.finish_import(&run, made),
             // A context that does not belong to its step cannot be built.
             (_, _, _) => ArchiveEnd::Ignored,
         }

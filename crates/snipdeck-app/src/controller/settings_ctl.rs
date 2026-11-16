@@ -701,7 +701,7 @@ where
     /// since it was taken; otherwise it is read again.
     pub(super) fn finish_import(
         &mut self,
-        run: ImportRun,
+        run: &ImportRun,
         made: Result<Made, JobError>,
     ) -> ArchiveEnd {
         // `None` in the error: the worker itself failed (no portable error to name).
