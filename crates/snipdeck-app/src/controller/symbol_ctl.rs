@@ -18,11 +18,10 @@ use snipdeck_platform::{
     file_dialog::{FilePicker, SaveKind},
     payload::{Data, Payload},
     pipeline::{self, Clipboard, Env, Keyboard, Timing},
-    route::Route,
 };
 use snipdeck_symbols::{Catalog, Kind, Recents, SymbolId};
 
-use super::{Controller, Effect, Library, PanelMenu, REFOCUS_WAIT, UseResult, failed};
+use super::{Controller, Effect, Library, PanelMenu, UseResult, failed};
 use crate::{
     host::ClipboardText,
     item_editor::Origin,

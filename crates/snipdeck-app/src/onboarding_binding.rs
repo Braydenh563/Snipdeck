@@ -55,7 +55,7 @@ struct HotkeyRow {
     alternatives: Vec<String>,
 }
 
-struct TourCore<C, K, T> {
+struct TourCore<C: Clipboard, K, T> {
     controller: Rc<RefCell<Controller<Store, C, K, T>>>,
     window: slint::Weak<ui::OnboardingWindow>,
     host: Rc<dyn SettingsHost>,
@@ -75,11 +75,11 @@ struct TourCore<C, K, T> {
 
 /// A bound welcome tour window. Dropping it does not unbind the window; the window's callbacks
 /// keep the binding alive.
-pub struct OnboardingBinding<C, K, T> {
+pub struct OnboardingBinding<C: Clipboard, K, T> {
     core: Rc<TourCore<C, K, T>>,
 }
 
-impl<C, K, T> std::fmt::Debug for OnboardingBinding<C, K, T> {
+impl<C: Clipboard, K, T> std::fmt::Debug for OnboardingBinding<C, K, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("OnboardingBinding").finish_non_exhaustive()
     }

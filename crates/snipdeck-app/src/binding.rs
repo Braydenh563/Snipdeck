@@ -266,7 +266,7 @@ impl Binding {
     }
 }
 
-struct Core<S, C, K, T> {
+struct Core<S, C: Clipboard, K, T> {
     controller: Rc<RefCell<Controller<S, C, K, T>>>,
     window: slint::Weak<ui::PanelWindow>,
     /// What the Panel asks of the machine: the keyboard for text entry, and to give it back.

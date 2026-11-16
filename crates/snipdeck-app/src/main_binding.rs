@@ -121,7 +121,7 @@ struct Editors {
     seq: u64,
 }
 
-struct MainCore<S, C, K, T> {
+struct MainCore<S, C: Clipboard, K, T> {
     controller: Rc<RefCell<Controller<S, C, K, T>>>,
     window: slint::Weak<ui::MainWindow>,
     /// What the window shows now, so a redraw sets only what changed.
@@ -135,11 +135,11 @@ struct MainCore<S, C, K, T> {
 
 /// A bound Main window. Dropping it does not unbind the window; the window's callbacks keep
 /// the binding alive.
-pub struct MainBinding<S, C, K, T> {
+pub struct MainBinding<S, C: Clipboard, K, T> {
     core: Rc<MainCore<S, C, K, T>>,
 }
 
-impl<S, C, K, T> std::fmt::Debug for MainBinding<S, C, K, T> {
+impl<S, C: Clipboard, K, T> std::fmt::Debug for MainBinding<S, C, K, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("MainBinding").finish_non_exhaustive()
     }

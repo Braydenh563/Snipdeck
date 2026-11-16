@@ -8,7 +8,6 @@ use snipdeck_core::{ListId, UseMode};
 use snipdeck_platform::{
     payload::{Data, FilePayload, Payload},
     pipeline::{self, Clipboard, Env, Keyboard, Timing},
-    route::Route,
 };
 use snipdeck_store::{RecentEntry, RecentKind, RecentPayload};
 

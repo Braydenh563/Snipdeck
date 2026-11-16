@@ -428,12 +428,12 @@ fn deferred_while_locked(key_ring_exists: bool, unlocked: bool) -> Result<(), Jo
 }
 
 /// The jobs on the app's own library, run through the controller that owns it.
-pub struct ControllerJobs<'a, C, K, T> {
+pub struct ControllerJobs<'a, C: Clipboard, K, T> {
     controller: &'a mut Controller<Store, C, K, T>,
     data_dir: &'a Path,
 }
 
-impl<'a, C, K, T> ControllerJobs<'a, C, K, T> {
+impl<'a, C: Clipboard, K, T> ControllerJobs<'a, C, K, T> {
     /// Jobs on `controller`'s library, with backups in `data_dir`.
     pub fn new(controller: &'a mut Controller<Store, C, K, T>, data_dir: &'a Path) -> Self {
         Self {

@@ -164,12 +164,12 @@ pub(crate) fn find_notices(exe_dir: &Path) -> Option<PathBuf> {
 // ---- The doctor on the real library ------------------------------------------------------------
 
 /// The facts of [`DoctorHost`], read from the controller's library and the data folder.
-pub struct ControllerDoctor<'a, C, K, T> {
+pub struct ControllerDoctor<'a, C: Clipboard, K, T> {
     controller: &'a Controller<Store, C, K, T>,
     data_dir: &'a Path,
 }
 
-impl<'a, C, K, T> ControllerDoctor<'a, C, K, T> {
+impl<'a, C: Clipboard, K, T> ControllerDoctor<'a, C, K, T> {
     /// The facts of `controller`, whose data folder is `data_dir`.
     pub fn new(controller: &'a Controller<Store, C, K, T>, data_dir: &'a Path) -> Self {
         Self {
@@ -292,7 +292,7 @@ fn build_date() -> &'static str {
 
 // ---- The binding -------------------------------------------------------------------------------
 
-struct HelpCore<C, K, T> {
+struct HelpCore<C: Clipboard, K, T> {
     controller: Rc<RefCell<Controller<Store, C, K, T>>>,
     window: slint::Weak<ui::HelpWindow>,
     /// The data folder; `None` in the demo, which has nothing to check.
@@ -576,11 +576,11 @@ where
 }
 
 /// A bound Help window. Dropping it does not unbind the window.
-pub struct HelpBinding<C, K, T> {
+pub struct HelpBinding<C: Clipboard, K, T> {
     core: Rc<HelpCore<C, K, T>>,
 }
 
-impl<C, K, T> std::fmt::Debug for HelpBinding<C, K, T> {
+impl<C: Clipboard, K, T> std::fmt::Debug for HelpBinding<C, K, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("HelpBinding").finish_non_exhaustive()
     }

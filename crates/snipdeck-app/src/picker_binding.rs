@@ -50,7 +50,7 @@ struct Shown {
     picker: PickerView,
 }
 
-struct PickerCore<S, C, K, T> {
+struct PickerCore<S, C: Clipboard, K, T> {
     controller: Rc<RefCell<Controller<S, C, K, T>>>,
     host: Rc<dyn PopupHost>,
     anchor: AnchorMemory,
