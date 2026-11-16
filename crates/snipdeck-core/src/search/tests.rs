@@ -471,8 +471,15 @@ fn a_cloned_index_shares_its_entries_and_a_patch_copies_one() {
         .filter(|&i| Arc::ptr_eq(&index.entries[i], &patched.entries[i]))
         .count();
     assert_eq!(shared, 3);
-    assert!(Arc::ptr_eq(&index.positions, &patched.positions), "positions untouched");
-    assert_eq!(titles(&index, &items, "Meeting", 5), ["Meeting link"], "the original is intact");
+    assert!(
+        Arc::ptr_eq(&index.positions, &patched.positions),
+        "positions untouched"
+    );
+    assert_eq!(
+        titles(&index, &items, "Meeting", 5),
+        ["Meeting link"],
+        "the original is intact"
+    );
     // A use count moves one entry only.
     let mut used = items[0].clone();
     used.use_count = 3;

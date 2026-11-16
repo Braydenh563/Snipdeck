@@ -734,7 +734,12 @@ impl MainModel {
         }
         match self.section {
             Section::All => self.items.iter().map(|i| &**i).collect(),
-            Section::Pinned => self.items.iter().filter(|i| i.pinned).map(|i| &**i).collect(),
+            Section::Pinned => self
+                .items
+                .iter()
+                .filter(|i| i.pinned)
+                .map(|i| &**i)
+                .collect(),
             Section::Recent | Section::Trash => Vec::new(),
             Section::List(id) => self.list_items(id),
             Section::Tag(id) => self

@@ -884,7 +884,12 @@ impl PanelModel {
     pub fn mark_all(&mut self) {
         let _changing = RowsChanging(&self.rows_cache);
         self.rows_cache.take();
-        let rows: Vec<Row> = self.rows().iter().filter(|r| r.is_item()).cloned().collect();
+        let rows: Vec<Row> = self
+            .rows()
+            .iter()
+            .filter(|r| r.is_item())
+            .cloned()
+            .collect();
         self.marked = rows.iter().map(|r| r.id).collect();
         self.anchor = rows.first().map(|r| r.id);
     }

@@ -12,7 +12,11 @@ fn pinning_and_unpinning_patch_the_snapshot_and_never_rebuild_the_index() {
     let _ = w.ctl.view();
     w.ctl.pin_row(0);
     let _ = w.ctl.view();
-    assert_eq!(w.ctl.index_cache.rebuilds(), rebuilds, "no rebuild for a pin");
+    assert_eq!(
+        w.ctl.index_cache.rebuilds(),
+        rebuilds,
+        "no rebuild for a pin"
+    );
 }
 
 #[test]
@@ -34,9 +38,16 @@ fn opening_main_reads_the_library_through_the_shared_cache() {
     w.ctl.main_open(crate::main_window::Section::All);
     let screen = w.ctl.main_screen();
     assert!(screen.counts.all > 0, "Main loaded the library");
-    assert_eq!(w.ctl.index_cache.rebuilds(), rebuilds, "Main built no index of its own");
+    assert_eq!(
+        w.ctl.index_cache.rebuilds(),
+        rebuilds,
+        "Main built no index of its own"
+    );
     let after = w.ctl.index_cache.snapshot(w.ctl.store()).expect("snapshot");
-    assert!(std::rc::Rc::ptr_eq(&before, &after), "one snapshot for both windows");
+    assert!(
+        std::rc::Rc::ptr_eq(&before, &after),
+        "one snapshot for both windows"
+    );
     // A pin patches the snapshot once for both windows and rebuilds nothing.
     w.ctl.pin_row(0);
     let _ = w.ctl.main_screen();

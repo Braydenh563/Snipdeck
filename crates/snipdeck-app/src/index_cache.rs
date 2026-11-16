@@ -562,10 +562,19 @@ mod tests {
         assert_eq!((cache.rebuilds(), cache.patches()), (1, 1));
         assert_eq!(shared_items(&first, &pinned), 9_999, "one item was copied");
         assert!(pinned.item(id).unwrap().pinned);
-        assert!(!first.item(id).unwrap().pinned, "the old snapshot is intact");
+        assert!(
+            !first.item(id).unwrap().pinned,
+            "the old snapshot is intact"
+        );
         assert_eq!(pinned.pinned.len(), 1);
-        assert!(Rc::ptr_eq(&first.suggest, &pinned.suggest), "titles did not change");
-        assert!(Rc::ptr_eq(&first.rich, &pinned.rich), "formats did not change");
+        assert!(
+            Rc::ptr_eq(&first.suggest, &pinned.suggest),
+            "titles did not change"
+        );
+        assert!(
+            Rc::ptr_eq(&first.rich, &pinned.rich),
+            "formats did not change"
+        );
         assert!(Rc::ptr_eq(&first.positions, &pinned.positions));
 
         // A counted use is the same: one item copied, the pinned list is kept as it was.
@@ -615,8 +624,16 @@ mod tests {
         // Nothing searched changed, so the index is not rebuilt; its tie-breakers (use count and
         // last use) are brought up to date, and the snapshot the Panel still holds keeps its own.
         assert_eq!(cache.rebuilds(), 1);
-        assert!(after_use.index.usage_is_current(after_use.all.iter().map(|i| &**i)));
-        assert!(!first.index.usage_is_current(after_use.all.iter().map(|i| &**i)));
+        assert!(
+            after_use
+                .index
+                .usage_is_current(after_use.all.iter().map(|i| &**i))
+        );
+        assert!(
+            !first
+                .index
+                .usage_is_current(after_use.all.iter().map(|i| &**i))
+        );
     }
 
     #[test]

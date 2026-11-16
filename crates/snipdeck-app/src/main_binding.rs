@@ -286,8 +286,14 @@ where
                 .borrow()
                 .as_ref()
                 .is_some_and(|w| w.window().is_visible())
-            || editors.list.as_ref().is_some_and(|w| w.window().is_visible())
-            || editors.board.as_ref().is_some_and(|w| w.window().is_visible())
+            || editors
+                .list
+                .as_ref()
+                .is_some_and(|w| w.window().is_visible())
+            || editors
+                .board
+                .as_ref()
+                .is_some_and(|w| w.window().is_visible())
     }
 
     /// Copies the tags into the Tag manager if it exists, so a delete, an Undo or a rename made

@@ -184,9 +184,13 @@ fn a_pin_and_a_use_patch_the_snapshot_and_rows_are_built_once() {
     assert_eq!((cache.rebuilds(), cache.patches()), (1, 2), "a use patches");
 
     let model = PanelModel::load_cached(&store, None, None, &cache).unwrap();
-    model.rows();
-    model.rows();
-    assert_eq!(model.rows_built(), 1, "rows are built once until something changes");
+    let _ = model.rows();
+    let _ = model.rows();
+    assert_eq!(
+        model.rows_built(),
+        1,
+        "rows are built once until something changes"
+    );
 }
 
 /// Prints the cold load, a pin patch, a use patch and a row build at 10,000 items.
@@ -219,5 +223,8 @@ fn measure_pin_use_and_rows_at_ten_thousand_items() {
         cache.rebuilds(),
         cache.patches()
     );
-    assert!(pin_ms <= PANEL_BUDGET_MS && use_ms <= PANEL_BUDGET_MS, "act over budget");
+    assert!(
+        pin_ms <= PANEL_BUDGET_MS && use_ms <= PANEL_BUDGET_MS,
+        "act over budget"
+    );
 }
