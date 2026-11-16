@@ -11,8 +11,9 @@ use crate::{
     index_cache::IndexCache,
     search_mark::{self, Marks},
 };
-use snipdeck_core::{BoardId, Item, ItemId, ItemKind, ListAccent, ListId, search::SearchIndex};
-use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TagRepo};
+use snipdeck_core::search::{BodyMatches, Query, SearchIndex};
+use snipdeck_core::{BoardId, Item, ItemId, ItemKind, ListAccent, ListId};
+use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TagRepo, TriggerRepo};
 
 /// How many results the Picker shows (the window scrolls past nine).
 pub const RESULT_LIMIT: usize = 50;
@@ -69,6 +70,8 @@ pub struct PickerModel {
     /// The board the Panel showed when the Picker opened (the "This board" scope).
     board: Option<BoardId>,
     query: String,
+    /// The items whose full content holds each word of the query (the store's full-text index).
+    body: BodyMatches,
     scope: Scope,
     /// Positions in `places` of the current results, best first.
     results: Vec<usize>,
@@ -100,7 +103,7 @@ impl PickerModel {
         cache: &IndexCache,
     ) -> snipdeck_store::Result<Self>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TriggerRepo,
     {
         let snapshot = cache.snapshot(store)?;
         let mut by_list: HashMap<ListId, Vec<&Item>> = HashMap::new();
@@ -128,6 +131,7 @@ impl PickerModel {
             suggest: Rc::clone(&snapshot.suggest),
             board,
             query: String::new(),
+            body: BodyMatches::default(),
             scope: Scope::All,
             results: Vec::new(),
             tag_hits: HashMap::new(),
@@ -167,7 +171,7 @@ impl PickerModel {
             all
         } else {
             self.index
-                .query(&self.query, self.places.len())
+                .query(&Query::parse(&self.query), &self.body, self.places.len())
                 .iter()
                 .filter_map(|hit| {
                     let n = positions.get(&hit.id).copied()?;
@@ -190,10 +194,24 @@ impl PickerModel {
         Rc::clone(&self.suggest)
     }
 
-    /// Sets the search text; the selection returns to the first row.
-    pub fn set_query(&mut self, query: &str) {
+    /// Sets the search text and looks its words up in the full content (the store's full-text
+    /// index); the selection returns to the first row.
+    ///
+    /// # Errors
+    ///
+    /// Any store error from the lookup; the text is kept and only the in-memory fields match.
+    pub fn set_query<S: ItemRepo>(&mut self, store: &S, query: &str) -> snipdeck_store::Result<()> {
         query.clone_into(&mut self.query);
+        self.body = BodyMatches::default();
+        let looked_up = if self.query.trim().is_empty() {
+            Ok(())
+        } else {
+            store
+                .search(&Query::parse(&self.query))
+                .map(|body| self.body = body)
+        };
         self.search();
+        looked_up
     }
 
     /// Sets the scope; the selection returns to the first row.
@@ -349,9 +367,9 @@ mod tests {
 
     #[test]
     fn a_search_marks_the_match_and_no_query_marks_nothing() {
-        let (_store, mut m) = model();
+        let (store, mut m) = model();
         assert!(m.rows().iter().all(|r| r.marks == Marks::default()));
-        m.set_query("shopping");
+        m.set_query(&store, "shopping").unwrap();
         let rows = m.rows();
         assert_ne!(rows.len(), 0, "the picker shows rows");
         assert!(
@@ -364,22 +382,22 @@ mod tests {
 
     #[test]
     fn typing_searches_all_boards_and_resets_the_selection() {
-        let (_, mut m) = model();
+        let (store, mut m) = model();
         m.move_selection(3);
         assert_eq!(m.selected(), 3);
-        m.set_query("shopping");
+        m.set_query(&store, "shopping").unwrap();
         assert_eq!(titles(&m), ["Shopping list"]);
         assert_eq!(m.selected(), 0);
-        m.set_query("zzzzqq");
+        m.set_query(&store, "zzzzqq").unwrap();
         assert_eq!(m.rows(), Vec::new());
         assert_eq!(m.item_at(0), None);
-        m.set_query("  ");
+        m.set_query(&store, "  ").unwrap();
         assert_eq!(m.rows().len(), 11);
     }
 
     #[test]
     fn scopes_narrow_the_search_to_the_board_or_the_pinned_items() {
-        let (_, mut m) = model();
+        let (store, mut m) = model();
         m.set_scope(Scope::Board);
         assert_eq!(m.rows().len(), 10, "Work has ten items");
         assert!(m.rows().iter().all(|r| r.board == "Work"));
@@ -390,11 +408,11 @@ mod tests {
 
         // The scope applies to a query too.
         m.set_scope(Scope::Board);
-        m.set_query("shopping");
+        m.set_query(&store, "shopping").unwrap();
         assert!(m.rows().is_empty(), "Shopping list is on the other board");
         m.set_scope(Scope::All);
         assert_eq!(titles(&m), ["Shopping list"]);
-        m.set_query("home");
+        m.set_query(&store, "home").unwrap();
         m.set_scope(Scope::Pinned);
         assert_eq!(titles(&m), ["Home address"]);
     }
@@ -409,7 +427,7 @@ mod tests {
 
     #[test]
     fn the_selection_stops_at_both_ends_and_quick_use_counts_rows() {
-        let (_, mut m) = model();
+        let (store, mut m) = model();
         m.move_selection(-4);
         assert_eq!(m.selected(), 0);
         m.move_selection(100);
@@ -421,7 +439,7 @@ mod tests {
         assert_eq!(m.quick_use(0), None);
         assert_eq!(m.quick_use(10), None);
 
-        m.set_query("zzzzqq");
+        m.set_query(&store, "zzzzqq").unwrap();
         m.move_selection(5);
         assert_eq!(m.selected(), 0, "no results, no selection to move");
     }
@@ -444,7 +462,7 @@ mod tests {
         let mut m =
             PickerModel::load_cached(&store, Some(board.id), &IndexCache::new()).expect("model");
         assert_eq!(m.rows().len(), RESULT_LIMIT);
-        m.set_query("snippet");
+        m.set_query(&store, "snippet").unwrap();
         assert_eq!(m.rows().len(), RESULT_LIMIT);
     }
 }

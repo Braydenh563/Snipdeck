@@ -130,15 +130,36 @@ a message tells you why. The Panel footer always says where a click will go: "Pa
 
 ### The Picker
 
-Press `Ctrl+Shift+Space`. A small search window opens at your caret. Type to filter. It matches titles, tags
-and the start of the content. It opens one line below your caret, so it covers neither the line you are typing
-nor the next one. **Settings, Panel, Picker position** moves it above, to the right or to the left of the caret;
+Press `Ctrl+Shift+Space`. A small search window opens at your caret. Type to filter. It searches the way every
+search box does (see [Searching](#searching)). It opens one line below your caret, so it covers neither the
+line you are typing nor the next one. **Settings, Panel, Picker position** moves it above, to the right or to the left of the caret;
 it switches to the opposite side when there is no room. Where an app shows no caret it opens at the mouse.
 
 - `Up`, `Down`, `PageUp`, `PageDown` move. `Enter` pastes. `Shift+Enter` copies. `Alt+Enter` pastes as plain text.
 - `Tab` and `Shift+Tab` change where it searches: **All**, **This board** or **Pinned**.
 - `Alt+1` to `Alt+9` use that row, whatever the box holds. Digits without `Alt` are typed into the search.
 - `Ctrl+E` edits the selected item. `Esc` closes the Picker.
+
+### Searching
+
+The Panel, the Picker and the Main window search the same way, so a search finds the same items in each.
+Every word you type must match somewhere: in the title, a tag, the list name, the trigger or the content.
+`invoice work` finds an item titled "Invoice" that is tagged "work". Case, accents and full-width letters
+do not matter: `resume` finds "Résumé". A word can be part of a longer word (`ature` finds "Signature"), and
+in Japanese, Chinese, Korean or Thai text one character is enough. The best matches come first: an exact
+trigger or title before a word found deep in the content, and among equals the items you use most.
+
+| Type | To find |
+|---|---|
+| `"kind regards"` | the words together, in that order |
+| `-draft` | items without "draft" (also `-tag:old`, `-is:pinned`) |
+| `tag:billing` | items with a tag that starts with "billing" |
+| `list:"Email replies"` | items in that list (quotes for a name with spaces) |
+| `kind:link` | one kind: `text`, `template`, `code`, `link`, `image` or `file` |
+| `is:pinned` | pinned items |
+
+Only the first 32 words (256 characters) of a search count. The matched part of each row is highlighted;
+when only a tag matched, the row shows that tag.
 
 ### Paste next
 

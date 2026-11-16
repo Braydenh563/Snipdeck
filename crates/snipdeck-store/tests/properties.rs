@@ -560,8 +560,8 @@ fn check(store: &Store, m: &Model) {
         .map(|i| (i.id, i))
         .collect();
     for created in &m.created {
-        let by_title = store.search(&format!("q{}q", created.n), 5).unwrap();
-        let by_body = store.search(&format!("b{}b", created.n), 5).unwrap();
+        let by_title = found(store, &format!("q{}q", created.n));
+        let by_body = found(store, &format!("b{}b", created.n));
         match live.get(&created.id) {
             None => assert!(by_title.is_empty() && by_body.is_empty(), "dead item found"),
             Some(entry) => {

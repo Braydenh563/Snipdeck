@@ -21,8 +21,72 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use crate::search_suggest::Index;
-use snipdeck_core::{Board, Item, ItemId, List, search::SearchIndex};
-use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, RecentEntry, RecentRepo, TagRepo};
+use snipdeck_core::search::{Names, SearchIndex};
+use snipdeck_core::{Board, Item, ItemId, List, ListId, TagId};
+use snipdeck_store::{
+    BoardRepo, ItemRepo, ListRepo, RecentEntry, RecentRepo, TagRepo, TriggerRepo,
+};
+
+/// The names, besides its own fields, that the search index matches an item by: the names of
+/// its tags, the name of its list and its trigger. Every surface builds its index with these,
+/// so a query finds the same items in the Panel, the Picker and Main.
+#[derive(Debug, Default)]
+pub(crate) struct SearchNames {
+    tags: HashMap<TagId, String>,
+    lists: HashMap<ListId, String>,
+    triggers: HashMap<ItemId, String>,
+}
+
+impl SearchNames {
+    /// Reads the tag names and triggers; `lists` are the lists the items can be in.
+    pub(crate) fn read<'a, S: TagRepo + TriggerRepo>(
+        store: &S,
+        lists: impl IntoIterator<Item = &'a List>,
+    ) -> snipdeck_store::Result<Self> {
+        Ok(Self {
+            tags: store
+                .tags()?
+                .into_iter()
+                .map(|t| (t.id, t.name.as_str().to_owned()))
+                .collect(),
+            lists: lists
+                .into_iter()
+                .map(|l| (l.id, l.name.as_str().to_owned()))
+                .collect(),
+            triggers: store
+                .triggers()?
+                .into_iter()
+                .map(|(trigger, item)| (item, trigger.as_str().to_owned()))
+                .collect(),
+        })
+    }
+
+    /// Adds `item` to `index`, or replaces its entry, with its names.
+    pub(crate) fn upsert(&self, index: &mut SearchIndex, item: &Item) {
+        let tags: Vec<&str> = item
+            .tags
+            .iter()
+            .filter_map(|t| self.tags.get(t).map(String::as_str))
+            .collect();
+        index.upsert(
+            item,
+            Names {
+                tags: &tags,
+                list: self.lists.get(&item.list_id).map_or("", String::as_str),
+                trigger: self.triggers.get(&item.id).map(String::as_str),
+            },
+        );
+    }
+
+    /// An index over `items`, in their order.
+    pub(crate) fn index<'a>(&self, items: impl IntoIterator<Item = &'a Item>) -> SearchIndex {
+        let mut index = SearchIndex::default();
+        for item in items {
+            self.upsert(&mut index, item);
+        }
+        index
+    }
+}
 
 /// What the Panel and the Picker read from the library on every load, kept together: every
 /// live item, every board with its lists, and the search index over the items.
@@ -94,7 +158,7 @@ impl IndexCache {
     /// Any store error while reading.
     pub fn snapshot<S>(&self, store: &S) -> snipdeck_store::Result<Rc<Snapshot>>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TriggerRepo,
     {
         let counter = store.change_counter();
         let at = (counter, store.usage_counter());
@@ -144,19 +208,8 @@ impl IndexCache {
         } else {
             let started = std::time::Instant::now();
             let tags = store.tags()?;
-            let tag_names: HashMap<_, _> = tags
-                .iter()
-                .map(|t| (t.id, t.name.as_str().to_owned()))
-                .collect();
-            let mut index = SearchIndex::default();
-            for item in &all {
-                index.upsert_with_tags(
-                    item,
-                    item.tags
-                        .iter()
-                        .filter_map(|t| tag_names.get(t).map(String::as_str)),
-                );
-            }
+            let names = SearchNames::read(store, boards.iter().flat_map(|(_, lists)| lists))?;
+            let index = names.index(&all);
             let suggest = Index::build(
                 &all,
                 tags.iter().map(|t| t.name.as_str()),
@@ -219,7 +272,7 @@ impl IndexCache {
     /// caller then reads everything).
     fn patched<S>(&self, store: &S, at: (u64, u64)) -> Option<Rc<Snapshot>>
     where
-        S: ItemRepo + TagRepo,
+        S: ItemRepo + TagRepo + TriggerRepo,
     {
         let (hint, read_at, built_at, old) = {
             let mut state = self.0.borrow_mut();
@@ -246,19 +299,17 @@ impl IndexCache {
         let mut all = old.all.clone();
         let mut index = Rc::clone(&old.index);
         let mut tags = Vec::new();
+        let mut names = SearchNames::default();
         if edited {
             tags = store.tags().ok()?;
+            names =
+                SearchNames::read(store, old.boards.iter().flat_map(|(_, lists)| lists)).ok()?;
         }
         for id in ids {
             let position = all.iter().position(|i| i.id == id)?;
             let item = store.item(id).ok()?;
             if edited {
-                Rc::make_mut(&mut index).upsert_with_tags(
-                    &item,
-                    item.tags
-                        .iter()
-                        .filter_map(|t| tags.iter().find(|x| x.id == *t).map(|x| x.name.as_str())),
-                );
+                names.upsert(Rc::make_mut(&mut index), &item);
             } else if !index.usage_is_current(std::iter::once(&item)) {
                 Rc::make_mut(&mut index).refresh_usage(std::iter::once(&item));
             }

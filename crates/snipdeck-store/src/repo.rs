@@ -21,6 +21,7 @@
 //!   sensitive or clearing the flag fails with
 //!   [`Error::EncryptionLocked`](crate::Error::EncryptionLocked).
 
+use snipdeck_core::search::{BodyMatches, Query};
 use snipdeck_core::{
     Board, BoardId, Format, Formats, Group, GroupId, Item, ItemId, List, ListId, Placement, Tag,
     TagId, Timestamp, Trigger,
@@ -206,9 +207,11 @@ pub trait ItemRepo {
     /// Counts one use at `at`, as [`Item::record_use`] does, without loading the item.
     fn record_use(&mut self, id: ItemId, at: Timestamp) -> Result<()>;
 
-    /// Full-content search (FTS5) over live items, best match first, at most `limit` ids.
-    /// Sensitive items match on their title only.
-    fn search(&self, query: &str, limit: usize) -> Result<Vec<ItemId>>;
+    /// For each term of `query`, the live items whose title or content contains it (the
+    /// full-text index, `None` for a term too short to look up). Sensitive items match on their
+    /// title only. Ranking and the other fields are the shared
+    /// [`SearchIndex`](snipdeck_core::search::SearchIndex)'s work.
+    fn search(&self, query: &Query) -> Result<BodyMatches>;
 }
 
 /// Tags. Tags are not trashed: deleting one removes it from every item.

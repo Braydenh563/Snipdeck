@@ -95,8 +95,11 @@ where
 
     /// The Picker's search text changed.
     pub fn picker_query(&mut self, query: &str) {
-        if let Some(picker) = &mut self.picker {
-            picker.set_query(query);
+        let Some(picker) = &mut self.picker else {
+            return;
+        };
+        if picker.set_query(&self.store, query).is_err() {
+            self.show_toast(failed());
         }
     }
 

@@ -168,11 +168,8 @@ fn sensitive_items_are_stored_encrypted_and_read_back_in_plain_text() {
         dir.path(),
         &[b"ZQ9inlineSECRET", b"ZQ9fileSECRET", &big[..64]],
     );
-    assert!(
-        s.search("4711", 5).unwrap().is_empty(),
-        "content is not indexed"
-    );
-    assert_eq!(s.search("bank", 5).unwrap(), [it.id], "the title is");
+    assert!(found(&s, "4711").is_empty(), "content is not indexed");
+    assert_eq!(found(&s, "bank"), [it.id], "the title is");
     assert_healthy(&s);
 }
 
@@ -265,7 +262,7 @@ fn without_a_key_ring_sensitive_items_are_kept_in_plain_text() {
         .unwrap();
     assert_eq!(s.formats(it.id).unwrap(), text_formats("hunter2"));
     assert_eq!(encrypted_flag(&raw(&dir), &it), 0);
-    assert_eq!(s.search("hunter2", 5).unwrap().len(), 0);
+    assert_eq!(found(&s, "hunter2").len(), 0);
 }
 
 #[test]
@@ -310,13 +307,13 @@ fn marking_an_item_sensitive_encrypts_it_and_clearing_the_flag_decrypts_it() {
     let (dir, mut s, l) = on_disk();
     s.create_key_ring(&ring(&p), None).unwrap();
     let mut it = item(&mut s, l.id, "token", "ghp_ZQ9tokenSECRET");
-    assert_eq!(s.search("ghp_ZQ9tokenSECRET", 5).unwrap(), [it.id]);
+    assert_eq!(found(&s, "ghp_ZQ9tokenSECRET"), [it.id]);
 
     it.sensitive = true;
     it.preview = String::new();
     s.update_item(&it, None).unwrap();
     assert_eq!(encrypted_flag(&raw(&dir), &it), 1);
-    assert_eq!(s.search("ghp_ZQ9tokenSECRET", 5).unwrap().len(), 0);
+    assert_eq!(found(&s, "ghp_ZQ9tokenSECRET").len(), 0);
     assert_eq!(
         s.formats(it.id).unwrap(),
         text_formats("ghp_ZQ9tokenSECRET")
@@ -329,7 +326,7 @@ fn marking_an_item_sensitive_encrypts_it_and_clearing_the_flag_decrypts_it() {
         s.formats(it.id).unwrap(),
         text_formats("ghp_ZQ9tokenSECRET")
     );
-    assert_eq!(s.search("ghp_ZQ9tokenSECRET", 5).unwrap(), [it.id]);
+    assert_eq!(found(&s, "ghp_ZQ9tokenSECRET"), [it.id]);
     assert_healthy(&s);
 }
 

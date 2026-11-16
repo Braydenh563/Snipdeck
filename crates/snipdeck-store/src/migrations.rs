@@ -19,7 +19,7 @@ pub(crate) const APPLICATION_ID: i32 = 0x534E_444B;
 /// One forward step of the schema.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Migration {
-    /// The version the database is at after this step; versions are 1 to 9 without gaps.
+    /// The version the database is at after this step; versions are 1 to 10 without gaps.
     pub version: u32,
     /// Short description, for error messages.
     pub name: &'static str,
@@ -84,6 +84,12 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         name: "typed triggers",
         sql: schema::V9,
         post: None,
+    },
+    Migration {
+        version: 10,
+        name: "trigram search over folded text",
+        sql: schema::V10,
+        post: Some(crate::fts::rebuild_v10),
     },
 ];
 
@@ -305,14 +311,14 @@ mod tests {
     use rusqlite::params;
 
     const NEXT_ADD_COLUMN: Migration = Migration {
-        version: 10,
+        version: 11,
         name: "add boards.colour",
         sql: "ALTER TABLE boards ADD COLUMN colour TEXT;",
         post: None,
     };
 
     const NEXT_BROKEN: Migration = Migration {
-        version: 10,
+        version: 11,
         name: "broken",
         sql: "ALTER TABLE boards ADD COLUMN colour TEXT; THIS IS NOT SQL;",
         post: None,
@@ -383,14 +389,54 @@ mod tests {
 
         let all = with_next(NEXT_ADD_COLUMN);
         let outcome = migrate(&mut conn, &all, Path::new(":memory:"), false).unwrap();
-        assert_eq!(outcome, Outcome { from: 9, to: 10 });
-        assert_eq!(version(&conn), 10);
+        assert_eq!(outcome, Outcome { from: 10, to: 11 });
+        assert_eq!(version(&conn), 11);
         let (name, colour): (String, Option<String>) = conn
             .query_row("SELECT name, colour FROM boards", [], |r| {
                 Ok((r.get(0)?, r.get(1)?))
             })
             .unwrap();
         assert_eq!((name.as_str(), colour), ("Work", None));
+    }
+
+    /// Version 10 on an existing version-9 index: the rows are kept, folded, and found by any
+    /// three characters (the trigram tokenizer); secure delete stays on.
+    #[test]
+    fn v10_rebuilds_the_search_index_over_folded_text() {
+        let mut conn = fresh();
+        migrate(&mut conn, &MIGRATIONS[..9], Path::new(":memory:"), false).unwrap();
+        conn.execute(
+            "INSERT INTO item_fts (rowid, title, body) VALUES (7, 'Café Signature', 'ＡＢＣ Crème')",
+            [],
+        )
+        .unwrap();
+        let outcome = migrate(&mut conn, MIGRATIONS, Path::new(":memory:"), false).unwrap();
+        assert_eq!(outcome, Outcome { from: 9, to: 10 });
+        let row: (i64, String, String) = conn
+            .query_row("SELECT rowid, title, body FROM item_fts", [], |r| {
+                Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+            })
+            .unwrap();
+        assert_eq!(
+            row,
+            (7, "cafe signature".to_owned(), "abc creme".to_owned())
+        );
+        let hits: i64 = conn
+            .query_row(
+                "SELECT count(*) FROM item_fts WHERE item_fts MATCH '\"natu\"'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(hits, 1, "mid-word");
+        let secure: i64 = conn
+            .query_row(
+                "SELECT v FROM item_fts_config WHERE k = 'secure-delete'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(secure, 1);
     }
 
     #[test]
@@ -410,7 +456,7 @@ mod tests {
             matches!(
                 err,
                 Error::Migration {
-                    version: 10,
+                    version: 11,
                     name: "broken",
                     source: Some(_),
                     ..
@@ -422,7 +468,7 @@ mod tests {
             std::error::Error::source(&err).is_some(),
             "the cause is kept"
         );
-        assert_eq!(version(&conn), 9);
+        assert_eq!(version(&conn), 10);
         // The half-applied ALTER TABLE was undone, and the data is intact.
         assert!(conn.prepare("SELECT colour FROM boards").is_err());
         let boards: i64 = conn
@@ -440,7 +486,7 @@ mod tests {
         let mut conn = fresh();
         migrate(&mut conn, MIGRATIONS, Path::new(":memory:"), false).unwrap();
         let dangling = Migration {
-            version: 10,
+            version: 11,
             name: "orphan a list",
             sql: "INSERT INTO lists (id, board_id, name, list_view, list_sort, rank, created_at, updated_at)
                   VALUES (zeroblob(16), zeroblob(16), 'L', 'compact', 'manual', 1, 0, 0);",
@@ -454,10 +500,10 @@ mod tests {
         )
         .unwrap_err();
         assert!(
-            matches!(err, Error::Migration { version: 10, .. }),
+            matches!(err, Error::Migration { version: 11, .. }),
             "{err:?}"
         );
-        assert_eq!(version(&conn), 9);
+        assert_eq!(version(&conn), 10);
     }
 
     #[test]
@@ -473,8 +519,8 @@ mod tests {
             matches!(
                 err,
                 Error::SchemaTooNew {
-                    found: 10,
-                    supported: 9
+                    found: 11,
+                    supported: 10
                 }
             ),
             "{err:?}"
@@ -484,28 +530,28 @@ mod tests {
             message.contains("newer Snipdeck") && message.contains("update"),
             "{message}"
         );
-        assert_eq!(version(&conn), 10);
+        assert_eq!(version(&conn), 11);
     }
 
     #[test]
-    fn an_older_binary_refuses_v9() {
+    fn an_older_binary_refuses_a_newer_file() {
         let mut conn = fresh();
         let path = std::path::Path::new("x.db");
         migrate(&mut conn, MIGRATIONS, path, false).unwrap();
-        assert_eq!(version(&conn), 9);
-        // A build that stops at version 8 meets a version-9 file.
+        assert_eq!(version(&conn), 10);
+        // A build that stops at version 8 meets a newer file.
         let err = migrate(&mut conn, &MIGRATIONS[..8], path, false).unwrap_err();
         assert!(
             matches!(
                 err,
                 Error::SchemaTooNew {
-                    found: 9,
+                    found: 10,
                     supported: 8
                 }
             ),
             "{err:?}"
         );
-        assert_eq!(version(&conn), 9, "left alone");
+        assert_eq!(version(&conn), 10, "left alone");
     }
 
     #[test]
@@ -539,10 +585,10 @@ mod tests {
                 outcome,
                 Outcome {
                     from: u32::try_from(start).unwrap(),
-                    to: 9
+                    to: 10
                 }
             );
-            assert_eq!(version(&conn), 9);
+            assert_eq!(version(&conn), 10);
             for sql in [
                 "SELECT label FROM items",
                 "SELECT icon FROM lists",
@@ -564,14 +610,14 @@ mod tests {
         let mut conn = Connection::open(&path).unwrap();
         migrate(&mut conn, MIGRATIONS, &path, true).unwrap();
         assert!(
-            !dir.path().join("snipdeck.db.pre-v8.bak").exists(),
+            !dir.path().join("snipdeck.db.pre-v9.bak").exists(),
             "nothing to back up on creation"
         );
         insert_board(&conn);
 
         migrate(&mut conn, &with_next(NEXT_ADD_COLUMN), &path, true).unwrap();
-        let backup = Connection::open(dir.path().join("snipdeck.db.pre-v9.bak")).unwrap();
-        assert_eq!(version(&backup), 9);
+        let backup = Connection::open(dir.path().join("snipdeck.db.pre-v10.bak")).unwrap();
+        assert_eq!(version(&backup), 10);
         let boards: i64 = backup
             .query_row("SELECT count(*) FROM boards", [], |r| r.get(0))
             .unwrap();
@@ -613,7 +659,7 @@ mod tests {
         migrate(&mut conn, MIGRATIONS, &path, true).unwrap();
         assert_eq!(entries(&v3), 0, "scrubbed");
         assert!(!v4.exists(), "a copy that cannot be scrubbed is deleted");
-        assert_eq!(version(&conn), 9, "and the open went on");
+        assert_eq!(version(&conn), 10, "and the open went on");
     }
 
     #[test]
@@ -675,7 +721,7 @@ mod tests {
         // A table rebuild, the migration shape that needs foreign keys off: widen the
         // `list_view` check by copying `lists` into a new table.
         let rebuild = Migration {
-            version: 10,
+            version: 11,
             name: "rebuild lists",
             sql: "CREATE TABLE lists_new (
                       id BLOB NOT NULL PRIMARY KEY CHECK (length(id) = 16),
@@ -709,7 +755,7 @@ mod tests {
         let before = counts(&conn);
         assert_eq!(before, [1, 1, 3, 4, 1, 1]);
         let outcome = migrate(&mut conn, &with_next(rebuild), &path, true).unwrap();
-        assert_eq!(outcome, Outcome { from: 1, to: 10 });
+        assert_eq!(outcome, Outcome { from: 1, to: 11 });
         assert_eq!(counts(&conn), before);
         let items_still_reference_the_list: i64 = conn
             .query_row(
