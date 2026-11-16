@@ -1471,13 +1471,30 @@ ui_tests! {
         assert!(view.size().width > 32.0, "label and caret: {}", view.size().width);
     }
 
-    fn toolbar_icon_only_below_560() {
+    fn the_toolbar_sheds_keys_then_labels_as_the_item_area_narrows() {
         let (ui, log) = start();
-        // 232 sidebar + 559 item area.
-        ui.window().set_size(slint::LogicalSize::new(232.0 + 559.0, 640.0));
-        settle();
-        let labels = ElementQuery::from_root(&ui).match_id("ToolbarButton::label-text").find_all();
-        assert!(labels.is_empty(), "no labels below 560");
+        // 232 sidebar + the item area; every step is one pixel either side of a threshold.
+        let at = |area: f32| {
+            ui.window().set_size(slint::LogicalSize::new(232.0 + area, 640.0));
+            settle();
+        };
+        let label_count = || ElementQuery::from_root(&ui).match_id("ToolbarButton::label-text").find_all().len();
+        let width = |name: &str| find(&ui, name, AccessibleRole::Button).size().width;
+        at(736.0);
+        assert_eq!(label_count(), 2, "both labels at 736");
+        let with_keys = width("Commands (Ctrl+K)");
+        at(735.0);
+        assert!(width("Commands (Ctrl+K)") < with_keys - 40.0, "the Ctrl K chips go below 736");
+        assert_eq!(label_count(), 2, "the labels stay");
+        at(658.0);
+        assert_eq!(label_count(), 2, "both labels at 658");
+        at(657.0);
+        assert_eq!(label_count(), 1, "the Commands label goes below 658");
+        assert!((width("Commands (Ctrl+K)") - 32.0).abs() < 0.5, "Commands is a 32 px icon button");
+        at(608.0);
+        assert_eq!(label_count(), 1, "the View label stays at 608");
+        at(607.0);
+        assert_eq!(label_count(), 0, "the View label goes below 608");
         for name in ["Commands (Ctrl+K)", "View"] {
             let b = find(&ui, name, AccessibleRole::Button);
             assert!((b.size().width - 32.0).abs() < 0.5 && (b.size().height - 32.0).abs() < 0.5, "{name} is a 32 px icon button: {:?}", b.size());
@@ -1486,11 +1503,22 @@ ui_tests! {
         find(&ui, "Commands (Ctrl+K)", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
         assert!(ui.get_palette_open(), "still opens the palette");
-        ui.window().set_size(slint::LogicalSize::new(232.0 + 560.0, 640.0));
         press_key(&ui, Key::Escape);
         settle();
-        let labels = ElementQuery::from_root(&ui).match_id("ToolbarButton::label-text").find_all();
-        assert_eq!(labels.len(), 2, "labels return at 560");
+        at(736.0);
+        assert_eq!(label_count(), 2, "the labels return at 736");
+    }
+
+    fn narrow_toolbar_view_menu_holds_the_tile_view() {
+        let (ui, log) = start();
+        ui.window().set_size(slint::LogicalSize::new(232.0 + 573.0, 640.0));
+        settle();
+        take(&log);
+        find(&ui, "View", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        find(&ui, "Tile view", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["view:Tile"], "the View menu stands in for the dropped toggles");
     }
 
     fn a_colour_label_is_named_in_the_cards_description_and_never_colour_alone() {
