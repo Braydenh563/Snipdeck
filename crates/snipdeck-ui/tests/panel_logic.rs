@@ -1250,19 +1250,19 @@ ui_tests! {
         w.dispatch_event(WindowEvent::PointerReleased { position: at, button: PointerEventButton::Left });
         assert_eq!(take(&log), ["drag", "drop"], "the press starts the drag and the release ends it");
 
-        find(&ui, "Close panel (Esc)", AccessibleRole::Button).mock_single_click(PointerEventButton::Left);
+        find(&ui, "Close Panel (Esc)", AccessibleRole::Button).mock_single_click(PointerEventButton::Left);
         assert_eq!(take(&log), ["close"], "the close button is not a drag handle");
     }
 
     fn the_pin_button_toggles_keep_on_top() {
         let (ui, log) = start();
-        let pin = find(&ui, "Keep panel on top", AccessibleRole::Button);
+        let pin = find(&ui, "Keep Panel on top", AccessibleRole::Button);
         assert_eq!(pin.accessible_checkable(), Some(true));
         assert_eq!(pin.accessible_checked(), Some(true), "the Panel is on top by default");
         pin.invoke_accessible_default_action();
         assert!(!ui.get_on_top());
         assert_eq!(take(&log), ["pin:false"]);
-        assert_eq!(find(&ui, "Keep panel on top", AccessibleRole::Button).accessible_checked(), Some(false));
+        assert_eq!(find(&ui, "Keep Panel on top", AccessibleRole::Button).accessible_checked(), Some(false));
     }
 
     fn ctrl_shift_p_opens_the_commands_like_in_the_main_window_and_leaves_the_pin_alone() {
@@ -1801,7 +1801,7 @@ ui_tests! {
         settle();
         let stack = find(&ui, "Paste stack (mark items)", AccessibleRole::ListItem);
         assert_eq!(stack.accessible_enabled(), Some(false));
-        assert!(missing(&ui, "Keep panel on top", AccessibleRole::ListItem), "no duplicate of the header pin at 100 %");
+        assert!(missing(&ui, "Keep Panel on top", AccessibleRole::ListItem), "no duplicate of the header pin at 100 %");
     }
 
     fn the_app_menu_stays_inside_the_window_at_560_and_at_the_minimum_height() {
@@ -1869,12 +1869,12 @@ ui_tests! {
 
     fn from_150_percent_keep_on_top_leaves_the_header_for_the_menu() {
         let (ui, _log) = start();
-        assert!(!missing(&ui, "Keep panel on top", AccessibleRole::Button), "100 %: the header button");
+        assert!(!missing(&ui, "Keep Panel on top", AccessibleRole::Button), "100 %: the header button");
         assert!(!ui.get_pin_in_menu());
         ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(1.5);
         settle();
         assert!(ui.get_pin_in_menu());
-        assert!(missing(&ui, "Keep panel on top", AccessibleRole::Button), "1.5: moved into More");
+        assert!(missing(&ui, "Keep Panel on top", AccessibleRole::Button), "1.5: moved into More");
     }
 
     fn every_layout_reports_a_row_tooltip_and_closes_it_when_the_rows_change() {
@@ -1934,7 +1934,7 @@ ui_tests! {
 
     fn the_menu_switcher_drops_the_tab_row_and_names_the_list_in_the_header() {
         let (ui, _log) = start();
-        let list_top = |ui: &PanelWindow| find(ui, "Snippets", AccessibleRole::List).absolute_position().y;
+        let list_top = |ui: &PanelWindow| find(ui, "Items", AccessibleRole::List).absolute_position().y;
         let before = list_top(&ui);
         assert!(!missing(&ui, "Lists", AccessibleRole::TabList));
         ui.set_lists_in_menu(true);
@@ -2346,8 +2346,8 @@ ui_tests! {
 
     fn every_control_has_a_role_and_a_label() {
         let (ui, _log) = start();
-        let _ = find(&ui, "Close panel (Esc)", AccessibleRole::Button);
-        let _ = find(&ui, "Keep panel on top", AccessibleRole::Button);
+        let _ = find(&ui, "Close Panel (Esc)", AccessibleRole::Button);
+        let _ = find(&ui, "Keep Panel on top", AccessibleRole::Button);
         let _ = find(&ui, "Board: Work", AccessibleRole::Button);
         let _ = find(&ui, "Search (Ctrl+F)", AccessibleRole::Button);
         let _ = find(&ui, "New", AccessibleRole::Button);
@@ -2357,8 +2357,8 @@ ui_tests! {
             let _ = find(&ui, name, AccessibleRole::Tab);
         }
         let _ = find(&ui, "Add list", AccessibleRole::Button);
-        let _ = find(&ui, "Snippets", AccessibleRole::List);
-        let _ = find(&ui, "Pinned snippets", AccessibleRole::List);
+        let _ = find(&ui, "Items", AccessibleRole::List);
+        let _ = find(&ui, "Pinned items", AccessibleRole::List);
         for name in ["Thanks, received", "Home address", "+1 more"] {
             let _ = find(&ui, name, AccessibleRole::Button);
         }
@@ -2382,8 +2382,8 @@ ui_tests! {
         // The search field joins the tree once it is open, with the close button beside it.
         chord(ui.window(), &[Key::Control], "f");
         settle();
-        let search = find(&ui, "Search snippets", AccessibleRole::TextInput);
-        assert_eq!(search.accessible_placeholder_text().as_deref(), Some("Search snippets"));
+        let search = find(&ui, "Search items", AccessibleRole::TextInput);
+        assert_eq!(search.accessible_placeholder_text().as_deref(), Some("Search items"));
         let _ = find(&ui, "Close search", AccessibleRole::Button);
     }
 
@@ -2394,7 +2394,7 @@ ui_tests! {
         settle();
         assert_eq!(ui.get_query(), "a", "a typed character opens the search and lands in it");
         assert!(missing(&ui, "Lists", AccessibleRole::TabList), "the block replaces the tabs");
-        assert!(missing(&ui, "Pinned snippets", AccessibleRole::List), "and the pinned strip");
+        assert!(missing(&ui, "Pinned items", AccessibleRole::List), "and the pinned strip");
         take(&log);
         find(&ui, "Close search", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
@@ -2402,7 +2402,7 @@ ui_tests! {
         assert_eq!(take(&log), ["query:"]);
         assert!(missing(&ui, "Close search", AccessibleRole::Button));
         let _ = find(&ui, "Lists", AccessibleRole::TabList);
-        let _ = find(&ui, "Pinned snippets", AccessibleRole::List);
+        let _ = find(&ui, "Pinned items", AccessibleRole::List);
         // The keyboard still types into the search afterwards.
         type_text(ui.window(), "b");
         assert_eq!(ui.get_query(), "b");
@@ -2414,7 +2414,7 @@ ui_tests! {
         settle();
         type_text(ui.window(), "a");
         settle();
-        let field = find(&ui, "Search snippets", AccessibleRole::TextInput);
+        let field = find(&ui, "Search items", AccessibleRole::TextInput);
         let clear = find(&ui, "Clear search", AccessibleRole::Button);
         let (fp, fz) = (field.absolute_position(), field.size());
         let (cp, cz) = (clear.absolute_position(), clear.size());
@@ -2433,12 +2433,12 @@ ui_tests! {
         ui.set_search_always(true);
         settle();
         assert!(missing(&ui, "Clear search", AccessibleRole::Button), "nothing to clear yet");
-        let _ = find(&ui, "Search snippets", AccessibleRole::TextInput);
+        let _ = find(&ui, "Search items", AccessibleRole::TextInput);
         type_text(ui.window(), "a");
         settle();
         assert!(missing(&ui, "Close search", AccessibleRole::Button), "the strip never goes away");
         let _ = find(&ui, "Lists", AccessibleRole::TabList);
-        let _ = find(&ui, "Pinned snippets", AccessibleRole::List);
+        let _ = find(&ui, "Pinned items", AccessibleRole::List);
         take(&log);
         find(&ui, "Clear search", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(ui.get_query(), "");
@@ -2548,7 +2548,7 @@ ui_tests! {
             let tabs = find(ui, "Lists", AccessibleRole::TabList);
             let strip = by_role(ui, AccessibleRole::List)
                 .into_iter()
-                .find(|e| e.accessible_label().as_deref() == Some("Pinned snippets"));
+                .find(|e| e.accessible_label().as_deref() == Some("Pinned items"));
             (tabs.absolute_position().y, strip.map(|e| (e.absolute_position().y, e.size().height)))
         };
         let footer = find(&ui, "Pastes into Mail · New message", AccessibleRole::Text);
@@ -2560,8 +2560,8 @@ ui_tests! {
         let with_pins = 24.0 + 40.0 + 32.0 + strip_h + footer.size().height;
         assert!((with_pins - 164.0).abs() < 0.5);
         set_pinned(&ui, Vec::new());
-        assert!(missing(&ui, "Pinned snippets", AccessibleRole::List));
-        let list = find(&ui, "Snippets", AccessibleRole::List);
+        assert!(missing(&ui, "Pinned items", AccessibleRole::List));
+        let list = find(&ui, "Items", AccessibleRole::List);
         // Grab strip 24 + header 40 + tabs 32 above the list; 32 of footer below it (the list ends above the footer).
         assert!(list.absolute_position().y >= 96.0 && list.absolute_position().y < 96.0 + 40.0, "list starts under the tabs: {}", list.absolute_position().y);
         assert!(footer.absolute_position().y + footer.size().height <= height + 0.5);
@@ -2673,8 +2673,8 @@ ui_tests! {
         let kebab = find(&ui, "More", AccessibleRole::Button);
         assert!(kebab.size().width >= MIN_HIT && kebab.size().height >= MIN_HIT);
         // Between the pin and the close button.
-        let pin = find(&ui, "Keep panel on top", AccessibleRole::Button).absolute_position().x;
-        let close = find(&ui, "Close panel (Esc)", AccessibleRole::Button).absolute_position().x;
+        let pin = find(&ui, "Keep Panel on top", AccessibleRole::Button).absolute_position().x;
+        let close = find(&ui, "Close Panel (Esc)", AccessibleRole::Button).absolute_position().x;
         assert!(pin < kebab.absolute_position().x && kebab.absolute_position().x < close);
 
         assert!(missing(&ui, "Panel menu", AccessibleRole::List), "closed by default");
@@ -2790,17 +2790,17 @@ ui_tests! {
     fn moving_from_one_icon_button_to_another_swaps_the_tooltip_instantly() {
         let (ui, _log) = start();
         let kebab = find(&ui, "More", AccessibleRole::Button);
-        let pin = find(&ui, "Keep panel on top", AccessibleRole::Button);
-        let close = find(&ui, "Close panel (Esc)", AccessibleRole::Button);
+        let pin = find(&ui, "Keep Panel on top", AccessibleRole::Button);
+        let close = find(&ui, "Close Panel (Esc)", AccessibleRole::Button);
         move_to(&ui, centre(&kebab));
         wait(600);
         assert_eq!(ui.get_tooltip_shown(), "More");
         move_to(&ui, centre(&pin));
         settle();
-        assert_eq!(ui.get_tooltip_shown(), "Keep panel on top", "no second 500ms wait");
+        assert_eq!(ui.get_tooltip_shown(), "Keep Panel on top", "no second 500ms wait");
         move_to(&ui, centre(&close));
         settle();
-        assert_eq!(ui.get_tooltip_shown(), "Close panel (Esc)");
+        assert_eq!(ui.get_tooltip_shown(), "Close Panel (Esc)");
         // After a rest the next one waits again.
         move_to(&ui, away(&ui));
         wait(1000);
@@ -2878,7 +2878,7 @@ ui_tests! {
         settle();
         ui.set_app_menu_open(true);
         settle();
-        move_to(&ui, centre(&find(&ui, "Close panel (Esc)", AccessibleRole::Button)));
+        move_to(&ui, centre(&find(&ui, "Close Panel (Esc)", AccessibleRole::Button)));
         settle();
         assert_eq!(ui.get_tooltip_shown(), "");
         take(&log);
@@ -2897,7 +2897,7 @@ ui_tests! {
             wait(501);
             assert_eq!(ui.get_tooltip_shown(), label, "tooltip of {label:?}");
         };
-        for label in ["More", "Keep panel on top", "Close panel (Esc)", "Add list", "Search (Ctrl+F)"] {
+        for label in ["More", "Keep Panel on top", "Close Panel (Esc)", "Add list", "Search (Ctrl+F)"] {
             hover(label);
         }
     }
@@ -3209,7 +3209,7 @@ ui_tests! {
         press_at(&ui, LogicalPosition::new(w - 10.0, y));
         assert_eq!(take(&log), ["use:0"], "and on the right side");
         // The header buttons next to the top-right corner still work.
-        find(&ui, "Close panel (Esc)", AccessibleRole::Button).mock_single_click(PointerEventButton::Left);
+        find(&ui, "Close Panel (Esc)", AccessibleRole::Button).mock_single_click(PointerEventButton::Left);
         assert_eq!(take(&log), ["close"]);
         // A press on the top edge over the header is a resize, not a drag.
         press_at(&ui, LogicalPosition::new(120.0, 1.0));
@@ -3322,12 +3322,12 @@ ui_tests! {
         press_at(&ui, centre(&more));
         settle();
         assert_eq!(take(&log), Vec::<String>::new(), "opening the menu uses nothing");
-        let menu = find(&ui, "More pinned snippets", AccessibleRole::List);
+        let menu = find(&ui, "More pinned items", AccessibleRole::List);
         assert!(menu.size().width > 0.0);
         let row = find(&ui, "Pinned 05", AccessibleRole::ListItem);
         row.invoke_accessible_default_action();
         assert_eq!(take(&log), ["pinned:4"], "row i of the menu is pinned item i + 2");
-        assert!(missing(&ui, "More pinned snippets", AccessibleRole::List), "choosing closes it");
+        assert!(missing(&ui, "More pinned items", AccessibleRole::List), "choosing closes it");
     }
 
     fn a_chip_in_an_overflowing_strip_still_uses_on_click() {
@@ -3354,7 +3354,7 @@ ui_tests! {
         press(ui.window(), &key(Key::Return));
         settle();
         assert_eq!(take(&log), Vec::<String>::new(), "the third stop is +N more: it opens the menu, uses nothing");
-        let _ = find(&ui, "More pinned snippets", AccessibleRole::List);
+        let _ = find(&ui, "More pinned items", AccessibleRole::List);
     }
 
     // ---- The Recent inbox -----------------------------------------------------------------------
@@ -3478,15 +3478,15 @@ ui_tests! {
 
     fn the_select_and_delete_strip_exists_only_while_a_mode_is_on() {
         let (ui, _log) = start();
-        assert!(missing(&ui, "Select snippets", AccessibleRole::Button), "no strip at rest");
-        assert!(missing(&ui, "Delete snippets", AccessibleRole::Button));
+        assert!(missing(&ui, "Select items", AccessibleRole::Button), "no strip at rest");
+        assert!(missing(&ui, "Delete items", AccessibleRole::Button));
         ui.set_select_mode(true);
         settle();
-        assert!(!missing(&ui, "Select snippets", AccessibleRole::Button));
+        assert!(!missing(&ui, "Select items", AccessibleRole::Button));
         assert!(missing(&ui, "Clear list\u{2026}", AccessibleRole::Button), "Clear list is for Delete mode");
         ui.set_select_mode(false);
         settle();
-        assert!(missing(&ui, "Select snippets", AccessibleRole::Button), "the strip is gone with the mode");
+        assert!(missing(&ui, "Select items", AccessibleRole::Button), "the strip is gone with the mode");
     }
 
     fn the_strip_is_labelled_and_fits_at_every_text_size() {
@@ -3497,7 +3497,7 @@ ui_tests! {
             ui.set_delete_mode(true);
             settle();
             let mut right = 0.0_f32;
-            for name in ["Select snippets", "Delete snippets", "Clear list\u{2026}", "Done"] {
+            for name in ["Select items", "Delete items", "Clear list\u{2026}", "Done"] {
                 let b = find(&ui, name, AccessibleRole::Button);
                 let (p, s) = (b.absolute_position(), b.size());
                 assert!(p.x >= right - 0.5, "{name} does not overlap the one before at {scale}");
@@ -3506,7 +3506,7 @@ ui_tests! {
                 right = p.x + s.width;
             }
             take(&log);
-            click_at(&ui, centre(&find(&ui, "Select snippets", AccessibleRole::Button)));
+            click_at(&ui, centre(&find(&ui, "Select items", AccessibleRole::Button)));
             assert_eq!(take(&log), ["select-mode:true"]);
             click_at(&ui, centre(&find(&ui, "Clear list\u{2026}", AccessibleRole::Button)));
             assert_eq!(take(&log), ["clear-requested"]);
@@ -3520,7 +3520,7 @@ ui_tests! {
         ui.set_select_mode(true);
         settle();
         take(&log);
-        click_at(&ui, centre(&find(&ui, "Delete snippets", AccessibleRole::Button)));
+        click_at(&ui, centre(&find(&ui, "Delete items", AccessibleRole::Button)));
         assert_eq!(take(&log), ["delete-mode:true"]);
         click_at(&ui, centre(&find(&ui, "Done", AccessibleRole::Button)));
         assert_eq!(take(&log), ["modes-ended"]);
@@ -3664,7 +3664,7 @@ ui_tests! {
         ui.window().dispatch_event(WindowEvent::WindowActiveChanged(false));
         settle();
         gained.set(0);
-        let field = find(&ui, "Search snippets", AccessibleRole::TextInput);
+        let field = find(&ui, "Search items", AccessibleRole::TextInput);
         click_at(&ui, centre(&field));
         assert!(gained.get() >= 1, "the click must take the keyboard back");
     }
@@ -3726,7 +3726,7 @@ ui_tests! {
         chord(ui.window(), &[Key::Control], "c");
         press(ui.window(), &key(Key::End));
         take(&log);
-        let field = find(&ui, "Search snippets", AccessibleRole::TextInput);
+        let field = find(&ui, "Search items", AccessibleRole::TextInput);
         right_click_at(&ui, centre(&field));
         settle();
         let paste = menu_item(&ui, "Paste").unwrap_or_else(|| panic!("no Paste; elements: {:?}", dump_roles(&ui)));

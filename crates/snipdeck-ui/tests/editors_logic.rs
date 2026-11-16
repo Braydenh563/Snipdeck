@@ -330,7 +330,7 @@ ui_tests! {
 
     fn the_trigger_field_speaks_its_helper_then_the_warning_and_the_error_wins() {
         const HELPER: &str =
-            "Type this in any app to insert the snippet. Turn it on in Settings, under Typing.";
+            "Type this in any app to insert the item. Turn it on in Settings, under Typing.";
         const ONE_CHAR: &str = "A one-character trigger fires every time you type it, even inside words. Two or more characters are safer.";
         let (ui, _log) = item_editor();
         ui.set_trigger("".into());
@@ -354,7 +354,7 @@ ui_tests! {
         settle();
         let reason = find(
             &ui,
-            "Sensitive items can't be typed in, so they have no trigger.",
+            "Sensitive items can’t be typed in, so they have no trigger.",
             AccessibleRole::Text,
         );
         assert!(reason.accessible_label().is_some(), "the reason is a text node");
@@ -651,12 +651,12 @@ ui_tests! {
         let (ui, _log) = item_editor();
         assert!(missing(&ui, "Restored the changes you had not saved.", AccessibleRole::Text));
         ui.set_restored(true);
-        ui.set_banner("Snipdeck couldn't save this item. Nothing was changed.".into());
+        ui.set_banner("Snipdeck couldn’t save this item. Nothing was changed.".into());
         ui.set_privacy_error("Unlock your library to save this item.".into());
         settle();
         let _ = find(&ui, "Restored the changes you had not saved.", AccessibleRole::Text);
         // Both problems are on screen as text the user can read.
-        let _ = find(&ui, "Snipdeck couldn't save this item. Nothing was changed.", AccessibleRole::Text);
+        let _ = find(&ui, "Snipdeck couldn’t save this item. Nothing was changed.", AccessibleRole::Text);
         ui.invoke_mark_dirty();
         assert!(ui.get_dirty());
         ui.invoke_mark_clean();
@@ -1178,7 +1178,7 @@ ui_tests! {
     fn shortcut_rows_record_clear_and_show_a_conflict() {
         let (ui, log) = settings();
         let names = [
-            "Show or hide the panel",
+            "Show or hide the Panel",
             "Open the picker",
             "Save the clipboard as an item",
             "Paste the next item",
@@ -1358,7 +1358,7 @@ ui_tests! {
         assert_eq!(taskbar.accessible_checked(), Some(false), "off by default");
         taskbar.invoke_accessible_default_action();
         assert_eq!(take(&log), ["taskbar:true"]);
-        let blur = find(&ui, "Hide the panel when it loses focus", AccessibleRole::Switch);
+        let blur = find(&ui, "Hide the Panel when it loses focus", AccessibleRole::Switch);
         assert_eq!(blur.accessible_checked(), Some(true), "on by default");
         blur.invoke_accessible_default_action();
         assert_eq!(take(&log), ["blur:false"]);
@@ -1379,17 +1379,17 @@ ui_tests! {
         spin.invoke_accessible_decrement_action();
         assert_eq!(take(&log), ["width:330", "width:310"]);
 
-        find(&ui, "Make the panel wider", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Make the Panel wider", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["width:330"]);
 
         ui.set_panel_width(480);
         settle();
         spin.invoke_accessible_increment_action();
         assert!(take(&log).is_empty(), "no step past the maximum");
-        assert_eq!(find(&ui, "Make the panel wider", AccessibleRole::Button).accessible_enabled(), Some(false));
+        assert_eq!(find(&ui, "Make the Panel wider", AccessibleRole::Button).accessible_enabled(), Some(false));
         ui.set_panel_width(260);
         settle();
-        assert_eq!(find(&ui, "Make the panel narrower", AccessibleRole::Button).accessible_enabled(), Some(false));
+        assert_eq!(find(&ui, "Make the Panel narrower", AccessibleRole::Button).accessible_enabled(), Some(false));
     }
 
     fn backups_to_keep_steps_by_one_between_one_and_sixty() {
@@ -1831,14 +1831,14 @@ ui_tests! {
 
     fn each_step_shows_its_own_content() {
         let (ui, _) = onboarding(0);
-        let _ = find(&ui, "The panel", AccessibleRole::Groupbox);
+        let _ = find(&ui, "The Panel", AccessibleRole::Groupbox);
         let _ = find(&ui, "The picker", AccessibleRole::Groupbox);
         let _ = find(&ui, "Also keep what I copy?", AccessibleRole::Groupbox);
         assert!(missing(&ui, "Start with Windows", AccessibleRole::Switch));
         ui.set_step(1);
         settle();
-        assert!(missing(&ui, "The panel", AccessibleRole::Groupbox));
-        let _ = find(&ui, "Show or hide the panel", AccessibleRole::Button);
+        assert!(missing(&ui, "The Panel", AccessibleRole::Groupbox));
+        let _ = find(&ui, "Show or hide the Panel", AccessibleRole::Button);
         ui.set_step(2);
         settle();
         let _ = find(&ui, "Floating", AccessibleRole::RadioButton);
@@ -1851,7 +1851,7 @@ ui_tests! {
 
     fn the_shortcut_step_records_through_the_settings_recorder() {
         let (ui, log) = onboarding(1);
-        let first = find(&ui, "Show or hide the panel", AccessibleRole::Button);
+        let first = find(&ui, "Show or hide the Panel", AccessibleRole::Button);
         assert_eq!(first.accessible_value().as_deref(), Some("Ctrl+Alt+V"));
         first.invoke_accessible_default_action();
         chord(ui.window(), &[Key::Control, Key::Alt], "k");

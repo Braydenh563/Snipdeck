@@ -957,10 +957,10 @@ fn the_list_menu_edits_the_list_it_was_opened_on() {
     let editor = ctl.main_screen().editor.expect("editor");
     assert_eq!(editor.name, "Code");
     assert!(!editor.is_new && editor.can_delete);
-    ctl.main_editor_save("Snippets", None, None, ListSort::Manual);
+    ctl.main_editor_save("Items", None, None, ListSort::Manual);
     assert_eq!(
-        ctl.view().tabs[tab_index(&ctl, "Snippets")].name,
-        "Snippets"
+        ctl.view().tabs[tab_index(&ctl, "Items")].name,
+        "Items"
     );
 }
 

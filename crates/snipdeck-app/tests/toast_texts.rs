@@ -477,7 +477,7 @@ fn what_a_toast_carries_reaches_its_sentence() {
         );
         assert_eq!(
             said(ToastMessage::TypingUnavailable),
-            "Couldn't start typing triggers. Nothing will be expanded or suggested."
+            "Couldn’t start typing triggers. Nothing will be expanded or suggested."
         );
         assert_eq!(said(ToastMessage::DockSet(None)), "Panel floats again");
         assert_eq!(
@@ -526,11 +526,11 @@ fn a_failure_toast_names_its_cause_and_ends_with_what_to_do() {
         let said = |m: ToastMessage| toast_text(&ui, &m);
         assert_eq!(
             said(ToastMessage::DailyBackupFailed(Cause::Other)),
-            "Couldn't make today's backup. Check the disk has room, then use Back up now in Settings."
+            "Couldn’t make today’s backup. Check the disk has room, then use Back up now in Settings."
         );
         assert_eq!(
             said(ToastMessage::UseFailed(Cause::DiskFull)),
-            "Couldn't use this item: the disk is full. Free up some space, then try again."
+            "Couldn’t use this item: the disk is full. Free up some space, then try again."
         );
         let causes = [
             Cause::Other,

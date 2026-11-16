@@ -572,7 +572,7 @@ fn the_apps_left_out_of_recent_are_a_list_with_add_remove_and_words_for_a_refusa
         r.ui.invoke_no_history_app_added("C:\\x\\y.exe".into());
         assert_eq!(
             r.ui.get_no_history_error(),
-            "Use just the program's file name, like notepad.exe."
+            "Use just the program’s file name, like notepad.exe."
         );
         r.ui.invoke_no_history_app_removed(0);
         assert_eq!(r.ui.get_no_history_error(), "");
@@ -770,7 +770,7 @@ fn choosing_an_edge_docks_the_panel_there_and_floating_lets_it_go() {
             "queued for the Panel's window"
         );
 
-        // "Docked panel uses the full edge" stretches it, and off gives the height back.
+        // "Docked Panel uses the full edge" stretches it, and off gives the height back.
         r.ui.invoke_dock_full_edge_toggled(true);
         assert!(r.ui.get_dock_full_edge(), "the page follows");
         assert_eq!(
@@ -1061,7 +1061,7 @@ fn start_with_windows_that_cannot_be_changed_says_so_and_keeps_the_old_value() {
         assert!(!r.ui.get_autostart(), "the switch went back");
         assert_eq!(
             r.ui.get_toast_text(),
-            "Couldn't change the Windows start-up entry."
+            "Couldn’t change the Windows start-up entry."
         );
         assert_eq!(r.ui.get_toast_kind(), ToastKind::Danger);
         r.host.autostart_fails.set(false);
@@ -1335,7 +1335,7 @@ fn export_saves_a_new_file_in_documents_each_time_and_opens_the_folder() {
         let first = files(&documents);
         assert_eq!(first.len(), 1);
         assert!(first[0].starts_with("Snipdeck-library-") && first[0].ends_with(".snipdeck"));
-        assert_eq!(r.ui.get_toast_text(), format!("Saved {}", first[0]));
+        assert_eq!(r.ui.get_toast_text(), format!("Saved {}.", first[0]));
         assert_eq!(*r.host.opened.borrow(), std::slice::from_ref(&documents));
         r.ui.invoke_export_requested();
         assert_eq!(
@@ -1625,7 +1625,7 @@ fn a_file_that_cannot_be_imported_shows_a_problem_and_nothing_to_confirm() {
         *r.host.import_pick.borrow_mut() = Some(junk);
         r.ui.invoke_import_source_chosen(1);
         assert!(r.ui.get_import_open());
-        assert_eq!(r.ui.get_import_problem(), "That isn't a Ditto database.");
+        assert_eq!(r.ui.get_import_problem(), "That isn’t a Ditto database.");
         // Confirming a problem writes nothing.
         r.ui.invoke_import_confirmed();
         assert!(!r.ui.get_import_open());
@@ -2038,7 +2038,7 @@ fn each_new_choice_previews_its_own_source_and_a_wrong_file_is_a_problem() {
         *r.host.import_pick.borrow_mut() = Some(junk.clone());
         r.ui.invoke_import_source_chosen(6);
         assert!(r.ui.get_import_open());
-        assert_eq!(r.ui.get_import_problem(), "That isn't a Beeftext export.");
+        assert_eq!(r.ui.get_import_problem(), "That isn’t a Beeftext export.");
         r.ui.invoke_import_confirmed();
         for choice in [7, 8] {
             *r.host.import_pick.borrow_mut() = Some(r.dir.path().join("missing.csv"));
@@ -2046,7 +2046,7 @@ fn each_new_choice_previews_its_own_source_and_a_wrong_file_is_a_problem() {
             assert!(r.ui.get_import_open(), "choice {choice}");
             assert_eq!(
                 r.ui.get_import_problem(),
-                "Snipdeck couldn't open that. Check that it still exists.",
+                "Snipdeck couldn’t open that. Check that it still exists.",
                 "choice {choice}"
             );
             r.ui.invoke_import_confirmed();
@@ -2805,7 +2805,7 @@ fn a_browser_that_will_not_open_says_so_in_a_toast() {
         let r = rig();
         r.host.url_fails.set(true);
         r.ui.invoke_support_requested();
-        assert_eq!(r.ui.get_toast_text(), "Couldn't open the link.");
+        assert_eq!(r.ui.get_toast_text(), "Couldn’t open the link.");
         assert_eq!(r.ui.get_toast_kind(), ToastKind::Danger);
     });
 }

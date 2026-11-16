@@ -526,7 +526,7 @@ const ONE_CHAR_WARNING: &str = "A one-character trigger fires every time you typ
 const WINDOWS_ONLY_NOTE: &str = "Typing triggers work on Windows only.";
 const TYPING_TOGGLES: [&str; 2] = [
     "Expand abbreviations as I type",
-    "Suggest snippets as I type",
+    "Suggest items as I type",
 ];
 
 fn rel_lum(c: [u8; 3]) -> f64 {
