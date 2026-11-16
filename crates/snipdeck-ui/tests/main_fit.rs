@@ -135,6 +135,18 @@ fn fit_problems(c: &Case, case: &str) -> Vec<String> {
             ));
         }
     }
+    // The toolbar row: neighbours keep a gap of 4 px (the three view toggles are one segmented control).
+    let mut bar: Vec<_> = bs.iter().filter(|b| b.2 + b.4 / 2.0 < 40.0 && b.1 > 40.0).collect();
+    bar.sort_by(|a, b| a.1.total_cmp(&b.1));
+    for pair in bar.windows(2) {
+        if pair[0].0.ends_with(" view") && pair[1].0.ends_with(" view") {
+            continue;
+        }
+        let gap = pair[1].1 - (pair[0].1 + pair[0].3);
+        if gap < 3.5 && !inside(pair[0], pair[1]) && !inside(pair[1], pair[0]) {
+            out.push(format!("{case}: {:?} and {:?} are {gap:.1} px apart", pair[0].0, pair[1].0));
+        }
+    }
     for (i, a) in bs.iter().enumerate() {
         for b in &bs[i + 1..] {
             let ox = (a.1 + a.3).min(b.1 + b.3) - a.1.max(b.1);

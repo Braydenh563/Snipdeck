@@ -1308,6 +1308,7 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     if window.get_query().as_str() != screen.query {
         window.set_query(screen.query.as_str().into());
     }
+    window.set_search_capped(screen.search_capped);
     window.set_rows_reorderable(screen.reorderable);
     window.set_has_groups(screen.rows.iter().any(|r| r.header.is_some()));
     window.set_list_total(to_i32(list_total(&screen.rows)));

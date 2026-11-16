@@ -172,6 +172,8 @@ pub struct MainScreen {
     pub label_filter: Option<ItemLabel>,
     /// The search text.
     pub query: String,
+    /// The search stopped at its limit: more items match than the rows show (MAIN-2).
+    pub search_capped: bool,
     /// The keyboard cursor.
     pub cursor: usize,
     /// Rows can be dragged into a new place: the open list is in manual order and no search is running.
@@ -305,6 +307,7 @@ where
             label_chips: self.main.label_chips(),
             label_filter: self.main.label_filter(),
             query: self.main.query().to_owned(),
+            search_capped: self.main.search_capped(),
             cursor: self.main.cursor(),
             reorderable: self.main.reorderable(),
             reorder_offer: !self.main.searching()

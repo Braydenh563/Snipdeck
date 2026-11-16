@@ -348,6 +348,8 @@ export component MainWindow inherits Window {
     in-out property <int> section-index: 0;
     in-out property <MainView> view: MainView.comfortable;
     in-out property <string> query <=> search.text;
+    // The host sets it when the search filled its limit: the line then says the list is the first part of the matches.
+    in property <bool> search-capped;
     // The row the keyboard works on. The window moves it; the host resets it when the section changes.
     in-out property <int> cursor: 0;
 
@@ -885,8 +887,9 @@ export component MainWindow inherits Window {
         if (root.chooser-colour) {
             root.colour-choices-requested(index);
         }
-        root.chooser-x = min(max(root.item-menu-x, root.sidebar-w), max(root.sidebar-w, root.width - 240px));
-        root.chooser-y = min(root.item-menu-y, max(0px, root.height - 300px));
+        // The chooser is `240px * text-scale` wide: clamp with its real size, so it never leaves the window (MAIN-5).
+        root.chooser-x = max(0px, min(root.item-menu-x, root.width - 240px * root.text-scale));
+        root.chooser-y = max(0px, min(root.item-menu-y, root.height - 300px * root.text-scale));
         root.chooser-open = true;
     }
 
@@ -2580,14 +2583,22 @@ export component MainWindow inherits Window {
                             icon: Icons.folder;
                             text: @tr("Move");
                             y: (parent.height - self.height) / 2;
-                            clicked => { root.act(ItemAction.move, root.cur); }
+                            clicked => {
+                                root.item-menu-x = self.absolute-position.x;
+                                root.item-menu-y = self.absolute-position.y + self.height;
+                                root.act(ItemAction.move, root.cur);
+                            }
                         }
                         if !root.in-trash: Button {
                             horizontal-stretch: 0;
                             icon: Icons.tag;
                             text: @tr("Tag");
                             y: (parent.height - self.height) / 2;
-                            clicked => { root.act(ItemAction.tag, root.cur); }
+                            clicked => {
+                                root.item-menu-x = self.absolute-position.x;
+                                root.item-menu-y = self.absolute-position.y + self.height;
+                                root.act(ItemAction.tag, root.cur);
+                            }
                         }
                         if !root.in-trash: Button {
                             horizontal-stretch: 0;
@@ -2739,6 +2750,7 @@ export component MainWindow inherits Window {
     // While searching it counts the matches and names the board they were found in.
     property <string> status-text: root.searching
         ? (root.rows.length == 0 ? @tr("No matches in {}", root.board-name)
+            : root.search-capped ? @tr("First {} matches in {}", root.rows.length, root.board-name)
             : @tr("{n} match in {}" | "{n} matches in {}" % root.rows.length, root.board-name))
         : @tr("{n} item" | "{n} items" % root.item-total);
 

@@ -415,7 +415,12 @@ impl MainModel {
                 list_labels.insert(
                     l.id,
                     ListLabel {
-                        board: String::new(),
+                        // A hit from another board says which one (MAIN-1); with one board the name adds nothing.
+                        board: if boards.len() > 1 {
+                            b.name.as_str().to_owned()
+                        } else {
+                            String::new()
+                        },
                         name: l.name.as_str().to_owned(),
                         accent: l.accent,
                     },
@@ -591,6 +596,12 @@ impl MainModel {
     #[must_use]
     pub fn query(&self) -> &str {
         &self.query
+    }
+
+    /// Whether the search stopped at [`SEARCH_LIMIT`] hits, so more items match than are shown.
+    #[must_use]
+    pub fn search_capped(&self) -> bool {
+        self.searching() && self.hits.len() >= SEARCH_LIMIT
     }
 
     /// Whether a search is active.
@@ -1423,6 +1434,29 @@ mod tests {
         model.open(Section::All);
         assert_eq!(model.query(), "");
         assert_eq!(model.rows().len(), 11);
+    }
+
+    #[test]
+    fn a_hit_on_another_board_names_its_board() {
+        // MAIN-1: the line says "in all boards", so a hit shows where it lives.
+        let (store, mut model) = loaded();
+        model.open(Section::List(list_named(&model, "Code")));
+        model.set_query(&store, "milk").expect("search");
+        let place = model.rows()[0].list.clone().expect("a place");
+        assert!(!place.board.is_empty(), "the board of the hit: {place:?}");
+    }
+
+    #[test]
+    fn a_search_that_fills_its_limit_says_so() {
+        // MAIN-2: 200 hits may be a cut, so the status line says "first 200".
+        let (store, mut model) = loaded();
+        model.set_query(&store, "milk").expect("search");
+        assert!(!model.search_capped(), "one hit is not a cut");
+        let id = store.all_items().expect("items")[0].id;
+        model.hits = vec![id; SEARCH_LIMIT];
+        assert!(model.search_capped());
+        model.set_query(&store, "").expect("clear");
+        assert!(!model.search_capped(), "no search, no cut");
     }
 
     #[test]

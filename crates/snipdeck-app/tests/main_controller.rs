@@ -1206,6 +1206,24 @@ fn alt_arrows_move_an_item_within_its_list_and_the_cursor_follows() {
 }
 
 #[test]
+fn alt_arrows_move_a_multi_selection_as_a_block() {
+    // MAIN-11: a drag moves the whole selection, so the keys must too (WCAG 2.5.7).
+    let mut ctl = seeded();
+    open_list(&mut ctl, "Email replies");
+    let before = titles(&ctl.main_screen());
+    ctl.main_select(1, SelectMode::Replace);
+    ctl.main_select(2, SelectMode::Extend);
+    ctl.main_reorder_items(-1);
+    let after = titles(&ctl.main_screen());
+    assert_eq!(
+        after[..3],
+        [before[1].clone(), before[2].clone(), before[0].clone()],
+        "the two selected items moved up past the first"
+    );
+    assert_eq!(ctl.main_screen().selected_count, 2, "the selection stays");
+}
+
+#[test]
 fn moving_an_item_by_the_keyboard_says_where_it_went_and_the_ends_say_nothing() {
     let mut ctl = seeded();
     open_list(&mut ctl, "Email replies");
@@ -1248,19 +1266,9 @@ fn keyboard_moves_under_a_label_filter_swap_with_the_next_shown_row() {
 }
 
 #[test]
-fn a_keyboard_move_does_not_move_a_multi_selection_or_replace_an_undo_toast() {
+fn a_keyboard_move_of_a_block_does_not_replace_an_undo_toast() {
     let mut ctl = seeded();
     open_list(&mut ctl, "Email replies");
-    let before = titles(&ctl.main_screen());
-    ctl.main_select(0, SelectMode::Replace);
-    ctl.main_select(1, SelectMode::Toggle);
-    ctl.main_reorder_items(1);
-    assert_eq!(
-        titles(&ctl.main_screen()),
-        before,
-        "several rows are selected"
-    );
-
     ctl.main_select(2, SelectMode::Replace);
     ctl.main_action(MainAction::Delete, 2);
     assert!(ctl.main_screen().toast.as_ref().is_some_and(|t| t.undo));
@@ -1821,6 +1829,22 @@ fn lists_and_boards_reorder_with_the_same_steps() {
     let menu = ctl.main_screen().board_menu.unwrap();
     assert!(menu.contains(&BoardMenuEntry::MoveDown { enabled: false }));
     assert!(menu.contains(&BoardMenuEntry::MoveUp { enabled: true }));
+}
+
+#[test]
+fn moving_a_list_or_a_board_says_where_it_went_and_the_board_menu_stays_open() {
+    // MAIN-12: the same announcement as an item move; three board moves need no three menu openings.
+    use snipdeck_app::controller::BoardMenuEntry;
+    let mut ctl = seeded();
+    let total = ctl.main_screen().lists.len();
+    ctl.main_reorder_list(2, -1);
+    assert_eq!(
+        message(&ctl.main_screen()),
+        ToastMessage::ItemPlaced { position: 2, total }
+    );
+    let down = menu_index(&mut ctl, &BoardMenuEntry::MoveDown { enabled: true });
+    ctl.main_board_menu_activate(down);
+    assert!(ctl.main_screen().board_menu.is_some(), "the menu stays open");
 }
 
 #[test]

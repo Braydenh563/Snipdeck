@@ -338,7 +338,7 @@ fn typing_in_the_search_box_searches_every_board() {
         type_text(r.window(), "milk");
         assert_eq!(r.ui.get_query(), "milk");
         assert_eq!(r.titles(), ["Shopping list"], "found on the other board");
-        assert_eq!(r.ui.get_rows().row_data(0).unwrap().list_name, "Errands");
+        assert_eq!(r.ui.get_rows().row_data(0).unwrap().list_name, "Personal · Errands");
         r.open_list(0);
         assert_eq!(r.ui.get_query(), "");
         assert_eq!(r.ui.get_rows().row_count(), 6);

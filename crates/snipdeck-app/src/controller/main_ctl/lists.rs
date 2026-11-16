@@ -114,11 +114,15 @@ where
             return;
         };
         let order: Vec<ListId> = self.main.lists().iter().map(|l| l.id).collect();
-        let Some((_, placement)) = reorder(&order, index, delta) else {
+        let Some((to, placement)) = reorder(&order, index, delta) else {
             return;
         };
         let done = self.store.move_list(order[index], board, placement);
         self.finish(&done, None);
+        if done.is_ok() {
+            // The same words as an item move: where it went (MAIN-12).
+            self.announce_placed(to + 1, order.len());
+        }
     }
 
     /// Alt+Up / Alt+Down or the item menu's Move up / Move down: moves the row at the cursor one
@@ -127,10 +131,27 @@ where
     /// a multi-selection is not moved.
     pub fn main_reorder_items(&mut self, delta: isize) {
         self.main_fresh();
+        let from = self.main.cursor();
         if self.main.selected_count() > 1 {
+            // The selection moves as one block, past the row beside its first or last row (MAIN-11).
+            let moved = self.main.dragged_items(from);
+            let keys = self.main.keys();
+            let at: Vec<usize> = keys
+                .iter()
+                .enumerate()
+                .filter(|(_, k)| matches!(k, Key::Item(id) if moved.contains(id)))
+                .map(|(i, _)| i)
+                .collect();
+            let onto = match (at.first(), at.last()) {
+                (Some(&lo), _) if delta < 0 => lo.checked_sub(1),
+                (_, Some(&hi)) if delta > 0 => Some(hi + 1).filter(|n| *n < keys.len()),
+                _ => None,
+            };
+            if let Some(onto) = onto {
+                self.main_drop_row(from, onto);
+            }
             return;
         }
-        let from = self.main.cursor();
         if self.main.group_at(from).is_some() {
             // A header moves its whole group past the item or group beside it.
             self.group_move_on(Surface::Main, from, delta);
@@ -384,14 +405,17 @@ where
             BoardMenuEntry::Separator => {}
             BoardMenuEntry::New => self.new_board(),
             BoardMenuEntry::Rename => self.edit_board(),
+            // The menu stays open after a move, so a board goes three places in three activations (MAIN-12).
             BoardMenuEntry::MoveUp { enabled } => {
                 if enabled {
                     self.main_reorder_board(-1);
+                    self.main.set_board_menu(true);
                 }
             }
             BoardMenuEntry::MoveDown { enabled } => {
                 if enabled {
                     self.main_reorder_board(1);
+                    self.main.set_board_menu(true);
                 }
             }
             BoardMenuEntry::Delete { enabled } => {
@@ -441,10 +465,13 @@ where
             return;
         };
         let order: Vec<BoardId> = self.main.boards().iter().map(|b| b.id).collect();
-        let Some((_, placement)) = reorder(&order, from, delta) else {
+        let Some((to, placement)) = reorder(&order, from, delta) else {
             return;
         };
         let done = self.store.move_board(order[from], placement);
         self.finish(&done, None);
+        if done.is_ok() {
+            self.announce_placed(to + 1, order.len());
+        }
     }
 }
