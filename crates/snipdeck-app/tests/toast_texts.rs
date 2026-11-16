@@ -144,7 +144,7 @@ const fn position(message: &ToastMessage) -> usize {
     }
 }
 
-const VARIANTS: usize = 113;
+const VARIANTS: usize = 114;
 
 fn s(text: &str) -> String {
     text.to_owned()
