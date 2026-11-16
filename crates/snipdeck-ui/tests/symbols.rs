@@ -53,10 +53,9 @@ fn cell_of(index: usize, flat: usize) -> SymbolCell {
         },
         text: sym.text.clone().unwrap_or_default().into(),
         label: match kind {
-            Kind::Emoji => sym.name.clone(),
+            Kind::Emoji | Kind::Character => sym.name.clone(),
             Kind::Kaomoji => sym.keywords.first().cloned().unwrap_or_default(),
             Kind::Icon => sym.name.replace('-', " "),
-            Kind::Character => sym.name.clone(),
         }
         .into(),
         kind: match kind {
