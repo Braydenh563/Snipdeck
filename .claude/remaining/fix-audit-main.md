@@ -13,12 +13,8 @@ Real gate (GATE_BASE=506333b --changed): all ok, failed none. Full `cargo test -
 main_fit, main_window_logic, main_controller, toast_texts, settings_window ok. Dedicated tests exist for 3,4,6,7,8,9,13,16,17,18,20,24,25,28,38.
 main_fit blanket skip replaced by scrolling_reveals() (passes).
 
-## Coordinator's list still open
-1. DONE. Real gate: GATE_BASE=506333b scripts/gate.sh --changed; full `cargo test -p snipdeck-ui`; RUSTDOCFLAGS="-D warnings" cargo doc .
-2. Missing tests: MAIN-5 (chooser anchored to the bulk-bar button, clamped by real size); the rest are written above.
-3. Items 14, 15, 21, 22, 23, 29, 32, 39-44, 47, 56-60: each ends fixed with a test, or recorded in docs/SPEC.md / DESIGN.md as post-1.0 with a reason.
-   19 stays untranslated key names (recorded in shortcut_texts.slint); 26 belongs to LIBRARY-11.
-4. Audit settings_binding.rs, help_binding.rs, toast_binding.rs.
-5. Nouns: make every locale use the item noun (de Eintrag, es elemento, fr élément, pt-BR item, ja 項目, zh-Hans 项目)
-   in the OLD strings too (they still say Textbaustein / fragmento / extrait / trecho / スニペット / 片段).
-6. Push after each gated batch; report head SHA and the real gate lines.
+## Round 2
+Code + test: MAIN-5 test, 15 (F2/Delete on sidebar list/tag; splitter Home/End, double-click reset), 39 (unused-tag wording), 42 (restored notice in list/board editors), 47 (tour import row), 59 (palette checks). Nouns: six .po files + i18n test.
+Recorded post-1.0 in docs/SPEC.md section 15 (and the DESIGN.md Detail row): 14, 15 drop targets, 21, 22, 23, 29, 32, 39 New tag/merge, 40, 41, 43, 44, 56, 57, 58, 60.
+Binding audit: .claude/audit/bindings.md (agent).
+Next: green run (editors_logic, main_window_logic, i18n, snipdeck-app main_controller + palette); UPDATE_GOLDEN=1 for onboarding-welcome goldens (--test editors); GATE_BASE=506333b scripts/gate.sh --changed; push; send_message to coordinator.
