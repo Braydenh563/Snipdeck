@@ -166,7 +166,7 @@ component GrabStrip inherits Rectangle {
         y: (parent.height - self.height) / 2 + 2px;
         width: root.active || touch.has-hover ? 48px : 36px;
         height: 4px;
-        border-radius: Radius.xs;
+        border-radius: 2px;
         background: root.active || touch.pressed ? Theme.accent : touch.has-hover ? Theme.text-primary : Theme.text-tertiary;
         animate width { duration: Motion.quick; }
     }
