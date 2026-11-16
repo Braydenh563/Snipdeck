@@ -200,6 +200,7 @@ fn rich_payloads_are_sealed_at_rest() {
     });
     ctl.on_clipboard_change(&ClipboardObservation {
         files: vec![format!("C:\\Users\\{path}\\notes.txt")],
+        source_app: Some("explorer.exe".to_owned()),
         ..ClipboardObservation::default()
     });
     // A picture of pseudo-random bytes, big enough to be a blob file of its own.
@@ -221,6 +222,7 @@ fn rich_payloads_are_sealed_at_rest() {
     }
     ctl.on_clipboard_change(&ClipboardObservation {
         image: Some(png_bytes.clone()),
+        source_app: Some("snippingtool.exe".to_owned()),
         ..ClipboardObservation::default()
     });
     assert_eq!(ctl.recent_entries().len(), 3, "all three were kept");
