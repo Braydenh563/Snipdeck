@@ -2372,7 +2372,8 @@ fn an_export_that_leaves_sensitive_items_out_says_how_many_were_written() {
         })
         .expect("the demo library has a list with a sensitive item");
     let dir = tempfile::tempdir().expect("dir");
-    ctl.main_export_list(with_secret, dir.path()).expect("a file");
+    ctl.main_export_list(with_secret, dir.path())
+        .expect("a file");
     match message(&ctl.main_screen()) {
         ToastMessage::ExportedSome { written, total, .. } => assert!(written < total),
         other => panic!("expected a partial export toast, got {other:?}"),

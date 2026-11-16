@@ -8789,7 +8789,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/tests/history.rs` | 17 |
 | `crates/snipdeck-app/tests/import_preview.rs` | 14 |
 | `crates/snipdeck-app/tests/legacy_files.rs` | 3 |
-| `crates/snipdeck-app/tests/main_controller.rs` | 104 |
+| `crates/snipdeck-app/tests/main_controller.rs` | 106 |
 | `crates/snipdeck-app/tests/main_window.rs` | 51 |
 | `crates/snipdeck-app/tests/master_password.rs` | 84 |
 | `crates/snipdeck-app/tests/menu_form_texts.rs` | 3 |
@@ -8799,7 +8799,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/tests/recent_at_rest.rs` | 5 |
 | `crates/snipdeck-app/tests/repaint_hook.rs` | 4 |
 | `crates/snipdeck-app/tests/screenshot.rs` | 2 |
-| `crates/snipdeck-app/tests/settings_window.rs` | 79 |
+| `crates/snipdeck-app/tests/settings_window.rs` | 80 |
 | `crates/snipdeck-app/tests/suggest_hint.rs` | 7 |
 | `crates/snipdeck-app/tests/support/mod.rs` | 0 |
 | `crates/snipdeck-app/tests/template_texts.rs` | 1 |

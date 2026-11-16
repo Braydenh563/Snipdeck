@@ -215,7 +215,8 @@ fn fit_problems(c: &Case, case: &str) -> Vec<String> {
             let oy = (a.2 + a.4).min(b.2 + b.4) - a.2.max(b.2);
             // A rail header button below the sidebar's viewport sits behind the footer, clipped away. That is
             // only allowed when wheeling the sidebar really brings it into view (proved by `scrolling_reveals`).
-            let behind_footer = |x: &(String, f32, f32, f32, f32), f: &(String, f32, f32, f32, f32)| {
+            let behind_footer = |x: &(String, f32, f32, f32, f32),
+                                 f: &(String, f32, f32, f32, f32)| {
                 matches!(x.0.as_str(), "Add list" | "Manage tags")
                     && matches!(f.0.as_str(), "Settings" | "Help")
                     && x.2 + x.4 > f.2

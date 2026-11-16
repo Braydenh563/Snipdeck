@@ -3121,6 +3121,10 @@ fn escape_closes_the_erase_question_before_anything_else() {
         assert!(r.ui.get_erase_open());
         press(r.ui.window(), &key(slint::platform::Key::Escape));
         assert!(!r.ui.get_erase_open(), "Esc closes the question");
-        assert_eq!(board_names(r.ctl.borrow().store()).len(), 2, "and erases nothing");
+        assert_eq!(
+            board_names(r.ctl.borrow().store()).len(),
+            2,
+            "and erases nothing"
+        );
     });
 }
