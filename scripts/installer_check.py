@@ -28,6 +28,8 @@ TABLE = ROOT / "packaging/registration.json"
 LAUNCHER_DATA = ROOT / "tools/launcher/data.ps1"
 APP_MANIFEST = ROOT / "crates/snipdeck-app/snipdeck.manifest"
 APP_BUILD_RS = ROOT / "crates/snipdeck-app/build.rs"
+DATA_RECORD = ROOT / "crates/snipdeck-platform/src/data_record.rs"
+DATA_RECORD_WIN = ROOT / "crates/snipdeck-platform/src/windows/data_record.rs"
 # What the exe's own manifest must carry (PLATFORM-15), as (needle, why).
 APP_MANIFEST_PARTS = (
     ("Microsoft.Windows.Common-Controls", "Common Controls v6"),
@@ -37,7 +39,6 @@ APP_MANIFEST_PARTS = (
     ("8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a", "supportedOS Windows 10/11"),
     (">PerMonitorV2", "per-monitor v2 DPI awareness"),
     ('level="asInvoker"', "asInvoker"),
-    (">UTF-8</activeCodePage>", "the UTF-8 code page"),
 )
 PACKAGING_DOCS = (ROOT / "docs/packaging.md", ROOT / "packaging/msix/README.md")
 # Custom messages that Inno itself defines in every language file.
@@ -254,13 +255,79 @@ def check_code(errors, text):
     if re.search(r"DelTree\(\s*GetEnv", code):
         errors.append("[Code] DelTree must not take GetEnv(...) directly: an empty variable gives a path at the drive root")
     for call in re.findall(r"DelTree\(([^,]+),", code):
-        if call.strip() not in ("Data", "RecordedData") and not re.match(r"(Profile|Tmp) \+ '", call.strip()):
+        if call.strip() not in ("Data", "Full") and not re.match(r"(Profile|Tmp) \+ '", call.strip()):
             errors.append(f"[Code] DelTree({call.strip()}) is not one of the guarded paths")
     for var in ("Profile", "Tmp"):
         if not re.search(rf"if {var} <> '' then\s*\n\s*DelTree\({var} \+", code):
             errors.append(f"[Code] DelTree on {var} must be guarded by 'if {var} <> '''")
     if "SafeToErase" not in code or "DataKey" not in code:
         errors.append("[Code] must erase the recorded data folder (DataKey) through SafeToErase")
+
+
+def rust_table(text, name):
+    """The string items of `pub const NAME: &[&str] = &[...]` or `pub const NAME: &str = "..."`."""
+    m = re.search(rf"pub const {name}: &\[&str\] = &\[(.*?)\];", text, re.S)
+    if m:
+        return re.findall(r'"([^"]*)"', m.group(1))
+    m = re.search(rf'pub const {name}: &str = r?"([^"]*)";', text)
+    if not m:
+        raise ValueError(f"{name} not found in data_record.rs")
+    return [m.group(1)]
+
+
+def pascal_const(code, name):
+    m = re.search(rf"^\s*{name}\s*=\s*'([^']*)';", code, re.M)
+    if not m:
+        raise ValueError(f"{name} not found in the [Code] constants")
+    return m.group(1)
+
+
+def check_erase(errors, iss_text=None, rust_text=None, win_text=None):
+    """The uninstaller erases only Snipdeck's own files in a marked folder, from the same tables as Rust."""
+    iss = iss_text if iss_text is not None else ISS.read_text(encoding="utf-8-sig")
+    rust = rust_text if rust_text is not None else DATA_RECORD.read_text(encoding="utf-8")
+    win = win_text if win_text is not None else DATA_RECORD_WIN.read_text(encoding="utf-8")
+    code = iss[iss.find("\n[Code]\n"):]
+    try:
+        tables = (
+            ("MarkerFile", "MARKER_FILE", False),
+            ("OwnEntries", "OWN_ENTRIES", True),
+            ("ProtectedNames", "PROTECTED_NAMES", True),
+        )
+        for pascal, rname, is_list in tables:
+            theirs = pascal_const(code, pascal)
+            theirs = [x for x in theirs.split("|") if x] if is_list else [theirs]
+            ours = rust_table(rust, rname)
+            if sorted(theirs) != sorted(ours):
+                errors.append(f"[Code] {pascal} differs from {rname} in data_record.rs: {sorted(theirs)} vs {sorted(ours)}")
+        if pascal_const(code, "DataKey") != rust_table(rust, "KEY")[0]:
+            errors.append("[Code] DataKey differs from KEY in data_record.rs")
+        value = rust_table(rust, "VALUE")[0]
+        if pascal_const(code, "DataValue") != value:
+            errors.append("[Code] DataValue differs from VALUE in data_record.rs")
+        if f'w!("{value}")' not in win:
+            errors.append("windows/data_record.rs must write the value named VALUE in data_record.rs")
+    except ValueError as err:
+        errors.append(str(err))
+    if "RegQueryMultiStringValue" not in code or "REG_MULTI_SZ" not in win:
+        errors.append("the recorded data folders must be a multi-string list, read with RegQueryMultiStringValue")
+    if re.search(r"DelTree\(\s*(RecordedFolders|Folder|Item|Custom)\b", code):
+        errors.append("[Code] DelTree must never take a recorded folder: erase only the OwnEntries inside it")
+    if not re.search(r"FileExists\([^;]*\+ MarkerFile\)", code) or "ErasableFolder" not in code:
+        errors.append("[Code] a recorded folder needs its marker file (ErasableFolder: SafeToErase and FileExists(... MarkerFile))")
+    if not re.search(r"Result := SafeToErase\(Folder\) and DirExists\(Folder\) and FileExists", code):
+        errors.append("[Code] ErasableFolder must require SafeToErase, the folder and the marker together")
+    if not re.search(r"ErasableRecorded\(", code) or not re.search(r"EraseOwnFiles\(", code):
+        errors.append("[Code] the recorded folders must go through ErasableRecorded and EraseOwnFiles")
+    m = re.search(r"procedure EraseOwnFiles.*?\nend;", code, re.S)
+    body = m.group(0) if m else ""
+    if not re.search(r"DeleteFile\(.*MarkerFile\)", body) or not re.search(r"RemoveDir\(RemoveBackslash\(Folder\)\)", body):
+        errors.append("[Code] EraseOwnFiles must delete the marker and then RemoveDir the folder (RemoveDir leaves a non-empty folder)")
+    if body.rfind("RemoveDir") < body.rfind("DeleteFile") or "DelTree(Full" not in body:
+        errors.append("[Code] EraseOwnFiles must remove the folder last and delete only its own entries")
+    for needle in ("'\\..\\'", "USERPROFILE", "ProtectedNames", "Length(P) <= 3"):
+        if needle not in (re.search(r"function SafeToErase.*?\nend;", code, re.S) or [""])[0]:
+            errors.append(f"[Code] SafeToErase must check {needle}")
 
 
 def check_arch(errors, text, setup):
@@ -283,6 +350,8 @@ def check_app_manifest(errors, manifest_text=None, build_text=None):
     for needle, why in APP_MANIFEST_PARTS:
         if needle not in text:
             errors.append(f"snipdeck.manifest lacks {why} ({needle!r})")
+    if "<activeCodePage" in re.sub(r"<!--.*?-->", "", text, flags=re.S):
+        errors.append("snipdeck.manifest must not set activeCodePage: nothing calls an ANSI API (see the comment in the manifest)")
     if "set_manifest_file(MANIFEST)" not in build or 'MANIFEST: &str = "snipdeck.manifest"' not in build:
         errors.append("crates/snipdeck-app/build.rs must embed snipdeck.manifest with set_manifest_file")
 
@@ -402,6 +471,7 @@ def run():
         check_encoding(errors)
         check_custom_messages(errors, iss_text)
         check_code(errors, iss_text)
+        check_erase(errors, iss_text)
         check_arch(errors, iss_text, setup)
         check_registration(errors, iss_text, json.loads(TABLE.read_text(encoding="utf-8")),
                            MANIFEST.read_text(encoding="utf-8"), LAUNCHER_DATA.read_text(encoding="utf-8"))

@@ -157,7 +157,16 @@ struct OwnerOnly {
 
 impl OwnerOnly {
     fn new(sid: &str) -> Result<Self, Error> {
-        let sddl = HSTRING::from(format!("D:(A;;GA;;;{sid})S:(ML;;NW;;;ME)"));
+        Self::from_sddl(&format!("D:(A;;GA;;;{sid})S:(ML;;NW;;;ME)"))
+    }
+
+    /// The installer marker's descriptor: also readable by Setup at normal integrity.
+    fn marker(sid: &str) -> Result<Self, Error> {
+        Self::from_sddl(&crate::instance_names::marker_sddl(sid))
+    }
+
+    fn from_sddl(sddl: &str) -> Result<Self, Error> {
+        let sddl = HSTRING::from(sddl);
         let mut descriptor = PSECURITY_DESCRIPTOR::default();
         // SAFETY: `sddl` is a NUL-terminated wide string that outlives the call; `descriptor`
         // receives a `LocalAlloc`ed block, freed in `Drop`.
@@ -399,6 +408,8 @@ pub struct SingleInstance {
     _mutex: Handle,
     /// Fixed-name marker the installer's `AppMutex` looks for (unverified on Windows). Best effort.
     _marker: Option<Handle>,
+    /// Why the marker could not be created (the app logs it; Setup then cannot see a running app).
+    marker_error: Option<String>,
 }
 
 impl std::fmt::Debug for SingleInstance {
@@ -408,6 +419,12 @@ impl std::fmt::Debug for SingleInstance {
 }
 
 impl SingleInstance {
+    /// Why the installer marker mutex could not be created, if it could not (for the log).
+    #[must_use]
+    pub fn marker_error(&self) -> Option<&str> {
+        self.marker_error.as_deref()
+    }
+
     /// Claims the instance for `app_id`, or hands `request` to the instance that has it.
     ///
     /// `on_request` runs on the listener thread for every request a later launch hands over (a plain
@@ -499,10 +516,21 @@ impl SingleInstance {
         // The installer cannot compute the per-folder id, so every first instance also holds the
         // fixed marker name (squatting it only makes Setup ask to close the app: harmless).
         let marker = HSTRING::from(crate::instance_names::INSTALLER_MARKER_MUTEX);
-        // SAFETY: plain named mutex, default security, name is a valid NUL-terminated HSTRING.
-        let marker = unsafe { CreateMutexW(None, false, PCWSTR(marker.as_ptr())) }
-            .ok()
-            .map(Handle);
+        // Its own descriptor (unverified on Windows): Setup at normal integrity must be able to open
+        // it even when this copy runs elevated. A failure is kept for the caller to log.
+        let created = user_sid()
+            .and_then(|sid| OwnerOnly::marker(&sid))
+            .and_then(|descriptor| {
+                let attributes = descriptor.attributes();
+                // SAFETY: a named mutex with an explicit descriptor that outlives the call (it is
+                // dropped after); the name is a valid NUL-terminated HSTRING.
+                unsafe { CreateMutexW(Some(&raw const attributes), false, PCWSTR(marker.as_ptr())) }
+                    .map_err(|e| Error::from_windows("CreateMutexW (installer marker)", &e))
+            });
+        let (marker, marker_error) = match created {
+            Ok(h) => (Some(Handle(h)), None),
+            Err(e) => (None, Some(e.to_string())),
+        };
         let Objects {
             mutex,
             raise,
@@ -522,6 +550,7 @@ impl SingleInstance {
             _section: section,
             _mutex: mutex,
             _marker: marker,
+            marker_error,
         }))
     }
 }

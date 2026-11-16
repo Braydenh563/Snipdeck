@@ -121,6 +121,18 @@ pub fn normalize_dir_key(path: &str) -> String {
 /// (the installer cannot compute the per-user, per-folder [`instance_id`]).
 pub const INSTALLER_MARKER_MUTEX: &str = r"Local\Snipdeck-main";
 
+/// The `SYNCHRONIZE` access right (all `OpenMutex` in Setup's `CheckForMutexes` asks for).
+const SYNCHRONIZE: &str = "0x00100000";
+
+/// The security descriptor (SDDL) of the installer marker mutex: the owner everything, every
+/// authenticated user `SYNCHRONIZE` only (no write, no delete), and a medium mandatory label that
+/// forbids write-up. So a Setup at normal integrity can open the marker of an app that runs
+/// elevated (or as another administrator account) and cannot change or release it.
+#[must_use]
+pub fn marker_sddl(user_sid: &str) -> String {
+    format!("D:(A;;GA;;;{user_sid})(A;;{SYNCHRONIZE};;;AU)S:(ML;;NW;;;ME)")
+}
+
 /// The id every kernel object name of one instance is built from: 32 hex characters, a hash of
 /// `user_sid` (the SID string of the logged-on user) and the data folder's [`normalize_dir_key`].
 ///
@@ -145,6 +157,21 @@ pub fn instance_id(user_sid: &str, dir_key: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn marker_sddl_lets_setup_synchronize_and_nothing_else() {
+        let sddl = super::marker_sddl("S-1-5-21-1-2-3-1001");
+        assert_eq!(
+            sddl,
+            "D:(A;;GA;;;S-1-5-21-1-2-3-1001)(A;;0x00100000;;;AU)S:(ML;;NW;;;ME)"
+        );
+        // Exactly two allow entries; the broad one is SYNCHRONIZE alone, never a generic right.
+        assert_eq!(sddl.matches("(A;;").count(), 2);
+        assert!(sddl.contains("(A;;0x00100000;;;AU)"));
+        assert!(!sddl.contains(";;;WD") && !sddl.contains("GA;;;AU"));
+        // A medium label with no-write-up, so a normal-integrity Setup is not shut out.
+        assert!(sddl.ends_with("S:(ML;;NW;;;ME)"));
+    }
+
     #[test]
     fn installer_marker_matches_the_inno_app_mutex() {
         assert_eq!(super::INSTALLER_MARKER_MUTEX, r"Local\Snipdeck-main");

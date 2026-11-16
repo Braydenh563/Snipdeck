@@ -133,6 +133,31 @@ class NewRules(unittest.TestCase):
         text = ISS_TEXT.replace("DelTree(Tmp + ", "DelTree(GetEnv('TEMP') + ", 1)
         self.assertTrue(run_check(ic.check_code, text))
 
+    def test_erase_rules_pass(self):
+        self.assertEqual(run_check(ic.check_erase), [])
+
+    def test_erase_tables_must_match_rust(self):
+        self.assertTrue(run_check(ic.check_erase, ISS_TEXT.replace("snipdeck.lock|", "", 1)))
+        self.assertTrue(run_check(ic.check_erase, ISS_TEXT.replace("documents|", "", 1)))
+        self.assertTrue(run_check(ic.check_erase, ISS_TEXT.replace("snipdeck-data-folder.txt", "x.txt", 1)))
+        self.assertTrue(run_check(ic.check_erase, ISS_TEXT.replace("'DataDirs'", "'DataDir'", 1)))
+
+    def test_erase_never_deltrees_a_recorded_folder(self):
+        bad = ISS_TEXT.replace("EraseOwnFiles(Copy(Rest, 1, P - 1));", "DelTree(Copy(Rest, 1, P - 1), True, True, True);", 1)
+        self.assertTrue(run_check(ic.check_code, bad))
+        bad = ISS_TEXT.replace("EraseOwnFiles(Copy(Rest, 1, P - 1));", "DelTree(Custom, True, True, True);", 1)
+        self.assertTrue(run_check(ic.check_erase, bad))
+        self.assertTrue(run_check(ic.check_code, bad))
+
+    def test_erase_needs_the_marker_and_the_empty_check(self):
+        self.assertTrue(run_check(ic.check_erase, ISS_TEXT.replace(" and FileExists(RemoveBackslash(Folder) + '\\' + MarkerFile)", "", 1)))
+        self.assertTrue(run_check(ic.check_erase, ISS_TEXT.replace("  RemoveDir(RemoveBackslash(Folder));\n", "", 1)))
+        self.assertTrue(run_check(ic.check_erase, ISS_TEXT.replace("RegQueryMultiStringValue", "RegQueryStringValue", 1)))
+
+    def test_erase_guard_needs_its_checks(self):
+        for needle in ("USERPROFILE", "ProtectedNames", "Length(P) <= 3"):
+            self.assertTrue(run_check(ic.check_erase, ISS_TEXT.replace(needle, "X", 1)), needle)
+
     def test_downgrade_guard_required(self):
         self.assertTrue(run_check(ic.check_code, ISS_TEXT.replace("DowngradeWarning", "Nothing")))
 
@@ -150,6 +175,8 @@ class NewRules(unittest.TestCase):
             self.assertIn(needle, text)
             self.assertTrue(run_check(ic.check_app_manifest, text.replace(needle, "x", 1), build), needle)
         self.assertTrue(run_check(ic.check_app_manifest, text, build.replace("set_manifest_file", "other")))
+        code_page = '<activeCodePage xmlns="http://schemas.microsoft.com/SMI/2019/WindowsSettings">UTF-8</activeCodePage>'
+        self.assertTrue(run_check(ic.check_app_manifest, text.replace("</windowsSettings>", code_page + "</windowsSettings>"), build))
 
 
 if __name__ == "__main__":

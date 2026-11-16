@@ -2592,11 +2592,11 @@ report_hotkey_problems | crates/snipdeck-app/src/main.rs:1094
 Library | crates/snipdeck-app/src/main.rs:1113
 data_folder | crates/snipdeck-app/src/main.rs:1122
 open_library | crates/snipdeck-app/src/main.rs:1131
-select_backend | crates/snipdeck-app/src/main.rs:1200
-with_app_icon | crates/snipdeck-app/src/main.rs:1233
-attach_when_created | crates/snipdeck-app/src/main.rs:1253
-with_binding | crates/snipdeck-app/src/main.rs:1266
-on_ui_thread | crates/snipdeck-app/src/main.rs:1277
+select_backend | crates/snipdeck-app/src/main.rs:1204
+with_app_icon | crates/snipdeck-app/src/main.rs:1237
+attach_when_created | crates/snipdeck-app/src/main.rs:1257
+with_binding | crates/snipdeck-app/src/main.rs:1270
+on_ui_thread | crates/snipdeck-app/src/main.rs:1281
 
 ### crates/snipdeck-app/src/main_binding.rs
 
@@ -3413,32 +3413,32 @@ system_look | crates/snipdeck-app/src/platform.rs:58
 monitor_under | crates/snipdeck-app/src/platform.rs:146
 failure_of | crates/snipdeck-app/src/platform.rs:164
 connect | crates/snipdeck-app/src/platform.rs:365
-imp | crates/snipdeck-app/src/platform.rs:459
-system_look | crates/snipdeck-app/src/platform.rs:480
-connect | crates/snipdeck-app/src/platform.rs:488
-system_look | crates/snipdeck-app/src/platform.rs:533
-attach_parent_console | crates/snipdeck-app/src/platform.rs:540
-harden_dll_search | crates/snipdeck-app/src/platform.rs:552
-show_startup_failure | crates/snipdeck-app/src/platform.rs:560
-ask_to_quit | crates/snipdeck-app/src/platform.rs:571
-instance_id | crates/snipdeck-app/src/platform.rs:585
-canonical_for_key | crates/snipdeck-app/src/platform.rs:597
-is_packaged | crates/snipdeck-app/src/platform.rs:618
-launched_by_startup_task | crates/snipdeck-app/src/platform.rs:633
-sync_autostart | crates/snipdeck-app/src/platform.rs:648
-hello | crates/snipdeck-app/src/platform.rs:674
-file_picker | crates/snipdeck-app/src/platform.rs:690
-Instance | crates/snipdeck-app/src/platform.rs:705
-Ack | crates/snipdeck-app/src/platform.rs:713
-Callbacks | crates/snipdeck-app/src/platform.rs:717
-Host | crates/snipdeck-app/src/platform.rs:747
-impl std::fmt::Debug for Host | crates/snipdeck-app/src/platform.rs:777
-fmt | crates/snipdeck-app/src/platform.rs:778
-Start | crates/snipdeck-app/src/platform.rs:785
-connect | crates/snipdeck-app/src/platform.rs:800
-tests | crates/snipdeck-app/src/platform.rs:805
-the_instance_follows_the_data_folder_however_it_is_spelled | crates/snipdeck-app/src/platform.rs:809
-off_windows_the_dev_host_pastes_into_the_demo_target | crates/snipdeck-app/src/platform.rs:828
+imp | crates/snipdeck-app/src/platform.rs:464
+system_look | crates/snipdeck-app/src/platform.rs:485
+connect | crates/snipdeck-app/src/platform.rs:493
+system_look | crates/snipdeck-app/src/platform.rs:538
+attach_parent_console | crates/snipdeck-app/src/platform.rs:545
+harden_dll_search | crates/snipdeck-app/src/platform.rs:557
+show_startup_failure | crates/snipdeck-app/src/platform.rs:565
+ask_to_quit | crates/snipdeck-app/src/platform.rs:576
+instance_id | crates/snipdeck-app/src/platform.rs:590
+canonical_for_key | crates/snipdeck-app/src/platform.rs:602
+is_packaged | crates/snipdeck-app/src/platform.rs:623
+launched_by_startup_task | crates/snipdeck-app/src/platform.rs:638
+sync_autostart | crates/snipdeck-app/src/platform.rs:653
+hello | crates/snipdeck-app/src/platform.rs:679
+file_picker | crates/snipdeck-app/src/platform.rs:695
+Instance | crates/snipdeck-app/src/platform.rs:710
+Ack | crates/snipdeck-app/src/platform.rs:718
+Callbacks | crates/snipdeck-app/src/platform.rs:722
+Host | crates/snipdeck-app/src/platform.rs:752
+impl std::fmt::Debug for Host | crates/snipdeck-app/src/platform.rs:782
+fmt | crates/snipdeck-app/src/platform.rs:783
+Start | crates/snipdeck-app/src/platform.rs:790
+connect | crates/snipdeck-app/src/platform.rs:805
+tests | crates/snipdeck-app/src/platform.rs:810
+the_instance_follows_the_data_folder_however_it_is_spelled | crates/snipdeck-app/src/platform.rs:814
+off_windows_the_dev_host_pastes_into_the_demo_target | crates/snipdeck-app/src/platform.rs:833
 
 ### crates/snipdeck-app/src/popup_window.rs
 
@@ -5315,21 +5315,36 @@ a_stale_value_is_rewritten_only_when_the_setting_is_on | crates/snipdeck-platfor
 
 ### crates/snipdeck-platform/src/data_record.rs
 
-KEY | crates/snipdeck-platform/src/data_record.rs:14
-VALUE | crates/snipdeck-platform/src/data_record.rs:16
-RecordAction | crates/snipdeck-platform/src/data_record.rs:20
-plan | crates/snipdeck-platform/src/data_record.rs:34
-is_absolute | crates/snipdeck-platform/src/data_record.rs:49
-same_folder | crates/snipdeck-platform/src/data_record.rs:56
-safe_to_erase | crates/snipdeck-platform/src/data_record.rs:69
-tests | crates/snipdeck-platform/src/data_record.rs:80
-plan_for | crates/snipdeck-platform/src/data_record.rs:86
-the_default_folder_is_not_recorded | crates/snipdeck-platform/src/data_record.rs:91
-a_custom_folder_is_recorded_once | crates/snipdeck-platform/src/data_record.rs:100
-a_stale_record_is_cleared_on_the_default | crates/snipdeck-platform/src/data_record.rs:114
-relative_and_empty_folders_are_never_recorded | crates/snipdeck-platform/src/data_record.rs:119
-an_unknown_default_still_records_a_custom_folder | crates/snipdeck-platform/src/data_record.rs:126
-erase_refuses_roots_and_the_profile | crates/snipdeck-platform/src/data_record.rs:134
+KEY | crates/snipdeck-platform/src/data_record.rs:18
+VALUE | crates/snipdeck-platform/src/data_record.rs:20
+MAX_FOLDERS | crates/snipdeck-platform/src/data_record.rs:22
+MARKER_FILE | crates/snipdeck-platform/src/data_record.rs:25
+OWN_ENTRIES | crates/snipdeck-platform/src/data_record.rs:27
+PROTECTED_NAMES | crates/snipdeck-platform/src/data_record.rs:41
+RecordAction | crates/snipdeck-platform/src/data_record.rs:62
+plan | crates/snipdeck-platform/src/data_record.rs:75
+encode_multi | crates/snipdeck-platform/src/data_record.rs:97
+decode_multi | crates/snipdeck-platform/src/data_record.rs:112
+write_marker | crates/snipdeck-platform/src/data_record.rs:125
+is_absolute | crates/snipdeck-platform/src/data_record.rs:139
+has_drive | crates/snipdeck-platform/src/data_record.rs:143
+same_folder | crates/snipdeck-platform/src/data_record.rs:149
+safe_to_erase | crates/snipdeck-platform/src/data_record.rs:163
+tests | crates/snipdeck-platform/src/data_record.rs:178
+plan_for | crates/snipdeck-platform/src/data_record.rs:184
+list | crates/snipdeck-platform/src/data_record.rs:189
+the_default_folder_is_not_recorded | crates/snipdeck-platform/src/data_record.rs:194
+a_custom_folder_is_added_once | crates/snipdeck-platform/src/data_record.rs:203
+a_second_folder_does_not_replace_the_first | crates/snipdeck-platform/src/data_record.rs:214
+the_default_keeps_older_records | crates/snipdeck-platform/src/data_record.rs:222
+the_list_is_capped_and_drops_the_oldest | crates/snipdeck-platform/src/data_record.rs:227
+relative_and_empty_folders_are_never_recorded | crates/snipdeck-platform/src/data_record.rs:238
+an_unknown_default_still_records_a_custom_folder | crates/snipdeck-platform/src/data_record.rs:244
+multi_string_round_trips | crates/snipdeck-platform/src/data_record.rs:249
+the_marker_is_written_once_and_creates_the_folder | crates/snipdeck-platform/src/data_record.rs:260
+the_tables_are_plain_names | crates/snipdeck-platform/src/data_record.rs:272
+erase_refuses_roots_and_the_profile | crates/snipdeck-platform/src/data_record.rs:287
+erase_refuses_well_known_folders_and_odd_paths | crates/snipdeck-platform/src/data_record.rs:299
 
 ### crates/snipdeck-platform/src/dwm_look.rs
 
@@ -5623,15 +5638,18 @@ lock_mutex_name | crates/snipdeck-platform/src/instance_names.rs:84
 section_name | crates/snipdeck-platform/src/instance_names.rs:94
 normalize_dir_key | crates/snipdeck-platform/src/instance_names.rs:103
 INSTALLER_MARKER_MUTEX | crates/snipdeck-platform/src/instance_names.rs:122
-instance_id | crates/snipdeck-platform/src/instance_names.rs:130
-tests | crates/snipdeck-platform/src/instance_names.rs:147
-installer_marker_matches_the_inno_app_mutex | crates/snipdeck-platform/src/instance_names.rs:149
-every_object_has_its_own_name_and_all_are_local | crates/snipdeck-platform/src/instance_names.rs:154
-one_folder_has_one_key_whatever_its_spelling | crates/snipdeck-platform/src/instance_names.rs:176
-the_id_follows_the_user_and_the_folder | crates/snipdeck-platform/src/instance_names.rs:197
-names_are_local_and_distinct | crates/snipdeck-platform/src/instance_names.rs:218
-rejects_bad_ids | crates/snipdeck-platform/src/instance_names.rs:233
-the_mutex_and_event_names_never_collide | crates/snipdeck-platform/src/instance_names.rs:245
+SYNCHRONIZE | crates/snipdeck-platform/src/instance_names.rs:125
+marker_sddl | crates/snipdeck-platform/src/instance_names.rs:132
+instance_id | crates/snipdeck-platform/src/instance_names.rs:142
+tests | crates/snipdeck-platform/src/instance_names.rs:159
+marker_sddl_lets_setup_synchronize_and_nothing_else | crates/snipdeck-platform/src/instance_names.rs:161
+installer_marker_matches_the_inno_app_mutex | crates/snipdeck-platform/src/instance_names.rs:176
+every_object_has_its_own_name_and_all_are_local | crates/snipdeck-platform/src/instance_names.rs:181
+one_folder_has_one_key_whatever_its_spelling | crates/snipdeck-platform/src/instance_names.rs:203
+the_id_follows_the_user_and_the_folder | crates/snipdeck-platform/src/instance_names.rs:224
+names_are_local_and_distinct | crates/snipdeck-platform/src/instance_names.rs:245
+rejects_bad_ids | crates/snipdeck-platform/src/instance_names.rs:260
+the_mutex_and_event_names_never_collide | crates/snipdeck-platform/src/instance_names.rs:272
 
 ### crates/snipdeck-platform/src/keys.rs
 
@@ -6558,14 +6576,13 @@ attach_parent_console | crates/snipdeck-platform/src/windows/console.rs:21
 
 ### crates/snipdeck-platform/src/windows/data_record.rs
 
-KEY | crates/snipdeck-platform/src/windows/data_record.rs:23
-VALUE | crates/snipdeck-platform/src/windows/data_record.rs:24
-os_error | crates/snipdeck-platform/src/windows/data_record.rs:26
-check | crates/snipdeck-platform/src/windows/data_record.rs:30
-read | crates/snipdeck-platform/src/windows/data_record.rs:39
-write | crates/snipdeck-platform/src/windows/data_record.rs:77
-clear | crates/snipdeck-platform/src/windows/data_record.rs:107
-sync | crates/snipdeck-platform/src/windows/data_record.rs:130
+KEY | crates/snipdeck-platform/src/windows/data_record.rs:24
+VALUE | crates/snipdeck-platform/src/windows/data_record.rs:25
+os_error | crates/snipdeck-platform/src/windows/data_record.rs:27
+check | crates/snipdeck-platform/src/windows/data_record.rs:31
+read | crates/snipdeck-platform/src/windows/data_record.rs:40
+write | crates/snipdeck-platform/src/windows/data_record.rs:79
+sync | crates/snipdeck-platform/src/windows/data_record.rs:113
 
 ### crates/snipdeck-platform/src/windows/dll_search.rs
 
@@ -6925,42 +6942,45 @@ user_sid | crates/snipdeck-platform/src/windows/single_instance.rs:116
 OwnerOnly | crates/snipdeck-platform/src/windows/single_instance.rs:154
 impl OwnerOnly | crates/snipdeck-platform/src/windows/single_instance.rs:158
 new | crates/snipdeck-platform/src/windows/single_instance.rs:159
-attributes | crates/snipdeck-platform/src/windows/single_instance.rs:178
-impl Drop for OwnerOnly | crates/snipdeck-platform/src/windows/single_instance.rs:187
-drop | crates/snipdeck-platform/src/windows/single_instance.rs:188
-Section | crates/snipdeck-platform/src/windows/single_instance.rs:197
-impl Section | crates/snipdeck-platform/src/windows/single_instance.rs:209
-create | crates/snipdeck-platform/src/windows/single_instance.rs:210
-with_mailbox | crates/snipdeck-platform/src/windows/single_instance.rs:237
-impl Drop for Section | crates/snipdeck-platform/src/windows/single_instance.rs:245
-drop | crates/snipdeck-platform/src/windows/single_instance.rs:246
-Objects | crates/snipdeck-platform/src/windows/single_instance.rs:259
-OpenError | crates/snipdeck-platform/src/windows/single_instance.rs:270
-create_event | crates/snipdeck-platform/src/windows/single_instance.rs:276
-create_mutex | crates/snipdeck-platform/src/windows/single_instance.rs:297
-impl Objects | crates/snipdeck-platform/src/windows/single_instance.rs:320
-open | crates/snipdeck-platform/src/windows/single_instance.rs:323
-Acquired | crates/snipdeck-platform/src/windows/single_instance.rs:352
-Delivery | crates/snipdeck-platform/src/windows/single_instance.rs:361
-Ack | crates/snipdeck-platform/src/windows/single_instance.rs:373
-impl Ack | crates/snipdeck-platform/src/windows/single_instance.rs:375
-send | crates/snipdeck-platform/src/windows/single_instance.rs:377
-impl std::fmt::Debug for Ack | crates/snipdeck-platform/src/windows/single_instance.rs:383
-fmt | crates/snipdeck-platform/src/windows/single_instance.rs:384
-SingleInstance | crates/snipdeck-platform/src/windows/single_instance.rs:390
-impl std::fmt::Debug for SingleInstance | crates/snipdeck-platform/src/windows/single_instance.rs:404
-fmt | crates/snipdeck-platform/src/windows/single_instance.rs:405
-impl SingleInstance | crates/snipdeck-platform/src/windows/single_instance.rs:410
-acquire | crates/snipdeck-platform/src/windows/single_instance.rs:426
-become_first | crates/snipdeck-platform/src/windows/single_instance.rs:460
-Locked | crates/snipdeck-platform/src/windows/single_instance.rs:530
-impl Drop for Locked<'_> | crates/snipdeck-platform/src/windows/single_instance.rs:532
-drop | crates/snipdeck-platform/src/windows/single_instance.rs:533
-hand_over | crates/snipdeck-platform/src/windows/single_instance.rs:540
-ask_to_quit | crates/snipdeck-platform/src/windows/single_instance.rs:598
-listen | crates/snipdeck-platform/src/windows/single_instance.rs:620
-impl Drop for SingleInstance | crates/snipdeck-platform/src/windows/single_instance.rs:656
-drop | crates/snipdeck-platform/src/windows/single_instance.rs:657
+marker | crates/snipdeck-platform/src/windows/single_instance.rs:164
+from_sddl | crates/snipdeck-platform/src/windows/single_instance.rs:168
+attributes | crates/snipdeck-platform/src/windows/single_instance.rs:187
+impl Drop for OwnerOnly | crates/snipdeck-platform/src/windows/single_instance.rs:196
+drop | crates/snipdeck-platform/src/windows/single_instance.rs:197
+Section | crates/snipdeck-platform/src/windows/single_instance.rs:206
+impl Section | crates/snipdeck-platform/src/windows/single_instance.rs:218
+create | crates/snipdeck-platform/src/windows/single_instance.rs:219
+with_mailbox | crates/snipdeck-platform/src/windows/single_instance.rs:246
+impl Drop for Section | crates/snipdeck-platform/src/windows/single_instance.rs:254
+drop | crates/snipdeck-platform/src/windows/single_instance.rs:255
+Objects | crates/snipdeck-platform/src/windows/single_instance.rs:268
+OpenError | crates/snipdeck-platform/src/windows/single_instance.rs:279
+create_event | crates/snipdeck-platform/src/windows/single_instance.rs:285
+create_mutex | crates/snipdeck-platform/src/windows/single_instance.rs:306
+impl Objects | crates/snipdeck-platform/src/windows/single_instance.rs:329
+open | crates/snipdeck-platform/src/windows/single_instance.rs:332
+Acquired | crates/snipdeck-platform/src/windows/single_instance.rs:361
+Delivery | crates/snipdeck-platform/src/windows/single_instance.rs:370
+Ack | crates/snipdeck-platform/src/windows/single_instance.rs:382
+impl Ack | crates/snipdeck-platform/src/windows/single_instance.rs:384
+send | crates/snipdeck-platform/src/windows/single_instance.rs:386
+impl std::fmt::Debug for Ack | crates/snipdeck-platform/src/windows/single_instance.rs:392
+fmt | crates/snipdeck-platform/src/windows/single_instance.rs:393
+SingleInstance | crates/snipdeck-platform/src/windows/single_instance.rs:399
+impl std::fmt::Debug for SingleInstance | crates/snipdeck-platform/src/windows/single_instance.rs:415
+fmt | crates/snipdeck-platform/src/windows/single_instance.rs:416
+impl SingleInstance | crates/snipdeck-platform/src/windows/single_instance.rs:421
+marker_error | crates/snipdeck-platform/src/windows/single_instance.rs:424
+acquire | crates/snipdeck-platform/src/windows/single_instance.rs:443
+become_first | crates/snipdeck-platform/src/windows/single_instance.rs:477
+Locked | crates/snipdeck-platform/src/windows/single_instance.rs:559
+impl Drop for Locked<'_> | crates/snipdeck-platform/src/windows/single_instance.rs:561
+drop | crates/snipdeck-platform/src/windows/single_instance.rs:562
+hand_over | crates/snipdeck-platform/src/windows/single_instance.rs:569
+ask_to_quit | crates/snipdeck-platform/src/windows/single_instance.rs:627
+listen | crates/snipdeck-platform/src/windows/single_instance.rs:649
+impl Drop for SingleInstance | crates/snipdeck-platform/src/windows/single_instance.rs:685
+drop | crates/snipdeck-platform/src/windows/single_instance.rs:686
 
 ### crates/snipdeck-platform/src/windows/system_look.rs
 
@@ -8826,25 +8846,28 @@ main | scripts/i18n.py:221
 
 ### scripts/installer_check.py
 
-sections | scripts/installer_check.py:52
-defines | scripts/installer_check.py:68
-expand | scripts/installer_check.py:88
-setup_dict | scripts/installer_check.py:92
-entry_fields | scripts/installer_check.py:102
-rust_mutex | scripts/installer_check.py:113
-asset_files | scripts/installer_check.py:122
-check_encoding | scripts/installer_check.py:137
-languages | scripts/installer_check.py:144
-check_custom_messages | scripts/installer_check.py:149
-check_registration | scripts/installer_check.py:177
-check_code | scripts/installer_check.py:244
-check_arch | scripts/installer_check.py:266
-check_app_manifest | scripts/installer_check.py:274
-check_docs | scripts/installer_check.py:290
-check_iss | scripts/installer_check.py:298
-check_manifest | scripts/installer_check.py:359
-run | scripts/installer_check.py:396
-main | scripts/installer_check.py:415
+sections | scripts/installer_check.py:53
+defines | scripts/installer_check.py:69
+expand | scripts/installer_check.py:89
+setup_dict | scripts/installer_check.py:93
+entry_fields | scripts/installer_check.py:103
+rust_mutex | scripts/installer_check.py:114
+asset_files | scripts/installer_check.py:123
+check_encoding | scripts/installer_check.py:138
+languages | scripts/installer_check.py:145
+check_custom_messages | scripts/installer_check.py:150
+check_registration | scripts/installer_check.py:178
+check_code | scripts/installer_check.py:245
+rust_table | scripts/installer_check.py:267
+pascal_const | scripts/installer_check.py:278
+check_erase | scripts/installer_check.py:285
+check_arch | scripts/installer_check.py:333
+check_app_manifest | scripts/installer_check.py:341
+check_docs | scripts/installer_check.py:359
+check_iss | scripts/installer_check.py:367
+check_manifest | scripts/installer_check.py:428
+run | scripts/installer_check.py:465
+main | scripts/installer_check.py:485
 
 ### scripts/make_logo.py
 
@@ -9446,14 +9469,14 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-platform/src/clipboard_history.rs` (inline) | 6 |
 | `crates/snipdeck-platform/src/clipboard_watch.rs` (inline) | 5 |
 | `crates/snipdeck-platform/src/command_line.rs` (inline) | 8 |
-| `crates/snipdeck-platform/src/data_record.rs` (inline) | 6 |
+| `crates/snipdeck-platform/src/data_record.rs` (inline) | 12 |
 | `crates/snipdeck-platform/src/dwm_look.rs` (inline) | 4 |
 | `crates/snipdeck-platform/src/error.rs` (inline) | 3 |
 | `crates/snipdeck-platform/src/eyedrop.rs` (inline) | 26 |
 | `crates/snipdeck-platform/src/file_dialog.rs` (inline) | 8 |
 | `crates/snipdeck-platform/src/handover.rs` (inline) | 8 |
 | `crates/snipdeck-platform/src/hotkey_table.rs` (inline) | 12 |
-| `crates/snipdeck-platform/src/instance_names.rs` (inline) | 7 |
+| `crates/snipdeck-platform/src/instance_names.rs` (inline) | 8 |
 | `crates/snipdeck-platform/src/keys.rs` (inline) | 11 |
 | `crates/snipdeck-platform/src/paint_record.rs` (inline) | 4 |
 | `crates/snipdeck-platform/src/payload.rs` (inline) | 6 |
@@ -9585,7 +9608,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `scripts/test_bump_version.py` | 6 |
 | `scripts/test_check_release_pin.py` | 11 |
 | `scripts/test_i18n.py` | 17 |
-| `scripts/test_installer_check.py` | 27 |
+| `scripts/test_installer_check.py` | 32 |
 | `scripts/test_msix_manifest.py` | 13 |
 | `scripts/test_symbols.py` | 24 |
 | `spikes/s3-longtext/src/viewer.rs` (inline) | 1 |

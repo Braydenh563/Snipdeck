@@ -390,7 +390,12 @@ mod imp {
                     on_request(request, Box::new(move || ack.send()));
                 };
             match SingleInstance::acquire(instance.id, instance.request, on_request, on_quit) {
-                Ok(Acquired::First(guard)) => keep_alive.push(Box::new(guard)),
+                Ok(Acquired::First(guard)) => {
+                    if let Some(why) = guard.marker_error() {
+                        crate::trace!("installer marker mutex: {why}");
+                    }
+                    keep_alive.push(Box::new(guard));
+                }
                 Ok(Acquired::Second(Delivery::Delivered)) => return Ok(Start::AlreadyRunning),
                 Ok(Acquired::Second(Delivery::Unresponsive)) => return Ok(Start::NotAnswering),
                 Err(e) => return Err(format!("single-instance guard: {e}")),

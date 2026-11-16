@@ -171,11 +171,15 @@ const
   UninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{5ACCE38D-D2C8-4BD3-88BD-9E76E5D0D402}_is1';
   { Where the app records a data folder chosen with --data-dir (crates/snipdeck-platform/src/data_record.rs). }
   DataKey = 'Software\Snipdeck';
-  DataValue = 'DataDir';
+  DataValue = 'DataDirs';
+  { The tables below equal the ones in data_record.rs (scripts/installer_check.py compares them). }
+  MarkerFile = 'snipdeck-data-folder.txt';
+  OwnEntries = 'snipdeck.db|snipdeck.db-wal|snipdeck.db-shm|snipdeck.lock|blobs|settings.json|settings.json.bad|maintenance.json|drafts|backups|logs';
+  ProtectedNames = 'documents|desktop|downloads|pictures|music|videos|users|appdata|local|roaming|windows|system32|program files|program files (x86)|programdata|onedrive';
 
 var
   WasRunning: Boolean;
-  RecordedData: String;
+  RecordedFolders: String;
 
 function IsRunning: Boolean;
 begin
@@ -279,8 +283,8 @@ function InitializeUninstall: Boolean;
 begin
   Result := True;
   { Read now: the [Registry] uninsdeletekey entries remove the record before the erase question comes. }
-  if not RegQueryStringValue(HKCU, DataKey, DataValue, RecordedData) then
-    RecordedData := '';
+  if not RegQueryMultiStringValue(HKCU, DataKey, DataValue, RecordedFolders) then
+    RecordedFolders := '';
   if IsRunning then
   begin
     if not QuitRunning(ExpandConstant('{app}\snipdeck.exe')) then
@@ -291,19 +295,90 @@ begin
   end;
 end;
 
-{ A recorded folder is erased only when it is a real folder: not empty, not a drive root, not the profile. }
+{ Mirrors safe_to_erase in data_record.rs: a drive-letter folder below the root, not the profile, not a
+  well-known folder, no "..". }
 function SafeToErase(const Path: String): Boolean;
 var
-  P: String;
+  P, Last: String;
 begin
-  P := RemoveBackslash(Path);
-  Result := (Length(P) > 3) and (CompareText(P, RemoveBackslash(GetEnv('USERPROFILE'))) <> 0);
+  Result := False;
+  P := Path;
+  StringChangeEx(P, '/', '\', True);
+  P := RemoveBackslash(P);
+  if (Length(P) <= 3) or (Pos('\..\', P + '\') > 0) then
+    Exit;
+  if (P[2] <> ':') or (P[3] <> '\') or (Pos(Lowercase(P[1]), 'abcdefghijklmnopqrstuvwxyz') = 0) then
+    Exit;
+  if CompareText(P, RemoveBackslash(GetEnv('USERPROFILE'))) = 0 then
+    Exit;
+  Last := Lowercase(ExtractFileName(P));
+  Result := Pos('|' + Last + '|', '|' + ProtectedNames + '|') = 0;
+end;
+
+{ A recorded folder is cleaned only when it passes SafeToErase, exists and holds the marker file the app wrote. }
+function ErasableFolder(const Folder: String): Boolean;
+begin
+  Result := SafeToErase(Folder) and DirExists(Folder) and FileExists(RemoveBackslash(Folder) + '\' + MarkerFile);
+end;
+
+{ Deletes Snipdeck's own names and the marker, then removes the folder only if nothing else is left in it
+  (RemoveDir fails on a folder with content). Never a DelTree on the folder itself. Unverified on Windows. }
+procedure EraseOwnFiles(const Folder: String);
+var
+  Rest, Name, Full: String;
+  P: Integer;
+begin
+  Rest := OwnEntries + '|';
+  while Rest <> '' do
+  begin
+    P := Pos('|', Rest);
+    Name := Copy(Rest, 1, P - 1);
+    Rest := Copy(Rest, P + 1, Length(Rest));
+    Full := RemoveBackslash(Folder) + '\' + Name;
+    if DirExists(Full) then
+      DelTree(Full, True, True, True)
+    else if FileExists(Full) then
+      DeleteFile(Full);
+  end;
+  DeleteFile(RemoveBackslash(Folder) + '\' + MarkerFile);
+  RemoveDir(RemoveBackslash(Folder));
+end;
+
+{ The erasable folders among the recorded ones (separated by #0), one per line, without the default folder. }
+function ErasableRecorded(const DefaultFolder: String): String;
+var
+  Rest, Item: String;
+  P: Integer;
+begin
+  Result := '';
+  Rest := RecordedFolders;
+  while Rest <> '' do
+  begin
+    P := Pos(#0, Rest);
+    if P = 0 then
+    begin
+      Item := Rest;
+      Rest := '';
+    end
+    else
+    begin
+      Item := Copy(Rest, 1, P - 1);
+      Rest := Copy(Rest, P + 1, Length(Rest));
+    end;
+    if (Item <> '') and ErasableFolder(Item) and (CompareText(RemoveBackslash(Item), DefaultFolder) <> 0) and
+       (Pos(#13#10 + RemoveBackslash(Item) + #13#10, #13#10 + Result + #13#10) = 0) then
+    begin
+      if Result <> '' then
+        Result := Result + #13#10;
+      Result := Result + RemoveBackslash(Item);
+    end;
+  end;
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
-  Data, Folders, Profile, Tmp: String;
-  EraseCustom: Boolean;
+  Data, Custom, Folders, Rest, Profile, Tmp: String;
+  P: Integer;
 begin
   if CurUninstallStep = usPostUninstall then
   begin
@@ -318,25 +393,31 @@ begin
     { The library is never erased silently. }
     if not UninstallSilent then
     begin
-      Data := ExpandConstant('{localappdata}\Snipdeck');
-      EraseCustom := (RecordedData <> '') and SafeToErase(RecordedData) and DirExists(RecordedData) and
-        (CompareText(RemoveBackslash(RecordedData), Data) <> 0);
+      Data := RemoveBackslash(ExpandConstant('{localappdata}\Snipdeck'));
+      Custom := ErasableRecorded(Data);
       Folders := '';
       if DirExists(Data) then
         Folders := Data;
-      if EraseCustom then
+      if Custom <> '' then
       begin
         if Folders <> '' then
           Folders := Folders + #13#10;
-        Folders := Folders + RemoveBackslash(RecordedData);
+        Folders := Folders + Custom;
       end;
       if (Folders <> '') and
          (MsgBox(FmtMessage(CustomMessage('EraseQuestion'), [Folders]), mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES) then
       begin
         if DirExists(Data) then
           DelTree(Data, True, True, True);
-        if EraseCustom then
-          DelTree(RecordedData, True, True, True);
+        Rest := Custom;
+        if Rest <> '' then
+          Rest := Rest + #13#10;
+        while Rest <> '' do
+        begin
+          P := Pos(#13#10, Rest);
+          EraseOwnFiles(Copy(Rest, 1, P - 1));
+          Rest := Copy(Rest, P + 2, Length(Rest));
+        end;
       end;
     end;
   end;

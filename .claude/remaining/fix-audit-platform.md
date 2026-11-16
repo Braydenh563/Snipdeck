@@ -261,3 +261,12 @@ Unverified: whether `windows-11-arm` runners are available to the repo; cross-co
 - P34: `makepri new` succeeds, icons sharp at 100/150/200 percent.
 - P36/P41: CI YAML above; ARM64 device: exe starts, hotkey, paste, tray.
 - P37: launcher `update`/`uninstall` with the app running: quits via `--quit`, no stray kill; `selftest.ps1` new cases pass.
+
+## fix-review-a (coordinator review items 1, 5, 6; all Windows behaviour unverified)
+Done: (1) uninstall no longer DelTrees a recorded folder: app writes `snipdeck-data-folder.txt` into every data folder and keeps a multi-string list `HKCU\Software\Snipdeck\DataDirs`; Setup cleans a folder only with the marker + SafeToErase (drive path, not root/profile/well-known name/`..`), deletes only the OwnEntries names + marker, then RemoveDir (empty only). Tables live in `crates/snipdeck-platform/src/data_record.rs`; `scripts/installer_check.py check_erase` compares them with the .iss. (5) `Local\Snipdeck-main` created with `marker_sddl` (owner GA, Authenticated Users SYNCHRONIZE, medium label NW); failure is logged via `trace!` ("installer marker mutex"). (6) `activeCodePage=UTF-8` dropped (no ANSI API is called); installer_check now rejects it.
+Windows run list:
+- `--data-dir D:\X` start twice with two different folders: `reg query HKCU\Software\Snipdeck /v DataDirs` lists both (REG_MULTI_SZ); each folder holds `snipdeck-data-folder.txt`.
+- Uninstall, answer Yes: both listed; own files gone, folder removed. Repeat with an extra `keep.txt` in the folder: it and the folder stay. Repeat with `--data-dir D:\Documents` and with a folder whose marker was deleted: not listed in the question, nothing deleted.
+- Old Setup tolerance: no `DataDir` single value is read any more (unreleased format).
+- Run the app elevated (Run as administrator) and start a normal-integrity Setup: it sees the running app (asks to close it); check the marker with `Get-Process`/Process Explorer handle ACL, and that the trace log has no "installer marker mutex" line.
+- Manifest: `mt.exe -inputresource:snipdeck.exe;#1` has no activeCodePage; a non-ASCII `--data-dir` (e.g. `D:\Daten\Übung`) and a non-ASCII username path still open the library and paste files.

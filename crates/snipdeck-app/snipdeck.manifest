@@ -30,7 +30,9 @@
       <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
       <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2,PerMonitor</dpiAwareness>
       <longPathAware xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">true</longPathAware>
-      <activeCodePage xmlns="http://schemas.microsoft.com/SMI/2019/WindowsSettings">UTF-8</activeCodePage>
+      <!-- No activeCodePage=UTF-8: the code calls only the wide (W) Win32 APIs and Rust std converts
+           paths and arguments itself, so the setting would change nothing but risk the ANSI behaviour
+           of any C library we link. Add it back only with a named ANSI API that needs it. -->
     </windowsSettings>
   </application>
 </assembly>

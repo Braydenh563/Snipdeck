@@ -71,9 +71,14 @@ The normal download for a home user is `Snipdeck-Setup-<version>.exe`, built wit
 - **Uninstall** (Settings > Apps) removes the program, the "Start with Windows" entry (and its Startup-apps
   flag), the file type, the link scheme and the data-folder record. It then asks whether to also erase the library
   (default No). A silent uninstall never erases it. The question lists every folder it would delete:
-  `%LOCALAPPDATA%\Snipdeck`, and the folder given with `--data-dir` if there was one (the app records it under
-  `HKCU\Software\Snipdeck`, value `DataDir`, and never records the default folder). A recorded folder that is a
-  drive root or the profile folder itself is never deleted. An unset `USERPROFILE` or `TEMP` skips the temp
+  `%LOCALAPPDATA%\Snipdeck`, and each folder given with `--data-dir` (the app keeps a list of them in
+  `HKCU\Software\Snipdeck`, multi-string value `DataDirs`, never the default folder, and writes
+  `snipdeck-data-folder.txt` into every data folder it uses). A recorded folder is cleaned only if that marker file
+  is in it and the path is below a drive root and not the profile or a well-known folder (Documents, Desktop,
+  Downloads, ...); Setup then deletes only Snipdeck's own names (database, `-wal`, `-shm`, lock, `blobs`,
+  settings, `drafts`, `backups`, `logs`, the marker) and removes the folder only if that left it empty, so
+  `--data-dir D:\Documents` loses nothing else. The tables are in `crates/snipdeck-platform/src/data_record.rs`
+  and the same list is in the `.iss`; `scripts/installer_check.py` compares them. An unset `USERPROFILE` or `TEMP` skips the temp
   deletions instead of aiming at the drive root. The shared list of leftovers is `registry_leftovers` in
   `packaging/registration.json`; the launcher's uninstall removes the same ones.
 - **SmartScreen.** Until the installer is signed (section 2, SignPath is the plan), Windows shows "Windows
@@ -372,7 +377,7 @@ Nothing in this page has been run. Tick each when the owner has done it.
       install the Setup build, add items, install the MSIX, check where the items are; uninstall the MSIX and list what remains).
 - [ ] MSIX icons: `makepri new` succeeds, and Start and the taskbar show sharp icons at 100, 150 and 200 percent with no coloured plate on the taskbar.
 - [ ] MSIX file type, `snipdeck:` scheme and the `snipdeck` command-line alias work after install (the app hand-over is separate).
-- [ ] Setup: `.snipdeck` double-click and `snipdeck:` links reach the app; uninstall removes both keys; `reg query HKCU\Software\Snipdeck` after a `--data-dir` start shows `DataDir`, and the erase question lists that folder.
+- [ ] Setup: `.snipdeck` double-click and `snipdeck:` links reach the app; uninstall removes both keys; `reg query HKCU\Software\Snipdeck` after a `--data-dir` start shows `DataDirs` with that folder, and the erase question lists it; after Yes only Snipdeck's files are gone (put an unrelated file in the folder first: it and the folder stay).
 - [ ] Setup: an older Setup over a newer install warns (silent run: refuses); upgrading while Snipdeck sits hidden in the tray brings it back hidden.
 - [ ] Setup in German, Spanish, French, Japanese and Portuguese: no English sentence in the wizard or the uninstall question (Chinese shows English).
 - [ ] ARM64: `iscc /DArm64=1` and `msix_manifest.py --arch arm64` build; on an ARM64 device the native exe starts, the hotkey, paste and tray work.
