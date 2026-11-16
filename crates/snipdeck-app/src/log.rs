@@ -2,7 +2,7 @@
 //! stderr, so every warning the app used to print there goes through [`warn!`](crate::warn!)
 //! instead: one line per event, written to this file and to stderr.
 //!
-//! Lines never carry what items contain (the same rule as [`crate::trace`]): callers pass
+//! Lines never carry what items contain (the same rule as [`mod@crate::trace`]): callers pass
 //! error texts and counts, not names, titles or snippet text. The file is capped: when it passes
 //! [`MAX_BYTES`] it becomes `snipdeck.log.1` (replacing the older one), so at most two files
 //! of that size exist.
@@ -45,7 +45,7 @@ pub fn path(data_dir: &Path) -> PathBuf {
     crate::crash::logs_dir(data_dir).join(FILE)
 }
 
-/// One log line: `<UTC time> <message>`, on one line and cut to [`MAX_LINE`] characters.
+/// One log line: `<UTC time> <message>`, on one line and cut to `MAX_LINE` characters.
 #[must_use]
 pub fn format_line(at: Timestamp, message: &str) -> String {
     let flat: String = message
@@ -61,7 +61,7 @@ pub fn format_line(at: Timestamp, message: &str) -> String {
 /// Appends `line` to the log in `data_dir`, rolling the file over first when it is full.
 ///
 /// # Errors
-/// Any I/O error; the caller has nowhere better to say it, so [`write`] drops it.
+/// Any I/O error; the caller has nowhere better to say it, so [`write()`] drops it.
 pub fn append(data_dir: &Path, line: &str, max_bytes: u64) -> io::Result<()> {
     let file = path(data_dir);
     if let Some(dir) = file.parent() {

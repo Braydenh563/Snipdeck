@@ -1613,26 +1613,26 @@ data_folder | crates/snipdeck-app/src/doctor.rs:312
 database | crates/snipdeck-app/src/doctor.rs:335
 backups | crates/snipdeck-app/src/doctor.rs:362
 encryption | crates/snipdeck-app/src/doctor.rs:408
-shortcuts | crates/snipdeck-app/src/doctor.rs:438
-tray | crates/snipdeck-app/src/doctor.rs:462
-crashes | crates/snipdeck-app/src/doctor.rs:470
-ReportInfo | crates/snipdeck-app/src/doctor.rs:485
-report | crates/snipdeck-app/src/doctor.rs:502
-tests | crates/snipdeck-app/src/doctor.rs:532
-only | crates/snipdeck-app/src/doctor.rs:603
-a_healthy_machine_passes_every_check_in_order | crates/snipdeck-app/src/doctor.rs:608
-the_data_folder_fails_when_unwritable_and_warns_when_nearly_full | crates/snipdeck-app/src/doctor.rs:622
-the_database_fails_on_a_finding_or_when_the_check_cannot_run | crates/snipdeck-app/src/doctor.rs:652
-a_damaged_database_offers_a_rebuild_with_a_backup_and_the_folder_without | crates/snipdeck-app/src/doctor.rs:673
-data_folder_problems_offer_the_folder | crates/snipdeck-app/src/doctor.rs:694
-backups_warn_when_missing_or_stale_and_offer_a_backup | crates/snipdeck-app/src/doctor.rs:714
-the_key_matters_only_when_sensitive_items_exist | crates/snipdeck-app/src/doctor.rs:752
-unset_shortcuts_warn_and_open_settings | crates/snipdeck-app/src/doctor.rs:786
-a_missing_tray_icon_warns | crates/snipdeck-app/src/doctor.rs:810
-a_crash_report_warns_and_offers_the_logs_folder | crates/snipdeck-app/src/doctor.rs:825
-the_worst_status_wins | crates/snipdeck-app/src/doctor.rs:838
-fix_codes_round_trip | crates/snipdeck-app/src/doctor.rs:855
-the_report_lists_versions_flags_and_checks_and_hides_the_data_folder_path | crates/snipdeck-app/src/doctor.rs:869
+shortcuts | crates/snipdeck-app/src/doctor.rs:444
+tray | crates/snipdeck-app/src/doctor.rs:468
+crashes | crates/snipdeck-app/src/doctor.rs:476
+ReportInfo | crates/snipdeck-app/src/doctor.rs:491
+report | crates/snipdeck-app/src/doctor.rs:508
+tests | crates/snipdeck-app/src/doctor.rs:538
+only | crates/snipdeck-app/src/doctor.rs:609
+a_healthy_machine_passes_every_check_in_order | crates/snipdeck-app/src/doctor.rs:614
+the_data_folder_fails_when_unwritable_and_warns_when_nearly_full | crates/snipdeck-app/src/doctor.rs:628
+the_database_fails_on_a_finding_or_when_the_check_cannot_run | crates/snipdeck-app/src/doctor.rs:658
+a_damaged_database_offers_a_rebuild_with_a_backup_and_the_folder_without | crates/snipdeck-app/src/doctor.rs:679
+data_folder_problems_offer_the_folder | crates/snipdeck-app/src/doctor.rs:700
+backups_warn_when_missing_or_stale_and_offer_a_backup | crates/snipdeck-app/src/doctor.rs:720
+the_key_matters_only_when_sensitive_items_exist | crates/snipdeck-app/src/doctor.rs:758
+unset_shortcuts_warn_and_open_settings | crates/snipdeck-app/src/doctor.rs:792
+a_missing_tray_icon_warns | crates/snipdeck-app/src/doctor.rs:816
+a_crash_report_warns_and_offers_the_logs_folder | crates/snipdeck-app/src/doctor.rs:831
+the_worst_status_wins | crates/snipdeck-app/src/doctor.rs:844
+fix_codes_round_trip | crates/snipdeck-app/src/doctor.rs:861
+the_report_lists_versions_flags_and_checks_and_hides_the_data_folder_path | crates/snipdeck-app/src/doctor.rs:875
 
 ### crates/snipdeck-app/src/drafts.rs
 

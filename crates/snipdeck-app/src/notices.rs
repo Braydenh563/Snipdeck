@@ -39,7 +39,7 @@ pub fn write(dir: &Path) -> io::Result<PathBuf> {
     Ok(path)
 }
 
-/// Where [`write`] puts the file for the running program: a `Snipdeck` folder in the temporary
+/// Where [`write()`] puts the file for the running program: a `Snipdeck` folder in the temporary
 /// folder (the notices are not user data, so the data folder stays theirs).
 #[must_use]
 pub fn default_dir() -> PathBuf {
