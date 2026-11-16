@@ -111,6 +111,9 @@ pub(super) struct ImportRun {
 #[derive(Default)]
 pub(super) struct ArchiveState {
     running: Option<(ArchiveOp, Context)>,
+    /// Whether an import (not a restore) installs the triggers its file carries. Off unless the
+    /// user turned it on in the preview: a trigger types text into other programs.
+    pub(super) install_triggers: bool,
 }
 
 impl ArchiveState {

@@ -479,7 +479,16 @@ fn build_item(
         .filter_map(|index| tag_ids.get(index).copied())
         .collect();
 
-    if let Some(preview) = &plan.preview {
+    // The excerpt is derived from the item's own text whenever it has one: an archive's claimed
+    // preview is only a fallback for items with no text (DATA-8). An image shows its picture,
+    // never an excerpt of its alt text, as the app itself makes it.
+    let is_image = plan.kind == ItemKind::Image;
+    let has_text = is_image
+        || plan
+            .formats
+            .iter()
+            .any(|f| matches!(f, PlanFormat::Single { kind: FormatKind::Text, .. }));
+    if let (Some(preview), false) = (&plan.preview, has_text) {
         item.preview = Item::preview_of(preview, plan.sensitive);
     }
     let mut formats = Vec::with_capacity(plan.formats.len());
@@ -487,7 +496,7 @@ fn build_item(
         match format {
             PlanFormat::Single { kind, source } => {
                 let bytes = resolve(source, fetch)?;
-                if *kind == FormatKind::Text && plan.preview.is_none() {
+                if *kind == FormatKind::Text && !is_image {
                     item.preview = Item::preview_of(preview_text(&bytes), plan.sensitive);
                 }
                 let content = put(lib, bytes, plan.sensitive)?;
@@ -816,7 +825,7 @@ mod tests {
         let known = existing_hashes(&s).unwrap();
         for body in ["small", big.as_str()] {
             let plan = PlanItem::text("other title".to_owned(), body.to_owned(), at(1));
-            assert!(known.contains(&plan.content_hash), "{} bytes", body.len());
+            assert!(known.values().any(|h| *h == plan.content_hash), "{} bytes", body.len());
         }
     }
 
@@ -897,7 +906,7 @@ mod tests {
         assert_eq!(known.len(), bodies.len());
         for body in &bodies {
             let plan = PlanItem::text("x".to_owned(), body.clone(), at(1));
-            assert!(known.contains(&plan.content_hash));
+            assert!(known.values().any(|h| *h == plan.content_hash));
         }
     }
 }

@@ -101,6 +101,9 @@ export global ImportTexts {
     pure public function note-columns-cut(file: string) -> string {
         return @tr("{}: some rows have more than 256 columns, and the extra columns were ignored.", file);
     }
+    pure public function note-trigger-too-short(title: string, trigger: string) -> string {
+        return @tr("{}: the trigger {} is too short (a trigger needs at least two characters), so it was imported without it.", title, trigger);
+    }
     pure public function note-trigger-taken(title: string, trigger: string) -> string {
         return @tr("{}: the trigger {} is already used by another snippet, so it was imported without it.", title, trigger);
     }

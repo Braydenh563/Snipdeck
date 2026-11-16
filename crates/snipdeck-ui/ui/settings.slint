@@ -358,6 +358,11 @@ export component SettingsPage inherits Window {
     in property <int> import-lists: 0;
     in property <int> import-items: 0;
     in property <int> import-duplicates: 0;
+    // The triggers the file would install: how many, the first few as one line, and the user's choice.
+    in property <int> import-triggers: 0;
+    in property <string> import-trigger-list;
+    in-out property <bool> import-install-triggers: false;
+    callback import-triggers-toggled(on: bool);
     // What will not be imported, already worded, and how many more there were.
     in property <[string]> import-warnings;
     in property <int> import-warnings-more: 0;
@@ -1619,6 +1624,35 @@ export component SettingsPage inherits Window {
                             wrap: word-wrap;
                             accessible-role: text;
                             accessible-label: self.text;
+                        }
+                        if root.import-problem == "" && root.import-triggers > 0: Text {
+                            text: root.import-restore
+                                ? @tr("{} trigger will be restored: {}" | "{} triggers will be restored: {}" % root.import-triggers, root.import-triggers, root.import-trigger-list)
+                                : @tr("This file has {} trigger, which types text into other programs: {}" | "This file has {} triggers, which type text into other programs: {}" % root.import-triggers, root.import-triggers, root.import-trigger-list);
+                            color: Theme.text-secondary;
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            wrap: word-wrap;
+                            accessible-role: text;
+                            accessible-label: self.text;
+                        }
+                        if root.import-problem == "" && root.import-triggers > 0 && !root.import-restore: HorizontalLayout {
+                            spacing: Space.s2;
+                            Text {
+                                text: @tr("Install these triggers");
+                                color: Theme.text-primary;
+                                font-family: Fonts.sans;
+                                font-size: Type.base;
+                                vertical-alignment: center;
+                            }
+                            Toggle {
+                                a11y-label: @tr("Install these triggers");
+                                checked <=> root.import-install-triggers;
+                                toggled(on) => { root.import-triggers-toggled(on); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
                         }
                         if root.import-problem == "" && root.import-items == 0 && root.import-boards == 0: Text {
                             text: @tr("Nothing new to import.");

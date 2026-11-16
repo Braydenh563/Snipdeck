@@ -201,11 +201,11 @@ fn beeftext_maps_groups_keywords_and_variables() {
 
 #[test]
 fn beeftext_accepts_a_bare_array_of_combos_and_a_bom() {
-    let json = "\u{feff}[{\"keyword\":\"k\",\"snippet\":\"v\"}]";
+    let json = "\u{feff}[{\"keyword\":\"kk\",\"snippet\":\"v\"}]";
     let (s, report) = beeftext(json.as_bytes(), &ImportOptions::default());
     assert_eq!(
         contents(&s)[0].2,
-        [et("v", "k", ItemKind::Text, "v")],
+        [et("v", "kk", ItemKind::Text, "v")],
         "{report:?}"
     );
 }
@@ -311,13 +311,13 @@ fn beeftext_limits_items_size_and_bad_bytes() {
 
 #[test]
 fn beeftext_two_cursors_fall_back_to_plain_text_and_duplicates_are_skipped() {
-    let json = r#"[{"keyword":"c","snippet":"a #{cursor} b #{cursor}"}]"#;
+    let json = r#"[{"keyword":"cc","snippet":"a #{cursor} b #{cursor}"}]"#;
     let (s, report) = beeftext(json.as_bytes(), &ImportOptions::default());
     assert_eq!(
         contents(&s)[0].2,
         [et(
             "a #{cursor} b #{cursor}",
-            "c",
+            "cc",
             ItemKind::Text,
             "a #{cursor} b #{cursor}"
         )]

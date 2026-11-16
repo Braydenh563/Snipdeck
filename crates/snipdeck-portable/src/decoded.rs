@@ -13,9 +13,9 @@ use snipdeck_store::name_key;
 
 use crate::{
     error::{Error, Result},
-    import::{ImportOptions, MergeStrategy},
+    import::{ImportOptions, MergeStrategy, Triggers},
     plan::{AssetRef, Library, Plan, apply, existing_hashes},
-    report::{ImportReport, Note, Warning},
+    report::{ImportReport, MAX_TRIGGERS_LISTED, Note, Warning},
 };
 
 /// Where an item sits and what it is: board name, list name (both as [`name_key`]), title and
@@ -107,11 +107,54 @@ impl<'a> Decoded<'a> {
         options: &ImportOptions<'_>,
         fetch: Fetch<'a>,
     ) -> Self {
-        Self {
+        let mut decoded = Self {
             plan,
             report,
             merge: options.merge,
             fetch,
+        };
+        decoded.vet_triggers();
+        if options.triggers == Triggers::Leave {
+            decoded.leave_triggers();
+        }
+        decoded
+    }
+
+    /// Drops triggers too short to type safely (a one-character trigger fires inside ordinary
+    /// words), noting each.
+    fn vet_triggers(&mut self) {
+        for item in self
+            .plan
+            .boards
+            .iter_mut()
+            .flat_map(|b| &mut b.lists)
+            .flat_map(|l| &mut l.items)
+        {
+            let Some(trigger) = item.trigger.take() else {
+                continue;
+            };
+            if trigger.as_str().chars().count() < snipdeck_core::SUGGEST_MIN_CHARS {
+                self.report.warn(Warning::Note(Note::TriggerTooShort {
+                    title: item.title.clone(),
+                    trigger: trigger.to_string(),
+                }));
+                continue;
+            }
+            item.trigger = Some(trigger);
+        }
+    }
+
+    /// Imports every item without its trigger: the choice of a caller that showed the list from
+    /// [`ImportReport::triggers`] and was told no.
+    pub fn leave_triggers(&mut self) {
+        for item in self
+            .plan
+            .boards
+            .iter_mut()
+            .flat_map(|b| &mut b.lists)
+            .flat_map(|l| &mut l.items)
+        {
+            item.trigger = None;
         }
     }
 
@@ -268,6 +311,10 @@ impl<'a> Decoded<'a> {
             }
             triggers.push(code.to_owned());
             triggers.sort();
+            report.triggers_total += 1;
+            if report.triggers.len() < MAX_TRIGGERS_LISTED {
+                report.triggers.push(code.to_owned());
+            }
         }
         Ok(report)
     }

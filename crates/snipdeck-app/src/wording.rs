@@ -177,6 +177,9 @@ fn note_text(
             texts.invoke_note_form_field(entry_label(texts, what), name.into())
         }
         Note::ColumnsCut { file } => texts.invoke_note_columns_cut(file.into()),
+        Note::TriggerTooShort { title, trigger } => {
+            texts.invoke_note_trigger_too_short(title.into(), trigger.into())
+        }
         Note::TriggerTaken { title, trigger } => {
             texts.invoke_note_trigger_taken(title.into(), trigger.into())
         }

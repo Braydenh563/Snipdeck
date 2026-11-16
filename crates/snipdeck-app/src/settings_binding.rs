@@ -660,8 +660,20 @@ struct ImportLines {
     lists: i32,
     items: i32,
     duplicates: i32,
+    triggers: i32,
+    trigger_list: String,
     warnings: Vec<snipdeck_portable::Warning>,
     more: i32,
+}
+
+/// The first triggers, as one line; `, ...` when there are more.
+fn trigger_line(codes: &[String], total: usize) -> String {
+    let shown = codes.iter().take(8).cloned().collect::<Vec<_>>().join(", ");
+    if total > codes.len().min(8) {
+        format!("{shown}, ...")
+    } else {
+        shown
+    }
 }
 
 /// How many warnings the preview lists; the rest are counted.
@@ -685,6 +697,8 @@ impl ImportLines {
                 lines.lists = to_i32(p.lists);
                 lines.items = to_i32(p.items);
                 lines.duplicates = to_i32(p.duplicates);
+                lines.triggers = to_i32(p.triggers_total);
+                lines.trigger_list = trigger_line(&p.triggers, p.triggers_total);
                 lines.warnings = p.warnings.iter().take(WARNINGS_SHOWN).cloned().collect();
                 lines.more =
                     to_i32(p.warnings.len().saturating_sub(WARNINGS_SHOWN) + p.warnings_dropped);
@@ -1620,7 +1634,12 @@ where
         redraw_all();
     }
 
+    fn import_triggers_toggled(self: &Rc<Self>, on: bool) {
+        self.act(|ctl| ctl.set_install_triggers(on));
+    }
+
     fn import_cancelled(self: &Rc<Self>) {
+        self.act(|ctl| ctl.set_install_triggers(false));
         self.state.borrow_mut().import = None;
         redraw_all();
     }
@@ -1956,6 +1975,8 @@ where
         wire!(on_import_source_chosen, |core, kind| core
             .import_chosen(kind));
         wire!(on_import_confirmed, |core| core.import_confirmed());
+        wire!(on_import_triggers_toggled, |core, on| core
+            .import_triggers_toggled(on));
         wire!(on_import_cancelled, |core| core.import_cancelled());
         wire!(on_erase_confirmed, |core, typed, forget| core
             .erase(&typed, forget));
@@ -1997,6 +2018,8 @@ fn render_import(window: &ui::SettingsPage, i: &ImportLines) {
     window.set_import_lists(i.lists);
     window.set_import_items(i.items);
     window.set_import_duplicates(i.duplicates);
+    window.set_import_triggers(i.triggers);
+    window.set_import_trigger_list(i.trigger_list.as_str().into());
     window.set_import_warnings(model(
         i.warnings
             .iter()

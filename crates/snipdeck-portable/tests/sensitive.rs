@@ -151,7 +151,7 @@ fn encrypted_export_round_trips_with_the_key() {
         key: KeySource::Given(&key),
         ..keep()
     };
-    let report = import_archive(&mut fresh, Cursor::new(&bytes), "x", at(1), &opts).unwrap();
+    let report = import_archive(&mut fresh, Cursor::new(&bytes), "x", at(10_000), &opts).unwrap();
     assert_eq!(report.items_added, 3);
     assert!(!report.has_warnings(), "{:?}", report.warnings);
     assert_same(&snapshot(&fresh), &snapshot(&original));
@@ -715,7 +715,8 @@ fn an_item_over_the_entry_limit_is_named_instead_of_failing_without_a_word() {
     let limits = small_entries();
     let s = vault_with_file(usize::try_from(limits.max_entry_bytes).unwrap() + 1);
     let mut out = Cursor::new(Vec::new());
-    let err = snipdeck_portable::export_to_writer(
+    // DATA-4: one item that does not fit no longer stops the export; it is left out and named.
+    let report = snipdeck_portable::export_to_writer(
         &s,
         at(100),
         &ExportOptions {
@@ -724,11 +725,11 @@ fn an_item_over_the_entry_limit_is_named_instead_of_failing_without_a_word() {
         },
         &mut out,
     )
-    .expect_err("too big");
-    assert!(
-        matches!(&err, Error::ItemTooLarge { title, .. } if title == "Passport scan"),
-        "{err:?}"
-    );
+    .expect("the rest of the library is still written");
+    assert_eq!(report.items, 0);
+    assert_eq!(report.skipped.len(), 1, "{:?}", report.skipped);
+    assert_eq!(report.skipped[0].title, "Passport scan");
+    assert!(report.skipped[0].reason.contains("limit"), "{:?}", report.skipped[0]);
 }
 
 #[test]

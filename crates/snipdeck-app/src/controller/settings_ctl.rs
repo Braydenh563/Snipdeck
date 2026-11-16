@@ -129,6 +129,10 @@ pub struct ImportPreview {
     pub warnings: Vec<snipdeck_portable::Warning>,
     /// Warnings left out of `warnings` because there were too many.
     pub warnings_dropped: usize,
+    /// The triggers the file would install (the first few), so the user sees what it types.
+    pub triggers: Vec<String>,
+    /// How many triggers in all.
+    pub triggers_total: usize,
 }
 
 impl ImportPreview {
@@ -789,6 +793,11 @@ where
         )
     }
 
+    /// Whether the next import installs the triggers in its file (the preview lists them).
+    pub fn set_install_triggers(&mut self, install: bool) {
+        self.archive.install_triggers = install;
+    }
+
     /// Imports `source` for real, as previewed. The outcome is [`ArchiveEnd::Imported`].
     pub fn begin_apply_import(&mut self, source: &ImportSource) -> Begun {
         self.begin_import(
@@ -838,13 +847,19 @@ where
                         tags: report.tags_added,
                         warnings: report.warnings,
                         warnings_dropped: report.warnings_dropped,
+                        triggers: report.triggers,
+                        triggers_total: report.triggers_total,
                     })
                     .map_err(|e| e.map_or(ImportProblem::Failed, |e| problem_of(&run.source, &e)));
                 ArchiveEnd::ImportPreview(preview)
             }
             ImportPurpose::Apply | ImportPurpose::Restore => {
                 let restoring = run.purpose == ImportPurpose::Restore;
-                let applied = ready.and_then(|(decoded, known)| {
+                let install = restoring || self.archive.install_triggers;
+                let applied = ready.and_then(|(mut decoded, known)| {
+                    if !install {
+                        decoded.leave_triggers();
+                    }
                     decoded.apply(&mut self.store, known.as_ref()).map_err(Some)
                 });
                 let worked = applied.is_ok();

@@ -55,7 +55,7 @@ pub use export::{
     ExportOptions, ExportReport, SensitivePolicy, SkippedItem, export_to_path, export_to_writer,
 };
 pub use import::{
-    BoardLayout, ImportOptions, KeySource, MergeStrategy, decode_archive, decode_archive_path,
+    BoardLayout, ImportOptions, KeySource, MergeStrategy, Triggers, decode_archive, decode_archive_path,
     import_archive, import_archive_path,
 };
 pub use importers::{

@@ -88,6 +88,17 @@ pub enum KeySource<'k> {
     Given(&'k DataKey),
 }
 
+/// Whether triggers in the source are installed. A trigger types text into other programs, so a
+/// caller that takes a file from someone else can leave them out after showing the list.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Triggers {
+    /// Install the source's triggers (the default; a restore of one's own backup).
+    #[default]
+    Install,
+    /// Import every item without its trigger.
+    Leave,
+}
+
 /// Options shared by every importer. Fields an importer has no use for are ignored.
 #[derive(Debug, Clone, Default)]
 pub struct ImportOptions<'k> {
@@ -106,6 +117,8 @@ pub struct ImportOptions<'k> {
     /// would add, then roll the transaction back so the library is unchanged. This is the
     /// preview the Settings import and Restore show before anything is written.
     pub dry_run: bool,
+    /// Whether the source's triggers are installed.
+    pub triggers: Triggers,
 }
 
 /// A board name from a file or folder name: trimmed, control characters replaced, shortened to
@@ -489,6 +502,8 @@ fn build_plan<R: Read + Seek>(
         }
     }
 
+    distrust_claims(&mut plan, now, options.merge == MergeStrategy::Restore);
+
     let unreferenced = archive
         .asset_hashes()
         .filter(|h| !builder.referenced.contains(h))
@@ -498,6 +513,33 @@ fn build_plan<R: Read + Seek>(
         unreferenced,
         truncated: builder.truncated,
     })
+}
+
+/// What a file says about time and use is a claim, not a fact: nothing may be dated after `now`
+/// (it would sort first and, for the Trash, never expire), and use counts only carry over when
+/// the file is the user's own backup being restored (DATA-10).
+fn distrust_claims(plan: &mut Plan, now: Timestamp, own_backup: bool) {
+    let cap = |t: &mut Timestamp| *t = (*t).min(now);
+    for board in &mut plan.boards {
+        cap(&mut board.created_at);
+        cap(&mut board.updated_at);
+        for list in &mut board.lists {
+            cap(&mut list.created_at);
+            cap(&mut list.updated_at);
+            for item in &mut list.items {
+                cap(&mut item.created_at);
+                cap(&mut item.updated_at);
+                if own_backup {
+                    if let Some(t) = &mut item.last_used_at {
+                        cap(t);
+                    }
+                } else {
+                    item.use_count = 0;
+                    item.last_used_at = None;
+                }
+            }
+        }
+    }
 }
 
 /// The manifest's counts must equal what the document and the zip really hold.

@@ -8,6 +8,9 @@ use snipdeck_core::BoardId;
 /// [`ImportReport::warnings_dropped`], so a folder of 100 000 bad files cannot exhaust memory.
 pub const MAX_WARNINGS: usize = 200;
 
+/// Most triggers an [`ImportReport`] lists by name.
+pub const MAX_TRIGGERS_LISTED: usize = 50;
+
 /// Something the import did not do, or did differently from what the source said. Warnings never
 /// fail an import; the caller shows them.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -186,6 +189,14 @@ pub enum Note {
         /// The file.
         file: String,
     },
+    /// A trigger of one character would fire in the middle of ordinary typing; the snippet came
+    /// in without it.
+    TriggerTooShort {
+        /// The snippet's title.
+        title: String,
+        /// The trigger.
+        trigger: String,
+    },
     /// The trigger is already used by another snippet; the snippet came in without it.
     TriggerTaken {
         /// The snippet's title.
@@ -269,6 +280,10 @@ impl fmt::Display for Note {
             Self::ColumnsCut { file } => write!(
                 f,
                 "{file}: some rows have more than 256 columns; the rest were ignored"
+            ),
+            Self::TriggerTooShort { title, trigger } => write!(
+                f,
+                "`{title}`: the trigger `{trigger}` is too short (a trigger needs at least two characters); imported without it"
             ),
             Self::TriggerTaken { title, trigger } => write!(
                 f,
@@ -368,6 +383,11 @@ pub struct ImportReport {
     pub tags_added: usize,
     /// The boards created, in order, so the UI can open the first one.
     pub boards: Vec<BoardId>,
+    /// The triggers the import installs (or would install), at most [`MAX_TRIGGERS_LISTED`], so
+    /// a preview can show what a file wants to type.
+    pub triggers: Vec<String>,
+    /// How many triggers in all, which can exceed `triggers.len()`.
+    pub triggers_total: usize,
     /// Up to [`MAX_WARNINGS`] warnings.
     pub warnings: Vec<Warning>,
     /// Warnings beyond [`MAX_WARNINGS`], which were counted but not kept.
