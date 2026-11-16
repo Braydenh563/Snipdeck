@@ -449,6 +449,19 @@ impl IndexCache {
         self.0.borrow().patches
     }
 
+    /// Whether the search index of the current snapshot is built.
+    #[must_use]
+    pub fn search_ready(&self) -> bool {
+        self.0.borrow().snapshot.search.get().is_some()
+    }
+
+    /// Builds the search index and suggestions of the current snapshot now (idle time after
+    /// the first frame), so the first keystroke does not.
+    pub fn warm(&self) {
+        let snapshot = Rc::clone(&self.0.borrow().snapshot);
+        let _ = snapshot.search();
+    }
+
     /// How many times the search index was built (on first use after a read; for tests and the
     /// performance notes).
     #[must_use]

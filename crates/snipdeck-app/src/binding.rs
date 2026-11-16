@@ -288,6 +288,8 @@ struct Core<S, C, K, T> {
     clipboard_timer: Cell<bool>,
     /// A timer is waiting for the idle lock of the master password.
     idle_timer: Cell<bool>,
+    /// A single-shot that builds the search index after a frame, while the Panel waits.
+    warm_timer: slint::Timer,
     /// Sends the dock its ticks while a hover or leave delay runs.
     dock_timer: slint::Timer,
     /// Set once the Panel has been shown: from then on a hidden Panel is not drawn.
@@ -331,6 +333,7 @@ where
                 settings_timer: Cell::new(false),
                 clipboard_timer: Cell::new(false),
                 idle_timer: Cell::new(false),
+                warm_timer: slint::Timer::default(),
                 dock_timer: slint::Timer::default(),
                 been_shown: std::cell::Cell::new(false),
                 drag_timer: slint::Timer::default(),
@@ -618,6 +621,27 @@ where
         self.arm_settings();
         self.arm_clipboard_clear();
         self.arm_idle_lock();
+        self.arm_warm();
+    }
+
+    /// Builds the search index shortly after a frame when it is not built (the library was read
+    /// again), so the first keystroke finds it ready. Runs only while the Panel is on screen.
+    fn arm_warm(self: &Rc<Self>) {
+        if self.warm_timer.running() || self.controller.borrow().search_ready() {
+            return;
+        }
+        let core = Rc::downgrade(self);
+        self.warm_timer.start(
+            slint::TimerMode::SingleShot,
+            std::time::Duration::from_millis(60),
+            move || {
+                if let Some(core) = core.upgrade()
+                    && let Ok(ctl) = core.controller.try_borrow()
+                {
+                    ctl.warm_search();
+                }
+            },
+        );
     }
 
     /// Runs the dock's timer while the Panel is docked, may tuck and is on screen, and only
@@ -1692,7 +1716,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         })));
     }
     if differs(&|p| {
-        p.rows == view.rows
+        (Rc::ptr_eq(&p.rows, &view.rows) || p.rows == view.rows)
             && p.dark == view.dark
             && p.stack.as_ref().map(|s| &s.items) == view.stack.as_ref().map(|s| &s.items)
     }) {

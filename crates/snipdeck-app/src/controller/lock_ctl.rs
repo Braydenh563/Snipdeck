@@ -586,6 +586,17 @@ where
 
     // ---- The idle lock -------------------------------------------------------------------------
 
+    /// Whether the search index is built (see [`crate::index_cache::IndexCache::search_ready`]).
+    #[must_use]
+    pub fn search_ready(&self) -> bool {
+        self.index_cache.search_ready()
+    }
+
+    /// Builds the search index in idle time (see [`crate::index_cache::IndexCache::warm`]).
+    pub fn warm_search(&self) {
+        self.index_cache.warm();
+    }
+
     /// How long until the idle lock is due, while a password is set and the library is open. The
     /// host arms a timer for this and then calls [`lock_if_idle`](Self::lock_if_idle).
     #[must_use]

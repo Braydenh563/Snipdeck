@@ -1124,6 +1124,25 @@ mod tests {
     // PERF-6: ghosts merge in one pass and keep the order the one-by-one insert gave: the newest
     // directly below its row, a ghost after a ghost right behind it, a lost neighbour last.
     #[test]
+    fn moving_the_selection_builds_no_rows_and_hands_out_the_same_rows() {
+        let mut f = fixture();
+        for n in 0..40 {
+            add_to(&mut f, Which::Replies, &format!("Item {n}"), "text");
+        }
+        let mut model =
+            PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
+        let first = model.rows();
+        let built = model.rows_built();
+        for _ in 0..10 {
+            model.move_selection(1);
+        }
+        model.move_selection(-3);
+        assert_eq!(model.rows_built(), built, "a cursor move builds no rows");
+        assert!(Rc::ptr_eq(&first, &model.rows()), "and the rows are the same ones");
+        assert_eq!(model.selected(), Some(model.rows()[7].id));
+    }
+
+    #[test]
     fn ghosts_are_merged_below_their_rows_in_one_pass() {
         let mut f = fixture();
         let ids: Vec<ItemId> = (0..4)
