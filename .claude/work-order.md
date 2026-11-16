@@ -1,5 +1,5 @@
 mode: continue
-status: active (owner: continue past 85%, finish-up 97%)
+status: stopped (usage)
 max-continues: 80
 max-idle-minutes: 60
 finish-up-line: 97%   # owner: "until 97% weekly usage"
