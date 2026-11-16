@@ -2637,6 +2637,23 @@ ui_tests! {
         assert_eq!(take(&log), ["reveal:4:true"]);
     }
 
+    fn a_row_tooltip_goes_when_the_host_removes_that_row_from_the_model() {
+        let (ui, _log) = start();
+        let model = Rc::new(VecModel::from(fixture::sample_rows()));
+        ui.set_rows(ModelRc::from(model.clone()));
+        settle();
+        move_to(&ui, centre(&rows(&ui)[2]));
+        wait(900);
+        assert!(!ui.get_tooltip_shown().is_empty(), "the row's tooltip is up after a rest");
+        // Removed in place (the model is not replaced, so `rows` does not change) under the resting pointer.
+        model.remove(2);
+        settle();
+        for _ in 0..4 {
+            wait(100);
+        }
+        assert_eq!(ui.get_tooltip_shown(), "", "the tip does not outlive its row");
+    }
+
     fn a_tooltip_from_a_row_closes_when_the_rows_change_or_scroll() {
         let (ui, _log) = start();
         let row = rows(&ui)[2].clone();
@@ -2800,6 +2817,81 @@ ui_tests! {
         assert_eq!(ui.get_tooltip_shown(), "");
         wait(450);
         assert_eq!(ui.get_tooltip_shown(), "More");
+    }
+
+    fn escape_closes_a_showing_tooltip_and_does_nothing_else_on_that_press() {
+        let (ui, log) = start();
+        move_to(&ui, centre(&find(&ui, "More", AccessibleRole::Button)));
+        wait(600);
+        assert_eq!(ui.get_tooltip_shown(), "More");
+        take(&log);
+        press(ui.window(), &key(Key::Escape));
+        settle();
+        assert_eq!(ui.get_tooltip_shown(), "", "the tip goes");
+        assert_eq!(take(&log), Vec::<String>::new(), "and the Panel stays");
+        wait(1000);
+        assert_eq!(ui.get_tooltip_shown(), "", "it stays closed while the pointer rests there");
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(take(&log), ["close"], "with no tip, Esc hides the Panel as before");
+    }
+
+    fn a_menu_opening_hides_the_tooltip_and_it_stays_hidden_after() {
+        let (ui, _log) = start();
+        move_to(&ui, centre(&find(&ui, "More", AccessibleRole::Button)));
+        wait(600);
+        assert_eq!(ui.get_tooltip_shown(), "More");
+        ui.set_app_menu_open(true);
+        settle();
+        assert_eq!(ui.get_tooltip_shown(), "", "no tip above the menu");
+        ui.set_app_menu_open(false);
+        wait(600);
+        assert_eq!(ui.get_tooltip_shown(), "", "nor after it, until the pointer moves on");
+    }
+
+    fn a_tooltip_goes_with_its_control_when_the_control_is_removed() {
+        let (ui, _log) = start();
+        let many: Vec<snipdeck_ui::TabItem> = (0..20)
+            .map(|i| snipdeck_ui::TabItem {
+                text: format!("List number {i}").into(),
+                accent: slint::Color::from_rgb_u8(0x0d, 0x94, 0x88),
+                icon: slint::Image::default(),
+            })
+            .collect();
+        ui.set_tabs(ModelRc::new(VecModel::from(many)));
+        settle();
+        move_to(&ui, centre(&find(&ui, "Scroll right", AccessibleRole::Button)));
+        wait(600);
+        assert_eq!(ui.get_tooltip_shown(), "Scroll right");
+        // The strip no longer overflows: the arrow is gone while the pointer rests where it was.
+        ui.set_tabs(ModelRc::new(VecModel::from(fixture::tabs())));
+        settle();
+        assert!(missing(&ui, "Scroll right", AccessibleRole::Button));
+        // Time passes as on a clock, so the layer's 100ms check ticks each step.
+        for _ in 0..4 {
+            wait(100);
+        }
+        assert_eq!(ui.get_tooltip_shown(), "", "the tip does not outlive its arrow");
+        move_to(&ui, centre(&find(&ui, "More", AccessibleRole::Button)));
+        wait(600);
+        assert_eq!(ui.get_tooltip_shown(), "More", "and the next control's tip still shows");
+    }
+
+    fn a_tip_that_would_show_at_once_under_a_menu_does_not_swallow_the_next_esc() {
+        let (ui, log) = start();
+        move_to(&ui, centre(&find(&ui, "More", AccessibleRole::Button)));
+        wait(600);
+        assert_eq!(ui.get_tooltip_shown(), "More");
+        // Off the control, then a menu opens within the quarter second a next tip would show at once.
+        move_to(&ui, away(&ui));
+        settle();
+        ui.set_app_menu_open(true);
+        settle();
+        move_to(&ui, centre(&find(&ui, "Close panel (Esc)", AccessibleRole::Button)));
+        settle();
+        assert_eq!(ui.get_tooltip_shown(), "");
+        take(&log);
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(take(&log), ["app-dismissed"], "the Esc reaches the menu");
     }
 
     fn every_icon_only_control_in_the_panel_has_a_tooltip() {

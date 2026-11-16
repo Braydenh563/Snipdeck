@@ -126,7 +126,12 @@ export component CommandPalette inherits Rectangle {
     // so a screen reader hears each arrow press and the count after each keystroke.
     property <string> status: root.cur < 0 ? @tr("{} found", 0) : @tr("{}, {} of {}", root.rows[root.cur].label, root.cur + 1, root.rows.length);
 
+    // The highlight was last moved by the pointer: the row under it is already (at least partly) in view, so the list
+    // is not nudged to show all of it, which would creep while a wheel or touchpad scroll passes rows under it.
+    property <bool> by-pointer: false;
+
     function move(delta: int) {
+        root.by-pointer = false;
         if (root.rows.length > 0) {
             root.current = mod(root.cur + delta + root.rows.length, root.rows.length);
         }
@@ -183,18 +188,37 @@ export component CommandPalette inherits Rectangle {
                     label: root.title;
                     clear-label: @tr("Clear search");
                     edited(text) => {
+                        root.by-pointer = false;
                         root.current = 0;
+                        // Back to the top even when as many rows come back (a scrollbar drag leaves the highlight where it was).
+                        plist.content-y = 0px;
                         root.query-changed(text);
                     }
                 }
                 Rectangle {
-                    // Keeps the highlighted row in view (the scrollbar may move the list away from it until the highlight moves).
-                    property <length> follow: min(0px, max(-(root.cur + 1) * root.row-h + plist.height, -root.cur * root.row-h));
                     property <int> n: root.rows.length;
+                    property <int> at: root.cur;
                     height: min(root.rows.length * root.row-h, Space.s12 * 6 * SystemLook.text-scale);
-                    init => { plist.content-y = self.follow; }
-                    changed follow => { plist.content-y = self.follow; }
-                    changed n => { plist.content-y = self.follow; }
+                    // Scrolls only as far as the highlighted row needs to be in view, and not at all when it already
+                    // is. The pointer moves the highlight to the row under it, which is in view: so a wheel or a
+                    // touchpad scroll is never pulled back by the row it brings under the pointer.
+                    function keep-current-in-view() {
+                        let top = root.cur * root.row-h;
+                        if (top + plist.content-y < 0px) {
+                            plist.content-y = -top;
+                        } else if (top + root.row-h + plist.content-y > plist.height) {
+                            plist.content-y = plist.height - top - root.row-h;
+                        }
+                    }
+                    init => { self.keep-current-in-view(); }
+                    changed at => {
+                        if (!root.by-pointer) { self.keep-current-in-view(); }
+                    }
+                    // New rows (the query changed): back to the top, where the highlight is.
+                    changed n => {
+                        plist.content-y = 0px;
+                        self.keep-current-in-view();
+                    }
 
                     plist := Flickable {
                         // Pinned to the left edge: an unset `x` would centre the narrowed list, leaving the
@@ -212,7 +236,10 @@ export component CommandPalette inherits Rectangle {
                                 index: i;
                                 count: root.rows.length;
                                 current: root.cur == i;
-                                pointer-entered => { root.current = i; }
+                                pointer-entered => {
+                                    root.by-pointer = true;
+                                    root.current = i;
+                                }
                                 activated => { root.chosen(row.id); }
                             }
                         }

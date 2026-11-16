@@ -22,7 +22,7 @@ use snipdeck_ui::{Fonts, MainSection, MainView, MainWindow, PaletteRow, selectio
 
 #[path = "support/mod.rs"]
 mod support;
-use support::{chord, key, on_ui_thread, press, type_text};
+use support::{chord, compose, key, on_ui_thread, press, type_text};
 
 #[path = "support/main_fixture.rs"]
 mod fixture;
@@ -2159,6 +2159,89 @@ ui_tests! {
         let _ = find(&ui, "Settings", AccessibleRole::Button);
     }
 
+    fn a_toolbar_tooltip_goes_when_the_palette_opens_and_esc_closes_one_first() {
+        let (ui, log) = start();
+        let tips = |ui: &MainWindow| ElementQuery::from_root(ui).match_inherits("Tooltip").find_all().len();
+        let rest_on = |ui: &MainWindow, label: &str| {
+            let button = find(ui, label, AccessibleRole::Button);
+            ui.window().dispatch_event(WindowEvent::PointerMoved { position: centre_of(&button) });
+            mock_elapsed_time(std::time::Duration::from_millis(600));
+            settle();
+        };
+        rest_on(&ui, "Compact view");
+        assert_eq!(tips(&ui), 1, "the view button's tip is up after a rest");
+        chord(ui.window(), &[Key::Control], "k");
+        settle();
+        assert!(ui.get_palette_open());
+        assert_eq!(tips(&ui), 0, "no tip above the palette's scrim");
+        press_key(&ui, Key::Escape);
+        settle();
+        assert!(!ui.get_palette_open());
+        mock_elapsed_time(std::time::Duration::from_millis(600));
+        settle();
+        assert_eq!(tips(&ui), 0, "it does not come back when the palette closes");
+
+        rest_on(&ui, "Comfortable view");
+        assert_eq!(tips(&ui), 1);
+        take(&log);
+        press_key(&ui, Key::Escape);
+        settle();
+        assert_eq!(tips(&ui), 0, "Esc closes the tip");
+        assert_eq!(take(&log), Vec::<String>::new(), "and does nothing else on that press");
+        mock_elapsed_time(std::time::Duration::from_millis(600));
+        settle();
+        assert_eq!(tips(&ui), 0, "it stays closed while the pointer rests there");
+        // With no tip up, Esc does its usual work again.
+        ui.set_selected_count(2);
+        settle();
+        press_key(&ui, Key::Escape);
+        assert_eq!(take(&log), ["clear"], "Esc with no tip clears the selection");
+    }
+
+    fn escape_during_a_search_composition_goes_to_the_composition_not_the_tooltip() {
+        let (ui, log) = start();
+        let tips = |ui: &MainWindow| ElementQuery::from_root(ui).match_inherits("Tooltip").find_all().len();
+        find(&ui, "Search snippets", AccessibleRole::TextInput).mock_single_click(slint::platform::PointerEventButton::Left);
+        settle();
+        let button = find(&ui, "Compact view", AccessibleRole::Button);
+        ui.window().dispatch_event(WindowEvent::PointerMoved { position: centre_of(&button) });
+        mock_elapsed_time(std::time::Duration::from_millis(600));
+        settle();
+        assert_eq!(tips(&ui), 1, "the view button's tip is up");
+        compose(ui.window(), "nihon");
+        settle();
+        take(&log);
+        press_key(&ui, Key::Escape);
+        assert_eq!(tips(&ui), 1, "Esc belongs to the input method while composing: the tip stays");
+        assert_eq!(take(&log), Vec::<String>::new());
+    }
+
+    fn a_card_tip_is_not_closed_by_the_card_the_pointer_left() {
+        assert_eq!(copy_to_copy(1, 2), 1, "moving up: the new card's Copy keeps its tip");
+        assert_eq!(copy_to_copy(2, 1), 1, "moving down: the new card's Copy keeps its tip");
+    }
+
+    fn a_tooltip_goes_with_its_control_when_the_window_widens_and_removes_it() {
+        let (ui, _log) = start();
+        let tips = |ui: &MainWindow| ElementQuery::from_root(ui).match_inherits("Tooltip").find_all().len();
+        ui.window().set_size(slint::LogicalSize::new(640.0, 520.0));
+        settle();
+        let board = find(&ui, "Board: Work", AccessibleRole::Button);
+        ui.window().dispatch_event(WindowEvent::PointerMoved { position: centre_of(&board) });
+        mock_elapsed_time(std::time::Duration::from_millis(600));
+        settle();
+        assert_eq!(tips(&ui), 1, "the narrow board button's tip is up");
+        // Wider: the icon button gives way to the full switcher while the pointer rests where it was.
+        ui.window().set_size(slint::LogicalSize::new(1040.0, 640.0));
+        settle();
+        // Time passes as on a clock, so the layer's 100ms check ticks each step.
+        for _ in 0..4 {
+            mock_elapsed_time(std::time::Duration::from_millis(100));
+            settle();
+        }
+        assert_eq!(tips(&ui), 0, "the tip does not outlive its button");
+    }
+
     fn rail_tooltips_stay_inside_the_window() {
         let (ui, _log) = start();
         ui.set_sidebar_collapsed(true);
@@ -2610,5 +2693,196 @@ ui_tests! {
         assert!(ElementHandle::find_by_accessible_label(&ui, "Recent copies are locked").next().is_some());
         find(&ui, "Unlock", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["unlock"]);
+    }
+}
+
+// ---- Palette scrolling -------------------------------------------------------------------------------
+
+/// Forty commands: more than the palette shows, so its list scrolls.
+fn many_palette_rows(ui: &MainWindow) {
+    let labels: Vec<String> = (0..40).map(|i| format!("Command {i}")).collect();
+    let rows: Vec<(i32, &str, &[&str])> = labels
+        .iter()
+        .enumerate()
+        .map(|(i, l)| (i32::try_from(i).unwrap_or(0), l.as_str(), &[][..]))
+        .collect();
+    palette_rows(ui, &rows);
+}
+
+/// How far the palette list is scrolled, in px: read from the first row still in view (a row
+/// scrolled out of the viewport is not found), given where row 0 sat unscrolled and the row height.
+fn scrolled(ui: &MainWindow, top0: f32, row_h: f32) -> f32 {
+    (0..40u8)
+        .find_map(|i| {
+            all(ui, &format!("Command {i}"), AccessibleRole::ListItem)
+                .first()
+                .map(|e| top0 + row_h * f32::from(i) - e.absolute_position().y)
+        })
+        .expect("a row in view")
+}
+
+/// Card `selected` shows its actions without hover; the pointer rests on card `hovered`'s Copy, then moves
+/// straight onto the selected card's Copy, so one move leaves one Copy and enters the other.
+fn copy_to_copy(selected: usize, hovered: usize) -> usize {
+    let (ui, _log) = start();
+    let tips = |ui: &MainWindow| {
+        ElementQuery::from_root(ui)
+            .match_inherits("Tooltip")
+            .find_all()
+            .len()
+    };
+    select_row(&ui, selected);
+    settle();
+    let titles = ["Thanks, received", "Invoice reminder", "Retry helper"];
+    let row = row_titled(&ui, titles[hovered]);
+    ui.window().dispatch_event(WindowEvent::PointerMoved {
+        position: centre_of(&row),
+    });
+    settle();
+    let from = button_in(&ui, &row, "Copy").expect("the hovered card's Copy");
+    ui.window().dispatch_event(WindowEvent::PointerMoved {
+        position: centre_of(&from),
+    });
+    mock_elapsed_time(std::time::Duration::from_millis(600));
+    settle();
+    assert_eq!(tips(&ui), 1, "Copy names itself");
+    let to = button_in(&ui, &row_titled(&ui, titles[selected]), "Copy")
+        .expect("the selected card's Copy");
+    ui.window().dispatch_event(WindowEvent::PointerMoved {
+        position: centre_of(&to),
+    });
+    mock_elapsed_time(std::time::Duration::from_millis(100));
+    settle();
+    tips(&ui)
+}
+
+/// The palette open on forty commands at Windows text size `scale` (rows grow with it).
+fn palette_at(scale: f32) -> MainWindow {
+    let (ui, _log) = start();
+    ui.global::<snipdeck_ui::SystemLook<'_>>()
+        .set_text_scale(scale);
+    settle();
+    chord(ui.window(), &[Key::Control], "k");
+    settle();
+    many_palette_rows(&ui);
+    ui
+}
+
+/// A wheel turn (one notch is 60px on the winit backend; a touchpad sends many small ones) over `at`,
+/// then the pointer moves a hair, as a hand on a touchpad does, so the row under it is hovered.
+fn wheel(ui: &MainWindow, at: LogicalPosition, delta_y: f32) {
+    ui.window().dispatch_event(WindowEvent::PointerScrolled {
+        position: at,
+        delta_x: 0.0,
+        delta_y,
+    });
+    mock_elapsed_time(std::time::Duration::from_millis(400));
+    settle();
+    ui.window().dispatch_event(WindowEvent::PointerMoved {
+        position: LogicalPosition::new(at.x, at.y + 0.5),
+    });
+    mock_elapsed_time(std::time::Duration::from_millis(50));
+    settle();
+}
+
+ui_tests! {
+    fn the_palette_list_scrolls_with_the_wheel_and_stays_where_it_was_scrolled() {
+        for scale in [1.0, 1.5] {
+        let ui = palette_at(scale);
+        let first = find(&ui, "Command 0", AccessibleRole::ListItem);
+        let top0 = first.absolute_position().y;
+        let row_h = first.size().height;
+        let over = LogicalPosition::new(first.absolute_position().x + 40.0, top0 + row_h * 2.5);
+        ui.window().dispatch_event(WindowEvent::PointerMoved { position: over });
+        settle();
+
+        // Far enough that the row under the pointer is past the first screenful: the old list re-pinned the
+        // highlight (that row) to its bottom edge, so every notch from there on jumped back.
+        for notch in 1..=8u16 {
+            wheel(&ui, over, -60.0);
+            let now = scrolled(&ui, top0, row_h);
+            assert!(
+                (now - 60.0 * f32::from(notch)).abs() < 1.0,
+                "after {notch} notches the list is {} px down, got {now}",
+                60 * notch
+            );
+        }
+        wheel(&ui, over, 60.0);
+        assert!(
+            (scrolled(&ui, top0, row_h) - 420.0).abs() < 1.0,
+            "a notch back up returns 60px"
+        );
+        }
+    }
+
+    fn many_small_touchpad_deltas_scroll_the_palette_as_far_as_their_sum() {
+        for scale in [1.0, 1.5] {
+        let ui = palette_at(scale);
+        let first = find(&ui, "Command 0", AccessibleRole::ListItem);
+        let top0 = first.absolute_position().y;
+        let row_h = first.size().height;
+        let over = LogicalPosition::new(first.absolute_position().x + 40.0, top0 + row_h * 2.5);
+        ui.window().dispatch_event(WindowEvent::PointerMoved { position: over });
+        settle();
+        // A precision touchpad: WM_MOUSEWHEEL with deltas of a few units of 120, so a few px each.
+        for _ in 0..120 {
+            wheel(&ui, over, -4.0);
+        }
+        let moved = scrolled(&ui, top0, row_h);
+        assert!((moved - 480.0).abs() < 1.0, "120 deltas of 4px scroll 480px, got {moved}");
+        }
+    }
+
+    fn the_keyboard_still_brings_the_highlighted_row_into_view_after_a_wheel_scroll() {
+        for scale in [1.0, 1.5] {
+        let ui = palette_at(scale);
+        let first = find(&ui, "Command 0", AccessibleRole::ListItem);
+        let top0 = first.absolute_position().y;
+        let row_h = first.size().height;
+        let over = LogicalPosition::new(first.absolute_position().x + 40.0, top0 + row_h * 2.5);
+        ui.window().dispatch_event(WindowEvent::PointerMoved { position: over });
+        settle();
+        wheel(&ui, over, -600.0);
+        // Move the pointer off the list so it does not hover a row, then walk to the last command.
+        ui.window().dispatch_event(WindowEvent::PointerExited);
+        // The list wraps, so walk down until the footer says the last command is highlighted.
+        let at_last = |ui: &MainWindow| {
+            ElementHandle::find_by_accessible_label(ui, "Command 39, 40 of 40").next().is_some()
+        };
+        for _ in 0..40 {
+            if at_last(&ui) {
+                break;
+            }
+            press_key(&ui, Key::DownArrow);
+            settle();
+        }
+        assert!(at_last(&ui), "the last command is highlighted");
+        // The last row is in view and the list is at its end (a further turn down moves nothing), so the row
+        // sits at the bottom edge, whatever the viewport's height at this text size.
+        let _ = find(&ui, "Command 39", AccessibleRole::ListItem);
+        let at_end = scrolled(&ui, top0, row_h);
+        assert!(at_end > row_h, "at {scale}x the list scrolled to its end, got {at_end}");
+        wheel(&ui, over, -600.0);
+        assert!(
+            (scrolled(&ui, top0, row_h) - at_end).abs() < 1.0,
+            "at {scale}x the last row was already at the bottom: {at_end}"
+        );
+        ui.window().dispatch_event(WindowEvent::PointerExited);
+        // The wheel's hover moved the highlight; walk up from there to the first command.
+        let at_first = |ui: &MainWindow| {
+            ElementHandle::find_by_accessible_label(ui, "Command 0, 1 of 40").next().is_some()
+        };
+        for _ in 0..40 {
+            if at_first(&ui) {
+                break;
+            }
+            press_key(&ui, Key::UpArrow);
+        }
+        assert!(at_first(&ui), "the first command is highlighted");
+        assert!(
+            scrolled(&ui, top0, row_h).abs() < 1.0,
+            "walking back up brings the first row back to the top"
+        );
+        }
     }
 }

@@ -153,6 +153,14 @@ first start.
 - Tab and Shift+Tab reach every field in the item editor, Settings and the fill form, including text fields inside scrolling areas, dropdowns and template choices, and the focus ring is no longer cut off.
 
 ### Fixed
+- **The command palette scrolls with the wheel and a two-finger touchpad swipe.** Each scroll used to snap back: the
+  row it brought under the pointer became the highlight, and the list re-pinned the highlight to its bottom edge. The
+  list now moves only when the highlight is out of view. Unverified on a Windows precision touchpad.
+- **Tooltips draw above everything in their window.** A tooltip no longer hides behind a later element (the heading
+  title, the toolbar) or gets cut off by a narrow container (the collapsed sidebar): each window has one tooltip layer
+  drawn last, shifted to stay inside the window. Every tooltip in the app now uses it: it shows at once when moving
+  from one control to the next, goes when a menu, dialog or the command palette opens, closes on `Esc` (that press
+  does nothing else), and closes when its button is used. Unverified on Windows.
 - **Paste as plain text** now also works on the Panel's Recent rows (`Alt+Enter`, `Alt`+click, and the row
   menu) and in the Main window (`Alt+Enter`, `Alt`+click). Unverified: whether `Alt`+click shows the target's
   menu bar on Windows.
