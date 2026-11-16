@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 
 use snipdeck_core::{
-    Format, Formats, Item, ItemId, ItemKind, Timestamp, UseMode, UseOutcome,
+    CaseShape, Format, Formats, Item, ItemId, ItemKind, Timestamp, UseMode, UseOutcome,
     template::{
         Locale, Prompt, RenderContext, RenderError, Template, TemplateError, TimeZone,
         transform::{self, Transform},
@@ -43,6 +43,32 @@ pub struct UseRequest {
     pub uuids: Option<Vec<[u8; 16]>>,
     /// Backspaces to send with the paste, to erase a typed trigger (0 for every other use).
     pub erase: usize,
+    /// What a typed trigger asks of the text that replaces it.
+    pub retype: Retype,
+}
+
+/// What a typed trigger asks of the text that replaces it: the case of the code typed
+/// ([`CaseMode::Adapt`](snipdeck_core::CaseMode)) and the delimiter that ended it, which went
+/// with the Backspaces and is typed again after the text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Retype {
+    /// How the text follows the case typed.
+    pub shape: CaseShape,
+    /// The delimiter to put back after the text.
+    pub delimiter: Option<char>,
+}
+
+impl Retype {
+    /// The HTML for the delimiter.
+    fn html(c: char) -> String {
+        match c {
+            '\n' | '\r' => "<br>".to_owned(),
+            '&' => "&amp;".to_owned(),
+            '<' => "&lt;".to_owned(),
+            '>' => "&gt;".to_owned(),
+            c => c.to_string(),
+        }
+    }
 }
 
 /// The most Left presses sent to put the caret at `{cursor}`.
@@ -240,6 +266,9 @@ fn build_payload<S: BlobStore>(
             // A transformed paste is plain text: no HTML, RTF, picture or files go with it.
             Format::Html(_) | Format::Rtf(_) | Format::Png(_) | Format::Files(_)
                 if request.transform.is_some() => {}
+            // A text in another case is plain; an RTF twin cannot take a delimiter.
+            Format::Html(_) if request.retype.shape != CaseShape::AsIs => {}
+            Format::Rtf(_) if request.retype.shape != CaseShape::AsIs || request.retype.delimiter.is_some() => {}
             Format::Text(content) => {
                 let bytes = store.read(content)?;
                 let text = String::from_utf8(bytes.into_owned()).map_err(|_| UseError::NotText)?;
@@ -255,15 +284,25 @@ fn build_payload<S: BlobStore>(
                     // The transform can change lengths (`ß` is `SS`): no caret to restore.
                     cursor = None;
                 }
+                if request.retype.shape != CaseShape::AsIs {
+                    text = request.retype.shape.apply(&text);
+                    cursor = None;
+                }
+                if let Some(d) = request.retype.delimiter {
+                    text.push(d);
+                    cursor = cursor.map(|n| n + 1);
+                }
                 data.push(Data::Text(text));
             }
             // A template's rich formats cannot be filled in: its text is what gets pasted.
             Format::Html(_) | Format::Rtf(_) if item.kind == ItemKind::Template => {}
             Format::Html(content) => {
                 let bytes = store.read(content)?;
-                data.push(Data::Html(
-                    String::from_utf8(bytes.into_owned()).map_err(|_| UseError::NotText)?,
-                ));
+                let mut html = String::from_utf8(bytes.into_owned()).map_err(|_| UseError::NotText)?;
+                if let Some(d) = request.retype.delimiter {
+                    html.push_str(&Retype::html(d));
+                }
+                data.push(Data::Html(html));
             }
             Format::Rtf(content) => data.push(Data::Rtf(store.read(content)?.into_owned())),
             Format::Png(content) => data.push(Data::Png(store.read(content)?.into_owned())),
@@ -394,6 +433,7 @@ mod tests {
                 transform: None,
                 uuids: None,
                 erase: 0,
+                retype: Retype::default(),
             }
         }
 

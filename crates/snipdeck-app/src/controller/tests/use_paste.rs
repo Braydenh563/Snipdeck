@@ -838,7 +838,8 @@ fn the_setting_off_keeps_the_panel_open_and_a_failed_use_never_hides() {
 // ---- Typed-trigger expansion (slice 5b) --------------------------------------------------------
 
 use crate::typing_worker::Typed;
-use snipdeck_core::{Fired, Trigger};
+use crate::usecase::Retype;
+use snipdeck_core::{CaseShape, Fired, Trigger};
 use snipdeck_store::TriggerRepo;
 
 /// A world where typing expansion is on and item `n` has the trigger `code`.
@@ -1220,6 +1221,8 @@ fn suggestion(w: &World, code: &str, chars: usize, password: bool) -> Typed {
         item: w.ids[1],
         trigger: Trigger::new(code).expect("trigger"),
         chars,
+        delimiter: None,
+        shape: CaseShape::AsIs,
     };
     Typed::new(fired, password, || true)
 }
@@ -1528,6 +1531,7 @@ fn a_called_off_sensitive_files_paste_still_deletes_its_temp_files_on_the_timer(
             chars: 2,
             app: None,
             fresh: Some(&stale),
+            retype: Retype::default(),
         }),
     );
     assert_eq!(result, UseResult::Cancelled);

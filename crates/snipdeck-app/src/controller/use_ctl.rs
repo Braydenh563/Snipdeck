@@ -22,7 +22,7 @@ use crate::{
     paste_next::{self},
     picker::{PickerModel, Scope},
     toast::{self, Toast, ToastKind, ToastMessage},
-    usecase::{self, UseError, UseRequest},
+    usecase::{self, Retype, UseError, UseRequest},
 };
 
 /// A typed trigger to erase with a paste.
@@ -34,6 +34,8 @@ pub(super) struct Erasing<'a> {
     /// `false` once a key was typed after the trigger (none for a confirmed fill form, whose own
     /// keystrokes the hook also sees).
     pub(super) fresh: Option<&'a dyn Fn() -> bool>,
+    /// What the trigger asks of the text that replaces it.
+    pub(super) retype: Retype,
 }
 
 impl<S, C, K, T> Controller<S, C, K, T>
@@ -244,6 +246,7 @@ where
             chars: e.chars,
             app: e.app,
             fresh: None,
+            retype: e.retype,
         });
         self.run_use_erasing(
             submission.item,
@@ -525,6 +528,7 @@ where
             transform,
             uuids: None,
             erase: chars,
+            retype: erase.as_ref().map_or_else(Retype::default, |e| e.retype),
             // Only a template that says `{clipboard}` reads what the user copied (A22).
             clipboard_text: if usecase::template_source(&self.store, item)
                 .ok()
@@ -594,6 +598,7 @@ where
                         self.fill_erase = erase.filter(|e| e.chars > 0).map(|e| FillErase {
                             chars: e.chars,
                             app: e.app,
+                            retype: e.retype,
                         });
                         UseResult::NeedsAnswers
                     }

@@ -215,6 +215,15 @@ CREATE TABLE triggers (
 ) STRICT, WITHOUT ROWID;
 ";
 
+/// Version 11: when a trigger fires (`immediate`, or at a `delimiter`) and how it reads case
+/// (`exact`, `ignore` or `adapt`). Every existing code keeps `immediate` and `exact`.
+pub(crate) const V11: &str = r"
+ALTER TABLE triggers ADD COLUMN fires TEXT NOT NULL DEFAULT 'immediate'
+    CHECK (fires IN ('immediate', 'delimiter'));
+ALTER TABLE triggers ADD COLUMN case_mode TEXT NOT NULL DEFAULT 'exact'
+    CHECK (case_mode IN ('exact', 'ignore', 'adapt'));
+";
+
 #[cfg(test)]
 mod tests {
     use rusqlite::{Connection, params};

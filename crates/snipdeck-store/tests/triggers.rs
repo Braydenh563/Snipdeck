@@ -12,7 +12,7 @@
 mod common;
 
 use common::*;
-use snipdeck_core::{ItemId, Matcher, Trigger};
+use snipdeck_core::{CaseMode, ItemId, Matcher, Trigger, TriggerEnd, TriggerOptions};
 use snipdeck_store::{
     BoardRepo, Error, GroupDelete, GroupRepo, ItemRepo, ListRepo, Store, TrashRepo, Trashable,
     TriggerRepo,
@@ -37,7 +37,7 @@ fn v9_keeps_items_and_adds_no_triggers() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("snipdeck.db"), FIXTURE_V8).unwrap();
     let mut s = Store::open(dir.path()).unwrap();
-    assert_eq!(s.schema_version().unwrap(), 9);
+    assert_eq!(s.schema_version().unwrap(), 11);
     assert!(dir.path().join("snipdeck.db.pre-v8.bak").exists());
     let board = s.boards().unwrap().remove(0);
     let list = s.lists(board.id).unwrap().remove(0);
@@ -201,4 +201,58 @@ fn stored_triggers_feed_the_matcher() {
     let mut m = Matcher::new(s.triggers().unwrap());
     let hit = ";addr".chars().find_map(|ch| m.feed(ch)).unwrap();
     assert_eq!((hit.item, hit.chars), (c, 5));
+}
+
+fn with(text: &str, end: TriggerEnd, case: CaseMode) -> Trigger {
+    trig(text).with_options(TriggerOptions { end, case })
+}
+
+#[test]
+fn a_triggers_end_and_case_mode_are_kept() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut s = Store::open(dir.path()).unwrap();
+    let (_, a, c) = two(&mut s);
+    let sig = with("sig", TriggerEnd::Delimiter, CaseMode::Adapt);
+    s.set_trigger(a, Some(&sig)).unwrap();
+    s.set_trigger(c, Some(&trig(";c"))).unwrap();
+    assert_eq!(s.trigger_of(a).unwrap(), Some(sig.clone()));
+    assert_eq!(s.trigger_of(a).unwrap().unwrap().options(), sig.options());
+    assert_eq!(
+        s.trigger_of(c).unwrap().unwrap().options(),
+        TriggerOptions::default(),
+        "the default is kept as the default"
+    );
+    drop(s);
+    let s = Store::open(dir.path()).unwrap();
+    assert_eq!(
+        s.triggers().unwrap(),
+        [(trig(";c"), c), (sig, a)],
+        "after a reopen"
+    );
+}
+
+#[test]
+fn a_code_that_differs_only_by_case_is_taken_when_a_mode_ignores_case() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut s = Store::open(dir.path()).unwrap();
+    let (_, a, c) = two(&mut s);
+    s.set_trigger(a, Some(&with(";sig", TriggerEnd::Immediate, CaseMode::Ignore)))
+        .unwrap();
+    let err = s.set_trigger(c, Some(&trig(";SIG"))).unwrap_err();
+    assert!(matches!(&err, Error::TriggerTaken(t) if t == ";sig"), "{err:?}");
+    assert_eq!(s.trigger_of(c).unwrap(), None);
+}
+
+#[test]
+fn a_delimiter_code_is_not_reported_as_hiding_a_longer_one() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut s = Store::open(dir.path()).unwrap();
+    let (_, a, c) = two(&mut s);
+    s.set_trigger(a, Some(&trig(";signature"))).unwrap();
+    let clash = s
+        .set_trigger(c, Some(&with(";sig", TriggerEnd::Delimiter, CaseMode::Exact)))
+        .unwrap();
+    assert!(clash.is_empty(), "{clash:?}");
+    let clash = s.set_trigger(c, Some(&trig(";sig"))).unwrap();
+    assert_eq!(clash, [trig(";signature")]);
 }

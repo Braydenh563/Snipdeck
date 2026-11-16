@@ -121,6 +121,25 @@ impl CaseShape {
     }
 }
 
+impl CaseShape {
+    /// `text` in this shape: upper case, or with its first letter in capitals and the rest left
+    /// as written.
+    #[must_use]
+    pub fn apply(self, text: &str) -> String {
+        match self {
+            Self::AsIs => text.to_owned(),
+            Self::Upper => text.to_uppercase(),
+            Self::Capital => {
+                let mut chars = text.chars();
+                chars
+                    .next()
+                    .map(|first| first.to_uppercase().chain(chars).collect())
+                    .unwrap_or_default()
+            }
+        }
+    }
+}
+
 /// What a trigger does besides standing for an item: when it fires and how it reads case.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct TriggerOptions {
@@ -914,6 +933,15 @@ mod tests {
         assert_eq!(shapes("bRb"), CaseShape::AsIs);
         let mut m = matcher_of(vec![(opt("b", TriggerEnd::Delimiter, CaseMode::Adapt), 1)]);
         assert_eq!(feed_all(&mut m, "B ")[0].shape, CaseShape::Capital, "one capital letter");
+    }
+
+    #[test]
+    fn a_shape_is_applied_to_the_text() {
+        assert_eq!(CaseShape::AsIs.apply("Best regards"), "Best regards");
+        assert_eq!(CaseShape::Upper.apply("Best regards"), "BEST REGARDS");
+        assert_eq!(CaseShape::Capital.apply("best regards"), "Best regards");
+        assert_eq!(CaseShape::Capital.apply("éa"), "Éa");
+        assert_eq!(CaseShape::Capital.apply(""), "");
     }
 
     #[test]

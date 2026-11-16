@@ -432,7 +432,7 @@ mod at_rest {
         // Opened with no key: the rows are kept and readable, flagged plain.
         {
             let s = Store::open(dir.path()).unwrap();
-            assert_eq!(s.schema_version().unwrap(), 9);
+            assert_eq!(s.schema_version().unwrap(), 11);
             assert_eq!(texts(&s), [m2.clone(), m1.clone()]);
             assert!(s.has_plain_recent().unwrap());
         }
@@ -547,7 +547,7 @@ mod at_rest {
             )
             .unwrap();
         let s = Store::open(dir.path()).unwrap();
-        assert_eq!(s.schema_version().unwrap(), 9);
+        assert_eq!(s.schema_version().unwrap(), 11);
         let all = s.recent().unwrap();
         assert_eq!(all.len(), 1);
         assert_eq!(all[0].text, m);

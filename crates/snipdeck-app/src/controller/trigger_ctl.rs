@@ -20,6 +20,7 @@ use super::{Controller, Library, Toast, ToastKind, ToastMessage, UseResult, use_
 use crate::{
     host::{ClipboardText, TypingControl},
     typing_worker::Typed,
+    usecase::Retype,
 };
 
 /// What became of a typed trigger.
@@ -235,6 +236,10 @@ where
             chars: fired.chars,
             app: self.model.target().map(|t| t.app.clone()),
             fresh: Some(&fresh),
+            retype: Retype {
+                shape: fired.shape,
+                delimiter: fired.delimiter,
+            },
         };
         match self.run_use_erasing(
             fired.item,
