@@ -5,7 +5,7 @@
 //! lower-casing keeps `Straße` and `STRASSE`, or a composed and a decomposed `École`, apart.
 
 use rusqlite::{Connection, OptionalExtension, params};
-use snipdeck_core::{Name, Tag, TagId};
+use snipdeck_core::{ItemId, Name, Tag, TagId};
 use unicode_normalization::UnicodeNormalization as _;
 
 use crate::Error;
@@ -110,6 +110,29 @@ pub(crate) fn delete_tag(cx: &mut Ctx<'_>, id: TagId) -> Result<()> {
         .execute("DELETE FROM tags WHERE id = ?1", [id_bytes(id)])?;
     if deleted == 0 {
         return Err(not_found(id));
+    }
+    Ok(())
+}
+
+pub(crate) fn tag_items(conn: &Connection, id: TagId) -> Result<Vec<ItemId>> {
+    let mut stmt =
+        conn.prepare_cached("SELECT item_id FROM item_tags WHERE tag_id = ?1 ORDER BY item_id")?;
+    let rows = stmt.query_map([id_bytes(id)], |r| r.get::<_, Vec<u8>>(0))?;
+    rows.map(|row| id_from(&row?)).collect()
+}
+
+pub(crate) fn link_tag(cx: &mut Ctx<'_>, id: TagId, items: &[ItemId]) -> Result<()> {
+    let conn = cx.conn;
+    if !crate::codec::exists(conn, "tags", id_bytes(id))? {
+        return Err(not_found(id));
+    }
+    for item in items {
+        // `INSERT ... SELECT` skips an item that is gone; OR IGNORE one that has the tag.
+        conn.execute(
+            "INSERT OR IGNORE INTO item_tags (item_id, tag_id)
+             SELECT id, ?2 FROM items WHERE id = ?1",
+            params![id_bytes(*item), id_bytes(id)],
+        )?;
     }
     Ok(())
 }

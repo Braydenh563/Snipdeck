@@ -562,6 +562,14 @@ macro_rules! repo_impls {
             fn delete_tag(&mut self, id: TagId) -> Result<()> {
                 self.writer(|cx| tags::delete_tag(cx, id))
             }
+
+            fn tag_items(&self, id: TagId) -> Result<Vec<ItemId>> {
+                tags::tag_items(self.reader().conn, id)
+            }
+
+            fn link_tag(&mut self, id: TagId, items: &[ItemId]) -> Result<()> {
+                self.writer(|cx| tags::link_tag(cx, id, items))
+            }
         }
 
         impl TrashRepo for $ty {
@@ -584,6 +592,10 @@ macro_rules! repo_impls {
 
             fn purge_entry(&mut self, target: Trashable) -> Result<()> {
                 self.writer(|cx| trash::purge_entry(cx, target))
+            }
+
+            fn is_stored(&self, target: Trashable) -> Result<bool> {
+                trash::is_stored(self.reader().conn, target)
             }
         }
     };

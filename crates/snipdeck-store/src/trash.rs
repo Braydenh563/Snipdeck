@@ -180,6 +180,15 @@ pub(crate) fn purge_entry(cx: &mut Ctx<'_>, target: Trashable) -> Result<()> {
     Ok(())
 }
 
+/// [`TrashRepo::is_stored`](crate::TrashRepo::is_stored).
+pub(crate) fn is_stored(conn: &rusqlite::Connection, target: Trashable) -> Result<bool> {
+    match target {
+        Trashable::Item(id) => exists(conn, "items", id_bytes(id)),
+        Trashable::List(id) => exists(conn, "lists", id_bytes(id)),
+        Trashable::Board(id) => exists(conn, "boards", id_bytes(id)),
+    }
+}
+
 /// [`Store::restore_reporting`](crate::Store::restore_reporting).
 pub(crate) fn restore_reporting(cx: &mut Ctx<'_>, target: Trashable) -> Result<Vec<Trashable>> {
     let tx = cx.conn;

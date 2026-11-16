@@ -134,3 +134,49 @@ fn names_clash_after_full_case_folding_and_normalisation() {
         Err(Error::TagExists(_))
     ));
 }
+
+#[test]
+fn a_deleted_tag_can_be_linked_back_to_live_and_trashed_items() {
+    use snipdeck_store::{ItemRepo, TrashRepo, Trashable};
+    let mut s = store();
+    let b = board(&mut s, "Work");
+    let l = list(&mut s, b.id, "Replies");
+    let tag = Tag::new(name("urgent"));
+    s.insert_tag(&tag).unwrap();
+    let (live, trashed, plain) = (
+        item(&mut s, l.id, "live", "a"),
+        item(&mut s, l.id, "trashed", "b"),
+        item(&mut s, l.id, "plain", "c"),
+    );
+    for it in [&live, &trashed] {
+        let mut tagged = (*it).clone();
+        tagged.tags.insert(tag.id);
+        s.update_item(&tagged, None).unwrap();
+    }
+    s.trash(Trashable::Item(trashed.id), at(100)).unwrap();
+    let mut linked = s.tag_items(tag.id).unwrap();
+    linked.sort();
+    let mut want = vec![live.id, trashed.id];
+    want.sort();
+    assert_eq!(linked, want, "the Trash's item counts too");
+    s.delete_tag(tag.id).unwrap();
+    assert!(s.tag_items(tag.id).unwrap().is_empty());
+    s.insert_tag(&tag).unwrap();
+    s.link_tag(
+        tag.id,
+        &[
+            live.id,
+            trashed.id,
+            plain.id,
+            snipdeck_core::ItemId::generate(),
+        ],
+    )
+    .unwrap();
+    assert!(s.item(live.id).unwrap().tags.contains(&tag.id));
+    s.restore(Trashable::Item(trashed.id)).unwrap();
+    assert!(s.item(trashed.id).unwrap().tags.contains(&tag.id));
+    assert!(matches!(
+        s.link_tag(TagId::generate(), &[]),
+        Err(Error::NotFound { .. })
+    ));
+}

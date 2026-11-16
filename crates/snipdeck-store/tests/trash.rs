@@ -480,3 +480,22 @@ fn restore_reporting_reports_every_record_it_brought_back() {
             .is_empty()
     );
 }
+
+#[test]
+fn a_record_is_stored_until_it_is_purged() {
+    let (mut s, b, l, it) = tree();
+    let item = Trashable::Item(it[0].id);
+    assert!(s.is_stored(item).unwrap());
+    s.trash(item, at(100)).unwrap();
+    assert!(s.is_stored(item).unwrap(), "the Trash still holds it");
+    s.purge_entry(item).unwrap();
+    assert!(!s.is_stored(item).unwrap());
+    s.trash(Trashable::List(l.id), at(200)).unwrap();
+    s.purge_entry(Trashable::List(l.id)).unwrap();
+    assert!(
+        !s.is_stored(Trashable::Item(it[1].id)).unwrap(),
+        "inside it"
+    );
+    assert!(!s.is_stored(Trashable::List(l.id)).unwrap());
+    assert!(s.is_stored(Trashable::Board(b.id)).unwrap());
+}
