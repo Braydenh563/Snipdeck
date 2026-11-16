@@ -1857,8 +1857,9 @@ where
         ));
         wire!(on_recent_history_toggled, |core, on| core
             .act(|ctl| ctl.set_recent_history(on)));
-        wire!(on_recent_keep_unknown_source_toggled, |core, on| core
-            .act(|ctl| ctl.update_settings(|s| s.recent_keep_unknown_source = on)));
+        wire!(on_recent_keep_unknown_source_toggled, |core, on| core.act(
+            |ctl| ctl.update_settings(|s| s.recent_keep_unknown_source = on)
+        ));
         wire!(on_expand_triggers_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.expand_triggers = on)));
         wire!(on_suggest_triggers_toggled, |core, on| core
