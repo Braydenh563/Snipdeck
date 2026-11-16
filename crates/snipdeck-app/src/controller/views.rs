@@ -115,6 +115,8 @@ pub struct ToastView {
 pub struct PickerView {
     /// The results, best first.
     pub rows: Vec<picker::Entry>,
+    /// The sensitive row held revealed (Space held on it), as an index into `rows`.
+    pub revealed: Option<usize>,
     /// What the search covers.
     pub scope: Scope,
     /// The search text.

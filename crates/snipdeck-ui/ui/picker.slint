@@ -102,6 +102,16 @@ export component PickerWindow inherits Window {
 
     // ---- State both ways ----------------------------------------------------------------------
     in-out property <string> query <=> search.text;
+    // The sensitive row held revealed by the host (-1 = none).
+    in property <int> revealed-index: -1;
+    // Space is held down on the selected sensitive row.
+    property <bool> held-reveal: false;
+    // The host hid the text again without a key release (the window lost the focus): the next press reveals again.
+    changed revealed-index => {
+        if (self.revealed-index < 0) {
+            self.held-reveal = false;
+        }
+    }
     in-out property <PickerScope> scope: PickerScope.all;
     // The keyboard-selected row. The picker moves it itself and reports `selection-moved`; the app writes it
     // back (it resets to 0 when the query or the scope changes).
@@ -125,6 +135,8 @@ export component PickerWindow inherits Window {
     callback row-activated(int);
     // Shift+Enter or Shift+click: copy only.
     callback row-copied(int);
+    // Space is held on a sensitive row (true) or let go (false): the host reveals its text meanwhile.
+    callback reveal-requested(int, bool);
     // Alt+Enter or Alt+click: paste as plain text.
     callback row-plain(int);
     // Alt+1-9 pressed (the app resolves it against the rows it sent).
@@ -373,12 +385,30 @@ export component PickerWindow inherits Window {
     scope-keys := FocusScope {
         forward-focus: search;
 
+        capture-key-released(event) => {
+            if (event.text == " " && root.held-reveal) {
+                root.held-reveal = false;
+                root.reveal-requested(root.sel, false);
+                return accept;
+            }
+            return reject;
+        }
+
         capture-key-pressed(event) => {
             // The chooser has the keyboard while it is open: its own keys (arrows, Enter, Esc) go through.
             if (root.colour-menu-open) {
                 return reject;
             }
             if (search.has-focus && !search.composing && suggest.handle-key(event)) {
+                return accept;
+            }
+            // Hold Space on the selected sensitive row reveals it, as in the Main window and the Panel. With a
+            // search typed, Space stays a text key of the field.
+            if (event.text == " " && !search.composing && root.query == "" && root.sel >= 0 && root.rows[root.sel].kind == ItemKind.sensitive) {
+                if (!root.held-reveal) {
+                    root.held-reveal = true;
+                    root.reveal-requested(root.sel, true);
+                }
                 return accept;
             }
             if (event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
@@ -547,7 +577,8 @@ export component PickerWindow inherits Window {
                         list-name: row.board-name != "" ? row.board-name + " \u{b7} " + row.list-name : row.list-name;
                         list-color: row.list-color;
                         selected: i == root.sel;
-                        masked-hint: @tr("Hidden. Open it in the Panel to reveal.");
+                        masked-hint: @tr("Hidden. Hold Space to reveal.");
+                        revealed: i == root.revealed-index;
                         pulling: i == root.used-index;
                         keyboard-focusable: false;
                         use => {

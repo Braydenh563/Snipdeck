@@ -291,6 +291,8 @@ pub struct Controller<S, C, K, T> {
     revealed: Option<snipdeck_core::ItemId>,
     /// A sensitive item held revealed in the Panel (its own: the two windows hold separately).
     panel_revealed: Option<snipdeck_core::ItemId>,
+    /// The Picker's sensitive row held revealed (Space held on it); only shown while the Picker is open.
+    picker_revealed: Option<snipdeck_core::ItemId>,
     /// What Windows says about light / dark and high contrast.
     os_look: SystemLook,
     /// The words a new list's and a new board's editor name starts from, in the language shown
@@ -534,6 +536,7 @@ where
             timer_seq: 0,
             revealed: None,
             panel_revealed: None,
+            picker_revealed: None,
             os_look: SystemLook::default(),
             new_list_base: crate::starter::NEW_LIST.to_owned(),
             new_board_base: crate::starter::NEW_BOARD.to_owned(),
@@ -709,6 +712,9 @@ where
             hotkeys_paused: self.session.hotkeys_paused,
             picker: self.picker.as_ref().map(|p| PickerView {
                 rows: p.rows(),
+                revealed: self
+                    .picker_revealed
+                    .and_then(|id| p.rows().iter().position(|r| r.id == id)),
                 scope: p.scope(),
                 query: p.query().to_owned(),
                 selected: p.selected(),

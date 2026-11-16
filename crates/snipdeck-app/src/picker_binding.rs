@@ -219,6 +219,9 @@ where
         wire!(on_row_plain, |core, i| core
             .use_row(index(i), UseMode::PastePlain));
         wire!(on_quick_use, |core, n| core.use_number(n));
+        wire!(on_reveal_requested, |core, i, on| core.act(
+            |ctl| ctl.picker_reveal(usize::try_from(i).unwrap_or(usize::MAX), on)
+        ));
         wire!(on_selection_moved, |core, delta| core.act(
             |ctl| ctl.picker_move(isize::try_from(delta).unwrap_or(0))
         ));
@@ -357,7 +360,7 @@ pub fn picker_place(board: &str, list: &str) -> String {
 
 /// One result as the window's row. A sensitive item shows only the mask, never its preview.
 #[must_use]
-pub fn picker_row(entry: &Entry, dark: bool) -> ui::PickerRow {
+pub fn picker_row(entry: &Entry, dark: bool, revealed: bool) -> ui::PickerRow {
     let marks = entry.marks.fields();
     let (swatch, has_swatch) =
         crate::colour_words::swatch_of_kind(entry.kind, &entry.preview, entry.sensitive);
@@ -367,7 +370,7 @@ pub fn picker_row(entry: &Entry, dark: bool) -> ui::PickerRow {
         mark_before: marks.mark_before.as_str().into(),
         mark_text: marks.mark_text.as_str().into(),
         // The windowed first line replaces the preview only for a marked row; a sensitive row has none.
-        preview: if entry.sensitive {
+        preview: if entry.sensitive && !revealed {
             SharedString::new()
         } else {
             marks
@@ -419,8 +422,16 @@ fn render(
             view.reduced_motion,
         );
     }
-    if differs(&|p| p.picker.rows == picker.rows && p.dark == view.dark) {
-        window.set_rows(model(picker.rows.iter().map(|e| picker_row(e, view.dark))));
+    if differs(&|p| {
+        p.picker.rows == picker.rows && p.picker.revealed == picker.revealed && p.dark == view.dark
+    }) {
+        window.set_rows(model(
+            picker
+                .rows
+                .iter()
+                .enumerate()
+                .map(|(i, e)| picker_row(e, view.dark, picker.revealed == Some(i))),
+        ));
     }
     if differs(&|p| p.picker.footer == picker.footer) {
         let (app, title) = match &picker.footer {
@@ -436,6 +447,10 @@ fn render(
     }
     if window.get_scope() != scope_in(picker.scope) {
         window.set_scope(scope_in(picker.scope));
+    }
+    let revealed = picker.revealed.map_or(-1, crate::binding::to_i32);
+    if window.get_revealed_index() != revealed {
+        window.set_revealed_index(revealed);
     }
     let selected = crate::binding::to_i32(picker.selected);
     if window.get_selected_index() != selected {
@@ -464,7 +479,7 @@ mod tests {
 
     #[test]
     fn picker_mask_has_no_tail() {
-        let row = picker_row(&entry(true), false);
+        let row = picker_row(&entry(true), false, false);
         assert_eq!(row.masked_preview.as_str(), "\u{2022}".repeat(12));
         assert!(!row.masked_preview.contains("7f3a"));
         assert_eq!(row.preview.as_str(), "");
@@ -474,35 +489,35 @@ mod tests {
     fn picker_row_carries_the_marks() {
         let mut marked = entry(false);
         marked.marks = crate::search_mark::marks("Login", "hunter2-7f3a", false, None, "hun");
-        let row = picker_row(&marked, false);
+        let row = picker_row(&marked, false, false);
         assert_eq!(row.mark_text.as_str(), "");
         assert_eq!(row.preview_match.as_str(), "hun");
         assert_eq!(row.preview.as_str(), "hunter2-7f3a");
         marked.marks = crate::search_mark::marks("Login", "x", false, None, "log");
-        let row = picker_row(&marked, false);
+        let row = picker_row(&marked, false, false);
         assert_eq!(row.mark_text.as_str(), "Log");
         marked.marks = crate::search_mark::marks("Login", "x", false, Some("work"), "work");
-        assert_eq!(picker_row(&marked, false).tag_hit.as_str(), "work");
+        assert_eq!(picker_row(&marked, false, false).tag_hit.as_str(), "work");
     }
 
     #[test]
     fn a_colour_result_has_a_swatch_and_a_secret_or_other_text_does_not() {
         let mut colour = entry(false);
         colour.preview = "#3a7bd5".into();
-        let row = picker_row(&colour, false);
+        let row = picker_row(&colour, false, false);
         assert!(row.has_swatch);
         assert_eq!(row.swatch, slint::Color::from_rgb_u8(0x3a, 0x7b, 0xd5));
-        assert!(!picker_row(&entry(false), false).has_swatch);
+        assert!(!picker_row(&entry(false), false, false).has_swatch);
         colour.sensitive = true;
-        assert!(!picker_row(&colour, false).has_swatch);
+        assert!(!picker_row(&colour, false, false).has_swatch);
         colour.sensitive = false;
         colour.kind = snipdeck_core::ItemKind::Link;
-        assert!(!picker_row(&colour, false).has_swatch);
+        assert!(!picker_row(&colour, false, false).has_swatch);
     }
 
     #[test]
     fn picker_place_uses_middle_dot() {
-        let row = picker_row(&entry(false), false);
+        let row = picker_row(&entry(false), false, false);
         assert_eq!(row.list_name.as_str(), "Work \u{b7} Logins");
         assert_eq!(row.board_name.as_str(), "");
         assert_eq!(picker_place("", "Logins"), "Logins");

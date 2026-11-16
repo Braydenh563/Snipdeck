@@ -292,3 +292,41 @@ fn the_picker_closes_when_the_user_switches_to_another_app_and_does_not_steal_th
         "the focus is left where the user put it"
     );
 }
+
+// UX-26: holding Space on a sensitive Picker row reveals it, as in the Main window and the Panel.
+#[test]
+fn holding_space_in_the_picker_reveals_only_a_sensitive_row_and_closing_ends_it() {
+    let mut w = world();
+    let secret = w.ids[0];
+    super::use_paste::make_sensitive(&mut w, secret);
+    w.ctl.open_picker();
+    let at = w
+        .ctl
+        .view()
+        .picker
+        .expect("open")
+        .rows
+        .iter()
+        .position(|r| r.id == w.ids[0])
+        .expect("the secret is a result");
+    let other = usize::from(at == 0);
+    assert_eq!(w.ctl.view().picker.expect("open").revealed, None);
+    w.ctl.picker_reveal(other, true);
+    assert_eq!(
+        w.ctl.view().picker.expect("open").revealed,
+        None,
+        "a plain row never reveals"
+    );
+    w.ctl.picker_reveal(at, true);
+    assert_eq!(w.ctl.view().picker.expect("open").revealed, Some(at));
+    w.ctl.picker_reveal(at, false);
+    assert_eq!(w.ctl.view().picker.expect("open").revealed, None);
+    w.ctl.picker_reveal(at, true);
+    w.ctl.close_picker();
+    w.ctl.open_picker();
+    assert_eq!(
+        w.ctl.view().picker.expect("open").revealed,
+        None,
+        "a reopened Picker starts hidden"
+    );
+}
