@@ -290,6 +290,8 @@ struct Core<S, C, K, T> {
     idle_timer: Cell<bool>,
     /// Sends the dock its ticks while a hover or leave delay runs.
     dock_timer: slint::Timer,
+    /// Set once the Panel has been shown: from then on a hidden Panel is not drawn.
+    been_shown: std::cell::Cell<bool>,
     drag_timer: slint::Timer,
     /// Looks at the clipboard while "Take screenshot" waits for its picture.
     screen_clip_timer: slint::Timer,
@@ -330,6 +332,7 @@ where
                 clipboard_timer: Cell::new(false),
                 idle_timer: Cell::new(false),
                 dock_timer: slint::Timer::default(),
+                been_shown: std::cell::Cell::new(false),
                 drag_timer: slint::Timer::default(),
                 screen_clip_timer: slint::Timer::default(),
                 colours: colours::Glue::default(),
@@ -484,6 +487,7 @@ where
                 Effect::ShowPanel => {
                     // A failure to show leaves the Panel hidden; the next hotkey tries again.
                     window.window().set_minimized(false);
+                    self.been_shown.set(true);
                     let shown = window.show();
                     crate::trace!(
                         "show panel: {shown:?}, visible now {}",
@@ -492,6 +496,7 @@ where
                     // A hidden Panel comes back where it was in the stack, behind the app in
                     // use; and one that is "shown" already (a second Open Panel) may be buried.
                     crate::native_window::raise(&window);
+                    redraw_all();
                     repaint_whole(&window);
                     // Shown on purpose (the hotkey, the tray, a second launch): the user types
                     // next, so the Panel takes the keyboard. A dock-hover reveal never comes
@@ -579,7 +584,11 @@ where
             self.apply(&picked);
         }
         let view = self.controller.borrow().view();
-        render(&window, self.shown.borrow().as_ref(), &view);
+        // A hidden Panel is not drawn: showing it draws (see `Effect::ShowPanel`).
+        let visible = window.window().is_visible() || !self.been_shown.get();
+        if visible {
+            render(&window, self.shown.borrow().as_ref(), &view);
+        }
         // A new group's name follows the language the window is in now.
         self.controller
             .borrow_mut()
@@ -603,7 +612,9 @@ where
                 crate::controller::TOAST_ENTER,
             );
         }
-        *self.shown.borrow_mut() = Some(view);
+        if visible {
+            *self.shown.borrow_mut() = Some(view);
+        }
         self.arm_settings();
         self.arm_clipboard_clear();
         self.arm_idle_lock();

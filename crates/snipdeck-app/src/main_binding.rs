@@ -129,6 +129,8 @@ struct MainCore<S, C, K, T> {
     editors: RefCell<Editors>,
     /// The Tag manager window, made the first time it is asked for.
     tag_manager: RefCell<Option<ui::TagManager>>,
+    /// Set once the window has been on screen: from then on a hidden Main is not drawn.
+    been_shown: std::cell::Cell<bool>,
     /// Redraws this window (registered with `binding::register_redraw`).
     redraw: Rc<dyn Fn()>,
 }
@@ -251,6 +253,10 @@ where
         let Some(window) = self.window.upgrade() else {
             return;
         };
+        // Nothing is drawn for a window nobody can see: the show path draws once it is visible.
+        if !self.anything_visible(&window) {
+            return;
+        }
         let screen = self.controller.borrow_mut().main_screen();
         render(&window, self.shown.borrow().as_ref(), &screen);
         if let Some(toast) = &screen.toast
@@ -265,6 +271,23 @@ where
         self.sync_editors(&screen);
         self.sync_tag_manager(&screen, false);
         *self.shown.borrow_mut() = Some(screen);
+    }
+
+    /// Whether Main, its Tag manager or one of its editors is on screen.
+    fn anything_visible(&self, window: &ui::MainWindow) -> bool {
+        let editors = self.editors.borrow();
+        if window.window().is_visible() {
+            self.been_shown.set(true);
+            return true;
+        }
+        !self.been_shown.get()
+            || self
+                .tag_manager
+                .borrow()
+                .as_ref()
+                .is_some_and(|w| w.window().is_visible())
+            || editors.list.as_ref().is_some_and(|w| w.window().is_visible())
+            || editors.board.as_ref().is_some_and(|w| w.window().is_visible())
     }
 
     /// Copies the tags into the Tag manager if it exists, so a delete, an Undo or a rename made
@@ -557,6 +580,7 @@ where
                 shown: RefCell::new(None),
                 editors: RefCell::new(Editors::default()),
                 tag_manager: RefCell::new(None),
+                been_shown: std::cell::Cell::new(false),
                 redraw: Rc::new(move || {
                     if let Some(core) = weak.upgrade() {
                         core.sync();
@@ -1032,8 +1056,8 @@ impl MainUi {
                     return Ok(());
                 };
                 // Reading the library again: it may have changed while the window was closed.
-                binding.redraw();
                 window.show()?;
+                binding.redraw();
                 if !placed.replace(true) {
                     // Where the user left it (then cut to the screen below); only once, as a
                     // hidden window keeps its place.
