@@ -196,7 +196,12 @@ fn a_preview_of_an_archive_with_pictures_writes_no_file_and_no_row() {
     let mut src = Store::open(src_dir.path()).unwrap();
     let b = board(&mut src, "Src");
     let l = list(&mut src, b.id, "L");
-    let pic = snipdeck_core::Item::new(l.id, "Shot".to_owned(), snipdeck_core::ItemKind::Image, at(3));
+    let pic = snipdeck_core::Item::new(
+        l.id,
+        "Shot".to_owned(),
+        snipdeck_core::ItemKind::Image,
+        at(3),
+    );
     let png = snipdeck_store::BlobStore::put(&mut src, noise(80_000, 3)).unwrap();
     src.insert_item(
         &pic,
@@ -205,7 +210,13 @@ fn a_preview_of_an_archive_with_pictures_writes_no_file_and_no_row() {
     )
     .unwrap();
     let mut bytes = Vec::new();
-    export_to_writer(&src, at(5), &ExportOptions::default(), Cursor::new(&mut bytes)).unwrap();
+    export_to_writer(
+        &src,
+        at(5),
+        &ExportOptions::default(),
+        Cursor::new(&mut bytes),
+    )
+    .unwrap();
 
     let target_dir = tempfile::tempdir().unwrap();
     let mut target = Store::open(target_dir.path()).unwrap();
@@ -214,7 +225,11 @@ fn a_preview_of_an_archive_with_pictures_writes_no_file_and_no_row() {
     let rows_before = snapshot(&target);
     let report = decoded.preview(&target, None).unwrap();
     assert_eq!(report.items_added, 1);
-    assert_eq!(files_under(target_dir.path()), files_before, "no file written");
+    assert_eq!(
+        files_under(target_dir.path()),
+        files_before,
+        "no file written"
+    );
     assert_eq!(snapshot(&target), rows_before);
     decoded.apply(&mut target, None).unwrap();
     assert!(

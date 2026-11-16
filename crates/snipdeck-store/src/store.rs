@@ -731,7 +731,11 @@ mod tests {
         assert_eq!(report.blobs, 0, "a pending blob is not an orphan");
         assert!(store.blobs.is_pending(&blob));
         store.blobs.attached([blob]);
-        assert_eq!(store.gc_blobs(Duration::ZERO).unwrap().blobs, 1, "now it is");
+        assert_eq!(
+            store.gc_blobs(Duration::ZERO).unwrap().blobs,
+            1,
+            "now it is"
+        );
     }
 
     #[test]

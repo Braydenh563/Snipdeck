@@ -856,8 +856,15 @@ mod tests {
         };
         let out = m.tick(&mut jobs);
         assert!(out.contains(&MaintenanceOutcome::BackupShrunk { was: 120, now: 3 }));
-        let toasts: Vec<_> = out.into_iter().filter_map(MaintenanceOutcome::into_toast).collect();
-        assert!(toasts.iter().any(|t| t.message == ToastMessage::BackupShrunk { was: 120, now: 3 }));
+        let toasts: Vec<_> = out
+            .into_iter()
+            .filter_map(MaintenanceOutcome::into_toast)
+            .collect();
+        assert!(
+            toasts
+                .iter()
+                .any(|t| t.message == ToastMessage::BackupShrunk { was: 120, now: 3 })
+        );
         assert!(toasts.iter().any(|t| t.message
             == ToastMessage::BackupMadeSkipping {
                 count: 2,

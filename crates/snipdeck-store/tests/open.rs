@@ -131,7 +131,7 @@ fn a_foreign_sqlite_file_is_not_adopted() {
 fn an_empty_database_file_beside_other_library_files_is_refused_not_replaced() {
     let dir = tempfile::tempdir().unwrap();
     {
-        let mut store = Store::open(dir.path()).unwrap();
+        let store = Store::open(dir.path()).unwrap();
         drop(store.close());
     }
     // A crashed sync client or a full disk leaves the file at zero bytes.
@@ -141,10 +141,21 @@ fn an_empty_database_file_beside_other_library_files_is_refused_not_replaced() {
     }
     // Other library files exist: a backup folder with a file in it.
     std::fs::create_dir_all(dir.path().join("backups")).unwrap();
-    std::fs::write(dir.path().join("backups").join("snipdeck-2026-01-01.snipdeck"), b"x").unwrap();
+    std::fs::write(
+        dir.path()
+            .join("backups")
+            .join("snipdeck-2026-01-01.snipdeck"),
+        b"x",
+    )
+    .unwrap();
     let err = Store::open(dir.path()).err().unwrap();
     assert!(matches!(err, Error::EmptyDatabase { .. }), "{err:?}");
-    assert_eq!(std::fs::metadata(dir.path().join("snipdeck.db")).unwrap().len(), 0);
+    assert_eq!(
+        std::fs::metadata(dir.path().join("snipdeck.db"))
+            .unwrap()
+            .len(),
+        0
+    );
 }
 
 #[test]

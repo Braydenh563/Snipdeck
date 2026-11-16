@@ -272,8 +272,7 @@ impl ArchiveJob {
                         detail: e.to_string(),
                     })?;
                 }
-                let report =
-                    export_to_path(lib, *now, &options, path).map_err(|e| failure(&e))?;
+                let report = export_to_path(lib, *now, &options, path).map_err(|e| failure(&e))?;
                 Ok(Made::File(Box::new(report)))
             }
         }

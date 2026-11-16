@@ -306,12 +306,12 @@ where
         ToastMessage::BackupMadeSkipping { count: n, first } => {
             t.invoke_backup_made_skipping(count(*n), first.into())
         }
-        ToastMessage::BackupShrunk { was, now } => {
-            t.invoke_backup_shrunk(count(*was), count(*now))
-        }
-        ToastMessage::ExportedSkipping { file, count: n, first } => {
-            t.invoke_exported_skipping(file.into(), count(*n), first.into())
-        }
+        ToastMessage::BackupShrunk { was, now } => t.invoke_backup_shrunk(count(*was), count(*now)),
+        ToastMessage::ExportedSkipping {
+            file,
+            count: n,
+            first,
+        } => t.invoke_exported_skipping(file.into(), count(*n), first.into()),
         ToastMessage::ArchiveBusy => t.invoke_archive_busy(),
         ToastMessage::BackupFailed(cause) => t.invoke_backup_failed(cause.code()),
         ToastMessage::DailyBackupFailed(cause) => t.invoke_daily_backup_failed(cause.code()),
