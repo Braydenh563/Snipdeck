@@ -515,8 +515,10 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
   (`snipdeck.db` and its attachments), the daily backups, the settings file, drafts and the crash and
   diagnostic logs. To remove them by hand, quit Snipdeck and delete that folder (export your library first
   if you may want it back).
-- **Portable zip.** There is no uninstaller. Delete the folder you unzipped; your data stays in
-  `%LOCALAPPDATA%\Snipdeck` (or the folder you gave with `--data-dir`) until you delete it too. Turn off
+- **Portable zip.** There is no uninstaller. Delete the folder you unzipped. Your data stays in
+  `%LOCALAPPDATA%\Snipdeck` (or the folder you gave with `--data-dir`) until you delete it too, unless
+  you put an empty file named `portable` beside `snipdeck.exe`: then the data lives in a `data` folder
+  next to it and nothing is written to the machine. Turn off
   **Start with Windows** in Settings first, or the Run entry stays behind.
 - **Microsoft Store build.** Uninstalling the app deletes its data, as the Store does for any packaged app.
   Export your library first if you want to keep it.

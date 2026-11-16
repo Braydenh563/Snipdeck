@@ -401,15 +401,31 @@ where
                 i32::try_from(checks.iter().filter(|c| c.status != Status::Ok).count())
                     .unwrap_or(i32::MAX),
             );
-            window.set_checks(model(checks.iter().map(|c| ui::HelpCheck {
-                label: c.label.into(),
-                detail: c.detail.as_str().into(),
-                status: match c.status {
-                    Status::Ok => 0,
-                    Status::Warn => 1,
-                    Status::Fail => 2,
-                },
-                fix: c.fix.map_or(0, Fix::code),
+            let words = window.global::<ui::DoctorTexts<'_>>();
+            window.set_checks(model(checks.iter().map(|c| {
+                ui::HelpCheck {
+                    label: words.invoke_label(
+                        doctor::LABELS
+                            .iter()
+                            .position(|l| *l == c.label)
+                            .and_then(|i| i32::try_from(i).ok())
+                            .unwrap_or(-1),
+                    ),
+                    detail: {
+                        let arg = |i: usize| {
+                            c.args
+                                .get(i)
+                                .map_or_else(Default::default, |v| v.as_str().into())
+                        };
+                        words.invoke_detail(c.finding.code(), arg(0), arg(1), arg(2))
+                    },
+                    status: match c.status {
+                        Status::Ok => 0,
+                        Status::Warn => 1,
+                        Status::Fail => 2,
+                    },
+                    fix: c.fix.map_or(0, Fix::code),
+                }
             })));
         }
         if let Some(toast) = &toast {

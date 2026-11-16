@@ -105,6 +105,10 @@ pub struct Check {
     pub status: Status,
     /// One sentence on what was found.
     pub detail: String,
+    /// The same finding as a code and its values, for the window's language.
+    pub finding: Finding,
+    /// The values `finding` names.
+    pub args: Vec<String>,
     /// What can be done about it, if anything.
     pub fix: Option<Fix>,
 }
@@ -155,18 +159,128 @@ pub trait DoctorHost {
     fn newest_crash(&self) -> Option<String>;
 }
 
+/// What a check found. The number is the code `DoctorTexts.detail` turns into the window's
+/// language; [`Finding::english`] is the same sentence for the pasted report and the tests.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Finding {
+    /// The data folder cannot be written: the error.
+    DataNotWritable,
+    /// Little room on the drive: free MB.
+    LowSpace,
+    /// Writable with room.
+    DataOk,
+    /// The integrity check could not run: the error.
+    DbCheckFailed,
+    /// The integrity check was clean.
+    DbOk,
+    /// The check found problems: how many, the first.
+    DbProblems,
+    /// The backups folder cannot be read: the error.
+    BackupsUnreadable,
+    /// No backup yet.
+    NoBackup,
+    /// The newest backup is old: date, days, how many kept.
+    BackupOld,
+    /// The newest backup is recent: date, how many kept.
+    BackupOk,
+    /// The items cannot be read: the error.
+    ItemsUnreadable,
+    /// Nothing is sensitive.
+    NoSensitive,
+    /// Sensitive items and a key: how many.
+    KeyPresent,
+    /// Sensitive items and no key: how many.
+    KeyMissing,
+    /// The key cannot be checked: the error.
+    KeyUnchecked,
+    /// Every shortcut is set.
+    ShortcutsOk,
+    /// No shortcut is set.
+    NoShortcut,
+    /// Some shortcuts are not set: their names.
+    ShortcutsUnset,
+    /// The tray icon is there.
+    TrayOk,
+    /// The tray icon is missing.
+    NoTray,
+    /// No crash report.
+    NoCrash,
+    /// The newest crash report: its file name.
+    Crash,
+}
+
+impl Finding {
+    /// The code the window's translation function takes.
+    #[must_use]
+    pub fn code(self) -> i32 {
+        self as i32
+    }
+
+    /// The sentence in English, with `args` filled in.
+    #[must_use]
+    pub fn english(self, args: &[String]) -> String {
+        let a = |i: usize| args.get(i).map_or("", String::as_str);
+        match self {
+            Self::DataNotWritable => format!("Snipdeck cannot write to its data folder: {}", a(0)),
+            Self::LowSpace => format!("Writable, but only {} MB are free on its drive.", a(0)),
+            Self::DataOk => "Writable, with room to spare.".to_owned(),
+            Self::DbCheckFailed => format!("The integrity check could not run: {}", a(0)),
+            Self::DbOk => "The integrity check found no problems.".to_owned(),
+            Self::DbProblems => format!(
+                "The integrity check found {} problem(s); the first: {}",
+                a(0),
+                a(1)
+            ),
+            Self::BackupsUnreadable => format!("The backups cannot be read: {}", a(0)),
+            Self::NoBackup => "No backup has been made yet.".to_owned(),
+            Self::BackupOld => format!(
+                "The newest backup is from {}, {} days ago ({} kept).",
+                a(0),
+                a(1),
+                a(2)
+            ),
+            Self::BackupOk => format!("Newest backup {}, {} kept.", a(0), a(1)),
+            Self::ItemsUnreadable => format!("The items cannot be read: {}", a(0)),
+            Self::NoSensitive => "No item is marked sensitive.".to_owned(),
+            Self::KeyPresent => format!("{} sensitive item(s), the key is present.", a(0)),
+            Self::KeyMissing => format!(
+                "{} sensitive item(s) are stored as plain text (no encryption key yet): \
+                 masked and readable, but not encrypted.",
+                a(0)
+            ),
+            Self::KeyUnchecked => format!("The key cannot be checked: {}", a(0)),
+            Self::ShortcutsOk => "All global shortcuts are set.".to_owned(),
+            Self::NoShortcut => "No global shortcut is set.".to_owned(),
+            Self::ShortcutsUnset => format!("Not set: {}.", a(0)),
+            Self::TrayOk => "The icon is in the notification area.".to_owned(),
+            Self::NoTray => {
+                "No icon in the notification area; closing the panel quits Snipdeck.".to_owned()
+            }
+            Self::NoCrash => "No crash report.".to_owned(),
+            Self::Crash => format!("The newest crash report is {}.", a(0)),
+        }
+    }
+}
+
 fn check(
     label: &'static str,
     status: Status,
-    detail: impl Into<String>,
+    finding: Finding,
+    args: &[String],
     fix: Option<Fix>,
 ) -> Check {
     Check {
         label,
         status,
-        detail: detail.into(),
+        detail: finding.english(args),
+        finding,
+        args: args.to_vec(),
         fix,
     }
+}
+
+fn s(v: impl ToString) -> String {
+    v.to_string()
 }
 
 /// Runs every check, in the order of [`LABELS`].
@@ -201,7 +315,8 @@ fn data_folder(host: &dyn DoctorHost) -> Check {
         return check(
             label,
             Status::Fail,
-            format!("Snipdeck cannot write to its data folder: {e}"),
+            Finding::DataNotWritable,
+            &[s(e)],
             Some(Fix::OpenDataFolder),
         );
     }
@@ -209,13 +324,11 @@ fn data_folder(host: &dyn DoctorHost) -> Check {
         Some(free) if free < LOW_SPACE_BYTES => check(
             label,
             Status::Warn,
-            format!(
-                "Writable, but only {} MB are free on its drive.",
-                free / (1024 * 1024)
-            ),
+            Finding::LowSpace,
+            &[s(free / (1024 * 1024))],
             Some(Fix::OpenDataFolder),
         ),
-        _ => check(label, Status::Ok, "Writable, with room to spare.", None),
+        _ => check(label, Status::Ok, Finding::DataOk, &[], None),
     }
 }
 
@@ -231,23 +344,16 @@ fn database(host: &dyn DoctorHost) -> Check {
         Err(e) => check(
             label,
             Status::Fail,
-            format!("The integrity check could not run: {e}"),
+            Finding::DbCheckFailed,
+            &[s(e)],
             Some(fix),
         ),
-        Ok(problems) if problems.is_empty() => check(
-            label,
-            Status::Ok,
-            "The integrity check found no problems.",
-            None,
-        ),
+        Ok(problems) if problems.is_empty() => check(label, Status::Ok, Finding::DbOk, &[], None),
         Ok(problems) => check(
             label,
             Status::Fail,
-            format!(
-                "The integrity check found {} problem(s); the first: {}",
-                problems.len(),
-                problems[0]
-            ),
+            Finding::DbProblems,
+            &[s(problems.len()), s(&problems[0])],
             Some(fix),
         ),
     }
@@ -261,7 +367,8 @@ fn backups(host: &dyn DoctorHost) -> Check {
             return check(
                 label,
                 Status::Warn,
-                format!("The backups cannot be read: {e}"),
+                Finding::BackupsUnreadable,
+                &[s(e)],
                 Some(Fix::BackUpNow),
             );
         }
@@ -270,7 +377,8 @@ fn backups(host: &dyn DoctorHost) -> Check {
         return check(
             label,
             Status::Warn,
-            "No backup has been made yet.",
+            Finding::NoBackup,
+            &[],
             Some(Fix::BackUpNow),
         );
     };
@@ -282,17 +390,16 @@ fn backups(host: &dyn DoctorHost) -> Check {
         check(
             label,
             Status::Warn,
-            format!(
-                "The newest backup is from {newest}, {age} days ago ({} kept).",
-                dates.len()
-            ),
+            Finding::BackupOld,
+            &[s(newest), s(age), s(dates.len())],
             Some(Fix::BackUpNow),
         )
     } else {
         check(
             label,
             Status::Ok,
-            format!("Newest backup {newest}, {} kept.", dates.len()),
+            Finding::BackupOk,
+            &[s(newest), s(dates.len())],
             None,
         )
     }
@@ -303,39 +410,28 @@ fn encryption(host: &dyn DoctorHost) -> Check {
     let sensitive = match host.sensitive_items() {
         Ok(n) => n,
         Err(e) => {
-            return check(
-                label,
-                Status::Warn,
-                format!("The items cannot be read: {e}"),
-                None,
-            );
+            return check(label, Status::Warn, Finding::ItemsUnreadable, &[s(e)], None);
         }
     };
     if sensitive == 0 {
-        return check(label, Status::Ok, "No item is marked sensitive.", None);
+        return check(label, Status::Ok, Finding::NoSensitive, &[], None);
     }
     match host.key_ring_exists() {
         Ok(true) => check(
             label,
             Status::Ok,
-            format!("{sensitive} sensitive item(s), the key is present."),
+            Finding::KeyPresent,
+            &[s(sensitive)],
             None,
         ),
         Ok(false) => check(
             label,
             Status::Warn,
-            format!(
-                "{sensitive} sensitive item(s) are stored as plain text (no encryption key yet): \
-                 masked and readable, but not encrypted."
-            ),
+            Finding::KeyMissing,
+            &[s(sensitive)],
             None,
         ),
-        Err(e) => check(
-            label,
-            Status::Warn,
-            format!("The key cannot be checked: {e}"),
-            None,
-        ),
+        Err(e) => check(label, Status::Warn, Finding::KeyUnchecked, &[s(e)], None),
     }
 }
 
@@ -343,19 +439,21 @@ fn shortcuts(host: &dyn DoctorHost) -> Check {
     let label = LABELS[4];
     let unset = host.shortcuts_unset();
     if unset.is_empty() {
-        check(label, Status::Ok, "All global shortcuts are set.", None)
+        check(label, Status::Ok, Finding::ShortcutsOk, &[], None)
     } else if unset.len() >= host.shortcuts_total() {
         check(
             label,
             Status::Warn,
-            "No global shortcut is set.",
+            Finding::NoShortcut,
+            &[],
             Some(Fix::OpenSettings),
         )
     } else {
         check(
             label,
             Status::Warn,
-            format!("Not set: {}.", unset.join(", ")),
+            Finding::ShortcutsUnset,
+            &[unset.join(", ")],
             Some(Fix::OpenSettings),
         )
     }
@@ -363,29 +461,20 @@ fn shortcuts(host: &dyn DoctorHost) -> Check {
 
 fn tray(host: &dyn DoctorHost) -> Check {
     if host.tray_present() {
-        check(
-            LABELS[5],
-            Status::Ok,
-            "The icon is in the notification area.",
-            None,
-        )
+        check(LABELS[5], Status::Ok, Finding::TrayOk, &[], None)
     } else {
-        check(
-            LABELS[5],
-            Status::Warn,
-            "No icon in the notification area; closing the panel quits Snipdeck.",
-            None,
-        )
+        check(LABELS[5], Status::Warn, Finding::NoTray, &[], None)
     }
 }
 
 fn crashes(host: &dyn DoctorHost) -> Check {
     match host.newest_crash() {
-        None => check(LABELS[6], Status::Ok, "No crash report.", None),
+        None => check(LABELS[6], Status::Ok, Finding::NoCrash, &[], None),
         Some(name) => check(
             LABELS[6],
             Status::Warn,
-            format!("The newest crash report is {name}."),
+            Finding::Crash,
+            &[name],
             Some(Fix::OpenLogsFolder),
         ),
     }

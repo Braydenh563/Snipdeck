@@ -1821,14 +1821,18 @@ where
                     .copied()
                     .unwrap_or_default();
             })));
-        wire!(on_language_chosen, |core, i| core.act(|ctl| ctl
-            .update_settings(|s| {
-                s.language = usize::try_from(i - 1)
-                    .ok()
-                    .and_then(|at| LANGUAGE_TAGS.get(at))
-                    .map(|tag| (*tag).to_owned())
-                    .unwrap_or_default();
-            })));
+        wire!(on_language_chosen, |core, i| {
+            let tag = usize::try_from(i - 1)
+                .ok()
+                .and_then(|at| LANGUAGE_TAGS.get(at))
+                .map(|tag| (*tag).to_owned())
+                .unwrap_or_default();
+            // A named language applies at once; "Follow Windows" waits for the next start.
+            if let Err(e) = crate::language::apply(&tag) {
+                crate::warn!("{e}");
+            }
+            core.act(|ctl| ctl.update_settings(|s| s.language = tag));
+        });
         wire!(on_autostart_toggled, |core, on| core.autostart_toggled(on));
         wire!(on_hello_unlock_toggled, |core, on| core.hello_toggled(on));
         wire!(on_close_to_tray_toggled, |core, on| core

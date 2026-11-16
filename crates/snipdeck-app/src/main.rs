@@ -922,7 +922,12 @@ fn open_library(args: &Args) -> Result<Library, String> {
     }
     let folder = match &args.data_dir {
         Some(dir) => dir.clone(),
-        None => snipdeck_app::paths::data_dir(&|name| std::env::var(name).ok(), cfg!(windows))
+        None => std::env::current_exe()
+            .ok()
+            .and_then(|exe| exe.parent().and_then(snipdeck_app::paths::portable_dir))
+            .or_else(|| {
+                snipdeck_app::paths::data_dir(&|name| std::env::var(name).ok(), cfg!(windows))
+            })
             .ok_or("cannot find a data folder; pass --data-dir <folder>")?,
     };
     // Where a crash report goes (set for any real library, also when the settings stay unsaved).

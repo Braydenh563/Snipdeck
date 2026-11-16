@@ -34,6 +34,19 @@ pub fn data_dir(env: &dyn Fn(&str) -> Option<String>, windows: bool) -> Option<P
         .or_else(|| non_empty("HOME").map(|home| Path::new(&home).join(".local/share/snipdeck")))
 }
 
+/// The file whose presence next to the program makes it portable.
+pub const PORTABLE_MARKER: &str = "portable";
+
+/// The portable data folder: `data` beside the program when a [`PORTABLE_MARKER`] file sits there
+/// (the unzipped portable build on a USB stick), so nothing is written to the machine.
+#[must_use]
+pub fn portable_dir(exe_dir: &Path) -> Option<PathBuf> {
+    exe_dir
+        .join(PORTABLE_MARKER)
+        .is_file()
+        .then(|| exe_dir.join("data"))
+}
+
 /// What reading the settings file found.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LoadOutcome {
@@ -192,6 +205,18 @@ pub fn saver_baseline(loaded: &Loaded, salvage_written: bool) -> Settings {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_portable_marker_beside_the_program_selects_its_data_folder() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        assert_eq!(portable_dir(dir.path()), None);
+        std::fs::write(dir.path().join(PORTABLE_MARKER), "").expect("marker");
+        assert_eq!(portable_dir(dir.path()), Some(dir.path().join("data")));
+        // A folder of that name is not the marker.
+        let other = tempfile::tempdir().expect("temp dir");
+        std::fs::create_dir(other.path().join(PORTABLE_MARKER)).expect("dir");
+        assert_eq!(portable_dir(other.path()), None);
+    }
 
     fn env<'a>(vars: &'a [(&'a str, &'a str)]) -> impl Fn(&str) -> Option<String> + 'a {
         move |name| {
