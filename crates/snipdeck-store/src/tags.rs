@@ -5,7 +5,7 @@
 //! lower-casing keeps `Straße` and `STRASSE`, or a composed and a decomposed `École`, apart.
 
 use rusqlite::{Connection, OptionalExtension, params};
-use snipdeck_core::{ItemId, Name, Tag, TagId};
+use snipdeck_core::{ItemId, ItemLabel, Name, Tag, TagId};
 use unicode_normalization::UnicodeNormalization as _;
 
 use crate::Error;
@@ -66,15 +66,21 @@ fn hex(bytes: &[u8]) -> String {
 }
 
 pub(crate) fn tags(conn: &Connection) -> Result<Vec<Tag>> {
-    let mut stmt = conn.prepare_cached("SELECT id, name FROM tags ORDER BY name_key, id")?;
+    let mut stmt =
+        conn.prepare_cached("SELECT id, name, colour FROM tags ORDER BY name_key, id")?;
     let rows = stmt.query_map([], |r| {
-        Ok((r.get::<_, Vec<u8>>(0)?, r.get::<_, String>(1)?))
+        Ok((
+            r.get::<_, Vec<u8>>(0)?,
+            r.get::<_, String>(1)?,
+            r.get::<_, Option<String>>(2)?,
+        ))
     })?;
     rows.map(|row| {
-        let (id, name) = row?;
+        let (id, name, colour) = row?;
         Ok(Tag {
             id: id_from(&id)?,
             name: stored_name(&name)?,
+            colour: colour.as_deref().map(str::parse).transpose()?,
         })
     })
     .collect()
@@ -85,8 +91,13 @@ pub(crate) fn insert_tag(cx: &mut Ctx<'_>, tag: &Tag) -> Result<()> {
     require_new(conn, "tags", tag.id)?;
     clash_check(conn, tag)?;
     conn.execute(
-        "INSERT INTO tags (id, name, name_key) VALUES (?1, ?2, ?3)",
-        params![id_bytes(tag.id), tag.name.as_str(), key(&tag.name)],
+        "INSERT INTO tags (id, name, name_key, colour) VALUES (?1, ?2, ?3, ?4)",
+        params![
+            id_bytes(tag.id),
+            tag.name.as_str(),
+            key(&tag.name),
+            tag.colour.map(ItemLabel::key)
+        ],
     )?;
     Ok(())
 }
@@ -98,8 +109,13 @@ pub(crate) fn update_tag(cx: &mut Ctx<'_>, tag: &Tag) -> Result<()> {
     }
     clash_check(conn, tag)?;
     conn.execute(
-        "UPDATE tags SET name = ?2, name_key = ?3 WHERE id = ?1",
-        params![id_bytes(tag.id), tag.name.as_str(), key(&tag.name)],
+        "UPDATE tags SET name = ?2, name_key = ?3, colour = ?4 WHERE id = ?1",
+        params![
+            id_bytes(tag.id),
+            tag.name.as_str(),
+            key(&tag.name),
+            tag.colour.map(ItemLabel::key)
+        ],
     )?;
     Ok(())
 }

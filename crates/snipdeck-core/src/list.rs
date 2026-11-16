@@ -1,4 +1,4 @@
-use crate::{BoardId, ListId, Name, Timestamp};
+use crate::{BoardId, ListId, Name, Sort, Timestamp};
 
 keyed_enum! {
     /// A list's colour, shown like an index-card divider tab: the active tab's underline,
@@ -90,18 +90,6 @@ keyed_enum! {
     }
 }
 
-keyed_enum! {
-    /// How a list orders its items in the panel (SPEC §5.1).
-    pub enum ListSort ("list sort") {
-        /// The user's drag order.
-        Manual = "manual",
-        /// Highest [`Item::use_count`](crate::Item::use_count) first.
-        MostUsed = "most-used",
-        /// Latest [`Item::last_used_at`](crate::Item::last_used_at) first.
-        RecentlyUsed = "recently-used",
-    }
-}
-
 /// An ordered collection of items inside a board, shown as a panel tab (SPEC §4).
 ///
 /// Manual order, of the list within its board, is held by storage, not by this type.
@@ -119,8 +107,8 @@ pub struct List {
     pub icon: Option<ListIcon>,
     /// Panel row style.
     pub view: ListView,
-    /// Panel item order.
-    pub sort: ListSort,
+    /// Item order in the Panel and the Main window.
+    pub sort: Sort,
     /// When the list was created.
     pub created_at: Timestamp,
     /// When the list was last changed.
@@ -137,7 +125,7 @@ impl List {
             accent: None,
             icon: None,
             view: ListView::Comfortable,
-            sort: ListSort::Manual,
+            sort: Sort::MANUAL,
             created_at: now,
             updated_at: now,
         }
@@ -154,7 +142,6 @@ mod tests {
         assert_keys_round_trip(ListAccent::ALL, ListAccent::key);
         assert_keys_round_trip(ListIcon::ALL, ListIcon::key);
         assert_keys_round_trip(ListView::ALL, ListView::key);
-        assert_keys_round_trip(ListSort::ALL, ListSort::key);
     }
 
     /// Panel v2 made the layout a global setting, but the store keeps each list's `view` as
@@ -184,7 +171,7 @@ mod tests {
         assert_eq!(list.board_id, board);
         assert_eq!(
             (list.accent, list.icon, list.view, list.sort),
-            (None, None, ListView::Comfortable, ListSort::Manual)
+            (None, None, ListView::Comfortable, Sort::MANUAL)
         );
         assert_eq!((list.created_at, list.updated_at), (now, now));
     }

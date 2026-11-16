@@ -98,13 +98,15 @@ duplicates; **an importer assigns new ids** to everything it creates.
 | Record | Field | Type | Notes |
 |---|---|---|---|
 | tag | `name` | string | 1 to 100 characters after trimming, no control characters. Tags whose names are equal ignoring case are the same tag. |
+| tag | `colour` | string or absent | Added in 1.3. One of the eight item colour keys (`blue teal green amber orange red violet slate`). An unknown key is malformed. |
+| board | `accent`, `icon` | string or absent | Added in 1.3. The same keys as a list's `accent` and `icon`. |
 | board, list | `name` | string | Same rule. |
 | board, list, item | `created_at`, `updated_at` | RFC 3339 string | Between the years 1677 and 2262 (storage limit). Fractional seconds allowed, offsets other than `Z` allowed. |
 | list | `accent` | string or absent | `blue teal green amber orange red rose violet slate`. |
 | list | `icon` | string or absent | Added in 1.1. One of the 24 icon keys: `folder star heart briefcase house user envelope-simple chat-circle phone calendar-blank shopping-cart credit-card code terminal-window book-open lightbulb flag bookmark-simple globe map-pin camera music-note wrench rocket-launch`. |
 | list | `groups` | array or absent | Added in 1.2. Objects `{id, name, collapsed}` (`id` a UUID unique in the archive, `name` as other names, `collapsed` bool, default false). Only groups with a written member are listed. |
 | list | `view` | string | `compact` or `comfortable`. |
-| list | `sort` | string | `manual`, `most-used` or `recently-used`. |
+| list | `sort` | string | A sort key, optionally followed by `-reversed`: `manual`, `name`, `created`, `modified`, `most-used` or `recently-used` (the last four keys were added in 1.3, as was `-reversed`; `manual` cannot be reversed). A reader of 1.2 or older refuses a list with a word it does not know. |
 | item | `title` | string | May be empty. |
 | item | `kind` | string | `text template code link image file`. Describes content; sensitivity is separate. |
 | item | `pinned`, `sensitive`, `always_plain` | boolean, default `false` | |

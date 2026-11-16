@@ -24,9 +24,11 @@ mod item;
 mod list;
 mod name;
 mod placement;
+mod sort;
 mod tag;
 mod trigger;
 mod usage;
+mod view_filter;
 
 pub mod search;
 pub mod template;
@@ -40,15 +42,17 @@ pub use group::Group;
 pub use ids::{BoardId, GroupId, ItemId, ListId, TagId};
 pub use item::{Item, ItemKind, ItemLabel};
 pub use jiff::Timestamp;
-pub use list::{List, ListAccent, ListIcon, ListSort, ListView};
+pub use list::{List, ListAccent, ListIcon, ListView};
 pub use name::Name;
 pub use placement::Placement;
+pub use sort::{Sort, SortKey};
 pub use tag::Tag;
 pub use trigger::{
     BUFFER_CHARS, Candidate, CaseMode, CaseShape, Fired, MIN_PLAIN_CHARS, Matcher,
     SUGGEST_MIN_CHARS, Suggestion, Trigger, TriggerEnd, TriggerOptions, prefix_of,
 };
 pub use usage::{PasteFailure, UseMode, UseOutcome};
+pub use view_filter::{TagMatch, ViewFilter};
 
 /// The product name shown to users. The working name lives only here (SPEC header).
 pub const APP_NAME: &str = "Snipdeck";

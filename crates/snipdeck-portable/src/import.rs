@@ -22,7 +22,7 @@ use std::str::FromStr;
 use snipdeck_core::Content;
 use snipdeck_core::{
     BlobRef, BoardId, FileEntry, Format, FormatKind, Formats, GroupId, Inline, ItemId, ItemKind,
-    ItemLabel, ListAccent, ListIcon, ListId, ListSort, ListView, Name, TagId, Timestamp, Trigger,
+    ItemLabel, ListAccent, ListIcon, ListId, ListView, Name, TagId, Timestamp, Trigger,
 };
 use snipdeck_store::crypto::{DataKey, Slot, decrypt_payload};
 use snipdeck_store::name_key;
@@ -415,9 +415,10 @@ fn build_plan<R: Read + Seek>(
         seen_items: HashSet::new(),
         truncated: 0,
     };
-    let tags = builder.read_tags(&doc.tags)?;
+    let (tags, tag_colours) = builder.read_tags(&doc.tags)?;
     let mut plan = Plan {
         tags,
+        tag_colours,
         boards: Vec::new(),
     };
 
@@ -425,6 +426,8 @@ fn build_plan<R: Read + Seek>(
     let multi = doc.boards.len() > 1;
     if !keep_boards {
         plan.boards.push(PlanBoard {
+            accent: None,
+            icon: None,
             name: single_board,
             created_at: now,
             updated_at: now,
@@ -445,8 +448,20 @@ fn build_plan<R: Read + Seek>(
             lists.push(builder.list(list, prefix)?);
         }
         if keep_boards {
+            let accent = board
+                .accent
+                .as_deref()
+                .map(|a| parse_key::<ListAccent>(a, "board accent"))
+                .transpose()?;
+            let icon = board
+                .icon
+                .as_deref()
+                .map(|i| parse_key::<ListIcon>(i, "board icon"))
+                .transpose()?;
             plan.boards.push(PlanBoard {
                 name,
+                accent,
+                icon,
                 created_at,
                 updated_at,
                 lists,
@@ -524,21 +539,32 @@ struct Builder<'a, R: Read + Seek> {
 
 impl<R: Read + Seek> Builder<'_, R> {
     /// Tags: ids unique, names valid. Tags whose names are equal ignoring case merge into one.
-    fn read_tags(&mut self, tags: &[TagDto]) -> Result<Vec<Name>> {
+    fn read_tags(&mut self, tags: &[TagDto]) -> Result<(Vec<Name>, Vec<Option<ItemLabel>>)> {
         let mut seen = HashSet::new();
         let mut names: Vec<Name> = Vec::new();
+        let mut colours: Vec<Option<ItemLabel>> = Vec::new();
         let mut by_key: HashMap<String, usize> = HashMap::new();
         for tag in tags {
             let id: TagId = parse_id(&tag.id, "tag")?;
             unique(&mut seen, id, "tag")?;
             let name = parse_name(&tag.name, "tag")?;
+            let colour = tag
+                .colour
+                .as_deref()
+                .map(|c| parse_key::<ItemLabel>(c, "tag colour"))
+                .transpose()?;
             let index = *by_key.entry(name_key(name.as_str())).or_insert_with(|| {
                 names.push(name.clone());
+                colours.push(None);
                 names.len() - 1
             });
+            // Two tags that merge keep the first colour any of them names.
+            if colours[index].is_none() {
+                colours[index] = colour;
+            }
             self.tag_index.insert(id, index);
         }
-        Ok(names)
+        Ok((names, colours))
     }
 
     /// One list. `prefix` is the archive board's name when boards are being merged into one.
@@ -562,7 +588,15 @@ impl<R: Read + Seek> Builder<'_, R> {
             .map(|i| parse_key::<ListIcon>(i, "list icon"))
             .transpose()?;
         list.view = parse_key::<ListView>(&dto.view, "list view")?;
-        list.sort = parse_key::<ListSort>(&dto.sort, "list sort")?;
+        list.sort = snipdeck_core::Sort::from_key(&dto.sort).map_err(|_| {
+            Error::malformed(
+                ITEMS,
+                format!(
+                    "`{}` is not a known list sort",
+                    crate::error::display_name(&dto.sort)
+                ),
+            )
+        })?;
         self.group_index.clear();
         for group in &dto.groups {
             let id: GroupId = parse_id(&group.id, "group")?;
