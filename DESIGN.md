@@ -308,7 +308,7 @@ One row, `components/item-card.slint`, used by the Panel, the Picker and the Mai
 | Zone | Width | Content |
 |---|---|---|
 | Sidebar | 232 (resizable 200–320), on Mica | Search, Recent, Pinned, Boards ▸ Lists, Tags, Trash |
-| Item list | flex, min 320 | toolbar (view, sort, filter) + ItemCards / tiles. Toolbar controls are 32px tall; as the item area (less the caption strip, at 100% text size) narrows, the toolbar sheds content before it shrinks a target: the Ctrl K chips go below 736px, the Commands label below 658px, the View label below 608px (icon-only, tooltips "Commands (Ctrl+K)", "View"), and the three view toggles below 574px (the View menu then lists all three). The search field takes the rest and every control keeps a 4px gap or more. |
+| Item list | flex, min 320 | toolbar (view, sort, filter) + ItemCards / tiles. Toolbar controls are 32px tall; as the item area (less the caption strip, at 100% text size) narrows, the toolbar sheds content before it shrinks a target: the Ctrl K chips go below 854px, the Commands label below 776px, the View label below 726px (icon-only, tooltips "Commands (Ctrl+K)", "View"), and the three view toggles below 692px (the View menu then lists all three). Below 480px the Panel button, Undo and Redo go and New item is icon-only. The search field takes the rest, never under 150px x text scale, and every control keeps a 4px gap or more. All thresholds and the window minimum (480x360) scale with the text size. |
 | Detail | 400 (resizable 320–640) | preview, editor, metadata |
 
 ### Shortcut conventions (Panel and Main window)

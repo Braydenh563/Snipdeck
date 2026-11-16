@@ -1454,6 +1454,8 @@ ui_tests! {
 
     fn toolbar_commands_and_view_are_labelled() {
         let (ui, _log) = start();
+        ui.window().set_size(slint::LogicalSize::new(232.0 + 854.0, 640.0));
+        settle();
         let texts = |ui: &MainWindow| -> Vec<String> {
             ElementQuery::from_root(ui)
                 .match_id("ToolbarButton::label-text")
@@ -1462,7 +1464,7 @@ ui_tests! {
                 .filter_map(|e| e.accessible_label().map(|l| l.to_string()))
                 .collect()
         };
-        assert_eq!(texts(&ui), ["Commands", "View"], "ghost buttons with a label at 808 px");
+        assert_eq!(texts(&ui), ["Commands", "View"], "ghost buttons with a label and the keys at 854 px");
         // Commands shows its key: two caps, Ctrl and K.
         let commands = find(&ui, "Commands (Ctrl+K)", AccessibleRole::Button);
         assert!(commands.size().height >= 32.0 - 0.5 && commands.size().height <= 32.0 + 0.5, "h32: {}", commands.size().height);
@@ -1480,21 +1482,21 @@ ui_tests! {
         };
         let label_count = || ElementQuery::from_root(&ui).match_id("ToolbarButton::label-text").find_all().len();
         let width = |name: &str| find(&ui, name, AccessibleRole::Button).size().width;
-        at(736.0);
-        assert_eq!(label_count(), 2, "both labels at 736");
+        at(854.0);
+        assert_eq!(label_count(), 2, "both labels at 854");
         let with_keys = width("Commands (Ctrl+K)");
-        at(735.0);
-        assert!(width("Commands (Ctrl+K)") < with_keys - 40.0, "the Ctrl K chips go below 736");
+        at(853.0);
+        assert!(width("Commands (Ctrl+K)") < with_keys - 40.0, "the Ctrl K chips go below 854");
         assert_eq!(label_count(), 2, "the labels stay");
-        at(658.0);
-        assert_eq!(label_count(), 2, "both labels at 658");
-        at(657.0);
-        assert_eq!(label_count(), 1, "the Commands label goes below 658");
+        at(776.0);
+        assert_eq!(label_count(), 2, "both labels at 776");
+        at(775.0);
+        assert_eq!(label_count(), 1, "the Commands label goes below 776");
         assert!((width("Commands (Ctrl+K)") - 32.0).abs() < 0.5, "Commands is a 32 px icon button");
-        at(608.0);
-        assert_eq!(label_count(), 1, "the View label stays at 608");
-        at(607.0);
-        assert_eq!(label_count(), 0, "the View label goes below 608");
+        at(726.0);
+        assert_eq!(label_count(), 1, "the View label stays at 726");
+        at(725.0);
+        assert_eq!(label_count(), 0, "the View label goes below 726");
         for name in ["Commands (Ctrl+K)", "View"] {
             let b = find(&ui, name, AccessibleRole::Button);
             assert!((b.size().width - 32.0).abs() < 0.5 && (b.size().height - 32.0).abs() < 0.5, "{name} is a 32 px icon button: {:?}", b.size());
@@ -1505,13 +1507,13 @@ ui_tests! {
         assert!(ui.get_palette_open(), "still opens the palette");
         press_key(&ui, Key::Escape);
         settle();
-        at(736.0);
-        assert_eq!(label_count(), 2, "the labels return at 736");
+        at(854.0);
+        assert_eq!(label_count(), 2, "the labels return at 854");
     }
 
     fn narrow_toolbar_view_menu_holds_the_tile_view() {
         let (ui, log) = start();
-        ui.window().set_size(slint::LogicalSize::new(232.0 + 573.0, 640.0));
+        ui.window().set_size(slint::LogicalSize::new(232.0 + 691.0, 640.0));
         settle();
         take(&log);
         find(&ui, "View", AccessibleRole::Button).invoke_accessible_default_action();
