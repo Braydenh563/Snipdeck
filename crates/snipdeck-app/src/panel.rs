@@ -13,7 +13,7 @@ use crate::{
 };
 use snipdeck_core::{
     Board, BoardId, GroupId, Item, ItemId, ItemKind, ItemLabel, List, ListAccent, ListIcon, ListId,
-    ListSort, search::SearchIndex,
+    ListSort,
 };
 use snipdeck_platform::{
     keys::{PasteRule, builtin_paste_rules},
@@ -154,7 +154,6 @@ pub struct PanelModel {
     /// Every item, the boards and the index, as read when the library last changed.
     all: Rc<Snapshot>,
     list_labels: HashMap<ListId, ListLabel>,
-    index: Rc<SearchIndex>,
     cache: IndexCache,
     query: String,
     selected: usize,
@@ -254,7 +253,6 @@ impl PanelModel {
                 )
             })
             .collect();
-        let index = Rc::clone(&snapshot.index);
         Ok(Self {
             boards,
             board,
@@ -264,7 +262,6 @@ impl PanelModel {
             groups,
             all: snapshot,
             list_labels,
-            index,
             cache: cache.clone(),
             query: String::new(),
             selected: 0,
@@ -413,7 +410,7 @@ impl PanelModel {
     /// search index).
     #[must_use]
     pub fn suggest_index(&self) -> Rc<crate::search_suggest::Index> {
-        Rc::clone(&self.all.suggest)
+        self.all.suggest()
     }
 
     /// Sets the search text; the selection returns to the first row.
@@ -466,7 +463,7 @@ impl PanelModel {
             self.place_ghosts(&mut rows);
             return rows;
         }
-        let found = self.index.query(&self.query, SEARCH_LIMIT);
+        let found = self.all.index().query(&self.query, SEARCH_LIMIT);
         let hits: Vec<(&Item, Option<&str>)> = found
             .iter()
             .filter_map(|hit| {

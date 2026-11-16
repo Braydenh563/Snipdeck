@@ -299,8 +299,8 @@ pub struct MainModel {
     /// The groups of each list of the open board.
     groups: HashMap<ListId, Vec<GroupRun>>,
     list_labels: HashMap<ListId, ListLabel>,
-    /// The names the search suggestions are made of, rebuilt by `reload`.
-    suggest: std::rc::Rc<crate::search_suggest::Index>,
+    /// The library snapshot read by `reload`; its suggestions are built on first use.
+    snapshot: std::rc::Rc<crate::index_cache::Snapshot>,
     trash: Vec<TrashEntry>,
     section: Section,
     query: String,
@@ -351,7 +351,7 @@ impl MainModel {
             items: Vec::new(),
             groups: HashMap::new(),
             list_labels: HashMap::new(),
-            suggest: std::rc::Rc::default(),
+            snapshot: std::rc::Rc::default(),
             trash: Vec::new(),
             section: Section::All,
             query: String::new(),
@@ -460,7 +460,7 @@ impl MainModel {
         self.list_labels = list_labels;
         self.trash = trash;
         self.hits = hits;
-        self.suggest = std::rc::Rc::clone(&snapshot.suggest);
+        self.snapshot = std::rc::Rc::clone(&snapshot);
         self.section = match self.section {
             Section::List(id) if !self.lists.iter().any(|l| l.id == id) => Section::All,
             Section::Tag(id) if !self.tags.iter().any(|t| t.id == id) => Section::All,
@@ -594,7 +594,7 @@ impl MainModel {
     /// The names the search suggestions are made of.
     #[must_use]
     pub fn suggest_index(&self) -> std::rc::Rc<crate::search_suggest::Index> {
-        std::rc::Rc::clone(&self.suggest)
+        self.snapshot.suggest()
     }
 
     /// The search text.
