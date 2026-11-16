@@ -26,6 +26,7 @@ use crate::{
     usecase,
 };
 
+pub(crate) mod detail;
 mod editors;
 mod items;
 mod lists;
@@ -152,6 +153,12 @@ pub struct MainScreen {
     pub board_delete: Option<usize>,
     /// The open board's lists.
     pub lists: Vec<SideList>,
+    /// The Detail pane's item (the one under the cursor), when there is one.
+    pub detail: Option<crate::main_window::DetailView>,
+    /// The Detail pane is switched on in the View menu.
+    pub detail_open: bool,
+    /// What the *Move to list* chooser offers: the open board's lists, then the other boards'.
+    pub move_targets: Vec<crate::main_window::MoveTarget>,
     /// The tags.
     pub tags: Vec<SideTag>,
     /// The *Tags* chooser's entries.
@@ -235,6 +242,8 @@ pub(super) enum EditorTarget {
 /// What to show after an editor saved.
 enum Opened {
     List(ListId),
+    /// A list now on another board: open that board, then the list.
+    MovedList(BoardId, ListId),
     Board(BoardId),
 }
 
@@ -275,7 +284,15 @@ where
             rows.iter()
                 .position(|r| r.header.as_ref().is_some_and(|h| h.group == g))
         });
+        self.fill_thumbs(&mut rows);
+        let detail = if self.settings.main_detail_open {
+            self.detail_view()
+        } else {
+            None
+        };
         MainScreen {
+            detail,
+            detail_open: self.settings.main_detail_open,
             dark: look.dark,
             high_contrast: look.high_contrast,
             accent: self.accent(),
@@ -289,6 +306,7 @@ where
                 .then(|| self.board_menu_entries()),
             board_delete: self.board_delete_count(),
             lists: self.main.side_lists(),
+            move_targets: self.main.move_targets(),
             tags: self.main.side_tags(),
             tag_choices: self.tag_choices(),
             counts: Counts {

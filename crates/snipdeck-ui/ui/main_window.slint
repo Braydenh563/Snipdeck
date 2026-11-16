@@ -46,8 +46,9 @@ import { EdgeScroll } from "components/edge-scroll.slint";
 import { CommandPalette, PaletteRow } from "components/command-palette.slint";
 import { CommandTexts } from "command_texts.slint";
 import { RecentRow, RecentText } from "panel.slint";
+import { DetailPane, DetailData } from "components/detail-pane.slint";
 
-export { ChoiceEntry, PaletteRow }
+export { ChoiceEntry, PaletteRow, DetailData }
 
 // One item of the item area. `selected` is written by the host (see the file header).
 export struct MainRow {
@@ -234,6 +235,17 @@ component MainCard inherits ItemCard {
     label: root.data.label;
     label-name: root.data.label-name;
     selected: root.data.selected;
+
+    // An image card with no picture yet asks the host for one (MAIN-21). The list is virtualised, so only the cards on
+    // screen ask, one decode each.
+    callback thumb-wanted();
+    function ask() {
+        if (root.data.kind == ItemKind.image && root.data.image.width == 0 && !root.data.is-header) {
+            root.thumb-wanted();
+        }
+    }
+    init => { root.ask(); }
+    changed data => { root.ask(); }
 }
 
 // A group heading in the sidebar with an optional trailing action.
@@ -303,6 +315,8 @@ export component MainWindow inherits Window {
     in property <bool> board-delete-open: false;
     in property <int> board-delete-count;
     in property <[ChoiceEntry]> lists;
+    // The Move to list chooser: the open board's lists, then the other boards' (named with their board).
+    in property <[ChoiceEntry]> move-choices;
     in property <[ChoiceEntry]> tags;
     // Tags with a tick for those on the selected items (the host refreshes it on `item-action(tag, ...)`).
     in property <[ChoiceEntry]> tag-choices;
@@ -458,6 +472,14 @@ export component MainWindow inherits Window {
     in-out property <bool> sidebar-collapsed: false;
     callback sidebar-width-changed(int);
     callback sidebar-collapsed-changed(bool);
+    // The Detail pane (SPEC 5.3): the item under the cursor, shown right of the list while the window is wide enough
+    // (`detail-open` is the user's choice in the View menu, remembered by the host).
+    in property <DetailData> detail;
+    in-out property <bool> detail-open: true;
+    callback detail-open-changed(bool);
+    // An image row on screen has no thumbnail yet: the host decodes it and draws again.
+    callback thumb-wanted(int);
+    out property <bool> detail-shown: false;
     // F1 asks for the guide, Ctrl+/ for the shortcuts, the Help menu for any of them.
     callback help-requested(HelpPage);
     // Help > Recent messages (MAIN-43): the host fills `recent-messages-text` (one message a line, newest first) before
@@ -690,7 +712,9 @@ export component MainWindow inherits Window {
     function update-narrow() {
         root.auto-rail = root.width < 720px * max(1, root.text-scale);
         root.narrow = root.auto-rail || root.sidebar-collapsed;
-        let room = (root.width - root.sidebar-w - root.caption-inset) / root.text-scale;
+        // The pane takes 360px and leaves the list 480px, so it shows from 1072px (232px sidebar) at 100% text size.
+        root.detail-shown = root.detail-open && (root.width - root.sidebar-w - root.caption-inset) / root.text-scale >= 840px;
+        let room = (root.width - root.sidebar-w - (root.detail-shown ? 360px * root.text-scale : 0px) - root.caption-inset) / root.text-scale;
         // The tiers leave the search field its 150px floor (scaled): each width is the controls that stay plus 150px.
         root.toolbar-keys = room >= 854px;
         root.commands-compact = room < 776px;
@@ -716,6 +740,9 @@ export component MainWindow inherits Window {
         root.update-narrow();
     }
     changed caption-inset => {
+        root.update-narrow();
+    }
+    changed detail-open => {
         root.update-narrow();
     }
     // Ctrl+B and the toolbar button. Below 720px the rail is automatic and wins, so there is nothing to fold.
@@ -1162,6 +1189,10 @@ export component MainWindow inherits Window {
     property <int> grid-row-count: root.tile ? ceil(root.rows.length / root.cols) : 0;
     pure function tile-index(r: int, c: int) -> int {
         return r * root.cols + c;
+    }
+    // What the card of cell `c` of grid row `r` needs: nothing for a cell past the last row.
+    pure function cell-need(r: int, c: int, need: length) -> length {
+        return root.tile-index(r, c) < root.rows.length ? need : 0px;
     }
     property <length> tile-w: (grid.width - 2 * root.ring - (root.cols - 1) * root.tile-gap) / root.cols;
     // ---- Keyboard ---------------------------------------------------------------------------------
@@ -2324,6 +2355,7 @@ export component MainWindow inherits Window {
                                                 root.act(root.in-trash ? ItemAction.restore : ItemAction.use, i);
                                             }
                                             copy => { root.act(ItemAction.copy, i); }
+                                            thumb-wanted => { root.thumb-wanted(i); }
                                             plain-click: !root.in-trash && !root.use-copies;
                                             use-plain => {
                                                 root.cursor = i;
@@ -2406,11 +2438,11 @@ export component MainWindow inherits Window {
                             visible: root.rows.length > 0;
                             scrolled => { root.follow-cursor = false; }
 
-                            for r in root.grid-row-count: Rectangle {
+                            for r in root.grid-row-count: grid-row := Rectangle {
                                 property <bool> has-cursor: floor(root.cur / root.cols) == r;
                                 // Each cell reports the height its card needs; a grid row takes its tallest card (min 96).
                                 property <[length]> need: [0px, 0px, 0px, 0px, 0px, 0px];
-                                height: max(self.need[0], self.need[1], self.need[2], self.need[3], self.need[4], self.need[5]) + root.tile-gap + (r == root.grid-row-count - 1 ? 2 * root.ring : 0px);
+                                height: max(root.cell-need(r, 0, self.need[0]), root.cell-need(r, 1, self.need[1]), root.cell-need(r, 2, self.need[2]), root.cell-need(r, 3, self.need[3]), root.cell-need(r, 4, self.need[4]), root.cell-need(r, 5, self.need[5])) + root.tile-gap + (r == root.grid-row-count - 1 ? 2 * root.ring : 0px);
 
                                 init => {
                                     if (self.has-cursor && root.follow-cursor) { root.reveal-grid(self.y, self.height); }
@@ -2446,17 +2478,6 @@ export component MainWindow inherits Window {
                                     y: root.ring;
                                     width: root.tile-w;
                                     height: parent.height - root.tile-gap - (r == root.grid-row-count - 1 ? 2 * root.ring : 0px);
-                                    property <length> need: root.tile-index(r, c) < root.rows.length ? tile-probe.preferred-height : 0px;
-                                    init => { parent.need[c] = self.need; }
-                                    changed need => { parent.need[c] = self.need; }
-                                    tile-probe := MainCard {
-                                        visible: false;
-                                        y: -2000px;
-                                        width: parent.width;
-                                        variant: ItemCardVariant.tile;
-                                        inline-tile: true;
-                                        data: root.rows[root.tile-index(r, c)];
-                                    }
                                     if root.tile-index(r, c) < root.rows.length: tile-drop := DropArea {
                                         // The tile being dragged over this one: a drop lands after it when coming from before.
                                         property <int> tile-from: -1;
@@ -2482,6 +2503,8 @@ export component MainWindow inherits Window {
                                         variant: ItemCardVariant.tile;
                                         data: root.rows[root.tile-index(r, c)];
                                         inline-tile: true;
+                                        init => { grid-row.need[c] = self.preferred-height; }
+                                        changed preferred-height => { grid-row.need[c] = self.preferred-height; }
                                         // Use first (Restore in the Trash), then Copy (not when Use already copies), Edit, More.
                                         use-action: true;
                                         use-glyph: root.in-trash ? Icons.arrow-counter-clockwise : Icons.arrow-bend-down-left;
@@ -2500,6 +2523,7 @@ export component MainWindow inherits Window {
                                             root.act(root.in-trash ? ItemAction.restore : ItemAction.use, root.tile-index(r, c));
                                         }
                                         copy => { root.act(ItemAction.copy, root.tile-index(r, c)); }
+                                        thumb-wanted => { root.thumb-wanted(root.tile-index(r, c)); }
                                         plain-click: !root.in-trash && !root.use-copies;
                                         use-plain => {
                                             root.cursor = root.tile-index(r, c);
@@ -2896,6 +2920,13 @@ export component MainWindow inherits Window {
                     }
                 }
             }
+
+            // ======== Detail ======================================================================
+            if root.detail-shown: DetailPane {
+                horizontal-stretch: 0;
+                width: 360px * root.text-scale;
+                data: root.detail;
+            }
         }
 
         // The splitter: a 24px strip straddling the sidebar's edge (12px each side), above the layout so it never sits under a sidebar control. Drag it, or focus it and press Left / Right
@@ -3151,6 +3182,9 @@ export component MainWindow inherits Window {
             { text: @tr("Main list density: Compact"), checked: root.drawn-view == MainView.compact },
             // The same three choices as the toggles beside it, which the toolbar drops when it is narrow.
             { text: @tr("Tile view"), checked: root.tile, disabled: root.has-groups },
+            { separator: true },
+            // On when chosen, but drawn only while the window is wide enough.
+            { text: @tr("Detail pane"), checked: root.detail-open },
         ];
         label: @tr("View");
         init => {
@@ -3172,6 +3206,9 @@ export component MainWindow inherits Window {
             } else if (i == 6) {
                 root.view = MainView.tile;
                 root.view-changed(MainView.tile);
+            } else if (i == 8) {
+                root.detail-open = !root.detail-open;
+                root.detail-open-changed(root.detail-open);
             }
         }
         dismissed => { root.close-menus(); }
@@ -3201,7 +3238,7 @@ export component MainWindow inherits Window {
         y: root.chooser-y;
         width: root.chooser-w;
         multi: root.chooser-tags;
-        entries: root.chooser-paste ? (root.chooser-colour ? root.colour-choices : root.paste-choices) : root.chooser-tags ? root.tag-choices : root.lists;
+        entries: root.chooser-paste ? (root.chooser-colour ? root.colour-choices : root.paste-choices) : root.chooser-tags ? root.tag-choices : root.move-choices;
         label: root.chooser-paste ? MenuTexts.item-paste-as() : root.chooser-tags ? @tr("Tags") : @tr("Move to list");
         empty-text: root.chooser-tags ? @tr("No tags yet") : @tr("No lists yet");
         init => {

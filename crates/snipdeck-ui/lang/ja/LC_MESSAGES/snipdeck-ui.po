@@ -314,6 +314,9 @@ msgstr "下"
 msgid "Blue"
 msgstr "青"
 
+msgid "Board"
+msgstr "ボード"
+
 msgid "Board name"
 msgstr "ボード名"
 
@@ -382,6 +385,9 @@ msgstr "パスワードを変更"
 
 msgid "Change these in Settings."
 msgstr "これらは設定で変更できます。"
+
+msgid "Changed"
+msgstr "更新"
 
 msgid "Changes apply at once."
 msgstr "変更はすぐに適用されます。"
@@ -821,6 +827,9 @@ msgstr "項目を作成"
 msgid "Create “{}”"
 msgstr "「{}」を作成"
 
+msgid "Created"
+msgstr "作成"
+
 msgid "Ctrl+Shift+V"
 msgstr "Ctrl+Shift+V"
 
@@ -940,6 +949,12 @@ msgstr "このPCにあるすべてのボード、リスト、項目、バック�
 
 msgid "Deletes everything in the Recent inbox now."
 msgstr "「最近」の受信箱の内容をすべて今すぐ削除します。"
+
+msgid "Detail pane"
+msgstr "詳細ペイン"
+
+msgid "Details"
+msgstr "詳細"
 
 msgid "Discard"
 msgstr "破棄"
@@ -1121,6 +1136,9 @@ msgstr "ファイル"
 msgid "File moved or deleted"
 msgstr "ファイルが移動または削除されました"
 
+msgid "Files"
+msgstr "ファイル"
+
 msgid "Fill in template"
 msgstr "テンプレートに入力"
 
@@ -1246,6 +1264,9 @@ msgstr "HSB"
 
 msgid "HSL"
 msgstr "HSL"
+
+msgid "HTML"
+msgstr "HTML"
 
 msgid "Handy for forms you fill field by field."
 msgstr "フォームを項目ごとに入力するときに便利です。"
@@ -1477,6 +1498,9 @@ msgstr "言語"
 msgid "Last backup: {}"
 msgstr "前回のバックアップ: {}"
 
+msgid "Last used"
+msgstr "最終使用"
+
 msgid "Layout"
 msgstr "レイアウト"
 
@@ -1704,6 +1728,9 @@ msgstr "名前に改行や制御文字を含めることはできません。"
 msgid "Navigation"
 msgstr "ナビゲーション"
 
+msgid "Never"
+msgstr "なし"
+
 msgid "Never keep copies from these programs"
 msgstr "これらのプログラムからのコピーは保存しない"
 
@@ -1911,6 +1938,9 @@ msgstr "ピン留めはまだありません"
 msgid "Nothing to paste next. Pin a snippet, or add one to this list."
 msgstr "次に貼り付けるものがありません。項目をピン留めするか、このリストに追加してください。"
 
+msgid "Nothing to preview."
+msgstr "プレビューするものがありません。"
+
 msgid "Nothing to redo"
 msgstr "やり直す操作はありません"
 
@@ -1961,6 +1991,9 @@ msgstr "白の上"
 
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "テキスト、コード、リンク、テンプレートの項目のみ機密にできます。"
+
+msgid "Only the start is shown."
+msgstr "先頭部分のみ表示しています。"
 
 msgid "Only with Start with Windows: wait in the tray, or open the Panel as well."
 msgstr "「Windows の起動時に開始」の場合のみ: トレイで待機するか、パネルも開きます。"
@@ -2346,6 +2379,9 @@ msgstr "終了"
 msgid "RGB"
 msgstr "RGB"
 
+msgid "RTF"
+msgstr "RTF"
+
 msgid "Ready. Press Test to check it."
 msgstr "準備完了。「テスト」を押して確認します。"
 
@@ -2666,6 +2702,9 @@ msgstr "すべて選択"
 msgid "Select all items"
 msgstr "すべての項目を選択"
 
+msgid "Select an item to see its details."
+msgstr "項目を選ぶと詳細が表示されます。"
+
 msgid "Select and delete"
 msgstr "選択と削除"
 
@@ -2905,6 +2944,9 @@ msgstr "並べ替え"
 
 msgid "Sort: {}"
 msgstr "並べ替え: {}"
+
+msgid "Source"
+msgstr "取得元"
 
 msgid "Source code"
 msgstr "ソースコード"
@@ -3298,6 +3340,9 @@ msgstr "各単語の先頭を大文字"
 msgid "Title, colour, tags, trigger, privacy"
 msgstr "タイトル、色、タグ、トリガー、プライバシー"
 
+msgid "Title: {}"
+msgstr "タイトル: {}"
+
 msgid "Titles, text and labels all count."
 msgstr "タイトル、本文、ラベルのすべてが対象です。"
 
@@ -3489,6 +3534,9 @@ msgstr "{} を使う"
 
 msgid "Use {} for {}"
 msgstr "{} を {} に使う"
+
+msgid "Used"
+msgstr "使用回数"
 
 msgid "User guide"
 msgstr "ユーザーガイド"
@@ -4026,6 +4074,10 @@ msgstr[0] "{n}件の項目も一緒にゴミ箱に移動します。30日間復�
 msgid "{n} match in {}"
 msgid_plural "{n} matches in {}"
 msgstr[0] "{} で {n} 件一致"
+
+msgid "{n} time"
+msgid_plural "{n} times"
+msgstr[0] "{n} 回"
 
 msgid "{}"
 msgstr "{}"

@@ -92,7 +92,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - **Sidebar**: Search, Recent inbox, Pinned, Boards ▸ Lists, Tags, Trash (30-day). The tag manager has a "New tag" row; renaming a tag onto an existing name merges the two after a confirmation that shows how many items change (the merged items keep one link).
 - **Colours**: one named palette of nine hues (Blue, Teal, Green, Amber, Orange, Red, Rose, Violet, Slate) names every colour choice. Item labels offer eight of them (no Rose: the library file restricts the stored label keys), lists and boards all nine, and the accent six presets plus Windows; the stored ids and values are unchanged.
 - **Item list**: list/grid, multi-select, bulk move/tag/delete, drag between lists. Dragging items (a pointer drag with a ghost showing the count) onto a list, a tag or Trash in the sidebar moves, tags or deletes them; the keyboard and menu routes (F2, Delete, Move, Tags…) do the same.
-- **Detail**: preview + editor + metadata (formats present, uses, created/updated, source app). Post-1.0 as a pane (MAIN-22, see §15): v1 shows the full card in the list and the Preview in the item editor.
+- **Detail**: a 360px pane right of the item list with a preview of the item under the cursor (its text, or its picture) and its metadata (formats present, uses, last used, created/updated, source app, list, tags). A sensitive item shows the mask until it is held revealed. It shows only while the item list keeps its 480px minimum beside it (window at least 1072px wide at 100% text size); the View menu's *Detail pane* switches it off or on, and the choice is kept in the settings. The 480px minimum window stays a two-pane layout.
 - Settings, onboarding, import/export and the optional Support Snipdeck link live here.
 
 ### 5.4 Editors
@@ -238,10 +238,6 @@ Cloud sync service, rich-text editing, image annotation (arrows/text), scripting
 Linux/macOS builds, mobile.
 
 Post-1.0, decided:
-- Main window Detail pane (MAIN-22): the 400px preview/metadata pane is cut from v1. The list card already shows the title, text and type, the item editor has a Preview (Ctrl+P) with the sample result of a template, and a third pane would need the 480px minimum window to drop to two. Revisit with the pane as an opt-in at wide sizes.
-- Moving a list to another board, and grouping the Move chooser by board (MAIN-23): lists are chosen per board by design; moving between boards is export and import until the board field is added with the board-picker work.
-- Image thumbnails in Main rows (MAIN-21): needs a bounded decode cache per visible image id; the Panel and Picker also lack it, so one cache serves all three in v1.1.
-- Cached main-screen rows and a shared tile probe (MAIN-14, MAIN-29): not timed on Windows (`docs/PERF.md`); both views are virtualised and 10,000 rows cost the same as 1,000, so no change before a release-build measurement shows a miss.
 - Global eyedropper hotkey chord: needs Windows-only verification, not possible before release.
 - Per-swatch Ctrl+S: per-swatch save is reachable from the swatch menu.
 - OLE `IDropTarget` drops from other apps: a v1.1 deferral (`docs/reviews/v101-spec.md:68`).

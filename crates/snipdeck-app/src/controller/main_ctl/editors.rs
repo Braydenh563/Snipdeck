@@ -42,6 +42,8 @@ where
                 accent: None,
                 icon: None,
                 sort: ListSort::Manual,
+                boards: self.board_choices(),
+                board_index: self.main.board_position().unwrap_or(0),
                 item_count: 0,
                 can_delete: false,
                 delete_hint: None,
@@ -49,6 +51,15 @@ where
                 restored: false,
             },
         );
+    }
+
+    /// The boards a list can be put on, in board order.
+    fn board_choices(&self) -> Vec<(BoardId, String)> {
+        self.main
+            .boards()
+            .iter()
+            .map(|b| (b.id, b.name.as_str().to_owned()))
+            .collect()
     }
 
     /// "Edit list…": opens the list editor for list `index` of the sidebar.
@@ -86,6 +97,12 @@ where
             accent: list.accent,
             icon: list.icon,
             sort: list.sort,
+            boards: self.board_choices(),
+            board_index: self
+                .main
+                .board_of_list(list.id)
+                .and_then(|b| self.main.boards().iter().position(|x| x.id == b))
+                .unwrap_or(0),
             item_count: count,
             can_delete: true,
             delete_hint: None,
@@ -123,6 +140,8 @@ where
             accent: None,
             icon: None,
             sort: ListSort::Manual,
+            boards: Vec::new(),
+            board_index: 0,
             item_count,
             can_delete,
             delete_hint: (!can_delete).then_some(DeleteHint::LastBoard),
@@ -147,6 +166,8 @@ where
                 accent: None,
                 icon: None,
                 sort: ListSort::Manual,
+                boards: Vec::new(),
+                board_index: 0,
                 item_count: 0,
                 can_delete: false,
                 delete_hint: None,
@@ -170,6 +191,8 @@ where
             accent: None,
             icon: None,
             sort: ListSort::Manual,
+            boards: Vec::new(),
+            board_index: 0,
             item_count: self.main.side_lists().iter().map(|l| l.count).sum(),
             can_delete,
             delete_hint: (!can_delete).then_some(DeleteHint::LastBoard),
@@ -189,6 +212,7 @@ where
             view.accent = typed.accent;
             view.icon = typed.icon;
             view.sort = typed.sort;
+            view.board_index = typed.board_index.min(view.boards.len().saturating_sub(1));
             view.restored = true;
         }
         self.editor = Some(EditorSlot { view, target });
@@ -215,8 +239,8 @@ where
                 return;
             }
         };
-        let now = self.clock.now();
-        match self.write_editor(target, name, accent, icon, sort, now) {
+        let board = slot.view.boards.get(slot.view.board_index).map(|b| b.0);
+        match self.write_editor(target, name, accent, icon, sort, board) {
             Ok(opened) => {
                 self.editor = None;
                 // Read again below (`library_changed`, after the toast); the window needs
@@ -225,6 +249,10 @@ where
                 self.main_fresh();
                 match opened {
                     Some(Opened::List(id)) => self.main.open(Section::List(id)),
+                    Some(Opened::MovedList(board, id)) => {
+                        self.open_board(board);
+                        self.main.open(Section::List(id));
+                    }
                     Some(Opened::Board(id)) => self.open_board(id),
                     None => {}
                 }
@@ -246,11 +274,12 @@ where
         accent: Option<ListAccent>,
         icon: Option<ListIcon>,
         sort: ListSort,
-        now: snipdeck_core::Timestamp,
+        board: Option<BoardId>,
     ) -> snipdeck_store::Result<Option<Opened>> {
+        let now = self.clock.now();
         match target {
-            EditorTarget::NewList(board) => {
-                let mut list = snipdeck_core::List::new(board, name, now);
+            EditorTarget::NewList(opened_on) => {
+                let mut list = snipdeck_core::List::new(board.unwrap_or(opened_on), name, now);
                 list.accent = accent;
                 list.icon = icon;
                 list.sort = sort;
@@ -265,7 +294,14 @@ where
                 list.sort = sort;
                 list.updated_at = now;
                 self.store.update_list(&list)?;
-                Ok(None)
+                // Another board chosen: the list goes to the end of that board and is shown there.
+                match board {
+                    Some(to) if self.main.board_of_list(id).is_some_and(|from| from != to) => {
+                        self.store.move_list(id, to, Placement::Last)?;
+                        Ok(Some(Opened::MovedList(to, id)))
+                    }
+                    _ => Ok(None),
+                }
             }
             EditorTarget::NewBoard => {
                 let board = snipdeck_core::Board::new(name, now);
@@ -329,13 +365,16 @@ where
         accent: Option<ListAccent>,
         icon: Option<ListIcon>,
         sort: ListSort,
+        board_index: usize,
     ) {
         let Some(slot) = self.editor.take() else {
             return;
         };
         self.parked_editors.retain(|(t, _)| *t != slot.target);
         let v = &slot.view;
-        if (v.name.as_str(), v.accent, v.icon, v.sort) == (name, accent, icon, sort) {
+        if (v.name.as_str(), v.accent, v.icon, v.sort) == (name, accent, icon, sort)
+            && v.board_index == board_index
+        {
             return;
         }
         let mut typed = slot.view;
@@ -343,7 +382,17 @@ where
         typed.accent = accent;
         typed.icon = icon;
         typed.sort = sort;
+        typed.board_index = board_index.min(typed.boards.len().saturating_sub(1));
         self.parked_editors.push((slot.target, typed));
+    }
+
+    /// The list editor's Board field picked board `index` of [`EditorView::boards`].
+    pub fn main_editor_set_board(&mut self, index: usize) {
+        if let Some(slot) = self.editor.as_mut()
+            && index < slot.view.boards.len()
+        {
+            slot.view.board_index = index;
+        }
     }
 
     /// The user edited a field of the editor: a refusal no longer applies.

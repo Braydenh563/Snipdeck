@@ -315,6 +315,9 @@ msgstr "Abaixo"
 msgid "Blue"
 msgstr "Azul"
 
+msgid "Board"
+msgstr "Quadro"
+
 msgid "Board name"
 msgstr "Nome do quadro"
 
@@ -383,6 +386,9 @@ msgstr "Alterar senha"
 
 msgid "Change these in Settings."
 msgstr "Altere isso em Configurações."
+
+msgid "Changed"
+msgstr "Alterado"
 
 msgid "Changes apply at once."
 msgstr "As alterações são aplicadas de imediato."
@@ -822,6 +828,9 @@ msgstr "Criar item"
 msgid "Create “{}”"
 msgstr "Criar “{}”"
 
+msgid "Created"
+msgstr "Criado"
+
 msgid "Ctrl+Shift+V"
 msgstr "Ctrl+Shift+V"
 
@@ -941,6 +950,12 @@ msgstr "Apaga todos os quadros, listas, itens e backups deste PC. Isso não pode
 
 msgid "Deletes everything in the Recent inbox now."
 msgstr "Apaga agora tudo na caixa de Recentes."
+
+msgid "Detail pane"
+msgstr "Painel de detalhes"
+
+msgid "Details"
+msgstr "Detalhes"
 
 msgid "Discard"
 msgstr "Descartar"
@@ -1122,6 +1137,9 @@ msgstr "Arquivo"
 msgid "File moved or deleted"
 msgstr "Arquivo movido ou excluído"
 
+msgid "Files"
+msgstr "Arquivos"
+
 msgid "Fill in template"
 msgstr "Preencher modelo"
 
@@ -1247,6 +1265,9 @@ msgstr "HSB"
 
 msgid "HSL"
 msgstr "HSL"
+
+msgid "HTML"
+msgstr "HTML"
 
 msgid "Handy for forms you fill field by field."
 msgstr "Útil para formulários preenchidos campo a campo."
@@ -1483,6 +1504,9 @@ msgstr "Idioma"
 msgid "Last backup: {}"
 msgstr "Último backup: {}"
 
+msgid "Last used"
+msgstr "Último uso"
+
 msgid "Layout"
 msgstr "Layout"
 
@@ -1712,6 +1736,9 @@ msgstr "Nomes não podem conter quebras de linha nem caracteres de controle."
 msgid "Navigation"
 msgstr "Navegação"
 
+msgid "Never"
+msgstr "Nunca"
+
 msgid "Never keep copies from these programs"
 msgstr "Nunca guardar cópias destes programas"
 
@@ -1919,6 +1946,9 @@ msgstr "Nada fixado ainda"
 msgid "Nothing to paste next. Pin a snippet, or add one to this list."
 msgstr "Nada para colar em seguida. Fixe um item ou adicione um a esta lista."
 
+msgid "Nothing to preview."
+msgstr "Nada para visualizar."
+
 msgid "Nothing to redo"
 msgstr "Nada para refazer"
 
@@ -1969,6 +1999,9 @@ msgstr "Sobre branco"
 
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "Somente itens de texto, código, link e modelo podem ser sensíveis."
+
+msgid "Only the start is shown."
+msgstr "Apenas o início é mostrado."
 
 msgid "Only with Start with Windows: wait in the tray, or open the Panel as well."
 msgstr "Somente com Iniciar com o Windows: aguardar na bandeja ou abrir também o Painel."
@@ -2354,6 +2387,9 @@ msgstr "Sair"
 msgid "RGB"
 msgstr "RGB"
 
+msgid "RTF"
+msgstr "RTF"
+
 msgid "Ready. Press Test to check it."
 msgstr "Pronto. Pressione Testar para verificar."
 
@@ -2676,6 +2712,9 @@ msgstr "Selecionar tudo"
 msgid "Select all items"
 msgstr "Selecionar todos os itens"
 
+msgid "Select an item to see its details."
+msgstr "Selecione um item para ver os detalhes."
+
 msgid "Select and delete"
 msgstr "Selecionar e excluir"
 
@@ -2915,6 +2954,9 @@ msgstr "Ordenar itens por"
 
 msgid "Sort: {}"
 msgstr "Ordem: {}"
+
+msgid "Source"
+msgstr "Origem"
 
 msgid "Source code"
 msgstr "Código-fonte"
@@ -3313,6 +3355,9 @@ msgstr "Iniciais Maiúsculas"
 msgid "Title, colour, tags, trigger, privacy"
 msgstr "Título, cor, tags, gatilho, privacidade"
 
+msgid "Title: {}"
+msgstr "Título: {}"
+
 msgid "Titles, text and labels all count."
 msgstr "Títulos, texto e rótulos contam."
 
@@ -3504,6 +3549,9 @@ msgstr "Usar {}"
 
 msgid "Use {} for {}"
 msgstr "Usar {} para {}"
+
+msgid "Used"
+msgstr "Usado"
 
 msgid "User guide"
 msgstr "Guia do usuário"
@@ -4050,6 +4098,11 @@ msgid "{n} match in {}"
 msgid_plural "{n} matches in {}"
 msgstr[0] "{n} correspondência em {}"
 msgstr[1] "{n} correspondências em {}"
+
+msgid "{n} time"
+msgid_plural "{n} times"
+msgstr[0] "{n} vez"
+msgstr[1] "{n} vezes"
 
 msgid "{}"
 msgstr "{}"

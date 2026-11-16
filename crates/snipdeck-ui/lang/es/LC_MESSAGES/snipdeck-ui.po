@@ -315,6 +315,9 @@ msgstr "Abajo"
 msgid "Blue"
 msgstr "Azul"
 
+msgid "Board"
+msgstr "Tablero"
+
 msgid "Board name"
 msgstr "Nombre del tablero"
 
@@ -383,6 +386,9 @@ msgstr "Cambiar contraseña"
 
 msgid "Change these in Settings."
 msgstr "Cámbialos en Configuración."
+
+msgid "Changed"
+msgstr "Modificado"
 
 msgid "Changes apply at once."
 msgstr "Los cambios se aplican de inmediato."
@@ -822,6 +828,9 @@ msgstr "Crear elemento"
 msgid "Create “{}”"
 msgstr "Crear “{}”"
 
+msgid "Created"
+msgstr "Creado"
+
 msgid "Ctrl+Shift+V"
 msgstr "Ctrl+Shift+V"
 
@@ -941,6 +950,12 @@ msgstr "Elimina todos los tableros, listas, elementos y copias de seguridad de e
 
 msgid "Deletes everything in the Recent inbox now."
 msgstr "Elimina ahora todo lo de la bandeja Recientes."
+
+msgid "Detail pane"
+msgstr "Panel de detalles"
+
+msgid "Details"
+msgstr "Detalles"
 
 msgid "Discard"
 msgstr "Descartar"
@@ -1122,6 +1137,9 @@ msgstr "Archivo"
 msgid "File moved or deleted"
 msgstr "Archivo movido o eliminado"
 
+msgid "Files"
+msgstr "Archivos"
+
 msgid "Fill in template"
 msgstr "Rellenar plantilla"
 
@@ -1247,6 +1265,9 @@ msgstr "HSB"
 
 msgid "HSL"
 msgstr "HSL"
+
+msgid "HTML"
+msgstr "HTML"
 
 msgid "Handy for forms you fill field by field."
 msgstr "Útil para formularios que rellenas campo a campo."
@@ -1483,6 +1504,9 @@ msgstr "Idioma"
 msgid "Last backup: {}"
 msgstr "Última copia: {}"
 
+msgid "Last used"
+msgstr "Último uso"
+
 msgid "Layout"
 msgstr "Diseño"
 
@@ -1712,6 +1736,9 @@ msgstr "Los nombres no pueden contener saltos de línea ni caracteres de control
 msgid "Navigation"
 msgstr "Navegación"
 
+msgid "Never"
+msgstr "Nunca"
+
 msgid "Never keep copies from these programs"
 msgstr "No guardar nunca copias de estos programas"
 
@@ -1919,6 +1946,9 @@ msgstr "Aún no hay nada fijado"
 msgid "Nothing to paste next. Pin a snippet, or add one to this list."
 msgstr "Nada que pegar a continuación. Fija un elemento o añade uno a esta lista."
 
+msgid "Nothing to preview."
+msgstr "Nada que previsualizar."
+
 msgid "Nothing to redo"
 msgstr "Nada que rehacer"
 
@@ -1969,6 +1999,9 @@ msgstr "Sobre blanco"
 
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "Solo los elementos de texto, código, enlace y plantilla pueden ser sensibles."
+
+msgid "Only the start is shown."
+msgstr "Solo se muestra el principio."
 
 msgid "Only with Start with Windows: wait in the tray, or open the Panel as well."
 msgstr "Solo con Iniciar con Windows: esperar en la bandeja o abrir también el panel."
@@ -2354,6 +2387,9 @@ msgstr "Salir"
 msgid "RGB"
 msgstr "RGB"
 
+msgid "RTF"
+msgstr "RTF"
+
 msgid "Ready. Press Test to check it."
 msgstr "Listo. Pulsa Probar para comprobarlo."
 
@@ -2676,6 +2712,9 @@ msgstr "Seleccionar todo"
 msgid "Select all items"
 msgstr "Seleccionar todos los elementos"
 
+msgid "Select an item to see its details."
+msgstr "Selecciona un elemento para ver sus detalles."
+
 msgid "Select and delete"
 msgstr "Seleccionar y eliminar"
 
@@ -2915,6 +2954,9 @@ msgstr "Ordenar elementos por"
 
 msgid "Sort: {}"
 msgstr "Orden: {}"
+
+msgid "Source"
+msgstr "Origen"
 
 msgid "Source code"
 msgstr "Código fuente"
@@ -3313,6 +3355,9 @@ msgstr "Tipo Título"
 msgid "Title, colour, tags, trigger, privacy"
 msgstr "Título, color, etiquetas, atajo, privacidad"
 
+msgid "Title: {}"
+msgstr "Título: {}"
+
 msgid "Titles, text and labels all count."
 msgstr "Cuentan los títulos, el texto y las etiquetas."
 
@@ -3504,6 +3549,9 @@ msgstr "Usar {}"
 
 msgid "Use {} for {}"
 msgstr "Usar {} para {}"
+
+msgid "Used"
+msgstr "Usado"
 
 msgid "User guide"
 msgstr "Guía del usuario"
@@ -4050,6 +4098,11 @@ msgid "{n} match in {}"
 msgid_plural "{n} matches in {}"
 msgstr[0] "{n} coincidencia en {}"
 msgstr[1] "{n} coincidencias en {}"
+
+msgid "{n} time"
+msgid_plural "{n} times"
+msgstr[0] "{n} vez"
+msgstr[1] "{n} veces"
 
 msgid "{}"
 msgstr "{}"

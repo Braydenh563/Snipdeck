@@ -15,7 +15,7 @@ use std::{
 };
 
 use slint::{
-    CloseRequestResponse, ComponentHandle, Global, SharedString,
+    CloseRequestResponse, ComponentHandle, Global, Model, SharedString,
     winit_030::{WinitWindowAccessor, winit},
 };
 use snipdeck_core::{ListAccent, ListIcon, ListSort};
@@ -488,13 +488,17 @@ where
         let weak = w.as_weak();
         w.on_save_requested(move || {
             if let Some(w) = weak.upgrade() {
-                let (name, accent, icon, sort) = (
+                let (name, accent, icon, sort, board) = (
                     w.get_name(),
                     accent_of(w.get_accent()),
                     icon_of(w.get_icon_index()),
                     sort_of(w.get_sort_index()),
+                    index(w.get_board_index()),
                 );
-                core.act(|ctl| ctl.main_editor_save(name.as_str(), accent, icon, sort));
+                core.act(|ctl| {
+                    ctl.main_editor_set_board(board);
+                    ctl.main_editor_save(name.as_str(), accent, icon, sort);
+                });
             }
         });
         let help = Rc::clone(self);
@@ -512,13 +516,14 @@ where
         let (core, weak) = (Rc::clone(self), w.as_weak());
         crate::ownership::register_closer(crate::ownership::Win::ListEditor, move || {
             if let Some(w) = weak.upgrade() {
-                let (name, accent, icon, sort) = (
+                let (name, accent, icon, sort, board) = (
                     w.get_name(),
                     accent_of(w.get_accent()),
                     icon_of(w.get_icon_index()),
                     sort_of(w.get_sort_index()),
+                    index(w.get_board_index()),
                 );
-                core.act(|ctl| ctl.main_editor_park(name.as_str(), accent, icon, sort));
+                core.act(|ctl| ctl.main_editor_park(name.as_str(), accent, icon, sort, board));
             }
         });
         self.editors.borrow_mut().list = Some(w.clone_strong());
@@ -556,7 +561,7 @@ where
             if let Some(w) = weak.upgrade() {
                 let name = w.get_name();
                 core.act(|ctl| {
-                    ctl.main_editor_park(name.as_str(), None, None, ListSort::Manual);
+                    ctl.main_editor_park(name.as_str(), None, None, ListSort::Manual, 0);
                 });
             }
         });
@@ -664,6 +669,27 @@ where
             .set_main_sidebar_width(u32::try_from(w).unwrap_or(0)));
         wire!(on_sidebar_collapsed_changed, |ctl, c| ctl
             .set_main_sidebar_collapsed(c));
+        wire!(on_detail_open_changed, |ctl, o| ctl.set_main_detail_open(o));
+        {
+            // Rows on screen that want a thumbnail: a few are decoded per tick, then the window draws.
+            let wanted = Rc::new(RefCell::new(Vec::<usize>::new()));
+            let core2 = Rc::clone(&core);
+            window.on_thumb_wanted(move |i| {
+                let at = index(i);
+                let queued = {
+                    let mut queue = wanted.borrow_mut();
+                    if queue.contains(&at) {
+                        false
+                    } else {
+                        queue.push(at);
+                        queue.len() == 1
+                    }
+                };
+                if queued {
+                    decode_thumbs_later(Rc::clone(&core2), Rc::clone(&wanted));
+                }
+            });
+        }
         wire!(on_select_requested, |ctl, i, mode| ctl
             .main_select(index(i), select_mode(mode)));
         wire!(on_select_all_requested, |ctl| ctl.main_select_all());
@@ -1268,6 +1294,16 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     if differs(&|p| p.lists == screen.lists && p.dark == screen.dark) {
         set_side_lists(window, screen);
     }
+    if differs(&|p| p.move_targets == screen.move_targets && p.dark == screen.dark) {
+        let icons = ui::ListIcons::get(window).get_all();
+        window.set_move_choices(model(screen.move_targets.iter().map(|l| ui::ChoiceEntry {
+            label: l.label.as_str().into(),
+            count: to_i32(l.count),
+            color: list_icon_tint(l.accent, screen.dark),
+            icon: crate::binding::list_icon_image(&icons, l.icon),
+            checked: false,
+        })));
+    }
     if differs(&|p| p.label_chips == screen.label_chips && p.label_filter == screen.label_filter) {
         set_label_filter(window, screen);
     }
@@ -1326,20 +1362,24 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
         window.set_count_trash(to_i32(screen.counts.trash));
     }
     if differs(&|p| p.rows == screen.rows && p.dark == screen.dark) {
-        let rows = screen
-            .rows
-            .iter()
-            .enumerate()
-            .map(|(i, r)| {
-                let mut row = main_row(r, screen.dark);
-                // The one sensitive row held revealed: the controller put its text in the preview.
-                if screen.revealed == Some(i) {
-                    row.preview = r.preview.as_str().into();
-                }
-                row
-            })
+        let current = window.get_rows();
+        // The window's rows are the converted rows of the screen shown before, one for one: a row that
+        // did not change is not converted again (MAIN-29).
+        let converted: Vec<ui::MainRow> = (0..current.row_count())
+            .filter_map(|i| current.row_data(i))
             .collect();
-        if let Some(fresh) = crate::binding::refreshed_model(&window.get_rows(), rows) {
+        let old = previous
+            .filter(|p| p.dark == screen.dark && p.rows.len() == converted.len())
+            .map(|p| (p.rows.as_slice(), converted.as_slice(), p.revealed));
+        let rows = convert_rows(old, &screen.rows, screen.revealed, |i, r| {
+            let mut row = main_row(r, screen.dark);
+            // The one sensitive row held revealed: the controller put its text in the preview.
+            if screen.revealed == Some(i) {
+                row.preview = r.preview.as_str().into();
+            }
+            row
+        });
+        if let Some(fresh) = crate::binding::refreshed_model(&current, rows) {
             window.set_rows(fresh);
         }
     }
@@ -1389,6 +1429,12 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     // The window runs ahead of the setting while the splitter is dragged: only a change of the setting is pushed.
     if differs(&|p| p.sidebar_width == screen.sidebar_width) {
         window.set_sidebar_width(i32::try_from(screen.sidebar_width).unwrap_or(232));
+    }
+    if window.get_detail_open() != screen.detail_open {
+        window.set_detail_open(screen.detail_open);
+    }
+    if differs(&|p| p.detail == screen.detail && p.dark == screen.dark) {
+        window.set_detail(detail_data(screen.detail.as_ref()));
     }
     if differs(&|p| p.sidebar_collapsed == screen.sidebar_collapsed) {
         window.set_sidebar_collapsed(screen.sidebar_collapsed);
@@ -1486,6 +1532,36 @@ fn payload_key(payload: Payload) -> Option<Key> {
 
 /// The items a list holds: headers stand for their group's count (members folded away included) and the members
 /// shown under an open header are not counted twice.
+/// The window's rows for `rows`: a row equal to the one with the same key in `old` takes that
+/// row's converted form, and only the others go through `convert`. `old` is the rows shown
+/// before, their converted forms (one for one) and which of them was held revealed; a row that
+/// is or was revealed is always converted.
+fn convert_rows<R: Clone>(
+    old: Option<(&[crate::main_window::Row], &[R], Option<usize>)>,
+    rows: &[crate::main_window::Row],
+    revealed: Option<usize>,
+    mut convert: impl FnMut(usize, &crate::main_window::Row) -> R,
+) -> Vec<R> {
+    let at_key: std::collections::HashMap<crate::main_window::Key, usize> = old
+        .map(|(shown, _, _)| shown.iter().enumerate().map(|(i, r)| (r.key, i)).collect())
+        .unwrap_or_default();
+    rows.iter()
+        .enumerate()
+        .map(|(i, row)| {
+            if let Some((shown, out, was_revealed)) = old
+                && revealed != Some(i)
+                && let Some(&at) = at_key.get(&row.key)
+                && was_revealed != Some(at)
+                && shown.get(at) == Some(row)
+                && let Some(kept) = out.get(at)
+            {
+                return kept.clone();
+            }
+            convert(i, row)
+        })
+        .collect()
+}
+
 fn list_total(rows: &[crate::main_window::Row]) -> usize {
     rows.iter()
         .map(|r| match &r.header {
@@ -1541,7 +1617,9 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
         list_color: color,
         label,
         label_name,
-        image: slint::Image::default(),
+        image: row.thumb.as_ref().map_or_else(slint::Image::default, |t| {
+            crate::binding::recent_thumb(Some(t.pixels()))
+        }),
         pinned: row.pinned,
         selected: row.selected,
         is_header: row.header.is_some(),
@@ -1593,6 +1671,12 @@ fn fill_list_editor(window: &ui::ListEditor, view: &EditorView) {
     ));
     window.set_icon_index(icon_index(view.icon));
     window.set_sort_index(sort_index(view.sort));
+    window.set_board_names(model(
+        view.boards
+            .iter()
+            .map(|(_, name)| SharedString::from(name.as_str())),
+    ));
+    window.set_board_index(to_i32(view.board_index));
     window.set_show_colour(true);
     window.set_show_sort(true);
     window.set_item_count(to_i32(view.item_count));
@@ -1736,6 +1820,62 @@ fn select_mode(mode: ui::SelectMode) -> SelectMode {
         ui::SelectMode::Toggle => SelectMode::Toggle,
         ui::SelectMode::Extend => SelectMode::Extend,
     }
+}
+
+/// The Detail pane's data for `view` (an empty pane when there is none).
+fn detail_data(view: Option<&crate::main_window::DetailView>) -> ui::DetailData {
+    let Some(v) = view else {
+        return ui::DetailData::default();
+    };
+    ui::DetailData {
+        has_item: true,
+        kind: item_kind_of(v.kind, v.sensitive),
+        title: v.title.as_str().into(),
+        text: v.text.as_str().into(),
+        text_cut: v.text_cut,
+        image: crate::binding::recent_thumb(
+            v.thumb.as_ref().map(crate::thumb_cache::Thumb::pixels),
+        ),
+        formats: model(v.formats.iter().map(|k| match k {
+            snipdeck_core::FormatKind::Text => 0,
+            snipdeck_core::FormatKind::Html => 1,
+            snipdeck_core::FormatKind::Rtf => 2,
+            snipdeck_core::FormatKind::Png => 3,
+            snipdeck_core::FormatKind::Files => 4,
+        })),
+        use_count: i32::try_from(v.use_count).unwrap_or(i32::MAX),
+        last_used: v.last_used.as_str().into(),
+        created: v.created.as_str().into(),
+        updated: v.updated.as_str().into(),
+        source_app: v.source_app.as_str().into(),
+        list_name: v.list_name.as_str().into(),
+        tags: v.tags.as_str().into(),
+    }
+}
+
+/// Decodes the queued rows' thumbnails a few at a time, one tick after the window drew them.
+fn decode_thumbs_later<S, C, K, T>(core: Rc<MainCore<S, C, K, T>>, wanted: Rc<RefCell<Vec<usize>>>)
+where
+    S: Library + 'static,
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    slint::Timer::single_shot(std::time::Duration::ZERO, move || {
+        let batch: Vec<usize> = {
+            let mut queue = wanted.borrow_mut();
+            let n = queue.len().min(crate::thumb_cache::DECODES_PER_PASS);
+            queue.drain(..n).collect()
+        };
+        core.act(|ctl| {
+            for at in batch {
+                ctl.main_thumbnail(at);
+            }
+        });
+        if !wanted.borrow().is_empty() {
+            decode_thumbs_later(core, wanted);
+        }
+    });
 }
 
 fn action_of(action: ui::ItemAction) -> MainAction {
@@ -1883,6 +2023,8 @@ mod tests {
             marks: crate::search_mark::marks("", "", false, None, ""),
             header,
             grouped,
+            image_stamp: None,
+            thumb: None,
         };
         let head = |count, collapsed| {
             Some(GroupHeader {
@@ -1902,6 +2044,81 @@ mod tests {
         ];
         assert_eq!(list_total(&rows), 9);
         assert_eq!(list_total(&rows[3..5]), 2);
+    }
+
+    /// MAIN-29: a redraw converts the rows that changed, not all of them.
+    #[test]
+    fn unchanged_rows_are_not_converted_again() {
+        use crate::main_window::{Key, Row};
+        let plain = |title: &str| Row {
+            key: Key::Item(snipdeck_core::ItemId::generate()),
+            kind: snipdeck_core::ItemKind::Text,
+            sensitive: false,
+            title: title.into(),
+            preview: String::new(),
+            list: None,
+            pinned: false,
+            label: None,
+            selected: false,
+            marks: crate::search_mark::marks(title, "", false, None, ""),
+            header: None,
+            grouped: false,
+            image_stamp: None,
+            thumb: None,
+        };
+        let rows: Vec<Row> = ["a", "b", "c", "d"].iter().map(|t| plain(t)).collect();
+        let mut converted = 0;
+        let mut convert = |_: usize, r: &Row| {
+            converted += 1;
+            r.title.clone()
+        };
+        let first = convert_rows(None, &rows, None, &mut convert);
+        assert_eq!(first, ["a", "b", "c", "d"]);
+        assert_eq!(converted, 4, "the first draw converts every row");
+
+        // One row is selected and a new one comes in at the top: two conversions, not five.
+        let mut next = rows.clone();
+        next[1].selected = true;
+        next.insert(0, plain("new"));
+        let mut count = 0;
+        let out = convert_rows(
+            Some((&rows, &first, None)),
+            &next,
+            None,
+            |_: usize, r: &Row| {
+                count += 1;
+                r.title.clone()
+            },
+        );
+        assert_eq!(out, ["new", "a", "b", "c", "d"]);
+        assert_eq!(count, 2);
+
+        // Nothing changed: nothing is converted.
+        let mut count = 0;
+        let same = convert_rows(
+            Some((&rows, &first, None)),
+            &rows,
+            None,
+            |_: usize, r: &Row| {
+                count += 1;
+                r.title.clone()
+            },
+        );
+        assert_eq!(same, first);
+        assert_eq!(count, 0);
+
+        // The row held revealed (now or before) always converts: its text came from outside the row.
+        let mut count = 0;
+        convert_rows(
+            Some((&rows, &first, Some(2))),
+            &rows,
+            Some(1),
+            |_: usize, r: &Row| {
+                count += 1;
+                r.title.clone()
+            },
+        );
+        assert_eq!(count, 2, "the revealed row and the one that was");
     }
 
     #[test]
@@ -1926,6 +2143,8 @@ mod tests {
             ),
             header: None,
             grouped: false,
+            image_stamp: None,
+            thumb: None,
         };
         let mapped = main_row(&row, false);
         assert_eq!(mapped.mark_before.as_str(), "Q3 ");

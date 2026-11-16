@@ -873,3 +873,109 @@ fn main_window_command_palette() {
     );
     assert_golden("palette-dark", &render(&h));
 }
+
+// ---- The Detail pane (MAIN-22) ------------------------------------------------------------------
+
+fn detail_sample() -> snipdeck_ui::DetailData {
+    snipdeck_ui::DetailData {
+        has_item: true,
+        kind: snipdeck_ui::ItemKind::Text,
+        title: "Out of office".into(),
+        text: "Hello,\n\nI am away until Monday and will answer when I am back.".into(),
+        text_cut: false,
+        image: slint::Image::default(),
+        formats: ModelRc::new(VecModel::from(vec![0, 1])),
+        use_count: 3,
+        last_used: "2026-10-16 09:12".into(),
+        created: "2026-09-01 08:00".into(),
+        updated: "2026-10-01 17:45".into(),
+        source_app: "Outlook".into(),
+        list_name: "Email replies".into(),
+        tags: "work, mail".into(),
+    }
+}
+
+#[test]
+fn the_detail_pane_shows_only_where_the_list_keeps_480px_beside_it() {
+    // At 100% text size: pane 360px, sidebar 232px, list at least 480px, so from 1072px.
+    for (width, shown) in [
+        (480, false),
+        (760, false),
+        (1040, false),
+        (1071, false),
+        (1072, true),
+        (1400, true),
+    ] {
+        let h = window((width, 640), false);
+        let _ = render(&h);
+        assert_eq!(h.component.get_detail_shown(), shown, "{width}px wide");
+    }
+    let h = window((1400, 640), false);
+    h.component.set_detail_open(false);
+    let _ = render(&h);
+    assert!(
+        !h.component.get_detail_shown(),
+        "the View menu switches it off"
+    );
+}
+
+#[test]
+fn the_detail_pane_is_labelled_and_names_its_fields_for_assistive_technology() {
+    use i_slint_backend_testing::ElementQuery;
+    let h = window((1280, 720), false);
+    h.component.set_detail(detail_sample());
+    let _ = render(&h);
+    assert!(h.component.get_detail_shown());
+    let labels: Vec<String> = ElementQuery::from_root(&h.component)
+        .match_descendants()
+        .find_all()
+        .into_iter()
+        .filter_map(|e| e.accessible_label().map(|l| l.to_string()))
+        .collect();
+    for want in [
+        "Details",
+        "Title: Out of office",
+        "Preview",
+        "Formats: Text, HTML",
+        "List: Email replies",
+        "Source: Outlook",
+        "Created: 2026-09-01 08:00",
+    ] {
+        assert!(labels.iter().any(|l| l == want), "no label {want:?}");
+    }
+}
+
+#[test]
+fn the_detail_pane_keeps_the_list_at_480px_or_more() {
+    use i_slint_backend_testing::ElementQuery;
+    let h = window((1072, 640), false);
+    h.component.set_detail(detail_sample());
+    let _ = render(&h);
+    assert!(h.component.get_detail_shown());
+    let pane = ElementQuery::from_root(&h.component)
+        .match_descendants()
+        .find_all()
+        .into_iter()
+        .find(|e| e.accessible_label().is_some_and(|l| l == "Details"))
+        .expect("the pane");
+    assert!(
+        (pane.size().width - 360.0).abs() < 0.5,
+        "{}",
+        pane.size().width
+    );
+    assert!((pane.absolute_position().x + 360.0 - 1072.0).abs() < 0.5);
+}
+
+#[test]
+fn main_window_with_the_detail_pane() {
+    let h = window((1280, 720), false);
+    h.component.set_board_name("Work".into());
+    h.component.set_detail(detail_sample());
+    assert_golden("main-detail-light", &render(&h));
+    drop(h);
+    let h = window((1280, 720), true);
+    let mut empty = detail_sample();
+    empty.has_item = false;
+    h.component.set_detail(empty);
+    assert_golden("main-detail-empty-dark", &render(&h));
+}

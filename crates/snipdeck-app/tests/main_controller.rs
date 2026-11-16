@@ -773,7 +773,7 @@ fn a_parked_list_editor_closes_and_comes_back_with_its_typed_fields() {
     let mut ctl = seeded();
     let index = list_index(&ctl.main_screen(), "Addresses");
     ctl.main_edit_list(index);
-    ctl.main_editor_park("Places (typed)", None, None, ListSort::RecentlyUsed);
+    ctl.main_editor_park("Places (typed)", None, None, ListSort::RecentlyUsed, 0);
     assert!(ctl.main_screen().editor.is_none());
     ctl.main_edit_list(index);
     let editor = ctl.main_screen().editor.expect("editor");
@@ -797,7 +797,13 @@ fn a_parked_editor_with_nothing_typed_leaves_no_draft() {
     let index = list_index(&ctl.main_screen(), "Addresses");
     ctl.main_edit_list(index);
     let editor = ctl.main_screen().editor.expect("editor");
-    ctl.main_editor_park(&editor.name, editor.accent, editor.icon, editor.sort);
+    ctl.main_editor_park(
+        &editor.name,
+        editor.accent,
+        editor.icon,
+        editor.sort,
+        editor.board_index,
+    );
     ctl.main_edit_list(index);
     ctl.main_editor_save("Renamed", None, None, ListSort::Manual);
     ctl.main_edit_list(index);
@@ -2524,4 +2530,243 @@ fn a_tag_drop_is_one_undo_step() {
     assert_eq!(ctl.main_screen().tags[0].count, 11);
     ctl.undo();
     assert_eq!(ctl.main_screen().tags[0].count, 0);
+// ---- Moving a list to another board (MAIN-23) -------------------------------------------------
+
+/// Whether the board `board` holds a list called `list`.
+fn board_has_list(ctl: &Ctl, board: &str, list: &str) -> bool {
+    let boards = ctl.store().boards().expect("boards");
+    let board = boards
+        .iter()
+        .find(|b| b.name.as_str() == board)
+        .unwrap_or_else(|| panic!("no board {board}"));
+    ctl.store()
+        .lists(board.id)
+        .expect("lists")
+        .iter()
+        .any(|l| l.name.as_str() == list)
+}
+
+#[test]
+fn the_list_editor_moves_a_list_to_another_board_and_opens_it_there() {
+    let mut ctl = seeded();
+    let screen = ctl.main_screen();
+    let index = list_index(&screen, "Addresses");
+    let list = screen.lists[index].id;
+    ctl.main_edit_list(index);
+    let editor = ctl.main_screen().editor.expect("editor");
+    assert_eq!(editor.boards.len(), 2);
+    assert_eq!(editor.boards[editor.board_index].1, "Work");
+    let other = 1 - editor.board_index;
+    let other_name = editor.boards[other].1.clone();
+    ctl.main_editor_set_board(other);
+    ctl.main_editor_save("Addresses", None, None, ListSort::Manual);
+    let screen = ctl.main_screen();
+    assert_eq!(screen.board_name, other_name, "the other board is open");
+    assert_eq!(screen.section, Section::List(list), "and the list with it");
+    assert_eq!(screen.rows.len(), 2, "its items went along");
+    assert!(screen.editor.is_none());
+    assert!(!board_has_list(&ctl, "Work", "Addresses"));
+    assert!(board_has_list(&ctl, &other_name, "Addresses"));
+}
+
+#[test]
+fn a_list_saved_on_its_own_board_stays_and_a_new_list_lands_on_the_chosen_board() {
+    let mut ctl = seeded();
+    let screen = ctl.main_screen();
+    let index = list_index(&screen, "Code");
+    ctl.main_edit_list(index);
+    ctl.main_editor_save("Code", None, None, ListSort::Manual);
+    assert_eq!(ctl.main_screen().board_name, "Work");
+    assert!(board_has_list(&ctl, "Work", "Code"));
+    ctl.main_new_list();
+    let editor = ctl.main_screen().editor.expect("new list editor");
+    assert!(editor.is_new);
+    let other = 1 - editor.board_index;
+    let other_name = editor.boards[other].1.clone();
+    ctl.main_editor_set_board(other);
+    ctl.main_editor_save("Fresh", None, None, ListSort::Manual);
+    assert!(board_has_list(&ctl, &other_name, "Fresh"));
+    assert!(!board_has_list(&ctl, "Work", "Fresh"));
+}
+
+#[test]
+fn a_parked_list_editor_keeps_the_board_that_was_picked() {
+    let mut ctl = seeded();
+    let screen = ctl.main_screen();
+    let index = list_index(&screen, "Code");
+    ctl.main_edit_list(index);
+    let editor = ctl.main_screen().editor.expect("editor");
+    let other = 1 - editor.board_index;
+    ctl.main_editor_park("Code", None, None, ListSort::Manual, other);
+    ctl.main_edit_list(index);
+    let back = ctl.main_screen().editor.expect("editor again");
+    assert_eq!(back.board_index, other, "the typed board comes back");
+}
+
+#[test]
+fn the_move_chooser_lists_the_open_board_first_then_the_others_with_their_board() {
+    let mut ctl = seeded();
+    let screen = ctl.main_screen();
+    let labels: Vec<&str> = screen
+        .move_targets
+        .iter()
+        .map(|t| t.label.as_str())
+        .collect();
+    assert_eq!(labels[..3], ["Email replies", "Addresses", "Code"]);
+    assert!(
+        labels.len() > 3,
+        "the other board's lists follow: {labels:?}"
+    );
+    assert_ne!(screen.move_targets[3].board, screen.move_targets[0].board);
+    assert_ne!(
+        labels[3], "",
+        "a list of another board is named with its board"
+    );
+    let far = screen.move_targets[3].list;
+    let row = row_of(&screen, "Out of office");
+    ctl.main_select(row, SelectMode::Replace);
+    assert!(ctl.main_action(MainAction::Move, row).is_none());
+    ctl.main_move_to(3);
+    let moved = ctl.main_screen();
+    assert!(matches!(
+        message(&moved),
+        ToastMessage::ItemsMoved { count: 1, .. }
+    ));
+    let items = ctl.store().items(far).expect("items");
+    assert!(items.iter().any(|i| i.title == "Out of office"));
+}
+
+// ---- Picture thumbnails of image rows (MAIN-21) and the Detail pane (MAIN-22) -------------------
+
+fn png_of(width: u32, height: u32) -> Vec<u8> {
+    let mut png = Vec::new();
+    let mut encoder = png::Encoder::new(&mut png, width, height);
+    encoder.set_color(png::ColorType::Rgba);
+    encoder.set_depth(png::BitDepth::Eight);
+    let pixels = vec![200_u8; (width * height * 4) as usize];
+    encoder
+        .write_header()
+        .and_then(|mut w| w.write_image_data(&pixels))
+        .expect("png");
+    png
+}
+
+fn store_with_pictures(count: usize) -> Store {
+    let mut store = demo::store(now()).expect("demo store");
+    let board = store.boards().expect("boards")[0].id;
+    let list = store.lists(board).expect("lists")[0].clone();
+    let to = snipdeck_app::capture::Destination {
+        id: list.id,
+        name: list.name.as_str().to_owned(),
+    };
+    for n in 0..count {
+        snipdeck_app::capture::capture_image(
+            &mut store,
+            &to,
+            png_of(4, 2),
+            &format!("Shot {n}"),
+            now(),
+        )
+        .expect("captured");
+    }
+    store
+}
+
+#[test]
+fn an_image_row_gets_its_thumbnail_once_and_only_when_asked() {
+    let (mut ctl, _) = rig_on(store_with_pictures(2));
+    let screen = ctl.main_screen();
+    let row = row_of(&screen, "Shot 0");
+    assert!(screen.rows[row].image_stamp.is_some());
+    assert!(
+        screen.rows[row].thumb.is_none(),
+        "nothing is decoded unasked"
+    );
+    assert_eq!(ctl.main_thumbnails_kept(), 0);
+    assert!(ctl.main_thumbnail(row));
+    assert!(!ctl.main_thumbnail(row), "a second ask finds it kept");
+    assert_eq!(ctl.main_thumbnails_kept(), 1);
+    let screen = ctl.main_screen();
+    let thumb = screen.rows[row].thumb.as_ref().expect("thumbnail");
+    assert_eq!(
+        (thumb.pixels().width, thumb.pixels().height),
+        (4, 2),
+        "a small picture is not enlarged"
+    );
+    assert!(screen.rows[row_of(&screen, "Shot 1")].thumb.is_none());
+}
+
+#[test]
+fn the_thumbnail_cache_never_grows_past_its_bound() {
+    let bound = snipdeck_app::thumb_cache::ROW_CAPACITY;
+    let (mut ctl, _) = rig_on(store_with_pictures(bound + 5));
+    let screen = ctl.main_screen();
+    let rows: Vec<usize> = (0..bound + 5)
+        .map(|n| row_of(&screen, &format!("Shot {n}")))
+        .collect();
+    for row in rows {
+        ctl.main_thumbnail(row);
+        assert!(ctl.main_thumbnails_kept() <= bound);
+    }
+    assert_eq!(ctl.main_thumbnails_kept(), bound);
+}
+
+#[test]
+fn the_detail_pane_shows_the_item_under_the_cursor_with_its_metadata() {
+    let mut ctl = seeded();
+    let screen = ctl.main_screen();
+    let row = row_of(&screen, "Out of office");
+    ctl.main_select(row, SelectMode::Replace);
+    let screen = ctl.main_screen();
+    assert!(screen.detail_open);
+    let detail = screen.detail.expect("detail");
+    assert_eq!(detail.title, "Out of office");
+    assert!(!detail.text.is_empty());
+    assert!(!detail.text_cut);
+    assert!(detail.formats.contains(&snipdeck_core::FormatKind::Text));
+    assert_eq!(detail.created.len(), 16, "{}", detail.created);
+    assert!(
+        detail.created.starts_with("2026-10-1"),
+        "{}",
+        detail.created
+    );
+    assert_ne!(detail.list_name, "");
+}
+
+#[test]
+fn the_detail_pane_masks_a_secret_until_it_is_held_revealed_and_follows_a_picture() {
+    let (mut ctl, _) = rig_on(store_with_pictures(1));
+    let screen = ctl.main_screen();
+    let secret = screen
+        .rows
+        .iter()
+        .position(|r| r.sensitive)
+        .expect("the demo has a secret");
+    ctl.main_select(secret, SelectMode::Replace);
+    let shown = ctl.main_screen().detail.expect("detail").text;
+    assert_eq!(shown, "••••••••••••");
+    ctl.main_reveal(secret, true);
+    let real = ctl.main_screen().detail.expect("detail").text;
+    assert_ne!(real, shown, "held revealed it shows the text");
+    ctl.main_reveal(secret, false);
+    let screen = ctl.main_screen();
+    let shot = row_of(&screen, "Shot 0");
+    ctl.main_select(shot, SelectMode::Replace);
+    let detail = ctl.main_screen().detail.expect("detail");
+    assert!(detail.thumb.is_some(), "a picture item shows its picture");
+    assert_eq!(detail.formats, [snipdeck_core::FormatKind::Png]);
+}
+
+#[test]
+fn the_detail_pane_reads_nothing_while_it_is_switched_off() {
+    let mut ctl = seeded();
+    let screen = ctl.main_screen();
+    let row = row_of(&screen, "Out of office");
+    ctl.main_select(row, SelectMode::Replace);
+    ctl.set_main_detail_open(false);
+    let screen = ctl.main_screen();
+    assert!(!screen.detail_open);
+    assert!(screen.detail.is_none());
+    ctl.set_main_detail_open(true);
+    assert!(ctl.main_screen().detail.is_some());
 }

@@ -154,6 +154,9 @@ fn select_row(ui: &MainWindow, i: usize) {
 fn start() -> (MainWindow, Log) {
     let ui = MainWindow::new().expect("main window");
     fixture::populate(&ui);
+    // These tests measure the list and its toolbar by the width of the item area; the Detail pane (which takes
+    // 360px from a wide window) has its own tests in `main_window.rs`.
+    ui.set_detail_open(false);
     ui.window().set_size(slint::LogicalSize::new(1040.0, 640.0));
     ui.show().expect("show");
     settle();
@@ -1495,6 +1498,22 @@ ui_tests! {
         assert!(commands.size().width > 100.0, "label and keycaps: {}", commands.size().width);
         let view = find(&ui, "View", AccessibleRole::Button);
         assert!(view.size().width > 32.0, "label and caret: {}", view.size().width);
+    }
+
+    fn the_detail_pane_takes_its_width_before_the_toolbar_is_measured() {
+        let (ui, _log) = start();
+        ui.set_detail_open(true);
+        ui.window().set_size(slint::LogicalSize::new(232.0 + 360.0 + 854.0, 640.0));
+        settle();
+        assert!(ui.get_detail_shown());
+        let labels = ElementQuery::from_root(&ui).match_id("ToolbarButton::label-text").find_all().len();
+        assert_eq!(labels, 2, "the list keeps 854px beside the pane, so the toolbar is as at 854 without it");
+        ui.window().set_size(slint::LogicalSize::new(232.0 + 360.0 + 853.0, 640.0));
+        settle();
+        let keys = find(&ui, "Commands (Ctrl+K)", AccessibleRole::Button).size().width;
+        ui.window().set_size(slint::LogicalSize::new(232.0 + 360.0 + 854.0, 640.0));
+        settle();
+        assert!(find(&ui, "Commands (Ctrl+K)", AccessibleRole::Button).size().width > keys + 40.0, "the keys go at the list's 854, not the window's");
     }
 
     fn the_toolbar_sheds_keys_then_labels_as_the_item_area_narrows() {

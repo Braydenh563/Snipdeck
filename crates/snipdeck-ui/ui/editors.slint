@@ -1750,6 +1750,10 @@ component EntityEditorBody inherits Rectangle {
     // 0 manual, 1 most used, 2 recently used.
     in-out property <int> sort-index: 0;
     in property <bool> show-icon: false;
+    // A list's board (MAIN-23): the field shows when there are two boards or more; `board-index` is the position in
+    // `board-names`.
+    in property <[string]> board-names;
+    in-out property <int> board-index: 0;
     in property <bool> show-colour: true;
     in property <bool> show-sort: true;
     // How many items a deletion affects (the confirmation says so).
@@ -1887,6 +1891,21 @@ component EntityEditorBody inherits Rectangle {
                             }
                         }
                     }
+                    if root.board-names.length > 1: FormField {
+                        label: @tr("Board");
+                        SelectField {
+                            label: @tr("Board");
+                            options: root.board-names;
+                            current: root.board-index;
+                            chosen(i) => {
+                                root.board-index = i;
+                                root.touch();
+                            }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
                     if root.show-colour: FormField {
                         label: @tr("Colour");
                         ColourPicker {
@@ -2019,6 +2038,9 @@ export component ListEditor inherits Window {
     // -1 no icon, else 0 to 23 in the order of the `ListIcons` global.
     in-out property <int> icon-index <=> body.icon-index;
     in property <[string]> icon-names <=> body.icon-names;
+    // The boards the list can live on, and the position of its board.
+    in property <[string]> board-names <=> body.board-names;
+    in-out property <int> board-index <=> body.board-index;
     // 0 manual, 1 most used, 2 recently used.
     in-out property <int> sort-index <=> body.sort-index;
     in property <bool> show-colour <=> body.show-colour;

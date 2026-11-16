@@ -314,6 +314,9 @@ msgstr "下方"
 msgid "Blue"
 msgstr "蓝色"
 
+msgid "Board"
+msgstr "看板"
+
 msgid "Board name"
 msgstr "看板名称"
 
@@ -382,6 +385,9 @@ msgstr "更改密码"
 
 msgid "Change these in Settings."
 msgstr "请在设置中更改。"
+
+msgid "Changed"
+msgstr "修改于"
 
 msgid "Changes apply at once."
 msgstr "更改立即生效。"
@@ -821,6 +827,9 @@ msgstr "创建项目"
 msgid "Create “{}”"
 msgstr "创建“{}”"
 
+msgid "Created"
+msgstr "创建于"
+
 msgid "Ctrl+Shift+V"
 msgstr "Ctrl+Shift+V"
 
@@ -940,6 +949,12 @@ msgstr "删除这台电脑上的所有看板、列表、项目和备份。此操
 
 msgid "Deletes everything in the Recent inbox now."
 msgstr "立即删除“最近”收件箱中的所有内容。"
+
+msgid "Detail pane"
+msgstr "详情窗格"
+
+msgid "Details"
+msgstr "详情"
 
 msgid "Discard"
 msgstr "放弃"
@@ -1121,6 +1136,9 @@ msgstr "文件"
 msgid "File moved or deleted"
 msgstr "文件已移动或删除"
 
+msgid "Files"
+msgstr "文件"
+
 msgid "Fill in template"
 msgstr "填写模板"
 
@@ -1246,6 +1264,9 @@ msgstr "HSB"
 
 msgid "HSL"
 msgstr "HSL"
+
+msgid "HTML"
+msgstr "HTML"
 
 msgid "Handy for forms you fill field by field."
 msgstr "适合逐个字段填写的表单。"
@@ -1477,6 +1498,9 @@ msgstr "语言"
 msgid "Last backup: {}"
 msgstr "上次备份：{}"
 
+msgid "Last used"
+msgstr "上次使用"
+
 msgid "Layout"
 msgstr "布局"
 
@@ -1704,6 +1728,9 @@ msgstr "名称不能包含换行或控制字符。"
 msgid "Navigation"
 msgstr "导航"
 
+msgid "Never"
+msgstr "从未"
+
 msgid "Never keep copies from these programs"
 msgstr "从不保留这些程序中的复制内容"
 
@@ -1911,6 +1938,9 @@ msgstr "还没有置顶内容"
 msgid "Nothing to paste next. Pin a snippet, or add one to this list."
 msgstr "没有可接着粘贴的内容。请置顶一个项目，或将其添加到此列表。"
 
+msgid "Nothing to preview."
+msgstr "没有可预览的内容。"
+
 msgid "Nothing to redo"
 msgstr "没有可重做的操作"
 
@@ -1961,6 +1991,9 @@ msgstr "在白色上"
 
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "只有文本、代码、链接和模板类型的项目可以设为敏感。"
+
+msgid "Only the start is shown."
+msgstr "仅显示开头部分。"
 
 msgid "Only with Start with Windows: wait in the tray, or open the Panel as well."
 msgstr "仅在“随 Windows 启动”时：在托盘中等待，或同时打开面板。"
@@ -2346,6 +2379,9 @@ msgstr "退出"
 msgid "RGB"
 msgstr "RGB"
 
+msgid "RTF"
+msgstr "RTF"
+
 msgid "Ready. Press Test to check it."
 msgstr "已就绪。按“测试”进行检查。"
 
@@ -2666,6 +2702,9 @@ msgstr "全选"
 msgid "Select all items"
 msgstr "选择所有项目"
 
+msgid "Select an item to see its details."
+msgstr "选择一个项目以查看详情。"
+
 msgid "Select and delete"
 msgstr "选择和删除"
 
@@ -2905,6 +2944,9 @@ msgstr "排序方式"
 
 msgid "Sort: {}"
 msgstr "排序:{}"
+
+msgid "Source"
+msgstr "来源"
 
 msgid "Source code"
 msgstr "源代码"
@@ -3298,6 +3340,9 @@ msgstr "首字母大写"
 msgid "Title, colour, tags, trigger, privacy"
 msgstr "标题、颜色、标签、触发词、隐私"
 
+msgid "Title: {}"
+msgstr "标题：{}"
+
 msgid "Titles, text and labels all count."
 msgstr "标题、文本和标签都会被搜索。"
 
@@ -3489,6 +3534,9 @@ msgstr "使用 {}"
 
 msgid "Use {} for {}"
 msgstr "将 {} 用于 {}"
+
+msgid "Used"
+msgstr "使用次数"
 
 msgid "User guide"
 msgstr "用户指南"
@@ -4026,6 +4074,10 @@ msgstr[0] "{n} 个项目将一同移至回收站。你可以在 30 天内恢复�
 msgid "{n} match in {}"
 msgid_plural "{n} matches in {}"
 msgstr[0] "在 {} 中有 {n} 个匹配项"
+
+msgid "{n} time"
+msgid_plural "{n} times"
+msgstr[0] "{n} 次"
 
 msgid "{}"
 msgstr "{}"
