@@ -3012,7 +3012,7 @@ mod tests {
     #[test]
     fn notes_come_back_from_the_fake_and_stay_until_set_again() {
         let fake = FakeEyedropper::default();
-        assert!(fake.notes().is_empty());
+        assert_eq!(fake.notes().len(), 0, "{:?}", fake.notes());
         fake.set_notes(vec![EyedropNote::KeysNotRegistered(vec![
             KeyName::Escape,
             KeyName::Aperture,

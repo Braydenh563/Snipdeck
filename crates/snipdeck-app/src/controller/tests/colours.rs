@@ -499,7 +499,7 @@ mod eyedropper {
         let view = w.ctl.colour_view();
         assert_eq!(view.other, Rgba8::rgb(255, 0, 0));
         assert_eq!(view.current, before);
-        assert!(view.recents.is_empty());
+        assert_eq!(view.recents.len(), 0, "{:?}", view.recents);
         assert_eq!(w.ctl.services().clipboard.written.len(), 0);
         // The next pick is an ordinary one again.
         w.ctl.colour_picked(BLUE, false, &[]);

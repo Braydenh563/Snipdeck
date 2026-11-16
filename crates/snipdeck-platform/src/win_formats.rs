@@ -963,7 +963,7 @@ mod tests {
             (r.clone(), r.join("missing")),
         ];
         assert_eq!(remove_listed_paste_dirs(&mut list), 1);
-        assert!(list.is_empty());
+        assert_eq!(list.len(), 0, "{list:?}");
         assert!(!secret.exists());
         assert!(plain.is_dir() && other.is_dir(), "not on the list");
     }

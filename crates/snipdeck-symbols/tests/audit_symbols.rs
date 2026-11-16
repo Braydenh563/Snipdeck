@@ -81,7 +81,7 @@ fn tools_47_kaomoji_and_icon_keywords_are_localised() {
     let c = Catalog::get();
     let g = c.group_name(Kind::Kaomoji, 0, Lang::De);
     assert_ne!(g, c.group_name(Kind::Kaomoji, 0, Lang::En), "{g}");
-    assert!(!c.group_name(Kind::Character, 0, Lang::En).is_empty());
+    assert_ne!(c.group_name(Kind::Character, 0, Lang::En), "");
     let hits = search(c, "achselzucken", Lang::De, Some(Kind::Kaomoji));
     assert!(
         !hits.is_empty(),
