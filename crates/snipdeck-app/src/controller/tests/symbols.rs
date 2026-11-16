@@ -617,7 +617,13 @@ fn choosing_save_as_hands_back_the_save_and_the_fake_dialog_reaches_finish() {
     };
     assert_eq!(id, icon);
     assert!(
-        matches!(export, IconExport::Png { rgba: [0x17, 0x16, 0x13, 0xFF], px: 64 }),
+        matches!(
+            export,
+            IconExport::Png {
+                rgba: [0x17, 0x16, 0x13, 0xFF],
+                px: 64
+            }
+        ),
         "the default is the document-safe dark ink (TOOLS-59)"
     );
     assert!(w.ctl.view().symbol_menu.is_none(), "the menu closed first");
@@ -687,7 +693,11 @@ fn tools_59_png_size_and_ink_are_remembered_and_used_by_copy_and_save() {
     };
     let at = find(&mut w, |e| matches!(e, SymbolMenuEntry::PngSize(_)));
     w.ctl.choose_symbol_menu(at, INK);
-    assert_eq!(w.ctl.settings().symbol_icon_px, 128, "steps to the next size");
+    assert_eq!(
+        w.ctl.settings().symbol_icon_px,
+        128,
+        "steps to the next size"
+    );
     let at = find(&mut w, |e| matches!(e, SymbolMenuEntry::PngInk { .. }));
     w.ctl.choose_symbol_menu(at, INK);
     assert!(!w.ctl.settings().symbol_icon_dark_ink);

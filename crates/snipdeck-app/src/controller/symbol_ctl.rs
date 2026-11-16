@@ -31,7 +31,6 @@ use crate::{
     usecase::UseError,
 };
 
-
 /// What "Save as..." writes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IconExport {

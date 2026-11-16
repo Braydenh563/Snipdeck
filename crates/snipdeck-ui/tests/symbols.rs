@@ -395,7 +395,10 @@ fn arrows_page_keys_and_enter_leave_the_window_as_requests() {
     // The Panel hands the keyboard to the grid (Down in the field bumps this); it is not itself a move.
     s.h.component.set_symbol_selected_row(5);
     enter_grid(&s);
-    assert!(s.moves.borrow().is_empty(), "entering the grid moves nothing");
+    assert!(
+        s.moves.borrow().is_empty(),
+        "entering the grid moves nothing"
+    );
     for (k, code) in [
         (char::from(slint::platform::Key::DownArrow), 3),
         (char::from(slint::platform::Key::UpArrow), 2),
@@ -434,7 +437,10 @@ fn up_from_the_first_row_returns_to_the_search_field() {
     s.h.component.set_symbol_selected_row(1);
     enter_grid(&s);
     key(&s, &char::from(slint::platform::Key::UpArrow).to_string());
-    assert!(s.moves.borrow().is_empty(), "Up on the first row is not a move");
+    assert!(
+        s.moves.borrow().is_empty(),
+        "Up on the first row is not a move"
+    );
     // Back in the field with no text: Left is again the Panel's grid move.
     key(&s, &char::from(slint::platform::Key::LeftArrow).to_string());
     assert_eq!(s.moves.borrow().last().copied(), Some(0));
@@ -532,7 +538,16 @@ fn char_rows(cols: usize) -> Vec<SymbolRow> {
     let c = Catalog::get();
     let r = c.range(Kind::Character);
     let (mut rows, mut y, mut flat) = (Vec::new(), 0.0, 0);
-    section(&mut rows, &mut y, &mut flat, "ARROWS", r.start..r.end, cols, 5, false);
+    section(
+        &mut rows,
+        &mut y,
+        &mut flat,
+        "ARROWS",
+        r.start..r.end,
+        cols,
+        5,
+        false,
+    );
     // Group header rows carry the group the strip jumps to.
     rows[0].group = 0;
     rows
@@ -547,7 +562,9 @@ fn the_characters_tab_draws_its_cells_as_text_with_a_group_strip() {
         .match_accessible_role(i_slint_backend_testing::AccessibleRole::Button)
         .find_all();
     assert!(
-        buttons.iter().any(|b| b.accessible_label().is_some_and(|l| l == "ARROWS")),
+        buttons
+            .iter()
+            .any(|b| b.accessible_label().is_some_and(|l| l == "ARROWS")),
         "the strip lists the group by name"
     );
     let _ = first;
@@ -577,8 +594,15 @@ fn the_preview_bar_shows_the_selected_symbol_large() {
 fn the_symbols_tab_holds_together_at_the_three_text_scales() {
     for scale in [1.0_f32, 1.5, 2.25] {
         for kind in [1, 4] {
-            let s = open(320, false, kind, if kind == 4 { char_rows } else { emoji_rows });
-            s.h.component.global::<SystemLook<'_>>().set_text_scale(scale);
+            let s = open(
+                320,
+                false,
+                kind,
+                if kind == 4 { char_rows } else { emoji_rows },
+            );
+            s.h.component
+                .global::<SystemLook<'_>>()
+                .set_text_scale(scale);
             let frame = render(&s);
             let cells = ElementQuery::from_root(&s.h.component)
                 .match_accessible_role(i_slint_backend_testing::AccessibleRole::ListItem)
@@ -587,7 +611,11 @@ fn the_symbols_tab_holds_together_at_the_three_text_scales() {
             for c in &cells {
                 let (at, size) = (c.absolute_position(), c.size());
                 assert!(size.width > 0.0 && size.height > 0.0, "a box at {scale}");
-                assert!(at.x >= -0.5 && at.x + size.width <= 320.5, "{scale}: cell x {}", at.x);
+                assert!(
+                    at.x >= -0.5 && at.x + size.width <= 320.5,
+                    "{scale}: cell x {}",
+                    at.x
+                );
             }
             // Focus: Down enters the grid; the ring colour shows around the selected cell.
             s.h.component.set_symbol_selected(0);

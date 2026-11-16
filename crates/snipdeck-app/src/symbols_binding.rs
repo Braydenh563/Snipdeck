@@ -228,10 +228,9 @@ fn rows_of(grid: &Grid, t: &ui::SymbolTexts<'_>, lang: Lang) -> Vec<ui::SymbolRo
     grid.rows
         .iter()
         .map(|row| {
-            let header = row
-                .title
-                .as_ref()
-                .map_or_else(String::new, |title| title_text(title, t, lang).to_uppercase());
+            let header = row.title.as_ref().map_or_else(String::new, |title| {
+                title_text(title, t, lang).to_uppercase()
+            });
             let link = row
                 .link
                 .map_or_else(String::new, |_| t.invoke_show_all().to_string());
@@ -253,11 +252,7 @@ fn rows_of(grid: &Grid, t: &ui::SymbolTexts<'_>, lang: Lang) -> Vec<ui::SymbolRo
                         text: sym.text.clone().unwrap_or_default().into(),
                         label: if kind == Kind::Kaomoji {
                             let (place, of) = kaomoji_place(cell.index);
-                            t.invoke_kaomoji_label(
-                                label_of(cell.index, lang).into(),
-                                place,
-                                of,
-                            )
+                            t.invoke_kaomoji_label(label_of(cell.index, lang).into(), place, of)
                         } else {
                             label_of(cell.index, lang).into()
                         },
@@ -342,14 +337,13 @@ pub fn label_of(index: usize, lang: Lang) -> String {
         return String::new();
     };
     match sym.id.kind() {
-        Kind::Emoji => catalog.display_name(index, lang).to_owned(),
+        Kind::Emoji | Kind::Character => catalog.display_name(index, lang).to_owned(),
         Kind::Kaomoji => sym
             .keywords
             .first()
             .cloned()
             .unwrap_or_else(|| sym.name.clone()),
         Kind::Icon => sym.name.replace('-', " "),
-        Kind::Character => catalog.display_name(index, lang).to_owned(),
     }
 }
 

@@ -32,7 +32,7 @@
   "icons": 1512,
   "characters": 2714,
   "tone_bases": 332,
-  "i18n_terms": 28,
+  "i18n_terms": 64,
   "emoji_groups": {
    "Smileys & Emotion": 172,
    "People & Body": 390,
@@ -474,32 +474,32 @@
    "sha256": "4cb07c49843a0c9a8e68150d5c0b4a01e5d407f63e7ecd2f45956c61e2484242"
   },
   "kaomoji.tsv.z": {
-   "bytes": 7398,
-   "sha256": "dd6553db2bf6cc156a238cccfb2babae378809061e1426b60b36e68b1d95c988"
+   "bytes": 7378,
+   "sha256": "4e29599adfec8263e7545b896eece05264274d50500a8960a5a8cb8ed80f8d67"
   },
   "names-de.tsv.z": {
-   "bytes": 48268,
-   "sha256": "ef7b458a73f8686105fa77ef8ec75b61a3434984ca00b9cf10ec81e82d2313f5"
+   "bytes": 48594,
+   "sha256": "eb99e38d9c83a1afebbbac07c5062ad107833b098c8c02e9639572177d4a2fc3"
   },
   "names-es.tsv.z": {
-   "bytes": 39183,
-   "sha256": "becadf77bd0f0acd9b4e9183d586a880c5bc6988608caaaf06ce9ece998252b8"
+   "bytes": 39505,
+   "sha256": "07e0993ba654b4c39675209b4df0effd4efe2712e5115220aa2ca1af9a3bd07a"
   },
   "names-fr.tsv.z": {
-   "bytes": 48696,
-   "sha256": "d3fb53681841aad59a35fb968d634ed03ac38f57acc51bd86581f8a39fd0462e"
+   "bytes": 49010,
+   "sha256": "eeda1f493db35a1980441bc09df0b10bbda5147169fa6d528d241ea0bfde47ae"
   },
   "names-ja.tsv.z": {
-   "bytes": 69862,
-   "sha256": "9255aaadcdef2be26c9db5d2f3b633f148d44c8ee4ccf7bdcc578adbb3c35ac2"
+   "bytes": 70405,
+   "sha256": "0166bc6c18bc553b4213fb4649b1c3db8e7c25012f1fa1be57fd691f5d782501"
   },
   "names-pt.tsv.z": {
-   "bytes": 49170,
-   "sha256": "368ed49b19fb7cf663fc4b130ce5775f00ab38a0bfcecb9f3abce5fa87cf32be"
+   "bytes": 49489,
+   "sha256": "609f04109e02d3fc7c0e890513b986e2098d8842d65bb068f64cc5d6991e4b8f"
   },
   "names-zh.tsv.z": {
-   "bytes": 83480,
-   "sha256": "236e7e440a7bce965e2938d0d6f4d81e7e61a30734dc136f350ea7bde93e9c94"
+   "bytes": 83953,
+   "sha256": "9f991a6e7fef215eed45ae9f482dd72a9d39f23743cd414663d49105e73c5fc2"
   },
   "tones.tsv.z": {
    "bytes": 5926,

@@ -219,12 +219,6 @@ msgstr "Há um item aberto no editor, então o texto colado não foi adicionado.
 msgid "Analogous"
 msgstr "Análogas"
 
-msgid "Angry"
-msgstr "Bravo"
-
-msgid "Animals"
-msgstr "Animais"
-
 msgid "Animals & Nature"
 msgstr "Animais e natureza"
 
@@ -371,6 +365,12 @@ msgstr "As alterações são aplicadas de imediato."
 
 msgid "Change…"
 msgstr "Alterar…"
+
+msgid "Character"
+msgstr "Caractere"
+
+msgid "Characters"
+msgstr "Caracteres"
 
 msgid "Check again"
 msgstr "Verificar novamente"
@@ -1185,9 +1185,6 @@ msgstr "Capture texto na hora"
 msgid "Green"
 msgstr "Verde"
 
-msgid "Greet"
-msgstr "Cumprimento"
-
 msgid "Group"
 msgstr "Grupo"
 
@@ -1368,9 +1365,6 @@ msgstr[1] "Suas listas e {n} itens serão movidos para a Lixeira. Você pode res
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
 msgstr "Suas listas e {} itens vão para a lixeira. Você pode restaurá-los por {} dias."
 
-msgid "Joy"
-msgstr "Alegria"
-
 msgid "Jump to a section"
 msgstr "Ir para uma seção"
 
@@ -1493,9 +1487,6 @@ msgstr "Carregando"
 
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "Os registros só são gravados quando o Snipdeck fecha de forma inesperada, não têm o conteúdo dos trechos e nunca são enviados a lugar nenhum."
-
-msgid "Love"
-msgstr "Amor"
 
 msgid "Main list"
 msgstr "Lista principal"
@@ -1795,6 +1786,9 @@ msgstr "Não funciona"
 msgid "Nothing copied yet"
 msgstr "Nada copiado ainda"
 
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "Nada é guardado se você não disser Sim, e você pode mudar isso quando quiser em Configurações. Recente guarda o texto que você copia, somente neste computador, pelas últimas {} cópias ou {} dias, o que vier primeiro. Senhas de gerenciadores de senhas e itens Sensíveis nunca são guardados."
+
 msgid "Nothing matches “{}”"
 msgstr "Nada corresponde a “{}”"
 
@@ -1963,6 +1957,15 @@ msgstr "Outra cor"
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
 msgstr "Fora dessa pasta, o Snipdeck só grava a entrada de inicialização do Windows (se você ativá-la) e a área de transferência quando você usa um trecho."
 
+msgid "PNG ink: dark (click for theme colour)"
+msgstr "Tinta do PNG: escura (clique para a cor do tema)"
+
+msgid "PNG ink: theme colour (click for dark)"
+msgstr "Tinta do PNG: cor do tema (clique para escura)"
+
+msgid "PNG size: {} px (click for the next)"
+msgstr "Tamanho do PNG: {} px (clique para o próximo)"
+
 msgid "PNG, {}"
 msgstr "PNG, {}"
 
@@ -2058,6 +2061,24 @@ msgstr "Colar o próximo item de uma pilha"
 
 msgid "Paste the result"
 msgstr "Colar o resultado"
+
+msgid "Paste, dark skin tone"
+msgstr "Colar, tom de pele escuro"
+
+msgid "Paste, default tone"
+msgstr "Colar, tom padrão"
+
+msgid "Paste, light skin tone"
+msgstr "Colar, tom de pele claro"
+
+msgid "Paste, medium skin tone"
+msgstr "Colar, tom de pele médio"
+
+msgid "Paste, medium-dark skin tone"
+msgstr "Colar, tom de pele médio-escuro"
+
+msgid "Paste, medium-light skin tone"
+msgstr "Colar, tom de pele médio-claro"
 
 msgid "Pasted"
 msgstr "Colado"
@@ -2257,9 +2278,6 @@ msgstr "Ações de entradas recentes"
 msgid "Recent history cleared"
 msgstr "Histórico recente limpo"
 
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "Nada é guardado se você não disser Sim, e você pode mudar isso quando quiser em Configurações. Recente guarda o texto que você copia, somente neste computador, pelas últimas {} cópias ou {} dias, o que vier primeiro. Senhas de gerenciadores de senhas e itens Sensíveis nunca são guardados."
-
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "Recentes guarda o texto que você copia, somente neste computador, pelas últimas {} cópias ou {} dias, o que ocorrer primeiro. Senhas de gerenciadores de senhas e itens sensíveis nunca são guardados. Você pode alterar isso quando quiser em Configurações."
 
@@ -2393,9 +2411,6 @@ msgstr "Clique com o botão direito ou pressione Menu para ver as ações da lis
 msgid "Rose"
 msgstr "Rosa"
 
-msgid "Sad"
-msgstr "Triste"
-
 msgid "Saturation and brightness"
 msgstr "Saturação e brilho"
 
@@ -2495,8 +2510,8 @@ msgstr "Pesquisar (Ctrl+F)"
 msgid "Search all snippets"
 msgstr "Pesquisar todos os trechos"
 
-msgid "Search emoji, kaomoji, icons"
-msgstr "Pesquisar emoji, kaomoji, ícones"
+msgid "Search emoji, kaomoji, icons, characters"
+msgstr "Buscar emoji, kaomoji, ícones, caracteres"
 
 msgid "Search every board and paste without opening the window."
 msgstr "Pesquise em todos os quadros e cole sem abrir a janela."
@@ -2566,6 +2581,9 @@ msgstr "Selecionar vários itens"
 
 msgid "Select snippets"
 msgstr "Selecionar snippets"
+
+msgid "Selected symbol"
+msgstr "Símbolo selecionado"
 
 msgid "Sensitive"
 msgstr "Sensível"
@@ -2659,9 +2677,6 @@ msgstr "Mostrar o tour de boas-vindas novamente"
 
 msgid "Show title, colour, tags, trigger and privacy"
 msgstr "Mostrar título, cor, tags, gatilho e privacidade"
-
-msgid "Shrug"
-msgstr "Dar de ombros"
 
 msgid "Sidebar width"
 msgstr "Largura da barra lateral"
@@ -2762,9 +2777,6 @@ msgstr "Trechos"
 msgid "Some files were left out: together they are over 64 MB."
 msgstr "Alguns arquivos foram deixados de fora: juntos, passam de 64 MB."
 
-msgid "Sorry"
-msgstr "Desculpe"
-
 msgid "Sort by"
 msgstr "Ordenar por"
 
@@ -2836,9 +2848,6 @@ msgstr "Apoiar"
 
 msgid "Support Snipdeck"
 msgstr "Apoiar o Snipdeck"
-
-msgid "Surprise"
-msgstr "Surpresa"
 
 msgid "Swap the two colours"
 msgstr "Trocar as duas cores"

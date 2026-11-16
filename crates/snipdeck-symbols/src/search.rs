@@ -250,6 +250,11 @@ pub fn search(catalog: &Catalog, query: &str, lang: Lang, kind: Option<Kind>) ->
                 rank = rank.into_iter().chain(rank_view(&e.view, &q, &terms)).min();
             }
         }
+        // A kaomoji is drawn as its text, not its name (many share one name, such as ten "cat"
+        // faces), so a name hit never outranks an emoji's keyword hit.
+        if sym.kind == Kind::Kaomoji {
+            rank = rank.map(|r| r.max(Rank::KeywordExact));
+        }
         if let Some(r) = rank {
             best.insert(index, r);
         }

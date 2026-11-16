@@ -522,7 +522,8 @@ impl Catalog {
     /// True once the names of `lang` are built (English is always ready).
     #[must_use]
     pub fn is_prepared(&self, lang: Lang) -> bool {
-        lang.slot().is_none_or(|slot| self.names[slot].get().is_some())
+        lang.slot()
+            .is_none_or(|slot| self.names[slot].get().is_some())
     }
 
     /// The translated names of every symbol that has one in `lang`, loaded on first use.

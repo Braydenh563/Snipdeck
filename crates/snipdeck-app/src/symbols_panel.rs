@@ -324,8 +324,7 @@ fn browse(
                     Kind::Character => Title::CharacterGroup(usize::from(g)),
                 };
                 let row = b.header(title, None);
-                if let Some(slot) = b.grid.groups.get_mut(usize::from(g))
-                {
+                if let Some(slot) = b.grid.groups.get_mut(usize::from(g)) {
                     *slot = Some((row, b.grid.items.len()));
                 }
                 b.section(catalog, k, run, columns, usize::MAX);

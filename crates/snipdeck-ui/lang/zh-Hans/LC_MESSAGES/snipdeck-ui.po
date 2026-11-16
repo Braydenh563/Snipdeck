@@ -218,12 +218,6 @@ msgstr "编辑器中已打开一个项目，所以粘贴的文本没有添加。
 msgid "Analogous"
 msgstr "邻近色"
 
-msgid "Angry"
-msgstr "生气"
-
-msgid "Animals"
-msgstr "动物"
-
 msgid "Animals & Nature"
 msgstr "动物与自然"
 
@@ -370,6 +364,12 @@ msgstr "更改立即生效。"
 
 msgid "Change…"
 msgstr "更改…"
+
+msgid "Character"
+msgstr "字符"
+
+msgid "Characters"
+msgstr "字符"
 
 msgid "Check again"
 msgstr "重新检查"
@@ -1184,9 +1184,6 @@ msgstr "随手保存文本"
 msgid "Green"
 msgstr "绿色"
 
-msgid "Greet"
-msgstr "问候"
-
 msgid "Group"
 msgstr "分组"
 
@@ -1364,9 +1361,6 @@ msgstr[0] "其列表及其中的 {n} 个片段将移至回收站。你可以在 
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
 msgstr "它的列表和 {} 个项目将移到回收站。你可以在 {} 天内恢复。"
 
-msgid "Joy"
-msgstr "喜悦"
-
 msgid "Jump to a section"
 msgstr "跳转到某个部分"
 
@@ -1489,9 +1483,6 @@ msgstr "正在加载"
 
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "日志只在 Snipdeck 崩溃时写入，不含片段内容，也不会发送到任何地方。"
-
-msgid "Love"
-msgstr "爱"
 
 msgid "Main list"
 msgstr "主列表"
@@ -1789,6 +1780,9 @@ msgstr "无法使用"
 msgid "Nothing copied yet"
 msgstr "尚未复制任何内容"
 
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "除非你选择“是”，否则不会保存任何内容，你也可以随时在设置中更改。“最近”只在此电脑上保存你复制的文本，保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感项目绝不会保存。"
+
 msgid "Nothing matches “{}”"
 msgstr "没有与“{}”匹配的内容"
 
@@ -1957,6 +1951,15 @@ msgstr "其他颜色"
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
 msgstr "在该文件夹之外，Snipdeck 只会写入 Windows 开机启动项（如果你开启了它），以及在你使用片段时写入剪贴板。"
 
+msgid "PNG ink: dark (click for theme colour)"
+msgstr "PNG 颜色：深色（点击改为主题色）"
+
+msgid "PNG ink: theme colour (click for dark)"
+msgstr "PNG 颜色：主题色（点击改为深色）"
+
+msgid "PNG size: {} px (click for the next)"
+msgstr "PNG 尺寸：{} px（点击切换下一个）"
+
 msgid "PNG, {}"
 msgstr "PNG，{}"
 
@@ -2052,6 +2055,24 @@ msgstr "粘贴堆栈中的下一项"
 
 msgid "Paste the result"
 msgstr "粘贴结果"
+
+msgid "Paste, dark skin tone"
+msgstr "粘贴，深肤色"
+
+msgid "Paste, default tone"
+msgstr "粘贴，默认色调"
+
+msgid "Paste, light skin tone"
+msgstr "粘贴，浅肤色"
+
+msgid "Paste, medium skin tone"
+msgstr "粘贴，中等肤色"
+
+msgid "Paste, medium-dark skin tone"
+msgstr "粘贴，中深肤色"
+
+msgid "Paste, medium-light skin tone"
+msgstr "粘贴，中浅肤色"
 
 msgid "Pasted"
 msgstr "已粘贴"
@@ -2251,9 +2272,6 @@ msgstr "最近条目操作"
 msgid "Recent history cleared"
 msgstr "已清除最近记录"
 
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "除非你选择“是”，否则不会保存任何内容，你也可以随时在设置中更改。“最近”只在此电脑上保存你复制的文本，保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感项目绝不会保存。"
-
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "“最近”会保留你复制的文本，仅保存在这台电脑上，最多保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感片段不会被保留。你可以随时在设置中更改。"
 
@@ -2385,9 +2403,6 @@ msgstr "右键单击或按菜单键查看列表操作"
 msgid "Rose"
 msgstr "玫瑰色"
 
-msgid "Sad"
-msgstr "难过"
-
 msgid "Saturation and brightness"
 msgstr "饱和度和亮度"
 
@@ -2487,8 +2502,8 @@ msgstr "搜索 (Ctrl+F)"
 msgid "Search all snippets"
 msgstr "搜索所有片段"
 
-msgid "Search emoji, kaomoji, icons"
-msgstr "搜索表情符号、颜文字、图标"
+msgid "Search emoji, kaomoji, icons, characters"
+msgstr "搜索表情、颜文字、图标、字符"
 
 msgid "Search every board and paste without opening the window."
 msgstr "搜索所有看板，无需打开窗口即可粘贴。"
@@ -2558,6 +2573,9 @@ msgstr "选择多个项目"
 
 msgid "Select snippets"
 msgstr "选择片段"
+
+msgid "Selected symbol"
+msgstr "所选符号"
 
 msgid "Sensitive"
 msgstr "敏感"
@@ -2651,9 +2669,6 @@ msgstr "再次显示欢迎导览"
 
 msgid "Show title, colour, tags, trigger and privacy"
 msgstr "显示标题、颜色、标签、触发词和隐私"
-
-msgid "Shrug"
-msgstr "耸肩"
 
 msgid "Sidebar width"
 msgstr "侧边栏宽度"
@@ -2754,9 +2769,6 @@ msgstr "片段"
 msgid "Some files were left out: together they are over 64 MB."
 msgstr "部分文件被忽略：它们加起来超过 64 MB。"
 
-msgid "Sorry"
-msgstr "抱歉"
-
 msgid "Sort by"
 msgstr "排序方式"
 
@@ -2828,9 +2840,6 @@ msgstr "支持"
 
 msgid "Support Snipdeck"
 msgstr "支持 Snipdeck"
-
-msgid "Surprise"
-msgstr "惊讶"
 
 msgid "Swap the two colours"
 msgstr "交换两种颜色"
