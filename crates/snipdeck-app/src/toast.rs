@@ -607,7 +607,7 @@ mod tests {
             store(snipdeck_store::Error::Io(Io::from(
                 ErrorKind::PermissionDenied
             ))),
-            ToastMessage::UseFailed(Cause::InUse)
+            ToastMessage::UseFailed(Cause::NotAllowed)
         );
         assert_eq!(
             store(snipdeck_store::Error::Corrupt("x".into())),

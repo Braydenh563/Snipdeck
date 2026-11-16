@@ -541,6 +541,7 @@ fn a_failure_toast_names_its_cause_and_ends_with_what_to_do() {
             Cause::Locked,
             Cause::NotArchive,
             Cause::TooNew,
+            Cause::NotAllowed,
         ];
         let failures: [fn(Cause) -> ToastMessage; 7] = [
             ToastMessage::UseFailed,
@@ -566,6 +567,14 @@ fn a_failure_toast_names_its_cause_and_ends_with_what_to_do() {
             // never reworded as the unknown one.
             assert_ne!(texts[1], texts[0], "{texts:?}");
             assert_ne!(texts[2], texts[0], "{texts:?}");
+            assert_ne!(
+                texts[6], texts[0],
+                "a permission is not the unknown cause: {texts:?}"
+            );
+            assert_ne!(
+                texts[6], texts[2],
+                "a permission is not a file in use: {texts:?}"
+            );
         }
         assert!(
             said(ToastMessage::ImportFailed(Cause::NotArchive)).contains("isn't a file Snipdeck")

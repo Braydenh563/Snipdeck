@@ -12,8 +12,10 @@ use snipdeck_store::{Error as Store, Trouble, crypto::CryptoError};
 pub enum Cause {
     /// The disk is full.
     DiskFull,
-    /// The file is open in another program, or may not be written (permission, read-only).
+    /// The file is open in another program.
     InUse,
+    /// The file or folder may not be written: a missing permission or a read-only disk.
+    NotAllowed,
     /// The library is locked behind the master password.
     Locked,
     /// The file is not a Snipdeck archive (or is damaged).
@@ -41,6 +43,7 @@ impl Cause {
             Self::TooNew => 5,
             Self::TooBig => 6,
             Self::Busy => 7,
+            Self::NotAllowed => 8,
         }
     }
 
@@ -91,6 +94,7 @@ impl Cause {
         match trouble {
             Trouble::DiskFull => Self::DiskFull,
             Trouble::InUse => Self::InUse,
+            Trouble::NotAllowed => Self::NotAllowed,
             Trouble::Other => Self::Other,
         }
     }
@@ -110,7 +114,7 @@ mod tests {
         );
         assert_eq!(
             Cause::of_io(&Io::from(ErrorKind::PermissionDenied)),
-            Cause::InUse
+            Cause::NotAllowed
         );
         assert_eq!(Cause::of_io(&Io::from(ErrorKind::NotFound)), Cause::Other);
         assert_eq!(Cause::of_store(&Store::EncryptionLocked), Cause::Locked);

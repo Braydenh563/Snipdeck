@@ -154,6 +154,9 @@ export global ToastTexts {
         if (cause == 2) {
             return @tr("Couldn't use this item: your library file is in use by another program. Close that program, then try again.");
         }
+        if (cause == 8) {
+            return @tr("Couldn't use this item: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again.");
+        }
         if (cause == 3) {
             return @tr("Couldn't use this item: your library is locked. Unlock it, then try again.");
         }
@@ -260,6 +263,9 @@ export global ToastTexts {
         if (cause == 2) {
             return @tr("Couldn't make a backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings.");
         }
+        if (cause == 8) {
+            return @tr("Couldn't make a backup: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then use Back up now in Settings.");
+        }
         if (cause == 3) {
             return @tr("Couldn't make a backup: your library is locked. Unlock it, then use Back up now in Settings.");
         }
@@ -275,6 +281,9 @@ export global ToastTexts {
         }
         if (cause == 2) {
             return @tr("Couldn't make today's backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings.");
+        }
+        if (cause == 8) {
+            return @tr("Couldn't make today's backup: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then use Back up now in Settings.");
         }
         if (cause == 6) {
             return @tr("Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings.");
@@ -308,6 +317,9 @@ export global ToastTexts {
         if (cause == 2) {
             return @tr("Couldn't restore that backup: a file is in use by another program. Close it, then try again.");
         }
+        if (cause == 8) {
+            return @tr("Couldn't restore that backup: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again.");
+        }
         if (cause == 3) {
             return @tr("Couldn't restore that backup: your library is locked. Unlock it, then try again.");
         }
@@ -329,6 +341,9 @@ export global ToastTexts {
         if (cause == 2) {
             return @tr("Couldn't import that: the file is in use by another program or can't be read. Close the program using it, then try again.");
         }
+        if (cause == 8) {
+            return @tr("Couldn't import that: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again.");
+        }
         if (cause == 3) {
             return @tr("Couldn't import that: your library is locked. Unlock it, then try again.");
         }
@@ -349,6 +364,9 @@ export global ToastTexts {
         }
         if (cause == 2) {
             return @tr("Couldn't export your library: the folder can't be written to. Check it isn't read-only or in use, then try again.");
+        }
+        if (cause == 8) {
+            return @tr("Couldn't export your library: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again.");
         }
         if (cause == 3) {
             return @tr("Couldn't export your library: it is locked. Unlock it, then try again.");
@@ -413,6 +431,9 @@ export global ToastTexts {
         }
         if (cause == 2) {
             return @tr("Couldn't make that change: your library file is in use by another program. Close that program, then try again.");
+        }
+        if (cause == 8) {
+            return @tr("Couldn't make that change: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again.");
         }
         if (cause == 3) {
             return @tr("Couldn't make that change: your library is locked. Unlock it, then try again.");

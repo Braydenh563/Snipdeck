@@ -123,9 +123,11 @@ pub enum Error {
 pub enum Trouble {
     /// The disk (or the quota on it) has no room left.
     DiskFull,
-    /// Another program or another Snipdeck holds the file, or it may not be written (a
-    /// permission, a read-only disk, a sharing violation).
+    /// Another program or another Snipdeck holds the file (a sharing violation, a busy or
+    /// locked database).
     InUse,
+    /// The file or folder may not be written: a permission is missing or the disk is read-only.
+    NotAllowed,
     /// Nothing more specific is known.
     Other,
 }
@@ -142,9 +144,8 @@ impl Trouble {
         }
         match error.kind() {
             ErrorKind::StorageFull | ErrorKind::QuotaExceeded => Self::DiskFull,
-            ErrorKind::PermissionDenied
-            | ErrorKind::ResourceBusy
-            | ErrorKind::ReadOnlyFilesystem => Self::InUse,
+            ErrorKind::PermissionDenied | ErrorKind::ReadOnlyFilesystem => Self::NotAllowed,
+            ErrorKind::ResourceBusy => Self::InUse,
             _ => Self::Other,
         }
     }
@@ -155,13 +156,10 @@ impl Trouble {
         use rusqlite::ErrorCode;
         match error.sqlite_error_code() {
             Some(ErrorCode::DiskFull) => Self::DiskFull,
-            Some(
-                ErrorCode::DatabaseBusy
-                | ErrorCode::DatabaseLocked
-                | ErrorCode::ReadOnly
-                | ErrorCode::PermissionDenied
-                | ErrorCode::CannotOpen,
-            ) => Self::InUse,
+            Some(ErrorCode::DatabaseBusy | ErrorCode::DatabaseLocked | ErrorCode::CannotOpen) => {
+                Self::InUse
+            }
+            Some(ErrorCode::ReadOnly | ErrorCode::PermissionDenied) => Self::NotAllowed,
             _ => Self::Other,
         }
     }
@@ -202,7 +200,7 @@ mod tests {
         );
         assert_eq!(
             Trouble::of_io(&Io::from(ErrorKind::PermissionDenied)),
-            Trouble::InUse
+            Trouble::NotAllowed
         );
         assert_eq!(
             Trouble::of_io(&Io::from(ErrorKind::NotFound)),
