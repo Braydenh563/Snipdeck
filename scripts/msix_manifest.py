@@ -2,7 +2,7 @@
 """Fill packaging/msix/AppxManifest.xml into an output file.
 
   python3 scripts/msix_manifest.py --identity-name Pub.Snipdeck --publisher "CN=Pub" \\
-      --publisher-display-name "Pub" --version 1.0.0 --out dist/msix/AppxManifest.xml
+      --publisher-display-name "Pub" --version 1.0.0 [--arch x64|arm64] --out dist/msix/AppxManifest.xml
 
 The version X.Y.Z becomes X.Y.Z.0 (the Store needs the last part to be 0). Refuses a leftover
 {{TOKEN}}, a bad version, or XML that is not well formed. Stdlib only.
@@ -16,6 +16,7 @@ from xml.sax.saxutils import escape
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 TEMPLATE = ROOT / "packaging/msix/AppxManifest.xml"
+ARCHES = ("x64", "arm64")  # ProcessorArchitecture values; one package per architecture
 VERSION_RE = re.compile(r"^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})$")
 
 
@@ -36,12 +37,15 @@ def attr(value):
     return escape(value, {'"': "&quot;"})
 
 
-def fill(template, identity_name, publisher, publisher_display_name, version):
+def fill(template, identity_name, publisher, publisher_display_name, version, arch="x64"):
     for label, value in (("identity name", identity_name), ("publisher", publisher),
                          ("publisher display name", publisher_display_name)):
         if not value or not value.strip():
             raise ManifestError(f"{label} is empty")
+    if arch not in ARCHES:
+        raise ManifestError(f"arch {arch!r} is not one of {', '.join(ARCHES)}")
     values = {
+        "ARCH": arch,
         "IDENTITY_NAME": identity_name,
         "PUBLISHER": publisher,
         "PUBLISHER_DISPLAY_NAME": publisher_display_name,
@@ -71,12 +75,13 @@ def main(argv=None):
     ap.add_argument("--publisher", required=True)
     ap.add_argument("--publisher-display-name", required=True)
     ap.add_argument("--version", required=True, help="X.Y.Z (written as X.Y.Z.0)")
+    ap.add_argument("--arch", default="x64", choices=ARCHES, help="ProcessorArchitecture (default x64)")
     ap.add_argument("--template", default=str(TEMPLATE))
     ap.add_argument("--out", required=True)
     a = ap.parse_args(argv)
     try:
         text = fill(pathlib.Path(a.template).read_text(encoding="utf-8"), a.identity_name,
-                    a.publisher, a.publisher_display_name, a.version)
+                    a.publisher, a.publisher_display_name, a.version, a.arch)
     except ManifestError as err:
         print(f"msix_manifest: {err}", file=sys.stderr)
         return 1

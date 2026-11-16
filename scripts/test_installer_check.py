@@ -88,5 +88,60 @@ class ManifestRules(unittest.TestCase):
         self.assertTrue(manifest_errors("<a>"))
 
 
+import json  # noqa: E402
+
+ISS_TEXT = ic.ISS.read_text(encoding="utf-8-sig")
+TABLE = json.loads(ic.TABLE.read_text(encoding="utf-8"))
+LAUNCHER = ic.LAUNCHER_DATA.read_text(encoding="utf-8")
+
+
+def run_check(fn, *args):
+    errors = []
+    fn(errors, *args)
+    return errors
+
+
+class NewRules(unittest.TestCase):
+    def test_real_files_pass(self):
+        self.assertEqual(run_check(ic.check_custom_messages, ISS_TEXT), [])
+        self.assertEqual(run_check(ic.check_code, ISS_TEXT), [])
+        self.assertEqual(run_check(ic.check_registration, ISS_TEXT, TABLE, MANIFEST, LAUNCHER), [])
+        self.assertEqual(run_check(ic.check_docs), [])
+
+    def test_missing_translation(self):
+        text = ISS_TEXT.replace("\ngerman.EraseQuestion=", "\nxx.EraseQuestion=", 1)
+        errors = run_check(ic.check_custom_messages, text)
+        self.assertTrue(any("EraseQuestion" in e and "german" in e for e in errors), errors)
+
+    def test_bare_bom_free_non_ascii(self):
+        errors = run_check(ic.check_encoding, "\u00e4".encode("utf-8"))
+        self.assertTrue(errors)
+        self.assertEqual(run_check(ic.check_encoding, b"\xef\xbb\xbf\xc3\xa4"), [])
+
+    def test_leftover_flag_removed(self):
+        text = ISS_TEXT.replace("uninsdeletevalue", "", 1)
+        self.assertTrue(run_check(ic.check_registration, text, TABLE, MANIFEST, LAUNCHER))
+
+    def test_manifest_alias_must_match(self):
+        bad = MANIFEST.replace('Alias="snipdeck.exe"', 'Alias="other.exe"')
+        self.assertTrue(run_check(ic.check_registration, ISS_TEXT, TABLE, bad, LAUNCHER))
+
+    def test_launcher_list_must_match(self):
+        self.assertTrue(run_check(ic.check_registration, ISS_TEXT, TABLE, MANIFEST, LAUNCHER.replace("StartupApproved", "X")))
+
+    def test_deltree_on_bare_environment(self):
+        text = ISS_TEXT.replace("DelTree(Tmp + ", "DelTree(GetEnv('TEMP') + ", 1)
+        self.assertTrue(run_check(ic.check_code, text))
+
+    def test_downgrade_guard_required(self):
+        self.assertTrue(run_check(ic.check_code, ISS_TEXT.replace("DowngradeWarning", "Nothing")))
+
+    def test_arch_define_required(self):
+        self.assertTrue(run_check(ic.check_arch, ISS_TEXT.replace("x64compatible", "x64"), {"ArchitecturesAllowed": "{#Arch}", "ArchitecturesInstallIn64BitMode": "{#Arch}"}))
+
+    def test_docs_need_makepri(self):
+        self.assertTrue(run_check(ic.check_docs, ["no step", "makepri new resources.pri"]))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -395,24 +395,39 @@ function Remove-ShortcutFile([string]$Path) {
     return $true
 }
 
-function Remove-Autostart {
-    # Removes only the value named Snipdeck from the current user's Run key (and its StartupApproved flag).
+function Get-RegistryLeftovers {
+    # What Snipdeck leaves under HKCU: values and keys the app (or Setup) writes. ONE list: it must equal
+    # "registry_leftovers" in packaging/registration.json, which is also what Setup's [Registry] removes
+    # (scripts/installer_check.py compares all three). Each item: Kind (value|key), SubKey, Name.
+    return @(
+        [pscustomobject]@{ Kind = 'value'; SubKey = 'Software\Microsoft\Windows\CurrentVersion\Run'; Name = 'Snipdeck' },
+        [pscustomobject]@{ Kind = 'value'; SubKey = 'Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run'; Name = 'Snipdeck' },
+        [pscustomobject]@{ Kind = 'key'; SubKey = 'Software\Snipdeck'; Name = '' }
+    )
+}
+
+function Remove-RegistryLeftovers {
+    # Removes the items of Get-RegistryLeftovers from the current user's registry (the start-with-Windows entry
+    # and its StartupApproved flag, the recorded data folder). Nothing else.
     if (-not $script:OnWindows) { return $false }
     $did = $false
-    $run = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
-    $appr = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run'
-    foreach ($key in @($run, $appr)) {
+    foreach ($item in (Get-RegistryLeftovers)) {
+        $path = 'HKCU:\' + $item.SubKey
         $has = $false
-        try { $has = [bool](Get-ItemProperty -Path $key -Name 'Snipdeck' -ErrorAction SilentlyContinue) } catch { }
-        if (-not $has) { continue }
-        if ($script:Opt.WhatIf) { Say "  [whatif] would remove the Snipdeck value from $key" 'Yellow'; $did = $true; continue }
         try {
-            Remove-ItemProperty -Path $key -Name 'Snipdeck' -ErrorAction Stop
-            Write-Log 'DELETE' "$key\Snipdeck"
-            Say "  Removed the Snipdeck start-with-Windows entry ($key)" 'Green'
+            if ($item.Kind -eq 'key') { $has = Test-Path -LiteralPath $path }
+            else { $has = [bool](Get-ItemProperty -LiteralPath $path -Name $item.Name -ErrorAction SilentlyContinue) }
+        } catch { }
+        if (-not $has) { continue }
+        if ($script:Opt.WhatIf) { Say "  [whatif] would remove $path $($item.Name)" 'Yellow'; $did = $true; continue }
+        try {
+            if ($item.Kind -eq 'key') { Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction Stop }
+            else { Remove-ItemProperty -LiteralPath $path -Name $item.Name -ErrorAction Stop }
+            Write-Log 'DELETE' "$path $($item.Name)"
+            Say "  Removed $path $($item.Name)" 'Green'
             $did = $true
         } catch {
-            Say "  Could not remove the autostart entry in ${key}: $($_.Exception.Message)" 'Yellow'
+            Say "  Could not remove ${path}: $($_.Exception.Message)" 'Yellow'
         }
     }
     return $did
@@ -504,7 +519,7 @@ function Invoke-Uninstall {
             if ($res -eq 'removed') { Say "  Removed $t" 'Green' } elseif ($res -eq 'failed') { $failed = $true; Say "  Could not fully remove $t (close cargo, editors, antivirus scans and try again)" 'Yellow' }
         }
     }
-    [void](Remove-Autostart)
+    [void](Remove-RegistryLeftovers)
     if ($env:APPDATA) {
         $programs = [System.IO.Path]::Combine($env:APPDATA, 'Microsoft', 'Windows', 'Start Menu', 'Programs')
         foreach ($lnk in @([System.IO.Path]::Combine($programs, 'Snipdeck.lnk'), [System.IO.Path]::Combine($programs, 'Snipdeck', 'Snipdeck.lnk'))) {

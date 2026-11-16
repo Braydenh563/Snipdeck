@@ -29,6 +29,26 @@ class FillTests(unittest.TestCase):
         self.assertEqual(ident.get("Version"), "1.2.3.0")
         self.assertEqual(root.find(ns + "Properties/" + ns + "PublisherDisplayName").text, "Pub & Co")
 
+    def test_arch_defaults_to_x64_and_accepts_arm64(self):
+        ns = "{http://schemas.microsoft.com/appx/manifest/foundation/windows10}"
+        for arch, want in ((None, "x64"), ("x64", "x64"), ("arm64", "arm64")):
+            out = mm.fill(TEMPLATE, *ARGS) if arch is None else mm.fill(TEMPLATE, *ARGS, arch=arch)
+            ident = ET.fromstring(out.encode()).find(ns + "Identity")
+            self.assertEqual(ident.get("ProcessorArchitecture"), want)
+
+    def test_bad_arch(self):
+        for arch in ("", "x86", "ARM64", "arm"):
+            with self.assertRaises(mm.ManifestError, msg=arch):
+                mm.fill(TEMPLATE, *ARGS, arch=arch)
+
+    def test_main_passes_arch(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = pathlib.Path(d) / "AppxManifest.xml"
+            base = ["--identity-name", "P.S", "--publisher", "CN=P", "--publisher-display-name", "P", "--version", "1.0.0"]
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(mm.main(base + ["--arch", "arm64", "--out", str(out)]), 0)
+            self.assertIn('ProcessorArchitecture="arm64"', out.read_text(encoding="utf-8"))
+
     def test_quotes_in_values_stay_valid(self):
         out = mm.fill(TEMPLATE, "Pub.Snipdeck", 'CN="Pub"', "A<B", "1.0.0")
         ET.fromstring(out.encode())
@@ -66,6 +86,17 @@ LANG = pathlib.Path(__file__).resolve().parent.parent / "crates" / "snipdeck-ui"
 
 
 class TemplateTests(unittest.TestCase):
+    def test_registers_file_type_protocol_and_alias_from_the_table(self):
+        import json
+        table = json.loads((mm.ROOT / "packaging/registration.json").read_text(encoding="utf-8"))
+        root = ET.fromstring(mm.fill(TEMPLATE, *ARGS).encode())
+        file_types = [e.text for e in root.iter() if e.tag.endswith("}FileType")]
+        protocols = [e.get("Name") for e in root.iter() if e.tag.endswith("}Protocol")]
+        aliases = [e.get("Alias") for e in root.iter() if e.tag.endswith("}ExecutionAlias")]
+        self.assertEqual(file_types, [table["file_extension"]])
+        self.assertEqual(protocols, [table["url_scheme"]])
+        self.assertEqual(aliases, [table["app_execution_alias"]])
+
     def test_declares_every_shipped_locale(self):
         root = ET.fromstring(mm.fill(TEMPLATE, *ARGS).encode())
         declared = {r.get("Language").lower() for r in root.iter(NS + "Resource")}
