@@ -1085,8 +1085,9 @@ impl SettingsHost for NoHost {
         _kind: snipdeck_app::controller::ImportKind,
         _single_file: bool,
         _owner: Option<isize>,
-    ) -> Option<PathBuf> {
-        None
+        done: Box<dyn FnOnce(Option<PathBuf>)>,
+    ) {
+        done(None);
     }
 
     fn clipboard_history_supported(&self) -> bool {

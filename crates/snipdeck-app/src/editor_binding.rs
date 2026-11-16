@@ -441,8 +441,9 @@ where
         set_preview(w, card.as_ref());
     }
 
-    /// Browse: the file dialog runs with no borrow of the controller held (it has its own
-    /// message loop), then its answer goes into the path field.
+    /// Browse: the file dialog runs on a thread of its own with no borrow of the controller held
+    /// (timers and hotkeys keep running), then its answer comes back to the UI thread and goes
+    /// into the path field.
     fn browse(self: &Rc<Self>, w: &ui::ItemEditor) {
         let Some(picker) = self.controller.borrow().file_picker() else {
             return;
@@ -452,13 +453,20 @@ where
         } else {
             PickKind::Any
         };
-        let answer = picker.pick(kind, native_window::handle_of(w.window()));
-        let path = self.controller.borrow_mut().item_editor_picked(answer);
-        if let Some(path) = path {
-            w.set_source_path(path.into());
-            w.invoke_mark_dirty();
-        }
-        redraw_all();
+        let this = Rc::clone(self);
+        let weak = w.as_weak();
+        let back =
+            crate::ui_thread::back_on_ui(move |answer: snipdeck_platform::file_dialog::Answer| {
+                let path = this.controller.borrow_mut().item_editor_picked(answer);
+                if let Some(path) = path
+                    && let Some(w) = weak.upgrade()
+                {
+                    w.set_source_path(path.into());
+                    w.invoke_mark_dirty();
+                }
+                redraw_all();
+            });
+        picker.pick(kind, native_window::handle_of(w.window()), Box::new(back));
     }
 }
 

@@ -122,22 +122,25 @@ pub trait SettingsHost {
 
     /// Asks the user for the folder an export is saved in (the file gets its dated name there).
     /// `owner` is the Settings window's native handle. The default is a machine without a
-    /// dialog, which exports to [`documents_folder`](Self::documents_folder).
-    fn pick_export_folder(&self, owner: Option<isize>) -> ExportFolder {
+    /// dialog, which exports to [`documents_folder`](Self::documents_folder). The dialog does not
+    /// block the UI: `done` gets the answer on the UI thread, later.
+    fn pick_export_folder(&self, owner: Option<isize>, done: Box<dyn FnOnce(ExportFolder)>) {
         let _ = owner;
-        ExportFolder::NoDialog
+        done(ExportFolder::NoDialog);
     }
 
     /// Asks the user for the file (or, for [`ImportKind::Folder`], the folder) to import.
     /// `owner` is the Settings window's native handle: it is disabled while the dialog is open.
     /// `single_file` asks for one file where the source is usually a folder (an Espanso `.yml`
-    /// file). `None` when they cancelled or the machine has no dialog.
+    /// file). `done` gets `None` when they cancelled or the machine has no dialog, on the UI
+    /// thread, possibly later.
     fn pick_import(
         &self,
         kind: ImportKind,
         single_file: bool,
         owner: Option<isize>,
-    ) -> Option<PathBuf>;
+        done: Box<dyn FnOnce(Option<PathBuf>)>,
+    );
 
     /// Whether this PC has a Windows clipboard history to offer as an import source (only
     /// Windows does). The source is left out of the "Import..." choices when it does not.
@@ -192,24 +195,6 @@ pub struct SystemHost {
     panel_taskbar: PanelTaskbar,
 }
 
-/// Waits (on the UI thread, polling every 50 ms) for the worker thread to put its answer in
-/// `slot`, then hands it to `done`. The closure `done` is not `Send`, so it cannot be called from
-/// the worker itself.
-#[cfg(windows)]
-fn deliver_when_ready(
-    slot: std::sync::Arc<std::sync::Mutex<Option<Result<(), AutostartError>>>>,
-    done: AutostartDone,
-) {
-    let ready = slot.lock().ok().and_then(|mut slot| slot.take());
-    if let Some(result) = ready {
-        done(result);
-        return;
-    }
-    slint::Timer::single_shot(std::time::Duration::from_millis(50), move || {
-        deliver_when_ready(slot, done);
-    });
-}
-
 impl SystemHost {
     /// A host that registers shortcuts with `hotkeys` and changes the Panel's taskbar button
     /// with `panel_taskbar`.
@@ -242,19 +227,14 @@ impl SettingsHost for SystemHost {
                 // "When Windows starts" choice instead. Windows answers on its own thread,
                 // possibly after a consent prompt: the answer is picked up on the UI thread.
                 let _ = hidden;
-                let slot = std::sync::Arc::new(std::sync::Mutex::new(None));
-                let answer = std::sync::Arc::clone(&slot);
+                let back = crate::ui_thread::back_on_ui(done);
                 package::request_startup_task(on, move |result| {
-                    let result = result.map_err(|e| match e {
+                    back(result.map_err(|e| match e {
                         package::TaskError::Blocked(Blocked::ByUser) => AutostartError::SwitchedOff,
                         package::TaskError::Blocked(Blocked::ByPolicy) => AutostartError::Policy,
                         package::TaskError::Os(e) => AutostartError::Other(e.to_string()),
-                    });
-                    if let Ok(mut slot) = answer.lock() {
-                        *slot = Some(result);
-                    }
+                    }));
                 });
-                deliver_when_ready(slot, done);
                 return;
             }
             let result = std::env::current_exe()
@@ -311,22 +291,32 @@ impl SettingsHost for SystemHost {
         crate::paths::documents_folder()
     }
 
-    fn pick_export_folder(&self, owner: Option<isize>) -> ExportFolder {
+    fn pick_export_folder(&self, owner: Option<isize>, done: Box<dyn FnOnce(ExportFolder)>) {
         #[cfg(windows)]
         {
             use snipdeck_platform::file_dialog::PickKind;
-            match crate::platform::file_picker().map(|picker| picker.pick(PickKind::Folder, owner))
-            {
-                Some(Ok(Some(folder))) => ExportFolder::Chosen(folder),
-                Some(Ok(None)) => ExportFolder::Cancelled,
-                Some(Err(_)) | None => ExportFolder::NoDialog,
-            }
+            let Some(picker) = crate::platform::file_picker() else {
+                done(ExportFolder::NoDialog);
+                return;
+            };
+            let back = crate::ui_thread::back_on_ui(done);
+            picker.pick(
+                PickKind::Folder,
+                owner,
+                Box::new(move |answer| {
+                    back(match answer {
+                        Ok(Some(folder)) => ExportFolder::Chosen(folder),
+                        Ok(None) => ExportFolder::Cancelled,
+                        Err(_) => ExportFolder::NoDialog,
+                    });
+                }),
+            );
         }
         #[cfg(not(windows))]
         {
             // Only Windows has a file dialog.
             let _ = owner;
-            ExportFolder::NoDialog
+            done(ExportFolder::NoDialog);
         }
     }
 
@@ -335,19 +325,26 @@ impl SettingsHost for SystemHost {
         kind: ImportKind,
         single_file: bool,
         owner: Option<isize>,
-    ) -> Option<PathBuf> {
+        done: Box<dyn FnOnce(Option<PathBuf>)>,
+    ) {
         #[cfg(windows)]
         {
-            crate::platform::file_picker()?
-                .pick(pick_kind(kind, single_file), owner)
-                .ok()
-                .flatten()
+            let Some(picker) = crate::platform::file_picker() else {
+                done(None);
+                return;
+            };
+            let back = crate::ui_thread::back_on_ui(done);
+            picker.pick(
+                pick_kind(kind, single_file),
+                owner,
+                Box::new(move |answer| back(answer.ok().flatten())),
+            );
         }
         #[cfg(not(windows))]
         {
             // Only Windows has a file dialog.
             let _ = (kind, single_file, owner);
-            None
+            done(None);
         }
     }
 
@@ -1611,12 +1608,20 @@ where
             .window
             .upgrade()
             .and_then(|w| crate::native_window::handle_of(w.window()));
-        let Some(path) = self.host.pick_import(kind, single_file, owner) else {
-            return;
-        };
-        let source = ImportSource::of(kind, path);
-        let name = source.file_name();
-        self.preview(source, false, name);
+        let this = Rc::clone(self);
+        self.host.pick_import(
+            kind,
+            single_file,
+            owner,
+            Box::new(move |path| {
+                let Some(path) = path else {
+                    return;
+                };
+                let source = ImportSource::of(kind, path);
+                let name = source.file_name();
+                this.preview(source, false, name);
+            }),
+        );
     }
 
     /// The "Windows clipboard history" choice: reads the history, then shows the preview, or says
@@ -1750,15 +1755,26 @@ where
             .window
             .upgrade()
             .and_then(|w| crate::native_window::handle_of(w.window()));
-        let folder = match self.host.pick_export_folder(owner) {
-            ExportFolder::Chosen(folder) => folder,
-            ExportFolder::Cancelled => return,
-            ExportFolder::NoDialog => self
-                .host
-                .documents_folder()
-                .unwrap_or_else(|| dir.join("exports")),
-        };
-        let begun = self.act(|ctl| ctl.begin_export(&folder));
+        let this = Rc::clone(self);
+        self.host.pick_export_folder(
+            owner,
+            Box::new(move |folder| {
+                let folder = match folder {
+                    ExportFolder::Chosen(folder) => folder,
+                    ExportFolder::Cancelled => return,
+                    ExportFolder::NoDialog => this
+                        .host
+                        .documents_folder()
+                        .unwrap_or_else(|| dir.join("exports")),
+                };
+                this.export_to(&folder);
+            }),
+        );
+    }
+
+    /// Exports into `folder` and, when it is done, shows the file in the file manager.
+    fn export_to(self: &Rc<Self>, folder: &Path) {
+        let begun = self.act(|ctl| ctl.begin_export(folder));
         self.show_busy();
         let this = Rc::clone(self);
         spawn_archive(&self.controller, begun, move |end| {

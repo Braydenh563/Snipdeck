@@ -461,8 +461,15 @@ where
                     .window
                     .upgrade()
                     .and_then(|w| crate::native_window::handle_of(w.window()));
-                let answer = prepared.ask(owner);
-                self.act(|ctl| ctl.finish_icon_save(&prepared, answer));
+                let prepared = Rc::new(prepared);
+                let prepared_for_finish = Rc::clone(&prepared);
+                let this = Rc::clone(self);
+                let back = crate::ui_thread::back_on_ui(
+                    move |answer: snipdeck_platform::file_dialog::Answer| {
+                        this.act(|ctl| ctl.finish_icon_save(&prepared_for_finish, answer));
+                    },
+                );
+                prepared.ask(owner, Box::new(back));
             }
         }
     }

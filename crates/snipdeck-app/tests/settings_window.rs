@@ -143,12 +143,14 @@ impl SettingsHost for FakeHost {
         self.documents.borrow().clone()
     }
 
-    fn pick_export_folder(&self, _owner: Option<isize>) -> ExportFolder {
+    fn pick_export_folder(&self, _owner: Option<isize>, done: Box<dyn FnOnce(ExportFolder)>) {
         self.export_asked.set(self.export_asked.get() + 1);
-        self.export_pick
-            .borrow()
-            .clone()
-            .unwrap_or(ExportFolder::NoDialog)
+        done(
+            self.export_pick
+                .borrow()
+                .clone()
+                .unwrap_or(ExportFolder::NoDialog),
+        );
     }
 
     fn pick_import(
@@ -156,9 +158,11 @@ impl SettingsHost for FakeHost {
         kind: snipdeck_app::controller::ImportKind,
         single_file: bool,
         _owner: Option<isize>,
-    ) -> Option<PathBuf> {
+        done: Box<dyn FnOnce(Option<PathBuf>)>,
+    ) {
         self.import_asked.borrow_mut().push((kind, single_file));
-        self.import_pick.borrow_mut().take()
+        let answer = self.import_pick.borrow_mut().take();
+        done(answer);
     }
 
     fn clipboard_history_supported(&self) -> bool {
