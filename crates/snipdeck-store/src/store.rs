@@ -777,8 +777,15 @@ mod tests {
     #[test]
     fn gc_counts_failed_deletes_and_carries_on() {
         let mut store = Store::open_in_memory().unwrap();
-        store.put(vec![1; INLINE_LIMIT + 1]).unwrap();
-        store.put(vec![2; INLINE_LIMIT + 1]).unwrap();
+        for fill in [1, 2] {
+            let snipdeck_core::Content::Blob { blob, .. } =
+                store.put(vec![fill; INLINE_LIMIT + 1]).unwrap()
+            else {
+                panic!()
+            };
+            // Attached once, then unreferenced: an orphan, not a pending blob.
+            store.blobs.attached([blob]);
+        }
         FAIL_REMOVES.with(|f| f.set(true));
         let report = store.gc_blobs(Duration::ZERO);
         FAIL_REMOVES.with(|f| f.set(false));
