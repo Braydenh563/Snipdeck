@@ -35,7 +35,7 @@ const GETTING_STARTED: [(&str, ItemKind, &str); 5] = [
     (
         "Right-click for more",
         ItemKind::Text,
-        "Right-click a card, or press the Menu key, to edit it, pin it to the strip above the list, move it, tag it or delete it. Delete this list when you no longer need it.",
+        "Right-click a card, or press the Menu key, to edit it, pin it to the strip above the list, move it or delete it. Delete this list when you no longer need it.",
     ),
     (
         "More tips",

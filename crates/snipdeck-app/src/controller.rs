@@ -27,6 +27,7 @@ mod editor_ctl;
 mod eyedrop_ctl;
 mod group_ctl;
 mod history_ctl;
+mod item_menu;
 mod library;
 mod lock_ctl;
 mod main_ctl;

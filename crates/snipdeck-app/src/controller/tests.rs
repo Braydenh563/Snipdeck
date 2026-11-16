@@ -39,6 +39,7 @@ mod capture_stack;
 mod colour_main;
 mod colours;
 mod dock;
+mod item_menu_parity;
 mod look_settings;
 mod main_groups;
 mod menus_frame;

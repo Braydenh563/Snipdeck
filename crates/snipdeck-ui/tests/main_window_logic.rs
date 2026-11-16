@@ -573,7 +573,7 @@ ui_tests! {
         take(&log);
         press_key(&ui, Key::Menu);
         assert!(ui.get_menu_open());
-        for label in ["Use", "Copy", "Edit", "Duplicate", "Pin", "Move to list…", "Tags…", "Move to Trash"] {
+        for label in ["Use", "Copy", "Edit…", "Duplicate", "Pin", "Move to list…", "Tags…", "Move to Trash"] {
             let _ = find(&ui, label, AccessibleRole::ListItem);
         }
         find(&ui, "Duplicate", AccessibleRole::ListItem).invoke_accessible_default_action();
@@ -594,6 +594,27 @@ ui_tests! {
         settle();
         assert_eq!(take(&log), ["move:1"]);
         assert!(!ui.get_menu_open(), "choosing a list closes it");
+    }
+
+    fn every_item_menu_row_runs_its_own_action() {
+        let (ui, log) = start();
+        for (label, want) in [
+            ("Edit…", "action:Edit:0"),
+            ("Duplicate", "action:Duplicate:0"),
+            ("Move to list…", "action:Move:0"),
+            ("Pin", "action:Pin:0"),
+            ("Tags…", "action:Tag:0"),
+            ("Move to Trash", "action:Delete:0"),
+        ] {
+            press_key(&ui, Key::Menu);
+            take(&log);
+            find(&ui, label, AccessibleRole::ListItem).invoke_accessible_default_action();
+            settle();
+            assert_eq!(take(&log), [want], "{label}");
+            if ui.get_menu_open() {
+                press_key(&ui, Key::Escape);
+            }
+        }
     }
 
     fn paste_as_in_the_item_menu_opens_a_chooser_of_the_six_transforms() {
@@ -1602,7 +1623,7 @@ ui_tests! {
         // The context menu on several rows disables what only works on one.
         press_key(&ui, Key::Menu);
         assert_eq!(find(&ui, "Use", AccessibleRole::ListItem).accessible_enabled(), Some(false));
-        assert_eq!(find(&ui, "Edit", AccessibleRole::ListItem).accessible_enabled(), Some(false));
+        assert_eq!(find(&ui, "Edit…", AccessibleRole::ListItem).accessible_enabled(), Some(false));
         assert_eq!(find(&ui, "Move to Trash", AccessibleRole::ListItem).accessible_enabled(), Some(true));
         press_key(&ui, Key::Escape);
 
