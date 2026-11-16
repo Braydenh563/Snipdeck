@@ -1,8 +1,9 @@
-//! The command-line checks `--check-db` and `--troubleshoot`: the library's integrity check and the
-//! Help window's Troubleshoot list, printed as text without starting the app.
+//! The command-line commands `--check-db`, `--troubleshoot` and `--backup`: the library's integrity
+//! check, the Help window's Troubleshoot list and a backup file, without starting the app.
 //!
-//! Both open the data folder like the app does, so they refuse while Snipdeck is running (the
-//! folder is locked). The words are literal English, like [`crate::doctor`].
+//! All three only read: the library is opened read-only (no folder or database is created, nothing
+//! is migrated, no lock is taken) and the settings file is never set aside, so they are safe beside
+//! a running Snipdeck and a mistyped `--data-dir` is an error, not a new library. The words are literal English, like [`crate::doctor`].
 
 use std::path::{Path, PathBuf};
 
@@ -37,9 +38,10 @@ fn could_not_run(folder: &Path, why: &str) -> Outcome {
     }
 }
 
-/// Opens the library in `folder`; a folder with none gets an empty one, which is healthy.
+/// Opens the library in `folder` for reading only: a diagnostic changes nothing (it may run beside
+/// a running Snipdeck) and a folder with no library is "could not run", not an empty healthy one.
 fn open(folder: &Path) -> Result<Store, Outcome> {
-    Store::open(folder).map_err(|e| could_not_run(folder, &e.to_string()))
+    Store::open_read_only(folder).map_err(|e| could_not_run(folder, &e.to_string()))
 }
 
 /// `--check-db`: the store's integrity check on the library in `folder`.
@@ -67,6 +69,25 @@ pub fn check_db(folder: &Path) -> Outcome {
             ),
             code: 1,
         },
+    }
+}
+
+/// `--backup <file>`: writes the library in `folder` to `dest` (a `.snipdeck` archive, as Settings'
+/// "Back up now" makes), reading only. Sensitive items are left out: the key ring needs the
+/// master password or Windows Hello, which a command line has not got.
+#[must_use]
+pub fn backup_to(folder: &Path, now: jiff::Timestamp, dest: &Path) -> Outcome {
+    let store = match open(folder) {
+        Ok(store) => store,
+        Err(outcome) => return outcome,
+    };
+    let options = snipdeck_portable::ExportOptions::default();
+    match snipdeck_portable::export_to_path(&store, now, &options, dest) {
+        Ok(_) => Outcome {
+            text: format!("ok: wrote {}", dest.display()),
+            code: 0,
+        },
+        Err(e) => could_not_run(folder, &format!("the backup could not be written: {e}")),
     }
 }
 
@@ -155,7 +176,7 @@ pub fn troubleshoot(folder: &Path, today: Date, os: &str) -> Outcome {
         Ok(store) => store,
         Err(outcome) => return outcome,
     };
-    let settings = paths::read_settings(folder).settings;
+    let settings = paths::peek_settings(folder);
     let host = FolderDoctor {
         store: &store,
         folder,
@@ -174,6 +195,7 @@ pub fn troubleshoot(folder: &Path, today: Date, os: &str) -> Outcome {
         dpi: "n/a".to_owned(),
         flags: crate::help_binding::report_flags(&settings),
         data_dir: folder.display().to_string(),
+        log_tail: crate::log::tail(folder, crate::log::REPORT_LINES),
     };
     Outcome {
         text: doctor::report(&info, &checks),
@@ -214,20 +236,60 @@ mod tests {
     }
 
     #[test]
-    fn a_fresh_empty_folder_is_healthy() {
+    fn a_folder_with_no_library_is_not_a_healthy_library_and_is_not_created() {
         let dir = tempfile::tempdir().expect("dir");
-        let out = check_db(dir.path());
-        assert_eq!(out.code, 0, "{}", out.text);
-        assert!(dir.path().join("snipdeck.db").exists());
+        let typo = dir.path().join("mistyped");
+        for out in [check_db(&typo), troubleshoot(&typo, TODAY, "TestOS 1")] {
+            assert_eq!(out.code, COULD_NOT_RUN, "{}", out.text);
+            assert!(out.text.contains("no library in"), "{}", out.text);
+        }
+        assert!(!typo.exists(), "a diagnostic must not create the folder");
+        assert!(check_db(dir.path()).text.contains("no library in"));
+        assert!(!dir.path().join("snipdeck.db").exists());
     }
 
     #[test]
-    fn a_running_app_is_named_not_a_panic() {
+    fn a_running_app_does_not_stop_the_check() {
         let dir = library();
         let _held = Store::open(dir.path()).expect("held");
         let out = check_db(dir.path());
-        assert_eq!(out.code, COULD_NOT_RUN);
-        assert!(out.text.contains("already using"), "{}", out.text);
+        assert_eq!(out.code, 0, "{}", out.text);
+    }
+
+    #[test]
+    fn a_damaged_settings_file_is_read_but_never_set_aside() {
+        let dir = library();
+        let file = dir.path().join("settings.json");
+        std::fs::write(&file, "{ not json").expect("write");
+        let _ = troubleshoot(dir.path(), TODAY, "TestOS 1");
+        assert_eq!(std::fs::read_to_string(&file).expect("kept"), "{ not json");
+        assert!(!dir.path().join("settings.json.bad").exists());
+    }
+
+    #[test]
+    fn a_backup_is_written_from_a_library_and_never_from_a_typo() {
+        let dir = library();
+        let out_dir = tempfile::tempdir().expect("dir");
+        let dest = out_dir.path().join("mine.snipdeck");
+        let now = jiff::Timestamp::from_second(1_760_000_000).expect("time");
+        let out = backup_to(dir.path(), now, &dest);
+        assert_eq!(out.code, 0, "{}", out.text);
+        assert!(dest.metadata().expect("written").len() > 0);
+
+        let typo = out_dir.path().join("mistyped");
+        let out = backup_to(&typo, now, &out_dir.path().join("x.snipdeck"));
+        assert_eq!(out.code, COULD_NOT_RUN, "{}", out.text);
+        assert!(!typo.exists());
+    }
+
+    #[test]
+    fn the_report_carries_the_last_warnings() {
+        let dir = library();
+        crate::log::append(dir.path(), "2026-10-19T10:00:00Z tray update failed", 1000)
+            .expect("log");
+        let out = troubleshoot(dir.path(), TODAY, "TestOS 1");
+        assert!(out.text.contains("Recent warnings"), "{}", out.text);
+        assert!(out.text.contains("tray update failed"));
     }
 
     #[test]

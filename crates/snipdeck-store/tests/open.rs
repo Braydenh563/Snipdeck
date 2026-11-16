@@ -126,3 +126,29 @@ fn a_foreign_sqlite_file_is_not_adopted() {
     let err = Store::open(dir.path()).err().unwrap();
     assert!(matches!(err, Error::ForeignDatabase { .. }), "{err:?}");
 }
+
+#[test]
+fn a_read_only_open_creates_nothing_and_a_missing_library_is_an_error() {
+    let dir = tempfile::tempdir().unwrap();
+    let missing = dir.path().join("nowhere");
+    let err = Store::open_read_only(&missing).err().expect("no library");
+    assert!(matches!(err, Error::Invalid(_)), "{err}");
+    assert!(!missing.exists(), "the folder must not be created");
+
+    let empty = dir.path().join("empty");
+    std::fs::create_dir(&empty).unwrap();
+    assert!(Store::open_read_only(&empty).is_err());
+    assert_eq!(
+        std::fs::read_dir(&empty).unwrap().count(),
+        0,
+        "no database made"
+    );
+}
+
+#[test]
+fn a_read_only_store_checks_a_library_beside_a_running_app() {
+    let dir = tempfile::tempdir().unwrap();
+    let _running = Store::open(dir.path()).unwrap();
+    let ro = Store::open_read_only(dir.path()).expect("no folder lock is needed");
+    assert!(ro.check_integrity().unwrap().is_empty());
+}

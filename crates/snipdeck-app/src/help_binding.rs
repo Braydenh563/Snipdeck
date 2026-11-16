@@ -560,6 +560,10 @@ where
                     .as_deref()
                     .map(|d| d.display().to_string())
                     .unwrap_or_default(),
+                log_tail: self
+                    .data_dir
+                    .as_deref()
+                    .map_or_else(Vec::new, |d| crate::log::tail(d, crate::log::REPORT_LINES)),
             }
         };
         let text = doctor::report(&info, &self.checks.borrow());

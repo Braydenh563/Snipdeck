@@ -149,6 +149,51 @@ impl Store {
         Self::open_locked(folder, lock).map_err(|failed| failed.error)
     }
 
+    /// Opens an existing library for reading only: no folder or database is created, no lock is
+    /// taken, nothing is migrated and the connection cannot write. For diagnostics that may run
+    /// beside a running Snipdeck.
+    ///
+    /// A folder with no library is [`Error::Invalid`]; a library of another schema version is
+    /// refused ([`Error::SchemaTooNew`] for a newer one, [`Error::Invalid`] for an older one,
+    /// which only the app's own start-up migrates).
+    pub fn open_read_only(folder: impl AsRef<Path>) -> Result<Self> {
+        let folder = folder.as_ref();
+        let db_path = folder.join(DB_FILE);
+        if !db_path.is_file() {
+            return Err(Error::Invalid(format!(
+                "no library in {}",
+                folder.display()
+            )));
+        }
+        let conn = Connection::open_with_flags(
+            &db_path,
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+        )?;
+        conn.busy_timeout(Duration::from_secs(5))?;
+        // A connection setting, not a write (the integrity check asks for it).
+        secure_delete(&conn)?;
+        let found: u32 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
+        let latest = migrations::latest(MIGRATIONS);
+        if found > latest {
+            return Err(Error::SchemaTooNew {
+                found,
+                supported: latest,
+            });
+        }
+        if found < latest {
+            return Err(Error::Invalid(
+                "the library is from an older version; start Snipdeck once to update it".to_owned(),
+            ));
+        }
+        Ok(Self {
+            conn,
+            blobs: Blobs::on_disk(folder.join(BLOB_DIR)),
+            key: None,
+            quiet: Quiet::default(),
+            lock: None,
+        })
+    }
+
     /// Like [`Store::open`], for a caller that already holds the folder's lock (from
     /// [`Store::close`]); it does not look for an interrupted rebuild.
     ///
@@ -363,10 +408,14 @@ impl Store {
             problems.push(format!("dangling reference from table `{}`", row?));
         }
         drop(stmt);
-        if let Err(e) = conn.execute(
-            "INSERT INTO item_fts (item_fts) VALUES ('integrity-check')",
-            [],
-        ) {
+        // FTS5 runs its own check as an INSERT, which a read-only connection cannot do; the
+        // row counts below still compare the index with the items.
+        if !conn.is_readonly(rusqlite::MAIN_DB)?
+            && let Err(e) = conn.execute(
+                "INSERT INTO item_fts (item_fts) VALUES ('integrity-check')",
+                [],
+            )
+        {
             problems.push(format!("full-text index is damaged: {e}"));
         }
 

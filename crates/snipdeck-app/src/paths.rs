@@ -106,6 +106,17 @@ fn decode(bytes: &[u8]) -> String {
     }
 }
 
+/// The settings in `folder`, read without changing anything: a damaged file is not set aside
+/// (for diagnostics that may run beside a running app). Same values as [`read_settings`].
+#[must_use]
+pub fn peek_settings(folder: &Path) -> Settings {
+    match std::fs::read(folder.join(SETTINGS_FILE)) {
+        Ok(bytes) => Settings::from_json(&decode(&bytes)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Settings::new_install(),
+        Err(_) => Settings::default(),
+    }
+}
+
 /// Reads the settings from `folder`. A missing file gives the new-install settings
 /// ([`Settings::new_install`]); an unreadable one gives the legacy defaults, and a damaged one keeps
 /// whatever parses ([`Settings::from_json`] never fails).
@@ -163,14 +174,6 @@ pub fn write_salvaged(folder: &Path, loaded: &Loaded) -> std::io::Result<()> {
         crate::settings_store::write_atomic(folder, &loaded.settings)?;
     }
     Ok(())
-}
-
-/// Whether this run writes settings changes back: not under `--dark` (a one-run override that
-/// must stay out of the user's file) and not when the file could not be read or set aside.
-/// Drafts, the daily backup and Settings "Back up now" do not depend on it.
-#[must_use]
-pub fn saves_settings(dark_override: bool, loaded: &Loaded) -> bool {
-    !dark_override && loaded.may_save()
 }
 
 /// What the settings saver should take as "on disk now": the loaded settings, except when a
@@ -266,18 +269,6 @@ mod tests {
             crate::settings::Theme::System,
             "the bad one is not"
         );
-    }
-
-    #[test]
-    fn dark_and_an_untouchable_file_stop_only_the_settings_saver() {
-        let loaded = |outcome| Loaded {
-            settings: Settings::default(),
-            outcome,
-        };
-        assert!(saves_settings(false, &loaded(LoadOutcome::Read)));
-        assert!(saves_settings(false, &loaded(LoadOutcome::Missing)));
-        assert!(!saves_settings(true, &loaded(LoadOutcome::Read)));
-        assert!(!saves_settings(false, &loaded(LoadOutcome::Untouchable)));
     }
 
     #[test]

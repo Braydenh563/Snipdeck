@@ -404,6 +404,8 @@ pub struct ReportInfo {
     pub flags: Vec<(String, String)>,
     /// The data folder's path, replaced by `<data folder>` wherever it appears.
     pub data_dir: String,
+    /// The last lines of `logs/snipdeck.log` (see [`crate::log`]), oldest first.
+    pub log_tail: Vec<String>,
 }
 
 /// The diagnostic report as text.
@@ -423,6 +425,12 @@ pub fn report(info: &ReportInfo, checks: &[Check]) -> String {
     out.push_str("\nChecks\n");
     for c in checks {
         let _ = writeln!(out, "  [{}] {}: {}", c.status.word(), c.label, c.detail);
+    }
+    if !info.log_tail.is_empty() {
+        out.push_str("\nRecent warnings\n");
+        for line in &info.log_tail {
+            let _ = writeln!(out, "  {line}");
+        }
     }
     if info.data_dir.is_empty() {
         out
@@ -776,6 +784,7 @@ mod tests {
             dpi: "150%".into(),
             flags: vec![("close to tray".into(), "on".into())],
             data_dir: "C:\\Users\\ann\\AppData\\Snipdeck".into(),
+            log_tail: vec!["2026-10-19T10:00:00Z the hotkey Ctrl+Alt+Space is taken".into()],
         };
         let checks = run(&Fake {
             integrity: Err("cannot open C:\\Users\\ann\\AppData\\Snipdeck\\library.db".into()),
@@ -784,6 +793,7 @@ mod tests {
         let text = report(&info, &checks);
         assert!(text.contains("Version: 0.1.0") && text.contains("Display scale: 150%"));
         assert!(text.contains("close to tray: on"));
+        assert!(text.contains("Recent warnings\n  2026-10-19T10:00:00Z the hotkey"));
         assert!(text.contains("[Problem] Database"));
         assert!(text.contains("<data folder>\\library.db"));
         // "ann" alone also matches the "cannot" of the error text.

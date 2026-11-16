@@ -45,7 +45,7 @@ use snipdeck_app::{
     screenshot,
     settings::{Settings, Theme},
     settings_binding::{PanelTaskbar, SettingsUi, SystemHost},
-    settings_store::{FileSink, SettingsSaver},
+    settings_store::{FileSink, SettingsSaver, ThemePinned},
     toast::Toast,
     toast_binding::ToastUi,
     unlock_binding::UnlockUi,
@@ -67,7 +67,7 @@ fn apply_tray_history(tray: &TrayCell, latest: &Rc<Cell<(bool, bool)>>) {
         if let Some(tray) = guard.as_mut()
             && let Err(e) = tray.set_history(latest.get().0, latest.get().1)
         {
-            eprintln!("snipdeck: cannot update the tray's history entry: {e}");
+            snipdeck_app::warn!("cannot update the tray's history entry: {e}");
         }
     } else {
         let (tray, latest) = (Rc::clone(tray), Rc::clone(latest));
@@ -95,9 +95,16 @@ fn main() -> ExitCode {
         Ok(args) => args,
         Err(e) => {
             eprintln!("snipdeck: {e}\n\n{}", cli::USAGE);
+            // The installed build has no console: a shortcut with a typo would start nothing
+            // and say nothing.
+            report_startup_failure(&format!("{e}\n\n{}", cli::USAGE));
             return ExitCode::from(2);
         }
     };
+    if args.version {
+        println!("snipdeck {}", env!("CARGO_PKG_VERSION"));
+        return ExitCode::SUCCESS;
+    }
     if args.help {
         println!("{}", cli::USAGE);
         return ExitCode::SUCCESS;
@@ -109,7 +116,7 @@ fn main() -> ExitCode {
     }
     // Windows says once how a packaged build was started; ask before anything else could.
     let by_startup_task = platform::launched_by_startup_task();
-    if args.check_db || args.troubleshoot {
+    if args.check_db || args.troubleshoot || args.backup.is_some() {
         return headless(&args);
     }
     snipdeck_app::trace!(
@@ -139,8 +146,7 @@ fn main() -> ExitCode {
 
 /// Tells the user, in a native message box and in their language, why the app could not start.
 fn report_startup_failure(details: &str) {
-    // The settings did not load, so the language is the system's.
-    let _ = slint::select_bundled_translation("");
+    // The settings did not load, so the language is the system's: the window picks it.
     // The text lives in the UI crate's catalogs; a window is the way to reach them. Without a
     // backend (the failure was in choosing one) there is no window and the reason stands alone.
     let text = match PanelWindow::new() {
@@ -167,6 +173,11 @@ fn headless(args: &Args) -> ExitCode {
             .to_zoned(jiff::tz::TimeZone::system())
             .date();
         let out = headless::troubleshoot(&folder, today, std::env::consts::OS);
+        println!("{}", out.text);
+        worst = worst.max(out.code);
+    }
+    if let Some(dest) = &args.backup {
+        let out = headless::backup_to(&folder, Timestamp::now(), dest);
         println!("{}", out.text);
         worst = worst.max(out.code);
     }
@@ -240,14 +251,15 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         keep_alive: _keep_alive,
     } = host;
     for warning in &warnings {
-        eprintln!("snipdeck: {warning}");
+        snipdeck_app::warn!("{warning}");
     }
 
-    // The interface language, before any window exists ("" follows the system).
-    if let Err(e) = slint::select_bundled_translation(&settings.language) {
-        eprintln!("snipdeck: no translation for {:?}: {e}", settings.language);
-    }
     let window = PanelWindow::new().map_err(|e| format!("creating the Panel: {e}"))?;
+    // The interface language, now that a component has registered the catalogues ("" follows the
+    // system language Slint already picked).
+    if let Err(e) = snipdeck_app::language::apply(&settings.language) {
+        snipdeck_app::warn!("{e}");
+    }
     let width = f32::from(u16::try_from(settings.panel_width).unwrap_or(320));
     window
         .window()
@@ -266,8 +278,15 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     let saver = settings_folder
         .clone()
         .zip(saver_baseline)
-        .map(|(folder, baseline)| {
-            let mut saver = SettingsSaver::new(Box::new(FileSink::new(folder)), baseline);
+        .map(|(folder, mut baseline)| {
+            // `--dark` is a one-run override: the saver keeps the file's theme and saves the rest.
+            let sink: Box<dyn snipdeck_app::settings_store::SettingsSink> = if args.dark {
+                let on_disk = std::mem::replace(&mut baseline.theme, settings.theme);
+                Box::new(ThemePinned::new(FileSink::new(folder), on_disk))
+            } else {
+                Box::new(FileSink::new(folder))
+            };
+            let mut saver = SettingsSaver::new(sink, baseline);
             // A baseline that differs from the settings in use (a failed salvage write) is a change
             // waiting to be written.
             saver.changed(&settings, Timestamp::now());
@@ -538,7 +557,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         // A first run (nothing in the library, tour not seen) opens the welcome tour.
         let tour_due = controller.borrow().tour_due();
         if tour_due && let Err(e) = onboarding_ui.open() {
-            eprintln!("snipdeck: cannot open the welcome tour: {e}");
+            snipdeck_app::warn!("cannot open the welcome tour: {e}");
         }
     }
     // The backup, the Trash purge (30 days, SPEC 5.7a) and the weekly check start 2 s after the
@@ -553,7 +572,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     // not start" (that message box is for failures before the first window).
     let ran = slint::run_event_loop_until_quit();
     if let Err(e) = &ran {
-        eprintln!("snipdeck: event loop: {e}");
+        snipdeck_app::warn!("event loop: {e}");
     }
     // An editor left open keeps what was typed since the last draft.
     item_editor.flush_draft();
@@ -561,7 +580,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     controller.borrow_mut().clear_pending_clipboard_now();
     // Settings changed in the last moments are still waiting for their quiet time.
     if let Err(e) = controller.borrow_mut().flush_settings() {
-        eprintln!("snipdeck: could not save the settings: {e}");
+        snipdeck_app::warn!("could not save the settings: {e}");
     }
     Ok(())
 }
@@ -613,10 +632,10 @@ fn show_tray(tray: &mut Option<Box<dyn snipdeck_platform::tray::Tray>>, window: 
         return;
     };
     if let Err(e) = tray.set_labels(snipdeck_app::wording::tray_labels(window)) {
-        eprintln!("snipdeck: cannot set the tray menu texts: {e}");
+        snipdeck_app::warn!("cannot set the tray menu texts: {e}");
     }
     if let Err(e) = tray.show() {
-        eprintln!("snipdeck: cannot show the tray icon yet: {e}");
+        snipdeck_app::warn!("cannot show the tray icon yet: {e}");
     }
 }
 
@@ -650,10 +669,7 @@ fn effect_handler(
             let chords = chords_now();
             let report = host::set_paused(&mut **hotkeys.borrow_mut(), *paused, &chords);
             if report.not_removed > 0 {
-                eprintln!(
-                    "snipdeck: {} hotkeys could not be switched off",
-                    report.not_removed
-                );
+                snipdeck_app::warn!("{} hotkeys could not be switched off", report.not_removed);
             }
             if !*paused {
                 report_hotkey_problems(&report.problems);
@@ -662,13 +678,13 @@ fn effect_handler(
             if let Some(tray) = tray.borrow_mut().as_mut()
                 && let Err(e) = tray.set_hotkeys_paused(*paused)
             {
-                eprintln!("snipdeck: cannot update the tray's check mark: {e}");
+                snipdeck_app::warn!("cannot update the tray's check mark: {e}");
             }
         }
         // Created the first time, then shown and raised again; the Panel stays as it is.
         Effect::OpenMainWindow => {
             if let Err(e) = main_ui.open() {
-                eprintln!("snipdeck: cannot open the main window: {e}");
+                snipdeck_app::warn!("cannot open the main window: {e}");
                 window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
             }
         }
@@ -680,13 +696,13 @@ fn effect_handler(
                 }
             }
             Err(e) => {
-                eprintln!("snipdeck: cannot open the command palette: {e}");
+                snipdeck_app::warn!("cannot open the command palette: {e}");
                 window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
             }
         },
         Effect::OpenSettings => {
             if let Err(e) = settings_ui.open() {
-                eprintln!("snipdeck: cannot open the settings: {e}");
+                snipdeck_app::warn!("cannot open the settings: {e}");
                 window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
             }
         }
@@ -694,20 +710,20 @@ fn effect_handler(
         Effect::OpenSupport => {
             use snipdeck_app::help_binding::{HelpHost, SUPPORT_URL, SystemHelpHost};
             if let Err(e) = SystemHelpHost.open_url(SUPPORT_URL) {
-                eprintln!("snipdeck: cannot open the support page: {e}");
+                snipdeck_app::warn!("cannot open the support page: {e}");
                 window_failed(snipdeck_app::toast::ToastMessage::LinkNotOpened);
             }
         }
         // A locked sensitive item behind a master password: ask for it.
         Effect::OpenUnlock => {
             if let Err(e) = unlock_ui.open() {
-                eprintln!("snipdeck: cannot open the unlock window: {e}");
+                snipdeck_app::warn!("cannot open the unlock window: {e}");
                 window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
             }
         }
         Effect::OpenListEditor => {
             if let Err(e) = main_ui.bind() {
-                eprintln!("snipdeck: cannot open the list editor: {e}");
+                snipdeck_app::warn!("cannot open the list editor: {e}");
                 window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
             }
         }
@@ -733,7 +749,7 @@ fn effect_handler(
         // user guide opens in the browser.
         Effect::OpenHelp(topic) => {
             if let Err(e) = help_ui.open(*topic) {
-                eprintln!("snipdeck: cannot open the help: {e}");
+                snipdeck_app::warn!("cannot open the help: {e}");
                 window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
             }
         }
@@ -868,9 +884,11 @@ fn watch_window_events(window: &PanelWindow, binding: Binding, armed: Rc<Cell<bo
 /// Prints the hotkeys that could not be registered and tells the user in the Panel.
 fn report_hotkey_problems(problems: &[host::HotkeyProblem]) {
     for problem in problems {
-        eprintln!(
-            "snipdeck: cannot register {} for {:?}: {}",
-            problem.chord, problem.action, problem.failure
+        snipdeck_app::warn!(
+            "cannot register {} for {:?}: {}",
+            problem.chord,
+            problem.action,
+            problem.failure
         );
     }
     with_binding(|b| b.hotkey_problems(problems));
@@ -909,6 +927,7 @@ fn open_library(args: &Args) -> Result<Library, String> {
     };
     // Where a crash report goes (set for any real library, also when the settings stay unsaved).
     crash::set_data_dir(&folder);
+    snipdeck_app::log::set_data_dir(&folder);
     let loaded = snipdeck_app::paths::read_settings(&folder);
     let may_save = loaded.may_save();
     let loaded_outcome = loaded.outcome;
@@ -916,18 +935,18 @@ fn open_library(args: &Args) -> Result<Library, String> {
     // find no file and fall back to the defaults (re-enabling pastes into apps the user excluded).
     let mut salvage_written = true;
     if may_save && let Err(e) = snipdeck_app::paths::write_salvaged(&folder, &loaded) {
-        eprintln!("snipdeck: could not write the recovered settings: {e}");
+        snipdeck_app::warn!("could not write the recovered settings: {e}");
         salvage_written = false;
     }
-    // `--dark` is a one-run override and an unreadable file must stay as it is: either stops the
-    // settings saver, and nothing else (drafts, backups and "Back up now" need the folder).
-    // The saver starts from what the file holds, which after a failed salvage write is nothing.
-    let saver_baseline = snipdeck_app::paths::saves_settings(args.dark, &loaded)
-        .then(|| snipdeck_app::paths::saver_baseline(&loaded, salvage_written));
+    // An unreadable file must stay as it is: it stops the settings saver, and nothing else
+    // (drafts, backups and "Back up now" need the folder). The saver starts from what the file
+    // holds, which after a failed salvage write is nothing.
+    let saver_baseline =
+        may_save.then(|| snipdeck_app::paths::saver_baseline(&loaded, salvage_written));
     let mut settings = loaded.settings;
     if !may_save {
-        eprintln!(
-            "snipdeck: the settings file in {} could not be read or set aside; running with the \
+        snipdeck_app::warn!(
+            "the settings file in {} could not be read or set aside; running with the \
              defaults and not saving changes, so the file stays as it is",
             folder.display()
         );
@@ -940,7 +959,7 @@ fn open_library(args: &Args) -> Result<Library, String> {
     // first run has nothing to act on (an empty board menu, no tabs, no rows).
     match snipdeck_app::starter::ensure_first_run(&mut store, now) {
         Ok(made) => snipdeck_app::trace!("real library; starter board made: {made}"),
-        Err(e) => eprintln!("snipdeck: could not create the first board: {e}"),
+        Err(e) => snipdeck_app::warn!("could not create the first board: {e}"),
     }
     Ok((
         store,
