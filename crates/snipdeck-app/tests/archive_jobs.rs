@@ -356,3 +356,110 @@ fn quitting_mid_export_removes_only_the_part_file_of_that_export() {
     assert!(!part.exists(), "this export's leftover is removed");
     assert!(other.exists(), "another .part is left alone");
 }
+
+/// A folder of text files, one per entry of `texts`.
+fn notes(dir: &std::path::Path, texts: &[&str]) -> snipdeck_app::controller::ImportSource {
+    let folder = dir.join("notes");
+    std::fs::create_dir_all(&folder).expect("folder");
+    for (i, text) in texts.iter().enumerate() {
+        std::fs::write(folder.join(format!("n{i}.txt")), text).expect("note");
+    }
+    snipdeck_app::controller::ImportSource::Folder(folder)
+}
+
+fn item_count(ctl: &Ctl) -> usize {
+    ctl.store().all_items().expect("items").len()
+}
+
+#[test]
+fn an_import_reads_on_a_worker_previews_the_same_as_it_adds_and_a_second_start_waits() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut ctl = start(dir.path());
+    let src = tempfile::tempdir().expect("src");
+    let source = notes(src.path(), &["alpha text", "beta text"]);
+    let before = item_count(&ctl);
+
+    let preview = job(ctl.begin_import_preview(&source));
+    assert!(ctl.archive_busy());
+    assert!(matches!(ctl.begin_apply_import(&source), Begun::Refused));
+    let ArchiveEnd::ImportPreview(Ok(preview)) = ctl.finish_archive(preview.run()) else {
+        panic!("a preview");
+    };
+    assert_eq!(preview.items, 2);
+    assert_eq!(item_count(&ctl), before, "a preview writes nothing");
+
+    let apply = job(ctl.begin_apply_import(&source));
+    assert!(matches!(
+        ctl.finish_archive(apply.run()),
+        ArchiveEnd::Imported(true)
+    ));
+    assert_eq!(item_count(&ctl), before + preview.items);
+    assert!(!ctl.archive_busy());
+}
+
+#[test]
+fn an_item_made_between_the_read_and_the_apply_is_still_skipped_as_a_duplicate() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut ctl = start(dir.path());
+    let src = tempfile::tempdir().expect("src");
+    let source = notes(
+        src.path(),
+        &["written after the export began", "something else"],
+    );
+    let before = item_count(&ctl);
+
+    let apply = job(ctl.begin_apply_import(&source));
+    // Typed while the worker reads: the file's first text is now in the library.
+    add_item(&mut ctl, "typed meanwhile");
+    assert!(matches!(
+        ctl.finish_archive(apply.run()),
+        ArchiveEnd::Imported(true)
+    ));
+    assert_eq!(
+        item_count(&ctl),
+        before + 1 + 1,
+        "the typed one and one new"
+    );
+}
+
+#[test]
+fn a_corrupt_source_fails_and_leaves_the_library_untouched() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut ctl = start(dir.path());
+    let src = tempfile::tempdir().expect("src");
+    let file = src.path().join("broken.snipdeck");
+    std::fs::write(&file, b"this is not an archive").expect("file");
+    let source = snipdeck_app::controller::ImportSource::Snipdeck(file.clone());
+    let before = item_count(&ctl);
+
+    let apply = job(ctl.begin_apply_import(&source));
+    assert!(matches!(
+        ctl.finish_archive(apply.run()),
+        ArchiveEnd::Imported(false)
+    ));
+    assert_eq!(item_count(&ctl), before);
+    let restore = job(ctl.begin_restore_backup(&file));
+    assert!(matches!(
+        ctl.finish_archive(restore.run()),
+        ArchiveEnd::Imported(false)
+    ));
+    assert_eq!(item_count(&ctl), before);
+    assert!(!ctl.archive_busy());
+}
+
+#[test]
+fn quitting_while_a_source_is_being_read_writes_nothing() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut ctl = start(dir.path());
+    let src = tempfile::tempdir().expect("src");
+    let source = notes(src.path(), &["one", "two"]);
+    let before = item_count(&ctl);
+
+    let apply = job(ctl.begin_apply_import(&source));
+    ctl.abandon_unfinished_archive();
+    drop(ctl);
+    // The worker finishes after the controller is gone: nobody applies it.
+    let _done = apply.run();
+    let store = Store::open(dir.path()).expect("reopen");
+    assert_eq!(store.all_items().expect("items").len(), before);
+}

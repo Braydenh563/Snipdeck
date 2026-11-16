@@ -42,6 +42,10 @@ pub enum ArchiveEnd {
     Exported(Option<PathBuf>),
     /// "Rebuild from backup": whether it worked.
     Rebuilt(bool),
+    /// An import or restore preview: what it would do, or why the source cannot be read.
+    ImportPreview(Result<super::ImportPreview, super::ImportProblem>),
+    /// An import or a restore: whether it worked.
+    Imported(bool),
     /// An outcome for a step that is not running (a stale one): nothing to do.
     Ignored,
 }
@@ -75,6 +79,27 @@ pub(super) enum Context {
     /// The target of an export, for the toast and the caller.
     Export(PathBuf),
     Rebuild(Box<Rebuild>),
+    /// An import, a restore or a preview of one.
+    Import(Box<ImportRun>),
+}
+
+/// What an import step is for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ImportPurpose {
+    /// Count what would come in; write nothing.
+    Preview,
+    /// "Import...": write it on one new board.
+    Apply,
+    /// "Restore": write the backup's own boards.
+    Restore,
+}
+
+/// What a running import step needs when its source has been read.
+pub(super) struct ImportRun {
+    pub(super) source: super::ImportSource,
+    pub(super) purpose: ImportPurpose,
+    /// The library's change counter when the snapshot was taken (see [`Rebuild::counter`]).
+    pub(super) counter: u64,
 }
 
 /// The archive step running now, if any.
@@ -249,7 +274,7 @@ where
         match (op, done.made, context) {
             (ArchiveOp::DailyBackup, made, _) => ArchiveEnd::Daily(made.map(|made| match made {
                 Made::Backup(outcome) => outcome,
-                Made::File => BackupOutcome::NotDue {
+                Made::File | Made::Decoded(_) => BackupOutcome::NotDue {
                     existing: PathBuf::new(),
                 },
             })),
@@ -291,6 +316,7 @@ where
                 }
                 ArchiveEnd::Rebuilt(self.finish_rebuild(*rebuild, made.is_ok()))
             }
+            (ArchiveOp::Decode, made, Context::Import(run)) => self.finish_import(*run, made),
             // A context that does not belong to its step cannot be built.
             (_, _, _) => ArchiveEnd::Ignored,
         }

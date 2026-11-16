@@ -305,6 +305,16 @@ pub trait ArchiveSteps {
     fn export_library(&mut self, folder: &std::path::Path) -> Option<std::path::PathBuf>;
     fn rebuild_from_backup(&mut self, data_dir: &std::path::Path, backup: &std::path::Path)
     -> bool;
+    fn preview_import(
+        &mut self,
+        source: &snipdeck_app::controller::ImportSource,
+    ) -> Result<snipdeck_app::controller::ImportPreview, snipdeck_app::controller::ImportProblem>;
+    fn preview_restore(
+        &mut self,
+        backup: &std::path::Path,
+    ) -> Result<snipdeck_app::controller::ImportPreview, snipdeck_app::controller::ImportProblem>;
+    fn apply_import(&mut self, source: &snipdeck_app::controller::ImportSource) -> bool;
+    fn restore_backup(&mut self, backup: &std::path::Path) -> bool;
 }
 
 fn end(
@@ -345,4 +355,41 @@ impl ArchiveSteps for Ctl {
             snipdeck_app::controller::ArchiveEnd::Rebuilt(true)
         )
     }
+    fn preview_import(
+        &mut self,
+        source: &snipdeck_app::controller::ImportSource,
+    ) -> Result<snipdeck_app::controller::ImportPreview, snipdeck_app::controller::ImportProblem>
+    {
+        let begun = self.begin_import_preview(source);
+        previewed(end(self, begun))
+    }
+    fn preview_restore(
+        &mut self,
+        backup: &std::path::Path,
+    ) -> Result<snipdeck_app::controller::ImportPreview, snipdeck_app::controller::ImportProblem>
+    {
+        let begun = self.begin_restore_preview(backup);
+        previewed(end(self, begun))
+    }
+    fn apply_import(&mut self, source: &snipdeck_app::controller::ImportSource) -> bool {
+        let begun = self.begin_apply_import(source);
+        imported(end(self, begun))
+    }
+    fn restore_backup(&mut self, backup: &std::path::Path) -> bool {
+        let begun = self.begin_restore_backup(backup);
+        imported(end(self, begun))
+    }
+}
+
+fn previewed(
+    end: snipdeck_app::controller::ArchiveEnd,
+) -> Result<snipdeck_app::controller::ImportPreview, snipdeck_app::controller::ImportProblem> {
+    match end {
+        snipdeck_app::controller::ArchiveEnd::ImportPreview(outcome) => outcome,
+        other => panic!("not a preview: {other:?}"),
+    }
+}
+
+fn imported(end: snipdeck_app::controller::ArchiveEnd) -> bool {
+    matches!(end, snipdeck_app::controller::ArchiveEnd::Imported(true))
 }

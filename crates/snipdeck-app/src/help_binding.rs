@@ -24,7 +24,7 @@ use snipdeck_ui as ui;
 
 use crate::{
     binding::{arm_toast, model, redraw_all, register_redraw},
-    controller::{Controller, HelpTopic, ToastPhase, ToastView, spawn_archive},
+    controller::{ArchiveEnd, Controller, HelpTopic, ToastPhase, ToastView, spawn_archive},
     crash,
     doctor::{self, Check, DoctorHost, Fix, ReportInfo, Status},
     host::ClipboardText,
@@ -506,27 +506,34 @@ where
 
     /// Opens the rebuild confirmation, naming the newest backup (date, items, boards).
     fn ask_rebuild(self: &Rc<Self>) {
-        let (Some(dir), Some(window)) = (self.data_dir.clone(), self.window.upgrade()) else {
+        let (Some(dir), Some(_)) = (self.data_dir.clone(), self.window.upgrade()) else {
             return;
         };
         let newest = backup::list_backups(&dir)
             .ok()
             .and_then(|found| found.into_iter().next());
-        let preview = newest.as_ref().and_then(|file| {
-            self.controller
-                .borrow_mut()
-                .preview_restore(&file.path)
-                .ok()
-                .map(|p| (file.date.to_string(), p))
-        });
-        let Some((date, preview)) = preview else {
+        let Some(file) = newest else {
             self.danger_toast(ToastMessage::RestoreFailed(crate::failure::Cause::Other));
             return;
         };
-        window.set_rebuild_date(date.into());
-        window.set_rebuild_items(i32::try_from(preview.items).unwrap_or(i32::MAX));
-        window.set_rebuild_boards(i32::try_from(preview.boards).unwrap_or(i32::MAX));
-        window.set_rebuild_open(true);
+        let begun = self
+            .controller
+            .borrow_mut()
+            .begin_restore_preview(&file.path);
+        let this = Rc::clone(self);
+        spawn_archive(&self.controller, begun, move |end| {
+            let ArchiveEnd::ImportPreview(outcome) = end else {
+                return;
+            };
+            let (Ok(preview), Some(window)) = (outcome, this.window.upgrade()) else {
+                this.danger_toast(ToastMessage::RestoreFailed(crate::failure::Cause::Other));
+                return;
+            };
+            window.set_rebuild_date(file.date.to_string().into());
+            window.set_rebuild_items(i32::try_from(preview.items).unwrap_or(i32::MAX));
+            window.set_rebuild_boards(i32::try_from(preview.boards).unwrap_or(i32::MAX));
+            window.set_rebuild_open(true);
+        });
     }
 
     fn rebuild(self: &Rc<Self>) {

@@ -33,8 +33,8 @@ use crate::{
     accent::AccentChoice,
     binding::{Loggable, Shown, arm_toast, model, redraw_all, register_redraw, to_i32},
     controller::{
-        ArchiveEnd, Controller, HelpTopic, ImportKind, ImportPreview, ImportProblem, ImportSource,
-        MasterState, ToastPhase, ToastView, spawn_archive,
+        ArchiveEnd, Begun, Controller, HelpTopic, ImportKind, ImportPreview, ImportProblem,
+        ImportSource, MasterState, ToastPhase, ToastView, spawn_archive,
     },
     host::{self, ClipboardText, HotkeyBackend, HotkeyFailure, HotkeyProblem},
     hotkey_health::{self, HotkeyHealth},
@@ -1574,22 +1574,26 @@ where
 
     /// Works out what `source` would do (nothing is written) and opens the preview on it.
     fn preview(self: &Rc<Self>, source: ImportSource, restore: bool, name: String) {
-        let outcome = self.act(|ctl| {
-            if restore {
-                source
-                    .path()
-                    .map_or(Err(ImportProblem::Failed), |p| ctl.preview_restore(p))
-            } else {
-                ctl.preview_import(&source)
+        let begun = self.act(|ctl| match source.path() {
+            Some(path) if restore => ctl.begin_restore_preview(path),
+            _ if restore => Begun::Refused,
+            _ => ctl.begin_import_preview(&source),
+        });
+        self.show_busy();
+        let this = Rc::clone(self);
+        spawn_archive(&self.controller, begun, move |end| {
+            this.show_busy();
+            // Refused (busy, or locked): the toast has said so; no preview opens.
+            if let ArchiveEnd::ImportPreview(outcome) = end {
+                this.state.borrow_mut().import = Some(PendingImport {
+                    source,
+                    restore,
+                    name,
+                    outcome,
+                });
             }
+            redraw_all();
         });
-        self.state.borrow_mut().import = Some(PendingImport {
-            source,
-            restore,
-            name,
-            outcome,
-        });
-        redraw_all();
     }
 
     /// "Import" / "Restore" in the preview: does what was previewed.
@@ -1598,12 +1602,18 @@ where
             return;
         };
         if pending.outcome.is_ok() {
-            if pending.restore {
-                self.act(|ctl| pending.source.path().is_some_and(|p| ctl.restore_backup(p)));
-            } else {
-                self.act(|ctl| ctl.apply_import(&pending.source));
-            }
-            self.refresh_backups();
+            let begun = self.act(|ctl| match pending.source.path() {
+                Some(path) if pending.restore => ctl.begin_restore_backup(path),
+                _ if pending.restore => Begun::Refused,
+                _ => ctl.begin_apply_import(&pending.source),
+            });
+            self.show_busy();
+            let this = Rc::clone(self);
+            spawn_archive(&self.controller, begun, move |_| {
+                this.show_busy();
+                this.refresh_backups();
+                redraw_all();
+            });
         }
         redraw_all();
     }

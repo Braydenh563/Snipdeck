@@ -21,13 +21,14 @@ use std::{
 use jiff::Zoned;
 use snipdeck_core::Timestamp;
 use snipdeck_portable::{
-    ExportOptions, Library, SensitivePolicy,
+    BoardLayout, Decoded, ExportOptions, ImportOptions, KeySource, Known, Library, MergeStrategy,
+    SensitivePolicy,
     backup::{self, BackupOutcome},
     export_to_path,
 };
 use snipdeck_store::{Store, crypto::DataKey};
 
-use crate::{failure::Cause, maintenance::JobError};
+use crate::{controller::ImportSource, failure::Cause, maintenance::JobError};
 
 /// What a job writes.
 #[derive(Debug, Clone)]
@@ -44,6 +45,13 @@ pub(crate) enum Work {
     Export { path: PathBuf, now: Timestamp },
     /// The salvage copy for a rebuild, at `path`.
     Salvage { path: PathBuf, now: Timestamp },
+    /// Reads and checks an import or a restore (no library involved) and the duplicate set of
+    /// the snapshot, for the UI thread to preview or apply.
+    Decode {
+        source: ImportSource,
+        layout: BoardLayout,
+        now: Timestamp,
+    },
 }
 
 /// Which step a job is, so the controller knows what to apply.
@@ -57,6 +65,8 @@ pub enum ArchiveOp {
     Export,
     /// The salvage copy of "Rebuild from backup".
     Salvage,
+    /// Reading an import or a restore source.
+    Decode,
 }
 
 /// What a finished job made.
@@ -66,6 +76,15 @@ pub enum Made {
     Backup(BackupOutcome),
     /// A file at the job's path.
     File,
+    /// A decoded source, or why it could not be read.
+    Decoded(Box<Result<Ready, snipdeck_portable::Error>>),
+}
+
+/// A decoded import and the duplicate set of the snapshot it was read beside.
+#[derive(Debug)]
+pub struct Ready {
+    pub(crate) decoded: Decoded<'static>,
+    pub(crate) known: Known,
 }
 
 /// Where a job reads the library from.
@@ -160,6 +179,23 @@ impl ArchiveJob {
                 .map_or(SensitivePolicy::Skip, SensitivePolicy::Encrypt),
             ..ExportOptions::default()
         };
+        if let Work::Decode {
+            source,
+            layout,
+            now,
+        } = &self.work
+        {
+            let options = ImportOptions {
+                merge: MergeStrategy::SkipDuplicates,
+                layout: *layout,
+                key: lib.data_key().map_or(KeySource::None, KeySource::Given),
+                ..ImportOptions::default()
+            };
+            let ready = source
+                .decode(*now, &options)
+                .and_then(|decoded| Known::of(lib).map(|known| Ready { decoded, known }));
+            return Ok(Made::Decoded(Box::new(ready)));
+        }
         match &self.work {
             Work::Backup {
                 data_dir,
@@ -179,6 +215,7 @@ impl ArchiveJob {
                     other => Ok(Made::Backup(other)),
                 }
             }
+            Work::Decode { .. } => Err(JobError::other("not an archive step")),
             Work::Export { path, now } | Work::Salvage { path, now } => {
                 if let Some(parent) = path.parent() {
                     std::fs::create_dir_all(parent).map_err(|e| JobError {
@@ -197,7 +234,7 @@ impl ArchiveJob {
     pub fn path(&self) -> Option<&Path> {
         match &self.work {
             Work::Export { path, .. } | Work::Salvage { path, .. } => Some(path),
-            Work::Backup { .. } => None,
+            Work::Backup { .. } | Work::Decode { .. } => None,
         }
     }
 }

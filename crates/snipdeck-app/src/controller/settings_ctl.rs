@@ -13,9 +13,9 @@ use std::{
 use jiff::tz::TimeZone;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_portable::{
-    BoardLayout, HistoryEntry, ImportOptions, ImportReport, KeySource, MergeStrategy,
-    import_archive_path, import_beeftext, import_copyq_json, import_ditto, import_entries,
-    import_espanso, import_folder, import_phraseexpress_csv, import_textexpander_csv,
+    BoardLayout, Decoded, HistoryEntry, ImportOptions, ImportReport, KeySource, MergeStrategy,
+    decode_archive_path, decode_beeftext, decode_copyq_json, decode_ditto, decode_entries,
+    decode_espanso, decode_folder, decode_phraseexpress_csv, decode_textexpander_csv,
 };
 use snipdeck_store::{
     ItemRepo, Store,
@@ -24,9 +24,10 @@ use snipdeck_store::{
 
 use super::{
     Controller, Toast, ToastKind, ToastMessage,
-    archive_ctl::{ArchiveEnd, Begun, Context, Rebuild},
+    archive_ctl::{ArchiveEnd, Begun, Context, ImportPurpose, ImportRun, Rebuild},
 };
-use crate::archive_job::{ArchiveOp, Work};
+use crate::archive_job::{ArchiveOp, Made, Work};
+use crate::maintenance::JobError;
 use crate::{failure::Cause, host::ClipboardText, starter};
 
 /// Where an import reads from. Each variant is one kind of source the Settings "Import..." row
@@ -87,24 +88,24 @@ impl ImportSource {
             .unwrap_or_default()
     }
 
-    /// Runs the importer for this source over `store`. With `options.dry_run` nothing is kept.
-    fn run(
+    /// Reads and checks this source, with no library: what a worker does. The result is
+    /// previewed or applied by [`Decoded`]. `options.key` must not be `KeySource::Library`.
+    pub(crate) fn decode(
         &self,
-        store: &mut Store,
         now: jiff::Timestamp,
         options: &ImportOptions<'_>,
-    ) -> snipdeck_portable::Result<ImportReport> {
+    ) -> snipdeck_portable::Result<Decoded<'static>> {
         match self {
-            Self::Snipdeck(p) => import_archive_path(store, p, now, options),
-            Self::Ditto(p) => import_ditto(store, p, now, options),
-            Self::CopyQ(p) => import_copyq_json(store, p, now, options),
-            Self::Folder(p) => import_folder(store, p, now, options),
-            Self::Espanso(p) => import_espanso(store, p, now, options),
-            Self::Beeftext(p) => import_beeftext(store, p, now, options),
-            Self::TextExpander(p) => import_textexpander_csv(store, p, now, options),
-            Self::PhraseExpress(p) => import_phraseexpress_csv(store, p, now, options),
+            Self::Snipdeck(p) => decode_archive_path(p, now, options),
+            Self::Ditto(p) => decode_ditto(p, now, options),
+            Self::CopyQ(p) => decode_copyq_json(p, now, options),
+            Self::Folder(p) => decode_folder(p, now, options),
+            Self::Espanso(p) => decode_espanso(p, now, options),
+            Self::Beeftext(p) => decode_beeftext(p, now, options),
+            Self::TextExpander(p) => decode_textexpander_csv(p, now, options),
+            Self::PhraseExpress(p) => decode_phraseexpress_csv(p, now, options),
             Self::ClipboardHistory { entries, board } => {
-                import_entries(store, entries, board, now, options)
+                decode_entries(entries, board, now, options)
             }
         }
     }
@@ -336,30 +337,11 @@ where
     }
 
     /// Restores `backup` (a file `backup::list_backups` found) into the library: what is missing
-    /// comes back, nothing is removed.
-    pub fn restore_backup(&mut self, backup_file: &Path) -> bool {
-        // Without the key the backup's sensitive items cannot be read, and they would be dropped.
-        if self.refuse_while_archiving() || self.copy_blocked_by_lock() {
-            return false;
-        }
+    /// comes back, nothing is removed. The file is read on a worker (`Begun::Job`); its outcome
+    /// is [`ArchiveEnd::Imported`].
+    pub fn begin_restore_backup(&mut self, backup_file: &Path) -> Begun {
         let source = ImportSource::Snipdeck(backup_file.to_path_buf());
-        // The shared import path: one transaction, duplicates skipped.
-        let restored = self.import_report(&source, BoardLayout::KeepBoards, false);
-        let worked = restored.is_ok();
-        match restored {
-            Ok(report) => {
-                self.show_toast(Toast {
-                    kind: ToastKind::Success,
-                    message: ToastMessage::BackupRestored {
-                        items: report.items_added,
-                    },
-                });
-                // After the toast: a failed refresh says the list is stale, which matters more.
-                self.refresh_or_notice("a restore");
-            }
-            Err(e) => self.show_toast(danger(ToastMessage::RestoreFailed(Cause::of_portable(&e)))),
-        }
-        worked
+        self.begin_import(source, BoardLayout::KeepBoards, ImportPurpose::Restore)
     }
 
     /// "Rebuild from backup…", first half: checks what must hold before anything is touched and
@@ -401,7 +383,7 @@ where
             }
         };
         // The backup must be readable before anything is touched.
-        if self.preview_restore(backup_file).is_err() {
+        if self.backup_unreadable(backup_file) {
             return failed(self);
         }
         let salvage = data_dir.join("snipdeck.salvage.snipdeck");
@@ -581,10 +563,9 @@ where
             return Err(self.roll_back(data_dir, fresh, original_key));
         }
         self.store = fresh;
-        let imported = self.import_report(
+        let imported = self.import_now(
             &ImportSource::Snipdeck(backup_file.to_path_buf()),
             BoardLayout::KeepBoards,
-            false,
         );
         let Ok(report) = imported else {
             let fresh = std::mem::replace(
@@ -595,10 +576,9 @@ where
         };
         let recovered = salvage
             .and_then(|file| {
-                self.import_report(
+                self.import_now(
                     &ImportSource::Snipdeck(file.to_path_buf()),
                     BoardLayout::KeepBoards,
-                    false,
                 )
                 .ok()
             })
@@ -656,94 +636,185 @@ where
         }
     }
 
-    /// The importer options every Settings import uses: duplicates are skipped, a `.snipdeck`
-    /// lands as `layout` says (one new board for an import, its own boards for a restore), encrypted items open with the library's own key.
-    fn import_report(
+    /// The slow half of every Settings import starts here: reading and checking the source,
+    /// with no library, on a worker (`Begun::Job`; the snapshot's duplicate set comes with it).
+    /// Duplicates are skipped; a `.snipdeck` lands as `layout` says (one new board for an
+    /// import, its own boards for a restore); encrypted items open with the library's key.
+    fn begin_import(
         &mut self,
-        source: &ImportSource,
+        source: ImportSource,
         layout: BoardLayout,
-        dry_run: bool,
-    ) -> snipdeck_portable::Result<ImportReport> {
-        let options = ImportOptions {
-            merge: MergeStrategy::SkipDuplicates,
+        purpose: ImportPurpose,
+    ) -> Begun {
+        // A `.snipdeck` file's sensitive items open with the library's key; locked, they would be
+        // dropped.
+        let needs_key = purpose == ImportPurpose::Restore
+            || (purpose == ImportPurpose::Apply && matches!(source, ImportSource::Snipdeck(_)));
+        if self.refuse_while_archiving() || (needs_key && self.copy_blocked_by_lock()) {
+            return Begun::Refused;
+        }
+        let work = Work::Decode {
+            source: source.clone(),
             layout,
-            key: KeySource::Library,
-            dry_run,
-            ..ImportOptions::default()
+            now: self.clock.now(),
         };
-        source.run(&mut self.store, self.clock.now(), &options)
+        let job = self.archive_job(ArchiveOp::Decode, work);
+        let run = ImportRun {
+            source,
+            purpose,
+            counter: self.store.change_counter(),
+        };
+        self.begin_running(job, Context::Import(Box::new(run)))
     }
 
     /// Works out what importing `source` would do, writing nothing: the preview the page shows
-    /// before the user agrees.
-    ///
-    /// # Errors
-    ///
-    /// Why the source cannot be read.
-    pub fn preview_import(
+    /// before the user agrees. The outcome is [`ArchiveEnd::ImportPreview`].
+    pub fn begin_import_preview(&mut self, source: &ImportSource) -> Begun {
+        self.begin_import(
+            source.clone(),
+            BoardLayout::SingleBoard,
+            ImportPurpose::Preview,
+        )
+    }
+
+    /// The preview of restoring a backup: like [`Self::begin_import_preview`], but the backup's
+    /// boards come back under their own names.
+    pub fn begin_restore_preview(&mut self, backup_file: &Path) -> Begun {
+        self.begin_import(
+            ImportSource::Snipdeck(backup_file.to_path_buf()),
+            BoardLayout::KeepBoards,
+            ImportPurpose::Preview,
+        )
+    }
+
+    /// Imports `source` for real, as previewed. The outcome is [`ArchiveEnd::Imported`].
+    pub fn begin_apply_import(&mut self, source: &ImportSource) -> Begun {
+        self.begin_import(
+            source.clone(),
+            BoardLayout::SingleBoard,
+            ImportPurpose::Apply,
+        )
+    }
+
+    /// The UI-thread half of an import step: previews or applies the decoded source against the
+    /// library as it is now. The snapshot's duplicate set is used only if nothing was edited
+    /// since it was taken; otherwise it is read again.
+    pub(super) fn finish_import(
         &mut self,
-        source: &ImportSource,
-    ) -> Result<ImportPreview, ImportProblem> {
-        self.preview_as(source, BoardLayout::SingleBoard)
+        run: ImportRun,
+        made: Result<Made, JobError>,
+    ) -> ArchiveEnd {
+        // `None` in the error: the worker itself failed (no portable error to name).
+        let decoded = match made {
+            Ok(Made::Decoded(decoded)) => (*decoded).map_err(Some),
+            Ok(_) => Err(None),
+            Err(e) => {
+                crate::trace!("import worker failed: {e}");
+                Err(None)
+            }
+        };
+        if run.purpose != ImportPurpose::Preview && self.copy_blocked_by_lock() {
+            // The library was locked while the source was being read: nothing is written.
+            return ArchiveEnd::Imported(false);
+        }
+        let fresh = run.counter == self.store.change_counter();
+        let ready = decoded.map(|ready| {
+            let known = fresh.then_some(ready.known);
+            (ready.decoded, known)
+        });
+        match run.purpose {
+            ImportPurpose::Preview => {
+                let preview = ready
+                    .and_then(|(decoded, known)| {
+                        decoded.preview(&self.store, known.as_ref()).map_err(Some)
+                    })
+                    .map(|report| ImportPreview {
+                        boards: report.boards_added,
+                        lists: report.lists_added,
+                        items: report.items_added,
+                        duplicates: report.duplicates_skipped,
+                        tags: report.tags_added,
+                        warnings: report.warnings,
+                        warnings_dropped: report.warnings_dropped,
+                    })
+                    .map_err(|e| e.map_or(ImportProblem::Failed, |e| problem_of(&run.source, &e)));
+                ArchiveEnd::ImportPreview(preview)
+            }
+            ImportPurpose::Apply | ImportPurpose::Restore => {
+                let restoring = run.purpose == ImportPurpose::Restore;
+                let applied = ready.and_then(|(decoded, known)| {
+                    decoded.apply(&mut self.store, known.as_ref()).map_err(Some)
+                });
+                let worked = applied.is_ok();
+                match applied {
+                    Ok(report) => {
+                        self.show_toast(Toast {
+                            kind: ToastKind::Success,
+                            message: if restoring {
+                                ToastMessage::BackupRestored {
+                                    items: report.items_added,
+                                }
+                            } else {
+                                ToastMessage::Imported {
+                                    items: report.items_added,
+                                }
+                            },
+                        });
+                        // After the toast: a failed refresh says the list is stale, which
+                        // matters more.
+                        self.refresh_or_notice(if restoring { "a restore" } else { "an import" });
+                    }
+                    Err(e) => {
+                        let cause = e.as_ref().map_or(Cause::Other, Cause::of_portable);
+                        self.show_toast(danger(if restoring {
+                            ToastMessage::RestoreFailed(cause)
+                        } else {
+                            ToastMessage::ImportFailed(cause)
+                        }));
+                    }
+                }
+                ArchiveEnd::Imported(worked)
+            }
+        }
     }
 
-    /// The preview of restoring a backup: like [`Self::preview_import`], but the backup's boards
-    /// come back under their own names.
-    ///
-    /// # Errors
-    ///
-    /// Why the backup cannot be read.
-    pub fn preview_restore(&mut self, backup_file: &Path) -> Result<ImportPreview, ImportProblem> {
-        let source = ImportSource::Snipdeck(backup_file.to_path_buf());
-        self.preview_as(&source, BoardLayout::KeepBoards)
+    /// Whether the backup cannot be read (checked on this thread, before a rebuild touches
+    /// anything).
+    fn backup_unreadable(&self, backup: &Path) -> bool {
+        let options = ImportOptions {
+            merge: MergeStrategy::SkipDuplicates,
+            layout: BoardLayout::KeepBoards,
+            key: self
+                .store
+                .data_key()
+                .map_or(KeySource::None, KeySource::Given),
+            ..ImportOptions::default()
+        };
+        ImportSource::Snipdeck(backup.to_path_buf())
+            .decode(self.clock.now(), &options)
+            .is_err()
     }
 
-    fn preview_as(
+    /// Reads and writes `source` in one go, on this thread: only for the rebuild's two imports
+    /// into the library it has just swapped in.
+    fn import_now(
         &mut self,
         source: &ImportSource,
         layout: BoardLayout,
-    ) -> Result<ImportPreview, ImportProblem> {
-        let report = self
-            .import_report(source, layout, true)
-            .map_err(|e| problem_of(source, &e))?;
-        Ok(ImportPreview {
-            boards: report.boards_added,
-            lists: report.lists_added,
-            items: report.items_added,
-            duplicates: report.duplicates_skipped,
-            tags: report.tags_added,
-            warnings: report.warnings,
-            warnings_dropped: report.warnings_dropped,
-        })
-    }
-
-    /// Imports `source` for real, as previewed, and says how many items came in. Returns
-    /// whether it worked.
-    pub fn apply_import(&mut self, source: &ImportSource) -> bool {
-        if self.refuse_while_archiving() {
-            return false;
-        }
-        // A `.snipdeck` file's sensitive items open with the library's key; locked, they would be
-        // dropped.
-        if matches!(source, ImportSource::Snipdeck(_)) && self.copy_blocked_by_lock() {
-            return false;
-        }
-        match self.import_report(source, BoardLayout::SingleBoard, false) {
-            Ok(report) => {
-                self.show_toast(Toast {
-                    kind: ToastKind::Success,
-                    message: ToastMessage::Imported {
-                        items: report.items_added,
-                    },
-                });
-                self.refresh_or_notice("an import");
-                true
-            }
-            Err(e) => {
-                self.show_toast(danger(ToastMessage::ImportFailed(Cause::of_portable(&e))));
-                false
-            }
-        }
+    ) -> snipdeck_portable::Result<ImportReport> {
+        let decoded = {
+            let options = ImportOptions {
+                merge: MergeStrategy::SkipDuplicates,
+                layout,
+                key: self
+                    .store
+                    .data_key()
+                    .map_or(KeySource::None, KeySource::Given),
+                ..ImportOptions::default()
+            };
+            source.decode(self.clock.now(), &options)?
+        };
+        decoded.apply(&mut self.store, None)
     }
 
     /// "Erase library": closes the library, deletes it from `data_dir` (everything but the
