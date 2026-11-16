@@ -4,9 +4,9 @@
 const MAIN: &str = include_str!("../src/main.rs");
 
 fn subsystem_attribute() -> &'static str {
-    MAIN.lines()
-        .find(|l| l.contains("windows_subsystem"))
-        .expect("main.rs sets the windows subsystem")
+    let line = MAIN.lines().find(|l| l.contains("windows_subsystem"));
+    assert!(line.is_some(), "main.rs sets the windows subsystem");
+    line.unwrap_or_default()
 }
 
 #[test]
