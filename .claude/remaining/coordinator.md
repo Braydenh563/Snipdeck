@@ -2,6 +2,9 @@
 
 PR #5 head pushed (tools merge, 1.99 clippy fixes, CodeQL keyring fix). CI: Windows, audits ok; Linux and CodeQL Rust were running.
 
+## Open CI
+- CodeQL: 1 new critical alert on 1c45c00 (likely hard-coded crypto value, keyring.rs NFC tests). Read the alert in the Security tab; fix with runtime-random stems or dismiss as test-only. Commented on PR #5.
+
 ## Areas
 - data: DONE, 7d3c212 on claude/fix-audit-data (toast queue added), gate green. Next: Sonnet reviewer (no checkout) on a1db682..7d3c212, then merge into PR #5.
 - perf: f5306da done; perf pt2 session_01NKjURujwKd9MubADsQ4Ane on PERF-8 (pushed 66d0bce, fixing a test compile), PERF-4/11/19.
