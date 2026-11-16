@@ -63,13 +63,17 @@ where
             self.show_toast(neutral(ToastMessage::GroupNeedsList));
             return;
         };
-        if !self.group_reorderable(s) {
-            self.offer_manual_for_group(s);
+        // Under a filter the rows show no headers: a group made now would be invisible.
+        if s == Surface::Main
+            && self.main.open_list().is_some()
+            && !self.main.searching()
+            && !self.main.shows_groups()
+        {
+            self.show_toast(neutral(ToastMessage::GroupColourFilter));
             return;
         }
-        // Under a colour filter the rows show no headers: a group made now would be invisible.
-        if s == Surface::Main && !self.main.shows_groups() {
-            self.show_toast(neutral(ToastMessage::GroupColourFilter));
+        if !self.group_reorderable(s) {
+            self.offer_manual_for_group(s);
             return;
         }
         // A window text that is no valid name (empty, too long) must not stop the group: it takes
@@ -352,7 +356,7 @@ where
             Surface::Main => {
                 if !self.main.searching()
                     && let Some(list) = self.main.open_list()
-                    && list.sort != snipdeck_core::ListSort::Manual
+                    && !list.sort.is_manual()
                 {
                     let id = list.id;
                     self.offer_manual_order(id);
@@ -555,6 +559,17 @@ where
         self.group_refresh(s);
     }
 
+    /// "Move group to list…": the chooser the window opens next holds the group's items, so the
+    /// list picked takes them all (the header stays behind; a group is a run in one list).
+    pub fn main_group_move_start(&mut self, index: usize) {
+        self.main_fresh();
+        if let Some(run) = self.group_row(Surface::Main, index) {
+            let targets = run.items.iter().map(|id| MainKey::Item(*id)).collect();
+            self.main.set_chooser(targets);
+            self.group_move = Some(run.group);
+        }
+    }
+
     /// Delete group: the header and its items go to the Trash, with the usual Undo toast (one
     /// step; restoring the items brings the header back).
     pub fn group_delete(&mut self, index: usize) {
@@ -565,14 +580,50 @@ where
         self.trash_with_undo(&items);
     }
 
-    /// Delete group from the Main window: the same, with the same Undo toast.
+    /// Delete group from the Main window: the same, with the same Undo toast. A folded group
+    /// hides the rows it deletes, so the window asks first, with the count.
     pub fn main_group_delete(&mut self, index: usize) {
         self.main_fresh();
         let Some(run) = self.group_row(Surface::Main, index) else {
             return;
         };
+        if run.group.collapsed && !run.items.is_empty() {
+            self.group_delete = Some(run.group.id);
+            return;
+        }
         self.trash_with_undo(&run.items);
         self.main_fresh();
+    }
+
+    /// The folded group the Main window asks about, with how many items go with it.
+    pub(super) fn group_delete_view(&self) -> Option<(String, usize)> {
+        let id = self.group_delete?;
+        self.main
+            .all_groups()
+            .find(|r| r.group.id == id)
+            .map(|r| (r.group.name.as_str().to_owned(), r.items.len()))
+    }
+
+    /// "Delete group" in the confirmation: the group and its items go to the Trash, with Undo.
+    pub fn main_group_delete_confirm(&mut self) {
+        self.main_fresh();
+        let Some(id) = self.group_delete.take() else {
+            return;
+        };
+        let items = self
+            .main
+            .all_groups()
+            .find(|r| r.group.id == id)
+            .map(|r| r.items.clone());
+        if let Some(items) = items {
+            self.trash_with_undo(&items);
+            self.main_fresh();
+        }
+    }
+
+    /// Cancel, Esc or a click on the scrim: the group stays.
+    pub fn main_group_delete_cancel(&mut self) {
+        self.group_delete = None;
     }
 
     /// A drag that involves a header: a header dropped on a row moves the whole group there; an

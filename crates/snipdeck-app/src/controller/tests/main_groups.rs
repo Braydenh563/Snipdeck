@@ -67,7 +67,7 @@ fn a_list_that_sorts_itself_offers_manual_order_instead_of_grouping() {
     let mut w = open_replies();
     let board = w.ctl.store().boards().expect("boards")[0].id;
     let id = w.ctl.store().lists(board).expect("lists")[0].id;
-    w.ctl.set_list_sort(id, snipdeck_core::ListSort::MostUsed);
+    w.ctl.set_list_sort(id, snipdeck_core::Sort::MOST_USED);
     w.ctl.main_select(0, SelectMode::Replace);
     w.ctl.main_group_marked(0);
     assert_eq!(shape(&mut w).iter().filter(|r| r.1).count(), 0);
@@ -475,6 +475,12 @@ fn deleting_a_folded_group_trashes_its_hidden_members_and_undo_restores_them() {
     group_first_two(&mut w);
     w.ctl.main_group_collapse(0, Some(true)); // [Group*] Three Greeting
     w.ctl.main_group_delete(0);
+    assert_eq!(
+        w.ctl.main_screen().group_delete,
+        Some(("Group".to_owned(), 2)),
+        "a folded group hides what it deletes: the window asks, with the count"
+    );
+    w.ctl.main_group_delete_confirm();
     assert_eq!(
         titles(&mut w),
         ["Three", "Greeting"],

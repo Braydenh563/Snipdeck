@@ -13,7 +13,7 @@ use crate::{
 use snipdeck_core::search::{BodyMatches, Query};
 use snipdeck_core::{
     Board, BoardId, GroupId, Item, ItemId, ItemKind, ItemLabel, List, ListAccent, ListIcon, ListId,
-    ListSort, search::SearchIndex,
+    search::SearchIndex,
 };
 use snipdeck_platform::{
     keys::{PasteRule, builtin_paste_rules},
@@ -377,7 +377,7 @@ impl PanelModel {
     /// refusal offers to switch the list to manual order.
     #[must_use]
     pub fn sorts_itself(&self) -> bool {
-        !self.searching() && self.list().is_some_and(|l| l.sort != ListSort::Manual)
+        !self.searching() && self.list().is_some_and(|l| !l.sort.is_manual())
     }
 
     /// Whether a search is active.
@@ -390,7 +390,7 @@ impl PanelModel {
     /// search is running.
     #[must_use]
     pub fn reorderable(&self) -> bool {
-        !self.searching() && self.list().is_some_and(|l| l.sort == ListSort::Manual)
+        !self.searching() && self.list().is_some_and(|l| l.sort.is_manual())
     }
 
     /// The shown list's items in manual order.
@@ -453,7 +453,7 @@ impl PanelModel {
                 Some((item, hit.tag.as_deref()))
             })
             .collect();
-        let manual = self.list().is_some_and(|l| l.sort == ListSort::Manual);
+        let manual = self.list().is_some_and(|l| l.sort.is_manual());
         let mut rows = Vec::new();
         let mut shown: Vec<GroupId> = Vec::new();
         let mut number = 0;
@@ -499,7 +499,7 @@ impl PanelModel {
     /// left out while it is collapsed). Quick numbers count item rows only. A list that orders
     /// itself shows no groups: a group is a run of the manual order.
     fn list_rows(&self) -> Vec<Row> {
-        let manual = self.list().is_some_and(|l| l.sort == ListSort::Manual);
+        let manual = self.list().is_some_and(|l| l.sort.is_manual());
         let runs: HashMap<ItemId, &GroupRun> = if manual {
             self.groups
                 .iter()
@@ -680,12 +680,8 @@ impl PanelModel {
     /// The shown list's items in its sort order, whatever the search says.
     fn list_items(&self) -> Vec<&Item> {
         let mut items: Vec<&Item> = self.items.iter().collect();
-        match self.list().map(|l| l.sort) {
-            Some(ListSort::MostUsed) => items.sort_by_key(|i| std::cmp::Reverse(i.use_count)),
-            Some(ListSort::RecentlyUsed) => {
-                items.sort_by_key(|i| std::cmp::Reverse(i.last_used_at));
-            }
-            _ => {}
+        if let Some(list) = self.list() {
+            list.sort.apply(&mut items);
         }
         items
     }
@@ -957,7 +953,7 @@ pub fn friendly_app_name(exe: &str) -> String {
 mod tests {
     use super::*;
     use crate::controller::Library as _;
-    use snipdeck_core::{Content, Format, Formats, Inline, Name, Placement, Tag, Timestamp};
+    use snipdeck_core::{Content, Format, Formats, Inline, Name, Placement, Sort, Tag, Timestamp};
     use snipdeck_platform::route::Focus;
     use snipdeck_store::Store;
     use snipdeck_store::TrashRepo as _;
@@ -1203,7 +1199,7 @@ mod tests {
         }
         f.store.record_use(quiet, at()).expect("use");
         let mut list = f.store.list(f.replies).expect("list");
-        list.sort = ListSort::MostUsed;
+        list.sort = Sort::MOST_USED;
         f.store.update_list(&list).expect("update");
         let rows = PanelModel::load_cached(&f.store, None, None, &IndexCache::new())
             .expect("model")
@@ -1331,7 +1327,7 @@ mod tests {
         model.move_selection(1);
         assert_eq!(model.selected(), Some(b));
         let mut list = f.store.list(f.replies).expect("list");
-        list.sort = ListSort::MostUsed;
+        list.sort = Sort::MOST_USED;
         f.store.update_list(&list).expect("update");
         f.store.record_use(a, at()).expect("use");
         model.refresh(&f.store).expect("refresh");

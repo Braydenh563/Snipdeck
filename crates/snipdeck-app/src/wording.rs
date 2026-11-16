@@ -295,6 +295,7 @@ where
         ToastMessage::GroupColourFilter => t.invoke_group_colour_filter(),
         ToastMessage::GroupNothing => t.invoke_group_nothing(),
         ToastMessage::TagDeleted { name } => t.invoke_tag_deleted(name.into()),
+        ToastMessage::TagMerged { from, into } => t.invoke_tag_merged(from.into(), into.into()),
         ToastMessage::UndoStopped => t.invoke_undo_stopped(),
         ToastMessage::HistoryStepLost => t.invoke_history_step_lost(),
         ToastMessage::Redone { action } => t.invoke_redone(action_word(&t, *action)),

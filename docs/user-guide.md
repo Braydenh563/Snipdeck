@@ -200,8 +200,13 @@ the right of the sidebar header (or `Ctrl+B`) folds the sidebar to a narrow rail
   Panel it has **New board**, **Rename board** and **Delete board** for the board you are on, so you can manage
   boards without opening the Main window. The Main window can also move a board up or down. Deleting a board
   moves its lists and items to the Trash, and **Undo** brings it back.
-- **Lists.** Add a list with **Add list** in the sidebar, or the **+** tab in the Panel. **Edit list** sets the name, a colour and the sort: manual, most
-  used or recently used. Move a list with `Alt+Up` or `Alt+Down` while it is selected in the sidebar.
+- **Lists.** Add a list with **Add list** in the sidebar, or the **+** tab in the Panel. **Edit list** sets the name, a colour, an icon and the sort (see *Sort and filter* below). Move a list with `Alt+Up` or `Alt+Down` while it is selected in the sidebar.
+- **Sort and filter.** The toolbar of the Main window has **Sort by** and **Filter** buttons. Sort by is one menu for
+  every view (a list, All items, Pinned and a tag): Manual, Name, Created, Modified, Most used or Recently used,
+  and **Reverse order**. Each view keeps its own choice; items never used come last. Filter combines kind (Text,
+  Template, Code, Link, Image, File), **Has a trigger**, **Sensitive**, **Untagged** and **Tags…** (several tags,
+  matching any of them, or every one with **Items need every chosen tag**). The choices show as chips under the
+  toolbar; a chip's button removes it and **Clear filter** removes all. The colour label chips work with them.
 - **Order of items.** Select a row and press `Alt+Up` or `Alt+Down`, in the Main window or the Panel, or choose **Move up** / **Move down** in the snippet's menu.
 - **Groups.** A list sorted by hand (Manual) can hold named groups of items, in the Panel and in the Main window.
   - **Make one.** Select two or more rows and press `Ctrl+G`, or choose **Group…** from the item menu (the row
@@ -214,7 +219,10 @@ the right of the sidebar header (or `Ctrl+B`) folds the sidebar to a narrow rail
     (in the Panel `Space` does too). A folded group hides its items and stays folded.
   - **Rename.** Press `F2` on the header, press `Ctrl+G` on it with nothing selected, or choose **Rename group**.
   - **Ungroup or delete.** **Ungroup** dissolves the group and keeps its items. **Delete group** (or `Delete`
-    on the header) moves the group and its items to the Trash, and `Ctrl+Z` brings them all back in one step.
+    on the header) moves the group and its items to the Trash, and `Ctrl+Z` brings them all back in one step. A
+    folded group asks first and names how many items it hides.
+  - **Move to another list.** **Move group to list…** in the header's menu takes the header and all its items.
+  - **Other sorts.** Under any sort except Manual the headers stay and the items sort inside each group.
   - **Move.** Drag a header to move the whole group, or press `Alt+Up` or `Alt+Down` on it. Dropping an item on a
     header adds it to that group.
   - **Search.** Searching lists every match, even inside a folded group, under the group's header in the Panel;
@@ -236,7 +244,9 @@ the right of the sidebar header (or `Ctrl+B`) folds the sidebar to a narrow rail
   starts with the list name. Each item follows, with its title when it has one, and a line of dashes between
   items. Images, files and sensitive items are left out, because the file is plain text.
 - **Tags.** Choose **Tags…** to tick the tags of the selected items. Delete a tag from the sidebar; its items
-  stay. New tags are made in the item editor.
+  stay. New tags are made in the item editor. In **Manage tags** each tag has a colour button (one of the eight
+  item colours, shown as a dot in the sidebar and here). Renaming a tag to a name that exists offers **Merge**:
+  every item gets the other tag and the renamed one is deleted; `Ctrl+Z` undoes it.
 - **Pin.** Press `Ctrl+P` on a row, or choose **Pin** from its menu. Pinned items show in a strip under the
   Panel's tabs, and under **Pinned** in the sidebar.
 - **Rename.** The item's title is in the editor (`Ctrl+E` or `F2`). Lists and boards have their own rename
@@ -261,6 +271,8 @@ the right of the sidebar header (or `Ctrl+B`) folds the sidebar to a narrow rail
   on its tab and in the sidebar, tinted in the list's colour. Use the arrow keys to move through the icons.
 
 ### Trash and undo
+
+The search box also searches the Trash by title and preview, with the same marks as everywhere else.
 
 Deleting an item, list or board moves it to the **Trash**. A message with an **Undo** button stays for about
 5 seconds, and longer while the pointer is on it. `Ctrl+Z` does the same as the button. In a search box

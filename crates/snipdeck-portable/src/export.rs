@@ -163,13 +163,37 @@ fn name_the_item(error: Error, title: &str) -> Error {
     }
 }
 
+/// The tags some written item uses, in name order.
+fn tag_dtos(
+    used: &BTreeSet<TagId>,
+    names: &HashMap<TagId, (String, Option<String>)>,
+) -> Vec<TagDto> {
+    let mut tags: Vec<TagDto> = used
+        .iter()
+        .filter_map(|id| {
+            names.get(id).map(|(name, colour)| TagDto {
+                id: id.to_string(),
+                name: name.clone(),
+                colour: colour.clone(),
+            })
+        })
+        .collect();
+    tags.sort_by_key(|t| t.name.to_lowercase());
+    tags
+}
+
 impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
     fn build_doc(&mut self) -> Result<ItemsDoc> {
-        let tag_names: HashMap<TagId, String> = self
+        let tag_names: HashMap<TagId, (String, Option<String>)> = self
             .lib
             .tags()?
             .into_iter()
-            .map(|t| (t.id, t.name.to_string()))
+            .map(|t| {
+                (
+                    t.id,
+                    (t.name.to_string(), t.colour.map(|c| c.key().to_owned())),
+                )
+            })
             .collect();
         let mut used_tags: BTreeSet<TagId> = BTreeSet::new();
         let mut boards = Vec::new();
@@ -236,7 +260,7 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
                     icon: list.icon.map(|i| i.key().to_owned()),
                     groups: group_dtos(&runs, &written_groups),
                     view: list.view.key().to_owned(),
-                    sort: list.sort.key().to_owned(),
+                    sort: list.sort.key(),
                     created_at: list.created_at.to_string(),
                     updated_at: list.updated_at.to_string(),
                     items,
@@ -246,6 +270,8 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
             boards.push(BoardDto {
                 id: board.id.to_string(),
                 name: board.name.to_string(),
+                accent: board.accent.map(|a| a.key().to_owned()),
+                icon: board.icon.map(|i| i.key().to_owned()),
                 created_at: board.created_at.to_string(),
                 updated_at: board.updated_at.to_string(),
                 lists,
@@ -253,17 +279,7 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
             self.report.boards += 1;
         }
 
-        // Tags in name order, only those some written item uses.
-        let mut tags: Vec<TagDto> = used_tags
-            .iter()
-            .filter_map(|id| {
-                tag_names.get(id).map(|name| TagDto {
-                    id: id.to_string(),
-                    name: name.clone(),
-                })
-            })
-            .collect();
-        tags.sort_by_key(|t| t.name.to_lowercase());
+        let tags = tag_dtos(&used_tags, &tag_names);
         self.report.tags = tags.len();
         Ok(ItemsDoc { tags, boards })
     }

@@ -13,6 +13,7 @@ export component LabelChip inherits Rectangle {
     in property <bool> selected: false;
     // Forces the focus ring (galleries and tests).
     in property <bool> show-focus: false;
+    out property <bool> has-focus: scope.has-focus;
     callback clicked();
 
     property <bool> hovered: touch.has-hover;

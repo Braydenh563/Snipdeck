@@ -164,7 +164,7 @@ where
         if let Some(ToastMessage::SwitchToManual { list }) =
             self.toast.as_ref().map(|t| t.toast.message.clone())
         {
-            self.set_list_sort(list, snipdeck_core::ListSort::Manual);
+            self.set_list_sort(list, snipdeck_core::Sort::MANUAL);
             return;
         }
         self.main_undo();

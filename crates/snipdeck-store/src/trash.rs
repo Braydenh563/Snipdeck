@@ -23,15 +23,16 @@ use crate::codec::{
 };
 use crate::{Error, Result, TrashEntry, Trashable};
 
-/// One row per trash entry: kind (0 board, 1 list, 2 item), id, label, `deleted_at`.
+/// One row per trash entry: kind (0 board, 1 list, 2 item), id, label, `deleted_at`, preview
+/// (an item's own preview; empty for a list or board).
 const ENTRIES: &str = "
-    SELECT 0 AS kind, id, name AS label, deleted_at FROM boards WHERE deleted_at IS NOT NULL
+    SELECT 0 AS kind, id, name AS label, deleted_at, '' AS preview FROM boards WHERE deleted_at IS NOT NULL
     UNION ALL
-    SELECT 1, l.id, l.name, l.deleted_at
+    SELECT 1, l.id, l.name, l.deleted_at, ''
       FROM lists l JOIN boards b ON b.id = l.board_id
      WHERE l.deleted_at IS NOT NULL AND b.deleted_at IS NULL
     UNION ALL
-    SELECT 2, i.id, CASE WHEN i.title <> '' THEN i.title ELSE i.preview END, i.deleted_at
+    SELECT 2, i.id, CASE WHEN i.title <> '' THEN i.title ELSE i.preview END, i.deleted_at, i.preview
       FROM items i JOIN lists l ON l.id = i.list_id JOIN boards b ON b.id = l.board_id
      WHERE i.deleted_at IS NOT NULL AND l.deleted_at IS NULL AND b.deleted_at IS NULL";
 
@@ -67,10 +68,11 @@ pub(crate) fn trashed(conn: &Connection) -> Result<Vec<TrashEntry>> {
             r.get::<_, Vec<u8>>(1)?,
             r.get::<_, String>(2)?,
             r.get::<_, i64>(3)?,
+            r.get::<_, String>(4)?,
         ))
     })?;
     rows.map(|row| {
-        let (kind, id, label, deleted_at) = row?;
+        let (kind, id, label, deleted_at, preview) = row?;
         let target = match kind {
             0 => Trashable::Board(id_from::<BoardId>(&id)?),
             1 => Trashable::List(id_from::<ListId>(&id)?),
@@ -79,6 +81,7 @@ pub(crate) fn trashed(conn: &Connection) -> Result<Vec<TrashEntry>> {
         Ok(TrashEntry {
             target,
             label,
+            preview,
             deleted_at: from_nanos(deleted_at)?,
         })
     })

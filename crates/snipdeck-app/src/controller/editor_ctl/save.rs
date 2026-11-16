@@ -349,7 +349,11 @@ where
                 out.ticked.insert(found.id);
             } else if let Ok(name) = Name::new(&entry.name) {
                 out.ticked.insert(entry.id);
-                out.created.push(Tag { id: entry.id, name });
+                out.created.push(Tag {
+                    id: entry.id,
+                    name,
+                    colour: None,
+                });
             }
         }
         Ok(out)

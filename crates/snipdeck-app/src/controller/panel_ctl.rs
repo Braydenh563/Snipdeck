@@ -329,7 +329,7 @@ where
             return;
         }
         if let Some(list) = self.model.list()
-            && list.sort != snipdeck_core::ListSort::Manual
+            && !list.sort.is_manual()
         {
             let id = list.id;
             self.offer_manual_order(id);

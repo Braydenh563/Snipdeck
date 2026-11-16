@@ -295,6 +295,8 @@ pub(crate) fn import_snips<L: Library>(
     let mut plan = Plan::default();
     if !lists.is_empty() {
         plan.boards.push(PlanBoard {
+            accent: None,
+            icon: None,
             name: board_name(
                 options.board_name.as_deref().unwrap_or(default_board),
                 default_board,

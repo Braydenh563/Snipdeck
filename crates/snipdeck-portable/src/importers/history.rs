@@ -89,6 +89,8 @@ pub fn import_entries<L: Library>(
         let mut list = PlanList::new(board.clone(), now);
         list.items = items;
         plan.boards.push(PlanBoard {
+            accent: None,
+            icon: None,
             name: board,
             created_at: now,
             updated_at: now,

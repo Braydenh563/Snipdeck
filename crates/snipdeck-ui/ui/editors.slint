@@ -14,7 +14,7 @@
 // Colour names and kind order are the host's mapping to its enums; they are listed next to each property.
 import { TipHost, TipLayer } from "components/tip-host.slint";
 import { ListView } from "std-widgets.slint";
-import { Theme, Type, Space, Radius, Motion, Fonts, Palette, ListHue, SystemLook } from "theme.slint";
+import { Theme, Type, Space, Radius, Motion, Fonts, Palette, ListHue, ListAccent, SystemLook } from "theme.slint";
 import { Icons } from "icons.slint";
 import { ListIcons } from "list-icons.slint";
 import { Icon } from "components/icon.slint";
@@ -31,7 +31,7 @@ import { Dialog, DialogVariant } from "components/dialog.slint";
 import { Chooser, ChoiceEntry } from "components/chooser.slint";
 import { OverlayScrollbar } from "components/scrollbar.slint";
 import { StateColor } from "components/state-color.slint";
-import { FormField, FormScroll, Segmented, SelectField } from "components/form.slint";
+import { FormField, FormScroll, SelectField } from "components/form.slint";
 
 // An information strip: icon plus text, never colour alone.
 component Notice inherits Rectangle {
@@ -221,10 +221,11 @@ component NoColour inherits Rectangle {
     in property <string> label;
     in property <bool> selected: false;
     in property <bool> show-focus: false;
+    in property <length> cell: Space.hit * SystemLook.text-scale;
     callback clicked();
 
-    width: Space.hit * SystemLook.text-scale;
-    height: Space.hit * SystemLook.text-scale;
+    width: root.cell;
+    height: root.cell;
     accessible-role: radio-button;
     accessible-label: root.label;
     accessible-checkable: true;
@@ -240,7 +241,7 @@ component NoColour inherits Rectangle {
     Rectangle {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
-        width: (touch.has-hover || touch.pressed ? 22px : 20px) * SystemLook.text-scale;
+        width: root.cell * (touch.has-hover || touch.pressed ? 22 : 20) / 28;
         height: self.width;
         border-radius: Radius.sm;
         border-width: 1px;
@@ -249,7 +250,7 @@ component NoColour inherits Rectangle {
         animate width { duration: Motion.instant; easing: Motion.out; }
         Icon {
             source: Icons.x;
-            size: 12px * SystemLook.text-scale;
+            size: root.cell * 12 / 28;
             tint: Theme.text-secondary;
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2;
@@ -288,23 +289,40 @@ component ColourPicker inherits Rectangle {
         }
     }
 
-    height: Space.hit * SystemLook.text-scale;
+    // The targets grow with the text size, but never past the room the row has: the cell is the 28 px hit target at
+    // the least, the text-size scaled one at the most, and what the targets (plus gaps) leave of the width between.
+    // Set from `changed` handlers, not bound to `root.width`: the row's width comes from its parent's layout, which
+    // also reads its height, which follows the cell.
+    property <length> gap: Space.s1 / SystemLook.text-scale;
+    property <length> cell: Space.hit * SystemLook.text-scale;
+    property <float> text-scale: SystemLook.text-scale;
+    function refit() {
+        if (root.width > 0px) {
+            root.cell = max(Space.hit, min(Space.hit * root.text-scale, (root.width - root.hues.length * root.gap) / (root.hues.length + 1)));
+        }
+    }
+    init => { root.refit(); }
+    changed width => { root.refit(); }
+    changed text-scale => { root.refit(); }
+    height: root.cell;
     forward-focus: scope;
     accessible-role: radio-group;
     accessible-label: root.label;
 
     HorizontalLayout {
-        // The targets grow with the text size and the window cannot get wider than its minimum, so the gap shrinks
-        // by the same factor: nine targets at 2.25x still end inside the window (final-audit-2 re-audit).
-        spacing: Space.s1 / SystemLook.text-scale;
+        // The gap shrinks with the text size as the targets grow, and the targets give way when the row is still too
+        // narrow: every choice ends inside the row at 2.25x.
+        spacing: root.gap;
         alignment: start;
         NoColour {
+            cell: root.cell;
             label: root.none-label;
             selected: root.accent == -1;
             show-focus: scope.has-focus && root.accent == -1;
             clicked => { root.move(-1); }
         }
         for h[i] in root.hues: Swatch {
+            cell: root.cell;
             hue: h;
             label: root.names[i];
             selected: i == root.accent;
@@ -1804,10 +1822,11 @@ component IconCell inherits Rectangle {
     in property <string> label;
     in property <bool> selected: false;
     in property <bool> show-focus: false;
+    in property <length> cell: Space.hit * SystemLook.text-scale;
     callback clicked();
 
-    width: Space.hit * SystemLook.text-scale;
-    height: Space.hit * SystemLook.text-scale;
+    width: root.cell;
+    height: root.cell;
     accessible-role: radio-button;
     accessible-label: root.label;
     accessible-checkable: true;
@@ -1823,13 +1842,13 @@ component IconCell inherits Rectangle {
     Rectangle {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
-        width: 22px * SystemLook.text-scale;
-        height: 22px * SystemLook.text-scale;
+        width: root.cell * 22 / 28;
+        height: root.cell * 22 / 28;
         border-radius: Radius.sm;
         background: touch.pressed ? Theme.bg-sunken : touch.has-hover ? Theme.bg-hover : root.selected ? Theme.bg-selected : transparent;
         Icon {
             source: root.source;
-            size: 16px * SystemLook.text-scale;
+            size: root.cell * 16 / 28;
             tint: root.selected ? Theme.text-on-selected : Theme.text-secondary;
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2;
@@ -1867,7 +1886,19 @@ component IconPicker inherits Rectangle {
         }
     }
 
-    height: 3 * Space.hit * SystemLook.text-scale + 2 * Space.s1;
+    // As the colour picker: the cells give way (to no less than the 28 px hit target) when nine of them do not fit the
+    // row at the text size in use. Set from `changed` handlers; the row's width comes from a layout that reads its height.
+    property <length> cell: Space.hit * SystemLook.text-scale;
+    property <float> text-scale: SystemLook.text-scale;
+    function refit() {
+        if (root.width > 0px) {
+            root.cell = max(Space.hit, min(Space.hit * root.text-scale, (root.width - (root.columns - 1) * Space.s1) / root.columns));
+        }
+    }
+    init => { root.refit(); }
+    changed width => { root.refit(); }
+    changed text-scale => { root.refit(); }
+    height: 3 * root.cell + 2 * Space.s1;
     forward-focus: scope;
     accessible-role: radio-group;
     accessible-label: root.label;
@@ -1881,15 +1912,17 @@ component IconPicker inherits Rectangle {
             for col in root.columns: Rectangle {
                 // 0 is "no icon"; 1 to 24 are the icons.
                 property <int> cell: row * root.columns + col;
-                width: Space.hit * SystemLook.text-scale;
-                height: Space.hit * SystemLook.text-scale;
+                width: root.cell;
+                height: root.cell;
                 if cell == 0: NoColour {
+                    cell: root.cell;
                     label: root.none-label;
                     selected: root.icon == -1;
                     show-focus: scope.has-focus && root.icon == -1;
                     clicked => { root.move(-1); }
                 }
                 if cell > 0 && cell <= root.total: IconCell {
+                    cell: root.cell;
                     source: ListIcons.all[cell - 1];
                     label: root.names[cell - 1];
                     selected: cell - 1 == root.icon;
@@ -2120,9 +2153,9 @@ component EntityEditorBody inherits Rectangle {
                     }
                     if root.show-sort: FormField {
                         label: @tr("Sort items by");
-                        Segmented {
+                        SelectField {
                             label: @tr("Sort items by");
-                            options: [@tr("Manual"), @tr("Most used"), @tr("Recently used")];
+                            options: [@tr("Manual"), @tr("Name"), @tr("Created"), @tr("Modified"), @tr("Most used"), @tr("Recently used")];
                             current: root.sort-index;
                             chosen(i) => {
                                 root.sort-index = i;
@@ -2273,6 +2306,8 @@ export component BoardEditor inherits Window {
     in-out property <string> name <=> body.name;
     in property <string> name-error <=> body.name-error;
     in-out property <int> accent <=> body.accent;
+    in-out property <int> icon-index <=> body.icon-index;
+    in property <[string]> icon-names <=> body.icon-names;
     in-out property <int> sort-index <=> body.sort-index;
     in property <bool> show-colour <=> body.show-colour;
     in property <bool> show-sort <=> body.show-sort;
@@ -2296,6 +2331,7 @@ export component BoardEditor inherits Window {
     public function focus-name() { body.focus-name(); }
 
     body := EntityEditorBody {
+        show-icon: true;
         name-label: @tr("Board name");
         name-placeholder: @tr("For example, Work");
         missing-name-text: @tr("Give the board a name.");
@@ -2332,19 +2368,36 @@ export component TagManager inherits Window {
     in property <[ChoiceEntry]> tags;
     // From the host after `rename-requested` ("A tag with that name exists").
     in property <string> rename-error;
+    // Each row's colour: -1 none, else the index into the eight item colours (the order of `ItemLabel`).
+    in property <[int]> colours;
+    // The colour names, in that order (spoken, and the picker's tooltips).
+    in property <[string]> colour-names: [@tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Orange"), @tr("Red"), @tr("Violet"), @tr("Slate")];
+    // The name of the tag a rename met ("A tag with that name exists"): the host sets it with `rename-error`, and the
+    // page offers to merge the tag being renamed into it. Empty: no offer.
+    in-out property <string> merge-into;
     // The row being renamed, or -1.
     in-out property <int> editing: -1;
+    // The row whose colour the dialog sets, or -1 (dialog closed).
+    in-out property <int> colour-index: -1;
     in-out property <string> rename-text;
     // The row whose deletion the dialog asks about, or -1 (dialog closed).
     in-out property <int> delete-index: -1;
 
     callback rename-requested(index: int, name: string);
     callback delete-confirmed(index: int);
+    // Colour tag `index` (accent -1 takes the colour off).
+    callback colour-chosen(index: int, accent: int);
+    // Merge tag `index` into the tag called `into`.
+    callback merge-confirmed(index: int, into: string);
     callback close-requested();
 
-    public function finish-rename() { root.editing = -1; }
+    public function finish-rename() {
+        root.editing = -1;
+        root.merge-into = "";
+    }
 
     property <length> row-h: max(Space.hit + Space.s2, Type.line-base + Space.s3);
+    property <[ListHue]> hues: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.violet, ListHue.slate];
 
     function begin-rename(i: int) {
         root.rename-text = root.tags[i].label;
@@ -2368,7 +2421,7 @@ export component TagManager inherits Window {
             return reject;
         }
         key-pressed(event) => {
-            if (event.text == Key.Escape && root.delete-index < 0) {
+            if (event.text == Key.Escape && root.delete-index < 0 && root.colour-index < 0 && root.merge-into == "") {
                 if (root.editing >= 0) {
                     root.editing = -1;
                     // The field is gone: keep the keys (a second Esc closes the page).
@@ -2434,6 +2487,14 @@ export component TagManager inherits Window {
                             padding-left: Space.s3;
                             padding-right: Space.s2;
                             spacing: Space.s2;
+                            if root.editing != i && i < root.colours.length && root.colours[i] >= 0: Rectangle {
+                                width: Space.s3;
+                                height: Space.s3;
+                                y: (parent.height - self.height) / 2;
+                                border-radius: self.width / 2;
+                                background: ListAccent.color(root.hues[root.colours[i]]);
+                                accessible-role: none;
+                            }
                             if root.editing != i: Text {
                                 horizontal-stretch: 1;
                                 min-width: 0px;
@@ -2483,6 +2544,15 @@ export component TagManager inherits Window {
                             VerticalLayout {
                                 alignment: center;
                                 IconButton {
+                                    icon: Icons.palette;
+                                    tooltip: @tr("Colour of tag {}", tag.label);
+                                    own-tooltip: true;
+                                    clicked => { root.colour-index = i; }
+                                }
+                            }
+                            VerticalLayout {
+                                alignment: center;
+                                IconButton {
                                     icon: Icons.trash;
                                     tooltip: @tr("Delete tag {}", tag.label);
                                     own-tooltip: true;
@@ -2513,6 +2583,47 @@ export component TagManager inherits Window {
         }
     }
 
+    // The colour of one tag: the eight item colours, applied as they are picked.
+    Dialog {
+        open: root.colour-index >= 0;
+        title: @tr("Colour of tag {}", root.colour-index >= 0 && root.colour-index < root.tags.length ? root.tags[root.colour-index].label : "");
+        body: @tr("Pick a colour: it shows as a dot beside the tag. Esc closes.");
+        fill: true;
+        dismissed => { root.colour-index = -1; }
+        closed => { scope.focus(); }
+        ColourPicker {
+            horizontal-stretch: 1;
+            hues: root.hues;
+            label: @tr("Tag colour");
+            none-label: @tr("No colour");
+            names: root.colour-names;
+            accent: root.colour-index >= 0 && root.colour-index < root.colours.length ? root.colours[root.colour-index] : -1;
+            chosen(a) => {
+                let i = root.colour-index;
+                root.colour-index = -1;
+                root.colour-chosen(i, a);
+            }
+        }
+    }
+
+    // A rename that met an existing name: merge instead.
+    Dialog {
+        open: root.merge-into != "" && root.editing >= 0;
+        title: @tr("Merge into “{}”?", root.merge-into);
+        body: @tr("Every item tagged “{}” gets “{}” and “{}” is deleted. You can undo it.", root.editing >= 0 && root.editing < root.tags.length ? root.tags[root.editing].label : "", root.merge-into, root.editing >= 0 && root.editing < root.tags.length ? root.tags[root.editing].label : "");
+        dismissed => { root.merge-into = ""; }
+        closed => { scope.focus(); }
+        Button {
+            text: @tr("Cancel");
+            clicked => { root.merge-into = ""; }
+        }
+        Button {
+            text: @tr("Merge");
+            variant: ButtonVariant.primary;
+            clicked => { root.merge-confirmed(root.editing, root.merge-into); }
+        }
+    }
+
     Dialog {
         open: root.delete-index >= 0;
         variant: DialogVariant.destructive;
@@ -2536,5 +2647,5 @@ export component TagManager inherits Window {
     }
 
     // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
-    TipLayer { suppressed: root.delete-index >= 0; }
+    TipLayer { suppressed: root.delete-index >= 0 || root.colour-index >= 0 || root.merge-into != ""; }
 }

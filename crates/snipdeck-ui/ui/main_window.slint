@@ -91,6 +91,13 @@ export struct LabelChipEntry {
     count: int,
 }
 
+// One chip of the view filter: `kind` is the Filter menu's row (0 to 5 an item kind in the host's order text, template,
+// code, link, image, file; 6 has a trigger, 7 sensitive, 8 untagged, 9 a tag, whose name is `name`).
+export struct FilterChipEntry {
+    kind: int,
+    name: string,
+}
+
 // What the sidebar has open. `list` and `tag` come with an index into `lists` / `tags`.
 export enum MainSection { all, pinned, recent, trash, list, tag }
 export enum MainView { comfortable, compact, tile }
@@ -435,9 +442,24 @@ export component MainWindow inherits Window {
     in property <string> panel-hotkey;
     // The Panel is on screen: the toolbar button hides it (pressed, "Hide Panel") instead of showing it.
     in property <bool> panel-visible;
-    // The open list's sort (0 Manual, 1 Most used, 2 Recently used); the heading's "Sort" menu changes it.
+    // The open section's sort: the key's position (0 Manual, 1 Name, 2 Created, 3 Modified, 4 Most used, 5 Recently
+    // used) and whether it runs against its natural direction. The heading's "Sort" menu changes both.
     in property <int> list-sort: 0;
-    callback sort-chosen(int);
+    in property <bool> list-sort-reversed: false;
+    // The section has a sort to choose (not the Recent inbox, the Trash or a search).
+    in property <bool> sortable: false;
+    callback sort-chosen(int, bool);
+    // The view filter: which of the menu's rows are ticked (the nine of `FilterChipEntry.kind`), the chips of the
+    // active criteria, whether the chosen tags must all be on an item, and the tags the Tags chooser offers.
+    in property <[bool]> filter-checked: [false, false, false, false, false, false, false, false, false];
+    in property <[FilterChipEntry]> filter-chips;
+    in property <bool> filter-match-all: false;
+    in property <[ChoiceEntry]> filter-tag-choices;
+    callback filter-toggled(int);
+    callback filter-chip-removed(int);
+    callback filter-tag-toggled(int);
+    callback filter-match-all-changed(bool);
+    callback filter-cleared();
     // The sidebar's width in logical pixels at 100 % text size (200 to 320), and whether Ctrl+B or the toolbar
     // button folded it to the icon rail. The host remembers both; the window changes them as the user does.
     in-out property <int> sidebar-width: 232;
@@ -465,6 +487,13 @@ export component MainWindow inherits Window {
     callback board-menu-activated(int);
     callback board-menu-dismissed();
     // The board delete confirmation: "Delete board", or Cancel / Esc / a click on the scrim.
+    // A folded group hides the rows its deletion trashes: the host asks first (`group-delete-open`), with the group's
+    // name and how many items go with it.
+    in property <bool> group-delete-open: false;
+    in property <string> group-delete-name;
+    in property <int> group-delete-count;
+    callback group-delete-confirmed();
+    callback group-delete-dismissed();
     callback board-delete-confirmed();
     callback board-delete-dismissed();
     callback toast-undo();
@@ -500,6 +529,7 @@ export component MainWindow inherits Window {
     callback group-rename-requested(int);
     callback group-rename-ended();
     callback group-ungroup-requested(int);
+    callback group-move-requested(int);
     callback group-delete-requested(int);
     // The header that should open its name for editing (the host counts requests in `rename-seq`).
     in property <int> rename-row: -1;
@@ -566,7 +596,7 @@ export component MainWindow inherits Window {
     out property <bool> rail: root.narrow;
     out property <int> columns: root.cols;
     out property <bool> confirm-open: root.confirm-shown;
-    out property <bool> menu-open: item-menu-open || nav-menu-open || chooser-open || help-menu-open || view-menu-open || sort-menu-open || recent-menu-open || recent-save-open;
+    out property <bool> menu-open: item-menu-open || nav-menu-open || chooser-open || help-menu-open || view-menu-open || sort-menu-open || filter-menu-open || recent-menu-open || recent-save-open;
 
     // ---- Internals ----------------------------------------------------------------------------
     property <int> used-index: -1;
@@ -580,6 +610,8 @@ export component MainWindow inherits Window {
     property <bool> commands-compact: false;
     property <bool> view-compact: false;
     property <bool> toolbar-toggles: true;
+    // The heading row's Filter and Sort buttons drop their words (the tooltip keeps them) when the row is too narrow for both.
+    property <bool> heading-compact: false;
     property <length> caption-inset: SystemLook.caption-inset;
     property <length> ctl-h: max(Space.s8 * SystemLook.text-scale, Type.line-base + Space.s2);
     property <length> bar-h: max(Space.s8 + Space.s3, Type.line-base + Space.s2 + Space.s3);
@@ -600,6 +632,8 @@ export component MainWindow inherits Window {
     property <int> cur: root.rows.length == 0 ? -1 : min(max(root.cursor, 0), root.rows.length - 1);
     property <bool> tile: root.view == MainView.tile && !root.has-groups;
     property <bool> in-trash: root.section == MainSection.trash;
+    // Every section that lists items can be narrowed (the Recent inbox lists clipboard entries and the Trash deleted records).
+    property <bool> filterable: root.section != MainSection.recent && root.section != MainSection.trash;
     property <bool> searching: root.query != "";
     property <bool> multi: root.selected-count > 1;
     property <int> nav-cursor: 0;
@@ -611,6 +645,9 @@ export component MainWindow inherits Window {
     property <bool> help-menu-open: false;
     property <bool> view-menu-open: false;
     property <bool> sort-menu-open: false;
+    property <bool> filter-menu-open: false;
+    // The Tags chooser is the filter's (not an item's).
+    property <bool> chooser-filter: false;
     // An empty image: a menu row without a check mark keeps its icon column.
     property <image> no-icon;
     property <length> nav-menu-x: 0px;
@@ -648,7 +685,7 @@ export component MainWindow inherits Window {
     property <int> confirm-kind: 0;
     property <int> confirm-target: 0;
     property <bool> confirm-shown: false;
-    property <bool> overlay-open: root.recent-menu-open || root.recent-save-open || root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.sort-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown || root.board-delete-open || root.palette-open;
+    property <bool> overlay-open: root.recent-menu-open || root.recent-save-open || root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.sort-menu-open || root.filter-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown || root.board-delete-open || root.group-delete-open || root.palette-open;
 
     init => {
         Palette.dark = root.dark;
@@ -666,6 +703,7 @@ export component MainWindow inherits Window {
         root.commands-compact = room < 658px;
         root.view-compact = room < 608px;
         root.toolbar-toggles = room >= 574px;
+        root.heading-compact = room < 380px;
     }
     // The Colour block needs room above the list. Set from `changed height` (not bound to `root.height`: the
     // block changes the layout, and a binding on the height would loop).
@@ -870,6 +908,7 @@ export component MainWindow inherits Window {
     }
 
     function open-chooser(tags: bool, paste: bool, index: int) {
+        root.chooser-filter = false;
         root.chooser-tags = tags;
         root.chooser-paste = paste;
         root.chooser-colour = paste && root.rows[index].has-swatch;
@@ -911,6 +950,16 @@ export component MainWindow inherits Window {
         root.sort-menu-open = true;
     }
 
+    property <length> filter-menu-x: 0px;
+    property <length> filter-menu-y: 0px;
+    function open-filter-menu(x: length, y: length) {
+        root.close-menus();
+        root.nav-origin = false;
+        root.filter-menu-x = x;
+        root.filter-menu-y = y;
+        root.filter-menu-open = true;
+    }
+
     function open-recent-menu(row: int, x: length, y: length) {
         root.nav-origin = false;
         root.recent-menu-row = row;
@@ -939,13 +988,16 @@ export component MainWindow inherits Window {
         root.help-menu-open = false;
         root.view-menu-open = false;
         root.sort-menu-open = false;
+        root.filter-menu-open = false;
         root.chooser-open = false;
+        root.chooser-filter = false;
         root.restore-focus();
     }
 
     property <[MenuEntry]> group-entries: [
         { text: MenuTexts.group-rename(), icon: Icons.pencil-simple, shortcut: "F2" },
         { text: MenuTexts.group-ungroup(), icon: Icons.files },
+        { text: MenuTexts.group-move(), icon: Icons.folder },
         { separator: true },
         { text: MenuTexts.group-delete(), icon: Icons.trash, destructive: true, shortcut: "Del" },
     ];
@@ -990,10 +1042,14 @@ export component MainWindow inherits Window {
                 root.group-rename-requested(index);
             } else if (i == 1) {
                 root.group-ungroup-requested(index);
-            } else if (i == 3) {
+            } else if (i == 2) {
+                // Every item of the group goes to the chosen list: the host fills the chooser, the window opens it.
+                root.group-move-requested(index);
+                root.open-chooser(false, false, index);
+            } else if (i == 4) {
                 root.group-delete-requested(index);
             }
-            if (i != 0) {
+            if (i != 0 && i != 2) {
                 items-scope.focus();
             }
             return;
@@ -1114,7 +1170,31 @@ export component MainWindow inherits Window {
     }
 
     pure function sort-name(sort: int) -> string {
-        return sort == 1 ? @tr("Most used") : sort == 2 ? @tr("Recently used") : @tr("Manual");
+        return sort == 1 ? @tr("Name")
+            : sort == 2 ? @tr("Created")
+            : sort == 3 ? @tr("Modified")
+            : sort == 4 ? @tr("Most used")
+            : sort == 5 ? @tr("Recently used")
+            : @tr("Manual");
+    }
+
+    // The words of a filter criterion (the Filter menu's row and its chip).
+    pure function filter-name(kind: int, name: string) -> string {
+        return kind == 0 ? @tr("Text")
+            : kind == 1 ? @tr("Template")
+            : kind == 2 ? @tr("Code")
+            : kind == 3 ? @tr("Link")
+            : kind == 4 ? @tr("Image")
+            : kind == 5 ? @tr("File")
+            : kind == 6 ? @tr("Has a trigger")
+            : kind == 7 ? @tr("Sensitive")
+            : kind == 8 ? @tr("Untagged")
+            : @tr("Tag: {}", name);
+    }
+
+    // How many criteria narrow the view, the colour label included.
+    pure function filter-count() -> int {
+        return root.filter-chips.length + (root.label-filter >= 0 ? 1 : 0);
     }
 
     // A suggestion was chosen: the word at the caret is replaced (the host computed the text and the new caret).
@@ -1437,6 +1517,7 @@ export component MainWindow inherits Window {
                                         kind: SidebarItemKind.tag;
                                         label: entry.label;
                                         count: entry.count;
+                                        mark-color: entry.color;
                                         rail: root.narrow;
                                         selected: root.nav-selected == 4 + root.n-lists + i;
                                         keyboard-focusable: false;
@@ -1746,9 +1827,22 @@ export component MainWindow inherits Window {
                             accessible-role: AccessibleRole.text;
                             accessible-label: root.section-name();
                         }
-                        if root.section == MainSection.list && !root.searching: sort-button := ToolbarButton {
+                        if root.filterable: filter-button := ToolbarButton {
                             horizontal-stretch: 0;
                             h: root.ctl-h;
+                            compact: root.heading-compact;
+                            icon: Icons.funnel;
+                            label: root.filter-count() > 0 ? @tr("Filter ({})", root.filter-count()) : @tr("Filter");
+                            tooltip: @tr("Filter the items");
+                            caret: true;
+                            active: root.filter-menu-open || root.filter-count() > 0;
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.open-filter-menu(self.absolute-position.x, self.absolute-position.y + self.height); }
+                        }
+                        if root.sortable: sort-button := ToolbarButton {
+                            horizontal-stretch: 0;
+                            h: root.ctl-h;
+                            compact: root.heading-compact;
                             icon: Icons.rows;
                             label: @tr("Sort: {}", root.sort-name(root.list-sort));
                             tooltip: @tr("Sort by: {}", root.sort-name(root.list-sort));
@@ -1769,8 +1863,9 @@ export component MainWindow inherits Window {
                 }
 
                 // ---- Colour-label filter ----------------------------------------------------------
-                if root.label-chips.length > 0 || root.label-filter >= 0: Rectangle {
-                    height: Space.hit + Space.s2;
+                // One chip's height plus its 4 px focus ring on each side (the row scrolls, so it clips) and the bottom gap.
+                if root.label-chips.length > 0 || root.filter-count() > 0: Rectangle {
+                    height: max(Space.hit, Type.line-sm + Space.s2) + 3 * Space.s1;
                     accessible-role: AccessibleRole.groupbox;
                     accessible-label: @tr("Filter by colour label");
                     HorizontalLayout {
@@ -1779,21 +1874,51 @@ export component MainWindow inherits Window {
                         padding-bottom: Space.s1;
                         spacing: Space.s1;
                         alignment: start;
-                        for chip in root.label-chips: LabelChip {
-                            y: (parent.height - self.height) / 2;
-                            text: chip.name;
-                            hue: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.violet, ListHue.slate][chip.label];
-                            count: chip.count;
-                            selected: chip.label == root.label-filter;
-                            clicked => { root.label-filter-requested(chip.label == root.label-filter ? -1 : chip.label); }
+                        // The chips scroll sideways when the row is too narrow for them at the text size in use (they
+                        // each keep their words); Clear filter and the count stay in view beside them.
+                        chip-scroll := Flickable {
+                            preferred-width: chip-row.preferred-width;
+                            min-width: Space.hit;
+                            content-width: max(chip-row.preferred-width, self.width);
+                            content-height: self.height;
+                            interactive: false;
+                            function reveal(x: length, w: length) {
+                                if (x + self.content-x < 0px) {
+                                    self.content-x = -x;
+                                } else if (x + w + self.content-x > self.width) {
+                                    self.content-x = self.width - x - w;
+                                }
+                            }
+                            chip-row := HorizontalLayout {
+                                spacing: Space.s1;
+                                alignment: start;
+                                for chip in root.label-chips: chip-l := LabelChip {
+                                    y: (parent.height - self.height) / 2;
+                                    text: chip.name;
+                                    hue: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.violet, ListHue.slate][chip.label];
+                                    count: chip.count;
+                                    selected: chip.label == root.label-filter;
+                                    clicked => { root.label-filter-requested(chip.label == root.label-filter ? -1 : chip.label); }
+                                    changed has-focus => { if (self.has-focus) { chip-scroll.reveal(self.x, self.width); } }
+                                }
+                                for chip[i] in root.filter-chips: chip-f := LabelChip {
+                                    y: (parent.height - self.height) / 2;
+                                    text: root.filter-name(chip.kind, chip.name);
+                                    hue: ListHue.slate;
+                                    selected: true;
+                                    accessible-description: @tr("Remove this filter");
+                                    clicked => { root.filter-chip-removed(i); }
+                                    changed has-focus => { if (self.has-focus) { chip-scroll.reveal(self.x, self.width); } }
+                                }
+                            }
                         }
-                        if root.label-filter >= 0: Button {
+                        if root.filter-count() > 0: Button {
                             variant: ButtonVariant.ghost;
                             text: @tr("Clear filter");
                             y: (parent.height - self.height) / 2;
-                            clicked => { root.label-filter-requested(-1); }
+                            clicked => { root.filter-cleared(); }
                         }
-                        if root.label-filter >= 0: Text {
+                        if root.filter-count() > 0 && !root.heading-compact: Text {
                             text: @tr("{n} item" | "{n} items" % root.rows.length);
                             font-family: Fonts.sans;
                             font-size: Type.sm;
@@ -2804,7 +2929,7 @@ export component MainWindow inherits Window {
         dismissed => { root.board-menu-dismissed(); }
     }
 
-    if root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.sort-menu-open || root.chooser-open || root.recent-menu-open || root.recent-save-open: TouchArea {
+    if root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.sort-menu-open || root.filter-menu-open || root.chooser-open || root.recent-menu-open || root.recent-save-open: TouchArea {
         pointer-event(event) => {
             if (event.kind == PointerEventKind.down) {
                 root.close-menus();
@@ -2957,9 +3082,14 @@ export component MainWindow inherits Window {
         x: max(0px, min(root.sort-menu-x, root.width - self.width - Space.s2));
         y: root.sort-menu-y;
         entries: [
-            { text: @tr("Manual"), icon: root.list-sort == 0 ? Icons.check : root.no-icon },
-            { text: @tr("Most used"), icon: root.list-sort == 1 ? Icons.check : root.no-icon },
-            { text: @tr("Recently used"), icon: root.list-sort == 2 ? Icons.check : root.no-icon },
+            { text: @tr("Manual"), icon: root.no-icon, checked: root.list-sort == 0 },
+            { text: @tr("Name"), icon: root.no-icon, checked: root.list-sort == 1 },
+            { text: @tr("Created"), icon: root.no-icon, checked: root.list-sort == 2 },
+            { text: @tr("Modified"), icon: root.no-icon, checked: root.list-sort == 3 },
+            { text: @tr("Most used"), icon: root.no-icon, checked: root.list-sort == 4 },
+            { text: @tr("Recently used"), icon: root.no-icon, checked: root.list-sort == 5 },
+            { separator: true },
+            { text: @tr("Reverse order"), icon: root.no-icon, checked: root.list-sort-reversed, disabled: root.list-sort == 0 },
         ];
         label: @tr("Sort by");
         init => {
@@ -2968,7 +3098,58 @@ export component MainWindow inherits Window {
         }
         activated(i) => {
             root.close-menus();
-            root.sort-chosen(i);
+            if (i == 7) {
+                root.sort-chosen(root.list-sort, !root.list-sort-reversed);
+            } else {
+                root.sort-chosen(i, false);
+            }
+        }
+        dismissed => { root.close-menus(); }
+    }
+    if root.filter-menu-open: Menu {
+        menu-max-h: root.height - root.filter-menu-y - Space.s2;
+        x: max(0px, min(root.filter-menu-x, root.width - self.width - Space.s2));
+        y: root.filter-menu-y;
+        entries: [
+            { text: @tr("Text"), icon: root.no-icon, checked: root.filter-checked[0] },
+            { text: @tr("Template"), icon: root.no-icon, checked: root.filter-checked[1] },
+            { text: @tr("Code"), icon: root.no-icon, checked: root.filter-checked[2] },
+            { text: @tr("Link"), icon: root.no-icon, checked: root.filter-checked[3] },
+            { text: @tr("Image"), icon: root.no-icon, checked: root.filter-checked[4] },
+            { text: @tr("File"), icon: root.no-icon, checked: root.filter-checked[5] },
+            { separator: true },
+            { text: @tr("Has a trigger"), icon: root.no-icon, checked: root.filter-checked[6] },
+            { text: @tr("Sensitive"), icon: root.no-icon, checked: root.filter-checked[7] },
+            { text: @tr("Untagged"), icon: root.no-icon, checked: root.filter-checked[8] },
+            { text: @tr("Tags…"), icon: Icons.tag },
+            { text: @tr("Items need every chosen tag"), icon: root.no-icon, checked: root.filter-match-all },
+            { separator: true },
+            { text: @tr("Clear filter"), icon: root.no-icon, disabled: root.filter-count() == 0 },
+        ];
+        label: @tr("Filter");
+        init => {
+            self.current = 0;
+            self.focus-menu();
+        }
+        activated(i) => {
+            if (i == 10) {
+                // The tags open in the chooser, where several can be ticked in a row.
+                root.filter-menu-open = false;
+                root.chooser-tags = true;
+                root.chooser-filter = true;
+                root.chooser-paste = false;
+                root.chooser-colour = false;
+                root.chooser-x = min(max(root.filter-menu-x, root.sidebar-w), max(root.sidebar-w, root.width - 240px));
+                root.chooser-y = min(root.filter-menu-y, max(0px, root.height - 300px));
+                root.chooser-open = true;
+            } else if (i == 11) {
+                root.filter-match-all-changed(!root.filter-match-all);
+            } else if (i == 13) {
+                root.close-menus();
+                root.filter-cleared();
+            } else {
+                root.filter-toggled(i < 6 ? i : i - 1);
+            }
         }
         dismissed => { root.close-menus(); }
     }
@@ -2977,8 +3158,8 @@ export component MainWindow inherits Window {
         y: root.chooser-y;
         width: 240px * SystemLook.text-scale;
         multi: root.chooser-tags;
-        entries: root.chooser-paste ? (root.chooser-colour ? root.colour-choices : root.paste-choices) : root.chooser-tags ? root.tag-choices : root.lists;
-        label: root.chooser-paste ? MenuTexts.item-paste-as() : root.chooser-tags ? @tr("Tags") : @tr("Move to list");
+        entries: root.chooser-paste ? (root.chooser-colour ? root.colour-choices : root.paste-choices) : root.chooser-filter ? root.filter-tag-choices : root.chooser-tags ? root.tag-choices : root.lists;
+        label: root.chooser-paste ? MenuTexts.item-paste-as() : root.chooser-filter ? @tr("Filter by tags") : root.chooser-tags ? @tr("Tags") : @tr("Move to list");
         empty-text: root.chooser-tags ? @tr("No tags yet") : @tr("No lists yet");
         init => {
             self.current = 0;
@@ -2993,6 +3174,8 @@ export component MainWindow inherits Window {
                     root.paste-as-chosen(i);
                 }
                 items-scope.focus();
+            } else if (root.chooser-filter) {
+                root.filter-tag-toggled(i);
             } else if (root.chooser-tags) {
                 root.tag-toggled(i, !root.tag-choices[i].checked);
             } else {
@@ -3039,6 +3222,25 @@ export component MainWindow inherits Window {
             variant: ButtonVariant.danger;
             text: @tr("Delete board");
             clicked => { root.board-delete-confirmed(); }
+        }
+    }
+
+    // A folded group's delete confirmation: the rows it trashes are out of sight.
+    Dialog {
+        title: @tr("Delete group “{}” and its {} items?", root.group-delete-name, root.group-delete-count);
+        body: @tr("The group and its items move to the Trash. You can restore them for {} days.", root.trash-days);
+        variant: DialogVariant.destructive;
+        open: root.group-delete-open;
+        dismissed => { root.group-delete-dismissed(); }
+        closed => { root.restore-focus(); }
+        Button {
+            text: @tr("Cancel");
+            clicked => { root.group-delete-dismissed(); }
+        }
+        Button {
+            variant: ButtonVariant.danger;
+            text: @tr("Delete group");
+            clicked => { root.group-delete-confirmed(); }
         }
     }
 

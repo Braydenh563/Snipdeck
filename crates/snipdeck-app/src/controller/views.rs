@@ -311,7 +311,7 @@ pub struct View {
     /// The context menu of a list tab while it is open ([`LIST_MENU`](crate::controller::LIST_MENU)).
     pub list_menu: Option<Vec<ListMenuEntry>>,
     /// The sort of the list the list menu is open on (its "Sort by" row is checked).
-    pub list_menu_sort: snipdeck_core::ListSort,
+    pub list_menu_sort: snipdeck_core::Sort,
     /// The list the list menu is open on holds a colour (its "Copy as CSS variables" row is on).
     pub list_menu_css: bool,
     /// The shown list sorts itself and no search runs: moves are refused but offer manual order.

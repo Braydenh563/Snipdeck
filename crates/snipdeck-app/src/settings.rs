@@ -722,6 +722,9 @@ impl WindowPlace {
 /// The colour the Colours tab starts on (`accent.default`).
 pub const DEFAULT_COLOUR: &str = "#2870d4";
 
+/// How many non-list sections keep a sort in the settings.
+const SECTION_SORTS_MAX: usize = 500;
+
 /// The user's settings.
 #[allow(
     clippy::struct_excessive_bools,
@@ -788,6 +791,10 @@ pub struct Settings {
     pub main_sidebar_width: u32,
     /// The Main sidebar is collapsed to its icon rail (Ctrl+B).
     pub main_sidebar_collapsed: bool,
+    /// The sort of the Main window's sections that are not a list (a list keeps its own in the
+    /// library): `all`, `pinned` and `tag:<id>`, each a sort word (`name`, `modified-reversed`).
+    /// Absent in older files, and a section with no entry is in manual order.
+    pub section_sorts: std::collections::BTreeMap<String, String>,
     /// How Snipdeck pastes into each program, lower-case executable name first: the paste key,
     /// or "never paste" (SPEC §5.8). A program with no rule gets `Ctrl+V`. A new file starts
     /// with the programs known to need another key.
@@ -903,6 +910,7 @@ impl Default for Settings {
             main_window: None,
             main_sidebar_width: MAIN_SIDEBAR_WIDTH_DEFAULT,
             main_sidebar_collapsed: false,
+            section_sorts: std::collections::BTreeMap::new(),
             programs: builtin_program_rules(),
             no_paste_apps: Vec::new(),
             recent_history: false,
@@ -965,6 +973,42 @@ impl Settings {
     #[must_use]
     pub const fn starts_visible(&self) -> bool {
         self.autostart && self.panel_start_visible
+    }
+
+    /// The sorts of the Main window's non-list sections that are valid; the rest is dropped by
+    /// [`sanitize`](Self::sanitize).
+    #[must_use]
+    pub fn section_sorts(&self) -> std::collections::BTreeMap<String, snipdeck_core::Sort> {
+        self.section_sorts
+            .iter()
+            .filter_map(|(k, v)| Some((k.clone(), snipdeck_core::Sort::from_key(v).ok()?)))
+            .collect()
+    }
+
+    /// Sets the sort of the section stored under `key` (manual removes the entry).
+    pub fn set_section_sort(&mut self, key: &str, sort: snipdeck_core::Sort) {
+        if sort.is_manual() {
+            self.section_sorts.remove(key);
+        } else {
+            self.section_sorts.insert(key.to_owned(), sort.key());
+        }
+        self.sanitize_section_sorts();
+    }
+
+    /// Drops the entries that name no section or hold a word no sort has, and keeps at most
+    /// [`SECTION_SORTS_MAX`] (a tag's view is stored by its id, and tags come and go).
+    fn sanitize_section_sorts(&mut self) {
+        self.section_sorts.retain(|key, word| {
+            let known = key == "all"
+                || key == "pinned"
+                || key
+                    .strip_prefix("tag:")
+                    .is_some_and(|id| id.parse::<snipdeck_core::TagId>().is_ok());
+            known && snipdeck_core::Sort::from_key(word).is_ok_and(|s| !s.is_manual())
+        });
+        while self.section_sorts.len() > SECTION_SORTS_MAX {
+            self.section_sorts.pop_first();
+        }
     }
 
     /// Reads settings from JSON. Never fails: text that is not JSON gives the defaults, and a
@@ -1039,6 +1083,7 @@ impl Settings {
         field!(main_window);
         field!(main_sidebar_width);
         field!(main_sidebar_collapsed);
+        field!(section_sorts);
         if let Some(rules) = map.get("programs").and_then(programs_from_value) {
             settings.programs = rules;
         }
@@ -1172,6 +1217,7 @@ impl Settings {
             .clipboard_clear_secs
             .clamp(*CLIPBOARD_CLEAR_SECS.start(), *CLIPBOARD_CLEAR_SECS.end());
         self.sanitize_panel_geometry();
+        self.sanitize_section_sorts();
         self.main_window = self.main_window.filter(|p| {
             (WindowPlace::MIN_SIDE..=PANEL_SIDE_LIMIT).contains(&p.w)
                 && (WindowPlace::MIN_SIDE..=PANEL_SIDE_LIMIT).contains(&p.h)

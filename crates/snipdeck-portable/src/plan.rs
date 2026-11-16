@@ -18,8 +18,8 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 
 use snipdeck_core::{
     BlobRef, Board, Content, FileEntry, Format, FormatKind, Formats, Group, Item, ItemId, ItemKind,
-    ItemLabel, List, ListAccent, ListIcon, ListSort, ListView, Name, Placement, Tag, TagId,
-    Timestamp, Trigger,
+    ItemLabel, List, ListAccent, ListIcon, ListView, Name, Placement, Sort, Tag, TagId, Timestamp,
+    Trigger,
 };
 use snipdeck_store::crypto::{DataKey, Slot};
 use snipdeck_store::{
@@ -153,7 +153,7 @@ pub(crate) struct PlanList {
     pub accent: Option<ListAccent>,
     pub icon: Option<ListIcon>,
     pub view: ListView,
-    pub sort: ListSort,
+    pub sort: Sort,
     pub created_at: Timestamp,
     pub updated_at: Timestamp,
     /// Name and collapsed flag of each group; items point at them by index.
@@ -168,7 +168,7 @@ impl PlanList {
             accent: None,
             icon: None,
             view: ListView::Comfortable,
-            sort: ListSort::Manual,
+            sort: Sort::MANUAL,
             created_at: now,
             updated_at: now,
             groups: Vec::new(),
@@ -180,6 +180,8 @@ impl PlanList {
 #[derive(Debug)]
 pub(crate) struct PlanBoard {
     pub name: Name,
+    pub accent: Option<ListAccent>,
+    pub icon: Option<ListIcon>,
     pub created_at: Timestamp,
     pub updated_at: Timestamp,
     pub lists: Vec<PlanList>,
@@ -188,6 +190,8 @@ pub(crate) struct PlanBoard {
 #[derive(Debug, Default)]
 pub(crate) struct Plan {
     pub tags: Vec<Name>,
+    /// The colour of each tag, by the same index; a tag past the end has none.
+    pub tag_colours: Vec<Option<ItemLabel>>,
     pub boards: Vec<PlanBoard>,
 }
 
@@ -384,7 +388,8 @@ fn write(
         let id = if let Some(id) = by_key.get(&key) {
             *id
         } else {
-            let tag = Tag::new(name.clone());
+            let mut tag = Tag::new(name.clone());
+            tag.colour = plan.tag_colours.get(index).copied().flatten();
             lib.insert_tag(&tag)?;
             by_key.insert(key, tag.id);
             report.tags_added += 1;
@@ -396,6 +401,8 @@ fn write(
     for plan_board in &mut plan.boards {
         let mut board = Board::new(plan_board.name.clone(), plan_board.created_at);
         board.updated_at = plan_board.updated_at;
+        board.accent = plan_board.accent;
+        board.icon = plan_board.icon;
         lib.insert_board(&board, Placement::Last)?;
         report.boards_added += 1;
         report.boards.push(board.id);
@@ -578,12 +585,15 @@ mod tests {
         let mut list_b = PlanList::new(name("B"), at(1));
         list_b.items = vec![item("b1", asset(2), &[1]), item("b2", asset(3), &[])];
         let board = |n: &str, lists| PlanBoard {
+            accent: None,
+            icon: None,
             name: name(n),
             created_at: at(1),
             updated_at: at(1),
             lists,
         };
         Plan {
+            tag_colours: Vec::new(),
             tags: vec![name("existing"), name("fresh")],
             boards: vec![board("First", vec![list_a]), board("Second", vec![list_b])],
         }
@@ -701,8 +711,11 @@ mod tests {
         let mut list = PlanList::new(name("L"), at(1));
         list.items = vec![item("t", Source::Bytes(b"t".to_vec()), &[0, 1, 2])];
         let mut plan = Plan {
+            tag_colours: Vec::new(),
             tags: vec![name("Straße"), name("STRASSE"), name("e\u{301}cole")],
             boards: vec![PlanBoard {
+                accent: None,
+                icon: None,
                 name: name("B"),
                 created_at: at(1),
                 updated_at: at(1),

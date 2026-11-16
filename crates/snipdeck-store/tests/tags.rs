@@ -13,7 +13,7 @@
 mod common;
 
 use common::*;
-use snipdeck_core::{Tag, TagId};
+use snipdeck_core::{ItemLabel, Tag, TagId};
 use snipdeck_store::{Error, TagRepo};
 
 fn names(s: &impl TagRepo) -> Vec<String> {
@@ -93,6 +93,7 @@ fn missing_tags_are_not_found() {
     let ghost = Tag {
         id: TagId::generate(),
         name: name("ghost"),
+        colour: None,
     };
     assert!(matches!(
         s.update_tag(&ghost),
@@ -179,4 +180,47 @@ fn a_deleted_tag_can_be_linked_back_to_live_and_trashed_items() {
         s.link_tag(TagId::generate(), &[]),
         Err(Error::NotFound { .. })
     ));
+}
+
+#[test]
+fn a_tag_keeps_its_colour_across_a_rename_and_a_reload() {
+    let mut s = store();
+    let mut t = Tag::new(name("billing"));
+    t.colour = Some(ItemLabel::Teal);
+    s.insert_tag(&t).unwrap();
+    assert_eq!(s.tags().unwrap()[0].colour, Some(ItemLabel::Teal));
+
+    t.name = name("Billing 2026");
+    s.update_tag(&t).unwrap();
+    assert_eq!(s.tags().unwrap(), [t.clone()]);
+
+    t.colour = None;
+    s.update_tag(&t).unwrap();
+    assert_eq!(s.tags().unwrap()[0].colour, None);
+}
+
+#[test]
+fn a_board_keeps_its_accent_and_icon() {
+    use snipdeck_core::{ListAccent, ListIcon, Placement, Sort, SortKey};
+    use snipdeck_store::{BoardRepo, ListRepo};
+    let mut s = store();
+    let mut b = snipdeck_core::Board::new(name("Work"), at(0));
+    b.accent = Some(ListAccent::Rose);
+    b.icon = Some(ListIcon::Briefcase);
+    s.insert_board(&b, Placement::Last).unwrap();
+    assert_eq!(s.board(b.id).unwrap(), b);
+    b.accent = None;
+    b.icon = Some(ListIcon::Globe);
+    s.update_board(&b).unwrap();
+    assert_eq!(s.boards().unwrap(), [b.clone()]);
+
+    // Every sort a list can be given survives storage.
+    let mut l = list(&mut s, b.id, "Replies");
+    for key in SortKey::ALL {
+        for reversed in [false, true] {
+            l.sort = Sort::new(*key, reversed);
+            s.update_list(&l).unwrap();
+            assert_eq!(s.lists(b.id).unwrap()[0].sort, l.sort, "{}", l.sort.key());
+        }
+    }
 }

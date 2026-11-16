@@ -6,7 +6,7 @@
 
 use std::{collections::HashMap, sync::LazyLock};
 
-use snipdeck_core::ListAccent;
+use snipdeck_core::{ItemLabel, ListAccent};
 
 const PALETTE_JSON: &str = include_str!("../../../design/tokens/palette.json");
 
@@ -79,6 +79,23 @@ fn tint_over(c: slint::Color, bgs: &[[u8; 3]]) -> slint::Color {
     } else {
         slint::Color::from_argb_u8(0, 0, 0, 0)
     }
+}
+
+/// The colour that tints a tag's icon in the sidebar: its item colour, when it reads there (the
+/// item colours are the list hues of the same names).
+#[must_use]
+pub fn tag_icon_tint(colour: Option<ItemLabel>, dark: bool) -> slint::Color {
+    let accent = colour.map(|c| match c {
+        ItemLabel::Blue => ListAccent::Blue,
+        ItemLabel::Teal => ListAccent::Teal,
+        ItemLabel::Green => ListAccent::Green,
+        ItemLabel::Amber => ListAccent::Amber,
+        ItemLabel::Orange => ListAccent::Orange,
+        ItemLabel::Red => ListAccent::Red,
+        ItemLabel::Violet => ListAccent::Violet,
+        ItemLabel::Slate => ListAccent::Slate,
+    });
+    list_icon_tint(accent, dark)
 }
 
 /// The colour that tints a list's icon in the sidebar: the list colour when it reads against the

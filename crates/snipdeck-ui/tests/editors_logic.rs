@@ -1132,16 +1132,31 @@ ui_tests! {
         assert_eq!(ui.get_icon_index(), -1, "No icon is the first stop");
     }
 
-    fn sort_is_a_choice_of_three() {
+    fn sort_is_a_choice_of_six() {
         let (ui, _log) = list_editor();
-        find(&ui, "Most used", AccessibleRole::RadioButton).invoke_accessible_default_action();
-        assert_eq!(ui.get_sort_index(), 1);
-        find(&ui, "Recently used", AccessibleRole::RadioButton).invoke_accessible_default_action();
-        assert_eq!(ui.get_sort_index(), 2);
+        // Tall enough that the open list is on screen (off-screen rows are not in the tree).
+        ui.window().set_size(slint::LogicalSize::new(460.0, 900.0));
+        settle();
+        let combo = find(&ui, "Sort items by", AccessibleRole::Combobox);
+        assert_eq!(combo.accessible_value().as_deref(), Some("Manual"));
+        combo.invoke_accessible_default_action();
+        settle();
+        for name in ["Manual", "Name", "Created", "Modified", "Most used", "Recently used"] {
+            let item = find(&ui, name, AccessibleRole::ListItem);
+            assert!(item.size().height >= MIN_HIT, "{name}");
+        }
+        find(&ui, "Most used", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        assert_eq!(ui.get_sort_index(), 4);
+        combo.invoke_accessible_default_action();
+        settle();
+        find(&ui, "Recently used", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        assert_eq!(ui.get_sort_index(), 5);
         ui.set_show_sort(false);
         ui.set_show_colour(false);
         settle();
-        assert!(missing(&ui, "Most used", AccessibleRole::RadioButton));
+        assert!(missing(&ui, "Sort items by", AccessibleRole::Combobox));
         assert!(missing(&ui, "Teal", AccessibleRole::RadioButton));
     }
 

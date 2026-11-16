@@ -1,4 +1,4 @@
-use crate::{Name, TagId};
+use crate::{ItemLabel, Name, TagId};
 
 /// A free-form label that can be put on items across boards (SPEC §4).
 ///
@@ -9,6 +9,9 @@ pub struct Tag {
     pub id: TagId,
     /// Display name.
     pub name: Name,
+    /// An optional colour, one of the eight item colours: shown beside the name wherever the
+    /// tag is listed, never alone (the name is always there).
+    pub colour: Option<ItemLabel>,
 }
 
 impl Tag {
@@ -17,6 +20,7 @@ impl Tag {
         Self {
             id: TagId::generate(),
             name,
+            colour: None,
         }
     }
 }

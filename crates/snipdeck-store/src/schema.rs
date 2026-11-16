@@ -229,10 +229,53 @@ ALTER TABLE triggers ADD COLUMN case_mode TEXT NOT NULL DEFAULT 'exact'
     CHECK (case_mode IN ('exact', 'ignore', 'adapt'));
 ";
 
+/// Version 12: one sort for every view, a tag's colour, and a board's accent and icon.
+///
+/// `lists.list_sort` loses its closed `CHECK` (the three words it listed are now two of a
+/// longer, growing set; `snipdeck-core` reads the word and refuses an unknown one), which SQLite
+/// can only do by rebuilding the table. The words `manual`, `most-used` and `recently-used`
+/// keep their meaning. A tag's colour is one of the eight item colours; a board takes the same
+/// accents and icons as a list.
+pub(crate) const V12: &str = r"
+CREATE TABLE lists_new (
+    id         BLOB    NOT NULL PRIMARY KEY CHECK (length(id) = 16),
+    board_id   BLOB    NOT NULL REFERENCES boards (id) ON DELETE CASCADE,
+    name       TEXT    NOT NULL CHECK (length(name) > 0),
+    accent     TEXT    CHECK (accent IS NULL OR accent IN
+                   ('blue', 'teal', 'green', 'amber', 'orange', 'red', 'rose', 'violet', 'slate')),
+    list_view  TEXT    NOT NULL CHECK (list_view IN ('compact', 'comfortable')),
+    list_sort  TEXT    NOT NULL CHECK (length(list_sort) BETWEEN 1 AND 40),
+    rank       INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER,
+    icon       TEXT    CHECK (icon IS NULL OR icon IN
+        ('folder', 'star', 'heart', 'briefcase', 'house', 'user', 'envelope-simple', 'chat-circle', 'phone', 'calendar-blank', 'shopping-cart', 'credit-card', 'code', 'terminal-window', 'book-open', 'lightbulb', 'flag', 'bookmark-simple', 'globe', 'map-pin', 'camera', 'music-note', 'wrench', 'rocket-launch')),
+    UNIQUE (board_id, rank)
+) STRICT;
+INSERT INTO lists_new (id, board_id, name, accent, list_view, list_sort, rank, created_at,
+                       updated_at, deleted_at, icon)
+    SELECT id, board_id, name, accent, list_view, list_sort, rank, created_at,
+           updated_at, deleted_at, icon FROM lists;
+DROP TABLE lists;
+ALTER TABLE lists_new RENAME TO lists;
+CREATE INDEX lists_trashed ON lists (deleted_at) WHERE deleted_at IS NOT NULL;
+
+ALTER TABLE tags ADD COLUMN colour TEXT
+    CHECK (colour IS NULL OR colour IN
+        ('blue', 'teal', 'green', 'amber', 'orange', 'red', 'violet', 'slate'));
+ALTER TABLE boards ADD COLUMN accent TEXT
+    CHECK (accent IS NULL OR accent IN
+        ('blue', 'teal', 'green', 'amber', 'orange', 'red', 'rose', 'violet', 'slate'));
+ALTER TABLE boards ADD COLUMN icon TEXT
+    CHECK (icon IS NULL OR icon IN
+        ('folder', 'star', 'heart', 'briefcase', 'house', 'user', 'envelope-simple', 'chat-circle', 'phone', 'calendar-blank', 'shopping-cart', 'credit-card', 'code', 'terminal-window', 'book-open', 'lightbulb', 'flag', 'bookmark-simple', 'globe', 'map-pin', 'camera', 'music-note', 'wrench', 'rocket-launch'));
+";
+
 #[cfg(test)]
 mod tests {
     use rusqlite::{Connection, params};
-    use snipdeck_core::{FormatKind, ItemKind, ListAccent, ListSort, ListView};
+    use snipdeck_core::{FormatKind, ItemKind, ListAccent, ListView};
 
     fn db() -> Connection {
         let conn = Connection::open_in_memory().unwrap();
@@ -329,10 +372,11 @@ mod tests {
             )
             .unwrap();
         }
-        for (i, sort) in ListSort::ALL.iter().enumerate() {
+        // Version 1 knows three sort words; the later ones are checked by the version-12 migration.
+        for (i, sort) in ["manual", "most-used", "recently-used"].iter().enumerate() {
             conn.execute(
                 "UPDATE lists SET list_sort = ?1 WHERE id = ?2",
-                params![sort.key(), id(20 + u8::try_from(i).unwrap())],
+                params![sort, id(20 + u8::try_from(i).unwrap())],
             )
             .unwrap();
         }

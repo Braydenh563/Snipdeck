@@ -20,7 +20,7 @@ use snipdeck_app::{
     settings::Settings,
     toast::{ToastKind, ToastMessage},
 };
-use snipdeck_core::{ItemId, ItemKind, ListSort, Name, Tag, Timestamp};
+use snipdeck_core::{ItemId, ItemKind, Name, Sort, Tag, Timestamp};
 use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, Store, TagRepo};
 
@@ -153,15 +153,15 @@ fn a_list_edit_round_trips() {
     let mut ctl = rig();
     let list = ctl.main_screen().lists[0].clone();
     ctl.main_edit_list(0);
-    ctl.main_editor_save("Renamed", None, None, ListSort::MostUsed);
+    ctl.main_editor_save("Renamed", None, None, Sort::MOST_USED);
     let stored = ctl.store().list(list.id).unwrap();
     assert_eq!(stored.name.as_str(), "Renamed");
-    assert_eq!(stored.sort, ListSort::MostUsed);
+    assert_eq!(stored.sort, Sort::MOST_USED);
     assert_eq!(ctl.history_view().undo, Some(Action::List));
     ctl.undo();
     let back = ctl.store().list(list.id).unwrap();
     assert_eq!(back.name.as_str(), list.name);
-    assert_eq!(back.sort, ListSort::Manual);
+    assert_eq!(back.sort, Sort::MANUAL);
     ctl.redo();
     assert_eq!(ctl.store().list(list.id).unwrap().name.as_str(), "Renamed");
 }
@@ -173,7 +173,7 @@ fn a_new_list_round_trips() {
     let board = before[0].id;
     let lists = ctl.store().lists(board).unwrap().len();
     ctl.main_new_list();
-    ctl.main_editor_save("Fresh", None, None, ListSort::Manual);
+    ctl.main_editor_save("Fresh", None, None, Sort::MANUAL);
     assert_eq!(ctl.store().lists(board).unwrap().len(), lists + 1);
     ctl.undo();
     assert_eq!(ctl.store().lists(board).unwrap().len(), lists);
@@ -205,7 +205,7 @@ fn rename_board(ctl: &mut Ctl, name: &str) {
         .position(|e| *e == BoardMenuEntry::Rename)
         .expect("Rename");
     ctl.main_board_menu_activate(at);
-    ctl.main_editor_save(name, None, None, ListSort::Manual);
+    ctl.main_editor_save(name, None, None, Sort::MANUAL);
 }
 
 #[test]
