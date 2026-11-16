@@ -1641,7 +1641,9 @@ ui_tests! {
             assert!(p.y + s.height <= h + 0.5, "inside at the bottom: {p:?} {s:?} at {w}x{h}@{scale}");
             if scale == 1.0 {
                 assert!((p.x - bp.x).abs() <= 1.0, "left edge on the button: {p:?} vs {bp:?}");
-                assert!(p.y >= bp.y + bs.height - 1.0, "below the button: {p:?} vs {bp:?} {bs:?}");
+                // Below the button, or pushed up by its real height (300px) when the bar is at the bottom.
+                let want = (bp.y + bs.height).min(h - 300.0);
+                assert!((p.y - want).abs() <= 1.0, "at the button, clamped: {p:?} vs {bp:?} {bs:?}");
             }
         }
     }
@@ -1758,7 +1760,14 @@ ui_tests! {
         assert_eq!(take(&log), Vec::<String>::new());
         press_key(&ui, Key::Escape);
         assert!(!ui.get_confirm_open());
-        // On a built-in view neither key does anything.
+        // On a built-in view neither key does anything (focus is back on the items: return to the sidebar).
+        for _ in 0..16 {
+            if ui.get_sidebar_focused() {
+                break;
+            }
+            press_key(&ui, Key::Backtab);
+        }
+        take(&log);
         press_key(&ui, Key::Home);
         press_key(&ui, Key::Delete);
         press_key(&ui, Key::F2);
