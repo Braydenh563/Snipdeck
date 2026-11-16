@@ -20,6 +20,7 @@ use crate::{
     history::{Action, Change, Snap},
     host::ClipboardText,
     item_editor::{self, EditorInput, EditorProblem, SaveFailure, Source},
+    usecase,
 };
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 
@@ -103,9 +104,11 @@ where
         if is_text && slot.large.is_none() {
             let checked = item_editor::check_text(&input.content).and_then(|()| match kind {
                 ItemKind::Link => item_editor::check_link(&input.content),
-                ItemKind::Template => {
-                    item_editor::check_template(&input.content).map(|()| input.content.clone())
-                }
+                ItemKind::Template => item_editor::check_template(
+                    &input.content,
+                    &usecase::StoreSnippets::new(&self.store),
+                )
+                .map(|()| input.content.clone()),
                 _ => Ok(input.content.clone()),
             });
             match checked {

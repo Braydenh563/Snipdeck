@@ -16,7 +16,10 @@ use snipdeck_ui::{
 
 use snipdeck_core::{
     ItemKind, ItemLabel, ListIcon,
-    template::{PLACEHOLDER_LIST, TemplateErrorKind, UnitHint, usage},
+    template::{
+        FORMAT_SPECIFIERS, PLACEHOLDER_LIST, SnippetProblem, TemplateErrorKind, UnitHint,
+        transform::Transform, usage,
+    },
 };
 
 use crate::{
@@ -641,7 +644,6 @@ pub fn transform_name(
     window: &PanelWindow,
     transform: snipdeck_core::template::transform::Transform,
 ) -> String {
-    use snipdeck_core::template::transform::Transform;
     let t = MenuTexts::get(window);
     match transform {
         Transform::Plain => t.invoke_paste_as_plain(),
@@ -650,6 +652,12 @@ pub fn transform_name(
         Transform::Title => t.invoke_paste_as_title(),
         Transform::Trimmed => t.invoke_paste_as_trimmed(),
         Transform::Slug => t.invoke_paste_as_slug(),
+        Transform::Sentence => t.invoke_paste_as_sentence(),
+        Transform::Camel => t.invoke_paste_as_camel(),
+        Transform::Snake => t.invoke_paste_as_snake(),
+        Transform::UrlEncode => t.invoke_paste_as_urlencode(),
+        Transform::FirstWord => t.invoke_paste_as_firstword(),
+        Transform::LastWord => t.invoke_paste_as_lastword(),
     }
     .into()
 }
@@ -837,7 +845,7 @@ where
     let text = match kind {
         K::UnmatchedClose => t.invoke_unmatched_close(code("}"), code("}}")),
         K::Unterminated => t.invoke_unterminated(code("{"), code("{{")),
-        K::EmptyPlaceholder => t.invoke_empty_placeholder(code("{}")),
+        K::EmptyPlaceholder => t.invoke_empty_placeholder(code("{}"), code("{{"), code("}}")),
         K::EmptyName => t.invoke_empty_name(code("{field:Name}")),
         K::UnclosedSection => t.invoke_unclosed_section(code("{optional:…}"), code("{/optional}")),
         K::NestedSection => t.invoke_nested_section(),
@@ -845,7 +853,8 @@ where
         K::NoOptions => t.invoke_no_options(code("{choice:Name|a|b}")),
         K::EmptyOption => t.invoke_empty_option(),
         K::DuplicateOption { option } => t.invoke_duplicate_option(code(option)),
-        K::TooManyParts => t.invoke_too_many_parts(code("{field:Name|default}")),
+        K::TooManyParts => t.invoke_too_many_parts(code("{field:Name|default}"), code("\\|")),
+        K::TwoStartOptions => t.invoke_two_start_options(code("*")),
         K::DuplicateCursor => t.invoke_duplicate_cursor(code("{cursor}")),
         K::TrailingPercent => t.invoke_trailing_percent(code("%"), code("%%")),
         K::Unknown { found, suggestion } => {
@@ -884,10 +893,66 @@ where
         K::TooManyOffsets { max } => t.invoke_too_many_offsets(int(*max)),
         K::UnknownFormatSpecifier { specifier } => t.invoke_unknown_format_specifier(
             code(&format!("%{specifier}")),
-            "%Y %y %m %B %b %d %e %j %A %a %H %I %M %S %p %z %F %T %%".into(),
+            FORMAT_SPECIFIERS.into(),
         ),
+        K::UnknownKey { found } => {
+            t.invoke_unknown_key(code(found), code("{key:tab}"), code("{key:enter}"))
+        }
+        K::CursorBeforeKey => t.invoke_cursor_before_key(code("{cursor}"), code("{key:…}")),
+        K::BadClipboardPosition { max } => {
+            t.invoke_bad_clipboard_position(code("{clipboard:N}"), int(*max))
+        }
+        K::UnknownTransform { found } => {
+            t.invoke_unknown_transform(code(found), Transform::keyword_list().into())
+        }
+        K::BadCalc => t.invoke_bad_calc(code("{calc:…}")),
+        K::CalcUnknownName { name } => {
+            t.invoke_calc_unknown_name(code(name), code(&format!("{{number:{name}}}")))
+        }
+        K::ValueUnknownName { name } => {
+            t.invoke_value_unknown_name(code(&format!("{{value:{name}}}")), code(name))
+        }
+        K::Snippet { name, problem } => match problem {
+            SnippetProblem::NotFound => t.invoke_snippet_not_found(code(name)),
+            SnippetProblem::Ambiguous => t.invoke_snippet_ambiguous(code(name)),
+            SnippetProblem::Unusable => t.invoke_snippet_unusable(code(name)),
+            SnippetProblem::Cycle => t.invoke_snippet_cycle(code(name)),
+            SnippetProblem::TooMuch => t.invoke_snippet_too_much(
+                int(snipdeck_core::template::MAX_SNIPPET_DEPTH),
+                int(snipdeck_core::template::MAX_SNIPPETS),
+            ),
+            SnippetProblem::Unavailable => t.invoke_snippet_unavailable(code(name)),
+        },
+        K::InSnippet { name, error } => {
+            let inner = template_problem_text(window, &TemplateProblem::Parse((**error).clone()));
+            t.invoke_in_snippet(code(name), inner.into())
+        }
     };
     text.into()
+}
+
+/// The four help lines under the editor's placeholder chips: the choice default, the limits, the
+/// escapes and the transform list. Each is built from the engine's own constants and enum, so the
+/// help cannot drift from what the parser does.
+#[must_use]
+pub fn template_help_texts<C>(window: &C) -> [String; 4]
+where
+    for<'a> TemplateTexts<'a>: Global<'a, C>,
+{
+    use snipdeck_core::template::{MAX_OFFSETS, MAX_PROMPTS, MAX_SNIPPET_DEPTH};
+    let t = TemplateTexts::get(window);
+    [
+        t.invoke_choice_help("`*`".into()).into(),
+        t.invoke_limits_help(int(MAX_PROMPTS), int(MAX_OFFSETS), int(MAX_SNIPPET_DEPTH))
+            .into(),
+        t.invoke_escapes_help("`{{` `}}`".into(), "`\\|` `\\{` `\\}`".into())
+            .into(),
+        t.invoke_transforms_help(
+            Transform::keyword_list().into(),
+            "`{clipboard|upper}`".into(),
+        )
+        .into(),
+    ]
 }
 
 /// Why the item editor refuses something, in words.

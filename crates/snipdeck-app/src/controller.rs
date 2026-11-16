@@ -7,10 +7,7 @@
 
 use std::time::Duration;
 
-use snipdeck_core::{
-    BoardId, ItemId, ListId, Timestamp,
-    template::{Locale, TimeZone},
-};
+use snipdeck_core::{BoardId, ItemId, ListId, Timestamp, template::TimeZone};
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
     system_look::SystemLook,
@@ -59,8 +56,9 @@ pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 pub use symbol_ctl::{IconExport, IconSave, SaveOutcome, SymbolChoice, SymbolMenuEntry};
 pub use trigger_ctl::{HintOutcome, TypedOutcome};
 pub use views::{
-    BoardDeleteView, ChooseEntry, ChooseLabel, ChooseMenu, ClearListView, Effect, FillSubmission,
-    FillView, ListDeleteView, PickerView, StackView, ToastPhase, ToastView, UseResult, View,
+    BoardDeleteView, CalendarView, ChooseEntry, ChooseLabel, ChooseMenu, ClearListView, Effect,
+    FillSubmission, FillView, ListDeleteView, PickerView, StackView, ToastPhase, ToastView,
+    UseResult, View,
 };
 
 use crate::{
@@ -241,6 +239,9 @@ pub struct Controller<S, C, K, T> {
     fill_seq: u64,
     /// A typed trigger to erase once the fill form is confirmed.
     fill_erase: Option<views::FillErase>,
+    /// The text selected in the Target, read before a fill form took the focus, for the use
+    /// that follows the form (`{selection}`).
+    selection_for_use: Option<String>,
     /// Where "paste next" is in its run.
     queue: PasteQueue,
     /// The items marked for a paste stack, in marking order.
@@ -520,6 +521,7 @@ where
             picker: None,
             fill: None,
             fill_erase: None,
+            selection_for_use: None,
             fill_seq: 0,
             queue: PasteQueue::default(),
             stack: Vec::new(),
@@ -626,14 +628,26 @@ where
                 seq: self.fill_seq,
                 title: f.title().to_owned(),
                 fields: f.fields().to_vec(),
+                date_hint: f.date_hint(),
+                calendar: {
+                    let locale = f.locale();
+                    let today = self.clock.now().to_zoned(self.tz.clone());
+                    CalendarView {
+                        months: locale.lang.months().map(str::to_owned).to_vec(),
+                        weekdays: locale.lang.weekdays_abbr().map(str::to_owned).to_vec(),
+                        week_starts_sunday: locale.week_starts_sunday,
+                        today: (
+                            i32::from(today.year()),
+                            i32::from(today.month()),
+                            i32::from(today.day()),
+                        ),
+                    }
+                },
+                dates: (0..f.fields().len()).map(|i| f.date_parts(i)).collect(),
                 preview: if masked {
                     String::new()
                 } else {
-                    f.preview(
-                        self.clock.now(),
-                        &self.tz,
-                        Locale::for_tag(&self.settings.language),
-                    )
+                    f.preview(self.clock.now(), &self.tz)
                 },
                 masked,
             }

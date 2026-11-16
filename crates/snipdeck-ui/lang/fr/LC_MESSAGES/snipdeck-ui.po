@@ -16,6 +16,9 @@ msgstr "#ffffff"
 msgid "(new ID)"
 msgstr "(nouvel ID)"
 
+msgid "(none)"
+msgstr "(aucun)"
+
 msgid "+{} more"
 msgstr "+{} de plus"
 
@@ -79,8 +82,14 @@ msgstr "Un onglet en forme de smiley à côté de Récent, avec des emoji, des k
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr "Une bande de vos extraits à côté de l'application dans laquelle vous travaillez. Cliquez sur l'un d'eux pour le coller."
 
+msgid "A sum of numbers and number names, with 2 decimals"
+msgstr "Une somme de nombres et de noms de nombres, avec 2 décimales"
+
 msgid "A tag with that name already exists."
 msgstr "Une étiquette portant ce nom existe déjà."
+
+msgid "A template can ask for up to {} different answers (fields, choices, numbers, dates and sections), a date can have up to {} offsets, and snippets can be nested {} deep."
+msgstr "Un modèle peut demander jusqu'à {} réponses différentes (champs, choix, nombres, dates et sections), une date peut avoir jusqu'à {} décalages, et les extraits peuvent être imbriqués sur {} niveaux."
 
 msgid "A tick box; the text inside is pasted only when ticked"
 msgstr "Une case à cocher ; le texte à l'intérieur n'est collé que si elle est cochée"
@@ -163,6 +172,9 @@ msgstr "Ajoute un mot de passe en plus de la protection propre à Windows pour v
 msgid "Adds a text snippet to {}"
 msgstr "Ajoute un extrait de texte à {}"
 
+msgid "After a bar a placeholder can change its text: {}, for example {}."
+msgstr "Après une barre verticale, un espace réservé peut modifier son texte : {}, par exemple {}."
+
 msgid "After a paste or copy"
 msgstr "Après un collage ou une copie"
 
@@ -213,6 +225,9 @@ msgstr "Ambre"
 msgid "An Image item holds a PNG picture. Choose a PNG file, or add this one as a File."
 msgstr "Un élément image contient une image PNG. Choisissez un fichier PNG, ou ajoutez celui-ci comme fichier."
 
+msgid "An answer again, with a transform"
+msgstr "Une réponse reprise, avec une transformation"
+
 msgid "An item is open in the editor, so the pasted text was not added. Close it, then paste again."
 msgstr "Un élément est ouvert dans l’éditeur, donc le texte collé n’a pas été ajouté. Fermez-le, puis collez à nouveau."
 
@@ -248,6 +263,9 @@ msgstr "Appliquer le nouveau nom"
 
 msgid "Asks for a date, today if left empty"
 msgstr "Demande une date, aujourd'hui si elle est vide"
+
+msgid "Asks for a number"
+msgstr "Demande un nombre"
 
 msgid "Asks for a value each time"
 msgstr "Demande une valeur à chaque fois"
@@ -1035,8 +1053,11 @@ msgstr "Terminer la pile"
 msgid "Enter"
 msgstr "Enter"
 
-msgid "Enter a real date as YYYY-MM-DD, or leave it empty for today."
-msgstr "Saisissez une vraie date au format AAAA-MM-JJ, ou laissez vide pour aujourd'hui."
+msgid "Enter a number, such as 12 or 3.5."
+msgstr "Saisissez un nombre, par exemple 12 ou 3,5."
+
+msgid "Enter a real date as {}, or leave it empty for today."
+msgstr "Saisissez une date réelle au format {}, ou laissez vide pour aujourd'hui."
 
 msgid "Enter creates “{}” in {}"
 msgstr "Entrée crée « {} » dans {}"
@@ -1112,6 +1133,9 @@ msgstr "Filtrer par libellé de couleur"
 
 msgid "Find anything by typing"
 msgstr "Tout trouver en tapant"
+
+msgid "First word"
+msgstr "Premier mot"
 
 msgid "Flags"
 msgstr "Drapeaux"
@@ -1340,6 +1364,12 @@ msgstr[1] "{} extraits importés"
 msgid "Import…"
 msgstr "Importer…"
 
+msgid "In a choice, put {} before the option to start on; an empty option is the \"none\" choice."
+msgstr "Dans un choix, placez {} devant l'option de départ ; une option vide est le choix « aucun »."
+
+msgid "In the text, write {} for a literal brace. Inside a placeholder, write {} for a literal bar or brace."
+msgstr "Dans le texte, écrivez {} pour une accolade littérale. Dans un espace réservé, écrivez {} pour une barre ou une accolade littérale."
+
 msgid "Include"
 msgstr "Inclure"
 
@@ -1442,6 +1472,9 @@ msgstr "Langue"
 
 msgid "Last backup: {}"
 msgstr "Dernière sauvegarde : {}"
+
+msgid "Last word"
+msgstr "Dernier mot"
 
 msgid "Layout"
 msgstr "Disposition"
@@ -1716,6 +1749,9 @@ msgstr "Suivant"
 
 msgid "Next list"
 msgstr "Liste suivante"
+
+msgid "Next month"
+msgstr "Mois suivant"
 
 msgid "Next scope"
 msgstr "Portée suivante"
@@ -2128,6 +2164,9 @@ msgstr "Choisir une couleur à l'écran"
 msgid "Pick a colour from the screen (Ctrl+I)"
 msgstr "Choisir une couleur à l'écran (Ctrl+I)"
 
+msgid "Pick a date"
+msgstr "Choisir une date"
+
 msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
 msgstr "Choisissez la position du panneau. Vous pouvez la modifier à tout moment dans les paramètres, avec les autres bords, le masquage au changement d'application et le bouton de la barre des tâches."
 
@@ -2194,6 +2233,12 @@ msgstr "Appuyez maintenant sur le raccourci"
 msgid "Press your Panel shortcut in any app to bring up your snippets."
 msgstr "Appuyez sur votre raccourci du panneau dans n'importe quelle appli pour afficher vos extraits."
 
+msgid "Presses Enter here"
+msgstr "Appuie sur Entrée ici"
+
+msgid "Presses Tab here, to move between the fields of a form"
+msgstr "Appuie sur Tab ici, pour passer d'un champ à l'autre d'un formulaire"
+
 msgid "Preview"
 msgstr "Aperçu"
 
@@ -2202,6 +2247,9 @@ msgstr "Aperçu de cet élément (Ctrl+P)"
 
 msgid "Previous list"
 msgstr "Liste précédente"
+
+msgid "Previous month"
+msgstr "Mois précédent"
 
 msgid "Privacy"
 msgstr "Confidentialité"
@@ -2593,6 +2641,9 @@ msgstr "Les éléments sensibles ne peuvent pas être saisis, ils n’ont donc p
 
 msgid "Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose."
 msgstr "Les éléments sensibles d'une sauvegarde ou d'un export ne peuvent être restaurés que par ce compte Windows sur ce PC. Sur un autre PC, ou après une réinstallation de Windows, ils sont ignorés. Gardez votre propre copie de tout ce qui est sensible et que vous ne pouvez pas perdre."
+
+msgid "Sentence case"
+msgstr "Majuscule de phrase"
 
 msgid "Set master password"
 msgstr "Définir le mot de passe principal"
@@ -3005,6 +3056,9 @@ msgstr "La corbeille est vide"
 msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
 msgstr "L'Historique du Presse-papiers ne contient encore aucun texte. Copiez du texte, puis réessayez."
 
+msgid "The clipboard before the latest copy (2 to 25)"
+msgstr "Le presse-papiers avant la dernière copie (2 à 25)"
+
 msgid "The file dialog couldn't open. Type the path instead."
 msgstr "La boîte de dialogue de fichiers n'a pas pu s'ouvrir. Saisissez plutôt le chemin."
 
@@ -3058,6 +3112,12 @@ msgstr "L'étiquette est retirée de ses extraits. Les extraits restent."
 
 msgid "The taskbar is on that edge. Pick another edge, or move the taskbar."
 msgstr "La barre des tâches occupe ce bord. Choisissez un autre bord ou déplacez la barre des tâches."
+
+msgid "The text of another snippet"
+msgstr "Le texte d'un autre extrait"
+
+msgid "The text selected in the app you paste into"
+msgstr "Le texte sélectionné dans l'application où vous collez"
 
 msgid "The time now"
 msgstr "L'heure actuelle"
@@ -3158,8 +3218,8 @@ msgstr "Les titres, le texte et les étiquettes comptent tous."
 msgid "To remove everything, use Erase library under Backups and your data, then delete the folder."
 msgstr "Pour tout supprimer, utilisez Effacer la bibliothèque sous Sauvegardes et vos données, puis supprimez le dossier."
 
-msgid "Today's date"
-msgstr "Date du jour"
+msgid "Today's date, in your regional format"
+msgstr "La date du jour, au format de votre région"
 
 msgid "Toggle keep Panel open"
 msgstr "Basculer Garder le Panneau ouvert"
@@ -3235,6 +3295,9 @@ msgstr "UI"
 
 msgid "UPPERCASE"
 msgstr "MAJUSCULES"
+
+msgid "URL-encoded"
+msgstr "Encodé pour URL"
 
 msgid "Undid {}"
 msgstr "Annulé : {}"
@@ -3470,8 +3533,8 @@ msgstr "Windows a désactivé Snipdeck dans Paramètres > Applications > Démarr
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "Avec l’historique du presse-papiers activé, Récents garde ce que vous copiez dans d’autres programmes."
 
-msgid "YYYY-MM-DD, empty for today"
-msgstr "YYYY-MM-DD, vide pour aujourd’hui"
+msgid "Words match anywhere in a title or body. \"Quotes\" match a phrase, -word excludes, and tag:, list:, kind: or is:pinned filter."
+msgstr "Les mots correspondent n’importe où dans le titre ou le corps. Les \"guillemets\" cherchent une expression, -mot exclut, et tag:, list:, kind: ou is:pinned filtrent."
 
 msgid "Yes"
 msgstr "Oui"
@@ -3530,11 +3593,14 @@ msgstr "`w` pour les semaines"
 msgid "`y` for years"
 msgstr "`y` pour les années"
 
+msgid "a calculation uses {}, which is not a {} of this template"
+msgstr "un calcul utilise {}, qui n'est pas un {} de ce modèle"
+
+msgid "a choice needs an option with text, and at most one empty option"
+msgstr "un choix a besoin d'une option avec du texte et d'au plus une option vide"
+
 msgid "a choice needs options, e.g. {}"
 msgstr "un choix nécessite des options, p. ex. {}"
-
-msgid "a choice option is empty"
-msgstr "une option du choix est vide"
 
 msgid "a placeholder can have at most {} offsets"
 msgstr "un espace réservé peut avoir au plus {} décalages"
@@ -3542,11 +3608,11 @@ msgstr "un espace réservé peut avoir au plus {} décalages"
 msgid "a placeholder is not valid"
 msgstr "un espace réservé n'est pas valide"
 
-msgid "a prompt takes a name and one more part: {}"
-msgstr "une invite prend un nom et une partie de plus : {}"
+msgid "a prompt takes a name and one more part: {}; write {} for a literal bar"
+msgstr "un champ prend un nom et une partie de plus : {} ; écrivez {} pour une barre littérale"
 
-msgid "a template can ask for at most {} different fields, choices, dates or sections"
-msgstr "un modèle peut demander au plus {} champs, choix, dates ou sections différents"
+msgid "a template can ask for at most {} different fields, choices, numbers, dates or sections"
+msgstr "un modèle peut demander au plus {} champs, choix, nombres, dates ou sections différents"
 
 msgid "a {} ends the format; write {} for a literal {}"
 msgstr "un {} termine le format ; écrivez {} pour un {} littéral"
@@ -3582,6 +3648,9 @@ msgstr "apparence couleur nuit"
 
 msgid "board change"
 msgstr "modification du tableau"
+
+msgid "camelCase"
+msgstr "camelCase"
 
 msgid "change modify rename"
 msgstr "modifier changer renommer"
@@ -3649,8 +3718,8 @@ msgstr "modification"
 msgid "emoji kaomoji icons smiley emoticon insert"
 msgstr "emoji kaomoji icônes smiley émoticône insérer"
 
-msgid "empty placeholder {}"
-msgstr "espace réservé vide {}"
+msgid "empty placeholder {}; to write a literal brace, write {} (and {} to close it)"
+msgstr "espace réservé vide {} ; pour une accolade littérale, écrivez {} (et {} pour la fermer)"
 
 msgid "every mark choose all"
 msgstr "tous marquer choisir sélectionner"
@@ -3699,6 +3768,9 @@ msgstr "raccourcis touches aide-mémoire combinaisons"
 msgid "https://example.com"
 msgstr "https://example.com"
 
+msgid "in the snippet {}: {}"
+msgstr "dans l'extrait {} : {}"
+
 msgid "label: {}"
 msgstr "libellé : {}"
 
@@ -3710,6 +3782,9 @@ msgstr "minuscules"
 
 msgid "make new folder together section collect"
 msgstr "créer nouveau dossier ensemble section rassembler"
+
+msgid "more than one snippet is titled {}; rename one"
+msgstr "plusieurs extraits portent le titre {} ; renommez-en un"
 
 msgid "move"
 msgstr "déplacement"
@@ -3732,11 +3807,17 @@ msgstr "ne jamais coller programmes exclus"
 msgid "no close name"
 msgstr "aucun nom proche"
 
+msgid "no snippet is titled {}"
+msgstr "aucun extrait ne s'intitule {}"
+
 msgid "notepad.exe"
 msgstr "notepad.exe"
 
 msgid "one of d, w, mo, y, h, min"
 msgstr "l'une de d, w, mo, y, h, min"
+
+msgid "only one choice option can start with {}"
+msgstr "une seule option du choix peut commencer par {}"
 
 msgid "only one {} is allowed"
 msgstr "un seul {} est autorisé"
@@ -3798,8 +3879,14 @@ msgstr "s"
 msgid "slug-like-this"
 msgstr "slug-comme-ceci"
 
+msgid "snake_case"
+msgstr "snake_case"
+
 msgid "snip snipping capture screen picture image"
 msgstr "capture découpe écran image copie d'écran"
+
+msgid "snippets can be nested {} deep and used {} times in one template"
+msgstr "les extraits peuvent être imbriqués sur {} niveaux et utilisés {} fois dans un modèle"
 
 msgid "stack queue sequence following paste"
 msgstr "pile file séquence suivant coller"
@@ -3828,6 +3915,9 @@ msgstr "tutoriel introduction démarrage bases apprendre"
 msgid "unknown date format {}; supported: {}"
 msgstr "format de date inconnu {} ; pris en charge : {}"
 
+msgid "unknown key {}; use {} or {}"
+msgstr "touche inconnue {} ; utilisez {} ou {}"
+
 msgid "unknown offset unit {}; use {}"
 msgstr "unité de décalage inconnue {} ; utilisez {}"
 
@@ -3836,6 +3926,9 @@ msgstr "espace réservé inconnu {}"
 
 msgid "unknown placeholder {}, did you mean {}?"
 msgstr "espace réservé inconnu {}, vouliez-vous dire {} ?"
+
+msgid "unknown transform {}; use one of {}"
+msgstr "transformation inconnue {} ; utilisez l'une de {}"
 
 msgid "version update"
 msgstr "version mise à jour"
@@ -3892,11 +3985,17 @@ msgstr[1] "{} octets"
 msgid "{} can't be used as a shortcut. Choose another in Settings."
 msgstr "{} ne peut pas servir de raccourci. Choisissez-en un autre dans les paramètres."
 
+msgid "{} cannot be looked up here"
+msgstr "{} ne peut pas être recherché ici"
+
 msgid "{} closes nothing"
 msgstr "{} ne ferme rien"
 
 msgid "{} closes nothing; write {} for a literal {}"
 msgstr "{} ne ferme rien ; écrivez {} pour un {} littéral"
+
+msgid "{} contains itself"
+msgstr "{} se contient lui-même"
 
 msgid "{} copy"
 msgstr "{} copie"
@@ -3926,8 +4025,14 @@ msgstr "{} trouvé(s)"
 msgid "{} h ago"
 msgstr "il y a {} h"
 
+msgid "{} has no text a template can use (a picture, files or a Sensitive item)"
+msgstr "{} n'a pas de texte utilisable par un modèle (une image, des fichiers ou un élément sensible)"
+
 msgid "{} is a link to somewhere else and was not followed."
 msgstr "{} est un lien vers un autre emplacement et n'a pas été suivi."
+
+msgid "{} is a sum of numbers and number names; the part after the bar is the decimals, 0 to 10"
+msgstr "{} est un calcul de nombres et de noms de nombres ; la partie après la barre est le nombre de décimales, de 0 à 10"
 
 msgid "{} is already in the list."
 msgstr "{} est déjà dans la liste."
@@ -3987,6 +4092,9 @@ msgstr[1] "{} résultats dans tous les tableaux"
 msgid "{} min ago"
 msgstr "il y a {} min"
 
+msgid "{} must come after the last {}"
+msgstr "{} doit venir après le dernier {}"
+
 msgid "{} needs a number"
 msgstr "{} nécessite un nombre"
 
@@ -4012,6 +4120,9 @@ msgid_plural "{} pictures or files that no snippet uses were left out."
 msgstr[0] "{} image ou fichier qu'aucun extrait n'utilise a été laissé de côté."
 msgstr[1] "{} images ou fichiers qu'aucun extrait n'utilise ont été laissés de côté."
 
+msgid "{} repeats an answer, but nothing asks for {}"
+msgstr "{} reprend une réponse, mais rien ne demande {}"
+
 msgid "{} selected"
 msgstr "{} sélectionné(s)"
 
@@ -4030,6 +4141,9 @@ msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "{} extrait sensible ne figurait pas dans la sauvegarde."
 msgstr[1] "{} extraits sensibles ne figuraient pas dans la sauvegarde."
 
+msgid "{} takes a whole number from 1 to {}; 1 is the clipboard now"
+msgstr "{} prend un nombre entier de 1 à {} ; 1 est le presse-papiers actuel"
+
 msgid "{} takes no argument"
 msgstr "{} n'accepte pas d'argument"
 
@@ -4041,6 +4155,9 @@ msgstr "{} : appuyez sur Tab pour insérer"
 
 msgid "{}, colour {}"
 msgstr "{}, couleur {}"
+
+msgid "{}, empty for today"
+msgstr "{}, vide pour aujourd'hui"
 
 msgid "{}, match {}"
 msgstr "{}, correspondance {}"
@@ -4107,6 +4224,3 @@ msgstr "{} : {} n’a pas été conservé comme déclencheur, car un déclencheu
 
 msgid "{}: {} was not kept as a trigger, because it fires after a separator and a Snipdeck trigger does not wait for one."
 msgstr "{} : {} n’a pas été conservé comme déclencheur, car il se déclenche après un séparateur et un déclencheur Snipdeck n’en attend pas."
-
-msgid "Words match anywhere in a title or body. \"Quotes\" match a phrase, -word excludes, and tag:, list:, kind: or is:pinned filter."
-msgstr "Les mots correspondent n’importe où dans le titre ou le corps. Les \"guillemets\" cherchent une expression, -mot exclut, et tag:, list:, kind: ou is:pinned filtrent."

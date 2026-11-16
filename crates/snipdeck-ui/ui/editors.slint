@@ -939,18 +939,32 @@ export component ItemEditor inherits Window {
     property <string> source-shown-error: root.source-error != "" ? root.source-error
         : (root.show-errors && root.source-missing) ? @tr("Choose a file, or cancel.") : "";
     property <[PlaceholderHelp]> placeholders: [
-        { token: "{date}", help: @tr("Today's date") },
+        { token: "{date}", help: @tr("Today's date, in your regional format") },
         { token: "{time}", help: @tr("The time now") },
         { token: "{datetime:FORMAT}", help: @tr("Date and time in a format you choose") },
         { token: "{uuid}", help: @tr("A new random ID each time") },
         { token: "{clipboard}", help: @tr("What is on the clipboard") },
+        { token: "{clipboard:2}", help: @tr("The clipboard before the latest copy (2 to 25)") },
+        { token: "{selection}", help: @tr("The text selected in the app you paste into") },
         { token: "{cursor}", help: @tr("Where the text cursor lands after pasting") },
+        { token: "{key:tab}", help: @tr("Presses Tab here, to move between the fields of a form") },
+        { token: "{key:enter}", help: @tr("Presses Enter here") },
         { token: "{field:Name}", help: @tr("Asks for a value each time") },
         { token: "{choice:Name|a|b}", help: @tr("Asks you to pick one of the options") },
         { token: "{multiline:Name|default}", help: @tr("Asks for text over several lines") },
+        { token: "{number:Name}", help: @tr("Asks for a number") },
+        { token: "{calc:Qty*Price|2}", help: @tr("A sum of numbers and number names, with 2 decimals") },
         { token: "{pickdate:Name|FORMAT}", help: @tr("Asks for a date, today if left empty") },
         { token: "{optional:Name}...{/optional}", help: @tr("A tick box; the text inside is pasted only when ticked") },
+        { token: "{value:Name|upper}", help: @tr("An answer again, with a transform") },
+        { token: "{snippet:Title}", help: @tr("The text of another snippet") },
     ];
+
+    // The limits, the escapes, the choice default and the transform list, in words (from the engine's own constants).
+    in property <string> limits-help;
+    in property <string> escapes-help;
+    in property <string> transforms-help;
+    in property <string> choice-help;
 
     // The longest token (by text), whose chip sets the width of the placeholder chip column.
     property <string> widest-token: "{optional:Name}...{/optional}";
@@ -1283,6 +1297,14 @@ export component ItemEditor inherits Window {
                                 root.touch();
                             }
                             chip-focused(y, h) => { root.reveal-field(y, h); }
+                        }
+                        for line in [root.choice-help, root.limits-help, root.escapes-help, root.transforms-help]: Text {
+                            text: line;
+                            color: Theme.text-secondary;
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            wrap: word-wrap;
+                            accessible-role: none;
                         }
                     }
 

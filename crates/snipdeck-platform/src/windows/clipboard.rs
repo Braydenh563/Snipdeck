@@ -493,6 +493,11 @@ impl Clipboard for WinClipboard {
         let formats = self.formats;
         self.call(move || restore_job(&snapshot, written, formats))?
     }
+
+    fn restore_forced(&mut self, snapshot: Snapshot) -> Result<(), Error> {
+        let formats = self.formats;
+        self.call(move || restore_forced_job(&snapshot, formats))?
+    }
 }
 
 impl Drop for WinClipboard {
@@ -1257,6 +1262,26 @@ fn restore_job(snapshot: &Snapshot, written: Written, formats: Formats) -> Resul
         ));
     }
     Ok(true)
+}
+
+/// Puts `snapshot` back although the clipboard changed since (the Target copied the selection at
+/// our request). Unverified on Windows.
+fn restore_forced_job(snapshot: &Snapshot, formats: Formats) -> Result<(), Error> {
+    let hwnd = owner_hwnd().ok_or_else(stopped)?;
+    let open = OpenGuard::open(hwnd, RESTORE_OPEN_BUDGET).ok_or_else(busy)?;
+    drain_clipboard_updates(hwnd);
+    // SAFETY: the clipboard is open by this thread with our window as the owner.
+    unsafe { EmptyClipboard() }.map_err(|e| os_error("EmptyClipboard", &e))?;
+    with_owner(|owner| owner.ledger.begin_write());
+    let whole = put_back(&snapshot.data, formats);
+    drop(open);
+    if whole {
+        Ok(())
+    } else {
+        Err(Error::Clipboard(
+            "a format of the earlier clipboard could not be put back".into(),
+        ))
+    }
 }
 
 /// Places `snapshot`'s formats now, with the markers (unless it is empty). The clipboard must be

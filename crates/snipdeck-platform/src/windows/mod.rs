@@ -23,6 +23,7 @@
 //! | [`dpi`] | Per-monitor DPI awareness for windows created before the UI toolkit's |
 //! | [`dpapi`] | `CryptProtectData` wrappers for the sensitive-items key |
 //! | [`tray`] | `WinTray`: [`crate::tray::Tray`] via `Shell_NotifyIconW` (v4), menu, `TaskbarCreated` |
+//! | [`regional`] | The regional short date and time patterns (`GetLocaleInfoEx`) |
 //! | [`system_look`] | Light / dark and high contrast, and a watcher for changes |
 //! | `hidden_window` | The hidden top-level window and thread that tray and system look share |
 //!
@@ -46,6 +47,7 @@ pub mod keyboard;
 pub mod message_box;
 pub mod package;
 pub mod paint_diag;
+pub mod regional;
 pub mod screen;
 pub mod shell_open;
 pub mod single_instance;

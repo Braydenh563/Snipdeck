@@ -36,6 +36,14 @@ pub struct FakeClipboard {
     pub incomplete_snapshot: bool,
     /// What `restore` returns.
     pub restore_result: Option<Result<bool, Error>>,
+    /// What `restore_forced` returns.
+    pub restore_forced_result: Option<Result<(), Error>>,
+    /// Text a Target puts on the clipboard when sent Ctrl+C, once this many text reads have
+    /// passed since the latest write (`ClipboardText::read_text`): the selection of the app.
+    pub copy_arrives: Option<(u32, String)>,
+    /// What the Win+V history holds besides the current text, newest first
+    /// (`ClipboardText::read_history`).
+    pub held_history: Vec<String>,
     /// The clipboard sequence number: it increases with every write and every clear.
     pub sequence: u32,
     /// How many times the text on the clipboard was read (`ClipboardText::read_text`).
@@ -126,6 +134,10 @@ impl Clipboard for FakeClipboard {
     fn restore(&mut self, (): (), (): ()) -> Result<bool, Error> {
         self.log.push("restore".into());
         self.restore_result.clone().unwrap_or(Ok(true))
+    }
+    fn restore_forced(&mut self, (): ()) -> Result<(), Error> {
+        self.log.push("restore_forced".into());
+        self.restore_forced_result.clone().unwrap_or(Ok(()))
     }
 }
 

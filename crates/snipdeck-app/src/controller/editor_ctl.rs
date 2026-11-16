@@ -14,9 +14,8 @@
 
 use std::{collections::BTreeSet, path::PathBuf, rc::Rc, sync::Arc};
 
-use snipdeck_core::{
-    Format, Formats, Item, ItemId, ItemKind, ListId, Tag, TagId, template::Locale,
-};
+use crate::usecase;
+use snipdeck_core::{Format, Formats, Item, ItemId, ItemKind, ListId, Tag, TagId};
 use snipdeck_platform::file_dialog::FilePicker;
 use snipdeck_store::{
     BlobStore,
@@ -283,8 +282,9 @@ where
             input,
             self.clock.now(),
             &self.tz,
-            Locale::for_tag(&self.settings.language),
+            usecase::template_locale(&self.settings.language),
             words,
+            &usecase::StoreSnippets::new(&self.store),
         ))
     }
 
