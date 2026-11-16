@@ -90,7 +90,7 @@ where
             };
             (path, message)
         });
-        if let Ok((path, message)) = &written {
+        if let Ok((_, message)) = &written {
             self.show_toast(Toast {
                 kind: ToastKind::Success,
                 message: message.clone(),
