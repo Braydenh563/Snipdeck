@@ -116,7 +116,7 @@ fn channel(v: u8) -> f64 {
     f64::from(v) / 255.0
 }
 
-fn decode(c: u8) -> f64 {
+pub(crate) fn decode(c: u8) -> f64 {
     let c = channel(c);
     if c <= 0.04045 {
         c / 12.92
@@ -125,12 +125,22 @@ fn decode(c: u8) -> f64 {
     }
 }
 
-fn encode(l: f64) -> f64 {
+pub(crate) fn encode(l: f64) -> f64 {
     let l = l.clamp(0.0, 1.0);
     if l <= 0.003_130_8 {
         l * 12.92
     } else {
         1.055 * l.powf(1.0 / 2.4) - 0.055
+    }
+}
+
+/// An opaque-or-not colour from linear-light sRGB channels (clamped, encoded, rounded).
+pub(crate) fn from_linear(rgb: [f64; 3], a: u8) -> Rgba8 {
+    Rgba8 {
+        r: unit_to_u8(encode(rgb[0])),
+        g: unit_to_u8(encode(rgb[1])),
+        b: unit_to_u8(encode(rgb[2])),
+        a,
     }
 }
 
@@ -269,7 +279,7 @@ pub(crate) fn to_oklab(c: Rgba8) -> (f64, f64, f64) {
     )
 }
 
-fn oklab_to_linear(l: f64, a: f64, b: f64) -> [f64; 3] {
+pub(crate) fn oklab_to_linear(l: f64, a: f64, b: f64) -> [f64; 3] {
     let lp = (l + 0.396_337_777_4 * a + 0.215_803_757_3 * b).powi(3);
     let mp = (l - 0.105_561_345_8 * a - 0.063_854_172_8 * b).powi(3);
     let sp = (l - 0.089_484_177_5 * a - 1.291_485_548_0 * b).powi(3);
