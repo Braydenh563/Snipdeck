@@ -247,10 +247,13 @@ fn render_at(h: &Harness<TemplateFillWindow>, height: f32) -> Frame {
 #[allow(clippy::expect_used, reason = "test code: a failure is a failed test")]
 fn open_calendar(h: &Harness<TemplateFillWindow>) {
     use i_slint_backend_testing::{AccessibleRole, ElementHandle};
-    ElementHandle::find_by_accessible_label(&h.component, "Pick a date")
-        .find(|e| e.accessible_role() == Some(AccessibleRole::Button))
-        .expect("the calendar button")
-        .invoke_accessible_default_action();
+    let buttons: Vec<_> = ElementHandle::find_by_accessible_label(&h.component, "Pick a date")
+        .filter(|e| e.accessible_role() == Some(AccessibleRole::Button))
+        .collect();
+    assert_eq!(buttons.len(), 1, "one calendar button");
+    buttons
+        .iter()
+        .for_each(ElementHandle::invoke_accessible_default_action);
     let _ = h.render_settled();
 }
 

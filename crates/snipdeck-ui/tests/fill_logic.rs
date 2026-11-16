@@ -25,8 +25,8 @@ mod fixture;
 const MIN_HIT: f32 = 24.0;
 
 type Log = Rc<RefCell<Vec<String>>>;
-/// A picked day: field index, year, month, day.
-type Picked = Rc<RefCell<Vec<(i32, i32, i32, i32)>>>;
+/// Each `date-picked` call: field, year, month, day.
+type Picks = Rc<RefCell<Vec<(i32, i32, i32, i32)>>>;
 
 /// A populated form whose every callback appends a line to the returned log.
 fn start_with(fields: Vec<FormField>) -> (TemplateFillWindow, Log) {
@@ -357,7 +357,7 @@ ui_tests! {
 
     fn the_calendar_button_opens_a_month_grid_and_a_picked_day_goes_to_the_host() {
         let (ui, _log) = start();
-        let picked: Picked = Rc::default();
+        let picked: Picks = Rc::default();
         {
             let picked = picked.clone();
             ui.on_date_picked(move |i, y, m, d| picked.borrow_mut().push((i, y, m, d)));

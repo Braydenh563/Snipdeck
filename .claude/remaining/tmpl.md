@@ -8,10 +8,14 @@
 - Slint: MonthGrid + calendar button, editor chips/help, form texts; i18n 6 locales translated (check --strict ok).
 - SPEC 5.4a, user guide, CODEMAP.
 
+- snipdeck-ui tests and goldens (fill, fill_logic, month_grid, month_grid_logic, audit_final1_keys, editors);
+  UI walk via goldens (light, dark, high contrast, 225%, Sunday start, narrow editor help).
+- fmt and workspace clippy clean (-D warnings).
+
 ## Next
-- snipdeck-ui tests: month_grid_logic, fill_logic, fill, audit_final1_keys, editors; goldens regenerate if changed
-- UI walk (sizes, scales, themes, focus order) via screenshot tests
-- fmt, clippy, gate, commit
+- gate --staged, commit, report. (doc check clean; full workspace test run: only panel_window paste-as list and
+  placeholder_align_logic counts failed, both updated for the 12 transforms / 19 placeholders and green.)
 
 ## Blocked / unverified
 - Windows: GetLocaleInfoEx, Ctrl+C selection capture, Win+V history read, key presses between pieces.
+- Not measured: real-window calendar interaction, min window size with the grid open, 1.5 text scale pixels.
