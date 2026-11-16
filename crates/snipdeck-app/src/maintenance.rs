@@ -72,6 +72,11 @@ pub struct State {
     pub last_integrity: Option<i64>,
     /// File name of the newest crash report the user has been told about.
     pub crash_acknowledged: Option<String>,
+    /// Unix seconds of the last tick of any run. A jump of more than the Trash's days since
+    /// then (a wrong clock, or a library left alone for a month) holds the purge for a day.
+    pub last_seen: Option<i64>,
+    /// Unix seconds before which the Trash is not purged: set by a forward jump of the clock.
+    pub purge_not_before: Option<i64>,
 }
 
 impl State {
@@ -235,6 +240,9 @@ pub enum MaintenanceOutcome {
     },
     /// The backup could not be made; it is tried again at the next run.
     BackupFailed(JobError),
+    /// The clock jumped forward by more than the Trash's days since the last run, so the Trash
+    /// purge waits a day: a wrong date must not delete what the person trashed yesterday.
+    TrashPurgeHeld,
     /// The Trash purge finished.
     TrashPurged {
         /// How many entries were deleted for good.
@@ -298,6 +306,9 @@ impl MaintenanceOutcome {
         match self {
             Self::BackupCreated { pruned } => format!("backup written, {pruned} old ones deleted"),
             Self::BackupFailed(e) => format!("backup failed: {e}"),
+            Self::TrashPurgeHeld => {
+                "the clock jumped forward; the Trash purge waits a day".to_owned()
+            }
             Self::TrashPurged { count } => format!("{count} expired Trash entries deleted"),
             Self::TrashPurgeFailed(e) => format!("Trash purge failed: {e}"),
             Self::BlobsSwept { count } => format!("{count} unused blob files deleted"),
@@ -385,7 +396,25 @@ impl Maintenance {
             changed |= self.take_backup(seconds, result, &mut outcomes);
         }
 
-        if is_due(self.state.last_purge, seconds, INTERVAL) {
+        let jumped = self
+            .state
+            .last_seen
+            .is_some_and(|seen| seconds.saturating_sub(seen) > i64::from(TRASH_DAYS) * 86_400);
+        if jumped {
+            self.state.purge_not_before = Some(seconds.saturating_add(86_400));
+            outcomes.push(MaintenanceOutcome::TrashPurgeHeld);
+        }
+        // A hold from a jump that is still ahead of the clock; a hold far beyond a day (the
+        // clock went back after it) is stale.
+        let held = self
+            .state
+            .purge_not_before
+            .is_some_and(|until| seconds < until && until.saturating_sub(seconds) <= 86_400);
+        if self.state.last_seen != Some(seconds) {
+            self.state.last_seen = Some(seconds);
+            changed = true;
+        }
+        if !held && is_due(self.state.last_purge, seconds, INTERVAL) {
             match jobs.purge_trash(trash_cutoff(now)) {
                 Ok(count) => {
                     self.state.last_purge = Some(seconds);
@@ -749,6 +778,44 @@ mod tests {
         clock.set(at(t0() + 60));
         assert!(m.tick(&mut jobs).is_empty(), "no other job is due");
         assert_eq!(jobs.prunes, 2);
+    }
+
+    #[test]
+    fn a_forward_clock_jump_holds_the_purge_for_a_day() {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut m, clock) = rig(dir.path());
+        let mut jobs = FakeJobs::default();
+        m.tick(&mut jobs);
+        assert_eq!(jobs.purges.len(), 1);
+
+        // The clock leaps a year ahead: nothing is purged, and the person is not told of
+        // a purge that did not happen.
+        clock.set(at(t0() + 365 * DAY));
+        let out = m.tick(&mut jobs);
+        assert!(out.contains(&MaintenanceOutcome::TrashPurgeHeld), "{out:?}");
+        assert_eq!(jobs.purges.len(), 1, "no purge on the jump");
+        clock.set(at(t0() + 365 * DAY + 12 * HOUR));
+        m.tick(&mut jobs);
+        assert_eq!(jobs.purges.len(), 1, "still held half a day later");
+
+        // A day later the clock has kept its date: the purge runs.
+        clock.set(at(t0() + 366 * DAY + HOUR));
+        m.tick(&mut jobs);
+        assert_eq!(jobs.purges.len(), 2);
+    }
+
+    #[test]
+    fn a_month_long_gap_survives_a_restart_as_a_jump_too() {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut m, _clock) = rig(dir.path());
+        m.tick(&mut FakeJobs::default());
+        drop(m);
+        let clock = FixedClock::new(at(t0() + 40 * DAY));
+        let mut m = Maintenance::new(dir.path(), Box::new(clock));
+        let mut jobs = FakeJobs::default();
+        let out = m.tick(&mut jobs);
+        assert!(out.contains(&MaintenanceOutcome::TrashPurgeHeld));
+        assert!(jobs.purges.is_empty());
     }
 
     #[test]
