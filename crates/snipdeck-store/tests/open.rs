@@ -131,7 +131,7 @@ fn a_foreign_sqlite_file_is_not_adopted() {
 fn a_read_only_open_creates_nothing_and_a_missing_library_is_an_error() {
     let dir = tempfile::tempdir().unwrap();
     let missing = dir.path().join("nowhere");
-    let err = Store::open_read_only(&missing).err().expect("no library");
+    let err = Store::open_read_only(&missing).expect_err("no library");
     assert!(matches!(err, Error::Invalid(_)), "{err}");
     assert!(!missing.exists(), "the folder must not be created");
 
