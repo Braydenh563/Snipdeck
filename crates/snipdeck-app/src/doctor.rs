@@ -279,7 +279,7 @@ fn check(
     }
 }
 
-fn s(v: impl ToString) -> String {
+fn s(v: &impl ToString) -> String {
     v.to_string()
 }
 
@@ -316,7 +316,7 @@ fn data_folder(host: &dyn DoctorHost) -> Check {
             label,
             Status::Fail,
             Finding::DataNotWritable,
-            &[s(e)],
+            &[s(&e)],
             Some(Fix::OpenDataFolder),
         );
     }
@@ -325,7 +325,7 @@ fn data_folder(host: &dyn DoctorHost) -> Check {
             label,
             Status::Warn,
             Finding::LowSpace,
-            &[s(free / (1024 * 1024))],
+            &[s(&(free / (1024 * 1024)))],
             Some(Fix::OpenDataFolder),
         ),
         _ => check(label, Status::Ok, Finding::DataOk, &[], None),
@@ -345,7 +345,7 @@ fn database(host: &dyn DoctorHost) -> Check {
             label,
             Status::Fail,
             Finding::DbCheckFailed,
-            &[s(e)],
+            &[s(&e)],
             Some(fix),
         ),
         Ok(problems) if problems.is_empty() => check(label, Status::Ok, Finding::DbOk, &[], None),
@@ -353,7 +353,7 @@ fn database(host: &dyn DoctorHost) -> Check {
             label,
             Status::Fail,
             Finding::DbProblems,
-            &[s(problems.len()), s(&problems[0])],
+            &[s(&problems.len()), s(&problems[0])],
             Some(fix),
         ),
     }
@@ -368,7 +368,7 @@ fn backups(host: &dyn DoctorHost) -> Check {
                 label,
                 Status::Warn,
                 Finding::BackupsUnreadable,
-                &[s(e)],
+                &[s(&e)],
                 Some(Fix::BackUpNow),
             );
         }
@@ -391,7 +391,7 @@ fn backups(host: &dyn DoctorHost) -> Check {
             label,
             Status::Warn,
             Finding::BackupOld,
-            &[s(newest), s(age), s(dates.len())],
+            &[s(&newest), s(&age), s(&dates.len())],
             Some(Fix::BackUpNow),
         )
     } else {
@@ -399,7 +399,7 @@ fn backups(host: &dyn DoctorHost) -> Check {
             label,
             Status::Ok,
             Finding::BackupOk,
-            &[s(newest), s(dates.len())],
+            &[s(&newest), s(&dates.len())],
             None,
         )
     }
@@ -410,7 +410,7 @@ fn encryption(host: &dyn DoctorHost) -> Check {
     let sensitive = match host.sensitive_items() {
         Ok(n) => n,
         Err(e) => {
-            return check(label, Status::Warn, Finding::ItemsUnreadable, &[s(e)], None);
+            return check(label, Status::Warn, Finding::ItemsUnreadable, &[s(&e)], None);
         }
     };
     if sensitive == 0 {
@@ -421,17 +421,17 @@ fn encryption(host: &dyn DoctorHost) -> Check {
             label,
             Status::Ok,
             Finding::KeyPresent,
-            &[s(sensitive)],
+            &[s(&sensitive)],
             None,
         ),
         Ok(false) => check(
             label,
             Status::Warn,
             Finding::KeyMissing,
-            &[s(sensitive)],
+            &[s(&sensitive)],
             None,
         ),
-        Err(e) => check(label, Status::Warn, Finding::KeyUnchecked, &[s(e)], None),
+        Err(e) => check(label, Status::Warn, Finding::KeyUnchecked, &[s(&e)], None),
     }
 }
 
