@@ -89,7 +89,7 @@ export component InputsGallery inherits Window {
             Caption { text: "SearchField: default"; }
             search := SearchField {
                 label: "Search";
-                placeholder: "Search snippets";
+                placeholder: "Search items";
                 clear-label: "Clear search";
                 text <=> root.search-text;
                 edited(t) => { root.search-edits += 1; }
@@ -98,11 +98,11 @@ export component InputsGallery inherits Window {
             Caption { text: "with text (clear button)"; }
             SearchField { label: "Search filled"; clear-label: "Clear filled"; text: "invoice"; }
             Caption { text: "hover"; }
-            SearchField { label: "Search hover"; placeholder: "Search snippets"; show-hover: true; }
+            SearchField { label: "Search hover"; placeholder: "Search items"; show-hover: true; }
             Caption { text: "focus"; }
             SearchField { label: "Search focus"; clear-label: "Clear focus"; text: "invoice"; show-focus: true; }
             Caption { text: "disabled"; }
-            SearchField { label: "Search disabled"; placeholder: "Search snippets"; enabled: false; }
+            SearchField { label: "Search disabled"; placeholder: "Search items"; enabled: false; }
             Caption { text: "error"; }
             SearchField { label: "Search error"; text: "((("; error: "Not a valid pattern"; }
             Caption { text: "IME composing"; }
@@ -394,7 +394,7 @@ export component EmptyStateGallery inherits Window {
             spacing: Space.s4;
             EmptyState {
                 kind: EmptyStateKind.list;
-                heading: "No snippets yet";
+                heading: "No items yet";
                 body: "Copy something, then use Save from clipboard to keep it here.";
                 action-text: "Save from clipboard";
                 action => { root.actions += 1; }
