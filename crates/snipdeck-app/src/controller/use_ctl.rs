@@ -78,7 +78,17 @@ where
         self.fill_erase = None;
         self.on_target_changed();
         match PickerModel::load_cached(&self.store, self.model.board(), &self.index_cache) {
-            Ok(picker) => self.picker = Some(picker),
+            Ok(picker) => {
+                let mut picker = picker.with_list(self.model.list().map(|l| l.id));
+                // Start where the user left off; "This list" only when the Panel shows one.
+                let scope = match self.picker_scope {
+                    Scope::List if !picker.has_list() => Scope::All,
+                    Scope::Board if self.model.board().is_none() => Scope::All,
+                    scope => scope,
+                };
+                picker.set_scope(scope);
+                self.picker = Some(picker);
+            }
             Err(_) => self.show_toast(failed()),
         }
     }
@@ -134,6 +144,7 @@ where
     pub fn picker_scope(&mut self, scope: Scope) {
         if let Some(picker) = &mut self.picker {
             picker.set_scope(scope);
+            self.picker_scope = scope;
         }
     }
 

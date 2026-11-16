@@ -232,6 +232,8 @@ pub struct Controller<S, C: Clipboard, K, T> {
     toast_seq: u64,
     /// The Picker, while it is open.
     picker: Option<PickerModel>,
+    /// The scope the Picker was left on; the next summon starts there.
+    picker_scope: crate::picker::Scope,
     /// The template fill form, while it is open.
     fill: Option<FillModel>,
     fill_seq: u64,
@@ -513,6 +515,7 @@ where
             toast: None,
             toast_seq: 0,
             picker: None,
+            picker_scope: crate::picker::Scope::default(),
             fill: None,
             fill_erase: None,
             fill_seq: 0,
@@ -723,6 +726,7 @@ where
             picker: self.picker.as_ref().map(|p| PickerView {
                 rows: p.rows(),
                 scope: p.scope(),
+                more: p.more(),
                 query: p.query().to_owned(),
                 selected: p.selected(),
                 footer: self.model.footer(),

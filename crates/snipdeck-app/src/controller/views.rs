@@ -117,6 +117,8 @@ pub struct PickerView {
     pub rows: Vec<picker::Entry>,
     /// What the search covers.
     pub scope: Scope,
+    /// The results were cut at the limit.
+    pub more: bool,
     /// The search text.
     pub query: String,
     /// The keyboard-selected row.

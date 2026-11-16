@@ -25,6 +25,8 @@ pub enum Scope {
     All,
     /// The board the Panel was showing when the Picker opened.
     Board,
+    /// The list the Panel was showing when the Picker opened.
+    List,
     /// Pinned items, on any board.
     Pinned,
 }
@@ -55,6 +57,7 @@ pub struct Entry {
 struct Place {
     item: Item,
     board: BoardId,
+    list: ListId,
     board_name: String,
     list_name: String,
     accent: Option<ListAccent>,
@@ -68,6 +71,10 @@ pub struct PickerModel {
     suggest: Rc<crate::search_suggest::Index>,
     /// The board the Panel showed when the Picker opened (the "This board" scope).
     board: Option<BoardId>,
+    /// The list the Panel showed when the Picker opened (the "This list" scope).
+    list: Option<ListId>,
+    /// The search found more than [`RESULT_LIMIT`] items and the rest were cut.
+    more: bool,
     query: String,
     scope: Scope,
     /// Positions in `places` of the current results, best first.
@@ -114,6 +121,7 @@ impl PickerModel {
                     places.push(Place {
                         item: item.clone(),
                         board: b.id,
+                        list: l.id,
                         board_name: b.name.as_str().to_owned(),
                         list_name: l.name.as_str().to_owned(),
                         accent: l.accent,
@@ -127,6 +135,8 @@ impl PickerModel {
             index,
             suggest: Rc::clone(&snapshot.suggest),
             board,
+            list: None,
+            more: false,
             query: String::new(),
             scope: Scope::All,
             results: Vec::new(),
@@ -141,6 +151,7 @@ impl PickerModel {
         match self.scope {
             Scope::All => true,
             Scope::Board => Some(place.board) == self.board,
+            Scope::List => Some(place.list) == self.list,
             Scope::Pinned => place.item.pinned,
         }
     }
@@ -180,8 +191,29 @@ impl PickerModel {
                 .collect()
         };
         self.tag_hits = tag_hits;
+        self.more = self.results.len() > RESULT_LIMIT;
         self.results.truncate(RESULT_LIMIT);
         self.selected = 0;
+    }
+
+    /// Sets the list the "This list" scope covers (the one the Panel shows).
+    #[must_use]
+    pub fn with_list(mut self, list: Option<ListId>) -> Self {
+        self.list = list;
+        self.search();
+        self
+    }
+
+    /// Whether results were cut at [`RESULT_LIMIT`].
+    #[must_use]
+    pub const fn more(&self) -> bool {
+        self.more
+    }
+
+    /// Whether the "This list" scope has a list to cover.
+    #[must_use]
+    pub const fn has_list(&self) -> bool {
+        self.list.is_some()
     }
 
     /// The names the search suggestions are made of.

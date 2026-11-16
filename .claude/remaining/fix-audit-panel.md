@@ -23,3 +23,10 @@ none
 - Post-1.0 in SPEC: 27, 21, F2 on Recent.
 - Next: 15, 22, 23, 31, then 2, 3, 12, 16, 17, 19, 20, 24, 25, 26, 29, 40, 45, 10k probe.
 - Done: 15 (names table + CamelCase), 22 (toasts for ignored stack mark and closed form; paste-next order kept, noted in SPEC).
+
+## PAUSED (owner usage limit)
+- Done and gated, pushed at d58fff5: 1,4-11,13,14,18,28,30,32-39,41-44, 2 (static commands).
+- Committed local before the WIP commit, not gated: 15 (friendly names), 22 (toasts + i18n).
+- WIP, compiles (`cargo check` clean) but no tests or gate: PANEL-23 Picker "This list" scope, "Showing the first 50" line, remembered scope. Still needs: picker_logic/controller tests, i18n for "This list" and "Showing the first {}", golden updates for the picker, SPEC note that Recent and Tag scopes are post-1.0 (Recent is a different data source; tags are searched by name).
+- Next: 31, 2 (dynamic rows), 3, 12, 16, 17, 19, 20, 24, 25, 26, 29, 40, 45, 10k probe.
+- Note: my earlier progress report went to the wrong session id; resent.

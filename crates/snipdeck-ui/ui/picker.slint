@@ -9,7 +9,7 @@
 //   type            filters; a printable key typed while another control has focus moves into the search
 //   Up / Down       move the selection (PageUp / PageDown a page); Enter uses it, Shift+Enter copies only
 //   Alt+1-9         use the Nth row, whatever the search holds (bare digits are always search text)
-//   Tab             next scope (All, This board, Pinned), Shift+Tab previous
+//   Tab             next scope (All, This board, This list, Pinned), Shift+Tab previous
 //   Ctrl+E          asks the host to edit the selected snippet
 //   Menu, Shift+F10 on a colour row: "Paste as" (the colour in each format; Enter pastes, Shift+Enter copies, Esc back)
 //   Ctrl+O          on a colour row: open it in the Panel's Colours tab
@@ -57,7 +57,7 @@ export struct PickerRow {
 }
 
 // What the search covers. Tab cycles through these in order.
-export enum PickerScope { all, board, pinned }
+export enum PickerScope { all, board, list, pinned }
 
 // One footer hint: the key caps and what they do. The caps speak their own name; the text is read as it is.
 component Hint inherits HorizontalLayout {
@@ -121,6 +121,8 @@ export component PickerWindow inherits Window {
     callback suggest-dismissed();
     callback suggest-chosen(int);
     callback scope-changed(PickerScope);
+    // The most results the list shows when the search found more (0 when nothing was cut).
+    in property <int> result-limit: 0;
     // Enter or a click used row `index`.
     callback row-activated(int);
     // Shift+Enter or Shift+click: copy only.
@@ -258,11 +260,11 @@ export component PickerWindow inherits Window {
     }
 
     pure function scope-index(s: PickerScope) -> int {
-        return s == PickerScope.all ? 0 : s == PickerScope.board ? 1 : 2;
+        return s == PickerScope.all ? 0 : s == PickerScope.board ? 1 : s == PickerScope.list ? 2 : 3;
     }
 
     pure function scope-at(i: int) -> PickerScope {
-        return i == 0 ? PickerScope.all : i == 1 ? PickerScope.board : PickerScope.pinned;
+        return i == 0 ? PickerScope.all : i == 1 ? PickerScope.board : i == 2 ? PickerScope.list : PickerScope.pinned;
     }
 
     // Rows are all `row-h` tall, so the selected row's place is known without the row existing yet.
@@ -351,7 +353,7 @@ export component PickerWindow inherits Window {
     }
 
     function cycle-scope(dir: int) {
-        root.pick-scope(root.scope-at(mod(root.scope-index(root.scope) + dir + 3, 3)));
+        root.pick-scope(root.scope-at(mod(root.scope-index(root.scope) + dir + 4, 4)));
     }
 
     // Moves a typed character into the search field when another control has focus.
@@ -503,9 +505,23 @@ export component PickerWindow inherits Window {
                         clicked => { root.pick-scope(PickerScope.board); }
                     }
                     Tag {
+                        text: @tr("This list");
+                        selected: root.scope == PickerScope.list;
+                        clicked => { root.pick-scope(PickerScope.list); }
+                    }
+                    Tag {
                         text: @tr("Pinned");
                         selected: root.scope == PickerScope.pinned;
                         clicked => { root.pick-scope(PickerScope.pinned); }
+                    }
+                    // The results were cut at the limit: say so instead of ending the list silently.
+                    if root.result-limit > 0: Text {
+                        horizontal-stretch: 1;
+                        horizontal-alignment: right;
+                        vertical-alignment: center;
+                        text: @tr("Showing the first {}", root.result-limit);
+                        color: Theme.text-secondary;
+                        font-size: Type.sm;
                     }
                 }
             }

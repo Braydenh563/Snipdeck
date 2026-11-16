@@ -25,7 +25,7 @@ use crate::{
     host::ClipboardText,
     palette::list_color,
     panel::Footer,
-    picker::{Entry, Scope},
+    picker::{Entry, RESULT_LIMIT, Scope},
     placement::{self, Anchor, PopupHost},
     popup_window::{Shell, set_look_globals},
     toast::{Toast, ToastKind, ToastMessage},
@@ -334,6 +334,7 @@ fn scope_of(scope: ui::PickerScope) -> Scope {
     match scope {
         ui::PickerScope::All => Scope::All,
         ui::PickerScope::Board => Scope::Board,
+        ui::PickerScope::List => Scope::List,
         ui::PickerScope::Pinned => Scope::Pinned,
     }
 }
@@ -342,6 +343,7 @@ const fn scope_in(scope: Scope) -> ui::PickerScope {
     match scope {
         Scope::All => ui::PickerScope::All,
         Scope::Board => ui::PickerScope::Board,
+        Scope::List => ui::PickerScope::List,
         Scope::Pinned => ui::PickerScope::Pinned,
     }
 }
@@ -439,6 +441,11 @@ fn render(
     if window.get_scope() != scope_in(picker.scope) {
         window.set_scope(scope_in(picker.scope));
     }
+    window.set_result_limit(if picker.more {
+        crate::binding::to_i32(RESULT_LIMIT)
+    } else {
+        0
+    });
     let selected = crate::binding::to_i32(picker.selected);
     if window.get_selected_index() != selected {
         window.set_selected_index(selected);
