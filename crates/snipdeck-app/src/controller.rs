@@ -49,7 +49,7 @@ pub use create_ctl::DropRun;
 pub use history_ctl::HistoryView;
 pub use library::Library;
 pub use lock_ctl::{MasterProblem, MasterState};
-pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice, TagRenameError};
+pub use main_ctl::{BoardMenuEntry, FilterChip, MainAction, MainScreen, TagChoice, TagRenameError};
 pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, ListMenuEntry};
 pub use panel_select::LABELS;
 pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
@@ -280,6 +280,11 @@ pub struct Controller<S, C, K, T> {
     /// The board menu's delete confirmation is asking about this board (the Main window draws
     /// it; no editor opens).
     board_delete: Option<BoardId>,
+    /// The Main window asks before deleting this folded group (its items are out of sight).
+    group_delete: Option<snipdeck_core::GroupId>,
+    /// The group the *Move to list* chooser was opened for: it is made again, with its name and fold, in the list the
+    /// items land in.
+    group_move: Option<snipdeck_core::Group>,
     /// List and board editors closed with the window that opened them: what was typed in each,
     /// for the next time it opens (this app session only).
     parked_editors: Vec<(main_ctl::EditorTarget, crate::main_window::EditorView)>,
@@ -499,6 +504,7 @@ where
         let colour_other = colour_ctl::colour_or(&settings.colour_contrast_with, "#ffffff");
         let mut main = MainModel::new();
         main.set_view_mode(ViewMode::from(settings.row_density));
+        main.set_section_sorts(settings.section_sorts());
         Ok(Self {
             store,
             services,
@@ -541,6 +547,8 @@ where
             editor: None,
             editor_seq: 0,
             board_delete: None,
+            group_delete: None,
+            group_move: None,
             parked_editors: Vec::new(),
             item_editor: None,
             item_editor_seq: 0,
@@ -754,13 +762,13 @@ where
     }
 
     /// The sort of the list the list menu is open on (manual while it is closed).
-    fn list_menu_sort(&self) -> snipdeck_core::ListSort {
+    fn list_menu_sort(&self) -> snipdeck_core::Sort {
         match self.menu {
             PanelMenu::List(id) => self
                 .store
                 .list(id)
-                .map_or(snipdeck_core::ListSort::Manual, |l| l.sort),
-            _ => snipdeck_core::ListSort::Manual,
+                .map_or(snipdeck_core::Sort::MANUAL, |l| l.sort),
+            _ => snipdeck_core::Sort::MANUAL,
         }
     }
 

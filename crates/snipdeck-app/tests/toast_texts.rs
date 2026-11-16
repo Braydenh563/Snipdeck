@@ -120,6 +120,7 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::GroupColourFilter => 113,
         ToastMessage::GroupNothing => 114,
         ToastMessage::TagDeleted { .. } => 115,
+        ToastMessage::TagMerged { .. } => 119,
         ToastMessage::UndoStopped => 116,
         ToastMessage::HistoryStepLost => 117,
         ToastMessage::SavedAgain { .. } => 118,
@@ -149,7 +150,7 @@ const fn position(message: &ToastMessage) -> usize {
     }
 }
 
-const VARIANTS: usize = 119;
+const VARIANTS: usize = 120;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -303,6 +304,10 @@ fn samples() -> Vec<ToastMessage> {
         M::GroupColourFilter,
         M::GroupNothing,
         M::TagDeleted { name: s("work") },
+        M::TagMerged {
+            from: s("work"),
+            into: s("Work"),
+        },
         M::UndoStopped,
         M::HistoryStepLost,
         M::DockSet(None),
@@ -489,6 +494,13 @@ fn what_a_toast_carries_reaches_its_sentence() {
         assert_eq!(
             said(ToastMessage::TagDeleted { name: s("work") }),
             "Deleted tag \"work\""
+        );
+        assert_eq!(
+            said(ToastMessage::TagMerged {
+                from: s("work"),
+                into: s("Work")
+            }),
+            "Merged tag \"work\" into \"Work\""
         );
         assert_eq!(
             said(ToastMessage::SavedAgain {

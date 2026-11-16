@@ -542,6 +542,9 @@ msgstr "色"
 msgid "Colour label"
 msgstr "カラーラベル"
 
+msgid "Colour of tag {}"
+msgstr "タグ {} の色"
+
 msgid "Colours"
 msgstr "カラー"
 
@@ -836,6 +839,9 @@ msgstr "項目を作成"
 msgid "Create “{}”"
 msgstr "「{}」を作成"
 
+msgid "Created"
+msgstr "作成日"
+
 msgid "Ctrl+Shift+V"
 msgstr "Ctrl+Shift+V"
 
@@ -892,6 +898,9 @@ msgstr "完全に削除"
 
 msgid "Delete group"
 msgstr "グループを削除"
+
+msgid "Delete group “{}” and its {} items?"
+msgstr "グループ「{}」と {} 件の項目を削除しますか?"
 
 msgid "Delete list"
 msgstr "リストを削除"
@@ -1103,6 +1112,9 @@ msgstr "Espanso（.yml ファイル1つ）"
 msgid "Every command, one search away"
 msgstr "すべてのコマンドが検索ひとつで見つかる"
 
+msgid "Every item tagged “{}” gets “{}” and “{}” is deleted. You can undo it."
+msgstr "「{}」が付いた項目すべてに「{}」が付き、「{}」は削除されます。元に戻せます。"
+
 msgid "Everything checks out."
 msgstr "問題ありません。"
 
@@ -1139,11 +1151,23 @@ msgstr "テンプレートに入力"
 msgid "Fill in the blanks"
 msgstr "空欄を埋める"
 
+msgid "Filter"
+msgstr "絞り込み"
+
+msgid "Filter ({})"
+msgstr "絞り込み ({})"
+
 msgid "Filter as you type"
 msgstr "入力に合わせて絞り込み"
 
 msgid "Filter by colour label"
 msgstr "カラーラベルで絞り込み"
+
+msgid "Filter by tags"
+msgstr "タグで絞り込む"
+
+msgid "Filter the items"
+msgstr "項目を絞り込む"
 
 msgid "Find"
 msgstr "検索"
@@ -1270,6 +1294,9 @@ msgstr "HSL"
 
 msgid "Handy for forms you fill field by field."
 msgstr "フォームを項目ごとに入力するときに便利です。"
+
+msgid "Has a trigger"
+msgstr "トリガーあり"
 
 msgid "Heard it. This shortcut works."
 msgstr "聞こえました。このショートカットは使えます。"
@@ -1425,6 +1452,9 @@ msgstr "ピン留めを外しました"
 
 msgid "Items are removed after {} days."
 msgstr "スニペットは{}日後に削除されます。"
+
+msgid "Items need every chosen tag"
+msgstr "選んだタグをすべて持つ項目だけ"
 
 msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
 msgid_plural "Its lists and {n} items will move to Trash. You can restore them for 30 days."
@@ -1640,8 +1670,20 @@ msgstr "大文字・小文字を厳密に区別する"
 msgid "Menu"
 msgstr "メニュー"
 
+msgid "Merge"
+msgstr "統合"
+
+msgid "Merge into “{}”?"
+msgstr "「{}」に統合しますか?"
+
+msgid "Merged tag \"{}\" into \"{}\""
+msgstr "タグ \"{}\" を \"{}\" に統合しました"
+
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
+
+msgid "Modified"
+msgstr "更新日"
 
 msgid "Monospace font"
 msgstr "等幅フォント"
@@ -1675,6 +1717,9 @@ msgstr "ボードを上へ移動"
 
 msgid "Move down"
 msgstr "下へ移動"
+
+msgid "Move group to list…"
+msgstr "グループをリストに移動…"
 
 msgid "Move selected item to Trash"
 msgstr "選択したスニペットをゴミ箱へ移動"
@@ -2212,6 +2257,9 @@ msgstr "画面から色を選ぶ"
 msgid "Pick a colour from the screen (Ctrl+I)"
 msgstr "画面から色を選ぶ (Ctrl+I)"
 
+msgid "Pick a colour: it shows as a dot beside the tag. Esc closes."
+msgstr "色を選ぶとタグの横に点で表示されます。Esc で閉じます。"
+
 msgid "Pick a date"
 msgstr "日付を選ぶ"
 
@@ -2425,6 +2473,9 @@ msgstr "重複行を削除"
 msgid "Remove tag {}"
 msgstr "タグ {} を削除"
 
+msgid "Remove this filter"
+msgstr "この絞り込みを外す"
+
 msgid "Remove {} from the list"
 msgstr "リストから {} を削除"
 
@@ -2495,6 +2546,9 @@ msgstr "検索結果"
 
 msgid "Resume it from the tray icon, then copy some text."
 msgstr "トレイアイコンから再開してから、テキストをコピーしてください。"
+
+msgid "Reverse order"
+msgstr "順序を逆にする"
 
 msgid "Right"
 msgstr "右"
@@ -3006,6 +3060,12 @@ msgstr "タグ"
 msgid "Tag a snippet to see it here."
 msgstr "スニペットにタグを付けると、ここに表示されます。"
 
+msgid "Tag colour"
+msgstr "タグの色"
+
+msgid "Tag: {}"
+msgstr "タグ: {}"
+
 msgid "Tags"
 msgstr "タグ"
 
@@ -3134,6 +3194,9 @@ msgstr "直前のコピーより前のクリップボード（2〜25）"
 
 msgid "The file dialog couldn't open. Type the path instead."
 msgstr "ファイルダイアログを開けませんでした。代わりにパスを入力してください。"
+
+msgid "The group and its items move to the Trash. You can restore them for {} days."
+msgstr "グループと項目はごみ箱に移動します。{} 日間は元に戻せます。"
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "取り込み元が Snipdeck が一度に読み込める量より大きいため、取り込みを途中で停止しました。"
@@ -3473,6 +3536,9 @@ msgstr "ピン留めの解除も同じ操作です。"
 
 msgid "Unsaved: this is how the item will look once you save it."
 msgstr "未保存：保存するとスニペットはこのように表示されます。"
+
+msgid "Untagged"
+msgstr "タグなし"
 
 msgid "Use"
 msgstr "使用"

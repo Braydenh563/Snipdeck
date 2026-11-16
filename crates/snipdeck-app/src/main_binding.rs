@@ -18,7 +18,7 @@ use slint::{
     CloseRequestResponse, ComponentHandle, Global, SharedString,
     winit_030::{WinitWindowAccessor, winit},
 };
-use snipdeck_core::{ListAccent, ListIcon, ListSort};
+use snipdeck_core::{ItemKind, ListAccent, ListIcon, Sort, SortKey};
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
     system_look::HighContrast,
@@ -36,7 +36,7 @@ use crate::{
     },
     host::ClipboardText,
     item_editor::Origin,
-    main_window::{EditorKind, EditorView, Key, Section, SelectMode, ViewMode},
+    main_window::{EditorKind, EditorView, FilterTerm, Key, Section, SelectMode, ViewMode},
     native_window::{
         fit_logical, fit_when_settled, place_of, place_over_owner, restore_place, size_before_show,
     },
@@ -291,6 +291,12 @@ where
             icon: slint::Image::default(),
             checked: false,
         })));
+        window.set_colours(model(
+            screen
+                .tags
+                .iter()
+                .map(|t| crate::binding::label_index(t.colour)),
+        ));
         window.set_dark(screen.dark);
         apply_look(&window, screen);
     }
@@ -316,7 +322,29 @@ where
                     }
                     Err(error) => {
                         w.set_rename_error(wording::tag_rename_error_text(&w, &error).into());
+                        // A name that is taken offers the merge into that tag.
+                        if matches!(error, crate::controller::TagRenameError::Exists) {
+                            w.set_merge_into(name.trim().into());
+                        }
                     }
+                }
+            }
+        });
+        let core = Rc::clone(self);
+        w.on_colour_chosen(move |i, accent| {
+            crate::trace!("callback tags colour_chosen ({i}, {accent})");
+            core.act(|ctl| ctl.main_set_tag_colour(index(i), crate::binding::label_of(accent)));
+        });
+        let (core, weak) = (Rc::clone(self), w.as_weak());
+        w.on_merge_confirmed(move |i, into| {
+            crate::trace!("callback tags merge_confirmed ({i})");
+            let result = core.act(|ctl| ctl.main_merge_tag(index(i), into.as_str()));
+            if let Some(w) = weak.upgrade() {
+                if result.is_ok() {
+                    w.set_rename_error(SharedString::new());
+                    w.invoke_finish_rename();
+                } else {
+                    w.set_merge_into(SharedString::new());
                 }
             }
         });
@@ -437,7 +465,7 @@ where
                     w.get_name(),
                     accent_of(w.get_accent()),
                     icon_of(w.get_icon_index()),
-                    sort_of(w.get_sort_index()),
+                    sort_of(w.get_sort_index(), false),
                 );
                 core.act(|ctl| ctl.main_editor_save(name.as_str(), accent, icon, sort));
             }
@@ -461,7 +489,7 @@ where
                     w.get_name(),
                     accent_of(w.get_accent()),
                     icon_of(w.get_icon_index()),
-                    sort_of(w.get_sort_index()),
+                    sort_of(w.get_sort_index(), false),
                 );
                 core.act(|ctl| ctl.main_editor_park(name.as_str(), accent, icon, sort));
             }
@@ -480,8 +508,12 @@ where
         let weak = w.as_weak();
         w.on_save_requested(move || {
             if let Some(w) = weak.upgrade() {
-                let name = w.get_name();
-                core.act(|ctl| ctl.main_editor_save(name.as_str(), None, None, ListSort::Manual));
+                let (name, accent, icon) = (
+                    w.get_name(),
+                    accent_of(w.get_accent()),
+                    icon_of(w.get_icon_index()),
+                );
+                core.act(|ctl| ctl.main_editor_save(name.as_str(), accent, icon, Sort::MANUAL));
             }
         });
         let help = Rc::clone(self);
@@ -499,9 +531,13 @@ where
         let (core, weak) = (Rc::clone(self), w.as_weak());
         crate::ownership::register_closer(crate::ownership::Win::BoardEditor, move || {
             if let Some(w) = weak.upgrade() {
-                let name = w.get_name();
+                let (name, accent, icon) = (
+                    w.get_name(),
+                    accent_of(w.get_accent()),
+                    icon_of(w.get_icon_index()),
+                );
                 core.act(|ctl| {
-                    ctl.main_editor_park(name.as_str(), None, None, ListSort::Manual);
+                    ctl.main_editor_park(name.as_str(), accent, icon, Sort::MANUAL);
                 });
             }
         });
@@ -604,7 +640,8 @@ where
             .main_set_label_filter(crate::binding::label_of(i)));
         wire!(on_view_changed, |ctl, v| ctl.main_set_view(view_of(v)));
         wire!(on_theme_chosen, |ctl, i| ctl.choose_theme(theme_of(i)));
-        wire!(on_sort_chosen, |ctl, i| ctl.main_set_list_sort(sort_of(i)));
+        wire!(on_sort_chosen, |ctl, i, reversed| ctl
+            .main_set_sort(sort_of(i, reversed)));
         wire!(on_sidebar_width_changed, |ctl, w| ctl
             .set_main_sidebar_width(u32::try_from(w).unwrap_or(0)));
         wire!(on_sidebar_collapsed_changed, |ctl, c| ctl
@@ -651,6 +688,32 @@ where
                 })));
             });
         }
+        {
+            let core2 = Rc::clone(&core);
+            window.on_filter_toggled(move |code| {
+                crate::trace!("callback main filter_toggled ({code})");
+                if let Some(term) = filter_term_of(code) {
+                    core2.act(|ctl| ctl.main_toggle_filter(term));
+                }
+            });
+            let core3 = Rc::clone(&core);
+            window.on_filter_chip_removed(move |i| {
+                crate::trace!("callback main filter_chip_removed ({i})");
+                let term = core3
+                    .shown
+                    .borrow()
+                    .as_ref()
+                    .and_then(|s| s.filter_chips.get(index(i)).map(|c| c.term));
+                if let Some(term) = term {
+                    core3.act(|ctl| ctl.main_toggle_filter(term));
+                }
+            });
+        }
+        wire!(on_filter_tag_toggled, |ctl, i| ctl
+            .main_toggle_filter_tag(index(i)));
+        wire!(on_filter_match_all_changed, |ctl, all| ctl
+            .main_set_filter_match_all(all));
+        wire!(on_filter_cleared, |ctl| ctl.main_clear_filter());
         wire!(on_tag_toggled, |ctl, i, on| ctl
             .main_toggle_tag(index(i), on));
         wire!(on_reveal_requested, |ctl, i, on| ctl
@@ -671,6 +734,10 @@ where
         wire!(on_board_menu_activated, |ctl, i| ctl
             .main_board_menu_activate(index(i)));
         wire!(on_board_menu_dismissed, |ctl| ctl.main_board_menu_close());
+        wire!(on_group_delete_confirmed, |ctl| ctl
+            .main_group_delete_confirm());
+        wire!(on_group_delete_dismissed, |ctl| ctl
+            .main_group_delete_cancel());
         wire!(on_board_delete_confirmed, |ctl| ctl
             .main_board_delete_confirm());
         wire!(on_board_delete_dismissed, |ctl| ctl
@@ -755,6 +822,8 @@ where
         wire!(on_group_rename_requested, |ctl, i| ctl
             .main_group_rename_start(index(i)));
         wire!(on_group_rename_ended, |ctl| ctl.main_group_rename_ended());
+        wire!(on_group_move_requested, |ctl, i| ctl
+            .main_group_move_start(index(i)));
         wire!(on_group_ungroup_requested, |ctl, i| ctl
             .main_group_ungroup(index(i)));
         wire!(on_group_delete_requested, |ctl, i| ctl
@@ -1130,6 +1199,63 @@ fn set_label_filter(window: &ui::MainWindow, screen: &MainScreen) {
     window.set_label_filter(crate::binding::label_index(screen.label_filter));
 }
 
+/// The Filter menu's row `code` (and a chip's `kind`): 0 to 5 an item kind in [`ItemKind::ALL`]
+/// order, 6 has a trigger, 7 sensitive, 8 untagged.
+fn filter_term_of(code: i32) -> Option<FilterTerm> {
+    let code = usize::try_from(code).ok()?;
+    match code {
+        0..=5 => ItemKind::ALL.get(code).copied().map(FilterTerm::Kind),
+        6 => Some(FilterTerm::HasTrigger),
+        7 => Some(FilterTerm::Sensitive),
+        8 => Some(FilterTerm::Untagged),
+        _ => None,
+    }
+}
+
+/// The code of a criterion for the window: see [`filter_term_of`]; 9 is a tag.
+fn filter_code(term: FilterTerm) -> i32 {
+    match term {
+        FilterTerm::Kind(kind) => ItemKind::ALL
+            .iter()
+            .position(|k| *k == kind)
+            .map_or(0, to_i32),
+        FilterTerm::HasTrigger => 6,
+        FilterTerm::Sensitive => 7,
+        FilterTerm::Untagged => 8,
+        FilterTerm::Tag(_) => 9,
+    }
+}
+
+/// The Filter menu's ticks and the chips of the active criteria.
+fn set_filter(window: &ui::MainWindow, screen: &MainScreen) {
+    let mut checked = [false; 9];
+    for chip in &screen.filter_chips {
+        if let Some(slot) = usize::try_from(filter_code(chip.term))
+            .ok()
+            .and_then(|i| checked.get_mut(i))
+        {
+            *slot = true;
+        }
+    }
+    window.set_filter_checked(model(checked.into_iter()));
+    window.set_filter_chips(model(screen.filter_chips.iter().map(|chip| {
+        ui::FilterChipEntry {
+            kind: filter_code(chip.term),
+            name: chip.name.as_str().into(),
+        }
+    })));
+    window.set_filter_match_all(screen.filter_match_all);
+    window.set_filter_tag_choices(model(screen.filter_tag_choices.iter().map(|t| {
+        ui::ChoiceEntry {
+            label: t.name.as_str().into(),
+            count: to_i32(t.count),
+            color: slint::Color::default(),
+            icon: slint::Image::default(),
+            checked: t.checked,
+        }
+    })));
+}
+
 /// The Colour block under the list: its swatch and the colour in every format.
 fn set_colour_block(window: &ui::MainWindow, block: Option<&crate::controller::ColourBlock>) {
     window.set_colour_block_shown(block.is_some());
@@ -1202,17 +1328,33 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
         }
         window.set_board_delete_open(screen.board_delete.is_some());
     }
+    if differs(&|p| p.group_delete == screen.group_delete)
+        || window.get_group_delete_open() != screen.group_delete.is_some()
+    {
+        if let Some((name, count)) = &screen.group_delete {
+            window.set_group_delete_name(name.as_str().into());
+            window.set_group_delete_count(to_i32(*count));
+        }
+        window.set_group_delete_open(screen.group_delete.is_some());
+    }
     if differs(&|p| p.lists == screen.lists && p.dark == screen.dark) {
         set_side_lists(window, screen);
     }
     if differs(&|p| p.label_chips == screen.label_chips && p.label_filter == screen.label_filter) {
         set_label_filter(window, screen);
     }
-    if differs(&|p| p.tags == screen.tags) {
+    if differs(&|p| {
+        p.filter_chips == screen.filter_chips
+            && p.filter_match_all == screen.filter_match_all
+            && p.filter_tag_choices == screen.filter_tag_choices
+    }) {
+        set_filter(window, screen);
+    }
+    if differs(&|p| p.tags == screen.tags && p.dark == screen.dark) {
         window.set_tags(model(screen.tags.iter().map(|t| ui::ChoiceEntry {
             label: t.name.as_str().into(),
             count: to_i32(t.count),
-            color: slint::Color::default(),
+            color: crate::palette::tag_icon_tint(t.colour, screen.dark),
             icon: slint::Image::default(),
             checked: false,
         })));
@@ -1320,7 +1462,9 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     if window.get_rename_seq() != rename_seq {
         window.set_rename_seq(rename_seq);
     }
-    window.set_list_sort(sort_index(screen.list_sort));
+    window.set_list_sort(sort_index(screen.sort));
+    window.set_list_sort_reversed(screen.sort.reversed && screen.sort.key.has_direction());
+    window.set_sortable(screen.sortable);
     window.set_reorder_offer(screen.reorder_offer);
     // The window runs ahead of the setting while the splitter is dragged: only a change of the setting is pushed.
     if differs(&|p| p.sidebar_width == screen.sidebar_width) {
@@ -1541,7 +1685,14 @@ fn fill_list_editor(window: &ui::ListEditor, view: &EditorView) {
 fn fill_board_editor(window: &ui::BoardEditor, view: &EditorView) {
     window.set_is_new(view.is_new);
     window.set_name(view.name.as_str().into());
-    window.set_show_colour(false);
+    window.set_accent(accent_index(view.accent));
+    window.set_icon_names(model(
+        ListIcon::ALL
+            .iter()
+            .map(|i| SharedString::from(wording::list_icon_name(*i))),
+    ));
+    window.set_icon_index(icon_index(view.icon));
+    window.set_show_colour(true);
     window.set_show_sort(false);
     window.set_item_count(to_i32(view.item_count));
     window.set_can_delete(view.can_delete);
@@ -1590,21 +1741,23 @@ fn icon_of(index: i32) -> Option<ListIcon> {
         .and_then(|i| ListIcon::ALL.get(i).copied())
 }
 
-/// 0 manual, 1 most used, 2 recently used.
-pub(crate) fn sort_index(sort: ListSort) -> i32 {
-    match sort {
-        ListSort::Manual => 0,
-        ListSort::MostUsed => 1,
-        ListSort::RecentlyUsed => 2,
-    }
+/// The position of the sort's key in [`SortKey::ALL`] (manual, name, created, modified, most
+/// used, recently used): the sort menu and the list editor use the same order.
+pub(crate) fn sort_index(sort: Sort) -> i32 {
+    SortKey::ALL
+        .iter()
+        .position(|k| *k == sort.key)
+        .and_then(|i| i32::try_from(i).ok())
+        .unwrap_or(0)
 }
 
-fn sort_of(index: i32) -> ListSort {
-    match index {
-        1 => ListSort::MostUsed,
-        2 => ListSort::RecentlyUsed,
-        _ => ListSort::Manual,
-    }
+/// The sort at `index` of [`SortKey::ALL`]: the key's natural direction, or the other one.
+fn sort_of(index: i32, reversed: bool) -> Sort {
+    let key = usize::try_from(index)
+        .ok()
+        .and_then(|i| SortKey::ALL.get(i).copied())
+        .unwrap_or(SortKey::Manual);
+    Sort::new(key, reversed)
 }
 
 fn ui_section(section: Section, index: usize) -> (ui::MainSection, i32) {
@@ -1752,9 +1905,17 @@ mod tests {
         // The window's ListHue order: blue, teal, green, amber, orange, red, rose, violet, slate.
         assert_eq!(accent_index(Some(ListAccent::Blue)), 0);
         assert_eq!(accent_index(Some(ListAccent::Slate)), 8);
-        for sort in [ListSort::Manual, ListSort::MostUsed, ListSort::RecentlyUsed] {
-            assert_eq!(sort_of(sort_index(sort)), sort);
+        for &key in SortKey::ALL {
+            for reversed in [false, true] {
+                let sort = Sort::new(key, reversed);
+                assert_eq!(sort_of(sort_index(sort), reversed), sort);
+            }
         }
+        assert_eq!(
+            sort_index(Sort::MOST_USED),
+            4,
+            "the menu lists the keys in SortKey::ALL order"
+        );
     }
 
     #[test]

@@ -203,7 +203,7 @@ fn start() -> (MainWindow, Log) {
     hook!(on_sidebar_collapsed_changed, |c| format!(
         "sidebar-collapsed:{c}"
     ));
-    hook!(on_sort_chosen, |i| format!("sort:{i}"));
+    hook!(on_sort_chosen, |i, reversed| format!("sort:{i}:{reversed}"));
     hook!(on_undo_requested, || "undo".to_string());
     hook!(on_help_requested, |page| format!("help:{page:?}"));
     hook!(on_panel_requested, || "panel".to_string());
@@ -2137,7 +2137,7 @@ ui_tests! {
         settle();
         let button = find(&ui, "Sort by: Manual", AccessibleRole::Button);
         assert!(button.size().height >= MIN_HIT);
-        ui.set_list_sort(1);
+        ui.set_list_sort(4);
         settle();
         let _ = find(&ui, "Sort by: Most used", AccessibleRole::Button);
         ui.set_list_sort(0);
@@ -2148,7 +2148,7 @@ ui_tests! {
         let _ = find(&ui, "Sort by", AccessibleRole::List);
         press_key(&ui, Key::DownArrow);
         press_key(&ui, Key::Return);
-        assert_eq!(take(&log), ["sort:1"]);
+        assert_eq!(take(&log), ["sort:1:false"]);
     }
 
     fn the_sidebar_rail_has_a_settings_button_when_collapsed() {

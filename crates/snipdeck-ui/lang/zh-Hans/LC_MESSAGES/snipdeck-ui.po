@@ -542,6 +542,9 @@ msgstr "颜色"
 msgid "Colour label"
 msgstr "颜色标签"
 
+msgid "Colour of tag {}"
+msgstr "标签 {} 的颜色"
+
 msgid "Colours"
 msgstr "颜色"
 
@@ -836,6 +839,9 @@ msgstr "创建项目"
 msgid "Create “{}”"
 msgstr "创建“{}”"
 
+msgid "Created"
+msgstr "创建时间"
+
 msgid "Ctrl+Shift+V"
 msgstr "Ctrl+Shift+V"
 
@@ -892,6 +898,9 @@ msgstr "永久删除"
 
 msgid "Delete group"
 msgstr "删除分组"
+
+msgid "Delete group “{}” and its {} items?"
+msgstr "要删除分组“{}”及其 {} 个条目吗?"
 
 msgid "Delete list"
 msgstr "删除列表"
@@ -1103,6 +1112,9 @@ msgstr "Espanso（单个 .yml 文件）"
 msgid "Every command, one search away"
 msgstr "每个命令，一搜即得"
 
+msgid "Every item tagged “{}” gets “{}” and “{}” is deleted. You can undo it."
+msgstr "所有带“{}”的条目都会改为“{}”,并删除“{}”。可以撤销。"
+
 msgid "Everything checks out."
 msgstr "一切正常。"
 
@@ -1139,11 +1151,23 @@ msgstr "填写模板"
 msgid "Fill in the blanks"
 msgstr "填写空白"
 
+msgid "Filter"
+msgstr "筛选"
+
+msgid "Filter ({})"
+msgstr "筛选 ({})"
+
 msgid "Filter as you type"
 msgstr "输入时筛选"
 
 msgid "Filter by colour label"
 msgstr "按颜色标签筛选"
+
+msgid "Filter by tags"
+msgstr "按标签筛选"
+
+msgid "Filter the items"
+msgstr "筛选条目"
 
 msgid "Find"
 msgstr "查找"
@@ -1270,6 +1294,9 @@ msgstr "HSL"
 
 msgid "Handy for forms you fill field by field."
 msgstr "适合逐个字段填写的表单。"
+
+msgid "Has a trigger"
+msgstr "有触发词"
 
 msgid "Heard it. This shortcut works."
 msgstr "收到了。此快捷键可用。"
@@ -1425,6 +1452,9 @@ msgstr "已取消固定"
 
 msgid "Items are removed after {} days."
 msgstr "片段将在 {} 天后移除。"
+
+msgid "Items need every chosen tag"
+msgstr "条目须带有所选的全部标签"
 
 msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
 msgid_plural "Its lists and {n} items will move to Trash. You can restore them for 30 days."
@@ -1640,8 +1670,20 @@ msgstr "严格区分大小写"
 msgid "Menu"
 msgstr "菜单"
 
+msgid "Merge"
+msgstr "合并"
+
+msgid "Merge into “{}”?"
+msgstr "要合并到“{}”吗?"
+
+msgid "Merged tag \"{}\" into \"{}\""
+msgstr "已将标签 \"{}\" 合并到 \"{}\""
+
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
+
+msgid "Modified"
+msgstr "修改时间"
 
 msgid "Monospace font"
 msgstr "等宽字体"
@@ -1675,6 +1717,9 @@ msgstr "将看板上移"
 
 msgid "Move down"
 msgstr "下移"
+
+msgid "Move group to list…"
+msgstr "将分组移到列表…"
 
 msgid "Move selected item to Trash"
 msgstr "将所选片段移到回收站"
@@ -2212,6 +2257,9 @@ msgstr "从屏幕上取色"
 msgid "Pick a colour from the screen (Ctrl+I)"
 msgstr "从屏幕上取色（Ctrl+I）"
 
+msgid "Pick a colour: it shows as a dot beside the tag. Esc closes."
+msgstr "选择颜色:它会作为圆点显示在标签旁。按 Esc 关闭。"
+
 msgid "Pick a date"
 msgstr "选择日期"
 
@@ -2425,6 +2473,9 @@ msgstr "删除重复行"
 msgid "Remove tag {}"
 msgstr "移除标签 {}"
 
+msgid "Remove this filter"
+msgstr "移除此筛选"
+
 msgid "Remove {} from the list"
 msgstr "从列表中移除 {}"
 
@@ -2495,6 +2546,9 @@ msgstr "搜索结果"
 
 msgid "Resume it from the tray icon, then copy some text."
 msgstr "请从托盘图标恢复，然后复制一些文本。"
+
+msgid "Reverse order"
+msgstr "反向排序"
 
 msgid "Right"
 msgstr "右侧"
@@ -3006,6 +3060,12 @@ msgstr "标签"
 msgid "Tag a snippet to see it here."
 msgstr "为片段添加标签后，即可在这里看到。"
 
+msgid "Tag colour"
+msgstr "标签颜色"
+
+msgid "Tag: {}"
+msgstr "标签:{}"
+
 msgid "Tags"
 msgstr "标签"
 
@@ -3134,6 +3194,9 @@ msgstr "最近一次复制之前的剪贴板内容（2 到 25）"
 
 msgid "The file dialog couldn't open. Type the path instead."
 msgstr "无法打开文件对话框。请改为输入路径。"
+
+msgid "The group and its items move to the Trash. You can restore them for {} days."
+msgstr "分组及其条目将移入回收站。{} 天内可以恢复。"
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "导入已提前停止，因为源内容比 Snipdeck 一次能读取的量大。"
@@ -3473,6 +3536,9 @@ msgstr "取消置顶的方式相同。"
 
 msgid "Unsaved: this is how the item will look once you save it."
 msgstr "未保存：保存后项目将如此显示。"
+
+msgid "Untagged"
+msgstr "无标签"
 
 msgid "Use"
 msgstr "使用"

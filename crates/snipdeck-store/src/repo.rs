@@ -255,6 +255,9 @@ pub struct TrashEntry {
     pub target: Trashable,
     /// Its name or title when it was trashed.
     pub label: String,
+    /// An item's preview (empty for a list or board, and for a sensitive item, which keeps none),
+    /// so the Trash can be searched by it.
+    pub preview: String,
     /// When it was trashed.
     pub deleted_at: Timestamp,
 }

@@ -1467,7 +1467,7 @@ fn a_move_in_a_sorted_list_offers_manual_order_through_the_keys() {
         )
         .unwrap();
         r.open_list(code);
-        r.ui.invoke_sort_chosen(1);
+        r.ui.invoke_sort_chosen(1, false);
         slint::platform::update_timers_and_animations();
         assert_eq!(r.ui.get_list_sort(), 1);
         assert!(!r.ui.get_rows_reorderable());
@@ -1497,7 +1497,7 @@ fn dragging_a_row_in_a_sorted_list_offers_manual_order() {
         )
         .unwrap();
         r.open_list(code);
-        r.ui.invoke_sort_chosen(1);
+        r.ui.invoke_sort_chosen(1, false);
         slint::platform::update_timers_and_animations();
         let first = r.ui.get_rows().row_data(0).unwrap().title.to_string();
         let second = r.ui.get_rows().row_data(1).unwrap().title.to_string();

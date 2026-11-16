@@ -543,6 +543,9 @@ msgstr "Cor"
 msgid "Colour label"
 msgstr "Rótulo de cor"
 
+msgid "Colour of tag {}"
+msgstr "Cor da etiqueta {}"
+
 msgid "Colours"
 msgstr "Cores"
 
@@ -837,6 +840,9 @@ msgstr "Criar item"
 msgid "Create “{}”"
 msgstr "Criar “{}”"
 
+msgid "Created"
+msgstr "Criado"
+
 msgid "Ctrl+Shift+V"
 msgstr "Ctrl+Shift+V"
 
@@ -893,6 +899,9 @@ msgstr "Excluir definitivamente"
 
 msgid "Delete group"
 msgstr "Excluir grupo"
+
+msgid "Delete group “{}” and its {} items?"
+msgstr "Excluir o grupo “{}” e seus {} itens?"
 
 msgid "Delete list"
 msgstr "Excluir lista"
@@ -1104,6 +1113,9 @@ msgstr "Espanso (um único arquivo .yml)"
 msgid "Every command, one search away"
 msgstr "Todos os comandos a uma pesquisa de distância"
 
+msgid "Every item tagged “{}” gets “{}” and “{}” is deleted. You can undo it."
+msgstr "Todos os itens com “{}” passam a ter “{}” e “{}” é excluída. Você pode desfazer."
+
 msgid "Everything checks out."
 msgstr "Está tudo certo."
 
@@ -1140,11 +1152,23 @@ msgstr "Preencher modelo"
 msgid "Fill in the blanks"
 msgstr "Preencha os espaços"
 
+msgid "Filter"
+msgstr "Filtrar"
+
+msgid "Filter ({})"
+msgstr "Filtrar ({})"
+
 msgid "Filter as you type"
 msgstr "Filtrar enquanto você digita"
 
 msgid "Filter by colour label"
 msgstr "Filtrar por rótulo de cor"
+
+msgid "Filter by tags"
+msgstr "Filtrar por etiquetas"
+
+msgid "Filter the items"
+msgstr "Filtrar os itens"
 
 msgid "Find"
 msgstr "Localizar"
@@ -1271,6 +1295,9 @@ msgstr "HSL"
 
 msgid "Handy for forms you fill field by field."
 msgstr "Útil para formulários preenchidos campo a campo."
+
+msgid "Has a trigger"
+msgstr "Tem um gatilho"
 
 msgid "Heard it. This shortcut works."
 msgstr "Ouvi. Este atalho funciona."
@@ -1428,6 +1455,9 @@ msgstr "Item desafixado"
 
 msgid "Items are removed after {} days."
 msgstr "Os trechos são removidos após {} dias."
+
+msgid "Items need every chosen tag"
+msgstr "Os itens precisam de todas as etiquetas escolhidas"
 
 msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
 msgid_plural "Its lists and {n} items will move to Trash. You can restore them for 30 days."
@@ -1644,8 +1674,20 @@ msgstr "Respeitar maiúsculas e minúsculas exatamente"
 msgid "Menu"
 msgstr "Menu"
 
+msgid "Merge"
+msgstr "Mesclar"
+
+msgid "Merge into “{}”?"
+msgstr "Mesclar em “{}”?"
+
+msgid "Merged tag \"{}\" into \"{}\""
+msgstr "Etiqueta \"{}\" mesclada em \"{}\""
+
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
+
+msgid "Modified"
+msgstr "Modificado"
 
 msgid "Monospace font"
 msgstr "Fonte monoespaçada"
@@ -1679,6 +1721,9 @@ msgstr "Mover quadro para cima"
 
 msgid "Move down"
 msgstr "Mover para baixo"
+
+msgid "Move group to list…"
+msgstr "Mover o grupo para a lista…"
 
 msgid "Move selected item to Trash"
 msgstr "Mover item selecionado para a Lixeira"
@@ -2218,6 +2263,9 @@ msgstr "Escolher uma cor da tela"
 msgid "Pick a colour from the screen (Ctrl+I)"
 msgstr "Escolher uma cor da tela (Ctrl+I)"
 
+msgid "Pick a colour: it shows as a dot beside the tag. Esc closes."
+msgstr "Escolha uma cor: ela aparece como um ponto ao lado da etiqueta. Esc fecha."
+
 msgid "Pick a date"
 msgstr "Escolher uma data"
 
@@ -2431,6 +2479,9 @@ msgstr "Remover linhas repetidas"
 msgid "Remove tag {}"
 msgstr "Remover a etiqueta {}"
 
+msgid "Remove this filter"
+msgstr "Remover este filtro"
+
 msgid "Remove {} from the list"
 msgstr "Remover {} da lista"
 
@@ -2503,6 +2554,9 @@ msgstr "Resultados"
 
 msgid "Resume it from the tray icon, then copy some text."
 msgstr "Retome-o pelo ícone na bandeja e copie algum texto."
+
+msgid "Reverse order"
+msgstr "Inverter a ordem"
 
 msgid "Right"
 msgstr "Direita"
@@ -3014,6 +3068,12 @@ msgstr "Etiquetas"
 msgid "Tag a snippet to see it here."
 msgstr "Etiquete um trecho para vê-lo aqui."
 
+msgid "Tag colour"
+msgstr "Cor da etiqueta"
+
+msgid "Tag: {}"
+msgstr "Etiqueta: {}"
+
 msgid "Tags"
 msgstr "Etiquetas"
 
@@ -3142,6 +3202,9 @@ msgstr "A área de transferência antes da última cópia (2 a 25)"
 
 msgid "The file dialog couldn't open. Type the path instead."
 msgstr "A caixa de diálogo de arquivos não pôde ser aberta. Digite o caminho."
+
+msgid "The group and its items move to the Trash. You can restore them for {} days."
+msgstr "O grupo e seus itens vão para a Lixeira. Você pode restaurá-los por {} dias."
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "A importação parou cedo porque a origem é maior do que o Snipdeck lê de uma vez."
@@ -3481,6 +3544,9 @@ msgstr "Desafixe do mesmo jeito."
 
 msgid "Unsaved: this is how the item will look once you save it."
 msgstr "Não salvo: é assim que o item ficará depois de salvar."
+
+msgid "Untagged"
+msgstr "Sem etiqueta"
 
 msgid "Use"
 msgstr "Usar"

@@ -163,6 +163,25 @@ fn name_the_item(error: Error, title: &str) -> Error {
     }
 }
 
+/// The tags some written item uses, in name order.
+fn tag_dtos(
+    used: &BTreeSet<TagId>,
+    names: &HashMap<TagId, (String, Option<String>)>,
+) -> Vec<TagDto> {
+    let mut tags: Vec<TagDto> = used
+        .iter()
+        .filter_map(|id| {
+            names.get(id).map(|(name, colour)| TagDto {
+                id: id.to_string(),
+                name: name.clone(),
+                colour: colour.clone(),
+            })
+        })
+        .collect();
+    tags.sort_by_key(|t| t.name.to_lowercase());
+    tags
+}
+
 impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
     fn build_doc(&mut self) -> Result<ItemsDoc> {
         let tag_names: HashMap<TagId, (String, Option<String>)> = self
@@ -260,18 +279,7 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
             self.report.boards += 1;
         }
 
-        // Tags in name order, only those some written item uses.
-        let mut tags: Vec<TagDto> = used_tags
-            .iter()
-            .filter_map(|id| {
-                tag_names.get(id).map(|(name, colour)| TagDto {
-                    id: id.to_string(),
-                    name: name.clone(),
-                    colour: colour.clone(),
-                })
-            })
-            .collect();
-        tags.sort_by_key(|t| t.name.to_lowercase());
+        let tags = tag_dtos(&used_tags, &tag_names);
         self.report.tags = tags.len();
         Ok(ItemsDoc { tags, boards })
     }

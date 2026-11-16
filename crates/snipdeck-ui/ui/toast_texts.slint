@@ -239,6 +239,9 @@ export global ToastTexts {
     pure public function tag-deleted(name: string) -> string {
         return @tr("Deleted tag \"{}\"", name);
     }
+    pure public function tag-merged(from: string, into: string) -> string {
+        return @tr("Merged tag \"{}\" into \"{}\"", from, into);
+    }
     pure public function undo-stopped() -> string {
         return @tr("That edit of a sensitive item cannot be undone: its text is not kept.");
     }

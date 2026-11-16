@@ -7,12 +7,12 @@
 //! items*, *Pinned* and the *Trash* span every board, the lists in the sidebar belong to the
 //! open board, and a search covers every board through the store's full-text index (SPEC §5.1).
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use snipdeck_core::search::{Hit, Query, SearchIndex};
 use snipdeck_core::{
     Board, BoardId, GroupId, Item, ItemId, ItemKind, ItemLabel, List, ListAccent, ListIcon, ListId,
-    ListSort, Placement, Tag, TagId,
+    Placement, Sort, Tag, TagId, ViewFilter,
 };
 use snipdeck_store::{
     BoardRepo, GroupRepo, GroupRun, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable,
@@ -39,6 +39,35 @@ fn search<S: ItemRepo>(
     let body = store.search(&query)?;
     Ok(index.query(&query, &body, SEARCH_LIMIT))
 }
+/// One criterion of the view filter: a chip in the toolbar and a row of the Filter menu.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FilterTerm {
+    /// Items of this kind (several kinds are alternatives).
+    Kind(ItemKind),
+    /// Items with a typed trigger.
+    HasTrigger,
+    /// Sensitive items.
+    Sensitive,
+    /// Items with no tag.
+    Untagged,
+    /// Items with this tag (several tags are any or all, by the filter's match).
+    Tag(TagId),
+}
+
+/// Whether a trash entry answers `query`: every wanted word is in its title or its preview and
+/// no excluded one is (the same word matching as the search marks; filters need data a trash
+/// entry does not carry and are not applied).
+fn trash_matches(entry: &TrashEntry, query: &Query) -> bool {
+    let found = |term: &snipdeck_core::search::Term| {
+        !snipdeck_core::search::find(&entry.label, term, true).is_empty()
+            || entry
+                .preview
+                .lines()
+                .any(|line| !snipdeck_core::search::find(line, term, false).is_empty())
+    };
+    query.terms.iter().all(|t| found(t) != t.negated)
+}
+
 /// The preview of a trashed list.
 pub const LIST_NOTE: &str = "List";
 /// The preview of a trashed board.
@@ -208,6 +237,8 @@ pub struct SideTag {
     pub name: String,
     /// How many items carry it.
     pub count: usize,
+    /// Its colour (one of the eight item colours), if it has one.
+    pub colour: Option<ItemLabel>,
 }
 
 /// The numbers next to the system views.
@@ -284,7 +315,7 @@ pub struct EditorView {
     /// A list's icon.
     pub icon: Option<ListIcon>,
     /// A list's item order.
-    pub sort: ListSort,
+    pub sort: Sort,
     /// How many items deleting it affects.
     pub item_count: usize,
     /// Whether it can be deleted.
@@ -320,7 +351,14 @@ pub struct MainModel {
     index: SearchIndex,
     hits: Vec<Hit>,
     view: ViewMode,
-    label_filter: Option<ItemLabel>,
+    /// What the open view is narrowed to (colour, tags, kind, trigger, sensitive); every section
+    /// shares it and a section change clears it.
+    filter: ViewFilter,
+    /// The items that have a typed trigger, for the filter.
+    triggered: HashSet<ItemId>,
+    /// The sort of each section that has none of its own in the library (All items, Pinned and
+    /// each tag), by [`MainModel::sort_key`]; the controller loads it from the settings.
+    sorts: BTreeMap<String, Sort>,
     selected: HashSet<Key>,
     anchor: Option<Key>,
     cursor: usize,
@@ -340,6 +378,29 @@ enum Entry<'a> {
     Trashed(&'a TrashEntry),
     /// A group's header above its members.
     Header(&'a GroupRun),
+}
+
+/// The row of a group's header.
+fn header_row(run: &GroupRun) -> Row {
+    Row {
+        key: Key::Group(run.group.id),
+        kind: ItemKind::Text,
+        sensitive: false,
+        title: run.group.name.as_str().to_owned(),
+        preview: String::new(),
+        list: None,
+        pinned: false,
+        label: None,
+        selected: false,
+        marks: Marks::default(),
+        header: Some(GroupHeader {
+            group: run.group.id,
+            name: run.group.name.as_str().to_owned(),
+            count: run.items.len(),
+            collapsed: run.group.collapsed,
+        }),
+        grouped: false,
+    }
 }
 
 impl MainModel {
@@ -365,7 +426,9 @@ impl MainModel {
             index: SearchIndex::default(),
             hits: Vec::new(),
             view: ViewMode::Comfortable,
-            label_filter: None,
+            filter: ViewFilter::none(),
+            triggered: HashSet::new(),
+            sorts: BTreeMap::new(),
             selected: HashSet::new(),
             anchor: None,
             cursor: 0,
@@ -426,6 +489,11 @@ impl MainModel {
             .map(|l| Ok((l.id, store.groups_of(l.id)?)))
             .collect::<snipdeck_store::Result<HashMap<_, _>>>()?;
         let tags = store.tags()?;
+        let triggered = store
+            .triggers()?
+            .into_iter()
+            .map(|(_, item)| item)
+            .collect();
         let trash = store.trashed()?;
         let mut list_labels = HashMap::new();
         let mut every_list = Vec::new();
@@ -466,6 +534,7 @@ impl MainModel {
         self.groups = groups;
         self.list_labels = list_labels;
         self.trash = trash;
+        self.triggered = triggered;
         self.index = index;
         self.hits = hits;
         self.suggest = std::rc::Rc::new(crate::search_suggest::Index::build(
@@ -478,6 +547,16 @@ impl MainModel {
             Section::Tag(id) if !self.tags.iter().any(|t| t.id == id) => Section::All,
             other => other,
         };
+        let gone: Vec<TagId> = self
+            .filter
+            .tags
+            .iter()
+            .filter(|t| !self.tags.iter().any(|known| known.id == **t))
+            .copied()
+            .collect();
+        for tag in gone {
+            self.filter.forget_tag(tag);
+        }
         let keys: HashSet<Key> = self.keys().into_iter().collect();
         self.selected.retain(|k| keys.contains(k));
         // A chooser outlives its rows leaving the view (untagging in a tag's view), not the
@@ -556,6 +635,7 @@ impl MainModel {
                 id: t.id,
                 name: t.name.as_str().to_owned(),
                 count: self.tag_counts.get(&t.id).copied().unwrap_or(0),
+                colour: t.colour,
             })
             .collect()
     }
@@ -664,24 +744,23 @@ impl MainModel {
 
     fn entries(&self) -> Vec<Entry<'_>> {
         if self.section == Section::Trash {
-            let needle = self.query.trim().to_lowercase();
+            let query = Query::parse(&self.query);
             return self
                 .trash
                 .iter()
-                .filter(|t| needle.is_empty() || t.label.to_lowercase().contains(&needle))
+                .filter(|t| trash_matches(t, &query))
                 .map(Entry::Trashed)
                 .collect();
         }
-        let wanted = self.label_filter;
         let items = self
             .unfiltered_items()
             .into_iter()
-            .filter(|i| wanted.is_none() || i.label == wanted);
+            .filter(|i| self.filter.matches(i, self.triggered.contains(&i.id)));
         if !self.shows_groups() {
             return items.map(Entry::Item).collect();
         }
-        // A group is a run of the manual order: its header goes above the first member, and a folded group
-        // shows the header only.
+        // A group is a run of the list's blocks: its header goes above the first member, and a
+        // folded group shows the header only.
         let mut entries = Vec::new();
         let mut open: Option<GroupId> = None;
         for item in items {
@@ -697,11 +776,12 @@ impl MainModel {
         entries
     }
 
-    /// Whether the rows carry group headers: the open section is one list in manual order, with no search and no
-    /// colour filter (a filter would cut a group's run).
+    /// Whether the rows carry group headers: the open section is one list, under any sort (the
+    /// sort orders the rows inside each block), with no search and no filter (a filter would cut
+    /// a group's run).
     #[must_use]
     pub fn shows_groups(&self) -> bool {
-        self.label_filter.is_none() && self.reorderable()
+        !self.searching() && self.filter.is_none() && matches!(self.section, Section::List(_))
     }
 
     /// The open list's groups (none when it shows none).
@@ -713,6 +793,15 @@ impl MainModel {
             }
             _ => &[],
         }
+    }
+
+    /// Every group of the open list, folded or not (a folded one has no rows to find it by).
+    pub fn all_groups(&self) -> impl Iterator<Item = &GroupRun> {
+        match self.section {
+            Section::List(id) => self.groups.get(&id).map_or(&[][..], Vec::as_slice),
+            _ => &[],
+        }
+        .iter()
     }
 
     /// The group whose header is row `index`.
@@ -744,13 +833,15 @@ impl MainModel {
                 .filter_map(|hit| by_id.get(&hit.id).copied())
                 .collect();
         }
-        match self.section {
+        let mut items: Vec<&Item> = match self.section {
             Section::All => self.items.iter().collect(),
             Section::Pinned => self.items.iter().filter(|i| i.pinned).collect(),
-            Section::Recent | Section::Trash => Vec::new(),
-            Section::List(id) => self.list_items(id),
+            Section::Recent | Section::Trash => return Vec::new(),
+            Section::List(id) => return self.list_items(id),
             Section::Tag(id) => self.items.iter().filter(|i| i.tags.contains(&id)).collect(),
-        }
+        };
+        self.sort().apply(&mut items);
+        items
     }
 
     /// The chips of the filter row: one per colour label some item of the open view carries
@@ -766,7 +857,7 @@ impl MainModel {
             .iter()
             .filter_map(|label| {
                 let count = items.iter().filter(|i| i.label == Some(*label)).count();
-                (count > 0 || self.label_filter == Some(*label)).then_some(LabelChip {
+                (count > 0 || self.filter.label == Some(*label)).then_some(LabelChip {
                     label: *label,
                     count,
                 })
@@ -777,28 +868,142 @@ impl MainModel {
     /// The colour label the view is filtered by.
     #[must_use]
     pub fn label_filter(&self) -> Option<ItemLabel> {
-        self.label_filter
+        self.filter.label
     }
 
     /// Filters the view by a colour label (`None` shows every item). The selection clears and the
     /// cursor returns to the top.
     pub fn set_label_filter(&mut self, label: Option<ItemLabel>) {
-        self.label_filter = label;
+        self.filter.label = label;
         self.clear_selection();
         self.cursor = 0;
     }
 
-    /// The items of list `id` in the list's own order (manual, most used or recently used).
-    fn list_items(&self, id: ListId) -> Vec<&Item> {
-        let mut items: Vec<&Item> = self.items.iter().filter(|i| i.list_id == id).collect();
-        match self.lists.iter().find(|l| l.id == id).map(|l| l.sort) {
-            Some(ListSort::MostUsed) => items.sort_by_key(|i| std::cmp::Reverse(i.use_count)),
-            Some(ListSort::RecentlyUsed) => {
-                items.sort_by_key(|i| std::cmp::Reverse(i.last_used_at));
-            }
-            _ => {}
+    /// What the open view is narrowed to.
+    #[must_use]
+    pub fn filter(&self) -> &ViewFilter {
+        &self.filter
+    }
+
+    /// Narrows the view: `change` edits the filter. The selection clears and the cursor returns to
+    /// the top, as for any change of what is shown.
+    pub fn edit_filter(&mut self, change: impl FnOnce(&mut ViewFilter)) {
+        change(&mut self.filter);
+        self.clear_selection();
+        self.cursor = 0;
+    }
+
+    /// What the filter holds, in the order the chips show it: kinds, then trigger, sensitive,
+    /// untagged and the chosen tags (by the sidebar's tag order).
+    #[must_use]
+    pub fn filter_terms(&self) -> Vec<FilterTerm> {
+        let f = &self.filter;
+        let mut terms: Vec<FilterTerm> = ItemKind::ALL
+            .iter()
+            .filter(|k| f.kinds.contains(k))
+            .map(|k| FilterTerm::Kind(*k))
+            .collect();
+        terms.extend(f.has_trigger.then_some(FilterTerm::HasTrigger));
+        terms.extend(f.sensitive.then_some(FilterTerm::Sensitive));
+        terms.extend(f.untagged.then_some(FilterTerm::Untagged));
+        terms.extend(
+            self.tags
+                .iter()
+                .filter(|t| f.tags.contains(&t.id))
+                .map(|t| FilterTerm::Tag(t.id)),
+        );
+        terms
+    }
+
+    /// Adds `term` to the filter, or takes it off when it is there.
+    pub fn toggle_filter(&mut self, term: FilterTerm) {
+        self.edit_filter(|f| match term {
+            FilterTerm::Kind(kind) => f.toggle_kind(kind),
+            FilterTerm::HasTrigger => f.has_trigger = !f.has_trigger,
+            FilterTerm::Sensitive => f.sensitive = !f.sensitive,
+            FilterTerm::Untagged => f.toggle_untagged(),
+            FilterTerm::Tag(tag) => f.toggle_tag(tag),
+        });
+    }
+
+    /// Whether item `id` has a typed trigger (for the filter's choices).
+    #[must_use]
+    pub fn has_trigger(&self, id: ItemId) -> bool {
+        self.triggered.contains(&id)
+    }
+
+    /// The settings key of `section`'s sort: the sections that have none of their own in the
+    /// library (All items, Pinned and a tag's view). `None` for a list (its sort is part of it),
+    /// the Recent inbox and the Trash.
+    #[must_use]
+    pub fn sort_key(section: Section) -> Option<String> {
+        match section {
+            Section::All => Some("all".to_owned()),
+            Section::Pinned => Some("pinned".to_owned()),
+            Section::Tag(id) => Some(format!("tag:{id}")),
+            Section::List(_) | Section::Recent | Section::Trash => None,
         }
-        items
+    }
+
+    /// Loads the sorts of All items, Pinned and the tag views (see [`sort_key`](Self::sort_key)).
+    pub fn set_section_sorts(&mut self, sorts: BTreeMap<String, Sort>) {
+        self.sorts = sorts;
+    }
+
+    /// The open section's sort (manual where it has none).
+    #[must_use]
+    pub fn sort(&self) -> Sort {
+        match self.section {
+            Section::List(id) => self
+                .lists
+                .iter()
+                .find(|l| l.id == id)
+                .map_or(Sort::MANUAL, |l| l.sort),
+            other => Self::sort_key(other)
+                .and_then(|k| self.sorts.get(&k).copied())
+                .unwrap_or(Sort::MANUAL),
+        }
+    }
+
+    /// Whether the open section has a sort to choose (not the Recent inbox or the Trash).
+    #[must_use]
+    pub fn sortable(&self) -> bool {
+        !matches!(self.section, Section::Recent | Section::Trash) && !self.searching()
+    }
+
+    /// The items of list `id` in the list's own order. A group is a block of the manual order and
+    /// stays where it is under any sort: the sort orders the rows inside each block (a group, or a
+    /// run of loose items). With a filter on there are no groups and the whole list is sorted.
+    fn list_items(&self, id: ListId) -> Vec<&Item> {
+        let items: Vec<&Item> = self.items.iter().filter(|i| i.list_id == id).collect();
+        let sort = self
+            .lists
+            .iter()
+            .find(|l| l.id == id)
+            .map_or(Sort::MANUAL, |l| l.sort);
+        if sort.is_manual() {
+            return items;
+        }
+        let runs = self.groups.get(&id).filter(|_| self.filter.is_none());
+        let group_of = |item: &Item| {
+            runs.and_then(|runs| runs.iter().find(|r| r.items.contains(&item.id)))
+                .map(|r| r.group.id)
+        };
+        let mut sorted = Vec::with_capacity(items.len());
+        let mut block: Vec<&Item> = Vec::new();
+        let mut block_group = None;
+        for item in items {
+            let group = group_of(item);
+            if group != block_group {
+                sort.apply(&mut block);
+                sorted.append(&mut block);
+                block_group = group;
+            }
+            block.push(item);
+        }
+        sort.apply(&mut block);
+        sorted.append(&mut block);
+        sorted
     }
 
     /// What the rows stand for, in order.
@@ -862,44 +1067,44 @@ impl MainModel {
                 }
                 Entry::Trashed(entry) => {
                     let key = Key::from(entry.target);
+                    let preview = match key {
+                        // An untitled item's title is its preview: say it once.
+                        Key::Item(_) if entry.preview == entry.label => String::new(),
+                        Key::Item(_) | Key::Group(_) => entry.preview.clone(),
+                        Key::List(_) => LIST_NOTE.to_owned(),
+                        Key::Board(_) => BOARD_NOTE.to_owned(),
+                    };
+                    let marks = if self.searching() {
+                        search_mark::marks(
+                            &entry.label,
+                            if matches!(key, Key::Item(_)) {
+                                &preview
+                            } else {
+                                ""
+                            },
+                            false,
+                            None,
+                            &self.query,
+                        )
+                    } else {
+                        Marks::default()
+                    };
                     Row {
                         key,
                         kind: ItemKind::Text,
                         sensitive: false,
                         title: entry.label.clone(),
-                        preview: match key {
-                            Key::Item(_) | Key::Group(_) => String::new(),
-                            Key::List(_) => LIST_NOTE.to_owned(),
-                            Key::Board(_) => BOARD_NOTE.to_owned(),
-                        },
+                        preview,
                         list: None,
                         pinned: false,
                         label: None,
                         selected: self.selected.contains(&key),
-                        marks: Marks::default(),
+                        marks,
                         header: None,
                         grouped: false,
                     }
                 }
-                Entry::Header(run) => Row {
-                    key: Key::Group(run.group.id),
-                    kind: ItemKind::Text,
-                    sensitive: false,
-                    title: run.group.name.as_str().to_owned(),
-                    preview: String::new(),
-                    list: None,
-                    pinned: false,
-                    label: None,
-                    selected: false,
-                    marks: Marks::default(),
-                    header: Some(GroupHeader {
-                        group: run.group.id,
-                        name: run.group.name.as_str().to_owned(),
-                        count: run.items.len(),
-                        collapsed: run.group.collapsed,
-                    }),
-                    grouped: false,
-                },
+                Entry::Header(run) => header_row(run),
             })
             .collect()
     }
@@ -921,10 +1126,10 @@ impl MainModel {
     }
 
     /// Whether the row at the cursor can be moved by hand: the open list is in manual order
-    /// and no search is running.
+    /// and no search is running (under a filter a row swaps with the next one shown).
     #[must_use]
     pub fn reorderable(&self) -> bool {
-        !self.searching() && self.open_list().is_some_and(|l| l.sort == ListSort::Manual)
+        !self.searching() && self.open_list().is_some_and(|l| l.sort.is_manual())
     }
 
     /// The trash entry for `key`.
@@ -939,7 +1144,7 @@ impl MainModel {
     /// returns to the top.
     pub fn open(&mut self, section: Section) {
         self.section = section;
-        self.label_filter = None;
+        self.filter = ViewFilter::none();
         self.query.clear();
         self.hits.clear();
         self.clear_selection();
@@ -1267,7 +1472,7 @@ mod tests {
             .expect("list")
             .clone();
         let mut sorted = code.clone();
-        sorted.sort = ListSort::MostUsed;
+        sorted.sort = Sort::MOST_USED;
         store.update_list(&sorted).expect("update");
         let second = store.items(code.id).expect("items")[1].id;
         store.record_use(second, now()).expect("use");
@@ -1340,7 +1545,7 @@ mod tests {
     }
 
     #[test]
-    fn groups_need_manual_order_and_no_search_or_label_filter() {
+    fn groups_need_no_search_or_filter_and_survive_a_sort() {
         let (mut store, mut model) = loaded();
         let (list, _, group) = grouped(&mut store, &mut model);
         model.set_query(&store, "e").expect("search");
@@ -1364,14 +1569,15 @@ mod tests {
             .find(|l| l.id == list)
             .expect("list")
             .clone();
-        sorted.sort = ListSort::MostUsed;
+        sorted.sort = Sort::MOST_USED;
         store.update_list(&sorted).expect("sort");
         model.reload(&store).expect("reload");
         model.open(Section::List(list));
         assert!(
-            !model.keys().contains(&Key::Group(group.id)),
-            "a list that sorts itself shows no groups"
+            model.keys().contains(&Key::Group(group.id)),
+            "a list that sorts itself keeps its group headers (the items sort inside each group)"
         );
+        assert!(!model.reorderable(), "but it cannot be reordered by hand");
     }
 
     #[test]

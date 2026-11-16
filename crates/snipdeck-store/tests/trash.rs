@@ -101,6 +101,7 @@ fn trashing_a_list_hides_its_items_and_is_one_trash_entry() {
         [TrashEntry {
             target: Trashable::List(l.id),
             label: "Replies".to_owned(),
+            preview: String::new(),
             deleted_at: at(20)
         }]
     );
@@ -116,6 +117,7 @@ fn trashing_a_list_hides_its_items_and_is_one_trash_entry() {
         [TrashEntry {
             target: Trashable::Item(it[0].id),
             label: "one".to_owned(),
+            preview: "one".to_owned(),
             deleted_at: at(10)
         }]
     );
@@ -495,4 +497,31 @@ fn a_record_is_stored_until_it_is_purged() {
     );
     assert!(!s.is_stored(Trashable::List(l.id)).unwrap());
     assert!(s.is_stored(Trashable::Board(b.id)).unwrap());
+}
+
+#[test]
+fn a_trash_entry_carries_the_items_preview_so_the_trash_can_be_searched() {
+    let (mut s, _b, l, it) = tree();
+    let untitled = item(&mut s, l.id, "", "the quarterly figures");
+    s.trash(Trashable::Item(it[0].id), at(10)).unwrap();
+    s.trash(Trashable::Item(untitled.id), at(20)).unwrap();
+    let previews: Vec<(String, String)> = s
+        .trashed()
+        .unwrap()
+        .into_iter()
+        .map(|e| (e.label, e.preview))
+        .collect();
+    assert_eq!(
+        previews,
+        [
+            (
+                "the quarterly figures".to_owned(),
+                "the quarterly figures".to_owned()
+            ),
+            ("one".to_owned(), "one".to_owned()),
+        ]
+    );
+    s.trash(Trashable::List(l.id), at(30)).unwrap();
+    let list_entry = s.trashed().unwrap().remove(0);
+    assert_eq!(list_entry.preview, "", "a list has no preview");
 }

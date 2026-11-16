@@ -147,13 +147,13 @@ impl Sort {
                 }
             }
             SortKey::Created => {
-                items.sort_by(|a, b| directed(a.created_at.cmp(&b.created_at), reversed))
+                items.sort_by(|a, b| directed(a.created_at.cmp(&b.created_at), reversed));
             }
             SortKey::Modified => {
-                items.sort_by(|a, b| directed(a.updated_at.cmp(&b.updated_at), reversed))
+                items.sort_by(|a, b| directed(a.updated_at.cmp(&b.updated_at), reversed));
             }
             SortKey::MostUsed => {
-                items.sort_by(|a, b| directed(a.use_count.cmp(&b.use_count), reversed))
+                items.sort_by(|a, b| directed(a.use_count.cmp(&b.use_count), reversed));
             }
             SortKey::RecentlyUsed => items.sort_by(|a, b| match (a.last_used_at, b.last_used_at) {
                 (None, None) => Ordering::Equal,

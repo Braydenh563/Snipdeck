@@ -470,6 +470,7 @@ fn expected_trash(m: &Model) -> Vec<TrashEntry> {
             out.push(TrashEntry {
                 target: Trashable::Board(b.id),
                 label: label("B"),
+                preview: String::new(),
                 deleted_at: at(t),
             });
             continue;
@@ -479,6 +480,7 @@ fn expected_trash(m: &Model) -> Vec<TrashEntry> {
                 out.push(TrashEntry {
                     target: Trashable::List(l.id),
                     label: label("L"),
+                    preview: String::new(),
                     deleted_at: at(t),
                 });
                 continue;
@@ -488,6 +490,10 @@ fn expected_trash(m: &Model) -> Vec<TrashEntry> {
                     out.push(TrashEntry {
                         target: Trashable::Item(i.id),
                         label: format!("q{}q", i.n),
+                        preview: Item::preview_of(
+                            &format!("b{}b common words", i.n),
+                            i.spec.sensitive,
+                        ),
                         deleted_at: at(t),
                     });
                 }

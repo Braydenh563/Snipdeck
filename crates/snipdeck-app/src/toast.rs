@@ -220,6 +220,13 @@ pub enum ToastMessage {
         /// The tag's name.
         name: String,
     },
+    /// "Merged tag work into Work": the items of the first carry the second now.
+    TagMerged {
+        /// The tag that went.
+        from: String,
+        /// The tag its items moved to.
+        into: String,
+    },
     /// "That edit of a sensitive item cannot be undone": Undo stopped at an edit whose text is
     /// not kept.
     UndoStopped,

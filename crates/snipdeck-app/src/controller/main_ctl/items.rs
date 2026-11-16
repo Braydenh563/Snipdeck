@@ -4,7 +4,7 @@ use crate::history::{Action, Change, Record};
 use snipdeck_core::template::transform::Transform;
 use snipdeck_core::{Item, ItemId, Name, Placement, Tag};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
-use snipdeck_store::{ItemRepo, TrashRepo, Trashable};
+use snipdeck_store::{GroupRepo, ItemRepo, TagRepo, TrashRepo, Trashable};
 
 use super::super::history_ctl::{item_targets, move_recorded, update_recorded};
 use super::super::{
@@ -63,6 +63,7 @@ where
             MainAction::Pin => self.pin(&items),
             MainAction::Duplicate => self.duplicate(&items),
             MainAction::Move | MainAction::Tag | MainAction::PasteAs => {
+                self.group_move = None;
                 self.main.set_chooser(targets);
             }
             MainAction::Delete => self.trash_items(&items),
@@ -316,6 +317,7 @@ where
             return;
         };
         let (list, name) = (list.id, list.name.as_str().to_owned());
+        let carried = self.group_move.take();
         let items: Vec<ItemId> = self
             .main
             .chooser()
@@ -328,11 +330,37 @@ where
         if items.is_empty() {
             return;
         }
+        // Each item's group now, recorded first so Undo (which runs the steps backwards) puts the
+        // membership back last, whatever the moves did to it.
+        let regroups: Vec<Change> = items
+            .iter()
+            .filter_map(|id| {
+                let from = self.store.item(*id).ok()?.list_id;
+                let runs = self.store.groups_of(from).ok()?;
+                runs.iter()
+                    .find(|r| r.items.contains(id))
+                    .map(|r| Change::Regroup {
+                        item: *id,
+                        group: Some(r.group.clone()),
+                    })
+            })
+            .collect();
         let mut changes = Vec::new();
         let done = self.store.atomically(|b| {
             changes.clear();
+            changes.extend(regroups.iter().cloned());
             for id in &items {
                 move_recorded(b, *id, list, Placement::Last, &mut changes)?;
+            }
+            // A moved group stays a group: made again in the new list with the same name and fold.
+            if let Some(old) = &carried {
+                let mut group = snipdeck_core::Group::new(list, old.name.clone());
+                group.collapsed = old.collapsed;
+                b.create_group(&group, &items)?;
+                changes.push(Change::Group {
+                    group,
+                    members: items.clone(),
+                });
             }
             Ok(())
         });
@@ -415,7 +443,11 @@ where
             return Ok(());
         };
         let before = self.stored_tag(tag);
-        let after = Tag { id: tag, name };
+        let after = Tag {
+            id: tag,
+            name,
+            colour: before.as_ref().and_then(|b| b.colour),
+        };
         match self.store.update_tag(&after) {
             Ok(()) => {
                 if let Some(before) = before.filter(|b| *b != after) {
@@ -436,6 +468,108 @@ where
                 Err(TagRenameError::Failed)
             }
         }
+    }
+
+    /// Colours tag `index` (`None` takes the colour off): one of the eight item colours, shown as
+    /// a dot beside the tag wherever it is listed.
+    pub fn main_set_tag_colour(&mut self, index: usize, colour: Option<snipdeck_core::ItemLabel>) {
+        self.main_fresh();
+        let Some(tag) = self.main.tags().get(index).map(|t| t.id) else {
+            return;
+        };
+        let Some(before) = self.stored_tag(tag) else {
+            return;
+        };
+        let after = Tag {
+            colour,
+            ..before.clone()
+        };
+        if after == before {
+            return;
+        }
+        match self.store.update_tag(&after) {
+            Ok(()) => {
+                self.record_step(
+                    Action::Tag,
+                    vec![Change::Rewrite {
+                        before: Record::Tag(before),
+                        after: Record::Tag(after),
+                    }],
+                );
+                self.library_changed();
+            }
+            Err(_) => self.show_toast(failed()),
+        }
+    }
+
+    /// Merges tag `index` into the tag named `into` (the clash a rename met): every item that
+    /// carried the first carries the second, and the first is deleted. One history step, so Undo
+    /// brings the tag back on exactly the items it was on.
+    ///
+    /// # Errors
+    ///
+    /// [`TagRenameError::Failed`] when no other tag has that name or the library could not be
+    /// written.
+    pub fn main_merge_tag(&mut self, index: usize, into: &str) -> Result<(), TagRenameError> {
+        self.main_fresh();
+        let key = into.trim().to_lowercase();
+        let Some(source) = self.main.tags().get(index).map(|t| t.id) else {
+            return Ok(());
+        };
+        let Some(target) = self
+            .main
+            .tags()
+            .iter()
+            .find(|t| t.id != source && t.name.as_str().to_lowercase() == key)
+            .map(|t| (t.id, t.name.as_str().to_owned()))
+        else {
+            return Err(TagRenameError::Failed);
+        };
+        let Some(stored) = self.stored_tag(source) else {
+            return Ok(());
+        };
+        let from = stored.name.as_str().to_owned();
+        let now = self.clock.now();
+        let carriers = self.store.tag_items(source).unwrap_or_default();
+        let mut changes = Vec::new();
+        let done = self.store.atomically(|b| {
+            changes.clear();
+            // The items in the Trash keep no tag after it goes; Undo brings the tag back on them.
+            let mut kept = Vec::new();
+            for id in &carriers {
+                match b.item(*id) {
+                    Ok(before) => {
+                        let mut item = before.clone();
+                        item.tags.remove(&source);
+                        item.tags.insert(target.0);
+                        item.updated_at = now;
+                        update_recorded(b, &before, &item, &mut changes)?;
+                    }
+                    Err(snipdeck_store::Error::NotFound { .. }) => kept.push(*id),
+                    Err(e) => return Err(e),
+                }
+            }
+            b.delete_tag(source)?;
+            changes.push(Change::DropTag {
+                tag: stored.clone(),
+                items: kept,
+            });
+            Ok(())
+        });
+        if done.is_err() {
+            self.show_toast(failed());
+            return Err(TagRenameError::Failed);
+        }
+        let step = self.record_step(Action::Tag, changes);
+        self.show_undo_toast(
+            neutral_toast(ToastMessage::TagMerged {
+                from,
+                into: target.1,
+            }),
+            step,
+        );
+        self.library_changed();
+        Ok(())
     }
 
     /// Deletes tag `index` after the window's confirmation (its items stay).
