@@ -2184,12 +2184,35 @@ ui_tests! {
         settle();
         assert!(!ui.get_drawer_open(), "choosing an item closes it");
         assert!(take(&log).iter().any(|l| l.starts_with("section:Pinned")));
+        assert!(ui.get_items_focused(), "the keys go to the list that was chosen");
         // Widening the window past 720 px leaves no drawer behind.
         chord(ui.window(), &[Key::Control], "b");
         settle();
         ui.window().set_size(slint::LogicalSize::new(900.0, 520.0));
         settle();
         assert!(!ui.get_drawer_open() && !ui.get_rail());
+    }
+
+    fn tab_and_shift_tab_stay_inside_the_open_drawer() {
+        let (ui, _log) = start();
+        ui.window().set_size(slint::LogicalSize::new(640.0, 520.0));
+        settle();
+        chord(ui.window(), &[Key::Control], "b");
+        settle();
+        assert!(ui.get_drawer_open());
+        let mut saw_nav = false;
+        for step in 0..14 {
+            press_key(&ui, Key::Tab);
+            assert!(ui.get_drawer_open(), "Tab {step}: still open");
+            assert!(!ui.get_search_focused() && !ui.get_items_focused(), "Tab {step}: focus left the drawer");
+            saw_nav |= ui.get_sidebar_focused();
+        }
+        assert!(saw_nav, "the sidebar list is one of the drawer's tab stops");
+        for step in 0..14 {
+            shift(&ui, Key::Tab);
+            assert!(ui.get_drawer_open(), "Shift+Tab {step}: still open");
+            assert!(!ui.get_search_focused() && !ui.get_items_focused(), "Shift+Tab {step}: focus left the drawer");
+        }
     }
 
     fn the_footer_buttons_keep_the_token_gap_from_the_status_line() {
@@ -2224,6 +2247,37 @@ ui_tests! {
                         let (p, z) = (b.absolute_position(), b.size());
                         assert!(p.y + z.height <= win.height + 0.5, "{what}: on screen");
                         assert!(p.x >= 0.0 && p.x + z.width <= slot, "{what}: inside the sidebar: {p:?} {z:?} of {slot}");
+                    }
+                    // Each button has at least the width it has when there is room (its preferred width).
+                    let mut mine = foot.clone();
+                    mine.sort_by(|a, b| {
+                        let (pa, pb) = (a.absolute_position(), b.absolute_position());
+                        pa.y.round().total_cmp(&pb.y.round()).then(pa.x.total_cmp(&pb.x))
+                    });
+                    let (roomy, _roomy_log) = start();
+                    roomy.global::<SystemLook<'_>>().set_text_scale(scale);
+                    roomy.set_sidebar_width(320);
+                    roomy.window().set_size(slint::LogicalSize::new(1400.0, 700.0));
+                    settle();
+                    let roomy_slot = roomy.get_sidebar_slot_width();
+                    let mut roomy_foot: Vec<_> = by_role(&roomy, AccessibleRole::Button)
+                        .into_iter()
+                        .filter(|b| {
+                            let (p, z) = (b.absolute_position(), b.size());
+                            p.x + z.width / 2.0 < roomy_slot && p.y > 700.0 - 3.0 * 28.0 * scale
+                        })
+                        .collect();
+                    roomy_foot.sort_by(|a, b| a.absolute_position().x.total_cmp(&b.absolute_position().x));
+                    if !collapsed && width > 700.0 {
+                        assert_eq!(roomy_foot.len(), 2, "{what}: reference footer");
+                        for (got, want) in mine.iter().zip(&roomy_foot) {
+                            assert!(
+                                got.size().width >= want.size().width - 0.5,
+                                "{what}: a footer button is {} wide, its preferred width is {}",
+                                got.size().width,
+                                want.size().width
+                            );
+                        }
                     }
                     let right = foot.iter().map(|b| b.absolute_position().x + b.size().width).fold(0.0, f32::max);
                     let status = by_role(&ui, AccessibleRole::Text)

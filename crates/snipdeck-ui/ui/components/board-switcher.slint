@@ -16,6 +16,11 @@ export component BoardSwitcher inherits Rectangle {
     // The Panel's header is 40 tall with 32px controls (Panel v2 spec 2.1); the board picker shrinks, its name elides.
     in property <length> min-h: Space.hit;
     out property <bool> has-focus: scope.has-focus;
+    // Each time this goes up the control takes the keyboard focus (the Main window's drawer wraps Tab onto it).
+    in property <int> focus-request: 0;
+    changed focus-request => {
+        if (root.focus-request > 0) { scope.focus(); }
+    }
     callback menu-requested();
 
     property <bool> hovered: touch.has-hover;

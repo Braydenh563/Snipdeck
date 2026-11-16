@@ -585,6 +585,14 @@ export component MainWindow inherits Window {
     // How wide the sidebar is drawn: the drawer is wider than the room it takes.
     property <length> view-w: root.drawer-open ? root.full-w : root.sidebar-w;
     property <int> toggle-focus: 0;
+    // The drawer's first and last tab stops (the board switcher and Help): Tab wraps from the last to the first and
+    // Shift+Tab the other way, so the keys never reach the toolbar, search or list behind the scrim.
+    property <bool> switcher-focused: false;
+    property <bool> help-focused: false;
+    property <int> switcher-focus: 0;
+    property <int> help-focus: 0;
+    // Settings and Help do not fit side by side in the sidebar's width at its preferred button widths: stack them.
+    property <bool> foot-stack: foot-measure-settings.preferred-width + foot-measure-help.preferred-width + 3 * Space.s2 > root.view-w;
     property <length> splitter-w: 8px;
     property <length> splitter-grab: 0px;
     property <bool> splitter-focused: false;
@@ -756,7 +764,11 @@ export component MainWindow inherits Window {
             root.query-changed("");
         }
         root.section-selected(root.section, root.section-index);
-        root.close-drawer();
+        // Choosing in the drawer closes it and the keys go to the list that was chosen.
+        if (root.drawer-open) {
+            root.drawer-open = false;
+            items-scope.focus();
+        }
     }
 
     // Where the keys go back to when a menu, chooser or confirmation closes: the sidebar when it was opened there.
@@ -1149,6 +1161,18 @@ export component MainWindow inherits Window {
                 root.close-drawer();
                 return accept;
             }
+            if (root.drawer-open && (event.text == Key.Tab || event.text == Key.Backtab)) {
+                let back = event.text == Key.Backtab || event.modifiers.shift;
+                if (!back && root.help-focused) {
+                    root.switcher-focus += 1;
+                    return accept;
+                }
+                if (back && root.switcher-focused) {
+                    root.help-focus += 1;
+                    return accept;
+                }
+                return reject;
+            }
             if (search.has-focus && suggest.handle-key(event)) {
                 return accept;
             }
@@ -1248,7 +1272,9 @@ export component MainWindow inherits Window {
                                 board-name: root.board-name;
                                 menu-open: root.board-menu-open;
                                 a11y-label: @tr("Board: {}", root.board-name);
+                                focus-request: root.switcher-focus;
                                 y: (parent.height - self.height) / 2;
+                                changed has-focus => { root.switcher-focused = self.has-focus; }
                                 menu-requested => { root.board-menu-requested(); }
                             }
                         }
@@ -1487,27 +1513,51 @@ export component MainWindow inherits Window {
                         }
                     }
 
-                    // Settings and Help, pinned to the foot of the sidebar. On the rail they are stacked so neither
-                    // reaches past the rail's edge into the status line.
+                    // Settings and Help, pinned to the foot of the sidebar. They sit side by side while both fit at their
+                    // own width; otherwise they stack, each at its full width (a button is never squeezed below its
+                    // text). On the rail they are icons in a column, so neither reaches past the rail's edge.
                     Rectangle {
-                        height: root.compact ? 2 * Space.hit * root.text-scale + 3 * Space.s1 : root.bar-h;
-                        if !root.compact: HorizontalLayout {
-                            padding: Space.s2;
-                            alignment: start;
+                        height: root.compact ? 2 * Space.hit * root.text-scale + 3 * Space.s1
+                            : root.foot-stack ? 2 * Space.s2 + Space.s1 + 2 * foot-measure-settings.height
+                            : root.bar-h;
+                        if !root.compact: Rectangle {
                             Button {
                                 variant: ButtonVariant.ghost;
                                 icon: Icons.gear;
                                 text: @tr("Settings");
-                                y: (parent.height - self.height) / 2;
+                                width: foot-measure-settings.preferred-width;
+                                x: Space.s2;
+                                y: root.foot-stack ? Space.s2 : (parent.height - self.height) / 2;
                                 clicked => { root.settings-requested(); }
                             }
                             Button {
                                 variant: ButtonVariant.ghost;
                                 icon: Icons.question;
                                 text: @tr("Help");
-                                y: (parent.height - self.height) / 2;
+                                width: foot-measure-help.preferred-width;
+                                focus-request: root.help-focus;
+                                x: root.foot-stack ? Space.s2 : 2 * Space.s2 + foot-measure-settings.preferred-width;
+                                y: root.foot-stack ? Space.s2 + Space.s1 + self.height : (parent.height - self.height) / 2;
+                                changed has-focus => { root.help-focused = self.has-focus; }
                                 clicked => { root.open-help-menu(); }
                             }
+                        }
+                        // Not shown and never focused: they only give the buttons' preferred widths.
+                        foot-measure-settings := Button {
+                            variant: ButtonVariant.ghost;
+                            icon: Icons.gear;
+                            text: @tr("Settings");
+                            visible: false;
+                            enabled: false;
+                            accessible-role: none;
+                        }
+                        foot-measure-help := Button {
+                            variant: ButtonVariant.ghost;
+                            icon: Icons.question;
+                            text: @tr("Help");
+                            visible: false;
+                            enabled: false;
+                            accessible-role: none;
                         }
                         if root.compact: VerticalLayout {
                             padding-top: Space.s1;
