@@ -479,40 +479,40 @@ set_colour_adjust_open | crates/snipdeck-app/src/controller/colour_ctl.rs:202
 set_colour_picker_style | crates/snipdeck-app/src/controller/colour_ctl.rs:207
 set_colour_input_model | crates/snipdeck-app/src/controller/colour_ctl.rs:212
 use_colour | crates/snipdeck-app/src/controller/colour_ctl.rs:218
-copy_extra_format | crates/snipdeck-app/src/controller/colour_ctl.rs:233
-use_nearest_name | crates/snipdeck-app/src/controller/colour_ctl.rs:247
-forget_recent_colour | crates/snipdeck-app/src/controller/colour_ctl.rs:256
-picker_recents_clear | crates/snipdeck-app/src/controller/colour_ctl.rs:265
-remember_colour | crates/snipdeck-app/src/controller/colour_ctl.rs:274
-colour_picked | crates/snipdeck-app/src/controller/colour_ctl.rs:287
-save_colour | crates/snipdeck-app/src/controller/colour_ctl.rs:323
-home_list_id | crates/snipdeck-app/src/controller/colour_ctl.rs:421
-clear_colour_caches | crates/snipdeck-app/src/controller/colour_ctl.rs:431
-find_home_list_id | crates/snipdeck-app/src/controller/colour_ctl.rs:436
-home_list | crates/snipdeck-app/src/controller/colour_ctl.rs:462
-new_list_for_save | crates/snipdeck-app/src/controller/colour_ctl.rs:483
-save_board | crates/snipdeck-app/src/controller/colour_ctl.rs:499
-make_list_for_save | crates/snipdeck-app/src/controller/colour_ctl.rs:513
-colour_of_item | crates/snipdeck-app/src/controller/colour_ctl.rs:538
-colour_save_targets | crates/snipdeck-app/src/controller/colour_ctl.rs:545
-set_pasted_image_title | crates/snipdeck-app/src/controller/colour_ctl.rs:567
-set_new_list_base | crates/snipdeck-app/src/controller/colour_ctl.rs:573
-saved_colours | crates/snipdeck-app/src/controller/colour_ctl.rs:579
-saved_colour_in | crates/snipdeck-app/src/controller/colour_ctl.rs:589
-delete_saved_colour | crates/snipdeck-app/src/controller/colour_ctl.rs:599
-edit_saved_colour | crates/snipdeck-app/src/controller/colour_ctl.rs:604
-rename_saved_colour | crates/snipdeck-app/src/controller/colour_ctl.rs:609
-read_saved_colours | crates/snipdeck-app/src/controller/colour_ctl.rs:631
-has_saved_list | crates/snipdeck-app/src/controller/colour_ctl.rs:650
-open_saved_colours | crates/snipdeck-app/src/controller/colour_ctl.rs:655
-use_colour_item | crates/snipdeck-app/src/controller/colour_ctl.rs:670
-open_item_in_colours | crates/snipdeck-app/src/controller/colour_ctl.rs:686
-list_has_colours | crates/snipdeck-app/src/controller/colour_ctl.rs:695
-copy_list_as_css | crates/snipdeck-app/src/controller/colour_ctl.rs:703
-colour_of | crates/snipdeck-app/src/controller/colour_ctl.rs:736
-fail_next_insert | crates/snipdeck-app/src/controller/colour_ctl.rs:750
-take_injected_failure | crates/snipdeck-app/src/controller/colour_ctl.rs:755
-take_injected_failure | crates/snipdeck-app/src/controller/colour_ctl.rs:760
+copy_extra_format | crates/snipdeck-app/src/controller/colour_ctl.rs:240
+use_nearest_name | crates/snipdeck-app/src/controller/colour_ctl.rs:254
+forget_recent_colour | crates/snipdeck-app/src/controller/colour_ctl.rs:263
+picker_recents_clear | crates/snipdeck-app/src/controller/colour_ctl.rs:272
+remember_colour | crates/snipdeck-app/src/controller/colour_ctl.rs:281
+colour_picked | crates/snipdeck-app/src/controller/colour_ctl.rs:294
+save_colour | crates/snipdeck-app/src/controller/colour_ctl.rs:330
+home_list_id | crates/snipdeck-app/src/controller/colour_ctl.rs:428
+clear_colour_caches | crates/snipdeck-app/src/controller/colour_ctl.rs:438
+find_home_list_id | crates/snipdeck-app/src/controller/colour_ctl.rs:443
+home_list | crates/snipdeck-app/src/controller/colour_ctl.rs:469
+new_list_for_save | crates/snipdeck-app/src/controller/colour_ctl.rs:490
+save_board | crates/snipdeck-app/src/controller/colour_ctl.rs:506
+make_list_for_save | crates/snipdeck-app/src/controller/colour_ctl.rs:520
+colour_of_item | crates/snipdeck-app/src/controller/colour_ctl.rs:545
+colour_save_targets | crates/snipdeck-app/src/controller/colour_ctl.rs:552
+set_pasted_image_title | crates/snipdeck-app/src/controller/colour_ctl.rs:574
+set_new_list_base | crates/snipdeck-app/src/controller/colour_ctl.rs:580
+saved_colours | crates/snipdeck-app/src/controller/colour_ctl.rs:586
+saved_colour_in | crates/snipdeck-app/src/controller/colour_ctl.rs:596
+delete_saved_colour | crates/snipdeck-app/src/controller/colour_ctl.rs:606
+edit_saved_colour | crates/snipdeck-app/src/controller/colour_ctl.rs:611
+rename_saved_colour | crates/snipdeck-app/src/controller/colour_ctl.rs:616
+read_saved_colours | crates/snipdeck-app/src/controller/colour_ctl.rs:638
+has_saved_list | crates/snipdeck-app/src/controller/colour_ctl.rs:657
+open_saved_colours | crates/snipdeck-app/src/controller/colour_ctl.rs:662
+use_colour_item | crates/snipdeck-app/src/controller/colour_ctl.rs:677
+open_item_in_colours | crates/snipdeck-app/src/controller/colour_ctl.rs:693
+list_has_colours | crates/snipdeck-app/src/controller/colour_ctl.rs:702
+copy_list_as_css | crates/snipdeck-app/src/controller/colour_ctl.rs:710
+colour_of | crates/snipdeck-app/src/controller/colour_ctl.rs:743
+fail_next_insert | crates/snipdeck-app/src/controller/colour_ctl.rs:757
+take_injected_failure | crates/snipdeck-app/src/controller/colour_ctl.rs:762
+take_injected_failure | crates/snipdeck-app/src/controller/colour_ctl.rs:767
 
 ### crates/snipdeck-app/src/controller/colour_main.rs
 
@@ -4101,19 +4101,19 @@ every_action_maps_to_a_command | crates/snipdeck-app/src/tips.rs:139
 
 ToastKind | crates/snipdeck-app/src/toast.rs:16
 ToastMessage | crates/snipdeck-app/src/toast.rs:27
-Toast | crates/snipdeck-app/src/toast.rs:407
-after_use | crates/snipdeck-app/src/toast.rs:417
-after_error | crates/snipdeck-app/src/toast.rs:462
-tests | crates/snipdeck-app/src/toast.rs:485
-a_paste_names_the_app | crates/snipdeck-app/src/toast.rs:495
-a_paste_that_could_not_restore_the_clipboard_says_so | crates/snipdeck-app/src/toast.rs:507
-a_plain_copy_is_a_success | crates/snipdeck-app/src/toast.rs:520
-an_excluded_app_says_pasting_is_off | crates/snipdeck-app/src/toast.rs:530
-a_paste_into_an_excluded_app_says_pasting_is_off_too | crates/snipdeck-app/src/toast.rs:545
-an_elevated_target_explains_why_it_was_only_copied | crates/snipdeck-app/src/toast.rs:563
-nothing_focused_and_a_vanished_target_have_their_own_messages | crates/snipdeck-app/src/toast.rs:582
-errors_are_danger_toasts_with_a_specific_cause | crates/snipdeck-app/src/toast.rs:606
-a_store_failure_is_worded_by_its_cause_when_the_error_names_one | crates/snipdeck-app/src/toast.rs:622
+Toast | crates/snipdeck-app/src/toast.rs:415
+after_use | crates/snipdeck-app/src/toast.rs:425
+after_error | crates/snipdeck-app/src/toast.rs:470
+tests | crates/snipdeck-app/src/toast.rs:493
+a_paste_names_the_app | crates/snipdeck-app/src/toast.rs:503
+a_paste_that_could_not_restore_the_clipboard_says_so | crates/snipdeck-app/src/toast.rs:515
+a_plain_copy_is_a_success | crates/snipdeck-app/src/toast.rs:528
+an_excluded_app_says_pasting_is_off | crates/snipdeck-app/src/toast.rs:538
+a_paste_into_an_excluded_app_says_pasting_is_off_too | crates/snipdeck-app/src/toast.rs:553
+an_elevated_target_explains_why_it_was_only_copied | crates/snipdeck-app/src/toast.rs:571
+nothing_focused_and_a_vanished_target_have_their_own_messages | crates/snipdeck-app/src/toast.rs:590
+errors_are_danger_toasts_with_a_specific_cause | crates/snipdeck-app/src/toast.rs:614
+a_store_failure_is_worded_by_its_cause_when_the_error_names_one | crates/snipdeck-app/src/toast.rs:630
 
 ### crates/snipdeck-app/src/toast_binding.rs
 
@@ -4317,37 +4317,37 @@ note_text | crates/snipdeck-app/src/wording.rs:139
 entry_label | crates/snipdeck-app/src/wording.rs:196
 numbered_label | crates/snipdeck-app/src/wording.rs:211
 toast_text | crates/snipdeck-app/src/wording.rs:223
-LANGUAGE_NAMES | crates/snipdeck-app/src/wording.rs:381
-LANGUAGE_TAGS | crates/snipdeck-app/src/wording.rs:392
-action_word | crates/snipdeck-app/src/wording.rs:395
-undo_tip | crates/snipdeck-app/src/wording.rs:402
-redo_tip | crates/snipdeck-app/src/wording.rs:413
-UNDO_LABEL | crates/snipdeck-app/src/wording.rs:423
-toast_edit_label | crates/snipdeck-app/src/wording.rs:427
-OPEN_LOG_LABEL | crates/snipdeck-app/src/wording.rs:435
-SWITCH_LABEL | crates/snipdeck-app/src/wording.rs:438
-import_problem_text | crates/snipdeck-app/src/wording.rs:443
-history_source_name | crates/snipdeck-app/src/wording.rs:474
-toast_button_text | crates/snipdeck-app/src/wording.rs:480
-use_label_text | crates/snipdeck-app/src/wording.rs:495
-paste_stack_idle_text | crates/snipdeck-app/src/wording.rs:509
-app_menu_text | crates/snipdeck-app/src/wording.rs:516
-app_menu_shortcut | crates/snipdeck-app/src/wording.rs:555
-item_menu_shortcut | crates/snipdeck-app/src/wording.rs:567
-item_menu_label | crates/snipdeck-app/src/wording.rs:595
-transform_name | crates/snipdeck-app/src/wording.rs:631
-symbol_menu_entry | crates/snipdeck-app/src/wording.rs:650
-board_menu_text | crates/snipdeck-app/src/wording.rs:695
-int | crates/snipdeck-app/src/wording.rs:714
-name_error_text | crates/snipdeck-app/src/wording.rs:720
-tag_rename_error_text | crates/snipdeck-app/src/wording.rs:736
-delete_hint_text | crates/snipdeck-app/src/wording.rs:751
-size_text | crates/snipdeck-app/src/wording.rs:764
-attachment_name_text | crates/snipdeck-app/src/wording.rs:784
-attachment_detail_text | crates/snipdeck-app/src/wording.rs:800
-template_problem_text | crates/snipdeck-app/src/wording.rs:822
-code | crates/snipdeck-app/src/wording.rs:827
-editor_problem_text | crates/snipdeck-app/src/wording.rs:894
+LANGUAGE_NAMES | crates/snipdeck-app/src/wording.rs:382
+LANGUAGE_TAGS | crates/snipdeck-app/src/wording.rs:393
+action_word | crates/snipdeck-app/src/wording.rs:396
+undo_tip | crates/snipdeck-app/src/wording.rs:403
+redo_tip | crates/snipdeck-app/src/wording.rs:414
+UNDO_LABEL | crates/snipdeck-app/src/wording.rs:424
+toast_edit_label | crates/snipdeck-app/src/wording.rs:428
+OPEN_LOG_LABEL | crates/snipdeck-app/src/wording.rs:436
+SWITCH_LABEL | crates/snipdeck-app/src/wording.rs:439
+import_problem_text | crates/snipdeck-app/src/wording.rs:444
+history_source_name | crates/snipdeck-app/src/wording.rs:475
+toast_button_text | crates/snipdeck-app/src/wording.rs:481
+use_label_text | crates/snipdeck-app/src/wording.rs:496
+paste_stack_idle_text | crates/snipdeck-app/src/wording.rs:510
+app_menu_text | crates/snipdeck-app/src/wording.rs:517
+app_menu_shortcut | crates/snipdeck-app/src/wording.rs:556
+item_menu_shortcut | crates/snipdeck-app/src/wording.rs:568
+item_menu_label | crates/snipdeck-app/src/wording.rs:596
+transform_name | crates/snipdeck-app/src/wording.rs:632
+symbol_menu_entry | crates/snipdeck-app/src/wording.rs:651
+board_menu_text | crates/snipdeck-app/src/wording.rs:696
+int | crates/snipdeck-app/src/wording.rs:715
+name_error_text | crates/snipdeck-app/src/wording.rs:721
+tag_rename_error_text | crates/snipdeck-app/src/wording.rs:737
+delete_hint_text | crates/snipdeck-app/src/wording.rs:752
+size_text | crates/snipdeck-app/src/wording.rs:765
+attachment_name_text | crates/snipdeck-app/src/wording.rs:785
+attachment_detail_text | crates/snipdeck-app/src/wording.rs:801
+template_problem_text | crates/snipdeck-app/src/wording.rs:823
+code | crates/snipdeck-app/src/wording.rs:828
+editor_problem_text | crates/snipdeck-app/src/wording.rs:895
 
 ### crates/snipdeck-colour/src/code.rs
 
@@ -9241,7 +9241,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/support/panel_fixture.rs` | 0 |
 | `crates/snipdeck-ui/tests/support/picker_fixture.rs` | 0 |
 | `crates/snipdeck-ui/tests/symbol_nav.rs` | 5 |
-| `crates/snipdeck-ui/tests/symbols.rs` | 19 |
+| `crates/snipdeck-ui/tests/symbols.rs` | 20 |
 | `crates/snipdeck-ui/tests/tooltips.rs` | 4 |
 | `crates/snipdeck-ui/tests/tray_texts.rs` | 1 |
 | `crates/snipdeck-ui/tests/ux_fit.rs` | 7 |
