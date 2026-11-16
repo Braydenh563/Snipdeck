@@ -15,8 +15,8 @@ mod common;
 use std::io::Cursor;
 
 use common::*;
-use snipdeck_portable::{BoardLayout, ExportOptions, ImportOptions, MergeStrategy, import_archive};
 use snipdeck_core::{CaseMode, Trigger, TriggerEnd, TriggerOptions};
+use snipdeck_portable::{BoardLayout, ExportOptions, ImportOptions, MergeStrategy, import_archive};
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TriggerRepo};
 
 fn keep_boards() -> ImportOptions<'static> {

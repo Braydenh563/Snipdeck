@@ -9,7 +9,7 @@
 use std::{fs, io::Read, path::Path};
 
 use snipdeck_core::{
-    Content, FileEntry, Inline, ItemKind, ItemLabel,
+    Content, FileEntry, Inline, ItemKind, ItemLabel, TriggerOptions,
     template::{Template, TemplateError, TemplateErrorKind},
 };
 use snipdeck_platform::system_look::HighContrast;
@@ -125,6 +125,21 @@ pub enum EditorProblem {
     TriggerInvalid,
     /// Another item already has this trigger.
     TriggerTaken,
+    /// A code of fewer than three letters or digits that fires without a delimiter: it would fire
+    /// inside ordinary words. Refused.
+    TriggerTooShort,
+    /// A one-character code fires every time it is typed. A warning.
+    TriggerOneCharacter,
+    /// This code starts another snippet's, so that one would never fire. A warning.
+    TriggerHides {
+        /// The other snippet's title.
+        title: String,
+    },
+    /// Another snippet's code starts this one, so this one would never fire. A warning.
+    TriggerHidden {
+        /// The other snippet's title.
+        title: String,
+    },
     /// A link without a scheme such as `https://`.
     LinkNeedsScheme,
     /// A link with a space or a line break in it.
@@ -271,6 +286,12 @@ pub struct ItemEditorView {
     pub trigger_problem: Option<EditorProblem>,
     /// The Trigger field as it stands.
     pub trigger: String,
+    /// When the trigger fires and how it reads case.
+    pub trigger_options: TriggerOptions,
+    /// A warning about the trigger that does not stop Save.
+    pub trigger_note: Option<EditorProblem>,
+    /// The text of a new item is already saved: Save waits for "Open it" or "Save anyway".
+    pub duplicate: Option<crate::duplicate::Duplicate>,
     /// A failure that belongs to no field.
     pub banner: Option<EditorProblem>,
     /// The text is over the editing cap: shown read-only; this is its size in bytes.

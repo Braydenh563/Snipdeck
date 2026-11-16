@@ -44,8 +44,8 @@ pub use name::Name;
 pub use placement::Placement;
 pub use tag::Tag;
 pub use trigger::{
-    BUFFER_CHARS, Candidate, CaseMode, CaseShape, Fired, MIN_PLAIN_CHARS, Matcher, SUGGEST_MIN_CHARS,
-    Suggestion, Trigger, TriggerEnd, TriggerOptions, prefix_of,
+    BUFFER_CHARS, Candidate, CaseMode, CaseShape, Fired, MIN_PLAIN_CHARS, Matcher,
+    SUGGEST_MIN_CHARS, Suggestion, Trigger, TriggerEnd, TriggerOptions, prefix_of,
 };
 pub use usage::{PasteFailure, UseMode, UseOutcome};
 

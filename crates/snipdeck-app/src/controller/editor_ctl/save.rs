@@ -127,14 +127,19 @@ where
         // A Sensitive item has no trigger (a short code must not release a secret).
         let mut trigger: Option<Trigger> = None;
         if !sensitive && !slot.trigger.is_empty() {
-            if let Ok(t) = Trigger::new(&slot.trigger) {
-                let taken = self
-                    .store
-                    .trigger_holder(&t)
-                    .ok()
-                    .flatten()
-                    .is_some_and(|holder| slot.target != ItemTarget::Item(holder));
-                if taken {
+            if let Some(t) = slot.trigger_code() {
+                let taken =
+                    self.store
+                        .triggers()
+                        .unwrap_or_default()
+                        .into_iter()
+                        .any(|(other, holder)| {
+                            other.same_code(&t) && slot.target != ItemTarget::Item(holder)
+                        });
+                if t.fires_in_words() && slot.original_code().as_ref() != Some(&t) {
+                    slot.problems.trigger = Some(EditorProblem::TriggerTooShort);
+                    refused = true;
+                } else if taken {
                     slot.problems.trigger = Some(EditorProblem::TriggerTaken);
                     refused = true;
                 } else {
@@ -152,6 +157,17 @@ where
         let Some((list_id, list_name)) = list else {
             return self.save_failed(slot, SaveFailure::ListGone);
         };
+        // The same text is already saved: ask before making a second copy.
+        if new
+            && !slot.allow_duplicate
+            && !sensitive
+            && let Some(found) = text
+                .as_deref()
+                .and_then(|t| crate::duplicate::find_text(&self.store, t))
+        {
+            slot.problems.duplicate = Some(found);
+            return Err(());
+        }
 
         // The key: made on the first sensitive item (on every plan: encryption is free), opened
         // whenever one exists.
@@ -239,9 +255,8 @@ where
                             &item,
                             (slot.original_text.as_deref(), old_formats),
                             text.as_deref(),
-                            (Trigger::new(&slot.original_trigger).ok() != trigger).then(|| {
-                                (Trigger::new(&slot.original_trigger).ok(), trigger.clone())
-                            }),
+                            (slot.original_code() != trigger)
+                                .then(|| (slot.original_code(), trigger.clone())),
                         );
                     }
                     done

@@ -145,16 +145,13 @@ pub(crate) fn set_trigger(
     let options = trigger.options();
     conn.execute(
         "INSERT INTO triggers (trigger, item_id, fires, case_mode) VALUES (?1, ?2, ?3, ?4)",
-        params![
-            trigger.as_str(),
-            id,
-            options.end.key(),
-            options.case.key()
-        ],
+        params![trigger.as_str(), id, options.end.key(), options.case.key()],
     )?;
     Ok(live
         .into_iter()
-        .filter(|(other, owner)| *owner != item && (trigger.shadows(other) || other.shadows(trigger)))
+        .filter(|(other, owner)| {
+            *owner != item && (trigger.shadows(other) || other.shadows(trigger))
+        })
         .map(|(other, _)| other)
         .collect())
 }

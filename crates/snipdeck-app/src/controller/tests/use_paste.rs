@@ -839,7 +839,7 @@ fn the_setting_off_keeps_the_panel_open_and_a_failed_use_never_hides() {
 
 use crate::typing_worker::Typed;
 use crate::usecase::Retype;
-use snipdeck_core::{CaseShape, Fired, Trigger};
+use snipdeck_core::{CaseMode, CaseShape, Fired, Trigger, TriggerEnd, TriggerOptions};
 use snipdeck_store::TriggerRepo;
 
 /// A world where typing expansion is on and item `n` has the trigger `code`.
@@ -896,6 +896,42 @@ fn a_typed_trigger_backspaces_then_pastes() {
         [Data::Text("second".into())]
     );
     assert_eq!(uses(&w, w.ids[1]), 1);
+}
+
+#[test]
+fn a_delimiter_trigger_that_adapts_to_case_types_the_text_back_with_the_delimiter() {
+    let mut w = world();
+    w.ctl.update_settings(|s| s.expand_triggers = true);
+    let trigger = Trigger::new("tw")
+        .expect("trigger")
+        .with_options(TriggerOptions {
+            end: TriggerEnd::Delimiter,
+            case: CaseMode::Adapt,
+        });
+    w.ctl
+        .store
+        .set_trigger(w.ids[1], Some(&trigger))
+        .expect("set trigger");
+    let fired = typed(&w, "TW ");
+    assert_eq!(fired.shape, CaseShape::Upper);
+    assert_eq!(fired.delimiter, Some(' '));
+    let out = w
+        .ctl
+        .expand_typed(&Typed::new(fired.clone(), false, || true));
+    assert_eq!(
+        out,
+        TypedOutcome::Expanded(UseResult::Done(UseOutcome::Pasted))
+    );
+    let sent = backspaces_sent(&mut w);
+    assert!(
+        sent[0].starts_with(&snipdeck_platform::keys::backspaces(3)),
+        "the code and the delimiter are erased"
+    );
+    assert_eq!(
+        w.ctl.services().clipboard.written[0].data(),
+        [Data::Text("SECOND ".into())],
+        "adapted to the capitals typed, with the delimiter put back"
+    );
 }
 
 #[test]

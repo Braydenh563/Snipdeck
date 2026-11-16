@@ -94,6 +94,9 @@ msgstr "Um título não pode conter quebras de linha nem caracteres de controle.
 msgid "A trigger is 1 to 32 characters with no spaces."
 msgstr "Um gatilho tem de 1 a 32 caracteres, sem espaços."
 
+msgid "A trigger of fewer than 3 letters or digits would fire inside words. Add a symbol such as ;, make it longer, or have it fire at a space or punctuation."
+msgstr "Um gatilho com menos de 3 letras ou dígitos dispararia no meio das palavras. Adicione um símbolo como ;, deixe-o mais longo ou faça-o disparar com um espaço ou pontuação."
+
 msgid "AA"
 msgstr "AA"
 
@@ -189,6 +192,9 @@ msgstr "Todas as {} cópias recentes serão removidas. Isso não pode ser desfei
 msgid "Alpha"
 msgstr "Alfa"
 
+msgid "Already saved"
+msgstr "Já salvo"
+
 msgid "Also forget the encryption key"
 msgstr "Esquecer também a chave de criptografia"
 
@@ -245,6 +251,9 @@ msgstr "Aparece quando você digita"
 
 msgid "Apply the new name"
 msgstr "Aplicar o novo nome"
+
+msgid "As soon as it is typed"
+msgstr "Assim que for digitado"
 
 msgid "Asks for a date, today if left empty"
 msgstr "Pede uma data; hoje se ficar vazia"
@@ -1305,6 +1314,12 @@ msgstr "Ainda não é possível adicionar ícones a uma lista."
 msgid "If you forget this password, your sensitive items can never be opened again. Snipdeck cannot reset it and keeps no recovery key. Your other items are not affected."
 msgstr "Se você esquecer esta senha, seus itens sensíveis nunca mais poderão ser abertos. O Snipdeck não pode redefini-la e não guarda chave de recuperação. Seus outros itens não são afetados."
 
+msgid "Ignore case"
+msgstr "Ignorar maiúsculas e minúsculas"
+
+msgid "Ignore case and follow what I typed"
+msgstr "Ignorar maiúsculas e minúsculas e seguir o que digitei"
+
 msgid "Image"
 msgstr "Imagem"
 
@@ -1557,6 +1572,9 @@ msgstr "Senha mestra removida. O Snipdeck não conseguiu abrir a biblioteca agor
 msgid "Master password set."
 msgstr "Senha mestra definida."
 
+msgid "Match case exactly"
+msgstr "Respeitar maiúsculas e minúsculas exatamente"
+
 msgid "Menu"
 msgstr "Menu"
 
@@ -1795,6 +1813,9 @@ msgstr "Não funciona"
 msgid "Nothing copied yet"
 msgstr "Nada copiado ainda"
 
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "Nada é guardado se você não disser Sim, e você pode mudar isso quando quiser em Configurações. Recente guarda o texto que você copia, somente neste computador, pelas últimas {} cópias ou {} dias, o que vier primeiro. Senhas de gerenciadores de senhas e itens Sensíveis nunca são guardados."
+
 msgid "Nothing matches “{}”"
 msgstr "Nada corresponde a “{}”"
 
@@ -1899,6 +1920,15 @@ msgstr "Abrir a pasta de dados"
 
 msgid "Open in Colours"
 msgstr "Abrir em Cores"
+
+msgid "Open in browser"
+msgstr "Abrir no navegador"
+
+msgid "Open it"
+msgstr "Abri-lo"
+
+msgid "Open log"
+msgstr "Abrir registro"
 
 msgid "Open logs folder"
 msgstr "Abrir pasta de logs"
@@ -2257,9 +2287,6 @@ msgstr "Ações de entradas recentes"
 msgid "Recent history cleared"
 msgstr "Histórico recente limpo"
 
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "Nada é guardado se você não disser Sim, e você pode mudar isso quando quiser em Configurações. Recente guarda o texto que você copia, somente neste computador, pelas últimas {} cópias ou {} dias, o que vier primeiro. Senhas de gerenciadores de senhas e itens Sensíveis nunca são guardados."
-
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "Recentes guarda o texto que você copia, somente neste computador, pelas últimas {} cópias ou {} dias, o que ocorrer primeiro. Senhas de gerenciadores de senhas e itens sensíveis nunca são guardados. Você pode alterar isso quando quiser em Configurações."
 
@@ -2407,6 +2434,9 @@ msgstr "Salvar"
 
 msgid "Save (Ctrl+Enter)"
 msgstr "Salvar (Ctrl+Enter)"
+
+msgid "Save anyway"
+msgstr "Salvar mesmo assim"
 
 msgid "Save as PNG…"
 msgstr "Salvar como PNG…"
@@ -2843,6 +2873,9 @@ msgstr "Surpresa"
 msgid "Swap the two colours"
 msgstr "Trocar as duas cores"
 
+msgid "Switch"
+msgstr "Alternar"
+
 msgid "Switch this list to Manual order?"
 msgstr "Mudar esta lista para a ordem manual?"
 
@@ -3041,6 +3074,9 @@ msgstr "A barra de tarefas está nessa borda. Escolha outra borda ou mova a barr
 msgid "The time now"
 msgstr "A hora atual"
 
+msgid "The trigger of {} starts like this one, so this one would never fire."
+msgstr "O gatilho de {} começa como este, então este nunca dispararia."
+
 msgid "The two passwords are not the same."
 msgstr "As duas senhas não são iguais."
 
@@ -3107,11 +3143,17 @@ msgstr "Este modelo não pode ser lido. Abra-o para corrigi-lo."
 msgid "This template can't be read: {}."
 msgstr "Não é possível ler este modelo: {}."
 
+msgid "This text is already saved as {} in {}."
+msgstr "Este texto já está salvo como {} em {}."
+
 msgid "This text is over {} KB, the most that can be edited here. Shorten it, or keep it in a file."
 msgstr "Este texto tem mais de {} KB, o máximo editável aqui. Encurte-o ou mantenha-o em um arquivo."
 
 msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
 msgstr "Este texto é {}. Qualquer coisa acima de 16 KB abre aqui somente para leitura, e os primeiros 16 KB são exibidos."
+
+msgid "This trigger starts the trigger of {}, which would then never fire."
+msgstr "Este gatilho é o início do gatilho de {}, que então nunca dispararia."
 
 msgid "Tile view"
 msgstr "Exibição em blocos"
@@ -3163,6 +3205,12 @@ msgstr "Tríade"
 
 msgid "Trigger"
 msgstr "Gatilho"
+
+msgid "Trigger and letter case"
+msgstr "Gatilho e maiúsculas"
+
+msgid "Trigger fires"
+msgstr "O gatilho dispara"
 
 msgid "Trimmed"
 msgstr "Sem espaços nas pontas"
@@ -3370,6 +3418,9 @@ msgstr "Roda"
 
 msgid "When Windows starts"
 msgstr "Quando o Windows inicia"
+
+msgid "When a space or punctuation follows"
+msgstr "Quando um espaço ou pontuação vem depois"
 
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel that tucks goes to its tab instead."
 msgstr "Com o alfinete desativado, o painel se oculta assim que você muda para outro aplicativo. Um painel fixado permanece, e um painel encaixado que se recolhe vai para sua aba."
@@ -3964,6 +4015,9 @@ msgstr[1] "{} novos quadros serão criados"
 
 msgid "{} of the checks need a look."
 msgstr "{} das verificações precisam de atenção."
+
+msgid "{} of {} characters"
+msgstr "{} de {} caracteres"
 
 msgid "{} of {} · next: {}"
 msgstr "{} de {} · próximo: {}"

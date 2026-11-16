@@ -25,14 +25,14 @@ use snipdeck_app::{
     toast::{ToastKind, ToastMessage},
 };
 use snipdeck_core::{
-    Content, Format, FormatKind, Formats, Inline, Item, ItemId, ItemKind, ItemLabel, Placement,
-    Timestamp,
+    CaseMode, Content, Format, FormatKind, Formats, Inline, Item, ItemId, ItemKind, ItemLabel,
+    Placement, Timestamp, TriggerEnd, TriggerOptions,
 };
 use snipdeck_platform::{
     file_dialog::{FakeFilePicker, PickKind},
     testing::{FakeClipboard, FakeKeyboard, FakeTiming},
 };
-use snipdeck_store::{BlobStore, ItemRepo, ListRepo, Store, TagRepo, TriggerRepo};
+use snipdeck_store::{BlobStore, BoardRepo, ItemRepo, ListRepo, Store, TagRepo, TriggerRepo};
 
 #[path = "support/mod.rs"]
 mod support;
@@ -1772,4 +1772,248 @@ fn open_in_browser_does_nothing_for_other_kinds() {
         .expect("row");
     r.ctl.main_action(MainAction::OpenLink, row);
     assert!(opened.borrow().is_empty());
+}
+
+/// Saves a new text item with `code` and `options` as its trigger.
+fn save_with_trigger(
+    ctl: &mut Ctl,
+    title: &str,
+    code: &str,
+    end: TriggerEnd,
+    case: CaseMode,
+) -> ItemId {
+    ctl.open_new_item(Origin::Main);
+    ctl.item_editor_set_trigger(code);
+    ctl.item_editor_set_trigger_end(end);
+    ctl.item_editor_set_trigger_case(case);
+    let v = view(ctl);
+    ctl.item_editor_save(&typed(&v, title, "body"));
+    assert!(
+        !ctl.item_editor_open(),
+        "saved {title}: {:?}",
+        ctl.item_editor_view().map(|v| v.trigger_problem)
+    );
+    item_titled(ctl, title)
+}
+
+fn item_titled(ctl: &Ctl, title: &str) -> ItemId {
+    let list = ctl.store().boards().expect("boards").remove(0);
+    let list = ctl.store().lists(list.id).expect("lists").remove(0);
+    ctl.store()
+        .items(list.id)
+        .expect("items")
+        .into_iter()
+        .find(|i| i.title == title)
+        .unwrap_or_else(|| panic!("no item {title}"))
+        .id
+}
+
+#[test]
+fn a_short_letters_only_trigger_is_refused_before_save_unless_it_waits_for_a_delimiter() {
+    let mut r = rig();
+    r.ctl.open_new_item(Origin::Main);
+    r.ctl.item_editor_set_trigger("ab");
+    assert_eq!(
+        r.ctl.item_editor_trigger_notes(),
+        (Some(EditorProblem::TriggerTooShort), None),
+        "told while typing, before Save"
+    );
+    assert_eq!(
+        view(&r.ctl).trigger_problem,
+        Some(EditorProblem::TriggerTooShort)
+    );
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Two", "2"));
+    assert!(r.ctl.item_editor_open(), "Save refuses it");
+    assert_eq!(r.ctl.store().triggers().expect("all").len(), 0);
+    // Three letters, a symbol in front, or a delimiter each make it safe.
+    for safe in ["abc", ";a", ",,", "a1b"] {
+        r.ctl.item_editor_set_trigger(safe);
+        assert_eq!(r.ctl.item_editor_trigger_notes(), (None, None), "{safe}");
+    }
+    r.ctl.item_editor_set_trigger("ab");
+    r.ctl.item_editor_set_trigger_end(TriggerEnd::Delimiter);
+    assert_eq!(r.ctl.item_editor_trigger_notes(), (None, None));
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Two", "2"));
+    assert!(!r.ctl.item_editor_open(), "saved");
+    let stored = r.ctl.store().triggers().expect("all");
+    assert_eq!(stored.len(), 1);
+    assert_eq!(stored[0].0.options().end, TriggerEnd::Delimiter);
+}
+
+#[test]
+fn a_prefix_clash_names_the_other_snippet_before_save() {
+    let mut r = rig();
+    save_with_trigger(
+        &mut r.ctl,
+        "Signature",
+        ";sig",
+        TriggerEnd::Immediate,
+        CaseMode::Exact,
+    );
+    r.ctl.open_new_item(Origin::Main);
+    r.ctl.item_editor_set_trigger(";signature");
+    assert_eq!(
+        r.ctl.item_editor_trigger_notes(),
+        (
+            None,
+            Some(EditorProblem::TriggerHidden {
+                title: "Signature".to_owned()
+            })
+        ),
+        "the shorter code of Signature fires first"
+    );
+    assert_eq!(
+        view(&r.ctl).trigger_note,
+        Some(EditorProblem::TriggerHidden {
+            title: "Signature".to_owned()
+        })
+    );
+    // The other code fires the moment it is typed, so waiting for a delimiter does not help.
+    r.ctl.item_editor_set_trigger_end(TriggerEnd::Delimiter);
+    assert!(r.ctl.item_editor_trigger_notes().1.is_some());
+    r.ctl.item_editor_set_trigger_end(TriggerEnd::Immediate);
+    r.ctl.item_editor_set_trigger(";si");
+    assert_eq!(
+        r.ctl.item_editor_trigger_notes().1,
+        Some(EditorProblem::TriggerHides {
+            title: "Signature".to_owned()
+        }),
+        "this one would hide Signature's"
+    );
+    // A warning does not stop Save.
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Small", "x"));
+    assert!(!r.ctl.item_editor_open());
+}
+
+#[test]
+fn a_triggers_options_are_saved_and_come_back_in_the_editor() {
+    let mut r = rig();
+    let id = save_with_trigger(
+        &mut r.ctl,
+        "Regards",
+        "brb",
+        TriggerEnd::Delimiter,
+        CaseMode::Adapt,
+    );
+    r.ctl.open_item_editor(id);
+    assert_eq!(
+        view(&r.ctl).trigger_options,
+        TriggerOptions {
+            end: TriggerEnd::Delimiter,
+            case: CaseMode::Adapt
+        }
+    );
+    // Changing only the options is a change of the trigger.
+    r.ctl.item_editor_set_trigger_case(CaseMode::Ignore);
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Regards", "body"));
+    let held = r
+        .ctl
+        .store()
+        .trigger_of(id)
+        .expect("trigger")
+        .expect("some");
+    assert_eq!(held.options().case, CaseMode::Ignore);
+}
+
+#[test]
+fn a_code_that_differs_only_by_case_is_taken_when_one_ignores_case() {
+    let mut r = rig();
+    save_with_trigger(
+        &mut r.ctl,
+        "First",
+        ";sig",
+        TriggerEnd::Immediate,
+        CaseMode::Ignore,
+    );
+    r.ctl.open_new_item(Origin::Main);
+    r.ctl.item_editor_set_trigger(";SIG");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Second", "2"));
+    assert!(r.ctl.item_editor_open());
+    assert_eq!(
+        view(&r.ctl).trigger_problem,
+        Some(EditorProblem::TriggerTaken)
+    );
+}
+
+#[test]
+fn a_new_item_with_text_that_is_already_saved_asks_before_saving_a_copy() {
+    let mut r = rig();
+    let first = save_new(
+        &mut r.ctl,
+        ItemKind::Text,
+        "Address",
+        "12 Elm Street\nTownsville",
+    );
+    let count = |r: &Rig| r.ctl.store().all_items().expect("items").len();
+    let before = count(&r);
+
+    // The same text, differing by blanks at the ends: not saved, and the editor says where it is.
+    r.ctl.open_new_item(Origin::Main);
+    let v = view(&r.ctl);
+    r.ctl
+        .item_editor_save(&typed(&v, "Copy", "  12 Elm Street\nTownsville \n"));
+    assert!(r.ctl.item_editor_open(), "waits for the answer");
+    let found = view(&r.ctl).duplicate.expect("the notice");
+    assert_eq!(found.item, first);
+    assert_eq!(found.title, "Address");
+    assert!(!found.list_name.is_empty());
+    assert_eq!(count(&r), before, "nothing was written");
+
+    // An edit takes the notice away; different text saves without asking.
+    r.ctl.item_editor_edited();
+    assert_eq!(view(&r.ctl).duplicate, None);
+    let v = view(&r.ctl);
+    r.ctl
+        .item_editor_save(&typed(&v, "Other", "somewhere else"));
+    assert!(!r.ctl.item_editor_open());
+    assert_eq!(count(&r), before + 1);
+
+    // "Save anyway" makes the copy.
+    r.ctl.open_new_item(Origin::Main);
+    let v = view(&r.ctl);
+    let input = typed(&v, "Copy", "12 Elm Street\nTownsville");
+    r.ctl.item_editor_save(&input);
+    assert!(view(&r.ctl).duplicate.is_some());
+    r.ctl.item_editor_save_anyway(&input);
+    assert!(!r.ctl.item_editor_open());
+    assert_eq!(count(&r), before + 2);
+
+    // "Open it" drops the new item and opens the saved one.
+    r.ctl.open_new_item(Origin::Main);
+    let v = view(&r.ctl);
+    r.ctl
+        .item_editor_save(&typed(&v, "Copy", "12 Elm Street\nTownsville"));
+    assert!(r.ctl.item_editor_open_duplicate());
+    // Two saved items now hold that text; the editor shows one of them, not the new item.
+    assert!(["Address", "Copy"].contains(&view(&r.ctl).fields.title.as_str()));
+    assert_eq!(count(&r), before + 2);
+}
+
+#[test]
+fn a_sensitive_text_is_never_compared_with_the_others() {
+    let mut r = rig();
+    save_new(&mut r.ctl, ItemKind::Text, "Plain", "hunter2");
+    r.ctl.open_new_item(Origin::Main);
+    let v = view(&r.ctl);
+    let input = EditorInput {
+        sensitive: true,
+        ..typed(&v, "Secret", "hunter2")
+    };
+    let before = r.ctl.store().all_items().expect("items").len();
+    r.ctl.item_editor_save(&input);
+    assert_eq!(
+        r.ctl.item_editor_view().and_then(|v| v.duplicate),
+        None,
+        "a match would tell that a secret equals a plain item"
+    );
+    assert_eq!(
+        r.ctl.store().all_items().expect("items").len(),
+        before + 1,
+        "saved without asking"
+    );
 }

@@ -268,7 +268,9 @@ fn build_payload<S: BlobStore>(
                 if request.transform.is_some() => {}
             // A text in another case is plain; an RTF twin cannot take a delimiter.
             Format::Html(_) if request.retype.shape != CaseShape::AsIs => {}
-            Format::Rtf(_) if request.retype.shape != CaseShape::AsIs || request.retype.delimiter.is_some() => {}
+            Format::Rtf(_)
+                if request.retype.shape != CaseShape::AsIs
+                    || request.retype.delimiter.is_some() => {}
             Format::Text(content) => {
                 let bytes = store.read(content)?;
                 let text = String::from_utf8(bytes.into_owned()).map_err(|_| UseError::NotText)?;
@@ -298,7 +300,8 @@ fn build_payload<S: BlobStore>(
             Format::Html(_) | Format::Rtf(_) if item.kind == ItemKind::Template => {}
             Format::Html(content) => {
                 let bytes = store.read(content)?;
-                let mut html = String::from_utf8(bytes.into_owned()).map_err(|_| UseError::NotText)?;
+                let mut html =
+                    String::from_utf8(bytes.into_owned()).map_err(|_| UseError::NotText)?;
                 if let Some(d) = request.retype.delimiter {
                     html.push_str(&Retype::html(d));
                 }

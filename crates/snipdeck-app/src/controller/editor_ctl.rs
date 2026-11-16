@@ -15,7 +15,8 @@
 use std::{collections::BTreeSet, path::PathBuf, rc::Rc, sync::Arc};
 
 use snipdeck_core::{
-    Format, Formats, Item, ItemId, ItemKind, ListId, Tag, TagId, template::Locale,
+    CaseMode, Format, Formats, Item, ItemId, ItemKind, ListId, Tag, TagId, Trigger, TriggerEnd,
+    TriggerOptions, template::Locale,
 };
 use snipdeck_platform::file_dialog::FilePicker;
 use snipdeck_store::{
@@ -26,6 +27,7 @@ use snipdeck_store::{
 use super::{Controller, Library, Toast, ToastKind, ToastMessage, failed};
 use crate::{
     drafts::{Draft, DraftKey, Drafts},
+    duplicate::Duplicate,
     host::ClipboardText,
     item_editor::{
         AttachmentView, EditorInput, EditorProblem, ItemEditorView, SaveFailure, Source,
@@ -81,6 +83,8 @@ struct Problems {
     privacy: Option<EditorProblem>,
     trigger: Option<EditorProblem>,
     banner: Option<EditorProblem>,
+    /// The new item's text is already saved: Save waits for "Open it" or "Save anyway".
+    duplicate: Option<Duplicate>,
 }
 
 /// An open item editor.
@@ -103,8 +107,14 @@ pub(super) struct ItemEditorSlot {
     /// The Trigger field as typed (empty: none); the window sends it with
     /// [`item_editor_set_trigger`](Controller::item_editor_set_trigger).
     trigger: String,
+    /// When the trigger fires and how it reads case, as chosen.
+    trigger_options: TriggerOptions,
+    /// "Save anyway" was chosen for a text that is already saved.
+    allow_duplicate: bool,
     /// The item's trigger when the editor opened (empty: none).
     original_trigger: String,
+    /// The options of that trigger.
+    original_options: TriggerOptions,
     /// The saved text of a text item up to the editing cap: what "changed" is measured against.
     /// A sensitive item's text is held here while its editor is open and no longer.
     original_text: Option<String>,
@@ -134,6 +144,21 @@ impl ItemEditorSlot {
     /// Whether this editor holds, or is about to hold, the text of a sensitive item.
     fn sensitive(&self) -> bool {
         self.original_sensitive || self.fields.sensitive || self.live_sensitive
+    }
+
+    /// The Trigger field as a trigger with the chosen options; `None` when it is blank or not a
+    /// valid code.
+    fn trigger_code(&self) -> Option<Trigger> {
+        Trigger::new(&self.trigger)
+            .ok()
+            .map(|t| t.with_options(self.trigger_options))
+    }
+
+    /// The trigger the item had when the editor opened.
+    fn original_code(&self) -> Option<Trigger> {
+        Trigger::new(&self.original_trigger)
+            .ok()
+            .map(|t| t.with_options(self.original_options))
     }
 
     fn draft_key(&self) -> DraftKey {
@@ -260,7 +285,14 @@ where
             source_problem: slot.problems.source.clone(),
             privacy_problem: slot.problems.privacy.clone(),
             trigger: slot.trigger.clone(),
-            trigger_problem: slot.problems.trigger.clone(),
+            trigger_options: slot.trigger_options,
+            trigger_problem: slot
+                .problems
+                .trigger
+                .clone()
+                .or_else(|| self.trigger_notes(slot).0),
+            trigger_note: self.trigger_notes(slot).1,
+            duplicate: slot.problems.duplicate.clone(),
             banner: slot.problems.banner.clone(),
             large: slot.large,
             formatted: slot.formatted,
@@ -311,12 +343,122 @@ where
         }
     }
 
+    /// The trigger fires `end`. Checked on Save, and noted at once by
+    /// [`item_editor_trigger_notes`](Self::item_editor_trigger_notes).
+    pub fn item_editor_set_trigger_end(&mut self, end: TriggerEnd) {
+        if let Some(slot) = self.item_editor.as_mut() {
+            slot.trigger_options.end = end;
+            slot.problems.trigger = None;
+        }
+    }
+
+    /// The trigger reads case as `case` says.
+    pub fn item_editor_set_trigger_case(&mut self, case: CaseMode) {
+        if let Some(slot) = self.item_editor.as_mut() {
+            slot.trigger_options.case = case;
+            slot.problems.trigger = None;
+        }
+    }
+
+    /// What is wrong with the trigger as it stands, before anything is saved: a refusal (the code
+    /// would fire inside ordinary words; Save will not take it) and a warning (the code hides
+    /// another snippet's, or is hidden by it; Save takes it). `(None, None)` when no editor is open.
+    #[must_use]
+    pub fn item_editor_trigger_notes(&self) -> (Option<EditorProblem>, Option<EditorProblem>) {
+        self.item_editor
+            .as_ref()
+            .map_or((None, None), |slot| self.trigger_notes(slot))
+    }
+
+    fn trigger_notes(
+        &self,
+        slot: &ItemEditorSlot,
+    ) -> (Option<EditorProblem>, Option<EditorProblem>) {
+        if slot.sensitive() || slot.trigger.is_empty() {
+            return (None, None);
+        }
+        let Some(code) = slot.trigger_code() else {
+            return (None, None);
+        };
+        if code.fires_in_words() {
+            // A code the item already had keeps working and can be saved with the item: it is
+            // only warned about until the user changes it.
+            return if slot.original_code().as_ref() == Some(&code) {
+                (None, Some(EditorProblem::TriggerTooShort))
+            } else {
+                (Some(EditorProblem::TriggerTooShort), None)
+            };
+        }
+        let own = match slot.target {
+            ItemTarget::Item(id) => Some(id),
+            ItemTarget::New => None,
+        };
+        let name = |other: &Trigger, owner| {
+            self.store
+                .item(owner)
+                .ok()
+                .map(|i| i.title)
+                .filter(|t| !t.trim().is_empty())
+                .unwrap_or_else(|| other.as_str().to_owned())
+        };
+        for (other, owner) in self.store.triggers().unwrap_or_default() {
+            if Some(owner) == own || code.same_code(&other) {
+                continue;
+            }
+            if code.shadows(&other) {
+                return (
+                    None,
+                    Some(EditorProblem::TriggerHides {
+                        title: name(&other, owner),
+                    }),
+                );
+            }
+            if other.shadows(&code) {
+                return (
+                    None,
+                    Some(EditorProblem::TriggerHidden {
+                        title: name(&other, owner),
+                    }),
+                );
+            }
+        }
+        if code.as_str().chars().count() == 1 {
+            return (None, Some(EditorProblem::TriggerOneCharacter));
+        }
+        (None, None)
+    }
+
+    /// Save for a new item whose text is already saved elsewhere ("Already saved in List X"):
+    /// saves it anyway.
+    pub fn item_editor_save_anyway(&mut self, input: &EditorInput) {
+        if let Some(slot) = self.item_editor.as_mut() {
+            slot.allow_duplicate = true;
+        }
+        self.item_editor_save(input);
+    }
+
+    /// "Open it" on the "Already saved" notice: drops the unsaved new item and opens the one that
+    /// has the text. Returns whether there was one to open.
+    pub fn item_editor_open_duplicate(&mut self) -> bool {
+        let Some(found) = self
+            .item_editor
+            .as_ref()
+            .and_then(|slot| slot.problems.duplicate.clone())
+        else {
+            return false;
+        };
+        self.item_editor_cancel();
+        self.open_item_editor(found.item);
+        true
+    }
+
     /// A field was edited: refusals no longer apply.
     pub fn item_editor_edited(&mut self) {
         let Some(slot) = self.item_editor.as_mut() else {
             return;
         };
         slot.problems = Problems::default();
+        slot.allow_duplicate = false;
         // Typing in a sensitive item is use: it must not idle the library out under the
         // user's hands (the lock closes this editor).
         if slot.sensitive() {

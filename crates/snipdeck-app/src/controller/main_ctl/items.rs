@@ -107,7 +107,10 @@ where
     /// Opens Link item `id` in the system's handler. Only `link_open::ALLOWED_SCHEMES` are opened,
     /// whatever the item holds; anything else (or an address the system cannot open) is a toast.
     fn open_link(&mut self, id: ItemId) {
-        let is_link = self.main.item(id).is_some_and(|i| i.kind == snipdeck_core::ItemKind::Link);
+        let is_link = self
+            .main
+            .item(id)
+            .is_some_and(|i| i.kind == snipdeck_core::ItemKind::Link);
         if !is_link {
             return;
         }

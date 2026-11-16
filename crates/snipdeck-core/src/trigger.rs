@@ -108,7 +108,11 @@ impl CaseShape {
         if typed == code {
             return Self::AsIs;
         }
-        let letters: Vec<char> = typed.iter().copied().filter(|c| c.is_alphabetic()).collect();
+        let letters: Vec<char> = typed
+            .iter()
+            .copied()
+            .filter(|c| c.is_alphabetic())
+            .collect();
         let upper = |c: &char| c.is_uppercase();
         let lower = |c: &char| c.is_lowercase();
         match letters.as_slice() {
@@ -882,7 +886,10 @@ mod tests {
 
     #[test]
     fn a_delimiter_trigger_fires_on_the_character_after_it_and_names_it() {
-        let mut m = matcher_of(vec![(opt("sig", TriggerEnd::Delimiter, CaseMode::Exact), 1)]);
+        let mut m = matcher_of(vec![(
+            opt("sig", TriggerEnd::Delimiter, CaseMode::Exact),
+            1,
+        )]);
         assert!(feed_all(&mut m, "sig").is_empty(), "not yet: it waits");
         let fired = feed_all(&mut m, " ");
         assert_eq!(fired.len(), 1);
@@ -890,8 +897,10 @@ mod tests {
         assert_eq!(fired[0].delimiter, Some(' '));
         assert_eq!(fired[0].chars, 4, "the code and the delimiter are erased");
         for d in ['.', ',', '\n', '\t', '!'] {
-            let mut m =
-                matcher_of(vec![(opt("sig", TriggerEnd::Delimiter, CaseMode::Exact), 1)]);
+            let mut m = matcher_of(vec![(
+                opt("sig", TriggerEnd::Delimiter, CaseMode::Exact),
+                1,
+            )]);
             feed_all(&mut m, "sig");
             assert_eq!(m.feed(d).and_then(|f| f.delimiter), Some(d), "{d:?}");
         }
@@ -899,32 +908,55 @@ mod tests {
 
     #[test]
     fn a_delimiter_trigger_does_not_fire_inside_a_word_or_on_a_letter() {
-        let mut m = matcher_of(vec![(opt("sig", TriggerEnd::Delimiter, CaseMode::Exact), 1)]);
-        assert!(feed_all(&mut m, "design ").is_empty(), "needs a boundary before");
-        assert!(feed_all(&mut m, "sigh ").is_empty(), "a letter is not a delimiter");
+        let mut m = matcher_of(vec![(
+            opt("sig", TriggerEnd::Delimiter, CaseMode::Exact),
+            1,
+        )]);
+        assert!(
+            feed_all(&mut m, "design ").is_empty(),
+            "needs a boundary before"
+        );
+        assert!(
+            feed_all(&mut m, "sigh ").is_empty(),
+            "a letter is not a delimiter"
+        );
         assert_eq!(feed_all(&mut m, "sig.").len(), 1);
     }
 
     #[test]
     fn an_immediate_trigger_still_fires_without_a_delimiter() {
-        let mut m = matcher_of(vec![(opt(";sig", TriggerEnd::Immediate, CaseMode::Exact), 1)]);
+        let mut m = matcher_of(vec![(
+            opt(";sig", TriggerEnd::Immediate, CaseMode::Exact),
+            1,
+        )]);
         let fired = feed_all(&mut m, ";sig");
-        assert_eq!((fired.len(), fired[0].delimiter, fired[0].chars), (1, None, 4));
+        assert_eq!(
+            (fired.len(), fired[0].delimiter, fired[0].chars),
+            (1, None, 4)
+        );
     }
 
     #[test]
     fn ignore_case_matches_any_case_and_exact_does_not() {
-        let mut m = matcher_of(vec![(opt(";sig", TriggerEnd::Immediate, CaseMode::Ignore), 1)]);
+        let mut m = matcher_of(vec![(
+            opt(";sig", TriggerEnd::Immediate, CaseMode::Ignore),
+            1,
+        )]);
         assert_eq!(feed_all(&mut m, ";SiG").len(), 1);
-        let mut m = matcher_of(vec![(opt(";sig", TriggerEnd::Immediate, CaseMode::Exact), 1)]);
+        let mut m = matcher_of(vec![(
+            opt(";sig", TriggerEnd::Immediate, CaseMode::Exact),
+            1,
+        )]);
         assert!(feed_all(&mut m, ";SIG").is_empty());
     }
 
     #[test]
     fn adapt_reports_the_shape_that_was_typed() {
         let shapes = |typed: &str| {
-            let mut m =
-                matcher_of(vec![(opt("brb", TriggerEnd::Delimiter, CaseMode::Adapt), 1)]);
+            let mut m = matcher_of(vec![(
+                opt("brb", TriggerEnd::Delimiter, CaseMode::Adapt),
+                1,
+            )]);
             feed_all(&mut m, &format!("{typed} "))[0].shape
         };
         assert_eq!(shapes("brb"), CaseShape::AsIs);
@@ -932,7 +964,11 @@ mod tests {
         assert_eq!(shapes("Brb"), CaseShape::Capital);
         assert_eq!(shapes("bRb"), CaseShape::AsIs);
         let mut m = matcher_of(vec![(opt("b", TriggerEnd::Delimiter, CaseMode::Adapt), 1)]);
-        assert_eq!(feed_all(&mut m, "B ")[0].shape, CaseShape::Capital, "one capital letter");
+        assert_eq!(
+            feed_all(&mut m, "B ")[0].shape,
+            CaseShape::Capital,
+            "one capital letter"
+        );
     }
 
     #[test]
@@ -968,7 +1004,10 @@ mod tests {
         assert!(t("a", TriggerEnd::Immediate).fires_in_words());
         assert!(!t("abc", TriggerEnd::Immediate).fires_in_words());
         assert!(!t("ab", TriggerEnd::Delimiter).fires_in_words());
-        assert!(!t(";a", TriggerEnd::Immediate).fires_in_words(), "a symbol starts it");
+        assert!(
+            !t(";a", TriggerEnd::Immediate).fires_in_words(),
+            "a symbol starts it"
+        );
         assert!(!t(",,", TriggerEnd::Immediate).fires_in_words());
     }
 

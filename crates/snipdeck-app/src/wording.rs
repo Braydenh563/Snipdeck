@@ -880,6 +880,17 @@ where
     text.into()
 }
 
+/// The "Already saved" dialog's body: which item holds the text and where.
+#[must_use]
+pub fn duplicate_text<C>(window: &C, found: &crate::duplicate::Duplicate) -> String
+where
+    for<'a> FormTexts<'a>: Global<'a, C>,
+{
+    FormTexts::get(window)
+        .invoke_duplicate_body(found.title.as_str().into(), found.list_name.as_str().into())
+        .into()
+}
+
 /// Why the item editor refuses something, in words.
 #[must_use]
 #[allow(clippy::too_many_lines, reason = "one match arm per problem")]
@@ -896,6 +907,10 @@ where
         EditorProblem::ContentTooLong { max_kb } => t.invoke_content_too_long(int(*max_kb)),
         EditorProblem::TriggerInvalid => t.invoke_trigger_invalid(),
         EditorProblem::TriggerTaken => t.invoke_trigger_taken(),
+        EditorProblem::TriggerTooShort => t.invoke_trigger_too_short(),
+        EditorProblem::TriggerOneCharacter => t.invoke_trigger_one_character(),
+        EditorProblem::TriggerHides { title } => t.invoke_trigger_hides(title.as_str().into()),
+        EditorProblem::TriggerHidden { title } => t.invoke_trigger_hidden(title.as_str().into()),
         EditorProblem::LinkNeedsScheme => t.invoke_link_needs_scheme(),
         EditorProblem::LinkHasSpace => t.invoke_link_has_space(),
         EditorProblem::Template(why) => {

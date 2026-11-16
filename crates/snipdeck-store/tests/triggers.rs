@@ -236,10 +236,16 @@ fn a_code_that_differs_only_by_case_is_taken_when_a_mode_ignores_case() {
     let dir = tempfile::tempdir().unwrap();
     let mut s = Store::open(dir.path()).unwrap();
     let (_, a, c) = two(&mut s);
-    s.set_trigger(a, Some(&with(";sig", TriggerEnd::Immediate, CaseMode::Ignore)))
-        .unwrap();
+    s.set_trigger(
+        a,
+        Some(&with(";sig", TriggerEnd::Immediate, CaseMode::Ignore)),
+    )
+    .unwrap();
     let err = s.set_trigger(c, Some(&trig(";SIG"))).unwrap_err();
-    assert!(matches!(&err, Error::TriggerTaken(t) if t == ";sig"), "{err:?}");
+    assert!(
+        matches!(&err, Error::TriggerTaken(t) if t == ";sig"),
+        "{err:?}"
+    );
     assert_eq!(s.trigger_of(c).unwrap(), None);
 }
 
@@ -250,7 +256,10 @@ fn a_delimiter_code_is_not_reported_as_hiding_a_longer_one() {
     let (_, a, c) = two(&mut s);
     s.set_trigger(a, Some(&trig(";signature"))).unwrap();
     let clash = s
-        .set_trigger(c, Some(&with(";sig", TriggerEnd::Delimiter, CaseMode::Exact)))
+        .set_trigger(
+            c,
+            Some(&with(";sig", TriggerEnd::Delimiter, CaseMode::Exact)),
+        )
         .unwrap();
     assert!(clash.is_empty(), "{clash:?}");
     let clash = s.set_trigger(c, Some(&trig(";sig"))).unwrap();

@@ -2,7 +2,7 @@
 
 use std::collections::BTreeSet;
 
-use snipdeck_core::{Format, ItemId, ItemKind, ListId, Name, TagId};
+use snipdeck_core::{Format, ItemId, ItemKind, ListId, Name, TagId, TriggerOptions};
 use snipdeck_store::name_key;
 
 use super::super::{Controller, Library, Toast, ToastKind, ToastMessage};
@@ -230,7 +230,10 @@ where
             original_kind: ItemKind::Text,
             original_sensitive: false,
             trigger: String::new(),
+            trigger_options: TriggerOptions::default(),
+            allow_duplicate: false,
             original_trigger: String::new(),
+            original_options: TriggerOptions::default(),
             original_text: None,
             formatted: false,
             stamp: None,
@@ -302,14 +305,16 @@ where
                 .formats(id)?
                 .iter()
                 .any(|f| matches!(f, Format::Html(_) | Format::Rtf(_)));
-        let trigger = if item.sensitive {
-            String::new()
+        let held = if item.sensitive {
+            None
         } else {
-            self.store
-                .trigger_of(id)?
-                .map(|t| t.as_str().to_owned())
-                .unwrap_or_default()
+            self.store.trigger_of(id)?
         };
+        let trigger = held
+            .as_ref()
+            .map(|t| t.as_str().to_owned())
+            .unwrap_or_default();
+        let options = held.map(|t| t.options()).unwrap_or_default();
         let mut slot = ItemEditorSlot {
             seq: 0,
             raise: 0,
@@ -321,7 +326,10 @@ where
             original_kind: item.kind,
             original_sensitive: item.sensitive,
             trigger: trigger.clone(),
+            trigger_options: options,
+            allow_duplicate: false,
             original_trigger: trigger,
+            original_options: options,
             original_text,
             formatted,
             stamp: Some(item.updated_at.to_string()),

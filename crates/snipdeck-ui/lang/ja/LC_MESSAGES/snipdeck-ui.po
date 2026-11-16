@@ -94,6 +94,9 @@ msgstr "タイトルに改行や制御文字を含めることはできません
 msgid "A trigger is 1 to 32 characters with no spaces."
 msgstr "トリガーは空白を含まない1～32文字です。"
 
+msgid "A trigger of fewer than 3 letters or digits would fire inside words. Add a symbol such as ;, make it longer, or have it fire at a space or punctuation."
+msgstr "3文字未満の文字・数字だけのトリガーは、単語の途中でも反応してしまいます。;のような記号を付ける、長くする、またはスペースや句読点で反応するようにしてください。"
+
 msgid "AA"
 msgstr "AA"
 
@@ -188,6 +191,9 @@ msgstr "{}件の最近のコピーを削除します。元に戻せません。"
 msgid "Alpha"
 msgstr "アルファ"
 
+msgid "Already saved"
+msgstr "保存済み"
+
 msgid "Also forget the encryption key"
 msgstr "暗号化キーも削除する"
 
@@ -244,6 +250,9 @@ msgstr "入力すると表示"
 
 msgid "Apply the new name"
 msgstr "新しい名前を適用"
+
+msgid "As soon as it is typed"
+msgstr "入力するとすぐ"
 
 msgid "Asks for a date, today if left empty"
 msgstr "日付を尋ねます。空のままなら今日の日付です"
@@ -1304,6 +1313,12 @@ msgstr "アイコンはまだリストに追加できません。"
 msgid "If you forget this password, your sensitive items can never be opened again. Snipdeck cannot reset it and keeps no recovery key. Your other items are not affected."
 msgstr "このパスワードを忘れると、機密スニペットは二度と開けなくなります。Snipdeck はパスワードをリセットできず、復旧キーも保存しません。それ以外のスニペットには影響しません。"
 
+msgid "Ignore case"
+msgstr "大文字・小文字を区別しない"
+
+msgid "Ignore case and follow what I typed"
+msgstr "大文字・小文字を区別せず、入力に合わせる"
+
 msgid "Image"
 msgstr "画像"
 
@@ -1553,6 +1568,9 @@ msgstr "マスターパスワードを削除しました。Snipdeck は今ライ
 msgid "Master password set."
 msgstr "マスターパスワードを設定しました。"
 
+msgid "Match case exactly"
+msgstr "大文字・小文字を厳密に区別する"
+
 msgid "Menu"
 msgstr "メニュー"
 
@@ -1789,6 +1807,9 @@ msgstr "動作しません"
 msgid "Nothing copied yet"
 msgstr "まだコピーされたものはありません"
 
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "「はい」を選ぶまで何も保存されず、設定でいつでも変更できます。「最近」は、コピーしたテキストを、直近 {} 件または {} 日間のどちらか先に達した分だけ、このコンピューターにのみ保存します。パスワード管理ツールからのパスワードや機密アイテムは保存されません。"
+
 msgid "Nothing matches “{}”"
 msgstr "「{}」に一致する項目はありません"
 
@@ -1893,6 +1914,15 @@ msgstr "データフォルダーを開く"
 
 msgid "Open in Colours"
 msgstr "カラーで開く"
+
+msgid "Open in browser"
+msgstr "ブラウザーで開く"
+
+msgid "Open it"
+msgstr "開く"
+
+msgid "Open log"
+msgstr "ログを開く"
 
 msgid "Open logs folder"
 msgstr "ログフォルダーを開く"
@@ -2251,9 +2281,6 @@ msgstr "最近の項目の操作"
 msgid "Recent history cleared"
 msgstr "最近の履歴を消去しました"
 
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "「はい」を選ぶまで何も保存されず、設定でいつでも変更できます。「最近」は、コピーしたテキストを、直近 {} 件または {} 日間のどちらか先に達した分だけ、このコンピューターにのみ保存します。パスワード管理ツールからのパスワードや機密アイテムは保存されません。"
-
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "「最近」は、コピーしたテキストをこのコンピューターにのみ、直近 {} 回のコピーまたは {} 日間のどちらか早い方まで保持します。パスワードマネージャーのパスワードと機密スニペットは保持されません。設定でいつでも変更できます。"
 
@@ -2399,6 +2426,9 @@ msgstr "保存"
 
 msgid "Save (Ctrl+Enter)"
 msgstr "保存 (Ctrl+Enter)"
+
+msgid "Save anyway"
+msgstr "それでも保存"
 
 msgid "Save as PNG…"
 msgstr "PNG として保存…"
@@ -2835,6 +2865,9 @@ msgstr "驚き"
 msgid "Swap the two colours"
 msgstr "2 つの色を入れ替える"
 
+msgid "Switch"
+msgstr "切り替え"
+
 msgid "Switch this list to Manual order?"
 msgstr "このリストを手動の並び順に切り替えますか?"
 
@@ -3033,6 +3066,9 @@ msgstr "その端にはタスクバーがあります。別の端を選ぶか、
 msgid "The time now"
 msgstr "現在時刻"
 
+msgid "The trigger of {} starts like this one, so this one would never fire."
+msgstr "{}のトリガーがこれと同じ文字で始まるため、これは反応しません。"
+
 msgid "The two passwords are not the same."
 msgstr "2つのパスワードが一致しません。"
 
@@ -3099,11 +3135,17 @@ msgstr "このテンプレートを読み込めません。開いて修正して
 msgid "This template can't be read: {}."
 msgstr "このテンプレートを読めません: {}"
 
+msgid "This text is already saved as {} in {}."
+msgstr "このテキストは、{}として{}にすでに保存されています。"
+
 msgid "This text is over {} KB, the most that can be edited here. Shorten it, or keep it in a file."
 msgstr "このテキストは {} KB を超えています。ここで編集できる上限です。短くするか、ファイルに保存してください。"
 
 msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
 msgstr "このテキストは{}です。16 KBを超えるものはここでは読み取り専用で開き、先頭の16 KBを表示します。"
+
+msgid "This trigger starts the trigger of {}, which would then never fire."
+msgstr "このトリガーは{}のトリガーの先頭部分にあたり、そちらが反応しなくなります。"
 
 msgid "Tile view"
 msgstr "タイル表示"
@@ -3155,6 +3197,12 @@ msgstr "トライアド"
 
 msgid "Trigger"
 msgstr "トリガー"
+
+msgid "Trigger and letter case"
+msgstr "トリガーと大文字・小文字"
+
+msgid "Trigger fires"
+msgstr "トリガーの反応タイミング"
 
 msgid "Trimmed"
 msgstr "前後の空白を削除"
@@ -3362,6 +3410,9 @@ msgstr "ホイール"
 
 msgid "When Windows starts"
 msgstr "Windows の起動時"
+
+msgid "When a space or punctuation follows"
+msgstr "スペースや句読点が続いたとき"
 
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel that tucks goes to its tab instead."
 msgstr "ピンがオフのとき、ほかのアプリに切り替えるとすぐにパネルが隠れます。ピン留めしたパネルは隠れず、タブに収まる設定の固定パネルは代わりにタブへ収まります。"
@@ -3941,6 +3992,9 @@ msgstr[0] "新しいボードを {} 個作成します"
 
 msgid "{} of the checks need a look."
 msgstr "{} 件の項目に確認が必要です。"
+
+msgid "{} of {} characters"
+msgstr "{}/{}文字"
 
 msgid "{} of {} · next: {}"
 msgstr "{} / {} · 次: {}"

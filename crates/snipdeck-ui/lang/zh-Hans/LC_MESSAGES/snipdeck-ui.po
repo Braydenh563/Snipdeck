@@ -94,6 +94,9 @@ msgstr "标题不能包含换行或控制字符。"
 msgid "A trigger is 1 to 32 characters with no spaces."
 msgstr "触发词为 1 到 32 个字符，不含空格。"
 
+msgid "A trigger of fewer than 3 letters or digits would fire inside words. Add a symbol such as ;, make it longer, or have it fire at a space or punctuation."
+msgstr "少于3个字母或数字的触发词会在单词中间触发。请加上 ; 之类的符号、加长它，或让它在空格或标点后触发。"
+
 msgid "AA"
 msgstr "AA"
 
@@ -188,6 +191,9 @@ msgstr "将删除全部 {} 条最近复制的内容。此操作无法撤销。"
 msgid "Alpha"
 msgstr "透明度"
 
+msgid "Already saved"
+msgstr "已保存"
+
 msgid "Also forget the encryption key"
 msgstr "同时忘记加密密钥"
 
@@ -244,6 +250,9 @@ msgstr "输入时出现"
 
 msgid "Apply the new name"
 msgstr "应用新名称"
+
+msgid "As soon as it is typed"
+msgstr "输入后立即触发"
 
 msgid "Asks for a date, today if left empty"
 msgstr "询问日期，留空则为今天"
@@ -1304,6 +1313,12 @@ msgstr "暂时无法将图标添加到列表。"
 msgid "If you forget this password, your sensitive items can never be opened again. Snipdeck cannot reset it and keeps no recovery key. Your other items are not affected."
 msgstr "如果忘记此密码，敏感片段将再也无法打开。Snipdeck 无法重置它，也不保存恢复密钥。你的其他片段不受影响。"
 
+msgid "Ignore case"
+msgstr "忽略大小写"
+
+msgid "Ignore case and follow what I typed"
+msgstr "忽略大小写并跟随我的输入"
+
 msgid "Image"
 msgstr "图片"
 
@@ -1553,6 +1568,9 @@ msgstr "主密码已移除。Snipdeck 刚才无法打开资料库。请重启 Sn
 msgid "Master password set."
 msgstr "主密码已设置。"
 
+msgid "Match case exactly"
+msgstr "严格区分大小写"
+
 msgid "Menu"
 msgstr "菜单"
 
@@ -1789,6 +1807,9 @@ msgstr "无法使用"
 msgid "Nothing copied yet"
 msgstr "尚未复制任何内容"
 
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "除非你选择“是”，否则不会保存任何内容，你也可以随时在设置中更改。“最近”只在此电脑上保存你复制的文本，保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感项目绝不会保存。"
+
 msgid "Nothing matches “{}”"
 msgstr "没有与“{}”匹配的内容"
 
@@ -1893,6 +1914,15 @@ msgstr "打开数据文件夹"
 
 msgid "Open in Colours"
 msgstr "在“颜色”中打开"
+
+msgid "Open in browser"
+msgstr "在浏览器中打开"
+
+msgid "Open it"
+msgstr "打开"
+
+msgid "Open log"
+msgstr "打开日志"
 
 msgid "Open logs folder"
 msgstr "打开日志文件夹"
@@ -2251,9 +2281,6 @@ msgstr "最近条目操作"
 msgid "Recent history cleared"
 msgstr "已清除最近记录"
 
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "除非你选择“是”，否则不会保存任何内容，你也可以随时在设置中更改。“最近”只在此电脑上保存你复制的文本，保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感项目绝不会保存。"
-
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "“最近”会保留你复制的文本，仅保存在这台电脑上，最多保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感片段不会被保留。你可以随时在设置中更改。"
 
@@ -2399,6 +2426,9 @@ msgstr "保存"
 
 msgid "Save (Ctrl+Enter)"
 msgstr "保存 (Ctrl+Enter)"
+
+msgid "Save anyway"
+msgstr "仍然保存"
 
 msgid "Save as PNG…"
 msgstr "另存为 PNG…"
@@ -2835,6 +2865,9 @@ msgstr "惊讶"
 msgid "Swap the two colours"
 msgstr "交换两种颜色"
 
+msgid "Switch"
+msgstr "切换"
+
 msgid "Switch this list to Manual order?"
 msgstr "要将此列表切换为手动排序吗?"
 
@@ -3033,6 +3066,9 @@ msgstr "任务栏位于该边缘。请选择其他边缘，或移动任务栏。
 msgid "The time now"
 msgstr "当前时间"
 
+msgid "The trigger of {} starts like this one, so this one would never fire."
+msgstr "{} 的触发词与此触发词开头相同，因此此触发词永远不会触发。"
+
 msgid "The two passwords are not the same."
 msgstr "两次输入的密码不一致。"
 
@@ -3099,11 +3135,17 @@ msgstr "无法读取此模板。请打开它进行修复。"
 msgid "This template can't be read: {}."
 msgstr "无法读取此模板：{}。"
 
+msgid "This text is already saved as {} in {}."
+msgstr "这段文字已作为 {} 保存在 {} 中。"
+
 msgid "This text is over {} KB, the most that can be edited here. Shorten it, or keep it in a file."
 msgstr "此文本超过 {} KB，这是此处可编辑的上限。请缩短它，或将其保存在文件中。"
 
 msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
 msgstr "此文本为 {}。超过 16 KB 的内容将在此以只读方式打开，并显示前 16 KB。"
+
+msgid "This trigger starts the trigger of {}, which would then never fire."
+msgstr "此触发词是 {} 的触发词的开头，那个触发词将永远不会触发。"
 
 msgid "Tile view"
 msgstr "平铺视图"
@@ -3155,6 +3197,12 @@ msgstr "三角配色"
 
 msgid "Trigger"
 msgstr "触发词"
+
+msgid "Trigger and letter case"
+msgstr "触发词与大小写"
+
+msgid "Trigger fires"
+msgstr "触发方式"
 
 msgid "Trimmed"
 msgstr "去除首尾空白"
@@ -3362,6 +3410,9 @@ msgstr "色轮"
 
 msgid "When Windows starts"
 msgstr "Windows 启动时"
+
+msgid "When a space or punctuation follows"
+msgstr "后面跟空格或标点时"
 
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel that tucks goes to its tab instead."
 msgstr "图钉关闭时，切换到其他应用后面板会立即隐藏。已固定的面板不会隐藏，会收起的停靠面板则收成标签。"
@@ -3941,6 +3992,9 @@ msgstr[0] "将新建 {} 个看板"
 
 msgid "{} of the checks need a look."
 msgstr "有 {} 项检查需要留意。"
+
+msgid "{} of {} characters"
+msgstr "{} / {} 个字符"
 
 msgid "{} of {} · next: {}"
 msgstr "{} / {} · 下一项：{}"
