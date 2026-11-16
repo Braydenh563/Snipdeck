@@ -24,3 +24,10 @@ PR #5, branch claude/compassionate-pascal-pod8ux. CI green on df614a06; pushed h
 ## After
 Ranked fix list (all findings), fix by class, review, gate --full, CI green, HANDOVER morning summary, retro.
 Cargo: flock /tmp/target-panel/.audit.lock; env CARGO_TARGET_DIR=/tmp/target-panel CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_BUILD_JOBS=2 CARGO_INCREMENTAL=0.
+
+## Fix sessions (cloud, Sonnet; owner: start fixes as audits arrive; merge each branch after verify+gate)
+- extras -> session_01NKjURvnHFVMoYZ2xeg3MSJ, branch claude/fix-audit-extras
+- library -> session_01NKjURvL8svpNDsnWjzGkp8, branch claude/fix-audit-library
+- panel -> session_01NKjURu2Ui2oqJRKoriWaT6, branch claude/fix-audit-panel
+- Next audits: copy findings to .claude/audit/<area>.md, push, start a session per area.
+Older open items: fable2-last Part B (session_01NKjURsVa5FL9t3AAoppKaw), fix/sidebar-expand (local), PR #29 (owner decision), blind usability tests, gate --full, CI, handover, retro.
