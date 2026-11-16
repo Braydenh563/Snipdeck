@@ -410,7 +410,13 @@ fn encryption(host: &dyn DoctorHost) -> Check {
     let sensitive = match host.sensitive_items() {
         Ok(n) => n,
         Err(e) => {
-            return check(label, Status::Warn, Finding::ItemsUnreadable, &[s(&e)], None);
+            return check(
+                label,
+                Status::Warn,
+                Finding::ItemsUnreadable,
+                &[s(&e)],
+                None,
+            );
         }
     };
     if sensitive == 0 {
