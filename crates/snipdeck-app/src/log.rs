@@ -154,7 +154,7 @@ mod tests {
     #[test]
     fn a_missing_log_is_no_lines() {
         let dir = tempfile::tempdir().unwrap();
-        assert!(tail(dir.path(), 5).is_empty());
+        assert_eq!(tail(dir.path(), 5), Vec::<String>::new());
     }
 
     #[test]

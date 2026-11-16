@@ -375,7 +375,7 @@ mod tests {
     fn a_panic_before_the_data_folder_is_known_is_written_when_it_is() {
         let dir = tempfile::tempdir().unwrap();
         record(None, start(), report("early"));
-        assert!(report_names(dir.path()).is_empty());
+        assert_eq!(report_names(dir.path()), Vec::<String>::new());
         set_data_dir(dir.path());
         let names = report_names(dir.path());
         assert_eq!(names.len(), 1, "{names:?}");
