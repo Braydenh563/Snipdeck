@@ -22,7 +22,10 @@ use support::on_ui_thread;
 
 /// One sample of every kind. The match has no wildcard, so a new `TemplateErrorKind` stops this
 /// file compiling until it is listed (and so tested).
-#[allow(clippy::too_many_lines, reason = "a table with one sample per kind of error")]
+#[allow(
+    clippy::too_many_lines,
+    reason = "a table with one sample per kind of error"
+)]
 fn samples() -> Vec<K> {
     let all = vec![
         K::UnmatchedClose,

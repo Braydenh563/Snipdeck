@@ -246,10 +246,13 @@ fn render_at(h: &Harness<TemplateFillWindow>, height: f32) -> Frame {
 /// Opens the month grid of the "Due date" field the way a user does.
 fn open_calendar(h: &Harness<TemplateFillWindow>) {
     use i_slint_backend_testing::{AccessibleRole, ElementHandle};
-    ElementHandle::find_by_accessible_label(&h.component, "Pick a date")
-        .find(|e| e.accessible_role() == Some(AccessibleRole::Button))
-        .expect("the calendar button")
-        .invoke_accessible_default_action();
+    let buttons: Vec<_> = ElementHandle::find_by_accessible_label(&h.component, "Pick a date")
+        .filter(|e| e.accessible_role() == Some(AccessibleRole::Button))
+        .collect();
+    assert_eq!(buttons.len(), 1, "one calendar button");
+    buttons
+        .iter()
+        .for_each(ElementHandle::invoke_accessible_default_action);
     let _ = h.render_settled();
 }
 
