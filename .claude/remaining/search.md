@@ -7,11 +7,14 @@
 - docs: SPEC 5.2 operators, user guide "Searching", store.md
 
 ## Next
-- run app lib tests + tests/search_surfaces.rs; fix fallout in snipdeck-ui tests
-- clippy/fmt, commit; UI walk of the marks (headless screenshot tests)
+- run `cargo test -p snipdeck-app --lib --test search_surfaces --test budget` and fix fallout
+  (app compiles: `cargo check -p snipdeck-app --lib --tests` was clean; tests never ran)
+- clippy for snipdeck-app / snipdeck-portable / snipdeck-ui; snipdeck-ui tests that search
+- UI walk of the marks (headless screenshot tests); no .slint file was changed
+- optional: search_suggest quotes a multi-word name after tag:/list:
 
 ## Blocked
-- none
+- snipdeck-ui (lib) build is SIGKILLed (OOM): other agents' builds use 6-9 GB of the 15 GB
 
 ## Decisions
 - Tags, list names and triggers are matched by the shared in-memory index (every surface uses it);
