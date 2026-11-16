@@ -2488,6 +2488,48 @@ ui_tests! {
         assert_eq!(live_status(&ui), "New item, 1 of 3", "the live footer names the highlighted row and its place");
     }
 
+    fn a_row_with_a_hint_is_dimmed_read_with_its_reason_and_runs_nothing() {
+        let (ui, log) = start();
+        chord(ui.window(), &[Key::Control], "k");
+        let mut rows: Vec<PaletteRow> = SAMPLE
+            .iter()
+            .map(|(id, label, _)| PaletteRow {
+                id: *id,
+                label: (*label).into(),
+                ..Default::default()
+            })
+            .collect();
+        rows.insert(
+            0,
+            PaletteRow {
+                id: 4,
+                label: "Symbols".into(),
+                hint: "Turn on the Symbols tab in Settings".into(),
+                ..Default::default()
+            },
+        );
+        ui.set_palette_rows(ModelRc::new(VecModel::from(rows)));
+        settle();
+        take(&log);
+        let item = find(&ui, "Symbols", AccessibleRole::ListItem);
+        assert_eq!(
+            item.accessible_description().as_deref(),
+            Some("Turn on the Symbols tab in Settings")
+        );
+        assert_eq!(
+            live_status(&ui),
+            "Symbols: Turn on the Symbols tab in Settings, 1 of 4"
+        );
+        press_key(&ui, Key::Return);
+        item.invoke_accessible_default_action();
+        settle();
+        assert!(ui.get_palette_open(), "the palette stays open");
+        assert!(take(&log).is_empty(), "no command ran");
+        press_key(&ui, Key::DownArrow);
+        press_key(&ui, Key::Return);
+        assert_eq!(take(&log), ["command:0"], "an ordinary row still runs");
+    }
+
     fn typing_reports_the_query_and_the_hosts_rows_replace_the_list() {
         let (ui, log) = start();
         chord(ui.window(), &[Key::Control], "k");

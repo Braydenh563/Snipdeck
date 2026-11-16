@@ -476,6 +476,9 @@ msgstr "剪贴板清除时间"
 msgid "Close"
 msgstr "关闭"
 
+msgid "Close Panel when I click away"
+msgstr "点击别处时关闭面板"
+
 msgid "Close panel"
 msgstr "关闭面板"
 
@@ -859,6 +862,9 @@ msgstr "要删除列表“{}”吗？"
 
 msgid "Delete list…"
 msgstr "删除列表…"
+
+msgid "Delete selected item for good"
+msgstr "永久删除所选项目"
 
 msgid "Delete snippets"
 msgstr "删除片段"
@@ -1373,6 +1379,9 @@ msgstr "刚刚"
 msgid "Kaomoji"
 msgstr "颜文字"
 
+msgid "Keep Panel open"
+msgstr "保持面板打开"
+
 msgid "Keep Panel visible during screenshots"
 msgstr "截图时保持面板可见"
 
@@ -1486,6 +1495,9 @@ msgstr "列表用来存放你的片段。"
 
 msgid "Loading"
 msgstr "正在加载"
+
+msgid "Lock Snipdeck"
+msgstr "锁定 Snipdeck"
 
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "日志只在 Snipdeck 崩溃时写入，不含片段内容，也不会发送到任何地方。"
@@ -2026,6 +2038,9 @@ msgstr "“粘贴下一个”每按一次就粘贴下一项。"
 msgid "Paste or copy"
 msgstr "粘贴或复制"
 
+msgid "Paste selected item as plain text"
+msgstr "将所选项目粘贴为纯文本"
+
 msgid "Paste several in order"
 msgstr "按顺序粘贴多项"
 
@@ -2164,6 +2179,9 @@ msgstr "置顶最常用的片段，它们会固定在面板顶部。"
 msgid "Pinned"
 msgstr "置顶"
 
+msgid "Pinned snippet. Press to paste."
+msgstr "已固定的片段。按下即可粘贴。"
+
 msgid "Pinned snippets"
 msgstr "已置顶的片段"
 
@@ -2235,6 +2253,9 @@ msgstr "快速使用编号"
 
 msgid "Quit"
 msgstr "退出"
+
+msgid "Quit Snipdeck"
+msgstr "退出 Snipdeck"
 
 msgid "RGB"
 msgstr "RGB"
@@ -2361,6 +2382,9 @@ msgstr "重置大小和位置"
 
 msgid "Restore"
 msgstr "还原"
+
+msgid "Restore selected item"
+msgstr "恢复所选项目"
 
 msgid "Restore the backup of {}"
 msgstr "还原 {} 的备份"
@@ -3144,9 +3168,6 @@ msgstr "要删除全部内容，请使用“备份与你的数据”下的“删
 msgid "Today's date"
 msgstr "今天的日期"
 
-msgid "Toggle keep Panel open"
-msgstr "切换保持面板打开"
-
 msgid "Tools"
 msgstr "工具"
 
@@ -3185,6 +3206,12 @@ msgstr "试一试"
 
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "在设置中开启剪贴板历史，以收集你复制的内容。"
+
+msgid "Turn on the Colours tab in Settings"
+msgstr "请在设置中开启“颜色”标签页"
+
+msgid "Turn on the Symbols tab in Settings"
+msgstr "请在设置中开启“符号”标签页"
 
 msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
 msgstr "关闭后，关闭面板或主窗口将退出 Snipdeck。"
@@ -3540,6 +3567,12 @@ msgstr "添加 新建"
 msgid "add create snippet note write"
 msgstr "添加 新建 片段 笔记 写入"
 
+msgid "add create workspace group"
+msgstr "添加 创建 工作区 分组"
+
+msgid "again forward step history"
+msgstr "再次 前进 步骤 历史"
+
 msgid "an offset in {} can be at most {}"
 msgstr "{} 中的偏移最大为 {}"
 
@@ -3559,6 +3592,12 @@ msgstr "外观 颜色 深色 浅色 跟随 windows"
 msgid "appearance colour night"
 msgstr "外观 颜色 夜间"
 
+msgid "back revert step history"
+msgstr "返回 撤销 步骤 历史"
+
+msgid "bring back undelete trash recover"
+msgstr "找回 恢复 回收站 还原"
+
 msgid "change modify rename"
 msgstr "更改 修改 重命名"
 
@@ -3570,6 +3609,9 @@ msgstr "剪贴板"
 
 msgid "clipboard save grab screenshot"
 msgstr "剪贴板 保存 抓取 截图"
+
+msgid "close toggle deck stow"
+msgstr "关闭 切换 面板 收起"
 
 msgid "collapse expand hide show toggle section"
 msgstr "折叠 展开 隐藏 显示 切换 区段"
@@ -3634,6 +3676,9 @@ msgstr "全部 标记 选择 全选"
 msgid "everything home show"
 msgstr "全部 首页 显示"
 
+msgid "exit close stop end"
+msgstr "退出 关闭 停止 结束"
+
 msgid "eyedropper color pick sample screen"
 msgstr "吸管 取色 颜色 采样 屏幕 eyedropper color pick"
 
@@ -3673,6 +3718,9 @@ msgstr "快捷键 键位 速查表 按键绑定 组合键"
 
 msgid "https://example.com"
 msgstr "https://example.com"
+
+msgid "keep open pin always on top stay hide blur"
+msgstr "保持打开 固定 始终置顶 停留 隐藏 失焦"
 
 msgid "label: {}"
 msgstr "标签：{}"
@@ -3725,6 +3773,9 @@ msgstr "或"
 msgid "pass"
 msgstr "通过"
 
+msgid "password secure private hide sensitive"
+msgstr "密码 安全 私密 隐藏 敏感"
+
 msgid "paste"
 msgstr "粘贴"
 
@@ -3748,6 +3799,9 @@ msgstr "px"
 
 msgid "quick find paste palette"
 msgstr "快速查找 粘贴 面板"
+
+msgid "remove erase permanently trash"
+msgstr "移除 清除 永久 回收站"
 
 msgid "remove trash discard section items"
 msgstr "移除 回收站 丢弃 区段 项目"
@@ -3793,6 +3847,9 @@ msgstr "触发词 文本扩展 自动补全 缩写 快捷"
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "教程 入门 引导 基础 学习"
+
+msgid "unformatted insert send without formatting"
+msgstr "无格式 插入 发送 不带格式"
 
 msgid "unknown date format {}; supported: {}"
 msgstr "未知的日期格式 {};支持:{}"

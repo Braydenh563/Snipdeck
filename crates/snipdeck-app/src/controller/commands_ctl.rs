@@ -46,7 +46,21 @@ where
             // (Search moves the window's focus, Tour opens the tour window). The arm stays only so
             // the match is exhaustive.
             Command::Search | Command::Tour => {}
-            Command::ShowPanel => self.main_toggle_panel(),
+            Command::ShowPanel | Command::HidePanel => self.main_toggle_panel(),
+            Command::Undo => self.undo(),
+            Command::Redo => self.redo(),
+            Command::NewBoard => self.main_new_board(),
+            Command::Lock => self.lock_now(),
+            Command::Quit => self.pending.push(Effect::Quit),
+            Command::UsePlain => {
+                self.main_action(MainAction::UsePlain, cursor);
+            }
+            Command::RestoreItem => {
+                self.main_action(MainAction::Restore, cursor);
+            }
+            Command::DeleteForever => {
+                self.main_action(MainAction::DeleteForever, cursor);
+            }
             Command::Symbols => {
                 if self.settings.show_symbols_tab {
                     let mut effects = self.show();
@@ -121,7 +135,7 @@ where
             Command::GoPinned => self.main_open(Section::Pinned),
             Command::GoRecent => self.main_open(Section::Recent),
             Command::GoTrash => self.main_open(Section::Trash),
-            Command::KeepPanelOpen => {
+            Command::KeepPanelOpen | Command::LetPanelClose => {
                 let on_top = !self.on_top;
                 self.choose_on_top(on_top);
             }

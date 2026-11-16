@@ -239,3 +239,5 @@ Post-1.0, decided:
 - Global eyedropper hotkey chord: needs Windows-only verification, not possible before release.
 - Per-swatch Ctrl+S: per-swatch save is reachable from the swatch menu.
 - OLE `IDropTarget` drops from other apps: a v1.1 deferral (`docs/reviews/v101-spec.md:68`).
+- Palette commands for Import, Export, Back up now and Empty Trash (PANEL-2): each runs through a confirmation or a file dialog that its own window owns (Settings, the Trash view), so a palette row would have to open that window first; Settings and Go to Trash are in the palette and lead there.
+- Dock polling (PANEL-43): the docked Panel reads the pointer every 50 ms only while it is shown and docked, and redraws nothing when nothing changed. Waking on pointer movement needs a global low-level mouse hook, which antivirus products flag, so the poll stays until a Windows measurement shows a cost.

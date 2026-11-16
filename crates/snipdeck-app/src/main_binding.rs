@@ -216,6 +216,11 @@ where
                 colours: ctl.settings().show_colours_tab,
                 eyedropper: ctl.eyedropper_state().0,
                 saved_colours: ctl.has_saved_list(),
+                panel_shown: ctl.visible(),
+                keep_open: ctl.keeps_open(),
+                can_undo: ctl.history_view().undo.is_some(),
+                can_redo: ctl.history_view().redo.is_some(),
+                lock_set: ctl.master_password_set(),
             },
             query,
         );

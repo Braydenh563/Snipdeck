@@ -761,6 +761,7 @@ fn palette_row(id: i32, label: &str, before: &str, mark: &str, keys: &[&str]) ->
         spoken: keys.join(" ").into(),
         mark_before: before.into(),
         mark_text: mark.into(),
+        hint: "".into(),
     }
 }
 

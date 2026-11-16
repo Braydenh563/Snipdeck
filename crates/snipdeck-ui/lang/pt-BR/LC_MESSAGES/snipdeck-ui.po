@@ -477,6 +477,9 @@ msgstr "Tempo para limpar a área de transferência"
 msgid "Close"
 msgstr "Fechar"
 
+msgid "Close Panel when I click away"
+msgstr "Fechar o painel quando eu clicar fora"
+
 msgid "Close panel"
 msgstr "Fechar painel"
 
@@ -860,6 +863,9 @@ msgstr "Excluir a lista “{}”?"
 
 msgid "Delete list…"
 msgstr "Excluir lista…"
+
+msgid "Delete selected item for good"
+msgstr "Excluir definitivamente o item selecionado"
 
 msgid "Delete snippets"
 msgstr "Excluir snippets"
@@ -1377,6 +1383,9 @@ msgstr "Agora mesmo"
 msgid "Kaomoji"
 msgstr "Kaomoji"
 
+msgid "Keep Panel open"
+msgstr "Manter o painel aberto"
+
 msgid "Keep Panel visible during screenshots"
 msgstr "Manter o painel visível durante as capturas"
 
@@ -1490,6 +1499,9 @@ msgstr "As listas guardam seus trechos."
 
 msgid "Loading"
 msgstr "Carregando"
+
+msgid "Lock Snipdeck"
+msgstr "Bloquear o Snipdeck"
 
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "Os registros só são gravados quando o Snipdeck fecha de forma inesperada, não têm o conteúdo dos trechos e nunca são enviados a lugar nenhum."
@@ -2032,6 +2044,9 @@ msgstr "Colar próximo cola o próximo item a cada vez que você pressiona."
 msgid "Paste or copy"
 msgstr "Colar ou copiar"
 
+msgid "Paste selected item as plain text"
+msgstr "Colar o item selecionado como texto simples"
+
 msgid "Paste several in order"
 msgstr "Cole vários em ordem"
 
@@ -2170,6 +2185,9 @@ msgstr "Fixe os itens que você mais usa; eles ficam no topo do painel."
 msgid "Pinned"
 msgstr "Fixados"
 
+msgid "Pinned snippet. Press to paste."
+msgstr "Trecho fixado. Pressione para colar."
+
 msgid "Pinned snippets"
 msgstr "Trechos fixados"
 
@@ -2241,6 +2259,9 @@ msgstr "Números de uso rápido"
 
 msgid "Quit"
 msgstr "Sair"
+
+msgid "Quit Snipdeck"
+msgstr "Sair do Snipdeck"
 
 msgid "RGB"
 msgstr "RGB"
@@ -2367,6 +2388,9 @@ msgstr "Redefinir tamanho e posição"
 
 msgid "Restore"
 msgstr "Restaurar"
+
+msgid "Restore selected item"
+msgstr "Restaurar o item selecionado"
 
 msgid "Restore the backup of {}"
 msgstr "Restaurar o backup de {}"
@@ -3152,9 +3176,6 @@ msgstr "Para remover tudo, use Apagar a biblioteca em Backups e seus dados e dep
 msgid "Today's date"
 msgstr "Data de hoje"
 
-msgid "Toggle keep Panel open"
-msgstr "Alternar manter o Painel aberto"
-
 msgid "Tools"
 msgstr "Ferramentas"
 
@@ -3193,6 +3214,12 @@ msgstr "Experimentar"
 
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "Ative o histórico da área de transferência em Configurações para reunir o que você copiar."
+
+msgid "Turn on the Colours tab in Settings"
+msgstr "Ative a aba Cores em Configurações"
+
+msgid "Turn on the Symbols tab in Settings"
+msgstr "Ative a aba Símbolos em Configurações"
 
 msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
 msgstr "Se você desativar, fechar o painel ou a janela principal encerra o Snipdeck."
@@ -3548,6 +3575,12 @@ msgstr "adicionar criar"
 msgid "add create snippet note write"
 msgstr "adicionar criar trecho nota escrever"
 
+msgid "add create workspace group"
+msgstr "adicionar criar espaço de trabalho grupo"
+
+msgid "again forward step history"
+msgstr "de novo avançar etapa histórico"
+
 msgid "an offset in {} can be at most {}"
 msgstr "um deslocamento em {} pode ser no máximo {}"
 
@@ -3568,6 +3601,12 @@ msgstr "aparência cor escuro claro seguir windows"
 msgid "appearance colour night"
 msgstr "aparência cor noite"
 
+msgid "back revert step history"
+msgstr "voltar reverter etapa histórico"
+
+msgid "bring back undelete trash recover"
+msgstr "recuperar restaurar lixeira"
+
 msgid "change modify rename"
 msgstr "alterar modificar renomear"
 
@@ -3579,6 +3618,9 @@ msgstr "área de transferência"
 
 msgid "clipboard save grab screenshot"
 msgstr "área de transferência salvar capturar captura de tela"
+
+msgid "close toggle deck stow"
+msgstr "fechar alternar painel guardar"
 
 msgid "collapse expand hide show toggle section"
 msgstr "recolher expandir ocultar mostrar alternar seção"
@@ -3643,6 +3685,9 @@ msgstr "todos marcar escolher selecionar"
 msgid "everything home show"
 msgstr "tudo início mostrar"
 
+msgid "exit close stop end"
+msgstr "sair fechar parar encerrar"
+
 msgid "eyedropper color pick sample screen"
 msgstr "conta-gotas cor escolher amostra tela eyedropper color pick"
 
@@ -3683,6 +3728,9 @@ msgstr "atalhos teclas cola atalhos combinações"
 
 msgid "https://example.com"
 msgstr "https://example.com"
+
+msgid "keep open pin always on top stay hide blur"
+msgstr "manter aberto fixar sempre visível permanecer ocultar foco"
 
 msgid "label: {}"
 msgstr "rótulo: {}"
@@ -3735,6 +3783,9 @@ msgstr "ou"
 msgid "pass"
 msgstr "aprovado"
 
+msgid "password secure private hide sensitive"
+msgstr "senha seguro privado ocultar sensível"
+
 msgid "paste"
 msgstr "colar"
 
@@ -3758,6 +3809,9 @@ msgstr "px"
 
 msgid "quick find paste palette"
 msgstr "busca rápida encontrar colar paleta"
+
+msgid "remove erase permanently trash"
+msgstr "remover apagar permanentemente lixeira"
 
 msgid "remove trash discard section items"
 msgstr "remover lixeira descartar seção itens"
@@ -3803,6 +3857,9 @@ msgstr "gatilho expansão de texto autocompletar abreviação atalho"
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "tutorial introdução integração básico aprender"
+
+msgid "unformatted insert send without formatting"
+msgstr "sem formatação inserir enviar texto simples"
 
 msgid "unknown date format {}; supported: {}"
 msgstr "formato de data desconhecido {}; aceitos: {}"

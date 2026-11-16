@@ -39,6 +39,16 @@ pub struct Offers {
     pub eyedropper: bool,
     /// The "Colours" list exists.
     pub saved_colours: bool,
+    /// The Panel is on screen.
+    pub panel_shown: bool,
+    /// "Keep Panel open" is on.
+    pub keep_open: bool,
+    /// There is a step to take back.
+    pub can_undo: bool,
+    /// There is a step to bring back.
+    pub can_redo: bool,
+    /// The library has a master password.
+    pub lock_set: bool,
 }
 
 /// What the palette may offer for the screen the Main window shows now.
@@ -61,6 +71,11 @@ pub fn context<'a>(
         saved_colours: offers.saved_colours,
         in_list: screen.is_some_and(|s| matches!(s.section, Section::List(_))),
         group: screen.and_then(|s| s.cursor_group),
+        panel_shown: offers.panel_shown,
+        keep_open: offers.keep_open,
+        can_undo: offers.can_undo,
+        can_redo: offers.can_redo,
+        lock_set: offers.lock_set,
     }
 }
 
@@ -73,10 +88,16 @@ pub fn rows(
     offers: Offers,
     query: &str,
 ) -> Vec<ui::PaletteRow> {
+    let words = ui::CommandTexts::get(window);
     commands::entries(&texts(window), &context(hotkeys, screen, offers), query)
         .into_iter()
         .map(|entry| {
             let (mark_before, mark_text) = entry.mark.clone().unwrap_or_default();
+            let hint = match entry.hint {
+                Some(commands::Hint::SymbolsTabOff) => words.get_hint_symbols_off(),
+                Some(commands::Hint::ColoursTabOff) => words.get_hint_colours_off(),
+                None => "".into(),
+            };
             ui::PaletteRow {
                 id: entry.command.id(),
                 label: entry.label.as_str().into(),
@@ -84,6 +105,7 @@ pub fn rows(
                 spoken: entry.spoken.as_str().into(),
                 mark_before: mark_before.into(),
                 mark_text: mark_text.into(),
+                hint,
             }
         })
         .collect()

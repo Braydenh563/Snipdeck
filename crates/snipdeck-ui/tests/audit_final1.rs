@@ -281,6 +281,7 @@ fn dump_toast_panel_palette() {
             spoken: keys.join(" ").into(),
             mark_before: "".into(),
             mark_text: mark.into(),
+            hint: "".into(),
         };
         let rows = vec![
             row(9, "Keyboard shortcuts", "Key", &["Ctrl", "/"]),

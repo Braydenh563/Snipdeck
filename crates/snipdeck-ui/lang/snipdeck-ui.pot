@@ -564,7 +564,7 @@ msgstr ""
 msgid "Clear recent history?"
 msgstr ""
 
-#: ui/components/command-palette.slint:189 ui/help.slint:271 ui/main_window.slint:1541 ui/panel.slint:1922 ui/panel.slint:2626 ui/picker.slint:467 ui/symbols.slint:173
+#: ui/components/command-palette.slint:203 ui/help.slint:271 ui/main_window.slint:1541 ui/panel.slint:1922 ui/panel.slint:2626 ui/picker.slint:467 ui/symbols.slint:173
 msgid "Clear search"
 msgstr ""
 
@@ -632,6 +632,10 @@ msgstr ""
 msgid "Close"
 msgstr ""
 
+#: ui/command_texts.slint:63
+msgid "Close Panel when I click away"
+msgstr ""
+
 #: ui/panel.slint:1846
 msgid "Close panel"
 msgstr ""
@@ -680,7 +684,7 @@ msgstr ""
 msgid "Comfortable view"
 msgstr ""
 
-#: ui/command_texts.slint:64 ui/main_window.slint:1615
+#: ui/command_texts.slint:77 ui/main_window.slint:1615
 msgid "Commands"
 msgstr ""
 
@@ -1142,6 +1146,10 @@ msgstr ""
 
 #: ui/main_window.slint:765 ui/panel.slint:310
 msgid "Delete list…"
+msgstr ""
+
+#: ui/command_texts.slint:71
+msgid "Delete selected item for good"
 msgstr ""
 
 #: ui/panel.slint:1881
@@ -1640,7 +1648,7 @@ msgstr ""
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr ""
 
-#: ui/main_window.slint:1562
+#: ui/command_texts.slint:62 ui/main_window.slint:1562
 msgid "Hide Panel"
 msgstr ""
 
@@ -1830,6 +1838,10 @@ msgstr ""
 msgid "Kaomoji"
 msgstr ""
 
+#: ui/command_texts.slint:53
+msgid "Keep Panel open"
+msgstr ""
+
 #: ui/settings.slint:485 ui/settings.slint:939 ui/settings.slint:942
 msgid "Keep Panel visible during screenshots"
 msgstr ""
@@ -1980,6 +1992,10 @@ msgstr ""
 
 #: ui/main_window.slint:2356 ui/main_window.slint:2369 ui/panel.slint:2609
 msgid "Loading"
+msgstr ""
+
+#: ui/command_texts.slint:67
+msgid "Lock Snipdeck"
 msgstr ""
 
 #: ui/settings.slint:1278
@@ -2214,7 +2230,7 @@ msgstr ""
 msgid "New"
 msgstr ""
 
-#: ui/command_texts.slint:13 ui/editors.slint:2022
+#: ui/command_texts.slint:13 ui/command_texts.slint:66 ui/editors.slint:2022
 msgid "New board"
 msgstr ""
 
@@ -2286,7 +2302,7 @@ msgstr ""
 msgid "No colour"
 msgstr ""
 
-#: ui/components/command-palette.slint:259
+#: ui/components/command-palette.slint:277
 msgid "No commands match “{}”"
 msgstr ""
 
@@ -2702,6 +2718,10 @@ msgstr ""
 msgid "Paste or copy"
 msgstr ""
 
+#: ui/command_texts.slint:69
+msgid "Paste selected item as plain text"
+msgstr ""
+
 #: ui/tip_texts.slint:10
 msgid "Paste several in order"
 msgstr ""
@@ -2886,6 +2906,10 @@ msgstr ""
 msgid "Pinned"
 msgstr ""
 
+#: ui/components/pinned-strip.slint:47
+msgid "Pinned snippet. Press to paste."
+msgstr ""
+
 #: ui/panel.slint:2089
 msgid "Pinned snippets"
 msgstr ""
@@ -2982,6 +3006,10 @@ msgstr ""
 msgid "Quit"
 msgstr ""
 
+#: ui/command_texts.slint:68
+msgid "Quit Snipdeck"
+msgstr ""
+
 #: ui/colours.slint:76
 msgid "RGB"
 msgstr ""
@@ -3042,7 +3070,7 @@ msgstr ""
 msgid "Redid {}"
 msgstr ""
 
-#: ui/shortcut_texts.slint:45 ui/shortcut_texts.slint:83
+#: ui/command_texts.slint:65 ui/shortcut_texts.slint:45 ui/shortcut_texts.slint:83
 msgid "Redo"
 msgstr ""
 
@@ -3148,6 +3176,10 @@ msgstr ""
 
 #: ui/main_window.slint:954 ui/main_window.slint:2094 ui/main_window.slint:2268 ui/main_window.slint:2599 ui/settings.slint:350 ui/settings.slint:1446
 msgid "Restore"
+msgstr ""
+
+#: ui/command_texts.slint:70
+msgid "Restore selected item"
 msgstr ""
 
 #: ui/settings.slint:349 ui/settings.slint:1449
@@ -4194,10 +4226,6 @@ msgstr ""
 msgid "Today's date"
 msgstr ""
 
-#: ui/command_texts.slint:53
-msgid "Toggle keep Panel open"
-msgstr ""
-
 #: ui/help.slint:235
 msgid "Tools"
 msgstr ""
@@ -4250,6 +4278,14 @@ msgstr ""
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr ""
 
+#: ui/command_texts.slint:75
+msgid "Turn on the Colours tab in Settings"
+msgstr ""
+
+#: ui/command_texts.slint:74
+msgid "Turn on the Symbols tab in Settings"
+msgstr ""
+
 #: ui/onboarding.slint:407 ui/settings.slint:1069
 msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
 msgstr ""
@@ -4262,7 +4298,7 @@ msgstr ""
 msgid "Type"
 msgstr ""
 
-#: ui/command_texts.slint:65
+#: ui/command_texts.slint:78
 msgid "Type a command"
 msgstr ""
 
@@ -4298,7 +4334,7 @@ msgstr ""
 msgid "Undid {}"
 msgstr ""
 
-#: ui/panel.slint:2378 ui/shortcut_texts.slint:44 ui/shortcut_texts.slint:82
+#: ui/command_texts.slint:64 ui/panel.slint:2378 ui/shortcut_texts.slint:44 ui/shortcut_texts.slint:82
 msgid "Undo"
 msgstr ""
 
@@ -4722,6 +4758,14 @@ msgstr ""
 msgid "add create snippet note write"
 msgstr ""
 
+#: ui/command_texts.slint:66
+msgid "add create workspace group"
+msgstr ""
+
+#: ui/command_texts.slint:65
+msgid "again forward step history"
+msgstr ""
+
 #: ui/template_texts.slint:102
 msgid "an offset in {} can be at most {}"
 msgstr ""
@@ -4748,6 +4792,14 @@ msgstr ""
 msgid "appearance colour night"
 msgstr ""
 
+#: ui/command_texts.slint:64
+msgid "back revert step history"
+msgstr ""
+
+#: ui/command_texts.slint:70
+msgid "bring back undelete trash recover"
+msgstr ""
+
 #: ui/command_texts.slint:43
 msgid "change modify rename"
 msgstr ""
@@ -4762,6 +4814,10 @@ msgstr ""
 
 #: ui/command_texts.slint:24
 msgid "clipboard save grab screenshot"
+msgstr ""
+
+#: ui/command_texts.slint:62
+msgid "close toggle deck stow"
 msgstr ""
 
 #: ui/command_texts.slint:56
@@ -4848,6 +4904,10 @@ msgstr ""
 msgid "everything home show"
 msgstr ""
 
+#: ui/command_texts.slint:68
+msgid "exit close stop end"
+msgstr ""
+
 #: ui/command_texts.slint:22
 msgid "eyedropper color pick sample screen"
 msgstr ""
@@ -4900,6 +4960,10 @@ msgstr ""
 
 #: ui/editors.slint:1143
 msgid "https://example.com"
+msgstr ""
+
+#: ui/command_texts.slint:63
+msgid "keep open pin always on top stay hide blur"
 msgstr ""
 
 #: ui/components/item-card.slint:482 ui/components/item-card.slint:482
@@ -4970,6 +5034,10 @@ msgstr ""
 msgid "pass"
 msgstr ""
 
+#: ui/command_texts.slint:67
+msgid "password secure private hide sensitive"
+msgstr ""
+
 #: ui/toast_texts.slint:198
 msgid "paste"
 msgstr ""
@@ -5000,6 +5068,10 @@ msgstr ""
 
 #: ui/command_texts.slint:23
 msgid "quick find paste palette"
+msgstr ""
+
+#: ui/command_texts.slint:71
+msgid "remove erase permanently trash"
 msgstr ""
 
 #: ui/command_texts.slint:59
@@ -5060,6 +5132,10 @@ msgstr ""
 
 #: ui/command_texts.slint:29
 msgid "tutorial intro onboarding basics learn"
+msgstr ""
+
+#: ui/command_texts.slint:69
+msgid "unformatted insert send without formatting"
 msgstr ""
 
 #: ui/template_texts.slint:108
@@ -5180,7 +5256,7 @@ msgid_plural "{} files, {} in all"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/components/command-palette.slint:127
+#: ui/components/command-palette.slint:139
 msgid "{} found"
 msgstr ""
 
@@ -5348,7 +5424,7 @@ msgstr ""
 msgid "{}, {}"
 msgstr ""
 
-#: ui/components/command-palette.slint:127
+#: ui/components/command-palette.slint:139
 msgid "{}, {} of {}"
 msgstr ""
 

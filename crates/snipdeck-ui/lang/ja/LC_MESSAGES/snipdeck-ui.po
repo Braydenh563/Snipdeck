@@ -476,6 +476,9 @@ msgstr "クリップボードの消去時間"
 msgid "Close"
 msgstr "閉じる"
 
+msgid "Close Panel when I click away"
+msgstr "外をクリックしたらパネルを閉じる"
+
 msgid "Close panel"
 msgstr "パネルを閉じる"
 
@@ -859,6 +862,9 @@ msgstr "リスト「{}」を削除しますか？"
 
 msgid "Delete list…"
 msgstr "リストを削除…"
+
+msgid "Delete selected item for good"
+msgstr "選択した項目を完全に削除"
 
 msgid "Delete snippets"
 msgstr "スニペットを削除"
@@ -1373,6 +1379,9 @@ msgstr "たった今"
 msgid "Kaomoji"
 msgstr "顔文字"
 
+msgid "Keep Panel open"
+msgstr "パネルを開いたままにする"
+
 msgid "Keep Panel visible during screenshots"
 msgstr "スクリーンショット中もパネルを表示したままにする"
 
@@ -1486,6 +1495,9 @@ msgstr "リストにはスニペットが入ります。"
 
 msgid "Loading"
 msgstr "読み込み中"
+
+msgid "Lock Snipdeck"
+msgstr "Snipdeck をロック"
 
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "ログはSnipdeckが異常終了したときだけ書き込まれ、スニペットの内容は含まれず、どこにも送信されません。"
@@ -2026,6 +2038,9 @@ msgstr "「次を貼り付け」は、押すたびに次の項目を貼り付け
 msgid "Paste or copy"
 msgstr "貼り付けまたはコピー"
 
+msgid "Paste selected item as plain text"
+msgstr "選択した項目をプレーンテキストで貼り付け"
+
 msgid "Paste several in order"
 msgstr "複数を順番に貼り付ける"
 
@@ -2164,6 +2179,9 @@ msgstr "よく使うスニペットをピン留めすると、パネルの上部
 msgid "Pinned"
 msgstr "ピン留め"
 
+msgid "Pinned snippet. Press to paste."
+msgstr "ピン留めしたスニペット。押すと貼り付けます。"
+
 msgid "Pinned snippets"
 msgstr "ピン留めしたスニペット"
 
@@ -2235,6 +2253,9 @@ msgstr "クイック入力番号"
 
 msgid "Quit"
 msgstr "終了"
+
+msgid "Quit Snipdeck"
+msgstr "Snipdeck を終了"
 
 msgid "RGB"
 msgstr "RGB"
@@ -2361,6 +2382,9 @@ msgstr "サイズと位置をリセット"
 
 msgid "Restore"
 msgstr "復元"
+
+msgid "Restore selected item"
+msgstr "選択した項目を元に戻す"
 
 msgid "Restore the backup of {}"
 msgstr "{} のバックアップを復元"
@@ -3144,9 +3168,6 @@ msgstr "すべて削除するには、「バックアップとデータ」の「
 msgid "Today's date"
 msgstr "今日の日付"
 
-msgid "Toggle keep Panel open"
-msgstr "パネルを開いたままにする（切り替え）"
-
 msgid "Tools"
 msgstr "ツール"
 
@@ -3185,6 +3206,12 @@ msgstr "試す"
 
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "設定でクリップボード履歴をオンにすると、コピーした内容が保存されます。"
+
+msgid "Turn on the Colours tab in Settings"
+msgstr "設定で「カラー」タブをオンにしてください"
+
+msgid "Turn on the Symbols tab in Settings"
+msgstr "設定で「記号」タブをオンにしてください"
 
 msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
 msgstr "オフにすると、パネルまたはメインウィンドウを閉じたときに Snipdeck が終了します。"
@@ -3540,6 +3567,12 @@ msgstr "追加 作成"
 msgid "add create snippet note write"
 msgstr "追加 作成 スニペット メモ 書く"
 
+msgid "add create workspace group"
+msgstr "追加 作成 ワークスペース グループ"
+
+msgid "again forward step history"
+msgstr "やり直し 進む 手順 履歴"
+
 msgid "an offset in {} can be at most {}"
 msgstr "{} のオフセットは最大 {} までです"
 
@@ -3559,6 +3592,12 @@ msgstr "外観 色 ダーク ライト Windows に従う"
 msgid "appearance colour night"
 msgstr "外観 色 夜"
 
+msgid "back revert step history"
+msgstr "戻す 元に戻す 手順 履歴"
+
+msgid "bring back undelete trash recover"
+msgstr "復元 戻す ごみ箱 復旧"
+
 msgid "change modify rename"
 msgstr "変更 編集 名前変更"
 
@@ -3570,6 +3609,9 @@ msgstr "クリップボード"
 
 msgid "clipboard save grab screenshot"
 msgstr "クリップボード 保存 取得 スクリーンショット"
+
+msgid "close toggle deck stow"
+msgstr "閉じる 切り替え パネル しまう"
 
 msgid "collapse expand hide show toggle section"
 msgstr "折りたたみ 展開 隠す 表示 切り替え セクション"
@@ -3634,6 +3676,9 @@ msgstr "すべて 選択 マーク"
 msgid "everything home show"
 msgstr "すべて ホーム 表示"
 
+msgid "exit close stop end"
+msgstr "終了 閉じる 停止 おわり"
+
 msgid "eyedropper color pick sample screen"
 msgstr "スポイト 色 取得 サンプル 画面 eyedropper color pick"
 
@@ -3673,6 +3718,9 @@ msgstr "ホットキー キー 一覧 ショートカット 組み合わせ"
 
 msgid "https://example.com"
 msgstr "https://example.com"
+
+msgid "keep open pin always on top stay hide blur"
+msgstr "開いたまま 固定 常に手前 残す 隠す フォーカス"
 
 msgid "label: {}"
 msgstr "ラベル: {}"
@@ -3725,6 +3773,9 @@ msgstr "または"
 msgid "pass"
 msgstr "合格"
 
+msgid "password secure private hide sensitive"
+msgstr "パスワード 安全 非公開 隠す 機密"
+
 msgid "paste"
 msgstr "貼り付け"
 
@@ -3748,6 +3799,9 @@ msgstr "px"
 
 msgid "quick find paste palette"
 msgstr "クイック 検索 貼り付け パレット"
+
+msgid "remove erase permanently trash"
+msgstr "削除 消去 完全 ごみ箱"
 
 msgid "remove trash discard section items"
 msgstr "削除 ゴミ箱 破棄 セクション 項目"
@@ -3793,6 +3847,9 @@ msgstr "トリガー テキスト展開 オートコンプリート 略語 シ�
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "チュートリアル 入門 基本 学ぶ"
+
+msgid "unformatted insert send without formatting"
+msgstr "書式なし 挿入 送信 書式 なし"
 
 msgid "unknown date format {}; supported: {}"
 msgstr "日付の書式 {} は不明です。使えるもの: {}"

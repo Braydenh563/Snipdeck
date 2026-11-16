@@ -12,3 +12,8 @@ App crate not cross-checkable for Windows here (no mingw gcc): platform.rs one-l
 
 ## Blocked
 none
+
+## Batch: palette (PANEL-2/4/44/43)
+- done: ten new commands (Hide Panel, Close Panel when I click away, Undo, Redo, New board, Lock, Quit, Paste as plain text, Restore, Delete for good), state-named toggles, unavailable Symbols/Colours rows with a reason (Hint), i18n, tests.
+- done: PANEL-44 chip accessible description; PANEL-43 recorded post-1.0 in SPEC.
+- next: dynamic board/list/tag rows (PANEL-2), PANEL-3, PANEL-5 Page/Home/End, then 10, 12, 15-29, 31, 36, 40, 41, 45.

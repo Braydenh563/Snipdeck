@@ -868,6 +868,18 @@ where
         self.visible
     }
 
+    /// Whether "Keep Panel open" is on (the Panel stays when another window is clicked).
+    #[must_use]
+    pub fn keeps_open(&self) -> bool {
+        self.on_top
+    }
+
+    /// Whether the library has a master password (so it can be locked now).
+    #[must_use]
+    pub fn master_password_set(&self) -> bool {
+        self.lock.set
+    }
+
     /// The panel's model, for tests and the host.
     #[must_use]
     pub fn model(&self) -> &PanelModel {

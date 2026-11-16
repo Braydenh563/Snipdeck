@@ -108,11 +108,31 @@ pub enum Command {
     MoveGroupUp,
     /// Move the group under the cursor down one place (Alt+Down).
     MoveGroupDown,
+    /// Hide the Panel (offered while it is shown; "Show Panel" while it is not).
+    HidePanel,
+    /// Let the Panel close when the user clicks away (offered while "keep open" is on).
+    LetPanelClose,
+    /// Take back the latest step (Ctrl+Z).
+    Undo,
+    /// Bring back the step Undo took back (Ctrl+Y).
+    Redo,
+    /// A new board.
+    NewBoard,
+    /// Lock the library now (offered with a master password).
+    Lock,
+    /// Quit Snipdeck.
+    Quit,
+    /// Paste the item under the cursor as plain text (Alt+Enter).
+    UsePlain,
+    /// Bring the item under the cursor back from the Trash.
+    RestoreItem,
+    /// Delete the item under the cursor from the Trash for good.
+    DeleteForever,
 }
 
 impl Command {
     /// Every command, in the order of `CommandTexts.all`.
-    pub const ALL: [Self; 47] = [
+    pub const ALL: [Self; 57] = [
         Self::NewItem,
         Self::NewList,
         Self::Search,
@@ -160,6 +180,16 @@ impl Command {
         Self::DeleteGroup,
         Self::MoveGroupUp,
         Self::MoveGroupDown,
+        Self::HidePanel,
+        Self::LetPanelClose,
+        Self::Undo,
+        Self::Redo,
+        Self::NewBoard,
+        Self::Lock,
+        Self::Quit,
+        Self::UsePlain,
+        Self::RestoreItem,
+        Self::DeleteForever,
     ];
 
     /// The command with palette id `id`.
@@ -203,6 +233,10 @@ impl Command {
             Self::RenameGroup => "F2",
             Self::MoveGroupUp => "Alt+Up",
             Self::MoveGroupDown => "Alt+Down",
+            Self::Undo => "Ctrl+Z",
+            Self::Redo => "Ctrl+Y",
+            Self::UsePlain => "Alt+Enter",
+            Self::DeleteForever => "Del",
             Self::ShowPanel => return chord_text(hotkeys, HotkeyAction::TogglePanel),
             Self::OpenPicker => return chord_text(hotkeys, HotkeyAction::Picker),
             Self::QuickCapture => return chord_text(hotkeys, HotkeyAction::Capture),
@@ -216,7 +250,10 @@ impl Command {
     /// a destructive command and a harmless one runs the harmless one.
     #[must_use]
     pub const fn destructive(self) -> bool {
-        matches!(self, Self::TrashItem | Self::DeleteGroup)
+        matches!(
+            self,
+            Self::TrashItem | Self::DeleteGroup | Self::DeleteForever | Self::Quit | Self::Lock
+        )
     }
 
     /// Acts on the item under the cursor, so it is offered only with one there.
@@ -231,6 +268,9 @@ impl Command {
                 | Self::PinItem
                 | Self::UnpinItem
                 | Self::TrashItem
+                | Self::UsePlain
+                | Self::RestoreItem
+                | Self::DeleteForever
         )
     }
 }
@@ -320,6 +360,26 @@ pub struct Context<'a> {
     pub in_list: bool,
     /// The cursor is on a group's header; `None` on an item.
     pub group: Option<CursorGroup>,
+    /// The Panel is on screen (offers "Hide Panel" instead of "Show Panel").
+    pub panel_shown: bool,
+    /// "Keep Panel open" is on (offers "Let Panel close…" instead of "Keep Panel open").
+    pub keep_open: bool,
+    /// There is a step to take back.
+    pub can_undo: bool,
+    /// There is a step to bring back.
+    pub can_redo: bool,
+    /// The library has a master password to lock with.
+    pub lock_set: bool,
+}
+
+/// Why a command the user may look for is listed but cannot run now. The palette shows the
+/// sentence on the row, dimmed, and Enter on it does nothing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Hint {
+    /// The Symbols tab is off in Settings.
+    SymbolsTabOff,
+    /// The Colours tab is off in Settings.
+    ColoursTabOff,
 }
 
 /// The group whose header is under the cursor, and where it can go.
@@ -345,6 +405,21 @@ pub struct Entry {
     pub keys: Vec<String>,
     /// The shortcut spoken.
     pub spoken: String,
+    /// Why the command cannot run now (the row is dimmed and Enter does nothing); `None` when it can.
+    pub hint: Option<Hint>,
+}
+
+/// What stops `command` from running when it is one the user looks for by name, so the palette lists
+/// it with the reason instead of hiding it.
+#[must_use]
+pub fn hint(command: Command, ctx: &Context<'_>) -> Option<Hint> {
+    match command {
+        Command::Symbols if !ctx.symbols => Some(Hint::SymbolsTabOff),
+        Command::Colours | Command::SavedColours | Command::PickColour if !ctx.colours => {
+            Some(Hint::ColoursTabOff)
+        }
+        _ => None,
+    }
 }
 
 /// Whether `command` is offered in `ctx`.
@@ -358,6 +433,15 @@ pub fn available(command: Command, ctx: &Context<'_>) -> bool {
         | Command::TrashItem => ctx.has_item && !ctx.in_trash,
         Command::PinItem => ctx.has_item && !ctx.in_trash && !ctx.item_pinned,
         Command::UnpinItem => ctx.has_item && !ctx.in_trash && ctx.item_pinned,
+        Command::ShowPanel => !ctx.panel_shown,
+        Command::HidePanel => ctx.panel_shown,
+        Command::KeepPanelOpen => !ctx.keep_open,
+        Command::LetPanelClose => ctx.keep_open,
+        Command::Undo => ctx.can_undo,
+        Command::Redo => ctx.can_redo,
+        Command::Lock => ctx.lock_set,
+        Command::UsePlain => ctx.has_item && !ctx.in_trash,
+        Command::RestoreItem | Command::DeleteForever => ctx.has_item && ctx.in_trash,
         Command::Symbols => ctx.symbols,
         Command::Colours => ctx.colours,
         Command::SavedColours => ctx.colours && ctx.saved_colours,
@@ -423,12 +507,13 @@ pub fn entries(texts: &[(String, String)], ctx: &Context<'_>, query: &str) -> Ve
         .split_whitespace()
         .map(snipdeck_symbols::fold)
         .collect();
-    let mut scored: Vec<(usize, bool, usize, Entry)> = Vec::new();
+    let mut scored: Vec<(usize, bool, bool, usize, Entry)> = Vec::new();
     for (i, command) in Command::ALL.iter().copied().enumerate() {
         let Some((label, synonyms)) = texts.get(i) else {
             continue;
         };
-        if !available(command, ctx) {
+        let hint = hint(command, ctx);
+        if hint.is_none() && !available(command, ctx) {
             continue;
         }
         let (label_lc, synonyms_lc) = (
@@ -446,6 +531,7 @@ pub fn entries(texts: &[(String, String)], ctx: &Context<'_>, query: &str) -> Ve
         let shortcut = command.shortcut(ctx.hotkeys);
         scored.push((
             score,
+            hint.is_some(),
             command.destructive() && !words.is_empty(),
             i,
             Entry {
@@ -454,10 +540,14 @@ pub fn entries(texts: &[(String, String)], ctx: &Context<'_>, query: &str) -> Ve
                 mark: search_mark::word_mark(label, query),
                 keys: shortcut.as_deref().map(caps).unwrap_or_default(),
                 spoken: shortcut.as_deref().map(spoken).unwrap_or_default(),
+                hint,
             },
         ));
     }
-    scored.sort_by_key(|(score, destructive, i, _)| (*score, *destructive, *i));
+    // A command that cannot run now goes after every one that can.
+    scored.sort_by_key(|(score, unavailable, destructive, i, _)| {
+        (*unavailable, *score, *destructive, *i)
+    });
     scored.into_iter().map(|(.., entry)| entry).collect()
 }
 
@@ -523,7 +613,48 @@ mod tests {
             saved_colours: true,
             in_list: true,
             group: None,
+            panel_shown: false,
+            keep_open: false,
+            can_undo: true,
+            can_redo: true,
+            lock_set: true,
         }
+    }
+
+    /// The test words padded to the whole catalogue, with the ten newest commands' words.
+    fn all_texts() -> Vec<(String, String)> {
+        let mut all = texts();
+        all.resize(Command::ALL.len(), (String::new(), String::new()));
+        let newest = [
+            (Command::HidePanel, "Hide Panel", "close"),
+            (
+                Command::LetPanelClose,
+                "Close Panel when I click away",
+                "keep open",
+            ),
+            (Command::Undo, "Undo", "back"),
+            (Command::Redo, "Redo", "again"),
+            (Command::NewBoard, "New board", "add create"),
+            (Command::Lock, "Lock Snipdeck", "password secure"),
+            (Command::Quit, "Quit Snipdeck", "exit close"),
+            (
+                Command::UsePlain,
+                "Paste selected item as plain text",
+                "unformatted",
+            ),
+            (Command::RestoreItem, "Restore selected item", "bring back"),
+            (
+                Command::DeleteForever,
+                "Delete selected item for good",
+                "remove",
+            ),
+        ];
+        for (command, label, words) in newest {
+            if let Some(slot) = all.get_mut(usize::try_from(command.id()).unwrap_or(0)) {
+                *slot = (label.to_owned(), words.to_owned());
+            }
+        }
+        all
     }
 
     fn labels(found: &[Entry]) -> Vec<&str> {
@@ -876,17 +1007,81 @@ mod tests {
     }
 
     #[test]
-    fn symbols_is_found_by_name_and_offered_only_while_the_tab_is_on() {
+    fn a_tab_that_is_off_stays_in_the_list_dimmed_with_its_reason_after_the_commands_that_run() {
         let hotkeys = Hotkeys::default();
-        let mut on = ctx(&hotkeys);
-        let found = entries(&texts(), &on, "symbols");
+        let mut c = ctx(&hotkeys);
+        let found = entries(&all_texts(), &c, "symbols");
         assert_eq!(found.first().map(|e| e.command), Some(Command::Symbols));
-        on.symbols = false;
+        assert_eq!(found.first().and_then(|e| e.hint), None);
+        c.symbols = false;
+        c.colours = false;
+        let found = entries(&all_texts(), &c, "symbols");
+        assert_eq!(found.first().map(|e| e.command), Some(Command::Symbols));
+        assert_eq!(
+            found.first().and_then(|e| e.hint),
+            Some(Hint::SymbolsTabOff)
+        );
+        let all = entries(&all_texts(), &c, "");
+        let first_hint = all.iter().position(|e| e.hint.is_some());
         assert!(
-            entries(&texts(), &on, "symbols")
+            all.iter()
+                .skip(first_hint.unwrap_or(0))
+                .all(|e| e.hint.is_some()),
+            "unavailable rows come last"
+        );
+        let colours = entries(&all_texts(), &c, "colours");
+        assert_eq!(
+            colours.first().and_then(|e| e.hint),
+            Some(Hint::ColoursTabOff)
+        );
+    }
+
+    #[test]
+    fn toggles_are_named_by_what_they_do_now() {
+        let hotkeys = Hotkeys::default();
+        let mut c = ctx(&hotkeys);
+        let has = |c: &Context<'_>, cmd: Command| {
+            entries(&all_texts(), c, "")
                 .iter()
-                .all(|e| e.command != Command::Symbols),
-            "the setting hides the command with the tab"
+                .any(|e| e.command == cmd)
+        };
+        assert!(has(&c, Command::ShowPanel) && !has(&c, Command::HidePanel));
+        assert!(has(&c, Command::KeepPanelOpen) && !has(&c, Command::LetPanelClose));
+        c.panel_shown = true;
+        c.keep_open = true;
+        assert!(!has(&c, Command::ShowPanel) && has(&c, Command::HidePanel));
+        assert!(!has(&c, Command::KeepPanelOpen) && has(&c, Command::LetPanelClose));
+    }
+
+    #[test]
+    fn undo_redo_lock_and_the_trash_commands_follow_their_state() {
+        let hotkeys = Hotkeys::default();
+        let mut c = ctx(&hotkeys);
+        let has = |c: &Context<'_>, cmd: Command| {
+            entries(&all_texts(), c, "")
+                .iter()
+                .any(|e| e.command == cmd)
+        };
+        assert!(has(&c, Command::Undo) && has(&c, Command::Redo) && has(&c, Command::Lock));
+        assert!(has(&c, Command::NewBoard) && has(&c, Command::Quit) && has(&c, Command::UsePlain));
+        assert!(!has(&c, Command::RestoreItem) && !has(&c, Command::DeleteForever));
+        c.can_undo = false;
+        c.can_redo = false;
+        c.lock_set = false;
+        assert!(!has(&c, Command::Undo) && !has(&c, Command::Redo) && !has(&c, Command::Lock));
+        c.in_trash = true;
+        assert!(has(&c, Command::RestoreItem) && has(&c, Command::DeleteForever));
+        assert!(!has(&c, Command::UsePlain));
+        let found = entries(&all_texts(), &c, "delete");
+        let forever = found
+            .iter()
+            .position(|e| e.command == Command::DeleteForever);
+        assert!(forever.is_some(), "found by its words");
+        assert!(Command::DeleteForever.destructive() && Command::Quit.destructive());
+        assert_eq!(Command::Undo.shortcut(&hotkeys).as_deref(), Some("Ctrl+Z"));
+        assert_eq!(
+            Command::UsePlain.shortcut(&hotkeys).as_deref(),
+            Some("Alt+Enter")
         );
     }
 
