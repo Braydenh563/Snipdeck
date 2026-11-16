@@ -1157,7 +1157,7 @@ ui_tests! {
         assert_eq!(take(&log), ["delete:2"]);
     }
 
-    /// MAIN-39: an unused tag says so instead of "removed from 0 items".
+    // MAIN-39: an unused tag says so instead of "removed from 0 items".
     fn deleting_an_unused_tag_does_not_say_zero_items() {
         let ui = TagManager::new().expect("tag manager");
         fixture::tag_manager(&ui);

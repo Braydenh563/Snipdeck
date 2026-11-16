@@ -1615,8 +1615,8 @@ ui_tests! {
         assert!(missing(&ui, "8 selected", AccessibleRole::Groupbox));
     }
 
-    /// MAIN-5: the Move chooser opens at the bulk bar's Move button and, whatever the window size and
-    /// text scale, is clamped by its real size so it never leaves the window.
+    // MAIN-5: the Move chooser opens at the bulk bar's Move button and, whatever the window size and
+    // text scale, is clamped by its real size so it never leaves the window.
     fn the_bulk_bar_chooser_is_anchored_to_its_button_and_stays_inside_the_window() {
         for (w, h, scale) in [(1040.0_f32, 640.0_f32, 1.0_f32), (480.0, 360.0, 2.25)] {
             let (ui, _log) = start();
@@ -1732,7 +1732,7 @@ ui_tests! {
         assert_eq!(find(&ui, "All items", AccessibleRole::ListItem).accessible_item_selected(), Some(false));
     }
 
-    /// MAIN-15: F2 edits and Delete asks to delete the list under the sidebar cursor, no menu needed.
+    // MAIN-15: F2 edits and Delete asks to delete the list under the sidebar cursor, no menu needed.
     fn f2_and_delete_work_on_a_sidebar_list() {
         let (ui, log) = start();
         for _ in 0..16 {
@@ -2171,7 +2171,7 @@ ui_tests! {
         assert_eq!(ui.get_sidebar_width(), 320, "stops at 320");
     }
 
-    /// MAIN-15: Home and End jump to the narrowest and the widest, a double click resets the default.
+    // MAIN-15: Home and End jump to the narrowest and the widest, a double click resets the default.
     fn splitter_home_end_and_double_click() {
         let (ui, _log) = start();
         let splitter = find(&ui, "Sidebar width", AccessibleRole::Slider);

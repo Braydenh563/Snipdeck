@@ -91,7 +91,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 ### 5.3 Main window (3-pane)
 - **Sidebar**: Search, Recent inbox, Pinned, Boards ▸ Lists, Tags, Trash (30-day).
 - **Item list**: list/grid, multi-select, bulk move/tag/delete, drag between lists.
-- **Detail**: preview + editor + metadata (formats present, uses, created/updated, source app).
+- **Detail**: preview + editor + metadata (formats present, uses, created/updated, source app). Post-1.0 as a pane (MAIN-22, see §15): v1 shows the full card in the list and the Preview in the item editor.
 - Settings, onboarding, import/export and the optional Support Snipdeck link live here.
 
 ### 5.4 Editors
@@ -236,6 +236,18 @@ Cloud sync service, rich-text editing, image annotation (arrows/text), scripting
 Linux/macOS builds, mobile.
 
 Post-1.0, decided:
+- Main window Detail pane (MAIN-22): the 400px preview/metadata pane is cut from v1. The list card already shows the title, text and type, the item editor has a Preview (Ctrl+P) with the sample result of a template, and a third pane would need the 480px minimum window to drop to two. Revisit with the pane as an opt-in at wide sizes.
+- Reading or editing text over 16 KB (MAIN-40): such items stay read-only in the editor; they are a captured-document case, not a snippet. An "Open in external editor" action needs a temp file and a write-back watcher that cannot be verified off Windows.
+- Moving a list to another board, and grouping the Move chooser by board (MAIN-23): lists are chosen per board by design; moving between boards is export and import until the board field is added with the board-picker work.
+- Drag an item onto the Trash or a tag (MAIN-15, drop-target half): needs Slint drag-and-drop targets in the sidebar, which Slint 1.18 does not give; the keyboard and menu routes (F2, Delete, Move, Tags…) exist.
+- Image thumbnails in Main rows (MAIN-21): needs a bounded decode cache per visible image id; the Panel and Picker also lack it, so one cache serves all three in v1.1.
+- Cached main-screen rows and a shared tile probe (MAIN-14, MAIN-29): not timed on Windows (`docs/PERF.md`); both views are virtualised and 10,000 rows cost the same as 1,000, so no change before a release-build measurement shows a miss.
+- Translated tip pictures (MAIN-32): the five crops are English renders; per-language renders are v1.1 art work.
+- Tag manager "New tag" and merge (MAIN-39): tags are created where they are used (the item editor's tag field); merge is a rename onto an existing name, which the manager refuses today with a clear message. The unused-tag wording is fixed.
+- One named colour palette across labels, lists and accent (MAIN-41): the three sets differ on purpose (labels have no Rose so a label never reads as a list colour; Settings adds the Windows accent); a rename-only change is deferred.
+- Toast hold by text length and a toast history (MAIN-43): error toasts hold 10 s and hover extends them; keyboard focus on a toast and a message history need the toast window to take focus, which breaks the no-activate paste flow.
+- Focus Cancel first in a destructive dialog (MAIN-44): the card keeps focus on purpose, so a stray Enter or Space can never confirm; the same rule as the Recent consent question (`.claude/now.md`).
+- Menu focus return to the View and Help buttons (MAIN-56), accessible names for the list and dialog scope (MAIN-57), the 24px splitter target and positional Tab order (MAIN-58), hover-only row icons in high contrast (MAIN-60): need Narrator and a Windows high-contrast run to verify; they stay open until the owner runs `tools/windows-test/`. Splitter keyboard (arrows, Home, End) and double-click reset are done, so the 8px strip has a keyboard equivalent (WCAG 2.5.8 allows it).
 - Global eyedropper hotkey chord: needs Windows-only verification, not possible before release.
 - Per-swatch Ctrl+S: per-swatch save is reachable from the swatch menu.
 - OLE `IDropTarget` drops from other apps: a v1.1 deferral (`docs/reviews/v101-spec.md:68`).
