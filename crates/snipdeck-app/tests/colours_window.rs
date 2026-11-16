@@ -231,7 +231,7 @@ fn brightness_to_zero_and_back_keeps_the_colour_and_the_values_row_says_so() {
     r.state().invoke_input_edited("#3a7bd5".into());
     r.state().invoke_model_picked(3); // HSB
     let start = channel_texts(&r);
-    assert_eq!(start.len(), 3, "H, S and B: {start:?}");
+    assert_eq!(start.len(), 4, "H, S, B and A: {start:?}");
     let bri = r.state().get_bri();
     r.state().invoke_bri_moved(0.0);
     assert_eq!(
@@ -312,12 +312,12 @@ fn a_translucent_second_colour_is_judged_over_white_and_the_row_says_so() {
             white,
             "{typed}: over white, not over black"
         );
-        assert!(row.name.contains("on white"), "{typed}: {:?}", row.name);
+        assert_eq!(row.over.as_str(), "over white", "{typed}");
     }
     r.state().invoke_other_accepted("#000000".into());
     r.settle();
     assert!(
-        !r.state().get_other_row().name.contains("on white"),
+        r.state().get_other_row().over.is_empty(),
         "an opaque colour is not flattened"
     );
 }
@@ -368,7 +368,7 @@ fn committing_an_hsl_channel_updates_the_other_rows() {
     let r = rig(false, (320, 640));
     r.state().invoke_input_edited("#3a7bd5".into());
     r.state().invoke_model_picked(2); // HSL
-    assert_eq!(channel_texts(&r).len(), 3);
+    assert_eq!(channel_texts(&r).len(), 4, "H, S, L and A");
     let before = r.ctl.borrow().colour_view().current;
     r.state().invoke_channel_committed(2, "20".into());
     let after = r.ctl.borrow().colour_view().current;
@@ -423,7 +423,7 @@ fn committing_and_stepping_a_cmyk_channel_updates_the_other_rows() {
     let r = rig(false, (320, 640));
     r.state().invoke_input_edited("rgb(13, 20, 25)".into());
     r.state().invoke_model_picked(4); // CMYK
-    assert_eq!(channel_texts(&r).len(), 4);
+    assert_eq!(channel_texts(&r).len(), 5, "C, M, Y, K and A");
     let c = number_at(&r, 0);
     r.state().invoke_channel_stepped(0, 1);
     assert!(
@@ -1320,7 +1320,15 @@ fn hovering_a_format_row_shows_its_text_in_the_footer() {
     r.state().invoke_input_edited("#3a7bd5".into());
     r.settle();
     let hint = r.state().get_use_hint().to_string();
-    assert_eq!(r.footer(), hint, "nothing hovered: where a click goes");
+    assert!(
+        !hint.is_empty(),
+        "the Formats title carries where a click goes"
+    );
+    assert_eq!(
+        r.footer(),
+        "Click makes a swatch current · Shift+click copies it",
+        "nothing hovered: what a click on a swatch does"
+    );
     let hint_for_rows = hint.clone();
     let row = r
         .rows(AccessibleRole::ListItem)
@@ -1339,7 +1347,7 @@ fn hovering_a_format_row_shows_its_text_in_the_footer() {
     r.pointer_to(2.0, 2.0);
     assert_eq!(
         r.footer(),
-        hint,
+        "Click makes a swatch current · Shift+click copies it",
         "and the hint is back when the pointer leaves"
     );
 }
