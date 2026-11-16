@@ -46,6 +46,9 @@ pub enum ArgError {
     /// A file or address that is not something Snipdeck opens (or a second one).
     #[error("`{0}` is not a .snipdeck file or a snipdeck:// address Snipdeck can open")]
     NotOpenable(String),
+    /// A file or address given with other arguments (a flag could redirect where data goes).
+    #[error("a .snipdeck file or snipdeck: address cannot be combined with other options")]
+    NotAlone,
 }
 
 /// The text of `--help`.
@@ -81,6 +84,14 @@ exit code, start it like this:
 /// See [`ArgError`].
 pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, ArgError> {
     let mut parsed = Args::default();
+    let args: Vec<OsString> = args.into_iter().collect();
+    let words: Vec<String> = args
+        .iter()
+        .map(|a| a.to_string_lossy().into_owned())
+        .collect();
+    let words: Vec<&str> = words.iter().map(String::as_str).collect();
+    handover::check_alone(&words).map_err(|_| ArgError::NotAlone)?;
+    let count = args.len();
     let mut args = args.into_iter();
     while let Some(arg) = args.next() {
         match arg.to_str().unwrap_or_default() {
@@ -105,6 +116,10 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, ArgError>
             }
             _ => return Err(ArgError::Unknown(arg.to_string_lossy().into_owned())),
         }
+    }
+    // A file (or address) takes the whole line: no flag before or after it.
+    if parsed.request.is_some() && count > 1 {
+        return Err(ArgError::NotAlone);
     }
     Ok(parsed)
 }
@@ -172,10 +187,31 @@ mod tests {
         let file = file.to_str().expect("utf-8 temp dir");
         let args = parse_all(&[file]).expect("args");
         assert_eq!(args.request, Some(Request::OpenFile(PathBuf::from(file))));
-        let args = parse_all(&["--hidden", "snipdeck://settings"]).expect("args");
+        let args = parse_all(&["snipdeck://settings"]).expect("args");
         assert_eq!(args.request, Some(Request::Url(UrlAction::Settings)));
-        assert!(args.hidden);
         assert_eq!(parse_all(&[]).expect("args").request, None);
+    }
+
+    #[test]
+    fn a_request_refuses_every_other_argument() {
+        let file = std::env::temp_dir().join("a.snipdeck");
+        let file = file.to_str().expect("utf-8 temp dir");
+        let url = "snipdeck://open";
+        for line in [
+            vec![url, "--screenshot", "x.png"],
+            vec![url, "--data-dir", "C:\\x"],
+            vec![url, "--hidden"],
+            vec![url, "--wat"],
+            vec!["--hidden", url],
+            vec!["--data-dir", "C:\\x", url],
+            vec![file, "--screenshot", "x.png"],
+            vec![file, "--data-dir", "C:\\x"],
+            vec!["--hidden", file],
+        ] {
+            assert_eq!(parse_all(&line), Err(ArgError::NotAlone), "{line:?}");
+        }
+        assert!(parse_all(&[url]).is_ok());
+        assert!(parse_all(&[file]).is_ok());
     }
 
     #[test]

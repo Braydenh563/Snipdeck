@@ -77,6 +77,9 @@ pub enum RequestError {
     /// A path that is not an absolute `.snipdeck` file.
     #[error("that is not the path of a .snipdeck file")]
     File,
+    /// A file or address given together with other arguments.
+    #[error("a file or snipdeck: address must be the only argument")]
+    NotAlone,
 }
 
 fn has_forbidden_char(text: &str) -> bool {
@@ -165,6 +168,24 @@ pub fn classify_argument(text: &str) -> Result<Request, RequestError> {
     } else {
         parse_file(text).map(Request::OpenFile)
     }
+}
+
+/// Whether a command line (after the program name) breaks the rule that a request travels alone.
+///
+/// A file or `snipdeck:` address comes from the shell or a web page, which must not be able to add
+/// `--screenshot`, `--data-dir` or any other flag. So when the first argument is not a flag, or any
+/// argument is a `snipdeck:` address, the line must be that one argument.
+///
+/// # Errors
+///
+/// [`RequestError::NotAlone`].
+pub fn check_alone(args: &[&str]) -> Result<(), RequestError> {
+    let first_is_request = args.first().is_some_and(|a| !a.starts_with('-') && !a.is_empty());
+    let has_url = args.iter().any(|a| is_url_argument(a));
+    if (first_is_request || has_url) && args.len() > 1 {
+        return Err(RequestError::NotAlone);
+    }
+    Ok(())
 }
 
 // ---- Wire format -----------------------------------------------------------------------------
@@ -377,6 +398,23 @@ mod tests {
         assert_eq!(classify_argument("notes.txt"), Err(RequestError::File));
         assert!(!is_url_argument("snip"));
         assert!(!is_url_argument("\u{e9}"));
+    }
+
+    #[test]
+    fn a_request_is_accepted_only_alone() {
+        assert_eq!(check_alone(&[]), Ok(()));
+        assert_eq!(check_alone(&["snipdeck://open"]), Ok(()));
+        assert_eq!(check_alone(&["--hidden", "--dark"]), Ok(()));
+        for line in [
+            &["snipdeck://open", "--screenshot", "x.png"][..],
+            &["--data-dir", "C:\\x", "snipdeck://open"],
+            &["snipdeck://open", "--hidden"],
+            &["--hidden", "snipdeck://open"],
+            &["snipdeck://open", "snipdeck://panel"],
+            &["C:\\a.snipdeck", "--data-dir", "C:\\x"],
+        ] {
+            assert_eq!(check_alone(line), Err(RequestError::NotAlone), "{line:?}");
+        }
     }
 
     #[test]

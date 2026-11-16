@@ -56,6 +56,7 @@ use snipdeck_app::{
     window_kind,
 };
 use snipdeck_core::Timestamp;
+use snipdeck_app::session_end::JobResult;
 use snipdeck_platform::handover::{Request, UrlAction};
 use snipdeck_platform::tray::TrayEvent;
 use snipdeck_store::Store;
@@ -82,7 +83,7 @@ thread_local! {
     /// Requests handed over before the binding existed.
     static EARLY: RefCell<Vec<EarlyRequest>> = const { RefCell::new(Vec::new()) };
     /// Saves everything that waits for a quiet moment (see [`flush_now`]).
-    static FLUSH: RefCell<Option<Box<dyn Fn()>>> = const { RefCell::new(None) };
+    static FLUSH: RefCell<Option<Box<dyn Fn() -> JobResult>>> = const { RefCell::new(None) };
 }
 
 /// Applies the newest "Pause history" state to the tray; if the tray is borrowed right now, tries
@@ -600,13 +601,18 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
             // An editor left open keeps what was typed since the last draft.
             item_editor.flush_draft();
             // A sensitive copy still waiting for its clear timer would outlive the app.
-            if let Ok(mut ctl) = controller.try_borrow_mut() {
-                ctl.clear_pending_clipboard_now();
-                // Settings changed in the last moments are still waiting for their quiet time.
-                if let Err(e) = ctl.flush_settings() {
-                    eprintln!("snipdeck: could not save the settings: {e}");
-                }
+            let Ok(mut ctl) = controller.try_borrow_mut() else {
+                // Borrowed by the code that was running when this came up: say so, and let the
+                // caller post the job again (the session end does, until its limit).
+                snipdeck_app::trace!("flush: the controller is busy, skipped");
+                return JobResult::Skipped;
+            };
+            ctl.clear_pending_clipboard_now();
+            // Settings changed in the last moments are still waiting for their quiet time.
+            if let Err(e) = ctl.flush_settings() {
+                eprintln!("snipdeck: could not save the settings: {e}");
             }
+            JobResult::Saved
         }));
     });
     // Frame changes are remembered only once the stored place has been restored.
@@ -673,7 +679,9 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     if let Err(e) = &ran {
         eprintln!("snipdeck: event loop: {e}");
     }
-    flush_now();
+    if flush_now() == JobResult::Skipped {
+        eprintln!("snipdeck: the final save was skipped: the controller was busy");
+    }
     // The saver's handles go as before: with this function, not with the thread.
     FLUSH.with(|f| drop(f.borrow_mut().take()));
     controller.borrow_mut().abandon_unfinished_archive();
@@ -683,12 +691,8 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
 /// Saves what is still waiting: the one list of what a clean end keeps. Runs after the event loop
 /// ends and, from the tray thread's `WM_ENDSESSION`, on the UI thread while Windows ends the
 /// session (the event loop never returns then). Safe to run twice.
-fn flush_now() {
-    FLUSH.with(|f| {
-        if let Some(flush) = f.borrow().as_ref() {
-            flush();
-        }
-    });
+fn flush_now() -> JobResult {
+    FLUSH.with(|f| f.borrow().as_ref().map_or(JobResult::Saved, |flush| flush()))
 }
 
 /// What a session end waits for on the UI thread, at most.
@@ -698,16 +702,13 @@ const SESSION_FLUSH_WAIT: std::time::Duration =
 /// Windows is ending the session (called on the tray thread): saves everything on the UI thread
 /// and waits for it, up to [`SESSION_FLUSH_WAIT`].
 fn flush_for_session_end() {
-    let outcome = snipdeck_app::session_end::flush_on_ui_thread(
+    let outcome = snipdeck_app::session_end::flush_until_saved(
         |job| slint::invoke_from_event_loop(job).is_ok(),
-        flush_now_on_ui_thread,
+        std::sync::Arc::new(flush_now),
         SESSION_FLUSH_WAIT,
+        &snipdeck_app::session_end::SystemClock::start(),
     );
     snipdeck_app::trace!("session end flush: {outcome:?}");
-}
-
-fn flush_now_on_ui_thread() {
-    flush_now();
 }
 
 /// A request that came in before the Panel was bound, kept with its acknowledgement.
