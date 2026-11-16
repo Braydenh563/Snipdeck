@@ -181,11 +181,12 @@ fn copy_png_writes_a_decodable_64_pixel_png_in_the_given_colour() {
     };
     let (info, pixels) = decode(bytes);
     assert_eq!((info.0, info.1), (64, 64));
+    // The default ink is dark and document-safe, not the theme colour (TOOLS-59).
     assert!(
         pixels
             .chunks(4)
-            .any(|p| p[3] > 0 && p[0] == 200 && p[1] == 10),
-        "some opaque pixel has the colour"
+            .any(|p| p[3] > 0 && p[0] == 0x17 && p[1] == 0x16),
+        "some opaque pixel has the dark ink"
     );
 }
 
@@ -533,6 +534,8 @@ fn the_menu_of_an_icon_adds_copy_svg_copy_png_and_save_as_when_a_dialog_exists()
             SymbolMenuEntry::CopyPng,
             SymbolMenuEntry::SaveAsSvg,
             SymbolMenuEntry::SaveAsPng,
+            SymbolMenuEntry::PngSize(64),
+            SymbolMenuEntry::PngInk { dark: true },
         ]
     );
 }
@@ -613,7 +616,16 @@ fn choosing_save_as_hands_back_the_save_and_the_fake_dialog_reaches_finish() {
         panic!("Save as asks for the dialog");
     };
     assert_eq!(id, icon);
-    assert!(matches!(export, IconExport::Png { rgba: INK, .. }));
+    assert!(
+        matches!(
+            export,
+            IconExport::Png {
+                rgba: [0x17, 0x16, 0x13, 0xFF],
+                px: 64
+            }
+        ),
+        "the default is the document-safe dark ink (TOOLS-59)"
+    );
     assert!(w.ctl.view().symbol_menu.is_none(), "the menu closed first");
     assert_eq!(
         save(&mut w, &id, export, Some(7)),
@@ -632,4 +644,72 @@ fn a_menu_entry_that_is_not_there_closes_the_menu_and_does_nothing() {
     ));
     assert!(w.ctl.view().symbol_menu.is_none());
     assert_eq!(w.ctl.services().clipboard.written.len(), 0);
+}
+
+/// TOOLS-46: an emoji with skin tones gets a tone row per tone; choosing one pastes that variant
+/// and is remembered as the default for the next use, also after a reload of the settings.
+#[test]
+fn tools_46_a_tone_row_pastes_the_variant_and_remembers_the_default_tone() {
+    let mut w = world();
+    let wave = SymbolId::Emoji("1f44b".into());
+    let entries = menu_of(&mut w, &wave);
+    let tones: Vec<_> = entries
+        .iter()
+        .filter(|e| matches!(e, SymbolMenuEntry::Tone(_)))
+        .collect();
+    assert_eq!(tones.len(), 6, "default plus five tones");
+    let at = entries
+        .iter()
+        .position(|e| *e == SymbolMenuEntry::Tone(3))
+        .unwrap();
+    w.ctl.choose_symbol_menu(at, INK);
+    assert_eq!(written_text(&w, 0), "\u{1F44B}\u{1F3FD}");
+    assert_eq!(w.ctl.settings().symbol_tone, 3);
+    // The next plain use is in the remembered tone.
+    w.ctl.use_symbol(&wave, UseMode::Copy);
+    assert_eq!(written_text(&w, 1), "\u{1F44B}\u{1F3FD}");
+    // An emoji without tones is unaffected.
+    w.ctl.use_symbol(&emoji(), UseMode::Copy);
+    assert_eq!(written_text(&w, 2), "\u{1F600}");
+    // Tone 0 returns to the default yellow.
+    let at = menu_of(&mut w, &wave)
+        .iter()
+        .position(|e| *e == SymbolMenuEntry::Tone(0))
+        .unwrap();
+    w.ctl.choose_symbol_menu(at, INK);
+    assert_eq!(w.ctl.settings().symbol_tone, 0);
+}
+
+/// TOOLS-59: the PNG size and ink are remembered; the default is 64 px in dark ink.
+#[test]
+fn tools_59_png_size_and_ink_are_remembered_and_used_by_copy_and_save() {
+    let mut w = world();
+    with_picker(&mut w, None);
+    let icon = first_of(Kind::Icon);
+    assert_eq!(w.ctl.settings().symbol_icon_px, 64);
+    assert!(w.ctl.settings().symbol_icon_dark_ink);
+    let find = |w: &mut World, want: fn(&SymbolMenuEntry) -> bool| {
+        menu_of(w, &icon).iter().position(want).unwrap()
+    };
+    let at = find(&mut w, |e| matches!(e, SymbolMenuEntry::PngSize(_)));
+    w.ctl.choose_symbol_menu(at, INK);
+    assert_eq!(
+        w.ctl.settings().symbol_icon_px,
+        128,
+        "steps to the next size"
+    );
+    let at = find(&mut w, |e| matches!(e, SymbolMenuEntry::PngInk { .. }));
+    w.ctl.choose_symbol_menu(at, INK);
+    assert!(!w.ctl.settings().symbol_icon_dark_ink);
+    let at = find(&mut w, |e| *e == SymbolMenuEntry::SaveAsPng);
+    let SymbolChoice::Save(_, IconExport::Png { px, rgba }) = w.ctl.choose_symbol_menu(at, INK)
+    else {
+        panic!("not a PNG save")
+    };
+    assert_eq!((px, rgba), (128, INK), "remembered size, theme ink");
+    assert!(w.ctl.copy_icon_png(&icon, [200, 10, 10, 255]));
+    let Data::Png(bytes) = &w.ctl.services().clipboard.written[0].data()[0] else {
+        panic!("not a PNG")
+    };
+    assert_eq!(decode(bytes).0, (128, 128));
 }

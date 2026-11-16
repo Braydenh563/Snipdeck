@@ -218,12 +218,6 @@ msgstr "エディターで項目を開いているため、貼り付けたテキ
 msgid "Analogous"
 msgstr "類似色"
 
-msgid "Angry"
-msgstr "怒り"
-
-msgid "Animals"
-msgstr "動物"
-
 msgid "Animals & Nature"
 msgstr "動物と自然"
 
@@ -370,6 +364,12 @@ msgstr "変更はすぐに適用されます。"
 
 msgid "Change…"
 msgstr "変更…"
+
+msgid "Character"
+msgstr "文字"
+
+msgid "Characters"
+msgstr "文字"
 
 msgid "Check again"
 msgstr "もう一度確認"
@@ -1184,9 +1184,6 @@ msgstr "作業中のテキストをすぐ保存"
 msgid "Green"
 msgstr "緑"
 
-msgid "Greet"
-msgstr "あいさつ"
-
 msgid "Group"
 msgstr "グループ"
 
@@ -1364,9 +1361,6 @@ msgstr[0] "そのリストと{n}件のスニペットはゴミ箱に移動しま
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
 msgstr "このボードのリストと{}件の項目がごみ箱に移動します。{}日間は復元できます。"
 
-msgid "Joy"
-msgstr "喜び"
-
 msgid "Jump to a section"
 msgstr "セクションへ移動"
 
@@ -1489,9 +1483,6 @@ msgstr "読み込み中"
 
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "ログはSnipdeckが異常終了したときだけ書き込まれ、スニペットの内容は含まれず、どこにも送信されません。"
-
-msgid "Love"
-msgstr "愛"
 
 msgid "Main list"
 msgstr "メインリスト"
@@ -1789,6 +1780,9 @@ msgstr "動作しません"
 msgid "Nothing copied yet"
 msgstr "まだコピーされたものはありません"
 
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "「はい」を選ぶまで何も保存されず、設定でいつでも変更できます。「最近」は、コピーしたテキストを、直近 {} 件または {} 日間のどちらか先に達した分だけ、このコンピューターにのみ保存します。パスワード管理ツールからのパスワードや機密アイテムは保存されません。"
+
 msgid "Nothing matches “{}”"
 msgstr "「{}」に一致する項目はありません"
 
@@ -1957,6 +1951,15 @@ msgstr "別の色"
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
 msgstr "このフォルダーの外にSnipdeckが書き込むのは、Windowsのスタートアップ項目（オンにした場合）と、スニペットを使うときのクリップボードだけです。"
 
+msgid "PNG ink: dark (click for theme colour)"
+msgstr "PNGの色: 濃色(クリックでテーマ色)"
+
+msgid "PNG ink: theme colour (click for dark)"
+msgstr "PNGの色: テーマ色(クリックで濃色)"
+
+msgid "PNG size: {} px (click for the next)"
+msgstr "PNGのサイズ: {} px(クリックで次のサイズ)"
+
 msgid "PNG, {}"
 msgstr "PNG、{}"
 
@@ -2052,6 +2055,24 @@ msgstr "スタックの次のスニペットを貼り付け"
 
 msgid "Paste the result"
 msgstr "結果を貼り付け"
+
+msgid "Paste, dark skin tone"
+msgstr "貼り付け、濃い肌色"
+
+msgid "Paste, default tone"
+msgstr "貼り付け、標準の色調"
+
+msgid "Paste, light skin tone"
+msgstr "貼り付け、明るい肌色"
+
+msgid "Paste, medium skin tone"
+msgstr "貼り付け、中間の肌色"
+
+msgid "Paste, medium-dark skin tone"
+msgstr "貼り付け、やや濃い肌色"
+
+msgid "Paste, medium-light skin tone"
+msgstr "貼り付け、やや明るい肌色"
 
 msgid "Pasted"
 msgstr "貼り付けました"
@@ -2251,9 +2272,6 @@ msgstr "最近の項目の操作"
 msgid "Recent history cleared"
 msgstr "最近の履歴を消去しました"
 
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "「はい」を選ぶまで何も保存されず、設定でいつでも変更できます。「最近」は、コピーしたテキストを、直近 {} 件または {} 日間のどちらか先に達した分だけ、このコンピューターにのみ保存します。パスワード管理ツールからのパスワードや機密アイテムは保存されません。"
-
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "「最近」は、コピーしたテキストをこのコンピューターにのみ、直近 {} 回のコピーまたは {} 日間のどちらか早い方まで保持します。パスワードマネージャーのパスワードと機密スニペットは保持されません。設定でいつでも変更できます。"
 
@@ -2385,9 +2403,6 @@ msgstr "右クリックまたはメニューキーでリストの操作を表示
 msgid "Rose"
 msgstr "ローズ"
 
-msgid "Sad"
-msgstr "悲しい"
-
 msgid "Saturation and brightness"
 msgstr "彩度と明度"
 
@@ -2487,8 +2502,8 @@ msgstr "検索 (Ctrl+F)"
 msgid "Search all snippets"
 msgstr "すべてのスニペットを検索"
 
-msgid "Search emoji, kaomoji, icons"
-msgstr "絵文字、顔文字、アイコンを検索"
+msgid "Search emoji, kaomoji, icons, characters"
+msgstr "絵文字、顔文字、アイコン、文字を検索"
 
 msgid "Search every board and paste without opening the window."
 msgstr "すべてのボードを検索し、ウィンドウを開かずに貼り付けます。"
@@ -2558,6 +2573,9 @@ msgstr "複数の項目を選択"
 
 msgid "Select snippets"
 msgstr "スニペットを選択"
+
+msgid "Selected symbol"
+msgstr "選択中の記号"
 
 msgid "Sensitive"
 msgstr "機密"
@@ -2651,9 +2669,6 @@ msgstr "ウェルカムツアーをもう一度表示"
 
 msgid "Show title, colour, tags, trigger and privacy"
 msgstr "タイトル、色、タグ、トリガー、プライバシーを表示"
-
-msgid "Shrug"
-msgstr "肩をすくめる"
 
 msgid "Sidebar width"
 msgstr "サイドバーの幅"
@@ -2754,9 +2769,6 @@ msgstr "スニペット"
 msgid "Some files were left out: together they are over 64 MB."
 msgstr "一部のファイルを除外しました。合計が 64 MB を超えています。"
 
-msgid "Sorry"
-msgstr "ごめんなさい"
-
 msgid "Sort by"
 msgstr "並べ替え"
 
@@ -2828,9 +2840,6 @@ msgstr "応援"
 
 msgid "Support Snipdeck"
 msgstr "Snipdeck を応援する"
-
-msgid "Surprise"
-msgstr "驚き"
 
 msgid "Swap the two colours"
 msgstr "2 つの色を入れ替える"

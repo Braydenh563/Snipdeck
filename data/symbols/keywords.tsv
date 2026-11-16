@@ -1,0 +1,5 @@
+# seq	drop (keywords removed)	add (keywords added)
+# TOOLS-53: CLDR keywords that send a query to the wrong emoji (reviewed against the 20 fixed query pairs in crates/snipdeck-symbols/tests/search.rs).
+1f344-200d-1f7eb	pizza	
+1f451	family	
+1f4b6	100	

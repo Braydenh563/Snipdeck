@@ -134,6 +134,34 @@
    "what": "Phosphor icons and catalog, 2.1.1",
    "sha256": "313332be6190b724da24107addd781799b48bf76b13963f24501112ffe1baadd",
    "bytes": 1443064
+  },
+  "unicode-data": {
+   "url": "https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt",
+   "licence": "Unicode-3.0",
+   "what": "UnicodeData.txt: character names and categories for the Characters kind",
+   "sha256": "0736451de439ae7baf1425136617da495e09ee5afbe6e394374db7009ea08950",
+   "bytes": 2243593
+  },
+  "unihan": {
+   "url": "https://www.unicode.org/Public/UCD/latest/ucd/Unihan.zip",
+   "licence": "Unicode-3.0",
+   "what": "Unihan readings: pinyin and kana search keys for zh and ja",
+   "sha256": "4c93ea9c1f636451729a840978f1667a53886af37ba854fdcce109721c63d43e",
+   "bytes": 8340649
+  },
+  "flags-npm": {
+   "url": "https://registry.npmjs.org/@iconify-json/flag/-/flag-1.2.15.tgz",
+   "licence": "MIT",
+   "what": "Flag Icons (lipis/flag-icons 7.6.0) repackaged as SVG bodies, 1.2.15",
+   "sha256": "4e93941b603fef7fb99c8c9d7df98fe202854e7d9b1275a66261845294dc2981",
+   "bytes": 1075073
+  },
+  "licence-flag-icons": {
+   "url": "https://raw.githubusercontent.com/lipis/flag-icons/main/LICENSE",
+   "licence": "MIT",
+   "what": "licence text (Copyright (c) 2013 Panayiotis Lipiridis)",
+   "sha256": "8f1195d55a2fd315a07d812328470ca9ba2abb78c8d317ff19619d5125e00cea",
+   "bytes": 1087
   }
  }
 }

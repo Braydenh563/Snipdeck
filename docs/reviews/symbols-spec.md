@@ -11,7 +11,7 @@ Nothing here was run: no cargo, no Windows. Claims marked *unverified* need a me
 - **Win+. (Windows emoji panel)** already offers emoji, kaomoji and symbols with skin tones. Its gaps,
   which are our reason to exist: no "save to my list", no icons, no SVG/PNG export, it pastes only at
   the caret it opened from, and it is not where the user's snippets are. We take its three-kind split
-  and its "recently used first" row. We do not copy its skin-tone picker (deferred, D7).
+  and its "recently used first" row. Skin tones are a menu row per tone (D7).
 - This feature **replaces** competitor idea 12 ("Starter boards": a Symbols board and an Emoji board,
   `docs/reviews/competitors-2026-10-18.md`). One library, not seeded boards that go stale (CLAUDE.md
   "replace, do not layer"). Record that in `.claude/now.md` Decisions in slice 7.
@@ -71,9 +71,7 @@ hotkey in this spec. Reason: the Panel is the 2-second window and the one with a
 window manages the library. A setting "Show Symbols tab" (on by default) sits in Settings > Panel for
 users who want the tab row back.
 
-**D7. Skin tones deferred.** Default (yellow) only. Reason: ~5x the people art (~+1.2 MB est.) plus a
-long-press/variant UI; Win+. covers it today. Revisit with owner feedback. Hair/gender ZWJ variants that
-are separate fully-qualified entries in `emoji-test.txt` stay (they are their own emoji).
+**D7. Skin tones are menu rows, not art.** An emoji with tones has a row per tone in its menu (default and five); choosing one pastes that variant and remembers it as the default tone (`symbol_tone` in the settings). The grid keeps the default art: tone art would be ~5x the people art (~+1.2 MB est.); that stays on the post-1.0 list in `docs/SPEC.md`. Hair/gender ZWJ variants that are separate fully-qualified entries in `emoji-test.txt` stay (they are their own emoji).
 
 **D8. Symbols search is its own box, not Panel search.** P2 D5 makes Panel search span every board;
 mixing ~3,300 symbols into those results would bury the user's own items. Inside the Symbols tab one
@@ -82,7 +80,7 @@ field searches all three kinds.
 **D9. Actions are the item actions, nothing new to learn.** Click / Enter pastes into the Target (same
 route as a snippet); Shift+click / Shift+Enter copies; no Target = click copies (P2 D3). "Add to list"
 (Ctrl+S, and in the menu) saves the symbol as a normal item in the list last shown in the Panel.
-Icons add three menu entries: Copy SVG, Copy PNG, Save as… Emoji and kaomoji have no export: they are
+Icons add menu entries (all implemented): Copy SVG, Copy PNG, Save as SVG, Save as PNG, and two rows that step the remembered PNG size and flip the ink (dark by default). Copy SVG, Copy PNG, Save as… Emoji and kaomoji have no export: they are
 text. That is the whole action set.
 
 **D10. Recents: most recently used, 24 max, shown first.** A "Recently used" section opens every kind's

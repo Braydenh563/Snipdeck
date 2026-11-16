@@ -19,9 +19,9 @@ fn smile() -> SymbolId {
 }
 
 #[test]
-fn art_decodes_and_resamples_to_24_30_36_48() {
+fn art_decodes_and_resamples_up_to_the_stored_72() {
     let c = Catalog::get();
-    for px in [24u32, 30, 36, 48] {
+    for px in [24u32, 30, 36, 48, 72] {
         let rgba = c.art(&smile(), px).unwrap();
         assert_eq!(rgba.len(), (px * px * 4) as usize, "{px}");
         let at = |x: u32, y: u32| &rgba[((y * px + x) * 4) as usize..][..4];
@@ -36,23 +36,59 @@ fn art_decodes_and_resamples_to_24_30_36_48() {
     }
     // Not just a fixed picture: different emoji differ.
     assert_ne!(
-        c.art(&smile(), 48),
-        c.art(&SymbolId::Emoji("1f680".into()), 48)
+        c.art(&smile(), 72),
+        c.art(&SymbolId::Emoji("1f680".into()), 72)
     );
 }
 
+/// TOOLS-63: the art is stored at 72 px, so it is drawn sharp up to 300 % scale (24 logical px).
 #[test]
-fn every_emoji_has_decodable_art() {
+fn art_is_stored_at_72_px_for_300_percent_scale() {
+    let pack = ArtPack::parse(include_bytes!("../data/emoji72.bin")).unwrap();
+    assert_eq!(pack.px(), 72);
+    assert!(pack.px() >= 24 * 3, "300 % of the 24 px logical cell");
+}
+
+/// TOOLS-45: every emoji has decodable art, except the ones the manifest lists as system style
+/// (drawn by the system emoji font); `has_art` agrees with the manifest.
+#[test]
+fn every_emoji_has_art_or_is_listed_as_system_style() {
     let c = Catalog::get();
-    let pack = ArtPack::parse(include_bytes!("../data/emoji48.bin")).unwrap();
+    let pack = ArtPack::parse(include_bytes!("../data/emoji72.bin")).unwrap();
     assert_eq!(pack.len(), c.range(snipdeck_symbols::Kind::Emoji).len());
-    assert_eq!(pack.px(), 48);
+    let m: serde_json::Value = serde_json::from_str(include_str!("../data/manifest.json")).unwrap();
+    let system: std::collections::HashSet<String> = m["system_style"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["seq"].as_str().unwrap().to_owned())
+        .collect();
+    assert!(
+        !system.is_empty() && system.len() < 100,
+        "the few emoji with no art at all"
+    );
     for i in c.range(snipdeck_symbols::Kind::Emoji) {
-        assert!(
-            pack.rgba(i, 24).is_some(),
-            "art of emoji {i} ({:?})",
-            c.symbol(i).unwrap().id
-        );
+        let sym = c.symbol(i).unwrap();
+        let SymbolId::Emoji(seq) = &sym.id else {
+            panic!("emoji range holds an emoji");
+        };
+        if system.contains(seq) {
+            assert!(!c.has_art(i), "{seq} is system style");
+            assert!(pack.rgba(i, 24).is_none(), "{seq}");
+        } else {
+            assert!(c.has_art(i), "{seq} has art");
+            assert!(pack.rgba(i, 24).is_some(), "art of emoji {i} ({seq})");
+        }
+    }
+    // Every country flag is drawn from bundled art, not left to a system font that has none.
+    for flag in [
+        "1f1e9-1f1ea",
+        "1f1ef-1f1f5",
+        "1f1fa-1f1f8",
+        "1f3f4-e0067-e0062-e0065-e006e-e0067-e007f",
+    ] {
+        let i = c.index_of(&SymbolId::Emoji(flag.into())).unwrap();
+        assert!(c.has_art(i), "{flag}");
     }
 }
 
