@@ -242,7 +242,7 @@ fn problem_of(source: &ImportSource, error: &snipdeck_portable::Error) -> Import
 /// things (Documents, a synced folder, a stick), and those are not Snipdeck's to delete. The
 /// settings, the logs and the lock are not in it.
 fn is_library_file(name: &str) -> bool {
-    const EXACT: [&str; 10] = [
+    const EXACT: [&str; 11] = [
         "snipdeck.db",
         "snipdeck.db-wal",
         "snipdeck.db-shm",
@@ -253,6 +253,8 @@ fn is_library_file(name: &str) -> bool {
         "backups",
         "drafts",
         "maintenance.json",
+        // A licence file an old version left behind.
+        "licence.key",
     ];
     EXACT.contains(&name)
         || name.starts_with("maintenance.json.")
