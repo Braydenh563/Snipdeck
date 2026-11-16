@@ -12,7 +12,7 @@ use std::{
 };
 
 use slint::{ComponentHandle, Global, Model, ModelRc, SharedString, VecModel};
-use snipdeck_core::{ItemId, ItemKind, ItemLabel, ListIcon, UseMode};
+use snipdeck_core::{ItemKind, ItemLabel, ListIcon, UseMode};
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
     system_look::SystemLook,

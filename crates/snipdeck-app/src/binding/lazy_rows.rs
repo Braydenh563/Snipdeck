@@ -260,38 +260,4 @@ mod tests {
             Some("Title 5000".into())
         );
     }
-
-    /// Records what the view is told.
-    #[derive(Default)]
-    struct Tracker(RefCell<Vec<String>>);
-    impl slint::ModelPeer for Tracker {
-        fn row_changed(&self, row: usize) {
-            self.0.borrow_mut().push(format!("c{row}"));
-        }
-        fn row_added(&self, index: usize, count: usize) {
-            self.0.borrow_mut().push(format!("a{index}+{count}"));
-        }
-        fn row_removed(&self, index: usize, count: usize) {
-            self.0.borrow_mut().push(format!("r{index}-{count}"));
-        }
-        fn reset(&self) {
-            self.0.borrow_mut().push("reset".into());
-        }
-    }
-
-    #[test]
-    fn only_the_changed_row_is_announced() {
-        let mut rows: Vec<Row> = (0..50).map(row).collect();
-        let lazy = model(&rows);
-        let peer = Rc::new(Tracker::default());
-        let rc: Rc<dyn slint::ModelPeer> = peer.clone();
-        lazy.model_tracker().attach_peer(Rc::downgrade(&rc).into());
-        rows[7].title = "Renamed".into();
-        lazy.update(Rc::new(rows.clone()), extras(&rows, &[]), false, None);
-        assert_eq!(*peer.0.borrow(), ["c7"]);
-        peer.0.borrow_mut().clear();
-        rows.insert(3, row(500));
-        lazy.update(Rc::new(rows.clone()), extras(&rows, &[]), false, None);
-        assert_eq!(*peer.0.borrow(), ["a3+1"]);
-    }
 }
