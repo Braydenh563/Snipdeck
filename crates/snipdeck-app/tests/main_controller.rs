@@ -2522,6 +2522,6 @@ fn a_tag_drop_is_one_undo_step() {
     ctl.main_select_all();
     ctl.main_drop_on_tag(0, 0);
     assert_eq!(ctl.main_screen().tags[0].count, 11);
-    ctl.main_undo();
+    ctl.undo();
     assert_eq!(ctl.main_screen().tags[0].count, 0);
 }

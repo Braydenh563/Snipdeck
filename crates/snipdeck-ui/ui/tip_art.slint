@@ -17,13 +17,13 @@ component Bar inherits Rectangle {
 component Key inherits Rectangle {
     in property <string> label;
     in property <bool> filled: false;
-    min-width: 28px;
+    width: max(28px, key-text.preferred-width + 14px);
     height: 26px;
     border-radius: Radius.sm;
     border-width: 1px;
     border-color: root.filled ? Theme.accent : Theme.border-strong;
     background: root.filled ? Theme.accent : Theme.bg-surface;
-    Text {
+    key-text := Text {
         text: root.label;
         color: root.filled ? Theme.text-on-accent : Theme.text-primary;
         font-family: Fonts.mono;
@@ -118,7 +118,6 @@ export component TipArt inherits Rectangle {
             ListRow { glyph: Icons.heart; pinned: true; }
             Rectangle { height: 1px; background: Theme.border-subtle; }
             ListRow { glyph: Icons.file-text; }
-            ListRow { glyph: Icons.link; }
         }
     }
     // 3: paste next, again and again: three rows, an arrow moving down.
@@ -127,7 +126,6 @@ export component TipArt inherits Rectangle {
             VerticalLayout { padding: 8px; spacing: 4px;
                 ListRow { glyph: Icons.check-circle; }
                 ListRow { glyph: Icons.arrow-bend-down-left; on: true; }
-                ListRow { glyph: Icons.file-text; }
                 ListRow { glyph: Icons.file-text; }
             }
         }
@@ -195,7 +193,6 @@ export component TipArt inherits Rectangle {
             HorizontalLayout { spacing: 6px; alignment: start; Key { label: "Ctrl"; } Key { label: "K"; filled: true; } }
             ListRow { glyph: Icons.plus; on: true; }
             ListRow { glyph: Icons.gear; }
-            ListRow { glyph: Icons.keyboard; }
         }
     }
     // 8: the three looks: rows, compact rows and tiles.

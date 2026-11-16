@@ -145,6 +145,9 @@ msgstr "リストを追加"
 msgid "Add some text, or cancel."
 msgstr "テキストを追加するか、キャンセルしてください。"
 
+msgid "Add tag"
+msgstr "タグを追加"
+
 msgid "Add to list"
 msgstr "リストに追加"
 
@@ -156,6 +159,9 @@ msgstr "「{}」に追加"
 
 msgid "Add {} or {} to a snippet."
 msgstr "項目に {} や {} を追加します。"
+
+msgid "Add, rename, merge or delete tags. A new name another tag already has merges the two. Deleting a tag removes it from its items; the items stay."
+msgstr "タグの追加、名前の変更、統合、削除ができます。ほかのタグにある名前を付けると、2 つのタグが統合されます。タグを削除すると項目から外れますが、項目は残ります。"
 
 msgid "Added to {}"
 msgstr "{} に追加しました"
@@ -1573,6 +1579,12 @@ msgstr "マスターパスワードを設定しました。"
 msgid "Menu"
 msgstr "メニュー"
 
+msgid "Merge tags"
+msgstr "タグを統合"
+
+msgid "Merge these tags?"
+msgstr "これらのタグを統合しますか?"
+
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
 
@@ -1718,6 +1730,9 @@ msgstr "次へ"
 
 msgid "Next list"
 msgstr "次のリスト"
+
+msgid "Next part"
+msgstr "次のパート"
 
 msgid "Next scope"
 msgstr "次の範囲"
@@ -2046,6 +2061,9 @@ msgstr "パネルは開いたままです"
 msgid "Panel width"
 msgstr "パネルの幅"
 
+msgid "Part {} of {}"
+msgstr "パート {} / {}"
+
 msgid "Paste"
 msgstr "貼り付け"
 
@@ -2229,6 +2247,9 @@ msgstr "この項目の表示をプレビュー (Ctrl+P)"
 msgid "Previous list"
 msgstr "前のリスト"
 
+msgid "Previous part"
+msgstr "前のパート"
+
 msgid "Privacy"
 msgstr "プライバシー"
 
@@ -2369,9 +2390,6 @@ msgstr "ボード名を変更…"
 
 msgid "Rename group"
 msgstr "グループ名を変更"
-
-msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
-msgstr "タグの名前を変更または削除します。タグを削除しても、それが付いた項目は残ります。"
 
 msgid "Rename tag {}"
 msgstr "タグ {} の名前を変更"
@@ -3166,8 +3184,8 @@ msgstr "このテンプレートを読めません: {}"
 msgid "This text is over {} KB, the most that can be edited here. Shorten it, or keep it in a file."
 msgstr "このテキストは {} KB を超えています。ここで編集できる上限です。短くするか、ファイルに保存してください。"
 
-msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
-msgstr "このテキストは{}です。16 KBを超えるものはここでは読み取り専用で開き、先頭の16 KBを表示します。"
+msgid "This text is {}. It opens a part at a time, so typing stays fast; all the parts are saved together."
+msgstr "このテキストは {} あります。入力を軽く保つため、1 パートずつ開きます。すべてのパートがまとめて保存されます。"
 
 msgid "Tile view"
 msgstr "タイル表示"
@@ -3897,6 +3915,10 @@ msgstr[0] "{n}件の項目"
 msgid "{n} item will be added"
 msgid_plural "{n} items will be added"
 msgstr[0] "{n} 件の項目が追加されます"
+
+msgid "{n} item will carry \"{}\" instead of \"{}\"."
+msgid_plural "{n} items will carry \"{}\" instead of \"{}\"."
+msgstr[0] "{n} 件の項目が「{}」の代わりに「{}」を持つようになります。"
 
 msgid "{n} item will move to Trash with it. You can restore them for 30 days."
 msgid_plural "{n} items will move to Trash with it. You can restore them for 30 days."
