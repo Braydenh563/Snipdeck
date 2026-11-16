@@ -1564,7 +1564,7 @@ fn render_recent(window: &ui::PanelWindow, previous: Option<&View>, view: &View)
             app: r.app.as_str().into(),
             age_minutes: i32::try_from(r.age_minutes).unwrap_or(i32::MAX),
             kind: crate::binding::recent_kind(r.kind),
-            image: crate::binding::recent_thumb(r.thumb.as_ref()),
+            image: crate::binding::recent_thumb(r.id, r.thumb.as_ref()),
         })));
         window.set_recent_targets(model(targets.iter().map(|t| ui::ChoiceEntry {
             label: t.label.as_str().into(),
@@ -2181,15 +2181,46 @@ pub(crate) fn recent_kind(kind: snipdeck_store::RecentKind) -> ui::ItemKind {
     }
 }
 
-/// A Recent picture's thumbnail as an image; empty when it has none.
-pub(crate) fn recent_thumb(thumb: Option<&snipdeck_store::RecentThumb>) -> slint::Image {
-    thumb.map_or_else(slint::Image::default, |t| {
-        slint::Image::from_rgba8(
+thread_local! {
+    /// The image made for each Recent entry's thumbnail, by entry id (a thumbnail never changes
+    /// once captured): a Recent change builds an image only for an entry not seen before.
+    static THUMBS: RefCell<HashMap<i64, slint::Image>> = RefCell::new(HashMap::new());
+    /// How many images [`recent_thumb`] has built (for tests).
+    static THUMBS_BUILT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// The most thumbnails kept: the inbox holds fewer entries than this, so only a long session
+/// of copies reaches it, and the cache then starts over.
+const THUMBS_KEPT: usize = 512;
+
+/// A Recent picture's thumbnail as an image; empty when it has none. Built once per entry `id`.
+pub(crate) fn recent_thumb(id: i64, thumb: Option<&snipdeck_store::RecentThumb>) -> slint::Image {
+    let Some(t) = thumb else {
+        return slint::Image::default();
+    };
+    THUMBS.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        if let Some(image) = cache.get(&id) {
+            return image.clone();
+        }
+        if cache.len() >= THUMBS_KEPT {
+            cache.clear();
+        }
+        THUMBS_BUILT.with(|n| n.set(n.get() + 1));
+        let image = slint::Image::from_rgba8(
             slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(
                 &t.rgba, t.width, t.height,
             ),
-        )
+        );
+        cache.insert(id, image.clone());
+        image
     })
+}
+
+/// Thumbnail images built so far on this thread (for tests).
+#[cfg(test)]
+pub(crate) fn thumbs_built() -> usize {
+    THUMBS_BUILT.with(std::cell::Cell::get)
 }
 
 /// The window's kind for an item: a sensitive item is its own kind whatever it holds.
@@ -2232,6 +2263,22 @@ impl Payload {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_recent_thumbnail_is_built_once_per_entry() {
+        let thumb = snipdeck_store::RecentThumb {
+            width: 2,
+            height: 2,
+            rgba: vec![255; 16],
+        };
+        let before = super::thumbs_built();
+        for _ in 0..50 {
+            let _ = super::recent_thumb(9_001, Some(&thumb));
+        }
+        let _ = super::recent_thumb(9_002, Some(&thumb));
+        let _ = super::recent_thumb(9_003, None);
+        assert_eq!(super::thumbs_built() - before, 2, "one image per entry id");
+    }
+
     #[test]
     fn refreshed_model_adds_and_deletes_rows_in_place() {
         fn ints(m: &ModelRc<i32>) -> Vec<i32> {
