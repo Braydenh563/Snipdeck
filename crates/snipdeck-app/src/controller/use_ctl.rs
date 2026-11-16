@@ -541,7 +541,7 @@ where
 
     /// Runs a waiting paste to its end now (a new use must not start over it: two pastes would
     /// share one clipboard).
-    pub(super) fn drain_paste(&mut self) {
+    pub fn drain_paste(&mut self) {
         while self.paste.is_some() {
             self.paste_tick();
             if self.paste.is_some() {

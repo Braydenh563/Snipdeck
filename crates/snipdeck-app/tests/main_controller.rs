@@ -209,6 +209,7 @@ fn use_pastes_and_counts_through_the_controller_and_copy_only_copies() {
         other => panic!("{other:?}"),
     };
     ctl.main_action(MainAction::Use, at).expect("a use");
+    ctl.drain_paste();
     assert_eq!(ctl.store().item(id).unwrap().use_count, 1);
     ctl.main_action(MainAction::Copy, at).expect("a use");
     assert_eq!(ctl.store().item(id).unwrap().use_count, 2);
@@ -224,6 +225,7 @@ fn use_plain_pastes_without_formatting_and_counts() {
         other => panic!("{other:?}"),
     };
     ctl.main_action(MainAction::UsePlain, at).expect("a use");
+    ctl.drain_paste();
     assert_eq!(ctl.store().item(id).unwrap().use_count, 1);
     let written = &ctl.services().clipboard.written;
     assert!(
@@ -268,6 +270,7 @@ fn duplicate_copies_each_selected_item_next_to_it_unpinned_and_unused() {
     };
     ctl.main_action(MainAction::Pin, at);
     ctl.main_action(MainAction::Use, at).expect("a use");
+    ctl.drain_paste();
     let original = ctl.store().item(id).unwrap();
     let siblings = ctl.store().items(original.list_id).unwrap();
     let place = siblings.iter().position(|i| i.id == id).unwrap();
