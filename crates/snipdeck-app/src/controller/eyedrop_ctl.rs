@@ -129,7 +129,7 @@ where
             .as_ref()
             .map(|e| e.notes())
             .unwrap_or_default();
-        let effects = match outcome {
+        let mut effects = match outcome {
             EyedropOutcome::Picked { rgb, hdr, also } => {
                 let pick = |c: [u8; 3]| snipdeck_colour::Rgba8::rgb(c[0], c[1], c[2]);
                 let also: Vec<_> = also.into_iter().map(pick).collect();
@@ -176,6 +176,7 @@ where
                 });
             }
         }
+        effects.push(Effect::RestoreMainAfterEyedropper);
         effects
     }
 
@@ -187,7 +188,6 @@ where
     pub(super) fn back_from_eyedropper(&mut self) -> Vec<Effect> {
         let mut effects = self.reveal_panel();
         effects.push(Effect::ShowColours);
-        effects.push(Effect::RestoreMainAfterEyedropper);
         effects
     }
 }

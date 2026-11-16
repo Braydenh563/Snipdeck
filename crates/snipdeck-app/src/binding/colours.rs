@@ -325,6 +325,15 @@ impl Glue {
             ..Default::default()
         });
         state.set_save_targets(model(targets));
+        state.set_extras(model(
+            snipdeck_colour::ExtraFormat::ALL
+                .iter()
+                .map(|f| ui::MenuEntry {
+                    text: snipdeck_colour::extra_text(view.current, *f).into(),
+                    ..Default::default()
+                })
+                .collect(),
+        ));
         state.set_copy_as(model(
             Format::ALL
                 .iter()
@@ -361,6 +370,7 @@ fn chips(
             .map(|c| swatch(t, *c, view.format))
             .collect(),
     ));
+    state.set_scheme_no_hue(view.scheme != Scheme::TintsShades && !snipdeck_colour::has_hue(c));
     state.set_scheme(model(
         scheme_colours
             .iter()
@@ -705,6 +715,15 @@ where
                         ctl.after_use(&used)
                     });
                 }
+            });
+        }
+        {
+            let core = Rc::clone(self);
+            state.on_extra_copied(move |i| {
+                core.act_effects(|ctl| {
+                    let used = ctl.copy_extra_format(usize::try_from(i).unwrap_or(0));
+                    ctl.after_use(&used)
+                });
             });
         }
         {

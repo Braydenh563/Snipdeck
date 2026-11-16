@@ -94,17 +94,20 @@ msgstr "タイトルに改行や制御文字を含めることはできません
 msgid "A trigger is 1 to 32 characters with no spaces."
 msgstr "トリガーは空白を含まない1～32文字です。"
 
-msgid "AA"
-msgstr "AA"
+msgid "AA 4.5"
+msgstr "AA 4.5"
 
-msgid "AA large"
-msgstr "AA 大きい文字"
+msgid "AA large 3"
+msgstr "AA（大きい文字）3"
 
-msgid "AAA"
-msgstr "AAA"
+msgid "AAA 7"
+msgstr "AAA 7"
 
-msgid "AAA large"
-msgstr "AAA 大きい文字"
+msgid "AAA large 4.5"
+msgstr "AAA（大きい文字）4.5"
+
+msgid "APCA Lc {}"
+msgstr "APCA Lc {}"
 
 msgid "About"
 msgstr "バージョン情報"
@@ -188,6 +191,9 @@ msgstr "{}件の最近のコピーを削除します。元に戻せません。"
 msgid "Alpha"
 msgstr "アルファ"
 
+msgid "Already saved in {}"
+msgstr "{} に保存済みです"
+
 msgid "Also forget the encryption key"
 msgstr "暗号化キーも削除する"
 
@@ -220,6 +226,9 @@ msgstr "類似色"
 
 msgid "Animals & Nature"
 msgstr "動物と自然"
+
+msgid "Another app has {}: use the mouse for those."
+msgstr "別のアプリが {} を使用しています。それらはマウスで操作してください。"
 
 msgid "Another program already uses {}."
 msgstr "別のプログラムが {} を既に使用しています。"
@@ -271,6 +280,12 @@ msgstr "編集に戻る (Ctrl+P)"
 
 msgid "Back up now"
 msgstr "今すぐバックアップ"
+
+msgid "Backdrop: black"
+msgstr "背景：黒"
+
+msgid "Backdrop: white"
+msgstr "背景：白"
 
 msgid "Backed up"
 msgstr "バックアップ済み"
@@ -458,6 +473,9 @@ msgstr "クリック"
 msgid "Click copies"
 msgstr "クリックでコピー"
 
+msgid "Click makes a swatch current · Shift+click copies it"
+msgstr "クリックで現在の色にする · Shift+クリックでコピー"
+
 msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
 msgstr "クリックまたは Enter で貼り付け。Shift+クリックまたは Shift+Enter でコピー。"
 
@@ -556,6 +574,9 @@ msgstr "Ctrl O"
 
 msgid "Copied"
 msgstr "コピーしました"
+
+msgid "Copied {}. HDR is on for this screen, so it is approximate."
+msgstr "{} をコピーしました。この画面は HDR のため、値は近似です。"
 
 msgid "Copied. Nothing in {} can take text right now."
 msgstr "コピーしました。{}は今テキストを受け付けられません。"
@@ -986,6 +1007,9 @@ msgstr "リストを編集"
 msgid "Edit list…"
 msgstr "リストを編集…"
 
+msgid "Edit or rename…"
+msgstr "編集または名前の変更…"
+
 msgid "Edit selected item"
 msgstr "選択したスニペットを編集"
 
@@ -1078,6 +1102,9 @@ msgstr "テキストとしてエクスポート"
 
 msgid "Export library"
 msgstr "ライブラリをエクスポート"
+
+msgid "Eyedropper, {}"
+msgstr "スポイト、{}"
 
 msgid "Fields"
 msgstr "入力欄"
@@ -1705,6 +1732,9 @@ msgstr "まだバックアップがありません"
 msgid "No colour"
 msgstr "色なし"
 
+msgid "No colour in the clipboard"
+msgstr "クリップボードに色がありません"
+
 msgid "No commands match “{}”"
 msgstr "「{}」に一致するコマンドはありません"
 
@@ -1848,9 +1878,6 @@ msgstr "黒の上"
 
 msgid "On this colour"
 msgstr "この色の上"
-
-msgid "On this colour (on white)"
-msgstr "この色の上（白の上）"
 
 msgid "On white"
 msgstr "白の上"
@@ -2011,6 +2038,9 @@ msgstr "プレーンテキストで貼り付け"
 msgid "Paste as…"
 msgstr "形式を指定して貼り付け…"
 
+msgid "Paste into {}"
+msgstr "{} に貼り付け"
+
 msgid "Paste key for {}"
 msgstr "{} の貼り付けキー"
 
@@ -2019,9 +2049,6 @@ msgstr "次の項目を貼り付け"
 
 msgid "Paste next pastes the next item each time you press it."
 msgstr "「次を貼り付け」は、押すたびに次の項目を貼り付けます。"
-
-msgid "Paste or copy"
-msgstr "貼り付けまたはコピー"
 
 msgid "Paste several in order"
 msgstr "複数を順番に貼り付ける"
@@ -2122,6 +2149,9 @@ msgstr "人と体"
 msgid "PhraseExpress export (CSV)"
 msgstr "PhraseExpress のエクスポート（CSV）"
 
+msgid "Pick"
+msgstr "選ぶ"
+
 msgid "Pick a colour from the screen"
 msgstr "画面から色を選ぶ"
 
@@ -2133,6 +2163,9 @@ msgstr "パネルの配置を選びます。設定でいつでも変更でき、
 
 msgid "Pick one and it pastes where you were typing."
 msgstr "選ぶと、入力していた場所に貼り付けられます。"
+
+msgid "Pick the other colour from the screen"
+msgstr "画面からもう一方の色を選ぶ"
 
 msgid "Picker"
 msgstr "ピッカー"
@@ -2199,6 +2232,9 @@ msgstr "プレビュー"
 
 msgid "Preview how this item will look (Ctrl+P)"
 msgstr "このスニペットの表示をプレビュー (Ctrl+P)"
+
+msgid "Previous colour {}. Click to go back."
+msgstr "前の色 {}。クリックで戻ります。"
 
 msgid "Previous list"
 msgstr "前のリスト"
@@ -2985,6 +3021,9 @@ msgstr "ゴミ箱は空です"
 msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
 msgstr "クリップボードの履歴にはまだテキストがありません。テキストをコピーしてから、もう一度お試しください。"
 
+msgid "The colour pick timed out."
+msgstr "色の選択がタイムアウトしました。"
+
 msgid "The file dialog couldn't open. Type the path instead."
 msgstr "ファイルダイアログを開けませんでした。代わりにパスを入力してください。"
 
@@ -3023,6 +3062,9 @@ msgstr "ピッカー"
 
 msgid "The report holds versions and settings switches, never your items."
 msgstr "レポートにはバージョンと設定のスイッチが含まれ、アイテムは含まれません。"
+
+msgid "The screen changed, so the colour pick ended."
+msgstr "画面が変わったため、色の選択を終了しました。"
 
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "選択したスニペットは完全に削除されます。この操作は元に戻せません。"
@@ -3101,6 +3143,9 @@ msgstr "このリストは空です"
 
 msgid "This looks like a password or key, so it was not saved. Check it, then save."
 msgstr "パスワードまたはキーのようなので保存しませんでした。確認してから保存してください。"
+
+msgid "This screen could not be captured"
+msgstr "この画面はキャプチャできませんでした"
 
 msgid "This template can't be read. Open it to fix it."
 msgstr "このテンプレートを読み込めません。開いて修正してください。"
@@ -3210,8 +3255,8 @@ msgstr "入力"
 msgid "Typing triggers work on Windows only."
 msgstr "入力によるトリガーは Windows でのみ動作します。"
 
-msgid "UI"
-msgstr "UI"
+msgid "UI 3"
+msgstr "UI 3"
 
 msgid "UPPERCASE"
 msgstr "大文字"
@@ -3294,6 +3339,9 @@ msgstr "未保存：保存するとスニペットはこのように表示され
 msgid "Use"
 msgstr "使用"
 
+msgid "Use as other colour"
+msgstr "もう一方の色として使う"
+
 msgid "Use at least {} characters."
 msgstr "{}文字以上にしてください。"
 
@@ -3318,8 +3366,14 @@ msgstr "マスターパスワードを入力する代わりに、顔、指紋、
 msgid "Use {}"
 msgstr "{} を使う"
 
+msgid "Use {} ({})"
+msgstr "{} を使う（{}）"
+
 msgid "Use {} for {}"
 msgstr "{} を {} に使う"
+
+msgid "Use {} to pass AA"
+msgstr "{} を使って AA を満たす"
 
 msgid "User guide"
 msgstr "ユーザーガイド"
@@ -3356,6 +3410,9 @@ msgstr "Snipdeck でできることを、画像と試すボタン付きで紹介
 
 msgid "What a click on the Snipdeck icon in the tray opens. The tray menu still has both."
 msgstr "トレイの Snipdeck アイコンをクリックしたときに開くものです。トレイのメニューからはどちらも開けます。"
+
+msgid "What a translucent colour is judged over"
+msgstr "半透明の色を判定する背景"
 
 msgid "What is on the clipboard"
 msgstr "クリップボードの内容"
@@ -3443,6 +3500,9 @@ msgstr "Windows の文字サイズ（設定 > アクセシビリティ > 文字�
 
 msgid "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
 msgstr "Windows の [設定] > [アプリ] > [スタートアップ] で Snipdeck がオフになっています。そこでオンにしてください。"
+
+msgid "Windows won't let Snipdeck read this screen."
+msgstr "Windows が Snipdeck によるこの画面の読み取りを許可していません。"
 
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "クリップボード履歴をオンにすると、「最近」に他のプログラムでコピーした内容が残ります。"
@@ -3718,6 +3778,12 @@ msgstr "省略可能なセクションは入れ子にできません"
 
 msgid "or"
 msgstr "または"
+
+msgid "over black"
+msgstr "黒の上"
+
+msgid "over white"
+msgstr "白の上"
 
 msgid "pass"
 msgstr "合格"

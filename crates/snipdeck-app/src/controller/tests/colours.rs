@@ -114,6 +114,21 @@ fn the_name_row_copies_the_bare_keyword() {
 }
 
 #[test]
+fn more_formats_copy_the_current_colour_as_code_and_never_press_keys() {
+    let mut w = world();
+    let c = Rgba8::rgb(0x41, 0x69, 0xe1);
+    w.ctl.set_colour(c);
+    for (i, f) in snipdeck_colour::ExtraFormat::ALL.iter().enumerate() {
+        w.ctl.copy_extra_format(i);
+        assert_eq!(written(&w, i), snipdeck_colour::extra_text(c, *f));
+    }
+    assert_eq!(w.ctl.services().keyboard.sent.len(), 0);
+    let n = w.ctl.services().clipboard.written.len();
+    w.ctl.copy_extra_format(999);
+    assert_eq!(w.ctl.services().clipboard.written.len(), n);
+}
+
+#[test]
 fn recents_dedupe_newest_first_and_can_be_forgotten() {
     let mut w = world();
     let red = Rgba8::rgb(255, 0, 0);
@@ -276,14 +291,7 @@ fn open_in_colours_makes_it_current_and_shows_the_tab() {
     w.ctl.set_colour(Rgba8::rgb(1, 2, 3));
     let id = w.ctl.saved_colours()[0].0;
     let effects = w.ctl.open_item_in_colours(id);
-    assert_eq!(
-        effects,
-        [
-            Effect::ShowPanel,
-            Effect::ShowColours,
-            Effect::RestoreMainAfterEyedropper
-        ]
-    );
+    assert_eq!(effects, [Effect::ShowPanel, Effect::ShowColours]);
     assert_eq!(w.ctl.colour_view().current, BLUE);
     assert_eq!(w.ctl.open_item_in_colours(w.ids[0]).len(), 0);
 }
@@ -338,14 +346,7 @@ fn copy_list_as_css_variables_names_each_colour_and_dedupes() {
 fn a_colour_picked_from_the_screen_is_current_remembered_and_copied_when_asked() {
     let mut w = world();
     let effects = w.ctl.colour_picked(BLUE, false, &[]);
-    assert_eq!(
-        effects,
-        [
-            Effect::ShowPanel,
-            Effect::ShowColours,
-            Effect::RestoreMainAfterEyedropper
-        ]
-    );
+    assert_eq!(effects, [Effect::ShowPanel, Effect::ShowColours]);
     assert_eq!(w.ctl.colour_view().current, BLUE);
     assert_eq!(w.ctl.colour_view().recents, [BLUE]);
     assert_eq!(written(&w, 0), "#3a7bd5", "copied in the default format");
@@ -501,9 +502,8 @@ mod eyedropper {
         assert!(view.recents.is_empty());
         assert_eq!(w.ctl.services().clipboard.written.len(), 0);
         // The next pick is an ordinary one again.
-        w.ctl.start_eyedropper();
-        w.ctl.poll_eyedropper();
-        assert_eq!(w.ctl.colour_view().current, Rgba8::rgb(255, 0, 0));
+        w.ctl.colour_picked(BLUE, false, &[]);
+        assert_eq!(w.ctl.colour_view().current, BLUE);
     }
 
     #[test]
@@ -713,14 +713,7 @@ mod item_menu {
             .position(|e| *e == ItemMenuEntry::OpenInColours)
             .expect("entry");
         let effects = w.ctl.choose_item_menu(open);
-        assert_eq!(
-            effects,
-            vec![
-                Effect::ShowPanel,
-                Effect::ShowColours,
-                Effect::RestoreMainAfterEyedropper
-            ]
-        );
+        assert_eq!(effects, vec![Effect::ShowPanel, Effect::ShowColours]);
         assert_eq!(w.ctl.colour_view().current, BLUE);
     }
 

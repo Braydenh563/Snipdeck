@@ -229,6 +229,19 @@ where
         result
     }
 
+    /// "More formats…": the current colour as one of the code formats, copied (never pasted).
+    pub fn copy_extra_format(&mut self, i: usize) -> UseResult {
+        let Some(f) = snipdeck_colour::ExtraFormat::ALL.get(i) else {
+            return UseResult::Failed;
+        };
+        let c = self.colour;
+        let result = self.use_text(snipdeck_colour::extra_text(c, *f), UseMode::Copy);
+        if matches!(result, UseResult::Done(_)) {
+            self.remember_colour(c);
+        }
+        result
+    }
+
     /// "Use royalblue (#4169e1)": the nearest keyword's colour replaces the current one. An explicit
     /// change of colour, never part of a copy.
     pub fn use_nearest_name(&mut self) {

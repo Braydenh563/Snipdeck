@@ -103,6 +103,7 @@ export global ColourTexts {
     pure public function swatch-label(hex: string, name: string) -> string { return @tr("{}, {}", hex, name); }
     pure public function use-hint-copy() -> string { return @tr("Click copies"); }
     // The rule for every swatch (recent, saved, scheme); the format rows state their own beside them.
+    pure public function no-hue-note() -> string { return @tr("No hue to rotate. Greys, white and black have none."); }
     pure public function previous-colour(name: string) -> string { return @tr("Previous colour {}. Click to go back.", name); }
     pure public function chip-hint() -> string { return @tr("Click makes a swatch current · Shift+click copies it"); }
     pure public function over-white() -> string { return @tr("over white"); }
@@ -129,6 +130,8 @@ export global ColourState {
     in property <[ColourSwatch]> recents;
     in property <[ColourSwatch]> saved;
     in property <[ColourSwatch]> scheme;
+    // True when the current colour has no hue and a hue scheme would only repeat it.
+    in property <bool> scheme-no-hue: false;
     // Format rows and contrast.
     in property <[ColourFormatRow]> formats;
     in property <[ColourContrastRow]> contrast;
@@ -160,6 +163,9 @@ export global ColourState {
     in property <[MenuEntry]> save-targets;
     // "Copy as…": one entry per format, in the order of `formats`.
     in property <[MenuEntry]> copy-as;
+    // The current colour in each of the extra formats (code, frameworks), in menu order.
+    in property <[MenuEntry]> extras;
+    callback extra-copied(int);
     // Open popup: 0 none, 1 a chip's menu, 2 a format row's menu, 3 Save to…, 4 Copy as…. The Panel closes it on Esc.
     in-out property <int> popup: 0;
     // Ctrl+Shift+S asks the tab to open Save to…; a printable key asks it to type `typed` into the input line.
@@ -1602,6 +1608,16 @@ export component ColoursView inherits Rectangle {
                     reveal(top, h) => { root.reveal(top, h); }
                 }
 
+                more-btn := Button {
+                    text: @tr("More formats…");
+                    size: ButtonSize.sm;
+                    variant: ButtonVariant.ghost;
+                    clicked => {
+                        root.popup-from = 4;
+                        root.open-popup(5, self.absolute-position.x, self.absolute-position.y + self.height);
+                    }
+                }
+
                 // ---- Contrast -------------------------------------------------------------------
                 SectionTitle { text: @tr("Contrast"); }
                 for c[i] in ColourState.contrast: ContrastLine {
@@ -1670,6 +1686,15 @@ export component ColoursView inherits Rectangle {
                         label: @tr("Scheme");
                         chosen(i) => { ColourState.scheme-picked(i); }
                     }
+                }
+                if ColourState.scheme-no-hue: Text {
+                    x: Space.s2;
+                    width: parent.width - 2 * Space.s2;
+                    text: ColourTexts.no-hue-note();
+                    wrap: word-wrap;
+                    color: Theme.text-secondary;
+                    font-size: Type.xs;
+                    font-family: Fonts.sans;
                 }
                 ChipGrid {
                     chips: ColourState.scheme;
@@ -1827,6 +1852,22 @@ export component ColoursView inherits Rectangle {
             } else {
                 ColourState.save(i);
             }
+        }
+    }
+    // More formats…: the current colour as text for code (hex variants, CSS Color 4, Swift, Kotlin, .NET).
+    if ColourState.popup == 5: Menu {
+        x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
+        y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2 - Space.menu-clear);
+        max-w: root.width - Space.s4;
+        menu-max-h: root.height - Space.s4 - Space.menu-clear;
+        label: @tr("More formats");
+        icons: false;
+        entries: ColourState.extras;
+        init => { self.focus-menu(); }
+        dismissed => { ColourState.popup = 0; }
+        activated(i) => {
+            ColourState.popup = 0;
+            ColourState.extra-copied(i);
         }
     }
     // Copy as…: the chip's colour in one of the formats.

@@ -94,17 +94,20 @@ msgstr "标题不能包含换行或控制字符。"
 msgid "A trigger is 1 to 32 characters with no spaces."
 msgstr "触发词为 1 到 32 个字符，不含空格。"
 
-msgid "AA"
-msgstr "AA"
+msgid "AA 4.5"
+msgstr "AA 4.5"
 
-msgid "AA large"
-msgstr "AA 大号文本"
+msgid "AA large 3"
+msgstr "AA 大字 3"
 
-msgid "AAA"
-msgstr "AAA"
+msgid "AAA 7"
+msgstr "AAA 7"
 
-msgid "AAA large"
-msgstr "AAA 大号文本"
+msgid "AAA large 4.5"
+msgstr "AAA 大字 4.5"
+
+msgid "APCA Lc {}"
+msgstr "APCA Lc {}"
 
 msgid "About"
 msgstr "关于"
@@ -188,6 +191,9 @@ msgstr "将删除全部 {} 条最近复制的内容。此操作无法撤销。"
 msgid "Alpha"
 msgstr "透明度"
 
+msgid "Already saved in {}"
+msgstr "已保存在 {} 中"
+
 msgid "Also forget the encryption key"
 msgstr "同时忘记加密密钥"
 
@@ -220,6 +226,9 @@ msgstr "邻近色"
 
 msgid "Animals & Nature"
 msgstr "动物与自然"
+
+msgid "Another app has {}: use the mouse for those."
+msgstr "其他应用占用了 {}：请改用鼠标操作。"
 
 msgid "Another program already uses {}."
 msgstr "其他程序已在使用 {}。"
@@ -271,6 +280,12 @@ msgstr "返回编辑 (Ctrl+P)"
 
 msgid "Back up now"
 msgstr "立即备份"
+
+msgid "Backdrop: black"
+msgstr "背景：黑色"
+
+msgid "Backdrop: white"
+msgstr "背景：白色"
 
 msgid "Backed up"
 msgstr "已备份"
@@ -458,6 +473,9 @@ msgstr "点击"
 msgid "Click copies"
 msgstr "点击为复制"
 
+msgid "Click makes a swatch current · Shift+click copies it"
+msgstr "单击设为当前色 · Shift+单击复制"
+
 msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
 msgstr "点击或按 Enter 粘贴。Shift+点击或 Shift+Enter 为复制。"
 
@@ -556,6 +574,9 @@ msgstr "Ctrl O"
 
 msgid "Copied"
 msgstr "已复制"
+
+msgid "Copied {}. HDR is on for this screen, so it is approximate."
+msgstr "已复制 {}。此屏幕启用了 HDR，因此数值为近似值。"
 
 msgid "Copied. Nothing in {} can take text right now."
 msgstr "已复制。{} 当前无法接收文本。"
@@ -986,6 +1007,9 @@ msgstr "编辑列表"
 msgid "Edit list…"
 msgstr "编辑列表…"
 
+msgid "Edit or rename…"
+msgstr "编辑或重命名…"
+
 msgid "Edit selected item"
 msgstr "编辑所选片段"
 
@@ -1078,6 +1102,9 @@ msgstr "导出为文本"
 
 msgid "Export library"
 msgstr "导出资料库"
+
+msgid "Eyedropper, {}"
+msgstr "取色器，{}"
 
 msgid "Fields"
 msgstr "字段"
@@ -1705,6 +1732,9 @@ msgstr "尚无备份"
 msgid "No colour"
 msgstr "无颜色"
 
+msgid "No colour in the clipboard"
+msgstr "剪贴板中没有颜色"
+
 msgid "No commands match “{}”"
 msgstr "没有与“{}”匹配的命令"
 
@@ -1848,9 +1878,6 @@ msgstr "在黑色上"
 
 msgid "On this colour"
 msgstr "在此颜色上"
-
-msgid "On this colour (on white)"
-msgstr "在此颜色上（在白色上）"
 
 msgid "On white"
 msgstr "在白色上"
@@ -2011,6 +2038,9 @@ msgstr "以纯文本粘贴"
 msgid "Paste as…"
 msgstr "粘贴为…"
 
+msgid "Paste into {}"
+msgstr "粘贴到 {}"
+
 msgid "Paste key for {}"
 msgstr "{} 的粘贴键"
 
@@ -2019,9 +2049,6 @@ msgstr "粘贴下一个项目"
 
 msgid "Paste next pastes the next item each time you press it."
 msgstr "“粘贴下一个”每按一次就粘贴下一项。"
-
-msgid "Paste or copy"
-msgstr "粘贴或复制"
 
 msgid "Paste several in order"
 msgstr "按顺序粘贴多项"
@@ -2122,6 +2149,9 @@ msgstr "人物与身体"
 msgid "PhraseExpress export (CSV)"
 msgstr "PhraseExpress 导出文件（CSV）"
 
+msgid "Pick"
+msgstr "选取"
+
 msgid "Pick a colour from the screen"
 msgstr "从屏幕上取色"
 
@@ -2133,6 +2163,9 @@ msgstr "选择面板的位置。你可以随时在设置中更改，还可设置
 
 msgid "Pick one and it pastes where you were typing."
 msgstr "选择一项，它就会粘贴到你正在输入的位置。"
+
+msgid "Pick the other colour from the screen"
+msgstr "从屏幕选取另一种颜色"
 
 msgid "Picker"
 msgstr "选择器"
@@ -2199,6 +2232,9 @@ msgstr "预览"
 
 msgid "Preview how this item will look (Ctrl+P)"
 msgstr "预览此项目的外观 (Ctrl+P)"
+
+msgid "Previous colour {}. Click to go back."
+msgstr "上一个颜色 {}。单击可返回。"
 
 msgid "Previous list"
 msgstr "上一个列表"
@@ -2985,6 +3021,9 @@ msgstr "回收站为空"
 msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
 msgstr "剪贴板历史记录中还没有文本。请先复制一些文本，然后重试。"
 
+msgid "The colour pick timed out."
+msgstr "取色已超时。"
+
 msgid "The file dialog couldn't open. Type the path instead."
 msgstr "无法打开文件对话框。请改为输入路径。"
 
@@ -3023,6 +3062,9 @@ msgstr "选择器"
 
 msgid "The report holds versions and settings switches, never your items."
 msgstr "报告只包含版本和设置开关,绝不包含你的条目。"
+
+msgid "The screen changed, so the colour pick ended."
+msgstr "屏幕已变化，取色已结束。"
 
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "所选片段将被永久删除，此操作无法撤销。"
@@ -3101,6 +3143,9 @@ msgstr "此列表为空"
 
 msgid "This looks like a password or key, so it was not saved. Check it, then save."
 msgstr "这看起来像密码或密钥，所以没有保存。请检查后再保存。"
+
+msgid "This screen could not be captured"
+msgstr "无法捕获此屏幕"
 
 msgid "This template can't be read. Open it to fix it."
 msgstr "无法读取此模板。请打开它进行修复。"
@@ -3210,8 +3255,8 @@ msgstr "输入"
 msgid "Typing triggers work on Windows only."
 msgstr "键入触发仅适用于 Windows。"
 
-msgid "UI"
-msgstr "UI"
+msgid "UI 3"
+msgstr "UI 3"
 
 msgid "UPPERCASE"
 msgstr "大写"
@@ -3294,6 +3339,9 @@ msgstr "未保存：保存后项目将如此显示。"
 msgid "Use"
 msgstr "使用"
 
+msgid "Use as other colour"
+msgstr "用作另一种颜色"
+
 msgid "Use at least {} characters."
 msgstr "至少使用 {} 个字符。"
 
@@ -3318,8 +3366,14 @@ msgstr "使用面部、指纹或 PIN 代替输入主密码。重启后以及每�
 msgid "Use {}"
 msgstr "使用 {}"
 
+msgid "Use {} ({})"
+msgstr "使用 {}（{}）"
+
 msgid "Use {} for {}"
 msgstr "将 {} 用于 {}"
+
+msgid "Use {} to pass AA"
+msgstr "使用 {} 以达到 AA"
 
 msgid "User guide"
 msgstr "用户指南"
@@ -3356,6 +3410,9 @@ msgstr "Snipdeck 的功能介绍，每条都有图片和试用按钮。你可以
 
 msgid "What a click on the Snipdeck icon in the tray opens. The tray menu still has both."
 msgstr "点击托盘中的 Snipdeck 图标时打开的内容。托盘菜单中仍有这两项。"
+
+msgid "What a translucent colour is judged over"
+msgstr "半透明颜色的判断底色"
 
 msgid "What is on the clipboard"
 msgstr "剪贴板中的内容"
@@ -3443,6 +3500,9 @@ msgstr "Windows 跟随你的 Windows 文字大小（设置 > 辅助功能 > 文�
 
 msgid "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
 msgstr "Windows 已在“设置”>“应用”>“启动”中关闭了 Snipdeck。请在那里重新打开。"
+
+msgid "Windows won't let Snipdeck read this screen."
+msgstr "Windows 不允许 Snipdeck 读取此屏幕。"
 
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "开启剪贴板历史后，“最近”会保存你在其他程序中复制的内容。"
@@ -3718,6 +3778,12 @@ msgstr "可选区段不能嵌套"
 
 msgid "or"
 msgstr "或"
+
+msgid "over black"
+msgstr "在黑色上"
+
+msgid "over white"
+msgstr "在白色上"
 
 msgid "pass"
 msgstr "通过"
