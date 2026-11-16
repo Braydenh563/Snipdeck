@@ -289,11 +289,12 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         controller.set_recent_gate(recent_gate);
         controller.set_typing(typing);
         controller.prune_recent();
+        // The notices from opening the library, one after the other.
         for toast in settings_toast {
-            controller.show_toast(toast);
+            controller.queue_toast(toast);
         }
         if clipboard_watch_failed {
-            controller.show_toast(Toast {
+            controller.queue_toast(Toast {
                 kind: snipdeck_app::toast::ToastKind::Danger,
                 message: snipdeck_app::toast::ToastMessage::ClipboardWatchFailed,
             });
@@ -947,12 +948,6 @@ fn open_library(args: &Args) -> Result<Library, String> {
     let (mut store, set_aside_toast) =
         snipdeck_app::paths::open_library_folder(&folder, Timestamp::now())
             .map_err(|e| format!("{}: {e}", folder.display()))?;
-    if set_aside_toast.is_some() && loaded_outcome.toast().is_some() {
-        // One toast shows at a time and the library notice (shown last) stays.
-        eprintln!(
-            "snipdeck: the settings file was also damaged or unreadable; see settings.json.bad"
-        );
-    }
     // A new library has no board, and the Panel cannot make one: without this every control of a
     // first run has nothing to act on (an empty board menu, no tabs, no rows).
     match snipdeck_app::starter::ensure_first_run(&mut store, now) {
@@ -964,7 +959,7 @@ fn open_library(args: &Args) -> Result<Library, String> {
         settings,
         Some(folder),
         saver_baseline,
-        // The settings notice first: the toast shown last stays, and the library one matters more.
+        // The settings notice first, then the library one.
         loaded_outcome
             .toast()
             .into_iter()
