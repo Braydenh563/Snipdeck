@@ -672,10 +672,6 @@ where
         wire!(on_board_menu_activated, |ctl, i| ctl
             .main_board_menu_activate(index(i)));
         wire!(on_board_menu_dismissed, |ctl| ctl.main_board_menu_close());
-        wire!(on_board_delete_confirmed, |ctl| ctl
-            .main_board_delete_confirm());
-        wire!(on_board_delete_dismissed, |ctl| ctl
-            .main_board_delete_cancel());
         wire!(on_toast_undo, |ctl| ctl.toast_action());
         wire!(on_toast_dismissed, |ctl| ctl.toast_dismiss());
         wire!(on_toast_edit, |ctl| {
@@ -1195,14 +1191,6 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
         window.set_board_menu_entries(model(entries));
         window.set_board_menu_open(screen.board_menu.is_some());
     }
-    if differs(&|p| p.board_delete == screen.board_delete)
-        || window.get_board_delete_open() != screen.board_delete.is_some()
-    {
-        if let Some(count) = screen.board_delete {
-            window.set_board_delete_count(i32::try_from(count).unwrap_or(i32::MAX));
-        }
-        window.set_board_delete_open(screen.board_delete.is_some());
-    }
     if differs(&|p| p.lists == screen.lists && p.dark == screen.dark) {
         set_side_lists(window, screen);
     }
@@ -1531,11 +1519,9 @@ fn fill_list_editor(window: &ui::ListEditor, view: &EditorView) {
     window.set_sort_index(sort_index(view.sort));
     window.set_show_colour(true);
     window.set_show_sort(true);
-    window.set_item_count(to_i32(view.item_count));
     window.set_can_delete(view.can_delete);
     window.set_delete_hint(hint_text(window, view));
     window.set_discard_open(false);
-    window.set_delete_open(false);
     window.invoke_mark_clean();
 }
 
@@ -1544,11 +1530,9 @@ fn fill_board_editor(window: &ui::BoardEditor, view: &EditorView) {
     window.set_name(view.name.as_str().into());
     window.set_show_colour(false);
     window.set_show_sort(false);
-    window.set_item_count(to_i32(view.item_count));
     window.set_can_delete(view.can_delete);
     window.set_delete_hint(hint_text(window, view));
     window.set_discard_open(false);
-    window.set_delete_open(false);
     window.invoke_mark_clean();
 }
 

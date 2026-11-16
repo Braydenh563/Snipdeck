@@ -96,7 +96,7 @@ pub enum BoardMenuEntry {
         /// There is a board below.
         enabled: bool,
     },
-    /// "Delete board…": the Main window's confirmation, and nothing else. Off for the last
+    /// "Delete board": moves the board to the Trash at once, with an Undo toast. Off for the last
     /// board, which cannot be deleted.
     Delete {
         /// More than one board exists.
@@ -138,9 +138,6 @@ pub struct MainScreen {
     pub board_name: String,
     /// The board menu while it is open.
     pub board_menu: Option<Vec<BoardMenuEntry>>,
-    /// The board menu's "Delete board…" confirmation while it asks: how many items move to the
-    /// Trash with the open board.
-    pub board_delete: Option<usize>,
     /// The open board's lists.
     pub lists: Vec<SideList>,
     /// The tags.
@@ -276,7 +273,6 @@ where
                 .main
                 .board_menu_open()
                 .then(|| self.board_menu_entries()),
-            board_delete: self.board_delete_count(),
             lists: self.main.side_lists(),
             tags: self.main.side_tags(),
             tag_choices: self.tag_choices(),
