@@ -138,6 +138,20 @@ fn rig_settings(
 }
 
 impl Rig {
+    /// Lets a paste's tail finish through the window's own timer chain: the fake clock moves by
+    /// hand (it only moves when something sleeps), the timers by mock time.
+    fn finish_paste(&self) {
+        for _ in 0..20 {
+            if !self.ctl.borrow().paste_pending() {
+                break;
+            }
+            self.ctl.borrow_mut().services_mut().timing.now += Duration::from_millis(50);
+            i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(10));
+            slint::platform::update_timers_and_animations();
+        }
+        assert!(!self.ctl.borrow().paste_pending(), "the paste ended");
+    }
+
     fn window(&self) -> &slint::Window {
         self.ui.window()
     }
@@ -651,6 +665,7 @@ fn alt_3_pastes_the_third_item_and_counts_the_use() {
         let r = rig();
         assert_eq!(r.uses(2), 0);
         chord(r.window(), &[Key::Alt], "3");
+        r.finish_paste();
         {
             let ctl = r.ctl.borrow();
             let services = ctl.services();
@@ -907,6 +922,7 @@ fn the_toast_walks_through_its_phases_on_mock_time_and_then_goes() {
     on_ui_thread(|| {
         let r = rig();
         chord(r.window(), &[Key::Alt], "1");
+        r.finish_paste();
         assert_eq!(r.ui.get_toast_text(), "Pasted into Mail");
         assert_eq!(r.ui.get_toast_phase(), snipdeck_ui::ToastPhase::Enter);
         i_slint_backend_testing::mock_elapsed_time(TOAST_ENTER);
@@ -1913,6 +1929,7 @@ fn a_paste_from_a_docked_panel_collapses_it() {
         let r = docked_rig(DockTrigger::Both);
         r.effects.borrow_mut().clear();
         chord(r.window(), &[Key::Alt], "3");
+        r.finish_paste();
         assert_eq!(r.uses(2), 1, "the third item was pasted");
         assert_eq!(*r.effects.borrow(), [Effect::PlaceWindow(STRIP)]);
         assert!(r.ui.get_dock_collapsed());
