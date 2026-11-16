@@ -100,6 +100,11 @@ fn a_preview_reports_exactly_what_the_apply_then_adds() {
     let previewed = decoded.preview(&s, None).unwrap();
     assert_eq!(snapshot(&s), before, "a preview writes nothing");
     let applied = decoded.apply(&mut s, None).unwrap();
+    // Only a preview lists the triggers (to ask before installing them); the rest agrees.
+    assert_eq!(previewed.triggers, [";hix", ";ok"]);
+    let mut previewed = previewed;
+    previewed.triggers.clear();
+    previewed.triggers_total = 0;
     assert_eq!(previewed, without_ids(applied));
     assert!(
         previewed.has_warnings(),
