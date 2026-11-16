@@ -16,11 +16,132 @@ use crate::{Error, ItemId};
 /// The most characters the matcher remembers, and the longest [`Trigger`].
 pub const BUFFER_CHARS: usize = 32;
 
+/// When a trigger fires (TextExpander's "expand immediately or at a delimiter").
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub enum TriggerEnd {
+    /// On the typing of its last character, once a boundary stands before it (the default).
+    #[default]
+    Immediate,
+    /// When a delimiter (a space, Enter, Tab or any punctuation) is typed right after it; the
+    /// delimiter is kept after the expansion. Safe for short, all-letter codes such as `sig`.
+    Delimiter,
+}
+
+impl TriggerEnd {
+    /// Both, in the order the editor lists them.
+    pub const ALL: [Self; 2] = [Self::Immediate, Self::Delimiter];
+
+    /// The stable key stored in the library and the archive.
+    #[must_use]
+    pub const fn key(self) -> &'static str {
+        match self {
+            Self::Immediate => "immediate",
+            Self::Delimiter => "delimiter",
+        }
+    }
+
+    /// The end for a stored key.
+    #[must_use]
+    pub fn from_key(key: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|e| e.key() == key)
+    }
+}
+
+/// How a trigger treats the case of what is typed (TextExpander and Alfred: "ignore case" and
+/// "adapt to typed case").
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub enum CaseMode {
+    /// `;Sig` and `;sig` are two codes (the default).
+    #[default]
+    Exact,
+    /// Any case of the letters fires it; the text is inserted as it is.
+    Ignore,
+    /// Any case fires it, and the text follows what was typed: ALL CAPS gives upper case and a
+    /// capital first letter gives a capital first letter.
+    Adapt,
+}
+
+impl CaseMode {
+    /// All three, in the order the editor lists them.
+    pub const ALL: [Self; 3] = [Self::Exact, Self::Ignore, Self::Adapt];
+
+    /// The stable key stored in the library and the archive.
+    #[must_use]
+    pub const fn key(self) -> &'static str {
+        match self {
+            Self::Exact => "exact",
+            Self::Ignore => "ignore",
+            Self::Adapt => "adapt",
+        }
+    }
+
+    /// The mode for a stored key.
+    #[must_use]
+    pub fn from_key(key: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|m| m.key() == key)
+    }
+
+    /// Whether `a` and `b` are the same typed character under this mode.
+    fn same(self, a: char, b: char) -> bool {
+        a == b || (self != Self::Exact && a.to_lowercase().eq(b.to_lowercase()))
+    }
+}
+
+/// How the text a fired trigger stands for follows the case that was typed
+/// ([`CaseMode::Adapt`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum CaseShape {
+    /// Inserted as it is.
+    #[default]
+    AsIs,
+    /// Typed in capitals (two or more letters, none lower case): all upper case.
+    Upper,
+    /// Typed with a capital first letter and the rest lower case: a capital first letter.
+    Capital,
+}
+
+impl CaseShape {
+    /// The shape of `typed` against the stored `code`. A code with no letters, or typed exactly
+    /// as stored, is [`CaseShape::AsIs`].
+    #[must_use]
+    pub fn of(typed: &[char], code: &[char]) -> Self {
+        if typed == code {
+            return Self::AsIs;
+        }
+        let letters: Vec<char> = typed.iter().copied().filter(|c| c.is_alphabetic()).collect();
+        let upper = |c: &char| c.is_uppercase();
+        let lower = |c: &char| c.is_lowercase();
+        match letters.as_slice() {
+            [] => Self::AsIs,
+            [only] if upper(only) => Self::Capital,
+            all if all.iter().all(upper) => Self::Upper,
+            [first, rest @ ..] if upper(first) && rest.iter().all(lower) => Self::Capital,
+            _ => Self::AsIs,
+        }
+    }
+}
+
+/// What a trigger does besides standing for an item: when it fires and how it reads case.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct TriggerOptions {
+    /// When it fires.
+    pub end: TriggerEnd,
+    /// How it reads case.
+    pub case: CaseMode,
+}
+
 /// A trigger: 1 to [`BUFFER_CHARS`] characters, none of them whitespace or a control
-/// character, kept in Unicode normalisation form C. Case counts: `;Sig` and `;sig` are two
-/// triggers.
+/// character, kept in Unicode normalisation form C, with its [`TriggerOptions`]. By default case
+/// counts: `;Sig` and `;sig` are two triggers (see [`CaseMode`]).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Trigger(String);
+pub struct Trigger {
+    text: String,
+    options: TriggerOptions,
+}
+
+/// The fewest characters of a trigger made only of letters and digits that is accepted when it
+/// fires without a delimiter: a shorter one fires inside ordinary words.
+pub const MIN_PLAIN_CHARS: usize = 3;
 
 impl Trigger {
     /// Checks the invariants. The text is normalised to NFC but not trimmed.
@@ -40,24 +161,90 @@ impl Trigger {
         if text.chars().any(|c| c.is_whitespace() || c.is_control()) {
             return Err(Error::TriggerHasSpace);
         }
-        Ok(Self(text.to_owned()))
+        Ok(Self {
+            text: text.to_owned(),
+            options: TriggerOptions::default(),
+        })
+    }
+
+    /// This trigger with `options`.
+    #[must_use]
+    pub fn with_options(mut self, options: TriggerOptions) -> Self {
+        self.options = options;
+        self
     }
 
     /// The trigger as a string slice.
     pub fn as_str(&self) -> &str {
-        &self.0
+        &self.text
+    }
+
+    /// When it fires and how it reads case.
+    #[must_use]
+    pub fn options(&self) -> TriggerOptions {
+        self.options
+    }
+
+    /// Whether this code would fire inside ordinary words: it fires without a delimiter and is
+    /// made of fewer than [`MIN_PLAIN_CHARS`] characters, all of them letters or digits (`a`,
+    /// `1`, `sg`). A code with a symbol in it (`;s`, `,,`) needs that symbol typed first and is
+    /// not "plain".
+    #[must_use]
+    pub fn fires_in_words(&self) -> bool {
+        self.options.end == TriggerEnd::Immediate
+            && self.text.chars().count() < MIN_PLAIN_CHARS
+            && self.text.chars().all(char::is_alphanumeric)
+    }
+
+    /// Whether typing `other` (or the start of it) could make this one fire first, so that
+    /// `other` never fires: this code, read with `other`'s case rules, is a proper start of `other`,
+    /// or the same code, and fires without a delimiter.
+    #[must_use]
+    pub fn shadows(&self, other: &Self) -> bool {
+        if self.options.end != TriggerEnd::Immediate {
+            return false;
+        }
+        let mode = if self.options.case == CaseMode::Exact && other.options.case == CaseMode::Exact
+        {
+            CaseMode::Exact
+        } else {
+            CaseMode::Ignore
+        };
+        let (mine, theirs): (Vec<char>, Vec<char>) =
+            (self.text.chars().collect(), other.text.chars().collect());
+        mine.len() <= theirs.len() && mine.iter().zip(&theirs).all(|(a, b)| mode.same(*a, *b))
+    }
+
+    /// Whether the two are the same code under their case modes (`;Sig` and `;sig` when one of
+    /// them ignores case): they may not both be kept.
+    #[must_use]
+    pub fn same_code(&self, other: &Self) -> bool {
+        let mode = if self.options.case == CaseMode::Exact && other.options.case == CaseMode::Exact
+        {
+            CaseMode::Exact
+        } else {
+            CaseMode::Ignore
+        };
+        let (mut a, mut b) = (self.text.chars(), other.text.chars());
+        loop {
+            match (a.next(), b.next()) {
+                (None, None) => return true,
+                (Some(x), Some(y)) if mode.same(x, y) => {}
+                _ => return false,
+            }
+        }
     }
 }
 
 impl AsRef<str> for Trigger {
     fn as_ref(&self) -> &str {
-        &self.0
+        &self.text
     }
 }
 
 impl core::fmt::Display for Trigger {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_str(&self.0)
+        f.write_str(&self.text)
     }
 }
 
@@ -68,9 +255,13 @@ pub struct Fired {
     pub item: ItemId,
     /// The trigger that was typed (so a trigger changed since can be told from this one).
     pub trigger: Trigger,
-    /// How many user-perceived characters (grapheme clusters) were typed for it: the
-    /// Backspaces the caller must send.
+    /// How many user-perceived characters (grapheme clusters) were typed for it, the delimiter
+    /// included: the Backspaces the caller must send.
     pub chars: usize,
+    /// The delimiter that ended it ([`TriggerEnd::Delimiter`]), to type again after the text.
+    pub delimiter: Option<char>,
+    /// How the text follows the case typed ([`CaseMode::Adapt`]).
+    pub shape: CaseShape,
 }
 
 /// The fewest typed characters that make a suggestion.
@@ -149,10 +340,20 @@ pub fn prefix_of(typed: &str, at_start: bool, candidates: &[Candidate]) -> Optio
 #[derive(Clone)]
 pub struct Matcher {
     /// Longest first.
-    triggers: Vec<(Vec<char>, ItemId, usize)>,
+    triggers: Vec<Entry>,
     buf: VecDeque<char>,
     /// Whether the position just before `buf` is a boundary (the start, or a dropped boundary).
     lead: bool,
+}
+
+/// One trigger as the matcher holds it.
+#[derive(Clone)]
+struct Entry {
+    code: Vec<char>,
+    trigger: Trigger,
+    item: ItemId,
+    /// Grapheme clusters in the code.
+    graphemes: usize,
 }
 
 // What was typed is private (a password may pass through): never print the buffer.
@@ -170,18 +371,29 @@ fn is_boundary(c: char) -> bool {
     !c.is_alphanumeric()
 }
 
+/// Whether typing `c` right after a [`TriggerEnd::Delimiter`] trigger completes it: a space,
+/// Enter, Tab or any punctuation, that is any character that is not a letter or digit and does
+/// not combine with the one before.
+fn is_delimiter(c: char) -> bool {
+    !c.is_alphanumeric() && canonical_combining_class(c) == 0
+}
+
 impl Matcher {
     /// A matcher for these triggers, with an empty buffer. A trigger given twice keeps the
     /// first.
     pub fn new(triggers: impl IntoIterator<Item = (Trigger, ItemId)>) -> Self {
-        let mut list: Vec<(Vec<char>, ItemId, usize)> = Vec::new();
-        for (t, item) in triggers {
-            let chars: Vec<char> = t.as_str().chars().collect();
-            if !list.iter().any(|(c, ..)| *c == chars) {
-                list.push((chars, item, t.as_str().graphemes(true).count()));
+        let mut list: Vec<Entry> = Vec::new();
+        for (trigger, item) in triggers {
+            if !list.iter().any(|e| e.trigger.same_code(&trigger)) {
+                list.push(Entry {
+                    code: trigger.as_str().chars().collect(),
+                    graphemes: trigger.as_str().graphemes(true).count(),
+                    trigger,
+                    item,
+                });
             }
         }
-        list.sort_by_key(|(c, ..)| core::cmp::Reverse(c.len()));
+        list.sort_by_key(|e| core::cmp::Reverse(e.code.len()));
         Self {
             triggers: list,
             buf: VecDeque::new(),
@@ -191,19 +403,52 @@ impl Matcher {
 
     /// Takes one typed character; returns the trigger it completed, if any.
     pub fn feed(&mut self, c: char) -> Option<Fired> {
+        let mut pushed = true;
         if canonical_combining_class(c) != 0
             && let Some(last) = self.buf.back_mut()
             && let Some(composed) = compose(*last, c)
         {
             *last = composed;
+            pushed = false;
         } else {
             self.push(c);
         }
-        let hit = self.triggers.iter().find(|(t, ..)| self.ends_with(t))?;
+        let hit = self
+            .triggers
+            .iter()
+            .find(|e| e.trigger.options().end == TriggerEnd::Immediate && self.ends_with(e, 0))
+            .map(|e| (e, None))
+            .or_else(|| {
+                if !(pushed && is_delimiter(c)) {
+                    return None;
+                }
+                self.triggers
+                    .iter()
+                    .find(|e| {
+                        e.trigger.options().end == TriggerEnd::Delimiter && self.ends_with(e, 1)
+                    })
+                    .map(|e| (e, Some(c)))
+            })?;
+        let (entry, delimiter) = hit;
+        let skip = usize::from(delimiter.is_some());
+        let typed: Vec<char> = self
+            .buf
+            .iter()
+            .skip(self.buf.len() - skip - entry.code.len())
+            .take(entry.code.len())
+            .copied()
+            .collect();
+        let shape = if entry.trigger.options().case == CaseMode::Adapt {
+            CaseShape::of(&typed, &entry.code)
+        } else {
+            CaseShape::AsIs
+        };
         let fired = Fired {
-            item: hit.1,
-            trigger: Trigger(hit.0.iter().collect()),
-            chars: hit.2,
+            item: entry.item,
+            trigger: entry.trigger.clone(),
+            chars: entry.graphemes + skip,
+            delimiter,
+            shape,
         };
         self.reset();
         Some(fired)
@@ -259,9 +504,22 @@ impl Matcher {
         self.buf.len()
     }
 
-    fn ends_with(&self, t: &[char]) -> bool {
-        let (n, m) = (self.buf.len(), t.len());
-        if m > n || !self.buf.iter().skip(n - m).eq(t.iter()) {
+    /// Whether the buffer, without its last `tail` characters, ends with the entry's code under
+    /// its case mode and a boundary stands before it.
+    fn ends_with(&self, e: &Entry, tail: usize) -> bool {
+        let mode = e.trigger.options().case;
+        let (m, n) = (e.code.len(), self.buf.len().saturating_sub(tail));
+        if m > n || self.buf.len() < tail {
+            return false;
+        }
+        if !self
+            .buf
+            .iter()
+            .skip(n - m)
+            .take(m)
+            .zip(&e.code)
+            .all(|(a, b)| mode.same(*a, *b))
+        {
             return false;
         }
         match n - m {
@@ -587,6 +845,119 @@ mod tests {
         m.after_expansion(None);
         assert_eq!(run(&mut m, "brb").len(), 1, "nothing known: a fresh start");
         assert_eq!(m.buffered(), 0);
+    }
+
+    fn opt(text: &str, end: TriggerEnd, case: CaseMode) -> Trigger {
+        Trigger::new(text)
+            .unwrap()
+            .with_options(TriggerOptions { end, case })
+    }
+
+    fn matcher_of(list: Vec<(Trigger, u8)>) -> Matcher {
+        Matcher::new(list.into_iter().map(|(t, n)| (t, id(n))))
+    }
+
+    fn feed_all(m: &mut Matcher, text: &str) -> Vec<Fired> {
+        text.chars().filter_map(|c| m.feed(c)).collect()
+    }
+
+    #[test]
+    fn a_delimiter_trigger_fires_on_the_character_after_it_and_names_it() {
+        let mut m = matcher_of(vec![(opt("sig", TriggerEnd::Delimiter, CaseMode::Exact), 1)]);
+        assert!(feed_all(&mut m, "sig").is_empty(), "not yet: it waits");
+        let fired = feed_all(&mut m, " ");
+        assert_eq!(fired.len(), 1);
+        assert_eq!(fired[0].item, id(1));
+        assert_eq!(fired[0].delimiter, Some(' '));
+        assert_eq!(fired[0].chars, 4, "the code and the delimiter are erased");
+        for d in ['.', ',', '\n', '\t', '!'] {
+            let mut m =
+                matcher_of(vec![(opt("sig", TriggerEnd::Delimiter, CaseMode::Exact), 1)]);
+            feed_all(&mut m, "sig");
+            assert_eq!(m.feed(d).and_then(|f| f.delimiter), Some(d), "{d:?}");
+        }
+    }
+
+    #[test]
+    fn a_delimiter_trigger_does_not_fire_inside_a_word_or_on_a_letter() {
+        let mut m = matcher_of(vec![(opt("sig", TriggerEnd::Delimiter, CaseMode::Exact), 1)]);
+        assert!(feed_all(&mut m, "design ").is_empty(), "needs a boundary before");
+        assert!(feed_all(&mut m, "sigh ").is_empty(), "a letter is not a delimiter");
+        assert_eq!(feed_all(&mut m, "sig.").len(), 1);
+    }
+
+    #[test]
+    fn an_immediate_trigger_still_fires_without_a_delimiter() {
+        let mut m = matcher_of(vec![(opt(";sig", TriggerEnd::Immediate, CaseMode::Exact), 1)]);
+        let fired = feed_all(&mut m, ";sig");
+        assert_eq!((fired.len(), fired[0].delimiter, fired[0].chars), (1, None, 4));
+    }
+
+    #[test]
+    fn ignore_case_matches_any_case_and_exact_does_not() {
+        let mut m = matcher_of(vec![(opt(";sig", TriggerEnd::Immediate, CaseMode::Ignore), 1)]);
+        assert_eq!(feed_all(&mut m, ";SiG").len(), 1);
+        let mut m = matcher_of(vec![(opt(";sig", TriggerEnd::Immediate, CaseMode::Exact), 1)]);
+        assert!(feed_all(&mut m, ";SIG").is_empty());
+    }
+
+    #[test]
+    fn adapt_reports_the_shape_that_was_typed() {
+        let shapes = |typed: &str| {
+            let mut m =
+                matcher_of(vec![(opt("brb", TriggerEnd::Delimiter, CaseMode::Adapt), 1)]);
+            feed_all(&mut m, &format!("{typed} "))[0].shape
+        };
+        assert_eq!(shapes("brb"), CaseShape::AsIs);
+        assert_eq!(shapes("BRB"), CaseShape::Upper);
+        assert_eq!(shapes("Brb"), CaseShape::Capital);
+        assert_eq!(shapes("bRb"), CaseShape::AsIs);
+        let mut m = matcher_of(vec![(opt("b", TriggerEnd::Delimiter, CaseMode::Adapt), 1)]);
+        assert_eq!(feed_all(&mut m, "B ")[0].shape, CaseShape::Capital, "one capital letter");
+    }
+
+    #[test]
+    fn a_trigger_with_no_letters_never_adapts() {
+        let code: Vec<char> = ";1".chars().collect();
+        assert_eq!(CaseShape::of(&code, &code), CaseShape::AsIs);
+        assert_eq!(CaseShape::of(&[';', '2'], &code), CaseShape::AsIs);
+    }
+
+    #[test]
+    fn two_codes_that_differ_only_by_case_are_one_when_a_mode_ignores_case() {
+        let exact = |t| opt(t, TriggerEnd::Immediate, CaseMode::Exact);
+        let ignore = |t| opt(t, TriggerEnd::Immediate, CaseMode::Ignore);
+        assert!(!exact(";Sig").same_code(&exact(";sig")));
+        assert!(exact(";Sig").same_code(&ignore(";sig")));
+        assert!(ignore(";sig").same_code(&exact(";SIG")));
+        assert!(!ignore(";sig").same_code(&ignore(";sign")));
+    }
+
+    #[test]
+    fn a_short_code_made_of_letters_fires_in_words_only_without_a_delimiter() {
+        let t = |s, e| opt(s, e, CaseMode::Exact);
+        assert!(t("ab", TriggerEnd::Immediate).fires_in_words());
+        assert!(t("a", TriggerEnd::Immediate).fires_in_words());
+        assert!(!t("abc", TriggerEnd::Immediate).fires_in_words());
+        assert!(!t("ab", TriggerEnd::Delimiter).fires_in_words());
+        assert!(!t(";a", TriggerEnd::Immediate).fires_in_words(), "a symbol starts it");
+        assert!(!t(",,", TriggerEnd::Immediate).fires_in_words());
+    }
+
+    #[test]
+    fn an_immediate_code_shadows_the_longer_ones_it_starts() {
+        let t = |s, e| opt(s, e, CaseMode::Exact);
+        let imm = |s| t(s, TriggerEnd::Immediate);
+        assert!(imm(";s").shadows(&imm(";sig")));
+        assert!(imm(";sig").shadows(&imm(";sig")));
+        assert!(!imm(";sig").shadows(&imm(";s")));
+        assert!(!t(";s", TriggerEnd::Delimiter).shadows(&imm(";sig")));
+        assert!(!imm(";x").shadows(&imm(";sig")));
+        assert!(!imm(";S").shadows(&imm(";sig")), "exact case: different");
+        assert!(
+            opt(";S", TriggerEnd::Immediate, CaseMode::Ignore).shadows(&imm(";sig")),
+            "ignoring case: the same start"
+        );
     }
 
     proptest! {
