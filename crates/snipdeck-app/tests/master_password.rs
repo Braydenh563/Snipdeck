@@ -1017,6 +1017,48 @@ fn locking_closes_a_sensitive_editor_so_no_plain_text_stays_on_screen() {
 }
 
 #[test]
+fn locking_keeps_the_unsaved_text_sealed_and_gives_it_back_after_the_unlock() {
+    let mut r = with_password();
+    r.ctl.open_item_editor(r.id);
+    let mut typed = r.ctl.item_editor_view().expect("editor").fields;
+    typed.content = "half-typed new secret".into();
+    typed.title = "Vault code 2".into();
+    r.ctl.item_editor_autosave(&typed);
+    r.advance(IDLE_LOCK);
+    assert!(r.ctl.lock_if_idle());
+    assert!(!r.ctl.item_editor_open(), "nothing on screen while locked");
+    assert!(r.ctl.item_editor_view().is_none());
+    assert_eq!(
+        r.toast(),
+        Some(ToastMessage::LockedEditorKept),
+        "the user is told the text is kept"
+    );
+    let job = r
+        .ctl
+        .begin_unlock_with_password(password())
+        .expect("checked")
+        .expect("locked");
+    assert_eq!(r.ctl.finish_master(run_elsewhere(job)), Ok(()));
+    let back = r.ctl.item_editor_view().expect("the editor comes back");
+    assert_eq!(back.fields.content, "half-typed new secret");
+    assert_eq!(back.fields.title, "Vault code 2");
+    assert!(back.restored, "marked as not yet saved");
+    assert_eq!(r.secret().as_deref(), Some(SECRET), "nothing was saved");
+}
+
+#[test]
+fn a_parked_editor_is_dropped_when_the_library_is_erased_or_the_item_is_gone() {
+    let mut r = with_password();
+    r.ctl.open_item_editor(r.id);
+    r.advance(IDLE_LOCK);
+    assert!(r.ctl.lock_if_idle());
+    assert!(r.ctl.erase_library(r.data.path(), true));
+    assert!(!r.ctl.item_editor_open(), "no editor of an erased library");
+    assert!(r.ctl.item_editor_view().is_none());
+    assert!(r.ctl.unlock_prompt_open() || !r.ctl.library_locked());
+}
+
+#[test]
 fn typing_in_a_sensitive_editor_counts_as_use() {
     let mut r = with_password();
     r.ctl.open_item_editor(r.id);

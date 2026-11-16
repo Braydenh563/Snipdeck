@@ -11,7 +11,7 @@
 //! * With a password set, the library starts locked and stays locked until the user types it. The
 //!   prompt opens the first time a locked sensitive item is needed ([`Effect::OpenUnlock`]), not
 //!   at start-up, so a tray app that starts with Windows does not greet the user with a dialog.
-//! * The library locks again after [`IDLE_LOCK`] without use, by the controller's clock.
+//! * The library locks again after the idle time in the settings ([`master_password::IDLE_LOCK`] by default) without use, by the controller's clock.
 
 use std::{sync::Arc, time::Duration};
 
@@ -26,7 +26,7 @@ use super::{Controller, Effect, Library, Toast, ToastKind, ToastMessage};
 use crate::{
     host::ClipboardText,
     master_job::{MasterDone, MasterJob, MasterOp},
-    master_password::{self, IDLE_LOCK, NewProblem},
+    master_password::{self, NewProblem},
 };
 
 /// Whether a master password can be used on this machine, and whether one is set.
@@ -534,9 +534,17 @@ where
     fn complete_unlock(&mut self) {
         self.lock.prompt = false;
         self.note_activity();
+        // Entries that aged out while locked go now, not at the next maintenance round.
+        self.prune_recent();
+        let had_parked_editor = self.parked_editor.is_some();
+        let editor_back = self.restore_parked_editor();
         self.sync_recent_gate();
         // Unlocking answers the "locked" error on screen, so it replaces it.
-        self.show_toast(neutral(ToastMessage::Unlocked));
+        if had_parked_editor && !editor_back {
+            self.show_toast(neutral(ToastMessage::LockedEditorClosed));
+        } else {
+            self.show_toast(neutral(ToastMessage::Unlocked));
+        }
         self.refresh_or_notice("unlocking");
     }
 
@@ -595,6 +603,12 @@ where
 
     // ---- The idle lock -------------------------------------------------------------------------
 
+    /// The idle time before a master password locks the library again (the setting).
+    #[must_use]
+    pub fn idle_lock(&self) -> Duration {
+        Duration::from_mins(u64::from(self.settings.idle_lock_minutes))
+    }
+
     /// How long until the idle lock is due, while a password is set and the library is open. The
     /// host arms a timer for this and then calls [`lock_if_idle`](Self::lock_if_idle).
     #[must_use]
@@ -609,11 +623,16 @@ where
         if self.lock.active_at.get() > now {
             self.lock.active_at.set(now);
         }
-        let due = self.lock.active_at.get().checked_add(IDLE_LOCK).ok()?;
+        let due = self
+            .lock
+            .active_at
+            .get()
+            .checked_add(self.idle_lock())
+            .ok()?;
         Some(Duration::try_from(due.duration_since(now)).unwrap_or_default())
     }
 
-    /// Locks the library if it has been idle for [`IDLE_LOCK`]. Returns whether it locked.
+    /// Locks the library if it has been idle for the idle time. Returns whether it locked.
     pub fn lock_if_idle(&mut self) -> bool {
         match self.idle_lock_wait() {
             Some(wait) if wait.is_zero() => {
@@ -636,6 +655,8 @@ where
         // A Hello step under way is told to stop and its outcome is refused; the sealed copy stays
         // (it is what Hello unlocks with).
         self.give_up_hello_step(true);
+        // An open editor of a sensitive item is sealed under the key before it goes.
+        let parked = self.park_sensitive_item_editor();
         self.store.lock_key_ring();
         self.index_cache.forget_recent();
         // A sensitive copy still on the clipboard does not outlive the lock.
@@ -643,9 +664,15 @@ where
         self.revealed = None;
         self.panel_revealed = None;
         self.sync_recent_gate();
-        // An open editor of a sensitive item holds its text in the window: it closes, unsaved.
-        if self.close_sensitive_item_editor() {
-            self.show_toast(neutral(ToastMessage::LockedEditorClosed));
+        // The editor's window closes with the lock; what was typed waits sealed for the unlock.
+        match parked {
+            Some(super::editor_ctl::Parked::Kept) => {
+                self.show_toast(neutral(ToastMessage::LockedEditorKept));
+            }
+            Some(super::editor_ctl::Parked::Dropped) => {
+                self.show_toast(neutral(ToastMessage::LockedEditorClosed));
+            }
+            None => {}
         }
         // The fill form of a sensitive template holds the decrypted template and its answers.
         if self.close_sensitive_fill() {

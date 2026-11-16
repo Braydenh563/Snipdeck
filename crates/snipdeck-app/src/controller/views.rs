@@ -303,6 +303,10 @@ pub struct View {
     /// The first-run question "Keep a Recent list of what you copy?" is due: unanswered, and
     /// the welcome tour is not running. Nothing is kept until the answer is Yes.
     pub recent_question: bool,
+    /// The Recent limits in the settings, for the question's wording.
+    pub recent_max_entries: u32,
+    /// How many days Recent keeps an entry.
+    pub recent_days: u32,
 }
 
 /// What a row of the Move or Colour choice says, before wording.

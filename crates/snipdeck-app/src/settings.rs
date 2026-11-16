@@ -27,6 +27,20 @@ pub const CLIPBOARD_CLEAR_SECS: std::ops::RangeInclusive<u32> = 5..=600;
 /// The default time before a copied sensitive item is cleared from the clipboard.
 pub const CLIPBOARD_CLEAR_SECS_DEFAULT: u32 = 30;
 
+/// How many Recent entries may be kept (Settings > Privacy).
+pub const RECENT_MAX_ENTRIES: std::ops::RangeInclusive<u32> = 10..=1000;
+/// The default number of Recent entries kept.
+pub const RECENT_MAX_ENTRIES_DEFAULT: u32 = 200;
+/// How many days a Recent entry may be kept (Settings > Privacy).
+pub const RECENT_MAX_DAYS: std::ops::RangeInclusive<u32> = 1..=30;
+/// The default number of days a Recent entry is kept.
+pub const RECENT_MAX_DAYS_DEFAULT: u32 = 7;
+/// Minutes without use before a master password locks the library again (Settings > Privacy).
+/// There is no "never": a missing or 0 value reads as the default.
+pub const IDLE_LOCK_MINUTES: std::ops::RangeInclusive<u32> = 1..=240;
+/// The default idle lock, in minutes.
+pub const IDLE_LOCK_MINUTES_DEFAULT: u32 = 15;
+
 /// How many monitors' Panel geometry is remembered.
 pub const PANEL_GEOMETRY_LIMIT: usize = 16;
 /// The largest Panel side stored, in physical pixels (a hand-edited file cannot ask for more).
@@ -812,6 +826,15 @@ pub struct Settings {
     /// [`Settings::from_json`] then reads `recent_history` as off until the answer is Yes: an
     /// upgrade where the user never chose is asked, and nothing is kept before they say Yes.
     pub recent_history_asked: bool,
+    /// "Pause history" (tray) is on. Saved, so a restart does not resume collecting by itself.
+    pub recent_paused: bool,
+    /// Keep at most this many Recent entries (bounded by [`RECENT_MAX_ENTRIES`]).
+    pub recent_max_entries: u32,
+    /// Keep a Recent entry at most this many days (bounded by [`RECENT_MAX_DAYS`]).
+    pub recent_max_days: u32,
+    /// Minutes without use before a master password locks the library (bounded by
+    /// [`IDLE_LOCK_MINUTES`]).
+    pub idle_lock_minutes: u32,
     /// Executable names that are never kept in the Recent inbox (lower case).
     pub no_history_apps: Vec<String>,
     /// Keep a Recent copy whose source program is unknown. Off by default: a copy with no
@@ -910,6 +933,10 @@ impl Default for Settings {
             no_paste_apps: Vec::new(),
             recent_history: false,
             recent_history_asked: false,
+            recent_paused: false,
+            recent_max_entries: RECENT_MAX_ENTRIES_DEFAULT,
+            recent_max_days: RECENT_MAX_DAYS_DEFAULT,
+            idle_lock_minutes: IDLE_LOCK_MINUTES_DEFAULT,
             no_history_apps: Vec::new(),
             recent_keep_unknown_source: false,
             dock: DockSettings::default(),
@@ -1060,6 +1087,10 @@ impl Settings {
         }
         field!(recent_history);
         field!(recent_history_asked);
+        field!(recent_paused);
+        field!(recent_max_entries);
+        field!(recent_max_days);
+        field!(idle_lock_minutes);
         field!(no_history_apps);
         field!(recent_keep_unknown_source);
         field!(dock);
@@ -1179,6 +1210,18 @@ impl Settings {
         self.clipboard_clear_secs = self
             .clipboard_clear_secs
             .clamp(*CLIPBOARD_CLEAR_SECS.start(), *CLIPBOARD_CLEAR_SECS.end());
+        self.recent_max_entries = self
+            .recent_max_entries
+            .clamp(*RECENT_MAX_ENTRIES.start(), *RECENT_MAX_ENTRIES.end());
+        self.recent_max_days = self
+            .recent_max_days
+            .clamp(*RECENT_MAX_DAYS.start(), *RECENT_MAX_DAYS.end());
+        if self.idle_lock_minutes == 0 {
+            self.idle_lock_minutes = IDLE_LOCK_MINUTES_DEFAULT;
+        }
+        self.idle_lock_minutes = self
+            .idle_lock_minutes
+            .clamp(*IDLE_LOCK_MINUTES.start(), *IDLE_LOCK_MINUTES.end());
         self.sanitize_panel_geometry();
         self.main_window = self.main_window.filter(|p| {
             (WindowPlace::MIN_SIDE..=PANEL_SIDE_LIMIT).contains(&p.w)
@@ -2064,6 +2107,53 @@ mod tests {
         assert_eq!((bad.backups_keep, bad.theme), (7, Theme::Dark));
         let kept = Settings {
             backups_keep: 30,
+            ..Settings::default()
+        };
+        assert_eq!(Settings::from_json(&kept.to_json()), kept);
+    }
+
+    #[test]
+    fn the_recent_limits_the_idle_lock_and_the_pause_are_settings_with_bounds() {
+        let d = Settings::from_json("{}");
+        assert_eq!(
+            (
+                d.recent_max_entries,
+                d.recent_max_days,
+                d.idle_lock_minutes,
+                d.recent_paused
+            ),
+            (200, 7, 15, false)
+        );
+        let low = Settings::from_json(
+            r#"{"recent_max_entries":0,"recent_max_days":0,"idle_lock_minutes":0}"#,
+        );
+        assert_eq!(
+            (
+                low.recent_max_entries,
+                low.recent_max_days,
+                low.idle_lock_minutes
+            ),
+            (10, 1, 15),
+            "never an unlimited or a zero value; the idle lock has no never"
+        );
+        let high = Settings::from_json(
+            r#"{"recent_max_entries":99999,"recent_max_days":9999,"idle_lock_minutes":99999}"#,
+        );
+        assert_eq!(
+            (
+                high.recent_max_entries,
+                high.recent_max_days,
+                high.idle_lock_minutes
+            ),
+            (1000, 30, 240)
+        );
+        let bad = Settings::from_json(r#"{"recent_max_days":"week","recent_paused":"yes"}"#);
+        assert_eq!((bad.recent_max_days, bad.recent_paused), (7, false));
+        let kept = Settings {
+            recent_max_entries: 50,
+            recent_max_days: 3,
+            idle_lock_minutes: 5,
+            recent_paused: true,
             ..Settings::default()
         };
         assert_eq!(Settings::from_json(&kept.to_json()), kept);

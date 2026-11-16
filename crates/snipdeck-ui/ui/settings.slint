@@ -302,6 +302,8 @@ export component SettingsPage inherits Window {
     // How many copies and how many days the history keeps (the description names them).
     in property <int> recent-max-entries: 200;
     in property <int> recent-max-days: 7;
+    // How many entries Recent holds now: switching it off asks about them when there are some.
+    in property <int> recent-count: 0;
     in-out property <bool> reduce-motion: false;
     in property <int> panel-width: 320;
     in property <int> panel-width-min: 260;
@@ -418,7 +420,13 @@ export component SettingsPage inherits Window {
     callback suggest-triggers-toggled(on: bool);
     // "Clear recent history" asked once more (Cancel / Clear history) before it acts.
     property <bool> clear-recent-ask: false;
+    property <bool> recent-off-ask: false;
     callback recent-history-cleared();
+    // "Turn off, keep what is there": the switch-off that does not clear (clearing is the default).
+    callback recent-history-off-kept();
+    callback recent-max-entries-chosen(count: int);
+    callback recent-max-days-chosen(days: int);
+    callback idle-lock-minutes-chosen(minutes: int);
     callback picker-recents-cleared();
     property <bool> picker-recents-asking: false;
     callback panel-in-taskbar-toggled(on: bool);
@@ -508,6 +516,7 @@ export component SettingsPage inherits Window {
     // (Cancel / Clear history showing) is never still there on the next look.
     public function reset-asks() {
         root.clear-recent-ask = false;
+        root.recent-off-ask = false;
     }
 
     function close-erase() {
@@ -1090,7 +1099,80 @@ export component SettingsPage inherits Window {
                         Toggle {
                             a11y-label: @tr("Keep a Recent inbox of what you copy");
                             checked <=> root.recent-history;
-                            toggled(on) => { root.recent-history-toggled(on); }
+                            toggled(on) => {
+                                if (!on && root.recent-count > 0) {
+                                    // Not off yet: ask what happens to the copies first.
+                                    root.recent-history = true;
+                                    root.recent-off-ask = true;
+                                } else {
+                                    root.recent-off-ask = false;
+                                    root.recent-history-toggled(on);
+                                }
+                            }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    if root.recent-off-ask: SettingRow {
+                        title: @tr("Delete what Recent has kept?");
+                        description: @tr("Recent holds {} copies. Turning it off deletes them, unless you choose to keep them hidden; kept copies show again if you turn Recent back on.", root.recent-count);
+                        HorizontalLayout {
+                            spacing: Space.s2;
+                            alignment: end;
+                            Button {
+                                text: @tr("Turn off and delete");
+                                variant: ButtonVariant.danger;
+                                clicked => {
+                                    root.recent-off-ask = false;
+                                    root.recent-history = false;
+                                    root.recent-history-toggled(false);
+                                }
+                            }
+                            Button {
+                                text: @tr("Turn off, keep them");
+                                clicked => {
+                                    root.recent-off-ask = false;
+                                    root.recent-history = false;
+                                    root.recent-history-off-kept();
+                                }
+                            }
+                            Button {
+                                text: @tr("Keep Recent on");
+                                clicked => { root.recent-off-ask = false; }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Recent: most copies kept");
+                        description: @tr("Older copies are deleted when there are more than this many.");
+                        NumberStepper {
+                            label: @tr("Most copies kept in Recent");
+                            decrease-label: @tr("Keep fewer copies");
+                            increase-label: @tr("Keep more copies");
+                            min: 10;
+                            max: 1000;
+                            step: 10;
+                            value: root.recent-max-entries;
+                            stepped(v) => { root.recent-max-entries-chosen(v); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Recent: days kept");
+                        description: @tr("Copies older than this are deleted, even when Recent is off or paused.");
+                        NumberStepper {
+                            label: @tr("Days a copy stays in Recent");
+                            decrease-label: @tr("Keep copies for fewer days");
+                            increase-label: @tr("Keep copies for more days");
+                            unit: @tr("days");
+                            min: 1;
+                            max: 30;
+                            step: 1;
+                            value: root.recent-max-days;
+                            stepped(v) => { root.recent-max-days-chosen(v); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }
@@ -1195,6 +1277,24 @@ export component SettingsPage inherits Window {
                             step: 5;
                             value: root.clipboard-clear-secs;
                             stepped(v) => { root.clipboard-clear-secs-chosen(v); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Lock after");
+                        description: @tr("Minutes without use before a master password locks your sensitive items again.");
+                        NumberStepper {
+                            label: @tr("Minutes before the library locks");
+                            decrease-label: @tr("Lock sooner");
+                            increase-label: @tr("Lock later");
+                            unit: @tr("min");
+                            min: 1;
+                            max: 240;
+                            step: 1;
+                            value: root.master-idle-minutes;
+                            stepped(v) => { root.idle-lock-minutes-chosen(v); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }

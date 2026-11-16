@@ -384,7 +384,7 @@ where
                     &list,
                     text,
                     (html, rtf),
-                    kind,
+                    capture::Shape::plain(kind),
                     snipdeck_core::Placement::First,
                     self.clock.now(),
                 );

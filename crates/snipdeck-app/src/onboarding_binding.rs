@@ -182,8 +182,8 @@ where
         window.set_autostart(settings.autostart);
         window.set_close_to_tray(settings.close_to_tray);
         window.set_recent_history(settings.recent_history);
-        window.set_recent_max_entries(crate::recent::max_entries_count());
-        window.set_recent_max_days(crate::recent::max_age_days());
+        window.set_recent_max_entries(i32::try_from(settings.recent_max_entries).unwrap_or(200));
+        window.set_recent_max_days(i32::try_from(settings.recent_max_days).unwrap_or(7));
         window.set_dock_edge_index(dock_edge_index(controller.dock_edge()));
         window.set_notice(match &*self.autostart_failed.borrow() {
             Some(message) => wording::toast_text(&window, message).into(),

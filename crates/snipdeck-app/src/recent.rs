@@ -29,22 +29,10 @@ pub const MAX_IMAGE_BYTES: usize = 8 * 1024 * 1024;
 pub const MAX_FILES: usize = 100;
 /// The longest side of a list thumbnail, in pixels.
 pub const THUMB_SIDE: u32 = 96;
-/// Default number of entries kept.
-pub const DEFAULT_MAX_ENTRIES: usize = 200;
+/// Default number of entries kept (the setting's default; the limits are user settings).
+pub const DEFAULT_MAX_ENTRIES: usize = crate::settings::RECENT_MAX_ENTRIES_DEFAULT as usize;
 /// Default retention in days.
-pub const DEFAULT_MAX_AGE_DAYS: u64 = 7;
-
-/// How long entries are kept, in days, as the windows' texts take it.
-#[must_use]
-pub fn max_age_days() -> i32 {
-    i32::try_from(DEFAULT_MAX_AGE_DAYS).unwrap_or(i32::MAX)
-}
-
-/// How many entries are kept, as the windows' texts take it.
-#[must_use]
-pub fn max_entries_count() -> i32 {
-    i32::try_from(DEFAULT_MAX_ENTRIES).unwrap_or(i32::MAX)
-}
+pub const DEFAULT_MAX_AGE_DAYS: u64 = crate::settings::RECENT_MAX_DAYS_DEFAULT as u64;
 
 /// The settings the policy reads. `Default` is the shipped default: off.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -100,12 +88,14 @@ impl Default for RecentSettings {
 }
 
 impl RecentSettings {
-    /// The policy's view of the app settings; `paused` is the tray's session-only switch.
+    /// The policy's view of the app settings (the limits, and the tray's "Pause history").
     #[must_use]
-    pub fn from_settings(settings: &crate::settings::Settings, paused: bool) -> Self {
+    pub fn from_settings(settings: &crate::settings::Settings) -> Self {
         Self {
             enabled: settings.recent_history,
-            paused,
+            paused: settings.recent_paused,
+            max_entries: settings.recent_max_entries as usize,
+            max_age: max_age_of(settings),
             excluded_apps: settings.no_history_apps.clone(),
             keep_unknown_source: settings.recent_keep_unknown_source,
             ..Self::default()
@@ -117,6 +107,12 @@ impl RecentSettings {
     pub const fn collecting(&self) -> bool {
         self.enabled && !self.paused
     }
+}
+
+/// How long the settings keep a Recent entry.
+#[must_use]
+pub fn max_age_of(settings: &crate::settings::Settings) -> Duration {
+    Duration::from_hours(24 * u64::from(settings.recent_max_days))
 }
 
 /// One clipboard change, as the listener saw it.

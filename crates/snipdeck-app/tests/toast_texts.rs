@@ -46,6 +46,7 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::UnlockFirst => 15,
         ToastMessage::LockedEditorClosed => 16,
         ToastMessage::LockedFillClosed => 106,
+        ToastMessage::LockedEditorKept => 112,
         ToastMessage::Saved { .. } => 17,
         ToastMessage::NothingToSave => 18,
         ToastMessage::TooLargeToSave => 19,
@@ -142,7 +143,7 @@ const fn position(message: &ToastMessage) -> usize {
     }
 }
 
-const VARIANTS: usize = 112;
+const VARIANTS: usize = 113;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -172,6 +173,7 @@ fn samples() -> Vec<ToastMessage> {
         M::MasterPasswordRemovedNotOpen,
         M::UnlockFirst,
         M::LockedEditorClosed,
+        M::LockedEditorKept,
         M::LockedFillClosed,
         M::Saved { list: s("Notes") },
         M::NothingToSave,

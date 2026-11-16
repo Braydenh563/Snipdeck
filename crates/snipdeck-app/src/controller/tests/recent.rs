@@ -707,3 +707,95 @@ fn the_settings_switch_still_turns_the_inbox_on_and_off() {
     assert_eq!(w.ctl.recent_entries().len(), 0);
     assert!(!w.ctl.recent_question_due());
 }
+
+// ---- Privacy limits: pause, size and age settings, switching off ----------------------------
+
+#[test]
+fn pause_history_survives_a_restart_until_the_user_resumes() {
+    use snipdeck_platform::clipboard_watch::WatchGate;
+    let mut w = recent_world();
+    w.ctl.set_recent_paused(true);
+    let next_start = restarted(&w);
+    assert!(next_start.recent_paused, "saved with the settings");
+    let mut w2 = world_with(None, next_start);
+    w2.ctl.set_key_provider(Box::new(
+        snipdeck_store::crypto::MemoryKeyProvider::new().expect("provider"),
+    ));
+    let gate = WatchGate::new();
+    w2.ctl.set_recent_gate(gate.clone());
+    assert!(w2.ctl.recent_paused());
+    assert!(!gate.is_open(), "still paused after the restart");
+    w2.ctl.on_clipboard_change(&copied("after the restart"));
+    assert_eq!(w2.ctl.store().recent().expect("recent").len(), 0);
+    w2.ctl.set_recent_paused(false);
+    assert!(!restarted(&w2).recent_paused);
+}
+
+#[test]
+fn the_entry_cap_and_the_days_are_the_settings() {
+    let mut w = recent_world();
+    w.ctl.update_settings(|s| s.recent_max_entries = 10);
+    for i in 0..12 {
+        w.ctl.on_clipboard_change(&copied(&format!("t{i}")));
+    }
+    assert_eq!(w.ctl.recent_entries().len(), 10);
+    w.ctl.update_settings(|s| s.recent_max_days = 2);
+    // 2 days (and a minute) after the last copy at the fixed clock.
+    w.clock.set(at("2026-10-19T10:31:00Z"));
+    w.ctl.prune_recent();
+    assert_eq!(w.ctl.store().recent().expect("recent").len(), 0);
+}
+
+#[test]
+fn an_entry_past_its_age_is_not_listed_even_before_any_prune() {
+    let mut w = recent_world();
+    w.ctl.on_clipboard_change(&copied("old"));
+    w.clock.set(at("2026-10-25T10:29:00Z"));
+    w.ctl.on_clipboard_change(&copied("fresh"));
+    // Past 7 days for "old" only; no prune has run.
+    w.clock.set(at("2026-10-25T10:31:00Z"));
+    let texts: Vec<_> = w.ctl.recent_entries().into_iter().map(|e| e.text).collect();
+    assert_eq!(texts, ["fresh"]);
+    assert_eq!(w.ctl.main_recent_rows().len(), 1);
+}
+
+#[test]
+fn switching_the_inbox_off_clears_it_by_default_and_keeping_is_the_explicit_choice() {
+    let mut w = recent_world();
+    w.ctl.on_clipboard_change(&copied("one"));
+    w.ctl.set_recent_history(false);
+    assert_eq!(w.ctl.store().recent().expect("recent").len(), 0, "cleared");
+    w.ctl.set_recent_history(true);
+    assert_eq!(w.ctl.recent_entries().len(), 0, "nothing comes back");
+
+    w.ctl.on_clipboard_change(&copied("two"));
+    w.ctl.set_recent_history_off_keeping_entries();
+    assert!(!w.ctl.recent_enabled());
+    assert_eq!(
+        w.ctl.store().recent().expect("recent").len(),
+        1,
+        "kept on request"
+    );
+    assert_eq!(w.ctl.recent_entries().len(), 0, "and hidden");
+}
+
+#[test]
+fn a_recent_text_can_be_saved_as_a_sensitive_item_sealed_and_without_a_preview() {
+    let mut w = recent_world();
+    w.ctl.on_clipboard_change(&copied("a token worth hiding"));
+    let id = w.ctl.recent_entries()[0].id;
+    w.ctl.recent_promote_sensitive(id, w.links_list);
+    let items = w.ctl.store().items(w.links_list).expect("items");
+    assert!(items[0].sensitive, "saved as Sensitive");
+    assert!(items[0].preview.is_empty(), "no plain preview");
+    assert_eq!(
+        crate::usecase::item_text(w.ctl.store(), items[0].id)
+            .expect("text")
+            .as_deref(),
+        Some("a token worth hiding")
+    );
+    assert_eq!(w.ctl.recent_entries().len(), 1, "the entry stays");
+    // The plain way is unchanged.
+    w.ctl.recent_promote(id, w.links_list);
+    assert!(!w.ctl.store().items(w.links_list).expect("items")[0].sensitive);
+}
