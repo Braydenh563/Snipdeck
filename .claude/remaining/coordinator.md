@@ -23,3 +23,4 @@ blind tests, gate --full, green CI, HANDOVER morning summary, Windows checklist 
 Told to push WIP, update remaining file, and wait: main pt4 session_01NKjURuzGHcwKpr8pazWMZj, panel session_01NKjURu2Ui2oqJRKoriWaT6, platform session_01NKjURtegHP2MFAY8JHxrGw, UX session_01NKjURrwFsjEnJjdxN6rPuQ, library session_01NKjURvL8svpNDsnWjzGkp8, extras session_01NKjURvnHFVMoYZ2xeg3MSJ. Resume each with send_message "resume from your remaining file".
 Done, awaiting review+merge: data 7d3c212 (claude/fix-audit-data), perf 923f2ba (claude/fix-audit-perf).
 CodeQL alert 98: keyring.rs:500 hard-coded password in the NFC test.
+Pause confirmed: platform 1a037fa (WIP, merged rounds not gated together; disk tight); panel ac77643 (WIP after gated d58fff5). Panel still lists 21, 27, 43 and the Import/Export/Back up/Empty Trash palette commands as post-1.0 in SPEC: on resume, tell it again to un-defer them.
