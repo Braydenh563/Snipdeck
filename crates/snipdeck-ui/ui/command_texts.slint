@@ -11,6 +11,8 @@ export global CommandTexts {
     // The names the list and board editors start with for a new one ("New list 1"): the host numbers them.
     out property <string> new-list-name: @tr("New list");
     out property <string> new-board-name: @tr("New board");
+    // The title of a duplicate: the host passes "{title}" and puts the original's title in its place, so the word order is the translator's.
+    pure public function copy-title(title: string) -> string { return @tr("{} copy", title); }
     out property <[CommandText]> all: [
         { label: @tr("New item"), words: @tr("add create snippet note write") },
         { label: @tr("New list"), words: @tr("add create") },

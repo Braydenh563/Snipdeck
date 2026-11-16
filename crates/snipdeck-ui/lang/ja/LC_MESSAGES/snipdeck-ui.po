@@ -440,6 +440,9 @@ msgstr "クリップボードを消去するまでの時間を長くする"
 msgid "Clear the clipboard sooner"
 msgstr "クリップボードを消去するまでの時間を短くする"
 
+msgid "Clear the colour filter to group items"
+msgstr "アイテムをグループ化するには色フィルターを解除してください"
+
 msgid "Clear the search"
 msgstr "検索をクリア"
 
@@ -851,6 +854,9 @@ msgstr "完全に削除しますか？"
 msgid "Delete for good…"
 msgstr "完全に削除…"
 
+msgid "Delete forever"
+msgstr "完全に削除"
+
 msgid "Delete group"
 msgstr "グループを削除"
 
@@ -901,6 +907,9 @@ msgstr "削除されたスニペットは、完全に削除されるまで{}日�
 
 msgid "Deleted list “{}”"
 msgstr "リスト「{}」を削除しました"
+
+msgid "Deleted tag \"{}\""
+msgstr "タグ「{}」を削除しました"
 
 msgid "Deleted “{}”"
 msgstr "削除しました:「{}」"
@@ -1789,6 +1798,9 @@ msgstr "動作しません"
 msgid "Nothing copied yet"
 msgstr "まだコピーされたものはありません"
 
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "「はい」を選ぶまで何も保存されず、設定でいつでも変更できます。「最近」は、コピーしたテキストを、直近 {} 件または {} 日間のどちらか先に達した分だけ、このコンピューターにのみ保存します。パスワード管理ツールからのパスワードや機密アイテムは保存されません。"
+
 msgid "Nothing matches “{}”"
 msgstr "「{}」に一致する項目はありません"
 
@@ -1884,6 +1896,9 @@ msgstr "Snipdeck を開く"
 
 msgid "Open a docked panel by"
 msgstr "固定したパネルを開く操作"
+
+msgid "Open a list to group its items"
+msgstr "アイテムをグループ化するにはリストを開いてください"
 
 msgid "Open backups folder"
 msgstr "バックアップフォルダーを開く"
@@ -2251,9 +2266,6 @@ msgstr "最近の項目の操作"
 msgid "Recent history cleared"
 msgstr "最近の履歴を消去しました"
 
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "「はい」を選ぶまで何も保存されず、設定でいつでも変更できます。「最近」は、コピーしたテキストを、直近 {} 件または {} 日間のどちらか先に達した分だけ、このコンピューターにのみ保存します。パスワード管理ツールからのパスワードや機密アイテムは保存されません。"
-
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "「最近」は、コピーしたテキストをこのコンピューターにのみ、直近 {} 回のコピーまたは {} 日間のどちらか早い方まで保持します。パスワードマネージャーのパスワードと機密スニペットは保持されません。設定でいつでも変更できます。"
 
@@ -2558,6 +2570,9 @@ msgstr "複数の項目を選択"
 
 msgid "Select snippets"
 msgstr "スニペットを選択"
+
+msgid "Select the items to group first"
+msgstr "先にグループ化するアイテムを選択してください"
 
 msgid "Sensitive"
 msgstr "機密"
@@ -2922,6 +2937,9 @@ msgstr "そのアプリ"
 msgid "That combination can't be used as a shortcut."
 msgstr "その組み合わせはショートカットに使えません。"
 
+msgid "That edit of a sensitive item cannot be undone: its text is not kept."
+msgstr "機密アイテムのこの編集は元に戻せません。テキストは保存されていません。"
+
 msgid "That file is empty."
 msgstr "そのファイルは空です。"
 
@@ -2963,6 +2981,9 @@ msgstr "パスワードが正しくありません。もう一度お試しくだ
 
 msgid "That path is a folder, not a file."
 msgstr "そのパスはファイルではなくフォルダーです。"
+
+msgid "That step cannot be undone any more: what it changed was deleted for good."
+msgstr "この操作はもう元に戻せません。変更の対象が完全に削除されました。"
 
 msgid "That text is too large to save."
 msgstr "そのテキストは大きすぎて保存できません。"
@@ -3212,6 +3233,9 @@ msgstr "元に戻しました: {}"
 
 msgid "Undo"
 msgstr "元に戻す"
+
+msgid "Undo and Redo reach the last 100 changes since Snipdeck started. They are forgotten when it closes or the library is erased. Text edits of sensitive items cannot be undone, and an item deleted for good is gone for good."
+msgstr "「元に戻す」と「やり直す」は、Snipdeck の起動後の直近 100 件の変更まで対応します。アプリを閉じるかライブラリを消去すると履歴は消えます。機密アイテムのテキスト編集は元に戻せず、完全に削除したアイテムは復元できません。"
 
 msgid "Undo delete of “{}”"
 msgstr "「{}」の削除を元に戻す"
@@ -3547,6 +3571,9 @@ msgstr "外観 色 ダーク ライト Windows に従う"
 msgid "appearance colour night"
 msgstr "外観 色 夜"
 
+msgid "board change"
+msgstr "ボードの変更"
+
 msgid "change modify rename"
 msgstr "変更 編集 名前変更"
 
@@ -3665,6 +3692,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "ラベル: {}"
 
+msgid "list change"
+msgstr "リストの変更"
+
 msgid "lowercase"
 msgstr "小文字"
 
@@ -3748,6 +3778,9 @@ msgstr "並べ替え 前へ 上げる セクション"
 
 msgid "reorder later lower section"
 msgstr "並べ替え 後ろへ 下げる セクション"
+
+msgid "restore"
+msgstr "復元"
 
 msgid "s"
 msgstr "秒"
@@ -3849,6 +3882,9 @@ msgstr "{} は何も閉じません"
 
 msgid "{} closes nothing; write {} for a literal {}"
 msgstr "{} は何も閉じません。{} と書くと文字としての {} になります"
+
+msgid "{} copy"
+msgstr "{} のコピー"
 
 msgid "{} could not be read and was skipped."
 msgstr "{} は読み込めなかったため、スキップされました。"

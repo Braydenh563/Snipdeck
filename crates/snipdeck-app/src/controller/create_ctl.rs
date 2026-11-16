@@ -349,6 +349,7 @@ where
             step,
             adds: Some(first),
             list: None,
+            purge: Vec::new(),
         });
     }
 

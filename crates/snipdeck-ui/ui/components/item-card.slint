@@ -165,6 +165,8 @@ export component ItemCard inherits Rectangle {
     // False where nothing is ever numbered (the Main window): the number cell is left out.
     in property <bool> numbered: true;
     in property <string> title;
+    // An untitled secret has no preview either: a fixed stand-in names it wherever the title is all there is.
+    property <string> shown-title: root.title == "" && root.sensitive ? @tr("Sensitive item") : root.title;
     // Search (Panel v2 spec 2.3): the first match in the title, as the text before it and the match itself. A span
     // of `search.mark` is drawn behind the match (never an underline). Both empty = no mark.
     in property <string> mark-before;
@@ -365,7 +367,7 @@ export component ItemCard inherits Rectangle {
     // DESIGN.md §8: the title never truncates below 12 characters; the preview gives way first. Twelve Latin
     // characters are about 7 em; twelve CJK characters are 12 em, so the floor follows the title's own average
     // character width when that is larger.
-    property <length> avg-char-w: m-title.preferred-width / max(1, root.title.character-count);
+    property <length> avg-char-w: m-title.preferred-width / max(1, root.shown-title.character-count);
     property <length> min-title-w: min(m-title.preferred-width, max(Type.base * 7, root.avg-char-w * 12));
     property <length> row-w: root.content-w - root.lead-w;
     // Gap between the row's text (title or preview) and its trailing label: one step wider than the
@@ -475,8 +477,8 @@ export component ItemCard inherits Rectangle {
     max-height: root.card-h;
     forward-focus: scope;
     accessible-role: list-item;
-    accessible-label: root.sensitive && !root.shown ? root.title
-        : (root.preview != "" ? root.title + ", " + root.preview : root.title)
+    accessible-label: root.sensitive && !root.shown ? root.shown-title
+        : (root.preview != "" ? root.shown-title + ", " + root.preview : root.shown-title)
             + (root.stack-position > 0 ? ", " + @tr("paste stack, number {}", root.stack-position) : "");
     // A masked secret says how to reveal it (`masked-hint`); otherwise the list the item belongs to.
     accessible-description: (root.has-label ? (root.described == "" ? @tr("label: {}", root.label-name) : root.described + ", " + @tr("label: {}", root.label-name)) : root.described) + (root.formatted && !root.sensitive ? (root.described == "" && !root.has-label ? "" : ", ") + @tr("Formatted") : "");
@@ -493,7 +495,7 @@ export component ItemCard inherits Rectangle {
     // Natural sizes of the texts (never visible), so layout never depends on a text's own width.
     m-title := Text {
         visible: false;
-        text: root.title;
+        text: root.shown-title;
         font-family: Fonts.sans;
         font-size: Type.base;
         font-weight: Type.medium;
@@ -501,7 +503,7 @@ export component ItemCard inherits Rectangle {
     m-title-wrap := Text {
         visible: false;
         width: root.qti ? root.qti-title-w : max(0px, root.width - 2 * root.pad-x - root.reserve-r);
-        text: root.title;
+        text: root.shown-title;
         font-family: Fonts.sans;
         font-size: Type.base;
         font-weight: Type.medium;
@@ -769,7 +771,7 @@ export component ItemCard inherits Rectangle {
                 : root.qr-title-y;
             width: root.qti ? root.qti-title-w : root.tile ? max(0px, root.width - 2 * root.pad-x - root.reserve-r) : root.title-w;
             height: root.tile ? root.tile-title-h : root.title-h;
-            text: root.title;
+            text: root.shown-title;
             font-family: Fonts.sans;
             font-size: Type.base;
             font-weight: Type.medium;

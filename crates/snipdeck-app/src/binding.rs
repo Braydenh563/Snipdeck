@@ -1908,7 +1908,11 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     if differs(&|p| p.toast == view.toast) {
         if let Some(toast) = &view.toast {
             {
-                window.set_toast_undo_label(wording::toast_button_text(toast).into());
+                window.set_toast_undo_label(if toast.purge {
+                    wording::toast_purge_label(window).into()
+                } else {
+                    wording::toast_button_text(toast).into()
+                });
                 window.set_toast_edit_label(if toast.edit {
                     wording::toast_edit_label(window).into()
                 } else {

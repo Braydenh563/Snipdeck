@@ -441,6 +441,9 @@ msgstr "Limpar a área de transferência depois"
 msgid "Clear the clipboard sooner"
 msgstr "Limpar a área de transferência antes"
 
+msgid "Clear the colour filter to group items"
+msgstr "Remova o filtro de cor para agrupar itens"
+
 msgid "Clear the search"
 msgstr "Limpar a pesquisa"
 
@@ -852,6 +855,9 @@ msgstr "Excluir definitivamente?"
 msgid "Delete for good…"
 msgstr "Excluir definitivamente…"
 
+msgid "Delete forever"
+msgstr "Excluir definitivamente"
+
 msgid "Delete group"
 msgstr "Excluir grupo"
 
@@ -902,6 +908,9 @@ msgstr "Os trechos excluídos ficam aqui por {} dias antes de serem removidos."
 
 msgid "Deleted list “{}”"
 msgstr "Lista “{}” excluída"
+
+msgid "Deleted tag \"{}\""
+msgstr "Etiqueta \"{}\" excluída"
 
 msgid "Deleted “{}”"
 msgstr "Excluído: “{}”"
@@ -1795,6 +1804,9 @@ msgstr "Não funciona"
 msgid "Nothing copied yet"
 msgstr "Nada copiado ainda"
 
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "Nada é guardado se você não disser Sim, e você pode mudar isso quando quiser em Configurações. Recente guarda o texto que você copia, somente neste computador, pelas últimas {} cópias ou {} dias, o que vier primeiro. Senhas de gerenciadores de senhas e itens Sensíveis nunca são guardados."
+
 msgid "Nothing matches “{}”"
 msgstr "Nada corresponde a “{}”"
 
@@ -1890,6 +1902,9 @@ msgstr "Abrir o Snipdeck"
 
 msgid "Open a docked panel by"
 msgstr "Abrir um painel acoplado por"
+
+msgid "Open a list to group its items"
+msgstr "Abra uma lista para agrupar os itens dela"
 
 msgid "Open backups folder"
 msgstr "Abrir a pasta de backups"
@@ -2257,9 +2272,6 @@ msgstr "Ações de entradas recentes"
 msgid "Recent history cleared"
 msgstr "Histórico recente limpo"
 
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "Nada é guardado se você não disser Sim, e você pode mudar isso quando quiser em Configurações. Recente guarda o texto que você copia, somente neste computador, pelas últimas {} cópias ou {} dias, o que vier primeiro. Senhas de gerenciadores de senhas e itens Sensíveis nunca são guardados."
-
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "Recentes guarda o texto que você copia, somente neste computador, pelas últimas {} cópias ou {} dias, o que ocorrer primeiro. Senhas de gerenciadores de senhas e itens sensíveis nunca são guardados. Você pode alterar isso quando quiser em Configurações."
 
@@ -2566,6 +2578,9 @@ msgstr "Selecionar vários itens"
 
 msgid "Select snippets"
 msgstr "Selecionar snippets"
+
+msgid "Select the items to group first"
+msgstr "Selecione primeiro os itens a agrupar"
 
 msgid "Sensitive"
 msgstr "Sensível"
@@ -2930,6 +2945,9 @@ msgstr "Esse app"
 msgid "That combination can't be used as a shortcut."
 msgstr "Essa combinação não pode ser usada como atalho."
 
+msgid "That edit of a sensitive item cannot be undone: its text is not kept."
+msgstr "Essa edição de um item sensível não pode ser desfeita: o texto dele não é guardado."
+
 msgid "That file is empty."
 msgstr "Esse arquivo está vazio."
 
@@ -2971,6 +2989,9 @@ msgstr "Essa senha não está certa. Tente de novo."
 
 msgid "That path is a folder, not a file."
 msgstr "Esse caminho é uma pasta, não um arquivo."
+
+msgid "That step cannot be undone any more: what it changed was deleted for good."
+msgstr "Essa etapa não pode mais ser desfeita: o que ela alterou foi excluído definitivamente."
 
 msgid "That text is too large to save."
 msgstr "Esse texto é grande demais para salvar."
@@ -3220,6 +3241,9 @@ msgstr "Desfeito: {}"
 
 msgid "Undo"
 msgstr "Desfazer"
+
+msgid "Undo and Redo reach the last 100 changes since Snipdeck started. They are forgotten when it closes or the library is erased. Text edits of sensitive items cannot be undone, and an item deleted for good is gone for good."
+msgstr "Desfazer e Refazer alcançam as últimas 100 alterações desde que o Snipdeck foi iniciado. Elas são esquecidas ao fechá-lo ou ao apagar a biblioteca. As edições do texto de itens sensíveis não podem ser desfeitas, e um item excluído definitivamente não volta."
 
 msgid "Undo delete of “{}”"
 msgstr "Desfazer a exclusão de “{}”"
@@ -3556,6 +3580,9 @@ msgstr "aparência cor escuro claro seguir windows"
 msgid "appearance colour night"
 msgstr "aparência cor noite"
 
+msgid "board change"
+msgstr "alteração do quadro"
+
 msgid "change modify rename"
 msgstr "alterar modificar renomear"
 
@@ -3675,6 +3702,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "rótulo: {}"
 
+msgid "list change"
+msgstr "alteração da lista"
+
 msgid "lowercase"
 msgstr "minúsculas"
 
@@ -3758,6 +3788,9 @@ msgstr "reordenar antes subir seção"
 
 msgid "reorder later lower section"
 msgstr "reordenar depois descer seção"
+
+msgid "restore"
+msgstr "restauração"
 
 msgid "s"
 msgstr "s"
@@ -3864,6 +3897,9 @@ msgstr "{} não fecha nada"
 
 msgid "{} closes nothing; write {} for a literal {}"
 msgstr "{} não fecha nada; escreva {} para um {} literal"
+
+msgid "{} copy"
+msgstr "{} cópia"
 
 msgid "{} could not be read and was skipped."
 msgstr "Não foi possível ler {} e ele foi ignorado."

@@ -205,10 +205,34 @@ export global ToastTexts {
             : kind == 8 ? @tr("pin")
             : kind == 9 ? @tr("tag change")
             : kind == 10 ? @tr("duplicate")
-            : @tr("group change");
+            : kind == 11 ? @tr("group change")
+            : kind == 12 ? @tr("restore")
+            : kind == 13 ? @tr("list change")
+            : @tr("board change");
     }
     pure public function undone(action: string) -> string {
         return @tr("Undid {}", action);
+    }
+    pure public function group-needs-list() -> string {
+        return @tr("Open a list to group its items");
+    }
+    pure public function group-colour-filter() -> string {
+        return @tr("Clear the colour filter to group items");
+    }
+    pure public function group-nothing() -> string {
+        return @tr("Select the items to group first");
+    }
+    pure public function tag-deleted(name: string) -> string {
+        return @tr("Deleted tag \"{}\"", name);
+    }
+    pure public function undo-stopped() -> string {
+        return @tr("That edit of a sensitive item cannot be undone: its text is not kept.");
+    }
+    pure public function history-step-lost() -> string {
+        return @tr("That step cannot be undone any more: what it changed was deleted for good.");
+    }
+    pure public function purge-button() -> string {
+        return @tr("Delete forever");
     }
     pure public function redone(action: string) -> string {
         return @tr("Redid {}", action);

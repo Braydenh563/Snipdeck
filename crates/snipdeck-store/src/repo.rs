@@ -224,6 +224,14 @@ pub trait TagRepo {
 
     /// Deletes a tag and removes it from every item.
     fn delete_tag(&mut self, id: TagId) -> Result<()>;
+
+    /// The items that carry tag `id`, live or in the Trash (what [`TagRepo::delete_tag`] would
+    /// unlink), so a deletion can be taken back.
+    fn tag_items(&self, id: TagId) -> Result<Vec<ItemId>>;
+
+    /// Puts tag `id` back on `items` (live or in the Trash). An item that is gone, or already
+    /// has the tag, is skipped; the tag must exist.
+    fn link_tag(&mut self, id: TagId, items: &[ItemId]) -> Result<()>;
 }
 
 /// Something that can be put in the trash.
@@ -277,4 +285,7 @@ pub trait TrashRepo {
     /// [`Error::NotFound`](crate::Error::NotFound) if `target` is not a trash entry (it is
     /// live, inside a trashed parent, or already gone).
     fn purge_entry(&mut self, target: Trashable) -> Result<()>;
+
+    /// Whether `target` is still in the library, live or in the Trash (it is not once purged).
+    fn is_stored(&self, target: Trashable) -> Result<bool>;
 }

@@ -441,6 +441,9 @@ msgstr "Vider le presse-papiers plus tard"
 msgid "Clear the clipboard sooner"
 msgstr "Vider le presse-papiers plus tôt"
 
+msgid "Clear the colour filter to group items"
+msgstr "Retirez le filtre de couleur pour regrouper des éléments"
+
 msgid "Clear the search"
 msgstr "Effacer la recherche"
 
@@ -852,6 +855,9 @@ msgstr "Supprimer définitivement ?"
 msgid "Delete for good…"
 msgstr "Supprimer définitivement…"
 
+msgid "Delete forever"
+msgstr "Supprimer définitivement"
+
 msgid "Delete group"
 msgstr "Supprimer le groupe"
 
@@ -902,6 +908,9 @@ msgstr "Les extraits supprimés restent ici {} jours avant d'être retirés."
 
 msgid "Deleted list “{}”"
 msgstr "Liste « {} » supprimée"
+
+msgid "Deleted tag \"{}\""
+msgstr "Étiquette « {} » supprimée"
 
 msgid "Deleted “{}”"
 msgstr "Supprimé : « {} »"
@@ -1795,6 +1804,9 @@ msgstr "Ne fonctionne pas"
 msgid "Nothing copied yet"
 msgstr "Rien n'a encore été copié"
 
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "Rien n’est conservé tant que vous ne répondez pas Oui, et vous pouvez le modifier à tout moment dans les Paramètres. Récent conserve le texte que vous copiez, uniquement sur cet ordinateur, pour les {} dernières copies ou les {} derniers jours, selon la première limite atteinte. Les mots de passe des gestionnaires de mots de passe et les éléments Sensibles ne sont jamais conservés."
+
 msgid "Nothing matches “{}”"
 msgstr "Rien ne correspond à « {} »"
 
@@ -1890,6 +1902,9 @@ msgstr "Ouvrir Snipdeck"
 
 msgid "Open a docked panel by"
 msgstr "Ouvrir un panneau ancré par"
+
+msgid "Open a list to group its items"
+msgstr "Ouvrez une liste pour regrouper ses éléments"
 
 msgid "Open backups folder"
 msgstr "Ouvrir le dossier des sauvegardes"
@@ -2257,9 +2272,6 @@ msgstr "Actions sur les entrées récentes"
 msgid "Recent history cleared"
 msgstr "Historique récent effacé"
 
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "Rien n’est conservé tant que vous ne répondez pas Oui, et vous pouvez le modifier à tout moment dans les Paramètres. Récent conserve le texte que vous copiez, uniquement sur cet ordinateur, pour les {} dernières copies ou les {} derniers jours, selon la première limite atteinte. Les mots de passe des gestionnaires de mots de passe et les éléments Sensibles ne sont jamais conservés."
-
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "Récents conserve le texte que vous copiez, sur cet ordinateur uniquement, pour les {} dernières copies ou les {} derniers jours, selon la première limite atteinte. Les mots de passe des gestionnaires de mots de passe et les extraits sensibles ne sont jamais conservés. Vous pouvez le modifier à tout moment dans les paramètres."
 
@@ -2566,6 +2578,9 @@ msgstr "Sélectionner plusieurs éléments"
 
 msgid "Select snippets"
 msgstr "Sélectionner des extraits"
+
+msgid "Select the items to group first"
+msgstr "Sélectionnez d'abord les éléments à regrouper"
 
 msgid "Sensitive"
 msgstr "Confidentiel"
@@ -2930,6 +2945,9 @@ msgstr "Cette application"
 msgid "That combination can't be used as a shortcut."
 msgstr "Cette combinaison ne peut pas servir de raccourci."
 
+msgid "That edit of a sensitive item cannot be undone: its text is not kept."
+msgstr "Cette modification d'un élément sensible ne peut pas être annulée : son texte n'est pas conservé."
+
 msgid "That file is empty."
 msgstr "Ce fichier est vide."
 
@@ -2971,6 +2989,9 @@ msgstr "Ce mot de passe est incorrect. Réessayez."
 
 msgid "That path is a folder, not a file."
 msgstr "Ce chemin est un dossier, pas un fichier."
+
+msgid "That step cannot be undone any more: what it changed was deleted for good."
+msgstr "Cette étape ne peut plus être annulée : ce qu'elle a modifié a été supprimé définitivement."
 
 msgid "That text is too large to save."
 msgstr "Ce texte est trop volumineux pour être enregistré."
@@ -3220,6 +3241,9 @@ msgstr "Annulé : {}"
 
 msgid "Undo"
 msgstr "Annuler"
+
+msgid "Undo and Redo reach the last 100 changes since Snipdeck started. They are forgotten when it closes or the library is erased. Text edits of sensitive items cannot be undone, and an item deleted for good is gone for good."
+msgstr "Annuler et Rétablir remontent jusqu'aux 100 dernières modifications depuis le démarrage de Snipdeck. Elles sont oubliées à sa fermeture ou à l'effacement de la bibliothèque. Les modifications du texte d'un élément sensible ne peuvent pas être annulées, et un élément supprimé définitivement est perdu."
 
 msgid "Undo delete of “{}”"
 msgstr "Annuler la suppression de « {} »"
@@ -3556,6 +3580,9 @@ msgstr "apparence couleur sombre clair suivre windows"
 msgid "appearance colour night"
 msgstr "apparence couleur nuit"
 
+msgid "board change"
+msgstr "modification du tableau"
+
 msgid "change modify rename"
 msgstr "modifier changer renommer"
 
@@ -3675,6 +3702,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "libellé : {}"
 
+msgid "list change"
+msgstr "modification de la liste"
+
 msgid "lowercase"
 msgstr "minuscules"
 
@@ -3758,6 +3788,9 @@ msgstr "réordonner plus tôt monter section"
 
 msgid "reorder later lower section"
 msgstr "réordonner plus tard descendre section"
+
+msgid "restore"
+msgstr "restauration"
 
 msgid "s"
 msgstr "s"
@@ -3864,6 +3897,9 @@ msgstr "{} ne ferme rien"
 
 msgid "{} closes nothing; write {} for a literal {}"
 msgstr "{} ne ferme rien ; écrivez {} pour un {} littéral"
+
+msgid "{} copy"
+msgstr "{} copie"
 
 msgid "{} could not be read and was skipped."
 msgstr "{} n'a pas pu être lu et a été ignoré."

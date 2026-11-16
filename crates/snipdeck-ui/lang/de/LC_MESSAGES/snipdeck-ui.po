@@ -441,6 +441,9 @@ msgstr "Zwischenablage später leeren"
 msgid "Clear the clipboard sooner"
 msgstr "Zwischenablage früher leeren"
 
+msgid "Clear the colour filter to group items"
+msgstr "Farbfilter aufheben, um Einträge zu gruppieren"
+
 msgid "Clear the search"
 msgstr "Suche leeren"
 
@@ -852,6 +855,9 @@ msgstr "Endgültig löschen?"
 msgid "Delete for good…"
 msgstr "Endgültig löschen…"
 
+msgid "Delete forever"
+msgstr "Endgültig löschen"
+
 msgid "Delete group"
 msgstr "Gruppe löschen"
 
@@ -902,6 +908,9 @@ msgstr "Gelöschte Textbausteine bleiben {} Tage hier, bevor sie entfernt werden
 
 msgid "Deleted list “{}”"
 msgstr "Liste „{}“ gelöscht"
+
+msgid "Deleted tag \"{}\""
+msgstr "Schlagwort „{}“ gelöscht"
 
 msgid "Deleted “{}”"
 msgstr "Gelöscht: „{}“"
@@ -1795,6 +1804,9 @@ msgstr "Funktioniert nicht"
 msgid "Nothing copied yet"
 msgstr "Noch nichts kopiert"
 
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "Ohne dein Ja wird nichts gespeichert, und du kannst das jederzeit in den Einstellungen ändern. „Zuletzt“ speichert den Text, den du kopierst, nur auf diesem Computer, für die letzten {} Kopien oder {} Tage, je nachdem, was zuerst eintritt. Passwörter aus Passwortmanagern und vertrauliche Einträge werden nie gespeichert."
+
 msgid "Nothing matches “{}”"
 msgstr "Nichts passt zu „{}“"
 
@@ -1890,6 +1902,9 @@ msgstr "Snipdeck öffnen"
 
 msgid "Open a docked panel by"
 msgstr "Angedocktes Panel öffnen durch"
+
+msgid "Open a list to group its items"
+msgstr "Öffne eine Liste, um ihre Einträge zu gruppieren"
 
 msgid "Open backups folder"
 msgstr "Sicherungsordner öffnen"
@@ -2257,9 +2272,6 @@ msgstr "Aktionen für Zuletzt Kopiertes"
 msgid "Recent history cleared"
 msgstr "Verlauf „Zuletzt“ gelöscht"
 
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "Ohne dein Ja wird nichts gespeichert, und du kannst das jederzeit in den Einstellungen ändern. „Zuletzt“ speichert den Text, den du kopierst, nur auf diesem Computer, für die letzten {} Kopien oder {} Tage, je nachdem, was zuerst eintritt. Passwörter aus Passwortmanagern und vertrauliche Einträge werden nie gespeichert."
-
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "„Zuletzt“ behält den kopierten Text, nur auf diesem Computer, für die letzten {} Kopien oder {} Tage, je nachdem, was zuerst eintritt. Passwörter aus Passwortmanagern und vertrauliche Textbausteine werden nie gespeichert. Du kannst das jederzeit in den Einstellungen ändern."
 
@@ -2566,6 +2578,9 @@ msgstr "Mehrere Einträge auswählen"
 
 msgid "Select snippets"
 msgstr "Snippets auswählen"
+
+msgid "Select the items to group first"
+msgstr "Wähle zuerst die Einträge zum Gruppieren aus"
 
 msgid "Sensitive"
 msgstr "Vertraulich"
@@ -2930,6 +2945,9 @@ msgstr "Diese App"
 msgid "That combination can't be used as a shortcut."
 msgstr "Diese Kombination kann nicht als Tastenkürzel verwendet werden."
 
+msgid "That edit of a sensitive item cannot be undone: its text is not kept."
+msgstr "Diese Bearbeitung eines sensiblen Eintrags lässt sich nicht rückgängig machen: Sein Text wird nicht gespeichert."
+
 msgid "That file is empty."
 msgstr "Diese Datei ist leer."
 
@@ -2971,6 +2989,9 @@ msgstr "Das Passwort ist nicht richtig. Versuche es erneut."
 
 msgid "That path is a folder, not a file."
 msgstr "Dieser Pfad ist ein Ordner, keine Datei."
+
+msgid "That step cannot be undone any more: what it changed was deleted for good."
+msgstr "Dieser Schritt lässt sich nicht mehr rückgängig machen: Was er geändert hat, wurde endgültig gelöscht."
 
 msgid "That text is too large to save."
 msgstr "Dieser Text ist zu groß zum Speichern."
@@ -3220,6 +3241,9 @@ msgstr "Rückgängig: {}"
 
 msgid "Undo"
 msgstr "Rückgängig"
+
+msgid "Undo and Redo reach the last 100 changes since Snipdeck started. They are forgotten when it closes or the library is erased. Text edits of sensitive items cannot be undone, and an item deleted for good is gone for good."
+msgstr "Rückgängig und Wiederholen reichen bis zu den letzten 100 Änderungen seit dem Start von Snipdeck. Sie werden vergessen, wenn Snipdeck geschlossen oder die Bibliothek gelöscht wird. Textänderungen an sensiblen Einträgen lassen sich nicht rückgängig machen, und endgültig gelöschte Einträge sind unwiederbringlich weg."
 
 msgid "Undo delete of “{}”"
 msgstr "Löschen von „{}“ rückgängig machen"
@@ -3556,6 +3580,9 @@ msgstr "Aussehen Farbe dunkel hell Windows folgen"
 msgid "appearance colour night"
 msgstr "Aussehen Farbe Nacht"
 
+msgid "board change"
+msgstr "Board-Änderung"
+
 msgid "change modify rename"
 msgstr "ändern bearbeiten umbenennen"
 
@@ -3675,6 +3702,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "Markierung: {}"
 
+msgid "list change"
+msgstr "Listenänderung"
+
 msgid "lowercase"
 msgstr "Kleinbuchstaben"
 
@@ -3758,6 +3788,9 @@ msgstr "umsortieren früher anheben Abschnitt"
 
 msgid "reorder later lower section"
 msgstr "umsortieren später absenken Abschnitt"
+
+msgid "restore"
+msgstr "Wiederherstellen"
 
 msgid "s"
 msgstr "s"
@@ -3864,6 +3897,9 @@ msgstr "{} schließt nichts"
 
 msgid "{} closes nothing; write {} for a literal {}"
 msgstr "{} schließt nichts; schreibe {} für ein wörtliches {}"
+
+msgid "{} copy"
+msgstr "{} Kopie"
 
 msgid "{} could not be read and was skipped."
 msgstr "{} konnte nicht gelesen werden und wurde übersprungen."

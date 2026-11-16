@@ -201,6 +201,22 @@ pub enum ToastMessage {
         /// What was taken back.
         action: crate::history::Action,
     },
+    /// "Open a list to group its items": Ctrl+G in a search or a view of several lists.
+    GroupNeedsList,
+    /// "Clear the colour filter to group items": the rows show no group headers under it.
+    GroupColourFilter,
+    /// "Select the items to group first".
+    GroupNothing,
+    /// "Deleted tag work": the items keep their other tags.
+    TagDeleted {
+        /// The tag's name.
+        name: String,
+    },
+    /// "That edit of a sensitive item cannot be undone": Undo stopped at an edit whose text is
+    /// not kept.
+    UndoStopped,
+    /// "That step cannot be undone any more: what it changed is gone for good."
+    HistoryStepLost,
     /// "Redid delete": the history brought a step back.
     Redone {
         /// What was brought back.

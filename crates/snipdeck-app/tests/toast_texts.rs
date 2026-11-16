@@ -116,6 +116,12 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::RecentDeleted => 81,
         ToastMessage::RecentCleared => 82,
         ToastMessage::PickerRecentsCleared => 111,
+        ToastMessage::GroupNeedsList => 112,
+        ToastMessage::GroupColourFilter => 113,
+        ToastMessage::GroupNothing => 114,
+        ToastMessage::TagDeleted { .. } => 115,
+        ToastMessage::UndoStopped => 116,
+        ToastMessage::HistoryStepLost => 117,
         ToastMessage::DockSet(_) => 83,
         ToastMessage::NotRefreshed => 84,
         ToastMessage::IconNotAddable => 85,
@@ -142,7 +148,7 @@ const fn position(message: &ToastMessage) -> usize {
     }
 }
 
-const VARIANTS: usize = 112;
+const VARIANTS: usize = 118;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -288,6 +294,12 @@ fn samples() -> Vec<ToastMessage> {
         M::RecentDeleted,
         M::RecentCleared,
         M::PickerRecentsCleared,
+        M::GroupNeedsList,
+        M::GroupColourFilter,
+        M::GroupNothing,
+        M::TagDeleted { name: s("work") },
+        M::UndoStopped,
+        M::HistoryStepLost,
         M::DockSet(None),
         M::DockSet(Some(DockEdge::Left)),
         M::DockSet(Some(DockEdge::Right)),
@@ -456,6 +468,30 @@ fn what_a_toast_carries_reaches_its_sentence() {
         assert_eq!(
             said(ToastMessage::PickerRecentsCleared),
             "Recently used emoji and colours cleared"
+        );
+        assert_eq!(
+            said(ToastMessage::GroupNeedsList),
+            "Open a list to group its items"
+        );
+        assert_eq!(
+            said(ToastMessage::GroupColourFilter),
+            "Clear the colour filter to group items"
+        );
+        assert_eq!(
+            said(ToastMessage::GroupNothing),
+            "Select the items to group first"
+        );
+        assert_eq!(
+            said(ToastMessage::TagDeleted { name: s("work") }),
+            "Deleted tag \"work\""
+        );
+        assert_eq!(
+            said(ToastMessage::UndoStopped),
+            "That edit of a sensitive item cannot be undone: its text is not kept."
+        );
+        assert_eq!(
+            said(ToastMessage::HistoryStepLost),
+            "That step cannot be undone any more: what it changed was deleted for good."
         );
         assert_eq!(said(ToastMessage::FileMoved), "File moved or deleted");
         assert_eq!(
