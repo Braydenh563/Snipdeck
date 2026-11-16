@@ -19,6 +19,6 @@ Done + tested (core and app/UI, strings in .pot and all six .po): DATA-1, 2, 3, 
 Open: 5 (recovery window for unopenable DB), 6 (zero-length DB), 11 (add test: preview writes nothing), 18, 19, 20 (Restore from file..., board layout choice), 21 (export list/board/selection; CSV/JSON/Markdown/Espanso, neutralise =+-@), 24, 25, 26, 28, 29 (Windows durable rename; gnu check), 30, 31, 32, 33, 34 (backup before bulk acts, version history, selective restore or SPEC note), 35, toast naming skipped items / suspect-shrink notice, the 5 not-reached interactions.
 
 ## Task 3 progress (worker)
-- Coded, tests written, NOT yet run (build in progress): DATA-6 (Error::EmptyDatabase), 11 (preview writes no file test), 26, 28 (worst-case draft test; editor cap is 16 KB so 256 KiB suffices), 30, 31 (DeeperFoldersSkipped), 33 (erase text), 35 (neutral fallbacks), toasts naming skipped items (backup, export) and suspect-shrink notice (manual + daily). Strings in .pot and 6 .po.
+- Done, tested, gated, pushed (fd26661): DATA-6 (Error::EmptyDatabase), 11 (preview writes no file test), 26, 28 (worst-case draft test; editor cap is 16 KB so 256 KiB suffices), 30, 31 (DeeperFoldersSkipped), 33 (erase text), 35 (neutral fallbacks), toasts naming skipped items (backup, export) and suspect-shrink notice (manual + daily). Strings in .pot and 6 .po.
 - Recorded post-1.0 in docs/SPEC.md: 5, 18, 19, 20, 21, 24, 25, 29, 32, 34, unreached interactions.
-- Next: run tests, gate --changed, push.
+- Open: nothing. Unverified: Windows-only paths; no run of the real app UI.
