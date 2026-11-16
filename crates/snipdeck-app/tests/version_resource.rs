@@ -1,5 +1,5 @@
 //! The exe's version resource names the company and the licence (Explorer's Details tab and
-//! SmartScreen show them). The resource is built on Windows only, so this reads the build script.
+//! `SmartScreen` show them). The resource is built on Windows only, so this reads the build script.
 #![allow(clippy::unwrap_used, reason = "test code")]
 
 #[test]
